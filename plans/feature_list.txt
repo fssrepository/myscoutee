@@ -1,0 +1,110 @@
+promotions ket reszre bontas, szervezett esemeny, vagy csak vminek a berlese
+
+mindenesetre az esemény panelben tetszolegesen lehet hozzáadni ezeket a szoveg ala
+
+a sub event-en szallas kivalaszto pl. a car gomb mellett min - max stb., tehat 4 gomb mar, feljon egy popup es gyakorlatilag, szallasra lehet keresni - pl. booking, szallas.hu stb. - berelni csonakot stb. (azt meg nem tudom, hogy csinalom meg) - sub promotion, tema (csonak, es esemény behuzas vagy vmi mas)
+
+chats - relevansak vannak benne, akiknel aktiv chat van, es mellette van egy + az accordion headerjeben, 
+
+ez esemény nélküli - amihez kesobb eseményt lehet adni a szokásos módon
+
+akkor eseménnye alakul es az események accordionban jelenik meg
+
+ez azt is jelenti, hogy invitalni kulon is lehet az embereket csak a chatbe, mig nem dontik el, hogy mi legyen - be lehet utni idopontot es az eseményhez kerdojel kerul ---- ???
+
+1 - 1 chat - chats accordion (talalkozas utan lehet kezdeményezni)
+
+websocket emulator - latszodjon, hogy ha ilyen mqtt uzenet kerul at, akkor a felület igy valtozik
+
+extended flag - ami bekapcsolja azokat a feluleteket, amelyek meg nincsenek a hatterbe kotve - esemény szerkeszto, event history, promotions, event button at the top of the chat (event editor)
+
+kivalszt eventet a menubol, alap a chat ablak es a tetejen van ez a gomb, a bal oldalon, meg az a harom sor, ami a menuben volt
+
+a game az alap oldal (ezek az események popup-ok)
+
+a game tetejen van egy history ikon (egyen, parok, ki kire szavazott) - popup megfelelő szurokkel
+
+az eseményeknel - menu item - torles, szerkesztes gomb - ami egy-egy popup
+az accordionon egy history es egy plus gomb (history accordion feedback-et lehet adni - csillag panel)
+
+----
+esemény szerkesztés - promociobol lehet cserélni az eseményt, vagy alesemenynek rakni, ha nem összetett - bal oldalt idovonal az alesemenyneknel es harom gomb mellette az esemény cim alatt, car, members, accessories (jelentkezok / szabad helyek min - max formatum - es piros szinezes, ha az esemény meg nem lesz megtartva - itt lesz a tournament stages a headerben - tehat nem kulon ablakban)
+
+lehet az események felett game menu
+ezen egy history gomb (szavazasok egyeni, par, adott, kapott stb.)
+
+a par szavazast meg nem tudom hogy hova milyen formában teszem
+
+viszont igy nem kell gombokat rakni a headerbe
+
+az event reszen lehet invitalni embereket - felbukkan egy popup - felul egy csips textbox keresovel - es itt lehet kiválasztani kit hivunk meg
+
+valszeg a panelekre fogok rakkattintani
+(ember panel ket oszlop - szokasos)
+----
+ezek azok akikkel mar találkozott emberunk
+
+the e-kozig projekt masold a myscoutee uj repo ala - es azon kerj modositasokat az AI-tol
+
+auto regisztráció a user selector menuben (edit gomb a felhasználó neve alatt, mint a Tinderen) - nagyjából ezek az adatok legyenek megjelenitve ha masok latjak, lock ikon mellette, private, publikus beallitas, school ugyanitt - ami egy auto complementer - varos beutese utan - a varos neve mellett az orszag "-"-val elvalasztva - ez is egy idovonalas legyen, esetleg legyenek meg munkahelyek is ott
+(a promotionts allashirdetes is lehet, mint tema)
+
+vmi jol designolt bejelentkezo felulet, ami osszefoglalja, hogy mi ez az alkalmazas, GDPR attekinto stb. kapcsolat (milyen témában)
+
+csoportok nem lesznek, esemény temak lesznek, ami a felhasználó erdeklodesi kore is, igy ez majd később optimalizalhato (csak olyan esemény re invitaljon, ami erdekel, ha globális stb.) - amikor egy eseményt letrehozok, ott lehet kiválasztani a témát, ez amikor egy eseményre rakeresunk egy szuro is
+
+a bal felso sarok (esemeny nev, hely, ido felirat) - csoport nev
+
+utana szavazatok gomb egy red counterrel
+(accordion - Egyeni, Parok (Kapott, Adott, Kölcsönös, Találkozott)
+
+meg egy üzenetet gomb (gyakorlatilag a chat) - a chat alul egy szoveg + egy gomb
+(esemény bedobasa stb. - ezt meg nem tudom)
+
+meg kell nezni, milyen volt az eredeti alkalmazás (milyen típusú csoportok voltak - szavazo csoport-on kivul mi volt meg)
+
+események a menuben datum szerint növekvő vannak sorba rendezve, a csoportok nev szerint
+
+(ha az esemény elmult, akkor mar nem jelenik meg, archiv események között lehet megtalálni) - archiv ikon vhol lehet az accordion-on
+
+invitation (accept - pipa jel, delete button) a menuben
+
+ha pipa, akkor bekerul az aktiv események accordionba (menu)
+
+az esemény
+
+esemény neve
+csoport neve
+helyszin
+
+a sor background kap egy csoport szint
+
+ha valaki nem torolheti az eseményt, mert nem admin, akkor kilepes gomb helyette a sorban, mert kilephet belole, ez a csoportoknal is igy van
+
+a promotion csak a szervezo altal létrehozott eseményeket takarja - amugy a tobbi szereplo egy listabol valassza ki (esemény oldal + gomb)
+
+az eseményt az accordionon belul sorba lehet rendezni - drageles talan
+
+a menusor nagyon hasonló (user selector - de nincs felhasználó valtas)
+
+Csoportok, csoporton belül Események accordion a menuben - kilepes gomb az eseménybol, csoportbol - Esemény gyakorlatilag egy chatszoba, alul egy textbox, mellette attachment, ahol helyeket lehet hozzaadni (hova menjunk kivalasztas a promociobol)
+
++ jel az accordionon, uj esemeny letrehozasa - egy ceruza is van a torles mellett, mint szerkesztes - tagok invitalasa, az ismeros listabol - esetleg esemény hozzaadas (ezt meg nem tudom)
+
+esemény tipusok + sztem az invitalas accordion - random esemény, meg mas invital - egyszerre egy accordion nyitva - ráadásul - az active user, ami a menunel a nev alatt van a masodik sorban - az a Felhasználóvalaszto helyett csoportvalaszto lesz - aktiv csoport - vhogy mutatni kell, hogy a masik csoportokban van uzenet red counter
+(meg ezt nem tudom)
+
+lehet hogy ha a csoportra kattintok, akkor nem a csoport események, hanem az osszes esemény jelenik meg -
+az esemény névben a következő sorban jelenik meg melyik csoporthoz tartozik
+
+Promociok - esemény szervezes (harmadik tab)
+
+ezek teljes popupok
+
+az esemény alesemenyei kozott
+(sztem ez accordion lesz)
+
+member lista, kis icon - nev mogotte es mellette egy auto ikon es pl. egy torol gomb, vki kirugasa a csoportbol
+
+rakkattintva a sorra, megjelenik a profil (tehat nem panel lista)
+a sor background szine mutatja, milyen szerepkore van - a member listat majd megnezem, hogy jelenik meg Facebook-on
