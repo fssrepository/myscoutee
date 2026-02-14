@@ -1,0 +1,787 @@
+<div class="documents invoices" *ngIf="!selectedItem">
+  <div class="search-row">
+    <div class="search-wrapper">
+      <mat-form-field class="search" appearance="outline">
+        <mat-chip-set class="search-chips" *ngIf="searchTerms.length > 0">
+          <mat-chip *ngFor="let term of searchTerms" removable (removed)="removeSearchTerm(term)">
+            {{ term }}
+            <button matChipRemove aria-label="Remove search term">✕</button>
+          </mat-chip>
+        </mat-chip-set>
+        <input
+          matInput
+          [formControl]="searchCtrl"
+          placeholder="Bizonylat keresés pl.: bizonylatszám, ügyfél, bizonylat típus"
+          (keydown.enter)="filterBySearch()"
+        >
+      </mat-form-field>
+
+      <div class="search-panel" [class.open]="showSearchPanel" *ngIf="showSearchPanel">
+        <div class="search-result" *ngFor="let result of searchResults" (click)="selectSearchResult(result)">
+          <div class="result-ugyfel">{{ result.ugyfel }}</div>
+          <div class="result-desc">{{ result.bizonylatTipus }} · {{ result.bizonylatSzam }}</div>
+        </div>
+        <div class="search-footer">
+          <span class="footer-left">all search result for "{{ searchCtrl.value }}"</span>
+          <span class="footer-right">Press ENTER</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="filters" #invoiceFilters [class.panel-open]="showUgyfelPanel || showDatePanel || showStatusPanel || showDirectionPanel || showTypePanel">
+    <div class="ugyfel-wrapper">
+      <button mat-stroked-button class="ugyfel-btn" [class.active]="showUgyfelPanel" (click)="toggleUgyfelPanel()" [attr.aria-expanded]="showUgyfelPanel">
+        <mat-icon *ngIf="selectedUgyfels.length > 0" class="tick">check</mat-icon>
+        <span class="label">Ügyfél:&nbsp;{{ selectedUgyfels.length === 0 ? '' : (selectedUgyfels.length === 1 ? selectedUgyfels[0] : selectedUgyfels[0] + ' +' + (selectedUgyfels.length - 1)) }}</span>
+        <mat-icon class="arrow" [class.open]="showUgyfelPanel">expand_more</mat-icon>
+      </button>
+
+      <div class="ugyfel-panel" [class.open]="showUgyfelPanel" *ngIf="showUgyfelPanel">
+        <mat-form-field class="ugyfeld-search" appearance="outline">
+          <mat-chip-set #chipList aria-label="Selected ügyfél" class="chip-list">
+            <mat-chip *ngFor="let s of selectedUgyfels" removable (removed)="removeUgyfel(s)">
+              {{ s }}
+              <button matChipRemove aria-label="Remove">✕</button>
+            </mat-chip>
+          </mat-chip-set>
+
+          <input
+            matInput
+            [formControl]="ugyfelCtrl"
+            [matAutocomplete]="uauto"
+            placeholder="Ügyfél keresés (személy, EV stb.)"
+            #ugyfelTrigger="matAutocompleteTrigger"
+            (focus)="ugyfelTrigger.openPanel()"
+            (click)="ugyfelTrigger.openPanel()"
+          >
+
+          <mat-autocomplete #uauto="matAutocomplete" (optionSelected)="selectUgyfel($event.option.value)">
+            <mat-option *ngFor="let option of filteredUgyfels$ | async" [value]="option">{{ option }}</mat-option>
+          </mat-autocomplete>
+        </mat-form-field>
+      </div>
+    </div>
+
+    <div class="type-wrapper">
+      <button mat-stroked-button class="type-btn" [class.active]="showTypePanel" (click)="toggleTypePanel()" [attr.aria-expanded]="showTypePanel">
+        <mat-icon *ngIf="selectedTypes.length > 0" class="tick">check</mat-icon>
+        <span class="label">Bizonylat típus:&nbsp;{{ selectedTypes.length === 0 ? '' : (selectedTypes.length === 1 ? selectedTypes[0] : selectedTypes[0] + ' +' + (selectedTypes.length - 1)) }}</span>
+        <mat-icon class="arrow" [class.open]="showTypePanel">expand_more</mat-icon>
+      </button>
+
+      <div class="type-panel" [class.open]="showTypePanel" *ngIf="showTypePanel">
+        <mat-form-field class="type-search" appearance="outline">
+          <mat-chip-set aria-label="Selected types" class="chip-list">
+            <mat-chip *ngFor="let s of selectedTypes" removable (removed)="removeType(s)">
+              {{ s }}
+              <button matChipRemove aria-label="Remove">✕</button>
+            </mat-chip>
+          </mat-chip-set>
+
+          <input
+            matInput
+            [formControl]="typeCtrl"
+            [matAutocomplete]="tauto"
+            placeholder="Bizonylat típus keresés"
+            #typeTrigger="matAutocompleteTrigger"
+            (focus)="typeTrigger.openPanel()"
+            (click)="typeTrigger.openPanel()"
+          >
+
+          <mat-autocomplete #tauto="matAutocomplete" (optionSelected)="selectType($event.option.value)">
+            <mat-option *ngFor="let option of filteredTypes$ | async" [value]="option">{{ option }}</mat-option>
+          </mat-autocomplete>
+        </mat-form-field>
+      </div>
+    </div>
+    <div class="date-wrapper">
+      <button mat-stroked-button class="date-btn" [class.active]="showDatePanel" (click)="toggleDatePanel()" [attr.aria-expanded]="showDatePanel">
+        <mat-icon *ngIf="dateFromCtrl.value || dateToCtrl.value" class="tick">check</mat-icon>
+        <span class="label">Dátum:&nbsp;{{ dateLabel }}</span>
+        <mat-icon class="arrow" [class.open]="showDatePanel">expand_more</mat-icon>
+      </button>
+
+      <div class="date-panel" [class.open]="showDatePanel" *ngIf="showDatePanel">
+        <div class="date-chips" *ngIf="dateFromCtrl.value || dateToCtrl.value">
+          <mat-chip-set aria-label="Selected dates" class="chip-list">
+            <mat-chip *ngIf="dateFromCtrl.value" removable (removed)="removeDate('from')">
+              From: {{ formatShortDate(dateFromCtrl.value) }}
+              <button matChipRemove aria-label="Remove">✕</button>
+            </mat-chip>
+            <mat-chip *ngIf="dateToCtrl.value" removable (removed)="removeDate('to')">
+              To: {{ formatShortDate(dateToCtrl.value) }}
+              <button matChipRemove aria-label="Remove">✕</button>
+            </mat-chip>
+          </mat-chip-set>
+        </div>
+
+        <div class="date-inputs">
+          <mat-form-field appearance="outline">
+            <input matInput [matDatepicker]="fromPicker" placeholder="Tól" [formControl]="dateFromCtrl" (dateChange)="onDateChange()">
+            <mat-datepicker-toggle matSuffix [for]="fromPicker"></mat-datepicker-toggle>
+            <mat-datepicker #fromPicker xPosition="start" yPosition="below"></mat-datepicker>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <input matInput [matDatepicker]="toPicker" placeholder="Ig" [formControl]="dateToCtrl" (dateChange)="onDateChange()">
+            <mat-datepicker-toggle matSuffix [for]="toPicker"></mat-datepicker-toggle>
+            <mat-datepicker #toPicker xPosition="start" yPosition="below"></mat-datepicker>
+          </mat-form-field>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-wrapper">
+      <button mat-stroked-button class="status-btn" [class.active]="showStatusPanel" (click)="toggleStatusPanel()" [attr.aria-expanded]="showStatusPanel">
+        <mat-icon *ngIf="selectedStatuses.length > 0" class="tick">check</mat-icon>
+        <span class="label">Státusz:&nbsp;{{ selectedStatuses.length === 0 ? '' : (selectedStatuses.length === 1 ? selectedStatuses[0] : selectedStatuses[0] + ' +' + (selectedStatuses.length - 1)) }}</span>
+        <mat-icon class="arrow" [class.open]="showStatusPanel">expand_more</mat-icon>
+      </button>
+
+      <div class="status-panel" [class.open]="showStatusPanel" *ngIf="showStatusPanel">
+        <mat-form-field class="status-search" appearance="outline">
+          <mat-chip-set aria-label="Selected statuses" class="chip-list">
+            <mat-chip *ngFor="let s of selectedStatuses" removable (removed)="removeStatus(s)">
+              {{ s }}
+              <button matChipRemove aria-label="Remove">✕</button>
+            </mat-chip>
+          </mat-chip-set>
+
+          <input
+            matInput
+            [formControl]="statusCtrl"
+            [matAutocomplete]="sauto"
+            placeholder="Státusz keresés"
+            #statusTrigger="matAutocompleteTrigger"
+            (focus)="statusTrigger.openPanel()"
+            (click)="statusTrigger.openPanel()"
+          >
+
+          <mat-autocomplete #sauto="matAutocomplete" (optionSelected)="selectStatus($event.option.value)">
+            <mat-option *ngFor="let option of filteredStatuses$ | async" [value]="option">{{ option }}</mat-option>
+          </mat-autocomplete>
+        </mat-form-field>
+      </div>
+    </div>
+
+    <div class="direction-wrapper">
+      <button mat-stroked-button class="direction-btn" [class.active]="showDirectionPanel" (click)="toggleDirectionPanel()" [attr.aria-expanded]="showDirectionPanel">
+        <mat-icon *ngIf="selectedDirections.length > 0" class="tick">check</mat-icon>
+        <span class="label">Irány:&nbsp;{{ selectedDirections.length === 0 ? '' : (selectedDirections.length === 1 ? selectedDirections[0] : selectedDirections[0] + ' +' + (selectedDirections.length - 1)) }}</span>
+        <mat-icon class="arrow" [class.open]="showDirectionPanel">expand_more</mat-icon>
+      </button>
+
+      <div class="direction-panel" [class.open]="showDirectionPanel" *ngIf="showDirectionPanel">
+        <mat-form-field class="direction-search" appearance="outline">
+          <mat-chip-set aria-label="Selected directions" class="chip-list">
+            <mat-chip *ngFor="let s of selectedDirections" removable (removed)="removeDirection(s)">
+              {{ s }}
+              <button matChipRemove aria-label="Remove">✕</button>
+            </mat-chip>
+          </mat-chip-set>
+
+          <input
+            matInput
+            [formControl]="directionCtrl"
+            [matAutocomplete]="dauto"
+            placeholder="Irány keresés"
+            #directionTrigger="matAutocompleteTrigger"
+            (focus)="directionTrigger.openPanel()"
+            (click)="directionTrigger.openPanel()"
+          >
+
+          <mat-autocomplete #dauto="matAutocomplete" (optionSelected)="selectDirection($event.option.value)">
+            <mat-option *ngFor="let option of filteredDirections$ | async" [value]="option">{{ option }}</mat-option>
+          </mat-autocomplete>
+        </mat-form-field>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="top-controls">
+    <div class="left-controls">
+      <button mat-icon-button (click)="refresh()" aria-label="Refresh" [disabled]="loading">
+        <mat-icon *ngIf="!loading">refresh</mat-icon>
+        <mat-spinner *ngIf="loading" diameter="20"></mat-spinner>
+      </button>
+    </div>
+    <div class="right-controls">
+      <mat-paginator #paginator [pageSizeOptions]="[5, 10, 25]" showFirstLastButtons></mat-paginator>
+    </div>
+  </div>
+
+  <div class="table-stack">
+    <div class="pull-indicator" *ngIf="isMobileView && (pullActive || pullRefreshing)">
+      <mat-progress-spinner
+        [mode]="pullRefreshing ? 'indeterminate' : 'determinate'"
+        [value]="pullProgress"
+        diameter="20">
+      </mat-progress-spinner>
+    </div>
+    <div class="table-container" #tableContainer>
+      <div class="table-overlay" *ngIf="loading">
+        <mat-progress-spinner diameter="48" mode="indeterminate"></mat-progress-spinner>
+      </div>
+      <table mat-table [dataSource]="dataSource" class="mat-elevation-z1">
+        <ng-container matColumnDef="name">
+          <td mat-cell *matCellDef="let element" class="col-name">
+            <div class="name-primary">
+              <mat-icon aria-hidden="true" class="status-icon" [class]="'status-icon status-' + getStatusClass(element.status)">
+                {{ getStatusIcon(element.status || '') }}
+              </mat-icon>
+              <span class="name-text">{{ element.ugyfel }}</span>
+            </div>
+            <div class="mobile-meta">
+              <span class="mobile-bizonylat">{{ element.bizonylatSzam }}</span>
+              <span class="mobile-status">{{ element.status }}</span>
+              <span class="mobile-form">{{ element.bizonylatTipus }}</span>
+            </div>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="bizonylat">
+          <td mat-cell *matCellDef="let element" class="col-bizonylat">{{ element.bizonylatSzam }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="type">
+          <td mat-cell *matCellDef="let element" class="col-form">{{ element.bizonylatTipus }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <td mat-cell *matCellDef="let element" class="col-status">{{ element.status }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="datetime">
+          <td mat-cell *matCellDef="let element" class="datetime-cell">{{ formatDate(element.datetime) }}</td>
+        </ng-container>
+
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;" [class.unread]="row.unread" [class.read]="!row.unread" (click)="selectTableRow(row)" style="cursor: pointer;"></tr>
+      </table>
+      <div class="mobile-load-indicator" *ngIf="mobileLoadingMore">
+        <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+      </div>
+      <div #tableScrollSentinel class="table-sentinel" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <div class="documents-fab">
+    <button mat-fab class="fab-action" aria-label="Bevallási időszak keresése" (click)="openPeriodsPopup()">
+      <mat-icon>history_edu</mat-icon>
+    </button>
+    <button mat-fab color="primary" class="fab-trigger" aria-label="Számla létrehozása" (click)="openCreatePopup()">
+      <mat-icon>add</mat-icon>
+    </button>
+  </div>
+</div>
+
+<section class="doc-popup" *ngIf="activePopup">
+  <div class="doc-popup-backdrop" (click)="closePopup()"></div>
+
+  <div class="doc-popup-panel invoice-create-panel" *ngIf="activePopup === 'create'" (click)="$event.stopPropagation()">
+    <div class="popup-header">
+      <div class="popup-title">
+        <h2>Számla létrehozása</h2>
+      </div>
+      <button mat-icon-button class="popup-close" aria-label="Bezárás" (click)="closePopup()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    <div class="popup-body">
+      <div class="invoice-create-grid invoice-create-layout">
+        <div class="invoice-card">
+          <div class="invoice-card-title">Kinek szól a bizonylat?</div>
+          <mat-form-field appearance="outline" class="popup-field">
+            <input matInput placeholder="Partner neve / adószám keresés">
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="popup-field">
+            <input matInput placeholder="Ország">
+          </mat-form-field>
+          <div class="inline-fields">
+            <mat-form-field appearance="outline" class="popup-field">
+              <input matInput placeholder="Irányítószám">
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="popup-field">
+              <input matInput placeholder="Település">
+            </mat-form-field>
+          </div>
+          <mat-form-field appearance="outline" class="popup-field">
+            <input matInput placeholder="Cím (utca, házszám)">
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="popup-field">
+            <input matInput placeholder="Adószám / EU adószám">
+          </mat-form-field>
+        </div>
+
+        <div class="invoice-card">
+          <div class="invoice-card-title">Típus</div>
+          <mat-form-field appearance="outline" class="popup-field">
+            <input matInput placeholder="Számla">
+          </mat-form-field>
+
+          <div class="invoice-card-title">Dátumok</div>
+          <div class="inline-fields">
+            <mat-form-field appearance="outline" class="popup-field">
+              <input matInput [matDatepicker]="invoiceDatePicker" placeholder="Számla kelte" [formControl]="invoiceDateCtrl">
+              <mat-datepicker-toggle matSuffix [for]="invoiceDatePicker"></mat-datepicker-toggle>
+              <mat-datepicker #invoiceDatePicker xPosition="start" yPosition="below"></mat-datepicker>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="popup-field">
+              <input matInput [matDatepicker]="fulfilmentDatePicker" placeholder="Teljesítés időpontja" [formControl]="fulfilmentDateCtrl">
+              <mat-datepicker-toggle matSuffix [for]="fulfilmentDatePicker"></mat-datepicker-toggle>
+              <mat-datepicker #fulfilmentDatePicker xPosition="start" yPosition="below"></mat-datepicker>
+            </mat-form-field>
+          </div>
+
+          <div class="invoice-card-title">Fizetés</div>
+          <div class="inline-fields">
+            <mat-form-field appearance="outline" class="popup-field">
+              <input
+                matInput
+                [formControl]="paymentMethodCtrl"
+                [matAutocomplete]="paymentAuto"
+                placeholder="Fizetési mód"
+              >
+              <mat-autocomplete #paymentAuto="matAutocomplete">
+                <mat-option *ngFor="let option of paymentMethods" [value]="option">{{ option }}</mat-option>
+              </mat-autocomplete>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="popup-field">
+              <input matInput [matDatepicker]="paymentDatePicker" placeholder="Fizetési határidő" [formControl]="paymentDeadlineCtrl">
+              <mat-datepicker-toggle matSuffix [for]="paymentDatePicker"></mat-datepicker-toggle>
+              <mat-datepicker #paymentDatePicker xPosition="start" yPosition="below"></mat-datepicker>
+            </mat-form-field>
+          </div>
+          <mat-form-field appearance="outline" class="popup-field">
+            <input matInput placeholder="Bankszámlaszám">
+          </mat-form-field>
+        </div>
+
+        <div class="invoice-card wide">
+          <div class="invoice-card-title">Tételek</div>
+          <div class="items-table" *ngIf="!isMobileView">
+            <div class="items-row items-header">
+              <span>Terméknév</span>
+              <span>Net. egységár</span>
+              <span>ÁFA</span>
+              <span>M. egység</span>
+              <span>Mennyiség</span>
+              <span>Net. részösszeg</span>
+            </div>
+            <div class="items-row" *ngFor="let item of invoiceItems; let i = index">
+              <div class="item-cell cell-name">
+                <div class="item-label">Terméknév</div>
+                <mat-form-field appearance="outline" class="items-field">
+                  <input matInput placeholder="Megnevezés" [(ngModel)]="item.name" name="itemName-{{ i }}">
+                </mat-form-field>
+              </div>
+              <div class="item-cell cell-unitprice">
+                <div class="item-label">Net. egységár</div>
+                <mat-form-field appearance="outline" class="items-field">
+                  <input matInput type="number" placeholder="0" [(ngModel)]="item.unitPrice" name="itemPrice-{{ i }}">
+                </mat-form-field>
+              </div>
+              <div class="item-cell cell-vat">
+                <div class="item-label">ÁFA</div>
+                <mat-form-field appearance="outline" class="items-field">
+                  <input
+                    matInput
+                    [matAutocomplete]="vatAuto"
+                    [(ngModel)]="item.vat"
+                    [ngModelOptions]="{ standalone: true }"
+                    name="itemVat-{{ i }}"
+                    placeholder="ÁFA"
+                  >
+                  <mat-autocomplete #vatAuto="matAutocomplete" [displayWith]="displayVatOption" panelClass="vat-autocomplete-panel">
+                    <mat-option *ngFor="let option of vatOptions" [value]="option">
+                      <div class="afa-option">
+                        <div class="afa-option-title"><strong>{{ option.code }}</strong> · {{ option.name }}</div>
+                        <div class="afa-option-desc">{{ option.description }}</div>
+                      </div>
+                    </mat-option>
+                  </mat-autocomplete>
+                </mat-form-field>
+              </div>
+              <div class="item-cell cell-unit">
+                <div class="item-label">M. egység</div>
+                <mat-form-field appearance="outline" class="items-field">
+                  <input matInput placeholder="db" [(ngModel)]="item.unit" name="itemUnit-{{ i }}">
+                </mat-form-field>
+              </div>
+              <div class="item-cell cell-qty">
+                <div class="item-label">Mennyiség</div>
+                <mat-form-field appearance="outline" class="items-field">
+                  <input matInput type="number" placeholder="1" [(ngModel)]="item.qty" name="itemQty-{{ i }}">
+                </mat-form-field>
+              </div>
+              <div class="item-cell cell-net">
+                <div class="item-label">Net. részösszeg</div>
+                <mat-form-field appearance="outline" class="items-field">
+                  <input matInput [value]="(getLineNet(item) | number:'1.0-0') + ' Ft'" disabled>
+                </mat-form-field>
+              </div>
+              <div class="item-cell cell-actions">
+                <button mat-icon-button class="item-remove" aria-label="Tétel törlése" (click)="removeInvoiceItem(i)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <mat-accordion class="items-accordion" *ngIf="isMobileView">
+            <mat-expansion-panel *ngFor="let item of invoiceItems; let i = index">
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  {{ (item.name || 'Tétel') + ' - ' + (getLineNet(item) | number:'1.0-0') + ' Ft' }}
+                </mat-panel-title>
+                <div class="accordion-actions">
+                  <button mat-icon-button class="item-remove" aria-label="Tétel törlése" (click)="removeInvoiceItem(i)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+              </mat-expansion-panel-header>
+              <div class="items-row mobile-items">
+                <div class="item-cell cell-name">
+                  <div class="item-label">Terméknév</div>
+                  <mat-form-field appearance="outline" class="items-field">
+                    <input matInput placeholder="Megnevezés" [(ngModel)]="item.name" name="mItemName-{{ i }}">
+                  </mat-form-field>
+                </div>
+                <div class="item-cell cell-unitprice">
+                  <div class="item-label">Net. egységár</div>
+                  <mat-form-field appearance="outline" class="items-field">
+                    <input matInput type="number" placeholder="0" [(ngModel)]="item.unitPrice" name="mItemPrice-{{ i }}">
+                  </mat-form-field>
+                </div>
+                <div class="item-cell cell-vat">
+                  <div class="item-label">ÁFA</div>
+                  <mat-form-field appearance="outline" class="items-field">
+                    <input
+                      matInput
+                      [matAutocomplete]="vatAuto"
+                      [(ngModel)]="item.vat"
+                      [ngModelOptions]="{ standalone: true }"
+                      name="mItemVat-{{ i }}"
+                      placeholder="ÁFA"
+                    >
+                    <mat-autocomplete #vatAuto="matAutocomplete" [displayWith]="displayVatOption" panelClass="vat-autocomplete-panel">
+                      <mat-option *ngFor="let option of vatOptions" [value]="option">
+                        <div class="afa-option">
+                          <div class="afa-option-title"><strong>{{ option.code }}</strong> · {{ option.name }}</div>
+                          <div class="afa-option-desc">{{ option.description }}</div>
+                        </div>
+                      </mat-option>
+                    </mat-autocomplete>
+                  </mat-form-field>
+                </div>
+                <div class="item-cell cell-unit">
+                  <div class="item-label">M. egység</div>
+                  <mat-form-field appearance="outline" class="items-field">
+                    <input matInput placeholder="db" [(ngModel)]="item.unit" name="mItemUnit-{{ i }}">
+                  </mat-form-field>
+                </div>
+                <div class="item-cell cell-qty">
+                  <div class="item-label">Mennyiség</div>
+                  <mat-form-field appearance="outline" class="items-field">
+                    <input matInput type="number" placeholder="1" [(ngModel)]="item.qty" name="mItemQty-{{ i }}">
+                  </mat-form-field>
+                </div>
+                <div class="item-cell cell-net">
+                  <div class="item-label">Net. részösszeg</div>
+                  <mat-form-field appearance="outline" class="items-field">
+                    <input matInput [value]="(getLineNet(item) | number:'1.0-0') + ' Ft'" disabled>
+                  </mat-form-field>
+                </div>
+              </div>
+            </mat-expansion-panel>
+          </mat-accordion>
+          <button mat-stroked-button class="add-item-btn" type="button" (click)="addInvoiceItem()">
+            <mat-icon>add</mat-icon>
+            Új tétel hozzáadása
+          </button>
+        </div>
+
+        <div class="invoice-card wide">
+          <div class="invoice-card-title">Tételek összesen</div>
+          <div class="invoice-summary">
+            <div class="summary-row"><span>Nettó számla érték (ÁFA nélkül)</span><span>{{ getNetTotal() | number:'1.0-0' }} Ft</span></div>
+            <div class="summary-row"><span>ÁFA összege</span><span>{{ getVatTotal() | number:'1.0-0' }} Ft</span></div>
+            <div class="summary-row total"><span>Fizetendő bruttó végösszeg</span><span>{{ getGrossTotal() | number:'1.0-0' }} Ft</span></div>
+          </div>
+        </div>
+
+        <div class="invoice-card upload wide">
+          <div class="invoice-card-title">Számla feltöltése</div>
+          <div class="upload-zone">
+            <mat-icon>cloud_upload</mat-icon>
+            <div class="upload-text">Húzd ide a fájlt, vagy válassz a gépről</div>
+            <button mat-stroked-button type="button">Fájl kiválasztása</button>
+          </div>
+        </div>
+
+        <div class="invoice-card wide create-action">
+          <button mat-flat-button color="primary" class="create-invoice-btn" type="button">Bizonylat létrehozása</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="doc-popup-panel period-panel" *ngIf="activePopup === 'periods'" (click)="$event.stopPropagation()">
+    <div class="popup-header popup-header-search">
+      <div class="popup-search-row">
+        <mat-form-field class="popup-search" appearance="outline">
+          <mat-chip-set class="search-chips" *ngIf="periodSearchTerms.length > 0">
+            <mat-chip *ngFor="let term of periodSearchTerms" removable (removed)="removePeriodSearchTerm(term)">
+              {{ term }}
+              <button matChipRemove aria-label="Remove search term">✕</button>
+            </mat-chip>
+          </mat-chip-set>
+          <input
+            matInput
+            [formControl]="periodSearchCtrl"
+            placeholder="Bevallási időszak keresés..."
+            (keydown.enter)="filterPeriodBySearch()"
+          >
+        </mat-form-field>
+        <button mat-icon-button class="popup-close" aria-label="Bezárás" (click)="closePopup()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="search-panel" [class.open]="showPeriodSearchPanel" *ngIf="showPeriodSearchPanel">
+        <div class="search-result" *ngFor="let result of periodSearchResults" (click)="selectPeriodSearchResult(result)">
+          <div class="result-ugyfel">{{ result.ugyfel }}</div>
+          <div class="result-desc">{{ result.idoszakLabel }} · {{ result.status }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="popup-body" *ngIf="!selectedPeriodItem">
+      <div class="filters" #periodFilters [class.panel-open]="showPeriodUgyfelPanel || showPeriodDatePanel || showPeriodStatusPanel">
+        <div class="ugyfel-wrapper">
+          <button mat-stroked-button class="ugyfel-btn" [class.active]="showPeriodUgyfelPanel" (click)="togglePeriodUgyfelPanel()" [attr.aria-expanded]="showPeriodUgyfelPanel">
+            <mat-icon *ngIf="selectedPeriodUgyfels.length > 0" class="tick">check</mat-icon>
+            <span class="label">Ügyfél:&nbsp;{{ selectedPeriodUgyfels.length === 0 ? '' : (selectedPeriodUgyfels.length === 1 ? selectedPeriodUgyfels[0] : selectedPeriodUgyfels[0] + ' +' + (selectedPeriodUgyfels.length - 1)) }}</span>
+            <mat-icon class="arrow" [class.open]="showPeriodUgyfelPanel">expand_more</mat-icon>
+          </button>
+
+          <div class="ugyfel-panel" [class.open]="showPeriodUgyfelPanel" *ngIf="showPeriodUgyfelPanel">
+            <mat-form-field class="ugyfeld-search" appearance="outline">
+              <mat-chip-set #periodChipList aria-label="Selected ügyfél" class="chip-list">
+                <mat-chip *ngFor="let s of selectedPeriodUgyfels" removable (removed)="removePeriodUgyfel(s)">
+                  {{ s }}
+                  <button matChipRemove aria-label="Remove">✕</button>
+                </mat-chip>
+              </mat-chip-set>
+
+              <input
+                matInput
+                [formControl]="periodUgyfelCtrl"
+                [matAutocomplete]="puauto"
+                placeholder="Ügyfél keresés (személy, EV stb.)"
+                #periodUgyfelTrigger="matAutocompleteTrigger"
+                (focus)="periodUgyfelTrigger.openPanel()"
+                (click)="periodUgyfelTrigger.openPanel()"
+              >
+
+              <mat-autocomplete #puauto="matAutocomplete" (optionSelected)="selectPeriodUgyfel($event.option.value)">
+                <mat-option *ngFor="let option of filteredPeriodUgyfels$ | async" [value]="option">{{ option }}</mat-option>
+              </mat-autocomplete>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <div class="date-wrapper">
+          <button mat-stroked-button class="date-btn" [class.active]="showPeriodDatePanel" (click)="togglePeriodDatePanel()" [attr.aria-expanded]="showPeriodDatePanel">
+            <mat-icon *ngIf="periodDateFromCtrl.value || periodDateToCtrl.value" class="tick">check</mat-icon>
+            <span class="label">Dátum:&nbsp;{{ periodDateLabel }}</span>
+            <mat-icon class="arrow" [class.open]="showPeriodDatePanel">expand_more</mat-icon>
+          </button>
+
+          <div class="date-panel" [class.open]="showPeriodDatePanel" *ngIf="showPeriodDatePanel">
+            <div class="date-chips" *ngIf="periodDateFromCtrl.value || periodDateToCtrl.value">
+              <mat-chip-set aria-label="Selected dates" class="chip-list">
+                <mat-chip *ngIf="periodDateFromCtrl.value" removable (removed)="removePeriodDate('from')">
+                  From: {{ formatShortDate(periodDateFromCtrl.value) }}
+                  <button matChipRemove aria-label="Remove">✕</button>
+                </mat-chip>
+                <mat-chip *ngIf="periodDateToCtrl.value" removable (removed)="removePeriodDate('to')">
+                  To: {{ formatShortDate(periodDateToCtrl.value) }}
+                  <button matChipRemove aria-label="Remove">✕</button>
+                </mat-chip>
+              </mat-chip-set>
+            </div>
+
+            <div class="date-inputs">
+              <mat-form-field appearance="outline">
+                <input matInput [matDatepicker]="periodFromPicker" placeholder="Tól" [formControl]="periodDateFromCtrl" (dateChange)="onPeriodDateChange()">
+                <mat-datepicker-toggle matSuffix [for]="periodFromPicker"></mat-datepicker-toggle>
+                <mat-datepicker #periodFromPicker xPosition="start" yPosition="below"></mat-datepicker>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <input matInput [matDatepicker]="periodToPicker" placeholder="Ig" [formControl]="periodDateToCtrl" (dateChange)="onPeriodDateChange()">
+                <mat-datepicker-toggle matSuffix [for]="periodToPicker"></mat-datepicker-toggle>
+                <mat-datepicker #periodToPicker xPosition="start" yPosition="below"></mat-datepicker>
+              </mat-form-field>
+            </div>
+          </div>
+        </div>
+
+        <div class="status-wrapper">
+          <button mat-stroked-button class="status-btn" [class.active]="showPeriodStatusPanel" (click)="togglePeriodStatusPanel()" [attr.aria-expanded]="showPeriodStatusPanel">
+            <mat-icon *ngIf="selectedPeriodStatuses.length > 0" class="tick">check</mat-icon>
+            <span class="label">Státusz:&nbsp;{{ selectedPeriodStatuses.length === 0 ? '' : (selectedPeriodStatuses.length === 1 ? selectedPeriodStatuses[0] : selectedPeriodStatuses[0] + ' +' + (selectedPeriodStatuses.length - 1)) }}</span>
+            <mat-icon class="arrow" [class.open]="showPeriodStatusPanel">expand_more</mat-icon>
+          </button>
+
+          <div class="status-panel" [class.open]="showPeriodStatusPanel" *ngIf="showPeriodStatusPanel">
+            <mat-form-field class="status-search" appearance="outline">
+              <mat-chip-set aria-label="Selected statuses" class="chip-list">
+                <mat-chip *ngFor="let s of selectedPeriodStatuses" removable (removed)="removePeriodStatus(s)">
+                  {{ s }}
+                  <button matChipRemove aria-label="Remove">✕</button>
+                </mat-chip>
+              </mat-chip-set>
+
+              <input
+                matInput
+                [formControl]="periodStatusCtrl"
+                [matAutocomplete]="psauto"
+                placeholder="Státusz keresés"
+                #periodStatusTrigger="matAutocompleteTrigger"
+                (focus)="periodStatusTrigger.openPanel()"
+                (click)="periodStatusTrigger.openPanel()"
+              >
+
+              <mat-autocomplete #psauto="matAutocomplete" (optionSelected)="selectPeriodStatus($event.option.value)">
+                <mat-option *ngFor="let option of filteredPeriodStatuses$ | async" [value]="option">{{ option }}</mat-option>
+              </mat-autocomplete>
+            </mat-form-field>
+          </div>
+        </div>
+      </div>
+
+      <div class="top-controls">
+        <div class="left-controls">
+          <button mat-icon-button (click)="refreshPeriod()" aria-label="Refresh">
+            <mat-icon>refresh</mat-icon>
+          </button>
+        </div>
+        <div class="right-controls">
+          <mat-paginator #periodPaginator [pageSizeOptions]="[5, 10, 25]" showFirstLastButtons></mat-paginator>
+        </div>
+      </div>
+
+      <div class="table-stack">
+        <div class="table-container period-table">
+          <table mat-table [dataSource]="periodDataSource" class="mat-elevation-z1">
+            <ng-container matColumnDef="statusIcon">
+              <td mat-cell *matCellDef="let element" class="period-status-cell">
+                <mat-icon [class]="getPeriodStatusClass(element.status)">{{ getPeriodStatusIcon(element.status) }}</mat-icon>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="ugyfel">
+              <td mat-cell *matCellDef="let element" class="period-name">
+                <div class="period-name-text">{{ element.ugyfel }}</div>
+                <div class="period-meta">
+                  <span class="period-meta-range">{{ element.idoszakLabel }}</span>
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="idoszak">
+              <td mat-cell *matCellDef="let element" class="period-range">{{ element.idoszakLabel }}</td>
+            </ng-container>
+
+            <tr mat-row *matRowDef="let row; columns: periodDisplayedColumns;" (click)="selectPeriodRow(row)" style="cursor: pointer;" [class.period-open-row]="row.status === 'Nyitott'" [class.period-closed-row]="row.status === 'Lezárt'"></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-view period-detail-view" *ngIf="selectedPeriodItem">
+      <div class="detail-header">
+        <button mat-icon-button (click)="closePeriodDetail()" aria-label="Back">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <div class="detail-header-info">
+          <div class="detail-header-text">
+            <div class="detail-ugyfel">{{ selectedPeriodItem.ugyfel }}</div>
+            <div class="detail-meta">{{ selectedPeriodItem.idoszakLabel }}</div>
+          </div>
+        </div>
+        <span class="status-icon-button detail-header-status" [class]="getPeriodStatusClass(selectedPeriodItem.status)">
+          <mat-icon>{{ getPeriodStatusIcon(selectedPeriodItem.status) }}</mat-icon>
+        </span>
+      </div>
+
+      <div class="detail-panel">
+        <div class="detail-accordion">
+          <div class="accordion-content">
+            <div class="item-meta">
+              <span>Státusz: {{ selectedPeriodItem.status }}</span>
+              <span>Bevallási időszak: {{ selectedPeriodItem.idoszakLabel }}</span>
+              <span>Időszak kezdete: {{ selectedPeriodItem.periodFrom }}</span>
+              <span>Időszak vége: {{ selectedPeriodItem.periodTo }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="detail-view" *ngIf="selectedItem">
+  <div class="detail-header">
+    <button mat-icon-button (click)="closeDetailView()" aria-label="Back">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <div class="detail-header-info">
+      <div class="detail-header-text">
+        <div class="detail-ugyfel">{{ selectedItem.ugyfel }}</div>
+        <div class="detail-meta">{{ selectedItem.bizonylatSzam }}</div>
+      </div>
+    </div>
+    <span
+      class="status-icon-button detail-header-status"
+      [class]="'status-' + getStatusClass(selectedItem.status)">
+      <mat-icon>{{ getStatusIcon(selectedItem.status || '') }}</mat-icon>
+    </span>
+  </div>
+
+  <div class="detail-panel">
+    <div class="detail-accordion">
+      <mat-accordion>
+        <mat-expansion-panel *ngFor="let item of selectedItem.items; let i = index" [expanded]="expandedItemIds.has('item-' + i)" (opened)="toggleAccordion('item-' + i)" (closed)="toggleAccordion('item-' + i)">
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <mat-icon class="accordion-icon" [class]="'status-' + getStatusClass(item.status)">{{ getStatusIcon(item.status || '') }}</mat-icon>
+              <span class="accordion-title-text">{{ item.bizonylatSzam }}</span>
+            </mat-panel-title>
+            <mat-panel-description>{{ formatDate(item.datetime) }}</mat-panel-description>
+          </mat-expansion-panel-header>
+          <div class="accordion-content">
+            <div class="item-meta">
+              <span>Státusz: {{ item.status }}</span>
+              <span>Bizonylat típus: {{ item.bizonylatTipus }}</span>
+            </div>
+            <div class="attachments-frame">
+              <div class="attachments-title">Csatolmányok</div>
+              <div class="attachment-row" *ngFor="let att of item.attachments">
+                <div class="attachment-name">{{ att.name }}</div>
+                <div class="attachment-actions">
+                  <button mat-icon-button aria-label="Download attachment" (click)="onDownloadAttachment()">
+                    <mat-icon>download</mat-icon>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </mat-expansion-panel>
+      </mat-accordion>
+    </div>
+  </div>
+</div>

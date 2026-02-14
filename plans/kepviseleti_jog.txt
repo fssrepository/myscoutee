@@ -1,0 +1,56 @@
+1  - vezető tisztségviselő
+2  - cégvezető
+3  - munkaviszonyban álló jogtanácsos
+4  - nagykorú alkalmazott, tag (egyéni vállalkozó, jogi személy, egyéb szervezet esetén)
+5  - ügyvéd
+6  - ügyvédi iroda
+7  - adótanácsadó, adószakértő, okleveles adószakértő
+8  - kamarai jogtanácsos
+9  - könyvelő (amennyiben egyéni vállalkozóként látja el az adózó képviseletét)
+10 - Art. 17. § (5) bekezdés szerinti bejelentés
+11 - bevallás ellenjegyzésére jogosult adótanácsadó, adószakértő, okleveles adószakértő
+12 - természetes személy törvényes képviselője (szülő, gyám, gondnok)
+13 - európai közösségi jogász
+14 - felszámoló, végelszámoló
+15 - számviteli, könyvviteli szolgáltatásra jogosult gazdasági társaság vagy egyéb szervezet
+16 - pénzügyi képviselő
+17 - Magyar Államkincstár, Kormányhivatal, Polgármesteri Hivatal alkalmazottja
+18 - adótanácsadásra jogosult gazdasági társaság vagy egyéb szervezet
+19 - termékdíj-ügyintéző
+20 - külföldi magánszemélyt Szja tv. alapján képviselő letétkezelő
+21 - részvényesi meghatalmazott
+22 - más nagykorú személy
+23 - könyvvizsgáló
+24 - társasház közös képviselője
+25 - jogi személy vezető tisztségviselő
+26 - speciális törvényes képviselet (bérgarancia biztos, kollektív befektetési formák letétkezelője, belföldi fióktelep)
+27 - más nagykorú személy (kizárólag szerencsejáték ügyekben)
+28 - cégvezető
+29 - nagykorú foglalkoztatott, ideértve fióktelep esetén az anyavállalat foglalkoztatottját is
+30 - jövedéki ügyintéző
+31 - közvetett vámjogi képviselő
+32 - közvetlen vámjogi képviselő
+33 - más nagykorú személy (kizárólag vámszakmai ügyekben)
+34 - nagykorú tag
+35 - közvetlen és egyben közvetett vámjogi képviselő, illetve vámügynökség
+36 - jövedéki és egyben termékdíj-ügyintéző
+37 - közvetlen, közvetett vámjogi képviselő és egyben termékdíj ügyintéző
+38 - vámtanácsadó
+39 - vámügynök
+40 - AEO-engedélyes
+41 - vámtanácsadó alkalmazottal rendelkező szervezet
+42 - vámügynök alkalmazottal rendelkező szervezet
+43 - csoportképviselő törvényes képviselője
+44 - nem természetes személy képesítés nélkül eljárni jogosult meghatalmazottja
+45 - felszámoló
+46 - végelszámoló
+47 - kiskorú törvényes képviselője (szülő, gyám)
+48 - természetes személy gondnoka
+49 - volt vezető tisztségviselő
+50 - kirendelt vagy kijelölt törvényes képviselő
+60 - természetes személy állandó meghatalmazottja
+88 - R01-es adatlapon bejelentett képviselő
+97 - más tagállamban letelepedett vámjogi képviselő
+98 - EKT-ban rögzített meghatalmazott
+99 - más tagállamban letelepedett könyvelő
+
