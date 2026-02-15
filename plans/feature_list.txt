@@ -1,3 +1,7 @@
+az ikon ujra designolasa - sztem egy sziv, levagva az alja egy korrel - igy lesz egy M betu es lesz az M betu kozepen egy csillag
+
+a profil oldal kidolgozasa - milyen adatokat kerunk be a felhasznalotol (elvileg a regi feluleten rajta)
+
 behuzni kulonbozo event-eket es rate-elni egy abblakban - a chat tetejen - star + popup - hogy melyiket valasszuk
 ezt lehet meg az esemeny felvetelenel, amikor nincs chat be lehet allitani, hogy igy mukodjon - csillag gomb legyen a kivalaszto helyett
 ha mar csak egy esemeny van, akkor a csillag edit gombba alakul, es onnantol mar csak cserelni lehet
