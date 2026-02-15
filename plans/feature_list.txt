@@ -1,5 +1,25 @@
+behuzni kulonbozo event-eket es rate-elni egy abblakban - a chat tetejen - star + popup - hogy melyiket valasszuk
+ezt lehet meg az esemeny felvetelenel, amikor nincs chat be lehet allitani, hogy igy mukodjon - csillag gomb legyen a kivalaszto helyett
+ha mar csak egy esemeny van, akkor a csillag edit gombba alakul, es onnantol mar csak cserelni lehet
+
+valahogy meg kell oldani, hogy egy kepet fel lehessen tolteni az esemenyhez, mint background, lesz egy alap kep
+
+a menu par tetejen a nev alatt egy edit gomb, aminel a profilt lehet valtoztatni
+
 chat - esemenyek ikon a tetejen
-game - egyen / parok (pls. rotate your phone)
+game - egyen / parok (pls. rotate your phone) - filter gomb ba oldalt mellette, ahol mint tinder meg lehet mondani,
+milyen sorrendben keruljenek az emberek a felhasznalo ele stb.
+
+game-nel history gomb, ahol adott, kapott ponstszam, kozos, parok adott kapott pontszamokra lehet szurni
+(gyakorlatilag mas nezet) - es egy kereso mezo felul
+
+valoszinu, hogy par rate eseten, a kepekre kattintva jon elo a masik kep, ha nem forog a telefon,
+ugyanabban a panelben -tehat nem egyszerre latszik mindketto (szokasos modon, mint a Tindernel, de a regi app-ban is igy van)
+
+de az is lehet egyik oldalt harom viszszintes kattinthato resz no, a tobbi harom ferfi - egyik rozsaszin szinu a masik kek
+ugyanugy nyil es akkor kinyilik vagy a ferfi vagy a noi profil
+
+ a kepek bal also sarkaban mindig mas info jelenik meg ugy mint a Tindernel ugyanarrol a szemelyrol - minden kepen mas
 
 chat menu - history gomb - itt lehet osszevonva az esemenyek history-val, csak mas view (chat view) - itt a sorbarendezes mas
 
@@ -12,14 +32,12 @@ chat es az eventsnel erdekes, lehet kulon allo popup-ok es inkabb x gomb, mint v
 
 az csak belso ikon lehet a chat ablakban, mert a legutolso aktivitasokat mutatja a menu bar, tehat allandoan cserelodik
 
-On Sun, 15 Feb 2026, 13:17 Peter Szabo, <raxim.uk@gmail.com> wrote:
 lehet a chat kulon mukodik, mindig a legfrissebb kerul elore, kuldo szemely ikonja es a szoveg --- azt, hogy mennyi uzenet volt red counter mellette
 
 az eseménybol valo kilepes zárja az ablakot is --- azt nem tudni mit csinaljunk azzal, ahol meg nincs esemeny letargyalva - lehet csak nem jelenik meg az esemény accordionban
 
 a chat ablak kinyitasanal kell lenni egy esemény gombnak, nem biztos, hogy az attending menu bar-on fenn lesz, mert nem jelenithet meg 50 eseményt egyszerre, esetleg a chat menu item mellett ha meg elfer megjelenik az esemény ikonja - ahol szerkeszteni lehet, vagy ezt mar a belso kepernyon kulon gombban - esemény szerkeszto
 
-On Sun, 15 Feb 2026, 11:51 Peter Szabo, <raxim.uk@gmail.com> wrote:
 olyan star szuro is legyen, hogy a legkedvesebb ismerosok, akiknel kolcsonosen pl. 7 feletti a pontszam
 
 a recommendation csak annyiban kulonbozik, hogy az ismerőseim ott voltak en nem (lehet ugyanazon az event history kepernyon ez is egy szuro gomb)
