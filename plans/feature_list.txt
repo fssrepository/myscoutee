@@ -1,3 +1,67 @@
+az csak belso ikon lehet a chat ablakban, mert a legutolso aktivitasokat mutatja a menu bar, tehat allandoan cserelodik
+
+On Sun, 15 Feb 2026, 13:17 Peter Szabo, <raxim.uk@gmail.com> wrote:
+lehet a chat kulon mukodik, mindig a legfrissebb kerul elore, kuldo szemely ikonja es a szoveg --- azt, hogy mennyi uzenet volt red counter mellette
+
+az eseménybol valo kilepes zárja az ablakot is --- azt nem tudni mit csinaljunk azzal, ahol meg nincs esemeny letargyalva - lehet csak nem jelenik meg az esemény accordionban
+
+a chat ablak kinyitasanal kell lenni egy esemény gombnak, nem biztos, hogy az attending menu bar-on fenn lesz, mert nem jelenithet meg 50 eseményt egyszerre, esetleg a chat menu item mellett ha meg elfer megjelenik az esemény ikonja - ahol szerkeszteni lehet, vagy ezt mar a belso kepernyon kulon gombban - esemény szerkeszto
+
+On Sun, 15 Feb 2026, 11:51 Peter Szabo, <raxim.uk@gmail.com> wrote:
+olyan star szuro is legyen, hogy a legkedvesebb ismerosok, akiknel kolcsonosen pl. 7 feletti a pontszam
+
+a recommendation csak annyiban kulonbozik, hogy az ismerőseim ott voltak en nem (lehet ugyanazon az event history kepernyon ez is egy szuro gomb)
+
+aztan van helyben kozelebbi események
+(nezet valtas)
+
+lehet ez a history egy osszetett mindenes panel - eventekre
+
+a szuro gombok meretenek csökkentese
+ugy mint a LinkedIn-en
+
+sajat események - en hoztam letre szuro
+(itt event of series is lehet)
+
+lehet ez a harom accordion lesz (chat, events, own events)
+
+4 accordion (Invites, chats, going, hosting)
+
+ugyanaz a popup, ha history gombra kattint az accordion headerben, vsak mas a szuro
+
+az own events (az szuri csak own-ra, de egyebbkent az egeszet mutatja)
+
+a menuben viszont az attending nem mutatja az ownt hely megtakaritas miatt
+
+az invites meg mutatja a szervezo ikonjat is a menuben - mert elfer, a popup-ban viszont ez az információ is benne lesz
+
+esetleg ha a menuben elfer, hanyan jelentkeztek az eseményre, es egyelore meg lesz-e tartva - piros hatter, narancssarga, vagy zold - a menu barban
+
+On Sun, 15 Feb 2026, 11:24 Peter Szabo, <raxim.uk@gmail.com> wrote:
+a history icon az esemény-en a pas es upcoming events filtert is tartalmazza
+
+az osszes upcoming events nem fer ki, es itt is lehet szerkeszteni az eseményeket - calendear napi nezet
+
+On Sun, 15 Feb 2026, 11:21 Peter Szabo, <raxim.uk@gmail.com> wrote:
+promotions nincs - gyakorlatilag egy esemény, ami publikusan vagy baratok kozott van meghirdetve, a private meg egyedi invitacio - a chat meg az esemény nelkuli esemény, ahol meg kitalaljak mi legyen
+
+az esemény history-ban lehet ertekelni eseményt, vagy kivalasztani user-t beszelgetesre - meginvitalni csevegesre
+
+On Sun, 15 Feb 2026, 11:15 Peter Szabo, <raxim.uk@gmail.com> wrote:
+az eseménynel a link generalva van, az alesemenyek egy-egy megallo - rakkattintva Google Maps jon elo - auto nezet
+
+On Sun, 15 Feb 2026, 11:08 Peter Szabo, <raxim.uk@gmail.com> wrote:
+history event - ket view - bal oldalt datum
+jobb oldalt esemény 3 sorban - ki rendezte ikon elotte es egy valto gomb felul eseményen résztvevők ikonjaival a panel helyett - es lehet nevre keresni a felso kereso textbox-ban - esetleg leegordulo filter gomb
+
+amikor esemény letrehozas zajlik - lehet egy chat ablak zero eseménnyel, majd hozzaadnak vmit
+
+lehet az esemény kereso az nem ket panelos, hanem calendar jellegu - nap nezet (google calendar) - esetleg honap nezet vagy week nezet - sticky header a bal felsoben, odaer a calendar, akkor valt (ez mar benne van az appban, at kell venni)
+
+On Sat, 14 Feb 2026, 16:55 Peter Szabo, <raxim.uk@gmail.com> wrote:
+talán azt kellene mint sub git repo - letölteni a frontend folderba, es utana hozzarakni, a szerver integraciot, ami meg egy private folder lenne - azonosító kulcsok (angularba is belerakni a file-okat - build time-ban) stb.
+(tehat a szerver nem lenne nyílt forráskódú)
+
 promotions ket reszre bontas, szervezett esemeny, vagy csak vminek a berlese
 
 mindenesetre az esemény panelben tetszolegesen lehet hozzáadni ezeket a szoveg ala
