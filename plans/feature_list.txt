@@ -7,6 +7,18 @@ if there is no subevent, then show only one vent panel without accordion
 accomodation - paste url (e.g. booking.com) - scrap with og:... tags, and show - the users can rate them (prefer),
 but booking a room is out of the portal hand
 
+there are optional subevents (where you had some capacity, so join first approach)
+
+on the event filter - event list - show how many people was going and are there any ismeros (maybe photos in small circle)
+
+szemelyes vagy virtualis event, ismetlodo esemeny (gyakorisag + veget er, mert a kezdo datum benn van)
+az esemenyhez foto feltoltes (esemeny kartya)
+
+feedback for an event (rate and message)
+
+event (ticket, dicreet, auto invite, - visibility - invitation only, friends, public, capacity, category (temak),description,)
+rule (join first, rate - auto approve - grace period?? (event/member num), rank (none, rate, fifa), expense (amount + currency))
+
 Profile
 
 image selector + image editor - clicking on squares and popup for image editor (pinch to zoom and move - desktop version too)
