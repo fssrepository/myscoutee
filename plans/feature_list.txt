@@ -1,3 +1,45 @@
+vmi jol designolt bejelentkezo felulet, ami osszefoglalja, hogy mi ez az alkalmazas, GDPR attekinto stb. kapcsolat (milyen témában)
+
+az event-en fazis valto - tehat egy checkbox, es az alaesemenyeket tournament phase 1/2/3-ba rendezi
+
+if there is no subevent, then show only one vent panel without accordion
+
+accomodation - paste url (e.g. booking.com) - scrap with og:... tags, and show - the users can rate them (prefer),
+but booking a room is out of the portal hand
+
+Profile
+
+image selector + image editor - clicking on squares and popup for image editor (pinch to zoom and move - desktop version too)
+about me,
+interest
+(creativity, fan favourites, food and drink, gaming, going out, music,
+outdoors and adventures, social and content, sports and fitness, staying in, tv and movies, values and causes, wellness and styles)
+height
+languages
+horoscop
+education
+family plans
+communication styles
+love style
+pets
+drinking
+smoke
+workout
+social media
+job title/company/school
+city (living in)
+sexual orientation
+gender
+phisique
+religion
+children
+
+car and school editor (maybe popup, maybe a right arrow like a menu (Tinder), not sure - no two columns, only one, maybe a card and an image)
+can show, how many users were in that school - in the filter bar maybe you can set profession match, school match etc.,
+friends in common (i was attending in an event, and one on the member who i saw, has an another event, where saw that person)
+
+there is non-editable event - for example tournaments - the tournament phase is sticky top of the event right to the date area (date line left hand side)
+
 Open Graph - meta tag, amivel egy url-rol kepes osszefoglalot lehet lehuzni, pl. booking.com (og:image)
 
 ha 5-6 alesemenynel  tobb van, akkor ket linket generalj a fo esemenyben
@@ -145,8 +187,6 @@ the e-kozig projekt masold a myscoutee uj repo ala - es azon kerj modositasokat 
 
 auto regisztráció a user selector menuben (edit gomb a felhasználó neve alatt, mint a Tinderen) - nagyjából ezek az adatok legyenek megjelenitve ha masok latjak, lock ikon mellette, private, publikus beallitas, school ugyanitt - ami egy auto complementer - varos beutese utan - a varos neve mellett az orszag "-"-val elvalasztva - ez is egy idovonalas legyen, esetleg legyenek meg munkahelyek is ott
 (a promotionts allashirdetes is lehet, mint tema)
-
-vmi jol designolt bejelentkezo felulet, ami osszefoglalja, hogy mi ez az alkalmazas, GDPR attekinto stb. kapcsolat (milyen témában)
 
 csoportok nem lesznek, esemény temak lesznek, ami a felhasználó erdeklodesi kore is, igy ez majd később optimalizalhato (csak olyan esemény re invitaljon, ami erdekel, ha globális stb.) - amikor egy eseményt letrehozok, ott lehet kiválasztani a témát, ez amikor egy eseményre rakeresunk egy szuro is
 
