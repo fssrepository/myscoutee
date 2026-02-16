@@ -1,3 +1,7 @@
+Open Graph - meta tag, amivel egy url-rol kepes osszefoglalot lehet lehuzni, pl. booking.com (og:image)
+
+ha 5-6 alesemenynel  tobb van, akkor ket linket generalj a fo esemenyben
+
 az ikon ujra designolasa - sztem egy sziv, levagva az alja egy korrel - igy lesz egy M betu es lesz az M betu kozepen egy csillag
 
 a profil oldal kidolgozasa - milyen adatokat kerunk be a felhasznalotol (elvileg a regi feluleten rajta)
