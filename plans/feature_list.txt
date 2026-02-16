@@ -1,6 +1,15 @@
+// A (Accepted), R (rejected), I (invited), K (kicked)?? - maybe by more members
+// than one, L (left) V (Verified)
+// T (Timed-Out), LL (late leave), W (on waiting
+// list), LD (left deleted), D (deleted), P (pending), Selected (S)
+
+LL - shows that, can't come, but the payment is due, there is a waiting list
+
 vmi jol designolt bejelentkezo felulet, ami osszefoglalja, hogy mi ez az alkalmazas, GDPR attekinto stb. kapcsolat (milyen témában)
 
-az event-en fazis valto - tehat egy checkbox, es az alaesemenyeket tournament phase 1/2/3-ba rendezi
+az event-en fazis valto - tehat egy checkbox, es az alesemenyeket tournament phase 1/2/3-ba rendezi
+
+if you nvite a person, you can set to admin also, so he can edit the event
 
 if there is no subevent, then show only one vent panel without accordion
 
@@ -17,7 +26,11 @@ az esemenyhez foto feltoltes (esemeny kartya)
 feedback for an event (rate and message)
 
 event (ticket, dicreet, auto invite, - visibility - invitation only, friends, public, capacity, category (temak),description,)
-rule (join first, rate - auto approve - grace period?? (event/member num), rank (none, rate, fifa), expense (amount + currency))
+rule (join first, rate (a rate nem kell sztem ez csak join first - esemenyre jelentkezik capacity alapjan) -
+auto approve - grace period?? (event/member num), rank (none, rate (mutual), fifa), expense (amount + currency))
+
+grace period (member) - if invited, but not respond - i think it's configurable but not on screen not to make too complex
+event grace period (if min capacity is not fulfilled, the event can't be started - not sure whether we need that grace period)
 
 Profile
 
