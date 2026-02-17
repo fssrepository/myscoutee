@@ -1,23 +1,131 @@
-// A (Accepted), R (rejected), I (invited), K (kicked)?? - maybe by more members
-// than one, L (left) V (Verified)
-// T (Timed-Out), LL (late leave), W (on waiting
-// list), LD (left deleted), D (deleted), P (pending), Selected (S)
+Dictionary:
+-----------
+cloudflare reverse proxy
+base44 landing page (summary, GDPR popup)
+angular page on different server (login page, exact functionality)
 
-LL - shows that, can't come, but the payment is due, there is a waiting list
+Remove the 3 horizontal button and any functionality related to it, the app is only works based on the user selector button
 
-vmi jol designolt bejelentkezo felulet, ami osszefoglalja, hogy mi ez az alkalmazas, GDPR attekinto stb. kapcsolat (milyen témában)
+Main page - Logo + text on every main page with ikon bar on the right side (logo redign, heart in a circle by cutting the bottom part, so it can be an M and put a star on it)
+Sub page - for example title for the current event and either X button on the right hand side or backward button before the title
+Popup - on mobile should be full, on desktop partial screen sized (similar to Egyenleg or email or urlap kereses popup)
 
-az event-en fazis valto - tehat egy checkbox, es az alesemenyeket tournament phase 1/2/3-ba rendezi
+Status of members (e.g.: event):
+A (Accepted), R (rejected), I (invited), K (kicked, maybe suspended/silenced), L (left), V (Verified), T (Timed-Out), LL (late leave - payment is due),
+W (on waiting list), LD (left deleted), D (deleted), P (pending), Selected (S)
 
-if you nvite a person, you can set to admin also, so he can edit the event
+Menu
+----
 
-if there is no subevent, then show only one vent panel without accordion
+Top of the menu: (remove "felhasznalo valasztas" functionality - below the exit button should be the exit title, not next to it)
+User icon + name, below name there is a button "Edit Profile", exit button on the right hand side
 
-accomodation - paste url (e.g. booking.com) - scrap with og:... tags, and show - the users can rate them (prefer),
-but booking a room is out of the portal hand
+Menu items:
+Game
+Chat
+Invitations
+Events
+Hosting
 
-there are optional subevents (where you had some capacity, so join first approach)
+Game - Default page
+-------------------
 
+Menu Button:
+shows the Tinder like panel on the left  with 3 buttons on the header (profile-filter e.g.: profession match, school match, friends in common etc.),history, type - (fab button - egyeni, parok - rotate screen status message))
+
+History button:
+which shows the votes in popup (filter bar: Adott, Kapott, Kolcsonos, Találkozott, Párok - Adott, Kapott, Találkozott,
+vote filter (large enough), how far the user is, when was active last time) filter textbox at the top (e.g.: filter for name)
+
+Red counter: to show the number of iteraction (how many people rated to you in any way)
+
+On the profile image, there is a horizontal lines at the top, showing how many images the user have.
+Clicking on that column vertically on the picture (Tinder like UI),
+showing the different picture of the user and different info about the user in the left bottom corner
+
+below the user photo there is a star bar 1-10, clicking on that nice animating
+(middle of the image screen the user has been rated with 5 inside in the star, and move to the next user)
+
+preload 10-15 photos, and paginating to the next stack, while the user finished on rating (the cards are on top of each other, so hiding each other)
+
+on pair rate - if the screen is rotated, the user of woman and the user of man cards (similar to what i described above) will be next to each other,
+anyway woman images the first 3-4 in red-orange line at the top of the image card, the man next to it in blue
+
+there will be an arrow on the bottom of the image, the profile data is in two columns to be able to compare anyway in one column
+
+Chat
+----
+
+accordion with the latest messages
+history icon to go to popup for every message
+
+in the header of the page event edit button (clicking on it event editor popup)
+
+Profile
+-------
+
+Invitations
+-----------
+
+accordion on the menu bar with invitations ordered by date asc
+
+
+Events
+-----
+
+accordion on the menu bar with events (where the user is going, but not a host) ordered by date asc
+(only upcoming event)
+
+for an event card there is a default image, but you can replace (upload new one)
+
+no groups (topics (edit/filter page), which corresponds to the interest of the user in the profile page)
+
+event editor:
+user can replace the whole event with a button (clicking on the button shows an event filter where we can select an other event)
+clicking on the sub events, show a new screen, which has calendar / member view, left from the sub events a timeline
+can tournament set, so tournament phase on every sub events - tournament for non-admins only the current phase is not disabled
+
+both tournament header and date header is sticky while scrolling up changing with the current values
+
+the sub event panels has (car, members, accessories and accomodation buttons with occupied / all places min - max - red if it's not fulfilled)
+there are also optional sub events (join first approach)
+
+if there is only one sub event, then show the panel instead of a button to go to popup screen of subevents
+
+rules (fifa, rate) inside the sub event screen, ticket, discreet in the main page (in the tilte whether it's tournament)
+
+all the popup has default view and member view
+
+accomodation popup:
+the users can rate that card (prefer)
+admin can remove accomodation from the list (in the header how many places we have, roms and for people)
+
+with + button, the accomodation form should contain:
+number of places (rooms and how many people)
+link (booking.com link which backend scraps with og: tags (Open Graph technology - you can scrap summary from html))
+
+car popup:
+you can assign your own car with + button, what you have already added to the screen
+or you can add a link for a car company - renting, even with a driver etc. (it needs to be registered to the system)
+add the number of places
+
+the car popup header should show, how many cars and places we have - where is the starting point/time of the car should be in the car panel list
+phone number or other accesibility of the owner on the car card
+
+if someone wants to be a passenger, can ask, and the driver can accept
+
+accessories:
+a list what you is required (e.g. food)
+with + button you can offer that - maybe you can select topics - and min - max, and how many offer has been added
+in the header - how many accessories, how many offered and how many are required
+
+members:
+Even on the main event a button should be there (as that ones are all of the participants)
+it's small pictures only (Tinder sized - e.g.: on upload screen)
+clicking on the icon show the profile of the user, but the image itself on the top right corner whether it's admin or not
+if it's admin that icon is clickable and you can set someone else to admin - (maybe kick out, suspend, silenced member etc.)
+
+-----------------
 on the event filter - event list - show how many people was going and are there any ismeros (maybe photos in small circle)
 
 szemelyes vagy virtualis event, ismetlodo esemeny (gyakorisag + veget er, mert a kezdo datum benn van)
@@ -31,8 +139,12 @@ auto approve - grace period?? (event/member num), rank (none, rate (mutual), fif
 
 grace period (member) - if invited, but not respond - i think it's configurable but not on screen not to make too complex
 event grace period (if min capacity is not fulfilled, the event can't be started - not sure whether we need that grace period)
+--------------------
 
 Profile
+-------
+
+lock icon next to each item to set whether it's friends only (who you met before), private, public
 
 image selector + image editor - clicking on squares and popup for image editor (pinch to zoom and move - desktop version too)
 about me,
@@ -59,44 +171,10 @@ phisique
 religion
 children
 
-car and school editor (maybe popup, maybe a right arrow like a menu (Tinder), not sure - no two columns, only one, maybe a card and an image)
-can show, how many users were in that school - in the filter bar maybe you can set profession match, school match etc.,
-friends in common (i was attending in an event, and one on the member who i saw, has an another event, where saw that person)
+school and work on the same history page - ordered by date desc - you can add new items
+can show, how many users were in that school
 
-there is non-editable event - for example tournaments - the tournament phase is sticky top of the event right to the date area (date line left hand side)
-
-Open Graph - meta tag, amivel egy url-rol kepes osszefoglalot lehet lehuzni, pl. booking.com (og:image)
-
-ha 5-6 alesemenynel  tobb van, akkor ket linket generalj a fo esemenyben
-
-az ikon ujra designolasa - sztem egy sziv, levagva az alja egy korrel - igy lesz egy M betu es lesz az M betu kozepen egy csillag
-
-a profil oldal kidolgozasa - milyen adatokat kerunk be a felhasznalotol (elvileg a regi feluleten rajta)
-
-behuzni kulonbozo event-eket es rate-elni egy abblakban - a chat tetejen - star + popup - hogy melyiket valasszuk
-ezt lehet meg az esemeny felvetelenel, amikor nincs chat be lehet allitani, hogy igy mukodjon - csillag gomb legyen a kivalaszto helyett
-ha mar csak egy esemeny van, akkor a csillag edit gombba alakul, es onnantol mar csak cserelni lehet
-
-valahogy meg kell oldani, hogy egy kepet fel lehessen tolteni az esemenyhez, mint background, lesz egy alap kep
-
-a menu par tetejen a nev alatt egy edit gomb, aminel a profilt lehet valtoztatni
-
-chat - esemenyek ikon a tetejen
-game - egyen / parok (pls. rotate your phone) - filter gomb ba oldalt mellette, ahol mint tinder meg lehet mondani,
-milyen sorrendben keruljenek az emberek a felhasznalo ele stb.
-
-game-nel history gomb, ahol adott, kapott ponstszam, kozos, parok adott kapott pontszamokra lehet szurni
-(gyakorlatilag mas nezet) - es egy kereso mezo felul
-
-valoszinu, hogy par rate eseten, a kepekre kattintva jon elo a masik kep, ha nem forog a telefon,
-ugyanabban a panelben -tehat nem egyszerre latszik mindketto (szokasos modon, mint a Tindernel, de a regi app-ban is igy van)
-
-de az is lehet egyik oldalt harom viszszintes kattinthato resz no, a tobbi harom ferfi - egyik rozsaszin szinu a masik kek
-ugyanugy nyil es akkor kinyilik vagy a ferfi vagy a noi profil
-
- a kepek bal also sarkaban mindig mas info jelenik meg ugy mint a Tindernel ugyanarrol a szemelyrol - minden kepen mas
-
-chat menu - history gomb - itt lehet osszevonva az esemenyek history-val, csak mas view (chat view) - itt a sorbarendezes mas
+----
 
 past event/chat-nel elore kerulnek a legutolsok - az upcomingna elore kerulnek az eppen aktualisak (ez gyakorlatilag kalendar view - month/week/day)
 lehet, hogy bele lehet kattintani magaba a chat-be a history oldalon, es vissza gomb, es amikor a menubarnal klikkelunk adott chat-re hasonloan visszagombos ablak jelenik meg
@@ -112,8 +190,6 @@ lehet a chat kulon mukodik, mindig a legfrissebb kerul elore, kuldo szemely ikon
 az eseménybol valo kilepes zárja az ablakot is --- azt nem tudni mit csinaljunk azzal, ahol meg nincs esemeny letargyalva - lehet csak nem jelenik meg az esemény accordionban
 
 a chat ablak kinyitasanal kell lenni egy esemény gombnak, nem biztos, hogy az attending menu bar-on fenn lesz, mert nem jelenithet meg 50 eseményt egyszerre, esetleg a chat menu item mellett ha meg elfer megjelenik az esemény ikonja - ahol szerkeszteni lehet, vagy ezt mar a belso kepernyon kulon gombban - esemény szerkeszto
-
-olyan star szuro is legyen, hogy a legkedvesebb ismerosok, akiknel kolcsonosen pl. 7 feletti a pontszam
 
 a recommendation csak annyiban kulonbozik, hogy az ismerőseim ott voltak en nem (lehet ugyanazon az event history kepernyon ez is egy szuro gomb)
 
@@ -184,36 +260,20 @@ extended flag - ami bekapcsolja azokat a feluleteket, amelyek meg nincsenek a ha
 
 kivalszt eventet a menubol, alap a chat ablak es a tetejen van ez a gomb, a bal oldalon, meg az a harom sor, ami a menuben volt
 
-a game az alap oldal (ezek az események popup-ok)
-
-a game tetejen van egy history ikon (egyen, parok, ki kire szavazott) - popup megfelelő szurokkel
-
 az eseményeknel - menu item - torles, szerkesztes gomb - ami egy-egy popup
 az accordionon egy history es egy plus gomb (history accordion feedback-et lehet adni - csillag panel)
 
 ----
-esemény szerkesztés - promociobol lehet cserélni az eseményt, vagy alesemenynek rakni, ha nem összetett - bal oldalt idovonal az alesemenyneknel es harom gomb mellette az esemény cim alatt, car, members, accessories (jelentkezok / szabad helyek min - max formatum - es piros szinezes, ha az esemény meg nem lesz megtartva - itt lesz a tournament stages a headerben - tehat nem kulon ablakban)
 
-lehet az események felett game menu
-ezen egy history gomb (szavazasok egyeni, par, adott, kapott stb.)
-
-a par szavazast meg nem tudom hogy hova milyen formában teszem
-
-viszont igy nem kell gombokat rakni a headerbe
-
-az event reszen lehet invitalni embereket - felbukkan egy popup - felul egy csips textbox keresovel - es itt lehet kiválasztani kit hivunk meg
+az event reszen lehet invitalni embereket - felbukkan egy popup - felul egy chips textbox keresovel - es itt lehet kiválasztani kit hivunk meg
 
 valszeg a panelekre fogok rakkattintani
 (ember panel ket oszlop - szokasos)
 ----
 ezek azok akikkel mar találkozott emberunk
 
-the e-kozig projekt masold a myscoutee uj repo ala - es azon kerj modositasokat az AI-tol
-
-auto regisztráció a user selector menuben (edit gomb a felhasználó neve alatt, mint a Tinderen) - nagyjából ezek az adatok legyenek megjelenitve ha masok latjak, lock ikon mellette, private, publikus beallitas, school ugyanitt - ami egy auto complementer - varos beutese utan - a varos neve mellett az orszag "-"-val elvalasztva - ez is egy idovonalas legyen, esetleg legyenek meg munkahelyek is ott
 (a promotionts allashirdetes is lehet, mint tema)
 
-csoportok nem lesznek, esemény temak lesznek, ami a felhasználó erdeklodesi kore is, igy ez majd később optimalizalhato (csak olyan esemény re invitaljon, ami erdekel, ha globális stb.) - amikor egy eseményt letrehozok, ott lehet kiválasztani a témát, ez amikor egy eseményre rakeresunk egy szuro is
 
 a bal felso sarok (esemeny nev, hely, ido felirat) - csoport nev
 
