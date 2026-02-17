@@ -17,6 +17,9 @@ T (Timed-Out - invited, but not respond within a built-in timeframe), LL (late l
 W (on waiting list), LD (left deleted), D (deleted), P (pending), Selected (S)
 
 if someone kicked out or late left then global score drops, not the mutual score, and it defines visibility
+time decay, if someone didn't meet with each other in 2 years time, can drop visibility (?? not sure, how to manage)
+if someone is inactive on the app, will be set "inactive" / host only mode automatically and the app asks to set it visible manually for the user, if he wants to
+the graph stays intact - inactive does mean logout from every event, and the frieds also do not see it - maybe Friends Only also needed
 
 the filter buttons and text box should me small, not the default angular one by saving space
 
