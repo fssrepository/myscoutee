@@ -38,6 +38,9 @@ Events
 Hosting (lend out something should be figured out also - not just event creation - bycicle for example as accessories)
 + button to add new event - (event explore)
 
+chat/invitations/events/hosting the same screen just a select filter box on the filter bar 
+(like in linked in - bottom alf screen to select options)
+
 Game - Default page
 -------------------
 
