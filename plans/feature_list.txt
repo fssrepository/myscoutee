@@ -3,6 +3,7 @@ Dictionary:
 cloudflare reverse proxy
 base44 landing page (summary, GDPR popup)
 angular page on different server (login page, exact functionality)
+separate sensitive server passwords from the main code base (won't be uploaded to the github)
 
 Remove the 3 horizontal button and any functionality related to it, the app is only works based on the user selector button
 
@@ -11,8 +12,17 @@ Sub page - for example title for the current event and either X button on the ri
 Popup - on mobile should be full, on desktop partial screen sized (similar to Egyenleg or email or urlap kereses popup)
 
 Status of members (e.g.: event):
-A (Accepted), R (rejected), I (invited), K (kicked, maybe suspended/silenced), L (left), V (Verified), T (Timed-Out), LL (late leave - payment is due),
+A (Accepted), R (rejected), I (invited), K (kicked, maybe suspended/silenced), L (left), V (Verified),
+T (Timed-Out - invited, but not respond within a built-in timeframe), LL (late leave - payment is due),
 W (on waiting list), LD (left deleted), D (deleted), P (pending), Selected (S)
+
+the filter buttons and text box should me small, not the default angular one by saving space
+
+the menu will be updated based on websocket/mqtt message
+
+if some requirement is not fulfilled on event, the event will be stopped (admin will be offered to stop or postpone etc.)
+notify a day before or so (maybe can be configurable not sure)
+
 
 Menu
 ----
@@ -25,7 +35,8 @@ Game
 Chat
 Invitations
 Events
-Hosting
+Hosting (lend out something should be figured out also - not just event creation - bycicle for example as accessories)
++ button to add new event - (event explore)
 
 Game - Default page
 -------------------
@@ -43,6 +54,8 @@ On the profile image, there is a horizontal lines at the top, showing how many i
 Clicking on that column vertically on the picture (Tinder like UI),
 showing the different picture of the user and different info about the user in the left bottom corner
 
+cards should show when the user was active
+
 below the user photo there is a star bar 1-10, clicking on that nice animating
 (middle of the image screen the user has been rated with 5 inside in the star, and move to the next user)
 
@@ -56,25 +69,44 @@ there will be an arrow on the bottom of the image, the profile data is in two co
 Chat
 ----
 
-accordion with the latest messages
-history icon to go to popup for every message
+accordion with the latest messages (sender's avatar and name of the last message, how many messages aren't read - red counter)
+history icon to go to popup for every messages (only the last message of the channel + sender avatar)
+
+clicking on each item - you can see the whole conversation
 
 in the header of the page event edit button (clicking on it event editor popup)
 
-Profile
--------
+the event editor button on the header shows the member button of the current chat users also, even if there is no event in place
+
+the chat window is two text box
+(the message area and the send message area - typing, read avatars etc. - normal chat, like facebook messenger)
 
 Invitations
 -----------
 
 accordion on the menu bar with invitations ordered by date asc
+inviter avatar icon + event description and when, if it's chat just the last message or so (should figure it out)
+
+clicking on invitation history icon, you can accept - maybe from the menu also or delete (but maybe it's safer inside the popup)
 
 
 Events
------
+------
+event drag to reorder the sub events?? (google maps has an example for it)
+
+random event avatar is System avatar
+
+if admin, you can delete the event, if user you can exit from the event
+
+there is a chat button in the header for the relevant chat window (with red counter)
+map has multiple routes - will be generated based on sub events location (it's textual, not coordinates - google map can handle - car view as default)
+
+exiting from an event close the chat also (maybe rejoining is an option)
 
 accordion on the menu bar with events (where the user is going, but not a host) ordered by date asc
 (only upcoming event)
+
+clicking on hytory icon - past/upcoming filter + calendar view (month/week/day)
 
 for an event card there is a default image, but you can replace (upload new one)
 
@@ -87,12 +119,19 @@ can tournament set, so tournament phase on every sub events - tournament for non
 
 both tournament header and date header is sticky while scrolling up changing with the current values
 
-the sub event panels has (car, members, accessories and accomodation buttons with occupied / all places min - max - red if it's not fulfilled)
+the sub event panels has
+(the following button can be added dynamically to the event card:
+car, members, accessories and accomodation buttons with occupied / all places min - max - red if it's not fulfilled)
 there are also optional sub events (join first approach)
+
+the title of sub events panel is the event name/short desc/date range etc in many rows maybe
+
+explore button for accomodations, accessories etc. (renting out from a company)
 
 if there is only one sub event, then show the panel instead of a button to go to popup screen of subevents
 
 rules (fifa, rate) inside the sub event screen, ticket, discreet in the main page (in the tilte whether it's tournament)
+event start, event end, frequency, virtual or in person event
 
 all the popup has default view and member view
 
@@ -125,21 +164,33 @@ it's small pictures only (Tinder sized - e.g.: on upload screen)
 clicking on the icon show the profile of the user, but the image itself on the top right corner whether it's admin or not
 if it's admin that icon is clickable and you can set someone else to admin - (maybe kick out, suspend, silenced member etc.)
 
------------------
-on the event filter - event list - show how many people was going and are there any ismeros (maybe photos in small circle)
+here we can invite users (who we had the same event - so friends) - 
+click right top corner of pictures and it add chipt at the top with the avatar + name of the user
+(maybe that bar is below the header - don't mess the header up)
 
-szemelyes vagy virtualis event, ismetlodo esemeny (gyakorisag + veget er, mert a kezdo datum benn van)
-az esemenyhez foto feltoltes (esemeny kartya)
+event list - history button:
+----------------------------
++ button to join to the event - new popup "event explore"
+can add feedback (rate 1-10 + message) here + select user for chat invite etc. (friends or host only)
 
-feedback for an event (rate and message)
+event explore: (host only chat???)
+--------------
+event list - show how many people is going and are there any ismeros (maybe photos in small circle)
+event has not enough members, event card should be red etc.
 
-event (ticket, dicreet, auto invite, - visibility - invitation only, friends, public, capacity, category (temak),description,)
-rule (join first, rate (a rate nem kell sztem ez csak join first - esemenyre jelentkezik capacity alapjan) -
-auto approve - grace period?? (event/member num), rank (none, rate (mutual), fifa), expense (amount + currency))
+filter:
+-------
+who is the host (textbox filter)
+recommendation - friends in common who were attending on an event, but the current user is not
+views (distance - users location, not the event location, calendar)
+own events filter (the events accordion in the menu does not show, only the popup to save space)
 
-grace period (member) - if invited, but not respond - i think it's configurable but not on screen not to make too complex
-event grace period (if min capacity is not fulfilled, the event can't be started - not sure whether we need that grace period)
---------------------
+main event:
+-----------
+ticket, dicreet, auto invite, - visibility - invitation only, friends, public, capacity, topics, description
+expense (amount + currency) - maybe for sub events also, and sum up in the header
+
+for tournament mode - ranking algorithm - none, rate (mutual), fifa
 
 Profile
 -------
@@ -174,159 +225,5 @@ children
 school and work on the same history page - ordered by date desc - you can add new items
 can show, how many users were in that school
 
-----
-
-past event/chat-nel elore kerulnek a legutolsok - az upcomingna elore kerulnek az eppen aktualisak (ez gyakorlatilag kalendar view - month/week/day)
-lehet, hogy bele lehet kattintani magaba a chat-be a history oldalon, es vissza gomb, es amikor a menubarnal klikkelunk adott chat-re hasonloan visszagombos ablak jelenik meg
-
-ez lehet az esemenyeknel, invitationoknel stb.
-
-chat es az eventsnel erdekes, lehet kulon allo popup-ok es inkabb x gomb, mint vissza gomb
-
-az csak belso ikon lehet a chat ablakban, mert a legutolso aktivitasokat mutatja a menu bar, tehat allandoan cserelodik
-
-lehet a chat kulon mukodik, mindig a legfrissebb kerul elore, kuldo szemely ikonja es a szoveg --- azt, hogy mennyi uzenet volt red counter mellette
-
-az eseménybol valo kilepes zárja az ablakot is --- azt nem tudni mit csinaljunk azzal, ahol meg nincs esemeny letargyalva - lehet csak nem jelenik meg az esemény accordionban
-
-a chat ablak kinyitasanal kell lenni egy esemény gombnak, nem biztos, hogy az attending menu bar-on fenn lesz, mert nem jelenithet meg 50 eseményt egyszerre, esetleg a chat menu item mellett ha meg elfer megjelenik az esemény ikonja - ahol szerkeszteni lehet, vagy ezt mar a belso kepernyon kulon gombban - esemény szerkeszto
-
-a recommendation csak annyiban kulonbozik, hogy az ismerőseim ott voltak en nem (lehet ugyanazon az event history kepernyon ez is egy szuro gomb)
-
-aztan van helyben kozelebbi események
-(nezet valtas)
-
-lehet ez a history egy osszetett mindenes panel - eventekre
-
-a szuro gombok meretenek csökkentese
-ugy mint a LinkedIn-en
-
-sajat események - en hoztam letre szuro
-(itt event of series is lehet)
-
-lehet ez a harom accordion lesz (chat, events, own events)
-
-4 accordion (Invites, chats, going, hosting)
-
-ugyanaz a popup, ha history gombra kattint az accordion headerben, vsak mas a szuro
-
-az own events (az szuri csak own-ra, de egyebbkent az egeszet mutatja)
-
-a menuben viszont az attending nem mutatja az ownt hely megtakaritas miatt
-
-az invites meg mutatja a szervezo ikonjat is a menuben - mert elfer, a popup-ban viszont ez az információ is benne lesz
-
-esetleg ha a menuben elfer, hanyan jelentkeztek az eseményre, es egyelore meg lesz-e tartva - piros hatter, narancssarga, vagy zold - a menu barban
-
-a history icon az esemény-en a pas es upcoming events filtert is tartalmazza
-
-az osszes upcoming events nem fer ki, es itt is lehet szerkeszteni az eseményeket - calendear napi nezet
-
-promotions nincs - gyakorlatilag egy esemény, ami publikusan vagy baratok kozott van meghirdetve, a private meg egyedi invitacio - a chat meg az esemény nelkuli esemény, ahol meg kitalaljak mi legyen
-
-az esemény history-ban lehet ertekelni eseményt, vagy kivalasztani user-t beszelgetesre - meginvitalni csevegesre
-
-az eseménynel a link generalva van, az alesemenyek egy-egy megallo - rakkattintva Google Maps jon elo - auto nezet
-
-history event - ket view - bal oldalt datum
-jobb oldalt esemény 3 sorban - ki rendezte ikon elotte es egy valto gomb felul eseményen résztvevők ikonjaival a panel helyett - es lehet nevre keresni a felso kereso textbox-ban - esetleg leegordulo filter gomb
-
-amikor esemény letrehozas zajlik - lehet egy chat ablak zero eseménnyel, majd hozzaadnak vmit
-
-lehet az esemény kereso az nem ket panelos, hanem calendar jellegu - nap nezet (google calendar) - esetleg honap nezet vagy week nezet - sticky header a bal felsoben, odaer a calendar, akkor valt (ez mar benne van az appban, at kell venni)
-
-talán azt kellene mint sub git repo - letölteni a frontend folderba, es utana hozzarakni, a szerver integraciot, ami meg egy private folder lenne - azonosító kulcsok (angularba is belerakni a file-okat - build time-ban) stb.
-(tehat a szerver nem lenne nyílt forráskódú)
-
-promotions ket reszre bontas, szervezett esemeny, vagy csak vminek a berlese
-
-mindenesetre az esemény panelben tetszolegesen lehet hozzáadni ezeket a szoveg ala
-
-a sub event-en szallas kivalaszto pl. a car gomb mellett min - max stb., tehat 4 gomb mar, feljon egy popup es gyakorlatilag, szallasra lehet keresni - pl. booking, szallas.hu stb. - berelni csonakot stb. (azt meg nem tudom, hogy csinalom meg) - sub promotion, tema (csonak, es esemény behuzas vagy vmi mas)
-
-chats - relevansak vannak benne, akiknel aktiv chat van, es mellette van egy + az accordion headerjeben, 
-
-ez esemény nélküli - amihez kesobb eseményt lehet adni a szokásos módon
-
-akkor eseménnye alakul es az események accordionban jelenik meg
-
-ez azt is jelenti, hogy invitalni kulon is lehet az embereket csak a chatbe, mig nem dontik el, hogy mi legyen - be lehet utni idopontot es az eseményhez kerdojel kerul ---- ???
-
-1 - 1 chat - chats accordion (talalkozas utan lehet kezdeményezni)
-
-websocket emulator - latszodjon, hogy ha ilyen mqtt uzenet kerul at, akkor a felület igy valtozik
-
-extended flag - ami bekapcsolja azokat a feluleteket, amelyek meg nincsenek a hatterbe kotve - esemény szerkeszto, event history, promotions, event button at the top of the chat (event editor)
-
-kivalszt eventet a menubol, alap a chat ablak es a tetejen van ez a gomb, a bal oldalon, meg az a harom sor, ami a menuben volt
-
-az eseményeknel - menu item - torles, szerkesztes gomb - ami egy-egy popup
-az accordionon egy history es egy plus gomb (history accordion feedback-et lehet adni - csillag panel)
-
-----
-
-az event reszen lehet invitalni embereket - felbukkan egy popup - felul egy chips textbox keresovel - es itt lehet kiválasztani kit hivunk meg
-
-valszeg a panelekre fogok rakkattintani
-(ember panel ket oszlop - szokasos)
-----
-ezek azok akikkel mar találkozott emberunk
-
-(a promotionts allashirdetes is lehet, mint tema)
-
-
-a bal felso sarok (esemeny nev, hely, ido felirat) - csoport nev
-
-utana szavazatok gomb egy red counterrel
-(accordion - Egyeni, Parok (Kapott, Adott, Kölcsönös, Találkozott)
-
-meg egy üzenetet gomb (gyakorlatilag a chat) - a chat alul egy szoveg + egy gomb
-(esemény bedobasa stb. - ezt meg nem tudom)
-
-meg kell nezni, milyen volt az eredeti alkalmazás (milyen típusú csoportok voltak - szavazo csoport-on kivul mi volt meg)
-
-események a menuben datum szerint növekvő vannak sorba rendezve, a csoportok nev szerint
-
-(ha az esemény elmult, akkor mar nem jelenik meg, archiv események között lehet megtalálni) - archiv ikon vhol lehet az accordion-on
-
-invitation (accept - pipa jel, delete button) a menuben
-
-ha pipa, akkor bekerul az aktiv események accordionba (menu)
-
-az esemény
-
-esemény neve
-csoport neve
-helyszin
-
-a sor background kap egy csoport szint
-
-ha valaki nem torolheti az eseményt, mert nem admin, akkor kilepes gomb helyette a sorban, mert kilephet belole, ez a csoportoknal is igy van
-
-a promotion csak a szervezo altal létrehozott eseményeket takarja - amugy a tobbi szereplo egy listabol valassza ki (esemény oldal + gomb)
-
-az eseményt az accordionon belul sorba lehet rendezni - drageles talan
-
-a menusor nagyon hasonló (user selector - de nincs felhasználó valtas)
-
-Csoportok, csoporton belül Események accordion a menuben - kilepes gomb az eseménybol, csoportbol - Esemény gyakorlatilag egy chatszoba, alul egy textbox, mellette attachment, ahol helyeket lehet hozzaadni (hova menjunk kivalasztas a promociobol)
-
-+ jel az accordionon, uj esemeny letrehozasa - egy ceruza is van a torles mellett, mint szerkesztes - tagok invitalasa, az ismeros listabol - esetleg esemény hozzaadas (ezt meg nem tudom)
-
-esemény tipusok + sztem az invitalas accordion - random esemény, meg mas invital - egyszerre egy accordion nyitva - ráadásul - az active user, ami a menunel a nev alatt van a masodik sorban - az a Felhasználóvalaszto helyett csoportvalaszto lesz - aktiv csoport - vhogy mutatni kell, hogy a masik csoportokban van uzenet red counter
-(meg ezt nem tudom)
-
-lehet hogy ha a csoportra kattintok, akkor nem a csoport események, hanem az osszes esemény jelenik meg -
-az esemény névben a következő sorban jelenik meg melyik csoporthoz tartozik
-
-Promociok - esemény szervezes (harmadik tab)
-
-ezek teljes popupok
-
-az esemény alesemenyei kozott
-(sztem ez accordion lesz)
-
-member lista, kis icon - nev mogotte es mellette egy auto ikon es pl. egy torol gomb, vki kirugasa a csoportbol
-
-rakkattintva a sorra, megjelenik a profil (tehat nem panel lista)
-a sor background szine mutatja, milyen szerepkore van - a member listat majd megnezem, hogy jelenik meg Facebook-on
+the interest might be hashtags, so for the event also hashtags can be added
+(it's like sub topics, not sure - filtering, user auto selection based on same priority etc.)
