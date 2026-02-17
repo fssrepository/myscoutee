@@ -23,6 +23,9 @@ the menu will be updated based on websocket/mqtt message
 if some requirement is not fulfilled on event, the event will be stopped (admin will be offered to stop or postpone etc.)
 notify a day before or so (maybe can be configurable not sure)
 
+if too many people rejects the invitation for a room, then the algorithm re-run for the left overs
+If somebody lefts, nobody replaces in random chat (avoid algorithm complexity - or simply use left overs)
+
 
 Menu
 ----
@@ -181,6 +184,8 @@ event explore: (host only chat???)
 event list - show how many people is going and are there any ismeros (maybe photos in small circle)
 event has not enough members, event card should be red etc.
 
+you can join to an event individually also - should be accepted by the admin (it's like invitation, just the other way around)
+
 filter:
 -------
 who is the host (textbox filter)
@@ -199,6 +204,8 @@ Profile
 -------
 
 lock icon next to each item to set whether it's friends only (who you met before), private, public
+
+invisible for games (only organizer)
 
 image selector + image editor - clicking on squares and popup for image editor (pinch to zoom and move - desktop version too)
 about me,
