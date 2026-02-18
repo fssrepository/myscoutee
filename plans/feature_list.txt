@@ -31,6 +31,10 @@ notify a day before or so (maybe can be configurable not sure)
 if too many people rejects the invitation for a room, then the algorithm re-run for the left overs
 If somebody lefts, nobody replaces in random chat (avoid algorithm complexity - or simply use left overs)
 
+instead of login screen generate 12 users (6 woman and 6 man - use images accordingly)
+to choose from (introduce environment variable for it)
+the 6 users should be contextual - so the screens should show to each other some of them are inviteable,
+some of them are in a chatgroup of 6
 
 Menu
 ----
