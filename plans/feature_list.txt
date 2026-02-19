@@ -200,6 +200,8 @@ you can join to an event individually also - should be accepted by the admin (it
 past event filter where you can see the vibes and reting to the event, and whether it has been recommended (host profile page, from menu bar "own events"
 + explore events - all host can appear with the events, but you can choose past events filter)
 
+maybe the only external parameter is the host id itself
+
 filter:
 -------
 who is the host (textbox filter)
