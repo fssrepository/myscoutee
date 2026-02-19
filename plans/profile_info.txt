@@ -149,6 +149,8 @@ Beliefs
 
 Religion
 
+Values
+
 Each item row:
 Label | Value | 🔒 icon
 

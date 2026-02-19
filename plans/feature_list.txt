@@ -188,7 +188,7 @@ click right top corner of pictures and it add chipt at the top with the avatar +
 event list - history button:
 ----------------------------
 + button to join to the event - new popup "event explore"
-can add feedback (rate 1-10 + message) here + select user for chat invite etc. (friends or host only)
+can add feedback (rate 1-10 + vibes + whether recommend???) here + select user for chat invite etc. (friends or host only)
 
 event explore: (host only chat???)
 --------------
@@ -196,6 +196,9 @@ event list - show how many people is going and are there any ismeros (maybe phot
 event has not enough members, event card should be red etc.
 
 you can join to an event individually also - should be accepted by the admin (it's like invitation, just the other way around)
+
+past event filter where you can see the vibes and reting to the event, and whether it has been recommended (host profile page, from menu bar "own events"
++ explore events - all host can appear with the events, but you can choose past events filter)
 
 filter:
 -------
