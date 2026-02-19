@@ -261,3 +261,5 @@ the interest might be hashtags, so for the event also hashtags can be added
 Assets accordion (car, accomodation, supplies)
 
 while editing the profile on the popup, there will be a settings button, where you can delete profile, logout, gdpr etc.
+
+for every accordion a +%, if you fill it out
