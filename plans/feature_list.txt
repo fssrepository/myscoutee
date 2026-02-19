@@ -1,0 +1,270 @@
+Dictionary:
+-----------
+cloudflare reverse proxy
+base44 landing page (summary, GDPR popup)
+angular page on different server (login page, exact functionality)
+separate sensitive server passwords from the main code base (won't be uploaded to the github)
+redis streams for chat (remove mosquitto)
+Logo - heart in a circle by cutting the bottom part, so it can be an M and put a star on it
+
+Algorithm
+---------
+Status of members (e.g.: event):
+A (Accepted), R (rejected), I (invited), K (kicked, maybe suspended/silenced), L (left), V (Verified),
+T (Timed-Out - invited, but not respond within a built-in timeframe), LL (late leave - payment is due),
+W (on waiting list), LD (left deleted), D (deleted), P (pending), Selected (S)
+
+if someone kicked out or late left then global score drops, not the mutual score, and it defines visibility
+time decay, if someone didn't meet with each other in 2 years time, can drop visibility (?? not sure, how to manage)
+if someone is inactive on the app, will be set "inactive" / host only mode automatically and the app asks to set it visible manually for the user
+the graph stays intact - inactive does mean logout from every event, and the frieds also do not see it - maybe Friends Only also needed
+
+if some requirement is not fulfilled on event, the event will be stopped (admin will be offered to stop or postpone etc.)
+notify a day before or so (maybe can be configurable not sure)
+
+if too many people rejects the invitation for a room, then the algorithm re-run for the left overs
+If somebody lefts, nobody replaces in random chat (avoid algorithm complexity - or simply use left overs)
+
+Sample Data
+-----------
+instead of login screen generate 12 users (6 woman and 6 man - use images accordingly) to choose from (introduce environment variable for it)
+the 6 users should be contextual - so the screens should show to each other some of them are inviteable, some of them are in a chatgroup of 6
+
+Base Design:
+-------
+Menu - will be updated based on websocket/mqtt message
+Main page - Logo + text on every main page with icon bar on the right side
+Sub page - for example title for the current event and either X button on the right hand side or backward button before the title
+Popup - on mobile should be full, on desktop partial screen sized (similar to Egyenleg or email or urlap kereses popup)
+Filter buttons/Filter textbox - should be small (not the default angular one by saving space)
+Page - should be center aligned horizontally on desktop
+
+Remove the 3 horizontal button and any functionality related to it (only user selector button/menu exists)
+
+Menu
+----
+
+Menu items:
+Game
+Chat
+Invitations
+Events
+Hosting (lend out something should be figured out also - not just event creation - bycicle for example as supplies)
++ button to add new event - (event explore)
+
+chat/invitations/events/hosting the same screen just a select filter box on the filter bar 
+(like in linked in - bottom half screen to select options)
+
+Game - Default page
+-------------------
+
+Menu Button:
+shows the Tinder like panel on the left with 3 buttons on the header (profile-filter e.g.: profession match, school match, friends in common etc.),
+history, type - (fab button - egyeni, parok - rotate screen status message))
+
+History button:
+which shows the votes in popup (filter bar: Adott, Kapott, Kolcsonos, Találkozott, Párok - Adott, Kapott, Találkozott,
+vote filter (large enough), how far the user is, when was active last time) filter textbox at the top (e.g.: filter for name)
+
+Red counter: to show the number of iteraction (how many people rated to you in any way)
+
+On the profile image, there is a horizontal lines at the top, showing how many images the user have.
+Clicking on that column vertically on the picture (Tinder like UI),
+showing the different picture of the user and different info about the user in the left bottom corner
+
+cards should show a message when the user was active (maybe wehther it's friends in common)
+
+below the user photo there is a star bar 1-10, clicking on that nice animating
+(middle of the image screen the user has been rated with 5 inside in the star, and move to the next user)
+
+preload 10-15 photos, and paginating to the next stack, while the user finished on rating (the cards are on top of each other, so hiding each other)
+
+on pair rate - if the screen is rotated, the user of woman and the user of man cards (similar to what i described above) will be next to each other,
+anyway woman images the first 3-4 in red-orange line at the top of the image card, the man next to it in blue
+
+there will be an arrow on the bottom of the image, the profile data is in two columns to be able to compare anyway in one column
+
+Chat
+----
+
+accordion with the latest messages (sender's avatar and name of the last message, how many messages aren't read - red counter)
+history icon to go to popup for every messages (only the last message of the channel + sender avatar)
+
+clicking on each item - you can see the whole conversation
+
+in the header of the page event edit button (clicking on it event editor popup)
+
+the event editor button on the header shows the member button of the current chat users also, even if there is no event in place
+
+the chat window is two text box
+(the message area and the send message area - typing, read avatars etc. - normal chat, like facebook messenger)
+
+Invitations
+-----------
+
+accordion on the menu bar with invitations ordered by date asc
+inviter avatar icon + event description and when, if it's chat just the last message or so (should figure it out)
+
+clicking on invitation history icon, you can accept - maybe from the menu also or delete (but maybe it's safer inside the popup)
+
+Events
+------
+event drag to reorder the sub events?? (google maps has an example for it)
+
+random event avatar is System avatar
+
+if admin, you can delete the event, if user you can exit from the event
+
+there is a chat button in the header for the relevant chat window (with red counter)
+map has multiple routes - will be generated based on sub events location (it's textual, not coordinates - google map can handle - car view as default)
+
+exiting from an event close the chat also (maybe rejoining is an option)
+
+accordion on the menu bar with events (where the user is going, but not a host) ordered by date asc
+(only upcoming event)
+
+clicking on hytory icon - past/upcoming filter + calendar view (month/week/day)
+
+for an event card there is a default image, but you can replace (upload new one)
+
+no groups (topics (edit/filter page), which corresponds to the interest of the user in the profile page)
+
+event editor:
+user can replace the whole event with a button (clicking on the button shows an event filter where we can select an other event)
+clicking on the sub events, show a new screen, which has calendar / member view, left from the sub events a timeline
+can tournament set, so tournament phase on every sub events - tournament for non-admins only the current phase is not disabled
+
+both tournament header and date header is sticky while scrolling up changing with the current values
+
+the sub event panels has
+(the following button can be added dynamically to the event card:
+car, members, accessories and accomodation (assests) buttons with occupied / all places min - max - red if it's not fulfilled)
+there are also optional sub events (join first approach)
+
+the title of sub events panel is the event name/short desc/date range etc in many rows maybe
+
+explore button for accomodations, accessories etc. (renting out from a company)
+
+if there is only one sub event, then show the panel instead of a button to go to popup screen of subevents
+
+rules (fifa, rate) inside the sub event screen, ticket, discreet in the main page (in the tilte whether it's tournament)
+event start, event end, frequency, virtual or in person event
+
+all the popup has default view and member view
+
+accomodation popup:
+the users can rate that card (prefer)
+admin can remove accomodation from the list (in the header how many places we have, roms and for people)
+
+with + button, the accomodation form should contain:
+number of places (rooms and how many people)
+link (booking.com link which backend scraps with og: tags (Open Graph technology - you can scrap summary from html))
+
+car popup:
+you can assign your own car with + button, what you have already added to the screen
+or you can add a link for a car company - renting, even with a driver etc. (it needs to be registered to the system)
+add the number of places
+
+the car popup header should show, how many cars and places we have - where is the starting point/time of the car should be in the car panel list
+phone number or other accesibility of the owner on the car card
+
+if someone wants to be a passenger, can ask, and the driver can accept
+
+accessories:
+a list what you is required (e.g. food)
+with + button you can offer that - maybe you can select topics - and min - max, and how many offer has been added
+in the header - how many accessories, how many offered and how many are required
+
+members:
+Even on the main event a button should be there (as that ones are all of the participants)
+it's small pictures only (Tinder sized - e.g.: on upload screen)
+clicking on the icon show the profile of the user, but the image itself on the top right corner whether it's admin or not
+if it's admin that icon is clickable and you can set someone else to admin - (maybe kick out, suspend, silenced member etc.)
+
+here we can invite users (who we had the same event - so friends) - 
+click right top corner of pictures and it add chipt at the top with the avatar + name of the user
+(maybe that bar is below the header - don't mess the header up)
+
+event list - history button:
+----------------------------
++ button to join to the event - new popup "event explore"
+can add feedback (rate 1-10 + vibes + whether recommend???) here + select user for chat invite etc. (friends or host only)
+
+event explore: (host only chat???)
+--------------
+event list - show how many people is going and are there any ismeros (maybe photos in small circle)
+event has not enough members, event card should be red etc.
+
+you can join to an event individually also - should be accepted by the admin (it's like invitation, just the other way around)
+
+past event filter where you can see the vibes and reting to the event, and whether it has been recommended (host profile page, from menu bar "own events"
++ explore events - all host can appear with the events, but you can choose past events filter)
+
+maybe the only external parameter is the host id itself, and based on that same page appears, little statistic at the top
+
+filter:
+-------
+who is the host (textbox filter)
+recommendation - friends in common who were attending on an event, but the current user is not
+views (distance - users location, not the event location, calendar)
+own events filter (the events accordion in the menu does not show, only the popup to save space)
+
+main event:
+-----------
+ticket, dicreet, auto invite, - visibility - invitation only, friends, public, capacity, topics, description
+expense (amount + currency) - maybe for sub events also, and sum up in the header
+
+for tournament mode - ranking algorithm - none, rate (mutual), fifa
+
+Profile
+-------
+Top of the menu: (remove "felhasznalo valasztas" functionality - below the exit button should be the exit title, not next to it)
+User icon + name, below name there is a button "Edit Profile" (maybe it shows a pencil + status), exit button on the right hand side
+
+next to the name - Verified (attended on an event), maybe you can add some sort of feedback for the use (icon will be there)
+
+After an event, other attendees vote on 3 traits. the profile shows the most one, but clicking on the icon can show the first 3 in % (popup)
+🔥 60% Adventurer
+🧠 30% Deep Thinker
+💛 10% Empath
+
+lock icon next to each item (public, friends only, private)
+
+profile status: (public, friends only, host only, inactive)
+
+image selector + image editor - clicking on squares and popup for image editor (pinch to zoom and move - desktop version too)
+about me,
+interest
+(creativity, fan favourites, food and drink, gaming, going out, music,
+outdoors and adventures, social and content, sports and fitness, staying in, tv and movies, values and causes, wellness and styles)
+height
+languages
+horoscop
+education
+family plans
+communication styles
+love style
+pets
+drinking
+smoke
+workout
+social media
+job title/company/school
+city (living in)
+sexual orientation
+gender
+phisique
+religion
+children
+
+school and work on the same history page - ordered by date desc - you can add new items
+can show, how many users were in that school
+
+the interest might be hashtags, so for the event also hashtags can be added
+(it's like sub topics, not sure - filtering, user auto selection based on same priority etc.)
+
+Assets accordion (car, accomodation, supplies)
+
+while editing the profile on the popup, there will be a settings button, where you can delete profile, logout, gdpr etc.
+
+for every accordion a +%, if you fill it out

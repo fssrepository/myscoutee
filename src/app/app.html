@@ -1,0 +1,432 @@
+<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
+<!-- * * * * * * * * * * * The content below * * * * * * * * * * * -->
+<!-- * * * * * * * * * * is only a placeholder * * * * * * * * * * -->
+<!-- * * * * * * * * * * and can be replaced.  * * * * * * * * * * -->
+<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
+<!-- * * * * * * * * * Delete the template below * * * * * * * * * -->
+<!-- * * * * * * * to get started with your project! * * * * * * * -->
+<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
+
+
+
+<main class="main">
+  <div class="content">
+
+    <!-- Mobile Menu Button -->
+    <button mat-icon-button class="mobile-menu-btn-global" (click)="toggleMobileMenu()" aria-label="Menü">
+      <mat-icon>menu</mat-icon>
+      <span class="badge-dot" *ngIf="menuBadgeTotal > 0">{{ menuBadgeTotal }}</span>
+    </button>
+
+    <!-- User Selector Button - Global -->
+    <button mat-icon-button class="user-selector-btn-global" (click)="onUserSelect()" aria-label="Felhasználó választása">
+      <span class="user-initial" [class]="getUserColorClass(activeUser.id)">{{ activeUser.initials }}</span>
+      <span class="badge-dot" *ngIf="userBadgeCount > 0">{{ userBadgeCount }}</span>
+    </button>
+
+    <!-- Mobile Menu Panel -->
+    <div class="mobile-menu-backdrop" [class.open]="showMobileMenu" (click)="closeMobileMenu()" *ngIf="showMobileMenu"></div>
+    <div class="mobile-menu-panel-global" [class.open]="showMobileMenu">
+      <div class="menu-header menu-header-row">
+        <img [src]="getIssueLogo()" [alt]="selectedIssueLabel" />
+        <button
+          *ngIf="selectedIssueLabel === 'Adóügy'"
+          class="balance-card"
+          type="button"
+          (click)="openPopup('balance')"
+          aria-label="Egyenleg megnyitása"
+        >
+          <span class="balance-title">Egyenleg</span>
+          <span class="balance-value">-200e Ft</span>
+        </button>
+      </div>
+      <div class="menu-items">
+        <a class="menu-item" routerLink="/home" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMobileMenu()">
+          <mat-icon>home</mat-icon>
+          <span>Kezdőoldal</span>
+          <span class="item-badge" *ngIf="menuBadges.home > 0">{{ menuBadges.home }}</span>
+        </a>
+        <a *ngIf="selectedIssueLabel === 'Adóügy'" class="menu-item" routerLink="/documents" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMobileMenu()">
+          <mat-icon>description</mat-icon>
+          <span>Dokumentumok</span>
+          <span class="item-badge" *ngIf="menuBadges.documents > 0">{{ menuBadges.documents }}</span>
+        </a>
+        <a *ngIf="selectedIssueLabel === 'Adóügy'" class="menu-item" routerLink="/documents/szamlak" routerLinkActive="active" (click)="closeMobileMenu()">
+          <mat-icon>receipt_long</mat-icon>
+          <span>Bizonylatok</span>
+          <span class="item-badge" *ngIf="menuBadges.invoices > 0">{{ menuBadges.invoices }}</span>
+        </a>
+        <button *ngIf="selectedIssueLabel === 'Adóügy'" class="menu-item menu-item-action" type="button" (click)="openPopup('contact')">
+          <mat-icon>support_agent</mat-icon>
+          <span>Kapcsolat</span>
+        </button>
+        <button *ngIf="selectedIssueLabel === 'Adóügy'" class="menu-item menu-item-action" type="button" (click)="openPopup('settings')">
+          <mat-icon>settings</mat-icon>
+          <span>Beállítások</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- User Menu Panel -->
+    <div class="user-menu-backdrop" [class.open]="showUserMenu" (click)="closeUserMenu()" *ngIf="showUserMenu"></div>
+    <aside class="user-menu-panel" [class.open]="showUserMenu">
+      <div class="user-menu-header">
+        <button
+          class="user-header-left user-header-link"
+          type="button"
+          (click)="openUserMenuView('users')"
+          [class.user-header-link-active]="userMenuView === 'users'"
+        >
+          <span class="user-avatar-wrapper">
+            <span class="user-avatar" [class]="getUserColorClass(activeUser.id)">{{ activeUser.initials }}</span>
+            <span class="badge-dot user-avatar-badge" *ngIf="userBadgeCount > 0">{{ userBadgeCount }}</span>
+          </span>
+          <div class="user-meta">
+            <span class="user-name">{{ activeUser.name }}</span>
+            <span class="user-role">Aktív felhasználó</span>
+          </div>
+        </button>
+        <button class="user-exit-btn" type="button" aria-label="Kilépés" (click)="openUserPopup('logoutConfirm')">
+          <mat-icon>logout</mat-icon>
+          <span>Kilépés</span>
+        </button>
+      </div>
+
+      <div class="user-menu-content">
+        <div *ngIf="userMenuView === 'root'">
+          <section class="user-menu-card accordion-card" [class.collapsed]="!appointmentsOpen">
+            <div class="card-header card-header-action" role="button" tabindex="0" (click)="toggleUserSection('appointments')">
+              <span class="card-header-left">
+                <span class="card-badge">{{ userAppointments.length }}</span>
+                <span class="card-title">Időpontfoglalás</span>
+              </span>
+              <button class="header-icon-btn" type="button" (click)="$event.stopPropagation(); openUserPopup('addAppointment')">
+                <mat-icon>add</mat-icon>
+              </button>
+            </div>
+            <div class="card-body appointment-list accordion-body" [class.open]="appointmentsOpen">
+              <div class="accordion-inner">
+                <button
+                  class="appointment-row"
+                  type="button"
+                  *ngFor="let appointment of userAppointments"
+                  (click)="selectAppointment(appointment.id); openUserPopup('appointment')"
+                >
+                  <div class="appointment-main">
+                    <span class="appointment-place">{{ appointment.place }}</span>
+                    <span class="appointment-address">{{ appointment.address }}</span>
+                  </div>
+                  <span class="appointment-date">{{ appointment.datetime }}</span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section class="user-menu-card accordion-card" [class.collapsed]="!issuesOpen">
+            <div class="card-header card-header-action" role="button" tabindex="0" (click)="toggleIssueSection()">
+              <span class="card-header-left">
+                <span class="card-badge">{{ getIssueTotal() }}</span>
+                <span class="card-title">Ügyek</span>
+              </span>
+            </div>
+            <div class="card-body accordion-body" [class.open]="issuesOpen">
+              <div class="accordion-inner">
+                <div class="issue-list">
+                  <button
+                    class="issue-row"
+                    type="button"
+                    *ngFor="let issue of issueGroups"
+                    (click)="selectIssue(issue.label)"
+                    [class.issue-row-active]="selectedIssueLabel === issue.label"
+                    [class]="getIssueRowClass(issue.label)"
+                  >
+                    <span class="issue-name">{{ issue.label }}</span>
+                    <span class="issue-count" *ngIf="getIssueCount(issue.label) > 0">{{ getIssueCount(issue.label) }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <button class="user-menu-link" type="button" (click)="openUserPopup('centralHelp')">
+            <mat-icon>support_agent</mat-icon>
+            <span>Központi segítség</span>
+          </button>
+
+          <button class="user-menu-link" type="button" (click)="openUserPopup('userSettings')">
+            <mat-icon>settings</mat-icon>
+            <span>Beállítások</span>
+          </button>
+        </div>
+
+        <div *ngIf="userMenuView === 'users'">
+          <button class="user-menu-subheader" type="button" (click)="openUserMenuView('root')" aria-label="Vissza">
+            <mat-icon>arrow_back</mat-icon>
+            <span class="subheader-title">Felhasználóváltás</span>
+          </button>
+
+          <section class="user-menu-card accordion-card" [class.collapsed]="!usersOpen">
+            <div class="card-header card-header-action" role="button" tabindex="0" (click)="toggleUserSection('users')">
+              <span class="card-header-left">
+                <span class="card-badge">{{ otherUsers.length }}</span>
+                <span class="card-title">Felhasználó</span>
+              </span>
+              <button class="header-icon-btn" type="button" (click)="$event.stopPropagation(); openUserPopup('addUser')">
+                <mat-icon>add</mat-icon>
+              </button>
+            </div>
+            <div class="card-body user-list-body accordion-body" [class.open]="usersOpen">
+              <div class="accordion-inner">
+                <button
+                  class="user-row"
+                  type="button"
+                  *ngFor="let user of otherUsers"
+                  (click)="selectUser(user.id)"
+                  [class.user-row-clicked]="clickedUserId === user.id"
+                >
+                  <span class="user-row-name">
+                    <span class="user-row-initial" [class]="getUserColorClass(user.id)">{{ user.initials }}</span>
+                    {{ user.name }}
+                  </span>
+                  <span class="user-row-actions">
+                    <button
+                      type="button"
+                      class="row-icon-btn"
+                      (click)="$event.stopPropagation(); openUserPopup('suspension', user)"
+                      aria-label="Akadályoztatás"
+                    >
+                      <mat-icon>priority_high</mat-icon>
+                    </button>
+                    <button
+                      type="button"
+                      class="row-icon-btn"
+                      (click)="$event.stopPropagation(); openUserPopup('deleteUser', user)"
+                      aria-label="Törlés"
+                    >
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                    <span class="user-row-badge">{{ getUserMenuTotalFor(user) }}</span>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </aside>
+
+    <nav class="sidebar" aria-label="Primary navigation">
+      <div class="sidebar-top">
+        <img [src]="getIssueLogo()" [alt]="selectedIssueLabel" />
+        <button
+          *ngIf="selectedIssueLabel === 'Adóügy'"
+          class="balance-card"
+          type="button"
+          (click)="openPopup('balance')"
+          aria-label="Egyenleg megnyitása"
+        >
+          <span class="balance-title">Egyenleg</span>
+          <span class="balance-value">-200e Ft</span>
+        </button>
+      </div>
+      <mat-nav-list>
+        <a mat-list-item routerLink="/home" routerLinkActive="selected" [routerLinkActiveOptions]="{ exact: true }">
+          <mat-icon aria-hidden="false" aria-label="Kezdőoldal">home</mat-icon>
+          <span>Kezdőoldal</span>
+          <span class="menu-badge" *ngIf="menuBadges.home > 0">{{ menuBadges.home }}</span>
+        </a>
+        <a *ngIf="selectedIssueLabel === 'Adóügy'" mat-list-item routerLink="/documents" routerLinkActive="selected" [routerLinkActiveOptions]="{ exact: true }">
+          <mat-icon aria-hidden="false" aria-label="Dokumentumok">description</mat-icon>
+          <span>Dokumentumok</span>
+          <span class="menu-badge" *ngIf="menuBadges.documents > 0">{{ menuBadges.documents }}</span>
+        </a>
+        <a *ngIf="selectedIssueLabel === 'Adóügy'" mat-list-item routerLink="/documents/szamlak" routerLinkActive="selected">
+          <mat-icon aria-hidden="false" aria-label="Bizonylatok">receipt_long</mat-icon>
+          <span>Bizonylatok</span>
+          <span class="menu-badge" *ngIf="menuBadges.invoices > 0">{{ menuBadges.invoices }}</span>
+        </a>
+        <button *ngIf="selectedIssueLabel === 'Adóügy'" mat-list-item type="button" class="menu-item-action" (click)="openPopup('contact')">
+          <mat-icon aria-hidden="false" aria-label="Kapcsolat">support_agent</mat-icon>
+          <span>Kapcsolat</span>
+        </button>
+        <button *ngIf="selectedIssueLabel === 'Adóügy'" mat-list-item type="button" class="menu-item-action" (click)="openPopup('settings')">
+          <mat-icon aria-hidden="false" aria-label="Beállítások">settings</mat-icon>
+          <span>Beállítások</span>
+        </button>
+      </mat-nav-list>
+    </nav>
+    <section class="content-area">
+      <router-outlet></router-outlet>
+    </section>
+  </div>
+</main>
+
+<section class="app-popup" *ngIf="activePopup && activePopup !== 'deleteUser' && activePopup !== 'logoutConfirm'">
+  <div class="app-popup-backdrop" (click)="closePopup()"></div>
+  <div class="app-popup-panel" (click)="$event.stopPropagation()">
+    <div class="popup-header">
+      <div class="popup-title">
+        <h2>{{ getPopupTitle() }}</h2>
+      </div>
+      <span class="popup-balance-value" *ngIf="activePopup === 'balance'">{{ balanceValue }}</span>
+      <button mat-icon-button class="popup-close" (click)="closePopup()" aria-label="Bezárás">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    <div class="popup-body">
+      <div *ngIf="activePopup === 'contact'" class="contact-content">
+        {{ contactContent }}
+      </div>
+      <div *ngIf="activePopup === 'appointment'" class="appointment-popup">
+        <div class="appointment-popup-header">
+          <h3>{{ selectedAppointment.place }}</h3>
+          <p>{{ selectedAppointment.address }}</p>
+          <p>{{ selectedAppointment.datetime }}</p>
+        </div>
+        <div class="appointment-links">
+          <button type="button" class="link-btn map-btn" (click)="openMapLinkSmart(selectedAppointment.mapUrl)">Térkép</button>
+          <button type="button" class="link-btn">Video chat</button>
+        </div>
+        <div class="appointment-categories">
+          <p>Kategória</p>
+          <div class="category-chip">{{ selectedAppointmentCategory }}</div>
+        </div>
+        <div class="appointment-actions">
+          <p>{{ selectedAppointmentCategory }} - részletek megjelenítése</p>
+          <button type="button" class="link-btn">Lemondás / áthelyezés</button>
+        </div>
+      </div>
+      <div *ngIf="activePopup === 'settings'">
+        <mat-accordion class="popup-accordion" multi>
+          <mat-expansion-panel *ngFor="let panel of settingsPanels">
+            <mat-expansion-panel-header>
+              <mat-panel-title>{{ panel.title }}</mat-panel-title>
+            </mat-expansion-panel-header>
+            <div class="accordion-content" *ngIf="panel.items && panel.items.length">
+              <ul class="popup-list" *ngIf="panel.title === 'Képviseletek' || panel.title === 'Értesítő szabályok'; else popupParagraphs">
+                <li *ngFor="let item of panel.items" class="popup-list-item" [class]="'popup-list-item level-' + getItemLevel(item)">
+                  {{ getItemText(item) }}
+                </li>
+              </ul>
+              <ng-template #popupParagraphs>
+                <p *ngFor="let item of panel.items">{{ getItemText(item) }}</p>
+              </ng-template>
+            </div>
+          </mat-expansion-panel>
+        </mat-accordion>
+      </div>
+      <div *ngIf="activePopup === 'balance'">
+        <mat-accordion class="popup-accordion" multi>
+          <mat-expansion-panel *ngFor="let panel of balancePanels">
+            <mat-expansion-panel-header>
+              <mat-panel-title>{{ panel.title }}</mat-panel-title>
+            </mat-expansion-panel-header>
+            <div class="accordion-content" *ngIf="panel.items && panel.items.length">
+              <ul class="popup-list">
+                <li *ngFor="let item of panel.items" class="popup-list-item" [class]="'popup-list-item level-' + getItemLevel(item)">
+                  {{ getItemText(item) }}
+                </li>
+              </ul>
+            </div>
+            <mat-accordion class="sub-accordion" *ngIf="panel.subpanels?.length" multi>
+              <mat-expansion-panel *ngFor="let subpanel of panel.subpanels">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>{{ subpanel.title }}</mat-panel-title>
+                </mat-expansion-panel-header>
+                <div class="accordion-content" *ngIf="subpanel.items && subpanel.items.length">
+                  <ul class="popup-list">
+                    <li *ngFor="let item of subpanel.items" class="popup-list-item" [class]="'popup-list-item level-' + getItemLevel(item)">
+                      {{ getItemText(item) }}
+                    </li>
+                  </ul>
+                </div>
+              </mat-expansion-panel>
+            </mat-accordion>
+          </mat-expansion-panel>
+        </mat-accordion>
+      </div>
+      <div *ngIf="activePopup === 'centralHelp'" class="contact-content">
+        1818
+      </div>
+      <div *ngIf="activePopup === 'suspension'" class="suspension-popup">
+        <p>Egészségügyi Krízishelyzet Moratórium - betegség, baleset, gondnok stb.</p>
+        <p>A felhasználó nem tudja ellátni a feladatait.</p>
+        <div class="suspension-user" *ngIf="pendingDeleteUser">
+          {{ pendingDeleteUser.name }}
+        </div>
+        <div class="suspension-actions">
+          <button type="button" class="link-btn">Felfüggeszt</button>
+          <button type="button" class="link-btn">Felfüggesztés törlése</button>
+          <button type="button" class="link-btn">Adott dátumok között</button>
+        </div>
+      </div>
+      <div *ngIf="activePopup === 'userSettings'" class="contact-content">
+        nyelv választás stb.
+      </div>
+      <div *ngIf="activePopup === 'addUser'" class="contact-content">
+        KAÜ (Ügyfélkapu+ bejelentkezés)
+      </div>
+      <div *ngIf="activePopup === 'addAppointment'" class="contact-content">
+        <p>Helyszín:</p>
+        <p>Cím:</p>
+        <p>Időpont:</p>
+        <p>Kategória:</p>
+        <p>Térkép link:</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="user-delete-confirm" *ngIf="activePopup === 'deleteUser'">
+  <div class="user-delete-confirm-backdrop" (click)="closePopup()"></div>
+  <div class="user-delete-confirm-panel" (click)="$event.stopPropagation()">
+    <h3>Valóban törölni akarja?</h3>
+    <div class="user-delete-confirm-name" *ngIf="pendingDeleteUser">
+      {{ pendingDeleteUser.name }}
+    </div>
+    <div class="user-delete-confirm-actions">
+      <button mat-stroked-button type="button" (click)="closePopup()">Mégsem</button>
+      <button mat-raised-button color="warn" class="delete-btn" type="button" (click)="closePopup()">Törlés</button>
+    </div>
+  </div>
+</section>
+
+<section class="logout-confirm" *ngIf="activePopup === 'logoutConfirm'">
+  <div class="logout-confirm-backdrop" (click)="closePopup()"></div>
+  <div class="logout-confirm-panel" (click)="$event.stopPropagation()">
+    <h3>Biztosan kilép?</h3>
+    <p>{{ activeUser.name }}</p>
+    <div class="logout-confirm-actions">
+      <button mat-stroked-button type="button" (click)="closePopup()">Mégsem</button>
+      <button mat-raised-button color="warn" class="logout-btn" type="button" (click)="closePopup()">Kilépés</button>
+    </div>
+  </div>
+</section>
+
+<section class="alert-popup" *ngIf="alertService.message() as message">
+  <div class="alert-popup-backdrop" (click)="alertService.close()"></div>
+  <div class="alert-popup-panel" (click)="$event.stopPropagation()">
+    <div class="popup-header">
+      <div class="popup-title">
+        <h2>Értesítés</h2>
+      </div>
+      <button mat-icon-button class="popup-close" (click)="alertService.close()" aria-label="Bezárás">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    <div class="popup-body">
+      <p>{{ message }}</p>
+    </div>
+    <div class="alert-actions">
+      <button mat-stroked-button type="button" (click)="alertService.close()">Rendben</button>
+    </div>
+  </div>
+</section>
+
+<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
+<!-- * * * * * * * * * * * The content above * * * * * * * * * * * * -->
+<!-- * * * * * * * * * * is only a placeholder * * * * * * * * * * * -->
+<!-- * * * * * * * * * * and can be replaced.  * * * * * * * * * * * -->
+<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
+<!-- * * * * * * * * * * End of Placeholder  * * * * * * * * * * * * -->
+<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->

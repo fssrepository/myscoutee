@@ -1,0 +1,274 @@
+🧱 1️⃣ Profile Page Structure (Clean & Tiered)
+
+Do NOT show everything equally.
+
+Use progressive disclosure.
+
+🟢 SECTION 1 — Identity (Top of Profile)
+
+This is what 90% of users care about first.
+
+Avatar (tap → image editor)
+
+Name + age
+
+City (Living in)
+
+Personality Badge (Primary bucket icon)
+
+🔵 Blue tick (attended, no feedback yet)
+
+Profile Status badge (small colored chip)
+
+Under that:
+
+Short headline (1-line vibe sentence)
+
+About Me (expandable)
+
+🧠 SECTION 2 — Personality (Social Proof Layer)
+
+Title: “How Others Experience Me”
+
+as a host:
+----------
+
+🥉 Bronze Host
+
+🥈 Silver Host
+
+🥇 Gold Host
+
+👑 Platinum Host
+
+Based on:
+
+Average crown rating
+
+Attendance rate
+
+No-show ratio
+
+Repeat attendees
+
+When clicking badge:
+
+Show:
+
+Avg rating
+
+Total events hosted
+
+% would attend again
+
+Top vibe category
+
+Top hosted event types
+
+as a member
+-----------
+
+personality traits with % rated by users
+how many events / people you were attending and didn't attend etc. (% by topics)
+
+🏷 SECTION 3 — Interests (Hashtag Based)
+
+Rename from “Interests” → “My World”
+
+Show:
+
+Top 5 visible hashtags as pills
+Expandable to see all
+
+Group under 6 Pillars (collapsed by default):
+
+Social & Lifestyle
+
+Arts & Entertainment
+
+Food & Experiences
+
+Active & Adventure
+
+Mind & Wellness
+
+Values & Identity
+
+Each hashtag = tappable → filter events + users
+
+Each hashtag has 🔒 icon.
+
+Important:
+User selects max 5 “priority” hashtags → algorithm weight boost.
+
+🧍 SECTION 4 — Personal Details (Structured & Minimal)
+
+Make this collapsible.
+
+Basics
+------
+
+Birthday
+
+Height
+
+Physique
+
+Languages
+
+Horoscope
+
+Lifestyle
+---------
+
+Drinking
+
+Smoking
+
+Workout
+
+Pets
+
+Relationships
+-------------
+
+Family plans
+
+Children
+
+Love style
+
+Communication style
+
+Sexual orientation
+
+Gender
+
+Beliefs
+-------
+
+Religion
+
+Values
+
+Each item row:
+Label | Value | 🔒 icon
+
+🎓 SECTION 5 — History (School & Work Combined)
+
+Separate page:
+“Experience”
+
+Chronological list (date desc):
+
+Company / School name
+
+Role / Degree
+
+Year range
+
+City
+
+Add new item button
+
+Special feature:
+Under school:
+“126 users studied here”
+
+Tap → see filtered user list.
+
+This is powerful social proof.
+
+📸 Image Selector + Editor UX --- there will be small images of 8 with + button inside as default, scrollable at the bottom of the screen - 
+clicking on that, showing the big image in carousel what you can edit (if there is no image on that, then popup image upload)
+
+profile_editor.png has profilkep button maybe - 72% showing the count of the images, clicking on that, the image editor appears
+you can somehow reorder images (maybe you can move - but red x you can delete)
+
+Grid of image squares:
+
+1 large primary image
+
+5 smaller secondary slots
+
+Tap any square → popup editor
+
+Editor features:
+
+Pinch to zoom (mobile)
+
+Drag to reposition
+
+Desktop:
+
+Scroll to zoom
+
+Drag to move
+
+Rotate optional
+
+Crop preview circle overlay
+
+Drag & drop reorder images.
+
+Optional:
+Badge overlay selector (personality icon overlay small corner).
+
+🔒 Privacy Model (Important)
+
+Every field has:
+
+🔓 Public
+👥 Friends only
+🎤 Hosts only
+🔒 Private
+
+Use subtle lock icon.
+Tap → bottom sheet selector.
+
+Default suggestion:
+
+Public:
+
+Name
+
+Avatar
+
+Personality bucket
+
+Top hashtags
+
+Friends:
+
+Height
+
+Job
+
+Education
+
+Hosts:
+
+Sexual orientation
+
+Family plans
+
+Private:
+
+Children
+
+Religion
+
+Exact company
+
+Let user override.
+
+📊 Profile Status (Top Badge)
+
+States:
+
+🟢 Public
+👥 Friends Only
+🎤 Host Only
+⚪ Inactive
+
+Inactive = hidden from search but keeps data.
