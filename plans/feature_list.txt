@@ -4,13 +4,11 @@ cloudflare reverse proxy
 base44 landing page (summary, GDPR popup)
 angular page on different server (login page, exact functionality)
 separate sensitive server passwords from the main code base (won't be uploaded to the github)
+redis streams for chat (remove mosquitto)
+Logo - heart in a circle by cutting the bottom part, so it can be an M and put a star on it
 
-Remove the 3 horizontal button and any functionality related to it, the app is only works based on the user selector button
-
-Main page - Logo + text on every main page with ikon bar on the right side (logo redign, heart in a circle by cutting the bottom part, so it can be an M and put a star on it)
-Sub page - for example title for the current event and either X button on the right hand side or backward button before the title
-Popup - on mobile should be full, on desktop partial screen sized (similar to Egyenleg or email or urlap kereses popup)
-
+Algorithm
+---------
 Status of members (e.g.: event):
 A (Accepted), R (rejected), I (invited), K (kicked, maybe suspended/silenced), L (left), V (Verified),
 T (Timed-Out - invited, but not respond within a built-in timeframe), LL (late leave - payment is due),
@@ -18,12 +16,8 @@ W (on waiting list), LD (left deleted), D (deleted), P (pending), Selected (S)
 
 if someone kicked out or late left then global score drops, not the mutual score, and it defines visibility
 time decay, if someone didn't meet with each other in 2 years time, can drop visibility (?? not sure, how to manage)
-if someone is inactive on the app, will be set "inactive" / host only mode automatically and the app asks to set it visible manually for the user, if he wants to
+if someone is inactive on the app, will be set "inactive" / host only mode automatically and the app asks to set it visible manually for the user
 the graph stays intact - inactive does mean logout from every event, and the frieds also do not see it - maybe Friends Only also needed
-
-the filter buttons and text box should me small, not the default angular one by saving space
-
-the menu will be updated based on websocket/mqtt message
 
 if some requirement is not fulfilled on event, the event will be stopped (admin will be offered to stop or postpone etc.)
 notify a day before or so (maybe can be configurable not sure)
@@ -31,33 +25,42 @@ notify a day before or so (maybe can be configurable not sure)
 if too many people rejects the invitation for a room, then the algorithm re-run for the left overs
 If somebody lefts, nobody replaces in random chat (avoid algorithm complexity - or simply use left overs)
 
-instead of login screen generate 12 users (6 woman and 6 man - use images accordingly)
-to choose from (introduce environment variable for it)
-the 6 users should be contextual - so the screens should show to each other some of them are inviteable,
-some of them are in a chatgroup of 6
+Sample Data
+-----------
+instead of login screen generate 12 users (6 woman and 6 man - use images accordingly) to choose from (introduce environment variable for it)
+the 6 users should be contextual - so the screens should show to each other some of them are inviteable, some of them are in a chatgroup of 6
+
+Base Design:
+-------
+Menu - will be updated based on websocket/mqtt message
+Main page - Logo + text on every main page with icon bar on the right side
+Sub page - for example title for the current event and either X button on the right hand side or backward button before the title
+Popup - on mobile should be full, on desktop partial screen sized (similar to Egyenleg or email or urlap kereses popup)
+Filter buttons/Filter textbox - should be small (not the default angular one by saving space)
+Page - should be center aligned horizontally on desktop
+
+Remove the 3 horizontal button and any functionality related to it (only user selector button/menu exists)
 
 Menu
 ----
-
-Top of the menu: (remove "felhasznalo valasztas" functionality - below the exit button should be the exit title, not next to it)
-User icon + name, below name there is a button "Edit Profile", exit button on the right hand side
 
 Menu items:
 Game
 Chat
 Invitations
 Events
-Hosting (lend out something should be figured out also - not just event creation - bycicle for example as accessories)
+Hosting (lend out something should be figured out also - not just event creation - bycicle for example as supplies)
 + button to add new event - (event explore)
 
 chat/invitations/events/hosting the same screen just a select filter box on the filter bar 
-(like in linked in - bottom alf screen to select options)
+(like in linked in - bottom half screen to select options)
 
 Game - Default page
 -------------------
 
 Menu Button:
-shows the Tinder like panel on the left  with 3 buttons on the header (profile-filter e.g.: profession match, school match, friends in common etc.),history, type - (fab button - egyeni, parok - rotate screen status message))
+shows the Tinder like panel on the left with 3 buttons on the header (profile-filter e.g.: profession match, school match, friends in common etc.),
+history, type - (fab button - egyeni, parok - rotate screen status message))
 
 History button:
 which shows the votes in popup (filter bar: Adott, Kapott, Kolcsonos, Találkozott, Párok - Adott, Kapott, Találkozott,
@@ -69,7 +72,7 @@ On the profile image, there is a horizontal lines at the top, showing how many i
 Clicking on that column vertically on the picture (Tinder like UI),
 showing the different picture of the user and different info about the user in the left bottom corner
 
-cards should show when the user was active
+cards should show a message when the user was active (maybe wehther it's friends in common)
 
 below the user photo there is a star bar 1-10, clicking on that nice animating
 (middle of the image screen the user has been rated with 5 inside in the star, and move to the next user)
@@ -104,7 +107,6 @@ inviter avatar icon + event description and when, if it's chat just the last mes
 
 clicking on invitation history icon, you can accept - maybe from the menu also or delete (but maybe it's safer inside the popup)
 
-
 Events
 ------
 event drag to reorder the sub events?? (google maps has an example for it)
@@ -136,7 +138,7 @@ both tournament header and date header is sticky while scrolling up changing wit
 
 the sub event panels has
 (the following button can be added dynamically to the event card:
-car, members, accessories and accomodation buttons with occupied / all places min - max - red if it's not fulfilled)
+car, members, accessories and accomodation (assests) buttons with occupied / all places min - max - red if it's not fulfilled)
 there are also optional sub events (join first approach)
 
 the title of sub events panel is the event name/short desc/date range etc in many rows maybe
@@ -211,10 +213,19 @@ for tournament mode - ranking algorithm - none, rate (mutual), fifa
 
 Profile
 -------
+Top of the menu: (remove "felhasznalo valasztas" functionality - below the exit button should be the exit title, not next to it)
+User icon + name, below name there is a button "Edit Profile" (maybe it shows a pencil + status), exit button on the right hand side
 
-lock icon next to each item to set whether it's friends only (who you met before), private, public
+next to the name - Verified (attended on an event), maybe you can add some sort of feedback for the use (icon will be there)
 
-invisible for games (only organizer)
+After an event, other attendees vote on 3 traits. the profile shows the most one, but clicking on the icon can show the first 3 in % (popup)
+🔥 60% Adventurer
+🧠 30% Deep Thinker
+💛 10% Empath
+
+lock icon next to each item (public, friends only, private)
+
+profile status: (public, friends only, host only, inactive)
 
 image selector + image editor - clicking on squares and popup for image editor (pinch to zoom and move - desktop version too)
 about me,
@@ -246,3 +257,7 @@ can show, how many users were in that school
 
 the interest might be hashtags, so for the event also hashtags can be added
 (it's like sub topics, not sure - filtering, user auto selection based on same priority etc.)
+
+Assets accordion (car, accomodation, supplies)
+
+while editing the profile on the popup, there will be a settings button, where you can delete profile, logout, gdpr etc.
