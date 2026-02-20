@@ -1,392 +1,644 @@
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
-<!-- * * * * * * * * * * * The content below * * * * * * * * * * * -->
-<!-- * * * * * * * * * * is only a placeholder * * * * * * * * * * -->
-<!-- * * * * * * * * * * and can be replaced.  * * * * * * * * * * -->
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
-<!-- * * * * * * * * * Delete the template below * * * * * * * * * -->
-<!-- * * * * * * * to get started with your project! * * * * * * * -->
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
-
-
-
 <main class="main">
-  <div class="content">
-
-    <!-- Mobile Menu Button -->
-    <button mat-icon-button class="mobile-menu-btn-global" (click)="toggleMobileMenu()" aria-label="Menü">
-      <mat-icon>menu</mat-icon>
-      <span class="badge-dot" *ngIf="menuBadgeTotal > 0">{{ menuBadgeTotal }}</span>
-    </button>
-
-    <!-- User Selector Button - Global -->
-    <button mat-icon-button class="user-selector-btn-global" (click)="onUserSelect()" aria-label="Felhasználó választása">
-      <span class="user-initial" [class]="getUserColorClass(activeUser.id)">{{ activeUser.initials }}</span>
+  <div class="content content-single">
+    <button mat-icon-button class="user-selector-btn-global" [class.is-hidden]="showUserMenu" (click)="onUserSelect()" aria-label="Open user menu">
+      <span class="user-initial" [class]="'user-color-' + activeUser.gender">{{ activeUser.initials }}</span>
       <span class="badge-dot" *ngIf="userBadgeCount > 0">{{ userBadgeCount }}</span>
     </button>
 
-    <!-- Mobile Menu Panel -->
-    <div class="mobile-menu-backdrop" [class.open]="showMobileMenu" (click)="closeMobileMenu()" *ngIf="showMobileMenu"></div>
-    <div class="mobile-menu-panel-global" [class.open]="showMobileMenu">
-      <div class="menu-header menu-header-row">
-        <img [src]="getIssueLogo()" [alt]="selectedIssueLabel" />
-        <button
-          *ngIf="selectedIssueLabel === 'Adóügy'"
-          class="balance-card"
-          type="button"
-          (click)="openPopup('balance')"
-          aria-label="Egyenleg megnyitása"
-        >
-          <span class="balance-title">Egyenleg</span>
-          <span class="balance-value">-200e Ft</span>
-        </button>
-      </div>
-      <div class="menu-items">
-        <a class="menu-item" routerLink="/home" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMobileMenu()">
-          <mat-icon>home</mat-icon>
-          <span>Kezdőoldal</span>
-          <span class="item-badge" *ngIf="menuBadges.home > 0">{{ menuBadges.home }}</span>
-        </a>
-        <a *ngIf="selectedIssueLabel === 'Adóügy'" class="menu-item" routerLink="/documents" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMobileMenu()">
-          <mat-icon>description</mat-icon>
-          <span>Dokumentumok</span>
-          <span class="item-badge" *ngIf="menuBadges.documents > 0">{{ menuBadges.documents }}</span>
-        </a>
-        <a *ngIf="selectedIssueLabel === 'Adóügy'" class="menu-item" routerLink="/documents/szamlak" routerLinkActive="active" (click)="closeMobileMenu()">
-          <mat-icon>receipt_long</mat-icon>
-          <span>Bizonylatok</span>
-          <span class="item-badge" *ngIf="menuBadges.invoices > 0">{{ menuBadges.invoices }}</span>
-        </a>
-        <button *ngIf="selectedIssueLabel === 'Adóügy'" class="menu-item menu-item-action" type="button" (click)="openPopup('contact')">
-          <mat-icon>support_agent</mat-icon>
-          <span>Kapcsolat</span>
-        </button>
-        <button *ngIf="selectedIssueLabel === 'Adóügy'" class="menu-item menu-item-action" type="button" (click)="openPopup('settings')">
-          <mat-icon>settings</mat-icon>
-          <span>Beállítások</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- User Menu Panel -->
     <div class="user-menu-backdrop" [class.open]="showUserMenu" (click)="closeUserMenu()" *ngIf="showUserMenu"></div>
+
     <aside class="user-menu-panel" [class.open]="showUserMenu">
-      <div class="user-menu-header">
-        <button
-          class="user-header-left user-header-link"
-          type="button"
-          (click)="openUserMenuView('users')"
-          [class.user-header-link-active]="userMenuView === 'users'"
-        >
-          <span class="user-avatar-wrapper">
-            <span class="user-avatar" [class]="getUserColorClass(activeUser.id)">{{ activeUser.initials }}</span>
-            <span class="badge-dot user-avatar-badge" *ngIf="userBadgeCount > 0">{{ userBadgeCount }}</span>
-          </span>
-          <div class="user-meta">
-            <span class="user-name">{{ activeUser.name }}</span>
-            <span class="user-role">Aktív felhasználó</span>
+      <div
+        class="user-menu-header"
+        role="button"
+        tabindex="0"
+        (click)="onHeaderPanelClick($event)"
+        (keydown.enter)="openProfileEditor()"
+        (keydown.space)="openProfileEditor(); $event.preventDefault()"
+      >
+        <span class="header-open-cue" aria-hidden="true">
+          <mat-icon>chevron_right</mat-icon>
+        </span>
+
+        <div class="user-header-main">
+          <div class="avatar-stack">
+            <span class="user-avatar user-avatar-large" [class]="'user-color-' + activeUser.gender">{{ activeUser.initials }}</span>
+            <span class="avatar-activity-badge" *ngIf="userBadgeCount > 0">{{ userBadgeCount }}</span>
+            <span class="avatar-bottom-pill">{{ activeUser.completion }}%</span>
           </div>
-        </button>
-        <button class="user-exit-btn" type="button" aria-label="Kilépés" (click)="openUserPopup('logoutConfirm')">
-          <mat-icon>logout</mat-icon>
-          <span>Kilépés</span>
-        </button>
+
+          <div class="user-meta user-meta-compact">
+            <span class="user-name">{{ activeUser.name }}, {{ activeUser.age }}</span>
+            <span class="user-role">{{ activeUser.statusText }}</span>
+            <span class="user-third-line">
+              <span class="meta-chip-inline">
+                <mat-icon [class]="getHostTierColorClass(activeUser.hostTier)">{{ getHostTierIcon(activeUser.hostTier) }}</mat-icon>
+                <span>{{ activeUser.hostTier }}</span>
+              </span>
+              <span class="meta-separator">·</span>
+              <span class="meta-chip-inline">
+                <mat-icon [class]="getTraitColorClass(activeUser.traitLabel)">{{ getTraitIcon(activeUser.traitLabel) }}</mat-icon>
+                <span>{{ activeUser.traitLabel }}</span>
+              </span>
+            </span>
+          </div>
+        </div>
       </div>
 
       <div class="user-menu-content">
-        <div *ngIf="userMenuView === 'root'">
-          <section class="user-menu-card accordion-card" [class.collapsed]="!appointmentsOpen">
-            <div class="card-header card-header-action" role="button" tabindex="0" (click)="toggleUserSection('appointments')">
-              <span class="card-header-left">
-                <span class="card-badge">{{ userAppointments.length }}</span>
-                <span class="card-title">Időpontfoglalás</span>
-              </span>
-              <button class="header-icon-btn" type="button" (click)="$event.stopPropagation(); openUserPopup('addAppointment')">
-                <mat-icon>add</mat-icon>
+        <button class="game-entry menu-tone-game is-active" type="button" (click)="goToGame()">
+          <span class="entry-left">
+            <mat-icon class="menu-item-icon">interests</mat-icon>
+            <span>Game</span>
+          </span>
+          <span class="card-badge" *ngIf="gameBadge > 0">{{ gameBadge }}</span>
+        </button>
+
+        <section class="user-menu-card">
+          <header class="card-header card-header-clickable menu-tone-chat" [class.is-active]="sectionsOpen.chat" (click)="toggleSection('chat')">
+            <span class="entry-left">
+              <mat-icon class="menu-item-icon">chat</mat-icon>
+              <span class="card-title">Chat</span>
+            </span>
+            <span class="card-badge menu-header-badge" *ngIf="chatBadge > 0">{{ chatBadge }}</span>
+          </header>
+
+          <div class="card-body accordion-body" [class.open]="sectionsOpen.chat">
+            <div class="accordion-inner">
+              <button class="menu-context-row chat-context-row" type="button" *ngFor="let item of chatItems" (click)="openChatItem(item)">
+                <span class="chat-room-avatar-wrap">
+                  <span class="chat-room-avatar" [class]="'user-color-' + getChatLastSender(item).gender">{{ getChatLastSender(item).initials }}</span>
+                </span>
+                <span class="menu-row-content chat-row-content">
+                  <span class="menu-row-name">{{ getChatLastSender(item).name }}</span>
+                  <span class="menu-row-title">{{ item.title }}</span>
+                  <span class="menu-row-sub">{{ item.lastMessage }}</span>
+                </span>
+                <span class="chat-members-inline-badge">{{ getChatMemberCount(item) }} members</span>
+                <span class="row-badge" *ngIf="item.unread > 0">{{ item.unread }}</span>
               </button>
             </div>
-            <div class="card-body appointment-list accordion-body" [class.open]="appointmentsOpen">
-              <div class="accordion-inner">
-                <button
-                  class="appointment-row"
-                  type="button"
-                  *ngFor="let appointment of userAppointments"
-                  (click)="selectAppointment(appointment.id); openUserPopup('appointment')"
-                >
-                  <div class="appointment-main">
-                    <span class="appointment-place">{{ appointment.place }}</span>
-                    <span class="appointment-address">{{ appointment.address }}</span>
-                  </div>
-                  <span class="appointment-date">{{ appointment.datetime }}</span>
-                </button>
-              </div>
-            </div>
-          </section>
+          </div>
+        </section>
 
-          <section class="user-menu-card accordion-card" [class.collapsed]="!issuesOpen">
-            <div class="card-header card-header-action" role="button" tabindex="0" (click)="toggleIssueSection()">
-              <span class="card-header-left">
-                <span class="card-badge">{{ getIssueTotal() }}</span>
-                <span class="card-title">Ügyek</span>
-              </span>
-            </div>
-            <div class="card-body accordion-body" [class.open]="issuesOpen">
-              <div class="accordion-inner">
-                <div class="issue-list">
-                  <button
-                    class="issue-row"
-                    type="button"
-                    *ngFor="let issue of issueGroups"
-                    (click)="selectIssue(issue.label)"
-                    [class.issue-row-active]="selectedIssueLabel === issue.label"
-                    [class]="getIssueRowClass(issue.label)"
-                  >
-                    <span class="issue-name">{{ issue.label }}</span>
-                    <span class="issue-count" *ngIf="getIssueCount(issue.label) > 0">{{ getIssueCount(issue.label) }}</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </section>
+        <section class="user-menu-card">
+          <header
+            class="card-header card-header-clickable menu-tone-invitations"
+            [class.is-active]="sectionsOpen.invitations"
+            (click)="toggleSection('invitations')"
+          >
+            <span class="entry-left">
+              <mat-icon class="menu-item-icon">mail</mat-icon>
+              <span class="card-title">Invitations</span>
+            </span>
+            <span class="card-badge menu-header-badge" *ngIf="invitationsBadge > 0">{{ invitationsBadge }}</span>
+          </header>
 
-          <button class="user-menu-link" type="button" (click)="openUserPopup('centralHelp')">
-            <mat-icon>support_agent</mat-icon>
-            <span>Központi segítség</span>
-          </button>
-
-          <button class="user-menu-link" type="button" (click)="openUserPopup('userSettings')">
-            <mat-icon>settings</mat-icon>
-            <span>Beállítások</span>
-          </button>
-        </div>
-
-        <div *ngIf="userMenuView === 'users'">
-          <button class="user-menu-subheader" type="button" (click)="openUserMenuView('root')" aria-label="Vissza">
-            <mat-icon>arrow_back</mat-icon>
-            <span class="subheader-title">Felhasználóváltás</span>
-          </button>
-
-          <section class="user-menu-card accordion-card" [class.collapsed]="!usersOpen">
-            <div class="card-header card-header-action" role="button" tabindex="0" (click)="toggleUserSection('users')">
-              <span class="card-header-left">
-                <span class="card-badge">{{ otherUsers.length }}</span>
-                <span class="card-title">Felhasználó</span>
-              </span>
-              <button class="header-icon-btn" type="button" (click)="$event.stopPropagation(); openUserPopup('addUser')">
-                <mat-icon>add</mat-icon>
+          <div class="card-body accordion-body" [class.open]="sectionsOpen.invitations">
+            <div class="accordion-inner">
+              <button
+                class="menu-context-row menu-context-row-event"
+                type="button"
+                *ngFor="let invitation of invitationItems"
+                (click)="openInvitationItem(invitation)"
+              >
+                <span class="menu-avatar">{{ invitation.avatar }}</span>
+                <span class="menu-row-content">
+                  <span class="menu-row-title">{{ invitation.description }}</span>
+                  <span class="menu-row-sub">{{ getInvitationActionSummary(invitation) }}</span>
+                  <span class="menu-row-sub">{{ invitation.when }}</span>
+                </span>
+                <span class="row-badge" *ngIf="invitation.unread > 0">{{ invitation.unread }}</span>
               </button>
             </div>
-            <div class="card-body user-list-body accordion-body" [class.open]="usersOpen">
-              <div class="accordion-inner">
-                <button
-                  class="user-row"
-                  type="button"
-                  *ngFor="let user of otherUsers"
-                  (click)="selectUser(user.id)"
-                  [class.user-row-clicked]="clickedUserId === user.id"
-                >
-                  <span class="user-row-name">
-                    <span class="user-row-initial" [class]="getUserColorClass(user.id)">{{ user.initials }}</span>
-                    {{ user.name }}
-                  </span>
-                  <span class="user-row-actions">
-                    <button
-                      type="button"
-                      class="row-icon-btn"
-                      (click)="$event.stopPropagation(); openUserPopup('suspension', user)"
-                      aria-label="Akadályoztatás"
-                    >
-                      <mat-icon>priority_high</mat-icon>
-                    </button>
-                    <button
-                      type="button"
-                      class="row-icon-btn"
-                      (click)="$event.stopPropagation(); openUserPopup('deleteUser', user)"
-                      aria-label="Törlés"
-                    >
-                      <mat-icon>delete</mat-icon>
-                    </button>
-                    <span class="user-row-badge">{{ getUserMenuTotalFor(user) }}</span>
-                  </span>
-                </button>
-              </div>
+          </div>
+        </section>
+
+        <section class="user-menu-card">
+          <header class="card-header card-header-clickable menu-tone-events" [class.is-active]="sectionsOpen.events" (click)="toggleSection('events')">
+            <span class="entry-left">
+              <mat-icon class="menu-item-icon">event</mat-icon>
+              <span class="card-title">Events</span>
+            </span>
+            <span class="menu-header-actions">
+              <button class="header-icon-btn" type="button" aria-label="Explore events" (click)="$event.stopPropagation(); openEventExplore()">
+                <span class="header-plus-glyph">+</span>
+              </button>
+              <span class="card-badge menu-header-badge" *ngIf="eventsBadge > 0">{{ eventsBadge }}</span>
+            </span>
+          </header>
+
+          <div class="card-body accordion-body" [class.open]="sectionsOpen.events">
+            <div class="accordion-inner">
+              <button
+                class="menu-context-row menu-context-row-event"
+                type="button"
+                *ngFor="let event of eventItems"
+                (click)="openEventItem(event)"
+              >
+                <span class="menu-avatar">{{ event.avatar }}</span>
+                <span class="menu-row-content">
+                  <span class="menu-row-title">{{ event.title }}</span>
+                  <span class="menu-row-sub">{{ event.shortDescription }}</span>
+                  <span class="menu-row-sub">{{ event.timeframe }}</span>
+                </span>
+                <span class="row-badge" *ngIf="event.activity > 0">{{ event.activity }}</span>
+              </button>
             </div>
-          </section>
-        </div>
+          </div>
+        </section>
+
+        <section class="user-menu-card">
+          <header class="card-header card-header-clickable menu-tone-hosting" [class.is-active]="sectionsOpen.hosting" (click)="toggleSection('hosting')">
+            <span class="entry-left">
+              <mat-icon class="menu-item-icon">stadium</mat-icon>
+              <span class="card-title">Hosting</span>
+            </span>
+            <span class="card-badge menu-header-badge" *ngIf="hostingBadge > 0">{{ hostingBadge }}</span>
+          </header>
+
+          <div class="card-body accordion-body" [class.open]="sectionsOpen.hosting">
+            <div class="accordion-inner">
+              <button
+                class="menu-context-row menu-context-row-event"
+                type="button"
+                *ngFor="let item of hostingItems"
+                (click)="openHostingItem(item)"
+              >
+                <span class="menu-avatar">{{ item.avatar }}</span>
+                <span class="menu-row-content">
+                  <span class="menu-row-title">{{ item.title }}</span>
+                  <span class="menu-row-sub">{{ item.shortDescription }}</span>
+                  <span class="menu-row-sub">{{ item.timeframe }}</span>
+                </span>
+                <span class="row-badge" *ngIf="item.activity > 0">{{ item.activity }}</span>
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
     </aside>
 
-    <nav class="sidebar" aria-label="Primary navigation">
-      <div class="sidebar-top">
-        <img [src]="getIssueLogo()" [alt]="selectedIssueLabel" />
-        <button
-          *ngIf="selectedIssueLabel === 'Adóügy'"
-          class="balance-card"
-          type="button"
-          (click)="openPopup('balance')"
-          aria-label="Egyenleg megnyitása"
-        >
-          <span class="balance-title">Egyenleg</span>
-          <span class="balance-value">-200e Ft</span>
-        </button>
-      </div>
-      <mat-nav-list>
-        <a mat-list-item routerLink="/home" routerLinkActive="selected" [routerLinkActiveOptions]="{ exact: true }">
-          <mat-icon aria-hidden="false" aria-label="Kezdőoldal">home</mat-icon>
-          <span>Kezdőoldal</span>
-          <span class="menu-badge" *ngIf="menuBadges.home > 0">{{ menuBadges.home }}</span>
-        </a>
-        <a *ngIf="selectedIssueLabel === 'Adóügy'" mat-list-item routerLink="/documents" routerLinkActive="selected" [routerLinkActiveOptions]="{ exact: true }">
-          <mat-icon aria-hidden="false" aria-label="Dokumentumok">description</mat-icon>
-          <span>Dokumentumok</span>
-          <span class="menu-badge" *ngIf="menuBadges.documents > 0">{{ menuBadges.documents }}</span>
-        </a>
-        <a *ngIf="selectedIssueLabel === 'Adóügy'" mat-list-item routerLink="/documents/szamlak" routerLinkActive="selected">
-          <mat-icon aria-hidden="false" aria-label="Bizonylatok">receipt_long</mat-icon>
-          <span>Bizonylatok</span>
-          <span class="menu-badge" *ngIf="menuBadges.invoices > 0">{{ menuBadges.invoices }}</span>
-        </a>
-        <button *ngIf="selectedIssueLabel === 'Adóügy'" mat-list-item type="button" class="menu-item-action" (click)="openPopup('contact')">
-          <mat-icon aria-hidden="false" aria-label="Kapcsolat">support_agent</mat-icon>
-          <span>Kapcsolat</span>
-        </button>
-        <button *ngIf="selectedIssueLabel === 'Adóügy'" mat-list-item type="button" class="menu-item-action" (click)="openPopup('settings')">
-          <mat-icon aria-hidden="false" aria-label="Beállítások">settings</mat-icon>
-          <span>Beállítások</span>
-        </button>
-      </mat-nav-list>
-    </nav>
-    <section class="content-area">
+    <section class="content-area content-area-full">
       <router-outlet></router-outlet>
     </section>
   </div>
 </main>
 
-<section class="app-popup" *ngIf="activePopup && activePopup !== 'deleteUser' && activePopup !== 'logoutConfirm'">
+<section class="app-popup" *ngIf="activePopup && activePopup !== 'logoutConfirm'">
   <div class="app-popup-backdrop" (click)="closePopup()"></div>
-  <div class="app-popup-panel" (click)="$event.stopPropagation()">
-    <div class="popup-header">
-      <div class="popup-title">
-        <h2>{{ getPopupTitle() }}</h2>
+  <div class="app-popup-panel" [class.popup-panel-members]="activePopup === 'chatMembers'" (click)="$event.stopPropagation()">
+    <div class="popup-header" [class.popup-header-chat]="activePopup === 'chat' && selectedChat">
+      <div class="popup-title popup-title-chat" *ngIf="activePopup === 'chat' && selectedChat; else defaultPopupTitle">
+        <div class="popup-chat-title-block">
+          <h2>{{ selectedChat.title }}</h2>
+        </div>
+        <button class="chat-members-stack chat-members-stack-large chat-header-members" type="button" (click)="openChatMembers(selectedChat, $event, true)">
+          <span class="chat-stack-avatar" *ngFor="let member of getChatVisibleMembers(selectedChat); let i = index" [class]="'user-color-' + member.gender" [style.zIndex]="30 - i">{{ member.initials }}</span>
+          <span class="chat-stack-more" *ngIf="getChatHiddenMemberCount(selectedChat) > 0">+{{ getChatHiddenMemberCount(selectedChat) }}</span>
+        </button>
       </div>
-      <span class="popup-balance-value" *ngIf="activePopup === 'balance'">{{ balanceValue }}</span>
-      <button mat-icon-button class="popup-close" (click)="closePopup()" aria-label="Bezárás">
+      <ng-template #defaultPopupTitle>
+        <div class="popup-title popup-title-members" *ngIf="activePopup === 'chatMembers'; else defaultPlainTitle">
+          <div class="popup-chat-title-block">
+            <h2>Chat Members</h2>
+            <p>{{ selectedChatMembersItem?.title || 'Room' }}</p>
+          </div>
+        </div>
+        <ng-template #defaultPlainTitle>
+          <div class="popup-title">
+            <h2>{{ getPopupTitle() }}</h2>
+          </div>
+        </ng-template>
+      </ng-template>
+      <span class="header-members-count" *ngIf="activePopup === 'chatMembers'">{{ selectedChatMembers.length }} members</span>
+      <button
+        type="button"
+        class="popup-chat-event-btn"
+        aria-label="Open event editor"
+        *ngIf="activePopup === 'chat' && selectedChat"
+        (click)="openEventEditor(true)"
+      >
+        <mat-icon>edit_calendar</mat-icon>
+      </button>
+      <button mat-icon-button class="popup-close" (click)="closePopup()" aria-label="Close">
         <mat-icon>close</mat-icon>
       </button>
     </div>
-    <div class="popup-body">
-      <div *ngIf="activePopup === 'contact'" class="contact-content">
-        {{ contactContent }}
-      </div>
-      <div *ngIf="activePopup === 'appointment'" class="appointment-popup">
-        <div class="appointment-popup-header">
-          <h3>{{ selectedAppointment.place }}</h3>
-          <p>{{ selectedAppointment.address }}</p>
-          <p>{{ selectedAppointment.datetime }}</p>
-        </div>
-        <div class="appointment-links">
-          <button type="button" class="link-btn map-btn" (click)="openMapLinkSmart(selectedAppointment.mapUrl)">Térkép</button>
-          <button type="button" class="link-btn">Video chat</button>
-        </div>
-        <div class="appointment-categories">
-          <p>Kategória</p>
-          <div class="category-chip">{{ selectedAppointmentCategory }}</div>
-        </div>
-        <div class="appointment-actions">
-          <p>{{ selectedAppointmentCategory }} - részletek megjelenítése</p>
-          <button type="button" class="link-btn">Lemondás / áthelyezés</button>
-        </div>
-      </div>
-      <div *ngIf="activePopup === 'settings'">
-        <mat-accordion class="popup-accordion" multi>
-          <mat-expansion-panel *ngFor="let panel of settingsPanels">
-            <mat-expansion-panel-header>
-              <mat-panel-title>{{ panel.title }}</mat-panel-title>
-            </mat-expansion-panel-header>
-            <div class="accordion-content" *ngIf="panel.items && panel.items.length">
-              <ul class="popup-list" *ngIf="panel.title === 'Képviseletek' || panel.title === 'Értesítő szabályok'; else popupParagraphs">
-                <li *ngFor="let item of panel.items" class="popup-list-item" [class]="'popup-list-item level-' + getItemLevel(item)">
-                  {{ getItemText(item) }}
-                </li>
-              </ul>
-              <ng-template #popupParagraphs>
-                <p *ngFor="let item of panel.items">{{ getItemText(item) }}</p>
-              </ng-template>
-            </div>
-          </mat-expansion-panel>
-        </mat-accordion>
-      </div>
-      <div *ngIf="activePopup === 'balance'">
-        <mat-accordion class="popup-accordion" multi>
-          <mat-expansion-panel *ngFor="let panel of balancePanels">
-            <mat-expansion-panel-header>
-              <mat-panel-title>{{ panel.title }}</mat-panel-title>
-            </mat-expansion-panel-header>
-            <div class="accordion-content" *ngIf="panel.items && panel.items.length">
-              <ul class="popup-list">
-                <li *ngFor="let item of panel.items" class="popup-list-item" [class]="'popup-list-item level-' + getItemLevel(item)">
-                  {{ getItemText(item) }}
-                </li>
-              </ul>
-            </div>
-            <mat-accordion class="sub-accordion" *ngIf="panel.subpanels?.length" multi>
-              <mat-expansion-panel *ngFor="let subpanel of panel.subpanels">
-                <mat-expansion-panel-header>
-                  <mat-panel-title>{{ subpanel.title }}</mat-panel-title>
-                </mat-expansion-panel-header>
-                <div class="accordion-content" *ngIf="subpanel.items && subpanel.items.length">
-                  <ul class="popup-list">
-                    <li *ngFor="let item of subpanel.items" class="popup-list-item" [class]="'popup-list-item level-' + getItemLevel(item)">
-                      {{ getItemText(item) }}
-                    </li>
-                  </ul>
+
+    <div class="popup-body" [class.popup-body-chat]="activePopup === 'chat' && selectedChat" [class.popup-body-members]="activePopup === 'chatMembers'">
+      <div *ngIf="activePopup === 'chat' && selectedChat" class="chat-popup-wrap">
+        <div class="chat-popup-box">
+          <div class="chat-thread">
+            <article class="chat-message" *ngFor="let message of chatPopupMessages" [class.mine]="message.mine">
+              <div class="chat-bubble">
+                <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">{{ message.senderAvatar.initials }}</span>
+                <div class="chat-message-content">
+                  <div class="chat-meta-row">
+                    <span class="chat-sender-name">{{ message.sender }}</span>
+                    <span class="chat-time-chip">{{ message.time }}</span>
+                  </div>
+                  <p class="chat-line">{{ message.text }}</p>
                 </div>
-              </mat-expansion-panel>
-            </mat-accordion>
+                <div class="chat-readers" *ngIf="message.readBy.length > 0">
+                  <span class="chat-reader" *ngFor="let reader of message.readBy" [class]="'user-color-' + reader.gender">{{ reader.initials }}</span>
+                </div>
+              </div>
+            </article>
+          </div>
+          <div class="chat-compose-box">
+            <textarea rows="3" placeholder="Write message"></textarea>
+            <button type="button" class="chat-send-btn" aria-label="Send message">
+              <mat-icon>send</mat-icon>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="activePopup === 'chatMembers'">
+        <div class="chat-members-popup-list">
+          <div class="chat-members-popup-row" *ngFor="let member of selectedChatMembers">
+            <span class="chat-members-popup-avatar" [class]="'user-color-' + member.gender">{{ member.initials }}</span>
+            <div class="chat-members-popup-meta">
+              <p>{{ member.name }}</p>
+              <p>{{ member.city }} · {{ member.statusText }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="activePopup === 'invitationActions' && selectedInvitation">
+        <div class="editor-list-card">
+          <h4>{{ selectedInvitation.description }}</h4>
+          <p>{{ getInvitationActionSummary(selectedInvitation) }} · {{ selectedInvitation.when }}</p>
+        </div>
+        <div class="popup-actions">
+          <button type="button" class="link-btn">Accept</button>
+          <button type="button" class="link-btn">Delete</button>
+          <button type="button" class="link-btn" (click)="openEventEditor()">Open Related Event</button>
+        </div>
+      </div>
+
+      <div *ngIf="activePopup === 'menuEvent' && selectedEvent">
+        <div class="editor-list-card">
+          <h4>{{ selectedEvent.title }}</h4>
+          <p>{{ selectedEvent.shortDescription }}</p>
+          <p>{{ selectedEvent.timeframe }}</p>
+        </div>
+        <div class="popup-actions">
+          <button type="button" class="link-btn" (click)="openEventEditor()" *ngIf="selectedEvent.isAdmin">Edit Event</button>
+          <button type="button" class="link-btn" *ngIf="!selectedEvent.isAdmin">Exit Event</button>
+          <button type="button" class="link-btn">Open Event Chat</button>
+        </div>
+      </div>
+
+      <div *ngIf="activePopup === 'hostingEvent' && selectedHostingEvent">
+        <div class="editor-list-card">
+          <h4>{{ selectedHostingEvent.title }}</h4>
+          <p>{{ selectedHostingEvent.shortDescription }}</p>
+          <p>{{ selectedHostingEvent.timeframe }}</p>
+        </div>
+        <div class="popup-actions">
+          <button type="button" class="link-btn">Accept Join Requests</button>
+          <button type="button" class="link-btn" (click)="openEventEditor()">Edit Hosted Event</button>
+        </div>
+      </div>
+
+      <div *ngIf="activePopup === 'eventExplore'">
+        <div class="editor-list-card">
+          <h4>Event Explore Filters</h4>
+          <p>Host name, friends-in-common recommendation, distance, calendar and own-event filter.</p>
+        </div>
+        <div class="editor-list-card">
+          <h4>Suggested Events</h4>
+          <p>Join request is one click and goes to admin approval.</p>
+          <div class="popup-actions">
+            <button type="button" class="link-btn">Join Selected Event</button>
+            <button type="button" class="link-btn" (click)="openEventEditor()">Create New Event</button>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="activePopup === 'eventEditor'">
+        <div class="editor-list-card event-main-card">
+          <h4>{{ eventEditor.mainEvent.title }}</h4>
+          <p>
+            Visibility: {{ eventEditor.mainEvent.visibility }} · Mode: {{ eventEditor.mainEvent.mode }} · Frequency:
+            {{ eventEditor.mainEvent.frequency }}
+          </p>
+          <p>Capacity: {{ eventEditor.mainEvent.capacity }} · Ticket: {{ eventEditor.mainEvent.ticket }} · Expense: {{ eventEditor.mainEvent.expense }}</p>
+          <p>{{ eventEditor.mainEvent.topics.join(', ') }}</p>
+        </div>
+
+        <div class="dynamic-supply-adder">
+          <input type="text" [(ngModel)]="newSupplyType" placeholder="Add supply type (for event cards)" />
+          <button type="button" class="link-btn" (click)="addSupplyType()">+ Add Type</button>
+        </div>
+
+        <div class="event-editor-card" *ngFor="let sub of eventEditor.subEvents">
+          <div class="event-editor-head">
+            <h4>{{ sub.title }}</h4>
+            <p>{{ sub.when }}</p>
+            <p>{{ sub.phase }}</p>
+          </div>
+
+          <div class="event-supply-buttons">
+            <button
+              class="supply-chip"
+              type="button"
+              *ngFor="let type of eventSupplyTypes"
+              [class.warn]="isSupplyStatIncomplete(sub, type)"
+              (click)="openSupplyDetail(sub.id, sub.title, type)"
+            >
+              <span class="chip-title">{{ type }}</span>
+              <span class="chip-meta">{{ getSupplyStat(sub, type) }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="activePopup === 'supplyDetail' && selectedSupplyContext">
+        <div class="editor-list-card">
+          <h4>{{ selectedSupplyContext.type }} · {{ selectedSupplyContext.subEventTitle }}</h4>
+          <p>Dynamic supply list for this event card.</p>
+        </div>
+        <div class="editor-list-card" *ngFor="let item of selectedSupplyItems">
+          <h4>{{ item.label }}</h4>
+          <p>{{ item.detail }}</p>
+        </div>
+        <div class="popup-actions">
+          <button type="button" class="link-btn" (click)="alertService.open('Supply item flow is ready for backend wiring.')">+ Add supply offer</button>
+          <button type="button" class="link-btn" (click)="openEventEditor()">Back to Event Editor</button>
+        </div>
+      </div>
+
+      <div *ngIf="activePopup === 'profileEditor'" class="profile-editor-wrap">
+        <div class="profile-identity-card profile-identity-card-large">
+          <div class="avatar-stack avatar-stack-editor">
+            <span class="user-avatar user-avatar-large" [class]="'user-color-' + activeUser.gender">{{ activeUser.initials }}</span>
+            <span class="avatar-activity-badge" *ngIf="userBadgeCount > 0">{{ userBadgeCount }}</span>
+          </div>
+
+          <div class="profile-header-text">
+            <h3>{{ profileForm.fullName || activeUser.name }}, {{ profileForm.age || activeUser.age }}</h3>
+            <p>{{ profileForm.statusText || activeUser.statusText }}</p>
+            <p class="profile-chip-line">
+              <span class="meta-chip-inline">
+                <mat-icon [class]="getHostTierColorClass(profileForm.hostTier || activeUser.hostTier)">{{ getHostTierIcon(profileForm.hostTier || activeUser.hostTier) }}</mat-icon>
+                <span>{{ profileForm.hostTier || activeUser.hostTier }}</span>
+              </span>
+              <span class="meta-separator">·</span>
+              <span class="meta-chip-inline">
+                <mat-icon [class]="getTraitColorClass(profileForm.traitLabel || activeUser.traitLabel)">{{ getTraitIcon(profileForm.traitLabel || activeUser.traitLabel) }}</mat-icon>
+                <span>{{ profileForm.traitLabel || activeUser.traitLabel }}</span>
+              </span>
+            </p>
+          </div>
+        </div>
+
+        <button type="button" class="profile-image-row" (click)="openImageEditor()">
+          <span class="entry-left">
+            <mat-icon>photo_camera</mat-icon>
+            <span>Profilkép</span>
+          </span>
+          <span class="completion-chip">{{ activeUser.completion }}%</span>
+        </button>
+
+        <div class="profile-form-grid">
+          <label>
+            <span>Teljes név</span>
+            <input type="text" [(ngModel)]="profileForm.fullName" />
+          </label>
+          <label>
+            <span>Kor / címke</span>
+            <input type="number" [(ngModel)]="profileForm.age" />
+          </label>
+          <label>
+            <span>Város</span>
+            <input type="text" [(ngModel)]="profileForm.city" />
+          </label>
+          <label>
+            <span>Állapot</span>
+            <input type="text" [(ngModel)]="profileForm.statusText" />
+          </label>
+          <label>
+            <span>Láthatóság</span>
+            <select [(ngModel)]="profileForm.profileStatus">
+              <option>Public</option>
+              <option>Friends only</option>
+              <option>Host only</option>
+              <option>Inactive</option>
+            </select>
+          </label>
+          <label>
+            <span>Host szint</span>
+            <input type="text" [(ngModel)]="profileForm.hostTier" />
+          </label>
+          <label>
+            <span>Fő személyiség címke</span>
+            <input type="text" [(ngModel)]="profileForm.traitLabel" />
+          </label>
+          <label class="wide">
+            <span>Headline</span>
+            <input type="text" [(ngModel)]="profileForm.headline" />
+          </label>
+          <label class="wide">
+            <span>About me</span>
+            <textarea rows="3" [(ngModel)]="profileForm.about"></textarea>
+          </label>
+        </div>
+
+        <p class="status-chip" [class]="profileStatusClass(profileForm.profileStatus)">{{ profileForm.profileStatus }}</p>
+
+        <mat-accordion class="popup-accordion" multi>
+          <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title>How Others Experience Me</mat-panel-title>
+            </mat-expansion-panel-header>
+            <div class="accordion-content">
+              <div class="editor-list-card" *ngFor="let trait of profileTopTraits">
+                <h4>{{ trait.icon }} {{ trait.label }}</h4>
+                <p>{{ trait.percent }}%</p>
+              </div>
+            </div>
+          </mat-expansion-panel>
+
+          <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title>My World</mat-panel-title>
+            </mat-expansion-panel-header>
+            <div class="accordion-content">
+              <div class="chip-row">
+                <span *ngFor="let tag of profilePriorityTags">{{ tag }} 🔒</span>
+              </div>
+              <div class="editor-list-card" *ngFor="let pillar of profilePillars">
+                <h4>{{ pillar.title }}</h4>
+                <p>{{ pillar.tags.join(', ') }}</p>
+              </div>
+            </div>
+          </mat-expansion-panel>
+
+          <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title>Personal Details</mat-panel-title>
+            </mat-expansion-panel-header>
+            <div class="accordion-content">
+              <div class="editor-list-card" *ngFor="let group of profileDetails">
+                <h4>{{ group.title }}</h4>
+                <p *ngFor="let row of group.rows">{{ row.label }}: {{ row.value }} {{ privacyIcon(row.privacy) }}</p>
+              </div>
+            </div>
+          </mat-expansion-panel>
+
+          <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title>Experience</mat-panel-title>
+            </mat-expansion-panel-header>
+            <div class="accordion-content">
+              <div class="editor-list-card" *ngFor="let item of profileExperience">
+                <h4>{{ item.place }}</h4>
+                <p>{{ item.role }} · {{ item.years }} · {{ item.city }}</p>
+                <p *ngIf="item.socialProof">{{ item.socialProof }}</p>
+              </div>
+            </div>
           </mat-expansion-panel>
         </mat-accordion>
-      </div>
-      <div *ngIf="activePopup === 'centralHelp'" class="contact-content">
-        1818
-      </div>
-      <div *ngIf="activePopup === 'suspension'" class="suspension-popup">
-        <p>Egészségügyi Krízishelyzet Moratórium - betegség, baleset, gondnok stb.</p>
-        <p>A felhasználó nem tudja ellátni a feladatait.</p>
-        <div class="suspension-user" *ngIf="pendingDeleteUser">
-          {{ pendingDeleteUser.name }}
+
+        <div class="popup-actions profile-main-actions">
+          <button type="button" class="link-btn neutral-btn" (click)="closePopup()">Mégsem</button>
+          <button type="button" class="link-btn primary-btn" (click)="saveProfile(); closePopup()">Profil mentése</button>
         </div>
-        <div class="suspension-actions">
-          <button type="button" class="link-btn">Felfüggeszt</button>
-          <button type="button" class="link-btn">Felfüggesztés törlése</button>
-          <button type="button" class="link-btn">Adott dátumok között</button>
+        <div class="popup-actions profile-secondary-actions">
+          <button type="button" class="link-btn" (click)="openLogoutConfirm()">Kilépés</button>
+          <button type="button" class="link-btn" (click)="openUserSelector()">Felhasználóváltás</button>
         </div>
       </div>
-      <div *ngIf="activePopup === 'userSettings'" class="contact-content">
-        nyelv választás stb.
+
+      <div *ngIf="activePopup === 'imageEditor'" class="image-editor-wrap">
+        <div class="image-editor-main" [style.backgroundImage]="selectedImagePreview ? 'url(' + selectedImagePreview + ')' : 'none'">
+          <span *ngIf="!selectedImagePreview">Select a slot to upload image</span>
+        </div>
+        <p class="image-editor-hint">Click a thumbnail to upload or replace image.</p>
+
+        <div class="image-editor-grid">
+          <button
+            type="button"
+            *ngFor="let slot of imageSlots; let i = index"
+            [class.slot-selected]="selectedImageIndex === i"
+            [style.backgroundImage]="slot ? 'url(' + slot + ')' : 'none'"
+            (click)="selectImageSlot(i)"
+          >
+            <span class="slot-index">{{ i + 1 }}</span>
+            <span *ngIf="!slot" class="slot-add">+</span>
+            <span *ngIf="slot" class="remove-slot" (click)="$event.stopPropagation(); removeImage(i)">×</span>
+          </button>
+        </div>
       </div>
-      <div *ngIf="activePopup === 'addUser'" class="contact-content">
-        KAÜ (Ügyfélkapu+ bejelentkezés)
-      </div>
-      <div *ngIf="activePopup === 'addAppointment'" class="contact-content">
-        <p>Helyszín:</p>
-        <p>Cím:</p>
-        <p>Időpont:</p>
-        <p>Kategória:</p>
-        <p>Térkép link:</p>
+
+      <div *ngIf="activePopup === 'imageUpload'" class="image-upload-wrap">
+        <div class="editor-list-card">
+          <h4>Upload image for slot {{ uploadTargetIndex + 1 }}</h4>
+          <p>Select an image and apply it to the selected slot.</p>
+        </div>
+        <input class="image-file-input" type="file" accept="image/*" (change)="onImageFileChange($event)" />
+        <div class="image-editor-main image-upload-preview" [style.backgroundImage]="pendingUploadPreview ? 'url(' + pendingUploadPreview + ')' : 'none'">
+          <span *ngIf="!pendingUploadPreview">No image selected</span>
+        </div>
+        <div class="popup-actions profile-main-actions">
+          <button type="button" class="link-btn neutral-btn" (click)="activePopup = 'imageEditor'">Mégsem</button>
+          <button type="button" class="link-btn primary-btn" (click)="applyUploadedImage()">Kép mentése</button>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<section class="user-delete-confirm" *ngIf="activePopup === 'deleteUser'">
-  <div class="user-delete-confirm-backdrop" (click)="closePopup()"></div>
-  <div class="user-delete-confirm-panel" (click)="$event.stopPropagation()">
-    <h3>Valóban törölni akarja?</h3>
-    <div class="user-delete-confirm-name" *ngIf="pendingDeleteUser">
-      {{ pendingDeleteUser.name }}
+<section class="app-popup app-popup-stacked" *ngIf="stackedPopup">
+  <div class="app-popup-backdrop" (click)="closeStackedPopup()"></div>
+  <div class="app-popup-panel" [class.popup-panel-members]="stackedPopup === 'chatMembers'" (click)="$event.stopPropagation()">
+    <div class="popup-header">
+      <div class="popup-title popup-title-members" *ngIf="stackedPopup === 'chatMembers'; else defaultStackedTitle">
+        <div class="popup-chat-title-block">
+          <h2>Chat Members</h2>
+          <p>{{ selectedChatMembersItem?.title || 'Room' }}</p>
+        </div>
+      </div>
+      <ng-template #defaultStackedTitle>
+        <div class="popup-title">
+          <h2>{{ getStackedPopupTitle() }}</h2>
+        </div>
+      </ng-template>
+      <span class="header-members-count" *ngIf="stackedPopup === 'chatMembers'">{{ selectedChatMembers.length }} members</span>
+      <button mat-icon-button class="popup-close" (click)="closeStackedPopup()" aria-label="Close">
+        <mat-icon>close</mat-icon>
+      </button>
     </div>
-    <div class="user-delete-confirm-actions">
-      <button mat-stroked-button type="button" (click)="closePopup()">Mégsem</button>
-      <button mat-raised-button color="warn" class="delete-btn" type="button" (click)="closePopup()">Törlés</button>
+
+    <div class="popup-body" [class.popup-body-members]="stackedPopup === 'chatMembers'">
+      <div *ngIf="stackedPopup === 'chatMembers'">
+        <div class="chat-members-popup-list">
+          <div class="chat-members-popup-row" *ngFor="let member of selectedChatMembers">
+            <span class="chat-members-popup-avatar" [class]="'user-color-' + member.gender">{{ member.initials }}</span>
+            <div class="chat-members-popup-meta">
+              <p>{{ member.name }}</p>
+              <p>{{ member.city }} · {{ member.statusText }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="stackedPopup === 'eventEditor'">
+        <div class="editor-list-card event-main-card">
+          <h4>{{ eventEditor.mainEvent.title }}</h4>
+          <p>
+            Visibility: {{ eventEditor.mainEvent.visibility }} · Mode: {{ eventEditor.mainEvent.mode }} · Frequency:
+            {{ eventEditor.mainEvent.frequency }}
+          </p>
+          <p>Capacity: {{ eventEditor.mainEvent.capacity }} · Ticket: {{ eventEditor.mainEvent.ticket }} · Expense: {{ eventEditor.mainEvent.expense }}</p>
+          <p>{{ eventEditor.mainEvent.topics.join(', ') }}</p>
+        </div>
+
+        <div class="dynamic-supply-adder">
+          <input type="text" [(ngModel)]="newSupplyType" placeholder="Add supply type (for event cards)" />
+          <button type="button" class="link-btn" (click)="addSupplyType()">+ Add Type</button>
+        </div>
+
+        <div class="event-editor-card" *ngFor="let sub of eventEditor.subEvents">
+          <div class="event-editor-head">
+            <h4>{{ sub.title }}</h4>
+            <p>{{ sub.when }}</p>
+            <p>{{ sub.phase }}</p>
+          </div>
+
+          <div class="event-supply-buttons">
+            <button
+              class="supply-chip"
+              type="button"
+              *ngFor="let type of eventSupplyTypes"
+              [class.warn]="isSupplyStatIncomplete(sub, type)"
+              (click)="openSupplyDetail(sub.id, sub.title, type)"
+            >
+              <span class="chip-title">{{ type }}</span>
+              <span class="chip-meta">{{ getSupplyStat(sub, type) }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="stackedPopup === 'supplyDetail' && selectedSupplyContext">
+        <div class="editor-list-card">
+          <h4>{{ selectedSupplyContext.type }} · {{ selectedSupplyContext.subEventTitle }}</h4>
+          <p>Dynamic supply list for this event card.</p>
+        </div>
+        <div class="editor-list-card" *ngFor="let item of selectedSupplyItems">
+          <h4>{{ item.label }}</h4>
+          <p>{{ item.detail }}</p>
+        </div>
+        <div class="popup-actions">
+          <button type="button" class="link-btn" (click)="alertService.open('Supply item flow is ready for backend wiring.')">+ Add supply offer</button>
+          <button type="button" class="link-btn" (click)="openEventEditor()">Back to Event Editor</button>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -398,7 +650,21 @@
     <p>{{ activeUser.name }}</p>
     <div class="logout-confirm-actions">
       <button mat-stroked-button type="button" (click)="closePopup()">Mégsem</button>
-      <button mat-raised-button color="warn" class="logout-btn" type="button" (click)="closePopup()">Kilépés</button>
+      <button mat-raised-button color="warn" class="logout-btn" type="button" (click)="confirmLogout()">Kilépés</button>
+    </div>
+  </div>
+</section>
+
+<section class="demo-login-overlay" *ngIf="showUserSelector">
+  <div class="demo-login-panel" (click)="$event.stopPropagation()">
+    <h2>Select demo user</h2>
+    <p>Login disabled mode. Choose one of the 12 users to open perspective-based data.</p>
+    <div class="demo-user-grid">
+      <button type="button" class="demo-user-item" *ngFor="let user of users" (click)="selectLoginUser(user.id)">
+        <span class="user-avatar" [class]="'user-color-' + user.gender">{{ user.initials }}</span>
+        <span class="demo-user-name">{{ user.name }}</span>
+        <span class="demo-user-meta">{{ user.gender }} · {{ user.city }}</span>
+      </button>
     </div>
   </div>
 </section>
@@ -422,11 +688,3 @@
     </div>
   </div>
 </section>
-
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
-<!-- * * * * * * * * * * * The content above * * * * * * * * * * * * -->
-<!-- * * * * * * * * * * is only a placeholder * * * * * * * * * * * -->
-<!-- * * * * * * * * * * and can be replaced.  * * * * * * * * * * * -->
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
-<!-- * * * * * * * * * * End of Placeholder  * * * * * * * * * * * * -->
-<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->

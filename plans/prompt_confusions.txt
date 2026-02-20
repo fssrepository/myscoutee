@@ -1,0 +1,35 @@
+Prompt Confusions / Assumptions (2026-02-20)
+============================================
+
+1) Routing model
+- Interpreted final requirement as: only Game is route-based; Chat/Invitations/Events/Hosting are popup-driven from user menu.
+
+2) Profile editor entry
+- Removed inline "Edit Profile" button to save space.
+- Used top-right pencil icon + full header click as editor entry.
+
+3) Exit location
+- Removed header "Kilépés" button from menu panel.
+- Moved logout action inside Profile Editor popup.
+
+4) Demo login / user perspective
+- Added environment toggle (loginEnabled=false by default).
+- In disabled mode, app shows 12-user selector overlay on start.
+- Selected user drives menu counters/content and game perspective.
+
+5) Event/Invitation item text
+- Changed accordion rows to short description + timeframe lines.
+- Detailed logistics (cars/accommodation/accessories) moved to Event Editor popup.
+
+6) Hosting interpretation
+- Implemented Hosting as own hosted events (not supplies list).
+- Supply assignment is represented in Event Editor sections (cars/accommodation/accessories).
+
+7) Screenshot alignment
+- Matched avatar emphasis + completion percent badges + 3-line header text.
+- Kept red activity counter on avatar top-right and moved completion indicator to bottom overlay pill.
+- Kept visual style close but not pixel-perfect due missing exact font/assets from design source.
+
+8) Data recency / document conflict
+- Some plan texts overlap with older versions.
+- Used latest profile/event requirements and prioritized mobile-usable accordion structure.

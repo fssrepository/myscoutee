@@ -1,456 +1,386 @@
-import { Component, HostListener, inject, signal } from '@angular/core';
+import { Component, HostListener, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
-import { MatListModule } from '@angular/material/list';
+import { Router, RouterOutlet } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { FormsModule } from '@angular/forms';
 import { AlertService } from './shared/alert.service';
-import { IssueSelectionService } from './shared/issue-selection.service';
+import {
+  DEMO_CHAT_BY_USER,
+  DEMO_EVENTS_BY_USER,
+  DEMO_HOSTING_BY_USER,
+  DEMO_INVITATIONS_BY_USER,
+  DemoUser,
+  DEMO_USERS,
+  EVENT_EDITOR_SAMPLE,
+  PROFILE_DETAILS,
+  PROFILE_EXPERIENCE,
+  PROFILE_PERSONALITY_TOP3,
+  PROFILE_PILLARS,
+  PROFILE_PRIORITY_TAGS,
+  ChatMenuItem,
+  EventMenuItem,
+  HostingMenuItem,
+  InvitationMenuItem
+} from './shared/demo-data';
+import { environment } from '../environments/environment';
 
-interface MenuItemEntry {
-  text: string;
-  level?: number;
+type AccordionSection = 'chat' | 'invitations' | 'events' | 'hosting';
+type MenuSection = 'game' | AccordionSection;
+
+type PopupType =
+  | 'chat'
+  | 'chatMembers'
+  | 'invitations'
+  | 'events'
+  | 'hosting'
+  | 'menuEvent'
+  | 'hostingEvent'
+  | 'invitationActions'
+  | 'eventEditor'
+  | 'eventExplore'
+  | 'profileEditor'
+  | 'imageEditor'
+  | 'imageUpload'
+  | 'supplyDetail'
+  | 'logoutConfirm'
+  | null;
+
+interface SupplyContext {
+  subEventId: string;
+  subEventTitle: string;
+  type: string;
 }
 
-interface MenuPanelItem {
-  title: string;
-  items: Array<string | MenuItemEntry>;
-}
-
-interface BalanceSubpanelItem {
-  title: string;
-  items: Array<string | MenuItemEntry>;
-}
-
-interface BalancePanelItem {
-  title: string;
-  items?: Array<string | MenuItemEntry>;
-  subpanels?: BalanceSubpanelItem[];
-}
-
-type IssueLabel =
-  | 'Adóügy'
-  | 'Kormányablak'
-  | 'Önkormányzat'
-  | 'Bűnügy'
-  | 'Egészségügy'
-  | 'Munkaügy'
-  | 'Jog'
-  | 'Szolgáltatások';
-
-type IssueCountMap = Record<IssueLabel, number>;
-
-interface UserCounts {
-  appointments: number;
-  issues: number;
-  suspension: number;
-  centralHelp: number;
-  userSettings: number;
-  users: number;
-}
-
-interface UserEntry {
+interface ChatReadAvatar {
   id: string;
-  name: string;
   initials: string;
-  issueCounts: IssueCountMap;
-  counts: UserCounts;
+  gender: 'woman' | 'man';
 }
+
+interface ChatPopupMessage {
+  id: string;
+  sender: string;
+  senderAvatar: ChatReadAvatar;
+  text: string;
+  time: string;
+  mine: boolean;
+  readBy: ChatReadAvatar[];
+}
+
+type SubEventCard = (typeof EVENT_EDITOR_SAMPLE.subEvents)[number];
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, MatListModule, MatIconModule, MatButtonModule, MatExpansionModule, FormsModule],
+  imports: [CommonModule, RouterOutlet, MatIconModule, MatButtonModule, MatExpansionModule, FormsModule],
   templateUrl: './app.html',
   styleUrl: '../_styles/app.scss'
 })
 export class App {
   public readonly alertService = inject(AlertService);
-  private readonly issueSelection = inject(IssueSelectionService);
-  private readonly router = inject(Router);
 
-  protected getItemText(item: string | { text: string }) {
-    return typeof item === 'string' ? item : item.text;
-  }
+  protected readonly users = DEMO_USERS;
+  protected readonly profileTopTraits = PROFILE_PERSONALITY_TOP3;
+  protected readonly profilePriorityTags = PROFILE_PRIORITY_TAGS;
+  protected readonly profilePillars = PROFILE_PILLARS;
+  protected readonly profileDetails = PROFILE_DETAILS;
+  protected readonly profileExperience = PROFILE_EXPERIENCE;
+  protected readonly eventEditor = EVENT_EDITOR_SAMPLE;
 
-  protected getItemLevel(item: string | { level?: number }) {
-    if (typeof item === 'string') {
-      return 0;
-    }
-    return item.level ?? 0;
-  }
-
-  protected activePopup: 'settings' | 'contact' | 'balance' | 'appointment' | 'addAppointment' | 'centralHelp' | 'suspension' | 'userSettings' | 'addUser' | 'deleteUser' | 'logoutConfirm' | null = null;
-  protected readonly title = signal('myscoutee');
-  protected menuBadges = { home: 0, documents: 0, invoices: 0 };
-  protected menuBadgeTotal = 0;
-  protected showMobileMenu = false;
   protected showUserMenu = false;
-  protected userBadgeCount = 1;
-  protected readonly contactContent = 'Chat, video, telefon link';
-  protected readonly balanceValue = '-200e Ft';
-  protected readonly settingsPanels: MenuPanelItem[] = [
-    {
-      title: 'Adozoi adatok',
-      items: ['Adóhatósági igazolások']
-    },
-    {
-      title: 'Foglalkoztatasi adatok',
-      items: ['Foglalkoztatói bejelentések, lekérdezések', 'Keresetkimutatás, Járulékadatok']
-    },
-    {
-      title: 'Képviseletek',
-      items: [
-        { text: 'Lista az aktuális képviseletekről és azok jogosultságairól (törlés gomb a végén)', level: 0 },
-        { text: 'Képviselt hozzáadása gomb a könyvelő oldalán', level: 0 },
-        { text: 'Képviselet meghatalmazás kérő űrlap betöltése - integrált Onya (jogosultság + önkormányzat - hipa checkbox)', level: 1 },
-        { text: 'Könyvelő beküldi a képviseleti meghatalmazás igénylést (kitölti az ürlapot), amit a vállalkozó a saját tárhelyén elfogad', level: 1 },
-        { text: 'Könyvelő beküldi a hipa adónem választó ürlapot is a NAV-nak (nem Önkormányzat felületén)', level: 1 },
-        { text: 'Ezzel ki lehet küszöbölni, hogy a vállalkozó kényszerből megossza az ügyfélkapus jelszavát a könyvelővel!', level: 1 }
-      ]
-    },
-    {
-      title: 'Szamlak',
-      items: ['Számla kliens regisztráció (m2m/billingo)']
-    },
-    {
-      title: 'Értesítő szabályok',
-      items: [
-        { text: 'A GDPR alapján a vállalkozónak is kell értesítőt küldeni a képviseleti műveletekről! (adatai változtak)', level: 0 },
-        { text: 'A vállalkozó beállíthatja:', level: 0 },
-        { text: 'Mely képviseleti műveletekről szeretne értesítést a vállalkozó a tárhelyén (e-mail)', level: 1 },
-        { text: 'Mely képviseleti műveleteket szeretné el is fogadni a tárhelyén (e-mail), mielőtt aktiválódik (30 nap múlva automatikusan elfogadasra kerül)', level: 1 },
-        { text: 'A tárhelyre érkező üzenet formája, amikor A könyvelő benyújtja az adóbevallást és a NAV feldolgozza azt:', level: 0 },
-        { text: 'A könyvelőnek visszaküld egy technikai vagy hibaüzenetet a szokásos módon', level: 1 },
-        { text: 'A vállalkozónak rövid, közérthető tájékoztatást küld', level: 1 },
-        { text: '„A 2021-es KATA adóbevallásban hibát észleltünk, itt tekintheti meg.”', level: 2 },
-        { text: '„Az Ön nevében új adóbevallás került benyújtásra. Kérjük, tekintse át az Ügyfélportál [megadott menüpontjában]. Ha mindent rendben talál, fogadja el; ha nem reagál 30 napon belül, a bevallást automatikusan elfogadottnak tekintjük.”', level: 2 },
-        { text: '„Az adóbevallás sikeresen benyújtásra került.”', level: 2 }
-      ]
-    }
-  ];
-  protected readonly balancePanels: BalancePanelItem[] = [
-    {
-      title: 'Befizetés',
-      items: [
-        { text: 'A különböző jogcímekhez tartozó számlák főszámla alá rendezése.', level: 0 },
-        { text: '"Természetes Személy" (Egyéni vállalkozó, Munkanélküli stb.)', level: 1 },
-        { text: 'Ha egy utalás a főszámlára érkezik, azt a rendszer automatikusan felbonthatná az alszámlák között. (pl. egészségügyi járulék, nyugdíjjárulék, kamarai hozzájárulás, HIPA stb.).', level: 2 },
-        { text: '"Vállalkozás" (Kft, Bt...)', level: 1 },
-        { text: 'Adózási formák', level: 0 },
-        { text: 'Számlaalapú adózás (fix %, a bérköltség munkavállalót terhelő részéhez igazított mérték - külföldi távmunka is)', level: 1 },
-        { text: 'Fix költségelszámolás alapú adózás (átalányadó)', level: 1 },
-        { text: 'Tételes költségelszámolás alapú adózás (VSZJA)', level: 1 },
-        { text: '', level: 1 },
-        { text: 'Közös elemek:', level: 1 },
-        { text: 'Alanyi adómentes határ', level: 2 },
-        { text: 'Minimum a minimálbér utáni járulékfizetés (garantált bérminimum eltörlése)', level: 2 },
-        { text: 'Adókulcsot csökkentő tételek (pl. családi kedvezmény)', level: 2 },
-        { text: 'Adó-visszaigénylési lehetőség (pl. ha az éves jövedelem nem éri el a minimálbér összegét)', level: 2 },
-        { text: 'Mindig MNB közép a számla kiállítás pillanatában (se banki eladási, se forgalmi alapú)', level: 2 },
-        { text: 'A KATA kivezetésnél 3M-es határ eltörlése adóév végéig, majd számla alapú adózássá formálása okozta volna a legkevesebb káoszt.', level: 1 }
-      ]
-    },
-    {
-      title: 'Adónaptár',
-      items: [
-        'Esedékes bevallások',
-        'Hiányzó bevallások'
-      ]
-    },
-    {
-      title: 'Köztartozások',
-      subpanels: [
-        {
-          title: 'Fizetési tájékoztatók',
-          items: ['Aktuális fizetési kötelezettségek összesítése']
-        },
-        {
-          title: 'Pótléklevezetés',
-          items: ['Késedelmi pótlékok részletezése időszakonként']
-        },
-        {
-          title: 'Adóteljesítmény',
-          items: ['Befizetések és teljesítések kimutatása']
-        },
-        {
-          title: 'Köztartozásmentes adózói adatbázis (KOMA)',
-          items: ['KOMA státusz és előzmények']
-        },
-        {
-          title: 'Egyéb végrehajtható köztartozások',
-          items: ['Más hatóságoktól átvett végrehajtható tartozások']
-        }
-      ]
-    },
-    {
-      title: 'Adóraktár',
-      subpanels: [
-        {
-          title: 'Adóraktári készlet + mozgás',
-          items: ['Készletállomány és készletmozgások listája']
-        },
-        {
-          title: 'Jövedéki biztosíték szabad keret',
-          items: ['Aktuális biztosítékkeret és felhasználás']
-        }
-      ]
-    }
-  ];
+  protected showUserSelector = !environment.loginEnabled;
+  protected activePopup: PopupType = null;
+  protected stackedPopup: PopupType = null;
+  protected activeUserId = this.getInitialUserId();
 
-  protected readonly users: UserEntry[] = [
-    {
-      id: 'user-1',
-      name: 'Farkas Anna',
-      initials: 'FA',
-      issueCounts: {
-        'Adóügy': 2,
-        'Kormányablak': 1,
-        'Önkormányzat': 0,
-        'Bűnügy': 3,
-        'Egészségügy': 2,
-        'Munkaügy': 1,
-        'Jog': 4,
-        'Szolgáltatások': 2
-      } as IssueCountMap,
-      counts: {
-        appointments: 3,
-        issues: 15,
-        suspension: 1,
-        centralHelp: 2,
-        userSettings: 1,
-        users: 4
-      }
-    },
-    {
-      id: 'user-2',
-      name: 'Kiss Balázs',
-      initials: 'KB',
-      issueCounts: {
-        'Adóügy': 1,
-        'Kormányablak': 0,
-        'Önkormányzat': 1,
-        'Bűnügy': 0,
-        'Egészségügy': 1,
-        'Munkaügy': 0,
-        'Jog': 2,
-        'Szolgáltatások': 0
-      } as IssueCountMap,
-      counts: {
-        appointments: 2,
-        issues: 5,
-        suspension: 0,
-        centralHelp: 1,
-        userSettings: 1,
-        users: 4
-      }
-    },
-    {
-      id: 'user-3',
-      name: 'Nagy Eszter',
-      initials: 'NE',
-      issueCounts: {
-        'Adóügy': 3,
-        'Kormányablak': 2,
-        'Önkormányzat': 1,
-        'Bűnügy': 2,
-        'Egészségügy': 0,
-        'Munkaügy': 1,
-        'Jog': 1,
-        'Szolgáltatások': 3
-      } as IssueCountMap,
-      counts: {
-        appointments: 4,
-        issues: 13,
-        suspension: 2,
-        centralHelp: 1,
-        userSettings: 1,
-        users: 4
-      }
-    }
-  ];
-  protected activeUserId = 'user-1';
+  protected sectionsOpen: Record<AccordionSection, boolean> = {
+    chat: true,
+    invitations: false,
+    events: false,
+    hosting: false
+  };
+  protected activeMenuSection: MenuSection = 'chat';
 
-  protected readonly appointmentsByUser: Record<string, Array<{
-    id: string;
-    place: string;
-    address: string;
-    datetime: string;
-    mapUrl: string;
-  }>> = {
-    'user-1': [
-      {
-        id: 'app-1',
-        place: 'NAV Kiemelt Ügyfélszolgálat',
-        address: '1054 Budapest, Széchenyi u. 2.',
-        datetime: '2026.02.18. 10:30',
-        mapUrl: 'https://maps.google.com/?q=1054+Budapest+Sz%C3%A9chenyi+u.+2'
-      },
-      {
-        id: 'app-2',
-        place: 'Kormányablak - XIII. kerület',
-        address: '1133 Budapest, Váci út 62-64.',
-        datetime: '2026.02.26. 09:15',
-        mapUrl: 'https://maps.google.com/?q=1133+Budapest+V%C3%A1ci+%C3%BAt+62-64'
-      },
-      {
-        id: 'app-3',
-        place: 'Önkormányzat - Ügyféltér',
-        address: '1146 Budapest, Thököly út 11.',
-        datetime: '2026.03.05. 14:00',
-        mapUrl: 'https://maps.google.com/?q=1146+Budapest+Th%C3%B6k%C3%B6ly+%C3%BAt+11'
-      }
-    ],
-    'user-2': [
-      {
-        id: 'app-4',
-        place: 'Kormányablak - XVI. kerület',
-        address: '1163 Budapest, Veres Péter út 112.',
-        datetime: '2026.02.20. 08:45',
-        mapUrl: 'https://maps.google.com/?q=1163+Budapest+Veres+P%C3%A9ter+%C3%BAt+112'
-      },
-      {
-        id: 'app-5',
-        place: 'NAV Ügyfélszolgálat',
-        address: '1081 Budapest, József körút 18.',
-        datetime: '2026.02.27. 11:00',
-        mapUrl: 'https://maps.google.com/?q=1081+Budapest+J%C3%B3zsef+k%C3%B6r%C3%BAt+18'
-      }
-    ],
-    'user-3': [
-      {
-        id: 'app-6',
-        place: 'Önkormányzat - Ügyféltér',
-        address: '1123 Budapest, Alkotás u. 1.',
-        datetime: '2026.02.19. 13:20',
-        mapUrl: 'https://maps.google.com/?q=1123+Budapest+Alkot%C3%A1s+u.+1'
-      },
-      {
-        id: 'app-7',
-        place: 'Kormányablak - XI. kerület',
-        address: '1117 Budapest, Fehérvári út 52.',
-        datetime: '2026.02.25. 09:00',
-        mapUrl: 'https://maps.google.com/?q=1117+Budapest+Feh%C3%A9rv%C3%A1ri+%C3%BAt+52'
-      },
-      {
-        id: 'app-8',
-        place: 'NAV Kiemelt Ügyfélszolgálat',
-        address: '1054 Budapest, Széchenyi u. 2.',
-        datetime: '2026.03.03. 15:10',
-        mapUrl: 'https://maps.google.com/?q=1054+Budapest+Sz%C3%A9chenyi+u.+2'
-      },
-      {
-        id: 'app-9',
-        place: 'Egészségügyi Központ',
-        address: '1037 Budapest, Bécsi út 96.',
-        datetime: '2026.03.10. 10:00',
-        mapUrl: 'https://maps.google.com/?q=1037+Budapest+B%C3%A9csi+%C3%BAt+96'
-      }
-    ]
+  protected selectedChat: ChatMenuItem | null = null;
+  protected selectedChatMembers: DemoUser[] = [];
+  protected selectedChatMembersItem: ChatMenuItem | null = null;
+  protected selectedInvitation: InvitationMenuItem | null = null;
+  protected selectedEvent: EventMenuItem | null = null;
+  protected selectedHostingEvent: HostingMenuItem | null = null;
+
+  protected imageSlots: Array<string | null> = [null, null, null, null, null, null, null, null];
+  protected selectedImageIndex = 0;
+  protected uploadTargetIndex = 0;
+  protected pendingUploadPreview: string | null = null;
+
+  protected eventSupplyTypes: string[] = ['Cars', 'Members', 'Accessories', 'Accommodation'];
+  protected newSupplyType = '';
+  protected selectedSupplyContext: SupplyContext | null = null;
+
+  protected profileForm = {
+    fullName: '',
+    age: 0,
+    city: '',
+    statusText: '',
+    profileStatus: 'Public' as 'Public' | 'Friends only' | 'Host only' | 'Inactive',
+    hostTier: '',
+    traitLabel: '',
+    headline: '',
+    about: ''
   };
 
-  protected selectedAppointmentId = this.appointmentsByUser['user-1'][0].id;
-  protected readonly appointmentCategories = [
-    'Adóügy',
-    'Kormányablak',
-    'Önkormányzat',
-    'Bűnügy',
-    'Egészségügy',
-    'Munkaügy',
-    'Jog',
-    'Szolgáltatások'
-  ];
-  protected selectedAppointmentCategory = this.appointmentCategories[0];
-  protected clickedUserId: string | null = null;
-  private clickedUserTimer: ReturnType<typeof setTimeout> | null = null;
-  protected pendingDeleteUser: UserEntry | null = null;
-
-  protected readonly issueGroups: Array<{ label: IssueLabel; detail: string }> = [
-    { label: 'Adóügy', detail: 'NAV' },
-    { label: 'Kormányablak', detail: 'Okmány stb.' },
-    { label: 'Önkormányzat', detail: 'Helyi ügyek' },
-    { label: 'Bűnügy', detail: 'Rendőrség' },
-    { label: 'Egészségügy', detail: 'EESZT' },
-    { label: 'Munkaügy', detail: 'Munkaügyi Központ' },
-    { label: 'Jog', detail: 'Bíróság, Ügyészség, Fogyasztóvédelem, Igazságügy, Köztársasági Elnök' },
-    { label: 'Szolgáltatások', detail: 'Közüzemi számlák, BKV bérletek, autópálya matrica, parkolás' }
-  ];
-  protected issueQuery = '';
-  protected usersOpen = true;
-  protected appointmentsOpen = false;
-  protected issuesOpen = false;
-  protected selectedIssueLabel: IssueLabel = 'Adóügy';
-  protected userMenuView: 'root' | 'users' = 'root';
-  protected readonly issueLogoMap: Record<IssueLabel, string> = {
-    'Adóügy': 'adougy-logo.svg',
-    'Kormányablak': 'kormanyablak-logo.svg',
-    'Önkormányzat': 'onkormanyzat-logo.svg',
-    'Bűnügy': 'bunugy-logo.svg',
-    'Egészségügy': 'egeszsegugy-logo.svg',
-    'Munkaügy': 'munkauegy-logo.svg',
-    'Jog': 'jog-logo.svg',
-    'Szolgáltatások': 'szolgaltatasok-logo.svg'
-  };
-  protected readonly userColorClassMap: Record<string, string> = {
-    'user-1': 'user-color-1',
-    'user-2': 'user-color-2',
-    'user-3': 'user-color-3'
-  };
-
-  constructor() {
-    this.userBadgeCount = this.getUserMenuTotal();
-    this.selectIssue('Adóügy');
-    // Listen for menu toggle events from child components
-    window.addEventListener('toggleMobileMenu', () => {
-      this.toggleMobileMenu();
-    });
+  constructor(private readonly router: Router) {
+    this.syncProfileFormFromActiveUser();
+    this.router.navigate(['/game']);
   }
 
-  toggleMobileMenu() {
-    this.showMobileMenu = !this.showMobileMenu;
+  protected get activeUser() {
+    return this.users.find(user => user.id === this.activeUserId) ?? this.users[0];
   }
 
-  openPopup(type: 'settings' | 'contact' | 'balance') {
-    this.activePopup = type;
-    this.showMobileMenu = false;
+  protected get userBadgeCount(): number {
+    return this.gameBadge + this.chatBadge + this.invitationsBadge + this.eventsBadge + this.hostingBadge;
   }
 
-  openUserPopup(type: 'appointment' | 'addAppointment' | 'centralHelp' | 'suspension' | 'userSettings' | 'addUser' | 'deleteUser' | 'logoutConfirm', user?: UserEntry) {
-    if (type === 'deleteUser' || type === 'suspension') {
-      this.pendingDeleteUser = user ?? null;
-    }
-    this.activePopup = type;
+  protected get gameBadge(): number {
+    return this.activeUser.activities.game;
+  }
+
+  protected get chatBadge(): number {
+    return this.resolveSectionBadge(
+      this.chatItems.map(item => item.unread),
+      this.chatItems.length
+    );
+  }
+
+  protected get invitationsBadge(): number {
+    return this.resolveSectionBadge(
+      this.invitationItems.map(item => item.unread),
+      this.invitationItems.length
+    );
+  }
+
+  protected get eventsBadge(): number {
+    return this.resolveSectionBadge(
+      this.eventItems.map(item => item.activity),
+      this.eventItems.length
+    );
+  }
+
+  protected get hostingBadge(): number {
+    return this.resolveSectionBadge(
+      this.hostingItems.map(item => item.activity),
+      this.hostingItems.length
+    );
+  }
+
+  protected get chatItems(): ChatMenuItem[] {
+    return DEMO_CHAT_BY_USER[this.activeUser.id] ?? DEMO_CHAT_BY_USER['u1'];
+  }
+
+  protected get invitationItems(): InvitationMenuItem[] {
+    return DEMO_INVITATIONS_BY_USER[this.activeUser.id] ?? DEMO_INVITATIONS_BY_USER['u1'];
+  }
+
+  protected get eventItems(): EventMenuItem[] {
+    return DEMO_EVENTS_BY_USER[this.activeUser.id] ?? DEMO_EVENTS_BY_USER['u1'];
+  }
+
+  protected get hostingItems(): HostingMenuItem[] {
+    return DEMO_HOSTING_BY_USER[this.activeUser.id] ?? DEMO_HOSTING_BY_USER['u1'];
+  }
+
+  protected get hasOpenAccordion(): boolean {
+    return this.sectionsOpen.chat || this.sectionsOpen.invitations || this.sectionsOpen.events || this.sectionsOpen.hosting;
+  }
+
+  protected get isGameSelected(): boolean {
+    return this.activeMenuSection === 'game' && !this.hasOpenAccordion;
+  }
+
+  protected onUserSelect(): void {
+    this.showUserMenu = !this.showUserMenu;
+  }
+
+  protected closeUserMenu(): void {
     this.showUserMenu = false;
   }
 
-  closePopup() {
-    this.activePopup = null;
-    this.pendingDeleteUser = null;
+  protected toggleSection(section: AccordionSection): void {
+    if (this.sectionsOpen[section]) {
+      this.activeMenuSection = section;
+      return;
+    }
+    this.sectionsOpen = {
+      chat: false,
+      invitations: false,
+      events: false,
+      hosting: false
+    };
+    this.sectionsOpen[section] = true;
+    this.activeMenuSection = section;
   }
 
-  getPopupTitle() {
+  protected goToGame(): void {
+    this.activeMenuSection = 'game';
+    this.router.navigate(['/game']);
+    this.closeUserMenu();
+  }
+
+  protected openChatItem(item: ChatMenuItem): void {
+    this.activeMenuSection = 'chat';
+    this.selectedChat = item;
+    this.stackedPopup = null;
+    this.activePopup = 'chat';
+    this.scrollChatToBottom();
+    this.closeUserMenu();
+  }
+
+  protected openChatMembers(item: ChatMenuItem, event?: Event, stacked = false): void {
+    event?.stopPropagation();
+    this.selectedChatMembersItem = item;
+    this.selectedChatMembers = this.getChatMembersById(item.id);
+    if (stacked || this.activePopup === 'chat' || this.stackedPopup !== null) {
+      this.stackedPopup = 'chatMembers';
+      return;
+    }
+    this.activePopup = 'chatMembers';
+    this.closeUserMenu();
+  }
+
+  protected openInvitationItem(item: InvitationMenuItem): void {
+    this.activeMenuSection = 'invitations';
+    this.selectedInvitation = item;
+    this.activePopup = 'invitationActions';
+    this.closeUserMenu();
+  }
+
+  protected openEventItem(item: EventMenuItem): void {
+    this.activeMenuSection = 'events';
+    this.selectedEvent = item;
+    this.activePopup = 'menuEvent';
+    this.closeUserMenu();
+  }
+
+  protected openHostingItem(item: HostingMenuItem): void {
+    this.activeMenuSection = 'hosting';
+    this.selectedHostingEvent = item;
+    this.activePopup = 'hostingEvent';
+    this.closeUserMenu();
+  }
+
+  protected openEventExplore(): void {
+    this.activeMenuSection = 'events';
+    if (this.stackedPopup !== null) {
+      this.stackedPopup = 'eventExplore';
+      return;
+    }
+    this.activePopup = 'eventExplore';
+    this.closeUserMenu();
+  }
+
+  protected openEventEditor(stacked = false): void {
+    if (stacked || this.stackedPopup !== null || this.activePopup === 'chat') {
+      this.stackedPopup = 'eventEditor';
+      return;
+    }
+    this.activePopup = 'eventEditor';
+  }
+
+  protected openProfileEditor(): void {
+    this.syncProfileFormFromActiveUser();
+    this.activePopup = 'profileEditor';
+    this.closeUserMenu();
+  }
+
+  protected openImageEditor(): void {
+    this.activePopup = 'imageEditor';
+  }
+
+  protected openImageUpload(index: number): void {
+    this.uploadTargetIndex = index;
+    this.pendingUploadPreview = this.imageSlots[index];
+    this.activePopup = 'imageUpload';
+  }
+
+  protected openLogoutConfirm(): void {
+    this.activePopup = 'logoutConfirm';
+  }
+
+  protected closePopup(): void {
+    this.activePopup = null;
+    this.stackedPopup = null;
+  }
+
+  protected closeStackedPopup(): void {
+    this.stackedPopup = null;
+    if (this.activePopup === 'chat') {
+      this.scrollChatToBottom();
+    }
+  }
+
+  protected confirmLogout(): void {
+    this.activePopup = null;
+    this.stackedPopup = null;
+    if (!environment.loginEnabled) {
+      this.showUserSelector = true;
+    }
+  }
+
+  protected selectLoginUser(userId: string): void {
+    this.activeUserId = userId;
+    localStorage.setItem('demo-active-user', userId);
+    this.syncProfileFormFromActiveUser();
+    this.activeMenuSection = 'chat';
+    this.sectionsOpen = {
+      chat: true,
+      invitations: false,
+      events: false,
+      hosting: false
+    };
+    window.dispatchEvent(new CustomEvent('active-user-changed'));
+    this.showUserSelector = false;
+    this.activePopup = null;
+    this.stackedPopup = null;
+    this.router.navigate(['/game']);
+  }
+
+  protected openUserSelector(): void {
+    this.showUserSelector = true;
+    this.closeUserMenu();
+  }
+
+  protected getPopupTitle(): string {
     switch (this.activePopup) {
-      case 'settings':
-        return 'Beállítások';
-      case 'contact':
-        return 'Kapcsolat';
-      case 'balance':
-        return 'Egyenleg';
-      case 'appointment':
-        return 'Időpontfoglalás';
-      case 'addAppointment':
-        return 'Új időpontfoglalás';
-      case 'centralHelp':
-        return 'Központi segítség';
-      case 'suspension':
-        return 'Felhasználó Felfüggesztése';
-      case 'userSettings':
-        return 'Beállítások';
-      case 'addUser':
-        return 'Felhasználó hozzáadása';
-      case 'deleteUser':
-        return 'Törlés';
+      case 'chat':
+        return this.selectedChat?.title ?? 'Chat';
+      case 'chatMembers':
+        return 'Chat Members';
+      case 'invitationActions':
+        return this.selectedInvitation?.description ?? 'Invitation';
+      case 'menuEvent':
+        return this.selectedEvent?.title ?? 'Event';
+      case 'hostingEvent':
+        return this.selectedHostingEvent?.title ?? 'Hosting Event';
+      case 'eventEditor':
+        return 'Event Editor';
+      case 'eventExplore':
+        return 'Event Explore';
+      case 'profileEditor':
+        return 'Profile Editor';
+      case 'imageEditor':
+        return 'Image Editor';
+      case 'imageUpload':
+        return 'Upload Image';
+      case 'supplyDetail':
+        return `${this.selectedSupplyContext?.type ?? 'Supply'} · ${this.selectedSupplyContext?.subEventTitle ?? ''}`.trim();
+      case 'invitations':
+        return 'Invitations';
+      case 'events':
+        return 'Events';
+      case 'hosting':
+        return 'Hosting';
       case 'logoutConfirm':
         return 'Kilépés';
       default:
@@ -458,225 +388,520 @@ export class App {
     }
   }
 
-  closeMobileMenu() {
-    this.showMobileMenu = false;
-  }
-
-  toggleUserMenu() {
-    this.showUserMenu = !this.showUserMenu;
-  }
-
-  closeUserMenu() {
-    this.showUserMenu = false;
-    this.userMenuView = 'root';
-  }
-
-  openUserMenuView(view: 'root' | 'users') {
-    this.userMenuView = view;
-    if (view === 'users') {
-      this.usersOpen = true;
-    }
-  }
-
-  toggleUserSection(section: 'users' | 'appointments') {
-    if (section === 'users') {
-      this.usersOpen = !this.usersOpen;
-      return;
-    }
-    this.appointmentsOpen = !this.appointmentsOpen;
-    if (this.appointmentsOpen) {
-      this.issuesOpen = false;
-    }
-  }
-
-
-  toggleIssueSection() {
-    this.issuesOpen = !this.issuesOpen;
-    if (this.issuesOpen) {
-      this.appointmentsOpen = false;
-    }
-  }
-
-  getIssueTotal() {
-    return Object.values(this.activeUser.issueCounts ?? {}).reduce((sum, value) => sum + value, 0);
-  }
-
-  getIssueCount(label: IssueLabel) {
-    return this.activeUser.issueCounts?.[label] ?? 0;
-  }
-
-  onUserSelect() {
-    this.toggleUserMenu();
-  }
-
-  get activeUser() {
-    return this.users.find(user => user.id === this.activeUserId) ?? this.users[0];
-  }
-
-  get otherUsers() {
-    return this.users.filter(user => user.id !== this.activeUserId);
-  }
-
-  selectUser(userId: string) {
-    this.activeUserId = userId;
-    this.clickedUserId = userId;
-    if (this.clickedUserTimer) {
-      clearTimeout(this.clickedUserTimer);
-    }
-    this.clickedUserTimer = setTimeout(() => {
-      this.clickedUserId = null;
-      this.clickedUserTimer = null;
-    }, 450);
-    this.userBadgeCount = this.getUserMenuTotal();
-    this.selectIssue('Adóügy');
-    const firstAppointment = this.userAppointments[0];
-    if (firstAppointment) {
-      this.selectedAppointmentId = firstAppointment.id;
-    }
-  }
-
-  getUserMenuTotal() {
-    return this.getUserMenuTotalFor(this.activeUser);
-  }
-
-  getUserMenuTotalFor(user: { id: string; counts: UserCounts; issueCounts?: IssueCountMap }) {
-    const issueTotal = Object.values(user.issueCounts ?? {}).reduce((sum, value) => sum + value, 0);
-    const appointmentTotal = this.appointmentsByUser[user.id]?.length ?? user.counts.appointments;
-    return appointmentTotal + issueTotal;
-  }
-
-  getUserMenuCount(key: keyof typeof this.activeUser.counts) {
-    if (key === 'issues') {
-      return this.getIssueTotal();
-    }
-    return this.activeUser.counts[key] ?? 0;
-  }
-
-  selectAppointment(appointmentId: string) {
-    this.selectedAppointmentId = appointmentId;
-    this.selectedAppointmentCategory = this.getCategoryForAppointment();
-  }
-
-  get userAppointments() {
-    return this.appointmentsByUser[this.activeUserId] ?? [];
-  }
-
-  get selectedAppointment() {
-    const appointments = this.userAppointments;
-    return appointments.find(item => item.id === this.selectedAppointmentId) ?? appointments[0];
-  }
-
-  private getCategoryForAppointment() {
-    const place = this.selectedAppointment.place.toLowerCase();
-    if (place.includes('nav')) {
-      return 'Adóügy';
-    }
-    if (place.includes('kormányablak')) {
-      return 'Kormányablak';
-    }
-    if (place.includes('önkormányzat')) {
-      return 'Önkormányzat';
-    }
-    return this.appointmentCategories[0];
-  }
-
-  setAppointmentCategory(category: string) {
-    this.selectedAppointmentCategory = category;
-  }
-
-  onIssueQueryChange(value: string) {
-    this.issueQuery = value;
-    const match = this.issueGroups.find(item => item.label.toLowerCase() === value.toLowerCase());
-    if (match) {
-      this.selectIssue(match.label);
-    }
-  }
-
-  selectIssue(issue: IssueLabel) {
-    this.selectedIssueLabel = issue;
-    const detail = this.getIssueDetail(issue);
-    this.issueSelection.setIssue(issue, detail);
-    this.updateMenuBadgesForIssue(issue);
-    this.router.navigate(['/home']);
-  }
-
-  getIssueDetail(issue: IssueLabel) {
-    return this.issueGroups.find(item => item.label === issue)?.detail ?? '';
-  }
-
-  getIssueRowClass(issue: IssueLabel) {
-    switch (issue) {
-      case 'Adóügy':
-        return 'issue-row--nav';
-      case 'Kormányablak':
-        return 'issue-row--kormanyablak';
-      case 'Önkormányzat':
-        return 'issue-row--onkormanyzat';
-      case 'Bűnügy':
-        return 'issue-row--bunugy';
-      case 'Egészségügy':
-        return 'issue-row--egeszsegugy';
-      case 'Munkaügy':
-        return 'issue-row--munkauegy';
-      case 'Jog':
-        return 'issue-row--jog';
-      case 'Szolgáltatások':
-        return 'issue-row--szolgaltatasok';
+  protected getStackedPopupTitle(): string {
+    switch (this.stackedPopup) {
+      case 'chatMembers':
+        return 'Chat Members';
+      case 'eventEditor':
+        return 'Event Editor';
+      case 'eventExplore':
+        return 'Event Explore';
+      case 'supplyDetail':
+        return `${this.selectedSupplyContext?.type ?? 'Supply'} · ${this.selectedSupplyContext?.subEventTitle ?? ''}`.trim();
       default:
         return '';
     }
   }
 
-  getIssueLogo() {
-    const file = this.issueLogoMap[this.selectedIssueLabel] ?? 'adougy-logo.svg';
-    return `assets/img/${file}`;
-  }
-
-  getUserColorClass(userId: string) {
-    return this.userColorClassMap[userId] ?? 'user-color-1';
-  }
-
-  private updateMenuBadgesForIssue(issue: IssueLabel) {
-    const count = this.getIssueCount(issue);
-    if (issue === 'Adóügy') {
-      const base = Math.floor(count / 3);
-      const remainder = count % 3;
-      this.menuBadges = {
-        home: base + (remainder > 0 ? 1 : 0),
-        documents: base + (remainder > 1 ? 1 : 0),
-        invoices: base
-      };
-    } else {
-      this.menuBadges = {
-        home: count,
-        documents: 0,
-        invoices: 0
-      };
+  protected privacyIcon(value: 'Public' | 'Friends' | 'Hosts' | 'Private'): string {
+    switch (value) {
+      case 'Public':
+        return '🔓';
+      case 'Friends':
+        return '👥';
+      case 'Hosts':
+        return '🎤';
+      default:
+        return '🔒';
     }
-    this.menuBadgeTotal = count;
   }
 
-  openMapLink(url: string, openNewTab: boolean) {
-    if (openNewTab) {
-      window.open(url, '_blank', 'noopener');
+  protected profileStatusClass(
+    value: 'Public' | 'Friends only' | 'Host only' | 'Inactive' = this.activeUser.profileStatus
+  ): string {
+    switch (value) {
+      case 'Public':
+        return 'status-public';
+      case 'Friends only':
+        return 'status-friends';
+      case 'Host only':
+        return 'status-host';
+      default:
+        return 'status-inactive';
+    }
+  }
+
+  protected onHeaderPanelClick(event: MouseEvent): void {
+    event.stopPropagation();
+    this.openProfileEditor();
+  }
+
+  protected getHostTierIcon(hostTier: string): string {
+    const normalized = this.normalizeText(hostTier);
+    if (normalized.includes('platinum')) {
+      return 'diamond';
+    }
+    if (normalized.includes('gold')) {
+      return 'emoji_events';
+    }
+    if (normalized.includes('silver')) {
+      return 'workspace_premium';
+    }
+    if (normalized.includes('bronze')) {
+      return 'military_tech';
+    }
+    return 'workspace_premium';
+  }
+
+  protected getHostTierColorClass(hostTier: string): string {
+    const normalized = this.normalizeText(hostTier);
+    if (normalized.includes('platinum')) {
+      return 'icon-tier-platinum';
+    }
+    if (normalized.includes('gold')) {
+      return 'icon-tier-gold';
+    }
+    if (normalized.includes('silver')) {
+      return 'icon-tier-silver';
+    }
+    if (normalized.includes('bronze')) {
+      return 'icon-tier-bronze';
+    }
+    return 'icon-tier-default';
+  }
+
+  protected getTraitIcon(traitLabel: string): string {
+    const normalized = this.normalizeText(traitLabel);
+    if (normalized.includes('kreat') || normalized.includes('creative')) {
+      return 'palette';
+    }
+    if (normalized.includes('empat')) {
+      return 'favorite';
+    }
+    if (normalized.includes('megbizh') || normalized.includes('reliable')) {
+      return 'verified';
+    }
+    if (normalized.includes('advent')) {
+      return 'hiking';
+    }
+    if (normalized.includes('think')) {
+      return 'psychology';
+    }
+    if (normalized.includes('social')) {
+      return 'groups';
+    }
+    if (normalized.includes('playful')) {
+      return 'sports_esports';
+    }
+    if (normalized.includes('ambitious') || normalized.includes('goal')) {
+      return 'trending_up';
+    }
+    return 'auto_awesome';
+  }
+
+  protected getTraitColorClass(traitLabel: string): string {
+    const normalized = this.normalizeText(traitLabel);
+    if (normalized.includes('kreat') || normalized.includes('creative')) {
+      return 'icon-trait-creative';
+    }
+    if (normalized.includes('empat')) {
+      return 'icon-trait-empath';
+    }
+    if (normalized.includes('megbizh') || normalized.includes('reliable')) {
+      return 'icon-trait-reliable';
+    }
+    if (normalized.includes('advent')) {
+      return 'icon-trait-adventurer';
+    }
+    if (normalized.includes('think')) {
+      return 'icon-trait-thinker';
+    }
+    if (normalized.includes('social')) {
+      return 'icon-trait-social';
+    }
+    if (normalized.includes('playful')) {
+      return 'icon-trait-playful';
+    }
+    if (normalized.includes('ambitious') || normalized.includes('goal')) {
+      return 'icon-trait-ambitious';
+    }
+    return 'icon-trait-default';
+  }
+
+  protected getInvitationActionSummary(invitation: InvitationMenuItem): string {
+    const text = this.normalizeText(invitation.description);
+    if (text.includes('jazz') || text.includes('music')) {
+      return 'You were added to music + check-in coordination';
+    }
+    if (text.includes('padel') || text.includes('pair')) {
+      return 'You were placed as a pair candidate for the next phase';
+    }
+    if (text.includes('photo') || text.includes('studio')) {
+      return 'You were assigned to checkpoint and content capture';
+    }
+    if (text.includes('ski') || text.includes('carpool')) {
+      return 'You were added to transport + timing planning';
+    }
+    return 'You have a pending role/action update for this event';
+  }
+
+  protected getChatStarter(item: ChatMenuItem): DemoUser {
+    const members = this.getChatMembersById(item.id);
+    return members[1] ?? members[0] ?? this.activeUser;
+  }
+
+  protected getChatLastSender(item: ChatMenuItem): DemoUser {
+    return this.users.find(user => user.id === item.lastSenderId) ?? this.getChatMembersById(item.id)[0] ?? this.activeUser;
+  }
+
+  protected getChatVisibleMembers(item: ChatMenuItem, limit = 3): DemoUser[] {
+    return this.getChatMembersById(item.id).slice(0, limit);
+  }
+
+  protected getChatHiddenMemberCount(item: ChatMenuItem, limit = 3): number {
+    const total = this.getChatMembersById(item.id).length;
+    return total > limit ? total - limit : 0;
+  }
+
+  protected getChatMemberCount(item: ChatMenuItem): number {
+    return this.getChatMembersById(item.id).length;
+  }
+
+  protected get chatPopupMessages(): ChatPopupMessage[] {
+    if (!this.selectedChat) {
+      return [];
+    }
+    const members = this.getChatMembersById(this.selectedChat.id);
+    const lastSender = members[0] ?? this.getChatLastSender(this.selectedChat);
+    const starter = members[1] ?? members[0] ?? this.activeUser;
+    const memberB = members[2] ?? starter;
+    const memberC = members[3] ?? memberB;
+    const me = this.activeUser;
+
+    const byId = (id: string) => this.users.find(user => user.id === id);
+    const toMessage = (id: string, text: string, time: string, readByIds: string[], forceMine = false): ChatPopupMessage => {
+      const senderUser = byId(id) ?? starter;
+      return {
+        id: `${this.selectedChat?.id}-${id}-${time}`,
+        sender: senderUser.name,
+        senderAvatar: this.toChatReader(senderUser),
+        text,
+        time,
+        mine: forceMine || senderUser.id === me.id,
+        readBy: readByIds
+          .map(readerId => byId(readerId))
+          .filter((reader): reader is DemoUser => Boolean(reader))
+          .map(reader => this.toChatReader(reader))
+      };
+    };
+
+    if (this.selectedChat.id === 'c1') {
+      return [
+        toMessage(starter.id, 'I opened this room to lock transport before 8 PM.', '08:58', [memberB.id]),
+        toMessage(me.id, 'I can handle pickup list and final seat assignments.', '09:03', [starter.id, memberB.id], true),
+        toMessage(memberB.id, 'I can do airport run if someone covers downtown.', '09:06', [starter.id, me.id]),
+        toMessage(lastSender.id, this.selectedChat.lastMessage, '09:11', [starter.id, me.id, memberB.id])
+      ];
+    }
+
+    if (this.selectedChat.id === 'c2') {
+      return [
+        toMessage(starter.id, 'Room is open, we need one more player for the second pair.', '18:32', [memberB.id]),
+        toMessage(me.id, 'I can join at 19:00 if court #3 stays available.', '18:37', [starter.id], true),
+        toMessage(lastSender.id, this.selectedChat.lastMessage, '18:40', [starter.id, me.id])
+      ];
+    }
+
+    if (this.selectedChat.id === 'c3') {
+      return [
+        toMessage(starter.id, 'Host queue reviewed, two pending invites expired.', '10:03', [memberB.id]),
+        toMessage(me.id, 'I can re-send only to people with verified attendance.', '10:06', [starter.id], true),
+        toMessage(lastSender.id, this.selectedChat.lastMessage, '10:09', [starter.id, me.id])
+      ];
+    }
+
+    return [
+      toMessage(starter.id, 'Opened this room to coordinate tasks quickly.', '09:01', [memberB.id]),
+      toMessage(me.id, 'I can cover the checklist and send updates.', '09:05', [starter.id], true),
+      toMessage(lastSender.id, this.selectedChat.lastMessage, '09:08', [starter.id, me.id, memberC.id])
+    ];
+  }
+
+  protected addSupplyType(): void {
+    const value = this.newSupplyType.trim();
+    if (!value) {
       return;
     }
-    window.location.href = url;
+    if (!this.eventSupplyTypes.some(type => type.toLowerCase() === value.toLowerCase())) {
+      this.eventSupplyTypes = [...this.eventSupplyTypes, value];
+    }
+    this.newSupplyType = '';
   }
 
-  openMapLinkSmart(url: string) {
-    const isMobile = window.matchMedia('(max-width: 768px)').matches;
-    this.openMapLink(url, !isMobile);
+  protected openSupplyDetail(subEventId: string, subEventTitle: string, type: string): void {
+    this.selectedSupplyContext = { subEventId, subEventTitle, type };
+    if (this.stackedPopup !== null || this.activePopup === 'chat') {
+      this.stackedPopup = 'supplyDetail';
+      return;
+    }
+    this.activePopup = 'supplyDetail';
+  }
+
+  protected getSupplyStat(subEvent: SubEventCard, type: string): string {
+    const normalized = type.toLowerCase();
+    if (normalized.includes('car')) {
+      return subEvent.requirements.cars;
+    }
+    if (normalized.includes('accommodation')) {
+      return subEvent.requirements.accommodation;
+    }
+    if (normalized.includes('accessor')) {
+      return subEvent.requirements.accessories;
+    }
+    if (normalized.includes('member')) {
+      return `${this.eventEditor.members.length} / ${this.eventEditor.mainEvent.capacity}`;
+    }
+    return '0 / 0';
+  }
+
+  protected isSupplyStatIncomplete(subEvent: SubEventCard, type: string): boolean {
+    const values = this.getSupplyStat(subEvent, type).split('/');
+    if (values.length !== 2) {
+      return false;
+    }
+    const current = Number.parseInt(values[0].trim(), 10);
+    const max = Number.parseInt(values[1].trim(), 10);
+    if (!Number.isFinite(current) || !Number.isFinite(max)) {
+      return false;
+    }
+    return current < max;
+  }
+
+  protected get selectedSupplyItems(): Array<{ label: string; detail: string }> {
+    if (!this.selectedSupplyContext) {
+      return [];
+    }
+    const type = this.selectedSupplyContext.type.toLowerCase();
+    if (type.includes('car')) {
+      return this.eventEditor.cars.map(car => ({ label: car.owner, detail: `${car.route} · seats ${car.seats}` }));
+    }
+    if (type.includes('accommodation')) {
+      return this.eventEditor.accommodations.map(room => ({ label: room.name, detail: `${room.rooms} · ${room.people}` }));
+    }
+    if (type.includes('accessor')) {
+      return this.eventEditor.accessories.map(accessory => ({ label: accessory.item, detail: `required ${accessory.required} · offered ${accessory.offered}` }));
+    }
+    if (type.includes('member')) {
+      return this.eventEditor.members.map(member => ({ label: member.name, detail: member.role }));
+    }
+    return [{ label: 'Custom supply slot', detail: 'Add items and assign to this sub-event.' }];
+  }
+
+  protected selectImageSlot(index: number): void {
+    this.selectedImageIndex = index;
+    this.openImageUpload(index);
+  }
+
+  protected removeImage(index: number): void {
+    this.imageSlots[index] = null;
+    if (this.selectedImageIndex === index) {
+      this.selectedImageIndex = 0;
+    }
+  }
+
+  protected onImageFileChange(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+    if (!file) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.pendingUploadPreview = typeof reader.result === 'string' ? reader.result : null;
+    };
+    reader.readAsDataURL(file);
+    target.value = '';
+  }
+
+  protected applyUploadedImage(): void {
+    if (this.pendingUploadPreview) {
+      this.imageSlots[this.uploadTargetIndex] = this.pendingUploadPreview;
+      this.selectedImageIndex = this.uploadTargetIndex;
+    }
+    if (this.stackedPopup !== null) {
+      this.stackedPopup = 'imageEditor';
+      return;
+    }
+    this.activePopup = 'imageEditor';
+  }
+
+  protected saveProfile(): void {
+    const user = this.activeUser;
+    user.name = this.profileForm.fullName.trim() || user.name;
+    user.age = this.profileForm.age || user.age;
+    user.city = this.profileForm.city.trim() || user.city;
+    user.statusText = this.profileForm.statusText.trim() || user.statusText;
+    user.profileStatus = this.profileForm.profileStatus;
+    user.hostTier = this.profileForm.hostTier.trim() || user.hostTier;
+    user.traitLabel = this.profileForm.traitLabel.trim() || user.traitLabel;
+    user.headline = this.profileForm.headline.trim() || user.headline;
+    user.about = this.profileForm.about.trim() || user.about;
+    user.initials = this.toInitials(user.name);
+    this.alertService.open('Profile saved');
+  }
+
+  protected get selectedImagePreview(): string | null {
+    return this.imageSlots[this.selectedImageIndex] ?? null;
+  }
+
+  @HostListener('window:openFeaturePopup', ['$event'])
+  onGlobalPopupRequest(event: Event): void {
+    const popupEvent = event as CustomEvent<{ type: 'eventEditor' | 'eventExplore' }>;
+    if (!popupEvent.detail?.type) {
+      return;
+    }
+    if (popupEvent.detail.type === 'eventEditor') {
+      this.openEventEditor();
+      return;
+    }
+    this.openEventExplore();
   }
 
   @HostListener('document:click', ['$event'])
-  onDocumentClick(event: MouseEvent) {
+  onDocumentClick(event: MouseEvent): void {
     const target = event.target as HTMLElement;
-    if (this.showMobileMenu && !target.closest('.mobile-menu-panel-global') && !target.closest('.mobile-menu-btn-global')) {
-      this.showMobileMenu = false;
-    }
     if (this.showUserMenu && !target.closest('.user-menu-panel') && !target.closest('.user-selector-btn-global')) {
       this.showUserMenu = false;
     }
+  }
+
+  private getInitialUserId(): string {
+    const stored = localStorage.getItem('demo-active-user');
+    if (stored && this.users.some(user => user.id === stored)) {
+      return stored;
+    }
+    return this.users[0].id;
+  }
+
+  private syncProfileFormFromActiveUser(): void {
+    const user = this.activeUser;
+    this.profileForm = {
+      fullName: user.name,
+      age: user.age,
+      city: user.city,
+      statusText: user.statusText,
+      profileStatus: user.profileStatus,
+      hostTier: user.hostTier,
+      traitLabel: user.traitLabel,
+      headline: user.headline,
+      about: user.about
+    };
+  }
+
+  private toInitials(name: string): string {
+    const parts = name.split(' ').filter(Boolean);
+    if (!parts.length) {
+      return 'U';
+    }
+    if (parts.length === 1) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  }
+
+  private getChatMembersById(chatId: string): DemoUser[] {
+    const chatItem = this.getChatItemById(chatId);
+    const explicitMembers = (chatItem?.memberIds ?? [])
+      .map(memberId => this.users.find(user => user.id === memberId))
+      .filter((user): user is DemoUser => Boolean(user));
+    const lastSender = chatItem?.lastSenderId ? this.users.find(user => user.id === chatItem.lastSenderId) ?? null : null;
+
+    const orderedMembers: DemoUser[] = [];
+    if (lastSender) {
+      orderedMembers.push(lastSender);
+    }
+    for (const member of explicitMembers) {
+      if (!orderedMembers.some(item => item.id === member.id)) {
+        orderedMembers.push(member);
+      }
+    }
+    if (!orderedMembers.some(item => item.id === this.activeUser.id)) {
+      orderedMembers.push(this.activeUser);
+    }
+    if (orderedMembers.length > 0) {
+      return orderedMembers;
+    }
+
+    const others = this.users.filter(user => user.id !== this.activeUser.id);
+    if (!others.length) {
+      return [this.activeUser];
+    }
+    const seed = this.hashText(chatId);
+    const offsets = [0, 3, 7, 11, 15, 19];
+    const memberCount = 3 + (seed % 3);
+    const picked: DemoUser[] = [];
+    for (const offset of offsets) {
+      const user = others[(seed + offset) % others.length];
+      if (!picked.some(item => item.id === user.id)) {
+        picked.push(user);
+      }
+      if (picked.length === memberCount) {
+        break;
+      }
+    }
+    while (picked.length < memberCount) {
+      picked.push(others[picked.length % others.length]);
+    }
+    return picked;
+  }
+
+  private getChatItemById(chatId: string): ChatMenuItem | undefined {
+    for (const entries of Object.values(DEMO_CHAT_BY_USER)) {
+      const match = entries.find(item => item.id === chatId);
+      if (match) {
+        return match;
+      }
+    }
+    return undefined;
+  }
+
+  private scrollChatToBottom(): void {
+    setTimeout(() => {
+      const chatThread = globalThis.document?.querySelector('.chat-thread');
+      if (chatThread instanceof HTMLElement) {
+        chatThread.scrollTop = chatThread.scrollHeight;
+      }
+    }, 0);
+  }
+
+  private toChatReader(user: DemoUser): ChatReadAvatar {
+    return {
+      id: user.id,
+      initials: user.initials,
+      gender: user.gender
+    };
+  }
+
+  private hashText(value: string): number {
+    let hash = 0;
+    for (let index = 0; index < value.length; index += 1) {
+      hash = (hash * 31 + value.charCodeAt(index)) % 104729;
+    }
+    return Math.abs(hash);
+  }
+
+  private resolveSectionBadge(values: number[], itemCount: number): number {
+    const positiveTotal = values.reduce((sum, value) => sum + (value > 0 ? value : 0), 0);
+    if (positiveTotal > 0) {
+      return positiveTotal;
+    }
+    return itemCount;
+  }
+
+  private normalizeText(value: string): string {
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
   }
 }
