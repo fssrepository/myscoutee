@@ -1,4 +1,4 @@
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, ElementRef, HostListener, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -27,7 +27,8 @@ import {
   ChatMenuItem,
   EventMenuItem,
   HostingMenuItem,
-  InvitationMenuItem
+  InvitationMenuItem,
+  ProfileGroup
 } from './shared/demo-data';
 import { environment } from '../environments/environment';
 
@@ -49,6 +50,8 @@ type PopupType =
   | 'imageEditor'
   | 'imageUpload'
   | 'supplyDetail'
+  | 'valuesSelector'
+  | 'interestSelector'
   | 'logoutConfirm'
   | null;
 
@@ -76,6 +79,35 @@ interface ChatPopupMessage {
 
 type SubEventCard = (typeof EVENT_EDITOR_SAMPLE.subEvents)[number];
 type ProfileStatus = 'public' | 'friends only' | 'host only' | 'inactive';
+type DetailPrivacy = 'Public' | 'Friends' | 'Hosts' | 'Private';
+
+interface ProfileDetailFormRow {
+  label: string;
+  value: string;
+  privacy: DetailPrivacy;
+  options: string[];
+}
+
+interface ProfileDetailFormGroup {
+  title: string;
+  rows: ProfileDetailFormRow[];
+}
+
+interface ValuesOptionGroup {
+  title: string;
+  shortTitle: string;
+  icon: string;
+  toneClass: string;
+  options: string[];
+}
+
+interface InterestOptionGroup {
+  title: string;
+  shortTitle: string;
+  icon: string;
+  toneClass: string;
+  options: string[];
+}
 
 @Component({
   selector: 'app-root',
@@ -102,8 +134,36 @@ export class App {
   protected readonly profileTopTraits = PROFILE_PERSONALITY_TOP3;
   protected readonly profilePriorityTags = PROFILE_PRIORITY_TAGS;
   protected readonly profilePillars = PROFILE_PILLARS;
-  protected readonly profileDetails = PROFILE_DETAILS;
+  protected profileDetailsForm: ProfileDetailFormGroup[] = [];
   protected readonly profileExperience = PROFILE_EXPERIENCE;
+  // Labels aligned with /plans context files:
+  // - event_vibes.txt
+  // - personality_traits.txt
+  // - personality_interest.txt
+  // - feature_list.txt
+  protected readonly vibeCategories = ['Energetic', 'Social', 'Deep', 'Relaxed', 'Creative', 'Exclusive', 'Focused'];
+  protected readonly hostedEventTypes = ['Road Trip', 'Game Night', 'Brunch', 'Hiking', 'Coffee Meetup', 'Sports'];
+  protected readonly vibeIcons: Record<string, string> = {
+    Energetic: '🔥',
+    Social: '💬',
+    Deep: '🧠',
+    Relaxed: '🌿',
+    Creative: '🎨',
+    Exclusive: '🥂',
+    Focused: '🎯'
+  };
+  protected readonly categoryIcons: Record<string, string> = {
+    Sports: '🏅',
+    'Road Trip': '🛣️',
+    Outdoors: '🌲',
+    Games: '🎮',
+    Culture: '🎭'
+  };
+  protected readonly memberTraitIcons: Record<string, string> = {
+    Adventurer: '🔥',
+    'Deep Thinker': '🧠',
+    Empath: '💛'
+  };
   protected readonly eventEditor = EVENT_EDITOR_SAMPLE;
   protected readonly physiqueOptions = ['Slim', 'Lean', 'Athletic', 'Fit', 'Curvy', 'Average', 'Muscular'];
   protected languageSuggestions = [
@@ -130,11 +190,145 @@ export class App {
     { value: 'host only', icon: 'stadium' },
     { value: 'inactive', icon: 'visibility_off' }
   ];
+  protected readonly profileDetailValueOptions: Record<string, string[]> = {
+    Drinking: ['Never', 'Socially', 'Occasionally', 'Weekends only'],
+    Smoking: ['Never', 'Socially', 'Occasionally', 'Trying to quit'],
+    Workout: ['Daily', '4x / week', '2-3x / week', 'Rarely'],
+    Pets: ['Dog-friendly', 'Cat-friendly', 'All pets welcome', 'No pets'],
+    'Family plans': ['Wants children', 'Open to children', 'Not sure yet', 'Does not want children'],
+    Children: ['No', 'Yes', 'Prefer not to say'],
+    'Love style': ['Long-term partnership', 'Slow-burn connection', 'Open relationship', 'Exploring'],
+    'Communication style': ['Direct + warm', 'Calm + reflective', 'Playful + light', 'Honest + concise'],
+    'Sexual orientation': ['Straight', 'Bisexual', 'Gay', 'Lesbian', 'Pansexual', 'Asexual', 'Prefer not to say'],
+    Gender: ['Woman', 'Man', 'Non-binary', 'Prefer not to say'],
+    Religion: ['Spiritual but not religious', 'Christian', 'Muslim', 'Jewish', 'Buddhist', 'Hindu', 'Atheist', 'Prefer not to say'],
+    Values: [
+      'Family-first, social impact, balanced life',
+      'Career-driven, growth-oriented, adventurous',
+      'Sustainability, empathy, community',
+      'Creativity, freedom, authenticity'
+    ]
+  };
+  protected readonly beliefsValuesOptionGroups: ValuesOptionGroup[] = [
+    {
+      title: 'Relationship & Family',
+      shortTitle: 'Family',
+      icon: '👪',
+      toneClass: 'section-family',
+      options: [
+        'Long-term partnership',
+        'Marriage-oriented',
+        'Casual dating',
+        'Open / Exploring',
+        'Family-first',
+        'Wants children',
+        'Independent lifestyle'
+      ]
+    },
+    {
+      title: 'Life Focus & Ambition',
+      shortTitle: 'Ambition',
+      icon: '🎯',
+      toneClass: 'section-ambition',
+      options: [
+        'Career-focused',
+        'Entrepreneurial',
+        'Stability-focused',
+        'Balanced work-life',
+        'Freedom-oriented',
+        'Goal-driven'
+      ]
+    },
+    {
+      title: 'Lifestyle Orientation',
+      shortTitle: 'Lifestyle',
+      icon: '🌿',
+      toneClass: 'section-lifestyle',
+      options: [
+        'Health & wellness focused',
+        'Fitness-driven',
+        'Mindfulness-oriented',
+        'Social / party lifestyle',
+        'Calm / home-centered',
+        'Adventure-driven',
+        'Balanced lifestyle'
+      ]
+    },
+    {
+      title: 'Beliefs & Worldview',
+      shortTitle: 'Beliefs',
+      icon: '✨',
+      toneClass: 'section-beliefs',
+      options: [
+        'Faith-oriented',
+        'Spiritual but not religious',
+        'Secular',
+        'Traditional values',
+        'Progressive values',
+        'Community-driven',
+        'Social impact oriented',
+        'Environmentally conscious',
+        'Politically engaged',
+        'Apolitical'
+      ]
+    }
+  ];
+  protected readonly interestOptionGroups: InterestOptionGroup[] = [
+    {
+      title: 'Social & Lifestyle',
+      shortTitle: 'Social',
+      icon: '🥂',
+      toneClass: 'section-social',
+      options: ['#GoingOut', '#Nightlife', '#StayingIn', '#Brunch', '#WineTasting', '#CoffeeDates', '#ContentCreation', '#InfluencerLife']
+    },
+    {
+      title: 'Arts & Entertainment',
+      shortTitle: 'Arts',
+      icon: '🎭',
+      toneClass: 'section-arts',
+      options: ['#Music', '#Concerts', '#Festivals', '#Movies', '#TVShows', '#Theatre', '#Gaming', '#Anime', '#Books', '#Photography', '#Creativity']
+    },
+    {
+      title: 'Food & Experiences',
+      shortTitle: 'Food',
+      icon: '🍽',
+      toneClass: 'section-food',
+      options: ['#Foodie', '#FineDining', '#StreetFood', '#Cooking', '#Cocktails', '#CraftBeer', '#Travel', '#LuxuryExperiences']
+    },
+    {
+      title: 'Active & Adventure',
+      shortTitle: 'Active',
+      icon: '🏕',
+      toneClass: 'section-active',
+      options: ['#Sports', '#Gym', '#Running', '#Hiking', '#Outdoors', '#ExtremeSports', '#Yoga', '#Fitness']
+    },
+    {
+      title: 'Mind & Wellness',
+      shortTitle: 'Mind',
+      icon: '🧘',
+      toneClass: 'section-mind',
+      options: ['#Wellness', '#Meditation', '#SelfDevelopment', '#MentalHealth', '#Spirituality', '#Biohacking', '#HealthyLifestyle']
+    },
+    {
+      title: 'Values & Identity',
+      shortTitle: 'Identity',
+      icon: '🌍',
+      toneClass: 'section-identity',
+      options: ['#Sustainability', '#Entrepreneurship', '#CareerDriven', '#FamilyOriented', '#Activism', '#Tech', '#Minimalism']
+    }
+  ];
 
   protected showUserMenu = false;
   protected showUserSelector = !environment.loginEnabled;
   protected activePopup: PopupType = null;
   protected stackedPopup: PopupType = null;
+  protected popupReturnTarget: PopupType = null;
+  protected openPrivacyFab: { groupIndex: number; rowIndex: number } | null = null;
+  protected privacyFabJustSelectedKey: string | null = null;
+  protected valuesSelectorContext: { groupIndex: number; rowIndex: number } | null = null;
+  protected valuesSelectorSelected: string[] = [];
+  protected interestSelectorContext: { groupIndex: number; rowIndex: number } | null = null;
+  protected interestSelectorSelected: string[] = [];
   protected activeUserId = this.getInitialUserId();
 
   protected sectionsOpen: Record<AccordionSection, boolean> = {
@@ -154,8 +348,8 @@ export class App {
 
   protected imageSlots: Array<string | null> = [null, null, null, null, null, null, null, null];
   protected selectedImageIndex = 0;
-  protected uploadTargetIndex = 0;
-  protected pendingUploadPreview: string | null = null;
+  protected pendingSlotUploadIndex: number | null = null;
+  @ViewChild('slotImageInput') private slotImageInput?: ElementRef<HTMLInputElement>;
 
   protected eventSupplyTypes: string[] = ['Cars', 'Members', 'Accessories', 'Accommodation'];
   protected newSupplyType = '';
@@ -178,6 +372,7 @@ export class App {
   protected showLanguagePanel = false;
 
   constructor(private readonly router: Router) {
+    this.profileDetailsForm = this.createProfileDetailsForm();
     this.syncProfileFormFromActiveUser();
     this.router.navigate(['/game']);
   }
@@ -337,18 +532,16 @@ export class App {
 
   protected openProfileEditor(): void {
     this.syncProfileFormFromActiveUser();
+    this.popupReturnTarget = null;
     this.activePopup = 'profileEditor';
     this.closeUserMenu();
   }
 
   protected openImageEditor(): void {
+    if (this.activePopup === 'profileEditor') {
+      this.popupReturnTarget = 'profileEditor';
+    }
     this.activePopup = 'imageEditor';
-  }
-
-  protected openImageUpload(index: number): void {
-    this.uploadTargetIndex = index;
-    this.pendingUploadPreview = this.imageSlots[index];
-    this.activePopup = 'imageUpload';
   }
 
   protected openLogoutConfirm(): void {
@@ -356,11 +549,25 @@ export class App {
   }
 
   protected closePopup(): void {
+    if (this.activePopup === 'imageEditor' && this.popupReturnTarget) {
+      this.activePopup = this.popupReturnTarget;
+      this.popupReturnTarget = null;
+      return;
+    }
     this.activePopup = null;
     this.stackedPopup = null;
+    this.popupReturnTarget = null;
   }
 
   protected closeStackedPopup(): void {
+    if (this.stackedPopup === 'valuesSelector') {
+      this.valuesSelectorContext = null;
+      this.valuesSelectorSelected = [];
+    }
+    if (this.stackedPopup === 'interestSelector') {
+      this.interestSelectorContext = null;
+      this.interestSelectorSelected = [];
+    }
     this.stackedPopup = null;
     if (this.activePopup === 'chat') {
       this.scrollChatToBottom();
@@ -370,6 +577,7 @@ export class App {
   protected confirmLogout(): void {
     this.activePopup = null;
     this.stackedPopup = null;
+    this.popupReturnTarget = null;
     if (!environment.loginEnabled) {
       this.showUserSelector = true;
     }
@@ -390,6 +598,7 @@ export class App {
     this.showUserSelector = false;
     this.activePopup = null;
     this.stackedPopup = null;
+    this.popupReturnTarget = null;
     this.router.navigate(['/game']);
   }
 
@@ -445,6 +654,10 @@ export class App {
         return 'Event Explore';
       case 'supplyDetail':
         return `${this.selectedSupplyContext?.type ?? 'Supply'} · ${this.selectedSupplyContext?.subEventTitle ?? ''}`.trim();
+      case 'valuesSelector':
+        return 'Values';
+      case 'interestSelector':
+        return 'Interest';
       default:
         return '';
     }
@@ -461,6 +674,342 @@ export class App {
       default:
         return '🔒';
     }
+  }
+
+  protected cycleDetailPrivacy(groupIndex: number, rowIndex: number): void {
+    const group = this.profileDetailsForm[groupIndex];
+    const row = group?.rows[rowIndex];
+    if (!row) {
+      return;
+    }
+    const order: DetailPrivacy[] = ['Public', 'Friends', 'Hosts', 'Private'];
+    const currentIndex = order.indexOf(row.privacy);
+    row.privacy = order[(currentIndex + 1 + order.length) % order.length];
+  }
+
+  protected toggleDetailPrivacyFab(groupIndex: number, rowIndex: number, event: MouseEvent): void {
+    event.stopPropagation();
+    const isOpen =
+      this.openPrivacyFab?.groupIndex === groupIndex &&
+      this.openPrivacyFab?.rowIndex === rowIndex;
+    this.openPrivacyFab = isOpen ? null : { groupIndex, rowIndex };
+  }
+
+  protected isDetailPrivacyFabOpen(groupIndex: number, rowIndex: number): boolean {
+    return this.openPrivacyFab?.groupIndex === groupIndex && this.openPrivacyFab?.rowIndex === rowIndex;
+  }
+
+  protected selectDetailPrivacy(
+    groupIndex: number,
+    rowIndex: number,
+    privacy: DetailPrivacy,
+    event: MouseEvent
+  ): void {
+    event.stopPropagation();
+    const row = this.profileDetailsForm[groupIndex]?.rows[rowIndex];
+    if (!row) {
+      return;
+    }
+    row.privacy = privacy;
+    this.openPrivacyFab = null;
+    const key = this.detailPrivacyFabKey(groupIndex, rowIndex);
+    this.privacyFabJustSelectedKey = key;
+    setTimeout(() => {
+      if (this.privacyFabJustSelectedKey === key) {
+        this.privacyFabJustSelectedKey = null;
+      }
+    }, 280);
+  }
+
+  protected isDetailPrivacyJustSelected(groupIndex: number, rowIndex: number): boolean {
+    return this.privacyFabJustSelectedKey === this.detailPrivacyFabKey(groupIndex, rowIndex);
+  }
+
+  protected openValuesSelector(groupIndex: number, rowIndex: number): void {
+    const row = this.profileDetailsForm[groupIndex]?.rows[rowIndex];
+    if (!row) {
+      return;
+    }
+    const allowed = new Set(this.beliefsValuesAllOptions());
+    this.valuesSelectorContext = { groupIndex, rowIndex };
+    this.valuesSelectorSelected = this.parseCommaValues(row.value)
+      .filter(item => allowed.has(item))
+      .slice(0, 5);
+    this.syncValuesContextToRow();
+    this.stackedPopup = 'valuesSelector';
+  }
+
+  protected openInterestSelector(groupIndex: number, rowIndex: number): void {
+    const row = this.profileDetailsForm[groupIndex]?.rows[rowIndex];
+    if (!row) {
+      return;
+    }
+    const allowed = new Set(this.interestAllOptions());
+    this.interestSelectorContext = { groupIndex, rowIndex };
+    this.interestSelectorSelected = this.parseCommaValues(row.value)
+      .filter(item => allowed.has(item))
+      .slice(0, 5);
+    this.syncInterestContextToRow();
+    this.stackedPopup = 'interestSelector';
+  }
+
+  protected toggleValuesOption(option: string): void {
+    const allowed = this.beliefsValuesAllOptions();
+    if (!allowed.includes(option)) {
+      return;
+    }
+    const exists = this.valuesSelectorSelected.includes(option);
+    if (!exists && this.valuesSelectorSelected.length >= 5) {
+      return;
+    }
+    this.valuesSelectorSelected = exists
+      ? this.valuesSelectorSelected.filter(item => item !== option)
+      : [...this.valuesSelectorSelected, option];
+    this.syncValuesContextToRow();
+  }
+
+  protected removeValuesOption(option: string): void {
+    this.valuesSelectorSelected = this.valuesSelectorSelected.filter(item => item !== option);
+    this.syncValuesContextToRow();
+  }
+
+  protected toggleInterestOption(option: string): void {
+    const allowed = this.interestAllOptions();
+    if (!allowed.includes(option)) {
+      return;
+    }
+    const exists = this.interestSelectorSelected.includes(option);
+    if (!exists && this.interestSelectorSelected.length >= 5) {
+      return;
+    }
+    this.interestSelectorSelected = exists
+      ? this.interestSelectorSelected.filter(item => item !== option)
+      : [...this.interestSelectorSelected, option];
+    this.syncInterestContextToRow();
+  }
+
+  protected removeInterestOption(option: string): void {
+    this.interestSelectorSelected = this.interestSelectorSelected.filter(item => item !== option);
+    this.syncInterestContextToRow();
+  }
+
+  protected isInterestOptionSelected(option: string): boolean {
+    return this.interestSelectorSelected.includes(option);
+  }
+
+  protected isValuesOptionSelected(option: string): boolean {
+    return this.valuesSelectorSelected.includes(option);
+  }
+
+  protected valuesOptionToneClass(option: string): string {
+    for (const group of this.beliefsValuesOptionGroups) {
+      if (group.options.includes(option)) {
+        return group.toneClass;
+      }
+    }
+    return '';
+  }
+
+  protected interestOptionToneClass(option: string): string {
+    for (const group of this.interestOptionGroups) {
+      if (group.options.includes(option)) {
+        return group.toneClass;
+      }
+    }
+    return '';
+  }
+
+  protected valuesRowSummary(value: string): string {
+    const selected = this.parseCommaValues(value);
+    if (selected.length === 0) {
+      return 'Select values';
+    }
+    if (selected.length <= 2) {
+      return selected.join(', ');
+    }
+    return `${selected[0]}, ${selected[1]} +${selected.length - 2}`;
+  }
+
+  protected interestRowSummary(value: string): string {
+    const selected = this.parseCommaValues(value);
+    if (selected.length === 0) {
+      return 'Select interests';
+    }
+    if (selected.length <= 2) {
+      return selected.join(', ');
+    }
+    return `${selected[0]}, ${selected[1]} +${selected.length - 2}`;
+  }
+
+  protected detailOptionClass(label: string, option: string, options: string[]): string {
+    if (label === 'Values') {
+      return this.valuesDominantToneClass(option);
+    }
+    if (label === 'Interest') {
+      return this.interestDominantToneClass(option);
+    }
+    return this.detailToneFromOptions(option, options);
+  }
+
+  protected detailSelectedClass(label: string, value: string, options: string[]): string {
+    if (label === 'Values') {
+      return this.valuesDominantToneClass(value);
+    }
+    if (label === 'Interest') {
+      return this.interestDominantToneClass(value);
+    }
+    return this.detailToneFromOptions(value, options);
+  }
+
+  protected valuesDominantToneClass(value: string): string {
+    const selected = this.parseCommaValues(value);
+    if (selected.length === 0) {
+      return 'section-beliefs';
+    }
+
+    const counts: Record<string, number> = {};
+    for (const option of selected) {
+      const tone = this.valuesOptionToneClass(option);
+      if (!tone) {
+        continue;
+      }
+      counts[tone] = (counts[tone] ?? 0) + 1;
+    }
+
+    let bestTone = '';
+    let bestCount = 0;
+    for (const [tone, count] of Object.entries(counts)) {
+      if (count > bestCount) {
+        bestTone = tone;
+        bestCount = count;
+      }
+    }
+
+    // Tie or empty: follow the first selected option's category.
+    if (!bestTone || Object.values(counts).filter(count => count === bestCount).length > 1) {
+      const firstTone = this.valuesOptionToneClass(selected[0]);
+      return firstTone || 'section-beliefs';
+    }
+    return bestTone;
+  }
+
+  protected interestDominantToneClass(value: string): string {
+    const selected = this.parseCommaValues(value);
+    if (selected.length === 0) {
+      return 'section-social';
+    }
+    const counts: Record<string, number> = {};
+    for (const option of selected) {
+      const tone = this.interestOptionToneClass(option);
+      if (!tone) {
+        continue;
+      }
+      counts[tone] = (counts[tone] ?? 0) + 1;
+    }
+
+    let bestTone = '';
+    let bestCount = 0;
+    for (const [tone, count] of Object.entries(counts)) {
+      if (count > bestCount) {
+        bestTone = tone;
+        bestCount = count;
+      }
+    }
+
+    if (!bestTone || Object.values(counts).filter(count => count === bestCount).length > 1) {
+      const firstTone = this.interestOptionToneClass(selected[0]);
+      return firstTone || 'section-social';
+    }
+
+    return bestTone;
+  }
+
+  protected privacyStatusClass(value: 'Public' | 'Friends' | 'Hosts' | 'Private'): string {
+    switch (value) {
+      case 'Public':
+        return 'status-public';
+      case 'Friends':
+        return 'status-friends';
+      case 'Hosts':
+        return 'status-host';
+      default:
+        return 'status-inactive';
+    }
+  }
+
+  protected privacyStatusIcon(value: 'Public' | 'Friends' | 'Hosts' | 'Private'): string {
+    switch (value) {
+      case 'Public':
+        return 'public';
+      case 'Friends':
+        return 'groups';
+      case 'Hosts':
+        return 'stadium';
+      default:
+        return 'visibility_off';
+    }
+  }
+
+  private createProfileDetailsForm(): ProfileDetailFormGroup[] {
+    const beliefsValuesOptions = this.beliefsValuesAllOptions();
+    const interestOptions = this.interestAllOptions();
+    return PROFILE_DETAILS.map((group: ProfileGroup) => ({
+      title: group.title,
+      rows: group.rows.map(row => ({
+        label: row.label,
+        value: row.value,
+        privacy: row.privacy,
+        options:
+          row.label === 'Values'
+            ? beliefsValuesOptions
+            : row.label === 'Interest'
+              ? interestOptions
+              : this.profileDetailValueOptions[row.label] ?? [row.value]
+      }))
+    }));
+  }
+
+  private syncValuesContextToRow(): void {
+    if (!this.valuesSelectorContext) {
+      return;
+    }
+    const row = this.profileDetailsForm[this.valuesSelectorContext.groupIndex]?.rows[this.valuesSelectorContext.rowIndex];
+    if (!row) {
+      return;
+    }
+    row.value = this.valuesSelectorSelected.join(', ');
+  }
+
+  private syncInterestContextToRow(): void {
+    if (!this.interestSelectorContext) {
+      return;
+    }
+    const row = this.profileDetailsForm[this.interestSelectorContext.groupIndex]?.rows[this.interestSelectorContext.rowIndex];
+    if (!row) {
+      return;
+    }
+    row.value = this.interestSelectorSelected.join(', ');
+  }
+
+  private parseCommaValues(value: string): string[] {
+    return value
+      .split(',')
+      .map(item => item.trim())
+      .filter(Boolean);
+  }
+
+  private detailToneFromOptions(value: string, options: string[]): string {
+    const index = options.findIndex(item => this.normalizeText(item) === this.normalizeText(value));
+    const paletteIndex = (index >= 0 ? index : 0) % 8;
+    return `detail-tone-${paletteIndex + 1}`;
+  }
+
+  private beliefsValuesAllOptions(): string[] {
+    return this.beliefsValuesOptionGroups.flatMap(group => group.options);
+  }
+
+  private interestAllOptions(): string[] {
+    return this.interestOptionGroups.flatMap(group => group.options);
   }
 
   protected profileStatusClass(value: ProfileStatus = this.activeUser.profileStatus): string {
@@ -658,6 +1207,154 @@ export class App {
 
   protected get availablePhysiqueOptions(): string[] {
     return this.physiqueOptions.filter(option => option !== this.profileForm.physique);
+  }
+
+  protected get hostSocialProofBaseMetrics(): Array<{ label: string; value: string }> {
+    return [
+      { label: 'Average crown rating', value: `${(this.seededMetric(1, 38, 50) / 10).toFixed(1)} / 5.0` },
+      { label: 'Attendance rate', value: `${this.seededMetric(2, 74, 99)}%` },
+      { label: 'No-show ratio', value: `${this.seededMetric(3, 1, 16)}%` },
+      { label: 'Repeat attendees', value: `${this.seededMetric(4, 36, 92)}%` }
+    ];
+  }
+
+  protected get hostAverageRating(): string {
+    return '4.4';
+  }
+
+  protected get hostTotalEvents(): number {
+    return this.seededMetric(9, 12, 80);
+  }
+
+  protected get hostAttendanceTotal(): number {
+    return this.hostTotalEvents * this.seededMetric(18, 8, 14);
+  }
+
+  protected get hostAttendanceAttended(): number {
+    return Math.floor(this.hostAttendanceTotal * (this.seededMetric(2, 74, 96) / 100));
+  }
+
+  protected get hostAttendanceNoShow(): number {
+    return this.hostAttendanceTotal - this.hostAttendanceAttended;
+  }
+
+  protected get hostAttendanceSummary(): string {
+    return `${this.hostAttendanceAttended} / ${this.hostAttendanceTotal}`;
+  }
+
+  protected get hostAttendanceNoShowSummary(): string {
+    return `${this.hostAttendanceNoShow}`;
+  }
+
+  protected get hostRepeatSummary(): string {
+    const total = this.seededMetric(19, 60, 220);
+    const repeat = Math.floor(total * (this.seededMetric(4, 36, 84) / 100));
+    return `${repeat}`;
+  }
+
+  protected get hostPeopleMet(): number {
+    return this.seededMetric(32, 90, 520);
+  }
+
+  protected get hostVibeSummary(): string {
+    const vibe = this.vibeCategories[this.seededMetric(5, 0, this.vibeCategories.length - 1)];
+    return `${vibe} ${this.seededMetric(20, 18, 86)}%`;
+  }
+
+  protected get hostCategorySummary(): string {
+    const sports = this.seededMetric(21, 8, 48);
+    const roadTrip = this.seededMetric(22, 6, 36);
+    return `Sports ${sports}%, Road Trip ${roadTrip}%`;
+  }
+
+  protected get hostVibeBadgeItems(): string[] {
+    return this.withContextIconItems(this.hostVibeSummary, this.vibeIcons);
+  }
+
+  protected get hostCategoryBadgeItems(): string[] {
+    return this.withContextIconItems(this.hostCategorySummary, this.categoryIcons);
+  }
+
+  protected get memberTraitBreakdown(): Array<{ label: string; value: string }> {
+    // from plans/feature_list.txt sample
+    return [
+      { label: 'Adventurer', value: '60%' },
+      { label: 'Deep Thinker', value: '30%' },
+      { label: 'Empath', value: '10%' }
+    ];
+  }
+
+  protected get memberPersonalityBadgeItems(): string[] {
+    return this.memberTraitBreakdown
+      .map(item => `${this.memberTraitIcons[item.label] ?? ''} ${item.label} ${item.value}`.trim())
+      .filter(Boolean);
+  }
+
+  protected get memberTotalEvents(): number {
+    return this.hostTotalEvents;
+  }
+
+  protected get memberAttendanceSummary(): string {
+    const total = 100;
+    const attended = this.seededMetric(23, 4, 96);
+    return `${attended} / ${total}`;
+  }
+
+  protected get memberNoShowCount(): number {
+    const [attendedText, totalText] = this.memberAttendanceSummary.split('/').map(item => item.trim());
+    const attended = Number.parseInt(attendedText, 10) || 0;
+    const total = Number.parseInt(totalText, 10) || 0;
+    return Math.max(0, total - attended);
+  }
+
+  protected get memberPeopleMet(): number {
+    return this.seededMetric(24, 80, 460);
+  }
+
+  protected get memberReturneesSummary(): string {
+    const total = this.memberPeopleMet;
+    const repeat = Math.floor(total * (this.seededMetric(33, 18, 72) / 100));
+    return `${repeat}`;
+  }
+
+  protected get memberVibeSummary(): string {
+    const first = this.vibeCategories[this.seededMetric(25, 0, this.vibeCategories.length - 1)];
+    const second = this.vibeCategories[this.seededMetric(26, 0, this.vibeCategories.length - 1)];
+    return `${first} ${this.seededMetric(27, 18, 74)}%, ${second} ${this.seededMetric(28, 12, 62)}%`;
+  }
+
+  protected get memberCategorySummary(): string {
+    return `Outdoors ${this.seededMetric(29, 40, 95)}%, Games ${this.seededMetric(30, 35, 95)}%, Culture ${this.seededMetric(31, 25, 90)}%`;
+  }
+
+  protected get memberVibeBadgeItems(): string[] {
+    return this.withContextIconItems(this.memberVibeSummary, this.vibeIcons);
+  }
+
+  protected get memberCategoryBadgeItems(): string[] {
+    return this.withContextIconItems(this.memberCategorySummary, this.categoryIcons);
+  }
+
+  protected get memberCategoryPlacementClass(): string {
+    const personalityLen = this.badgeItemsLength(this.memberPersonalityBadgeItems);
+    const vibeLen = this.badgeItemsLength(this.memberVibeBadgeItems);
+    return personalityLen <= vibeLen ? 'badge-below-left' : 'badge-below-right';
+  }
+
+  protected get activeHostTier(): string {
+    return this.profileForm.hostTier || this.activeUser.hostTier;
+  }
+
+  protected get activeMemberTrait(): string {
+    return this.profileForm.traitLabel || this.activeUser.traitLabel;
+  }
+
+  protected get hostTierBadgeIcon(): string {
+    const tier = this.normalizeText(this.activeHostTier);
+    if (tier.includes('platinum')) return '👑';
+    if (tier.includes('gold')) return '🥇';
+    if (tier.includes('silver')) return '🥈';
+    return '🥉';
   }
 
   protected getHostTierIcon(hostTier: string): string {
@@ -923,40 +1620,43 @@ export class App {
 
   protected selectImageSlot(index: number): void {
     this.selectedImageIndex = index;
-    this.openImageUpload(index);
+    if (this.imageSlots[index]) {
+      return;
+    }
+    this.pendingSlotUploadIndex = index;
+    this.slotImageInput?.nativeElement.click();
   }
 
   protected removeImage(index: number): void {
+    this.revokeObjectUrl(this.imageSlots[index]);
     this.imageSlots[index] = null;
     if (this.selectedImageIndex === index) {
-      this.selectedImageIndex = 0;
+      const nearest = this.findNearestFilledImageIndex(index);
+      this.selectedImageIndex = nearest >= 0 ? nearest : 0;
     }
   }
 
-  protected onImageFileChange(event: Event): void {
+  protected selectImageFromStack(index: number): void {
+    if (!this.imageSlots[index]) {
+      return;
+    }
+    this.selectedImageIndex = index;
+  }
+
+  protected onSlotImageFileChange(event: Event): void {
     const target = event.target as HTMLInputElement;
     const file = target.files?.[0];
-    if (!file) {
+    const slotIndex = this.pendingSlotUploadIndex;
+    this.pendingSlotUploadIndex = null;
+    if (!file || slotIndex === null) {
+      target.value = '';
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      this.pendingUploadPreview = typeof reader.result === 'string' ? reader.result : null;
-    };
-    reader.readAsDataURL(file);
-    target.value = '';
-  }
 
-  protected applyUploadedImage(): void {
-    if (this.pendingUploadPreview) {
-      this.imageSlots[this.uploadTargetIndex] = this.pendingUploadPreview;
-      this.selectedImageIndex = this.uploadTargetIndex;
-    }
-    if (this.stackedPopup !== null) {
-      this.stackedPopup = 'imageEditor';
-      return;
-    }
-    this.activePopup = 'imageEditor';
+    this.revokeObjectUrl(this.imageSlots[slotIndex]);
+    this.imageSlots[slotIndex] = URL.createObjectURL(file);
+    this.selectedImageIndex = slotIndex;
+    target.value = '';
   }
 
   protected saveProfile(): void {
@@ -978,6 +1678,32 @@ export class App {
 
   protected get selectedImagePreview(): string | null {
     return this.imageSlots[this.selectedImageIndex] ?? null;
+  }
+
+  protected get imageStackSlots(): number[] {
+    return this.imageSlots
+      .map((slot, index) => (slot ? index : -1))
+      .filter(index => index >= 0);
+  }
+
+  private findNearestFilledImageIndex(fromIndex: number): number {
+    for (let distance = 1; distance < this.imageSlots.length; distance += 1) {
+      const right = fromIndex + distance;
+      if (right < this.imageSlots.length && this.imageSlots[right]) {
+        return right;
+      }
+      const left = fromIndex - distance;
+      if (left >= 0 && this.imageSlots[left]) {
+        return left;
+      }
+    }
+    return this.imageSlots.findIndex(slot => Boolean(slot));
+  }
+
+  private revokeObjectUrl(value: string | null): void {
+    if (value && value.startsWith('blob:')) {
+      URL.revokeObjectURL(value);
+    }
   }
 
   @HostListener('window:openFeaturePopup', ['$event'])
@@ -1005,6 +1731,9 @@ export class App {
     if (this.showLanguagePanel && !target.closest('.language-filter')) {
       this.showLanguagePanel = false;
     }
+    if (this.openPrivacyFab && !target.closest('.profile-details-privacy-fab')) {
+      this.openPrivacyFab = null;
+    }
   }
 
   private getInitialUserId(): string {
@@ -1013,6 +1742,10 @@ export class App {
       return stored;
     }
     return this.users[0].id;
+  }
+
+  private detailPrivacyFabKey(groupIndex: number, rowIndex: number): string {
+    return `${groupIndex}-${rowIndex}`;
   }
 
   private syncProfileFormFromActiveUser(): void {
@@ -1095,6 +1828,29 @@ export class App {
     if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) return 'Scorpio';
     if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) return 'Sagittarius';
     return 'Capricorn';
+  }
+
+  private seededMetric(offset: number, min: number, max: number): number {
+    const source = `${this.activeUser.id}-${this.activeUser.name}-${this.activeUser.city}-${offset}`;
+    let hash = 0;
+    for (let i = 0; i < source.length; i += 1) {
+      hash = (hash * 31 + source.charCodeAt(i)) >>> 0;
+    }
+    return min + (hash % (max - min + 1));
+  }
+
+  private withContextIconItems(summary: string, iconMap: Record<string, string>): string[] {
+    return summary
+      .split(',')
+      .map(part => {
+        const trimmed = part.trim();
+        const key = Object.keys(iconMap).find(label => trimmed.startsWith(label));
+        return key ? `${iconMap[key]} ${trimmed}` : trimmed;
+      });
+  }
+
+  private badgeItemsLength(items: string[]): number {
+    return items.reduce((sum, item) => sum + item.length, 0);
   }
 
   private toInitials(name: string): string {

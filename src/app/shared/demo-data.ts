@@ -510,7 +510,9 @@ export const PROFILE_DETAILS: ProfileGroup[] = [
   {
     title: 'Basics',
     rows: [
-      { label: 'Birthday', value: 'May 12, 1996', privacy: 'Friends' },
+      { label: 'Name', value: 'Farkas Anna', privacy: 'Public' },
+      { label: 'City', value: 'Austin', privacy: 'Public' },
+      { label: 'Birthday', value: 'May 12, 1997', privacy: 'Friends' },
       { label: 'Height', value: '170 cm', privacy: 'Friends' },
       { label: 'Physique', value: 'Athletic', privacy: 'Friends' },
       { label: 'Languages', value: 'English, Spanish', privacy: 'Public' },
@@ -520,6 +522,7 @@ export const PROFILE_DETAILS: ProfileGroup[] = [
   {
     title: 'Lifestyle',
     rows: [
+      { label: 'Interest', value: '#GoingOut, #Music, #Sports', privacy: 'Friends' },
       { label: 'Drinking', value: 'Socially', privacy: 'Friends' },
       { label: 'Smoking', value: 'Never', privacy: 'Friends' },
       { label: 'Workout', value: '4x / week', privacy: 'Public' },
@@ -541,7 +544,7 @@ export const PROFILE_DETAILS: ProfileGroup[] = [
     title: 'Beliefs',
     rows: [
       { label: 'Religion', value: 'Spiritual but not religious', privacy: 'Private' },
-      { label: 'Values', value: 'Family-first, social impact, balanced life', privacy: 'Friends' }
+      { label: 'Values', value: 'Family-first, Social impact oriented, Balanced lifestyle', privacy: 'Friends' }
     ]
   }
 ];

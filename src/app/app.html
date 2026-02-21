@@ -194,7 +194,12 @@
 
 <section class="app-popup" *ngIf="activePopup && activePopup !== 'logoutConfirm'">
   <div class="app-popup-backdrop" (click)="closePopup()"></div>
-  <div class="app-popup-panel" [class.popup-panel-members]="activePopup === 'chatMembers'" (click)="$event.stopPropagation()">
+  <div
+    class="app-popup-panel"
+    [class.popup-panel-members]="activePopup === 'chatMembers'"
+    [class.popup-panel-image-editor]="activePopup === 'imageEditor'"
+    (click)="$event.stopPropagation()"
+  >
     <div class="popup-header" [class.popup-header-chat]="activePopup === 'chat' && selectedChat">
       <div class="popup-title popup-title-chat" *ngIf="activePopup === 'chat' && selectedChat; else defaultPopupTitle">
         <div class="popup-chat-title-block">
@@ -233,7 +238,12 @@
       </button>
     </div>
 
-    <div class="popup-body" [class.popup-body-chat]="activePopup === 'chat' && selectedChat" [class.popup-body-members]="activePopup === 'chatMembers'">
+    <div
+      class="popup-body"
+      [class.popup-body-chat]="activePopup === 'chat' && selectedChat"
+      [class.popup-body-members]="activePopup === 'chatMembers'"
+      [class.popup-body-image-editor]="activePopup === 'imageEditor'"
+    >
       <div *ngIf="activePopup === 'chat' && selectedChat" class="chat-popup-wrap">
         <div class="chat-popup-box">
           <div class="chat-thread">
@@ -440,158 +450,329 @@
           <textarea rows="3" maxlength="160" [(ngModel)]="profileForm.about"></textarea>
         </label>
 
-        <mat-accordion class="profile-basics-accordion">
-          <mat-expansion-panel [expanded]="true">
+        <mat-accordion class="popup-accordion profile-editor-accordion">
+          <mat-expansion-panel class="editor-panel editor-panel-impressions">
             <mat-expansion-panel-header>
               <mat-panel-title>
-                <span class="basics-title">
-                  <mat-icon>badge</mat-icon>
-                  <span>Basics</span>
+                <span class="editor-accordion-title">
+                  <mat-icon>psychology</mat-icon>
+                  <span>Impressions</span>
                 </span>
               </mat-panel-title>
             </mat-expansion-panel-header>
-            <div class="profile-form-grid">
-          <label class="name-field">
-            <span>Name</span>
-            <input type="text" [(ngModel)]="profileForm.fullName" />
-          </label>
-          <label class="city-field">
-            <span>City</span>
-            <input type="text" [(ngModel)]="profileForm.city" />
-          </label>
-          <label class="birthday-field">
-            <span>Birthday</span>
-            <div class="date-input-wrap">
-              <input [matDatepicker]="birthdayPicker" [(ngModel)]="profileForm.birthday" (ngModelChange)="onBirthdayChange($event)" />
-              <button type="button" class="date-picker-btn" (click)="birthdayPicker.open()" aria-label="Open birthday picker">
-                <mat-icon>calendar_month</mat-icon>
-              </button>
-              <mat-datepicker #birthdayPicker></mat-datepicker>
-            </div>
-          </label>
-          <label class="horoscope-field">
-            <span>Horoscope</span>
-            <div class="profile-status-select-wrap selector-like readonly-select" [class]="getHoroscopeClass(profileForm.horoscope)">
-              <span class="zodiac-symbol">{{ getHoroscopeSymbol(profileForm.horoscope) }}</span>
-              <span class="zodiac-label">{{ profileForm.horoscope }}</span>
-            </div>
-          </label>
-          <label class="height-field">
-            <span>Height (cm)</span>
-            <input type="number" min="0" step="1" [(ngModel)]="profileForm.heightCm" />
-          </label>
-          <label class="physique-field">
-            <span>Physique</span>
-            <div class="profile-status-select-wrap selector-like physique-select-wrap" [class]="getPhysiqueClass(profileForm.physique)">
-              <mat-select [(ngModel)]="profileForm.physique" disableOptionCentering panelClass="selector-options-panel">
-                <mat-select-trigger>
-                  <span class="status-option-content">
-                    <mat-icon [class]="getPhysiqueClass(profileForm.physique)">{{ getPhysiqueIcon(profileForm.physique) }}</mat-icon>
-                    <span>{{ profileForm.physique }}</span>
-                  </span>
-                </mat-select-trigger>
-                <mat-option
-                  *ngFor="let item of physiqueOptions"
-                  [value]="item"
-                  [class]="'status-option ' + getPhysiqueClass(item)"
-                  [class.hide-selected-option]="item === profileForm.physique"
-                >
-                  <span class="status-option-content">
-                    <mat-icon [class]="getPhysiqueClass(item)">{{ getPhysiqueIcon(item) }}</mat-icon>
-                    <span>{{ item }}</span>
-                  </span>
-                </mat-option>
-              </mat-select>
-            </div>
-          </label>
-          <label class="languages-field">
-            <span>Languages</span>
-            <div class="language-filter" (click)="onLanguagePanelClick($event)">
-              <button type="button" mat-stroked-button class="language-select-btn" [class.active]="showLanguagePanel" (click)="toggleLanguagePanel()">
-                <span class="label">{{ languageTriggerLabel() }}</span>
-                <mat-icon class="arrow" [class.open]="showLanguagePanel">expand_more</mat-icon>
-              </button>
+            <div class="accordion-content">
+              <div class="social-proof-grid">
+                <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-host">
+                  <h4 class="social-proof-identity-pill social-proof-identity-pill-host">
+                    <mat-icon [class]="getHostTierColorClass(activeHostTier)">{{ getHostTierIcon(activeHostTier) }}</mat-icon>
+                    <span>{{ activeHostTier }}</span>
+                  </h4>
 
-              <div class="language-panel" [class.open]="showLanguagePanel" *ngIf="showLanguagePanel">
-                <div class="language-chip-input" (click)="onLanguageInputContainerClick($event)">
-                  <mat-chip-set class="language-chip-set-inline" *ngIf="profileForm.languages.length > 0">
-                    <mat-chip *ngFor="let item of profileForm.languages" [removable]="true" (removed)="removeLanguage(item)">
-                      <span>{{ item }}</span>
-                      <button matChipRemove aria-label="Remove language">
-                        <mat-icon>cancel</mat-icon>
-                      </button>
-                    </mat-chip>
-                  </mat-chip-set>
+                  <div class="social-proof-metric-strip">
+                    <span class="sp-metric-cell sp-metric-cell-rate">
+                      <span class="label">Rate</span>
+                      <span class="value">{{ hostAverageRating }}</span>
+                    </span>
+                    <span class="sp-metric-cell sp-metric-cell-people">
+                      <span class="label">People / Events</span>
+                      <span class="value">{{ hostPeopleMet }} / {{ hostTotalEvents }}</span>
+                    </span>
+                    <span class="sp-metric-cell sp-metric-cell-return">
+                      <span class="label">Returnees / NoShow</span>
+                      <span class="value">{{ hostRepeatSummary }} / {{ hostAttendanceNoShowSummary }}</span>
+                    </span>
+                  </div>
 
-                  <input
-                    type="text"
-                    [(ngModel)]="languageInput"
-                    [matAutocomplete]="languageAuto"
-                    #languageTrigger="matAutocompleteTrigger"
-                    (focus)="onLanguageInputFocus(); languageTrigger.openPanel()"
-                    (click)="languageTrigger.openPanel()"
-                    (keydown)="onLanguageInputKeydown($event)"
-                    (blur)="onLanguageInputBlur()"
-                    placeholder="Language search"
-                  />
-                  <mat-icon class="language-dropdown-icon">search</mat-icon>
+                  <div class="social-proof-section-block">
+                    <div class="social-proof-section-head section-vibe">
+                      <span class="section-tag">Vibe</span>
+                      <span class="section-line"></span>
+                    </div>
+                    <div class="social-proof-chip-list">
+                      <span class="social-proof-chip chip-vibe" *ngFor="let item of hostVibeBadgeItems">{{ item }}</span>
+                    </div>
+                  </div>
 
-                  <mat-autocomplete #languageAuto="matAutocomplete" (optionSelected)="selectLanguage($event.option.value)">
-                    <mat-option *ngFor="let item of availableLanguageDisplaySuggestions" [value]="item">
-                      {{ item }}
-                    </mat-option>
-                  </mat-autocomplete>
+                  <div class="social-proof-section-block">
+                    <div class="social-proof-section-head section-category">
+                      <span class="section-tag">Category</span>
+                      <span class="section-line"></span>
+                    </div>
+                    <div class="social-proof-chip-list">
+                      <span class="social-proof-chip chip-category" *ngFor="let item of hostCategoryBadgeItems">{{ item }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-member">
+                  <h4 class="social-proof-identity-pill social-proof-identity-pill-member">
+                    <mat-icon [class]="getTraitColorClass(activeMemberTrait)">{{ getTraitIcon(activeMemberTrait) }}</mat-icon>
+                    <span>{{ activeMemberTrait }}</span>
+                  </h4>
+
+                  <div class="social-proof-metric-strip">
+                    <span class="sp-metric-cell sp-metric-cell-rate">
+                      <span class="label">Rate</span>
+                      <span class="value">{{ hostAverageRating }}</span>
+                    </span>
+                    <span class="sp-metric-cell sp-metric-cell-people">
+                      <span class="label">People / Events</span>
+                      <span class="value">{{ memberPeopleMet }} / {{ memberTotalEvents }}</span>
+                    </span>
+                    <span class="sp-metric-cell sp-metric-cell-return">
+                      <span class="label">Returnees / NoShow</span>
+                      <span class="value">{{ memberReturneesSummary }} / {{ memberNoShowCount }}</span>
+                    </span>
+                  </div>
+
+                  <div class="social-proof-section-block">
+                    <div class="social-proof-section-head section-personality">
+                      <span class="section-tag">Personality</span>
+                      <span class="section-line"></span>
+                    </div>
+                    <div class="social-proof-chip-list">
+                      <span class="social-proof-chip chip-personality" *ngFor="let item of memberPersonalityBadgeItems">{{ item }}</span>
+                    </div>
+                  </div>
+
+                  <div class="social-proof-section-block">
+                    <div class="social-proof-section-head section-vibe">
+                      <span class="section-tag">Vibe</span>
+                      <span class="section-line"></span>
+                    </div>
+                    <div class="social-proof-chip-list">
+                      <span class="social-proof-chip chip-vibe" *ngFor="let item of memberVibeBadgeItems">{{ item }}</span>
+                    </div>
+                  </div>
+
+                  <div class="social-proof-section-block">
+                    <div class="social-proof-section-head section-category">
+                      <span class="section-tag">Category</span>
+                      <span class="section-line"></span>
+                    </div>
+                    <div class="social-proof-chip-list">
+                      <span class="social-proof-chip chip-category" *ngFor="let item of memberCategoryBadgeItems">{{ item }}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </label>
-        </div>
           </mat-expansion-panel>
-        </mat-accordion>
 
-        <mat-accordion class="popup-accordion" multi>
-          <mat-expansion-panel>
+          <mat-expansion-panel class="editor-panel editor-panel-details">
             <mat-expansion-panel-header>
-              <mat-panel-title>How Others Experience Me</mat-panel-title>
+              <mat-panel-title>
+                <span class="editor-accordion-title">
+                  <mat-icon>badge</mat-icon>
+                  <span>Personal Details</span>
+                </span>
+              </mat-panel-title>
             </mat-expansion-panel-header>
             <div class="accordion-content">
-              <div class="editor-list-card" *ngFor="let trait of profileTopTraits">
-                <h4>{{ trait.icon }} {{ trait.label }}</h4>
-                <p>{{ trait.percent }}%</p>
+              <div class="profile-details-structured">
+                <section class="profile-details-group" *ngFor="let group of profileDetailsForm; let groupIndex = index">
+                  <h4>{{ group.title }}</h4>
+                  <div class="profile-form-grid profile-details-form-grid basics-moved-grid" *ngIf="group.title === 'Basics'; else nonBasicsGroup">
+                    <label class="name-field">
+                      <span>Name</span>
+                      <input type="text" [(ngModel)]="profileForm.fullName" />
+                    </label>
+                    <label class="city-field">
+                      <span>City</span>
+                      <input type="text" [(ngModel)]="profileForm.city" />
+                    </label>
+                    <label class="birthday-field">
+                      <span>Birthday</span>
+                      <div class="date-input-wrap">
+                        <input [matDatepicker]="birthdayPicker" [(ngModel)]="profileForm.birthday" (ngModelChange)="onBirthdayChange($event)" />
+                        <button type="button" class="date-picker-btn" (click)="birthdayPicker.open()" aria-label="Open birthday picker">
+                          <mat-icon>calendar_month</mat-icon>
+                        </button>
+                        <mat-datepicker #birthdayPicker></mat-datepicker>
+                      </div>
+                    </label>
+                    <label class="horoscope-field">
+                      <span>Horoscope</span>
+                      <div class="profile-status-select-wrap selector-like readonly-select" [class]="getHoroscopeClass(profileForm.horoscope)">
+                        <span class="zodiac-symbol">{{ getHoroscopeSymbol(profileForm.horoscope) }}</span>
+                        <span class="zodiac-label">{{ profileForm.horoscope }}</span>
+                      </div>
+                    </label>
+                    <label class="height-field">
+                      <span>Height (cm)</span>
+                      <input type="number" min="0" step="1" [(ngModel)]="profileForm.heightCm" />
+                    </label>
+                    <label class="physique-field">
+                      <span>Physique</span>
+                      <div class="profile-status-select-wrap selector-like physique-select-wrap" [class]="getPhysiqueClass(profileForm.physique)">
+                        <mat-select [(ngModel)]="profileForm.physique" disableOptionCentering panelClass="selector-options-panel physique-options-panel">
+                          <mat-select-trigger>
+                            <span class="status-option-content">
+                              <mat-icon [class]="getPhysiqueClass(profileForm.physique)">{{ getPhysiqueIcon(profileForm.physique) }}</mat-icon>
+                              <span>{{ profileForm.physique }}</span>
+                            </span>
+                          </mat-select-trigger>
+                          <mat-option
+                            *ngFor="let item of physiqueOptions"
+                            [value]="item"
+                            [class]="'status-option ' + getPhysiqueClass(item)"
+                            [class.hide-selected-option]="item === profileForm.physique"
+                          >
+                            <span class="status-option-content">
+                              <mat-icon [class]="getPhysiqueClass(item)">{{ getPhysiqueIcon(item) }}</mat-icon>
+                              <span>{{ item }}</span>
+                            </span>
+                          </mat-option>
+                        </mat-select>
+                      </div>
+                    </label>
+                    <label class="languages-field">
+                      <span>Languages</span>
+                      <div class="language-filter" (click)="onLanguagePanelClick($event)">
+                        <button type="button" mat-stroked-button class="language-select-btn" [class.active]="showLanguagePanel" (click)="toggleLanguagePanel()">
+                          <span class="label">{{ languageTriggerLabel() }}</span>
+                          <mat-icon class="arrow" [class.open]="showLanguagePanel">expand_more</mat-icon>
+                        </button>
+
+                        <div class="language-panel" [class.open]="showLanguagePanel" *ngIf="showLanguagePanel">
+                          <div class="language-chip-input" (click)="onLanguageInputContainerClick($event)">
+                            <mat-chip-set class="language-chip-set-inline" *ngIf="profileForm.languages.length > 0">
+                              <mat-chip *ngFor="let item of profileForm.languages" [removable]="true" (removed)="removeLanguage(item)">
+                                <span>{{ item }}</span>
+                                <button matChipRemove aria-label="Remove language">
+                                  <mat-icon>cancel</mat-icon>
+                                </button>
+                              </mat-chip>
+                            </mat-chip-set>
+
+                            <input
+                              type="text"
+                              [(ngModel)]="languageInput"
+                              [matAutocomplete]="languageAuto"
+                              #languageTrigger="matAutocompleteTrigger"
+                              (focus)="onLanguageInputFocus(); languageTrigger.openPanel()"
+                              (click)="languageTrigger.openPanel()"
+                              (keydown)="onLanguageInputKeydown($event)"
+                              (blur)="onLanguageInputBlur()"
+                              placeholder="Language search"
+                            />
+                            <mat-icon class="language-dropdown-icon">search</mat-icon>
+
+                            <mat-autocomplete #languageAuto="matAutocomplete" (optionSelected)="selectLanguage($event.option.value)">
+                              <mat-option *ngFor="let item of availableLanguageDisplaySuggestions" [value]="item">
+                                {{ item }}
+                              </mat-option>
+                            </mat-autocomplete>
+                          </div>
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                  <ng-template #nonBasicsGroup>
+                    <div class="profile-form-grid profile-details-form-grid">
+                    <label class="profile-details-field" *ngFor="let row of group.rows; let rowIndex = index">
+                      <span>{{ row.label }}</span>
+                      <div class="profile-details-control-row">
+                        <button
+                          type="button"
+                          class="profile-status-select-wrap selector-like profile-details-values-btn"
+                          [ngClass]="row.label === 'Values' ? valuesDominantToneClass(row.value) : interestDominantToneClass(row.value)"
+                          *ngIf="row.label === 'Values' || row.label === 'Interest'; else detailsSelect"
+                          (click)="row.label === 'Values' ? openValuesSelector(groupIndex, rowIndex) : openInterestSelector(groupIndex, rowIndex)"
+                        >
+                          <span class="status-option-content">
+                            <span>{{ row.label === 'Values' ? valuesRowSummary(row.value) : interestRowSummary(row.value) }}</span>
+                          </span>
+                          <mat-icon>chevron_right</mat-icon>
+                        </button>
+                        <ng-template #detailsSelect>
+                        <div class="profile-status-select-wrap selector-like profile-details-select" [ngClass]="detailSelectedClass(row.label, row.value, row.options)">
+                          <mat-select [(ngModel)]="row.value" disableOptionCentering panelClass="selector-options-panel">
+                            <mat-select-trigger>
+                              <span class="status-option-content">
+                                <span>{{ row.value }}</span>
+                              </span>
+                            </mat-select-trigger>
+                            <mat-option
+                              *ngFor="let item of row.options"
+                              [value]="item"
+                              class="status-option"
+                              [ngClass]="detailOptionClass(row.label, item, row.options)"
+                              [class.hide-selected-option]="item === row.value"
+                            >
+                              <span class="status-option-content">
+                                <span>{{ item }}</span>
+                              </span>
+                            </mat-option>
+                          </mat-select>
+                        </div>
+                        </ng-template>
+                        <div
+                          class="profile-details-privacy-fab"
+                          [class.open]="isDetailPrivacyFabOpen(groupIndex, rowIndex)"
+                          [class.is-just-selected]="isDetailPrivacyJustSelected(groupIndex, rowIndex)"
+                        >
+                          <button
+                            type="button"
+                            class="profile-details-privacy-btn profile-details-privacy-trigger"
+                            [class]="privacyStatusClass(row.privacy)"
+                            (click)="toggleDetailPrivacyFab(groupIndex, rowIndex, $event)"
+                            aria-label="Change visibility"
+                          >
+                            <mat-icon>{{ privacyStatusIcon(row.privacy) }}</mat-icon>
+                          </button>
+                          <div class="privacy-fab-actions">
+                            <button
+                              type="button"
+                              class="profile-details-privacy-btn status-public"
+                              (click)="selectDetailPrivacy(groupIndex, rowIndex, 'Public', $event)"
+                              aria-label="Public"
+                            >
+                              <mat-icon>public</mat-icon>
+                            </button>
+                            <button
+                              type="button"
+                              class="profile-details-privacy-btn status-friends"
+                              (click)="selectDetailPrivacy(groupIndex, rowIndex, 'Friends', $event)"
+                              aria-label="Friends"
+                            >
+                              <mat-icon>groups</mat-icon>
+                            </button>
+                            <button
+                              type="button"
+                              class="profile-details-privacy-btn status-host"
+                              (click)="selectDetailPrivacy(groupIndex, rowIndex, 'Hosts', $event)"
+                              aria-label="Hosts"
+                            >
+                              <mat-icon>stadium</mat-icon>
+                            </button>
+                            <button
+                              type="button"
+                              class="profile-details-privacy-btn status-inactive"
+                              (click)="selectDetailPrivacy(groupIndex, rowIndex, 'Private', $event)"
+                              aria-label="Private"
+                            >
+                              <mat-icon>visibility_off</mat-icon>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </label>
+                    </div>
+                  </ng-template>
+                </section>
               </div>
             </div>
           </mat-expansion-panel>
 
-          <mat-expansion-panel>
+          <mat-expansion-panel class="editor-panel editor-panel-experience">
             <mat-expansion-panel-header>
-              <mat-panel-title>My World</mat-panel-title>
-            </mat-expansion-panel-header>
-            <div class="accordion-content">
-              <div class="chip-row">
-                <span *ngFor="let tag of profilePriorityTags">{{ tag }} 🔒</span>
-              </div>
-              <div class="editor-list-card" *ngFor="let pillar of profilePillars">
-                <h4>{{ pillar.title }}</h4>
-                <p>{{ pillar.tags.join(', ') }}</p>
-              </div>
-            </div>
-          </mat-expansion-panel>
-
-          <mat-expansion-panel>
-            <mat-expansion-panel-header>
-              <mat-panel-title>Personal Details</mat-panel-title>
-            </mat-expansion-panel-header>
-            <div class="accordion-content">
-              <div class="editor-list-card" *ngFor="let group of profileDetails">
-                <h4>{{ group.title }}</h4>
-                <p *ngFor="let row of group.rows">{{ row.label }}: {{ row.value }} {{ privacyIcon(row.privacy) }}</p>
-              </div>
-            </div>
-          </mat-expansion-panel>
-
-          <mat-expansion-panel>
-            <mat-expansion-panel-header>
-              <mat-panel-title>Experience</mat-panel-title>
+              <mat-panel-title>
+                <span class="editor-accordion-title">
+                  <mat-icon>work_history</mat-icon>
+                  <span>Experience</span>
+                </span>
+              </mat-panel-title>
             </mat-expansion-panel-header>
             <div class="accordion-content">
               <div class="editor-list-card" *ngFor="let item of profileExperience">
@@ -601,23 +782,53 @@
               </div>
             </div>
           </mat-expansion-panel>
+
+          <mat-expansion-panel class="editor-panel editor-panel-assets">
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                <span class="editor-accordion-title">
+                  <mat-icon>inventory_2</mat-icon>
+                  <span>Assets</span>
+                </span>
+              </mat-panel-title>
+            </mat-expansion-panel-header>
+            <div class="accordion-content">
+              <div class="assets-actions-row">
+                <button type="button" class="link-btn">Car</button>
+                <button type="button" class="link-btn">Accommodation</button>
+                <button type="button" class="link-btn">Supplies</button>
+              </div>
+            </div>
+          </mat-expansion-panel>
         </mat-accordion>
 
-        <div class="popup-actions profile-main-actions">
-          <button type="button" class="link-btn neutral-btn" (click)="closePopup()">Mégsem</button>
-          <button type="button" class="link-btn primary-btn" (click)="saveProfile(); closePopup()">Profil mentése</button>
-        </div>
-        <div class="popup-actions profile-secondary-actions">
-          <button type="button" class="link-btn" (click)="openLogoutConfirm()">Kilépés</button>
-          <button type="button" class="link-btn" (click)="openUserSelector()">Felhasználóváltás</button>
-        </div>
       </div>
 
       <div *ngIf="activePopup === 'imageEditor'" class="image-editor-wrap">
+        <div class="image-stack-indicators" *ngIf="imageStackSlots.length > 0">
+          <button
+            type="button"
+            class="image-stack-line"
+            *ngFor="let slotIndex of imageStackSlots"
+            [class.active]="slotIndex === selectedImageIndex"
+            (click)="selectImageFromStack(slotIndex)"
+            aria-label="Select image"
+          ></button>
+        </div>
         <div class="image-editor-main" [style.backgroundImage]="selectedImagePreview ? 'url(' + selectedImagePreview + ')' : 'none'">
+          <div class="image-stack-hit-area" *ngIf="imageStackSlots.length > 0">
+            <button
+              type="button"
+              class="image-stack-hit-segment"
+              *ngFor="let slotIndex of imageStackSlots"
+              (click)="selectImageFromStack(slotIndex)"
+              aria-label="Select image"
+            ></button>
+          </div>
           <span *ngIf="!selectedImagePreview">Select a slot to upload image</span>
         </div>
         <p class="image-editor-hint">Click a thumbnail to upload or replace image.</p>
+        <input #slotImageInput class="image-file-input-hidden" type="file" accept="image/*" (change)="onSlotImageFileChange($event)" />
 
         <div class="image-editor-grid">
           <button
@@ -633,21 +844,6 @@
           </button>
         </div>
       </div>
-
-      <div *ngIf="activePopup === 'imageUpload'" class="image-upload-wrap">
-        <div class="editor-list-card">
-          <h4>Upload image for slot {{ uploadTargetIndex + 1 }}</h4>
-          <p>Select an image and apply it to the selected slot.</p>
-        </div>
-        <input class="image-file-input" type="file" accept="image/*" (change)="onImageFileChange($event)" />
-        <div class="image-editor-main image-upload-preview" [style.backgroundImage]="pendingUploadPreview ? 'url(' + pendingUploadPreview + ')' : 'none'">
-          <span *ngIf="!pendingUploadPreview">No image selected</span>
-        </div>
-        <div class="popup-actions profile-main-actions">
-          <button type="button" class="link-btn neutral-btn" (click)="activePopup = 'imageEditor'">Mégsem</button>
-          <button type="button" class="link-btn primary-btn" (click)="applyUploadedImage()">Kép mentése</button>
-        </div>
-      </div>
     </div>
   </div>
 </section>
@@ -655,23 +851,45 @@
 <section class="app-popup app-popup-stacked" *ngIf="stackedPopup">
   <div class="app-popup-backdrop" (click)="closeStackedPopup()"></div>
   <div class="app-popup-panel" [class.popup-panel-members]="stackedPopup === 'chatMembers'" (click)="$event.stopPropagation()">
-    <div class="popup-header">
-      <div class="popup-title popup-title-members" *ngIf="stackedPopup === 'chatMembers'; else defaultStackedTitle">
-        <div class="popup-chat-title-block">
-          <h2>Chat Members</h2>
-          <p>{{ selectedChatMembersItem?.title || 'Room' }}</p>
-        </div>
-      </div>
-      <ng-template #defaultStackedTitle>
-        <div class="popup-title">
-          <h2>{{ getStackedPopupTitle() }}</h2>
-        </div>
-      </ng-template>
-      <span class="header-members-count" *ngIf="stackedPopup === 'chatMembers'">{{ selectedChatMembers.length }} members</span>
-      <button mat-icon-button class="popup-close" (click)="closeStackedPopup()" aria-label="Close">
-        <mat-icon>close</mat-icon>
+    <div class="popup-header" *ngIf="stackedPopup === 'valuesSelector' || stackedPopup === 'interestSelector'; else defaultStackedHeader">
+      <button mat-icon-button class="popup-back-btn" (click)="closeStackedPopup()" aria-label="Back">
+        <mat-icon>arrow_back</mat-icon>
       </button>
+      <div class="popup-title popup-title-values">
+        <h2>{{ getStackedPopupTitle() }}</h2>
+      </div>
+      <div class="values-header-chips" *ngIf="(stackedPopup === 'valuesSelector' ? valuesSelectorSelected : interestSelectorSelected).length > 0">
+        <button
+          type="button"
+          class="values-selected-chip"
+          [class]="stackedPopup === 'valuesSelector' ? valuesOptionToneClass(item) : interestOptionToneClass(item)"
+          *ngFor="let item of (stackedPopup === 'valuesSelector' ? valuesSelectorSelected : interestSelectorSelected)"
+          (click)="stackedPopup === 'valuesSelector' ? removeValuesOption(item) : removeInterestOption(item)"
+        >
+          <span>{{ item }}</span>
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
     </div>
+    <ng-template #defaultStackedHeader>
+      <div class="popup-header">
+        <div class="popup-title popup-title-members" *ngIf="stackedPopup === 'chatMembers'; else defaultStackedTitle">
+          <div class="popup-chat-title-block">
+            <h2>Chat Members</h2>
+            <p>{{ selectedChatMembersItem?.title || 'Room' }}</p>
+          </div>
+        </div>
+        <ng-template #defaultStackedTitle>
+          <div class="popup-title">
+            <h2>{{ getStackedPopupTitle() }}</h2>
+          </div>
+        </ng-template>
+        <span class="header-members-count" *ngIf="stackedPopup === 'chatMembers'">{{ selectedChatMembers.length }} members</span>
+        <button mat-icon-button class="popup-close" (click)="closeStackedPopup()" aria-label="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </ng-template>
 
     <div class="popup-body" [class.popup-body-members]="stackedPopup === 'chatMembers'">
       <div *ngIf="stackedPopup === 'chatMembers'">
@@ -736,6 +954,46 @@
         <div class="popup-actions">
           <button type="button" class="link-btn" (click)="alertService.open('Supply item flow is ready for backend wiring.')">+ Add supply offer</button>
           <button type="button" class="link-btn" (click)="openEventEditor()">Back to Event Editor</button>
+        </div>
+      </div>
+
+      <div *ngIf="stackedPopup === 'valuesSelector'" class="values-selector-popup">
+        <div class="values-selector-group" *ngFor="let group of beliefsValuesOptionGroups">
+          <div class="social-proof-section-head" [class]="group.toneClass">
+            <span class="section-tag">{{ group.icon }} {{ group.shortTitle }}</span>
+            <span class="section-line"></span>
+          </div>
+          <div class="social-proof-chip-list">
+            <button
+              type="button"
+              class="social-proof-chip values-option-chip"
+              [class.active]="isValuesOptionSelected(option)"
+              *ngFor="let option of group.options"
+              (click)="toggleValuesOption(option)"
+            >
+              {{ option }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="stackedPopup === 'interestSelector'" class="values-selector-popup">
+        <div class="values-selector-group" *ngFor="let group of interestOptionGroups">
+          <div class="social-proof-section-head" [class]="group.toneClass">
+            <span class="section-tag">{{ group.icon }} {{ group.shortTitle }}</span>
+            <span class="section-line"></span>
+          </div>
+          <div class="social-proof-chip-list">
+            <button
+              type="button"
+              class="social-proof-chip values-option-chip"
+              [class.active]="isInterestOptionSelected(option)"
+              *ngFor="let option of group.options"
+              (click)="toggleInterestOption(option)"
+            >
+              {{ option }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
