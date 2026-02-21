@@ -2,7 +2,12 @@ export interface DemoUser {
   id: string;
   name: string;
   age: number;
+  birthday: string;
   city: string;
+  height: string;
+  physique: string;
+  languages: string[];
+  horoscope: string;
   initials: string;
   gender: 'woman' | 'man';
   statusText: string;
@@ -11,7 +16,7 @@ export interface DemoUser {
   completion: number;
   headline: string;
   about: string;
-  profileStatus: 'Public' | 'Friends only' | 'Host only' | 'Inactive';
+  profileStatus: 'public' | 'friends only' | 'host only' | 'inactive';
   activities: {
     game: number;
     chat: number;
@@ -75,7 +80,12 @@ export const DEMO_USERS: DemoUser[] = [
     id: 'u1',
     name: 'Farkas Anna',
     age: 28,
+    birthday: '1997-05-12',
     city: 'Austin',
+    height: '170 cm',
+    physique: 'Athletic',
+    languages: ['English', 'Spanish'],
+    horoscope: 'Taurus',
     initials: 'FA',
     gender: 'woman',
     statusText: 'Aktív felhasználó',
@@ -84,14 +94,19 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 72,
     headline: 'Planning cozy chaos with structure.',
     about: 'I host events where social energy stays high, but logistics stay clean and predictable.',
-    profileStatus: 'Public',
+    profileStatus: 'public',
     activities: { game: 9, chat: 8, invitations: 4, events: 6, hosting: 3 }
   },
   {
     id: 'u2',
     name: 'Kiss Balázs',
     age: 31,
+    birthday: '1994-09-23',
     city: 'Chicago',
+    height: '182 cm',
+    physique: 'Lean',
+    languages: ['English', 'Hungarian'],
+    horoscope: 'Libra',
     initials: 'KB',
     gender: 'man',
     statusText: 'Aktív felhasználó',
@@ -100,14 +115,19 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 64,
     headline: 'Reliable planning, zero drama.',
     about: 'I like compact events with clear timelines and simple role assignment.',
-    profileStatus: 'Friends only',
+    profileStatus: 'friends only',
     activities: { game: 4, chat: 3, invitations: 1, events: 2, hosting: 1 }
   },
   {
     id: 'u3',
     name: 'Nagy Eszter',
     age: 30,
+    birthday: '1995-07-19',
     city: 'Seattle',
+    height: '168 cm',
+    physique: 'Fit',
+    languages: ['English', 'Hungarian'],
+    horoscope: 'Cancer',
     initials: 'NE',
     gender: 'woman',
     statusText: 'Aktív felhasználó',
@@ -116,14 +136,19 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 58,
     headline: 'Art nights and adventure mornings.',
     about: 'I enjoy cultural events and activity-heavy weekends with small groups.',
-    profileStatus: 'Friends only',
+    profileStatus: 'friends only',
     activities: { game: 6, chat: 7, invitations: 3, events: 4, hosting: 2 }
   },
   {
     id: 'u4',
     name: 'Maya Stone',
     age: 29,
+    birthday: '1996-11-04',
     city: 'San Diego',
+    height: '172 cm',
+    physique: 'Athletic',
+    languages: ['English'],
+    horoscope: 'Scorpio',
     initials: 'MS',
     gender: 'woman',
     statusText: 'Aktív felhasználó',
@@ -132,14 +157,19 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 76,
     headline: 'Sunset rides and coffee circles.',
     about: 'I host social-first events where people who do not know each other can connect fast.',
-    profileStatus: 'Public',
+    profileStatus: 'public',
     activities: { game: 7, chat: 5, invitations: 3, events: 5, hosting: 2 }
   },
   {
     id: 'u5',
     name: 'Lina Park',
     age: 27,
+    birthday: '1998-02-21',
     city: 'Denver',
+    height: '167 cm',
+    physique: 'Slim',
+    languages: ['English', 'Korean'],
+    horoscope: 'Pisces',
     initials: 'LP',
     gender: 'woman',
     statusText: 'Aktív felhasználó',
@@ -148,14 +178,19 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 68,
     headline: 'Thoughtful plans, minimal noise.',
     about: 'I prefer meaningful conversations and smaller events with quality curation.',
-    profileStatus: 'Host only',
+    profileStatus: 'host only',
     activities: { game: 5, chat: 6, invitations: 4, events: 4, hosting: 1 }
   },
   {
     id: 'u6',
     name: 'Iris Bloom',
     age: 26,
+    birthday: '1999-08-14',
     city: 'Miami',
+    height: '169 cm',
+    physique: 'Curvy',
+    languages: ['English', 'Portuguese'],
+    horoscope: 'Leo',
     initials: 'IB',
     gender: 'woman',
     statusText: 'Aktív felhasználó',
@@ -164,14 +199,19 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 55,
     headline: 'Travel light, host well.',
     about: 'I organize active and travel-style events with flexible participant roles.',
-    profileStatus: 'Public',
+    profileStatus: 'public',
     activities: { game: 3, chat: 4, invitations: 2, events: 3, hosting: 1 }
   },
   {
     id: 'u7',
     name: 'Noah Hart',
     age: 30,
+    birthday: '1995-03-07',
     city: 'New York',
+    height: '184 cm',
+    physique: 'Athletic',
+    languages: ['English'],
+    horoscope: 'Pisces',
     initials: 'NH',
     gender: 'man',
     statusText: 'Aktív felhasználó',
@@ -180,14 +220,19 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 70,
     headline: 'Fast pace, good vibes.',
     about: 'I host sports and game-heavy events with structured follow-ups.',
-    profileStatus: 'Public',
+    profileStatus: 'public',
     activities: { game: 8, chat: 9, invitations: 3, events: 5, hosting: 2 }
   },
   {
     id: 'u8',
     name: 'Evan Reed',
     age: 32,
+    birthday: '1993-12-28',
     city: 'Boston',
+    height: '180 cm',
+    physique: 'Average',
+    languages: ['English', 'French'],
+    horoscope: 'Capricorn',
     initials: 'ER',
     gender: 'man',
     statusText: 'Aktív felhasználó',
@@ -196,14 +241,19 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 61,
     headline: 'Metrics first, then movement.',
     about: 'I optimize event outcomes and participant quality through filtered invites.',
-    profileStatus: 'Friends only',
+    profileStatus: 'friends only',
     activities: { game: 4, chat: 4, invitations: 2, events: 3, hosting: 2 }
   },
   {
     id: 'u9',
     name: 'Kai Morgan',
     age: 25,
+    birthday: '2000-04-18',
     city: 'Portland',
+    height: '178 cm',
+    physique: 'Slim',
+    languages: ['English'],
+    horoscope: 'Aries',
     initials: 'KM',
     gender: 'man',
     statusText: 'Aktív felhasználó',
@@ -212,14 +262,19 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 53,
     headline: 'Design-led hangouts only.',
     about: 'I design event atmospheres first and build flow around people and space.',
-    profileStatus: 'Host only',
+    profileStatus: 'host only',
     activities: { game: 2, chat: 5, invitations: 2, events: 2, hosting: 1 }
   },
   {
     id: 'u10',
     name: 'Luca Hale',
     age: 29,
+    birthday: '1996-01-11',
     city: 'Los Angeles',
+    height: '183 cm',
+    physique: 'Fit',
+    languages: ['English', 'Italian'],
+    horoscope: 'Capricorn',
     initials: 'LH',
     gender: 'man',
     statusText: 'Aktív felhasználó',
@@ -228,14 +283,19 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 74,
     headline: 'Always on time, always clear.',
     about: 'I keep the calendar strict and communication transparent for all members.',
-    profileStatus: 'Public',
+    profileStatus: 'public',
     activities: { game: 6, chat: 4, invitations: 2, events: 6, hosting: 3 }
   },
   {
     id: 'u11',
     name: 'Theo Lane',
     age: 33,
+    birthday: '1992-10-02',
     city: 'Nashville',
+    height: '186 cm',
+    physique: 'Athletic',
+    languages: ['English'],
+    horoscope: 'Libra',
     initials: 'TL',
     gender: 'man',
     statusText: 'Aktív felhasználó',
@@ -244,14 +304,19 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 60,
     headline: 'Calm planning for complex events.',
     about: 'I run long-format events with multiple sub-events and role-based access.',
-    profileStatus: 'Friends only',
+    profileStatus: 'friends only',
     activities: { game: 5, chat: 3, invitations: 2, events: 4, hosting: 2 }
   },
   {
     id: 'u12',
     name: 'Milo Grant',
     age: 27,
+    birthday: '1998-06-27',
     city: 'Phoenix',
+    height: '176 cm',
+    physique: 'Average',
+    languages: ['English', 'Spanish'],
+    horoscope: 'Cancer',
     initials: 'MG',
     gender: 'man',
     statusText: 'Aktív felhasználó',
@@ -260,7 +325,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 66,
     headline: 'Curated nights, meaningful circles.',
     about: 'I host quality-first social events with strong moderation and feedback loops.',
-    profileStatus: 'Public',
+    profileStatus: 'public',
     activities: { game: 4, chat: 5, invitations: 3, events: 3, hosting: 1 }
   }
 ];

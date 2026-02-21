@@ -4,6 +4,11 @@ import { Router, RouterOutlet } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
+import { MatSelectModule } from '@angular/material/select';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { FormsModule } from '@angular/forms';
 import { AlertService } from './shared/alert.service';
 import {
@@ -70,10 +75,23 @@ interface ChatPopupMessage {
 }
 
 type SubEventCard = (typeof EVENT_EDITOR_SAMPLE.subEvents)[number];
+type ProfileStatus = 'public' | 'friends only' | 'host only' | 'inactive';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule, RouterOutlet, MatIconModule, MatButtonModule, MatExpansionModule, FormsModule],
+  imports: [
+    CommonModule,
+    RouterOutlet,
+    MatIconModule,
+    MatButtonModule,
+    MatExpansionModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
+    MatSelectModule,
+    MatChipsModule,
+    MatAutocompleteModule,
+    FormsModule
+  ],
   templateUrl: './app.html',
   styleUrl: '../_styles/app.scss'
 })
@@ -87,6 +105,31 @@ export class App {
   protected readonly profileDetails = PROFILE_DETAILS;
   protected readonly profileExperience = PROFILE_EXPERIENCE;
   protected readonly eventEditor = EVENT_EDITOR_SAMPLE;
+  protected readonly physiqueOptions = ['Slim', 'Lean', 'Athletic', 'Fit', 'Curvy', 'Average', 'Muscular'];
+  protected languageSuggestions = [
+    'English',
+    'Spanish',
+    'French',
+    'German',
+    'Italian',
+    'Portuguese',
+    'Hungarian',
+    'Romanian',
+    'Polish',
+    'Dutch',
+    'Turkish',
+    'Arabic',
+    'Hindi',
+    'Japanese',
+    'Korean',
+    'Mandarin'
+  ];
+  protected readonly profileStatusOptions: Array<{ value: ProfileStatus; icon: string }> = [
+    { value: 'public', icon: 'public' },
+    { value: 'friends only', icon: 'groups' },
+    { value: 'host only', icon: 'stadium' },
+    { value: 'inactive', icon: 'visibility_off' }
+  ];
 
   protected showUserMenu = false;
   protected showUserSelector = !environment.loginEnabled;
@@ -120,15 +163,19 @@ export class App {
 
   protected profileForm = {
     fullName: '',
-    age: 0,
+    birthday: null as Date | null,
     city: '',
-    statusText: '',
-    profileStatus: 'Public' as 'Public' | 'Friends only' | 'Host only' | 'Inactive',
+    heightCm: null as number | null,
+    physique: '',
+    languages: [] as string[],
+    horoscope: '',
+    profileStatus: 'public' as ProfileStatus,
     hostTier: '',
     traitLabel: '',
-    headline: '',
     about: ''
   };
+  protected languageInput = '';
+  protected showLanguagePanel = false;
 
   constructor(private readonly router: Router) {
     this.syncProfileFormFromActiveUser();
@@ -416,24 +463,201 @@ export class App {
     }
   }
 
-  protected profileStatusClass(
-    value: 'Public' | 'Friends only' | 'Host only' | 'Inactive' = this.activeUser.profileStatus
-  ): string {
+  protected profileStatusClass(value: ProfileStatus = this.activeUser.profileStatus): string {
     switch (value) {
-      case 'Public':
+      case 'public':
         return 'status-public';
-      case 'Friends only':
+      case 'friends only':
         return 'status-friends';
-      case 'Host only':
+      case 'host only':
         return 'status-host';
       default:
         return 'status-inactive';
     }
   }
 
+  protected getProfileStatusIcon(value: ProfileStatus = this.activeUser.profileStatus): string {
+    switch (value) {
+      case 'public':
+        return 'public';
+      case 'friends only':
+        return 'groups';
+      case 'host only':
+        return 'stadium';
+      default:
+        return 'visibility_off';
+    }
+  }
+
+  protected getPhysiqueIcon(value: string): string {
+    const normalized = this.normalizeText(value);
+    if (normalized.includes('slim')) {
+      return 'directions_run';
+    }
+    if (normalized.includes('lean')) {
+      return 'self_improvement';
+    }
+    if (normalized.includes('athletic')) {
+      return 'fitness_center';
+    }
+    if (normalized.includes('fit')) {
+      return 'sports_gymnastics';
+    }
+    if (normalized.includes('curvy')) {
+      return 'accessibility';
+    }
+    if (normalized.includes('muscular')) {
+      return 'sports_mma';
+    }
+    return 'accessibility_new';
+  }
+
+  protected getPhysiqueClass(value: string): string {
+    const normalized = this.normalizeText(value);
+    if (normalized.includes('slim')) {
+      return 'physique-slim';
+    }
+    if (normalized.includes('lean')) {
+      return 'physique-lean';
+    }
+    if (normalized.includes('athletic') || normalized.includes('fit')) {
+      return 'physique-athletic';
+    }
+    if (normalized.includes('curvy')) {
+      return 'physique-curvy';
+    }
+    if (normalized.includes('muscular')) {
+      return 'physique-muscular';
+    }
+    return 'physique-average';
+  }
+
+  protected getHoroscopeSymbol(value: string): string {
+    switch (value) {
+      case 'Aries':
+        return '♈';
+      case 'Taurus':
+        return '♉';
+      case 'Gemini':
+        return '♊';
+      case 'Cancer':
+        return '♋';
+      case 'Leo':
+        return '♌';
+      case 'Virgo':
+        return '♍';
+      case 'Libra':
+        return '♎';
+      case 'Scorpio':
+        return '♏';
+      case 'Sagittarius':
+        return '♐';
+      case 'Capricorn':
+        return '♑';
+      case 'Aquarius':
+        return '♒';
+      default:
+        return '♓';
+    }
+  }
+
+  protected getHoroscopeClass(value: string): string {
+    return `zodiac-${this.normalizeText(value).replace(/\s+/g, '-')}`;
+  }
+
   protected onHeaderPanelClick(event: MouseEvent): void {
     event.stopPropagation();
     this.openProfileEditor();
+  }
+
+  protected onBirthdayChange(value: Date | null): void {
+    this.profileForm.birthday = value;
+    this.profileForm.horoscope = value ? this.getHoroscopeByDate(value) : '';
+  }
+
+  protected toggleLanguagePanel(): void {
+    this.showLanguagePanel = !this.showLanguagePanel;
+  }
+
+  protected addCustomLanguage(value = this.languageInput): void {
+    const normalized = value.trim();
+    if (!normalized) {
+      return;
+    }
+    if (!this.profileForm.languages.some(item => item.toLowerCase() === normalized.toLowerCase())) {
+      this.profileForm.languages = [...this.profileForm.languages, normalized];
+    }
+    if (!this.languageSuggestions.some(item => item.toLowerCase() === normalized.toLowerCase())) {
+      this.languageSuggestions.push(normalized);
+    }
+    this.languageInput = '';
+  }
+
+  protected selectLanguage(value: string): void {
+    this.addCustomLanguage(value);
+    this.showLanguagePanel = true;
+  }
+
+  protected languageTriggerLabel(): string {
+    if (this.profileForm.languages.length === 0) {
+      return '';
+    }
+    if (this.profileForm.languages.length === 1) {
+      return this.profileForm.languages[0];
+    }
+    return `${this.profileForm.languages[0]} +${this.profileForm.languages.length - 1}`;
+  }
+
+  protected onLanguageInputFocus(): void {
+    this.showLanguagePanel = true;
+  }
+
+  protected onLanguagePanelClick(event: MouseEvent): void {
+    event.stopPropagation();
+  }
+
+  protected onLanguageInputContainerClick(event: MouseEvent): void {
+    event.stopPropagation();
+    this.showLanguagePanel = true;
+  }
+
+  protected onLanguageInputBlur(): void {
+    this.addCustomLanguage();
+  }
+
+  protected onLanguageInputKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Enter' && event.key !== ',') {
+      return;
+    }
+    event.preventDefault();
+    this.addCustomLanguage();
+  }
+
+  protected removeLanguage(value: string): void {
+    this.profileForm.languages = this.profileForm.languages.filter(item => item !== value);
+  }
+
+  protected get availableLanguageSuggestions(): string[] {
+    const query = this.languageInput.trim().toLowerCase();
+    return this.languageSuggestions.filter(item => {
+      const isSelected = this.profileForm.languages.some(selected => selected.toLowerCase() === item.toLowerCase());
+      if (isSelected) {
+        return false;
+      }
+      return query.length === 0 ? true : item.toLowerCase().includes(query);
+    });
+  }
+
+  protected get availableLanguageDisplaySuggestions(): string[] {
+    return this.availableLanguageSuggestions.slice(0, 20);
+  }
+
+  protected get availableProfileStatusOptions(): Array<{ value: ProfileStatus; icon: string }> {
+    return this.profileStatusOptions.filter(option => option.value !== this.profileForm.profileStatus);
+  }
+
+  protected get availablePhysiqueOptions(): string[] {
+    return this.physiqueOptions.filter(option => option !== this.profileForm.physique);
   }
 
   protected getHostTierIcon(hostTier: string): string {
@@ -738,14 +962,16 @@ export class App {
   protected saveProfile(): void {
     const user = this.activeUser;
     user.name = this.profileForm.fullName.trim() || user.name;
-    user.age = this.profileForm.age || user.age;
+    const birthday = this.profileForm.birthday ? this.toIsoDate(this.profileForm.birthday) : user.birthday;
+    user.birthday = birthday;
+    user.age = this.getAgeFromIsoDate(birthday);
     user.city = this.profileForm.city.trim() || user.city;
-    user.statusText = this.profileForm.statusText.trim() || user.statusText;
+    user.height = this.profileForm.heightCm ? `${this.profileForm.heightCm} cm` : user.height;
+    user.physique = this.profileForm.physique || user.physique;
+    user.languages = this.profileForm.languages.length > 0 ? [...this.profileForm.languages] : user.languages;
+    user.horoscope = this.profileForm.horoscope || user.horoscope;
     user.profileStatus = this.profileForm.profileStatus;
-    user.hostTier = this.profileForm.hostTier.trim() || user.hostTier;
-    user.traitLabel = this.profileForm.traitLabel.trim() || user.traitLabel;
-    user.headline = this.profileForm.headline.trim() || user.headline;
-    user.about = this.profileForm.about.trim() || user.about;
+    user.about = this.profileForm.about.trim().slice(0, 160);
     user.initials = this.toInitials(user.name);
     this.alertService.open('Profile saved');
   }
@@ -773,6 +999,12 @@ export class App {
     if (this.showUserMenu && !target.closest('.user-menu-panel') && !target.closest('.user-selector-btn-global')) {
       this.showUserMenu = false;
     }
+    if (this.showLanguagePanel && target.closest('.cdk-overlay-pane')) {
+      return;
+    }
+    if (this.showLanguagePanel && !target.closest('.language-filter')) {
+      this.showLanguagePanel = false;
+    }
   }
 
   private getInitialUserId(): string {
@@ -785,17 +1017,84 @@ export class App {
 
   private syncProfileFormFromActiveUser(): void {
     const user = this.activeUser;
+    const birthday = this.fromIsoDate(user.birthday);
     this.profileForm = {
       fullName: user.name,
-      age: user.age,
+      birthday,
       city: user.city,
-      statusText: user.statusText,
+      heightCm: Number.parseInt(user.height, 10) || null,
+      physique: user.physique,
+      languages: [...user.languages],
+      horoscope: birthday ? this.getHoroscopeByDate(birthday) : user.horoscope,
       profileStatus: user.profileStatus,
       hostTier: user.hostTier,
       traitLabel: user.traitLabel,
-      headline: user.headline,
       about: user.about
     };
+  }
+
+  protected get profileCardBirthday(): string {
+    if (!this.profileForm.birthday) {
+      return 'Birthday';
+    }
+    return this.profileForm.birthday.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  }
+
+  protected get profileEditorAge(): number {
+    if (!this.profileForm.birthday) {
+      return this.activeUser.age;
+    }
+    return this.getAgeFromIsoDate(this.toIsoDate(this.profileForm.birthday));
+  }
+
+  private fromIsoDate(value: string): Date | null {
+    if (!value) {
+      return null;
+    }
+    const parsed = new Date(`${value}T00:00:00`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private toIsoDate(value: Date): string {
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    const day = `${value.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private getAgeFromIsoDate(value: string): number {
+    const birthday = this.fromIsoDate(value);
+    if (!birthday) {
+      return this.activeUser.age;
+    }
+    const now = new Date();
+    let age = now.getFullYear() - birthday.getFullYear();
+    const monthDiff = now.getMonth() - birthday.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birthday.getDate())) {
+      age -= 1;
+    }
+    return age;
+  }
+
+  private getHoroscopeByDate(value: Date): string {
+    const month = value.getMonth() + 1;
+    const day = value.getDate();
+    if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return 'Aquarius';
+    if ((month === 2 && day >= 19) || (month === 3 && day <= 20)) return 'Pisces';
+    if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return 'Aries';
+    if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return 'Taurus';
+    if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) return 'Gemini';
+    if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) return 'Cancer';
+    if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) return 'Leo';
+    if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) return 'Virgo';
+    if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) return 'Libra';
+    if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) return 'Scorpio';
+    if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) return 'Sagittarius';
+    return 'Capricorn';
   }
 
   private toInitials(name: string): string {

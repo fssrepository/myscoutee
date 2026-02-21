@@ -29,7 +29,14 @@
 
           <div class="user-meta user-meta-compact">
             <span class="user-name">{{ activeUser.name }}, {{ activeUser.age }}</span>
-            <span class="user-role">{{ activeUser.statusText }}</span>
+            <span class="user-city-line">
+              <mat-icon>location_on</mat-icon>
+              <span>{{ activeUser.city }}</span>
+            </span>
+            <span class="user-role user-role-status" [class]="profileStatusClass(activeUser.profileStatus)">
+              <mat-icon>{{ getProfileStatusIcon(activeUser.profileStatus) }}</mat-icon>
+              <span>{{ activeUser.profileStatus }}</span>
+            </span>
             <span class="user-third-line">
               <span class="meta-chip-inline">
                 <mat-icon [class]="getHostTierColorClass(activeUser.hostTier)">{{ getHostTierIcon(activeUser.hostTier) }}</mat-icon>
@@ -376,12 +383,41 @@
         <div class="profile-identity-card profile-identity-card-large">
           <div class="avatar-stack avatar-stack-editor">
             <span class="user-avatar user-avatar-large" [class]="'user-color-' + activeUser.gender">{{ activeUser.initials }}</span>
-            <span class="avatar-activity-badge" *ngIf="userBadgeCount > 0">{{ userBadgeCount }}</span>
+            <button type="button" class="avatar-edit-btn" aria-label="Open image editor" (click)="openImageEditor()">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <span class="avatar-bottom-pill">{{ activeUser.completion }}%</span>
           </div>
 
           <div class="profile-header-text">
-            <h3>{{ profileForm.fullName || activeUser.name }}, {{ profileForm.age || activeUser.age }}</h3>
-            <p>{{ profileForm.statusText || activeUser.statusText }}</p>
+            <h3 class="profile-name-line">
+              <span>{{ (profileForm.fullName || activeUser.name) + ', ' + profileEditorAge }}</span>
+            </h3>
+            <span class="profile-city-line">
+              <mat-icon>location_on</mat-icon>
+              <span>{{ profileForm.city || activeUser.city }}</span>
+            </span>
+            <div class="profile-status-select-wrap" [class]="profileStatusClass(profileForm.profileStatus)">
+              <mat-select [(ngModel)]="profileForm.profileStatus" disableOptionCentering panelClass="selector-options-panel status-options-panel">
+                <mat-select-trigger>
+                  <span class="status-option-content">
+                    <mat-icon [class]="profileStatusClass(profileForm.profileStatus)">{{ getProfileStatusIcon(profileForm.profileStatus) }}</mat-icon>
+                    <span>{{ profileForm.profileStatus }}</span>
+                  </span>
+                </mat-select-trigger>
+                <mat-option
+                  *ngFor="let status of profileStatusOptions"
+                  [value]="status.value"
+                  [class]="'status-option ' + profileStatusClass(status.value)"
+                  [class.hide-selected-option]="status.value === profileForm.profileStatus"
+                >
+                  <span class="status-option-content">
+                    <mat-icon [class]="profileStatusClass(status.value)">{{ status.icon }}</mat-icon>
+                    <span>{{ status.value }}</span>
+                  </span>
+                </mat-option>
+              </mat-select>
+            </div>
             <p class="profile-chip-line">
               <span class="meta-chip-inline">
                 <mat-icon [class]="getHostTierColorClass(profileForm.hostTier || activeUser.hostTier)">{{ getHostTierIcon(profileForm.hostTier || activeUser.hostTier) }}</mat-icon>
@@ -396,59 +432,122 @@
           </div>
         </div>
 
-        <button type="button" class="profile-image-row" (click)="openImageEditor()">
-          <span class="entry-left">
-            <mat-icon>photo_camera</mat-icon>
-            <span>Profilkép</span>
-          </span>
-          <span class="completion-chip">{{ activeUser.completion }}%</span>
-        </button>
+        <label class="profile-about-field">
+          <div class="profile-about-head">
+            <span>About me</span>
+            <small>{{ profileForm.about.length }}/160</small>
+          </div>
+          <textarea rows="3" maxlength="160" [(ngModel)]="profileForm.about"></textarea>
+        </label>
 
-        <div class="profile-form-grid">
-          <label>
-            <span>Teljes név</span>
+        <mat-accordion class="profile-basics-accordion">
+          <mat-expansion-panel [expanded]="true">
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                <span class="basics-title">
+                  <mat-icon>badge</mat-icon>
+                  <span>Basics</span>
+                </span>
+              </mat-panel-title>
+            </mat-expansion-panel-header>
+            <div class="profile-form-grid">
+          <label class="name-field">
+            <span>Name</span>
             <input type="text" [(ngModel)]="profileForm.fullName" />
           </label>
-          <label>
-            <span>Kor / címke</span>
-            <input type="number" [(ngModel)]="profileForm.age" />
-          </label>
-          <label>
-            <span>Város</span>
+          <label class="city-field">
+            <span>City</span>
             <input type="text" [(ngModel)]="profileForm.city" />
           </label>
-          <label>
-            <span>Állapot</span>
-            <input type="text" [(ngModel)]="profileForm.statusText" />
+          <label class="birthday-field">
+            <span>Birthday</span>
+            <div class="date-input-wrap">
+              <input [matDatepicker]="birthdayPicker" [(ngModel)]="profileForm.birthday" (ngModelChange)="onBirthdayChange($event)" />
+              <button type="button" class="date-picker-btn" (click)="birthdayPicker.open()" aria-label="Open birthday picker">
+                <mat-icon>calendar_month</mat-icon>
+              </button>
+              <mat-datepicker #birthdayPicker></mat-datepicker>
+            </div>
           </label>
-          <label>
-            <span>Láthatóság</span>
-            <select [(ngModel)]="profileForm.profileStatus">
-              <option>Public</option>
-              <option>Friends only</option>
-              <option>Host only</option>
-              <option>Inactive</option>
-            </select>
+          <label class="horoscope-field">
+            <span>Horoscope</span>
+            <div class="profile-status-select-wrap selector-like readonly-select" [class]="getHoroscopeClass(profileForm.horoscope)">
+              <span class="zodiac-symbol">{{ getHoroscopeSymbol(profileForm.horoscope) }}</span>
+              <span class="zodiac-label">{{ profileForm.horoscope }}</span>
+            </div>
           </label>
-          <label>
-            <span>Host szint</span>
-            <input type="text" [(ngModel)]="profileForm.hostTier" />
+          <label class="height-field">
+            <span>Height (cm)</span>
+            <input type="number" min="0" step="1" [(ngModel)]="profileForm.heightCm" />
           </label>
-          <label>
-            <span>Fő személyiség címke</span>
-            <input type="text" [(ngModel)]="profileForm.traitLabel" />
+          <label class="physique-field">
+            <span>Physique</span>
+            <div class="profile-status-select-wrap selector-like physique-select-wrap" [class]="getPhysiqueClass(profileForm.physique)">
+              <mat-select [(ngModel)]="profileForm.physique" disableOptionCentering panelClass="selector-options-panel">
+                <mat-select-trigger>
+                  <span class="status-option-content">
+                    <mat-icon [class]="getPhysiqueClass(profileForm.physique)">{{ getPhysiqueIcon(profileForm.physique) }}</mat-icon>
+                    <span>{{ profileForm.physique }}</span>
+                  </span>
+                </mat-select-trigger>
+                <mat-option
+                  *ngFor="let item of physiqueOptions"
+                  [value]="item"
+                  [class]="'status-option ' + getPhysiqueClass(item)"
+                  [class.hide-selected-option]="item === profileForm.physique"
+                >
+                  <span class="status-option-content">
+                    <mat-icon [class]="getPhysiqueClass(item)">{{ getPhysiqueIcon(item) }}</mat-icon>
+                    <span>{{ item }}</span>
+                  </span>
+                </mat-option>
+              </mat-select>
+            </div>
           </label>
-          <label class="wide">
-            <span>Headline</span>
-            <input type="text" [(ngModel)]="profileForm.headline" />
-          </label>
-          <label class="wide">
-            <span>About me</span>
-            <textarea rows="3" [(ngModel)]="profileForm.about"></textarea>
+          <label class="languages-field">
+            <span>Languages</span>
+            <div class="language-filter" (click)="onLanguagePanelClick($event)">
+              <button type="button" mat-stroked-button class="language-select-btn" [class.active]="showLanguagePanel" (click)="toggleLanguagePanel()">
+                <span class="label">{{ languageTriggerLabel() }}</span>
+                <mat-icon class="arrow" [class.open]="showLanguagePanel">expand_more</mat-icon>
+              </button>
+
+              <div class="language-panel" [class.open]="showLanguagePanel" *ngIf="showLanguagePanel">
+                <div class="language-chip-input" (click)="onLanguageInputContainerClick($event)">
+                  <mat-chip-set class="language-chip-set-inline" *ngIf="profileForm.languages.length > 0">
+                    <mat-chip *ngFor="let item of profileForm.languages" [removable]="true" (removed)="removeLanguage(item)">
+                      <span>{{ item }}</span>
+                      <button matChipRemove aria-label="Remove language">
+                        <mat-icon>cancel</mat-icon>
+                      </button>
+                    </mat-chip>
+                  </mat-chip-set>
+
+                  <input
+                    type="text"
+                    [(ngModel)]="languageInput"
+                    [matAutocomplete]="languageAuto"
+                    #languageTrigger="matAutocompleteTrigger"
+                    (focus)="onLanguageInputFocus(); languageTrigger.openPanel()"
+                    (click)="languageTrigger.openPanel()"
+                    (keydown)="onLanguageInputKeydown($event)"
+                    (blur)="onLanguageInputBlur()"
+                    placeholder="Language search"
+                  />
+                  <mat-icon class="language-dropdown-icon">search</mat-icon>
+
+                  <mat-autocomplete #languageAuto="matAutocomplete" (optionSelected)="selectLanguage($event.option.value)">
+                    <mat-option *ngFor="let item of availableLanguageDisplaySuggestions" [value]="item">
+                      {{ item }}
+                    </mat-option>
+                  </mat-autocomplete>
+                </div>
+              </div>
+            </div>
           </label>
         </div>
-
-        <p class="status-chip" [class]="profileStatusClass(profileForm.profileStatus)">{{ profileForm.profileStatus }}</p>
+          </mat-expansion-panel>
+        </mat-accordion>
 
         <mat-accordion class="popup-accordion" multi>
           <mat-expansion-panel>

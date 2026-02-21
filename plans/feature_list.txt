@@ -268,3 +268,13 @@ Assets accordion (car, accomodation, supplies)
 while editing the profile on the popup, there will be a settings button, where you can delete profile, logout, gdpr etc.
 
 for every accordion a +%, if you fill it out
+
+badge - red counter, if more than 9, than 9+ (so only 2 digits appears - space)
+
+popup header
+
+Event editor
+title of event
+
+Chat
+title of chat
