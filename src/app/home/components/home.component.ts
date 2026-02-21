@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
 import { DEMO_USERS, DemoUser } from '../../shared/demo-data';
 
 type LocalPopup = 'history' | null;
@@ -8,13 +9,14 @@ type LocalPopup = 'history' | null;
   selector: 'app-home',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule],
+  imports: [CommonModule, MatIconModule],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss']
 })
 export class HomeComponent {
   private users = DEMO_USERS;
   protected selectedRating = 7;
+  protected isPairMode = false;
   protected cardIndex = 0;
   protected localPopup: LocalPopup = null;
   protected activeUserId = this.getActiveUserId();
@@ -42,6 +44,10 @@ export class HomeComponent {
     this.cardIndex = nextIndex % this.candidatePool.length;
   }
 
+  protected togglePairMode(): void {
+    this.isPairMode = !this.isPairMode;
+  }
+
   protected openHistory(): void {
     this.localPopup = 'history';
   }
@@ -50,8 +56,19 @@ export class HomeComponent {
     this.localPopup = null;
   }
 
-  protected requestGlobalPopup(type: 'eventEditor' | 'eventExplore'): void {
-    window.dispatchEvent(new CustomEvent('openFeaturePopup', { detail: { type } }));
+  protected openFilter(): void {
+    this.localPopup = 'history';
+  }
+
+  protected get candidateInitials(): string {
+    const parts = this.activeCandidate.name.split(' ').filter(Boolean);
+    if (parts.length === 0) {
+      return 'U';
+    }
+    if (parts.length === 1) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
   }
 
   @HostListener('window:active-user-changed')

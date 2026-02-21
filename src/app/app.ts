@@ -346,7 +346,7 @@ export class App {
   protected selectedEvent: EventMenuItem | null = null;
   protected selectedHostingEvent: HostingMenuItem | null = null;
 
-  protected imageSlots: Array<string | null> = [null, null, null, null, null, null, null, null];
+  protected imageSlots: Array<string | null> = [];
   protected selectedImageIndex = 0;
   protected pendingSlotUploadIndex: number | null = null;
   @ViewChild('slotImageInput') private slotImageInput?: ElementRef<HTMLInputElement>;
@@ -370,8 +370,10 @@ export class App {
   };
   protected languageInput = '';
   protected showLanguagePanel = false;
+  private readonly profileImageSlotsByUser: Record<string, Array<string | null>> = {};
 
   constructor(private readonly router: Router) {
+    this.initializeProfileImageSlots();
     this.profileDetailsForm = this.createProfileDetailsForm();
     this.syncProfileFormFromActiveUser();
     this.router.navigate(['/game']);
@@ -1630,6 +1632,7 @@ export class App {
   protected removeImage(index: number): void {
     this.revokeObjectUrl(this.imageSlots[index]);
     this.imageSlots[index] = null;
+    this.persistActiveUserImageSlots();
     if (this.selectedImageIndex === index) {
       const nearest = this.findNearestFilledImageIndex(index);
       this.selectedImageIndex = nearest >= 0 ? nearest : 0;
@@ -1656,6 +1659,7 @@ export class App {
     this.revokeObjectUrl(this.imageSlots[slotIndex]);
     this.imageSlots[slotIndex] = URL.createObjectURL(file);
     this.selectedImageIndex = slotIndex;
+    this.persistActiveUserImageSlots();
     target.value = '';
   }
 
@@ -1678,6 +1682,10 @@ export class App {
 
   protected get selectedImagePreview(): string | null {
     return this.imageSlots[this.selectedImageIndex] ?? null;
+  }
+
+  protected get featuredImagePreview(): string | null {
+    return this.imageSlots[0] ?? null;
   }
 
   protected get imageStackSlots(): number[] {
@@ -1748,6 +1756,20 @@ export class App {
     return `${groupIndex}-${rowIndex}`;
   }
 
+  private initializeProfileImageSlots(): void {
+    for (const user of this.users) {
+      this.profileImageSlotsByUser[user.id] = this.createEmptyImageSlots();
+    }
+  }
+
+  private createEmptyImageSlots(): Array<string | null> {
+    return Array.from({ length: 8 }, () => null);
+  }
+
+  private persistActiveUserImageSlots(): void {
+    this.profileImageSlotsByUser[this.activeUser.id] = [...this.imageSlots];
+  }
+
   private syncProfileFormFromActiveUser(): void {
     const user = this.activeUser;
     const birthday = this.fromIsoDate(user.birthday);
@@ -1764,6 +1786,10 @@ export class App {
       traitLabel: user.traitLabel,
       about: user.about
     };
+    const slots = this.profileImageSlotsByUser[user.id];
+    this.imageSlots = slots ? [...slots] : this.createEmptyImageSlots();
+    const firstFilled = this.imageSlots.findIndex(slot => Boolean(slot));
+    this.selectedImageIndex = firstFilled >= 0 ? firstFilled : 0;
   }
 
   protected get profileCardBirthday(): string {

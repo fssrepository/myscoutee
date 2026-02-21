@@ -2,43 +2,46 @@
   <header class="game-header">
     <div>
       <h1>Game</h1>
-      <p>Default route. All other menu sections open as popup above this page.</p>
+      <p>Discover profiles and rate with 10-star feedback.</p>
     </div>
     <div class="game-actions">
-      <button type="button" (click)="openHistory()">History</button>
-      <button type="button" (click)="requestGlobalPopup('eventEditor')">Event Editor</button>
-      <button type="button" (click)="requestGlobalPopup('eventExplore')">Event Explore</button>
+      <button type="button" class="game-action-mode" [class.mode-pair]="isPairMode" [class.mode-single]="!isPairMode" (click)="togglePairMode()">
+        <mat-icon>{{ isPairMode ? 'groups' : 'person' }}</mat-icon>
+        <span>{{ isPairMode ? 'Pair mode' : 'Single mode' }}</span>
+      </button>
+      <button type="button" class="game-action-filter has-badge" (click)="openFilter()" aria-label="Open profile filters">
+        <mat-icon>filter_alt</mat-icon>
+      </button>
+      <button type="button" class="game-action-filter has-badge" (click)="openFilter()" aria-label="Open profile filters">
+        <mat-icon>history</mat-icon>
+        <span class="history-badge">{{ activeUser.activities.game }}</span>
+      </button>
     </div>
   </header>
 
-  <section class="game-filter-bar">
-    <span>Profile filter: profession + school + friends in common</span>
-    <span>Type: single / pair</span>
-    <span>Interaction counter: {{ activeUser.activities.game }}</span>
-  </section>
-
-  <section class="game-layout">
-    <article class="card-stack">
-      <div class="image-progress"><span></span><span></span><span></span><span></span></div>
+  <section class="game-layout-single">
+    <article class="card-stack game-card-main">
       <div class="card-content">
         <h2>{{ activeCandidate.name }}, {{ activeCandidate.age }}</h2>
         <p>{{ activeCandidate.city }} · {{ activeCandidate.statusText }}</p>
         <p>{{ activeCandidate.headline }}</p>
       </div>
-      <div class="rating-bar">
-        <span class="rating-value">{{ selectedRating }}</span>
-        <button type="button" *ngFor="let score of ratingScale" (click)="setRating(score)">{{ score }}</button>
+      <div class="card-image-area">
+        <span class="card-image-placeholder">{{ candidateInitials }}</span>
+      </div>
+      <div class="rating-stars">
+        <button
+          type="button"
+          class="star-btn"
+          *ngFor="let score of ratingScale"
+          [class.filled]="score <= selectedRating"
+          (click)="setRating(score)"
+          aria-label="Rate {{ score }}"
+        >
+          ★
+        </button>
       </div>
     </article>
-
-    <aside class="pair-card">
-      <h3>Pair mode preview</h3>
-      <p>Rotate in pair mode to compare two candidates side-by-side.</p>
-      <div class="pair-row">
-        <span class="pill woman">Woman lane</span>
-        <span class="pill man">Man lane</span>
-      </div>
-    </aside>
   </section>
 </div>
 
@@ -46,12 +49,12 @@
   <div class="game-popup-backdrop" (click)="closeLocalPopup()"></div>
   <div class="game-popup-panel" (click)="$event.stopPropagation()">
     <header>
-      <h2>Vote History</h2>
+      <h2>Profile Filter</h2>
       <button type="button" (click)="closeLocalPopup()">×</button>
     </header>
     <div class="game-popup-body">
-      <p>Filters: Given · Received · Mutual · Met · Pairs</p>
-      <p>Additional filters: distance, activity time, name search.</p>
+      <p>Filters: profession, school, friends in common.</p>
+      <p>Mode: single/pair, distance and recent activity.</p>
     </div>
   </div>
 </section>

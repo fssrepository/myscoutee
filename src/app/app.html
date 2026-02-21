@@ -1,7 +1,13 @@
 <main class="main">
   <div class="content content-single">
     <button mat-icon-button class="user-selector-btn-global" [class.is-hidden]="showUserMenu" (click)="onUserSelect()" aria-label="Open user menu">
-      <span class="user-initial" [class]="'user-color-' + activeUser.gender">{{ activeUser.initials }}</span>
+      <span
+        class="user-initial"
+        [ngClass]="['user-color-' + activeUser.gender, featuredImagePreview ? 'has-photo' : '']"
+        [style.backgroundImage]="featuredImagePreview ? 'url(' + featuredImagePreview + ')' : null"
+      >
+        <ng-container *ngIf="!featuredImagePreview">{{ activeUser.initials }}</ng-container>
+      </span>
       <span class="badge-dot" *ngIf="userBadgeCount > 0">{{ userBadgeCount }}</span>
     </button>
 
@@ -22,7 +28,13 @@
 
         <div class="user-header-main">
           <div class="avatar-stack">
-            <span class="user-avatar user-avatar-large" [class]="'user-color-' + activeUser.gender">{{ activeUser.initials }}</span>
+            <span
+              class="user-avatar user-avatar-large"
+              [ngClass]="['user-color-' + activeUser.gender, featuredImagePreview ? 'has-photo' : '']"
+              [style.backgroundImage]="featuredImagePreview ? 'url(' + featuredImagePreview + ')' : null"
+            >
+              <ng-container *ngIf="!featuredImagePreview">{{ activeUser.initials }}</ng-container>
+            </span>
             <span class="avatar-activity-badge" *ngIf="userBadgeCount > 0">{{ userBadgeCount }}</span>
             <span class="avatar-bottom-pill">{{ activeUser.completion }}%</span>
           </div>
@@ -392,7 +404,13 @@
       <div *ngIf="activePopup === 'profileEditor'" class="profile-editor-wrap">
         <div class="profile-identity-card profile-identity-card-large">
           <div class="avatar-stack avatar-stack-editor">
-            <span class="user-avatar user-avatar-large" [class]="'user-color-' + activeUser.gender">{{ activeUser.initials }}</span>
+            <span
+              class="user-avatar user-avatar-large"
+              [ngClass]="['user-color-' + activeUser.gender, featuredImagePreview ? 'has-photo' : '']"
+              [style.backgroundImage]="featuredImagePreview ? 'url(' + featuredImagePreview + ')' : null"
+            >
+              <ng-container *ngIf="!featuredImagePreview">{{ activeUser.initials }}</ng-container>
+            </span>
             <button type="button" class="avatar-edit-btn" aria-label="Open image editor" (click)="openImageEditor()">
               <mat-icon>edit</mat-icon>
             </button>
@@ -835,6 +853,7 @@
             type="button"
             *ngFor="let slot of imageSlots; let i = index"
             [class.slot-selected]="selectedImageIndex === i"
+            [class.slot-featured]="i === 0"
             [style.backgroundImage]="slot ? 'url(' + slot + ')' : 'none'"
             (click)="selectImageSlot(i)"
           >

@@ -72,6 +72,15 @@
   box-shadow: 0 8px 20px rgba(13, 24, 44, 0.26);
 }
 
+.user-selector-btn-global .user-initial.has-photo,
+.user-avatar.has-photo {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: transparent;
+  font-size: 0;
+}
+
 .user-selector-btn-global .badge-dot {
   position: absolute;
   top: -6px;
@@ -3345,6 +3354,15 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.image-editor-grid button.slot-featured {
+  border-color: rgba(204, 130, 27, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(226, 158, 41, 0.46);
+}
+
+.image-editor-grid button.slot-featured.slot-selected {
+  box-shadow: 0 0 0 2px rgba(228, 156, 52, 0.28), inset 0 0 0 1px rgba(226, 158, 41, 0.52);
 }
 
 .image-editor-grid .slot-selected {
