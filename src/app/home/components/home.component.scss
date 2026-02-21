@@ -5,7 +5,7 @@
 .game-page {
   max-width: 980px;
   margin: 0 auto;
-  min-height: calc(100vh - 2rem);
+  min-height: calc(100vh - 3rem);
   border: 1px solid rgba(21, 38, 62, 0.14);
   border-radius: 16px;
   padding: 0.74rem;
@@ -167,7 +167,7 @@
   margin: 0 0.72rem;
   border-radius: 12px;
   border: 1px dashed rgba(19, 34, 55, 0.2);
-  min-height: 280px;
+  min-height: calc(100vh - 15.5rem);
   background:
     linear-gradient(155deg, rgba(219, 234, 255, 0.66), rgba(255, 241, 230, 0.54)),
     #f8fbff;
