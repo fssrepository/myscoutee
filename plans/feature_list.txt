@@ -316,3 +316,5 @@ profile editor (move the status selector to before about me, but below avatar bu
 the Profile Details -> is a section, not an accordion (panel will be wider)
 
 Experience (section - school / workplace)
+
+on mobile, when you click on dropdown box or fab and you show a popup on bottom with the list of elements
