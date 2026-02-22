@@ -124,7 +124,7 @@
   right: -6px;
   min-width: 20px;
   height: 20px;
-  border-radius: 999px;
+  border-radius: 50%;
   background: #d94a4a;
   color: #fff;
   font-size: 11px;
@@ -132,7 +132,6 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 5px;
   box-shadow: 0 0 0 2px #fff;
 }
 
