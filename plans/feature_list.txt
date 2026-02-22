@@ -278,3 +278,41 @@ title of event
 
 Chat
 title of chat
+
+---------
+
+changes in design:
+
+while clicking on user selector
+
+avatar....icon + public profile in the third rows
+
+pencil (top right corner) -> clicking on it profile editor
+
+below the avatar
+
+Impressions ---------------------------
+2 badge (Platinum Host, Empirikus Résztvető)
+
+remove the Impressions accordion from the Profile Editor
+
+Activities-----------------------------
+5 gomg (game, chats, invitations, events, hosting)
+
+formatum
+icon
+name
+
+Assets
+----------------------------------------
+3 gomg (accomodations, cars, supplies)
+
+formatum
+icon
+name
+
+profile editor (move the status selector to before about me, but below avatar button - header should be Profile Status)
+
+the Profile Details -> is a section, not an accordion (panel will be wider)
+
+Experience (section - school / workplace)
