@@ -4,7 +4,7 @@ import { Router, RouterOutlet } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';
+import { DateAdapter, MAT_DATE_FORMATS, MatNativeDateModule, NativeDateAdapter } from '@angular/material/core';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatChipsModule } from '@angular/material/chips';
@@ -146,6 +146,56 @@ interface MobileProfileSelectorSheet {
     | { kind: 'experienceType' };
 }
 
+class YearMonthDayDateAdapter extends NativeDateAdapter {
+  override parse(value: unknown): Date | null {
+    if (typeof value === 'string') {
+      const normalized = value.trim();
+      if (!normalized) {
+        return null;
+      }
+      const match = normalized.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
+      if (match) {
+        const year = Number.parseInt(match[1], 10);
+        const month = Number.parseInt(match[2], 10);
+        const day = Number.parseInt(match[3], 10);
+        if (
+          Number.isFinite(year) &&
+          Number.isFinite(month) &&
+          Number.isFinite(day) &&
+          month >= 1 &&
+          month <= 12 &&
+          day >= 1 &&
+          day <= 31
+        ) {
+          return new Date(year, month - 1, day);
+        }
+      }
+    }
+    return super.parse(value);
+  }
+
+  override format(date: Date, displayFormat: Object): string {
+    if (displayFormat === 'ymdInput') {
+      const month = `${date.getMonth() + 1}`.padStart(2, '0');
+      const day = `${date.getDate()}`.padStart(2, '0');
+      return `${date.getFullYear()}/${month}/${day}`;
+    }
+    return super.format(date, displayFormat);
+  }
+}
+
+const APP_DATE_FORMATS = {
+  parse: {
+    dateInput: 'ymdInput'
+  },
+  display: {
+    dateInput: 'ymdInput',
+    monthYearLabel: 'MMM yyyy',
+    dateA11yLabel: 'LL',
+    monthYearA11yLabel: 'MMMM yyyy'
+  }
+};
+
 @Component({
   selector: 'app-root',
   imports: [
@@ -160,6 +210,10 @@ interface MobileProfileSelectorSheet {
     MatChipsModule,
     MatAutocompleteModule,
     FormsModule
+  ],
+  providers: [
+    { provide: DateAdapter, useClass: YearMonthDayDateAdapter },
+    { provide: MAT_DATE_FORMATS, useValue: APP_DATE_FORMATS }
   ],
   templateUrl: './app.html',
   styleUrl: '../_styles/app.scss'
@@ -2644,13 +2698,17 @@ export class App {
     if (!value || value === 'Present') {
       return null;
     }
-    const [yearRaw, monthRaw] = value.split('-');
-    const year = Number.parseInt(yearRaw, 10);
-    const month = Number.parseInt(monthRaw, 10);
-    if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
+    const match = value.trim().match(/^(\d{4})[/-](\d{1,2})(?:[/-](\d{1,2}))?$/);
+    if (!match) {
       return null;
     }
-    return new Date(year, month - 1, 1);
+    const year = Number.parseInt(match[1], 10);
+    const month = Number.parseInt(match[2], 10);
+    const day = match[3] ? Number.parseInt(match[3], 10) : 1;
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day) || month < 1 || month > 12 || day < 1 || day > 31) {
+      return null;
+    }
+    return new Date(year, month - 1, day);
   }
 
   private toYearMonth(value: Date | null): string {
@@ -2659,14 +2717,16 @@ export class App {
     }
     const year = value.getFullYear();
     const month = `${value.getMonth() + 1}`.padStart(2, '0');
-    return `${year}-${month}`;
+    const day = `${value.getDate()}`.padStart(2, '0');
+    return `${year}/${month}/${day}`;
   }
 
   private toSortableDate(value: string): number {
     if (!value) {
       return Number.POSITIVE_INFINITY;
     }
-    const parsed = new Date(`${value}-01T00:00:00`);
+    const safe = value.replace(/\//g, '-');
+    const parsed = /^\d{4}-\d{2}-\d{2}$/.test(safe) ? new Date(`${safe}T00:00:00`) : new Date(`${safe}-01T00:00:00`);
     return Number.isNaN(parsed.getTime()) ? Number.POSITIVE_INFINITY : parsed.getTime();
   }
 

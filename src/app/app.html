@@ -1295,8 +1295,8 @@
                   <mat-form-field appearance="fill" class="experience-date-range-field" subscriptSizing="dynamic">
                     <mat-label>Enter a date range</mat-label>
                     <mat-date-range-input [rangePicker]="experienceDateRangePicker">
-                      <input matStartDate [(ngModel)]="experienceRangeStart" name="experienceRangeStart" placeholder="YYYY/MM" />
-                      <input matEndDate [(ngModel)]="experienceRangeEnd" name="experienceRangeEnd" placeholder="YYYY/MM" />
+                      <input matStartDate [(ngModel)]="experienceRangeStart" name="experienceRangeStart" placeholder="YYYY/MM/DD" />
+                      <input matEndDate [(ngModel)]="experienceRangeEnd" name="experienceRangeEnd" placeholder="YYYY/MM/DD" />
                     </mat-date-range-input>
                     <mat-datepicker-toggle matSuffix [for]="experienceDateRangePicker"></mat-datepicker-toggle>
                     <mat-hint>YYYY/MM - YYYY/MM</mat-hint>
