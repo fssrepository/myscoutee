@@ -479,6 +479,7 @@ export class App {
   protected languageInput = '';
   protected showLanguagePanel = false;
   private readonly profileImageSlotsByUser: Record<string, Array<string | null>> = {};
+  private readonly languageSheetHeightCssVar = '--mobile-language-sheet-height';
 
   constructor(private readonly router: Router) {
     this.initializeProfileImageSlots();
@@ -1728,6 +1729,10 @@ export class App {
 
   protected openMobileLanguageSelector(event: Event): void {
     event.stopPropagation();
+    if (typeof document !== 'undefined' && typeof window !== 'undefined') {
+      const stableHeight = Math.max(window.innerHeight - 6, 320);
+      document.documentElement.style.setProperty(this.languageSheetHeightCssVar, `${stableHeight}px`);
+    }
     this.languageInput = '';
     this.mobileProfileSelectorSheet = {
       title: 'Languages',
@@ -1776,6 +1781,9 @@ export class App {
   }
 
   protected closeMobileProfileSelectorSheet(): void {
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.removeProperty(this.languageSheetHeightCssVar);
+    }
     this.mobileProfileSelectorSheet = null;
   }
 

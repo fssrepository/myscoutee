@@ -4904,15 +4904,6 @@ textarea {
   max-width: min(94vw, 620px);
 }
 
-.mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-selector-options {
-  justify-items: stretch;
-}
-
-.mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-selector-option {
-  width: 100%;
-  min-width: 0;
-}
-
 .mobile-profile-selector-handle {
   width: 42px;
   height: 4px;
@@ -5384,6 +5375,41 @@ textarea {
     border-bottom: 0;
     box-shadow: 0 -16px 32px rgba(15, 29, 52, 0.24);
     padding: 0.4rem 0.6rem max(0.58rem, env(safe-area-inset-bottom));
+  }
+
+  .mobile-profile-selector-sheet.mobile-profile-selector-sheet-language {
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    max-width: 100vw;
+    height: var(--mobile-language-sheet-height, 100svh);
+    max-height: var(--mobile-language-sheet-height, 100svh);
+    border-radius: 0;
+    padding: max(0.4rem, env(safe-area-inset-top)) 0.6rem max(0.58rem, env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-selector-title,
+  .mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-language-entry {
+    flex: 0 0 auto;
+  }
+
+  .mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-selector-options {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    margin-top: 0.18rem;
+    justify-items: stretch;
+    align-content: start;
+    grid-auto-rows: max-content;
+  }
+
+  .mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-selector-option {
+    width: 100%;
+    min-width: 0;
+    min-height: 46px;
   }
 
   .mobile-profile-selector-options {
