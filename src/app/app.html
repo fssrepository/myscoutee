@@ -651,68 +651,108 @@
                     </label>
                     <label class="physique-field">
                       <span>Physique</span>
-                      <div class="profile-status-select-wrap selector-like physique-select-wrap" [class]="getPhysiqueClass(profileForm.physique)">
-                        <mat-select [(ngModel)]="profileForm.physique" disableOptionCentering panelClass="selector-options-panel physique-options-panel profile-bottom-sheet-panel">
-                          <mat-select-trigger>
-                            <span class="status-option-content">
-                              <mat-icon [class]="getPhysiqueClass(profileForm.physique)">{{ getPhysiqueIcon(profileForm.physique) }}</mat-icon>
-                              <span>{{ profileForm.physique }}</span>
-                            </span>
-                          </mat-select-trigger>
-                          <mat-option
-                            *ngFor="let item of physiqueOptions"
-                            [value]="item"
-                            [class]="'status-option ' + getPhysiqueClass(item)"
-                            [class.hide-selected-option]="item === profileForm.physique"
-                          >
-                            <span class="status-option-content">
-                              <mat-icon [class]="getPhysiqueClass(item)">{{ getPhysiqueIcon(item) }}</mat-icon>
-                              <span>{{ item }}</span>
-                            </span>
-                          </mat-option>
-                        </mat-select>
-                      </div>
+                      <ng-container *ngIf="!isMobileView; else mobilePhysiqueSelectorButton">
+                        <div class="profile-status-select-wrap selector-like physique-select-wrap" [class]="getPhysiqueClass(profileForm.physique)">
+                          <mat-select [(ngModel)]="profileForm.physique" disableOptionCentering panelClass="selector-options-panel physique-options-panel profile-bottom-sheet-panel">
+                            <mat-select-trigger>
+                              <span class="status-option-content">
+                                <mat-icon [class]="getPhysiqueClass(profileForm.physique)">{{ getPhysiqueIcon(profileForm.physique) }}</mat-icon>
+                                <span>{{ profileForm.physique }}</span>
+                              </span>
+                            </mat-select-trigger>
+                            <mat-option
+                              *ngFor="let item of physiqueOptions"
+                              [value]="item"
+                              [class]="'status-option ' + getPhysiqueClass(item)"
+                              [class.hide-selected-option]="item === profileForm.physique"
+                            >
+                              <span class="status-option-content">
+                                <mat-icon [class]="getPhysiqueClass(item)">{{ getPhysiqueIcon(item) }}</mat-icon>
+                                <span>{{ item }}</span>
+                              </span>
+                            </mat-option>
+                          </mat-select>
+                        </div>
+                      </ng-container>
+                      <ng-template #mobilePhysiqueSelectorButton>
+                        <button
+                          type="button"
+                          class="profile-status-select-wrap selector-like physique-select-wrap"
+                          [ngClass]="getPhysiqueClass(profileForm.physique)"
+                          (click)="openMobilePhysiqueSelector($event)"
+                        >
+                          <span class="status-option-content">
+                            <mat-icon [class]="getPhysiqueClass(profileForm.physique)">{{ getPhysiqueIcon(profileForm.physique) }}</mat-icon>
+                            <span>{{ profileForm.physique }}</span>
+                          </span>
+                          <mat-icon>expand_more</mat-icon>
+                        </button>
+                      </ng-template>
                     </label>
                     <label class="languages-field">
                       <span>Languages</span>
-                      <div class="language-filter" (click)="onLanguagePanelClick($event)">
-                        <button type="button" mat-stroked-button class="language-select-btn" [class.active]="showLanguagePanel" (click)="toggleLanguagePanel()">
-                          <span class="label">{{ languageTriggerLabel() }}</span>
-                          <mat-icon class="arrow" [class.open]="showLanguagePanel">expand_more</mat-icon>
-                        </button>
+                      <ng-container *ngIf="!isMobileView; else mobileLanguageSelectorButton">
+                        <div class="language-filter" (click)="onLanguagePanelClick($event)">
+                          <button type="button" mat-stroked-button class="language-select-btn" [class.active]="showLanguagePanel" (click)="toggleLanguagePanel()">
+                            <span class="label">{{ languageTriggerLabel() }}</span>
+                            <mat-icon class="arrow" [class.open]="showLanguagePanel">expand_more</mat-icon>
+                          </button>
 
-                        <div class="language-panel" [class.open]="showLanguagePanel" *ngIf="showLanguagePanel">
-                          <div class="language-chip-input" (click)="onLanguageInputContainerClick($event)">
-                            <mat-chip-set class="language-chip-set-inline" *ngIf="profileForm.languages.length > 0">
-                              <mat-chip *ngFor="let item of profileForm.languages" [removable]="true" (removed)="removeLanguage(item)">
-                                <span>{{ item }}</span>
-                                <button matChipRemove aria-label="Remove language">
-                                  <mat-icon>cancel</mat-icon>
-                                </button>
-                              </mat-chip>
-                            </mat-chip-set>
+                          <div class="language-panel" [class.open]="showLanguagePanel" *ngIf="showLanguagePanel">
+                            <div class="language-chip-input" (click)="onLanguageInputContainerClick($event)">
+                              <mat-chip-set class="language-chip-set-inline" *ngIf="profileForm.languages.length > 0">
+                                <mat-chip
+                                  *ngFor="let item of profileForm.languages"
+                                  [ngClass]="languageToneClass(item)"
+                                  [removable]="true"
+                                  (removed)="removeLanguage(item)"
+                                >
+                                  <span>{{ item }}</span>
+                                  <button matChipRemove aria-label="Remove language">
+                                    <mat-icon>cancel</mat-icon>
+                                  </button>
+                                </mat-chip>
+                              </mat-chip-set>
 
-                            <input
-                              type="text"
-                              [(ngModel)]="languageInput"
-                              [matAutocomplete]="languageAuto"
-                              #languageTrigger="matAutocompleteTrigger"
-                              (focus)="onLanguageInputFocus(); languageTrigger.openPanel()"
-                              (click)="languageTrigger.openPanel()"
-                              (keydown)="onLanguageInputKeydown($event)"
-                              (blur)="onLanguageInputBlur()"
-                              placeholder="Language search"
-                            />
-                            <mat-icon class="language-dropdown-icon">search</mat-icon>
+                              <input
+                                type="text"
+                                [(ngModel)]="languageInput"
+                                [matAutocomplete]="languageAuto"
+                                #languageTrigger="matAutocompleteTrigger"
+                                (focus)="onLanguageInputFocus(); languageTrigger.openPanel()"
+                                (click)="languageTrigger.openPanel()"
+                                (keydown)="onLanguageInputKeydown($event)"
+                                (blur)="onLanguageInputBlur()"
+                                placeholder="Language search"
+                              />
+                              <mat-icon class="language-dropdown-icon">search</mat-icon>
 
-                            <mat-autocomplete #languageAuto="matAutocomplete" (optionSelected)="selectLanguage($event.option.value)">
-                              <mat-option *ngFor="let item of availableLanguageDisplaySuggestions" [value]="item">
-                                {{ item }}
-                              </mat-option>
-                            </mat-autocomplete>
+                              <mat-autocomplete #languageAuto="matAutocomplete" (optionSelected)="selectLanguage($event.option.value)">
+                                <mat-option
+                                  *ngFor="let item of availableLanguageDisplaySuggestions"
+                                  [value]="item"
+                                  [ngClass]="languageToneClass(item)"
+                                >
+                                  {{ item }}
+                                </mat-option>
+                              </mat-autocomplete>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      </ng-container>
+                      <ng-template #mobileLanguageSelectorButton>
+                        <button
+                          type="button"
+                          class="profile-status-select-wrap selector-like language-mobile-trigger"
+                          (click)="openMobileLanguageSelector($event)"
+                        >
+                          <span class="status-option-content">
+                            <mat-icon>language</mat-icon>
+                            <span>{{ languageTriggerLabel() || 'Select languages' }}</span>
+                          </span>
+                          <mat-icon>expand_more</mat-icon>
+                        </button>
+                      </ng-template>
                     </label>
                   </div>
                   <ng-template #nonBasicsGroup>
@@ -908,12 +948,12 @@
       <mat-icon>list</mat-icon>
       <span>{{ mobileProfileSelectorSheet.title }}</span>
     </div>
-    <div class="mobile-profile-selector-options">
+    <div class="mobile-profile-selector-options" *ngIf="mobileProfileSelectorSheet.context.kind !== 'language'; else mobileLanguageSelectorSheet">
       <button
         type="button"
         class="mobile-profile-selector-option"
         *ngFor="let option of mobileProfileSelectorSheet.options"
-        [class.active]="option.value === mobileProfileSelectorSheet.selected"
+        [class.active]="isMobileSelectorOptionActive(option.value)"
         [ngClass]="option.toneClass"
         (click)="selectMobileProfileSelectorOption(option.value)"
       >
@@ -921,9 +961,51 @@
           <mat-icon>{{ option.icon }}</mat-icon>
           <span>{{ option.label }}</span>
         </span>
-        <mat-icon *ngIf="option.value === mobileProfileSelectorSheet.selected">check</mat-icon>
+        <mat-icon *ngIf="isMobileSelectorOptionActive(option.value)">check</mat-icon>
       </button>
     </div>
+    <ng-template #mobileLanguageSelectorSheet>
+      <div class="mobile-profile-language-entry" (click)="$event.stopPropagation()">
+        <div class="mobile-profile-language-chips" *ngIf="profileForm.languages.length > 0">
+          <button
+            type="button"
+            class="mobile-profile-language-chip"
+            [ngClass]="languageToneClass(item)"
+            *ngFor="let item of profileForm.languages"
+            (click)="removeLanguage(item)"
+          >
+            <span>{{ item }}</span>
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <label class="mobile-profile-language-input-wrap">
+          <input
+            type="text"
+            [(ngModel)]="languageInput"
+            (keydown)="onLanguageInputKeydown($event)"
+            (blur)="onLanguageInputBlur()"
+            placeholder="Type language"
+          />
+          <mat-icon>search</mat-icon>
+        </label>
+      </div>
+      <div class="mobile-profile-selector-options">
+        <button
+          type="button"
+          class="mobile-profile-selector-option"
+          *ngFor="let item of availableLanguageDisplaySuggestions"
+          [class.active]="isMobileSelectorOptionActive(item)"
+          [ngClass]="languageToneClass(item)"
+          (click)="selectMobileProfileSelectorOption(item)"
+        >
+          <span class="mobile-profile-selector-option-main">
+            <mat-icon>language</mat-icon>
+            <span>{{ item }}</span>
+          </span>
+          <mat-icon *ngIf="isMobileSelectorOptionActive(item)">check</mat-icon>
+        </button>
+      </div>
+    </ng-template>
   </div>
 </section>
 

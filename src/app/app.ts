@@ -138,6 +138,8 @@ interface MobileProfileSelectorSheet {
   options: MobileProfileSelectorOption[];
   context:
     | { kind: 'profileStatus' }
+    | { kind: 'physique' }
+    | { kind: 'language' }
     | { kind: 'detailValue'; groupIndex: number; rowIndex: number }
     | { kind: 'experienceType' };
 }
@@ -1545,7 +1547,10 @@ export class App {
     if (normalized.includes('lean')) {
       return 'physique-lean';
     }
-    if (normalized.includes('athletic') || normalized.includes('fit')) {
+    if (normalized.includes('fit')) {
+      return 'physique-fit';
+    }
+    if (normalized.includes('athletic')) {
       return 'physique-athletic';
     }
     if (normalized.includes('curvy')) {
@@ -1626,6 +1631,36 @@ export class App {
     };
   }
 
+  protected openMobilePhysiqueSelector(event: Event): void {
+    event.stopPropagation();
+    this.mobileProfileSelectorSheet = {
+      title: 'Physique',
+      selected: this.profileForm.physique,
+      options: this.physiqueOptions.map(option => ({
+        value: option,
+        label: option,
+        icon: this.getPhysiqueIcon(option),
+        toneClass: this.getPhysiqueClass(option)
+      })),
+      context: { kind: 'physique' }
+    };
+  }
+
+  protected openMobileLanguageSelector(event: Event): void {
+    event.stopPropagation();
+    this.languageInput = '';
+    this.mobileProfileSelectorSheet = {
+      title: 'Languages',
+      selected: '',
+      options: this.languageSuggestions.map(option => ({
+        value: option,
+        label: option,
+        icon: 'language'
+      })),
+      context: { kind: 'language' }
+    };
+  }
+
   protected openMobileDetailValueSelector(groupIndex: number, rowIndex: number, event: Event): void {
     event.stopPropagation();
     const row = this.profileDetailsForm[groupIndex]?.rows[rowIndex];
@@ -1664,6 +1699,17 @@ export class App {
     this.mobileProfileSelectorSheet = null;
   }
 
+  protected isMobileSelectorOptionActive(value: string): boolean {
+    const sheet = this.mobileProfileSelectorSheet;
+    if (!sheet) {
+      return false;
+    }
+    if (sheet.context.kind === 'language') {
+      return this.profileForm.languages.some(item => item.toLowerCase() === value.toLowerCase());
+    }
+    return sheet.selected === value;
+  }
+
   protected selectMobileProfileSelectorOption(value: string): void {
     const sheet = this.mobileProfileSelectorSheet;
     if (!sheet) {
@@ -1674,6 +1720,27 @@ export class App {
         this.profileForm.profileStatus = value as ProfileStatus;
       }
       this.mobileProfileSelectorSheet = null;
+      return;
+    }
+    if (sheet.context.kind === 'physique') {
+      if (this.physiqueOptions.includes(value)) {
+        this.profileForm.physique = value;
+      }
+      this.mobileProfileSelectorSheet = null;
+      return;
+    }
+    if (sheet.context.kind === 'language') {
+      const exists = this.profileForm.languages.some(item => item.toLowerCase() === value.toLowerCase());
+      if (exists) {
+        this.profileForm.languages = this.profileForm.languages.filter(item => item.toLowerCase() !== value.toLowerCase());
+      } else {
+        this.profileForm.languages = [...this.profileForm.languages, value];
+      }
+      this.languageInput = '';
+      this.mobileProfileSelectorSheet = {
+        ...sheet,
+        selected: this.profileForm.languages.join(', ')
+      };
       return;
     }
     if (sheet.context.kind === 'experienceType') {
@@ -1762,6 +1829,22 @@ export class App {
 
   protected removeLanguage(value: string): void {
     this.profileForm.languages = this.profileForm.languages.filter(item => item !== value);
+  }
+
+  protected languageToneClass(value: string): string {
+    return `language-tone-${this.languageToneIndex(value)}`;
+  }
+
+  protected languageToneIndex(value: string): number {
+    const normalized = this.normalizeText(value);
+    if (!normalized) {
+      return 1;
+    }
+    let hash = 0;
+    for (const char of normalized) {
+      hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+    }
+    return (hash % 8) + 1;
   }
 
   protected get availableLanguageSuggestions(): string[] {
@@ -2363,7 +2446,12 @@ export class App {
     if (this.showUserMenu && !target.closest('.user-menu-panel') && !target.closest('.user-selector-btn-global')) {
       this.showUserMenu = false;
     }
-    if (this.showLanguagePanel && target.closest('.cdk-overlay-pane')) {
+    if (
+      this.showLanguagePanel &&
+      (target.closest('.cdk-overlay-pane') ||
+        target.closest('.cdk-overlay-container') ||
+        target.closest('.mat-mdc-autocomplete-panel'))
+    ) {
       return;
     }
     if (this.showLanguagePanel && !target.closest('.language-filter')) {
