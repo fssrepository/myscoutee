@@ -118,6 +118,24 @@
   line-height: 16px;
 }
 
+.filter-state-badge {
+  border: 1px solid rgba(255, 255, 255, 0.46);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 0.6rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0.2rem 0.36rem;
+  letter-spacing: 0.02em;
+}
+
+.filter-state-badge.active {
+  background: rgba(214, 251, 223, 0.96);
+  border-color: rgba(123, 205, 143, 0.9);
+  color: #1e6f3d;
+}
+
 .history-badge {
   position: absolute;
   top: -6px;
@@ -160,6 +178,10 @@
   margin: 0.26rem 0 0;
   color: rgba(21, 36, 58, 0.74);
   font-size: 0.84rem;
+}
+
+.card-content.card-content-empty {
+  min-height: 92px;
 }
 
 .card-image-area {
@@ -315,9 +337,29 @@
 .game-popup-panel h2 {
   margin: 0;
   font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
-.game-popup-panel button {
+.popup-filter-meta {
+  border: 1px solid rgba(67, 95, 131, 0.24);
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #2b4e79;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.22rem 0.46rem;
+}
+
+.popup-filter-meta.active {
+  background: #e8f8ee;
+  border-color: rgba(63, 148, 88, 0.32);
+  color: #22603c;
+}
+
+.game-popup-panel > header > button {
   border: 1px solid rgba(15, 23, 42, 0.2);
   border-radius: 999px;
   background: #fff;
@@ -337,6 +379,131 @@
 .game-popup-body p {
   margin: 0;
   color: rgba(15, 23, 42, 0.72);
+}
+
+.game-filter-popup-panel {
+  width: min(820px, calc(100vw - 1rem));
+  border-radius: 16px;
+  border-color: rgba(31, 56, 89, 0.18);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.game-filter-body {
+  max-height: min(76vh, 720px);
+  overflow: auto;
+  padding: 0.8rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.72rem;
+  align-items: start;
+}
+
+.game-filter-section {
+  border: 1px solid rgba(32, 58, 92, 0.16);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fbfdff 0%, #f4f9ff 100%);
+  padding: 0.66rem;
+  display: grid;
+  gap: 0.52rem;
+}
+
+.game-filter-section h3 {
+  margin: 0;
+  font-size: 0.86rem;
+  color: #20385c;
+}
+
+.game-filter-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.game-filter-value-badge {
+  border: 1px solid rgba(39, 73, 114, 0.22);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f0f6ff 0%, #e6eefb 100%);
+  color: #22436a;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0.26rem 0.5rem;
+  white-space: nowrap;
+}
+
+.game-filter-slider-wrap {
+  display: grid;
+  gap: 0.44rem;
+}
+
+.game-filter-distance {
+  display: block;
+}
+
+.game-filter-slider-wrap mat-slider,
+.game-filter-distance mat-slider {
+  width: 100%;
+}
+
+.game-filter-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.36rem;
+}
+
+.game-filter-chip {
+  border: 1px solid rgba(41, 70, 106, 0.22);
+  border-radius: 999px;
+  background: #f4f8ff;
+  color: #234066;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.3rem 0.58rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.26rem;
+  cursor: pointer;
+}
+
+.game-filter-chip .mat-icon {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+  line-height: 14px;
+}
+
+.game-filter-chip.active {
+  box-shadow: inset 0 0 0 1px rgba(30, 56, 90, 0.28);
+}
+
+.game-filter-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.44rem;
+  padding-top: 0.12rem;
+}
+
+.filter-btn {
+  border-radius: 10px;
+  border: 1px solid rgba(36, 64, 99, 0.24);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.42rem 0.68rem;
+  cursor: pointer;
+}
+
+.filter-btn.filter-btn-reset {
+  background: #fff;
+  color: #1f3659;
+}
+
+.filter-btn.filter-btn-apply {
+  background: linear-gradient(180deg, #4f8fdf 0%, #3e79c4 100%);
+  border-color: rgba(34, 96, 176, 0.46);
+  color: #fff;
 }
 
 @media (max-width: 760px) {
@@ -361,5 +528,10 @@
 
   .rating-stars {
     grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .game-filter-body {
+    grid-template-columns: 1fr;
+    max-height: calc(100dvh - 8.6rem);
   }
 }

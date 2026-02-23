@@ -10,8 +10,9 @@
       </button>
       <button type="button" class="game-action-filter has-badge" (click)="openFilter()" aria-label="Open profile filters">
         <mat-icon>filter_alt</mat-icon>
+        <span class="filter-state-badge" [class.active]="isFilterActive">{{ isFilterActive ? 'ON' : 'OFF' }}</span>
       </button>
-      <button type="button" class="game-action-filter has-badge" (click)="openFilter()" aria-label="Open profile filters">
+      <button type="button" class="game-action-filter has-badge" (click)="openHistory()" aria-label="Open game history">
         <mat-icon>history</mat-icon>
         <span class="history-badge">{{ activeUser.activities.game }}</span>
       </button>
@@ -20,11 +21,17 @@
 
   <section class="game-layout-single">
     <article class="card-stack game-card-main">
-      <div class="card-content">
-        <h2>{{ activeCandidate.name }}, {{ activeCandidate.age }}</h2>
-        <p>{{ activeCandidate.city }} · {{ activeCandidate.statusText }}</p>
-        <p>{{ activeCandidate.headline }}</p>
+      <div class="card-content" *ngIf="activeCandidate as candidate; else noCandidateCard">
+        <h2>{{ candidate.name }}, {{ candidate.age }}</h2>
+        <p>{{ candidate.city }} · {{ localizedStatusText(candidate.statusText) }}</p>
+        <p>{{ candidate.headline }}</p>
       </div>
+      <ng-template #noCandidateCard>
+        <div class="card-content card-content-empty">
+          <h2>No matching profiles</h2>
+          <p>Adjust age, distance, or profile traits in filter settings.</p>
+        </div>
+      </ng-template>
       <div class="game-image-stack-indicators" *ngIf="candidateImageStack.length > 1">
         <button
           type="button"
@@ -60,10 +67,10 @@
               aria-label="Select profile image"
             ></button>
           </div>
-          <span class="card-image-placeholder" *ngIf="!candidateImage">{{ candidateInitials }}</span>
+          <span class="card-image-placeholder" *ngIf="!candidateImage">{{ hasFilteredCandidates ? candidateInitials : '∅' }}</span>
         </div>
       </div>
-      <div class="rating-stars">
+      <div class="rating-stars" *ngIf="activeCandidate">
         <button
           type="button"
           class="star-btn"
@@ -79,16 +86,171 @@
   </section>
 </div>
 
+<section class="game-popup" *ngIf="localPopup === 'filter'">
+  <div class="game-popup-backdrop" (click)="closeLocalPopup()"></div>
+  <div class="game-popup-panel game-filter-popup-panel" (click)="$event.stopPropagation()">
+    <header>
+      <h2>
+        Game Filters
+        <span class="popup-filter-meta" [class.active]="isFilterActive">
+          {{ isFilterActive ? 'Active' : 'Off' }} · {{ candidatePool.length }} match{{ candidatePool.length === 1 ? '' : 'es' }}
+        </span>
+      </h2>
+      <button type="button" (click)="closeLocalPopup()">×</button>
+    </header>
+    <div class="game-popup-body game-filter-body">
+      <section class="game-filter-section">
+        <div class="game-filter-section-head">
+          <h3>Age Range</h3>
+          <span class="game-filter-value-badge">{{ filterDraft.ageMin }} - {{ filterDraft.ageMax }}</span>
+        </div>
+        <div class="game-filter-slider-wrap">
+          <mat-slider [min]="minAgeBound" [max]="maxAgeBound" [step]="1">
+            <input
+              matSliderStartThumb
+              [ngModel]="filterDraft.ageMin"
+              (ngModelChange)="onAgeMinChange($event)"
+            />
+            <input
+              matSliderEndThumb
+              [ngModel]="filterDraft.ageMax"
+              (ngModelChange)="onAgeMaxChange($event)"
+            />
+          </mat-slider>
+        </div>
+      </section>
+
+      <section class="game-filter-section">
+        <div class="game-filter-section-head">
+          <h3>Height Range (cm)</h3>
+          <span class="game-filter-value-badge">{{ filterDraft.heightMinCm }} - {{ filterDraft.heightMaxCm }}</span>
+        </div>
+        <div class="game-filter-slider-wrap">
+          <mat-slider [min]="minHeightBoundCm" [max]="maxHeightBoundCm" [step]="1">
+            <input
+              matSliderStartThumb
+              [ngModel]="filterDraft.heightMinCm"
+              (ngModelChange)="onHeightMinChange($event)"
+            />
+            <input
+              matSliderEndThumb
+              [ngModel]="filterDraft.heightMaxCm"
+              (ngModelChange)="onHeightMaxChange($event)"
+            />
+          </mat-slider>
+        </div>
+      </section>
+
+      <section class="game-filter-section">
+        <div class="game-filter-section-head">
+          <h3>Maximum Distance</h3>
+          <span class="game-filter-value-badge">{{ filterDraft.maxDistanceKm }} km</span>
+        </div>
+        <div class="game-filter-distance">
+          <mat-slider [min]="0" [max]="500" [step]="5">
+            <input
+              matSliderThumb
+              [ngModel]="filterDraft.maxDistanceKm"
+              (ngModelChange)="onDistanceChange($event)"
+            />
+          </mat-slider>
+        </div>
+      </section>
+
+      <section class="game-filter-section">
+        <h3>Physique</h3>
+        <div class="game-filter-chip-grid">
+          <button
+            type="button"
+            class="game-filter-chip"
+            *ngFor="let physique of availablePhysiques"
+            [class.active]="isPhysiqueSelected(physique)"
+            (click)="toggleFilterPhysique(physique)"
+          >
+            <span>{{ physique }}</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="game-filter-section">
+        <h3>Languages</h3>
+        <div class="game-filter-chip-grid">
+          <button
+            type="button"
+            class="game-filter-chip"
+            *ngFor="let language of availableLanguages"
+            [class.active]="isLanguageSelected(language)"
+            (click)="toggleFilterLanguage(language)"
+          >
+            <span>{{ language }}</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="game-filter-section">
+        <h3>Gender</h3>
+        <div class="game-filter-chip-grid">
+          <button
+            type="button"
+            class="game-filter-chip"
+            *ngFor="let option of genderFilterOptions"
+            [class.active]="isGenderSelected(option.value)"
+            (click)="toggleFilterGender(option.value)"
+          >
+            <mat-icon>{{ option.icon }}</mat-icon>
+            <span>{{ option.label }}</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="game-filter-section">
+        <h3>Horoscope</h3>
+        <div class="game-filter-chip-grid">
+          <button
+            type="button"
+            class="game-filter-chip"
+            *ngFor="let horoscope of availableHoroscopes"
+            [class.active]="isHoroscopeSelected(horoscope)"
+            (click)="toggleFilterHoroscope(horoscope)"
+          >
+            <span>{{ horoscope }}</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="game-filter-section">
+        <h3>Top Trait</h3>
+        <div class="game-filter-chip-grid">
+          <button
+            type="button"
+            class="game-filter-chip"
+            *ngFor="let trait of availableTraitLabels"
+            [class.active]="isTraitLabelSelected(trait)"
+            (click)="toggleFilterTraitLabel(trait)"
+          >
+            <span>{{ trait }}</span>
+          </button>
+        </div>
+      </section>
+
+      <div class="game-filter-actions">
+        <button type="button" class="filter-btn filter-btn-reset" (click)="resetFilterDraft()">Reset</button>
+        <button type="button" class="filter-btn filter-btn-apply" (click)="applyFilter()">Apply</button>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="game-popup" *ngIf="localPopup === 'history'">
   <div class="game-popup-backdrop" (click)="closeLocalPopup()"></div>
   <div class="game-popup-panel" (click)="$event.stopPropagation()">
     <header>
-      <h2>Profile Filter</h2>
+      <h2>Game History</h2>
       <button type="button" (click)="closeLocalPopup()">×</button>
     </header>
     <div class="game-popup-body">
-      <p>Filters: profession, school, friends in common.</p>
-      <p>Mode: single/pair, distance and recent activity.</p>
+      <p>Recent ratings and mutual matches can appear here.</p>
+      <p>Current placeholder keeps popup structure ready.</p>
     </div>
   </div>
 </section>
