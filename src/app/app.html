@@ -209,6 +209,7 @@
     [class.popup-panel-members]="activePopup === 'chatMembers'"
     [class.popup-panel-image-editor]="activePopup === 'imageEditor'"
     [class.popup-panel-profile-editor]="activePopup === 'profileEditor'"
+    [class.popup-panel-assets]="isAssetPopup"
     (click)="$event.stopPropagation()"
   >
     <div class="popup-header" [class.popup-header-chat]="activePopup === 'chat' && selectedChat">
@@ -434,37 +435,148 @@
         </div>
       </div>
 
-      <div *ngIf="activePopup === 'assetsCar'">
-        <div class="editor-list-card">
-          <h4>Cars for active trips</h4>
-          <p>Seat coverage and transport offers from your current event roster.</p>
+      <div *ngIf="isAssetPopup" class="experience-popup assets-popup">
+        <div class="experience-toolbar assets-toolbar">
+          <div class="profile-status-select-wrap selector-like experience-filter-select" [ngClass]="assetTypeClass(assetFilter)">
+            <mat-select
+              [(ngModel)]="assetFilter"
+              (ngModelChange)="selectAssetFilter($event)"
+              disableOptionCentering
+              panelClass="selector-options-panel profile-bottom-sheet-panel"
+            >
+              <mat-select-trigger>
+                <span class="status-option-content">
+                  <mat-icon [class]="assetTypeClass(assetFilter)">{{ assetTypeIcon(assetFilter) }}</mat-icon>
+                  <span>{{ assetFilter }}</span>
+                </span>
+              </mat-select-trigger>
+              <mat-option *ngFor="let option of assetFilterOptions" [value]="option" class="status-option" [ngClass]="assetTypeClass(option)">
+                <span class="status-option-content">
+                  <mat-icon [class]="assetTypeClass(option)">{{ assetTypeIcon(option) }}</mat-icon>
+                  <span>{{ option }}</span>
+                </span>
+              </mat-option>
+            </mat-select>
+          </div>
+          <button type="button" class="popup-header-add-btn assets-add-btn" (click)="openAssetForm()" aria-label="Add asset">
+            <mat-icon>add</mat-icon>
+          </button>
         </div>
-        <div class="editor-list-card" *ngFor="let item of assetCarItems">
-          <h4>{{ item.label }}</h4>
-          <p>{{ item.detail }}</p>
-        </div>
-      </div>
 
-      <div *ngIf="activePopup === 'assetsAccommodation'">
-        <div class="editor-list-card">
-          <h4>Accommodation capacity</h4>
-          <p>Rooms and people coverage from current hosting plans.</p>
+        <div class="experience-card-list assets-card-list">
+          <article class="experience-item-card asset-item-card" [ngClass]="assetTypeClass(card.type)" *ngFor="let card of filteredAssetCards">
+            <div class="asset-card-image" [style.backgroundImage]="'url(' + card.imageUrl + ')'">
+              <a class="asset-source-icon" [href]="card.sourceLink" target="_blank" rel="noopener" (click)="$event.stopPropagation()" aria-label="Open source link">
+                <mat-icon>link</mat-icon>
+              </a>
+              <button
+                type="button"
+                class="asset-occupancy-badge"
+                *ngIf="canManageAssetMembers(card)"
+                (click)="openAssetMembers(card, $event)"
+                aria-label="Open member requests"
+              >
+                <span>{{ assetOccupancyLabel(card) }}</span>
+                <span class="card-badge asset-request-badge" *ngIf="assetPendingCount(card) > 0">{{ assetPendingCount(card) }}</span>
+              </button>
+            </div>
+            <div class="experience-item-head">
+              <span class="experience-item-icon">
+                <mat-icon>{{ assetTypeIcon(card.type) }}</mat-icon>
+              </span>
+              <div class="experience-item-meta">
+                <h4>{{ card.title }}</h4>
+                <p>{{ card.type }} · {{ card.subtitle }} · {{ card.city }}</p>
+              </div>
+              <div class="experience-item-actions">
+                <button type="button" class="experience-action-btn experience-action-edit" (click)="$event.stopPropagation(); openAssetForm(card)" aria-label="Edit asset">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button type="button" class="experience-action-btn experience-action-delete" (click)="$event.stopPropagation(); deleteAssetCard(card.id)" aria-label="Delete asset">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </div>
+            <p class="experience-item-description">{{ card.details }}</p>
+          </article>
         </div>
-        <div class="editor-list-card" *ngFor="let item of assetAccommodationItems">
-          <h4>{{ item.label }}</h4>
-          <p>{{ item.detail }}</p>
-        </div>
-      </div>
 
-      <div *ngIf="activePopup === 'assetsSupplies'">
-        <div class="editor-list-card">
-          <h4>Supply checklist</h4>
-          <p>Required vs offered accessories for active events.</p>
-        </div>
-        <div class="editor-list-card" *ngFor="let item of assetSuppliesItems">
-          <h4>{{ item.label }}</h4>
-          <p>{{ item.detail }}</p>
-        </div>
+        <section class="experience-form-overlay asset-form-overlay" *ngIf="showAssetForm">
+          <div class="experience-form-overlay-backdrop" (click)="closeAssetForm()"></div>
+          <div class="experience-form-popup asset-form-popup">
+            <div class="experience-form-header">
+              <h3>{{ editingAssetId ? 'Edit ' + assetForm.type : 'Add ' + activeAssetType }}</h3>
+              <button type="button" class="experience-form-close-btn" (click)="closeAssetForm()" aria-label="Close asset form">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+            <section class="experience-form-panel">
+              <div class="experience-form-grid">
+                <label>
+                  <span>Type</span>
+                  <div class="profile-status-select-wrap selector-like experience-type-select" [ngClass]="assetTypeClass(assetForm.type)">
+                    <mat-select [(ngModel)]="assetForm.type" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel">
+                      <mat-select-trigger>
+                        <span class="status-option-content">
+                          <mat-icon [class]="assetTypeClass(assetForm.type)">{{ assetTypeIcon(assetForm.type) }}</mat-icon>
+                          <span>{{ assetForm.type }}</span>
+                        </span>
+                      </mat-select-trigger>
+                      <mat-option *ngFor="let option of assetFilterOptions" [value]="option" class="status-option" [ngClass]="assetTypeClass(option)">
+                        <span class="status-option-content">
+                          <mat-icon [class]="assetTypeClass(option)">{{ assetTypeIcon(option) }}</mat-icon>
+                          <span>{{ option }}</span>
+                        </span>
+                      </mat-option>
+                    </mat-select>
+                  </div>
+                </label>
+                <label>
+                  <span>Title</span>
+                  <input type="text" [(ngModel)]="assetForm.title" />
+                </label>
+                <label>
+                  <span>Subtitle</span>
+                  <input type="text" [(ngModel)]="assetForm.subtitle" />
+                </label>
+                <label>
+                  <span>City</span>
+                  <input type="text" [(ngModel)]="assetForm.city" />
+                </label>
+                <label>
+                  <span>Total capacity</span>
+                  <input type="number" min="1" step="1" [(ngModel)]="assetForm.capacityTotal" />
+                </label>
+                <label class="experience-description-field">
+                  <span>Details</span>
+                  <textarea rows="3" [(ngModel)]="assetForm.details"></textarea>
+                </label>
+                <label class="experience-description-field">
+                  <span>Source link</span>
+                  <div class="asset-source-row">
+                    <input type="text" [(ngModel)]="assetForm.sourceLink" placeholder="https://..." />
+                    <button type="button" class="asset-source-refresh-btn" (click)="refreshAssetFromSourceLink()" aria-label="Refresh from source">
+                      <mat-icon>refresh</mat-icon>
+                    </button>
+                  </div>
+                </label>
+                <label class="experience-description-field">
+                  <span>Image</span>
+                  <input #assetImageInput type="file" accept="image/*" hidden (change)="onAssetImageFileChange($event)" />
+                  <button type="button" class="asset-image-dropzone" (click)="triggerAssetImageUpload($event)">
+                    <div class="asset-image-preview" [style.backgroundImage]="assetForm.imageUrl ? 'url(' + assetForm.imageUrl + ')' : null">
+                      <span class="asset-image-plus">+</span>
+                    </div>
+                  </button>
+                </label>
+              </div>
+              <div class="popup-actions experience-form-actions">
+                <button type="button" class="link-btn neutral-btn" (click)="closeAssetForm()">Cancel</button>
+                <button type="button" class="link-btn primary-btn" (click)="saveAssetCard()">Save</button>
+              </div>
+            </section>
+          </div>
+        </section>
       </div>
 
       <div *ngIf="activePopup === 'eventExplore'">
@@ -996,6 +1108,7 @@
     class="app-popup-panel"
     [class.popup-panel-members]="stackedPopup === 'chatMembers'"
     [class.popup-panel-profile-editor]="stackedPopup === 'experienceSelector'"
+    [class.popup-panel-asset-members]="stackedPopup === 'assetMembers'"
     (click)="$event.stopPropagation()"
   >
     <div
@@ -1067,7 +1180,7 @@
       </div>
     </ng-template>
 
-    <div class="popup-body" [class.popup-body-members]="stackedPopup === 'chatMembers'" [class.popup-body-experience]="stackedPopup === 'experienceSelector'">
+    <div class="popup-body" [class.popup-body-members]="stackedPopup === 'chatMembers' || stackedPopup === 'assetMembers'" [class.popup-body-experience]="stackedPopup === 'experienceSelector'">
       <div *ngIf="stackedPopup === 'chatMembers'">
         <div class="chat-members-popup-list">
           <div class="chat-members-popup-row" *ngFor="let member of selectedChatMembers">
@@ -1078,6 +1191,50 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <div *ngIf="stackedPopup === 'assetMembers' && selectedAssetCard" class="assets-member-popup">
+        <div class="experience-card-list assets-card-list">
+          <article class="experience-item-card asset-member-card" [ngClass]="assetMemberStatusClass(member)" *ngFor="let member of selectedAssetCard.requests">
+            <div class="experience-item-head">
+              <span class="chat-members-popup-avatar" [class]="'user-color-' + member.gender">{{ member.initials }}</span>
+              <div class="experience-item-meta">
+                <h4>{{ member.name }}</h4>
+                <p>{{ member.note }}</p>
+              </div>
+              <div class="experience-item-actions">
+                <button
+                  type="button"
+                  class="experience-action-btn"
+                  [class.active]="isAssetMemberActionPending(selectedAssetCard.id, member.id, 'accept')"
+                  (click)="queueAssetMemberAction(selectedAssetCard.id, member.id, 'accept', $event)"
+                >
+                  <mat-icon>check</mat-icon>
+                </button>
+                <button
+                  type="button"
+                  class="experience-action-btn experience-action-delete"
+                  [class.active]="isAssetMemberActionPending(selectedAssetCard.id, member.id, 'remove')"
+                  (click)="queueAssetMemberAction(selectedAssetCard.id, member.id, 'remove', $event)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <section class="experience-delete-confirm" *ngIf="pendingAssetMemberAction">
+          <div class="experience-delete-confirm-backdrop" (click)="cancelAssetMemberAction()"></div>
+          <div class="experience-delete-confirm-panel">
+            <h4>Confirm member action</h4>
+            <p>{{ pendingAssetMemberActionLabel() }}</p>
+            <div class="popup-actions">
+              <button type="button" class="link-btn neutral-btn" (click)="cancelAssetMemberAction()">Cancel</button>
+              <button type="button" class="link-btn primary-btn" (click)="confirmAssetMemberAction()">Confirm</button>
+            </div>
+          </div>
+        </section>
       </div>
 
       <div *ngIf="stackedPopup === 'eventEditor'">

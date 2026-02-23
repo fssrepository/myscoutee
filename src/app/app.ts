@@ -54,6 +54,7 @@ type PopupType =
   | 'imageEditor'
   | 'imageUpload'
   | 'supplyDetail'
+  | 'assetMembers'
   | 'valuesSelector'
   | 'interestSelector'
   | 'experienceSelector'
@@ -144,6 +145,32 @@ interface MobileProfileSelectorSheet {
     | { kind: 'experiencePrivacy'; type: 'workspace' | 'school' }
     | { kind: 'detailValue'; groupIndex: number; rowIndex: number }
     | { kind: 'experienceType' };
+}
+
+type AssetType = 'Car' | 'Accommodation' | 'Supplies';
+type AssetRequestAction = 'accept' | 'remove';
+type AssetRequestStatus = 'pending' | 'accepted';
+
+interface AssetMemberRequest {
+  id: string;
+  name: string;
+  initials: string;
+  gender: 'woman' | 'man';
+  status: AssetRequestStatus;
+  note: string;
+}
+
+interface AssetCard {
+  id: string;
+  type: AssetType;
+  title: string;
+  subtitle: string;
+  city: string;
+  capacityTotal: number;
+  details: string;
+  imageUrl: string;
+  sourceLink: string;
+  requests: AssetMemberRequest[];
 }
 
 class YearMonthDayDateAdapter extends NativeDateAdapter {
@@ -443,6 +470,23 @@ export class App {
     description: ''
   };
   protected experienceEntries: ExperienceEntry[] = this.buildSampleExperienceEntries();
+  protected readonly assetFilterOptions: AssetType[] = ['Car', 'Accommodation', 'Supplies'];
+  protected assetFilter: AssetType = 'Car';
+  protected assetCards: AssetCard[] = this.buildSampleAssetCards();
+  protected showAssetForm = false;
+  protected editingAssetId: string | null = null;
+  protected selectedAssetCardId: string | null = null;
+  protected pendingAssetMemberAction: { cardId: string; memberId: string; action: AssetRequestAction } | null = null;
+  protected assetForm: Omit<AssetCard, 'id' | 'requests'> = {
+    type: 'Car',
+    title: '',
+    subtitle: '',
+    city: '',
+    capacityTotal: 4,
+    details: '',
+    imageUrl: '',
+    sourceLink: ''
+  };
   protected activeUserId = this.getInitialUserId();
 
   protected activeMenuSection: MenuSection = 'chat';
@@ -458,6 +502,7 @@ export class App {
   protected selectedImageIndex = 0;
   protected pendingSlotUploadIndex: number | null = null;
   @ViewChild('slotImageInput') private slotImageInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('assetImageInput') private assetImageInput?: ElementRef<HTMLInputElement>;
 
   protected eventSupplyTypes: string[] = ['Cars', 'Members', 'Accessories', 'Accommodation'];
   protected newSupplyType = '';
@@ -538,15 +583,21 @@ export class App {
   }
 
   protected get assetCarsBadge(): number {
-    return this.getSupplyGapByKey('cars');
+    return this.assetCards
+      .filter(card => card.type === 'Car')
+      .reduce((sum, card) => sum + this.assetPendingCount(card), 0);
   }
 
   protected get assetAccommodationBadge(): number {
-    return this.getSupplyGapByKey('accommodation');
+    return this.assetCards
+      .filter(card => card.type === 'Accommodation')
+      .reduce((sum, card) => sum + this.assetPendingCount(card), 0);
   }
 
   protected get assetSuppliesBadge(): number {
-    return this.getSupplyGapByKey('accessories');
+    return this.assetCards
+      .filter(card => card.type === 'Supplies')
+      .reduce((sum, card) => sum + this.assetPendingCount(card), 0);
   }
 
   protected get chatItems(): ChatMenuItem[] {
@@ -619,16 +670,22 @@ export class App {
   }
 
   protected openAssetCarPopup(): void {
+    this.assetFilter = 'Car';
+    this.closeAssetForm();
     this.activePopup = 'assetsCar';
     this.closeUserMenu();
   }
 
   protected openAssetAccommodationPopup(): void {
+    this.assetFilter = 'Accommodation';
+    this.closeAssetForm();
     this.activePopup = 'assetsAccommodation';
     this.closeUserMenu();
   }
 
   protected openAssetSuppliesPopup(): void {
+    this.assetFilter = 'Supplies';
+    this.closeAssetForm();
     this.activePopup = 'assetsSupplies';
     this.closeUserMenu();
   }
@@ -719,6 +776,9 @@ export class App {
     this.activePopup = null;
     this.stackedPopup = null;
     this.popupReturnTarget = null;
+    this.closeAssetForm();
+    this.pendingAssetMemberAction = null;
+    this.selectedAssetCardId = null;
   }
 
   protected closeStackedPopup(): void {
@@ -735,6 +795,10 @@ export class App {
       this.pendingExperienceDeleteId = null;
       this.showExperienceForm = false;
       this.resetExperienceForm();
+    }
+    if (this.stackedPopup === 'assetMembers') {
+      this.pendingAssetMemberAction = null;
+      this.selectedAssetCardId = null;
     }
     this.stackedPopup = null;
     if (this.activePopup === 'chat') {
@@ -832,6 +896,8 @@ export class App {
         return 'Interest';
       case 'experienceSelector':
         return 'Experience';
+      case 'assetMembers':
+        return this.selectedAssetCard ? `${this.selectedAssetCard.title} · Members` : 'Members';
       default:
         return '';
     }
@@ -2442,6 +2508,290 @@ export class App {
     }));
   }
 
+  protected get isAssetPopup(): boolean {
+    return this.activePopup === 'assetsCar' || this.activePopup === 'assetsAccommodation' || this.activePopup === 'assetsSupplies';
+  }
+
+  protected get activeAssetType(): AssetType {
+    if (this.activePopup === 'assetsAccommodation') {
+      return 'Accommodation';
+    }
+    if (this.activePopup === 'assetsSupplies') {
+      return 'Supplies';
+    }
+    return 'Car';
+  }
+
+  protected get filteredAssetCards(): AssetCard[] {
+    return this.assetCards.filter(card => card.type === this.assetFilter);
+  }
+
+  protected get selectedAssetCard(): AssetCard | null {
+    if (!this.selectedAssetCardId) {
+      return null;
+    }
+    return this.assetCards.find(card => card.id === this.selectedAssetCardId) ?? null;
+  }
+
+  protected assetTypeIcon(type: AssetType): string {
+    if (type === 'Car') {
+      return 'directions_car';
+    }
+    if (type === 'Accommodation') {
+      return 'apartment';
+    }
+    return 'inventory_2';
+  }
+
+  protected assetTypeClass(type: AssetType): string {
+    if (type === 'Car') {
+      return 'asset-filter-car';
+    }
+    if (type === 'Accommodation') {
+      return 'asset-filter-accommodation';
+    }
+    if (type === 'Supplies') {
+      return 'asset-filter-supplies';
+    }
+    return 'asset-filter-car';
+  }
+
+  protected assetPendingCount(card: AssetCard): number {
+    return card.requests.filter(member => member.status === 'pending').length;
+  }
+
+  protected assetAcceptedCount(card: AssetCard): number {
+    return card.requests.filter(member => member.status === 'accepted').length;
+  }
+
+  protected assetOccupiedCount(card: AssetCard): number {
+    return this.assetAcceptedCount(card);
+  }
+
+  protected assetOccupancyLabel(card: AssetCard): string {
+    return `${this.assetOccupiedCount(card)} / ${card.capacityTotal}`;
+  }
+
+  protected canManageAssetMembers(card: AssetCard): boolean {
+    return card.type !== 'Supplies';
+  }
+
+  protected assetMemberStatusClass(member: AssetMemberRequest): string {
+    return member.status === 'pending' ? 'asset-member-pending' : 'asset-member-accepted';
+  }
+
+  protected selectAssetFilter(filter: AssetType): void {
+    this.assetFilter = filter;
+    if (filter === 'Car') {
+      this.activePopup = 'assetsCar';
+      return;
+    }
+    if (filter === 'Accommodation') {
+      this.activePopup = 'assetsAccommodation';
+      return;
+    }
+    this.activePopup = 'assetsSupplies';
+  }
+
+  protected openAssetMembers(card: AssetCard, event?: Event): void {
+    event?.stopPropagation();
+    this.selectedAssetCardId = card.id;
+    this.pendingAssetMemberAction = null;
+    this.stackedPopup = 'assetMembers';
+  }
+
+  protected openAssetForm(card?: AssetCard): void {
+    this.pendingAssetMemberAction = null;
+    this.showAssetForm = true;
+    if (card) {
+      this.editingAssetId = card.id;
+      this.assetForm = {
+        type: card.type,
+        title: card.title,
+        subtitle: card.subtitle,
+        city: card.city,
+        capacityTotal: card.capacityTotal,
+        details: card.details,
+        imageUrl: card.imageUrl,
+        sourceLink: card.sourceLink
+      };
+      return;
+    }
+    this.editingAssetId = null;
+    this.assetForm = {
+      type: this.activeAssetType,
+      title: '',
+      subtitle: '',
+      city: '',
+      capacityTotal: this.activeAssetType === 'Supplies' ? 6 : 4,
+      details: '',
+      imageUrl: '',
+      sourceLink: ''
+    };
+  }
+
+  protected closeAssetForm(): void {
+    this.showAssetForm = false;
+    this.editingAssetId = null;
+  }
+
+  protected saveAssetCard(): void {
+    const title = this.assetForm.title.trim();
+    const city = this.assetForm.city.trim();
+    if (!title || !city) {
+      return;
+    }
+    const payload: Omit<AssetCard, 'id' | 'requests'> = {
+      type: this.assetForm.type,
+      title,
+      subtitle: this.assetForm.subtitle.trim(),
+      city,
+      capacityTotal: Math.max(1, Number(this.assetForm.capacityTotal) || (this.assetForm.type === 'Supplies' ? 6 : 4)),
+      details: this.assetForm.details.trim() || 'No details yet.',
+      imageUrl: this.assetForm.imageUrl.trim() || this.defaultAssetImage(this.assetForm.type),
+      sourceLink: this.assetForm.sourceLink.trim() || 'https://picsum.photos'
+    };
+    if (this.editingAssetId) {
+      this.assetCards = this.assetCards.map(card =>
+        card.id === this.editingAssetId
+          ? {
+              ...card,
+              ...payload
+            }
+          : card
+      );
+    } else {
+      this.assetCards = [
+        {
+          id: `asset-${Date.now()}`,
+          ...payload,
+          requests: []
+        },
+        ...this.assetCards
+      ];
+    }
+    this.closeAssetForm();
+  }
+
+  protected deleteAssetCard(cardId: string): void {
+    this.assetCards = this.assetCards.filter(card => card.id !== cardId);
+    if (this.selectedAssetCardId === cardId) {
+      this.selectedAssetCardId = null;
+      this.stackedPopup = null;
+      this.pendingAssetMemberAction = null;
+    }
+  }
+
+  protected queueAssetMemberAction(cardId: string, memberId: string, action: AssetRequestAction, event?: Event): void {
+    event?.stopPropagation();
+    this.pendingAssetMemberAction = { cardId, memberId, action };
+  }
+
+  protected cancelAssetMemberAction(): void {
+    this.pendingAssetMemberAction = null;
+  }
+
+  protected confirmAssetMemberAction(): void {
+    const pending = this.pendingAssetMemberAction;
+    if (!pending) {
+      return;
+    }
+    this.assetCards = this.assetCards.map(card => {
+      if (card.id !== pending.cardId) {
+        return card;
+      }
+      if (pending.action === 'remove') {
+        return {
+          ...card,
+          requests: card.requests.filter(member => member.id !== pending.memberId)
+        };
+      }
+      return {
+        ...card,
+        requests: card.requests.map(member =>
+          member.id === pending.memberId
+            ? {
+                ...member,
+                status: 'accepted'
+              }
+            : member
+        )
+      };
+    });
+    this.pendingAssetMemberAction = null;
+  }
+
+  protected isAssetMemberActionPending(cardId: string, memberId: string, action: AssetRequestAction): boolean {
+    return (
+      this.pendingAssetMemberAction?.cardId === cardId &&
+      this.pendingAssetMemberAction?.memberId === memberId &&
+      this.pendingAssetMemberAction?.action === action
+    );
+  }
+
+  protected pendingAssetMemberActionLabel(): string {
+    const pending = this.pendingAssetMemberAction;
+    if (!pending) {
+      return '';
+    }
+    const card = this.assetCards.find(item => item.id === pending.cardId);
+    const member = card?.requests.find(item => item.id === pending.memberId);
+    if (!member) {
+      return '';
+    }
+    if (pending.action === 'accept') {
+      return `Accept ${member.name} for ${card?.title ?? 'this asset'}?`;
+    }
+    return `Remove ${member.name} from ${card?.title ?? 'this asset'}?`;
+  }
+
+  protected triggerAssetImageUpload(event?: Event): void {
+    event?.stopPropagation();
+    this.assetImageInput?.nativeElement.click();
+  }
+
+  protected onAssetImageFileChange(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+    if (!file) {
+      return;
+    }
+    this.revokeObjectUrl(this.assetForm.imageUrl);
+    this.assetForm.imageUrl = URL.createObjectURL(file);
+    target.value = '';
+  }
+
+  protected refreshAssetFromSourceLink(): void {
+    const raw = this.assetForm.sourceLink.trim();
+    if (!raw) {
+      return;
+    }
+    let parsed: URL | null = null;
+    try {
+      parsed = new URL(raw);
+    } catch {
+      try {
+        parsed = new URL(`https://${raw}`);
+        this.assetForm.sourceLink = parsed.toString();
+      } catch {
+        return;
+      }
+    }
+    const seed = `${this.assetForm.type.toLowerCase()}-${parsed.hostname.replace(/\./g, '-')}${parsed.pathname.replace(/[^\w-]/g, '-')}`;
+    if (!this.assetForm.imageUrl.trim()) {
+      this.assetForm.imageUrl = this.defaultAssetImage(this.assetForm.type, seed);
+    }
+    if (!this.assetForm.title.trim()) {
+      this.assetForm.title = `${this.assetForm.type} · ${parsed.hostname.replace(/^www\./, '')}`;
+    }
+    if (!this.assetForm.subtitle.trim()) {
+      this.assetForm.subtitle = parsed.pathname && parsed.pathname !== '/' ? parsed.pathname.slice(1).replace(/[-_/]+/g, ' ') : 'Imported preview';
+    }
+    if (!this.assetForm.details.trim()) {
+      this.assetForm.details = `Preview imported from ${parsed.hostname}. You can adjust the details before saving.`;
+    }
+  }
+
   protected selectImageSlot(index: number): void {
     this.selectedImageIndex = index;
     if (this.imageSlots[index]) {
@@ -2631,6 +2981,117 @@ export class App {
     this.imageSlots = slots ? [...slots] : this.createEmptyImageSlots();
     const firstFilled = this.imageSlots.findIndex(slot => Boolean(slot));
     this.selectedImageIndex = firstFilled >= 0 ? firstFilled : 0;
+  }
+
+  private buildSampleAssetCards(): AssetCard[] {
+    return [
+      {
+        id: 'asset-car-1',
+        type: 'Car',
+        title: 'City-to-Lake SUV',
+        subtitle: 'Hyundai Tucson · Automatic',
+        city: 'Austin',
+        capacityTotal: 4,
+        details: 'Pickup from Downtown at 17:30. Luggage: 2 cabin bags.',
+        imageUrl: this.defaultAssetImage('Car', 'car-1'),
+        sourceLink: 'https://picsum.photos/seed/car-1/1200/700',
+        requests: [
+          this.buildAssetRequest('asset-member-1', 'u4', 'pending', 'Needs one medium suitcase slot.'),
+          this.buildAssetRequest('asset-member-2', 'u8', 'accepted', 'Can meet at 6th Street.'),
+          this.buildAssetRequest('asset-member-7', 'u2', 'accepted', 'Travels light with backpack only.')
+        ]
+      },
+      {
+        id: 'asset-car-2',
+        type: 'Car',
+        title: 'Airport Shuttle Hatchback',
+        subtitle: 'Volkswagen Golf · Manual',
+        city: 'Austin',
+        capacityTotal: 4,
+        details: 'Airport run before midnight, fuel split evenly.',
+        imageUrl: this.defaultAssetImage('Car', 'car-2'),
+        sourceLink: 'https://picsum.photos/seed/car-2/1200/700',
+        requests: [this.buildAssetRequest('asset-member-3', 'u6', 'pending', 'Landing at 22:40.')]
+      },
+      {
+        id: 'asset-acc-1',
+        type: 'Accommodation',
+        title: 'South Congress Loft',
+        subtitle: '2 bedrooms · 1 living room',
+        city: 'Austin',
+        capacityTotal: 4,
+        details: 'Check-in after 15:00. Quiet building, no smoking.',
+        imageUrl: this.defaultAssetImage('Accommodation', 'acc-1'),
+        sourceLink: 'https://picsum.photos/seed/acc-1/1200/700',
+        requests: [
+          this.buildAssetRequest('asset-member-4', 'u3', 'pending', 'Staying for 2 nights.'),
+          this.buildAssetRequest('asset-member-5', 'u10', 'accepted', 'Can share room.')
+        ]
+      },
+      {
+        id: 'asset-acc-2',
+        type: 'Accommodation',
+        title: 'Eastside Guest Room',
+        subtitle: 'Private room · Shared bathroom',
+        city: 'Austin',
+        capacityTotal: 2,
+        details: 'Ideal for early risers. Parking available.',
+        imageUrl: this.defaultAssetImage('Accommodation', 'acc-2'),
+        sourceLink: 'https://picsum.photos/seed/acc-2/1200/700',
+        requests: [this.buildAssetRequest('asset-member-6', 'u11', 'pending', 'Arrives Friday evening.')]
+      },
+      {
+        id: 'asset-sup-1',
+        type: 'Supplies',
+        title: 'Camping Gear Kit',
+        subtitle: 'Tent + lamps + first aid',
+        city: 'Austin',
+        capacityTotal: 6,
+        details: 'Packed and ready in the garage. Pickup only.',
+        imageUrl: this.defaultAssetImage('Supplies', 'sup-1'),
+        sourceLink: 'https://picsum.photos/seed/sup-1/1200/700',
+        requests: []
+      },
+      {
+        id: 'asset-sup-2',
+        type: 'Supplies',
+        title: 'Game Night Box',
+        subtitle: 'Board games + cards + speakers',
+        city: 'Austin',
+        capacityTotal: 4,
+        details: 'Can deliver to venue before 19:00.',
+        imageUrl: this.defaultAssetImage('Supplies', 'sup-2'),
+        sourceLink: 'https://picsum.photos/seed/sup-2/1200/700',
+        requests: []
+      }
+    ];
+  }
+
+  private buildAssetRequest(
+    id: string,
+    userId: string,
+    status: AssetRequestStatus,
+    note: string
+  ): AssetMemberRequest {
+    const user = this.users.find(item => item.id === userId) ?? this.users[0];
+    return {
+      id,
+      name: user.name,
+      initials: user.initials,
+      gender: user.gender,
+      status,
+      note
+    };
+  }
+
+  protected defaultAssetImage(type: AssetType, seed = type.toLowerCase()): string {
+    if (type === 'Car') {
+      return `https://picsum.photos/seed/${seed}/1200/700`;
+    }
+    if (type === 'Accommodation') {
+      return `https://picsum.photos/seed/${seed}/1200/700`;
+    }
+    return `https://picsum.photos/seed/${seed}/1200/700`;
   }
 
   private buildSampleExperienceEntries(): ExperienceEntry[] {

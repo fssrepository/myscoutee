@@ -1237,6 +1237,11 @@
   height: calc(100vh - 1.2rem);
 }
 
+.app-popup-panel.popup-panel-assets,
+.app-popup-panel.popup-panel-asset-members {
+  height: calc(100vh - 1.2rem);
+}
+
 .popup-header {
   display: flex;
   justify-content: space-between;
@@ -3011,6 +3016,21 @@ textarea {
   border-color: rgba(45, 94, 168, 0.32);
 }
 
+.experience-filter-select.asset-filter-car {
+  background: linear-gradient(180deg, #fff1f3 0%, #ffe6ea 100%);
+  border-color: rgba(169, 72, 90, 0.32);
+}
+
+.experience-filter-select.asset-filter-accommodation {
+  background: linear-gradient(180deg, #eaf4ff 0%, #e1ecfb 100%);
+  border-color: rgba(45, 94, 168, 0.32);
+}
+
+.experience-filter-select.asset-filter-supplies {
+  background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
+  border-color: rgba(44, 126, 72, 0.32);
+}
+
 .experience-filter-all {
   color: #694ea6;
 }
@@ -3029,6 +3049,207 @@ textarea {
 
 .experience-filter-project {
   color: #5f4ca0;
+}
+
+.asset-filter-car {
+  color: #a1485a;
+}
+
+.asset-filter-accommodation {
+  color: #2d5ea8;
+}
+
+.asset-filter-supplies {
+  color: #2d7d47;
+}
+
+.assets-popup {
+  position: relative;
+}
+
+.assets-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.assets-toolbar .experience-filter-select {
+  min-width: 188px;
+  width: 188px;
+  max-width: 188px;
+}
+
+.assets-add-btn {
+  margin-left: auto;
+}
+
+.assets-card-list {
+  gap: 0.68rem;
+}
+
+.asset-item-card {
+  display: grid;
+  gap: 0.44rem;
+}
+
+.asset-item-card .experience-item-head {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+}
+
+.asset-card-image {
+  width: 100%;
+  height: 130px;
+  border-radius: 10px;
+  border: 1px solid rgba(36, 64, 98, 0.2);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+}
+
+.asset-occupancy-badge {
+  position: absolute;
+  top: 0.38rem;
+  right: 0.38rem;
+  min-width: 56px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  background: rgba(26, 45, 71, 0.82);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0 0.58rem;
+  cursor: pointer;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.7), 0 8px 16px rgba(255, 255, 255, 0.42);
+  transition: transform 0.14s ease, box-shadow 0.14s ease, filter 0.14s ease;
+}
+
+.asset-occupancy-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.82), 0 10px 22px rgba(255, 255, 255, 0.58);
+  filter: brightness(1.06);
+}
+
+.asset-occupancy-badge:active {
+  transform: scale(0.96);
+}
+
+.asset-request-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid #fff;
+}
+
+.asset-source-icon {
+  position: absolute;
+  top: 0.38rem;
+  left: 0.38rem;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: rgba(244, 248, 255, 0.9);
+  color: #2d5ea8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.asset-source-icon .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.asset-source-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.38rem;
+  align-items: center;
+}
+
+.asset-source-refresh-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(36, 64, 98, 0.24);
+  background: linear-gradient(180deg, #edf3fb 0%, #e3ecf8 100%);
+  color: #34577f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.asset-source-refresh-btn .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.asset-image-dropzone {
+  border: 0;
+  background: transparent;
+  width: 100%;
+  padding: 0;
+  cursor: pointer;
+}
+
+.asset-image-preview {
+  width: 100%;
+  min-height: 170px;
+  border-radius: 12px;
+  border: 1px dashed rgba(56, 83, 119, 0.3);
+  background: linear-gradient(180deg, #f8fbff 0%, #edf3fb 100%);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.asset-image-plus {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(56, 83, 119, 0.24);
+  background: rgba(255, 255, 255, 0.86);
+  color: #34577f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.assets-member-popup {
+  position: relative;
+}
+
+.asset-member-card.asset-member-pending {
+  background: linear-gradient(180deg, #fff1f2 0%, #ffe7ea 100%);
+  border-color: rgba(189, 66, 95, 0.38);
+}
+
+.asset-member-card.asset-member-accepted {
+  background: linear-gradient(180deg, #ecf7ef 0%, #e2f1e6 100%);
+  border-color: rgba(45, 125, 71, 0.34);
+}
+
+.asset-member-card .experience-action-btn.active {
+  box-shadow: inset 0 0 0 1px rgba(24, 46, 76, 0.26);
 }
 
 .mat-mdc-option.status-option.experience-filter-all {
@@ -3411,12 +3632,39 @@ textarea {
   border-color: rgba(88, 78, 159, 0.32);
 }
 
+.experience-type-select.asset-filter-car {
+  background: linear-gradient(180deg, #fff1f3 0%, #ffe6ea 100%);
+  border-color: rgba(169, 72, 90, 0.32);
+}
+
+.experience-type-select.asset-filter-accommodation {
+  background: linear-gradient(180deg, #eaf4ff 0%, #e1ecfb 100%);
+  border-color: rgba(45, 94, 168, 0.32);
+}
+
+.experience-type-select.asset-filter-supplies {
+  background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
+  border-color: rgba(44, 126, 72, 0.32);
+}
+
 .mat-mdc-option.status-option.experience-filter-online {
   background: linear-gradient(0deg, #ffffff, #edf8ee);
 }
 
 .mat-mdc-option.status-option.experience-filter-project {
   background: linear-gradient(0deg, #ffffff, #f4f0ff);
+}
+
+.mat-mdc-option.status-option.asset-filter-car {
+  background: linear-gradient(0deg, #ffffff, #ffecef);
+}
+
+.mat-mdc-option.status-option.asset-filter-accommodation {
+  background: linear-gradient(0deg, #ffffff, #ebf4ff);
+}
+
+.mat-mdc-option.status-option.asset-filter-supplies {
+  background: linear-gradient(0deg, #ffffff, #edf8ee);
 }
 
 .experience-date-range-field .mat-mdc-text-field-wrapper {
