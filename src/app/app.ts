@@ -125,6 +125,23 @@ interface ExperienceEntry {
   description: string;
 }
 
+interface MobileProfileSelectorOption {
+  value: string;
+  label: string;
+  icon: string;
+  toneClass?: string;
+}
+
+interface MobileProfileSelectorSheet {
+  title: string;
+  selected: string;
+  options: MobileProfileSelectorOption[];
+  context:
+    | { kind: 'profileStatus' }
+    | { kind: 'detailValue'; groupIndex: number; rowIndex: number }
+    | { kind: 'experienceType' };
+}
+
 @Component({
   selector: 'app-root',
   imports: [
@@ -341,10 +358,15 @@ export class App {
   protected popupReturnTarget: PopupType = null;
   protected openPrivacyFab: { groupIndex: number; rowIndex: number } | null = null;
   protected privacyFabJustSelectedKey: string | null = null;
+  protected mobileProfileSelectorSheet: MobileProfileSelectorSheet | null = null;
   protected valuesSelectorContext: { groupIndex: number; rowIndex: number } | null = null;
   protected valuesSelectorSelected: string[] = [];
   protected interestSelectorContext: { groupIndex: number; rowIndex: number } | null = null;
   protected interestSelectorSelected: string[] = [];
+  protected experienceVisibility: Record<'workspace' | 'school', DetailPrivacy> = {
+    workspace: 'Public',
+    school: 'Public'
+  };
   protected readonly experienceFilterOptions: Array<'All' | 'Workspace' | 'School'> = ['All', 'Workspace', 'School'];
   protected readonly experienceTypeOptions: Array<ExperienceEntry['type']> = ['Workspace', 'School', 'Online Session', 'Additional Project'];
   protected experienceFilter: 'All' | 'Workspace' | 'School' = 'All';
@@ -1576,6 +1598,108 @@ export class App {
   protected onBirthdayChange(value: Date | null): void {
     this.profileForm.birthday = value;
     this.profileForm.horoscope = value ? this.getHoroscopeByDate(value) : '';
+  }
+
+  protected get isMobileView(): boolean {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return window.matchMedia('(max-width: 760px)').matches;
+  }
+
+  protected onProfileStatusChange(value: ProfileStatus): void {
+    this.profileForm.profileStatus = value;
+  }
+
+  protected openProfileStatusSelector(event: Event): void {
+    event.stopPropagation();
+    this.mobileProfileSelectorSheet = {
+      title: 'Profile Status',
+      selected: this.profileForm.profileStatus,
+      options: this.profileStatusOptions.map(option => ({
+        value: option.value,
+        label: option.value,
+        icon: option.icon,
+        toneClass: this.profileStatusClass(option.value)
+      })),
+      context: { kind: 'profileStatus' }
+    };
+  }
+
+  protected openMobileDetailValueSelector(groupIndex: number, rowIndex: number, event: Event): void {
+    event.stopPropagation();
+    const row = this.profileDetailsForm[groupIndex]?.rows[rowIndex];
+    if (!row) {
+      return;
+    }
+    this.mobileProfileSelectorSheet = {
+      title: row.label,
+      selected: row.value,
+      options: row.options.map(option => ({
+        value: option,
+        label: option,
+        icon: this.detailOptionIcon(row.label, option),
+        toneClass: this.detailOptionClass(row.label, option, row.options)
+      })),
+      context: { kind: 'detailValue', groupIndex, rowIndex }
+    };
+  }
+
+  protected openMobileExperienceTypeSelector(event: Event): void {
+    event.stopPropagation();
+    this.mobileProfileSelectorSheet = {
+      title: 'Experience Type',
+      selected: this.experienceForm.type,
+      options: this.experienceTypeOptions.map(option => ({
+        value: option,
+        label: option,
+        icon: this.experienceTypeIcon(option),
+        toneClass: this.experienceTypeToneClass(option)
+      })),
+      context: { kind: 'experienceType' }
+    };
+  }
+
+  protected closeMobileProfileSelectorSheet(): void {
+    this.mobileProfileSelectorSheet = null;
+  }
+
+  protected selectMobileProfileSelectorOption(value: string): void {
+    const sheet = this.mobileProfileSelectorSheet;
+    if (!sheet) {
+      return;
+    }
+    if (sheet.context.kind === 'profileStatus') {
+      if (this.profileStatusOptions.some(option => option.value === value)) {
+        this.profileForm.profileStatus = value as ProfileStatus;
+      }
+      this.mobileProfileSelectorSheet = null;
+      return;
+    }
+    if (sheet.context.kind === 'experienceType') {
+      if (this.experienceTypeOptions.includes(value as ExperienceEntry['type'])) {
+        this.experienceForm.type = value as ExperienceEntry['type'];
+      }
+      this.mobileProfileSelectorSheet = null;
+      return;
+    }
+    const row = this.profileDetailsForm[sheet.context.groupIndex]?.rows[sheet.context.rowIndex];
+    if (row && row.options.includes(value)) {
+      row.value = value;
+    }
+    this.mobileProfileSelectorSheet = null;
+  }
+
+  protected experienceVisibilityValue(type: 'workspace' | 'school'): DetailPrivacy {
+    return this.experienceVisibility[type];
+  }
+
+  protected toggleExperiencePrivacy(type: 'workspace' | 'school', event: Event): void {
+    event.stopPropagation();
+    const order: DetailPrivacy[] = ['Public', 'Friends', 'Hosts', 'Private'];
+    const current = this.experienceVisibility[type];
+    const index = order.indexOf(current);
+    this.experienceVisibility[type] = order[(index + 1 + order.length) % order.length];
   }
 
   protected toggleLanguagePanel(): void {

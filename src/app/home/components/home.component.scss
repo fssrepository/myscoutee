@@ -173,6 +173,69 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-image-content {
+  width: 100%;
+  min-height: inherit;
+  height: 100%;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center;
+  transition: transform 0.14s ease-out;
+  cursor: default;
+  position: relative;
+  touch-action: none;
+}
+
+.card-image-content.is-draggable {
+  cursor: grab;
+}
+
+.card-image-content.is-draggable:active {
+  cursor: grabbing;
+}
+
+.game-image-stack-indicators {
+  margin: 0 0.72rem 0.42rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.game-image-stack-line {
+  border: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(49, 78, 117, 0.24);
+  cursor: pointer;
+  padding: 0;
+}
+
+.game-image-stack-line.active {
+  background: rgba(43, 97, 170, 0.78);
+}
+
+.game-image-hit-area {
+  position: absolute;
+  inset: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 4px;
+  z-index: 2;
+}
+
+.game-image-hit-segment {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
 }
 
 .card-image-placeholder {

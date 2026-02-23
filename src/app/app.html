@@ -45,9 +45,6 @@
               <mat-icon>{{ getProfileStatusIcon(activeUser.profileStatus) }}</mat-icon>
               <span>{{ activeUser.completion }}%</span>
             </span>
-            <span class="header-open-cue" aria-hidden="true">
-              <mat-icon>edit</mat-icon>
-            </span>
           </div>
 
           <div class="user-meta user-meta-compact">
@@ -58,6 +55,9 @@
             </span>
           </div>
         </div>
+        <span class="header-open-cue" aria-hidden="true">
+          <mat-icon>edit</mat-icon>
+        </span>
       </div>
 
       <div class="user-menu-content">
@@ -548,7 +548,10 @@
             <button type="button" class="avatar-edit-btn" aria-label="Open image editor" (click)="openImageEditor()">
               <mat-icon>edit</mat-icon>
             </button>
-            <span class="avatar-bottom-pill">{{ activeUser.completion }}%</span>
+            <span class="avatar-bottom-pill avatar-bottom-pill-header" [class]="profileStatusClass(profileForm.profileStatus)">
+              <mat-icon>{{ getProfileStatusIcon(profileForm.profileStatus) }}</mat-icon>
+              <span>{{ activeUser.completion }}%</span>
+            </span>
           </div>
 
           <div class="profile-header-text">
@@ -562,46 +565,58 @@
           </div>
         </div>
 
-        <label class="profile-about-field profile-status-field">
+        <div class="profile-editor-scroll-area">
+        <div class="profile-details-structured">
+          <label class="profile-about-field profile-status-field">
           <div class="profile-about-head">
             <span>Profile Status</span>
           </div>
-          <div class="profile-status-select-wrap" [class]="profileStatusClass(profileForm.profileStatus)">
-            <mat-select
-              [(ngModel)]="profileForm.profileStatus"
-              disableOptionCentering
-              panelClass="selector-options-panel status-options-panel profile-bottom-sheet-panel"
+          <ng-container *ngIf="!isMobileView; else mobileProfileStatusButton">
+            <div class="profile-status-select-wrap selector-like" [class]="profileStatusClass(profileForm.profileStatus)">
+              <mat-select [(ngModel)]="profileForm.profileStatus" (ngModelChange)="onProfileStatusChange($event)" disableOptionCentering panelClass="status-options-panel">
+                <mat-select-trigger>
+                  <span class="status-option-content">
+                    <mat-icon [class]="profileStatusClass(profileForm.profileStatus)">{{ getProfileStatusIcon(profileForm.profileStatus) }}</mat-icon>
+                    <span>{{ profileForm.profileStatus }}</span>
+                  </span>
+                </mat-select-trigger>
+                <mat-option
+                  *ngFor="let option of profileStatusOptions"
+                  [value]="option.value"
+                  class="status-option"
+                  [ngClass]="profileStatusClass(option.value)"
+                  [class.hide-selected-option]="option.value === profileForm.profileStatus"
+                >
+                  <span class="status-option-content">
+                    <mat-icon [class]="profileStatusClass(option.value)">{{ option.icon }}</mat-icon>
+                    <span>{{ option.value }}</span>
+                  </span>
+                </mat-option>
+              </mat-select>
+            </div>
+          </ng-container>
+          <ng-template #mobileProfileStatusButton>
+            <button
+              type="button"
+              class="profile-status-select-wrap profile-status-trigger"
+              [class]="'profile-status-select-wrap profile-status-trigger ' + profileStatusClass(profileForm.profileStatus)"
+              (click)="openProfileStatusSelector($event)"
             >
-              <mat-select-trigger>
-                <span class="status-option-content">
-                  <mat-icon [class]="profileStatusClass(profileForm.profileStatus)">{{ getProfileStatusIcon(profileForm.profileStatus) }}</mat-icon>
-                  <span>{{ profileForm.profileStatus }}</span>
-                </span>
-              </mat-select-trigger>
-              <mat-option
-                *ngFor="let status of profileStatusOptions"
-                [value]="status.value"
-                [class]="'status-option ' + profileStatusClass(status.value)"
-                [class.hide-selected-option]="status.value === profileForm.profileStatus"
-              >
-                <span class="status-option-content">
-                  <mat-icon [class]="profileStatusClass(status.value)">{{ status.icon }}</mat-icon>
-                  <span>{{ status.value }}</span>
-                </span>
-              </mat-option>
-            </mat-select>
-          </div>
+              <span class="status-option-content">
+                <mat-icon [class]="profileStatusClass(profileForm.profileStatus)">{{ getProfileStatusIcon(profileForm.profileStatus) }}</mat-icon>
+                <span>{{ profileForm.profileStatus }}</span>
+              </span>
+              <mat-icon>expand_more</mat-icon>
+            </button>
+          </ng-template>
         </label>
-
-        <label class="profile-about-field">
-          <div class="profile-about-head">
-            <span>About me</span>
-            <small>{{ profileForm.about.length }}/160</small>
-          </div>
-          <textarea rows="3" maxlength="160" [(ngModel)]="profileForm.about"></textarea>
-        </label>
-
-        <div class="profile-details-structured">
+          <label class="profile-about-field">
+            <div class="profile-about-head">
+              <span>About me</span>
+              <small>{{ profileForm.about.length }}/160</small>
+            </div>
+            <textarea rows="3" maxlength="160" [(ngModel)]="profileForm.about"></textarea>
+          </label>
           <section class="profile-details-group" *ngFor="let group of profileDetailsForm; let groupIndex = index">
                   <h4>{{ group.title }}</h4>
                   <div class="profile-form-grid profile-details-form-grid basics-moved-grid" *ngIf="group.title === 'Basics'; else nonBasicsGroup">
@@ -702,7 +717,7 @@
                   </div>
                   <ng-template #nonBasicsGroup>
                     <div class="profile-form-grid profile-details-form-grid">
-                    <label class="profile-details-field" *ngFor="let row of group.rows; let rowIndex = index">
+                    <div class="profile-details-field" *ngFor="let row of group.rows; let rowIndex = index">
                       <span>{{ row.label }}</span>
                       <div class="profile-details-control-row">
                         <button
@@ -718,32 +733,47 @@
                           <mat-icon>chevron_right</mat-icon>
                         </button>
                         <ng-template #detailsSelect>
-                        <div class="profile-status-select-wrap selector-like profile-details-select" [ngClass]="detailSelectedClass(row.label, row.value, row.options)">
-                          <mat-select [(ngModel)]="row.value" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel">
-                            <mat-select-trigger>
-                              <span class="status-option-content">
-                                <mat-icon>{{ detailOptionIcon(row.label, row.value) }}</mat-icon>
-                                <span>{{ row.value }}</span>
-                              </span>
-                            </mat-select-trigger>
-                            <mat-option
-                              *ngFor="let item of row.options"
-                              [value]="item"
-                              class="status-option"
-                              [ngClass]="detailOptionClass(row.label, item, row.options)"
-                              [class.hide-selected-option]="item === row.value"
-                            >
-                              <span class="status-option-content">
-                                <mat-icon>{{ detailOptionIcon(row.label, item) }}</mat-icon>
-                                <span>{{ item }}</span>
-                              </span>
-                            </mat-option>
-                          </mat-select>
-                        </div>
+                        <ng-container *ngIf="!isMobileView; else mobileDetailSelectButton">
+                          <div class="profile-status-select-wrap selector-like profile-details-select" [ngClass]="detailSelectedClass(row.label, row.value, row.options)">
+                            <mat-select [(ngModel)]="row.value" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel">
+                              <mat-select-trigger>
+                                <span class="status-option-content">
+                                  <mat-icon>{{ detailOptionIcon(row.label, row.value) }}</mat-icon>
+                                  <span>{{ row.value }}</span>
+                                </span>
+                              </mat-select-trigger>
+                              <mat-option
+                                *ngFor="let item of row.options"
+                                [value]="item"
+                                class="status-option"
+                                [ngClass]="detailOptionClass(row.label, item, row.options)"
+                                [class.hide-selected-option]="item === row.value"
+                              >
+                                <span class="status-option-content">
+                                  <mat-icon>{{ detailOptionIcon(row.label, item) }}</mat-icon>
+                                  <span>{{ item }}</span>
+                                </span>
+                              </mat-option>
+                            </mat-select>
+                          </div>
+                        </ng-container>
+                        <ng-template #mobileDetailSelectButton>
+                          <button
+                            type="button"
+                            class="profile-status-select-wrap selector-like profile-details-select"
+                            [ngClass]="detailSelectedClass(row.label, row.value, row.options)"
+                            (click)="openMobileDetailValueSelector(groupIndex, rowIndex, $event)"
+                          >
+                            <span class="status-option-content">
+                              <mat-icon>{{ detailOptionIcon(row.label, row.value) }}</mat-icon>
+                              <span>{{ row.value }}</span>
+                            </span>
+                            <mat-icon>expand_more</mat-icon>
+                          </button>
+                        </ng-template>
                         </ng-template>
                         <div
                           class="profile-details-privacy-fab"
-                          [class.open]="isDetailPrivacyFabOpen(groupIndex, rowIndex)"
                           [class.is-just-selected]="isDetailPrivacyJustSelected(groupIndex, rowIndex)"
                         >
                           <button
@@ -755,77 +785,72 @@
                           >
                             <mat-icon>{{ privacyStatusIcon(row.privacy) }}</mat-icon>
                           </button>
-                          <div class="privacy-fab-actions">
-                            <button
-                              type="button"
-                              class="profile-details-privacy-btn status-public"
-                              (click)="selectDetailPrivacy(groupIndex, rowIndex, 'Public', $event)"
-                              aria-label="Public"
-                            >
-                              <mat-icon>public</mat-icon>
-                            </button>
-                            <button
-                              type="button"
-                              class="profile-details-privacy-btn status-friends"
-                              (click)="selectDetailPrivacy(groupIndex, rowIndex, 'Friends', $event)"
-                              aria-label="Friends"
-                            >
-                              <mat-icon>groups</mat-icon>
-                            </button>
-                            <button
-                              type="button"
-                              class="profile-details-privacy-btn status-host"
-                              (click)="selectDetailPrivacy(groupIndex, rowIndex, 'Hosts', $event)"
-                              aria-label="Hosts"
-                            >
-                              <mat-icon>stadium</mat-icon>
-                            </button>
-                            <button
-                              type="button"
-                              class="profile-details-privacy-btn status-inactive"
-                              (click)="selectDetailPrivacy(groupIndex, rowIndex, 'Private', $event)"
-                              aria-label="Private"
-                            >
-                              <mat-icon>visibility_off</mat-icon>
-                            </button>
-                          </div>
                         </div>
                       </div>
-                    </label>
+                    </div>
                     </div>
                   </ng-template>
           </section>
           <section class="profile-details-group experience-selector-card">
             <h4>Experience</h4>
-            <div class="experience-selector-row">
-              <span>Workspace</span>
-              <button
-                type="button"
-                class="profile-status-select-wrap selector-like profile-details-values-btn section-social"
-                (click)="openWorkspaceSelector()"
-              >
-                <span class="status-option-content">
-                  <mat-icon>apartment</mat-icon>
-                  <span>{{ workspaceExperienceSummary }}</span>
-                </span>
-                <mat-icon>chevron_right</mat-icon>
-              </button>
-            </div>
-            <div class="experience-selector-row">
-              <span>School</span>
-              <button
-                type="button"
-                class="profile-status-select-wrap selector-like profile-details-values-btn section-arts"
-                (click)="openSchoolSelector()"
-              >
-                <span class="status-option-content">
-                  <mat-icon>school</mat-icon>
-                  <span>{{ schoolExperienceSummary }}</span>
-                </span>
-                <mat-icon>chevron_right</mat-icon>
-              </button>
+            <div class="experience-selector-grid">
+              <div class="experience-selector-row">
+                <span>Workspace</span>
+                <div class="profile-details-control-row">
+                  <button
+                    type="button"
+                    class="profile-status-select-wrap selector-like profile-details-values-btn section-social"
+                    (click)="openWorkspaceSelector()"
+                  >
+                    <span class="status-option-content">
+                      <mat-icon>apartment</mat-icon>
+                      <span>{{ workspaceExperienceSummary }}</span>
+                    </span>
+                    <mat-icon>chevron_right</mat-icon>
+                  </button>
+                  <div class="profile-details-privacy-fab">
+                    <button
+                      type="button"
+                      class="profile-details-privacy-btn profile-details-privacy-trigger"
+                      [class]="privacyStatusClass(experienceVisibilityValue('workspace'))"
+                      (click)="toggleExperiencePrivacy('workspace', $event)"
+                      aria-label="Change workspace visibility"
+                    >
+                      <mat-icon>{{ privacyStatusIcon(experienceVisibilityValue('workspace')) }}</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="experience-selector-row">
+                <span>School</span>
+                <div class="profile-details-control-row">
+                  <button
+                    type="button"
+                    class="profile-status-select-wrap selector-like profile-details-values-btn section-arts"
+                    (click)="openSchoolSelector()"
+                  >
+                    <span class="status-option-content">
+                      <mat-icon>school</mat-icon>
+                      <span>{{ schoolExperienceSummary }}</span>
+                    </span>
+                    <mat-icon>chevron_right</mat-icon>
+                  </button>
+                  <div class="profile-details-privacy-fab">
+                    <button
+                      type="button"
+                      class="profile-details-privacy-btn profile-details-privacy-trigger"
+                      [class]="privacyStatusClass(experienceVisibilityValue('school'))"
+                      (click)="toggleExperiencePrivacy('school', $event)"
+                      aria-label="Change school visibility"
+                    >
+                      <mat-icon>{{ privacyStatusIcon(experienceVisibilityValue('school')) }}</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
+        </div>
         </div>
 
       </div>
@@ -871,6 +896,33 @@
           </button>
         </div>
       </div>
+    </div>
+  </div>
+</section>
+
+<section class="mobile-profile-selector-sheet-wrap" *ngIf="mobileProfileSelectorSheet">
+  <div class="mobile-profile-selector-backdrop" (click)="closeMobileProfileSelectorSheet()"></div>
+  <div class="mobile-profile-selector-sheet" (click)="$event.stopPropagation()">
+    <div class="mobile-profile-selector-handle" aria-hidden="true"></div>
+    <div class="mobile-profile-selector-title">
+      <mat-icon>list</mat-icon>
+      <span>{{ mobileProfileSelectorSheet.title }}</span>
+    </div>
+    <div class="mobile-profile-selector-options">
+      <button
+        type="button"
+        class="mobile-profile-selector-option"
+        *ngFor="let option of mobileProfileSelectorSheet.options"
+        [class.active]="option.value === mobileProfileSelectorSheet.selected"
+        [ngClass]="option.toneClass"
+        (click)="selectMobileProfileSelectorOption(option.value)"
+      >
+        <span class="mobile-profile-selector-option-main">
+          <mat-icon>{{ option.icon }}</mat-icon>
+          <span>{{ option.label }}</span>
+        </span>
+        <mat-icon *ngIf="option.value === mobileProfileSelectorSheet.selected">check</mat-icon>
+      </button>
     </div>
   </div>
 </section>
@@ -1140,34 +1192,50 @@
             </div>
             <section class="experience-form-panel">
               <div class="experience-form-grid">
-                <label>
+                <label class="experience-type-field">
                   <span>Type</span>
-                  <div class="profile-status-select-wrap selector-like experience-type-select" [ngClass]="experienceTypeToneClass(experienceForm.type)">
-                    <mat-select [(ngModel)]="experienceForm.type" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel">
-                      <mat-select-trigger>
-                        <span class="status-option-content">
-                          <mat-icon [class]="experienceTypeToneClass(experienceForm.type)">{{ experienceTypeIcon(experienceForm.type) }}</mat-icon>
-                          <span>{{ experienceForm.type }}</span>
-                        </span>
-                      </mat-select-trigger>
-                      <mat-option *ngFor="let option of experienceTypeOptions" [value]="option" class="status-option" [ngClass]="experienceTypeToneClass(option)">
-                        <span class="status-option-content">
-                          <mat-icon [class]="experienceTypeToneClass(option)">{{ experienceTypeIcon(option) }}</mat-icon>
-                          <span>{{ option }}</span>
-                        </span>
-                      </mat-option>
-                    </mat-select>
-                  </div>
+                  <ng-container *ngIf="!isMobileView; else mobileExperienceTypeButton">
+                    <div class="profile-status-select-wrap selector-like experience-type-select" [ngClass]="experienceTypeToneClass(experienceForm.type)">
+                      <mat-select [(ngModel)]="experienceForm.type" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel">
+                        <mat-select-trigger>
+                          <span class="status-option-content">
+                            <mat-icon [class]="experienceTypeToneClass(experienceForm.type)">{{ experienceTypeIcon(experienceForm.type) }}</mat-icon>
+                            <span>{{ experienceForm.type }}</span>
+                          </span>
+                        </mat-select-trigger>
+                        <mat-option *ngFor="let option of experienceTypeOptions" [value]="option" class="status-option" [ngClass]="experienceTypeToneClass(option)">
+                          <span class="status-option-content">
+                            <mat-icon [class]="experienceTypeToneClass(option)">{{ experienceTypeIcon(option) }}</mat-icon>
+                            <span>{{ option }}</span>
+                          </span>
+                        </mat-option>
+                      </mat-select>
+                    </div>
+                  </ng-container>
+                  <ng-template #mobileExperienceTypeButton>
+                    <button
+                      type="button"
+                      class="profile-status-select-wrap selector-like experience-type-select"
+                      [ngClass]="experienceTypeToneClass(experienceForm.type)"
+                      (click)="openMobileExperienceTypeSelector($event)"
+                    >
+                      <span class="status-option-content">
+                        <mat-icon [class]="experienceTypeToneClass(experienceForm.type)">{{ experienceTypeIcon(experienceForm.type) }}</mat-icon>
+                        <span>{{ experienceForm.type }}</span>
+                      </span>
+                      <mat-icon>expand_more</mat-icon>
+                    </button>
+                  </ng-template>
                 </label>
-                <label>
+                <label class="experience-title-field">
                   <span>Title</span>
                   <input type="text" [(ngModel)]="experienceForm.title" />
                 </label>
-                <label>
+                <label class="experience-org-field">
                   <span>Organization</span>
                   <input type="text" [(ngModel)]="experienceForm.org" />
                 </label>
-                <label>
+                <label class="experience-city-field">
                   <span>City</span>
                   <input type="text" [(ngModel)]="experienceForm.city" />
                 </label>

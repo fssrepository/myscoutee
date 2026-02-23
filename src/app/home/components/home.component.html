@@ -1,8 +1,7 @@
 <div class="game-page">
   <header class="game-header">
     <div>
-      <h1>Game</h1>
-      <p>Discover profiles and rate with 10-star feedback.</p>
+      <h1>Myscoutee</h1>
     </div>
     <div class="game-actions">
       <button type="button" class="game-action-mode" [class.mode-pair]="isPairMode" [class.mode-single]="!isPairMode" (click)="togglePairMode()">
@@ -26,8 +25,43 @@
         <p>{{ activeCandidate.city }} · {{ activeCandidate.statusText }}</p>
         <p>{{ activeCandidate.headline }}</p>
       </div>
+      <div class="game-image-stack-indicators" *ngIf="candidateImageStack.length > 1">
+        <button
+          type="button"
+          class="game-image-stack-line"
+          *ngFor="let image of candidateImageStack; let i = index"
+          [class.active]="i === selectedCandidateImageIndex"
+          (click)="selectCandidateImage(i)"
+          aria-label="Select profile image"
+        ></button>
+      </div>
       <div class="card-image-area">
-        <span class="card-image-placeholder">{{ candidateInitials }}</span>
+        <div
+          class="card-image-content"
+          [style.backgroundImage]="candidateImage ? 'url(' + candidateImage + ')' : 'none'"
+          [style.transform]="'translate(' + candidateImagePanX + 'px,' + candidateImagePanY + 'px) scale(' + candidateImageZoom + ')'"
+          [class.is-draggable]="candidateImageZoom > 1"
+          (wheel)="onCandidateImageWheel($event)"
+          (mousedown)="onCandidateImageMouseDown($event)"
+          (mousemove)="onCandidateImageMouseMove($event)"
+          (mouseup)="onCandidateImageMouseUp()"
+          (mouseleave)="onCandidateImageMouseUp()"
+          (touchstart)="onCandidateImageTouchStart($event)"
+          (touchmove)="onCandidateImageTouchMove($event)"
+          (touchend)="onCandidateImageTouchEnd()"
+          (touchcancel)="onCandidateImageTouchEnd()"
+        >
+          <div class="game-image-hit-area" *ngIf="candidateImageStack.length > 1">
+            <button
+              type="button"
+              class="game-image-hit-segment"
+              *ngFor="let image of candidateImageStack; let i = index"
+              (click)="selectCandidateImage(i)"
+              aria-label="Select profile image"
+            ></button>
+          </div>
+          <span class="card-image-placeholder" *ngIf="!candidateImage">{{ candidateInitials }}</span>
+        </div>
       </div>
       <div class="rating-stars">
         <button

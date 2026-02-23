@@ -16,6 +16,7 @@ export interface DemoUser {
   completion: number;
   headline: string;
   about: string;
+  images?: string[];
   profileStatus: 'public' | 'friends only' | 'host only' | 'inactive';
   activities: {
     game: number;
