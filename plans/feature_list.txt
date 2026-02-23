@@ -34,12 +34,7 @@ Base Design:
 -------
 Menu - will be updated based on websocket/mqtt message
 Main page - Logo + text on every main page with icon bar on the right side
-Sub page - for example title for the current event and either X button on the right hand side or backward button before the title
-Popup - on mobile should be full, on desktop partial screen sized (similar to Egyenleg or email or urlap kereses popup)
 Filter buttons/Filter textbox - should be small (not the default angular one by saving space)
-Page - should be center aligned horizontally on desktop
-
-Remove the 3 horizontal button and any functionality related to it (only user selector button/menu exists)
 
 Menu
 ----
@@ -292,7 +287,7 @@ pencil (top right corner) -> clicking on it profile editor
 below the avatar
 
 Impressions ---------------------------
-2 badge (Platinum Host, Empirikus Résztvető)
+2 badge (Platinum Host, Empathetic Attendee)
 
 remove the Impressions accordion from the Profile Editor
 
@@ -317,4 +312,5 @@ the Profile Details -> is a section, not an accordion (panel will be wider)
 
 Experience (section - school / workplace)
 
-on mobile, when you click on dropdown box or fab and you show a popup on bottom with the list of elements
+on mobile, when you click on dropdown box or fab and you show a popup on bottom of the screen with the list of elements (icons before)
+if you click on one element, then the button title updated or the fab icon

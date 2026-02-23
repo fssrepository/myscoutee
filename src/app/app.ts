@@ -3,10 +3,10 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatExpansionModule } from '@angular/material/expansion';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatSelectModule } from '@angular/material/select';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { FormsModule } from '@angular/forms';
@@ -32,12 +32,16 @@ import {
 } from './shared/demo-data';
 import { environment } from '../environments/environment';
 
-type AccordionSection = 'chat' | 'invitations' | 'events' | 'hosting';
-type MenuSection = 'game' | AccordionSection;
+type MenuSection = 'game' | 'chat' | 'invitations' | 'events' | 'hosting';
 
 type PopupType =
   | 'chat'
   | 'chatMembers'
+  | 'impressionsHost'
+  | 'impressionsMember'
+  | 'assetsCar'
+  | 'assetsAccommodation'
+  | 'assetsSupplies'
   | 'invitations'
   | 'events'
   | 'hosting'
@@ -52,6 +56,7 @@ type PopupType =
   | 'supplyDetail'
   | 'valuesSelector'
   | 'interestSelector'
+  | 'experienceSelector'
   | 'logoutConfirm'
   | null;
 
@@ -109,6 +114,17 @@ interface InterestOptionGroup {
   options: string[];
 }
 
+interface ExperienceEntry {
+  id: string;
+  type: 'Workspace' | 'School' | 'Online Session' | 'Additional Project';
+  title: string;
+  org: string;
+  city: string;
+  dateFrom: string;
+  dateTo: string;
+  description: string;
+}
+
 @Component({
   selector: 'app-root',
   imports: [
@@ -116,10 +132,10 @@ interface InterestOptionGroup {
     RouterOutlet,
     MatIconModule,
     MatButtonModule,
-    MatExpansionModule,
     MatDatepickerModule,
     MatNativeDateModule,
     MatSelectModule,
+    MatFormFieldModule,
     MatChipsModule,
     MatAutocompleteModule,
     FormsModule
@@ -329,14 +345,26 @@ export class App {
   protected valuesSelectorSelected: string[] = [];
   protected interestSelectorContext: { groupIndex: number; rowIndex: number } | null = null;
   protected interestSelectorSelected: string[] = [];
+  protected readonly experienceFilterOptions: Array<'All' | 'Workspace' | 'School'> = ['All', 'Workspace', 'School'];
+  protected readonly experienceTypeOptions: Array<ExperienceEntry['type']> = ['Workspace', 'School', 'Online Session', 'Additional Project'];
+  protected experienceFilter: 'All' | 'Workspace' | 'School' = 'All';
+  protected editingExperienceId: string | null = null;
+  protected pendingExperienceDeleteId: string | null = null;
+  protected showExperienceForm = false;
+  protected experienceRangeStart: Date | null = null;
+  protected experienceRangeEnd: Date | null = null;
+  protected experienceForm: Omit<ExperienceEntry, 'id'> = {
+    type: 'Workspace',
+    title: '',
+    org: '',
+    city: '',
+    dateFrom: '',
+    dateTo: '',
+    description: ''
+  };
+  protected experienceEntries: ExperienceEntry[] = this.buildSampleExperienceEntries();
   protected activeUserId = this.getInitialUserId();
 
-  protected sectionsOpen: Record<AccordionSection, boolean> = {
-    chat: true,
-    invitations: false,
-    events: false,
-    hosting: false
-  };
   protected activeMenuSection: MenuSection = 'chat';
 
   protected selectedChat: ChatMenuItem | null = null;
@@ -384,7 +412,16 @@ export class App {
   }
 
   protected get userBadgeCount(): number {
-    return this.gameBadge + this.chatBadge + this.invitationsBadge + this.eventsBadge + this.hostingBadge;
+    return (
+      this.gameBadge +
+      this.chatBadge +
+      this.invitationsBadge +
+      this.eventsBadge +
+      this.hostingBadge +
+      this.assetCarsBadge +
+      this.assetAccommodationBadge +
+      this.assetSuppliesBadge
+    );
   }
 
   protected get gameBadge(): number {
@@ -419,6 +456,18 @@ export class App {
     );
   }
 
+  protected get assetCarsBadge(): number {
+    return this.getSupplyGapByKey('cars');
+  }
+
+  protected get assetAccommodationBadge(): number {
+    return this.getSupplyGapByKey('accommodation');
+  }
+
+  protected get assetSuppliesBadge(): number {
+    return this.getSupplyGapByKey('accessories');
+  }
+
   protected get chatItems(): ChatMenuItem[] {
     return DEMO_CHAT_BY_USER[this.activeUser.id] ?? DEMO_CHAT_BY_USER['u1'];
   }
@@ -435,14 +484,6 @@ export class App {
     return DEMO_HOSTING_BY_USER[this.activeUser.id] ?? DEMO_HOSTING_BY_USER['u1'];
   }
 
-  protected get hasOpenAccordion(): boolean {
-    return this.sectionsOpen.chat || this.sectionsOpen.invitations || this.sectionsOpen.events || this.sectionsOpen.hosting;
-  }
-
-  protected get isGameSelected(): boolean {
-    return this.activeMenuSection === 'game' && !this.hasOpenAccordion;
-  }
-
   protected onUserSelect(): void {
     this.showUserMenu = !this.showUserMenu;
   }
@@ -451,24 +492,63 @@ export class App {
     this.showUserMenu = false;
   }
 
-  protected toggleSection(section: AccordionSection): void {
-    if (this.sectionsOpen[section]) {
-      this.activeMenuSection = section;
-      return;
-    }
-    this.sectionsOpen = {
-      chat: false,
-      invitations: false,
-      events: false,
-      hosting: false
-    };
-    this.sectionsOpen[section] = true;
-    this.activeMenuSection = section;
-  }
-
   protected goToGame(): void {
     this.activeMenuSection = 'game';
     this.router.navigate(['/game']);
+    this.closeUserMenu();
+  }
+
+  protected openChatShortcut(): void {
+    const [firstItem] = this.chatItems;
+    if (firstItem) {
+      this.openChatItem(firstItem);
+      return;
+    }
+    this.activeMenuSection = 'chat';
+    this.closeUserMenu();
+  }
+
+  protected openInvitationShortcut(): void {
+    const [firstItem] = this.invitationItems;
+    if (firstItem) {
+      this.openInvitationItem(firstItem);
+      return;
+    }
+    this.activeMenuSection = 'invitations';
+    this.closeUserMenu();
+  }
+
+  protected openEventShortcut(): void {
+    const [firstItem] = this.eventItems;
+    if (firstItem) {
+      this.openEventItem(firstItem);
+      return;
+    }
+    this.openEventExplore();
+  }
+
+  protected openHostingShortcut(): void {
+    const [firstItem] = this.hostingItems;
+    if (firstItem) {
+      this.openHostingItem(firstItem);
+      return;
+    }
+    this.activeMenuSection = 'hosting';
+    this.closeUserMenu();
+  }
+
+  protected openAssetCarPopup(): void {
+    this.activePopup = 'assetsCar';
+    this.closeUserMenu();
+  }
+
+  protected openAssetAccommodationPopup(): void {
+    this.activePopup = 'assetsAccommodation';
+    this.closeUserMenu();
+  }
+
+  protected openAssetSuppliesPopup(): void {
+    this.activePopup = 'assetsSupplies';
     this.closeUserMenu();
   }
 
@@ -536,7 +616,6 @@ export class App {
     this.syncProfileFormFromActiveUser();
     this.popupReturnTarget = null;
     this.activePopup = 'profileEditor';
-    this.closeUserMenu();
   }
 
   protected openImageEditor(): void {
@@ -570,6 +649,12 @@ export class App {
       this.interestSelectorContext = null;
       this.interestSelectorSelected = [];
     }
+    if (this.stackedPopup === 'experienceSelector') {
+      this.editingExperienceId = null;
+      this.pendingExperienceDeleteId = null;
+      this.showExperienceForm = false;
+      this.resetExperienceForm();
+    }
     this.stackedPopup = null;
     if (this.activePopup === 'chat') {
       this.scrollChatToBottom();
@@ -590,12 +675,6 @@ export class App {
     localStorage.setItem('demo-active-user', userId);
     this.syncProfileFormFromActiveUser();
     this.activeMenuSection = 'chat';
-    this.sectionsOpen = {
-      chat: true,
-      invitations: false,
-      events: false,
-      hosting: false
-    };
     window.dispatchEvent(new CustomEvent('active-user-changed'));
     this.showUserSelector = false;
     this.activePopup = null;
@@ -615,6 +694,16 @@ export class App {
         return this.selectedChat?.title ?? 'Chat';
       case 'chatMembers':
         return 'Chat Members';
+      case 'impressionsHost':
+        return this.activeHostTier;
+      case 'impressionsMember':
+        return this.memberImpressionTitle;
+      case 'assetsCar':
+        return 'Assets · Car';
+      case 'assetsAccommodation':
+        return 'Assets · Accommodation';
+      case 'assetsSupplies':
+        return 'Assets · Supplies';
       case 'invitationActions':
         return this.selectedInvitation?.description ?? 'Invitation';
       case 'menuEvent':
@@ -660,9 +749,195 @@ export class App {
         return 'Values';
       case 'interestSelector':
         return 'Interest';
+      case 'experienceSelector':
+        return 'Experience';
       default:
         return '';
     }
+  }
+
+  protected get filteredExperienceEntries(): ExperienceEntry[] {
+    const filtered = this.experienceEntries.filter(item => {
+      if (this.experienceFilter === 'All') {
+        return true;
+      }
+      return item.type === this.experienceFilter;
+    });
+    return [...filtered].sort((a, b) => this.toSortableDate(b.dateFrom) - this.toSortableDate(a.dateFrom));
+  }
+
+  protected get experienceSummary(): string {
+    return `${this.experienceEntries.length} entries`;
+  }
+
+  protected get workspaceExperienceSummary(): string {
+    const count = this.experienceEntries.filter(item => item.type === 'Workspace').length;
+    return `${count} entries`;
+  }
+
+  protected get schoolExperienceSummary(): string {
+    const count = this.experienceEntries.filter(item => item.type === 'School').length;
+    return `${count} entries`;
+  }
+
+  protected openExperienceSelector(filter: 'All' | 'Workspace' | 'School' = 'All'): void {
+    this.experienceFilter = filter;
+    this.pendingExperienceDeleteId = null;
+    this.editingExperienceId = null;
+    this.resetExperienceForm();
+    this.stackedPopup = 'experienceSelector';
+  }
+
+  protected openWorkspaceSelector(): void {
+    this.openExperienceSelector('Workspace');
+  }
+
+  protected openSchoolSelector(): void {
+    this.openExperienceSelector('School');
+  }
+
+  protected experienceTypeIcon(type: ExperienceEntry['type']): string {
+    switch (type) {
+      case 'Workspace':
+        return 'apartment';
+      case 'School':
+        return 'school';
+      case 'Online Session':
+        return 'videocam';
+      default:
+        return 'rocket_launch';
+    }
+  }
+
+  protected experienceTypeClass(type: ExperienceEntry['type']): string {
+    switch (type) {
+      case 'Workspace':
+        return 'experience-card-workspace';
+      case 'School':
+        return 'experience-card-school';
+      case 'Online Session':
+        return 'experience-card-online';
+      default:
+        return 'experience-card-project';
+    }
+  }
+
+  protected experienceFilterIcon(option: 'All' | 'Workspace' | 'School'): string {
+    if (option === 'Workspace') {
+      return 'apartment';
+    }
+    if (option === 'School') {
+      return 'school';
+    }
+    return 'filter_alt';
+  }
+
+  protected experienceFilterClass(option: 'All' | 'Workspace' | 'School'): string {
+    if (option === 'Workspace') {
+      return 'experience-filter-workspace';
+    }
+    if (option === 'School') {
+      return 'experience-filter-school';
+    }
+    return 'experience-filter-all';
+  }
+
+  protected experienceTypeToneClass(type: ExperienceEntry['type']): string {
+    switch (type) {
+      case 'Workspace':
+        return 'experience-filter-workspace';
+      case 'School':
+        return 'experience-filter-school';
+      case 'Online Session':
+        return 'experience-filter-online';
+      default:
+        return 'experience-filter-project';
+    }
+  }
+
+  protected openExperienceForm(entry?: ExperienceEntry): void {
+    this.pendingExperienceDeleteId = null;
+    this.showExperienceForm = true;
+    if (entry) {
+      this.editingExperienceId = entry.id;
+      this.experienceForm = {
+        type: entry.type,
+        title: entry.title,
+        org: entry.org,
+        city: entry.city,
+        dateFrom: entry.dateFrom,
+        dateTo: entry.dateTo === 'Present' ? '' : entry.dateTo,
+        description: entry.description
+      };
+      this.experienceRangeStart = this.fromYearMonth(entry.dateFrom);
+      this.experienceRangeEnd = entry.dateTo === 'Present' ? null : this.fromYearMonth(entry.dateTo);
+    } else {
+      this.editingExperienceId = null;
+      this.resetExperienceForm();
+    }
+  }
+
+  protected closeExperienceForm(): void {
+    this.showExperienceForm = false;
+    this.editingExperienceId = null;
+    this.resetExperienceForm();
+  }
+
+  protected saveExperienceEntry(): void {
+    if (!this.experienceForm.title.trim() || !this.experienceForm.org.trim() || !this.experienceRangeStart) {
+      return;
+    }
+    const dateFrom = this.toYearMonth(this.experienceRangeStart);
+    if (!dateFrom) {
+      return;
+    }
+    const dateTo = this.experienceRangeEnd ? this.toYearMonth(this.experienceRangeEnd) : 'Present';
+    const payload: Omit<ExperienceEntry, 'id'> = {
+      ...this.experienceForm,
+      dateFrom,
+      title: this.experienceForm.title.trim(),
+      org: this.experienceForm.org.trim(),
+      city: this.experienceForm.city.trim(),
+      dateTo: dateTo || 'Present',
+      description: this.experienceForm.description.trim()
+    };
+    if (this.editingExperienceId) {
+      this.experienceEntries = this.experienceEntries.map(item =>
+        item.id === this.editingExperienceId
+          ? {
+              ...item,
+              ...payload
+            }
+          : item
+      );
+    } else {
+      this.experienceEntries = [
+        ...this.experienceEntries,
+        {
+          id: `exp-${Date.now()}`,
+          ...payload
+        }
+      ];
+    }
+    this.showExperienceForm = false;
+    this.editingExperienceId = null;
+    this.resetExperienceForm();
+  }
+
+  protected requestExperienceDelete(entryId: string): void {
+    this.pendingExperienceDeleteId = entryId;
+  }
+
+  protected cancelExperienceDelete(): void {
+    this.pendingExperienceDeleteId = null;
+  }
+
+  protected confirmExperienceDelete(): void {
+    if (!this.pendingExperienceDeleteId) {
+      return;
+    }
+    this.experienceEntries = this.experienceEntries.filter(item => item.id !== this.pendingExperienceDeleteId);
+    this.pendingExperienceDeleteId = null;
   }
 
   protected privacyIcon(value: 'Public' | 'Friends' | 'Hosts' | 'Private'): string {
@@ -861,6 +1136,183 @@ export class App {
       return this.interestDominantToneClass(value);
     }
     return this.detailToneFromOptions(value, options);
+  }
+
+  protected detailOptionIcon(label: string, option: string): string {
+    const normalizedLabel = this.normalizeText(label);
+    const normalizedOption = this.normalizeText(option);
+
+    if (normalizedLabel.includes('drinking')) {
+      if (normalizedOption.includes('never')) {
+        return 'no_drinks';
+      }
+      if (normalizedOption.includes('socially')) {
+        return 'groups';
+      }
+      if (normalizedOption.includes('occasionally')) {
+        return 'event';
+      }
+      return 'nightlife';
+    }
+    if (normalizedLabel.includes('smoking')) {
+      if (normalizedOption.includes('never')) {
+        return 'smoke_free';
+      }
+      if (normalizedOption.includes('trying')) {
+        return 'healing';
+      }
+      if (normalizedOption.includes('socially')) {
+        return 'group';
+      }
+      return 'smoking_rooms';
+    }
+    if (normalizedLabel.includes('workout')) {
+      if (normalizedOption.includes('daily')) {
+        return 'whatshot';
+      }
+      if (normalizedOption.includes('4x')) {
+        return 'fitness_center';
+      }
+      if (normalizedOption.includes('2-3x')) {
+        return 'directions_run';
+      }
+      return 'self_improvement';
+    }
+    if (normalizedLabel.includes('pets')) {
+      if (normalizedOption.includes('dog')) {
+        return 'pets';
+      }
+      if (normalizedOption.includes('cat')) {
+        return 'cat';
+      }
+      if (normalizedOption.includes('all')) {
+        return 'cruelty_free';
+      }
+      return 'block';
+    }
+    if (normalizedLabel.includes('family')) {
+      if (normalizedOption.includes('want')) {
+        return 'child_care';
+      }
+      if (normalizedOption.includes('open')) {
+        return 'family_restroom';
+      }
+      if (normalizedOption.includes('not sure')) {
+        return 'help_outline';
+      }
+      return 'do_not_disturb_alt';
+    }
+    if (normalizedLabel.includes('children')) {
+      if (normalizedOption === 'yes') {
+        return 'child_friendly';
+      }
+      if (normalizedOption === 'no') {
+        return 'do_not_disturb_alt';
+      }
+      return 'privacy_tip';
+    }
+    if (normalizedLabel.includes('love')) {
+      if (normalizedOption.includes('long-term')) {
+        return 'favorite';
+      }
+      if (normalizedOption.includes('slow-burn')) {
+        return 'hourglass_bottom';
+      }
+      if (normalizedOption.includes('open')) {
+        return 'hub';
+      }
+      return 'explore';
+    }
+    if (normalizedLabel.includes('communication')) {
+      if (normalizedOption.includes('direct')) {
+        return 'campaign';
+      }
+      if (normalizedOption.includes('calm')) {
+        return 'record_voice_over';
+      }
+      if (normalizedOption.includes('playful')) {
+        return 'mood';
+      }
+      return 'forum';
+    }
+    if (normalizedLabel.includes('orientation')) {
+      if (normalizedOption.includes('straight')) {
+        return 'person';
+      }
+      if (normalizedOption.includes('bisexual')) {
+        return 'diversity_3';
+      }
+      if (normalizedOption.includes('gay') || normalizedOption.includes('lesbian')) {
+        return 'favorite';
+      }
+      if (normalizedOption.includes('pansexual')) {
+        return 'all_inclusive';
+      }
+      if (normalizedOption.includes('asexual')) {
+        return 'do_not_disturb_on';
+      }
+      return 'privacy_tip';
+    }
+    if (normalizedLabel === 'gender') {
+      if (normalizedOption.includes('woman')) {
+        return 'female';
+      }
+      if (normalizedOption.includes('man')) {
+        return 'male';
+      }
+      if (normalizedOption.includes('non-binary')) {
+        return 'transgender';
+      }
+      return 'privacy_tip';
+    }
+    if (normalizedLabel.includes('religion')) {
+      if (normalizedOption.includes('spiritual')) {
+        return 'self_improvement';
+      }
+      if (normalizedOption.includes('christian')) {
+        return 'church';
+      }
+      if (normalizedOption.includes('muslim')) {
+        return 'mosque';
+      }
+      if (normalizedOption.includes('jewish')) {
+        return 'synagogue';
+      }
+      if (normalizedOption.includes('buddhist') || normalizedOption.includes('hindu')) {
+        return 'temple_buddhist';
+      }
+      if (normalizedOption.includes('atheist')) {
+        return 'public_off';
+      }
+      return 'privacy_tip';
+    }
+
+    if (normalizedOption.includes('never')) {
+      return 'block';
+    }
+    if (normalizedOption.includes('daily')) {
+      return 'today';
+    }
+    const iconPool = [
+      'radio_button_checked',
+      'diamond',
+      'bolt',
+      'eco',
+      'favorite',
+      'nightlife',
+      'star',
+      'palette',
+      'self_improvement',
+      'travel_explore',
+      'psychology',
+      'celebration'
+    ];
+    let hash = 0;
+    for (let i = 0; i < normalizedOption.length; i += 1) {
+      hash = ((hash << 5) - hash + normalizedOption.charCodeAt(i)) | 0;
+    }
+    const safeIndex = Math.abs(hash) % iconPool.length;
+    return iconPool[safeIndex];
   }
 
   protected valuesDominantToneClass(value: string): string {
@@ -1351,6 +1803,35 @@ export class App {
     return this.profileForm.traitLabel || this.activeUser.traitLabel;
   }
 
+  protected get memberImpressionTitle(): string {
+    const normalized = this.normalizeText(this.activeMemberTrait);
+    if (normalized.includes('empat') || normalized.includes('empath')) {
+      return 'Empathetic Attendee';
+    }
+    if (normalized.includes('advent')) {
+      return 'Adventurous Attendee';
+    }
+    if (normalized.includes('kreat') || normalized.includes('creative')) {
+      return 'Creative Attendee';
+    }
+    if (normalized.includes('think')) {
+      return 'Thoughtful Attendee';
+    }
+    if (normalized.includes('social')) {
+      return 'Social Attendee';
+    }
+    if (normalized.includes('playful')) {
+      return 'Playful Attendee';
+    }
+    if (normalized.includes('ambitious') || normalized.includes('goal')) {
+      return 'Ambitious Attendee';
+    }
+    if (normalized.includes('megbizh') || normalized.includes('reliable')) {
+      return 'Reliable Attendee';
+    }
+    return `${this.activeMemberTrait} Attendee`;
+  }
+
   protected get hostTierBadgeIcon(): string {
     const tier = this.normalizeText(this.activeHostTier);
     if (tier.includes('platinum')) return '👑';
@@ -1449,6 +1930,16 @@ export class App {
       return 'icon-trait-ambitious';
     }
     return 'icon-trait-default';
+  }
+
+  protected openHostImpressions(): void {
+    this.activePopup = 'impressionsHost';
+    this.closeUserMenu();
+  }
+
+  protected openMemberImpressions(): void {
+    this.activePopup = 'impressionsMember';
+    this.closeUserMenu();
   }
 
   protected getInvitationActionSummary(invitation: InvitationMenuItem): string {
@@ -1618,6 +2109,21 @@ export class App {
       return this.eventEditor.members.map(member => ({ label: member.name, detail: member.role }));
     }
     return [{ label: 'Custom supply slot', detail: 'Add items and assign to this sub-event.' }];
+  }
+
+  protected get assetCarItems(): Array<{ label: string; detail: string }> {
+    return this.eventEditor.cars.map(car => ({ label: car.owner, detail: `${car.route} · seats ${car.seats}` }));
+  }
+
+  protected get assetAccommodationItems(): Array<{ label: string; detail: string }> {
+    return this.eventEditor.accommodations.map(room => ({ label: room.name, detail: `${room.rooms} · ${room.people}` }));
+  }
+
+  protected get assetSuppliesItems(): Array<{ label: string; detail: string }> {
+    return this.eventEditor.accessories.map(accessory => ({
+      label: accessory.item,
+      detail: `required ${accessory.required} · offered ${accessory.offered}`
+    }));
   }
 
   protected selectImageSlot(index: number): void {
@@ -1790,6 +2296,105 @@ export class App {
     this.imageSlots = slots ? [...slots] : this.createEmptyImageSlots();
     const firstFilled = this.imageSlots.findIndex(slot => Boolean(slot));
     this.selectedImageIndex = firstFilled >= 0 ? firstFilled : 0;
+  }
+
+  private buildSampleExperienceEntries(): ExperienceEntry[] {
+    return [
+      {
+        id: 'exp-1',
+        type: 'School',
+        title: 'BSc Computer Science',
+        org: 'State University',
+        city: 'Austin',
+        dateFrom: '2014-09',
+        dateTo: '2018-06',
+        description: 'Software engineering and distributed systems.'
+      },
+      {
+        id: 'exp-2',
+        type: 'Additional Project',
+        title: 'Community Event Platform',
+        org: 'Independent Project',
+        city: 'Austin',
+        dateFrom: '2018-09',
+        dateTo: '2019-05',
+        description: 'Built MVP with profile, event, and chat modules.'
+      },
+      {
+        id: 'exp-3',
+        type: 'Workspace',
+        title: 'Community Lead',
+        org: 'Studio Tide',
+        city: 'Chicago',
+        dateFrom: '2019-06',
+        dateTo: '2021-08',
+        description: 'Owned member engagement and host onboarding.'
+      },
+      {
+        id: 'exp-4',
+        type: 'Online Session',
+        title: 'Remote Product Sprint',
+        org: 'Northwind Labs',
+        city: 'Online',
+        dateFrom: '2021-10',
+        dateTo: '2022-02',
+        description: 'Cross-functional delivery for profile editor v2.'
+      },
+      {
+        id: 'exp-5',
+        type: 'Workspace',
+        title: 'Product Manager',
+        org: 'Northwind Labs',
+        city: 'Austin',
+        dateFrom: '2022-03',
+        dateTo: 'Present',
+        description: 'Leads social graph and trust product areas.'
+      }
+    ];
+  }
+
+  private resetExperienceForm(): void {
+    this.experienceForm = {
+      type: 'Workspace',
+      title: '',
+      org: '',
+      city: '',
+      dateFrom: '',
+      dateTo: '',
+      description: ''
+    };
+    this.experienceRangeStart = null;
+    this.experienceRangeEnd = null;
+  }
+
+  private fromYearMonth(value: string): Date | null {
+    if (!value || value === 'Present') {
+      return null;
+    }
+    const [yearRaw, monthRaw] = value.split('-');
+    const year = Number.parseInt(yearRaw, 10);
+    const month = Number.parseInt(monthRaw, 10);
+    if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
+      return null;
+    }
+    return new Date(year, month - 1, 1);
+  }
+
+  private toYearMonth(value: Date | null): string {
+    if (!value) {
+      return '';
+    }
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    return `${year}-${month}`;
+  }
+
+  private toSortableDate(value: string): number {
+    if (!value) {
+      return Number.POSITIVE_INFINITY;
+    }
+    const parsed = new Date(`${value}-01T00:00:00`);
+    return Number.isNaN(parsed.getTime()) ? Number.POSITIVE_INFINITY : parsed.getTime();
   }
 
   protected get profileCardBirthday(): string {
@@ -1977,6 +2582,23 @@ export class App {
       return positiveTotal;
     }
     return itemCount;
+  }
+
+  private getSupplyGapByKey(key: 'cars' | 'accommodation' | 'accessories'): number {
+    return this.eventEditor.subEvents.reduce((maxGap, subEvent) => {
+      const requirement = subEvent.requirements[key];
+      return Math.max(maxGap, this.parseSupplyGap(requirement));
+    }, 0);
+  }
+
+  private parseSupplyGap(value: string): number {
+    const [currentRaw, totalRaw] = value.split('/');
+    const current = Number.parseInt(currentRaw?.trim() ?? '', 10);
+    const total = Number.parseInt(totalRaw?.trim() ?? '', 10);
+    if (!Number.isFinite(current) || !Number.isFinite(total)) {
+      return 0;
+    }
+    return Math.max(0, total - current);
   }
 
   private normalizeText(value: string): string {

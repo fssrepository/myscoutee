@@ -22,9 +22,14 @@
         (keydown.enter)="openProfileEditor()"
         (keydown.space)="openProfileEditor(); $event.preventDefault()"
       >
-        <span class="header-open-cue" aria-hidden="true">
-          <mat-icon>chevron_right</mat-icon>
-        </span>
+        <button
+          type="button"
+          class="user-menu-close-btn"
+          aria-label="Close menu"
+          (click)="$event.stopPropagation(); closeUserMenu()"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
 
         <div class="user-header-main">
           <div class="avatar-stack">
@@ -36,7 +41,13 @@
               <ng-container *ngIf="!featuredImagePreview">{{ activeUser.initials }}</ng-container>
             </span>
             <span class="avatar-activity-badge" *ngIf="userBadgeCount > 0">{{ userBadgeCount }}</span>
-            <span class="avatar-bottom-pill">{{ activeUser.completion }}%</span>
+            <span class="avatar-bottom-pill avatar-bottom-pill-header" [class]="profileStatusClass(activeUser.profileStatus)">
+              <mat-icon>{{ getProfileStatusIcon(activeUser.profileStatus) }}</mat-icon>
+              <span>{{ activeUser.completion }}%</span>
+            </span>
+            <span class="header-open-cue" aria-hidden="true">
+              <mat-icon>edit</mat-icon>
+            </span>
           </div>
 
           <div class="user-meta user-meta-compact">
@@ -45,156 +56,143 @@
               <mat-icon>location_on</mat-icon>
               <span>{{ activeUser.city }}</span>
             </span>
-            <span class="user-role user-role-status" [class]="profileStatusClass(activeUser.profileStatus)">
-              <mat-icon>{{ getProfileStatusIcon(activeUser.profileStatus) }}</mat-icon>
-              <span>{{ activeUser.profileStatus }}</span>
-            </span>
-            <span class="user-third-line">
-              <span class="meta-chip-inline">
-                <mat-icon [class]="getHostTierColorClass(activeUser.hostTier)">{{ getHostTierIcon(activeUser.hostTier) }}</mat-icon>
-                <span>{{ activeUser.hostTier }}</span>
-              </span>
-              <span class="meta-separator">·</span>
-              <span class="meta-chip-inline">
-                <mat-icon [class]="getTraitColorClass(activeUser.traitLabel)">{{ getTraitIcon(activeUser.traitLabel) }}</mat-icon>
-                <span>{{ activeUser.traitLabel }}</span>
-              </span>
-            </span>
           </div>
         </div>
       </div>
 
       <div class="user-menu-content">
-        <button class="game-entry menu-tone-game is-active" type="button" (click)="goToGame()">
-          <span class="entry-left">
-            <mat-icon class="menu-item-icon">interests</mat-icon>
-            <span>Game</span>
+        <div class="social-proof-section-head section-personality activities-header impressions-menu-header">
+          <span class="section-tag">
+            <mat-icon>psychology</mat-icon>
+            <span>Impressions</span>
           </span>
-          <span class="card-badge" *ngIf="gameBadge > 0">{{ gameBadge }}</span>
-        </button>
+          <span class="section-line"></span>
+        </div>
 
-        <section class="user-menu-card">
-          <header class="card-header card-header-clickable menu-tone-chat" [class.is-active]="sectionsOpen.chat" (click)="toggleSection('chat')">
-            <span class="entry-left">
-              <mat-icon class="menu-item-icon">chat</mat-icon>
-              <span class="card-title">Chat</span>
-            </span>
-            <span class="card-badge menu-header-badge" *ngIf="chatBadge > 0">{{ chatBadge }}</span>
-          </header>
-
-          <div class="card-body accordion-body" [class.open]="sectionsOpen.chat">
-            <div class="accordion-inner">
-              <button class="menu-context-row chat-context-row" type="button" *ngFor="let item of chatItems" (click)="openChatItem(item)">
-                <span class="chat-room-avatar-wrap">
-                  <span class="chat-room-avatar" [class]="'user-color-' + getChatLastSender(item).gender">{{ getChatLastSender(item).initials }}</span>
-                </span>
-                <span class="menu-row-content chat-row-content">
-                  <span class="menu-row-name">{{ getChatLastSender(item).name }}</span>
-                  <span class="menu-row-title">{{ item.title }}</span>
-                  <span class="menu-row-sub">{{ item.lastMessage }}</span>
-                </span>
-                <span class="chat-members-inline-badge">{{ getChatMemberCount(item) }} members</span>
-                <span class="row-badge" *ngIf="item.unread > 0">{{ item.unread }}</span>
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section class="user-menu-card">
-          <header
-            class="card-header card-header-clickable menu-tone-invitations"
-            [class.is-active]="sectionsOpen.invitations"
-            (click)="toggleSection('invitations')"
+        <div class="impressions-shortcuts">
+          <button
+            class="impression-shortcut-btn impression-shortcut-host"
+            type="button"
+            (click)="openHostImpressions()"
+            aria-label="Open host impressions"
+            [title]="activeHostTier"
           >
-            <span class="entry-left">
-              <mat-icon class="menu-item-icon">mail</mat-icon>
-              <span class="card-title">Invitations</span>
-            </span>
-            <span class="card-badge menu-header-badge" *ngIf="invitationsBadge > 0">{{ invitationsBadge }}</span>
-          </header>
+            <mat-icon [class]="getHostTierColorClass(activeHostTier)">{{ getHostTierIcon(activeHostTier) }}</mat-icon>
+            <span class="impression-shortcut-label">{{ activeHostTier }}</span>
+          </button>
 
-          <div class="card-body accordion-body" [class.open]="sectionsOpen.invitations">
-            <div class="accordion-inner">
-              <button
-                class="menu-context-row menu-context-row-event"
-                type="button"
-                *ngFor="let invitation of invitationItems"
-                (click)="openInvitationItem(invitation)"
-              >
-                <span class="menu-avatar">{{ invitation.avatar }}</span>
-                <span class="menu-row-content">
-                  <span class="menu-row-title">{{ invitation.description }}</span>
-                  <span class="menu-row-sub">{{ getInvitationActionSummary(invitation) }}</span>
-                  <span class="menu-row-sub">{{ invitation.when }}</span>
-                </span>
-                <span class="row-badge" *ngIf="invitation.unread > 0">{{ invitation.unread }}</span>
-              </button>
-            </div>
-          </div>
-        </section>
+          <button
+            class="impression-shortcut-btn impression-shortcut-member"
+            type="button"
+            (click)="openMemberImpressions()"
+            aria-label="Open member impressions"
+            [title]="memberImpressionTitle"
+          >
+            <mat-icon [class]="getTraitColorClass(activeMemberTrait)">{{ getTraitIcon(activeMemberTrait) }}</mat-icon>
+            <span class="impression-shortcut-label">{{ memberImpressionTitle }}</span>
+          </button>
+        </div>
 
-        <section class="user-menu-card">
-          <header class="card-header card-header-clickable menu-tone-events" [class.is-active]="sectionsOpen.events" (click)="toggleSection('events')">
-            <span class="entry-left">
-              <mat-icon class="menu-item-icon">event</mat-icon>
-              <span class="card-title">Events</span>
-            </span>
-            <span class="menu-header-actions">
-              <button class="header-icon-btn" type="button" aria-label="Explore events" (click)="$event.stopPropagation(); openEventExplore()">
-                <span class="header-plus-glyph">+</span>
-              </button>
-              <span class="card-badge menu-header-badge" *ngIf="eventsBadge > 0">{{ eventsBadge }}</span>
-            </span>
-          </header>
+        <div class="social-proof-section-head section-social activities-header">
+          <span class="section-tag">
+            <mat-icon>local_activity</mat-icon>
+            <span>Activities</span>
+          </span>
+          <span class="section-line"></span>
+        </div>
 
-          <div class="card-body accordion-body" [class.open]="sectionsOpen.events">
-            <div class="accordion-inner">
-              <button
-                class="menu-context-row menu-context-row-event"
-                type="button"
-                *ngFor="let event of eventItems"
-                (click)="openEventItem(event)"
-              >
-                <span class="menu-avatar">{{ event.avatar }}</span>
-                <span class="menu-row-content">
-                  <span class="menu-row-title">{{ event.title }}</span>
-                  <span class="menu-row-sub">{{ event.shortDescription }}</span>
-                  <span class="menu-row-sub">{{ event.timeframe }}</span>
-                </span>
-                <span class="row-badge" *ngIf="event.activity > 0">{{ event.activity }}</span>
-              </button>
-            </div>
-          </div>
-        </section>
+        <div class="menu-shortcuts">
+          <button
+            class="menu-shortcut-btn menu-shortcut-game"
+            type="button"
+            (click)="goToGame()"
+            aria-label="Open game"
+            title="Game"
+          >
+            <mat-icon>interests</mat-icon>
+            <span class="menu-shortcut-label">Game</span>
+            <span class="card-badge menu-shortcut-badge" *ngIf="gameBadge > 0">{{ gameBadge }}</span>
+          </button>
 
-        <section class="user-menu-card">
-          <header class="card-header card-header-clickable menu-tone-hosting" [class.is-active]="sectionsOpen.hosting" (click)="toggleSection('hosting')">
-            <span class="entry-left">
-              <mat-icon class="menu-item-icon">stadium</mat-icon>
-              <span class="card-title">Hosting</span>
-            </span>
-            <span class="card-badge menu-header-badge" *ngIf="hostingBadge > 0">{{ hostingBadge }}</span>
-          </header>
+          <button
+            class="menu-shortcut-btn menu-shortcut-chat"
+            type="button"
+            (click)="openChatShortcut()"
+            aria-label="Open chat"
+            title="Chat"
+          >
+            <mat-icon>chat</mat-icon>
+            <span class="menu-shortcut-label">Chat</span>
+            <span class="card-badge menu-shortcut-badge" *ngIf="chatBadge > 0">{{ chatBadge }}</span>
+          </button>
 
-          <div class="card-body accordion-body" [class.open]="sectionsOpen.hosting">
-            <div class="accordion-inner">
-              <button
-                class="menu-context-row menu-context-row-event"
-                type="button"
-                *ngFor="let item of hostingItems"
-                (click)="openHostingItem(item)"
-              >
-                <span class="menu-avatar">{{ item.avatar }}</span>
-                <span class="menu-row-content">
-                  <span class="menu-row-title">{{ item.title }}</span>
-                  <span class="menu-row-sub">{{ item.shortDescription }}</span>
-                  <span class="menu-row-sub">{{ item.timeframe }}</span>
-                </span>
-                <span class="row-badge" *ngIf="item.activity > 0">{{ item.activity }}</span>
-              </button>
-            </div>
-          </div>
-        </section>
+          <button
+            class="menu-shortcut-btn menu-shortcut-invitations"
+            type="button"
+            (click)="openInvitationShortcut()"
+            aria-label="Open invitations"
+            title="Invitations"
+          >
+            <mat-icon>mail</mat-icon>
+            <span class="menu-shortcut-label">Invitations</span>
+            <span class="card-badge menu-shortcut-badge" *ngIf="invitationsBadge > 0">{{ invitationsBadge }}</span>
+          </button>
+
+          <button
+            class="menu-shortcut-btn menu-shortcut-events"
+            type="button"
+            (click)="openEventShortcut()"
+            aria-label="Open events"
+            title="Events"
+          >
+            <mat-icon>event</mat-icon>
+            <span class="menu-shortcut-label">Events</span>
+            <span class="card-badge menu-shortcut-badge" *ngIf="eventsBadge > 0">{{ eventsBadge }}</span>
+          </button>
+
+          <button
+            class="menu-shortcut-btn menu-shortcut-hosting"
+            type="button"
+            (click)="openHostingShortcut()"
+            aria-label="Open hosting"
+            title="Hosting"
+          >
+            <mat-icon>stadium</mat-icon>
+            <span class="menu-shortcut-label">Hosting</span>
+            <span class="card-badge menu-shortcut-badge" *ngIf="hostingBadge > 0">{{ hostingBadge }}</span>
+          </button>
+        </div>
+
+        <div class="social-proof-section-head section-arts activities-header impressions-menu-header">
+          <span class="section-tag">
+            <mat-icon>inventory_2</mat-icon>
+            <span>Assets</span>
+          </span>
+          <span class="section-line"></span>
+        </div>
+
+        <div class="assets-shortcuts">
+          <button class="asset-shortcut-btn asset-shortcut-car" type="button" (click)="openAssetCarPopup()" aria-label="Car">
+            <mat-icon>directions_car</mat-icon>
+            <span class="asset-shortcut-label">Car</span>
+            <span class="card-badge menu-shortcut-badge" *ngIf="assetCarsBadge > 0">{{ assetCarsBadge }}</span>
+          </button>
+          <button
+            class="asset-shortcut-btn asset-shortcut-accommodation"
+            type="button"
+            (click)="openAssetAccommodationPopup()"
+            aria-label="Accommodation"
+          >
+            <mat-icon>apartment</mat-icon>
+            <span class="asset-shortcut-label">Accommodation</span>
+            <span class="card-badge menu-shortcut-badge" *ngIf="assetAccommodationBadge > 0">{{ assetAccommodationBadge }}</span>
+          </button>
+          <button class="asset-shortcut-btn asset-shortcut-supplies" type="button" (click)="openAssetSuppliesPopup()" aria-label="Supplies">
+            <mat-icon>inventory_2</mat-icon>
+            <span class="asset-shortcut-label">Supplies</span>
+            <span class="card-badge menu-shortcut-badge" *ngIf="assetSuppliesBadge > 0">{{ assetSuppliesBadge }}</span>
+          </button>
+        </div>
       </div>
     </aside>
 
@@ -210,6 +208,7 @@
     class="app-popup-panel"
     [class.popup-panel-members]="activePopup === 'chatMembers'"
     [class.popup-panel-image-editor]="activePopup === 'imageEditor'"
+    [class.popup-panel-profile-editor]="activePopup === 'profileEditor'"
     (click)="$event.stopPropagation()"
   >
     <div class="popup-header" [class.popup-header-chat]="activePopup === 'chat' && selectedChat">
@@ -230,9 +229,22 @@
           </div>
         </div>
         <ng-template #defaultPlainTitle>
-          <div class="popup-title">
-            <h2>{{ getPopupTitle() }}</h2>
+          <div class="popup-title popup-title-impressions" *ngIf="activePopup === 'impressionsHost' || activePopup === 'impressionsMember'; else plainPopupTitle">
+            <div class="popup-chat-title-block">
+              <h2>Impressions</h2>
+              <p class="popup-impression-subline">
+                <mat-icon [class]="activePopup === 'impressionsHost' ? getHostTierColorClass(activeHostTier) : getTraitColorClass(activeMemberTrait)">
+                  {{ activePopup === 'impressionsHost' ? getHostTierIcon(activeHostTier) : getTraitIcon(activeMemberTrait) }}
+                </mat-icon>
+                <span>{{ activePopup === 'impressionsHost' ? activeHostTier : memberImpressionTitle }}</span>
+              </p>
+            </div>
           </div>
+          <ng-template #plainPopupTitle>
+            <div class="popup-title">
+              <h2>{{ getPopupTitle() }}</h2>
+            </div>
+          </ng-template>
         </ng-template>
       </ng-template>
       <span class="header-members-count" *ngIf="activePopup === 'chatMembers'">{{ selectedChatMembers.length }} members</span>
@@ -254,6 +266,7 @@
       class="popup-body"
       [class.popup-body-chat]="activePopup === 'chat' && selectedChat"
       [class.popup-body-members]="activePopup === 'chatMembers'"
+      [class.popup-body-impressions]="activePopup === 'impressionsHost' || activePopup === 'impressionsMember'"
       [class.popup-body-image-editor]="activePopup === 'imageEditor'"
     >
       <div *ngIf="activePopup === 'chat' && selectedChat" class="chat-popup-wrap">
@@ -330,6 +343,127 @@
         <div class="popup-actions">
           <button type="button" class="link-btn">Accept Join Requests</button>
           <button type="button" class="link-btn" (click)="openEventEditor()">Edit Hosted Event</button>
+        </div>
+      </div>
+
+      <div *ngIf="activePopup === 'impressionsHost'">
+        <div class="social-proof-grid">
+          <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-host">
+            <div class="popup-impressions-badge popup-impressions-badge-host">
+              <span class="popup-impressions-badge-segment popup-impressions-rate-rate">
+                <span class="popup-impressions-badge-label">Rate</span>
+                <span class="popup-impressions-badge-value">{{ hostAverageRating }}</span>
+              </span>
+              <span class="popup-impressions-badge-segment popup-impressions-rate-people">
+                <span class="popup-impressions-badge-label">People / Events</span>
+                <span class="popup-impressions-badge-value">{{ hostPeopleMet + ' / ' + hostTotalEvents }}</span>
+              </span>
+              <span class="popup-impressions-badge-segment popup-impressions-rate-return">
+                <span class="popup-impressions-badge-label">Returnees / NoShow</span>
+                <span class="popup-impressions-badge-value">{{ hostRepeatSummary + ' / ' + hostAttendanceNoShowSummary }}</span>
+              </span>
+            </div>
+
+            <div class="social-proof-section-block">
+              <div class="social-proof-section-head section-vibe">
+                <span class="section-tag">Vibe</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="social-proof-chip-list">
+                <span class="social-proof-chip chip-vibe" *ngFor="let item of hostVibeBadgeItems">{{ item }}</span>
+              </div>
+            </div>
+
+            <div class="social-proof-section-block">
+              <div class="social-proof-section-head section-category">
+                <span class="section-tag">Category</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="social-proof-chip-list">
+                <span class="social-proof-chip chip-category" *ngFor="let item of hostCategoryBadgeItems">{{ item }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="activePopup === 'impressionsMember'">
+        <div class="social-proof-grid">
+          <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-member">
+            <div class="popup-impressions-badge popup-impressions-badge-member">
+              <span class="popup-impressions-badge-segment popup-impressions-rate-people">
+                <span class="popup-impressions-badge-label">People / Events</span>
+                <span class="popup-impressions-badge-value">{{ memberPeopleMet + ' / ' + memberTotalEvents }}</span>
+              </span>
+              <span class="popup-impressions-badge-segment popup-impressions-rate-return">
+                <span class="popup-impressions-badge-label">Returnees / NoShow</span>
+                <span class="popup-impressions-badge-value">{{ memberReturneesSummary + ' / ' + memberNoShowCount }}</span>
+              </span>
+            </div>
+
+            <div class="social-proof-section-block">
+              <div class="social-proof-section-head section-personality">
+                <span class="section-tag">Personality</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="social-proof-chip-list">
+                <span class="social-proof-chip chip-personality" *ngFor="let item of memberPersonalityBadgeItems">{{ item }}</span>
+              </div>
+            </div>
+
+            <div class="social-proof-section-block">
+              <div class="social-proof-section-head section-vibe">
+                <span class="section-tag">Vibe</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="social-proof-chip-list">
+                <span class="social-proof-chip chip-vibe" *ngFor="let item of memberVibeBadgeItems">{{ item }}</span>
+              </div>
+            </div>
+
+            <div class="social-proof-section-block">
+              <div class="social-proof-section-head section-category">
+                <span class="section-tag">Category</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="social-proof-chip-list">
+                <span class="social-proof-chip chip-category" *ngFor="let item of memberCategoryBadgeItems">{{ item }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="activePopup === 'assetsCar'">
+        <div class="editor-list-card">
+          <h4>Cars for active trips</h4>
+          <p>Seat coverage and transport offers from your current event roster.</p>
+        </div>
+        <div class="editor-list-card" *ngFor="let item of assetCarItems">
+          <h4>{{ item.label }}</h4>
+          <p>{{ item.detail }}</p>
+        </div>
+      </div>
+
+      <div *ngIf="activePopup === 'assetsAccommodation'">
+        <div class="editor-list-card">
+          <h4>Accommodation capacity</h4>
+          <p>Rooms and people coverage from current hosting plans.</p>
+        </div>
+        <div class="editor-list-card" *ngFor="let item of assetAccommodationItems">
+          <h4>{{ item.label }}</h4>
+          <p>{{ item.detail }}</p>
+        </div>
+      </div>
+
+      <div *ngIf="activePopup === 'assetsSupplies'">
+        <div class="editor-list-card">
+          <h4>Supply checklist</h4>
+          <p>Required vs offered accessories for active events.</p>
+        </div>
+        <div class="editor-list-card" *ngFor="let item of assetSuppliesItems">
+          <h4>{{ item.label }}</h4>
+          <p>{{ item.detail }}</p>
         </div>
       </div>
 
@@ -425,40 +559,39 @@
               <mat-icon>location_on</mat-icon>
               <span>{{ profileForm.city || activeUser.city }}</span>
             </span>
-            <div class="profile-status-select-wrap" [class]="profileStatusClass(profileForm.profileStatus)">
-              <mat-select [(ngModel)]="profileForm.profileStatus" disableOptionCentering panelClass="selector-options-panel status-options-panel">
-                <mat-select-trigger>
-                  <span class="status-option-content">
-                    <mat-icon [class]="profileStatusClass(profileForm.profileStatus)">{{ getProfileStatusIcon(profileForm.profileStatus) }}</mat-icon>
-                    <span>{{ profileForm.profileStatus }}</span>
-                  </span>
-                </mat-select-trigger>
-                <mat-option
-                  *ngFor="let status of profileStatusOptions"
-                  [value]="status.value"
-                  [class]="'status-option ' + profileStatusClass(status.value)"
-                  [class.hide-selected-option]="status.value === profileForm.profileStatus"
-                >
-                  <span class="status-option-content">
-                    <mat-icon [class]="profileStatusClass(status.value)">{{ status.icon }}</mat-icon>
-                    <span>{{ status.value }}</span>
-                  </span>
-                </mat-option>
-              </mat-select>
-            </div>
-            <p class="profile-chip-line">
-              <span class="meta-chip-inline">
-                <mat-icon [class]="getHostTierColorClass(profileForm.hostTier || activeUser.hostTier)">{{ getHostTierIcon(profileForm.hostTier || activeUser.hostTier) }}</mat-icon>
-                <span>{{ profileForm.hostTier || activeUser.hostTier }}</span>
-              </span>
-              <span class="meta-separator">·</span>
-              <span class="meta-chip-inline">
-                <mat-icon [class]="getTraitColorClass(profileForm.traitLabel || activeUser.traitLabel)">{{ getTraitIcon(profileForm.traitLabel || activeUser.traitLabel) }}</mat-icon>
-                <span>{{ profileForm.traitLabel || activeUser.traitLabel }}</span>
-              </span>
-            </p>
           </div>
         </div>
+
+        <label class="profile-about-field profile-status-field">
+          <div class="profile-about-head">
+            <span>Profile Status</span>
+          </div>
+          <div class="profile-status-select-wrap" [class]="profileStatusClass(profileForm.profileStatus)">
+            <mat-select
+              [(ngModel)]="profileForm.profileStatus"
+              disableOptionCentering
+              panelClass="selector-options-panel status-options-panel profile-bottom-sheet-panel"
+            >
+              <mat-select-trigger>
+                <span class="status-option-content">
+                  <mat-icon [class]="profileStatusClass(profileForm.profileStatus)">{{ getProfileStatusIcon(profileForm.profileStatus) }}</mat-icon>
+                  <span>{{ profileForm.profileStatus }}</span>
+                </span>
+              </mat-select-trigger>
+              <mat-option
+                *ngFor="let status of profileStatusOptions"
+                [value]="status.value"
+                [class]="'status-option ' + profileStatusClass(status.value)"
+                [class.hide-selected-option]="status.value === profileForm.profileStatus"
+              >
+                <span class="status-option-content">
+                  <mat-icon [class]="profileStatusClass(status.value)">{{ status.icon }}</mat-icon>
+                  <span>{{ status.value }}</span>
+                </span>
+              </mat-option>
+            </mat-select>
+          </div>
+        </label>
 
         <label class="profile-about-field">
           <div class="profile-about-head">
@@ -468,127 +601,8 @@
           <textarea rows="3" maxlength="160" [(ngModel)]="profileForm.about"></textarea>
         </label>
 
-        <mat-accordion class="popup-accordion profile-editor-accordion">
-          <mat-expansion-panel class="editor-panel editor-panel-impressions">
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                <span class="editor-accordion-title">
-                  <mat-icon>psychology</mat-icon>
-                  <span>Impressions</span>
-                </span>
-              </mat-panel-title>
-            </mat-expansion-panel-header>
-            <div class="accordion-content">
-              <div class="social-proof-grid">
-                <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-host">
-                  <h4 class="social-proof-identity-pill social-proof-identity-pill-host">
-                    <mat-icon [class]="getHostTierColorClass(activeHostTier)">{{ getHostTierIcon(activeHostTier) }}</mat-icon>
-                    <span>{{ activeHostTier }}</span>
-                  </h4>
-
-                  <div class="social-proof-metric-strip">
-                    <span class="sp-metric-cell sp-metric-cell-rate">
-                      <span class="label">Rate</span>
-                      <span class="value">{{ hostAverageRating }}</span>
-                    </span>
-                    <span class="sp-metric-cell sp-metric-cell-people">
-                      <span class="label">People / Events</span>
-                      <span class="value">{{ hostPeopleMet }} / {{ hostTotalEvents }}</span>
-                    </span>
-                    <span class="sp-metric-cell sp-metric-cell-return">
-                      <span class="label">Returnees / NoShow</span>
-                      <span class="value">{{ hostRepeatSummary }} / {{ hostAttendanceNoShowSummary }}</span>
-                    </span>
-                  </div>
-
-                  <div class="social-proof-section-block">
-                    <div class="social-proof-section-head section-vibe">
-                      <span class="section-tag">Vibe</span>
-                      <span class="section-line"></span>
-                    </div>
-                    <div class="social-proof-chip-list">
-                      <span class="social-proof-chip chip-vibe" *ngFor="let item of hostVibeBadgeItems">{{ item }}</span>
-                    </div>
-                  </div>
-
-                  <div class="social-proof-section-block">
-                    <div class="social-proof-section-head section-category">
-                      <span class="section-tag">Category</span>
-                      <span class="section-line"></span>
-                    </div>
-                    <div class="social-proof-chip-list">
-                      <span class="social-proof-chip chip-category" *ngFor="let item of hostCategoryBadgeItems">{{ item }}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-member">
-                  <h4 class="social-proof-identity-pill social-proof-identity-pill-member">
-                    <mat-icon [class]="getTraitColorClass(activeMemberTrait)">{{ getTraitIcon(activeMemberTrait) }}</mat-icon>
-                    <span>{{ activeMemberTrait }}</span>
-                  </h4>
-
-                  <div class="social-proof-metric-strip">
-                    <span class="sp-metric-cell sp-metric-cell-rate">
-                      <span class="label">Rate</span>
-                      <span class="value">{{ hostAverageRating }}</span>
-                    </span>
-                    <span class="sp-metric-cell sp-metric-cell-people">
-                      <span class="label">People / Events</span>
-                      <span class="value">{{ memberPeopleMet }} / {{ memberTotalEvents }}</span>
-                    </span>
-                    <span class="sp-metric-cell sp-metric-cell-return">
-                      <span class="label">Returnees / NoShow</span>
-                      <span class="value">{{ memberReturneesSummary }} / {{ memberNoShowCount }}</span>
-                    </span>
-                  </div>
-
-                  <div class="social-proof-section-block">
-                    <div class="social-proof-section-head section-personality">
-                      <span class="section-tag">Personality</span>
-                      <span class="section-line"></span>
-                    </div>
-                    <div class="social-proof-chip-list">
-                      <span class="social-proof-chip chip-personality" *ngFor="let item of memberPersonalityBadgeItems">{{ item }}</span>
-                    </div>
-                  </div>
-
-                  <div class="social-proof-section-block">
-                    <div class="social-proof-section-head section-vibe">
-                      <span class="section-tag">Vibe</span>
-                      <span class="section-line"></span>
-                    </div>
-                    <div class="social-proof-chip-list">
-                      <span class="social-proof-chip chip-vibe" *ngFor="let item of memberVibeBadgeItems">{{ item }}</span>
-                    </div>
-                  </div>
-
-                  <div class="social-proof-section-block">
-                    <div class="social-proof-section-head section-category">
-                      <span class="section-tag">Category</span>
-                      <span class="section-line"></span>
-                    </div>
-                    <div class="social-proof-chip-list">
-                      <span class="social-proof-chip chip-category" *ngFor="let item of memberCategoryBadgeItems">{{ item }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </mat-expansion-panel>
-
-          <mat-expansion-panel class="editor-panel editor-panel-details">
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                <span class="editor-accordion-title">
-                  <mat-icon>badge</mat-icon>
-                  <span>Personal Details</span>
-                </span>
-              </mat-panel-title>
-            </mat-expansion-panel-header>
-            <div class="accordion-content">
-              <div class="profile-details-structured">
-                <section class="profile-details-group" *ngFor="let group of profileDetailsForm; let groupIndex = index">
+        <div class="profile-details-structured">
+          <section class="profile-details-group" *ngFor="let group of profileDetailsForm; let groupIndex = index">
                   <h4>{{ group.title }}</h4>
                   <div class="profile-form-grid profile-details-form-grid basics-moved-grid" *ngIf="group.title === 'Basics'; else nonBasicsGroup">
                     <label class="name-field">
@@ -623,7 +637,7 @@
                     <label class="physique-field">
                       <span>Physique</span>
                       <div class="profile-status-select-wrap selector-like physique-select-wrap" [class]="getPhysiqueClass(profileForm.physique)">
-                        <mat-select [(ngModel)]="profileForm.physique" disableOptionCentering panelClass="selector-options-panel physique-options-panel">
+                        <mat-select [(ngModel)]="profileForm.physique" disableOptionCentering panelClass="selector-options-panel physique-options-panel profile-bottom-sheet-panel">
                           <mat-select-trigger>
                             <span class="status-option-content">
                               <mat-icon [class]="getPhysiqueClass(profileForm.physique)">{{ getPhysiqueIcon(profileForm.physique) }}</mat-icon>
@@ -705,9 +719,10 @@
                         </button>
                         <ng-template #detailsSelect>
                         <div class="profile-status-select-wrap selector-like profile-details-select" [ngClass]="detailSelectedClass(row.label, row.value, row.options)">
-                          <mat-select [(ngModel)]="row.value" disableOptionCentering panelClass="selector-options-panel">
+                          <mat-select [(ngModel)]="row.value" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel">
                             <mat-select-trigger>
                               <span class="status-option-content">
+                                <mat-icon>{{ detailOptionIcon(row.label, row.value) }}</mat-icon>
                                 <span>{{ row.value }}</span>
                               </span>
                             </mat-select-trigger>
@@ -719,6 +734,7 @@
                               [class.hide-selected-option]="item === row.value"
                             >
                               <span class="status-option-content">
+                                <mat-icon>{{ detailOptionIcon(row.label, item) }}</mat-icon>
                                 <span>{{ item }}</span>
                               </span>
                             </mat-option>
@@ -778,47 +794,39 @@
                     </label>
                     </div>
                   </ng-template>
-                </section>
-              </div>
-            </div>
-          </mat-expansion-panel>
-
-          <mat-expansion-panel class="editor-panel editor-panel-experience">
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                <span class="editor-accordion-title">
-                  <mat-icon>work_history</mat-icon>
-                  <span>Experience</span>
+          </section>
+          <section class="profile-details-group experience-selector-card">
+            <h4>Experience</h4>
+            <div class="experience-selector-row">
+              <span>Workspace</span>
+              <button
+                type="button"
+                class="profile-status-select-wrap selector-like profile-details-values-btn section-social"
+                (click)="openWorkspaceSelector()"
+              >
+                <span class="status-option-content">
+                  <mat-icon>apartment</mat-icon>
+                  <span>{{ workspaceExperienceSummary }}</span>
                 </span>
-              </mat-panel-title>
-            </mat-expansion-panel-header>
-            <div class="accordion-content">
-              <div class="editor-list-card" *ngFor="let item of profileExperience">
-                <h4>{{ item.place }}</h4>
-                <p>{{ item.role }} · {{ item.years }} · {{ item.city }}</p>
-                <p *ngIf="item.socialProof">{{ item.socialProof }}</p>
-              </div>
+                <mat-icon>chevron_right</mat-icon>
+              </button>
             </div>
-          </mat-expansion-panel>
-
-          <mat-expansion-panel class="editor-panel editor-panel-assets">
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                <span class="editor-accordion-title">
-                  <mat-icon>inventory_2</mat-icon>
-                  <span>Assets</span>
+            <div class="experience-selector-row">
+              <span>School</span>
+              <button
+                type="button"
+                class="profile-status-select-wrap selector-like profile-details-values-btn section-arts"
+                (click)="openSchoolSelector()"
+              >
+                <span class="status-option-content">
+                  <mat-icon>school</mat-icon>
+                  <span>{{ schoolExperienceSummary }}</span>
                 </span>
-              </mat-panel-title>
-            </mat-expansion-panel-header>
-            <div class="accordion-content">
-              <div class="assets-actions-row">
-                <button type="button" class="link-btn">Car</button>
-                <button type="button" class="link-btn">Accommodation</button>
-                <button type="button" class="link-btn">Supplies</button>
-              </div>
+                <mat-icon>chevron_right</mat-icon>
+              </button>
             </div>
-          </mat-expansion-panel>
-        </mat-accordion>
+          </section>
+        </div>
 
       </div>
 
@@ -867,17 +875,54 @@
   </div>
 </section>
 
-<section class="app-popup app-popup-stacked" *ngIf="stackedPopup">
+<section
+  class="app-popup app-popup-stacked"
+  *ngIf="stackedPopup"
+>
   <div class="app-popup-backdrop" (click)="closeStackedPopup()"></div>
-  <div class="app-popup-panel" [class.popup-panel-members]="stackedPopup === 'chatMembers'" (click)="$event.stopPropagation()">
-    <div class="popup-header" *ngIf="stackedPopup === 'valuesSelector' || stackedPopup === 'interestSelector'; else defaultStackedHeader">
-      <button mat-icon-button class="popup-back-btn" (click)="closeStackedPopup()" aria-label="Back">
+  <div
+    class="app-popup-panel"
+    [class.popup-panel-members]="stackedPopup === 'chatMembers'"
+    [class.popup-panel-profile-editor]="stackedPopup === 'experienceSelector'"
+    (click)="$event.stopPropagation()"
+  >
+    <div
+      class="popup-header"
+      [class.popup-header-selector]="stackedPopup === 'valuesSelector' || stackedPopup === 'interestSelector' || stackedPopup === 'experienceSelector'"
+      *ngIf="
+        stackedPopup === 'valuesSelector' ||
+        stackedPopup === 'interestSelector' ||
+        stackedPopup === 'experienceSelector';
+        else defaultStackedHeader
+      "
+    >
+      <button
+        mat-icon-button
+        class="popup-back-btn"
+        (click)="showExperienceForm ? closeExperienceForm() : closeStackedPopup()"
+        aria-label="Back"
+      >
         <mat-icon>arrow_back</mat-icon>
       </button>
       <div class="popup-title popup-title-values">
         <h2>{{ getStackedPopupTitle() }}</h2>
       </div>
-      <div class="values-header-chips" *ngIf="(stackedPopup === 'valuesSelector' ? valuesSelectorSelected : interestSelectorSelected).length > 0">
+      <button
+        *ngIf="stackedPopup === 'experienceSelector'"
+        type="button"
+        class="popup-header-add-btn"
+        (click)="openExperienceForm()"
+        aria-label="Add experience"
+      >
+        <mat-icon>add</mat-icon>
+      </button>
+      <div
+        class="values-header-chips"
+        *ngIf="
+          (stackedPopup === 'valuesSelector' || stackedPopup === 'interestSelector') &&
+          (stackedPopup === 'valuesSelector' ? valuesSelectorSelected : interestSelectorSelected).length > 0
+        "
+      >
         <button
           type="button"
           class="values-selected-chip"
@@ -910,7 +955,7 @@
       </div>
     </ng-template>
 
-    <div class="popup-body" [class.popup-body-members]="stackedPopup === 'chatMembers'">
+    <div class="popup-body" [class.popup-body-members]="stackedPopup === 'chatMembers'" [class.popup-body-experience]="stackedPopup === 'experienceSelector'">
       <div *ngIf="stackedPopup === 'chatMembers'">
         <div class="chat-members-popup-list">
           <div class="chat-members-popup-row" *ngFor="let member of selectedChatMembers">
@@ -1014,6 +1059,147 @@
             </button>
           </div>
         </div>
+      </div>
+
+      <div *ngIf="stackedPopup === 'experienceSelector'" class="experience-popup">
+        <div class="experience-toolbar">
+          <div
+            class="profile-status-select-wrap selector-like experience-filter-select"
+            [ngClass]="experienceFilterClass(experienceFilter)"
+          >
+            <mat-select
+              [(ngModel)]="experienceFilter"
+              disableOptionCentering
+              panelClass="selector-options-panel profile-bottom-sheet-panel"
+            >
+              <mat-select-trigger>
+                <span class="status-option-content">
+                  <mat-icon [class]="experienceFilterClass(experienceFilter)">{{ experienceFilterIcon(experienceFilter) }}</mat-icon>
+                  <span>{{ experienceFilter }}</span>
+                </span>
+              </mat-select-trigger>
+              <mat-option
+                *ngFor="let option of experienceFilterOptions"
+                [value]="option"
+                class="status-option"
+                [ngClass]="experienceFilterClass(option)"
+              >
+                <span class="status-option-content">
+                  <mat-icon [class]="experienceFilterClass(option)">{{ experienceFilterIcon(option) }}</mat-icon>
+                  <span>{{ option }}</span>
+                </span>
+              </mat-option>
+            </mat-select>
+          </div>
+        </div>
+
+        <div class="experience-card-list">
+          <article class="experience-item-card" [ngClass]="experienceTypeClass(item.type)" *ngFor="let item of filteredExperienceEntries">
+            <div class="experience-item-head">
+              <span class="experience-item-icon">
+                <mat-icon>{{ experienceTypeIcon(item.type) }}</mat-icon>
+              </span>
+              <div class="experience-item-meta">
+                <h4>{{ item.title }}</h4>
+                <p>{{ item.org }} · {{ item.city }}</p>
+              </div>
+              <div class="experience-item-actions">
+                <button type="button" class="experience-action-btn experience-action-edit" (click)="openExperienceForm(item)" aria-label="Edit experience">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button type="button" class="experience-action-btn experience-action-delete" (click)="requestExperienceDelete(item.id)" aria-label="Delete experience">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </div>
+            <p class="experience-item-description">{{ item.description }}</p>
+            <p class="experience-item-dates">{{ item.dateFrom }} - {{ item.dateTo }}</p>
+          </article>
+        </div>
+
+        <section class="experience-delete-confirm" *ngIf="pendingExperienceDeleteId">
+          <div class="experience-delete-confirm-backdrop" (click)="cancelExperienceDelete()"></div>
+          <div class="experience-delete-confirm-panel">
+            <h4>Delete experience?</h4>
+            <p>This entry will be removed from your profile.</p>
+            <div class="popup-actions">
+              <button type="button" class="link-btn neutral-btn" (click)="cancelExperienceDelete()">Cancel</button>
+              <button type="button" class="link-btn experience-delete-btn" (click)="confirmExperienceDelete()">Delete</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="experience-form-overlay" *ngIf="showExperienceForm">
+          <div class="experience-form-overlay-backdrop" (click)="closeExperienceForm()"></div>
+          <div class="experience-form-popup">
+            <div class="experience-form-header">
+              <h3>{{ editingExperienceId ? 'Edit Experience' : 'Add Experience' }}</h3>
+              <button type="button" class="experience-form-close-btn" (click)="closeExperienceForm()" aria-label="Close add experience">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+            <section class="experience-form-panel">
+              <div class="experience-form-grid">
+                <label>
+                  <span>Type</span>
+                  <div class="profile-status-select-wrap selector-like experience-type-select" [ngClass]="experienceTypeToneClass(experienceForm.type)">
+                    <mat-select [(ngModel)]="experienceForm.type" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel">
+                      <mat-select-trigger>
+                        <span class="status-option-content">
+                          <mat-icon [class]="experienceTypeToneClass(experienceForm.type)">{{ experienceTypeIcon(experienceForm.type) }}</mat-icon>
+                          <span>{{ experienceForm.type }}</span>
+                        </span>
+                      </mat-select-trigger>
+                      <mat-option *ngFor="let option of experienceTypeOptions" [value]="option" class="status-option" [ngClass]="experienceTypeToneClass(option)">
+                        <span class="status-option-content">
+                          <mat-icon [class]="experienceTypeToneClass(option)">{{ experienceTypeIcon(option) }}</mat-icon>
+                          <span>{{ option }}</span>
+                        </span>
+                      </mat-option>
+                    </mat-select>
+                  </div>
+                </label>
+                <label>
+                  <span>Title</span>
+                  <input type="text" [(ngModel)]="experienceForm.title" />
+                </label>
+                <label>
+                  <span>Organization</span>
+                  <input type="text" [(ngModel)]="experienceForm.org" />
+                </label>
+                <label>
+                  <span>City</span>
+                  <input type="text" [(ngModel)]="experienceForm.city" />
+                </label>
+                <label class="experience-date-range-label">
+                  <span>Date range</span>
+                  <mat-form-field appearance="fill" class="experience-date-range-field" subscriptSizing="dynamic">
+                    <mat-label>Enter a date range</mat-label>
+                    <mat-date-range-input [rangePicker]="experienceDateRangePicker">
+                      <input matStartDate [(ngModel)]="experienceRangeStart" name="experienceRangeStart" placeholder="YYYY/MM" />
+                      <input matEndDate [(ngModel)]="experienceRangeEnd" name="experienceRangeEnd" placeholder="YYYY/MM" />
+                    </mat-date-range-input>
+                    <mat-datepicker-toggle matSuffix [for]="experienceDateRangePicker"></mat-datepicker-toggle>
+                    <mat-hint>YYYY/MM - YYYY/MM</mat-hint>
+                    <mat-date-range-picker #experienceDateRangePicker></mat-date-range-picker>
+                  </mat-form-field>
+                </label>
+                <label class="experience-description-field">
+                  <span>Description</span>
+                  <textarea rows="4" [(ngModel)]="experienceForm.description"></textarea>
+                </label>
+              </div>
+              <div class="popup-actions experience-form-actions">
+                <button type="button" class="link-btn neutral-btn" (click)="closeExperienceForm()">Cancel</button>
+                <button type="button" class="link-btn primary-btn" (click)="saveExperienceEntry()">Save</button>
+              </div>
+            </section>
+          </div>
+        </section>
+      </div>
+      <div *ngIf="stackedPopup === 'experienceSelector' && filteredExperienceEntries.length === 0" class="editor-list-card">
+        <h4>No entries in this filter</h4>
+        <p>Try switching the type dropdown to All.</p>
       </div>
     </div>
   </div>

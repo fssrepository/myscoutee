@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200" role="img" aria-label="profile FA">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4f89c8"/>
+      <stop offset="100%" stop-color="#224d85"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="1200" fill="url(#bg)"/>
+  <circle cx="260" cy="240" r="180" fill="rgba(255,255,255,0.16)"/>
+  <circle cx="760" cy="980" r="230" fill="rgba(255,255,255,0.12)"/>
+  <rect x="120" y="640" width="660" height="430" rx="210" fill="rgba(255,255,255,0.16)"/>
+  <text x="450" y="735" text-anchor="middle" font-family="Verdana, Arial, sans-serif" font-size="156" font-weight="700" fill="#ffffff">FA</text>
+</svg>
