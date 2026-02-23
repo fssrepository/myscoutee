@@ -2355,31 +2355,31 @@ textarea {
 }
 
 .mat-mdc-option.status-option.physique-slim {
-  background: linear-gradient(0deg, #ffffff, #f2f5f9);
+  background: #eaf4ff;
 }
 
 .mat-mdc-option.status-option.physique-lean {
-  background: linear-gradient(0deg, #ffffff, #f2f5f9);
+  background: #edf8f4;
 }
 
 .mat-mdc-option.status-option.physique-athletic {
-  background: linear-gradient(0deg, #ffffff, #f2f5f9);
+  background: #e8f5ec;
 }
 
 .mat-mdc-option.status-option.physique-fit {
-  background: linear-gradient(0deg, #ffffff, #f2f5f9);
+  background: #f1f2ff;
 }
 
 .mat-mdc-option.status-option.physique-curvy {
-  background: linear-gradient(0deg, #ffffff, #f2f5f9);
+  background: #fff2f8;
 }
 
 .mat-mdc-option.status-option.physique-muscular {
-  background: linear-gradient(0deg, #ffffff, #f2f5f9);
+  background: #fbf4ea;
 }
 
 .mat-mdc-option.status-option.physique-average {
-  background: linear-gradient(0deg, #ffffff, #f2f5f9);
+  background: #eff4f9;
 }
 
 .mat-mdc-option.status-option.physique-slim .status-option-content {
@@ -4887,6 +4887,20 @@ textarea {
   flex-direction: column;
 }
 
+.mobile-profile-selector-sheet.mobile-profile-selector-sheet-language {
+  min-width: 340px;
+  max-width: min(94vw, 620px);
+}
+
+.mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-selector-options {
+  justify-items: stretch;
+}
+
+.mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-selector-option {
+  width: 100%;
+  min-width: 0;
+}
+
 .mobile-profile-selector-handle {
   width: 42px;
   height: 4px;
@@ -5027,28 +5041,28 @@ textarea {
 }
 
 .mobile-profile-selector-option.physique-athletic {
+  background: #e8f5ec;
+  border-color: rgba(47, 126, 77, 0.34);
+}
+
+.mobile-profile-selector-option.physique-fit {
   background: #f1f2ff;
   border-color: rgba(70, 95, 187, 0.34);
 }
 
-.mobile-profile-selector-option.physique-fit {
+.mobile-profile-selector-option.physique-curvy {
   background: #fff2f8;
   border-color: rgba(161, 72, 117, 0.34);
 }
 
-.mobile-profile-selector-option.physique-curvy {
+.mobile-profile-selector-option.physique-muscular {
   background: #fbf4ea;
   border-color: rgba(125, 79, 36, 0.34);
 }
 
-.mobile-profile-selector-option.physique-muscular {
+.mobile-profile-selector-option.physique-average {
   background: #eff4f9;
   border-color: rgba(77, 102, 127, 0.34);
-}
-
-.mobile-profile-selector-option.physique-average {
-  background: #f7f5ea;
-  border-color: rgba(128, 109, 66, 0.34);
 }
 
 .mobile-profile-language-entry {
@@ -5483,8 +5497,8 @@ textarea {
   }
 
   .basics-moved-grid .horoscope-field .readonly-select {
-    width: min(100%, 7.7rem);
-    max-width: 7.7rem;
+    width: min(100%, 6.3rem);
+    max-width: 6.3rem;
     min-width: 0;
     min-height: 36px;
     margin-top: 0;

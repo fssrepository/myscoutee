@@ -692,52 +692,11 @@
                     <label class="languages-field">
                       <span>Languages</span>
                       <ng-container *ngIf="!isMobileView; else mobileLanguageSelectorButton">
-                        <div class="language-filter" (click)="onLanguagePanelClick($event)">
-                          <button type="button" mat-stroked-button class="language-select-btn" [class.active]="showLanguagePanel" (click)="toggleLanguagePanel()">
+                        <div class="language-filter">
+                          <button type="button" mat-stroked-button class="language-select-btn" (click)="openMobileLanguageSelector($event)">
                             <span class="label">{{ languageTriggerLabel() }}</span>
-                            <mat-icon class="arrow" [class.open]="showLanguagePanel">expand_more</mat-icon>
+                            <mat-icon class="arrow">expand_more</mat-icon>
                           </button>
-
-                          <div class="language-panel" [class.open]="showLanguagePanel" *ngIf="showLanguagePanel">
-                            <div class="language-chip-input" (click)="onLanguageInputContainerClick($event)">
-                              <mat-chip-set class="language-chip-set-inline" *ngIf="profileForm.languages.length > 0">
-                                <mat-chip
-                                  *ngFor="let item of profileForm.languages"
-                                  [ngClass]="languageToneClass(item)"
-                                  [removable]="true"
-                                  (removed)="removeLanguage(item)"
-                                >
-                                  <span>{{ item }}</span>
-                                  <button matChipRemove aria-label="Remove language">
-                                    <mat-icon>cancel</mat-icon>
-                                  </button>
-                                </mat-chip>
-                              </mat-chip-set>
-
-                              <input
-                                type="text"
-                                [(ngModel)]="languageInput"
-                                [matAutocomplete]="languageAuto"
-                                #languageTrigger="matAutocompleteTrigger"
-                                (focus)="onLanguageInputFocus(); languageTrigger.openPanel()"
-                                (click)="languageTrigger.openPanel()"
-                                (keydown)="onLanguageInputKeydown($event)"
-                                (blur)="onLanguageInputBlur()"
-                                placeholder="Language search"
-                              />
-                              <mat-icon class="language-dropdown-icon">search</mat-icon>
-
-                              <mat-autocomplete #languageAuto="matAutocomplete" (optionSelected)="selectLanguage($event.option.value)">
-                                <mat-option
-                                  *ngFor="let item of availableLanguageDisplaySuggestions"
-                                  [value]="item"
-                                  [ngClass]="languageToneClass(item)"
-                                >
-                                  {{ item }}
-                                </mat-option>
-                              </mat-autocomplete>
-                            </div>
-                          </div>
                         </div>
                       </ng-container>
                       <ng-template #mobileLanguageSelectorButton>
@@ -814,13 +773,12 @@
                         </ng-template>
                         <div
                           class="profile-details-privacy-fab"
-                          [class.is-just-selected]="isDetailPrivacyJustSelected(groupIndex, rowIndex)"
                         >
                           <button
                             type="button"
                             class="profile-details-privacy-btn profile-details-privacy-trigger"
                             [class]="privacyStatusClass(row.privacy)"
-                            (click)="toggleDetailPrivacyFab(groupIndex, rowIndex, $event)"
+                            (click)="openDetailPrivacySelector(groupIndex, rowIndex, $event)"
                             aria-label="Change visibility"
                           >
                             <mat-icon>{{ privacyStatusIcon(row.privacy) }}</mat-icon>
@@ -853,7 +811,7 @@
                       type="button"
                       class="profile-details-privacy-btn profile-details-privacy-trigger"
                       [class]="privacyStatusClass(experienceVisibilityValue('workspace'))"
-                      (click)="toggleExperiencePrivacy('workspace', $event)"
+                      (click)="openExperiencePrivacySelector('workspace', $event)"
                       aria-label="Change workspace visibility"
                     >
                       <mat-icon>{{ privacyStatusIcon(experienceVisibilityValue('workspace')) }}</mat-icon>
@@ -880,7 +838,7 @@
                       type="button"
                       class="profile-details-privacy-btn profile-details-privacy-trigger"
                       [class]="privacyStatusClass(experienceVisibilityValue('school'))"
-                      (click)="toggleExperiencePrivacy('school', $event)"
+                      (click)="openExperiencePrivacySelector('school', $event)"
                       aria-label="Change school visibility"
                     >
                       <mat-icon>{{ privacyStatusIcon(experienceVisibilityValue('school')) }}</mat-icon>
@@ -942,7 +900,11 @@
 
 <section class="mobile-profile-selector-sheet-wrap" *ngIf="mobileProfileSelectorSheet">
   <div class="mobile-profile-selector-backdrop" (click)="closeMobileProfileSelectorSheet()"></div>
-  <div class="mobile-profile-selector-sheet" (click)="$event.stopPropagation()">
+  <div
+    class="mobile-profile-selector-sheet"
+    [class.mobile-profile-selector-sheet-language]="mobileProfileSelectorSheet.context.kind === 'language'"
+    (click)="$event.stopPropagation()"
+  >
     <div class="mobile-profile-selector-handle" aria-hidden="true"></div>
     <div class="mobile-profile-selector-title">
       <mat-icon>list</mat-icon>

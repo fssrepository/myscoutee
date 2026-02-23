@@ -140,6 +140,8 @@ interface MobileProfileSelectorSheet {
     | { kind: 'profileStatus' }
     | { kind: 'physique' }
     | { kind: 'language' }
+    | { kind: 'detailPrivacy'; groupIndex: number; rowIndex: number }
+    | { kind: 'experiencePrivacy'; type: 'workspace' | 'school' }
     | { kind: 'detailValue'; groupIndex: number; rowIndex: number }
     | { kind: 'experienceType' };
 }
@@ -1026,6 +1028,30 @@ export class App {
     return this.privacyFabJustSelectedKey === this.detailPrivacyFabKey(groupIndex, rowIndex);
   }
 
+  protected openDetailPrivacySelector(groupIndex: number, rowIndex: number, event: Event): void {
+    event.stopPropagation();
+    const row = this.profileDetailsForm[groupIndex]?.rows[rowIndex];
+    if (!row) {
+      return;
+    }
+    this.mobileProfileSelectorSheet = {
+      title: `${row.label} visibility`,
+      selected: row.privacy,
+      options: this.privacySelectorOptions(),
+      context: { kind: 'detailPrivacy', groupIndex, rowIndex }
+    };
+  }
+
+  protected openExperiencePrivacySelector(type: 'workspace' | 'school', event: Event): void {
+    event.stopPropagation();
+    this.mobileProfileSelectorSheet = {
+      title: `${type === 'workspace' ? 'Workspace' : 'School'} visibility`,
+      selected: this.experienceVisibility[type],
+      options: this.privacySelectorOptions(),
+      context: { kind: 'experiencePrivacy', type }
+    };
+  }
+
   protected openValuesSelector(groupIndex: number, rowIndex: number): void {
     const row = this.profileDetailsForm[groupIndex]?.rows[rowIndex];
     if (!row) {
@@ -1747,6 +1773,21 @@ export class App {
         ...sheet,
         selected: this.profileForm.languages.join(', ')
       };
+      return;
+    }
+    if (sheet.context.kind === 'detailPrivacy') {
+      const row = this.profileDetailsForm[sheet.context.groupIndex]?.rows[sheet.context.rowIndex];
+      if (row && this.isDetailPrivacy(value)) {
+        row.privacy = value;
+      }
+      this.mobileProfileSelectorSheet = null;
+      return;
+    }
+    if (sheet.context.kind === 'experiencePrivacy') {
+      if (this.isDetailPrivacy(value)) {
+        this.experienceVisibility[sheet.context.type] = value;
+      }
+      this.mobileProfileSelectorSheet = null;
       return;
     }
     if (sheet.context.kind === 'experienceType') {
@@ -2478,6 +2519,20 @@ export class App {
 
   private detailPrivacyFabKey(groupIndex: number, rowIndex: number): string {
     return `${groupIndex}-${rowIndex}`;
+  }
+
+  private privacySelectorOptions(): MobileProfileSelectorOption[] {
+    const order: DetailPrivacy[] = ['Public', 'Friends', 'Hosts', 'Private'];
+    return order.map(option => ({
+      value: option,
+      label: option,
+      icon: this.privacyStatusIcon(option),
+      toneClass: this.privacyStatusClass(option)
+    }));
+  }
+
+  private isDetailPrivacy(value: string): value is DetailPrivacy {
+    return value === 'Public' || value === 'Friends' || value === 'Hosts' || value === 'Private';
   }
 
   private initializeProfileImageSlots(): void {
