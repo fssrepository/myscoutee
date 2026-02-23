@@ -4912,6 +4912,30 @@ textarea {
 .mobile-profile-selector-sheet.mobile-profile-selector-sheet-language {
   min-width: 340px;
   max-width: min(94vw, 620px);
+  height: min(78vh, 620px);
+  max-height: min(78vh, 620px);
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-selector-title,
+.mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-language-entry {
+  flex: 0 0 auto;
+}
+
+.mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-selector-options {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  margin-top: 0.18rem;
+  justify-items: stretch;
+  align-content: start;
+  grid-auto-rows: max-content;
+}
+
+.mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-selector-option {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
 }
 
 .mobile-profile-selector-handle {
