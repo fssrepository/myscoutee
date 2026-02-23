@@ -1319,7 +1319,8 @@
 .popup-impressions-badge {
   position: absolute;
   top: 3.5rem;
-  left: 0;
+  left: 50%;
+  transform: translateX(-50%);
   display: inline-flex;
   align-items: stretch;
   border-radius: 14px;

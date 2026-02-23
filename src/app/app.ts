@@ -634,70 +634,66 @@ export class App {
   protected openChatShortcut(): void {
     const [firstItem] = this.chatItems;
     if (firstItem) {
-      this.openChatItem(firstItem);
+      this.openChatItem(firstItem, false);
       return;
     }
     this.activeMenuSection = 'chat';
-    this.closeUserMenu();
   }
 
   protected openInvitationShortcut(): void {
     const [firstItem] = this.invitationItems;
     if (firstItem) {
-      this.openInvitationItem(firstItem);
+      this.openInvitationItem(firstItem, false);
       return;
     }
     this.activeMenuSection = 'invitations';
-    this.closeUserMenu();
   }
 
   protected openEventShortcut(): void {
     const [firstItem] = this.eventItems;
     if (firstItem) {
-      this.openEventItem(firstItem);
+      this.openEventItem(firstItem, false);
       return;
     }
-    this.openEventExplore();
+    this.openEventExplore(false);
   }
 
   protected openHostingShortcut(): void {
     const [firstItem] = this.hostingItems;
     if (firstItem) {
-      this.openHostingItem(firstItem);
+      this.openHostingItem(firstItem, false);
       return;
     }
     this.activeMenuSection = 'hosting';
-    this.closeUserMenu();
   }
 
   protected openAssetCarPopup(): void {
     this.assetFilter = 'Car';
     this.closeAssetForm();
     this.activePopup = 'assetsCar';
-    this.closeUserMenu();
   }
 
   protected openAssetAccommodationPopup(): void {
     this.assetFilter = 'Accommodation';
     this.closeAssetForm();
     this.activePopup = 'assetsAccommodation';
-    this.closeUserMenu();
   }
 
   protected openAssetSuppliesPopup(): void {
     this.assetFilter = 'Supplies';
     this.closeAssetForm();
     this.activePopup = 'assetsSupplies';
-    this.closeUserMenu();
   }
 
-  protected openChatItem(item: ChatMenuItem): void {
+  protected openChatItem(item: ChatMenuItem, closeMenu = true): void {
     this.activeMenuSection = 'chat';
     this.selectedChat = item;
     this.stackedPopup = null;
     this.activePopup = 'chat';
     this.scrollChatToBottom();
-    this.closeUserMenu();
+    if (closeMenu) {
+      this.closeUserMenu();
+    }
   }
 
   protected openChatMembers(item: ChatMenuItem, event?: Event, stacked = false): void {
@@ -712,35 +708,43 @@ export class App {
     this.closeUserMenu();
   }
 
-  protected openInvitationItem(item: InvitationMenuItem): void {
+  protected openInvitationItem(item: InvitationMenuItem, closeMenu = true): void {
     this.activeMenuSection = 'invitations';
     this.selectedInvitation = item;
     this.activePopup = 'invitationActions';
-    this.closeUserMenu();
+    if (closeMenu) {
+      this.closeUserMenu();
+    }
   }
 
-  protected openEventItem(item: EventMenuItem): void {
+  protected openEventItem(item: EventMenuItem, closeMenu = true): void {
     this.activeMenuSection = 'events';
     this.selectedEvent = item;
     this.activePopup = 'menuEvent';
-    this.closeUserMenu();
+    if (closeMenu) {
+      this.closeUserMenu();
+    }
   }
 
-  protected openHostingItem(item: HostingMenuItem): void {
+  protected openHostingItem(item: HostingMenuItem, closeMenu = true): void {
     this.activeMenuSection = 'hosting';
     this.selectedHostingEvent = item;
     this.activePopup = 'hostingEvent';
-    this.closeUserMenu();
+    if (closeMenu) {
+      this.closeUserMenu();
+    }
   }
 
-  protected openEventExplore(): void {
+  protected openEventExplore(closeMenu = true): void {
     this.activeMenuSection = 'events';
     if (this.stackedPopup !== null) {
       this.stackedPopup = 'eventExplore';
       return;
     }
     this.activePopup = 'eventExplore';
-    this.closeUserMenu();
+    if (closeMenu) {
+      this.closeUserMenu();
+    }
   }
 
   protected openEventEditor(stacked = false): void {
@@ -2339,12 +2343,10 @@ export class App {
 
   protected openHostImpressions(): void {
     this.activePopup = 'impressionsHost';
-    this.closeUserMenu();
   }
 
   protected openMemberImpressions(): void {
     this.activePopup = 'impressionsHost';
-    this.closeUserMenu();
   }
 
   protected getInvitationActionSummary(invitation: InvitationMenuItem): string {
