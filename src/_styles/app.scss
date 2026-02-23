@@ -4910,6 +4910,7 @@ textarea {
 }
 
 .mobile-profile-selector-sheet.mobile-profile-selector-sheet-language {
+  width: min(94vw, 620px);
   min-width: 340px;
   max-width: min(94vw, 620px);
   height: min(78vh, 620px);
@@ -4921,6 +4922,11 @@ textarea {
 .mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-selector-title,
 .mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-language-entry {
   flex: 0 0 auto;
+}
+
+.mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-language-chips {
+  width: 100%;
+  align-content: flex-start;
 }
 
 .mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-selector-options {
