@@ -557,6 +557,19 @@
   color: #205c38;
 }
 
+.menu-shortcut-rates {
+  background: #fff7df;
+  border-color: #e4c67f;
+}
+
+.menu-shortcut-rates .mat-icon {
+  color: #c8921e;
+}
+
+.menu-shortcut-rates .menu-shortcut-label {
+  color: #835d14;
+}
+
 .menu-shortcut-chat {
   background: #f2f7ff;
   border-color: #bfd4ef;
@@ -648,14 +661,69 @@
   line-height: 18px;
 }
 
-.impression-shortcut-host {
+.impression-shortcut-tone-platinum {
   border-color: rgba(72, 160, 183, 0.44);
   background: linear-gradient(180deg, #e9f9ff 0%, #d9f0fb 100%);
 }
 
-.impression-shortcut-member {
+.impression-shortcut-tone-gold {
+  border-color: rgba(189, 141, 51, 0.42);
+  background: linear-gradient(180deg, #fff7e8 0%, #ffeed2 100%);
+}
+
+.impression-shortcut-tone-silver {
+  border-color: rgba(111, 134, 164, 0.4);
+  background: linear-gradient(180deg, #eff5ff 0%, #e5edf8 100%);
+}
+
+.impression-shortcut-tone-bronze {
+  border-color: rgba(178, 103, 62, 0.4);
+  background: linear-gradient(180deg, #fff0e8 0%, #fde4d6 100%);
+}
+
+.impression-shortcut-tone-empath {
   border-color: rgba(131, 106, 185, 0.42);
   background: linear-gradient(180deg, #f2ecff 0%, #e8defb 100%);
+}
+
+.impression-shortcut-tone-creative {
+  border-color: rgba(122, 76, 196, 0.38);
+  background: linear-gradient(180deg, #f3ecff 0%, #e9ddff 100%);
+}
+
+.impression-shortcut-tone-reliable {
+  border-color: rgba(61, 146, 94, 0.38);
+  background: linear-gradient(180deg, #edf8ef 0%, #e1f1e5 100%);
+}
+
+.impression-shortcut-tone-adventurer {
+  border-color: rgba(47, 139, 174, 0.38);
+  background: linear-gradient(180deg, #ebf7ff 0%, #deeffb 100%);
+}
+
+.impression-shortcut-tone-thinker {
+  border-color: rgba(80, 108, 168, 0.36);
+  background: linear-gradient(180deg, #edf1ff 0%, #e2e9fb 100%);
+}
+
+.impression-shortcut-tone-social {
+  border-color: rgba(45, 138, 139, 0.38);
+  background: linear-gradient(180deg, #eaf8f8 0%, #ddf1f1 100%);
+}
+
+.impression-shortcut-tone-playful {
+  border-color: rgba(183, 95, 47, 0.38);
+  background: linear-gradient(180deg, #fff4ea 0%, #fee9da 100%);
+}
+
+.impression-shortcut-tone-ambitious {
+  border-color: rgba(79, 113, 190, 0.38);
+  background: linear-gradient(180deg, #edf2ff 0%, #e1e8fb 100%);
+}
+
+.impression-shortcut-rates {
+  border-color: rgba(193, 150, 51, 0.42);
+  background: linear-gradient(180deg, #fff7df 0%, #ffefc8 100%);
 }
 
 .impression-shortcut-label {

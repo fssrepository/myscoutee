@@ -477,6 +477,7 @@ export class App {
   protected showAssetForm = false;
   protected editingAssetId: string | null = null;
   protected selectedAssetCardId: string | null = null;
+  protected pendingAssetDeleteCardId: string | null = null;
   protected pendingAssetMemberAction: { cardId: string; memberId: string; action: AssetRequestAction } | null = null;
   protected assetForm: Omit<AssetCard, 'id' | 'requests'> = {
     type: 'Car',
@@ -782,6 +783,7 @@ export class App {
     this.stackedPopup = null;
     this.popupReturnTarget = null;
     this.closeAssetForm();
+    this.pendingAssetDeleteCardId = null;
     this.pendingAssetMemberAction = null;
     this.selectedAssetCardId = null;
   }
@@ -2283,6 +2285,23 @@ export class App {
     return 'icon-tier-default';
   }
 
+  protected getHostTierToneClass(hostTier: string): string {
+    const normalized = this.normalizeText(hostTier);
+    if (normalized.includes('platinum')) {
+      return 'impression-shortcut-tone-platinum';
+    }
+    if (normalized.includes('gold')) {
+      return 'impression-shortcut-tone-gold';
+    }
+    if (normalized.includes('silver')) {
+      return 'impression-shortcut-tone-silver';
+    }
+    if (normalized.includes('bronze')) {
+      return 'impression-shortcut-tone-bronze';
+    }
+    return 'impression-shortcut-tone-platinum';
+  }
+
   protected getTraitIcon(traitLabel: string): string {
     const normalized = this.normalizeText(traitLabel);
     if (normalized.includes('kreat') || normalized.includes('creative')) {
@@ -2339,6 +2358,35 @@ export class App {
       return 'icon-trait-ambitious';
     }
     return 'icon-trait-default';
+  }
+
+  protected getTraitToneClass(traitLabel: string): string {
+    const normalized = this.normalizeText(traitLabel);
+    if (normalized.includes('kreat') || normalized.includes('creative')) {
+      return 'impression-shortcut-tone-creative';
+    }
+    if (normalized.includes('empat')) {
+      return 'impression-shortcut-tone-empath';
+    }
+    if (normalized.includes('megbizh') || normalized.includes('reliable')) {
+      return 'impression-shortcut-tone-reliable';
+    }
+    if (normalized.includes('advent')) {
+      return 'impression-shortcut-tone-adventurer';
+    }
+    if (normalized.includes('think')) {
+      return 'impression-shortcut-tone-thinker';
+    }
+    if (normalized.includes('social')) {
+      return 'impression-shortcut-tone-social';
+    }
+    if (normalized.includes('playful')) {
+      return 'impression-shortcut-tone-playful';
+    }
+    if (normalized.includes('ambitious') || normalized.includes('goal')) {
+      return 'impression-shortcut-tone-ambitious';
+    }
+    return 'impression-shortcut-tone-thinker';
   }
 
   protected openHostImpressions(): void {
@@ -2660,6 +2708,10 @@ export class App {
     this.editingAssetId = null;
   }
 
+  protected get assetFormTitle(): string {
+    return `${this.editingAssetId ? 'Edit' : 'Add'} ${this.assetForm.type}`;
+  }
+
   protected saveAssetCard(): void {
     const title = this.assetForm.title.trim();
     const city = this.assetForm.city.trim();
@@ -2698,7 +2750,31 @@ export class App {
     this.closeAssetForm();
   }
 
-  protected deleteAssetCard(cardId: string): void {
+  protected requestAssetDelete(cardId: string): void {
+    this.pendingAssetDeleteCardId = cardId;
+  }
+
+  protected cancelAssetDelete(): void {
+    this.pendingAssetDeleteCardId = null;
+  }
+
+  protected pendingAssetDeleteLabel(): string {
+    if (!this.pendingAssetDeleteCardId) {
+      return '';
+    }
+    const card = this.assetCards.find(item => item.id === this.pendingAssetDeleteCardId);
+    return card ? `Delete ${card.title}?` : 'Delete this item?';
+  }
+
+  protected confirmAssetDelete(): void {
+    if (!this.pendingAssetDeleteCardId) {
+      return;
+    }
+    this.deleteAssetCard(this.pendingAssetDeleteCardId);
+    this.pendingAssetDeleteCardId = null;
+  }
+
+  private deleteAssetCard(cardId: string): void {
     this.assetCards = this.assetCards.filter(card => card.id !== cardId);
     if (this.selectedAssetCardId === cardId) {
       this.selectedAssetCardId = null;

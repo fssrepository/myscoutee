@@ -71,7 +71,8 @@
 
         <div class="impressions-shortcuts">
           <button
-            class="impression-shortcut-btn impression-shortcut-host"
+            class="impression-shortcut-btn"
+            [ngClass]="getHostTierToneClass(activeHostTier)"
             type="button"
             (click)="openHostImpressions()"
             aria-label="Open host impressions"
@@ -82,7 +83,8 @@
           </button>
 
           <button
-            class="impression-shortcut-btn impression-shortcut-member"
+            class="impression-shortcut-btn"
+            [ngClass]="getTraitToneClass(activeMemberTrait)"
             type="button"
             (click)="openMemberImpressions()"
             aria-label="Open member impressions"
@@ -103,14 +105,14 @@
 
         <div class="menu-shortcuts">
           <button
-            class="menu-shortcut-btn menu-shortcut-game"
+            class="menu-shortcut-btn menu-shortcut-rates"
             type="button"
             (click)="goToGame()"
             aria-label="Open game"
-            title="Game"
+            title="Rates"
           >
-            <mat-icon>interests</mat-icon>
-            <span class="menu-shortcut-label">Game</span>
+            <mat-icon>star</mat-icon>
+            <span class="menu-shortcut-label">Rates</span>
             <span class="card-badge menu-shortcut-badge" *ngIf="gameBadge > 0">{{ gameBadge }}</span>
           </button>
 
@@ -119,10 +121,10 @@
             type="button"
             (click)="openChatShortcut()"
             aria-label="Open chat"
-            title="Chat"
+            title="Chats"
           >
             <mat-icon>chat</mat-icon>
-            <span class="menu-shortcut-label">Chat</span>
+            <span class="menu-shortcut-label">Chats</span>
             <span class="card-badge menu-shortcut-badge" *ngIf="chatBadge > 0">{{ chatBadge }}</span>
           </button>
 
@@ -506,7 +508,7 @@
                 <button type="button" class="experience-action-btn experience-action-edit" (click)="$event.stopPropagation(); openAssetForm(card)" aria-label="Edit asset">
                   <mat-icon>edit</mat-icon>
                 </button>
-                <button type="button" class="experience-action-btn experience-action-delete" (click)="$event.stopPropagation(); deleteAssetCard(card.id)" aria-label="Delete asset">
+                <button type="button" class="experience-action-btn experience-action-delete" (click)="$event.stopPropagation(); requestAssetDelete(card.id)" aria-label="Delete asset">
                   <mat-icon>delete</mat-icon>
                 </button>
               </div>
@@ -519,7 +521,7 @@
           <div class="experience-form-overlay-backdrop" (click)="closeAssetForm()"></div>
           <div class="experience-form-popup asset-form-popup">
             <div class="experience-form-header">
-              <h3>{{ editingAssetId ? 'Edit ' + assetForm.type : 'Add ' + activeAssetType }}</h3>
+              <h3>{{ assetFormTitle }}</h3>
               <button type="button" class="experience-form-close-btn" (click)="closeAssetForm()" aria-label="Close asset form">
                 <mat-icon>close</mat-icon>
               </button>
@@ -589,6 +591,18 @@
                 <button type="button" class="link-btn primary-btn" (click)="saveAssetCard()">Save</button>
               </div>
             </section>
+          </div>
+        </section>
+
+        <section class="experience-delete-confirm" *ngIf="pendingAssetDeleteCardId">
+          <div class="experience-delete-confirm-backdrop" (click)="cancelAssetDelete()"></div>
+          <div class="experience-delete-confirm-panel">
+            <h4>Delete asset</h4>
+            <p>{{ pendingAssetDeleteLabel() }}</p>
+            <div class="popup-actions">
+              <button type="button" class="link-btn neutral-btn" (click)="cancelAssetDelete()">Cancel</button>
+              <button type="button" class="link-btn experience-delete-btn" (click)="confirmAssetDelete()">Delete</button>
+            </div>
           </div>
         </section>
       </div>
