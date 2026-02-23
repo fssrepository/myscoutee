@@ -230,15 +230,9 @@
           </div>
         </div>
         <ng-template #defaultPlainTitle>
-          <div class="popup-title popup-title-impressions" *ngIf="activePopup === 'impressionsHost' || activePopup === 'impressionsMember'; else plainPopupTitle">
+          <div class="popup-title popup-title-impressions" *ngIf="activePopup === 'impressionsHost'; else plainPopupTitle">
             <div class="popup-chat-title-block">
               <h2>Impressions</h2>
-              <p class="popup-impression-subline">
-                <mat-icon [class]="activePopup === 'impressionsHost' ? getHostTierColorClass(activeHostTier) : getTraitColorClass(activeMemberTrait)">
-                  {{ activePopup === 'impressionsHost' ? getHostTierIcon(activeHostTier) : getTraitIcon(activeMemberTrait) }}
-                </mat-icon>
-                <span>{{ activePopup === 'impressionsHost' ? activeHostTier : memberImpressionTitle }}</span>
-              </p>
             </div>
           </div>
           <ng-template #plainPopupTitle>
@@ -267,7 +261,7 @@
       class="popup-body"
       [class.popup-body-chat]="activePopup === 'chat' && selectedChat"
       [class.popup-body-members]="activePopup === 'chatMembers'"
-      [class.popup-body-impressions]="activePopup === 'impressionsHost' || activePopup === 'impressionsMember'"
+      [class.popup-body-impressions]="activePopup === 'impressionsHost'"
       [class.popup-body-image-editor]="activePopup === 'imageEditor'"
     >
       <div *ngIf="activePopup === 'chat' && selectedChat" class="chat-popup-wrap">
@@ -350,6 +344,10 @@
       <div *ngIf="activePopup === 'impressionsHost'">
         <div class="social-proof-grid">
           <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-host">
+            <div class="social-proof-identity-pill social-proof-identity-pill-host">
+              <mat-icon [class]="getHostTierColorClass(activeHostTier)">{{ getHostTierIcon(activeHostTier) }}</mat-icon>
+              <span>{{ activeHostTier }}</span>
+            </div>
             <div class="popup-impressions-badge popup-impressions-badge-host">
               <span class="popup-impressions-badge-segment popup-impressions-rate-rate">
                 <span class="popup-impressions-badge-label">Rate</span>
@@ -385,12 +383,12 @@
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div *ngIf="activePopup === 'impressionsMember'">
-        <div class="social-proof-grid">
           <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-member">
+            <div class="social-proof-identity-pill social-proof-identity-pill-member">
+              <mat-icon [class]="getTraitColorClass(activeMemberTrait)">{{ getTraitIcon(activeMemberTrait) }}</mat-icon>
+              <span>{{ memberImpressionTitle }}</span>
+            </div>
             <div class="popup-impressions-badge popup-impressions-badge-member">
               <span class="popup-impressions-badge-segment popup-impressions-rate-people">
                 <span class="popup-impressions-badge-label">People / Events</span>

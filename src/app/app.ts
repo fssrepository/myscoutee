@@ -2343,7 +2343,7 @@ export class App {
   }
 
   protected openMemberImpressions(): void {
-    this.activePopup = 'impressionsMember';
+    this.activePopup = 'impressionsHost';
     this.closeUserMenu();
   }
 

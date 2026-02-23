@@ -649,13 +649,13 @@
 }
 
 .impression-shortcut-host {
-  border-color: rgba(177, 146, 57, 0.34);
-  background: linear-gradient(180deg, #fff9e8 0%, #fff1d4 100%);
+  border-color: rgba(72, 160, 183, 0.44);
+  background: linear-gradient(180deg, #e9f9ff 0%, #d9f0fb 100%);
 }
 
 .impression-shortcut-member {
-  border-color: rgba(199, 98, 128, 0.3);
-  background: linear-gradient(180deg, #fff3f7 0%, #ffe8f0 100%);
+  border-color: rgba(131, 106, 185, 0.42);
+  background: linear-gradient(180deg, #f2ecff 0%, #e8defb 100%);
 }
 
 .impression-shortcut-label {
@@ -1318,7 +1318,7 @@
 
 .popup-impressions-badge {
   position: absolute;
-  top: 0;
+  top: 3.5rem;
   left: 0;
   display: inline-flex;
   align-items: stretch;
@@ -4305,7 +4305,11 @@ textarea {
 }
 
 .social-proof-identity-pill {
-  margin: 0.45rem 0 0.7rem;
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-0.36rem, -0.42rem);
+  margin: 0;
   width: fit-content;
   max-width: 100%;
   min-height: 36px;
@@ -4320,6 +4324,8 @@ textarea {
   background: linear-gradient(180deg, #efeaff 0%, #e5ddfb 100%);
   border: 1px solid rgba(140, 118, 206, 0.4);
   color: #2e3153;
+  z-index: 3;
+  box-shadow: 0 4px 10px rgba(31, 44, 70, 0.16);
 }
 
 .social-proof-card.social-proof-card-modern .social-proof-identity-pill .mat-icon {
@@ -4327,6 +4333,18 @@ textarea {
   height: 18px;
   font-size: 18px;
   line-height: 18px;
+}
+
+.social-proof-identity-pill-host {
+  background: linear-gradient(180deg, #e9f9ff 0%, #d9f0fb 100%);
+  border-color: rgba(72, 160, 183, 0.44);
+  color: #204f67;
+}
+
+.social-proof-identity-pill-member {
+  background: linear-gradient(180deg, #f2ecff 0%, #e8defb 100%);
+  border-color: rgba(131, 106, 185, 0.42);
+  color: #4a3f78;
 }
 
 .social-proof-metric-strip {
@@ -4398,16 +4416,17 @@ textarea {
 }
 
 .popup-body.popup-body-impressions .social-proof-grid {
-  width: min(860px, 100%);
-  grid-template-columns: minmax(0, 1fr);
+  width: min(980px, 100%);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
   justify-items: stretch;
   margin: 0 auto;
 }
 
 .popup-body.popup-body-impressions .social-proof-card.social-proof-card-modern {
-  max-width: 760px;
+  max-width: none;
   min-height: auto;
-  padding: 3.35rem 1rem 1.05rem;
+  padding: 4.95rem 1rem 1.05rem;
 }
 
 .popup-body.popup-body-impressions .social-proof-section-head {
@@ -4428,7 +4447,7 @@ textarea {
 }
 
 .popup-body.popup-body-impressions .social-proof-card.social-proof-card-modern {
-  padding-top: 3.95rem;
+  padding-top: 7rem;
 }
 
 @media (max-width: 760px) {
@@ -4458,12 +4477,28 @@ textarea {
   }
 
   .popup-body.popup-body-impressions .social-proof-card.social-proof-card-modern {
-    padding-top: 3rem;
+    padding-top: 6rem;
+  }
+
+  .popup-body.popup-body-impressions .social-proof-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.7rem;
+  }
+
+  .popup-impressions-badge {
+    top: 3rem;
+  }
+
+  .social-proof-identity-pill {
+    transform: translate(-0.18rem, -0.34rem);
+    min-height: 32px;
+    padding: 0.25rem 0.56rem;
+    font-size: 0.8rem;
   }
 }
 
 .social-proof-section-block {
-  margin-top: 0.9rem;
+  margin-top: 0.52rem;
 }
 
 .social-proof-section-head {
@@ -4661,11 +4696,11 @@ textarea {
 }
 
 .social-proof-card-host .social-proof-identity-pill {
-  transform: translate(-0.9rem, -0.9rem);
+  transform: translate(-0.36rem, -0.42rem);
 }
 
 .social-proof-card-member .social-proof-identity-pill {
-  transform: translate(-0.9rem, -0.9rem);
+  transform: translate(-0.36rem, -0.42rem);
 }
 
 @media (max-width: 960px) {
