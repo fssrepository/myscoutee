@@ -1344,7 +1344,7 @@
 
 .popup-impressions-badge-label {
   text-transform: uppercase;
-  font-size: 0.58rem;
+  font-size: 0.7rem;
   letter-spacing: 0.03em;
   white-space: nowrap;
   font-family: inherit;
@@ -2926,11 +2926,13 @@ textarea {
 
 .popup-header-selector {
   justify-content: flex-start;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .popup-header-selector .popup-title-values {
   margin-right: 0;
-  flex: 1;
+  flex: 1 1 auto;
 }
 
 .popup-header-add-btn {
@@ -3517,13 +3519,15 @@ textarea {
 .values-header-chips {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.28rem;
-  margin-left: auto;
-  max-width: calc(100% - 150px);
-  overflow-x: auto;
-  overflow-y: hidden;
-  white-space: nowrap;
-  padding-bottom: 2px;
+  flex: 0 0 100%;
+  margin-left: 0;
+  margin-top: 0.34rem;
+  max-width: 100%;
+  overflow: visible;
+  white-space: normal;
+  padding-bottom: 0;
 }
 
 .popup-title-values {
@@ -4176,7 +4180,7 @@ textarea {
   }
 
   .popup-impressions-badge-label {
-    font-size: 0.52rem;
+    font-size: 0.7rem;
   }
 
   .popup-impressions-badge-value {
