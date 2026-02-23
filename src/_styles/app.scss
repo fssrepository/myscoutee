@@ -3968,8 +3968,13 @@ textarea {
   margin-left: auto;
 }
 
-.mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) {
+.mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled):not(.status-option) {
   background: #f0f5fc;
+}
+
+.mat-mdc-option.status-option.mdc-list-item--selected:not(.mdc-list-item--disabled) {
+  filter: brightness(0.95);
+  box-shadow: inset 0 0 0 1px rgba(24, 46, 76, 0.2);
 }
 
 .status-public {
@@ -4975,6 +4980,7 @@ textarea {
 
 .mobile-profile-selector-option.active {
   box-shadow: inset 0 0 0 1px rgba(24, 46, 76, 0.24);
+  filter: brightness(0.95);
 }
 
 .mobile-profile-selector-option.status-public {
