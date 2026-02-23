@@ -1205,7 +1205,8 @@
               <div class="experience-item-actions">
                 <button
                   type="button"
-                  class="experience-action-btn"
+                  class="experience-action-btn asset-accept-btn"
+                  *ngIf="member.status === 'pending'"
                   [class.active]="isAssetMemberActionPending(selectedAssetCard.id, member.id, 'accept')"
                   (click)="queueAssetMemberAction(selectedAssetCard.id, member.id, 'accept', $event)"
                 >

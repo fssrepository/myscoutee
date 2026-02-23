@@ -3252,6 +3252,12 @@ textarea {
   box-shadow: inset 0 0 0 1px rgba(24, 46, 76, 0.26);
 }
 
+.asset-accept-btn {
+  background: linear-gradient(180deg, #e8f7ec 0%, #dff1e5 100%);
+  border-color: rgba(45, 125, 71, 0.46);
+  color: #2d7d47;
+}
+
 .mat-mdc-option.status-option.experience-filter-all {
   background: linear-gradient(0deg, #ffffff, #f1ebff);
 }
