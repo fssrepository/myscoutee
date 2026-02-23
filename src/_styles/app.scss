@@ -4920,6 +4920,7 @@ textarea {
   color: #1c3354;
   font-size: 0.94rem;
   font-weight: 800;
+  position: relative;
 }
 
 .mobile-profile-selector-title .mat-icon {
@@ -4927,6 +4928,28 @@ textarea {
   height: 17px;
   font-size: 17px;
   line-height: 17px;
+}
+
+.mobile-profile-selector-close-btn {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(56, 83, 119, 0.24);
+  border-radius: 50%;
+  background: linear-gradient(180deg, #edf3fb 0%, #e3ecf8 100%);
+  color: #34577f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.mobile-profile-selector-close-btn .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
 }
 
 .mobile-profile-selector-options {

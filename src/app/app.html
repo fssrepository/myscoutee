@@ -898,8 +898,8 @@
   </div>
 </section>
 
-<section class="mobile-profile-selector-sheet-wrap" *ngIf="mobileProfileSelectorSheet">
-  <div class="mobile-profile-selector-backdrop" (click)="closeMobileProfileSelectorSheet()"></div>
+<section class="mobile-profile-selector-sheet-wrap" *ngIf="mobileProfileSelectorSheet" (click)="$event.stopPropagation()">
+  <div class="mobile-profile-selector-backdrop" (click)="$event.stopPropagation(); closeMobileProfileSelectorSheet()"></div>
   <div
     class="mobile-profile-selector-sheet"
     [class.mobile-profile-selector-sheet-language]="mobileProfileSelectorSheet.context.kind === 'language'"
@@ -909,6 +909,15 @@
     <div class="mobile-profile-selector-title">
       <mat-icon>list</mat-icon>
       <span>{{ mobileProfileSelectorSheet.title }}</span>
+      <button
+        *ngIf="mobileProfileSelectorSheet.context.kind === 'language'"
+        type="button"
+        class="mobile-profile-selector-close-btn"
+        (click)="closeMobileProfileSelectorSheet(); $event.stopPropagation()"
+        aria-label="Close language popup"
+      >
+        <mat-icon>close</mat-icon>
+      </button>
     </div>
     <div class="mobile-profile-selector-options" *ngIf="mobileProfileSelectorSheet.context.kind !== 'language'; else mobileLanguageSelectorSheet">
       <button
