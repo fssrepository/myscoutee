@@ -25,16 +25,13 @@ notify a day before or so (maybe can be configurable not sure)
 if too many people rejects the invitation for a room, then the algorithm re-run for the left overs
 If somebody lefts, nobody replaces in random chat (avoid algorithm complexity - or simply use left overs)
 
-Sample Data
------------
-instead of login screen generate 12 users (6 woman and 6 man - use images accordingly) to choose from (introduce environment variable for it)
-the 6 users should be contextual - so the screens should show to each other some of them are inviteable, some of them are in a chatgroup of 6
-
 Base Design:
 -------
+Login button - either test users popup or login screen popup
 Menu - will be updated based on websocket/mqtt message
 Main page - Logo + text on every main page with icon bar on the right side
 Filter buttons/Filter textbox - should be small (not the default angular one by saving space)
+badge - red counter, if more than 9, than 9+ (so only 2 digits appears - space)
 
 Menu
 ----
@@ -213,58 +210,9 @@ for tournament mode - ranking algorithm - none, rate (mutual), fifa
 
 Profile
 -------
-Top of the menu: (remove "felhasznalo valasztas" functionality - below the exit button should be the exit title, not next to it)
-User icon + name, below name there is a button "Edit Profile" (maybe it shows a pencil + status), exit button on the right hand side
-
-next to the name - Verified (attended on an event), maybe you can add some sort of feedback for the use (icon will be there)
-
-After an event, other attendees vote on 3 traits. the profile shows the most one, but clicking on the icon can show the first 3 in % (popup)
-🔥 60% Adventurer
-🧠 30% Deep Thinker
-💛 10% Empath
-
-lock icon next to each item (public, friends only, private)
-
-profile status: (public, friends only, host only, inactive)
-
-image selector + image editor - clicking on squares and popup for image editor (pinch to zoom and move - desktop version too)
-about me,
-interest
-(creativity, fan favourites, food and drink, gaming, going out, music,
-outdoors and adventures, social and content, sports and fitness, staying in, tv and movies, values and causes, wellness and styles)
-height
-languages
-horoscop
-education
-family plans
-communication styles
-love style
-pets
-drinking
-smoke
-workout
-social media
-job title/company/school
-city (living in)
-sexual orientation
-gender
-phisique
-religion
-children
-
-school and work on the same history page - ordered by date desc - you can add new items
-can show, how many users were in that school
-
-the interest might be hashtags, so for the event also hashtags can be added
-(it's like sub topics, not sure - filtering, user auto selection based on same priority etc.)
-
-Assets accordion (car, accomodation, supplies)
-
 while editing the profile on the popup, there will be a settings button, where you can delete profile, logout, gdpr etc.
 
 for every accordion a +%, if you fill it out
-
-badge - red counter, if more than 9, than 9+ (so only 2 digits appears - space)
 
 popup header
 
@@ -273,44 +221,3 @@ title of event
 
 Chat
 title of chat
-
----------
-
-changes in design:
-
-while clicking on user selector
-
-avatar....icon + public profile in the third rows
-
-pencil (top right corner) -> clicking on it profile editor
-
-below the avatar
-
-Impressions ---------------------------
-2 badge (Platinum Host, Empathetic Attendee)
-
-remove the Impressions accordion from the Profile Editor
-
-Activities-----------------------------
-5 gomg (game, chats, invitations, events, hosting)
-
-formatum
-icon
-name
-
-Assets
-----------------------------------------
-3 gomg (accomodations, cars, supplies)
-
-formatum
-icon
-name
-
-profile editor (move the status selector to before about me, but below avatar button - header should be Profile Status)
-
-the Profile Details -> is a section, not an accordion (panel will be wider)
-
-Experience (section - school / workplace)
-
-on mobile, when you click on dropdown box or fab and you show a popup on bottom of the screen with the list of elements (icons before)
-if you click on one element, then the button title updated or the fab icon
