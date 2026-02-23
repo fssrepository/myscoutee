@@ -5016,15 +5016,39 @@ textarea {
   border-color: rgba(128, 109, 66, 0.32);
 }
 
-.mobile-profile-selector-option.physique-slim,
-.mobile-profile-selector-option.physique-lean,
-.mobile-profile-selector-option.physique-athletic,
-.mobile-profile-selector-option.physique-fit,
-.mobile-profile-selector-option.physique-curvy,
-.mobile-profile-selector-option.physique-muscular,
+.mobile-profile-selector-option.physique-slim {
+  background: #eaf4ff;
+  border-color: rgba(63, 122, 179, 0.34);
+}
+
+.mobile-profile-selector-option.physique-lean {
+  background: #edf8f4;
+  border-color: rgba(75, 127, 113, 0.34);
+}
+
+.mobile-profile-selector-option.physique-athletic {
+  background: #f1f2ff;
+  border-color: rgba(70, 95, 187, 0.34);
+}
+
+.mobile-profile-selector-option.physique-fit {
+  background: #fff2f8;
+  border-color: rgba(161, 72, 117, 0.34);
+}
+
+.mobile-profile-selector-option.physique-curvy {
+  background: #fbf4ea;
+  border-color: rgba(125, 79, 36, 0.34);
+}
+
+.mobile-profile-selector-option.physique-muscular {
+  background: #eff4f9;
+  border-color: rgba(77, 102, 127, 0.34);
+}
+
 .mobile-profile-selector-option.physique-average {
-  background: linear-gradient(180deg, #edf4ff 0%, #e4ecfb 100%);
-  border-color: rgba(60, 94, 145, 0.32);
+  background: #f7f5ea;
+  border-color: rgba(128, 109, 66, 0.34);
 }
 
 .mobile-profile-language-entry {
@@ -5073,17 +5097,33 @@ textarea {
   background: #f8fafd;
 }
 
-.mobile-profile-language-input-wrap .mat-icon {
+.mobile-profile-language-submit-btn {
   position: absolute;
-  right: 0.58rem;
+  right: 0.38rem;
   top: 50%;
   transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(56, 83, 119, 0.24);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #edf3fb 0%, #e3ecf8 100%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.mobile-profile-language-submit-btn .mat-icon {
   width: 16px;
   height: 16px;
   font-size: 16px;
   line-height: 16px;
-  color: rgba(31, 63, 103, 0.64);
-  pointer-events: none;
+  color: #34577f;
+}
+
+.mobile-profile-language-submit-btn:active {
+  transform: translateY(-50%) scale(0.96);
 }
 
 @media (max-width: 960px) {

@@ -1699,6 +1699,12 @@ export class App {
     this.mobileProfileSelectorSheet = null;
   }
 
+  protected submitMobileLanguageAndClose(event: Event): void {
+    event.stopPropagation();
+    this.addCustomLanguage();
+    this.closeMobileProfileSelectorSheet();
+  }
+
   protected isMobileSelectorOptionActive(value: string): boolean {
     const sheet = this.mobileProfileSelectorSheet;
     if (!sheet) {

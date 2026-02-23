@@ -986,7 +986,14 @@
             (blur)="onLanguageInputBlur()"
             placeholder="Type language"
           />
-          <mat-icon>search</mat-icon>
+          <button
+            type="button"
+            class="mobile-profile-language-submit-btn"
+            (click)="submitMobileLanguageAndClose($event)"
+            aria-label="Save language search and close"
+          >
+            <mat-icon>search</mat-icon>
+          </button>
         </label>
       </div>
       <div class="mobile-profile-selector-options">
