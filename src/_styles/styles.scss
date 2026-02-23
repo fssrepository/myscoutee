@@ -20,3 +20,32 @@ body {
   margin: 0;
   height: 100%;
 }
+
+/* Mobile: remove the blue tap highlight while keeping keyboard focus visible */
+*,
+*::before,
+*::after {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Hide focus outlines for non-keyboard (touch) interactions, but keep them for keyboard navigation */
+:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Accessible focus for keyboard users */
+:focus-visible {
+  outline: 3px solid rgba(21, 156, 228, 0.6);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Ensure links and buttons do not show the native tap highlight on mobile */
+a,
+button,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
