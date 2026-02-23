@@ -144,7 +144,8 @@ interface MobileProfileSelectorSheet {
     | { kind: 'detailPrivacy'; groupIndex: number; rowIndex: number }
     | { kind: 'experiencePrivacy'; type: 'workspace' | 'school' }
     | { kind: 'detailValue'; groupIndex: number; rowIndex: number }
-    | { kind: 'experienceType' };
+    | { kind: 'experienceType' }
+    | { kind: 'assetFilter' };
 }
 
 type AssetType = 'Car' | 'Accommodation' | 'Supplies';
@@ -1846,6 +1847,21 @@ export class App {
     };
   }
 
+  protected openMobileAssetFilterSelector(event: Event): void {
+    event.stopPropagation();
+    this.mobileProfileSelectorSheet = {
+      title: 'Asset Type',
+      selected: this.assetFilter,
+      options: this.assetFilterOptions.map(option => ({
+        value: option,
+        label: option,
+        icon: this.assetTypeIcon(option),
+        toneClass: this.assetTypeClass(option)
+      })),
+      context: { kind: 'assetFilter' }
+    };
+  }
+
   protected closeMobileProfileSelectorSheet(): void {
     if (typeof document !== 'undefined') {
       document.documentElement.style.removeProperty(this.languageSheetHeightCssVar);
@@ -1921,6 +1937,13 @@ export class App {
     if (sheet.context.kind === 'experienceType') {
       if (this.experienceTypeOptions.includes(value as ExperienceEntry['type'])) {
         this.experienceForm.type = value as ExperienceEntry['type'];
+      }
+      this.mobileProfileSelectorSheet = null;
+      return;
+    }
+    if (sheet.context.kind === 'assetFilter') {
+      if (this.assetFilterOptions.includes(value as AssetType)) {
+        this.selectAssetFilter(value as AssetType);
       }
       this.mobileProfileSelectorSheet = null;
       return;

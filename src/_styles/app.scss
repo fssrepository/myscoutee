@@ -680,9 +680,10 @@
   background: linear-gradient(180deg, #f6f4ff 0%, #efeafd 100%);
   min-height: 64px;
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.34rem;
+  gap: 0.16rem;
   padding: 0.42rem 0.46rem;
   text-align: center;
   cursor: pointer;
@@ -3770,6 +3771,21 @@ textarea {
   border-color: rgba(88, 78, 159, 0.32);
 }
 
+.mobile-profile-selector-option.asset-filter-car {
+  background: linear-gradient(180deg, #fff1f3 0%, #ffe6ea 100%);
+  border-color: rgba(169, 72, 90, 0.32);
+}
+
+.mobile-profile-selector-option.asset-filter-accommodation {
+  background: linear-gradient(180deg, #eaf4ff 0%, #e1ecfb 100%);
+  border-color: rgba(45, 94, 168, 0.32);
+}
+
+.mobile-profile-selector-option.asset-filter-supplies {
+  background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
+  border-color: rgba(44, 126, 72, 0.32);
+}
+
 .values-header-chips {
   display: flex;
   align-items: center;
@@ -5741,11 +5757,11 @@ textarea {
   }
 
   .assets-shortcuts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .assets-shortcuts .asset-shortcut-btn:last-child {
-    grid-column: 1 / -1;
+    grid-column: auto;
   }
 
   .profile-form-grid.profile-details-form-grid.basics-moved-grid {
