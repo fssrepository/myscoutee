@@ -618,12 +618,12 @@ export class App {
     { key: 'pair-received', label: 'Received' }
   ];
   protected readonly rateFilterEntries: RateFilterEntry[] = [
-    { kind: 'group', label: 'Single' },
+    { kind: 'group', label: 'Single Rate' },
     { kind: 'item', key: 'individual-given', label: 'Given' },
     { kind: 'item', key: 'individual-received', label: 'Received' },
     { kind: 'item', key: 'individual-mutual', label: 'Mutual' },
     { kind: 'item', key: 'individual-met', label: 'Met' },
-    { kind: 'group', label: 'Pair' },
+    { kind: 'group', label: 'Pair Rate' },
     { kind: 'item', key: 'pair-given', label: 'Given' },
     { kind: 'item', key: 'pair-received', label: 'Received' }
   ];
@@ -3287,6 +3287,11 @@ export class App {
   }
 
   protected activitiesHeaderLineOne(): string {
+    if (this.activitiesPrimaryFilter === 'rates') {
+      const group = this.activitiesRateFilter.startsWith('individual') ? 'Single' : 'Pair';
+      const label = this.rateFilters.find(option => option.key === this.activitiesRateFilter)?.label ?? 'Given';
+      return `${group} Rate · ${label}`;
+    }
     if (this.activitiesView === 'month' || this.activitiesView === 'week') {
       return this.activitiesPrimaryFilterLabel();
     }
@@ -3294,12 +3299,7 @@ export class App {
   }
 
   protected activitiesHeaderLineTwo(): string {
-    if (this.activitiesPrimaryFilter !== 'rates') {
-      return '';
-    }
-    const group = this.activitiesRateFilter.startsWith('individual') ? 'Single' : 'Pair';
-    const label = this.rateFilters.find(option => option.key === this.activitiesRateFilter)?.label ?? 'Given';
-    return `${group} · ${label}`;
+    return '';
   }
 
   protected activitiesPrimaryPanelWidth(): string {
@@ -3468,6 +3468,15 @@ export class App {
 
   protected selectedActivityRateTitle(): string {
     return this.selectedActivityRateRow()?.title ?? 'Rate';
+  }
+
+  protected selectedActivityRateModeLabel(): string {
+    const row = this.selectedActivityRateRow();
+    if (!row || row.type !== 'rates') {
+      return this.activitiesRateFilter.startsWith('individual') ? 'Single' : 'Pair';
+    }
+    const item = row.source as RateMenuItem;
+    return item.mode === 'pair' ? 'Pair' : 'Single';
   }
 
   private selectedActivityRateRow(): ActivityListRow | null {

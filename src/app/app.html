@@ -646,7 +646,7 @@
 
         <div class="activities-rate-editor-dock" *ngIf="isActivityRateEditorOpen() && !isCalendarLayoutView()">
           <div class="activities-rate-editor-head">
-            <span>Rate {{ selectedActivityRateTitle() }}</span>
+            <span>Rate · {{ selectedActivityRateModeLabel() }} · {{ selectedActivityRateTitle() }}</span>
           </div>
           <div class="activities-rate-editor-stars">
             <button
