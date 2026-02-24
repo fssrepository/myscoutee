@@ -120,6 +120,53 @@ interface ActivityGroup {
   rows: ActivityListRow[];
 }
 
+interface CalendarDayCell {
+  key: string;
+  date: Date;
+  dayNumber: number;
+  inCurrentMonth: boolean;
+  isToday: boolean;
+  rows: ActivityListRow[];
+}
+
+interface CalendarMonthPage {
+  key: string;
+  label: string;
+  weeks: CalendarMonthWeek[];
+}
+
+interface CalendarMonthWeek {
+  start: Date;
+  end: Date;
+  days: CalendarDayCell[];
+  spans: CalendarMonthSpan[];
+}
+
+interface CalendarMonthSpan {
+  key: string;
+  row: ActivityListRow;
+  startCol: number;
+  endCol: number;
+  lane: number;
+}
+
+interface CalendarWeekPage {
+  key: string;
+  label: string;
+  days: CalendarDayCell[];
+}
+
+interface ActivityDateTimeRange {
+  startIso: string;
+  endIso: string;
+}
+
+interface CalendarTimedBadge {
+  row: ActivityListRow;
+  topPct: number;
+  heightPct: number;
+}
+
 type SubEventCard = (typeof EVENT_EDITOR_SAMPLE.subEvents)[number];
 type ProfileStatus = 'public' | 'friends only' | 'host only' | 'inactive';
 type DetailPrivacy = 'Public' | 'Friends' | 'Hosts' | 'Private';
@@ -541,6 +588,9 @@ export class App {
   protected showActivitiesSecondaryPicker = false;
   protected activitiesStickyValue = '';
   protected readonly activityRatingScale = Array.from({ length: 10 }, (_, index) => index + 1);
+  private readonly weekCalendarStartHour = 6;
+  private readonly weekCalendarEndHour = 23;
+  private readonly weekCalendarSlotHeightPx = 34;
   protected selectedActivityRateId: string | null = null;
   private readonly activityRateDraftById: Record<string, number> = {};
   private readonly activityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
@@ -592,6 +642,8 @@ export class App {
     e8: '2026-02-27T11:15:00',
     e9: '2026-02-27T13:30:00',
     e10: '2026-03-14T18:15:00',
+    e11: '2026-03-28T09:00:00',
+    e12: '2026-04-26T10:00:00',
     e4: '2026-02-28T08:00:00',
     e5: '2026-03-03T18:00:00'
   };
@@ -617,7 +669,23 @@ export class App {
   };
   protected readonly chatDistanceById: Record<string, number> = { c1: 5, c2: 10, c3: 15, c4: 8, c5: 12 };
   protected readonly invitationDistanceById: Record<string, number> = { i1: 10, i2: 15, i3: 5, i4: 12, i5: 18 };
-  protected readonly eventDistanceById: Record<string, number> = { e1: 20, e2: 10, e3: 15, e6: 35, e7: 45, e8: 20, e9: 20, e10: 35, e4: 5, e5: 25 };
+  protected readonly eventDistanceById: Record<string, number> = { e1: 20, e2: 10, e3: 15, e6: 35, e7: 45, e8: 20, e9: 20, e10: 35, e11: 30, e12: 40, e4: 5, e5: 25 };
+  protected readonly activityDateTimeRangeById: Record<string, ActivityDateTimeRange> = {
+    e1: { startIso: '2026-02-27T09:00:00', endIso: '2026-03-01T12:00:00' },
+    e2: { startIso: '2026-03-08T10:00:00', endIso: '2026-03-08T19:00:00' },
+    e3: { startIso: '2026-03-12T19:30:00', endIso: '2026-03-12T23:00:00' },
+    e6: { startIso: '2026-03-14T17:00:00', endIso: '2026-03-14T20:30:00' },
+    e7: { startIso: '2026-03-16T09:30:00', endIso: '2026-03-16T11:30:00' },
+    e8: { startIso: '2026-02-27T11:15:00', endIso: '2026-02-27T13:00:00' },
+    e9: { startIso: '2026-02-27T13:30:00', endIso: '2026-02-27T15:30:00' },
+    e10: { startIso: '2026-03-14T18:15:00', endIso: '2026-03-14T21:15:00' },
+    e11: { startIso: '2026-03-28T09:00:00', endIso: '2026-05-06T21:00:00' },
+    e12: { startIso: '2026-04-26T10:00:00', endIso: '2026-06-02T20:00:00' },
+    h1: { startIso: '2026-02-27T18:00:00', endIso: '2026-02-27T21:00:00' },
+    h2: { startIso: '2026-04-04T16:00:00', endIso: '2026-04-04T20:00:00' },
+    h3: { startIso: '2026-03-01T09:30:00', endIso: '2026-03-01T12:00:00' },
+    h4: { startIso: '2026-03-05T18:00:00', endIso: '2026-03-05T21:00:00' }
+  };
   protected readonly hostingDistanceById: Record<string, number> = { h1: 5, h2: 20, h3: 10, h4: 15 };
   protected readonly activityImageById: Record<string, string> = {
     e1: 'https://picsum.photos/seed/event-e1/1200/700',
@@ -628,6 +696,8 @@ export class App {
     e8: 'https://picsum.photos/seed/event-e8/1200/700',
     e9: 'https://picsum.photos/seed/event-e9/1200/700',
     e10: 'https://picsum.photos/seed/event-e10/1200/700',
+    e11: 'https://picsum.photos/seed/event-e11/1200/700',
+    e12: 'https://picsum.photos/seed/event-e12/1200/700',
     e4: 'https://picsum.photos/seed/event-e4/1200/700',
     e5: 'https://picsum.photos/seed/event-e5/1200/700',
     h1: 'https://picsum.photos/seed/event-h1/1200/700',
@@ -649,6 +719,8 @@ export class App {
     e8: 'https://example.com/events/e8',
     e9: 'https://example.com/events/e9',
     e10: 'https://example.com/events/e10',
+    e11: 'https://example.com/events/e11',
+    e12: 'https://example.com/events/e12',
     e4: 'https://example.com/events/e4',
     e5: 'https://example.com/events/e5',
     h1: 'https://example.com/hosting/h1',
@@ -670,6 +742,8 @@ export class App {
     e8: '16 / 20',
     e9: '18 / 22',
     e10: '19 / 24',
+    e11: '41 / 60',
+    e12: '28 / 40',
     e4: '10 / 12',
     e5: '14 / 18',
     h1: '20 / 24',
@@ -698,6 +772,7 @@ export class App {
   @ViewChild('slotImageInput') private slotImageInput?: ElementRef<HTMLInputElement>;
   @ViewChild('assetImageInput') private assetImageInput?: ElementRef<HTMLInputElement>;
   @ViewChild('activitiesScroll') private activitiesScrollRef?: ElementRef<HTMLDivElement>;
+  @ViewChild('activitiesCalendarScroll') private activitiesCalendarScrollRef?: ElementRef<HTMLDivElement>;
 
   protected eventSupplyTypes: string[] = ['Cars', 'Members', 'Accessories', 'Accommodation'];
   protected newSupplyType = '';
@@ -2860,6 +2935,81 @@ export class App {
     return grouped;
   }
 
+  protected readonly calendarWeekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  protected readonly calendarWeekHours = Array.from(
+    { length: this.weekCalendarEndHour - this.weekCalendarStartHour + 1 },
+    (_, index) => this.weekCalendarStartHour + index
+  );
+
+  protected isCalendarLayoutView(): boolean {
+    return this.activitiesView === 'month' || this.activitiesView === 'week';
+  }
+
+  protected get calendarMonthPages(): CalendarMonthPage[] {
+    if (this.activitiesView !== 'month') {
+      return [];
+    }
+    const rows = this.filteredActivityRows;
+    const rowsByDate = this.buildActivityRowsByDate(rows);
+    const monthAnchors = this.monthAnchorsForRows(rows);
+    return monthAnchors.map(anchor => this.buildMonthPage(anchor, rowsByDate, rows));
+  }
+
+  protected get calendarWeekPages(): CalendarWeekPage[] {
+    if (this.activitiesView !== 'week') {
+      return [];
+    }
+    const rows = this.filteredActivityRows;
+    const rowsByDate = this.buildActivityRowsByDate(rows);
+    const weekAnchors = this.weekAnchorsForRows(rows);
+    return weekAnchors.map(anchor => this.buildWeekPage(anchor, rowsByDate));
+  }
+
+  protected weekHourLabel(hour: number): string {
+    return `${`${hour}`.padStart(2, '0')}:00`;
+  }
+
+  protected weekDayTimedBadges(day: CalendarDayCell): CalendarTimedBadge[] {
+    const dayStart = new Date(day.date);
+    dayStart.setHours(this.weekCalendarStartHour, 0, 0, 0);
+    const dayEnd = new Date(day.date);
+    dayEnd.setHours(this.weekCalendarEndHour + 1, 0, 0, 0);
+    const totalMinutes = (dayEnd.getTime() - dayStart.getTime()) / 60000;
+    const badges: CalendarTimedBadge[] = [];
+    for (const row of day.rows) {
+      const range = this.activityDateRange(row);
+      if (!range) {
+        continue;
+      }
+      const segmentStart = new Date(Math.max(range.start.getTime(), dayStart.getTime()));
+      const segmentEnd = new Date(Math.min(range.end.getTime(), dayEnd.getTime()));
+      if (segmentEnd.getTime() <= segmentStart.getTime()) {
+        continue;
+      }
+      const minutesFromTop = (segmentStart.getTime() - dayStart.getTime()) / 60000;
+      const durationMinutes = (segmentEnd.getTime() - segmentStart.getTime()) / 60000;
+      badges.push({
+        row,
+        topPct: (minutesFromTop / totalMinutes) * 100,
+        heightPct: Math.max(2.2, (durationMinutes / totalMinutes) * 100)
+      });
+    }
+    return badges;
+  }
+
+  protected monthWeekLaneCount(week: CalendarMonthWeek): number {
+    if (week.spans.length === 0) {
+      return 0;
+    }
+    return week.spans.reduce((maxLane, span) => Math.max(maxLane, span.lane + 1), 0);
+  }
+
+  protected calendarBadgeToneClass(row: ActivityListRow): string {
+    const paletteSize = 8;
+    const toneIndex = (this.hashText(row.id) % paletteSize) + 1;
+    return `calendar-badge-tone-${toneIndex}`;
+  }
+
   protected get activitiesStickyHeader(): string {
     if (this.activitiesStickyValue) {
       return this.activitiesStickyValue;
@@ -3087,6 +3237,9 @@ export class App {
   }
 
   protected activitiesHeaderLineOne(): string {
+    if (this.activitiesView === 'month' || this.activitiesView === 'week') {
+      return this.activitiesPrimaryFilterLabel();
+    }
     return `${this.activitiesPrimaryFilterLabel()} · ${this.activitiesSecondaryFilterLabel()}`;
   }
 
@@ -4509,7 +4662,17 @@ export class App {
         return;
       }
       const scrollElement = this.activitiesScrollRef?.nativeElement;
-      if (scrollElement) {
+      const calendarElement = this.activitiesCalendarScrollRef?.nativeElement;
+      if (this.isCalendarLayoutView()) {
+        if (calendarElement) {
+          calendarElement.scrollLeft = 0;
+          const initialIndex = this.initialCalendarPageIndex();
+          const pageWidth = calendarElement.clientWidth || 0;
+          if (pageWidth > 0 && initialIndex > 0) {
+            calendarElement.scrollLeft = initialIndex * pageWidth;
+          }
+        }
+      } else if (scrollElement) {
         scrollElement.scrollTop = 0;
       }
       const syncSticky = () => this.updateActivitiesStickyHeader(scrollElement?.scrollTop ?? 0);
@@ -4522,6 +4685,14 @@ export class App {
   }
 
   private seedActivitiesStickyHeader(): void {
+    if (this.activitiesView === 'month') {
+      this.activitiesStickyValue = this.calendarMonthPages[0]?.label ?? 'No items';
+      return;
+    }
+    if (this.activitiesView === 'week') {
+      this.activitiesStickyValue = this.calendarWeekPages[0]?.label ?? 'No items';
+      return;
+    }
     const firstGroup = this.groupedActivityRows[0];
     if (firstGroup) {
       this.activitiesStickyValue = firstGroup.label;
@@ -4531,6 +4702,21 @@ export class App {
   }
 
   private updateActivitiesStickyHeader(scrollTop: number): void {
+    if (this.activitiesView === 'month' || this.activitiesView === 'week') {
+      const calendarElement = this.activitiesCalendarScrollRef?.nativeElement;
+      if (!calendarElement) {
+        this.seedActivitiesStickyHeader();
+        return;
+      }
+      const pageWidth = calendarElement.clientWidth || 1;
+      const pageIndex = Math.max(0, Math.round(calendarElement.scrollLeft / pageWidth));
+      if (this.activitiesView === 'month') {
+        this.activitiesStickyValue = this.calendarMonthPages[pageIndex]?.label ?? this.calendarMonthPages[0]?.label ?? 'No items';
+        return;
+      }
+      this.activitiesStickyValue = this.calendarWeekPages[pageIndex]?.label ?? this.calendarWeekPages[0]?.label ?? 'No items';
+      return;
+    }
     const groups = this.groupedActivityRows;
     if (groups.length === 0) {
       this.activitiesStickyValue = this.activitiesView === 'distance' ? '5 km' : 'No items';
@@ -4558,6 +4744,280 @@ export class App {
       rows.find(row => row.offsetTop >= targetTop - alignmentTolerancePx) ??
       rows[rows.length - 1];
     this.activitiesStickyValue = activeRow.dataset['groupLabel'] ?? groups[0].label;
+  }
+
+  protected onActivitiesCalendarScroll(event: Event): void {
+    const target = event.target as HTMLElement;
+    this.updateActivitiesStickyHeader(target.scrollTop || 0);
+  }
+
+  private initialCalendarPageIndex(): number {
+    const today = this.dateOnly(new Date());
+    if (this.activitiesView === 'month') {
+      const monthKey = this.monthKey(today);
+      const pages = this.calendarMonthPages;
+      const pageIndex = pages.findIndex(page => page.key === monthKey);
+      return pageIndex >= 0 ? pageIndex : 0;
+    }
+    if (this.activitiesView === 'week') {
+      const weekKey = this.dateKey(this.startOfWeekMonday(today));
+      const pages = this.calendarWeekPages;
+      const pageIndex = pages.findIndex(page => page.key === weekKey);
+      return pageIndex >= 0 ? pageIndex : 0;
+    }
+    return 0;
+  }
+
+  private buildActivityRowsByDate(rows: ActivityListRow[]): Map<string, ActivityListRow[]> {
+    const byDate = new Map<string, ActivityListRow[]>();
+    for (const row of rows) {
+      const range = this.activityDateRange(row);
+      if (!range) {
+        continue;
+      }
+      let cursor = this.dateOnly(range.start);
+      const endDate = this.dateOnly(range.end);
+      while (cursor.getTime() <= endDate.getTime()) {
+        const key = this.dateKey(cursor);
+        const current = byDate.get(key) ?? [];
+        current.push(row);
+        byDate.set(key, current);
+        cursor = this.addDays(cursor, 1);
+      }
+    }
+    return byDate;
+  }
+
+  private activityDateRange(row: ActivityListRow): { start: Date; end: Date } | null {
+    const explicit = this.activityDateTimeRangeById[row.id];
+    if (explicit) {
+      const start = new Date(explicit.startIso);
+      const end = new Date(explicit.endIso);
+      if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && end.getTime() > start.getTime()) {
+        return { start, end };
+      }
+    }
+    const parsed = new Date(row.dateIso);
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+    const fallbackEnd = new Date(parsed.getTime() + 2 * 60 * 60 * 1000);
+    return { start: parsed, end: fallbackEnd };
+  }
+
+  private monthAnchorsForRows(rows: ActivityListRow[]): Date[] {
+    const dates = rows
+      .map(row => new Date(row.dateIso))
+      .filter(date => !Number.isNaN(date.getTime()))
+      .map(date => this.startOfMonth(this.dateOnly(date)));
+    const todayMonth = this.startOfMonth(this.dateOnly(new Date()));
+    if (dates.length === 0) {
+      return [this.addMonths(todayMonth, -1), todayMonth, this.addMonths(todayMonth, 1)];
+    }
+    const min = dates.reduce((acc, cur) => (cur.getTime() < acc.getTime() ? cur : acc), dates[0]);
+    const max = dates.reduce((acc, cur) => (cur.getTime() > acc.getTime() ? cur : acc), dates[0]);
+    const start = this.addMonths(min, -1);
+    const end = this.addMonths(max, 1);
+    const months: Date[] = [];
+    let cursor = this.dateOnly(start);
+    while (cursor.getTime() <= end.getTime()) {
+      months.push(cursor);
+      cursor = this.addMonths(cursor, 1);
+    }
+    return months;
+  }
+
+  private weekAnchorsForRows(rows: ActivityListRow[]): Date[] {
+    const dates = rows
+      .map(row => new Date(row.dateIso))
+      .filter(date => !Number.isNaN(date.getTime()))
+      .map(date => this.startOfWeekMonday(this.dateOnly(date)));
+    const todayWeek = this.startOfWeekMonday(this.dateOnly(new Date()));
+    if (dates.length === 0) {
+      return [this.addDays(todayWeek, -7), todayWeek, this.addDays(todayWeek, 7)];
+    }
+    const min = dates.reduce((acc, cur) => (cur.getTime() < acc.getTime() ? cur : acc), dates[0]);
+    const max = dates.reduce((acc, cur) => (cur.getTime() > acc.getTime() ? cur : acc), dates[0]);
+    const start = this.addDays(min, -7);
+    const end = this.addDays(max, 7);
+    const weeks: Date[] = [];
+    let cursor = this.dateOnly(start);
+    while (cursor.getTime() <= end.getTime()) {
+      weeks.push(cursor);
+      cursor = this.addDays(cursor, 7);
+    }
+    return weeks;
+  }
+
+  private buildMonthPage(anchor: Date, rowsByDate: Map<string, ActivityListRow[]>, rows: ActivityListRow[]): CalendarMonthPage {
+    const firstDay = this.startOfMonth(anchor);
+    const firstWeekStart = this.startOfWeekMonday(firstDay);
+    const monthEnd = this.endOfMonth(anchor);
+    const lastWeekEnd = this.endOfWeekSunday(monthEnd);
+    const weeks: CalendarMonthWeek[] = [];
+    let cursor = this.dateOnly(firstWeekStart);
+    while (cursor.getTime() <= lastWeekEnd.getTime()) {
+      const weekStart = this.dateOnly(cursor);
+      const weekEnd = this.addDays(weekStart, 6);
+      const days: CalendarDayCell[] = [];
+      for (let day = 0; day < 7; day += 1) {
+        const date = this.addDays(cursor, day);
+        days.push(this.buildCalendarDayCell(date, rowsByDate, firstDay.getMonth()));
+      }
+      weeks.push({
+        start: weekStart,
+        end: weekEnd,
+        days,
+        spans: this.buildMonthWeekSpans(weekStart, weekEnd, rows)
+      });
+      cursor = this.addDays(cursor, 7);
+    }
+    return {
+      key: this.monthKey(anchor),
+      label: anchor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      weeks
+    };
+  }
+
+  private buildWeekPage(anchor: Date, rowsByDate: Map<string, ActivityListRow[]>): CalendarWeekPage {
+    const start = this.startOfWeekMonday(anchor);
+    const days: CalendarDayCell[] = [];
+    for (let day = 0; day < 7; day += 1) {
+      const date = this.addDays(start, day);
+      days.push(this.buildCalendarDayCell(date, rowsByDate, date.getMonth()));
+    }
+    const end = this.addDays(start, 6);
+    return {
+      key: this.dateKey(start),
+      label: this.weekRangeLabel(start, end),
+      days
+    };
+  }
+
+  private buildMonthWeekSpans(weekStart: Date, weekEnd: Date, rows: ActivityListRow[]): CalendarMonthSpan[] {
+    const spansBase: Array<{ row: ActivityListRow; startCol: number; endCol: number }> = [];
+    for (const row of rows) {
+      const range = this.activityDateRange(row);
+      if (!range) {
+        continue;
+      }
+      const startDate = this.dateOnly(range.start);
+      const endDate = this.dateOnly(range.end);
+      if (!this.dateRangeOverlaps(startDate, endDate, weekStart, weekEnd)) {
+        continue;
+      }
+      const visibleStart = startDate.getTime() < weekStart.getTime() ? weekStart : startDate;
+      const visibleEnd = endDate.getTime() > weekEnd.getTime() ? weekEnd : endDate;
+      spansBase.push({
+        row,
+        startCol: Math.max(0, this.dayDiff(weekStart, visibleStart)),
+        endCol: Math.min(6, this.dayDiff(weekStart, visibleEnd))
+      });
+    }
+
+    spansBase.sort((a, b) => a.startCol - b.startCol || b.endCol - a.endCol);
+    const lanes: Array<Array<{ startCol: number; endCol: number }>> = [];
+    const spans: CalendarMonthSpan[] = [];
+
+    for (const span of spansBase) {
+      let laneIndex = 0;
+      while (laneIndex < lanes.length) {
+        const conflict = lanes[laneIndex].some(item => !(span.endCol < item.startCol || span.startCol > item.endCol));
+        if (!conflict) {
+          break;
+        }
+        laneIndex += 1;
+      }
+      if (!lanes[laneIndex]) {
+        lanes[laneIndex] = [];
+      }
+      lanes[laneIndex].push({ startCol: span.startCol, endCol: span.endCol });
+      spans.push({
+        key: `${span.row.id}-${this.dateKey(weekStart)}-${span.startCol}-${span.endCol}-${laneIndex}`,
+        row: span.row,
+        startCol: span.startCol,
+        endCol: span.endCol,
+        lane: laneIndex
+      });
+    }
+
+    return spans;
+  }
+
+  private buildCalendarDayCell(date: Date, rowsByDate: Map<string, ActivityListRow[]>, currentMonthIndex: number): CalendarDayCell {
+    const safeDate = this.dateOnly(date);
+    const key = this.dateKey(safeDate);
+    const todayKey = this.dateKey(this.dateOnly(new Date()));
+    return {
+      key,
+      date: safeDate,
+      dayNumber: safeDate.getDate(),
+      inCurrentMonth: safeDate.getMonth() === currentMonthIndex,
+      isToday: key === todayKey,
+      rows: rowsByDate.get(key) ?? []
+    };
+  }
+
+  private weekRangeLabel(start: Date, end: Date): string {
+    const startLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const endLabel = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return `${startLabel} - ${endLabel}`;
+  }
+
+  private dayDiff(from: Date, to: Date): number {
+    const ms = this.dateOnly(to).getTime() - this.dateOnly(from).getTime();
+    return Math.floor(ms / 86400000);
+  }
+
+  private dateRangeOverlaps(startA: Date, endA: Date, startB: Date, endB: Date): boolean {
+    return startA.getTime() <= endB.getTime() && endA.getTime() >= startB.getTime();
+  }
+
+  private dateOnly(value: Date): Date {
+    return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  }
+
+  private dateKey(value: Date): string {
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    const day = `${value.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private monthKey(value: Date): string {
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    return `${year}-${month}`;
+  }
+
+  private addDays(value: Date, days: number): Date {
+    const copy = new Date(value);
+    copy.setDate(copy.getDate() + days);
+    return this.dateOnly(copy);
+  }
+
+  private addMonths(value: Date, months: number): Date {
+    const copy = new Date(value.getFullYear(), value.getMonth() + months, 1);
+    return this.dateOnly(copy);
+  }
+
+  private startOfMonth(value: Date): Date {
+    return this.dateOnly(new Date(value.getFullYear(), value.getMonth(), 1));
+  }
+
+  private endOfMonth(value: Date): Date {
+    return this.dateOnly(new Date(value.getFullYear(), value.getMonth() + 1, 0));
+  }
+
+  private startOfWeekMonday(value: Date): Date {
+    const copy = this.dateOnly(value);
+    const day = copy.getDay();
+    const mondayOffset = day === 0 ? -6 : 1 - day;
+    return this.addDays(copy, mondayOffset);
+  }
+
+  private endOfWeekSunday(value: Date): Date {
+    return this.addDays(this.startOfWeekMonday(value), 6);
   }
 
   private activityGroupLabel(row: ActivityListRow): string {

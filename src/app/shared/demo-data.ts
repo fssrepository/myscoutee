@@ -480,6 +480,24 @@ export const DEMO_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       timeframe: 'Mar 14 · 6:15 PM - 8:45 PM',
       activity: 2,
       isAdmin: true
+    },
+    {
+      id: 'e11',
+      avatar: 'SY',
+      title: 'Cross-Month Community Relay',
+      shortDescription: 'Long-format challenge with rotating teams across multiple weekends.',
+      timeframe: 'Mar 28 - May 6',
+      activity: 5,
+      isAdmin: true
+    },
+    {
+      id: 'e12',
+      avatar: 'SY',
+      title: 'Spring Cohort Journey',
+      shortDescription: 'Multi-stage mentorship/event arc with check-ins and shared tasks.',
+      timeframe: 'Apr 26 - Jun 2',
+      activity: 4,
+      isAdmin: false
     }
   ],
   u2: [
