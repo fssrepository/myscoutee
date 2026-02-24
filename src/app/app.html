@@ -256,6 +256,19 @@
         <mat-icon>edit_calendar</mat-icon>
       </button>
       <div class="activities-view-picker" *ngIf="activePopup === 'activities'">
+        <div class="activities-secondary-picker">
+          <button type="button" class="popup-view-fab" (click)="toggleActivitiesSecondaryPicker($event)" [attr.aria-label]="'Open secondary filter: ' + activitiesSecondaryFilterLabel()">
+            <mat-icon>{{ activitiesSecondaryFilterIcon() }}</mat-icon>
+            <span>{{ activitiesSecondaryFilterLabel() }}</span>
+          </button>
+          <div class="activities-view-picker-panel" *ngIf="showActivitiesSecondaryPicker">
+            <button type="button" class="activities-view-option" *ngFor="let option of activitiesSecondaryFilters" (click)="selectActivitiesSecondaryFilter(option.key)">
+              <mat-icon>{{ option.icon }}</mat-icon>
+              <span>{{ option.label }}</span>
+            </button>
+          </div>
+        </div>
+
         <button type="button" class="popup-view-fab" (click)="toggleActivitiesViewPicker($event)" [attr.aria-label]="'Open view selector: ' + activityViewLabel()">
           <mat-icon>view_agenda</mat-icon>
           <span>{{ activityViewLabel() }}</span>
@@ -303,29 +316,11 @@
             </mat-select>
           </div>
 
-          <div class="profile-status-select-wrap selector-like experience-filter-select" [ngClass]="activitiesSecondaryFilterClass(activitiesSecondaryFilter)">
-            <mat-select
-              [(ngModel)]="activitiesSecondaryFilter"
-              (ngModelChange)="selectActivitiesSecondaryFilter($event)"
-              disableOptionCentering
-              panelClass="selector-options-panel profile-bottom-sheet-panel"
-            >
-              <mat-select-trigger>
-                <span class="status-option-content">
-                  <mat-icon [class]="activitiesSecondaryFilterClass(activitiesSecondaryFilter)">tune</mat-icon>
-                  <span>{{ activitiesSecondaryFilterLabel() }}</span>
-                </span>
-              </mat-select-trigger>
-              <mat-option *ngFor="let option of activitiesSecondaryFilters" [value]="option.key" class="status-option" [ngClass]="activitiesSecondaryFilterClass(option.key)">
-                <span class="status-option-content">
-                  <mat-icon [class]="activitiesSecondaryFilterClass(option.key)">tune</mat-icon>
-                  <span>{{ option.label }}</span>
-                </span>
-              </mat-option>
-            </mat-select>
-          </div>
-
-          <div class="profile-status-select-wrap selector-like experience-filter-select" [ngClass]="activitiesRateFilterClass(activitiesRateFilter)" *ngIf="isRateFilterVisible()">
+          <div
+            class="profile-status-select-wrap selector-like experience-filter-select"
+            [ngClass]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]"
+            *ngIf="isRateFilterVisible()"
+          >
             <mat-select
               [(ngModel)]="activitiesRateFilter"
               (ngModelChange)="selectActivitiesRateFilter($event)"
@@ -334,16 +329,28 @@
             >
               <mat-select-trigger>
                 <span class="status-option-content">
-                  <mat-icon [class]="activitiesRateFilterClass(activitiesRateFilter)">star</mat-icon>
+                  <mat-icon [class]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]">{{ activitiesRateFilterIcon(activitiesRateFilter) }}</mat-icon>
                   <span>{{ activitiesRateFilterLabel() }}</span>
                 </span>
               </mat-select-trigger>
-              <mat-option *ngFor="let option of rateFilters" [value]="option.key" class="status-option" [ngClass]="activitiesRateFilterClass(option.key)">
-                <span class="status-option-content">
-                  <mat-icon [class]="activitiesRateFilterClass(option.key)">star</mat-icon>
-                  <span>{{ option.label }}</span>
-                </span>
-              </mat-option>
+              <ng-container *ngFor="let option of rateFilterEntries">
+                <mat-option *ngIf="option.kind === 'group'" class="status-option rate-filter-group-option" [class.is-group-separator]="isRateGroupSeparator(option.label)" disabled>
+                  <span class="status-option-content rate-filter-group-label">
+                    <span>{{ option.label }}</span>
+                  </span>
+                </mat-option>
+                <mat-option
+                  *ngIf="option.kind === 'item'"
+                  [value]="option.key"
+                  class="status-option"
+                  [ngClass]="[activitiesRateFilterClass(option.key), rateFilterOptionClass(option.key)]"
+                >
+                  <span class="status-option-content">
+                    <mat-icon [class]="[activitiesRateFilterClass(option.key), rateFilterOptionClass(option.key)]">{{ activitiesRateFilterIcon(option.key) }}</mat-icon>
+                    <span>{{ option.label }}</span>
+                  </span>
+                </mat-option>
+              </ng-container>
             </mat-select>
           </div>
         </div>

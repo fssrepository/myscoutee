@@ -95,8 +95,11 @@ type RateFilterKey =
   | 'individual-mutual'
   | 'individual-met'
   | 'pair-given'
-  | 'pair-received'
-  | 'pair-met';
+  | 'pair-received';
+
+type RateFilterEntry =
+  | { kind: 'group'; label: string }
+  | { kind: 'item'; key: RateFilterKey; label: string };
 
 interface ActivityListRow {
   id: string;
@@ -526,29 +529,39 @@ export class App {
   protected activitiesRateFilter: RateFilterKey = 'individual-given';
   protected activitiesView: ActivitiesView = 'week';
   protected showActivitiesViewPicker = false;
+  protected showActivitiesSecondaryPicker = false;
   protected activitiesStickyValue = '';
   private lastActivityOpenKey: string | null = null;
   private lastActivityOpenAt = 0;
   protected readonly activitiesPrimaryFilters: Array<{ key: ActivitiesPrimaryFilter; label: string; icon: string }> = [
+    { key: 'rates', label: 'Rates', icon: 'star' },
     { key: 'chats', label: 'Chats', icon: 'chat' },
     { key: 'invitations', label: 'Invitations', icon: 'mail' },
     { key: 'events', label: 'Events', icon: 'event' },
-    { key: 'hosting', label: 'Hosting', icon: 'stadium' },
-    { key: 'rates', label: 'Rates', icon: 'star' }
+    { key: 'hosting', label: 'Hosting', icon: 'stadium' }
   ];
-  protected readonly activitiesSecondaryFilters: Array<{ key: ActivitiesSecondaryFilter; label: string }> = [
-    { key: 'recent', label: 'Recent' },
-    { key: 'relevant', label: 'Relevant' },
-    { key: 'past', label: 'Past' }
+  protected readonly activitiesSecondaryFilters: Array<{ key: ActivitiesSecondaryFilter; label: string; icon: string }> = [
+    { key: 'recent', label: 'Recent', icon: 'schedule' },
+    { key: 'relevant', label: 'Relevant', icon: 'auto_awesome' },
+    { key: 'past', label: 'Past', icon: 'history' }
   ];
   protected readonly rateFilters: Array<{ key: RateFilterKey; label: string }> = [
-    { key: 'individual-given', label: 'Egyeni: Adott' },
-    { key: 'individual-received', label: 'Egyeni: Kapott' },
-    { key: 'individual-mutual', label: 'Egyeni: Kolcsonos' },
-    { key: 'individual-met', label: 'Egyeni: Talalkozott' },
-    { key: 'pair-given', label: 'Par: Adott' },
-    { key: 'pair-received', label: 'Par: Kapott' },
-    { key: 'pair-met', label: 'Par: Talalkozott' }
+    { key: 'individual-given', label: 'Given' },
+    { key: 'individual-received', label: 'Received' },
+    { key: 'individual-mutual', label: 'Mutual' },
+    { key: 'individual-met', label: 'Met' },
+    { key: 'pair-given', label: 'Given' },
+    { key: 'pair-received', label: 'Received' }
+  ];
+  protected readonly rateFilterEntries: RateFilterEntry[] = [
+    { kind: 'group', label: 'Individual' },
+    { kind: 'item', key: 'individual-given', label: 'Given' },
+    { kind: 'item', key: 'individual-received', label: 'Received' },
+    { kind: 'item', key: 'individual-mutual', label: 'Mutual' },
+    { kind: 'item', key: 'individual-met', label: 'Met' },
+    { kind: 'group', label: 'Pair' },
+    { kind: 'item', key: 'pair-given', label: 'Given' },
+    { kind: 'item', key: 'pair-received', label: 'Received' }
   ];
   protected readonly activitiesViewOptions: Array<{ key: ActivitiesView; label: string; icon: string }> = [
     { key: 'month', label: 'Month', icon: 'calendar_month' },
@@ -807,6 +820,7 @@ export class App {
     this.activitiesPrimaryFilter = primaryFilter;
     this.activitiesSecondaryFilter = 'recent';
     this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
     this.activitiesView = primaryFilter === 'rates' ? 'distance' : 'week';
     this.activitiesStickyValue = '';
     this.resetActivitiesScroll();
@@ -956,6 +970,7 @@ export class App {
     this.pendingAssetMemberAction = null;
     this.selectedAssetCardId = null;
     this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
   }
 
   protected closeStackedPopup(): void {
@@ -2783,6 +2798,7 @@ export class App {
   protected selectActivitiesPrimaryFilter(filter: ActivitiesPrimaryFilter): void {
     this.activitiesPrimaryFilter = filter;
     this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
     if (filter === 'rates') {
       this.activitiesView = 'distance';
     }
@@ -2792,25 +2808,35 @@ export class App {
 
   protected selectActivitiesSecondaryFilter(filter: ActivitiesSecondaryFilter): void {
     this.activitiesSecondaryFilter = filter;
+    this.showActivitiesSecondaryPicker = false;
     this.resetActivitiesScroll();
     this.updateActivitiesStickyHeader(0);
   }
 
   protected selectActivitiesRateFilter(filter: RateFilterKey): void {
     this.activitiesRateFilter = filter;
+    this.showActivitiesSecondaryPicker = false;
     this.resetActivitiesScroll();
     this.updateActivitiesStickyHeader(0);
   }
 
   protected toggleActivitiesViewPicker(event: Event): void {
     event.stopPropagation();
+    this.showActivitiesSecondaryPicker = false;
     this.showActivitiesViewPicker = !this.showActivitiesViewPicker;
+  }
+
+  protected toggleActivitiesSecondaryPicker(event: Event): void {
+    event.stopPropagation();
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = !this.showActivitiesSecondaryPicker;
   }
 
   protected setActivitiesView(view: ActivitiesView, event?: Event): void {
     event?.stopPropagation();
     this.activitiesView = view;
     this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
     this.resetActivitiesScroll();
     this.updateActivitiesStickyHeader(0);
   }
@@ -2831,8 +2857,44 @@ export class App {
     return this.activitiesSecondaryFilters.find(option => option.key === this.activitiesSecondaryFilter)?.label ?? 'Recent';
   }
 
+  protected activitiesSecondaryFilterIcon(): string {
+    return this.activitiesSecondaryFilters.find(option => option.key === this.activitiesSecondaryFilter)?.icon ?? 'schedule';
+  }
+
   protected activitiesRateFilterLabel(): string {
-    return this.rateFilters.find(option => option.key === this.activitiesRateFilter)?.label ?? 'Egyeni: Adott';
+    const filter = this.rateFilters.find(option => option.key === this.activitiesRateFilter);
+    if (!filter) {
+      return 'Individual · Given';
+    }
+    const group = this.activitiesRateFilter.startsWith('individual') ? 'Individual' : 'Pair';
+    return `${group} · ${filter.label}`;
+  }
+
+  protected activitiesRateFilterIcon(key: RateFilterKey = this.activitiesRateFilter): string {
+    switch (key) {
+      case 'individual-given':
+        return 'north_east';
+      case 'individual-received':
+        return 'south_west';
+      case 'individual-mutual':
+        return 'sync_alt';
+      case 'individual-met':
+        return 'handshake';
+      case 'pair-given':
+        return 'group_add';
+      case 'pair-received':
+        return 'groups_2';
+      default:
+        return 'star';
+    }
+  }
+
+  protected rateFilterOptionClass(key: RateFilterKey): string {
+    return `rate-filter-item-${key}`;
+  }
+
+  protected isRateGroupSeparator(label: string): boolean {
+    return label === 'Pair';
   }
 
   protected activitiesPrimaryFilterClass(filter: ActivitiesPrimaryFilter = this.activitiesPrimaryFilter): string {
@@ -3607,6 +3669,9 @@ export class App {
     }
     if (this.showActivitiesViewPicker && !target.closest('.activities-view-picker') && !target.closest('.popup-view-fab')) {
       this.showActivitiesViewPicker = false;
+    }
+    if (this.showActivitiesSecondaryPicker && !target.closest('.activities-secondary-picker') && !target.closest('.popup-view-fab')) {
+      this.showActivitiesSecondaryPicker = false;
     }
   }
 

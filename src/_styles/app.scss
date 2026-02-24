@@ -1475,6 +1475,13 @@
 .activities-view-picker {
   position: relative;
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+}
+
+.activities-secondary-picker {
+  position: relative;
 }
 
 .popup-view-fab {
@@ -1808,6 +1815,7 @@
 }
 
 .activities-chat-members-badge {
+  align-self: baseline;
   position: relative;
   min-width: 72px;
   height: 28px;
@@ -3506,6 +3514,36 @@ textarea {
   border-color: rgba(200, 146, 30, 0.34);
 }
 
+.experience-filter-select.rate-filter-item-individual-given {
+  background: linear-gradient(180deg, #fff1f3 0%, #ffe6ea 100%);
+  border-color: rgba(169, 72, 90, 0.32);
+}
+
+.experience-filter-select.rate-filter-item-individual-received {
+  background: linear-gradient(180deg, #eaf4ff 0%, #e1ecfb 100%);
+  border-color: rgba(45, 94, 168, 0.32);
+}
+
+.experience-filter-select.rate-filter-item-individual-mutual {
+  background: linear-gradient(180deg, #f2f3ff 0%, #e8eafb 100%);
+  border-color: rgba(79, 104, 168, 0.32);
+}
+
+.experience-filter-select.rate-filter-item-individual-met {
+  background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
+  border-color: rgba(44, 126, 72, 0.32);
+}
+
+.experience-filter-select.rate-filter-item-pair-given {
+  background: linear-gradient(180deg, #fff5ec 0%, #feead9 100%);
+  border-color: rgba(151, 92, 41, 0.32);
+}
+
+.experience-filter-select.rate-filter-item-pair-received {
+  background: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
+  border-color: rgba(37, 127, 95, 0.32);
+}
+
 .experience-filter-select.activity-filter-secondary {
   background: linear-gradient(180deg, #f4f6fb 0%, #eef2f8 100%);
   border-color: rgba(94, 114, 146, 0.28);
@@ -4170,6 +4208,75 @@ textarea {
 
 .mat-mdc-option.status-option.activity-filter-secondary {
   background: linear-gradient(0deg, #ffffff, #f1f4fa);
+}
+
+.mat-mdc-option.status-option.rate-filter-group-option {
+  background: #fff;
+  opacity: 1;
+  pointer-events: none;
+  min-height: 28px;
+}
+
+.rate-filter-group-label {
+  font-weight: 800;
+  font-size: 0.69rem;
+  color: #1f3658;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mat-mdc-option.status-option.rate-filter-group-option.is-group-separator {
+  border-top: 1px solid rgba(92, 110, 140, 0.28);
+  margin-top: 0.28rem;
+  padding-top: 0.34rem;
+}
+
+.rate-filter-item-individual-given {
+  color: #a1485a;
+}
+
+.rate-filter-item-individual-received {
+  color: #2d5ea8;
+}
+
+.rate-filter-item-individual-mutual {
+  color: #4f68a8;
+}
+
+.rate-filter-item-individual-met {
+  color: #2d7d47;
+}
+
+.rate-filter-item-pair-given {
+  color: #8a5428;
+}
+
+.rate-filter-item-pair-received {
+  color: #236d51;
+}
+
+.mat-mdc-option.status-option.rate-filter-item-individual-given {
+  background: linear-gradient(0deg, #ffffff, #fff1f3);
+}
+
+.mat-mdc-option.status-option.rate-filter-item-individual-received {
+  background: linear-gradient(0deg, #ffffff, #eaf4ff);
+}
+
+.mat-mdc-option.status-option.rate-filter-item-individual-mutual {
+  background: linear-gradient(0deg, #ffffff, #f2f3ff);
+}
+
+.mat-mdc-option.status-option.rate-filter-item-individual-met {
+  background: linear-gradient(0deg, #ffffff, #edf8ee);
+}
+
+.mat-mdc-option.status-option.rate-filter-item-pair-given {
+  background: linear-gradient(0deg, #ffffff, #fff5ec);
+}
+
+.mat-mdc-option.status-option.rate-filter-item-pair-received {
+  background: linear-gradient(0deg, #ffffff, #edf9f4);
 }
 
 .experience-date-range-field .mat-mdc-text-field-wrapper {
