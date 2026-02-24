@@ -469,8 +469,10 @@
                   type="button"
                   class="activities-rate-score-badge"
                   [class.is-pending]="isActivityRatePending(row)"
-                  (click)="openActivityRateEditor(row, $event)"
-                  [attr.aria-label]="isActivityRatePending(row) ? 'Add your rating' : 'Edit your rating'"
+                  [class.is-disabled]="isPairReceivedRateRow(row)"
+                  (pointerup)="$event.stopPropagation()"
+                  (click)="isPairReceivedRateRow(row) ? $event.stopPropagation() : openActivityRateEditor(row, $event)"
+                  [attr.aria-label]="isPairReceivedRateRow(row) ? 'Received pair rating' : (isActivityRatePending(row) ? 'Add your rating' : 'Edit your rating')"
                 >
                   <span class="activities-rate-score-star">★</span>
                   <span *ngIf="activityOwnRatingLabel(row) as ownRatingLabel">{{ ownRatingLabel }}</span>

@@ -3126,6 +3126,14 @@ export class App {
     return row.type === 'rates';
   }
 
+  protected isPairReceivedRateRow(row: ActivityListRow): boolean {
+    if (row.type !== 'rates') {
+      return false;
+    }
+    const item = row.source as RateMenuItem;
+    return item.mode === 'pair' && this.displayedRateDirection(item) === 'received';
+  }
+
   protected activityOwnRatingValue(row: ActivityListRow): number {
     if (row.type !== 'rates') {
       return 0;
@@ -3136,6 +3144,9 @@ export class App {
       return this.normalizeRateScore(drafted);
     }
     if (!this.hasOwnRating(item)) {
+      if (this.displayedRateDirection(item) === 'received' && item.mode === 'pair') {
+        return this.pairReceivedAverageScore(item);
+      }
       return 0;
     }
     return this.rateOwnScore(item);
@@ -3150,7 +3161,11 @@ export class App {
     if (row.type !== 'rates') {
       return false;
     }
-    return !this.hasOwnRating(row.source as RateMenuItem);
+    const item = row.source as RateMenuItem;
+    if (!this.hasOwnRating(item) && this.displayedRateDirection(item) === 'received' && item.mode === 'pair') {
+      return this.pairReceivedAverageScore(item) <= 0;
+    }
+    return !this.hasOwnRating(item);
   }
 
   protected openActivityRateEditor(row: ActivityListRow, event: Event): void {
@@ -3228,6 +3243,21 @@ export class App {
       return false;
     }
     return Number.isFinite(item.scoreGiven) && item.scoreGiven > 0;
+  }
+
+  private pairReceivedAverageScore(item: RateMenuItem): number {
+    const matching = this.rateItems.filter(candidate =>
+      candidate.mode === 'pair' &&
+      candidate.userId === item.userId &&
+      this.displayedRateDirection(candidate) === 'received' &&
+      Number.isFinite(candidate.scoreReceived) &&
+      candidate.scoreReceived > 0
+    );
+    if (matching.length === 0) {
+      return 0;
+    }
+    const total = matching.reduce((sum, candidate) => sum + candidate.scoreReceived, 0);
+    return this.normalizeRateScore(total / matching.length);
   }
 
   private displayedRateDirection(item: RateMenuItem): RateMenuItem['direction'] {
