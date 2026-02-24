@@ -1664,7 +1664,7 @@
   z-index: 12;
   border: 1px solid rgba(33, 51, 78, 0.14);
   border-radius: 9px;
-  background: #fff;
+  background: linear-gradient(180deg,#f9fbff 0%,#f3f8ff 100%);
   color: #203b5d;
   font-size: 0.76rem;
   font-weight: 800;
@@ -1677,8 +1677,9 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  scroll-snap-type: y mandatory;
+  scroll-snap-type: y proximity;
   scroll-padding-top: 2.6rem;
+  scroll-behavior: smooth;
   display: flex;
   flex-direction: column;
   gap: 0.34rem;
@@ -1701,7 +1702,7 @@
 .activities-scroll-list .activities-card {
   scroll-snap-align: start;
   scroll-margin-top: 0;
-  scroll-snap-stop: always;
+  scroll-snap-stop: normal;
 }
 
 .activities-scroll-list.activities-scroll-list-with-rate-editor {
