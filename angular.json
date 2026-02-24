@@ -20,8 +20,12 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
-            "outputPath": "docs",
+            "outputPath": {
+              "base": "docs",
+              "browser": ""
+            },
             "browser": "src/main.ts",
+            "prerender": false,
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
             "assets": ["src/assets", "src/404.html"],
@@ -31,7 +35,6 @@
           },
           "configurations": {
             "production": {
-              "outputPath": "docs",
               "budgets": [
                 {
                   "type": "initial",
@@ -47,7 +50,6 @@
               "outputHashing": "all"
             },
             "development": {
-              "outputPath": "docs",
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true

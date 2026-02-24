@@ -1291,10 +1291,10 @@
         (click)="selectMobileProfileSelectorOption(option.value)"
       >
         <span class="mobile-profile-selector-option-main">
-          <mat-icon *ngIf="!option.disabled">{{ option.icon }}</mat-icon>
+          <mat-icon *ngIf="option.icon">{{ option.icon }}</mat-icon>
           <span>{{ option.label }}</span>
         </span>
-        <span class="rate-filter-count-badge" *ngIf="option.badge !== undefined">{{ option.badge }}</span>
+        <span class="rate-filter-count-badge" *ngIf="!option.disabled && option.badge !== undefined">{{ option.badge }}</span>
         <mat-icon *ngIf="!option.disabled && option.badge === undefined && isMobileSelectorOptionActive(option.value)">check</mat-icon>
       </button>
     </div>

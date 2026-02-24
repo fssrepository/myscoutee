@@ -2078,7 +2078,8 @@ export class App {
         value: option.key,
         label: option.label,
         icon: option.icon,
-        toneClass: this.activitiesPrimaryFilterClass(option.key)
+        toneClass: this.activitiesPrimaryFilterClass(option.key),
+        badge: this.activitiesPrimaryFilterCount(option.key)
       })),
       context: { kind: 'activitiesPrimaryFilter' }
     };
@@ -2092,11 +2093,12 @@ export class App {
       options: this.rateFilterEntries
         .map(option => {
           if (option.kind === 'group') {
+            const isPair = option.label === 'Pair';
             return {
               value: `group-${option.label.toLowerCase().replace(/\s+/g, '-')}`,
               label: option.label,
-              icon: '',
-              toneClass: `rate-filter-group-option-mobile${option.label === 'Pair' ? ' is-group-separator-mobile' : ''}`,
+              icon: isPair ? 'groups_2' : 'person',
+              toneClass: `rate-filter-group-option-mobile ${isPair ? 'rate-filter-group-pair is-group-separator-mobile' : 'rate-filter-group-single'}`,
               disabled: true
             };
           }

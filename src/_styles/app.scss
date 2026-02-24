@@ -4521,31 +4521,37 @@ textarea {
 .mobile-profile-selector-option.rate-filter-item-individual-given {
   background: linear-gradient(180deg, #fff1f3 0%, #ffe6ea 100%);
   border-color: rgba(169, 72, 90, 0.32);
+  color: #a1485a;
 }
 
 .mobile-profile-selector-option.rate-filter-item-individual-received {
   background: linear-gradient(180deg, #eaf4ff 0%, #e1ecfb 100%);
   border-color: rgba(45, 94, 168, 0.32);
+  color: #2d5ea8;
 }
 
 .mobile-profile-selector-option.rate-filter-item-individual-mutual {
   background: linear-gradient(180deg, #f2f3ff 0%, #e8eafb 100%);
   border-color: rgba(79, 104, 168, 0.32);
+  color: #4f68a8;
 }
 
 .mobile-profile-selector-option.rate-filter-item-individual-met {
   background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
   border-color: rgba(44, 126, 72, 0.32);
+  color: #2d7d47;
 }
 
 .mobile-profile-selector-option.rate-filter-item-pair-given {
   background: linear-gradient(180deg, #fff5ec 0%, #feead9 100%);
   border-color: rgba(151, 92, 41, 0.32);
+  color: #8a5428;
 }
 
 .mobile-profile-selector-option.rate-filter-item-pair-received {
   background: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
   border-color: rgba(37, 127, 95, 0.32);
+  color: #236d51;
 }
 
 .values-header-chips {
@@ -6127,7 +6133,7 @@ textarea {
 }
 
 .mobile-profile-selector-option.mobile-profile-selector-option-group .mobile-profile-selector-option-main {
-  gap: 0;
+  gap: 0.26rem;
 }
 
 .mobile-profile-selector-option.mobile-profile-selector-option-group .mobile-profile-selector-option-main span {
@@ -6141,6 +6147,18 @@ textarea {
   border-top: 0;
   margin-top: 0.28rem;
   padding-top: 0.18rem;
+}
+
+.mobile-profile-selector-option.mobile-profile-selector-option-group.rate-filter-group-single {
+  background: linear-gradient(180deg, #eef3fb 0%, #e7edf8 100%);
+  border-color: rgba(84, 104, 136, 0.3);
+  color: #3f5779;
+}
+
+.mobile-profile-selector-option.mobile-profile-selector-option-group.rate-filter-group-pair {
+  background: linear-gradient(180deg, #eef8f5 0%, #e5f2ee 100%);
+  border-color: rgba(47, 142, 125, 0.3);
+  color: #2a6c61;
 }
 
 .mobile-profile-selector-option.status-public {

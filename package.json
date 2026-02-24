@@ -5,6 +5,9 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:gh": "ng build --configuration production --base-href /myscoutee/",
+    "postbuild": "rm -f docs/prerendered-routes.json",
+    "postbuild:gh": "rm -f docs/prerendered-routes.json",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
