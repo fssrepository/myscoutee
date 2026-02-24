@@ -1486,6 +1486,7 @@
 
 .activities-view-picker {
   position: relative;
+  z-index: 20;
   margin-left: auto;
   display: inline-flex;
   align-items: center;
@@ -1494,6 +1495,7 @@
 
 .activities-secondary-picker {
   position: relative;
+  z-index: 21;
 }
 
 .activities-compact-select {
@@ -1568,7 +1570,7 @@
   box-shadow: 0 10px 24px rgba(17, 29, 48, 0.22);
   padding: 0.24rem;
   min-width: 128px;
-  z-index: 3;
+  z-index: 40;
   display: grid;
   gap: 0.16rem;
 }
@@ -1659,7 +1661,7 @@
 .activities-sticky-header {
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 12;
   border: 1px solid rgba(33, 51, 78, 0.14);
   border-radius: 9px;
   background: #fff;
@@ -1667,6 +1669,7 @@
   font-size: 0.76rem;
   font-weight: 800;
   padding: 0.35rem 0.55rem;
+  margin-bottom: 0.06rem;
 }
 
 .activities-scroll-list {
@@ -1674,10 +1677,31 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  scroll-snap-type: y mandatory;
+  scroll-padding-top: 2.6rem;
   display: flex;
   flex-direction: column;
   gap: 0.34rem;
   padding-right: 0;
+}
+
+.activities-group-marker {
+  scroll-snap-align: none;
+  border: 1px solid rgba(39, 60, 92, 0.16);
+  border-radius: 9px;
+  background: linear-gradient(180deg, #f9fbff 0%, #f3f8ff 100%);
+  color: rgba(31, 58, 92, 0.78);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  padding: 0.24rem 0.52rem;
+}
+
+.activities-scroll-list .asset-item-card,
+.activities-scroll-list .activities-card {
+  scroll-snap-align: start;
+  scroll-margin-top: 0;
+  scroll-snap-stop: always;
 }
 
 .activities-scroll-list.activities-scroll-list-with-rate-editor {

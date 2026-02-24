@@ -115,6 +115,11 @@ interface ActivityListRow {
   source: ChatMenuItem | InvitationMenuItem | EventMenuItem | HostingMenuItem | RateMenuItem;
 }
 
+interface ActivityGroup {
+  label: string;
+  rows: ActivityListRow[];
+}
+
 type SubEventCard = (typeof EVENT_EDITOR_SAMPLE.subEvents)[number];
 type ProfileStatus = 'public' | 'friends only' | 'host only' | 'inactive';
 type DetailPrivacy = 'Public' | 'Friends' | 'Hosts' | 'Private';
@@ -582,6 +587,11 @@ export class App {
     e1: '2026-02-27T09:00:00',
     e2: '2026-03-08T10:00:00',
     e3: '2026-03-12T19:30:00',
+    e6: '2026-03-14T17:00:00',
+    e7: '2026-03-16T09:30:00',
+    e8: '2026-02-27T11:15:00',
+    e9: '2026-02-27T13:30:00',
+    e10: '2026-03-14T18:15:00',
     e4: '2026-02-28T08:00:00',
     e5: '2026-03-03T18:00:00'
   };
@@ -607,12 +617,17 @@ export class App {
   };
   protected readonly chatDistanceById: Record<string, number> = { c1: 5, c2: 10, c3: 15, c4: 8, c5: 12 };
   protected readonly invitationDistanceById: Record<string, number> = { i1: 10, i2: 15, i3: 5, i4: 12, i5: 18 };
-  protected readonly eventDistanceById: Record<string, number> = { e1: 20, e2: 10, e3: 15, e4: 5, e5: 25 };
+  protected readonly eventDistanceById: Record<string, number> = { e1: 20, e2: 10, e3: 15, e6: 35, e7: 45, e8: 20, e9: 20, e10: 35, e4: 5, e5: 25 };
   protected readonly hostingDistanceById: Record<string, number> = { h1: 5, h2: 20, h3: 10, h4: 15 };
   protected readonly activityImageById: Record<string, string> = {
     e1: 'https://picsum.photos/seed/event-e1/1200/700',
     e2: 'https://picsum.photos/seed/event-e2/1200/700',
     e3: 'https://picsum.photos/seed/event-e3/1200/700',
+    e6: 'https://picsum.photos/seed/event-e6/1200/700',
+    e7: 'https://picsum.photos/seed/event-e7/1200/700',
+    e8: 'https://picsum.photos/seed/event-e8/1200/700',
+    e9: 'https://picsum.photos/seed/event-e9/1200/700',
+    e10: 'https://picsum.photos/seed/event-e10/1200/700',
     e4: 'https://picsum.photos/seed/event-e4/1200/700',
     e5: 'https://picsum.photos/seed/event-e5/1200/700',
     h1: 'https://picsum.photos/seed/event-h1/1200/700',
@@ -629,6 +644,11 @@ export class App {
     e1: 'https://example.com/events/e1',
     e2: 'https://example.com/events/e2',
     e3: 'https://example.com/events/e3',
+    e6: 'https://example.com/events/e6',
+    e7: 'https://example.com/events/e7',
+    e8: 'https://example.com/events/e8',
+    e9: 'https://example.com/events/e9',
+    e10: 'https://example.com/events/e10',
     e4: 'https://example.com/events/e4',
     e5: 'https://example.com/events/e5',
     h1: 'https://example.com/hosting/h1',
@@ -645,6 +665,11 @@ export class App {
     e1: '24 / 28',
     e2: '13 / 16',
     e3: '18 / 20',
+    e6: '20 / 24',
+    e7: '9 / 12',
+    e8: '16 / 20',
+    e9: '18 / 22',
+    e10: '19 / 24',
     e4: '10 / 12',
     e5: '14 / 18',
     h1: '20 / 24',
@@ -835,7 +860,6 @@ export class App {
     this.clearActivityRateEditorState();
     this.activitiesStickyValue = '';
     this.resetActivitiesScroll();
-    this.updateActivitiesStickyHeader(0);
     if (closeMenu) {
       this.closeUserMenu();
     }
@@ -2821,6 +2845,21 @@ export class App {
     return this.filteredActivityRows.filter(row => !this.isEventStyleActivity(row));
   }
 
+  protected get groupedActivityRows(): ActivityGroup[] {
+    const rows = this.filteredActivityRows;
+    const grouped: ActivityGroup[] = [];
+    for (const row of rows) {
+      const label = this.activityGroupLabel(row);
+      const lastGroup = grouped[grouped.length - 1];
+      if (!lastGroup || lastGroup.label !== label) {
+        grouped.push({ label, rows: [row] });
+        continue;
+      }
+      lastGroup.rows.push(row);
+    }
+    return grouped;
+  }
+
   protected get activitiesStickyHeader(): string {
     if (this.activitiesStickyValue) {
       return this.activitiesStickyValue;
@@ -2885,14 +2924,12 @@ export class App {
       this.selectedActivityRateId = null;
     }
     this.resetActivitiesScroll();
-    this.updateActivitiesStickyHeader(0);
   }
 
   protected selectActivitiesSecondaryFilter(filter: ActivitiesSecondaryFilter): void {
     this.activitiesSecondaryFilter = filter;
     this.showActivitiesSecondaryPicker = false;
     this.resetActivitiesScroll();
-    this.updateActivitiesStickyHeader(0);
   }
 
   protected selectActivitiesRateFilter(filter: RateFilterKey): void {
@@ -2904,7 +2941,6 @@ export class App {
     this.selectedActivityRateId = null;
     this.showActivitiesSecondaryPicker = false;
     this.resetActivitiesScroll();
-    this.updateActivitiesStickyHeader(0);
   }
 
   protected toggleActivitiesViewPicker(event: Event): void {
@@ -2925,7 +2961,6 @@ export class App {
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
     this.resetActivitiesScroll();
-    this.updateActivitiesStickyHeader(0);
   }
 
   protected activityViewLabel(): string {
@@ -4468,6 +4503,7 @@ export class App {
   }
 
   private resetActivitiesScroll(): void {
+    this.seedActivitiesStickyHeader();
     setTimeout(() => {
       if (this.activePopup !== 'activities') {
         return;
@@ -4476,38 +4512,70 @@ export class App {
       if (scrollElement) {
         scrollElement.scrollTop = 0;
       }
-      this.updateActivitiesStickyHeader(0);
+      const syncSticky = () => this.updateActivitiesStickyHeader(scrollElement?.scrollTop ?? 0);
+      if (typeof globalThis.requestAnimationFrame === 'function') {
+        globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(syncSticky));
+        return;
+      }
+      setTimeout(syncSticky, 0);
     }, 0);
   }
 
+  private seedActivitiesStickyHeader(): void {
+    const firstGroup = this.groupedActivityRows[0];
+    if (firstGroup) {
+      this.activitiesStickyValue = firstGroup.label;
+      return;
+    }
+    this.activitiesStickyValue = this.activitiesView === 'distance' ? '5 km' : 'No items';
+  }
+
   private updateActivitiesStickyHeader(scrollTop: number): void {
-    const rows = this.filteredActivityRows;
-    if (rows.length === 0) {
+    const groups = this.groupedActivityRows;
+    if (groups.length === 0) {
       this.activitiesStickyValue = this.activitiesView === 'distance' ? '5 km' : 'No items';
       return;
     }
-    if (this.activitiesView === 'distance') {
-      const rowIndex = Math.max(0, Math.min(rows.length - 1, Math.floor(scrollTop / 112)));
-      const rowDistance = rows[rowIndex]?.distanceKm ?? 5;
-      const bucket = Math.max(5, Math.ceil(rowDistance / 5) * 5);
-      this.activitiesStickyValue = `${bucket} km`;
+    const scrollElement = this.activitiesScrollRef?.nativeElement;
+    if (!scrollElement) {
+      this.activitiesStickyValue = groups[0].label;
       return;
     }
-    const rowIndex = Math.max(0, Math.min(rows.length - 1, Math.floor(scrollTop / 112)));
-    const parsed = new Date(rows[rowIndex].dateIso);
-    if (Number.isNaN(parsed.getTime())) {
-      this.activitiesStickyValue = 'Date unavailable';
+    const stickyHeader = scrollElement.querySelector<HTMLElement>('.activities-sticky-header');
+    const stickyHeaderHeight = stickyHeader?.offsetHeight ?? 0;
+    const targetTop = scrollTop + stickyHeaderHeight + 1;
+    const rows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.activities-row-item'));
+    if (rows.length === 0) {
+      this.activitiesStickyValue = groups[0].label;
       return;
+    }
+    if (scrollTop <= 1) {
+      this.activitiesStickyValue = rows[0].dataset['groupLabel'] ?? groups[0].label;
+      return;
+    }
+    const alignmentTolerancePx = 2;
+    const activeRow =
+      rows.find(row => row.offsetTop >= targetTop - alignmentTolerancePx) ??
+      rows[rows.length - 1];
+    this.activitiesStickyValue = activeRow.dataset['groupLabel'] ?? groups[0].label;
+  }
+
+  private activityGroupLabel(row: ActivityListRow): string {
+    if (this.activitiesView === 'distance') {
+      const bucket = Math.max(5, Math.ceil(row.distanceKm / 5) * 5);
+      return `${bucket} km`;
+    }
+    const parsed = new Date(row.dateIso);
+    if (Number.isNaN(parsed.getTime())) {
+      return 'Date unavailable';
     }
     if (this.activitiesView === 'day') {
-      this.activitiesStickyValue = parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-      return;
+      return parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     }
     if (this.activitiesView === 'month') {
-      this.activitiesStickyValue = parsed.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      return;
+      return parsed.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     }
-    this.activitiesStickyValue = `Week ${this.isoWeekNumber(parsed)}, ${parsed.getFullYear()}`;
+    return `Week ${this.isoWeekNumber(parsed)}, ${parsed.getFullYear()}`;
   }
 
   private isoWeekNumber(date: Date): number {

@@ -400,86 +400,94 @@
           </ng-container>
         </div>
 
-        <div class="activities-sticky-header">{{ activitiesStickyHeader }}</div>
-
         <div class="experience-card-list assets-card-list activities-scroll-list" [class.activities-scroll-list-with-rate-editor]="isActivityRateEditorOpen()" #activitiesScroll (scroll)="onActivitiesScroll($event)">
-          <article class="experience-item-card asset-item-card" *ngFor="let row of eventStyleActivityRows" (pointerup)="onActivityRowPointerUp(row, $event)" (click)="onActivityRowClick(row, $event)">
-            <div class="asset-card-image" [style.backgroundImage]="'url(' + activityImageUrl(row) + ')'">
-              <a class="asset-source-icon" [href]="activitySourceLink(row)" target="_blank" rel="noopener" (click)="$event.stopPropagation()" aria-label="Open source link">
-                <mat-icon>link</mat-icon>
-              </a>
-              <button
-                type="button"
-                class="asset-occupancy-badge"
-                (click)="openActivityFromInlineControl(row, $event)"
-                aria-label="Open item details"
-              >
-                <span>{{ activityCapacityLabel(row) }}</span>
-                <span class="card-badge asset-request-badge" *ngIf="row.unread > 0">{{ row.unread }}</span>
-              </button>
-            </div>
-            <div class="experience-item-head">
-              <span class="experience-item-icon">
-                <mat-icon>{{ activityTypeIcon(row) }}</mat-icon>
-              </span>
-              <div class="experience-item-meta">
-                <h4>{{ row.title }}</h4>
-                <p>{{ activityMetaLine(row) }}</p>
-              </div>
-              <div class="experience-item-actions" *ngIf="canEditActivityRow(row)">
-                <button type="button" class="experience-action-btn experience-action-edit" (click)="editActivityEvent(row, $event)" aria-label="Edit event">
-                  <mat-icon>edit</mat-icon>
-                </button>
-                <button type="button" class="experience-action-btn experience-action-delete" (click)="deleteActivityEvent(row, $event)" aria-label="Delete event">
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </div>
-            </div>
-            <p class="experience-item-description">{{ row.subtitle }}</p>
-          </article>
+          <div class="activities-sticky-header">{{ activitiesStickyHeader }}</div>
 
-          <button
-            type="button"
-            class="activities-card activities-card-btn"
-            [class.activities-card-chat]="isActivityChatRow(row)"
-            [class.activities-card-rate]="isRateStyleActivity(row)"
-            [class.activities-card-rates]="row.type === 'rates'"
-            *ngFor="let row of nonEventStyleActivityRows"
-            (pointerup)="onActivityRowPointerUp(row, $event)"
-            (click)="onActivityRowClick(row, $event)"
-          >
-            <span class="activities-card-avatar" [class]="activityRowAvatarClass(row)">
-              {{ activityRowAvatarInitials(row) }}
-            </span>
+          <ng-container *ngFor="let group of groupedActivityRows; let groupIndex = index">
+            <div class="activities-group-marker" *ngIf="groupIndex > 0" [attr.data-group-label]="group.label">{{ group.label }}</div>
 
-            <div class="activities-card-main" *ngIf="isActivityChatRow(row)">
-              <p class="activities-card-title">{{ row.title }}</p>
-              <p class="activities-card-subtitle">{{ row.subtitle }}</p>
-              <p class="activities-card-detail">{{ row.detail }}</p>
-            </div>
-            <span class="activities-chat-members-badge" *ngIf="isActivityChatRow(row)">
-              <span>{{ activityChatMemberCount(row) }} members</span>
-              <span class="card-badge asset-request-badge activities-chat-unread-badge" *ngIf="row.unread > 0">{{ row.unread }}</span>
-            </span>
+            <ng-container *ngFor="let row of group.rows">
+              <article class="experience-item-card asset-item-card activities-row-item" [attr.data-group-label]="group.label" *ngIf="isEventStyleActivity(row); else nonEventActivityRow" (pointerup)="onActivityRowPointerUp(row, $event)" (click)="onActivityRowClick(row, $event)">
+                <div class="asset-card-image" [style.backgroundImage]="'url(' + activityImageUrl(row) + ')'">
+                  <a class="asset-source-icon" [href]="activitySourceLink(row)" target="_blank" rel="noopener" (click)="$event.stopPropagation()" aria-label="Open source link">
+                    <mat-icon>link</mat-icon>
+                  </a>
+                  <button
+                    type="button"
+                    class="asset-occupancy-badge"
+                    (click)="openActivityFromInlineControl(row, $event)"
+                    aria-label="Open item details"
+                  >
+                    <span>{{ activityCapacityLabel(row) }}</span>
+                    <span class="card-badge asset-request-badge" *ngIf="row.unread > 0">{{ row.unread }}</span>
+                  </button>
+                </div>
+                <div class="experience-item-head">
+                  <span class="experience-item-icon">
+                    <mat-icon>{{ activityTypeIcon(row) }}</mat-icon>
+                  </span>
+                  <div class="experience-item-meta">
+                    <h4>{{ row.title }}</h4>
+                    <p>{{ activityMetaLine(row) }}</p>
+                  </div>
+                  <div class="experience-item-actions" *ngIf="canEditActivityRow(row)">
+                    <button type="button" class="experience-action-btn experience-action-edit" (click)="editActivityEvent(row, $event)" aria-label="Edit event">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button type="button" class="experience-action-btn experience-action-delete" (click)="deleteActivityEvent(row, $event)" aria-label="Delete event">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                </div>
+                <p class="experience-item-description">{{ row.subtitle }}</p>
+              </article>
 
-            <div class="activities-rate-card-body" *ngIf="row.type === 'rates'">
-              <p class="activities-event-title">{{ row.title }}</p>
-              <div class="activities-rate-card-head">
+              <ng-template #nonEventActivityRow>
                 <button
                   type="button"
-                  class="activities-rate-score-badge"
-                  [class.is-pending]="isActivityRatePending(row)"
-                  [class.is-disabled]="isPairReceivedRateRow(row)"
-                  (pointerup)="$event.stopPropagation()"
-                  (click)="isPairReceivedRateRow(row) ? $event.stopPropagation() : openActivityRateEditor(row, $event)"
-                  [attr.aria-label]="isPairReceivedRateRow(row) ? 'Received pair rating' : (isActivityRatePending(row) ? 'Add your rating' : 'Edit your rating')"
+                  class="activities-card activities-card-btn activities-row-item"
+                  [attr.data-group-label]="group.label"
+                  [class.activities-card-chat]="isActivityChatRow(row)"
+                  [class.activities-card-rate]="isRateStyleActivity(row)"
+                  [class.activities-card-rates]="row.type === 'rates'"
+                  (pointerup)="onActivityRowPointerUp(row, $event)"
+                  (click)="onActivityRowClick(row, $event)"
                 >
-                  <span class="activities-rate-score-star">★</span>
-                  <span *ngIf="activityOwnRatingLabel(row) as ownRatingLabel">{{ ownRatingLabel }}</span>
+                  <span class="activities-card-avatar" [class]="activityRowAvatarClass(row)">
+                    {{ activityRowAvatarInitials(row) }}
+                  </span>
+
+                  <div class="activities-card-main" *ngIf="isActivityChatRow(row)">
+                    <p class="activities-card-title">{{ row.title }}</p>
+                    <p class="activities-card-subtitle">{{ row.subtitle }}</p>
+                    <p class="activities-card-detail">{{ row.detail }}</p>
+                  </div>
+                  <span class="activities-chat-members-badge" *ngIf="isActivityChatRow(row)">
+                    <span>{{ activityChatMemberCount(row) }} members</span>
+                    <span class="card-badge asset-request-badge activities-chat-unread-badge" *ngIf="row.unread > 0">{{ row.unread }}</span>
+                  </span>
+
+                  <div class="activities-rate-card-body" *ngIf="row.type === 'rates'">
+                    <p class="activities-event-title">{{ row.title }}</p>
+                    <div class="activities-rate-card-head">
+                      <button
+                        type="button"
+                        class="activities-rate-score-badge"
+                        [class.is-pending]="isActivityRatePending(row)"
+                        [class.is-disabled]="isPairReceivedRateRow(row)"
+                        (pointerup)="$event.stopPropagation()"
+                        (click)="isPairReceivedRateRow(row) ? $event.stopPropagation() : openActivityRateEditor(row, $event)"
+                        [attr.aria-label]="isPairReceivedRateRow(row) ? 'Received pair rating' : (isActivityRatePending(row) ? 'Add your rating' : 'Edit your rating')"
+                      >
+                        <span class="activities-rate-score-star">★</span>
+                        <span *ngIf="activityOwnRatingLabel(row) as ownRatingLabel">{{ ownRatingLabel }}</span>
+                      </button>
+                    </div>
+                  </div>
                 </button>
-              </div>
-            </div>
-          </button>
+              </ng-template>
+            </ng-container>
+          </ng-container>
 
           <div class="editor-list-card" *ngIf="filteredActivityRows.length === 0">
             <h4>No items</h4>

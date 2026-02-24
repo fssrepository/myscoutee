@@ -435,6 +435,51 @@ export const DEMO_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       timeframe: 'Mar 12 · 7:30 PM - 11:30 PM',
       activity: 3,
       isAdmin: false
+    },
+    {
+      id: 'e6',
+      avatar: 'SY',
+      title: 'Sunset Beach Volley',
+      shortDescription: 'Casual teams, rotation rounds, and post-game snacks.',
+      timeframe: 'Mar 14 · 5:00 PM - 8:30 PM',
+      activity: 2,
+      isAdmin: false
+    },
+    {
+      id: 'e7',
+      avatar: 'SY',
+      title: 'Coffee + Book Swap',
+      shortDescription: 'Small-circle meetup with curated intro prompts.',
+      timeframe: 'Mar 16 · 9:30 AM - 11:30 AM',
+      activity: 1,
+      isAdmin: true
+    },
+    {
+      id: 'e8',
+      avatar: 'SY',
+      title: 'Lakeside Walk Lab',
+      shortDescription: 'Guided walk with paired mini-conversations.',
+      timeframe: 'Feb 27 · 11:15 AM - 1:00 PM',
+      activity: 2,
+      isAdmin: false
+    },
+    {
+      id: 'e9',
+      avatar: 'SY',
+      title: 'Brunch Rotation',
+      shortDescription: 'Table rotations every 20 minutes for fresh intros.',
+      timeframe: 'Feb 27 · 1:30 PM - 3:30 PM',
+      activity: 3,
+      isAdmin: false
+    },
+    {
+      id: 'e10',
+      avatar: 'SY',
+      title: 'Golden Hour Meetup',
+      shortDescription: 'Sunset meetup with check-in games and soft networking.',
+      timeframe: 'Mar 14 · 6:15 PM - 8:45 PM',
+      activity: 2,
+      isAdmin: true
     }
   ],
   u2: [
