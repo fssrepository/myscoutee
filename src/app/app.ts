@@ -588,6 +588,7 @@ export class App {
   protected showActivitiesSecondaryPicker = false;
   protected activitiesStickyValue = '';
   protected pendingActivityDeleteRow: ActivityListRow | null = null;
+  protected pendingActivityAction: 'delete' | 'exit' = 'delete';
   protected readonly activityRatingScale = Array.from({ length: 10 }, (_, index) => index + 1);
   private readonly weekCalendarStartHour = 6;
   private readonly weekCalendarEndHour = 23;
@@ -1086,6 +1087,7 @@ export class App {
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
     this.pendingActivityDeleteRow = null;
+    this.pendingActivityAction = 'delete';
     this.clearActivityRateEditorState();
   }
 
@@ -3687,11 +3689,120 @@ export class App {
     this.onActivityRowClick(row);
   }
 
-  protected canEditActivityRow(row: ActivityListRow): boolean {
+  protected canManageActivityRow(row: ActivityListRow): boolean {
+    return row.type === 'invitations' || row.type === 'events' || row.type === 'hosting';
+  }
+
+  protected activityPrimaryActionIcon(row: ActivityListRow): string {
     if (row.type === 'invitations') {
-      return true;
+      return 'visibility';
     }
-    return row.isAdmin === true && (row.type === 'events' || row.type === 'hosting');
+    return row.isAdmin ? 'edit' : 'visibility';
+  }
+
+  protected activityPrimaryActionLabel(row: ActivityListRow): string {
+    if (row.type === 'invitations') {
+      return 'View invitation';
+    }
+    if (row.isAdmin) {
+      return row.type === 'hosting' ? 'Edit hosted event' : 'Edit event';
+    }
+    return row.type === 'hosting' ? 'Open hosted event' : 'Open event';
+  }
+
+  protected activitySecondaryActionIcon(row: ActivityListRow): string {
+    return this.isExitActivityRow(row) ? 'logout' : 'delete';
+  }
+
+  protected activitySecondaryActionLabel(row: ActivityListRow): string {
+    if (this.isExitActivityRow(row)) {
+      return row.type === 'hosting' ? 'Exit hosted event' : 'Exit event';
+    }
+    if (row.type === 'invitations') {
+      return 'Delete invitation';
+    }
+    return row.type === 'hosting' ? 'Delete hosted event' : 'Delete event';
+  }
+
+  protected openActivityPrimaryAction(row: ActivityListRow): void {
+    if (row.type === 'invitations') {
+      this.openInvitationItem(row.source as InvitationMenuItem, false, true);
+      return;
+    }
+    if (row.type === 'events' || row.type === 'hosting') {
+      if (row.isAdmin) {
+        this.openEventEditor();
+        return;
+      }
+      if (row.type === 'events') {
+        this.openEventItem(row.source as EventMenuItem, false, true);
+        return;
+      }
+      this.openHostingItem(row.source as HostingMenuItem, false, true);
+      return;
+    }
+  }
+
+  protected triggerActivitySecondaryAction(row: ActivityListRow): void {
+    this.pendingActivityAction = this.isExitActivityRow(row) ? 'exit' : 'delete';
+    this.pendingActivityDeleteRow = row;
+  }
+
+  private isExitActivityRow(row: ActivityListRow): boolean {
+    return (row.type === 'events' || row.type === 'hosting') && row.isAdmin !== true;
+  }
+
+  protected pendingActivityConfirmTitle(): string {
+    return this.pendingActivityAction === 'exit' ? 'Exit activity' : 'Delete activity';
+  }
+
+  protected pendingActivityConfirmActionLabel(): string {
+    return this.pendingActivityAction === 'exit' ? 'Exit' : 'Delete';
+  }
+
+  protected pendingActivityDeleteLabel(): string {
+    if (!this.pendingActivityDeleteRow) {
+      return '';
+    }
+    if (this.pendingActivityAction === 'exit') {
+      return `Exit ${this.pendingActivityDeleteRow.title}?`;
+    }
+    return `Delete ${this.pendingActivityDeleteRow.title}?`;
+  }
+
+  protected confirmActivityDelete(): void {
+    if (!this.pendingActivityDeleteRow) {
+      return;
+    }
+    if (this.pendingActivityAction === 'exit') {
+      this.applyActivityExit(this.pendingActivityDeleteRow);
+    } else {
+      this.applyActivityDelete(this.pendingActivityDeleteRow);
+    }
+    this.pendingActivityDeleteRow = null;
+    this.pendingActivityAction = 'delete';
+  }
+
+  protected cancelActivityDelete(): void {
+    this.pendingActivityDeleteRow = null;
+    this.pendingActivityAction = 'delete';
+  }
+
+  private applyActivityExit(row: ActivityListRow): void {
+    if (row.type === 'events') {
+      this.eventItemsByUser[this.activeUser.id] = this.eventItems.filter(item => item.id !== row.id);
+      return;
+    }
+    if (row.type === 'hosting') {
+      this.hostingItemsByUser[this.activeUser.id] = this.hostingItems.filter(item => item.id !== row.id);
+      this.eventItemsByUser[this.activeUser.id] = this.eventItems.filter(item => item.id !== row.id);
+    }
+  }
+
+  protected deleteActivityEvent(row: ActivityListRow, event: Event): void {
+    event.stopPropagation();
+    this.pendingActivityAction = 'delete';
+    this.pendingActivityDeleteRow = row;
   }
 
   protected editActivityEvent(row: ActivityListRow, event: Event): void {
@@ -3703,30 +3814,6 @@ export class App {
     if (row.type === 'events' || row.type === 'hosting') {
       this.openEventEditor();
     }
-  }
-
-  protected deleteActivityEvent(row: ActivityListRow, event: Event): void {
-    event.stopPropagation();
-    this.pendingActivityDeleteRow = row;
-  }
-
-  protected cancelActivityDelete(): void {
-    this.pendingActivityDeleteRow = null;
-  }
-
-  protected pendingActivityDeleteLabel(): string {
-    if (!this.pendingActivityDeleteRow) {
-      return '';
-    }
-    return `Delete ${this.pendingActivityDeleteRow.title}?`;
-  }
-
-  protected confirmActivityDelete(): void {
-    if (!this.pendingActivityDeleteRow) {
-      return;
-    }
-    this.applyActivityDelete(this.pendingActivityDeleteRow);
-    this.pendingActivityDeleteRow = null;
   }
 
   private applyActivityDelete(row: ActivityListRow): void {

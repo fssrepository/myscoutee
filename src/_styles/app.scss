@@ -2886,8 +2886,7 @@
   .asset-shortcut-btn:hover,
   .game-entry:hover,
   .card-header:hover,
-  .activities-card:hover,
-  .activities-scroll-list .asset-item-card:hover {
+  .activities-card:hover {
     transform: translateY(-1px);
     box-shadow: 0 3px 10px rgba(16, 29, 48, 0.14);
   }
@@ -2923,7 +2922,6 @@
 .game-entry:active,
 .card-header:active,
 .activities-card:active,
-.activities-scroll-list .asset-item-card:active,
 .header-icon-btn:active,
 .popup-chat-event-btn:active,
 .chat-header-members:active,

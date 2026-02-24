@@ -417,7 +417,7 @@
               <div class="activities-group-marker" *ngIf="groupIndex > 0" [attr.data-group-label]="group.label">{{ group.label }}</div>
 
               <ng-container *ngFor="let row of group.rows">
-                <article class="experience-item-card asset-item-card activities-row-item" [attr.data-group-label]="group.label" *ngIf="isEventStyleActivity(row); else nonEventActivityRow" (pointerup)="onActivityRowPointerUp(row, $event)" (click)="onActivityRowClick(row, $event)">
+                <article class="experience-item-card asset-item-card activities-row-item" [attr.data-group-label]="group.label" *ngIf="isEventStyleActivity(row); else nonEventActivityRow">
                   <div class="asset-card-image" [style.backgroundImage]="'url(' + activityImageUrl(row) + ')'">
                     <a
                       class="asset-source-icon activities-source-avatar"
@@ -449,26 +449,22 @@
                       <h4>{{ row.title }}</h4>
                       <p>{{ activityMetaLine(row) }}</p>
                     </div>
-                    <div class="experience-item-actions" *ngIf="canEditActivityRow(row)">
+                    <div class="experience-item-actions" *ngIf="canManageActivityRow(row)">
                       <button
                         type="button"
                         class="experience-action-btn experience-action-edit"
-                        (pointerdown)="$event.stopPropagation()"
-                        (pointerup)="$event.stopPropagation()"
-                        (click)="editActivityEvent(row, $event)"
-                        [attr.aria-label]="row.type === 'invitations' ? 'View invitation' : 'Edit event'"
+                        (click)="$event.stopPropagation(); openActivityPrimaryAction(row)"
+                        [attr.aria-label]="activityPrimaryActionLabel(row)"
                       >
-                        <mat-icon>{{ row.type === 'invitations' ? 'visibility' : 'edit' }}</mat-icon>
+                        <mat-icon>{{ activityPrimaryActionIcon(row) }}</mat-icon>
                       </button>
                       <button
                         type="button"
                         class="experience-action-btn experience-action-delete"
-                        (pointerdown)="$event.stopPropagation()"
-                        (pointerup)="$event.stopPropagation()"
-                        (click)="deleteActivityEvent(row, $event)"
-                        [attr.aria-label]="row.type === 'invitations' ? 'Delete invitation' : 'Delete event'"
+                        (click)="$event.stopPropagation(); triggerActivitySecondaryAction(row)"
+                        [attr.aria-label]="activitySecondaryActionLabel(row)"
                       >
-                        <mat-icon>delete</mat-icon>
+                        <mat-icon>{{ activitySecondaryActionIcon(row) }}</mat-icon>
                       </button>
                     </div>
                   </div>
@@ -669,11 +665,11 @@
         <section class="experience-delete-confirm" *ngIf="pendingActivityDeleteRow">
           <div class="experience-delete-confirm-backdrop" (click)="cancelActivityDelete()"></div>
           <div class="experience-delete-confirm-panel">
-            <h4>Delete activity</h4>
+            <h4>{{ pendingActivityConfirmTitle() }}</h4>
             <p>{{ pendingActivityDeleteLabel() }}</p>
             <div class="popup-actions">
               <button type="button" class="link-btn neutral-btn" (click)="cancelActivityDelete()">Cancel</button>
-              <button type="button" class="link-btn experience-delete-btn" (click)="confirmActivityDelete()">Delete</button>
+              <button type="button" class="link-btn experience-delete-btn" (click)="confirmActivityDelete()">{{ pendingActivityConfirmActionLabel() }}</button>
             </div>
           </div>
         </section>
