@@ -58,6 +58,7 @@ type PopupType =
   | 'imageUpload'
   | 'supplyDetail'
   | 'assetMembers'
+  | 'activityMembers'
   | 'valuesSelector'
   | 'interestSelector'
   | 'experienceSelector'
@@ -589,6 +590,8 @@ export class App {
   protected activitiesStickyValue = '';
   protected pendingActivityDeleteRow: ActivityListRow | null = null;
   protected pendingActivityAction: 'delete' | 'exit' = 'delete';
+  protected selectedActivityMembers: DemoUser[] = [];
+  protected selectedActivityMembersTitle = '';
   protected readonly activityRatingScale = Array.from({ length: 10 }, (_, index) => index + 1);
   private readonly weekCalendarStartHour = 6;
   private readonly weekCalendarEndHour = 23;
@@ -1110,6 +1113,10 @@ export class App {
       this.pendingAssetMemberAction = null;
       this.selectedAssetCardId = null;
     }
+    if (this.stackedPopup === 'activityMembers') {
+      this.selectedActivityMembers = [];
+      this.selectedActivityMembersTitle = '';
+    }
     this.stackedPopup = null;
     if (this.activePopup === 'chat') {
       this.scrollChatToBottom();
@@ -1152,6 +1159,8 @@ export class App {
         return this.selectedChat?.title ?? 'Chat';
       case 'chatMembers':
         return 'Chat Members';
+      case 'activityMembers':
+        return 'Members';
       case 'impressionsHost':
         return this.activeHostTier;
       case 'impressionsMember':
@@ -3748,8 +3757,15 @@ export class App {
     this.pendingActivityDeleteRow = row;
   }
 
-  private isExitActivityRow(row: ActivityListRow): boolean {
+  protected isExitActivityRow(row: ActivityListRow): boolean {
     return (row.type === 'events' || row.type === 'hosting') && row.isAdmin !== true;
+  }
+
+  protected openActivityMembers(row: ActivityListRow, event?: Event): void {
+    event?.stopPropagation();
+    this.selectedActivityMembers = this.getActivityMembersByRow(row);
+    this.selectedActivityMembersTitle = row.title;
+    this.stackedPopup = 'activityMembers';
   }
 
   protected pendingActivityConfirmTitle(): string {
@@ -4893,6 +4909,27 @@ export class App {
     }
     while (picked.length < memberCount) {
       picked.push(others[picked.length % others.length]);
+    }
+    return picked;
+  }
+
+  private getActivityMembersByRow(row: ActivityListRow): DemoUser[] {
+    const others = this.users.filter(user => user.id !== this.activeUser.id);
+    if (others.length === 0) {
+      return [this.activeUser];
+    }
+    const seed = this.hashText(`${row.type}:${row.id}`);
+    const memberCount = row.type === 'invitations' ? 3 : 5;
+    const picked: DemoUser[] = [this.activeUser];
+    const offsets = [0, 3, 7, 11, 15, 19, 23];
+    for (const offset of offsets) {
+      const candidate = others[(seed + offset) % others.length];
+      if (!picked.some(item => item.id === candidate.id)) {
+        picked.push(candidate);
+      }
+      if (picked.length >= memberCount) {
+        break;
+      }
     }
     return picked;
   }

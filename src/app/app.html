@@ -434,8 +434,8 @@
                     <button
                       type="button"
                       class="asset-occupancy-badge"
-                      (click)="openActivityFromInlineControl(row, $event)"
-                      aria-label="Open item details"
+                      (click)="openActivityMembers(row, $event)"
+                      aria-label="Open members"
                     >
                       <span>{{ activityCapacityLabel(row) }}</span>
                       <span class="card-badge asset-request-badge" *ngIf="row.type !== 'invitations' && row.unread > 0">{{ row.unread }}</span>
@@ -461,6 +461,7 @@
                       <button
                         type="button"
                         class="experience-action-btn experience-action-delete"
+                        [class.experience-action-exit]="isExitActivityRow(row)"
                         (click)="$event.stopPropagation(); triggerActivitySecondaryAction(row)"
                         [attr.aria-label]="activitySecondaryActionLabel(row)"
                       >
@@ -901,17 +902,17 @@
               <a class="asset-source-icon" [href]="card.sourceLink" target="_blank" rel="noopener" (click)="$event.stopPropagation()" aria-label="Open source link">
                 <mat-icon>link</mat-icon>
               </a>
-              <button
-                type="button"
-                class="asset-occupancy-badge"
-                *ngIf="canManageAssetMembers(card)"
-                (click)="openAssetMembers(card, $event)"
-                aria-label="Open member requests"
-              >
-                <span>{{ assetOccupancyLabel(card) }}</span>
-                <span class="card-badge asset-request-badge" *ngIf="assetPendingCount(card) > 0">{{ assetPendingCount(card) }}</span>
-              </button>
-            </div>
+                <button
+                  type="button"
+                  class="asset-occupancy-badge"
+                  *ngIf="canManageAssetMembers(card)"
+                  (click)="openAssetMembers(card, $event)"
+                  aria-label="Open member requests"
+                >
+                  <span>{{ assetOccupancyLabel(card) }}</span>
+                  <span class="card-badge asset-request-badge" *ngIf="assetPendingCount(card) > 0">{{ assetPendingCount(card) }}</span>
+                </button>
+              </div>
             <div class="experience-item-head">
               <span class="experience-item-icon">
                 <mat-icon>{{ assetTypeIcon(card.type) }}</mat-icon>
@@ -1553,7 +1554,7 @@
   <div class="app-popup-backdrop" (click)="closeStackedPopup()"></div>
   <div
     class="app-popup-panel"
-    [class.popup-panel-members]="stackedPopup === 'chatMembers'"
+    [class.popup-panel-members]="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers'"
     [class.popup-panel-profile-editor]="stackedPopup === 'experienceSelector'"
     [class.popup-panel-asset-members]="stackedPopup === 'assetMembers'"
     (click)="$event.stopPropagation()"
@@ -1619,10 +1620,10 @@
           </button>
         </div>
         <ng-template #stackedHeaderDefaultTitle>
-        <div class="popup-title popup-title-members" *ngIf="stackedPopup === 'chatMembers'; else defaultStackedTitle">
+        <div class="popup-title popup-title-members" *ngIf="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers'; else defaultStackedTitle">
           <div class="popup-chat-title-block">
-            <h2>Chat Members</h2>
-            <p>{{ selectedChatMembersItem?.title || 'Room' }}</p>
+            <h2>{{ stackedPopup === 'activityMembers' ? 'Members' : 'Chat Members' }}</h2>
+            <p>{{ stackedPopup === 'activityMembers' ? (selectedActivityMembersTitle || 'Event') : (selectedChatMembersItem?.title || 'Room') }}</p>
           </div>
         </div>
         <ng-template #defaultStackedTitle>
@@ -1631,7 +1632,9 @@
           </div>
         </ng-template>
         </ng-template>
-        <span class="header-members-count" *ngIf="stackedPopup === 'chatMembers'">{{ selectedChatMembers.length }} members</span>
+        <span class="header-members-count" *ngIf="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers'">
+          {{ stackedPopup === 'activityMembers' ? selectedActivityMembers.length : selectedChatMembers.length }} members
+        </span>
         <button
           type="button"
           class="popup-chat-event-btn"
@@ -1659,7 +1662,7 @@
     <div
       class="popup-body"
       [class.popup-body-chat]="stackedPopup === 'chat'"
-      [class.popup-body-members]="stackedPopup === 'chatMembers' || stackedPopup === 'assetMembers'"
+      [class.popup-body-members]="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers' || stackedPopup === 'assetMembers'"
       [class.popup-body-experience]="stackedPopup === 'experienceSelector'"
       [class.popup-body-impressions]="stackedPopup === 'impressionsHost'"
     >
@@ -1694,6 +1697,18 @@
       <div *ngIf="stackedPopup === 'chatMembers'">
         <div class="chat-members-popup-list">
           <div class="chat-members-popup-row" *ngFor="let member of selectedChatMembers">
+            <span class="chat-members-popup-avatar" [class]="'user-color-' + member.gender">{{ member.initials }}</span>
+            <div class="chat-members-popup-meta">
+              <p>{{ member.name }}</p>
+              <p>{{ member.city }} · {{ member.statusText }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="stackedPopup === 'activityMembers'">
+        <div class="chat-members-popup-list">
+          <div class="chat-members-popup-row" *ngFor="let member of selectedActivityMembers">
             <span class="chat-members-popup-avatar" [class]="'user-color-' + member.gender">{{ member.initials }}</span>
             <div class="chat-members-popup-meta">
               <p>{{ member.name }}</p>
