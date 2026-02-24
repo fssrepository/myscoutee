@@ -189,7 +189,7 @@ event has not enough members, event card should be red etc.
 
 you can join to an event individually also - should be accepted by the admin (it's like invitation, just the other way around)
 
-past event filter where you can see the vibes and reting to the event, and whether it has been recommended (host profile page, from menu bar "own events"
+past event filter where you can see the vibes and rating to the event, and whether it has been recommended (host profile page, from menu bar "own events"
 + explore events - all host can appear with the events, but you can choose past events filter)
 
 maybe the only external parameter is the host id itself, and based on that same page appears, little statistic at the top

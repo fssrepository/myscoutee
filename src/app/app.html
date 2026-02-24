@@ -107,8 +107,8 @@
           <button
             class="menu-shortcut-btn menu-shortcut-rates"
             type="button"
-            (click)="goToGame()"
-            aria-label="Open game"
+            (click)="openRatesShortcut()"
+            aria-label="Open rates"
             title="Rates"
           >
             <mat-icon>star</mat-icon>
@@ -240,6 +240,7 @@
           <ng-template #plainPopupTitle>
             <div class="popup-title">
               <h2>{{ getPopupTitle() }}</h2>
+              <p class="popup-subtitle-activities" *ngIf="activePopup === 'activities'">{{ activitiesHeaderSelectionLine() }}</p>
             </div>
           </ng-template>
         </ng-template>
@@ -254,6 +255,18 @@
       >
         <mat-icon>edit_calendar</mat-icon>
       </button>
+      <div class="activities-view-picker" *ngIf="activePopup === 'activities'">
+        <button type="button" class="popup-view-fab" (click)="toggleActivitiesViewPicker($event)" [attr.aria-label]="'Open view selector: ' + activityViewLabel()">
+          <mat-icon>view_agenda</mat-icon>
+          <span>{{ activityViewLabel() }}</span>
+        </button>
+        <div class="activities-view-picker-panel" *ngIf="showActivitiesViewPicker">
+          <button type="button" class="activities-view-option" *ngFor="let option of activitiesViewOptions" (click)="setActivitiesView(option.key, $event)">
+            <mat-icon>{{ option.icon }}</mat-icon>
+            <span>{{ option.label }}</span>
+          </button>
+        </div>
+      </div>
       <button mat-icon-button class="popup-close" (click)="closePopup()" aria-label="Close">
         <mat-icon>close</mat-icon>
       </button>
@@ -266,6 +279,157 @@
       [class.popup-body-impressions]="activePopup === 'impressionsHost'"
       [class.popup-body-image-editor]="activePopup === 'imageEditor'"
     >
+      <div *ngIf="activePopup === 'activities'" class="activities-popup">
+        <div class="experience-toolbar assets-toolbar">
+          <div class="profile-status-select-wrap selector-like experience-filter-select" [ngClass]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)">
+            <mat-select
+              [(ngModel)]="activitiesPrimaryFilter"
+              (ngModelChange)="selectActivitiesPrimaryFilter($event)"
+              disableOptionCentering
+              panelClass="selector-options-panel profile-bottom-sheet-panel"
+            >
+              <mat-select-trigger>
+                <span class="status-option-content">
+                  <mat-icon [class]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)">{{ activitiesPrimaryFilterIcon() }}</mat-icon>
+                  <span>{{ activitiesPrimaryFilterLabel() }}</span>
+                </span>
+              </mat-select-trigger>
+              <mat-option *ngFor="let option of activitiesPrimaryFilters" [value]="option.key" class="status-option" [ngClass]="activitiesPrimaryFilterClass(option.key)">
+                <span class="status-option-content">
+                  <mat-icon [class]="activitiesPrimaryFilterClass(option.key)">{{ option.icon }}</mat-icon>
+                  <span>{{ option.label }}</span>
+                </span>
+              </mat-option>
+            </mat-select>
+          </div>
+
+          <div class="profile-status-select-wrap selector-like experience-filter-select" [ngClass]="activitiesSecondaryFilterClass(activitiesSecondaryFilter)">
+            <mat-select
+              [(ngModel)]="activitiesSecondaryFilter"
+              (ngModelChange)="selectActivitiesSecondaryFilter($event)"
+              disableOptionCentering
+              panelClass="selector-options-panel profile-bottom-sheet-panel"
+            >
+              <mat-select-trigger>
+                <span class="status-option-content">
+                  <mat-icon [class]="activitiesSecondaryFilterClass(activitiesSecondaryFilter)">tune</mat-icon>
+                  <span>{{ activitiesSecondaryFilterLabel() }}</span>
+                </span>
+              </mat-select-trigger>
+              <mat-option *ngFor="let option of activitiesSecondaryFilters" [value]="option.key" class="status-option" [ngClass]="activitiesSecondaryFilterClass(option.key)">
+                <span class="status-option-content">
+                  <mat-icon [class]="activitiesSecondaryFilterClass(option.key)">tune</mat-icon>
+                  <span>{{ option.label }}</span>
+                </span>
+              </mat-option>
+            </mat-select>
+          </div>
+
+          <div class="profile-status-select-wrap selector-like experience-filter-select" [ngClass]="activitiesRateFilterClass(activitiesRateFilter)" *ngIf="isRateFilterVisible()">
+            <mat-select
+              [(ngModel)]="activitiesRateFilter"
+              (ngModelChange)="selectActivitiesRateFilter($event)"
+              disableOptionCentering
+              panelClass="selector-options-panel profile-bottom-sheet-panel"
+            >
+              <mat-select-trigger>
+                <span class="status-option-content">
+                  <mat-icon [class]="activitiesRateFilterClass(activitiesRateFilter)">star</mat-icon>
+                  <span>{{ activitiesRateFilterLabel() }}</span>
+                </span>
+              </mat-select-trigger>
+              <mat-option *ngFor="let option of rateFilters" [value]="option.key" class="status-option" [ngClass]="activitiesRateFilterClass(option.key)">
+                <span class="status-option-content">
+                  <mat-icon [class]="activitiesRateFilterClass(option.key)">star</mat-icon>
+                  <span>{{ option.label }}</span>
+                </span>
+              </mat-option>
+            </mat-select>
+          </div>
+        </div>
+
+        <div class="activities-sticky-header">{{ activitiesStickyHeader }}</div>
+
+        <div class="experience-card-list assets-card-list activities-scroll-list" #activitiesScroll (scroll)="onActivitiesScroll($event)">
+          <article class="experience-item-card asset-item-card" *ngFor="let row of eventStyleActivityRows" (click)="onActivityRowClick(row, $event)">
+            <div class="asset-card-image" [style.backgroundImage]="'url(' + activityImageUrl(row) + ')'">
+              <a class="asset-source-icon" [href]="activitySourceLink(row)" target="_blank" rel="noopener" (click)="$event.stopPropagation()" aria-label="Open source link">
+                <mat-icon>link</mat-icon>
+              </a>
+              <button
+                type="button"
+                class="asset-occupancy-badge"
+                (click)="openActivityFromInlineControl(row, $event)"
+                aria-label="Open item details"
+              >
+                <span>{{ activityCapacityLabel(row) }}</span>
+                <span class="card-badge asset-request-badge" *ngIf="row.unread > 0">{{ row.unread }}</span>
+              </button>
+            </div>
+            <div class="experience-item-head">
+              <span class="experience-item-icon">
+                <mat-icon>{{ activityTypeIcon(row) }}</mat-icon>
+              </span>
+              <div class="experience-item-meta">
+                <h4>{{ row.title }}</h4>
+                <p>{{ activityMetaLine(row) }}</p>
+              </div>
+              <div class="experience-item-actions" *ngIf="canEditActivityRow(row)">
+                <button type="button" class="experience-action-btn experience-action-edit" (click)="editActivityEvent(row, $event)" aria-label="Edit event">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button type="button" class="experience-action-btn experience-action-delete" (click)="deleteActivityEvent(row, $event)" aria-label="Delete event">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </div>
+            <p class="experience-item-description">{{ row.subtitle }}</p>
+          </article>
+
+          <button
+            type="button"
+            class="activities-card activities-card-btn"
+            [class.activities-card-chat]="isActivityChatRow(row)"
+            [class.activities-card-rate]="isRateStyleActivity(row)"
+            [class.activities-card-rates]="row.type === 'rates'"
+            *ngFor="let row of nonEventStyleActivityRows"
+            (click)="onActivityRowClick(row, $event)"
+          >
+            <span class="activities-card-avatar" [class]="activityRowAvatarClass(row)">
+              {{ activityRowAvatarInitials(row) }}
+            </span>
+
+            <div class="activities-card-main" *ngIf="isActivityChatRow(row)">
+              <p class="activities-card-title">{{ row.title }}</p>
+              <p class="activities-card-subtitle">{{ row.subtitle }}</p>
+              <p class="activities-card-detail">{{ row.detail }}</p>
+            </div>
+            <span class="activities-chat-members-badge" *ngIf="isActivityChatRow(row)">
+              <span>{{ activityChatMemberCount(row) }} members</span>
+              <span class="card-badge asset-request-badge activities-chat-unread-badge" *ngIf="row.unread > 0">{{ row.unread }}</span>
+            </span>
+
+            <div class="activities-rate-card-body" *ngIf="isRateStyleActivity(row)">
+              <div class="activities-event-card-head">
+                <span class="activities-event-chip">{{ activityTypeLabel(row) }}</span>
+              </div>
+              <p class="activities-event-title">{{ row.title }}</p>
+              <p class="activities-event-subtitle">{{ row.subtitle }}</p>
+              <p class="activities-card-detail">{{ row.detail }}</p>
+              <div class="activities-event-meta">
+                <span>{{ activityDateLabel(row) }}</span>
+                <span>{{ row.distanceKm }} km</span>
+              </div>
+            </div>
+          </button>
+
+          <div class="editor-list-card" *ngIf="filteredActivityRows.length === 0">
+            <h4>No items</h4>
+            <p>{{ activitiesEmptyLabel }}</p>
+          </div>
+        </div>
+      </div>
+
       <div *ngIf="activePopup === 'chat' && selectedChat" class="chat-popup-wrap">
         <div class="chat-popup-box">
           <div class="chat-thread">
@@ -1189,7 +1353,17 @@
       </div>
     </div>
     <ng-template #defaultStackedHeader>
-      <div class="popup-header">
+      <div class="popup-header" [class.popup-header-chat]="stackedPopup === 'chat' && selectedChat">
+        <div class="popup-title popup-title-chat" *ngIf="stackedPopup === 'chat' && selectedChat; else stackedHeaderDefaultTitle">
+          <div class="popup-chat-title-block">
+            <h2>{{ selectedChat.title }}</h2>
+          </div>
+          <button class="chat-members-stack chat-members-stack-large chat-header-members" type="button" (click)="openChatMembers(selectedChat, $event, true)">
+            <span class="chat-stack-avatar" *ngFor="let member of getChatVisibleMembers(selectedChat); let i = index" [class]="'user-color-' + member.gender" [style.zIndex]="30 - i">{{ member.initials }}</span>
+            <span class="chat-stack-more" *ngIf="getChatHiddenMemberCount(selectedChat) > 0">+{{ getChatHiddenMemberCount(selectedChat) }}</span>
+          </button>
+        </div>
+        <ng-template #stackedHeaderDefaultTitle>
         <div class="popup-title popup-title-members" *ngIf="stackedPopup === 'chatMembers'; else defaultStackedTitle">
           <div class="popup-chat-title-block">
             <h2>Chat Members</h2>
@@ -1201,14 +1375,52 @@
             <h2>{{ getStackedPopupTitle() }}</h2>
           </div>
         </ng-template>
+        </ng-template>
         <span class="header-members-count" *ngIf="stackedPopup === 'chatMembers'">{{ selectedChatMembers.length }} members</span>
+        <button
+          type="button"
+          class="popup-chat-event-btn"
+          aria-label="Open event editor"
+          *ngIf="stackedPopup === 'chat' && selectedChat"
+          (click)="openEventEditor(true)"
+        >
+          <mat-icon>edit_calendar</mat-icon>
+        </button>
         <button mat-icon-button class="popup-close" (click)="closeStackedPopup()" aria-label="Close">
           <mat-icon>close</mat-icon>
         </button>
       </div>
     </ng-template>
 
-    <div class="popup-body" [class.popup-body-members]="stackedPopup === 'chatMembers' || stackedPopup === 'assetMembers'" [class.popup-body-experience]="stackedPopup === 'experienceSelector'">
+    <div class="popup-body" [class.popup-body-chat]="stackedPopup === 'chat'" [class.popup-body-members]="stackedPopup === 'chatMembers' || stackedPopup === 'assetMembers'" [class.popup-body-experience]="stackedPopup === 'experienceSelector'">
+      <div *ngIf="stackedPopup === 'chat' && selectedChat" class="chat-popup-wrap">
+        <div class="chat-popup-box">
+          <div class="chat-thread">
+            <article class="chat-message" *ngFor="let message of chatPopupMessages" [class.mine]="message.mine">
+              <div class="chat-bubble">
+                <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">{{ message.senderAvatar.initials }}</span>
+                <div class="chat-message-content">
+                  <div class="chat-meta-row">
+                    <span class="chat-sender-name">{{ message.sender }}</span>
+                    <span class="chat-time-chip">{{ message.time }}</span>
+                  </div>
+                  <p class="chat-line">{{ message.text }}</p>
+                </div>
+                <div class="chat-readers" *ngIf="message.readBy.length > 0">
+                  <span class="chat-reader" *ngFor="let reader of message.readBy" [class]="'user-color-' + reader.gender">{{ reader.initials }}</span>
+                </div>
+              </div>
+            </article>
+          </div>
+          <div class="chat-compose-box">
+            <textarea rows="3" placeholder="Write message"></textarea>
+            <button type="button" class="chat-send-btn" aria-label="Send message">
+              <mat-icon>send</mat-icon>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div *ngIf="stackedPopup === 'chatMembers'">
         <div class="chat-members-popup-list">
           <div class="chat-members-popup-row" *ngFor="let member of selectedChatMembers">
@@ -1264,6 +1476,43 @@
             </div>
           </div>
         </section>
+      </div>
+
+      <div *ngIf="stackedPopup === 'invitationActions' && selectedInvitation">
+        <div class="editor-list-card">
+          <h4>{{ selectedInvitation.description }}</h4>
+          <p>{{ getInvitationActionSummary(selectedInvitation) }} · {{ selectedInvitation.when }}</p>
+        </div>
+        <div class="popup-actions">
+          <button type="button" class="link-btn">Accept</button>
+          <button type="button" class="link-btn">Delete</button>
+          <button type="button" class="link-btn" (click)="openEventEditor(true)">Open Related Event</button>
+        </div>
+      </div>
+
+      <div *ngIf="stackedPopup === 'menuEvent' && selectedEvent">
+        <div class="editor-list-card">
+          <h4>{{ selectedEvent.title }}</h4>
+          <p>{{ selectedEvent.shortDescription }}</p>
+          <p>{{ selectedEvent.timeframe }}</p>
+        </div>
+        <div class="popup-actions">
+          <button type="button" class="link-btn" (click)="openEventEditor(true)" *ngIf="selectedEvent.isAdmin">Edit Event</button>
+          <button type="button" class="link-btn" *ngIf="!selectedEvent.isAdmin">Exit Event</button>
+          <button type="button" class="link-btn">Open Event Chat</button>
+        </div>
+      </div>
+
+      <div *ngIf="stackedPopup === 'hostingEvent' && selectedHostingEvent">
+        <div class="editor-list-card">
+          <h4>{{ selectedHostingEvent.title }}</h4>
+          <p>{{ selectedHostingEvent.shortDescription }}</p>
+          <p>{{ selectedHostingEvent.timeframe }}</p>
+        </div>
+        <div class="popup-actions">
+          <button type="button" class="link-btn">Accept Join Requests</button>
+          <button type="button" class="link-btn" (click)="openEventEditor(true)">Edit Hosted Event</button>
+        </div>
       </div>
 
       <div *ngIf="stackedPopup === 'eventEditor'">

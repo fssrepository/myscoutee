@@ -16,6 +16,7 @@ import {
   DEMO_EVENTS_BY_USER,
   DEMO_HOSTING_BY_USER,
   DEMO_INVITATIONS_BY_USER,
+  DEMO_RATES_BY_USER,
   DemoUser,
   DEMO_USERS,
   EVENT_EDITOR_SAMPLE,
@@ -28,6 +29,7 @@ import {
   EventMenuItem,
   HostingMenuItem,
   InvitationMenuItem,
+  RateMenuItem,
   ProfileGroup
 } from './shared/demo-data';
 import { environment } from '../environments/environment';
@@ -35,6 +37,7 @@ import { environment } from '../environments/environment';
 type MenuSection = 'game' | 'chat' | 'invitations' | 'events' | 'hosting';
 
 type PopupType =
+  | 'activities'
   | 'chat'
   | 'chatMembers'
   | 'impressionsHost'
@@ -81,6 +84,32 @@ interface ChatPopupMessage {
   time: string;
   mine: boolean;
   readBy: ChatReadAvatar[];
+}
+
+type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
+type ActivitiesSecondaryFilter = 'recent' | 'relevant' | 'past';
+type ActivitiesView = 'month' | 'week' | 'day' | 'distance';
+type RateFilterKey =
+  | 'individual-given'
+  | 'individual-received'
+  | 'individual-mutual'
+  | 'individual-met'
+  | 'pair-given'
+  | 'pair-received'
+  | 'pair-met';
+
+interface ActivityListRow {
+  id: string;
+  type: ActivitiesPrimaryFilter;
+  title: string;
+  subtitle: string;
+  detail: string;
+  dateIso: string;
+  distanceKm: number;
+  unread: number;
+  metricScore: number;
+  isAdmin?: boolean;
+  source: ChatMenuItem | InvitationMenuItem | EventMenuItem | HostingMenuItem | RateMenuItem;
 }
 
 type SubEventCard = (typeof EVENT_EDITOR_SAMPLE.subEvents)[number];
@@ -492,6 +521,120 @@ export class App {
   protected activeUserId = this.getInitialUserId();
 
   protected activeMenuSection: MenuSection = 'chat';
+  protected activitiesPrimaryFilter: ActivitiesPrimaryFilter = 'chats';
+  protected activitiesSecondaryFilter: ActivitiesSecondaryFilter = 'recent';
+  protected activitiesRateFilter: RateFilterKey = 'individual-given';
+  protected activitiesView: ActivitiesView = 'week';
+  protected showActivitiesViewPicker = false;
+  protected activitiesStickyValue = '';
+  protected readonly activitiesPrimaryFilters: Array<{ key: ActivitiesPrimaryFilter; label: string; icon: string }> = [
+    { key: 'chats', label: 'Chats', icon: 'chat' },
+    { key: 'invitations', label: 'Invitations', icon: 'mail' },
+    { key: 'events', label: 'Events', icon: 'event' },
+    { key: 'hosting', label: 'Hosting', icon: 'stadium' },
+    { key: 'rates', label: 'Rates', icon: 'star' }
+  ];
+  protected readonly activitiesSecondaryFilters: Array<{ key: ActivitiesSecondaryFilter; label: string }> = [
+    { key: 'recent', label: 'Recent' },
+    { key: 'relevant', label: 'Relevant' },
+    { key: 'past', label: 'Past' }
+  ];
+  protected readonly rateFilters: Array<{ key: RateFilterKey; label: string }> = [
+    { key: 'individual-given', label: 'Egyeni: Adott' },
+    { key: 'individual-received', label: 'Egyeni: Kapott' },
+    { key: 'individual-mutual', label: 'Egyeni: Kolcsonos' },
+    { key: 'individual-met', label: 'Egyeni: Talalkozott' },
+    { key: 'pair-given', label: 'Par: Adott' },
+    { key: 'pair-received', label: 'Par: Kapott' },
+    { key: 'pair-met', label: 'Par: Talalkozott' }
+  ];
+  protected readonly activitiesViewOptions: Array<{ key: ActivitiesView; label: string; icon: string }> = [
+    { key: 'month', label: 'Month', icon: 'calendar_month' },
+    { key: 'week', label: 'Week', icon: 'date_range' },
+    { key: 'day', label: 'Day', icon: 'today' },
+    { key: 'distance', label: 'Distance', icon: 'social_distance' }
+  ];
+  protected readonly eventDatesById: Record<string, string> = {
+    e1: '2026-02-27T09:00:00',
+    e2: '2026-03-08T10:00:00',
+    e3: '2026-03-12T19:30:00',
+    e4: '2026-02-28T08:00:00',
+    e5: '2026-03-03T18:00:00'
+  };
+  protected readonly hostingDatesById: Record<string, string> = {
+    h1: '2026-02-27T18:00:00',
+    h2: '2026-04-04T16:00:00',
+    h3: '2026-03-01T09:30:00',
+    h4: '2026-03-05T18:00:00'
+  };
+  protected readonly invitationDatesById: Record<string, string> = {
+    i1: '2026-02-21T20:00:00',
+    i2: '2026-02-22T15:00:00',
+    i3: '2026-02-21T09:15:00',
+    i4: '2026-02-22T18:30:00',
+    i5: '2026-02-23T18:00:00'
+  };
+  protected readonly chatDatesById: Record<string, string> = {
+    c1: '2026-02-21T09:11:00',
+    c2: '2026-02-22T18:40:00',
+    c3: '2026-02-23T10:09:00',
+    c4: '2026-02-22T12:30:00',
+    c5: '2026-02-23T17:40:00'
+  };
+  protected readonly chatDistanceById: Record<string, number> = { c1: 5, c2: 10, c3: 15, c4: 8, c5: 12 };
+  protected readonly invitationDistanceById: Record<string, number> = { i1: 10, i2: 15, i3: 5, i4: 12, i5: 18 };
+  protected readonly eventDistanceById: Record<string, number> = { e1: 20, e2: 10, e3: 15, e4: 5, e5: 25 };
+  protected readonly hostingDistanceById: Record<string, number> = { h1: 5, h2: 20, h3: 10, h4: 15 };
+  protected readonly activityImageById: Record<string, string> = {
+    e1: 'https://picsum.photos/seed/event-e1/1200/700',
+    e2: 'https://picsum.photos/seed/event-e2/1200/700',
+    e3: 'https://picsum.photos/seed/event-e3/1200/700',
+    e4: 'https://picsum.photos/seed/event-e4/1200/700',
+    e5: 'https://picsum.photos/seed/event-e5/1200/700',
+    h1: 'https://picsum.photos/seed/event-h1/1200/700',
+    h2: 'https://picsum.photos/seed/event-h2/1200/700',
+    h3: 'https://picsum.photos/seed/event-h3/1200/700',
+    h4: 'https://picsum.photos/seed/event-h4/1200/700',
+    i1: 'https://picsum.photos/seed/event-i1/1200/700',
+    i2: 'https://picsum.photos/seed/event-i2/1200/700',
+    i3: 'https://picsum.photos/seed/event-i3/1200/700',
+    i4: 'https://picsum.photos/seed/event-i4/1200/700',
+    i5: 'https://picsum.photos/seed/event-i5/1200/700'
+  };
+  protected readonly activitySourceLinkById: Record<string, string> = {
+    e1: 'https://example.com/events/e1',
+    e2: 'https://example.com/events/e2',
+    e3: 'https://example.com/events/e3',
+    e4: 'https://example.com/events/e4',
+    e5: 'https://example.com/events/e5',
+    h1: 'https://example.com/hosting/h1',
+    h2: 'https://example.com/hosting/h2',
+    h3: 'https://example.com/hosting/h3',
+    h4: 'https://example.com/hosting/h4',
+    i1: 'https://example.com/invitations/i1',
+    i2: 'https://example.com/invitations/i2',
+    i3: 'https://example.com/invitations/i3',
+    i4: 'https://example.com/invitations/i4',
+    i5: 'https://example.com/invitations/i5'
+  };
+  protected readonly activityCapacityById: Record<string, string> = {
+    e1: '24 / 28',
+    e2: '13 / 16',
+    e3: '18 / 20',
+    e4: '10 / 12',
+    e5: '14 / 18',
+    h1: '20 / 24',
+    h2: '16 / 22',
+    h3: '9 / 12',
+    h4: '11 / 15',
+    i1: '2 / 4',
+    i2: '1 / 2',
+    i3: '3 / 4',
+    i4: '1 / 3',
+    i5: '2 / 3'
+  };
+  protected readonly eventItemsByUser: Record<string, EventMenuItem[]> = this.cloneMapItems(DEMO_EVENTS_BY_USER);
+  protected readonly hostingItemsByUser: Record<string, HostingMenuItem[]> = this.cloneMapItems(DEMO_HOSTING_BY_USER);
 
   protected selectedChat: ChatMenuItem | null = null;
   protected selectedChatMembers: DemoUser[] = [];
@@ -505,6 +648,7 @@ export class App {
   protected pendingSlotUploadIndex: number | null = null;
   @ViewChild('slotImageInput') private slotImageInput?: ElementRef<HTMLInputElement>;
   @ViewChild('assetImageInput') private assetImageInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('activitiesScroll') private activitiesScrollRef?: ElementRef<HTMLDivElement>;
 
   protected eventSupplyTypes: string[] = ['Cars', 'Members', 'Accessories', 'Accommodation'];
   protected newSupplyType = '';
@@ -611,11 +755,15 @@ export class App {
   }
 
   protected get eventItems(): EventMenuItem[] {
-    return DEMO_EVENTS_BY_USER[this.activeUser.id] ?? DEMO_EVENTS_BY_USER['u1'];
+    return this.eventItemsByUser[this.activeUser.id] ?? this.eventItemsByUser['u1'] ?? [];
   }
 
   protected get hostingItems(): HostingMenuItem[] {
-    return DEMO_HOSTING_BY_USER[this.activeUser.id] ?? DEMO_HOSTING_BY_USER['u1'];
+    return this.hostingItemsByUser[this.activeUser.id] ?? this.hostingItemsByUser['u1'] ?? [];
+  }
+
+  protected get rateItems(): RateMenuItem[] {
+    return DEMO_RATES_BY_USER[this.activeUser.id] ?? DEMO_RATES_BY_USER['u1'] ?? [];
   }
 
   protected onUserSelect(): void {
@@ -632,40 +780,38 @@ export class App {
     this.closeUserMenu();
   }
 
+  protected openRatesShortcut(): void {
+    this.openActivitiesPopup('rates', false);
+  }
+
   protected openChatShortcut(): void {
-    const [firstItem] = this.chatItems;
-    if (firstItem) {
-      this.openChatItem(firstItem, false);
-      return;
-    }
-    this.activeMenuSection = 'chat';
+    this.openActivitiesPopup('chats', false);
   }
 
   protected openInvitationShortcut(): void {
-    const [firstItem] = this.invitationItems;
-    if (firstItem) {
-      this.openInvitationItem(firstItem, false);
-      return;
-    }
-    this.activeMenuSection = 'invitations';
+    this.openActivitiesPopup('invitations', false);
   }
 
   protected openEventShortcut(): void {
-    const [firstItem] = this.eventItems;
-    if (firstItem) {
-      this.openEventItem(firstItem, false);
-      return;
-    }
-    this.openEventExplore(false);
+    this.openActivitiesPopup('events', false);
   }
 
   protected openHostingShortcut(): void {
-    const [firstItem] = this.hostingItems;
-    if (firstItem) {
-      this.openHostingItem(firstItem, false);
-      return;
+    this.openActivitiesPopup('hosting', false);
+  }
+
+  protected openActivitiesPopup(primaryFilter: ActivitiesPrimaryFilter, closeMenu = true): void {
+    this.activePopup = 'activities';
+    this.activitiesPrimaryFilter = primaryFilter;
+    this.activitiesSecondaryFilter = 'recent';
+    this.showActivitiesViewPicker = false;
+    this.activitiesView = primaryFilter === 'rates' ? 'distance' : 'week';
+    this.activitiesStickyValue = '';
+    this.resetActivitiesScroll();
+    this.updateActivitiesStickyHeader(0);
+    if (closeMenu) {
+      this.closeUserMenu();
     }
-    this.activeMenuSection = 'hosting';
   }
 
   protected openAssetCarPopup(): void {
@@ -686,9 +832,15 @@ export class App {
     this.activePopup = 'assetsSupplies';
   }
 
-  protected openChatItem(item: ChatMenuItem, closeMenu = true): void {
+  protected openChatItem(item: ChatMenuItem, closeMenu = true, stacked = false): void {
     this.activeMenuSection = 'chat';
     this.selectedChat = item;
+    this.showActivitiesViewPicker = false;
+    if (stacked || this.activePopup === 'activities' || this.stackedPopup !== null) {
+      this.stackedPopup = 'chat';
+      this.scrollChatToBottom();
+      return;
+    }
     this.stackedPopup = null;
     this.activePopup = 'chat';
     this.scrollChatToBottom();
@@ -709,27 +861,42 @@ export class App {
     this.closeUserMenu();
   }
 
-  protected openInvitationItem(item: InvitationMenuItem, closeMenu = true): void {
+  protected openInvitationItem(item: InvitationMenuItem, closeMenu = true, stacked = false): void {
     this.activeMenuSection = 'invitations';
     this.selectedInvitation = item;
+    this.showActivitiesViewPicker = false;
+    if (stacked || this.activePopup === 'activities' || this.stackedPopup !== null) {
+      this.stackedPopup = 'invitationActions';
+      return;
+    }
     this.activePopup = 'invitationActions';
     if (closeMenu) {
       this.closeUserMenu();
     }
   }
 
-  protected openEventItem(item: EventMenuItem, closeMenu = true): void {
+  protected openEventItem(item: EventMenuItem, closeMenu = true, stacked = false): void {
     this.activeMenuSection = 'events';
     this.selectedEvent = item;
+    this.showActivitiesViewPicker = false;
+    if (stacked || this.activePopup === 'activities' || this.stackedPopup !== null) {
+      this.stackedPopup = 'menuEvent';
+      return;
+    }
     this.activePopup = 'menuEvent';
     if (closeMenu) {
       this.closeUserMenu();
     }
   }
 
-  protected openHostingItem(item: HostingMenuItem, closeMenu = true): void {
+  protected openHostingItem(item: HostingMenuItem, closeMenu = true, stacked = false): void {
     this.activeMenuSection = 'hosting';
     this.selectedHostingEvent = item;
+    this.showActivitiesViewPicker = false;
+    if (stacked || this.activePopup === 'activities' || this.stackedPopup !== null) {
+      this.stackedPopup = 'hostingEvent';
+      return;
+    }
     this.activePopup = 'hostingEvent';
     if (closeMenu) {
       this.closeUserMenu();
@@ -786,6 +953,7 @@ export class App {
     this.pendingAssetDeleteCardId = null;
     this.pendingAssetMemberAction = null;
     this.selectedAssetCardId = null;
+    this.showActivitiesViewPicker = false;
   }
 
   protected closeStackedPopup(): void {
@@ -842,6 +1010,8 @@ export class App {
 
   protected getPopupTitle(): string {
     switch (this.activePopup) {
+      case 'activities':
+        return 'Activities';
       case 'chat':
         return this.selectedChat?.title ?? 'Chat';
       case 'chatMembers':
@@ -889,8 +1059,16 @@ export class App {
 
   protected getStackedPopupTitle(): string {
     switch (this.stackedPopup) {
+      case 'chat':
+        return this.selectedChat?.title ?? 'Chat';
       case 'chatMembers':
         return 'Chat Members';
+      case 'invitationActions':
+        return this.selectedInvitation?.description ?? 'Invitation';
+      case 'menuEvent':
+        return this.selectedEvent?.title ?? 'Event';
+      case 'hostingEvent':
+        return this.selectedHostingEvent?.title ?? 'Hosting Event';
       case 'eventEditor':
         return 'Event Editor';
       case 'eventExplore':
@@ -2436,6 +2614,383 @@ export class App {
     return this.getChatMembersById(item.id).length;
   }
 
+  protected get isActivitiesPopup(): boolean {
+    return this.activePopup === 'activities';
+  }
+
+  protected get filteredActivityRows(): ActivityListRow[] {
+    let rows: ActivityListRow[] = [];
+    if (this.activitiesPrimaryFilter === 'chats') {
+      rows = this.chatItems.map(item => {
+        const sender = this.getChatLastSender(item);
+        return {
+          id: item.id,
+          type: 'chats',
+          title: sender.name,
+          subtitle: item.title,
+          detail: item.lastMessage.trim(),
+          dateIso: this.chatDatesById[item.id] ?? '2026-02-21T09:00:00',
+          distanceKm: this.chatDistanceById[item.id] ?? 5,
+          unread: item.unread,
+          metricScore: item.unread * 10 + this.getChatMemberCount(item),
+          source: item
+        };
+      });
+    } else if (this.activitiesPrimaryFilter === 'invitations') {
+      rows = this.invitationItems.map(item => ({
+        id: item.id,
+        type: 'invitations',
+        title: item.description,
+        subtitle: item.inviter,
+        detail: item.when,
+        dateIso: this.invitationDatesById[item.id] ?? '2026-02-21T09:00:00',
+        distanceKm: this.invitationDistanceById[item.id] ?? 5,
+        unread: item.unread,
+        metricScore: item.unread * 10,
+        source: item
+      }));
+    } else if (this.activitiesPrimaryFilter === 'events') {
+      rows = this.eventItems.map(item => ({
+        id: item.id,
+        type: 'events',
+        title: item.title,
+        subtitle: item.shortDescription,
+        detail: item.timeframe,
+        dateIso: this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
+        distanceKm: this.eventDistanceById[item.id] ?? 10,
+        unread: item.activity,
+        metricScore: (item.isAdmin ? 20 : 0) + item.activity,
+        isAdmin: item.isAdmin,
+        source: item
+      }));
+    } else if (this.activitiesPrimaryFilter === 'hosting') {
+      rows = this.hostingItems.map(item => ({
+        id: item.id,
+        type: 'hosting',
+        title: item.title,
+        subtitle: item.shortDescription,
+        detail: item.timeframe,
+        dateIso: this.hostingDatesById[item.id] ?? '2026-03-01T09:00:00',
+        distanceKm: this.hostingDistanceById[item.id] ?? 10,
+        unread: item.activity,
+        metricScore: 20 + item.activity,
+        isAdmin: true,
+        source: item
+      }));
+    } else {
+      rows = this.rateItems
+        .filter(item => this.matchesRateFilter(item, this.activitiesRateFilter))
+        .map(item => {
+          const user = this.users.find(candidate => candidate.id === item.userId) ?? this.activeUser;
+          return {
+            id: item.id,
+            type: 'rates',
+            title: user.name,
+            subtitle: item.eventName,
+            detail:
+              item.direction === 'met'
+                ? 'Met only'
+                : `Given ${item.scoreGiven} · Received ${item.scoreReceived}`,
+            dateIso: item.happenedAt,
+            distanceKm: item.distanceKm,
+            unread: 0,
+            metricScore: item.direction === 'mutual' ? item.scoreGiven + item.scoreReceived : Math.max(item.scoreGiven, item.scoreReceived),
+            source: item
+          };
+        });
+    }
+
+    const sorted = this.sortActivitiesRows(rows);
+    if (this.activitiesView === 'distance') {
+      return [...sorted].sort((a, b) => a.distanceKm - b.distanceKm);
+    }
+    return sorted;
+  }
+
+  protected get eventStyleActivityRows(): ActivityListRow[] {
+    return this.filteredActivityRows.filter(row => this.isEventStyleActivity(row));
+  }
+
+  protected get nonEventStyleActivityRows(): ActivityListRow[] {
+    return this.filteredActivityRows.filter(row => !this.isEventStyleActivity(row));
+  }
+
+  protected get activitiesStickyHeader(): string {
+    if (this.activitiesStickyValue) {
+      return this.activitiesStickyValue;
+    }
+    return this.activitiesView === 'distance' ? '5 km' : 'No items';
+  }
+
+  protected get activitiesEmptyLabel(): string {
+    if (this.activitiesPrimaryFilter === 'rates') {
+      return 'No rate interactions for this filter yet.';
+    }
+    return `No ${this.activitiesPrimaryFilter} items in this filter.`;
+  }
+
+  protected isRateFilterVisible(): boolean {
+    return this.activitiesPrimaryFilter === 'rates';
+  }
+
+  protected isActivityChatRow(row: ActivityListRow): boolean {
+    return row.type === 'chats';
+  }
+
+  protected activityRowAvatarInitials(row: ActivityListRow): string {
+    if (row.type === 'rates') {
+      const rate = row.source as RateMenuItem;
+      return this.users.find(user => user.id === rate.userId)?.initials ?? 'U';
+    }
+    const source = row.source;
+    if ('avatar' in source && source.avatar) {
+      return source.avatar.slice(0, 2).toUpperCase();
+    }
+    return this.activeUser.initials;
+  }
+
+  protected activityRowAvatarClass(row: ActivityListRow): string {
+    if (row.type === 'rates') {
+      const rate = row.source as RateMenuItem;
+      const gender = this.users.find(user => user.id === rate.userId)?.gender ?? 'woman';
+      return `user-color-${gender}`;
+    }
+    if (row.type === 'chats') {
+      const chat = row.source as ChatMenuItem;
+      const gender = this.getChatLastSender(chat).gender;
+      return `user-color-${gender}`;
+    }
+    return 'user-color-man';
+  }
+
+  protected onActivitiesScroll(event: Event): void {
+    const target = event.target as HTMLElement;
+    this.updateActivitiesStickyHeader(target.scrollTop || 0);
+  }
+
+  protected selectActivitiesPrimaryFilter(filter: ActivitiesPrimaryFilter): void {
+    this.activitiesPrimaryFilter = filter;
+    this.showActivitiesViewPicker = false;
+    if (filter === 'rates') {
+      this.activitiesView = 'distance';
+    }
+    this.resetActivitiesScroll();
+    this.updateActivitiesStickyHeader(0);
+  }
+
+  protected selectActivitiesSecondaryFilter(filter: ActivitiesSecondaryFilter): void {
+    this.activitiesSecondaryFilter = filter;
+    this.resetActivitiesScroll();
+    this.updateActivitiesStickyHeader(0);
+  }
+
+  protected selectActivitiesRateFilter(filter: RateFilterKey): void {
+    this.activitiesRateFilter = filter;
+    this.resetActivitiesScroll();
+    this.updateActivitiesStickyHeader(0);
+  }
+
+  protected toggleActivitiesViewPicker(event: Event): void {
+    event.stopPropagation();
+    this.showActivitiesViewPicker = !this.showActivitiesViewPicker;
+  }
+
+  protected setActivitiesView(view: ActivitiesView, event?: Event): void {
+    event?.stopPropagation();
+    this.activitiesView = view;
+    this.showActivitiesViewPicker = false;
+    this.resetActivitiesScroll();
+    this.updateActivitiesStickyHeader(0);
+  }
+
+  protected activityViewLabel(): string {
+    return this.activitiesViewOptions.find(option => option.key === this.activitiesView)?.label ?? 'View';
+  }
+
+  protected activitiesPrimaryFilterLabel(): string {
+    return this.activitiesPrimaryFilters.find(option => option.key === this.activitiesPrimaryFilter)?.label ?? 'Chats';
+  }
+
+  protected activitiesPrimaryFilterIcon(): string {
+    return this.activitiesPrimaryFilters.find(option => option.key === this.activitiesPrimaryFilter)?.icon ?? 'chat';
+  }
+
+  protected activitiesSecondaryFilterLabel(): string {
+    return this.activitiesSecondaryFilters.find(option => option.key === this.activitiesSecondaryFilter)?.label ?? 'Recent';
+  }
+
+  protected activitiesRateFilterLabel(): string {
+    return this.rateFilters.find(option => option.key === this.activitiesRateFilter)?.label ?? 'Egyeni: Adott';
+  }
+
+  protected activitiesPrimaryFilterClass(filter: ActivitiesPrimaryFilter = this.activitiesPrimaryFilter): string {
+    if (filter === 'chats') {
+      return 'activity-filter-chat';
+    }
+    if (filter === 'invitations') {
+      return 'activity-filter-invitations';
+    }
+    if (filter === 'events') {
+      return 'activity-filter-events';
+    }
+    if (filter === 'hosting') {
+      return 'activity-filter-hosting';
+    }
+    return 'activity-filter-rates';
+  }
+
+  protected activitiesSecondaryFilterClass(filter: ActivitiesSecondaryFilter = this.activitiesSecondaryFilter): string {
+    if (filter === 'recent') {
+      return 'activity-filter-secondary';
+    }
+    if (filter === 'relevant') {
+      return 'activity-filter-secondary';
+    }
+    return 'activity-filter-secondary';
+  }
+
+  protected activitiesRateFilterClass(filter: RateFilterKey = this.activitiesRateFilter): string {
+    return filter.startsWith('individual') ? 'activity-filter-rates' : 'activity-filter-rates';
+  }
+
+  protected activitiesHeaderSelectionLine(): string {
+    const primary = this.activitiesPrimaryFilterLabel();
+    const secondary = this.activitiesSecondaryFilterLabel();
+    if (this.activitiesPrimaryFilter === 'rates') {
+      return `${primary} · ${secondary} · ${this.activitiesRateFilterLabel()}`;
+    }
+    return `${primary} · ${secondary}`;
+  }
+
+  protected onActivityRowClick(row: ActivityListRow, event?: Event): void {
+    event?.stopPropagation();
+    if (row.type === 'chats') {
+      this.openChatItem(row.source as ChatMenuItem, false, true);
+      return;
+    }
+    if (row.type === 'invitations') {
+      this.openInvitationItem(row.source as InvitationMenuItem, false, true);
+      return;
+    }
+    if (row.type === 'events') {
+      this.openEventItem(row.source as EventMenuItem, false, true);
+      return;
+    }
+    if (row.type === 'hosting') {
+      this.openHostingItem(row.source as HostingMenuItem, false, true);
+      return;
+    }
+    this.openMemberImpressions();
+  }
+
+  protected activityChatMemberCount(row: ActivityListRow): number {
+    if (row.type !== 'chats') {
+      return 0;
+    }
+    return this.getChatMemberCount(row.source as ChatMenuItem);
+  }
+
+  protected isEventStyleActivity(row: ActivityListRow): boolean {
+    return row.type === 'events' || row.type === 'hosting' || row.type === 'invitations';
+  }
+
+  protected isRateStyleActivity(row: ActivityListRow): boolean {
+    return row.type === 'rates';
+  }
+
+  protected activityTypeLabel(row: ActivityListRow): string {
+    if (row.type === 'events') {
+      return 'Event';
+    }
+    if (row.type === 'hosting') {
+      return 'Hosting';
+    }
+    if (row.type === 'invitations') {
+      return 'Invitation';
+    }
+    if (row.type === 'rates') {
+      return 'Rate';
+    }
+    return 'Chat';
+  }
+
+  protected activityDateLabel(row: ActivityListRow): string {
+    const parsed = new Date(row.dateIso);
+    if (Number.isNaN(parsed.getTime())) {
+      return row.detail;
+    }
+    return parsed.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  }
+
+  protected activityImageUrl(row: ActivityListRow): string {
+    return this.activityImageById[row.id] ?? 'https://picsum.photos/seed/event-default/1200/700';
+  }
+
+  protected activitySourceLink(row: ActivityListRow): string {
+    return this.activitySourceLinkById[row.id] ?? 'https://example.com/events';
+  }
+
+  protected activityCapacityLabel(row: ActivityListRow): string {
+    if (row.type === 'invitations') {
+      return `${row.unread} pending`;
+    }
+    return this.activityCapacityById[row.id] ?? `${Math.max(1, row.unread)} / ${Math.max(4, row.unread + 6)}`;
+  }
+
+  protected activityTypeIcon(row: ActivityListRow): string {
+    if (row.type === 'events') {
+      return 'event';
+    }
+    if (row.type === 'hosting') {
+      return 'stadium';
+    }
+    if (row.type === 'invitations') {
+      return 'mail';
+    }
+    if (row.type === 'rates') {
+      return 'star';
+    }
+    return 'chat';
+  }
+
+  protected activityMetaLine(row: ActivityListRow): string {
+    return `${this.activityTypeLabel(row)} · ${this.activityDateLabel(row)} · ${row.distanceKm} km`;
+  }
+
+  protected openActivityFromInlineControl(row: ActivityListRow, event: Event): void {
+    event.stopPropagation();
+    this.onActivityRowClick(row);
+  }
+
+  protected canEditActivityRow(row: ActivityListRow): boolean {
+    return row.isAdmin === true && (row.type === 'events' || row.type === 'hosting');
+  }
+
+  protected editActivityEvent(row: ActivityListRow, event: Event): void {
+    event.stopPropagation();
+    if (row.type === 'events' || row.type === 'hosting') {
+      this.openEventEditor();
+    }
+  }
+
+  protected deleteActivityEvent(row: ActivityListRow, event: Event): void {
+    event.stopPropagation();
+    if (row.type === 'events') {
+      const next = this.eventItems.filter(item => item.id !== row.id);
+      this.eventItemsByUser[this.activeUser.id] = next;
+      return;
+    }
+    if (row.type === 'hosting') {
+      const next = this.hostingItems.filter(item => item.id !== row.id);
+      this.hostingItemsByUser[this.activeUser.id] = next;
+    }
+  }
+
   protected get chatPopupMessages(): ChatPopupMessage[] {
     if (!this.selectedChat) {
       return [];
@@ -3020,6 +3575,9 @@ export class App {
     if (this.openPrivacyFab && !target.closest('.profile-details-privacy-fab')) {
       this.openPrivacyFab = null;
     }
+    if (this.showActivitiesViewPicker && !target.closest('.activities-view-picker') && !target.closest('.popup-view-fab')) {
+      this.showActivitiesViewPicker = false;
+    }
   }
 
   private getInitialUserId(): string {
@@ -3502,6 +4060,90 @@ export class App {
       return 0;
     }
     return Math.max(0, total - current);
+  }
+
+  private sortActivitiesRows(rows: ActivityListRow[]): ActivityListRow[] {
+    const sorted = [...rows];
+    if (this.activitiesSecondaryFilter === 'recent') {
+      if (this.activitiesPrimaryFilter === 'events' || this.activitiesPrimaryFilter === 'hosting') {
+        return sorted.sort((a, b) => this.toSortableDate(a.dateIso) - this.toSortableDate(b.dateIso));
+      }
+      return sorted.sort((a, b) => this.toSortableDate(b.dateIso) - this.toSortableDate(a.dateIso));
+    }
+    if (this.activitiesSecondaryFilter === 'past') {
+      return sorted.sort((a, b) => this.toSortableDate(b.dateIso) - this.toSortableDate(a.dateIso));
+    }
+    if (this.activitiesPrimaryFilter === 'rates') {
+      return sorted.sort((a, b) => b.metricScore - a.metricScore || this.toSortableDate(b.dateIso) - this.toSortableDate(a.dateIso));
+    }
+    if (this.activitiesPrimaryFilter === 'events' || this.activitiesPrimaryFilter === 'hosting') {
+      return sorted.sort((a, b) => b.metricScore - a.metricScore || this.toSortableDate(a.dateIso) - this.toSortableDate(b.dateIso));
+    }
+    return sorted.sort((a, b) => b.metricScore - a.metricScore || this.toSortableDate(b.dateIso) - this.toSortableDate(a.dateIso));
+  }
+
+  private matchesRateFilter(item: RateMenuItem, filter: RateFilterKey): boolean {
+    const [modeKey, directionKey] = filter.split('-') as ['individual' | 'pair', 'given' | 'received' | 'mutual' | 'met'];
+    return item.mode === modeKey && item.direction === directionKey;
+  }
+
+  private resetActivitiesScroll(): void {
+    setTimeout(() => {
+      if (this.activePopup !== 'activities') {
+        return;
+      }
+      const scrollElement = this.activitiesScrollRef?.nativeElement;
+      if (scrollElement) {
+        scrollElement.scrollTop = 0;
+      }
+      this.updateActivitiesStickyHeader(0);
+    }, 0);
+  }
+
+  private updateActivitiesStickyHeader(scrollTop: number): void {
+    const rows = this.filteredActivityRows;
+    if (rows.length === 0) {
+      this.activitiesStickyValue = this.activitiesView === 'distance' ? '5 km' : 'No items';
+      return;
+    }
+    if (this.activitiesView === 'distance') {
+      const rowIndex = Math.max(0, Math.min(rows.length - 1, Math.floor(scrollTop / 112)));
+      const rowDistance = rows[rowIndex]?.distanceKm ?? 5;
+      const bucket = Math.max(5, Math.ceil(rowDistance / 5) * 5);
+      this.activitiesStickyValue = `${bucket} km`;
+      return;
+    }
+    const rowIndex = Math.max(0, Math.min(rows.length - 1, Math.floor(scrollTop / 112)));
+    const parsed = new Date(rows[rowIndex].dateIso);
+    if (Number.isNaN(parsed.getTime())) {
+      this.activitiesStickyValue = 'Date unavailable';
+      return;
+    }
+    if (this.activitiesView === 'day') {
+      this.activitiesStickyValue = parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      return;
+    }
+    if (this.activitiesView === 'month') {
+      this.activitiesStickyValue = parsed.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      return;
+    }
+    this.activitiesStickyValue = `Week ${this.isoWeekNumber(parsed)}, ${parsed.getFullYear()}`;
+  }
+
+  private isoWeekNumber(date: Date): number {
+    const copy = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const day = copy.getUTCDay() || 7;
+    copy.setUTCDate(copy.getUTCDate() + 4 - day);
+    const yearStart = new Date(Date.UTC(copy.getUTCFullYear(), 0, 1));
+    return Math.ceil((((copy.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  }
+
+  private cloneMapItems<T>(input: Record<string, T[]>): Record<string, T[]> {
+    const output: Record<string, T[]> = {};
+    for (const [key, value] of Object.entries(input)) {
+      output[key] = value.map(item => ({ ...item }));
+    }
+    return output;
   }
 
   private normalizeText(value: string): string {
