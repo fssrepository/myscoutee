@@ -351,7 +351,7 @@
         <div class="activities-sticky-header">{{ activitiesStickyHeader }}</div>
 
         <div class="experience-card-list assets-card-list activities-scroll-list" #activitiesScroll (scroll)="onActivitiesScroll($event)">
-          <article class="experience-item-card asset-item-card" *ngFor="let row of eventStyleActivityRows" (click)="onActivityRowClick(row, $event)">
+          <article class="experience-item-card asset-item-card" *ngFor="let row of eventStyleActivityRows" (pointerup)="onActivityRowPointerUp(row, $event)" (click)="onActivityRowClick(row, $event)">
             <div class="asset-card-image" [style.backgroundImage]="'url(' + activityImageUrl(row) + ')'">
               <a class="asset-source-icon" [href]="activitySourceLink(row)" target="_blank" rel="noopener" (click)="$event.stopPropagation()" aria-label="Open source link">
                 <mat-icon>link</mat-icon>
@@ -393,6 +393,7 @@
             [class.activities-card-rate]="isRateStyleActivity(row)"
             [class.activities-card-rates]="row.type === 'rates'"
             *ngFor="let row of nonEventStyleActivityRows"
+            (pointerup)="onActivityRowPointerUp(row, $event)"
             (click)="onActivityRowClick(row, $event)"
           >
             <span class="activities-card-avatar" [class]="activityRowAvatarClass(row)">
@@ -507,7 +508,11 @@
         </div>
       </div>
 
-      <div *ngIf="activePopup === 'impressionsHost'">
+      <ng-container *ngIf="activePopup === 'impressionsHost'">
+        <ng-container *ngTemplateOutlet="impressionsHostTemplate"></ng-container>
+      </ng-container>
+
+      <ng-template #impressionsHostTemplate>
         <div class="social-proof-grid">
           <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-host">
             <div class="social-proof-identity-pill social-proof-identity-pill-host">
@@ -597,7 +602,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </ng-template>
 
       <div *ngIf="isAssetPopup" class="experience-popup assets-popup">
         <div class="experience-toolbar assets-toolbar">
@@ -1392,7 +1397,13 @@
       </div>
     </ng-template>
 
-    <div class="popup-body" [class.popup-body-chat]="stackedPopup === 'chat'" [class.popup-body-members]="stackedPopup === 'chatMembers' || stackedPopup === 'assetMembers'" [class.popup-body-experience]="stackedPopup === 'experienceSelector'">
+    <div
+      class="popup-body"
+      [class.popup-body-chat]="stackedPopup === 'chat'"
+      [class.popup-body-members]="stackedPopup === 'chatMembers' || stackedPopup === 'assetMembers'"
+      [class.popup-body-experience]="stackedPopup === 'experienceSelector'"
+      [class.popup-body-impressions]="stackedPopup === 'impressionsHost'"
+    >
       <div *ngIf="stackedPopup === 'chat' && selectedChat" class="chat-popup-wrap">
         <div class="chat-popup-box">
           <div class="chat-thread">
@@ -1428,6 +1439,96 @@
             <div class="chat-members-popup-meta">
               <p>{{ member.name }}</p>
               <p>{{ member.city }} · {{ member.statusText }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="stackedPopup === 'impressionsHost'" class="social-proof-grid">
+        <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-host">
+          <div class="social-proof-identity-pill social-proof-identity-pill-host">
+            <mat-icon [class]="getHostTierColorClass(activeHostTier)">{{ getHostTierIcon(activeHostTier) }}</mat-icon>
+            <span>{{ activeHostTier }}</span>
+          </div>
+          <div class="popup-impressions-badge popup-impressions-badge-host">
+            <span class="popup-impressions-badge-segment popup-impressions-rate-rate">
+              <span class="popup-impressions-badge-label">Rate</span>
+              <span class="popup-impressions-badge-value">{{ hostAverageRating }}</span>
+            </span>
+            <span class="popup-impressions-badge-segment popup-impressions-rate-people">
+              <span class="popup-impressions-badge-label">People / Events</span>
+              <span class="popup-impressions-badge-value">{{ hostPeopleMet + ' / ' + hostTotalEvents }}</span>
+            </span>
+            <span class="popup-impressions-badge-segment popup-impressions-rate-return">
+              <span class="popup-impressions-badge-label">Returnees / NoShow</span>
+              <span class="popup-impressions-badge-value">{{ hostRepeatSummary + ' / ' + hostAttendanceNoShowSummary }}</span>
+            </span>
+          </div>
+
+          <div class="social-proof-section-block">
+            <div class="social-proof-section-head section-vibe">
+              <span class="section-tag">Vibe</span>
+              <span class="section-line"></span>
+            </div>
+            <div class="social-proof-chip-list">
+              <span class="social-proof-chip chip-vibe" *ngFor="let item of hostVibeBadgeItems">{{ item }}</span>
+            </div>
+          </div>
+
+          <div class="social-proof-section-block">
+            <div class="social-proof-section-head section-category">
+              <span class="section-tag">Category</span>
+              <span class="section-line"></span>
+            </div>
+            <div class="social-proof-chip-list">
+              <span class="social-proof-chip chip-category" *ngFor="let item of hostCategoryBadgeItems">{{ item }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-member">
+          <div class="social-proof-identity-pill social-proof-identity-pill-member">
+            <mat-icon [class]="getTraitColorClass(activeMemberTrait)">{{ getTraitIcon(activeMemberTrait) }}</mat-icon>
+            <span>{{ memberImpressionTitle }}</span>
+          </div>
+          <div class="popup-impressions-badge popup-impressions-badge-member">
+            <span class="popup-impressions-badge-segment popup-impressions-rate-people">
+              <span class="popup-impressions-badge-label">People / Events</span>
+              <span class="popup-impressions-badge-value">{{ memberPeopleMet + ' / ' + memberTotalEvents }}</span>
+            </span>
+            <span class="popup-impressions-badge-segment popup-impressions-rate-return">
+              <span class="popup-impressions-badge-label">Returnees / NoShow</span>
+              <span class="popup-impressions-badge-value">{{ memberReturneesSummary + ' / ' + memberNoShowCount }}</span>
+            </span>
+          </div>
+
+          <div class="social-proof-section-block">
+            <div class="social-proof-section-head section-personality">
+              <span class="section-tag">Personality</span>
+              <span class="section-line"></span>
+            </div>
+            <div class="social-proof-chip-list">
+              <span class="social-proof-chip chip-personality" *ngFor="let item of memberPersonalityBadgeItems">{{ item }}</span>
+            </div>
+          </div>
+
+          <div class="social-proof-section-block">
+            <div class="social-proof-section-head section-vibe">
+              <span class="section-tag">Vibe</span>
+              <span class="section-line"></span>
+            </div>
+            <div class="social-proof-chip-list">
+              <span class="social-proof-chip chip-vibe" *ngFor="let item of memberVibeBadgeItems">{{ item }}</span>
+            </div>
+          </div>
+
+          <div class="social-proof-section-block">
+            <div class="social-proof-section-head section-category">
+              <span class="section-tag">Category</span>
+              <span class="section-line"></span>
+            </div>
+            <div class="social-proof-chip-list">
+              <span class="social-proof-chip chip-category" *ngFor="let item of memberCategoryBadgeItems">{{ item }}</span>
             </div>
           </div>
         </div>

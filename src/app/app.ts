@@ -527,6 +527,8 @@ export class App {
   protected activitiesView: ActivitiesView = 'week';
   protected showActivitiesViewPicker = false;
   protected activitiesStickyValue = '';
+  private lastActivityOpenKey: string | null = null;
+  private lastActivityOpenAt = 0;
   protected readonly activitiesPrimaryFilters: Array<{ key: ActivitiesPrimaryFilter; label: string; icon: string }> = [
     { key: 'chats', label: 'Chats', icon: 'chat' },
     { key: 'invitations', label: 'Invitations', icon: 'mail' },
@@ -1063,6 +1065,8 @@ export class App {
         return this.selectedChat?.title ?? 'Chat';
       case 'chatMembers':
         return 'Chat Members';
+      case 'impressionsHost':
+        return 'Impressions';
       case 'invitationActions':
         return this.selectedInvitation?.description ?? 'Invitation';
       case 'menuEvent':
@@ -2568,10 +2572,18 @@ export class App {
   }
 
   protected openHostImpressions(): void {
+    if (this.activePopup === 'activities' || this.stackedPopup !== null) {
+      this.stackedPopup = 'impressionsHost';
+      return;
+    }
     this.activePopup = 'impressionsHost';
   }
 
   protected openMemberImpressions(): void {
+    if (this.activePopup === 'activities' || this.stackedPopup !== null) {
+      this.stackedPopup = 'impressionsHost';
+      return;
+    }
     this.activePopup = 'impressionsHost';
   }
 
@@ -2863,7 +2875,25 @@ export class App {
   }
 
   protected onActivityRowClick(row: ActivityListRow, event?: Event): void {
+    this.openActivityRow(row, event);
+  }
+
+  protected onActivityRowPointerUp(row: ActivityListRow, event: PointerEvent): void {
+    if (event.button !== 0) {
+      return;
+    }
+    this.openActivityRow(row, event);
+  }
+
+  private openActivityRow(row: ActivityListRow, event?: Event): void {
     event?.stopPropagation();
+    const key = `${row.type}:${row.id}`;
+    const now = Date.now();
+    if (this.lastActivityOpenKey === key && now - this.lastActivityOpenAt < 220) {
+      return;
+    }
+    this.lastActivityOpenKey = key;
+    this.lastActivityOpenAt = now;
     if (row.type === 'chats') {
       this.openChatItem(row.source as ChatMenuItem, false, true);
       return;
