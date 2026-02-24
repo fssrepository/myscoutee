@@ -163,6 +163,8 @@ interface MobileProfileSelectorOption {
   label: string;
   icon: string;
   toneClass?: string;
+  badge?: number;
+  disabled?: boolean;
 }
 
 interface MobileProfileSelectorSheet {
@@ -177,7 +179,9 @@ interface MobileProfileSelectorSheet {
     | { kind: 'experiencePrivacy'; type: 'workspace' | 'school' }
     | { kind: 'detailValue'; groupIndex: number; rowIndex: number }
     | { kind: 'experienceType' }
-    | { kind: 'assetFilter' };
+    | { kind: 'assetFilter' }
+    | { kind: 'activitiesPrimaryFilter' }
+    | { kind: 'activitiesRateFilter' };
 }
 
 type AssetType = 'Car' | 'Accommodation' | 'Supplies';
@@ -554,7 +558,7 @@ export class App {
     { key: 'pair-received', label: 'Received' }
   ];
   protected readonly rateFilterEntries: RateFilterEntry[] = [
-    { kind: 'group', label: 'Individual' },
+    { kind: 'group', label: 'Single' },
     { kind: 'item', key: 'individual-given', label: 'Given' },
     { kind: 'item', key: 'individual-received', label: 'Received' },
     { kind: 'item', key: 'individual-mutual', label: 'Mutual' },
@@ -2065,6 +2069,49 @@ export class App {
     };
   }
 
+  protected openMobileActivitiesPrimaryFilterSelector(event: Event): void {
+    event.stopPropagation();
+    this.mobileProfileSelectorSheet = {
+      title: 'Activities',
+      selected: this.activitiesPrimaryFilter,
+      options: this.activitiesPrimaryFilters.map(option => ({
+        value: option.key,
+        label: option.label,
+        icon: option.icon,
+        toneClass: this.activitiesPrimaryFilterClass(option.key)
+      })),
+      context: { kind: 'activitiesPrimaryFilter' }
+    };
+  }
+
+  protected openMobileActivitiesRateFilterSelector(event: Event): void {
+    event.stopPropagation();
+    this.mobileProfileSelectorSheet = {
+      title: 'Rate Type',
+      selected: this.activitiesRateFilter,
+      options: this.rateFilterEntries
+        .map(option => {
+          if (option.kind === 'group') {
+            return {
+              value: `group-${option.label.toLowerCase().replace(/\s+/g, '-')}`,
+              label: option.label,
+              icon: '',
+              toneClass: `rate-filter-group-option-mobile${option.label === 'Pair' ? ' is-group-separator-mobile' : ''}`,
+              disabled: true
+            };
+          }
+          return {
+            value: option.key,
+            label: option.label,
+            icon: this.activitiesRateFilterIcon(option.key),
+            toneClass: this.rateFilterOptionClass(option.key),
+            badge: this.rateFilterCount(option.key)
+          };
+        }),
+      context: { kind: 'activitiesRateFilter' }
+    };
+  }
+
   protected closeMobileProfileSelectorSheet(): void {
     if (typeof document !== 'undefined') {
       document.documentElement.style.removeProperty(this.languageSheetHeightCssVar);
@@ -2147,6 +2194,20 @@ export class App {
     if (sheet.context.kind === 'assetFilter') {
       if (this.assetFilterOptions.includes(value as AssetType)) {
         this.selectAssetFilter(value as AssetType);
+      }
+      this.mobileProfileSelectorSheet = null;
+      return;
+    }
+    if (sheet.context.kind === 'activitiesPrimaryFilter') {
+      if (this.activitiesPrimaryFilters.some(option => option.key === value)) {
+        this.selectActivitiesPrimaryFilter(value as ActivitiesPrimaryFilter);
+      }
+      this.mobileProfileSelectorSheet = null;
+      return;
+    }
+    if (sheet.context.kind === 'activitiesRateFilter') {
+      if (this.rateFilters.some(option => option.key === value)) {
+        this.selectActivitiesRateFilter(value as RateFilterKey);
       }
       this.mobileProfileSelectorSheet = null;
       return;
@@ -2864,9 +2925,9 @@ export class App {
   protected activitiesRateFilterLabel(): string {
     const filter = this.rateFilters.find(option => option.key === this.activitiesRateFilter);
     if (!filter) {
-      return 'Individual · Given';
+      return 'Single · Given';
     }
-    const group = this.activitiesRateFilter.startsWith('individual') ? 'Individual' : 'Pair';
+    const group = this.activitiesRateFilter.startsWith('individual') ? 'Single' : 'Pair';
     return `${group} · ${filter.label}`;
   }
 
@@ -2895,6 +2956,34 @@ export class App {
 
   protected isRateGroupSeparator(label: string): boolean {
     return label === 'Pair';
+  }
+
+  protected rateFilterCount(filter: RateFilterKey): number {
+    return this.rateItems.filter(item => this.matchesRateFilter(item, filter)).length;
+  }
+
+  protected selectedRateFilterCount(): number {
+    return this.rateFilterCount(this.activitiesRateFilter);
+  }
+
+  protected totalRateFilterCount(): number {
+    return this.rateItems.length;
+  }
+
+  protected activitiesPrimaryFilterCount(filter: ActivitiesPrimaryFilter): number {
+    if (filter === 'chats') {
+      return this.chatItems.length;
+    }
+    if (filter === 'invitations') {
+      return this.invitationItems.length;
+    }
+    if (filter === 'events') {
+      return this.eventItems.length;
+    }
+    if (filter === 'hosting') {
+      return this.hostingItems.length;
+    }
+    return this.totalRateFilterCount();
   }
 
   protected activitiesPrimaryFilterClass(filter: ActivitiesPrimaryFilter = this.activitiesPrimaryFilter): string {
@@ -2934,6 +3023,27 @@ export class App {
       return `${primary} · ${secondary} · ${this.activitiesRateFilterLabel()}`;
     }
     return `${primary} · ${secondary}`;
+  }
+
+  protected activitiesHeaderLineOne(): string {
+    return `${this.activitiesPrimaryFilterLabel()} · ${this.activitiesSecondaryFilterLabel()}`;
+  }
+
+  protected activitiesHeaderLineTwo(): string {
+    if (this.activitiesPrimaryFilter !== 'rates') {
+      return '';
+    }
+    const group = this.activitiesRateFilter.startsWith('individual') ? 'Single' : 'Pair';
+    const label = this.rateFilters.find(option => option.key === this.activitiesRateFilter)?.label ?? 'Given';
+    return `${group} · ${label}`;
+  }
+
+  protected activitiesPrimaryPanelWidth(): string {
+    return '260px';
+  }
+
+  protected activitiesRatePanelWidth(): string {
+    return '320px';
   }
 
   protected onActivityRowClick(row: ActivityListRow, event?: Event): void {

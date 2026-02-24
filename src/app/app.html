@@ -240,7 +240,10 @@
           <ng-template #plainPopupTitle>
             <div class="popup-title">
               <h2>{{ getPopupTitle() }}</h2>
-              <p class="popup-subtitle-activities" *ngIf="activePopup === 'activities'">{{ activitiesHeaderSelectionLine() }}</p>
+              <p class="popup-subtitle-activities" *ngIf="activePopup === 'activities'">{{ activitiesHeaderLineOne() }}</p>
+              <p class="popup-subtitle-activities popup-subtitle-activities-secondary" *ngIf="activePopup === 'activities' && activitiesHeaderLineTwo()">
+                {{ activitiesHeaderLineTwo() }}
+              </p>
             </div>
           </ng-template>
         </ng-template>
@@ -294,65 +297,106 @@
     >
       <div *ngIf="activePopup === 'activities'" class="activities-popup">
         <div class="experience-toolbar assets-toolbar">
-          <div class="profile-status-select-wrap selector-like experience-filter-select" [ngClass]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)">
-            <mat-select
-              [(ngModel)]="activitiesPrimaryFilter"
-              (ngModelChange)="selectActivitiesPrimaryFilter($event)"
-              disableOptionCentering
-              panelClass="selector-options-panel profile-bottom-sheet-panel"
+          <ng-container *ngIf="!isMobileView; else mobileActivitiesPrimaryFilterButton">
+            <div class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-primary-filter-select" [ngClass]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)">
+              <mat-select
+                [(ngModel)]="activitiesPrimaryFilter"
+                (ngModelChange)="selectActivitiesPrimaryFilter($event)"
+                [panelWidth]="activitiesPrimaryPanelWidth()"
+                disableOptionCentering
+                panelClass="selector-options-panel profile-bottom-sheet-panel activities-primary-options-panel"
+              >
+                <mat-select-trigger>
+                  <span class="status-option-content">
+                    <mat-icon [class]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)">{{ activitiesPrimaryFilterIcon() }}</mat-icon>
+                    <span>{{ activitiesPrimaryFilterLabel() }}</span>
+                  </span>
+                </mat-select-trigger>
+                <mat-option *ngFor="let option of activitiesPrimaryFilters" [value]="option.key" class="status-option" [ngClass]="activitiesPrimaryFilterClass(option.key)">
+                  <span class="status-option-content">
+                    <mat-icon [class]="activitiesPrimaryFilterClass(option.key)">{{ option.icon }}</mat-icon>
+                    <span>{{ option.label }}</span>
+                    <span class="rate-filter-count-badge">{{ activitiesPrimaryFilterCount(option.key) }}</span>
+                  </span>
+                </mat-option>
+              </mat-select>
+              <span class="rate-filter-count-badge rate-filter-trigger-badge">{{ activitiesPrimaryFilterCount(activitiesPrimaryFilter) }}</span>
+            </div>
+          </ng-container>
+          <ng-template #mobileActivitiesPrimaryFilterButton>
+            <button
+              type="button"
+              class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-primary-filter-select"
+              [ngClass]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)"
+              (click)="openMobileActivitiesPrimaryFilterSelector($event)"
             >
-              <mat-select-trigger>
-                <span class="status-option-content">
-                  <mat-icon [class]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)">{{ activitiesPrimaryFilterIcon() }}</mat-icon>
-                  <span>{{ activitiesPrimaryFilterLabel() }}</span>
-                </span>
-              </mat-select-trigger>
-              <mat-option *ngFor="let option of activitiesPrimaryFilters" [value]="option.key" class="status-option" [ngClass]="activitiesPrimaryFilterClass(option.key)">
-                <span class="status-option-content">
-                  <mat-icon [class]="activitiesPrimaryFilterClass(option.key)">{{ option.icon }}</mat-icon>
-                  <span>{{ option.label }}</span>
-                </span>
-              </mat-option>
-            </mat-select>
-          </div>
+              <span class="status-option-content">
+                <mat-icon [class]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)">{{ activitiesPrimaryFilterIcon() }}</mat-icon>
+                <span>{{ activitiesPrimaryFilterLabel() }}</span>
+              </span>
+              <mat-icon>expand_more</mat-icon>
+              <span class="rate-filter-count-badge rate-filter-trigger-badge">{{ activitiesPrimaryFilterCount(activitiesPrimaryFilter) }}</span>
+            </button>
+          </ng-template>
 
-          <div
-            class="profile-status-select-wrap selector-like experience-filter-select"
-            [ngClass]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]"
-            *ngIf="isRateFilterVisible()"
-          >
-            <mat-select
-              [(ngModel)]="activitiesRateFilter"
-              (ngModelChange)="selectActivitiesRateFilter($event)"
-              disableOptionCentering
-              panelClass="selector-options-panel profile-bottom-sheet-panel"
-            >
-              <mat-select-trigger>
+          <ng-container *ngIf="isRateFilterVisible()">
+            <ng-container *ngIf="!isMobileView; else mobileActivitiesRateFilterButton">
+              <div
+                class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-rate-filter-select"
+                [ngClass]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]"
+              >
+                <mat-select
+                  [(ngModel)]="activitiesRateFilter"
+                  (ngModelChange)="selectActivitiesRateFilter($event)"
+                  [panelWidth]="activitiesRatePanelWidth()"
+                  disableOptionCentering
+                  panelClass="selector-options-panel profile-bottom-sheet-panel activities-rate-options-panel"
+                >
+                  <mat-select-trigger>
+                    <span class="status-option-content">
+                      <mat-icon [class]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]">{{ activitiesRateFilterIcon(activitiesRateFilter) }}</mat-icon>
+                      <span>{{ activitiesRateFilterLabel() }}</span>
+                    </span>
+                  </mat-select-trigger>
+                  <ng-container *ngFor="let option of rateFilterEntries">
+                    <mat-option *ngIf="option.kind === 'group'" class="status-option rate-filter-group-option" [class.is-group-separator]="isRateGroupSeparator(option.label)" disabled>
+                      <span class="status-option-content rate-filter-group-label">
+                        <span>{{ option.label }}</span>
+                      </span>
+                    </mat-option>
+                    <mat-option
+                      *ngIf="option.kind === 'item'"
+                      [value]="option.key"
+                      class="status-option"
+                      [ngClass]="[activitiesRateFilterClass(option.key), rateFilterOptionClass(option.key)]"
+                    >
+                      <span class="status-option-content">
+                        <mat-icon [class]="[activitiesRateFilterClass(option.key), rateFilterOptionClass(option.key)]">{{ activitiesRateFilterIcon(option.key) }}</mat-icon>
+                        <span>{{ option.label }}</span>
+                        <span class="rate-filter-count-badge">{{ rateFilterCount(option.key) }}</span>
+                      </span>
+                    </mat-option>
+                  </ng-container>
+                </mat-select>
+                <span class="rate-filter-count-badge rate-filter-trigger-badge">{{ totalRateFilterCount() }}</span>
+              </div>
+            </ng-container>
+            <ng-template #mobileActivitiesRateFilterButton>
+              <button
+                type="button"
+                class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-rate-filter-select"
+                [ngClass]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]"
+                (click)="openMobileActivitiesRateFilterSelector($event)"
+              >
                 <span class="status-option-content">
                   <mat-icon [class]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]">{{ activitiesRateFilterIcon(activitiesRateFilter) }}</mat-icon>
                   <span>{{ activitiesRateFilterLabel() }}</span>
                 </span>
-              </mat-select-trigger>
-              <ng-container *ngFor="let option of rateFilterEntries">
-                <mat-option *ngIf="option.kind === 'group'" class="status-option rate-filter-group-option" [class.is-group-separator]="isRateGroupSeparator(option.label)" disabled>
-                  <span class="status-option-content rate-filter-group-label">
-                    <span>{{ option.label }}</span>
-                  </span>
-                </mat-option>
-                <mat-option
-                  *ngIf="option.kind === 'item'"
-                  [value]="option.key"
-                  class="status-option"
-                  [ngClass]="[activitiesRateFilterClass(option.key), rateFilterOptionClass(option.key)]"
-                >
-                  <span class="status-option-content">
-                    <mat-icon [class]="[activitiesRateFilterClass(option.key), rateFilterOptionClass(option.key)]">{{ activitiesRateFilterIcon(option.key) }}</mat-icon>
-                    <span>{{ option.label }}</span>
-                  </span>
-                </mat-option>
-              </ng-container>
-            </mat-select>
-          </div>
+                <mat-icon>expand_more</mat-icon>
+                <span class="rate-filter-count-badge rate-filter-trigger-badge">{{ totalRateFilterCount() }}</span>
+              </button>
+            </ng-template>
+          </ng-container>
         </div>
 
         <div class="activities-sticky-header">{{ activitiesStickyHeader }}</div>
@@ -1241,14 +1285,17 @@
         class="mobile-profile-selector-option"
         *ngFor="let option of mobileProfileSelectorSheet.options"
         [class.active]="isMobileSelectorOptionActive(option.value)"
+        [class.mobile-profile-selector-option-group]="option.disabled"
         [ngClass]="option.toneClass"
+        [disabled]="option.disabled"
         (click)="selectMobileProfileSelectorOption(option.value)"
       >
         <span class="mobile-profile-selector-option-main">
-          <mat-icon>{{ option.icon }}</mat-icon>
+          <mat-icon *ngIf="!option.disabled">{{ option.icon }}</mat-icon>
           <span>{{ option.label }}</span>
         </span>
-        <mat-icon *ngIf="isMobileSelectorOptionActive(option.value)">check</mat-icon>
+        <span class="rate-filter-count-badge" *ngIf="option.badge !== undefined">{{ option.badge }}</span>
+        <mat-icon *ngIf="!option.disabled && option.badge === undefined && isMobileSelectorOptionActive(option.value)">check</mat-icon>
       </button>
     </div>
     <ng-template #mobileLanguageSelectorSheet>

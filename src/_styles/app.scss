@@ -1334,6 +1334,14 @@
   color: rgba(21, 39, 62, 0.72);
 }
 
+.popup-subtitle-activities-secondary {
+  margin-top: 0.04rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: rgba(21, 39, 62, 0.58);
+}
+
 .popup-title-members {
   min-width: 0;
   flex: 1;
@@ -1482,6 +1490,44 @@
 
 .activities-secondary-picker {
   position: relative;
+}
+
+.activities-compact-select {
+  width: fit-content !important;
+  min-width: 0 !important;
+  max-width: 100%;
+}
+
+.activities-compact-select .mat-mdc-select-trigger {
+  width: auto !important;
+  min-width: 0;
+}
+
+.activities-compact-select .status-option-content {
+  width: auto;
+  min-width: 0;
+}
+
+.activities-rate-filter-select .status-option-content {
+  gap: 0.34rem;
+}
+
+.activities-rate-filter-select .mat-mdc-select-arrow-wrapper {
+  margin-left: 0.54rem;
+}
+
+.activities-rate-filter-select > .mat-icon:last-child {
+  margin-left: 0.54rem;
+}
+
+.activities-rate-filter-select {
+  position: relative;
+  overflow: visible;
+}
+
+.activities-primary-filter-select {
+  position: relative;
+  overflow: visible;
 }
 
 .popup-view-fab {
@@ -4219,7 +4265,7 @@ textarea {
 
 .rate-filter-group-label {
   font-weight: 800;
-  font-size: 0.69rem;
+  font-size: 0.64rem;
   color: #1f3658;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -4277,6 +4323,62 @@ textarea {
 
 .mat-mdc-option.status-option.rate-filter-item-pair-received {
   background: linear-gradient(0deg, #ffffff, #edf9f4);
+}
+
+.activities-rate-options-panel .mat-mdc-option .mat-pseudo-checkbox,
+.activities-rate-options-panel .mat-mdc-option .mat-pseudo-checkbox-minimal,
+.activities-rate-options-panel .mat-mdc-option .mat-mdc-option-pseudo-checkbox,
+.activities-rate-options-panel .mat-mdc-option .mdc-list-item__end {
+  display: none !important;
+}
+
+.activities-primary-options-panel .mat-mdc-option .mat-pseudo-checkbox,
+.activities-primary-options-panel .mat-mdc-option .mat-pseudo-checkbox-minimal,
+.activities-primary-options-panel .mat-mdc-option .mat-mdc-option-pseudo-checkbox,
+.activities-primary-options-panel .mat-mdc-option .mdc-list-item__end {
+  display: none !important;
+}
+
+.activities-rate-options-panel .mat-mdc-option.status-option .status-option-content,
+.activities-primary-options-panel .mat-mdc-option.status-option .status-option-content {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  column-gap: 0.34rem;
+}
+
+.activities-rate-options-panel .mat-mdc-option.status-option .rate-filter-count-badge,
+.activities-primary-options-panel .mat-mdc-option.status-option .rate-filter-count-badge {
+  margin-left: 0;
+  justify-self: end;
+}
+
+.rate-filter-count-badge {
+  margin-left: auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid #fff;
+  background: #d84d4d;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 2px 8px rgba(120, 24, 24, 0.22);
+}
+
+.rate-filter-trigger-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  margin-left: 0;
+  z-index: 2;
 }
 
 .experience-date-range-field .mat-mdc-text-field-wrapper {
@@ -4377,18 +4479,73 @@ textarea {
 }
 
 .mobile-profile-selector-option.asset-filter-car {
+  background: linear-gradient(180deg, #eef6ff 0%, #e2efff 100%);
+  border-color: rgba(43, 111, 179, 0.32);
+}
+
+.mobile-profile-selector-option.asset-filter-accommodation {
+  background: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
+  border-color: rgba(37, 127, 95, 0.32);
+}
+
+.mobile-profile-selector-option.asset-filter-supplies {
+  background: linear-gradient(180deg, #fff5ec 0%, #feead9 100%);
+  border-color: rgba(151, 92, 41, 0.32);
+}
+
+.mobile-profile-selector-option.activity-filter-rates {
+  background: linear-gradient(180deg, #fff7df 0%, #ffefc8 100%);
+  border-color: rgba(200, 146, 30, 0.34);
+}
+
+.mobile-profile-selector-option.activity-filter-chat {
+  background: linear-gradient(180deg, #f2f7ff 0%, #e8f2ff 100%);
+  border-color: rgba(63, 116, 178, 0.32);
+}
+
+.mobile-profile-selector-option.activity-filter-invitations {
+  background: linear-gradient(180deg, #f6f4ff 0%, #efeafd 100%);
+  border-color: rgba(115, 88, 176, 0.32);
+}
+
+.mobile-profile-selector-option.activity-filter-events {
+  background: linear-gradient(180deg, #fff7f0 0%, #ffefdf 100%);
+  border-color: rgba(208, 125, 51, 0.32);
+}
+
+.mobile-profile-selector-option.activity-filter-hosting {
+  background: linear-gradient(180deg, #f1fbfa 0%, #e6f5f2 100%);
+  border-color: rgba(47, 142, 157, 0.32);
+}
+
+.mobile-profile-selector-option.rate-filter-item-individual-given {
   background: linear-gradient(180deg, #fff1f3 0%, #ffe6ea 100%);
   border-color: rgba(169, 72, 90, 0.32);
 }
 
-.mobile-profile-selector-option.asset-filter-accommodation {
+.mobile-profile-selector-option.rate-filter-item-individual-received {
   background: linear-gradient(180deg, #eaf4ff 0%, #e1ecfb 100%);
   border-color: rgba(45, 94, 168, 0.32);
 }
 
-.mobile-profile-selector-option.asset-filter-supplies {
+.mobile-profile-selector-option.rate-filter-item-individual-mutual {
+  background: linear-gradient(180deg, #f2f3ff 0%, #e8eafb 100%);
+  border-color: rgba(79, 104, 168, 0.32);
+}
+
+.mobile-profile-selector-option.rate-filter-item-individual-met {
   background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
   border-color: rgba(44, 126, 72, 0.32);
+}
+
+.mobile-profile-selector-option.rate-filter-item-pair-given {
+  background: linear-gradient(180deg, #fff5ec 0%, #feead9 100%);
+  border-color: rgba(151, 92, 41, 0.32);
+}
+
+.mobile-profile-selector-option.rate-filter-item-pair-received {
+  background: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
+  border-color: rgba(37, 127, 95, 0.32);
 }
 
 .values-header-chips {
@@ -5945,6 +6102,45 @@ textarea {
 .mobile-profile-selector-option.active {
   box-shadow: inset 0 0 0 1px rgba(24, 46, 76, 0.24);
   filter: brightness(0.95);
+}
+
+.mobile-profile-selector-option.mobile-profile-selector-option-group,
+.mobile-profile-selector-option.mobile-profile-selector-option-group:disabled {
+  width: fit-content;
+  min-width: 0;
+  justify-content: flex-start;
+  border: 1px solid rgba(92, 110, 140, 0.22);
+  border-radius: 7px;
+  background: linear-gradient(180deg, #f8fbff 0%, #eef3fa 100%);
+  color: rgba(31, 54, 88, 0.8);
+  min-height: 26px;
+  padding: 0.18rem 0.44rem;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: default;
+  opacity: 1;
+  box-shadow: none;
+  filter: none;
+  justify-self: start;
+}
+
+.mobile-profile-selector-option.mobile-profile-selector-option-group .mobile-profile-selector-option-main {
+  gap: 0;
+}
+
+.mobile-profile-selector-option.mobile-profile-selector-option-group .mobile-profile-selector-option-main span {
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.mobile-profile-selector-option.mobile-profile-selector-option-group.is-group-separator-mobile {
+  border-top: 0;
+  margin-top: 0.28rem;
+  padding-top: 0.18rem;
 }
 
 .mobile-profile-selector-option.status-public {
