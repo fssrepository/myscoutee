@@ -933,7 +933,7 @@ export class App {
     this.activitiesSecondaryFilter = 'recent';
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
-    this.activitiesView = primaryFilter === 'rates' ? 'distance' : 'week';
+    this.activitiesView = 'day';
     this.clearActivityRateEditorState();
     this.activitiesStickyValue = '';
     this.resetActivitiesScroll();
@@ -2175,7 +2175,8 @@ export class App {
         value: option,
         label: option,
         icon: this.assetTypeIcon(option),
-        toneClass: this.assetTypeClass(option)
+        toneClass: this.assetTypeClass(option),
+        badge: this.assetFilterCount(option)
       })),
       context: { kind: 'assetFilter' }
     };
@@ -3231,19 +3232,19 @@ export class App {
   }
 
   protected activitiesPrimaryFilterCount(filter: ActivitiesPrimaryFilter): number {
+    if (filter === 'rates') {
+      return this.gameBadge;
+    }
     if (filter === 'chats') {
-      return this.chatItems.length;
+      return this.chatBadge;
     }
     if (filter === 'invitations') {
-      return this.invitationItems.length;
+      return this.invitationsBadge;
     }
     if (filter === 'events') {
-      return this.eventItems.length;
+      return this.eventsBadge;
     }
-    if (filter === 'hosting') {
-      return this.hostingItems.length;
-    }
-    return this.totalRateFilterCount();
+    return this.hostingBadge;
   }
 
   protected activitiesPrimaryFilterClass(filter: ActivitiesPrimaryFilter = this.activitiesPrimaryFilter): string {
@@ -3307,6 +3308,10 @@ export class App {
 
   protected activitiesRatePanelWidth(): string {
     return '320px';
+  }
+
+  protected assetFilterPanelWidth(): string {
+    return '248px';
   }
 
   protected onActivityRowClick(row: ActivityListRow, event?: Event): void {
@@ -3933,6 +3938,16 @@ export class App {
       return 'asset-filter-supplies';
     }
     return 'asset-filter-car';
+  }
+
+  protected assetFilterCount(type: AssetType): number {
+    if (type === 'Car') {
+      return this.assetCarsBadge;
+    }
+    if (type === 'Accommodation') {
+      return this.assetAccommodationBadge;
+    }
+    return this.assetSuppliesBadge;
   }
 
   protected assetPendingCount(card: AssetCard): number {

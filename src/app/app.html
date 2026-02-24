@@ -326,11 +326,11 @@
                   <span class="status-option-content">
                     <mat-icon [class]="activitiesPrimaryFilterClass(option.key)">{{ option.icon }}</mat-icon>
                     <span>{{ option.label }}</span>
-                    <span class="rate-filter-count-badge">{{ activitiesPrimaryFilterCount(option.key) }}</span>
+                    <span class="rate-filter-count-badge" *ngIf="activitiesPrimaryFilterCount(option.key) > 0">{{ activitiesPrimaryFilterCount(option.key) }}</span>
                   </span>
                 </mat-option>
               </mat-select>
-              <span class="rate-filter-count-badge rate-filter-trigger-badge">{{ activitiesPrimaryFilterCount(activitiesPrimaryFilter) }}</span>
+              <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesPrimaryFilterCount(activitiesPrimaryFilter) > 0">{{ activitiesPrimaryFilterCount(activitiesPrimaryFilter) }}</span>
             </div>
           </ng-container>
           <ng-template #mobileActivitiesPrimaryFilterButton>
@@ -345,7 +345,7 @@
                 <span>{{ activitiesPrimaryFilterLabel() }}</span>
               </span>
               <mat-icon>expand_more</mat-icon>
-              <span class="rate-filter-count-badge rate-filter-trigger-badge">{{ activitiesPrimaryFilterCount(activitiesPrimaryFilter) }}</span>
+              <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesPrimaryFilterCount(activitiesPrimaryFilter) > 0">{{ activitiesPrimaryFilterCount(activitiesPrimaryFilter) }}</span>
             </button>
           </ng-template>
 
@@ -383,12 +383,12 @@
                       <span class="status-option-content">
                         <mat-icon [class]="[activitiesRateFilterClass(option.key), rateFilterOptionClass(option.key)]">{{ activitiesRateFilterIcon(option.key) }}</mat-icon>
                         <span>{{ option.label }}</span>
-                        <span class="rate-filter-count-badge">{{ rateFilterCount(option.key) }}</span>
+                        <span class="rate-filter-count-badge" *ngIf="rateFilterCount(option.key) > 0">{{ rateFilterCount(option.key) }}</span>
                       </span>
                     </mat-option>
                   </ng-container>
                 </mat-select>
-                <span class="rate-filter-count-badge rate-filter-trigger-badge">{{ totalRateFilterCount() }}</span>
+                <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="totalRateFilterCount() > 0">{{ totalRateFilterCount() }}</span>
               </div>
             </ng-container>
             <ng-template #mobileActivitiesRateFilterButton>
@@ -403,7 +403,7 @@
                   <span>{{ activitiesRateFilterLabel() }}</span>
                 </span>
                 <mat-icon>expand_more</mat-icon>
-                <span class="rate-filter-count-badge rate-filter-trigger-badge">{{ totalRateFilterCount() }}</span>
+                <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="totalRateFilterCount() > 0">{{ totalRateFilterCount() }}</span>
               </button>
             </ng-template>
           </ng-container>
@@ -838,12 +838,13 @@
       <div *ngIf="isAssetPopup" class="experience-popup assets-popup">
         <div class="experience-toolbar assets-toolbar">
           <ng-container *ngIf="!isMobileView; else mobileAssetFilterButton">
-            <div class="profile-status-select-wrap selector-like experience-filter-select" [ngClass]="assetTypeClass(assetFilter)">
+            <div class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select" [ngClass]="assetTypeClass(assetFilter)">
               <mat-select
                 [(ngModel)]="assetFilter"
                 (ngModelChange)="selectAssetFilter($event)"
+                [panelWidth]="assetFilterPanelWidth()"
                 disableOptionCentering
-                panelClass="selector-options-panel profile-bottom-sheet-panel"
+                panelClass="selector-options-panel profile-bottom-sheet-panel assets-filter-options-panel"
               >
                 <mat-select-trigger>
                   <span class="status-option-content">
@@ -855,15 +856,17 @@
                   <span class="status-option-content">
                     <mat-icon [class]="assetTypeClass(option)">{{ assetTypeIcon(option) }}</mat-icon>
                     <span>{{ option }}</span>
+                    <span class="rate-filter-count-badge" *ngIf="assetFilterCount(option) > 0">{{ assetFilterCount(option) }}</span>
                   </span>
                 </mat-option>
               </mat-select>
+              <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="assetFilterCount(assetFilter) > 0">{{ assetFilterCount(assetFilter) }}</span>
             </div>
           </ng-container>
           <ng-template #mobileAssetFilterButton>
             <button
               type="button"
-              class="profile-status-select-wrap selector-like experience-filter-select"
+              class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select"
               [ngClass]="assetTypeClass(assetFilter)"
               (click)="openMobileAssetFilterSelector($event)"
             >
@@ -872,6 +875,7 @@
                 <span>{{ assetFilter }}</span>
               </span>
               <mat-icon>expand_more</mat-icon>
+              <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="assetFilterCount(assetFilter) > 0">{{ assetFilterCount(assetFilter) }}</span>
             </button>
           </ng-template>
           <button type="button" class="popup-header-add-btn assets-add-btn" (click)="openAssetForm()" aria-label="Add asset">
@@ -1474,7 +1478,7 @@
           <mat-icon *ngIf="option.icon">{{ option.icon }}</mat-icon>
           <span>{{ option.label }}</span>
         </span>
-        <span class="rate-filter-count-badge" *ngIf="!option.disabled && option.badge !== undefined">{{ option.badge }}</span>
+        <span class="rate-filter-count-badge" *ngIf="!option.disabled && option.badge !== undefined && option.badge > 0">{{ option.badge }}</span>
         <mat-icon *ngIf="!option.disabled && option.badge === undefined && isMobileSelectorOptionActive(option.value)">check</mat-icon>
       </button>
     </div>

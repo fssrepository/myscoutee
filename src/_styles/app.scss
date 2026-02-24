@@ -2288,7 +2288,6 @@
 
 .activities-card-rates .activities-rate-card-head {
   position: absolute;
-  top: 0;
   right: 0;
 }
 
@@ -4336,6 +4335,20 @@ textarea {
   max-width: 188px;
 }
 
+.assets-toolbar .experience-filter-select.assets-compact-select {
+  min-width: 0;
+  width: fit-content;
+  max-width: 100%;
+  position: relative;
+  overflow: visible;
+}
+
+.assets-toolbar .experience-filter-select.assets-compact-select .mat-mdc-select-trigger,
+.assets-toolbar .experience-filter-select.assets-compact-select .status-option-content {
+  width: auto;
+  min-width: 0;
+}
+
 .assets-add-btn {
   margin-left: auto;
 }
@@ -5112,6 +5125,20 @@ textarea {
   width: 100%;
   min-width: 0;
   column-gap: 0.34rem;
+}
+
+.assets-filter-options-panel .mat-mdc-option.status-option .status-option-content {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  column-gap: 0.34rem;
+}
+
+.assets-filter-options-panel .mat-mdc-option.status-option .rate-filter-count-badge {
+  margin-left: 0;
+  justify-self: end;
 }
 
 .activities-rate-options-panel .mat-mdc-option.status-option .rate-filter-count-badge,

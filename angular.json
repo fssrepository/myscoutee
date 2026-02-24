@@ -50,6 +50,10 @@
               "outputHashing": "all"
             },
             "development": {
+              "outputPath": {
+                "base": "dev",
+                "browser": ""
+              },
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
