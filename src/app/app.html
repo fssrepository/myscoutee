@@ -259,6 +259,15 @@
       >
         <mat-icon>edit_calendar</mat-icon>
       </button>
+      <button
+        type="button"
+        class="popup-chat-event-btn popup-invitation-approve-btn"
+        aria-label="Approve invitation"
+        *ngIf="activePopup === 'invitationActions' && selectedInvitation && !selectedInvitationIsAccepted()"
+        (click)="approveSelectedInvitation($event)"
+      >
+        <mat-icon>done</mat-icon>
+      </button>
       <div class="activities-view-picker" *ngIf="activePopup === 'activities'">
         <div class="activities-secondary-picker" *ngIf="!isCalendarLayoutView()">
           <button type="button" class="popup-view-fab" (click)="toggleActivitiesSecondaryPicker($event)" [attr.aria-label]="'Open secondary filter: ' + activitiesSecondaryFilterLabel()">
@@ -296,7 +305,7 @@
       [class.popup-body-impressions]="activePopup === 'impressionsHost'"
       [class.popup-body-image-editor]="activePopup === 'imageEditor'"
     >
-      <div *ngIf="activePopup === 'activities'" class="activities-popup">
+      <div *ngIf="activePopup === 'activities'" class="activities-popup" (click)="onActivitiesPopupSurfaceClick($event)">
         <div class="experience-toolbar assets-toolbar">
           <ng-container *ngIf="!isMobileView; else mobileActivitiesPrimaryFilterButton">
             <div class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-primary-filter-select" [ngClass]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)">
@@ -410,8 +419,17 @@
               <ng-container *ngFor="let row of group.rows">
                 <article class="experience-item-card asset-item-card activities-row-item" [attr.data-group-label]="group.label" *ngIf="isEventStyleActivity(row); else nonEventActivityRow" (pointerup)="onActivityRowPointerUp(row, $event)" (click)="onActivityRowClick(row, $event)">
                   <div class="asset-card-image" [style.backgroundImage]="'url(' + activityImageUrl(row) + ')'">
-                    <a class="asset-source-icon" [href]="activitySourceLink(row)" target="_blank" rel="noopener" (click)="$event.stopPropagation()" aria-label="Open source link">
-                      <mat-icon>link</mat-icon>
+                    <a
+                      class="asset-source-icon activities-source-avatar"
+                      *ngIf="showActivitySourceIcon(row)"
+                      [href]="activitySourceLink(row)"
+                      target="_blank"
+                      rel="noopener"
+                      (click)="$event.stopPropagation()"
+                      aria-label="Open source link"
+                      [ngClass]="activitySourceAvatarClass(row)"
+                    >
+                      <span>{{ activitySourceAvatarLabel(row) }}</span>
                     </a>
                     <button
                       type="button"
@@ -420,7 +438,7 @@
                       aria-label="Open item details"
                     >
                       <span>{{ activityCapacityLabel(row) }}</span>
-                      <span class="card-badge asset-request-badge" *ngIf="row.unread > 0">{{ row.unread }}</span>
+                      <span class="card-badge asset-request-badge" *ngIf="row.type !== 'invitations' && row.unread > 0">{{ row.unread }}</span>
                     </button>
                   </div>
                   <div class="experience-item-head">
@@ -432,10 +450,20 @@
                       <p>{{ activityMetaLine(row) }}</p>
                     </div>
                     <div class="experience-item-actions" *ngIf="canEditActivityRow(row)">
-                      <button type="button" class="experience-action-btn experience-action-edit" (click)="editActivityEvent(row, $event)" aria-label="Edit event">
-                        <mat-icon>edit</mat-icon>
+                      <button
+                        type="button"
+                        class="experience-action-btn experience-action-edit"
+                        (click)="editActivityEvent(row, $event)"
+                        [attr.aria-label]="row.type === 'invitations' ? 'View invitation' : 'Edit event'"
+                      >
+                        <mat-icon>{{ row.type === 'invitations' ? 'visibility' : 'edit' }}</mat-icon>
                       </button>
-                      <button type="button" class="experience-action-btn experience-action-delete" (click)="deleteActivityEvent(row, $event)" aria-label="Delete event">
+                      <button
+                        type="button"
+                        class="experience-action-btn experience-action-delete"
+                        (click)="deleteActivityEvent(row, $event)"
+                        [attr.aria-label]="row.type === 'invitations' ? 'Delete invitation' : 'Delete event'"
+                      >
                         <mat-icon>delete</mat-icon>
                       </button>
                     </div>
@@ -619,9 +647,6 @@
         <div class="activities-rate-editor-dock" *ngIf="isActivityRateEditorOpen() && !isCalendarLayoutView()">
           <div class="activities-rate-editor-head">
             <span>Rate {{ selectedActivityRateTitle() }}</span>
-            <button type="button" class="activities-rate-editor-close" (click)="closeActivityRateEditor($event)" aria-label="Close rating editor">
-              <mat-icon>close</mat-icon>
-            </button>
           </div>
           <div class="activities-rate-editor-stars">
             <button
@@ -684,8 +709,7 @@
           <p>{{ getInvitationActionSummary(selectedInvitation) }} · {{ selectedInvitation.when }}</p>
         </div>
         <div class="popup-actions">
-          <button type="button" class="link-btn">Accept</button>
-          <button type="button" class="link-btn">Delete</button>
+          <button type="button" class="link-btn" (click)="deleteSelectedInvitation($event)">Delete</button>
           <button type="button" class="link-btn" (click)="openEventEditor()">Open Related Event</button>
         </div>
       </div>
@@ -1601,6 +1625,15 @@
         >
           <mat-icon>edit_calendar</mat-icon>
         </button>
+        <button
+          type="button"
+          class="popup-chat-event-btn popup-invitation-approve-btn"
+          aria-label="Approve invitation"
+          *ngIf="stackedPopup === 'invitationActions' && selectedInvitation && !selectedInvitationIsAccepted()"
+          (click)="approveSelectedInvitation($event)"
+        >
+          <mat-icon>done</mat-icon>
+        </button>
         <button mat-icon-button class="popup-close" (click)="closeStackedPopup()" aria-label="Close">
           <mat-icon>close</mat-icon>
         </button>
@@ -1795,8 +1828,7 @@
           <p>{{ getInvitationActionSummary(selectedInvitation) }} · {{ selectedInvitation.when }}</p>
         </div>
         <div class="popup-actions">
-          <button type="button" class="link-btn">Accept</button>
-          <button type="button" class="link-btn">Delete</button>
+          <button type="button" class="link-btn" (click)="deleteSelectedInvitation($event)">Delete</button>
           <button type="button" class="link-btn" (click)="openEventEditor(true)">Open Related Event</button>
         </div>
       </div>

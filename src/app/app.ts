@@ -756,8 +756,10 @@ export class App {
     i4: '1 / 3',
     i5: '2 / 3'
   };
+  protected readonly invitationItemsByUser: Record<string, InvitationMenuItem[]> = this.cloneMapItems(DEMO_INVITATIONS_BY_USER);
   protected readonly eventItemsByUser: Record<string, EventMenuItem[]> = this.cloneMapItems(DEMO_EVENTS_BY_USER);
   protected readonly hostingItemsByUser: Record<string, HostingMenuItem[]> = this.cloneMapItems(DEMO_HOSTING_BY_USER);
+  private readonly acceptedInvitationIdsByUser: Record<string, string[]> = {};
 
   protected selectedChat: ChatMenuItem | null = null;
   protected selectedChatMembers: DemoUser[] = [];
@@ -875,7 +877,7 @@ export class App {
   }
 
   protected get invitationItems(): InvitationMenuItem[] {
-    return DEMO_INVITATIONS_BY_USER[this.activeUser.id] ?? DEMO_INVITATIONS_BY_USER['u1'];
+    return this.invitationItemsByUser[this.activeUser.id] ?? this.invitationItemsByUser['u1'] ?? [];
   }
 
   protected get eventItems(): EventMenuItem[] {
@@ -2856,19 +2858,22 @@ export class App {
         source: item
       }));
     } else if (this.activitiesPrimaryFilter === 'events') {
-      rows = this.eventItems.map(item => ({
-        id: item.id,
-        type: 'events',
-        title: item.title,
-        subtitle: item.shortDescription,
-        detail: item.timeframe,
-        dateIso: this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
-        distanceKm: this.eventDistanceById[item.id] ?? 10,
-        unread: item.activity,
-        metricScore: (item.isAdmin ? 20 : 0) + item.activity,
-        isAdmin: item.isAdmin,
-        source: item
-      }));
+      rows = [
+        ...this.eventItems.map<ActivityListRow>(item => ({
+          id: item.id,
+          type: 'events',
+          title: item.title,
+          subtitle: item.shortDescription,
+          detail: item.timeframe,
+          dateIso: this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
+          distanceKm: this.eventDistanceById[item.id] ?? 10,
+          unread: item.activity,
+          metricScore: (item.isAdmin ? 20 : 0) + item.activity,
+          isAdmin: item.isAdmin,
+          source: item
+        })),
+        ...this.acceptedInvitationRowsAsEvents()
+      ];
     } else if (this.activitiesPrimaryFilter === 'hosting') {
       rows = this.hostingItems.map(item => ({
         id: item.id,
@@ -3394,6 +3399,9 @@ export class App {
       return false;
     }
     const item = row.source as RateMenuItem;
+    if (this.displayedRateDirection(item) === 'met') {
+      return false;
+    }
     if (!this.hasOwnRating(item) && this.displayedRateDirection(item) === 'received' && item.mode === 'pair') {
       return this.pairReceivedAverageScore(item) <= 0;
     }
@@ -3408,8 +3416,17 @@ export class App {
     this.selectedActivityRateId = row.id;
   }
 
-  protected closeActivityRateEditor(event?: Event): void {
-    event?.stopPropagation();
+  protected onActivitiesPopupSurfaceClick(event: MouseEvent): void {
+    if (this.activePopup !== 'activities' || this.activitiesPrimaryFilter !== 'rates' || !this.selectedActivityRateId) {
+      return;
+    }
+    const target = event.target as HTMLElement | null;
+    if (!target) {
+      return;
+    }
+    if (target.closest('.activities-rate-editor-dock') || target.closest('.activities-rate-score-badge')) {
+      return;
+    }
     this.selectedActivityRateId = null;
   }
 
@@ -3507,6 +3524,51 @@ export class App {
     this.selectedActivityRateId = null;
   }
 
+  private acceptInvitationFromRow(invitationId: string): void {
+    if (this.isInvitationAcceptedId(invitationId)) {
+      return;
+    }
+    const acceptedIds = this.acceptedInvitationIdsByUser[this.activeUser.id] ?? [];
+    this.acceptedInvitationIdsByUser[this.activeUser.id] = [...acceptedIds, invitationId];
+  }
+
+  private isInvitationAcceptedId(invitationId: string): boolean {
+    return (this.acceptedInvitationIdsByUser[this.activeUser.id] ?? []).includes(invitationId);
+  }
+
+  private acceptedInvitationRowsAsEvents(): ActivityListRow[] {
+    const acceptedIds = new Set(this.acceptedInvitationIdsByUser[this.activeUser.id] ?? []);
+    if (acceptedIds.size === 0) {
+      return [];
+    }
+    return this.invitationItems
+      .filter(item => acceptedIds.has(item.id))
+      .map(item => {
+        const syntheticEvent: EventMenuItem = {
+          id: item.id,
+          avatar: item.avatar,
+          title: item.description,
+          shortDescription: `Invited by ${item.inviter}`,
+          timeframe: item.when,
+          activity: item.unread,
+          isAdmin: false
+        };
+        return {
+          id: item.id,
+          type: 'events',
+          title: syntheticEvent.title,
+          subtitle: syntheticEvent.shortDescription,
+          detail: syntheticEvent.timeframe,
+          dateIso: this.invitationDatesById[item.id] ?? '2026-02-21T09:00:00',
+          distanceKm: this.invitationDistanceById[item.id] ?? 5,
+          unread: syntheticEvent.activity,
+          metricScore: syntheticEvent.activity,
+          isAdmin: false,
+          source: syntheticEvent
+        };
+      });
+  }
+
   protected activityTypeLabel(row: ActivityListRow): string {
     if (row.type === 'events') {
       return 'Event';
@@ -3544,10 +3606,40 @@ export class App {
     return this.activitySourceLinkById[row.id] ?? 'https://example.com/events';
   }
 
-  protected activityCapacityLabel(row: ActivityListRow): string {
+  protected showActivitySourceIcon(row: ActivityListRow): boolean {
+    return row.type === 'events' || row.type === 'invitations';
+  }
+
+  protected activitySourceAvatarLabel(row: ActivityListRow): string {
     if (row.type === 'invitations') {
-      return `${row.unread} pending`;
+      const invitation = row.source as InvitationMenuItem;
+      return this.initialsFromText(invitation.inviter);
     }
+    if (row.type === 'events') {
+      const event = row.source as EventMenuItem;
+      const explicitOwner = this.findUserByName(event.avatar || '');
+      if (explicitOwner) {
+        return explicitOwner.initials;
+      }
+      const fallbackOwner = this.users[this.hashText(`${row.id}-${event.title}`) % this.users.length];
+      return fallbackOwner?.initials ?? this.initialsFromText(event.title);
+    }
+    if (row.type === 'hosting') {
+      const hosting = row.source as HostingMenuItem;
+      return this.initialsFromText(hosting.avatar || hosting.title);
+    }
+    return this.initialsFromText(row.title);
+  }
+
+  protected activitySourceAvatarClass(row: ActivityListRow): string {
+    const toneSeed = row.type === 'invitations'
+      ? `${row.id}-${(row.source as InvitationMenuItem).inviter}`
+      : `${row.id}-${row.title}`;
+    const toneIndex = (this.hashText(toneSeed) % 8) + 1;
+    return `activities-source-tone-${toneIndex}`;
+  }
+
+  protected activityCapacityLabel(row: ActivityListRow): string {
     return this.activityCapacityById[row.id] ?? `${Math.max(1, row.unread)} / ${Math.max(4, row.unread + 6)}`;
   }
 
@@ -3577,11 +3669,18 @@ export class App {
   }
 
   protected canEditActivityRow(row: ActivityListRow): boolean {
+    if (row.type === 'invitations') {
+      return true;
+    }
     return row.isAdmin === true && (row.type === 'events' || row.type === 'hosting');
   }
 
   protected editActivityEvent(row: ActivityListRow, event: Event): void {
     event.stopPropagation();
+    if (row.type === 'invitations') {
+      this.openInvitationItem(row.source as InvitationMenuItem, false, true);
+      return;
+    }
     if (row.type === 'events' || row.type === 'hosting') {
       this.openEventEditor();
     }
@@ -3589,6 +3688,10 @@ export class App {
 
   protected deleteActivityEvent(row: ActivityListRow, event: Event): void {
     event.stopPropagation();
+    if (row.type === 'invitations') {
+      this.removeInvitationById(row.id);
+      return;
+    }
     if (row.type === 'events') {
       const next = this.eventItems.filter(item => item.id !== row.id);
       this.eventItemsByUser[this.activeUser.id] = next;
@@ -3598,6 +3701,45 @@ export class App {
       const next = this.hostingItems.filter(item => item.id !== row.id);
       this.hostingItemsByUser[this.activeUser.id] = next;
     }
+  }
+
+  protected isInvitationAccepted(row: ActivityListRow): boolean {
+    return row.type === 'invitations' && this.isInvitationAcceptedId(row.id);
+  }
+
+  protected selectedInvitationIsAccepted(): boolean {
+    return this.selectedInvitation ? this.isInvitationAcceptedId(this.selectedInvitation.id) : false;
+  }
+
+  protected approveSelectedInvitation(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.selectedInvitation) {
+      return;
+    }
+    this.acceptInvitationFromRow(this.selectedInvitation.id);
+  }
+
+  protected deleteSelectedInvitation(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.selectedInvitation) {
+      return;
+    }
+    const deletedId = this.selectedInvitation.id;
+    this.removeInvitationById(deletedId);
+    this.selectedInvitation = null;
+    if (this.stackedPopup === 'invitationActions') {
+      this.stackedPopup = null;
+      return;
+    }
+    if (this.activePopup === 'invitationActions') {
+      this.activePopup = null;
+    }
+  }
+
+  private removeInvitationById(invitationId: string): void {
+    const next = this.invitationItems.filter(item => item.id !== invitationId);
+    this.invitationItemsByUser[this.activeUser.id] = next;
+    this.acceptedInvitationIdsByUser[this.activeUser.id] = (this.acceptedInvitationIdsByUser[this.activeUser.id] ?? []).filter(id => id !== invitationId);
   }
 
   protected get chatPopupMessages(): ChatPopupMessage[] {
@@ -5149,5 +5291,24 @@ export class App {
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  private initialsFromText(value: string): string {
+    const words = value
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (words.length === 0) {
+      return 'U';
+    }
+    if (words.length === 1) {
+      return words[0].slice(0, 2).toUpperCase();
+    }
+    return `${words[0][0] ?? ''}${words[1][0] ?? ''}`.toUpperCase();
+  }
+
+  private findUserByName(name: string): DemoUser | undefined {
+    const target = this.normalizeText(name);
+    return this.users.find(user => this.normalizeText(user.name) === target);
   }
 }
