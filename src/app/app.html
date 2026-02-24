@@ -506,17 +506,34 @@
             (scroll)="onActivitiesCalendarScroll($event)"
           >
             <ng-container *ngIf="activitiesView === 'month'; else activitiesWeekPages">
-              <section class="activities-calendar-page activities-calendar-page-month" *ngFor="let page of calendarMonthPages">
+              <section
+                class="activities-calendar-page activities-calendar-page-month"
+                *ngFor="let page of calendarMonthPages"
+                [style.--month-week-count]="page.weeks.length"
+              >
                 <header class="activities-calendar-page-head">{{ page.label }}</header>
                 <div class="activities-calendar-weekdays">
                   <span *ngFor="let dayLabel of calendarWeekdayLabels">{{ dayLabel }}</span>
                 </div>
                 <div class="activities-month-grid">
                   <div class="activities-month-week" *ngFor="let week of page.weeks">
-                    <div class="activities-month-cell" *ngFor="let day of week.days" [class.outside]="!day.inCurrentMonth" [class.today]="day.isToday">
+                    <div
+                      class="activities-month-cell"
+                      *ngFor="let day of week.days"
+                      [class.outside]="!day.inCurrentMonth"
+                      [class.today]="day.isToday"
+                      [class.activities-month-cell-rates]="activitiesPrimaryFilter === 'rates'"
+                    >
                       <div class="activities-month-day-num">{{ day.dayNumber }}</div>
+                      <div
+                        class="activities-month-rate-count"
+                        *ngIf="activitiesPrimaryFilter === 'rates' && monthRateCount(day) as rateCount"
+                        [ngClass]="monthRateHeatClass(day)"
+                      >
+                        {{ rateCountLabel(rateCount) }}
+                      </div>
                     </div>
-                    <div class="activities-month-week-spans" *ngIf="week.spans.length > 0">
+                    <div class="activities-month-week-spans" *ngIf="activitiesPrimaryFilter !== 'rates' && week.spans.length > 0">
                       <button
                         type="button"
                         class="activities-calendar-badge activities-month-span-badge"
@@ -543,6 +560,13 @@
                   <div class="activities-week-board-day-head" *ngFor="let day of page.days; let dayIndex = index" [class.today]="day.isToday">
                     <span>{{ calendarWeekdayLabels[dayIndex] }}</span>
                     <strong>{{ day.dayNumber }}</strong>
+                    <div
+                      class="activities-week-rate-count"
+                      *ngIf="activitiesPrimaryFilter === 'rates' && weekRateDayCount(day) as rateCount"
+                      [ngClass]="weekRateDayHeatClass(day)"
+                    >
+                      {{ rateCountLabel(rateCount) }}
+                    </div>
                   </div>
 
                   <div class="activities-week-hours-col">
@@ -551,19 +575,35 @@
                     </div>
                   </div>
 
-                  <div class="activities-week-day-col" *ngFor="let day of page.days" [class.today]="day.isToday">
-                    <div class="activities-week-hour-slot" *ngFor="let hour of calendarWeekHours"></div>
-                    <button
-                      type="button"
-                      class="activities-calendar-badge activities-week-timed-badge"
-                      [ngClass]="calendarBadgeToneClass(badge.row)"
-                      *ngFor="let badge of weekDayTimedBadges(day)"
-                      [style.top.%]="badge.topPct"
-                      [style.height.%]="badge.heightPct"
-                      (click)="onActivityRowClick(badge.row, $event)"
-                    >
-                      <span>{{ badge.row.title }}</span>
-                    </button>
+                  <div class="activities-week-day-col" *ngFor="let day of page.days" [class.today]="day.isToday" [class.activities-week-day-col-rates]="activitiesPrimaryFilter === 'rates'">
+                    <ng-container *ngIf="activitiesPrimaryFilter === 'rates'; else weekEventBadges">
+                      <div
+                        class="activities-week-hour-slot activities-week-rate-slot"
+                        *ngFor="let hour of calendarWeekHours"
+                      >
+                        <div
+                          class="activities-week-rate-badge"
+                          *ngIf="weekRateHourCount(day, hour) as hourCount"
+                          [ngClass]="rateHeatClassByCount(hourCount)"
+                        >
+                          {{ rateCountLabel(hourCount) }}
+                        </div>
+                      </div>
+                    </ng-container>
+                    <ng-template #weekEventBadges>
+                      <div class="activities-week-hour-slot" *ngFor="let hour of calendarWeekHours"></div>
+                      <button
+                        type="button"
+                        class="activities-calendar-badge activities-week-timed-badge"
+                        [ngClass]="calendarBadgeToneClass(badge.row)"
+                        *ngFor="let badge of weekDayTimedBadges(day)"
+                        [style.top.%]="badge.topPct"
+                        [style.height.%]="badge.heightPct"
+                        (click)="onActivityRowClick(badge.row, $event)"
+                      >
+                        <span>{{ badge.row.title }}</span>
+                      </button>
+                    </ng-template>
                   </div>
                 </div>
               </section>

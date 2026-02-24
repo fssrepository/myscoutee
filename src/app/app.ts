@@ -2997,6 +2997,50 @@ export class App {
     return badges;
   }
 
+  protected monthRateCount(day: CalendarDayCell): number {
+    if (this.activitiesPrimaryFilter !== 'rates') {
+      return 0;
+    }
+    return day.rows.length;
+  }
+
+  protected monthRateHeatClass(day: CalendarDayCell): string {
+    return this.rateHeatClass(this.monthRateCount(day));
+  }
+
+  protected weekRateDayCount(day: CalendarDayCell): number {
+    if (this.activitiesPrimaryFilter !== 'rates') {
+      return 0;
+    }
+    return day.rows.length;
+  }
+
+  protected weekRateDayHeatClass(day: CalendarDayCell): string {
+    return this.rateHeatClass(this.weekRateDayCount(day));
+  }
+
+  protected weekRateHourCount(day: CalendarDayCell, hour: number): number {
+    if (this.activitiesPrimaryFilter !== 'rates') {
+      return 0;
+    }
+    const slotStart = new Date(day.date);
+    slotStart.setHours(hour, 0, 0, 0);
+    const slotEnd = new Date(slotStart);
+    slotEnd.setHours(hour + 1, 0, 0, 0);
+    return this.countOverlappingRows(day.rows, slotStart, slotEnd);
+  }
+
+  protected rateHeatClassByCount(count: number): string {
+    return this.rateHeatClass(count);
+  }
+
+  protected rateCountLabel(value: number): string {
+    if (!Number.isFinite(value) || value <= 0) {
+      return '0';
+    }
+    return value > 99 ? '99+' : `${value}`;
+  }
+
   protected monthWeekLaneCount(week: CalendarMonthWeek): number {
     if (week.spans.length === 0) {
       return 0;
@@ -4789,6 +4833,14 @@ export class App {
   }
 
   private activityDateRange(row: ActivityListRow): { start: Date; end: Date } | null {
+    if (row.type === 'rates') {
+      const point = new Date(row.dateIso);
+      if (Number.isNaN(point.getTime())) {
+        return null;
+      }
+      // Rates are point-in-time events for calendar heat/count views.
+      return { start: point, end: new Date(point.getTime() + 60 * 1000) };
+    }
     const explicit = this.activityDateTimeRangeById[row.id];
     if (explicit) {
       const start = new Date(explicit.startIso);
@@ -4971,6 +5023,44 @@ export class App {
 
   private dateRangeOverlaps(startA: Date, endA: Date, startB: Date, endB: Date): boolean {
     return startA.getTime() <= endB.getTime() && endA.getTime() >= startB.getTime();
+  }
+
+  private countOverlappingRows(rows: ActivityListRow[], start: Date, end: Date): number {
+    let count = 0;
+    for (const row of rows) {
+      const range = this.activityDateRange(row);
+      if (!range) {
+        continue;
+      }
+      if (range.start.getTime() < end.getTime() && range.end.getTime() > start.getTime()) {
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  private rateHeatClass(count: number): string {
+    if (count <= 0) {
+      return 'activities-rate-heat-0';
+    }
+    const clamped = Math.min(100, count);
+    const normalized = (clamped - 1) / 99;
+    if (normalized <= 0.16) {
+      return 'activities-rate-heat-1';
+    }
+    if (normalized <= 0.32) {
+      return 'activities-rate-heat-2';
+    }
+    if (normalized <= 0.5) {
+      return 'activities-rate-heat-3';
+    }
+    if (normalized <= 0.68) {
+      return 'activities-rate-heat-4';
+    }
+    if (normalized <= 0.84) {
+      return 'activities-rate-heat-5';
+    }
+    return 'activities-rate-heat-6';
   }
 
   private dateOnly(value: Date): Date {
