@@ -535,6 +535,11 @@ export class App {
   protected showActivitiesViewPicker = false;
   protected showActivitiesSecondaryPicker = false;
   protected activitiesStickyValue = '';
+  protected readonly activityRatingScale = Array.from({ length: 10 }, (_, index) => index + 1);
+  protected selectedActivityRateId: string | null = null;
+  private readonly activityRateDraftById: Record<string, number> = {};
+  private readonly activityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
+  private readonly pendingActivityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
   private lastActivityOpenKey: string | null = null;
   private lastActivityOpenAt = 0;
   protected readonly activitiesPrimaryFilters: Array<{ key: ActivitiesPrimaryFilter; label: string; icon: string }> = [
@@ -820,12 +825,14 @@ export class App {
   }
 
   protected openActivitiesPopup(primaryFilter: ActivitiesPrimaryFilter, closeMenu = true): void {
+    this.commitPendingRateDirectionOverrides();
     this.activePopup = 'activities';
     this.activitiesPrimaryFilter = primaryFilter;
     this.activitiesSecondaryFilter = 'recent';
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
     this.activitiesView = primaryFilter === 'rates' ? 'distance' : 'week';
+    this.clearActivityRateEditorState();
     this.activitiesStickyValue = '';
     this.resetActivitiesScroll();
     this.updateActivitiesStickyHeader(0);
@@ -975,6 +982,7 @@ export class App {
     this.selectedAssetCardId = null;
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
+    this.clearActivityRateEditorState();
   }
 
   protected closeStackedPopup(): void {
@@ -1021,6 +1029,7 @@ export class App {
     this.activePopup = null;
     this.stackedPopup = null;
     this.popupReturnTarget = null;
+    this.clearActivityRateEditorState();
     this.router.navigate(['/game']);
   }
 
@@ -1964,7 +1973,9 @@ export class App {
     if (typeof window === 'undefined') {
       return false;
     }
-    return window.matchMedia('(max-width: 760px)').matches;
+    const isNarrowViewport = window.matchMedia('(max-width: 760px)').matches;
+    const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+    return isNarrowViewport && hasCoarsePointer;
   }
 
   protected onProfileStatusChange(value: ProfileStatus): void {
@@ -2070,6 +2081,9 @@ export class App {
   }
 
   protected openMobileActivitiesPrimaryFilterSelector(event: Event): void {
+    if (!this.isMobileView) {
+      return;
+    }
     event.stopPropagation();
     this.mobileProfileSelectorSheet = {
       title: 'Activities',
@@ -2086,6 +2100,9 @@ export class App {
   }
 
   protected openMobileActivitiesRateFilterSelector(event: Event): void {
+    if (!this.isMobileView) {
+      return;
+    }
     event.stopPropagation();
     this.mobileProfileSelectorSheet = {
       title: 'Rate Type',
@@ -2772,19 +2789,18 @@ export class App {
         .filter(item => this.matchesRateFilter(item, this.activitiesRateFilter))
         .map(item => {
           const user = this.users.find(candidate => candidate.id === item.userId) ?? this.activeUser;
+          const direction = this.displayedRateDirection(item);
+          const ownScore = this.rateOwnScore(item);
           return {
             id: item.id,
             type: 'rates',
             title: user.name,
-            subtitle: item.eventName,
-            detail:
-              item.direction === 'met'
-                ? 'Met only'
-                : `Given ${item.scoreGiven} · Received ${item.scoreReceived}`,
+            subtitle: '',
+            detail: '',
             dateIso: item.happenedAt,
             distanceKm: item.distanceKm,
             unread: 0,
-            metricScore: item.direction === 'mutual' ? item.scoreGiven + item.scoreReceived : Math.max(item.scoreGiven, item.scoreReceived),
+            metricScore: direction === 'mutual' ? ownScore + Math.max(item.scoreReceived, 0) : ownScore,
             source: item
           };
         });
@@ -2864,6 +2880,9 @@ export class App {
     this.showActivitiesSecondaryPicker = false;
     if (filter === 'rates') {
       this.activitiesView = 'distance';
+      this.selectedActivityRateId = null;
+    } else {
+      this.selectedActivityRateId = null;
     }
     this.resetActivitiesScroll();
     this.updateActivitiesStickyHeader(0);
@@ -2877,7 +2896,12 @@ export class App {
   }
 
   protected selectActivitiesRateFilter(filter: RateFilterKey): void {
+    const filterChanged = filter !== this.activitiesRateFilter;
+    if (filterChanged) {
+      this.commitPendingRateDirectionOverrides();
+    }
     this.activitiesRateFilter = filter;
+    this.selectedActivityRateId = null;
     this.showActivitiesSecondaryPicker = false;
     this.resetActivitiesScroll();
     this.updateActivitiesStickyHeader(0);
@@ -3084,7 +3108,7 @@ export class App {
       this.openHostingItem(row.source as HostingMenuItem, false, true);
       return;
     }
-    this.openMemberImpressions();
+    this.selectedActivityRateId = null;
   }
 
   protected activityChatMemberCount(row: ActivityListRow): number {
@@ -3100,6 +3124,125 @@ export class App {
 
   protected isRateStyleActivity(row: ActivityListRow): boolean {
     return row.type === 'rates';
+  }
+
+  protected activityOwnRatingValue(row: ActivityListRow): number {
+    if (row.type !== 'rates') {
+      return 0;
+    }
+    const item = row.source as RateMenuItem;
+    const drafted = this.activityRateDraftById[item.id];
+    if (Number.isFinite(drafted)) {
+      return this.normalizeRateScore(drafted);
+    }
+    if (!this.hasOwnRating(item)) {
+      return 0;
+    }
+    return this.rateOwnScore(item);
+  }
+
+  protected activityOwnRatingLabel(row: ActivityListRow): string {
+    const value = this.activityOwnRatingValue(row);
+    return value > 0 ? `${value}` : '';
+  }
+
+  protected isActivityRatePending(row: ActivityListRow): boolean {
+    if (row.type !== 'rates') {
+      return false;
+    }
+    return !this.hasOwnRating(row.source as RateMenuItem);
+  }
+
+  protected openActivityRateEditor(row: ActivityListRow, event: Event): void {
+    event.stopPropagation();
+    if (row.type !== 'rates') {
+      return;
+    }
+    this.selectedActivityRateId = row.id;
+  }
+
+  protected closeActivityRateEditor(event?: Event): void {
+    event?.stopPropagation();
+    this.selectedActivityRateId = null;
+  }
+
+  protected setSelectedActivityOwnRating(score: number): void {
+    if (!this.selectedActivityRateId) {
+      return;
+    }
+    const normalized = this.normalizeRateScore(score);
+    const row = this.selectedActivityRateRow();
+    this.activityRateDraftById[this.selectedActivityRateId] = normalized;
+    if (!row || row.type !== 'rates') {
+      return;
+    }
+    const rateItem = row.source as RateMenuItem;
+    const direction = this.displayedRateDirection(rateItem);
+    if (direction === 'received') {
+      this.pendingActivityRateDirectionOverrideById[rateItem.id] = rateItem.mode === 'individual' ? 'mutual' : 'given';
+    } else if (direction === 'met') {
+      this.pendingActivityRateDirectionOverrideById[rateItem.id] = 'given';
+    }
+  }
+
+  protected isActivityRateEditorOpen(): boolean {
+    return this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'rates' && !!this.selectedActivityRateId;
+  }
+
+  protected isSelectedActivityRateScore(score: number): boolean {
+    const row = this.selectedActivityRateRow();
+    if (!row) {
+      return false;
+    }
+    return score <= this.activityOwnRatingValue(row);
+  }
+
+  protected selectedActivityRateTitle(): string {
+    return this.selectedActivityRateRow()?.title ?? 'Rate';
+  }
+
+  private selectedActivityRateRow(): ActivityListRow | null {
+    if (!this.selectedActivityRateId) {
+      return null;
+    }
+    return this.filteredActivityRows.find(row => row.type === 'rates' && row.id === this.selectedActivityRateId) ?? null;
+  }
+
+  private normalizeRateScore(value: number): number {
+    return Math.min(10, Math.max(1, Math.round(value)));
+  }
+
+  private rateOwnScore(item: RateMenuItem): number {
+    if (Number.isFinite(item.scoreGiven) && item.scoreGiven > 0) {
+      return this.normalizeRateScore(item.scoreGiven);
+    }
+    return 5;
+  }
+
+  private hasOwnRating(item: RateMenuItem): boolean {
+    const drafted = this.activityRateDraftById[item.id];
+    if (Number.isFinite(drafted) && drafted > 0) {
+      return true;
+    }
+    if (this.displayedRateDirection(item) === 'received') {
+      return false;
+    }
+    return Number.isFinite(item.scoreGiven) && item.scoreGiven > 0;
+  }
+
+  private displayedRateDirection(item: RateMenuItem): RateMenuItem['direction'] {
+    return this.activityRateDirectionOverrideById[item.id] ?? item.direction;
+  }
+
+  private commitPendingRateDirectionOverrides(): void {
+    Object.assign(this.activityRateDirectionOverrideById, this.pendingActivityRateDirectionOverrideById);
+    for (const key of Object.keys(this.pendingActivityRateDirectionOverrideById)) {
+      delete this.pendingActivityRateDirectionOverrideById[key];
+    }
+  }
+
+  private clearActivityRateEditorState(): void {
+    this.selectedActivityRateId = null;
   }
 
   protected activityTypeLabel(row: ActivityListRow): string {
@@ -4291,7 +4434,7 @@ export class App {
 
   private matchesRateFilter(item: RateMenuItem, filter: RateFilterKey): boolean {
     const [modeKey, directionKey] = filter.split('-') as ['individual' | 'pair', 'given' | 'received' | 'mutual' | 'met'];
-    return item.mode === modeKey && item.direction === directionKey;
+    return item.mode === modeKey && this.displayedRateDirection(item) === directionKey;
   }
 
   private resetActivitiesScroll(): void {

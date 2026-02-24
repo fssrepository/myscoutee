@@ -212,6 +212,7 @@
     [class.popup-panel-image-editor]="activePopup === 'imageEditor'"
     [class.popup-panel-profile-editor]="activePopup === 'profileEditor'"
     [class.popup-panel-assets]="isAssetPopup"
+    [class.popup-panel-activities]="activePopup === 'activities'"
     (click)="$event.stopPropagation()"
   >
     <div class="popup-header" [class.popup-header-chat]="activePopup === 'chat' && selectedChat">
@@ -401,7 +402,7 @@
 
         <div class="activities-sticky-header">{{ activitiesStickyHeader }}</div>
 
-        <div class="experience-card-list assets-card-list activities-scroll-list" #activitiesScroll (scroll)="onActivitiesScroll($event)">
+        <div class="experience-card-list assets-card-list activities-scroll-list" [class.activities-scroll-list-with-rate-editor]="isActivityRateEditorOpen()" #activitiesScroll (scroll)="onActivitiesScroll($event)">
           <article class="experience-item-card asset-item-card" *ngFor="let row of eventStyleActivityRows" (pointerup)="onActivityRowPointerUp(row, $event)" (click)="onActivityRowClick(row, $event)">
             <div class="asset-card-image" [style.backgroundImage]="'url(' + activityImageUrl(row) + ')'">
               <a class="asset-source-icon" [href]="activitySourceLink(row)" target="_blank" rel="noopener" (click)="$event.stopPropagation()" aria-label="Open source link">
@@ -461,16 +462,19 @@
               <span class="card-badge asset-request-badge activities-chat-unread-badge" *ngIf="row.unread > 0">{{ row.unread }}</span>
             </span>
 
-            <div class="activities-rate-card-body" *ngIf="isRateStyleActivity(row)">
-              <div class="activities-event-card-head">
-                <span class="activities-event-chip">{{ activityTypeLabel(row) }}</span>
-              </div>
+            <div class="activities-rate-card-body" *ngIf="row.type === 'rates'">
               <p class="activities-event-title">{{ row.title }}</p>
-              <p class="activities-event-subtitle">{{ row.subtitle }}</p>
-              <p class="activities-card-detail">{{ row.detail }}</p>
-              <div class="activities-event-meta">
-                <span>{{ activityDateLabel(row) }}</span>
-                <span>{{ row.distanceKm }} km</span>
+              <div class="activities-rate-card-head">
+                <button
+                  type="button"
+                  class="activities-rate-score-badge"
+                  [class.is-pending]="isActivityRatePending(row)"
+                  (click)="openActivityRateEditor(row, $event)"
+                  [attr.aria-label]="isActivityRatePending(row) ? 'Add your rating' : 'Edit your rating'"
+                >
+                  <span class="activities-rate-score-star">★</span>
+                  <span *ngIf="activityOwnRatingLabel(row) as ownRatingLabel">{{ ownRatingLabel }}</span>
+                </button>
               </div>
             </div>
           </button>
@@ -478,6 +482,27 @@
           <div class="editor-list-card" *ngIf="filteredActivityRows.length === 0">
             <h4>No items</h4>
             <p>{{ activitiesEmptyLabel }}</p>
+          </div>
+        </div>
+
+        <div class="activities-rate-editor-dock" *ngIf="isActivityRateEditorOpen()">
+          <div class="activities-rate-editor-head">
+            <span>Rate {{ selectedActivityRateTitle() }}</span>
+            <button type="button" class="activities-rate-editor-close" (click)="closeActivityRateEditor($event)" aria-label="Close rating editor">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <div class="activities-rate-editor-stars">
+            <button
+              type="button"
+              class="activities-rate-star-btn"
+              *ngFor="let score of activityRatingScale"
+              [class.filled]="isSelectedActivityRateScore(score)"
+              (click)="setSelectedActivityOwnRating(score)"
+              [attr.aria-label]="'Set rating ' + score"
+            >
+              ★
+            </button>
           </div>
         </div>
       </div>
