@@ -453,6 +453,8 @@
                       <button
                         type="button"
                         class="experience-action-btn experience-action-edit"
+                        (pointerdown)="$event.stopPropagation()"
+                        (pointerup)="$event.stopPropagation()"
                         (click)="editActivityEvent(row, $event)"
                         [attr.aria-label]="row.type === 'invitations' ? 'View invitation' : 'Edit event'"
                       >
@@ -461,6 +463,8 @@
                       <button
                         type="button"
                         class="experience-action-btn experience-action-delete"
+                        (pointerdown)="$event.stopPropagation()"
+                        (pointerup)="$event.stopPropagation()"
                         (click)="deleteActivityEvent(row, $event)"
                         [attr.aria-label]="row.type === 'invitations' ? 'Delete invitation' : 'Delete event'"
                       >
@@ -661,6 +665,18 @@
             </button>
           </div>
         </div>
+
+        <section class="experience-delete-confirm" *ngIf="pendingActivityDeleteRow">
+          <div class="experience-delete-confirm-backdrop" (click)="cancelActivityDelete()"></div>
+          <div class="experience-delete-confirm-panel">
+            <h4>Delete activity</h4>
+            <p>{{ pendingActivityDeleteLabel() }}</p>
+            <div class="popup-actions">
+              <button type="button" class="link-btn neutral-btn" (click)="cancelActivityDelete()">Cancel</button>
+              <button type="button" class="link-btn experience-delete-btn" (click)="confirmActivityDelete()">Delete</button>
+            </div>
+          </div>
+        </section>
       </div>
 
       <div *ngIf="activePopup === 'chat' && selectedChat" class="chat-popup-wrap">

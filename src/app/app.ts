@@ -587,6 +587,7 @@ export class App {
   protected showActivitiesViewPicker = false;
   protected showActivitiesSecondaryPicker = false;
   protected activitiesStickyValue = '';
+  protected pendingActivityDeleteRow: ActivityListRow | null = null;
   protected readonly activityRatingScale = Array.from({ length: 10 }, (_, index) => index + 1);
   private readonly weekCalendarStartHour = 6;
   private readonly weekCalendarEndHour = 23;
@@ -848,9 +849,10 @@ export class App {
   }
 
   protected get hostingBadge(): number {
+    const adminEvents = this.eventItems.filter(item => item.isAdmin);
     return this.resolveSectionBadge(
-      this.hostingItems.map(item => item.activity),
-      this.hostingItems.length
+      adminEvents.map(item => item.activity),
+      adminEvents.length
     );
   }
 
@@ -1083,6 +1085,7 @@ export class App {
     this.selectedAssetCardId = null;
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
+    this.pendingActivityDeleteRow = null;
     this.clearActivityRateEditorState();
   }
 
@@ -2876,14 +2879,16 @@ export class App {
         ...this.acceptedInvitationRowsAsEvents()
       ];
     } else if (this.activitiesPrimaryFilter === 'hosting') {
-      rows = this.hostingItems.map(item => ({
+      rows = this.eventItems
+        .filter(item => item.isAdmin)
+        .map(item => ({
         id: item.id,
         type: 'hosting',
         title: item.title,
         subtitle: item.shortDescription,
         detail: item.timeframe,
-        dateIso: this.hostingDatesById[item.id] ?? '2026-03-01T09:00:00',
-        distanceKm: this.hostingDistanceById[item.id] ?? 10,
+        dateIso: this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
+        distanceKm: this.eventDistanceById[item.id] ?? 10,
         unread: item.activity,
         metricScore: 20 + item.activity,
         isAdmin: true,
@@ -3702,6 +3707,29 @@ export class App {
 
   protected deleteActivityEvent(row: ActivityListRow, event: Event): void {
     event.stopPropagation();
+    this.pendingActivityDeleteRow = row;
+  }
+
+  protected cancelActivityDelete(): void {
+    this.pendingActivityDeleteRow = null;
+  }
+
+  protected pendingActivityDeleteLabel(): string {
+    if (!this.pendingActivityDeleteRow) {
+      return '';
+    }
+    return `Delete ${this.pendingActivityDeleteRow.title}?`;
+  }
+
+  protected confirmActivityDelete(): void {
+    if (!this.pendingActivityDeleteRow) {
+      return;
+    }
+    this.applyActivityDelete(this.pendingActivityDeleteRow);
+    this.pendingActivityDeleteRow = null;
+  }
+
+  private applyActivityDelete(row: ActivityListRow): void {
     if (row.type === 'invitations') {
       this.removeInvitationById(row.id);
       return;
@@ -3712,8 +3740,10 @@ export class App {
       return;
     }
     if (row.type === 'hosting') {
-      const next = this.hostingItems.filter(item => item.id !== row.id);
-      this.hostingItemsByUser[this.activeUser.id] = next;
+      const nextEvents = this.eventItems.filter(item => item.id !== row.id);
+      this.eventItemsByUser[this.activeUser.id] = nextEvents;
+      const nextHosting = this.hostingItems.filter(item => item.id !== row.id);
+      this.hostingItemsByUser[this.activeUser.id] = nextHosting;
     }
   }
 
