@@ -33,6 +33,7 @@ import {
   ProfileGroup
 } from './shared/demo-data';
 import { environment } from '../environments/environment';
+import { LazyBgImageDirective } from './shared/lazy-bg-image.directive';
 
 type MenuSection = 'game' | 'chat' | 'invitations' | 'events' | 'hosting';
 
@@ -349,7 +350,8 @@ const APP_DATE_FORMATS = {
     MatFormFieldModule,
     MatChipsModule,
     MatAutocompleteModule,
-    FormsModule
+    FormsModule,
+    LazyBgImageDirective
   ],
   providers: [
     { provide: DateAdapter, useClass: YearMonthDayDateAdapter },

@@ -4719,6 +4719,15 @@ textarea {
   background-position: center;
   background-repeat: no-repeat;
   position: relative;
+  transition: opacity 100ms ease-in;
+}
+
+.asset-card-image.lazy-bg-loading {
+  opacity: 0;
+}
+
+.asset-card-image.lazy-bg-loaded {
+  opacity: 1;
 }
 
 .asset-occupancy-badge {

@@ -418,7 +418,7 @@
 
               <ng-container *ngFor="let row of group.rows">
                 <article class="experience-item-card asset-item-card activities-row-item" [attr.data-group-label]="group.label" *ngIf="isEventStyleActivity(row); else nonEventActivityRow">
-                  <div class="asset-card-image" [style.backgroundImage]="'url(' + activityImageUrl(row) + ')'">
+                  <div class="asset-card-image" [appLazyBgImage]="activityImageUrl(row)">
                     <a
                       class="asset-source-icon activities-source-avatar"
                       *ngIf="showActivitySourceIcon(row)"
@@ -923,7 +923,7 @@
 
         <div class="experience-card-list assets-card-list">
           <article class="experience-item-card asset-item-card" [ngClass]="assetTypeClass(card.type)" *ngFor="let card of filteredAssetCards">
-            <div class="asset-card-image" [style.backgroundImage]="'url(' + card.imageUrl + ')'">
+            <div class="asset-card-image" [appLazyBgImage]="card.imageUrl">
               <a class="asset-source-icon" [href]="card.sourceLink" target="_blank" rel="noopener" (click)="$event.stopPropagation()" aria-label="Open source link">
                 <mat-icon>link</mat-icon>
               </a>
