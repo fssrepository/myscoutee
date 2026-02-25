@@ -257,12 +257,12 @@
       <span class="header-members-count" *ngIf="activePopup === 'chatMembers'">{{ selectedChatMembers.length }} members</span>
       <button
         type="button"
-        class="popup-header-add-btn assets-add-btn"
-        aria-label="Create event"
+        class="popup-chat-event-btn"
+        aria-label="Open event editor"
         *ngIf="activePopup === 'chat' && selectedChat"
-        (click)="openEventEditor(true, 'create')"
+        (click)="openEventEditor(true)"
       >
-        <mat-icon>add</mat-icon>
+        <mat-icon>edit_calendar</mat-icon>
       </button>
       <button
         type="button"
@@ -1693,12 +1693,12 @@
         </span>
         <button
           type="button"
-          class="popup-header-add-btn assets-add-btn"
-          aria-label="Create event"
+          class="popup-chat-event-btn"
+          aria-label="Open event editor"
           *ngIf="stackedPopup === 'chat' && selectedChat"
-          (click)="openEventEditor(true, 'create')"
+          (click)="openEventEditor(true)"
         >
-          <mat-icon>add</mat-icon>
+          <mat-icon>edit_calendar</mat-icon>
         </button>
         <button
           type="button"
