@@ -635,6 +635,7 @@ export class App {
   private calendarMonthFocusDate: Date | null = null;
   private calendarWeekFocusDate: Date | null = null;
   private calendarEdgeSettleTimer: ReturnType<typeof setTimeout> | null = null;
+  private calendarPostSettleTimer: ReturnType<typeof setTimeout> | null = null;
   private calendarInitialPageIndexOverride: number | null = null;
   private suppressCalendarEdgeSettle = false;
   private calendarMonthAnchorPages: Date[] | null = null;
@@ -5527,13 +5528,28 @@ export class App {
     if (this.calendarEdgeSettleTimer) {
       clearTimeout(this.calendarEdgeSettleTimer);
     }
+    if (this.calendarPostSettleTimer) {
+      clearTimeout(this.calendarPostSettleTimer);
+      this.calendarPostSettleTimer = null;
+    }
     this.calendarEdgeSettleTimer = setTimeout(() => {
       this.calendarEdgeSettleTimer = null;
       if (this.suppressCalendarEdgeSettle) {
         return;
       }
-      this.handleCalendarEdgeSettle(target);
-    }, 160);
+      const scrollLeftSnapshot = target.scrollLeft;
+      // Require an extra quiet window before mutating page anchors.
+      this.calendarPostSettleTimer = setTimeout(() => {
+        this.calendarPostSettleTimer = null;
+        if (this.suppressCalendarEdgeSettle || this.activePopup !== 'activities' || !this.isCalendarLayoutView()) {
+          return;
+        }
+        if (Math.abs(target.scrollLeft - scrollLeftSnapshot) > 1) {
+          return;
+        }
+        this.handleCalendarEdgeSettle(target);
+      }, 100);
+    }, 120);
   }
 
   protected navigateActivitiesCalendarTo(pageIndex: number, event?: Event): void {
@@ -5926,7 +5942,7 @@ export class App {
     const rawPageIndex = calendarElement.scrollLeft / pageWidth;
     const nearestPageIndex = Math.max(0, Math.min(pages.length - 1, Math.round(rawPageIndex)));
     const nearestPageLeft = nearestPageIndex * pageWidth;
-    // Settle only when snap has actually finished.
+    // Never force snap-back here; only continue once native scroll/snap has fully settled.
     if (Math.abs(calendarElement.scrollLeft - nearestPageLeft) > 1) {
       return;
     }
