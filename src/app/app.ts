@@ -240,6 +240,10 @@ interface MobileProfileSelectorSheet {
 type AssetType = 'Car' | 'Accommodation' | 'Supplies';
 type AssetRequestAction = 'accept' | 'remove';
 type AssetRequestStatus = 'pending' | 'accepted';
+type ActivityMemberStatus = 'pending' | 'accepted';
+type ActivityPendingSource = 'admin' | 'member' | null;
+type ActivityInviteSort = 'recent' | 'relevant';
+type ActivityMemberRequestKind = 'invite' | 'join' | null;
 
 interface AssetMemberRequest {
   id: string;
@@ -261,6 +265,25 @@ interface AssetCard {
   imageUrl: string;
   sourceLink: string;
   requests: AssetMemberRequest[];
+}
+
+interface ActivityMemberEntry {
+  id: string;
+  userId: string;
+  name: string;
+  initials: string;
+  gender: 'woman' | 'man';
+  city: string;
+  statusText: string;
+  status: ActivityMemberStatus;
+  pendingSource: ActivityPendingSource;
+  requestKind: ActivityMemberRequestKind;
+  invitedByActiveUser: boolean;
+  metAtIso: string;
+  actionAtIso: string;
+  metWhere: string;
+  relevance: number;
+  avatarUrl: string;
 }
 
 class YearMonthDayDateAdapter extends NativeDateAdapter {
@@ -590,8 +613,15 @@ export class App {
   protected activitiesStickyValue = '';
   protected pendingActivityDeleteRow: ActivityListRow | null = null;
   protected pendingActivityAction: 'delete' | 'exit' = 'delete';
-  protected selectedActivityMembers: DemoUser[] = [];
+  protected selectedActivityMembers: ActivityMemberEntry[] = [];
   protected selectedActivityMembersTitle = '';
+  protected selectedActivityMembersRowId: string | null = null;
+  protected selectedActivityMembersRow: ActivityListRow | null = null;
+  protected activityInviteSort: ActivityInviteSort = 'recent';
+  protected showActivityInviteSortPicker = false;
+  protected selectedActivityInviteUserIds: string[] = [];
+  protected superStackedPopup: 'activityInviteFriends' | null = null;
+  private readonly activityMembersByRowId: Record<string, ActivityMemberEntry[]> = {};
   protected readonly activityRatingScale = Array.from({ length: 10 }, (_, index) => index + 1);
   private readonly weekCalendarStartHour = 6;
   private readonly weekCalendarEndHour = 23;
@@ -1091,6 +1121,13 @@ export class App {
     this.showActivitiesSecondaryPicker = false;
     this.pendingActivityDeleteRow = null;
     this.pendingActivityAction = 'delete';
+    this.selectedActivityMembers = [];
+    this.selectedActivityMembersTitle = '';
+    this.selectedActivityMembersRowId = null;
+    this.selectedActivityMembersRow = null;
+    this.selectedActivityInviteUserIds = [];
+    this.showActivityInviteSortPicker = false;
+    this.superStackedPopup = null;
     this.clearActivityRateEditorState();
   }
 
@@ -1116,6 +1153,11 @@ export class App {
     if (this.stackedPopup === 'activityMembers') {
       this.selectedActivityMembers = [];
       this.selectedActivityMembersTitle = '';
+      this.selectedActivityMembersRowId = null;
+      this.selectedActivityMembersRow = null;
+      this.selectedActivityInviteUserIds = [];
+      this.showActivityInviteSortPicker = false;
+      this.superStackedPopup = null;
     }
     this.stackedPopup = null;
     if (this.activePopup === 'chat') {
@@ -3763,9 +3805,180 @@ export class App {
 
   protected openActivityMembers(row: ActivityListRow, event?: Event): void {
     event?.stopPropagation();
-    this.selectedActivityMembers = this.getActivityMembersByRow(row);
+    this.selectedActivityMembersRowId = `${row.type}:${row.id}`;
+    this.selectedActivityMembers = this.sortActivityMembersByActionTimeAsc(this.getActivityMembersByRow(row));
+    this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
+    this.selectedActivityMembersRow = row;
     this.selectedActivityMembersTitle = row.title;
+    this.selectedActivityInviteUserIds = [];
+    this.superStackedPopup = null;
     this.stackedPopup = 'activityMembers';
+  }
+
+  protected openActivityInviteFriends(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.selectedActivityMembersRowId || !this.selectedActivityMembersRow) {
+      return;
+    }
+    this.activityInviteSort = 'recent';
+    this.selectedActivityInviteUserIds = [];
+    this.showActivityInviteSortPicker = false;
+    this.superStackedPopup = 'activityInviteFriends';
+  }
+
+  protected closeActivityInviteFriends(applyInvitations = true): void {
+    if (applyInvitations) {
+      this.applySelectedActivityInvitations();
+    }
+    this.showActivityInviteSortPicker = false;
+    this.superStackedPopup = null;
+  }
+
+  protected toggleActivityInviteSortPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.showActivityInviteSortPicker = !this.showActivityInviteSortPicker;
+  }
+
+  protected selectActivityInviteSort(sort: ActivityInviteSort): void {
+    this.activityInviteSort = sort;
+    this.showActivityInviteSortPicker = false;
+  }
+
+  protected toggleActivityInviteFriend(userId: string, event?: Event): void {
+    event?.stopPropagation();
+    if (this.selectedActivityInviteUserIds.includes(userId)) {
+      this.selectedActivityInviteUserIds = this.selectedActivityInviteUserIds.filter(id => id !== userId);
+      return;
+    }
+    this.selectedActivityInviteUserIds = [...this.selectedActivityInviteUserIds, userId];
+  }
+
+  protected isActivityInviteFriendSelected(userId: string): boolean {
+    return this.selectedActivityInviteUserIds.includes(userId);
+  }
+
+  protected get activityInviteCandidates(): ActivityMemberEntry[] {
+    if (!this.selectedActivityMembersRow) {
+      return [];
+    }
+    const existing = new Set(this.selectedActivityMembers.map(member => member.userId));
+    const candidates = this.users
+      .filter(user => user.id !== this.activeUser.id && !existing.has(user.id))
+      .map(user => this.toActivityMemberEntry(user, this.selectedActivityMembersRow!, this.selectedActivityMembersRowId!, {
+        status: 'pending',
+        pendingSource: this.selectedActivityMembersRow?.isAdmin ? 'admin' : 'member',
+        invitedByActiveUser: true
+      }));
+    return [...candidates].sort((a, b) => {
+      if (this.activityInviteSort === 'relevant') {
+        if (b.relevance !== a.relevance) {
+          return b.relevance - a.relevance;
+        }
+      }
+      return this.toSortableDate(b.metAtIso) - this.toSortableDate(a.metAtIso);
+    });
+  }
+
+  protected get selectedActivityInviteChips(): ActivityMemberEntry[] {
+    const selected = new Set(this.selectedActivityInviteUserIds);
+    return this.activityInviteCandidates.filter(item => selected.has(item.userId));
+  }
+
+  protected get activityMembersOrdered(): ActivityMemberEntry[] {
+    return this.sortActivityMembersByActionTimeAsc(this.selectedActivityMembers);
+  }
+
+  protected activityInviteMetLabel(entry: ActivityMemberEntry): string {
+    const dateText = new Date(entry.metAtIso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return `${entry.metWhere} · ${dateText}`;
+  }
+
+  protected activityMemberActionDate(entry: ActivityMemberEntry): string {
+    const when = new Date(entry.actionAtIso);
+    const dateText = Number.isNaN(when.getTime())
+      ? new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+      : when.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return `${dateText}`;
+  }
+
+  protected chatMemberActionDate(member: DemoUser): string {
+    const seed = this.hashText(`${this.selectedChatMembersItem?.id ?? 'chat'}:${member.id}`);
+    const when = this.addDays(new Date('2026-02-25T12:00:00'), -(seed % 28));
+    const dateText = when.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return `${dateText}`;
+  }
+
+  protected activityMemberAge(entry: ActivityMemberEntry): number {
+    return this.users.find(user => user.id === entry.userId)?.age ?? 0;
+  }
+
+  protected activityMemberStatusClass(entry: ActivityMemberEntry): string {
+    if (entry.status === 'accepted') {
+      return 'activity-member-approved';
+    }
+    if (entry.requestKind === 'join') {
+      return 'activity-member-join-request';
+    }
+    if (entry.pendingSource === 'admin') {
+      return 'activity-member-pending-invitation';
+    }
+    return 'activity-member-pending-admin-approval';
+  }
+
+  protected canApproveActivityMember(entry: ActivityMemberEntry): boolean {
+    if (this.selectedActivityMembersRow?.isAdmin !== true) {
+      return false;
+    }
+    return entry.status === 'pending' && (entry.pendingSource === 'member' || entry.requestKind === 'join');
+  }
+
+  protected canDeleteActivityMember(entry: ActivityMemberEntry): boolean {
+    if (this.selectedActivityMembersRow?.isAdmin === true) {
+      return true;
+    }
+    return entry.status === 'pending';
+  }
+
+  protected activityMemberStatusLabel(entry: ActivityMemberEntry): string {
+    if (entry.status === 'accepted') {
+      return 'Approved';
+    }
+    if (entry.requestKind === 'join') {
+      return 'Waiting For Join Approval';
+    }
+    if (entry.pendingSource === 'admin') {
+      return 'Invitation Pending';
+    }
+    return 'Waiting For Admin Approval';
+  }
+
+  protected approveActivityMember(entry: ActivityMemberEntry, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.selectedActivityMembersRowId || !this.canApproveActivityMember(entry)) {
+      return;
+    }
+    const nowIso = this.toIsoDateTime(new Date());
+    this.selectedActivityMembers = this.sortActivityMembersByActionTimeAsc(this.selectedActivityMembers.map(item =>
+      item.id === entry.id
+        ? {
+            ...item,
+            status: 'accepted',
+            pendingSource: null,
+            requestKind: null,
+            actionAtIso: nowIso
+          }
+        : item
+    ));
+    this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
+  }
+
+  protected removeActivityMember(entry: ActivityMemberEntry, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.selectedActivityMembersRowId || !this.canDeleteActivityMember(entry)) {
+      return;
+    }
+    this.selectedActivityMembers = this.selectedActivityMembers.filter(item => item.id !== entry.id);
+    this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
   }
 
   protected pendingActivityConfirmTitle(): string {
@@ -4489,6 +4702,9 @@ export class App {
     if (this.showActivitiesSecondaryPicker && !target.closest('.activities-secondary-picker') && !target.closest('.popup-view-fab')) {
       this.showActivitiesSecondaryPicker = false;
     }
+    if (this.showActivityInviteSortPicker && !target.closest('.friends-picker-sort') && !target.closest('.popup-view-fab')) {
+      this.showActivityInviteSortPicker = false;
+    }
   }
 
   private getInitialUserId(): string {
@@ -4765,8 +4981,21 @@ export class App {
       return Number.POSITIVE_INFINITY;
     }
     const safe = value.replace(/\//g, '-');
-    const parsed = /^\d{4}-\d{2}-\d{2}$/.test(safe) ? new Date(`${safe}T00:00:00`) : new Date(`${safe}-01T00:00:00`);
-    return Number.isNaN(parsed.getTime()) ? Number.POSITIVE_INFINITY : parsed.getTime();
+
+    // First, support full ISO date-time values directly (e.g. 2026-02-25T12:34:56).
+    const direct = new Date(safe);
+    if (!Number.isNaN(direct.getTime())) {
+      return direct.getTime();
+    }
+
+    // Fallback for date-only and year-month values used elsewhere in the app.
+    if (/^\d{4}-\d{2}-\d{2}$/.test(safe)) {
+      return new Date(`${safe}T00:00:00`).getTime();
+    }
+    if (/^\d{4}-\d{2}$/.test(safe)) {
+      return new Date(`${safe}-01T00:00:00`).getTime();
+    }
+    return Number.POSITIVE_INFINITY;
   }
 
   protected get profileCardBirthday(): string {
@@ -4800,6 +5029,16 @@ export class App {
     const month = `${value.getMonth() + 1}`.padStart(2, '0');
     const day = `${value.getDate()}`.padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  private toIsoDateTime(value: Date): string {
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    const day = `${value.getDate()}`.padStart(2, '0');
+    const hours = `${value.getHours()}`.padStart(2, '0');
+    const minutes = `${value.getMinutes()}`.padStart(2, '0');
+    const seconds = `${value.getSeconds()}`.padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
   }
 
   private getAgeFromIsoDate(value: string): number {
@@ -4913,10 +5152,15 @@ export class App {
     return picked;
   }
 
-  private getActivityMembersByRow(row: ActivityListRow): DemoUser[] {
+  private getActivityMembersByRow(row: ActivityListRow): ActivityMemberEntry[] {
+    const rowKey = `${row.type}:${row.id}`;
+    const cached = this.activityMembersByRowId[rowKey];
+    if (cached) {
+      return this.sortActivityMembersByActionTimeAsc([...cached]);
+    }
     const others = this.users.filter(user => user.id !== this.activeUser.id);
     if (others.length === 0) {
-      return [this.activeUser];
+      return [this.toActivityMemberEntry(this.activeUser, row, rowKey, { status: 'accepted', pendingSource: null, invitedByActiveUser: false })];
     }
     const seed = this.hashText(`${row.type}:${row.id}`);
     const memberCount = row.type === 'invitations' ? 3 : 5;
@@ -4931,7 +5175,100 @@ export class App {
         break;
       }
     }
-    return picked;
+    const accepted = picked.map(user => this.toActivityMemberEntry(user, row, rowKey, { status: 'accepted', pendingSource: null, invitedByActiveUser: false }));
+    const acceptedIds = new Set(accepted.map(item => item.userId));
+    const pendingCandidate = others.find(user => !acceptedIds.has(user.id));
+    if (pendingCandidate) {
+      accepted.push(
+        this.toActivityMemberEntry(pendingCandidate, row, rowKey, {
+          status: 'pending',
+          pendingSource: row.isAdmin ? 'admin' : 'member',
+          invitedByActiveUser: true
+        })
+      );
+      acceptedIds.add(pendingCandidate.id);
+    }
+    const joinCandidate = others.find(user => !acceptedIds.has(user.id));
+    if (joinCandidate) {
+      const joinEntry = this.toActivityMemberEntry(joinCandidate, row, rowKey, {
+        status: 'pending',
+        pendingSource: 'member',
+        invitedByActiveUser: false
+      });
+      accepted.push({
+        ...joinEntry,
+        requestKind: 'join'
+      });
+    }
+    const ordered = this.sortActivityMembersByActionTimeAsc(accepted);
+    this.activityMembersByRowId[rowKey] = [...ordered];
+    return ordered;
+  }
+
+  private applySelectedActivityInvitations(): void {
+    if (!this.selectedActivityMembersRow || !this.selectedActivityMembersRowId || this.selectedActivityInviteUserIds.length === 0) {
+      this.selectedActivityInviteUserIds = [];
+      return;
+    }
+    const selected = new Set(this.selectedActivityInviteUserIds);
+    const pendingSource: ActivityPendingSource = this.selectedActivityMembersRow.isAdmin ? 'admin' : 'member';
+    const nowIso = this.toIsoDateTime(new Date());
+    const additions = this.activityInviteCandidates
+      .filter(candidate => selected.has(candidate.userId))
+      .map(candidate => ({
+        ...candidate,
+        status: 'pending' as const,
+        pendingSource,
+        requestKind: 'invite' as const,
+        invitedByActiveUser: true,
+        actionAtIso: nowIso
+      }));
+    const byUserId = new Set(this.selectedActivityMembers.map(item => item.userId));
+    const next = [...this.selectedActivityMembers];
+    for (const item of additions) {
+      if (!byUserId.has(item.userId)) {
+        next.push(item);
+        byUserId.add(item.userId);
+      }
+    }
+    const ordered = this.sortActivityMembersByActionTimeAsc(next);
+    this.selectedActivityMembers = ordered;
+    this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...ordered];
+    this.selectedActivityInviteUserIds = [];
+  }
+
+  private toActivityMemberEntry(
+    user: DemoUser,
+    row: ActivityListRow,
+    rowKey: string,
+    defaults: { status: ActivityMemberStatus; pendingSource: ActivityPendingSource; invitedByActiveUser: boolean }
+  ): ActivityMemberEntry {
+    const seed = this.hashText(`${rowKey}:${user.id}`);
+    const metAt = this.addDays(new Date('2026-02-24T12:00:00'), -((seed % 220) + 1));
+    const metPlaces = ['City Center Meetup', 'Board Game Night', 'Coffee Social', 'Hiking Group', 'Music Event', 'Brunch Table'];
+    const place = metPlaces[seed % metPlaces.length];
+    return {
+      id: `${rowKey}:${user.id}`,
+      userId: user.id,
+      name: user.name,
+      initials: user.initials,
+      gender: user.gender,
+      city: user.city,
+      statusText: user.statusText,
+      status: defaults.status,
+      pendingSource: defaults.pendingSource,
+      requestKind: defaults.status === 'pending' ? 'invite' : null,
+      invitedByActiveUser: defaults.invitedByActiveUser,
+      metAtIso: this.toIsoDateTime(metAt),
+      actionAtIso: this.toIsoDateTime(metAt),
+      metWhere: place,
+      relevance: 40 + (seed % 61),
+      avatarUrl: `https://i.pravatar.cc/1200?img=${(seed % 70) + 1}`
+    };
+  }
+
+  private sortActivityMembersByActionTimeAsc(entries: ActivityMemberEntry[]): ActivityMemberEntry[] {
+    return [...entries].sort((a, b) => this.toSortableDate(b.actionAtIso) - this.toSortableDate(a.actionAtIso));
   }
 
   private getChatItemById(chatId: string): ChatMenuItem | undefined {

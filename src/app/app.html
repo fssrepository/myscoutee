@@ -709,8 +709,9 @@
           <div class="chat-members-popup-row" *ngFor="let member of selectedChatMembers">
             <span class="chat-members-popup-avatar" [class]="'user-color-' + member.gender">{{ member.initials }}</span>
             <div class="chat-members-popup-meta">
-              <p>{{ member.name }}</p>
-              <p>{{ member.city }} · {{ member.statusText }}</p>
+              <p class="member-name">{{ member.name }}, {{ member.age }}</p>
+              <p class="member-city">{{ member.city }}</p>
+              <p class="member-action">{{ chatMemberActionDate(member) }}</p>
             </div>
           </div>
         </div>
@@ -1699,22 +1700,46 @@
           <div class="chat-members-popup-row" *ngFor="let member of selectedChatMembers">
             <span class="chat-members-popup-avatar" [class]="'user-color-' + member.gender">{{ member.initials }}</span>
             <div class="chat-members-popup-meta">
-              <p>{{ member.name }}</p>
-              <p>{{ member.city }} · {{ member.statusText }}</p>
+              <p class="member-name">{{ member.name }}, {{ member.age }}</p>
+              <p class="member-city">{{ member.city }}</p>
+              <p class="member-action">{{ chatMemberActionDate(member) }}</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div *ngIf="stackedPopup === 'activityMembers'">
-        <div class="chat-members-popup-list">
-          <div class="chat-members-popup-row" *ngFor="let member of selectedActivityMembers">
+      <div *ngIf="stackedPopup === 'activityMembers'" class="activity-members-popup-wrap">
+        <div class="chat-members-popup-list activity-members-popup-list">
+          <article class="chat-members-popup-row activity-members-popup-row" [ngClass]="activityMemberStatusClass(member)" *ngFor="let member of activityMembersOrdered">
             <span class="chat-members-popup-avatar" [class]="'user-color-' + member.gender">{{ member.initials }}</span>
             <div class="chat-members-popup-meta">
-              <p>{{ member.name }}</p>
-              <p>{{ member.city }} · {{ member.statusText }}</p>
+              <p class="member-name">{{ member.name }}, {{ activityMemberAge(member) }}</p>
+              <p class="member-city">{{ member.city }}</p>
+              <p class="member-action">{{ activityMemberActionDate(member) }}</p>
             </div>
-          </div>
+            <div class="activity-members-side">
+              <div class="experience-item-actions" *ngIf="canApproveActivityMember(member) || canDeleteActivityMember(member)">
+                <button
+                  type="button"
+                  class="experience-action-btn asset-accept-btn"
+                  *ngIf="canApproveActivityMember(member)"
+                  (click)="approveActivityMember(member, $event)"
+                  aria-label="Approve invitation"
+                >
+                  <mat-icon>check</mat-icon>
+                </button>
+                <button
+                  type="button"
+                  class="experience-action-btn experience-action-delete"
+                  (click)="removeActivityMember(member, $event)"
+                  aria-label="Delete invitation"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+              <span class="chat-members-inline-badge activity-member-status-badge">{{ activityMemberStatusLabel(member) }}</span>
+            </div>
+          </article>
         </div>
       </div>
 
@@ -2137,6 +2162,74 @@
       <div *ngIf="stackedPopup === 'experienceSelector' && filteredExperienceEntries.length === 0" class="editor-list-card">
         <h4>No entries in this filter</h4>
         <p>Try switching the type dropdown to All.</p>
+      </div>
+    </div>
+    <button
+      type="button"
+      class="activity-members-add-fab"
+      *ngIf="stackedPopup === 'activityMembers'"
+      (click)="openActivityInviteFriends($event)"
+      aria-label="Invite friends"
+    >
+      <mat-icon>add</mat-icon>
+    </button>
+  </div>
+</section>
+
+<section class="app-popup app-popup-stacked app-popup-super-stacked" *ngIf="superStackedPopup === 'activityInviteFriends'">
+  <div class="app-popup-backdrop" (click)="closeActivityInviteFriends(true)"></div>
+  <div class="app-popup-panel popup-panel-friends-picker" (click)="$event.stopPropagation()">
+    <div class="popup-header popup-header-friends-picker">
+      <div class="popup-title">
+        <h2>Invite Friends</h2>
+      </div>
+      <div class="popup-header-inline-controls">
+        <div class="friends-picker-sort">
+          <button type="button" class="popup-view-fab" (click)="toggleActivityInviteSortPicker($event)" aria-label="Open invite sort">
+            <mat-icon>{{ activityInviteSort === 'recent' ? 'schedule' : 'auto_awesome' }}</mat-icon>
+            <span>{{ activityInviteSort === 'recent' ? 'Recent' : 'Relevant' }}</span>
+          </button>
+          <div class="activities-view-picker-panel" *ngIf="showActivityInviteSortPicker">
+            <button type="button" class="activities-view-option" (click)="selectActivityInviteSort('recent')">
+              <mat-icon>schedule</mat-icon>
+              <span>Recent</span>
+            </button>
+            <button type="button" class="activities-view-option" (click)="selectActivityInviteSort('relevant')">
+              <mat-icon>auto_awesome</mat-icon>
+              <span>Relevant</span>
+            </button>
+          </div>
+        </div>
+        <button mat-icon-button class="popup-close" (click)="closeActivityInviteFriends(true)" aria-label="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <div class="popup-body popup-body-friends-picker">
+      <div class="friends-picker-chip-row" *ngIf="selectedActivityInviteChips.length > 0">
+        <button type="button" class="values-selected-chip friends-picker-chip" *ngFor="let chip of selectedActivityInviteChips" (click)="toggleActivityInviteFriend(chip.userId, $event)">
+          <span class="friends-picker-chip-avatar" [class]="'user-color-' + chip.gender">{{ chip.initials }}</span>
+          <span>{{ chip.name }}</span>
+          <mat-icon class="friends-picker-chip-remove">close</mat-icon>
+        </button>
+      </div>
+      <div class="friends-picker-grid">
+        <article class="friends-picker-card" *ngFor="let candidate of activityInviteCandidates" [style.backgroundImage]="'url(' + candidate.avatarUrl + ')'">
+          <button
+            type="button"
+            class="friends-picker-card-add-btn"
+            [class.active]="isActivityInviteFriendSelected(candidate.userId)"
+            (click)="toggleActivityInviteFriend(candidate.userId, $event)"
+            aria-label="Select friend"
+          >
+            <mat-icon>{{ isActivityInviteFriendSelected(candidate.userId) ? 'check' : 'add' }}</mat-icon>
+          </button>
+          <div class="friends-picker-card-meta">
+            <h4>{{ candidate.name }}</h4>
+            <p>{{ activityInviteMetLabel(candidate) }}</p>
+          </div>
+        </article>
       </div>
     </div>
   </div>

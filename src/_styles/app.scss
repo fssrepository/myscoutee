@@ -1640,6 +1640,152 @@
   height: 100%;
 }
 
+.app-popup-super-stacked {
+  z-index: 3600;
+}
+
+.popup-panel-friends-picker {
+  width: min(980px, calc(100vw - 1rem));
+  height: min(92vh, 980px);
+}
+
+.popup-header-friends-picker {
+  gap: 0.55rem;
+}
+
+.popup-header-inline-controls {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.46rem;
+}
+
+.friends-picker-sort {
+  position: relative;
+}
+
+.popup-body-friends-picker {
+  display: grid;
+  gap: 0.28rem;
+  align-content: start;
+  grid-auto-rows: max-content;
+}
+
+.friends-picker-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  margin-top: 0;
+}
+
+.friends-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 0.58rem;
+  justify-items: start;
+  align-content: start;
+}
+
+.friends-picker-card {
+  position: relative;
+  width: min(100%, 320px);
+  min-height: 250px;
+  border-radius: 13px;
+  border: 1px solid rgba(30, 51, 81, 0.24);
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+
+.friends-picker-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 16, 28, 0.14) 0%, rgba(8, 15, 28, 0.82) 100%);
+}
+
+.friends-picker-card-add-btn {
+  position: absolute;
+  top: 0.48rem;
+  right: 0.48rem;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  background: rgba(243, 249, 255, 0.92);
+  color: #275b98;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.friends-picker-card-add-btn .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.friends-picker-card-add-btn.active {
+  background: #2d7d47;
+  border-color: #20613a;
+  color: #fff;
+}
+
+.friends-picker-card-meta {
+  position: absolute;
+  left: 0.52rem;
+  right: 0.52rem;
+  bottom: 0.46rem;
+  z-index: 2;
+}
+
+.friends-picker-card-meta h4 {
+  margin: 0;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+
+.friends-picker-card-meta p {
+  margin: 0.1rem 0 0;
+  color: rgba(245, 249, 255, 0.96);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.58);
+}
+
+.popup-body-friends-picker .friends-picker-card-meta p {
+  color: rgba(245, 249, 255, 0.96);
+}
+
+.friends-picker-chip {
+  padding-right: 0.36rem;
+}
+
+.friends-picker-chip-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.friends-picker-chip-remove {
+  margin-left: auto;
+}
+
 .popup-body-experience {
   position: relative;
   padding-bottom: 0.74rem;
@@ -2835,6 +2981,16 @@
   gap: 0.38rem;
 }
 
+.activity-members-popup-list {
+  position: relative;
+  padding-bottom: 4.1rem;
+}
+
+.activity-members-popup-wrap {
+  position: relative;
+  min-height: 100%;
+}
+
 .chat-members-popup-row {
   border: 1px solid rgba(15, 27, 47, 0.12);
   border-radius: 11px;
@@ -2844,6 +3000,94 @@
   align-items: center;
   gap: 0.48rem;
 }
+
+.activity-members-popup-row {
+  position: relative;
+  align-items: flex-start;
+}
+
+.activity-members-popup-row .chat-members-popup-meta {
+  flex: 1 1 auto;
+}
+
+.activity-members-popup-row .experience-item-actions {
+  margin-left: auto;
+  justify-self: end;
+}
+
+.activity-members-side {
+  margin-left: auto;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.22rem;
+}
+
+.activity-member-status-badge {
+  height: 18px;
+  padding: 0 0.42rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: rgba(28, 43, 65, 0.82);
+  background: rgba(214, 222, 233, 0.92);
+  border: 1px solid rgba(129, 146, 169, 0.34);
+}
+
+.activity-member-approved {
+  background: linear-gradient(180deg, #ecf7ef 0%, #e2f1e6 100%);
+  border-color: rgba(45, 125, 71, 0.34);
+}
+
+.activity-member-pending-invitation {
+  background: linear-gradient(180deg, #fff2df 0%, #ffe8c9 100%);
+  border-color: rgba(181, 113, 26, 0.45);
+}
+
+.activity-member-pending-admin-approval {
+  background: linear-gradient(180deg, #fff1f2 0%, #ffe7ea 100%);
+  border-color: rgba(189, 66, 95, 0.38);
+}
+
+.activity-member-join-request {
+  background: linear-gradient(180deg, #eef5ff 0%, #e4eeff 100%);
+  border-color: rgba(46, 102, 181, 0.38);
+}
+
+.activity-members-add-fab {
+  position: absolute;
+  right: 0.85rem;
+  bottom: max(0.85rem, env(safe-area-inset-bottom));
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid rgba(42, 67, 101, 0.28);
+  background: linear-gradient(180deg, #eef4ff 0%, #dfe9ff 100%);
+  color: #275b98;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 22px rgba(9, 21, 40, 0.24);
+  cursor: pointer;
+  z-index: 12;
+}
+
+.activity-members-add-fab .mat-icon {
+  width: 22px;
+  height: 22px;
+  font-size: 22px;
+  line-height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 760px) {
+  .activity-members-add-fab {
+    right: 0.6rem;
+    bottom: max(0.6rem, env(safe-area-inset-bottom));
+  }
+}
+
 
 .chat-members-popup-avatar {
   width: 34px;
@@ -2878,6 +3122,22 @@
 .chat-members-popup-meta p:last-child {
   font-size: 0.75rem;
   color: rgba(20, 32, 52, 0.65);
+}
+
+.chat-members-popup-meta .member-name {
+  font-size: 0.85rem;
+  color: rgba(20, 32, 52, 0.9);
+  font-weight: 700;
+}
+
+.chat-members-popup-meta .member-city {
+  font-size: 0.75rem;
+  color: rgba(20, 32, 52, 0.68);
+}
+
+.chat-members-popup-meta .member-action {
+  font-size: 0.71rem;
+  color: rgba(20, 32, 52, 0.58);
 }
 
 @media (hover: hover) {
@@ -6016,6 +6276,14 @@ textarea {
 }
 
 @media (max-width: 760px) {
+  .friends-picker-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .friends-picker-card {
+    min-height: 190px;
+  }
+
   .popup-impressions-badge {
     display: inline-flex;
     flex-wrap: nowrap;
