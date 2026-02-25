@@ -875,6 +875,7 @@ export class App {
   private activitiesPaginationAwaitScrollReset = false;
   private activitiesBottomPullTracking = false;
   private activitiesBottomPullEdgeLocked = false;
+  private activitiesBottomPullStartOnLastRow = false;
   private activitiesBottomPullStartY = 0;
   private readonly activitiesBottomPullMaxPx = 70;
   private readonly activitiesBottomPullTriggerPx = 32;
@@ -3299,11 +3300,7 @@ export class App {
     if (!target || event.touches.length === 0) {
       return;
     }
-    // Start tracking gesture immediately; bottom check happens on move.
-    this.activitiesBottomPullTracking = true;
-    this.activitiesBottomPullEdgeLocked = false;
-    this.activitiesBottomPullStartY = event.touches[0].clientY;
-    this.activitiesBottomPullArmed = false;
+    this.beginActivitiesBottomPull(target, event.target, event.touches[0].clientY);
   }
 
   protected onActivitiesTouchMove(event: TouchEvent): void {
@@ -3314,24 +3311,9 @@ export class App {
     if (!target || event.touches.length === 0) {
       return;
     }
-    const remainingPx = target.scrollHeight - target.scrollTop - target.clientHeight;
-    if (!this.activitiesBottomPullEdgeLocked) {
-      if (remainingPx > 24) {
-        this.resetActivitiesBottomPullState();
-        return;
-      }
-      this.activitiesBottomPullEdgeLocked = true;
+    if (this.moveActivitiesBottomPull(target, event.touches[0].clientY)) {
+      event.preventDefault();
     }
-    const deltaY = event.touches[0].clientY - this.activitiesBottomPullStartY;
-    const pullUpDelta = Math.max(0, -deltaY);
-    const pullPx = this.clampNumber(pullUpDelta * 0.42, 0, this.activitiesBottomPullMaxPx);
-    if (pullPx <= 0) {
-      return;
-    }
-    this.activitiesBottomPullPx = pullPx;
-    this.activitiesBottomPullArmed = pullPx >= this.activitiesBottomPullTriggerPx;
-    this.activitiesBottomPullReleasing = false;
-    event.preventDefault();
   }
 
   protected onActivitiesTouchEnd(event: TouchEvent): void {
@@ -3339,11 +3321,39 @@ export class App {
       return;
     }
     const target = event.currentTarget as HTMLElement | null;
-    const shouldTrigger = this.activitiesBottomPullArmed || this.activitiesBottomPullPx >= this.activitiesBottomPullTriggerPx * 0.8;
-    this.releaseActivitiesBottomPull();
-    if (shouldTrigger && target) {
-      this.forceLoadMoreActivities(target);
+    this.finishActivitiesBottomPull(target);
+  }
+
+  protected onActivitiesPointerStart(event: PointerEvent): void {
+    if (event.pointerType === 'touch' || event.button !== 0 || this.isCalendarLayoutView() || this.activePopup !== 'activities') {
+      return;
     }
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) {
+      return;
+    }
+    this.beginActivitiesBottomPull(target, event.target, event.clientY);
+  }
+
+  protected onActivitiesPointerMove(event: PointerEvent): void {
+    if (event.pointerType === 'touch' || !this.activitiesBottomPullTracking || this.isCalendarLayoutView() || this.activePopup !== 'activities') {
+      return;
+    }
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) {
+      return;
+    }
+    if (this.moveActivitiesBottomPull(target, event.clientY)) {
+      event.preventDefault();
+    }
+  }
+
+  protected onActivitiesPointerEnd(event: PointerEvent): void {
+    if (event.pointerType === 'touch' || !this.activitiesBottomPullTracking) {
+      return;
+    }
+    const target = event.currentTarget as HTMLElement | null;
+    this.finishActivitiesBottomPull(target);
   }
 
   protected selectActivitiesPrimaryFilter(filter: ActivitiesPrimaryFilter): void {
@@ -6396,6 +6406,7 @@ export class App {
   private releaseActivitiesBottomPull(): void {
     this.activitiesBottomPullTracking = false;
     this.activitiesBottomPullEdgeLocked = false;
+    this.activitiesBottomPullStartOnLastRow = false;
     this.activitiesBottomPullArmed = false;
     if (this.activitiesBottomPullReleaseTimer) {
       clearTimeout(this.activitiesBottomPullReleaseTimer);
@@ -6412,6 +6423,7 @@ export class App {
   private resetActivitiesBottomPullState(): void {
     this.activitiesBottomPullTracking = false;
     this.activitiesBottomPullEdgeLocked = false;
+    this.activitiesBottomPullStartOnLastRow = false;
     this.activitiesBottomPullArmed = false;
     this.activitiesBottomPullPx = 0;
     this.activitiesBottomPullReleasing = false;
@@ -6432,6 +6444,49 @@ export class App {
 
   private clampNumber(value: number, min: number, max: number): number {
     return Math.min(max, Math.max(min, value));
+  }
+
+  private beginActivitiesBottomPull(container: HTMLElement, eventTarget: EventTarget | null, startY: number): void {
+    this.activitiesBottomPullTracking = true;
+    this.activitiesBottomPullEdgeLocked = false;
+    const targetElement = eventTarget instanceof HTMLElement ? eventTarget : null;
+    const touchedRow = targetElement?.closest('.activities-row-item') as HTMLElement | null;
+    const rows = Array.from(container.querySelectorAll<HTMLElement>('.activities-row-item'));
+    const lastRow = rows.length > 0 ? rows[rows.length - 1] : null;
+    this.activitiesBottomPullStartOnLastRow = !!(touchedRow && lastRow && touchedRow === lastRow);
+    this.activitiesBottomPullStartY = startY;
+    this.activitiesBottomPullArmed = false;
+  }
+
+  private moveActivitiesBottomPull(container: HTMLElement, currentY: number): boolean {
+    const remainingPx = container.scrollHeight - container.scrollTop - container.clientHeight;
+    if (!this.activitiesBottomPullEdgeLocked) {
+      const isBottomEdge = remainingPx <= 1;
+      if (!isBottomEdge && !this.activitiesBottomPullStartOnLastRow) {
+        this.resetActivitiesBottomPullState();
+        return false;
+      }
+      this.activitiesBottomPullEdgeLocked = true;
+    }
+    const deltaY = currentY - this.activitiesBottomPullStartY;
+    const pullUpDelta = Math.max(0, -deltaY);
+    const pullPx = this.clampNumber(pullUpDelta * 0.42, 0, this.activitiesBottomPullMaxPx);
+    if (pullPx <= 0) {
+      return false;
+    }
+    this.activitiesBottomPullPx = pullPx;
+    this.activitiesBottomPullArmed = pullPx >= this.activitiesBottomPullTriggerPx;
+    this.activitiesBottomPullReleasing = false;
+    container.scrollTop = container.scrollHeight;
+    return true;
+  }
+
+  private finishActivitiesBottomPull(container: HTMLElement | null): void {
+    const shouldTrigger = this.activitiesBottomPullArmed || this.activitiesBottomPullPx >= this.activitiesBottomPullTriggerPx * 0.8;
+    this.releaseActivitiesBottomPull();
+    if (shouldTrigger && container) {
+      this.forceLoadMoreActivities(container);
+    }
   }
 
   private shiftCalendarPages(direction: -1 | 1): void {

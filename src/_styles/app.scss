@@ -1893,8 +1893,6 @@
   gap: 0.34rem;
   padding-right: 0;
   --activities-bottom-pull: 0px;
-  transform: translateY(calc(var(--activities-bottom-pull) * -1));
-  will-change: transform;
 }
 
 .popup-body.popup-body-activities {
@@ -1902,11 +1900,22 @@
 }
 
 .activities-scroll-list.is-bottom-pull-active {
-  transition: none;
+  .activities-bottom-pull-spacer {
+    transition: none;
+  }
 }
 
 .activities-scroll-list.is-bottom-pull-releasing {
-  transition: transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  .activities-bottom-pull-spacer {
+    transition: height 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+}
+
+.activities-bottom-pull-spacer {
+  flex: 0 0 auto;
+  height: var(--activities-bottom-pull);
+  pointer-events: none;
+  scroll-snap-align: none;
 }
 
 .activities-group-marker {

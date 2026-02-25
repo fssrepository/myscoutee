@@ -433,6 +433,10 @@
             [style.--activities-bottom-pull.px]="activitiesBottomPullPx"
             #activitiesScroll
             (scroll)="onActivitiesScroll($event)"
+            (pointerdown)="onActivitiesPointerStart($event)"
+            (pointermove)="onActivitiesPointerMove($event)"
+            (pointerup)="onActivitiesPointerEnd($event)"
+            (pointercancel)="onActivitiesPointerEnd($event)"
             (touchstart)="onActivitiesTouchStart($event)"
             (touchmove)="onActivitiesTouchMove($event)"
             (touchend)="onActivitiesTouchEnd($event)"
@@ -552,6 +556,8 @@
               <h4>No items</h4>
               <p>{{ activitiesEmptyLabel }}</p>
             </div>
+
+            <div class="activities-bottom-pull-spacer" aria-hidden="true"></div>
           </div>
         </ng-container>
 
