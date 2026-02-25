@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, ViewChild, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, Injectable, NgZone, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -287,6 +287,7 @@ interface ActivityMemberEntry {
   avatarUrl: string;
 }
 
+@Injectable()
 class YearMonthDayDateAdapter extends NativeDateAdapter {
   override parse(value: unknown): Date | null {
     if (typeof value === 'string') {
@@ -657,6 +658,10 @@ export class App {
   }
   private calendarMonthAnchorsHydrated = false;
   private calendarWeekAnchorsHydrated = false;
+  private calendarMonthPagesCacheKey = '';
+  private calendarWeekPagesCacheKey = '';
+  private calendarMonthPagesCache: CalendarMonthPage[] = [];
+  private calendarWeekPagesCache: CalendarWeekPage[] = [];
   protected readonly activitiesPrimaryFilters: Array<{ key: ActivitiesPrimaryFilter; label: string; icon: string }> = [
     { key: 'rates', label: 'Rates', icon: 'star' },
     { key: 'chats', label: 'Chats', icon: 'chat' },
@@ -867,6 +872,7 @@ export class App {
   private readonly activitiesHeaderLoadingWindowMs = 3000;
   private readonly activitiesHeaderLoadingTickMs = 16;
   private activitiesHeaderLoadingStartedAtMs = 0;
+  private activitiesHeaderFlushScheduled = false;
   private readonly activitiesPaginationLoadDelayMs = 3500;
   private activitiesVisibleCount = this.activitiesPageSize;
   private activitiesPaginationKey = '';
@@ -3133,9 +3139,23 @@ export class App {
       return [];
     }
     const rows = this.filteredActivityRows;
-    const rowsByDate = this.buildActivityRowsByDate(rows);
     const monthAnchors = this.monthAnchorsForRows(rows);
-    return monthAnchors.map(anchor => this.buildMonthPage(anchor, rowsByDate, rows));
+    const cacheKey = [
+      this.activeUserId,
+      this.activitiesPrimaryFilter,
+      this.activitiesSecondaryFilter,
+      this.activitiesRateFilter,
+      this.activitiesView,
+      this.calendarRowsSignature(rows),
+      monthAnchors.map(anchor => this.monthKey(anchor)).join(',')
+    ].join('|');
+    if (cacheKey === this.calendarMonthPagesCacheKey) {
+      return this.calendarMonthPagesCache;
+    }
+    const rowsByDate = this.buildActivityRowsByDate(rows);
+    this.calendarMonthPagesCache = monthAnchors.map(anchor => this.buildMonthPage(anchor, rowsByDate, rows));
+    this.calendarMonthPagesCacheKey = cacheKey;
+    return this.calendarMonthPagesCache;
   }
 
   protected get calendarWeekPages(): CalendarWeekPage[] {
@@ -3143,9 +3163,23 @@ export class App {
       return [];
     }
     const rows = this.filteredActivityRows;
-    const rowsByDate = this.buildActivityRowsByDate(rows);
     const weekAnchors = this.weekAnchorsForRows(rows);
-    return weekAnchors.map(anchor => this.buildWeekPage(anchor, rowsByDate));
+    const cacheKey = [
+      this.activeUserId,
+      this.activitiesPrimaryFilter,
+      this.activitiesSecondaryFilter,
+      this.activitiesRateFilter,
+      this.activitiesView,
+      this.calendarRowsSignature(rows),
+      weekAnchors.map(anchor => this.dateKey(anchor)).join(',')
+    ].join('|');
+    if (cacheKey === this.calendarWeekPagesCacheKey) {
+      return this.calendarWeekPagesCache;
+    }
+    const rowsByDate = this.buildActivityRowsByDate(rows);
+    this.calendarWeekPagesCache = weekAnchors.map(anchor => this.buildWeekPage(anchor, rowsByDate));
+    this.calendarWeekPagesCacheKey = cacheKey;
+    return this.calendarWeekPagesCache;
   }
 
   protected weekHourLabel(hour: number): string {
@@ -5700,6 +5734,7 @@ export class App {
       if (this.suppressCalendarEdgeSettle) {
         return;
       }
+      this.normalizeCalendarScrollPageAlignment(target);
       const scrollLeftSnapshot = target.scrollLeft;
       // Require an extra quiet window before mutating page anchors.
       this.calendarPostSettleTimer = setTimeout(() => {
@@ -5710,6 +5745,7 @@ export class App {
         if (Math.abs(target.scrollLeft - scrollLeftSnapshot) > 1) {
           return;
         }
+        this.normalizeCalendarScrollPageAlignment(target);
         this.handleCalendarEdgeSettle(target);
       }, 100);
     }, 120);
@@ -5766,7 +5802,8 @@ export class App {
         });
         this.endActivitiesHeaderProgressLoading();
       };
-      setTimeout(scrollAfterShift, 0);
+      // Keep edge-navigation behavior aligned with swipe settle timing.
+      setTimeout(scrollAfterShift, 100);
       return;
     }
     calendarElement.scrollTo({ left: targetIndex * pageWidth, behavior: 'smooth' });
@@ -5874,6 +5911,16 @@ export class App {
     const focusWeek = this.calendarWeekFocusDate ? this.startOfWeekMonday(this.calendarWeekFocusDate) : todayWeek;
     this.calendarWeekAnchorPages = this.buildWeekAnchorWindow(focusWeek);
     return [...this.calendarWeekAnchorPages];
+  }
+
+  private calendarRowsSignature(rows: ActivityListRow[]): string {
+    return rows
+      .map(row => {
+        const range = this.activityDateTimeRangeById[row.id];
+        const rangeSignature = range ? `${range.startIso}:${range.endIso}` : '';
+        return `${row.type}:${row.id}:${row.dateIso}:${rangeSignature}`;
+      })
+      .join(',');
   }
 
   private buildMonthPage(anchor: Date, rowsByDate: Map<string, ActivityListRow[]>, rows: ActivityListRow[]): CalendarMonthPage {
@@ -6094,6 +6141,22 @@ export class App {
     return Math.max(0, Math.round(calendarElement.scrollLeft / pageWidth));
   }
 
+  private normalizeCalendarScrollPageAlignment(calendarElement: HTMLElement): void {
+    const pageWidth = calendarElement.clientWidth || 0;
+    if (pageWidth <= 0) {
+      return;
+    }
+    const nearestPageIndex = Math.max(0, Math.round(calendarElement.scrollLeft / pageWidth));
+    const nearestPageLeft = nearestPageIndex * pageWidth;
+    if (Math.abs(calendarElement.scrollLeft - nearestPageLeft) > 0.75) {
+      return;
+    }
+    const previousScrollBehavior = calendarElement.style.scrollBehavior;
+    calendarElement.style.scrollBehavior = 'auto';
+    calendarElement.scrollLeft = nearestPageLeft;
+    calendarElement.style.scrollBehavior = previousScrollBehavior;
+  }
+
   private handleCalendarEdgeSettle(calendarElement: HTMLElement): void {
     if (this.suppressCalendarEdgeSettle) {
       return;
@@ -6312,6 +6375,9 @@ export class App {
   }
 
   private beginActivitiesHeaderProgressLoading(): void {
+    if (this.isCalendarLayoutView()) {
+      return;
+    }
     this.activitiesHeaderLoadingCounter += 1;
     if (this.activitiesHeaderLoadingCounter > 1) {
       return;
@@ -6339,6 +6405,9 @@ export class App {
   }
 
   private endActivitiesHeaderProgressLoading(): void {
+    if (this.activitiesHeaderLoadingCounter === 0) {
+      return;
+    }
     this.activitiesHeaderLoadingCounter = Math.max(0, this.activitiesHeaderLoadingCounter - 1);
     if (this.activitiesHeaderLoadingCounter !== 0) {
       return;
@@ -6382,7 +6451,8 @@ export class App {
       return;
     }
     const elapsed = Math.max(0, performance.now() - this.activitiesHeaderLoadingStartedAtMs);
-    this.activitiesHeaderLoadingProgress = this.clampNumber(elapsed / this.activitiesHeaderLoadingWindowMs, 0, 1);
+    const nextProgress = this.clampNumber(elapsed / this.activitiesHeaderLoadingWindowMs, 0, 1);
+    this.activitiesHeaderLoadingProgress = Math.max(this.activitiesHeaderLoadingProgress, nextProgress);
     this.activitiesHeaderLoadingOverdue = elapsed >= this.activitiesHeaderLoadingWindowMs && this.activitiesHeaderLoadingCounter > 0;
   }
 
@@ -6439,7 +6509,23 @@ export class App {
   }
 
   private flushActivitiesHeaderProgress(): void {
-    this.ngZone.run(() => this.cdr.detectChanges());
+    if (this.activitiesHeaderFlushScheduled) {
+      return;
+    }
+    this.activitiesHeaderFlushScheduled = true;
+    this.ngZone.runOutsideAngular(() => {
+      const flush = () => {
+        this.ngZone.run(() => {
+          this.activitiesHeaderFlushScheduled = false;
+          this.cdr.markForCheck();
+        });
+      };
+      if (typeof globalThis.requestAnimationFrame === 'function') {
+        globalThis.requestAnimationFrame(() => flush());
+        return;
+      }
+      setTimeout(flush, 0);
+    });
   }
 
   private clampNumber(value: number, min: number, max: number): number {

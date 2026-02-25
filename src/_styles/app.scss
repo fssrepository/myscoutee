@@ -1990,6 +1990,9 @@
 
 .activities-calendar-page-week {
   min-height: 100%;
+  overflow: hidden;
+  contain: paint;
+  background: #fff;
 }
 
 .activities-calendar-page-head {
