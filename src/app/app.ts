@@ -639,6 +639,8 @@ export class App {
   private suppressCalendarEdgeSettle = false;
   private calendarMonthAnchorPages: Date[] | null = null;
   private calendarWeekAnchorPages: Date[] | null = null;
+  private calendarMonthAnchorsHydrated = false;
+  private calendarWeekAnchorsHydrated = false;
   protected readonly activitiesPrimaryFilters: Array<{ key: ActivitiesPrimaryFilter; label: string; icon: string }> = [
     { key: 'rates', label: 'Rates', icon: 'star' },
     { key: 'chats', label: 'Chats', icon: 'chat' },
@@ -984,6 +986,8 @@ export class App {
     this.calendarInitialPageIndexOverride = null;
     this.calendarMonthAnchorPages = null;
     this.calendarWeekAnchorPages = null;
+    this.calendarMonthAnchorsHydrated = false;
+    this.calendarWeekAnchorsHydrated = false;
     this.resetActivitiesScroll();
     if (closeMenu) {
       this.closeUserMenu();
@@ -3231,6 +3235,8 @@ export class App {
     this.calendarMonthAnchorPages = null;
     this.calendarWeekAnchorPages = null;
     this.calendarInitialPageIndexOverride = null;
+    this.calendarMonthAnchorsHydrated = false;
+    this.calendarWeekAnchorsHydrated = false;
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
     this.resetActivitiesScroll();
@@ -5406,11 +5412,19 @@ export class App {
           const pageWidth = calendarElement.clientWidth || 0;
           if (pageWidth > 0) {
             this.suppressCalendarEdgeSettle = true;
+            const previousScrollBehavior = calendarElement.style.scrollBehavior;
+            if (this.isMobileView) {
+              calendarElement.style.scrollBehavior = 'auto';
+            }
             calendarElement.scrollLeft = Math.max(0, initialIndex * pageWidth);
+            if (this.isMobileView) {
+              calendarElement.style.scrollBehavior = previousScrollBehavior;
+            }
             setTimeout(() => {
               this.suppressCalendarEdgeSettle = false;
             }, 0);
           }
+          this.scheduleCalendarAnchorHydration();
         }
       } else if (scrollElement) {
         scrollElement.scrollTop = 0;
@@ -5623,7 +5637,11 @@ export class App {
     }
     const todayMonth = this.startOfMonth(this.dateOnly(new Date()));
     const focusMonth = this.calendarMonthFocusDate ? this.startOfMonth(this.calendarMonthFocusDate) : todayMonth;
-    this.calendarMonthAnchorPages = [this.addMonths(focusMonth, -1), focusMonth, this.addMonths(focusMonth, 1)];
+    if (this.isMobileView) {
+      this.calendarMonthAnchorPages = [this.addMonths(focusMonth, -1), focusMonth, this.addMonths(focusMonth, 1)];
+      return [...this.calendarMonthAnchorPages];
+    }
+    this.calendarMonthAnchorPages = [focusMonth];
     return [...this.calendarMonthAnchorPages];
   }
 
@@ -5633,7 +5651,11 @@ export class App {
     }
     const todayWeek = this.startOfWeekMonday(this.dateOnly(new Date()));
     const focusWeek = this.calendarWeekFocusDate ? this.startOfWeekMonday(this.calendarWeekFocusDate) : todayWeek;
-    this.calendarWeekAnchorPages = [this.addDays(focusWeek, -7), focusWeek, this.addDays(focusWeek, 7)];
+    if (this.isMobileView) {
+      this.calendarWeekAnchorPages = [this.addDays(focusWeek, -7), focusWeek, this.addDays(focusWeek, 7)];
+      return [...this.calendarWeekAnchorPages];
+    }
+    this.calendarWeekAnchorPages = [focusWeek];
     return [...this.calendarWeekAnchorPages];
   }
 
@@ -5929,6 +5951,39 @@ export class App {
       const last = pages[pages.length - 1];
       this.calendarWeekAnchorPages = [...pages.slice(1), this.addDays(last, 7)];
     }
+  }
+
+  private scheduleCalendarAnchorHydration(): void {
+    if (this.isMobileView) {
+      return;
+    }
+    if (this.activitiesView === 'month') {
+      if (this.calendarMonthAnchorsHydrated || !this.calendarMonthAnchorPages || this.calendarMonthAnchorPages.length !== 1) {
+        return;
+      }
+      this.calendarMonthAnchorsHydrated = true;
+    } else if (this.activitiesView === 'week') {
+      if (this.calendarWeekAnchorsHydrated || !this.calendarWeekAnchorPages || this.calendarWeekAnchorPages.length !== 1) {
+        return;
+      }
+      this.calendarWeekAnchorsHydrated = true;
+    } else {
+      return;
+    }
+
+    setTimeout(() => {
+      if (this.activitiesView === 'month' && this.calendarMonthAnchorPages?.length === 1) {
+        const focus = this.calendarMonthAnchorPages[0];
+        this.calendarMonthAnchorPages = [this.addMonths(focus, -1), focus, this.addMonths(focus, 1)];
+      } else if (this.activitiesView === 'week' && this.calendarWeekAnchorPages?.length === 1) {
+        const focus = this.calendarWeekAnchorPages[0];
+        this.calendarWeekAnchorPages = [this.addDays(focus, -7), focus, this.addDays(focus, 7)];
+      } else {
+        return;
+      }
+      this.calendarInitialPageIndexOverride = 1;
+      this.resetActivitiesScroll();
+    }, 0);
   }
 
   private addDays(value: Date, days: number): Date {
