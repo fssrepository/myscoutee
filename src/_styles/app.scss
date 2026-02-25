@@ -1900,14 +1900,18 @@
 }
 
 .activities-scroll-list.is-bottom-pull-active {
+  scroll-behavior: auto;
+
   .activities-bottom-pull-spacer {
-    transition: none;
+    transition: height 140ms ease-out;
   }
 }
 
 .activities-scroll-list.is-bottom-pull-releasing {
+  scroll-behavior: auto;
+
   .activities-bottom-pull-spacer {
-    transition: height 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    transition: height 420ms cubic-bezier(0.2, 0.7, 0.24, 1);
   }
 }
 
