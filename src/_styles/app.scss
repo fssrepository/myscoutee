@@ -1322,6 +1322,54 @@
   gap: 0.4rem;
   padding: 0.58rem 0.4rem;
   border-bottom: 1px solid var(--line);
+  position: relative;
+}
+
+.popup-header-with-activities-progress {
+  border-bottom-color: rgba(46, 114, 184, 0.2);
+}
+
+.activities-header-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: rgba(46, 114, 184, 0.12);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.activities-header-progress-fill {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(67, 96, 205, 0.98) 0%, rgba(52, 88, 206, 0.98) 100%);
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform 120ms ease-out, opacity 100ms ease-out;
+}
+
+.activities-header-progress-loading {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(270deg, rgba(235, 147, 33, 0.98) 0%, rgba(247, 190, 52, 0.98) 100%);
+  opacity: 0;
+  transform-origin: right center;
+  transform: scaleX(0);
+  transition: transform 140ms linear, opacity 90ms ease-out;
+}
+
+.activities-header-progress.is-loading .activities-header-progress-fill {
+  opacity: 0;
+}
+
+.activities-header-progress.is-loading .activities-header-progress-loading {
+  opacity: 1;
+}
+
+.activities-header-progress.is-loading.is-loading-overdue .activities-header-progress-loading {
+  transform: scaleX(1) !important;
+  background: linear-gradient(270deg, rgba(213, 54, 68, 0.98) 0%, rgba(196, 29, 42, 0.98) 100%);
 }
 
 .popup-title h2 {
@@ -1844,6 +1892,21 @@
   flex-direction: column;
   gap: 0.34rem;
   padding-right: 0;
+  --activities-bottom-pull: 0px;
+  transform: translateY(calc(var(--activities-bottom-pull) * -1));
+  will-change: transform;
+}
+
+.popup-body.popup-body-activities {
+  overflow: hidden;
+}
+
+.activities-scroll-list.is-bottom-pull-active {
+  transition: none;
+}
+
+.activities-scroll-list.is-bottom-pull-releasing {
+  transition: transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .activities-group-marker {
@@ -2398,6 +2461,17 @@
 }
 
 @media (max-width: 760px) {
+  .activities-scroll-list {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .activities-scroll-list::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+
   .activities-month-cell {
     min-height: 4.6rem;
     padding: 0.16rem;
@@ -7532,6 +7606,11 @@ textarea {
 }
 
 @media (max-width: 760px) {
+  .activities-header-progress {
+    height: 3px;
+    background: rgba(46, 114, 184, 0.16);
+  }
+
   .user-menu-panel {
     width: 100vw;
   }

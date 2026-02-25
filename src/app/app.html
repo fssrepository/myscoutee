@@ -215,7 +215,11 @@
     [class.popup-panel-activities]="activePopup === 'activities'"
     (click)="$event.stopPropagation()"
   >
-    <div class="popup-header" [class.popup-header-chat]="activePopup === 'chat' && selectedChat">
+    <div
+      class="popup-header"
+      [class.popup-header-chat]="activePopup === 'chat' && selectedChat"
+      [class.popup-header-with-activities-progress]="activePopup === 'activities'"
+    >
       <div class="popup-title popup-title-chat" *ngIf="activePopup === 'chat' && selectedChat; else defaultPopupTitle">
         <div class="popup-chat-title-block">
           <h2>{{ selectedChat.title }}</h2>
@@ -296,12 +300,23 @@
       <button mat-icon-button class="popup-close" (click)="closePopup()" aria-label="Close">
         <mat-icon>close</mat-icon>
       </button>
+      <div
+        *ngIf="activePopup === 'activities'"
+        class="activities-header-progress"
+        [class.is-loading]="activitiesHeaderProgressLoading"
+        [class.is-loading-overdue]="activitiesHeaderLoadingOverdue"
+        aria-hidden="true"
+      >
+        <span class="activities-header-progress-fill" [style.transform]="'scaleX(' + activitiesHeaderProgress + ')'"></span>
+        <span class="activities-header-progress-loading" [style.transform]="'scaleX(' + activitiesHeaderLoadingProgress + ')'"></span>
+      </div>
     </div>
 
     <div
       class="popup-body"
       [class.popup-body-chat]="activePopup === 'chat' && selectedChat"
       [class.popup-body-members]="activePopup === 'chatMembers'"
+      [class.popup-body-activities]="activePopup === 'activities'"
       [class.popup-body-impressions]="activePopup === 'impressionsHost'"
       [class.popup-body-image-editor]="activePopup === 'imageEditor'"
     >
@@ -410,7 +425,19 @@
         </div>
 
         <ng-container *ngIf="!isCalendarLayoutView(); else activitiesCalendarLayout">
-          <div class="experience-card-list assets-card-list activities-scroll-list" [class.activities-scroll-list-with-rate-editor]="isActivityRateEditorOpen()" #activitiesScroll (scroll)="onActivitiesScroll($event)">
+          <div
+            class="experience-card-list assets-card-list activities-scroll-list"
+            [class.activities-scroll-list-with-rate-editor]="isActivityRateEditorOpen()"
+            [class.is-bottom-pull-active]="activitiesBottomPullPx > 0"
+            [class.is-bottom-pull-releasing]="activitiesBottomPullReleasing"
+            [style.--activities-bottom-pull.px]="activitiesBottomPullPx"
+            #activitiesScroll
+            (scroll)="onActivitiesScroll($event)"
+            (touchstart)="onActivitiesTouchStart($event)"
+            (touchmove)="onActivitiesTouchMove($event)"
+            (touchend)="onActivitiesTouchEnd($event)"
+            (touchcancel)="onActivitiesTouchEnd($event)"
+          >
             <div class="activities-sticky-header">{{ activitiesStickyHeader }}</div>
 
             <ng-container *ngFor="let group of groupedActivityRows; let groupIndex = index">

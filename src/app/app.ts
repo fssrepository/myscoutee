@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, ViewChild, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -362,6 +362,8 @@ const APP_DATE_FORMATS = {
 })
 export class App {
   public readonly alertService = inject(AlertService);
+  private readonly ngZone = inject(NgZone);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   protected readonly users = DEMO_USERS;
   protected readonly profileTopTraits = PROFILE_PERSONALITY_TOP3;
@@ -613,6 +615,10 @@ export class App {
   protected showActivitiesViewPicker = false;
   protected showActivitiesSecondaryPicker = false;
   protected activitiesStickyValue = '';
+  protected activitiesBottomPullPx = 0;
+  protected activitiesBottomPullReleasing = false;
+  protected activitiesBottomPullArmed = false;
+  protected readonly activitiesPageSize = 10;
   protected pendingActivityDeleteRow: ActivityListRow | null = null;
   protected pendingActivityAction: 'delete' | 'exit' = 'delete';
   protected selectedActivityMembers: ActivityMemberEntry[] = [];
@@ -821,6 +827,10 @@ export class App {
   protected selectedInvitation: InvitationMenuItem | null = null;
   protected selectedEvent: EventMenuItem | null = null;
   protected selectedHostingEvent: HostingMenuItem | null = null;
+  protected activitiesHeaderProgress = 0;
+  protected activitiesHeaderProgressLoading = false;
+  protected activitiesHeaderLoadingProgress = 0;
+  protected activitiesHeaderLoadingOverdue = false;
 
   protected imageSlots: Array<string | null> = [];
   protected selectedImageIndex = 0;
@@ -851,12 +861,75 @@ export class App {
   protected showLanguagePanel = false;
   private readonly profileImageSlotsByUser: Record<string, Array<string | null>> = {};
   private readonly languageSheetHeightCssVar = '--mobile-language-sheet-height';
+  private activitiesHeaderLoadingCounter = 0;
+  private activitiesHeaderLoadingInterval: ReturnType<typeof setInterval> | null = null;
+  private activitiesHeaderLoadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly activitiesHeaderLoadingWindowMs = 3000;
+  private readonly activitiesHeaderLoadingTickMs = 16;
+  private activitiesHeaderLoadingStartedAtMs = 0;
+  private readonly activitiesPaginationLoadDelayMs = 3500;
+  private activitiesVisibleCount = this.activitiesPageSize;
+  private activitiesPaginationKey = '';
+  private activitiesLoadMoreTimer: ReturnType<typeof setTimeout> | null = null;
+  private activitiesIsPaginating = false;
+  private activitiesPaginationAwaitScrollReset = false;
+  private activitiesBottomPullTracking = false;
+  private activitiesBottomPullEdgeLocked = false;
+  private activitiesBottomPullStartY = 0;
+  private readonly activitiesBottomPullMaxPx = 70;
+  private readonly activitiesBottomPullTriggerPx = 32;
+  private activitiesBottomPullReleaseTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly router: Router) {
     this.initializeProfileImageSlots();
+    this.ensurePaginationTestEvents(30);
     this.profileDetailsForm = this.createProfileDetailsForm();
     this.syncProfileFormFromActiveUser();
     this.router.navigate(['/game']);
+  }
+
+  private ensurePaginationTestEvents(minEventsPerUser: number): void {
+    for (const user of this.users) {
+      const userId = user.id;
+      const events = this.eventItemsByUser[userId] ?? [];
+      if (events.length >= minEventsPerUser) {
+        continue;
+      }
+
+      const needed = minEventsPerUser - events.length;
+      const synthetic: EventMenuItem[] = [];
+      for (let index = 0; index < needed; index += 1) {
+        const seq = events.length + index + 1;
+        const id = `ex-${userId}-${seq}`;
+        const start = new Date(2026, 2, 1 + (index * 2), 10 + (index % 6), (index % 2) * 30, 0, 0);
+        const end = new Date(start.getTime() + ((2 + (index % 3)) * 60 * 60 * 1000));
+        const isAdmin = (seq % 4) === 0;
+        const title = `Pagination Test Event ${seq}`;
+        const timeframe = `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+
+        synthetic.push({
+          id,
+          avatar: user.initials,
+          title,
+          shortDescription: `Synthetic feed item ${seq} to validate activities infinite loading.`,
+          timeframe,
+          activity: (index % 5) + 1,
+          isAdmin
+        });
+
+        this.eventDatesById[id] = start.toISOString().slice(0, 19);
+        this.eventDistanceById[id] = 3 + (index % 42);
+        this.activityDateTimeRangeById[id] = {
+          startIso: start.toISOString().slice(0, 19),
+          endIso: end.toISOString().slice(0, 19)
+        };
+        this.activityImageById[id] = `https://picsum.photos/seed/event-${id}/1200/700`;
+        this.activitySourceLinkById[id] = `https://example.com/events/${id}`;
+        this.activityCapacityById[id] = `${6 + (index % 18)} / ${12 + (index % 24)}`;
+      }
+
+      this.eventItemsByUser[userId] = [...events, ...synthetic];
+    }
   }
 
   protected get activeUser() {
@@ -1155,6 +1228,16 @@ export class App {
     this.showActivityInviteSortPicker = false;
     this.superStackedPopup = null;
     this.clearActivityRateEditorState();
+    this.cancelActivitiesPaginationLoad();
+    this.clearActivitiesHeaderLoadingAnimation();
+    this.activitiesPaginationKey = '';
+    this.activitiesVisibleCount = this.activitiesPageSize;
+    this.activitiesHeaderProgress = 0;
+    this.resetActivitiesBottomPullState();
+    if (this.activitiesBottomPullReleaseTimer) {
+      clearTimeout(this.activitiesBottomPullReleaseTimer);
+      this.activitiesBottomPullReleaseTimer = null;
+    }
   }
 
   protected closeStackedPopup(): void {
@@ -2910,6 +2993,15 @@ export class App {
   }
 
   protected get filteredActivityRows(): ActivityListRow[] {
+    const rows = this.buildFilteredActivityRowsBase();
+    if (this.isCalendarLayoutView()) {
+      return rows;
+    }
+    this.ensureActivitiesPaginationState(rows.length);
+    return rows.slice(0, Math.min(this.activitiesVisibleCount, rows.length));
+  }
+
+  private buildFilteredActivityRowsBase(): ActivityListRow[] {
     let rows: ActivityListRow[] = [];
     if (this.activitiesPrimaryFilter === 'chats') {
       rows = this.chatItems.map(item => {
@@ -3195,6 +3287,63 @@ export class App {
   protected onActivitiesScroll(event: Event): void {
     const target = event.target as HTMLElement;
     this.updateActivitiesStickyHeader(target.scrollTop || 0);
+    this.updateActivitiesHeaderProgress();
+    this.maybeLoadMoreActivities(target);
+  }
+
+  protected onActivitiesTouchStart(event: TouchEvent): void {
+    if (this.isCalendarLayoutView() || this.activePopup !== 'activities') {
+      return;
+    }
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target || event.touches.length === 0) {
+      return;
+    }
+    // Start tracking gesture immediately; bottom check happens on move.
+    this.activitiesBottomPullTracking = true;
+    this.activitiesBottomPullEdgeLocked = false;
+    this.activitiesBottomPullStartY = event.touches[0].clientY;
+    this.activitiesBottomPullArmed = false;
+  }
+
+  protected onActivitiesTouchMove(event: TouchEvent): void {
+    if (!this.activitiesBottomPullTracking || this.isCalendarLayoutView() || this.activePopup !== 'activities') {
+      return;
+    }
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target || event.touches.length === 0) {
+      return;
+    }
+    const remainingPx = target.scrollHeight - target.scrollTop - target.clientHeight;
+    if (!this.activitiesBottomPullEdgeLocked) {
+      if (remainingPx > 24) {
+        this.resetActivitiesBottomPullState();
+        return;
+      }
+      this.activitiesBottomPullEdgeLocked = true;
+    }
+    const deltaY = event.touches[0].clientY - this.activitiesBottomPullStartY;
+    const pullUpDelta = Math.max(0, -deltaY);
+    const pullPx = this.clampNumber(pullUpDelta * 0.42, 0, this.activitiesBottomPullMaxPx);
+    if (pullPx <= 0) {
+      return;
+    }
+    this.activitiesBottomPullPx = pullPx;
+    this.activitiesBottomPullArmed = pullPx >= this.activitiesBottomPullTriggerPx;
+    this.activitiesBottomPullReleasing = false;
+    event.preventDefault();
+  }
+
+  protected onActivitiesTouchEnd(event: TouchEvent): void {
+    if (!this.activitiesBottomPullTracking) {
+      return;
+    }
+    const target = event.currentTarget as HTMLElement | null;
+    const shouldTrigger = this.activitiesBottomPullArmed || this.activitiesBottomPullPx >= this.activitiesBottomPullTriggerPx * 0.8;
+    this.releaseActivitiesBottomPull();
+    if (shouldTrigger && target) {
+      this.forceLoadMoreActivities(target);
+    }
   }
 
   protected selectActivitiesPrimaryFilter(filter: ActivitiesPrimaryFilter): void {
@@ -5448,6 +5597,7 @@ export class App {
         scrollElement.scrollTop = 0;
       }
       const syncSticky = () => this.updateActivitiesStickyHeader(scrollElement?.scrollTop ?? 0);
+      this.updateActivitiesHeaderProgress();
       if (typeof globalThis.requestAnimationFrame === 'function') {
         globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(syncSticky));
         return;
@@ -5521,6 +5671,7 @@ export class App {
   protected onActivitiesCalendarScroll(event: Event): void {
     const target = event.target as HTMLElement;
     this.updateActivitiesStickyHeader(target.scrollTop || 0);
+    this.updateActivitiesHeaderProgress();
     if (!this.isCalendarLayoutView()) {
       return;
     }
@@ -5579,6 +5730,7 @@ export class App {
     }
     const targetIndex = Math.max(0, Math.min(pages.length - 1, currentIndex + step));
     if (targetIndex === currentIndex) {
+      this.beginActivitiesHeaderProgressLoading();
       this.shiftCalendarPages(step);
       const edgeHoldIndex = step < 0 ? 1 : pages.length - 2;
       this.calendarInitialPageIndexOverride = edgeHoldIndex;
@@ -5586,10 +5738,12 @@ export class App {
       const scrollAfterShift = () => {
         const nextElement = this.activitiesCalendarScrollRef?.nativeElement;
         if (!nextElement) {
+          this.endActivitiesHeaderProgressLoading();
           return;
         }
         const nextWidth = nextElement.clientWidth || 0;
         if (nextWidth <= 0) {
+          this.endActivitiesHeaderProgressLoading();
           return;
         }
         const previousScrollBehavior = nextElement.style.scrollBehavior;
@@ -5600,6 +5754,7 @@ export class App {
           left: nextWidth * (edgeHoldIndex + step),
           behavior: 'smooth'
         });
+        this.endActivitiesHeaderProgressLoading();
       };
       setTimeout(scrollAfterShift, 0);
       return;
@@ -5954,6 +6109,7 @@ export class App {
       return;
     }
     this.suppressCalendarEdgeSettle = true;
+    this.beginActivitiesHeaderProgressLoading();
     const edgePage = atLeftEdge ? pages[0] : pages[pages.length - 1];
     if (this.activitiesView === 'month') {
       this.calendarMonthFocusDate =
@@ -5969,11 +6125,13 @@ export class App {
       const nextElement = this.activitiesCalendarScrollRef?.nativeElement;
       if (!nextElement) {
         this.suppressCalendarEdgeSettle = false;
+        this.endActivitiesHeaderProgressLoading();
         return;
       }
       const nextWidth = nextElement.clientWidth || 0;
       if (nextWidth <= 0) {
         this.suppressCalendarEdgeSettle = false;
+        this.endActivitiesHeaderProgressLoading();
         return;
       }
       const previousScrollBehavior = nextElement.style.scrollBehavior;
@@ -5987,6 +6145,8 @@ export class App {
         nextElement.style.scrollSnapType = previousSnapType;
         this.suppressCalendarEdgeSettle = false;
         this.updateActivitiesStickyHeader(0);
+        this.updateActivitiesHeaderProgress();
+        this.endActivitiesHeaderProgressLoading();
       };
       if (typeof globalThis.requestAnimationFrame === 'function') {
         globalThis.requestAnimationFrame(() => release());
@@ -5995,6 +6155,283 @@ export class App {
       }
     };
     setTimeout(stabilizeAfterShift, 0);
+  }
+
+  private updateActivitiesHeaderProgress(): void {
+    if (this.activePopup !== 'activities') {
+      this.activitiesHeaderProgress = 0;
+      return;
+    }
+
+    if (this.isCalendarLayoutView()) {
+      const calendarElement = this.activitiesCalendarScrollRef?.nativeElement;
+      if (!calendarElement) {
+        this.activitiesHeaderProgress = 0;
+        return;
+      }
+      const maxHorizontalScroll = Math.max(0, calendarElement.scrollWidth - calendarElement.clientWidth);
+      if (maxHorizontalScroll <= 1) {
+        this.activitiesHeaderProgress = 0;
+        return;
+      }
+      this.activitiesHeaderProgress = this.clampNumber(calendarElement.scrollLeft / maxHorizontalScroll, 0, 1);
+      return;
+    }
+
+    const listElement = this.activitiesScrollRef?.nativeElement;
+    if (!listElement) {
+      this.activitiesHeaderProgress = 0;
+      return;
+    }
+    const maxVerticalScroll = Math.max(0, listElement.scrollHeight - listElement.clientHeight);
+    if (maxVerticalScroll <= 1) {
+      this.activitiesHeaderProgress = 0;
+      return;
+    }
+    this.activitiesHeaderProgress = this.clampNumber(listElement.scrollTop / maxVerticalScroll, 0, 1);
+  }
+
+  private maybeLoadMoreActivities(scrollElement: HTMLElement): void {
+    if (this.activePopup !== 'activities' || this.isCalendarLayoutView() || this.activitiesIsPaginating) {
+      return;
+    }
+    const rows = this.buildFilteredActivityRowsBase();
+    this.ensureActivitiesPaginationState(rows.length);
+    if (this.activitiesVisibleCount >= rows.length) {
+      return;
+    }
+    const remainingPx = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
+    if (this.activitiesPaginationAwaitScrollReset) {
+      if (remainingPx > 360) {
+        this.activitiesPaginationAwaitScrollReset = false;
+      }
+      return;
+    }
+    if (!this.shouldStartActivitiesPreload(scrollElement) && remainingPx > 520) {
+      return;
+    }
+    this.startActivitiesPaginationLoad();
+  }
+
+  private forceLoadMoreActivities(scrollElement: HTMLElement): void {
+    if (this.activePopup !== 'activities' || this.isCalendarLayoutView() || this.activitiesIsPaginating) {
+      return;
+    }
+    const rows = this.buildFilteredActivityRowsBase();
+    this.ensureActivitiesPaginationState(rows.length);
+    this.activitiesPaginationAwaitScrollReset = false;
+    // Pull-up explicitly triggers a server-like refresh route too, even if
+    // there are no currently unseen local rows.
+    this.startActivitiesPaginationLoad(true);
+  }
+
+  private startActivitiesPaginationLoad(allowEmptyResponse = false): void {
+    if (this.activitiesIsPaginating) {
+      return;
+    }
+    if (!allowEmptyResponse) {
+      const rows = this.buildFilteredActivityRowsBase();
+      this.ensureActivitiesPaginationState(rows.length);
+      if (this.activitiesVisibleCount >= rows.length) {
+        return;
+      }
+    }
+    this.activitiesIsPaginating = true;
+    this.beginActivitiesHeaderProgressLoading();
+    this.activitiesLoadMoreTimer = setTimeout(() => {
+      this.activitiesLoadMoreTimer = null;
+      const previousVisibleCount = this.activitiesVisibleCount;
+      const latestRows = this.buildFilteredActivityRowsBase();
+      this.ensureActivitiesPaginationState(latestRows.length);
+      if (latestRows.length > previousVisibleCount) {
+        this.activitiesVisibleCount = Math.min(previousVisibleCount + this.activitiesPageSize, latestRows.length);
+      }
+      this.activitiesIsPaginating = false;
+      this.activitiesPaginationAwaitScrollReset = true;
+      this.endActivitiesHeaderProgressLoading();
+      this.updateActivitiesHeaderProgress();
+      this.refreshActivitiesHeaderProgressSoon();
+    }, this.activitiesPaginationLoadDelayMs);
+  }
+
+  private shouldStartActivitiesPreload(scrollElement: HTMLElement): boolean {
+    const rows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.activities-row-item'));
+    if (rows.length === 0) {
+      return false;
+    }
+    if (rows.length <= 3) {
+      return true;
+    }
+    const thirdFromLast = rows[rows.length - 3];
+    const viewportBottom = scrollElement.scrollTop + scrollElement.clientHeight;
+    return viewportBottom >= thirdFromLast.offsetTop;
+  }
+
+  private ensureActivitiesPaginationState(totalRows: number): void {
+    const nextKey = this.activitiesPaginationStateKey();
+    if (nextKey === this.activitiesPaginationKey) {
+      return;
+    }
+    this.activitiesPaginationKey = nextKey;
+    this.activitiesVisibleCount = Math.min(this.activitiesPageSize, totalRows);
+    this.activitiesPaginationAwaitScrollReset = false;
+    this.cancelActivitiesPaginationLoad();
+    this.updateActivitiesHeaderProgress();
+  }
+
+  private activitiesPaginationStateKey(): string {
+    return [
+      this.activeUserId,
+      this.activitiesPrimaryFilter,
+      this.activitiesSecondaryFilter,
+      this.activitiesRateFilter,
+      this.activitiesView
+    ].join('|');
+  }
+
+  private cancelActivitiesPaginationLoad(): void {
+    if (this.activitiesLoadMoreTimer) {
+      clearTimeout(this.activitiesLoadMoreTimer);
+      this.activitiesLoadMoreTimer = null;
+    }
+    if (this.activitiesIsPaginating) {
+      this.activitiesIsPaginating = false;
+      this.endActivitiesHeaderProgressLoading();
+    }
+    this.activitiesPaginationAwaitScrollReset = false;
+  }
+
+  private beginActivitiesHeaderProgressLoading(): void {
+    this.activitiesHeaderLoadingCounter += 1;
+    if (this.activitiesHeaderLoadingCounter > 1) {
+      return;
+    }
+    this.activitiesHeaderProgressLoading = true;
+    this.activitiesHeaderLoadingOverdue = false;
+    this.activitiesHeaderLoadingProgress = 0.02;
+    this.activitiesHeaderLoadingStartedAtMs = performance.now();
+    this.flushActivitiesHeaderProgress();
+    if (this.activitiesHeaderLoadingCompleteTimer) {
+      clearTimeout(this.activitiesHeaderLoadingCompleteTimer);
+      this.activitiesHeaderLoadingCompleteTimer = null;
+    }
+    if (this.activitiesHeaderLoadingInterval) {
+      clearInterval(this.activitiesHeaderLoadingInterval);
+      this.activitiesHeaderLoadingInterval = null;
+    }
+    this.updateActivitiesHeaderLoadingWindow();
+    this.activitiesHeaderLoadingInterval = this.ngZone.runOutsideAngular(() =>
+      setInterval(() => {
+        this.updateActivitiesHeaderLoadingWindow();
+        this.flushActivitiesHeaderProgress();
+      }, this.activitiesHeaderLoadingTickMs)
+    );
+  }
+
+  private endActivitiesHeaderProgressLoading(): void {
+    this.activitiesHeaderLoadingCounter = Math.max(0, this.activitiesHeaderLoadingCounter - 1);
+    if (this.activitiesHeaderLoadingCounter !== 0) {
+      return;
+    }
+    this.completeActivitiesHeaderLoading();
+  }
+
+  private completeActivitiesHeaderLoading(): void {
+    if (this.activitiesHeaderLoadingInterval) {
+      clearInterval(this.activitiesHeaderLoadingInterval);
+      this.activitiesHeaderLoadingInterval = null;
+    }
+    // Success path: snap the loading bar to full width immediately.
+    this.activitiesHeaderLoadingProgress = 1;
+    this.activitiesHeaderLoadingOverdue = false;
+    this.flushActivitiesHeaderProgress();
+    if (this.activitiesHeaderLoadingCompleteTimer) {
+      clearTimeout(this.activitiesHeaderLoadingCompleteTimer);
+    }
+    this.activitiesHeaderLoadingCompleteTimer = this.ngZone.runOutsideAngular(() =>
+      setTimeout(() => {
+        this.ngZone.run(() => {
+          if (this.activitiesHeaderLoadingCounter !== 0) {
+            return;
+          }
+          this.activitiesHeaderProgressLoading = false;
+          this.activitiesHeaderLoadingProgress = 0;
+          this.activitiesHeaderLoadingOverdue = false;
+          this.activitiesHeaderLoadingStartedAtMs = 0;
+          this.activitiesHeaderLoadingCompleteTimer = null;
+          this.updateActivitiesHeaderProgress();
+          this.refreshActivitiesHeaderProgressSoon();
+          this.flushActivitiesHeaderProgress();
+        });
+      }, 100)
+    );
+  }
+
+  private updateActivitiesHeaderLoadingWindow(): void {
+    if (!this.activitiesHeaderProgressLoading) {
+      return;
+    }
+    const elapsed = Math.max(0, performance.now() - this.activitiesHeaderLoadingStartedAtMs);
+    this.activitiesHeaderLoadingProgress = this.clampNumber(elapsed / this.activitiesHeaderLoadingWindowMs, 0, 1);
+    this.activitiesHeaderLoadingOverdue = elapsed >= this.activitiesHeaderLoadingWindowMs && this.activitiesHeaderLoadingCounter > 0;
+  }
+
+  private clearActivitiesHeaderLoadingAnimation(): void {
+    if (this.activitiesHeaderLoadingInterval) {
+      clearInterval(this.activitiesHeaderLoadingInterval);
+      this.activitiesHeaderLoadingInterval = null;
+    }
+    if (this.activitiesHeaderLoadingCompleteTimer) {
+      clearTimeout(this.activitiesHeaderLoadingCompleteTimer);
+      this.activitiesHeaderLoadingCompleteTimer = null;
+    }
+    this.activitiesHeaderLoadingCounter = 0;
+    this.activitiesHeaderLoadingProgress = 0;
+    this.activitiesHeaderProgressLoading = false;
+    this.activitiesHeaderLoadingOverdue = false;
+    this.activitiesHeaderLoadingStartedAtMs = 0;
+    this.flushActivitiesHeaderProgress();
+  }
+
+  private releaseActivitiesBottomPull(): void {
+    this.activitiesBottomPullTracking = false;
+    this.activitiesBottomPullEdgeLocked = false;
+    this.activitiesBottomPullArmed = false;
+    if (this.activitiesBottomPullReleaseTimer) {
+      clearTimeout(this.activitiesBottomPullReleaseTimer);
+      this.activitiesBottomPullReleaseTimer = null;
+    }
+    this.activitiesBottomPullReleasing = true;
+    this.activitiesBottomPullPx = 0;
+    this.activitiesBottomPullReleaseTimer = setTimeout(() => {
+      this.activitiesBottomPullReleasing = false;
+      this.activitiesBottomPullReleaseTimer = null;
+    }, 220);
+  }
+
+  private resetActivitiesBottomPullState(): void {
+    this.activitiesBottomPullTracking = false;
+    this.activitiesBottomPullEdgeLocked = false;
+    this.activitiesBottomPullArmed = false;
+    this.activitiesBottomPullPx = 0;
+    this.activitiesBottomPullReleasing = false;
+  }
+
+  private refreshActivitiesHeaderProgressSoon(): void {
+    const refresh = () => this.updateActivitiesHeaderProgress();
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(refresh));
+      return;
+    }
+    setTimeout(refresh, 0);
+  }
+
+  private flushActivitiesHeaderProgress(): void {
+    this.ngZone.run(() => this.cdr.detectChanges());
+  }
+
+  private clampNumber(value: number, min: number, max: number): number {
+    return Math.min(max, Math.max(min, value));
   }
 
   private shiftCalendarPages(direction: -1 | 1): void {
