@@ -7964,6 +7964,7 @@ textarea {
     max-height: 100dvh;
     border-radius: 0;
     overflow-x: hidden;
+    box-shadow: none;
   }
 
   .app-popup-panel.popup-panel-image-editor {
@@ -7980,12 +7981,14 @@ textarea {
 
   .popup-body.popup-body-chat {
     height: calc(100vh - 58px);
+    height: calc(100dvh - 58px);
     padding: 0.45rem;
     overflow: hidden;
   }
 
   .popup-body.popup-body-members {
     height: calc(100vh - 58px);
+    height: calc(100dvh - 58px);
     padding: 0.45rem;
   }
 
@@ -7997,6 +8000,13 @@ textarea {
 
   .popup-body.popup-body-impressions {
     padding: 0.45rem;
+  }
+
+  .activities-calendar-page-month,
+  .activities-month-grid,
+  .activities-month-week,
+  .activities-month-cell {
+    transition: height 0.18s ease, min-height 0.18s ease, grid-template-rows 0.18s ease;
   }
 
   .chat-popup-wrap {
@@ -8053,6 +8063,7 @@ textarea {
     min-height: 100dvh;
     margin: 0 !important;
     border-radius: 0;
+    box-shadow: none;
   }
 
   .experience-form-overlay {

@@ -5890,12 +5890,13 @@ export class App {
       return;
     }
     const maxLeft = Math.max(0, calendarElement.scrollWidth - pageWidth);
-    const edgeThreshold = Math.max(12, Math.floor(pageWidth * 0.08));
+    const edgeThreshold = 2;
     const atLeftEdge = calendarElement.scrollLeft <= edgeThreshold;
     const atRightEdge = maxLeft - calendarElement.scrollLeft <= edgeThreshold;
     if (!atLeftEdge && !atRightEdge) {
       return;
     }
+    this.suppressCalendarEdgeSettle = true;
     const edgePage = atLeftEdge ? pages[0] : pages[pages.length - 1];
     if (this.activitiesView === 'month') {
       this.calendarMonthFocusDate =
@@ -5910,17 +5911,30 @@ export class App {
     const recenterToMiddle = () => {
       const nextElement = this.activitiesCalendarScrollRef?.nativeElement;
       if (!nextElement) {
+        this.suppressCalendarEdgeSettle = false;
         return;
       }
       const nextWidth = nextElement.clientWidth || 0;
       if (nextWidth <= 0) {
+        this.suppressCalendarEdgeSettle = false;
         return;
       }
       const previousScrollBehavior = nextElement.style.scrollBehavior;
+      const previousSnapType = nextElement.style.scrollSnapType;
       nextElement.style.scrollBehavior = 'auto';
+      nextElement.style.scrollSnapType = 'none';
       nextElement.scrollLeft = nextWidth;
       nextElement.style.scrollBehavior = previousScrollBehavior;
-      this.updateActivitiesStickyHeader(0);
+      const release = () => {
+        nextElement.style.scrollSnapType = previousSnapType;
+        this.suppressCalendarEdgeSettle = false;
+        this.updateActivitiesStickyHeader(0);
+      };
+      if (typeof globalThis.requestAnimationFrame === 'function') {
+        globalThis.requestAnimationFrame(() => release());
+      } else {
+        setTimeout(release, 0);
+      }
     };
     setTimeout(recenterToMiddle, 0);
   }
