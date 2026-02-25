@@ -5529,8 +5529,11 @@ export class App {
     }
     this.calendarEdgeSettleTimer = setTimeout(() => {
       this.calendarEdgeSettleTimer = null;
+      if (this.suppressCalendarEdgeSettle) {
+        return;
+      }
       this.handleCalendarEdgeSettle(target);
-    }, 120);
+    }, 160);
   }
 
   protected navigateActivitiesCalendarTo(pageIndex: number, event?: Event): void {
@@ -5922,17 +5925,10 @@ export class App {
     }
     const rawPageIndex = calendarElement.scrollLeft / pageWidth;
     const nearestPageIndex = Math.max(0, Math.min(pages.length - 1, Math.round(rawPageIndex)));
-    const snapDistancePages = Math.abs(rawPageIndex - nearestPageIndex);
-    // Ignore while inertia/gesture is still between pages; prevents forward swipe snapping back.
-    if (snapDistancePages > 0.08) {
-      return;
-    }
     const nearestPageLeft = nearestPageIndex * pageWidth;
-    if (Math.abs(calendarElement.scrollLeft - nearestPageLeft) > 0.5) {
-      const previousScrollBehavior = calendarElement.style.scrollBehavior;
-      calendarElement.style.scrollBehavior = 'auto';
-      calendarElement.scrollLeft = nearestPageLeft;
-      calendarElement.style.scrollBehavior = previousScrollBehavior;
+    // Settle only when snap has actually finished.
+    if (Math.abs(calendarElement.scrollLeft - nearestPageLeft) > 1) {
+      return;
     }
     const atLeftEdge = nearestPageIndex === 0;
     const atRightEdge = nearestPageIndex === pages.length - 1;
