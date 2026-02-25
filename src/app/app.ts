@@ -5415,12 +5415,24 @@ export class App {
           if (pageWidth > 0) {
             this.suppressCalendarEdgeSettle = true;
             const previousScrollBehavior = calendarElement.style.scrollBehavior;
+            const previousSnapType = calendarElement.style.scrollSnapType;
             calendarElement.style.scrollBehavior = 'auto';
+            if (this.isMobileView) {
+              calendarElement.style.scrollSnapType = 'none';
+            }
             calendarElement.scrollLeft = Math.max(0, initialIndex * pageWidth);
             calendarElement.style.scrollBehavior = previousScrollBehavior;
-            setTimeout(() => {
+            const release = () => {
+              if (this.isMobileView) {
+                calendarElement.style.scrollSnapType = previousSnapType;
+              }
               this.suppressCalendarEdgeSettle = false;
-            }, 0);
+            };
+            if (typeof globalThis.requestAnimationFrame === 'function') {
+              globalThis.requestAnimationFrame(() => release());
+            } else {
+              setTimeout(release, 0);
+            }
           }
           this.scheduleCalendarAnchorHydration();
         }
@@ -5575,6 +5587,18 @@ export class App {
 
   protected navigateActivitiesCalendarForward(event?: Event): void {
     this.navigateActivitiesCalendarTo(this.currentCalendarPageIndex() + 1, event);
+  }
+
+  protected trackByCalendarPageKey(_: number, page: CalendarMonthPage | CalendarWeekPage): string {
+    return page.key;
+  }
+
+  protected trackByCalendarMonthWeekKey(_: number, week: CalendarMonthWeek): string {
+    return this.dateKey(week.start);
+  }
+
+  protected trackByCalendarDayKey(_: number, day: CalendarDayCell): string {
+    return day.key;
   }
 
   private initialCalendarPageIndex(): number {
@@ -5903,7 +5927,13 @@ export class App {
     if (pages.length < this.calendarAnchorWindowSize) {
       return;
     }
-    const nearestPageIndex = Math.max(0, Math.min(pages.length - 1, Math.round(calendarElement.scrollLeft / pageWidth)));
+    const rawPageIndex = calendarElement.scrollLeft / pageWidth;
+    const nearestPageIndex = Math.max(0, Math.min(pages.length - 1, Math.round(rawPageIndex)));
+    const snapDistancePages = Math.abs(rawPageIndex - nearestPageIndex);
+    // Ignore while inertia/gesture is still between pages; prevents forward swipe snapping back.
+    if (snapDistancePages > 0.08) {
+      return;
+    }
     const nearestPageLeft = nearestPageIndex * pageWidth;
     if (Math.abs(calendarElement.scrollLeft - nearestPageLeft) > 0.5) {
       const previousScrollBehavior = calendarElement.style.scrollBehavior;
@@ -5911,10 +5941,8 @@ export class App {
       calendarElement.scrollLeft = nearestPageLeft;
       calendarElement.style.scrollBehavior = previousScrollBehavior;
     }
-    const maxLeft = Math.max(0, calendarElement.scrollWidth - pageWidth);
-    const edgeThreshold = 2;
-    const atLeftEdge = calendarElement.scrollLeft <= edgeThreshold;
-    const atRightEdge = maxLeft - calendarElement.scrollLeft <= edgeThreshold;
+    const atLeftEdge = nearestPageIndex === 0;
+    const atRightEdge = nearestPageIndex === pages.length - 1;
     if (!atLeftEdge && !atRightEdge) {
       return;
     }
