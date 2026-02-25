@@ -639,6 +639,8 @@ export class App {
   private suppressCalendarEdgeSettle = false;
   private calendarMonthAnchorPages: Date[] | null = null;
   private calendarWeekAnchorPages: Date[] | null = null;
+  private readonly calendarAnchorRadius = 2;
+  private readonly calendarAnchorWindowSize = 5;
   private calendarMonthAnchorsHydrated = false;
   private calendarWeekAnchorsHydrated = false;
   protected readonly activitiesPrimaryFilters: Array<{ key: ActivitiesPrimaryFilter; label: string; icon: string }> = [
@@ -5544,7 +5546,7 @@ export class App {
     const targetIndex = Math.max(0, Math.min(pages.length - 1, currentIndex + step));
     if (targetIndex === currentIndex) {
       this.shiftCalendarPages(step);
-      this.calendarInitialPageIndexOverride = 1;
+      this.calendarInitialPageIndexOverride = this.calendarAnchorRadius;
       this.resetActivitiesScroll();
       const scrollAfterShift = () => {
         const nextElement = this.activitiesCalendarScrollRef?.nativeElement;
@@ -5557,9 +5559,12 @@ export class App {
         }
         const previousScrollBehavior = nextElement.style.scrollBehavior;
         nextElement.style.scrollBehavior = 'auto';
-        nextElement.scrollLeft = nextWidth;
+        nextElement.scrollLeft = nextWidth * this.calendarAnchorRadius;
         nextElement.style.scrollBehavior = previousScrollBehavior;
-        nextElement.scrollTo({ left: step < 0 ? 0 : nextWidth * 2, behavior: 'smooth' });
+        nextElement.scrollTo({
+          left: step < 0 ? nextWidth * (this.calendarAnchorRadius - 1) : nextWidth * (this.calendarAnchorRadius + 1),
+          behavior: 'smooth'
+        });
       };
       setTimeout(scrollAfterShift, 0);
       return;
@@ -5574,14 +5579,14 @@ export class App {
       const monthKey = this.monthKey(focus);
       const pages = this.calendarMonthPages;
       const pageIndex = pages.findIndex(page => page.key === monthKey);
-      return pageIndex >= 0 ? pageIndex : Math.min(1, Math.max(0, pages.length - 1));
+      return pageIndex >= 0 ? pageIndex : Math.min(this.calendarAnchorRadius, Math.max(0, pages.length - 1));
     }
     if (this.activitiesView === 'week') {
       const focus = this.calendarWeekFocusDate ? this.startOfWeekMonday(this.calendarWeekFocusDate) : this.startOfWeekMonday(today);
       const weekKey = this.dateKey(focus);
       const pages = this.calendarWeekPages;
       const pageIndex = pages.findIndex(page => page.key === weekKey);
-      return pageIndex >= 0 ? pageIndex : Math.min(1, Math.max(0, pages.length - 1));
+      return pageIndex >= 0 ? pageIndex : Math.min(this.calendarAnchorRadius, Math.max(0, pages.length - 1));
     }
     return 0;
   }
@@ -5637,11 +5642,13 @@ export class App {
     }
     const todayMonth = this.startOfMonth(this.dateOnly(new Date()));
     const focusMonth = this.calendarMonthFocusDate ? this.startOfMonth(this.calendarMonthFocusDate) : todayMonth;
-    if (this.isMobileView) {
-      this.calendarMonthAnchorPages = [this.addMonths(focusMonth, -1), focusMonth, this.addMonths(focusMonth, 1)];
-      return [...this.calendarMonthAnchorPages];
-    }
-    this.calendarMonthAnchorPages = [focusMonth];
+    this.calendarMonthAnchorPages = [
+      this.addMonths(focusMonth, -2),
+      this.addMonths(focusMonth, -1),
+      focusMonth,
+      this.addMonths(focusMonth, 1),
+      this.addMonths(focusMonth, 2)
+    ];
     return [...this.calendarMonthAnchorPages];
   }
 
@@ -5651,11 +5658,13 @@ export class App {
     }
     const todayWeek = this.startOfWeekMonday(this.dateOnly(new Date()));
     const focusWeek = this.calendarWeekFocusDate ? this.startOfWeekMonday(this.calendarWeekFocusDate) : todayWeek;
-    if (this.isMobileView) {
-      this.calendarWeekAnchorPages = [this.addDays(focusWeek, -7), focusWeek, this.addDays(focusWeek, 7)];
-      return [...this.calendarWeekAnchorPages];
-    }
-    this.calendarWeekAnchorPages = [focusWeek];
+    this.calendarWeekAnchorPages = [
+      this.addDays(focusWeek, -14),
+      this.addDays(focusWeek, -7),
+      focusWeek,
+      this.addDays(focusWeek, 7),
+      this.addDays(focusWeek, 14)
+    ];
     return [...this.calendarWeekAnchorPages];
   }
 
@@ -5886,7 +5895,7 @@ export class App {
       return;
     }
     const pages = this.activitiesView === 'month' ? this.calendarMonthPages : this.calendarWeekPages;
-    if (pages.length < 3) {
+    if (pages.length < this.calendarAnchorWindowSize) {
       return;
     }
     const maxLeft = Math.max(0, calendarElement.scrollWidth - pageWidth);
@@ -5923,7 +5932,7 @@ export class App {
       const previousSnapType = nextElement.style.scrollSnapType;
       nextElement.style.scrollBehavior = 'auto';
       nextElement.style.scrollSnapType = 'none';
-      nextElement.scrollLeft = nextWidth;
+      nextElement.scrollLeft = nextWidth * this.calendarAnchorRadius;
       nextElement.style.scrollBehavior = previousScrollBehavior;
       const release = () => {
         nextElement.style.scrollSnapType = previousSnapType;
@@ -5942,7 +5951,7 @@ export class App {
   private shiftCalendarPages(direction: -1 | 1): void {
     if (this.activitiesView === 'month') {
       const pages = this.calendarMonthAnchorPages ?? this.monthAnchorsForRows([]);
-      if (pages.length < 3) {
+      if (pages.length < this.calendarAnchorWindowSize) {
         return;
       }
       if (direction < 0) {
@@ -5955,7 +5964,7 @@ export class App {
       return;
     }
     const pages = this.calendarWeekAnchorPages ?? this.weekAnchorsForRows([]);
-    if (pages.length < 3) {
+    if (pages.length < this.calendarAnchorWindowSize) {
       return;
     }
     if (direction < 0) {
@@ -5988,14 +5997,26 @@ export class App {
     setTimeout(() => {
       if (this.activitiesView === 'month' && this.calendarMonthAnchorPages?.length === 1) {
         const focus = this.calendarMonthAnchorPages[0];
-        this.calendarMonthAnchorPages = [this.addMonths(focus, -1), focus, this.addMonths(focus, 1)];
+        this.calendarMonthAnchorPages = [
+          this.addMonths(focus, -2),
+          this.addMonths(focus, -1),
+          focus,
+          this.addMonths(focus, 1),
+          this.addMonths(focus, 2)
+        ];
       } else if (this.activitiesView === 'week' && this.calendarWeekAnchorPages?.length === 1) {
         const focus = this.calendarWeekAnchorPages[0];
-        this.calendarWeekAnchorPages = [this.addDays(focus, -7), focus, this.addDays(focus, 7)];
+        this.calendarWeekAnchorPages = [
+          this.addDays(focus, -14),
+          this.addDays(focus, -7),
+          focus,
+          this.addDays(focus, 7),
+          this.addDays(focus, 14)
+        ];
       } else {
         return;
       }
-      this.calendarInitialPageIndexOverride = 1;
+      this.calendarInitialPageIndexOverride = this.calendarAnchorRadius;
       this.resetActivitiesScroll();
     }, 0);
   }
