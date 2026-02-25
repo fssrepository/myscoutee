@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, ViewChild, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, Injectable, NgZone, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,6 +9,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatInputModule } from '@angular/material/input';
+import { MatTimepickerModule } from '@angular/material/timepicker';
 import { FormsModule } from '@angular/forms';
 import { AlertService } from './shared/alert.service';
 import {
@@ -16,6 +18,7 @@ import {
   DEMO_EVENTS_BY_USER,
   DEMO_HOSTING_BY_USER,
   DEMO_INVITATIONS_BY_USER,
+  DEMO_RATES_BY_USER,
   DemoUser,
   DEMO_USERS,
   EVENT_EDITOR_SAMPLE,
@@ -28,13 +31,16 @@ import {
   EventMenuItem,
   HostingMenuItem,
   InvitationMenuItem,
+  RateMenuItem,
   ProfileGroup
 } from './shared/demo-data';
 import { environment } from '../environments/environment';
+import { LazyBgImageDirective } from './shared/lazy-bg-image.directive';
 
 type MenuSection = 'game' | 'chat' | 'invitations' | 'events' | 'hosting';
 
 type PopupType =
+  | 'activities'
   | 'chat'
   | 'chatMembers'
   | 'impressionsHost'
@@ -55,6 +61,7 @@ type PopupType =
   | 'imageUpload'
   | 'supplyDetail'
   | 'assetMembers'
+  | 'activityMembers'
   | 'valuesSelector'
   | 'interestSelector'
   | 'experienceSelector'
@@ -81,6 +88,87 @@ interface ChatPopupMessage {
   time: string;
   mine: boolean;
   readBy: ChatReadAvatar[];
+}
+
+type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
+type ActivitiesSecondaryFilter = 'recent' | 'relevant' | 'past';
+type ActivitiesView = 'month' | 'week' | 'day' | 'distance';
+type RateFilterKey =
+  | 'individual-given'
+  | 'individual-received'
+  | 'individual-mutual'
+  | 'individual-met'
+  | 'pair-given'
+  | 'pair-received';
+
+type RateFilterEntry =
+  | { kind: 'group'; label: string }
+  | { kind: 'item'; key: RateFilterKey; label: string };
+
+interface ActivityListRow {
+  id: string;
+  type: ActivitiesPrimaryFilter;
+  title: string;
+  subtitle: string;
+  detail: string;
+  dateIso: string;
+  distanceKm: number;
+  unread: number;
+  metricScore: number;
+  isAdmin?: boolean;
+  source: ChatMenuItem | InvitationMenuItem | EventMenuItem | HostingMenuItem | RateMenuItem;
+}
+
+interface ActivityGroup {
+  label: string;
+  rows: ActivityListRow[];
+}
+
+interface CalendarDayCell {
+  key: string;
+  date: Date;
+  dayNumber: number;
+  inCurrentMonth: boolean;
+  isToday: boolean;
+  rows: ActivityListRow[];
+}
+
+interface CalendarMonthPage {
+  key: string;
+  label: string;
+  weeks: CalendarMonthWeek[];
+}
+
+interface CalendarMonthWeek {
+  start: Date;
+  end: Date;
+  days: CalendarDayCell[];
+  spans: CalendarMonthSpan[];
+}
+
+interface CalendarMonthSpan {
+  key: string;
+  row: ActivityListRow;
+  startCol: number;
+  endCol: number;
+  lane: number;
+}
+
+interface CalendarWeekPage {
+  key: string;
+  label: string;
+  days: CalendarDayCell[];
+}
+
+interface ActivityDateTimeRange {
+  startIso: string;
+  endIso: string;
+}
+
+interface CalendarTimedBadge {
+  row: ActivityListRow;
+  topPct: number;
+  heightPct: number;
 }
 
 type SubEventCard = (typeof EVENT_EDITOR_SAMPLE.subEvents)[number];
@@ -126,11 +214,42 @@ interface ExperienceEntry {
   description: string;
 }
 
+interface EventEditorForm {
+  title: string;
+  description: string;
+  imageUrl: string;
+  startAt: string;
+  endAt: string;
+  frequency: string;
+  visibility: EventVisibility;
+  blindMode: EventBlindMode;
+  topics: string[];
+  subEvents: SubEventFormItem[];
+}
+
+interface SubEventFormItem {
+  id: string;
+  name: string;
+  description: string;
+  startAt: string;
+  endAt: string;
+  optional: boolean;
+  capacityMin: number;
+  capacityMax: number;
+  membersAccepted: number;
+  membersPending: number;
+  carsPending: number;
+  accommodationPending: number;
+  suppliesPending: number;
+}
+
 interface MobileProfileSelectorOption {
   value: string;
   label: string;
   icon: string;
   toneClass?: string;
+  badge?: number;
+  disabled?: boolean;
 }
 
 interface MobileProfileSelectorSheet {
@@ -145,12 +264,23 @@ interface MobileProfileSelectorSheet {
     | { kind: 'experiencePrivacy'; type: 'workspace' | 'school' }
     | { kind: 'detailValue'; groupIndex: number; rowIndex: number }
     | { kind: 'experienceType' }
-    | { kind: 'assetFilter' };
+    | { kind: 'assetFilter' }
+    | { kind: 'activitiesPrimaryFilter' }
+    | { kind: 'activitiesRateFilter' }
+    | { kind: 'eventFrequency' };
 }
 
 type AssetType = 'Car' | 'Accommodation' | 'Supplies';
 type AssetRequestAction = 'accept' | 'remove';
+type EventEditorMode = 'edit' | 'create';
+type EventEditorTarget = 'events' | 'hosting';
+type EventVisibility = 'Public' | 'Friends only' | 'Invitation only';
+type EventBlindMode = 'Open Event' | 'Blind Event';
 type AssetRequestStatus = 'pending' | 'accepted';
+type ActivityMemberStatus = 'pending' | 'accepted';
+type ActivityPendingSource = 'admin' | 'member' | null;
+type ActivityInviteSort = 'recent' | 'relevant';
+type ActivityMemberRequestKind = 'invite' | 'join' | null;
 
 interface AssetMemberRequest {
   id: string;
@@ -174,6 +304,26 @@ interface AssetCard {
   requests: AssetMemberRequest[];
 }
 
+interface ActivityMemberEntry {
+  id: string;
+  userId: string;
+  name: string;
+  initials: string;
+  gender: 'woman' | 'man';
+  city: string;
+  statusText: string;
+  status: ActivityMemberStatus;
+  pendingSource: ActivityPendingSource;
+  requestKind: ActivityMemberRequestKind;
+  invitedByActiveUser: boolean;
+  metAtIso: string;
+  actionAtIso: string;
+  metWhere: string;
+  relevance: number;
+  avatarUrl: string;
+}
+
+@Injectable()
 class YearMonthDayDateAdapter extends NativeDateAdapter {
   override parse(value: unknown): Date | null {
     if (typeof value === 'string') {
@@ -208,16 +358,22 @@ class YearMonthDayDateAdapter extends NativeDateAdapter {
       const day = `${date.getDate()}`.padStart(2, '0');
       return `${date.getFullYear()}/${month}/${day}`;
     }
+    if (displayFormat === 'hmInput') {
+      return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+    }
     return super.format(date, displayFormat);
   }
 }
 
 const APP_DATE_FORMATS = {
   parse: {
-    dateInput: 'ymdInput'
+    dateInput: 'ymdInput',
+    timeInput: 'hmInput'
   },
   display: {
     dateInput: 'ymdInput',
+    timeInput: 'hmInput',
+    timeOptionLabel: 'hmInput',
     monthYearLabel: 'MMM yyyy',
     dateA11yLabel: 'LL',
     monthYearA11yLabel: 'MMMM yyyy'
@@ -237,7 +393,10 @@ const APP_DATE_FORMATS = {
     MatFormFieldModule,
     MatChipsModule,
     MatAutocompleteModule,
-    FormsModule
+    MatInputModule,
+    MatTimepickerModule,
+    FormsModule,
+    LazyBgImageDirective
   ],
   providers: [
     { provide: DateAdapter, useClass: YearMonthDayDateAdapter },
@@ -248,6 +407,8 @@ const APP_DATE_FORMATS = {
 })
 export class App {
   public readonly alertService = inject(AlertService);
+  private readonly ngZone = inject(NgZone);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   protected readonly users = DEMO_USERS;
   protected readonly profileTopTraits = PROFILE_PERSONALITY_TOP3;
@@ -441,6 +602,7 @@ export class App {
   protected showUserSelector = !environment.loginEnabled;
   protected activePopup: PopupType = null;
   protected stackedPopup: PopupType = null;
+  protected eventEditorMode: EventEditorMode = 'edit';
   protected popupReturnTarget: PopupType = null;
   protected openPrivacyFab: { groupIndex: number; rowIndex: number } | null = null;
   protected privacyFabJustSelectedKey: string | null = null;
@@ -475,6 +637,7 @@ export class App {
   protected assetFilter: AssetType = 'Car';
   protected assetCards: AssetCard[] = this.buildSampleAssetCards();
   protected showAssetForm = false;
+  protected showAssetVisibilityPicker = false;
   protected editingAssetId: string | null = null;
   protected selectedAssetCardId: string | null = null;
   protected pendingAssetDeleteCardId: string | null = null;
@@ -489,9 +652,261 @@ export class App {
     imageUrl: '',
     sourceLink: ''
   };
+  protected assetFormVisibility: EventVisibility = 'Public';
+  private readonly assetVisibilityById: Record<string, EventVisibility> = {};
   protected activeUserId = this.getInitialUserId();
 
   protected activeMenuSection: MenuSection = 'chat';
+  protected activitiesPrimaryFilter: ActivitiesPrimaryFilter = 'chats';
+  protected activitiesSecondaryFilter: ActivitiesSecondaryFilter = 'recent';
+  protected activitiesRateFilter: RateFilterKey = 'individual-given';
+  protected activitiesView: ActivitiesView = 'week';
+  protected showActivitiesViewPicker = false;
+  protected showActivitiesSecondaryPicker = false;
+  protected activitiesStickyValue = '';
+  protected readonly activitiesPageSize = 10;
+  protected pendingActivityDeleteRow: ActivityListRow | null = null;
+  protected pendingActivityAction: 'delete' | 'exit' = 'delete';
+  protected pendingActivityMemberDelete: ActivityMemberEntry | null = null;
+  protected selectedActivityMembers: ActivityMemberEntry[] = [];
+  protected selectedActivityMembersTitle = '';
+  protected selectedActivityMembersRowId: string | null = null;
+  protected selectedActivityMembersRow: ActivityListRow | null = null;
+  protected activityInviteSort: ActivityInviteSort = 'recent';
+  protected showActivityInviteSortPicker = false;
+  protected selectedActivityInviteUserIds: string[] = [];
+  protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | null = null;
+  private readonly activityMembersByRowId: Record<string, ActivityMemberEntry[]> = {};
+  protected readonly activityRatingScale = Array.from({ length: 10 }, (_, index) => index + 1);
+  private readonly weekCalendarStartHour = 6;
+  private readonly weekCalendarEndHour = 23;
+  private readonly weekCalendarSlotHeightPx = 34;
+  protected selectedActivityRateId: string | null = null;
+  private readonly activityRateDraftById: Record<string, number> = {};
+  private readonly activityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
+  private readonly pendingActivityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
+  private lastActivityOpenKey: string | null = null;
+  private lastActivityOpenAt = 0;
+  private calendarMonthFocusDate: Date | null = null;
+  private calendarWeekFocusDate: Date | null = null;
+  private calendarEdgeSettleTimer: ReturnType<typeof setTimeout> | null = null;
+  private calendarPostSettleTimer: ReturnType<typeof setTimeout> | null = null;
+  private calendarInitialPageIndexOverride: number | null = null;
+  private suppressCalendarEdgeSettle = false;
+  private calendarMonthAnchorPages: Date[] | null = null;
+  private calendarWeekAnchorPages: Date[] | null = null;
+  private get calendarAnchorRadius(): number {
+    return this.isMobileView ? 1 : 2;
+  }
+
+  private get calendarAnchorWindowSize(): number {
+    return (this.calendarAnchorRadius * 2) + 1;
+  }
+  private calendarMonthAnchorsHydrated = false;
+  private calendarWeekAnchorsHydrated = false;
+  private calendarMonthPagesCacheKey = '';
+  private calendarWeekPagesCacheKey = '';
+  private calendarMonthPagesCache: CalendarMonthPage[] = [];
+  private calendarWeekPagesCache: CalendarWeekPage[] = [];
+  protected readonly activitiesPrimaryFilters: Array<{ key: ActivitiesPrimaryFilter; label: string; icon: string }> = [
+    { key: 'rates', label: 'Rates', icon: 'star' },
+    { key: 'chats', label: 'Chats', icon: 'chat' },
+    { key: 'invitations', label: 'Invitations', icon: 'mail' },
+    { key: 'events', label: 'Events', icon: 'event' },
+    { key: 'hosting', label: 'Hosting', icon: 'stadium' }
+  ];
+  protected readonly activitiesSecondaryFilters: Array<{ key: ActivitiesSecondaryFilter; label: string; icon: string }> = [
+    { key: 'recent', label: 'Recent', icon: 'schedule' },
+    { key: 'relevant', label: 'Relevant', icon: 'auto_awesome' },
+    { key: 'past', label: 'Past', icon: 'history' }
+  ];
+  protected readonly rateFilters: Array<{ key: RateFilterKey; label: string }> = [
+    { key: 'individual-given', label: 'Given' },
+    { key: 'individual-received', label: 'Received' },
+    { key: 'individual-mutual', label: 'Mutual' },
+    { key: 'individual-met', label: 'Met' },
+    { key: 'pair-given', label: 'Given' },
+    { key: 'pair-received', label: 'Received' }
+  ];
+  protected readonly rateFilterEntries: RateFilterEntry[] = [
+    { kind: 'group', label: 'Single Rate' },
+    { kind: 'item', key: 'individual-given', label: 'Given' },
+    { kind: 'item', key: 'individual-received', label: 'Received' },
+    { kind: 'item', key: 'individual-mutual', label: 'Mutual' },
+    { kind: 'item', key: 'individual-met', label: 'Met' },
+    { kind: 'group', label: 'Pair Rate' },
+    { kind: 'item', key: 'pair-given', label: 'Given' },
+    { kind: 'item', key: 'pair-received', label: 'Received' }
+  ];
+  protected readonly activitiesViewOptions: Array<{ key: ActivitiesView; label: string; icon: string }> = [
+    { key: 'month', label: 'Month', icon: 'calendar_month' },
+    { key: 'week', label: 'Week', icon: 'date_range' },
+    { key: 'day', label: 'Day', icon: 'today' },
+    { key: 'distance', label: 'Distance', icon: 'social_distance' }
+  ];
+  protected readonly eventDatesById: Record<string, string> = {
+    e1: '2026-02-27T09:00:00',
+    e2: '2026-03-08T10:00:00',
+    e3: '2026-03-12T19:30:00',
+    e6: '2026-03-14T17:00:00',
+    e7: '2026-03-16T09:30:00',
+    e8: '2026-02-27T11:15:00',
+    e9: '2026-02-27T13:30:00',
+    e10: '2026-03-14T18:15:00',
+    e11: '2026-03-28T09:00:00',
+    e12: '2026-04-26T10:00:00',
+    e4: '2026-02-28T08:00:00',
+    e5: '2026-03-03T18:00:00'
+  };
+  protected readonly hostingDatesById: Record<string, string> = {
+    h1: '2026-02-27T18:00:00',
+    h2: '2026-04-04T16:00:00',
+    h3: '2026-03-01T09:30:00',
+    h4: '2026-03-05T18:00:00'
+  };
+  protected readonly eventVisibilityById: Record<string, EventVisibility> = {
+    e1: 'Invitation only',
+    e2: 'Public',
+    e3: 'Friends only',
+    e4: 'Invitation only',
+    e5: 'Friends only',
+    e6: 'Public',
+    e7: 'Invitation only',
+    e8: 'Public',
+    e9: 'Friends only',
+    e10: 'Invitation only',
+    e11: 'Friends only',
+    e12: 'Public',
+    h1: 'Invitation only',
+    h2: 'Friends only',
+    h3: 'Public',
+    h4: 'Friends only'
+  };
+  protected readonly eventBlindModeById: Record<string, EventBlindMode> = {
+    e1: 'Open Event',
+    e2: 'Open Event',
+    e3: 'Blind Event',
+    e4: 'Open Event',
+    e5: 'Open Event',
+    e6: 'Blind Event',
+    e7: 'Open Event',
+    e8: 'Open Event',
+    e9: 'Blind Event',
+    e10: 'Open Event',
+    e11: 'Open Event',
+    e12: 'Blind Event',
+    h1: 'Blind Event',
+    h2: 'Open Event',
+    h3: 'Open Event',
+    h4: 'Blind Event'
+  };
+  protected readonly invitationDatesById: Record<string, string> = {
+    i1: '2026-02-21T20:00:00',
+    i2: '2026-02-22T15:00:00',
+    i3: '2026-02-21T09:15:00',
+    i4: '2026-02-22T18:30:00',
+    i5: '2026-02-23T18:00:00'
+  };
+  protected readonly chatDatesById: Record<string, string> = {
+    c1: '2026-02-21T09:11:00',
+    c2: '2026-02-22T18:40:00',
+    c3: '2026-02-23T10:09:00',
+    c4: '2026-02-22T12:30:00',
+    c5: '2026-02-23T17:40:00'
+  };
+  protected readonly chatDistanceById: Record<string, number> = { c1: 5, c2: 10, c3: 15, c4: 8, c5: 12 };
+  protected readonly invitationDistanceById: Record<string, number> = { i1: 10, i2: 15, i3: 5, i4: 12, i5: 18 };
+  protected readonly eventDistanceById: Record<string, number> = { e1: 20, e2: 10, e3: 15, e6: 35, e7: 45, e8: 20, e9: 20, e10: 35, e11: 30, e12: 40, e4: 5, e5: 25 };
+  protected readonly activityDateTimeRangeById: Record<string, ActivityDateTimeRange> = {
+    e1: { startIso: '2026-02-27T09:00:00', endIso: '2026-03-01T12:00:00' },
+    e2: { startIso: '2026-03-08T10:00:00', endIso: '2026-03-08T19:00:00' },
+    e3: { startIso: '2026-03-12T19:30:00', endIso: '2026-03-12T23:00:00' },
+    e6: { startIso: '2026-03-14T17:00:00', endIso: '2026-03-14T20:30:00' },
+    e7: { startIso: '2026-03-16T09:30:00', endIso: '2026-03-16T11:30:00' },
+    e8: { startIso: '2026-02-27T11:15:00', endIso: '2026-02-27T13:00:00' },
+    e9: { startIso: '2026-02-27T13:30:00', endIso: '2026-02-27T15:30:00' },
+    e10: { startIso: '2026-03-14T18:15:00', endIso: '2026-03-14T21:15:00' },
+    e11: { startIso: '2026-03-28T09:00:00', endIso: '2026-05-06T21:00:00' },
+    e12: { startIso: '2026-04-26T10:00:00', endIso: '2026-06-02T20:00:00' },
+    h1: { startIso: '2026-02-27T18:00:00', endIso: '2026-02-27T21:00:00' },
+    h2: { startIso: '2026-04-04T16:00:00', endIso: '2026-04-04T20:00:00' },
+    h3: { startIso: '2026-03-01T09:30:00', endIso: '2026-03-01T12:00:00' },
+    h4: { startIso: '2026-03-05T18:00:00', endIso: '2026-03-05T21:00:00' }
+  };
+  protected readonly hostingDistanceById: Record<string, number> = { h1: 5, h2: 20, h3: 10, h4: 15 };
+  protected readonly activityImageById: Record<string, string> = {
+    e1: 'https://picsum.photos/seed/event-e1/1200/700',
+    e2: 'https://picsum.photos/seed/event-e2/1200/700',
+    e3: 'https://picsum.photos/seed/event-e3/1200/700',
+    e6: 'https://picsum.photos/seed/event-e6/1200/700',
+    e7: 'https://picsum.photos/seed/event-e7/1200/700',
+    e8: 'https://picsum.photos/seed/event-e8/1200/700',
+    e9: 'https://picsum.photos/seed/event-e9/1200/700',
+    e10: 'https://picsum.photos/seed/event-e10/1200/700',
+    e11: 'https://picsum.photos/seed/event-e11/1200/700',
+    e12: 'https://picsum.photos/seed/event-e12/1200/700',
+    e4: 'https://picsum.photos/seed/event-e4/1200/700',
+    e5: 'https://picsum.photos/seed/event-e5/1200/700',
+    h1: 'https://picsum.photos/seed/event-h1/1200/700',
+    h2: 'https://picsum.photos/seed/event-h2/1200/700',
+    h3: 'https://picsum.photos/seed/event-h3/1200/700',
+    h4: 'https://picsum.photos/seed/event-h4/1200/700',
+    i1: 'https://picsum.photos/seed/event-i1/1200/700',
+    i2: 'https://picsum.photos/seed/event-i2/1200/700',
+    i3: 'https://picsum.photos/seed/event-i3/1200/700',
+    i4: 'https://picsum.photos/seed/event-i4/1200/700',
+    i5: 'https://picsum.photos/seed/event-i5/1200/700'
+  };
+  protected readonly activitySourceLinkById: Record<string, string> = {
+    e1: 'https://example.com/events/e1',
+    e2: 'https://example.com/events/e2',
+    e3: 'https://example.com/events/e3',
+    e6: 'https://example.com/events/e6',
+    e7: 'https://example.com/events/e7',
+    e8: 'https://example.com/events/e8',
+    e9: 'https://example.com/events/e9',
+    e10: 'https://example.com/events/e10',
+    e11: 'https://example.com/events/e11',
+    e12: 'https://example.com/events/e12',
+    e4: 'https://example.com/events/e4',
+    e5: 'https://example.com/events/e5',
+    h1: 'https://example.com/hosting/h1',
+    h2: 'https://example.com/hosting/h2',
+    h3: 'https://example.com/hosting/h3',
+    h4: 'https://example.com/hosting/h4',
+    i1: 'https://example.com/invitations/i1',
+    i2: 'https://example.com/invitations/i2',
+    i3: 'https://example.com/invitations/i3',
+    i4: 'https://example.com/invitations/i4',
+    i5: 'https://example.com/invitations/i5'
+  };
+  protected readonly activityCapacityById: Record<string, string> = {
+    e1: '24 / 28',
+    e2: '13 / 16',
+    e3: '18 / 20',
+    e6: '20 / 24',
+    e7: '9 / 12',
+    e8: '16 / 20',
+    e9: '18 / 22',
+    e10: '19 / 24',
+    e11: '41 / 60',
+    e12: '28 / 40',
+    e4: '10 / 12',
+    e5: '14 / 18',
+    h1: '20 / 24',
+    h2: '16 / 22',
+    h3: '9 / 12',
+    h4: '11 / 15',
+    i1: '2 / 4',
+    i2: '1 / 2',
+    i3: '3 / 4',
+    i4: '1 / 3',
+    i5: '2 / 3'
+  };
+  protected readonly invitationItemsByUser: Record<string, InvitationMenuItem[]> = this.cloneMapItems(DEMO_INVITATIONS_BY_USER);
+  protected readonly eventItemsByUser: Record<string, EventMenuItem[]> = this.cloneMapItems(DEMO_EVENTS_BY_USER);
+  protected readonly hostingItemsByUser: Record<string, HostingMenuItem[]> = this.cloneMapItems(DEMO_HOSTING_BY_USER);
+  private readonly acceptedInvitationIdsByUser: Record<string, string[]> = {};
 
   protected selectedChat: ChatMenuItem | null = null;
   protected selectedChatMembers: DemoUser[] = [];
@@ -499,12 +914,38 @@ export class App {
   protected selectedInvitation: InvitationMenuItem | null = null;
   protected selectedEvent: EventMenuItem | null = null;
   protected selectedHostingEvent: HostingMenuItem | null = null;
+  protected eventEditorTarget: EventEditorTarget = 'events';
+  protected editingEventId: string | null = null;
+  protected eventForm: EventEditorForm = this.defaultEventForm();
+  protected showSubEventForm = false;
+  protected showSubEventOptionalPicker = false;
+  protected subEventForm: SubEventFormItem = this.defaultSubEventForm();
+  protected subEventStartDateValue: Date | null = null;
+  protected subEventEndDateValue: Date | null = null;
+  protected subEventStartTimeValue: Date | null = null;
+  protected subEventEndTimeValue: Date | null = null;
+  protected showEventVisibilityPicker = false;
+  protected showProfileStatusHeaderPicker = false;
+  protected readonly eventVisibilityOptions: EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
+  protected readonly eventBlindModeOptions: EventBlindMode[] = ['Open Event', 'Blind Event'];
+  private readonly eventSubEventsById: Record<string, SubEventFormItem[]> = {};
+  protected eventStartDateValue: Date | null = null;
+  protected eventEndDateValue: Date | null = null;
+  protected eventStartTimeValue: Date | null = null;
+  protected eventEndTimeValue: Date | null = null;
+  protected activitiesHeaderProgress = 0;
+  protected activitiesHeaderProgressLoading = false;
+  protected activitiesHeaderLoadingProgress = 0;
+  protected activitiesHeaderLoadingOverdue = false;
 
   protected imageSlots: Array<string | null> = [];
   protected selectedImageIndex = 0;
   protected pendingSlotUploadIndex: number | null = null;
   @ViewChild('slotImageInput') private slotImageInput?: ElementRef<HTMLInputElement>;
   @ViewChild('assetImageInput') private assetImageInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('eventImageInput') private eventImageInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('activitiesScroll') private activitiesScrollRef?: ElementRef<HTMLDivElement>;
+  @ViewChild('activitiesCalendarScroll') private activitiesCalendarScrollRef?: ElementRef<HTMLDivElement>;
 
   protected eventSupplyTypes: string[] = ['Cars', 'Members', 'Accessories', 'Accommodation'];
   protected newSupplyType = '';
@@ -527,12 +968,75 @@ export class App {
   protected showLanguagePanel = false;
   private readonly profileImageSlotsByUser: Record<string, Array<string | null>> = {};
   private readonly languageSheetHeightCssVar = '--mobile-language-sheet-height';
+  private activitiesHeaderLoadingCounter = 0;
+  private activitiesHeaderLoadingInterval: ReturnType<typeof setInterval> | null = null;
+  private activitiesHeaderLoadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly activitiesHeaderLoadingWindowMs = 3000;
+  private readonly activitiesHeaderLoadingTickMs = 16;
+  private activitiesHeaderLoadingStartedAtMs = 0;
+  private activitiesHeaderFlushScheduled = false;
+  private readonly activitiesPaginationLoadDelayMs = 3500;
+  private activitiesCalendarBadgesTimer: ReturnType<typeof setTimeout> | null = null;
+  private activitiesCalendarBadgesLoadingActive = false;
+  private activitiesCalendarBadgesLoadingDelayKey = '';
+  private readonly activitiesCalendarBadgesReadyDelayKeys = new Set<string>();
+  private activitiesCalendarBadgeDelayPageKey = '';
+  private activitiesVisibleCount = this.activitiesPageSize;
+  private activitiesPaginationKey = '';
+  private activitiesLoadMoreTimer: ReturnType<typeof setTimeout> | null = null;
+  private activitiesIsPaginating = false;
+  private activitiesPaginationAwaitScrollReset = false;
 
   constructor(private readonly router: Router) {
     this.initializeProfileImageSlots();
+    this.ensurePaginationTestEvents(30);
     this.profileDetailsForm = this.createProfileDetailsForm();
     this.syncProfileFormFromActiveUser();
     this.router.navigate(['/game']);
+  }
+
+  private ensurePaginationTestEvents(minEventsPerUser: number): void {
+    for (const user of this.users) {
+      const userId = user.id;
+      const events = this.eventItemsByUser[userId] ?? [];
+      if (events.length >= minEventsPerUser) {
+        continue;
+      }
+
+      const needed = minEventsPerUser - events.length;
+      const synthetic: EventMenuItem[] = [];
+      for (let index = 0; index < needed; index += 1) {
+        const seq = events.length + index + 1;
+        const id = `ex-${userId}-${seq}`;
+        const start = new Date(2026, 2, 1 + (index * 2), 10 + (index % 6), (index % 2) * 30, 0, 0);
+        const end = new Date(start.getTime() + ((2 + (index % 3)) * 60 * 60 * 1000));
+        const isAdmin = (seq % 4) === 0;
+        const title = `Pagination Test Event ${seq}`;
+        const timeframe = `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+
+        synthetic.push({
+          id,
+          avatar: user.initials,
+          title,
+          shortDescription: `Synthetic feed item ${seq} to validate activities infinite loading.`,
+          timeframe,
+          activity: (index % 5) + 1,
+          isAdmin
+        });
+
+        this.eventDatesById[id] = start.toISOString().slice(0, 19);
+        this.eventDistanceById[id] = 3 + (index % 42);
+        this.activityDateTimeRangeById[id] = {
+          startIso: start.toISOString().slice(0, 19),
+          endIso: end.toISOString().slice(0, 19)
+        };
+        this.activityImageById[id] = `https://picsum.photos/seed/event-${id}/1200/700`;
+        this.activitySourceLinkById[id] = `https://example.com/events/${id}`;
+        this.activityCapacityById[id] = `${6 + (index % 18)} / ${12 + (index % 24)}`;
+      }
+
+      this.eventItemsByUser[userId] = [...events, ...synthetic];
+    }
   }
 
   protected get activeUser() {
@@ -578,9 +1082,10 @@ export class App {
   }
 
   protected get hostingBadge(): number {
+    const adminEvents = this.eventItems.filter(item => item.isAdmin);
     return this.resolveSectionBadge(
-      this.hostingItems.map(item => item.activity),
-      this.hostingItems.length
+      adminEvents.map(item => item.activity),
+      adminEvents.length
     );
   }
 
@@ -607,15 +1112,19 @@ export class App {
   }
 
   protected get invitationItems(): InvitationMenuItem[] {
-    return DEMO_INVITATIONS_BY_USER[this.activeUser.id] ?? DEMO_INVITATIONS_BY_USER['u1'];
+    return this.invitationItemsByUser[this.activeUser.id] ?? this.invitationItemsByUser['u1'] ?? [];
   }
 
   protected get eventItems(): EventMenuItem[] {
-    return DEMO_EVENTS_BY_USER[this.activeUser.id] ?? DEMO_EVENTS_BY_USER['u1'];
+    return this.eventItemsByUser[this.activeUser.id] ?? this.eventItemsByUser['u1'] ?? [];
   }
 
   protected get hostingItems(): HostingMenuItem[] {
-    return DEMO_HOSTING_BY_USER[this.activeUser.id] ?? DEMO_HOSTING_BY_USER['u1'];
+    return this.hostingItemsByUser[this.activeUser.id] ?? this.hostingItemsByUser['u1'] ?? [];
+  }
+
+  protected get rateItems(): RateMenuItem[] {
+    return DEMO_RATES_BY_USER[this.activeUser.id] ?? DEMO_RATES_BY_USER['u1'] ?? [];
   }
 
   protected onUserSelect(): void {
@@ -632,40 +1141,50 @@ export class App {
     this.closeUserMenu();
   }
 
+  protected openRatesShortcut(): void {
+    this.openActivitiesPopup('rates', false);
+  }
+
   protected openChatShortcut(): void {
-    const [firstItem] = this.chatItems;
-    if (firstItem) {
-      this.openChatItem(firstItem, false);
-      return;
-    }
-    this.activeMenuSection = 'chat';
+    this.openActivitiesPopup('chats', false);
   }
 
   protected openInvitationShortcut(): void {
-    const [firstItem] = this.invitationItems;
-    if (firstItem) {
-      this.openInvitationItem(firstItem, false);
-      return;
-    }
-    this.activeMenuSection = 'invitations';
+    this.openActivitiesPopup('invitations', false);
   }
 
   protected openEventShortcut(): void {
-    const [firstItem] = this.eventItems;
-    if (firstItem) {
-      this.openEventItem(firstItem, false);
-      return;
-    }
-    this.openEventExplore(false);
+    this.openActivitiesPopup('events', false);
   }
 
   protected openHostingShortcut(): void {
-    const [firstItem] = this.hostingItems;
-    if (firstItem) {
-      this.openHostingItem(firstItem, false);
-      return;
+    this.openActivitiesPopup('hosting', false);
+  }
+
+  protected openActivitiesPopup(primaryFilter: ActivitiesPrimaryFilter, closeMenu = true): void {
+    this.commitPendingRateDirectionOverrides();
+    this.activePopup = 'activities';
+    this.activitiesPrimaryFilter = primaryFilter;
+    this.activitiesSecondaryFilter = 'recent';
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showEventVisibilityPicker = false;
+    this.showAssetVisibilityPicker = false;
+    this.showProfileStatusHeaderPicker = false;
+    this.activitiesView = 'day';
+    this.clearActivityRateEditorState();
+    this.activitiesStickyValue = '';
+    this.calendarMonthFocusDate = null;
+    this.calendarWeekFocusDate = null;
+    this.calendarInitialPageIndexOverride = null;
+    this.calendarMonthAnchorPages = null;
+    this.calendarWeekAnchorPages = null;
+    this.calendarMonthAnchorsHydrated = false;
+    this.calendarWeekAnchorsHydrated = false;
+    this.resetActivitiesScroll();
+    if (closeMenu) {
+      this.closeUserMenu();
     }
-    this.activeMenuSection = 'hosting';
   }
 
   protected openAssetCarPopup(): void {
@@ -686,9 +1205,15 @@ export class App {
     this.activePopup = 'assetsSupplies';
   }
 
-  protected openChatItem(item: ChatMenuItem, closeMenu = true): void {
+  protected openChatItem(item: ChatMenuItem, closeMenu = true, stacked = false): void {
     this.activeMenuSection = 'chat';
     this.selectedChat = item;
+    this.showActivitiesViewPicker = false;
+    if (stacked || this.activePopup === 'activities' || this.stackedPopup !== null) {
+      this.stackedPopup = 'chat';
+      this.scrollChatToBottom();
+      return;
+    }
     this.stackedPopup = null;
     this.activePopup = 'chat';
     this.scrollChatToBottom();
@@ -709,27 +1234,42 @@ export class App {
     this.closeUserMenu();
   }
 
-  protected openInvitationItem(item: InvitationMenuItem, closeMenu = true): void {
+  protected openInvitationItem(item: InvitationMenuItem, closeMenu = true, stacked = false): void {
     this.activeMenuSection = 'invitations';
     this.selectedInvitation = item;
+    this.showActivitiesViewPicker = false;
+    if (stacked || this.activePopup === 'activities' || this.stackedPopup !== null) {
+      this.stackedPopup = 'invitationActions';
+      return;
+    }
     this.activePopup = 'invitationActions';
     if (closeMenu) {
       this.closeUserMenu();
     }
   }
 
-  protected openEventItem(item: EventMenuItem, closeMenu = true): void {
+  protected openEventItem(item: EventMenuItem, closeMenu = true, stacked = false): void {
     this.activeMenuSection = 'events';
     this.selectedEvent = item;
+    this.showActivitiesViewPicker = false;
+    if (stacked || this.activePopup === 'activities' || this.stackedPopup !== null) {
+      this.stackedPopup = 'menuEvent';
+      return;
+    }
     this.activePopup = 'menuEvent';
     if (closeMenu) {
       this.closeUserMenu();
     }
   }
 
-  protected openHostingItem(item: HostingMenuItem, closeMenu = true): void {
+  protected openHostingItem(item: HostingMenuItem, closeMenu = true, stacked = false): void {
     this.activeMenuSection = 'hosting';
     this.selectedHostingEvent = item;
+    this.showActivitiesViewPicker = false;
+    if (stacked || this.activePopup === 'activities' || this.stackedPopup !== null) {
+      this.stackedPopup = 'hostingEvent';
+      return;
+    }
     this.activePopup = 'hostingEvent';
     if (closeMenu) {
       this.closeUserMenu();
@@ -748,7 +1288,15 @@ export class App {
     }
   }
 
-  protected openEventEditor(stacked = false): void {
+  protected openEventEditor(
+    stacked = false,
+    mode: EventEditorMode = 'edit',
+    source?: EventMenuItem | HostingMenuItem
+  ): void {
+    this.eventEditorMode = mode;
+    this.showEventVisibilityPicker = false;
+    this.showProfileStatusHeaderPicker = false;
+    this.prepareEventEditorForm(mode, source);
     if (stacked || this.stackedPopup !== null || this.activePopup === 'chat') {
       this.stackedPopup = 'eventEditor';
       return;
@@ -756,9 +1304,763 @@ export class App {
     this.activePopup = 'eventEditor';
   }
 
+  protected triggerEventImageUpload(event?: Event): void {
+    event?.stopPropagation();
+    this.eventImageInput?.nativeElement.click();
+  }
+
+  protected onEventImageFileChange(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+    if (!file) {
+      return;
+    }
+    this.revokeObjectUrl(this.eventForm.imageUrl);
+    this.eventForm.imageUrl = URL.createObjectURL(file);
+    target.value = '';
+  }
+
+  protected openEventTopicsSelector(event?: Event): void {
+    event?.stopPropagation();
+    const allowed = new Set(this.interestAllOptions());
+    this.interestSelectorContext = null;
+    this.interestSelectorSelected = this.eventForm.topics
+      .filter(item => allowed.has(item))
+      .slice(0, 5);
+    this.eventForm.topics = [...this.interestSelectorSelected];
+    this.superStackedPopup = 'eventTopicsSelector';
+  }
+
+  protected closeEventTopicsSelector(apply = true): void {
+    if (apply) {
+      this.eventForm.topics = [...this.interestSelectorSelected];
+    } else {
+      const allowed = new Set(this.interestAllOptions());
+      this.interestSelectorSelected = this.eventForm.topics.filter(item => allowed.has(item)).slice(0, 5);
+    }
+    this.superStackedPopup = null;
+  }
+
+  protected eventTopicToneClass(option: string): string {
+    for (const group of this.interestOptionGroups) {
+      if (group.options.includes(option)) {
+        return group.toneClass;
+      }
+    }
+    return '';
+  }
+
+  protected eventTopicLabel(option: string): string {
+    return `#${option.replace(/^#+/, '')}`;
+  }
+
+  protected eventTopicsPanelClass(): string {
+    return 'section-identity';
+  }
+
+  protected eventTopicsPanelIcon(): string {
+    return 'sell';
+  }
+
+  protected get eventFrequencyOptions(): string[] {
+    return this.contextualFrequencyOptions(this.eventForm.startAt, this.eventForm.endAt);
+  }
+
+  protected eventFrequencyIcon(option: string): string {
+    switch (option) {
+      case 'Daily':
+        return 'today';
+      case 'Weekly':
+        return 'view_week';
+      case 'Bi-weekly':
+        return 'date_range';
+      case 'Monthly':
+        return 'calendar_month';
+      default:
+        return 'event';
+    }
+  }
+
+  protected eventFrequencyClass(option: string): string {
+    switch (option) {
+      case 'Daily':
+        return 'event-frequency-daily';
+      case 'Weekly':
+        return 'event-frequency-weekly';
+      case 'Bi-weekly':
+        return 'event-frequency-bi-weekly';
+      case 'Monthly':
+        return 'event-frequency-monthly';
+      default:
+        return 'event-frequency-one-time';
+    }
+  }
+
+  protected eventVisibilityIcon(option: EventVisibility): string {
+    switch (option) {
+      case 'Public':
+        return 'public';
+      case 'Friends only':
+        return 'groups';
+      default:
+        return 'mail_lock';
+    }
+  }
+
+  protected eventVisibilityClass(option: EventVisibility): string {
+    switch (option) {
+      case 'Public':
+        return 'event-visibility-public';
+      case 'Friends only':
+        return 'event-visibility-friends';
+      default:
+        return 'event-visibility-invitation';
+    }
+  }
+
+  protected toggleEventVisibilityPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.showEventVisibilityPicker = !this.showEventVisibilityPicker;
+  }
+
+  protected selectEventVisibility(option: EventVisibility, event?: Event): void {
+    event?.stopPropagation();
+    this.eventForm.visibility = option;
+    this.showEventVisibilityPicker = false;
+  }
+
+  protected eventBlindModeIcon(option: EventBlindMode): string {
+    return option === 'Blind Event' ? 'visibility_off' : 'visibility';
+  }
+
+  protected eventBlindModeClass(option: EventBlindMode): string {
+    return option === 'Blind Event' ? 'blind-mode-blind' : 'blind-mode-open';
+  }
+
+  protected eventBlindModeDescription(option: EventBlindMode): string {
+    return option === 'Blind Event'
+      ? 'Attendees won’t see each other before the event.'
+      : 'Attendees can preview each other before the event.';
+  }
+
+  protected toggleEventBlindMode(event?: Event): void {
+    event?.stopPropagation();
+    this.eventForm.blindMode = this.eventForm.blindMode === 'Blind Event' ? 'Open Event' : 'Blind Event';
+  }
+
+  protected openSubEventPanel(event?: Event): void {
+    event?.stopPropagation();
+    this.subEventForm = this.defaultSubEventForm();
+    this.syncSubEventDateTimeControlsFromForm();
+    this.showSubEventOptionalPicker = false;
+    this.showSubEventForm = true;
+  }
+
+  protected closeSubEventPanel(event?: Event): void {
+    event?.stopPropagation();
+    this.appendCurrentSubEventIfValid();
+    this.showSubEventForm = false;
+    this.showSubEventOptionalPicker = false;
+  }
+
+  protected closeSubEventPanelWithSave(event?: Event): void {
+    event?.stopPropagation();
+    this.appendCurrentSubEventIfValid();
+    this.showSubEventForm = false;
+    this.showSubEventOptionalPicker = false;
+  }
+
+  protected saveSubEventForm(event?: Event): void {
+    event?.stopPropagation();
+    this.appendCurrentSubEventIfValid();
+    this.showSubEventForm = false;
+    this.showSubEventOptionalPicker = false;
+  }
+
+  protected onSubEventStartDateChange(value: Date | null): void {
+    this.subEventStartDateValue = value;
+    this.syncSubEventFormFromDateTimeControls();
+    this.normalizeSubEventDateRange();
+    this.syncSubEventDateTimeControlsFromForm();
+  }
+
+  protected onSubEventEndDateChange(value: Date | null): void {
+    this.subEventEndDateValue = value;
+    this.syncSubEventFormFromDateTimeControls();
+    this.normalizeSubEventDateRange();
+    this.syncSubEventDateTimeControlsFromForm();
+  }
+
+  protected onSubEventStartTimeChange(value: Date | null): void {
+    this.subEventStartTimeValue = value;
+    this.syncSubEventFormFromDateTimeControls();
+    this.normalizeSubEventDateRange();
+    this.syncSubEventDateTimeControlsFromForm();
+  }
+
+  protected onSubEventEndTimeChange(value: Date | null): void {
+    this.subEventEndTimeValue = value;
+    this.syncSubEventFormFromDateTimeControls();
+    this.normalizeSubEventDateRange();
+    this.syncSubEventDateTimeControlsFromForm();
+  }
+
+  protected subEventCardRange(item: SubEventFormItem): string {
+    const start = new Date(item.startAt);
+    const end = new Date(item.endAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return 'Date pending';
+    }
+    const startLabel = `${this.pad2(start.getMonth() + 1)}/${this.pad2(start.getDate())} ${this.pad2(start.getHours())}:${this.pad2(start.getMinutes())}`;
+    const endLabel = `${this.pad2(end.getMonth() + 1)}/${this.pad2(end.getDate())} ${this.pad2(end.getHours())}:${this.pad2(end.getMinutes())}`;
+    return `${startLabel} - ${endLabel}`;
+  }
+
+  protected subEventCardMeta(item: SubEventFormItem): string {
+    return item.optional ? 'Optional' : 'Mandatory';
+  }
+
+  protected subEventCapacityLabel(item: SubEventFormItem): string {
+    return `${item.membersAccepted} / ${item.capacityMin} - ${item.capacityMax}`;
+  }
+
+  protected subEventCapacityStateClass(item: SubEventFormItem): string {
+    return item.membersAccepted >= item.capacityMin && item.membersAccepted <= item.capacityMax
+      ? 'subevent-capacity-in-range'
+      : 'subevent-capacity-out-of-range';
+  }
+
+  protected openSubEventBadgePopup(type: 'Members' | 'Car' | 'Accommodation' | 'Supplies', item: SubEventFormItem, event?: Event): void {
+    event?.stopPropagation();
+    this.alertService.open(`${type} popup for "${item.name}" is ready for wiring.`);
+  }
+
+  protected subEventModeClass(optional: boolean): string {
+    return optional ? 'subevent-mode-optional' : 'subevent-mode-mandatory';
+  }
+
+  protected subEventModeIcon(optional: boolean): string {
+    return optional ? 'toggle_on' : 'block';
+  }
+
+  protected toggleSubEventOptionalPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.showSubEventOptionalPicker = !this.showSubEventOptionalPicker;
+  }
+
+  protected selectSubEventOptional(optional: boolean, event?: Event): void {
+    event?.stopPropagation();
+    this.subEventForm.optional = optional;
+    this.showSubEventOptionalPicker = false;
+  }
+
+  protected onSubEventCapacityMinChange(value: number | string): void {
+    const parsed = Number(value);
+    this.subEventForm.capacityMin = Math.max(1, Number.isFinite(parsed) ? parsed : 1);
+    if (this.subEventForm.capacityMax < this.subEventForm.capacityMin) {
+      this.subEventForm.capacityMax = this.subEventForm.capacityMin;
+    }
+  }
+
+  protected onSubEventCapacityMaxChange(value: number | string): void {
+    const parsed = Number(value);
+    const next = Math.max(1, Number.isFinite(parsed) ? parsed : this.subEventForm.capacityMin);
+    this.subEventForm.capacityMax = next < this.subEventForm.capacityMin ? this.subEventForm.capacityMin : next;
+  }
+
+  protected toggleAssetVisibilityPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.showAssetVisibilityPicker = !this.showAssetVisibilityPicker;
+  }
+
+  protected selectAssetVisibility(option: EventVisibility, event?: Event): void {
+    event?.stopPropagation();
+    this.assetFormVisibility = option;
+    this.showAssetVisibilityPicker = false;
+  }
+
+  protected toggleProfileStatusHeaderPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.showProfileStatusHeaderPicker = !this.showProfileStatusHeaderPicker;
+  }
+
+  protected selectProfileStatusFromHeader(option: ProfileStatus, event?: Event): void {
+    event?.stopPropagation();
+    this.profileForm.profileStatus = option;
+    this.showProfileStatusHeaderPicker = false;
+  }
+
+  protected eventFrequencyAscii(option: string): string {
+    switch (option) {
+      case 'Daily':
+        return '☀';
+      case 'Weekly':
+        return '↻';
+      case 'Bi-weekly':
+        return '⇆';
+      case 'Monthly':
+        return '◷';
+      default:
+        return '•';
+    }
+  }
+
+  protected onEventStartDateChange(value: Date | null): void {
+    this.eventStartDateValue = value;
+    this.syncEventFormFromDateTimeControls();
+    this.normalizeEventDateRange();
+    this.syncEventDateTimeControlsFromForm();
+  }
+
+  protected onEventEndDateChange(value: Date | null): void {
+    this.eventEndDateValue = value;
+    this.syncEventFormFromDateTimeControls();
+    this.normalizeEventDateRange();
+    this.syncEventDateTimeControlsFromForm();
+  }
+
+  protected onEventStartTimeChange(value: Date | null): void {
+    this.eventStartTimeValue = value;
+    this.syncEventFormFromDateTimeControls();
+    this.normalizeEventDateRange();
+    this.syncEventDateTimeControlsFromForm();
+  }
+
+  protected onEventEndTimeChange(value: Date | null): void {
+    this.eventEndTimeValue = value;
+    this.syncEventFormFromDateTimeControls();
+    this.normalizeEventDateRange();
+    this.syncEventDateTimeControlsFromForm();
+  }
+
+  protected saveEventEditorForm(): void {
+    this.syncEventFormFromDateTimeControls();
+    const title = this.eventForm.title.trim();
+    const description = this.eventForm.description.trim();
+    if (!title || !description || !this.eventForm.startAt || !this.eventForm.endAt) {
+      return;
+    }
+    this.normalizeEventDateRange();
+    if (this.editingEventId) {
+      this.updateExistingEventFromForm();
+    } else {
+      this.insertCreatedEventFromForm();
+    }
+    if (this.stackedPopup === 'eventEditor') {
+      this.closeStackedPopup();
+      return;
+    }
+    this.closePopup();
+  }
+
+  protected cancelEventEditorForm(): void {
+    if (this.stackedPopup === 'eventEditor') {
+      this.closeStackedPopup();
+      return;
+    }
+    this.closePopup();
+  }
+
+  private prepareEventEditorForm(mode: EventEditorMode, explicitSource?: EventMenuItem | HostingMenuItem): void {
+    const source = this.resolveEventEditorSource(explicitSource);
+    this.showSubEventForm = false;
+    const target = source && this.isHostingSource(source)
+      ? 'hosting'
+      : (this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'hosting' ? 'hosting' : 'events');
+    this.eventEditorTarget = target;
+    if (mode === 'edit' && source) {
+      this.editingEventId = source.id;
+      this.eventForm = this.loadEventFormFromSource(source, target);
+      this.syncEventDateTimeControlsFromForm();
+      return;
+    }
+    this.editingEventId = null;
+    this.eventForm = this.defaultEventForm();
+    this.eventForm.frequency = this.eventFrequencyOptions[0] ?? 'One-time';
+    this.syncEventDateTimeControlsFromForm();
+  }
+
+  private resolveEventEditorSource(explicitSource?: EventMenuItem | HostingMenuItem): EventMenuItem | HostingMenuItem | null {
+    if (explicitSource) {
+      return explicitSource;
+    }
+    if (this.activePopup === 'hostingEvent' || this.stackedPopup === 'hostingEvent') {
+      return this.selectedHostingEvent;
+    }
+    if (this.activePopup === 'menuEvent' || this.stackedPopup === 'menuEvent') {
+      return this.selectedEvent;
+    }
+    return this.selectedEvent ?? this.selectedHostingEvent;
+  }
+
+  private isHostingSource(source: EventMenuItem | HostingMenuItem): source is HostingMenuItem {
+    return this.hostingItems.some(item => item.id === source.id);
+  }
+
+  private loadEventFormFromSource(source: EventMenuItem | HostingMenuItem, target: EventEditorTarget): EventEditorForm {
+    const startIso = target === 'hosting'
+      ? (this.hostingDatesById[source.id] ?? this.defaultEventStartIso())
+      : (this.eventDatesById[source.id] ?? this.defaultEventStartIso());
+    const start = new Date(startIso);
+    const fallbackStart = Number.isNaN(start.getTime()) ? new Date(this.defaultEventStartIso()) : start;
+    const end = new Date(fallbackStart.getTime() + 2 * 60 * 60 * 1000);
+    const frequency = this.parseFrequencyFromTimeframe(source.timeframe);
+    return {
+      title: source.title,
+      description: source.shortDescription,
+      imageUrl: this.defaultAssetImage('Supplies', `event-${source.id}`),
+      startAt: this.toIsoDateTimeLocal(fallbackStart),
+      endAt: this.toIsoDateTimeLocal(end),
+      frequency,
+      visibility: this.eventVisibilityById[source.id] ?? (target === 'hosting' ? 'Invitation only' : 'Public'),
+      blindMode: this.eventBlindModeById[source.id] ?? 'Open Event',
+      topics: [...this.eventEditor.mainEvent.topics].slice(0, 5),
+      subEvents: this.cloneSubEvents(this.eventSubEventsById[source.id] ?? [])
+    };
+  }
+
+  private updateExistingEventFromForm(): void {
+    if (!this.editingEventId) {
+      return;
+    }
+    const timeframe = this.buildEventTimeframeLabel(this.eventForm.startAt, this.eventForm.endAt, this.eventForm.frequency);
+    const title = this.eventForm.title.trim();
+    const shortDescription = this.eventForm.description.trim();
+    this.eventVisibilityById[this.editingEventId] = this.eventForm.visibility;
+    this.eventBlindModeById[this.editingEventId] = this.eventForm.blindMode;
+    this.eventSubEventsById[this.editingEventId] = this.cloneSubEvents(this.eventForm.subEvents);
+    if (this.eventEditorTarget === 'hosting') {
+      this.hostingItemsByUser[this.activeUser.id] = this.hostingItems.map(item =>
+        item.id === this.editingEventId
+          ? { ...item, title, shortDescription, timeframe }
+          : item
+      );
+      if (this.selectedHostingEvent?.id === this.editingEventId) {
+        this.selectedHostingEvent = { ...this.selectedHostingEvent, title, shortDescription, timeframe };
+      }
+      return;
+    }
+    this.eventItemsByUser[this.activeUser.id] = this.eventItems.map(item =>
+      item.id === this.editingEventId
+        ? { ...item, title, shortDescription, timeframe }
+        : item
+    );
+    if (this.selectedEvent?.id === this.editingEventId) {
+      this.selectedEvent = { ...this.selectedEvent, title, shortDescription, timeframe };
+    }
+  }
+
+  private insertCreatedEventFromForm(): void {
+    const baseId = Date.now();
+    const timeframe = this.buildEventTimeframeLabel(this.eventForm.startAt, this.eventForm.endAt, this.eventForm.frequency);
+    if (this.eventEditorTarget === 'hosting') {
+      const id = `h${baseId}`;
+      this.hostingDatesById[id] = this.eventForm.startAt;
+      this.eventVisibilityById[id] = this.eventForm.visibility;
+      this.eventBlindModeById[id] = this.eventForm.blindMode;
+      this.eventSubEventsById[id] = this.cloneSubEvents(this.eventForm.subEvents);
+      const next: HostingMenuItem = {
+        id,
+        avatar: this.activeUser.initials,
+        title: this.eventForm.title.trim(),
+        shortDescription: this.eventForm.description.trim(),
+        timeframe,
+        activity: 1
+      };
+      this.hostingItemsByUser[this.activeUser.id] = [next, ...this.hostingItems];
+      this.selectedHostingEvent = next;
+      return;
+    }
+    const id = `e${baseId}`;
+    this.eventDatesById[id] = this.eventForm.startAt;
+    this.eventVisibilityById[id] = this.eventForm.visibility;
+    this.eventBlindModeById[id] = this.eventForm.blindMode;
+    this.eventSubEventsById[id] = this.cloneSubEvents(this.eventForm.subEvents);
+    const next: EventMenuItem = {
+      id,
+      avatar: this.activeUser.initials,
+      title: this.eventForm.title.trim(),
+      shortDescription: this.eventForm.description.trim(),
+      timeframe,
+      activity: 1,
+      isAdmin: true
+    };
+    this.eventItemsByUser[this.activeUser.id] = [next, ...this.eventItems];
+    this.selectedEvent = next;
+  }
+
+  private defaultEventForm(): EventEditorForm {
+    const start = new Date();
+    start.setMinutes(0, 0, 0);
+    start.setHours(start.getHours() + 1);
+    const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+    return {
+      title: '',
+      description: '',
+      imageUrl: '',
+      startAt: this.toIsoDateTimeLocal(start),
+      endAt: this.toIsoDateTimeLocal(end),
+      frequency: 'One-time',
+      visibility: 'Invitation only',
+      blindMode: 'Open Event',
+      topics: [],
+      subEvents: []
+    };
+  }
+
+  private normalizeEventDateRange(): void {
+    const start = new Date(this.eventForm.startAt);
+    const end = new Date(this.eventForm.endAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return;
+    }
+    if (end.getTime() <= start.getTime()) {
+      const nextEnd = new Date(start.getTime() + 60 * 60 * 1000);
+      this.eventForm.endAt = this.toIsoDateTimeLocal(nextEnd);
+    }
+    const allowed = this.contextualFrequencyOptions(this.eventForm.startAt, this.eventForm.endAt);
+    if (!allowed.includes(this.eventForm.frequency)) {
+      this.eventForm.frequency = allowed[0] ?? 'One-time';
+    }
+  }
+
+  private syncEventDateTimeControlsFromForm(): void {
+    this.eventStartDateValue = this.isoLocalDateTimeToDate(this.eventForm.startAt);
+    this.eventEndDateValue = this.isoLocalDateTimeToDate(this.eventForm.endAt);
+    this.eventStartTimeValue = this.isoLocalDateTimeToDate(this.eventForm.startAt);
+    this.eventEndTimeValue = this.isoLocalDateTimeToDate(this.eventForm.endAt);
+  }
+
+  private syncEventFormFromDateTimeControls(): void {
+    this.eventForm.startAt = this.applyDatePartToIsoLocal(this.eventForm.startAt, this.eventStartDateValue);
+    this.eventForm.startAt = this.applyTimePartFromDateToIsoLocal(this.eventForm.startAt, this.eventStartTimeValue);
+    this.eventForm.endAt = this.applyDatePartToIsoLocal(this.eventForm.endAt, this.eventEndDateValue);
+    this.eventForm.endAt = this.applyTimePartFromDateToIsoLocal(this.eventForm.endAt, this.eventEndTimeValue);
+  }
+
+  private defaultSubEventForm(): SubEventFormItem {
+    const baseStart = this.isoLocalDateTimeToDate(this.eventForm.startAt) ?? new Date();
+    const start = new Date(baseStart);
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    return {
+      id: '',
+      name: '',
+      description: '',
+      startAt: this.toIsoDateTimeLocal(start),
+      endAt: this.toIsoDateTimeLocal(end),
+      optional: true,
+      capacityMin: 4,
+      capacityMax: 6,
+      membersAccepted: 0,
+      membersPending: 0,
+      carsPending: 0,
+      accommodationPending: 0,
+      suppliesPending: 0
+    };
+  }
+
+  private syncSubEventDateTimeControlsFromForm(): void {
+    this.subEventStartDateValue = this.isoLocalDateTimeToDate(this.subEventForm.startAt);
+    this.subEventEndDateValue = this.isoLocalDateTimeToDate(this.subEventForm.endAt);
+    this.subEventStartTimeValue = this.isoLocalDateTimeToDate(this.subEventForm.startAt);
+    this.subEventEndTimeValue = this.isoLocalDateTimeToDate(this.subEventForm.endAt);
+  }
+
+  private syncSubEventFormFromDateTimeControls(): void {
+    this.subEventForm.startAt = this.applyDatePartToIsoLocal(this.subEventForm.startAt, this.subEventStartDateValue);
+    this.subEventForm.startAt = this.applyTimePartFromDateToIsoLocal(this.subEventForm.startAt, this.subEventStartTimeValue);
+    this.subEventForm.endAt = this.applyDatePartToIsoLocal(this.subEventForm.endAt, this.subEventEndDateValue);
+    this.subEventForm.endAt = this.applyTimePartFromDateToIsoLocal(this.subEventForm.endAt, this.subEventEndTimeValue);
+  }
+
+  private normalizeSubEventDateRange(): void {
+    const start = new Date(this.subEventForm.startAt);
+    const end = new Date(this.subEventForm.endAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return;
+    }
+    if (end.getTime() <= start.getTime()) {
+      const nextEnd = new Date(start.getTime() + 60 * 60 * 1000);
+      this.subEventForm.endAt = this.toIsoDateTimeLocal(nextEnd);
+    }
+  }
+
+  private cloneSubEvents(items: SubEventFormItem[]): SubEventFormItem[] {
+    return items.map(item => ({ ...item }));
+  }
+
+  private appendCurrentSubEventIfValid(): boolean {
+    this.syncSubEventFormFromDateTimeControls();
+    const name = this.subEventForm.name.trim();
+    const description = this.subEventForm.description.trim();
+    if (!name || !description) {
+      return false;
+    }
+    this.normalizeSubEventDateRange();
+    const fallbackStart = this.subEventForm.startAt || this.eventForm.startAt || this.defaultEventStartIso();
+    const fallbackEnd = this.subEventForm.endAt || this.eventForm.endAt || this.defaultEventStartIso();
+    const next: SubEventFormItem = {
+      ...this.subEventForm,
+      id: `se-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name,
+      description,
+      startAt: fallbackStart,
+      endAt: fallbackEnd,
+      capacityMin: Math.max(1, Number(this.subEventForm.capacityMin) || 1),
+      capacityMax: Math.max(
+        Math.max(1, Number(this.subEventForm.capacityMin) || 1),
+        Number(this.subEventForm.capacityMax) || Math.max(1, Number(this.subEventForm.capacityMin) || 1)
+      ),
+      membersAccepted: Math.min(2, Math.max(1, Number(this.subEventForm.capacityMin) || 1)),
+      membersPending: Math.max(
+        0,
+        Math.max(
+          Math.max(1, Number(this.subEventForm.capacityMin) || 1),
+          Number(this.subEventForm.capacityMax) || Math.max(1, Number(this.subEventForm.capacityMin) || 1)
+        ) - Math.min(2, Math.max(1, Number(this.subEventForm.capacityMin) || 1))
+      ),
+      carsPending: 1,
+      accommodationPending: 2,
+      suppliesPending: 3
+    };
+    this.eventForm.subEvents = [...this.eventForm.subEvents, next];
+    return true;
+  }
+
+  private contextualFrequencyOptions(startAt: string, endAt: string): string[] {
+    const start = new Date(startAt);
+    const end = new Date(endAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end.getTime() <= start.getTime()) {
+      return ['One-time'];
+    }
+    const daySpan = (end.getTime() - start.getTime()) / 86400000;
+    const options = ['One-time'];
+    if (daySpan >= 1) {
+      options.push('Daily');
+    }
+    if (daySpan >= 14) {
+      options.push('Weekly');
+    }
+    if (daySpan >= 28) {
+      options.push('Bi-weekly', 'Monthly');
+    }
+    return options;
+  }
+
+  private parseFrequencyFromTimeframe(timeframe: string): string {
+    const normalized = timeframe.toLowerCase();
+    if (normalized.includes('every')) {
+      return 'Weekly';
+    }
+    if (normalized.includes('monthly')) {
+      return 'Monthly';
+    }
+    if (normalized.includes('daily')) {
+      return 'Daily';
+    }
+    return 'One-time';
+  }
+
+  private buildEventTimeframeLabel(startAt: string, endAt: string, frequency: string): string {
+    const start = new Date(startAt);
+    const end = new Date(endAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return '';
+    }
+    const timeLabel = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    if (frequency === 'Daily') {
+      return `Daily · ${timeLabel}`;
+    }
+    if (frequency === 'Weekly') {
+      return `Every ${start.toLocaleDateString('en-US', { weekday: 'short' })} · ${timeLabel}`;
+    }
+    if (frequency === 'Bi-weekly') {
+      return `Every 2nd ${start.toLocaleDateString('en-US', { weekday: 'short' })} · ${timeLabel}`;
+    }
+    if (frequency === 'Monthly') {
+      return `Monthly · Day ${start.getDate()} · ${timeLabel}`;
+    }
+    const dayLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const sameDay = start.toDateString() === end.toDateString();
+    if (sameDay) {
+      const endTimeLabel = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      return `${dayLabel} · ${timeLabel} - ${endTimeLabel}`;
+    }
+    const endDayLabel = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `${dayLabel} - ${endDayLabel}`;
+  }
+
+  private defaultEventStartIso(): string {
+    return this.toIsoDateTime(new Date());
+  }
+
+  private pad2(value: number): string {
+    return `${value}`.padStart(2, '0');
+  }
+
+  private toIsoDateTimeLocal(value: Date): string {
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    const day = `${value.getDate()}`.padStart(2, '0');
+    const hours = `${value.getHours()}`.padStart(2, '0');
+    const minutes = `${value.getMinutes()}`.padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
+
+  private isoLocalDateTimeToDate(value: string): Date | null {
+    if (!value) {
+      return null;
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private isoLocalTimePart(value: string): string {
+    const parsed = this.isoLocalDateTimeToDate(value);
+    if (!parsed) {
+      return '12:00';
+    }
+    const hours = `${parsed.getHours()}`.padStart(2, '0');
+    const minutes = `${parsed.getMinutes()}`.padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+
+  private applyDatePartToIsoLocal(current: string, date: Date | null): string {
+    if (!date) {
+      return current;
+    }
+    const base = this.isoLocalDateTimeToDate(current) ?? new Date();
+    const next = new Date(base);
+    next.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+    return this.toIsoDateTimeLocal(next);
+  }
+
+  private applyTimePartToIsoLocal(current: string, time: string): string {
+    const base = this.isoLocalDateTimeToDate(current) ?? new Date();
+    const [hoursRaw, minutesRaw] = time.split(':');
+    const hours = Number.parseInt(hoursRaw ?? '', 10);
+    const minutes = Number.parseInt(minutesRaw ?? '', 10);
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+      return current;
+    }
+    const next = new Date(base);
+    next.setHours(hours, minutes, 0, 0);
+    return this.toIsoDateTimeLocal(next);
+  }
+
+  private applyTimePartFromDateToIsoLocal(current: string, value: Date | null): string {
+    if (!value) {
+      return current;
+    }
+    const hours = value.getHours();
+    const minutes = value.getMinutes();
+    return this.applyTimePartToIsoLocal(current, `${`${hours}`.padStart(2, '0')}:${`${minutes}`.padStart(2, '0')}`);
+  }
+
   protected openProfileEditor(): void {
     this.syncProfileFormFromActiveUser();
     this.popupReturnTarget = null;
+    this.showProfileStatusHeaderPicker = false;
     this.activePopup = 'profileEditor';
   }
 
@@ -779,6 +2081,9 @@ export class App {
       this.popupReturnTarget = null;
       return;
     }
+    if (this.activePopup === 'profileEditor') {
+      this.commitProfileForm(false);
+    }
     this.activePopup = null;
     this.stackedPopup = null;
     this.popupReturnTarget = null;
@@ -786,6 +2091,28 @@ export class App {
     this.pendingAssetDeleteCardId = null;
     this.pendingAssetMemberAction = null;
     this.selectedAssetCardId = null;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showEventVisibilityPicker = false;
+    this.showAssetVisibilityPicker = false;
+    this.showProfileStatusHeaderPicker = false;
+    this.pendingActivityDeleteRow = null;
+    this.pendingActivityAction = 'delete';
+    this.pendingActivityMemberDelete = null;
+    this.selectedActivityMembers = [];
+    this.selectedActivityMembersTitle = '';
+    this.selectedActivityMembersRowId = null;
+    this.selectedActivityMembersRow = null;
+    this.selectedActivityInviteUserIds = [];
+    this.showActivityInviteSortPicker = false;
+    this.superStackedPopup = null;
+    this.clearActivityRateEditorState();
+    this.cancelActivitiesPaginationLoad();
+    this.clearActivitiesHeaderLoadingAnimation();
+    this.clearActivitiesCalendarBadgeDelay();
+    this.activitiesPaginationKey = '';
+    this.activitiesVisibleCount = this.activitiesPageSize;
+    this.activitiesHeaderProgress = 0;
   }
 
   protected closeStackedPopup(): void {
@@ -807,7 +2134,22 @@ export class App {
       this.pendingAssetMemberAction = null;
       this.selectedAssetCardId = null;
     }
+    if (this.stackedPopup === 'activityMembers') {
+      this.pendingActivityMemberDelete = null;
+      this.selectedActivityMembers = [];
+      this.selectedActivityMembersTitle = '';
+      this.selectedActivityMembersRowId = null;
+      this.selectedActivityMembersRow = null;
+      this.selectedActivityInviteUserIds = [];
+      this.showActivityInviteSortPicker = false;
+      this.superStackedPopup = null;
+    }
+    if (this.superStackedPopup === 'eventTopicsSelector') {
+      this.superStackedPopup = null;
+    }
     this.stackedPopup = null;
+    this.showEventVisibilityPicker = false;
+    this.showProfileStatusHeaderPicker = false;
     if (this.activePopup === 'chat') {
       this.scrollChatToBottom();
     }
@@ -832,6 +2174,7 @@ export class App {
     this.activePopup = null;
     this.stackedPopup = null;
     this.popupReturnTarget = null;
+    this.clearActivityRateEditorState();
     this.router.navigate(['/game']);
   }
 
@@ -842,10 +2185,14 @@ export class App {
 
   protected getPopupTitle(): string {
     switch (this.activePopup) {
+      case 'activities':
+        return 'Activities';
       case 'chat':
         return this.selectedChat?.title ?? 'Chat';
       case 'chatMembers':
         return 'Chat Members';
+      case 'activityMembers':
+        return 'Members';
       case 'impressionsHost':
         return this.activeHostTier;
       case 'impressionsMember':
@@ -863,7 +2210,7 @@ export class App {
       case 'hostingEvent':
         return this.selectedHostingEvent?.title ?? 'Hosting Event';
       case 'eventEditor':
-        return 'Event Editor';
+        return this.eventEditorMode === 'create' ? 'Create Event' : 'Edit Event';
       case 'eventExplore':
         return 'Event Explore';
       case 'profileEditor':
@@ -889,10 +2236,20 @@ export class App {
 
   protected getStackedPopupTitle(): string {
     switch (this.stackedPopup) {
+      case 'chat':
+        return this.selectedChat?.title ?? 'Chat';
       case 'chatMembers':
         return 'Chat Members';
+      case 'impressionsHost':
+        return 'Impressions';
+      case 'invitationActions':
+        return this.selectedInvitation?.description ?? 'Invitation';
+      case 'menuEvent':
+        return this.selectedEvent?.title ?? 'Event';
+      case 'hostingEvent':
+        return this.selectedHostingEvent?.title ?? 'Hosting Event';
       case 'eventEditor':
-        return 'Event Editor';
+        return this.eventEditorMode === 'create' ? 'Create Event' : 'Edit Event';
       case 'eventExplore':
         return 'Event Explore';
       case 'supplyDetail':
@@ -1241,11 +2598,17 @@ export class App {
       ? this.interestSelectorSelected.filter(item => item !== option)
       : [...this.interestSelectorSelected, option];
     this.syncInterestContextToRow();
+    if (this.superStackedPopup === 'eventTopicsSelector') {
+      this.eventForm.topics = [...this.interestSelectorSelected];
+    }
   }
 
   protected removeInterestOption(option: string): void {
     this.interestSelectorSelected = this.interestSelectorSelected.filter(item => item !== option);
     this.syncInterestContextToRow();
+    if (this.superStackedPopup === 'eventTopicsSelector') {
+      this.eventForm.topics = [...this.interestSelectorSelected];
+    }
   }
 
   protected isInterestOptionSelected(option: string): boolean {
@@ -1657,6 +3020,16 @@ export class App {
     }
   }
 
+  protected completionBadgeStyle(value: number): Record<string, string> {
+    const clamped = Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
+    const hue = Math.round((clamped / 100) * 120);
+    return {
+      background: `hsl(${hue}, 82%, 84%)`,
+      borderColor: `hsl(${hue}, 70%, 58%)`,
+      color: `hsl(${hue}, 74%, 24%)`
+    };
+  }
+
   protected getProfileStatusIcon(value: ProfileStatus = this.activeUser.profileStatus): string {
     switch (value) {
       case 'public':
@@ -1763,7 +3136,9 @@ export class App {
     if (typeof window === 'undefined') {
       return false;
     }
-    return window.matchMedia('(max-width: 760px)').matches;
+    const isNarrowViewport = window.matchMedia('(max-width: 760px)').matches;
+    const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+    return isNarrowViewport && hasCoarsePointer;
   }
 
   protected onProfileStatusChange(value: ProfileStatus): void {
@@ -1862,9 +3237,79 @@ export class App {
         value: option,
         label: option,
         icon: this.assetTypeIcon(option),
-        toneClass: this.assetTypeClass(option)
+        toneClass: this.assetTypeClass(option),
+        badge: this.assetFilterCount(option)
       })),
       context: { kind: 'assetFilter' }
+    };
+  }
+
+  protected openMobileActivitiesPrimaryFilterSelector(event: Event): void {
+    if (!this.isMobileView) {
+      return;
+    }
+    event.stopPropagation();
+    this.mobileProfileSelectorSheet = {
+      title: 'Activities',
+      selected: this.activitiesPrimaryFilter,
+      options: this.activitiesPrimaryFilters.map(option => ({
+        value: option.key,
+        label: option.label,
+        icon: option.icon,
+        toneClass: this.activitiesPrimaryFilterClass(option.key),
+        badge: this.activitiesPrimaryFilterCount(option.key)
+      })),
+      context: { kind: 'activitiesPrimaryFilter' }
+    };
+  }
+
+  protected openMobileActivitiesRateFilterSelector(event: Event): void {
+    if (!this.isMobileView) {
+      return;
+    }
+    event.stopPropagation();
+    this.mobileProfileSelectorSheet = {
+      title: 'Rate Type',
+      selected: this.activitiesRateFilter,
+      options: this.rateFilterEntries
+        .map(option => {
+          if (option.kind === 'group') {
+            const isPair = option.label === 'Pair';
+            return {
+              value: `group-${option.label.toLowerCase().replace(/\s+/g, '-')}`,
+              label: option.label,
+              icon: isPair ? 'groups_2' : 'person',
+              toneClass: `rate-filter-group-option-mobile ${isPair ? 'rate-filter-group-pair is-group-separator-mobile' : 'rate-filter-group-single'}`,
+              disabled: true
+            };
+          }
+          return {
+            value: option.key,
+            label: option.label,
+            icon: this.activitiesRateFilterIcon(option.key),
+            toneClass: this.rateFilterOptionClass(option.key),
+            badge: this.rateFilterCount(option.key)
+          };
+        }),
+      context: { kind: 'activitiesRateFilter' }
+    };
+  }
+
+  protected openMobileEventFrequencySelector(event: Event): void {
+    if (!this.isMobileView) {
+      return;
+    }
+    event.stopPropagation();
+    this.mobileProfileSelectorSheet = {
+      title: 'Frequency',
+      selected: this.eventForm.frequency,
+      options: this.eventFrequencyOptions.map(option => ({
+        value: option,
+        label: option,
+        icon: this.eventFrequencyIcon(option),
+        toneClass: this.eventFrequencyClass(option)
+      })),
+      context: { kind: 'eventFrequency' }
     };
   }
 
@@ -1950,6 +3395,27 @@ export class App {
     if (sheet.context.kind === 'assetFilter') {
       if (this.assetFilterOptions.includes(value as AssetType)) {
         this.selectAssetFilter(value as AssetType);
+      }
+      this.mobileProfileSelectorSheet = null;
+      return;
+    }
+    if (sheet.context.kind === 'activitiesPrimaryFilter') {
+      if (this.activitiesPrimaryFilters.some(option => option.key === value)) {
+        this.selectActivitiesPrimaryFilter(value as ActivitiesPrimaryFilter);
+      }
+      this.mobileProfileSelectorSheet = null;
+      return;
+    }
+    if (sheet.context.kind === 'activitiesRateFilter') {
+      if (this.rateFilters.some(option => option.key === value)) {
+        this.selectActivitiesRateFilter(value as RateFilterKey);
+      }
+      this.mobileProfileSelectorSheet = null;
+      return;
+    }
+    if (sheet.context.kind === 'eventFrequency') {
+      if (this.eventFrequencyOptions.includes(value)) {
+        this.eventForm.frequency = value;
       }
       this.mobileProfileSelectorSheet = null;
       return;
@@ -2390,10 +3856,18 @@ export class App {
   }
 
   protected openHostImpressions(): void {
+    if (this.activePopup === 'activities' || this.stackedPopup !== null) {
+      this.stackedPopup = 'impressionsHost';
+      return;
+    }
     this.activePopup = 'impressionsHost';
   }
 
   protected openMemberImpressions(): void {
+    if (this.activePopup === 'activities' || this.stackedPopup !== null) {
+      this.stackedPopup = 'impressionsHost';
+      return;
+    }
     this.activePopup = 'impressionsHost';
   }
 
@@ -2434,6 +3908,1332 @@ export class App {
 
   protected getChatMemberCount(item: ChatMenuItem): number {
     return this.getChatMembersById(item.id).length;
+  }
+
+  protected get isActivitiesPopup(): boolean {
+    return this.activePopup === 'activities';
+  }
+
+  protected get filteredActivityRows(): ActivityListRow[] {
+    const rows = this.buildFilteredActivityRowsBase();
+    if (this.isCalendarLayoutView()) {
+      return rows;
+    }
+    this.ensureActivitiesPaginationState(rows.length);
+    return rows.slice(0, Math.min(this.activitiesVisibleCount, rows.length));
+  }
+
+  private buildFilteredActivityRowsBase(): ActivityListRow[] {
+    let rows: ActivityListRow[] = [];
+    if (this.activitiesPrimaryFilter === 'chats') {
+      rows = this.chatItems.map(item => {
+        const sender = this.getChatLastSender(item);
+        return {
+          id: item.id,
+          type: 'chats',
+          title: sender.name,
+          subtitle: item.title,
+          detail: item.lastMessage.trim(),
+          dateIso: this.chatDatesById[item.id] ?? '2026-02-21T09:00:00',
+          distanceKm: this.chatDistanceById[item.id] ?? 5,
+          unread: item.unread,
+          metricScore: item.unread * 10 + this.getChatMemberCount(item),
+          source: item
+        };
+      });
+    } else if (this.activitiesPrimaryFilter === 'invitations') {
+      rows = this.invitationItems.map(item => ({
+        id: item.id,
+        type: 'invitations',
+        title: item.description,
+        subtitle: item.inviter,
+        detail: item.when,
+        dateIso: this.invitationDatesById[item.id] ?? '2026-02-21T09:00:00',
+        distanceKm: this.invitationDistanceById[item.id] ?? 5,
+        unread: item.unread,
+        metricScore: item.unread * 10,
+        source: item
+      }));
+    } else if (this.activitiesPrimaryFilter === 'events') {
+      rows = [
+        ...this.eventItems.map<ActivityListRow>(item => ({
+          id: item.id,
+          type: 'events',
+          title: item.title,
+          subtitle: item.shortDescription,
+          detail: item.timeframe,
+          dateIso: this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
+          distanceKm: this.eventDistanceById[item.id] ?? 10,
+          unread: item.activity,
+          metricScore: (item.isAdmin ? 20 : 0) + item.activity,
+          isAdmin: item.isAdmin,
+          source: item
+        })),
+        ...this.acceptedInvitationRowsAsEvents()
+      ];
+    } else if (this.activitiesPrimaryFilter === 'hosting') {
+      rows = this.eventItems
+        .filter(item => item.isAdmin)
+        .map(item => ({
+        id: item.id,
+        type: 'hosting',
+        title: item.title,
+        subtitle: item.shortDescription,
+        detail: item.timeframe,
+        dateIso: this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
+        distanceKm: this.eventDistanceById[item.id] ?? 10,
+        unread: item.activity,
+        metricScore: 20 + item.activity,
+        isAdmin: true,
+        source: item
+      }));
+    } else {
+      rows = this.rateItems
+        .filter(item => this.matchesRateFilter(item, this.activitiesRateFilter))
+        .map(item => {
+          const user = this.users.find(candidate => candidate.id === item.userId) ?? this.activeUser;
+          const direction = this.displayedRateDirection(item);
+          const ownScore = this.rateOwnScore(item);
+          return {
+            id: item.id,
+            type: 'rates',
+            title: user.name,
+            subtitle: '',
+            detail: '',
+            dateIso: item.happenedAt,
+            distanceKm: item.distanceKm,
+            unread: 0,
+            metricScore: direction === 'mutual' ? ownScore + Math.max(item.scoreReceived, 0) : ownScore,
+            source: item
+          };
+        });
+    }
+
+    const sorted = this.sortActivitiesRows(rows);
+    if (this.activitiesView === 'distance') {
+      return [...sorted].sort((a, b) => a.distanceKm - b.distanceKm);
+    }
+    return sorted;
+  }
+
+  protected get eventStyleActivityRows(): ActivityListRow[] {
+    return this.filteredActivityRows.filter(row => this.isEventStyleActivity(row));
+  }
+
+  protected get nonEventStyleActivityRows(): ActivityListRow[] {
+    return this.filteredActivityRows.filter(row => !this.isEventStyleActivity(row));
+  }
+
+  protected get groupedActivityRows(): ActivityGroup[] {
+    const rows = this.filteredActivityRows;
+    const grouped: ActivityGroup[] = [];
+    for (const row of rows) {
+      const label = this.activityGroupLabel(row);
+      const lastGroup = grouped[grouped.length - 1];
+      if (!lastGroup || lastGroup.label !== label) {
+        grouped.push({ label, rows: [row] });
+        continue;
+      }
+      lastGroup.rows.push(row);
+    }
+    return grouped;
+  }
+
+  protected readonly calendarWeekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  protected readonly calendarWeekHours = Array.from(
+    { length: this.weekCalendarEndHour - this.weekCalendarStartHour + 1 },
+    (_, index) => this.weekCalendarStartHour + index
+  );
+
+  protected isCalendarLayoutView(): boolean {
+    return this.activitiesView === 'month' || this.activitiesView === 'week';
+  }
+
+  protected get calendarMonthPages(): CalendarMonthPage[] {
+    if (this.activitiesView !== 'month') {
+      return [];
+    }
+    const rows = this.filteredActivityRows;
+    const monthAnchors = this.monthAnchorsForRows(rows);
+    const cacheKey = [
+      this.activeUserId,
+      this.activitiesPrimaryFilter,
+      this.activitiesSecondaryFilter,
+      this.activitiesRateFilter,
+      this.activitiesView,
+      this.calendarRowsSignature(rows),
+      monthAnchors.map(anchor => this.monthKey(anchor)).join(',')
+    ].join('|');
+    if (cacheKey === this.calendarMonthPagesCacheKey) {
+      return this.calendarMonthPagesCache;
+    }
+    const rowsByDate = this.buildActivityRowsByDate(rows);
+    this.calendarMonthPagesCache = monthAnchors.map(anchor => this.buildMonthPage(anchor, rowsByDate, rows));
+    this.calendarMonthPagesCacheKey = cacheKey;
+    return this.calendarMonthPagesCache;
+  }
+
+  protected get calendarWeekPages(): CalendarWeekPage[] {
+    if (this.activitiesView !== 'week') {
+      return [];
+    }
+    const rows = this.filteredActivityRows;
+    const weekAnchors = this.weekAnchorsForRows(rows);
+    const cacheKey = [
+      this.activeUserId,
+      this.activitiesPrimaryFilter,
+      this.activitiesSecondaryFilter,
+      this.activitiesRateFilter,
+      this.activitiesView,
+      this.calendarRowsSignature(rows),
+      weekAnchors.map(anchor => this.dateKey(anchor)).join(',')
+    ].join('|');
+    if (cacheKey === this.calendarWeekPagesCacheKey) {
+      return this.calendarWeekPagesCache;
+    }
+    const rowsByDate = this.buildActivityRowsByDate(rows);
+    this.calendarWeekPagesCache = weekAnchors.map(anchor => this.buildWeekPage(anchor, rowsByDate));
+    this.calendarWeekPagesCacheKey = cacheKey;
+    return this.calendarWeekPagesCache;
+  }
+
+  protected weekHourLabel(hour: number): string {
+    return `${`${hour}`.padStart(2, '0')}:00`;
+  }
+
+  protected weekDayTimedBadges(day: CalendarDayCell): CalendarTimedBadge[] {
+    const dayStart = new Date(day.date);
+    dayStart.setHours(this.weekCalendarStartHour, 0, 0, 0);
+    const dayEnd = new Date(day.date);
+    dayEnd.setHours(this.weekCalendarEndHour + 1, 0, 0, 0);
+    const totalMinutes = (dayEnd.getTime() - dayStart.getTime()) / 60000;
+    const badges: CalendarTimedBadge[] = [];
+    for (const row of day.rows) {
+      const range = this.activityDateRange(row);
+      if (!range) {
+        continue;
+      }
+      const segmentStart = new Date(Math.max(range.start.getTime(), dayStart.getTime()));
+      const segmentEnd = new Date(Math.min(range.end.getTime(), dayEnd.getTime()));
+      if (segmentEnd.getTime() <= segmentStart.getTime()) {
+        continue;
+      }
+      const minutesFromTop = (segmentStart.getTime() - dayStart.getTime()) / 60000;
+      const durationMinutes = (segmentEnd.getTime() - segmentStart.getTime()) / 60000;
+      badges.push({
+        row,
+        topPct: (minutesFromTop / totalMinutes) * 100,
+        heightPct: Math.max(2.2, (durationMinutes / totalMinutes) * 100)
+      });
+    }
+    return badges;
+  }
+
+  protected monthRateCount(day: CalendarDayCell): number {
+    if (this.activitiesPrimaryFilter !== 'rates') {
+      return 0;
+    }
+    return day.rows.length;
+  }
+
+  protected monthRateHeatClass(day: CalendarDayCell): string {
+    return this.rateHeatClass(this.monthRateCount(day));
+  }
+
+  protected weekRateDayCount(day: CalendarDayCell): number {
+    if (this.activitiesPrimaryFilter !== 'rates') {
+      return 0;
+    }
+    return day.rows.length;
+  }
+
+  protected weekRateDayHeatClass(day: CalendarDayCell): string {
+    return this.rateHeatClass(this.weekRateDayCount(day));
+  }
+
+  protected weekRateHourCount(day: CalendarDayCell, hour: number): number {
+    if (this.activitiesPrimaryFilter !== 'rates') {
+      return 0;
+    }
+    const slotStart = new Date(day.date);
+    slotStart.setHours(hour, 0, 0, 0);
+    const slotEnd = new Date(slotStart);
+    slotEnd.setHours(hour + 1, 0, 0, 0);
+    return this.countOverlappingRows(day.rows, slotStart, slotEnd);
+  }
+
+  protected rateHeatClassByCount(count: number): string {
+    return this.rateHeatClass(count);
+  }
+
+  protected rateCountLabel(value: number): string {
+    if (!Number.isFinite(value) || value <= 0) {
+      return '0';
+    }
+    return value > 99 ? '99+' : `${value}`;
+  }
+
+  protected monthWeekLaneCount(week: CalendarMonthWeek): number {
+    if (week.spans.length === 0) {
+      return 0;
+    }
+    return week.spans.reduce((maxLane, span) => Math.max(maxLane, span.lane + 1), 0);
+  }
+
+  protected calendarBadgeToneClass(row: ActivityListRow): string {
+    const paletteSize = 8;
+    const toneIndex = (this.hashText(row.id) % paletteSize) + 1;
+    return `calendar-badge-tone-${toneIndex}`;
+  }
+
+  protected get activitiesStickyHeader(): string {
+    if (this.activitiesStickyValue) {
+      return this.activitiesStickyValue;
+    }
+    return this.activitiesView === 'distance' ? '5 km' : 'No items';
+  }
+
+  protected get activitiesEmptyLabel(): string {
+    if (this.activitiesPrimaryFilter === 'rates') {
+      return 'No rate interactions for this filter yet.';
+    }
+    return `No ${this.activitiesPrimaryFilter} items in this filter.`;
+  }
+
+  protected isRateFilterVisible(): boolean {
+    return this.activitiesPrimaryFilter === 'rates';
+  }
+
+  protected isActivityChatRow(row: ActivityListRow): boolean {
+    return row.type === 'chats';
+  }
+
+  protected activityRowAvatarInitials(row: ActivityListRow): string {
+    if (row.type === 'rates') {
+      const rate = row.source as RateMenuItem;
+      return this.users.find(user => user.id === rate.userId)?.initials ?? 'U';
+    }
+    const source = row.source;
+    if ('avatar' in source && source.avatar) {
+      return source.avatar.slice(0, 2).toUpperCase();
+    }
+    return this.activeUser.initials;
+  }
+
+  protected activityRowAvatarClass(row: ActivityListRow): string {
+    if (row.type === 'rates') {
+      const rate = row.source as RateMenuItem;
+      const gender = this.users.find(user => user.id === rate.userId)?.gender ?? 'woman';
+      return `user-color-${gender}`;
+    }
+    if (row.type === 'chats') {
+      const chat = row.source as ChatMenuItem;
+      const gender = this.getChatLastSender(chat).gender;
+      return `user-color-${gender}`;
+    }
+    return 'user-color-man';
+  }
+
+  protected onActivitiesScroll(event: Event): void {
+    const target = event.target as HTMLElement;
+    this.updateActivitiesStickyHeader(target.scrollTop || 0);
+    this.updateActivitiesHeaderProgress();
+    this.maybeLoadMoreActivities(target);
+  }
+
+  protected areCalendarBadgesReady(pageKey: string): boolean {
+    if (!this.isCalendarLayoutView()) {
+      return true;
+    }
+    return this.activitiesCalendarBadgesReadyDelayKeys.has(this.calendarBadgeDelayKey(pageKey));
+  }
+
+  protected selectActivitiesPrimaryFilter(filter: ActivitiesPrimaryFilter): void {
+    this.activitiesPrimaryFilter = filter;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    if (filter === 'rates') {
+      this.activitiesView = 'distance';
+      this.selectedActivityRateId = null;
+    } else {
+      this.selectedActivityRateId = null;
+    }
+    this.resetActivitiesScroll();
+  }
+
+  protected selectActivitiesSecondaryFilter(filter: ActivitiesSecondaryFilter): void {
+    this.activitiesSecondaryFilter = filter;
+    this.showActivitiesSecondaryPicker = false;
+    this.resetActivitiesScroll();
+  }
+
+  protected selectActivitiesRateFilter(filter: RateFilterKey): void {
+    const filterChanged = filter !== this.activitiesRateFilter;
+    if (filterChanged) {
+      this.commitPendingRateDirectionOverrides();
+    }
+    this.activitiesRateFilter = filter;
+    this.selectedActivityRateId = null;
+    this.showActivitiesSecondaryPicker = false;
+    this.resetActivitiesScroll();
+  }
+
+  protected toggleActivitiesViewPicker(event: Event): void {
+    event.stopPropagation();
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesViewPicker = !this.showActivitiesViewPicker;
+  }
+
+  protected toggleActivitiesSecondaryPicker(event: Event): void {
+    event.stopPropagation();
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = !this.showActivitiesSecondaryPicker;
+  }
+
+  protected setActivitiesView(view: ActivitiesView, event?: Event): void {
+    event?.stopPropagation();
+    this.activitiesView = view;
+    this.calendarMonthAnchorPages = null;
+    this.calendarWeekAnchorPages = null;
+    this.calendarInitialPageIndexOverride = null;
+    this.calendarMonthAnchorsHydrated = false;
+    this.calendarWeekAnchorsHydrated = false;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.resetActivitiesScroll(view === 'month' || view === 'week');
+  }
+
+  protected activityViewLabel(): string {
+    return this.activitiesViewOptions.find(option => option.key === this.activitiesView)?.label ?? 'View';
+  }
+
+  protected activitiesPrimaryFilterLabel(): string {
+    return this.activitiesPrimaryFilters.find(option => option.key === this.activitiesPrimaryFilter)?.label ?? 'Chats';
+  }
+
+  protected activitiesPrimaryFilterIcon(): string {
+    return this.activitiesPrimaryFilters.find(option => option.key === this.activitiesPrimaryFilter)?.icon ?? 'chat';
+  }
+
+  protected activitiesSecondaryFilterLabel(): string {
+    return this.activitiesSecondaryFilters.find(option => option.key === this.activitiesSecondaryFilter)?.label ?? 'Recent';
+  }
+
+  protected activitiesSecondaryFilterIcon(): string {
+    return this.activitiesSecondaryFilters.find(option => option.key === this.activitiesSecondaryFilter)?.icon ?? 'schedule';
+  }
+
+  protected activitiesRateFilterLabel(): string {
+    const filter = this.rateFilters.find(option => option.key === this.activitiesRateFilter);
+    if (!filter) {
+      return 'Single · Given';
+    }
+    const group = this.activitiesRateFilter.startsWith('individual') ? 'Single' : 'Pair';
+    return `${group} · ${filter.label}`;
+  }
+
+  protected activitiesRateFilterIcon(key: RateFilterKey = this.activitiesRateFilter): string {
+    switch (key) {
+      case 'individual-given':
+        return 'north_east';
+      case 'individual-received':
+        return 'south_west';
+      case 'individual-mutual':
+        return 'sync_alt';
+      case 'individual-met':
+        return 'handshake';
+      case 'pair-given':
+        return 'group_add';
+      case 'pair-received':
+        return 'groups_2';
+      default:
+        return 'star';
+    }
+  }
+
+  protected rateFilterOptionClass(key: RateFilterKey): string {
+    return `rate-filter-item-${key}`;
+  }
+
+  protected isRateGroupSeparator(label: string): boolean {
+    return label === 'Pair';
+  }
+
+  protected rateFilterCount(filter: RateFilterKey): number {
+    return this.rateItems.filter(item => this.matchesRateFilter(item, filter)).length;
+  }
+
+  protected selectedRateFilterCount(): number {
+    return this.rateFilterCount(this.activitiesRateFilter);
+  }
+
+  protected totalRateFilterCount(): number {
+    return this.rateItems.length;
+  }
+
+  protected activitiesPrimaryFilterCount(filter: ActivitiesPrimaryFilter): number {
+    if (filter === 'rates') {
+      return this.gameBadge;
+    }
+    if (filter === 'chats') {
+      return this.chatBadge;
+    }
+    if (filter === 'invitations') {
+      return this.invitationsBadge;
+    }
+    if (filter === 'events') {
+      return this.eventsBadge;
+    }
+    return this.hostingBadge;
+  }
+
+  protected activitiesPrimaryFilterClass(filter: ActivitiesPrimaryFilter = this.activitiesPrimaryFilter): string {
+    if (filter === 'chats') {
+      return 'activity-filter-chat';
+    }
+    if (filter === 'invitations') {
+      return 'activity-filter-invitations';
+    }
+    if (filter === 'events') {
+      return 'activity-filter-events';
+    }
+    if (filter === 'hosting') {
+      return 'activity-filter-hosting';
+    }
+    return 'activity-filter-rates';
+  }
+
+  protected activitiesSecondaryFilterClass(filter: ActivitiesSecondaryFilter = this.activitiesSecondaryFilter): string {
+    if (filter === 'recent') {
+      return 'activity-filter-secondary';
+    }
+    if (filter === 'relevant') {
+      return 'activity-filter-secondary';
+    }
+    return 'activity-filter-secondary';
+  }
+
+  protected activitiesRateFilterClass(filter: RateFilterKey = this.activitiesRateFilter): string {
+    return filter.startsWith('individual') ? 'activity-filter-rates' : 'activity-filter-rates';
+  }
+
+  protected activitiesHeaderSelectionLine(): string {
+    const primary = this.activitiesPrimaryFilterLabel();
+    const secondary = this.activitiesSecondaryFilterLabel();
+    if (this.activitiesPrimaryFilter === 'rates') {
+      return `${primary} · ${secondary} · ${this.activitiesRateFilterLabel()}`;
+    }
+    return `${primary} · ${secondary}`;
+  }
+
+  protected activitiesHeaderLineOne(): string {
+    if (this.activitiesPrimaryFilter === 'rates') {
+      const group = this.activitiesRateFilter.startsWith('individual') ? 'Single' : 'Pair';
+      const label = this.rateFilters.find(option => option.key === this.activitiesRateFilter)?.label ?? 'Given';
+      return `${group} Rate · ${label}`;
+    }
+    if (this.activitiesView === 'month' || this.activitiesView === 'week') {
+      return this.activitiesPrimaryFilterLabel();
+    }
+    return `${this.activitiesPrimaryFilterLabel()} · ${this.activitiesSecondaryFilterLabel()}`;
+  }
+
+  protected activitiesHeaderLineTwo(): string {
+    return '';
+  }
+
+  protected activitiesPrimaryPanelWidth(): string {
+    return '260px';
+  }
+
+  protected activitiesRatePanelWidth(): string {
+    return '320px';
+  }
+
+  protected assetFilterPanelWidth(): string {
+    return '248px';
+  }
+
+  protected onActivityRowClick(row: ActivityListRow, event?: Event): void {
+    this.openActivityRow(row, event);
+  }
+
+  protected onActivityRowPointerUp(row: ActivityListRow, event: PointerEvent): void {
+    if (event.button !== 0) {
+      return;
+    }
+    this.openActivityRow(row, event);
+  }
+
+  private openActivityRow(row: ActivityListRow, event?: Event): void {
+    event?.stopPropagation();
+    const key = `${row.type}:${row.id}`;
+    const now = Date.now();
+    if (this.lastActivityOpenKey === key && now - this.lastActivityOpenAt < 220) {
+      return;
+    }
+    this.lastActivityOpenKey = key;
+    this.lastActivityOpenAt = now;
+    if (row.type === 'chats') {
+      this.openChatItem(row.source as ChatMenuItem, false, true);
+      return;
+    }
+    if (row.type === 'invitations') {
+      this.openInvitationItem(row.source as InvitationMenuItem, false, true);
+      return;
+    }
+    if (row.type === 'events') {
+      this.openEventItem(row.source as EventMenuItem, false, true);
+      return;
+    }
+    if (row.type === 'hosting') {
+      this.openHostingItem(row.source as HostingMenuItem, false, true);
+      return;
+    }
+    this.selectedActivityRateId = null;
+  }
+
+  protected activityChatMemberCount(row: ActivityListRow): number {
+    if (row.type !== 'chats') {
+      return 0;
+    }
+    return this.getChatMemberCount(row.source as ChatMenuItem);
+  }
+
+  protected isEventStyleActivity(row: ActivityListRow): boolean {
+    return row.type === 'events' || row.type === 'hosting' || row.type === 'invitations';
+  }
+
+  protected isRateStyleActivity(row: ActivityListRow): boolean {
+    return row.type === 'rates';
+  }
+
+  protected isPairReceivedRateRow(row: ActivityListRow): boolean {
+    if (row.type !== 'rates') {
+      return false;
+    }
+    const item = row.source as RateMenuItem;
+    return item.mode === 'pair' && this.displayedRateDirection(item) === 'received';
+  }
+
+  protected activityOwnRatingValue(row: ActivityListRow): number {
+    if (row.type !== 'rates') {
+      return 0;
+    }
+    const item = row.source as RateMenuItem;
+    const drafted = this.activityRateDraftById[item.id];
+    if (Number.isFinite(drafted)) {
+      return this.normalizeRateScore(drafted);
+    }
+    if (!this.hasOwnRating(item)) {
+      if (this.displayedRateDirection(item) === 'received' && item.mode === 'pair') {
+        return this.pairReceivedAverageScore(item);
+      }
+      return 0;
+    }
+    return this.rateOwnScore(item);
+  }
+
+  protected activityOwnRatingLabel(row: ActivityListRow): string {
+    const value = this.activityOwnRatingValue(row);
+    return value > 0 ? `${value}` : '';
+  }
+
+  protected isActivityRatePending(row: ActivityListRow): boolean {
+    if (row.type !== 'rates') {
+      return false;
+    }
+    const item = row.source as RateMenuItem;
+    if (this.displayedRateDirection(item) === 'met') {
+      return false;
+    }
+    if (!this.hasOwnRating(item) && this.displayedRateDirection(item) === 'received' && item.mode === 'pair') {
+      return this.pairReceivedAverageScore(item) <= 0;
+    }
+    return !this.hasOwnRating(item);
+  }
+
+  protected openActivityRateEditor(row: ActivityListRow, event: Event): void {
+    event.stopPropagation();
+    if (row.type !== 'rates') {
+      return;
+    }
+    this.selectedActivityRateId = row.id;
+  }
+
+  protected onActivitiesPopupSurfaceClick(event: MouseEvent): void {
+    if (this.activePopup !== 'activities' || this.activitiesPrimaryFilter !== 'rates' || !this.selectedActivityRateId) {
+      return;
+    }
+    const target = event.target as HTMLElement | null;
+    if (!target) {
+      return;
+    }
+    if (target.closest('.activities-rate-editor-dock') || target.closest('.activities-rate-score-badge')) {
+      return;
+    }
+    this.selectedActivityRateId = null;
+  }
+
+  protected setSelectedActivityOwnRating(score: number): void {
+    if (!this.selectedActivityRateId) {
+      return;
+    }
+    const normalized = this.normalizeRateScore(score);
+    const row = this.selectedActivityRateRow();
+    this.activityRateDraftById[this.selectedActivityRateId] = normalized;
+    if (!row || row.type !== 'rates') {
+      return;
+    }
+    const rateItem = row.source as RateMenuItem;
+    const direction = this.displayedRateDirection(rateItem);
+    if (direction === 'received') {
+      this.pendingActivityRateDirectionOverrideById[rateItem.id] = rateItem.mode === 'individual' ? 'mutual' : 'given';
+    } else if (direction === 'met') {
+      this.pendingActivityRateDirectionOverrideById[rateItem.id] = 'given';
+    }
+  }
+
+  protected isActivityRateEditorOpen(): boolean {
+    return this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'rates' && !!this.selectedActivityRateId;
+  }
+
+  protected isSelectedActivityRateScore(score: number): boolean {
+    const row = this.selectedActivityRateRow();
+    if (!row) {
+      return false;
+    }
+    return score <= this.activityOwnRatingValue(row);
+  }
+
+  protected selectedActivityRateTitle(): string {
+    return this.selectedActivityRateRow()?.title ?? 'Rate';
+  }
+
+  protected selectedActivityRateModeLabel(): string {
+    const row = this.selectedActivityRateRow();
+    if (!row || row.type !== 'rates') {
+      return this.activitiesRateFilter.startsWith('individual') ? 'Single' : 'Pair';
+    }
+    const item = row.source as RateMenuItem;
+    return item.mode === 'pair' ? 'Pair' : 'Single';
+  }
+
+  private selectedActivityRateRow(): ActivityListRow | null {
+    if (!this.selectedActivityRateId) {
+      return null;
+    }
+    return this.filteredActivityRows.find(row => row.type === 'rates' && row.id === this.selectedActivityRateId) ?? null;
+  }
+
+  private normalizeRateScore(value: number): number {
+    return Math.min(10, Math.max(1, Math.round(value)));
+  }
+
+  private rateOwnScore(item: RateMenuItem): number {
+    if (Number.isFinite(item.scoreGiven) && item.scoreGiven > 0) {
+      return this.normalizeRateScore(item.scoreGiven);
+    }
+    return 5;
+  }
+
+  private hasOwnRating(item: RateMenuItem): boolean {
+    const drafted = this.activityRateDraftById[item.id];
+    if (Number.isFinite(drafted) && drafted > 0) {
+      return true;
+    }
+    if (this.displayedRateDirection(item) === 'received') {
+      return false;
+    }
+    return Number.isFinite(item.scoreGiven) && item.scoreGiven > 0;
+  }
+
+  private pairReceivedAverageScore(item: RateMenuItem): number {
+    const matching = this.rateItems.filter(candidate =>
+      candidate.mode === 'pair' &&
+      candidate.userId === item.userId &&
+      this.displayedRateDirection(candidate) === 'received' &&
+      Number.isFinite(candidate.scoreReceived) &&
+      candidate.scoreReceived > 0
+    );
+    if (matching.length === 0) {
+      return 0;
+    }
+    const total = matching.reduce((sum, candidate) => sum + candidate.scoreReceived, 0);
+    return this.normalizeRateScore(total / matching.length);
+  }
+
+  private displayedRateDirection(item: RateMenuItem): RateMenuItem['direction'] {
+    return this.activityRateDirectionOverrideById[item.id] ?? item.direction;
+  }
+
+  private commitPendingRateDirectionOverrides(): void {
+    Object.assign(this.activityRateDirectionOverrideById, this.pendingActivityRateDirectionOverrideById);
+    for (const key of Object.keys(this.pendingActivityRateDirectionOverrideById)) {
+      delete this.pendingActivityRateDirectionOverrideById[key];
+    }
+  }
+
+  private clearActivityRateEditorState(): void {
+    this.selectedActivityRateId = null;
+  }
+
+  private acceptInvitationFromRow(invitationId: string): void {
+    if (this.isInvitationAcceptedId(invitationId)) {
+      return;
+    }
+    const acceptedIds = this.acceptedInvitationIdsByUser[this.activeUser.id] ?? [];
+    this.acceptedInvitationIdsByUser[this.activeUser.id] = [...acceptedIds, invitationId];
+  }
+
+  private isInvitationAcceptedId(invitationId: string): boolean {
+    return (this.acceptedInvitationIdsByUser[this.activeUser.id] ?? []).includes(invitationId);
+  }
+
+  private acceptedInvitationRowsAsEvents(): ActivityListRow[] {
+    const acceptedIds = new Set(this.acceptedInvitationIdsByUser[this.activeUser.id] ?? []);
+    if (acceptedIds.size === 0) {
+      return [];
+    }
+    return this.invitationItems
+      .filter(item => acceptedIds.has(item.id))
+      .map(item => {
+        const syntheticEvent: EventMenuItem = {
+          id: item.id,
+          avatar: item.avatar,
+          title: item.description,
+          shortDescription: `Invited by ${item.inviter}`,
+          timeframe: item.when,
+          activity: item.unread,
+          isAdmin: false
+        };
+        return {
+          id: item.id,
+          type: 'events',
+          title: syntheticEvent.title,
+          subtitle: syntheticEvent.shortDescription,
+          detail: syntheticEvent.timeframe,
+          dateIso: this.invitationDatesById[item.id] ?? '2026-02-21T09:00:00',
+          distanceKm: this.invitationDistanceById[item.id] ?? 5,
+          unread: syntheticEvent.activity,
+          metricScore: syntheticEvent.activity,
+          isAdmin: false,
+          source: syntheticEvent
+        };
+      });
+  }
+
+  protected activityTypeLabel(row: ActivityListRow): string {
+    if (row.type === 'events') {
+      return 'Event';
+    }
+    if (row.type === 'hosting') {
+      return 'Hosting';
+    }
+    if (row.type === 'invitations') {
+      return 'Invitation';
+    }
+    if (row.type === 'rates') {
+      return 'Rate';
+    }
+    return 'Chat';
+  }
+
+  protected activityDateLabel(row: ActivityListRow): string {
+    const parsed = new Date(row.dateIso);
+    if (Number.isNaN(parsed.getTime())) {
+      return row.detail;
+    }
+    return parsed.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  }
+
+  protected activityImageUrl(row: ActivityListRow): string {
+    return this.activityImageById[row.id] ?? 'https://picsum.photos/seed/event-default/1200/700';
+  }
+
+  protected activitySourceLink(row: ActivityListRow): string {
+    return this.activitySourceLinkById[row.id] ?? 'https://example.com/events';
+  }
+
+  protected showActivitySourceIcon(row: ActivityListRow): boolean {
+    return row.type === 'events' || row.type === 'invitations';
+  }
+
+  protected activitySourceAvatarLabel(row: ActivityListRow): string {
+    if (row.type === 'invitations') {
+      const invitation = row.source as InvitationMenuItem;
+      return this.initialsFromText(invitation.inviter);
+    }
+    if (row.type === 'events') {
+      const event = row.source as EventMenuItem;
+      const explicitOwner = this.findUserByName(event.avatar || '');
+      if (explicitOwner) {
+        return explicitOwner.initials;
+      }
+      const fallbackOwner = this.users[this.hashText(`${row.id}-${event.title}`) % this.users.length];
+      return fallbackOwner?.initials ?? this.initialsFromText(event.title);
+    }
+    if (row.type === 'hosting') {
+      const hosting = row.source as HostingMenuItem;
+      return this.initialsFromText(hosting.avatar || hosting.title);
+    }
+    return this.initialsFromText(row.title);
+  }
+
+  protected activitySourceAvatarClass(row: ActivityListRow): string {
+    const toneSeed = row.type === 'invitations'
+      ? `${row.id}-${(row.source as InvitationMenuItem).inviter}`
+      : `${row.id}-${row.title}`;
+    const toneIndex = (this.hashText(toneSeed) % 8) + 1;
+    return `activities-source-tone-${toneIndex}`;
+  }
+
+  protected activityCapacityLabel(row: ActivityListRow): string {
+    const acceptedMembersCount = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted').length;
+    const capacityTotal = this.activityCapacityTotal(row, acceptedMembersCount);
+    return `${acceptedMembersCount} / ${capacityTotal}`;
+  }
+
+  protected activityPendingMemberCount(row: ActivityListRow): number {
+    return this.getActivityMembersByRow(row).filter(member => member.status === 'pending').length;
+  }
+
+  private activityCapacityTotal(row: ActivityListRow, fallbackBase = 0): number {
+    const source = this.activityCapacityById[row.id];
+    if (source) {
+      const parts = source.split('/').map(part => Number.parseInt(part.trim(), 10));
+      if (parts.length >= 2 && Number.isFinite(parts[1]) && parts[1] > 0) {
+        return parts[1];
+      }
+    }
+    return Math.max(fallbackBase, 4);
+  }
+
+  protected activityTypeIcon(row: ActivityListRow): string {
+    if (row.type === 'events') {
+      return 'event';
+    }
+    if (row.type === 'hosting') {
+      return 'stadium';
+    }
+    if (row.type === 'invitations') {
+      return 'mail';
+    }
+    if (row.type === 'rates') {
+      return 'star';
+    }
+    return 'chat';
+  }
+
+  protected activityMetaLine(row: ActivityListRow): string {
+    return `${this.activityTypeLabel(row)} · ${this.activityDateLabel(row)} · ${row.distanceKm} km`;
+  }
+
+  protected openActivityFromInlineControl(row: ActivityListRow, event: Event): void {
+    event.stopPropagation();
+    this.onActivityRowClick(row);
+  }
+
+  protected canManageActivityRow(row: ActivityListRow): boolean {
+    return row.type === 'invitations' || row.type === 'events' || row.type === 'hosting';
+  }
+
+  protected activityPrimaryActionIcon(row: ActivityListRow): string {
+    if (row.type === 'invitations') {
+      return 'visibility';
+    }
+    return row.isAdmin ? 'edit' : 'visibility';
+  }
+
+  protected activityPrimaryActionLabel(row: ActivityListRow): string {
+    if (row.type === 'invitations') {
+      return 'View invitation';
+    }
+    if (row.isAdmin) {
+      return row.type === 'hosting' ? 'Edit hosted event' : 'Edit event';
+    }
+    return row.type === 'hosting' ? 'Open hosted event' : 'Open event';
+  }
+
+  protected activitySecondaryActionIcon(row: ActivityListRow): string {
+    return this.isExitActivityRow(row) ? 'logout' : 'delete';
+  }
+
+  protected activitySecondaryActionLabel(row: ActivityListRow): string {
+    if (this.isExitActivityRow(row)) {
+      return row.type === 'hosting' ? 'Exit hosted event' : 'Exit event';
+    }
+    if (row.type === 'invitations') {
+      return 'Delete invitation';
+    }
+    return row.type === 'hosting' ? 'Delete hosted event' : 'Delete event';
+  }
+
+  protected openActivityPrimaryAction(row: ActivityListRow): void {
+    if (row.type === 'invitations') {
+      this.openInvitationItem(row.source as InvitationMenuItem, false, true);
+      return;
+    }
+    if (row.type === 'events' || row.type === 'hosting') {
+      if (row.isAdmin) {
+        this.openEventEditor(true, 'edit', row.source as EventMenuItem | HostingMenuItem);
+        return;
+      }
+      if (row.type === 'events') {
+        this.openEventItem(row.source as EventMenuItem, false, true);
+        return;
+      }
+      this.openHostingItem(row.source as HostingMenuItem, false, true);
+      return;
+    }
+  }
+
+  protected triggerActivitySecondaryAction(row: ActivityListRow): void {
+    this.pendingActivityAction = this.isExitActivityRow(row) ? 'exit' : 'delete';
+    this.pendingActivityDeleteRow = row;
+  }
+
+  protected isExitActivityRow(row: ActivityListRow): boolean {
+    return (row.type === 'events' || row.type === 'hosting') && row.isAdmin !== true;
+  }
+
+  protected openActivityMembers(row: ActivityListRow, event?: Event): void {
+    event?.stopPropagation();
+    this.pendingActivityMemberDelete = null;
+    this.selectedActivityMembersRowId = `${row.type}:${row.id}`;
+    this.selectedActivityMembers = this.sortActivityMembersByActionTimeAsc(this.getActivityMembersByRow(row));
+    this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
+    this.selectedActivityMembersRow = row;
+    this.selectedActivityMembersTitle = row.title;
+    this.selectedActivityInviteUserIds = [];
+    this.superStackedPopup = null;
+    this.stackedPopup = 'activityMembers';
+  }
+
+  protected openActivityInviteFriends(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.selectedActivityMembersRowId || !this.selectedActivityMembersRow) {
+      return;
+    }
+    this.activityInviteSort = 'recent';
+    this.selectedActivityInviteUserIds = [];
+    this.showActivityInviteSortPicker = false;
+    this.superStackedPopup = 'activityInviteFriends';
+  }
+
+  protected closeActivityInviteFriends(applyInvitations = true): void {
+    if (applyInvitations) {
+      this.applySelectedActivityInvitations();
+    }
+    this.showActivityInviteSortPicker = false;
+    this.superStackedPopup = null;
+  }
+
+  protected toggleActivityInviteSortPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.showActivityInviteSortPicker = !this.showActivityInviteSortPicker;
+  }
+
+  protected selectActivityInviteSort(sort: ActivityInviteSort): void {
+    this.activityInviteSort = sort;
+    this.showActivityInviteSortPicker = false;
+  }
+
+  protected toggleActivityInviteFriend(userId: string, event?: Event): void {
+    event?.stopPropagation();
+    if (this.selectedActivityInviteUserIds.includes(userId)) {
+      this.selectedActivityInviteUserIds = this.selectedActivityInviteUserIds.filter(id => id !== userId);
+      return;
+    }
+    this.selectedActivityInviteUserIds = [...this.selectedActivityInviteUserIds, userId];
+  }
+
+  protected isActivityInviteFriendSelected(userId: string): boolean {
+    return this.selectedActivityInviteUserIds.includes(userId);
+  }
+
+  protected get activityInviteCandidates(): ActivityMemberEntry[] {
+    if (!this.selectedActivityMembersRow) {
+      return [];
+    }
+    const existing = new Set(this.selectedActivityMembers.map(member => member.userId));
+    const candidates = this.users
+      .filter(user => user.id !== this.activeUser.id && !existing.has(user.id))
+      .map(user => this.toActivityMemberEntry(user, this.selectedActivityMembersRow!, this.selectedActivityMembersRowId!, {
+        status: 'pending',
+        pendingSource: this.selectedActivityMembersRow?.isAdmin ? 'admin' : 'member',
+        invitedByActiveUser: true
+      }));
+    return [...candidates].sort((a, b) => {
+      if (this.activityInviteSort === 'relevant') {
+        if (b.relevance !== a.relevance) {
+          return b.relevance - a.relevance;
+        }
+      }
+      return this.toSortableDate(b.metAtIso) - this.toSortableDate(a.metAtIso);
+    });
+  }
+
+  protected get selectedActivityInviteChips(): ActivityMemberEntry[] {
+    const selected = new Set(this.selectedActivityInviteUserIds);
+    return this.activityInviteCandidates.filter(item => selected.has(item.userId));
+  }
+
+  protected get activityMembersOrdered(): ActivityMemberEntry[] {
+    return this.sortActivityMembersByActionTimeAsc(this.selectedActivityMembers);
+  }
+
+  protected activityMembersHeaderSummary(): string {
+    const pendingCount = this.selectedActivityMembers.filter(member => member.status === 'pending').length;
+    const acceptedCount = this.selectedActivityMembers.length - pendingCount;
+    if (pendingCount <= 0) {
+      return `${acceptedCount} members`;
+    }
+    return `${acceptedCount} members · ${pendingCount} pending`;
+  }
+
+  protected activityInviteMetLabel(entry: ActivityMemberEntry): string {
+    const dateText = new Date(entry.metAtIso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return `${entry.metWhere} · ${dateText}`;
+  }
+
+  protected activityMemberActionDate(entry: ActivityMemberEntry): string {
+    const when = new Date(entry.actionAtIso);
+    const dateText = Number.isNaN(when.getTime())
+      ? new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+      : when.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return `${dateText}`;
+  }
+
+  protected chatMemberActionDate(member: DemoUser): string {
+    const seed = this.hashText(`${this.selectedChatMembersItem?.id ?? 'chat'}:${member.id}`);
+    const when = this.addDays(new Date('2026-02-25T12:00:00'), -(seed % 28));
+    const dateText = when.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return `${dateText}`;
+  }
+
+  protected activityMemberAge(entry: ActivityMemberEntry): number {
+    return this.users.find(user => user.id === entry.userId)?.age ?? 0;
+  }
+
+  protected activityMemberStatusClass(entry: ActivityMemberEntry): string {
+    if (entry.status === 'accepted') {
+      return 'activity-member-approved';
+    }
+    if (entry.requestKind === 'join') {
+      return 'activity-member-join-request';
+    }
+    if (entry.pendingSource === 'admin') {
+      return 'activity-member-pending-invitation';
+    }
+    return 'activity-member-pending-admin-approval';
+  }
+
+  protected canApproveActivityMember(entry: ActivityMemberEntry): boolean {
+    if (this.selectedActivityMembersRow?.isAdmin !== true) {
+      return false;
+    }
+    return entry.status === 'pending' && (entry.pendingSource === 'member' || entry.requestKind === 'join');
+  }
+
+  protected canDeleteActivityMember(entry: ActivityMemberEntry): boolean {
+    if (this.selectedActivityMembersRow?.isAdmin === true) {
+      return true;
+    }
+    return entry.status === 'pending';
+  }
+
+  protected activityMemberStatusLabel(entry: ActivityMemberEntry): string {
+    if (entry.status === 'accepted') {
+      return 'Approved';
+    }
+    if (entry.requestKind === 'join') {
+      return 'Waiting For Join Approval';
+    }
+    if (entry.pendingSource === 'admin') {
+      return 'Invitation Pending';
+    }
+    return 'Waiting For Admin Approval';
+  }
+
+  protected approveActivityMember(entry: ActivityMemberEntry, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.selectedActivityMembersRowId || !this.canApproveActivityMember(entry)) {
+      return;
+    }
+    const nowIso = this.toIsoDateTime(new Date());
+    this.selectedActivityMembers = this.sortActivityMembersByActionTimeAsc(this.selectedActivityMembers.map(item =>
+      item.id === entry.id
+        ? {
+            ...item,
+            status: 'accepted',
+            pendingSource: null,
+            requestKind: null,
+            actionAtIso: nowIso
+          }
+        : item
+    ));
+    this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
+  }
+
+  protected removeActivityMember(entry: ActivityMemberEntry, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.selectedActivityMembersRowId || !this.canDeleteActivityMember(entry)) {
+      return;
+    }
+    this.pendingActivityMemberDelete = entry;
+  }
+
+  protected confirmRemoveActivityMember(): void {
+    if (!this.pendingActivityMemberDelete || !this.selectedActivityMembersRowId) {
+      this.pendingActivityMemberDelete = null;
+      return;
+    }
+    const targetId = this.pendingActivityMemberDelete.id;
+    this.selectedActivityMembers = this.selectedActivityMembers.filter(item => item.id !== targetId);
+    this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
+    this.pendingActivityMemberDelete = null;
+  }
+
+  protected cancelRemoveActivityMember(): void {
+    this.pendingActivityMemberDelete = null;
+  }
+
+  protected pendingActivityMemberDeleteTitle(): string {
+    return 'Remove member';
+  }
+
+  protected pendingActivityMemberDeleteLabel(): string {
+    if (!this.pendingActivityMemberDelete) {
+      return '';
+    }
+    return `Remove ${this.pendingActivityMemberDelete.name} from this event?`;
+  }
+
+  protected pendingActivityConfirmTitle(): string {
+    return this.pendingActivityAction === 'exit' ? 'Exit activity' : 'Delete activity';
+  }
+
+  protected pendingActivityConfirmActionLabel(): string {
+    return this.pendingActivityAction === 'exit' ? 'Exit' : 'Delete';
+  }
+
+  protected pendingActivityDeleteLabel(): string {
+    if (!this.pendingActivityDeleteRow) {
+      return '';
+    }
+    if (this.pendingActivityAction === 'exit') {
+      return `Exit ${this.pendingActivityDeleteRow.title}?`;
+    }
+    return `Delete ${this.pendingActivityDeleteRow.title}?`;
+  }
+
+  protected confirmActivityDelete(): void {
+    if (!this.pendingActivityDeleteRow) {
+      return;
+    }
+    if (this.pendingActivityAction === 'exit') {
+      this.applyActivityExit(this.pendingActivityDeleteRow);
+    } else {
+      this.applyActivityDelete(this.pendingActivityDeleteRow);
+    }
+    this.pendingActivityDeleteRow = null;
+    this.pendingActivityAction = 'delete';
+  }
+
+  protected cancelActivityDelete(): void {
+    this.pendingActivityDeleteRow = null;
+    this.pendingActivityAction = 'delete';
+  }
+
+  private applyActivityExit(row: ActivityListRow): void {
+    if (row.type === 'events') {
+      this.eventItemsByUser[this.activeUser.id] = this.eventItems.filter(item => item.id !== row.id);
+      return;
+    }
+    if (row.type === 'hosting') {
+      this.hostingItemsByUser[this.activeUser.id] = this.hostingItems.filter(item => item.id !== row.id);
+      this.eventItemsByUser[this.activeUser.id] = this.eventItems.filter(item => item.id !== row.id);
+    }
+  }
+
+  protected deleteActivityEvent(row: ActivityListRow, event: Event): void {
+    event.stopPropagation();
+    this.pendingActivityAction = 'delete';
+    this.pendingActivityDeleteRow = row;
+  }
+
+  protected editActivityEvent(row: ActivityListRow, event: Event): void {
+    event.stopPropagation();
+    if (row.type === 'invitations') {
+      this.openInvitationItem(row.source as InvitationMenuItem, false, true);
+      return;
+    }
+    if (row.type === 'events' || row.type === 'hosting') {
+      this.openEventEditor(true, 'edit', row.source as EventMenuItem | HostingMenuItem);
+    }
+  }
+
+  private applyActivityDelete(row: ActivityListRow): void {
+    if (row.type === 'invitations') {
+      this.removeInvitationById(row.id);
+      return;
+    }
+    if (row.type === 'events') {
+      const next = this.eventItems.filter(item => item.id !== row.id);
+      this.eventItemsByUser[this.activeUser.id] = next;
+      return;
+    }
+    if (row.type === 'hosting') {
+      const nextEvents = this.eventItems.filter(item => item.id !== row.id);
+      this.eventItemsByUser[this.activeUser.id] = nextEvents;
+      const nextHosting = this.hostingItems.filter(item => item.id !== row.id);
+      this.hostingItemsByUser[this.activeUser.id] = nextHosting;
+    }
+  }
+
+  protected isInvitationAccepted(row: ActivityListRow): boolean {
+    return row.type === 'invitations' && this.isInvitationAcceptedId(row.id);
+  }
+
+  protected selectedInvitationIsAccepted(): boolean {
+    return this.selectedInvitation ? this.isInvitationAcceptedId(this.selectedInvitation.id) : false;
+  }
+
+  protected approveSelectedInvitation(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.selectedInvitation) {
+      return;
+    }
+    this.acceptInvitationFromRow(this.selectedInvitation.id);
+  }
+
+  protected deleteSelectedInvitation(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.selectedInvitation) {
+      return;
+    }
+    const deletedId = this.selectedInvitation.id;
+    this.removeInvitationById(deletedId);
+    this.selectedInvitation = null;
+    if (this.stackedPopup === 'invitationActions') {
+      this.stackedPopup = null;
+      return;
+    }
+    if (this.activePopup === 'invitationActions') {
+      this.activePopup = null;
+    }
+  }
+
+  private removeInvitationById(invitationId: string): void {
+    const next = this.invitationItems.filter(item => item.id !== invitationId);
+    this.invitationItemsByUser[this.activeUser.id] = next;
+    this.acceptedInvitationIdsByUser[this.activeUser.id] = (this.acceptedInvitationIdsByUser[this.activeUser.id] ?? []).filter(id => id !== invitationId);
   }
 
   protected get chatPopupMessages(): ChatPopupMessage[] {
@@ -2629,6 +5429,16 @@ export class App {
     return 'asset-filter-car';
   }
 
+  protected assetFilterCount(type: AssetType): number {
+    if (type === 'Car') {
+      return this.assetCarsBadge;
+    }
+    if (type === 'Accommodation') {
+      return this.assetAccommodationBadge;
+    }
+    return this.assetSuppliesBadge;
+  }
+
   protected assetPendingCount(card: AssetCard): number {
     return card.requests.filter(member => member.status === 'pending').length;
   }
@@ -2676,8 +5486,10 @@ export class App {
   protected openAssetForm(card?: AssetCard): void {
     this.pendingAssetMemberAction = null;
     this.showAssetForm = true;
+    this.showAssetVisibilityPicker = false;
     if (card) {
       this.editingAssetId = card.id;
+      this.assetFormVisibility = this.assetVisibilityById[card.id] ?? 'Public';
       this.assetForm = {
         type: card.type,
         title: card.title,
@@ -2691,6 +5503,7 @@ export class App {
       return;
     }
     this.editingAssetId = null;
+    this.assetFormVisibility = 'Public';
     this.assetForm = {
       type: this.activeAssetType,
       title: '',
@@ -2705,6 +5518,7 @@ export class App {
 
   protected closeAssetForm(): void {
     this.showAssetForm = false;
+    this.showAssetVisibilityPicker = false;
     this.editingAssetId = null;
   }
 
@@ -2729,6 +5543,7 @@ export class App {
       sourceLink: this.assetForm.sourceLink.trim() || 'https://picsum.photos'
     };
     if (this.editingAssetId) {
+      this.assetVisibilityById[this.editingAssetId] = this.assetFormVisibility;
       this.assetCards = this.assetCards.map(card =>
         card.id === this.editingAssetId
           ? {
@@ -2738,9 +5553,11 @@ export class App {
           : card
       );
     } else {
+      const id = `asset-${Date.now()}`;
+      this.assetVisibilityById[id] = this.assetFormVisibility;
       this.assetCards = [
         {
-          id: `asset-${Date.now()}`,
+          id,
           ...payload,
           requests: []
         },
@@ -2937,6 +5754,10 @@ export class App {
   }
 
   protected saveProfile(): void {
+    this.commitProfileForm(true);
+  }
+
+  private commitProfileForm(showAlert: boolean): void {
     const user = this.activeUser;
     user.name = this.profileForm.fullName.trim() || user.name;
     const birthday = this.profileForm.birthday ? this.toIsoDate(this.profileForm.birthday) : user.birthday;
@@ -2950,7 +5771,9 @@ export class App {
     user.profileStatus = this.profileForm.profileStatus;
     user.about = this.profileForm.about.trim().slice(0, 160);
     user.initials = this.toInitials(user.name);
-    this.alertService.open('Profile saved');
+    if (showAlert) {
+      this.alertService.open('Profile saved');
+    }
   }
 
   protected get selectedImagePreview(): string | null {
@@ -3019,6 +5842,24 @@ export class App {
     }
     if (this.openPrivacyFab && !target.closest('.profile-details-privacy-fab')) {
       this.openPrivacyFab = null;
+    }
+    if (this.showActivitiesViewPicker && !target.closest('.activities-view-picker') && !target.closest('.popup-view-fab')) {
+      this.showActivitiesViewPicker = false;
+    }
+    if (this.showActivitiesSecondaryPicker && !target.closest('.activities-secondary-picker') && !target.closest('.popup-view-fab')) {
+      this.showActivitiesSecondaryPicker = false;
+    }
+    if (this.showActivityInviteSortPicker && !target.closest('.friends-picker-sort') && !target.closest('.popup-view-fab')) {
+      this.showActivityInviteSortPicker = false;
+    }
+    if (this.showEventVisibilityPicker && !target.closest('.event-visibility-picker') && !target.closest('.popup-view-fab')) {
+      this.showEventVisibilityPicker = false;
+    }
+    if (this.showAssetVisibilityPicker && !target.closest('.asset-visibility-picker') && !target.closest('.popup-view-fab')) {
+      this.showAssetVisibilityPicker = false;
+    }
+    if (this.showProfileStatusHeaderPicker && !target.closest('.profile-status-header-picker') && !target.closest('.popup-view-fab')) {
+      this.showProfileStatusHeaderPicker = false;
     }
   }
 
@@ -3296,8 +6137,21 @@ export class App {
       return Number.POSITIVE_INFINITY;
     }
     const safe = value.replace(/\//g, '-');
-    const parsed = /^\d{4}-\d{2}-\d{2}$/.test(safe) ? new Date(`${safe}T00:00:00`) : new Date(`${safe}-01T00:00:00`);
-    return Number.isNaN(parsed.getTime()) ? Number.POSITIVE_INFINITY : parsed.getTime();
+
+    // First, support full ISO date-time values directly (e.g. 2026-02-25T12:34:56).
+    const direct = new Date(safe);
+    if (!Number.isNaN(direct.getTime())) {
+      return direct.getTime();
+    }
+
+    // Fallback for date-only and year-month values used elsewhere in the app.
+    if (/^\d{4}-\d{2}-\d{2}$/.test(safe)) {
+      return new Date(`${safe}T00:00:00`).getTime();
+    }
+    if (/^\d{4}-\d{2}$/.test(safe)) {
+      return new Date(`${safe}-01T00:00:00`).getTime();
+    }
+    return Number.POSITIVE_INFINITY;
   }
 
   protected get profileCardBirthday(): string {
@@ -3331,6 +6185,16 @@ export class App {
     const month = `${value.getMonth() + 1}`.padStart(2, '0');
     const day = `${value.getDate()}`.padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  private toIsoDateTime(value: Date): string {
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    const day = `${value.getDate()}`.padStart(2, '0');
+    const hours = `${value.getHours()}`.padStart(2, '0');
+    const minutes = `${value.getMinutes()}`.padStart(2, '0');
+    const seconds = `${value.getSeconds()}`.padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
   }
 
   private getAgeFromIsoDate(value: string): number {
@@ -3444,6 +6308,119 @@ export class App {
     return picked;
   }
 
+  private getActivityMembersByRow(row: ActivityListRow): ActivityMemberEntry[] {
+    const rowKey = `${row.type}:${row.id}`;
+    const cached = this.activityMembersByRowId[rowKey];
+    if (cached) {
+      return this.sortActivityMembersByActionTimeAsc([...cached]);
+    }
+    const others = this.users.filter(user => user.id !== this.activeUser.id);
+    if (others.length === 0) {
+      return [this.toActivityMemberEntry(this.activeUser, row, rowKey, { status: 'accepted', pendingSource: null, invitedByActiveUser: false })];
+    }
+    const seed = this.hashText(`${row.type}:${row.id}`);
+    const acceptedTarget = row.type === 'invitations' ? 2 + (seed % 3) : 4 + (seed % 3);
+    const pendingTarget = row.type === 'invitations' ? 1 + ((seed >> 2) % 2) : 1 + ((seed >> 3) % 3);
+    const picked: DemoUser[] = [this.activeUser];
+    const offsets = [0, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29];
+    for (const offset of offsets) {
+      const candidate = others[(seed + offset) % others.length];
+      if (!picked.some(item => item.id === candidate.id)) {
+        picked.push(candidate);
+      }
+      if (picked.length >= acceptedTarget) {
+        break;
+      }
+    }
+    const accepted = picked.map(user => this.toActivityMemberEntry(user, row, rowKey, { status: 'accepted', pendingSource: null, invitedByActiveUser: false }));
+    const acceptedIds = new Set(accepted.map(item => item.userId));
+    const pendingPool = others.filter(user => !acceptedIds.has(user.id));
+    const pendingCount = Math.min(pendingTarget, pendingPool.length);
+    for (let index = 0; index < pendingCount; index += 1) {
+      const user = pendingPool[index];
+      const isJoinRequest = ((seed + index) % 3) === 0;
+      const pendingSource: ActivityPendingSource = row.isAdmin ? 'admin' : 'member';
+      const baseEntry = this.toActivityMemberEntry(user, row, rowKey, {
+        status: 'pending',
+        pendingSource: isJoinRequest ? 'member' : pendingSource,
+        invitedByActiveUser: !isJoinRequest
+      });
+      accepted.push({
+        ...baseEntry,
+        requestKind: isJoinRequest ? 'join' : 'invite'
+      });
+    }
+    const ordered = this.sortActivityMembersByActionTimeAsc(accepted);
+    this.activityMembersByRowId[rowKey] = [...ordered];
+    return ordered;
+  }
+
+  private applySelectedActivityInvitations(): void {
+    if (!this.selectedActivityMembersRow || !this.selectedActivityMembersRowId || this.selectedActivityInviteUserIds.length === 0) {
+      this.selectedActivityInviteUserIds = [];
+      return;
+    }
+    const selected = new Set(this.selectedActivityInviteUserIds);
+    const pendingSource: ActivityPendingSource = this.selectedActivityMembersRow.isAdmin ? 'admin' : 'member';
+    const nowIso = this.toIsoDateTime(new Date());
+    const additions = this.activityInviteCandidates
+      .filter(candidate => selected.has(candidate.userId))
+      .map(candidate => ({
+        ...candidate,
+        status: 'pending' as const,
+        pendingSource,
+        requestKind: 'invite' as const,
+        invitedByActiveUser: true,
+        actionAtIso: nowIso
+      }));
+    const byUserId = new Set(this.selectedActivityMembers.map(item => item.userId));
+    const next = [...this.selectedActivityMembers];
+    for (const item of additions) {
+      if (!byUserId.has(item.userId)) {
+        next.push(item);
+        byUserId.add(item.userId);
+      }
+    }
+    const ordered = this.sortActivityMembersByActionTimeAsc(next);
+    this.selectedActivityMembers = ordered;
+    this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...ordered];
+    this.selectedActivityInviteUserIds = [];
+  }
+
+  private toActivityMemberEntry(
+    user: DemoUser,
+    row: ActivityListRow,
+    rowKey: string,
+    defaults: { status: ActivityMemberStatus; pendingSource: ActivityPendingSource; invitedByActiveUser: boolean }
+  ): ActivityMemberEntry {
+    const seed = this.hashText(`${rowKey}:${user.id}`);
+    const metAt = this.addDays(new Date('2026-02-24T12:00:00'), -((seed % 220) + 1));
+    const metPlaces = ['City Center Meetup', 'Board Game Night', 'Coffee Social', 'Hiking Group', 'Music Event', 'Brunch Table'];
+    const place = metPlaces[seed % metPlaces.length];
+    return {
+      id: `${rowKey}:${user.id}`,
+      userId: user.id,
+      name: user.name,
+      initials: user.initials,
+      gender: user.gender,
+      city: user.city,
+      statusText: user.statusText,
+      status: defaults.status,
+      pendingSource: defaults.pendingSource,
+      requestKind: defaults.status === 'pending' ? 'invite' : null,
+      invitedByActiveUser: defaults.invitedByActiveUser,
+      metAtIso: this.toIsoDateTime(metAt),
+      actionAtIso: this.toIsoDateTime(metAt),
+      metWhere: place,
+      relevance: 40 + (seed % 61),
+      avatarUrl: `https://i.pravatar.cc/1200?img=${(seed % 70) + 1}`
+    };
+  }
+
+  private sortActivityMembersByActionTimeAsc(entries: ActivityMemberEntry[]): ActivityMemberEntry[] {
+    return [...entries].sort((a, b) => this.toSortableDate(b.actionAtIso) - this.toSortableDate(a.actionAtIso));
+  }
+
   private getChatItemById(chatId: string): ChatMenuItem | undefined {
     for (const entries of Object.values(DEMO_CHAT_BY_USER)) {
       const match = entries.find(item => item.id === chatId);
@@ -3504,10 +6481,1202 @@ export class App {
     return Math.max(0, total - current);
   }
 
+  private sortActivitiesRows(rows: ActivityListRow[]): ActivityListRow[] {
+    const sorted = [...rows];
+    if (this.activitiesSecondaryFilter === 'recent') {
+      if (this.activitiesPrimaryFilter === 'events' || this.activitiesPrimaryFilter === 'hosting') {
+        return sorted.sort((a, b) => this.toSortableDate(a.dateIso) - this.toSortableDate(b.dateIso));
+      }
+      return sorted.sort((a, b) => this.toSortableDate(b.dateIso) - this.toSortableDate(a.dateIso));
+    }
+    if (this.activitiesSecondaryFilter === 'past') {
+      return sorted.sort((a, b) => this.toSortableDate(b.dateIso) - this.toSortableDate(a.dateIso));
+    }
+    if (this.activitiesPrimaryFilter === 'rates') {
+      return sorted.sort((a, b) => b.metricScore - a.metricScore || this.toSortableDate(b.dateIso) - this.toSortableDate(a.dateIso));
+    }
+    if (this.activitiesPrimaryFilter === 'events' || this.activitiesPrimaryFilter === 'hosting') {
+      return sorted.sort((a, b) => b.metricScore - a.metricScore || this.toSortableDate(a.dateIso) - this.toSortableDate(b.dateIso));
+    }
+    return sorted.sort((a, b) => b.metricScore - a.metricScore || this.toSortableDate(b.dateIso) - this.toSortableDate(a.dateIso));
+  }
+
+  private matchesRateFilter(item: RateMenuItem, filter: RateFilterKey): boolean {
+    const [modeKey, directionKey] = filter.split('-') as ['individual' | 'pair', 'given' | 'received' | 'mutual' | 'met'];
+    return item.mode === modeKey && this.displayedRateDirection(item) === directionKey;
+  }
+
+  private resetActivitiesScroll(loadCalendarBadgesForCurrentPage = false): void {
+    this.seedActivitiesStickyHeader();
+    if (this.isCalendarLayoutView()) {
+      this.clearActivitiesCalendarBadgeDelay();
+    }
+    setTimeout(() => {
+      if (this.activePopup !== 'activities') {
+        return;
+      }
+      const scrollElement = this.activitiesScrollRef?.nativeElement;
+      const calendarElement = this.activitiesCalendarScrollRef?.nativeElement;
+      if (this.isCalendarLayoutView()) {
+        if (calendarElement) {
+          const initialIndex = this.calendarInitialPageIndexOverride ?? this.initialCalendarPageIndex();
+          this.calendarInitialPageIndexOverride = null;
+          const pageWidth = calendarElement.clientWidth || 0;
+          if (pageWidth > 0) {
+            this.suppressCalendarEdgeSettle = true;
+            const previousScrollBehavior = calendarElement.style.scrollBehavior;
+            const previousSnapType = calendarElement.style.scrollSnapType;
+            calendarElement.style.scrollBehavior = 'auto';
+            if (this.isMobileView) {
+              calendarElement.style.scrollSnapType = 'none';
+            }
+            calendarElement.scrollLeft = Math.max(0, initialIndex * pageWidth);
+            calendarElement.style.scrollBehavior = previousScrollBehavior;
+            const release = () => {
+              if (this.isMobileView) {
+                calendarElement.style.scrollSnapType = previousSnapType;
+              }
+              this.suppressCalendarEdgeSettle = false;
+            };
+            if (typeof globalThis.requestAnimationFrame === 'function') {
+              globalThis.requestAnimationFrame(() => release());
+            } else {
+              setTimeout(release, 0);
+            }
+          }
+          this.scheduleCalendarAnchorHydration();
+        }
+      } else if (scrollElement) {
+        scrollElement.scrollTop = 0;
+      }
+      const syncSticky = () => this.updateActivitiesStickyHeader(scrollElement?.scrollTop ?? 0);
+      this.updateActivitiesHeaderProgress();
+      if (this.isCalendarLayoutView() && loadCalendarBadgesForCurrentPage) {
+        this.syncActivitiesCalendarBadgeDelay();
+      }
+      if (typeof globalThis.requestAnimationFrame === 'function') {
+        globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(syncSticky));
+        return;
+      }
+      setTimeout(syncSticky, 0);
+    }, 0);
+  }
+
+  private seedActivitiesStickyHeader(): void {
+    if (this.activitiesView === 'month') {
+      this.activitiesStickyValue = this.calendarMonthPages[0]?.label ?? 'No items';
+      return;
+    }
+    if (this.activitiesView === 'week') {
+      this.activitiesStickyValue = this.calendarWeekPages[0]?.label ?? 'No items';
+      return;
+    }
+    const firstGroup = this.groupedActivityRows[0];
+    if (firstGroup) {
+      this.activitiesStickyValue = firstGroup.label;
+      return;
+    }
+    this.activitiesStickyValue = this.activitiesView === 'distance' ? '5 km' : 'No items';
+  }
+
+  private updateActivitiesStickyHeader(scrollTop: number): void {
+    if (this.activitiesView === 'month' || this.activitiesView === 'week') {
+      const calendarElement = this.activitiesCalendarScrollRef?.nativeElement;
+      if (!calendarElement) {
+        this.seedActivitiesStickyHeader();
+        return;
+      }
+      const pageWidth = calendarElement.clientWidth || 1;
+      const pageIndex = Math.max(0, Math.round(calendarElement.scrollLeft / pageWidth));
+      if (this.activitiesView === 'month') {
+        this.activitiesStickyValue = this.calendarMonthPages[pageIndex]?.label ?? this.calendarMonthPages[0]?.label ?? 'No items';
+        return;
+      }
+      this.activitiesStickyValue = this.calendarWeekPages[pageIndex]?.label ?? this.calendarWeekPages[0]?.label ?? 'No items';
+      return;
+    }
+    const groups = this.groupedActivityRows;
+    if (groups.length === 0) {
+      this.activitiesStickyValue = this.activitiesView === 'distance' ? '5 km' : 'No items';
+      return;
+    }
+    const scrollElement = this.activitiesScrollRef?.nativeElement;
+    if (!scrollElement) {
+      this.activitiesStickyValue = groups[0].label;
+      return;
+    }
+    const stickyHeader = scrollElement.querySelector<HTMLElement>('.activities-sticky-header');
+    const stickyHeaderHeight = stickyHeader?.offsetHeight ?? 0;
+    const targetTop = scrollTop + stickyHeaderHeight + 1;
+    const rows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.activities-row-item'));
+    if (rows.length === 0) {
+      this.activitiesStickyValue = groups[0].label;
+      return;
+    }
+    if (scrollTop <= 1) {
+      this.activitiesStickyValue = rows[0].dataset['groupLabel'] ?? groups[0].label;
+      return;
+    }
+    const alignmentTolerancePx = 2;
+    const activeRow =
+      rows.find(row => row.offsetTop >= targetTop - alignmentTolerancePx) ??
+      rows[rows.length - 1];
+    this.activitiesStickyValue = activeRow.dataset['groupLabel'] ?? groups[0].label;
+  }
+
+  protected onActivitiesCalendarScroll(event: Event): void {
+    const target = event.target as HTMLElement;
+    this.updateActivitiesStickyHeader(target.scrollTop || 0);
+    this.updateActivitiesHeaderProgress();
+    if (!this.isCalendarLayoutView()) {
+      return;
+    }
+    if (this.suppressCalendarEdgeSettle) {
+      return;
+    }
+    if (this.calendarEdgeSettleTimer) {
+      clearTimeout(this.calendarEdgeSettleTimer);
+    }
+    if (this.calendarPostSettleTimer) {
+      clearTimeout(this.calendarPostSettleTimer);
+      this.calendarPostSettleTimer = null;
+    }
+    this.calendarEdgeSettleTimer = setTimeout(() => {
+      this.calendarEdgeSettleTimer = null;
+      if (this.suppressCalendarEdgeSettle) {
+        return;
+      }
+      this.normalizeCalendarScrollPageAlignment(target);
+      const scrollLeftSnapshot = target.scrollLeft;
+      // Require an extra quiet window before mutating page anchors.
+      this.calendarPostSettleTimer = setTimeout(() => {
+        this.calendarPostSettleTimer = null;
+        if (this.suppressCalendarEdgeSettle || this.activePopup !== 'activities' || !this.isCalendarLayoutView()) {
+          return;
+        }
+        if (Math.abs(target.scrollLeft - scrollLeftSnapshot) > 1) {
+          return;
+        }
+        this.normalizeCalendarScrollPageAlignment(target);
+        this.maybeSyncActivitiesCalendarBadgeDelayByPage();
+        this.handleCalendarEdgeSettle(target);
+      }, 100);
+    }, 120);
+  }
+
+  protected navigateActivitiesCalendarTo(pageIndex: number, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isCalendarLayoutView()) {
+      return;
+    }
+    const pages = this.activitiesView === 'month' ? this.calendarMonthPages : this.calendarWeekPages;
+    if (pages.length === 0) {
+      return;
+    }
+    const currentIndex = this.currentCalendarPageIndex();
+    const delta = pageIndex - currentIndex;
+    if (delta === 0) {
+      return;
+    }
+    const step = delta > 0 ? 1 : -1;
+    const calendarElement = this.activitiesCalendarScrollRef?.nativeElement;
+    if (!calendarElement) {
+      return;
+    }
+    const pageWidth = calendarElement.clientWidth || 0;
+    if (pageWidth <= 0) {
+      return;
+    }
+    const targetIndex = Math.max(0, Math.min(pages.length - 1, currentIndex + step));
+    if (targetIndex === currentIndex) {
+      this.beginActivitiesHeaderProgressLoading();
+      this.shiftCalendarPages(step);
+      const edgeHoldIndex = step < 0 ? 1 : pages.length - 2;
+      this.calendarInitialPageIndexOverride = edgeHoldIndex;
+      this.resetActivitiesScroll();
+      const scrollAfterShift = () => {
+        const nextElement = this.activitiesCalendarScrollRef?.nativeElement;
+        if (!nextElement) {
+          this.endActivitiesHeaderProgressLoading();
+          return;
+        }
+        const nextWidth = nextElement.clientWidth || 0;
+        if (nextWidth <= 0) {
+          this.endActivitiesHeaderProgressLoading();
+          return;
+        }
+        const previousScrollBehavior = nextElement.style.scrollBehavior;
+        nextElement.style.scrollBehavior = 'auto';
+        nextElement.scrollLeft = nextWidth * edgeHoldIndex;
+        nextElement.style.scrollBehavior = previousScrollBehavior;
+        nextElement.scrollTo({
+          left: nextWidth * (edgeHoldIndex + step),
+          behavior: 'smooth'
+        });
+        this.endActivitiesHeaderProgressLoading();
+      };
+      // Keep edge-navigation behavior aligned with swipe settle timing.
+      setTimeout(scrollAfterShift, 100);
+      return;
+    }
+    calendarElement.scrollTo({ left: targetIndex * pageWidth, behavior: 'smooth' });
+  }
+
+  protected navigateActivitiesCalendarBackward(event?: Event): void {
+    this.navigateActivitiesCalendarTo(this.currentCalendarPageIndex() - 1, event);
+  }
+
+  protected navigateActivitiesCalendarForward(event?: Event): void {
+    this.navigateActivitiesCalendarTo(this.currentCalendarPageIndex() + 1, event);
+  }
+
+  protected trackByCalendarPageKey(_: number, page: CalendarMonthPage | CalendarWeekPage): string {
+    return page.key;
+  }
+
+  protected trackByCalendarMonthWeekKey(_: number, week: CalendarMonthWeek): string {
+    return this.dateKey(week.start);
+  }
+
+  protected trackByCalendarDayKey(_: number, day: CalendarDayCell): string {
+    return day.key;
+  }
+
+  private initialCalendarPageIndex(): number {
+    const today = this.dateOnly(new Date());
+    if (this.activitiesView === 'month') {
+      const focus = this.calendarMonthFocusDate ? this.startOfMonth(this.calendarMonthFocusDate) : this.startOfMonth(today);
+      const monthKey = this.monthKey(focus);
+      const pages = this.calendarMonthPages;
+      const pageIndex = pages.findIndex(page => page.key === monthKey);
+      return pageIndex >= 0 ? pageIndex : Math.min(this.calendarAnchorRadius, Math.max(0, pages.length - 1));
+    }
+    if (this.activitiesView === 'week') {
+      const focus = this.calendarWeekFocusDate ? this.startOfWeekMonday(this.calendarWeekFocusDate) : this.startOfWeekMonday(today);
+      const weekKey = this.dateKey(focus);
+      const pages = this.calendarWeekPages;
+      const pageIndex = pages.findIndex(page => page.key === weekKey);
+      return pageIndex >= 0 ? pageIndex : Math.min(this.calendarAnchorRadius, Math.max(0, pages.length - 1));
+    }
+    return 0;
+  }
+
+  private buildActivityRowsByDate(rows: ActivityListRow[]): Map<string, ActivityListRow[]> {
+    const byDate = new Map<string, ActivityListRow[]>();
+    for (const row of rows) {
+      const range = this.activityDateRange(row);
+      if (!range) {
+        continue;
+      }
+      let cursor = this.dateOnly(range.start);
+      const endDate = this.dateOnly(range.end);
+      while (cursor.getTime() <= endDate.getTime()) {
+        const key = this.dateKey(cursor);
+        const current = byDate.get(key) ?? [];
+        current.push(row);
+        byDate.set(key, current);
+        cursor = this.addDays(cursor, 1);
+      }
+    }
+    return byDate;
+  }
+
+  private activityDateRange(row: ActivityListRow): { start: Date; end: Date } | null {
+    if (row.type === 'rates') {
+      const point = new Date(row.dateIso);
+      if (Number.isNaN(point.getTime())) {
+        return null;
+      }
+      // Rates are point-in-time events for calendar heat/count views.
+      return { start: point, end: new Date(point.getTime() + 60 * 1000) };
+    }
+    const explicit = this.activityDateTimeRangeById[row.id];
+    if (explicit) {
+      const start = new Date(explicit.startIso);
+      const end = new Date(explicit.endIso);
+      if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && end.getTime() > start.getTime()) {
+        return { start, end };
+      }
+    }
+    const parsed = new Date(row.dateIso);
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+    const fallbackEnd = new Date(parsed.getTime() + 2 * 60 * 60 * 1000);
+    return { start: parsed, end: fallbackEnd };
+  }
+
+  private monthAnchorsForRows(rows: ActivityListRow[]): Date[] {
+    if (this.calendarMonthAnchorPages && this.calendarMonthAnchorPages.length > 0) {
+      return [...this.calendarMonthAnchorPages];
+    }
+    const todayMonth = this.startOfMonth(this.dateOnly(new Date()));
+    const focusMonth = this.calendarMonthFocusDate ? this.startOfMonth(this.calendarMonthFocusDate) : todayMonth;
+    this.calendarMonthAnchorPages = this.buildMonthAnchorWindow(focusMonth);
+    return [...this.calendarMonthAnchorPages];
+  }
+
+  private weekAnchorsForRows(rows: ActivityListRow[]): Date[] {
+    if (this.calendarWeekAnchorPages && this.calendarWeekAnchorPages.length > 0) {
+      return [...this.calendarWeekAnchorPages];
+    }
+    const todayWeek = this.startOfWeekMonday(this.dateOnly(new Date()));
+    const focusWeek = this.calendarWeekFocusDate ? this.startOfWeekMonday(this.calendarWeekFocusDate) : todayWeek;
+    this.calendarWeekAnchorPages = this.buildWeekAnchorWindow(focusWeek);
+    return [...this.calendarWeekAnchorPages];
+  }
+
+  private calendarRowsSignature(rows: ActivityListRow[]): string {
+    return rows
+      .map(row => {
+        const range = this.activityDateTimeRangeById[row.id];
+        const rangeSignature = range ? `${range.startIso}:${range.endIso}` : '';
+        return `${row.type}:${row.id}:${row.dateIso}:${rangeSignature}`;
+      })
+      .join(',');
+  }
+
+  private buildMonthPage(anchor: Date, rowsByDate: Map<string, ActivityListRow[]>, rows: ActivityListRow[]): CalendarMonthPage {
+    const firstDay = this.startOfMonth(anchor);
+    const firstWeekStart = this.startOfWeekMonday(firstDay);
+    const monthEnd = this.endOfMonth(anchor);
+    const lastWeekEnd = this.endOfWeekSunday(monthEnd);
+    const weeks: CalendarMonthWeek[] = [];
+    let cursor = this.dateOnly(firstWeekStart);
+    while (cursor.getTime() <= lastWeekEnd.getTime()) {
+      const weekStart = this.dateOnly(cursor);
+      const weekEnd = this.addDays(weekStart, 6);
+      const days: CalendarDayCell[] = [];
+      for (let day = 0; day < 7; day += 1) {
+        const date = this.addDays(cursor, day);
+        days.push(this.buildCalendarDayCell(date, rowsByDate, firstDay.getMonth()));
+      }
+      weeks.push({
+        start: weekStart,
+        end: weekEnd,
+        days,
+        spans: this.buildMonthWeekSpans(weekStart, weekEnd, rows)
+      });
+      cursor = this.addDays(cursor, 7);
+    }
+    return {
+      key: this.monthKey(anchor),
+      label: anchor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      weeks
+    };
+  }
+
+  private buildWeekPage(anchor: Date, rowsByDate: Map<string, ActivityListRow[]>): CalendarWeekPage {
+    const start = this.startOfWeekMonday(anchor);
+    const days: CalendarDayCell[] = [];
+    for (let day = 0; day < 7; day += 1) {
+      const date = this.addDays(start, day);
+      days.push(this.buildCalendarDayCell(date, rowsByDate, date.getMonth()));
+    }
+    const end = this.addDays(start, 6);
+    return {
+      key: this.dateKey(start),
+      label: this.weekRangeLabel(start, end),
+      days
+    };
+  }
+
+  private buildMonthWeekSpans(weekStart: Date, weekEnd: Date, rows: ActivityListRow[]): CalendarMonthSpan[] {
+    const spansBase: Array<{ row: ActivityListRow; startCol: number; endCol: number }> = [];
+    for (const row of rows) {
+      const range = this.activityDateRange(row);
+      if (!range) {
+        continue;
+      }
+      const startDate = this.dateOnly(range.start);
+      const endDate = this.dateOnly(range.end);
+      if (!this.dateRangeOverlaps(startDate, endDate, weekStart, weekEnd)) {
+        continue;
+      }
+      const visibleStart = startDate.getTime() < weekStart.getTime() ? weekStart : startDate;
+      const visibleEnd = endDate.getTime() > weekEnd.getTime() ? weekEnd : endDate;
+      spansBase.push({
+        row,
+        startCol: Math.max(0, this.dayDiff(weekStart, visibleStart)),
+        endCol: Math.min(6, this.dayDiff(weekStart, visibleEnd))
+      });
+    }
+
+    spansBase.sort((a, b) => a.startCol - b.startCol || b.endCol - a.endCol);
+    const lanes: Array<Array<{ startCol: number; endCol: number }>> = [];
+    const spans: CalendarMonthSpan[] = [];
+
+    for (const span of spansBase) {
+      let laneIndex = 0;
+      while (laneIndex < lanes.length) {
+        const conflict = lanes[laneIndex].some(item => !(span.endCol < item.startCol || span.startCol > item.endCol));
+        if (!conflict) {
+          break;
+        }
+        laneIndex += 1;
+      }
+      if (!lanes[laneIndex]) {
+        lanes[laneIndex] = [];
+      }
+      lanes[laneIndex].push({ startCol: span.startCol, endCol: span.endCol });
+      spans.push({
+        key: `${span.row.id}-${this.dateKey(weekStart)}-${span.startCol}-${span.endCol}-${laneIndex}`,
+        row: span.row,
+        startCol: span.startCol,
+        endCol: span.endCol,
+        lane: laneIndex
+      });
+    }
+
+    return spans;
+  }
+
+  private buildCalendarDayCell(date: Date, rowsByDate: Map<string, ActivityListRow[]>, currentMonthIndex: number): CalendarDayCell {
+    const safeDate = this.dateOnly(date);
+    const key = this.dateKey(safeDate);
+    const todayKey = this.dateKey(this.dateOnly(new Date()));
+    return {
+      key,
+      date: safeDate,
+      dayNumber: safeDate.getDate(),
+      inCurrentMonth: safeDate.getMonth() === currentMonthIndex,
+      isToday: key === todayKey,
+      rows: rowsByDate.get(key) ?? []
+    };
+  }
+
+  private weekRangeLabel(start: Date, end: Date): string {
+    const startLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const endLabel = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return `${startLabel} - ${endLabel}`;
+  }
+
+  private dayDiff(from: Date, to: Date): number {
+    const ms = this.dateOnly(to).getTime() - this.dateOnly(from).getTime();
+    return Math.floor(ms / 86400000);
+  }
+
+  private dateRangeOverlaps(startA: Date, endA: Date, startB: Date, endB: Date): boolean {
+    return startA.getTime() <= endB.getTime() && endA.getTime() >= startB.getTime();
+  }
+
+  private countOverlappingRows(rows: ActivityListRow[], start: Date, end: Date): number {
+    let count = 0;
+    for (const row of rows) {
+      const range = this.activityDateRange(row);
+      if (!range) {
+        continue;
+      }
+      if (range.start.getTime() < end.getTime() && range.end.getTime() > start.getTime()) {
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  private rateHeatClass(count: number): string {
+    if (count <= 0) {
+      return 'activities-rate-heat-0';
+    }
+    const clamped = Math.min(100, count);
+    const normalized = (clamped - 1) / 99;
+    if (normalized <= 0.16) {
+      return 'activities-rate-heat-1';
+    }
+    if (normalized <= 0.32) {
+      return 'activities-rate-heat-2';
+    }
+    if (normalized <= 0.5) {
+      return 'activities-rate-heat-3';
+    }
+    if (normalized <= 0.68) {
+      return 'activities-rate-heat-4';
+    }
+    if (normalized <= 0.84) {
+      return 'activities-rate-heat-5';
+    }
+    return 'activities-rate-heat-6';
+  }
+
+  private dateOnly(value: Date): Date {
+    return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  }
+
+  private dateKey(value: Date): string {
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    const day = `${value.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private monthKey(value: Date): string {
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    return `${year}-${month}`;
+  }
+
+  private parseDateKey(value: string): Date | null {
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) {
+      return null;
+    }
+    const year = Number.parseInt(match[1], 10);
+    const month = Number.parseInt(match[2], 10);
+    const day = Number.parseInt(match[3], 10);
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+      return null;
+    }
+    return this.dateOnly(new Date(year, month - 1, day));
+  }
+
+  private parseMonthKey(value: string): Date | null {
+    const match = value.match(/^(\d{4})-(\d{2})$/);
+    if (!match) {
+      return null;
+    }
+    const year = Number.parseInt(match[1], 10);
+    const month = Number.parseInt(match[2], 10);
+    if (!Number.isFinite(year) || !Number.isFinite(month)) {
+      return null;
+    }
+    return this.startOfMonth(new Date(year, month - 1, 1));
+  }
+
+  private currentCalendarPageIndex(): number {
+    const calendarElement = this.activitiesCalendarScrollRef?.nativeElement;
+    if (!calendarElement) {
+      return 0;
+    }
+    const pageWidth = calendarElement.clientWidth || 0;
+    if (pageWidth <= 0) {
+      return 0;
+    }
+    return Math.max(0, Math.round(calendarElement.scrollLeft / pageWidth));
+  }
+
+  private normalizeCalendarScrollPageAlignment(calendarElement: HTMLElement): void {
+    const pageWidth = calendarElement.clientWidth || 0;
+    if (pageWidth <= 0) {
+      return;
+    }
+    const nearestPageIndex = Math.max(0, Math.round(calendarElement.scrollLeft / pageWidth));
+    const nearestPageLeft = nearestPageIndex * pageWidth;
+    if (Math.abs(calendarElement.scrollLeft - nearestPageLeft) > 0.75) {
+      return;
+    }
+    const previousScrollBehavior = calendarElement.style.scrollBehavior;
+    calendarElement.style.scrollBehavior = 'auto';
+    calendarElement.scrollLeft = nearestPageLeft;
+    calendarElement.style.scrollBehavior = previousScrollBehavior;
+  }
+
+  private handleCalendarEdgeSettle(calendarElement: HTMLElement): void {
+    if (this.suppressCalendarEdgeSettle) {
+      return;
+    }
+    const pageWidth = calendarElement.clientWidth || 0;
+    if (pageWidth <= 0) {
+      return;
+    }
+    const pages = this.activitiesView === 'month' ? this.calendarMonthPages : this.calendarWeekPages;
+    if (pages.length < this.calendarAnchorWindowSize) {
+      return;
+    }
+    const rawPageIndex = calendarElement.scrollLeft / pageWidth;
+    const nearestPageIndex = Math.max(0, Math.min(pages.length - 1, Math.round(rawPageIndex)));
+    const nearestPageLeft = nearestPageIndex * pageWidth;
+    // Never force snap-back here; only continue once native scroll/snap has fully settled.
+    if (Math.abs(calendarElement.scrollLeft - nearestPageLeft) > 1) {
+      return;
+    }
+    const atLeftEdge = nearestPageIndex === 0;
+    const atRightEdge = nearestPageIndex === pages.length - 1;
+    if (!atLeftEdge && !atRightEdge) {
+      return;
+    }
+    this.suppressCalendarEdgeSettle = true;
+    this.beginActivitiesHeaderProgressLoading();
+    const edgePage = atLeftEdge ? pages[0] : pages[pages.length - 1];
+    if (this.activitiesView === 'month') {
+      this.calendarMonthFocusDate =
+        this.parseMonthKey(edgePage.key) ??
+        this.startOfMonth(this.dateOnly(new Date()));
+    } else {
+      this.calendarWeekFocusDate =
+        this.parseDateKey(edgePage.key) ??
+        this.startOfWeekMonday(this.dateOnly(new Date()));
+    }
+    this.shiftCalendarPages(atLeftEdge ? -1 : 1);
+    const stabilizeAfterShift = () => {
+      const nextElement = this.activitiesCalendarScrollRef?.nativeElement;
+      if (!nextElement) {
+        this.suppressCalendarEdgeSettle = false;
+        this.endActivitiesHeaderProgressLoading();
+        return;
+      }
+      const nextWidth = nextElement.clientWidth || 0;
+      if (nextWidth <= 0) {
+        this.suppressCalendarEdgeSettle = false;
+        this.endActivitiesHeaderProgressLoading();
+        return;
+      }
+      const previousScrollBehavior = nextElement.style.scrollBehavior;
+      const previousSnapType = nextElement.style.scrollSnapType;
+      nextElement.style.scrollBehavior = 'auto';
+      nextElement.style.scrollSnapType = 'none';
+      const settledIndex = atLeftEdge ? 1 : pages.length - 2;
+      nextElement.scrollLeft = nextWidth * settledIndex;
+      nextElement.style.scrollBehavior = previousScrollBehavior;
+      const release = () => {
+        nextElement.style.scrollSnapType = previousSnapType;
+        this.suppressCalendarEdgeSettle = false;
+        this.updateActivitiesStickyHeader(0);
+        this.updateActivitiesHeaderProgress();
+        this.endActivitiesHeaderProgressLoading();
+      };
+      if (typeof globalThis.requestAnimationFrame === 'function') {
+        globalThis.requestAnimationFrame(() => release());
+      } else {
+        setTimeout(release, 0);
+      }
+    };
+    setTimeout(stabilizeAfterShift, 0);
+  }
+
+  private updateActivitiesHeaderProgress(): void {
+    if (this.activePopup !== 'activities') {
+      this.activitiesHeaderProgress = 0;
+      return;
+    }
+
+    if (this.isCalendarLayoutView()) {
+      const calendarElement = this.activitiesCalendarScrollRef?.nativeElement;
+      if (!calendarElement) {
+        this.activitiesHeaderProgress = 0;
+        return;
+      }
+      const maxHorizontalScroll = Math.max(0, calendarElement.scrollWidth - calendarElement.clientWidth);
+      if (maxHorizontalScroll <= 1) {
+        this.activitiesHeaderProgress = 0;
+        return;
+      }
+      this.activitiesHeaderProgress = this.clampNumber(calendarElement.scrollLeft / maxHorizontalScroll, 0, 1);
+      return;
+    }
+
+    const listElement = this.activitiesScrollRef?.nativeElement;
+    if (!listElement) {
+      this.activitiesHeaderProgress = 0;
+      return;
+    }
+    const maxVerticalScroll = Math.max(0, listElement.scrollHeight - listElement.clientHeight);
+    if (maxVerticalScroll <= 1) {
+      this.activitiesHeaderProgress = 0;
+      return;
+    }
+    this.activitiesHeaderProgress = this.clampNumber(listElement.scrollTop / maxVerticalScroll, 0, 1);
+  }
+
+  private maybeLoadMoreActivities(scrollElement: HTMLElement): void {
+    if (this.activePopup !== 'activities' || this.isCalendarLayoutView() || this.activitiesIsPaginating) {
+      return;
+    }
+    const rows = this.buildFilteredActivityRowsBase();
+    this.ensureActivitiesPaginationState(rows.length);
+    if (this.activitiesVisibleCount >= rows.length) {
+      return;
+    }
+    const remainingPx = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
+    if (this.activitiesPaginationAwaitScrollReset) {
+      if (remainingPx > 360) {
+        this.activitiesPaginationAwaitScrollReset = false;
+      }
+      return;
+    }
+    if (!this.shouldStartActivitiesPreload(scrollElement) && remainingPx > 520) {
+      return;
+    }
+    this.startActivitiesPaginationLoad();
+  }
+
+  private forceLoadMoreActivities(scrollElement: HTMLElement): void {
+    if (this.activePopup !== 'activities' || this.isCalendarLayoutView() || this.activitiesIsPaginating) {
+      return;
+    }
+    const rows = this.buildFilteredActivityRowsBase();
+    this.ensureActivitiesPaginationState(rows.length);
+    this.activitiesPaginationAwaitScrollReset = false;
+    // Pull-up explicitly triggers a server-like refresh route too, even if
+    // there are no currently unseen local rows.
+    this.startActivitiesPaginationLoad(true);
+  }
+
+  private startActivitiesPaginationLoad(allowEmptyResponse = false): void {
+    if (this.activitiesIsPaginating) {
+      return;
+    }
+    if (!allowEmptyResponse) {
+      const rows = this.buildFilteredActivityRowsBase();
+      this.ensureActivitiesPaginationState(rows.length);
+      if (this.activitiesVisibleCount >= rows.length) {
+        return;
+      }
+    }
+    this.activitiesIsPaginating = true;
+    this.beginActivitiesHeaderProgressLoading();
+    this.activitiesLoadMoreTimer = setTimeout(() => {
+      this.activitiesLoadMoreTimer = null;
+      const previousVisibleCount = this.activitiesVisibleCount;
+      const latestRows = this.buildFilteredActivityRowsBase();
+      this.ensureActivitiesPaginationState(latestRows.length);
+      if (latestRows.length > previousVisibleCount) {
+        this.activitiesVisibleCount = Math.min(previousVisibleCount + this.activitiesPageSize, latestRows.length);
+      }
+      this.activitiesIsPaginating = false;
+      this.activitiesPaginationAwaitScrollReset = true;
+      this.endActivitiesHeaderProgressLoading();
+      this.updateActivitiesHeaderProgress();
+      this.refreshActivitiesHeaderProgressSoon();
+    }, this.activitiesPaginationLoadDelayMs);
+  }
+
+  private shouldStartActivitiesPreload(scrollElement: HTMLElement): boolean {
+    const rows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.activities-row-item'));
+    if (rows.length === 0) {
+      return false;
+    }
+    if (rows.length <= 3) {
+      return true;
+    }
+    const thirdFromLast = rows[rows.length - 3];
+    const viewportBottom = scrollElement.scrollTop + scrollElement.clientHeight;
+    return viewportBottom >= thirdFromLast.offsetTop;
+  }
+
+  private ensureActivitiesPaginationState(totalRows: number): void {
+    const nextKey = this.activitiesPaginationStateKey();
+    if (nextKey === this.activitiesPaginationKey) {
+      return;
+    }
+    this.activitiesPaginationKey = nextKey;
+    this.activitiesVisibleCount = Math.min(this.activitiesPageSize, totalRows);
+    this.activitiesPaginationAwaitScrollReset = false;
+    this.cancelActivitiesPaginationLoad();
+    this.updateActivitiesHeaderProgress();
+  }
+
+  private activitiesPaginationStateKey(): string {
+    return [
+      this.activeUserId,
+      this.activitiesPrimaryFilter,
+      this.activitiesSecondaryFilter,
+      this.activitiesRateFilter,
+      this.activitiesView
+    ].join('|');
+  }
+
+  private cancelActivitiesPaginationLoad(): void {
+    if (this.activitiesLoadMoreTimer) {
+      clearTimeout(this.activitiesLoadMoreTimer);
+      this.activitiesLoadMoreTimer = null;
+    }
+    if (this.activitiesIsPaginating) {
+      this.activitiesIsPaginating = false;
+      this.endActivitiesHeaderProgressLoading();
+    }
+    this.activitiesPaginationAwaitScrollReset = false;
+  }
+
+  private beginActivitiesHeaderProgressLoading(): void {
+    this.activitiesHeaderLoadingCounter += 1;
+    if (this.activitiesHeaderLoadingCounter > 1) {
+      return;
+    }
+    this.activitiesHeaderProgressLoading = true;
+    this.activitiesHeaderLoadingOverdue = false;
+    this.activitiesHeaderLoadingProgress = 0.02;
+    this.activitiesHeaderLoadingStartedAtMs = performance.now();
+    this.flushActivitiesHeaderProgress();
+    if (this.activitiesHeaderLoadingCompleteTimer) {
+      clearTimeout(this.activitiesHeaderLoadingCompleteTimer);
+      this.activitiesHeaderLoadingCompleteTimer = null;
+    }
+    if (this.activitiesHeaderLoadingInterval) {
+      clearInterval(this.activitiesHeaderLoadingInterval);
+      this.activitiesHeaderLoadingInterval = null;
+    }
+    this.updateActivitiesHeaderLoadingWindow();
+    this.activitiesHeaderLoadingInterval = this.ngZone.runOutsideAngular(() =>
+      setInterval(() => {
+        this.updateActivitiesHeaderLoadingWindow();
+        this.flushActivitiesHeaderProgress();
+      }, this.activitiesHeaderLoadingTickMs)
+    );
+  }
+
+  private endActivitiesHeaderProgressLoading(): void {
+    if (this.activitiesHeaderLoadingCounter === 0) {
+      return;
+    }
+    this.activitiesHeaderLoadingCounter = Math.max(0, this.activitiesHeaderLoadingCounter - 1);
+    if (this.activitiesHeaderLoadingCounter !== 0) {
+      return;
+    }
+    this.completeActivitiesHeaderLoading();
+  }
+
+  private completeActivitiesHeaderLoading(): void {
+    if (this.activitiesHeaderLoadingInterval) {
+      clearInterval(this.activitiesHeaderLoadingInterval);
+      this.activitiesHeaderLoadingInterval = null;
+    }
+    // Success path: snap the loading bar to full width immediately.
+    this.activitiesHeaderLoadingProgress = 1;
+    this.activitiesHeaderLoadingOverdue = false;
+    this.flushActivitiesHeaderProgress();
+    if (this.activitiesHeaderLoadingCompleteTimer) {
+      clearTimeout(this.activitiesHeaderLoadingCompleteTimer);
+    }
+    this.activitiesHeaderLoadingCompleteTimer = this.ngZone.runOutsideAngular(() =>
+      setTimeout(() => {
+        this.ngZone.run(() => {
+          if (this.activitiesHeaderLoadingCounter !== 0) {
+            return;
+          }
+          this.activitiesHeaderProgressLoading = false;
+          this.activitiesHeaderLoadingProgress = 0;
+          this.activitiesHeaderLoadingOverdue = false;
+          this.activitiesHeaderLoadingStartedAtMs = 0;
+          this.activitiesHeaderLoadingCompleteTimer = null;
+          this.updateActivitiesHeaderProgress();
+          this.refreshActivitiesHeaderProgressSoon();
+          this.flushActivitiesHeaderProgress();
+        });
+      }, 100)
+    );
+  }
+
+  private updateActivitiesHeaderLoadingWindow(): void {
+    if (!this.activitiesHeaderProgressLoading) {
+      return;
+    }
+    const elapsed = Math.max(0, performance.now() - this.activitiesHeaderLoadingStartedAtMs);
+    const nextProgress = this.clampNumber(elapsed / this.activitiesHeaderLoadingWindowMs, 0, 1);
+    this.activitiesHeaderLoadingProgress = Math.max(this.activitiesHeaderLoadingProgress, nextProgress);
+    this.activitiesHeaderLoadingOverdue = elapsed >= this.activitiesHeaderLoadingWindowMs && this.activitiesHeaderLoadingCounter > 0;
+  }
+
+  private clearActivitiesHeaderLoadingAnimation(): void {
+    if (this.activitiesHeaderLoadingInterval) {
+      clearInterval(this.activitiesHeaderLoadingInterval);
+      this.activitiesHeaderLoadingInterval = null;
+    }
+    if (this.activitiesHeaderLoadingCompleteTimer) {
+      clearTimeout(this.activitiesHeaderLoadingCompleteTimer);
+      this.activitiesHeaderLoadingCompleteTimer = null;
+    }
+    this.activitiesHeaderLoadingCounter = 0;
+    this.activitiesHeaderLoadingProgress = 0;
+    this.activitiesHeaderProgressLoading = false;
+    this.activitiesHeaderLoadingOverdue = false;
+    this.activitiesHeaderLoadingStartedAtMs = 0;
+    this.flushActivitiesHeaderProgress();
+  }
+
+  private syncActivitiesCalendarBadgeDelay(): void {
+    if (this.activePopup !== 'activities' || !this.isCalendarLayoutView()) {
+      this.clearActivitiesCalendarBadgeDelay();
+      return;
+    }
+    const pageKey = this.currentActivitiesCalendarBadgeDelayPageKey();
+    if (!pageKey) {
+      return;
+    }
+    this.activitiesCalendarBadgeDelayPageKey = pageKey;
+    const delayKey = this.calendarBadgeDelayKey(pageKey);
+    if (this.activitiesCalendarBadgesReadyDelayKeys.has(delayKey)) {
+      if (this.activitiesCalendarBadgesTimer) {
+        clearTimeout(this.activitiesCalendarBadgesTimer);
+        this.activitiesCalendarBadgesTimer = null;
+      }
+      if (this.activitiesCalendarBadgesLoadingActive) {
+        this.endActivitiesHeaderProgressLoading();
+        this.activitiesCalendarBadgesLoadingActive = false;
+      }
+      this.activitiesCalendarBadgesLoadingDelayKey = '';
+      return;
+    }
+    if (this.activitiesCalendarBadgesTimer && this.activitiesCalendarBadgesLoadingDelayKey === delayKey) {
+      return;
+    }
+    if (this.activitiesCalendarBadgesTimer) {
+      clearTimeout(this.activitiesCalendarBadgesTimer);
+      this.activitiesCalendarBadgesTimer = null;
+    }
+    if (this.activitiesCalendarBadgesLoadingActive) {
+      this.endActivitiesHeaderProgressLoading();
+      this.activitiesCalendarBadgesLoadingActive = false;
+    }
+    this.activitiesCalendarBadgesLoadingDelayKey = delayKey;
+    this.beginActivitiesHeaderProgressLoading();
+    this.activitiesCalendarBadgesLoadingActive = true;
+    this.activitiesCalendarBadgesTimer = setTimeout(() => {
+      this.activitiesCalendarBadgesTimer = null;
+      this.activitiesCalendarBadgesReadyDelayKeys.add(delayKey);
+      if (this.activitiesCalendarBadgesLoadingActive) {
+        this.endActivitiesHeaderProgressLoading();
+        this.activitiesCalendarBadgesLoadingActive = false;
+      }
+      this.activitiesCalendarBadgesLoadingDelayKey = '';
+      this.cdr.markForCheck();
+    }, this.activitiesPaginationLoadDelayMs);
+  }
+
+  private clearActivitiesCalendarBadgeDelay(): void {
+    if (this.activitiesCalendarBadgesTimer) {
+      clearTimeout(this.activitiesCalendarBadgesTimer);
+      this.activitiesCalendarBadgesTimer = null;
+    }
+    if (this.activitiesCalendarBadgesLoadingActive) {
+      this.endActivitiesHeaderProgressLoading();
+      this.activitiesCalendarBadgesLoadingActive = false;
+    }
+    this.activitiesCalendarBadgesLoadingDelayKey = '';
+    this.activitiesCalendarBadgesReadyDelayKeys.clear();
+    this.activitiesCalendarBadgeDelayPageKey = '';
+  }
+
+  private maybeSyncActivitiesCalendarBadgeDelayByPage(): void {
+    if (this.activePopup !== 'activities' || !this.isCalendarLayoutView()) {
+      return;
+    }
+    const nextKey = this.currentActivitiesCalendarBadgeDelayPageKey();
+    if (!nextKey || nextKey === this.activitiesCalendarBadgeDelayPageKey) {
+      return;
+    }
+    this.activitiesCalendarBadgeDelayPageKey = nextKey;
+    this.syncActivitiesCalendarBadgeDelay();
+  }
+
+  private currentActivitiesCalendarBadgeDelayPageKey(): string {
+    if (!this.isCalendarLayoutView()) {
+      return '';
+    }
+    const pages = this.activitiesView === 'month' ? this.calendarMonthPages : this.calendarWeekPages;
+    if (pages.length === 0) {
+      return '';
+    }
+    const pageIndex = Math.max(0, Math.min(pages.length - 1, this.currentCalendarPageIndex()));
+    const pageKey = pages[pageIndex]?.key ?? '';
+    if (!pageKey) {
+      return '';
+    }
+    return pageKey;
+  }
+
+  private calendarBadgeDelayKey(pageKey: string): string {
+    return `${this.activitiesView}:${pageKey}`;
+  }
+
+  private refreshActivitiesHeaderProgressSoon(): void {
+    const refresh = () => this.updateActivitiesHeaderProgress();
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(refresh));
+      return;
+    }
+    setTimeout(refresh, 0);
+  }
+
+  private flushActivitiesHeaderProgress(): void {
+    if (this.activitiesHeaderFlushScheduled) {
+      return;
+    }
+    this.activitiesHeaderFlushScheduled = true;
+    this.ngZone.runOutsideAngular(() => {
+      const flush = () => {
+        this.ngZone.run(() => {
+          this.activitiesHeaderFlushScheduled = false;
+          this.cdr.markForCheck();
+        });
+      };
+      if (typeof globalThis.requestAnimationFrame === 'function') {
+        globalThis.requestAnimationFrame(() => flush());
+        return;
+      }
+      setTimeout(flush, 0);
+    });
+  }
+
+  private clampNumber(value: number, min: number, max: number): number {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  private shiftCalendarPages(direction: -1 | 1): void {
+    if (this.activitiesView === 'month') {
+      const pages = this.calendarMonthAnchorPages ?? this.monthAnchorsForRows([]);
+      if (pages.length < this.calendarAnchorWindowSize) {
+        return;
+      }
+      if (direction < 0) {
+        const first = pages[0];
+        this.calendarMonthAnchorPages = [this.addMonths(first, -1), ...pages.slice(0, pages.length - 1)];
+      } else {
+        const last = pages[pages.length - 1];
+        this.calendarMonthAnchorPages = [...pages.slice(1), this.addMonths(last, 1)];
+      }
+      return;
+    }
+    const pages = this.calendarWeekAnchorPages ?? this.weekAnchorsForRows([]);
+    if (pages.length < this.calendarAnchorWindowSize) {
+      return;
+    }
+    if (direction < 0) {
+      const first = pages[0];
+      this.calendarWeekAnchorPages = [this.addDays(first, -7), ...pages.slice(0, pages.length - 1)];
+    } else {
+      const last = pages[pages.length - 1];
+      this.calendarWeekAnchorPages = [...pages.slice(1), this.addDays(last, 7)];
+    }
+  }
+
+  private scheduleCalendarAnchorHydration(): void {
+    if (this.isMobileView) {
+      return;
+    }
+    if (this.activitiesView === 'month') {
+      if (this.calendarMonthAnchorsHydrated || !this.calendarMonthAnchorPages || this.calendarMonthAnchorPages.length !== 1) {
+        return;
+      }
+      this.calendarMonthAnchorsHydrated = true;
+    } else if (this.activitiesView === 'week') {
+      if (this.calendarWeekAnchorsHydrated || !this.calendarWeekAnchorPages || this.calendarWeekAnchorPages.length !== 1) {
+        return;
+      }
+      this.calendarWeekAnchorsHydrated = true;
+    } else {
+      return;
+    }
+
+    setTimeout(() => {
+      if (this.activitiesView === 'month' && this.calendarMonthAnchorPages?.length === 1) {
+        const focus = this.calendarMonthAnchorPages[0];
+        this.calendarMonthAnchorPages = this.buildMonthAnchorWindow(focus);
+      } else if (this.activitiesView === 'week' && this.calendarWeekAnchorPages?.length === 1) {
+        const focus = this.calendarWeekAnchorPages[0];
+        this.calendarWeekAnchorPages = this.buildWeekAnchorWindow(focus);
+      } else {
+        return;
+      }
+      this.calendarInitialPageIndexOverride = this.calendarAnchorRadius;
+      this.resetActivitiesScroll();
+    }, 0);
+  }
+
+  private addDays(value: Date, days: number): Date {
+    const copy = new Date(value);
+    copy.setDate(copy.getDate() + days);
+    return this.dateOnly(copy);
+  }
+
+  private buildMonthAnchorWindow(focusMonth: Date): Date[] {
+    const radius = this.calendarAnchorRadius;
+    const anchors: Date[] = [];
+    for (let offset = -radius; offset <= radius; offset += 1) {
+      anchors.push(this.addMonths(focusMonth, offset));
+    }
+    return anchors;
+  }
+
+  private buildWeekAnchorWindow(focusWeek: Date): Date[] {
+    const radius = this.calendarAnchorRadius;
+    const anchors: Date[] = [];
+    for (let offset = -radius; offset <= radius; offset += 1) {
+      anchors.push(this.addDays(focusWeek, offset * 7));
+    }
+    return anchors;
+  }
+
+  private addMonths(value: Date, months: number): Date {
+    const copy = new Date(value.getFullYear(), value.getMonth() + months, 1);
+    return this.dateOnly(copy);
+  }
+
+  private startOfMonth(value: Date): Date {
+    return this.dateOnly(new Date(value.getFullYear(), value.getMonth(), 1));
+  }
+
+  private endOfMonth(value: Date): Date {
+    return this.dateOnly(new Date(value.getFullYear(), value.getMonth() + 1, 0));
+  }
+
+  private startOfWeekMonday(value: Date): Date {
+    const copy = this.dateOnly(value);
+    const day = copy.getDay();
+    const mondayOffset = day === 0 ? -6 : 1 - day;
+    return this.addDays(copy, mondayOffset);
+  }
+
+  private endOfWeekSunday(value: Date): Date {
+    return this.addDays(this.startOfWeekMonday(value), 6);
+  }
+
+  private activityGroupLabel(row: ActivityListRow): string {
+    if (this.activitiesView === 'distance') {
+      const bucket = Math.max(5, Math.ceil(row.distanceKm / 5) * 5);
+      return `${bucket} km`;
+    }
+    const parsed = new Date(row.dateIso);
+    if (Number.isNaN(parsed.getTime())) {
+      return 'Date unavailable';
+    }
+    if (this.activitiesView === 'day') {
+      return parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    }
+    if (this.activitiesView === 'month') {
+      return parsed.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
+    return `Week ${this.isoWeekNumber(parsed)}, ${parsed.getFullYear()}`;
+  }
+
+  private isoWeekNumber(date: Date): number {
+    const copy = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const day = copy.getUTCDay() || 7;
+    copy.setUTCDate(copy.getUTCDate() + 4 - day);
+    const yearStart = new Date(Date.UTC(copy.getUTCFullYear(), 0, 1));
+    return Math.ceil((((copy.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  }
+
+  private cloneMapItems<T>(input: Record<string, T[]>): Record<string, T[]> {
+    const output: Record<string, T[]> = {};
+    for (const [key, value] of Object.entries(input)) {
+      output[key] = value.map(item => ({ ...item }));
+    }
+    return output;
+  }
+
   private normalizeText(value: string): string {
     return value
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  private initialsFromText(value: string): string {
+    const words = value
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (words.length === 0) {
+      return 'U';
+    }
+    if (words.length === 1) {
+      return words[0].slice(0, 2).toUpperCase();
+    }
+    return `${words[0][0] ?? ''}${words[1][0] ?? ''}`.toUpperCase();
+  }
+
+  private findUserByName(name: string): DemoUser | undefined {
+    const target = this.normalizeText(name);
+    return this.users.find(user => this.normalizeText(user.name) === target);
   }
 }

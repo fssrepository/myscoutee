@@ -65,6 +65,18 @@ export interface HostingMenuItem {
   activity: number;
 }
 
+export interface RateMenuItem {
+  id: string;
+  userId: string;
+  mode: 'individual' | 'pair';
+  direction: 'given' | 'received' | 'mutual' | 'met';
+  scoreGiven: number;
+  scoreReceived: number;
+  eventName: string;
+  happenedAt: string;
+  distanceKm: number;
+}
+
 export interface ProfileRow {
   label: string;
   value: string;
@@ -423,6 +435,69 @@ export const DEMO_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       timeframe: 'Mar 12 · 7:30 PM - 11:30 PM',
       activity: 3,
       isAdmin: false
+    },
+    {
+      id: 'e6',
+      avatar: 'SY',
+      title: 'Sunset Beach Volley',
+      shortDescription: 'Casual teams, rotation rounds, and post-game snacks.',
+      timeframe: 'Mar 14 · 5:00 PM - 8:30 PM',
+      activity: 2,
+      isAdmin: false
+    },
+    {
+      id: 'e7',
+      avatar: 'SY',
+      title: 'Coffee + Book Swap',
+      shortDescription: 'Small-circle meetup with curated intro prompts.',
+      timeframe: 'Mar 16 · 9:30 AM - 11:30 AM',
+      activity: 1,
+      isAdmin: true
+    },
+    {
+      id: 'e8',
+      avatar: 'SY',
+      title: 'Lakeside Walk Lab',
+      shortDescription: 'Guided walk with paired mini-conversations.',
+      timeframe: 'Feb 27 · 11:15 AM - 1:00 PM',
+      activity: 2,
+      isAdmin: false
+    },
+    {
+      id: 'e9',
+      avatar: 'SY',
+      title: 'Brunch Rotation',
+      shortDescription: 'Table rotations every 20 minutes for fresh intros.',
+      timeframe: 'Feb 27 · 1:30 PM - 3:30 PM',
+      activity: 3,
+      isAdmin: false
+    },
+    {
+      id: 'e10',
+      avatar: 'SY',
+      title: 'Golden Hour Meetup',
+      shortDescription: 'Sunset meetup with check-in games and soft networking.',
+      timeframe: 'Mar 14 · 6:15 PM - 8:45 PM',
+      activity: 2,
+      isAdmin: true
+    },
+    {
+      id: 'e11',
+      avatar: 'SY',
+      title: 'Cross-Month Community Relay',
+      shortDescription: 'Long-format challenge with rotating teams across multiple weekends.',
+      timeframe: 'Mar 28 - May 6',
+      activity: 5,
+      isAdmin: true
+    },
+    {
+      id: 'e12',
+      avatar: 'SY',
+      title: 'Spring Cohort Journey',
+      shortDescription: 'Multi-stage mentorship/event arc with check-ins and shared tasks.',
+      timeframe: 'Apr 26 - Jun 2',
+      activity: 4,
+      isAdmin: false
     }
   ],
   u2: [
@@ -486,6 +561,125 @@ export const DEMO_HOSTING_BY_USER: Record<string, HostingMenuItem[]> = {
       shortDescription: 'Own hosted monthly event, open applications pending.',
       timeframe: 'Monthly · First Thu',
       activity: 1
+    }
+  ]
+};
+
+export const DEMO_RATES_BY_USER: Record<string, RateMenuItem[]> = {
+  u1: [
+    {
+      id: 'r1',
+      userId: 'u4',
+      mode: 'individual',
+      direction: 'given',
+      scoreGiven: 9,
+      scoreReceived: 7,
+      eventName: 'Alpine Weekend 2.0',
+      happenedAt: '2026-02-21T20:30:00',
+      distanceKm: 5
+    },
+    {
+      id: 'r2',
+      userId: 'u7',
+      mode: 'individual',
+      direction: 'received',
+      scoreGiven: 6,
+      scoreReceived: 8,
+      eventName: 'Open Padel Pairs',
+      happenedAt: '2026-02-20T19:10:00',
+      distanceKm: 10
+    },
+    {
+      id: 'r3',
+      userId: 'u10',
+      mode: 'individual',
+      direction: 'mutual',
+      scoreGiven: 8,
+      scoreReceived: 9,
+      eventName: 'Host Circle Ops',
+      happenedAt: '2026-02-18T09:45:00',
+      distanceKm: 15
+    },
+    {
+      id: 'r4',
+      userId: 'u5',
+      mode: 'individual',
+      direction: 'met',
+      scoreGiven: 0,
+      scoreReceived: 0,
+      eventName: 'Jazz Rooftop Session',
+      happenedAt: '2026-02-14T22:00:00',
+      distanceKm: 20
+    },
+    {
+      id: 'r5',
+      userId: 'u6',
+      mode: 'pair',
+      direction: 'given',
+      scoreGiven: 8,
+      scoreReceived: 6,
+      eventName: 'Night Food League',
+      happenedAt: '2026-02-12T21:20:00',
+      distanceKm: 10
+    },
+    {
+      id: 'r6',
+      userId: 'u8',
+      mode: 'pair',
+      direction: 'received',
+      scoreGiven: 6,
+      scoreReceived: 8,
+      eventName: 'City Brunch - Main Room',
+      happenedAt: '2026-02-10T13:05:00',
+      distanceKm: 25
+    },
+    {
+      id: 'r7',
+      userId: 'u11',
+      mode: 'pair',
+      direction: 'met',
+      scoreGiven: 0,
+      scoreReceived: 0,
+      eventName: 'Creative Studio Meetup',
+      happenedAt: '2026-02-08T18:35:00',
+      distanceKm: 30
+    }
+  ],
+  u2: [
+    {
+      id: 'r8',
+      userId: 'u6',
+      mode: 'individual',
+      direction: 'mutual',
+      scoreGiven: 8,
+      scoreReceived: 8,
+      eventName: 'Foodie Crawl Team',
+      happenedAt: '2026-02-19T18:30:00',
+      distanceKm: 5
+    },
+    {
+      id: 'r9',
+      userId: 'u1',
+      mode: 'pair',
+      direction: 'given',
+      scoreGiven: 7,
+      scoreReceived: 6,
+      eventName: 'Sunrise Run + Brunch',
+      happenedAt: '2026-02-17T09:00:00',
+      distanceKm: 10
+    }
+  ],
+  u3: [
+    {
+      id: 'r10',
+      userId: 'u10',
+      mode: 'individual',
+      direction: 'received',
+      scoreGiven: 6,
+      scoreReceived: 8,
+      eventName: 'Urban Photo Sprint',
+      happenedAt: '2026-02-22T20:00:00',
+      distanceKm: 5
     }
   ]
 };

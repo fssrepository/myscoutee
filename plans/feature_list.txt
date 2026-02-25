@@ -101,21 +101,17 @@ clicking on invitation history icon, you can accept - maybe from the menu also o
 
 Events
 ------
+
 event drag to reorder the sub events?? (google maps has an example for it)
 
-random event avatar is System avatar
-
-if admin, you can delete the event, if user you can exit from the event
-
 there is a chat button in the header for the relevant chat window (with red counter)
-map has multiple routes - will be generated based on sub events location (it's textual, not coordinates - google map can handle - car view as default)
+map has multiple routes - will be generated based on sub events location
+(it's textual, not coordinates - google map can handle - car view as default)
 
 exiting from an event close the chat also (maybe rejoining is an option)
 
 accordion on the menu bar with events (where the user is going, but not a host) ordered by date asc
 (only upcoming event)
-
-clicking on hytory icon - past/upcoming filter + calendar view (month/week/day)
 
 for an event card there is a default image, but you can replace (upload new one)
 
@@ -179,6 +175,10 @@ click right top corner of pictures and it add chipt at the top with the avatar +
 
 event list - history button:
 ----------------------------
+Create Event header - until you don't publish the event, it will be draft (maybe that message in 2nd line)
+you should publish (publish button in the header or in the cards) - in this case cancel/save can be removed (auto save)
+
+
 + button to join to the event - new popup "event explore"
 can add feedback (rate 1-10 + vibes + whether recommend???) here + select user for chat invite etc. (friends or host only)
 
@@ -189,7 +189,7 @@ event has not enough members, event card should be red etc.
 
 you can join to an event individually also - should be accepted by the admin (it's like invitation, just the other way around)
 
-past event filter where you can see the vibes and reting to the event, and whether it has been recommended (host profile page, from menu bar "own events"
+past event filter where you can see the vibes and rating to the event, and whether it has been recommended (host profile page, from menu bar "own events"
 + explore events - all host can appear with the events, but you can choose past events filter)
 
 maybe the only external parameter is the host id itself, and based on that same page appears, little statistic at the top
@@ -206,7 +206,13 @@ main event:
 ticket, dicreet, auto invite, - visibility - invitation only, friends, public, capacity, topics, description
 expense (amount + currency) - maybe for sub events also, and sum up in the header
 
-for tournament mode - ranking algorithm - none, rate (mutual), fifa
+event/member grace shouldn't be configured by the user (system variable)
+
+for tournament mode (it might not be developed at first) - ranking algorithm - none, rate (mutual), fifa
+
+sub events - Name/Description/Date range/Optional/Capacity/Assets + Members
+
+(Assets + Member badge - 2nd line 2 / 3 - 5)
 
 Profile
 -------
