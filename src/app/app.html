@@ -544,12 +544,11 @@
               >
                 <header class="activities-calendar-page-head">
                   <span class="activities-calendar-page-head-label">{{ page.label }}</span>
-                  <span class="activities-calendar-page-head-nav" *ngIf="!isMobileView">
+                  <span class="activities-calendar-page-head-nav">
                     <button
                       type="button"
                       class="activities-calendar-nav-btn"
                       (click)="navigateActivitiesCalendarTo(pageIndex - 1, $event)"
-                      [disabled]="pageIndex === 0"
                       aria-label="Previous period"
                     >
                       <mat-icon>chevron_left</mat-icon>
@@ -558,7 +557,6 @@
                       type="button"
                       class="activities-calendar-nav-btn"
                       (click)="navigateActivitiesCalendarTo(pageIndex + 1, $event)"
-                      [disabled]="pageIndex >= calendarMonthPages.length - 1"
                       aria-label="Next period"
                     >
                       <mat-icon>chevron_right</mat-icon>
@@ -606,15 +604,17 @@
             </ng-container>
 
             <ng-template #activitiesWeekPages>
-              <section class="activities-calendar-page activities-calendar-page-week" *ngFor="let page of calendarWeekPages; let pageIndex = index">
+              <section
+                class="activities-calendar-page activities-calendar-page-week"
+                *ngFor="let page of calendarWeekPages; let pageIndex = index"
+              >
                 <header class="activities-calendar-page-head">
                   <span class="activities-calendar-page-head-label">{{ page.label }}</span>
-                  <span class="activities-calendar-page-head-nav" *ngIf="!isMobileView">
+                  <span class="activities-calendar-page-head-nav">
                     <button
                       type="button"
                       class="activities-calendar-nav-btn"
                       (click)="navigateActivitiesCalendarTo(pageIndex - 1, $event)"
-                      [disabled]="pageIndex === 0"
                       aria-label="Previous period"
                     >
                       <mat-icon>chevron_left</mat-icon>
@@ -623,7 +623,6 @@
                       type="button"
                       class="activities-calendar-nav-btn"
                       (click)="navigateActivitiesCalendarTo(pageIndex + 1, $event)"
-                      [disabled]="pageIndex >= calendarWeekPages.length - 1"
                       aria-label="Next period"
                     >
                       <mat-icon>chevron_right</mat-icon>

@@ -1930,6 +1930,12 @@
   gap: 0.22rem;
 }
 
+@media (max-width: 760px) {
+  .activities-calendar-page-head-nav {
+    display: none;
+  }
+}
+
 .activities-calendar-nav-btn {
   appearance: none;
   -webkit-appearance: none;
