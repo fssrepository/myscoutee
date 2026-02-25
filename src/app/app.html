@@ -298,6 +298,54 @@
           </button>
         </div>
       </div>
+      <div class="event-visibility-picker" *ngIf="activePopup === 'eventEditor'">
+        <button
+          type="button"
+          class="popup-view-fab event-visibility-trigger"
+          [ngClass]="eventVisibilityClass(eventForm.visibility)"
+          (click)="toggleEventVisibilityPicker($event)"
+          aria-label="Open visibility selector"
+        >
+          <mat-icon [class]="eventVisibilityClass(eventForm.visibility)">{{ eventVisibilityIcon(eventForm.visibility) }}</mat-icon>
+          <span>{{ eventForm.visibility }}</span>
+        </button>
+        <div class="activities-view-picker-panel" *ngIf="showEventVisibilityPicker">
+          <button
+            type="button"
+            class="activities-view-option"
+            [ngClass]="eventVisibilityClass(option)"
+            *ngFor="let option of eventVisibilityOptions"
+            (click)="selectEventVisibility(option, $event)"
+          >
+            <mat-icon [class]="eventVisibilityClass(option)">{{ eventVisibilityIcon(option) }}</mat-icon>
+            <span>{{ option }}</span>
+          </button>
+        </div>
+      </div>
+      <div class="event-visibility-picker profile-status-header-picker" *ngIf="activePopup === 'profileEditor'">
+        <button
+          type="button"
+          class="popup-view-fab event-visibility-trigger"
+          [ngClass]="profileStatusClass(profileForm.profileStatus)"
+          (click)="toggleProfileStatusHeaderPicker($event)"
+          aria-label="Open profile status selector"
+        >
+          <mat-icon [class]="profileStatusClass(profileForm.profileStatus)">{{ getProfileStatusIcon(profileForm.profileStatus) }}</mat-icon>
+          <span>{{ profileForm.profileStatus }}</span>
+        </button>
+        <div class="activities-view-picker-panel" *ngIf="showProfileStatusHeaderPicker">
+          <button
+            type="button"
+            class="activities-view-option"
+            [ngClass]="profileStatusClass(option.value)"
+            *ngFor="let option of profileStatusOptions"
+            (click)="selectProfileStatusFromHeader(option.value, $event)"
+          >
+            <mat-icon [class]="profileStatusClass(option.value)">{{ option.icon }}</mat-icon>
+            <span>{{ option.value }}</span>
+          </button>
+        </div>
+      </div>
       <button mat-icon-button class="popup-close" (click)="closePopup()" aria-label="Close">
         <mat-icon>close</mat-icon>
       </button>
@@ -1095,42 +1143,109 @@
       </div>
 
       <div *ngIf="activePopup === 'eventEditor'">
-        <div class="editor-list-card event-main-card">
-          <h4>{{ eventEditor.mainEvent.title }}</h4>
-          <p>
-            Visibility: {{ eventEditor.mainEvent.visibility }} · Mode: {{ eventEditor.mainEvent.mode }} · Frequency:
-            {{ eventEditor.mainEvent.frequency }}
-          </p>
-          <p>Capacity: {{ eventEditor.mainEvent.capacity }} · Ticket: {{ eventEditor.mainEvent.ticket }} · Expense: {{ eventEditor.mainEvent.expense }}</p>
-          <p>{{ eventEditor.mainEvent.topics.join(', ') }}</p>
-        </div>
-
-        <div class="dynamic-supply-adder">
-          <input type="text" [(ngModel)]="newSupplyType" placeholder="Add supply type (for event cards)" />
-          <button type="button" class="link-btn" (click)="addSupplyType()">+ Add Type</button>
-        </div>
-
-        <div class="event-editor-card" *ngFor="let sub of eventEditor.subEvents">
-          <div class="event-editor-head">
-            <h4>{{ sub.title }}</h4>
-            <p>{{ sub.when }}</p>
-            <p>{{ sub.phase }}</p>
-          </div>
-
-          <div class="event-supply-buttons">
-            <button
-              class="supply-chip"
-              type="button"
-              *ngFor="let type of eventSupplyTypes"
-              [class.warn]="isSupplyStatIncomplete(sub, type)"
-              (click)="openSupplyDetail(sub.id, sub.title, type)"
-            >
-              <span class="chip-title">{{ type }}</span>
-              <span class="chip-meta">{{ getSupplyStat(sub, type) }}</span>
-            </button>
-          </div>
-        </div>
+        <ng-container [ngTemplateOutlet]="eventEditorFormTemplate"></ng-container>
       </div>
+
+      <ng-template #eventEditorFormTemplate>
+        <section class="editor-list-card">
+          <div class="experience-form-panel">
+            <div class="experience-form-grid">
+              <label class="experience-description-field">
+                <span>Image</span>
+                <input #eventImageInput type="file" accept="image/*" hidden (change)="onEventImageFileChange($event)" />
+                <button type="button" class="asset-image-dropzone" (click)="triggerEventImageUpload($event)">
+                  <div class="asset-image-preview" [style.backgroundImage]="eventForm.imageUrl ? 'url(' + eventForm.imageUrl + ')' : null">
+                    <span class="asset-image-plus">+</span>
+                  </div>
+                </button>
+              </label>
+              <label class="experience-title-field">
+                <span>Name</span>
+                <input type="text" [(ngModel)]="eventForm.title" />
+              </label>
+              <label class="event-topics-field">
+                <span>Topics</span>
+                <button type="button" class="profile-status-select-wrap selector-like experience-type-select activity-filter-events event-topics-trigger" (click)="openEventTopicsSelector($event)">
+                  <span class="status-option-content">
+                    <mat-icon class="activity-filter-events">interests</mat-icon>
+                    <span>{{ eventForm.topics.length > 0 ? (eventForm.topics.join(', ')) : 'Select topics' }}</span>
+                  </span>
+                  <mat-icon>chevron_right</mat-icon>
+                </button>
+              </label>
+              <label class="experience-description-field">
+                <span>Description</span>
+                <textarea rows="4" [(ngModel)]="eventForm.description"></textarea>
+              </label>
+              <label class="event-datetime-label">
+                <span>Start</span>
+                <div class="event-datetime-row">
+                  <mat-form-field appearance="outline" class="event-date-field event-date-field-start" subscriptSizing="dynamic">
+                    <input matInput [matDatepicker]="eventStartPicker" [ngModel]="eventStartDateValue" (ngModelChange)="onEventStartDateChange($event)" />
+                    <mat-datepicker-toggle matSuffix [for]="eventStartPicker"></mat-datepicker-toggle>
+                    <mat-datepicker #eventStartPicker></mat-datepicker>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="event-time-field event-time-field-start" subscriptSizing="dynamic">
+                    <input
+                      matInput
+                      [matTimepicker]="eventStartTimePicker"
+                      [matTimepickerOpenOnClick]="true"
+                      [ngModel]="eventStartTimeValue"
+                      (ngModelChange)="onEventStartTimeChange($event)"
+                    />
+                    <mat-timepicker-toggle matSuffix [for]="eventStartTimePicker"></mat-timepicker-toggle>
+                    <mat-timepicker #eventStartTimePicker></mat-timepicker>
+                  </mat-form-field>
+                </div>
+              </label>
+              <label class="event-datetime-label">
+                <span>End</span>
+                <div class="event-datetime-row">
+                  <mat-form-field appearance="outline" class="event-date-field event-date-field-end" subscriptSizing="dynamic">
+                    <input matInput [matDatepicker]="eventEndPicker" [ngModel]="eventEndDateValue" (ngModelChange)="onEventEndDateChange($event)" />
+                    <mat-datepicker-toggle matSuffix [for]="eventEndPicker"></mat-datepicker-toggle>
+                    <mat-datepicker #eventEndPicker></mat-datepicker>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="event-time-field event-time-field-end" subscriptSizing="dynamic">
+                    <input
+                      matInput
+                      [matTimepicker]="eventEndTimePicker"
+                      [matTimepickerOpenOnClick]="true"
+                      [ngModel]="eventEndTimeValue"
+                      (ngModelChange)="onEventEndTimeChange($event)"
+                    />
+                    <mat-timepicker-toggle matSuffix [for]="eventEndTimePicker"></mat-timepicker-toggle>
+                    <mat-timepicker #eventEndTimePicker></mat-timepicker>
+                  </mat-form-field>
+                </div>
+              </label>
+              <label>
+                <span>Frequency</span>
+                <div class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select" [ngClass]="eventFrequencyClass(eventForm.frequency)">
+                  <mat-select [(ngModel)]="eventForm.frequency" [panelWidth]="null" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel event-frequency-options-panel">
+                    <mat-select-trigger>
+                      <span class="status-option-content">
+                        <mat-icon [class]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
+                        <span>{{ eventForm.frequency }}</span>
+                      </span>
+                    </mat-select-trigger>
+                    <mat-option *ngFor="let option of eventFrequencyOptions" [value]="option" class="status-option" [ngClass]="eventFrequencyClass(option)">
+                      <span class="status-option-content">
+                        <mat-icon [class]="eventFrequencyClass(option)">{{ eventFrequencyIcon(option) }}</mat-icon>
+                        <span>{{ option }}</span>
+                      </span>
+                    </mat-option>
+                  </mat-select>
+                </div>
+              </label>
+            </div>
+            <div class="popup-actions experience-form-actions">
+              <button type="button" class="link-btn neutral-btn" (click)="cancelEventEditorForm()">Cancel</button>
+              <button type="button" class="link-btn primary-btn" (click)="saveEventEditorForm()">Save</button>
+            </div>
+          </div>
+        </section>
+      </ng-template>
 
       <div *ngIf="activePopup === 'supplyDetail' && selectedSupplyContext">
         <div class="editor-list-card">
@@ -1179,49 +1294,6 @@
 
         <div class="profile-editor-scroll-area">
         <div class="profile-details-structured">
-          <label class="profile-about-field profile-status-field">
-          <div class="profile-about-head">
-            <span>Profile Status</span>
-          </div>
-          <ng-container *ngIf="!isMobileView; else mobileProfileStatusButton">
-            <div class="profile-status-select-wrap selector-like" [class]="profileStatusClass(profileForm.profileStatus)">
-              <mat-select [(ngModel)]="profileForm.profileStatus" (ngModelChange)="onProfileStatusChange($event)" disableOptionCentering panelClass="status-options-panel">
-                <mat-select-trigger>
-                  <span class="status-option-content">
-                    <mat-icon [class]="profileStatusClass(profileForm.profileStatus)">{{ getProfileStatusIcon(profileForm.profileStatus) }}</mat-icon>
-                    <span>{{ profileForm.profileStatus }}</span>
-                  </span>
-                </mat-select-trigger>
-                <mat-option
-                  *ngFor="let option of profileStatusOptions"
-                  [value]="option.value"
-                  class="status-option"
-                  [ngClass]="profileStatusClass(option.value)"
-                  [class.hide-selected-option]="option.value === profileForm.profileStatus"
-                >
-                  <span class="status-option-content">
-                    <mat-icon [class]="profileStatusClass(option.value)">{{ option.icon }}</mat-icon>
-                    <span>{{ option.value }}</span>
-                  </span>
-                </mat-option>
-              </mat-select>
-            </div>
-          </ng-container>
-          <ng-template #mobileProfileStatusButton>
-            <button
-              type="button"
-              class="profile-status-select-wrap profile-status-trigger"
-              [class]="'profile-status-select-wrap profile-status-trigger ' + profileStatusClass(profileForm.profileStatus)"
-              (click)="openProfileStatusSelector($event)"
-            >
-              <span class="status-option-content">
-                <mat-icon [class]="profileStatusClass(profileForm.profileStatus)">{{ getProfileStatusIcon(profileForm.profileStatus) }}</mat-icon>
-                <span>{{ profileForm.profileStatus }}</span>
-              </span>
-              <mat-icon>expand_more</mat-icon>
-            </button>
-          </ng-template>
-        </label>
           <label class="profile-about-field">
             <div class="profile-about-head">
               <span>About me</span>
@@ -1709,6 +1781,30 @@
         >
           <mat-icon>done</mat-icon>
         </button>
+        <div class="event-visibility-picker" *ngIf="stackedPopup === 'eventEditor'">
+          <button
+            type="button"
+            class="popup-view-fab event-visibility-trigger"
+            [ngClass]="eventVisibilityClass(eventForm.visibility)"
+            (click)="toggleEventVisibilityPicker($event)"
+            aria-label="Open visibility selector"
+          >
+            <mat-icon [class]="eventVisibilityClass(eventForm.visibility)">{{ eventVisibilityIcon(eventForm.visibility) }}</mat-icon>
+            <span>{{ eventForm.visibility }}</span>
+          </button>
+          <div class="activities-view-picker-panel" *ngIf="showEventVisibilityPicker">
+            <button
+              type="button"
+              class="activities-view-option"
+              [ngClass]="eventVisibilityClass(option)"
+              *ngFor="let option of eventVisibilityOptions"
+              (click)="selectEventVisibility(option, $event)"
+            >
+              <mat-icon [class]="eventVisibilityClass(option)">{{ eventVisibilityIcon(option) }}</mat-icon>
+              <span>{{ option }}</span>
+            </button>
+          </div>
+        </div>
         <button mat-icon-button class="popup-close" (click)="closeStackedPopup()" aria-label="Close">
           <mat-icon>close</mat-icon>
         </button>
@@ -1986,41 +2082,104 @@
       </div>
 
       <div *ngIf="stackedPopup === 'eventEditor'">
-        <div class="editor-list-card event-main-card">
-          <h4>{{ eventEditor.mainEvent.title }}</h4>
-          <p>
-            Visibility: {{ eventEditor.mainEvent.visibility }} · Mode: {{ eventEditor.mainEvent.mode }} · Frequency:
-            {{ eventEditor.mainEvent.frequency }}
-          </p>
-          <p>Capacity: {{ eventEditor.mainEvent.capacity }} · Ticket: {{ eventEditor.mainEvent.ticket }} · Expense: {{ eventEditor.mainEvent.expense }}</p>
-          <p>{{ eventEditor.mainEvent.topics.join(', ') }}</p>
-        </div>
-
-        <div class="dynamic-supply-adder">
-          <input type="text" [(ngModel)]="newSupplyType" placeholder="Add supply type (for event cards)" />
-          <button type="button" class="link-btn" (click)="addSupplyType()">+ Add Type</button>
-        </div>
-
-        <div class="event-editor-card" *ngFor="let sub of eventEditor.subEvents">
-          <div class="event-editor-head">
-            <h4>{{ sub.title }}</h4>
-            <p>{{ sub.when }}</p>
-            <p>{{ sub.phase }}</p>
+        <section class="editor-list-card">
+          <div class="experience-form-panel">
+            <div class="experience-form-grid">
+              <label class="experience-description-field">
+                <span>Image</span>
+                <input #eventImageInput type="file" accept="image/*" hidden (change)="onEventImageFileChange($event)" />
+                <button type="button" class="asset-image-dropzone" (click)="triggerEventImageUpload($event)">
+                  <div class="asset-image-preview" [style.backgroundImage]="eventForm.imageUrl ? 'url(' + eventForm.imageUrl + ')' : null">
+                    <span class="asset-image-plus">+</span>
+                  </div>
+                </button>
+              </label>
+              <label class="experience-title-field">
+                <span>Name</span>
+                <input type="text" [(ngModel)]="eventForm.title" />
+              </label>
+              <label class="event-topics-field">
+                <span>Topics</span>
+                <button type="button" class="profile-status-select-wrap selector-like experience-type-select activity-filter-events event-topics-trigger" (click)="openEventTopicsSelector($event)">
+                  <span class="status-option-content">
+                    <mat-icon class="activity-filter-events">interests</mat-icon>
+                    <span>{{ eventForm.topics.length > 0 ? (eventForm.topics.join(', ')) : 'Select topics' }}</span>
+                  </span>
+                  <mat-icon>chevron_right</mat-icon>
+                </button>
+              </label>
+              <label class="experience-description-field">
+                <span>Description</span>
+                <textarea rows="4" [(ngModel)]="eventForm.description"></textarea>
+              </label>
+              <label class="event-datetime-label">
+                <span>Start</span>
+                <div class="event-datetime-row">
+                  <mat-form-field appearance="outline" class="event-date-field event-date-field-start" subscriptSizing="dynamic">
+                    <input matInput [matDatepicker]="eventStartPickerStacked" [ngModel]="eventStartDateValue" (ngModelChange)="onEventStartDateChange($event)" />
+                    <mat-datepicker-toggle matSuffix [for]="eventStartPickerStacked"></mat-datepicker-toggle>
+                    <mat-datepicker #eventStartPickerStacked></mat-datepicker>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="event-time-field event-time-field-start" subscriptSizing="dynamic">
+                    <input
+                      matInput
+                      [matTimepicker]="eventStartTimePickerStacked"
+                      [matTimepickerOpenOnClick]="true"
+                      [ngModel]="eventStartTimeValue"
+                      (ngModelChange)="onEventStartTimeChange($event)"
+                    />
+                    <mat-timepicker-toggle matSuffix [for]="eventStartTimePickerStacked"></mat-timepicker-toggle>
+                    <mat-timepicker #eventStartTimePickerStacked></mat-timepicker>
+                  </mat-form-field>
+                </div>
+              </label>
+              <label class="event-datetime-label">
+                <span>End</span>
+                <div class="event-datetime-row">
+                  <mat-form-field appearance="outline" class="event-date-field event-date-field-end" subscriptSizing="dynamic">
+                    <input matInput [matDatepicker]="eventEndPickerStacked" [ngModel]="eventEndDateValue" (ngModelChange)="onEventEndDateChange($event)" />
+                    <mat-datepicker-toggle matSuffix [for]="eventEndPickerStacked"></mat-datepicker-toggle>
+                    <mat-datepicker #eventEndPickerStacked></mat-datepicker>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="event-time-field event-time-field-end" subscriptSizing="dynamic">
+                    <input
+                      matInput
+                      [matTimepicker]="eventEndTimePickerStacked"
+                      [matTimepickerOpenOnClick]="true"
+                      [ngModel]="eventEndTimeValue"
+                      (ngModelChange)="onEventEndTimeChange($event)"
+                    />
+                    <mat-timepicker-toggle matSuffix [for]="eventEndTimePickerStacked"></mat-timepicker-toggle>
+                    <mat-timepicker #eventEndTimePickerStacked></mat-timepicker>
+                  </mat-form-field>
+                </div>
+              </label>
+              <label>
+                <span>Frequency</span>
+                <div class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select" [ngClass]="eventFrequencyClass(eventForm.frequency)">
+                  <mat-select [(ngModel)]="eventForm.frequency" [panelWidth]="null" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel event-frequency-options-panel">
+                    <mat-select-trigger>
+                      <span class="status-option-content">
+                        <mat-icon [class]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
+                        <span>{{ eventForm.frequency }}</span>
+                      </span>
+                    </mat-select-trigger>
+                    <mat-option *ngFor="let option of eventFrequencyOptions" [value]="option" class="status-option" [ngClass]="eventFrequencyClass(option)">
+                      <span class="status-option-content">
+                        <mat-icon [class]="eventFrequencyClass(option)">{{ eventFrequencyIcon(option) }}</mat-icon>
+                        <span>{{ option }}</span>
+                      </span>
+                    </mat-option>
+                  </mat-select>
+                </div>
+              </label>
+            </div>
+            <div class="popup-actions experience-form-actions">
+              <button type="button" class="link-btn neutral-btn" (click)="cancelEventEditorForm()">Cancel</button>
+              <button type="button" class="link-btn primary-btn" (click)="saveEventEditorForm()">Save</button>
+            </div>
           </div>
-
-          <div class="event-supply-buttons">
-            <button
-              class="supply-chip"
-              type="button"
-              *ngFor="let type of eventSupplyTypes"
-              [class.warn]="isSupplyStatIncomplete(sub, type)"
-              (click)="openSupplyDetail(sub.id, sub.title, type)"
-            >
-              <span class="chip-title">{{ type }}</span>
-              <span class="chip-meta">{{ getSupplyStat(sub, type) }}</span>
-            </button>
-          </div>
-        </div>
+        </section>
       </div>
 
       <div *ngIf="stackedPopup === 'supplyDetail' && selectedSupplyContext">
@@ -2244,6 +2403,58 @@
     >
       <mat-icon>add</mat-icon>
     </button>
+  </div>
+</section>
+
+<section class="app-popup app-popup-stacked app-popup-super-stacked" *ngIf="superStackedPopup === 'eventTopicsSelector'">
+  <div class="app-popup-backdrop" (click)="closeEventTopicsSelector(true)"></div>
+  <div class="app-popup-panel popup-panel-friends-picker" (click)="$event.stopPropagation()">
+    <div class="popup-header popup-header-friends-picker event-topics-header">
+      <button
+        mat-icon-button
+        class="popup-back-btn"
+        (click)="closeEventTopicsSelector(true)"
+        aria-label="Back"
+      >
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <div class="popup-title">
+        <h2>Topics</h2>
+      </div>
+    </div>
+    <div class="popup-body popup-body-friends-picker">
+      <div class="friends-picker-chip-row" *ngIf="interestSelectorSelected.length > 0">
+        <button
+          type="button"
+          class="values-selected-chip friends-picker-chip"
+          [class]="eventTopicToneClass(topic)"
+          *ngFor="let topic of interestSelectorSelected"
+          (click)="removeInterestOption(topic)"
+        >
+          <span>{{ topic }}</span>
+          <mat-icon class="friends-picker-chip-remove">close</mat-icon>
+        </button>
+      </div>
+      <div class="values-selector-popup">
+        <div class="values-selector-group" *ngFor="let group of interestOptionGroups">
+          <div class="social-proof-section-head" [class]="group.toneClass">
+            <span class="section-tag">{{ group.icon }} {{ group.shortTitle }}</span>
+            <span class="section-line"></span>
+          </div>
+          <div class="social-proof-chip-list">
+            <button
+              type="button"
+              class="social-proof-chip values-option-chip"
+              [class.active]="isInterestOptionSelected(option)"
+              *ngFor="let option of group.options"
+              (click)="toggleInterestOption(option)"
+            >
+              {{ option }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 

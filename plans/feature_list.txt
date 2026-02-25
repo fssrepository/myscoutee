@@ -101,21 +101,17 @@ clicking on invitation history icon, you can accept - maybe from the menu also o
 
 Events
 ------
+
 event drag to reorder the sub events?? (google maps has an example for it)
 
-random event avatar is System avatar
-
-if admin, you can delete the event, if user you can exit from the event
-
 there is a chat button in the header for the relevant chat window (with red counter)
-map has multiple routes - will be generated based on sub events location (it's textual, not coordinates - google map can handle - car view as default)
+map has multiple routes - will be generated based on sub events location
+(it's textual, not coordinates - google map can handle - car view as default)
 
 exiting from an event close the chat also (maybe rejoining is an option)
 
 accordion on the menu bar with events (where the user is going, but not a host) ordered by date asc
 (only upcoming event)
-
-clicking on hytory icon - past/upcoming filter + calendar view (month/week/day)
 
 for an event card there is a default image, but you can replace (upload new one)
 

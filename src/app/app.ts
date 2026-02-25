@@ -9,6 +9,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatInputModule } from '@angular/material/input';
+import { MatTimepickerModule } from '@angular/material/timepicker';
 import { FormsModule } from '@angular/forms';
 import { AlertService } from './shared/alert.service';
 import {
@@ -212,6 +214,17 @@ interface ExperienceEntry {
   description: string;
 }
 
+interface EventEditorForm {
+  title: string;
+  description: string;
+  imageUrl: string;
+  startAt: string;
+  endAt: string;
+  frequency: string;
+  visibility: EventVisibility;
+  topics: string[];
+}
+
 interface MobileProfileSelectorOption {
   value: string;
   label: string;
@@ -241,6 +254,8 @@ interface MobileProfileSelectorSheet {
 type AssetType = 'Car' | 'Accommodation' | 'Supplies';
 type AssetRequestAction = 'accept' | 'remove';
 type EventEditorMode = 'edit' | 'create';
+type EventEditorTarget = 'events' | 'hosting';
+type EventVisibility = 'Public' | 'Friends only' | 'Invitation only';
 type AssetRequestStatus = 'pending' | 'accepted';
 type ActivityMemberStatus = 'pending' | 'accepted';
 type ActivityPendingSource = 'admin' | 'member' | null;
@@ -323,16 +338,22 @@ class YearMonthDayDateAdapter extends NativeDateAdapter {
       const day = `${date.getDate()}`.padStart(2, '0');
       return `${date.getFullYear()}/${month}/${day}`;
     }
+    if (displayFormat === 'hmInput') {
+      return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    }
     return super.format(date, displayFormat);
   }
 }
 
 const APP_DATE_FORMATS = {
   parse: {
-    dateInput: 'ymdInput'
+    dateInput: 'ymdInput',
+    timeInput: 'hmInput'
   },
   display: {
     dateInput: 'ymdInput',
+    timeInput: 'hmInput',
+    timeOptionLabel: 'hmInput',
     monthYearLabel: 'MMM yyyy',
     dateA11yLabel: 'LL',
     monthYearA11yLabel: 'MMMM yyyy'
@@ -352,6 +373,8 @@ const APP_DATE_FORMATS = {
     MatFormFieldModule,
     MatChipsModule,
     MatAutocompleteModule,
+    MatInputModule,
+    MatTimepickerModule,
     FormsModule,
     LazyBgImageDirective
   ],
@@ -629,7 +652,7 @@ export class App {
   protected activityInviteSort: ActivityInviteSort = 'recent';
   protected showActivityInviteSortPicker = false;
   protected selectedActivityInviteUserIds: string[] = [];
-  protected superStackedPopup: 'activityInviteFriends' | null = null;
+  protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | null = null;
   private readonly activityMembersByRowId: Record<string, ActivityMemberEntry[]> = {};
   protected readonly activityRatingScale = Array.from({ length: 10 }, (_, index) => index + 1);
   private readonly weekCalendarStartHour = 6;
@@ -717,6 +740,24 @@ export class App {
     h2: '2026-04-04T16:00:00',
     h3: '2026-03-01T09:30:00',
     h4: '2026-03-05T18:00:00'
+  };
+  protected readonly eventVisibilityById: Record<string, EventVisibility> = {
+    e1: 'Invitation only',
+    e2: 'Public',
+    e3: 'Friends only',
+    e4: 'Invitation only',
+    e5: 'Friends only',
+    e6: 'Public',
+    e7: 'Invitation only',
+    e8: 'Public',
+    e9: 'Friends only',
+    e10: 'Invitation only',
+    e11: 'Friends only',
+    e12: 'Public',
+    h1: 'Invitation only',
+    h2: 'Friends only',
+    h3: 'Public',
+    h4: 'Friends only'
   };
   protected readonly invitationDatesById: Record<string, string> = {
     i1: '2026-02-21T20:00:00',
@@ -832,6 +873,16 @@ export class App {
   protected selectedInvitation: InvitationMenuItem | null = null;
   protected selectedEvent: EventMenuItem | null = null;
   protected selectedHostingEvent: HostingMenuItem | null = null;
+  protected eventEditorTarget: EventEditorTarget = 'events';
+  protected editingEventId: string | null = null;
+  protected eventForm: EventEditorForm = this.defaultEventForm();
+  protected showEventVisibilityPicker = false;
+  protected showProfileStatusHeaderPicker = false;
+  protected readonly eventVisibilityOptions: EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
+  protected eventStartDateValue: Date | null = null;
+  protected eventEndDateValue: Date | null = null;
+  protected eventStartTimeValue: Date | null = null;
+  protected eventEndTimeValue: Date | null = null;
   protected activitiesHeaderProgress = 0;
   protected activitiesHeaderProgressLoading = false;
   protected activitiesHeaderLoadingProgress = 0;
@@ -842,6 +893,7 @@ export class App {
   protected pendingSlotUploadIndex: number | null = null;
   @ViewChild('slotImageInput') private slotImageInput?: ElementRef<HTMLInputElement>;
   @ViewChild('assetImageInput') private assetImageInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('eventImageInput') private eventImageInput?: ElementRef<HTMLInputElement>;
   @ViewChild('activitiesScroll') private activitiesScrollRef?: ElementRef<HTMLDivElement>;
   @ViewChild('activitiesCalendarScroll') private activitiesCalendarScrollRef?: ElementRef<HTMLDivElement>;
 
@@ -1066,6 +1118,8 @@ export class App {
     this.activitiesSecondaryFilter = 'recent';
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
+    this.showEventVisibilityPicker = false;
+    this.showProfileStatusHeaderPicker = false;
     this.activitiesView = 'day';
     this.clearActivityRateEditorState();
     this.activitiesStickyValue = '';
@@ -1183,8 +1237,15 @@ export class App {
     }
   }
 
-  protected openEventEditor(stacked = false, mode: EventEditorMode = 'edit'): void {
+  protected openEventEditor(
+    stacked = false,
+    mode: EventEditorMode = 'edit',
+    source?: EventMenuItem | HostingMenuItem
+  ): void {
     this.eventEditorMode = mode;
+    this.showEventVisibilityPicker = false;
+    this.showProfileStatusHeaderPicker = false;
+    this.prepareEventEditorForm(mode, source);
     if (stacked || this.stackedPopup !== null || this.activePopup === 'chat') {
       this.stackedPopup = 'eventEditor';
       return;
@@ -1192,9 +1253,497 @@ export class App {
     this.activePopup = 'eventEditor';
   }
 
+  protected triggerEventImageUpload(event?: Event): void {
+    event?.stopPropagation();
+    this.eventImageInput?.nativeElement.click();
+  }
+
+  protected onEventImageFileChange(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+    if (!file) {
+      return;
+    }
+    this.revokeObjectUrl(this.eventForm.imageUrl);
+    this.eventForm.imageUrl = URL.createObjectURL(file);
+    target.value = '';
+  }
+
+  protected openEventTopicsSelector(event?: Event): void {
+    event?.stopPropagation();
+    const allowed = new Set(this.interestAllOptions());
+    this.interestSelectorContext = null;
+    this.interestSelectorSelected = this.eventForm.topics
+      .filter(item => allowed.has(item))
+      .slice(0, 5);
+    this.eventForm.topics = [...this.interestSelectorSelected];
+    this.superStackedPopup = 'eventTopicsSelector';
+  }
+
+  protected closeEventTopicsSelector(apply = true): void {
+    if (apply) {
+      this.eventForm.topics = [...this.interestSelectorSelected];
+    } else {
+      const allowed = new Set(this.interestAllOptions());
+      this.interestSelectorSelected = this.eventForm.topics.filter(item => allowed.has(item)).slice(0, 5);
+    }
+    this.superStackedPopup = null;
+  }
+
+  protected eventTopicToneClass(option: string): string {
+    for (const group of this.interestOptionGroups) {
+      if (group.options.includes(option)) {
+        return group.toneClass;
+      }
+    }
+    return '';
+  }
+
+  protected get eventFrequencyOptions(): string[] {
+    return this.contextualFrequencyOptions(this.eventForm.startAt, this.eventForm.endAt);
+  }
+
+  protected eventFrequencyIcon(option: string): string {
+    switch (option) {
+      case 'Daily':
+        return 'today';
+      case 'Weekly':
+        return 'view_week';
+      case 'Bi-weekly':
+        return 'date_range';
+      case 'Monthly':
+        return 'calendar_month';
+      default:
+        return 'event';
+    }
+  }
+
+  protected eventFrequencyClass(option: string): string {
+    switch (option) {
+      case 'Daily':
+        return 'event-frequency-daily';
+      case 'Weekly':
+        return 'event-frequency-weekly';
+      case 'Bi-weekly':
+        return 'event-frequency-bi-weekly';
+      case 'Monthly':
+        return 'event-frequency-monthly';
+      default:
+        return 'event-frequency-one-time';
+    }
+  }
+
+  protected eventVisibilityIcon(option: EventVisibility): string {
+    switch (option) {
+      case 'Public':
+        return 'public';
+      case 'Friends only':
+        return 'groups';
+      default:
+        return 'mail_lock';
+    }
+  }
+
+  protected eventVisibilityClass(option: EventVisibility): string {
+    switch (option) {
+      case 'Public':
+        return 'event-visibility-public';
+      case 'Friends only':
+        return 'event-visibility-friends';
+      default:
+        return 'event-visibility-invitation';
+    }
+  }
+
+  protected toggleEventVisibilityPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.showEventVisibilityPicker = !this.showEventVisibilityPicker;
+  }
+
+  protected selectEventVisibility(option: EventVisibility, event?: Event): void {
+    event?.stopPropagation();
+    this.eventForm.visibility = option;
+    this.showEventVisibilityPicker = false;
+  }
+
+  protected toggleProfileStatusHeaderPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.showProfileStatusHeaderPicker = !this.showProfileStatusHeaderPicker;
+  }
+
+  protected selectProfileStatusFromHeader(option: ProfileStatus, event?: Event): void {
+    event?.stopPropagation();
+    this.profileForm.profileStatus = option;
+    this.showProfileStatusHeaderPicker = false;
+  }
+
+  protected eventFrequencyAscii(option: string): string {
+    switch (option) {
+      case 'Daily':
+        return '☀';
+      case 'Weekly':
+        return '↻';
+      case 'Bi-weekly':
+        return '⇆';
+      case 'Monthly':
+        return '◷';
+      default:
+        return '•';
+    }
+  }
+
+  protected onEventStartDateChange(value: Date | null): void {
+    this.eventStartDateValue = value;
+    this.syncEventFormFromDateTimeControls();
+    this.normalizeEventDateRange();
+    this.syncEventDateTimeControlsFromForm();
+  }
+
+  protected onEventEndDateChange(value: Date | null): void {
+    this.eventEndDateValue = value;
+    this.syncEventFormFromDateTimeControls();
+    this.normalizeEventDateRange();
+    this.syncEventDateTimeControlsFromForm();
+  }
+
+  protected onEventStartTimeChange(value: Date | null): void {
+    this.eventStartTimeValue = value;
+    this.syncEventFormFromDateTimeControls();
+    this.normalizeEventDateRange();
+    this.syncEventDateTimeControlsFromForm();
+  }
+
+  protected onEventEndTimeChange(value: Date | null): void {
+    this.eventEndTimeValue = value;
+    this.syncEventFormFromDateTimeControls();
+    this.normalizeEventDateRange();
+    this.syncEventDateTimeControlsFromForm();
+  }
+
+  protected saveEventEditorForm(): void {
+    this.syncEventFormFromDateTimeControls();
+    const title = this.eventForm.title.trim();
+    const description = this.eventForm.description.trim();
+    if (!title || !description || !this.eventForm.startAt || !this.eventForm.endAt) {
+      return;
+    }
+    this.normalizeEventDateRange();
+    if (this.editingEventId) {
+      this.updateExistingEventFromForm();
+    } else {
+      this.insertCreatedEventFromForm();
+    }
+    if (this.stackedPopup === 'eventEditor') {
+      this.closeStackedPopup();
+      return;
+    }
+    this.closePopup();
+  }
+
+  protected cancelEventEditorForm(): void {
+    if (this.stackedPopup === 'eventEditor') {
+      this.closeStackedPopup();
+      return;
+    }
+    this.closePopup();
+  }
+
+  private prepareEventEditorForm(mode: EventEditorMode, explicitSource?: EventMenuItem | HostingMenuItem): void {
+    const source = this.resolveEventEditorSource(explicitSource);
+    const target = source && this.isHostingSource(source)
+      ? 'hosting'
+      : (this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'hosting' ? 'hosting' : 'events');
+    this.eventEditorTarget = target;
+    if (mode === 'edit' && source) {
+      this.editingEventId = source.id;
+      this.eventForm = this.loadEventFormFromSource(source, target);
+      this.syncEventDateTimeControlsFromForm();
+      return;
+    }
+    this.editingEventId = null;
+    this.eventForm = this.defaultEventForm();
+    this.eventForm.frequency = this.eventFrequencyOptions[0] ?? 'One-time';
+    this.syncEventDateTimeControlsFromForm();
+  }
+
+  private resolveEventEditorSource(explicitSource?: EventMenuItem | HostingMenuItem): EventMenuItem | HostingMenuItem | null {
+    if (explicitSource) {
+      return explicitSource;
+    }
+    if (this.activePopup === 'hostingEvent' || this.stackedPopup === 'hostingEvent') {
+      return this.selectedHostingEvent;
+    }
+    if (this.activePopup === 'menuEvent' || this.stackedPopup === 'menuEvent') {
+      return this.selectedEvent;
+    }
+    return this.selectedEvent ?? this.selectedHostingEvent;
+  }
+
+  private isHostingSource(source: EventMenuItem | HostingMenuItem): source is HostingMenuItem {
+    return this.hostingItems.some(item => item.id === source.id);
+  }
+
+  private loadEventFormFromSource(source: EventMenuItem | HostingMenuItem, target: EventEditorTarget): EventEditorForm {
+    const startIso = target === 'hosting'
+      ? (this.hostingDatesById[source.id] ?? this.defaultEventStartIso())
+      : (this.eventDatesById[source.id] ?? this.defaultEventStartIso());
+    const start = new Date(startIso);
+    const fallbackStart = Number.isNaN(start.getTime()) ? new Date(this.defaultEventStartIso()) : start;
+    const end = new Date(fallbackStart.getTime() + 2 * 60 * 60 * 1000);
+    const frequency = this.parseFrequencyFromTimeframe(source.timeframe);
+    return {
+      title: source.title,
+      description: source.shortDescription,
+      imageUrl: this.defaultAssetImage('Supplies', `event-${source.id}`),
+      startAt: this.toIsoDateTimeLocal(fallbackStart),
+      endAt: this.toIsoDateTimeLocal(end),
+      frequency,
+      visibility: this.eventVisibilityById[source.id] ?? (target === 'hosting' ? 'Invitation only' : 'Public'),
+      topics: [...this.eventEditor.mainEvent.topics].slice(0, 5)
+    };
+  }
+
+  private updateExistingEventFromForm(): void {
+    if (!this.editingEventId) {
+      return;
+    }
+    const timeframe = this.buildEventTimeframeLabel(this.eventForm.startAt, this.eventForm.endAt, this.eventForm.frequency);
+    const title = this.eventForm.title.trim();
+    const shortDescription = this.eventForm.description.trim();
+    this.eventVisibilityById[this.editingEventId] = this.eventForm.visibility;
+    if (this.eventEditorTarget === 'hosting') {
+      this.hostingItemsByUser[this.activeUser.id] = this.hostingItems.map(item =>
+        item.id === this.editingEventId
+          ? { ...item, title, shortDescription, timeframe }
+          : item
+      );
+      if (this.selectedHostingEvent?.id === this.editingEventId) {
+        this.selectedHostingEvent = { ...this.selectedHostingEvent, title, shortDescription, timeframe };
+      }
+      return;
+    }
+    this.eventItemsByUser[this.activeUser.id] = this.eventItems.map(item =>
+      item.id === this.editingEventId
+        ? { ...item, title, shortDescription, timeframe }
+        : item
+    );
+    if (this.selectedEvent?.id === this.editingEventId) {
+      this.selectedEvent = { ...this.selectedEvent, title, shortDescription, timeframe };
+    }
+  }
+
+  private insertCreatedEventFromForm(): void {
+    const baseId = Date.now();
+    const timeframe = this.buildEventTimeframeLabel(this.eventForm.startAt, this.eventForm.endAt, this.eventForm.frequency);
+    if (this.eventEditorTarget === 'hosting') {
+      const id = `h${baseId}`;
+      this.hostingDatesById[id] = this.eventForm.startAt;
+      this.eventVisibilityById[id] = this.eventForm.visibility;
+      const next: HostingMenuItem = {
+        id,
+        avatar: this.activeUser.initials,
+        title: this.eventForm.title.trim(),
+        shortDescription: this.eventForm.description.trim(),
+        timeframe,
+        activity: 1
+      };
+      this.hostingItemsByUser[this.activeUser.id] = [next, ...this.hostingItems];
+      this.selectedHostingEvent = next;
+      return;
+    }
+    const id = `e${baseId}`;
+    this.eventDatesById[id] = this.eventForm.startAt;
+    this.eventVisibilityById[id] = this.eventForm.visibility;
+    const next: EventMenuItem = {
+      id,
+      avatar: this.activeUser.initials,
+      title: this.eventForm.title.trim(),
+      shortDescription: this.eventForm.description.trim(),
+      timeframe,
+      activity: 1,
+      isAdmin: true
+    };
+    this.eventItemsByUser[this.activeUser.id] = [next, ...this.eventItems];
+    this.selectedEvent = next;
+  }
+
+  private defaultEventForm(): EventEditorForm {
+    const start = new Date();
+    start.setMinutes(0, 0, 0);
+    start.setHours(start.getHours() + 1);
+    const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+    return {
+      title: '',
+      description: '',
+      imageUrl: '',
+      startAt: this.toIsoDateTimeLocal(start),
+      endAt: this.toIsoDateTimeLocal(end),
+      frequency: 'One-time',
+      visibility: 'Invitation only',
+      topics: []
+    };
+  }
+
+  private normalizeEventDateRange(): void {
+    const start = new Date(this.eventForm.startAt);
+    const end = new Date(this.eventForm.endAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return;
+    }
+    if (end.getTime() <= start.getTime()) {
+      const nextEnd = new Date(start.getTime() + 60 * 60 * 1000);
+      this.eventForm.endAt = this.toIsoDateTimeLocal(nextEnd);
+    }
+    const allowed = this.contextualFrequencyOptions(this.eventForm.startAt, this.eventForm.endAt);
+    if (!allowed.includes(this.eventForm.frequency)) {
+      this.eventForm.frequency = allowed[0] ?? 'One-time';
+    }
+  }
+
+  private syncEventDateTimeControlsFromForm(): void {
+    this.eventStartDateValue = this.isoLocalDateTimeToDate(this.eventForm.startAt);
+    this.eventEndDateValue = this.isoLocalDateTimeToDate(this.eventForm.endAt);
+    this.eventStartTimeValue = this.isoLocalDateTimeToDate(this.eventForm.startAt);
+    this.eventEndTimeValue = this.isoLocalDateTimeToDate(this.eventForm.endAt);
+  }
+
+  private syncEventFormFromDateTimeControls(): void {
+    this.eventForm.startAt = this.applyDatePartToIsoLocal(this.eventForm.startAt, this.eventStartDateValue);
+    this.eventForm.startAt = this.applyTimePartFromDateToIsoLocal(this.eventForm.startAt, this.eventStartTimeValue);
+    this.eventForm.endAt = this.applyDatePartToIsoLocal(this.eventForm.endAt, this.eventEndDateValue);
+    this.eventForm.endAt = this.applyTimePartFromDateToIsoLocal(this.eventForm.endAt, this.eventEndTimeValue);
+  }
+
+  private contextualFrequencyOptions(startAt: string, endAt: string): string[] {
+    const start = new Date(startAt);
+    const end = new Date(endAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end.getTime() <= start.getTime()) {
+      return ['One-time'];
+    }
+    const daySpan = (end.getTime() - start.getTime()) / 86400000;
+    const options = ['One-time'];
+    if (daySpan >= 1) {
+      options.push('Daily');
+    }
+    if (daySpan >= 14) {
+      options.push('Weekly');
+    }
+    if (daySpan >= 28) {
+      options.push('Bi-weekly', 'Monthly');
+    }
+    return options;
+  }
+
+  private parseFrequencyFromTimeframe(timeframe: string): string {
+    const normalized = timeframe.toLowerCase();
+    if (normalized.includes('every')) {
+      return 'Weekly';
+    }
+    if (normalized.includes('monthly')) {
+      return 'Monthly';
+    }
+    if (normalized.includes('daily')) {
+      return 'Daily';
+    }
+    return 'One-time';
+  }
+
+  private buildEventTimeframeLabel(startAt: string, endAt: string, frequency: string): string {
+    const start = new Date(startAt);
+    const end = new Date(endAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return '';
+    }
+    const timeLabel = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    if (frequency === 'Daily') {
+      return `Daily · ${timeLabel}`;
+    }
+    if (frequency === 'Weekly') {
+      return `Every ${start.toLocaleDateString('en-US', { weekday: 'short' })} · ${timeLabel}`;
+    }
+    if (frequency === 'Bi-weekly') {
+      return `Every 2nd ${start.toLocaleDateString('en-US', { weekday: 'short' })} · ${timeLabel}`;
+    }
+    if (frequency === 'Monthly') {
+      return `Monthly · Day ${start.getDate()} · ${timeLabel}`;
+    }
+    const dayLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const sameDay = start.toDateString() === end.toDateString();
+    if (sameDay) {
+      const endTimeLabel = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      return `${dayLabel} · ${timeLabel} - ${endTimeLabel}`;
+    }
+    const endDayLabel = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `${dayLabel} - ${endDayLabel}`;
+  }
+
+  private defaultEventStartIso(): string {
+    return this.toIsoDateTime(new Date());
+  }
+
+  private toIsoDateTimeLocal(value: Date): string {
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    const day = `${value.getDate()}`.padStart(2, '0');
+    const hours = `${value.getHours()}`.padStart(2, '0');
+    const minutes = `${value.getMinutes()}`.padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
+
+  private isoLocalDateTimeToDate(value: string): Date | null {
+    if (!value) {
+      return null;
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private isoLocalTimePart(value: string): string {
+    const parsed = this.isoLocalDateTimeToDate(value);
+    if (!parsed) {
+      return '12:00';
+    }
+    const hours = `${parsed.getHours()}`.padStart(2, '0');
+    const minutes = `${parsed.getMinutes()}`.padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+
+  private applyDatePartToIsoLocal(current: string, date: Date | null): string {
+    if (!date) {
+      return current;
+    }
+    const base = this.isoLocalDateTimeToDate(current) ?? new Date();
+    const next = new Date(base);
+    next.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+    return this.toIsoDateTimeLocal(next);
+  }
+
+  private applyTimePartToIsoLocal(current: string, time: string): string {
+    const base = this.isoLocalDateTimeToDate(current) ?? new Date();
+    const [hoursRaw, minutesRaw] = time.split(':');
+    const hours = Number.parseInt(hoursRaw ?? '', 10);
+    const minutes = Number.parseInt(minutesRaw ?? '', 10);
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+      return current;
+    }
+    const next = new Date(base);
+    next.setHours(hours, minutes, 0, 0);
+    return this.toIsoDateTimeLocal(next);
+  }
+
+  private applyTimePartFromDateToIsoLocal(current: string, value: Date | null): string {
+    if (!value) {
+      return current;
+    }
+    const hours = value.getHours();
+    const minutes = value.getMinutes();
+    return this.applyTimePartToIsoLocal(current, `${`${hours}`.padStart(2, '0')}:${`${minutes}`.padStart(2, '0')}`);
+  }
+
   protected openProfileEditor(): void {
     this.syncProfileFormFromActiveUser();
     this.popupReturnTarget = null;
+    this.showProfileStatusHeaderPicker = false;
     this.activePopup = 'profileEditor';
   }
 
@@ -1224,6 +1773,8 @@ export class App {
     this.selectedAssetCardId = null;
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
+    this.showEventVisibilityPicker = false;
+    this.showProfileStatusHeaderPicker = false;
     this.pendingActivityDeleteRow = null;
     this.pendingActivityAction = 'delete';
     this.pendingActivityMemberDelete = null;
@@ -1272,7 +1823,12 @@ export class App {
       this.showActivityInviteSortPicker = false;
       this.superStackedPopup = null;
     }
+    if (this.superStackedPopup === 'eventTopicsSelector') {
+      this.superStackedPopup = null;
+    }
     this.stackedPopup = null;
+    this.showEventVisibilityPicker = false;
+    this.showProfileStatusHeaderPicker = false;
     if (this.activePopup === 'chat') {
       this.scrollChatToBottom();
     }
@@ -1721,11 +2277,17 @@ export class App {
       ? this.interestSelectorSelected.filter(item => item !== option)
       : [...this.interestSelectorSelected, option];
     this.syncInterestContextToRow();
+    if (this.superStackedPopup === 'eventTopicsSelector') {
+      this.eventForm.topics = [...this.interestSelectorSelected];
+    }
   }
 
   protected removeInterestOption(option: string): void {
     this.interestSelectorSelected = this.interestSelectorSelected.filter(item => item !== option);
     this.syncInterestContextToRow();
+    if (this.superStackedPopup === 'eventTopicsSelector') {
+      this.eventForm.topics = [...this.interestSelectorSelected];
+    }
   }
 
   protected isInterestOptionSelected(option: string): boolean {
@@ -3963,7 +4525,7 @@ export class App {
     }
     if (row.type === 'events' || row.type === 'hosting') {
       if (row.isAdmin) {
-        this.openEventEditor();
+        this.openEventEditor(true, 'edit', row.source as EventMenuItem | HostingMenuItem);
         return;
       }
       if (row.type === 'events') {
@@ -4257,7 +4819,7 @@ export class App {
       return;
     }
     if (row.type === 'events' || row.type === 'hosting') {
-      this.openEventEditor();
+      this.openEventEditor(true, 'edit', row.source as EventMenuItem | HostingMenuItem);
     }
   }
 
@@ -4920,6 +5482,12 @@ export class App {
     }
     if (this.showActivityInviteSortPicker && !target.closest('.friends-picker-sort') && !target.closest('.popup-view-fab')) {
       this.showActivityInviteSortPicker = false;
+    }
+    if (this.showEventVisibilityPicker && !target.closest('.event-visibility-picker') && !target.closest('.popup-view-fab')) {
+      this.showEventVisibilityPicker = false;
+    }
+    if (this.showProfileStatusHeaderPicker && !target.closest('.profile-status-header-picker') && !target.closest('.popup-view-fab')) {
+      this.showProfileStatusHeaderPicker = false;
     }
   }
 
