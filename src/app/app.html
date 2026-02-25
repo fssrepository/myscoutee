@@ -539,10 +539,32 @@
             <ng-container *ngIf="activitiesView === 'month'; else activitiesWeekPages">
               <section
                 class="activities-calendar-page activities-calendar-page-month"
-                *ngFor="let page of calendarMonthPages"
+                *ngFor="let page of calendarMonthPages; let pageIndex = index"
                 [style.--month-week-count]="page.weeks.length"
               >
-                <header class="activities-calendar-page-head">{{ page.label }}</header>
+                <header class="activities-calendar-page-head">
+                  <span class="activities-calendar-page-head-label">{{ page.label }}</span>
+                  <span class="activities-calendar-page-head-nav" *ngIf="!isMobileView">
+                    <button
+                      type="button"
+                      class="activities-calendar-nav-btn"
+                      (click)="navigateActivitiesCalendarTo(pageIndex - 1, $event)"
+                      [disabled]="pageIndex === 0"
+                      aria-label="Previous period"
+                    >
+                      <mat-icon>chevron_left</mat-icon>
+                    </button>
+                    <button
+                      type="button"
+                      class="activities-calendar-nav-btn"
+                      (click)="navigateActivitiesCalendarTo(pageIndex + 1, $event)"
+                      [disabled]="pageIndex >= calendarMonthPages.length - 1"
+                      aria-label="Next period"
+                    >
+                      <mat-icon>chevron_right</mat-icon>
+                    </button>
+                  </span>
+                </header>
                 <div class="activities-calendar-weekdays">
                   <span *ngFor="let dayLabel of calendarWeekdayLabels">{{ dayLabel }}</span>
                 </div>
@@ -584,8 +606,30 @@
             </ng-container>
 
             <ng-template #activitiesWeekPages>
-              <section class="activities-calendar-page activities-calendar-page-week" *ngFor="let page of calendarWeekPages">
-                <header class="activities-calendar-page-head">{{ page.label }}</header>
+              <section class="activities-calendar-page activities-calendar-page-week" *ngFor="let page of calendarWeekPages; let pageIndex = index">
+                <header class="activities-calendar-page-head">
+                  <span class="activities-calendar-page-head-label">{{ page.label }}</span>
+                  <span class="activities-calendar-page-head-nav" *ngIf="!isMobileView">
+                    <button
+                      type="button"
+                      class="activities-calendar-nav-btn"
+                      (click)="navigateActivitiesCalendarTo(pageIndex - 1, $event)"
+                      [disabled]="pageIndex === 0"
+                      aria-label="Previous period"
+                    >
+                      <mat-icon>chevron_left</mat-icon>
+                    </button>
+                    <button
+                      type="button"
+                      class="activities-calendar-nav-btn"
+                      (click)="navigateActivitiesCalendarTo(pageIndex + 1, $event)"
+                      [disabled]="pageIndex >= calendarWeekPages.length - 1"
+                      aria-label="Next period"
+                    >
+                      <mat-icon>chevron_right</mat-icon>
+                    </button>
+                  </span>
+                </header>
                 <div class="activities-week-board">
                   <div class="activities-week-board-corner"></div>
                   <div class="activities-week-board-day-head" *ngFor="let day of page.days; let dayIndex = index" [class.today]="day.isToday">

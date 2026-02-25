@@ -5472,6 +5472,24 @@ export class App {
     this.updateActivitiesStickyHeader(target.scrollTop || 0);
   }
 
+  protected navigateActivitiesCalendarTo(pageIndex: number, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isCalendarLayoutView()) {
+      return;
+    }
+    const calendarElement = this.activitiesCalendarScrollRef?.nativeElement;
+    if (!calendarElement) {
+      return;
+    }
+    const pageWidth = calendarElement.clientWidth || 0;
+    if (pageWidth <= 0) {
+      return;
+    }
+    const maxLeft = Math.max(0, calendarElement.scrollWidth - pageWidth);
+    const targetLeft = Math.max(0, Math.min(maxLeft, pageIndex * pageWidth));
+    calendarElement.scrollTo({ left: targetLeft, behavior: 'smooth' });
+  }
+
   private initialCalendarPageIndex(): number {
     const today = this.dateOnly(new Date());
     if (this.activitiesView === 'month') {

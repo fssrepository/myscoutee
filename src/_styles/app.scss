@@ -1865,6 +1865,7 @@
   align-items: flex-start;
   gap: 0;
   scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
   scrollbar-width: none;
   -ms-overflow-style: none;
   padding-bottom: calc(0.8rem + env(safe-area-inset-bottom));
@@ -1887,6 +1888,7 @@
   min-width: 100%;
   max-width: 100%;
   scroll-snap-align: start;
+  scroll-snap-stop: always;
   padding-right: 0.28rem;
   padding-bottom: 0.48rem;
   box-sizing: border-box;
@@ -1912,6 +1914,51 @@
   font-weight: 800;
   padding: 0.42rem 0.56rem;
   margin-bottom: 0.36rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+
+.activities-calendar-page-head-label {
+  min-width: 0;
+}
+
+.activities-calendar-page-head-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+}
+
+.activities-calendar-nav-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin: 0;
+  line-height: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 58, 91, 0.24);
+  background: rgba(255, 255, 255, 0.9);
+  color: #244267;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.activities-calendar-nav-btn .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+  display: block;
+  margin: 0;
+}
+
+.activities-calendar-nav-btn:disabled {
+  opacity: 0.42;
+  cursor: default;
 }
 
 .activities-calendar-weekdays {
@@ -2217,6 +2264,15 @@
 }
 
 @media (min-width: 761px) {
+  .activities-calendar-scroll {
+    scroll-snap-type: x mandatory;
+  }
+
+  .activities-calendar-page {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+
   .activities-calendar-scroll.activities-calendar-scroll-week {
     overflow-y: hidden;
   }
@@ -4728,6 +4784,7 @@ textarea {
   border-color: rgba(255, 255, 255, 0.94);
   box-shadow: 0 6px 14px rgba(8, 18, 34, 0.34);
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.22);
+  transition: transform 0.16s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
 .activities-source-avatar.user-color-man {
@@ -4983,6 +5040,41 @@ textarea {
   color: #3c2600;
 }
 
+.activities-row-item .experience-action-btn,
+.activities-row-item .asset-occupancy-badge {
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease,
+    border-color 0.2s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .activities-row-item .experience-action-btn:hover {
+    transform: translateY(-1px) scale(1.04);
+    box-shadow: 0 6px 14px rgba(19, 39, 68, 0.22);
+    filter: saturate(1.05);
+  }
+
+  .activities-row-item .asset-occupancy-badge:hover {
+    transform: translateY(-1px) scale(1.03);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.82), 0 11px 24px rgba(255, 255, 255, 0.62);
+    filter: brightness(1.08) saturate(1.04);
+  }
+
+  .activities-row-item .activities-source-avatar:hover {
+    transform: translateY(-1px) scale(1.05);
+    box-shadow: 0 6px 14px rgba(16, 30, 52, 0.26);
+    filter: brightness(1.08);
+  }
+}
+
+.activities-row-item .experience-action-btn:active,
+.activities-row-item .asset-occupancy-badge:active,
+.activities-row-item .activities-source-avatar:active {
+  transform: scale(0.94);
+}
+
 .experience-item-dates {
   font-size: 0.72rem;
   font-weight: 700;
@@ -5100,9 +5192,9 @@ textarea {
 }
 
 .experience-delete-confirm {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: 3800;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5113,7 +5205,6 @@ textarea {
   position: absolute;
   inset: 0;
   background: rgba(8, 16, 30, 0.46);
-  border-radius: 12px;
 }
 
 .experience-delete-confirm-panel {
