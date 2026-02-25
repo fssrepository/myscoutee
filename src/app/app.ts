@@ -884,7 +884,8 @@ export class App {
   private activitiesBottomPullStartOnLastRow = false;
   private activitiesBottomPullPointerId: number | null = null;
   private activitiesBottomPullStartY = 0;
-  private readonly activitiesBottomPullMaxPx = 96;
+  private activitiesTouchGlobalListenersAttached = false;
+  private readonly activitiesBottomPullMaxPx = 220;
   private readonly activitiesBottomPullTriggerPx = 28;
   private activitiesBottomPullReleaseTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -3328,9 +3329,14 @@ export class App {
   }
 
   protected onActivitiesTouchStart(event: TouchEvent): void {
-    if (typeof PointerEvent !== 'undefined') {
-      return;
-    }
+    console.log('[activities-pull][handler-start]', {
+      input: 'touch',
+      eventType: event.type,
+      touches: event.touches.length,
+      tracking: this.activitiesBottomPullTracking,
+      popup: this.activePopup,
+      calendarView: this.isCalendarLayoutView()
+    });
     if (this.isCalendarLayoutView() || this.activePopup !== 'activities') {
       return;
     }
@@ -3339,12 +3345,16 @@ export class App {
       return;
     }
     this.beginActivitiesBottomPull(target, event.target, event.touches[0].clientY);
+    const remainingPx = target.scrollHeight - target.scrollTop - target.clientHeight;
+    const canBeginBottomPull = remainingPx <= 24 || this.activitiesBottomPullStartOnLastRow;
+    if (!canBeginBottomPull) {
+      this.resetActivitiesBottomPullState();
+      return;
+    }
+    event.preventDefault();
   }
 
   protected onActivitiesTouchMove(event: TouchEvent): void {
-    if (typeof PointerEvent !== 'undefined') {
-      return;
-    }
     if (!this.activitiesBottomPullTracking || this.isCalendarLayoutView() || this.activePopup !== 'activities') {
       return;
     }
@@ -3358,17 +3368,51 @@ export class App {
   }
 
   protected onActivitiesTouchEnd(event: TouchEvent): void {
-    if (typeof PointerEvent !== 'undefined') {
+    console.log('[activities-pull][handler-end]', {
+      input: 'touch',
+      eventType: event.type,
+      touches: event.touches.length,
+      tracking: this.activitiesBottomPullTracking,
+      pullPx: this.activitiesBottomPullPx,
+      armed: this.activitiesBottomPullArmed
+    });
+    if (!this.activitiesBottomPullTracking) {
       return;
     }
+    if (event.touches.length > 0) {
+      return;
+    }
+    const target = event.currentTarget as HTMLElement | null;
+    this.finishActivitiesBottomPull(target, 'release');
+  }
+
+  protected onActivitiesTouchCancel(event: TouchEvent): void {
+    console.log('[activities-pull][handler-end]', {
+      input: 'touch',
+      eventType: event.type,
+      touches: event.touches.length,
+      tracking: this.activitiesBottomPullTracking,
+      pullPx: this.activitiesBottomPullPx,
+      armed: this.activitiesBottomPullArmed,
+      reason: 'cancel'
+    });
     if (!this.activitiesBottomPullTracking) {
       return;
     }
     const target = event.currentTarget as HTMLElement | null;
-    this.finishActivitiesBottomPull(target);
+    this.finishActivitiesBottomPull(target, 'cancel');
   }
 
   protected onActivitiesPointerStart(event: PointerEvent): void {
+    console.log('[activities-pull][handler-start]', {
+      input: 'pointer',
+      eventType: event.type,
+      pointerType: event.pointerType,
+      pointerId: event.pointerId,
+      tracking: this.activitiesBottomPullTracking,
+      popup: this.activePopup,
+      calendarView: this.isCalendarLayoutView()
+    });
     const isMousePointer = event.pointerType === 'mouse';
     if ((isMousePointer && event.button !== 0) || this.isCalendarLayoutView() || this.activePopup !== 'activities') {
       return;
@@ -3405,6 +3449,16 @@ export class App {
   }
 
   protected onActivitiesPointerEnd(event: PointerEvent): void {
+    console.log('[activities-pull][handler-end]', {
+      input: 'pointer',
+      eventType: event.type,
+      pointerType: event.pointerType,
+      pointerId: event.pointerId,
+      tracking: this.activitiesBottomPullTracking,
+      trackedPointerId: this.activitiesBottomPullPointerId,
+      pullPx: this.activitiesBottomPullPx,
+      armed: this.activitiesBottomPullArmed
+    });
     if (!this.activitiesBottomPullTracking) {
       return;
     }
@@ -3420,7 +3474,37 @@ export class App {
       }
     }
     this.activitiesBottomPullPointerId = null;
-    this.finishActivitiesBottomPull(target);
+    this.finishActivitiesBottomPull(target, 'release');
+  }
+
+  protected onActivitiesPointerCancel(event: PointerEvent): void {
+    console.log('[activities-pull][handler-end]', {
+      input: 'pointer',
+      eventType: event.type,
+      pointerType: event.pointerType,
+      pointerId: event.pointerId,
+      tracking: this.activitiesBottomPullTracking,
+      trackedPointerId: this.activitiesBottomPullPointerId,
+      pullPx: this.activitiesBottomPullPx,
+      armed: this.activitiesBottomPullArmed,
+      reason: 'cancel'
+    });
+    if (!this.activitiesBottomPullTracking) {
+      return;
+    }
+    if (this.activitiesBottomPullPointerId !== null && event.pointerId !== this.activitiesBottomPullPointerId) {
+      return;
+    }
+    const target = event.currentTarget as HTMLElement | null;
+    if (target && typeof target.releasePointerCapture === 'function') {
+      try {
+        target.releasePointerCapture(event.pointerId);
+      } catch {
+        // Ignore release failures.
+      }
+    }
+    this.activitiesBottomPullPointerId = null;
+    this.finishActivitiesBottomPull(target, 'cancel');
   }
 
   protected selectActivitiesPrimaryFilter(filter: ActivitiesPrimaryFilter): void {
@@ -6506,7 +6590,8 @@ export class App {
     this.flushActivitiesHeaderProgress();
   }
 
-  private releaseActivitiesBottomPull(): void {
+  private releaseActivitiesBottomPull(animateBounce = true): void {
+    this.detachActivitiesTouchGlobalListeners();
     this.activitiesBottomPullTracking = false;
     this.activitiesBottomPullEdgeLocked = false;
     this.activitiesBottomPullStartOnLastRow = false;
@@ -6516,8 +6601,11 @@ export class App {
       clearTimeout(this.activitiesBottomPullReleaseTimer);
       this.activitiesBottomPullReleaseTimer = null;
     }
-    this.activitiesBottomPullReleasing = true;
+    this.activitiesBottomPullReleasing = animateBounce;
     this.activitiesBottomPullPx = 0;
+    if (!animateBounce) {
+      return;
+    }
     this.activitiesBottomPullReleaseTimer = setTimeout(() => {
       this.activitiesBottomPullReleasing = false;
       this.activitiesBottomPullReleaseTimer = null;
@@ -6525,6 +6613,7 @@ export class App {
   }
 
   private resetActivitiesBottomPullState(): void {
+    this.detachActivitiesTouchGlobalListeners();
     this.activitiesBottomPullTracking = false;
     this.activitiesBottomPullEdgeLocked = false;
     this.activitiesBottomPullStartOnLastRow = false;
@@ -6568,6 +6657,7 @@ export class App {
   }
 
   private beginActivitiesBottomPull(container: HTMLElement, eventTarget: EventTarget | null, startY: number): void {
+    this.attachActivitiesTouchGlobalListeners();
     this.activitiesBottomPullTracking = true;
     this.activitiesBottomPullEdgeLocked = false;
     const targetElement = eventTarget instanceof HTMLElement ? eventTarget : null;
@@ -6590,7 +6680,7 @@ export class App {
   private moveActivitiesBottomPull(container: HTMLElement, currentY: number): boolean {
     const remainingPx = container.scrollHeight - container.scrollTop - container.clientHeight;
     if (!this.activitiesBottomPullEdgeLocked) {
-      const isBottomEdge = remainingPx <= 1;
+      const isBottomEdge = remainingPx <= 24;
       if (!isBottomEdge && !this.activitiesBottomPullStartOnLastRow) {
         this.resetActivitiesBottomPullState();
         return false;
@@ -6601,7 +6691,8 @@ export class App {
     const pullUpDelta = Math.max(0, -deltaY);
     const panelQuarterPx = Math.max(0, Math.floor(container.clientHeight * 0.35));
     const maxPullPx = Math.max(this.activitiesBottomPullMaxPx, panelQuarterPx);
-    const pullPx = this.clampNumber(pullUpDelta * 1.2, 0, maxPullPx);
+    // Make spacer grow much more aggressively from drag distance.
+    const pullPx = this.clampNumber(pullUpDelta * 2.1, 0, maxPullPx);
     if (pullPx <= 0) {
       return false;
     }
@@ -6621,19 +6712,61 @@ export class App {
     return true;
   }
 
-  private finishActivitiesBottomPull(container: HTMLElement | null): void {
+  private finishActivitiesBottomPull(container: HTMLElement | null, reason: 'release' | 'cancel' = 'release'): void {
     const shouldTrigger = this.activitiesBottomPullArmed || this.activitiesBottomPullPx >= this.activitiesBottomPullTriggerPx * 0.65;
+    const shouldBounceBack = this.activitiesBottomPullPx > 0;
+    const shouldLoad = reason === 'release' && shouldTrigger;
     console.log('[activities-pull] end', {
+      reason,
       shouldTrigger,
+      shouldBounceBack,
+      shouldLoad,
       armed: this.activitiesBottomPullArmed,
       pullPx: this.activitiesBottomPullPx,
       triggerPx: this.activitiesBottomPullTriggerPx,
       hasContainer: !!container
     });
-    this.releaseActivitiesBottomPull();
-    if (shouldTrigger && container) {
+    this.releaseActivitiesBottomPull(shouldBounceBack);
+    if (shouldLoad && container) {
       this.forceLoadMoreActivities(container);
     }
+  }
+
+  private readonly handleDocumentTouchEnd = (event: TouchEvent): void => {
+    if (!this.activitiesBottomPullTracking || this.isCalendarLayoutView() || this.activePopup !== 'activities') {
+      return;
+    }
+    if (event.touches.length > 0) {
+      return;
+    }
+    const container = this.activitiesScrollRef?.nativeElement ?? null;
+    this.finishActivitiesBottomPull(container, 'release');
+  };
+
+  private readonly handleDocumentTouchCancel = (_event: TouchEvent): void => {
+    if (!this.activitiesBottomPullTracking || this.isCalendarLayoutView() || this.activePopup !== 'activities') {
+      return;
+    }
+    const container = this.activitiesScrollRef?.nativeElement ?? null;
+    this.finishActivitiesBottomPull(container, 'cancel');
+  };
+
+  private attachActivitiesTouchGlobalListeners(): void {
+    if (this.activitiesTouchGlobalListenersAttached) {
+      return;
+    }
+    document.addEventListener('touchend', this.handleDocumentTouchEnd, { passive: true });
+    document.addEventListener('touchcancel', this.handleDocumentTouchCancel, { passive: true });
+    this.activitiesTouchGlobalListenersAttached = true;
+  }
+
+  private detachActivitiesTouchGlobalListeners(): void {
+    if (!this.activitiesTouchGlobalListenersAttached) {
+      return;
+    }
+    document.removeEventListener('touchend', this.handleDocumentTouchEnd);
+    document.removeEventListener('touchcancel', this.handleDocumentTouchCancel);
+    this.activitiesTouchGlobalListenersAttached = false;
   }
 
   private shiftCalendarPages(direction: -1 | 1): void {
