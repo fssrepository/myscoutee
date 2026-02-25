@@ -5415,13 +5415,9 @@ export class App {
           if (pageWidth > 0) {
             this.suppressCalendarEdgeSettle = true;
             const previousScrollBehavior = calendarElement.style.scrollBehavior;
-            if (this.isMobileView) {
-              calendarElement.style.scrollBehavior = 'auto';
-            }
+            calendarElement.style.scrollBehavior = 'auto';
             calendarElement.scrollLeft = Math.max(0, initialIndex * pageWidth);
-            if (this.isMobileView) {
-              calendarElement.style.scrollBehavior = previousScrollBehavior;
-            }
+            calendarElement.style.scrollBehavior = previousScrollBehavior;
             setTimeout(() => {
               this.suppressCalendarEdgeSettle = false;
             }, 0);
@@ -5546,7 +5542,8 @@ export class App {
     const targetIndex = Math.max(0, Math.min(pages.length - 1, currentIndex + step));
     if (targetIndex === currentIndex) {
       this.shiftCalendarPages(step);
-      this.calendarInitialPageIndexOverride = this.calendarAnchorRadius;
+      const edgeHoldIndex = step < 0 ? 1 : pages.length - 2;
+      this.calendarInitialPageIndexOverride = edgeHoldIndex;
       this.resetActivitiesScroll();
       const scrollAfterShift = () => {
         const nextElement = this.activitiesCalendarScrollRef?.nativeElement;
@@ -5559,10 +5556,10 @@ export class App {
         }
         const previousScrollBehavior = nextElement.style.scrollBehavior;
         nextElement.style.scrollBehavior = 'auto';
-        nextElement.scrollLeft = nextWidth * this.calendarAnchorRadius;
+        nextElement.scrollLeft = nextWidth * edgeHoldIndex;
         nextElement.style.scrollBehavior = previousScrollBehavior;
         nextElement.scrollTo({
-          left: step < 0 ? nextWidth * (this.calendarAnchorRadius - 1) : nextWidth * (this.calendarAnchorRadius + 1),
+          left: nextWidth * (edgeHoldIndex + step),
           behavior: 'smooth'
         });
       };
@@ -5570,6 +5567,14 @@ export class App {
       return;
     }
     calendarElement.scrollTo({ left: targetIndex * pageWidth, behavior: 'smooth' });
+  }
+
+  protected navigateActivitiesCalendarBackward(event?: Event): void {
+    this.navigateActivitiesCalendarTo(this.currentCalendarPageIndex() - 1, event);
+  }
+
+  protected navigateActivitiesCalendarForward(event?: Event): void {
+    this.navigateActivitiesCalendarTo(this.currentCalendarPageIndex() + 1, event);
   }
 
   private initialCalendarPageIndex(): number {
@@ -5898,6 +5903,14 @@ export class App {
     if (pages.length < this.calendarAnchorWindowSize) {
       return;
     }
+    const nearestPageIndex = Math.max(0, Math.min(pages.length - 1, Math.round(calendarElement.scrollLeft / pageWidth)));
+    const nearestPageLeft = nearestPageIndex * pageWidth;
+    if (Math.abs(calendarElement.scrollLeft - nearestPageLeft) > 0.5) {
+      const previousScrollBehavior = calendarElement.style.scrollBehavior;
+      calendarElement.style.scrollBehavior = 'auto';
+      calendarElement.scrollLeft = nearestPageLeft;
+      calendarElement.style.scrollBehavior = previousScrollBehavior;
+    }
     const maxLeft = Math.max(0, calendarElement.scrollWidth - pageWidth);
     const edgeThreshold = 2;
     const atLeftEdge = calendarElement.scrollLeft <= edgeThreshold;
@@ -5917,7 +5930,7 @@ export class App {
         this.startOfWeekMonday(this.dateOnly(new Date()));
     }
     this.shiftCalendarPages(atLeftEdge ? -1 : 1);
-    const recenterToMiddle = () => {
+    const stabilizeAfterShift = () => {
       const nextElement = this.activitiesCalendarScrollRef?.nativeElement;
       if (!nextElement) {
         this.suppressCalendarEdgeSettle = false;
@@ -5932,7 +5945,8 @@ export class App {
       const previousSnapType = nextElement.style.scrollSnapType;
       nextElement.style.scrollBehavior = 'auto';
       nextElement.style.scrollSnapType = 'none';
-      nextElement.scrollLeft = nextWidth * this.calendarAnchorRadius;
+      const settledIndex = atLeftEdge ? 1 : pages.length - 2;
+      nextElement.scrollLeft = nextWidth * settledIndex;
       nextElement.style.scrollBehavior = previousScrollBehavior;
       const release = () => {
         nextElement.style.scrollSnapType = previousSnapType;
@@ -5945,7 +5959,7 @@ export class App {
         setTimeout(release, 0);
       }
     };
-    setTimeout(recenterToMiddle, 0);
+    setTimeout(stabilizeAfterShift, 0);
   }
 
   private shiftCalendarPages(direction: -1 | 1): void {

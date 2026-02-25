@@ -1818,6 +1818,20 @@
   margin-bottom: 0.06rem;
 }
 
+.activities-sticky-header-calendar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+}
+
+.activities-sticky-calendar-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  flex: 0 0 auto;
+}
+
 .activities-scroll-list {
   flex: 1;
   min-height: 0;
@@ -1887,16 +1901,17 @@
   flex: 0 0 100%;
   min-width: 100%;
   max-width: 100%;
+  height: 100%;
   scroll-snap-align: start;
   scroll-snap-stop: always;
-  padding-right: 0.28rem;
+  padding-right: 0;
   padding-bottom: 0.48rem;
   box-sizing: border-box;
 }
 
 .activities-calendar-page-month {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   min-height: 100%;
   --month-week-count: 5;
 }
@@ -1916,7 +1931,7 @@
   margin-bottom: 0.36rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.35rem;
 }
 
@@ -1925,15 +1940,7 @@
 }
 
 .activities-calendar-page-head-nav {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.22rem;
-}
-
-@media (max-width: 760px) {
-  .activities-calendar-page-head-nav {
-    display: none;
-  }
+  display: none;
 }
 
 .activities-calendar-nav-btn {
@@ -2002,7 +2009,7 @@
 }
 
 .activities-month-cell {
-  min-height: 0;
+  min-height: 6.2rem;
   height: auto;
   border: 1px solid rgba(37, 63, 96, 0.18);
   border-radius: 10px;
@@ -2392,7 +2399,7 @@
 
 @media (max-width: 760px) {
   .activities-month-cell {
-    min-height: 0;
+    min-height: 4.6rem;
     padding: 0.16rem;
   }
 
