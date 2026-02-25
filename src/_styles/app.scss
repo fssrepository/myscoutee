@@ -3003,7 +3003,7 @@
 
 .activity-members-popup-row {
   position: relative;
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 .activity-members-popup-row .chat-members-popup-meta {
@@ -3017,10 +3017,18 @@
 
 .activity-members-side {
   margin-left: auto;
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.22rem;
+  justify-content: space-between;
+  align-self: stretch;
+  min-height: 100%;
+}
+
+.activity-member-actions-spacer {
+  height: 28px;
+  width: 1px;
+  visibility: hidden;
 }
 
 .activity-member-status-badge {
@@ -3133,11 +3141,15 @@
 .chat-members-popup-meta .member-city {
   font-size: 0.75rem;
   color: rgba(20, 32, 52, 0.68);
+  font-family: 'Avenir Next', 'Segoe UI', sans-serif;
+  font-weight: 500;
 }
 
 .chat-members-popup-meta .member-action {
   font-size: 0.71rem;
   color: rgba(20, 32, 52, 0.58);
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', ui-monospace, monospace;
+  letter-spacing: 0.01em;
 }
 
 @media (hover: hover) {

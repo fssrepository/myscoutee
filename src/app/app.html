@@ -438,7 +438,9 @@
                       aria-label="Open members"
                     >
                       <span>{{ activityCapacityLabel(row) }}</span>
-                      <span class="card-badge asset-request-badge" *ngIf="row.type !== 'invitations' && row.unread > 0">{{ row.unread }}</span>
+                      <ng-container *ngIf="activityPendingMemberCount(row) as pendingMemberCount">
+                        <span class="card-badge asset-request-badge" *ngIf="pendingMemberCount > 0">{{ pendingMemberCount }}</span>
+                      </ng-container>
                     </button>
                   </div>
                   <div class="experience-item-head">
@@ -1634,7 +1636,7 @@
         </ng-template>
         </ng-template>
         <span class="header-members-count" *ngIf="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers'">
-          {{ stackedPopup === 'activityMembers' ? selectedActivityMembers.length : selectedChatMembers.length }} members
+          {{ stackedPopup === 'activityMembers' ? activityMembersHeaderSummary() : (selectedChatMembers.length + ' members') }}
         </span>
         <button
           type="button"
@@ -1718,25 +1720,30 @@
               <p class="member-action">{{ activityMemberActionDate(member) }}</p>
             </div>
             <div class="activity-members-side">
-              <div class="experience-item-actions" *ngIf="canApproveActivityMember(member) || canDeleteActivityMember(member)">
-                <button
-                  type="button"
-                  class="experience-action-btn asset-accept-btn"
-                  *ngIf="canApproveActivityMember(member)"
-                  (click)="approveActivityMember(member, $event)"
-                  aria-label="Approve invitation"
-                >
-                  <mat-icon>check</mat-icon>
-                </button>
-                <button
-                  type="button"
-                  class="experience-action-btn experience-action-delete"
-                  (click)="removeActivityMember(member, $event)"
-                  aria-label="Delete invitation"
-                >
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </div>
+              <ng-container *ngIf="canApproveActivityMember(member) || canDeleteActivityMember(member); else activityMemberActionsSpacer">
+                <div class="experience-item-actions">
+                  <button
+                    type="button"
+                    class="experience-action-btn asset-accept-btn"
+                    *ngIf="canApproveActivityMember(member)"
+                    (click)="approveActivityMember(member, $event)"
+                    aria-label="Approve invitation"
+                  >
+                    <mat-icon>check</mat-icon>
+                  </button>
+                  <button
+                    type="button"
+                    class="experience-action-btn experience-action-delete"
+                    (click)="removeActivityMember(member, $event)"
+                    aria-label="Delete invitation"
+                  >
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+              </ng-container>
+              <ng-template #activityMemberActionsSpacer>
+                <span class="activity-member-actions-spacer" aria-hidden="true"></span>
+              </ng-template>
               <span class="chat-members-inline-badge activity-member-status-badge">{{ activityMemberStatusLabel(member) }}</span>
             </div>
           </article>

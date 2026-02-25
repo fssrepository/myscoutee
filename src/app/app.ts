@@ -3715,6 +3715,10 @@ export class App {
     return this.activityCapacityById[row.id] ?? `${Math.max(1, row.unread)} / ${Math.max(4, row.unread + 6)}`;
   }
 
+  protected activityPendingMemberCount(row: ActivityListRow): number {
+    return this.getActivityMembersByRow(row).filter(member => member.status === 'pending').length;
+  }
+
   protected activityTypeIcon(row: ActivityListRow): string {
     if (row.type === 'events') {
       return 'event';
@@ -3886,6 +3890,15 @@ export class App {
 
   protected get activityMembersOrdered(): ActivityMemberEntry[] {
     return this.sortActivityMembersByActionTimeAsc(this.selectedActivityMembers);
+  }
+
+  protected activityMembersHeaderSummary(): string {
+    const acceptedCount = this.selectedActivityMembers.filter(member => member.status === 'accepted').length;
+    const pendingCount = this.selectedActivityMembers.length - acceptedCount;
+    if (pendingCount <= 0) {
+      return `${acceptedCount} members`;
+    }
+    return `${acceptedCount} members · ${pendingCount} pending`;
   }
 
   protected activityInviteMetLabel(entry: ActivityMemberEntry): string {
