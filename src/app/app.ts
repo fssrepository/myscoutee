@@ -222,6 +222,7 @@ interface EventEditorForm {
   endAt: string;
   frequency: string;
   visibility: EventVisibility;
+  blindMode: EventBlindMode;
   topics: string[];
 }
 
@@ -257,6 +258,7 @@ type AssetRequestAction = 'accept' | 'remove';
 type EventEditorMode = 'edit' | 'create';
 type EventEditorTarget = 'events' | 'hosting';
 type EventVisibility = 'Public' | 'Friends only' | 'Invitation only';
+type EventBlindMode = 'Open Event' | 'Blind Event';
 type AssetRequestStatus = 'pending' | 'accepted';
 type ActivityMemberStatus = 'pending' | 'accepted';
 type ActivityPendingSource = 'admin' | 'member' | null;
@@ -763,6 +765,24 @@ export class App {
     h3: 'Public',
     h4: 'Friends only'
   };
+  protected readonly eventBlindModeById: Record<string, EventBlindMode> = {
+    e1: 'Open Event',
+    e2: 'Open Event',
+    e3: 'Blind Event',
+    e4: 'Open Event',
+    e5: 'Open Event',
+    e6: 'Blind Event',
+    e7: 'Open Event',
+    e8: 'Open Event',
+    e9: 'Blind Event',
+    e10: 'Open Event',
+    e11: 'Open Event',
+    e12: 'Blind Event',
+    h1: 'Blind Event',
+    h2: 'Open Event',
+    h3: 'Open Event',
+    h4: 'Blind Event'
+  };
   protected readonly invitationDatesById: Record<string, string> = {
     i1: '2026-02-21T20:00:00',
     i2: '2026-02-22T15:00:00',
@@ -883,6 +903,7 @@ export class App {
   protected showEventVisibilityPicker = false;
   protected showProfileStatusHeaderPicker = false;
   protected readonly eventVisibilityOptions: EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
+  protected readonly eventBlindModeOptions: EventBlindMode[] = ['Open Event', 'Blind Event'];
   protected eventStartDateValue: Date | null = null;
   protected eventEndDateValue: Date | null = null;
   protected eventStartTimeValue: Date | null = null;
@@ -1304,6 +1325,18 @@ export class App {
     return '';
   }
 
+  protected eventTopicLabel(option: string): string {
+    return `#${option.replace(/^#+/, '')}`;
+  }
+
+  protected eventTopicsPanelClass(): string {
+    return 'section-identity';
+  }
+
+  protected eventTopicsPanelIcon(): string {
+    return 'sell';
+  }
+
   protected get eventFrequencyOptions(): string[] {
     return this.contextualFrequencyOptions(this.eventForm.startAt, this.eventForm.endAt);
   }
@@ -1369,6 +1402,25 @@ export class App {
     event?.stopPropagation();
     this.eventForm.visibility = option;
     this.showEventVisibilityPicker = false;
+  }
+
+  protected eventBlindModeIcon(option: EventBlindMode): string {
+    return option === 'Blind Event' ? 'visibility_off' : 'visibility';
+  }
+
+  protected eventBlindModeClass(option: EventBlindMode): string {
+    return option === 'Blind Event' ? 'blind-mode-blind' : 'blind-mode-open';
+  }
+
+  protected eventBlindModeDescription(option: EventBlindMode): string {
+    return option === 'Blind Event'
+      ? 'Attendees won’t see each other before the event.'
+      : 'Attendees can preview each other before the event.';
+  }
+
+  protected toggleEventBlindMode(event?: Event): void {
+    event?.stopPropagation();
+    this.eventForm.blindMode = this.eventForm.blindMode === 'Blind Event' ? 'Open Event' : 'Blind Event';
   }
 
   protected toggleAssetVisibilityPicker(event?: Event): void {
@@ -1515,6 +1567,7 @@ export class App {
       endAt: this.toIsoDateTimeLocal(end),
       frequency,
       visibility: this.eventVisibilityById[source.id] ?? (target === 'hosting' ? 'Invitation only' : 'Public'),
+      blindMode: this.eventBlindModeById[source.id] ?? 'Open Event',
       topics: [...this.eventEditor.mainEvent.topics].slice(0, 5)
     };
   }
@@ -1527,6 +1580,7 @@ export class App {
     const title = this.eventForm.title.trim();
     const shortDescription = this.eventForm.description.trim();
     this.eventVisibilityById[this.editingEventId] = this.eventForm.visibility;
+    this.eventBlindModeById[this.editingEventId] = this.eventForm.blindMode;
     if (this.eventEditorTarget === 'hosting') {
       this.hostingItemsByUser[this.activeUser.id] = this.hostingItems.map(item =>
         item.id === this.editingEventId
@@ -1555,6 +1609,7 @@ export class App {
       const id = `h${baseId}`;
       this.hostingDatesById[id] = this.eventForm.startAt;
       this.eventVisibilityById[id] = this.eventForm.visibility;
+      this.eventBlindModeById[id] = this.eventForm.blindMode;
       const next: HostingMenuItem = {
         id,
         avatar: this.activeUser.initials,
@@ -1570,6 +1625,7 @@ export class App {
     const id = `e${baseId}`;
     this.eventDatesById[id] = this.eventForm.startAt;
     this.eventVisibilityById[id] = this.eventForm.visibility;
+    this.eventBlindModeById[id] = this.eventForm.blindMode;
     const next: EventMenuItem = {
       id,
       avatar: this.activeUser.initials,
@@ -1596,6 +1652,7 @@ export class App {
       endAt: this.toIsoDateTimeLocal(end),
       frequency: 'One-time',
       visibility: 'Invitation only',
+      blindMode: 'Open Event',
       topics: []
     };
   }

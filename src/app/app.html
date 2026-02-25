@@ -1201,101 +1201,128 @@
                 <span>Name</span>
                 <input type="text" [(ngModel)]="eventForm.title" />
               </label>
-              <label class="event-topics-field">
-                <span>Topics</span>
-                <button type="button" class="profile-status-select-wrap selector-like experience-type-select activity-filter-events event-topics-trigger" (click)="openEventTopicsSelector($event)">
-                  <span class="status-option-content">
-                    <mat-icon class="activity-filter-events">interests</mat-icon>
-                    <span>{{ eventForm.topics.length > 0 ? (eventForm.topics.join(', ')) : 'Select topics' }}</span>
+              <span class="event-form-row-spacer" *ngIf="!isMobileView" aria-hidden="true"></span>
+              <label class="experience-description-field event-blind-mode-field">
+                <button
+                  type="button"
+                  class="event-blind-mode-card"
+                  [ngClass]="eventBlindModeClass(eventForm.blindMode)"
+                  (click)="toggleEventBlindMode($event)"
+                >
+                  <span class="event-blind-mode-title">
+                    <mat-icon [class]="eventBlindModeClass(eventForm.blindMode)">{{ eventBlindModeIcon(eventForm.blindMode) }}</mat-icon>
+                    <span>{{ eventForm.blindMode }}</span>
                   </span>
-                  <mat-icon>chevron_right</mat-icon>
+                  <span class="event-blind-mode-description">{{ eventBlindModeDescription(eventForm.blindMode) }}</span>
+                </button>
+              </label>
+              <label class="event-topics-field event-topics-panel-field">
+                <button type="button" class="event-topics-panel" [ngClass]="eventTopicsPanelClass()" (click)="openEventTopicsSelector($event)">
+                  <span class="event-topics-panel-head">
+                    <span class="event-topics-panel-title">
+                      <mat-icon>{{ eventTopicsPanelIcon() }}</mat-icon>
+                      <span>Topics</span>
+                    </span>
+                    <mat-icon class="event-topics-chevron">chevron_right</mat-icon>
+                  </span>
+                  <span class="event-topics-panel-body" *ngIf="eventForm.topics.length > 0; else eventTopicsPlaceholderMain">
+                    <span class="values-selected-chip event-topic-pill" *ngFor="let topic of eventForm.topics" [ngClass]="interestOptionToneClass(topic)">
+                      {{ eventTopicLabel(topic) }}
+                    </span>
+                  </span>
+                  <ng-template #eventTopicsPlaceholderMain>
+                    <span class="event-topics-panel-placeholder">Select topics</span>
+                  </ng-template>
                 </button>
               </label>
               <label class="experience-description-field">
                 <span>Description</span>
                 <textarea rows="4" [(ngModel)]="eventForm.description"></textarea>
               </label>
-              <label class="event-datetime-label">
-                <span>Start</span>
-                <div class="event-datetime-row">
-                  <mat-form-field appearance="outline" class="event-date-field event-date-field-start" subscriptSizing="dynamic">
-                    <input matInput [matDatepicker]="eventStartPicker" [ngModel]="eventStartDateValue" (ngModelChange)="onEventStartDateChange($event)" />
-                    <mat-datepicker-toggle matSuffix [for]="eventStartPicker"></mat-datepicker-toggle>
-                    <mat-datepicker #eventStartPicker></mat-datepicker>
-                  </mat-form-field>
-                  <mat-form-field appearance="outline" class="event-time-field event-time-field-start" subscriptSizing="dynamic">
-                    <input
-                      matInput
-                      [matTimepicker]="eventStartTimePicker"
-                      [matTimepickerOpenOnClick]="true"
-                      [ngModel]="eventStartTimeValue"
-                      (ngModelChange)="onEventStartTimeChange($event)"
-                    />
-                    <mat-timepicker-toggle matSuffix [for]="eventStartTimePicker"></mat-timepicker-toggle>
-                    <mat-timepicker #eventStartTimePicker></mat-timepicker>
-                  </mat-form-field>
-                </div>
-              </label>
-              <label class="event-datetime-label">
-                <span>End</span>
-                <div class="event-datetime-row">
-                  <mat-form-field appearance="outline" class="event-date-field event-date-field-end" subscriptSizing="dynamic">
-                    <input matInput [matDatepicker]="eventEndPicker" [ngModel]="eventEndDateValue" (ngModelChange)="onEventEndDateChange($event)" />
-                    <mat-datepicker-toggle matSuffix [for]="eventEndPicker"></mat-datepicker-toggle>
-                    <mat-datepicker #eventEndPicker></mat-datepicker>
-                  </mat-form-field>
-                  <mat-form-field appearance="outline" class="event-time-field event-time-field-end" subscriptSizing="dynamic">
-                    <input
-                      matInput
-                      [matTimepicker]="eventEndTimePicker"
-                      [matTimepickerOpenOnClick]="true"
-                      [ngModel]="eventEndTimeValue"
-                      (ngModelChange)="onEventEndTimeChange($event)"
-                    />
-                    <mat-timepicker-toggle matSuffix [for]="eventEndTimePicker"></mat-timepicker-toggle>
-                    <mat-timepicker #eventEndTimePicker></mat-timepicker>
-                  </mat-form-field>
-                </div>
-              </label>
-              <label>
-                <span>Frequency</span>
-                <ng-container *ngIf="!isMobileView; else mobileEventFrequencyButton">
-                  <div class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select" [ngClass]="eventFrequencyClass(eventForm.frequency)">
-                    <mat-select [(ngModel)]="eventForm.frequency" [panelWidth]="null" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel event-frequency-options-panel">
-                      <mat-select-trigger>
+              <section class="event-schedule-panel">
+                <div class="event-schedule-panel-head">
+                  <span class="event-schedule-panel-title">
+                    <mat-icon>calendar_month</mat-icon>
+                    <span>Date</span>
+                  </span>
+                  <label class="event-frequency-label">
+                    <ng-container *ngIf="!isMobileView; else mobileEventFrequencyButton">
+                      <div class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select" [ngClass]="eventFrequencyClass(eventForm.frequency)">
+                        <mat-select [(ngModel)]="eventForm.frequency" [panelWidth]="null" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel event-frequency-options-panel">
+                          <mat-select-trigger>
+                            <span class="status-option-content">
+                              <mat-icon [class]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
+                              <span>{{ eventForm.frequency }}</span>
+                            </span>
+                          </mat-select-trigger>
+                          <mat-option *ngFor="let option of eventFrequencyOptions" [value]="option" class="status-option" [ngClass]="eventFrequencyClass(option)">
+                            <span class="status-option-content">
+                              <mat-icon [class]="eventFrequencyClass(option)">{{ eventFrequencyIcon(option) }}</mat-icon>
+                              <span>{{ option }}</span>
+                            </span>
+                          </mat-option>
+                        </mat-select>
+                      </div>
+                    </ng-container>
+                    <ng-template #mobileEventFrequencyButton>
+                      <button
+                        type="button"
+                        class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select"
+                        [ngClass]="eventFrequencyClass(eventForm.frequency)"
+                        (click)="openMobileEventFrequencySelector($event)"
+                      >
                         <span class="status-option-content">
                           <mat-icon [class]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
                           <span>{{ eventForm.frequency }}</span>
                         </span>
-                      </mat-select-trigger>
-                      <mat-option *ngFor="let option of eventFrequencyOptions" [value]="option" class="status-option" [ngClass]="eventFrequencyClass(option)">
-                        <span class="status-option-content">
-                          <mat-icon [class]="eventFrequencyClass(option)">{{ eventFrequencyIcon(option) }}</mat-icon>
-                          <span>{{ option }}</span>
-                        </span>
-                      </mat-option>
-                    </mat-select>
+                        <mat-icon>expand_more</mat-icon>
+                      </button>
+                    </ng-template>
+                  </label>
+                </div>
+                <label class="event-datetime-label">
+                  <span>Start</span>
+                  <div class="event-datetime-row">
+                    <mat-form-field appearance="outline" class="event-date-field event-date-field-start" subscriptSizing="dynamic">
+                      <input matInput [matDatepicker]="eventStartPicker" [ngModel]="eventStartDateValue" (ngModelChange)="onEventStartDateChange($event)" />
+                      <mat-datepicker-toggle matSuffix [for]="eventStartPicker"></mat-datepicker-toggle>
+                      <mat-datepicker #eventStartPicker></mat-datepicker>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" class="event-time-field event-time-field-start" subscriptSizing="dynamic">
+                      <input
+                        matInput
+                        [matTimepicker]="eventStartTimePicker"
+                        [matTimepickerOpenOnClick]="true"
+                        [ngModel]="eventStartTimeValue"
+                        (ngModelChange)="onEventStartTimeChange($event)"
+                      />
+                      <mat-timepicker-toggle matSuffix [for]="eventStartTimePicker"></mat-timepicker-toggle>
+                      <mat-timepicker #eventStartTimePicker></mat-timepicker>
+                    </mat-form-field>
                   </div>
-                </ng-container>
-                <ng-template #mobileEventFrequencyButton>
-                  <button
-                    type="button"
-                    class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select"
-                    [ngClass]="eventFrequencyClass(eventForm.frequency)"
-                    (click)="openMobileEventFrequencySelector($event)"
-                  >
-                    <span class="status-option-content">
-                      <mat-icon [class]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
-                      <span>{{ eventForm.frequency }}</span>
-                    </span>
-                    <mat-icon>expand_more</mat-icon>
-                  </button>
-                </ng-template>
-              </label>
-            </div>
-            <div class="popup-actions experience-form-actions">
-              <button type="button" class="link-btn neutral-btn" (click)="cancelEventEditorForm()">Cancel</button>
-              <button type="button" class="link-btn primary-btn" (click)="saveEventEditorForm()">Save</button>
+                </label>
+                <label class="event-datetime-label">
+                  <span>End</span>
+                  <div class="event-datetime-row">
+                    <mat-form-field appearance="outline" class="event-date-field event-date-field-end" subscriptSizing="dynamic">
+                      <input matInput [matDatepicker]="eventEndPicker" [ngModel]="eventEndDateValue" (ngModelChange)="onEventEndDateChange($event)" />
+                      <mat-datepicker-toggle matSuffix [for]="eventEndPicker"></mat-datepicker-toggle>
+                      <mat-datepicker #eventEndPicker></mat-datepicker>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" class="event-time-field event-time-field-end" subscriptSizing="dynamic">
+                      <input
+                        matInput
+                        [matTimepicker]="eventEndTimePicker"
+                        [matTimepickerOpenOnClick]="true"
+                        [ngModel]="eventEndTimeValue"
+                        (ngModelChange)="onEventEndTimeChange($event)"
+                      />
+                      <mat-timepicker-toggle matSuffix [for]="eventEndTimePicker"></mat-timepicker-toggle>
+                      <mat-timepicker #eventEndTimePicker></mat-timepicker>
+                    </mat-form-field>
+                  </div>
+                </label>
+              </section>
             </div>
           </div>
         </section>
@@ -2157,101 +2184,128 @@
                 <span>Name</span>
                 <input type="text" [(ngModel)]="eventForm.title" />
               </label>
-              <label class="event-topics-field">
-                <span>Topics</span>
-                <button type="button" class="profile-status-select-wrap selector-like experience-type-select activity-filter-events event-topics-trigger" (click)="openEventTopicsSelector($event)">
-                  <span class="status-option-content">
-                    <mat-icon class="activity-filter-events">interests</mat-icon>
-                    <span>{{ eventForm.topics.length > 0 ? (eventForm.topics.join(', ')) : 'Select topics' }}</span>
+              <span class="event-form-row-spacer" *ngIf="!isMobileView" aria-hidden="true"></span>
+              <label class="experience-description-field event-blind-mode-field">
+                <button
+                  type="button"
+                  class="event-blind-mode-card"
+                  [ngClass]="eventBlindModeClass(eventForm.blindMode)"
+                  (click)="toggleEventBlindMode($event)"
+                >
+                  <span class="event-blind-mode-title">
+                    <mat-icon [class]="eventBlindModeClass(eventForm.blindMode)">{{ eventBlindModeIcon(eventForm.blindMode) }}</mat-icon>
+                    <span>{{ eventForm.blindMode }}</span>
                   </span>
-                  <mat-icon>chevron_right</mat-icon>
+                  <span class="event-blind-mode-description">{{ eventBlindModeDescription(eventForm.blindMode) }}</span>
+                </button>
+              </label>
+              <label class="event-topics-field event-topics-panel-field">
+                <button type="button" class="event-topics-panel" [ngClass]="eventTopicsPanelClass()" (click)="openEventTopicsSelector($event)">
+                  <span class="event-topics-panel-head">
+                    <span class="event-topics-panel-title">
+                      <mat-icon>{{ eventTopicsPanelIcon() }}</mat-icon>
+                      <span>Topics</span>
+                    </span>
+                    <mat-icon class="event-topics-chevron">chevron_right</mat-icon>
+                  </span>
+                  <span class="event-topics-panel-body" *ngIf="eventForm.topics.length > 0; else eventTopicsPlaceholderStacked">
+                    <span class="values-selected-chip event-topic-pill" *ngFor="let topic of eventForm.topics" [ngClass]="interestOptionToneClass(topic)">
+                      {{ eventTopicLabel(topic) }}
+                    </span>
+                  </span>
+                  <ng-template #eventTopicsPlaceholderStacked>
+                    <span class="event-topics-panel-placeholder">Select topics</span>
+                  </ng-template>
                 </button>
               </label>
               <label class="experience-description-field">
                 <span>Description</span>
                 <textarea rows="4" [(ngModel)]="eventForm.description"></textarea>
               </label>
-              <label class="event-datetime-label">
-                <span>Start</span>
-                <div class="event-datetime-row">
-                  <mat-form-field appearance="outline" class="event-date-field event-date-field-start" subscriptSizing="dynamic">
-                    <input matInput [matDatepicker]="eventStartPickerStacked" [ngModel]="eventStartDateValue" (ngModelChange)="onEventStartDateChange($event)" />
-                    <mat-datepicker-toggle matSuffix [for]="eventStartPickerStacked"></mat-datepicker-toggle>
-                    <mat-datepicker #eventStartPickerStacked></mat-datepicker>
-                  </mat-form-field>
-                  <mat-form-field appearance="outline" class="event-time-field event-time-field-start" subscriptSizing="dynamic">
-                    <input
-                      matInput
-                      [matTimepicker]="eventStartTimePickerStacked"
-                      [matTimepickerOpenOnClick]="true"
-                      [ngModel]="eventStartTimeValue"
-                      (ngModelChange)="onEventStartTimeChange($event)"
-                    />
-                    <mat-timepicker-toggle matSuffix [for]="eventStartTimePickerStacked"></mat-timepicker-toggle>
-                    <mat-timepicker #eventStartTimePickerStacked></mat-timepicker>
-                  </mat-form-field>
-                </div>
-              </label>
-              <label class="event-datetime-label">
-                <span>End</span>
-                <div class="event-datetime-row">
-                  <mat-form-field appearance="outline" class="event-date-field event-date-field-end" subscriptSizing="dynamic">
-                    <input matInput [matDatepicker]="eventEndPickerStacked" [ngModel]="eventEndDateValue" (ngModelChange)="onEventEndDateChange($event)" />
-                    <mat-datepicker-toggle matSuffix [for]="eventEndPickerStacked"></mat-datepicker-toggle>
-                    <mat-datepicker #eventEndPickerStacked></mat-datepicker>
-                  </mat-form-field>
-                  <mat-form-field appearance="outline" class="event-time-field event-time-field-end" subscriptSizing="dynamic">
-                    <input
-                      matInput
-                      [matTimepicker]="eventEndTimePickerStacked"
-                      [matTimepickerOpenOnClick]="true"
-                      [ngModel]="eventEndTimeValue"
-                      (ngModelChange)="onEventEndTimeChange($event)"
-                    />
-                    <mat-timepicker-toggle matSuffix [for]="eventEndTimePickerStacked"></mat-timepicker-toggle>
-                    <mat-timepicker #eventEndTimePickerStacked></mat-timepicker>
-                  </mat-form-field>
-                </div>
-              </label>
-              <label>
-                <span>Frequency</span>
-                <ng-container *ngIf="!isMobileView; else mobileEventFrequencyButtonStacked">
-                  <div class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select" [ngClass]="eventFrequencyClass(eventForm.frequency)">
-                    <mat-select [(ngModel)]="eventForm.frequency" [panelWidth]="null" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel event-frequency-options-panel">
-                      <mat-select-trigger>
+              <section class="event-schedule-panel">
+                <div class="event-schedule-panel-head">
+                  <span class="event-schedule-panel-title">
+                    <mat-icon>calendar_month</mat-icon>
+                    <span>Date</span>
+                  </span>
+                  <label class="event-frequency-label">
+                    <ng-container *ngIf="!isMobileView; else mobileEventFrequencyButtonStacked">
+                      <div class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select" [ngClass]="eventFrequencyClass(eventForm.frequency)">
+                        <mat-select [(ngModel)]="eventForm.frequency" [panelWidth]="null" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel event-frequency-options-panel">
+                          <mat-select-trigger>
+                            <span class="status-option-content">
+                              <mat-icon [class]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
+                              <span>{{ eventForm.frequency }}</span>
+                            </span>
+                          </mat-select-trigger>
+                          <mat-option *ngFor="let option of eventFrequencyOptions" [value]="option" class="status-option" [ngClass]="eventFrequencyClass(option)">
+                            <span class="status-option-content">
+                              <mat-icon [class]="eventFrequencyClass(option)">{{ eventFrequencyIcon(option) }}</mat-icon>
+                              <span>{{ option }}</span>
+                            </span>
+                          </mat-option>
+                        </mat-select>
+                      </div>
+                    </ng-container>
+                    <ng-template #mobileEventFrequencyButtonStacked>
+                      <button
+                        type="button"
+                        class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select"
+                        [ngClass]="eventFrequencyClass(eventForm.frequency)"
+                        (click)="openMobileEventFrequencySelector($event)"
+                      >
                         <span class="status-option-content">
                           <mat-icon [class]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
                           <span>{{ eventForm.frequency }}</span>
                         </span>
-                      </mat-select-trigger>
-                      <mat-option *ngFor="let option of eventFrequencyOptions" [value]="option" class="status-option" [ngClass]="eventFrequencyClass(option)">
-                        <span class="status-option-content">
-                          <mat-icon [class]="eventFrequencyClass(option)">{{ eventFrequencyIcon(option) }}</mat-icon>
-                          <span>{{ option }}</span>
-                        </span>
-                      </mat-option>
-                    </mat-select>
+                        <mat-icon>expand_more</mat-icon>
+                      </button>
+                    </ng-template>
+                  </label>
+                </div>
+                <label class="event-datetime-label">
+                  <span>Start</span>
+                  <div class="event-datetime-row">
+                    <mat-form-field appearance="outline" class="event-date-field event-date-field-start" subscriptSizing="dynamic">
+                      <input matInput [matDatepicker]="eventStartPickerStacked" [ngModel]="eventStartDateValue" (ngModelChange)="onEventStartDateChange($event)" />
+                      <mat-datepicker-toggle matSuffix [for]="eventStartPickerStacked"></mat-datepicker-toggle>
+                      <mat-datepicker #eventStartPickerStacked></mat-datepicker>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" class="event-time-field event-time-field-start" subscriptSizing="dynamic">
+                      <input
+                        matInput
+                        [matTimepicker]="eventStartTimePickerStacked"
+                        [matTimepickerOpenOnClick]="true"
+                        [ngModel]="eventStartTimeValue"
+                        (ngModelChange)="onEventStartTimeChange($event)"
+                      />
+                      <mat-timepicker-toggle matSuffix [for]="eventStartTimePickerStacked"></mat-timepicker-toggle>
+                      <mat-timepicker #eventStartTimePickerStacked></mat-timepicker>
+                    </mat-form-field>
                   </div>
-                </ng-container>
-                <ng-template #mobileEventFrequencyButtonStacked>
-                  <button
-                    type="button"
-                    class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select"
-                    [ngClass]="eventFrequencyClass(eventForm.frequency)"
-                    (click)="openMobileEventFrequencySelector($event)"
-                  >
-                    <span class="status-option-content">
-                      <mat-icon [class]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
-                      <span>{{ eventForm.frequency }}</span>
-                    </span>
-                    <mat-icon>expand_more</mat-icon>
-                  </button>
-                </ng-template>
-              </label>
-            </div>
-            <div class="popup-actions experience-form-actions">
-              <button type="button" class="link-btn neutral-btn" (click)="cancelEventEditorForm()">Cancel</button>
-              <button type="button" class="link-btn primary-btn" (click)="saveEventEditorForm()">Save</button>
+                </label>
+                <label class="event-datetime-label">
+                  <span>End</span>
+                  <div class="event-datetime-row">
+                    <mat-form-field appearance="outline" class="event-date-field event-date-field-end" subscriptSizing="dynamic">
+                      <input matInput [matDatepicker]="eventEndPickerStacked" [ngModel]="eventEndDateValue" (ngModelChange)="onEventEndDateChange($event)" />
+                      <mat-datepicker-toggle matSuffix [for]="eventEndPickerStacked"></mat-datepicker-toggle>
+                      <mat-datepicker #eventEndPickerStacked></mat-datepicker>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" class="event-time-field event-time-field-end" subscriptSizing="dynamic">
+                      <input
+                        matInput
+                        [matTimepicker]="eventEndTimePickerStacked"
+                        [matTimepickerOpenOnClick]="true"
+                        [ngModel]="eventEndTimeValue"
+                        (ngModelChange)="onEventEndTimeChange($event)"
+                      />
+                      <mat-timepicker-toggle matSuffix [for]="eventEndTimePickerStacked"></mat-timepicker-toggle>
+                      <mat-timepicker #eventEndTimePickerStacked></mat-timepicker>
+                    </mat-form-field>
+                  </div>
+                </label>
+              </section>
             </div>
           </div>
         </section>
