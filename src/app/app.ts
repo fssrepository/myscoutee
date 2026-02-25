@@ -639,8 +639,13 @@ export class App {
   private suppressCalendarEdgeSettle = false;
   private calendarMonthAnchorPages: Date[] | null = null;
   private calendarWeekAnchorPages: Date[] | null = null;
-  private readonly calendarAnchorRadius = 2;
-  private readonly calendarAnchorWindowSize = 5;
+  private get calendarAnchorRadius(): number {
+    return this.isMobileView ? 1 : 2;
+  }
+
+  private get calendarAnchorWindowSize(): number {
+    return (this.calendarAnchorRadius * 2) + 1;
+  }
   private calendarMonthAnchorsHydrated = false;
   private calendarWeekAnchorsHydrated = false;
   protected readonly activitiesPrimaryFilters: Array<{ key: ActivitiesPrimaryFilter; label: string; icon: string }> = [
@@ -5671,13 +5676,7 @@ export class App {
     }
     const todayMonth = this.startOfMonth(this.dateOnly(new Date()));
     const focusMonth = this.calendarMonthFocusDate ? this.startOfMonth(this.calendarMonthFocusDate) : todayMonth;
-    this.calendarMonthAnchorPages = [
-      this.addMonths(focusMonth, -2),
-      this.addMonths(focusMonth, -1),
-      focusMonth,
-      this.addMonths(focusMonth, 1),
-      this.addMonths(focusMonth, 2)
-    ];
+    this.calendarMonthAnchorPages = this.buildMonthAnchorWindow(focusMonth);
     return [...this.calendarMonthAnchorPages];
   }
 
@@ -5687,13 +5686,7 @@ export class App {
     }
     const todayWeek = this.startOfWeekMonday(this.dateOnly(new Date()));
     const focusWeek = this.calendarWeekFocusDate ? this.startOfWeekMonday(this.calendarWeekFocusDate) : todayWeek;
-    this.calendarWeekAnchorPages = [
-      this.addDays(focusWeek, -14),
-      this.addDays(focusWeek, -7),
-      focusWeek,
-      this.addDays(focusWeek, 7),
-      this.addDays(focusWeek, 14)
-    ];
+    this.calendarWeekAnchorPages = this.buildWeekAnchorWindow(focusWeek);
     return [...this.calendarWeekAnchorPages];
   }
 
@@ -6039,22 +6032,10 @@ export class App {
     setTimeout(() => {
       if (this.activitiesView === 'month' && this.calendarMonthAnchorPages?.length === 1) {
         const focus = this.calendarMonthAnchorPages[0];
-        this.calendarMonthAnchorPages = [
-          this.addMonths(focus, -2),
-          this.addMonths(focus, -1),
-          focus,
-          this.addMonths(focus, 1),
-          this.addMonths(focus, 2)
-        ];
+        this.calendarMonthAnchorPages = this.buildMonthAnchorWindow(focus);
       } else if (this.activitiesView === 'week' && this.calendarWeekAnchorPages?.length === 1) {
         const focus = this.calendarWeekAnchorPages[0];
-        this.calendarWeekAnchorPages = [
-          this.addDays(focus, -14),
-          this.addDays(focus, -7),
-          focus,
-          this.addDays(focus, 7),
-          this.addDays(focus, 14)
-        ];
+        this.calendarWeekAnchorPages = this.buildWeekAnchorWindow(focus);
       } else {
         return;
       }
@@ -6067,6 +6048,24 @@ export class App {
     const copy = new Date(value);
     copy.setDate(copy.getDate() + days);
     return this.dateOnly(copy);
+  }
+
+  private buildMonthAnchorWindow(focusMonth: Date): Date[] {
+    const radius = this.calendarAnchorRadius;
+    const anchors: Date[] = [];
+    for (let offset = -radius; offset <= radius; offset += 1) {
+      anchors.push(this.addMonths(focusMonth, offset));
+    }
+    return anchors;
+  }
+
+  private buildWeekAnchorWindow(focusWeek: Date): Date[] {
+    const radius = this.calendarAnchorRadius;
+    const anchors: Date[] = [];
+    for (let offset = -radius; offset <= radius; offset += 1) {
+      anchors.push(this.addDays(focusWeek, offset * 7));
+    }
+    return anchors;
   }
 
   private addMonths(value: Date, months: number): Date {
