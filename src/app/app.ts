@@ -3712,11 +3712,24 @@ export class App {
   }
 
   protected activityCapacityLabel(row: ActivityListRow): string {
-    return this.activityCapacityById[row.id] ?? `${Math.max(1, row.unread)} / ${Math.max(4, row.unread + 6)}`;
+    const acceptedMembersCount = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted').length;
+    const capacityTotal = this.activityCapacityTotal(row, acceptedMembersCount);
+    return `${acceptedMembersCount} / ${capacityTotal}`;
   }
 
   protected activityPendingMemberCount(row: ActivityListRow): number {
     return this.getActivityMembersByRow(row).filter(member => member.status === 'pending').length;
+  }
+
+  private activityCapacityTotal(row: ActivityListRow, fallbackBase = 0): number {
+    const source = this.activityCapacityById[row.id];
+    if (source) {
+      const parts = source.split('/').map(part => Number.parseInt(part.trim(), 10));
+      if (parts.length >= 2 && Number.isFinite(parts[1]) && parts[1] > 0) {
+        return parts[1];
+      }
+    }
+    return Math.max(fallbackBase, 4);
   }
 
   protected activityTypeIcon(row: ActivityListRow): string {
@@ -3893,8 +3906,8 @@ export class App {
   }
 
   protected activityMembersHeaderSummary(): string {
-    const acceptedCount = this.selectedActivityMembers.filter(member => member.status === 'accepted').length;
-    const pendingCount = this.selectedActivityMembers.length - acceptedCount;
+    const pendingCount = this.selectedActivityMembers.filter(member => member.status === 'pending').length;
+    const acceptedCount = this.selectedActivityMembers.length - pendingCount;
     if (pendingCount <= 0) {
       return `${acceptedCount} members`;
     }
@@ -5176,41 +5189,35 @@ export class App {
       return [this.toActivityMemberEntry(this.activeUser, row, rowKey, { status: 'accepted', pendingSource: null, invitedByActiveUser: false })];
     }
     const seed = this.hashText(`${row.type}:${row.id}`);
-    const memberCount = row.type === 'invitations' ? 3 : 5;
+    const acceptedTarget = row.type === 'invitations' ? 2 + (seed % 3) : 4 + (seed % 3);
+    const pendingTarget = row.type === 'invitations' ? 1 + ((seed >> 2) % 2) : 1 + ((seed >> 3) % 3);
     const picked: DemoUser[] = [this.activeUser];
-    const offsets = [0, 3, 7, 11, 15, 19, 23];
+    const offsets = [0, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29];
     for (const offset of offsets) {
       const candidate = others[(seed + offset) % others.length];
       if (!picked.some(item => item.id === candidate.id)) {
         picked.push(candidate);
       }
-      if (picked.length >= memberCount) {
+      if (picked.length >= acceptedTarget) {
         break;
       }
     }
     const accepted = picked.map(user => this.toActivityMemberEntry(user, row, rowKey, { status: 'accepted', pendingSource: null, invitedByActiveUser: false }));
     const acceptedIds = new Set(accepted.map(item => item.userId));
-    const pendingCandidate = others.find(user => !acceptedIds.has(user.id));
-    if (pendingCandidate) {
-      accepted.push(
-        this.toActivityMemberEntry(pendingCandidate, row, rowKey, {
-          status: 'pending',
-          pendingSource: row.isAdmin ? 'admin' : 'member',
-          invitedByActiveUser: true
-        })
-      );
-      acceptedIds.add(pendingCandidate.id);
-    }
-    const joinCandidate = others.find(user => !acceptedIds.has(user.id));
-    if (joinCandidate) {
-      const joinEntry = this.toActivityMemberEntry(joinCandidate, row, rowKey, {
+    const pendingPool = others.filter(user => !acceptedIds.has(user.id));
+    const pendingCount = Math.min(pendingTarget, pendingPool.length);
+    for (let index = 0; index < pendingCount; index += 1) {
+      const user = pendingPool[index];
+      const isJoinRequest = ((seed + index) % 3) === 0;
+      const pendingSource: ActivityPendingSource = row.isAdmin ? 'admin' : 'member';
+      const baseEntry = this.toActivityMemberEntry(user, row, rowKey, {
         status: 'pending',
-        pendingSource: 'member',
-        invitedByActiveUser: false
+        pendingSource: isJoinRequest ? 'member' : pendingSource,
+        invitedByActiveUser: !isJoinRequest
       });
       accepted.push({
-        ...joinEntry,
-        requestKind: 'join'
+        ...baseEntry,
+        requestKind: isJoinRequest ? 'join' : 'invite'
       });
     }
     const ordered = this.sortActivityMembersByActionTimeAsc(accepted);

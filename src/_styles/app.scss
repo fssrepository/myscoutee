@@ -2353,6 +2353,10 @@
   transition: transform 0.14s ease, box-shadow 0.16s ease, filter 0.16s ease;
 }
 
+.activities-scroll-list .asset-item-card.activities-row-item {
+  cursor: default;
+}
+
 .activities-card {
   position: relative;
   border: 1px solid rgba(33, 51, 78, 0.14);
