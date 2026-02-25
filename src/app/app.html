@@ -1323,7 +1323,128 @@
                   </div>
                 </label>
               </section>
+              <section class="event-subevents-panel">
+                <div class="event-subevents-panel-head">
+                  <span class="event-subevents-panel-title">
+                    <mat-icon>view_timeline</mat-icon>
+                    <span>Sub events</span>
+                  </span>
+                  <button type="button" class="event-subevents-add-btn" (click)="openSubEventPanel($event)" aria-label="Add sub event">
+                    <mat-icon>add</mat-icon>
+                  </button>
+                </div>
+                <div class="event-subevents-grid" *ngIf="eventForm.subEvents.length > 0">
+                  <article class="event-subevent-card" *ngFor="let subEvent of eventForm.subEvents">
+                    <h4>{{ subEvent.name }}</h4>
+                    <p>{{ subEvent.description || 'No description' }}</p>
+                    <span>{{ subEventCardRange(subEvent) }}</span>
+                    <span>{{ subEventCardMeta(subEvent) }}</span>
+                    <div class="event-subevent-badges">
+                      <button type="button" class="event-subevent-badge event-subevent-badge-members" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Members', subEvent, $event)">
+                        <span class="event-subevent-badge-title">Members</span>
+                        <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.membersPending > 0">{{ subEvent.membersPending }}</span>
+                      </button>
+                      <button type="button" class="event-subevent-badge event-subevent-badge-car" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Car', subEvent, $event)">
+                        <span class="event-subevent-badge-title">Car</span>
+                        <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.carsPending > 0">{{ subEvent.carsPending }}</span>
+                      </button>
+                      <button type="button" class="event-subevent-badge event-subevent-badge-accommodation" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Accommodation', subEvent, $event)">
+                        <span class="event-subevent-badge-title">Accommodation</span>
+                        <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.accommodationPending > 0">{{ subEvent.accommodationPending }}</span>
+                      </button>
+                      <button type="button" class="event-subevent-badge event-subevent-badge-supplies" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Supplies', subEvent, $event)">
+                        <span class="event-subevent-badge-title">Supplies</span>
+                        <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.suppliesPending > 0">{{ subEvent.suppliesPending }}</span>
+                      </button>
+                    </div>
+                  </article>
+                </div>
+              </section>
             </div>
+            <section class="experience-form-overlay subevent-form-overlay" *ngIf="showSubEventForm">
+              <div class="experience-form-overlay-backdrop" (click)="closeSubEventPanel($event)"></div>
+              <div class="experience-form-popup subevent-form-popup">
+                <div class="experience-form-header">
+                  <h3>Create Sub Event</h3>
+                  <div class="experience-form-header-controls">
+                    <label class="subevent-optional-field subevent-optional-field-header">
+                      <button type="button" class="subevent-optional-toggle" [ngClass]="subEventModeClass(subEventForm.optional)" (click)="toggleSubEventOptionalPicker($event)">
+                        <mat-icon>{{ subEventModeIcon(subEventForm.optional) }}</mat-icon>
+                        <span>{{ subEventForm.optional ? 'Optional' : 'Mandatory' }}</span>
+                        <mat-icon>expand_more</mat-icon>
+                      </button>
+                      <div class="activities-view-picker-panel subevent-optional-picker-panel" *ngIf="showSubEventOptionalPicker">
+                        <button type="button" class="activities-view-option subevent-mode-mandatory" (click)="selectSubEventOptional(false, $event)">
+                          <mat-icon>{{ subEventModeIcon(false) }}</mat-icon>
+                          <span>Mandatory</span>
+                        </button>
+                        <button type="button" class="activities-view-option subevent-mode-optional" (click)="selectSubEventOptional(true, $event)">
+                          <mat-icon>{{ subEventModeIcon(true) }}</mat-icon>
+                          <span>Optional</span>
+                        </button>
+                      </div>
+                    </label>
+                    <button type="button" class="experience-form-close-btn" (click)="closeSubEventPanelWithSave($event)" aria-label="Close create sub event">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                </div>
+                <section class="experience-form-panel subevent-form-panel" [ngClass]="subEventModeClass(subEventForm.optional)">
+                  <div class="experience-form-grid subevent-form-grid">
+                    <label class="experience-title-field">
+                      <span>Name</span>
+                      <input type="text" [(ngModel)]="subEventForm.name" />
+                    </label>
+                    <label class="subevent-capacity-range-field">
+                      <span>Capacity</span>
+                      <div class="subevent-capacity-range">
+                        <input type="number" min="1" step="1" [ngModel]="subEventForm.capacityMin" (ngModelChange)="onSubEventCapacityMinChange($event)" placeholder="Min" />
+                        <span class="subevent-capacity-separator">-</span>
+                        <input type="number" [min]="subEventForm.capacityMin" step="1" [ngModel]="subEventForm.capacityMax" (ngModelChange)="onSubEventCapacityMaxChange($event)" placeholder="Max" />
+                      </div>
+                    </label>
+                    <label class="experience-description-field">
+                      <span>Description</span>
+                      <textarea rows="3" [(ngModel)]="subEventForm.description"></textarea>
+                    </label>
+                    <label class="event-datetime-label">
+                      <span>Start</span>
+                      <div class="event-datetime-row">
+                        <mat-form-field appearance="outline" class="event-date-field" subscriptSizing="dynamic">
+                          <input matInput [matDatepicker]="subEventStartPickerMain" [ngModel]="subEventStartDateValue" (ngModelChange)="onSubEventStartDateChange($event)" />
+                          <mat-datepicker-toggle matSuffix [for]="subEventStartPickerMain"></mat-datepicker-toggle>
+                          <mat-datepicker #subEventStartPickerMain></mat-datepicker>
+                        </mat-form-field>
+                        <mat-form-field appearance="outline" class="event-time-field" subscriptSizing="dynamic">
+                          <input matInput [matTimepicker]="subEventStartTimePickerMain" [matTimepickerOpenOnClick]="true" [ngModel]="subEventStartTimeValue" (ngModelChange)="onSubEventStartTimeChange($event)" />
+                          <mat-timepicker-toggle matSuffix [for]="subEventStartTimePickerMain"></mat-timepicker-toggle>
+                          <mat-timepicker #subEventStartTimePickerMain></mat-timepicker>
+                        </mat-form-field>
+                      </div>
+                    </label>
+                    <label class="event-datetime-label">
+                      <span>End</span>
+                      <div class="event-datetime-row">
+                        <mat-form-field appearance="outline" class="event-date-field" subscriptSizing="dynamic">
+                          <input matInput [matDatepicker]="subEventEndPickerMain" [ngModel]="subEventEndDateValue" (ngModelChange)="onSubEventEndDateChange($event)" />
+                          <mat-datepicker-toggle matSuffix [for]="subEventEndPickerMain"></mat-datepicker-toggle>
+                          <mat-datepicker #subEventEndPickerMain></mat-datepicker>
+                        </mat-form-field>
+                        <mat-form-field appearance="outline" class="event-time-field" subscriptSizing="dynamic">
+                          <input matInput [matTimepicker]="subEventEndTimePickerMain" [matTimepickerOpenOnClick]="true" [ngModel]="subEventEndTimeValue" (ngModelChange)="onSubEventEndTimeChange($event)" />
+                          <mat-timepicker-toggle matSuffix [for]="subEventEndTimePickerMain"></mat-timepicker-toggle>
+                          <mat-timepicker #subEventEndTimePickerMain></mat-timepicker>
+                        </mat-form-field>
+                      </div>
+                    </label>
+                  </div>
+                </section>
+              </div>
+            </section>
           </div>
         </section>
       </ng-template>
@@ -2306,7 +2427,128 @@
                   </div>
                 </label>
               </section>
+              <section class="event-subevents-panel">
+                <div class="event-subevents-panel-head">
+                  <span class="event-subevents-panel-title">
+                    <mat-icon>view_timeline</mat-icon>
+                    <span>Sub events</span>
+                  </span>
+                  <button type="button" class="event-subevents-add-btn" (click)="openSubEventPanel($event)" aria-label="Add sub event">
+                    <mat-icon>add</mat-icon>
+                  </button>
+                </div>
+                <div class="event-subevents-grid" *ngIf="eventForm.subEvents.length > 0">
+                  <article class="event-subevent-card" *ngFor="let subEvent of eventForm.subEvents">
+                    <h4>{{ subEvent.name }}</h4>
+                    <p>{{ subEvent.description || 'No description' }}</p>
+                    <span>{{ subEventCardRange(subEvent) }}</span>
+                    <span>{{ subEventCardMeta(subEvent) }}</span>
+                    <div class="event-subevent-badges">
+                      <button type="button" class="event-subevent-badge event-subevent-badge-members" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Members', subEvent, $event)">
+                        <span class="event-subevent-badge-title">Members</span>
+                        <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.membersPending > 0">{{ subEvent.membersPending }}</span>
+                      </button>
+                      <button type="button" class="event-subevent-badge event-subevent-badge-car" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Car', subEvent, $event)">
+                        <span class="event-subevent-badge-title">Car</span>
+                        <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.carsPending > 0">{{ subEvent.carsPending }}</span>
+                      </button>
+                      <button type="button" class="event-subevent-badge event-subevent-badge-accommodation" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Accommodation', subEvent, $event)">
+                        <span class="event-subevent-badge-title">Accommodation</span>
+                        <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.accommodationPending > 0">{{ subEvent.accommodationPending }}</span>
+                      </button>
+                      <button type="button" class="event-subevent-badge event-subevent-badge-supplies" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Supplies', subEvent, $event)">
+                        <span class="event-subevent-badge-title">Supplies</span>
+                        <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.suppliesPending > 0">{{ subEvent.suppliesPending }}</span>
+                      </button>
+                    </div>
+                  </article>
+                </div>
+              </section>
             </div>
+            <section class="experience-form-overlay subevent-form-overlay" *ngIf="showSubEventForm">
+              <div class="experience-form-overlay-backdrop" (click)="closeSubEventPanel($event)"></div>
+              <div class="experience-form-popup subevent-form-popup">
+                <div class="experience-form-header">
+                  <h3>Create Sub Event</h3>
+                  <div class="experience-form-header-controls">
+                    <label class="subevent-optional-field subevent-optional-field-header">
+                      <button type="button" class="subevent-optional-toggle" [ngClass]="subEventModeClass(subEventForm.optional)" (click)="toggleSubEventOptionalPicker($event)">
+                        <mat-icon>{{ subEventModeIcon(subEventForm.optional) }}</mat-icon>
+                        <span>{{ subEventForm.optional ? 'Optional' : 'Mandatory' }}</span>
+                        <mat-icon>expand_more</mat-icon>
+                      </button>
+                      <div class="activities-view-picker-panel subevent-optional-picker-panel" *ngIf="showSubEventOptionalPicker">
+                        <button type="button" class="activities-view-option subevent-mode-mandatory" (click)="selectSubEventOptional(false, $event)">
+                          <mat-icon>{{ subEventModeIcon(false) }}</mat-icon>
+                          <span>Mandatory</span>
+                        </button>
+                        <button type="button" class="activities-view-option subevent-mode-optional" (click)="selectSubEventOptional(true, $event)">
+                          <mat-icon>{{ subEventModeIcon(true) }}</mat-icon>
+                          <span>Optional</span>
+                        </button>
+                      </div>
+                    </label>
+                    <button type="button" class="experience-form-close-btn" (click)="closeSubEventPanelWithSave($event)" aria-label="Close create sub event">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                </div>
+                <section class="experience-form-panel subevent-form-panel" [ngClass]="subEventModeClass(subEventForm.optional)">
+                  <div class="experience-form-grid subevent-form-grid">
+                    <label class="experience-title-field">
+                      <span>Name</span>
+                      <input type="text" [(ngModel)]="subEventForm.name" />
+                    </label>
+                    <label class="subevent-capacity-range-field">
+                      <span>Capacity</span>
+                      <div class="subevent-capacity-range">
+                        <input type="number" min="1" step="1" [ngModel]="subEventForm.capacityMin" (ngModelChange)="onSubEventCapacityMinChange($event)" placeholder="Min" />
+                        <span class="subevent-capacity-separator">-</span>
+                        <input type="number" [min]="subEventForm.capacityMin" step="1" [ngModel]="subEventForm.capacityMax" (ngModelChange)="onSubEventCapacityMaxChange($event)" placeholder="Max" />
+                      </div>
+                    </label>
+                    <label class="experience-description-field">
+                      <span>Description</span>
+                      <textarea rows="3" [(ngModel)]="subEventForm.description"></textarea>
+                    </label>
+                    <label class="event-datetime-label">
+                      <span>Start</span>
+                      <div class="event-datetime-row">
+                        <mat-form-field appearance="outline" class="event-date-field" subscriptSizing="dynamic">
+                          <input matInput [matDatepicker]="subEventStartPickerStacked" [ngModel]="subEventStartDateValue" (ngModelChange)="onSubEventStartDateChange($event)" />
+                          <mat-datepicker-toggle matSuffix [for]="subEventStartPickerStacked"></mat-datepicker-toggle>
+                          <mat-datepicker #subEventStartPickerStacked></mat-datepicker>
+                        </mat-form-field>
+                        <mat-form-field appearance="outline" class="event-time-field" subscriptSizing="dynamic">
+                          <input matInput [matTimepicker]="subEventStartTimePickerStacked" [matTimepickerOpenOnClick]="true" [ngModel]="subEventStartTimeValue" (ngModelChange)="onSubEventStartTimeChange($event)" />
+                          <mat-timepicker-toggle matSuffix [for]="subEventStartTimePickerStacked"></mat-timepicker-toggle>
+                          <mat-timepicker #subEventStartTimePickerStacked></mat-timepicker>
+                        </mat-form-field>
+                      </div>
+                    </label>
+                    <label class="event-datetime-label">
+                      <span>End</span>
+                      <div class="event-datetime-row">
+                        <mat-form-field appearance="outline" class="event-date-field" subscriptSizing="dynamic">
+                          <input matInput [matDatepicker]="subEventEndPickerStacked" [ngModel]="subEventEndDateValue" (ngModelChange)="onSubEventEndDateChange($event)" />
+                          <mat-datepicker-toggle matSuffix [for]="subEventEndPickerStacked"></mat-datepicker-toggle>
+                          <mat-datepicker #subEventEndPickerStacked></mat-datepicker>
+                        </mat-form-field>
+                        <mat-form-field appearance="outline" class="event-time-field" subscriptSizing="dynamic">
+                          <input matInput [matTimepicker]="subEventEndTimePickerStacked" [matTimepickerOpenOnClick]="true" [ngModel]="subEventEndTimeValue" (ngModelChange)="onSubEventEndTimeChange($event)" />
+                          <mat-timepicker-toggle matSuffix [for]="subEventEndTimePickerStacked"></mat-timepicker-toggle>
+                          <mat-timepicker #subEventEndTimePickerStacked></mat-timepicker>
+                        </mat-form-field>
+                      </div>
+                    </label>
+                  </div>
+                </section>
+              </div>
+            </section>
           </div>
         </section>
       </div>

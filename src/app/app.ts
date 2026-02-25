@@ -224,6 +224,23 @@ interface EventEditorForm {
   visibility: EventVisibility;
   blindMode: EventBlindMode;
   topics: string[];
+  subEvents: SubEventFormItem[];
+}
+
+interface SubEventFormItem {
+  id: string;
+  name: string;
+  description: string;
+  startAt: string;
+  endAt: string;
+  optional: boolean;
+  capacityMin: number;
+  capacityMax: number;
+  membersAccepted: number;
+  membersPending: number;
+  carsPending: number;
+  accommodationPending: number;
+  suppliesPending: number;
 }
 
 interface MobileProfileSelectorOption {
@@ -900,10 +917,18 @@ export class App {
   protected eventEditorTarget: EventEditorTarget = 'events';
   protected editingEventId: string | null = null;
   protected eventForm: EventEditorForm = this.defaultEventForm();
+  protected showSubEventForm = false;
+  protected showSubEventOptionalPicker = false;
+  protected subEventForm: SubEventFormItem = this.defaultSubEventForm();
+  protected subEventStartDateValue: Date | null = null;
+  protected subEventEndDateValue: Date | null = null;
+  protected subEventStartTimeValue: Date | null = null;
+  protected subEventEndTimeValue: Date | null = null;
   protected showEventVisibilityPicker = false;
   protected showProfileStatusHeaderPicker = false;
   protected readonly eventVisibilityOptions: EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
   protected readonly eventBlindModeOptions: EventBlindMode[] = ['Open Event', 'Blind Event'];
+  private readonly eventSubEventsById: Record<string, SubEventFormItem[]> = {};
   protected eventStartDateValue: Date | null = null;
   protected eventEndDateValue: Date | null = null;
   protected eventStartTimeValue: Date | null = null;
@@ -1423,6 +1448,126 @@ export class App {
     this.eventForm.blindMode = this.eventForm.blindMode === 'Blind Event' ? 'Open Event' : 'Blind Event';
   }
 
+  protected openSubEventPanel(event?: Event): void {
+    event?.stopPropagation();
+    this.subEventForm = this.defaultSubEventForm();
+    this.syncSubEventDateTimeControlsFromForm();
+    this.showSubEventOptionalPicker = false;
+    this.showSubEventForm = true;
+  }
+
+  protected closeSubEventPanel(event?: Event): void {
+    event?.stopPropagation();
+    this.appendCurrentSubEventIfValid();
+    this.showSubEventForm = false;
+    this.showSubEventOptionalPicker = false;
+  }
+
+  protected closeSubEventPanelWithSave(event?: Event): void {
+    event?.stopPropagation();
+    this.appendCurrentSubEventIfValid();
+    this.showSubEventForm = false;
+    this.showSubEventOptionalPicker = false;
+  }
+
+  protected saveSubEventForm(event?: Event): void {
+    event?.stopPropagation();
+    this.appendCurrentSubEventIfValid();
+    this.showSubEventForm = false;
+    this.showSubEventOptionalPicker = false;
+  }
+
+  protected onSubEventStartDateChange(value: Date | null): void {
+    this.subEventStartDateValue = value;
+    this.syncSubEventFormFromDateTimeControls();
+    this.normalizeSubEventDateRange();
+    this.syncSubEventDateTimeControlsFromForm();
+  }
+
+  protected onSubEventEndDateChange(value: Date | null): void {
+    this.subEventEndDateValue = value;
+    this.syncSubEventFormFromDateTimeControls();
+    this.normalizeSubEventDateRange();
+    this.syncSubEventDateTimeControlsFromForm();
+  }
+
+  protected onSubEventStartTimeChange(value: Date | null): void {
+    this.subEventStartTimeValue = value;
+    this.syncSubEventFormFromDateTimeControls();
+    this.normalizeSubEventDateRange();
+    this.syncSubEventDateTimeControlsFromForm();
+  }
+
+  protected onSubEventEndTimeChange(value: Date | null): void {
+    this.subEventEndTimeValue = value;
+    this.syncSubEventFormFromDateTimeControls();
+    this.normalizeSubEventDateRange();
+    this.syncSubEventDateTimeControlsFromForm();
+  }
+
+  protected subEventCardRange(item: SubEventFormItem): string {
+    const start = new Date(item.startAt);
+    const end = new Date(item.endAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return 'Date pending';
+    }
+    const startLabel = `${this.pad2(start.getMonth() + 1)}/${this.pad2(start.getDate())} ${this.pad2(start.getHours())}:${this.pad2(start.getMinutes())}`;
+    const endLabel = `${this.pad2(end.getMonth() + 1)}/${this.pad2(end.getDate())} ${this.pad2(end.getHours())}:${this.pad2(end.getMinutes())}`;
+    return `${startLabel} - ${endLabel}`;
+  }
+
+  protected subEventCardMeta(item: SubEventFormItem): string {
+    return item.optional ? 'Optional' : 'Mandatory';
+  }
+
+  protected subEventCapacityLabel(item: SubEventFormItem): string {
+    return `${item.membersAccepted} / ${item.capacityMin} - ${item.capacityMax}`;
+  }
+
+  protected subEventCapacityStateClass(item: SubEventFormItem): string {
+    return item.membersAccepted >= item.capacityMin && item.membersAccepted <= item.capacityMax
+      ? 'subevent-capacity-in-range'
+      : 'subevent-capacity-out-of-range';
+  }
+
+  protected openSubEventBadgePopup(type: 'Members' | 'Car' | 'Accommodation' | 'Supplies', item: SubEventFormItem, event?: Event): void {
+    event?.stopPropagation();
+    this.alertService.open(`${type} popup for "${item.name}" is ready for wiring.`);
+  }
+
+  protected subEventModeClass(optional: boolean): string {
+    return optional ? 'subevent-mode-optional' : 'subevent-mode-mandatory';
+  }
+
+  protected subEventModeIcon(optional: boolean): string {
+    return optional ? 'toggle_on' : 'block';
+  }
+
+  protected toggleSubEventOptionalPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.showSubEventOptionalPicker = !this.showSubEventOptionalPicker;
+  }
+
+  protected selectSubEventOptional(optional: boolean, event?: Event): void {
+    event?.stopPropagation();
+    this.subEventForm.optional = optional;
+    this.showSubEventOptionalPicker = false;
+  }
+
+  protected onSubEventCapacityMinChange(value: number | string): void {
+    const parsed = Number(value);
+    this.subEventForm.capacityMin = Math.max(1, Number.isFinite(parsed) ? parsed : 1);
+    if (this.subEventForm.capacityMax < this.subEventForm.capacityMin) {
+      this.subEventForm.capacityMax = this.subEventForm.capacityMin;
+    }
+  }
+
+  protected onSubEventCapacityMaxChange(value: number | string): void {
+    const parsed = Number(value);
+    const next = Math.max(1, Number.isFinite(parsed) ? parsed : this.subEventForm.capacityMin);
+    this.subEventForm.capacityMax = next < this.subEventForm.capacityMin ? this.subEventForm.capacityMin : next;
+  }
+
   protected toggleAssetVisibilityPicker(event?: Event): void {
     event?.stopPropagation();
     this.showAssetVisibilityPicker = !this.showAssetVisibilityPicker;
@@ -1518,6 +1663,7 @@ export class App {
 
   private prepareEventEditorForm(mode: EventEditorMode, explicitSource?: EventMenuItem | HostingMenuItem): void {
     const source = this.resolveEventEditorSource(explicitSource);
+    this.showSubEventForm = false;
     const target = source && this.isHostingSource(source)
       ? 'hosting'
       : (this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'hosting' ? 'hosting' : 'events');
@@ -1568,7 +1714,8 @@ export class App {
       frequency,
       visibility: this.eventVisibilityById[source.id] ?? (target === 'hosting' ? 'Invitation only' : 'Public'),
       blindMode: this.eventBlindModeById[source.id] ?? 'Open Event',
-      topics: [...this.eventEditor.mainEvent.topics].slice(0, 5)
+      topics: [...this.eventEditor.mainEvent.topics].slice(0, 5),
+      subEvents: this.cloneSubEvents(this.eventSubEventsById[source.id] ?? [])
     };
   }
 
@@ -1581,6 +1728,7 @@ export class App {
     const shortDescription = this.eventForm.description.trim();
     this.eventVisibilityById[this.editingEventId] = this.eventForm.visibility;
     this.eventBlindModeById[this.editingEventId] = this.eventForm.blindMode;
+    this.eventSubEventsById[this.editingEventId] = this.cloneSubEvents(this.eventForm.subEvents);
     if (this.eventEditorTarget === 'hosting') {
       this.hostingItemsByUser[this.activeUser.id] = this.hostingItems.map(item =>
         item.id === this.editingEventId
@@ -1610,6 +1758,7 @@ export class App {
       this.hostingDatesById[id] = this.eventForm.startAt;
       this.eventVisibilityById[id] = this.eventForm.visibility;
       this.eventBlindModeById[id] = this.eventForm.blindMode;
+      this.eventSubEventsById[id] = this.cloneSubEvents(this.eventForm.subEvents);
       const next: HostingMenuItem = {
         id,
         avatar: this.activeUser.initials,
@@ -1626,6 +1775,7 @@ export class App {
     this.eventDatesById[id] = this.eventForm.startAt;
     this.eventVisibilityById[id] = this.eventForm.visibility;
     this.eventBlindModeById[id] = this.eventForm.blindMode;
+    this.eventSubEventsById[id] = this.cloneSubEvents(this.eventForm.subEvents);
     const next: EventMenuItem = {
       id,
       avatar: this.activeUser.initials,
@@ -1653,7 +1803,8 @@ export class App {
       frequency: 'One-time',
       visibility: 'Invitation only',
       blindMode: 'Open Event',
-      topics: []
+      topics: [],
+      subEvents: []
     };
   }
 
@@ -1685,6 +1836,95 @@ export class App {
     this.eventForm.startAt = this.applyTimePartFromDateToIsoLocal(this.eventForm.startAt, this.eventStartTimeValue);
     this.eventForm.endAt = this.applyDatePartToIsoLocal(this.eventForm.endAt, this.eventEndDateValue);
     this.eventForm.endAt = this.applyTimePartFromDateToIsoLocal(this.eventForm.endAt, this.eventEndTimeValue);
+  }
+
+  private defaultSubEventForm(): SubEventFormItem {
+    const baseStart = this.isoLocalDateTimeToDate(this.eventForm.startAt) ?? new Date();
+    const start = new Date(baseStart);
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    return {
+      id: '',
+      name: '',
+      description: '',
+      startAt: this.toIsoDateTimeLocal(start),
+      endAt: this.toIsoDateTimeLocal(end),
+      optional: true,
+      capacityMin: 4,
+      capacityMax: 6,
+      membersAccepted: 0,
+      membersPending: 0,
+      carsPending: 0,
+      accommodationPending: 0,
+      suppliesPending: 0
+    };
+  }
+
+  private syncSubEventDateTimeControlsFromForm(): void {
+    this.subEventStartDateValue = this.isoLocalDateTimeToDate(this.subEventForm.startAt);
+    this.subEventEndDateValue = this.isoLocalDateTimeToDate(this.subEventForm.endAt);
+    this.subEventStartTimeValue = this.isoLocalDateTimeToDate(this.subEventForm.startAt);
+    this.subEventEndTimeValue = this.isoLocalDateTimeToDate(this.subEventForm.endAt);
+  }
+
+  private syncSubEventFormFromDateTimeControls(): void {
+    this.subEventForm.startAt = this.applyDatePartToIsoLocal(this.subEventForm.startAt, this.subEventStartDateValue);
+    this.subEventForm.startAt = this.applyTimePartFromDateToIsoLocal(this.subEventForm.startAt, this.subEventStartTimeValue);
+    this.subEventForm.endAt = this.applyDatePartToIsoLocal(this.subEventForm.endAt, this.subEventEndDateValue);
+    this.subEventForm.endAt = this.applyTimePartFromDateToIsoLocal(this.subEventForm.endAt, this.subEventEndTimeValue);
+  }
+
+  private normalizeSubEventDateRange(): void {
+    const start = new Date(this.subEventForm.startAt);
+    const end = new Date(this.subEventForm.endAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return;
+    }
+    if (end.getTime() <= start.getTime()) {
+      const nextEnd = new Date(start.getTime() + 60 * 60 * 1000);
+      this.subEventForm.endAt = this.toIsoDateTimeLocal(nextEnd);
+    }
+  }
+
+  private cloneSubEvents(items: SubEventFormItem[]): SubEventFormItem[] {
+    return items.map(item => ({ ...item }));
+  }
+
+  private appendCurrentSubEventIfValid(): boolean {
+    this.syncSubEventFormFromDateTimeControls();
+    const name = this.subEventForm.name.trim();
+    const description = this.subEventForm.description.trim();
+    if (!name || !description) {
+      return false;
+    }
+    this.normalizeSubEventDateRange();
+    const fallbackStart = this.subEventForm.startAt || this.eventForm.startAt || this.defaultEventStartIso();
+    const fallbackEnd = this.subEventForm.endAt || this.eventForm.endAt || this.defaultEventStartIso();
+    const next: SubEventFormItem = {
+      ...this.subEventForm,
+      id: `se-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name,
+      description,
+      startAt: fallbackStart,
+      endAt: fallbackEnd,
+      capacityMin: Math.max(1, Number(this.subEventForm.capacityMin) || 1),
+      capacityMax: Math.max(
+        Math.max(1, Number(this.subEventForm.capacityMin) || 1),
+        Number(this.subEventForm.capacityMax) || Math.max(1, Number(this.subEventForm.capacityMin) || 1)
+      ),
+      membersAccepted: Math.min(2, Math.max(1, Number(this.subEventForm.capacityMin) || 1)),
+      membersPending: Math.max(
+        0,
+        Math.max(
+          Math.max(1, Number(this.subEventForm.capacityMin) || 1),
+          Number(this.subEventForm.capacityMax) || Math.max(1, Number(this.subEventForm.capacityMin) || 1)
+        ) - Math.min(2, Math.max(1, Number(this.subEventForm.capacityMin) || 1))
+      ),
+      carsPending: 1,
+      accommodationPending: 2,
+      suppliesPending: 3
+    };
+    this.eventForm.subEvents = [...this.eventForm.subEvents, next];
+    return true;
   }
 
   private contextualFrequencyOptions(startAt: string, endAt: string): string[] {
@@ -1752,6 +1992,10 @@ export class App {
 
   private defaultEventStartIso(): string {
     return this.toIsoDateTime(new Date());
+  }
+
+  private pad2(value: number): string {
+    return `${value}`.padStart(2, '0');
   }
 
   private toIsoDateTimeLocal(value: Date): string {
