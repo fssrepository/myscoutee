@@ -616,9 +616,6 @@ export class App {
   protected showActivitiesViewPicker = false;
   protected showActivitiesSecondaryPicker = false;
   protected activitiesStickyValue = '';
-  protected activitiesBottomPullPx = 0;
-  protected activitiesBottomPullReleasing = false;
-  protected activitiesBottomPullArmed = false;
   protected readonly activitiesPageSize = 10;
   protected pendingActivityDeleteRow: ActivityListRow | null = null;
   protected pendingActivityAction: 'delete' | 'exit' = 'delete';
@@ -874,20 +871,16 @@ export class App {
   private activitiesHeaderLoadingStartedAtMs = 0;
   private activitiesHeaderFlushScheduled = false;
   private readonly activitiesPaginationLoadDelayMs = 3500;
+  private activitiesCalendarBadgesTimer: ReturnType<typeof setTimeout> | null = null;
+  private activitiesCalendarBadgesLoadingActive = false;
+  private activitiesCalendarBadgesLoadingDelayKey = '';
+  private readonly activitiesCalendarBadgesReadyDelayKeys = new Set<string>();
+  private activitiesCalendarBadgeDelayPageKey = '';
   private activitiesVisibleCount = this.activitiesPageSize;
   private activitiesPaginationKey = '';
   private activitiesLoadMoreTimer: ReturnType<typeof setTimeout> | null = null;
   private activitiesIsPaginating = false;
   private activitiesPaginationAwaitScrollReset = false;
-  private activitiesBottomPullTracking = false;
-  private activitiesBottomPullEdgeLocked = false;
-  private activitiesBottomPullStartOnLastRow = false;
-  private activitiesBottomPullPointerId: number | null = null;
-  private activitiesBottomPullStartY = 0;
-  private activitiesTouchGlobalListenersAttached = false;
-  private readonly activitiesBottomPullMaxPx = 220;
-  private readonly activitiesBottomPullTriggerPx = 28;
-  private activitiesBottomPullReleaseTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly router: Router) {
     this.initializeProfileImageSlots();
@@ -1239,14 +1232,10 @@ export class App {
     this.clearActivityRateEditorState();
     this.cancelActivitiesPaginationLoad();
     this.clearActivitiesHeaderLoadingAnimation();
+    this.clearActivitiesCalendarBadgeDelay();
     this.activitiesPaginationKey = '';
     this.activitiesVisibleCount = this.activitiesPageSize;
     this.activitiesHeaderProgress = 0;
-    this.resetActivitiesBottomPullState();
-    if (this.activitiesBottomPullReleaseTimer) {
-      clearTimeout(this.activitiesBottomPullReleaseTimer);
-      this.activitiesBottomPullReleaseTimer = null;
-    }
   }
 
   protected closeStackedPopup(): void {
@@ -3328,183 +3317,11 @@ export class App {
     this.maybeLoadMoreActivities(target);
   }
 
-  protected onActivitiesTouchStart(event: TouchEvent): void {
-    console.log('[activities-pull][handler-start]', {
-      input: 'touch',
-      eventType: event.type,
-      touches: event.touches.length,
-      tracking: this.activitiesBottomPullTracking,
-      popup: this.activePopup,
-      calendarView: this.isCalendarLayoutView()
-    });
-    if (this.isCalendarLayoutView() || this.activePopup !== 'activities') {
-      return;
+  protected areCalendarBadgesReady(pageKey: string): boolean {
+    if (!this.isCalendarLayoutView()) {
+      return true;
     }
-    const target = event.currentTarget as HTMLElement | null;
-    if (!target || event.touches.length === 0) {
-      return;
-    }
-    this.beginActivitiesBottomPull(target, event.target, event.touches[0].clientY);
-    const remainingPx = target.scrollHeight - target.scrollTop - target.clientHeight;
-    const canBeginBottomPull = remainingPx <= 24 || this.activitiesBottomPullStartOnLastRow;
-    if (!canBeginBottomPull) {
-      this.resetActivitiesBottomPullState();
-      return;
-    }
-    event.preventDefault();
-  }
-
-  protected onActivitiesTouchMove(event: TouchEvent): void {
-    if (!this.activitiesBottomPullTracking || this.isCalendarLayoutView() || this.activePopup !== 'activities') {
-      return;
-    }
-    const target = event.currentTarget as HTMLElement | null;
-    if (!target || event.touches.length === 0) {
-      return;
-    }
-    if (this.moveActivitiesBottomPull(target, event.touches[0].clientY)) {
-      event.preventDefault();
-    }
-  }
-
-  protected onActivitiesTouchEnd(event: TouchEvent): void {
-    console.log('[activities-pull][handler-end]', {
-      input: 'touch',
-      eventType: event.type,
-      touches: event.touches.length,
-      tracking: this.activitiesBottomPullTracking,
-      pullPx: this.activitiesBottomPullPx,
-      armed: this.activitiesBottomPullArmed
-    });
-    if (!this.activitiesBottomPullTracking) {
-      return;
-    }
-    if (event.touches.length > 0) {
-      return;
-    }
-    const target = event.currentTarget as HTMLElement | null;
-    this.finishActivitiesBottomPull(target, 'release');
-  }
-
-  protected onActivitiesTouchCancel(event: TouchEvent): void {
-    console.log('[activities-pull][handler-end]', {
-      input: 'touch',
-      eventType: event.type,
-      touches: event.touches.length,
-      tracking: this.activitiesBottomPullTracking,
-      pullPx: this.activitiesBottomPullPx,
-      armed: this.activitiesBottomPullArmed,
-      reason: 'cancel'
-    });
-    if (!this.activitiesBottomPullTracking) {
-      return;
-    }
-    const target = event.currentTarget as HTMLElement | null;
-    this.finishActivitiesBottomPull(target, 'cancel');
-  }
-
-  protected onActivitiesPointerStart(event: PointerEvent): void {
-    console.log('[activities-pull][handler-start]', {
-      input: 'pointer',
-      eventType: event.type,
-      pointerType: event.pointerType,
-      pointerId: event.pointerId,
-      tracking: this.activitiesBottomPullTracking,
-      popup: this.activePopup,
-      calendarView: this.isCalendarLayoutView()
-    });
-    const isMousePointer = event.pointerType === 'mouse';
-    if ((isMousePointer && event.button !== 0) || this.isCalendarLayoutView() || this.activePopup !== 'activities') {
-      return;
-    }
-    const target = event.currentTarget as HTMLElement | null;
-    if (!target) {
-      return;
-    }
-    this.activitiesBottomPullPointerId = event.pointerId;
-    if (typeof target.setPointerCapture === 'function') {
-      try {
-        target.setPointerCapture(event.pointerId);
-      } catch {
-        // Ignore capture failures; fallback behavior still works.
-      }
-    }
-    this.beginActivitiesBottomPull(target, event.target, event.clientY);
-  }
-
-  protected onActivitiesPointerMove(event: PointerEvent): void {
-    if (!this.activitiesBottomPullTracking || this.isCalendarLayoutView() || this.activePopup !== 'activities') {
-      return;
-    }
-    if (this.activitiesBottomPullPointerId !== null && event.pointerId !== this.activitiesBottomPullPointerId) {
-      return;
-    }
-    const target = event.currentTarget as HTMLElement | null;
-    if (!target) {
-      return;
-    }
-    if (this.moveActivitiesBottomPull(target, event.clientY)) {
-      event.preventDefault();
-    }
-  }
-
-  protected onActivitiesPointerEnd(event: PointerEvent): void {
-    console.log('[activities-pull][handler-end]', {
-      input: 'pointer',
-      eventType: event.type,
-      pointerType: event.pointerType,
-      pointerId: event.pointerId,
-      tracking: this.activitiesBottomPullTracking,
-      trackedPointerId: this.activitiesBottomPullPointerId,
-      pullPx: this.activitiesBottomPullPx,
-      armed: this.activitiesBottomPullArmed
-    });
-    if (!this.activitiesBottomPullTracking) {
-      return;
-    }
-    if (this.activitiesBottomPullPointerId !== null && event.pointerId !== this.activitiesBottomPullPointerId) {
-      return;
-    }
-    const target = event.currentTarget as HTMLElement | null;
-    if (target && typeof target.releasePointerCapture === 'function') {
-      try {
-        target.releasePointerCapture(event.pointerId);
-      } catch {
-        // Ignore release failures.
-      }
-    }
-    this.activitiesBottomPullPointerId = null;
-    this.finishActivitiesBottomPull(target, 'release');
-  }
-
-  protected onActivitiesPointerCancel(event: PointerEvent): void {
-    console.log('[activities-pull][handler-end]', {
-      input: 'pointer',
-      eventType: event.type,
-      pointerType: event.pointerType,
-      pointerId: event.pointerId,
-      tracking: this.activitiesBottomPullTracking,
-      trackedPointerId: this.activitiesBottomPullPointerId,
-      pullPx: this.activitiesBottomPullPx,
-      armed: this.activitiesBottomPullArmed,
-      reason: 'cancel'
-    });
-    if (!this.activitiesBottomPullTracking) {
-      return;
-    }
-    if (this.activitiesBottomPullPointerId !== null && event.pointerId !== this.activitiesBottomPullPointerId) {
-      return;
-    }
-    const target = event.currentTarget as HTMLElement | null;
-    if (target && typeof target.releasePointerCapture === 'function') {
-      try {
-        target.releasePointerCapture(event.pointerId);
-      } catch {
-        // Ignore release failures.
-      }
-    }
-    this.activitiesBottomPullPointerId = null;
-    this.finishActivitiesBottomPull(target, 'cancel');
+    return this.activitiesCalendarBadgesReadyDelayKeys.has(this.calendarBadgeDelayKey(pageKey));
   }
 
   protected selectActivitiesPrimaryFilter(filter: ActivitiesPrimaryFilter): void {
@@ -3559,7 +3376,7 @@ export class App {
     this.calendarWeekAnchorsHydrated = false;
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
-    this.resetActivitiesScroll();
+    this.resetActivitiesScroll(view === 'month' || view === 'week');
   }
 
   protected activityViewLabel(): string {
@@ -5717,8 +5534,11 @@ export class App {
     return item.mode === modeKey && this.displayedRateDirection(item) === directionKey;
   }
 
-  private resetActivitiesScroll(): void {
+  private resetActivitiesScroll(loadCalendarBadgesForCurrentPage = false): void {
     this.seedActivitiesStickyHeader();
+    if (this.isCalendarLayoutView()) {
+      this.clearActivitiesCalendarBadgeDelay();
+    }
     setTimeout(() => {
       if (this.activePopup !== 'activities') {
         return;
@@ -5759,6 +5579,9 @@ export class App {
       }
       const syncSticky = () => this.updateActivitiesStickyHeader(scrollElement?.scrollTop ?? 0);
       this.updateActivitiesHeaderProgress();
+      if (this.isCalendarLayoutView() && loadCalendarBadgesForCurrentPage) {
+        this.syncActivitiesCalendarBadgeDelay();
+      }
       if (typeof globalThis.requestAnimationFrame === 'function') {
         globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(syncSticky));
         return;
@@ -5863,6 +5686,7 @@ export class App {
           return;
         }
         this.normalizeCalendarScrollPageAlignment(target);
+        this.maybeSyncActivitiesCalendarBadgeDelayByPage();
         this.handleCalendarEdgeSettle(target);
       }, 100);
     }, 120);
@@ -6492,9 +6316,6 @@ export class App {
   }
 
   private beginActivitiesHeaderProgressLoading(): void {
-    if (this.isCalendarLayoutView()) {
-      return;
-    }
     this.activitiesHeaderLoadingCounter += 1;
     if (this.activitiesHeaderLoadingCounter > 1) {
       return;
@@ -6590,37 +6411,99 @@ export class App {
     this.flushActivitiesHeaderProgress();
   }
 
-  private releaseActivitiesBottomPull(animateBounce = true): void {
-    this.detachActivitiesTouchGlobalListeners();
-    this.activitiesBottomPullTracking = false;
-    this.activitiesBottomPullEdgeLocked = false;
-    this.activitiesBottomPullStartOnLastRow = false;
-    this.activitiesBottomPullPointerId = null;
-    this.activitiesBottomPullArmed = false;
-    if (this.activitiesBottomPullReleaseTimer) {
-      clearTimeout(this.activitiesBottomPullReleaseTimer);
-      this.activitiesBottomPullReleaseTimer = null;
-    }
-    this.activitiesBottomPullReleasing = animateBounce;
-    this.activitiesBottomPullPx = 0;
-    if (!animateBounce) {
+  private syncActivitiesCalendarBadgeDelay(): void {
+    if (this.activePopup !== 'activities' || !this.isCalendarLayoutView()) {
+      this.clearActivitiesCalendarBadgeDelay();
       return;
     }
-    this.activitiesBottomPullReleaseTimer = setTimeout(() => {
-      this.activitiesBottomPullReleasing = false;
-      this.activitiesBottomPullReleaseTimer = null;
-    }, 420);
+    const pageKey = this.currentActivitiesCalendarBadgeDelayPageKey();
+    if (!pageKey) {
+      return;
+    }
+    this.activitiesCalendarBadgeDelayPageKey = pageKey;
+    const delayKey = this.calendarBadgeDelayKey(pageKey);
+    if (this.activitiesCalendarBadgesReadyDelayKeys.has(delayKey)) {
+      if (this.activitiesCalendarBadgesTimer) {
+        clearTimeout(this.activitiesCalendarBadgesTimer);
+        this.activitiesCalendarBadgesTimer = null;
+      }
+      if (this.activitiesCalendarBadgesLoadingActive) {
+        this.endActivitiesHeaderProgressLoading();
+        this.activitiesCalendarBadgesLoadingActive = false;
+      }
+      this.activitiesCalendarBadgesLoadingDelayKey = '';
+      return;
+    }
+    if (this.activitiesCalendarBadgesTimer && this.activitiesCalendarBadgesLoadingDelayKey === delayKey) {
+      return;
+    }
+    if (this.activitiesCalendarBadgesTimer) {
+      clearTimeout(this.activitiesCalendarBadgesTimer);
+      this.activitiesCalendarBadgesTimer = null;
+    }
+    if (this.activitiesCalendarBadgesLoadingActive) {
+      this.endActivitiesHeaderProgressLoading();
+      this.activitiesCalendarBadgesLoadingActive = false;
+    }
+    this.activitiesCalendarBadgesLoadingDelayKey = delayKey;
+    this.beginActivitiesHeaderProgressLoading();
+    this.activitiesCalendarBadgesLoadingActive = true;
+    this.activitiesCalendarBadgesTimer = setTimeout(() => {
+      this.activitiesCalendarBadgesTimer = null;
+      this.activitiesCalendarBadgesReadyDelayKeys.add(delayKey);
+      if (this.activitiesCalendarBadgesLoadingActive) {
+        this.endActivitiesHeaderProgressLoading();
+        this.activitiesCalendarBadgesLoadingActive = false;
+      }
+      this.activitiesCalendarBadgesLoadingDelayKey = '';
+      this.cdr.markForCheck();
+    }, this.activitiesPaginationLoadDelayMs);
   }
 
-  private resetActivitiesBottomPullState(): void {
-    this.detachActivitiesTouchGlobalListeners();
-    this.activitiesBottomPullTracking = false;
-    this.activitiesBottomPullEdgeLocked = false;
-    this.activitiesBottomPullStartOnLastRow = false;
-    this.activitiesBottomPullPointerId = null;
-    this.activitiesBottomPullArmed = false;
-    this.activitiesBottomPullPx = 0;
-    this.activitiesBottomPullReleasing = false;
+  private clearActivitiesCalendarBadgeDelay(): void {
+    if (this.activitiesCalendarBadgesTimer) {
+      clearTimeout(this.activitiesCalendarBadgesTimer);
+      this.activitiesCalendarBadgesTimer = null;
+    }
+    if (this.activitiesCalendarBadgesLoadingActive) {
+      this.endActivitiesHeaderProgressLoading();
+      this.activitiesCalendarBadgesLoadingActive = false;
+    }
+    this.activitiesCalendarBadgesLoadingDelayKey = '';
+    this.activitiesCalendarBadgesReadyDelayKeys.clear();
+    this.activitiesCalendarBadgeDelayPageKey = '';
+  }
+
+  private maybeSyncActivitiesCalendarBadgeDelayByPage(): void {
+    if (this.activePopup !== 'activities' || !this.isCalendarLayoutView()) {
+      return;
+    }
+    const nextKey = this.currentActivitiesCalendarBadgeDelayPageKey();
+    if (!nextKey || nextKey === this.activitiesCalendarBadgeDelayPageKey) {
+      return;
+    }
+    this.activitiesCalendarBadgeDelayPageKey = nextKey;
+    this.syncActivitiesCalendarBadgeDelay();
+  }
+
+  private currentActivitiesCalendarBadgeDelayPageKey(): string {
+    if (!this.isCalendarLayoutView()) {
+      return '';
+    }
+    const pages = this.activitiesView === 'month' ? this.calendarMonthPages : this.calendarWeekPages;
+    if (pages.length === 0) {
+      return '';
+    }
+    const pageIndex = Math.max(0, Math.min(pages.length - 1, this.currentCalendarPageIndex()));
+    const pageKey = pages[pageIndex]?.key ?? '';
+    if (!pageKey) {
+      return '';
+    }
+    return pageKey;
+  }
+
+  private calendarBadgeDelayKey(pageKey: string): string {
+    return `${this.activitiesView}:${pageKey}`;
   }
 
   private refreshActivitiesHeaderProgressSoon(): void {
@@ -6654,121 +6537,6 @@ export class App {
 
   private clampNumber(value: number, min: number, max: number): number {
     return Math.min(max, Math.max(min, value));
-  }
-
-  private beginActivitiesBottomPull(container: HTMLElement, eventTarget: EventTarget | null, startY: number): void {
-    this.attachActivitiesTouchGlobalListeners();
-    this.activitiesBottomPullTracking = true;
-    this.activitiesBottomPullEdgeLocked = false;
-    const targetElement = eventTarget instanceof HTMLElement ? eventTarget : null;
-    const touchedRow = targetElement?.closest('.activities-row-item') as HTMLElement | null;
-    const rows = Array.from(container.querySelectorAll<HTMLElement>('.activities-row-item'));
-    const lastRow = rows.length > 0 ? rows[rows.length - 1] : null;
-    this.activitiesBottomPullStartOnLastRow = !!(touchedRow && lastRow && touchedRow === lastRow);
-    this.activitiesBottomPullStartY = startY;
-    this.activitiesBottomPullArmed = false;
-    console.log('[activities-pull] start', {
-      startY,
-      startOnLastRow: this.activitiesBottomPullStartOnLastRow,
-      scrollTop: container.scrollTop,
-      scrollHeight: container.scrollHeight,
-      clientHeight: container.clientHeight,
-      remainingPx: container.scrollHeight - container.scrollTop - container.clientHeight
-    });
-  }
-
-  private moveActivitiesBottomPull(container: HTMLElement, currentY: number): boolean {
-    const remainingPx = container.scrollHeight - container.scrollTop - container.clientHeight;
-    if (!this.activitiesBottomPullEdgeLocked) {
-      const isBottomEdge = remainingPx <= 24;
-      if (!isBottomEdge && !this.activitiesBottomPullStartOnLastRow) {
-        this.resetActivitiesBottomPullState();
-        return false;
-      }
-      this.activitiesBottomPullEdgeLocked = true;
-    }
-    const deltaY = currentY - this.activitiesBottomPullStartY;
-    const pullUpDelta = Math.max(0, -deltaY);
-    const panelQuarterPx = Math.max(0, Math.floor(container.clientHeight * 0.35));
-    const maxPullPx = Math.max(this.activitiesBottomPullMaxPx, panelQuarterPx);
-    // Make spacer grow much more aggressively from drag distance.
-    const pullPx = this.clampNumber(pullUpDelta * 2.1, 0, maxPullPx);
-    if (pullPx <= 0) {
-      return false;
-    }
-    this.activitiesBottomPullPx = pullPx;
-    this.activitiesBottomPullArmed = pullPx >= this.activitiesBottomPullTriggerPx;
-    this.activitiesBottomPullReleasing = false;
-    this.ngZone.runOutsideAngular(() => {
-      container.scrollTop = container.scrollHeight;
-    });
-    console.log('[activities-pull] move', {
-      deltaY,
-      pullUpDelta,
-      pullPx,
-      spacerPx: this.activitiesBottomPullPx,
-      armed: this.activitiesBottomPullArmed,
-      edgeLocked: this.activitiesBottomPullEdgeLocked,
-      startOnLastRow: this.activitiesBottomPullStartOnLastRow
-    });
-    return true;
-  }
-
-  private finishActivitiesBottomPull(container: HTMLElement | null, reason: 'release' | 'cancel' = 'release'): void {
-    const shouldTrigger = this.activitiesBottomPullArmed || this.activitiesBottomPullPx >= this.activitiesBottomPullTriggerPx * 0.65;
-    const shouldBounceBack = this.activitiesBottomPullPx > 0;
-    const shouldLoad = reason === 'release' && shouldTrigger;
-    console.log('[activities-pull] end', {
-      reason,
-      shouldTrigger,
-      shouldBounceBack,
-      shouldLoad,
-      armed: this.activitiesBottomPullArmed,
-      pullPx: this.activitiesBottomPullPx,
-      triggerPx: this.activitiesBottomPullTriggerPx,
-      hasContainer: !!container
-    });
-    this.releaseActivitiesBottomPull(shouldBounceBack);
-    if (shouldLoad && container) {
-      this.forceLoadMoreActivities(container);
-    }
-  }
-
-  private readonly handleDocumentTouchEnd = (event: TouchEvent): void => {
-    if (!this.activitiesBottomPullTracking || this.isCalendarLayoutView() || this.activePopup !== 'activities') {
-      return;
-    }
-    if (event.touches.length > 0) {
-      return;
-    }
-    const container = this.activitiesScrollRef?.nativeElement ?? null;
-    this.finishActivitiesBottomPull(container, 'release');
-  };
-
-  private readonly handleDocumentTouchCancel = (_event: TouchEvent): void => {
-    if (!this.activitiesBottomPullTracking || this.isCalendarLayoutView() || this.activePopup !== 'activities') {
-      return;
-    }
-    const container = this.activitiesScrollRef?.nativeElement ?? null;
-    this.finishActivitiesBottomPull(container, 'cancel');
-  };
-
-  private attachActivitiesTouchGlobalListeners(): void {
-    if (this.activitiesTouchGlobalListenersAttached) {
-      return;
-    }
-    document.addEventListener('touchend', this.handleDocumentTouchEnd, { passive: true });
-    document.addEventListener('touchcancel', this.handleDocumentTouchCancel, { passive: true });
-    this.activitiesTouchGlobalListenersAttached = true;
-  }
-
-  private detachActivitiesTouchGlobalListeners(): void {
-    if (!this.activitiesTouchGlobalListenersAttached) {
-      return;
-    }
-    document.removeEventListener('touchend', this.handleDocumentTouchEnd);
-    document.removeEventListener('touchcancel', this.handleDocumentTouchCancel);
-    this.activitiesTouchGlobalListenersAttached = false;
   }
 
   private shiftCalendarPages(direction: -1 | 1): void {

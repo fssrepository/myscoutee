@@ -428,15 +428,8 @@
           <div
             class="experience-card-list assets-card-list activities-scroll-list"
             [class.activities-scroll-list-with-rate-editor]="isActivityRateEditorOpen()"
-            [class.is-bottom-pull-active]="activitiesBottomPullPx > 0"
-            [class.is-bottom-pull-releasing]="activitiesBottomPullReleasing"
-            [style.--activities-bottom-pull.px]="activitiesBottomPullPx"
             #activitiesScroll
             (scroll)="onActivitiesScroll($event)"
-            (touchstart)="onActivitiesTouchStart($event)"
-            (touchmove)="onActivitiesTouchMove($event)"
-            (touchend)="onActivitiesTouchEnd($event)"
-            (touchcancel)="onActivitiesTouchCancel($event)"
           >
             <div class="activities-sticky-header">{{ activitiesStickyHeader }}</div>
 
@@ -552,8 +545,6 @@
               <h4>No items</h4>
               <p>{{ activitiesEmptyLabel }}</p>
             </div>
-
-            <div class="activities-bottom-pull-spacer" aria-hidden="true"></div>
           </div>
         </ng-container>
 
@@ -607,13 +598,13 @@
                       <div class="activities-month-day-num">{{ day.dayNumber }}</div>
                       <div
                         class="activities-month-rate-count"
-                        *ngIf="activitiesPrimaryFilter === 'rates' && monthRateCount(day) as rateCount"
+                        *ngIf="areCalendarBadgesReady(page.key) && activitiesPrimaryFilter === 'rates' && monthRateCount(day) as rateCount"
                         [ngClass]="monthRateHeatClass(day)"
                       >
                         {{ rateCountLabel(rateCount) }}
                       </div>
                     </div>
-                    <div class="activities-month-week-spans" *ngIf="activitiesPrimaryFilter !== 'rates' && week.spans.length > 0">
+                    <div class="activities-month-week-spans" *ngIf="areCalendarBadgesReady(page.key) && activitiesPrimaryFilter !== 'rates' && week.spans.length > 0">
                       <button
                         type="button"
                         class="activities-calendar-badge activities-month-span-badge"
@@ -644,7 +635,7 @@
                     <strong>{{ day.dayNumber }}</strong>
                     <div
                       class="activities-week-rate-count"
-                      *ngIf="activitiesPrimaryFilter === 'rates' && weekRateDayCount(day) as rateCount"
+                      *ngIf="areCalendarBadgesReady(page.key) && activitiesPrimaryFilter === 'rates' && weekRateDayCount(day) as rateCount"
                       [ngClass]="weekRateDayHeatClass(day)"
                     >
                       {{ rateCountLabel(rateCount) }}
@@ -665,7 +656,7 @@
                       >
                         <div
                           class="activities-week-rate-badge"
-                          *ngIf="weekRateHourCount(day, hour) as hourCount"
+                          *ngIf="areCalendarBadgesReady(page.key) && weekRateHourCount(day, hour) as hourCount"
                           [ngClass]="rateHeatClassByCount(hourCount)"
                         >
                           {{ rateCountLabel(hourCount) }}
@@ -678,7 +669,7 @@
                         type="button"
                         class="activities-calendar-badge activities-week-timed-badge"
                         [ngClass]="calendarBadgeToneClass(badge.row)"
-                        *ngFor="let badge of weekDayTimedBadges(day)"
+                        *ngFor="let badge of (areCalendarBadgesReady(page.key) ? weekDayTimedBadges(day) : [])"
                         [style.top.%]="badge.topPct"
                         [style.height.%]="badge.heightPct"
                         (click)="onActivityRowClick(badge.row, $event)"
