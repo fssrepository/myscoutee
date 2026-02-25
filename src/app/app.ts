@@ -248,7 +248,8 @@ interface MobileProfileSelectorSheet {
     | { kind: 'experienceType' }
     | { kind: 'assetFilter' }
     | { kind: 'activitiesPrimaryFilter' }
-    | { kind: 'activitiesRateFilter' };
+    | { kind: 'activitiesRateFilter' }
+    | { kind: 'eventFrequency' };
 }
 
 type AssetType = 'Car' | 'Accommodation' | 'Supplies';
@@ -617,6 +618,7 @@ export class App {
   protected assetFilter: AssetType = 'Car';
   protected assetCards: AssetCard[] = this.buildSampleAssetCards();
   protected showAssetForm = false;
+  protected showAssetVisibilityPicker = false;
   protected editingAssetId: string | null = null;
   protected selectedAssetCardId: string | null = null;
   protected pendingAssetDeleteCardId: string | null = null;
@@ -631,6 +633,8 @@ export class App {
     imageUrl: '',
     sourceLink: ''
   };
+  protected assetFormVisibility: EventVisibility = 'Public';
+  private readonly assetVisibilityById: Record<string, EventVisibility> = {};
   protected activeUserId = this.getInitialUserId();
 
   protected activeMenuSection: MenuSection = 'chat';
@@ -1119,6 +1123,7 @@ export class App {
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
     this.showEventVisibilityPicker = false;
+    this.showAssetVisibilityPicker = false;
     this.showProfileStatusHeaderPicker = false;
     this.activitiesView = 'day';
     this.clearActivityRateEditorState();
@@ -1364,6 +1369,17 @@ export class App {
     event?.stopPropagation();
     this.eventForm.visibility = option;
     this.showEventVisibilityPicker = false;
+  }
+
+  protected toggleAssetVisibilityPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.showAssetVisibilityPicker = !this.showAssetVisibilityPicker;
+  }
+
+  protected selectAssetVisibility(option: EventVisibility, event?: Event): void {
+    event?.stopPropagation();
+    this.assetFormVisibility = option;
+    this.showAssetVisibilityPicker = false;
   }
 
   protected toggleProfileStatusHeaderPicker(event?: Event): void {
@@ -1764,6 +1780,9 @@ export class App {
       this.popupReturnTarget = null;
       return;
     }
+    if (this.activePopup === 'profileEditor') {
+      this.commitProfileForm(false);
+    }
     this.activePopup = null;
     this.stackedPopup = null;
     this.popupReturnTarget = null;
@@ -1774,6 +1793,7 @@ export class App {
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
     this.showEventVisibilityPicker = false;
+    this.showAssetVisibilityPicker = false;
     this.showProfileStatusHeaderPicker = false;
     this.pendingActivityDeleteRow = null;
     this.pendingActivityAction = 'delete';
@@ -2699,6 +2719,16 @@ export class App {
     }
   }
 
+  protected completionBadgeStyle(value: number): Record<string, string> {
+    const clamped = Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
+    const hue = Math.round((clamped / 100) * 120);
+    return {
+      background: `hsl(${hue}, 82%, 84%)`,
+      borderColor: `hsl(${hue}, 70%, 58%)`,
+      color: `hsl(${hue}, 74%, 24%)`
+    };
+  }
+
   protected getProfileStatusIcon(value: ProfileStatus = this.activeUser.profileStatus): string {
     switch (value) {
       case 'public':
@@ -2964,6 +2994,24 @@ export class App {
     };
   }
 
+  protected openMobileEventFrequencySelector(event: Event): void {
+    if (!this.isMobileView) {
+      return;
+    }
+    event.stopPropagation();
+    this.mobileProfileSelectorSheet = {
+      title: 'Frequency',
+      selected: this.eventForm.frequency,
+      options: this.eventFrequencyOptions.map(option => ({
+        value: option,
+        label: option,
+        icon: this.eventFrequencyIcon(option),
+        toneClass: this.eventFrequencyClass(option)
+      })),
+      context: { kind: 'eventFrequency' }
+    };
+  }
+
   protected closeMobileProfileSelectorSheet(): void {
     if (typeof document !== 'undefined') {
       document.documentElement.style.removeProperty(this.languageSheetHeightCssVar);
@@ -3060,6 +3108,13 @@ export class App {
     if (sheet.context.kind === 'activitiesRateFilter') {
       if (this.rateFilters.some(option => option.key === value)) {
         this.selectActivitiesRateFilter(value as RateFilterKey);
+      }
+      this.mobileProfileSelectorSheet = null;
+      return;
+    }
+    if (sheet.context.kind === 'eventFrequency') {
+      if (this.eventFrequencyOptions.includes(value)) {
+        this.eventForm.frequency = value;
       }
       this.mobileProfileSelectorSheet = null;
       return;
@@ -5130,8 +5185,10 @@ export class App {
   protected openAssetForm(card?: AssetCard): void {
     this.pendingAssetMemberAction = null;
     this.showAssetForm = true;
+    this.showAssetVisibilityPicker = false;
     if (card) {
       this.editingAssetId = card.id;
+      this.assetFormVisibility = this.assetVisibilityById[card.id] ?? 'Public';
       this.assetForm = {
         type: card.type,
         title: card.title,
@@ -5145,6 +5202,7 @@ export class App {
       return;
     }
     this.editingAssetId = null;
+    this.assetFormVisibility = 'Public';
     this.assetForm = {
       type: this.activeAssetType,
       title: '',
@@ -5159,6 +5217,7 @@ export class App {
 
   protected closeAssetForm(): void {
     this.showAssetForm = false;
+    this.showAssetVisibilityPicker = false;
     this.editingAssetId = null;
   }
 
@@ -5183,6 +5242,7 @@ export class App {
       sourceLink: this.assetForm.sourceLink.trim() || 'https://picsum.photos'
     };
     if (this.editingAssetId) {
+      this.assetVisibilityById[this.editingAssetId] = this.assetFormVisibility;
       this.assetCards = this.assetCards.map(card =>
         card.id === this.editingAssetId
           ? {
@@ -5192,9 +5252,11 @@ export class App {
           : card
       );
     } else {
+      const id = `asset-${Date.now()}`;
+      this.assetVisibilityById[id] = this.assetFormVisibility;
       this.assetCards = [
         {
-          id: `asset-${Date.now()}`,
+          id,
           ...payload,
           requests: []
         },
@@ -5391,6 +5453,10 @@ export class App {
   }
 
   protected saveProfile(): void {
+    this.commitProfileForm(true);
+  }
+
+  private commitProfileForm(showAlert: boolean): void {
     const user = this.activeUser;
     user.name = this.profileForm.fullName.trim() || user.name;
     const birthday = this.profileForm.birthday ? this.toIsoDate(this.profileForm.birthday) : user.birthday;
@@ -5404,7 +5470,9 @@ export class App {
     user.profileStatus = this.profileForm.profileStatus;
     user.about = this.profileForm.about.trim().slice(0, 160);
     user.initials = this.toInitials(user.name);
-    this.alertService.open('Profile saved');
+    if (showAlert) {
+      this.alertService.open('Profile saved');
+    }
   }
 
   protected get selectedImagePreview(): string | null {
@@ -5485,6 +5553,9 @@ export class App {
     }
     if (this.showEventVisibilityPicker && !target.closest('.event-visibility-picker') && !target.closest('.popup-view-fab')) {
       this.showEventVisibilityPicker = false;
+    }
+    if (this.showAssetVisibilityPicker && !target.closest('.asset-visibility-picker') && !target.closest('.popup-view-fab')) {
+      this.showAssetVisibilityPicker = false;
     }
     if (this.showProfileStatusHeaderPicker && !target.closest('.profile-status-header-picker') && !target.closest('.popup-view-fab')) {
       this.showProfileStatusHeaderPicker = false;

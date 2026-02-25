@@ -175,6 +175,10 @@ click right top corner of pictures and it add chipt at the top with the avatar +
 
 event list - history button:
 ----------------------------
+Create Event header - until you don't publish the event, it will be draft (maybe that message in 2nd line)
+you should publish (publish button in the header or in the cards) - in this case cancel/save can be removed (auto save)
+
+
 + button to join to the event - new popup "event explore"
 can add feedback (rate 1-10 + vibes + whether recommend???) here + select user for chat invite etc. (friends or host only)
 
@@ -201,6 +205,8 @@ main event:
 -----------
 ticket, dicreet, auto invite, - visibility - invitation only, friends, public, capacity, topics, description
 expense (amount + currency) - maybe for sub events also, and sum up in the header
+
+event/member grace shouldn't be configured by the user (system variable)
 
 for tournament mode - ranking algorithm - none, rate (mutual), fifa
 

@@ -16,6 +16,7 @@
     <aside class="user-menu-panel" [class.open]="showUserMenu">
       <div
         class="user-menu-header"
+        [ngClass]="profileStatusClass(activeUser.profileStatus)"
         role="button"
         tabindex="0"
         (click)="onHeaderPanelClick($event)"
@@ -41,8 +42,7 @@
               <ng-container *ngIf="!featuredImagePreview">{{ activeUser.initials }}</ng-container>
             </span>
             <span class="avatar-activity-badge" *ngIf="userBadgeCount > 0">{{ userBadgeCount }}</span>
-            <span class="avatar-bottom-pill avatar-bottom-pill-header" [class]="profileStatusClass(activeUser.profileStatus)">
-              <mat-icon>{{ getProfileStatusIcon(activeUser.profileStatus) }}</mat-icon>
+            <span class="avatar-bottom-pill avatar-bottom-pill-header" [ngStyle]="completionBadgeStyle(activeUser.completion)">
               <span>{{ activeUser.completion }}%</span>
             </span>
           </div>
@@ -71,7 +71,7 @@
 
         <div class="impressions-shortcuts">
           <button
-            class="impression-shortcut-btn"
+            class="impression-shortcut-btn impression-shortcut-host-btn"
             [ngClass]="getHostTierToneClass(activeHostTier)"
             type="button"
             (click)="openHostImpressions()"
@@ -79,11 +79,14 @@
             [title]="activeHostTier"
           >
             <mat-icon [class]="getHostTierColorClass(activeHostTier)">{{ getHostTierIcon(activeHostTier) }}</mat-icon>
-            <span class="impression-shortcut-label">{{ activeHostTier }}</span>
+            <span class="impression-shortcut-label">
+              <span class="impression-shortcut-main">{{ activeHostTier.replace(' Host', '') }}</span>
+              <span class="impression-shortcut-sub">Host</span>
+            </span>
           </button>
 
           <button
-            class="impression-shortcut-btn"
+            class="impression-shortcut-btn impression-shortcut-member-btn"
             [ngClass]="getTraitToneClass(activeMemberTrait)"
             type="button"
             (click)="openMemberImpressions()"
@@ -91,7 +94,10 @@
             [title]="memberImpressionTitle"
           >
             <mat-icon [class]="getTraitColorClass(activeMemberTrait)">{{ getTraitIcon(activeMemberTrait) }}</mat-icon>
-            <span class="impression-shortcut-label">{{ memberImpressionTitle }}</span>
+            <span class="impression-shortcut-label">
+              <span class="impression-shortcut-main">{{ memberImpressionTitle.replace(' Attendee', '') }}</span>
+              <span class="impression-shortcut-sub">Attendee</span>
+            </span>
           </button>
         </div>
 
@@ -165,7 +171,7 @@
           </button>
         </div>
 
-        <div class="social-proof-section-head section-arts activities-header impressions-menu-header">
+        <div class="social-proof-section-head section-arts section-assets activities-header impressions-menu-header">
           <span class="section-tag">
             <mat-icon>inventory_2</mat-icon>
             <span>Assets</span>
@@ -864,7 +870,10 @@
           <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-host">
             <div class="social-proof-identity-pill social-proof-identity-pill-host">
               <mat-icon [class]="getHostTierColorClass(activeHostTier)">{{ getHostTierIcon(activeHostTier) }}</mat-icon>
-              <span>{{ activeHostTier }}</span>
+              <span class="social-proof-identity-label">
+                <span class="social-proof-identity-main">{{ activeHostTier.replace(' Host', '') }}</span>
+                <span class="social-proof-identity-sub">Host</span>
+              </span>
             </div>
             <div class="popup-impressions-badge popup-impressions-badge-host">
               <span class="popup-impressions-badge-segment popup-impressions-rate-rate">
@@ -905,7 +914,10 @@
           <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-member">
             <div class="social-proof-identity-pill social-proof-identity-pill-member">
               <mat-icon [class]="getTraitColorClass(activeMemberTrait)">{{ getTraitIcon(activeMemberTrait) }}</mat-icon>
-              <span>{{ memberImpressionTitle }}</span>
+              <span class="social-proof-identity-label">
+                <span class="social-proof-identity-main">{{ memberImpressionTitle.replace(' Attendee', '') }}</span>
+                <span class="social-proof-identity-sub">Attendee</span>
+              </span>
             </div>
             <div class="popup-impressions-badge popup-impressions-badge-member">
               <span class="popup-impressions-badge-segment popup-impressions-rate-people">
@@ -1042,11 +1054,37 @@
           <div class="experience-form-popup asset-form-popup">
             <div class="experience-form-header">
               <h3>{{ assetFormTitle }}</h3>
-              <button type="button" class="experience-form-close-btn" (click)="closeAssetForm()" aria-label="Close asset form">
-                <mat-icon>close</mat-icon>
-              </button>
+              <div class="experience-form-header-controls">
+                <div class="event-visibility-picker asset-visibility-picker">
+                  <button
+                    type="button"
+                    class="popup-view-fab event-visibility-trigger"
+                    [ngClass]="eventVisibilityClass(assetFormVisibility)"
+                    (click)="toggleAssetVisibilityPicker($event)"
+                    aria-label="Open asset visibility selector"
+                  >
+                    <mat-icon [class]="eventVisibilityClass(assetFormVisibility)">{{ eventVisibilityIcon(assetFormVisibility) }}</mat-icon>
+                    <span>{{ assetFormVisibility }}</span>
+                  </button>
+                  <div class="activities-view-picker-panel" *ngIf="showAssetVisibilityPicker">
+                    <button
+                      type="button"
+                      class="activities-view-option"
+                      [ngClass]="eventVisibilityClass(option)"
+                      *ngFor="let option of eventVisibilityOptions"
+                      (click)="selectAssetVisibility(option, $event)"
+                    >
+                      <mat-icon [class]="eventVisibilityClass(option)">{{ eventVisibilityIcon(option) }}</mat-icon>
+                      <span>{{ option }}</span>
+                    </button>
+                  </div>
+                </div>
+                <button type="button" class="experience-form-close-btn" (click)="closeAssetForm()" aria-label="Close asset form">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
             </div>
-            <section class="experience-form-panel">
+            <section class="experience-form-panel" [ngClass]="eventVisibilityClass(assetFormVisibility)">
               <div class="experience-form-grid">
                 <label>
                   <span>Type</span>
@@ -1148,7 +1186,7 @@
 
       <ng-template #eventEditorFormTemplate>
         <section class="editor-list-card">
-          <div class="experience-form-panel">
+          <div class="experience-form-panel" [ngClass]="eventVisibilityClass(eventForm.visibility)">
             <div class="experience-form-grid">
               <label class="experience-description-field">
                 <span>Image</span>
@@ -1221,22 +1259,38 @@
               </label>
               <label>
                 <span>Frequency</span>
-                <div class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select" [ngClass]="eventFrequencyClass(eventForm.frequency)">
-                  <mat-select [(ngModel)]="eventForm.frequency" [panelWidth]="null" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel event-frequency-options-panel">
-                    <mat-select-trigger>
-                      <span class="status-option-content">
-                        <mat-icon [class]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
-                        <span>{{ eventForm.frequency }}</span>
-                      </span>
-                    </mat-select-trigger>
-                    <mat-option *ngFor="let option of eventFrequencyOptions" [value]="option" class="status-option" [ngClass]="eventFrequencyClass(option)">
-                      <span class="status-option-content">
-                        <mat-icon [class]="eventFrequencyClass(option)">{{ eventFrequencyIcon(option) }}</mat-icon>
-                        <span>{{ option }}</span>
-                      </span>
-                    </mat-option>
-                  </mat-select>
-                </div>
+                <ng-container *ngIf="!isMobileView; else mobileEventFrequencyButton">
+                  <div class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select" [ngClass]="eventFrequencyClass(eventForm.frequency)">
+                    <mat-select [(ngModel)]="eventForm.frequency" [panelWidth]="null" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel event-frequency-options-panel">
+                      <mat-select-trigger>
+                        <span class="status-option-content">
+                          <mat-icon [class]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
+                          <span>{{ eventForm.frequency }}</span>
+                        </span>
+                      </mat-select-trigger>
+                      <mat-option *ngFor="let option of eventFrequencyOptions" [value]="option" class="status-option" [ngClass]="eventFrequencyClass(option)">
+                        <span class="status-option-content">
+                          <mat-icon [class]="eventFrequencyClass(option)">{{ eventFrequencyIcon(option) }}</mat-icon>
+                          <span>{{ option }}</span>
+                        </span>
+                      </mat-option>
+                    </mat-select>
+                  </div>
+                </ng-container>
+                <ng-template #mobileEventFrequencyButton>
+                  <button
+                    type="button"
+                    class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select"
+                    [ngClass]="eventFrequencyClass(eventForm.frequency)"
+                    (click)="openMobileEventFrequencySelector($event)"
+                  >
+                    <span class="status-option-content">
+                      <mat-icon [class]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
+                      <span>{{ eventForm.frequency }}</span>
+                    </span>
+                    <mat-icon>expand_more</mat-icon>
+                  </button>
+                </ng-template>
               </label>
             </div>
             <div class="popup-actions experience-form-actions">
@@ -1263,7 +1317,7 @@
       </div>
 
       <div *ngIf="activePopup === 'profileEditor'" class="profile-editor-wrap">
-        <div class="profile-identity-card profile-identity-card-large">
+        <div class="profile-identity-card profile-identity-card-large" [ngClass]="profileStatusClass(profileForm.profileStatus)">
           <div class="avatar-stack avatar-stack-editor">
             <span
               class="user-avatar user-avatar-large"
@@ -1275,8 +1329,7 @@
             <button type="button" class="avatar-edit-btn" aria-label="Open image editor" (click)="openImageEditor()">
               <mat-icon>edit</mat-icon>
             </button>
-            <span class="avatar-bottom-pill avatar-bottom-pill-header" [class]="profileStatusClass(profileForm.profileStatus)">
-              <mat-icon>{{ getProfileStatusIcon(profileForm.profileStatus) }}</mat-icon>
+            <span class="avatar-bottom-pill avatar-bottom-pill-header" [ngStyle]="completionBadgeStyle(activeUser.completion)">
               <span>{{ activeUser.completion }}%</span>
             </span>
           </div>
@@ -1914,7 +1967,10 @@
         <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-host">
           <div class="social-proof-identity-pill social-proof-identity-pill-host">
             <mat-icon [class]="getHostTierColorClass(activeHostTier)">{{ getHostTierIcon(activeHostTier) }}</mat-icon>
-            <span>{{ activeHostTier }}</span>
+            <span class="social-proof-identity-label">
+              <span class="social-proof-identity-main">{{ activeHostTier.replace(' Host', '') }}</span>
+              <span class="social-proof-identity-sub">Host</span>
+            </span>
           </div>
           <div class="popup-impressions-badge popup-impressions-badge-host">
             <span class="popup-impressions-badge-segment popup-impressions-rate-rate">
@@ -1955,7 +2011,10 @@
         <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-member">
           <div class="social-proof-identity-pill social-proof-identity-pill-member">
             <mat-icon [class]="getTraitColorClass(activeMemberTrait)">{{ getTraitIcon(activeMemberTrait) }}</mat-icon>
-            <span>{{ memberImpressionTitle }}</span>
+            <span class="social-proof-identity-label">
+              <span class="social-proof-identity-main">{{ memberImpressionTitle.replace(' Attendee', '') }}</span>
+              <span class="social-proof-identity-sub">Attendee</span>
+            </span>
           </div>
           <div class="popup-impressions-badge popup-impressions-badge-member">
             <span class="popup-impressions-badge-segment popup-impressions-rate-people">
@@ -2083,7 +2142,7 @@
 
       <div *ngIf="stackedPopup === 'eventEditor'">
         <section class="editor-list-card">
-          <div class="experience-form-panel">
+          <div class="experience-form-panel" [ngClass]="eventVisibilityClass(eventForm.visibility)">
             <div class="experience-form-grid">
               <label class="experience-description-field">
                 <span>Image</span>
@@ -2156,22 +2215,38 @@
               </label>
               <label>
                 <span>Frequency</span>
-                <div class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select" [ngClass]="eventFrequencyClass(eventForm.frequency)">
-                  <mat-select [(ngModel)]="eventForm.frequency" [panelWidth]="null" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel event-frequency-options-panel">
-                    <mat-select-trigger>
-                      <span class="status-option-content">
-                        <mat-icon [class]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
-                        <span>{{ eventForm.frequency }}</span>
-                      </span>
-                    </mat-select-trigger>
-                    <mat-option *ngFor="let option of eventFrequencyOptions" [value]="option" class="status-option" [ngClass]="eventFrequencyClass(option)">
-                      <span class="status-option-content">
-                        <mat-icon [class]="eventFrequencyClass(option)">{{ eventFrequencyIcon(option) }}</mat-icon>
-                        <span>{{ option }}</span>
-                      </span>
-                    </mat-option>
-                  </mat-select>
-                </div>
+                <ng-container *ngIf="!isMobileView; else mobileEventFrequencyButtonStacked">
+                  <div class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select" [ngClass]="eventFrequencyClass(eventForm.frequency)">
+                    <mat-select [(ngModel)]="eventForm.frequency" [panelWidth]="null" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel event-frequency-options-panel">
+                      <mat-select-trigger>
+                        <span class="status-option-content">
+                          <mat-icon [class]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
+                          <span>{{ eventForm.frequency }}</span>
+                        </span>
+                      </mat-select-trigger>
+                      <mat-option *ngFor="let option of eventFrequencyOptions" [value]="option" class="status-option" [ngClass]="eventFrequencyClass(option)">
+                        <span class="status-option-content">
+                          <mat-icon [class]="eventFrequencyClass(option)">{{ eventFrequencyIcon(option) }}</mat-icon>
+                          <span>{{ option }}</span>
+                        </span>
+                      </mat-option>
+                    </mat-select>
+                  </div>
+                </ng-container>
+                <ng-template #mobileEventFrequencyButtonStacked>
+                  <button
+                    type="button"
+                    class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select"
+                    [ngClass]="eventFrequencyClass(eventForm.frequency)"
+                    (click)="openMobileEventFrequencySelector($event)"
+                  >
+                    <span class="status-option-content">
+                      <mat-icon [class]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
+                      <span>{{ eventForm.frequency }}</span>
+                    </span>
+                    <mat-icon>expand_more</mat-icon>
+                  </button>
+                </ng-template>
               </label>
             </div>
             <div class="popup-actions experience-form-actions">
