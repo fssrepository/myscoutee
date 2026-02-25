@@ -1790,6 +1790,17 @@
             </div>
           </article>
         </div>
+        <section class="experience-delete-confirm" *ngIf="pendingActivityMemberDelete">
+          <div class="experience-delete-confirm-backdrop" (click)="cancelRemoveActivityMember()"></div>
+          <div class="experience-delete-confirm-panel">
+            <h4>{{ pendingActivityMemberDeleteTitle() }}</h4>
+            <p>{{ pendingActivityMemberDeleteLabel() }}</p>
+            <div class="popup-actions">
+              <button type="button" class="link-btn neutral-btn" (click)="cancelRemoveActivityMember()">Cancel</button>
+              <button type="button" class="link-btn experience-delete-btn" (click)="confirmRemoveActivityMember()">Remove</button>
+            </div>
+          </div>
+        </section>
       </div>
 
       <div *ngIf="stackedPopup === 'impressionsHost'" class="social-proof-grid">

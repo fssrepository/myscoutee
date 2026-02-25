@@ -619,6 +619,7 @@ export class App {
   protected readonly activitiesPageSize = 10;
   protected pendingActivityDeleteRow: ActivityListRow | null = null;
   protected pendingActivityAction: 'delete' | 'exit' = 'delete';
+  protected pendingActivityMemberDelete: ActivityMemberEntry | null = null;
   protected selectedActivityMembers: ActivityMemberEntry[] = [];
   protected selectedActivityMembersTitle = '';
   protected selectedActivityMembersRowId: string | null = null;
@@ -1222,6 +1223,7 @@ export class App {
     this.showActivitiesSecondaryPicker = false;
     this.pendingActivityDeleteRow = null;
     this.pendingActivityAction = 'delete';
+    this.pendingActivityMemberDelete = null;
     this.selectedActivityMembers = [];
     this.selectedActivityMembersTitle = '';
     this.selectedActivityMembersRowId = null;
@@ -1258,6 +1260,7 @@ export class App {
       this.selectedAssetCardId = null;
     }
     if (this.stackedPopup === 'activityMembers') {
+      this.pendingActivityMemberDelete = null;
       this.selectedActivityMembers = [];
       this.selectedActivityMembersTitle = '';
       this.selectedActivityMembersRowId = null;
@@ -3980,6 +3983,7 @@ export class App {
 
   protected openActivityMembers(row: ActivityListRow, event?: Event): void {
     event?.stopPropagation();
+    this.pendingActivityMemberDelete = null;
     this.selectedActivityMembersRowId = `${row.type}:${row.id}`;
     this.selectedActivityMembers = this.sortActivityMembersByActionTimeAsc(this.getActivityMembersByRow(row));
     this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
@@ -4161,8 +4165,33 @@ export class App {
     if (!this.selectedActivityMembersRowId || !this.canDeleteActivityMember(entry)) {
       return;
     }
-    this.selectedActivityMembers = this.selectedActivityMembers.filter(item => item.id !== entry.id);
+    this.pendingActivityMemberDelete = entry;
+  }
+
+  protected confirmRemoveActivityMember(): void {
+    if (!this.pendingActivityMemberDelete || !this.selectedActivityMembersRowId) {
+      this.pendingActivityMemberDelete = null;
+      return;
+    }
+    const targetId = this.pendingActivityMemberDelete.id;
+    this.selectedActivityMembers = this.selectedActivityMembers.filter(item => item.id !== targetId);
     this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
+    this.pendingActivityMemberDelete = null;
+  }
+
+  protected cancelRemoveActivityMember(): void {
+    this.pendingActivityMemberDelete = null;
+  }
+
+  protected pendingActivityMemberDeleteTitle(): string {
+    return 'Remove member';
+  }
+
+  protected pendingActivityMemberDeleteLabel(): string {
+    if (!this.pendingActivityMemberDelete) {
+      return '';
+    }
+    return `Remove ${this.pendingActivityMemberDelete.name} from this event?`;
   }
 
   protected pendingActivityConfirmTitle(): string {
