@@ -6699,7 +6699,9 @@ export class App {
     this.activitiesBottomPullPx = pullPx;
     this.activitiesBottomPullArmed = pullPx >= this.activitiesBottomPullTriggerPx;
     this.activitiesBottomPullReleasing = false;
-    container.scrollTop = container.scrollHeight;
+    this.ngZone.runOutsideAngular(() => {
+      container.scrollTop = container.scrollHeight;
+    });
     console.log('[activities-pull] move', {
       deltaY,
       pullUpDelta,
