@@ -240,6 +240,7 @@ interface MobileProfileSelectorSheet {
 
 type AssetType = 'Car' | 'Accommodation' | 'Supplies';
 type AssetRequestAction = 'accept' | 'remove';
+type EventEditorMode = 'edit' | 'create';
 type AssetRequestStatus = 'pending' | 'accepted';
 type ActivityMemberStatus = 'pending' | 'accepted';
 type ActivityPendingSource = 'admin' | 'member' | null;
@@ -558,6 +559,7 @@ export class App {
   protected showUserSelector = !environment.loginEnabled;
   protected activePopup: PopupType = null;
   protected stackedPopup: PopupType = null;
+  protected eventEditorMode: EventEditorMode = 'edit';
   protected popupReturnTarget: PopupType = null;
   protected openPrivacyFab: { groupIndex: number; rowIndex: number } | null = null;
   protected privacyFabJustSelectedKey: string | null = null;
@@ -1181,7 +1183,8 @@ export class App {
     }
   }
 
-  protected openEventEditor(stacked = false): void {
+  protected openEventEditor(stacked = false, mode: EventEditorMode = 'edit'): void {
+    this.eventEditorMode = mode;
     if (stacked || this.stackedPopup !== null || this.activePopup === 'chat') {
       this.stackedPopup = 'eventEditor';
       return;
@@ -1330,7 +1333,7 @@ export class App {
       case 'hostingEvent':
         return this.selectedHostingEvent?.title ?? 'Hosting Event';
       case 'eventEditor':
-        return 'Event Editor';
+        return this.eventEditorMode === 'create' ? 'Create Event' : 'Edit Event';
       case 'eventExplore':
         return 'Event Explore';
       case 'profileEditor':
@@ -1369,7 +1372,7 @@ export class App {
       case 'hostingEvent':
         return this.selectedHostingEvent?.title ?? 'Hosting Event';
       case 'eventEditor':
-        return 'Event Editor';
+        return this.eventEditorMode === 'create' ? 'Create Event' : 'Edit Event';
       case 'eventExplore':
         return 'Event Explore';
       case 'supplyDetail':

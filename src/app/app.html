@@ -211,6 +211,7 @@
     [class.popup-panel-members]="activePopup === 'chatMembers'"
     [class.popup-panel-image-editor]="activePopup === 'imageEditor'"
     [class.popup-panel-profile-editor]="activePopup === 'profileEditor'"
+    [class.popup-panel-event-editor]="activePopup === 'eventEditor'"
     [class.popup-panel-assets]="isAssetPopup"
     [class.popup-panel-activities]="activePopup === 'activities'"
     (click)="$event.stopPropagation()"
@@ -256,12 +257,12 @@
       <span class="header-members-count" *ngIf="activePopup === 'chatMembers'">{{ selectedChatMembers.length }} members</span>
       <button
         type="button"
-        class="popup-chat-event-btn"
-        aria-label="Open event editor"
+        class="popup-header-add-btn assets-add-btn"
+        aria-label="Create event"
         *ngIf="activePopup === 'chat' && selectedChat"
-        (click)="openEventEditor(true)"
+        (click)="openEventEditor(true, 'create')"
       >
-        <mat-icon>edit_calendar</mat-icon>
+        <mat-icon>add</mat-icon>
       </button>
       <button
         type="button"
@@ -422,6 +423,15 @@
               </button>
             </ng-template>
           </ng-container>
+          <button
+            *ngIf="activitiesPrimaryFilter === 'hosting' || activitiesPrimaryFilter === 'chats'"
+            type="button"
+            class="popup-header-add-btn assets-add-btn"
+            (click)="openEventEditor(true, 'create')"
+            aria-label="Create event"
+          >
+            <mat-icon>add</mat-icon>
+          </button>
         </div>
 
         <ng-container *ngIf="!isCalendarLayoutView(); else activitiesCalendarLayout">
@@ -1601,6 +1611,7 @@
     class="app-popup-panel"
     [class.popup-panel-members]="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers'"
     [class.popup-panel-profile-editor]="stackedPopup === 'experienceSelector'"
+    [class.popup-panel-event-editor]="stackedPopup === 'eventEditor'"
     [class.popup-panel-asset-members]="stackedPopup === 'assetMembers'"
     (click)="$event.stopPropagation()"
   >
@@ -1682,12 +1693,12 @@
         </span>
         <button
           type="button"
-          class="popup-chat-event-btn"
-          aria-label="Open event editor"
+          class="popup-header-add-btn assets-add-btn"
+          aria-label="Create event"
           *ngIf="stackedPopup === 'chat' && selectedChat"
-          (click)="openEventEditor(true)"
+          (click)="openEventEditor(true, 'create')"
         >
-          <mat-icon>edit_calendar</mat-icon>
+          <mat-icon>add</mat-icon>
         </button>
         <button
           type="button"
