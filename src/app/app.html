@@ -2753,7 +2753,13 @@
             </mat-select>
             <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="subEventResourceFilterCount(subEventResourceFilter) > 0">{{ subEventResourceFilterCount(subEventResourceFilter) }}</span>
           </div>
-          <button type="button" class="popup-header-add-btn assets-add-btn" (click)="alertService.open('Add item flow is ready for backend wiring.')" aria-label="Add sub-event resource">
+          <button
+            type="button"
+            class="popup-header-add-btn assets-add-btn"
+            (pointerdown)="handleSubEventQuickAction('Add item flow is ready for backend wiring.', $event)"
+            (click)="$event.preventDefault(); $event.stopPropagation()"
+            aria-label="Add sub-event resource"
+          >
             <mat-icon>add</mat-icon>
           </button>
         </div>
@@ -2770,7 +2776,8 @@
               <button
                 type="button"
                 class="asset-occupancy-badge"
-                (click)="alertService.open('Assignment panel is ready for backend wiring.')"
+                (pointerdown)="handleSubEventQuickAction('Assignment panel is ready for backend wiring.', $event)"
+                (click)="$event.preventDefault(); $event.stopPropagation()"
                 aria-label="Open assignments"
               >
                 <span>{{ subEventResourceOccupancyLabel(card) }}</span>
@@ -2786,10 +2793,22 @@
                 <p>{{ card.type }} · {{ card.subtitle }} · {{ card.city }}</p>
               </div>
               <div class="experience-item-actions">
-                <button type="button" class="experience-action-btn experience-action-edit" (click)="alertService.open('Edit flow is ready for backend wiring.')" aria-label="Edit sub-event resource">
+                <button
+                  type="button"
+                  class="experience-action-btn experience-action-edit"
+                  (pointerdown)="handleSubEventQuickAction('Edit flow is ready for backend wiring.', $event)"
+                  (click)="$event.preventDefault(); $event.stopPropagation()"
+                  aria-label="Edit sub-event resource"
+                >
                   <mat-icon>edit</mat-icon>
                 </button>
-                <button type="button" class="experience-action-btn experience-action-delete" (click)="alertService.open('Delete flow is ready for backend wiring.')" aria-label="Delete sub-event resource">
+                <button
+                  type="button"
+                  class="experience-action-btn experience-action-delete"
+                  (pointerdown)="handleSubEventQuickAction('Delete flow is ready for backend wiring.', $event)"
+                  (click)="$event.preventDefault(); $event.stopPropagation()"
+                  aria-label="Delete sub-event resource"
+                >
                   <mat-icon>delete</mat-icon>
                 </button>
               </div>

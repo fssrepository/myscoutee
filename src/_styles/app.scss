@@ -6534,6 +6534,11 @@ textarea {
   transform: translateY(-14px) !important;
 }
 
+/* Avoid consuming the next click when closing asset/sub-event filter selects. */
+.cdk-overlay-container:has(.assets-filter-options-panel) .cdk-overlay-backdrop {
+  pointer-events: none !important;
+}
+
 .selector-options-panel .mat-mdc-option:not(:last-child) {
   border-bottom: 1px solid #e6edf7;
 }

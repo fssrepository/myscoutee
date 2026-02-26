@@ -239,3 +239,5 @@ on the event explore the panels should get something like when on member selecti
 so event editor opens, and you can assign members to it or add additional subevents, supplies etc.
 
 i think it shouldn't clone, it's join and invite other members
+
+assets button on sub event panel - red border, or sullyestett, de nem piros hatter szin, hogy elkulonuljon

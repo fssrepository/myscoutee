@@ -1724,6 +1724,12 @@ export class App {
     this.stackedPopup = 'subEventAssets';
   }
 
+  protected handleSubEventQuickAction(message: string, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.alertService.open(message);
+  }
+
   protected readonly subEventResourceFilterOptions: SubEventResourceFilter[] = ['Members', 'Car', 'Accommodation', 'Supplies'];
 
   protected selectSubEventResourceFilter(filter: SubEventResourceFilter): void {
