@@ -1796,8 +1796,10 @@
   border: 1px solid rgba(34, 54, 88, 0.22);
   border-radius: 14px;
   background: rgba(233, 242, 255, 0.46);
-  padding: 0.72rem 0.78rem;
+  padding: 0.58rem 0.72rem;
   backdrop-filter: blur(2px);
+  min-height: 0;
+  gap: 0.3rem;
 }
 
 .entry-hero .entry-stat-card:nth-child(1) {
@@ -1840,8 +1842,12 @@
 }
 
 .entry-hero .entry-stat-meter {
-  margin-top: 0.58rem;
+  margin-top: 0.38rem;
   background: rgba(35, 57, 93, 0.16);
+}
+
+.entry-hero .entry-stat-card:nth-child(1) .entry-stat-meter {
+  display: none;
 }
 
 .entry-hero .entry-stat-meter-fill {
