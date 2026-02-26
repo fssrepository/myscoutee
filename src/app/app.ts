@@ -2660,6 +2660,15 @@ export class App {
     this.showUserSelector = false;
   }
 
+  protected scrollEntryTo(sectionId: string, event?: Event): void {
+    event?.preventDefault();
+    const target = document.getElementById(sectionId);
+    if (!target) {
+      return;
+    }
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   protected continueWithFirebaseAuth(): void {
     if (this.firebaseAuthIsBusy) {
       return;

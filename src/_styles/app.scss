@@ -51,10 +51,22 @@
 
 .entry-brand {
   display: inline-flex;
-  align-items: center;
-  gap: 0.66rem;
+  align-items: flex-end;
   color: #173763;
   text-decoration: none;
+  font-weight: 700;
+  color: #1f2d3d;
+
+  background-image: linear-gradient(
+    90deg,
+    #4f7cff,
+    #7b5cff,
+    #ff4d8d
+  );
+
+  background-repeat: no-repeat;
+  background-size: 100% 3px;   /* thickness */
+  background-position: 0 100%; /* bottom */
 }
 
 .entry-brand-mark {
@@ -62,12 +74,13 @@
   height: 38px;
   display: block;
   object-fit: contain;
-  border-radius: 50%;
-  box-shadow: 0 8px 16px rgba(31, 64, 108, 0.24);
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
 }
 
 .entry-brand-text {
-  font-size: 1.7rem;
+  font-size: 2.3rem;
   font-weight: 900;
   line-height: 1;
   letter-spacing: -0.02em;
@@ -1343,7 +1356,6 @@
 .entry-footer-mark {
   width: 30px;
   height: 30px;
-  border-radius: 50%;
 }
 
 .entry-footer-brand p {
@@ -2096,13 +2108,15 @@
   }
 
   .entry-brand-text {
-    font-size: 1.34rem;
+    font-size: 2.3rem;
   }
 
   .entry-brand-mark {
     width: 34px;
     height: 34px;
-    border-radius: 50%;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
   }
 
   .entry-hero {

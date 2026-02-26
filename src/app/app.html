@@ -2,12 +2,12 @@
   <div class="entry-shell-panel">
     <header class="entry-shell-header">
       <a class="entry-brand" href="#top" aria-label="MyScoutee landing top">
-        <img class="entry-brand-mark" src="assets/logo/myscoutee-m-mark.svg" alt="MyScoutee M logo" />
+        <img class="entry-brand-mark" src="assets/logo/heart.png" alt="MyScoutee logo" />
         <span class="entry-brand-text">yScoutee</span>
       </a>
       <nav class="entry-nav" aria-label="Landing sections">
-        <a href="#why">Why</a>
-        <a href="#how">How it works</a>
+        <a href="#why" (click)="scrollEntryTo('why', $event)">Why</a>
+        <a href="#how" (click)="scrollEntryTo('how', $event)">How it works</a>
       </nav>
       <button type="button" class="entry-auth-btn" [class.entry-auth-btn-avatar]="entryAuthButtonShowsAvatar" (click)="openEntryAuth()">
         <ng-container *ngIf="entryAuthButtonShowsAvatar; else loginButtonContent">
@@ -22,7 +22,7 @@
 
     <section class="entry-hero" id="top">
       <div class="entry-hero-main">
-        <div class="entry-hero-content">
+        <div class="entry-hero-content" id="why">
           <p class="entry-eyebrow">Your preferences come first</p>
           <h1>Stop Swiping. Start Connecting.</h1>
           <p class="entry-hero-lead">
@@ -34,7 +34,7 @@
               <mat-icon>rocket_launch</mat-icon>
               <span>{{ isFirebaseAuthMode ? 'Continue' : 'Start exploring' }}</span>
             </button>
-            <a class="entry-cta entry-cta-ghost" href="#how">
+            <a class="entry-cta entry-cta-ghost" href="#how" (click)="scrollEntryTo('how', $event)">
               <mat-icon>timeline</mat-icon>
               <span>See how it works</span>
             </a>
@@ -139,7 +139,7 @@
       <div class="entry-footer-grid">
         <section class="entry-footer-brand">
           <div class="entry-footer-title">
-            <img class="entry-footer-mark" src="assets/logo/myscoutee-m-mark.svg" alt="MyScoutee logo" />
+            <img class="entry-footer-mark" src="assets/logo/heart.png" alt="MyScoutee logo" />
             <span>yScoutee</span>
           </div>
           <p>You choose who you meet first. MyScoutee helps turn that into real plans and better conversations.</p>
@@ -147,8 +147,8 @@
 
         <section class="entry-footer-links">
           <h3>Explore</h3>
-          <a href="#why">Why</a>
-          <a href="#how">How it works</a>
+          <a href="#why" (click)="scrollEntryTo('why', $event)">Why</a>
+          <a href="#how" (click)="scrollEntryTo('how', $event)">How it works</a>
           <a href="#" (click)="openEntryConsentPopup(true); $event.preventDefault()">Data privacy</a>
         </section>
 
