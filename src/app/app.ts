@@ -81,6 +81,20 @@ interface FirebaseAuthProfile {
   initials: string;
 }
 
+interface EntryConsentState {
+  version: string;
+  accepted: boolean;
+  acceptedAtIso: string;
+}
+
+interface EntryConsentAuditRecord {
+  tsIso: string;
+  action: 'accepted' | 'rejected';
+  version: string;
+  source: 'entry';
+  userAgent: string;
+}
+
 interface SupplyContext {
   subEventId: string;
   subEventTitle: string;
@@ -465,6 +479,10 @@ const APP_DATE_FORMATS = {
 export class App {
   private static readonly DEMO_ACTIVE_USER_KEY = 'demo-active-user';
   private static readonly FIREBASE_AUTH_PROFILE_KEY = 'firebase-auth-profile';
+  private static readonly ENTRY_CONSENT_KEY = 'entry-gdpr-consent';
+  private static readonly ENTRY_CONSENT_AUDIT_KEY = 'entry-gdpr-consent-audit';
+  private static readonly ENTRY_CONSENT_VERSION = '2026-02-26-v1';
+  private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
 
   public readonly alertService = inject(AlertService);
   private readonly ngZone = inject(NgZone);
@@ -663,6 +681,8 @@ export class App {
   protected readonly gdprContent = GDPR_CONTENT;
   protected readonly authMode: AuthMode = this.resolveAuthMode();
   protected showEntryShell = true;
+  protected showEntryConsentPopup = false;
+  protected entryConsentViewOnly = false;
   protected showUserSelector = false;
   protected showFirebaseAuthPopup = false;
   protected firebaseAuthIsBusy = false;
@@ -2615,6 +2635,11 @@ export class App {
     if (!this.showEntryShell) {
       return;
     }
+    if (!this.hasEntryConsent) {
+      this.entryConsentViewOnly = false;
+      this.showEntryConsentPopup = true;
+      return;
+    }
     if (this.authMode === 'firebase') {
       if (this.firebaseAuthProfile) {
         this.completeEntryFlow();
@@ -2629,6 +2654,10 @@ export class App {
   protected closeFirebaseAuthPopup(): void {
     this.showFirebaseAuthPopup = false;
     this.firebaseAuthIsBusy = false;
+  }
+
+  protected closeDemoUserSelectorPopup(): void {
+    this.showUserSelector = false;
   }
 
   protected continueWithFirebaseAuth(): void {
@@ -2670,6 +2699,44 @@ export class App {
       return this.firebaseAuthProfile?.name ?? 'Continue';
     }
     return 'Login';
+  }
+
+  protected get hasEntryConsent(): boolean {
+    return this.loadEntryConsentState() !== null;
+  }
+
+  protected openEntryConsentPopup(viewOnly = false): void {
+    this.entryConsentViewOnly = viewOnly;
+    this.showEntryConsentPopup = true;
+  }
+
+  protected closeEntryConsentPopup(): void {
+    if (!this.entryConsentViewOnly && !this.hasEntryConsent) {
+      return;
+    }
+    this.showEntryConsentPopup = false;
+    this.entryConsentViewOnly = false;
+  }
+
+  protected acceptEntryConsent(): void {
+    const nowIso = new Date().toISOString();
+    const consent: EntryConsentState = {
+      version: App.ENTRY_CONSENT_VERSION,
+      accepted: true,
+      acceptedAtIso: nowIso
+    };
+    localStorage.setItem(App.ENTRY_CONSENT_KEY, JSON.stringify(consent));
+    this.appendEntryConsentAudit('accepted', nowIso);
+    this.showEntryConsentPopup = false;
+    this.entryConsentViewOnly = false;
+  }
+
+  protected rejectEntryConsent(): void {
+    const nowIso = new Date().toISOString();
+    localStorage.removeItem(App.ENTRY_CONSENT_KEY);
+    this.appendEntryConsentAudit('rejected', nowIso);
+    this.showEntryConsentPopup = true;
+    this.entryConsentViewOnly = false;
   }
 
   protected getPopupTitle(): string {
@@ -6456,6 +6523,9 @@ export class App {
   }
 
   private initializeEntryFlow(): void {
+    const hasConsent = this.loadEntryConsentState() !== null;
+    this.entryConsentViewOnly = false;
+    this.showEntryConsentPopup = !hasConsent;
     if (this.authMode === 'selector') {
       localStorage.removeItem(App.DEMO_ACTIVE_USER_KEY);
       this.firebaseAuthProfile = null;
@@ -6469,6 +6539,58 @@ export class App {
     this.showEntryShell = !hasFirebaseSession;
     this.showUserSelector = false;
     this.showFirebaseAuthPopup = false;
+  }
+
+  private loadEntryConsentState(): EntryConsentState | null {
+    const raw = localStorage.getItem(App.ENTRY_CONSENT_KEY);
+    if (!raw) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(raw) as Partial<EntryConsentState>;
+      if (
+        parsed.version !== App.ENTRY_CONSENT_VERSION ||
+        parsed.accepted !== true ||
+        typeof parsed.acceptedAtIso !== 'string' ||
+        parsed.acceptedAtIso.length === 0
+      ) {
+        return null;
+      }
+      return {
+        version: parsed.version,
+        accepted: true,
+        acceptedAtIso: parsed.acceptedAtIso
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private appendEntryConsentAudit(action: EntryConsentAuditRecord['action'], tsIso: string): void {
+    const record: EntryConsentAuditRecord = {
+      tsIso,
+      action,
+      version: App.ENTRY_CONSENT_VERSION,
+      source: 'entry',
+      userAgent: navigator.userAgent
+    };
+    const existing = this.loadEntryConsentAudit();
+    existing.unshift(record);
+    const trimmed = existing.slice(0, App.ENTRY_CONSENT_AUDIT_MAX);
+    localStorage.setItem(App.ENTRY_CONSENT_AUDIT_KEY, JSON.stringify(trimmed));
+  }
+
+  private loadEntryConsentAudit(): EntryConsentAuditRecord[] {
+    const raw = localStorage.getItem(App.ENTRY_CONSENT_AUDIT_KEY);
+    if (!raw) {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(raw) as EntryConsentAuditRecord[];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   }
 
   private loadFirebaseAuthProfile(): FirebaseAuthProfile | null {

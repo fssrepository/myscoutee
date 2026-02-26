@@ -133,6 +133,151 @@
         <span>{{ isFirebaseAuthMode ? 'Continue to app' : 'Open demo' }}</span>
       </button>
     </section>
+
+    <footer class="entry-footer" aria-label="Site footer">
+      <div class="entry-footer-topline"></div>
+      <div class="entry-footer-grid">
+        <section class="entry-footer-brand">
+          <div class="entry-footer-title">
+            <img class="entry-footer-mark" src="assets/logo/myscoutee-m-mark.svg" alt="MyScoutee logo" />
+            <span>yScoutee</span>
+          </div>
+          <p>You choose who you meet first. MyScoutee helps turn that into real plans and better conversations.</p>
+        </section>
+
+        <section class="entry-footer-links">
+          <h3>Explore</h3>
+          <a href="#why">Why</a>
+          <a href="#how">How it works</a>
+          <a href="#" (click)="openEntryConsentPopup(true); $event.preventDefault()">Data privacy</a>
+        </section>
+
+        <section class="entry-footer-contact">
+          <h3>Let&apos;s connect</h3>
+          <div class="entry-footer-socials">
+            <a href="#" aria-label="MyScoutee on Instagram">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm10 2H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3Zm-5 3.5A5.5 5.5 0 1 1 6.5 13 5.5 5.5 0 0 1 12 7.5Zm0 2A3.5 3.5 0 1 0 15.5 13 3.5 3.5 0 0 0 12 9.5ZM18.2 6.3a1.2 1.2 0 1 1-1.2 1.2 1.2 1.2 0 0 1 1.2-1.2Z"/>
+              </svg>
+            </a>
+            <a href="#" aria-label="MyScoutee on TikTok">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14 3h2.2c.3 1.4 1.1 2.6 2.3 3.3 1 .6 2 .9 3.1.9V10c-1.8 0-3.5-.5-4.9-1.5V15a6 6 0 1 1-6-6c.5 0 1 0 1.4.2v2.6a3.5 3.5 0 1 0 2 3.2V3Z"/>
+              </svg>
+            </a>
+            <a href="#" aria-label="MyScoutee on Facebook">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M13.5 22v-8h2.8l.4-3h-3.2V9.1c0-.9.3-1.5 1.6-1.5h1.7V4.9c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.8V11H8.5v3h2.3v8h2.7Z"/>
+              </svg>
+            </a>
+          </div>
+        </section>
+      </div>
+      <div class="entry-footer-bottom">
+        <span>© 2026 MyScoutee</span>
+      </div>
+    </footer>
+
+    <section class="entry-consent-overlay" *ngIf="showEntryConsentPopup" aria-label="GDPR consent">
+      <div class="entry-consent-backdrop" (click)="entryConsentViewOnly && closeEntryConsentPopup()"></div>
+      <article class="entry-consent-panel">
+        <header class="entry-consent-head">
+          <div class="entry-consent-head-row">
+            <h2>Privacy first</h2>
+            <button
+              type="button"
+              class="popup-close"
+              *ngIf="entryConsentViewOnly"
+              (click)="closeEntryConsentPopup()"
+              aria-label="Close privacy popup"
+            >
+              <span class="popup-close-glyph" aria-hidden="true">×</span>
+            </button>
+          </div>
+          <p *ngIf="!entryConsentViewOnly">Before continuing, please review and accept how your data is used in MyScoutee.</p>
+          <p *ngIf="entryConsentViewOnly">Full GDPR details for transparency.</p>
+        </header>
+
+        <div class="entry-consent-content">
+          <section class="entry-consent-card">
+            <h3>{{ gdprContent.title }}</h3>
+            <p>{{ gdprContent.subtitle }}</p>
+            <p><strong>Last updated:</strong> {{ gdprContent.updatedAt | date:'mediumDate' }}</p>
+          </section>
+
+          <section class="entry-consent-card">
+            <h3>Contact details</h3>
+            <ul>
+              <li *ngFor="let contact of gdprContent.contacts"><strong>{{ contact.label }}:</strong> {{ contact.value }}</li>
+            </ul>
+          </section>
+
+          <section class="entry-consent-card">
+            <h3>Legal basis</h3>
+            <ul>
+              <li *ngFor="let item of gdprContent.legalBases">{{ item }}</li>
+            </ul>
+          </section>
+
+          <section class="entry-consent-card">
+            <h3>Your rights</h3>
+            <div class="entry-consent-grid">
+              <section class="entry-consent-mini-card" *ngFor="let right of gdprContent.rights">
+                <h4>{{ right.title }}</h4>
+                <ul>
+                  <li *ngFor="let item of right.items">{{ item }}</li>
+                </ul>
+              </section>
+            </div>
+          </section>
+
+          <section class="entry-consent-card">
+            <h3>Data categories</h3>
+            <div class="entry-consent-grid">
+              <section class="entry-consent-mini-card" *ngFor="let section of gdprContent.dataCategories">
+                <h4>{{ section.category }}</h4>
+                <ul>
+                  <li *ngFor="let item of section.items">{{ item }}</li>
+                </ul>
+              </section>
+            </div>
+          </section>
+
+          <section class="entry-consent-card">
+            <h3>Purposes</h3>
+            <ul>
+              <li *ngFor="let item of gdprContent.purposes">{{ item }}</li>
+            </ul>
+          </section>
+
+          <section class="entry-consent-card">
+            <h3>Retention</h3>
+            <ul>
+              <li *ngFor="let item of gdprContent.retention">{{ item }}</li>
+            </ul>
+          </section>
+
+          <section class="entry-consent-card">
+            <h3>Sharing</h3>
+            <ul>
+              <li *ngFor="let item of gdprContent.sharing">{{ item }}</li>
+            </ul>
+          </section>
+
+          <section class="entry-consent-card">
+            <h3>Security</h3>
+            <ul>
+              <li *ngFor="let item of gdprContent.security">{{ item }}</li>
+            </ul>
+          </section>
+        </div>
+
+        <footer class="entry-consent-actions" *ngIf="!entryConsentViewOnly">
+          <button type="button" class="entry-consent-btn entry-consent-btn-muted" (click)="rejectEntryConsent()">Not now</button>
+          <button type="button" class="entry-consent-btn entry-consent-btn-primary" (click)="acceptEntryConsent()">Accept and continue</button>
+        </footer>
+      </article>
+    </section>
   </div>
 </section>
 
@@ -3367,9 +3512,17 @@
 </ng-container>
 
 <section class="demo-login-overlay" *ngIf="showUserSelector">
+  <div class="demo-login-backdrop" (click)="closeDemoUserSelectorPopup()"></div>
   <div class="demo-login-panel" (click)="$event.stopPropagation()">
-    <h2>Select demo user</h2>
-    <p>Login disabled mode. Choose one of the 12 users to open perspective-based data.</p>
+    <div class="demo-login-header">
+      <div>
+        <h2>Select demo user</h2>
+        <p>Login disabled mode. Choose one of the 12 users to open perspective-based data.</p>
+      </div>
+      <button mat-icon-button type="button" class="popup-close" (click)="closeDemoUserSelectorPopup()" aria-label="Close demo user popup">
+        <span class="popup-close-glyph" aria-hidden="true">×</span>
+      </button>
+    </div>
     <div class="demo-user-grid">
       <button type="button" class="demo-user-item" *ngFor="let user of users" (click)="selectLoginUser(user.id)">
         <span class="user-avatar" [class]="'user-color-' + user.gender">{{ user.initials }}</span>
@@ -3385,8 +3538,8 @@
   <div class="firebase-auth-panel" [class.mobile-fullscreen]="isMobileView" (click)="$event.stopPropagation()">
     <div class="firebase-auth-header">
       <h2>Login</h2>
-      <button mat-icon-button type="button" class="popup-close" (click)="closeFirebaseAuthPopup()" aria-label="Close login popup">
-        <mat-icon>close</mat-icon>
+      <button type="button" class="popup-close" (click)="closeFirebaseAuthPopup()" aria-label="Close login popup">
+        <span class="popup-close-glyph" aria-hidden="true">×</span>
       </button>
     </div>
     <p>Continue with Firebase auth. On mobile this opens as a full-screen flow.</p>
