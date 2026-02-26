@@ -2744,7 +2744,7 @@ export class App {
     const nowIso = new Date().toISOString();
     localStorage.removeItem(App.ENTRY_CONSENT_KEY);
     this.appendEntryConsentAudit('rejected', nowIso);
-    this.showEntryConsentPopup = true;
+    this.showEntryConsentPopup = false;
     this.entryConsentViewOnly = false;
   }
 
