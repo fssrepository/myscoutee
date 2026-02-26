@@ -80,9 +80,9 @@
 }
 
 .entry-brand-text {
-  font-size: 2.3rem;
+  font-size: 2rem;
   font-weight: 900;
-  line-height: 1;
+  line-height: 0.8;
   letter-spacing: -0.02em;
   background: none;
   color: #1f3a63;
@@ -1346,11 +1346,18 @@
 
 .entry-footer-title {
   display: inline-flex;
-  align-items: center;
-  gap: 0.44rem;
+  align-items: flex-end;
   font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: -0.01em;
+}
+
+.entry-footer-title span {
+  display: inline-block;
+  background-image: linear-gradient(90deg, #4f7cff, #7b5cff, #ff4d8d);
+  background-repeat: no-repeat;
+  background-size: 100% 3px;
+  background-position: 0 100%;
 }
 
 .entry-footer-mark {
@@ -2108,7 +2115,7 @@
   }
 
   .entry-brand-text {
-    font-size: 2.3rem;
+    font-size: 2rem;
   }
 
   .entry-brand-mark {
@@ -2171,13 +2178,12 @@
   }
 
   .entry-footer-title {
-    font-size: 2rem;
-    line-height: 1;
+    font-size: 1.5rem;
+    line-height: 0.8;
   }
 
   .entry-footer-brand p {
     margin-top: 0.64rem;
-    font-size: 0.96rem;
   }
 
   .entry-footer-socials {
@@ -2198,29 +2204,23 @@
 
   .entry-footer-links h3,
   .entry-footer-contact h3 {
-    font-size: 1.45rem;
-    font-weight: 800;
-    line-height: 1;
-    margin-bottom: 0.5rem;
+    font-size: 1.04rem;
+    margin-bottom: 0;
   }
 
   .entry-footer-links a {
-    font-size: 1.08rem;
-    line-height: 1.4;
     color: rgba(220, 231, 249, 0.88);
   }
 
   .entry-footer-contact p {
     margin-top: 0.2rem;
     margin-bottom: 0.72rem;
-    font-size: 0.94rem;
-    line-height: 1.5;
   }
 
   .entry-footer-contact-btn {
-    min-height: 44px;
-    font-size: 0.92rem;
-    padding: 0 0.88rem;
+    min-height: 38px;
+    font-size: 0.84rem;
+    padding: 0 0.72rem;
   }
 
   .entry-footer-bottom {
