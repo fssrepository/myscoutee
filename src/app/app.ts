@@ -72,6 +72,15 @@ type PopupType =
   | 'logoutConfirm'
   | null;
 
+type AuthMode = 'selector' | 'firebase';
+
+interface FirebaseAuthProfile {
+  id: string;
+  name: string;
+  email: string;
+  initials: string;
+}
+
 interface SupplyContext {
   subEventId: string;
   subEventTitle: string;
@@ -454,6 +463,9 @@ const APP_DATE_FORMATS = {
   styleUrl: '../_styles/app.scss'
 })
 export class App {
+  private static readonly DEMO_ACTIVE_USER_KEY = 'demo-active-user';
+  private static readonly FIREBASE_AUTH_PROFILE_KEY = 'firebase-auth-profile';
+
   public readonly alertService = inject(AlertService);
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -649,7 +661,12 @@ export class App {
   protected showUserMenu = false;
   protected showUserSettingsMenu = false;
   protected readonly gdprContent = GDPR_CONTENT;
-  protected showUserSelector = !environment.loginEnabled;
+  protected readonly authMode: AuthMode = this.resolveAuthMode();
+  protected showEntryShell = true;
+  protected showUserSelector = false;
+  protected showFirebaseAuthPopup = false;
+  protected firebaseAuthIsBusy = false;
+  protected firebaseAuthProfile: FirebaseAuthProfile | null = null;
   protected activePopup: PopupType = null;
   protected stackedPopup: PopupType = null;
   protected eventEditorMode: EventEditorMode = 'edit';
@@ -1073,6 +1090,7 @@ export class App {
     this.ensurePaginationTestEvents(30);
     this.profileDetailsForm = this.createProfileDetailsForm();
     this.syncProfileFormFromActiveUser();
+    this.initializeEntryFlow();
     this.router.navigate(['/game']);
   }
 
@@ -2560,28 +2578,98 @@ export class App {
     this.activePopup = null;
     this.stackedPopup = null;
     this.popupReturnTarget = null;
-    if (!environment.loginEnabled) {
-      this.showUserSelector = true;
+    this.showUserMenu = false;
+    this.showUserSettingsMenu = false;
+    this.showUserSelector = false;
+    this.showFirebaseAuthPopup = false;
+    if (this.authMode === 'firebase') {
+      localStorage.removeItem(App.FIREBASE_AUTH_PROFILE_KEY);
+      this.firebaseAuthProfile = null;
+      this.showEntryShell = true;
+      return;
     }
+    localStorage.removeItem(App.DEMO_ACTIVE_USER_KEY);
+    this.showEntryShell = true;
   }
 
   protected selectLoginUser(userId: string): void {
     this.activeUserId = userId;
-    localStorage.setItem('demo-active-user', userId);
+    localStorage.setItem(App.DEMO_ACTIVE_USER_KEY, userId);
     this.syncProfileFormFromActiveUser();
     this.activeMenuSection = 'chat';
     window.dispatchEvent(new CustomEvent('active-user-changed'));
-    this.showUserSelector = false;
-    this.activePopup = null;
-    this.stackedPopup = null;
-    this.popupReturnTarget = null;
-    this.clearActivityRateEditorState();
-    this.router.navigate(['/game']);
+    this.completeEntryFlow();
   }
 
   protected openUserSelector(): void {
+    if (this.authMode === 'firebase') {
+      this.showFirebaseAuthPopup = true;
+      this.closeUserMenu();
+      return;
+    }
     this.showUserSelector = true;
     this.closeUserMenu();
+  }
+
+  protected openEntryAuth(): void {
+    if (!this.showEntryShell) {
+      return;
+    }
+    if (this.authMode === 'firebase') {
+      if (this.firebaseAuthProfile) {
+        this.completeEntryFlow();
+        return;
+      }
+      this.showFirebaseAuthPopup = true;
+      return;
+    }
+    this.showUserSelector = true;
+  }
+
+  protected closeFirebaseAuthPopup(): void {
+    this.showFirebaseAuthPopup = false;
+    this.firebaseAuthIsBusy = false;
+  }
+
+  protected continueWithFirebaseAuth(): void {
+    if (this.firebaseAuthIsBusy) {
+      return;
+    }
+    this.firebaseAuthIsBusy = true;
+    const user = this.activeUser;
+    const profile: FirebaseAuthProfile = {
+      id: `oauth-${Date.now()}`,
+      name: user.name,
+      email: `${user.id}@myscoutee.local`,
+      initials: user.initials
+    };
+    localStorage.setItem(App.FIREBASE_AUTH_PROFILE_KEY, JSON.stringify(profile));
+    localStorage.setItem(App.DEMO_ACTIVE_USER_KEY, this.activeUserId);
+    this.firebaseAuthProfile = profile;
+    this.firebaseAuthIsBusy = false;
+    this.completeEntryFlow();
+  }
+
+  protected get isFirebaseAuthMode(): boolean {
+    return this.authMode === 'firebase';
+  }
+
+  protected get entryAuthButtonShowsAvatar(): boolean {
+    return this.isFirebaseAuthMode && !!this.firebaseAuthProfile;
+  }
+
+  protected get entryAuthButtonIcon(): string {
+    if (this.authMode === 'selector') {
+      return 'group';
+    }
+    return 'login';
+  }
+
+  protected get entryAuthButtonLabel(): string {
+    if (this.entryAuthButtonShowsAvatar) {
+      return this.firebaseAuthProfile?.name ?? 'Continue';
+    }
+    return 'Login';
   }
 
   protected getPopupTitle(): string {
@@ -6352,11 +6440,67 @@ export class App {
   }
 
   private getInitialUserId(): string {
-    const stored = localStorage.getItem('demo-active-user');
+    const stored = localStorage.getItem(App.DEMO_ACTIVE_USER_KEY);
     if (stored && this.users.some(user => user.id === stored)) {
       return stored;
     }
     return this.users[0].id;
+  }
+
+  private resolveAuthMode(): AuthMode {
+    const configured = (environment as { authMode?: string }).authMode;
+    if (configured === 'firebase' || configured === 'selector') {
+      return configured;
+    }
+    return environment.loginEnabled ? 'firebase' : 'selector';
+  }
+
+  private initializeEntryFlow(): void {
+    if (this.authMode === 'selector') {
+      localStorage.removeItem(App.DEMO_ACTIVE_USER_KEY);
+      this.firebaseAuthProfile = null;
+      this.showEntryShell = true;
+      this.showUserSelector = false;
+      this.showFirebaseAuthPopup = false;
+      return;
+    }
+    this.firebaseAuthProfile = this.loadFirebaseAuthProfile();
+    const hasFirebaseSession = this.firebaseAuthProfile !== null;
+    this.showEntryShell = !hasFirebaseSession;
+    this.showUserSelector = false;
+    this.showFirebaseAuthPopup = false;
+  }
+
+  private loadFirebaseAuthProfile(): FirebaseAuthProfile | null {
+    const raw = localStorage.getItem(App.FIREBASE_AUTH_PROFILE_KEY);
+    if (!raw) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(raw) as Partial<FirebaseAuthProfile>;
+      if (!parsed.id || !parsed.name || !parsed.email || !parsed.initials) {
+        return null;
+      }
+      return {
+        id: parsed.id,
+        name: parsed.name,
+        email: parsed.email,
+        initials: parsed.initials
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private completeEntryFlow(): void {
+    this.showEntryShell = false;
+    this.showUserSelector = false;
+    this.showFirebaseAuthPopup = false;
+    this.activePopup = null;
+    this.stackedPopup = null;
+    this.popupReturnTarget = null;
+    this.clearActivityRateEditorState();
+    this.router.navigate(['/game']);
   }
 
   private detailPrivacyFabKey(groupIndex: number, rowIndex: number): string {

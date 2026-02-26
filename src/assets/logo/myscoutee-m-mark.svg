@@ -1,0 +1,30 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MyScoutee M logo">
+  <defs>
+    <linearGradient id="msBg" x1="12" y1="10" x2="108" y2="110" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4F5DE7"/>
+      <stop offset="0.55" stop-color="#8458EB"/>
+      <stop offset="1" stop-color="#22C7A8"/>
+    </linearGradient>
+
+    <mask id="heartCutMask" maskUnits="userSpaceOnUse" x="20" y="24" width="80" height="74">
+      <rect x="20" y="24" width="80" height="74" fill="white"/>
+      <circle cx="60" cy="79" r="14" fill="black"/>
+    </mask>
+  </defs>
+
+  <rect x="8" y="8" width="104" height="104" rx="24" fill="url(#msBg)"/>
+
+  <path
+    d="M60 90C48 81 28 66 28 49C28 38 36 30 46 30C52 30 57 33 60 38C63 33 68 30 74 30C84 30 92 38 92 49C92 66 72 81 60 90Z"
+    fill="white"
+    fill-opacity="0.95"
+    mask="url(#heartCutMask)"
+  />
+
+  <path
+    d="M60 44L61.9 48.1L66.3 48.5L63 51.6L63.9 56L60 53.8L56.1 56L57 51.6L53.7 48.5L58.1 48.1L60 44Z"
+    fill="#FFC857"
+  />
+
+  <rect x="8" y="8" width="104" height="104" rx="24" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
+</svg>

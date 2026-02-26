@@ -1,8 +1,9 @@
 <div class="game-page">
   <header class="game-header">
-    <div>
-      <h1>Myscoutee</h1>
-    </div>
+    <a class="game-brand" href="/" aria-label="MyScoutee home">
+      <img class="game-brand-mark" src="assets/logo/myscoutee-m-mark.svg" alt="MyScoutee M logo" />
+      <span class="game-brand-text">yScoutee</span>
+    </a>
     <div class="game-actions">
       <button type="button" class="game-action-mode" [class.mode-pair]="isPairMode" [class.mode-single]="!isPairMode" (click)="togglePairMode()">
         <mat-icon>{{ isPairMode ? 'groups' : 'person' }}</mat-icon>

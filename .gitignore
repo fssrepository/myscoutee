@@ -39,6 +39,8 @@ yarn-error.log
 testem.log
 /typings
 __screenshots__/
+/keys/*.json
+!/keys/*.example.json
 
 # System files
 .DS_Store
