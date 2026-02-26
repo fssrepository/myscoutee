@@ -223,6 +223,7 @@ interface EventEditorForm {
   frequency: string;
   visibility: EventVisibility;
   blindMode: EventBlindMode;
+  autoInviter: boolean;
   topics: string[];
   subEvents: SubEventFormItem[];
 }
@@ -799,6 +800,24 @@ export class App {
     h2: 'Open Event',
     h3: 'Open Event',
     h4: 'Blind Event'
+  };
+  protected readonly eventAutoInviterById: Record<string, boolean> = {
+    e1: true,
+    e2: true,
+    e3: false,
+    e4: true,
+    e5: false,
+    e6: true,
+    e7: true,
+    e8: false,
+    e9: false,
+    e10: true,
+    e11: true,
+    e12: false,
+    h1: true,
+    h2: false,
+    h3: true,
+    h4: false
   };
   protected readonly invitationDatesById: Record<string, string> = {
     i1: '2026-02-21T20:00:00',
@@ -1448,6 +1467,29 @@ export class App {
     this.eventForm.blindMode = this.eventForm.blindMode === 'Blind Event' ? 'Open Event' : 'Blind Event';
   }
 
+  protected toggleEventAutoInviter(event?: Event): void {
+    event?.stopPropagation();
+    this.eventForm.autoInviter = !this.eventForm.autoInviter;
+  }
+
+  protected eventAutoInviterClass(enabled: boolean): string {
+    return enabled ? 'auto-inviter-on' : 'auto-inviter-off';
+  }
+
+  protected eventAutoInviterIcon(enabled: boolean): string {
+    return enabled ? 'group_add' : 'person_off';
+  }
+
+  protected eventAutoInviterLabel(enabled: boolean): string {
+    return enabled ? 'Auto Inviter On' : 'Auto Inviter Off';
+  }
+
+  protected eventAutoInviterDescription(enabled: boolean): string {
+    return enabled
+      ? 'Invites people by matching mutual preferences.'
+      : 'Manual invites only.';
+  }
+
   protected openSubEventPanel(event?: Event): void {
     event?.stopPropagation();
     this.subEventForm = this.defaultSubEventForm();
@@ -1714,6 +1756,7 @@ export class App {
       frequency,
       visibility: this.eventVisibilityById[source.id] ?? (target === 'hosting' ? 'Invitation only' : 'Public'),
       blindMode: this.eventBlindModeById[source.id] ?? 'Open Event',
+      autoInviter: this.eventAutoInviterById[source.id] ?? false,
       topics: [...this.eventEditor.mainEvent.topics].slice(0, 5),
       subEvents: this.cloneSubEvents(this.eventSubEventsById[source.id] ?? [])
     };
@@ -1728,6 +1771,7 @@ export class App {
     const shortDescription = this.eventForm.description.trim();
     this.eventVisibilityById[this.editingEventId] = this.eventForm.visibility;
     this.eventBlindModeById[this.editingEventId] = this.eventForm.blindMode;
+    this.eventAutoInviterById[this.editingEventId] = this.eventForm.autoInviter;
     this.eventSubEventsById[this.editingEventId] = this.cloneSubEvents(this.eventForm.subEvents);
     if (this.eventEditorTarget === 'hosting') {
       this.hostingItemsByUser[this.activeUser.id] = this.hostingItems.map(item =>
@@ -1758,6 +1802,7 @@ export class App {
       this.hostingDatesById[id] = this.eventForm.startAt;
       this.eventVisibilityById[id] = this.eventForm.visibility;
       this.eventBlindModeById[id] = this.eventForm.blindMode;
+      this.eventAutoInviterById[id] = this.eventForm.autoInviter;
       this.eventSubEventsById[id] = this.cloneSubEvents(this.eventForm.subEvents);
       const next: HostingMenuItem = {
         id,
@@ -1775,6 +1820,7 @@ export class App {
     this.eventDatesById[id] = this.eventForm.startAt;
     this.eventVisibilityById[id] = this.eventForm.visibility;
     this.eventBlindModeById[id] = this.eventForm.blindMode;
+    this.eventAutoInviterById[id] = this.eventForm.autoInviter;
     this.eventSubEventsById[id] = this.cloneSubEvents(this.eventForm.subEvents);
     const next: EventMenuItem = {
       id,
@@ -1803,6 +1849,7 @@ export class App {
       frequency: 'One-time',
       visibility: 'Invitation only',
       blindMode: 'Open Event',
+      autoInviter: false,
       topics: [],
       subEvents: []
     };

@@ -208,7 +208,8 @@ expense (amount + currency) - maybe for sub events also, and sum up in the heade
 
 event/member grace shouldn't be configured by the user (system variable)
 
-for tournament mode (it might not be developed at first) - ranking algorithm - none, rate (mutual), fifa
+tournament mode (stages - it can be only one stage with leaderboard, or multiple stages - fifa or simple value
+mutual rate does not make sense (removed))
 
 sub events - Name/Description/Date range/Optional/Capacity/Assets + Members
 

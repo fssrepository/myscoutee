@@ -5952,6 +5952,20 @@ textarea {
   grid-column: 2 / 3;
 }
 
+.event-intel-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.72rem;
+}
+
+.event-intel-row .event-blind-mode-field,
+.event-intel-row .event-topics-panel-field,
+.event-intel-row .event-auto-inviter-field {
+  grid-column: auto;
+  width: 100%;
+}
+
 .event-topics-panel {
   width: 100%;
   border: 1px solid rgba(88, 78, 159, 0.32);
@@ -6086,13 +6100,17 @@ textarea {
 }
 
 .event-blind-mode-field {
-  grid-column: 1 / 2;
+  grid-column: 1 / -1;
 }
 
 .event-form-row-spacer {
   grid-column: 2 / 3;
   min-height: 0;
   visibility: hidden;
+}
+
+.event-auto-inviter-field {
+  grid-column: 2 / 3;
 }
 
 .event-blind-mode-card {
@@ -6131,6 +6149,52 @@ textarea {
 .event-blind-mode-card.blind-mode-blind {
   background: linear-gradient(180deg, #fff0f2 0%, #fde5e9 100%);
   border-color: rgba(184, 76, 98, 0.42);
+}
+
+.event-auto-inviter-card {
+  width: 100%;
+  border: 1px solid rgba(91, 106, 132, 0.3);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #edf4ff 0%, #e4eefc 100%);
+  padding: 0.6rem 0.72rem;
+  display: grid;
+  gap: 0.22rem;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(29, 53, 86, 0.12);
+}
+
+.event-auto-inviter-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.36rem;
+  font-size: 1.02rem;
+  font-weight: 800;
+  line-height: 1.08;
+}
+
+.event-auto-inviter-description {
+  font-size: 0.74rem;
+  color: rgba(34, 53, 80, 0.86);
+  line-height: 1.28;
+}
+
+.event-auto-inviter-card.auto-inviter-on {
+  background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
+  border-color: rgba(44, 126, 72, 0.36);
+}
+
+.event-auto-inviter-card.auto-inviter-off {
+  background: linear-gradient(180deg, #eef3fb 0%, #e4ebf7 100%);
+  border-color: rgba(79, 107, 145, 0.36);
+}
+
+.event-auto-inviter-card .mat-icon.auto-inviter-on {
+  color: #2d7d47;
+}
+
+.event-auto-inviter-card .mat-icon.auto-inviter-off {
+  color: #3d6594;
 }
 
 .event-blind-mode-card .mat-icon.blind-mode-open,
@@ -8974,8 +9038,14 @@ textarea {
   }
 
   .event-blind-mode-field,
-  .event-topics-panel-field {
+  .event-topics-panel-field,
+  .event-auto-inviter-field {
     grid-column: 1 / -1;
+  }
+
+  .event-intel-row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
   }
 
   .event-form-row-spacer {

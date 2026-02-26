@@ -1202,39 +1202,55 @@
                 <input type="text" [(ngModel)]="eventForm.title" />
               </label>
               <span class="event-form-row-spacer" *ngIf="!isMobileView" aria-hidden="true"></span>
-              <label class="experience-description-field event-blind-mode-field">
-                <button
-                  type="button"
-                  class="event-blind-mode-card"
-                  [ngClass]="eventBlindModeClass(eventForm.blindMode)"
-                  (click)="toggleEventBlindMode($event)"
-                >
-                  <span class="event-blind-mode-title">
-                    <mat-icon [class]="eventBlindModeClass(eventForm.blindMode)">{{ eventBlindModeIcon(eventForm.blindMode) }}</mat-icon>
-                    <span>{{ eventForm.blindMode }}</span>
-                  </span>
-                  <span class="event-blind-mode-description">{{ eventBlindModeDescription(eventForm.blindMode) }}</span>
-                </button>
-              </label>
-              <label class="event-topics-field event-topics-panel-field">
-                <button type="button" class="event-topics-panel" [ngClass]="eventTopicsPanelClass()" (click)="openEventTopicsSelector($event)">
-                  <span class="event-topics-panel-head">
-                    <span class="event-topics-panel-title">
-                      <mat-icon>{{ eventTopicsPanelIcon() }}</mat-icon>
-                      <span>Topics</span>
+              <div class="event-intel-row">
+                <label class="event-blind-mode-field">
+                  <button
+                    type="button"
+                    class="event-blind-mode-card"
+                    [ngClass]="eventBlindModeClass(eventForm.blindMode)"
+                    (click)="toggleEventBlindMode($event)"
+                  >
+                    <span class="event-blind-mode-title">
+                      <mat-icon [class]="eventBlindModeClass(eventForm.blindMode)">{{ eventBlindModeIcon(eventForm.blindMode) }}</mat-icon>
+                      <span>{{ eventForm.blindMode }}</span>
                     </span>
-                    <mat-icon class="event-topics-chevron">chevron_right</mat-icon>
-                  </span>
-                  <span class="event-topics-panel-body" *ngIf="eventForm.topics.length > 0; else eventTopicsPlaceholderMain">
-                    <span class="values-selected-chip event-topic-pill" *ngFor="let topic of eventForm.topics" [ngClass]="interestOptionToneClass(topic)">
-                      {{ eventTopicLabel(topic) }}
+                    <span class="event-blind-mode-description">{{ eventBlindModeDescription(eventForm.blindMode) }}</span>
+                  </button>
+                </label>
+                <label class="event-topics-field event-topics-panel-field">
+                  <button type="button" class="event-topics-panel" [ngClass]="eventTopicsPanelClass()" (click)="openEventTopicsSelector($event)">
+                    <span class="event-topics-panel-head">
+                      <span class="event-topics-panel-title">
+                        <mat-icon>{{ eventTopicsPanelIcon() }}</mat-icon>
+                        <span>Topics</span>
+                      </span>
+                      <mat-icon class="event-topics-chevron">chevron_right</mat-icon>
                     </span>
-                  </span>
-                  <ng-template #eventTopicsPlaceholderMain>
-                    <span class="event-topics-panel-placeholder">Select topics</span>
-                  </ng-template>
-                </button>
-              </label>
+                    <span class="event-topics-panel-body" *ngIf="eventForm.topics.length > 0; else eventTopicsPlaceholderMain">
+                      <span class="values-selected-chip event-topic-pill" *ngFor="let topic of eventForm.topics" [ngClass]="interestOptionToneClass(topic)">
+                        {{ eventTopicLabel(topic) }}
+                      </span>
+                    </span>
+                    <ng-template #eventTopicsPlaceholderMain>
+                      <span class="event-topics-panel-placeholder">Select topics</span>
+                    </ng-template>
+                  </button>
+                </label>
+                <label class="event-auto-inviter-field">
+                  <button
+                    type="button"
+                    class="event-auto-inviter-card"
+                    [ngClass]="eventAutoInviterClass(eventForm.autoInviter)"
+                    (click)="toggleEventAutoInviter($event)"
+                  >
+                    <span class="event-auto-inviter-title">
+                      <mat-icon [class]="eventAutoInviterClass(eventForm.autoInviter)">{{ eventAutoInviterIcon(eventForm.autoInviter) }}</mat-icon>
+                      <span>{{ eventAutoInviterLabel(eventForm.autoInviter) }}</span>
+                    </span>
+                    <span class="event-auto-inviter-description">{{ eventAutoInviterDescription(eventForm.autoInviter) }}</span>
+                  </button>
+                </label>
+              </div>
               <label class="experience-description-field">
                 <span>Description</span>
                 <textarea rows="4" [(ngModel)]="eventForm.description"></textarea>
@@ -2310,39 +2326,55 @@
                 <input type="text" [(ngModel)]="eventForm.title" />
               </label>
               <span class="event-form-row-spacer" *ngIf="!isMobileView" aria-hidden="true"></span>
-              <label class="experience-description-field event-blind-mode-field">
-                <button
-                  type="button"
-                  class="event-blind-mode-card"
-                  [ngClass]="eventBlindModeClass(eventForm.blindMode)"
-                  (click)="toggleEventBlindMode($event)"
-                >
-                  <span class="event-blind-mode-title">
-                    <mat-icon [class]="eventBlindModeClass(eventForm.blindMode)">{{ eventBlindModeIcon(eventForm.blindMode) }}</mat-icon>
-                    <span>{{ eventForm.blindMode }}</span>
-                  </span>
-                  <span class="event-blind-mode-description">{{ eventBlindModeDescription(eventForm.blindMode) }}</span>
-                </button>
-              </label>
-              <label class="event-topics-field event-topics-panel-field">
-                <button type="button" class="event-topics-panel" [ngClass]="eventTopicsPanelClass()" (click)="openEventTopicsSelector($event)">
-                  <span class="event-topics-panel-head">
-                    <span class="event-topics-panel-title">
-                      <mat-icon>{{ eventTopicsPanelIcon() }}</mat-icon>
-                      <span>Topics</span>
+              <div class="event-intel-row">
+                <label class="event-blind-mode-field">
+                  <button
+                    type="button"
+                    class="event-blind-mode-card"
+                    [ngClass]="eventBlindModeClass(eventForm.blindMode)"
+                    (click)="toggleEventBlindMode($event)"
+                  >
+                    <span class="event-blind-mode-title">
+                      <mat-icon [class]="eventBlindModeClass(eventForm.blindMode)">{{ eventBlindModeIcon(eventForm.blindMode) }}</mat-icon>
+                      <span>{{ eventForm.blindMode }}</span>
                     </span>
-                    <mat-icon class="event-topics-chevron">chevron_right</mat-icon>
-                  </span>
-                  <span class="event-topics-panel-body" *ngIf="eventForm.topics.length > 0; else eventTopicsPlaceholderStacked">
-                    <span class="values-selected-chip event-topic-pill" *ngFor="let topic of eventForm.topics" [ngClass]="interestOptionToneClass(topic)">
-                      {{ eventTopicLabel(topic) }}
+                    <span class="event-blind-mode-description">{{ eventBlindModeDescription(eventForm.blindMode) }}</span>
+                  </button>
+                </label>
+                <label class="event-topics-field event-topics-panel-field">
+                  <button type="button" class="event-topics-panel" [ngClass]="eventTopicsPanelClass()" (click)="openEventTopicsSelector($event)">
+                    <span class="event-topics-panel-head">
+                      <span class="event-topics-panel-title">
+                        <mat-icon>{{ eventTopicsPanelIcon() }}</mat-icon>
+                        <span>Topics</span>
+                      </span>
+                      <mat-icon class="event-topics-chevron">chevron_right</mat-icon>
                     </span>
-                  </span>
-                  <ng-template #eventTopicsPlaceholderStacked>
-                    <span class="event-topics-panel-placeholder">Select topics</span>
-                  </ng-template>
-                </button>
-              </label>
+                    <span class="event-topics-panel-body" *ngIf="eventForm.topics.length > 0; else eventTopicsPlaceholderStacked">
+                      <span class="values-selected-chip event-topic-pill" *ngFor="let topic of eventForm.topics" [ngClass]="interestOptionToneClass(topic)">
+                        {{ eventTopicLabel(topic) }}
+                      </span>
+                    </span>
+                    <ng-template #eventTopicsPlaceholderStacked>
+                      <span class="event-topics-panel-placeholder">Select topics</span>
+                    </ng-template>
+                  </button>
+                </label>
+                <label class="event-auto-inviter-field">
+                  <button
+                    type="button"
+                    class="event-auto-inviter-card"
+                    [ngClass]="eventAutoInviterClass(eventForm.autoInviter)"
+                    (click)="toggleEventAutoInviter($event)"
+                  >
+                    <span class="event-auto-inviter-title">
+                      <mat-icon [class]="eventAutoInviterClass(eventForm.autoInviter)">{{ eventAutoInviterIcon(eventForm.autoInviter) }}</mat-icon>
+                      <span>{{ eventAutoInviterLabel(eventForm.autoInviter) }}</span>
+                    </span>
+                    <span class="event-auto-inviter-description">{{ eventAutoInviterDescription(eventForm.autoInviter) }}</span>
+                  </button>
+                </label>
+              </div>
               <label class="experience-description-field">
                 <span>Description</span>
                 <textarea rows="4" [(ngModel)]="eventForm.description"></textarea>
