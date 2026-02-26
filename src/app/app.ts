@@ -100,6 +100,7 @@ interface ChatPopupMessage {
 type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
 type ActivitiesSecondaryFilter = 'recent' | 'relevant' | 'past';
 type ActivitiesView = 'month' | 'week' | 'day' | 'distance';
+type EventExploreOrder = 'upcoming' | 'past-events' | 'nearby' | 'most-relevant' | 'top-rated';
 type RateFilterKey =
   | 'individual-given'
   | 'individual-received'
@@ -176,6 +177,20 @@ interface CalendarTimedBadge {
   row: ActivityListRow;
   topPct: number;
   heightPct: number;
+}
+
+interface EventExploreCard {
+  id: string;
+  title: string;
+  subtitle: string;
+  timeframe: string;
+  imageUrl: string;
+  distanceKm: number;
+  relevance: number;
+  rating: number;
+  startSort: number;
+  isPast: boolean;
+  sourceType: 'event' | 'hosting';
 }
 
 type SubEventCard = (typeof EVENT_EDITOR_SAMPLE.subEvents)[number];
@@ -694,6 +709,8 @@ export class App {
   protected activitiesView: ActivitiesView = 'week';
   protected showActivitiesViewPicker = false;
   protected showActivitiesSecondaryPicker = false;
+  protected showEventExploreOrderPicker = false;
+  protected eventExploreOrder: EventExploreOrder = 'upcoming';
   protected activitiesStickyValue = '';
   protected readonly activitiesPageSize = 10;
   protected pendingActivityDeleteRow: ActivityListRow | null = null;
@@ -774,6 +791,13 @@ export class App {
     { key: 'week', label: 'Week', icon: 'date_range' },
     { key: 'day', label: 'Day', icon: 'today' },
     { key: 'distance', label: 'Distance', icon: 'social_distance' }
+  ];
+  protected readonly eventExploreOrderOptions: Array<{ key: EventExploreOrder; label: string; icon: string }> = [
+    { key: 'upcoming', label: 'Upcoming', icon: 'event_upcoming' },
+    { key: 'past-events', label: 'Past Events', icon: 'history' },
+    { key: 'nearby', label: 'Nearby', icon: 'near_me' },
+    { key: 'most-relevant', label: 'Most Relevant', icon: 'auto_awesome' },
+    { key: 'top-rated', label: 'Top Rated', icon: 'emoji_events' }
   ];
   protected readonly eventDatesById: Record<string, string> = {
     e1: '2026-02-27T09:00:00',
@@ -1221,6 +1245,7 @@ export class App {
     this.activitiesSecondaryFilter = 'recent';
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
+    this.showEventExploreOrderPicker = false;
     this.showEventVisibilityPicker = false;
     this.showAssetVisibilityPicker = false;
     this.showProfileStatusHeaderPicker = false;
@@ -1329,9 +1354,10 @@ export class App {
     }
   }
 
-  protected openEventExplore(closeMenu = true): void {
+  protected openEventExplore(closeMenu = true, stacked = false): void {
     this.activeMenuSection = 'events';
-    if (this.stackedPopup !== null) {
+    this.showEventExploreOrderPicker = false;
+    if (stacked || this.stackedPopup !== null) {
       this.stackedPopup = 'eventExplore';
       return;
     }
@@ -2436,6 +2462,7 @@ export class App {
   }
 
   protected closeStackedPopup(): void {
+    this.showEventExploreOrderPicker = false;
     if (this.stackedPopup === 'subEventMembers' || this.stackedPopup === 'subEventAssets') {
       this.selectedSubEventBadgeContext = null;
       if (this.subEventBadgePopupOrigin === 'stacked-event-editor') {
@@ -4616,6 +4643,10 @@ export class App {
     this.resetActivitiesScroll();
   }
 
+  protected shouldShowActivitiesExploreAction(): boolean {
+    return this.activitiesPrimaryFilter === 'chats' || this.activitiesPrimaryFilter === 'events' || this.activitiesPrimaryFilter === 'hosting';
+  }
+
   protected toggleActivitiesViewPicker(event: Event): void {
     event.stopPropagation();
     this.showActivitiesSecondaryPicker = false;
@@ -4639,6 +4670,72 @@ export class App {
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
     this.resetActivitiesScroll(view === 'month' || view === 'week');
+  }
+
+  protected toggleEventExploreOrderPicker(event: Event): void {
+    event.stopPropagation();
+    this.showEventExploreOrderPicker = !this.showEventExploreOrderPicker;
+  }
+
+  protected selectEventExploreOrder(order: EventExploreOrder, event?: Event): void {
+    event?.stopPropagation();
+    this.eventExploreOrder = order;
+    this.showEventExploreOrderPicker = false;
+  }
+
+  protected eventExploreOrderLabel(order: EventExploreOrder = this.eventExploreOrder): string {
+    return this.eventExploreOrderOptions.find(option => option.key === order)?.label ?? 'Upcoming';
+  }
+
+  protected eventExploreOrderIcon(order: EventExploreOrder = this.eventExploreOrder): string {
+    return this.eventExploreOrderOptions.find(option => option.key === order)?.icon ?? 'event_upcoming';
+  }
+
+  protected eventExploreOrderClass(order: EventExploreOrder = this.eventExploreOrder): string {
+    if (order === 'upcoming') {
+      return 'event-explore-order-upcoming';
+    }
+    if (order === 'past-events') {
+      return 'event-explore-order-past-events';
+    }
+    if (order === 'nearby') {
+      return 'event-explore-order-nearby';
+    }
+    if (order === 'top-rated') {
+      return 'event-explore-order-top-rated';
+    }
+    return 'event-explore-order-most-relevant';
+  }
+
+  protected get eventExploreCards(): EventExploreCard[] {
+    const now = Date.now();
+    const events: EventExploreCard[] = this.eventItems.map(item => this.toEventExploreCard(item, 'event', now));
+    const hosting: EventExploreCard[] = this.hostingItems.map(item => this.toEventExploreCard(item, 'hosting', now));
+    const cards = [...events, ...hosting];
+
+    if (this.eventExploreOrder === 'upcoming') {
+      return [...cards].sort((a, b) => {
+        if (a.isPast !== b.isPast) {
+          return Number(a.isPast) - Number(b.isPast);
+        }
+        return a.startSort - b.startSort;
+      });
+    }
+    if (this.eventExploreOrder === 'past-events') {
+      return [...cards].sort((a, b) => {
+        if (a.isPast !== b.isPast) {
+          return Number(b.isPast) - Number(a.isPast);
+        }
+        return b.startSort - a.startSort;
+      });
+    }
+    if (this.eventExploreOrder === 'nearby') {
+      return [...cards].sort((a, b) => a.distanceKm - b.distanceKm || b.relevance - a.relevance);
+    }
+    if (this.eventExploreOrder === 'top-rated') {
+      return [...cards].sort((a, b) => b.rating - a.rating || b.relevance - a.relevance);
+    }
+    return [...cards].sort((a, b) => b.relevance - a.relevance || a.startSort - b.startSort);
   }
 
   protected activityViewLabel(): string {
@@ -6199,6 +6296,9 @@ export class App {
     if (this.showProfileStatusHeaderPicker && !target.closest('.profile-status-header-picker') && !target.closest('.popup-view-fab')) {
       this.showProfileStatusHeaderPicker = false;
     }
+    if (this.showEventExploreOrderPicker && !target.closest('.event-explore-order-picker') && !target.closest('.popup-view-fab')) {
+      this.showEventExploreOrderPicker = false;
+    }
   }
 
   private getInitialUserId(): string {
@@ -6490,6 +6590,36 @@ export class App {
       return new Date(`${safe}-01T00:00:00`).getTime();
     }
     return Number.POSITIVE_INFINITY;
+  }
+
+  private toEventExploreCard(
+    source: EventMenuItem | HostingMenuItem,
+    sourceType: 'event' | 'hosting',
+    nowEpochMs: number
+  ): EventExploreCard {
+    const startIso = sourceType === 'event'
+      ? (this.eventDatesById[source.id] ?? this.defaultEventStartIso())
+      : (this.hostingDatesById[source.id] ?? this.defaultEventStartIso());
+    const startSort = this.toSortableDate(startIso);
+    const seed = this.hashText(`${sourceType}:${source.id}:${source.title}`);
+    const rating = 6 + ((seed % 35) / 10);
+    const relevance = 50 + (seed % 51);
+    const distanceKm = sourceType === 'event'
+      ? (this.eventDistanceById[source.id] ?? (5 + (seed % 35)))
+      : (this.hostingDistanceById[source.id] ?? (5 + (seed % 35)));
+    return {
+      id: source.id,
+      title: source.title,
+      subtitle: source.shortDescription,
+      timeframe: source.timeframe,
+      imageUrl: this.activityImageById[source.id] ?? `https://picsum.photos/seed/event-explore-${source.id}/1200/700`,
+      distanceKm,
+      relevance,
+      rating,
+      startSort,
+      isPast: startSort < nowEpochMs,
+      sourceType
+    };
   }
 
   protected get profileCardBirthday(): string {

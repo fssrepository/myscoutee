@@ -353,6 +353,30 @@
           </button>
         </div>
       </div>
+      <div class="event-explore-order-picker" *ngIf="activePopup === 'eventExplore'">
+        <button
+          type="button"
+          class="popup-view-fab event-explore-order-trigger"
+          [ngClass]="eventExploreOrderClass()"
+          (click)="toggleEventExploreOrderPicker($event)"
+          aria-label="Open event explore order"
+        >
+          <mat-icon [class]="eventExploreOrderClass()">{{ eventExploreOrderIcon() }}</mat-icon>
+          <span>{{ eventExploreOrderLabel() }}</span>
+        </button>
+        <div class="activities-view-picker-panel event-explore-order-panel" *ngIf="showEventExploreOrderPicker">
+          <button
+            type="button"
+            class="activities-view-option"
+            [ngClass]="eventExploreOrderClass(option.key)"
+            *ngFor="let option of eventExploreOrderOptions"
+            (click)="selectEventExploreOrder(option.key, $event)"
+          >
+            <mat-icon [class]="eventExploreOrderClass(option.key)">{{ option.icon }}</mat-icon>
+            <span>{{ option.label }}</span>
+          </button>
+        </div>
+      </div>
       <button mat-icon-button class="popup-close" (click)="closePopup()" aria-label="Close">
         <mat-icon>close</mat-icon>
       </button>
@@ -478,15 +502,24 @@
               </button>
             </ng-template>
           </ng-container>
-          <button
-            *ngIf="activitiesPrimaryFilter === 'hosting' || activitiesPrimaryFilter === 'chats' || activitiesPrimaryFilter === 'events'"
-            type="button"
-            class="popup-header-add-btn assets-add-btn"
-            (click)="openEventEditor(true, 'create')"
-            aria-label="Create event"
-          >
-            <mat-icon>add</mat-icon>
-          </button>
+          <div class="activities-action-stack" *ngIf="shouldShowActivitiesExploreAction()">
+            <button
+              type="button"
+              class="popup-header-add-btn activities-explore-btn"
+              (click)="openEventExplore(false)"
+              aria-label="Explore events"
+            >
+              <mat-icon>explore</mat-icon>
+            </button>
+            <button
+              type="button"
+              class="popup-header-add-btn activities-add-btn"
+              (click)="openEventEditor(true, 'create')"
+              aria-label="Create event"
+            >
+              <mat-icon>add</mat-icon>
+            </button>
+          </div>
         </div>
 
         <ng-container *ngIf="!isCalendarLayoutView(); else activitiesCalendarLayout">
@@ -1167,19 +1200,44 @@
       </div>
 
       <div *ngIf="activePopup === 'eventExplore'">
-        <div class="editor-list-card">
-          <h4>Event Explore Filters</h4>
-          <p>Host name, friends-in-common recommendation, distance, calendar and own-event filter.</p>
-        </div>
-        <div class="editor-list-card">
-          <h4>Suggested Events</h4>
-          <p>Join request is one click and goes to admin approval.</p>
-          <div class="popup-actions">
-            <button type="button" class="link-btn">Join Selected Event</button>
-            <button type="button" class="link-btn" (click)="openEventEditor()">Create New Event</button>
+        <ng-container [ngTemplateOutlet]="eventExploreContentTemplate"></ng-container>
+      </div>
+
+      <ng-template #eventExploreContentTemplate>
+        <div class="event-explore-popup">
+          <div class="experience-card-list assets-card-list event-explore-list" *ngIf="eventExploreCards.length > 0; else eventExploreEmptyState">
+            <article class="experience-item-card asset-item-card event-explore-card" *ngFor="let card of eventExploreCards">
+              <div class="asset-card-image" [appLazyBgImage]="card.imageUrl">
+                <span class="asset-source-icon event-explore-source-chip" [class.event-explore-source-hosting]="card.sourceType === 'hosting'">
+                  <mat-icon>{{ card.sourceType === 'hosting' ? 'stadium' : 'event' }}</mat-icon>
+                </span>
+                <span class="asset-occupancy-badge event-explore-meta-badge">{{ card.distanceKm }} km · {{ card.rating | number:'1.1-1' }}★</span>
+              </div>
+              <div class="experience-item-head">
+                <span class="experience-item-icon">
+                  <mat-icon>{{ card.sourceType === 'hosting' ? 'stadium' : 'event' }}</mat-icon>
+                </span>
+                <div class="experience-item-meta">
+                  <h4>{{ card.title }}</h4>
+                  <p>{{ card.sourceType === 'hosting' ? 'Hosting' : 'Event' }} · Relevance {{ card.relevance }}</p>
+                </div>
+              </div>
+              <p class="experience-item-description">{{ card.subtitle }}</p>
+              <p class="event-explore-timeframe">{{ card.timeframe }}</p>
+              <div class="popup-actions">
+                <button type="button" class="link-btn" (click)="alertService.open('Join request flow is ready for backend wiring.')">Request Join</button>
+                <button type="button" class="link-btn" (click)="openEventEditor()">{{ card.sourceType === 'hosting' ? 'Open Hosted Event' : 'Open Event' }}</button>
+              </div>
+            </article>
           </div>
         </div>
-      </div>
+      </ng-template>
+      <ng-template #eventExploreEmptyState>
+        <div class="editor-list-card">
+          <h4>No events found</h4>
+          <p>Try another ordering badge.</p>
+        </div>
+      </ng-template>
 
       <div *ngIf="activePopup === 'eventEditor'">
         <ng-container [ngTemplateOutlet]="eventEditorFormTemplate"></ng-container>
@@ -2387,6 +2445,42 @@
           <button type="button" class="link-btn">Accept Join Requests</button>
           <button type="button" class="link-btn" (click)="openEventEditor(true)">Edit Hosted Event</button>
         </div>
+      </div>
+
+      <div *ngIf="stackedPopup === 'eventExplore'">
+        <div class="event-explore-popup">
+          <div class="experience-card-list assets-card-list event-explore-list" *ngIf="eventExploreCards.length > 0; else stackedEventExploreEmptyState">
+            <article class="experience-item-card asset-item-card event-explore-card" *ngFor="let card of eventExploreCards">
+              <div class="asset-card-image" [appLazyBgImage]="card.imageUrl">
+                <span class="asset-source-icon event-explore-source-chip" [class.event-explore-source-hosting]="card.sourceType === 'hosting'">
+                  <mat-icon>{{ card.sourceType === 'hosting' ? 'stadium' : 'event' }}</mat-icon>
+                </span>
+                <span class="asset-occupancy-badge event-explore-meta-badge">{{ card.distanceKm }} km · {{ card.rating | number:'1.1-1' }}★</span>
+              </div>
+              <div class="experience-item-head">
+                <span class="experience-item-icon">
+                  <mat-icon>{{ card.sourceType === 'hosting' ? 'stadium' : 'event' }}</mat-icon>
+                </span>
+                <div class="experience-item-meta">
+                  <h4>{{ card.title }}</h4>
+                  <p>{{ card.sourceType === 'hosting' ? 'Hosting' : 'Event' }} · Relevance {{ card.relevance }}</p>
+                </div>
+              </div>
+              <p class="experience-item-description">{{ card.subtitle }}</p>
+              <p class="event-explore-timeframe">{{ card.timeframe }}</p>
+              <div class="popup-actions">
+                <button type="button" class="link-btn" (click)="alertService.open('Join request flow is ready for backend wiring.')">Request Join</button>
+                <button type="button" class="link-btn" (click)="openEventEditor(true)">{{ card.sourceType === 'hosting' ? 'Open Hosted Event' : 'Open Event' }}</button>
+              </div>
+            </article>
+          </div>
+        </div>
+        <ng-template #stackedEventExploreEmptyState>
+          <div class="editor-list-card">
+            <h4>No events found</h4>
+            <p>Try another ordering badge.</p>
+          </div>
+        </ng-template>
       </div>
 
       <div *ngIf="stackedPopup === 'eventEditor'">

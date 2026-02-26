@@ -1695,6 +1695,83 @@
   margin-right: 0.32rem;
 }
 
+.event-explore-order-picker {
+  position: relative;
+  z-index: 22;
+  margin-left: auto;
+  margin-right: 0.32rem;
+  flex: 0 0 auto;
+}
+
+.event-explore-order-trigger {
+  flex-wrap: nowrap;
+}
+
+.event-explore-order-trigger.event-explore-order-upcoming {
+  background: linear-gradient(180deg, #edf7ff 0%, #e3f1ff 100%);
+  border-color: rgba(44, 111, 184, 0.34);
+}
+
+.event-explore-order-trigger.event-explore-order-past-events {
+  background: linear-gradient(180deg, #f4f5f8 0%, #eceef3 100%);
+  border-color: rgba(91, 102, 124, 0.34);
+}
+
+.event-explore-order-trigger.event-explore-order-nearby {
+  background: linear-gradient(180deg, #eef9f3 0%, #e4f3eb 100%);
+  border-color: rgba(43, 124, 85, 0.34);
+}
+
+.event-explore-order-trigger.event-explore-order-most-relevant {
+  background: linear-gradient(180deg, #f3f1ff 0%, #ece8ff 100%);
+  border-color: rgba(96, 83, 164, 0.34);
+}
+
+.event-explore-order-trigger.event-explore-order-top-rated {
+  background: linear-gradient(180deg, #fff8e8 0%, #fff1d9 100%);
+  border-color: rgba(185, 118, 31, 0.35);
+}
+
+.event-explore-order-upcoming {
+  color: #2c6fb8;
+}
+
+.event-explore-order-past-events {
+  color: #5f697c;
+}
+
+.event-explore-order-nearby {
+  color: #2f7e56;
+}
+
+.event-explore-order-most-relevant {
+  color: #5d4ea2;
+}
+
+.event-explore-order-top-rated {
+  color: #b7761f;
+}
+
+.event-explore-order-panel .activities-view-option.event-explore-order-upcoming {
+  background: linear-gradient(0deg, #ffffff, #edf7ff);
+}
+
+.event-explore-order-panel .activities-view-option.event-explore-order-past-events {
+  background: linear-gradient(0deg, #ffffff, #f4f5f8);
+}
+
+.event-explore-order-panel .activities-view-option.event-explore-order-nearby {
+  background: linear-gradient(0deg, #ffffff, #eef9f3);
+}
+
+.event-explore-order-panel .activities-view-option.event-explore-order-most-relevant {
+  background: linear-gradient(0deg, #ffffff, #f3f1ff);
+}
+
+.event-explore-order-panel .activities-view-option.event-explore-order-top-rated {
+  background: linear-gradient(0deg, #ffffff, #fff8e8);
+}
+
 .profile-status-header-picker .event-visibility-trigger.status-public {
   background: linear-gradient(180deg, #eaf5ee 0%, #e2f0e8 100%);
   border-color: rgba(31, 111, 58, 0.34);
@@ -3413,6 +3490,20 @@
     right: 0.6rem;
     bottom: max(0.6rem, env(safe-area-inset-bottom));
   }
+
+  .event-explore-order-trigger {
+    padding: 0 0.5rem;
+  }
+
+  .event-explore-order-trigger span {
+    max-width: 6.6rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .activities-action-stack {
+    gap: 0.28rem;
+  }
 }
 
 
@@ -4961,6 +5052,72 @@ textarea {
 
 .assets-add-btn {
   margin-left: auto;
+}
+
+.activities-action-stack {
+  margin-left: auto;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.34rem;
+}
+
+.activities-add-btn {
+  margin-left: 0;
+}
+
+.activities-explore-btn {
+  margin-left: 0;
+  border-color: rgba(194, 122, 39, 0.46);
+  background: linear-gradient(180deg, #fff2e2 0%, #ffe4c7 100%);
+  color: #9b5f20;
+  box-shadow: 0 2px 8px rgba(146, 88, 24, 0.2);
+}
+
+.activities-explore-btn:hover {
+  background: linear-gradient(180deg, #ffe9d4 0%, #ffd9b5 100%);
+  border-color: rgba(163, 99, 28, 0.62);
+  color: #7f4c19;
+  box-shadow: 0 4px 10px rgba(127, 76, 25, 0.24);
+}
+
+.activities-explore-btn:active {
+  transform: scale(0.92);
+}
+
+.event-explore-popup {
+  height: 100%;
+  min-height: 0;
+}
+
+.event-explore-list {
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 0;
+}
+
+.event-explore-card {
+  gap: 0.52rem;
+}
+
+.event-explore-source-chip {
+  background: rgba(35, 58, 89, 0.86);
+}
+
+.event-explore-source-chip.event-explore-source-hosting {
+  background: rgba(17, 103, 111, 0.9);
+}
+
+.event-explore-meta-badge {
+  background: rgba(30, 49, 75, 0.86);
+  font-weight: 700;
+}
+
+.event-explore-timeframe {
+  margin: -0.12rem 0 0;
+  font-size: 0.73rem;
+  color: rgba(23, 39, 61, 0.7);
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', ui-monospace, monospace;
 }
 
 .assets-card-list {
