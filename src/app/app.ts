@@ -56,6 +56,8 @@ type PopupType =
   | 'invitationActions'
   | 'eventEditor'
   | 'eventExplore'
+  | 'subEventMembers'
+  | 'subEventAssets'
   | 'profileEditor'
   | 'imageEditor'
   | 'imageUpload'
@@ -72,6 +74,11 @@ interface SupplyContext {
   subEventId: string;
   subEventTitle: string;
   type: string;
+}
+
+interface SubEventBadgeContext {
+  subEvent: SubEventFormItem;
+  type: 'Members' | 'Car' | 'Accommodation' | 'Supplies';
 }
 
 interface ChatReadAvatar {
@@ -218,6 +225,8 @@ interface EventEditorForm {
   title: string;
   description: string;
   imageUrl: string;
+  capacityMin: number | null;
+  capacityMax: number | null;
   startAt: string;
   endAt: string;
   frequency: string;
@@ -242,6 +251,11 @@ interface SubEventFormItem {
   carsPending: number;
   accommodationPending: number;
   suppliesPending: number;
+}
+
+interface EventCapacityRange {
+  min: number | null;
+  max: number | null;
 }
 
 interface MobileProfileSelectorOption {
@@ -272,6 +286,7 @@ interface MobileProfileSelectorSheet {
 }
 
 type AssetType = 'Car' | 'Accommodation' | 'Supplies';
+type SubEventResourceFilter = 'Members' | AssetType;
 type AssetRequestAction = 'accept' | 'remove';
 type EventEditorMode = 'edit' | 'create';
 type EventEditorTarget = 'events' | 'hosting';
@@ -303,6 +318,21 @@ interface AssetCard {
   imageUrl: string;
   sourceLink: string;
   requests: AssetMemberRequest[];
+}
+
+interface SubEventResourceCard {
+  id: string;
+  type: SubEventResourceFilter;
+  title: string;
+  subtitle: string;
+  city: string;
+  details: string;
+  imageUrl: string;
+  sourceLink: string;
+  capacityTotal: number;
+  accepted: number;
+  pending: number;
+  isMembers: boolean;
 }
 
 interface ActivityMemberEntry {
@@ -819,6 +849,7 @@ export class App {
     h3: true,
     h4: false
   };
+  protected readonly eventCapacityById: Record<string, EventCapacityRange> = {};
   protected readonly invitationDatesById: Record<string, string> = {
     i1: '2026-02-21T20:00:00',
     i2: '2026-02-22T15:00:00',
@@ -969,6 +1000,9 @@ export class App {
   protected eventSupplyTypes: string[] = ['Cars', 'Members', 'Accessories', 'Accommodation'];
   protected newSupplyType = '';
   protected selectedSupplyContext: SupplyContext | null = null;
+  protected selectedSubEventBadgeContext: SubEventBadgeContext | null = null;
+  protected subEventResourceFilter: SubEventResourceFilter = 'Members';
+  private subEventBadgePopupOrigin: 'active-event-editor' | 'stacked-event-editor' | null = null;
 
   protected profileForm = {
     fullName: '',
@@ -1574,7 +1608,96 @@ export class App {
 
   protected openSubEventBadgePopup(type: 'Members' | 'Car' | 'Accommodation' | 'Supplies', item: SubEventFormItem, event?: Event): void {
     event?.stopPropagation();
-    this.alertService.open(`${type} popup for "${item.name}" is ready for wiring.`);
+    this.subEventBadgePopupOrigin = this.stackedPopup === 'eventEditor' ? 'stacked-event-editor' : 'active-event-editor';
+    this.selectedSubEventBadgeContext = {
+      subEvent: item,
+      type
+    };
+    this.subEventResourceFilter = type === 'Members' ? 'Members' : type;
+    this.stackedPopup = 'subEventAssets';
+  }
+
+  protected readonly subEventResourceFilterOptions: SubEventResourceFilter[] = ['Members', 'Car', 'Accommodation', 'Supplies'];
+
+  protected selectSubEventResourceFilter(filter: SubEventResourceFilter): void {
+    this.subEventResourceFilter = filter;
+  }
+
+  protected subEventResourceTypeIcon(type: SubEventResourceFilter): string {
+    if (type === 'Members') {
+      return 'groups';
+    }
+    return this.assetTypeIcon(type);
+  }
+
+  protected subEventResourceTypeClass(type: SubEventResourceFilter): string {
+    if (type === 'Members') {
+      return 'asset-filter-members';
+    }
+    return this.assetTypeClass(type);
+  }
+
+  protected subEventResourceFilterCount(type: SubEventResourceFilter): number {
+    if (!this.selectedSubEventBadgeContext) {
+      return 0;
+    }
+    const subEvent = this.selectedSubEventBadgeContext.subEvent;
+    if (type === 'Members') {
+      return subEvent.membersPending;
+    }
+    if (type === 'Car') {
+      return subEvent.carsPending;
+    }
+    if (type === 'Accommodation') {
+      return subEvent.accommodationPending;
+    }
+    return subEvent.suppliesPending;
+  }
+
+  protected get subEventResourceCards(): SubEventResourceCard[] {
+    if (!this.selectedSubEventBadgeContext) {
+      return [];
+    }
+    const subEvent = this.selectedSubEventBadgeContext.subEvent;
+    if (this.subEventResourceFilter === 'Members') {
+      return this.eventEditor.members.map((member, index) => {
+        const pending = index >= subEvent.membersAccepted && index < subEvent.membersAccepted + subEvent.membersPending;
+        return {
+          id: `subevent-member-${index}`,
+          type: 'Members',
+          title: member.name,
+          subtitle: member.role,
+          city: this.activeUser.city,
+          details: pending ? 'Pending member request for this sub event.' : 'Accepted for this sub event.',
+          imageUrl: this.defaultAssetImage('Supplies', `subevent-member-${index}`),
+          sourceLink: '',
+          capacityTotal: Math.max(subEvent.capacityMax, 1),
+          accepted: Math.min(subEvent.membersAccepted, Math.max(subEvent.capacityMax, 1)),
+          pending: pending ? 1 : 0,
+          isMembers: true
+        };
+      });
+    }
+
+    const baseCards = this.assetCards.filter(card => card.type === this.subEventResourceFilter);
+    return baseCards.map(card => ({
+      id: `subevent-${card.id}`,
+      type: card.type,
+      title: card.title,
+      subtitle: card.subtitle,
+      city: card.city,
+      details: card.details,
+      imageUrl: card.imageUrl,
+      sourceLink: card.sourceLink,
+      capacityTotal: card.capacityTotal,
+      accepted: this.assetAcceptedCount(card),
+      pending: this.assetPendingCount(card),
+      isMembers: false
+    }));
+  }
+
+  protected subEventResourceOccupancyLabel(card: SubEventResourceCard): string {
+    return `${card.accepted} / ${card.capacityTotal}`;
   }
 
   protected subEventModeClass(optional: boolean): string {
@@ -1593,21 +1716,64 @@ export class App {
   protected selectSubEventOptional(optional: boolean, event?: Event): void {
     event?.stopPropagation();
     this.subEventForm.optional = optional;
+    if (optional) {
+      this.normalizeSubEventCapacityRange(true);
+    }
     this.showSubEventOptionalPicker = false;
   }
 
   protected onSubEventCapacityMinChange(value: number | string): void {
     const parsed = Number(value);
-    this.subEventForm.capacityMin = Math.max(1, Number.isFinite(parsed) ? parsed : 1);
-    if (this.subEventForm.capacityMax < this.subEventForm.capacityMin) {
-      this.subEventForm.capacityMax = this.subEventForm.capacityMin;
-    }
+    this.subEventForm.capacityMin = Math.max(1, Number.isFinite(parsed) ? parsed : this.subEventForm.capacityMin);
+    this.normalizeSubEventCapacityRange(true);
   }
 
   protected onSubEventCapacityMaxChange(value: number | string): void {
     const parsed = Number(value);
-    const next = Math.max(1, Number.isFinite(parsed) ? parsed : this.subEventForm.capacityMin);
-    this.subEventForm.capacityMax = next < this.subEventForm.capacityMin ? this.subEventForm.capacityMin : next;
+    const next = Math.max(1, Number.isFinite(parsed) ? parsed : this.subEventForm.capacityMax);
+    const mainMax = this.optionalSubEventMainMax();
+    this.subEventForm.capacityMax = mainMax !== null ? Math.min(next, mainMax) : next;
+    this.normalizeSubEventCapacityRange(true);
+  }
+
+  protected onSubEventCapacityMaxInput(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    if (!input) {
+      return;
+    }
+    const raw = input.value;
+    if (raw === '') {
+      return;
+    }
+    this.onSubEventCapacityMaxChange(raw);
+    input.value = String(this.subEventForm.capacityMax);
+  }
+
+  protected optionalSubEventMainMax(): number | null {
+    if (!this.subEventForm.optional) {
+      return null;
+    }
+    return this.normalizedCapacityValue(this.eventForm.capacityMax);
+  }
+
+  protected onEventCapacityMinChange(value: number | string): void {
+    this.eventForm.capacityMin = this.toCapacityInputValue(value);
+    const normalizedMin = this.normalizedCapacityValue(this.eventForm.capacityMin);
+    const normalizedMax = this.normalizedCapacityValue(this.eventForm.capacityMax);
+    if (normalizedMin !== null && normalizedMax !== null && normalizedMax < normalizedMin) {
+      this.eventForm.capacityMax = normalizedMin;
+    }
+    this.enforceOpenSubEventCapacityAgainstMain();
+  }
+
+  protected onEventCapacityMaxChange(value: number | string): void {
+    this.eventForm.capacityMax = this.toCapacityInputValue(value);
+    const normalizedMin = this.normalizedCapacityValue(this.eventForm.capacityMin);
+    const normalizedMax = this.normalizedCapacityValue(this.eventForm.capacityMax);
+    if (normalizedMax !== null && normalizedMin !== null && normalizedMax < normalizedMin) {
+      this.eventForm.capacityMax = normalizedMin;
+    }
+    this.enforceOpenSubEventCapacityAgainstMain();
   }
 
   protected toggleAssetVisibilityPicker(event?: Event): void {
@@ -1677,6 +1843,10 @@ export class App {
 
   protected saveEventEditorForm(): void {
     this.syncEventFormFromDateTimeControls();
+    const normalizedCapacity = this.normalizedEventCapacityRange();
+    this.eventForm.capacityMin = normalizedCapacity.min;
+    this.eventForm.capacityMax = normalizedCapacity.max;
+    this.normalizeExistingSubEventsCapacityAgainstMain();
     const title = this.eventForm.title.trim();
     const description = this.eventForm.description.trim();
     if (!title || !description || !this.eventForm.startAt || !this.eventForm.endAt) {
@@ -1747,10 +1917,13 @@ export class App {
     const fallbackStart = Number.isNaN(start.getTime()) ? new Date(this.defaultEventStartIso()) : start;
     const end = new Date(fallbackStart.getTime() + 2 * 60 * 60 * 1000);
     const frequency = this.parseFrequencyFromTimeframe(source.timeframe);
+    const capacity = this.eventCapacityById[source.id] ?? { min: null, max: null };
     return {
       title: source.title,
       description: source.shortDescription,
       imageUrl: this.defaultAssetImage('Supplies', `event-${source.id}`),
+      capacityMin: this.normalizedCapacityValue(capacity.min),
+      capacityMax: this.normalizedCapacityValue(capacity.max),
       startAt: this.toIsoDateTimeLocal(fallbackStart),
       endAt: this.toIsoDateTimeLocal(end),
       frequency,
@@ -1772,6 +1945,7 @@ export class App {
     this.eventVisibilityById[this.editingEventId] = this.eventForm.visibility;
     this.eventBlindModeById[this.editingEventId] = this.eventForm.blindMode;
     this.eventAutoInviterById[this.editingEventId] = this.eventForm.autoInviter;
+    this.eventCapacityById[this.editingEventId] = this.normalizedEventCapacityRange();
     this.eventSubEventsById[this.editingEventId] = this.cloneSubEvents(this.eventForm.subEvents);
     if (this.eventEditorTarget === 'hosting') {
       this.hostingItemsByUser[this.activeUser.id] = this.hostingItems.map(item =>
@@ -1803,6 +1977,7 @@ export class App {
       this.eventVisibilityById[id] = this.eventForm.visibility;
       this.eventBlindModeById[id] = this.eventForm.blindMode;
       this.eventAutoInviterById[id] = this.eventForm.autoInviter;
+      this.eventCapacityById[id] = this.normalizedEventCapacityRange();
       this.eventSubEventsById[id] = this.cloneSubEvents(this.eventForm.subEvents);
       const next: HostingMenuItem = {
         id,
@@ -1821,6 +1996,7 @@ export class App {
     this.eventVisibilityById[id] = this.eventForm.visibility;
     this.eventBlindModeById[id] = this.eventForm.blindMode;
     this.eventAutoInviterById[id] = this.eventForm.autoInviter;
+    this.eventCapacityById[id] = this.normalizedEventCapacityRange();
     this.eventSubEventsById[id] = this.cloneSubEvents(this.eventForm.subEvents);
     const next: EventMenuItem = {
       id,
@@ -1844,6 +2020,8 @@ export class App {
       title: '',
       description: '',
       imageUrl: '',
+      capacityMin: null,
+      capacityMax: null,
       startAt: this.toIsoDateTimeLocal(start),
       endAt: this.toIsoDateTimeLocal(end),
       frequency: 'One-time',
@@ -1889,6 +2067,10 @@ export class App {
     const baseStart = this.isoLocalDateTimeToDate(this.eventForm.startAt) ?? new Date();
     const start = new Date(baseStart);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
+    const mainMin = this.normalizedCapacityValue(this.eventForm.capacityMin);
+    const mainMax = this.normalizedCapacityValue(this.eventForm.capacityMax);
+    const initialMin = mainMax !== null ? Math.min(mainMin ?? 1, mainMax) : 4;
+    const initialMax = mainMax !== null ? mainMax : 6;
     return {
       id: '',
       name: '',
@@ -1896,8 +2078,8 @@ export class App {
       startAt: this.toIsoDateTimeLocal(start),
       endAt: this.toIsoDateTimeLocal(end),
       optional: true,
-      capacityMin: 4,
-      capacityMax: 6,
+      capacityMin: initialMin,
+      capacityMax: initialMax,
       membersAccepted: 0,
       membersPending: 0,
       carsPending: 0,
@@ -1946,6 +2128,15 @@ export class App {
     this.normalizeSubEventDateRange();
     const fallbackStart = this.subEventForm.startAt || this.eventForm.startAt || this.defaultEventStartIso();
     const fallbackEnd = this.subEventForm.endAt || this.eventForm.endAt || this.defaultEventStartIso();
+    this.normalizeSubEventCapacityRange(true);
+    const mainMax = this.normalizedCapacityValue(this.eventForm.capacityMax);
+    const mainMin = this.normalizedCapacityValue(this.eventForm.capacityMin);
+    const nextCapacityMin = this.subEventForm.optional
+      ? this.subEventForm.capacityMin
+      : (mainMax !== null ? Math.min(mainMin ?? 1, mainMax) : this.subEventForm.capacityMin);
+    const nextCapacityMax = this.subEventForm.optional
+      ? this.subEventForm.capacityMax
+      : (mainMax !== null ? mainMax : this.subEventForm.capacityMax);
     const next: SubEventFormItem = {
       ...this.subEventForm,
       id: `se-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -1953,18 +2144,18 @@ export class App {
       description,
       startAt: fallbackStart,
       endAt: fallbackEnd,
-      capacityMin: Math.max(1, Number(this.subEventForm.capacityMin) || 1),
+      capacityMin: Math.max(1, Number(nextCapacityMin) || 1),
       capacityMax: Math.max(
-        Math.max(1, Number(this.subEventForm.capacityMin) || 1),
-        Number(this.subEventForm.capacityMax) || Math.max(1, Number(this.subEventForm.capacityMin) || 1)
+        Math.max(1, Number(nextCapacityMin) || 1),
+        Number(nextCapacityMax) || Math.max(1, Number(nextCapacityMin) || 1)
       ),
-      membersAccepted: Math.min(2, Math.max(1, Number(this.subEventForm.capacityMin) || 1)),
+      membersAccepted: Math.min(2, Math.max(1, Number(nextCapacityMin) || 1)),
       membersPending: Math.max(
         0,
         Math.max(
-          Math.max(1, Number(this.subEventForm.capacityMin) || 1),
-          Number(this.subEventForm.capacityMax) || Math.max(1, Number(this.subEventForm.capacityMin) || 1)
-        ) - Math.min(2, Math.max(1, Number(this.subEventForm.capacityMin) || 1))
+          Math.max(1, Number(nextCapacityMin) || 1),
+          Number(nextCapacityMax) || Math.max(1, Number(nextCapacityMin) || 1)
+        ) - Math.min(2, Math.max(1, Number(nextCapacityMin) || 1))
       ),
       carsPending: 1,
       accommodationPending: 2,
@@ -1992,6 +2183,86 @@ export class App {
       options.push('Bi-weekly', 'Monthly');
     }
     return options;
+  }
+
+  private toCapacityInputValue(value: number | string): number | null {
+    if (value === '' || value === null || value === undefined) {
+      return null;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+    return Math.max(1, Math.trunc(parsed));
+  }
+
+  private normalizedCapacityValue(value: number | null | undefined): number | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+    return Math.max(1, Math.trunc(parsed));
+  }
+
+  private normalizedEventCapacityRange(): EventCapacityRange {
+    const min = this.normalizedCapacityValue(this.eventForm.capacityMin);
+    const max = this.normalizedCapacityValue(this.eventForm.capacityMax);
+    if (min !== null && max !== null && max < min) {
+      return { min, max: min };
+    }
+    return { min, max };
+  }
+
+  private normalizeSubEventCapacityRange(syncMainWhenMissing: boolean): void {
+    let min = Math.max(1, Number(this.subEventForm.capacityMin) || 1);
+    let max = Math.max(1, Number(this.subEventForm.capacityMax) || min);
+    const mainMax = this.normalizedCapacityValue(this.eventForm.capacityMax);
+    if (this.subEventForm.optional && mainMax !== null) {
+      max = Math.min(max, mainMax);
+    }
+    if (max < min) {
+      min = max;
+    }
+    this.subEventForm.capacityMin = min;
+    this.subEventForm.capacityMax = max;
+    if (this.subEventForm.optional && syncMainWhenMissing && mainMax === null) {
+      this.eventForm.capacityMin = min;
+      this.eventForm.capacityMax = max;
+    }
+  }
+
+  private enforceOpenSubEventCapacityAgainstMain(): void {
+    if (!this.showSubEventForm || !this.subEventForm.optional) {
+      return;
+    }
+    this.normalizeSubEventCapacityRange(false);
+  }
+
+  private normalizeExistingSubEventsCapacityAgainstMain(): void {
+    const mainMax = this.normalizedCapacityValue(this.eventForm.capacityMax);
+    if (mainMax === null) {
+      return;
+    }
+    const mainMin = this.normalizedCapacityValue(this.eventForm.capacityMin) ?? 1;
+    this.eventForm.subEvents = this.eventForm.subEvents.map(item => {
+      if (!item.optional) {
+        return {
+          ...item,
+          capacityMin: Math.min(mainMin, mainMax),
+          capacityMax: mainMax
+        };
+      }
+      const clampedMax = Math.min(Math.max(item.capacityMax, 1), mainMax);
+      const clampedMin = Math.min(Math.max(item.capacityMin, 1), clampedMax);
+      return {
+        ...item,
+        capacityMin: clampedMin,
+        capacityMax: clampedMax
+      };
+    });
   }
 
   private parseFrequencyFromTimeframe(timeframe: string): string {
@@ -2138,6 +2409,8 @@ export class App {
     this.pendingAssetDeleteCardId = null;
     this.pendingAssetMemberAction = null;
     this.selectedAssetCardId = null;
+    this.selectedSubEventBadgeContext = null;
+    this.subEventBadgePopupOrigin = null;
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
     this.showEventVisibilityPicker = false;
@@ -2163,6 +2436,16 @@ export class App {
   }
 
   protected closeStackedPopup(): void {
+    if (this.stackedPopup === 'subEventMembers' || this.stackedPopup === 'subEventAssets') {
+      this.selectedSubEventBadgeContext = null;
+      if (this.subEventBadgePopupOrigin === 'stacked-event-editor') {
+        this.stackedPopup = 'eventEditor';
+      } else {
+        this.stackedPopup = null;
+      }
+      this.subEventBadgePopupOrigin = null;
+      return;
+    }
     if (this.stackedPopup === 'valuesSelector') {
       this.valuesSelectorContext = null;
       this.valuesSelectorSelected = [];
@@ -2268,6 +2551,10 @@ export class App {
         return 'Upload Image';
       case 'supplyDetail':
         return `${this.selectedSupplyContext?.type ?? 'Supply'} · ${this.selectedSupplyContext?.subEventTitle ?? ''}`.trim();
+      case 'subEventMembers':
+        return `Members · ${this.selectedSubEventBadgeContext?.subEvent.name ?? ''}`.trim();
+      case 'subEventAssets':
+        return `${this.subEventResourceFilter} · ${this.selectedSubEventBadgeContext?.subEvent.name ?? ''}`.trim();
       case 'invitations':
         return 'Invitations';
       case 'events':
@@ -2301,6 +2588,10 @@ export class App {
         return 'Event Explore';
       case 'supplyDetail':
         return `${this.selectedSupplyContext?.type ?? 'Supply'} · ${this.selectedSupplyContext?.subEventTitle ?? ''}`.trim();
+      case 'subEventMembers':
+        return `Members · ${this.selectedSubEventBadgeContext?.subEvent.name ?? ''}`.trim();
+      case 'subEventAssets':
+        return `${this.subEventResourceFilter} · ${this.selectedSubEventBadgeContext?.subEvent.name ?? ''}`.trim();
       case 'valuesSelector':
         return 'Values';
       case 'interestSelector':

@@ -1345,6 +1345,11 @@
   position: relative;
 }
 
+.popup-header > .popup-title {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .popup-header-with-activities-progress {
   border-bottom-color: rgba(46, 114, 184, 0.2);
 }
@@ -1412,6 +1417,13 @@
   font-weight: 800;
   letter-spacing: 0.01em;
   color: rgba(21, 39, 62, 0.58);
+}
+
+.popup-subtitle-event-publish {
+  margin: 0.12rem 0 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: rgba(21, 39, 62, 0.66);
 }
 
 .popup-title-members {
@@ -1626,12 +1638,18 @@
 .popup-view-fab span {
   font-size: 0.74rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .event-visibility-picker {
   position: relative;
   z-index: 22;
   margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.event-visibility-trigger {
+  flex-wrap: nowrap;
 }
 
 .event-visibility-trigger.event-visibility-public {
@@ -5177,6 +5195,29 @@ textarea {
   position: relative;
 }
 
+.subevent-members-popup .asset-member-card {
+  border-color: rgba(82, 112, 152, 0.28);
+  background: linear-gradient(180deg, #f2f6ff 0%, #e8eefb 100%);
+}
+
+.subevent-assets-popup {
+  display: grid;
+  gap: 0.62rem;
+}
+
+.subevent-assets-intro {
+  border-color: rgba(76, 104, 143, 0.28);
+  background: linear-gradient(180deg, #f3f7ff 0%, #e9f0fd 100%);
+}
+
+.subevent-member-icon {
+  pointer-events: none;
+}
+
+.subevent-member-icon .mat-icon {
+  color: #3d6594;
+}
+
 .asset-member-card.asset-member-pending {
   background: linear-gradient(180deg, #fff1f2 0%, #ffe7ea 100%);
   border-color: rgba(189, 66, 95, 0.38);
@@ -5657,6 +5698,11 @@ textarea {
   border-color: rgba(151, 92, 41, 0.32);
 }
 
+.experience-type-select.asset-filter-members {
+  background: linear-gradient(180deg, #f0f5ff 0%, #e4ecfb 100%);
+  border-color: rgba(67, 96, 141, 0.32);
+}
+
 .mat-mdc-option.status-option.experience-filter-online {
   background: linear-gradient(0deg, #ffffff, #edf8ee);
 }
@@ -5675,6 +5721,10 @@ textarea {
 
 .mat-mdc-option.status-option.asset-filter-supplies {
   background: linear-gradient(0deg, #ffffff, #fff5ec);
+}
+
+.mat-mdc-option.status-option.asset-filter-members {
+  background: linear-gradient(0deg, #ffffff, #f0f5ff);
 }
 
 .mat-mdc-option.status-option.activity-filter-chat {
@@ -6101,6 +6151,11 @@ textarea {
 
 .event-blind-mode-field {
   grid-column: 1 / -1;
+}
+
+.event-capacity-range-field {
+  width: 100%;
+  grid-column: 2 / 3;
 }
 
 .event-form-row-spacer {
@@ -9050,6 +9105,10 @@ textarea {
 
   .event-form-row-spacer {
     display: none;
+  }
+
+  .event-capacity-range-field {
+    grid-column: 1 / -1;
   }
 
   .event-schedule-panel {

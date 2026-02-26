@@ -252,6 +252,7 @@
           <ng-template #plainPopupTitle>
             <div class="popup-title">
               <h2>{{ getPopupTitle() }}</h2>
+              <p class="popup-subtitle-event-publish" *ngIf="activePopup === 'eventEditor'">You should publish separately!</p>
               <p class="popup-subtitle-activities" *ngIf="activePopup === 'activities'">{{ activitiesHeaderLineOne() }}</p>
               <p class="popup-subtitle-activities popup-subtitle-activities-secondary" *ngIf="activePopup === 'activities' && activitiesHeaderLineTwo()">
                 {{ activitiesHeaderLineTwo() }}
@@ -1201,7 +1202,14 @@
                 <span>Name</span>
                 <input type="text" [(ngModel)]="eventForm.title" />
               </label>
-              <span class="event-form-row-spacer" *ngIf="!isMobileView" aria-hidden="true"></span>
+              <label class="event-capacity-range-field">
+                <span>Capacity</span>
+                <div class="subevent-capacity-range">
+                  <input type="number" min="1" step="1" [ngModel]="eventForm.capacityMin" (ngModelChange)="onEventCapacityMinChange($event)" placeholder="Min" />
+                  <span class="subevent-capacity-separator">-</span>
+                  <input type="number" [min]="eventForm.capacityMin || 1" step="1" [ngModel]="eventForm.capacityMax" (ngModelChange)="onEventCapacityMaxChange($event)" placeholder="Max" />
+                </div>
+              </label>
               <div class="event-intel-row">
                 <label class="event-blind-mode-field">
                   <button
@@ -1419,12 +1427,12 @@
                       <span>Name</span>
                       <input type="text" [(ngModel)]="subEventForm.name" />
                     </label>
-                    <label class="subevent-capacity-range-field">
+                    <label class="subevent-capacity-range-field" *ngIf="subEventForm.optional">
                       <span>Capacity</span>
                       <div class="subevent-capacity-range">
                         <input type="number" min="1" step="1" [ngModel]="subEventForm.capacityMin" (ngModelChange)="onSubEventCapacityMinChange($event)" placeholder="Min" />
                         <span class="subevent-capacity-separator">-</span>
-                        <input type="number" [min]="subEventForm.capacityMin" step="1" [ngModel]="subEventForm.capacityMax" (ngModelChange)="onSubEventCapacityMaxChange($event)" placeholder="Max" />
+                        <input type="number" min="1" [max]="optionalSubEventMainMax() || null" step="1" [ngModel]="subEventForm.capacityMax" (input)="onSubEventCapacityMaxInput($event)" (ngModelChange)="onSubEventCapacityMaxChange($event)" placeholder="Max" />
                       </div>
                     </label>
                     <label class="experience-description-field">
@@ -1905,7 +1913,7 @@
     [class.popup-panel-members]="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers'"
     [class.popup-panel-profile-editor]="stackedPopup === 'experienceSelector'"
     [class.popup-panel-event-editor]="stackedPopup === 'eventEditor'"
-    [class.popup-panel-asset-members]="stackedPopup === 'assetMembers'"
+    [class.popup-panel-asset-members]="stackedPopup === 'assetMembers' || stackedPopup === 'subEventMembers' || stackedPopup === 'subEventAssets'"
     (click)="$event.stopPropagation()"
   >
     <div
@@ -1978,6 +1986,7 @@
         <ng-template #defaultStackedTitle>
           <div class="popup-title">
             <h2>{{ getStackedPopupTitle() }}</h2>
+            <p class="popup-subtitle-event-publish" *ngIf="stackedPopup === 'eventEditor'">You should publish separately!</p>
           </div>
         </ng-template>
         </ng-template>
@@ -2035,7 +2044,7 @@
     <div
       class="popup-body"
       [class.popup-body-chat]="stackedPopup === 'chat'"
-      [class.popup-body-members]="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers' || stackedPopup === 'assetMembers'"
+      [class.popup-body-members]="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers' || stackedPopup === 'assetMembers' || stackedPopup === 'subEventMembers' || stackedPopup === 'subEventAssets'"
       [class.popup-body-experience]="stackedPopup === 'experienceSelector'"
       [class.popup-body-impressions]="stackedPopup === 'impressionsHost'"
     >
@@ -2272,6 +2281,78 @@
         </section>
       </div>
 
+      <div *ngIf="stackedPopup === 'subEventAssets' && selectedSubEventBadgeContext" class="experience-popup assets-popup subevent-assets-popup">
+        <div class="experience-toolbar assets-toolbar">
+          <div class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select" [ngClass]="subEventResourceTypeClass(subEventResourceFilter)">
+            <mat-select
+              [(ngModel)]="subEventResourceFilter"
+              (ngModelChange)="selectSubEventResourceFilter($event)"
+              [panelWidth]="assetFilterPanelWidth()"
+              disableOptionCentering
+              panelClass="selector-options-panel profile-bottom-sheet-panel assets-filter-options-panel"
+            >
+              <mat-select-trigger>
+                <span class="status-option-content">
+                  <mat-icon [class]="subEventResourceTypeClass(subEventResourceFilter)">{{ subEventResourceTypeIcon(subEventResourceFilter) }}</mat-icon>
+                  <span>{{ subEventResourceFilter.toLowerCase() }}</span>
+                </span>
+              </mat-select-trigger>
+              <mat-option *ngFor="let option of subEventResourceFilterOptions" [value]="option" class="status-option" [ngClass]="subEventResourceTypeClass(option)">
+                <span class="status-option-content">
+                  <mat-icon [class]="subEventResourceTypeClass(option)">{{ subEventResourceTypeIcon(option) }}</mat-icon>
+                  <span>{{ option.toLowerCase() }}</span>
+                  <span class="rate-filter-count-badge" *ngIf="subEventResourceFilterCount(option) > 0">{{ subEventResourceFilterCount(option) }}</span>
+                </span>
+              </mat-option>
+            </mat-select>
+            <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="subEventResourceFilterCount(subEventResourceFilter) > 0">{{ subEventResourceFilterCount(subEventResourceFilter) }}</span>
+          </div>
+          <button type="button" class="popup-header-add-btn assets-add-btn" (click)="alertService.open('Add item flow is ready for backend wiring.')" aria-label="Add sub-event resource">
+            <mat-icon>add</mat-icon>
+          </button>
+        </div>
+
+        <div class="experience-card-list assets-card-list">
+          <article class="experience-item-card asset-item-card" [ngClass]="subEventResourceTypeClass(card.type)" *ngFor="let card of subEventResourceCards">
+            <div class="asset-card-image" [appLazyBgImage]="card.imageUrl">
+              <a class="asset-source-icon" *ngIf="!card.isMembers && card.sourceLink" [href]="card.sourceLink" target="_blank" rel="noopener" (click)="$event.stopPropagation()" aria-label="Open source link">
+                <mat-icon>link</mat-icon>
+              </a>
+              <span class="asset-source-icon subevent-member-icon" *ngIf="card.isMembers">
+                <mat-icon>groups</mat-icon>
+              </span>
+              <button
+                type="button"
+                class="asset-occupancy-badge"
+                (click)="alertService.open('Assignment panel is ready for backend wiring.')"
+                aria-label="Open assignments"
+              >
+                <span>{{ subEventResourceOccupancyLabel(card) }}</span>
+                <span class="card-badge asset-request-badge" *ngIf="card.pending > 0">{{ card.pending }}</span>
+              </button>
+            </div>
+            <div class="experience-item-head">
+              <span class="experience-item-icon">
+                <mat-icon>{{ subEventResourceTypeIcon(card.type) }}</mat-icon>
+              </span>
+              <div class="experience-item-meta">
+                <h4>{{ card.title }}</h4>
+                <p>{{ card.type }} · {{ card.subtitle }} · {{ card.city }}</p>
+              </div>
+              <div class="experience-item-actions">
+                <button type="button" class="experience-action-btn experience-action-edit" (click)="alertService.open('Edit flow is ready for backend wiring.')" aria-label="Edit sub-event resource">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button type="button" class="experience-action-btn experience-action-delete" (click)="alertService.open('Delete flow is ready for backend wiring.')" aria-label="Delete sub-event resource">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </div>
+            <p class="experience-item-description">{{ card.details }}</p>
+          </article>
+        </div>
+      </div>
+
       <div *ngIf="stackedPopup === 'invitationActions' && selectedInvitation">
         <div class="editor-list-card">
           <h4>{{ selectedInvitation.description }}</h4>
@@ -2325,7 +2406,14 @@
                 <span>Name</span>
                 <input type="text" [(ngModel)]="eventForm.title" />
               </label>
-              <span class="event-form-row-spacer" *ngIf="!isMobileView" aria-hidden="true"></span>
+              <label class="event-capacity-range-field">
+                <span>Capacity</span>
+                <div class="subevent-capacity-range">
+                  <input type="number" min="1" step="1" [ngModel]="eventForm.capacityMin" (ngModelChange)="onEventCapacityMinChange($event)" placeholder="Min" />
+                  <span class="subevent-capacity-separator">-</span>
+                  <input type="number" [min]="eventForm.capacityMin || 1" step="1" [ngModel]="eventForm.capacityMax" (ngModelChange)="onEventCapacityMaxChange($event)" placeholder="Max" />
+                </div>
+              </label>
               <div class="event-intel-row">
                 <label class="event-blind-mode-field">
                   <button
@@ -2543,12 +2631,12 @@
                       <span>Name</span>
                       <input type="text" [(ngModel)]="subEventForm.name" />
                     </label>
-                    <label class="subevent-capacity-range-field">
+                    <label class="subevent-capacity-range-field" *ngIf="subEventForm.optional">
                       <span>Capacity</span>
                       <div class="subevent-capacity-range">
                         <input type="number" min="1" step="1" [ngModel]="subEventForm.capacityMin" (ngModelChange)="onSubEventCapacityMinChange($event)" placeholder="Min" />
                         <span class="subevent-capacity-separator">-</span>
-                        <input type="number" [min]="subEventForm.capacityMin" step="1" [ngModel]="subEventForm.capacityMax" (ngModelChange)="onSubEventCapacityMaxChange($event)" placeholder="Max" />
+                        <input type="number" min="1" [max]="optionalSubEventMainMax() || null" step="1" [ngModel]="subEventForm.capacityMax" (input)="onSubEventCapacityMaxInput($event)" (ngModelChange)="onSubEventCapacityMaxChange($event)" placeholder="Max" />
                       </div>
                     </label>
                     <label class="experience-description-field">
