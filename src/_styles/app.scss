@@ -5557,6 +5557,7 @@ textarea {
 
 .experience-form-grid label {
   display: grid;
+  grid-template-rows: max-content;
   gap: 0 !important;
   font-weight: 600;
   color: rgba(26, 44, 69, 0.88);
@@ -6162,6 +6163,7 @@ textarea {
 .event-datetime-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(146px, 158px);
+  grid-template-rows: min-content;
   align-items: center;
   padding-left: 0 !important;
 }
@@ -6211,7 +6213,6 @@ textarea {
 .event-schedule-panel .event-datetime-label {
   margin: 0;
   width: 100%;
-  justify-self: stretch;
   padding-left: 0 !important;
 }
 
@@ -6459,10 +6460,6 @@ textarea {
   z-index: 3900;
 }
 
-.subevent-form-popup {
-  width: min(760px, calc(100vw - 1.4rem));
-}
-
 .subevent-form-panel {
   overflow-y: auto;
 }
@@ -6479,6 +6476,7 @@ textarea {
 
 .subevent-form-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: max-content;
 }
 
 .subevent-capacity-range-field {
