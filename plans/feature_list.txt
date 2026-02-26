@@ -234,3 +234,6 @@ top rated event ordering does mean (organizer is top rated by users, so show tha
 Friends Only?? on recommended, maybe it's in the filter bar
 
 there are places left, topics filter on events
+
+on the event explore the panels should get something like when on member selection screen, add the badge to the header
+so event editor opens, and you can assign members to it or add additional subevents, supplies etc.
