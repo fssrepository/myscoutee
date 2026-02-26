@@ -6323,6 +6323,7 @@ textarea {
   font-size: 0.86rem;
   font-weight: 800;
   color: #1f3f66;
+  padding-right: 8.6rem;
 }
 
 .event-subevent-card p {
@@ -6365,16 +6366,18 @@ textarea {
 }
 
 .event-subevent-badges {
-  margin-top: 0.18rem;
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: stretch;
-  gap: 0.34rem;
+  margin-top: 0.24rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 1.5rem;
+  row-gap: 1rem;
+  width: 100%;
+  max-width: 100%;
 }
 
 .event-subevent-badge {
   position: relative;
-  min-height: 44px;
+  min-height: 34px;
   border: 1px solid rgba(65, 94, 133, 0.3);
   border-radius: 10px;
   background: linear-gradient(180deg, #f5f8ff 0%, #eaf0fb 100%);
@@ -6384,21 +6387,22 @@ textarea {
   align-items: center;
   justify-content: center;
   gap: 0.06rem;
-  padding: 0.24rem 0.36rem;
+  padding: 0.14rem 0.24rem;
   cursor: pointer;
-  width: fit-content;
-  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
 }
 
 .event-subevent-badge-title {
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   font-weight: 800;
   line-height: 1;
   text-align: center;
+  text-decoration: underline;
 }
 
 .event-subevent-badge-value {
-  font-size: 0.74rem;
+  font-size: 0.66rem;
   font-weight: 800;
   line-height: 1.08;
 }
