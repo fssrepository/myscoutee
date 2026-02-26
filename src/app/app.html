@@ -252,7 +252,7 @@
           <ng-template #plainPopupTitle>
             <div class="popup-title">
               <h2>{{ getPopupTitle() }}</h2>
-              <p class="popup-subtitle-event-publish" *ngIf="activePopup === 'eventEditor'">You should publish separately!</p>
+              <p class="popup-subtitle-event-publish" *ngIf="activePopup === 'eventEditor'">Should be published separately!</p>
               <p class="popup-subtitle-activities" *ngIf="activePopup === 'activities'">{{ activitiesHeaderLineOne() }}</p>
               <p class="popup-subtitle-activities popup-subtitle-activities-secondary" *ngIf="activePopup === 'activities' && activitiesHeaderLineTwo()">
                 {{ activitiesHeaderLineTwo() }}
@@ -1986,7 +1986,7 @@
         <ng-template #defaultStackedTitle>
           <div class="popup-title">
             <h2>{{ getStackedPopupTitle() }}</h2>
-            <p class="popup-subtitle-event-publish" *ngIf="stackedPopup === 'eventEditor'">You should publish separately!</p>
+            <p class="popup-subtitle-event-publish" *ngIf="stackedPopup === 'eventEditor'">Should be published separately!</p>
           </div>
         </ng-template>
         </ng-template>
