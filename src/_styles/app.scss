@@ -6330,6 +6330,7 @@ textarea {
   font-size: 0.72rem;
   color: rgba(30, 50, 77, 0.82);
   line-height: 1.25;
+  min-height: calc(2 * 1.25em);
   width: 100%;
   white-space: normal;
   overflow: hidden;
@@ -9031,14 +9032,13 @@ textarea {
   }
 
   .event-subevent-badges {
-    margin-top: 0.08rem;
+    margin-top: 0.24rem;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 1.5rem;
     row-gap: 1rem;
-    width: min(100%, 216px);
+    width: 100%;
     max-width: 100%;
-    padding-top: 0.08rem;
   }
 
   .event-subevent-badge {
