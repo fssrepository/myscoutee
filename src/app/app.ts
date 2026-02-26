@@ -1775,6 +1775,7 @@ export class App {
     if (this.subEventResourceFilter === 'Members') {
       return this.eventEditor.members.map((member, index) => {
         const pending = index >= subEvent.membersAccepted && index < subEvent.membersAccepted + subEvent.membersPending;
+        const memberSeed = this.hashText(`${subEvent.id}:${member.name}:${index}`);
         return {
           id: `subevent-member-${index}`,
           type: 'Members',
@@ -1782,7 +1783,7 @@ export class App {
           subtitle: member.role,
           city: this.activeUser.city,
           details: pending ? 'Pending member request for this sub event.' : 'Accepted for this sub event.',
-          imageUrl: this.defaultAssetImage('Supplies', `subevent-member-${index}`),
+          imageUrl: `https://i.pravatar.cc/1200?img=${(memberSeed % 70) + 1}`,
           sourceLink: '',
           capacityTotal: Math.max(subEvent.capacityMax, 1),
           accepted: Math.min(subEvent.membersAccepted, Math.max(subEvent.capacityMax, 1)),
@@ -6186,12 +6187,12 @@ export class App {
     const payload: Omit<AssetCard, 'id' | 'requests'> = {
       type: this.assetForm.type,
       title,
-      subtitle: this.assetForm.subtitle.trim(),
+      subtitle: this.assetForm.subtitle.trim() || this.defaultAssetSubtitle(this.assetForm.type),
       city,
       capacityTotal: Math.max(1, Number(this.assetForm.capacityTotal) || (this.assetForm.type === 'Supplies' ? 6 : 4)),
-      details: this.assetForm.details.trim() || 'No details yet.',
+      details: this.assetForm.details.trim() || this.defaultAssetDetails(this.assetForm.type),
       imageUrl: this.assetForm.imageUrl.trim() || this.defaultAssetImage(this.assetForm.type),
-      sourceLink: this.assetForm.sourceLink.trim() || 'https://picsum.photos'
+      sourceLink: this.assetForm.sourceLink.trim() || this.defaultAssetSourceLink(this.assetForm.type)
     };
     if (this.editingAssetId) {
       this.assetVisibilityById[this.editingAssetId] = this.assetFormVisibility;
@@ -6705,7 +6706,7 @@ export class App {
         capacityTotal: 4,
         details: 'Pickup from Downtown at 17:30. Luggage: 2 cabin bags.',
         imageUrl: this.defaultAssetImage('Car', 'car-1'),
-        sourceLink: 'https://picsum.photos/seed/car-1/1200/700',
+        sourceLink: this.defaultAssetSourceLink('Car'),
         requests: [
           this.buildAssetRequest('asset-member-1', 'u4', 'pending', 'Needs one medium suitcase slot.'),
           this.buildAssetRequest('asset-member-2', 'u8', 'accepted', 'Can meet at 6th Street.'),
@@ -6721,7 +6722,7 @@ export class App {
         capacityTotal: 4,
         details: 'Airport run before midnight, fuel split evenly.',
         imageUrl: this.defaultAssetImage('Car', 'car-2'),
-        sourceLink: 'https://picsum.photos/seed/car-2/1200/700',
+        sourceLink: this.defaultAssetSourceLink('Car'),
         requests: [this.buildAssetRequest('asset-member-3', 'u6', 'pending', 'Landing at 22:40.')]
       },
       {
@@ -6733,7 +6734,7 @@ export class App {
         capacityTotal: 4,
         details: 'Check-in after 15:00. Quiet building, no smoking.',
         imageUrl: this.defaultAssetImage('Accommodation', 'acc-1'),
-        sourceLink: 'https://picsum.photos/seed/acc-1/1200/700',
+        sourceLink: this.defaultAssetSourceLink('Accommodation'),
         requests: [
           this.buildAssetRequest('asset-member-4', 'u3', 'pending', 'Staying for 2 nights.'),
           this.buildAssetRequest('asset-member-5', 'u10', 'accepted', 'Can share room.')
@@ -6748,7 +6749,7 @@ export class App {
         capacityTotal: 2,
         details: 'Ideal for early risers. Parking available.',
         imageUrl: this.defaultAssetImage('Accommodation', 'acc-2'),
-        sourceLink: 'https://picsum.photos/seed/acc-2/1200/700',
+        sourceLink: this.defaultAssetSourceLink('Accommodation'),
         requests: [this.buildAssetRequest('asset-member-6', 'u11', 'pending', 'Arrives Friday evening.')]
       },
       {
@@ -6760,7 +6761,7 @@ export class App {
         capacityTotal: 6,
         details: 'Packed and ready in the garage. Pickup only.',
         imageUrl: this.defaultAssetImage('Supplies', 'sup-1'),
-        sourceLink: 'https://picsum.photos/seed/sup-1/1200/700',
+        sourceLink: this.defaultAssetSourceLink('Supplies'),
         requests: []
       },
       {
@@ -6772,7 +6773,7 @@ export class App {
         capacityTotal: 4,
         details: 'Can deliver to venue before 19:00.',
         imageUrl: this.defaultAssetImage('Supplies', 'sup-2'),
-        sourceLink: 'https://picsum.photos/seed/sup-2/1200/700',
+        sourceLink: this.defaultAssetSourceLink('Supplies'),
         requests: []
       }
     ];
@@ -6796,13 +6797,44 @@ export class App {
   }
 
   protected defaultAssetImage(type: AssetType, seed = type.toLowerCase()): string {
+    const lock = (this.hashText(`${type}:${seed}`) % 997) + 1;
     if (type === 'Car') {
-      return `https://picsum.photos/seed/${seed}/1200/700`;
+      return `https://loremflickr.com/1200/700/car,road,vehicle?lock=${lock}`;
     }
     if (type === 'Accommodation') {
-      return `https://picsum.photos/seed/${seed}/1200/700`;
+      return `https://loremflickr.com/1200/700/apartment,hotel,interior?lock=${lock}`;
     }
-    return `https://picsum.photos/seed/${seed}/1200/700`;
+    return `https://loremflickr.com/1200/700/camping,gear,equipment?lock=${lock}`;
+  }
+
+  private defaultAssetSourceLink(type: AssetType): string {
+    if (type === 'Car') {
+      return 'https://www.google.com/search?tbm=isch&q=carpool+car+vehicle';
+    }
+    if (type === 'Accommodation') {
+      return 'https://www.google.com/search?tbm=isch&q=apartment+hotel+room+interior';
+    }
+    return 'https://www.google.com/search?tbm=isch&q=event+supplies+equipment+kit';
+  }
+
+  private defaultAssetSubtitle(type: AssetType): string {
+    if (type === 'Car') {
+      return 'Seats + luggage capacity';
+    }
+    if (type === 'Accommodation') {
+      return 'Rooms + sleeping spots';
+    }
+    return 'Packed items + delivery window';
+  }
+
+  private defaultAssetDetails(type: AssetType): string {
+    if (type === 'Car') {
+      return 'Route, pickup time, and luggage constraints are confirmed.';
+    }
+    if (type === 'Accommodation') {
+      return 'Check-in details, room setup, and stay notes are confirmed.';
+    }
+    return 'Item condition, handoff location, and timing are confirmed.';
   }
 
   private buildSampleExperienceEntries(): ExperienceEntry[] {
