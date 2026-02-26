@@ -5557,7 +5557,7 @@ textarea {
 
 .experience-form-grid label {
   display: grid;
-  grid-template-rows: max-content;
+  grid-template-rows: min-content;
   gap: 0 !important;
   font-weight: 600;
   color: rgba(26, 44, 69, 0.88);
@@ -6472,6 +6472,7 @@ textarea {
 .subevent-form-panel.subevent-mode-optional {
   background: linear-gradient(180deg, #f1f9ff 0%, #e8f3ff 100%);
   border-color: rgba(63, 118, 188, 0.28);
+  align-content: space-between;
 }
 
 .subevent-form-grid {
