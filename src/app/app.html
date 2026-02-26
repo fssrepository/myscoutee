@@ -1334,11 +1334,15 @@
                   </button>
                 </div>
                 <div class="event-subevents-grid" *ngIf="eventForm.subEvents.length > 0">
-                  <article class="event-subevent-card" *ngFor="let subEvent of eventForm.subEvents">
+                  <article
+                    class="event-subevent-card"
+                    [class.event-subevent-card-optional]="subEvent.optional"
+                    [class.event-subevent-card-mandatory]="!subEvent.optional"
+                    *ngFor="let subEvent of eventForm.subEvents"
+                  >
                     <h4>{{ subEvent.name }}</h4>
                     <p>{{ subEvent.description || 'No description' }}</p>
-                    <span>{{ subEventCardRange(subEvent) }}</span>
-                    <span>{{ subEventCardMeta(subEvent) }}</span>
+                    <span class="event-subevent-range-badge">{{ subEventCardRange(subEvent) }}</span>
                     <div class="event-subevent-badges">
                       <button type="button" class="event-subevent-badge event-subevent-badge-members" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Members', subEvent, $event)">
                         <span class="event-subevent-badge-title">Members</span>
@@ -2438,11 +2442,15 @@
                   </button>
                 </div>
                 <div class="event-subevents-grid" *ngIf="eventForm.subEvents.length > 0">
-                  <article class="event-subevent-card" *ngFor="let subEvent of eventForm.subEvents">
+                  <article
+                    class="event-subevent-card"
+                    [class.event-subevent-card-optional]="subEvent.optional"
+                    [class.event-subevent-card-mandatory]="!subEvent.optional"
+                    *ngFor="let subEvent of eventForm.subEvents"
+                  >
                     <h4>{{ subEvent.name }}</h4>
                     <p>{{ subEvent.description || 'No description' }}</p>
-                    <span>{{ subEventCardRange(subEvent) }}</span>
-                    <span>{{ subEventCardMeta(subEvent) }}</span>
+                    <span class="event-subevent-range-badge">{{ subEventCardRange(subEvent) }}</span>
                     <div class="event-subevent-badges">
                       <button type="button" class="event-subevent-badge event-subevent-badge-members" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Members', subEvent, $event)">
                         <span class="event-subevent-badge-title">Members</span>
