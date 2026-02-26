@@ -2395,8 +2395,8 @@
 }
 
 .user-menu-header.status-public {
-  background: linear-gradient(180deg, #eaf5ee 0%, #e2f0e8 100%);
-  border-bottom-color: rgba(31, 111, 58, 0.34);
+  background: linear-gradient(180deg, #e6f6ef 0%, #d9f0e6 100%);
+  border-bottom-color: rgba(47, 143, 102, 0.34);
 }
 
 .user-menu-header.status-friends {
@@ -2698,8 +2698,8 @@
 }
 
 .user-role-status.status-public {
-  background: linear-gradient(180deg, #eaf5ee 0%, #e2f0e8 100%);
-  border-color: rgba(31, 111, 58, 0.34);
+  background: linear-gradient(180deg, #e6f6ef 0%, #d9f0e6 100%);
+  border-color: rgba(47, 143, 102, 0.34);
 }
 
 .user-role-status.status-friends {
@@ -4109,8 +4109,8 @@
 }
 
 .profile-status-header-picker .event-visibility-trigger.status-public {
-  background: linear-gradient(180deg, #eaf5ee 0%, #e2f0e8 100%);
-  border-color: rgba(31, 111, 58, 0.34);
+  background: linear-gradient(180deg, #e6f6ef 0%, #d9f0e6 100%);
+  border-color: rgba(47, 143, 102, 0.34);
 }
 
 .profile-status-header-picker .event-visibility-trigger.status-friends {
@@ -4130,7 +4130,7 @@
 
 .profile-status-header-picker .event-visibility-trigger .mat-icon.status-public,
 .profile-status-header-picker .activities-view-option.status-public .mat-icon {
-  color: #1f6f3a;
+  color: #2f8f66;
 }
 
 .profile-status-header-picker .event-visibility-trigger .mat-icon.status-friends,
@@ -4149,7 +4149,7 @@
 }
 
 .profile-status-header-picker .activities-view-option.status-public {
-  background: linear-gradient(0deg, #ffffff, #eaf5ee);
+  background: linear-gradient(0deg, #ffffff, #e6f6ef);
 }
 
 .profile-status-header-picker .activities-view-option.status-friends {
@@ -6223,7 +6223,7 @@ textarea {
 
 .profile-identity-card.profile-identity-card-large.status-public {
   background: linear-gradient(180deg, #f5fbf7 0%, #eef8f2 100%);
-  border-color: rgba(49, 123, 74, 0.22);
+  border-color: rgba(47, 143, 102, 0.24);
 }
 
 .profile-identity-card.profile-identity-card-large.status-friends {
@@ -6392,8 +6392,8 @@ textarea {
 }
 
 .profile-status-select-wrap.status-public {
-  background: linear-gradient(180deg, #eaf5ee 0%, #e2f0e8 100%);
-  border-color: rgba(31, 111, 58, 0.34);
+  background: linear-gradient(180deg, #e6f6ef 0%, #d9f0e6 100%);
+  border-color: rgba(47, 143, 102, 0.34);
 }
 
 .profile-status-select-wrap.status-friends {
@@ -6458,13 +6458,13 @@ textarea {
   flex: 0 0 16px;
 }
 
-.status-option-content .status-public { color: #1f6f3a; }
+.status-option-content .status-public { color: #2f8f66; }
 .status-option-content .status-friends { color: #1b57a1; }
 .status-option-content .status-host { color: #87580f; }
 .status-option-content .status-inactive { color: #5b6573; }
 
 .profile-status-select-wrap.status-public .status-option-content .mat-icon {
-  color: #1f6f3a;
+  color: #2f8f66;
 }
 
 .profile-status-select-wrap.status-friends .status-option-content .mat-icon {
@@ -6534,9 +6534,9 @@ textarea {
 
 .selector-options-panel .mat-mdc-option.status-option.status-public,
 .status-options-panel .mat-mdc-option.status-option.status-public {
-  --mdc-list-list-item-container-color: #e3f2e9;
-  --mat-mdc-option-selected-container-color: #e3f2e9;
-  background: linear-gradient(0deg, #ffffff, #e3f2e9) !important;
+  --mdc-list-list-item-container-color: #def3e9;
+  --mat-mdc-option-selected-container-color: #def3e9;
+  background: linear-gradient(0deg, #ffffff, #def3e9) !important;
 }
 
 .selector-options-panel .mat-mdc-option.status-option.status-friends,
@@ -6562,7 +6562,7 @@ textarea {
 
 /* Mirror physique behavior: direct option tinting by item class */
 .mat-mdc-option.status-option.status-public {
-  background: linear-gradient(0deg, #ffffff, #e3f2e9) !important;
+  background: linear-gradient(0deg, #ffffff, #def3e9) !important;
 }
 
 .mat-mdc-option.status-option.status-friends {
@@ -6581,12 +6581,12 @@ textarea {
 .selector-options-panel .mat-mdc-option.status-option.status-public .status-option-content .mat-icon,
 .status-options-panel .mat-mdc-option.status-option.status-public .status-option-content,
 .status-options-panel .mat-mdc-option.status-option.status-public .status-option-content .mat-icon {
-  color: #1f6f3a !important;
+  color: #2f8f66 !important;
 }
 
 .selector-options-panel .mat-mdc-option.status-option.status-public .mdc-list-item__ripple::before,
 .status-options-panel .mat-mdc-option.status-option.status-public .mdc-list-item__ripple::before {
-  background-color: #e3f2e9 !important;
+  background-color: #def3e9 !important;
 }
 
 .selector-options-panel .mat-mdc-option.status-option.status-friends .status-option-content,
@@ -7094,8 +7094,8 @@ textarea {
 }
 
 .profile-details-privacy-btn.status-public {
-  background: linear-gradient(180deg, #eaf5ee 0%, #e2f0e8 100%);
-  border-color: rgba(31, 111, 58, 0.34);
+  background: linear-gradient(180deg, #e6f6ef 0%, #d9f0e6 100%);
+  border-color: rgba(47, 143, 102, 0.34);
 }
 
 .profile-details-privacy-btn.status-friends {
@@ -10097,7 +10097,7 @@ textarea {
 }
 
 .status-public {
-  color: #1f6f3a;
+  color: #2f8f66;
 }
 
 .status-friends {
@@ -11027,7 +11027,7 @@ textarea {
   gap: 0.6rem;
   padding: 0.92rem 1rem 0.8rem;
   border-bottom: 1px solid rgba(36, 63, 107, 0.14);
-  background: linear-gradient(180deg, #eaf5ee 0%, #e2f0e8 100%);
+  background: linear-gradient(180deg, #e6f6ef 0%, #d9f0e6 100%);
 }
 
 .demo-login-panel h2 {
@@ -11445,8 +11445,8 @@ textarea {
 }
 
 .mobile-profile-selector-option.status-public {
-  background: linear-gradient(180deg, #eaf5ee 0%, #e2f0e8 100%);
-  border-color: rgba(31, 111, 58, 0.34);
+  background: linear-gradient(180deg, #e6f6ef 0%, #d9f0e6 100%);
+  border-color: rgba(47, 143, 102, 0.34);
 }
 
 .mobile-profile-selector-option.status-friends {
