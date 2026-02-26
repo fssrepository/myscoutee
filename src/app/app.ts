@@ -34,6 +34,7 @@ import {
   RateMenuItem,
   ProfileGroup
 } from './shared/demo-data';
+import { GDPR_CONTENT } from './shared/gdpr-data';
 import { environment } from '../environments/environment';
 import { LazyBgImageDirective } from './shared/lazy-bg-image.directive';
 
@@ -67,6 +68,7 @@ type PopupType =
   | 'valuesSelector'
   | 'interestSelector'
   | 'experienceSelector'
+  | 'gdpr'
   | 'logoutConfirm'
   | null;
 
@@ -645,6 +647,8 @@ export class App {
   ];
 
   protected showUserMenu = false;
+  protected showUserSettingsMenu = false;
+  protected readonly gdprContent = GDPR_CONTENT;
   protected showUserSelector = !environment.loginEnabled;
   protected activePopup: PopupType = null;
   protected stackedPopup: PopupType = null;
@@ -1206,10 +1210,49 @@ export class App {
 
   protected onUserSelect(): void {
     this.showUserMenu = !this.showUserMenu;
+    if (!this.showUserMenu) {
+      this.showUserSettingsMenu = false;
+    }
   }
 
   protected closeUserMenu(): void {
     this.showUserMenu = false;
+    this.showUserSettingsMenu = false;
+  }
+
+  protected toggleUserSettingsMenu(event: MouseEvent): void {
+    event.stopPropagation();
+    this.showUserSettingsMenu = !this.showUserSettingsMenu;
+  }
+
+  protected closeUserSettingsMenu(): void {
+    this.showUserSettingsMenu = false;
+  }
+
+  protected onUserSettingsAction(action: 'helper' | 'gdpr' | 'delete-account' | 'logout', event?: Event): void {
+    event?.stopPropagation();
+    this.closeUserSettingsMenu();
+    switch (action) {
+      case 'helper':
+        this.alertService.open('Helper center is ready for backend wiring.');
+        return;
+      case 'gdpr':
+        this.openGdprPopup();
+        return;
+      case 'delete-account':
+        this.alertService.open('Delete account flow is ready for backend wiring.');
+        return;
+      case 'logout':
+        this.openLogoutConfirm();
+        return;
+      default:
+        return;
+    }
+  }
+
+  protected openGdprPopup(): void {
+    this.activePopup = 'gdpr';
+    this.closeUserMenu();
   }
 
   protected goToGame(): void {
@@ -2405,6 +2448,7 @@ export class App {
     this.syncProfileFormFromActiveUser();
     this.popupReturnTarget = null;
     this.showProfileStatusHeaderPicker = false;
+    this.showUserSettingsMenu = false;
     this.activePopup = 'profileEditor';
   }
 
@@ -2590,6 +2634,8 @@ export class App {
         return 'Hosting';
       case 'logoutConfirm':
         return 'Kilépés';
+      case 'gdpr':
+        return 'Privacy';
       default:
         return '';
     }
@@ -6263,6 +6309,10 @@ export class App {
     const target = event.target as HTMLElement;
     if (this.showUserMenu && !target.closest('.user-menu-panel') && !target.closest('.user-selector-btn-global')) {
       this.showUserMenu = false;
+      this.showUserSettingsMenu = false;
+    }
+    if (this.showUserSettingsMenu && !target.closest('.user-settings-menu') && !target.closest('.user-menu-settings-btn')) {
+      this.showUserSettingsMenu = false;
     }
     if (
       this.showLanguagePanel &&
