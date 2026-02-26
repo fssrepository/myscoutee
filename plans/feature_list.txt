@@ -237,3 +237,5 @@ there are places left, topics filter on events
 
 on the event explore the panels should get something like when on member selection screen, add the badge to the header
 so event editor opens, and you can assign members to it or add additional subevents, supplies etc.
+
+i think it shouldn't clone, it's join and invite other members
