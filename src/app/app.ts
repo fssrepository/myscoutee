@@ -778,7 +778,7 @@ export class App {
   private readonly activityMembersByRowId: Record<string, ActivityMemberEntry[]> = {};
   private activityMembersPopupOrigin: 'active-event-editor' | 'stacked-event-editor' | 'event-explore' | null = null;
   protected readonly activityRatingScale = Array.from({ length: 10 }, (_, index) => index + 1);
-  private readonly weekCalendarStartHour = 6;
+  private readonly weekCalendarStartHour = 0;
   private readonly weekCalendarEndHour = 23;
   private readonly weekCalendarSlotHeightPx = 34;
   protected selectedActivityRateId: string | null = null;

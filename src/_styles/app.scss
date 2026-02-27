@@ -4593,6 +4593,20 @@
   padding-right: 0;
 }
 
+@media (min-width: 1024px) {
+  .popup-body.popup-body-activities .activities-popup > .activities-scroll-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-content: start;
+    gap: 0.34rem;
+  }
+
+  .popup-body.popup-body-activities .activities-popup > .activities-scroll-list .activities-sticky-header,
+  .popup-body.popup-body-activities .activities-popup > .activities-scroll-list .activities-group-marker {
+    grid-column: 1 / -1;
+  }
+}
+
 .popup-body.popup-body-activities {
   overflow: hidden;
 }
@@ -4637,7 +4651,10 @@
 }
 
 .activities-calendar-scroll.activities-calendar-scroll-week {
+  align-items: flex-start;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 .activities-calendar-scroll.activities-calendar-scroll-month {
@@ -4668,9 +4685,10 @@
 }
 
 .activities-calendar-page-week {
-  min-height: 100%;
-  overflow: hidden;
-  contain: paint;
+  min-height: max-content;
+  height: max-content;
+  overflow: visible;
+  contain: none;
   background: #fff;
 }
 
@@ -4908,12 +4926,12 @@
 
 .activities-week-board {
   --week-slot-h: 34px;
-  --week-slot-count: 18;
+  --week-slot-count: 24;
   display: grid;
   grid-template-columns: 34px repeat(7, minmax(0, 1fr));
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
   gap: 0;
-  min-height: min(66vh, 760px);
+  min-height: calc((var(--week-slot-count) * var(--week-slot-h)) + 34px);
 }
 
 .activities-week-board-corner {
@@ -5041,29 +5059,16 @@
   }
 
   .activities-calendar-scroll.activities-calendar-scroll-week {
-    overflow-y: hidden;
+    overflow-y: auto;
   }
 
   .activities-calendar-page-week {
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
+    display: block;
   }
 
   .activities-week-board {
-    min-height: 0;
-    height: 100%;
-  }
-
-  .activities-week-hours-col,
-  .activities-week-day-col {
-    grid-template-rows: repeat(var(--week-slot-count), minmax(0, 1fr));
-    grid-auto-rows: unset;
-  }
-
-  .activities-week-hour-slot,
-  .activities-week-hour-label {
+    min-height: calc((var(--week-slot-count) * var(--week-slot-h)) + 34px);
     height: auto;
-    min-height: 0;
   }
 }
 
@@ -7921,6 +7926,18 @@ textarea {
 
 .assets-card-list {
   gap: 0.68rem;
+}
+
+@media (min-width: 1024px) {
+  .experience-card-list.assets-card-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-content: start;
+  }
+
+  .event-explore-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-content: start;
+  }
 }
 
 .asset-item-card {
