@@ -11685,6 +11685,21 @@ textarea {
   gap: 0.45rem;
 }
 
+.delete-account-confirm-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 36px;
+  border: 1px solid rgba(176, 28, 45, 0.58);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ee5d6f 0%, #dd3d52 100%);
+  color: #fff;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 0 0.82rem;
+  cursor: pointer;
+}
+
 .demo-login-overlay {
   position: fixed;
   inset: 0;

@@ -69,6 +69,7 @@ type PopupType =
   | 'interestSelector'
   | 'experienceSelector'
   | 'gdpr'
+  | 'deleteAccountConfirm'
   | 'logoutConfirm'
   | null;
 
@@ -1301,18 +1302,20 @@ export class App {
 
   protected onUserSettingsAction(action: 'helper' | 'gdpr' | 'delete-account' | 'logout', event?: Event): void {
     event?.stopPropagation();
-    this.closeUserSettingsMenu();
     switch (action) {
       case 'helper':
+        this.closeUserSettingsMenu();
         this.alertService.open('Helper center is ready for backend wiring.');
         return;
       case 'gdpr':
         this.openGdprPopup();
         return;
       case 'delete-account':
-        this.alertService.open('Delete account flow is ready for backend wiring.');
+        this.closeUserSettingsMenu();
+        this.openDeleteAccountConfirm();
         return;
       case 'logout':
+        this.closeUserSettingsMenu();
         this.openLogoutConfirm();
         return;
       default:
@@ -1322,6 +1325,15 @@ export class App {
 
   protected openGdprPopup(): void {
     this.activePopup = 'gdpr';
+  }
+
+  protected openDeleteAccountConfirm(): void {
+    this.activePopup = 'deleteAccountConfirm';
+  }
+
+  protected confirmDeleteAccount(): void {
+    this.alertService.open('Delete account flow is ready for backend wiring.');
+    this.closePopup();
     this.closeUserMenu();
   }
 
@@ -2709,6 +2721,11 @@ export class App {
     this.activitiesPaginationKey = '';
     this.activitiesVisibleCount = this.activitiesPageSize;
     this.activitiesHeaderProgress = 0;
+  }
+
+  protected closePopupFromBackdrop(event: MouseEvent): void {
+    event.stopPropagation();
+    this.closePopup();
   }
 
   protected closeStackedPopup(): void {

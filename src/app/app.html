@@ -511,8 +511,8 @@
   </div>
 </main>
 
-<section class="app-popup" *ngIf="activePopup && activePopup !== 'logoutConfirm'">
-  <div class="app-popup-backdrop" (click)="closePopup()"></div>
+<section class="app-popup" *ngIf="activePopup && activePopup !== 'logoutConfirm' && activePopup !== 'deleteAccountConfirm'">
+  <div class="app-popup-backdrop" (click)="closePopupFromBackdrop($event)"></div>
   <div
     class="app-popup-panel"
     [class.popup-panel-members]="activePopup === 'chatMembers'"
@@ -4075,6 +4075,18 @@
     <div class="logout-confirm-actions">
       <button mat-stroked-button type="button" (click)="closePopup()">Mégsem</button>
       <button mat-raised-button color="warn" class="logout-btn" type="button" (click)="confirmLogout()">Kilépés</button>
+    </div>
+  </div>
+</section>
+
+<section class="logout-confirm" *ngIf="activePopup === 'deleteAccountConfirm'">
+  <div class="logout-confirm-backdrop" (click)="closePopup()"></div>
+  <div class="logout-confirm-panel" (click)="$event.stopPropagation()">
+    <h3>Delete account?</h3>
+    <p>{{ activeUser.name }}</p>
+    <div class="logout-confirm-actions">
+      <button mat-stroked-button type="button" (click)="closePopup()">Cancel</button>
+      <button type="button" class="delete-account-confirm-btn" (click)="confirmDeleteAccount()">Delete</button>
     </div>
   </div>
 </section>
