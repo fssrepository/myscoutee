@@ -744,6 +744,19 @@
               <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesPrimaryFilterCount(activitiesPrimaryFilter) > 0">{{ activitiesPrimaryFilterCount(activitiesPrimaryFilter) }}</span>
             </button>
           </ng-template>
+          <button
+            *ngIf="isHostingPublicationFilterVisible()"
+            type="button"
+            class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-hosting-draft-toggle"
+            [class.is-active]="hostingPublicationFilter === 'drafts'"
+            (click)="selectHostingPublicationFilter(hostingPublicationFilter === 'drafts' ? 'published' : 'drafts')"
+            [attr.aria-label]="hostingPublicationFilter === 'drafts' ? 'Show published hosting' : 'Show non-published hosting'"
+          >
+            <span class="status-option-content activities-hosting-draft-content">
+              <span class="activities-hosting-draft-label">{{ hostingPublicationFilter === 'drafts' ? 'Drafts' : 'Published' }}</span>
+            </span>
+            <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="hostingDraftCount() > 0">{{ hostingDraftCount() }}</span>
+          </button>
 
           <ng-container *ngIf="isRateFilterVisible()">
             <ng-container *ngIf="!isMobileView; else mobileActivitiesRateFilterButton">
@@ -863,14 +876,23 @@
                     </button>
                   </div>
                   <div class="experience-item-head">
-                    <span class="experience-item-icon">
-                      <mat-icon>{{ activityTypeIcon(row) }}</mat-icon>
+                    <span class="experience-item-icon" [ngClass]="activityLeadingIconCircleClass(row)">
+                      <mat-icon>{{ activityLeadingIcon(row) }}</mat-icon>
                     </span>
                     <div class="experience-item-meta">
                       <h4>{{ row.title }}</h4>
                       <p>{{ activityMetaLine(row) }}</p>
                     </div>
                     <div class="experience-item-actions" *ngIf="canManageActivityRow(row)">
+                      <button
+                        type="button"
+                        class="experience-action-btn experience-action-publish"
+                        *ngIf="shouldShowActivityPublishAction(row)"
+                        (click)="publishHostingActivity(row, $event)"
+                        aria-label="Publish hosted event"
+                      >
+                        <mat-icon>campaign</mat-icon>
+                      </button>
                       <button
                         type="button"
                         class="experience-action-btn experience-action-edit"
@@ -1114,6 +1136,18 @@
             <div class="popup-actions">
               <button type="button" class="link-btn neutral-btn" (click)="cancelActivityDelete()">Cancel</button>
               <button type="button" class="link-btn experience-delete-btn" (click)="confirmActivityDelete()">{{ pendingActivityConfirmActionLabel() }}</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="experience-delete-confirm" *ngIf="pendingActivityPublishRow">
+          <div class="experience-delete-confirm-backdrop" (click)="cancelActivityPublish()"></div>
+          <div class="experience-delete-confirm-panel">
+            <h4>{{ pendingActivityPublishTitle() }}</h4>
+            <p>{{ pendingActivityPublishLabel() }}</p>
+            <div class="popup-actions">
+              <button type="button" class="link-btn neutral-btn" (click)="cancelActivityPublish()">Cancel</button>
+              <button type="button" class="link-btn experience-publish-btn" (click)="confirmActivityPublish()">Publish</button>
             </div>
           </div>
         </section>

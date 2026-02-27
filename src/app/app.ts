@@ -124,6 +124,7 @@ interface ChatPopupMessage {
 
 type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
 type ActivitiesSecondaryFilter = 'recent' | 'relevant' | 'past';
+type HostingPublicationFilter = 'published' | 'drafts';
 type ActivitiesView = 'month' | 'week' | 'day' | 'distance';
 type EventExploreOrder = 'upcoming' | 'past-events' | 'nearby' | 'most-relevant' | 'top-rated';
 type RateFilterKey =
@@ -746,6 +747,7 @@ export class App {
   protected activeMenuSection: MenuSection = 'chat';
   protected activitiesPrimaryFilter: ActivitiesPrimaryFilter = 'chats';
   protected activitiesSecondaryFilter: ActivitiesSecondaryFilter = 'recent';
+  protected hostingPublicationFilter: HostingPublicationFilter = 'published';
   protected activitiesRateFilter: RateFilterKey = 'individual-given';
   protected activitiesView: ActivitiesView = 'week';
   protected showActivitiesViewPicker = false;
@@ -755,6 +757,7 @@ export class App {
   protected activitiesStickyValue = '';
   protected readonly activitiesPageSize = 10;
   protected pendingActivityDeleteRow: ActivityListRow | null = null;
+  protected pendingActivityPublishRow: ActivityListRow | null = null;
   protected pendingActivityAction: 'delete' | 'exit' = 'delete';
   protected pendingActivityMemberDelete: ActivityMemberEntry | null = null;
   protected selectedActivityMembers: ActivityMemberEntry[] = [];
@@ -912,6 +915,18 @@ export class App {
     h1: true,
     h2: false,
     h3: true,
+    h4: false
+  };
+  protected readonly hostingPublishedById: Record<string, boolean> = {
+    e1: true,
+    e4: true,
+    e5: true,
+    e7: false,
+    e10: true,
+    e11: false,
+    h1: true,
+    h2: true,
+    h3: false,
     h4: false
   };
   protected readonly eventCapacityById: Record<string, EventCapacityRange> = {};
@@ -1324,6 +1339,7 @@ export class App {
     this.activePopup = 'activities';
     this.activitiesPrimaryFilter = primaryFilter;
     this.activitiesSecondaryFilter = 'recent';
+    this.hostingPublicationFilter = 'published';
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
     this.showEventExploreOrderPicker = false;
@@ -2088,6 +2104,7 @@ export class App {
     if (this.eventEditorTarget === 'hosting') {
       const id = `h${baseId}`;
       this.hostingDatesById[id] = this.eventForm.startAt;
+      this.hostingPublishedById[id] = false;
       this.eventVisibilityById[id] = this.eventForm.visibility;
       this.eventBlindModeById[id] = this.eventForm.blindMode;
       this.eventAutoInviterById[id] = this.eventForm.autoInviter;
@@ -4556,6 +4573,7 @@ export class App {
     } else if (this.activitiesPrimaryFilter === 'hosting') {
       rows = this.eventItems
         .filter(item => item.isAdmin)
+        .filter(item => this.hostingPublicationFilter === 'drafts' ? !this.isHostingPublished(item.id) : this.isHostingPublished(item.id))
         .map(item => ({
         id: item.id,
         type: 'hosting',
@@ -4641,6 +4659,7 @@ export class App {
       this.activeUserId,
       this.activitiesPrimaryFilter,
       this.activitiesSecondaryFilter,
+      this.hostingPublicationFilter,
       this.activitiesRateFilter,
       this.activitiesView,
       this.calendarRowsSignature(rows),
@@ -4665,6 +4684,7 @@ export class App {
       this.activeUserId,
       this.activitiesPrimaryFilter,
       this.activitiesSecondaryFilter,
+      this.hostingPublicationFilter,
       this.activitiesRateFilter,
       this.activitiesView,
       this.calendarRowsSignature(rows),
@@ -4779,6 +4799,9 @@ export class App {
     if (this.activitiesPrimaryFilter === 'rates') {
       return 'No rate interactions for this filter yet.';
     }
+    if (this.activitiesPrimaryFilter === 'hosting' && this.hostingPublicationFilter === 'drafts') {
+      return 'No drafts in hosting yet.';
+    }
     return `No ${this.activitiesPrimaryFilter} items in this filter.`;
   }
 
@@ -4832,6 +4855,7 @@ export class App {
 
   protected selectActivitiesPrimaryFilter(filter: ActivitiesPrimaryFilter): void {
     this.activitiesPrimaryFilter = filter;
+    this.hostingPublicationFilter = 'published';
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
     if (filter === 'rates') {
@@ -4841,6 +4865,22 @@ export class App {
       this.selectedActivityRateId = null;
     }
     this.resetActivitiesScroll();
+  }
+
+  protected selectHostingPublicationFilter(filter: HostingPublicationFilter): void {
+    if (this.activitiesPrimaryFilter !== 'hosting' || this.hostingPublicationFilter === filter) {
+      return;
+    }
+    this.hostingPublicationFilter = filter;
+    this.resetActivitiesScroll();
+  }
+
+  protected isHostingPublicationFilterVisible(): boolean {
+    return this.activitiesPrimaryFilter === 'hosting';
+  }
+
+  protected hostingDraftCount(): number {
+    return this.eventItems.filter(item => item.isAdmin && !this.isHostingPublished(item.id)).length;
   }
 
   protected selectActivitiesSecondaryFilter(filter: ActivitiesSecondaryFilter): void {
@@ -4861,7 +4901,7 @@ export class App {
   }
 
   protected shouldShowActivitiesExploreAction(): boolean {
-    return this.activitiesPrimaryFilter === 'chats' || this.activitiesPrimaryFilter === 'events' || this.activitiesPrimaryFilter === 'hosting';
+    return this.activitiesPrimaryFilter === 'hosting';
   }
 
   protected toggleActivitiesViewPicker(event: Event): void {
@@ -5466,6 +5506,10 @@ export class App {
     return Math.max(fallbackBase, 4);
   }
 
+  private activityVisibility(row: ActivityListRow): EventVisibility {
+    return this.eventVisibilityById[row.id] ?? (row.type === 'hosting' ? 'Invitation only' : 'Public');
+  }
+
   protected activityTypeIcon(row: ActivityListRow): string {
     if (row.type === 'events') {
       return 'event';
@@ -5482,6 +5526,20 @@ export class App {
     return 'chat';
   }
 
+  protected activityLeadingIcon(row: ActivityListRow): string {
+    if (row.type === 'hosting' || row.type === 'events') {
+      return this.eventVisibilityIcon(this.activityVisibility(row));
+    }
+    return this.activityTypeIcon(row);
+  }
+
+  protected activityLeadingIconCircleClass(row: ActivityListRow): string {
+    if (row.type !== 'hosting' && row.type !== 'events') {
+      return '';
+    }
+    return `experience-item-icon-${this.eventVisibilityClass(this.activityVisibility(row))}`;
+  }
+
   protected activityMetaLine(row: ActivityListRow): string {
     return `${this.activityTypeLabel(row)} · ${this.activityDateLabel(row)} · ${row.distanceKm} km`;
   }
@@ -5493,6 +5551,14 @@ export class App {
 
   protected canManageActivityRow(row: ActivityListRow): boolean {
     return row.type === 'invitations' || row.type === 'events' || row.type === 'hosting';
+  }
+
+  protected shouldShowActivityPublishAction(row: ActivityListRow): boolean {
+    return row.type === 'hosting'
+      && row.isAdmin === true
+      && this.activitiesPrimaryFilter === 'hosting'
+      && this.hostingPublicationFilter === 'drafts'
+      && !this.isHostingPublished(row.id);
   }
 
   protected activityPrimaryActionIcon(row: ActivityListRow): string {
@@ -5548,6 +5614,38 @@ export class App {
   protected triggerActivitySecondaryAction(row: ActivityListRow): void {
     this.pendingActivityAction = this.isExitActivityRow(row) ? 'exit' : 'delete';
     this.pendingActivityDeleteRow = row;
+  }
+
+  protected publishHostingActivity(row: ActivityListRow, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.shouldShowActivityPublishAction(row)) {
+      return;
+    }
+    this.pendingActivityPublishRow = row;
+  }
+
+  protected pendingActivityPublishTitle(): string {
+    return 'Publish activity';
+  }
+
+  protected pendingActivityPublishLabel(): string {
+    if (!this.pendingActivityPublishRow) {
+      return '';
+    }
+    return `Publish ${this.pendingActivityPublishRow.title}?`;
+  }
+
+  protected confirmActivityPublish(): void {
+    if (!this.pendingActivityPublishRow) {
+      return;
+    }
+    this.hostingPublishedById[this.pendingActivityPublishRow.id] = true;
+    this.pendingActivityPublishRow = null;
+    this.resetActivitiesScroll();
+  }
+
+  protected cancelActivityPublish(): void {
+    this.pendingActivityPublishRow = null;
   }
 
   protected isExitActivityRow(row: ActivityListRow): boolean {
@@ -7337,6 +7435,10 @@ export class App {
     return item.mode === modeKey && this.displayedRateDirection(item) === directionKey;
   }
 
+  private isHostingPublished(eventId: string): boolean {
+    return this.hostingPublishedById[eventId] !== false;
+  }
+
   private resetActivitiesScroll(loadCalendarBadgesForCurrentPage = false): void {
     this.seedActivitiesStickyHeader();
     if (this.isCalendarLayoutView()) {
@@ -8101,6 +8203,7 @@ export class App {
       this.activeUserId,
       this.activitiesPrimaryFilter,
       this.activitiesSecondaryFilter,
+      this.hostingPublicationFilter,
       this.activitiesRateFilter,
       this.activitiesView
     ].join('|');
