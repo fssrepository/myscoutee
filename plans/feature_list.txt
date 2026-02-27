@@ -251,3 +251,7 @@ what you have added to your asets from menu bar)
 reflect any changes on card (if you edit event) - the chat needs to have day separator (not sticky, just in the scrollable area)
 
 fix game screen, check how to make tournament ready
+
+while creating event, needs to create chat wehn publish
+
+on rate add another view or a button to make it large like the game, so you can go through on it like in the case of game
