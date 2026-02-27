@@ -262,4 +262,4 @@ maybe the menu bar avatar colour should be the mabe screen background colour
 
 event view screen (everything disabled, just invite members and add assets not)
 
-lazy load card image - card_no_edges.png
+lazy load card image - card_no_edges.png (animate lazy load images in different places also)
