@@ -752,7 +752,7 @@ export class App {
   protected activitiesView: ActivitiesView = 'week';
   protected showActivitiesViewPicker = false;
   protected showActivitiesSecondaryPicker = false;
-  protected inlineItemActionMenu: { scope: 'activity' | 'asset'; id: string; title: string; openUp: boolean } | null = null;
+  protected inlineItemActionMenu: { scope: 'activity' | 'asset' | 'explore'; id: string; title: string; openUp: boolean } | null = null;
   protected showEventExploreOrderPicker = false;
   protected eventExploreOrder: EventExploreOrder = 'upcoming';
   protected activitiesStickyValue = '';
@@ -767,12 +767,13 @@ export class App {
   protected selectedActivityMembersTitle = '';
   protected selectedActivityMembersRowId: string | null = null;
   protected selectedActivityMembersRow: ActivityListRow | null = null;
+  protected activityMembersReadOnly = false;
   protected activityInviteSort: ActivityInviteSort = 'recent';
   protected showActivityInviteSortPicker = false;
   protected selectedActivityInviteUserIds: string[] = [];
-  protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | null = null;
+  protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | 'impressionsHost' | null = null;
   private readonly activityMembersByRowId: Record<string, ActivityMemberEntry[]> = {};
-  private activityMembersPopupOrigin: 'active-event-editor' | 'stacked-event-editor' | null = null;
+  private activityMembersPopupOrigin: 'active-event-editor' | 'stacked-event-editor' | 'event-explore' | null = null;
   protected readonly activityRatingScale = Array.from({ length: 10 }, (_, index) => index + 1);
   private readonly weekCalendarStartHour = 6;
   private readonly weekCalendarEndHour = 23;
@@ -1460,7 +1461,7 @@ export class App {
   protected openEventExplore(closeMenu = true, stacked = false): void {
     this.activeMenuSection = 'events';
     this.showEventExploreOrderPicker = false;
-    if (stacked || this.stackedPopup !== null) {
+    if (stacked || this.stackedPopup !== null || this.activePopup === 'activities') {
       this.stackedPopup = 'eventExplore';
       return;
     }
@@ -2677,7 +2678,9 @@ export class App {
     this.eventEditorClosePublishConfirmContext = null;
     this.pendingActivityAction = 'delete';
     this.pendingActivityMemberDelete = null;
+    this.activityMembersPopupOrigin = null;
     this.inlineItemActionMenu = null;
+    this.activityMembersReadOnly = false;
     this.selectedActivityMembers = [];
     this.selectedActivityMembersTitle = '';
     this.selectedActivityMembersRowId = null;
@@ -2699,6 +2702,10 @@ export class App {
     this.eventEditorClosePublishConfirmContext = null;
     this.inlineItemActionMenu = null;
     this.showEventExploreOrderPicker = false;
+    if (this.superStackedPopup === 'impressionsHost') {
+      this.superStackedPopup = null;
+      return;
+    }
     if (this.stackedPopup === 'subEventMembers' || this.stackedPopup === 'subEventAssets') {
       this.selectedSubEventBadgeContext = null;
       if (this.subEventBadgePopupOrigin === 'stacked-event-editor') {
@@ -2729,6 +2736,7 @@ export class App {
     }
     if (this.stackedPopup === 'activityMembers') {
       this.pendingActivityMemberDelete = null;
+      this.activityMembersReadOnly = false;
       this.selectedActivityMembers = [];
       this.selectedActivityMembersTitle = '';
       this.selectedActivityMembersRowId = null;
@@ -2736,6 +2744,11 @@ export class App {
       this.selectedActivityInviteUserIds = [];
       this.showActivityInviteSortPicker = false;
       this.superStackedPopup = null;
+      if (this.activityMembersPopupOrigin === 'event-explore') {
+        this.activityMembersPopupOrigin = null;
+        this.stackedPopup = 'eventExplore';
+        return;
+      }
       if (this.activityMembersPopupOrigin === 'stacked-event-editor') {
         this.activityMembersPopupOrigin = null;
         this.stackedPopup = 'eventEditor';
@@ -5135,6 +5148,150 @@ export class App {
     return [...cards].sort((a, b) => b.relevance - a.relevance || a.startSort - b.startSort);
   }
 
+  protected eventExploreCreatorInitials(card: EventExploreCard): string {
+    const source = this.resolveEventExploreSource(card);
+    if (!source?.avatar) {
+      return this.initialsFromText(card.title);
+    }
+    return this.initialsFromText(source.avatar);
+  }
+
+  protected eventExploreCreatorToneClass(card: EventExploreCard): string {
+    const rating = this.clampNumber(card.rating, 0, 10);
+    if (rating <= 3.0) {
+      return 'event-explore-rating-cool';
+    }
+    if (rating <= 5.5) {
+      return 'event-explore-rating-cool-mid';
+    }
+    if (rating <= 7.2) {
+      return 'event-explore-rating-neutral';
+    }
+    if (rating <= 8.6) {
+      return 'event-explore-rating-warm-mid';
+    }
+    return 'event-explore-rating-warm';
+  }
+
+  protected eventExploreCreatorAvatarToneClass(card: EventExploreCard): string {
+    const toneIndex = (this.hashText(`${card.sourceType}:${card.id}:${this.eventExploreCreatorInitials(card)}`) % 8) + 1;
+    return `activities-source-tone-${toneIndex}`;
+  }
+
+  protected eventExploreVisibility(card: EventExploreCard): EventVisibility {
+    const visibility = this.eventVisibilityById[card.id] ?? 'Public';
+    return visibility === 'Invitation only' ? 'Friends only' : visibility;
+  }
+
+  protected eventExploreVisibilityCircleClass(card: EventExploreCard): string {
+    return `experience-item-icon-${this.eventVisibilityClass(this.eventExploreVisibility(card))}`;
+  }
+
+  protected isEventExploreOpenEvent(card: EventExploreCard): boolean {
+    return (this.eventBlindModeById[card.id] ?? 'Open Event') === 'Open Event';
+  }
+
+  protected eventExploreMembersLabel(card: EventExploreCard): string {
+    const row = this.eventExploreRow(card);
+    if (!row) {
+      return '0 / 0';
+    }
+    return this.activityCapacityLabel(row);
+  }
+
+  protected openEventExploreMembers(card: EventExploreCard, event: Event): void {
+    event.stopPropagation();
+    const row = this.eventExploreRow(card);
+    if (!row) {
+      return;
+    }
+    this.openActivityMembers(row, event, 'explore');
+  }
+
+  protected openEventExploreHostImpressions(event: Event): void {
+    event.stopPropagation();
+    if (this.stackedPopup === 'eventExplore') {
+      this.superStackedPopup = 'impressionsHost';
+      return;
+    }
+    if (this.activePopup === 'eventExplore') {
+      this.stackedPopup = 'impressionsHost';
+      return;
+    }
+    this.openHostImpressions();
+  }
+
+  protected closeSuperStackedImpressions(): void {
+    if (this.superStackedPopup === 'impressionsHost') {
+      this.superStackedPopup = null;
+    }
+  }
+
+  protected eventExploreTopics(card: EventExploreCard): string[] {
+    const source = this.resolveEventExploreSource(card);
+    if (!source) {
+      return [];
+    }
+    const pool = Array.from(new Set(this.interestOptionGroups.flatMap(group => group.options)));
+    if (pool.length === 0) {
+      return [];
+    }
+    const seed = this.hashText(`${card.sourceType}:${card.id}:${source.title}`);
+    const count = 2 + (seed % 2);
+    const result: string[] = [];
+    for (let index = 0; index < pool.length && result.length < count; index += 1) {
+      const candidate = pool[(seed + (index * 3)) % pool.length];
+      if (!result.includes(candidate)) {
+        result.push(candidate);
+      }
+    }
+    return result;
+  }
+
+  protected eventExploreTopicLabel(topic: string): string {
+    return topic.replace(/^#+\s*/, '');
+  }
+
+  protected toggleEventExploreItemActionMenu(card: EventExploreCard, event: Event): void {
+    event.stopPropagation();
+    if (this.inlineItemActionMenu?.scope === 'explore' && this.inlineItemActionMenu.id === card.id) {
+      this.inlineItemActionMenu = null;
+      return;
+    }
+    this.inlineItemActionMenu = { scope: 'explore', id: card.id, title: card.title, openUp: this.shouldOpenInlineItemMenuUp(event) };
+  }
+
+  protected isEventExploreItemActionMenuOpen(card: EventExploreCard): boolean {
+    return this.inlineItemActionMenu?.scope === 'explore' && this.inlineItemActionMenu.id === card.id;
+  }
+
+  protected isEventExploreItemActionMenuOpenUp(card: EventExploreCard): boolean {
+    return this.inlineItemActionMenu?.scope === 'explore'
+      && this.inlineItemActionMenu.id === card.id
+      && this.inlineItemActionMenu.openUp;
+  }
+
+  protected runEventExploreViewAction(card: EventExploreCard, stacked: boolean, event: Event): void {
+    event.stopPropagation();
+    const source = this.resolveEventExploreSource(card);
+    if (!source) {
+      this.inlineItemActionMenu = null;
+      return;
+    }
+    if (card.sourceType === 'hosting') {
+      this.openHostingItem(source as HostingMenuItem, false, stacked);
+    } else {
+      this.openEventItem(source as EventMenuItem, false, stacked);
+    }
+    this.inlineItemActionMenu = null;
+  }
+
+  protected runEventExploreJoinAction(card: EventExploreCard, event: Event): void {
+    event.stopPropagation();
+    this.alertService.open(`Join request for ${card.title} is ready for backend wiring.`);
+    this.inlineItemActionMenu = null;
+  }
+
   protected activityViewLabel(): string {
     return this.activitiesViewOptions.find(option => option.key === this.activitiesView)?.label ?? 'View';
   }
@@ -5834,8 +5991,15 @@ export class App {
     return (row.type === 'events' || row.type === 'hosting') && row.isAdmin !== true;
   }
 
-  protected openActivityMembers(row: ActivityListRow, event?: Event): void {
+  protected openActivityMembers(row: ActivityListRow, event?: Event, source: 'default' | 'explore' = 'default'): void {
     event?.stopPropagation();
+    const previousStackedPopup = this.stackedPopup;
+    this.activityMembersReadOnly = source === 'explore';
+    if (source === 'explore' && previousStackedPopup === 'eventExplore') {
+      this.activityMembersPopupOrigin = 'event-explore';
+    } else if (source !== 'explore') {
+      this.activityMembersPopupOrigin = null;
+    }
     this.pendingActivityMemberDelete = null;
     this.selectedActivityMembersRowId = `${row.type}:${row.id}`;
     this.selectedActivityMembers = this.sortActivityMembersByActionTimeAsc(this.getActivityMembersByRow(row));
@@ -6883,6 +7047,33 @@ export class App {
     const spaceBelow = viewportHeight - rect.bottom;
     const spaceAbove = rect.top;
     return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
+  }
+
+  private resolveEventExploreSource(card: EventExploreCard): EventMenuItem | HostingMenuItem | null {
+    if (card.sourceType === 'hosting') {
+      return this.hostingItems.find(item => item.id === card.id) ?? null;
+    }
+    return this.eventItems.find(item => item.id === card.id) ?? null;
+  }
+
+  private eventExploreRow(card: EventExploreCard): ActivityListRow | null {
+    const source = this.resolveEventExploreSource(card);
+    if (!source) {
+      return null;
+    }
+    return {
+      id: card.id,
+      type: card.sourceType === 'hosting' ? 'hosting' : 'events',
+      title: card.title,
+      subtitle: card.subtitle,
+      detail: card.timeframe,
+      dateIso: this.eventDatesById[card.id] ?? this.hostingDatesById[card.id] ?? this.defaultEventStartIso(),
+      distanceKm: card.distanceKm,
+      unread: 0,
+      metricScore: card.relevance,
+      isAdmin: false,
+      source
+    };
   }
 
   @HostListener('window:openFeaturePopup', ['$event'])
