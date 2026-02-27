@@ -255,3 +255,5 @@ fix game screen, check how to make tournament ready
 while creating event, needs to create chat wehn publish
 
 on rate add another view or a button to make it large like the game, so you can go through on it like in the case of game
+
+on chat just only days does make sense, on rate not sure, and at the moment it has got 3 columns (for chat it shouldn't be i think)
