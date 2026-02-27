@@ -9148,7 +9148,7 @@ textarea {
 .event-subevent-range-badge {
   position: absolute;
   top: 0.42rem;
-  right: 0.56rem;
+  right: 1.2rem;
   min-height: 22px;
   border: 1px solid rgba(121, 135, 156, 0.26);
   border-radius: 999px;
@@ -9163,6 +9163,23 @@ textarea {
   white-space: nowrap;
 }
 
+.event-subevent-remove-btn {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(16, 29, 49, 0.78);
+  color: #fff;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  cursor: pointer;
+  padding: 0;
+}
+
 .event-subevent-badges {
   margin-top: 0.24rem;
   display: grid;
@@ -9175,23 +9192,37 @@ textarea {
 
 .event-subevent-badge {
   position: relative;
-  min-height: 34px;
+  min-height: 36px;
   border: 1px solid rgba(65, 94, 133, 0.3);
   border-radius: 10px;
   background: linear-gradient(180deg, #f5f8ff 0%, #eaf0fb 100%);
   color: #2a4f7b;
   display: inline-flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: 0.06rem;
-  padding: 0.14rem 0.24rem;
+  justify-content: flex-start;
+  gap: 0.24rem;
+  padding: 0.16rem 0.3rem;
   cursor: pointer;
   width: 100%;
   min-width: 0;
 }
 
+.event-subevent-badge-icon {
+  flex: 0 0 26px;
+  width: 26px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  align-self: stretch;
+}
+
 .event-subevent-badge-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
   font-size: 0.7rem;
   font-weight: 800;
   line-height: 1;
@@ -9199,34 +9230,54 @@ textarea {
   text-decoration: underline;
 }
 
+.event-subevent-badge-icon .mat-icon {
+  width: 24px;
+  height: 24px;
+  font-size: 24px;
+  line-height: 24px;
+}
+
+.event-subevent-badge-text {
+  min-height: 28px;
+  flex: 1;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.06rem;
+  min-width: 0;
+}
+
 .event-subevent-badge-value {
+  width: 100%;
   font-size: 0.66rem;
   font-weight: 800;
   line-height: 1.08;
+  text-align: center;
 }
 
 .event-subevent-badge-members {
-  background: linear-gradient(180deg, #edf7ef 0%, #e2f0e7 100%);
-  border-color: rgba(49, 123, 75, 0.34);
-  color: #2e7a4a;
+  background: linear-gradient(180deg, #f2f7ff 0%, #e8f2ff 100%);
+  border-color: rgba(63, 116, 178, 0.32);
+  color: #3f74b2;
 }
 
 .event-subevent-badge-car {
-  background: linear-gradient(180deg, #ecf4ff 0%, #e1ecfb 100%);
-  border-color: rgba(45, 94, 168, 0.32);
-  color: #2d5ea8;
+  background: linear-gradient(180deg, #fff7f0 0%, #ffefdf 100%);
+  border-color: rgba(208, 125, 51, 0.32);
+  color: #d07d33;
 }
 
 .event-subevent-badge-accommodation {
-  background: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
-  border-color: rgba(37, 127, 95, 0.32);
-  color: #247957;
+  background: linear-gradient(180deg, #f6f4ff 0%, #efeafd 100%);
+  border-color: rgba(115, 88, 176, 0.32);
+  color: #7358b0;
 }
 
 .event-subevent-badge-supplies {
-  background: linear-gradient(180deg, #fff5ec 0%, #feead9 100%);
-  border-color: rgba(151, 92, 41, 0.32);
-  color: #9a6229;
+  background: linear-gradient(180deg, #f1fbfa 0%, #e6f5f2 100%);
+  border-color: rgba(47, 142, 157, 0.32);
+  color: #2f8e9d;
 }
 
 .event-subevent-badge-counter {
@@ -9241,16 +9292,9 @@ textarea {
   z-index: 2;
 }
 
-.event-subevent-badge.subevent-capacity-in-range {
-  background: linear-gradient(180deg, #dbf4e3 0%, #bfe9cc 100%);
-  border-color: rgba(27, 118, 62, 0.46);
-  color: #165b34;
-}
-
 .event-subevent-badge.subevent-capacity-out-of-range {
-  background: linear-gradient(180deg, #ffe3e3 0%, #ffc8c8 100%);
-  border-color: rgba(171, 43, 43, 0.46);
-  color: #8a2323;
+  border-color: rgba(171, 43, 43, 0.64);
+  box-shadow: 0 0 0 1px rgba(171, 43, 43, 0.16);
 }
 
 .subevent-form-overlay {
@@ -12148,10 +12192,15 @@ textarea {
 
   .event-subevent-range-badge {
     top: 0.38rem;
-    right: 0.44rem;
+    right: 1rem;
     font-size: 0.62rem;
     min-height: 20px;
     padding: 0 0.44rem;
+  }
+
+  .event-subevent-remove-btn {
+    top: -4px;
+    right: -4px;
   }
 
   .event-subevent-badges {
@@ -12185,16 +12234,9 @@ textarea {
     right: -12px;
   }
 
-  .event-subevent-badge.subevent-capacity-in-range {
-    background: linear-gradient(180deg, #d1f0db 0%, #b0e3c2 100%);
-    border-color: rgba(21, 110, 56, 0.5);
-    color: #134f2e;
-  }
-
   .event-subevent-badge.subevent-capacity-out-of-range {
-    background: linear-gradient(180deg, #ffd8d8 0%, #ffbcbc 100%);
-    border-color: rgba(158, 35, 35, 0.5);
-    color: #7f1f1f;
+    border-color: rgba(158, 35, 35, 0.66);
+    box-shadow: 0 0 0 1px rgba(158, 35, 35, 0.2);
   }
 
   .subevent-form-popup {

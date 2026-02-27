@@ -758,6 +758,7 @@ export class App {
   protected readonly activitiesPageSize = 10;
   protected pendingActivityDeleteRow: ActivityListRow | null = null;
   protected pendingActivityPublishRow: ActivityListRow | null = null;
+  protected pendingSubEventDeleteId: string | null = null;
   protected eventEditorClosePublishConfirmContext: 'active' | 'stacked' | null = null;
   protected pendingActivityAction: 'delete' | 'exit' = 'delete';
   protected pendingActivityMemberDelete: ActivityMemberEntry | null = null;
@@ -1676,6 +1677,38 @@ export class App {
     this.showSubEventOptionalPicker = false;
   }
 
+  protected requestSubEventDelete(subEvent: SubEventFormItem, event?: Event): void {
+    event?.stopPropagation();
+    this.pendingSubEventDeleteId = subEvent.id;
+  }
+
+  protected cancelSubEventDelete(): void {
+    this.pendingSubEventDeleteId = null;
+  }
+
+  protected confirmSubEventDelete(): void {
+    if (!this.pendingSubEventDeleteId) {
+      return;
+    }
+    this.eventForm.subEvents = this.eventForm.subEvents.filter(item => item.id !== this.pendingSubEventDeleteId);
+    this.pendingSubEventDeleteId = null;
+  }
+
+  protected pendingSubEventDeleteTitle(): string {
+    return 'Delete sub event';
+  }
+
+  protected pendingSubEventDeleteLabel(): string {
+    if (!this.pendingSubEventDeleteId) {
+      return '';
+    }
+    const item = this.eventForm.subEvents.find(subEvent => subEvent.id === this.pendingSubEventDeleteId);
+    if (!item) {
+      return 'Delete this sub event?';
+    }
+    return `Delete ${item.name}?`;
+  }
+
   protected saveSubEventForm(event?: Event): void {
     event?.stopPropagation();
     const saved = this.appendCurrentSubEventIfValid();
@@ -2574,6 +2607,7 @@ export class App {
     this.showProfileStatusHeaderPicker = false;
     this.pendingActivityDeleteRow = null;
     this.pendingActivityPublishRow = null;
+    this.pendingSubEventDeleteId = null;
     this.eventEditorClosePublishConfirmContext = null;
     this.pendingActivityAction = 'delete';
     this.pendingActivityMemberDelete = null;
@@ -2594,6 +2628,7 @@ export class App {
   }
 
   protected closeStackedPopup(): void {
+    this.pendingSubEventDeleteId = null;
     this.eventEditorClosePublishConfirmContext = null;
     this.showEventExploreOrderPicker = false;
     if (this.stackedPopup === 'subEventMembers' || this.stackedPopup === 'subEventAssets') {

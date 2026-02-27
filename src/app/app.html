@@ -1765,28 +1765,41 @@
                     [class.event-subevent-card-mandatory]="!subEvent.optional"
                     *ngFor="let subEvent of eventForm.subEvents"
                   >
+                    <button type="button" class="event-subevent-remove-btn" (click)="requestSubEventDelete(subEvent, $event)" aria-label="Delete sub event">×</button>
                     <h4>{{ subEvent.name }}</h4>
                     <p>{{ subEvent.description || 'No description' }}</p>
                     <span class="event-subevent-range-badge">{{ subEventCardRange(subEvent) }}</span>
                     <div class="event-subevent-badges">
-                      <button type="button" class="event-subevent-badge event-subevent-badge-members" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Members', subEvent, $event)">
-                        <span class="event-subevent-badge-title">Members</span>
-                        <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                      <button type="button" class="event-subevent-badge event-subevent-badge-members" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Members', subEvent, $event)" *ngIf="subEvent.optional">
+                        <span class="event-subevent-badge-icon"><mat-icon>groups</mat-icon></span>
+                        <span class="event-subevent-badge-text">
+                          <span class="event-subevent-badge-title">Members</span>
+                          <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        </span>
                         <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.membersPending > 0">{{ subEvent.membersPending }}</span>
                       </button>
                       <button type="button" class="event-subevent-badge event-subevent-badge-car" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Car', subEvent, $event)">
-                        <span class="event-subevent-badge-title">Car</span>
-                        <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        <span class="event-subevent-badge-icon"><mat-icon>directions_car</mat-icon></span>
+                        <span class="event-subevent-badge-text">
+                          <span class="event-subevent-badge-title">Car</span>
+                          <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        </span>
                         <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.carsPending > 0">{{ subEvent.carsPending }}</span>
                       </button>
                       <button type="button" class="event-subevent-badge event-subevent-badge-accommodation" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Accommodation', subEvent, $event)">
-                        <span class="event-subevent-badge-title">Accommodation</span>
-                        <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        <span class="event-subevent-badge-icon"><mat-icon>hotel</mat-icon></span>
+                        <span class="event-subevent-badge-text">
+                          <span class="event-subevent-badge-title">Accommodation</span>
+                          <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        </span>
                         <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.accommodationPending > 0">{{ subEvent.accommodationPending }}</span>
                       </button>
                       <button type="button" class="event-subevent-badge event-subevent-badge-supplies" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Supplies', subEvent, $event)">
-                        <span class="event-subevent-badge-title">Supplies</span>
-                        <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        <span class="event-subevent-badge-icon"><mat-icon>inventory_2</mat-icon></span>
+                        <span class="event-subevent-badge-text">
+                          <span class="event-subevent-badge-title">Supplies</span>
+                          <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        </span>
                         <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.suppliesPending > 0">{{ subEvent.suppliesPending }}</span>
                       </button>
                     </div>
@@ -3106,28 +3119,41 @@
                     [class.event-subevent-card-mandatory]="!subEvent.optional"
                     *ngFor="let subEvent of eventForm.subEvents"
                   >
+                    <button type="button" class="event-subevent-remove-btn" (click)="requestSubEventDelete(subEvent, $event)" aria-label="Delete sub event">×</button>
                     <h4>{{ subEvent.name }}</h4>
                     <p>{{ subEvent.description || 'No description' }}</p>
                     <span class="event-subevent-range-badge">{{ subEventCardRange(subEvent) }}</span>
                     <div class="event-subevent-badges">
-                      <button type="button" class="event-subevent-badge event-subevent-badge-members" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Members', subEvent, $event)">
-                        <span class="event-subevent-badge-title">Members</span>
-                        <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                      <button type="button" class="event-subevent-badge event-subevent-badge-members" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Members', subEvent, $event)" *ngIf="subEvent.optional">
+                        <span class="event-subevent-badge-icon"><mat-icon>groups</mat-icon></span>
+                        <span class="event-subevent-badge-text">
+                          <span class="event-subevent-badge-title">Members</span>
+                          <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        </span>
                         <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.membersPending > 0">{{ subEvent.membersPending }}</span>
                       </button>
                       <button type="button" class="event-subevent-badge event-subevent-badge-car" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Car', subEvent, $event)">
-                        <span class="event-subevent-badge-title">Car</span>
-                        <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        <span class="event-subevent-badge-icon"><mat-icon>directions_car</mat-icon></span>
+                        <span class="event-subevent-badge-text">
+                          <span class="event-subevent-badge-title">Car</span>
+                          <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        </span>
                         <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.carsPending > 0">{{ subEvent.carsPending }}</span>
                       </button>
                       <button type="button" class="event-subevent-badge event-subevent-badge-accommodation" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Accommodation', subEvent, $event)">
-                        <span class="event-subevent-badge-title">Accommodation</span>
-                        <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        <span class="event-subevent-badge-icon"><mat-icon>hotel</mat-icon></span>
+                        <span class="event-subevent-badge-text">
+                          <span class="event-subevent-badge-title">Accommodation</span>
+                          <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        </span>
                         <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.accommodationPending > 0">{{ subEvent.accommodationPending }}</span>
                       </button>
                       <button type="button" class="event-subevent-badge event-subevent-badge-supplies" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Supplies', subEvent, $event)">
-                        <span class="event-subevent-badge-title">Supplies</span>
-                        <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        <span class="event-subevent-badge-icon"><mat-icon>inventory_2</mat-icon></span>
+                        <span class="event-subevent-badge-text">
+                          <span class="event-subevent-badge-title">Supplies</span>
+                          <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                        </span>
                         <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.suppliesPending > 0">{{ subEvent.suppliesPending }}</span>
                       </button>
                     </div>
@@ -3562,6 +3588,18 @@
     <div class="popup-actions">
       <button type="button" class="link-btn neutral-btn" (click)="cancelEventEditorCloseWithPublishPrompt()">Cancel</button>
       <button type="button" class="link-btn experience-publish-btn" (click)="confirmEventEditorCloseWithPublish()">Publish</button>
+    </div>
+  </div>
+</section>
+
+<section class="experience-delete-confirm" *ngIf="pendingSubEventDeleteId">
+  <div class="experience-delete-confirm-backdrop" (click)="cancelSubEventDelete()"></div>
+  <div class="experience-delete-confirm-panel">
+    <h4>{{ pendingSubEventDeleteTitle() }}</h4>
+    <p>{{ pendingSubEventDeleteLabel() }}</p>
+    <div class="popup-actions">
+      <button type="button" class="link-btn neutral-btn" (click)="cancelSubEventDelete()">Cancel</button>
+      <button type="button" class="link-btn experience-delete-btn" (click)="confirmSubEventDelete()">Delete</button>
     </div>
   </div>
 </section>
