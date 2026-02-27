@@ -180,6 +180,7 @@
 }
 
 .entry-hero h1 {
+  margin-top: 1rem !important;
   margin: 0;
   max-width: 14ch;
   font-size: clamp(2rem, 4vw, 3.4rem);
@@ -198,7 +199,7 @@
 }
 
 .entry-hero-cta {
-  margin-top: 1.1rem;
+  margin-top: 2.8rem;
   display: flex;
   flex-wrap: wrap;
   gap: 0.54rem;
@@ -409,10 +410,27 @@
   color: #d17d12;
 }
 
+@media (max-width: 900px) {
+  .entry-hero-lead p {
+    line-height: 1.24;
+  }
+
+  .hero-hook {
+    font-size: clamp(0.9rem, 3.9vw, 1rem);
+  }
+
+  .hero-value {
+    font-size: clamp(0.95rem, 4.1vw, 1.06rem);
+  }
+
+  .hero-outcome {
+    font-size: clamp(0.84rem, 3.6vw, 0.96rem);
+  }
+}
+
 .entry-benefit-grid,
 .entry-steps-grid,
 .entry-use-cases {
-  margin-top: 0.95rem;
   display: grid;
   gap: 0.85rem;
 }
@@ -2111,6 +2129,10 @@
 }
 
 @media (max-width: 720px) {
+  .entry-hero-cta {
+    margin-top: 1rem;
+  }
+
   .entry-shell {
     padding: 0.55rem;
   }
@@ -11479,6 +11501,167 @@ textarea {
 .mobile-profile-selector-option.status-inactive {
   background: linear-gradient(180deg, #f2f3f5 0%, #e8ebef 100%);
   border-color: rgba(91, 101, 115, 0.32);
+}
+
+/* How it works: visual card redesign */
+#how .entry-steps-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.82rem;
+}
+
+#how .entry-step-card-visual {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 30px;
+  border: 2px solid rgba(73, 124, 223, 0.45);
+  background: #ffffff;
+  box-shadow: 0 10px 22px rgba(24, 39, 77, 0.08);
+}
+
+#how .entry-step-card-visual .entry-step-headline {
+  padding: 0.78rem 0.9rem 0.16rem;
+  display: flex;
+  align-items: center;
+  gap: 0.52rem;
+}
+
+#how .entry-step-card-visual .entry-step-index {
+  min-width: 42px;
+  min-height: 42px;
+  border-radius: 12px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.12rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  background: #eaf3ff;
+  color: #2666de;
+}
+
+#how .entry-step-card-visual h3 {
+  margin: 0;
+  color: #121a48;
+  font-size: clamp(1.04rem, 1.28vw, 1.28rem);
+  line-height: 1.14;
+  letter-spacing: -0.015em;
+  font-weight: 780;
+}
+
+#how .entry-step-card-visual > p {
+  margin: 0;
+  padding: 0.02rem 0.9rem 0.7rem;
+  color: #3a3f6c;
+  font-size: clamp(0.76rem, 0.92vw, 0.92rem);
+  line-height: 1.28;
+  font-weight: 500;
+}
+
+#how .entry-step-card-visual > p strong {
+  color: #11174a;
+  font-weight: 780;
+}
+
+#how .entry-step-card-visual .entry-step-visual {
+  position: relative;
+  height: 208px;
+  border-top: 1px solid rgba(63, 86, 131, 0.08);
+  overflow: hidden;
+  background: #f4f7ff;
+}
+
+#how .entry-step-card-visual .entry-step-visual::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('/assets/logo/cards_no_edges.png');
+  background-repeat: no-repeat;
+  background-size: 200% 286%;
+  background-position: var(--slice-x, 0%) var(--slice-y, 0%);
+}
+
+#how .entry-step-card-visual-1 {
+  border-color: rgba(62, 129, 248, 0.58);
+}
+
+#how .entry-step-card-visual-1 .entry-step-index {
+  background: #e8f2ff;
+  color: #1f66e2;
+}
+
+#how .entry-step-card-visual-1 .entry-step-visual {
+  --slice-x: 0%;
+  --slice-y: 23%;
+}
+
+#how .entry-step-card-visual-2 {
+  border-color: rgba(133, 76, 255, 0.58);
+}
+
+#how .entry-step-card-visual-2 .entry-step-index {
+  background: #efe7ff;
+  color: #7a3eff;
+}
+
+#how .entry-step-card-visual-2 .entry-step-visual {
+  --slice-x: 100%;
+  --slice-y: 23%;
+}
+
+#how .entry-step-card-visual-3 {
+  border-color: rgba(243, 82, 181, 0.58);
+}
+
+#how .entry-step-card-visual-3 .entry-step-index {
+  background: #ffe9f6;
+  color: #f04ea8;
+}
+
+#how .entry-step-card-visual-3 .entry-step-visual {
+  --slice-x: 0%;
+  --slice-y: 99%;
+}
+
+#how .entry-step-card-visual-4 {
+  border-color: rgba(255, 132, 88, 0.58);
+}
+
+#how .entry-step-card-visual-4 .entry-step-index {
+  background: #ffe9e1;
+  color: #f16633;
+}
+
+#how .entry-step-card-visual-4 .entry-step-visual {
+  --slice-x: 100%;
+  --slice-y: 99%;
+}
+
+@media (max-width: 900px) {
+  #how .entry-steps-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #how .entry-step-card-visual .entry-step-visual {
+    height: 162px;
+  }
+
+  #how .entry-step-card-visual h3 {
+    font-size: clamp(0.92rem, 4.3vw, 1.02rem);
+    line-height: 1.12;
+  }
+
+  #how .entry-step-card-visual > p {
+    font-size: clamp(0.74rem, 3.1vw, 0.82rem);
+    line-height: 1.24;
+  }
+
+  #how .entry-step-card-visual .entry-step-index {
+    min-width: 38px;
+    min-height: 38px;
+    font-size: 0.95rem;
+  }
 }
 
 .mobile-profile-selector-option.detail-tone-1 {

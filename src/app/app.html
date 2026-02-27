@@ -1,7 +1,7 @@
 <section class="entry-shell" *ngIf="showEntryShell">
   <div class="entry-shell-panel">
     <header class="entry-shell-header">
-      <a class="entry-brand" href="#top" aria-label="MyScoutee landing top">
+      <a class="entry-brand" aria-label="MyScoutee landing top">
         <img class="entry-brand-mark" src="assets/logo/heart.png" alt="MyScoutee logo" />
         <span class="entry-brand-text">yScoutee</span>
       </a>
@@ -25,10 +25,6 @@
         <div class="entry-hero-content" id="why">
           <p class="entry-eyebrow">Your preferences come first</p>
           <h1>Stop Swiping. Start Connecting.</h1>
-          <p class="entry-hero-lead">
-            Tired of the endless, superficial shuffle? Set who you want to meet first, and MyScoutee turns your priorities into smarter, fairer matches.
-            Join group chats with people who match your preferences, meet in real life, and skip the games, bias, and burnout.
-          </p>
           <div class="entry-hero-cta">
             <button type="button" class="entry-cta entry-cta-primary" (click)="openEntryAuth()">
               <mat-icon>rocket_launch</mat-icon>
@@ -80,44 +76,38 @@
     </section>
 
     <section class="entry-section" id="how">
-      <header class="entry-section-head">
-        <h2>
-          <span class="entry-section-badge tone-flow" aria-hidden="true"><mat-icon>route</mat-icon></span>
-          <span>How MyScoutee works</span>
-        </h2>
-      </header>
       <div class="entry-steps-grid">
-        <article class="entry-step-card">
-          <div class="entry-step-topline">
+        <article class="entry-step-card entry-step-card-visual entry-step-card-visual-1">
+          <div class="entry-step-headline">
             <span class="entry-step-index">01</span>
-            <span class="entry-card-icon tone-priority"><mat-icon>star_rate</mat-icon></span>
+            <h3>Set priorities and feedback</h3>
           </div>
-          <h3>Set priorities and feedback</h3>
-          <p>Rate people from 1 to 10. You can also rate pairs to improve matching.</p>
+          <p>Rate people 1–10 for <strong>better matches</strong>.</p>
+          <div class="entry-step-visual" aria-hidden="true"></div>
         </article>
-        <article class="entry-step-card">
-          <div class="entry-step-topline">
+        <article class="entry-step-card entry-step-card-visual entry-step-card-visual-2">
+          <div class="entry-step-headline">
             <span class="entry-step-index">02</span>
-            <span class="entry-card-icon tone-graph"><mat-icon>hub</mat-icon></span>
+            <h3>Start in a matched group chat</h3>
           </div>
-          <h3>Start in a matched group chat</h3>
-          <p>Join a group chat with matching people, then decide where to meet.</p>
+          <p>Join a group chat with your <strong>top matches</strong>.</p>
+          <div class="entry-step-visual" aria-hidden="true"></div>
         </article>
-        <article class="entry-step-card">
-          <div class="entry-step-topline">
+        <article class="entry-step-card entry-step-card-visual entry-step-card-visual-3">
+          <div class="entry-step-headline">
             <span class="entry-step-index">03</span>
-            <span class="entry-card-icon tone-event"><mat-icon>event_available</mat-icon></span>
+            <h3>Meet through events</h3>
           </div>
-          <h3>Meet through events</h3>
-          <p>Pick an event or create your own meetup and take things offline.</p>
+          <p>Join an event or create your own and <strong>go offline</strong>.</p>
+          <div class="entry-step-visual" aria-hidden="true"></div>
         </article>
-        <article class="entry-step-card">
-          <div class="entry-step-topline">
+        <article class="entry-step-card entry-step-card-visual entry-step-card-visual-4">
+          <div class="entry-step-headline">
             <span class="entry-step-index">04</span>
-            <span class="entry-card-icon tone-community"><mat-icon>campaign</mat-icon></span>
+            <h3>Host your own events</h3>
           </div>
-          <h3>Host your own events</h3>
-          <p>Create events for everyone, for friends only, or by invitation only.</p>
+          <p>Create events for everyone, friends, or <strong>invite-only</strong>.</p>
+          <div class="entry-step-visual" aria-hidden="true"></div>
         </article>
       </div>
     </section>
