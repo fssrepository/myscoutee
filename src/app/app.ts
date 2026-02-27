@@ -2000,6 +2000,7 @@ export class App {
     this.eventStartDateValue = value;
     this.syncEventFormFromDateTimeControls();
     this.normalizeEventDateRange();
+    this.enforceOpenSubEventDateAgainstMain();
     this.syncEventDateTimeControlsFromForm();
   }
 
@@ -2007,6 +2008,7 @@ export class App {
     this.eventEndDateValue = value;
     this.syncEventFormFromDateTimeControls();
     this.normalizeEventDateRange();
+    this.enforceOpenSubEventDateAgainstMain();
     this.syncEventDateTimeControlsFromForm();
   }
 
@@ -2014,6 +2016,7 @@ export class App {
     this.eventStartTimeValue = value;
     this.syncEventFormFromDateTimeControls();
     this.normalizeEventDateRange();
+    this.enforceOpenSubEventDateAgainstMain();
     this.syncEventDateTimeControlsFromForm();
   }
 
@@ -2021,6 +2024,7 @@ export class App {
     this.eventEndTimeValue = value;
     this.syncEventFormFromDateTimeControls();
     this.normalizeEventDateRange();
+    this.enforceOpenSubEventDateAgainstMain();
     this.syncEventDateTimeControlsFromForm();
   }
 
@@ -2030,6 +2034,7 @@ export class App {
     this.eventForm.capacityMin = normalizedCapacity.min;
     this.eventForm.capacityMax = normalizedCapacity.max;
     this.normalizeExistingSubEventsCapacityAgainstMain();
+    this.normalizeExistingSubEventsDateAgainstMain();
     const title = this.eventForm.title.trim();
     const description = this.eventForm.description.trim();
     if (!title || !description || !this.eventForm.startAt || !this.eventForm.endAt) {
@@ -2291,15 +2296,33 @@ export class App {
   }
 
   private normalizeSubEventDateRange(): void {
-    const start = new Date(this.subEventForm.startAt);
-    const end = new Date(this.subEventForm.endAt);
+    let start = new Date(this.subEventForm.startAt);
+    let end = new Date(this.subEventForm.endAt);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       return;
     }
     if (end.getTime() <= start.getTime()) {
-      const nextEnd = new Date(start.getTime() + 60 * 60 * 1000);
-      this.subEventForm.endAt = this.toIsoDateTimeLocal(nextEnd);
+      end = new Date(start.getTime() + 60 * 60 * 1000);
     }
+
+    const mainStart = new Date(this.eventForm.startAt);
+    const mainEnd = new Date(this.eventForm.endAt);
+    if (!Number.isNaN(mainStart.getTime()) && !Number.isNaN(mainEnd.getTime())) {
+      const clampTime = (value: Date) => Math.min(Math.max(value.getTime(), mainStart.getTime()), mainEnd.getTime());
+      start = new Date(clampTime(start));
+      end = new Date(clampTime(end));
+      if (end.getTime() <= start.getTime()) {
+        const nextEnd = new Date(Math.min(mainEnd.getTime(), start.getTime() + 60 * 60 * 1000));
+        if (nextEnd.getTime() > start.getTime()) {
+          end = nextEnd;
+        } else {
+          start = new Date(Math.max(mainStart.getTime(), mainEnd.getTime() - 60 * 60 * 1000));
+          end = new Date(mainEnd);
+        }
+      }
+    }
+    this.subEventForm.startAt = this.toIsoDateTimeLocal(start);
+    this.subEventForm.endAt = this.toIsoDateTimeLocal(end);
   }
 
   private cloneSubEvents(items: SubEventFormItem[]): SubEventFormItem[] {
@@ -2429,6 +2452,15 @@ export class App {
     this.normalizeSubEventCapacityRange(false);
   }
 
+  private enforceOpenSubEventDateAgainstMain(): void {
+    if (!this.showSubEventForm) {
+      return;
+    }
+    this.syncSubEventFormFromDateTimeControls();
+    this.normalizeSubEventDateRange();
+    this.syncSubEventDateTimeControlsFromForm();
+  }
+
   private normalizeExistingSubEventsCapacityAgainstMain(): void {
     const mainMax = this.normalizedCapacityValue(this.eventForm.capacityMax);
     if (mainMax === null) {
@@ -2449,6 +2481,39 @@ export class App {
         ...item,
         capacityMin: clampedMin,
         capacityMax: clampedMax
+      };
+    });
+  }
+
+  private normalizeExistingSubEventsDateAgainstMain(): void {
+    const mainStart = new Date(this.eventForm.startAt);
+    const mainEnd = new Date(this.eventForm.endAt);
+    if (Number.isNaN(mainStart.getTime()) || Number.isNaN(mainEnd.getTime())) {
+      return;
+    }
+    const clampTime = (value: Date) => Math.min(Math.max(value.getTime(), mainStart.getTime()), mainEnd.getTime());
+    this.eventForm.subEvents = this.eventForm.subEvents.map(item => {
+      let start = new Date(item.startAt);
+      let end = new Date(item.endAt);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        start = new Date(mainStart);
+        end = new Date(Math.min(mainEnd.getTime(), mainStart.getTime() + 60 * 60 * 1000));
+      }
+      start = new Date(clampTime(start));
+      end = new Date(clampTime(end));
+      if (end.getTime() <= start.getTime()) {
+        const nextEnd = new Date(Math.min(mainEnd.getTime(), start.getTime() + 60 * 60 * 1000));
+        if (nextEnd.getTime() > start.getTime()) {
+          end = nextEnd;
+        } else {
+          start = new Date(Math.max(mainStart.getTime(), mainEnd.getTime() - 60 * 60 * 1000));
+          end = new Date(mainEnd);
+        }
+      }
+      return {
+        ...item,
+        startAt: this.toIsoDateTimeLocal(start),
+        endAt: this.toIsoDateTimeLocal(end)
       };
     });
   }
@@ -7497,6 +7562,7 @@ export class App {
     this.eventForm.capacityMin = normalizedCapacity.min;
     this.eventForm.capacityMax = normalizedCapacity.max;
     this.normalizeExistingSubEventsCapacityAgainstMain();
+    this.normalizeExistingSubEventsDateAgainstMain();
     if (!this.hasEventEditorRequiredFields()) {
       return null;
     }
