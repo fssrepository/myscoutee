@@ -534,6 +534,7 @@
       class="popup-header"
       [class.popup-header-chat]="activePopup === 'chat' && selectedChat"
       [class.popup-header-with-activities-progress]="activePopup === 'activities'"
+      [class.popup-header-with-chat-progress]="activePopup === 'chat' && selectedChat"
     >
       <div class="popup-title popup-title-chat" *ngIf="activePopup === 'chat' && selectedChat; else defaultPopupTitle">
         <div class="popup-chat-title-block">
@@ -705,6 +706,13 @@
       >
         <span class="activities-header-progress-fill" [style.transform]="'scaleX(' + activitiesHeaderProgress + ')'"></span>
         <span class="activities-header-progress-loading" [style.transform]="'scaleX(' + activitiesHeaderLoadingProgress + ')'"></span>
+      </div>
+      <div
+        *ngIf="activePopup === 'chat' && selectedChat"
+        class="activities-header-progress chat-header-progress"
+        aria-hidden="true"
+      >
+        <span class="activities-header-progress-fill" [style.transform]="'scaleX(' + chatHeaderProgress + ')'"></span>
       </div>
     </div>
 
@@ -1190,7 +1198,8 @@
 
       <div *ngIf="activePopup === 'chat' && selectedChat" class="chat-popup-wrap">
         <div class="chat-popup-box">
-          <div class="chat-thread">
+          <div class="chat-thread" (scroll)="onChatThreadScroll($event)">
+            <div class="chat-history-top-sentinel" *ngIf="hasMoreChatMessages()" aria-hidden="true"></div>
             <article class="chat-message" *ngFor="let message of chatPopupMessages" [class.mine]="message.mine">
               <div class="chat-bubble">
                 <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">{{ message.senderAvatar.initials }}</span>
@@ -1208,8 +1217,8 @@
             </article>
           </div>
           <div class="chat-compose-box">
-            <textarea rows="3" placeholder="Write message"></textarea>
-            <button type="button" class="chat-send-btn" aria-label="Send message">
+            <textarea rows="3" placeholder="Write message" [(ngModel)]="chatDraftMessage"></textarea>
+            <button type="button" class="chat-send-btn" aria-label="Send message" (click)="sendChatMessage()">
               <mat-icon>send</mat-icon>
             </button>
           </div>
@@ -2604,7 +2613,11 @@
       </div>
     </div>
     <ng-template #defaultStackedHeader>
-      <div class="popup-header" [class.popup-header-chat]="stackedPopup === 'chat' && selectedChat">
+      <div
+        class="popup-header"
+        [class.popup-header-chat]="stackedPopup === 'chat' && selectedChat"
+        [class.popup-header-with-chat-progress]="stackedPopup === 'chat' && selectedChat"
+      >
         <div class="popup-title popup-title-chat" *ngIf="stackedPopup === 'chat' && selectedChat; else stackedHeaderDefaultTitle">
           <div class="popup-chat-title-block">
             <h2>{{ selectedChat.title }}</h2>
@@ -2708,6 +2721,13 @@
         <button mat-icon-button class="popup-close" (click)="handleStackedPopupHeaderClose()" aria-label="Close">
           <mat-icon>close</mat-icon>
         </button>
+        <div
+          *ngIf="stackedPopup === 'chat' && selectedChat"
+          class="activities-header-progress chat-header-progress"
+          aria-hidden="true"
+        >
+          <span class="activities-header-progress-fill" [style.transform]="'scaleX(' + chatHeaderProgress + ')'"></span>
+        </div>
       </div>
     </ng-template>
 
@@ -2720,7 +2740,8 @@
     >
       <div *ngIf="stackedPopup === 'chat' && selectedChat" class="chat-popup-wrap">
         <div class="chat-popup-box">
-          <div class="chat-thread">
+          <div class="chat-thread" (scroll)="onChatThreadScroll($event)">
+            <div class="chat-history-top-sentinel" *ngIf="hasMoreChatMessages()" aria-hidden="true"></div>
             <article class="chat-message" *ngFor="let message of chatPopupMessages" [class.mine]="message.mine">
               <div class="chat-bubble">
                 <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">{{ message.senderAvatar.initials }}</span>
@@ -2738,8 +2759,8 @@
             </article>
           </div>
           <div class="chat-compose-box">
-            <textarea rows="3" placeholder="Write message"></textarea>
-            <button type="button" class="chat-send-btn" aria-label="Send message">
+            <textarea rows="3" placeholder="Write message" [(ngModel)]="chatDraftMessage"></textarea>
+            <button type="button" class="chat-send-btn" aria-label="Send message" (click)="sendChatMessage()">
               <mat-icon>send</mat-icon>
             </button>
           </div>

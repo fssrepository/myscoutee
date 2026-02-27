@@ -3724,6 +3724,10 @@
   border-bottom-color: rgba(46, 114, 184, 0.2);
 }
 
+.popup-header-with-chat-progress {
+  border-bottom-color: rgba(58, 106, 178, 0.18);
+}
+
 .activities-header-progress {
   position: absolute;
   left: 0;
@@ -3765,6 +3769,18 @@
 .activities-header-progress.is-loading.is-loading-overdue .activities-header-progress-loading {
   transform: scaleX(1) !important;
   background: linear-gradient(270deg, rgba(213, 54, 68, 0.98) 0%, rgba(196, 29, 42, 0.98) 100%);
+}
+
+.chat-header-progress {
+  background: rgba(64, 110, 180, 0.12);
+}
+
+.chat-header-progress .activities-header-progress-fill {
+  background: linear-gradient(90deg, rgba(70, 121, 201, 0.98) 0%, rgba(52, 94, 173, 0.98) 100%);
+}
+
+.chat-header-progress .activities-header-progress-loading {
+  display: none;
 }
 
 .popup-title h2 {
@@ -5621,6 +5637,13 @@
   flex-direction: column;
   gap: 0.48rem;
   padding-right: 0.12rem;
+}
+
+.chat-history-top-sentinel {
+  height: 10px;
+  opacity: 0;
+  pointer-events: none;
+  flex: 0 0 auto;
 }
 
 .chat-message {

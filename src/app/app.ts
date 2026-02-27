@@ -1050,6 +1050,11 @@ export class App {
   protected selectedChat: ChatMenuItem | null = null;
   protected selectedChatMembers: DemoUser[] = [];
   protected selectedChatMembersItem: ChatMenuItem | null = null;
+  protected readonly chatHistoryPageSize = 10;
+  protected chatVisibleMessageCount = this.chatHistoryPageSize;
+  protected chatDraftMessage = '';
+  private readonly chatHistoryById: Record<string, ChatPopupMessage[]> = {};
+  private chatHistoryLoadingOlder = false;
   protected selectedInvitation: InvitationMenuItem | null = null;
   protected selectedEvent: EventMenuItem | null = null;
   protected selectedHostingEvent: HostingMenuItem | null = null;
@@ -1078,6 +1083,7 @@ export class App {
   protected activitiesHeaderProgressLoading = false;
   protected activitiesHeaderLoadingProgress = 0;
   protected activitiesHeaderLoadingOverdue = false;
+  protected chatHeaderProgress = 0;
 
   protected imageSlots: Array<string | null> = [];
   protected selectedImageIndex = 0;
@@ -1394,6 +1400,10 @@ export class App {
   protected openChatItem(item: ChatMenuItem, closeMenu = true, stacked = false): void {
     this.activeMenuSection = 'chat';
     this.selectedChat = item;
+    this.ensureSelectedChatHistory();
+    this.chatVisibleMessageCount = Math.min(this.chatHistoryPageSize, this.selectedChatHistory.length);
+    this.chatDraftMessage = '';
+    this.chatHistoryLoadingOlder = false;
     this.showActivitiesViewPicker = false;
     if (stacked || this.activePopup === 'activities' || this.stackedPopup !== null) {
       this.stackedPopup = 'chat';
@@ -6546,63 +6556,73 @@ export class App {
   }
 
   protected get chatPopupMessages(): ChatPopupMessage[] {
-    if (!this.selectedChat) {
+    const history = this.selectedChatHistory;
+    if (history.length === 0) {
       return [];
     }
-    const members = this.getChatMembersById(this.selectedChat.id);
-    const lastSender = members[0] ?? this.getChatLastSender(this.selectedChat);
-    const starter = members[1] ?? members[0] ?? this.activeUser;
-    const memberB = members[2] ?? starter;
-    const memberC = members[3] ?? memberB;
-    const me = this.activeUser;
+    const start = Math.max(0, history.length - this.chatVisibleMessageCount);
+    return history.slice(start);
+  }
 
-    const byId = (id: string) => this.users.find(user => user.id === id);
-    const toMessage = (id: string, text: string, time: string, readByIds: string[], forceMine = false): ChatPopupMessage => {
-      const senderUser = byId(id) ?? starter;
-      return {
-        id: `${this.selectedChat?.id}-${id}-${time}`,
-        sender: senderUser.name,
-        senderAvatar: this.toChatReader(senderUser),
-        text,
-        time,
-        mine: forceMine || senderUser.id === me.id,
-        readBy: readByIds
-          .map(readerId => byId(readerId))
-          .filter((reader): reader is DemoUser => Boolean(reader))
-          .map(reader => this.toChatReader(reader))
-      };
-    };
+  protected hasMoreChatMessages(): boolean {
+    return this.chatVisibleMessageCount < this.selectedChatHistory.length;
+  }
 
-    if (this.selectedChat.id === 'c1') {
-      return [
-        toMessage(starter.id, 'I opened this room to lock transport before 8 PM.', '08:58', [memberB.id]),
-        toMessage(me.id, 'I can handle pickup list and final seat assignments.', '09:03', [starter.id, memberB.id], true),
-        toMessage(memberB.id, 'I can do airport run if someone covers downtown.', '09:06', [starter.id, me.id]),
-        toMessage(lastSender.id, this.selectedChat.lastMessage, '09:11', [starter.id, me.id, memberB.id])
-      ];
+  protected onChatThreadScroll(event: Event): void {
+    const thread = event.target as HTMLElement | null;
+    if (thread) {
+      this.updateChatHeaderProgress(thread);
     }
-
-    if (this.selectedChat.id === 'c2') {
-      return [
-        toMessage(starter.id, 'Room is open, we need one more player for the second pair.', '18:32', [memberB.id]),
-        toMessage(me.id, 'I can join at 19:00 if court #3 stays available.', '18:37', [starter.id], true),
-        toMessage(lastSender.id, this.selectedChat.lastMessage, '18:40', [starter.id, me.id])
-      ];
+    if (this.chatHistoryLoadingOlder || !this.hasMoreChatMessages()) {
+      return;
     }
-
-    if (this.selectedChat.id === 'c3') {
-      return [
-        toMessage(starter.id, 'Host queue reviewed, two pending invites expired.', '10:03', [memberB.id]),
-        toMessage(me.id, 'I can re-send only to people with verified attendance.', '10:06', [starter.id], true),
-        toMessage(lastSender.id, this.selectedChat.lastMessage, '10:09', [starter.id, me.id])
-      ];
+    if (!thread) {
+      return;
     }
+    if (thread.scrollTop > 48) {
+      return;
+    }
+    const beforeHeight = thread.scrollHeight;
+    const beforeTop = thread.scrollTop;
+    this.chatHistoryLoadingOlder = true;
+    this.chatVisibleMessageCount = Math.min(this.chatVisibleMessageCount + this.chatHistoryPageSize, this.selectedChatHistory.length);
+    this.cdr.detectChanges();
+    setTimeout(() => {
+      const afterHeight = thread.scrollHeight;
+      thread.scrollTop = beforeTop + (afterHeight - beforeHeight);
+      this.updateChatHeaderProgress(thread);
+      this.chatHistoryLoadingOlder = false;
+    }, 0);
+  }
 
-    return [
-      toMessage(starter.id, 'Opened this room to coordinate tasks quickly.', '09:01', [memberB.id]),
-      toMessage(me.id, 'I can cover the checklist and send updates.', '09:05', [starter.id], true),
-      toMessage(lastSender.id, this.selectedChat.lastMessage, '09:08', [starter.id, me.id, memberC.id])
-    ];
+  protected sendChatMessage(): void {
+    if (!this.selectedChat) {
+      return;
+    }
+    const text = this.chatDraftMessage.trim();
+    if (!text) {
+      return;
+    }
+    this.ensureSelectedChatHistory();
+    const history = this.chatHistoryById[this.selectedChat.id];
+    if (!history) {
+      return;
+    }
+    const now = new Date();
+    const time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+    history.push({
+      id: `${this.selectedChat.id}-${this.activeUser.id}-${now.getTime()}`,
+      sender: this.activeUser.name,
+      senderAvatar: this.toChatReader(this.activeUser),
+      text,
+      time,
+      mine: true,
+      readBy: []
+    });
+    this.chatDraftMessage = '';
+    this.chatVisibleMessageCount = Math.max(this.chatVisibleMessageCount, this.chatHistoryPageSize);
+    this.chatVisibleMessageCount = Math.min(this.chatVisibleMessageCount, history.length);
+    this.scrollChatToBottom();
   }
 
   protected addSupplyType(): void {
@@ -8126,8 +8146,116 @@ export class App {
       const chatThread = globalThis.document?.querySelector('.chat-thread');
       if (chatThread instanceof HTMLElement) {
         chatThread.scrollTop = chatThread.scrollHeight;
+        this.updateChatHeaderProgress(chatThread);
       }
     }, 0);
+  }
+
+  private updateChatHeaderProgress(chatThread: HTMLElement): void {
+    const maxVerticalScroll = Math.max(0, chatThread.scrollHeight - chatThread.clientHeight);
+    if (maxVerticalScroll <= 0) {
+      this.chatHeaderProgress = 1;
+      return;
+    }
+    this.chatHeaderProgress = this.clampNumber(chatThread.scrollTop / maxVerticalScroll, 0, 1);
+  }
+
+  private get selectedChatHistory(): ChatPopupMessage[] {
+    if (!this.selectedChat) {
+      return [];
+    }
+    this.ensureSelectedChatHistory();
+    return this.chatHistoryById[this.selectedChat.id] ?? [];
+  }
+
+  private ensureSelectedChatHistory(): void {
+    if (!this.selectedChat) {
+      return;
+    }
+    if (this.chatHistoryById[this.selectedChat.id]) {
+      return;
+    }
+    this.chatHistoryById[this.selectedChat.id] = this.buildChatHistory(this.selectedChat);
+  }
+
+  private buildChatHistory(chat: ChatMenuItem): ChatPopupMessage[] {
+    const members = this.getChatMembersById(chat.id);
+    const lastSender = members[0] ?? this.getChatLastSender(chat);
+    const starter = members[1] ?? members[0] ?? this.activeUser;
+    const memberB = members[2] ?? starter;
+    const memberC = members[3] ?? memberB;
+    const me = this.activeUser;
+
+    const byId = (id: string) => this.users.find(user => user.id === id);
+    const toMessage = (id: string, text: string, time: string, readByIds: string[], forceMine = false, suffix = ''): ChatPopupMessage => {
+      const senderUser = byId(id) ?? starter;
+      return {
+        id: `${chat.id}-${id}-${time}-${suffix || this.hashText(text)}`,
+        sender: senderUser.name,
+        senderAvatar: this.toChatReader(senderUser),
+        text,
+        time,
+        mine: forceMine || senderUser.id === me.id,
+        readBy: readByIds
+          .map(readerId => byId(readerId))
+          .filter((reader): reader is DemoUser => Boolean(reader))
+          .map(reader => this.toChatReader(reader))
+      };
+    };
+
+    const seed = this.hashText(`${chat.id}:${chat.title}`);
+    const olderPool = [
+      'Shared updated ETA for everyone.',
+      'Pinned the checklist in this room.',
+      'Confirmed who can bring supplies.',
+      'Noted backup plan if weather changes.',
+      'Added the new member to transport.',
+      'Assigned table and seat groups.',
+      'Synced on arrival windows.',
+      'Collected final confirmations.'
+    ];
+    const olderMessages: ChatPopupMessage[] = [];
+    const olderCount = 36;
+    for (let index = olderCount - 1; index >= 0; index -= 1) {
+      const senderCycle = index % 3;
+      const senderId = senderCycle === 0 ? starter.id : (senderCycle === 1 ? me.id : memberB.id);
+      const baseText = olderPool[(seed + index) % olderPool.length];
+      const text = `${baseText} (#${olderCount - index})`;
+      const hour = 7 + Math.floor(index / 6);
+      const minute = (index * 7) % 60;
+      const time = `${`${hour}`.padStart(2, '0')}:${`${minute}`.padStart(2, '0')}`;
+      const readByIds = senderId === me.id ? [starter.id, memberB.id] : [me.id, memberC.id];
+      olderMessages.push(toMessage(senderId, text, time, readByIds, senderId === me.id, `older-${index}`));
+    }
+
+    let recentMessages: ChatPopupMessage[];
+    if (chat.id === 'c1') {
+      recentMessages = [
+        toMessage(starter.id, 'I opened this room to lock transport before 8 PM.', '08:58', [memberB.id]),
+        toMessage(me.id, 'I can handle pickup list and final seat assignments.', '09:03', [starter.id, memberB.id], true),
+        toMessage(memberB.id, 'I can do airport run if someone covers downtown.', '09:06', [starter.id, me.id]),
+        toMessage(lastSender.id, chat.lastMessage, '09:11', [starter.id, me.id, memberB.id])
+      ];
+    } else if (chat.id === 'c2') {
+      recentMessages = [
+        toMessage(starter.id, 'Room is open, we need one more player for the second pair.', '18:32', [memberB.id]),
+        toMessage(me.id, 'I can join at 19:00 if court #3 stays available.', '18:37', [starter.id], true),
+        toMessage(lastSender.id, chat.lastMessage, '18:40', [starter.id, me.id])
+      ];
+    } else if (chat.id === 'c3') {
+      recentMessages = [
+        toMessage(starter.id, 'Host queue reviewed, two pending invites expired.', '10:03', [memberB.id]),
+        toMessage(me.id, 'I can re-send only to people with verified attendance.', '10:06', [starter.id], true),
+        toMessage(lastSender.id, chat.lastMessage, '10:09', [starter.id, me.id])
+      ];
+    } else {
+      recentMessages = [
+        toMessage(starter.id, 'Opened this room to coordinate tasks quickly.', '09:01', [memberB.id]),
+        toMessage(me.id, 'I can cover the checklist and send updates.', '09:05', [starter.id], true),
+        toMessage(lastSender.id, chat.lastMessage, '09:08', [starter.id, me.id, memberC.id])
+      ];
+    }
+    return [...olderMessages, ...recentMessages];
   }
 
   private toChatReader(user: DemoUser): ChatReadAvatar {
