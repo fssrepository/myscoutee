@@ -1742,7 +1742,7 @@
               <p class="experience-item-description">{{ card.subtitle }}</p>
               <p class="event-explore-timeframe">{{ card.timeframe }}</p>
               <div class="event-explore-topic-row">
-                <span class="event-topic-chip" *ngFor="let topic of eventExploreTopics(card)">#{{ eventExploreTopicLabel(topic) }}</span>
+                <span class="event-topic-chip" *ngFor="let topic of eventExploreTopics(card)" [ngClass]="interestOptionToneClass(topic)">#{{ eventExploreTopicLabel(topic) }}</span>
               </div>
               </article>
             </ng-container>
@@ -3255,7 +3255,7 @@
               <p class="experience-item-description">{{ card.subtitle }}</p>
               <p class="event-explore-timeframe">{{ card.timeframe }}</p>
               <div class="event-explore-topic-row">
-                <span class="event-topic-chip" *ngFor="let topic of eventExploreTopics(card)">#{{ eventExploreTopicLabel(topic) }}</span>
+                <span class="event-topic-chip" *ngFor="let topic of eventExploreTopics(card)" [ngClass]="interestOptionToneClass(topic)">#{{ eventExploreTopicLabel(topic) }}</span>
               </div>
               </article>
             </ng-container>

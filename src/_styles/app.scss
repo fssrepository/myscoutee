@@ -7959,6 +7959,42 @@ textarea {
   padding: 0.14rem 0.46rem;
 }
 
+.event-topic-chip.section-social {
+  background: linear-gradient(180deg, #ecf4ff 0%, #e1ecfb 100%);
+  border-color: rgba(45, 94, 168, 0.32);
+  color: #2d5ea8;
+}
+
+.event-topic-chip.section-arts {
+  background: linear-gradient(180deg, #f2edfb 0%, #e9e2f9 100%);
+  border-color: rgba(103, 76, 164, 0.32);
+  color: #654ca1;
+}
+
+.event-topic-chip.section-food {
+  background: linear-gradient(180deg, #fff4e8 0%, #fee9d6 100%);
+  border-color: rgba(170, 97, 28, 0.32);
+  color: #9d611c;
+}
+
+.event-topic-chip.section-active {
+  background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
+  border-color: rgba(44, 126, 72, 0.32);
+  color: #2d7d47;
+}
+
+.event-topic-chip.section-mind {
+  background: linear-gradient(180deg, #eaf8f6 0%, #def1ee 100%);
+  border-color: rgba(37, 124, 118, 0.32);
+  color: #2d7d78;
+}
+
+.event-topic-chip.section-identity {
+  background: linear-gradient(180deg, #f4f0ff 0%, #e9e3fb 100%);
+  border-color: rgba(88, 78, 159, 0.32);
+  color: #5a4ea0;
+}
+
 .assets-card-list {
   gap: 0.68rem;
 }
