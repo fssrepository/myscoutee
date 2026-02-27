@@ -7482,10 +7482,11 @@ textarea {
   min-width: 108px;
   height: 36px;
   min-height: 36px;
-  box-sizing: border-box;
+  box-sizing: content-box;
   appearance: none;
   -webkit-appearance: none;
-  line-height: 1;
+  line-height: inherit;
+  padding: 0.12rem 0.64rem 0.12rem 0.78rem;
   position: relative;
   overflow: visible;
 }
@@ -8264,6 +8265,11 @@ textarea {
   color: rgba(26, 44, 69, 0.88);
 }
 
+.required-star {
+  color: #bf2f2f;
+  font-weight: 800;
+}
+
 .experience-form-panel input,
 .experience-form-panel textarea {
   box-sizing: border-box;
@@ -8288,6 +8294,18 @@ textarea {
 .experience-form-panel textarea {
   resize: vertical;
   min-height: 96px;
+}
+
+.experience-form-panel input.field-required-invalid,
+.experience-form-panel textarea.field-required-invalid {
+  border-color: #c83232 !important;
+  box-shadow: 0 0 0 2px rgba(200, 50, 50, 0.16);
+}
+
+.experience-form-panel input.field-required-invalid:focus,
+.experience-form-panel textarea.field-required-invalid:focus {
+  border-color: #b61f1f !important;
+  box-shadow: 0 0 0 3px rgba(182, 31, 31, 0.24);
 }
 
 .experience-form-actions {

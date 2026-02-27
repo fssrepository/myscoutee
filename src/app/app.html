@@ -553,7 +553,6 @@
           <ng-template #plainPopupTitle>
             <div class="popup-title">
               <h2>{{ getPopupTitle() }}</h2>
-              <p class="popup-subtitle-event-publish" *ngIf="activePopup === 'eventEditor'">Should be published separately!</p>
               <p class="popup-subtitle-activities" *ngIf="activePopup === 'activities'">{{ activitiesHeaderLineOne() }}</p>
               <p class="popup-subtitle-activities popup-subtitle-activities-secondary" *ngIf="activePopup === 'activities' && activitiesHeaderLineTwo()">
                 {{ activitiesHeaderLineTwo() }}
@@ -606,6 +605,15 @@
           </button>
         </div>
       </div>
+      <button
+        class="chat-members-stack chat-members-stack-large chat-header-members"
+        type="button"
+        *ngIf="showEventEditorHeaderMembersButton('active')"
+        (click)="openEventEditorMembers($event)"
+      >
+        <span class="chat-stack-avatar" *ngFor="let member of eventEditorHeaderMembers(); let i = index" [class]="'user-color-' + member.gender" [style.zIndex]="30 - i">{{ member.initials }}</span>
+        <span class="chat-stack-more" *ngIf="eventEditorHeaderHiddenMemberCount() > 0">+{{ eventEditorHeaderHiddenMemberCount() }}</span>
+      </button>
       <div class="event-visibility-picker" *ngIf="activePopup === 'eventEditor'">
         <button
           type="button"
@@ -678,7 +686,7 @@
           </button>
         </div>
       </div>
-      <button mat-icon-button class="popup-close" (click)="closePopup()" aria-label="Close">
+      <button mat-icon-button class="popup-close" (click)="handlePrimaryPopupHeaderClose()" aria-label="Close">
         <mat-icon>close</mat-icon>
       </button>
       <div
@@ -1592,8 +1600,8 @@
                 </button>
               </label>
               <label class="experience-title-field">
-                <span>Name</span>
-                <input type="text" [(ngModel)]="eventForm.title" />
+                <span>Name <span class="required-star">*</span></span>
+                <input type="text" [(ngModel)]="eventForm.title" [class.field-required-invalid]="eventEditorFieldInvalid('title')" />
               </label>
               <label class="event-capacity-range-field">
                 <span>Capacity</span>
@@ -1653,8 +1661,8 @@
                 </label>
               </div>
               <label class="experience-description-field">
-                <span>Description</span>
-                <textarea rows="4" [(ngModel)]="eventForm.description"></textarea>
+                <span>Description <span class="required-star">*</span></span>
+                <textarea rows="4" [(ngModel)]="eventForm.description" [class.field-required-invalid]="eventEditorFieldInvalid('description')"></textarea>
               </label>
               <section class="event-schedule-panel">
                 <div class="event-schedule-panel-head">
@@ -1817,8 +1825,8 @@
                 <section class="experience-form-panel subevent-form-panel" [ngClass]="subEventModeClass(subEventForm.optional)">
                   <div class="experience-form-grid subevent-form-grid">
                     <label class="experience-title-field">
-                      <span>Name</span>
-                      <input type="text" [(ngModel)]="subEventForm.name" />
+                      <span>Name <span class="required-star">*</span></span>
+                      <input type="text" [(ngModel)]="subEventForm.name" [class.field-required-invalid]="subEventFieldInvalid('name')" />
                     </label>
                     <label class="subevent-capacity-range-field" *ngIf="subEventForm.optional">
                       <span>Capacity</span>
@@ -1829,8 +1837,8 @@
                       </div>
                     </label>
                     <label class="experience-description-field">
-                      <span>Description</span>
-                      <textarea rows="3" [(ngModel)]="subEventForm.description"></textarea>
+                      <span>Description <span class="required-star">*</span></span>
+                      <textarea rows="3" [(ngModel)]="subEventForm.description" [class.field-required-invalid]="subEventFieldInvalid('description')"></textarea>
                     </label>
                     <label class="event-datetime-label">
                       <span>Start</span>
@@ -2453,7 +2461,6 @@
         <ng-template #defaultStackedTitle>
           <div class="popup-title">
             <h2>{{ getStackedPopupTitle() }}</h2>
-            <p class="popup-subtitle-event-publish" *ngIf="stackedPopup === 'eventEditor'">Should be published separately!</p>
           </div>
         </ng-template>
         </ng-template>
@@ -2477,6 +2484,15 @@
           (click)="approveSelectedInvitation($event)"
         >
           <mat-icon>done</mat-icon>
+        </button>
+        <button
+          class="chat-members-stack chat-members-stack-large chat-header-members"
+          type="button"
+          *ngIf="showEventEditorHeaderMembersButton('stacked')"
+          (click)="openEventEditorMembers($event)"
+        >
+          <span class="chat-stack-avatar" *ngFor="let member of eventEditorHeaderMembers(); let i = index" [class]="'user-color-' + member.gender" [style.zIndex]="30 - i">{{ member.initials }}</span>
+          <span class="chat-stack-more" *ngIf="eventEditorHeaderHiddenMemberCount() > 0">+{{ eventEditorHeaderHiddenMemberCount() }}</span>
         </button>
         <div class="event-visibility-picker" *ngIf="stackedPopup === 'eventEditor'">
           <button
@@ -2502,7 +2518,7 @@
             </button>
           </div>
         </div>
-        <button mat-icon-button class="popup-close" (click)="closeStackedPopup()" aria-label="Close">
+        <button mat-icon-button class="popup-close" (click)="handleStackedPopupHeaderClose()" aria-label="Close">
           <mat-icon>close</mat-icon>
         </button>
       </div>
@@ -2925,8 +2941,8 @@
                 </button>
               </label>
               <label class="experience-title-field">
-                <span>Name</span>
-                <input type="text" [(ngModel)]="eventForm.title" />
+                <span>Name <span class="required-star">*</span></span>
+                <input type="text" [(ngModel)]="eventForm.title" [class.field-required-invalid]="eventEditorFieldInvalid('title')" />
               </label>
               <label class="event-capacity-range-field">
                 <span>Capacity</span>
@@ -2986,8 +3002,8 @@
                 </label>
               </div>
               <label class="experience-description-field">
-                <span>Description</span>
-                <textarea rows="4" [(ngModel)]="eventForm.description"></textarea>
+                <span>Description <span class="required-star">*</span></span>
+                <textarea rows="4" [(ngModel)]="eventForm.description" [class.field-required-invalid]="eventEditorFieldInvalid('description')"></textarea>
               </label>
               <section class="event-schedule-panel">
                 <div class="event-schedule-panel-head">
@@ -3150,8 +3166,8 @@
                 <section class="experience-form-panel subevent-form-panel" [ngClass]="subEventModeClass(subEventForm.optional)">
                   <div class="experience-form-grid subevent-form-grid">
                     <label class="experience-title-field">
-                      <span>Name</span>
-                      <input type="text" [(ngModel)]="subEventForm.name" />
+                      <span>Name <span class="required-star">*</span></span>
+                      <input type="text" [(ngModel)]="subEventForm.name" [class.field-required-invalid]="subEventFieldInvalid('name')" />
                     </label>
                     <label class="subevent-capacity-range-field" *ngIf="subEventForm.optional">
                       <span>Capacity</span>
@@ -3162,8 +3178,8 @@
                       </div>
                     </label>
                     <label class="experience-description-field">
-                      <span>Description</span>
-                      <textarea rows="3" [(ngModel)]="subEventForm.description"></textarea>
+                      <span>Description <span class="required-star">*</span></span>
+                      <textarea rows="3" [(ngModel)]="subEventForm.description" [class.field-required-invalid]="subEventFieldInvalid('description')"></textarea>
                     </label>
                     <label class="event-datetime-label">
                       <span>Start</span>
@@ -3534,6 +3550,18 @@
           </div>
         </article>
       </div>
+    </div>
+  </div>
+</section>
+
+<section class="experience-delete-confirm" *ngIf="eventEditorClosePublishConfirmContext">
+  <div class="experience-delete-confirm-backdrop" (click)="cancelEventEditorCloseWithPublishPrompt()"></div>
+  <div class="experience-delete-confirm-panel">
+    <h4>{{ eventEditorClosePublishConfirmTitle() }}</h4>
+    <p>{{ eventEditorClosePublishConfirmLabel() }}</p>
+    <div class="popup-actions">
+      <button type="button" class="link-btn neutral-btn" (click)="cancelEventEditorCloseWithPublishPrompt()">Cancel</button>
+      <button type="button" class="link-btn experience-publish-btn" (click)="confirmEventEditorCloseWithPublish()">Publish</button>
     </div>
   </div>
 </section>

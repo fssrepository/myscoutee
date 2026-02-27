@@ -758,6 +758,7 @@ export class App {
   protected readonly activitiesPageSize = 10;
   protected pendingActivityDeleteRow: ActivityListRow | null = null;
   protected pendingActivityPublishRow: ActivityListRow | null = null;
+  protected eventEditorClosePublishConfirmContext: 'active' | 'stacked' | null = null;
   protected pendingActivityAction: 'delete' | 'exit' = 'delete';
   protected pendingActivityMemberDelete: ActivityMemberEntry | null = null;
   protected selectedActivityMembers: ActivityMemberEntry[] = [];
@@ -769,6 +770,7 @@ export class App {
   protected selectedActivityInviteUserIds: string[] = [];
   protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | null = null;
   private readonly activityMembersByRowId: Record<string, ActivityMemberEntry[]> = {};
+  private activityMembersPopupOrigin: 'active-event-editor' | 'stacked-event-editor' | null = null;
   protected readonly activityRatingScale = Array.from({ length: 10 }, (_, index) => index + 1);
   private readonly weekCalendarStartHour = 6;
   private readonly weekCalendarEndHour = 23;
@@ -1047,9 +1049,11 @@ export class App {
   protected eventEditorTarget: EventEditorTarget = 'events';
   protected editingEventId: string | null = null;
   protected eventForm: EventEditorForm = this.defaultEventForm();
+  protected showEventEditorRequiredValidation = false;
   protected showSubEventForm = false;
   protected showSubEventOptionalPicker = false;
   protected subEventForm: SubEventFormItem = this.defaultSubEventForm();
+  protected showSubEventRequiredValidation = false;
   protected subEventStartDateValue: Date | null = null;
   protected subEventEndDateValue: Date | null = null;
   protected subEventStartTimeValue: Date | null = null;
@@ -1650,6 +1654,7 @@ export class App {
   protected openSubEventPanel(event?: Event): void {
     event?.stopPropagation();
     this.subEventForm = this.defaultSubEventForm();
+    this.showSubEventRequiredValidation = false;
     this.syncSubEventDateTimeControlsFromForm();
     this.showSubEventOptionalPicker = false;
     this.showSubEventForm = true;
@@ -1658,6 +1663,7 @@ export class App {
   protected closeSubEventPanel(event?: Event): void {
     event?.stopPropagation();
     this.appendCurrentSubEventIfValid();
+    this.showSubEventRequiredValidation = false;
     this.showSubEventForm = false;
     this.showSubEventOptionalPicker = false;
   }
@@ -1665,15 +1671,29 @@ export class App {
   protected closeSubEventPanelWithSave(event?: Event): void {
     event?.stopPropagation();
     this.appendCurrentSubEventIfValid();
+    this.showSubEventRequiredValidation = false;
     this.showSubEventForm = false;
     this.showSubEventOptionalPicker = false;
   }
 
   protected saveSubEventForm(event?: Event): void {
     event?.stopPropagation();
-    this.appendCurrentSubEventIfValid();
+    const saved = this.appendCurrentSubEventIfValid();
+    if (!saved) {
+      this.showSubEventRequiredValidation = true;
+      return;
+    }
+    this.showSubEventRequiredValidation = false;
     this.showSubEventForm = false;
     this.showSubEventOptionalPicker = false;
+  }
+
+  protected eventEditorFieldInvalid(field: 'title' | 'description'): boolean {
+    return !this.eventForm[field].trim();
+  }
+
+  protected subEventFieldInvalid(field: 'name' | 'description'): boolean {
+    return !this.subEventForm[field].trim();
   }
 
   protected onSubEventStartDateChange(value: Date | null): void {
@@ -1980,8 +2000,10 @@ export class App {
     const title = this.eventForm.title.trim();
     const description = this.eventForm.description.trim();
     if (!title || !description || !this.eventForm.startAt || !this.eventForm.endAt) {
+      this.showEventEditorRequiredValidation = true;
       return;
     }
+    this.showEventEditorRequiredValidation = false;
     this.normalizeEventDateRange();
     if (this.editingEventId) {
       this.updateExistingEventFromForm();
@@ -2006,6 +2028,8 @@ export class App {
   private prepareEventEditorForm(mode: EventEditorMode, explicitSource?: EventMenuItem | HostingMenuItem): void {
     const source = this.resolveEventEditorSource(explicitSource);
     this.showSubEventForm = false;
+    this.showEventEditorRequiredValidation = false;
+    this.showSubEventRequiredValidation = false;
     const target = source && this.isHostingSource(source)
       ? 'hosting'
       : (this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'hosting' ? 'hosting' : 'events');
@@ -2549,6 +2573,8 @@ export class App {
     this.showAssetVisibilityPicker = false;
     this.showProfileStatusHeaderPicker = false;
     this.pendingActivityDeleteRow = null;
+    this.pendingActivityPublishRow = null;
+    this.eventEditorClosePublishConfirmContext = null;
     this.pendingActivityAction = 'delete';
     this.pendingActivityMemberDelete = null;
     this.selectedActivityMembers = [];
@@ -2568,6 +2594,7 @@ export class App {
   }
 
   protected closeStackedPopup(): void {
+    this.eventEditorClosePublishConfirmContext = null;
     this.showEventExploreOrderPicker = false;
     if (this.stackedPopup === 'subEventMembers' || this.stackedPopup === 'subEventAssets') {
       this.selectedSubEventBadgeContext = null;
@@ -2606,6 +2633,12 @@ export class App {
       this.selectedActivityInviteUserIds = [];
       this.showActivityInviteSortPicker = false;
       this.superStackedPopup = null;
+      if (this.activityMembersPopupOrigin === 'stacked-event-editor') {
+        this.activityMembersPopupOrigin = null;
+        this.stackedPopup = 'eventEditor';
+        return;
+      }
+      this.activityMembersPopupOrigin = null;
     }
     if (this.superStackedPopup === 'eventTopicsSelector') {
       this.superStackedPopup = null;
@@ -4864,6 +4897,7 @@ export class App {
     } else {
       this.selectedActivityRateId = null;
     }
+    this.releaseActiveElementFocus();
     this.resetActivitiesScroll();
   }
 
@@ -4872,6 +4906,7 @@ export class App {
       return;
     }
     this.hostingPublicationFilter = filter;
+    this.releaseActiveElementFocus();
     this.resetActivitiesScroll();
   }
 
@@ -4886,6 +4921,7 @@ export class App {
   protected selectActivitiesSecondaryFilter(filter: ActivitiesSecondaryFilter): void {
     this.activitiesSecondaryFilter = filter;
     this.showActivitiesSecondaryPicker = false;
+    this.releaseActiveElementFocus();
     this.resetActivitiesScroll();
   }
 
@@ -4897,6 +4933,7 @@ export class App {
     this.activitiesRateFilter = filter;
     this.selectedActivityRateId = null;
     this.showActivitiesSecondaryPicker = false;
+    this.releaseActiveElementFocus();
     this.resetActivitiesScroll();
   }
 
@@ -5663,6 +5700,101 @@ export class App {
     this.selectedActivityInviteUserIds = [];
     this.superStackedPopup = null;
     this.stackedPopup = 'activityMembers';
+  }
+
+  protected eventEditorHeaderMembers(limit = 3): ActivityMemberEntry[] {
+    const row = this.eventEditorMembersRow();
+    if (!row) {
+      return [];
+    }
+    return this.getActivityMembersByRow(row).slice(0, limit);
+  }
+
+  protected eventEditorHeaderHiddenMemberCount(limit = 3): number {
+    const row = this.eventEditorMembersRow();
+    if (!row) {
+      return 0;
+    }
+    const total = this.getActivityMembersByRow(row).length;
+    return total > limit ? total - limit : 0;
+  }
+
+  protected showEventEditorHeaderMembersButton(context: 'active' | 'stacked'): boolean {
+    if (context === 'active' && this.activePopup !== 'eventEditor') {
+      return false;
+    }
+    if (context === 'stacked' && this.stackedPopup !== 'eventEditor') {
+      return false;
+    }
+    return this.eventEditorMembersRow() !== null;
+  }
+
+  protected openEventEditorMembers(event?: Event): void {
+    event?.stopPropagation();
+    const row = this.eventEditorMembersRow();
+    if (!row) {
+      return;
+    }
+    this.openActivityMembers(row, event);
+    this.activityMembersPopupOrigin = this.stackedPopup === 'activityMembers' && this.activePopup === 'eventEditor'
+      ? 'active-event-editor'
+      : 'stacked-event-editor';
+  }
+
+  protected handlePrimaryPopupHeaderClose(): void {
+    if (this.activePopup === 'eventEditor' && this.shouldPromptEventEditorPublishOnClose()) {
+      this.eventEditorClosePublishConfirmContext = 'active';
+      return;
+    }
+    this.closePopup();
+  }
+
+  protected handleStackedPopupHeaderClose(): void {
+    if (this.stackedPopup === 'eventEditor' && this.shouldPromptEventEditorPublishOnClose()) {
+      this.eventEditorClosePublishConfirmContext = 'stacked';
+      return;
+    }
+    this.closeStackedPopup();
+  }
+
+  protected eventEditorClosePublishConfirmTitle(): string {
+    return 'Publish event';
+  }
+
+  protected eventEditorClosePublishConfirmLabel(): string {
+    const row = this.eventEditorMembersRow();
+    if (!row) {
+      const title = this.eventForm.title.trim();
+      return title ? `Publish ${title} before closing?` : 'Publish this event before closing?';
+    }
+    return `Publish ${row.title} before closing?`;
+  }
+
+  protected cancelEventEditorCloseWithPublishPrompt(): void {
+    this.persistEventEditorIfValidForClose();
+    const context = this.eventEditorClosePublishConfirmContext;
+    this.eventEditorClosePublishConfirmContext = null;
+    if (context === 'stacked') {
+      this.closeStackedPopup();
+      return;
+    }
+    this.closePopup();
+  }
+
+  protected confirmEventEditorCloseWithPublish(): void {
+    const row = this.eventEditorMembersRow();
+    const persistedId = this.persistEventEditorIfValidForClose();
+    const publishId = persistedId ?? row?.id ?? this.editingEventId;
+    const context = this.eventEditorClosePublishConfirmContext;
+    if (publishId) {
+      this.hostingPublishedById[publishId] = true;
+    }
+    this.eventEditorClosePublishConfirmContext = null;
+    if (context === 'stacked') {
+      this.closeStackedPopup();
+      return;
+    }
+    this.closePopup();
   }
 
   protected openActivityInviteFriends(event?: Event): void {
@@ -7282,6 +7414,76 @@ export class App {
     const ordered = this.sortActivityMembersByActionTimeAsc(accepted);
     this.activityMembersByRowId[rowKey] = [...ordered];
     return ordered;
+  }
+
+  private eventEditorMembersRow(): ActivityListRow | null {
+    const isActiveEditor = this.activePopup === 'eventEditor';
+    const isStackedEditor = this.stackedPopup === 'eventEditor';
+    if (!isActiveEditor && !isStackedEditor) {
+      return null;
+    }
+    const source = this.resolveEventEditorSource();
+    if (!source) {
+      return null;
+    }
+    const isHosting = this.eventEditorTarget === 'hosting' || this.isHostingSource(source);
+    return {
+      id: source.id,
+      type: isHosting ? 'hosting' : 'events',
+      title: source.title,
+      subtitle: source.shortDescription,
+      detail: source.timeframe,
+      dateIso: this.eventDatesById[source.id] ?? this.defaultEventStartIso(),
+      distanceKm: this.eventDistanceById[source.id] ?? 10,
+      unread: source.activity,
+      metricScore: source.activity,
+      isAdmin: true,
+      source
+    };
+  }
+
+  private shouldPromptEventEditorPublishOnClose(): boolean {
+    if (this.eventEditorTarget !== 'hosting') {
+      return false;
+    }
+    if (this.editingEventId) {
+      return !this.isHostingPublished(this.editingEventId);
+    }
+    return this.hasEventEditorRequiredFields();
+  }
+
+  private hasEventEditorRequiredFields(): boolean {
+    return Boolean(this.eventForm.title.trim() && this.eventForm.description.trim() && this.eventForm.startAt && this.eventForm.endAt);
+  }
+
+  private persistEventEditorIfValidForClose(): string | null {
+    this.syncEventFormFromDateTimeControls();
+    const normalizedCapacity = this.normalizedEventCapacityRange();
+    this.eventForm.capacityMin = normalizedCapacity.min;
+    this.eventForm.capacityMax = normalizedCapacity.max;
+    this.normalizeExistingSubEventsCapacityAgainstMain();
+    if (!this.hasEventEditorRequiredFields()) {
+      return null;
+    }
+    this.showEventEditorRequiredValidation = false;
+    this.normalizeEventDateRange();
+    if (this.editingEventId) {
+      this.updateExistingEventFromForm();
+      return this.editingEventId;
+    }
+    this.insertCreatedEventFromForm();
+    return this.eventEditorTarget === 'hosting'
+      ? (this.selectedHostingEvent?.id ?? null)
+      : (this.selectedEvent?.id ?? null);
+  }
+
+  private releaseActiveElementFocus(): void {
+    setTimeout(() => {
+      const active = globalThis.document?.activeElement;
+      if (active instanceof HTMLElement) {
+        active.blur();
+      }
+    }, 0);
   }
 
   private applySelectedActivityInvitations(): void {
