@@ -831,10 +831,11 @@
               </button>
             </ng-template>
           </ng-container>
-          <div class="activities-action-stack" *ngIf="shouldShowActivitiesExploreAction()">
+          <div class="activities-action-stack" *ngIf="shouldShowActivitiesExploreAction() || shouldShowActivitiesCreateAction()">
             <button
               type="button"
               class="popup-header-add-btn activities-explore-btn"
+              *ngIf="shouldShowActivitiesExploreAction()"
               (click)="openEventExplore(false)"
               aria-label="Explore events"
             >
@@ -843,6 +844,7 @@
             <button
               type="button"
               class="popup-header-add-btn activities-add-btn"
+              *ngIf="shouldShowActivitiesCreateAction()"
               (click)="openEventEditor(true, 'create')"
               aria-label="Create event"
             >
@@ -864,7 +866,7 @@
               <div class="activities-group-marker" *ngIf="groupIndex > 0" [attr.data-group-label]="group.label">{{ group.label }}</div>
 
               <ng-container *ngFor="let row of group.rows">
-                <article class="experience-item-card asset-item-card activities-row-item" [attr.data-group-label]="group.label" *ngIf="isEventStyleActivity(row); else nonEventActivityRow">
+                <article class="experience-item-card asset-item-card activities-row-item" [class.activities-row-item-full]="isActivityFull(row)" [attr.data-group-label]="group.label" *ngIf="isEventStyleActivity(row); else nonEventActivityRow">
                   <div class="asset-card-image" [appLazyBgImage]="activityImageUrl(row)">
                     <a
                       class="asset-source-icon activities-source-avatar"
@@ -881,6 +883,7 @@
                     <button
                       type="button"
                       class="asset-occupancy-badge"
+                      [class.asset-occupancy-badge-full]="isActivityFull(row)"
                       (click)="openActivityMembers(row, $event)"
                       aria-label="Open members"
                     >
@@ -1594,8 +1597,40 @@
 
       <ng-template #eventExploreContentTemplate let-stacked="stacked">
         <div class="event-explore-popup">
+          <div class="event-explore-filter-bar">
+            <button
+              type="button"
+              class="popup-view-fab event-explore-filter-btn event-explore-filter-friends"
+              [class.is-active]="eventExploreFilterFriendsOnly"
+              (click)="toggleEventExploreFriendsOnly($event)"
+            >
+              <mat-icon>groups</mat-icon>
+              <span>Friends going</span>
+            </button>
+            <button
+              type="button"
+              class="popup-view-fab event-explore-filter-btn event-explore-filter-rooms"
+              [class.is-active]="eventExploreFilterHasRooms"
+              (click)="toggleEventExploreHasRooms($event)"
+            >
+              <mat-icon>hotel</mat-icon>
+              <span>Open spots</span>
+            </button>
+            <div class="event-explore-topic-filter">
+              <button
+                type="button"
+                class="popup-view-fab event-explore-filter-btn event-explore-filter-topic"
+                [class.is-active]="!!eventExploreFilterTopic"
+                (click)="openEventExploreTopicFilterPopup($event)"
+              >
+                <mat-icon>sell</mat-icon>
+                <span>{{ eventExploreTopicFilterLabel() }}</span>
+                <mat-icon class="event-explore-topic-filter-arrow">chevron_right</mat-icon>
+              </button>
+            </div>
+          </div>
           <div class="experience-card-list assets-card-list event-explore-list" *ngIf="eventExploreCards.length > 0; else eventExploreEmptyState">
-            <article class="experience-item-card asset-item-card event-explore-card" *ngFor="let card of eventExploreCards">
+            <article class="experience-item-card asset-item-card event-explore-card" [class.event-explore-card-full]="eventExploreIsFull(card)" *ngFor="let card of eventExploreCards">
               <div class="asset-card-image" [appLazyBgImage]="card.imageUrl">
                 <button
                   type="button"
@@ -1611,13 +1646,36 @@
                   </span>
                 </button>
                 <button
+                  *ngIf="isEventExploreOpenEvent(card); else eventExploreMembersBadgeLocked"
                   type="button"
                   class="asset-occupancy-badge event-explore-member-badge"
+                  [class.event-explore-member-badge-full]="eventExploreIsFull(card)"
                   (click)="openEventExploreMembers(card, $event)"
                   aria-label="Open event members"
                 >
-                  <span>{{ eventExploreMembersLabel(card) }}</span>
+                  <span class="event-explore-member-badge-content">
+                    <span class="event-explore-member-visibility-icon" [ngClass]="eventExploreMembersVisibilityClass(card)">
+                      <mat-icon [class]="eventExploreMembersVisibilityClass(card)">{{ eventExploreMembersVisibilityIcon(card) }}</mat-icon>
+                    </span>
+                    <span>{{ eventExploreMembersLabel(card) }}</span>
+                  </span>
                 </button>
+                <ng-template #eventExploreMembersBadgeLocked>
+                  <button
+                    type="button"
+                    disabled
+                    class="asset-occupancy-badge event-explore-member-badge event-explore-member-badge-inactive"
+                    [class.event-explore-member-badge-full]="eventExploreIsFull(card)"
+                    aria-label="Members hidden for this event"
+                  >
+                    <span class="event-explore-member-badge-content">
+                      <span class="event-explore-member-visibility-icon" [ngClass]="eventExploreMembersVisibilityClass(card)">
+                        <mat-icon [class]="eventExploreMembersVisibilityClass(card)">{{ eventExploreMembersVisibilityIcon(card) }}</mat-icon>
+                      </span>
+                      <span>{{ eventExploreMembersLabel(card) }}</span>
+                    </span>
+                  </button>
+                </ng-template>
               </div>
               <div class="experience-item-head">
                 <span class="experience-item-icon" [ngClass]="eventExploreVisibilityCircleClass(card)">
@@ -3024,8 +3082,40 @@
 
       <div *ngIf="stackedPopup === 'eventExplore'">
         <div class="event-explore-popup">
+          <div class="event-explore-filter-bar">
+            <button
+              type="button"
+              class="popup-view-fab event-explore-filter-btn event-explore-filter-friends"
+              [class.is-active]="eventExploreFilterFriendsOnly"
+              (click)="toggleEventExploreFriendsOnly($event)"
+            >
+              <mat-icon>groups</mat-icon>
+              <span>Friends going</span>
+            </button>
+            <button
+              type="button"
+              class="popup-view-fab event-explore-filter-btn event-explore-filter-rooms"
+              [class.is-active]="eventExploreFilterHasRooms"
+              (click)="toggleEventExploreHasRooms($event)"
+            >
+              <mat-icon>hotel</mat-icon>
+              <span>Open spots</span>
+            </button>
+            <div class="event-explore-topic-filter">
+              <button
+                type="button"
+                class="popup-view-fab event-explore-filter-btn event-explore-filter-topic"
+                [class.is-active]="!!eventExploreFilterTopic"
+                (click)="openEventExploreTopicFilterPopup($event)"
+              >
+                <mat-icon>sell</mat-icon>
+                <span>{{ eventExploreTopicFilterLabel() }}</span>
+                <mat-icon class="event-explore-topic-filter-arrow">chevron_right</mat-icon>
+              </button>
+            </div>
+          </div>
           <div class="experience-card-list assets-card-list event-explore-list" *ngIf="eventExploreCards.length > 0; else stackedEventExploreEmptyState">
-            <article class="experience-item-card asset-item-card event-explore-card" *ngFor="let card of eventExploreCards">
+            <article class="experience-item-card asset-item-card event-explore-card" [class.event-explore-card-full]="eventExploreIsFull(card)" *ngFor="let card of eventExploreCards">
               <div class="asset-card-image" [appLazyBgImage]="card.imageUrl">
                 <button
                   type="button"
@@ -3041,13 +3131,36 @@
                   </span>
                 </button>
                 <button
+                  *ngIf="isEventExploreOpenEvent(card); else stackedEventExploreMembersBadgeLocked"
                   type="button"
                   class="asset-occupancy-badge event-explore-member-badge"
+                  [class.event-explore-member-badge-full]="eventExploreIsFull(card)"
                   (click)="openEventExploreMembers(card, $event)"
                   aria-label="Open event members"
                 >
-                  <span>{{ eventExploreMembersLabel(card) }}</span>
+                  <span class="event-explore-member-badge-content">
+                    <span class="event-explore-member-visibility-icon" [ngClass]="eventExploreMembersVisibilityClass(card)">
+                      <mat-icon [class]="eventExploreMembersVisibilityClass(card)">{{ eventExploreMembersVisibilityIcon(card) }}</mat-icon>
+                    </span>
+                    <span>{{ eventExploreMembersLabel(card) }}</span>
+                  </span>
                 </button>
+                <ng-template #stackedEventExploreMembersBadgeLocked>
+                  <button
+                    type="button"
+                    disabled
+                    class="asset-occupancy-badge event-explore-member-badge event-explore-member-badge-inactive"
+                    [class.event-explore-member-badge-full]="eventExploreIsFull(card)"
+                    aria-label="Members hidden for this event"
+                  >
+                    <span class="event-explore-member-badge-content">
+                      <span class="event-explore-member-visibility-icon" [ngClass]="eventExploreMembersVisibilityClass(card)">
+                        <mat-icon [class]="eventExploreMembersVisibilityClass(card)">{{ eventExploreMembersVisibilityIcon(card) }}</mat-icon>
+                      </span>
+                      <span>{{ eventExploreMembersLabel(card) }}</span>
+                    </span>
+                  </button>
+                </ng-template>
               </div>
               <div class="experience-item-head">
                 <span class="experience-item-icon" [ngClass]="eventExploreVisibilityCircleClass(card)">
@@ -3630,6 +3743,58 @@
     >
       <mat-icon>add</mat-icon>
     </button>
+  </div>
+</section>
+
+<section class="app-popup app-popup-stacked app-popup-super-stacked" *ngIf="superStackedPopup === 'eventExploreTopicFilter'">
+  <div class="app-popup-backdrop" (click)="closeEventExploreTopicFilterPopup()"></div>
+  <div class="app-popup-panel popup-panel-friends-picker" (click)="$event.stopPropagation()">
+    <div class="popup-header popup-header-friends-picker event-topics-header">
+      <button
+        mat-icon-button
+        class="popup-back-btn"
+        (click)="closeEventExploreTopicFilterPopup()"
+        aria-label="Back"
+      >
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <div class="popup-title">
+        <h2>Topic Filter</h2>
+      </div>
+    </div>
+    <div class="popup-body popup-body-friends-picker">
+      <div class="friends-picker-chip-row" *ngIf="eventExploreFilterTopic">
+        <button
+          type="button"
+          class="values-selected-chip friends-picker-chip"
+          [ngClass]="interestOptionToneClass(eventExploreFilterTopic)"
+          (click)="selectEventExploreTopicFilter('', $event)"
+        >
+          <span>#{{ eventExploreTopicLabel(eventExploreFilterTopic) }}</span>
+          <mat-icon class="friends-picker-chip-remove">close</mat-icon>
+        </button>
+      </div>
+      <div class="values-selector-popup">
+        <div class="values-selector-group" *ngFor="let group of eventExploreTopicFilterGroups">
+          <div class="social-proof-section-head" [class]="group.toneClass">
+            <span class="section-tag">{{ group.icon }} {{ group.shortTitle }}</span>
+            <span class="section-line"></span>
+          </div>
+          <div class="social-proof-chip-list">
+            <button
+              type="button"
+              class="social-proof-chip values-option-chip"
+              [class.active]="eventExploreTopicLabel(option) === eventExploreTopicLabel(eventExploreFilterTopic)"
+              [ngClass]="interestOptionToneClass(option)"
+              *ngFor="let option of group.options"
+              (click)="selectEventExploreTopicFilter(option, $event)"
+            >
+              #{{ eventExploreTopicLabel(option) }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 

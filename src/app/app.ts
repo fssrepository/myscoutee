@@ -755,6 +755,9 @@ export class App {
   protected inlineItemActionMenu: { scope: 'activity' | 'asset' | 'explore'; id: string; title: string; openUp: boolean } | null = null;
   protected showEventExploreOrderPicker = false;
   protected eventExploreOrder: EventExploreOrder = 'upcoming';
+  protected eventExploreFilterFriendsOnly = false;
+  protected eventExploreFilterHasRooms = false;
+  protected eventExploreFilterTopic = '';
   protected activitiesStickyValue = '';
   protected readonly activitiesPageSize = 10;
   protected pendingActivityDeleteRow: ActivityListRow | null = null;
@@ -771,7 +774,7 @@ export class App {
   protected activityInviteSort: ActivityInviteSort = 'recent';
   protected showActivityInviteSortPicker = false;
   protected selectedActivityInviteUserIds: string[] = [];
-  protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | 'impressionsHost' | null = null;
+  protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | 'eventExploreTopicFilter' | 'impressionsHost' | null = null;
   private readonly activityMembersByRowId: Record<string, ActivityMemberEntry[]> = {};
   private activityMembersPopupOrigin: 'active-event-editor' | 'stacked-event-editor' | 'event-explore' | null = null;
   protected readonly activityRatingScale = Array.from({ length: 10 }, (_, index) => index + 1);
@@ -934,6 +937,7 @@ export class App {
     h3: false,
     h4: false
   };
+  private readonly forcedAcceptedMembersByRowKey: Record<string, number> = { 'events:e8': 20 };
   protected readonly eventCapacityById: Record<string, EventCapacityRange> = {};
   protected readonly invitationDatesById: Record<string, string> = {
     i1: '2026-02-21T20:00:00',
@@ -1021,7 +1025,7 @@ export class App {
     e3: '18 / 20',
     e6: '20 / 24',
     e7: '9 / 12',
-    e8: '16 / 20',
+    e8: '20 / 20',
     e9: '18 / 22',
     e10: '19 / 24',
     e11: '41 / 60',
@@ -5054,6 +5058,10 @@ export class App {
   }
 
   protected shouldShowActivitiesExploreAction(): boolean {
+    return this.activitiesPrimaryFilter === 'events';
+  }
+
+  protected shouldShowActivitiesCreateAction(): boolean {
     return this.activitiesPrimaryFilter === 'hosting';
   }
 
@@ -5093,6 +5101,50 @@ export class App {
     this.showEventExploreOrderPicker = false;
   }
 
+  protected toggleEventExploreFriendsOnly(event?: Event): void {
+    event?.stopPropagation();
+    this.eventExploreFilterFriendsOnly = !this.eventExploreFilterFriendsOnly;
+  }
+
+  protected toggleEventExploreHasRooms(event?: Event): void {
+    event?.stopPropagation();
+    this.eventExploreFilterHasRooms = !this.eventExploreFilterHasRooms;
+  }
+
+  protected openEventExploreTopicFilterPopup(event: Event): void {
+    event.stopPropagation();
+    this.superStackedPopup = 'eventExploreTopicFilter';
+  }
+
+  protected closeEventExploreTopicFilterPopup(): void {
+    if (this.superStackedPopup === 'eventExploreTopicFilter') {
+      this.superStackedPopup = null;
+    }
+  }
+
+  protected selectEventExploreTopicFilter(topic: string, event?: Event): void {
+    event?.stopPropagation();
+    const nextTopic = this.normalizeText(topic) === this.normalizeText(this.eventExploreFilterTopic) ? '' : topic;
+    this.eventExploreFilterTopic = nextTopic;
+  }
+
+  protected eventExploreTopicFilterLabel(): string {
+    if (!this.eventExploreFilterTopic) {
+      return 'Topic';
+    }
+    return `#${this.eventExploreTopicLabel(this.eventExploreFilterTopic)}`;
+  }
+
+  protected get eventExploreTopicFilterGroups(): Array<{ title: string; shortTitle: string; icon: string; toneClass: string; options: string[] }> {
+    return this.interestOptionGroups.map(group => ({
+      title: group.title,
+      shortTitle: group.shortTitle,
+      icon: group.icon,
+      toneClass: group.toneClass,
+      options: [...group.options]
+    }));
+  }
+
   protected eventExploreOrderLabel(order: EventExploreOrder = this.eventExploreOrder): string {
     return this.eventExploreOrderOptions.find(option => option.key === order)?.label ?? 'Upcoming';
   }
@@ -5121,7 +5173,12 @@ export class App {
     const now = Date.now();
     const events: EventExploreCard[] = this.eventItems.map(item => this.toEventExploreCard(item, 'event', now));
     const hosting: EventExploreCard[] = this.hostingItems.map(item => this.toEventExploreCard(item, 'hosting', now));
-    const cards = [...events, ...hosting];
+    const selectedTopic = this.normalizeText(this.eventExploreTopicLabel(this.eventExploreFilterTopic));
+    const cards = [...events, ...hosting]
+      .filter(card => this.eventExploreVisibilityRaw(card) !== 'Invitation only')
+      .filter(card => !this.eventExploreFilterFriendsOnly || this.eventExploreFriendsGoingMatch(card))
+      .filter(card => !this.eventExploreFilterHasRooms || this.eventExploreHasRooms(card))
+      .filter(card => !selectedTopic || this.eventExploreTopics(card).some(topic => this.normalizeText(this.eventExploreTopicLabel(topic)) === selectedTopic));
 
     if (this.eventExploreOrder === 'upcoming') {
       return [...cards].sort((a, b) => {
@@ -5179,24 +5236,76 @@ export class App {
   }
 
   protected eventExploreVisibility(card: EventExploreCard): EventVisibility {
-    const visibility = this.eventVisibilityById[card.id] ?? 'Public';
-    return visibility === 'Invitation only' ? 'Friends only' : visibility;
+    return this.eventExploreVisibilityRaw(card);
   }
 
   protected eventExploreVisibilityCircleClass(card: EventExploreCard): string {
     return `experience-item-icon-${this.eventVisibilityClass(this.eventExploreVisibility(card))}`;
   }
 
+  protected eventExploreHasRooms(card: EventExploreCard): boolean {
+    const metrics = this.eventExploreCapacityMetrics(card);
+    return metrics.total > metrics.current;
+  }
+
+  protected eventExploreIsFull(card: EventExploreCard): boolean {
+    const metrics = this.eventExploreCapacityMetrics(card);
+    return metrics.total > 0 && metrics.current >= metrics.total;
+  }
+
+  protected eventExploreHasFriendGoing(card: EventExploreCard): boolean {
+    const row = this.eventExploreRow(card);
+    if (!row) {
+      return false;
+    }
+    return this.getActivityMembersByRow(row).some(member =>
+      member.status === 'accepted'
+      && member.userId !== this.activeUser.id
+      && this.isFriendOfActiveUser(member.userId)
+    );
+  }
+
+  protected eventExploreFriendsGoingMatch(card: EventExploreCard): boolean {
+    return this.eventExploreVisibilityRaw(card) !== 'Invitation only' && this.eventExploreHasFriendGoing(card);
+  }
+
   protected isEventExploreOpenEvent(card: EventExploreCard): boolean {
-    return (this.eventBlindModeById[card.id] ?? 'Open Event') === 'Open Event';
+    return this.eventExploreBlindMode(card) === 'Open Event';
+  }
+
+  protected eventExploreBlindMode(card: EventExploreCard): EventBlindMode {
+    return this.eventBlindModeById[card.id] ?? 'Open Event';
+  }
+
+  protected eventExploreMembersVisibilityIcon(card: EventExploreCard): string {
+    return this.eventBlindModeIcon(this.eventExploreBlindMode(card));
+  }
+
+  protected eventExploreMembersVisibilityClass(card: EventExploreCard): string {
+    return this.eventBlindModeClass(this.eventExploreBlindMode(card));
   }
 
   protected eventExploreMembersLabel(card: EventExploreCard): string {
-    const row = this.eventExploreRow(card);
-    if (!row) {
+    const metrics = this.eventExploreCapacityMetrics(card);
+    if (metrics.total <= 0) {
       return '0 / 0';
     }
-    return this.activityCapacityLabel(row);
+    return `${metrics.current} / ${metrics.total}`;
+  }
+
+  protected eventExploreOpenSpots(card: EventExploreCard): number {
+    const metrics = this.eventExploreCapacityMetrics(card);
+    return Math.max(0, metrics.total - metrics.current);
+  }
+
+  private eventExploreCapacityMetrics(card: EventExploreCard): { current: number; total: number } {
+    const row = this.eventExploreRow(card);
+    if (!row) {
+      return { current: 0, total: 0 };
+    }
+    const current = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted').length;
+    const total = this.activityCapacityTotal(row, current);
+    return { current, total };
   }
 
   protected openEventExploreMembers(card: EventExploreCard, event: Event): void {
@@ -5790,6 +5899,15 @@ export class App {
 
   protected activityPendingMemberCount(row: ActivityListRow): number {
     return this.getActivityMembersByRow(row).filter(member => member.status === 'pending').length;
+  }
+
+  protected isActivityFull(row: ActivityListRow): boolean {
+    if (row.type !== 'events') {
+      return false;
+    }
+    const acceptedMembersCount = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted').length;
+    const capacityTotal = this.activityCapacityTotal(row, acceptedMembersCount);
+    return capacityTotal > 0 && acceptedMembersCount >= capacityTotal;
   }
 
   private activityCapacityTotal(row: ActivityListRow, fallbackBase = 0): number {
@@ -7765,6 +7883,12 @@ export class App {
     if (cached) {
       return this.sortActivityMembersByActionTimeAsc([...cached]);
     }
+    const forcedAcceptedCount = this.forcedAcceptedMembersByRowKey[rowKey];
+    if (Number.isFinite(forcedAcceptedCount) && forcedAcceptedCount > 0) {
+      const forced = this.buildForcedAcceptedMembers(row, rowKey, forcedAcceptedCount);
+      this.activityMembersByRowId[rowKey] = [...forced];
+      return forced;
+    }
     const others = this.users.filter(user => user.id !== this.activeUser.id);
     if (others.length === 0) {
       return [this.toActivityMemberEntry(this.activeUser, row, rowKey, { status: 'accepted', pendingSource: null, invitedByActiveUser: false })];
@@ -7804,6 +7928,50 @@ export class App {
     const ordered = this.sortActivityMembersByActionTimeAsc(accepted);
     this.activityMembersByRowId[rowKey] = [...ordered];
     return ordered;
+  }
+
+  private buildForcedAcceptedMembers(row: ActivityListRow, rowKey: string, count: number): ActivityMemberEntry[] {
+    const templates = this.users.length > 0 ? this.users : [this.activeUser];
+    const members: ActivityMemberEntry[] = [];
+    const cappedCount = Math.max(1, count);
+    for (let index = 0; index < cappedCount; index += 1) {
+      const template = templates[index % templates.length];
+      const ordinal = Math.floor(index / templates.length);
+      const isSelf = index === 0;
+      const userId = isSelf ? this.activeUser.id : `${template.id}-force-${ordinal + 1}-${index + 1}`;
+      const when = this.addDays(new Date('2026-02-24T12:00:00'), -((index % 30) + 1));
+      members.push({
+        id: `${rowKey}:${userId}`,
+        userId,
+        name: isSelf ? this.activeUser.name : template.name,
+        initials: template.initials,
+        gender: template.gender,
+        city: template.city,
+        statusText: template.statusText,
+        status: 'accepted',
+        pendingSource: null,
+        requestKind: null,
+        invitedByActiveUser: false,
+        metAtIso: this.toIsoDateTime(when),
+        actionAtIso: this.toIsoDateTime(when),
+        metWhere: 'Event Explore',
+        relevance: 60 + ((index * 7) % 40),
+        avatarUrl: `https://i.pravatar.cc/1200?img=${(this.hashText(`${rowKey}:${userId}`) % 70) + 1}`
+      });
+    }
+    return this.sortActivityMembersByActionTimeAsc(members);
+  }
+
+  private isFriendOfActiveUser(userId: string): boolean {
+    if (!userId || userId === this.activeUser.id) {
+      return false;
+    }
+    const seed = this.hashText(`${this.activeUser.id}:friend:${userId}`);
+    return (seed % 100) < 45;
+  }
+
+  private eventExploreVisibilityRaw(card: EventExploreCard): EventVisibility {
+    return this.eventVisibilityById[card.id] ?? 'Public';
   }
 
   private eventEditorMembersRow(): ActivityListRow | null {

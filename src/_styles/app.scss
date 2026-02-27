@@ -7553,6 +7553,9 @@ textarea {
 .event-explore-popup {
   height: 100%;
   min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.46rem;
 }
 
 .event-explore-list {
@@ -7561,8 +7564,95 @@ textarea {
   padding-right: 0;
 }
 
+.event-explore-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.event-explore-filter-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.event-explore-filter-btn {
+  min-height: 34px;
+  padding: 0.14rem 0.52rem;
+  border-radius: 999px;
+  border-color: rgba(42, 83, 141, 0.3);
+  background: linear-gradient(180deg, #f7fbff 0%, #edf4ff 100%);
+  color: #2b5f9c;
+  flex: 0 0 auto;
+}
+
+.event-explore-filter-btn .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.event-explore-filter-topic {
+  min-width: 92px;
+  max-width: 122px;
+  justify-content: space-between;
+  gap: 0.2rem;
+}
+
+.event-explore-filter-topic span {
+  flex: 1 1 auto;
+  text-align: left;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-explore-topic-filter-arrow {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  line-height: 15px;
+  opacity: 0.88;
+}
+
+.event-explore-filter-btn.is-active {
+  color: #fff;
+  border-color: transparent;
+}
+
+.event-explore-filter-friends.is-active {
+  background: linear-gradient(180deg, #4f9f6e 0%, #3e865b 100%);
+}
+
+.event-explore-filter-rooms.is-active {
+  background: linear-gradient(180deg, #4a91bf 0%, #3574a4 100%);
+}
+
+.event-explore-filter-topic.is-active {
+  background: linear-gradient(180deg, #7f68bf 0%, #6650a5 100%);
+}
+
+.event-explore-topic-filter {
+  position: relative;
+}
+
+.event-explore-topic-filter-panel {
+  width: min(260px, calc(100vw - 2.4rem));
+  max-height: 280px;
+  overflow-y: auto;
+}
+
 .event-explore-card {
   gap: 0.52rem;
+}
+
+.event-explore-card.event-explore-card-full {
+  border-color: rgba(201, 83, 83, 0.42);
+  background: linear-gradient(180deg, #fff8f8 0%, #fff1f1 100%);
 }
 
 .asset-source-icon.event-explore-creator-chip {
@@ -7710,6 +7800,69 @@ textarea {
   color: #fff;
   font-weight: 800;
   box-shadow: 0 7px 16px rgba(9, 22, 40, 0.34), inset 0 0 0 1px rgba(18, 38, 64, 0.58);
+}
+
+.event-explore-member-badge.event-explore-member-badge-full {
+  background: linear-gradient(180deg, #b84f4f 0%, #963636 100%);
+  box-shadow: 0 7px 16px rgba(72, 24, 24, 0.36), inset 0 0 0 1px rgba(111, 38, 38, 0.6);
+}
+
+.event-explore-member-badge.event-explore-member-badge-inactive,
+.event-explore-member-badge.event-explore-member-badge-inactive.event-explore-member-badge-full {
+  background: linear-gradient(180deg, #dfe4ec 0%, #cfd7e4 100%);
+  color: #4f5f78;
+  border-color: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 6px 12px rgba(21, 38, 64, 0.16), inset 0 0 0 1px rgba(78, 99, 130, 0.2);
+  cursor: default;
+  pointer-events: none;
+}
+
+.event-explore-member-badge-content {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 16px;
+  padding-left: 0.9rem;
+}
+
+.event-explore-member-visibility-icon {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  position: absolute;
+  left: -0.4rem;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.event-explore-member-visibility-icon .mat-icon {
+  width: 11px;
+  height: 11px;
+  font-size: 11px;
+  line-height: 11px;
+}
+
+.event-explore-member-visibility-icon.blind-mode-open {
+  background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
+  box-shadow: inset 0 0 0 1px rgba(44, 126, 72, 0.32);
+}
+
+.event-explore-member-visibility-icon.blind-mode-blind {
+  background: linear-gradient(180deg, #fff0f2 0%, #fde5e9 100%);
+  box-shadow: inset 0 0 0 1px rgba(184, 76, 98, 0.36);
+}
+
+.event-explore-member-visibility-icon .mat-icon.blind-mode-open {
+  color: #2d7d47;
+}
+
+.event-explore-member-visibility-icon .mat-icon.blind-mode-blind {
+  color: #b84c62;
 }
 
 .event-explore-member-badge:hover {
@@ -8324,6 +8477,16 @@ textarea {
     box-shadow 0.2s ease,
     filter 0.2s ease,
     border-color 0.2s ease;
+}
+
+.activities-row-item.activities-row-item-full {
+  border-color: rgba(201, 83, 83, 0.42);
+  background: linear-gradient(180deg, #fff8f8 0%, #fff1f1 100%);
+}
+
+.activities-row-item .asset-occupancy-badge.asset-occupancy-badge-full {
+  background: linear-gradient(180deg, #b84f4f 0%, #963636 100%);
+  box-shadow: 0 7px 16px rgba(72, 24, 24, 0.36), inset 0 0 0 1px rgba(111, 38, 38, 0.6);
 }
 
 @media (hover: hover) and (pointer: fine) {
