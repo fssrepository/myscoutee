@@ -4655,6 +4655,7 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
+  padding-bottom: 0;
 }
 
 .activities-calendar-scroll.activities-calendar-scroll-month {
@@ -4687,6 +4688,7 @@
 .activities-calendar-page-week {
   min-height: max-content;
   height: max-content;
+  padding-bottom: 0;
   overflow: visible;
   contain: none;
   background: #fff;
@@ -5001,6 +5003,7 @@
     rgba(33, 54, 82, 0.12) calc(var(--week-slot-h) - 1px),
     rgba(33, 54, 82, 0.12) var(--week-slot-h)
   );
+  height: calc(var(--week-slot-count) * var(--week-slot-h));
 }
 
 .activities-week-hour-label {
@@ -5029,6 +5032,7 @@
     rgba(33, 54, 82, 0.12) calc(var(--week-slot-h) - 1px),
     rgba(33, 54, 82, 0.12) var(--week-slot-h)
   );
+  height: calc(var(--week-slot-count) * var(--week-slot-h));
 }
 
 .activities-week-day-col:last-child {
