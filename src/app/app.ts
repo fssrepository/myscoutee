@@ -220,6 +220,11 @@ interface EventExploreCard {
   sourceType: 'event' | 'hosting';
 }
 
+interface EventExploreGroup {
+  label: string;
+  cards: EventExploreCard[];
+}
+
 type SubEventCard = (typeof EVENT_EDITOR_SAMPLE.subEvents)[number];
 type ProfileStatus = 'public' | 'friends only' | 'host only' | 'inactive';
 type DetailPrivacy = 'Public' | 'Friends' | 'Hosts' | 'Private';
@@ -760,6 +765,7 @@ export class App {
   protected eventExploreFilterHasRooms = false;
   protected eventExploreFilterTopic = '';
   protected activitiesStickyValue = '';
+  protected eventExploreStickyValue = '';
   protected readonly activitiesPageSize = 10;
   protected pendingActivityDeleteRow: ActivityListRow | null = null;
   protected pendingActivityPublishRow: ActivityListRow | null = null;
@@ -1084,6 +1090,10 @@ export class App {
   protected activitiesHeaderProgressLoading = false;
   protected activitiesHeaderLoadingProgress = 0;
   protected activitiesHeaderLoadingOverdue = false;
+  protected eventExploreHeaderProgress = 0;
+  protected eventExploreHeaderProgressLoading = false;
+  protected eventExploreHeaderLoadingProgress = 0;
+  protected eventExploreHeaderLoadingOverdue = false;
   protected chatHeaderProgress = 0;
 
   protected imageSlots: Array<string | null> = [];
@@ -1094,6 +1104,7 @@ export class App {
   @ViewChild('eventImageInput') private eventImageInput?: ElementRef<HTMLInputElement>;
   @ViewChild('activitiesScroll') private activitiesScrollRef?: ElementRef<HTMLDivElement>;
   @ViewChild('activitiesCalendarScroll') private activitiesCalendarScrollRef?: ElementRef<HTMLDivElement>;
+  @ViewChild('eventExploreScroll') private eventExploreScrollRef?: ElementRef<HTMLDivElement>;
 
   protected eventSupplyTypes: string[] = ['Cars', 'Members', 'Accessories', 'Accommodation'];
   protected newSupplyType = '';
@@ -1137,6 +1148,15 @@ export class App {
   private activitiesLoadMoreTimer: ReturnType<typeof setTimeout> | null = null;
   private activitiesIsPaginating = false;
   private activitiesPaginationAwaitScrollReset = false;
+  private eventExploreVisibleCount = this.activitiesPageSize;
+  private eventExplorePaginationKey = '';
+  private eventExploreLoadMoreTimer: ReturnType<typeof setTimeout> | null = null;
+  private eventExploreIsPaginating = false;
+  private eventExplorePaginationAwaitScrollReset = false;
+  private eventExploreHeaderLoadingCounter = 0;
+  private eventExploreHeaderLoadingInterval: ReturnType<typeof setInterval> | null = null;
+  private eventExploreHeaderLoadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
+  private eventExploreHeaderLoadingStartedAtMs = 0;
 
   constructor(private readonly router: Router) {
     this.initializeProfileImageSlots();
@@ -1487,11 +1507,15 @@ export class App {
   protected openEventExplore(closeMenu = true, stacked = false): void {
     this.activeMenuSection = 'events';
     this.showEventExploreOrderPicker = false;
+    this.eventExploreStickyValue = '';
+    this.eventExploreHeaderProgress = 0;
     if (stacked || this.stackedPopup !== null || this.activePopup === 'activities') {
       this.stackedPopup = 'eventExplore';
+      this.resetEventExploreScroll();
       return;
     }
     this.activePopup = 'eventExplore';
+    this.resetEventExploreScroll();
     if (closeMenu) {
       this.closeUserMenu();
     }
@@ -2717,10 +2741,16 @@ export class App {
     this.clearActivityRateEditorState();
     this.cancelActivitiesPaginationLoad();
     this.clearActivitiesHeaderLoadingAnimation();
+    this.cancelEventExplorePaginationLoad();
+    this.clearEventExploreHeaderLoadingAnimation();
     this.clearActivitiesCalendarBadgeDelay();
     this.activitiesPaginationKey = '';
     this.activitiesVisibleCount = this.activitiesPageSize;
     this.activitiesHeaderProgress = 0;
+    this.eventExplorePaginationKey = '';
+    this.eventExploreVisibleCount = this.activitiesPageSize;
+    this.eventExploreHeaderProgress = 0;
+    this.eventExploreStickyValue = '';
   }
 
   protected closePopupFromBackdrop(event: MouseEvent): void {
@@ -2733,6 +2763,9 @@ export class App {
     this.eventEditorClosePublishConfirmContext = null;
     this.inlineItemActionMenu = null;
     this.showEventExploreOrderPicker = false;
+    this.cancelEventExplorePaginationLoad();
+    this.clearEventExploreHeaderLoadingAnimation();
+    this.eventExploreHeaderProgress = 0;
     if (this.superStackedPopup === 'impressionsHost') {
       this.superStackedPopup = null;
       return;
@@ -5126,16 +5159,22 @@ export class App {
     event?.stopPropagation();
     this.eventExploreOrder = order;
     this.showEventExploreOrderPicker = false;
+    this.eventExploreStickyValue = '';
+    this.resetEventExploreScroll();
   }
 
   protected toggleEventExploreFriendsOnly(event?: Event): void {
     event?.stopPropagation();
     this.eventExploreFilterFriendsOnly = !this.eventExploreFilterFriendsOnly;
+    this.eventExploreStickyValue = '';
+    this.resetEventExploreScroll();
   }
 
   protected toggleEventExploreHasRooms(event?: Event): void {
     event?.stopPropagation();
     this.eventExploreFilterHasRooms = !this.eventExploreFilterHasRooms;
+    this.eventExploreStickyValue = '';
+    this.resetEventExploreScroll();
   }
 
   protected openEventExploreTopicFilterPopup(event: Event): void {
@@ -5153,6 +5192,8 @@ export class App {
     event?.stopPropagation();
     const nextTopic = this.normalizeText(topic) === this.normalizeText(this.eventExploreFilterTopic) ? '' : topic;
     this.eventExploreFilterTopic = nextTopic;
+    this.eventExploreStickyValue = '';
+    this.resetEventExploreScroll();
   }
 
   protected eventExploreTopicFilterLabel(): string {
@@ -5196,7 +5237,53 @@ export class App {
     return 'event-explore-order-most-relevant';
   }
 
+  protected get eventExploreStickyHeader(): string {
+    if (this.eventExploreStickyValue) {
+      return this.eventExploreStickyValue;
+    }
+    return this.eventExploreGroupedCards[0]?.label ?? 'No items';
+  }
+
+  protected onEventExploreScroll(event: Event): void {
+    const scrollElement = event.target as HTMLElement;
+    this.updateEventExploreStickyFromScroll(scrollElement);
+    this.updateEventExploreHeaderProgress();
+    this.maybeLoadMoreEventExplore(scrollElement);
+  }
+
+  private updateEventExploreStickyFromScroll(scrollElement: HTMLElement): void {
+    const groups = this.eventExploreGroupedCards;
+    if (groups.length === 0) {
+      this.eventExploreStickyValue = 'No items';
+      return;
+    }
+    const stickyHeader = scrollElement.querySelector<HTMLElement>('.event-explore-sticky-header');
+    const stickyHeaderHeight = stickyHeader?.offsetHeight ?? 0;
+    const targetTop = (scrollElement.scrollTop || 0) + stickyHeaderHeight + 1;
+    const rows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.event-explore-card[data-event-explore-group-label]'));
+    if (rows.length === 0) {
+      this.eventExploreStickyValue = groups[0].label;
+      return;
+    }
+    const scrollTop = scrollElement.scrollTop || 0;
+    if (scrollTop <= 1) {
+      this.eventExploreStickyValue = rows[0].dataset['eventExploreGroupLabel'] ?? groups[0].label;
+      return;
+    }
+    const alignmentTolerancePx = 2;
+    const activeRow =
+      rows.find(row => row.offsetTop >= targetTop - alignmentTolerancePx) ??
+      rows[rows.length - 1];
+    this.eventExploreStickyValue = activeRow.dataset['eventExploreGroupLabel'] ?? groups[0].label;
+  }
+
   protected get eventExploreCards(): EventExploreCard[] {
+    const cards = this.buildEventExploreCardsBase();
+    this.ensureEventExplorePaginationState(cards.length);
+    return cards.slice(0, Math.min(this.eventExploreVisibleCount, cards.length));
+  }
+
+  private buildEventExploreCardsBase(): EventExploreCard[] {
     const now = Date.now();
     const events: EventExploreCard[] = this.eventItems.map(item => this.toEventExploreCard(item, 'event', now));
     const hosting: EventExploreCard[] = this.hostingItems.map(item => this.toEventExploreCard(item, 'hosting', now));
@@ -5230,6 +5317,21 @@ export class App {
       return [...cards].sort((a, b) => b.rating - a.rating || b.relevance - a.relevance);
     }
     return [...cards].sort((a, b) => b.relevance - a.relevance || a.startSort - b.startSort);
+  }
+
+  protected get eventExploreGroupedCards(): EventExploreGroup[] {
+    const cards = this.eventExploreCards;
+    const grouped: EventExploreGroup[] = [];
+    for (const card of cards) {
+      const label = this.eventExploreGroupLabel(card);
+      const lastGroup = grouped[grouped.length - 1];
+      if (!lastGroup || lastGroup.label !== label) {
+        grouped.push({ label, cards: [card] });
+        continue;
+      }
+      lastGroup.cards.push(card);
+    }
+    return grouped;
   }
 
   protected eventExploreCreatorInitials(card: EventExploreCard): string {
@@ -5333,6 +5435,22 @@ export class App {
     const current = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted').length;
     const total = this.activityCapacityTotal(row, current);
     return { current, total };
+  }
+
+  private eventExploreGroupLabel(card: EventExploreCard): string {
+    if (this.eventExploreOrder === 'nearby') {
+      const bucket = Math.max(5, Math.ceil(card.distanceKm / 5) * 5);
+      return `${bucket} km`;
+    }
+    if (this.eventExploreOrder === 'top-rated') {
+      const bucket = Math.max(1, Math.min(10, Math.round(this.clampNumber(card.rating, 0, 10))));
+      return `${bucket} / 10`;
+    }
+    const parsed = new Date(card.startSort);
+    if (Number.isNaN(parsed.getTime())) {
+      return 'Date unavailable';
+    }
+    return parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   }
 
   protected openEventExploreMembers(card: EventExploreCard, event: Event): void {
@@ -9221,6 +9339,236 @@ export class App {
     this.activitiesHeaderLoadingOverdue = false;
     this.activitiesHeaderLoadingStartedAtMs = 0;
     this.flushActivitiesHeaderProgress();
+  }
+
+  private updateEventExploreHeaderProgress(): void {
+    if (this.activePopup !== 'eventExplore' && this.stackedPopup !== 'eventExplore') {
+      this.eventExploreHeaderProgress = 0;
+      return;
+    }
+    const listElement = this.eventExploreScrollRef?.nativeElement;
+    if (!listElement) {
+      this.eventExploreHeaderProgress = 0;
+      return;
+    }
+    const maxVerticalScroll = Math.max(0, listElement.scrollHeight - listElement.clientHeight);
+    if (maxVerticalScroll <= 1) {
+      this.eventExploreHeaderProgress = 0;
+      return;
+    }
+    this.eventExploreHeaderProgress = this.clampNumber(listElement.scrollTop / maxVerticalScroll, 0, 1);
+  }
+
+  private maybeLoadMoreEventExplore(scrollElement: HTMLElement): void {
+    if ((this.activePopup !== 'eventExplore' && this.stackedPopup !== 'eventExplore') || this.eventExploreIsPaginating) {
+      return;
+    }
+    const cards = this.buildEventExploreCardsBase();
+    this.ensureEventExplorePaginationState(cards.length);
+    if (this.eventExploreVisibleCount >= cards.length) {
+      return;
+    }
+    const remainingPx = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
+    if (this.eventExplorePaginationAwaitScrollReset) {
+      if (remainingPx > 360) {
+        this.eventExplorePaginationAwaitScrollReset = false;
+      }
+      return;
+    }
+    if (!this.shouldStartEventExplorePreload(scrollElement) && remainingPx > 520) {
+      return;
+    }
+    this.startEventExplorePaginationLoad();
+  }
+
+  private shouldStartEventExplorePreload(scrollElement: HTMLElement): boolean {
+    const rows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.event-explore-card'));
+    if (rows.length === 0) {
+      return false;
+    }
+    if (rows.length <= 3) {
+      return true;
+    }
+    const thirdFromLast = rows[rows.length - 3];
+    const viewportBottom = scrollElement.scrollTop + scrollElement.clientHeight;
+    return viewportBottom >= thirdFromLast.offsetTop;
+  }
+
+  private ensureEventExplorePaginationState(totalCards: number): void {
+    const nextKey = this.eventExplorePaginationStateKey();
+    if (nextKey === this.eventExplorePaginationKey) {
+      return;
+    }
+    this.eventExplorePaginationKey = nextKey;
+    this.eventExploreVisibleCount = Math.min(this.activitiesPageSize, totalCards);
+    this.eventExplorePaginationAwaitScrollReset = false;
+    this.cancelEventExplorePaginationLoad();
+    this.updateEventExploreHeaderProgress();
+  }
+
+  private eventExplorePaginationStateKey(): string {
+    return [
+      this.activeUserId,
+      this.eventExploreOrder,
+      this.eventExploreFilterFriendsOnly ? 'friends' : 'all',
+      this.eventExploreFilterHasRooms ? 'rooms' : 'all',
+      this.normalizeText(this.eventExploreFilterTopic)
+    ].join('|');
+  }
+
+  private startEventExplorePaginationLoad(): void {
+    if (this.eventExploreIsPaginating) {
+      return;
+    }
+    const cards = this.buildEventExploreCardsBase();
+    this.ensureEventExplorePaginationState(cards.length);
+    if (this.eventExploreVisibleCount >= cards.length) {
+      return;
+    }
+    this.eventExploreIsPaginating = true;
+    this.beginEventExploreHeaderProgressLoading();
+    this.eventExploreLoadMoreTimer = setTimeout(() => {
+      this.eventExploreLoadMoreTimer = null;
+      const previousVisibleCount = this.eventExploreVisibleCount;
+      const latestCards = this.buildEventExploreCardsBase();
+      this.ensureEventExplorePaginationState(latestCards.length);
+      if (latestCards.length > previousVisibleCount) {
+        this.eventExploreVisibleCount = Math.min(previousVisibleCount + this.activitiesPageSize, latestCards.length);
+      }
+      this.eventExploreIsPaginating = false;
+      this.eventExplorePaginationAwaitScrollReset = true;
+      this.endEventExploreHeaderProgressLoading();
+      this.updateEventExploreHeaderProgress();
+    }, this.activitiesPaginationLoadDelayMs);
+  }
+
+  private cancelEventExplorePaginationLoad(): void {
+    if (this.eventExploreLoadMoreTimer) {
+      clearTimeout(this.eventExploreLoadMoreTimer);
+      this.eventExploreLoadMoreTimer = null;
+    }
+    if (this.eventExploreIsPaginating) {
+      this.eventExploreIsPaginating = false;
+      this.endEventExploreHeaderProgressLoading();
+    }
+    this.eventExplorePaginationAwaitScrollReset = false;
+  }
+
+  private beginEventExploreHeaderProgressLoading(): void {
+    this.eventExploreHeaderLoadingCounter += 1;
+    if (this.eventExploreHeaderLoadingCounter > 1) {
+      return;
+    }
+    this.eventExploreHeaderProgressLoading = true;
+    this.eventExploreHeaderLoadingOverdue = false;
+    this.eventExploreHeaderLoadingProgress = 0.02;
+    this.eventExploreHeaderLoadingStartedAtMs = performance.now();
+    this.flushActivitiesHeaderProgress();
+    if (this.eventExploreHeaderLoadingCompleteTimer) {
+      clearTimeout(this.eventExploreHeaderLoadingCompleteTimer);
+      this.eventExploreHeaderLoadingCompleteTimer = null;
+    }
+    if (this.eventExploreHeaderLoadingInterval) {
+      clearInterval(this.eventExploreHeaderLoadingInterval);
+      this.eventExploreHeaderLoadingInterval = null;
+    }
+    this.updateEventExploreHeaderLoadingWindow();
+    this.eventExploreHeaderLoadingInterval = this.ngZone.runOutsideAngular(() =>
+      setInterval(() => {
+        this.updateEventExploreHeaderLoadingWindow();
+        this.flushActivitiesHeaderProgress();
+      }, this.activitiesHeaderLoadingTickMs)
+    );
+  }
+
+  private endEventExploreHeaderProgressLoading(): void {
+    if (this.eventExploreHeaderLoadingCounter === 0) {
+      return;
+    }
+    this.eventExploreHeaderLoadingCounter = Math.max(0, this.eventExploreHeaderLoadingCounter - 1);
+    if (this.eventExploreHeaderLoadingCounter !== 0) {
+      return;
+    }
+    this.completeEventExploreHeaderLoading();
+  }
+
+  private completeEventExploreHeaderLoading(): void {
+    if (this.eventExploreHeaderLoadingInterval) {
+      clearInterval(this.eventExploreHeaderLoadingInterval);
+      this.eventExploreHeaderLoadingInterval = null;
+    }
+    this.eventExploreHeaderLoadingProgress = 1;
+    this.eventExploreHeaderLoadingOverdue = false;
+    this.flushActivitiesHeaderProgress();
+    if (this.eventExploreHeaderLoadingCompleteTimer) {
+      clearTimeout(this.eventExploreHeaderLoadingCompleteTimer);
+    }
+    this.eventExploreHeaderLoadingCompleteTimer = this.ngZone.runOutsideAngular(() =>
+      setTimeout(() => {
+        this.ngZone.run(() => {
+          if (this.eventExploreHeaderLoadingCounter !== 0) {
+            return;
+          }
+          this.eventExploreHeaderProgressLoading = false;
+          this.eventExploreHeaderLoadingProgress = 0;
+          this.eventExploreHeaderLoadingOverdue = false;
+          this.eventExploreHeaderLoadingStartedAtMs = 0;
+          this.eventExploreHeaderLoadingCompleteTimer = null;
+          this.updateEventExploreHeaderProgress();
+          this.refreshActivitiesHeaderProgressSoon();
+          this.flushActivitiesHeaderProgress();
+        });
+      }, 100)
+    );
+  }
+
+  private updateEventExploreHeaderLoadingWindow(): void {
+    if (!this.eventExploreHeaderProgressLoading) {
+      return;
+    }
+    const elapsed = Math.max(0, performance.now() - this.eventExploreHeaderLoadingStartedAtMs);
+    const nextProgress = this.clampNumber(elapsed / this.activitiesHeaderLoadingWindowMs, 0, 1);
+    this.eventExploreHeaderLoadingProgress = Math.max(this.eventExploreHeaderLoadingProgress, nextProgress);
+    this.eventExploreHeaderLoadingOverdue =
+      elapsed >= this.activitiesHeaderLoadingWindowMs && this.eventExploreHeaderLoadingCounter > 0;
+  }
+
+  private clearEventExploreHeaderLoadingAnimation(): void {
+    if (this.eventExploreHeaderLoadingInterval) {
+      clearInterval(this.eventExploreHeaderLoadingInterval);
+      this.eventExploreHeaderLoadingInterval = null;
+    }
+    if (this.eventExploreHeaderLoadingCompleteTimer) {
+      clearTimeout(this.eventExploreHeaderLoadingCompleteTimer);
+      this.eventExploreHeaderLoadingCompleteTimer = null;
+    }
+    this.eventExploreHeaderLoadingCounter = 0;
+    this.eventExploreHeaderLoadingProgress = 0;
+    this.eventExploreHeaderProgressLoading = false;
+    this.eventExploreHeaderLoadingOverdue = false;
+    this.eventExploreHeaderLoadingStartedAtMs = 0;
+    this.flushActivitiesHeaderProgress();
+  }
+
+  private resetEventExploreScroll(): void {
+    const totalCards = this.buildEventExploreCardsBase().length;
+    this.eventExplorePaginationKey = '';
+    this.eventExploreVisibleCount = Math.min(this.activitiesPageSize, totalCards);
+    this.eventExplorePaginationAwaitScrollReset = false;
+    this.cancelEventExplorePaginationLoad();
+    this.clearEventExploreHeaderLoadingAnimation();
+    setTimeout(() => {
+      const scrollElement = this.eventExploreScrollRef?.nativeElement;
+      if (!scrollElement) {
+        this.eventExploreStickyValue = this.eventExploreGroupedCards[0]?.label ?? 'No items';
+        this.updateEventExploreHeaderProgress();
+        return;
+      }
+      scrollElement.scrollTop = 0;
+      this.maybeLoadMoreEventExplore(scrollElement);
+      this.updateEventExploreStickyFromScroll(scrollElement);
+      this.updateEventExploreHeaderProgress();
+    }, 0);
   }
 
   private syncActivitiesCalendarBadgeDelay(): void {

@@ -4599,7 +4599,7 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     align-content: start;
     column-gap: 0.34rem;
-    row-gap: 0.5rem;
+    row-gap: 0.6rem;
   }
 
   .popup-body.popup-body-activities .activities-popup > .activities-scroll-list .activities-sticky-header,
@@ -4614,6 +4614,12 @@
 
 .popup-body.popup-body-activities {
   overflow: hidden;
+}
+
+.popup-body.popup-body-event-explore {
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
 }
 
 .activities-group-marker {
@@ -7597,8 +7603,28 @@ textarea {
 
 .event-explore-list {
   height: 100%;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
   padding-right: 0;
+  scroll-padding-top: 2.6rem;
+  scroll-snap-type: y proximity;
+  scroll-behavior: smooth;
+  display: flex;
+  flex-direction: column;
+  gap: 0.34rem;
+}
+
+.event-explore-list .event-explore-card {
+  scroll-snap-align: start;
+  scroll-margin-top: 0;
+  scroll-snap-stop: normal;
+}
+
+.event-explore-list .event-explore-group-marker {
+  scroll-snap-align: none;
 }
 
 .event-explore-filter-bar {
@@ -7946,6 +7972,19 @@ textarea {
   .event-explore-list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     align-content: start;
+    column-gap: 0.34rem;
+    row-gap: 0.6rem;
+    scroll-snap-type: y mandatory;
+    scroll-padding-top: 2.9rem;
+  }
+
+  .event-explore-list .event-explore-card {
+    scroll-snap-stop: always;
+  }
+
+  .event-explore-list .event-explore-sticky-header,
+  .event-explore-list .event-explore-group-marker {
+    grid-column: 1 / -1;
   }
 }
 
@@ -8234,7 +8273,8 @@ textarea {
 
 .experience-card-list {
   display: grid;
-  gap: 0.52rem;
+  column-gap: 0.34rem;
+  row-gap: 0.9rem;
   padding-bottom: 0.35rem;
   align-content: start;
 }
