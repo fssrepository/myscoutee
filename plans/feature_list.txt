@@ -241,3 +241,13 @@ so event editor opens, and you can assign members to it or add additional subeve
 i think it shouldn't clone, it's join and invite other members
 
 assets button on sub event panel - red border, or sullyestett, de nem piros hatter szin, hogy elkulonuljon
+
+----------------------------------------
+given rate - pig image panels like on event (3 panels in one row instead of line - image can be increased, like game panel)
+
+assets (accomodation... add explore button, fix + button which is assign your own things
+what you have added to your asets from menu bar)
+
+reflect any changes on card (if you edit event) - the chat needs to have day separator (not sticky, just in the scrollable area)
+
+fix game screen, check how to make tournament ready
