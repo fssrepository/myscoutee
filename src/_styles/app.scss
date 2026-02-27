@@ -4689,8 +4689,8 @@
   min-height: max-content;
   height: max-content;
   padding-bottom: 0;
-  overflow: visible;
-  contain: none;
+  overflow: hidden;
+  contain: paint;
   background: #fff;
 }
 
