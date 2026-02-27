@@ -261,3 +261,5 @@ on chat just only days does make sense, on rate not sure, and at the moment it h
 maybe the menu bar avatar colour should be the mabe screen background colour
 
 event view screen (everything disabled, just invite members and add assets not)
+
+lazy load card image - card_no_edges.png
