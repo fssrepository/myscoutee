@@ -523,6 +523,13 @@
     [class.popup-panel-activities]="activePopup === 'activities'"
     (click)="$event.stopPropagation()"
   >
+    <button
+      type="button"
+      class="item-action-menu-dismiss-layer"
+      *ngIf="inlineItemActionMenu"
+      (click)="closeInlineItemActionMenu($event)"
+      aria-label="Close action menu"
+    ></button>
     <div
       class="popup-header"
       [class.popup-header-chat]="activePopup === 'chat' && selectedChat"
@@ -894,30 +901,47 @@
                     <div class="experience-item-actions" *ngIf="canManageActivityRow(row)">
                       <button
                         type="button"
-                        class="experience-action-btn experience-action-publish"
-                        *ngIf="shouldShowActivityPublishAction(row)"
-                        (click)="publishHostingActivity(row, $event)"
-                        aria-label="Publish hosted event"
+                        class="experience-action-btn experience-action-menu-trigger"
+                        [class.is-open]="isActivityItemActionMenuOpen(row)"
+                        (click)="toggleActivityItemActionMenu(row, $event)"
+                        [attr.aria-label]="isActivityItemActionMenuOpen(row) ? 'Close activity actions' : 'Open activity actions'"
                       >
-                        <mat-icon>campaign</mat-icon>
+                        <mat-icon>{{ isActivityItemActionMenuOpen(row) ? 'close' : 'more_vert' }}</mat-icon>
                       </button>
-                      <button
-                        type="button"
-                        class="experience-action-btn experience-action-edit"
-                        (click)="$event.stopPropagation(); openActivityPrimaryAction(row)"
-                        [attr.aria-label]="activityPrimaryActionLabel(row)"
+                      <div
+                        class="item-action-menu"
+                        [class.is-open]="isActivityItemActionMenuOpen(row)"
+                        [class.item-action-menu-mobile]="isMobileView"
+                        [class.item-action-menu-desktop]="!isMobileView"
+                        [class.is-open-up]="isActivityItemActionMenuOpenUp(row)"
+                        [attr.aria-hidden]="!isActivityItemActionMenuOpen(row)"
+                        (click)="$event.stopPropagation()"
                       >
-                        <mat-icon>{{ activityPrimaryActionIcon(row) }}</mat-icon>
-                      </button>
-                      <button
-                        type="button"
-                        class="experience-action-btn experience-action-delete"
-                        [class.experience-action-exit]="isExitActivityRow(row)"
-                        (click)="$event.stopPropagation(); triggerActivitySecondaryAction(row)"
-                        [attr.aria-label]="activitySecondaryActionLabel(row)"
-                      >
-                        <mat-icon>{{ activitySecondaryActionIcon(row) }}</mat-icon>
-                      </button>
+                        <div class="item-action-menu-title">{{ row.title }}</div>
+                        <button
+                          type="button"
+                          class="item-action-menu-btn item-action-menu-btn-publish"
+                          *ngIf="shouldShowActivityPublishAction(row)"
+                          (click)="runActivityItemPublishAction(row, $event)"
+                        >
+                          <mat-icon>campaign</mat-icon>
+                          <span>Publish</span>
+                        </button>
+                        <button type="button" class="item-action-menu-btn" (click)="runActivityItemPrimaryAction(row, $event)">
+                          <mat-icon>{{ activityPrimaryActionIcon(row) }}</mat-icon>
+                          <span>{{ activityPrimaryActionLabel(row) }}</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="item-action-menu-btn"
+                          [class.item-action-menu-btn-destructive]="!isExitActivityRow(row)"
+                          [class.item-action-menu-btn-warning]="isExitActivityRow(row)"
+                          (click)="runActivityItemSecondaryAction(row, $event)"
+                        >
+                          <mat-icon>{{ activitySecondaryActionIcon(row) }}</mat-icon>
+                          <span>{{ activitySecondaryActionLabel(row) }}</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <p class="experience-item-description">{{ row.subtitle }}</p>
@@ -1414,12 +1438,34 @@
                 <p>{{ card.type }} · {{ card.subtitle }} · {{ card.city }}</p>
               </div>
               <div class="experience-item-actions">
-                <button type="button" class="experience-action-btn experience-action-edit" (click)="$event.stopPropagation(); openAssetForm(card)" aria-label="Edit asset">
-                  <mat-icon>edit</mat-icon>
+                <button
+                  type="button"
+                  class="experience-action-btn experience-action-menu-trigger"
+                  [class.is-open]="isAssetItemActionMenuOpen(card)"
+                  (click)="toggleAssetItemActionMenu(card, $event)"
+                  [attr.aria-label]="isAssetItemActionMenuOpen(card) ? 'Close asset actions' : 'Open asset actions'"
+                >
+                  <mat-icon>{{ isAssetItemActionMenuOpen(card) ? 'close' : 'more_vert' }}</mat-icon>
                 </button>
-                <button type="button" class="experience-action-btn experience-action-delete" (click)="$event.stopPropagation(); requestAssetDelete(card.id)" aria-label="Delete asset">
-                  <mat-icon>delete</mat-icon>
-                </button>
+                <div
+                  class="item-action-menu"
+                  [class.is-open]="isAssetItemActionMenuOpen(card)"
+                  [class.item-action-menu-mobile]="isMobileView"
+                  [class.item-action-menu-desktop]="!isMobileView"
+                  [class.is-open-up]="isAssetItemActionMenuOpenUp(card)"
+                  [attr.aria-hidden]="!isAssetItemActionMenuOpen(card)"
+                  (click)="$event.stopPropagation()"
+                >
+                  <div class="item-action-menu-title">{{ card.title }}</div>
+                  <button type="button" class="item-action-menu-btn" (click)="runAssetItemEditAction(card, $event)">
+                    <mat-icon>edit</mat-icon>
+                    <span>Edit</span>
+                  </button>
+                  <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="runAssetItemDeleteAction(card, $event)">
+                    <mat-icon>delete</mat-icon>
+                    <span>Delete</span>
+                  </button>
+                </div>
               </div>
             </div>
             <p class="experience-item-description">{{ card.details }}</p>

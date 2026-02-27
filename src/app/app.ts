@@ -752,6 +752,7 @@ export class App {
   protected activitiesView: ActivitiesView = 'week';
   protected showActivitiesViewPicker = false;
   protected showActivitiesSecondaryPicker = false;
+  protected inlineItemActionMenu: { scope: 'activity' | 'asset'; id: string; title: string; openUp: boolean } | null = null;
   protected showEventExploreOrderPicker = false;
   protected eventExploreOrder: EventExploreOrder = 'upcoming';
   protected activitiesStickyValue = '';
@@ -2676,6 +2677,7 @@ export class App {
     this.eventEditorClosePublishConfirmContext = null;
     this.pendingActivityAction = 'delete';
     this.pendingActivityMemberDelete = null;
+    this.inlineItemActionMenu = null;
     this.selectedActivityMembers = [];
     this.selectedActivityMembersTitle = '';
     this.selectedActivityMembersRowId = null;
@@ -2695,6 +2697,7 @@ export class App {
   protected closeStackedPopup(): void {
     this.pendingSubEventDeleteId = null;
     this.eventEditorClosePublishConfirmContext = null;
+    this.inlineItemActionMenu = null;
     this.showEventExploreOrderPicker = false;
     if (this.stackedPopup === 'subEventMembers' || this.stackedPopup === 'subEventAssets') {
       this.selectedSubEventBadgeContext = null;
@@ -5686,6 +5689,48 @@ export class App {
     this.onActivityRowClick(row);
   }
 
+  protected toggleActivityItemActionMenu(row: ActivityListRow, event: Event): void {
+    event.stopPropagation();
+    if (this.inlineItemActionMenu?.scope === 'activity' && this.inlineItemActionMenu.id === row.id) {
+      this.inlineItemActionMenu = null;
+      return;
+    }
+    this.inlineItemActionMenu = { scope: 'activity', id: row.id, title: row.title, openUp: this.shouldOpenInlineItemMenuUp(event) };
+  }
+
+  protected closeInlineItemActionMenu(event?: Event): void {
+    event?.stopPropagation();
+    this.inlineItemActionMenu = null;
+  }
+
+  protected isActivityItemActionMenuOpen(row: ActivityListRow): boolean {
+    return this.inlineItemActionMenu?.scope === 'activity' && this.inlineItemActionMenu.id === row.id;
+  }
+
+  protected isActivityItemActionMenuOpenUp(row: ActivityListRow): boolean {
+    return this.inlineItemActionMenu?.scope === 'activity'
+      && this.inlineItemActionMenu.id === row.id
+      && this.inlineItemActionMenu.openUp;
+  }
+
+  protected runActivityItemPrimaryAction(row: ActivityListRow, event: Event): void {
+    event.stopPropagation();
+    this.openActivityPrimaryAction(row);
+    this.inlineItemActionMenu = null;
+  }
+
+  protected runActivityItemSecondaryAction(row: ActivityListRow, event: Event): void {
+    event.stopPropagation();
+    this.triggerActivitySecondaryAction(row);
+    this.inlineItemActionMenu = null;
+  }
+
+  protected runActivityItemPublishAction(row: ActivityListRow, event: Event): void {
+    event.stopPropagation();
+    this.publishHostingActivity(row, event);
+    this.inlineItemActionMenu = null;
+  }
+
   protected canManageActivityRow(row: ActivityListRow): boolean {
     return row.type === 'invitations' || row.type === 'events' || row.type === 'hosting';
   }
@@ -5707,12 +5752,12 @@ export class App {
 
   protected activityPrimaryActionLabel(row: ActivityListRow): string {
     if (row.type === 'invitations') {
-      return 'View invitation';
+      return 'View';
     }
     if (row.isAdmin) {
-      return row.type === 'hosting' ? 'Edit hosted event' : 'Edit event';
+      return 'Edit';
     }
-    return row.type === 'hosting' ? 'Open hosted event' : 'Open event';
+    return 'View';
   }
 
   protected activitySecondaryActionIcon(row: ActivityListRow): string {
@@ -5721,12 +5766,12 @@ export class App {
 
   protected activitySecondaryActionLabel(row: ActivityListRow): string {
     if (this.isExitActivityRow(row)) {
-      return row.type === 'hosting' ? 'Exit hosted event' : 'Exit event';
+      return 'Exit';
     }
     if (row.type === 'invitations') {
-      return 'Delete invitation';
+      return 'Reject';
     }
-    return row.type === 'hosting' ? 'Delete hosted event' : 'Delete event';
+    return 'Delete';
   }
 
   protected openActivityPrimaryAction(row: ActivityListRow): void {
@@ -6553,6 +6598,37 @@ export class App {
     this.pendingAssetDeleteCardId = cardId;
   }
 
+  protected toggleAssetItemActionMenu(card: AssetCard, event: Event): void {
+    event.stopPropagation();
+    if (this.inlineItemActionMenu?.scope === 'asset' && this.inlineItemActionMenu.id === card.id) {
+      this.inlineItemActionMenu = null;
+      return;
+    }
+    this.inlineItemActionMenu = { scope: 'asset', id: card.id, title: card.title, openUp: this.shouldOpenInlineItemMenuUp(event) };
+  }
+
+  protected isAssetItemActionMenuOpen(card: AssetCard): boolean {
+    return this.inlineItemActionMenu?.scope === 'asset' && this.inlineItemActionMenu.id === card.id;
+  }
+
+  protected isAssetItemActionMenuOpenUp(card: AssetCard): boolean {
+    return this.inlineItemActionMenu?.scope === 'asset'
+      && this.inlineItemActionMenu.id === card.id
+      && this.inlineItemActionMenu.openUp;
+  }
+
+  protected runAssetItemEditAction(card: AssetCard, event: Event): void {
+    event.stopPropagation();
+    this.openAssetForm(card);
+    this.inlineItemActionMenu = null;
+  }
+
+  protected runAssetItemDeleteAction(card: AssetCard, event: Event): void {
+    event.stopPropagation();
+    this.requestAssetDelete(card.id);
+    this.inlineItemActionMenu = null;
+  }
+
   protected cancelAssetDelete(): void {
     this.pendingAssetDeleteCardId = null;
   }
@@ -6792,6 +6868,23 @@ export class App {
     }
   }
 
+  private shouldOpenInlineItemMenuUp(event: Event): boolean {
+    if (this.isMobileView || typeof window === 'undefined') {
+      return false;
+    }
+    const trigger = event.currentTarget as HTMLElement | null;
+    const actionWrap = trigger?.closest('.experience-item-actions') as HTMLElement | null;
+    if (!actionWrap) {
+      return false;
+    }
+    const rect = actionWrap.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const estimatedMenuHeight = 248;
+    const spaceBelow = viewportHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
+  }
+
   @HostListener('window:openFeaturePopup', ['$event'])
   onGlobalPopupRequest(event: Event): void {
     const popupEvent = event as CustomEvent<{ type: 'eventEditor' | 'eventExplore' }>;
@@ -6807,7 +6900,13 @@ export class App {
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
-    const target = event.target as HTMLElement;
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    if (this.inlineItemActionMenu && !target.closest('.item-action-menu') && !target.closest('.experience-action-menu-trigger')) {
+      this.inlineItemActionMenu = null;
+    }
     if (this.showUserMenu && !target.closest('.user-menu-panel') && !target.closest('.user-selector-btn-global')) {
       this.showUserMenu = false;
       this.showUserSettingsMenu = false;

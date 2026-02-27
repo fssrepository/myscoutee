@@ -7962,9 +7962,162 @@ textarea {
 }
 
 .experience-item-actions {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 0.28rem;
+}
+
+.experience-action-menu-trigger {
+  background: #f2f5fb;
+  border-color: rgba(45, 86, 140, 0.3);
+  color: #2f5f9c;
+  transition: transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.experience-action-menu-trigger.is-open {
+  background: #eef3fc;
+  border-color: rgba(44, 86, 145, 0.42);
+  color: #284f83;
+}
+
+.experience-action-menu-trigger .mat-icon {
+  transition: transform 0.16s ease, opacity 0.16s ease;
+}
+
+.experience-action-menu-trigger.is-open .mat-icon {
+  transform: rotate(90deg) scale(1.04);
+}
+
+.item-action-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+  min-width: 220px;
+  max-width: min(300px, 70vw);
+  border: 1px solid rgba(42, 67, 101, 0.24);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 16px 34px rgba(14, 30, 52, 0.22);
+  padding: 0.36rem;
+  display: grid;
+  gap: 0.18rem;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.item-action-menu-dismiss-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: default;
+}
+
+.item-action-menu.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.item-action-menu.item-action-menu-desktop.is-open {
+  animation: item-action-menu-slide-down 0.16s ease-out;
+}
+
+.item-action-menu.item-action-menu-desktop.is-open-up {
+  top: auto;
+  bottom: calc(100% + 6px);
+  animation: item-action-menu-slide-up 0.16s ease-out;
+}
+
+.item-action-menu-title {
+  margin: 0 0 0.1rem;
+  padding: 0.34rem 0.46rem 0.42rem;
+  border-bottom: 1px solid rgba(37, 64, 101, 0.14);
+  color: #203a5f;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.22;
+  word-break: break-word;
+}
+
+.item-action-menu-btn {
+  width: 100%;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #1f3659;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.42rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.item-action-menu-btn .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.item-action-menu-btn-publish {
+  color: #975316;
+}
+
+.item-action-menu-btn-destructive {
+  color: #b52b2b;
+}
+
+.item-action-menu-btn-warning {
+  color: #8d5f12;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .item-action-menu-btn:hover {
+    background: rgba(230, 239, 252, 0.76);
+  }
+}
+
+@keyframes item-action-menu-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes item-action-menu-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes item-action-menu-mobile-sheet-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 24px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 .experience-action-btn {
@@ -12118,6 +12271,47 @@ textarea {
   .experience-item-actions {
     grid-area: actions;
     justify-self: end;
+  }
+
+  .item-action-menu.item-action-menu-mobile {
+    position: fixed;
+    left: 50%;
+    right: auto;
+    top: auto;
+    bottom: env(safe-area-inset-bottom, 0px);
+    width: min(100vw - 1.6rem, 27rem);
+    min-width: 0;
+    max-width: calc(100vw - 1.6rem);
+    max-height: min(70vh, 32rem);
+    overflow-y: auto;
+    padding: 0.45rem;
+    border-radius: 14px 14px 0 0;
+    box-shadow: 0 22px 48px rgba(11, 24, 43, 0.32);
+    transform: translate(-50%, 0);
+  }
+
+  .item-action-menu.item-action-menu-mobile.is-open {
+    animation: item-action-menu-mobile-sheet-in 0.2s ease-out;
+  }
+
+  .item-action-menu-title {
+    padding: 0.52rem 0.56rem 0.56rem;
+    font-size: 0.9rem;
+  }
+
+  .item-action-menu-btn {
+    min-height: 42px;
+    padding: 0.55rem 0.58rem;
+    border-radius: 11px;
+    font-size: 0.92rem;
+    gap: 0.5rem;
+  }
+
+  .item-action-menu-btn .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    line-height: 18px;
   }
 
   .experience-form-grid {
