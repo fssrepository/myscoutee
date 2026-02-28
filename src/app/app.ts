@@ -290,6 +290,7 @@ interface SubEventFormItem {
   description: string;
   startAt: string;
   endAt: string;
+  createdByUserId?: string;
   optional: boolean;
   capacityMin: number;
   capacityMax: number;
@@ -298,6 +299,22 @@ interface SubEventFormItem {
   carsPending: number;
   accommodationPending: number;
   suppliesPending: number;
+}
+
+interface SubEventTournamentGroup {
+  key: string;
+  groupNumber: number;
+  groupLabel: string;
+  subEvent: SubEventFormItem;
+}
+
+interface SubEventTournamentStage {
+  key: string;
+  stageNumber: number;
+  title: string;
+  subtitle: string;
+  groups: SubEventTournamentGroup[];
+  isCurrent: boolean;
 }
 
 interface EventCapacityRange {
@@ -334,6 +351,7 @@ interface MobileProfileSelectorSheet {
 
 type AssetType = 'Car' | 'Accommodation' | 'Supplies';
 type SubEventResourceFilter = 'Members' | AssetType;
+type SubEventsDisplayMode = 'Casual' | 'Tournament';
 type AssetRequestAction = 'accept' | 'remove';
 type EventEditorMode = 'edit' | 'create';
 type EventEditorTarget = 'events' | 'hosting';
@@ -758,7 +776,7 @@ export class App {
   protected activitiesView: ActivitiesView = 'week';
   protected showActivitiesViewPicker = false;
   protected showActivitiesSecondaryPicker = false;
-  protected inlineItemActionMenu: { scope: 'activity' | 'asset' | 'explore'; id: string; title: string; openUp: boolean } | null = null;
+  protected inlineItemActionMenu: { scope: 'activity' | 'asset' | 'explore' | 'subEvent'; id: string; title: string; openUp: boolean } | null = null;
   protected showEventExploreOrderPicker = false;
   protected eventExploreOrder: EventExploreOrder = 'upcoming';
   protected eventExploreFilterFriendsOnly = false;
@@ -781,7 +799,7 @@ export class App {
   protected activityInviteSort: ActivityInviteSort = 'recent';
   protected showActivityInviteSortPicker = false;
   protected selectedActivityInviteUserIds: string[] = [];
-  protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | 'eventExploreTopicFilter' | 'impressionsHost' | null = null;
+  protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | 'eventSubEvents' | 'eventExploreTopicFilter' | 'impressionsHost' | null = null;
   private readonly activityMembersByRowId: Record<string, ActivityMemberEntry[]> = {};
   private activityMembersPopupOrigin: 'active-event-editor' | 'stacked-event-editor' | 'event-explore' | null = null;
   protected readonly activityRatingScale = Array.from({ length: 10 }, (_, index) => index + 1);
@@ -1086,6 +1104,10 @@ export class App {
   protected eventEndDateValue: Date | null = null;
   protected eventStartTimeValue: Date | null = null;
   protected eventEndTimeValue: Date | null = null;
+  protected readonly subEventsDisplayModeOptions: SubEventsDisplayMode[] = ['Casual', 'Tournament'];
+  protected subEventsDisplayMode: SubEventsDisplayMode = 'Casual';
+  protected showSubEventsDisplayModePicker = false;
+  protected subEventStagePageIndex = 0;
   protected activitiesHeaderProgress = 0;
   protected activitiesHeaderProgressLoading = false;
   protected activitiesHeaderLoadingProgress = 0;
@@ -1105,6 +1127,7 @@ export class App {
   @ViewChild('activitiesScroll') private activitiesScrollRef?: ElementRef<HTMLDivElement>;
   @ViewChild('activitiesCalendarScroll') private activitiesCalendarScrollRef?: ElementRef<HTMLDivElement>;
   @ViewChild('eventExploreScroll') private eventExploreScrollRef?: ElementRef<HTMLDivElement>;
+  @ViewChild('subEventStagesScroll') private subEventStagesScrollRef?: ElementRef<HTMLDivElement>;
 
   protected eventSupplyTypes: string[] = ['Cars', 'Members', 'Accessories', 'Accommodation'];
   protected newSupplyType = '';
@@ -1564,6 +1587,143 @@ export class App {
     this.superStackedPopup = 'eventTopicsSelector';
   }
 
+  protected openEventSubEventsPopup(event?: Event): void {
+    event?.stopPropagation();
+    this.showSubEventsDisplayModePicker = false;
+    this.resetSubEventStagePaging();
+    this.superStackedPopup = 'eventSubEvents';
+  }
+
+  protected closeEventSubEventsPopup(): void {
+    if (this.superStackedPopup === 'eventSubEvents') {
+      this.superStackedPopup = null;
+    }
+    this.showSubEventsDisplayModePicker = false;
+  }
+
+  protected eventSubEventsParentTitle(): string {
+    const currentTitle = this.eventForm.title.trim();
+    if (currentTitle) {
+      return currentTitle;
+    }
+    return this.selectedEvent?.title ?? this.selectedHostingEvent?.title ?? '';
+  }
+
+  protected subEventsCountLabel(): string {
+    const count = this.eventForm.subEvents.length;
+    return count === 1 ? '1 sub event' : `${count} sub events`;
+  }
+
+  protected subEventsDisplayModeClass(mode: SubEventsDisplayMode = this.subEventsDisplayMode): string {
+    return mode === 'Tournament' ? 'subevents-mode-tournament' : 'subevents-mode-casual';
+  }
+
+  protected subEventsDisplayModeGlyph(mode: SubEventsDisplayMode = this.subEventsDisplayMode): string {
+    return mode === 'Tournament' ? 'T' : 'C';
+  }
+
+  protected toggleSubEventsDisplayModePicker(event?: Event): void {
+    event?.stopPropagation();
+    this.showSubEventsDisplayModePicker = !this.showSubEventsDisplayModePicker;
+  }
+
+  protected selectSubEventsDisplayMode(mode: SubEventsDisplayMode, event?: Event): void {
+    event?.stopPropagation();
+    this.subEventsDisplayMode = mode;
+    this.showSubEventsDisplayModePicker = false;
+    this.resetSubEventStagePaging();
+  }
+
+  protected get subEventTournamentStages(): SubEventTournamentStage[] {
+    const source = this.eventForm.subEvents;
+    if (source.length === 0) {
+      return [];
+    }
+    const currentStageNumber = this.resolveCurrentTournamentStageNumber(source);
+    return source.map((subEvent, index) => {
+      const stageNumber = index + 1;
+      const groupCount = this.subEventTournamentGroupCount(subEvent);
+      const groups = Array.from({ length: groupCount }, (_, groupIndex) => ({
+        key: `${subEvent.id || `subevent-${stageNumber}`}:g${groupIndex + 1}`,
+        groupNumber: groupIndex + 1,
+        groupLabel: `Group ${groupIndex + 1}`,
+        subEvent
+      }));
+      return {
+        key: subEvent.id || `stage-${stageNumber}`,
+        stageNumber,
+        title: `Stage ${stageNumber}`,
+        subtitle: subEvent.name,
+        groups,
+        isCurrent: stageNumber === currentStageNumber
+      };
+    });
+  }
+
+  protected get subEventTournamentStagePages(): SubEventTournamentStage[][] {
+    const stages = this.subEventTournamentStages;
+    const pages: SubEventTournamentStage[][] = [];
+    for (let index = 0; index < stages.length; index += 3) {
+      pages.push(stages.slice(index, index + 3));
+    }
+    return pages;
+  }
+
+  protected subEventStagePlaceholders(page: SubEventTournamentStage[]): number[] {
+    const missing = Math.max(0, 3 - page.length);
+    return Array.from({ length: missing }, (_, index) => index);
+  }
+
+  protected subEventStageAccentColor(stageNumber: number, totalStages: number): string {
+    if (totalStages <= 1) {
+      return 'hsl(210 72% 48%)';
+    }
+    const ratio = this.clampNumber((stageNumber - 1) / (totalStages - 1), 0, 1);
+    const hue = Math.round(210 - (210 * ratio));
+    return `hsl(${hue} 72% 48%)`;
+  }
+
+  protected subEventStageMetaLabel(stage: SubEventTournamentStage): string {
+    return `${stage.groups.length} groups`;
+  }
+
+  protected onSubEventStagesScroll(event: Event): void {
+    const element = event.target as HTMLElement | null;
+    if (!element) {
+      return;
+    }
+    const width = element.clientWidth || 1;
+    const nextIndex = Math.round(element.scrollLeft / width);
+    const maxIndex = Math.max(0, this.subEventTournamentStagePages.length - 1);
+    this.subEventStagePageIndex = this.clampNumber(nextIndex, 0, maxIndex);
+  }
+
+  protected canScrollSubEventStagePages(direction: -1 | 1): boolean {
+    if (direction < 0) {
+      return this.subEventStagePageIndex > 0;
+    }
+    return this.subEventStagePageIndex < this.subEventTournamentStagePages.length - 1;
+  }
+
+  protected scrollSubEventStagePages(direction: -1 | 1, event?: Event): void {
+    event?.stopPropagation();
+    const scrollElement = this.subEventStagesScrollRef?.nativeElement;
+    if (!scrollElement) {
+      return;
+    }
+    const nextIndex = this.clampNumber(
+      this.subEventStagePageIndex + direction,
+      0,
+      Math.max(0, this.subEventTournamentStagePages.length - 1)
+    );
+    const width = scrollElement.clientWidth || 0;
+    if (width <= 0) {
+      return;
+    }
+    this.subEventStagePageIndex = nextIndex;
+    scrollElement.scrollTo({ left: width * nextIndex, behavior: 'smooth' });
+  }
+
   protected closeEventTopicsSelector(apply = true): void {
     if (apply) {
       this.eventForm.topics = [...this.interestSelectorSelected];
@@ -1834,14 +1994,100 @@ export class App {
       : 'subevent-capacity-out-of-range';
   }
 
+  protected toggleSubEventItemActionMenu(item: SubEventFormItem, event: Event): void {
+    event.stopPropagation();
+    this.toggleSubEventItemActionMenuWithKey(item, item.id, event);
+  }
+
+  protected toggleSubEventItemActionMenuWithKey(item: SubEventFormItem, menuKey: string, event: Event): void {
+    event.stopPropagation();
+    if (this.inlineItemActionMenu?.scope === 'subEvent' && this.inlineItemActionMenu.id === menuKey) {
+      this.inlineItemActionMenu = null;
+      return;
+    }
+    this.inlineItemActionMenu = { scope: 'subEvent', id: menuKey, title: item.name, openUp: this.shouldOpenInlineItemMenuUp(event) };
+  }
+
+  protected isSubEventItemActionMenuOpen(item: SubEventFormItem): boolean {
+    return this.isSubEventItemActionMenuOpenWithKey(item.id);
+  }
+
+  protected isSubEventItemActionMenuOpenWithKey(menuKey: string): boolean {
+    return this.inlineItemActionMenu?.scope === 'subEvent' && this.inlineItemActionMenu.id === menuKey;
+  }
+
+  protected isSubEventItemActionMenuOpenUp(item: SubEventFormItem): boolean {
+    return this.isSubEventItemActionMenuOpenUpWithKey(item.id);
+  }
+
+  protected isSubEventItemActionMenuOpenUpWithKey(menuKey: string): boolean {
+    return this.inlineItemActionMenu?.scope === 'subEvent'
+      && this.inlineItemActionMenu.id === menuKey
+      && this.inlineItemActionMenu.openUp;
+  }
+
+  protected canEditSubEventItem(item: SubEventFormItem): boolean {
+    return this.subEventCreatorId(item) === this.activeUser.id;
+  }
+
+  protected canDeleteSubEventItem(item: SubEventFormItem): boolean {
+    return this.subEventCreatorId(item) === this.activeUser.id;
+  }
+
+  protected canJoinSubEventItem(item: SubEventFormItem): boolean {
+    return item.optional && this.subEventCreatorId(item) !== this.activeUser.id;
+  }
+
+  protected canManageSubEventItem(item: SubEventFormItem): boolean {
+    return this.canJoinSubEventItem(item) || this.canEditSubEventItem(item) || this.canDeleteSubEventItem(item);
+  }
+
+  protected runSubEventItemJoinAction(item: SubEventFormItem, event: Event): void {
+    event.stopPropagation();
+    if (!this.canJoinSubEventItem(item)) {
+      return;
+    }
+    this.alertService.open(`Join request for ${item.name} is ready for backend wiring.`);
+    this.inlineItemActionMenu = null;
+  }
+
+  protected runSubEventItemEditAction(item: SubEventFormItem, event: Event): void {
+    event.stopPropagation();
+    if (!this.canEditSubEventItem(item)) {
+      return;
+    }
+    this.subEventForm = {
+      ...item,
+      createdByUserId: this.subEventCreatorId(item)
+    };
+    this.showSubEventRequiredValidation = false;
+    this.showSubEventOptionalPicker = false;
+    this.syncSubEventDateTimeControlsFromForm();
+    this.showSubEventForm = true;
+    this.inlineItemActionMenu = null;
+  }
+
+  protected runSubEventItemDeleteAction(item: SubEventFormItem, event: Event): void {
+    event.stopPropagation();
+    if (!this.canDeleteSubEventItem(item)) {
+      return;
+    }
+    this.requestSubEventDelete(item);
+    this.inlineItemActionMenu = null;
+  }
+
   protected openSubEventBadgePopup(type: 'Members' | 'Car' | 'Accommodation' | 'Supplies', item: SubEventFormItem, event?: Event): void {
     event?.stopPropagation();
+    const isFromSubEventsSuperPopup = this.superStackedPopup === 'eventSubEvents';
     this.subEventBadgePopupOrigin = this.stackedPopup === 'eventEditor' ? 'stacked-event-editor' : 'active-event-editor';
     this.selectedSubEventBadgeContext = {
       subEvent: item,
       type
     };
     this.subEventResourceFilter = type === 'Members' ? 'Members' : type;
+    if (isFromSubEventsSuperPopup) {
+      this.superStackedPopup = null;
+    }
     this.stackedPopup = 'subEventAssets';
   }
 
@@ -2322,6 +2568,7 @@ export class App {
       description: '',
       startAt: this.toIsoDateTimeLocal(start),
       endAt: this.toIsoDateTimeLocal(end),
+      createdByUserId: this.activeUser.id,
       optional: true,
       capacityMin: initialMin,
       capacityMax: initialMax,
@@ -2381,6 +2628,53 @@ export class App {
     return items.map(item => ({ ...item }));
   }
 
+  private subEventCreatorId(item: SubEventFormItem): string {
+    return item.createdByUserId ?? this.activeUser.id;
+  }
+
+  private subEventTournamentGroupCount(item: SubEventFormItem): number {
+    const normalizedMax = Math.max(1, Number(item.capacityMax) || 1);
+    return this.clampNumber(Math.ceil(normalizedMax / 2), 2, 8);
+  }
+
+  private resolveCurrentTournamentStageNumber(items: SubEventFormItem[]): number {
+    if (items.length === 0) {
+      return 1;
+    }
+    const now = Date.now();
+    for (let index = 0; index < items.length; index += 1) {
+      const start = new Date(items[index].startAt).getTime();
+      const end = new Date(items[index].endAt).getTime();
+      if (Number.isNaN(start) || Number.isNaN(end)) {
+        continue;
+      }
+      if (start <= now && now <= end) {
+        return index + 1;
+      }
+    }
+    for (let index = 0; index < items.length; index += 1) {
+      const start = new Date(items[index].startAt).getTime();
+      if (!Number.isNaN(start) && start > now) {
+        return index + 1;
+      }
+    }
+    return items.length;
+  }
+
+  private resetSubEventStagePaging(): void {
+    this.subEventStagePageIndex = 0;
+    setTimeout(() => {
+      const scrollElement = this.subEventStagesScrollRef?.nativeElement;
+      if (!scrollElement) {
+        return;
+      }
+      const previousBehavior = scrollElement.style.scrollBehavior;
+      scrollElement.style.scrollBehavior = 'auto';
+      scrollElement.scrollLeft = 0;
+      scrollElement.style.scrollBehavior = previousBehavior;
+    }, 0);
+  }
+
   private appendCurrentSubEventIfValid(): boolean {
     this.syncSubEventFormFromDateTimeControls();
     const name = this.subEventForm.name.trim();
@@ -2400,13 +2694,16 @@ export class App {
     const nextCapacityMax = this.subEventForm.optional
       ? this.subEventForm.capacityMax
       : (mainMax !== null ? mainMax : this.subEventForm.capacityMax);
+    const existingId = this.subEventForm.id;
+    const creatorId = this.subEventForm.createdByUserId ?? this.activeUser.id;
     const next: SubEventFormItem = {
       ...this.subEventForm,
-      id: `se-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id: existingId || `se-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name,
       description,
       startAt: fallbackStart,
       endAt: fallbackEnd,
+      createdByUserId: creatorId,
       capacityMin: Math.max(1, Number(nextCapacityMin) || 1),
       capacityMax: Math.max(
         Math.max(1, Number(nextCapacityMin) || 1),
@@ -2424,6 +2721,10 @@ export class App {
       accommodationPending: 2,
       suppliesPending: 3
     };
+    if (existingId && this.eventForm.subEvents.some(item => item.id === existingId)) {
+      this.eventForm.subEvents = this.eventForm.subEvents.map(item => item.id === existingId ? next : item);
+      return true;
+    }
     this.eventForm.subEvents = [...this.eventForm.subEvents, next];
     return true;
   }
@@ -2820,7 +3121,7 @@ export class App {
       }
       this.activityMembersPopupOrigin = null;
     }
-    if (this.superStackedPopup === 'eventTopicsSelector') {
+    if (this.superStackedPopup === 'eventTopicsSelector' || this.superStackedPopup === 'eventSubEvents') {
       this.superStackedPopup = null;
     }
     this.stackedPopup = null;
@@ -7412,6 +7713,9 @@ export class App {
     }
     if (this.showEventExploreOrderPicker && !target.closest('.event-explore-order-picker') && !target.closest('.popup-view-fab')) {
       this.showEventExploreOrderPicker = false;
+    }
+    if (this.showSubEventsDisplayModePicker && !target.closest('.subevents-mode-picker')) {
+      this.showSubEventsDisplayModePicker = false;
     }
   }
 

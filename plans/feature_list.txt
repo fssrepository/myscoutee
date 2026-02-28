@@ -263,3 +263,61 @@ maybe the menu bar avatar colour should be the mabe screen background colour
 event view screen (everything disabled, just invite members and add assets not)
 
 lazy load card image - card_no_edges.png (animate lazy load images in different places also)
+
+somehow we need to show that assets are occupied for that date on assets popup also inside the items (maybe it's a different view)
+
+On Fri, Feb 27, 2026 at 11:00 PM Peter Szabo <raxim.uk@gmail.com> wrote:
+https://chatgpt.com/codex
+
+On Fri, 27 Feb 2026, 22:59 Peter Szabo, <raxim.uk@gmail.com> wrote:
+assets hasn't any member acceptance,
+if someone is including your apartment into his own event, you will be a manager role of the event - the apartment should get some availability
+
+-----
+Tournament mode
+
+sub event item panel in different popup, Sub Event button on main event might have badge - type badge (tournament) + arrow
+
+Sub Event should look like an event panel, just 3 colum, scroll backward, forward horizontally,
+you can popup a generator where you can put tier number, and in each tier how many room you have,
+so restrict the top 2 from each room to go to the next round, row does contain item panels 
+(room #1, #2 for each tier - similar what we have on the main event editor sub eventt panel)
+
+only + button on assets and member badge (booking.com link will be copied...)
+
+the + button should be an assign button wich popups up own assets
+
+clicking on an item badge (assets...show list screen about the available assets and over there should be an assign button wich gous to his own assets, what you can choose, create new one (invite members item panels - tick icon top right corner)
+
+the rate activities filter
+
+it's not lines similar like invite people panel but instead of tick icon, star icon with the value, also it can go to full screen on given - similar to the game 10 star bottom of the image, and you can go through each element (it's a different view on that part of the popup - next to day etc.) - the member images in small maybe that image stack style like on game, same user 3 image next to each other hidden)
+
+when you close the event editor popup, maybe a confirmation dialog appears before, would you like to publish the event??, maybe in the header you should add members like int the case of chat to invite
+
+when clicking on invitation, order, view make a load (activities)
+
+to simplify there is no asset explore, just you can assign assets of your own managed to the event, what you are attending
+naturally you can add not only your own apparent - you can assign to the event
+
+ticket qr code generator for event + voice recorder for person (voice can be attached to the profile)
+
+accept chat - tick right hand side
+
+chat should load before the actual chat 10  items, as it's backward
+
+"+" button on chat, event, hosting
+
+profile status change - close profile, the 72% coloring and % changes accordingly
+
+every button on touchscreen while clicking should be an animated effect 
+
+invite friends - date is in new line
+
+chat - create some element before to make loading before
+
+don't make pull up/downs
+
+visibility of assets (public, private, friends only)
+
+lazy load images - paginator a horizontal progress and load (old myscoutee has it)
