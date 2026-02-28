@@ -1927,10 +1927,12 @@
                       <mat-icon>view_timeline</mat-icon>
                       <span>Sub Events</span>
                     </span>
+                    <span class="event-subevents-panel-summary event-subevents-panel-summary-inline" *ngIf="eventForm.subEvents.length > 0">
+                      {{ subEventsCountLabel() }}
+                    </span>
                     <mat-icon class="event-subevents-chevron">chevron_right</mat-icon>
                   </span>
                   <span class="event-subevents-panel-body" *ngIf="eventForm.subEvents.length > 0; else eventSubEventsPlaceholderMain">
-                    <span class="event-subevents-panel-summary">{{ subEventsCountLabel() }}</span>
                     <span class="values-selected-chip event-subevent-panel-chip" *ngFor="let subEvent of eventForm.subEvents | slice:0:2">
                       {{ subEvent.name }}
                     </span>
@@ -3399,10 +3401,12 @@
                       <mat-icon>view_timeline</mat-icon>
                       <span>Sub Events</span>
                     </span>
+                    <span class="event-subevents-panel-summary event-subevents-panel-summary-inline" *ngIf="eventForm.subEvents.length > 0">
+                      {{ subEventsCountLabel() }}
+                    </span>
                     <mat-icon class="event-subevents-chevron">chevron_right</mat-icon>
                   </span>
                   <span class="event-subevents-panel-body" *ngIf="eventForm.subEvents.length > 0; else eventSubEventsPlaceholderStacked">
-                    <span class="event-subevents-panel-summary">{{ subEventsCountLabel() }}</span>
                     <span class="values-selected-chip event-subevent-panel-chip" *ngFor="let subEvent of eventForm.subEvents | slice:0:2">
                       {{ subEvent.name }}
                     </span>
