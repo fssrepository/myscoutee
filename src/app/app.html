@@ -3911,11 +3911,11 @@
                 </button>
               </span>
             </div>
-            <div class="subevent-stage-scroll" #subEventStagesScroll (scroll)="onSubEventStagesScroll($event)">
-              <section class="subevent-stage-page" *ngFor="let page of subEventTournamentStagePages">
+            <div class="subevent-stage-scroll" [class.subevent-stage-scroll-desktop]="!isSubEventSwipeViewport" #subEventStagesScroll (scroll)="onSubEventStagesScroll($event)">
+              <section class="subevent-stage-page" [class.subevent-stage-page-desktop]="!isSubEventSwipeViewport" *ngFor="let page of subEventTournamentStagePages; trackBy: trackBySubEventStagePage">
                 <article
                   class="subevent-stage-column"
-                  *ngFor="let stage of page"
+                  *ngFor="let stage of page; trackBy: trackBySubEventStage"
                   [class.is-current]="stage.isCurrent"
                   [style.--stage-accent]="subEventStageAccentColor(stage.stageNumber, subEventTournamentStages.length)"
                 >
@@ -3965,7 +3965,7 @@
                     </div>
                   </header>
                   <div class="subevent-stage-column-body">
-                    <ng-container *ngFor="let group of stage.groups">
+                    <ng-container *ngFor="let group of stage.groups; trackBy: trackBySubEventTournamentGroup">
                       <ng-container
                         [ngTemplateOutlet]="subEventPopupCardTemplate"
                         [ngTemplateOutletContext]="{ subEvent: group.subEvent, groupLabel: group.groupLabel, menuKey: group.key, group: group, tournamentMode: true }"

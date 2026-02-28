@@ -1691,8 +1691,14 @@ export class App {
 
   protected get subEventTournamentStagePages(): SubEventTournamentStage[][] {
     const stages = this.subEventTournamentStages;
-    const pages: SubEventTournamentStage[][] = [];
+    if (!this.isSubEventSwipeViewport) {
+      return stages.length > 0 ? [stages] : [];
+    }
+    if (stages.length === 0) {
+      return [];
+    }
     const pageSize = this.subEventStagePageSize();
+    const pages: SubEventTournamentStage[][] = [];
     for (let index = 0; index < stages.length; index += pageSize) {
       pages.push(stages.slice(index, index + pageSize));
     }
@@ -1703,6 +1709,18 @@ export class App {
     const expectedColumns = this.subEventStagePageSize();
     const missing = Math.max(0, expectedColumns - page.length);
     return Array.from({ length: missing }, (_, index) => index);
+  }
+
+  protected trackBySubEventStagePage(index: number): number {
+    return index;
+  }
+
+  protected trackBySubEventStage(_: number, stage: SubEventTournamentStage): string {
+    return stage.key;
+  }
+
+  protected trackBySubEventTournamentGroup(_: number, group: SubEventTournamentGroup): string {
+    return group.key;
   }
 
   protected subEventStageAccentColor(stageNumber: number, totalStages: number): string {
@@ -1719,11 +1737,11 @@ export class App {
   }
 
   protected subEventTournamentPageRangeLabel(): string {
-    const pages = this.subEventTournamentStagePages;
-    if (pages.length === 0) {
+    const stages = this.subEventTournamentStages;
+    if (stages.length === 0) {
       return '';
     }
-    const page = pages[this.subEventStagePageIndex] ?? pages[0];
+    const page = this.subEventVisibleStagesForRangeLabel();
     const rangeParts = page
       .map(stage => {
         const start = new Date(stage.subEvent.startAt).getTime();
@@ -1756,17 +1774,39 @@ export class App {
     if (!element) {
       return;
     }
-    const width = element.clientWidth || 1;
-    const nextIndex = Math.round(element.scrollLeft / width);
-    const maxIndex = Math.max(0, this.subEventTournamentStagePages.length - 1);
-    this.subEventStagePageIndex = this.clampNumber(nextIndex, 0, maxIndex);
+    if (this.isSubEventSwipeViewport) {
+      const step = element.clientWidth || 1;
+      const nextIndex = Math.round(element.scrollLeft / step);
+      const maxIndex = Math.max(0, this.subEventTournamentStagePages.length - 1);
+      this.subEventStagePageIndex = this.clampNumber(nextIndex, 0, maxIndex);
+      return;
+    }
+    const step = this.subEventDesktopColumnStep(element);
+    if (step <= 0) {
+      return;
+    }
+    const currentStart = element.scrollLeft / step;
+    const starts = this.subEventDesktopPageStarts(this.subEventTournamentStages.length);
+    let nearestIndex = 0;
+    let nearestDiff = Number.POSITIVE_INFINITY;
+    for (let index = 0; index < starts.length; index += 1) {
+      const diff = Math.abs(starts[index] - currentStart);
+      if (diff < nearestDiff) {
+        nearestDiff = diff;
+        nearestIndex = index;
+      }
+    }
+    this.subEventStagePageIndex = nearestIndex;
   }
 
   protected canScrollSubEventStagePages(direction: -1 | 1): boolean {
+    const maxIndex = this.isSubEventSwipeViewport
+      ? Math.max(0, this.subEventTournamentStagePages.length - 1)
+      : Math.max(0, this.subEventDesktopPageStarts(this.subEventTournamentStages.length).length - 1);
     if (direction < 0) {
       return this.subEventStagePageIndex > 0;
     }
-    return this.subEventStagePageIndex < this.subEventTournamentStagePages.length - 1;
+    return this.subEventStagePageIndex < maxIndex;
   }
 
   protected scrollSubEventStagePages(direction: -1 | 1, event?: Event): void {
@@ -1775,17 +1815,30 @@ export class App {
     if (!scrollElement) {
       return;
     }
+    const maxIndex = this.isSubEventSwipeViewport
+      ? Math.max(0, this.subEventTournamentStagePages.length - 1)
+      : Math.max(0, this.subEventDesktopPageStarts(this.subEventTournamentStages.length).length - 1);
     const nextIndex = this.clampNumber(
       this.subEventStagePageIndex + direction,
       0,
-      Math.max(0, this.subEventTournamentStagePages.length - 1)
+      maxIndex
     );
-    const width = scrollElement.clientWidth || 0;
-    if (width <= 0) {
+    this.subEventStagePageIndex = nextIndex;
+    if (this.isSubEventSwipeViewport) {
+      const step = scrollElement.clientWidth || 0;
+      if (step <= 0) {
+        return;
+      }
+      scrollElement.scrollTo({ left: step * nextIndex, behavior: 'smooth' });
       return;
     }
-    this.subEventStagePageIndex = nextIndex;
-    scrollElement.scrollTo({ left: width * nextIndex, behavior: 'smooth' });
+    const starts = this.subEventDesktopPageStarts(this.subEventTournamentStages.length);
+    const targetStart = starts[nextIndex] ?? 0;
+    const step = this.subEventDesktopColumnStep(scrollElement);
+    if (step <= 0) {
+      return;
+    }
+    scrollElement.scrollTo({ left: targetStart * step, behavior: 'smooth' });
   }
 
   protected closeEventTopicsSelector(apply = true): void {
@@ -2997,6 +3050,46 @@ export class App {
       return false;
     }
     return window.matchMedia('(max-width: 760px)').matches;
+  }
+
+  private subEventDesktopPageStarts(totalStages: number): number[] {
+    const visibleColumns = 3;
+    if (totalStages <= 0) {
+      return [0];
+    }
+    if (totalStages <= visibleColumns) {
+      return [0];
+    }
+    const starts: number[] = [0];
+    const lastStart = totalStages - visibleColumns;
+    for (let start = visibleColumns; start < lastStart; start += visibleColumns) {
+      starts.push(start);
+    }
+    if (starts[starts.length - 1] !== lastStart) {
+      starts.push(lastStart);
+    }
+    return starts;
+  }
+
+  private subEventDesktopColumnStep(scrollElement: HTMLElement): number {
+    const computed = getComputedStyle(scrollElement);
+    const gap = Number.parseFloat(computed.columnGap || computed.gap || '0') || 0;
+    const firstColumn = scrollElement.querySelector<HTMLElement>('.subevent-stage-column');
+    if (firstColumn) {
+      return Math.max(1, firstColumn.getBoundingClientRect().width + gap);
+    }
+    return Math.max(1, (scrollElement.clientWidth || 1) / 3);
+  }
+
+  private subEventVisibleStagesForRangeLabel(): SubEventTournamentStage[] {
+    const pages = this.subEventTournamentStagePages;
+    if (this.isSubEventSwipeViewport) {
+      return pages[this.subEventStagePageIndex] ?? pages[0] ?? [];
+    }
+    const stages = this.subEventTournamentStages;
+    const starts = this.subEventDesktopPageStarts(stages.length);
+    const start = starts[this.subEventStagePageIndex] ?? 0;
+    return stages.slice(start, start + 3);
   }
 
   private subEventTournamentGroupCount(item: SubEventFormItem): number {
