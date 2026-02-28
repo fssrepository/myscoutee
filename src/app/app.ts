@@ -1781,13 +1781,10 @@ export class App {
       this.subEventStagePageIndex = this.clampNumber(nextIndex, 0, maxIndex);
       return;
     }
-    const step = this.subEventDesktopColumnStep(element);
-    if (step <= 0) {
-      return;
-    }
-    const currentStart = element.scrollLeft / step;
     const starts = this.subEventDesktopPageStarts(this.subEventTournamentStages.length);
-    this.subEventStagePageIndex = this.subEventDesktopNearestStartIndex(starts, currentStart);
+    const offsets = this.subEventDesktopPageOffsets(element, starts);
+    const currentOffset = element.scrollLeft;
+    this.subEventStagePageIndex = this.subEventDesktopNearestStartIndex(offsets, currentOffset);
   }
 
   protected canScrollSubEventStagePages(direction: -1 | 1): boolean {
@@ -1802,13 +1799,21 @@ export class App {
     if (starts.length <= 1) {
       return false;
     }
-    const scrollElement = this.subEventStagesScrollRef?.nativeElement ?? null;
-    const currentStart = this.subEventDesktopCurrentStart(scrollElement);
-    const epsilon = 0.02;
-    if (direction < 0) {
-      return starts.some(start => start < (currentStart - epsilon));
+    const scrollElement = this.subEventStagesScrollRef?.nativeElement;
+    if (!scrollElement) {
+      const maxIndex = Math.max(0, starts.length - 1);
+      if (direction < 0) {
+        return this.subEventStagePageIndex > 0;
+      }
+      return this.subEventStagePageIndex < maxIndex;
     }
-    return starts.some(start => start > (currentStart + epsilon));
+    const currentOffset = scrollElement.scrollLeft;
+    const offsets = this.subEventDesktopPageOffsets(scrollElement, starts);
+    const epsilon = 1;
+    if (direction < 0) {
+      return offsets.some(offset => offset < (currentOffset - epsilon));
+    }
+    return offsets.some(offset => offset > (currentOffset + epsilon));
   }
 
   protected scrollSubEventStagePages(direction: -1 | 1, event?: Event): void {
@@ -1833,28 +1838,31 @@ export class App {
       return;
     }
     const starts = this.subEventDesktopPageStarts(this.subEventTournamentStages.length);
-    const currentStart = this.subEventDesktopCurrentStart(scrollElement);
-    const epsilon = 0.02;
-    let targetStart: number | null = null;
+    const offsets = this.subEventDesktopPageOffsets(scrollElement, starts);
+    const currentOffset = scrollElement.scrollLeft;
+    const epsilon = 1;
+    let targetPageIndex: number | null = null;
     if (direction > 0) {
-      targetStart = starts.find(start => start > (currentStart + epsilon)) ?? null;
+      for (let index = 0; index < offsets.length; index += 1) {
+        if (offsets[index] > (currentOffset + epsilon)) {
+          targetPageIndex = index;
+          break;
+        }
+      }
     } else {
-      for (let index = starts.length - 1; index >= 0; index -= 1) {
-        if (starts[index] < (currentStart - epsilon)) {
-          targetStart = starts[index];
+      for (let index = offsets.length - 1; index >= 0; index -= 1) {
+        if (offsets[index] < (currentOffset - epsilon)) {
+          targetPageIndex = index;
           break;
         }
       }
     }
-    if (targetStart === null) {
+    if (targetPageIndex === null) {
       return;
     }
-    const step = this.subEventDesktopColumnStep(scrollElement);
-    if (step <= 0) {
-      return;
-    }
-    this.subEventStagePageIndex = this.subEventDesktopNearestStartIndex(starts, targetStart);
-    scrollElement.scrollTo({ left: targetStart * step, behavior: 'smooth' });
+    const targetOffset = offsets[targetPageIndex] ?? 0;
+    this.subEventStagePageIndex = targetPageIndex;
+    scrollElement.scrollTo({ left: targetOffset, behavior: 'smooth' });
   }
 
   protected closeEventTopicsSelector(apply = true): void {
@@ -3087,11 +3095,14 @@ export class App {
     return starts;
   }
 
-  private subEventDesktopNearestStartIndex(starts: number[], currentStart: number): number {
+  private subEventDesktopNearestStartIndex(values: number[], currentValue: number): number {
+    if (values.length === 0) {
+      return 0;
+    }
     let nearestIndex = 0;
     let nearestDiff = Number.POSITIVE_INFINITY;
-    for (let index = 0; index < starts.length; index += 1) {
-      const diff = Math.abs(starts[index] - currentStart);
+    for (let index = 0; index < values.length; index += 1) {
+      const diff = Math.abs(values[index] - currentValue);
       if (diff < nearestDiff) {
         nearestDiff = diff;
         nearestIndex = index;
@@ -3100,30 +3111,30 @@ export class App {
     return nearestIndex;
   }
 
-  private subEventDesktopCurrentStart(scrollElement: HTMLElement | null): number {
-    if (!scrollElement) {
-      const starts = this.subEventDesktopPageStarts(this.subEventTournamentStages.length);
-      return starts[this.subEventStagePageIndex] ?? 0;
+  private subEventDesktopPageOffsets(scrollElement: HTMLElement, starts: number[]): number[] {
+    const stageOffsets = this.subEventDesktopStageOffsets(scrollElement);
+    const maxIndex = Math.max(0, stageOffsets.length - 1);
+    if (stageOffsets.length === 0) {
+      return starts.map(() => 0);
     }
-    const step = this.subEventDesktopColumnStep(scrollElement);
-    if (step <= 0) {
-      return 0;
-    }
-    return scrollElement.scrollLeft / step;
+    return starts.map(start => stageOffsets[this.clampNumber(start, 0, maxIndex)] ?? 0);
   }
 
-  private subEventDesktopColumnStep(scrollElement: HTMLElement): number {
-    const computed = getComputedStyle(scrollElement);
-    const gap = Number.parseFloat(computed.columnGap || computed.gap || '0') || 0;
-    const viewportWidth = scrollElement.clientWidth || 0;
-    if (viewportWidth > 0) {
-      return Math.max(1, (viewportWidth + gap) / 3);
+  private subEventDesktopStageOffsets(scrollElement: HTMLElement): number[] {
+    const columns = Array.from(
+      scrollElement.querySelectorAll<HTMLElement>('.subevent-stage-column:not(.subevent-stage-column-placeholder)')
+    );
+    if (columns.length === 0) {
+      return [];
     }
-    const firstColumn = scrollElement.querySelector<HTMLElement>('.subevent-stage-column');
-    if (firstColumn) {
-      return Math.max(1, firstColumn.getBoundingClientRect().width + gap);
-    }
-    return Math.max(1, (scrollElement.clientWidth || 1) / 3);
+    const scrollRect = scrollElement.getBoundingClientRect();
+    return columns.map((column, index) => {
+      const left = column.getBoundingClientRect().left - scrollRect.left + scrollElement.scrollLeft;
+      if (Number.isFinite(left)) {
+        return Math.max(0, left);
+      }
+      return Math.max(0, index * (scrollElement.clientWidth || 1));
+    });
   }
 
   private subEventVisibleStagesForRangeLabel(): SubEventTournamentStage[] {
