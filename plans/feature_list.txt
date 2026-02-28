@@ -208,7 +208,8 @@ expense (amount + currency) - maybe for sub events also, and sum up in the heade
 
 event/member grace shouldn't be configured by the user (system variable)
 
-for tournament mode (it might not be developed at first) - ranking algorithm - none, rate (mutual), fifa
+tournament mode (stages - it can be only one stage with leaderboard, or multiple stages - fifa or simple value
+mutual rate does not make sense (removed))
 
 sub events - Name/Description/Date range/Optional/Capacity/Assets + Members
 
@@ -227,3 +228,96 @@ title of event
 
 Chat
 title of chat
+
+top rated event ordering does mean (organizer is top rated by users, so show that event first)
+
+Friends Only?? on recommended, maybe it's in the filter bar
+
+there are places left, topics filter on events
+
+on the event explore the panels should get something like when on member selection screen, add the badge to the header
+so event editor opens, and you can assign members to it or add additional subevents, supplies etc.
+
+i think it shouldn't clone, it's join and invite other members
+
+assets button on sub event panel - red border, or sullyestett, de nem piros hatter szin, hogy elkulonuljon
+
+----------------------------------------
+given rate - pig image panels like on event (3 panels in one row instead of line - image can be increased, like game panel)
+
+assets (accomodation... add explore button, fix + button which is assign your own things
+what you have added to your asets from menu bar)
+
+reflect any changes on card (if you edit event) - the chat needs to have day separator (not sticky, just in the scrollable area)
+
+fix game screen, check how to make tournament ready
+
+while creating event, needs to create chat wehn publish
+
+on rate add another view or a button to make it large like the game, so you can go through on it like in the case of game
+
+on chat just only days does make sense, on rate not sure, and at the moment it has got 3 columns (for chat it shouldn't be i think)
+
+maybe the menu bar avatar colour should be the mabe screen background colour
+
+event view screen (everything disabled, just invite members and add assets not)
+
+lazy load card image - card_no_edges.png (animate lazy load images in different places also)
+
+somehow we need to show that assets are occupied for that date on assets popup also inside the items (maybe it's a different view)
+
+On Fri, Feb 27, 2026 at 11:00 PM Peter Szabo <raxim.uk@gmail.com> wrote:
+https://chatgpt.com/codex
+
+On Fri, 27 Feb 2026, 22:59 Peter Szabo, <raxim.uk@gmail.com> wrote:
+assets hasn't any member acceptance,
+if someone is including your apartment into his own event, you will be a manager role of the event - the apartment should get some availability
+
+-----
+Tournament mode
+
+sub event item panel in different popup, Sub Event button on main event might have badge - type badge (tournament) + arrow
+
+Sub Event should look like an event panel, just 3 colum, scroll backward, forward horizontally,
+you can popup a generator where you can put tier number, and in each tier how many room you have,
+so restrict the top 2 from each room to go to the next round, row does contain item panels 
+(room #1, #2 for each tier - similar what we have on the main event editor sub eventt panel)
+
+only + button on assets and member badge (booking.com link will be copied...)
+
+the + button should be an assign button wich popups up own assets
+
+clicking on an item badge (assets...show list screen about the available assets and over there should be an assign button wich gous to his own assets, what you can choose, create new one (invite members item panels - tick icon top right corner)
+
+the rate activities filter
+
+it's not lines similar like invite people panel but instead of tick icon, star icon with the value, also it can go to full screen on given - similar to the game 10 star bottom of the image, and you can go through each element (it's a different view on that part of the popup - next to day etc.) - the member images in small maybe that image stack style like on game, same user 3 image next to each other hidden)
+
+when you close the event editor popup, maybe a confirmation dialog appears before, would you like to publish the event??, maybe in the header you should add members like int the case of chat to invite
+
+when clicking on invitation, order, view make a load (activities)
+
+to simplify there is no asset explore, just you can assign assets of your own managed to the event, what you are attending
+naturally you can add not only your own apparent - you can assign to the event
+
+ticket qr code generator for event + voice recorder for person (voice can be attached to the profile)
+
+accept chat - tick right hand side
+
+chat should load before the actual chat 10  items, as it's backward
+
+"+" button on chat, event, hosting
+
+profile status change - close profile, the 72% coloring and % changes accordingly
+
+every button on touchscreen while clicking should be an animated effect 
+
+invite friends - date is in new line
+
+chat - create some element before to make loading before
+
+don't make pull up/downs
+
+visibility of assets (public, private, friends only)
+
+lazy load images - paginator a horizontal progress and load (old myscoutee has it)

@@ -1,3 +1,4 @@
 export const environment = {
-  loginEnabled: false
+  loginEnabled: false,
+  authMode: 'selector' as const
 };

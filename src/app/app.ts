@@ -34,6 +34,7 @@ import {
   RateMenuItem,
   ProfileGroup
 } from './shared/demo-data';
+import { GDPR_CONTENT } from './shared/gdpr-data';
 import { environment } from '../environments/environment';
 import { LazyBgImageDirective } from './shared/lazy-bg-image.directive';
 
@@ -56,6 +57,8 @@ type PopupType =
   | 'invitationActions'
   | 'eventEditor'
   | 'eventExplore'
+  | 'subEventMembers'
+  | 'subEventAssets'
   | 'profileEditor'
   | 'imageEditor'
   | 'imageUpload'
@@ -65,13 +68,43 @@ type PopupType =
   | 'valuesSelector'
   | 'interestSelector'
   | 'experienceSelector'
+  | 'gdpr'
+  | 'deleteAccountConfirm'
   | 'logoutConfirm'
   | null;
+
+type AuthMode = 'selector' | 'firebase';
+
+interface FirebaseAuthProfile {
+  id: string;
+  name: string;
+  email: string;
+  initials: string;
+}
+
+interface EntryConsentState {
+  version: string;
+  accepted: boolean;
+  acceptedAtIso: string;
+}
+
+interface EntryConsentAuditRecord {
+  tsIso: string;
+  action: 'accepted' | 'rejected';
+  version: string;
+  source: 'entry';
+  userAgent: string;
+}
 
 interface SupplyContext {
   subEventId: string;
   subEventTitle: string;
   type: string;
+}
+
+interface SubEventBadgeContext {
+  subEvent: SubEventFormItem;
+  type: 'Members' | 'Car' | 'Accommodation' | 'Supplies';
 }
 
 interface ChatReadAvatar {
@@ -92,7 +125,9 @@ interface ChatPopupMessage {
 
 type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
 type ActivitiesSecondaryFilter = 'recent' | 'relevant' | 'past';
+type HostingPublicationFilter = 'published' | 'drafts';
 type ActivitiesView = 'month' | 'week' | 'day' | 'distance';
+type EventExploreOrder = 'upcoming' | 'past-events' | 'nearby' | 'most-relevant' | 'top-rated';
 type RateFilterKey =
   | 'individual-given'
   | 'individual-received'
@@ -171,6 +206,25 @@ interface CalendarTimedBadge {
   heightPct: number;
 }
 
+interface EventExploreCard {
+  id: string;
+  title: string;
+  subtitle: string;
+  timeframe: string;
+  imageUrl: string;
+  distanceKm: number;
+  relevance: number;
+  rating: number;
+  startSort: number;
+  isPast: boolean;
+  sourceType: 'event' | 'hosting';
+}
+
+interface EventExploreGroup {
+  label: string;
+  cards: EventExploreCard[];
+}
+
 type SubEventCard = (typeof EVENT_EDITOR_SAMPLE.subEvents)[number];
 type ProfileStatus = 'public' | 'friends only' | 'host only' | 'inactive';
 type DetailPrivacy = 'Public' | 'Friends' | 'Hosts' | 'Private';
@@ -218,11 +272,14 @@ interface EventEditorForm {
   title: string;
   description: string;
   imageUrl: string;
+  capacityMin: number | null;
+  capacityMax: number | null;
   startAt: string;
   endAt: string;
   frequency: string;
   visibility: EventVisibility;
   blindMode: EventBlindMode;
+  autoInviter: boolean;
   topics: string[];
   subEvents: SubEventFormItem[];
 }
@@ -233,6 +290,8 @@ interface SubEventFormItem {
   description: string;
   startAt: string;
   endAt: string;
+  createdByUserId?: string;
+  groups?: SubEventGroupItem[];
   optional: boolean;
   capacityMin: number;
   capacityMax: number;
@@ -241,6 +300,36 @@ interface SubEventFormItem {
   carsPending: number;
   accommodationPending: number;
   suppliesPending: number;
+}
+
+interface SubEventGroupItem {
+  id: string;
+  name: string;
+}
+
+interface SubEventTournamentGroup {
+  key: string;
+  id: string;
+  groupNumber: number;
+  groupLabel: string;
+  subEvent: SubEventFormItem;
+}
+
+interface SubEventTournamentStage {
+  key: string;
+  stageNumber: number;
+  title: string;
+  subtitle: string;
+  description: string;
+  rangeLabel: string;
+  subEvent: SubEventFormItem;
+  groups: SubEventTournamentGroup[];
+  isCurrent: boolean;
+}
+
+interface EventCapacityRange {
+  min: number | null;
+  max: number | null;
 }
 
 interface MobileProfileSelectorOption {
@@ -271,6 +360,8 @@ interface MobileProfileSelectorSheet {
 }
 
 type AssetType = 'Car' | 'Accommodation' | 'Supplies';
+type SubEventResourceFilter = 'Members' | AssetType;
+type SubEventsDisplayMode = 'Casual' | 'Tournament';
 type AssetRequestAction = 'accept' | 'remove';
 type EventEditorMode = 'edit' | 'create';
 type EventEditorTarget = 'events' | 'hosting';
@@ -302,6 +393,21 @@ interface AssetCard {
   imageUrl: string;
   sourceLink: string;
   requests: AssetMemberRequest[];
+}
+
+interface SubEventResourceCard {
+  id: string;
+  type: SubEventResourceFilter;
+  title: string;
+  subtitle: string;
+  city: string;
+  details: string;
+  imageUrl: string;
+  sourceLink: string;
+  capacityTotal: number;
+  accepted: number;
+  pending: number;
+  isMembers: boolean;
 }
 
 interface ActivityMemberEntry {
@@ -406,6 +512,13 @@ const APP_DATE_FORMATS = {
   styleUrl: '../_styles/app.scss'
 })
 export class App {
+  private static readonly DEMO_ACTIVE_USER_KEY = 'demo-active-user';
+  private static readonly FIREBASE_AUTH_PROFILE_KEY = 'firebase-auth-profile';
+  private static readonly ENTRY_CONSENT_KEY = 'entry-gdpr-consent';
+  private static readonly ENTRY_CONSENT_AUDIT_KEY = 'entry-gdpr-consent-audit';
+  private static readonly ENTRY_CONSENT_VERSION = '2026-02-26-v1';
+  private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
+
   public readonly alertService = inject(AlertService);
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -599,7 +712,16 @@ export class App {
   ];
 
   protected showUserMenu = false;
-  protected showUserSelector = !environment.loginEnabled;
+  protected showUserSettingsMenu = false;
+  protected readonly gdprContent = GDPR_CONTENT;
+  protected readonly authMode: AuthMode = this.resolveAuthMode();
+  protected showEntryShell = true;
+  protected showEntryConsentPopup = false;
+  protected entryConsentViewOnly = false;
+  protected showUserSelector = false;
+  protected showFirebaseAuthPopup = false;
+  protected firebaseAuthIsBusy = false;
+  protected firebaseAuthProfile: FirebaseAuthProfile | null = null;
   protected activePopup: PopupType = null;
   protected stackedPopup: PopupType = null;
   protected eventEditorMode: EventEditorMode = 'edit';
@@ -659,26 +781,39 @@ export class App {
   protected activeMenuSection: MenuSection = 'chat';
   protected activitiesPrimaryFilter: ActivitiesPrimaryFilter = 'chats';
   protected activitiesSecondaryFilter: ActivitiesSecondaryFilter = 'recent';
+  protected hostingPublicationFilter: HostingPublicationFilter = 'published';
   protected activitiesRateFilter: RateFilterKey = 'individual-given';
   protected activitiesView: ActivitiesView = 'week';
   protected showActivitiesViewPicker = false;
   protected showActivitiesSecondaryPicker = false;
+  protected inlineItemActionMenu: { scope: 'activity' | 'asset' | 'explore' | 'subEvent' | 'subEventStage'; id: string; title: string; openUp: boolean } | null = null;
+  protected showEventExploreOrderPicker = false;
+  protected eventExploreOrder: EventExploreOrder = 'upcoming';
+  protected eventExploreFilterFriendsOnly = false;
+  protected eventExploreFilterHasRooms = false;
+  protected eventExploreFilterTopic = '';
   protected activitiesStickyValue = '';
+  protected eventExploreStickyValue = '';
   protected readonly activitiesPageSize = 10;
   protected pendingActivityDeleteRow: ActivityListRow | null = null;
+  protected pendingActivityPublishRow: ActivityListRow | null = null;
+  protected pendingSubEventDeleteId: string | null = null;
+  protected eventEditorClosePublishConfirmContext: 'active' | 'stacked' | null = null;
   protected pendingActivityAction: 'delete' | 'exit' = 'delete';
   protected pendingActivityMemberDelete: ActivityMemberEntry | null = null;
   protected selectedActivityMembers: ActivityMemberEntry[] = [];
   protected selectedActivityMembersTitle = '';
   protected selectedActivityMembersRowId: string | null = null;
   protected selectedActivityMembersRow: ActivityListRow | null = null;
+  protected activityMembersReadOnly = false;
   protected activityInviteSort: ActivityInviteSort = 'recent';
   protected showActivityInviteSortPicker = false;
   protected selectedActivityInviteUserIds: string[] = [];
-  protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | null = null;
+  protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | 'eventSubEvents' | 'eventExploreTopicFilter' | 'impressionsHost' | null = null;
   private readonly activityMembersByRowId: Record<string, ActivityMemberEntry[]> = {};
+  private activityMembersPopupOrigin: 'active-event-editor' | 'stacked-event-editor' | 'event-explore' | null = null;
   protected readonly activityRatingScale = Array.from({ length: 10 }, (_, index) => index + 1);
-  private readonly weekCalendarStartHour = 6;
+  private readonly weekCalendarStartHour = 0;
   private readonly weekCalendarEndHour = 23;
   private readonly weekCalendarSlotHeightPx = 34;
   protected selectedActivityRateId: string | null = null;
@@ -744,6 +879,13 @@ export class App {
     { key: 'day', label: 'Day', icon: 'today' },
     { key: 'distance', label: 'Distance', icon: 'social_distance' }
   ];
+  protected readonly eventExploreOrderOptions: Array<{ key: EventExploreOrder; label: string; icon: string }> = [
+    { key: 'upcoming', label: 'Upcoming', icon: 'event_upcoming' },
+    { key: 'past-events', label: 'Past Events', icon: 'history' },
+    { key: 'nearby', label: 'Nearby', icon: 'near_me' },
+    { key: 'most-relevant', label: 'Most Relevant', icon: 'auto_awesome' },
+    { key: 'top-rated', label: 'Top Rated', icon: 'emoji_events' }
+  ];
   protected readonly eventDatesById: Record<string, string> = {
     e1: '2026-02-27T09:00:00',
     e2: '2026-03-08T10:00:00',
@@ -800,6 +942,38 @@ export class App {
     h3: 'Open Event',
     h4: 'Blind Event'
   };
+  protected readonly eventAutoInviterById: Record<string, boolean> = {
+    e1: true,
+    e2: true,
+    e3: false,
+    e4: true,
+    e5: false,
+    e6: true,
+    e7: true,
+    e8: false,
+    e9: false,
+    e10: true,
+    e11: true,
+    e12: false,
+    h1: true,
+    h2: false,
+    h3: true,
+    h4: false
+  };
+  protected readonly hostingPublishedById: Record<string, boolean> = {
+    e1: true,
+    e4: true,
+    e5: true,
+    e7: false,
+    e10: true,
+    e11: false,
+    h1: true,
+    h2: true,
+    h3: false,
+    h4: false
+  };
+  private readonly forcedAcceptedMembersByRowKey: Record<string, number> = { 'events:e8': 20 };
+  protected readonly eventCapacityById: Record<string, EventCapacityRange> = {};
   protected readonly invitationDatesById: Record<string, string> = {
     i1: '2026-02-21T20:00:00',
     i2: '2026-02-22T15:00:00',
@@ -886,7 +1060,7 @@ export class App {
     e3: '18 / 20',
     e6: '20 / 24',
     e7: '9 / 12',
-    e8: '16 / 20',
+    e8: '20 / 20',
     e9: '18 / 22',
     e10: '19 / 24',
     e11: '41 / 60',
@@ -911,15 +1085,26 @@ export class App {
   protected selectedChat: ChatMenuItem | null = null;
   protected selectedChatMembers: DemoUser[] = [];
   protected selectedChatMembersItem: ChatMenuItem | null = null;
+  protected readonly chatHistoryPageSize = 10;
+  protected chatVisibleMessageCount = this.chatHistoryPageSize;
+  protected chatDraftMessage = '';
+  private readonly chatHistoryById: Record<string, ChatPopupMessage[]> = {};
+  private chatHistoryLoadingOlder = false;
   protected selectedInvitation: InvitationMenuItem | null = null;
   protected selectedEvent: EventMenuItem | null = null;
   protected selectedHostingEvent: HostingMenuItem | null = null;
   protected eventEditorTarget: EventEditorTarget = 'events';
   protected editingEventId: string | null = null;
   protected eventForm: EventEditorForm = this.defaultEventForm();
+  protected showEventEditorRequiredValidation = false;
   protected showSubEventForm = false;
   protected showSubEventOptionalPicker = false;
   protected subEventForm: SubEventFormItem = this.defaultSubEventForm();
+  protected showSubEventRequiredValidation = false;
+  protected subEventFormStageNumber: number | null = null;
+  protected showSubEventGroupForm = false;
+  protected showSubEventGroupRequiredValidation = false;
+  protected subEventGroupForm = this.defaultSubEventGroupForm();
   protected subEventStartDateValue: Date | null = null;
   protected subEventEndDateValue: Date | null = null;
   protected subEventStartTimeValue: Date | null = null;
@@ -933,10 +1118,19 @@ export class App {
   protected eventEndDateValue: Date | null = null;
   protected eventStartTimeValue: Date | null = null;
   protected eventEndTimeValue: Date | null = null;
+  protected readonly subEventsDisplayModeOptions: SubEventsDisplayMode[] = ['Casual', 'Tournament'];
+  protected subEventsDisplayMode: SubEventsDisplayMode = 'Casual';
+  protected showSubEventsDisplayModePicker = false;
+  protected subEventStagePageIndex = 0;
   protected activitiesHeaderProgress = 0;
   protected activitiesHeaderProgressLoading = false;
   protected activitiesHeaderLoadingProgress = 0;
   protected activitiesHeaderLoadingOverdue = false;
+  protected eventExploreHeaderProgress = 0;
+  protected eventExploreHeaderProgressLoading = false;
+  protected eventExploreHeaderLoadingProgress = 0;
+  protected eventExploreHeaderLoadingOverdue = false;
+  protected chatHeaderProgress = 0;
 
   protected imageSlots: Array<string | null> = [];
   protected selectedImageIndex = 0;
@@ -946,10 +1140,15 @@ export class App {
   @ViewChild('eventImageInput') private eventImageInput?: ElementRef<HTMLInputElement>;
   @ViewChild('activitiesScroll') private activitiesScrollRef?: ElementRef<HTMLDivElement>;
   @ViewChild('activitiesCalendarScroll') private activitiesCalendarScrollRef?: ElementRef<HTMLDivElement>;
+  @ViewChild('eventExploreScroll') private eventExploreScrollRef?: ElementRef<HTMLDivElement>;
+  @ViewChild('subEventStagesScroll') private subEventStagesScrollRef?: ElementRef<HTMLDivElement>;
 
   protected eventSupplyTypes: string[] = ['Cars', 'Members', 'Accessories', 'Accommodation'];
   protected newSupplyType = '';
   protected selectedSupplyContext: SupplyContext | null = null;
+  protected selectedSubEventBadgeContext: SubEventBadgeContext | null = null;
+  protected subEventResourceFilter: SubEventResourceFilter = 'Members';
+  private subEventBadgePopupOrigin: 'active-event-editor' | 'stacked-event-editor' | null = null;
 
   protected profileForm = {
     fullName: '',
@@ -986,12 +1185,22 @@ export class App {
   private activitiesLoadMoreTimer: ReturnType<typeof setTimeout> | null = null;
   private activitiesIsPaginating = false;
   private activitiesPaginationAwaitScrollReset = false;
+  private eventExploreVisibleCount = this.activitiesPageSize;
+  private eventExplorePaginationKey = '';
+  private eventExploreLoadMoreTimer: ReturnType<typeof setTimeout> | null = null;
+  private eventExploreIsPaginating = false;
+  private eventExplorePaginationAwaitScrollReset = false;
+  private eventExploreHeaderLoadingCounter = 0;
+  private eventExploreHeaderLoadingInterval: ReturnType<typeof setInterval> | null = null;
+  private eventExploreHeaderLoadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
+  private eventExploreHeaderLoadingStartedAtMs = 0;
 
   constructor(private readonly router: Router) {
     this.initializeProfileImageSlots();
     this.ensurePaginationTestEvents(30);
     this.profileDetailsForm = this.createProfileDetailsForm();
     this.syncProfileFormFromActiveUser();
+    this.initializeEntryFlow();
     this.router.navigate(['/game']);
   }
 
@@ -1129,10 +1338,60 @@ export class App {
 
   protected onUserSelect(): void {
     this.showUserMenu = !this.showUserMenu;
+    if (!this.showUserMenu) {
+      this.showUserSettingsMenu = false;
+    }
   }
 
   protected closeUserMenu(): void {
     this.showUserMenu = false;
+    this.showUserSettingsMenu = false;
+  }
+
+  protected toggleUserSettingsMenu(event: MouseEvent): void {
+    event.stopPropagation();
+    this.showUserSettingsMenu = !this.showUserSettingsMenu;
+  }
+
+  protected closeUserSettingsMenu(): void {
+    this.showUserSettingsMenu = false;
+  }
+
+  protected onUserSettingsAction(action: 'helper' | 'gdpr' | 'delete-account' | 'logout', event?: Event): void {
+    event?.stopPropagation();
+    switch (action) {
+      case 'helper':
+        this.closeUserSettingsMenu();
+        this.alertService.open('Helper center is ready for backend wiring.');
+        return;
+      case 'gdpr':
+        this.openGdprPopup();
+        return;
+      case 'delete-account':
+        this.closeUserSettingsMenu();
+        this.openDeleteAccountConfirm();
+        return;
+      case 'logout':
+        this.closeUserSettingsMenu();
+        this.openLogoutConfirm();
+        return;
+      default:
+        return;
+    }
+  }
+
+  protected openGdprPopup(): void {
+    this.activePopup = 'gdpr';
+  }
+
+  protected openDeleteAccountConfirm(): void {
+    this.activePopup = 'deleteAccountConfirm';
+  }
+
+  protected confirmDeleteAccount(): void {
+    this.alertService.open('Delete account flow is ready for backend wiring.');
+    this.closePopup();
+    this.closeUserMenu();
   }
 
   protected goToGame(): void {
@@ -1166,8 +1425,10 @@ export class App {
     this.activePopup = 'activities';
     this.activitiesPrimaryFilter = primaryFilter;
     this.activitiesSecondaryFilter = 'recent';
+    this.hostingPublicationFilter = 'published';
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
+    this.showEventExploreOrderPicker = false;
     this.showEventVisibilityPicker = false;
     this.showAssetVisibilityPicker = false;
     this.showProfileStatusHeaderPicker = false;
@@ -1208,6 +1469,10 @@ export class App {
   protected openChatItem(item: ChatMenuItem, closeMenu = true, stacked = false): void {
     this.activeMenuSection = 'chat';
     this.selectedChat = item;
+    this.ensureSelectedChatHistory();
+    this.chatVisibleMessageCount = Math.min(this.chatHistoryPageSize, this.selectedChatHistory.length);
+    this.chatDraftMessage = '';
+    this.chatHistoryLoadingOlder = false;
     this.showActivitiesViewPicker = false;
     if (stacked || this.activePopup === 'activities' || this.stackedPopup !== null) {
       this.stackedPopup = 'chat';
@@ -1276,13 +1541,18 @@ export class App {
     }
   }
 
-  protected openEventExplore(closeMenu = true): void {
+  protected openEventExplore(closeMenu = true, stacked = false): void {
     this.activeMenuSection = 'events';
-    if (this.stackedPopup !== null) {
+    this.showEventExploreOrderPicker = false;
+    this.eventExploreStickyValue = '';
+    this.eventExploreHeaderProgress = 0;
+    if (stacked || this.stackedPopup !== null || this.activePopup === 'activities') {
       this.stackedPopup = 'eventExplore';
+      this.resetEventExploreScroll();
       return;
     }
     this.activePopup = 'eventExplore';
+    this.resetEventExploreScroll();
     if (closeMenu) {
       this.closeUserMenu();
     }
@@ -1329,6 +1599,270 @@ export class App {
       .slice(0, 5);
     this.eventForm.topics = [...this.interestSelectorSelected];
     this.superStackedPopup = 'eventTopicsSelector';
+  }
+
+  protected openEventSubEventsPopup(event?: Event): void {
+    event?.stopPropagation();
+    this.showSubEventsDisplayModePicker = false;
+    this.showSubEventForm = false;
+    this.subEventFormStageNumber = null;
+    this.showSubEventGroupForm = false;
+    this.showSubEventOptionalPicker = false;
+    this.showSubEventGroupRequiredValidation = false;
+    this.resetSubEventStagePaging();
+    this.superStackedPopup = 'eventSubEvents';
+  }
+
+  protected closeEventSubEventsPopup(): void {
+    if (this.superStackedPopup === 'eventSubEvents') {
+      this.superStackedPopup = null;
+    }
+    this.inlineItemActionMenu = null;
+    this.showSubEventsDisplayModePicker = false;
+    this.subEventFormStageNumber = null;
+    this.showSubEventForm = false;
+    this.showSubEventGroupForm = false;
+    this.showSubEventGroupRequiredValidation = false;
+  }
+
+  protected eventSubEventsParentTitle(): string {
+    const currentTitle = this.eventForm.title.trim();
+    if (currentTitle) {
+      return currentTitle;
+    }
+    return this.selectedEvent?.title ?? this.selectedHostingEvent?.title ?? '';
+  }
+
+  protected subEventsCountLabel(): string {
+    const count = this.eventForm.subEvents.length;
+    return count === 1 ? '1 sub event' : `${count} sub events`;
+  }
+
+  protected subEventsDisplayModeClass(mode: SubEventsDisplayMode = this.subEventsDisplayMode): string {
+    return mode === 'Tournament' ? 'subevents-mode-tournament' : 'subevents-mode-casual';
+  }
+
+  protected subEventsDisplayModeGlyph(mode: SubEventsDisplayMode = this.subEventsDisplayMode): string {
+    return mode === 'Tournament' ? 'T' : 'C';
+  }
+
+  protected toggleSubEventsDisplayModePicker(event?: Event): void {
+    event?.stopPropagation();
+    this.showSubEventsDisplayModePicker = !this.showSubEventsDisplayModePicker;
+  }
+
+  protected selectSubEventsDisplayMode(mode: SubEventsDisplayMode, event?: Event): void {
+    event?.stopPropagation();
+    this.subEventsDisplayMode = mode;
+    this.showSubEventsDisplayModePicker = false;
+    this.inlineItemActionMenu = null;
+    this.resetSubEventStagePaging();
+  }
+
+  protected get subEventTournamentStages(): SubEventTournamentStage[] {
+    const source = this.eventForm.subEvents;
+    if (source.length === 0) {
+      return [];
+    }
+    const currentStageNumber = this.resolveCurrentTournamentStageNumber(source);
+    return source.map((subEvent, index) => {
+      const stageNumber = index + 1;
+      const stageKey = subEvent.id || `stage-${stageNumber}`;
+      const groups = this.subEventGroupsForStage(subEvent).map((group, groupIndex) => ({
+        key: `${stageKey}:g:${group.id}`,
+        id: group.id,
+        groupNumber: groupIndex + 1,
+        groupLabel: group.name,
+        subEvent
+      }));
+      return {
+        key: stageKey,
+        stageNumber,
+        title: `Stage ${stageNumber}`,
+        subtitle: subEvent.name,
+        description: subEvent.description,
+        rangeLabel: this.subEventCardRange(subEvent),
+        subEvent,
+        groups,
+        isCurrent: stageNumber === currentStageNumber
+      };
+    });
+  }
+
+  protected get subEventTournamentStagePages(): SubEventTournamentStage[][] {
+    const stages = this.subEventTournamentStages;
+    if (!this.isSubEventSwipeViewport) {
+      return stages.length > 0 ? [stages] : [];
+    }
+    if (stages.length === 0) {
+      return [];
+    }
+    const pageSize = this.subEventStagePageSize();
+    const pages: SubEventTournamentStage[][] = [];
+    for (let index = 0; index < stages.length; index += pageSize) {
+      pages.push(stages.slice(index, index + pageSize));
+    }
+    return pages;
+  }
+
+  protected subEventStagePlaceholders(page: SubEventTournamentStage[]): number[] {
+    const expectedColumns = this.subEventStagePageSize();
+    const missing = Math.max(0, expectedColumns - page.length);
+    return Array.from({ length: missing }, (_, index) => index);
+  }
+
+  protected trackBySubEventStagePage(index: number): number {
+    return index;
+  }
+
+  protected trackBySubEventStage(_: number, stage: SubEventTournamentStage): string {
+    return stage.key;
+  }
+
+  protected trackBySubEventTournamentGroup(_: number, group: SubEventTournamentGroup): string {
+    return group.key;
+  }
+
+  protected subEventStageAccentColor(stageNumber: number, totalStages: number): string {
+    if (totalStages <= 1) {
+      return 'hsl(210 72% 48%)';
+    }
+    const ratio = this.clampNumber((stageNumber - 1) / (totalStages - 1), 0, 1);
+    const hue = Math.round(210 - (210 * ratio));
+    return `hsl(${hue} 72% 48%)`;
+  }
+
+  protected subEventStageMetaLabel(stage: SubEventTournamentStage): string {
+    return `${stage.groups.length} groups`;
+  }
+
+  protected subEventTournamentPageRangeLabel(): string {
+    const stages = this.subEventTournamentStages;
+    if (stages.length === 0) {
+      return '';
+    }
+    const page = this.subEventVisibleStagesForRangeLabel();
+    const rangeParts = page
+      .map(stage => {
+        const start = new Date(stage.subEvent.startAt).getTime();
+        const end = new Date(stage.subEvent.endAt).getTime();
+        if (Number.isNaN(start) || Number.isNaN(end)) {
+          return null;
+        }
+        return { start, end };
+      })
+      .filter((entry): entry is { start: number; end: number } => entry !== null);
+    if (rangeParts.length === 0) {
+      return 'Date pending';
+    }
+    const minStart = Math.min(...rangeParts.map(entry => entry.start));
+    const maxEnd = Math.max(...rangeParts.map(entry => entry.end));
+    return this.tournamentPageRangeLabelFromMs(minStart, maxEnd);
+  }
+
+  protected subEventGroupBadgeStyle(groupNumber: number): Record<string, string> {
+    const hue = (groupNumber * 43) % 360;
+    return {
+      borderColor: `hsl(${hue} 54% 58%)`,
+      background: `linear-gradient(180deg, hsl(${hue} 92% 96%) 0%, hsl(${hue} 84% 90%) 100%)`,
+      color: `hsl(${hue} 48% 34%)`
+    };
+  }
+
+  protected onSubEventStagesScroll(event: Event): void {
+    const element = event.target as HTMLElement | null;
+    if (!element) {
+      return;
+    }
+    if (this.isSubEventSwipeViewport) {
+      const step = element.clientWidth || 1;
+      const nextIndex = Math.round(element.scrollLeft / step);
+      const maxIndex = Math.max(0, this.subEventTournamentStagePages.length - 1);
+      this.subEventStagePageIndex = this.clampNumber(nextIndex, 0, maxIndex);
+      return;
+    }
+    const starts = this.subEventDesktopPageStarts(this.subEventTournamentStages.length);
+    const offsets = this.subEventDesktopPageOffsets(element, starts);
+    const currentOffset = element.scrollLeft;
+    this.subEventStagePageIndex = this.subEventDesktopNearestStartIndex(offsets, currentOffset);
+  }
+
+  protected canScrollSubEventStagePages(direction: -1 | 1): boolean {
+    if (this.isSubEventSwipeViewport) {
+      const maxIndex = Math.max(0, this.subEventTournamentStagePages.length - 1);
+      if (direction < 0) {
+        return this.subEventStagePageIndex > 0;
+      }
+      return this.subEventStagePageIndex < maxIndex;
+    }
+    const starts = this.subEventDesktopPageStarts(this.subEventTournamentStages.length);
+    if (starts.length <= 1) {
+      return false;
+    }
+    const scrollElement = this.subEventStagesScrollRef?.nativeElement;
+    if (!scrollElement) {
+      const maxIndex = Math.max(0, starts.length - 1);
+      if (direction < 0) {
+        return this.subEventStagePageIndex > 0;
+      }
+      return this.subEventStagePageIndex < maxIndex;
+    }
+    const currentOffset = scrollElement.scrollLeft;
+    const offsets = this.subEventDesktopPageOffsets(scrollElement, starts);
+    const epsilon = 1;
+    if (direction < 0) {
+      return offsets.some(offset => offset < (currentOffset - epsilon));
+    }
+    return offsets.some(offset => offset > (currentOffset + epsilon));
+  }
+
+  protected scrollSubEventStagePages(direction: -1 | 1, event?: Event): void {
+    event?.stopPropagation();
+    const scrollElement = this.subEventStagesScrollRef?.nativeElement;
+    if (!scrollElement) {
+      return;
+    }
+    if (this.isSubEventSwipeViewport) {
+      const maxIndex = Math.max(0, this.subEventTournamentStagePages.length - 1);
+      const nextIndex = this.clampNumber(
+        this.subEventStagePageIndex + direction,
+        0,
+        maxIndex
+      );
+      this.subEventStagePageIndex = nextIndex;
+      const step = scrollElement.clientWidth || 0;
+      if (step <= 0) {
+        return;
+      }
+      scrollElement.scrollTo({ left: step * nextIndex, behavior: 'smooth' });
+      return;
+    }
+    const starts = this.subEventDesktopPageStarts(this.subEventTournamentStages.length);
+    const offsets = this.subEventDesktopPageOffsets(scrollElement, starts);
+    const currentOffset = scrollElement.scrollLeft;
+    const epsilon = 1;
+    let targetPageIndex: number | null = null;
+    if (direction > 0) {
+      for (let index = 0; index < offsets.length; index += 1) {
+        if (offsets[index] > (currentOffset + epsilon)) {
+          targetPageIndex = index;
+          break;
+        }
+      }
+    } else {
+      for (let index = offsets.length - 1; index >= 0; index -= 1) {
+        if (offsets[index] < (currentOffset - epsilon)) {
+          targetPageIndex = index;
+          break;
+        }
+      }
+    }
+    if (targetPageIndex === null) {
+      return;
+    }
+    const targetOffset = offsets[targetPageIndex] ?? 0;
+    this.subEventStagePageIndex = targetPageIndex;
+    scrollElement.scrollTo({ left: targetOffset, behavior: 'smooth' });
   }
 
   protected closeEventTopicsSelector(apply = true): void {
@@ -1448,17 +1982,48 @@ export class App {
     this.eventForm.blindMode = this.eventForm.blindMode === 'Blind Event' ? 'Open Event' : 'Blind Event';
   }
 
+  protected toggleEventAutoInviter(event?: Event): void {
+    event?.stopPropagation();
+    this.eventForm.autoInviter = !this.eventForm.autoInviter;
+  }
+
+  protected eventAutoInviterClass(enabled: boolean): string {
+    return enabled ? 'auto-inviter-on' : 'auto-inviter-off';
+  }
+
+  protected eventAutoInviterIcon(enabled: boolean): string {
+    return enabled ? 'group_add' : 'person_off';
+  }
+
+  protected eventAutoInviterLabel(enabled: boolean): string {
+    return enabled ? 'Auto Inviter On' : 'Auto Inviter Off';
+  }
+
+  protected eventAutoInviterDescription(enabled: boolean): string {
+    return enabled
+      ? 'Invites people by matching mutual preferences.'
+      : 'Manual invites only.';
+  }
+
   protected openSubEventPanel(event?: Event): void {
     event?.stopPropagation();
     this.subEventForm = this.defaultSubEventForm();
+    this.subEventFormStageNumber = this.superStackedPopup === 'eventSubEvents' && this.subEventsDisplayMode === 'Tournament'
+      ? this.eventForm.subEvents.length + 1
+      : null;
+    this.showSubEventRequiredValidation = false;
+    this.showSubEventGroupRequiredValidation = false;
     this.syncSubEventDateTimeControlsFromForm();
     this.showSubEventOptionalPicker = false;
+    this.showSubEventGroupForm = false;
     this.showSubEventForm = true;
   }
 
   protected closeSubEventPanel(event?: Event): void {
     event?.stopPropagation();
     this.appendCurrentSubEventIfValid();
+    this.showSubEventRequiredValidation = false;
+    this.subEventFormStageNumber = null;
     this.showSubEventForm = false;
     this.showSubEventOptionalPicker = false;
   }
@@ -1466,15 +2031,63 @@ export class App {
   protected closeSubEventPanelWithSave(event?: Event): void {
     event?.stopPropagation();
     this.appendCurrentSubEventIfValid();
+    this.showSubEventRequiredValidation = false;
+    this.subEventFormStageNumber = null;
     this.showSubEventForm = false;
     this.showSubEventOptionalPicker = false;
   }
 
+  protected requestSubEventDelete(subEvent: SubEventFormItem, event?: Event): void {
+    event?.stopPropagation();
+    this.pendingSubEventDeleteId = subEvent.id;
+  }
+
+  protected cancelSubEventDelete(): void {
+    this.pendingSubEventDeleteId = null;
+  }
+
+  protected confirmSubEventDelete(): void {
+    if (!this.pendingSubEventDeleteId) {
+      return;
+    }
+    this.eventForm.subEvents = this.eventForm.subEvents.filter(item => item.id !== this.pendingSubEventDeleteId);
+    this.pendingSubEventDeleteId = null;
+  }
+
+  protected pendingSubEventDeleteTitle(): string {
+    return 'Delete sub event';
+  }
+
+  protected pendingSubEventDeleteLabel(): string {
+    if (!this.pendingSubEventDeleteId) {
+      return '';
+    }
+    const item = this.eventForm.subEvents.find(subEvent => subEvent.id === this.pendingSubEventDeleteId);
+    if (!item) {
+      return 'Delete this sub event?';
+    }
+    return `Delete ${item.name}?`;
+  }
+
   protected saveSubEventForm(event?: Event): void {
     event?.stopPropagation();
-    this.appendCurrentSubEventIfValid();
+    const saved = this.appendCurrentSubEventIfValid();
+    if (!saved) {
+      this.showSubEventRequiredValidation = true;
+      return;
+    }
+    this.showSubEventRequiredValidation = false;
+    this.subEventFormStageNumber = null;
     this.showSubEventForm = false;
     this.showSubEventOptionalPicker = false;
+  }
+
+  protected eventEditorFieldInvalid(field: 'title' | 'description'): boolean {
+    return !this.eventForm[field].trim();
+  }
+
+  protected subEventFieldInvalid(field: 'name' | 'description'): boolean {
+    return !this.subEventForm[field].trim();
   }
 
   protected onSubEventStartDateChange(value: Date | null): void {
@@ -1530,9 +2143,340 @@ export class App {
       : 'subevent-capacity-out-of-range';
   }
 
+  protected subEventFormTitle(): string {
+    const stageNumber = this.subEventFormStageNumber ?? (this.subEventForm.id ? this.resolveSubEventStageNumber(this.subEventForm.id) : null);
+    if (stageNumber !== null && this.superStackedPopup === 'eventSubEvents' && this.subEventsDisplayMode === 'Tournament') {
+      return this.subEventForm.id ? `Edit Stage ${stageNumber} Event` : `Create Stage ${stageNumber} Event`;
+    }
+    return this.subEventForm.id ? 'Edit Sub Event' : 'Create Sub Event';
+  }
+
+  protected subEventAddFabLabel(): string {
+    if (this.superStackedPopup === 'eventSubEvents' && this.subEventsDisplayMode === 'Tournament') {
+      return 'Add Stage Event';
+    }
+    return 'Add Sub Event';
+  }
+
+  protected subEventAddButtonLabel(): string {
+    return this.subEventAddFabLabel();
+  }
+
+  protected subEventGroupFormTitle(): string {
+    return this.subEventGroupForm.id ? 'Edit Group' : 'Create Group';
+  }
+
+  protected subEventGroupFieldInvalid(): boolean {
+    return !this.subEventGroupForm.name.trim();
+  }
+
+  protected toggleSubEventItemActionMenu(item: SubEventFormItem, event: Event): void {
+    event.stopPropagation();
+    this.toggleSubEventItemActionMenuWithKey(item, item.id, event);
+  }
+
+  protected toggleSubEventItemActionMenuWithKey(item: SubEventFormItem, menuKey: string, event: Event): void {
+    event.stopPropagation();
+    if (this.inlineItemActionMenu?.scope === 'subEvent' && this.inlineItemActionMenu.id === menuKey) {
+      this.inlineItemActionMenu = null;
+      return;
+    }
+    this.inlineItemActionMenu = { scope: 'subEvent', id: menuKey, title: item.name, openUp: this.shouldOpenInlineItemMenuUp(event) };
+  }
+
+  protected isSubEventItemActionMenuOpen(item: SubEventFormItem): boolean {
+    return this.isSubEventItemActionMenuOpenWithKey(item.id);
+  }
+
+  protected isSubEventItemActionMenuOpenWithKey(menuKey: string): boolean {
+    return this.inlineItemActionMenu?.scope === 'subEvent' && this.inlineItemActionMenu.id === menuKey;
+  }
+
+  protected isSubEventItemActionMenuOpenUp(item: SubEventFormItem): boolean {
+    return this.isSubEventItemActionMenuOpenUpWithKey(item.id);
+  }
+
+  protected isSubEventItemActionMenuOpenUpWithKey(menuKey: string): boolean {
+    return this.inlineItemActionMenu?.scope === 'subEvent'
+      && this.inlineItemActionMenu.id === menuKey
+      && this.inlineItemActionMenu.openUp;
+  }
+
+  protected toggleSubEventStageActionMenu(stage: SubEventTournamentStage, event: Event): void {
+    event.stopPropagation();
+    if (this.inlineItemActionMenu?.scope === 'subEventStage' && this.inlineItemActionMenu.id === stage.key) {
+      this.inlineItemActionMenu = null;
+      return;
+    }
+    this.inlineItemActionMenu = {
+      scope: 'subEventStage',
+      id: stage.key,
+      title: stage.title,
+      openUp: this.shouldOpenInlineItemMenuUp(event)
+    };
+  }
+
+  protected isSubEventStageActionMenuOpen(stage: SubEventTournamentStage): boolean {
+    return this.inlineItemActionMenu?.scope === 'subEventStage' && this.inlineItemActionMenu.id === stage.key;
+  }
+
+  protected isSubEventStageActionMenuOpenUp(stage: SubEventTournamentStage): boolean {
+    return this.inlineItemActionMenu?.scope === 'subEventStage'
+      && this.inlineItemActionMenu.id === stage.key
+      && this.inlineItemActionMenu.openUp;
+  }
+
+  protected canEditSubEventItem(item: SubEventFormItem): boolean {
+    return this.subEventCreatorId(item) === this.activeUser.id;
+  }
+
+  protected canDeleteSubEventItem(item: SubEventFormItem): boolean {
+    return this.subEventCreatorId(item) === this.activeUser.id;
+  }
+
+  protected canJoinSubEventItem(item: SubEventFormItem): boolean {
+    return item.optional && this.subEventCreatorId(item) !== this.activeUser.id;
+  }
+
+  protected canManageSubEventItem(item: SubEventFormItem): boolean {
+    return this.canJoinSubEventItem(item) || this.canEditSubEventItem(item) || this.canDeleteSubEventItem(item);
+  }
+
+  protected runSubEventItemJoinAction(item: SubEventFormItem, event: Event, group?: SubEventTournamentGroup): void {
+    event.stopPropagation();
+    if (!this.canJoinSubEventItem(item)) {
+      return;
+    }
+    const targetLabel = group ? `${item.name} · ${group.groupLabel}` : item.name;
+    this.alertService.open(`Join request for ${targetLabel} is ready for backend wiring.`);
+    this.inlineItemActionMenu = null;
+  }
+
+  protected runSubEventItemEditAction(
+    item: SubEventFormItem,
+    event: Event,
+    group?: SubEventTournamentGroup,
+    tournamentMode = false
+  ): void {
+    event.stopPropagation();
+    if (!this.canEditSubEventItem(item)) {
+      return;
+    }
+    if (tournamentMode && group) {
+      this.openSubEventGroupEditor(item, group);
+      this.inlineItemActionMenu = null;
+      return;
+    }
+    this.subEventFormStageNumber = tournamentMode ? this.resolveSubEventStageNumber(item.id) : null;
+    this.subEventForm = {
+      ...item,
+      createdByUserId: this.subEventCreatorId(item),
+      groups: this.cloneSubEventGroups(item.groups)
+    };
+    this.showSubEventRequiredValidation = false;
+    this.showSubEventOptionalPicker = false;
+    this.showSubEventGroupForm = false;
+    this.syncSubEventDateTimeControlsFromForm();
+    this.showSubEventForm = true;
+    this.inlineItemActionMenu = null;
+  }
+
+  protected runSubEventStageEditAction(stage: SubEventTournamentStage, event: Event): void {
+    event.stopPropagation();
+    if (!this.canEditSubEventItem(stage.subEvent)) {
+      return;
+    }
+    this.subEventFormStageNumber = stage.stageNumber;
+    this.subEventForm = {
+      ...stage.subEvent,
+      createdByUserId: this.subEventCreatorId(stage.subEvent),
+      groups: this.cloneSubEventGroups(stage.subEvent.groups)
+    };
+    this.showSubEventRequiredValidation = false;
+    this.showSubEventOptionalPicker = false;
+    this.showSubEventGroupForm = false;
+    this.syncSubEventDateTimeControlsFromForm();
+    this.showSubEventForm = true;
+    this.inlineItemActionMenu = null;
+  }
+
+  protected runSubEventStageDeleteAction(stage: SubEventTournamentStage, event: Event): void {
+    event.stopPropagation();
+    if (!this.canDeleteSubEventItem(stage.subEvent)) {
+      return;
+    }
+    this.requestSubEventDelete(stage.subEvent, event);
+    this.inlineItemActionMenu = null;
+  }
+
+  protected runSubEventItemDeleteAction(
+    item: SubEventFormItem,
+    event: Event,
+    group?: SubEventTournamentGroup,
+    tournamentMode = false
+  ): void {
+    event.stopPropagation();
+    if (!this.canDeleteSubEventItem(item)) {
+      return;
+    }
+    if (tournamentMode && group) {
+      const currentGroups = this.materializedSubEventGroups(item);
+      if (currentGroups.length <= 1) {
+        this.alertService.open('At least one group is required in a stage.');
+        this.inlineItemActionMenu = null;
+        return;
+      }
+      const nextGroups = currentGroups.filter(entry => entry.id !== group.id);
+      this.patchSubEventGroups(item.id, nextGroups);
+      this.inlineItemActionMenu = null;
+      return;
+    }
+    this.requestSubEventDelete(item);
+    this.inlineItemActionMenu = null;
+  }
+
+  protected runSubEventStageAddGroupAction(stage: SubEventTournamentStage, event: Event): void {
+    event.stopPropagation();
+    if (!this.canEditSubEventItem(stage.subEvent)) {
+      return;
+    }
+    this.subEventGroupForm = this.defaultSubEventGroupForm(stage.subEvent, {
+      stageTitle: `${stage.title} · ${stage.subtitle}`
+    });
+    this.showSubEventGroupRequiredValidation = false;
+    this.showSubEventForm = false;
+    this.showSubEventGroupForm = true;
+    this.inlineItemActionMenu = null;
+  }
+
+  protected closeSubEventGroupPanel(event?: Event): void {
+    event?.stopPropagation();
+    this.appendCurrentSubEventGroupIfValid();
+    this.showSubEventGroupRequiredValidation = false;
+    this.showSubEventGroupForm = false;
+  }
+
+  protected closeSubEventGroupPanelWithSave(event?: Event): void {
+    event?.stopPropagation();
+    this.appendCurrentSubEventGroupIfValid();
+    this.showSubEventGroupRequiredValidation = false;
+    this.showSubEventGroupForm = false;
+  }
+
+  protected saveSubEventGroupForm(event?: Event): void {
+    event?.stopPropagation();
+    const saved = this.appendCurrentSubEventGroupIfValid();
+    if (!saved) {
+      this.showSubEventGroupRequiredValidation = true;
+      return;
+    }
+    this.showSubEventGroupRequiredValidation = false;
+    this.showSubEventGroupForm = false;
+  }
+
   protected openSubEventBadgePopup(type: 'Members' | 'Car' | 'Accommodation' | 'Supplies', item: SubEventFormItem, event?: Event): void {
     event?.stopPropagation();
-    this.alertService.open(`${type} popup for "${item.name}" is ready for wiring.`);
+    const isFromSubEventsSuperPopup = this.superStackedPopup === 'eventSubEvents';
+    this.subEventBadgePopupOrigin = this.stackedPopup === 'eventEditor' ? 'stacked-event-editor' : 'active-event-editor';
+    this.selectedSubEventBadgeContext = {
+      subEvent: item,
+      type
+    };
+    this.subEventResourceFilter = type === 'Members' ? 'Members' : type;
+    if (isFromSubEventsSuperPopup) {
+      this.superStackedPopup = null;
+    }
+    this.stackedPopup = 'subEventAssets';
+  }
+
+  protected handleSubEventQuickAction(message: string, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.alertService.open(message);
+  }
+
+  protected readonly subEventResourceFilterOptions: SubEventResourceFilter[] = ['Members', 'Car', 'Accommodation', 'Supplies'];
+
+  protected selectSubEventResourceFilter(filter: SubEventResourceFilter): void {
+    this.subEventResourceFilter = filter;
+  }
+
+  protected subEventResourceTypeIcon(type: SubEventResourceFilter): string {
+    if (type === 'Members') {
+      return 'groups';
+    }
+    return this.assetTypeIcon(type);
+  }
+
+  protected subEventResourceTypeClass(type: SubEventResourceFilter): string {
+    if (type === 'Members') {
+      return 'asset-filter-members';
+    }
+    return this.assetTypeClass(type);
+  }
+
+  protected subEventResourceFilterCount(type: SubEventResourceFilter): number {
+    if (!this.selectedSubEventBadgeContext) {
+      return 0;
+    }
+    const subEvent = this.selectedSubEventBadgeContext.subEvent;
+    if (type === 'Members') {
+      return subEvent.membersPending;
+    }
+    if (type === 'Car') {
+      return subEvent.carsPending;
+    }
+    if (type === 'Accommodation') {
+      return subEvent.accommodationPending;
+    }
+    return subEvent.suppliesPending;
+  }
+
+  protected get subEventResourceCards(): SubEventResourceCard[] {
+    if (!this.selectedSubEventBadgeContext) {
+      return [];
+    }
+    const subEvent = this.selectedSubEventBadgeContext.subEvent;
+    if (this.subEventResourceFilter === 'Members') {
+      return this.eventEditor.members.map((member, index) => {
+        const pending = index >= subEvent.membersAccepted && index < subEvent.membersAccepted + subEvent.membersPending;
+        const memberSeed = this.hashText(`${subEvent.id}:${member.name}:${index}`);
+        return {
+          id: `subevent-member-${index}`,
+          type: 'Members',
+          title: member.name,
+          subtitle: member.role,
+          city: this.activeUser.city,
+          details: pending ? 'Pending member request for this sub event.' : 'Accepted for this sub event.',
+          imageUrl: `https://i.pravatar.cc/1200?img=${(memberSeed % 70) + 1}`,
+          sourceLink: '',
+          capacityTotal: Math.max(subEvent.capacityMax, 1),
+          accepted: Math.min(subEvent.membersAccepted, Math.max(subEvent.capacityMax, 1)),
+          pending: pending ? 1 : 0,
+          isMembers: true
+        };
+      });
+    }
+
+    const baseCards = this.assetCards.filter(card => card.type === this.subEventResourceFilter);
+    return baseCards.map(card => ({
+      id: `subevent-${card.id}`,
+      type: card.type,
+      title: card.title,
+      subtitle: card.subtitle,
+      city: card.city,
+      details: card.details,
+      imageUrl: card.imageUrl,
+      sourceLink: card.sourceLink,
+      capacityTotal: card.capacityTotal,
+      accepted: this.assetAcceptedCount(card),
+      pending: this.assetPendingCount(card),
+      isMembers: false
+    }));
+  }
+
+  protected subEventResourceOccupancyLabel(card: SubEventResourceCard): string {
+    return `${card.accepted} / ${card.capacityTotal}`;
   }
 
   protected subEventModeClass(optional: boolean): string {
@@ -1551,21 +2495,64 @@ export class App {
   protected selectSubEventOptional(optional: boolean, event?: Event): void {
     event?.stopPropagation();
     this.subEventForm.optional = optional;
+    if (optional) {
+      this.normalizeSubEventCapacityRange(true);
+    }
     this.showSubEventOptionalPicker = false;
   }
 
   protected onSubEventCapacityMinChange(value: number | string): void {
     const parsed = Number(value);
-    this.subEventForm.capacityMin = Math.max(1, Number.isFinite(parsed) ? parsed : 1);
-    if (this.subEventForm.capacityMax < this.subEventForm.capacityMin) {
-      this.subEventForm.capacityMax = this.subEventForm.capacityMin;
-    }
+    this.subEventForm.capacityMin = Math.max(1, Number.isFinite(parsed) ? parsed : this.subEventForm.capacityMin);
+    this.normalizeSubEventCapacityRange(true);
   }
 
   protected onSubEventCapacityMaxChange(value: number | string): void {
     const parsed = Number(value);
-    const next = Math.max(1, Number.isFinite(parsed) ? parsed : this.subEventForm.capacityMin);
-    this.subEventForm.capacityMax = next < this.subEventForm.capacityMin ? this.subEventForm.capacityMin : next;
+    const next = Math.max(1, Number.isFinite(parsed) ? parsed : this.subEventForm.capacityMax);
+    const mainMax = this.optionalSubEventMainMax();
+    this.subEventForm.capacityMax = mainMax !== null ? Math.min(next, mainMax) : next;
+    this.normalizeSubEventCapacityRange(true);
+  }
+
+  protected onSubEventCapacityMaxInput(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    if (!input) {
+      return;
+    }
+    const raw = input.value;
+    if (raw === '') {
+      return;
+    }
+    this.onSubEventCapacityMaxChange(raw);
+    input.value = String(this.subEventForm.capacityMax);
+  }
+
+  protected optionalSubEventMainMax(): number | null {
+    if (!this.subEventForm.optional) {
+      return null;
+    }
+    return this.normalizedCapacityValue(this.eventForm.capacityMax);
+  }
+
+  protected onEventCapacityMinChange(value: number | string): void {
+    this.eventForm.capacityMin = this.toCapacityInputValue(value);
+    const normalizedMin = this.normalizedCapacityValue(this.eventForm.capacityMin);
+    const normalizedMax = this.normalizedCapacityValue(this.eventForm.capacityMax);
+    if (normalizedMin !== null && normalizedMax !== null && normalizedMax < normalizedMin) {
+      this.eventForm.capacityMax = normalizedMin;
+    }
+    this.enforceOpenSubEventCapacityAgainstMain();
+  }
+
+  protected onEventCapacityMaxChange(value: number | string): void {
+    this.eventForm.capacityMax = this.toCapacityInputValue(value);
+    const normalizedMin = this.normalizedCapacityValue(this.eventForm.capacityMin);
+    const normalizedMax = this.normalizedCapacityValue(this.eventForm.capacityMax);
+    if (normalizedMax !== null && normalizedMin !== null && normalizedMax < normalizedMin) {
+      this.eventForm.capacityMax = normalizedMin;
+    }
+    this.enforceOpenSubEventCapacityAgainstMain();
   }
 
   protected toggleAssetVisibilityPicker(event?: Event): void {
@@ -1609,6 +2596,7 @@ export class App {
     this.eventStartDateValue = value;
     this.syncEventFormFromDateTimeControls();
     this.normalizeEventDateRange();
+    this.enforceOpenSubEventDateAgainstMain();
     this.syncEventDateTimeControlsFromForm();
   }
 
@@ -1616,6 +2604,7 @@ export class App {
     this.eventEndDateValue = value;
     this.syncEventFormFromDateTimeControls();
     this.normalizeEventDateRange();
+    this.enforceOpenSubEventDateAgainstMain();
     this.syncEventDateTimeControlsFromForm();
   }
 
@@ -1623,6 +2612,7 @@ export class App {
     this.eventStartTimeValue = value;
     this.syncEventFormFromDateTimeControls();
     this.normalizeEventDateRange();
+    this.enforceOpenSubEventDateAgainstMain();
     this.syncEventDateTimeControlsFromForm();
   }
 
@@ -1630,16 +2620,24 @@ export class App {
     this.eventEndTimeValue = value;
     this.syncEventFormFromDateTimeControls();
     this.normalizeEventDateRange();
+    this.enforceOpenSubEventDateAgainstMain();
     this.syncEventDateTimeControlsFromForm();
   }
 
   protected saveEventEditorForm(): void {
     this.syncEventFormFromDateTimeControls();
+    const normalizedCapacity = this.normalizedEventCapacityRange();
+    this.eventForm.capacityMin = normalizedCapacity.min;
+    this.eventForm.capacityMax = normalizedCapacity.max;
+    this.normalizeExistingSubEventsCapacityAgainstMain();
+    this.normalizeExistingSubEventsDateAgainstMain();
     const title = this.eventForm.title.trim();
     const description = this.eventForm.description.trim();
     if (!title || !description || !this.eventForm.startAt || !this.eventForm.endAt) {
+      this.showEventEditorRequiredValidation = true;
       return;
     }
+    this.showEventEditorRequiredValidation = false;
     this.normalizeEventDateRange();
     if (this.editingEventId) {
       this.updateExistingEventFromForm();
@@ -1664,6 +2662,12 @@ export class App {
   private prepareEventEditorForm(mode: EventEditorMode, explicitSource?: EventMenuItem | HostingMenuItem): void {
     const source = this.resolveEventEditorSource(explicitSource);
     this.showSubEventForm = false;
+    this.subEventFormStageNumber = null;
+    this.showSubEventGroupForm = false;
+    this.showEventEditorRequiredValidation = false;
+    this.showSubEventRequiredValidation = false;
+    this.showSubEventGroupRequiredValidation = false;
+    this.subEventGroupForm = this.defaultSubEventGroupForm();
     const target = source && this.isHostingSource(source)
       ? 'hosting'
       : (this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'hosting' ? 'hosting' : 'events');
@@ -1705,15 +2709,19 @@ export class App {
     const fallbackStart = Number.isNaN(start.getTime()) ? new Date(this.defaultEventStartIso()) : start;
     const end = new Date(fallbackStart.getTime() + 2 * 60 * 60 * 1000);
     const frequency = this.parseFrequencyFromTimeframe(source.timeframe);
+    const capacity = this.eventCapacityById[source.id] ?? { min: null, max: null };
     return {
       title: source.title,
       description: source.shortDescription,
       imageUrl: this.defaultAssetImage('Supplies', `event-${source.id}`),
+      capacityMin: this.normalizedCapacityValue(capacity.min),
+      capacityMax: this.normalizedCapacityValue(capacity.max),
       startAt: this.toIsoDateTimeLocal(fallbackStart),
       endAt: this.toIsoDateTimeLocal(end),
       frequency,
       visibility: this.eventVisibilityById[source.id] ?? (target === 'hosting' ? 'Invitation only' : 'Public'),
       blindMode: this.eventBlindModeById[source.id] ?? 'Open Event',
+      autoInviter: this.eventAutoInviterById[source.id] ?? false,
       topics: [...this.eventEditor.mainEvent.topics].slice(0, 5),
       subEvents: this.cloneSubEvents(this.eventSubEventsById[source.id] ?? [])
     };
@@ -1728,6 +2736,8 @@ export class App {
     const shortDescription = this.eventForm.description.trim();
     this.eventVisibilityById[this.editingEventId] = this.eventForm.visibility;
     this.eventBlindModeById[this.editingEventId] = this.eventForm.blindMode;
+    this.eventAutoInviterById[this.editingEventId] = this.eventForm.autoInviter;
+    this.eventCapacityById[this.editingEventId] = this.normalizedEventCapacityRange();
     this.eventSubEventsById[this.editingEventId] = this.cloneSubEvents(this.eventForm.subEvents);
     if (this.eventEditorTarget === 'hosting') {
       this.hostingItemsByUser[this.activeUser.id] = this.hostingItems.map(item =>
@@ -1756,8 +2766,11 @@ export class App {
     if (this.eventEditorTarget === 'hosting') {
       const id = `h${baseId}`;
       this.hostingDatesById[id] = this.eventForm.startAt;
+      this.hostingPublishedById[id] = false;
       this.eventVisibilityById[id] = this.eventForm.visibility;
       this.eventBlindModeById[id] = this.eventForm.blindMode;
+      this.eventAutoInviterById[id] = this.eventForm.autoInviter;
+      this.eventCapacityById[id] = this.normalizedEventCapacityRange();
       this.eventSubEventsById[id] = this.cloneSubEvents(this.eventForm.subEvents);
       const next: HostingMenuItem = {
         id,
@@ -1775,6 +2788,8 @@ export class App {
     this.eventDatesById[id] = this.eventForm.startAt;
     this.eventVisibilityById[id] = this.eventForm.visibility;
     this.eventBlindModeById[id] = this.eventForm.blindMode;
+    this.eventAutoInviterById[id] = this.eventForm.autoInviter;
+    this.eventCapacityById[id] = this.normalizedEventCapacityRange();
     this.eventSubEventsById[id] = this.cloneSubEvents(this.eventForm.subEvents);
     const next: EventMenuItem = {
       id,
@@ -1798,11 +2813,14 @@ export class App {
       title: '',
       description: '',
       imageUrl: '',
+      capacityMin: null,
+      capacityMax: null,
       startAt: this.toIsoDateTimeLocal(start),
       endAt: this.toIsoDateTimeLocal(end),
       frequency: 'One-time',
       visibility: 'Invitation only',
       blindMode: 'Open Event',
+      autoInviter: false,
       topics: [],
       subEvents: []
     };
@@ -1842,20 +2860,40 @@ export class App {
     const baseStart = this.isoLocalDateTimeToDate(this.eventForm.startAt) ?? new Date();
     const start = new Date(baseStart);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
+    const mainMin = this.normalizedCapacityValue(this.eventForm.capacityMin);
+    const mainMax = this.normalizedCapacityValue(this.eventForm.capacityMax);
+    const initialMin = mainMax !== null ? Math.min(mainMin ?? 1, mainMax) : 4;
+    const initialMax = mainMax !== null ? mainMax : 6;
     return {
       id: '',
       name: '',
       description: '',
       startAt: this.toIsoDateTimeLocal(start),
       endAt: this.toIsoDateTimeLocal(end),
+      createdByUserId: this.activeUser.id,
+      groups: [],
       optional: true,
-      capacityMin: 4,
-      capacityMax: 6,
+      capacityMin: initialMin,
+      capacityMax: initialMax,
       membersAccepted: 0,
       membersPending: 0,
       carsPending: 0,
       accommodationPending: 0,
       suppliesPending: 0
+    };
+  }
+
+  private defaultSubEventGroupForm(
+    stage: SubEventFormItem | null = null,
+    options?: { stageTitle?: string; groupId?: string; groupName?: string }
+  ): { id: string; stageId: string; stageTitle: string; name: string } {
+    const stageId = stage?.id ?? '';
+    const existingGroups = stage ? this.materializedSubEventGroups(stage) : [];
+    return {
+      id: options?.groupId ?? '',
+      stageId,
+      stageTitle: options?.stageTitle ?? stage?.name ?? '',
+      name: options?.groupName ?? `Group ${existingGroups.length + 1}`
     };
   }
 
@@ -1874,19 +2912,283 @@ export class App {
   }
 
   private normalizeSubEventDateRange(): void {
-    const start = new Date(this.subEventForm.startAt);
-    const end = new Date(this.subEventForm.endAt);
+    let start = new Date(this.subEventForm.startAt);
+    let end = new Date(this.subEventForm.endAt);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       return;
     }
     if (end.getTime() <= start.getTime()) {
-      const nextEnd = new Date(start.getTime() + 60 * 60 * 1000);
-      this.subEventForm.endAt = this.toIsoDateTimeLocal(nextEnd);
+      end = new Date(start.getTime() + 60 * 60 * 1000);
     }
+
+    const mainStart = new Date(this.eventForm.startAt);
+    const mainEnd = new Date(this.eventForm.endAt);
+    if (!Number.isNaN(mainStart.getTime()) && !Number.isNaN(mainEnd.getTime())) {
+      const clampTime = (value: Date) => Math.min(Math.max(value.getTime(), mainStart.getTime()), mainEnd.getTime());
+      start = new Date(clampTime(start));
+      end = new Date(clampTime(end));
+      if (end.getTime() <= start.getTime()) {
+        const nextEnd = new Date(Math.min(mainEnd.getTime(), start.getTime() + 60 * 60 * 1000));
+        if (nextEnd.getTime() > start.getTime()) {
+          end = nextEnd;
+        } else {
+          start = new Date(Math.max(mainStart.getTime(), mainEnd.getTime() - 60 * 60 * 1000));
+          end = new Date(mainEnd);
+        }
+      }
+    }
+    this.subEventForm.startAt = this.toIsoDateTimeLocal(start);
+    this.subEventForm.endAt = this.toIsoDateTimeLocal(end);
   }
 
   private cloneSubEvents(items: SubEventFormItem[]): SubEventFormItem[] {
-    return items.map(item => ({ ...item }));
+    return items.map(item => ({
+      ...item,
+      groups: this.cloneSubEventGroups(item.groups)
+    }));
+  }
+
+  private cloneSubEventGroups(groups: SubEventGroupItem[] | undefined): SubEventGroupItem[] {
+    if (!groups || groups.length === 0) {
+      return [];
+    }
+    return groups.map(group => ({ ...group }));
+  }
+
+  private subEventGroupsForStage(item: SubEventFormItem): SubEventGroupItem[] {
+    if (item.groups && item.groups.length > 0) {
+      return this.cloneSubEventGroups(item.groups);
+    }
+    const stageId = item.id || `stage-${Math.random().toString(36).slice(2, 7)}`;
+    return this.createDefaultSubEventGroups(stageId, this.subEventTournamentGroupCount(item));
+  }
+
+  private materializedSubEventGroups(item: SubEventFormItem): SubEventGroupItem[] {
+    if (item.groups && item.groups.length > 0) {
+      return this.cloneSubEventGroups(item.groups);
+    }
+    const stageId = item.id || `stage-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    return this.createDefaultSubEventGroups(stageId, this.subEventTournamentGroupCount(item));
+  }
+
+  private createDefaultSubEventGroups(stageId: string, count: number): SubEventGroupItem[] {
+    const safeCount = this.clampNumber(count, 1, 24);
+    return Array.from({ length: safeCount }, (_, groupIndex) => ({
+      id: `grp-${stageId}-${groupIndex + 1}`,
+      name: `Group ${groupIndex + 1}`
+    }));
+  }
+
+  private patchSubEventGroups(stageId: string, groups: SubEventGroupItem[]): void {
+    this.eventForm.subEvents = this.eventForm.subEvents.map(item => {
+      if (item.id !== stageId) {
+        return item;
+      }
+      return {
+        ...item,
+        groups: this.cloneSubEventGroups(groups)
+      };
+    });
+  }
+
+  private openSubEventGroupEditor(item: SubEventFormItem, group: SubEventTournamentGroup): void {
+    const stageIndex = this.eventForm.subEvents.findIndex(entry => entry.id === item.id);
+    const stageLabel = stageIndex >= 0 ? `Stage ${stageIndex + 1} · ${item.name}` : item.name;
+    this.subEventGroupForm = this.defaultSubEventGroupForm(item, {
+      stageTitle: stageLabel,
+      groupId: group.id,
+      groupName: group.groupLabel
+    });
+    this.showSubEventGroupRequiredValidation = false;
+    this.showSubEventForm = false;
+    this.showSubEventGroupForm = true;
+  }
+
+  private appendCurrentSubEventGroupIfValid(): boolean {
+    const stageId = this.subEventGroupForm.stageId;
+    const nextName = this.subEventGroupForm.name.trim();
+    if (!stageId || !nextName) {
+      return false;
+    }
+    const stage = this.eventForm.subEvents.find(item => item.id === stageId);
+    if (!stage) {
+      return false;
+    }
+    const existingGroups = this.materializedSubEventGroups(stage);
+    const existingId = this.subEventGroupForm.id;
+    const nextId = existingId || `grp-${stageId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const nextEntry: SubEventGroupItem = {
+      id: nextId,
+      name: nextName
+    };
+    let nextGroups: SubEventGroupItem[];
+    if (existingId && existingGroups.some(group => group.id === existingId)) {
+      nextGroups = existingGroups.map(group => group.id === existingId ? nextEntry : group);
+    } else {
+      nextGroups = [...existingGroups, nextEntry];
+    }
+    this.patchSubEventGroups(stageId, nextGroups);
+    return true;
+  }
+
+  private tournamentPageRangeLabelFromMs(startMs: number, endMs: number): string {
+    const start = new Date(startMs);
+    const end = new Date(endMs);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return 'Date pending';
+    }
+    const nowYear = new Date().getFullYear();
+    const includeYearStart = start.getFullYear() !== nowYear || start.getFullYear() !== end.getFullYear();
+    const includeYearEnd = end.getFullYear() !== nowYear || start.getFullYear() !== end.getFullYear();
+    const startLabel = start.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      ...(includeYearStart ? { year: 'numeric' } : {})
+    });
+    const endLabel = end.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      ...(includeYearEnd ? { year: 'numeric' } : {})
+    });
+    return `${startLabel} - ${endLabel}`;
+  }
+
+  private subEventCreatorId(item: SubEventFormItem): string {
+    return item.createdByUserId ?? this.activeUser.id;
+  }
+
+  private resolveSubEventStageNumber(subEventId: string): number | null {
+    const index = this.eventForm.subEvents.findIndex(item => item.id === subEventId);
+    if (index < 0) {
+      return null;
+    }
+    return index + 1;
+  }
+
+  private subEventStagePageSize(): number {
+    return this.isSubEventSwipeViewport ? 1 : 3;
+  }
+
+  protected get isSubEventSwipeViewport(): boolean {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return window.matchMedia('(max-width: 760px)').matches;
+  }
+
+  private subEventDesktopPageStarts(totalStages: number): number[] {
+    const visibleColumns = 3;
+    if (totalStages <= 0) {
+      return [0];
+    }
+    if (totalStages <= visibleColumns) {
+      return [0];
+    }
+    const starts: number[] = [0];
+    const lastStart = totalStages - visibleColumns;
+    for (let start = visibleColumns; start < lastStart; start += visibleColumns) {
+      starts.push(start);
+    }
+    if (starts[starts.length - 1] !== lastStart) {
+      starts.push(lastStart);
+    }
+    return starts;
+  }
+
+  private subEventDesktopNearestStartIndex(values: number[], currentValue: number): number {
+    if (values.length === 0) {
+      return 0;
+    }
+    let nearestIndex = 0;
+    let nearestDiff = Number.POSITIVE_INFINITY;
+    for (let index = 0; index < values.length; index += 1) {
+      const diff = Math.abs(values[index] - currentValue);
+      if (diff < nearestDiff) {
+        nearestDiff = diff;
+        nearestIndex = index;
+      }
+    }
+    return nearestIndex;
+  }
+
+  private subEventDesktopPageOffsets(scrollElement: HTMLElement, starts: number[]): number[] {
+    const stageOffsets = this.subEventDesktopStageOffsets(scrollElement);
+    const maxIndex = Math.max(0, stageOffsets.length - 1);
+    if (stageOffsets.length === 0) {
+      return starts.map(() => 0);
+    }
+    return starts.map(start => stageOffsets[this.clampNumber(start, 0, maxIndex)] ?? 0);
+  }
+
+  private subEventDesktopStageOffsets(scrollElement: HTMLElement): number[] {
+    const columns = Array.from(
+      scrollElement.querySelectorAll<HTMLElement>('.subevent-stage-column:not(.subevent-stage-column-placeholder)')
+    );
+    if (columns.length === 0) {
+      return [];
+    }
+    const scrollRect = scrollElement.getBoundingClientRect();
+    return columns.map((column, index) => {
+      const left = column.getBoundingClientRect().left - scrollRect.left + scrollElement.scrollLeft;
+      if (Number.isFinite(left)) {
+        return Math.max(0, left);
+      }
+      return Math.max(0, index * (scrollElement.clientWidth || 1));
+    });
+  }
+
+  private subEventVisibleStagesForRangeLabel(): SubEventTournamentStage[] {
+    const pages = this.subEventTournamentStagePages;
+    if (this.isSubEventSwipeViewport) {
+      return pages[this.subEventStagePageIndex] ?? pages[0] ?? [];
+    }
+    const stages = this.subEventTournamentStages;
+    const starts = this.subEventDesktopPageStarts(stages.length);
+    const start = starts[this.subEventStagePageIndex] ?? 0;
+    return stages.slice(start, start + 3);
+  }
+
+  private subEventTournamentGroupCount(item: SubEventFormItem): number {
+    const normalizedMax = Math.max(1, Number(item.capacityMax) || 1);
+    return this.clampNumber(Math.ceil(normalizedMax / 2), 2, 8);
+  }
+
+  private resolveCurrentTournamentStageNumber(items: SubEventFormItem[]): number {
+    if (items.length === 0) {
+      return 1;
+    }
+    const now = Date.now();
+    for (let index = 0; index < items.length; index += 1) {
+      const start = new Date(items[index].startAt).getTime();
+      const end = new Date(items[index].endAt).getTime();
+      if (Number.isNaN(start) || Number.isNaN(end)) {
+        continue;
+      }
+      if (start <= now && now <= end) {
+        return index + 1;
+      }
+    }
+    for (let index = 0; index < items.length; index += 1) {
+      const start = new Date(items[index].startAt).getTime();
+      if (!Number.isNaN(start) && start > now) {
+        return index + 1;
+      }
+    }
+    return items.length;
+  }
+
+  private resetSubEventStagePaging(): void {
+    this.subEventStagePageIndex = 0;
+    setTimeout(() => {
+      const scrollElement = this.subEventStagesScrollRef?.nativeElement;
+      if (!scrollElement) {
+        return;
+      }
+      const previousBehavior = scrollElement.style.scrollBehavior;
+      scrollElement.style.scrollBehavior = 'auto';
+      scrollElement.scrollLeft = 0;
+      scrollElement.style.scrollBehavior = previousBehavior;
+    }, 0);
   }
 
   private appendCurrentSubEventIfValid(): boolean {
@@ -1899,30 +3201,54 @@ export class App {
     this.normalizeSubEventDateRange();
     const fallbackStart = this.subEventForm.startAt || this.eventForm.startAt || this.defaultEventStartIso();
     const fallbackEnd = this.subEventForm.endAt || this.eventForm.endAt || this.defaultEventStartIso();
+    this.normalizeSubEventCapacityRange(true);
+    const mainMax = this.normalizedCapacityValue(this.eventForm.capacityMax);
+    const mainMin = this.normalizedCapacityValue(this.eventForm.capacityMin);
+    const nextCapacityMin = this.subEventForm.optional
+      ? this.subEventForm.capacityMin
+      : (mainMax !== null ? Math.min(mainMin ?? 1, mainMax) : this.subEventForm.capacityMin);
+    const nextCapacityMax = this.subEventForm.optional
+      ? this.subEventForm.capacityMax
+      : (mainMax !== null ? mainMax : this.subEventForm.capacityMax);
+    const existingId = this.subEventForm.id;
+    const creatorId = this.subEventForm.createdByUserId ?? this.activeUser.id;
+    const nextSubEventId = existingId || `se-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const existingItem = existingId ? this.eventForm.subEvents.find(item => item.id === existingId) : null;
+    const fallbackGroupCount = this.clampNumber(Math.ceil(Math.max(1, Number(nextCapacityMax) || 1) / 2), 2, 8);
+    const fallbackGroups = this.createDefaultSubEventGroups(nextSubEventId, fallbackGroupCount);
+    const groupsSource = this.subEventForm.groups?.length
+      ? this.subEventForm.groups
+      : (existingItem?.groups?.length ? existingItem.groups : fallbackGroups);
     const next: SubEventFormItem = {
       ...this.subEventForm,
-      id: `se-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id: nextSubEventId,
       name,
       description,
       startAt: fallbackStart,
       endAt: fallbackEnd,
-      capacityMin: Math.max(1, Number(this.subEventForm.capacityMin) || 1),
+      createdByUserId: creatorId,
+      groups: this.cloneSubEventGroups(groupsSource),
+      capacityMin: Math.max(1, Number(nextCapacityMin) || 1),
       capacityMax: Math.max(
-        Math.max(1, Number(this.subEventForm.capacityMin) || 1),
-        Number(this.subEventForm.capacityMax) || Math.max(1, Number(this.subEventForm.capacityMin) || 1)
+        Math.max(1, Number(nextCapacityMin) || 1),
+        Number(nextCapacityMax) || Math.max(1, Number(nextCapacityMin) || 1)
       ),
-      membersAccepted: Math.min(2, Math.max(1, Number(this.subEventForm.capacityMin) || 1)),
+      membersAccepted: Math.min(2, Math.max(1, Number(nextCapacityMin) || 1)),
       membersPending: Math.max(
         0,
         Math.max(
-          Math.max(1, Number(this.subEventForm.capacityMin) || 1),
-          Number(this.subEventForm.capacityMax) || Math.max(1, Number(this.subEventForm.capacityMin) || 1)
-        ) - Math.min(2, Math.max(1, Number(this.subEventForm.capacityMin) || 1))
+          Math.max(1, Number(nextCapacityMin) || 1),
+          Number(nextCapacityMax) || Math.max(1, Number(nextCapacityMin) || 1)
+        ) - Math.min(2, Math.max(1, Number(nextCapacityMin) || 1))
       ),
       carsPending: 1,
       accommodationPending: 2,
       suppliesPending: 3
     };
+    if (existingId && this.eventForm.subEvents.some(item => item.id === existingId)) {
+      this.eventForm.subEvents = this.eventForm.subEvents.map(item => item.id === existingId ? next : item);
+      return true;
+    }
     this.eventForm.subEvents = [...this.eventForm.subEvents, next];
     return true;
   }
@@ -1945,6 +3271,128 @@ export class App {
       options.push('Bi-weekly', 'Monthly');
     }
     return options;
+  }
+
+  private toCapacityInputValue(value: number | string): number | null {
+    if (value === '' || value === null || value === undefined) {
+      return null;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+    return Math.max(1, Math.trunc(parsed));
+  }
+
+  private normalizedCapacityValue(value: number | null | undefined): number | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+    return Math.max(1, Math.trunc(parsed));
+  }
+
+  private normalizedEventCapacityRange(): EventCapacityRange {
+    const min = this.normalizedCapacityValue(this.eventForm.capacityMin);
+    const max = this.normalizedCapacityValue(this.eventForm.capacityMax);
+    if (min !== null && max !== null && max < min) {
+      return { min, max: min };
+    }
+    return { min, max };
+  }
+
+  private normalizeSubEventCapacityRange(syncMainWhenMissing: boolean): void {
+    let min = Math.max(1, Number(this.subEventForm.capacityMin) || 1);
+    let max = Math.max(1, Number(this.subEventForm.capacityMax) || min);
+    const mainMax = this.normalizedCapacityValue(this.eventForm.capacityMax);
+    if (this.subEventForm.optional && mainMax !== null) {
+      max = Math.min(max, mainMax);
+    }
+    if (max < min) {
+      min = max;
+    }
+    this.subEventForm.capacityMin = min;
+    this.subEventForm.capacityMax = max;
+    if (this.subEventForm.optional && syncMainWhenMissing && mainMax === null) {
+      this.eventForm.capacityMin = min;
+      this.eventForm.capacityMax = max;
+    }
+  }
+
+  private enforceOpenSubEventCapacityAgainstMain(): void {
+    if (!this.showSubEventForm || !this.subEventForm.optional) {
+      return;
+    }
+    this.normalizeSubEventCapacityRange(false);
+  }
+
+  private enforceOpenSubEventDateAgainstMain(): void {
+    if (!this.showSubEventForm) {
+      return;
+    }
+    this.syncSubEventFormFromDateTimeControls();
+    this.normalizeSubEventDateRange();
+    this.syncSubEventDateTimeControlsFromForm();
+  }
+
+  private normalizeExistingSubEventsCapacityAgainstMain(): void {
+    const mainMax = this.normalizedCapacityValue(this.eventForm.capacityMax);
+    if (mainMax === null) {
+      return;
+    }
+    const mainMin = this.normalizedCapacityValue(this.eventForm.capacityMin) ?? 1;
+    this.eventForm.subEvents = this.eventForm.subEvents.map(item => {
+      if (!item.optional) {
+        return {
+          ...item,
+          capacityMin: Math.min(mainMin, mainMax),
+          capacityMax: mainMax
+        };
+      }
+      const clampedMax = Math.min(Math.max(item.capacityMax, 1), mainMax);
+      const clampedMin = Math.min(Math.max(item.capacityMin, 1), clampedMax);
+      return {
+        ...item,
+        capacityMin: clampedMin,
+        capacityMax: clampedMax
+      };
+    });
+  }
+
+  private normalizeExistingSubEventsDateAgainstMain(): void {
+    const mainStart = new Date(this.eventForm.startAt);
+    const mainEnd = new Date(this.eventForm.endAt);
+    if (Number.isNaN(mainStart.getTime()) || Number.isNaN(mainEnd.getTime())) {
+      return;
+    }
+    const clampTime = (value: Date) => Math.min(Math.max(value.getTime(), mainStart.getTime()), mainEnd.getTime());
+    this.eventForm.subEvents = this.eventForm.subEvents.map(item => {
+      let start = new Date(item.startAt);
+      let end = new Date(item.endAt);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        start = new Date(mainStart);
+        end = new Date(Math.min(mainEnd.getTime(), mainStart.getTime() + 60 * 60 * 1000));
+      }
+      start = new Date(clampTime(start));
+      end = new Date(clampTime(end));
+      if (end.getTime() <= start.getTime()) {
+        const nextEnd = new Date(Math.min(mainEnd.getTime(), start.getTime() + 60 * 60 * 1000));
+        if (nextEnd.getTime() > start.getTime()) {
+          end = nextEnd;
+        } else {
+          start = new Date(Math.max(mainStart.getTime(), mainEnd.getTime() - 60 * 60 * 1000));
+          end = new Date(mainEnd);
+        }
+      }
+      return {
+        ...item,
+        startAt: this.toIsoDateTimeLocal(start),
+        endAt: this.toIsoDateTimeLocal(end)
+      };
+    });
   }
 
   private parseFrequencyFromTimeframe(timeframe: string): string {
@@ -2061,6 +3509,7 @@ export class App {
     this.syncProfileFormFromActiveUser();
     this.popupReturnTarget = null;
     this.showProfileStatusHeaderPicker = false;
+    this.showUserSettingsMenu = false;
     this.activePopup = 'profileEditor';
   }
 
@@ -2091,14 +3540,29 @@ export class App {
     this.pendingAssetDeleteCardId = null;
     this.pendingAssetMemberAction = null;
     this.selectedAssetCardId = null;
+    this.selectedSubEventBadgeContext = null;
+    this.subEventBadgePopupOrigin = null;
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
     this.showEventVisibilityPicker = false;
     this.showAssetVisibilityPicker = false;
     this.showProfileStatusHeaderPicker = false;
     this.pendingActivityDeleteRow = null;
+    this.pendingActivityPublishRow = null;
+    this.pendingSubEventDeleteId = null;
+    this.eventEditorClosePublishConfirmContext = null;
+    this.showSubEventForm = false;
+    this.subEventFormStageNumber = null;
+    this.showSubEventGroupForm = false;
+    this.showSubEventOptionalPicker = false;
+    this.showSubEventRequiredValidation = false;
+    this.showSubEventGroupRequiredValidation = false;
+    this.subEventGroupForm = this.defaultSubEventGroupForm();
     this.pendingActivityAction = 'delete';
     this.pendingActivityMemberDelete = null;
+    this.activityMembersPopupOrigin = null;
+    this.inlineItemActionMenu = null;
+    this.activityMembersReadOnly = false;
     this.selectedActivityMembers = [];
     this.selectedActivityMembersTitle = '';
     this.selectedActivityMembersRowId = null;
@@ -2109,13 +3573,48 @@ export class App {
     this.clearActivityRateEditorState();
     this.cancelActivitiesPaginationLoad();
     this.clearActivitiesHeaderLoadingAnimation();
+    this.cancelEventExplorePaginationLoad();
+    this.clearEventExploreHeaderLoadingAnimation();
     this.clearActivitiesCalendarBadgeDelay();
     this.activitiesPaginationKey = '';
     this.activitiesVisibleCount = this.activitiesPageSize;
     this.activitiesHeaderProgress = 0;
+    this.eventExplorePaginationKey = '';
+    this.eventExploreVisibleCount = this.activitiesPageSize;
+    this.eventExploreHeaderProgress = 0;
+    this.eventExploreStickyValue = '';
+  }
+
+  protected closePopupFromBackdrop(event: MouseEvent): void {
+    event.stopPropagation();
+    this.closePopup();
   }
 
   protected closeStackedPopup(): void {
+    this.pendingSubEventDeleteId = null;
+    this.eventEditorClosePublishConfirmContext = null;
+    this.inlineItemActionMenu = null;
+    this.subEventFormStageNumber = null;
+    this.showSubEventGroupForm = false;
+    this.showSubEventGroupRequiredValidation = false;
+    this.showEventExploreOrderPicker = false;
+    this.cancelEventExplorePaginationLoad();
+    this.clearEventExploreHeaderLoadingAnimation();
+    this.eventExploreHeaderProgress = 0;
+    if (this.superStackedPopup === 'impressionsHost') {
+      this.superStackedPopup = null;
+      return;
+    }
+    if (this.stackedPopup === 'subEventMembers' || this.stackedPopup === 'subEventAssets') {
+      this.selectedSubEventBadgeContext = null;
+      if (this.subEventBadgePopupOrigin === 'stacked-event-editor') {
+        this.stackedPopup = 'eventEditor';
+      } else {
+        this.stackedPopup = null;
+      }
+      this.subEventBadgePopupOrigin = null;
+      return;
+    }
     if (this.stackedPopup === 'valuesSelector') {
       this.valuesSelectorContext = null;
       this.valuesSelectorSelected = [];
@@ -2136,6 +3635,7 @@ export class App {
     }
     if (this.stackedPopup === 'activityMembers') {
       this.pendingActivityMemberDelete = null;
+      this.activityMembersReadOnly = false;
       this.selectedActivityMembers = [];
       this.selectedActivityMembersTitle = '';
       this.selectedActivityMembersRowId = null;
@@ -2143,8 +3643,19 @@ export class App {
       this.selectedActivityInviteUserIds = [];
       this.showActivityInviteSortPicker = false;
       this.superStackedPopup = null;
+      if (this.activityMembersPopupOrigin === 'event-explore') {
+        this.activityMembersPopupOrigin = null;
+        this.stackedPopup = 'eventExplore';
+        return;
+      }
+      if (this.activityMembersPopupOrigin === 'stacked-event-editor') {
+        this.activityMembersPopupOrigin = null;
+        this.stackedPopup = 'eventEditor';
+        return;
+      }
+      this.activityMembersPopupOrigin = null;
     }
-    if (this.superStackedPopup === 'eventTopicsSelector') {
+    if (this.superStackedPopup === 'eventTopicsSelector' || this.superStackedPopup === 'eventSubEvents') {
       this.superStackedPopup = null;
     }
     this.stackedPopup = null;
@@ -2159,28 +3670,154 @@ export class App {
     this.activePopup = null;
     this.stackedPopup = null;
     this.popupReturnTarget = null;
-    if (!environment.loginEnabled) {
-      this.showUserSelector = true;
+    this.showUserMenu = false;
+    this.showUserSettingsMenu = false;
+    this.showUserSelector = false;
+    this.showFirebaseAuthPopup = false;
+    if (this.authMode === 'firebase') {
+      localStorage.removeItem(App.FIREBASE_AUTH_PROFILE_KEY);
+      this.firebaseAuthProfile = null;
+      this.showEntryShell = true;
+      return;
     }
+    localStorage.removeItem(App.DEMO_ACTIVE_USER_KEY);
+    this.showEntryShell = true;
   }
 
   protected selectLoginUser(userId: string): void {
     this.activeUserId = userId;
-    localStorage.setItem('demo-active-user', userId);
+    localStorage.setItem(App.DEMO_ACTIVE_USER_KEY, userId);
     this.syncProfileFormFromActiveUser();
     this.activeMenuSection = 'chat';
     window.dispatchEvent(new CustomEvent('active-user-changed'));
-    this.showUserSelector = false;
-    this.activePopup = null;
-    this.stackedPopup = null;
-    this.popupReturnTarget = null;
-    this.clearActivityRateEditorState();
-    this.router.navigate(['/game']);
+    this.completeEntryFlow();
   }
 
   protected openUserSelector(): void {
+    if (this.authMode === 'firebase') {
+      this.showFirebaseAuthPopup = true;
+      this.closeUserMenu();
+      return;
+    }
     this.showUserSelector = true;
     this.closeUserMenu();
+  }
+
+  protected openEntryAuth(): void {
+    if (!this.showEntryShell) {
+      return;
+    }
+    if (!this.hasEntryConsent) {
+      this.entryConsentViewOnly = false;
+      this.showEntryConsentPopup = true;
+      return;
+    }
+    if (this.authMode === 'firebase') {
+      if (this.firebaseAuthProfile) {
+        this.completeEntryFlow();
+        return;
+      }
+      this.showFirebaseAuthPopup = true;
+      return;
+    }
+    this.showUserSelector = true;
+  }
+
+  protected closeFirebaseAuthPopup(): void {
+    this.showFirebaseAuthPopup = false;
+    this.firebaseAuthIsBusy = false;
+  }
+
+  protected closeDemoUserSelectorPopup(): void {
+    this.showUserSelector = false;
+  }
+
+  protected scrollEntryTo(sectionId: string, event?: Event): void {
+    event?.preventDefault();
+    const target = document.getElementById(sectionId);
+    if (!target) {
+      return;
+    }
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  protected continueWithFirebaseAuth(): void {
+    if (this.firebaseAuthIsBusy) {
+      return;
+    }
+    this.firebaseAuthIsBusy = true;
+    const user = this.activeUser;
+    const profile: FirebaseAuthProfile = {
+      id: `oauth-${Date.now()}`,
+      name: user.name,
+      email: `${user.id}@myscoutee.local`,
+      initials: user.initials
+    };
+    localStorage.setItem(App.FIREBASE_AUTH_PROFILE_KEY, JSON.stringify(profile));
+    localStorage.setItem(App.DEMO_ACTIVE_USER_KEY, this.activeUserId);
+    this.firebaseAuthProfile = profile;
+    this.firebaseAuthIsBusy = false;
+    this.completeEntryFlow();
+  }
+
+  protected get isFirebaseAuthMode(): boolean {
+    return this.authMode === 'firebase';
+  }
+
+  protected get entryAuthButtonShowsAvatar(): boolean {
+    return this.isFirebaseAuthMode && !!this.firebaseAuthProfile;
+  }
+
+  protected get entryAuthButtonIcon(): string {
+    if (this.authMode === 'selector') {
+      return 'group';
+    }
+    return 'login';
+  }
+
+  protected get entryAuthButtonLabel(): string {
+    if (this.entryAuthButtonShowsAvatar) {
+      return this.firebaseAuthProfile?.name ?? 'Continue';
+    }
+    return 'Login';
+  }
+
+  protected get hasEntryConsent(): boolean {
+    return this.loadEntryConsentState() !== null;
+  }
+
+  protected openEntryConsentPopup(viewOnly = false): void {
+    this.entryConsentViewOnly = viewOnly;
+    this.showEntryConsentPopup = true;
+  }
+
+  protected closeEntryConsentPopup(): void {
+    if (!this.entryConsentViewOnly && !this.hasEntryConsent) {
+      return;
+    }
+    this.showEntryConsentPopup = false;
+    this.entryConsentViewOnly = false;
+  }
+
+  protected acceptEntryConsent(): void {
+    const nowIso = new Date().toISOString();
+    const consent: EntryConsentState = {
+      version: App.ENTRY_CONSENT_VERSION,
+      accepted: true,
+      acceptedAtIso: nowIso
+    };
+    localStorage.setItem(App.ENTRY_CONSENT_KEY, JSON.stringify(consent));
+    this.appendEntryConsentAudit('accepted', nowIso);
+    this.showEntryConsentPopup = false;
+    this.entryConsentViewOnly = false;
+  }
+
+  protected rejectEntryConsent(): void {
+    const nowIso = new Date().toISOString();
+    localStorage.removeItem(App.ENTRY_CONSENT_KEY);
+    this.appendEntryConsentAudit('rejected', nowIso);
+    this.showEntryConsentPopup = false;
+    this.entryConsentViewOnly = false;
   }
 
   protected getPopupTitle(): string {
@@ -2221,6 +3858,10 @@ export class App {
         return 'Upload Image';
       case 'supplyDetail':
         return `${this.selectedSupplyContext?.type ?? 'Supply'} · ${this.selectedSupplyContext?.subEventTitle ?? ''}`.trim();
+      case 'subEventMembers':
+        return `Members · ${this.selectedSubEventBadgeContext?.subEvent.name ?? ''}`.trim();
+      case 'subEventAssets':
+        return `${this.subEventResourceFilter} · ${this.selectedSubEventBadgeContext?.subEvent.name ?? ''}`.trim();
       case 'invitations':
         return 'Invitations';
       case 'events':
@@ -2229,6 +3870,8 @@ export class App {
         return 'Hosting';
       case 'logoutConfirm':
         return 'Kilépés';
+      case 'gdpr':
+        return 'Privacy';
       default:
         return '';
     }
@@ -2254,6 +3897,10 @@ export class App {
         return 'Event Explore';
       case 'supplyDetail':
         return `${this.selectedSupplyContext?.type ?? 'Supply'} · ${this.selectedSupplyContext?.subEventTitle ?? ''}`.trim();
+      case 'subEventMembers':
+        return `Members · ${this.selectedSubEventBadgeContext?.subEvent.name ?? ''}`.trim();
+      case 'subEventAssets':
+        return `${this.subEventResourceFilter} · ${this.selectedSubEventBadgeContext?.subEvent.name ?? ''}`.trim();
       case 'valuesSelector':
         return 'Values';
       case 'interestSelector':
@@ -3974,6 +5621,7 @@ export class App {
     } else if (this.activitiesPrimaryFilter === 'hosting') {
       rows = this.eventItems
         .filter(item => item.isAdmin)
+        .filter(item => this.hostingPublicationFilter === 'drafts' ? !this.isHostingPublished(item.id) : this.isHostingPublished(item.id))
         .map(item => ({
         id: item.id,
         type: 'hosting',
@@ -4059,6 +5707,7 @@ export class App {
       this.activeUserId,
       this.activitiesPrimaryFilter,
       this.activitiesSecondaryFilter,
+      this.hostingPublicationFilter,
       this.activitiesRateFilter,
       this.activitiesView,
       this.calendarRowsSignature(rows),
@@ -4083,6 +5732,7 @@ export class App {
       this.activeUserId,
       this.activitiesPrimaryFilter,
       this.activitiesSecondaryFilter,
+      this.hostingPublicationFilter,
       this.activitiesRateFilter,
       this.activitiesView,
       this.calendarRowsSignature(rows),
@@ -4197,6 +5847,9 @@ export class App {
     if (this.activitiesPrimaryFilter === 'rates') {
       return 'No rate interactions for this filter yet.';
     }
+    if (this.activitiesPrimaryFilter === 'hosting' && this.hostingPublicationFilter === 'drafts') {
+      return 'No drafts in hosting yet.';
+    }
     return `No ${this.activitiesPrimaryFilter} items in this filter.`;
   }
 
@@ -4250,6 +5903,7 @@ export class App {
 
   protected selectActivitiesPrimaryFilter(filter: ActivitiesPrimaryFilter): void {
     this.activitiesPrimaryFilter = filter;
+    this.hostingPublicationFilter = 'published';
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
     if (filter === 'rates') {
@@ -4258,12 +5912,31 @@ export class App {
     } else {
       this.selectedActivityRateId = null;
     }
+    this.releaseActiveElementFocus();
     this.resetActivitiesScroll();
+  }
+
+  protected selectHostingPublicationFilter(filter: HostingPublicationFilter): void {
+    if (this.activitiesPrimaryFilter !== 'hosting' || this.hostingPublicationFilter === filter) {
+      return;
+    }
+    this.hostingPublicationFilter = filter;
+    this.releaseActiveElementFocus();
+    this.resetActivitiesScroll();
+  }
+
+  protected isHostingPublicationFilterVisible(): boolean {
+    return this.activitiesPrimaryFilter === 'hosting';
+  }
+
+  protected hostingDraftCount(): number {
+    return this.eventItems.filter(item => item.isAdmin && !this.isHostingPublished(item.id)).length;
   }
 
   protected selectActivitiesSecondaryFilter(filter: ActivitiesSecondaryFilter): void {
     this.activitiesSecondaryFilter = filter;
     this.showActivitiesSecondaryPicker = false;
+    this.releaseActiveElementFocus();
     this.resetActivitiesScroll();
   }
 
@@ -4275,7 +5948,16 @@ export class App {
     this.activitiesRateFilter = filter;
     this.selectedActivityRateId = null;
     this.showActivitiesSecondaryPicker = false;
+    this.releaseActiveElementFocus();
     this.resetActivitiesScroll();
+  }
+
+  protected shouldShowActivitiesExploreAction(): boolean {
+    return this.activitiesPrimaryFilter === 'events';
+  }
+
+  protected shouldShowActivitiesCreateAction(): boolean {
+    return this.activitiesPrimaryFilter === 'hosting';
   }
 
   protected toggleActivitiesViewPicker(event: Event): void {
@@ -4301,6 +5983,402 @@ export class App {
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
     this.resetActivitiesScroll(view === 'month' || view === 'week');
+  }
+
+  protected toggleEventExploreOrderPicker(event: Event): void {
+    event.stopPropagation();
+    this.showEventExploreOrderPicker = !this.showEventExploreOrderPicker;
+  }
+
+  protected selectEventExploreOrder(order: EventExploreOrder, event?: Event): void {
+    event?.stopPropagation();
+    this.eventExploreOrder = order;
+    this.showEventExploreOrderPicker = false;
+    this.eventExploreStickyValue = '';
+    this.resetEventExploreScroll();
+  }
+
+  protected toggleEventExploreFriendsOnly(event?: Event): void {
+    event?.stopPropagation();
+    this.eventExploreFilterFriendsOnly = !this.eventExploreFilterFriendsOnly;
+    this.eventExploreStickyValue = '';
+    this.resetEventExploreScroll();
+  }
+
+  protected toggleEventExploreHasRooms(event?: Event): void {
+    event?.stopPropagation();
+    this.eventExploreFilterHasRooms = !this.eventExploreFilterHasRooms;
+    this.eventExploreStickyValue = '';
+    this.resetEventExploreScroll();
+  }
+
+  protected openEventExploreTopicFilterPopup(event: Event): void {
+    event.stopPropagation();
+    this.superStackedPopup = 'eventExploreTopicFilter';
+  }
+
+  protected closeEventExploreTopicFilterPopup(): void {
+    if (this.superStackedPopup === 'eventExploreTopicFilter') {
+      this.superStackedPopup = null;
+    }
+  }
+
+  protected selectEventExploreTopicFilter(topic: string, event?: Event): void {
+    event?.stopPropagation();
+    const nextTopic = this.normalizeText(topic) === this.normalizeText(this.eventExploreFilterTopic) ? '' : topic;
+    this.eventExploreFilterTopic = nextTopic;
+    this.eventExploreStickyValue = '';
+    this.resetEventExploreScroll();
+  }
+
+  protected eventExploreTopicFilterLabel(): string {
+    if (!this.eventExploreFilterTopic) {
+      return 'Topic';
+    }
+    return `#${this.eventExploreTopicLabel(this.eventExploreFilterTopic)}`;
+  }
+
+  protected get eventExploreTopicFilterGroups(): Array<{ title: string; shortTitle: string; icon: string; toneClass: string; options: string[] }> {
+    return this.interestOptionGroups.map(group => ({
+      title: group.title,
+      shortTitle: group.shortTitle,
+      icon: group.icon,
+      toneClass: group.toneClass,
+      options: [...group.options]
+    }));
+  }
+
+  protected eventExploreOrderLabel(order: EventExploreOrder = this.eventExploreOrder): string {
+    return this.eventExploreOrderOptions.find(option => option.key === order)?.label ?? 'Upcoming';
+  }
+
+  protected eventExploreOrderIcon(order: EventExploreOrder = this.eventExploreOrder): string {
+    return this.eventExploreOrderOptions.find(option => option.key === order)?.icon ?? 'event_upcoming';
+  }
+
+  protected eventExploreOrderClass(order: EventExploreOrder = this.eventExploreOrder): string {
+    if (order === 'upcoming') {
+      return 'event-explore-order-upcoming';
+    }
+    if (order === 'past-events') {
+      return 'event-explore-order-past-events';
+    }
+    if (order === 'nearby') {
+      return 'event-explore-order-nearby';
+    }
+    if (order === 'top-rated') {
+      return 'event-explore-order-top-rated';
+    }
+    return 'event-explore-order-most-relevant';
+  }
+
+  protected get eventExploreStickyHeader(): string {
+    if (this.eventExploreStickyValue) {
+      return this.eventExploreStickyValue;
+    }
+    return this.eventExploreGroupedCards[0]?.label ?? 'No items';
+  }
+
+  protected onEventExploreScroll(event: Event): void {
+    const scrollElement = event.target as HTMLElement;
+    this.updateEventExploreStickyFromScroll(scrollElement);
+    this.updateEventExploreHeaderProgress();
+    this.maybeLoadMoreEventExplore(scrollElement);
+  }
+
+  private updateEventExploreStickyFromScroll(scrollElement: HTMLElement): void {
+    const groups = this.eventExploreGroupedCards;
+    if (groups.length === 0) {
+      this.eventExploreStickyValue = 'No items';
+      return;
+    }
+    const stickyHeader = scrollElement.querySelector<HTMLElement>('.event-explore-sticky-header');
+    const stickyHeaderHeight = stickyHeader?.offsetHeight ?? 0;
+    const targetTop = (scrollElement.scrollTop || 0) + stickyHeaderHeight + 1;
+    const rows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.event-explore-card[data-event-explore-group-label]'));
+    if (rows.length === 0) {
+      this.eventExploreStickyValue = groups[0].label;
+      return;
+    }
+    const scrollTop = scrollElement.scrollTop || 0;
+    if (scrollTop <= 1) {
+      this.eventExploreStickyValue = rows[0].dataset['eventExploreGroupLabel'] ?? groups[0].label;
+      return;
+    }
+    const alignmentTolerancePx = 2;
+    const activeRow =
+      rows.find(row => row.offsetTop >= targetTop - alignmentTolerancePx) ??
+      rows[rows.length - 1];
+    this.eventExploreStickyValue = activeRow.dataset['eventExploreGroupLabel'] ?? groups[0].label;
+  }
+
+  protected get eventExploreCards(): EventExploreCard[] {
+    const cards = this.buildEventExploreCardsBase();
+    this.ensureEventExplorePaginationState(cards.length);
+    return cards.slice(0, Math.min(this.eventExploreVisibleCount, cards.length));
+  }
+
+  private buildEventExploreCardsBase(): EventExploreCard[] {
+    const now = Date.now();
+    const events: EventExploreCard[] = this.eventItems.map(item => this.toEventExploreCard(item, 'event', now));
+    const hosting: EventExploreCard[] = this.hostingItems.map(item => this.toEventExploreCard(item, 'hosting', now));
+    const selectedTopic = this.normalizeText(this.eventExploreTopicLabel(this.eventExploreFilterTopic));
+    const cards = [...events, ...hosting]
+      .filter(card => this.eventExploreVisibilityRaw(card) !== 'Invitation only')
+      .filter(card => !this.eventExploreFilterFriendsOnly || this.eventExploreFriendsGoingMatch(card))
+      .filter(card => !this.eventExploreFilterHasRooms || this.eventExploreHasRooms(card))
+      .filter(card => !selectedTopic || this.eventExploreTopics(card).some(topic => this.normalizeText(this.eventExploreTopicLabel(topic)) === selectedTopic));
+
+    if (this.eventExploreOrder === 'upcoming') {
+      return [...cards].sort((a, b) => {
+        if (a.isPast !== b.isPast) {
+          return Number(a.isPast) - Number(b.isPast);
+        }
+        return a.startSort - b.startSort;
+      });
+    }
+    if (this.eventExploreOrder === 'past-events') {
+      return [...cards].sort((a, b) => {
+        if (a.isPast !== b.isPast) {
+          return Number(b.isPast) - Number(a.isPast);
+        }
+        return b.startSort - a.startSort;
+      });
+    }
+    if (this.eventExploreOrder === 'nearby') {
+      return [...cards].sort((a, b) => a.distanceKm - b.distanceKm || b.relevance - a.relevance);
+    }
+    if (this.eventExploreOrder === 'top-rated') {
+      return [...cards].sort((a, b) => b.rating - a.rating || b.relevance - a.relevance);
+    }
+    return [...cards].sort((a, b) => b.relevance - a.relevance || a.startSort - b.startSort);
+  }
+
+  protected get eventExploreGroupedCards(): EventExploreGroup[] {
+    const cards = this.eventExploreCards;
+    const grouped: EventExploreGroup[] = [];
+    for (const card of cards) {
+      const label = this.eventExploreGroupLabel(card);
+      const lastGroup = grouped[grouped.length - 1];
+      if (!lastGroup || lastGroup.label !== label) {
+        grouped.push({ label, cards: [card] });
+        continue;
+      }
+      lastGroup.cards.push(card);
+    }
+    return grouped;
+  }
+
+  protected eventExploreCreatorInitials(card: EventExploreCard): string {
+    const source = this.resolveEventExploreSource(card);
+    if (!source?.avatar) {
+      return this.initialsFromText(card.title);
+    }
+    return this.initialsFromText(source.avatar);
+  }
+
+  protected eventExploreCreatorToneClass(card: EventExploreCard): string {
+    const rating = this.clampNumber(card.rating, 0, 10);
+    if (rating <= 3.0) {
+      return 'event-explore-rating-cool';
+    }
+    if (rating <= 5.5) {
+      return 'event-explore-rating-cool-mid';
+    }
+    if (rating <= 7.2) {
+      return 'event-explore-rating-neutral';
+    }
+    if (rating <= 8.6) {
+      return 'event-explore-rating-warm-mid';
+    }
+    return 'event-explore-rating-warm';
+  }
+
+  protected eventExploreCreatorAvatarToneClass(card: EventExploreCard): string {
+    const toneIndex = (this.hashText(`${card.sourceType}:${card.id}:${this.eventExploreCreatorInitials(card)}`) % 8) + 1;
+    return `activities-source-tone-${toneIndex}`;
+  }
+
+  protected eventExploreVisibility(card: EventExploreCard): EventVisibility {
+    return this.eventExploreVisibilityRaw(card);
+  }
+
+  protected eventExploreVisibilityCircleClass(card: EventExploreCard): string {
+    return `experience-item-icon-${this.eventVisibilityClass(this.eventExploreVisibility(card))}`;
+  }
+
+  protected eventExploreHasRooms(card: EventExploreCard): boolean {
+    const metrics = this.eventExploreCapacityMetrics(card);
+    return metrics.total > metrics.current;
+  }
+
+  protected eventExploreIsFull(card: EventExploreCard): boolean {
+    const metrics = this.eventExploreCapacityMetrics(card);
+    return metrics.total > 0 && metrics.current >= metrics.total;
+  }
+
+  protected eventExploreHasFriendGoing(card: EventExploreCard): boolean {
+    const row = this.eventExploreRow(card);
+    if (!row) {
+      return false;
+    }
+    return this.getActivityMembersByRow(row).some(member =>
+      member.status === 'accepted'
+      && member.userId !== this.activeUser.id
+      && this.isFriendOfActiveUser(member.userId)
+    );
+  }
+
+  protected eventExploreFriendsGoingMatch(card: EventExploreCard): boolean {
+    return this.eventExploreVisibilityRaw(card) !== 'Invitation only' && this.eventExploreHasFriendGoing(card);
+  }
+
+  protected isEventExploreOpenEvent(card: EventExploreCard): boolean {
+    return this.eventExploreBlindMode(card) === 'Open Event';
+  }
+
+  protected eventExploreBlindMode(card: EventExploreCard): EventBlindMode {
+    return this.eventBlindModeById[card.id] ?? 'Open Event';
+  }
+
+  protected eventExploreMembersVisibilityIcon(card: EventExploreCard): string {
+    return this.eventBlindModeIcon(this.eventExploreBlindMode(card));
+  }
+
+  protected eventExploreMembersVisibilityClass(card: EventExploreCard): string {
+    return this.eventBlindModeClass(this.eventExploreBlindMode(card));
+  }
+
+  protected eventExploreMembersLabel(card: EventExploreCard): string {
+    const metrics = this.eventExploreCapacityMetrics(card);
+    if (metrics.total <= 0) {
+      return '0 / 0';
+    }
+    return `${metrics.current} / ${metrics.total}`;
+  }
+
+  protected eventExploreOpenSpots(card: EventExploreCard): number {
+    const metrics = this.eventExploreCapacityMetrics(card);
+    return Math.max(0, metrics.total - metrics.current);
+  }
+
+  private eventExploreCapacityMetrics(card: EventExploreCard): { current: number; total: number } {
+    const row = this.eventExploreRow(card);
+    if (!row) {
+      return { current: 0, total: 0 };
+    }
+    const current = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted').length;
+    const total = this.activityCapacityTotal(row, current);
+    return { current, total };
+  }
+
+  private eventExploreGroupLabel(card: EventExploreCard): string {
+    if (this.eventExploreOrder === 'nearby') {
+      const bucket = Math.max(5, Math.ceil(card.distanceKm / 5) * 5);
+      return `${bucket} km`;
+    }
+    if (this.eventExploreOrder === 'top-rated') {
+      const bucket = Math.max(1, Math.min(10, Math.round(this.clampNumber(card.rating, 0, 10))));
+      return `${bucket} / 10`;
+    }
+    const parsed = new Date(card.startSort);
+    if (Number.isNaN(parsed.getTime())) {
+      return 'Date unavailable';
+    }
+    return parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
+  protected openEventExploreMembers(card: EventExploreCard, event: Event): void {
+    event.stopPropagation();
+    const row = this.eventExploreRow(card);
+    if (!row) {
+      return;
+    }
+    this.openActivityMembers(row, event, 'explore');
+  }
+
+  protected openEventExploreHostImpressions(event: Event): void {
+    event.stopPropagation();
+    if (this.stackedPopup === 'eventExplore') {
+      this.superStackedPopup = 'impressionsHost';
+      return;
+    }
+    if (this.activePopup === 'eventExplore') {
+      this.stackedPopup = 'impressionsHost';
+      return;
+    }
+    this.openHostImpressions();
+  }
+
+  protected closeSuperStackedImpressions(): void {
+    if (this.superStackedPopup === 'impressionsHost') {
+      this.superStackedPopup = null;
+    }
+  }
+
+  protected eventExploreTopics(card: EventExploreCard): string[] {
+    const source = this.resolveEventExploreSource(card);
+    if (!source) {
+      return [];
+    }
+    const pool = Array.from(new Set(this.interestOptionGroups.flatMap(group => group.options)));
+    if (pool.length === 0) {
+      return [];
+    }
+    const seed = this.hashText(`${card.sourceType}:${card.id}:${source.title}`);
+    const count = 2 + (seed % 2);
+    const result: string[] = [];
+    for (let index = 0; index < pool.length && result.length < count; index += 1) {
+      const candidate = pool[(seed + (index * 3)) % pool.length];
+      if (!result.includes(candidate)) {
+        result.push(candidate);
+      }
+    }
+    return result;
+  }
+
+  protected eventExploreTopicLabel(topic: string): string {
+    return topic.replace(/^#+\s*/, '');
+  }
+
+  protected toggleEventExploreItemActionMenu(card: EventExploreCard, event: Event): void {
+    event.stopPropagation();
+    if (this.inlineItemActionMenu?.scope === 'explore' && this.inlineItemActionMenu.id === card.id) {
+      this.inlineItemActionMenu = null;
+      return;
+    }
+    this.inlineItemActionMenu = { scope: 'explore', id: card.id, title: card.title, openUp: this.shouldOpenInlineItemMenuUp(event) };
+  }
+
+  protected isEventExploreItemActionMenuOpen(card: EventExploreCard): boolean {
+    return this.inlineItemActionMenu?.scope === 'explore' && this.inlineItemActionMenu.id === card.id;
+  }
+
+  protected isEventExploreItemActionMenuOpenUp(card: EventExploreCard): boolean {
+    return this.inlineItemActionMenu?.scope === 'explore'
+      && this.inlineItemActionMenu.id === card.id
+      && this.inlineItemActionMenu.openUp;
+  }
+
+  protected runEventExploreViewAction(card: EventExploreCard, stacked: boolean, event: Event): void {
+    event.stopPropagation();
+    const source = this.resolveEventExploreSource(card);
+    if (!source) {
+      this.inlineItemActionMenu = null;
+      return;
+    }
+    if (card.sourceType === 'hosting') {
+      this.openHostingItem(source as HostingMenuItem, false, stacked);
+    } else {
+      this.openEventItem(source as EventMenuItem, false, stacked);
+    }
+    this.inlineItemActionMenu = null;
+  }
+
+  protected runEventExploreJoinAction(card: EventExploreCard, event: Event): void {
+    event.stopPropagation();
+    this.alertService.open(`Join request for ${card.title} is ready for backend wiring.`);
+    this.inlineItemActionMenu = null;
   }
 
   protected activityViewLabel(): string {
@@ -4803,6 +6881,15 @@ export class App {
     return this.getActivityMembersByRow(row).filter(member => member.status === 'pending').length;
   }
 
+  protected isActivityFull(row: ActivityListRow): boolean {
+    if (row.type !== 'events') {
+      return false;
+    }
+    const acceptedMembersCount = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted').length;
+    const capacityTotal = this.activityCapacityTotal(row, acceptedMembersCount);
+    return capacityTotal > 0 && acceptedMembersCount >= capacityTotal;
+  }
+
   private activityCapacityTotal(row: ActivityListRow, fallbackBase = 0): number {
     const source = this.activityCapacityById[row.id];
     if (source) {
@@ -4812,6 +6899,10 @@ export class App {
       }
     }
     return Math.max(fallbackBase, 4);
+  }
+
+  private activityVisibility(row: ActivityListRow): EventVisibility {
+    return this.eventVisibilityById[row.id] ?? (row.type === 'hosting' ? 'Invitation only' : 'Public');
   }
 
   protected activityTypeIcon(row: ActivityListRow): string {
@@ -4830,6 +6921,20 @@ export class App {
     return 'chat';
   }
 
+  protected activityLeadingIcon(row: ActivityListRow): string {
+    if (row.type === 'hosting' || row.type === 'events') {
+      return this.eventVisibilityIcon(this.activityVisibility(row));
+    }
+    return this.activityTypeIcon(row);
+  }
+
+  protected activityLeadingIconCircleClass(row: ActivityListRow): string {
+    if (row.type !== 'hosting' && row.type !== 'events') {
+      return '';
+    }
+    return `experience-item-icon-${this.eventVisibilityClass(this.activityVisibility(row))}`;
+  }
+
   protected activityMetaLine(row: ActivityListRow): string {
     return `${this.activityTypeLabel(row)} · ${this.activityDateLabel(row)} · ${row.distanceKm} km`;
   }
@@ -4839,8 +6944,58 @@ export class App {
     this.onActivityRowClick(row);
   }
 
+  protected toggleActivityItemActionMenu(row: ActivityListRow, event: Event): void {
+    event.stopPropagation();
+    if (this.inlineItemActionMenu?.scope === 'activity' && this.inlineItemActionMenu.id === row.id) {
+      this.inlineItemActionMenu = null;
+      return;
+    }
+    this.inlineItemActionMenu = { scope: 'activity', id: row.id, title: row.title, openUp: this.shouldOpenInlineItemMenuUp(event) };
+  }
+
+  protected closeInlineItemActionMenu(event?: Event): void {
+    event?.stopPropagation();
+    this.inlineItemActionMenu = null;
+  }
+
+  protected isActivityItemActionMenuOpen(row: ActivityListRow): boolean {
+    return this.inlineItemActionMenu?.scope === 'activity' && this.inlineItemActionMenu.id === row.id;
+  }
+
+  protected isActivityItemActionMenuOpenUp(row: ActivityListRow): boolean {
+    return this.inlineItemActionMenu?.scope === 'activity'
+      && this.inlineItemActionMenu.id === row.id
+      && this.inlineItemActionMenu.openUp;
+  }
+
+  protected runActivityItemPrimaryAction(row: ActivityListRow, event: Event): void {
+    event.stopPropagation();
+    this.openActivityPrimaryAction(row);
+    this.inlineItemActionMenu = null;
+  }
+
+  protected runActivityItemSecondaryAction(row: ActivityListRow, event: Event): void {
+    event.stopPropagation();
+    this.triggerActivitySecondaryAction(row);
+    this.inlineItemActionMenu = null;
+  }
+
+  protected runActivityItemPublishAction(row: ActivityListRow, event: Event): void {
+    event.stopPropagation();
+    this.publishHostingActivity(row, event);
+    this.inlineItemActionMenu = null;
+  }
+
   protected canManageActivityRow(row: ActivityListRow): boolean {
     return row.type === 'invitations' || row.type === 'events' || row.type === 'hosting';
+  }
+
+  protected shouldShowActivityPublishAction(row: ActivityListRow): boolean {
+    return row.type === 'hosting'
+      && row.isAdmin === true
+      && this.activitiesPrimaryFilter === 'hosting'
+      && this.hostingPublicationFilter === 'drafts'
+      && !this.isHostingPublished(row.id);
   }
 
   protected activityPrimaryActionIcon(row: ActivityListRow): string {
@@ -4852,12 +7007,12 @@ export class App {
 
   protected activityPrimaryActionLabel(row: ActivityListRow): string {
     if (row.type === 'invitations') {
-      return 'View invitation';
+      return 'View';
     }
     if (row.isAdmin) {
-      return row.type === 'hosting' ? 'Edit hosted event' : 'Edit event';
+      return 'Edit';
     }
-    return row.type === 'hosting' ? 'Open hosted event' : 'Open event';
+    return 'View';
   }
 
   protected activitySecondaryActionIcon(row: ActivityListRow): string {
@@ -4866,12 +7021,12 @@ export class App {
 
   protected activitySecondaryActionLabel(row: ActivityListRow): string {
     if (this.isExitActivityRow(row)) {
-      return row.type === 'hosting' ? 'Exit hosted event' : 'Exit event';
+      return 'Exit';
     }
     if (row.type === 'invitations') {
-      return 'Delete invitation';
+      return 'Reject';
     }
-    return row.type === 'hosting' ? 'Delete hosted event' : 'Delete event';
+    return 'Delete';
   }
 
   protected openActivityPrimaryAction(row: ActivityListRow): void {
@@ -4898,12 +7053,51 @@ export class App {
     this.pendingActivityDeleteRow = row;
   }
 
+  protected publishHostingActivity(row: ActivityListRow, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.shouldShowActivityPublishAction(row)) {
+      return;
+    }
+    this.pendingActivityPublishRow = row;
+  }
+
+  protected pendingActivityPublishTitle(): string {
+    return 'Publish activity';
+  }
+
+  protected pendingActivityPublishLabel(): string {
+    if (!this.pendingActivityPublishRow) {
+      return '';
+    }
+    return `Publish ${this.pendingActivityPublishRow.title}?`;
+  }
+
+  protected confirmActivityPublish(): void {
+    if (!this.pendingActivityPublishRow) {
+      return;
+    }
+    this.hostingPublishedById[this.pendingActivityPublishRow.id] = true;
+    this.pendingActivityPublishRow = null;
+    this.resetActivitiesScroll();
+  }
+
+  protected cancelActivityPublish(): void {
+    this.pendingActivityPublishRow = null;
+  }
+
   protected isExitActivityRow(row: ActivityListRow): boolean {
     return (row.type === 'events' || row.type === 'hosting') && row.isAdmin !== true;
   }
 
-  protected openActivityMembers(row: ActivityListRow, event?: Event): void {
+  protected openActivityMembers(row: ActivityListRow, event?: Event, source: 'default' | 'explore' = 'default'): void {
     event?.stopPropagation();
+    const previousStackedPopup = this.stackedPopup;
+    this.activityMembersReadOnly = source === 'explore';
+    if (source === 'explore' && previousStackedPopup === 'eventExplore') {
+      this.activityMembersPopupOrigin = 'event-explore';
+    } else if (source !== 'explore') {
+      this.activityMembersPopupOrigin = null;
+    }
     this.pendingActivityMemberDelete = null;
     this.selectedActivityMembersRowId = `${row.type}:${row.id}`;
     this.selectedActivityMembers = this.sortActivityMembersByActionTimeAsc(this.getActivityMembersByRow(row));
@@ -4913,6 +7107,101 @@ export class App {
     this.selectedActivityInviteUserIds = [];
     this.superStackedPopup = null;
     this.stackedPopup = 'activityMembers';
+  }
+
+  protected eventEditorHeaderMembers(limit = 3): ActivityMemberEntry[] {
+    const row = this.eventEditorMembersRow();
+    if (!row) {
+      return [];
+    }
+    return this.getActivityMembersByRow(row).slice(0, limit);
+  }
+
+  protected eventEditorHeaderHiddenMemberCount(limit = 3): number {
+    const row = this.eventEditorMembersRow();
+    if (!row) {
+      return 0;
+    }
+    const total = this.getActivityMembersByRow(row).length;
+    return total > limit ? total - limit : 0;
+  }
+
+  protected showEventEditorHeaderMembersButton(context: 'active' | 'stacked'): boolean {
+    if (context === 'active' && this.activePopup !== 'eventEditor') {
+      return false;
+    }
+    if (context === 'stacked' && this.stackedPopup !== 'eventEditor') {
+      return false;
+    }
+    return this.eventEditorMembersRow() !== null;
+  }
+
+  protected openEventEditorMembers(event?: Event): void {
+    event?.stopPropagation();
+    const row = this.eventEditorMembersRow();
+    if (!row) {
+      return;
+    }
+    this.openActivityMembers(row, event);
+    this.activityMembersPopupOrigin = this.stackedPopup === 'activityMembers' && this.activePopup === 'eventEditor'
+      ? 'active-event-editor'
+      : 'stacked-event-editor';
+  }
+
+  protected handlePrimaryPopupHeaderClose(): void {
+    if (this.activePopup === 'eventEditor' && this.shouldPromptEventEditorPublishOnClose()) {
+      this.eventEditorClosePublishConfirmContext = 'active';
+      return;
+    }
+    this.closePopup();
+  }
+
+  protected handleStackedPopupHeaderClose(): void {
+    if (this.stackedPopup === 'eventEditor' && this.shouldPromptEventEditorPublishOnClose()) {
+      this.eventEditorClosePublishConfirmContext = 'stacked';
+      return;
+    }
+    this.closeStackedPopup();
+  }
+
+  protected eventEditorClosePublishConfirmTitle(): string {
+    return 'Publish event';
+  }
+
+  protected eventEditorClosePublishConfirmLabel(): string {
+    const row = this.eventEditorMembersRow();
+    if (!row) {
+      const title = this.eventForm.title.trim();
+      return title ? `Publish ${title} before closing?` : 'Publish this event before closing?';
+    }
+    return `Publish ${row.title} before closing?`;
+  }
+
+  protected cancelEventEditorCloseWithPublishPrompt(): void {
+    this.persistEventEditorIfValidForClose();
+    const context = this.eventEditorClosePublishConfirmContext;
+    this.eventEditorClosePublishConfirmContext = null;
+    if (context === 'stacked') {
+      this.closeStackedPopup();
+      return;
+    }
+    this.closePopup();
+  }
+
+  protected confirmEventEditorCloseWithPublish(): void {
+    const row = this.eventEditorMembersRow();
+    const persistedId = this.persistEventEditorIfValidForClose();
+    const publishId = persistedId ?? row?.id ?? this.editingEventId;
+    const context = this.eventEditorClosePublishConfirmContext;
+    if (publishId) {
+      this.hostingPublishedById[publishId] = true;
+    }
+    this.eventEditorClosePublishConfirmContext = null;
+    if (context === 'stacked') {
+      this.closeStackedPopup();
+      return;
+    }
+    this.closePopup();
   }
 
   protected openActivityInviteFriends(event?: Event): void {
@@ -5237,63 +7526,73 @@ export class App {
   }
 
   protected get chatPopupMessages(): ChatPopupMessage[] {
-    if (!this.selectedChat) {
+    const history = this.selectedChatHistory;
+    if (history.length === 0) {
       return [];
     }
-    const members = this.getChatMembersById(this.selectedChat.id);
-    const lastSender = members[0] ?? this.getChatLastSender(this.selectedChat);
-    const starter = members[1] ?? members[0] ?? this.activeUser;
-    const memberB = members[2] ?? starter;
-    const memberC = members[3] ?? memberB;
-    const me = this.activeUser;
+    const start = Math.max(0, history.length - this.chatVisibleMessageCount);
+    return history.slice(start);
+  }
 
-    const byId = (id: string) => this.users.find(user => user.id === id);
-    const toMessage = (id: string, text: string, time: string, readByIds: string[], forceMine = false): ChatPopupMessage => {
-      const senderUser = byId(id) ?? starter;
-      return {
-        id: `${this.selectedChat?.id}-${id}-${time}`,
-        sender: senderUser.name,
-        senderAvatar: this.toChatReader(senderUser),
-        text,
-        time,
-        mine: forceMine || senderUser.id === me.id,
-        readBy: readByIds
-          .map(readerId => byId(readerId))
-          .filter((reader): reader is DemoUser => Boolean(reader))
-          .map(reader => this.toChatReader(reader))
-      };
-    };
+  protected hasMoreChatMessages(): boolean {
+    return this.chatVisibleMessageCount < this.selectedChatHistory.length;
+  }
 
-    if (this.selectedChat.id === 'c1') {
-      return [
-        toMessage(starter.id, 'I opened this room to lock transport before 8 PM.', '08:58', [memberB.id]),
-        toMessage(me.id, 'I can handle pickup list and final seat assignments.', '09:03', [starter.id, memberB.id], true),
-        toMessage(memberB.id, 'I can do airport run if someone covers downtown.', '09:06', [starter.id, me.id]),
-        toMessage(lastSender.id, this.selectedChat.lastMessage, '09:11', [starter.id, me.id, memberB.id])
-      ];
+  protected onChatThreadScroll(event: Event): void {
+    const thread = event.target as HTMLElement | null;
+    if (thread) {
+      this.updateChatHeaderProgress(thread);
     }
-
-    if (this.selectedChat.id === 'c2') {
-      return [
-        toMessage(starter.id, 'Room is open, we need one more player for the second pair.', '18:32', [memberB.id]),
-        toMessage(me.id, 'I can join at 19:00 if court #3 stays available.', '18:37', [starter.id], true),
-        toMessage(lastSender.id, this.selectedChat.lastMessage, '18:40', [starter.id, me.id])
-      ];
+    if (this.chatHistoryLoadingOlder || !this.hasMoreChatMessages()) {
+      return;
     }
-
-    if (this.selectedChat.id === 'c3') {
-      return [
-        toMessage(starter.id, 'Host queue reviewed, two pending invites expired.', '10:03', [memberB.id]),
-        toMessage(me.id, 'I can re-send only to people with verified attendance.', '10:06', [starter.id], true),
-        toMessage(lastSender.id, this.selectedChat.lastMessage, '10:09', [starter.id, me.id])
-      ];
+    if (!thread) {
+      return;
     }
+    if (thread.scrollTop > 48) {
+      return;
+    }
+    const beforeHeight = thread.scrollHeight;
+    const beforeTop = thread.scrollTop;
+    this.chatHistoryLoadingOlder = true;
+    this.chatVisibleMessageCount = Math.min(this.chatVisibleMessageCount + this.chatHistoryPageSize, this.selectedChatHistory.length);
+    this.cdr.detectChanges();
+    setTimeout(() => {
+      const afterHeight = thread.scrollHeight;
+      thread.scrollTop = beforeTop + (afterHeight - beforeHeight);
+      this.updateChatHeaderProgress(thread);
+      this.chatHistoryLoadingOlder = false;
+    }, 0);
+  }
 
-    return [
-      toMessage(starter.id, 'Opened this room to coordinate tasks quickly.', '09:01', [memberB.id]),
-      toMessage(me.id, 'I can cover the checklist and send updates.', '09:05', [starter.id], true),
-      toMessage(lastSender.id, this.selectedChat.lastMessage, '09:08', [starter.id, me.id, memberC.id])
-    ];
+  protected sendChatMessage(): void {
+    if (!this.selectedChat) {
+      return;
+    }
+    const text = this.chatDraftMessage.trim();
+    if (!text) {
+      return;
+    }
+    this.ensureSelectedChatHistory();
+    const history = this.chatHistoryById[this.selectedChat.id];
+    if (!history) {
+      return;
+    }
+    const now = new Date();
+    const time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+    history.push({
+      id: `${this.selectedChat.id}-${this.activeUser.id}-${now.getTime()}`,
+      sender: this.activeUser.name,
+      senderAvatar: this.toChatReader(this.activeUser),
+      text,
+      time,
+      mine: true,
+      readBy: []
+    });
+    this.chatDraftMessage = '';
+    this.chatVisibleMessageCount = Math.max(this.chatVisibleMessageCount, this.chatHistoryPageSize);
+    this.chatVisibleMessageCount = Math.min(this.chatVisibleMessageCount, history.length);
+    this.scrollChatToBottom();
   }
 
   protected addSupplyType(): void {
@@ -5535,12 +7834,12 @@ export class App {
     const payload: Omit<AssetCard, 'id' | 'requests'> = {
       type: this.assetForm.type,
       title,
-      subtitle: this.assetForm.subtitle.trim(),
+      subtitle: this.assetForm.subtitle.trim() || this.defaultAssetSubtitle(this.assetForm.type),
       city,
       capacityTotal: Math.max(1, Number(this.assetForm.capacityTotal) || (this.assetForm.type === 'Supplies' ? 6 : 4)),
-      details: this.assetForm.details.trim() || 'No details yet.',
+      details: this.assetForm.details.trim() || this.defaultAssetDetails(this.assetForm.type),
       imageUrl: this.assetForm.imageUrl.trim() || this.defaultAssetImage(this.assetForm.type),
-      sourceLink: this.assetForm.sourceLink.trim() || 'https://picsum.photos'
+      sourceLink: this.assetForm.sourceLink.trim() || this.defaultAssetSourceLink(this.assetForm.type)
     };
     if (this.editingAssetId) {
       this.assetVisibilityById[this.editingAssetId] = this.assetFormVisibility;
@@ -5569,6 +7868,37 @@ export class App {
 
   protected requestAssetDelete(cardId: string): void {
     this.pendingAssetDeleteCardId = cardId;
+  }
+
+  protected toggleAssetItemActionMenu(card: AssetCard, event: Event): void {
+    event.stopPropagation();
+    if (this.inlineItemActionMenu?.scope === 'asset' && this.inlineItemActionMenu.id === card.id) {
+      this.inlineItemActionMenu = null;
+      return;
+    }
+    this.inlineItemActionMenu = { scope: 'asset', id: card.id, title: card.title, openUp: this.shouldOpenInlineItemMenuUp(event) };
+  }
+
+  protected isAssetItemActionMenuOpen(card: AssetCard): boolean {
+    return this.inlineItemActionMenu?.scope === 'asset' && this.inlineItemActionMenu.id === card.id;
+  }
+
+  protected isAssetItemActionMenuOpenUp(card: AssetCard): boolean {
+    return this.inlineItemActionMenu?.scope === 'asset'
+      && this.inlineItemActionMenu.id === card.id
+      && this.inlineItemActionMenu.openUp;
+  }
+
+  protected runAssetItemEditAction(card: AssetCard, event: Event): void {
+    event.stopPropagation();
+    this.openAssetForm(card);
+    this.inlineItemActionMenu = null;
+  }
+
+  protected runAssetItemDeleteAction(card: AssetCard, event: Event): void {
+    event.stopPropagation();
+    this.requestAssetDelete(card.id);
+    this.inlineItemActionMenu = null;
   }
 
   protected cancelAssetDelete(): void {
@@ -5810,6 +8140,50 @@ export class App {
     }
   }
 
+  private shouldOpenInlineItemMenuUp(event: Event): boolean {
+    if (this.isMobileView || typeof window === 'undefined') {
+      return false;
+    }
+    const trigger = event.currentTarget as HTMLElement | null;
+    const actionWrap = trigger?.closest('.experience-item-actions') as HTMLElement | null;
+    if (!actionWrap) {
+      return false;
+    }
+    const rect = actionWrap.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const estimatedMenuHeight = 248;
+    const spaceBelow = viewportHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
+  }
+
+  private resolveEventExploreSource(card: EventExploreCard): EventMenuItem | HostingMenuItem | null {
+    if (card.sourceType === 'hosting') {
+      return this.hostingItems.find(item => item.id === card.id) ?? null;
+    }
+    return this.eventItems.find(item => item.id === card.id) ?? null;
+  }
+
+  private eventExploreRow(card: EventExploreCard): ActivityListRow | null {
+    const source = this.resolveEventExploreSource(card);
+    if (!source) {
+      return null;
+    }
+    return {
+      id: card.id,
+      type: card.sourceType === 'hosting' ? 'hosting' : 'events',
+      title: card.title,
+      subtitle: card.subtitle,
+      detail: card.timeframe,
+      dateIso: this.eventDatesById[card.id] ?? this.hostingDatesById[card.id] ?? this.defaultEventStartIso(),
+      distanceKm: card.distanceKm,
+      unread: 0,
+      metricScore: card.relevance,
+      isAdmin: false,
+      source
+    };
+  }
+
   @HostListener('window:openFeaturePopup', ['$event'])
   onGlobalPopupRequest(event: Event): void {
     const popupEvent = event as CustomEvent<{ type: 'eventEditor' | 'eventExplore' }>;
@@ -5825,9 +8199,19 @@ export class App {
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
-    const target = event.target as HTMLElement;
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    if (this.inlineItemActionMenu && !target.closest('.item-action-menu') && !target.closest('.experience-action-menu-trigger')) {
+      this.inlineItemActionMenu = null;
+    }
     if (this.showUserMenu && !target.closest('.user-menu-panel') && !target.closest('.user-selector-btn-global')) {
       this.showUserMenu = false;
+      this.showUserSettingsMenu = false;
+    }
+    if (this.showUserSettingsMenu && !target.closest('.user-settings-menu') && !target.closest('.user-menu-settings-btn')) {
+      this.showUserSettingsMenu = false;
     }
     if (
       this.showLanguagePanel &&
@@ -5861,14 +8245,131 @@ export class App {
     if (this.showProfileStatusHeaderPicker && !target.closest('.profile-status-header-picker') && !target.closest('.popup-view-fab')) {
       this.showProfileStatusHeaderPicker = false;
     }
+    if (this.showEventExploreOrderPicker && !target.closest('.event-explore-order-picker') && !target.closest('.popup-view-fab')) {
+      this.showEventExploreOrderPicker = false;
+    }
+    if (this.showSubEventsDisplayModePicker && !target.closest('.subevents-mode-picker')) {
+      this.showSubEventsDisplayModePicker = false;
+    }
   }
 
   private getInitialUserId(): string {
-    const stored = localStorage.getItem('demo-active-user');
+    const stored = localStorage.getItem(App.DEMO_ACTIVE_USER_KEY);
     if (stored && this.users.some(user => user.id === stored)) {
       return stored;
     }
     return this.users[0].id;
+  }
+
+  private resolveAuthMode(): AuthMode {
+    const configured = (environment as { authMode?: string }).authMode;
+    if (configured === 'firebase' || configured === 'selector') {
+      return configured;
+    }
+    return environment.loginEnabled ? 'firebase' : 'selector';
+  }
+
+  private initializeEntryFlow(): void {
+    const hasConsent = this.loadEntryConsentState() !== null;
+    this.entryConsentViewOnly = false;
+    this.showEntryConsentPopup = !hasConsent;
+    if (this.authMode === 'selector') {
+      localStorage.removeItem(App.DEMO_ACTIVE_USER_KEY);
+      this.firebaseAuthProfile = null;
+      this.showEntryShell = true;
+      this.showUserSelector = false;
+      this.showFirebaseAuthPopup = false;
+      return;
+    }
+    this.firebaseAuthProfile = this.loadFirebaseAuthProfile();
+    const hasFirebaseSession = this.firebaseAuthProfile !== null;
+    this.showEntryShell = !hasFirebaseSession;
+    this.showUserSelector = false;
+    this.showFirebaseAuthPopup = false;
+  }
+
+  private loadEntryConsentState(): EntryConsentState | null {
+    const raw = localStorage.getItem(App.ENTRY_CONSENT_KEY);
+    if (!raw) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(raw) as Partial<EntryConsentState>;
+      if (
+        parsed.version !== App.ENTRY_CONSENT_VERSION ||
+        parsed.accepted !== true ||
+        typeof parsed.acceptedAtIso !== 'string' ||
+        parsed.acceptedAtIso.length === 0
+      ) {
+        return null;
+      }
+      return {
+        version: parsed.version,
+        accepted: true,
+        acceptedAtIso: parsed.acceptedAtIso
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private appendEntryConsentAudit(action: EntryConsentAuditRecord['action'], tsIso: string): void {
+    const record: EntryConsentAuditRecord = {
+      tsIso,
+      action,
+      version: App.ENTRY_CONSENT_VERSION,
+      source: 'entry',
+      userAgent: navigator.userAgent
+    };
+    const existing = this.loadEntryConsentAudit();
+    existing.unshift(record);
+    const trimmed = existing.slice(0, App.ENTRY_CONSENT_AUDIT_MAX);
+    localStorage.setItem(App.ENTRY_CONSENT_AUDIT_KEY, JSON.stringify(trimmed));
+  }
+
+  private loadEntryConsentAudit(): EntryConsentAuditRecord[] {
+    const raw = localStorage.getItem(App.ENTRY_CONSENT_AUDIT_KEY);
+    if (!raw) {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(raw) as EntryConsentAuditRecord[];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private loadFirebaseAuthProfile(): FirebaseAuthProfile | null {
+    const raw = localStorage.getItem(App.FIREBASE_AUTH_PROFILE_KEY);
+    if (!raw) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(raw) as Partial<FirebaseAuthProfile>;
+      if (!parsed.id || !parsed.name || !parsed.email || !parsed.initials) {
+        return null;
+      }
+      return {
+        id: parsed.id,
+        name: parsed.name,
+        email: parsed.email,
+        initials: parsed.initials
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private completeEntryFlow(): void {
+    this.showEntryShell = false;
+    this.showUserSelector = false;
+    this.showFirebaseAuthPopup = false;
+    this.activePopup = null;
+    this.stackedPopup = null;
+    this.popupReturnTarget = null;
+    this.clearActivityRateEditorState();
+    this.router.navigate(['/game']);
   }
 
   private detailPrivacyFabKey(groupIndex: number, rowIndex: number): string {
@@ -5936,7 +8437,7 @@ export class App {
         capacityTotal: 4,
         details: 'Pickup from Downtown at 17:30. Luggage: 2 cabin bags.',
         imageUrl: this.defaultAssetImage('Car', 'car-1'),
-        sourceLink: 'https://picsum.photos/seed/car-1/1200/700',
+        sourceLink: this.defaultAssetSourceLink('Car'),
         requests: [
           this.buildAssetRequest('asset-member-1', 'u4', 'pending', 'Needs one medium suitcase slot.'),
           this.buildAssetRequest('asset-member-2', 'u8', 'accepted', 'Can meet at 6th Street.'),
@@ -5952,7 +8453,7 @@ export class App {
         capacityTotal: 4,
         details: 'Airport run before midnight, fuel split evenly.',
         imageUrl: this.defaultAssetImage('Car', 'car-2'),
-        sourceLink: 'https://picsum.photos/seed/car-2/1200/700',
+        sourceLink: this.defaultAssetSourceLink('Car'),
         requests: [this.buildAssetRequest('asset-member-3', 'u6', 'pending', 'Landing at 22:40.')]
       },
       {
@@ -5964,7 +8465,7 @@ export class App {
         capacityTotal: 4,
         details: 'Check-in after 15:00. Quiet building, no smoking.',
         imageUrl: this.defaultAssetImage('Accommodation', 'acc-1'),
-        sourceLink: 'https://picsum.photos/seed/acc-1/1200/700',
+        sourceLink: this.defaultAssetSourceLink('Accommodation'),
         requests: [
           this.buildAssetRequest('asset-member-4', 'u3', 'pending', 'Staying for 2 nights.'),
           this.buildAssetRequest('asset-member-5', 'u10', 'accepted', 'Can share room.')
@@ -5979,7 +8480,7 @@ export class App {
         capacityTotal: 2,
         details: 'Ideal for early risers. Parking available.',
         imageUrl: this.defaultAssetImage('Accommodation', 'acc-2'),
-        sourceLink: 'https://picsum.photos/seed/acc-2/1200/700',
+        sourceLink: this.defaultAssetSourceLink('Accommodation'),
         requests: [this.buildAssetRequest('asset-member-6', 'u11', 'pending', 'Arrives Friday evening.')]
       },
       {
@@ -5991,7 +8492,7 @@ export class App {
         capacityTotal: 6,
         details: 'Packed and ready in the garage. Pickup only.',
         imageUrl: this.defaultAssetImage('Supplies', 'sup-1'),
-        sourceLink: 'https://picsum.photos/seed/sup-1/1200/700',
+        sourceLink: this.defaultAssetSourceLink('Supplies'),
         requests: []
       },
       {
@@ -6003,7 +8504,7 @@ export class App {
         capacityTotal: 4,
         details: 'Can deliver to venue before 19:00.',
         imageUrl: this.defaultAssetImage('Supplies', 'sup-2'),
-        sourceLink: 'https://picsum.photos/seed/sup-2/1200/700',
+        sourceLink: this.defaultAssetSourceLink('Supplies'),
         requests: []
       }
     ];
@@ -6027,13 +8528,44 @@ export class App {
   }
 
   protected defaultAssetImage(type: AssetType, seed = type.toLowerCase()): string {
+    const lock = (this.hashText(`${type}:${seed}`) % 997) + 1;
     if (type === 'Car') {
-      return `https://picsum.photos/seed/${seed}/1200/700`;
+      return `https://loremflickr.com/1200/700/car,road,vehicle?lock=${lock}`;
     }
     if (type === 'Accommodation') {
-      return `https://picsum.photos/seed/${seed}/1200/700`;
+      return `https://loremflickr.com/1200/700/apartment,hotel,interior?lock=${lock}`;
     }
-    return `https://picsum.photos/seed/${seed}/1200/700`;
+    return `https://loremflickr.com/1200/700/camping,gear,equipment?lock=${lock}`;
+  }
+
+  private defaultAssetSourceLink(type: AssetType): string {
+    if (type === 'Car') {
+      return 'https://www.google.com/search?tbm=isch&q=carpool+car+vehicle';
+    }
+    if (type === 'Accommodation') {
+      return 'https://www.google.com/search?tbm=isch&q=apartment+hotel+room+interior';
+    }
+    return 'https://www.google.com/search?tbm=isch&q=event+supplies+equipment+kit';
+  }
+
+  private defaultAssetSubtitle(type: AssetType): string {
+    if (type === 'Car') {
+      return 'Seats + luggage capacity';
+    }
+    if (type === 'Accommodation') {
+      return 'Rooms + sleeping spots';
+    }
+    return 'Packed items + delivery window';
+  }
+
+  private defaultAssetDetails(type: AssetType): string {
+    if (type === 'Car') {
+      return 'Route, pickup time, and luggage constraints are confirmed.';
+    }
+    if (type === 'Accommodation') {
+      return 'Check-in details, room setup, and stay notes are confirmed.';
+    }
+    return 'Item condition, handoff location, and timing are confirmed.';
   }
 
   private buildSampleExperienceEntries(): ExperienceEntry[] {
@@ -6152,6 +8684,36 @@ export class App {
       return new Date(`${safe}-01T00:00:00`).getTime();
     }
     return Number.POSITIVE_INFINITY;
+  }
+
+  private toEventExploreCard(
+    source: EventMenuItem | HostingMenuItem,
+    sourceType: 'event' | 'hosting',
+    nowEpochMs: number
+  ): EventExploreCard {
+    const startIso = sourceType === 'event'
+      ? (this.eventDatesById[source.id] ?? this.defaultEventStartIso())
+      : (this.hostingDatesById[source.id] ?? this.defaultEventStartIso());
+    const startSort = this.toSortableDate(startIso);
+    const seed = this.hashText(`${sourceType}:${source.id}:${source.title}`);
+    const rating = 6 + ((seed % 35) / 10);
+    const relevance = 50 + (seed % 51);
+    const distanceKm = sourceType === 'event'
+      ? (this.eventDistanceById[source.id] ?? (5 + (seed % 35)))
+      : (this.hostingDistanceById[source.id] ?? (5 + (seed % 35)));
+    return {
+      id: source.id,
+      title: source.title,
+      subtitle: source.shortDescription,
+      timeframe: source.timeframe,
+      imageUrl: this.activityImageById[source.id] ?? `https://picsum.photos/seed/event-explore-${source.id}/1200/700`,
+      distanceKm,
+      relevance,
+      rating,
+      startSort,
+      isPast: startSort < nowEpochMs,
+      sourceType
+    };
   }
 
   protected get profileCardBirthday(): string {
@@ -6314,6 +8876,12 @@ export class App {
     if (cached) {
       return this.sortActivityMembersByActionTimeAsc([...cached]);
     }
+    const forcedAcceptedCount = this.forcedAcceptedMembersByRowKey[rowKey];
+    if (Number.isFinite(forcedAcceptedCount) && forcedAcceptedCount > 0) {
+      const forced = this.buildForcedAcceptedMembers(row, rowKey, forcedAcceptedCount);
+      this.activityMembersByRowId[rowKey] = [...forced];
+      return forced;
+    }
     const others = this.users.filter(user => user.id !== this.activeUser.id);
     if (others.length === 0) {
       return [this.toActivityMemberEntry(this.activeUser, row, rowKey, { status: 'accepted', pendingSource: null, invitedByActiveUser: false })];
@@ -6353,6 +8921,121 @@ export class App {
     const ordered = this.sortActivityMembersByActionTimeAsc(accepted);
     this.activityMembersByRowId[rowKey] = [...ordered];
     return ordered;
+  }
+
+  private buildForcedAcceptedMembers(row: ActivityListRow, rowKey: string, count: number): ActivityMemberEntry[] {
+    const templates = this.users.length > 0 ? this.users : [this.activeUser];
+    const members: ActivityMemberEntry[] = [];
+    const cappedCount = Math.max(1, count);
+    for (let index = 0; index < cappedCount; index += 1) {
+      const template = templates[index % templates.length];
+      const ordinal = Math.floor(index / templates.length);
+      const isSelf = index === 0;
+      const userId = isSelf ? this.activeUser.id : `${template.id}-force-${ordinal + 1}-${index + 1}`;
+      const when = this.addDays(new Date('2026-02-24T12:00:00'), -((index % 30) + 1));
+      members.push({
+        id: `${rowKey}:${userId}`,
+        userId,
+        name: isSelf ? this.activeUser.name : template.name,
+        initials: template.initials,
+        gender: template.gender,
+        city: template.city,
+        statusText: template.statusText,
+        status: 'accepted',
+        pendingSource: null,
+        requestKind: null,
+        invitedByActiveUser: false,
+        metAtIso: this.toIsoDateTime(when),
+        actionAtIso: this.toIsoDateTime(when),
+        metWhere: 'Event Explore',
+        relevance: 60 + ((index * 7) % 40),
+        avatarUrl: `https://i.pravatar.cc/1200?img=${(this.hashText(`${rowKey}:${userId}`) % 70) + 1}`
+      });
+    }
+    return this.sortActivityMembersByActionTimeAsc(members);
+  }
+
+  private isFriendOfActiveUser(userId: string): boolean {
+    if (!userId || userId === this.activeUser.id) {
+      return false;
+    }
+    const seed = this.hashText(`${this.activeUser.id}:friend:${userId}`);
+    return (seed % 100) < 45;
+  }
+
+  private eventExploreVisibilityRaw(card: EventExploreCard): EventVisibility {
+    return this.eventVisibilityById[card.id] ?? 'Public';
+  }
+
+  private eventEditorMembersRow(): ActivityListRow | null {
+    const isActiveEditor = this.activePopup === 'eventEditor';
+    const isStackedEditor = this.stackedPopup === 'eventEditor';
+    if (!isActiveEditor && !isStackedEditor) {
+      return null;
+    }
+    const source = this.resolveEventEditorSource();
+    if (!source) {
+      return null;
+    }
+    const isHosting = this.eventEditorTarget === 'hosting' || this.isHostingSource(source);
+    return {
+      id: source.id,
+      type: isHosting ? 'hosting' : 'events',
+      title: source.title,
+      subtitle: source.shortDescription,
+      detail: source.timeframe,
+      dateIso: this.eventDatesById[source.id] ?? this.defaultEventStartIso(),
+      distanceKm: this.eventDistanceById[source.id] ?? 10,
+      unread: source.activity,
+      metricScore: source.activity,
+      isAdmin: true,
+      source
+    };
+  }
+
+  private shouldPromptEventEditorPublishOnClose(): boolean {
+    if (this.eventEditorTarget !== 'hosting') {
+      return false;
+    }
+    if (this.editingEventId) {
+      return !this.isHostingPublished(this.editingEventId);
+    }
+    return this.hasEventEditorRequiredFields();
+  }
+
+  private hasEventEditorRequiredFields(): boolean {
+    return Boolean(this.eventForm.title.trim() && this.eventForm.description.trim() && this.eventForm.startAt && this.eventForm.endAt);
+  }
+
+  private persistEventEditorIfValidForClose(): string | null {
+    this.syncEventFormFromDateTimeControls();
+    const normalizedCapacity = this.normalizedEventCapacityRange();
+    this.eventForm.capacityMin = normalizedCapacity.min;
+    this.eventForm.capacityMax = normalizedCapacity.max;
+    this.normalizeExistingSubEventsCapacityAgainstMain();
+    this.normalizeExistingSubEventsDateAgainstMain();
+    if (!this.hasEventEditorRequiredFields()) {
+      return null;
+    }
+    this.showEventEditorRequiredValidation = false;
+    this.normalizeEventDateRange();
+    if (this.editingEventId) {
+      this.updateExistingEventFromForm();
+      return this.editingEventId;
+    }
+    this.insertCreatedEventFromForm();
+    return this.eventEditorTarget === 'hosting'
+      ? (this.selectedHostingEvent?.id ?? null)
+      : (this.selectedEvent?.id ?? null);
+  }
+
+  private releaseActiveElementFocus(): void {
+    setTimeout(() => {
+      const active = globalThis.document?.activeElement;
+      if (active instanceof HTMLElement) {
+        active.blur();
+      }
+    }, 0);
   }
 
   private applySelectedActivityInvitations(): void {
@@ -6436,8 +9119,116 @@ export class App {
       const chatThread = globalThis.document?.querySelector('.chat-thread');
       if (chatThread instanceof HTMLElement) {
         chatThread.scrollTop = chatThread.scrollHeight;
+        this.updateChatHeaderProgress(chatThread);
       }
     }, 0);
+  }
+
+  private updateChatHeaderProgress(chatThread: HTMLElement): void {
+    const maxVerticalScroll = Math.max(0, chatThread.scrollHeight - chatThread.clientHeight);
+    if (maxVerticalScroll <= 0) {
+      this.chatHeaderProgress = 1;
+      return;
+    }
+    this.chatHeaderProgress = this.clampNumber(chatThread.scrollTop / maxVerticalScroll, 0, 1);
+  }
+
+  private get selectedChatHistory(): ChatPopupMessage[] {
+    if (!this.selectedChat) {
+      return [];
+    }
+    this.ensureSelectedChatHistory();
+    return this.chatHistoryById[this.selectedChat.id] ?? [];
+  }
+
+  private ensureSelectedChatHistory(): void {
+    if (!this.selectedChat) {
+      return;
+    }
+    if (this.chatHistoryById[this.selectedChat.id]) {
+      return;
+    }
+    this.chatHistoryById[this.selectedChat.id] = this.buildChatHistory(this.selectedChat);
+  }
+
+  private buildChatHistory(chat: ChatMenuItem): ChatPopupMessage[] {
+    const members = this.getChatMembersById(chat.id);
+    const lastSender = members[0] ?? this.getChatLastSender(chat);
+    const starter = members[1] ?? members[0] ?? this.activeUser;
+    const memberB = members[2] ?? starter;
+    const memberC = members[3] ?? memberB;
+    const me = this.activeUser;
+
+    const byId = (id: string) => this.users.find(user => user.id === id);
+    const toMessage = (id: string, text: string, time: string, readByIds: string[], forceMine = false, suffix = ''): ChatPopupMessage => {
+      const senderUser = byId(id) ?? starter;
+      return {
+        id: `${chat.id}-${id}-${time}-${suffix || this.hashText(text)}`,
+        sender: senderUser.name,
+        senderAvatar: this.toChatReader(senderUser),
+        text,
+        time,
+        mine: forceMine || senderUser.id === me.id,
+        readBy: readByIds
+          .map(readerId => byId(readerId))
+          .filter((reader): reader is DemoUser => Boolean(reader))
+          .map(reader => this.toChatReader(reader))
+      };
+    };
+
+    const seed = this.hashText(`${chat.id}:${chat.title}`);
+    const olderPool = [
+      'Shared updated ETA for everyone.',
+      'Pinned the checklist in this room.',
+      'Confirmed who can bring supplies.',
+      'Noted backup plan if weather changes.',
+      'Added the new member to transport.',
+      'Assigned table and seat groups.',
+      'Synced on arrival windows.',
+      'Collected final confirmations.'
+    ];
+    const olderMessages: ChatPopupMessage[] = [];
+    const olderCount = 36;
+    for (let index = olderCount - 1; index >= 0; index -= 1) {
+      const senderCycle = index % 3;
+      const senderId = senderCycle === 0 ? starter.id : (senderCycle === 1 ? me.id : memberB.id);
+      const baseText = olderPool[(seed + index) % olderPool.length];
+      const text = `${baseText} (#${olderCount - index})`;
+      const hour = 7 + Math.floor(index / 6);
+      const minute = (index * 7) % 60;
+      const time = `${`${hour}`.padStart(2, '0')}:${`${minute}`.padStart(2, '0')}`;
+      const readByIds = senderId === me.id ? [starter.id, memberB.id] : [me.id, memberC.id];
+      olderMessages.push(toMessage(senderId, text, time, readByIds, senderId === me.id, `older-${index}`));
+    }
+
+    let recentMessages: ChatPopupMessage[];
+    if (chat.id === 'c1') {
+      recentMessages = [
+        toMessage(starter.id, 'I opened this room to lock transport before 8 PM.', '08:58', [memberB.id]),
+        toMessage(me.id, 'I can handle pickup list and final seat assignments.', '09:03', [starter.id, memberB.id], true),
+        toMessage(memberB.id, 'I can do airport run if someone covers downtown.', '09:06', [starter.id, me.id]),
+        toMessage(lastSender.id, chat.lastMessage, '09:11', [starter.id, me.id, memberB.id])
+      ];
+    } else if (chat.id === 'c2') {
+      recentMessages = [
+        toMessage(starter.id, 'Room is open, we need one more player for the second pair.', '18:32', [memberB.id]),
+        toMessage(me.id, 'I can join at 19:00 if court #3 stays available.', '18:37', [starter.id], true),
+        toMessage(lastSender.id, chat.lastMessage, '18:40', [starter.id, me.id])
+      ];
+    } else if (chat.id === 'c3') {
+      recentMessages = [
+        toMessage(starter.id, 'Host queue reviewed, two pending invites expired.', '10:03', [memberB.id]),
+        toMessage(me.id, 'I can re-send only to people with verified attendance.', '10:06', [starter.id], true),
+        toMessage(lastSender.id, chat.lastMessage, '10:09', [starter.id, me.id])
+      ];
+    } else {
+      recentMessages = [
+        toMessage(starter.id, 'Opened this room to coordinate tasks quickly.', '09:01', [memberB.id]),
+        toMessage(me.id, 'I can cover the checklist and send updates.', '09:05', [starter.id], true),
+        toMessage(lastSender.id, chat.lastMessage, '09:08', [starter.id, me.id, memberC.id])
+      ];
+    }
+    return [...olderMessages, ...recentMessages];
   }
 
   private toChatReader(user: DemoUser): ChatReadAvatar {
@@ -6504,6 +9295,10 @@ export class App {
   private matchesRateFilter(item: RateMenuItem, filter: RateFilterKey): boolean {
     const [modeKey, directionKey] = filter.split('-') as ['individual' | 'pair', 'given' | 'received' | 'mutual' | 'met'];
     return item.mode === modeKey && this.displayedRateDirection(item) === directionKey;
+  }
+
+  private isHostingPublished(eventId: string): boolean {
+    return this.hostingPublishedById[eventId] !== false;
   }
 
   private resetActivitiesScroll(loadCalendarBadgesForCurrentPage = false): void {
@@ -7270,6 +10065,7 @@ export class App {
       this.activeUserId,
       this.activitiesPrimaryFilter,
       this.activitiesSecondaryFilter,
+      this.hostingPublicationFilter,
       this.activitiesRateFilter,
       this.activitiesView
     ].join('|');
@@ -7381,6 +10177,236 @@ export class App {
     this.activitiesHeaderLoadingOverdue = false;
     this.activitiesHeaderLoadingStartedAtMs = 0;
     this.flushActivitiesHeaderProgress();
+  }
+
+  private updateEventExploreHeaderProgress(): void {
+    if (this.activePopup !== 'eventExplore' && this.stackedPopup !== 'eventExplore') {
+      this.eventExploreHeaderProgress = 0;
+      return;
+    }
+    const listElement = this.eventExploreScrollRef?.nativeElement;
+    if (!listElement) {
+      this.eventExploreHeaderProgress = 0;
+      return;
+    }
+    const maxVerticalScroll = Math.max(0, listElement.scrollHeight - listElement.clientHeight);
+    if (maxVerticalScroll <= 1) {
+      this.eventExploreHeaderProgress = 0;
+      return;
+    }
+    this.eventExploreHeaderProgress = this.clampNumber(listElement.scrollTop / maxVerticalScroll, 0, 1);
+  }
+
+  private maybeLoadMoreEventExplore(scrollElement: HTMLElement): void {
+    if ((this.activePopup !== 'eventExplore' && this.stackedPopup !== 'eventExplore') || this.eventExploreIsPaginating) {
+      return;
+    }
+    const cards = this.buildEventExploreCardsBase();
+    this.ensureEventExplorePaginationState(cards.length);
+    if (this.eventExploreVisibleCount >= cards.length) {
+      return;
+    }
+    const remainingPx = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
+    if (this.eventExplorePaginationAwaitScrollReset) {
+      if (remainingPx > 360) {
+        this.eventExplorePaginationAwaitScrollReset = false;
+      }
+      return;
+    }
+    if (!this.shouldStartEventExplorePreload(scrollElement) && remainingPx > 520) {
+      return;
+    }
+    this.startEventExplorePaginationLoad();
+  }
+
+  private shouldStartEventExplorePreload(scrollElement: HTMLElement): boolean {
+    const rows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.event-explore-card'));
+    if (rows.length === 0) {
+      return false;
+    }
+    if (rows.length <= 3) {
+      return true;
+    }
+    const thirdFromLast = rows[rows.length - 3];
+    const viewportBottom = scrollElement.scrollTop + scrollElement.clientHeight;
+    return viewportBottom >= thirdFromLast.offsetTop;
+  }
+
+  private ensureEventExplorePaginationState(totalCards: number): void {
+    const nextKey = this.eventExplorePaginationStateKey();
+    if (nextKey === this.eventExplorePaginationKey) {
+      return;
+    }
+    this.eventExplorePaginationKey = nextKey;
+    this.eventExploreVisibleCount = Math.min(this.activitiesPageSize, totalCards);
+    this.eventExplorePaginationAwaitScrollReset = false;
+    this.cancelEventExplorePaginationLoad();
+    this.updateEventExploreHeaderProgress();
+  }
+
+  private eventExplorePaginationStateKey(): string {
+    return [
+      this.activeUserId,
+      this.eventExploreOrder,
+      this.eventExploreFilterFriendsOnly ? 'friends' : 'all',
+      this.eventExploreFilterHasRooms ? 'rooms' : 'all',
+      this.normalizeText(this.eventExploreFilterTopic)
+    ].join('|');
+  }
+
+  private startEventExplorePaginationLoad(): void {
+    if (this.eventExploreIsPaginating) {
+      return;
+    }
+    const cards = this.buildEventExploreCardsBase();
+    this.ensureEventExplorePaginationState(cards.length);
+    if (this.eventExploreVisibleCount >= cards.length) {
+      return;
+    }
+    this.eventExploreIsPaginating = true;
+    this.beginEventExploreHeaderProgressLoading();
+    this.eventExploreLoadMoreTimer = setTimeout(() => {
+      this.eventExploreLoadMoreTimer = null;
+      const previousVisibleCount = this.eventExploreVisibleCount;
+      const latestCards = this.buildEventExploreCardsBase();
+      this.ensureEventExplorePaginationState(latestCards.length);
+      if (latestCards.length > previousVisibleCount) {
+        this.eventExploreVisibleCount = Math.min(previousVisibleCount + this.activitiesPageSize, latestCards.length);
+      }
+      this.eventExploreIsPaginating = false;
+      this.eventExplorePaginationAwaitScrollReset = true;
+      this.endEventExploreHeaderProgressLoading();
+      this.updateEventExploreHeaderProgress();
+    }, this.activitiesPaginationLoadDelayMs);
+  }
+
+  private cancelEventExplorePaginationLoad(): void {
+    if (this.eventExploreLoadMoreTimer) {
+      clearTimeout(this.eventExploreLoadMoreTimer);
+      this.eventExploreLoadMoreTimer = null;
+    }
+    if (this.eventExploreIsPaginating) {
+      this.eventExploreIsPaginating = false;
+      this.endEventExploreHeaderProgressLoading();
+    }
+    this.eventExplorePaginationAwaitScrollReset = false;
+  }
+
+  private beginEventExploreHeaderProgressLoading(): void {
+    this.eventExploreHeaderLoadingCounter += 1;
+    if (this.eventExploreHeaderLoadingCounter > 1) {
+      return;
+    }
+    this.eventExploreHeaderProgressLoading = true;
+    this.eventExploreHeaderLoadingOverdue = false;
+    this.eventExploreHeaderLoadingProgress = 0.02;
+    this.eventExploreHeaderLoadingStartedAtMs = performance.now();
+    this.flushActivitiesHeaderProgress();
+    if (this.eventExploreHeaderLoadingCompleteTimer) {
+      clearTimeout(this.eventExploreHeaderLoadingCompleteTimer);
+      this.eventExploreHeaderLoadingCompleteTimer = null;
+    }
+    if (this.eventExploreHeaderLoadingInterval) {
+      clearInterval(this.eventExploreHeaderLoadingInterval);
+      this.eventExploreHeaderLoadingInterval = null;
+    }
+    this.updateEventExploreHeaderLoadingWindow();
+    this.eventExploreHeaderLoadingInterval = this.ngZone.runOutsideAngular(() =>
+      setInterval(() => {
+        this.updateEventExploreHeaderLoadingWindow();
+        this.flushActivitiesHeaderProgress();
+      }, this.activitiesHeaderLoadingTickMs)
+    );
+  }
+
+  private endEventExploreHeaderProgressLoading(): void {
+    if (this.eventExploreHeaderLoadingCounter === 0) {
+      return;
+    }
+    this.eventExploreHeaderLoadingCounter = Math.max(0, this.eventExploreHeaderLoadingCounter - 1);
+    if (this.eventExploreHeaderLoadingCounter !== 0) {
+      return;
+    }
+    this.completeEventExploreHeaderLoading();
+  }
+
+  private completeEventExploreHeaderLoading(): void {
+    if (this.eventExploreHeaderLoadingInterval) {
+      clearInterval(this.eventExploreHeaderLoadingInterval);
+      this.eventExploreHeaderLoadingInterval = null;
+    }
+    this.eventExploreHeaderLoadingProgress = 1;
+    this.eventExploreHeaderLoadingOverdue = false;
+    this.flushActivitiesHeaderProgress();
+    if (this.eventExploreHeaderLoadingCompleteTimer) {
+      clearTimeout(this.eventExploreHeaderLoadingCompleteTimer);
+    }
+    this.eventExploreHeaderLoadingCompleteTimer = this.ngZone.runOutsideAngular(() =>
+      setTimeout(() => {
+        this.ngZone.run(() => {
+          if (this.eventExploreHeaderLoadingCounter !== 0) {
+            return;
+          }
+          this.eventExploreHeaderProgressLoading = false;
+          this.eventExploreHeaderLoadingProgress = 0;
+          this.eventExploreHeaderLoadingOverdue = false;
+          this.eventExploreHeaderLoadingStartedAtMs = 0;
+          this.eventExploreHeaderLoadingCompleteTimer = null;
+          this.updateEventExploreHeaderProgress();
+          this.refreshActivitiesHeaderProgressSoon();
+          this.flushActivitiesHeaderProgress();
+        });
+      }, 100)
+    );
+  }
+
+  private updateEventExploreHeaderLoadingWindow(): void {
+    if (!this.eventExploreHeaderProgressLoading) {
+      return;
+    }
+    const elapsed = Math.max(0, performance.now() - this.eventExploreHeaderLoadingStartedAtMs);
+    const nextProgress = this.clampNumber(elapsed / this.activitiesHeaderLoadingWindowMs, 0, 1);
+    this.eventExploreHeaderLoadingProgress = Math.max(this.eventExploreHeaderLoadingProgress, nextProgress);
+    this.eventExploreHeaderLoadingOverdue =
+      elapsed >= this.activitiesHeaderLoadingWindowMs && this.eventExploreHeaderLoadingCounter > 0;
+  }
+
+  private clearEventExploreHeaderLoadingAnimation(): void {
+    if (this.eventExploreHeaderLoadingInterval) {
+      clearInterval(this.eventExploreHeaderLoadingInterval);
+      this.eventExploreHeaderLoadingInterval = null;
+    }
+    if (this.eventExploreHeaderLoadingCompleteTimer) {
+      clearTimeout(this.eventExploreHeaderLoadingCompleteTimer);
+      this.eventExploreHeaderLoadingCompleteTimer = null;
+    }
+    this.eventExploreHeaderLoadingCounter = 0;
+    this.eventExploreHeaderLoadingProgress = 0;
+    this.eventExploreHeaderProgressLoading = false;
+    this.eventExploreHeaderLoadingOverdue = false;
+    this.eventExploreHeaderLoadingStartedAtMs = 0;
+    this.flushActivitiesHeaderProgress();
+  }
+
+  private resetEventExploreScroll(): void {
+    const totalCards = this.buildEventExploreCardsBase().length;
+    this.eventExplorePaginationKey = '';
+    this.eventExploreVisibleCount = Math.min(this.activitiesPageSize, totalCards);
+    this.eventExplorePaginationAwaitScrollReset = false;
+    this.cancelEventExplorePaginationLoad();
+    this.clearEventExploreHeaderLoadingAnimation();
+    setTimeout(() => {
+      const scrollElement = this.eventExploreScrollRef?.nativeElement;
+      if (!scrollElement) {
+        this.eventExploreStickyValue = this.eventExploreGroupedCards[0]?.label ?? 'No items';
+        this.updateEventExploreHeaderProgress();
+        return;
+      }
+      scrollElement.scrollTop = 0;
+      this.maybeLoadMoreEventExplore(scrollElement);
+      this.updateEventExploreStickyFromScroll(scrollElement);
+      this.updateEventExploreHeaderProgress();
+    }, 0);
   }
 
   private syncActivitiesCalendarBadgeDelay(): void {
