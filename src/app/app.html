@@ -1946,7 +1946,7 @@
               <div class="experience-form-overlay-backdrop" (click)="closeSubEventPanel($event)"></div>
               <div class="experience-form-popup subevent-form-popup">
                 <div class="experience-form-header">
-                  <h3>Create Sub Event</h3>
+                  <h3>{{ subEventFormTitle() }}</h3>
                   <div class="experience-form-header-controls">
                     <label class="subevent-optional-field subevent-optional-field-header">
                       <button type="button" class="subevent-optional-toggle" [ngClass]="subEventModeClass(subEventForm.optional)" (click)="toggleSubEventOptionalPicker($event)">
@@ -3418,7 +3418,7 @@
               <div class="experience-form-overlay-backdrop" (click)="closeSubEventPanel($event)"></div>
               <div class="experience-form-popup subevent-form-popup">
                 <div class="experience-form-header">
-                  <h3>Create Sub Event</h3>
+                  <h3>{{ subEventFormTitle() }}</h3>
                   <div class="experience-form-header-controls">
                     <label class="subevent-optional-field subevent-optional-field-header">
                       <button type="button" class="subevent-optional-toggle" [ngClass]="subEventModeClass(subEventForm.optional)" (click)="toggleSubEventOptionalPicker($event)">
@@ -3844,28 +3844,39 @@
           <p *ngIf="eventSubEventsParentTitle() as parentEventTitle">{{ parentEventTitle }}</p>
         </div>
       </div>
-      <div class="subevents-mode-picker">
+      <div class="subevents-header-controls">
         <button
           type="button"
-          class="popup-view-fab subevents-mode-trigger"
-          [ngClass]="subEventsDisplayModeClass()"
-          (click)="toggleSubEventsDisplayModePicker($event)"
-          aria-label="Open sub events mode selector"
+          class="popup-header-add-btn subevents-header-add-btn"
+          (click)="openSubEventPanel($event)"
+          [attr.aria-label]="subEventAddButtonLabel()"
+          [attr.title]="subEventAddButtonLabel()"
         >
-          <span class="subevents-mode-glyph">{{ subEventsDisplayModeGlyph() }}</span>
-          <span>{{ subEventsDisplayMode }}</span>
+          <mat-icon>add</mat-icon>
         </button>
-        <div class="activities-view-picker-panel" *ngIf="showSubEventsDisplayModePicker">
+        <div class="subevents-mode-picker">
           <button
             type="button"
-            class="activities-view-option"
-            [ngClass]="subEventsDisplayModeClass(option)"
-            *ngFor="let option of subEventsDisplayModeOptions"
-            (click)="selectSubEventsDisplayMode(option, $event)"
+            class="popup-view-fab subevents-mode-trigger"
+            [ngClass]="subEventsDisplayModeClass()"
+            (click)="toggleSubEventsDisplayModePicker($event)"
+            aria-label="Open sub events mode selector"
           >
-            <span class="subevents-mode-glyph">{{ subEventsDisplayModeGlyph(option) }}</span>
-            <span>{{ option }}</span>
+            <span class="subevents-mode-glyph">{{ subEventsDisplayModeGlyph() }}</span>
+            <span>{{ subEventsDisplayMode }}</span>
           </button>
+          <div class="activities-view-picker-panel" *ngIf="showSubEventsDisplayModePicker">
+            <button
+              type="button"
+              class="activities-view-option"
+              [ngClass]="subEventsDisplayModeClass(option)"
+              *ngFor="let option of subEventsDisplayModeOptions"
+              (click)="selectSubEventsDisplayMode(option, $event)"
+            >
+              <span class="subevents-mode-glyph">{{ subEventsDisplayModeGlyph(option) }}</span>
+              <span>{{ option }}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -3873,8 +3884,9 @@
       <ng-container *ngIf="eventForm.subEvents.length > 0; else subEventsPopupEmptyState">
         <ng-container *ngIf="subEventsDisplayMode === 'Tournament'; else subEventsCasualList">
           <div class="subevent-stage-board">
-            <div class="activities-calendar-page-head subevent-stage-board-head" *ngIf="subEventTournamentStagePages.length > 1 && !isMobileView">
-              <span class="activities-calendar-page-head-nav">
+            <div class="activities-sticky-header activities-sticky-header-calendar subevent-stage-period-head">
+              <span>{{ subEventTournamentPageRangeLabel() }}</span>
+              <span class="activities-sticky-calendar-nav" *ngIf="!isSubEventSwipeViewport">
                 <button
                   type="button"
                   class="activities-calendar-nav-btn"
@@ -3904,15 +3916,55 @@
                   [style.--stage-accent]="subEventStageAccentColor(stage.stageNumber, subEventTournamentStages.length)"
                 >
                   <header class="subevent-stage-column-head" [class.is-current]="stage.isCurrent">
-                    <span class="subevent-stage-column-title">{{ stage.title }}</span>
-                    <strong>{{ stage.subtitle }}</strong>
-                    <span class="subevent-stage-column-meta">{{ subEventStageMetaLabel(stage) }}</span>
+                    <div class="subevent-stage-head-main">
+                      <span class="subevent-stage-column-title">{{ stage.title }}</span>
+                      <strong>{{ stage.subtitle }}</strong>
+                      <p class="subevent-stage-column-description">{{ stage.description || 'No description' }}</p>
+                    </div>
+                    <div class="subevent-stage-head-meta">
+                      <span class="subevent-stage-range-badge">{{ stage.rangeLabel }}</span>
+                      <span class="subevent-stage-column-meta">{{ subEventStageMetaLabel(stage) }}</span>
+                    </div>
+                    <div class="experience-item-actions subevent-stage-item-actions" *ngIf="canEditSubEventItem(stage.subEvent)">
+                      <button
+                        type="button"
+                        class="experience-action-btn experience-action-menu-trigger"
+                        [class.is-open]="isSubEventStageActionMenuOpen(stage)"
+                        (click)="toggleSubEventStageActionMenu(stage, $event)"
+                        [attr.aria-label]="isSubEventStageActionMenuOpen(stage) ? 'Close stage actions' : 'Open stage actions'"
+                      >
+                        <mat-icon>{{ isSubEventStageActionMenuOpen(stage) ? 'close' : 'more_vert' }}</mat-icon>
+                      </button>
+                      <div
+                        class="item-action-menu"
+                        [class.is-open]="isSubEventStageActionMenuOpen(stage)"
+                        [class.item-action-menu-mobile]="isMobileView"
+                        [class.item-action-menu-desktop]="!isMobileView"
+                        [class.is-open-up]="isSubEventStageActionMenuOpenUp(stage)"
+                        [attr.aria-hidden]="!isSubEventStageActionMenuOpen(stage)"
+                        (click)="$event.stopPropagation()"
+                      >
+                        <div class="item-action-menu-title">{{ stage.title }}</div>
+                        <button type="button" class="item-action-menu-btn" (click)="runSubEventStageAddGroupAction(stage, $event)">
+                          <mat-icon>group_add</mat-icon>
+                          <span>Add Group</span>
+                        </button>
+                        <button type="button" class="item-action-menu-btn" (click)="runSubEventStageEditAction(stage, $event)">
+                          <mat-icon>edit</mat-icon>
+                          <span>Edit Stage Event</span>
+                        </button>
+                        <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="runSubEventStageDeleteAction(stage, $event)">
+                          <mat-icon>delete</mat-icon>
+                          <span>Delete Stage</span>
+                        </button>
+                      </div>
+                    </div>
                   </header>
                   <div class="subevent-stage-column-body">
                     <ng-container *ngFor="let group of stage.groups">
                       <ng-container
                         [ngTemplateOutlet]="subEventPopupCardTemplate"
-                        [ngTemplateOutletContext]="{ subEvent: group.subEvent, groupLabel: group.groupLabel, menuKey: group.key }"
+                        [ngTemplateOutletContext]="{ subEvent: group.subEvent, groupLabel: group.groupLabel, menuKey: group.key, group: group, tournamentMode: true }"
                       ></ng-container>
                     </ng-container>
                   </div>
@@ -3927,7 +3979,7 @@
             <ng-container *ngFor="let subEvent of eventForm.subEvents">
               <ng-container
                 [ngTemplateOutlet]="subEventPopupCardTemplate"
-                [ngTemplateOutletContext]="{ subEvent: subEvent, groupLabel: '', menuKey: subEvent.id }"
+                [ngTemplateOutletContext]="{ subEvent: subEvent, groupLabel: '', menuKey: subEvent.id, group: null, tournamentMode: false }"
               ></ng-container>
             </ng-container>
           </div>
@@ -3939,15 +3991,16 @@
           <p>Use + to add the first sub event.</p>
         </div>
       </ng-template>
-      <ng-template #subEventPopupCardTemplate let-subEvent="subEvent" let-groupLabel="groupLabel" let-menuKey="menuKey">
+      <ng-template #subEventPopupCardTemplate let-subEvent="subEvent" let-groupLabel="groupLabel" let-menuKey="menuKey" let-group="group" let-tournamentMode="tournamentMode">
         <article
           class="event-subevent-card"
           [class.event-subevent-card-optional]="subEvent.optional"
           [class.event-subevent-card-mandatory]="!subEvent.optional"
+          [class.event-subevent-card-group]="tournamentMode"
         >
-          <span class="event-subevent-group-label" *ngIf="groupLabel">{{ groupLabel }}</span>
-          <div class="event-subevent-card-head">
-            <h4>{{ subEvent.name }}</h4>
+          <span class="event-subevent-group-label" *ngIf="groupLabel" [ngStyle]="subEventGroupBadgeStyle(group?.groupNumber || 1)">{{ groupLabel }}</span>
+          <div class="event-subevent-card-head" *ngIf="!tournamentMode || canManageSubEventItem(subEvent)">
+            <h4 *ngIf="!tournamentMode">{{ subEvent.name }}</h4>
             <div class="experience-item-actions event-subevent-item-actions" *ngIf="canManageSubEventItem(subEvent)">
               <button
                 type="button"
@@ -3967,12 +4020,12 @@
                 [attr.aria-hidden]="!isSubEventItemActionMenuOpenWithKey(menuKey)"
                 (click)="$event.stopPropagation()"
               >
-                <div class="item-action-menu-title">{{ subEvent.name }}</div>
+                <div class="item-action-menu-title">{{ groupLabel || subEvent.name }}</div>
                 <button
                   type="button"
                   class="item-action-menu-btn item-action-menu-btn-publish"
                   *ngIf="canJoinSubEventItem(subEvent)"
-                  (click)="runSubEventItemJoinAction(subEvent, $event)"
+                  (click)="runSubEventItemJoinAction(subEvent, $event, group)"
                 >
                   <mat-icon>person_add</mat-icon>
                   <span>Join</span>
@@ -3981,7 +4034,7 @@
                   type="button"
                   class="item-action-menu-btn"
                   *ngIf="canEditSubEventItem(subEvent)"
-                  (click)="runSubEventItemEditAction(subEvent, $event)"
+                  (click)="runSubEventItemEditAction(subEvent, $event, group, tournamentMode)"
                 >
                   <mat-icon>edit</mat-icon>
                   <span>Edit</span>
@@ -3990,7 +4043,7 @@
                   type="button"
                   class="item-action-menu-btn item-action-menu-btn-destructive"
                   *ngIf="canDeleteSubEventItem(subEvent)"
-                  (click)="runSubEventItemDeleteAction(subEvent, $event)"
+                  (click)="runSubEventItemDeleteAction(subEvent, $event, group, tournamentMode)"
                 >
                   <mat-icon>delete</mat-icon>
                   <span>Delete</span>
@@ -3998,8 +4051,8 @@
               </div>
             </div>
           </div>
-          <p>{{ subEvent.description || 'No description' }}</p>
-          <span class="event-subevent-range-badge">{{ subEventCardRange(subEvent) }}</span>
+          <p *ngIf="!tournamentMode">{{ subEvent.description || 'No description' }}</p>
+          <span class="event-subevent-range-badge" *ngIf="!tournamentMode">{{ subEventCardRange(subEvent) }}</span>
           <div class="event-subevent-badges">
             <button type="button" class="event-subevent-badge event-subevent-badge-members" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Members', subEvent, $event)" *ngIf="subEvent.optional">
               <span class="event-subevent-badge-icon"><mat-icon>groups</mat-icon></span>
@@ -4041,7 +4094,7 @@
       <div class="experience-form-overlay-backdrop" (click)="closeSubEventPanel($event)"></div>
       <div class="experience-form-popup subevent-form-popup">
         <div class="experience-form-header">
-          <h3>Create Sub Event</h3>
+          <h3>{{ subEventFormTitle() }}</h3>
           <div class="experience-form-header-controls">
             <label class="subevent-optional-field subevent-optional-field-header">
               <button type="button" class="subevent-optional-toggle" [ngClass]="subEventModeClass(subEventForm.optional)" (click)="toggleSubEventOptionalPicker($event)">
@@ -4117,14 +4170,32 @@
         </section>
       </div>
     </section>
-    <button
-      type="button"
-      class="event-subevents-add-fab"
-      (click)="openSubEventPanel($event)"
-      aria-label="Add sub event"
-    >
-      <mat-icon>add</mat-icon>
-    </button>
+    <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay" *ngIf="showSubEventGroupForm && superStackedPopup === 'eventSubEvents'">
+      <div class="experience-form-overlay-backdrop" (click)="closeSubEventGroupPanel($event)"></div>
+      <div class="experience-form-popup subevent-form-popup subevent-group-popup">
+        <div class="experience-form-header">
+          <h3>{{ subEventGroupFormTitle() }}</h3>
+          <div class="experience-form-header-controls">
+            <span class="subevent-group-stage-chip" *ngIf="subEventGroupForm.stageTitle">{{ subEventGroupForm.stageTitle }}</span>
+            <button type="button" class="experience-form-close-btn" (click)="closeSubEventGroupPanelWithSave($event)" aria-label="Close group editor">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        </div>
+        <section class="experience-form-panel subevent-form-panel subevent-group-form-panel">
+          <div class="experience-form-grid subevent-group-form-grid">
+            <label class="experience-title-field">
+              <span>Name <span class="required-star">*</span></span>
+              <input
+                type="text"
+                [(ngModel)]="subEventGroupForm.name"
+                [class.field-required-invalid]="showSubEventGroupRequiredValidation && subEventGroupFieldInvalid()"
+              />
+            </label>
+          </div>
+        </section>
+      </div>
+    </section>
   </div>
 </section>
 
