@@ -692,6 +692,15 @@
           </button>
         </div>
       </div>
+      <button
+        type="button"
+        class="popup-header-add-btn subevent-leaderboard-save-btn"
+        *ngIf="activePopup === 'eventEditor'"
+        (click)="saveEventEditorForm()"
+        aria-label="Save event"
+      >
+        <mat-icon>done</mat-icon>
+      </button>
       <button mat-icon-button class="popup-close" (click)="handlePrimaryPopupHeaderClose()" aria-label="Close">
         <mat-icon>close</mat-icon>
       </button>
@@ -1523,6 +1532,9 @@
                     </button>
                   </div>
                 </div>
+                <button type="button" class="popup-header-add-btn subevent-leaderboard-save-btn" (click)="saveAssetCard()" aria-label="Save asset">
+                  <mat-icon>done</mat-icon>
+                </button>
                 <button type="button" class="experience-form-close-btn" (click)="closeAssetForm()" aria-label="Close asset form">
                   <mat-icon>close</mat-icon>
                 </button>
@@ -1587,10 +1599,6 @@
                     </div>
                   </button>
                 </label>
-              </div>
-              <div class="popup-actions experience-form-actions">
-                <button type="button" class="link-btn neutral-btn" (click)="closeAssetForm()">Cancel</button>
-                <button type="button" class="link-btn primary-btn" (click)="saveAssetCard()">Save</button>
               </div>
             </section>
           </div>
@@ -1982,7 +1990,15 @@
                         <span>Mandatory</span>
                       </span>
                     </ng-template>
-                    <button type="button" class="experience-form-close-btn" (click)="closeSubEventPanelWithSave($event)" aria-label="Close create sub event">
+                    <button
+                      type="button"
+                      class="popup-header-add-btn subevent-leaderboard-save-btn"
+                      (click)="saveSubEventForm($event)"
+                      aria-label="Save sub event"
+                    >
+                      <mat-icon>done</mat-icon>
+                    </button>
+                    <button type="button" class="experience-form-close-btn" (click)="closeSubEventPanel($event)" aria-label="Close create sub event">
                       <mat-icon>close</mat-icon>
                     </button>
                   </div>
@@ -2811,6 +2827,15 @@
             </button>
           </div>
         </div>
+        <button
+          type="button"
+          class="popup-header-add-btn subevent-leaderboard-save-btn"
+          *ngIf="stackedPopup === 'eventEditor'"
+          (click)="saveEventEditorForm()"
+          aria-label="Save event"
+        >
+          <mat-icon>done</mat-icon>
+        </button>
         <button mat-icon-button class="popup-close" (click)="handleStackedPopupHeaderClose()" aria-label="Close">
           <mat-icon>close</mat-icon>
         </button>
@@ -3570,7 +3595,15 @@
                         <span>Mandatory</span>
                       </span>
                     </ng-template>
-                    <button type="button" class="experience-form-close-btn" (click)="closeSubEventPanelWithSave($event)" aria-label="Close create sub event">
+                    <button
+                      type="button"
+                      class="popup-header-add-btn subevent-leaderboard-save-btn"
+                      (click)="saveSubEventForm($event)"
+                      aria-label="Save sub event"
+                    >
+                      <mat-icon>done</mat-icon>
+                    </button>
+                    <button type="button" class="experience-form-close-btn" (click)="closeSubEventPanel($event)" aria-label="Close create sub event">
                       <mat-icon>close</mat-icon>
                     </button>
                   </div>
@@ -4360,7 +4393,15 @@
                 <span>Mandatory</span>
               </span>
             </ng-template>
-            <button type="button" class="experience-form-close-btn" (click)="closeSubEventPanelWithSave($event)" aria-label="Close create sub event">
+            <button
+              type="button"
+              class="popup-header-add-btn subevent-leaderboard-save-btn"
+              (click)="saveSubEventForm($event)"
+              aria-label="Save sub event"
+            >
+              <mat-icon>done</mat-icon>
+            </button>
+            <button type="button" class="experience-form-close-btn" (click)="closeSubEventPanel($event)" aria-label="Close create sub event">
               <mat-icon>close</mat-icon>
             </button>
           </div>
@@ -4523,7 +4564,15 @@
           <h3>{{ subEventGroupFormTitle() }}</h3>
           <div class="experience-form-header-controls">
             <span class="subevent-group-stage-chip" *ngIf="subEventGroupForm.stageTitle">{{ subEventGroupForm.stageTitle }}</span>
-            <button type="button" class="experience-form-close-btn" (click)="closeSubEventGroupPanelWithSave($event)" aria-label="Close group editor">
+            <button
+              type="button"
+              class="popup-header-add-btn subevent-leaderboard-save-btn"
+              (click)="saveSubEventGroupForm($event)"
+              aria-label="Save group"
+            >
+              <mat-icon>done</mat-icon>
+            </button>
+            <button type="button" class="experience-form-close-btn" (click)="closeSubEventGroupPanel($event)" aria-label="Close group editor">
               <mat-icon>close</mat-icon>
             </button>
           </div>

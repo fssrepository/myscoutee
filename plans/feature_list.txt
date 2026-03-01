@@ -321,3 +321,10 @@ don't make pull up/downs
 visibility of assets (public, private, friends only)
 
 lazy load images - paginator a horizontal progress and load (old myscoutee has it)
+
+-------------------
+
+view event popups (invitations/events) - the rate is big profile images, not this small one
+members in the event editor header like in the case of chat
+
+in sub event editor - assets management popups

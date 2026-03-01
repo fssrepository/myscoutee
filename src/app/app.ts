@@ -2139,7 +2139,6 @@ export class App {
 
   protected closeSubEventPanel(event?: Event): void {
     event?.stopPropagation();
-    this.appendCurrentSubEventIfValid();
     this.showSubEventRequiredValidation = false;
     this.subEventFormStageNumber = null;
     this.resetSubEventStageInsertControls();
@@ -2804,6 +2803,7 @@ export class App {
     if (this.subEventLeaderboardForm.awayMemberId === this.subEventLeaderboardForm.homeMemberId) {
       this.subEventLeaderboardForm.awayMemberId = fallbackAway;
     }
+    this.syncSubEventLeaderboardFifaFormFromLatestMatch(stage);
   }
 
   protected onSubEventLeaderboardHomeMemberChange(value: string | null | undefined): void {
@@ -2819,6 +2819,7 @@ export class App {
       const replacement = members.find(member => member.id !== nextHome)?.id ?? '';
       this.subEventLeaderboardForm.awayMemberId = replacement;
     }
+    this.syncSubEventLeaderboardFifaFormFromLatestMatch(stage);
   }
 
   protected onSubEventLeaderboardAwayMemberChange(value: string | null | undefined): void {
@@ -2833,6 +2834,7 @@ export class App {
     if (this.subEventLeaderboardForm.awayMemberId === this.subEventLeaderboardForm.homeMemberId) {
       this.subEventLeaderboardForm.homeMemberId = members.find(member => member.id !== nextAway)?.id ?? '';
     }
+    this.syncSubEventLeaderboardFifaFormFromLatestMatch(stage);
   }
 
   protected onSubEventLeaderboardScoreValueChange(value: number | string | null | undefined): void {
@@ -3195,7 +3197,6 @@ export class App {
 
   protected closeSubEventGroupPanel(event?: Event): void {
     event?.stopPropagation();
-    this.appendCurrentSubEventGroupIfValid();
     this.showSubEventGroupRequiredValidation = false;
     this.showSubEventGroupForm = false;
   }
@@ -3802,6 +3803,35 @@ export class App {
     this.ensureSubEventLeaderboardMembers(stage);
     const nextGroupId = groupId ?? this.subEventLeaderboardEditingGroupId ?? stage.groups[0]?.id ?? '';
     this.onSubEventLeaderboardGroupChange(nextGroupId);
+  }
+
+  private syncSubEventLeaderboardFifaFormFromLatestMatch(stage: SubEventTournamentStage): void {
+    if (this.subEventLeaderboardMode(stage) !== 'Fifa') {
+      return;
+    }
+    const groupId = this.resolveLeaderboardGroupId(stage, this.subEventLeaderboardForm.groupId);
+    const homeMemberId = this.subEventLeaderboardForm.homeMemberId;
+    const awayMemberId = this.subEventLeaderboardForm.awayMemberId;
+    if (!groupId || !homeMemberId || !awayMemberId || homeMemberId === awayMemberId) {
+      this.subEventLeaderboardForm.homeScore = null;
+      this.subEventLeaderboardForm.awayScore = null;
+      this.subEventLeaderboardForm.note = '';
+      return;
+    }
+    const pairKey = this.subEventLeaderboardMatchPairKey(homeMemberId, awayMemberId);
+    const latestMatch = this.subEventLeaderboardFifaMatches(stage, groupId).find(
+      match => this.subEventLeaderboardMatchPairKey(match.homeMemberId, match.awayMemberId) === pairKey
+    );
+    if (!latestMatch) {
+      this.subEventLeaderboardForm.homeScore = null;
+      this.subEventLeaderboardForm.awayScore = null;
+      this.subEventLeaderboardForm.note = '';
+      return;
+    }
+    const isSameOrder = latestMatch.homeMemberId === homeMemberId && latestMatch.awayMemberId === awayMemberId;
+    this.subEventLeaderboardForm.homeScore = isSameOrder ? latestMatch.homeScore : latestMatch.awayScore;
+    this.subEventLeaderboardForm.awayScore = isSameOrder ? latestMatch.awayScore : latestMatch.homeScore;
+    this.subEventLeaderboardForm.note = latestMatch.note ?? '';
   }
 
   private subEventLeaderboardStageGroupKey(stageId: string, groupId: string): string {
