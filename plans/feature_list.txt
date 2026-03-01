@@ -332,3 +332,7 @@ in sub event editor - assets management popups
 Sub events header (name of the event and the number of stages)
 
 add group popup on mobile
+
+----
+
+git submodule to grab the front end code, the backend will be in private repo
