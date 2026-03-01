@@ -328,3 +328,5 @@ view event popups (invitations/events) - the rate is big profile images, not thi
 members in the event editor header like in the case of chat
 
 in sub event editor - assets management popups
+
+Sub events header (name of the event and the number of stages)
