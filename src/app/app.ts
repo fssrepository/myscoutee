@@ -1213,6 +1213,8 @@ export class App {
   protected subEventsDisplayMode: SubEventsDisplayMode = 'Casual';
   protected showSubEventsDisplayModePicker = false;
   protected subEventStagePageIndex = 0;
+  private subEventStageArrowScrollLock = false;
+  private subEventStageArrowScrollUnlockTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly subEventLeaderboardMembersByGroupId: Record<string, SubEventLeaderboardMember[]> = {};
   private readonly subEventLeaderboardScoreEntriesByGroupKey: Record<string, SubEventLeaderboardScoreEntry[]> = {};
   private readonly subEventLeaderboardFifaMatchesByGroupKey: Record<string, SubEventLeaderboardFifaMatch[]> = {};
@@ -1719,6 +1721,11 @@ export class App {
     if (this.superStackedPopup === 'eventSubEvents') {
       this.superStackedPopup = null;
     }
+    this.subEventStageArrowScrollLock = false;
+    if (this.subEventStageArrowScrollUnlockTimer) {
+      clearTimeout(this.subEventStageArrowScrollUnlockTimer);
+      this.subEventStageArrowScrollUnlockTimer = null;
+    }
     this.inlineItemActionMenu = null;
     this.showSubEventsDisplayModePicker = false;
     this.subEventFormStageNumber = null;
@@ -1871,6 +1878,59 @@ export class App {
     return this.tournamentPageRangeLabelFromMs(minStart, maxEnd);
   }
 
+  protected subEventPreviousStageLabel(): string {
+    return this.subEventPreviousStage()?.title ?? '';
+  }
+
+  protected subEventNextStageLabel(): string {
+    return this.subEventNextStage()?.title ?? '';
+  }
+
+  protected subEventPreviousStageColor(): string {
+    const stage = this.subEventPreviousStage();
+    if (!stage) {
+      return '';
+    }
+    return this.subEventStageAccentColor(stage.stageNumber, this.subEventTournamentStages.length);
+  }
+
+  protected subEventNextStageColor(): string {
+    const stage = this.subEventNextStage();
+    if (!stage) {
+      return '';
+    }
+    return this.subEventStageAccentColor(stage.stageNumber, this.subEventTournamentStages.length);
+  }
+
+  protected subEventVisibleStageStartLabel(): string {
+    return this.subEventVisibleStageEdges()?.start.title ?? '';
+  }
+
+  protected subEventVisibleStageEndLabel(): string {
+    return this.subEventVisibleStageEdges()?.end.title ?? '';
+  }
+
+  protected subEventVisibleStageHasRange(): boolean {
+    const edges = this.subEventVisibleStageEdges();
+    return !!edges && edges.start.stageNumber !== edges.end.stageNumber;
+  }
+
+  protected subEventVisibleStageStartColor(): string {
+    const edges = this.subEventVisibleStageEdges();
+    if (!edges) {
+      return '';
+    }
+    return this.subEventStageAccentColor(edges.start.stageNumber, this.subEventTournamentStages.length);
+  }
+
+  protected subEventVisibleStageEndColor(): string {
+    const edges = this.subEventVisibleStageEdges();
+    if (!edges) {
+      return '';
+    }
+    return this.subEventStageAccentColor(edges.end.stageNumber, this.subEventTournamentStages.length);
+  }
+
   protected subEventGroupBadgeStyle(groupNumber: number): Record<string, string> {
     const hue = (groupNumber * 43) % 360;
     return {
@@ -1885,17 +1945,10 @@ export class App {
     if (!element) {
       return;
     }
-    if (this.isSubEventSwipeViewport) {
-      const step = element.clientWidth || 1;
-      const nextIndex = Math.round(element.scrollLeft / step);
-      const maxIndex = Math.max(0, this.subEventTournamentStagePages.length - 1);
-      this.subEventStagePageIndex = this.clampNumber(nextIndex, 0, maxIndex);
+    if (this.subEventStageArrowScrollLock) {
       return;
     }
-    const starts = this.subEventDesktopPageStarts(this.subEventTournamentStages.length);
-    const offsets = this.subEventDesktopPageOffsets(element, starts);
-    const currentOffset = element.scrollLeft;
-    this.subEventStagePageIndex = this.subEventDesktopNearestStartIndex(offsets, currentOffset);
+    this.syncSubEventStagePageIndexFromScroll(element);
   }
 
   protected canScrollSubEventStagePages(direction: -1 | 1): boolean {
@@ -1940,7 +1993,7 @@ export class App {
         0,
         maxIndex
       );
-      this.subEventStagePageIndex = nextIndex;
+      this.lockSubEventStagePageIndexForArrowNavigation(nextIndex, scrollElement);
       const step = scrollElement.clientWidth || 0;
       if (step <= 0) {
         return;
@@ -1972,7 +2025,7 @@ export class App {
       return;
     }
     const targetOffset = offsets[targetPageIndex] ?? 0;
-    this.subEventStagePageIndex = targetPageIndex;
+    this.lockSubEventStagePageIndexForArrowNavigation(targetPageIndex, scrollElement);
     scrollElement.scrollTo({ left: targetOffset, behavior: 'smooth' });
   }
 
@@ -4387,15 +4440,97 @@ export class App {
     });
   }
 
-  private subEventVisibleStagesForRangeLabel(): SubEventTournamentStage[] {
-    const pages = this.subEventTournamentStagePages;
+  private syncSubEventStagePageIndexFromScroll(scrollElement: HTMLElement): void {
     if (this.isSubEventSwipeViewport) {
-      return pages[this.subEventStagePageIndex] ?? pages[0] ?? [];
+      const step = scrollElement.clientWidth || 1;
+      const nextIndex = Math.round(scrollElement.scrollLeft / step);
+      const maxIndex = Math.max(0, this.subEventTournamentStagePages.length - 1);
+      this.subEventStagePageIndex = this.clampNumber(nextIndex, 0, maxIndex);
+      return;
+    }
+    const starts = this.subEventDesktopPageStarts(this.subEventTournamentStages.length);
+    const offsets = this.subEventDesktopPageOffsets(scrollElement, starts);
+    const currentOffset = scrollElement.scrollLeft;
+    this.subEventStagePageIndex = this.subEventDesktopNearestStartIndex(offsets, currentOffset);
+  }
+
+  private lockSubEventStagePageIndexForArrowNavigation(targetPageIndex: number, scrollElement: HTMLElement): void {
+    this.subEventStagePageIndex = targetPageIndex;
+    this.subEventStageArrowScrollLock = true;
+    if (this.subEventStageArrowScrollUnlockTimer) {
+      clearTimeout(this.subEventStageArrowScrollUnlockTimer);
+      this.subEventStageArrowScrollUnlockTimer = null;
+    }
+    this.subEventStageArrowScrollUnlockTimer = setTimeout(() => {
+      this.subEventStageArrowScrollLock = false;
+      this.subEventStageArrowScrollUnlockTimer = null;
+      this.syncSubEventStagePageIndexFromScroll(scrollElement);
+    }, 420);
+  }
+
+  private subEventVisibleStageBounds(): { start: number; end: number } | null {
+    const stages = this.subEventTournamentStages;
+    const total = stages.length;
+    if (total === 0) {
+      return null;
+    }
+    if (this.isSubEventSwipeViewport) {
+      const pages = this.subEventTournamentStagePages;
+      if (pages.length === 0) {
+        return null;
+      }
+      const pageIndex = this.clampNumber(this.subEventStagePageIndex, 0, pages.length - 1);
+      const pageSize = this.subEventStagePageSize();
+      const start = this.clampNumber(pageIndex * pageSize, 0, Math.max(0, total - 1));
+      const pageLength = Math.max(1, pages[pageIndex]?.length ?? 0);
+      const end = this.clampNumber(start + pageLength - 1, start, total - 1);
+      return { start, end };
+    }
+    const starts = this.subEventDesktopPageStarts(total);
+    const startIndex = this.clampNumber(this.subEventStagePageIndex, 0, Math.max(0, starts.length - 1));
+    const start = this.clampNumber(starts[startIndex] ?? 0, 0, Math.max(0, total - 1));
+    const end = this.clampNumber(start + 2, start, total - 1);
+    return { start, end };
+  }
+
+  private subEventPreviousStage(): SubEventTournamentStage | null {
+    const bounds = this.subEventVisibleStageBounds();
+    if (!bounds || bounds.start <= 0) {
+      return null;
+    }
+    return this.subEventTournamentStages[bounds.start - 1] ?? null;
+  }
+
+  private subEventNextStage(): SubEventTournamentStage | null {
+    const bounds = this.subEventVisibleStageBounds();
+    const stages = this.subEventTournamentStages;
+    if (!bounds || bounds.end >= (stages.length - 1)) {
+      return null;
+    }
+    return stages[bounds.end + 1] ?? null;
+  }
+
+  private subEventVisibleStageEdges(): { start: SubEventTournamentStage; end: SubEventTournamentStage } | null {
+    const bounds = this.subEventVisibleStageBounds();
+    if (!bounds) {
+      return null;
     }
     const stages = this.subEventTournamentStages;
-    const starts = this.subEventDesktopPageStarts(stages.length);
-    const start = starts[this.subEventStagePageIndex] ?? 0;
-    return stages.slice(start, start + 3);
+    const start = stages[bounds.start];
+    const end = stages[bounds.end];
+    if (!start || !end) {
+      return null;
+    }
+    return { start, end };
+  }
+
+  private subEventVisibleStagesForRangeLabel(): SubEventTournamentStage[] {
+    const stages = this.subEventTournamentStages;
+    const bounds = this.subEventVisibleStageBounds();
+    if (!bounds) {
+      return [];
+    }
+    return stages.slice(bounds.start, bounds.end + 1);
   }
 
   private resolveCurrentTournamentStageNumber(items: SubEventFormItem[]): number {
@@ -4423,6 +4558,11 @@ export class App {
   }
 
   private resetSubEventStagePaging(): void {
+    this.subEventStageArrowScrollLock = false;
+    if (this.subEventStageArrowScrollUnlockTimer) {
+      clearTimeout(this.subEventStageArrowScrollUnlockTimer);
+      this.subEventStageArrowScrollUnlockTimer = null;
+    }
     this.subEventStagePageIndex = 0;
     setTimeout(() => {
       const scrollElement = this.subEventStagesScrollRef?.nativeElement;

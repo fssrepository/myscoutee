@@ -4150,8 +4150,7 @@
         <ng-container *ngIf="subEventsDisplayMode === 'Tournament'; else subEventsCasualList">
           <div class="subevent-stage-board">
             <div class="activities-sticky-header activities-sticky-header-calendar subevent-stage-period-head">
-              <span>{{ subEventTournamentPageRangeLabel() }}</span>
-              <span class="activities-sticky-calendar-nav" *ngIf="!isSubEventSwipeViewport">
+              <span class="activities-sticky-calendar-nav subevent-stage-period-nav subevent-stage-period-nav-left">
                 <button
                   type="button"
                   class="activities-calendar-nav-btn"
@@ -4161,6 +4160,36 @@
                 >
                   <mat-icon>chevron_left</mat-icon>
                 </button>
+                <span
+                  class="subevent-stage-period-neighbor"
+                  [class.is-empty]="!subEventPreviousStageLabel()"
+                  [style.color]="subEventPreviousStageColor()"
+                >
+                  {{ subEventPreviousStageLabel() || 'Stage' }}
+                </span>
+              </span>
+              <span class="subevent-stage-period-center">
+                <span class="subevent-stage-period-current">
+                  <span class="subevent-stage-period-current-start" [style.color]="subEventVisibleStageStartColor()">
+                    {{ subEventVisibleStageStartLabel() }}
+                  </span>
+                  <ng-container *ngIf="subEventVisibleStageHasRange()">
+                    <span class="subevent-stage-period-current-separator">-</span>
+                    <span class="subevent-stage-period-current-end" [style.color]="subEventVisibleStageEndColor()">
+                      {{ subEventVisibleStageEndLabel() }}
+                    </span>
+                  </ng-container>
+                </span>
+                <span class="subevent-stage-period-label">{{ subEventTournamentPageRangeLabel() }}</span>
+              </span>
+              <span class="activities-sticky-calendar-nav subevent-stage-period-nav subevent-stage-period-nav-right">
+                <span
+                  class="subevent-stage-period-neighbor"
+                  [class.is-empty]="!subEventNextStageLabel()"
+                  [style.color]="subEventNextStageColor()"
+                >
+                  {{ subEventNextStageLabel() || 'Stage' }}
+                </span>
                 <button
                   type="button"
                   class="activities-calendar-nav-btn"
