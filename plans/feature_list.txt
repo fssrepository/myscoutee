@@ -324,7 +324,7 @@ lazy load images - paginator a horizontal progress and load (old myscoutee has i
 
 -------------------
 
-view event popups (invitations/events) - the rate is big profile images, not this small one
+view event popups (invitations/events - view event menu item) - the rate is big profile images, not this small one
 members in the event editor header like in the case of chat
 
 in sub event editor - assets management popups
