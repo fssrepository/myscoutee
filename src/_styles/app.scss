@@ -10746,6 +10746,88 @@ textarea {
   min-width: 0;
 }
 
+.subevent-tournament-rule-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.44rem 0.52rem;
+}
+
+.subevent-tournament-select {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid rgba(61, 98, 143, 0.3);
+  border-radius: 8px;
+  background: #fff;
+  min-height: 30px;
+  padding: 0 0.46rem;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.subevent-tournament-select .mat-mdc-select {
+  width: 100%;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.subevent-tournament-select .mat-mdc-select-trigger {
+  min-height: 28px;
+}
+
+.subevent-tournament-select .mat-mdc-select-arrow-wrapper {
+  margin-left: auto;
+  padding-left: 0.3rem;
+}
+
+.subevent-tournament-select-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.26rem;
+}
+
+.subevent-tournament-select-trigger .mat-icon {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+  line-height: 14px;
+}
+
+.subevent-tournament-select.tournament-leaderboard-score {
+  background: linear-gradient(180deg, #f2f8ff 0%, #e8f1ff 100%);
+  border-color: rgba(56, 102, 170, 0.36);
+  color: #2e5ea8;
+}
+
+.subevent-tournament-select.tournament-leaderboard-fifa {
+  background: linear-gradient(180deg, #fff4e9 0%, #ffe9d4 100%);
+  border-color: rgba(181, 110, 40, 0.4);
+  color: #a35f1d;
+}
+
+.subevent-tournament-leaderboard-option-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+}
+
+.subevent-tournament-leaderboard-option-content .mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  line-height: 15px;
+}
+
+.subevent-tournament-leaderboard-option.tournament-leaderboard-score {
+  background: linear-gradient(180deg, #f5f9ff 0%, #edf3ff 100%);
+  color: #2e5ea8;
+}
+
+.subevent-tournament-leaderboard-option.tournament-leaderboard-fifa {
+  background: linear-gradient(180deg, #fff8ef 0%, #fff0df 100%);
+  color: #a35f1d;
+}
+
 .subevent-tournament-hint {
   margin: 0;
   color: rgba(35, 62, 97, 0.76);
@@ -13800,6 +13882,23 @@ textarea {
   }
 
   .subevent-stage-insert-target-select .mat-mdc-select-trigger {
+    min-height: 28px;
+  }
+
+  .subevent-tournament-rule-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .subevent-tournament-select {
+    min-height: 30px;
+    padding: 0 0.42rem;
+  }
+
+  .subevent-tournament-select .mat-mdc-select {
+    font-size: 0.72rem;
+  }
+
+  .subevent-tournament-select .mat-mdc-select-trigger {
     min-height: 28px;
   }
 

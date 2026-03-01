@@ -295,6 +295,8 @@ interface SubEventFormItem {
   tournamentGroupCount?: number;
   tournamentGroupCapacityMin?: number;
   tournamentGroupCapacityMax?: number;
+  tournamentLeaderboardType?: TournamentLeaderboardType;
+  tournamentAdvancePerGroup?: number;
   optional: boolean;
   capacityMin: number;
   capacityMax: number;
@@ -382,6 +384,7 @@ interface MobileProfileSelectorSheet {
 type AssetType = 'Car' | 'Accommodation' | 'Supplies';
 type SubEventResourceFilter = 'Members' | AssetType;
 type SubEventsDisplayMode = 'Casual' | 'Tournament';
+type TournamentLeaderboardType = 'Score' | 'Fifa';
 type AssetRequestAction = 'accept' | 'remove';
 type EventEditorMode = 'edit' | 'create';
 type EventEditorTarget = 'events' | 'hosting';
@@ -1143,6 +1146,7 @@ export class App {
   protected eventStartTimeValue: Date | null = null;
   protected eventEndTimeValue: Date | null = null;
   protected readonly subEventsDisplayModeOptions: SubEventsDisplayMode[] = ['Casual', 'Tournament'];
+  protected readonly tournamentLeaderboardTypeOptions: TournamentLeaderboardType[] = ['Score', 'Fifa'];
   protected subEventsDisplayMode: SubEventsDisplayMode = 'Casual';
   protected showSubEventsDisplayModePicker = false;
   protected subEventStagePageIndex = 0;
@@ -2366,6 +2370,37 @@ export class App {
     this.normalizeTournamentStageConfigOnForm();
   }
 
+  protected tournamentLeaderboardTypeValue(): TournamentLeaderboardType {
+    return this.normalizedTournamentLeaderboardType(this.subEventForm.tournamentLeaderboardType);
+  }
+
+  protected tournamentLeaderboardTypeIcon(
+    value: TournamentLeaderboardType = this.tournamentLeaderboardTypeValue()
+  ): string {
+    return value === 'Fifa' ? 'sports_soccer' : 'leaderboard';
+  }
+
+  protected tournamentLeaderboardTypeClass(
+    value: TournamentLeaderboardType = this.tournamentLeaderboardTypeValue()
+  ): string {
+    return value === 'Fifa' ? 'tournament-leaderboard-fifa' : 'tournament-leaderboard-score';
+  }
+
+  protected onTournamentLeaderboardTypeChange(value: TournamentLeaderboardType | string | null | undefined): void {
+    this.subEventForm.tournamentLeaderboardType = this.normalizedTournamentLeaderboardType(value);
+  }
+
+  protected onTournamentAdvancePerGroupChange(value: number | string): void {
+    if (value === '' || value === null || value === undefined) {
+      this.subEventForm.tournamentAdvancePerGroup = undefined;
+      return;
+    }
+    const parsed = Number(value);
+    this.subEventForm.tournamentAdvancePerGroup = Number.isFinite(parsed)
+      ? Math.max(1, Math.trunc(parsed))
+      : this.subEventForm.tournamentAdvancePerGroup;
+  }
+
   protected tournamentStageTotalCapacityLabel(): string {
     const config = this.tournamentStageConfigFromItem(this.subEventForm);
     const min = config.groupCount * config.groupCapacityMin;
@@ -3131,6 +3166,8 @@ export class App {
       endAt: this.toIsoDateTimeLocal(end),
       createdByUserId: this.activeUser.id,
       groups: [],
+      tournamentLeaderboardType: 'Score',
+      tournamentAdvancePerGroup: 1,
       optional: true,
       capacityMin: initialMin,
       capacityMax: initialMax,
@@ -3606,6 +3643,15 @@ export class App {
     const nextOptional = forceMandatoryTournament ? false : this.subEventForm.optional;
     this.normalizeSubEventCapacityRange(true);
     const tournamentConfig = forceMandatoryTournament ? this.normalizeTournamentStageConfigOnForm() : null;
+    const tournamentLeaderboardType = forceMandatoryTournament
+      ? this.normalizedTournamentLeaderboardType(this.subEventForm.tournamentLeaderboardType)
+      : this.subEventForm.tournamentLeaderboardType;
+    const tournamentAdvancePerGroup = forceMandatoryTournament
+      ? this.normalizedTournamentAdvancePerGroup(
+        this.subEventForm.tournamentAdvancePerGroup,
+        tournamentConfig?.groupCapacityMax ?? this.subEventForm.tournamentGroupCapacityMax
+      )
+      : this.subEventForm.tournamentAdvancePerGroup;
     const nextCapacityMin = this.subEventForm.capacityMin;
     const nextCapacityMax = this.subEventForm.capacityMax;
     const tournamentGroupCount = this.normalizedCapacityValue(this.subEventForm.tournamentGroupCount);
@@ -3631,6 +3677,8 @@ export class App {
       tournamentGroupCount: tournamentGroupCount ?? undefined,
       tournamentGroupCapacityMin: tournamentConfig?.groupCapacityMin ?? this.subEventForm.tournamentGroupCapacityMin,
       tournamentGroupCapacityMax: tournamentConfig?.groupCapacityMax ?? this.subEventForm.tournamentGroupCapacityMax,
+      tournamentLeaderboardType: tournamentLeaderboardType ?? undefined,
+      tournamentAdvancePerGroup: tournamentAdvancePerGroup ?? undefined,
       capacityMin: Math.max(1, Number(nextCapacityMin) || 1),
       capacityMax: Math.max(
         Math.max(1, Number(nextCapacityMin) || 1),
@@ -3733,6 +3781,22 @@ export class App {
     return Math.max(1, Math.trunc(parsed));
   }
 
+  private normalizedTournamentLeaderboardType(value: unknown): TournamentLeaderboardType {
+    return value === 'Fifa' ? 'Fifa' : 'Score';
+  }
+
+  private normalizedTournamentAdvancePerGroup(
+    value: number | string | null | undefined,
+    maxPerGroupValue: number | string | null | undefined
+  ): number {
+    const maxPerGroup = this.toPositiveInt(maxPerGroupValue, 1);
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return 1;
+    }
+    return this.clampNumber(Math.trunc(parsed), 1, maxPerGroup);
+  }
+
   private tournamentEstimatedGroupCountRange(
     perGroupMinValue: number | string | null | undefined,
     perGroupMaxValue: number | string | null | undefined
@@ -3792,6 +3856,13 @@ export class App {
   private applyTournamentStageConfigToForm(config: SubEventTournamentConfig): void {
     this.subEventForm.tournamentGroupCapacityMin = config.groupCapacityMin;
     this.subEventForm.tournamentGroupCapacityMax = config.groupCapacityMax;
+    this.subEventForm.tournamentLeaderboardType = this.normalizedTournamentLeaderboardType(
+      this.subEventForm.tournamentLeaderboardType
+    );
+    this.subEventForm.tournamentAdvancePerGroup = this.normalizedTournamentAdvancePerGroup(
+      this.subEventForm.tournamentAdvancePerGroup,
+      config.groupCapacityMax
+    );
     const fixedGroupCount = this.subEventForm.groups?.length
       ? this.subEventForm.groups.length
       : this.normalizedCapacityValue(this.subEventForm.tournamentGroupCount);
@@ -3825,6 +3896,13 @@ export class App {
     const reference = this.tournamentInsertReferenceStage();
     if (reference) {
       const referenceConfig = this.tournamentStageConfigFromItem(reference);
+      this.subEventForm.tournamentLeaderboardType = this.normalizedTournamentLeaderboardType(
+        reference.tournamentLeaderboardType
+      );
+      this.subEventForm.tournamentAdvancePerGroup = this.normalizedTournamentAdvancePerGroup(
+        reference.tournamentAdvancePerGroup,
+        referenceConfig.groupCapacityMax
+      );
       const nextTotal = Math.max(1, Math.ceil((referenceConfig.groupCount * referenceConfig.groupCapacityMax) / 2));
       const nextGroupCount = Math.max(1, Math.ceil(nextTotal / referenceConfig.groupCapacityMax));
       this.applyTournamentStageConfigToForm({
@@ -3839,6 +3917,8 @@ export class App {
     const defaultGroupCount = this.clampNumber(Math.max(1, Math.ceil(mainMax / 8)), 1, 64);
     const defaultGroupMin = Math.max(1, Math.ceil(mainMin / defaultGroupCount));
     const defaultGroupMax = Math.max(defaultGroupMin, Math.ceil(mainMax / defaultGroupCount));
+    this.subEventForm.tournamentLeaderboardType = 'Score';
+    this.subEventForm.tournamentAdvancePerGroup = 1;
     this.applyTournamentStageConfigToForm({
       groupCount: defaultGroupCount,
       groupCapacityMin: defaultGroupMin,
@@ -3850,7 +3930,13 @@ export class App {
     if (!this.isTournamentStageMandatoryContext()) {
       return;
     }
-    this.applyTournamentStageConfigToForm(this.tournamentStageConfigFromItem(item));
+    const config = this.tournamentStageConfigFromItem(item);
+    this.subEventForm.tournamentLeaderboardType = this.normalizedTournamentLeaderboardType(item.tournamentLeaderboardType);
+    this.subEventForm.tournamentAdvancePerGroup = this.normalizedTournamentAdvancePerGroup(
+      item.tournamentAdvancePerGroup,
+      config.groupCapacityMax
+    );
+    this.applyTournamentStageConfigToForm(config);
   }
 
   private normalizeTournamentStageConfigOnForm(): SubEventTournamentConfig {

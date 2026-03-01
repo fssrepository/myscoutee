@@ -2085,12 +2085,54 @@
                             />
                           </label>
                         </div>
+                        <div class="subevent-tournament-rule-row">
+                          <label class="subevent-tournament-field">
+                            <span>Leaderboard Type</span>
+                            <div class="subevent-tournament-select" [ngClass]="tournamentLeaderboardTypeClass()">
+                              <mat-select
+                                [ngModel]="tournamentLeaderboardTypeValue()"
+                                (selectionChange)="onTournamentLeaderboardTypeChange($event.value)"
+                                [panelWidth]="null"
+                                disableOptionCentering
+                                panelClass="selector-options-panel profile-bottom-sheet-panel subevent-tournament-leaderboard-options-panel"
+                              >
+                                <mat-select-trigger>
+                                  <span class="subevent-tournament-select-trigger">
+                                    <mat-icon>{{ tournamentLeaderboardTypeIcon() }}</mat-icon>
+                                    <span>{{ tournamentLeaderboardTypeValue() }}</span>
+                                  </span>
+                                </mat-select-trigger>
+                                <mat-option
+                                  *ngFor="let option of tournamentLeaderboardTypeOptions"
+                                  [value]="option"
+                                  class="status-option subevent-tournament-leaderboard-option"
+                                  [ngClass]="tournamentLeaderboardTypeClass(option)"
+                                >
+                                  <span class="subevent-tournament-leaderboard-option-content">
+                                    <mat-icon>{{ tournamentLeaderboardTypeIcon(option) }}</mat-icon>
+                                    <span>{{ option }}</span>
+                                  </span>
+                                </mat-option>
+                              </mat-select>
+                            </div>
+                          </label>
+                          <label class="subevent-tournament-field">
+                            <span>Advance Per Group</span>
+                            <input
+                              type="number"
+                              min="1"
+                              step="1"
+                              [ngModel]="subEventForm.tournamentAdvancePerGroup ?? ''"
+                              (ngModelChange)="onTournamentAdvancePerGroupChange($event)"
+                              placeholder="1"
+                            />
+                          </label>
+                        </div>
                         <label class="subevent-tournament-field subevent-tournament-field-readonly">
                           <span>Estimated Group Count</span>
                           <input type="text" [value]="tournamentEstimatedGroupCountLabel()" readonly />
                         </label>
                       </div>
-                      <p class="subevent-tournament-hint">{{ tournamentStageAdvanceHintLabel() }}</p>
                     </fieldset>
                   </div>
                 </section>
@@ -3631,12 +3673,54 @@
                             />
                           </label>
                         </div>
+                        <div class="subevent-tournament-rule-row">
+                          <label class="subevent-tournament-field">
+                            <span>Leaderboard Type</span>
+                            <div class="subevent-tournament-select" [ngClass]="tournamentLeaderboardTypeClass()">
+                              <mat-select
+                                [ngModel]="tournamentLeaderboardTypeValue()"
+                                (selectionChange)="onTournamentLeaderboardTypeChange($event.value)"
+                                [panelWidth]="null"
+                                disableOptionCentering
+                                panelClass="selector-options-panel profile-bottom-sheet-panel subevent-tournament-leaderboard-options-panel"
+                              >
+                                <mat-select-trigger>
+                                  <span class="subevent-tournament-select-trigger">
+                                    <mat-icon>{{ tournamentLeaderboardTypeIcon() }}</mat-icon>
+                                    <span>{{ tournamentLeaderboardTypeValue() }}</span>
+                                  </span>
+                                </mat-select-trigger>
+                                <mat-option
+                                  *ngFor="let option of tournamentLeaderboardTypeOptions"
+                                  [value]="option"
+                                  class="status-option subevent-tournament-leaderboard-option"
+                                  [ngClass]="tournamentLeaderboardTypeClass(option)"
+                                >
+                                  <span class="subevent-tournament-leaderboard-option-content">
+                                    <mat-icon>{{ tournamentLeaderboardTypeIcon(option) }}</mat-icon>
+                                    <span>{{ option }}</span>
+                                  </span>
+                                </mat-option>
+                              </mat-select>
+                            </div>
+                          </label>
+                          <label class="subevent-tournament-field">
+                            <span>Advance Per Group</span>
+                            <input
+                              type="number"
+                              min="1"
+                              step="1"
+                              [ngModel]="subEventForm.tournamentAdvancePerGroup ?? ''"
+                              (ngModelChange)="onTournamentAdvancePerGroupChange($event)"
+                              placeholder="1"
+                            />
+                          </label>
+                        </div>
                         <label class="subevent-tournament-field subevent-tournament-field-readonly">
                           <span>Estimated Group Count</span>
                           <input type="text" [value]="tournamentEstimatedGroupCountLabel()" readonly />
                         </label>
                       </div>
-                      <p class="subevent-tournament-hint">{{ tournamentStageAdvanceHintLabel() }}</p>
                     </fieldset>
                   </div>
                 </section>
@@ -4205,7 +4289,7 @@
           <p *ngIf="!tournamentMode">{{ subEvent.description || 'No description' }}</p>
           <span class="event-subevent-range-badge" *ngIf="!tournamentMode">{{ subEventCardRange(subEvent) }}</span>
           <div class="event-subevent-badges">
-            <button type="button" class="event-subevent-badge event-subevent-badge-members" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Members', subEvent, $event)" *ngIf="subEvent.optional">
+            <button type="button" class="event-subevent-badge event-subevent-badge-members" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Members', subEvent, $event)" *ngIf="subEvent.optional || tournamentMode">
               <span class="event-subevent-badge-icon"><mat-icon>groups</mat-icon></span>
               <span class="event-subevent-badge-text">
                 <span class="event-subevent-badge-title">Members</span>
@@ -4375,12 +4459,54 @@
                     />
                   </label>
                 </div>
+                <div class="subevent-tournament-rule-row">
+                  <label class="subevent-tournament-field">
+                    <span>Leaderboard Type</span>
+                    <div class="subevent-tournament-select" [ngClass]="tournamentLeaderboardTypeClass()">
+                      <mat-select
+                        [ngModel]="tournamentLeaderboardTypeValue()"
+                        (selectionChange)="onTournamentLeaderboardTypeChange($event.value)"
+                        [panelWidth]="null"
+                        disableOptionCentering
+                        panelClass="selector-options-panel profile-bottom-sheet-panel subevent-tournament-leaderboard-options-panel"
+                      >
+                        <mat-select-trigger>
+                          <span class="subevent-tournament-select-trigger">
+                            <mat-icon>{{ tournamentLeaderboardTypeIcon() }}</mat-icon>
+                            <span>{{ tournamentLeaderboardTypeValue() }}</span>
+                          </span>
+                        </mat-select-trigger>
+                        <mat-option
+                          *ngFor="let option of tournamentLeaderboardTypeOptions"
+                          [value]="option"
+                          class="status-option subevent-tournament-leaderboard-option"
+                          [ngClass]="tournamentLeaderboardTypeClass(option)"
+                        >
+                          <span class="subevent-tournament-leaderboard-option-content">
+                            <mat-icon>{{ tournamentLeaderboardTypeIcon(option) }}</mat-icon>
+                            <span>{{ option }}</span>
+                          </span>
+                        </mat-option>
+                      </mat-select>
+                    </div>
+                  </label>
+                  <label class="subevent-tournament-field">
+                    <span>Advance Per Group</span>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      [ngModel]="subEventForm.tournamentAdvancePerGroup ?? ''"
+                      (ngModelChange)="onTournamentAdvancePerGroupChange($event)"
+                      placeholder="1"
+                    />
+                  </label>
+                </div>
                 <label class="subevent-tournament-field subevent-tournament-field-readonly">
                   <span>Estimated Group Count</span>
                   <input type="text" [value]="tournamentEstimatedGroupCountLabel()" readonly />
                 </label>
               </div>
-              <p class="subevent-tournament-hint">{{ tournamentStageAdvanceHintLabel() }}</p>
             </fieldset>
           </div>
         </section>
