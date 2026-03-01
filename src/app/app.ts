@@ -2401,7 +2401,14 @@ export class App {
 
   protected selectSubEventStageInsertPlacement(placement: 'before' | 'after', event?: Event): void {
     event?.stopPropagation();
+    if (this.subEventStageInsertPlacement === placement) {
+      return;
+    }
     this.subEventStageInsertPlacement = placement;
+    this.applySubEventInsertTargetDateRangeToForm();
+    if (this.isTournamentStageMandatoryContext() && !this.subEventForm.id) {
+      this.initializeTournamentStageConfigForCreate();
+    }
   }
 
   protected onSubEventStageInsertTargetChange(value: string | null | undefined): void {
@@ -3657,9 +3664,7 @@ export class App {
 
   private defaultEventForm(): EventEditorForm {
     const start = new Date();
-    start.setMinutes(0, 0, 0);
-    start.setHours(start.getHours() + 1);
-    const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+    const end = new Date(start.getTime());
     return {
       title: '',
       description: '',
@@ -3709,8 +3714,9 @@ export class App {
 
   private defaultSubEventForm(): SubEventFormItem {
     const baseStart = this.isoLocalDateTimeToDate(this.eventForm.startAt) ?? new Date();
+    const baseEnd = this.isoLocalDateTimeToDate(this.eventForm.endAt) ?? new Date(baseStart);
     const start = new Date(baseStart);
-    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    const end = new Date(baseEnd.getTime() < baseStart.getTime() ? baseStart : baseEnd);
     const mainMin = this.normalizedCapacityValue(this.eventForm.capacityMin);
     const mainMax = this.normalizedCapacityValue(this.eventForm.capacityMax);
     const initialMin = mainMax !== null ? Math.min(mainMin ?? 1, mainMax) : 4;
@@ -4020,50 +4026,99 @@ export class App {
       return;
     }
     const source = this.subEventInsertTargetSource();
-    const target = source.find(item => item.id === this.subEventStageInsertTargetId);
+    const targetIndex = source.findIndex(item => item.id === this.subEventStageInsertTargetId);
+    if (targetIndex < 0) {
+      return;
+    }
+
+    const target = source[targetIndex];
     if (!target) {
       return;
     }
-    const startMs = new Date(target.startAt).getTime();
-    const endMs = new Date(target.endAt).getTime();
-    if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
-      return;
-    }
-    this.subEventForm.startAt = target.startAt;
-    this.subEventForm.endAt = target.endAt;
+
+    const previous = source[targetIndex - 1] ?? null;
+    const next = source[targetIndex + 1] ?? null;
+    const beforeStartBoundary = previous?.endAt ?? target.startAt;
+    const beforeEndBoundary = target.startAt;
+    const afterStartBoundary = target.endAt;
+    const afterEndBoundary = next?.startAt ?? target.endAt;
+
+    const draftStartAt = this.subEventStageInsertPlacement === 'before'
+      ? beforeStartBoundary
+      : afterStartBoundary;
+    const draftEndAt = this.subEventStageInsertPlacement === 'before'
+      ? beforeEndBoundary
+      : afterEndBoundary;
+
+    this.subEventForm.startAt = draftStartAt;
+    this.subEventForm.endAt = draftEndAt;
     this.syncSubEventDateTimeControlsFromForm();
   }
 
   private applyGapShiftAfterInsert(items: SubEventFormItem[], insertIndex: number): SubEventFormItem[] {
     const nextItems = this.cloneSubEvents(items);
     const inserted = nextItems[insertIndex] ?? null;
-    const following = nextItems[insertIndex + 1] ?? null;
-    if (!inserted || !following) {
+    if (!inserted) {
       return nextItems;
     }
 
+    const insertedId = inserted.id;
+    const insertedStartMs = new Date(inserted.startAt).getTime();
     const insertedEndMs = new Date(inserted.endAt).getTime();
-    const followingStartMs = new Date(following.startAt).getTime();
-    if (Number.isNaN(insertedEndMs) || Number.isNaN(followingStartMs)) {
+    if (Number.isNaN(insertedStartMs) || Number.isNaN(insertedEndMs)) {
       return nextItems;
     }
 
-    const desiredFollowingStartMs = insertedEndMs;
-    const shiftMs = desiredFollowingStartMs - followingStartMs;
-    if (shiftMs === 0) {
-      return nextItems;
-    }
+    const ordered = nextItems
+      .map((item, index) => {
+        const startMs = new Date(item.startAt).getTime();
+        const endMs = new Date(item.endAt).getTime();
+        return { item, index, startMs, endMs };
+      })
+      .filter(entry => !Number.isNaN(entry.startMs) && !Number.isNaN(entry.endMs))
+      .sort((a, b) => {
+        if (a.startMs !== b.startMs) {
+          return a.startMs - b.startMs;
+        }
+        return a.index - b.index;
+      });
 
-    for (let index = insertIndex + 1; index < nextItems.length; index += 1) {
-      const item = nextItems[index];
-      const startMs = new Date(item.startAt).getTime();
-      const endMs = new Date(item.endAt).getTime();
-      if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
+    let trimCandidate: (typeof ordered)[number] | null = null;
+    for (const entry of ordered) {
+      if (entry.item.id === insertedId) {
         continue;
       }
-      item.startAt = this.toIsoDateTimeLocal(new Date(startMs + shiftMs));
-      item.endAt = this.toIsoDateTimeLocal(new Date(endMs + shiftMs));
+      if (entry.startMs < insertedStartMs && entry.endMs > insertedStartMs) {
+        trimCandidate = entry;
+      }
     }
+    if (trimCandidate) {
+      trimCandidate.item.endAt = this.toIsoDateTimeLocal(new Date(insertedStartMs));
+    }
+
+    const firstShiftOverlap = ordered.find(entry =>
+      entry.item.id !== insertedId
+      && entry.startMs >= insertedStartMs
+      && entry.startMs < insertedEndMs
+    );
+    if (!firstShiftOverlap) {
+      return nextItems;
+    }
+
+    const shiftStartMs = firstShiftOverlap.startMs;
+    const shiftMs = insertedEndMs - shiftStartMs;
+    if (shiftMs <= 0) {
+      return nextItems;
+    }
+
+    for (const entry of ordered) {
+      if (entry.item.id === insertedId || entry.startMs < shiftStartMs) {
+        continue;
+      }
+      entry.item.startAt = this.toIsoDateTimeLocal(new Date(entry.startMs + shiftMs));
+      entry.item.endAt = this.toIsoDateTimeLocal(new Date(entry.endMs + shiftMs));
+    }
+
     return nextItems;
   }
 
@@ -4087,7 +4142,7 @@ export class App {
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       return;
     }
-    if (end.getTime() <= start.getTime()) {
+    if (end.getTime() < start.getTime()) {
       end = new Date(start.getTime() + 60 * 60 * 1000);
     }
     this.subEventForm.startAt = this.toIsoDateTimeLocal(start);

@@ -336,3 +336,27 @@ add group popup on mobile
 ----
 
 git submodule to grab the front end code, the backend will be in private repo
+
+-----
+before/after
+
+if before insert - load the element range before the element, if there is no element before -load start/end date the start of the first element
+
+if after - load the date range after, if there is no element after set to end date
+
+either way you shift rigtht the overlapping element in a way the first overlapping should trim if it's just half way overlapping - the element end date after the newly added element start date
+
+reiterate - pls. formulize with edge cases (both casual + tournament)
+1) you have three elements for example 1, 2, 3
+II) non-overlapping elements
+a) insert before the 2, set the date range in the form end date of 1 and start date of 2
+b) if you insert after 2 - set date range end date of 2 and start date of 3
+c) if you insert before 1 - set date range start date of 1 and start date of 1
+d) if you insert after 3 - set date range end date of 3 and end date of 3
+II) if the user manually modifies the date range and it's overlapping
+a) if you insert before 3 and modifes to overlap 1 and fully overlap 2, then you should trim 1 by setting end date of 1 to the start date of the newly added element, and shift elements 2 and after by the difference between the end date of newly added element and the start date of 2
+b) to summarize:
+if you half way overlap an element and the overlapped element start date is before then the newly added element start date trim
+the fully overlapped element should shift with the events in a way what i described in II/a
+
+if there is no element you shouldn't set 1h date range as default on the form
