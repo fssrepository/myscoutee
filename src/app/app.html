@@ -3926,7 +3926,9 @@
             (click)="toggleSubEventsDisplayModePicker($event)"
             aria-label="Open sub events mode selector"
           >
-            <span class="subevents-mode-glyph">{{ subEventsDisplayModeGlyph() }}</span>
+            <span class="subevents-mode-glyph">
+              <mat-icon>{{ subEventsDisplayModeIcon() }}</mat-icon>
+            </span>
             <span>{{ subEventsDisplayMode }}</span>
           </button>
           <div class="activities-view-picker-panel" *ngIf="showSubEventsDisplayModePicker">
@@ -3937,7 +3939,9 @@
               *ngFor="let option of subEventsDisplayModeOptions"
               (click)="selectSubEventsDisplayMode(option, $event)"
             >
-              <span class="subevents-mode-glyph">{{ subEventsDisplayModeGlyph(option) }}</span>
+              <span class="subevents-mode-glyph">
+                <mat-icon>{{ subEventsDisplayModeIcon(option) }}</mat-icon>
+              </span>
               <span>{{ option }}</span>
             </button>
           </div>

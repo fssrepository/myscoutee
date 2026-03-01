@@ -1646,8 +1646,8 @@ export class App {
     return mode === 'Tournament' ? 'subevents-mode-tournament' : 'subevents-mode-casual';
   }
 
-  protected subEventsDisplayModeGlyph(mode: SubEventsDisplayMode = this.subEventsDisplayMode): string {
-    return mode === 'Tournament' ? 'T' : 'C';
+  protected subEventsDisplayModeIcon(mode: SubEventsDisplayMode = this.subEventsDisplayMode): string {
+    return mode === 'Tournament' ? 'emoji_events' : 'groups';
   }
 
   protected toggleSubEventsDisplayModePicker(event?: Event): void {
@@ -3185,24 +3185,14 @@ export class App {
     if (item.groups && item.groups.length > 0) {
       return this.cloneSubEventGroups(item.groups);
     }
-    const stageId = item.id || `stage-${Math.random().toString(36).slice(2, 7)}`;
-    return this.createDefaultSubEventGroups(stageId, this.subEventTournamentGroupCount(item));
+    return [];
   }
 
   private materializedSubEventGroups(item: SubEventFormItem): SubEventGroupItem[] {
     if (item.groups && item.groups.length > 0) {
       return this.cloneSubEventGroups(item.groups);
     }
-    const stageId = item.id || `stage-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    return this.createDefaultSubEventGroups(stageId, this.subEventTournamentGroupCount(item));
-  }
-
-  private createDefaultSubEventGroups(stageId: string, count: number): SubEventGroupItem[] {
-    const safeCount = this.clampNumber(count, 1, 24);
-    return Array.from({ length: safeCount }, (_, groupIndex) => ({
-      id: `grp-${stageId}-${groupIndex + 1}`,
-      name: `Group ${groupIndex + 1}`
-    }));
+    return [];
   }
 
   private patchSubEventGroups(stageId: string, groups: SubEventGroupItem[]): void {
@@ -3374,11 +3364,6 @@ export class App {
     return stages.slice(start, start + 3);
   }
 
-  private subEventTournamentGroupCount(item: SubEventFormItem): number {
-    const normalizedMax = Math.max(1, Number(item.capacityMax) || 1);
-    return this.clampNumber(Math.ceil(normalizedMax / 2), 2, 8);
-  }
-
   private resolveCurrentTournamentStageNumber(items: SubEventFormItem[]): number {
     if (items.length === 0) {
       return 1;
@@ -3436,8 +3421,7 @@ export class App {
     const creatorId = this.subEventForm.createdByUserId ?? this.activeUser.id;
     const nextSubEventId = existingId || `se-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const existingItem = existingId ? this.eventForm.subEvents.find(item => item.id === existingId) : null;
-    const fallbackGroupCount = this.clampNumber(Math.ceil(Math.max(1, Number(nextCapacityMax) || 1) / 2), 2, 8);
-    const fallbackGroups = this.createDefaultSubEventGroups(nextSubEventId, fallbackGroupCount);
+    const fallbackGroups: SubEventGroupItem[] = [];
     const groupsSource = this.subEventForm.groups?.length
       ? this.subEventForm.groups
       : (existingItem?.groups?.length ? existingItem.groups : fallbackGroups);

@@ -4370,6 +4370,14 @@
   border: 1px solid transparent;
 }
 
+.subevents-mode-trigger .subevents-mode-glyph .mat-icon,
+.activities-view-option .subevents-mode-glyph .mat-icon {
+  width: 12px;
+  height: 12px;
+  font-size: 12px;
+  line-height: 12px;
+}
+
 .subevents-mode-trigger.subevents-mode-casual {
   background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
   border-color: rgba(44, 126, 72, 0.36);
@@ -13527,6 +13535,14 @@ textarea {
     width: 16px;
     height: 16px;
     font-size: 0.64rem;
+  }
+
+  .subevents-mode-trigger .subevents-mode-glyph .mat-icon,
+  .activities-view-option .subevents-mode-glyph .mat-icon {
+    width: 11px;
+    height: 11px;
+    font-size: 11px;
+    line-height: 11px;
   }
 
   .subevents-header-controls {
