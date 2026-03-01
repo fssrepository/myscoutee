@@ -1950,23 +1950,31 @@
                 <div class="experience-form-header">
                   <h3>{{ subEventFormTitle() }}</h3>
                   <div class="experience-form-header-controls">
-                    <label class="subevent-optional-field subevent-optional-field-header">
-                      <button type="button" class="subevent-optional-toggle" [ngClass]="subEventModeClass(subEventForm.optional)" (click)="toggleSubEventOptionalPicker($event)">
-                        <mat-icon>{{ subEventModeIcon(subEventForm.optional) }}</mat-icon>
-                        <span>{{ subEventForm.optional ? 'Optional' : 'Mandatory' }}</span>
-                        <mat-icon>expand_more</mat-icon>
-                      </button>
-                      <div class="activities-view-picker-panel subevent-optional-picker-panel" *ngIf="showSubEventOptionalPicker">
-                        <button type="button" class="activities-view-option subevent-mode-mandatory" (click)="selectSubEventOptional(false, $event)">
-                          <mat-icon>{{ subEventModeIcon(false) }}</mat-icon>
-                          <span>Mandatory</span>
+                    <ng-container *ngIf="showSubEventOptionalToggle(); else subEventMandatoryHeaderMain">
+                      <label class="subevent-optional-field subevent-optional-field-header">
+                        <button type="button" class="subevent-optional-toggle" [ngClass]="subEventModeClass(subEventForm.optional)" (click)="toggleSubEventOptionalPicker($event)">
+                          <mat-icon>{{ subEventModeIcon(subEventForm.optional) }}</mat-icon>
+                          <span>{{ subEventForm.optional ? 'Optional' : 'Mandatory' }}</span>
+                          <mat-icon>expand_more</mat-icon>
                         </button>
-                        <button type="button" class="activities-view-option subevent-mode-optional" (click)="selectSubEventOptional(true, $event)">
-                          <mat-icon>{{ subEventModeIcon(true) }}</mat-icon>
-                          <span>Optional</span>
-                        </button>
-                      </div>
-                    </label>
+                        <div class="activities-view-picker-panel subevent-optional-picker-panel" *ngIf="showSubEventOptionalPicker">
+                          <button type="button" class="activities-view-option subevent-mode-mandatory" (click)="selectSubEventOptional(false, $event)">
+                            <mat-icon>{{ subEventModeIcon(false) }}</mat-icon>
+                            <span>Mandatory</span>
+                          </button>
+                          <button type="button" class="activities-view-option subevent-mode-optional" (click)="selectSubEventOptional(true, $event)">
+                            <mat-icon>{{ subEventModeIcon(true) }}</mat-icon>
+                            <span>Optional</span>
+                          </button>
+                        </div>
+                      </label>
+                    </ng-container>
+                    <ng-template #subEventMandatoryHeaderMain>
+                      <span class="subevent-optional-toggle subevent-mode-mandatory subevent-optional-toggle-static">
+                        <mat-icon>{{ subEventModeIcon(false) }}</mat-icon>
+                        <span>Mandatory</span>
+                      </span>
+                    </ng-template>
                     <button type="button" class="experience-form-close-btn" (click)="closeSubEventPanelWithSave($event)" aria-label="Close create sub event">
                       <mat-icon>close</mat-icon>
                     </button>
@@ -1984,6 +1992,18 @@
                         <input type="number" min="1" step="1" [ngModel]="subEventForm.capacityMin" (ngModelChange)="onSubEventCapacityMinChange($event)" placeholder="Min" />
                         <span class="subevent-capacity-separator">-</span>
                         <input type="number" min="1" [max]="optionalSubEventMainMax() || null" step="1" [ngModel]="subEventForm.capacityMax" (input)="onSubEventCapacityMaxInput($event)" (ngModelChange)="onSubEventCapacityMaxChange($event)" placeholder="Max" />
+                      </div>
+                    </label>
+                    <label class="subevent-stage-insert-field" *ngIf="showSubEventInsertControls()">
+                      <span>{{ subEventInsertFieldLabel() }}</span>
+                      <div class="subevent-stage-insert-controls">
+                        <span class="subevent-stage-insert-mode">
+                          <button type="button" class="subevent-stage-insert-mode-btn" [class.is-active]="subEventStageInsertPlacement === 'before'" (click)="selectSubEventStageInsertPlacement('before', $event)">Before</button>
+                          <button type="button" class="subevent-stage-insert-mode-btn" [class.is-active]="subEventStageInsertPlacement === 'after'" (click)="selectSubEventStageInsertPlacement('after', $event)">After</button>
+                        </span>
+                        <select [ngModel]="subEventStageInsertTargetId || ''" (ngModelChange)="onSubEventStageInsertTargetChange($event)">
+                          <option *ngFor="let option of subEventStageInsertOptions" [value]="option.id">{{ option.label }}</option>
+                        </select>
                       </div>
                     </label>
                     <label class="experience-description-field">
@@ -3424,23 +3444,31 @@
                 <div class="experience-form-header">
                   <h3>{{ subEventFormTitle() }}</h3>
                   <div class="experience-form-header-controls">
-                    <label class="subevent-optional-field subevent-optional-field-header">
-                      <button type="button" class="subevent-optional-toggle" [ngClass]="subEventModeClass(subEventForm.optional)" (click)="toggleSubEventOptionalPicker($event)">
-                        <mat-icon>{{ subEventModeIcon(subEventForm.optional) }}</mat-icon>
-                        <span>{{ subEventForm.optional ? 'Optional' : 'Mandatory' }}</span>
-                        <mat-icon>expand_more</mat-icon>
-                      </button>
-                      <div class="activities-view-picker-panel subevent-optional-picker-panel" *ngIf="showSubEventOptionalPicker">
-                        <button type="button" class="activities-view-option subevent-mode-mandatory" (click)="selectSubEventOptional(false, $event)">
-                          <mat-icon>{{ subEventModeIcon(false) }}</mat-icon>
-                          <span>Mandatory</span>
+                    <ng-container *ngIf="showSubEventOptionalToggle(); else subEventMandatoryHeaderStacked">
+                      <label class="subevent-optional-field subevent-optional-field-header">
+                        <button type="button" class="subevent-optional-toggle" [ngClass]="subEventModeClass(subEventForm.optional)" (click)="toggleSubEventOptionalPicker($event)">
+                          <mat-icon>{{ subEventModeIcon(subEventForm.optional) }}</mat-icon>
+                          <span>{{ subEventForm.optional ? 'Optional' : 'Mandatory' }}</span>
+                          <mat-icon>expand_more</mat-icon>
                         </button>
-                        <button type="button" class="activities-view-option subevent-mode-optional" (click)="selectSubEventOptional(true, $event)">
-                          <mat-icon>{{ subEventModeIcon(true) }}</mat-icon>
-                          <span>Optional</span>
-                        </button>
-                      </div>
-                    </label>
+                        <div class="activities-view-picker-panel subevent-optional-picker-panel" *ngIf="showSubEventOptionalPicker">
+                          <button type="button" class="activities-view-option subevent-mode-mandatory" (click)="selectSubEventOptional(false, $event)">
+                            <mat-icon>{{ subEventModeIcon(false) }}</mat-icon>
+                            <span>Mandatory</span>
+                          </button>
+                          <button type="button" class="activities-view-option subevent-mode-optional" (click)="selectSubEventOptional(true, $event)">
+                            <mat-icon>{{ subEventModeIcon(true) }}</mat-icon>
+                            <span>Optional</span>
+                          </button>
+                        </div>
+                      </label>
+                    </ng-container>
+                    <ng-template #subEventMandatoryHeaderStacked>
+                      <span class="subevent-optional-toggle subevent-mode-mandatory subevent-optional-toggle-static">
+                        <mat-icon>{{ subEventModeIcon(false) }}</mat-icon>
+                        <span>Mandatory</span>
+                      </span>
+                    </ng-template>
                     <button type="button" class="experience-form-close-btn" (click)="closeSubEventPanelWithSave($event)" aria-label="Close create sub event">
                       <mat-icon>close</mat-icon>
                     </button>
@@ -3458,6 +3486,18 @@
                         <input type="number" min="1" step="1" [ngModel]="subEventForm.capacityMin" (ngModelChange)="onSubEventCapacityMinChange($event)" placeholder="Min" />
                         <span class="subevent-capacity-separator">-</span>
                         <input type="number" min="1" [max]="optionalSubEventMainMax() || null" step="1" [ngModel]="subEventForm.capacityMax" (input)="onSubEventCapacityMaxInput($event)" (ngModelChange)="onSubEventCapacityMaxChange($event)" placeholder="Max" />
+                      </div>
+                    </label>
+                    <label class="subevent-stage-insert-field" *ngIf="showSubEventInsertControls()">
+                      <span>{{ subEventInsertFieldLabel() }}</span>
+                      <div class="subevent-stage-insert-controls">
+                        <span class="subevent-stage-insert-mode">
+                          <button type="button" class="subevent-stage-insert-mode-btn" [class.is-active]="subEventStageInsertPlacement === 'before'" (click)="selectSubEventStageInsertPlacement('before', $event)">Before</button>
+                          <button type="button" class="subevent-stage-insert-mode-btn" [class.is-active]="subEventStageInsertPlacement === 'after'" (click)="selectSubEventStageInsertPlacement('after', $event)">After</button>
+                        </span>
+                        <select [ngModel]="subEventStageInsertTargetId || ''" (ngModelChange)="onSubEventStageInsertTargetChange($event)">
+                          <option *ngFor="let option of subEventStageInsertOptions" [value]="option.id">{{ option.label }}</option>
+                        </select>
                       </div>
                     </label>
                     <label class="experience-description-field">
@@ -4100,23 +4140,31 @@
         <div class="experience-form-header">
           <h3>{{ subEventFormTitle() }}</h3>
           <div class="experience-form-header-controls">
-            <label class="subevent-optional-field subevent-optional-field-header">
-              <button type="button" class="subevent-optional-toggle" [ngClass]="subEventModeClass(subEventForm.optional)" (click)="toggleSubEventOptionalPicker($event)">
-                <mat-icon>{{ subEventModeIcon(subEventForm.optional) }}</mat-icon>
-                <span>{{ subEventForm.optional ? 'Optional' : 'Mandatory' }}</span>
-                <mat-icon>expand_more</mat-icon>
-              </button>
-              <div class="activities-view-picker-panel subevent-optional-picker-panel" *ngIf="showSubEventOptionalPicker">
-                <button type="button" class="activities-view-option subevent-mode-mandatory" (click)="selectSubEventOptional(false, $event)">
-                  <mat-icon>{{ subEventModeIcon(false) }}</mat-icon>
-                  <span>Mandatory</span>
+            <ng-container *ngIf="showSubEventOptionalToggle(); else subEventMandatoryHeaderSuper">
+              <label class="subevent-optional-field subevent-optional-field-header">
+                <button type="button" class="subevent-optional-toggle" [ngClass]="subEventModeClass(subEventForm.optional)" (click)="toggleSubEventOptionalPicker($event)">
+                  <mat-icon>{{ subEventModeIcon(subEventForm.optional) }}</mat-icon>
+                  <span>{{ subEventForm.optional ? 'Optional' : 'Mandatory' }}</span>
+                  <mat-icon>expand_more</mat-icon>
                 </button>
-                <button type="button" class="activities-view-option subevent-mode-optional" (click)="selectSubEventOptional(true, $event)">
-                  <mat-icon>{{ subEventModeIcon(true) }}</mat-icon>
-                  <span>Optional</span>
-                </button>
-              </div>
-            </label>
+                <div class="activities-view-picker-panel subevent-optional-picker-panel" *ngIf="showSubEventOptionalPicker">
+                  <button type="button" class="activities-view-option subevent-mode-mandatory" (click)="selectSubEventOptional(false, $event)">
+                    <mat-icon>{{ subEventModeIcon(false) }}</mat-icon>
+                    <span>Mandatory</span>
+                  </button>
+                  <button type="button" class="activities-view-option subevent-mode-optional" (click)="selectSubEventOptional(true, $event)">
+                    <mat-icon>{{ subEventModeIcon(true) }}</mat-icon>
+                    <span>Optional</span>
+                  </button>
+                </div>
+              </label>
+            </ng-container>
+            <ng-template #subEventMandatoryHeaderSuper>
+              <span class="subevent-optional-toggle subevent-mode-mandatory subevent-optional-toggle-static">
+                <mat-icon>{{ subEventModeIcon(false) }}</mat-icon>
+                <span>Mandatory</span>
+              </span>
+            </ng-template>
             <button type="button" class="experience-form-close-btn" (click)="closeSubEventPanelWithSave($event)" aria-label="Close create sub event">
               <mat-icon>close</mat-icon>
             </button>
@@ -4134,6 +4182,18 @@
                 <input type="number" min="1" step="1" [ngModel]="subEventForm.capacityMin" (ngModelChange)="onSubEventCapacityMinChange($event)" placeholder="Min" />
                 <span class="subevent-capacity-separator">-</span>
                 <input type="number" min="1" [max]="optionalSubEventMainMax() || null" step="1" [ngModel]="subEventForm.capacityMax" (input)="onSubEventCapacityMaxInput($event)" (ngModelChange)="onSubEventCapacityMaxChange($event)" placeholder="Max" />
+              </div>
+            </label>
+            <label class="subevent-stage-insert-field" *ngIf="showSubEventInsertControls()">
+              <span>{{ subEventInsertFieldLabel() }}</span>
+              <div class="subevent-stage-insert-controls">
+                <span class="subevent-stage-insert-mode">
+                  <button type="button" class="subevent-stage-insert-mode-btn" [class.is-active]="subEventStageInsertPlacement === 'before'" (click)="selectSubEventStageInsertPlacement('before', $event)">Before</button>
+                  <button type="button" class="subevent-stage-insert-mode-btn" [class.is-active]="subEventStageInsertPlacement === 'after'" (click)="selectSubEventStageInsertPlacement('after', $event)">After</button>
+                </span>
+                <select [ngModel]="subEventStageInsertTargetId || ''" (ngModelChange)="onSubEventStageInsertTargetChange($event)">
+                  <option *ngFor="let option of subEventStageInsertOptions" [value]="option.id">{{ option.label }}</option>
+                </select>
               </div>
             </label>
             <label class="experience-description-field">

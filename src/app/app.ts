@@ -1102,6 +1102,8 @@ export class App {
   protected subEventForm: SubEventFormItem = this.defaultSubEventForm();
   protected showSubEventRequiredValidation = false;
   protected subEventFormStageNumber: number | null = null;
+  protected subEventStageInsertPlacement: 'before' | 'after' = 'after';
+  protected subEventStageInsertTargetId: string | null = null;
   protected showSubEventGroupForm = false;
   protected showSubEventGroupRequiredValidation = false;
   protected subEventGroupForm = this.defaultSubEventGroupForm();
@@ -1603,6 +1605,7 @@ export class App {
 
   protected openEventSubEventsPopup(event?: Event): void {
     event?.stopPropagation();
+    this.eventForm.subEvents = this.sortSubEventsByStartAsc(this.eventForm.subEvents);
     this.showSubEventsDisplayModePicker = false;
     this.showSubEventForm = false;
     this.subEventFormStageNumber = null;
@@ -2008,9 +2011,13 @@ export class App {
   protected openSubEventPanel(event?: Event): void {
     event?.stopPropagation();
     this.subEventForm = this.defaultSubEventForm();
-    this.subEventFormStageNumber = this.superStackedPopup === 'eventSubEvents' && this.subEventsDisplayMode === 'Tournament'
-      ? this.eventForm.subEvents.length + 1
-      : null;
+    const tournamentStageContext = this.isTournamentStageMandatoryContext();
+    if (tournamentStageContext) {
+      this.subEventForm.optional = false;
+    }
+    this.subEventFormStageNumber = tournamentStageContext ? this.eventForm.subEvents.length + 1 : null;
+    this.resetSubEventStageInsertControls();
+    this.applySubEventInsertTargetDateRangeToForm();
     this.showSubEventRequiredValidation = false;
     this.showSubEventGroupRequiredValidation = false;
     this.syncSubEventDateTimeControlsFromForm();
@@ -2024,6 +2031,7 @@ export class App {
     this.appendCurrentSubEventIfValid();
     this.showSubEventRequiredValidation = false;
     this.subEventFormStageNumber = null;
+    this.resetSubEventStageInsertControls();
     this.showSubEventForm = false;
     this.showSubEventOptionalPicker = false;
   }
@@ -2033,6 +2041,7 @@ export class App {
     this.appendCurrentSubEventIfValid();
     this.showSubEventRequiredValidation = false;
     this.subEventFormStageNumber = null;
+    this.resetSubEventStageInsertControls();
     this.showSubEventForm = false;
     this.showSubEventOptionalPicker = false;
   }
@@ -2051,6 +2060,7 @@ export class App {
       return;
     }
     this.eventForm.subEvents = this.eventForm.subEvents.filter(item => item.id !== this.pendingSubEventDeleteId);
+    this.updateMainEventBoundsFromSubEvents();
     this.pendingSubEventDeleteId = null;
   }
 
@@ -2078,6 +2088,7 @@ export class App {
     }
     this.showSubEventRequiredValidation = false;
     this.subEventFormStageNumber = null;
+    this.resetSubEventStageInsertControls();
     this.showSubEventForm = false;
     this.showSubEventOptionalPicker = false;
   }
@@ -2144,15 +2155,18 @@ export class App {
   }
 
   protected subEventFormTitle(): string {
-    const stageNumber = this.subEventFormStageNumber ?? (this.subEventForm.id ? this.resolveSubEventStageNumber(this.subEventForm.id) : null);
-    if (stageNumber !== null && this.superStackedPopup === 'eventSubEvents' && this.subEventsDisplayMode === 'Tournament') {
+    let stageNumber = this.subEventFormStageNumber ?? (this.subEventForm.id ? this.resolveSubEventStageNumber(this.subEventForm.id) : null);
+    if (!this.subEventForm.id && this.showSubEventInsertControls()) {
+      stageNumber = this.subEventInsertStageNumberPreview();
+    }
+    if (stageNumber !== null && this.isTournamentStageMandatoryContext()) {
       return this.subEventForm.id ? `Edit Stage ${stageNumber} Event` : `Create Stage ${stageNumber} Event`;
     }
     return this.subEventForm.id ? 'Edit Sub Event' : 'Create Sub Event';
   }
 
   protected subEventAddFabLabel(): string {
-    if (this.superStackedPopup === 'eventSubEvents' && this.subEventsDisplayMode === 'Tournament') {
+    if (this.isTournamentStageMandatoryContext()) {
       return 'Add Stage Event';
     }
     return 'Add Sub Event';
@@ -2168,6 +2182,46 @@ export class App {
 
   protected subEventGroupFieldInvalid(): boolean {
     return !this.subEventGroupForm.name.trim();
+  }
+
+  protected isTournamentStageMandatoryContext(): boolean {
+    return this.superStackedPopup === 'eventSubEvents' && this.subEventsDisplayMode === 'Tournament';
+  }
+
+  protected showSubEventOptionalToggle(): boolean {
+    return !this.isTournamentStageMandatoryContext();
+  }
+
+  protected showSubEventInsertControls(): boolean {
+    return !this.subEventForm.id && this.sortSubEventsByStartAsc(this.eventForm.subEvents).length > 0;
+  }
+
+  protected get subEventStageInsertOptions(): Array<{ id: string; label: string }> {
+    if (this.isTournamentStageMandatoryContext()) {
+      return this.subEventTournamentStages.map(stage => ({
+        id: stage.subEvent.id,
+        label: `${stage.title} · ${stage.subtitle || 'Untitled'}`
+      }));
+    }
+    const source = this.sortSubEventsByStartAsc(this.eventForm.subEvents);
+    return source.map((item, index) => ({
+      id: item.id,
+      label: item.name || `Sub Event ${index + 1}`
+    }));
+  }
+
+  protected subEventInsertFieldLabel(): string {
+    return this.isTournamentStageMandatoryContext() ? 'Insert Stage' : 'Insert Sub Event';
+  }
+
+  protected selectSubEventStageInsertPlacement(placement: 'before' | 'after', event?: Event): void {
+    event?.stopPropagation();
+    this.subEventStageInsertPlacement = placement;
+  }
+
+  protected onSubEventStageInsertTargetChange(value: string): void {
+    this.subEventStageInsertTargetId = value || null;
+    this.applySubEventInsertTargetDateRangeToForm();
   }
 
   protected toggleSubEventItemActionMenu(item: SubEventFormItem, event: Event): void {
@@ -2268,11 +2322,14 @@ export class App {
       return;
     }
     this.subEventFormStageNumber = tournamentMode ? this.resolveSubEventStageNumber(item.id) : null;
+    const tournamentStageContext = this.isTournamentStageMandatoryContext() && tournamentMode;
     this.subEventForm = {
       ...item,
+      optional: tournamentStageContext ? false : item.optional,
       createdByUserId: this.subEventCreatorId(item),
       groups: this.cloneSubEventGroups(item.groups)
     };
+    this.resetSubEventStageInsertControls();
     this.showSubEventRequiredValidation = false;
     this.showSubEventOptionalPicker = false;
     this.showSubEventGroupForm = false;
@@ -2289,9 +2346,11 @@ export class App {
     this.subEventFormStageNumber = stage.stageNumber;
     this.subEventForm = {
       ...stage.subEvent,
+      optional: false,
       createdByUserId: this.subEventCreatorId(stage.subEvent),
       groups: this.cloneSubEventGroups(stage.subEvent.groups)
     };
+    this.resetSubEventStageInsertControls();
     this.showSubEventRequiredValidation = false;
     this.showSubEventOptionalPicker = false;
     this.showSubEventGroupForm = false;
@@ -2489,11 +2548,20 @@ export class App {
 
   protected toggleSubEventOptionalPicker(event?: Event): void {
     event?.stopPropagation();
+    if (this.isTournamentStageMandatoryContext()) {
+      this.showSubEventOptionalPicker = false;
+      return;
+    }
     this.showSubEventOptionalPicker = !this.showSubEventOptionalPicker;
   }
 
   protected selectSubEventOptional(optional: boolean, event?: Event): void {
     event?.stopPropagation();
+    if (this.isTournamentStageMandatoryContext()) {
+      this.subEventForm.optional = false;
+      this.showSubEventOptionalPicker = false;
+      return;
+    }
     this.subEventForm.optional = optional;
     if (optional) {
       this.normalizeSubEventCapacityRange(true);
@@ -2510,8 +2578,7 @@ export class App {
   protected onSubEventCapacityMaxChange(value: number | string): void {
     const parsed = Number(value);
     const next = Math.max(1, Number.isFinite(parsed) ? parsed : this.subEventForm.capacityMax);
-    const mainMax = this.optionalSubEventMainMax();
-    this.subEventForm.capacityMax = mainMax !== null ? Math.min(next, mainMax) : next;
+    this.subEventForm.capacityMax = next;
     this.normalizeSubEventCapacityRange(true);
   }
 
@@ -2529,10 +2596,7 @@ export class App {
   }
 
   protected optionalSubEventMainMax(): number | null {
-    if (!this.subEventForm.optional) {
-      return null;
-    }
-    return this.normalizedCapacityValue(this.eventForm.capacityMax);
+    return null;
   }
 
   protected onEventCapacityMinChange(value: number | string): void {
@@ -2723,7 +2787,7 @@ export class App {
       blindMode: this.eventBlindModeById[source.id] ?? 'Open Event',
       autoInviter: this.eventAutoInviterById[source.id] ?? false,
       topics: [...this.eventEditor.mainEvent.topics].slice(0, 5),
-      subEvents: this.cloneSubEvents(this.eventSubEventsById[source.id] ?? [])
+      subEvents: this.sortSubEventsByStartAsc(this.cloneSubEvents(this.eventSubEventsById[source.id] ?? []))
     };
   }
 
@@ -2897,6 +2961,102 @@ export class App {
     };
   }
 
+  private resetSubEventStageInsertControls(): void {
+    this.subEventStageInsertPlacement = 'after';
+    const source = this.sortSubEventsByStartAsc(this.eventForm.subEvents);
+    if (source.length === 0) {
+      this.subEventStageInsertTargetId = null;
+      return;
+    }
+    this.subEventStageInsertTargetId = source[source.length - 1].id;
+  }
+
+  private subEventInsertStageNumberPreview(): number | null {
+    const source = this.sortSubEventsByStartAsc(this.eventForm.subEvents);
+    const count = source.length;
+    if (!this.showSubEventInsertControls()) {
+      return count > 0 ? count + 1 : 1;
+    }
+    const fallback = count + 1;
+    if (!this.subEventStageInsertTargetId) {
+      return fallback;
+    }
+    const targetIndex = source.findIndex(item => item.id === this.subEventStageInsertTargetId);
+    if (targetIndex < 0) {
+      return fallback;
+    }
+    return this.subEventStageInsertPlacement === 'before'
+      ? targetIndex + 1
+      : Math.min(count + 1, targetIndex + 2);
+  }
+
+  private subEventInsertIndex(items: SubEventFormItem[]): number {
+    if (items.length === 0) {
+      return 0;
+    }
+    const fallbackTargetIndex = items.length - 1;
+    const requestedTargetIndex = this.subEventStageInsertTargetId
+      ? items.findIndex(item => item.id === this.subEventStageInsertTargetId)
+      : -1;
+    const targetIndex = requestedTargetIndex >= 0 ? requestedTargetIndex : fallbackTargetIndex;
+    return this.subEventStageInsertPlacement === 'before' ? targetIndex : targetIndex + 1;
+  }
+
+  private applySubEventInsertTargetDateRangeToForm(): void {
+    if (this.subEventForm.id) {
+      return;
+    }
+    if (!this.subEventStageInsertTargetId) {
+      return;
+    }
+    const source = this.sortSubEventsByStartAsc(this.eventForm.subEvents);
+    const target = source.find(item => item.id === this.subEventStageInsertTargetId);
+    if (!target) {
+      return;
+    }
+    const startMs = new Date(target.startAt).getTime();
+    const endMs = new Date(target.endAt).getTime();
+    if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
+      return;
+    }
+    this.subEventForm.startAt = target.startAt;
+    this.subEventForm.endAt = target.endAt;
+    this.syncSubEventDateTimeControlsFromForm();
+  }
+
+  private applyGapShiftAfterInsert(items: SubEventFormItem[], insertIndex: number): SubEventFormItem[] {
+    const nextItems = this.cloneSubEvents(items);
+    const inserted = nextItems[insertIndex] ?? null;
+    const following = nextItems[insertIndex + 1] ?? null;
+    if (!inserted || !following) {
+      return nextItems;
+    }
+
+    const insertedEndMs = new Date(inserted.endAt).getTime();
+    const followingStartMs = new Date(following.startAt).getTime();
+    if (Number.isNaN(insertedEndMs) || Number.isNaN(followingStartMs)) {
+      return nextItems;
+    }
+
+    const desiredFollowingStartMs = insertedEndMs;
+    const shiftMs = desiredFollowingStartMs - followingStartMs;
+    if (shiftMs === 0) {
+      return nextItems;
+    }
+
+    for (let index = insertIndex + 1; index < nextItems.length; index += 1) {
+      const item = nextItems[index];
+      const startMs = new Date(item.startAt).getTime();
+      const endMs = new Date(item.endAt).getTime();
+      if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
+        continue;
+      }
+      item.startAt = this.toIsoDateTimeLocal(new Date(startMs + shiftMs));
+      item.endAt = this.toIsoDateTimeLocal(new Date(endMs + shiftMs));
+    }
+    return nextItems;
+  }
+
   private syncSubEventDateTimeControlsFromForm(): void {
     this.subEventStartDateValue = this.isoLocalDateTimeToDate(this.subEventForm.startAt);
     this.subEventEndDateValue = this.isoLocalDateTimeToDate(this.subEventForm.endAt);
@@ -2920,23 +3080,6 @@ export class App {
     if (end.getTime() <= start.getTime()) {
       end = new Date(start.getTime() + 60 * 60 * 1000);
     }
-
-    const mainStart = new Date(this.eventForm.startAt);
-    const mainEnd = new Date(this.eventForm.endAt);
-    if (!Number.isNaN(mainStart.getTime()) && !Number.isNaN(mainEnd.getTime())) {
-      const clampTime = (value: Date) => Math.min(Math.max(value.getTime(), mainStart.getTime()), mainEnd.getTime());
-      start = new Date(clampTime(start));
-      end = new Date(clampTime(end));
-      if (end.getTime() <= start.getTime()) {
-        const nextEnd = new Date(Math.min(mainEnd.getTime(), start.getTime() + 60 * 60 * 1000));
-        if (nextEnd.getTime() > start.getTime()) {
-          end = nextEnd;
-        } else {
-          start = new Date(Math.max(mainStart.getTime(), mainEnd.getTime() - 60 * 60 * 1000));
-          end = new Date(mainEnd);
-        }
-      }
-    }
     this.subEventForm.startAt = this.toIsoDateTimeLocal(start);
     this.subEventForm.endAt = this.toIsoDateTimeLocal(end);
   }
@@ -2946,6 +3089,25 @@ export class App {
       ...item,
       groups: this.cloneSubEventGroups(item.groups)
     }));
+  }
+
+  private sortSubEventsByStartAsc(items: SubEventFormItem[]): SubEventFormItem[] {
+    const source = this.cloneSubEvents(items);
+    return source
+      .map((item, index) => ({
+        item,
+        index,
+        startMs: new Date(item.startAt).getTime()
+      }))
+      .sort((a, b) => {
+        const aTime = Number.isNaN(a.startMs) ? Number.POSITIVE_INFINITY : a.startMs;
+        const bTime = Number.isNaN(b.startMs) ? Number.POSITIVE_INFINITY : b.startMs;
+        if (aTime !== bTime) {
+          return aTime - bTime;
+        }
+        return a.index - b.index;
+      })
+      .map(entry => entry.item);
   }
 
   private cloneSubEventGroups(groups: SubEventGroupItem[] | undefined): SubEventGroupItem[] {
@@ -3201,15 +3363,11 @@ export class App {
     this.normalizeSubEventDateRange();
     const fallbackStart = this.subEventForm.startAt || this.eventForm.startAt || this.defaultEventStartIso();
     const fallbackEnd = this.subEventForm.endAt || this.eventForm.endAt || this.defaultEventStartIso();
+    const forceMandatoryTournament = this.isTournamentStageMandatoryContext();
+    const nextOptional = forceMandatoryTournament ? false : this.subEventForm.optional;
     this.normalizeSubEventCapacityRange(true);
-    const mainMax = this.normalizedCapacityValue(this.eventForm.capacityMax);
-    const mainMin = this.normalizedCapacityValue(this.eventForm.capacityMin);
-    const nextCapacityMin = this.subEventForm.optional
-      ? this.subEventForm.capacityMin
-      : (mainMax !== null ? Math.min(mainMin ?? 1, mainMax) : this.subEventForm.capacityMin);
-    const nextCapacityMax = this.subEventForm.optional
-      ? this.subEventForm.capacityMax
-      : (mainMax !== null ? mainMax : this.subEventForm.capacityMax);
+    const nextCapacityMin = this.subEventForm.capacityMin;
+    const nextCapacityMax = this.subEventForm.capacityMax;
     const existingId = this.subEventForm.id;
     const creatorId = this.subEventForm.createdByUserId ?? this.activeUser.id;
     const nextSubEventId = existingId || `se-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -3226,6 +3384,7 @@ export class App {
       description,
       startAt: fallbackStart,
       endAt: fallbackEnd,
+      optional: nextOptional,
       createdByUserId: creatorId,
       groups: this.cloneSubEventGroups(groupsSource),
       capacityMin: Math.max(1, Number(nextCapacityMin) || 1),
@@ -3246,10 +3405,21 @@ export class App {
       suppliesPending: 3
     };
     if (existingId && this.eventForm.subEvents.some(item => item.id === existingId)) {
-      this.eventForm.subEvents = this.eventForm.subEvents.map(item => item.id === existingId ? next : item);
+      this.eventForm.subEvents = this.sortSubEventsByStartAsc(
+        this.eventForm.subEvents.map(item => item.id === existingId ? next : item)
+      );
+      this.updateMainEventBoundsFromSubEvents();
       return true;
     }
-    this.eventForm.subEvents = [...this.eventForm.subEvents, next];
+    const source = this.sortSubEventsByStartAsc(this.eventForm.subEvents);
+    const insertIndex = this.subEventInsertIndex(source);
+    const insertedItems = [
+      ...source.slice(0, insertIndex),
+      next,
+      ...source.slice(insertIndex)
+    ];
+    this.eventForm.subEvents = this.sortSubEventsByStartAsc(this.applyGapShiftAfterInsert(insertedItems, insertIndex));
+    this.updateMainEventBoundsFromSubEvents();
     return true;
   }
 
@@ -3305,94 +3475,73 @@ export class App {
   }
 
   private normalizeSubEventCapacityRange(syncMainWhenMissing: boolean): void {
+    void syncMainWhenMissing;
     let min = Math.max(1, Number(this.subEventForm.capacityMin) || 1);
     let max = Math.max(1, Number(this.subEventForm.capacityMax) || min);
-    const mainMax = this.normalizedCapacityValue(this.eventForm.capacityMax);
-    if (this.subEventForm.optional && mainMax !== null) {
-      max = Math.min(max, mainMax);
-    }
     if (max < min) {
       min = max;
     }
     this.subEventForm.capacityMin = min;
     this.subEventForm.capacityMax = max;
-    if (this.subEventForm.optional && syncMainWhenMissing && mainMax === null) {
-      this.eventForm.capacityMin = min;
-      this.eventForm.capacityMax = max;
-    }
   }
 
   private enforceOpenSubEventCapacityAgainstMain(): void {
-    if (!this.showSubEventForm || !this.subEventForm.optional) {
-      return;
-    }
-    this.normalizeSubEventCapacityRange(false);
+    return;
   }
 
   private enforceOpenSubEventDateAgainstMain(): void {
-    if (!this.showSubEventForm) {
-      return;
-    }
-    this.syncSubEventFormFromDateTimeControls();
-    this.normalizeSubEventDateRange();
-    this.syncSubEventDateTimeControlsFromForm();
+    return;
   }
 
   private normalizeExistingSubEventsCapacityAgainstMain(): void {
-    const mainMax = this.normalizedCapacityValue(this.eventForm.capacityMax);
-    if (mainMax === null) {
-      return;
-    }
-    const mainMin = this.normalizedCapacityValue(this.eventForm.capacityMin) ?? 1;
-    this.eventForm.subEvents = this.eventForm.subEvents.map(item => {
-      if (!item.optional) {
-        return {
-          ...item,
-          capacityMin: Math.min(mainMin, mainMax),
-          capacityMax: mainMax
-        };
-      }
-      const clampedMax = Math.min(Math.max(item.capacityMax, 1), mainMax);
-      const clampedMin = Math.min(Math.max(item.capacityMin, 1), clampedMax);
-      return {
-        ...item,
-        capacityMin: clampedMin,
-        capacityMax: clampedMax
-      };
-    });
+    this.updateMainEventBoundsFromSubEvents();
   }
 
   private normalizeExistingSubEventsDateAgainstMain(): void {
-    const mainStart = new Date(this.eventForm.startAt);
-    const mainEnd = new Date(this.eventForm.endAt);
-    if (Number.isNaN(mainStart.getTime()) || Number.isNaN(mainEnd.getTime())) {
+    this.updateMainEventBoundsFromSubEvents();
+  }
+
+  private updateMainEventBoundsFromSubEvents(): void {
+    if (this.eventForm.subEvents.length === 0) {
       return;
     }
-    const clampTime = (value: Date) => Math.min(Math.max(value.getTime(), mainStart.getTime()), mainEnd.getTime());
-    this.eventForm.subEvents = this.eventForm.subEvents.map(item => {
-      let start = new Date(item.startAt);
-      let end = new Date(item.endAt);
-      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-        start = new Date(mainStart);
-        end = new Date(Math.min(mainEnd.getTime(), mainStart.getTime() + 60 * 60 * 1000));
-      }
-      start = new Date(clampTime(start));
-      end = new Date(clampTime(end));
-      if (end.getTime() <= start.getTime()) {
-        const nextEnd = new Date(Math.min(mainEnd.getTime(), start.getTime() + 60 * 60 * 1000));
-        if (nextEnd.getTime() > start.getTime()) {
-          end = nextEnd;
-        } else {
-          start = new Date(Math.max(mainStart.getTime(), mainEnd.getTime() - 60 * 60 * 1000));
-          end = new Date(mainEnd);
+    let minStartMs: number | null = null;
+    let maxEndMs: number | null = null;
+    let minCapacity: number | null = null;
+    let maxCapacity: number | null = null;
+
+    for (const item of this.eventForm.subEvents) {
+      let startMs = new Date(item.startAt).getTime();
+      let endMs = new Date(item.endAt).getTime();
+      if (!Number.isNaN(startMs) && !Number.isNaN(endMs)) {
+        if (endMs <= startMs) {
+          endMs = startMs + (60 * 60 * 1000);
         }
+        minStartMs = minStartMs === null ? startMs : Math.min(minStartMs, startMs);
+        maxEndMs = maxEndMs === null ? endMs : Math.max(maxEndMs, endMs);
       }
-      return {
-        ...item,
-        startAt: this.toIsoDateTimeLocal(start),
-        endAt: this.toIsoDateTimeLocal(end)
-      };
-    });
+
+      const normalizedMin = this.normalizedCapacityValue(item.capacityMin);
+      const normalizedMax = this.normalizedCapacityValue(item.capacityMax);
+      if (normalizedMin !== null) {
+        minCapacity = minCapacity === null ? normalizedMin : Math.min(minCapacity, normalizedMin);
+      }
+      if (normalizedMax !== null) {
+        maxCapacity = maxCapacity === null ? normalizedMax : Math.max(maxCapacity, normalizedMax);
+      }
+    }
+
+    if (minStartMs !== null && maxEndMs !== null) {
+      this.eventForm.startAt = this.toIsoDateTimeLocal(new Date(minStartMs));
+      this.eventForm.endAt = this.toIsoDateTimeLocal(new Date(maxEndMs));
+      this.syncEventDateTimeControlsFromForm();
+    }
+    if (minCapacity !== null) {
+      this.eventForm.capacityMin = minCapacity;
+    }
+    if (maxCapacity !== null) {
+      this.eventForm.capacityMax = Math.max(maxCapacity, this.eventForm.capacityMin ?? maxCapacity);
+    }
   }
 
   private parseFrequencyFromTimeframe(timeframe: string): string {

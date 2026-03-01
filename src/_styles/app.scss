@@ -10527,6 +10527,64 @@ textarea {
   color: #2d5ea8;
 }
 
+.subevent-optional-toggle-static {
+  cursor: default;
+}
+
+.subevent-stage-insert-field {
+  width: 100%;
+}
+
+.subevent-stage-insert-controls {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.46rem;
+}
+
+.subevent-stage-insert-mode {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(52, 85, 126, 0.28);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f6f9ff 0%, #edf4ff 100%);
+  overflow: hidden;
+}
+
+.subevent-stage-insert-mode-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #2f4e76;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  min-height: 30px;
+  padding: 0 0.58rem;
+  cursor: pointer;
+}
+
+.subevent-stage-insert-mode-btn + .subevent-stage-insert-mode-btn {
+  border-left: 1px solid rgba(52, 85, 126, 0.22);
+}
+
+.subevent-stage-insert-mode-btn.is-active {
+  background: linear-gradient(180deg, #dbe9ff 0%, #cfdefb 100%);
+  color: #1f4678;
+}
+
+.subevent-stage-insert-controls select {
+  min-height: 32px;
+  border: 1px solid rgba(67, 102, 147, 0.28);
+  border-radius: 8px;
+  background: #fff;
+  color: #1f3c62;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0 0.48rem;
+  width: 100%;
+}
+
 .subevent-optional-picker-panel {
   left: auto;
   right: 0;
@@ -13529,6 +13587,15 @@ textarea {
 
   .subevent-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .subevent-stage-insert-controls {
+    grid-template-columns: 1fr;
+    gap: 0.34rem;
+  }
+
+  .subevent-stage-insert-mode {
+    width: fit-content;
   }
 
   .subevent-group-popup {
