@@ -4019,7 +4019,10 @@
           </div>
         </ng-container>
         <ng-template #subEventsCasualList>
-          <div class="event-subevents-grid event-subevents-grid-popup">
+          <div
+            class="event-subevents-grid event-subevents-grid-popup"
+            [class.event-subevents-grid-popup-desktop]="!isSubEventSwipeViewport"
+          >
             <ng-container *ngFor="let subEvent of eventForm.subEvents">
               <ng-container
                 [ngTemplateOutlet]="subEventPopupCardTemplate"

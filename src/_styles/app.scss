@@ -4698,6 +4698,14 @@
   align-content: start;
 }
 
+.event-subevents-grid-popup.event-subevents-grid-popup-desktop .event-subevent-card:not(.event-subevent-card-group) {
+  flex: 0 0 calc((100% - (2 * 0.46rem)) / 3);
+  max-width: calc((100% - (2 * 0.46rem)) / 3);
+  min-width: 0;
+  width: calc((100% - (2 * 0.46rem)) / 3);
+  box-sizing: border-box;
+}
+
 .event-subevents-empty-state {
   max-width: 420px;
 }
@@ -6370,6 +6378,12 @@
 }
 
 @media (max-width: 760px) {
+  .event-subevents-grid-popup.event-subevents-grid-popup-desktop .event-subevent-card:not(.event-subevent-card-group) {
+    flex: 1 1 auto;
+    max-width: 100%;
+    width: auto;
+  }
+
   .activity-members-add-fab {
     right: 0.6rem;
     bottom: max(0.6rem, env(safe-area-inset-bottom));
