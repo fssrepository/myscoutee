@@ -3780,7 +3780,8 @@
 }
 
 .chat-header-progress .activities-header-progress-loading {
-  display: none;
+  display: block;
+  background: linear-gradient(270deg, rgba(243, 166, 54, 0.98) 0%, rgba(233, 133, 37, 0.98) 100%);
 }
 
 .popup-title h2 {
@@ -4029,6 +4030,13 @@
   font-size: 0.74rem;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.popup-body.popup-body-activities .popup-view-fab span,
+.popup-body.popup-body-activities .profile-status-select-wrap.activities-compact-select .mat-mdc-select,
+.popup-body.popup-body-activities .profile-status-select-wrap.activities-compact-select .status-option-content span:last-child,
+.popup-body.popup-body-activities .profile-status-select-wrap.activities-compact-select .mat-mdc-select-value-text {
+  font-weight: 400 !important;
 }
 
 .event-visibility-picker {
@@ -5097,6 +5105,10 @@
   .popup-body.popup-body-activities .activities-popup > .activities-scroll-list .activities-sticky-header {
     margin-bottom: 0;
   }
+
+  .popup-body.popup-body-activities .activities-popup > .activities-scroll-list.activities-scroll-list-chat {
+    grid-template-columns: 1fr;
+  }
 }
 
 .popup-body.popup-body-activities {
@@ -5787,6 +5799,130 @@
   position: static;
 }
 
+.activities-rate-profile-card {
+  position: relative;
+  width: 100%;
+  min-height: 264px;
+  border: 1px solid rgba(34, 54, 84, 0.24);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #1b2c45 0%, #132238 100%);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.activities-rate-profile-stack {
+  position: relative;
+  min-height: 264px;
+  height: 100%;
+}
+
+.activities-rate-profile-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: 14px;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  box-shadow: 0 12px 24px rgba(6, 18, 36, 0.34);
+}
+
+.activities-rate-profile-layer-active {
+  pointer-events: none;
+}
+
+.activities-rate-profile-layer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(12, 22, 36, 0.04) 0%, rgba(7, 16, 28, 0.62) 66%, rgba(7, 16, 28, 0.84) 100%);
+}
+
+.activities-rate-profile-indicators {
+  position: absolute;
+  top: 0.36rem;
+  left: 0.52rem;
+  right: 0.52rem;
+  z-index: 10;
+  gap: 5px;
+}
+
+.activities-rate-profile-indicators .image-stack-line {
+  height: 4px;
+  border: 1px solid rgba(28, 42, 64, 0.36);
+  background: rgba(167, 177, 192, 0.9);
+}
+
+.activities-rate-profile-indicators .image-stack-line.active {
+  border-color: rgba(248, 252, 255, 0.86);
+  background: rgba(250, 252, 255, 0.98);
+  box-shadow: 0 0 0 1px rgba(10, 20, 34, 0.12);
+}
+
+.activities-rate-profile-hit-area {
+  top: 0.2rem;
+  left: 0.2rem;
+  right: 0.2rem;
+  bottom: 0.2rem;
+  z-index: 4;
+}
+
+.activities-rate-profile-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  display: grid;
+  gap: 0.14rem;
+  padding: 0.74rem 0.8rem 0.72rem;
+}
+
+.activities-rate-profile-line {
+  margin: 0;
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(5, 13, 24, 0.56);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activities-rate-profile-line-primary {
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.activities-rate-profile-line-secondary {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: rgba(227, 238, 255, 0.94);
+}
+
+.activities-rate-profile-stack-single.activities-rate-profile-stack-given .activities-rate-profile-layer {
+  border-color: rgba(63, 136, 208, 0.52);
+}
+
+.activities-rate-profile-stack-single.activities-rate-profile-stack-received .activities-rate-profile-layer {
+  border-color: rgba(53, 160, 114, 0.52);
+}
+
+.activities-rate-profile-stack-single.activities-rate-profile-stack-mutual .activities-rate-profile-layer {
+  border-color: rgba(176, 121, 48, 0.52);
+}
+
+.activities-rate-profile-stack-single.activities-rate-profile-stack-met .activities-rate-profile-layer {
+  border-color: rgba(104, 118, 139, 0.52);
+}
+
+.activities-rate-profile-stack-pair.activities-rate-profile-stack-given .activities-rate-profile-layer {
+  border-color: rgba(141, 93, 201, 0.52);
+}
+
+.activities-rate-profile-stack-pair.activities-rate-profile-stack-received .activities-rate-profile-layer {
+  border-color: rgba(197, 92, 150, 0.52);
+}
+
 .activities-rate-score-badge {
   min-height: 26px;
   border: 1px solid rgba(187, 136, 22, 0.34);
@@ -5807,6 +5943,22 @@
     box-shadow 0.2s ease,
     border-color 0.2s ease,
     filter 0.2s ease;
+}
+
+.activities-rate-score-badge .mat-icon {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+  line-height: 14px;
+}
+
+.activities-rate-score-badge-floating {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 24;
+  min-width: 68px;
+  justify-content: center;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -5868,6 +6020,30 @@
 .activities-card-rates .activities-card-detail,
 .activities-card-rates .activities-event-meta {
   display: none !important;
+}
+
+@media (max-width: 760px) {
+  .activities-rate-profile-card {
+    min-height: 224px;
+  }
+
+  .activities-rate-profile-stack {
+    min-height: 224px;
+  }
+
+  .activities-rate-profile-indicators {
+    top: 0.32rem;
+    left: 0.44rem;
+    right: 0.44rem;
+  }
+
+  .activities-rate-profile-line-primary {
+    font-size: 0.84rem;
+  }
+
+  .activities-rate-profile-line-secondary {
+    font-size: 0.72rem;
+  }
 }
 
 .activities-rate-editor-dock {
@@ -6140,10 +6316,31 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 0.48rem;
+  display: block;
   padding-right: 0.12rem;
+}
+
+.chat-day-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  margin: 0.08rem 0 0.3rem;
+  padding: 0.08rem 0;
+  background: linear-gradient(180deg, rgba(245, 249, 255, 0.98) 0%, rgba(245, 249, 255, 0.86) 70%, rgba(245, 249, 255, 0) 100%);
+}
+
+.chat-day-pill {
+  border: 1px solid rgba(43, 74, 116, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: rgba(36, 64, 99, 0.88);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  padding: 0.22rem 0.58rem;
 }
 
 .chat-history-top-sentinel {
@@ -6156,6 +6353,7 @@
 .chat-message {
   display: flex;
   width: 100%;
+  margin-bottom: 0.48rem;
 }
 
 .chat-message.mine {
@@ -6235,6 +6433,10 @@
   color: rgba(16, 29, 49, 0.88);
   font-size: 0.82rem;
   line-height: 1.3;
+}
+
+.chat-message:last-child {
+  margin-bottom: 0.12rem;
 }
 
 .chat-readers {
@@ -9254,6 +9456,22 @@ textarea {
   font-weight: 700;
 }
 
+.subevent-form-header-title {
+  min-width: 0;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.08rem;
+}
+
+.subevent-form-header-title p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: rgba(53, 79, 114, 0.86);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .experience-form-header-controls {
   display: inline-flex;
   align-items: center;
@@ -10495,7 +10713,7 @@ textarea {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.06rem;
+  gap: 0.2rem;
   min-width: 0;
 }
 
@@ -10606,13 +10824,13 @@ textarea {
 .subevent-group-header-main {
   min-width: 0;
   display: grid;
-  gap: 0.16rem;
+  gap: 0.3rem;
 }
 
 .subevent-group-stage-subtitle {
   margin: 0;
   color: rgba(35, 57, 88, 0.76);
-  font-size: 0.76rem;
+  font-size: 0.8rem;
   font-weight: 600;
   line-height: 1.24;
 }
@@ -14603,7 +14821,7 @@ textarea {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 0.7rem;
+    font-size: 0.8rem;
   }
 
   .experience-date-range-label {

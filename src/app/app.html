@@ -587,7 +587,7 @@
         <mat-icon>done</mat-icon>
       </button>
       <div class="activities-view-picker" *ngIf="activePopup === 'activities'">
-        <div class="activities-secondary-picker" *ngIf="!isCalendarLayoutView()">
+        <div class="activities-secondary-picker" *ngIf="!isCalendarLayoutView() && activitiesPrimaryFilter !== 'chats'">
           <button type="button" class="popup-view-fab" (click)="toggleActivitiesSecondaryPicker($event)" [attr.aria-label]="'Open secondary filter: ' + activitiesSecondaryFilterLabel()">
             <mat-icon>{{ activitiesSecondaryFilterIcon() }}</mat-icon>
             <span>{{ activitiesSecondaryFilterLabel() }}</span>
@@ -600,11 +600,11 @@
           </div>
         </div>
 
-        <button type="button" class="popup-view-fab" (click)="toggleActivitiesViewPicker($event)" [attr.aria-label]="'Open view selector: ' + activityViewLabel()">
+        <button type="button" class="popup-view-fab" *ngIf="activitiesPrimaryFilter !== 'chats'" (click)="toggleActivitiesViewPicker($event)" [attr.aria-label]="'Open view selector: ' + activityViewLabel()">
           <mat-icon>view_agenda</mat-icon>
           <span>{{ activityViewLabel() }}</span>
         </button>
-        <div class="activities-view-picker-panel" *ngIf="showActivitiesViewPicker">
+        <div class="activities-view-picker-panel" *ngIf="showActivitiesViewPicker && activitiesPrimaryFilter !== 'chats'">
           <button type="button" class="activities-view-option" *ngFor="let option of activitiesViewOptions" (click)="setActivitiesView(option.key, $event)">
             <mat-icon>{{ option.icon }}</mat-icon>
             <span>{{ option.label }}</span>
@@ -717,9 +717,12 @@
       <div
         *ngIf="activePopup === 'chat' && selectedChat"
         class="activities-header-progress chat-header-progress"
+        [class.is-loading]="chatHeaderProgressLoading"
+        [class.is-loading-overdue]="chatHeaderLoadingOverdue"
         aria-hidden="true"
       >
         <span class="activities-header-progress-fill" [style.transform]="'scaleX(' + chatHeaderProgress + ')'"></span>
+        <span class="activities-header-progress-loading" [style.transform]="'scaleX(' + chatHeaderLoadingProgress + ')'"></span>
       </div>
       <div
         *ngIf="activePopup === 'eventExplore'"
@@ -883,6 +886,7 @@
           <div
             class="experience-card-list assets-card-list activities-scroll-list"
             [class.activities-scroll-list-with-rate-editor]="isActivityRateEditorOpen()"
+            [class.activities-scroll-list-chat]="activitiesPrimaryFilter === 'chats'"
             #activitiesScroll
             (scroll)="onActivitiesScroll($event)"
           >
@@ -978,12 +982,10 @@
 
                 <ng-template #nonEventActivityRow>
                   <button
+                    *ngIf="isActivityChatRow(row); else nonChatActivityCard"
                     type="button"
-                    class="activities-card activities-card-btn activities-row-item"
+                    class="activities-card activities-card-btn activities-row-item activities-card-chat"
                     [attr.data-group-label]="group.label"
-                    [class.activities-card-chat]="isActivityChatRow(row)"
-                    [class.activities-card-rate]="isRateStyleActivity(row)"
-                    [class.activities-card-rates]="row.type === 'rates'"
                     (pointerup)="onActivityRowPointerUp(row, $event)"
                     (click)="onActivityRowClick(row, $event)"
                   >
@@ -991,39 +993,75 @@
                       {{ activityRowAvatarInitials(row) }}
                     </span>
 
-                    <div class="activities-card-main" *ngIf="isActivityChatRow(row)">
+                    <div class="activities-card-main">
                       <p class="activities-card-title">{{ row.title }}</p>
                       <p class="activities-card-subtitle">{{ row.subtitle }}</p>
                       <p class="activities-card-detail">{{ row.detail }}</p>
                     </div>
-                    <span class="activities-chat-members-badge" *ngIf="isActivityChatRow(row)">
+                    <span class="activities-chat-members-badge">
                       <span>{{ activityChatMemberCount(row) }} members</span>
                       <span class="card-badge asset-request-badge activities-chat-unread-badge" *ngIf="row.unread > 0">{{ row.unread }}</span>
                     </span>
+                  </button>
 
-                    <div class="activities-rate-card-body" *ngIf="row.type === 'rates'">
-                      <p class="activities-event-title">{{ row.title }}</p>
-                      <div class="activities-rate-card-head">
+                <ng-template #nonChatActivityCard>
+                  <article
+                    *ngIf="isRateStyleActivity(row)"
+                    class="activities-rate-profile-card activities-row-item"
+                    [attr.data-group-label]="group.label"
+                  >
+                    <div class="activities-rate-profile-stack" [ngClass]="activityRateCardContentClasses(row)" *ngIf="activityRateCardImageUrls(row) as imageUrls">
+                      <div class="image-stack-indicators activities-rate-profile-indicators" *ngIf="imageUrls.length > 0">
                         <button
                           type="button"
-                          class="activities-rate-score-badge"
+                          class="image-stack-line"
+                          *ngFor="let imageUrl of imageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                          [class.active]="imageIndex === activityRateCardActiveImageIndex(row)"
+                          (click)="selectActivityRateCardImage(row, imageIndex, $event)"
+                          aria-label="Select profile image"
+                        ></button>
+                      </div>
+                      <div
+                        class="activities-rate-profile-layer activities-rate-profile-layer-active"
+                        [appLazyBgImage]="activityRateCardActiveImageUrl(row)"
+                      >
+                        <div class="activities-rate-profile-overlay" *ngIf="activityRateCardHasLine(row, activityRateCardActiveImageIndex(row))">
+                          <p class="activities-rate-profile-line activities-rate-profile-line-primary">
+                            {{ activityRateCardPrimaryLine(row, activityRateCardActiveImageIndex(row)) }}
+                          </p>
+                          <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
+                            {{ activityRateCardSecondaryLine(row, activityRateCardActiveImageIndex(row)) }}
+                          </p>
+                        </div>
+                      </div>
+                      <div class="image-stack-hit-area activities-rate-profile-hit-area" *ngIf="imageUrls.length > 1">
+                        <button
+                          type="button"
+                          class="image-stack-hit-segment"
+                          *ngFor="let imageUrl of imageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                          (click)="selectActivityRateCardImage(row, imageIndex, $event)"
+                          aria-label="Select profile image"
+                        ></button>
+                      </div>
+                      <button
+                        type="button"
+                        class="activities-rate-score-badge activities-rate-score-badge-floating"
                           [class.is-pending]="isActivityRatePending(row)"
                           [class.is-disabled]="isPairReceivedRateRow(row)"
-                          (pointerup)="$event.stopPropagation()"
                           (click)="isPairReceivedRateRow(row) ? $event.stopPropagation() : openActivityRateEditor(row, $event)"
                           [attr.aria-label]="isPairReceivedRateRow(row) ? 'Received pair rating' : (isActivityRatePending(row) ? 'Add your rating' : 'Edit your rating')"
                         >
-                          <span class="activities-rate-score-star">★</span>
-                          <span *ngIf="activityOwnRatingLabel(row) as ownRatingLabel">{{ ownRatingLabel }}</span>
+                          <mat-icon>star</mat-icon>
+                          <span>{{ activityRateBadgeLabel(row) }}</span>
                         </button>
                       </div>
-                    </div>
-                  </button>
+                    </article>
+                  </ng-template>
                 </ng-template>
               </ng-container>
             </ng-container>
 
-            <div class="editor-list-card" *ngIf="filteredActivityRows.length === 0">
+            <div class="editor-list-card" *ngIf="!activitiesInitialLoadPending && filteredActivityRows.length === 0">
               <h4>No items</h4>
               <p>{{ activitiesEmptyLabel }}</p>
             </div>
@@ -1164,7 +1202,7 @@
               </section>
             </ng-template>
 
-            <div class="editor-list-card" *ngIf="filteredActivityRows.length === 0">
+            <div class="editor-list-card" *ngIf="!activitiesInitialLoadPending && filteredActivityRows.length === 0">
               <h4>No items</h4>
               <p>{{ activitiesEmptyLabel }}</p>
             </div>
@@ -1216,30 +1254,40 @@
 
       <div *ngIf="activePopup === 'chat' && selectedChat" class="chat-popup-wrap">
         <div class="chat-popup-box">
-          <div class="chat-thread" (scroll)="onChatThreadScroll($event)">
-            <div class="chat-history-top-sentinel" *ngIf="hasMoreChatMessages()" aria-hidden="true"></div>
-            <article class="chat-message" *ngFor="let message of chatPopupMessages" [class.mine]="message.mine">
-              <div class="chat-bubble">
-                <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">{{ message.senderAvatar.initials }}</span>
-                <div class="chat-message-content">
-                  <div class="chat-meta-row">
-                    <span class="chat-sender-name">{{ message.sender }}</span>
-                    <span class="chat-time-chip">{{ message.time }}</span>
+          <div class="editor-list-card" *ngIf="chatInitialLoadPending">
+            <h4>Loading chat...</h4>
+          </div>
+          <ng-container *ngIf="!chatInitialLoadPending">
+            <div class="chat-thread" (scroll)="onChatThreadScroll($event)">
+              <div class="chat-history-top-sentinel" *ngIf="hasMoreChatMessages()" aria-hidden="true"></div>
+              <ng-container *ngFor="let dayGroup of chatPopupDayGroups; trackBy: trackByChatDayGroup">
+                <div class="chat-day-sticky">
+                  <span class="chat-day-pill">{{ dayGroup.label }}</span>
+                </div>
+                <article class="chat-message" *ngFor="let message of dayGroup.messages; trackBy: trackByChatMessage" [class.mine]="message.mine">
+                  <div class="chat-bubble">
+                    <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">{{ message.senderAvatar.initials }}</span>
+                    <div class="chat-message-content">
+                      <div class="chat-meta-row">
+                        <span class="chat-sender-name">{{ message.sender }}</span>
+                        <span class="chat-time-chip">{{ message.time }}</span>
+                      </div>
+                      <p class="chat-line">{{ message.text }}</p>
+                    </div>
+                    <div class="chat-readers" *ngIf="message.readBy.length > 0">
+                      <span class="chat-reader" *ngFor="let reader of message.readBy" [class]="'user-color-' + reader.gender">{{ reader.initials }}</span>
+                    </div>
                   </div>
-                  <p class="chat-line">{{ message.text }}</p>
-                </div>
-                <div class="chat-readers" *ngIf="message.readBy.length > 0">
-                  <span class="chat-reader" *ngFor="let reader of message.readBy" [class]="'user-color-' + reader.gender">{{ reader.initials }}</span>
-                </div>
-              </div>
-            </article>
-          </div>
-          <div class="chat-compose-box">
-            <textarea rows="3" placeholder="Write message" [(ngModel)]="chatDraftMessage"></textarea>
-            <button type="button" class="chat-send-btn" aria-label="Send message" (click)="sendChatMessage()">
-              <mat-icon>send</mat-icon>
-            </button>
-          </div>
+                </article>
+              </ng-container>
+            </div>
+            <div class="chat-compose-box">
+              <textarea rows="3" placeholder="Write message" [(ngModel)]="chatDraftMessage"></textarea>
+              <button type="button" class="chat-send-btn" aria-label="Send message" (click)="sendChatMessage()">
+                <mat-icon>send</mat-icon>
+              </button>
+            </div>
+          </ng-container>
         </div>
       </div>
 
@@ -1756,9 +1804,14 @@
         </div>
       </ng-template>
       <ng-template #eventExploreEmptyState>
-        <div class="editor-list-card">
+        <div class="editor-list-card" *ngIf="!eventExploreInitialLoadPending; else eventExploreLoadingState">
           <h4>No events found</h4>
           <p>Try another ordering badge.</p>
+        </div>
+      </ng-template>
+      <ng-template #eventExploreLoadingState>
+        <div class="editor-list-card">
+          <h4>Loading events...</h4>
         </div>
       </ng-template>
 
@@ -1963,7 +2016,10 @@
               <div class="experience-form-overlay-backdrop" (click)="closeSubEventPanel($event)"></div>
               <div class="experience-form-popup subevent-form-popup">
                 <div class="experience-form-header">
-                  <h3>{{ subEventFormTitle() }}</h3>
+                  <div class="subevent-form-header-title">
+                    <h3>{{ subEventFormTitle() }}</h3>
+                    <p *ngIf="eventSubEventsParentTitle() as parentEventTitle">{{ parentEventTitle }}</p>
+                  </div>
                   <div class="experience-form-header-controls">
                     <ng-container *ngIf="showSubEventOptionalToggle(); else subEventMandatoryHeaderMain">
                       <label class="subevent-optional-field subevent-optional-field-header">
@@ -2842,9 +2898,12 @@
         <div
           *ngIf="stackedPopup === 'chat' && selectedChat"
           class="activities-header-progress chat-header-progress"
+          [class.is-loading]="chatHeaderProgressLoading"
+          [class.is-loading-overdue]="chatHeaderLoadingOverdue"
           aria-hidden="true"
         >
           <span class="activities-header-progress-fill" [style.transform]="'scaleX(' + chatHeaderProgress + ')'"></span>
+          <span class="activities-header-progress-loading" [style.transform]="'scaleX(' + chatHeaderLoadingProgress + ')'"></span>
         </div>
         <div
           *ngIf="stackedPopup === 'eventExplore'"
@@ -2869,30 +2928,40 @@
     >
       <div *ngIf="stackedPopup === 'chat' && selectedChat" class="chat-popup-wrap">
         <div class="chat-popup-box">
-          <div class="chat-thread" (scroll)="onChatThreadScroll($event)">
-            <div class="chat-history-top-sentinel" *ngIf="hasMoreChatMessages()" aria-hidden="true"></div>
-            <article class="chat-message" *ngFor="let message of chatPopupMessages" [class.mine]="message.mine">
-              <div class="chat-bubble">
-                <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">{{ message.senderAvatar.initials }}</span>
-                <div class="chat-message-content">
-                  <div class="chat-meta-row">
-                    <span class="chat-sender-name">{{ message.sender }}</span>
-                    <span class="chat-time-chip">{{ message.time }}</span>
+          <div class="editor-list-card" *ngIf="chatInitialLoadPending">
+            <h4>Loading chat...</h4>
+          </div>
+          <ng-container *ngIf="!chatInitialLoadPending">
+            <div class="chat-thread" (scroll)="onChatThreadScroll($event)">
+              <div class="chat-history-top-sentinel" *ngIf="hasMoreChatMessages()" aria-hidden="true"></div>
+              <ng-container *ngFor="let dayGroup of chatPopupDayGroups; trackBy: trackByChatDayGroup">
+                <div class="chat-day-sticky">
+                  <span class="chat-day-pill">{{ dayGroup.label }}</span>
+                </div>
+                <article class="chat-message" *ngFor="let message of dayGroup.messages; trackBy: trackByChatMessage" [class.mine]="message.mine">
+                  <div class="chat-bubble">
+                    <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">{{ message.senderAvatar.initials }}</span>
+                    <div class="chat-message-content">
+                      <div class="chat-meta-row">
+                        <span class="chat-sender-name">{{ message.sender }}</span>
+                        <span class="chat-time-chip">{{ message.time }}</span>
+                      </div>
+                      <p class="chat-line">{{ message.text }}</p>
+                    </div>
+                    <div class="chat-readers" *ngIf="message.readBy.length > 0">
+                      <span class="chat-reader" *ngFor="let reader of message.readBy" [class]="'user-color-' + reader.gender">{{ reader.initials }}</span>
+                    </div>
                   </div>
-                  <p class="chat-line">{{ message.text }}</p>
-                </div>
-                <div class="chat-readers" *ngIf="message.readBy.length > 0">
-                  <span class="chat-reader" *ngFor="let reader of message.readBy" [class]="'user-color-' + reader.gender">{{ reader.initials }}</span>
-                </div>
-              </div>
-            </article>
-          </div>
-          <div class="chat-compose-box">
-            <textarea rows="3" placeholder="Write message" [(ngModel)]="chatDraftMessage"></textarea>
-            <button type="button" class="chat-send-btn" aria-label="Send message" (click)="sendChatMessage()">
-              <mat-icon>send</mat-icon>
-            </button>
-          </div>
+                </article>
+              </ng-container>
+            </div>
+            <div class="chat-compose-box">
+              <textarea rows="3" placeholder="Write message" [(ngModel)]="chatDraftMessage"></textarea>
+              <button type="button" class="chat-send-btn" aria-label="Send message" (click)="sendChatMessage()">
+                <mat-icon>send</mat-icon>
+              </button>
+            </div>
+          </ng-container>
         </div>
       </div>
 
@@ -3364,9 +3433,14 @@
           </div>
         </div>
         <ng-template #stackedEventExploreEmptyState>
-          <div class="editor-list-card">
+          <div class="editor-list-card" *ngIf="!eventExploreInitialLoadPending; else stackedEventExploreLoadingState">
             <h4>No events found</h4>
             <p>Try another ordering badge.</p>
+          </div>
+        </ng-template>
+        <ng-template #stackedEventExploreLoadingState>
+          <div class="editor-list-card">
+            <h4>Loading events...</h4>
           </div>
         </ng-template>
       </div>
@@ -3568,7 +3642,10 @@
               <div class="experience-form-overlay-backdrop" (click)="closeSubEventPanel($event)"></div>
               <div class="experience-form-popup subevent-form-popup">
                 <div class="experience-form-header">
-                  <h3>{{ subEventFormTitle() }}</h3>
+                  <div class="subevent-form-header-title">
+                    <h3>{{ subEventFormTitle() }}</h3>
+                    <p *ngIf="eventSubEventsParentTitle() as parentEventTitle">{{ parentEventTitle }}</p>
+                  </div>
                   <div class="experience-form-header-controls">
                     <ng-container *ngIf="showSubEventOptionalToggle(); else subEventMandatoryHeaderStacked">
                       <label class="subevent-optional-field subevent-optional-field-header">
@@ -4395,7 +4472,10 @@
       <div class="experience-form-overlay-backdrop" (click)="closeSubEventPanel($event)"></div>
       <div class="experience-form-popup subevent-form-popup">
         <div class="experience-form-header">
-          <h3>{{ subEventFormTitle() }}</h3>
+          <div class="subevent-form-header-title">
+            <h3>{{ subEventFormTitle() }}</h3>
+            <p *ngIf="eventSubEventsParentTitle() as parentEventTitle">{{ parentEventTitle }}</p>
+          </div>
           <div class="experience-form-header-controls">
             <ng-container *ngIf="showSubEventOptionalToggle(); else subEventMandatoryHeaderSuper">
               <label class="subevent-optional-field subevent-optional-field-header">

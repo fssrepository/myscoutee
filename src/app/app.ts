@@ -119,8 +119,15 @@ interface ChatPopupMessage {
   senderAvatar: ChatReadAvatar;
   text: string;
   time: string;
+  sentAtIso: string;
   mine: boolean;
   readBy: ChatReadAvatar[];
+}
+
+interface ChatPopupDayGroup {
+  key: string;
+  label: string;
+  messages: ChatPopupMessage[];
 }
 
 type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
@@ -905,6 +912,7 @@ export class App {
   private readonly activityRateDraftById: Record<string, number> = {};
   private readonly activityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
   private readonly pendingActivityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
+  private readonly activityRateCardActiveImageIndexById: Record<string, number> = {};
   private lastActivityOpenKey: string | null = null;
   private lastActivityOpenAt = 0;
   private calendarMonthFocusDate: Date | null = null;
@@ -936,7 +944,7 @@ export class App {
     { key: 'hosting', label: 'Hosting', icon: 'stadium' }
   ];
   protected readonly activitiesSecondaryFilters: Array<{ key: ActivitiesSecondaryFilter; label: string; icon: string }> = [
-    { key: 'recent', label: 'Recent', icon: 'schedule' },
+    { key: 'recent', label: 'Upcoming', icon: 'schedule' },
     { key: 'relevant', label: 'Relevant', icon: 'auto_awesome' },
     { key: 'past', label: 'Past', icon: 'history' }
   ];
@@ -1171,10 +1179,13 @@ export class App {
   protected selectedChatMembers: DemoUser[] = [];
   protected selectedChatMembersItem: ChatMenuItem | null = null;
   protected readonly chatHistoryPageSize = 10;
+  private readonly chatInitialVisiblePageCount = 2;
   protected chatVisibleMessageCount = this.chatHistoryPageSize;
+  protected chatInitialLoadPending = false;
   protected chatDraftMessage = '';
   private readonly chatHistoryById: Record<string, ChatPopupMessage[]> = {};
   private chatHistoryLoadingOlder = false;
+  private chatHistoryLoadOlderTimer: ReturnType<typeof setTimeout> | null = null;
   protected selectedInvitation: InvitationMenuItem | null = null;
   protected selectedEvent: EventMenuItem | null = null;
   protected selectedHostingEvent: HostingMenuItem | null = null;
@@ -1231,6 +1242,9 @@ export class App {
   protected eventExploreHeaderLoadingProgress = 0;
   protected eventExploreHeaderLoadingOverdue = false;
   protected chatHeaderProgress = 0;
+  protected chatHeaderProgressLoading = false;
+  protected chatHeaderLoadingProgress = 0;
+  protected chatHeaderLoadingOverdue = false;
 
   protected imageSlots: Array<string | null> = [];
   protected selectedImageIndex = 0;
@@ -1265,6 +1279,7 @@ export class App {
   };
   protected languageInput = '';
   protected showLanguagePanel = false;
+  private readonly profileDetailsFormByUser: Record<string, ProfileDetailFormGroup[]> = {};
   private readonly profileImageSlotsByUser: Record<string, Array<string | null>> = {};
   private readonly languageSheetHeightCssVar = '--mobile-language-sheet-height';
   private activitiesHeaderLoadingCounter = 0;
@@ -1274,17 +1289,19 @@ export class App {
   private readonly activitiesHeaderLoadingTickMs = 16;
   private activitiesHeaderLoadingStartedAtMs = 0;
   private activitiesHeaderFlushScheduled = false;
-  private readonly activitiesPaginationLoadDelayMs = 3500;
+  private readonly activitiesPaginationLoadDelayMs = 1000;
   private activitiesCalendarBadgesTimer: ReturnType<typeof setTimeout> | null = null;
   private activitiesCalendarBadgesLoadingActive = false;
   private activitiesCalendarBadgesLoadingDelayKey = '';
   private readonly activitiesCalendarBadgesReadyDelayKeys = new Set<string>();
   private activitiesCalendarBadgeDelayPageKey = '';
+  protected activitiesInitialLoadPending = false;
   private activitiesVisibleCount = this.activitiesPageSize;
   private activitiesPaginationKey = '';
   private activitiesLoadMoreTimer: ReturnType<typeof setTimeout> | null = null;
   private activitiesIsPaginating = false;
   private activitiesPaginationAwaitScrollReset = false;
+  protected eventExploreInitialLoadPending = false;
   private eventExploreVisibleCount = this.activitiesPageSize;
   private eventExplorePaginationKey = '';
   private eventExploreLoadMoreTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1294,11 +1311,16 @@ export class App {
   private eventExploreHeaderLoadingInterval: ReturnType<typeof setInterval> | null = null;
   private eventExploreHeaderLoadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
   private eventExploreHeaderLoadingStartedAtMs = 0;
+  private chatHeaderLoadingCounter = 0;
+  private chatHeaderLoadingInterval: ReturnType<typeof setInterval> | null = null;
+  private chatHeaderLoadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
+  private chatHeaderLoadingStartedAtMs = 0;
+  private chatInitialLoadTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly router: Router) {
     this.initializeProfileImageSlots();
     this.ensurePaginationTestEvents(30);
-    this.profileDetailsForm = this.createProfileDetailsForm();
+    this.initializeProfileDetailForms();
     this.syncProfileFormFromActiveUser();
     this.initializeEntryFlow();
     this.router.navigate(['/game']);
@@ -1570,18 +1592,18 @@ export class App {
     this.activeMenuSection = 'chat';
     this.selectedChat = item;
     this.ensureSelectedChatHistory();
-    this.chatVisibleMessageCount = Math.min(this.chatHistoryPageSize, this.selectedChatHistory.length);
+    this.chatVisibleMessageCount = this.initialChatVisibleMessageCount(this.selectedChatHistory.length);
     this.chatDraftMessage = '';
     this.chatHistoryLoadingOlder = false;
     this.showActivitiesViewPicker = false;
     if (stacked || this.activePopup === 'activities' || this.stackedPopup !== null) {
       this.stackedPopup = 'chat';
-      this.scrollChatToBottom();
+      this.startChatInitialLoad();
       return;
     }
     this.stackedPopup = null;
     this.activePopup = 'chat';
-    this.scrollChatToBottom();
+    this.startChatInitialLoad();
     if (closeMenu) {
       this.closeUserMenu();
     }
@@ -5241,6 +5263,7 @@ export class App {
     this.showActivityInviteSortPicker = false;
     this.superStackedPopup = null;
     this.clearActivityRateEditorState();
+    this.cancelChatInitialLoad();
     this.cancelActivitiesPaginationLoad();
     this.clearActivitiesHeaderLoadingAnimation();
     this.cancelEventExplorePaginationLoad();
@@ -5253,6 +5276,7 @@ export class App {
     this.eventExploreVisibleCount = this.activitiesPageSize;
     this.eventExploreHeaderProgress = 0;
     this.eventExploreStickyValue = '';
+    this.chatHeaderProgress = 0;
   }
 
   protected closePopupFromBackdrop(event: MouseEvent): void {
@@ -5261,6 +5285,10 @@ export class App {
   }
 
   protected closeStackedPopup(): void {
+    if (this.stackedPopup === 'chat') {
+      this.cancelChatInitialLoad();
+      this.chatHeaderProgress = 0;
+    }
     this.pendingSubEventDeleteId = null;
     this.pendingSubEventDeleteContext = null;
     this.pendingSubEventGroupDelete = null;
@@ -6268,14 +6296,35 @@ export class App {
     }
   }
 
+  private initializeProfileDetailForms(): void {
+    for (const user of this.users) {
+      this.profileDetailsFormByUser[user.id] = this.createProfileDetailsFormForUser(user);
+    }
+  }
+
+  private profileDetailsForUser(userId: string): ProfileDetailFormGroup[] {
+    const existing = this.profileDetailsFormByUser[userId];
+    if (existing) {
+      return existing;
+    }
+    const user = this.users.find(candidate => candidate.id === userId) ?? this.activeUser;
+    const generated = this.createProfileDetailsFormForUser(user);
+    this.profileDetailsFormByUser[userId] = generated;
+    return generated;
+  }
+
   private createProfileDetailsForm(): ProfileDetailFormGroup[] {
+    return this.createProfileDetailsFormForUser(this.activeUser);
+  }
+
+  private createProfileDetailsFormForUser(user: DemoUser): ProfileDetailFormGroup[] {
     const beliefsValuesOptions = this.beliefsValuesAllOptions();
     const interestOptions = this.interestAllOptions();
     return PROFILE_DETAILS.map((group: ProfileGroup) => ({
       title: group.title,
       rows: group.rows.map(row => ({
         label: row.label,
-        value: row.value,
+        value: this.profileDetailSeedValue(user, row.label, row.value),
         privacy: row.privacy,
         options:
           row.label === 'Values'
@@ -6285,6 +6334,71 @@ export class App {
               : this.profileDetailValueOptions[row.label] ?? [row.value]
       }))
     }));
+  }
+
+  private profileDetailSeedValue(user: DemoUser, label: string, fallback: string): string {
+    switch (label) {
+      case 'Name':
+        return user.name;
+      case 'City':
+        return user.city;
+      case 'Birthday': {
+        const parsed = this.fromIsoDate(user.birthday);
+        return parsed
+          ? parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          : fallback;
+      }
+      case 'Height':
+        return user.height;
+      case 'Physique':
+        return user.physique;
+      case 'Languages':
+        return user.languages.join(', ');
+      case 'Horoscope':
+        return user.horoscope;
+      case 'Gender':
+        return user.gender === 'woman' ? 'Woman' : 'Man';
+      case 'Interest': {
+        const selected = this.seededOptionsForUser(user, this.interestAllOptions(), 3, label);
+        return selected.join(', ');
+      }
+      case 'Values': {
+        const selected = this.seededOptionsForUser(user, this.beliefsValuesAllOptions(), 3, label);
+        return selected.join(', ');
+      }
+      default: {
+        const options = this.profileDetailValueOptions[label] ?? [];
+        if (options.length === 0) {
+          return fallback;
+        }
+        return this.seededOptionForUser(user, options, label);
+      }
+    }
+  }
+
+  private seededOptionForUser(user: DemoUser, options: string[], context: string): string {
+    if (options.length === 0) {
+      return '';
+    }
+    const seed = this.hashText(`profile-detail:${user.id}:${context}`);
+    return options[seed % options.length] ?? options[0];
+  }
+
+  private seededOptionsForUser(user: DemoUser, options: string[], count: number, context: string): string[] {
+    if (options.length === 0 || count <= 0) {
+      return [];
+    }
+    const start = this.hashText(`profile-detail-list:${user.id}:${context}`) % options.length;
+    const selected: string[] = [];
+    let index = start;
+    while (selected.length < Math.min(count, options.length)) {
+      const option = options[index % options.length];
+      if (!selected.includes(option)) {
+        selected.push(option);
+      }
+      index += 3;
+    }
+    return selected;
   }
 
   private syncValuesContextToRow(): void {
@@ -7243,6 +7357,9 @@ export class App {
       return rows;
     }
     this.ensureActivitiesPaginationState(rows.length);
+    if (this.activitiesInitialLoadPending) {
+      return [];
+    }
     return rows.slice(0, Math.min(this.activitiesVisibleCount, rows.length));
   }
 
@@ -7313,7 +7430,7 @@ export class App {
       }));
     } else {
       rows = this.rateItems
-        .filter(item => this.matchesRateFilter(item, this.activitiesRateFilter))
+        .filter(item => item.userId !== this.activeUser.id && this.matchesRateFilter(item, this.activitiesRateFilter))
         .map(item => {
           const user = this.users.find(candidate => candidate.id === item.userId) ?? this.activeUser;
           const direction = this.displayedRateDirection(item);
@@ -7331,6 +7448,15 @@ export class App {
             source: item
           };
         });
+      if (rows.length === 0) {
+        rows = this.generatedRateRowsForFilter(this.activitiesRateFilter, 16);
+      } else if (rows.length < 12) {
+        const needed = 12 - rows.length;
+        const generated = this.generatedRateRowsForFilter(this.activitiesRateFilter, needed).filter(generatedRow =>
+          !rows.some(existingRow => existingRow.id === generatedRow.id)
+        );
+        rows = [...rows, ...generated];
+      }
     }
 
     const sorted = this.sortActivitiesRows(rows);
@@ -7585,6 +7711,9 @@ export class App {
     if (filter === 'rates') {
       this.activitiesView = 'distance';
       this.selectedActivityRateId = null;
+    } else if (filter === 'chats') {
+      this.activitiesView = 'day';
+      this.selectedActivityRateId = null;
     } else {
       this.selectedActivityRateId = null;
     }
@@ -7638,12 +7767,20 @@ export class App {
 
   protected toggleActivitiesViewPicker(event: Event): void {
     event.stopPropagation();
+    if (this.activitiesPrimaryFilter === 'chats') {
+      this.showActivitiesViewPicker = false;
+      return;
+    }
     this.showActivitiesSecondaryPicker = false;
     this.showActivitiesViewPicker = !this.showActivitiesViewPicker;
   }
 
   protected toggleActivitiesSecondaryPicker(event: Event): void {
     event.stopPropagation();
+    if (this.activitiesPrimaryFilter === 'chats') {
+      this.showActivitiesSecondaryPicker = false;
+      return;
+    }
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = !this.showActivitiesSecondaryPicker;
   }
@@ -7791,6 +7928,9 @@ export class App {
   protected get eventExploreCards(): EventExploreCard[] {
     const cards = this.buildEventExploreCardsBase();
     this.ensureEventExplorePaginationState(cards.length);
+    if (this.eventExploreInitialLoadPending) {
+      return [];
+    }
     return cards.slice(0, Math.min(this.eventExploreVisibleCount, cards.length));
   }
 
@@ -8070,7 +8210,7 @@ export class App {
   }
 
   protected activitiesSecondaryFilterLabel(): string {
-    return this.activitiesSecondaryFilters.find(option => option.key === this.activitiesSecondaryFilter)?.label ?? 'Recent';
+    return this.activitiesSecondaryFilters.find(option => option.key === this.activitiesSecondaryFilter)?.label ?? 'Upcoming';
   }
 
   protected activitiesSecondaryFilterIcon(): string {
@@ -8173,6 +8313,9 @@ export class App {
 
   protected activitiesHeaderSelectionLine(): string {
     const primary = this.activitiesPrimaryFilterLabel();
+    if (this.activitiesPrimaryFilter === 'chats') {
+      return primary;
+    }
     const secondary = this.activitiesSecondaryFilterLabel();
     if (this.activitiesPrimaryFilter === 'rates') {
       return `${primary} · ${secondary} · ${this.activitiesRateFilterLabel()}`;
@@ -8181,6 +8324,9 @@ export class App {
   }
 
   protected activitiesHeaderLineOne(): string {
+    if (this.activitiesPrimaryFilter === 'chats') {
+      return this.activitiesPrimaryFilterLabel();
+    }
     if (this.activitiesPrimaryFilter === 'rates') {
       const group = this.activitiesRateFilter.startsWith('individual') ? 'Single' : 'Pair';
       const label = this.rateFilters.find(option => option.key === this.activitiesRateFilter)?.label ?? 'Given';
@@ -8260,6 +8406,264 @@ export class App {
 
   protected isRateStyleActivity(row: ActivityListRow): boolean {
     return row.type === 'rates';
+  }
+
+  protected trackByRateCardImage(index: number, imageUrl: string): string {
+    return `${index}-${imageUrl}`;
+  }
+
+  protected activityRateCardImageUrls(row: ActivityListRow): string[] {
+    if (row.type !== 'rates') {
+      return [];
+    }
+    const item = row.source as RateMenuItem;
+    const user = this.activityRateUser(row);
+    const profileSlots = user ? (this.profileImageSlotsByUser[user.id] ?? []) : [];
+    const explicitProfile = profileSlots.filter((slot): slot is string => Boolean(slot)).slice(0, 6);
+    const explicitUser = (user?.images ?? []).filter(Boolean).slice(0, 6);
+    const explicit = [...explicitProfile, ...explicitUser.filter(url => !explicitProfile.includes(url))];
+    const userSeed = this.hashText(`rate-profile:${user?.id ?? row.id}`);
+    const portraitSeed = (userSeed % 70) + 1;
+    const generated = Array.from({ length: 6 }, (_, index) => {
+      const avatarIndex = ((portraitSeed + (index * 7)) % 70) + 1;
+      return `https://i.pravatar.cc/900?img=${avatarIndex}`;
+    });
+    const merged = [...explicit, ...generated.filter(url => !explicit.includes(url))];
+    const seededCount = 1 + (this.hashText(`rate-photo-count:${user?.id ?? row.id}`) % 4);
+    const desiredCount = item.direction === 'met' ? Math.min(2, seededCount) : seededCount;
+    return merged.slice(0, Math.max(1, Math.min(4, desiredCount)));
+  }
+
+  protected activityRateCardActiveImageIndex(row: ActivityListRow): number {
+    const images = this.activityRateCardImageUrls(row);
+    if (images.length === 0) {
+      return 0;
+    }
+    const current = this.activityRateCardActiveImageIndexById[row.id] ?? 0;
+    return this.clampNumber(current, 0, images.length - 1);
+  }
+
+  protected activityRateCardActiveImageUrl(row: ActivityListRow): string {
+    const images = this.activityRateCardImageUrls(row);
+    if (images.length === 0) {
+      return '';
+    }
+    return images[this.activityRateCardActiveImageIndex(row)] ?? images[0] ?? '';
+  }
+
+  protected selectActivityRateCardImage(row: ActivityListRow, imageIndex: number, event?: Event): void {
+    event?.stopPropagation();
+    const images = this.activityRateCardImageUrls(row);
+    if (images.length === 0) {
+      return;
+    }
+    this.activityRateCardActiveImageIndexById[row.id] = this.clampNumber(imageIndex, 0, images.length - 1);
+  }
+
+  protected activityRateCardPrimaryLine(row: ActivityListRow, cardIndex: number): string {
+    const line = this.activityRateCardLines(row, cardIndex);
+    return line.primary;
+  }
+
+  protected activityRateCardSecondaryLine(row: ActivityListRow, cardIndex: number): string {
+    const line = this.activityRateCardLines(row, cardIndex);
+    return line.secondary;
+  }
+
+  private activityRateCardLines(row: ActivityListRow, cardIndex: number): { primary: string; secondary: string } {
+    const user = this.activityRateUser(row);
+    if (!user) {
+      return cardIndex === 0
+        ? { primary: row.title, secondary: `${row.distanceKm} km` }
+        : { primary: '', secondary: '' };
+    }
+    const item = row.source as RateMenuItem;
+    const modeLabel = item.mode === 'pair' ? 'Pair' : 'Single';
+    const direction = this.displayedRateDirection(item);
+    const directionLabel = `${direction.charAt(0).toUpperCase()}${direction.slice(1)}`;
+    const happenedOn = this.toRateCardDateLabel(item.happenedAt);
+
+    const cards: Array<{ primary: string; secondary: string }> = [
+      { primary: `${user.name}, ${user.age}`, secondary: `${user.city} · ${row.distanceKm} km` }
+    ];
+    const pushCard = (privacy: DetailPrivacy, primary: string, secondary: string) => {
+      const normalizedPrimary = primary.trim();
+      const normalizedSecondary = secondary.trim();
+      if (!normalizedPrimary || !normalizedSecondary) {
+        return;
+      }
+      if (!this.canViewRateCardDetail(user, privacy)) {
+        return;
+      }
+      cards.push({ primary: normalizedPrimary, secondary: normalizedSecondary });
+    };
+
+    // Card #1 is fixed, then use profile details by importance while respecting row visibility.
+    const pushProfilePair = (
+      primaryLabel: string,
+      secondaryLabel: string,
+      primaryPrefix = '',
+      secondaryPrefix = ''
+    ): void => {
+      const primaryValue = this.visibleProfileDetailValue(user, primaryLabel);
+      const secondaryValue = this.visibleProfileDetailValue(user, secondaryLabel);
+      if (!primaryValue || !secondaryValue) {
+        return;
+      }
+      const primary = primaryPrefix ? `${primaryPrefix}${primaryValue}` : primaryValue;
+      const secondary = secondaryPrefix ? `${secondaryPrefix}${secondaryValue}` : secondaryValue;
+      cards.push({ primary, secondary });
+    };
+
+    pushProfilePair('Interest', 'Values');
+    pushProfilePair('Communication style', 'Love style');
+    pushProfilePair('Workout', 'Pets');
+    pushProfilePair('Languages', 'Horoscope');
+    pushProfilePair('Height', 'Physique');
+    pushProfilePair('Family plans', 'Children');
+    pushProfilePair('Drinking', 'Smoking');
+    pushProfilePair('Religion', 'Gender');
+    pushProfilePair('Birthday', 'City', 'Birthday · ', '');
+
+    pushCard('Friends', user.traitLabel, user.hostTier);
+    pushCard('Public', `${modeLabel} · ${directionLabel}`, `${item.eventName} · ${happenedOn}`);
+
+    const dedupedCards: Array<{ primary: string; secondary: string }> = [];
+    const seen = new Set<string>();
+    for (const card of cards) {
+      const key = `${card.primary}::${card.secondary}`;
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      dedupedCards.push(card);
+    }
+
+    if (cardIndex < 0 || cardIndex >= dedupedCards.length) {
+      return { primary: '', secondary: '' };
+    }
+    return dedupedCards[cardIndex] ?? { primary: '', secondary: '' };
+  }
+
+  private visibleProfileDetailValue(user: DemoUser, label: string): string {
+    const row = this.profileDetailRowByLabel(user.id, label);
+    if (!row) {
+      return '';
+    }
+    const value = row.value?.trim();
+    if (!value) {
+      return '';
+    }
+    if (!this.canViewRateCardDetail(user, row.privacy)) {
+      return '';
+    }
+    return value;
+  }
+
+  private profileDetailRowByLabel(userId: string, label: string): ProfileDetailFormRow | null {
+    const target = this.normalizeText(label);
+    for (const group of this.profileDetailsForUser(userId)) {
+      for (const row of group.rows) {
+        if (this.normalizeText(row.label) === target) {
+          return row;
+        }
+      }
+    }
+    return null;
+  }
+
+  private canViewRateCardDetail(user: DemoUser, privacy: DetailPrivacy): boolean {
+    const isSelf = user.id === this.activeUser.id;
+    const isFriend = this.isFriendOfActiveUser(user.id);
+    const isHost = this.hostingItems.length > 0 || this.eventItems.some(item => item.isAdmin);
+
+    if (user.profileStatus === 'inactive' && !isSelf) {
+      return privacy === 'Public';
+    }
+
+    if (user.profileStatus === 'friends only' && !isSelf && !isFriend) {
+      return privacy === 'Public';
+    }
+
+    if (user.profileStatus === 'host only' && !isSelf && !isHost) {
+      return privacy === 'Public';
+    }
+
+    if (privacy === 'Public') {
+      return true;
+    }
+    if (privacy === 'Friends') {
+      return isSelf || isFriend || isHost;
+    }
+    if (privacy === 'Hosts') {
+      return isSelf || isHost;
+    }
+    return isSelf;
+  }
+
+  protected activityRateCardHasLine(row: ActivityListRow, cardIndex: number): boolean {
+    const card = this.activityRateCardLines(row, cardIndex);
+    return card.primary.length > 0 && card.secondary.length > 0;
+  }
+
+  protected activityRateCardContentClasses(row: ActivityListRow): string[] {
+    const item = row.source as RateMenuItem;
+    const directionClass = this.displayedRateDirection(item);
+    return [
+      item.mode === 'pair' ? 'activities-rate-profile-stack-pair' : 'activities-rate-profile-stack-single',
+      `activities-rate-profile-stack-${directionClass}`
+    ];
+  }
+
+  private generatedRateRowsForFilter(filter: RateFilterKey, count = 12): ActivityListRow[] {
+    const [modeKey, directionKey] = filter.split('-') as ['individual' | 'pair', RateMenuItem['direction']];
+    const fallbackUsers = this.users.filter(user => user.id !== this.activeUser.id);
+    const targetCount = Math.max(1, count);
+    return Array.from({ length: targetCount }, (_, index) => {
+      const user = fallbackUsers[index % fallbackUsers.length] ?? this.activeUser;
+      const seed = this.hashText(`generated-rate:${filter}:${user.id}:${index}`);
+      const dayOffset = seed % 21;
+      const scoreGiven = directionKey === 'met' ? 0 : 5 + (seed % 5);
+      const scoreReceived = directionKey === 'met' ? 0 : 4 + ((seed + 2) % 6);
+      const happenedAt = this.toIsoDateTime(this.addDays(new Date('2026-03-01T18:00:00'), -dayOffset));
+      const item: RateMenuItem = {
+        id: `generated-${filter}-${user.id}-${index + 1}`,
+        userId: user.id,
+        mode: modeKey,
+        direction: directionKey,
+        scoreGiven,
+        scoreReceived,
+        eventName: `${modeKey === 'pair' ? 'Pair' : 'Single'} ${directionKey} Session`,
+        happenedAt,
+        distanceKm: 2 + (seed % 34)
+      };
+      const ownScore = this.rateOwnScore(item);
+      return {
+        id: item.id,
+        type: 'rates' as const,
+        title: user.name,
+        subtitle: '',
+        detail: '',
+        dateIso: item.happenedAt,
+        distanceKm: item.distanceKm,
+        unread: 0,
+        metricScore: directionKey === 'mutual' ? ownScore + Math.max(item.scoreReceived, 0) : ownScore,
+        source: item
+      };
+    });
+  }
+
+  private toRateCardDateLabel(isoValue: string): string {
+    const date = new Date(isoValue);
+    if (Number.isNaN(date.getTime())) {
+      return 'Unknown';
+    }
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  protected activityRateBadgeLabel(row: ActivityListRow): string {
+    const ownLabel = this.activityOwnRatingLabel(row);
+    return ownLabel ? ownLabel : 'Rate';
   }
 
   protected isPairReceivedRateRow(row: ActivityListRow): boolean {
@@ -8382,6 +8786,22 @@ export class App {
 
   private normalizeRateScore(value: number): number {
     return Math.min(10, Math.max(1, Math.round(value)));
+  }
+
+  private activityRateUser(row: ActivityListRow): DemoUser | null {
+    if (row.type !== 'rates') {
+      return null;
+    }
+    const item = row.source as RateMenuItem;
+    return this.users.find(user => user.id === item.userId) ?? null;
+  }
+
+  private compactBirthdayLabel(birthdayIso: string): string {
+    const parsed = new Date(birthdayIso);
+    if (Number.isNaN(parsed.getTime())) {
+      return 'N/A';
+    }
+    return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 
   private rateOwnScore(item: RateMenuItem): number {
@@ -9210,6 +9630,34 @@ export class App {
     return history.slice(start);
   }
 
+  protected get chatPopupDayGroups(): ChatPopupDayGroup[] {
+    const groups: ChatPopupDayGroup[] = [];
+    for (const message of this.chatPopupMessages) {
+      const parsed = new Date(message.sentAtIso);
+      const day = Number.isNaN(parsed.getTime()) ? this.dateOnly(new Date()) : this.dateOnly(parsed);
+      const key = this.dateKey(day);
+      const last = groups[groups.length - 1];
+      if (!last || last.key !== key) {
+        groups.push({
+          key,
+          label: this.chatDayLabel(day),
+          messages: [message]
+        });
+        continue;
+      }
+      last.messages.push(message);
+    }
+    return groups;
+  }
+
+  protected trackByChatDayGroup(_: number, group: ChatPopupDayGroup): string {
+    return group.key;
+  }
+
+  protected trackByChatMessage(_: number, message: ChatPopupMessage): string {
+    return message.id;
+  }
+
   protected hasMoreChatMessages(): boolean {
     return this.chatVisibleMessageCount < this.selectedChatHistory.length;
   }
@@ -9231,14 +9679,19 @@ export class App {
     const beforeHeight = thread.scrollHeight;
     const beforeTop = thread.scrollTop;
     this.chatHistoryLoadingOlder = true;
-    this.chatVisibleMessageCount = Math.min(this.chatVisibleMessageCount + this.chatHistoryPageSize, this.selectedChatHistory.length);
-    this.cdr.detectChanges();
-    setTimeout(() => {
-      const afterHeight = thread.scrollHeight;
-      thread.scrollTop = beforeTop + (afterHeight - beforeHeight);
-      this.updateChatHeaderProgress(thread);
-      this.chatHistoryLoadingOlder = false;
-    }, 0);
+    this.beginChatHeaderProgressLoading();
+    this.chatHistoryLoadOlderTimer = setTimeout(() => {
+      this.chatHistoryLoadOlderTimer = null;
+      this.chatVisibleMessageCount = Math.min(this.chatVisibleMessageCount + this.chatHistoryPageSize, this.selectedChatHistory.length);
+      this.cdr.detectChanges();
+      setTimeout(() => {
+        const afterHeight = thread.scrollHeight;
+        thread.scrollTop = beforeTop + (afterHeight - beforeHeight);
+        this.updateChatHeaderProgress(thread);
+        this.chatHistoryLoadingOlder = false;
+        this.endChatHeaderProgressLoading();
+      }, 0);
+    }, this.activitiesPaginationLoadDelayMs);
   }
 
   protected sendChatMessage(): void {
@@ -9262,6 +9715,7 @@ export class App {
       senderAvatar: this.toChatReader(this.activeUser),
       text,
       time,
+      sentAtIso: this.toIsoDateTime(now),
       mine: true,
       readBy: []
     });
@@ -9777,6 +10231,9 @@ export class App {
     user.profileStatus = this.profileForm.profileStatus;
     user.about = this.profileForm.about.trim().slice(0, 160);
     user.initials = this.toInitials(user.name);
+    user.images = this.imageSlots.filter((slot): slot is string => Boolean(slot));
+    this.syncProfileBasicsIntoDetailRows(user);
+    this.profileDetailsFormByUser[user.id] = this.profileDetailsForm;
     if (showAlert) {
       this.alertService.open('Profile saved');
     }
@@ -10068,7 +10525,21 @@ export class App {
 
   private initializeProfileImageSlots(): void {
     for (const user of this.users) {
-      this.profileImageSlotsByUser[user.id] = this.createEmptyImageSlots();
+      const slots = this.createEmptyImageSlots();
+      const explicit = (user.images ?? []).filter(Boolean).slice(0, 8);
+      if (explicit.length > 0) {
+        explicit.forEach((url, index) => {
+          slots[index] = url;
+        });
+      } else {
+        const count = 1 + (this.hashText(`profile-image-count:${user.id}`) % 4);
+        const seedBase = this.hashText(`profile-image-seed:${user.id}`) % 70;
+        for (let index = 0; index < count; index += 1) {
+          const avatarIndex = ((seedBase + (index * 9)) % 70) + 1;
+          slots[index] = `https://i.pravatar.cc/900?img=${avatarIndex}`;
+        }
+      }
+      this.profileImageSlotsByUser[user.id] = slots;
     }
   }
 
@@ -10083,6 +10554,7 @@ export class App {
   private syncProfileFormFromActiveUser(): void {
     const user = this.activeUser;
     const birthday = this.fromIsoDate(user.birthday);
+    this.profileDetailsForm = this.profileDetailsForUser(user.id);
     this.profileForm = {
       fullName: user.name,
       birthday,
@@ -10096,10 +10568,35 @@ export class App {
       traitLabel: user.traitLabel,
       about: user.about
     };
+    this.syncProfileBasicsIntoDetailRows(user);
     const slots = this.profileImageSlotsByUser[user.id];
     this.imageSlots = slots ? [...slots] : this.createEmptyImageSlots();
     const firstFilled = this.imageSlots.findIndex(slot => Boolean(slot));
     this.selectedImageIndex = firstFilled >= 0 ? firstFilled : 0;
+  }
+
+  private syncProfileBasicsIntoDetailRows(user: DemoUser): void {
+    const setRowValue = (label: string, value: string): void => {
+      const row = this.profileDetailRowByLabel(user.id, label);
+      if (!row) {
+        return;
+      }
+      row.value = value;
+    };
+    const birthdayDate = this.fromIsoDate(user.birthday);
+    setRowValue('Name', user.name);
+    setRowValue('City', user.city);
+    setRowValue(
+      'Birthday',
+      birthdayDate
+        ? birthdayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        : ''
+    );
+    setRowValue('Height', user.height);
+    setRowValue('Physique', user.physique);
+    setRowValue('Languages', user.languages.join(', '));
+    setRowValue('Horoscope', user.horoscope);
+    setRowValue('Gender', user.gender === 'woman' ? 'Woman' : 'Man');
   }
 
   private buildSampleAssetCards(): AssetCard[] {
@@ -10790,6 +11287,49 @@ export class App {
     return undefined;
   }
 
+  private startChatInitialLoad(): void {
+    this.cancelChatInitialLoad();
+    this.chatInitialLoadPending = true;
+    this.chatHeaderProgress = 0;
+    this.beginChatHeaderProgressLoading();
+    this.chatInitialLoadTimer = setTimeout(() => {
+      this.chatInitialLoadTimer = null;
+      this.endChatHeaderProgressLoading();
+    }, this.activitiesPaginationLoadDelayMs);
+  }
+
+  private initialChatVisibleMessageCount(totalMessages: number): number {
+    const chunkSize = this.chatHistoryPageSize * this.chatInitialVisiblePageCount;
+    return Math.min(totalMessages, Math.max(this.chatHistoryPageSize, chunkSize));
+  }
+
+  private chatDayLabel(value: Date): string {
+    const day = this.dateOnly(value);
+    const today = this.dateOnly(new Date());
+    if (this.dateKey(day) === this.dateKey(today)) {
+      return 'Today';
+    }
+    const yesterday = this.addDays(today, -1);
+    if (this.dateKey(day) === this.dateKey(yesterday)) {
+      return 'Yesterday';
+    }
+    return day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
+  private cancelChatInitialLoad(): void {
+    if (this.chatInitialLoadTimer) {
+      clearTimeout(this.chatInitialLoadTimer);
+      this.chatInitialLoadTimer = null;
+    }
+    if (this.chatHistoryLoadOlderTimer) {
+      clearTimeout(this.chatHistoryLoadOlderTimer);
+      this.chatHistoryLoadOlderTimer = null;
+    }
+    this.chatHistoryLoadingOlder = false;
+    this.chatInitialLoadPending = false;
+    this.clearChatHeaderLoadingAnimation();
+  }
+
   private scrollChatToBottom(): void {
     setTimeout(() => {
       const chatThread = globalThis.document?.querySelector('.chat-thread');
@@ -10834,16 +11374,21 @@ export class App {
     const memberB = members[2] ?? starter;
     const memberC = members[3] ?? memberB;
     const me = this.activeUser;
+    const anchor = new Date(this.chatDatesById[chat.id] ?? this.toIsoDateTime(new Date()));
+    const chatAnchor = Number.isNaN(anchor.getTime()) ? new Date() : anchor;
+    const at = (minutesBefore: number): Date => new Date(chatAnchor.getTime() - (minutesBefore * 60 * 1000));
 
     const byId = (id: string) => this.users.find(user => user.id === id);
-    const toMessage = (id: string, text: string, time: string, readByIds: string[], forceMine = false, suffix = ''): ChatPopupMessage => {
+    const toMessage = (id: string, text: string, sentAt: Date, readByIds: string[], forceMine = false, suffix = ''): ChatPopupMessage => {
       const senderUser = byId(id) ?? starter;
+      const time = sentAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
       return {
-        id: `${chat.id}-${id}-${time}-${suffix || this.hashText(text)}`,
+        id: `${chat.id}-${id}-${sentAt.getTime()}-${suffix || this.hashText(text)}`,
         sender: senderUser.name,
         senderAvatar: this.toChatReader(senderUser),
         text,
         time,
+        sentAtIso: this.toIsoDateTime(sentAt),
         mine: forceMine || senderUser.id === me.id,
         readBy: readByIds
           .map(readerId => byId(readerId))
@@ -10865,43 +11410,43 @@ export class App {
     ];
     const olderMessages: ChatPopupMessage[] = [];
     const olderCount = 36;
+    const olderBaseStart = new Date(chatAnchor.getTime() - ((olderCount + 12) * 40 * 60 * 1000));
     for (let index = olderCount - 1; index >= 0; index -= 1) {
       const senderCycle = index % 3;
       const senderId = senderCycle === 0 ? starter.id : (senderCycle === 1 ? me.id : memberB.id);
       const baseText = olderPool[(seed + index) % olderPool.length];
-      const text = `${baseText} (#${olderCount - index})`;
-      const hour = 7 + Math.floor(index / 6);
-      const minute = (index * 7) % 60;
-      const time = `${`${hour}`.padStart(2, '0')}:${`${minute}`.padStart(2, '0')}`;
+      const text = baseText;
+      const sequenceFromOldest = (olderCount - 1) - index;
+      const sentAt = new Date(olderBaseStart.getTime() + (sequenceFromOldest * 40 * 60 * 1000));
       const readByIds = senderId === me.id ? [starter.id, memberB.id] : [me.id, memberC.id];
-      olderMessages.push(toMessage(senderId, text, time, readByIds, senderId === me.id, `older-${index}`));
+      olderMessages.push(toMessage(senderId, text, sentAt, readByIds, senderId === me.id, `older-${index}`));
     }
 
     let recentMessages: ChatPopupMessage[];
     if (chat.id === 'c1') {
       recentMessages = [
-        toMessage(starter.id, 'I opened this room to lock transport before 8 PM.', '08:58', [memberB.id]),
-        toMessage(me.id, 'I can handle pickup list and final seat assignments.', '09:03', [starter.id, memberB.id], true),
-        toMessage(memberB.id, 'I can do airport run if someone covers downtown.', '09:06', [starter.id, me.id]),
-        toMessage(lastSender.id, chat.lastMessage, '09:11', [starter.id, me.id, memberB.id])
+        toMessage(starter.id, 'I opened this room to lock transport before 8 PM.', at(13), [memberB.id]),
+        toMessage(me.id, 'I can handle pickup list and final seat assignments.', at(8), [starter.id, memberB.id], true),
+        toMessage(memberB.id, 'I can do airport run if someone covers downtown.', at(5), [starter.id, me.id]),
+        toMessage(lastSender.id, chat.lastMessage, at(0), [starter.id, me.id, memberB.id])
       ];
     } else if (chat.id === 'c2') {
       recentMessages = [
-        toMessage(starter.id, 'Room is open, we need one more player for the second pair.', '18:32', [memberB.id]),
-        toMessage(me.id, 'I can join at 19:00 if court #3 stays available.', '18:37', [starter.id], true),
-        toMessage(lastSender.id, chat.lastMessage, '18:40', [starter.id, me.id])
+        toMessage(starter.id, 'Room is open, we need one more player for the second pair.', at(8), [memberB.id]),
+        toMessage(me.id, 'I can join at 19:00 if court #3 stays available.', at(3), [starter.id], true),
+        toMessage(lastSender.id, chat.lastMessage, at(0), [starter.id, me.id])
       ];
     } else if (chat.id === 'c3') {
       recentMessages = [
-        toMessage(starter.id, 'Host queue reviewed, two pending invites expired.', '10:03', [memberB.id]),
-        toMessage(me.id, 'I can re-send only to people with verified attendance.', '10:06', [starter.id], true),
-        toMessage(lastSender.id, chat.lastMessage, '10:09', [starter.id, me.id])
+        toMessage(starter.id, 'Host queue reviewed, two pending invites expired.', at(6), [memberB.id]),
+        toMessage(me.id, 'I can re-send only to people with verified attendance.', at(3), [starter.id], true),
+        toMessage(lastSender.id, chat.lastMessage, at(0), [starter.id, me.id])
       ];
     } else {
       recentMessages = [
-        toMessage(starter.id, 'Opened this room to coordinate tasks quickly.', '09:01', [memberB.id]),
-        toMessage(me.id, 'I can cover the checklist and send updates.', '09:05', [starter.id], true),
-        toMessage(lastSender.id, chat.lastMessage, '09:08', [starter.id, me.id, memberC.id])
+        toMessage(starter.id, 'Opened this room to coordinate tasks quickly.', at(7), [memberB.id]),
+        toMessage(me.id, 'I can cover the checklist and send updates.', at(3), [starter.id], true),
+        toMessage(lastSender.id, chat.lastMessage, at(0), [starter.id, me.id, memberC.id])
       ];
     }
     return [...olderMessages, ...recentMessages];
@@ -10979,8 +11524,17 @@ export class App {
 
   private resetActivitiesScroll(loadCalendarBadgesForCurrentPage = false): void {
     this.seedActivitiesStickyHeader();
+    this.cancelActivitiesPaginationLoad();
+    this.clearActivitiesHeaderLoadingAnimation();
     if (this.isCalendarLayoutView()) {
+      this.activitiesInitialLoadPending = false;
       this.clearActivitiesCalendarBadgeDelay();
+    } else {
+      this.activitiesPaginationKey = this.activitiesPaginationStateKey();
+      this.activitiesVisibleCount = 0;
+      this.activitiesPaginationAwaitScrollReset = false;
+      this.activitiesInitialLoadPending = true;
+      this.startActivitiesPaginationLoad(true);
     }
     setTimeout(() => {
       if (this.activePopup !== 'activities') {
@@ -11703,9 +12257,11 @@ export class App {
       if (latestRows.length > previousVisibleCount) {
         this.activitiesVisibleCount = Math.min(previousVisibleCount + this.activitiesPageSize, latestRows.length);
       }
+      this.activitiesInitialLoadPending = false;
       this.activitiesIsPaginating = false;
       this.activitiesPaginationAwaitScrollReset = true;
       this.endActivitiesHeaderProgressLoading();
+      this.refreshActivitiesStickyHeaderSoon();
       this.updateActivitiesHeaderProgress();
       this.refreshActivitiesHeaderProgressSoon();
     }, this.activitiesPaginationLoadDelayMs);
@@ -11730,7 +12286,9 @@ export class App {
       return;
     }
     this.activitiesPaginationKey = nextKey;
-    this.activitiesVisibleCount = Math.min(this.activitiesPageSize, totalRows);
+    this.activitiesVisibleCount = this.activitiesInitialLoadPending
+      ? 0
+      : Math.min(this.activitiesPageSize, totalRows);
     this.activitiesPaginationAwaitScrollReset = false;
     this.cancelActivitiesPaginationLoad();
     this.updateActivitiesHeaderProgress();
@@ -11757,6 +12315,7 @@ export class App {
       this.endActivitiesHeaderProgressLoading();
     }
     this.activitiesPaginationAwaitScrollReset = false;
+    this.activitiesInitialLoadPending = false;
   }
 
   private beginActivitiesHeaderProgressLoading(): void {
@@ -11914,7 +12473,9 @@ export class App {
       return;
     }
     this.eventExplorePaginationKey = nextKey;
-    this.eventExploreVisibleCount = Math.min(this.activitiesPageSize, totalCards);
+    this.eventExploreVisibleCount = this.eventExploreInitialLoadPending
+      ? 0
+      : Math.min(this.activitiesPageSize, totalCards);
     this.eventExplorePaginationAwaitScrollReset = false;
     this.cancelEventExplorePaginationLoad();
     this.updateEventExploreHeaderProgress();
@@ -11930,14 +12491,16 @@ export class App {
     ].join('|');
   }
 
-  private startEventExplorePaginationLoad(): void {
+  private startEventExplorePaginationLoad(allowEmptyResponse = false): void {
     if (this.eventExploreIsPaginating) {
       return;
     }
-    const cards = this.buildEventExploreCardsBase();
-    this.ensureEventExplorePaginationState(cards.length);
-    if (this.eventExploreVisibleCount >= cards.length) {
-      return;
+    if (!allowEmptyResponse) {
+      const cards = this.buildEventExploreCardsBase();
+      this.ensureEventExplorePaginationState(cards.length);
+      if (this.eventExploreVisibleCount >= cards.length) {
+        return;
+      }
     }
     this.eventExploreIsPaginating = true;
     this.beginEventExploreHeaderProgressLoading();
@@ -11949,6 +12512,7 @@ export class App {
       if (latestCards.length > previousVisibleCount) {
         this.eventExploreVisibleCount = Math.min(previousVisibleCount + this.activitiesPageSize, latestCards.length);
       }
+      this.eventExploreInitialLoadPending = false;
       this.eventExploreIsPaginating = false;
       this.eventExplorePaginationAwaitScrollReset = true;
       this.endEventExploreHeaderProgressLoading();
@@ -11966,6 +12530,7 @@ export class App {
       this.endEventExploreHeaderProgressLoading();
     }
     this.eventExplorePaginationAwaitScrollReset = false;
+    this.eventExploreInitialLoadPending = false;
   }
 
   private beginEventExploreHeaderProgressLoading(): void {
@@ -12064,13 +12629,127 @@ export class App {
     this.flushActivitiesHeaderProgress();
   }
 
+  private beginChatHeaderProgressLoading(): void {
+    this.chatHeaderLoadingCounter += 1;
+    if (this.chatHeaderLoadingCounter > 1) {
+      return;
+    }
+    this.chatHeaderProgressLoading = true;
+    this.chatHeaderLoadingOverdue = false;
+    this.chatHeaderLoadingProgress = 0.02;
+    this.chatHeaderLoadingStartedAtMs = performance.now();
+    this.flushActivitiesHeaderProgress();
+    if (this.chatHeaderLoadingCompleteTimer) {
+      clearTimeout(this.chatHeaderLoadingCompleteTimer);
+      this.chatHeaderLoadingCompleteTimer = null;
+    }
+    if (this.chatHeaderLoadingInterval) {
+      clearInterval(this.chatHeaderLoadingInterval);
+      this.chatHeaderLoadingInterval = null;
+    }
+    this.updateChatHeaderLoadingWindow();
+    this.chatHeaderLoadingInterval = this.ngZone.runOutsideAngular(() =>
+      setInterval(() => {
+        this.updateChatHeaderLoadingWindow();
+        this.flushActivitiesHeaderProgress();
+      }, this.activitiesHeaderLoadingTickMs)
+    );
+  }
+
+  private endChatHeaderProgressLoading(): void {
+    if (this.chatHeaderLoadingCounter === 0) {
+      return;
+    }
+    this.chatHeaderLoadingCounter = Math.max(0, this.chatHeaderLoadingCounter - 1);
+    if (this.chatHeaderLoadingCounter !== 0) {
+      return;
+    }
+    this.completeChatHeaderLoading();
+  }
+
+  private completeChatHeaderLoading(): void {
+    if (this.chatHeaderLoadingInterval) {
+      clearInterval(this.chatHeaderLoadingInterval);
+      this.chatHeaderLoadingInterval = null;
+    }
+    this.chatHeaderLoadingProgress = 1;
+    this.chatHeaderLoadingOverdue = false;
+    this.flushActivitiesHeaderProgress();
+    if (this.chatHeaderLoadingCompleteTimer) {
+      clearTimeout(this.chatHeaderLoadingCompleteTimer);
+    }
+    this.chatHeaderLoadingCompleteTimer = this.ngZone.runOutsideAngular(() =>
+      setTimeout(() => {
+        this.ngZone.run(() => {
+          if (this.chatHeaderLoadingCounter !== 0) {
+            return;
+          }
+          this.chatHeaderProgressLoading = false;
+          this.chatHeaderLoadingProgress = 0;
+          this.chatHeaderLoadingOverdue = false;
+          this.chatHeaderLoadingStartedAtMs = 0;
+          this.chatHeaderLoadingCompleteTimer = null;
+          this.flushActivitiesHeaderProgress();
+          if (this.chatInitialLoadPending) {
+            this.chatInitialLoadPending = false;
+            this.scrollChatToBottomAfterLoad();
+          }
+        });
+      }, 100)
+    );
+  }
+
+  private scrollChatToBottomAfterLoad(): void {
+    if (this.chatHeaderProgressLoading || !this.selectedChat) {
+      return;
+    }
+    const isChatOpen = (this.activePopup === 'chat' || this.stackedPopup === 'chat');
+    if (!isChatOpen) {
+      return;
+    }
+    const run = () => this.scrollChatToBottom();
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(run));
+      return;
+    }
+    setTimeout(run, 0);
+  }
+
+  private updateChatHeaderLoadingWindow(): void {
+    if (!this.chatHeaderProgressLoading) {
+      return;
+    }
+    const elapsed = Math.max(0, performance.now() - this.chatHeaderLoadingStartedAtMs);
+    const nextProgress = this.clampNumber(elapsed / this.activitiesHeaderLoadingWindowMs, 0, 1);
+    this.chatHeaderLoadingProgress = Math.max(this.chatHeaderLoadingProgress, nextProgress);
+    this.chatHeaderLoadingOverdue = elapsed >= this.activitiesHeaderLoadingWindowMs && this.chatHeaderLoadingCounter > 0;
+  }
+
+  private clearChatHeaderLoadingAnimation(): void {
+    if (this.chatHeaderLoadingInterval) {
+      clearInterval(this.chatHeaderLoadingInterval);
+      this.chatHeaderLoadingInterval = null;
+    }
+    if (this.chatHeaderLoadingCompleteTimer) {
+      clearTimeout(this.chatHeaderLoadingCompleteTimer);
+      this.chatHeaderLoadingCompleteTimer = null;
+    }
+    this.chatHeaderLoadingCounter = 0;
+    this.chatHeaderLoadingProgress = 0;
+    this.chatHeaderProgressLoading = false;
+    this.chatHeaderLoadingOverdue = false;
+    this.chatHeaderLoadingStartedAtMs = 0;
+    this.flushActivitiesHeaderProgress();
+  }
+
   private resetEventExploreScroll(): void {
-    const totalCards = this.buildEventExploreCardsBase().length;
-    this.eventExplorePaginationKey = '';
-    this.eventExploreVisibleCount = Math.min(this.activitiesPageSize, totalCards);
-    this.eventExplorePaginationAwaitScrollReset = false;
     this.cancelEventExplorePaginationLoad();
     this.clearEventExploreHeaderLoadingAnimation();
+    this.eventExplorePaginationKey = this.eventExplorePaginationStateKey();
+    this.eventExploreVisibleCount = 0;
+    this.eventExplorePaginationAwaitScrollReset = false;
+    this.eventExploreInitialLoadPending = true;
+    this.startEventExplorePaginationLoad(true);
     setTimeout(() => {
       const scrollElement = this.eventExploreScrollRef?.nativeElement;
       if (!scrollElement) {
@@ -12079,7 +12758,6 @@ export class App {
         return;
       }
       scrollElement.scrollTop = 0;
-      this.maybeLoadMoreEventExplore(scrollElement);
       this.updateEventExploreStickyFromScroll(scrollElement);
       this.updateEventExploreHeaderProgress();
     }, 0);
@@ -12182,6 +12860,15 @@ export class App {
 
   private refreshActivitiesHeaderProgressSoon(): void {
     const refresh = () => this.updateActivitiesHeaderProgress();
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(refresh));
+      return;
+    }
+    setTimeout(refresh, 0);
+  }
+
+  private refreshActivitiesStickyHeaderSoon(): void {
+    const refresh = () => this.updateActivitiesStickyHeader(this.activitiesScrollRef?.nativeElement?.scrollTop ?? 0);
     if (typeof globalThis.requestAnimationFrame === 'function') {
       globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(refresh));
       return;

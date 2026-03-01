@@ -336,3 +336,16 @@ add group popup on mobile
 ----
 
 git submodule to grab the front end code, the backend will be in private repo
+
+---
+
+add manually group if there is group does exist
+
+you need to increase the max capacity of the main event accordingly
+manual groups are priority groups above the generated one with different rules
+if you edit a generated group independently, it becomes manual group
+
+it does mean that it's out of the range of stage rule value
+you should show also that (in the group / manual or generated)
+
+view event should look lke the same like edit, but read only
