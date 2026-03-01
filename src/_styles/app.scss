@@ -4355,27 +4355,11 @@
   padding: 0 0.62rem;
 }
 
-.subevents-mode-trigger .subevents-mode-glyph,
-.activities-view-option .subevents-mode-glyph {
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.7rem;
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: 0.01em;
-  border: 1px solid transparent;
-}
-
-.subevents-mode-trigger .subevents-mode-glyph .mat-icon,
-.activities-view-option .subevents-mode-glyph .mat-icon {
-  width: 12px;
-  height: 12px;
-  font-size: 12px;
-  line-height: 12px;
+.subevents-mode-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
 }
 
 .subevents-mode-trigger.subevents-mode-casual {
@@ -4384,10 +4368,8 @@
   color: #2d7d47;
 }
 
-.subevents-mode-trigger.subevents-mode-casual .subevents-mode-glyph,
-.activities-view-option.subevents-mode-casual .subevents-mode-glyph {
-  background: linear-gradient(180deg, #dff2e4 0%, #d3eadb 100%);
-  border-color: rgba(44, 126, 72, 0.34);
+.subevents-mode-trigger.subevents-mode-casual .subevents-mode-icon,
+.activities-view-option.subevents-mode-casual .subevents-mode-icon {
   color: #2d7d47;
 }
 
@@ -4397,10 +4379,8 @@
   color: #a35e1d;
 }
 
-.subevents-mode-trigger.subevents-mode-tournament .subevents-mode-glyph,
-.activities-view-option.subevents-mode-tournament .subevents-mode-glyph {
-  background: linear-gradient(180deg, #ffe2c8 0%, #ffd5b0 100%);
-  border-color: rgba(183, 110, 40, 0.44);
+.subevents-mode-trigger.subevents-mode-tournament .subevents-mode-icon,
+.activities-view-option.subevents-mode-tournament .subevents-mode-icon {
   color: #a35e1d;
 }
 
@@ -9231,7 +9211,7 @@ textarea {
 .experience-delete-confirm {
   position: fixed;
   inset: 0;
-  z-index: 3800;
+  z-index: 4200;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -10102,6 +10082,40 @@ textarea {
   color: #7b5a2f;
 }
 
+.event-subevents-panel-mode {
+  margin-left: 0.16rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  min-height: 18px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 0 0.34rem;
+  font-size: 0.6rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.event-subevents-panel-mode .mat-icon {
+  width: 12px;
+  height: 12px;
+  font-size: 12px;
+  line-height: 12px;
+}
+
+.event-subevents-panel-mode.subevents-mode-casual {
+  background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
+  border-color: rgba(44, 126, 72, 0.36);
+  color: #2d7d47;
+}
+
+.event-subevents-panel-mode.subevents-mode-tournament {
+  background: linear-gradient(180deg, #fff3e8 0%, #ffe8d2 100%);
+  border-color: rgba(183, 110, 40, 0.4);
+  color: #a35e1d;
+}
+
 .event-subevents-panel-title .mat-icon {
   width: 18px;
   height: 18px;
@@ -10125,9 +10139,9 @@ textarea {
 .event-subevents-panel-body {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 0.3rem;
-  min-height: 1.4rem;
+  align-items: stretch;
+  gap: 0.34rem;
+  min-height: 1.6rem;
 }
 
 .event-subevents-panel-summary {
@@ -10144,6 +10158,41 @@ textarea {
 
 .event-subevent-panel-chip {
   cursor: default;
+  border: 1px solid rgba(74, 104, 141, 0.24);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f8fbff 0%, #edf4ff 100%);
+  padding: 0.28rem 0.42rem;
+  display: grid;
+  gap: 0.14rem;
+  min-width: 0;
+  max-width: 100%;
+  width: fit-content;
+  flex: 0 1 auto;
+}
+
+.event-subevent-panel-chip-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-width: 0;
+}
+
+.event-subevent-panel-chip-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #27466f;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.event-subevent-panel-chip-date {
+  color: rgba(40, 63, 95, 0.8);
+  font-size: 0.64rem;
+  font-weight: 700;
+  line-height: 1.15;
 }
 
 .event-subevents-panel-placeholder {
@@ -10631,6 +10680,77 @@ textarea {
 .subevent-stage-insert-target-select .mat-mdc-select-arrow-wrapper {
   margin-left: auto;
   padding-left: 0.3rem;
+}
+
+.subevent-tournament-fieldset {
+  grid-column: 1 / -1;
+  margin: 0;
+  border: 1px solid rgba(53, 88, 130, 0.3);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f7fbff 0%, #edf5ff 100%);
+  padding: 0.5rem 0.58rem 0.54rem;
+  display: grid;
+  gap: 0.44rem;
+}
+
+.subevent-tournament-fieldset > legend {
+  padding: 0 0.36rem;
+  color: #294d79;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.subevent-tournament-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.44rem 0.52rem;
+}
+
+.subevent-tournament-field {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.subevent-tournament-field > span {
+  color: rgba(26, 52, 84, 0.82);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.subevent-tournament-field > input {
+  width: 100%;
+  min-height: 30px;
+  border: 1px solid rgba(61, 98, 143, 0.3);
+  border-radius: 8px;
+  background: #fff;
+  color: #1f3f68;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 0.2rem 0.46rem;
+  box-sizing: border-box;
+}
+
+.subevent-tournament-field-readonly > input {
+  background: #eff5fc;
+  color: #2d4f78;
+}
+
+.subevent-tournament-range-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 0.42rem;
+}
+
+.subevent-tournament-range-field {
+  min-width: 0;
+}
+
+.subevent-tournament-hint {
+  margin: 0;
+  color: rgba(35, 62, 97, 0.76);
+  font-size: 0.68rem;
+  line-height: 1.3;
 }
 
 .subevent-optional-picker-panel {
@@ -13530,19 +13650,30 @@ textarea {
     gap: 0.3rem;
   }
 
-  .subevents-mode-trigger .subevents-mode-glyph,
-  .activities-view-option .subevents-mode-glyph {
-    width: 16px;
-    height: 16px;
-    font-size: 0.64rem;
+  .subevents-mode-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+    line-height: 14px;
   }
 
-  .subevents-mode-trigger .subevents-mode-glyph .mat-icon,
-  .activities-view-option .subevents-mode-glyph .mat-icon {
+  .event-subevents-panel-mode {
+    min-height: 17px;
+    font-size: 0.58rem;
+    padding: 0 0.3rem;
+  }
+
+  .event-subevents-panel-mode .mat-icon {
     width: 11px;
     height: 11px;
     font-size: 11px;
     line-height: 11px;
+  }
+
+  .event-subevent-panel-chip {
+    min-width: 0;
+    flex: 0 1 auto;
+    padding: 0.26rem 0.38rem;
   }
 
   .subevents-header-controls {

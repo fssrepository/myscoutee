@@ -292,6 +292,9 @@ interface SubEventFormItem {
   endAt: string;
   createdByUserId?: string;
   groups?: SubEventGroupItem[];
+  tournamentGroupCount?: number;
+  tournamentGroupCapacityMin?: number;
+  tournamentGroupCapacityMax?: number;
   optional: boolean;
   capacityMin: number;
   capacityMax: number;
@@ -305,6 +308,23 @@ interface SubEventFormItem {
 interface SubEventGroupItem {
   id: string;
   name: string;
+  capacityMin?: number;
+  capacityMax?: number;
+}
+
+interface SubEventGroupFormItem {
+  id: string;
+  stageId: string;
+  stageTitle: string;
+  name: string;
+  capacityMin: number;
+  capacityMax: number;
+}
+
+interface SubEventTournamentConfig {
+  groupCount: number;
+  groupCapacityMin: number;
+  groupCapacityMax: number;
 }
 
 interface SubEventTournamentGroup {
@@ -799,6 +819,7 @@ export class App {
   protected pendingActivityPublishRow: ActivityListRow | null = null;
   protected pendingSubEventDeleteId: string | null = null;
   protected pendingSubEventDeleteContext: 'subEvent' | 'stage' | null = null;
+  protected pendingSubEventGroupDelete: { stageId: string; groupId: string; stageLabel: string; groupLabel: string } | null = null;
   protected eventEditorClosePublishConfirmContext: 'active' | 'stacked' | null = null;
   protected pendingActivityAction: 'delete' | 'exit' = 'delete';
   protected pendingActivityMemberDelete: ActivityMemberEntry | null = null;
@@ -1107,7 +1128,7 @@ export class App {
   protected subEventStageInsertTargetId: string | null = null;
   protected showSubEventGroupForm = false;
   protected showSubEventGroupRequiredValidation = false;
-  protected subEventGroupForm = this.defaultSubEventGroupForm();
+  protected subEventGroupForm: SubEventGroupFormItem = this.defaultSubEventGroupForm();
   protected subEventStartDateValue: Date | null = null;
   protected subEventEndDateValue: Date | null = null;
   protected subEventStartTimeValue: Date | null = null;
@@ -1613,6 +1634,7 @@ export class App {
     this.showSubEventGroupForm = false;
     this.showSubEventOptionalPicker = false;
     this.showSubEventGroupRequiredValidation = false;
+    this.pendingSubEventGroupDelete = null;
     this.resetSubEventStagePaging();
     this.superStackedPopup = 'eventSubEvents';
   }
@@ -1627,6 +1649,7 @@ export class App {
     this.showSubEventForm = false;
     this.showSubEventGroupForm = false;
     this.showSubEventGroupRequiredValidation = false;
+    this.pendingSubEventGroupDelete = null;
   }
 
   protected eventSubEventsParentTitle(): string {
@@ -2019,6 +2042,9 @@ export class App {
     this.subEventFormStageNumber = tournamentStageContext ? this.eventForm.subEvents.length + 1 : null;
     this.resetSubEventStageInsertControls();
     this.applySubEventInsertTargetDateRangeToForm();
+    if (tournamentStageContext) {
+      this.initializeTournamentStageConfigForCreate();
+    }
     this.showSubEventRequiredValidation = false;
     this.showSubEventGroupRequiredValidation = false;
     this.syncSubEventDateTimeControlsFromForm();
@@ -2055,6 +2081,54 @@ export class App {
     event?.stopPropagation();
     this.pendingSubEventDeleteId = subEvent.id;
     this.pendingSubEventDeleteContext = context;
+  }
+
+  protected requestSubEventGroupDelete(
+    stage: SubEventFormItem,
+    group: SubEventTournamentGroup,
+    event?: Event
+  ): void {
+    event?.stopPropagation();
+    const stageNumber = this.resolveSubEventStageNumber(stage.id);
+    const stagePrefix = stageNumber !== null ? `Stage ${stageNumber}` : 'Stage';
+    const stageName = stage.name.trim() || 'Untitled';
+    this.pendingSubEventGroupDelete = {
+      stageId: stage.id,
+      groupId: group.id,
+      stageLabel: `${stagePrefix} · ${stageName}`,
+      groupLabel: group.groupLabel
+    };
+  }
+
+  protected cancelSubEventGroupDelete(): void {
+    this.pendingSubEventGroupDelete = null;
+  }
+
+  protected confirmSubEventGroupDelete(): void {
+    if (!this.pendingSubEventGroupDelete) {
+      return;
+    }
+    const pending = this.pendingSubEventGroupDelete;
+    const stage = this.eventForm.subEvents.find(item => item.id === pending.stageId);
+    if (!stage) {
+      this.pendingSubEventGroupDelete = null;
+      return;
+    }
+    const currentGroups = this.materializedSubEventGroups(stage);
+    const nextGroups = currentGroups.filter(group => group.id !== pending.groupId);
+    this.patchSubEventGroups(stage.id, nextGroups);
+    this.pendingSubEventGroupDelete = null;
+  }
+
+  protected pendingSubEventGroupDeleteTitle(): string {
+    return 'Delete group';
+  }
+
+  protected pendingSubEventGroupDeleteLabel(): string {
+    if (!this.pendingSubEventGroupDelete) {
+      return '';
+    }
+    return `Delete ${this.pendingSubEventGroupDelete.groupLabel} from ${this.pendingSubEventGroupDelete.stageLabel}?`;
   }
 
   protected cancelSubEventDelete(): void {
@@ -2210,6 +2284,10 @@ export class App {
     return this.subEventInsertTargetSource().length > 0;
   }
 
+  protected showTournamentStageConfigFields(): boolean {
+    return this.isTournamentStageMandatoryContext();
+  }
+
   protected get subEventStageInsertOptions(): Array<{ id: string; label: string }> {
     const source = this.subEventInsertTargetSource();
     if (this.isTournamentStageMandatoryContext()) {
@@ -2247,6 +2325,76 @@ export class App {
     }
     this.subEventStageInsertTargetId = nextValue;
     this.applySubEventInsertTargetDateRangeToForm();
+    if (this.isTournamentStageMandatoryContext() && !this.subEventForm.id) {
+      this.initializeTournamentStageConfigForCreate();
+    }
+  }
+
+  protected onTournamentGroupCountChange(value: number | string): void {
+    if (value === '' || value === null || value === undefined) {
+      this.subEventForm.tournamentGroupCount = undefined;
+      this.normalizeTournamentStageConfigOnForm();
+      return;
+    }
+    const parsed = Number(value);
+    this.subEventForm.tournamentGroupCount = Number.isFinite(parsed) ? parsed : this.subEventForm.tournamentGroupCount;
+    this.normalizeTournamentStageConfigOnForm();
+  }
+
+  protected onTournamentGroupCapacityMinChange(value: number | string): void {
+    if (value === '' || value === null || value === undefined) {
+      this.subEventForm.tournamentGroupCapacityMin = undefined;
+      this.normalizeTournamentStageConfigOnForm();
+      return;
+    }
+    const parsed = Number(value);
+    this.subEventForm.tournamentGroupCapacityMin = Number.isFinite(parsed)
+      ? parsed
+      : this.subEventForm.tournamentGroupCapacityMin;
+    this.normalizeTournamentStageConfigOnForm();
+  }
+
+  protected onTournamentGroupCapacityMaxChange(value: number | string): void {
+    if (value === '' || value === null || value === undefined) {
+      this.subEventForm.tournamentGroupCapacityMax = undefined;
+      return;
+    }
+    const parsed = Number(value);
+    this.subEventForm.tournamentGroupCapacityMax = Number.isFinite(parsed)
+      ? parsed
+      : this.subEventForm.tournamentGroupCapacityMax;
+    this.normalizeTournamentStageConfigOnForm();
+  }
+
+  protected tournamentStageTotalCapacityLabel(): string {
+    const config = this.tournamentStageConfigFromItem(this.subEventForm);
+    const min = config.groupCount * config.groupCapacityMin;
+    const max = config.groupCount * config.groupCapacityMax;
+    return `${min} - ${max}`;
+  }
+
+  protected tournamentEstimatedGroupCountLabel(): string {
+    const config = this.tournamentStageConfigFromItem(this.subEventForm);
+    const estimated = this.tournamentEstimatedGroupCountRange(config.groupCapacityMin, config.groupCapacityMax);
+    return `${estimated.min} - ${estimated.max}`;
+  }
+
+  protected tournamentStageAdvanceHintLabel(): string {
+    const config = this.tournamentStageConfigFromItem(this.subEventForm);
+    if (config.groupCount <= 0) {
+      return 'Set at least one group to calculate progression.';
+    }
+    const nextStage = this.nextTournamentStageForCurrentDraft();
+    if (!nextStage) {
+      return 'Final stage: no next-stage progression required.';
+    }
+    const nextConfig = this.tournamentStageConfigFromItem(nextStage);
+    const nextMin = Math.max(1, nextConfig.groupCount * nextConfig.groupCapacityMin);
+    const nextMax = Math.max(nextMin, nextConfig.groupCount * nextConfig.groupCapacityMax);
+    const perGroupMin = Math.max(1, Math.floor(nextMin / config.groupCount));
+    const perGroupMax = Math.max(perGroupMin, Math.ceil(nextMax / config.groupCount));
+    const perGroupLabel = perGroupMin === perGroupMax ? String(perGroupMin) : `${perGroupMin} - ${perGroupMax}`;
+    return `Auto advance / group: ${perGroupLabel} (from next stage capacity).`;
   }
 
   protected toggleSubEventItemActionMenu(item: SubEventFormItem, event: Event): void {
@@ -2354,6 +2502,9 @@ export class App {
       createdByUserId: this.subEventCreatorId(item),
       groups: this.cloneSubEventGroups(item.groups)
     };
+    if (tournamentStageContext) {
+      this.initializeTournamentStageConfigForEdit(item);
+    }
     this.resetSubEventStageInsertControls(item.id);
     this.showSubEventRequiredValidation = false;
     this.showSubEventOptionalPicker = false;
@@ -2375,6 +2526,7 @@ export class App {
       createdByUserId: this.subEventCreatorId(stage.subEvent),
       groups: this.cloneSubEventGroups(stage.subEvent.groups)
     };
+    this.initializeTournamentStageConfigForEdit(stage.subEvent);
     this.resetSubEventStageInsertControls(stage.subEvent.id);
     this.showSubEventRequiredValidation = false;
     this.showSubEventOptionalPicker = false;
@@ -2404,14 +2556,7 @@ export class App {
       return;
     }
     if (tournamentMode && group) {
-      const currentGroups = this.materializedSubEventGroups(item);
-      if (currentGroups.length <= 1) {
-        this.alertService.open('At least one group is required in a stage.');
-        this.inlineItemActionMenu = null;
-        return;
-      }
-      const nextGroups = currentGroups.filter(entry => entry.id !== group.id);
-      this.patchSubEventGroups(item.id, nextGroups);
+      this.requestSubEventGroupDelete(item, group, event);
       this.inlineItemActionMenu = null;
       return;
     }
@@ -2424,13 +2569,37 @@ export class App {
     if (!this.canEditSubEventItem(stage.subEvent)) {
       return;
     }
+    const stageConfig = this.tournamentStageConfigFromItem(stage.subEvent);
     this.subEventGroupForm = this.defaultSubEventGroupForm(stage.subEvent, {
-      stageTitle: `${stage.title} · ${stage.subtitle}`
+      stageTitle: `${stage.title} · ${stage.subtitle}`,
+      groupCapacityMin: stageConfig.groupCapacityMin,
+      groupCapacityMax: stageConfig.groupCapacityMax
     });
     this.showSubEventGroupRequiredValidation = false;
     this.showSubEventForm = false;
     this.showSubEventGroupForm = true;
     this.inlineItemActionMenu = null;
+  }
+
+  protected onSubEventGroupCapacityMinChange(value: number | string): void {
+    const parsed = Number(value);
+    const nextMin = Math.max(1, Number.isFinite(parsed) ? Math.trunc(parsed) : this.subEventGroupForm.capacityMin);
+    this.subEventGroupForm.capacityMin = nextMin;
+    if (this.subEventGroupForm.capacityMax < nextMin) {
+      this.subEventGroupForm.capacityMax = nextMin;
+    }
+  }
+
+  protected onSubEventGroupCapacityMaxChange(value: number | string): void {
+    if (value === '' || value === null || value === undefined) {
+      return;
+    }
+    const parsed = Number(value);
+    const nextMax = Math.max(
+      this.subEventGroupForm.capacityMin,
+      Number.isFinite(parsed) ? Math.trunc(parsed) : this.subEventGroupForm.capacityMax
+    );
+    this.subEventGroupForm.capacityMax = nextMax;
   }
 
   protected closeSubEventGroupPanel(event?: Event): void {
@@ -2757,6 +2926,7 @@ export class App {
     this.showSubEventRequiredValidation = false;
     this.showSubEventGroupRequiredValidation = false;
     this.subEventGroupForm = this.defaultSubEventGroupForm();
+    this.pendingSubEventGroupDelete = null;
     const target = source && this.isHostingSource(source)
       ? 'hosting'
       : (this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'hosting' ? 'hosting' : 'events');
@@ -2974,15 +3144,28 @@ export class App {
 
   private defaultSubEventGroupForm(
     stage: SubEventFormItem | null = null,
-    options?: { stageTitle?: string; groupId?: string; groupName?: string }
-  ): { id: string; stageId: string; stageTitle: string; name: string } {
+    options?: {
+      stageTitle?: string;
+      groupId?: string;
+      groupName?: string;
+      groupCapacityMin?: number;
+      groupCapacityMax?: number;
+    }
+  ): SubEventGroupFormItem {
     const stageId = stage?.id ?? '';
     const existingGroups = stage ? this.materializedSubEventGroups(stage) : [];
+    const stageConfig = stage ? this.tournamentStageConfigFromItem(stage) : null;
+    const fallbackMin = stageConfig?.groupCapacityMin ?? 1;
+    const fallbackMax = stageConfig?.groupCapacityMax ?? fallbackMin;
+    const nextMin = Math.max(1, Number(options?.groupCapacityMin) || fallbackMin);
+    const nextMax = Math.max(nextMin, Number(options?.groupCapacityMax) || fallbackMax);
     return {
       id: options?.groupId ?? '',
       stageId,
       stageTitle: options?.stageTitle ?? stage?.name ?? '',
-      name: options?.groupName ?? `Group ${existingGroups.length + 1}`
+      name: options?.groupName ?? `Group ${existingGroups.length + 1}`,
+      capacityMin: nextMin,
+      capacityMax: nextMax
     };
   }
 
@@ -3210,10 +3393,13 @@ export class App {
   private openSubEventGroupEditor(item: SubEventFormItem, group: SubEventTournamentGroup): void {
     const stageIndex = this.eventForm.subEvents.findIndex(entry => entry.id === item.id);
     const stageLabel = stageIndex >= 0 ? `Stage ${stageIndex + 1} · ${item.name}` : item.name;
+    const sourceGroup = this.materializedSubEventGroups(item).find(entry => entry.id === group.id);
     this.subEventGroupForm = this.defaultSubEventGroupForm(item, {
       stageTitle: stageLabel,
       groupId: group.id,
-      groupName: group.groupLabel
+      groupName: group.groupLabel,
+      groupCapacityMin: sourceGroup?.capacityMin,
+      groupCapacityMax: sourceGroup?.capacityMax
     });
     this.showSubEventGroupRequiredValidation = false;
     this.showSubEventForm = false;
@@ -3233,9 +3419,13 @@ export class App {
     const existingGroups = this.materializedSubEventGroups(stage);
     const existingId = this.subEventGroupForm.id;
     const nextId = existingId || `grp-${stageId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const nextCapacityMin = Math.max(1, Number(this.subEventGroupForm.capacityMin) || 1);
+    const nextCapacityMax = Math.max(nextCapacityMin, Number(this.subEventGroupForm.capacityMax) || nextCapacityMin);
     const nextEntry: SubEventGroupItem = {
       id: nextId,
-      name: nextName
+      name: nextName,
+      capacityMin: nextCapacityMin,
+      capacityMax: nextCapacityMax
     };
     let nextGroups: SubEventGroupItem[];
     if (existingId && existingGroups.some(group => group.id === existingId)) {
@@ -3415,16 +3605,19 @@ export class App {
     const forceMandatoryTournament = this.isTournamentStageMandatoryContext();
     const nextOptional = forceMandatoryTournament ? false : this.subEventForm.optional;
     this.normalizeSubEventCapacityRange(true);
+    const tournamentConfig = forceMandatoryTournament ? this.normalizeTournamentStageConfigOnForm() : null;
     const nextCapacityMin = this.subEventForm.capacityMin;
     const nextCapacityMax = this.subEventForm.capacityMax;
+    const tournamentGroupCount = this.normalizedCapacityValue(this.subEventForm.tournamentGroupCount);
     const existingId = this.subEventForm.id;
     const creatorId = this.subEventForm.createdByUserId ?? this.activeUser.id;
     const nextSubEventId = existingId || `se-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const existingItem = existingId ? this.eventForm.subEvents.find(item => item.id === existingId) : null;
     const fallbackGroups: SubEventGroupItem[] = [];
-    const groupsSource = this.subEventForm.groups?.length
+    const baseGroupsSource = this.subEventForm.groups?.length
       ? this.subEventForm.groups
       : (existingItem?.groups?.length ? existingItem.groups : fallbackGroups);
+    const groupsSource = baseGroupsSource;
     const next: SubEventFormItem = {
       ...this.subEventForm,
       id: nextSubEventId,
@@ -3435,6 +3628,9 @@ export class App {
       optional: nextOptional,
       createdByUserId: creatorId,
       groups: this.cloneSubEventGroups(groupsSource),
+      tournamentGroupCount: tournamentGroupCount ?? undefined,
+      tournamentGroupCapacityMin: tournamentConfig?.groupCapacityMin ?? this.subEventForm.tournamentGroupCapacityMin,
+      tournamentGroupCapacityMax: tournamentConfig?.groupCapacityMax ?? this.subEventForm.tournamentGroupCapacityMax,
       capacityMin: Math.max(1, Number(nextCapacityMin) || 1),
       capacityMax: Math.max(
         Math.max(1, Number(nextCapacityMin) || 1),
@@ -3529,8 +3725,161 @@ export class App {
     return { min, max };
   }
 
+  private toPositiveInt(value: number | string | null | undefined, fallback: number): number {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return Math.max(1, Math.trunc(fallback));
+    }
+    return Math.max(1, Math.trunc(parsed));
+  }
+
+  private tournamentEstimatedGroupCountRange(
+    perGroupMinValue: number | string | null | undefined,
+    perGroupMaxValue: number | string | null | undefined
+  ): { min: number; max: number } {
+    const rawMainMin = Number(this.eventForm.capacityMin);
+    const rawMainMax = Number(this.eventForm.capacityMax);
+    const mainMin = Number.isFinite(rawMainMin) ? Math.max(0, Math.trunc(rawMainMin)) : 0;
+    const mainMaxBase = Number.isFinite(rawMainMax) ? Math.max(0, Math.trunc(rawMainMax)) : mainMin;
+    const mainMax = Math.max(mainMin, mainMaxBase);
+    const perGroupMin = this.toPositiveInt(perGroupMinValue, 1);
+    const perGroupMax = this.toPositiveInt(perGroupMaxValue, perGroupMin);
+    if (mainMin <= 0 && mainMax <= 0) {
+      return { min: 0, max: 0 };
+    }
+    const estimatedMinGroups = Math.max(1, Math.ceil(mainMin / perGroupMin));
+    const estimatedMaxGroups = Math.max(1, Math.ceil(mainMax / perGroupMax));
+    return {
+      min: Math.min(estimatedMinGroups, estimatedMaxGroups),
+      max: Math.max(estimatedMinGroups, estimatedMaxGroups)
+    };
+  }
+
+  private tournamentStageConfigFromItem(item: Partial<SubEventFormItem>): SubEventTournamentConfig {
+    const explicitGroupCountRaw = Number(item.tournamentGroupCount);
+    const explicitGroupCount = Number.isFinite(explicitGroupCountRaw) && explicitGroupCountRaw > 0
+      ? Math.max(1, Math.trunc(explicitGroupCountRaw))
+      : null;
+    const fixedGroupCount = item.groups?.length ? item.groups.length : explicitGroupCount;
+    const groupCountForInference = this.clampNumber(fixedGroupCount ?? 1, 1, 64);
+    const itemMin = Math.max(1, Number(item.capacityMin) || 1);
+    const itemMax = Math.max(itemMin, Number(item.capacityMax) || itemMin);
+    const inferredGroupMin = Math.max(1, Math.ceil(itemMin / groupCountForInference));
+    const inferredGroupMax = Math.max(inferredGroupMin, Math.ceil(itemMax / groupCountForInference));
+    const groupCapacityMin = this.clampNumber(
+      this.toPositiveInt(item.tournamentGroupCapacityMin, inferredGroupMin),
+      1,
+      9999
+    );
+    const groupCapacityMax = this.clampNumber(
+      this.toPositiveInt(item.tournamentGroupCapacityMax, groupCapacityMin),
+      groupCapacityMin,
+      9999
+    );
+    const estimatedRange = this.tournamentEstimatedGroupCountRange(groupCapacityMin, groupCapacityMax);
+    const groupCount = this.clampNumber(
+      fixedGroupCount ?? (estimatedRange.max > 0 ? estimatedRange.max : 1),
+      1,
+      64
+    );
+    return {
+      groupCount,
+      groupCapacityMin,
+      groupCapacityMax
+    };
+  }
+
+  private applyTournamentStageConfigToForm(config: SubEventTournamentConfig): void {
+    this.subEventForm.tournamentGroupCapacityMin = config.groupCapacityMin;
+    this.subEventForm.tournamentGroupCapacityMax = config.groupCapacityMax;
+    const fixedGroupCount = this.subEventForm.groups?.length
+      ? this.subEventForm.groups.length
+      : this.normalizedCapacityValue(this.subEventForm.tournamentGroupCount);
+    const estimated = this.tournamentEstimatedGroupCountRange(config.groupCapacityMin, config.groupCapacityMax);
+    const minGroups = fixedGroupCount ?? (estimated.min > 0 ? estimated.min : 1);
+    const maxGroups = fixedGroupCount ?? (estimated.max > 0 ? estimated.max : minGroups);
+    this.subEventForm.capacityMin = minGroups * config.groupCapacityMin;
+    this.subEventForm.capacityMax = Math.max(this.subEventForm.capacityMin, maxGroups * config.groupCapacityMax);
+  }
+
+  private tournamentInsertReferenceStage(): SubEventFormItem | null {
+    const source = this.sortSubEventRefsByStartAsc(this.eventForm.subEvents);
+    if (source.length === 0) {
+      return null;
+    }
+    const fallbackTargetIndex = source.length - 1;
+    const targetIndex = this.subEventStageInsertTargetId
+      ? source.findIndex(item => item.id === this.subEventStageInsertTargetId)
+      : fallbackTargetIndex;
+    const resolvedTargetIndex = targetIndex >= 0 ? targetIndex : fallbackTargetIndex;
+    if (this.subEventStageInsertPlacement === 'before') {
+      return source[resolvedTargetIndex - 1] ?? source[resolvedTargetIndex] ?? null;
+    }
+    return source[resolvedTargetIndex] ?? null;
+  }
+
+  private initializeTournamentStageConfigForCreate(): void {
+    if (!this.isTournamentStageMandatoryContext()) {
+      return;
+    }
+    const reference = this.tournamentInsertReferenceStage();
+    if (reference) {
+      const referenceConfig = this.tournamentStageConfigFromItem(reference);
+      const nextTotal = Math.max(1, Math.ceil((referenceConfig.groupCount * referenceConfig.groupCapacityMax) / 2));
+      const nextGroupCount = Math.max(1, Math.ceil(nextTotal / referenceConfig.groupCapacityMax));
+      this.applyTournamentStageConfigToForm({
+        groupCount: nextGroupCount,
+        groupCapacityMin: referenceConfig.groupCapacityMin,
+        groupCapacityMax: referenceConfig.groupCapacityMax
+      });
+      return;
+    }
+    const mainMin = this.normalizedCapacityValue(this.eventForm.capacityMin) ?? 8;
+    const mainMax = this.normalizedCapacityValue(this.eventForm.capacityMax) ?? Math.max(mainMin, 16);
+    const defaultGroupCount = this.clampNumber(Math.max(1, Math.ceil(mainMax / 8)), 1, 64);
+    const defaultGroupMin = Math.max(1, Math.ceil(mainMin / defaultGroupCount));
+    const defaultGroupMax = Math.max(defaultGroupMin, Math.ceil(mainMax / defaultGroupCount));
+    this.applyTournamentStageConfigToForm({
+      groupCount: defaultGroupCount,
+      groupCapacityMin: defaultGroupMin,
+      groupCapacityMax: defaultGroupMax
+    });
+  }
+
+  private initializeTournamentStageConfigForEdit(item: SubEventFormItem): void {
+    if (!this.isTournamentStageMandatoryContext()) {
+      return;
+    }
+    this.applyTournamentStageConfigToForm(this.tournamentStageConfigFromItem(item));
+  }
+
+  private normalizeTournamentStageConfigOnForm(): SubEventTournamentConfig {
+    const normalized = this.tournamentStageConfigFromItem(this.subEventForm);
+    this.applyTournamentStageConfigToForm(normalized);
+    return normalized;
+  }
+
+  private nextTournamentStageForCurrentDraft(): SubEventFormItem | null {
+    const source = this.subEventInsertTargetSource();
+    if (source.length === 0 || !this.subEventStageInsertTargetId) {
+      return null;
+    }
+    const targetIndex = source.findIndex(item => item.id === this.subEventStageInsertTargetId);
+    if (targetIndex < 0) {
+      return null;
+    }
+    if (this.subEventStageInsertPlacement === 'before') {
+      return source[targetIndex] ?? null;
+    }
+    return source[targetIndex + 1] ?? null;
+  }
+
   private normalizeSubEventCapacityRange(syncMainWhenMissing: boolean): void {
     void syncMainWhenMissing;
+    if (this.isTournamentStageMandatoryContext()) {
+      this.normalizeTournamentStageConfigOnForm();
+      return;
+    }
     let min = Math.max(1, Number(this.subEventForm.capacityMin) || 1);
     let max = Math.max(1, Number(this.subEventForm.capacityMax) || min);
     if (max < min) {
@@ -3755,6 +4104,7 @@ export class App {
     this.pendingActivityPublishRow = null;
     this.pendingSubEventDeleteId = null;
     this.pendingSubEventDeleteContext = null;
+    this.pendingSubEventGroupDelete = null;
     this.eventEditorClosePublishConfirmContext = null;
     this.showSubEventForm = false;
     this.subEventFormStageNumber = null;
@@ -3798,6 +4148,7 @@ export class App {
   protected closeStackedPopup(): void {
     this.pendingSubEventDeleteId = null;
     this.pendingSubEventDeleteContext = null;
+    this.pendingSubEventGroupDelete = null;
     this.eventEditorClosePublishConfirmContext = null;
     this.inlineItemActionMenu = null;
     this.subEventFormStageNumber = null;

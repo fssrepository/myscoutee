@@ -1926,6 +1926,10 @@
                     <span class="event-subevents-panel-title">
                       <mat-icon>view_timeline</mat-icon>
                       <span>Sub Events</span>
+                      <span class="event-subevents-panel-mode" [ngClass]="subEventsDisplayModeClass()">
+                        <mat-icon>{{ subEventsDisplayModeIcon() }}</mat-icon>
+                        <span>{{ subEventsDisplayMode }}</span>
+                      </span>
                     </span>
                     <span class="event-subevents-panel-summary event-subevents-panel-summary-inline" *ngIf="eventForm.subEvents.length > 0">
                       {{ subEventsCountLabel() }}
@@ -1933,8 +1937,11 @@
                     <mat-icon class="event-subevents-chevron">chevron_right</mat-icon>
                   </span>
                   <span class="event-subevents-panel-body" *ngIf="eventForm.subEvents.length > 0; else eventSubEventsPlaceholderMain">
-                    <span class="values-selected-chip event-subevent-panel-chip" *ngFor="let subEvent of eventForm.subEvents | slice:0:2">
-                      {{ subEvent.name }}
+                    <span class="event-subevent-panel-chip" *ngFor="let subEvent of eventForm.subEvents">
+                      <span class="event-subevent-panel-chip-head">
+                        <span class="event-subevent-panel-chip-name">{{ subEvent.name || 'Untitled' }}</span>
+                      </span>
+                      <span class="event-subevent-panel-chip-date">{{ subEventCardRange(subEvent) }}</span>
                     </span>
                   </span>
                   <ng-template #eventSubEventsPlaceholderMain>
@@ -2050,6 +2057,41 @@
                         </mat-form-field>
                       </div>
                     </label>
+                    <fieldset class="subevent-tournament-fieldset" *ngIf="showTournamentStageConfigFields()">
+                      <legend>Stage Rule</legend>
+                      <div class="subevent-tournament-grid">
+                        <div class="subevent-tournament-range-row">
+                          <label class="subevent-tournament-field subevent-tournament-range-field">
+                            <span>Min Per Group</span>
+                            <input
+                              type="number"
+                              min="1"
+                              step="1"
+                              [ngModel]="subEventForm.tournamentGroupCapacityMin ?? ''"
+                              (ngModelChange)="onTournamentGroupCapacityMinChange($event)"
+                              placeholder="Min"
+                            />
+                          </label>
+                          <span class="subevent-capacity-separator">-</span>
+                          <label class="subevent-tournament-field subevent-tournament-range-field">
+                            <span>Max Per Group</span>
+                            <input
+                              type="number"
+                              min="1"
+                              step="1"
+                              [ngModel]="subEventForm.tournamentGroupCapacityMax ?? ''"
+                              (ngModelChange)="onTournamentGroupCapacityMaxChange($event)"
+                              placeholder="Max"
+                            />
+                          </label>
+                        </div>
+                        <label class="subevent-tournament-field subevent-tournament-field-readonly">
+                          <span>Estimated Group Count</span>
+                          <input type="text" [value]="tournamentEstimatedGroupCountLabel()" readonly />
+                        </label>
+                      </div>
+                      <p class="subevent-tournament-hint">{{ tournamentStageAdvanceHintLabel() }}</p>
+                    </fieldset>
                   </div>
                 </section>
               </div>
@@ -3430,6 +3472,10 @@
                     <span class="event-subevents-panel-title">
                       <mat-icon>view_timeline</mat-icon>
                       <span>Sub Events</span>
+                      <span class="event-subevents-panel-mode" [ngClass]="subEventsDisplayModeClass()">
+                        <mat-icon>{{ subEventsDisplayModeIcon() }}</mat-icon>
+                        <span>{{ subEventsDisplayMode }}</span>
+                      </span>
                     </span>
                     <span class="event-subevents-panel-summary event-subevents-panel-summary-inline" *ngIf="eventForm.subEvents.length > 0">
                       {{ subEventsCountLabel() }}
@@ -3437,8 +3483,11 @@
                     <mat-icon class="event-subevents-chevron">chevron_right</mat-icon>
                   </span>
                   <span class="event-subevents-panel-body" *ngIf="eventForm.subEvents.length > 0; else eventSubEventsPlaceholderStacked">
-                    <span class="values-selected-chip event-subevent-panel-chip" *ngFor="let subEvent of eventForm.subEvents | slice:0:2">
-                      {{ subEvent.name }}
+                    <span class="event-subevent-panel-chip" *ngFor="let subEvent of eventForm.subEvents">
+                      <span class="event-subevent-panel-chip-head">
+                        <span class="event-subevent-panel-chip-name">{{ subEvent.name || 'Untitled' }}</span>
+                      </span>
+                      <span class="event-subevent-panel-chip-date">{{ subEventCardRange(subEvent) }}</span>
                     </span>
                   </span>
                   <ng-template #eventSubEventsPlaceholderStacked>
@@ -3554,6 +3603,41 @@
                         </mat-form-field>
                       </div>
                     </label>
+                    <fieldset class="subevent-tournament-fieldset" *ngIf="showTournamentStageConfigFields()">
+                      <legend>Stage Rule</legend>
+                      <div class="subevent-tournament-grid">
+                        <div class="subevent-tournament-range-row">
+                          <label class="subevent-tournament-field subevent-tournament-range-field">
+                            <span>Min Per Group</span>
+                            <input
+                              type="number"
+                              min="1"
+                              step="1"
+                              [ngModel]="subEventForm.tournamentGroupCapacityMin ?? ''"
+                              (ngModelChange)="onTournamentGroupCapacityMinChange($event)"
+                              placeholder="Min"
+                            />
+                          </label>
+                          <span class="subevent-capacity-separator">-</span>
+                          <label class="subevent-tournament-field subevent-tournament-range-field">
+                            <span>Max Per Group</span>
+                            <input
+                              type="number"
+                              min="1"
+                              step="1"
+                              [ngModel]="subEventForm.tournamentGroupCapacityMax ?? ''"
+                              (ngModelChange)="onTournamentGroupCapacityMaxChange($event)"
+                              placeholder="Max"
+                            />
+                          </label>
+                        </div>
+                        <label class="subevent-tournament-field subevent-tournament-field-readonly">
+                          <span>Estimated Group Count</span>
+                          <input type="text" [value]="tournamentEstimatedGroupCountLabel()" readonly />
+                        </label>
+                      </div>
+                      <p class="subevent-tournament-hint">{{ tournamentStageAdvanceHintLabel() }}</p>
+                    </fieldset>
                   </div>
                 </section>
               </div>
@@ -3926,9 +4010,7 @@
             (click)="toggleSubEventsDisplayModePicker($event)"
             aria-label="Open sub events mode selector"
           >
-            <span class="subevents-mode-glyph">
-              <mat-icon>{{ subEventsDisplayModeIcon() }}</mat-icon>
-            </span>
+            <mat-icon class="subevents-mode-icon">{{ subEventsDisplayModeIcon() }}</mat-icon>
             <span>{{ subEventsDisplayMode }}</span>
           </button>
           <div class="activities-view-picker-panel" *ngIf="showSubEventsDisplayModePicker">
@@ -3939,9 +4021,7 @@
               *ngFor="let option of subEventsDisplayModeOptions"
               (click)="selectSubEventsDisplayMode(option, $event)"
             >
-              <span class="subevents-mode-glyph">
-                <mat-icon>{{ subEventsDisplayModeIcon(option) }}</mat-icon>
-              </span>
+              <mat-icon class="subevents-mode-icon">{{ subEventsDisplayModeIcon(option) }}</mat-icon>
               <span>{{ option }}</span>
             </button>
           </div>
@@ -4267,6 +4347,41 @@
                 </mat-form-field>
               </div>
             </label>
+            <fieldset class="subevent-tournament-fieldset" *ngIf="showTournamentStageConfigFields()">
+              <legend>Stage Rule</legend>
+              <div class="subevent-tournament-grid">
+                <div class="subevent-tournament-range-row">
+                  <label class="subevent-tournament-field subevent-tournament-range-field">
+                    <span>Min Per Group</span>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      [ngModel]="subEventForm.tournamentGroupCapacityMin ?? ''"
+                      (ngModelChange)="onTournamentGroupCapacityMinChange($event)"
+                      placeholder="Min"
+                    />
+                  </label>
+                  <span class="subevent-capacity-separator">-</span>
+                  <label class="subevent-tournament-field subevent-tournament-range-field">
+                    <span>Max Per Group</span>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      [ngModel]="subEventForm.tournamentGroupCapacityMax ?? ''"
+                      (ngModelChange)="onTournamentGroupCapacityMaxChange($event)"
+                      placeholder="Max"
+                    />
+                  </label>
+                </div>
+                <label class="subevent-tournament-field subevent-tournament-field-readonly">
+                  <span>Estimated Group Count</span>
+                  <input type="text" [value]="tournamentEstimatedGroupCountLabel()" readonly />
+                </label>
+              </div>
+              <p class="subevent-tournament-hint">{{ tournamentStageAdvanceHintLabel() }}</p>
+            </fieldset>
           </div>
         </section>
       </div>
@@ -4292,6 +4407,14 @@
                 [(ngModel)]="subEventGroupForm.name"
                 [class.field-required-invalid]="showSubEventGroupRequiredValidation && subEventGroupFieldInvalid()"
               />
+            </label>
+            <label class="subevent-capacity-range-field">
+              <span>Capacity</span>
+              <div class="subevent-capacity-range">
+                <input type="number" min="1" step="1" [ngModel]="subEventGroupForm.capacityMin" (ngModelChange)="onSubEventGroupCapacityMinChange($event)" placeholder="Min" />
+                <span class="subevent-capacity-separator">-</span>
+                <input type="number" min="1" step="1" [ngModel]="subEventGroupForm.capacityMax" (ngModelChange)="onSubEventGroupCapacityMaxChange($event)" placeholder="Max" />
+              </div>
             </label>
           </div>
         </section>
@@ -4492,6 +4615,18 @@
     <div class="popup-actions">
       <button type="button" class="link-btn neutral-btn" (click)="cancelSubEventDelete()">Cancel</button>
       <button type="button" class="link-btn experience-delete-btn" (click)="confirmSubEventDelete()">Delete</button>
+    </div>
+  </div>
+</section>
+
+<section class="experience-delete-confirm" *ngIf="pendingSubEventGroupDelete">
+  <div class="experience-delete-confirm-backdrop" (click)="cancelSubEventGroupDelete()"></div>
+  <div class="experience-delete-confirm-panel">
+    <h4>{{ pendingSubEventGroupDeleteTitle() }}</h4>
+    <p>{{ pendingSubEventGroupDeleteLabel() }}</p>
+    <div class="popup-actions">
+      <button type="button" class="link-btn neutral-btn" (click)="cancelSubEventGroupDelete()">Cancel</button>
+      <button type="button" class="link-btn experience-delete-btn" (click)="confirmSubEventGroupDelete()">Delete</button>
     </div>
   </div>
 </section>
