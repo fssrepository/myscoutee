@@ -2193,21 +2193,25 @@ export class App {
   }
 
   protected showSubEventInsertControls(): boolean {
-    return !this.subEventForm.id && this.sortSubEventsByStartAsc(this.eventForm.subEvents).length > 0;
+    return !this.subEventForm.id && this.eventForm.subEvents.length > 0;
   }
 
   protected get subEventStageInsertOptions(): Array<{ id: string; label: string }> {
     if (this.isTournamentStageMandatoryContext()) {
-      return this.subEventTournamentStages.map(stage => ({
-        id: stage.subEvent.id,
-        label: `${stage.title} · ${stage.subtitle || 'Untitled'}`
+      return this.eventForm.subEvents.map((item, index) => ({
+        id: item.id,
+        label: `Stage ${index + 1} · ${item.name || 'Untitled'}`
       }));
     }
-    const source = this.sortSubEventsByStartAsc(this.eventForm.subEvents);
+    const source = this.sortSubEventRefsByStartAsc(this.eventForm.subEvents);
     return source.map((item, index) => ({
       id: item.id,
       label: item.name || `Sub Event ${index + 1}`
     }));
+  }
+
+  protected trackBySubEventStageInsertOption(_: number, option: { id: string }): string {
+    return option.id;
   }
 
   protected subEventInsertFieldLabel(): string {
@@ -2219,8 +2223,12 @@ export class App {
     this.subEventStageInsertPlacement = placement;
   }
 
-  protected onSubEventStageInsertTargetChange(value: string): void {
-    this.subEventStageInsertTargetId = value || null;
+  protected onSubEventStageInsertTargetChange(value: string | null | undefined): void {
+    const nextValue = value || null;
+    if (this.subEventStageInsertTargetId === nextValue) {
+      return;
+    }
+    this.subEventStageInsertTargetId = nextValue;
     this.applySubEventInsertTargetDateRangeToForm();
   }
 
@@ -2963,7 +2971,7 @@ export class App {
 
   private resetSubEventStageInsertControls(): void {
     this.subEventStageInsertPlacement = 'after';
-    const source = this.sortSubEventsByStartAsc(this.eventForm.subEvents);
+    const source = this.sortSubEventRefsByStartAsc(this.eventForm.subEvents);
     if (source.length === 0) {
       this.subEventStageInsertTargetId = null;
       return;
@@ -2972,7 +2980,7 @@ export class App {
   }
 
   private subEventInsertStageNumberPreview(): number | null {
-    const source = this.sortSubEventsByStartAsc(this.eventForm.subEvents);
+    const source = this.sortSubEventRefsByStartAsc(this.eventForm.subEvents);
     const count = source.length;
     if (!this.showSubEventInsertControls()) {
       return count > 0 ? count + 1 : 1;
@@ -3009,7 +3017,7 @@ export class App {
     if (!this.subEventStageInsertTargetId) {
       return;
     }
-    const source = this.sortSubEventsByStartAsc(this.eventForm.subEvents);
+    const source = this.sortSubEventRefsByStartAsc(this.eventForm.subEvents);
     const target = source.find(item => item.id === this.subEventStageInsertTargetId);
     if (!target) {
       return;
@@ -3094,6 +3102,24 @@ export class App {
   private sortSubEventsByStartAsc(items: SubEventFormItem[]): SubEventFormItem[] {
     const source = this.cloneSubEvents(items);
     return source
+      .map((item, index) => ({
+        item,
+        index,
+        startMs: new Date(item.startAt).getTime()
+      }))
+      .sort((a, b) => {
+        const aTime = Number.isNaN(a.startMs) ? Number.POSITIVE_INFINITY : a.startMs;
+        const bTime = Number.isNaN(b.startMs) ? Number.POSITIVE_INFINITY : b.startMs;
+        if (aTime !== bTime) {
+          return aTime - bTime;
+        }
+        return a.index - b.index;
+      })
+      .map(entry => entry.item);
+  }
+
+  private sortSubEventRefsByStartAsc(items: readonly SubEventFormItem[]): SubEventFormItem[] {
+    return items
       .map((item, index) => ({
         item,
         index,

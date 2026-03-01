@@ -10554,6 +10554,7 @@ textarea {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 0.46rem;
+  width: 100%;
 }
 
 .subevent-stage-insert-mode {
@@ -10587,16 +10588,41 @@ textarea {
   color: #1f4678;
 }
 
-.subevent-stage-insert-controls select {
-  min-height: 32px;
+.subevent-stage-insert-target-select {
+  min-width: 0;
+  width: 100%;
   border: 1px solid rgba(67, 102, 147, 0.28);
   border-radius: 8px;
   background: #fff;
+  min-height: 32px;
+  padding: 0 0.48rem;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.subevent-stage-insert-target-select .mat-mdc-select {
+  width: 100%;
   color: #1f3c62;
   font-size: 0.75rem;
   font-weight: 600;
-  padding: 0 0.48rem;
-  width: 100%;
+}
+
+.subevent-stage-insert-target-select .mat-mdc-select-trigger {
+  min-height: 30px;
+}
+
+.subevent-stage-insert-target-select .mat-mdc-select-value,
+.subevent-stage-insert-target-select .mat-mdc-select-value-text,
+.subevent-stage-insert-option-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subevent-stage-insert-target-select .mat-mdc-select-arrow-wrapper {
+  margin-left: auto;
+  padding-left: 0.3rem;
 }
 
 .subevent-optional-picker-panel {
@@ -13602,12 +13628,32 @@ textarea {
   }
 
   .subevent-stage-insert-controls {
-    grid-template-columns: 1fr;
+    grid-template-columns: auto minmax(0, 1fr);
     gap: 0.34rem;
   }
 
   .subevent-stage-insert-mode {
-    width: fit-content;
+    width: auto;
+    max-width: 100%;
+  }
+
+  .subevent-stage-insert-mode-btn {
+    min-height: 28px;
+    font-size: 0.7rem;
+    padding: 0 0.5rem;
+  }
+
+  .subevent-stage-insert-target-select {
+    min-height: 30px;
+    padding: 0 0.42rem;
+  }
+
+  .subevent-stage-insert-target-select .mat-mdc-select {
+    font-size: 0.72rem;
+  }
+
+  .subevent-stage-insert-target-select .mat-mdc-select-trigger {
+    min-height: 28px;
   }
 
   .subevent-group-popup {

@@ -2001,9 +2001,19 @@
                           <button type="button" class="subevent-stage-insert-mode-btn" [class.is-active]="subEventStageInsertPlacement === 'before'" (click)="selectSubEventStageInsertPlacement('before', $event)">Before</button>
                           <button type="button" class="subevent-stage-insert-mode-btn" [class.is-active]="subEventStageInsertPlacement === 'after'" (click)="selectSubEventStageInsertPlacement('after', $event)">After</button>
                         </span>
-                        <select [ngModel]="subEventStageInsertTargetId || ''" (ngModelChange)="onSubEventStageInsertTargetChange($event)">
-                          <option *ngFor="let option of subEventStageInsertOptions" [value]="option.id">{{ option.label }}</option>
-                        </select>
+                        <div class="subevent-stage-insert-target-select">
+                          <mat-select
+                            [ngModel]="subEventStageInsertTargetId"
+                            (selectionChange)="onSubEventStageInsertTargetChange($event.value)"
+                            [panelWidth]="null"
+                            disableOptionCentering
+                            panelClass="selector-options-panel profile-bottom-sheet-panel subevent-stage-insert-options-panel"
+                          >
+                            <mat-option *ngFor="let option of subEventStageInsertOptions; trackBy: trackBySubEventStageInsertOption" [value]="option.id" class="status-option">
+                              <span class="subevent-stage-insert-option-label">{{ option.label }}</span>
+                            </mat-option>
+                          </mat-select>
+                        </div>
                       </div>
                     </label>
                     <label class="experience-description-field">
@@ -3495,9 +3505,19 @@
                           <button type="button" class="subevent-stage-insert-mode-btn" [class.is-active]="subEventStageInsertPlacement === 'before'" (click)="selectSubEventStageInsertPlacement('before', $event)">Before</button>
                           <button type="button" class="subevent-stage-insert-mode-btn" [class.is-active]="subEventStageInsertPlacement === 'after'" (click)="selectSubEventStageInsertPlacement('after', $event)">After</button>
                         </span>
-                        <select [ngModel]="subEventStageInsertTargetId || ''" (ngModelChange)="onSubEventStageInsertTargetChange($event)">
-                          <option *ngFor="let option of subEventStageInsertOptions" [value]="option.id">{{ option.label }}</option>
-                        </select>
+                        <div class="subevent-stage-insert-target-select">
+                          <mat-select
+                            [ngModel]="subEventStageInsertTargetId"
+                            (selectionChange)="onSubEventStageInsertTargetChange($event.value)"
+                            [panelWidth]="null"
+                            disableOptionCentering
+                            panelClass="selector-options-panel profile-bottom-sheet-panel subevent-stage-insert-options-panel"
+                          >
+                            <mat-option *ngFor="let option of subEventStageInsertOptions; trackBy: trackBySubEventStageInsertOption" [value]="option.id" class="status-option">
+                              <span class="subevent-stage-insert-option-label">{{ option.label }}</span>
+                            </mat-option>
+                          </mat-select>
+                        </div>
                       </div>
                     </label>
                     <label class="experience-description-field">
@@ -4194,9 +4214,19 @@
                   <button type="button" class="subevent-stage-insert-mode-btn" [class.is-active]="subEventStageInsertPlacement === 'before'" (click)="selectSubEventStageInsertPlacement('before', $event)">Before</button>
                   <button type="button" class="subevent-stage-insert-mode-btn" [class.is-active]="subEventStageInsertPlacement === 'after'" (click)="selectSubEventStageInsertPlacement('after', $event)">After</button>
                 </span>
-                <select [ngModel]="subEventStageInsertTargetId || ''" (ngModelChange)="onSubEventStageInsertTargetChange($event)">
-                  <option *ngFor="let option of subEventStageInsertOptions" [value]="option.id">{{ option.label }}</option>
-                </select>
+                <div class="subevent-stage-insert-target-select">
+                  <mat-select
+                    [ngModel]="subEventStageInsertTargetId"
+                    (selectionChange)="onSubEventStageInsertTargetChange($event.value)"
+                    [panelWidth]="null"
+                    disableOptionCentering
+                    panelClass="selector-options-panel profile-bottom-sheet-panel subevent-stage-insert-options-panel"
+                  >
+                    <mat-option *ngFor="let option of subEventStageInsertOptions; trackBy: trackBySubEventStageInsertOption" [value]="option.id" class="status-option">
+                      <span class="subevent-stage-insert-option-label">{{ option.label }}</span>
+                    </mat-option>
+                  </mat-select>
+                </div>
               </div>
             </label>
             <label class="experience-description-field">
