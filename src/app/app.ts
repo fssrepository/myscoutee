@@ -2985,14 +2985,18 @@ export class App {
   protected isSubEventLeaderboardGroupOpen(stage: SubEventTournamentStage, group: SubEventTournamentGroup): boolean {
     const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, group.id);
     const explicit = this.subEventLeaderboardOpenGroups[key];
-    return explicit ?? true;
+    return explicit ?? false;
   }
 
   protected toggleSubEventLeaderboardGroup(stage: SubEventTournamentStage, group: SubEventTournamentGroup, event?: Event): void {
     event?.stopPropagation();
-    const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, group.id);
-    const current = this.subEventLeaderboardOpenGroups[key];
-    this.subEventLeaderboardOpenGroups[key] = !(current ?? true);
+    const currentIsOpen = this.isSubEventLeaderboardGroupOpen(stage, group);
+    for (const stageGroup of stage.groups) {
+      const stageGroupKey = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, stageGroup.id);
+      this.subEventLeaderboardOpenGroups[stageGroupKey] = false;
+    }
+    const targetKey = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, group.id);
+    this.subEventLeaderboardOpenGroups[targetKey] = !currentIsOpen;
   }
 
   protected subEventLeaderboardHasMemberDetails(stage: SubEventTournamentStage, group: SubEventTournamentGroup): boolean {
@@ -3776,6 +3780,11 @@ export class App {
       return;
     }
     this.clearSubEventLeaderboardDetailsForStage(stage.subEvent.id);
+    for (let index = 0; index < stage.groups.length; index += 1) {
+      const group = stage.groups[index];
+      const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, group.id);
+      this.subEventLeaderboardOpenGroups[key] = index === 0;
+    }
     this.subEventLeaderboardStageId = stage.subEvent.id;
     this.subEventLeaderboardEditingGroupId = null;
     this.showSubEventLeaderboardPopup = true;

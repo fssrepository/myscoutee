@@ -4568,16 +4568,19 @@
           <ng-container *ngIf="subEventLeaderboardStage as leaderboardStage; else subEventLeaderboardMissingState">
             <div class="subevent-leaderboard-groups">
               <article class="subevent-leaderboard-group" *ngFor="let group of leaderboardStage.groups; trackBy: trackBySubEventTournamentGroup">
-                <div class="subevent-leaderboard-group-head">
-                  <button type="button" class="subevent-leaderboard-group-title-btn" (click)="toggleSubEventLeaderboardGroup(leaderboardStage, group, $event)">
-                    <span class="subevent-leaderboard-group-title">{{ group.groupLabel }}</span>
-                  </button>
+                <div
+                  class="subevent-leaderboard-group-head"
+                  role="button"
+                  tabindex="0"
+                  (click)="toggleSubEventLeaderboardGroup(leaderboardStage, group, $event)"
+                  (keydown.enter)="toggleSubEventLeaderboardGroup(leaderboardStage, group, $event)"
+                  (keydown.space)="toggleSubEventLeaderboardGroup(leaderboardStage, group, $event); $event.preventDefault()"
+                >
+                  <span class="subevent-leaderboard-group-title">{{ group.groupLabel }}</span>
                   <button type="button" class="subevent-leaderboard-group-add" (click)="openSubEventLeaderboardEntryPopup(leaderboardStage, group, $event)" aria-label="Add leaderboard entry">
                     <mat-icon>add</mat-icon>
                   </button>
-                  <button type="button" class="subevent-leaderboard-group-arrow-btn" (click)="toggleSubEventLeaderboardGroup(leaderboardStage, group, $event)" aria-label="Expand or collapse group">
-                    <mat-icon class="subevent-leaderboard-group-arrow">{{ isSubEventLeaderboardGroupOpen(leaderboardStage, group) ? 'expand_less' : 'expand_more' }}</mat-icon>
-                  </button>
+                  <mat-icon class="subevent-leaderboard-group-arrow">{{ isSubEventLeaderboardGroupOpen(leaderboardStage, group) ? 'expand_less' : 'expand_more' }}</mat-icon>
                 </div>
                 <div class="subevent-leaderboard-group-body" *ngIf="isSubEventLeaderboardGroupOpen(leaderboardStage, group)">
                   <p class="subevent-leaderboard-advance-line">Top {{ subEventLeaderboardAdvanceCount(leaderboardStage) }} advance from this group.</p>
@@ -4605,13 +4608,14 @@
                     </ng-container>
                     <ng-template #subEventLeaderboardScoreTable>
                       <div class="subevent-leaderboard-table-wrap">
-                        <table class="subevent-leaderboard-table">
+                        <table class="subevent-leaderboard-table subevent-leaderboard-table-score">
                           <thead>
                             <tr>
                               <th>#</th>
                               <th>Member</th>
                               <th>Score</th>
                               <th>Updates</th>
+                              <th class="subevent-leaderboard-end-column" aria-hidden="true"></th>
                             </tr>
                           </thead>
                           <tbody>
@@ -4622,9 +4626,12 @@
                               (click)="openSubEventLeaderboardMemberDetails(leaderboardStage, group, row.memberId, $event)"
                             >
                               <td>{{ rowIndex + 1 }}</td>
-                              <td>{{ row.memberName }}</td>
+                              <td class="subevent-leaderboard-member-cell">{{ row.memberName }}</td>
                               <td>{{ row.total }}</td>
                               <td>{{ row.updates }}</td>
+                              <td class="subevent-leaderboard-row-end">
+                                <mat-icon class="subevent-leaderboard-row-forward">chevron_right</mat-icon>
+                              </td>
                             </tr>
                           </tbody>
                         </table>
@@ -4659,7 +4666,7 @@
                     </ng-container>
                     <ng-template #subEventLeaderboardFifaTable>
                       <div class="subevent-leaderboard-table-wrap">
-                        <table class="subevent-leaderboard-table">
+                        <table class="subevent-leaderboard-table subevent-leaderboard-table-fifa">
                           <thead>
                             <tr>
                               <th>#</th>
@@ -4668,6 +4675,7 @@
                               <th>W-D-L</th>
                               <th>GF:GA</th>
                               <th>GD</th>
+                              <th class="subevent-leaderboard-end-column" aria-hidden="true"></th>
                             </tr>
                           </thead>
                           <tbody>
@@ -4678,11 +4686,14 @@
                               (click)="openSubEventLeaderboardMemberDetails(leaderboardStage, group, row.memberId, $event)"
                             >
                               <td>{{ rowIndex + 1 }}</td>
-                              <td>{{ row.memberName }}</td>
+                              <td class="subevent-leaderboard-member-cell">{{ row.memberName }}</td>
                               <td>{{ row.points }}</td>
                               <td>{{ row.wins }}-{{ row.draws }}-{{ row.losses }}</td>
                               <td>{{ row.goalsFor }}:{{ row.goalsAgainst }}</td>
                               <td>{{ row.goalDiff }}</td>
+                              <td class="subevent-leaderboard-row-end">
+                                <mat-icon class="subevent-leaderboard-row-forward">chevron_right</mat-icon>
+                              </td>
                             </tr>
                           </tbody>
                         </table>
