@@ -349,6 +349,64 @@ interface SubEventTournamentStage {
   isCurrent: boolean;
 }
 
+interface SubEventLeaderboardMember {
+  id: string;
+  name: string;
+}
+
+interface SubEventLeaderboardScoreEntry {
+  id: string;
+  stageId: string;
+  groupId: string;
+  memberId: string;
+  value: number;
+  note: string;
+  createdAtMs: number;
+}
+
+interface SubEventLeaderboardFifaMatch {
+  id: string;
+  stageId: string;
+  groupId: string;
+  homeMemberId: string;
+  awayMemberId: string;
+  homeScore: number;
+  awayScore: number;
+  note: string;
+  createdAtMs: number;
+}
+
+interface SubEventLeaderboardFormItem {
+  groupId: string;
+  memberId: string;
+  scoreValue: number | null;
+  note: string;
+  homeMemberId: string;
+  awayMemberId: string;
+  homeScore: number | null;
+  awayScore: number | null;
+}
+
+interface SubEventLeaderboardScoreStandingRow {
+  memberId: string;
+  memberName: string;
+  total: number;
+  updates: number;
+}
+
+interface SubEventLeaderboardFifaStandingRow {
+  memberId: string;
+  memberName: string;
+  points: number;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDiff: number;
+}
+
 interface EventCapacityRange {
   min: number | null;
   max: number | null;
@@ -1132,6 +1190,11 @@ export class App {
   protected showSubEventGroupForm = false;
   protected showSubEventGroupRequiredValidation = false;
   protected subEventGroupForm: SubEventGroupFormItem = this.defaultSubEventGroupForm();
+  protected showSubEventLeaderboardPopup = false;
+  protected showSubEventLeaderboardForm = false;
+  protected subEventLeaderboardStageId: string | null = null;
+  protected subEventLeaderboardEditingGroupId: string | null = null;
+  protected subEventLeaderboardForm: SubEventLeaderboardFormItem = this.defaultSubEventLeaderboardForm();
   protected subEventStartDateValue: Date | null = null;
   protected subEventEndDateValue: Date | null = null;
   protected subEventStartTimeValue: Date | null = null;
@@ -1150,6 +1213,11 @@ export class App {
   protected subEventsDisplayMode: SubEventsDisplayMode = 'Casual';
   protected showSubEventsDisplayModePicker = false;
   protected subEventStagePageIndex = 0;
+  private readonly subEventLeaderboardMembersByGroupId: Record<string, SubEventLeaderboardMember[]> = {};
+  private readonly subEventLeaderboardScoreEntriesByGroupKey: Record<string, SubEventLeaderboardScoreEntry[]> = {};
+  private readonly subEventLeaderboardFifaMatchesByGroupKey: Record<string, SubEventLeaderboardFifaMatch[]> = {};
+  private readonly subEventLeaderboardOpenGroups: Record<string, boolean> = {};
+  private readonly subEventLeaderboardDetailMemberByGroupKey: Record<string, string | null> = {};
   protected activitiesHeaderProgress = 0;
   protected activitiesHeaderProgressLoading = false;
   protected activitiesHeaderLoadingProgress = 0;
@@ -1636,6 +1704,10 @@ export class App {
     this.showSubEventForm = false;
     this.subEventFormStageNumber = null;
     this.showSubEventGroupForm = false;
+    this.showSubEventLeaderboardPopup = false;
+    this.showSubEventLeaderboardForm = false;
+    this.subEventLeaderboardStageId = null;
+    this.subEventLeaderboardEditingGroupId = null;
     this.showSubEventOptionalPicker = false;
     this.showSubEventGroupRequiredValidation = false;
     this.pendingSubEventGroupDelete = null;
@@ -1652,6 +1724,10 @@ export class App {
     this.subEventFormStageNumber = null;
     this.showSubEventForm = false;
     this.showSubEventGroupForm = false;
+    this.showSubEventLeaderboardPopup = false;
+    this.showSubEventLeaderboardForm = false;
+    this.subEventLeaderboardStageId = null;
+    this.subEventLeaderboardEditingGroupId = null;
     this.showSubEventGroupRequiredValidation = false;
     this.pendingSubEventGroupDelete = null;
   }
@@ -1752,6 +1828,10 @@ export class App {
 
   protected trackBySubEventTournamentGroup(_: number, group: SubEventTournamentGroup): string {
     return group.key;
+  }
+
+  protected trackById(_: number, item: { id: string }): string {
+    return item.id;
   }
 
   protected subEventStageAccentColor(stageNumber: number, totalStages: number): string {
@@ -2121,6 +2201,7 @@ export class App {
     const currentGroups = this.materializedSubEventGroups(stage);
     const nextGroups = currentGroups.filter(group => group.id !== pending.groupId);
     this.patchSubEventGroups(stage.id, nextGroups);
+    this.clearSubEventLeaderboardGroup(stage.id, pending.groupId);
     this.pendingSubEventGroupDelete = null;
   }
 
@@ -2144,7 +2225,9 @@ export class App {
     if (!this.pendingSubEventDeleteId) {
       return;
     }
-    this.eventForm.subEvents = this.eventForm.subEvents.filter(item => item.id !== this.pendingSubEventDeleteId);
+    const pendingId = this.pendingSubEventDeleteId;
+    this.eventForm.subEvents = this.eventForm.subEvents.filter(item => item.id !== pendingId);
+    this.clearSubEventLeaderboardStage(pendingId);
     this.updateMainEventBoundsFromSubEvents();
     this.pendingSubEventDeleteId = null;
     this.pendingSubEventDeleteContext = null;
@@ -2614,6 +2697,475 @@ export class App {
     this.showSubEventForm = false;
     this.showSubEventGroupForm = true;
     this.inlineItemActionMenu = null;
+  }
+
+  protected runSubEventStageLeaderboardAction(stage: SubEventTournamentStage, event: Event): void {
+    event.stopPropagation();
+    this.openSubEventLeaderboardPopup(stage);
+    this.inlineItemActionMenu = null;
+  }
+
+  protected get subEventLeaderboardStage(): SubEventTournamentStage | null {
+    if (!this.subEventLeaderboardStageId) {
+      return null;
+    }
+    return this.subEventTournamentStages.find(stage => stage.subEvent.id === this.subEventLeaderboardStageId) ?? null;
+  }
+
+  protected subEventLeaderboardPopupTitle(): string {
+    const stage = this.subEventLeaderboardStage;
+    if (!stage) {
+      return 'Leaderboard';
+    }
+    return `${stage.title} Leaderboard`;
+  }
+
+  protected subEventLeaderboardPopupSubtitle(): string {
+    const stage = this.subEventLeaderboardStage;
+    if (!stage) {
+      return '';
+    }
+    return `${stage.subtitle} · ${stage.rangeLabel}`;
+  }
+
+  protected subEventLeaderboardMode(stage: SubEventTournamentStage | null = this.subEventLeaderboardStage): TournamentLeaderboardType {
+    if (!stage) {
+      return 'Score';
+    }
+    return this.normalizedTournamentLeaderboardType(stage.subEvent.tournamentLeaderboardType);
+  }
+
+  protected subEventLeaderboardModeIcon(stage: SubEventTournamentStage | null = this.subEventLeaderboardStage): string {
+    return this.tournamentLeaderboardTypeIcon(this.subEventLeaderboardMode(stage));
+  }
+
+  protected openSubEventLeaderboardEntryPopup(
+    stage: SubEventTournamentStage,
+    group: SubEventTournamentGroup,
+    event?: Event
+  ): void {
+    event?.stopPropagation();
+    if (this.subEventLeaderboardStageId !== stage.subEvent.id) {
+      this.subEventLeaderboardStageId = stage.subEvent.id;
+    }
+    this.subEventLeaderboardEditingGroupId = group.id;
+    this.showSubEventLeaderboardForm = true;
+    this.resetSubEventLeaderboardFormForCurrentStage(group.id);
+  }
+
+  protected closeSubEventLeaderboardEntryPopup(event?: Event): void {
+    event?.stopPropagation();
+    this.showSubEventLeaderboardForm = false;
+    this.subEventLeaderboardEditingGroupId = null;
+    this.subEventLeaderboardForm = this.defaultSubEventLeaderboardForm();
+  }
+
+  protected subEventLeaderboardEntryGroupLabel(): string {
+    const stage = this.subEventLeaderboardStage;
+    const groupId = this.subEventLeaderboardEditingGroupId;
+    if (!stage || !groupId) {
+      return 'Group';
+    }
+    return stage.groups.find(group => group.id === groupId)?.groupLabel ?? 'Group';
+  }
+
+  protected closeSubEventLeaderboardPopup(event?: Event): void {
+    event?.stopPropagation();
+    const stageId = this.subEventLeaderboardStageId;
+    if (stageId) {
+      this.clearSubEventLeaderboardDetailsForStage(stageId);
+    }
+    this.showSubEventLeaderboardPopup = false;
+    this.showSubEventLeaderboardForm = false;
+    this.subEventLeaderboardStageId = null;
+    this.subEventLeaderboardEditingGroupId = null;
+    this.subEventLeaderboardForm = this.defaultSubEventLeaderboardForm();
+  }
+
+  protected onSubEventLeaderboardGroupChange(value: string | null | undefined): void {
+    const stage = this.subEventLeaderboardStage;
+    if (!stage) {
+      return;
+    }
+    const resolved = this.resolveLeaderboardGroupId(stage, value);
+    this.subEventLeaderboardForm.groupId = resolved;
+    const members = this.subEventLeaderboardMembersForGroup(stage, resolved);
+    const firstId = members[0]?.id ?? '';
+    this.subEventLeaderboardForm.memberId = members.some(member => member.id === this.subEventLeaderboardForm.memberId)
+      ? this.subEventLeaderboardForm.memberId
+      : firstId;
+    this.subEventLeaderboardForm.homeMemberId = members.some(member => member.id === this.subEventLeaderboardForm.homeMemberId)
+      ? this.subEventLeaderboardForm.homeMemberId
+      : firstId;
+    const fallbackAway = members.find(member => member.id !== this.subEventLeaderboardForm.homeMemberId)?.id ?? firstId;
+    this.subEventLeaderboardForm.awayMemberId = members.some(member => member.id === this.subEventLeaderboardForm.awayMemberId)
+      ? this.subEventLeaderboardForm.awayMemberId
+      : fallbackAway;
+    if (this.subEventLeaderboardForm.awayMemberId === this.subEventLeaderboardForm.homeMemberId) {
+      this.subEventLeaderboardForm.awayMemberId = fallbackAway;
+    }
+  }
+
+  protected onSubEventLeaderboardHomeMemberChange(value: string | null | undefined): void {
+    const stage = this.subEventLeaderboardStage;
+    if (!stage) {
+      return;
+    }
+    const groupId = this.resolveLeaderboardGroupId(stage, this.subEventLeaderboardForm.groupId);
+    const members = this.subEventLeaderboardMembersForGroup(stage, groupId);
+    const nextHome = members.find(member => member.id === value)?.id ?? members[0]?.id ?? '';
+    this.subEventLeaderboardForm.homeMemberId = nextHome;
+    if (this.subEventLeaderboardForm.awayMemberId === nextHome) {
+      const replacement = members.find(member => member.id !== nextHome)?.id ?? '';
+      this.subEventLeaderboardForm.awayMemberId = replacement;
+    }
+  }
+
+  protected onSubEventLeaderboardAwayMemberChange(value: string | null | undefined): void {
+    const stage = this.subEventLeaderboardStage;
+    if (!stage) {
+      return;
+    }
+    const groupId = this.resolveLeaderboardGroupId(stage, this.subEventLeaderboardForm.groupId);
+    const members = this.subEventLeaderboardMembersForGroup(stage, groupId);
+    const nextAway = members.find(member => member.id === value)?.id ?? members[1]?.id ?? members[0]?.id ?? '';
+    this.subEventLeaderboardForm.awayMemberId = nextAway;
+    if (this.subEventLeaderboardForm.awayMemberId === this.subEventLeaderboardForm.homeMemberId) {
+      this.subEventLeaderboardForm.homeMemberId = members.find(member => member.id !== nextAway)?.id ?? '';
+    }
+  }
+
+  protected onSubEventLeaderboardScoreValueChange(value: number | string | null | undefined): void {
+    if (value === '' || value === null || value === undefined) {
+      this.subEventLeaderboardForm.scoreValue = null;
+      return;
+    }
+    const parsed = Number(value);
+    this.subEventLeaderboardForm.scoreValue = Number.isFinite(parsed) ? Math.trunc(parsed) : null;
+  }
+
+  protected onSubEventLeaderboardHomeScoreChange(value: number | string | null | undefined): void {
+    if (value === '' || value === null || value === undefined) {
+      this.subEventLeaderboardForm.homeScore = null;
+      return;
+    }
+    const parsed = Number(value);
+    this.subEventLeaderboardForm.homeScore = Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : null;
+  }
+
+  protected onSubEventLeaderboardAwayScoreChange(value: number | string | null | undefined): void {
+    if (value === '' || value === null || value === undefined) {
+      this.subEventLeaderboardForm.awayScore = null;
+      return;
+    }
+    const parsed = Number(value);
+    this.subEventLeaderboardForm.awayScore = Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : null;
+  }
+
+  protected subEventLeaderboardMembersForCurrentGroup(): SubEventLeaderboardMember[] {
+    const stage = this.subEventLeaderboardStage;
+    if (!stage) {
+      return [];
+    }
+    const groupId = this.resolveLeaderboardGroupId(stage, this.subEventLeaderboardForm.groupId);
+    return this.subEventLeaderboardMembersForGroup(stage, groupId);
+  }
+
+  protected canSubmitSubEventLeaderboardEntry(): boolean {
+    const stage = this.subEventLeaderboardStage;
+    if (!stage) {
+      return false;
+    }
+    const groupId = this.resolveLeaderboardGroupId(stage, this.subEventLeaderboardForm.groupId);
+    if (!groupId) {
+      return false;
+    }
+    const members = this.subEventLeaderboardMembersForGroup(stage, groupId);
+    if (members.length === 0) {
+      return false;
+    }
+    const mode = this.subEventLeaderboardMode(stage);
+    if (mode === 'Score') {
+      const validMember = members.some(member => member.id === this.subEventLeaderboardForm.memberId);
+      const score = this.subEventLeaderboardForm.scoreValue;
+      return validMember && score !== null && Number.isFinite(score);
+    }
+    const validHome = members.some(member => member.id === this.subEventLeaderboardForm.homeMemberId);
+    const validAway = members.some(member => member.id === this.subEventLeaderboardForm.awayMemberId);
+    const homeScore = this.subEventLeaderboardForm.homeScore;
+    const awayScore = this.subEventLeaderboardForm.awayScore;
+    return validHome
+      && validAway
+      && this.subEventLeaderboardForm.homeMemberId !== this.subEventLeaderboardForm.awayMemberId
+      && homeScore !== null
+      && awayScore !== null
+      && Number.isFinite(homeScore)
+      && Number.isFinite(awayScore)
+      && homeScore >= 0
+      && awayScore >= 0;
+  }
+
+  protected saveSubEventLeaderboardEntry(event?: Event): void {
+    event?.stopPropagation();
+    const stage = this.subEventLeaderboardStage;
+    if (!stage || !this.canSubmitSubEventLeaderboardEntry()) {
+      return;
+    }
+    const groupId = this.resolveLeaderboardGroupId(stage, this.subEventLeaderboardForm.groupId);
+    const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, groupId);
+    const mode = this.subEventLeaderboardMode(stage);
+    if (mode === 'Score') {
+      const nextValue = Number(this.subEventLeaderboardForm.scoreValue);
+      const nextEntry: SubEventLeaderboardScoreEntry = {
+        id: `score-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        stageId: stage.subEvent.id,
+        groupId,
+        memberId: this.subEventLeaderboardForm.memberId,
+        value: Number.isFinite(nextValue) ? Math.trunc(nextValue) : 0,
+        note: this.subEventLeaderboardForm.note.trim(),
+        createdAtMs: Date.now()
+      };
+      this.subEventLeaderboardScoreEntriesByGroupKey[key] = [
+        ...(this.subEventLeaderboardScoreEntriesByGroupKey[key] ?? []),
+        nextEntry
+      ];
+      this.subEventLeaderboardForm.scoreValue = null;
+      this.subEventLeaderboardForm.note = '';
+      return;
+    }
+    const nextHomeScore = Number(this.subEventLeaderboardForm.homeScore);
+    const nextAwayScore = Number(this.subEventLeaderboardForm.awayScore);
+    const nextHomeMemberId = this.subEventLeaderboardForm.homeMemberId;
+    const nextAwayMemberId = this.subEventLeaderboardForm.awayMemberId;
+    const matches = [...(this.subEventLeaderboardFifaMatchesByGroupKey[key] ?? [])];
+    const pairKey = this.subEventLeaderboardMatchPairKey(nextHomeMemberId, nextAwayMemberId);
+    const existingIndex = matches.findIndex(
+      match => this.subEventLeaderboardMatchPairKey(match.homeMemberId, match.awayMemberId) === pairKey
+    );
+    const nextMatch: SubEventLeaderboardFifaMatch = {
+      id: existingIndex >= 0
+        ? matches[existingIndex].id
+        : `fifa-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      stageId: stage.subEvent.id,
+      groupId,
+      homeMemberId: nextHomeMemberId,
+      awayMemberId: nextAwayMemberId,
+      homeScore: Math.max(0, Number.isFinite(nextHomeScore) ? Math.trunc(nextHomeScore) : 0),
+      awayScore: Math.max(0, Number.isFinite(nextAwayScore) ? Math.trunc(nextAwayScore) : 0),
+      note: this.subEventLeaderboardForm.note.trim(),
+      createdAtMs: Date.now()
+    };
+    if (existingIndex >= 0) {
+      matches[existingIndex] = nextMatch;
+    } else {
+      matches.push(nextMatch);
+    }
+    this.subEventLeaderboardFifaMatchesByGroupKey[key] = matches;
+    this.subEventLeaderboardForm.homeScore = null;
+    this.subEventLeaderboardForm.awayScore = null;
+    this.subEventLeaderboardForm.note = '';
+  }
+
+  protected saveSubEventLeaderboardEntryFromPopup(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.canSubmitSubEventLeaderboardEntry()) {
+      return;
+    }
+    this.saveSubEventLeaderboardEntry();
+    this.closeSubEventLeaderboardEntryPopup();
+  }
+
+  protected subEventLeaderboardAdvanceCount(stage: SubEventTournamentStage): number {
+    return this.normalizedTournamentAdvancePerGroup(
+      stage.subEvent.tournamentAdvancePerGroup,
+      stage.subEvent.tournamentGroupCapacityMax ?? stage.subEvent.capacityMax
+    );
+  }
+
+  protected isSubEventLeaderboardGroupOpen(stage: SubEventTournamentStage, group: SubEventTournamentGroup): boolean {
+    const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, group.id);
+    const explicit = this.subEventLeaderboardOpenGroups[key];
+    return explicit ?? true;
+  }
+
+  protected toggleSubEventLeaderboardGroup(stage: SubEventTournamentStage, group: SubEventTournamentGroup, event?: Event): void {
+    event?.stopPropagation();
+    const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, group.id);
+    const current = this.subEventLeaderboardOpenGroups[key];
+    this.subEventLeaderboardOpenGroups[key] = !(current ?? true);
+  }
+
+  protected subEventLeaderboardHasMemberDetails(stage: SubEventTournamentStage, group: SubEventTournamentGroup): boolean {
+    const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, group.id);
+    const memberId = this.subEventLeaderboardDetailMemberByGroupKey[key];
+    return !!memberId;
+  }
+
+  protected openSubEventLeaderboardMemberDetails(
+    stage: SubEventTournamentStage,
+    group: SubEventTournamentGroup,
+    memberId: string,
+    event?: Event
+  ): void {
+    event?.stopPropagation();
+    const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, group.id);
+    this.subEventLeaderboardDetailMemberByGroupKey[key] = memberId;
+  }
+
+  protected closeSubEventLeaderboardMemberDetails(
+    stage: SubEventTournamentStage,
+    group: SubEventTournamentGroup,
+    event?: Event
+  ): void {
+    event?.stopPropagation();
+    const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, group.id);
+    this.subEventLeaderboardDetailMemberByGroupKey[key] = null;
+  }
+
+  protected subEventLeaderboardDetailMemberName(stage: SubEventTournamentStage, group: SubEventTournamentGroup): string {
+    const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, group.id);
+    const memberId = this.subEventLeaderboardDetailMemberByGroupKey[key];
+    if (!memberId) {
+      return 'Member';
+    }
+    const member = this.subEventLeaderboardMembersForGroup(stage, group.id).find(entry => entry.id === memberId);
+    return member?.name ?? 'Member';
+  }
+
+  protected subEventLeaderboardScoreHistory(
+    stage: SubEventTournamentStage,
+    group: SubEventTournamentGroup
+  ): SubEventLeaderboardScoreEntry[] {
+    const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, group.id);
+    const selectedMemberId = this.subEventLeaderboardDetailMemberByGroupKey[key];
+    if (!selectedMemberId) {
+      return [];
+    }
+    return this.subEventLeaderboardScoreEntries(stage, group.id)
+      .filter(entry => entry.memberId === selectedMemberId)
+      .sort((a, b) => b.createdAtMs - a.createdAtMs);
+  }
+
+  protected subEventLeaderboardFifaHistory(
+    stage: SubEventTournamentStage,
+    group: SubEventTournamentGroup
+  ): SubEventLeaderboardFifaMatch[] {
+    const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, group.id);
+    const selectedMemberId = this.subEventLeaderboardDetailMemberByGroupKey[key];
+    if (!selectedMemberId) {
+      return [];
+    }
+    return this.subEventLeaderboardFifaMatches(stage, group.id)
+      .filter(match => match.homeMemberId === selectedMemberId || match.awayMemberId === selectedMemberId)
+      .sort((a, b) => b.createdAtMs - a.createdAtMs);
+  }
+
+  protected subEventLeaderboardScoreValueLabel(value: number): string {
+    return value > 0 ? `+${value}` : `${value}`;
+  }
+
+  protected subEventLeaderboardScoreRows(stage: SubEventTournamentStage, group: SubEventTournamentGroup): SubEventLeaderboardScoreStandingRow[] {
+    const members = this.subEventLeaderboardMembersForGroup(stage, group.id);
+    const lookup = new Map<string, SubEventLeaderboardScoreStandingRow>();
+    for (const member of members) {
+      lookup.set(member.id, {
+        memberId: member.id,
+        memberName: member.name,
+        total: 0,
+        updates: 0
+      });
+    }
+    for (const entry of this.subEventLeaderboardScoreEntries(stage, group.id)) {
+      const row = lookup.get(entry.memberId);
+      if (!row) {
+        continue;
+      }
+      row.total += entry.value;
+      row.updates += 1;
+    }
+    return Array.from(lookup.values()).sort((a, b) => {
+      if (a.total !== b.total) {
+        return b.total - a.total;
+      }
+      return a.memberName.localeCompare(b.memberName);
+    });
+  }
+
+  protected subEventLeaderboardFifaRows(stage: SubEventTournamentStage, group: SubEventTournamentGroup): SubEventLeaderboardFifaStandingRow[] {
+    const members = this.subEventLeaderboardMembersForGroup(stage, group.id);
+    const lookup = new Map<string, SubEventLeaderboardFifaStandingRow>();
+    for (const member of members) {
+      lookup.set(member.id, {
+        memberId: member.id,
+        memberName: member.name,
+        points: 0,
+        played: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        goalDiff: 0
+      });
+    }
+    for (const match of this.subEventLeaderboardFifaMatches(stage, group.id)) {
+      const home = lookup.get(match.homeMemberId);
+      const away = lookup.get(match.awayMemberId);
+      if (!home || !away) {
+        continue;
+      }
+      home.played += 1;
+      away.played += 1;
+      home.goalsFor += match.homeScore;
+      home.goalsAgainst += match.awayScore;
+      away.goalsFor += match.awayScore;
+      away.goalsAgainst += match.homeScore;
+      if (match.homeScore > match.awayScore) {
+        home.wins += 1;
+        home.points += 3;
+        away.losses += 1;
+      } else if (match.homeScore < match.awayScore) {
+        away.wins += 1;
+        away.points += 3;
+        home.losses += 1;
+      } else {
+        home.draws += 1;
+        away.draws += 1;
+        home.points += 1;
+        away.points += 1;
+      }
+    }
+    const rows = Array.from(lookup.values());
+    for (const row of rows) {
+      row.goalDiff = row.goalsFor - row.goalsAgainst;
+    }
+    return rows.sort((a, b) => {
+      if (a.points !== b.points) {
+        return b.points - a.points;
+      }
+      if (a.goalDiff !== b.goalDiff) {
+        return b.goalDiff - a.goalDiff;
+      }
+      if (a.goalsFor !== b.goalsFor) {
+        return b.goalsFor - a.goalsFor;
+      }
+      return a.memberName.localeCompare(b.memberName);
+    });
+  }
+
+  protected subEventLeaderboardFifaMatches(stage: SubEventTournamentStage, groupId: string): SubEventLeaderboardFifaMatch[] {
+    const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, groupId);
+    return [...(this.subEventLeaderboardFifaMatchesByGroupKey[key] ?? [])]
+      .sort((a, b) => b.createdAtMs - a.createdAtMs);
+  }
+
+  protected isSubEventLeaderboardAdvanceRow(stage: SubEventTournamentStage, rowIndex: number): boolean {
+    return rowIndex < this.subEventLeaderboardAdvanceCount(stage);
+  }
+
+  protected subEventLeaderboardMemberName(stage: SubEventTournamentStage, groupId: string, memberId: string): string {
+    const member = this.subEventLeaderboardMembersForGroup(stage, groupId).find(entry => entry.id === memberId);
+    return member?.name ?? 'Member';
   }
 
   protected onSubEventGroupCapacityMinChange(value: number | string): void {
@@ -3204,6 +3756,167 @@ export class App {
       capacityMin: nextMin,
       capacityMax: nextMax
     };
+  }
+
+  private defaultSubEventLeaderboardForm(): SubEventLeaderboardFormItem {
+    return {
+      groupId: '',
+      memberId: '',
+      scoreValue: null,
+      note: '',
+      homeMemberId: '',
+      awayMemberId: '',
+      homeScore: null,
+      awayScore: null
+    };
+  }
+
+  private openSubEventLeaderboardPopup(stage: SubEventTournamentStage): void {
+    if (!this.canEditSubEventItem(stage.subEvent)) {
+      return;
+    }
+    this.clearSubEventLeaderboardDetailsForStage(stage.subEvent.id);
+    this.subEventLeaderboardStageId = stage.subEvent.id;
+    this.subEventLeaderboardEditingGroupId = null;
+    this.showSubEventLeaderboardPopup = true;
+    this.showSubEventLeaderboardForm = false;
+    this.ensureSubEventLeaderboardMembers(stage);
+    this.subEventLeaderboardForm = this.defaultSubEventLeaderboardForm();
+  }
+
+  private resetSubEventLeaderboardFormForCurrentStage(groupId?: string): void {
+    this.subEventLeaderboardForm = this.defaultSubEventLeaderboardForm();
+    const stage = this.subEventLeaderboardStage;
+    if (!stage) {
+      return;
+    }
+    this.ensureSubEventLeaderboardMembers(stage);
+    const nextGroupId = groupId ?? this.subEventLeaderboardEditingGroupId ?? stage.groups[0]?.id ?? '';
+    this.onSubEventLeaderboardGroupChange(nextGroupId);
+  }
+
+  private subEventLeaderboardStageGroupKey(stageId: string, groupId: string): string {
+    return `${stageId}::${groupId}`;
+  }
+
+  private subEventLeaderboardMatchPairKey(memberAId: string, memberBId: string): string {
+    const pair = [memberAId, memberBId].sort((a, b) => a.localeCompare(b));
+    return `${pair[0]}::${pair[1]}`;
+  }
+
+  private resolveLeaderboardGroupId(stage: SubEventTournamentStage, requestedGroupId: string | null | undefined): string {
+    const fallback = stage.groups[0]?.id ?? '';
+    if (!requestedGroupId) {
+      return fallback;
+    }
+    return stage.groups.some(group => group.id === requestedGroupId) ? requestedGroupId : fallback;
+  }
+
+  private subEventLeaderboardGroupCapacity(stage: SubEventTournamentStage, groupId: string): number {
+    const sourceGroup = this.subEventGroupsForStage(stage.subEvent).find(entry => entry.id === groupId);
+    const groupMax = Number(sourceGroup?.capacityMax);
+    if (Number.isFinite(groupMax) && groupMax > 0) {
+      return this.clampNumber(Math.trunc(groupMax), 2, 128);
+    }
+    const stageMax = Number(stage.subEvent.tournamentGroupCapacityMax);
+    if (Number.isFinite(stageMax) && stageMax > 0) {
+      return this.clampNumber(Math.trunc(stageMax), 2, 128);
+    }
+    const fallbackMax = Number(stage.subEvent.capacityMax);
+    if (Number.isFinite(fallbackMax) && fallbackMax > 0) {
+      return this.clampNumber(Math.trunc(fallbackMax), 2, 128);
+    }
+    return 4;
+  }
+
+  private ensureSubEventLeaderboardMembers(stage: SubEventTournamentStage): void {
+    for (const group of stage.groups) {
+      const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, group.id);
+      if (this.subEventLeaderboardOpenGroups[key] === undefined) {
+        this.subEventLeaderboardOpenGroups[key] = true;
+      }
+      const existing = this.subEventLeaderboardMembersByGroupId[key];
+      if (existing && existing.length > 0) {
+        this.subEventLeaderboardMembersByGroupId[key] = existing.map((member, index) => ({
+          ...member,
+          name: `Member ${index + 1}`
+        }));
+        continue;
+      }
+      const memberCount = this.subEventLeaderboardGroupCapacity(stage, group.id);
+      this.subEventLeaderboardMembersByGroupId[key] = Array.from({ length: memberCount }, (_, index) => {
+        const ordinal = index + 1;
+        return {
+          id: `${group.id}-m-${ordinal}`,
+          name: `Member ${ordinal}`
+        };
+      });
+    }
+  }
+
+  private subEventLeaderboardMembersForGroup(stage: SubEventTournamentStage, groupId: string): SubEventLeaderboardMember[] {
+    const resolvedGroupId = this.resolveLeaderboardGroupId(stage, groupId);
+    if (!resolvedGroupId) {
+      return [];
+    }
+    this.ensureSubEventLeaderboardMembers(stage);
+    const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, resolvedGroupId);
+    return this.subEventLeaderboardMembersByGroupId[key] ?? [];
+  }
+
+  private subEventLeaderboardScoreEntries(stage: SubEventTournamentStage, groupId: string): SubEventLeaderboardScoreEntry[] {
+    const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, groupId);
+    return this.subEventLeaderboardScoreEntriesByGroupKey[key] ?? [];
+  }
+
+  private clearSubEventLeaderboardGroup(stageId: string, groupId: string): void {
+    const key = this.subEventLeaderboardStageGroupKey(stageId, groupId);
+    delete this.subEventLeaderboardMembersByGroupId[key];
+    delete this.subEventLeaderboardOpenGroups[key];
+    delete this.subEventLeaderboardDetailMemberByGroupKey[key];
+    delete this.subEventLeaderboardScoreEntriesByGroupKey[key];
+    delete this.subEventLeaderboardFifaMatchesByGroupKey[key];
+  }
+
+  private clearSubEventLeaderboardStage(stageId: string): void {
+    const prefix = `${stageId}::`;
+    for (const key of Object.keys(this.subEventLeaderboardMembersByGroupId)) {
+      if (key.startsWith(prefix)) {
+        delete this.subEventLeaderboardMembersByGroupId[key];
+      }
+    }
+    for (const key of Object.keys(this.subEventLeaderboardOpenGroups)) {
+      if (key.startsWith(prefix)) {
+        delete this.subEventLeaderboardOpenGroups[key];
+      }
+    }
+    for (const key of Object.keys(this.subEventLeaderboardDetailMemberByGroupKey)) {
+      if (key.startsWith(prefix)) {
+        delete this.subEventLeaderboardDetailMemberByGroupKey[key];
+      }
+    }
+    for (const key of Object.keys(this.subEventLeaderboardScoreEntriesByGroupKey)) {
+      if (key.startsWith(prefix)) {
+        delete this.subEventLeaderboardScoreEntriesByGroupKey[key];
+      }
+    }
+    for (const key of Object.keys(this.subEventLeaderboardFifaMatchesByGroupKey)) {
+      if (key.startsWith(prefix)) {
+        delete this.subEventLeaderboardFifaMatchesByGroupKey[key];
+      }
+    }
+    if (this.subEventLeaderboardStageId === stageId) {
+      this.closeSubEventLeaderboardPopup();
+    }
+  }
+
+  private clearSubEventLeaderboardDetailsForStage(stageId: string): void {
+    const prefix = `${stageId}::`;
+    for (const key of Object.keys(this.subEventLeaderboardDetailMemberByGroupKey)) {
+      if (key.startsWith(prefix)) {
+        this.subEventLeaderboardDetailMemberByGroupKey[key] = null;
+      }
+    }
   }
 
   private resetSubEventStageInsertControls(editingSubEventId: string | null = null): void {
@@ -4195,6 +4908,11 @@ export class App {
     this.showSubEventForm = false;
     this.subEventFormStageNumber = null;
     this.showSubEventGroupForm = false;
+    this.showSubEventLeaderboardPopup = false;
+    this.showSubEventLeaderboardForm = false;
+    this.subEventLeaderboardStageId = null;
+    this.subEventLeaderboardEditingGroupId = null;
+    this.subEventLeaderboardForm = this.defaultSubEventLeaderboardForm();
     this.showSubEventOptionalPicker = false;
     this.showSubEventRequiredValidation = false;
     this.showSubEventGroupRequiredValidation = false;
@@ -4240,6 +4958,10 @@ export class App {
     this.subEventFormStageNumber = null;
     this.showSubEventGroupForm = false;
     this.showSubEventGroupRequiredValidation = false;
+    this.showSubEventLeaderboardPopup = false;
+    this.showSubEventLeaderboardForm = false;
+    this.subEventLeaderboardStageId = null;
+    this.subEventLeaderboardForm = this.defaultSubEventLeaderboardForm();
     this.showEventExploreOrderPicker = false;
     this.cancelEventExplorePaginationLoad();
     this.clearEventExploreHeaderLoadingAnimation();

@@ -4181,6 +4181,10 @@
                           <mat-icon>group_add</mat-icon>
                           <span>Add Group</span>
                         </button>
+                        <button type="button" class="item-action-menu-btn" (click)="runSubEventStageLeaderboardAction(stage, $event)">
+                          <mat-icon>{{ subEventLeaderboardModeIcon(stage) }}</mat-icon>
+                          <span>Leaderboard</span>
+                        </button>
                         <button type="button" class="item-action-menu-btn" (click)="runSubEventStageEditAction(stage, $event)">
                           <mat-icon>edit</mat-icon>
                           <span>Edit Stage Event</span>
@@ -4541,6 +4545,284 @@
                 <span class="subevent-capacity-separator">-</span>
                 <input type="number" min="1" step="1" [ngModel]="subEventGroupForm.capacityMax" (ngModelChange)="onSubEventGroupCapacityMaxChange($event)" placeholder="Max" />
               </div>
+            </label>
+          </div>
+        </section>
+      </div>
+    </section>
+    <section class="experience-form-overlay subevent-form-overlay subevent-leaderboard-overlay" *ngIf="showSubEventLeaderboardPopup && superStackedPopup === 'eventSubEvents'">
+      <div class="experience-form-overlay-backdrop" (click)="closeSubEventLeaderboardPopup($event)"></div>
+      <div class="experience-form-popup subevent-form-popup subevent-leaderboard-popup">
+        <div class="experience-form-header subevent-leaderboard-header">
+          <div class="subevent-leaderboard-header-main">
+            <h3>{{ subEventLeaderboardPopupTitle() }}</h3>
+            <p *ngIf="subEventLeaderboardPopupSubtitle() as leaderboardSubtitle">{{ leaderboardSubtitle }}</p>
+          </div>
+          <div class="experience-form-header-controls">
+            <button type="button" class="experience-form-close-btn" (click)="closeSubEventLeaderboardPopup($event)" aria-label="Close leaderboard">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        </div>
+        <section class="experience-form-panel subevent-form-panel subevent-leaderboard-panel">
+          <ng-container *ngIf="subEventLeaderboardStage as leaderboardStage; else subEventLeaderboardMissingState">
+            <div class="subevent-leaderboard-groups">
+              <article class="subevent-leaderboard-group" *ngFor="let group of leaderboardStage.groups; trackBy: trackBySubEventTournamentGroup">
+                <div class="subevent-leaderboard-group-head">
+                  <button type="button" class="subevent-leaderboard-group-title-btn" (click)="toggleSubEventLeaderboardGroup(leaderboardStage, group, $event)">
+                    <span class="subevent-leaderboard-group-title">{{ group.groupLabel }}</span>
+                  </button>
+                  <button type="button" class="subevent-leaderboard-group-add" (click)="openSubEventLeaderboardEntryPopup(leaderboardStage, group, $event)" aria-label="Add leaderboard entry">
+                    <mat-icon>add</mat-icon>
+                  </button>
+                  <button type="button" class="subevent-leaderboard-group-arrow-btn" (click)="toggleSubEventLeaderboardGroup(leaderboardStage, group, $event)" aria-label="Expand or collapse group">
+                    <mat-icon class="subevent-leaderboard-group-arrow">{{ isSubEventLeaderboardGroupOpen(leaderboardStage, group) ? 'expand_less' : 'expand_more' }}</mat-icon>
+                  </button>
+                </div>
+                <div class="subevent-leaderboard-group-body" *ngIf="isSubEventLeaderboardGroupOpen(leaderboardStage, group)">
+                  <p class="subevent-leaderboard-advance-line">Top {{ subEventLeaderboardAdvanceCount(leaderboardStage) }} advance from this group.</p>
+
+                  <ng-container *ngIf="subEventLeaderboardMode(leaderboardStage) === 'Score'; else subEventLeaderboardFifaSection">
+                    <ng-container *ngIf="subEventLeaderboardHasMemberDetails(leaderboardStage, group); else subEventLeaderboardScoreTable">
+                      <div class="subevent-leaderboard-history-head">
+                        <button type="button" class="subevent-leaderboard-history-back-btn" (click)="closeSubEventLeaderboardMemberDetails(leaderboardStage, group, $event)" aria-label="Back to score table">
+                          <mat-icon>arrow_back</mat-icon>
+                        </button>
+                        <strong>{{ subEventLeaderboardDetailMemberName(leaderboardStage, group) }}</strong>
+                      </div>
+                      <ng-container *ngIf="subEventLeaderboardScoreHistory(leaderboardStage, group) as scoreHistory">
+                        <div class="subevent-leaderboard-history-list" *ngIf="scoreHistory.length > 0; else subEventLeaderboardScoreHistoryEmpty">
+                          <article class="subevent-leaderboard-history-item" *ngFor="let entry of scoreHistory; trackBy: trackById">
+                            <span class="subevent-leaderboard-history-value">{{ subEventLeaderboardScoreValueLabel(entry.value) }}</span>
+                            <span class="subevent-leaderboard-history-note">{{ entry.note || 'No note' }}</span>
+                            <span class="subevent-leaderboard-history-updated">{{ entry.createdAtMs | date:'MM/dd HH:mm' }}</span>
+                          </article>
+                        </div>
+                        <ng-template #subEventLeaderboardScoreHistoryEmpty>
+                          <p class="subevent-leaderboard-history-empty">No score updates yet.</p>
+                        </ng-template>
+                      </ng-container>
+                    </ng-container>
+                    <ng-template #subEventLeaderboardScoreTable>
+                      <div class="subevent-leaderboard-table-wrap">
+                        <table class="subevent-leaderboard-table">
+                          <thead>
+                            <tr>
+                              <th>#</th>
+                              <th>Member</th>
+                              <th>Score</th>
+                              <th>Updates</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr
+                              *ngFor="let row of subEventLeaderboardScoreRows(leaderboardStage, group); let rowIndex = index"
+                              [class.is-advance]="isSubEventLeaderboardAdvanceRow(leaderboardStage, rowIndex)"
+                              [class.subevent-leaderboard-row-clickable]="true"
+                              (click)="openSubEventLeaderboardMemberDetails(leaderboardStage, group, row.memberId, $event)"
+                            >
+                              <td>{{ rowIndex + 1 }}</td>
+                              <td>{{ row.memberName }}</td>
+                              <td>{{ row.total }}</td>
+                              <td>{{ row.updates }}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </ng-template>
+                  </ng-container>
+
+                  <ng-template #subEventLeaderboardFifaSection>
+                    <ng-container *ngIf="subEventLeaderboardHasMemberDetails(leaderboardStage, group); else subEventLeaderboardFifaTable">
+                      <div class="subevent-leaderboard-history-head">
+                        <button type="button" class="subevent-leaderboard-history-back-btn" (click)="closeSubEventLeaderboardMemberDetails(leaderboardStage, group, $event)" aria-label="Back to fifa table">
+                          <mat-icon>arrow_back</mat-icon>
+                        </button>
+                        <strong>{{ subEventLeaderboardDetailMemberName(leaderboardStage, group) }}</strong>
+                      </div>
+                      <ng-container *ngIf="subEventLeaderboardFifaHistory(leaderboardStage, group) as fifaHistory">
+                        <div class="subevent-leaderboard-match-list" *ngIf="fifaHistory.length > 0; else subEventLeaderboardFifaHistoryEmpty">
+                          <div class="subevent-leaderboard-match-item" *ngFor="let match of fifaHistory; trackBy: trackById">
+                            <span class="subevent-leaderboard-match-members">
+                              {{ subEventLeaderboardMemberName(leaderboardStage, group.id, match.homeMemberId) }}
+                              -
+                              {{ subEventLeaderboardMemberName(leaderboardStage, group.id, match.awayMemberId) }}
+                            </span>
+                            <span class="subevent-leaderboard-match-score">{{ match.homeScore }} : {{ match.awayScore }}</span>
+                            <span class="subevent-leaderboard-match-updated">{{ match.createdAtMs | date:'MM/dd HH:mm' }}</span>
+                          </div>
+                        </div>
+                        <ng-template #subEventLeaderboardFifaHistoryEmpty>
+                          <p class="subevent-leaderboard-history-empty">No matches yet.</p>
+                        </ng-template>
+                      </ng-container>
+                    </ng-container>
+                    <ng-template #subEventLeaderboardFifaTable>
+                      <div class="subevent-leaderboard-table-wrap">
+                        <table class="subevent-leaderboard-table">
+                          <thead>
+                            <tr>
+                              <th>#</th>
+                              <th>Member</th>
+                              <th>Pts</th>
+                              <th>W-D-L</th>
+                              <th>GF:GA</th>
+                              <th>GD</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr
+                              *ngFor="let row of subEventLeaderboardFifaRows(leaderboardStage, group); let rowIndex = index"
+                              [class.is-advance]="isSubEventLeaderboardAdvanceRow(leaderboardStage, rowIndex)"
+                              [class.subevent-leaderboard-row-clickable]="true"
+                              (click)="openSubEventLeaderboardMemberDetails(leaderboardStage, group, row.memberId, $event)"
+                            >
+                              <td>{{ rowIndex + 1 }}</td>
+                              <td>{{ row.memberName }}</td>
+                              <td>{{ row.points }}</td>
+                              <td>{{ row.wins }}-{{ row.draws }}-{{ row.losses }}</td>
+                              <td>{{ row.goalsFor }}:{{ row.goalsAgainst }}</td>
+                              <td>{{ row.goalDiff }}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </ng-template>
+                  </ng-template>
+                </div>
+              </article>
+            </div>
+          </ng-container>
+          <ng-template #subEventLeaderboardMissingState>
+            <div class="editor-list-card event-subevents-empty-state">
+              <h4>Stage not available</h4>
+              <p>Return to Sub Events and open Leaderboard from a stage menu.</p>
+            </div>
+          </ng-template>
+        </section>
+      </div>
+    </section>
+    <section class="experience-form-overlay subevent-form-overlay subevent-leaderboard-entry-overlay" *ngIf="showSubEventLeaderboardForm && showSubEventLeaderboardPopup && superStackedPopup === 'eventSubEvents'">
+      <div class="experience-form-overlay-backdrop" (click)="closeSubEventLeaderboardEntryPopup($event)"></div>
+      <div class="experience-form-popup subevent-form-popup subevent-leaderboard-entry-popup">
+        <div class="experience-form-header">
+          <h3>{{ subEventLeaderboardEntryGroupLabel() }}</h3>
+          <div class="experience-form-header-controls">
+            <button
+              type="button"
+              class="popup-header-add-btn subevent-leaderboard-save-btn"
+              (click)="saveSubEventLeaderboardEntryFromPopup($event)"
+              [disabled]="!canSubmitSubEventLeaderboardEntry()"
+              aria-label="Save leaderboard entry"
+            >
+              <mat-icon>done</mat-icon>
+            </button>
+            <button type="button" class="experience-form-close-btn" (click)="closeSubEventLeaderboardEntryPopup($event)" aria-label="Close leaderboard editor">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        </div>
+        <section class="experience-form-panel subevent-form-panel subevent-leaderboard-entry-panel">
+          <div class="subevent-leaderboard-entry-grid">
+            <ng-container *ngIf="subEventLeaderboardMode() === 'Score'; else subEventLeaderboardEntryFifaForm">
+              <label class="subevent-leaderboard-entry-field">
+                <span>Member</span>
+                <div class="subevent-leaderboard-select">
+                  <mat-select
+                    [ngModel]="subEventLeaderboardForm.memberId"
+                    (selectionChange)="subEventLeaderboardForm.memberId = $event.value"
+                    [panelWidth]="null"
+                    disableOptionCentering
+                    panelClass="selector-options-panel profile-bottom-sheet-panel subevent-leaderboard-options-panel"
+                  >
+                    <mat-option
+                      *ngFor="let member of subEventLeaderboardMembersForCurrentGroup(); trackBy: trackById"
+                      [value]="member.id"
+                      class="status-option"
+                    >
+                      <span class="subevent-leaderboard-option-label">{{ member.name }}</span>
+                    </mat-option>
+                  </mat-select>
+                </div>
+              </label>
+              <label class="subevent-leaderboard-entry-field">
+                <span>Score</span>
+                <input
+                  type="number"
+                  step="1"
+                  [ngModel]="subEventLeaderboardForm.scoreValue ?? ''"
+                  (ngModelChange)="onSubEventLeaderboardScoreValueChange($event)"
+                  placeholder="e.g. +3 or -1"
+                />
+              </label>
+            </ng-container>
+            <ng-template #subEventLeaderboardEntryFifaForm>
+              <label class="subevent-leaderboard-entry-field">
+                <span>Member A</span>
+                <div class="subevent-leaderboard-select">
+                  <mat-select
+                    [ngModel]="subEventLeaderboardForm.homeMemberId"
+                    (selectionChange)="onSubEventLeaderboardHomeMemberChange($event.value)"
+                    [panelWidth]="null"
+                    disableOptionCentering
+                    panelClass="selector-options-panel profile-bottom-sheet-panel subevent-leaderboard-options-panel"
+                  >
+                    <mat-option
+                      *ngFor="let member of subEventLeaderboardMembersForCurrentGroup(); trackBy: trackById"
+                      [value]="member.id"
+                      class="status-option"
+                    >
+                      <span class="subevent-leaderboard-option-label">{{ member.name }}</span>
+                    </mat-option>
+                  </mat-select>
+                </div>
+              </label>
+              <label class="subevent-leaderboard-entry-field">
+                <span>Member B</span>
+                <div class="subevent-leaderboard-select">
+                  <mat-select
+                    [ngModel]="subEventLeaderboardForm.awayMemberId"
+                    (selectionChange)="onSubEventLeaderboardAwayMemberChange($event.value)"
+                    [panelWidth]="null"
+                    disableOptionCentering
+                    panelClass="selector-options-panel profile-bottom-sheet-panel subevent-leaderboard-options-panel"
+                  >
+                    <mat-option
+                      *ngFor="let member of subEventLeaderboardMembersForCurrentGroup(); trackBy: trackById"
+                      [value]="member.id"
+                      class="status-option"
+                    >
+                      <span class="subevent-leaderboard-option-label">{{ member.name }}</span>
+                    </mat-option>
+                  </mat-select>
+                </div>
+              </label>
+              <label class="subevent-leaderboard-entry-field subevent-leaderboard-score-field">
+                <span>Score A</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  [ngModel]="subEventLeaderboardForm.homeScore ?? ''"
+                  (ngModelChange)="onSubEventLeaderboardHomeScoreChange($event)"
+                  placeholder="0"
+                />
+              </label>
+              <label class="subevent-leaderboard-entry-field subevent-leaderboard-score-field">
+                <span>Score B</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  [ngModel]="subEventLeaderboardForm.awayScore ?? ''"
+                  (ngModelChange)="onSubEventLeaderboardAwayScoreChange($event)"
+                  placeholder="0"
+                />
+              </label>
+            </ng-template>
+            <label class="subevent-leaderboard-entry-field subevent-leaderboard-entry-note">
+              <span>Note</span>
+              <input type="text" [(ngModel)]="subEventLeaderboardForm.note" placeholder="Reason / context" />
             </label>
           </div>
         </section>
