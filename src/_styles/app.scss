@@ -5049,7 +5049,7 @@
 .activities-sticky-header {
   position: sticky;
   top: 0;
-  z-index: 12;
+  z-index: 25;
   border: 1px solid rgba(33, 51, 78, 0.14);
   border-radius: 9px;
   background: linear-gradient(180deg,#f9fbff 0%,#f3f8ff 100%);
@@ -13264,7 +13264,11 @@ textarea {
 }
 
 .image-stack-indicators {
-  position: static;
+  position: absolute;
+  width: auto !important;
+  top: -0.1rem;
+  left: 0.25rem;
+  right: 0.25rem;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 4px;
