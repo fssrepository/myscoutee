@@ -595,7 +595,7 @@
           <div class="activities-view-picker-panel" *ngIf="showActivitiesSecondaryPicker">
             <button type="button" class="activities-view-option" *ngFor="let option of activitiesSecondaryFilters" (click)="selectActivitiesSecondaryFilter(option.key)">
               <mat-icon>{{ option.icon }}</mat-icon>
-              <span>{{ option.label }}</span>
+              <span>{{ activitiesSecondaryFilterOptionLabel(option.key) }}</span>
             </button>
           </div>
         </div>

@@ -8210,7 +8210,14 @@ export class App {
   }
 
   protected activitiesSecondaryFilterLabel(): string {
-    return this.activitiesSecondaryFilters.find(option => option.key === this.activitiesSecondaryFilter)?.label ?? 'Upcoming';
+    return this.activitiesSecondaryFilterOptionLabel(this.activitiesSecondaryFilter);
+  }
+
+  protected activitiesSecondaryFilterOptionLabel(filter: ActivitiesSecondaryFilter): string {
+    if (filter === 'recent') {
+      return this.activitiesPrimaryFilter === 'rates' ? 'Recent' : 'Upcoming';
+    }
+    return this.activitiesSecondaryFilters.find(option => option.key === filter)?.label ?? 'Relevant';
   }
 
   protected activitiesSecondaryFilterIcon(): string {
@@ -8422,12 +8429,13 @@ export class App {
     const explicitProfile = profileSlots.filter((slot): slot is string => Boolean(slot)).slice(0, 6);
     const explicitUser = (user?.images ?? []).filter(Boolean).slice(0, 6);
     const explicit = [...explicitProfile, ...explicitUser.filter(url => !explicitProfile.includes(url))];
-    const userSeed = this.hashText(`rate-profile:${user?.id ?? row.id}`);
-    const portraitSeed = (userSeed % 70) + 1;
-    const generated = Array.from({ length: 6 }, (_, index) => {
-      const avatarIndex = ((portraitSeed + (index * 7)) % 70) + 1;
-      return `https://i.pravatar.cc/900?img=${avatarIndex}`;
-    });
+    const fallbackUser: DemoUser = user ?? {
+      ...this.activeUser,
+      id: `rate-fallback-${row.id}`,
+      name: row.title,
+      gender: this.activeUser.gender
+    };
+    const generated = Array.from({ length: 6 }, (_, index) => this.profilePortraitUrlForUser(fallbackUser, index, `rate-${row.id}`));
     const merged = [...explicit, ...generated.filter(url => !explicit.includes(url))];
     const seededCount = 1 + (this.hashText(`rate-photo-count:${user?.id ?? row.id}`) % 4);
     const desiredCount = item.direction === 'met' ? Math.min(2, seededCount) : seededCount;
@@ -8651,6 +8659,13 @@ export class App {
         source: item
       };
     });
+  }
+
+  private profilePortraitUrlForUser(user: DemoUser, index: number, context: string): string {
+    const safeGender = user.gender === 'woman' ? 'women' : 'men';
+    const seed = this.hashText(`portrait:${context}:${user.id}:${index}`);
+    const pictureIndex = seed % 100;
+    return `https://randomuser.me/api/portraits/${safeGender}/${pictureIndex}.jpg`;
   }
 
   private toRateCardDateLabel(isoValue: string): string {
@@ -10533,10 +10548,8 @@ export class App {
         });
       } else {
         const count = 1 + (this.hashText(`profile-image-count:${user.id}`) % 4);
-        const seedBase = this.hashText(`profile-image-seed:${user.id}`) % 70;
         for (let index = 0; index < count; index += 1) {
-          const avatarIndex = ((seedBase + (index * 9)) % 70) + 1;
-          slots[index] = `https://i.pravatar.cc/900?img=${avatarIndex}`;
+          slots[index] = this.profilePortraitUrlForUser(user, index, 'profile-seed');
         }
       }
       this.profileImageSlotsByUser[user.id] = slots;
