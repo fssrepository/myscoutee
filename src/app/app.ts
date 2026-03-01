@@ -798,6 +798,7 @@ export class App {
   protected pendingActivityDeleteRow: ActivityListRow | null = null;
   protected pendingActivityPublishRow: ActivityListRow | null = null;
   protected pendingSubEventDeleteId: string | null = null;
+  protected pendingSubEventDeleteContext: 'subEvent' | 'stage' | null = null;
   protected eventEditorClosePublishConfirmContext: 'active' | 'stacked' | null = null;
   protected pendingActivityAction: 'delete' | 'exit' = 'delete';
   protected pendingActivityMemberDelete: ActivityMemberEntry | null = null;
@@ -2046,13 +2047,19 @@ export class App {
     this.showSubEventOptionalPicker = false;
   }
 
-  protected requestSubEventDelete(subEvent: SubEventFormItem, event?: Event): void {
+  protected requestSubEventDelete(
+    subEvent: SubEventFormItem,
+    event?: Event,
+    context: 'subEvent' | 'stage' = 'subEvent'
+  ): void {
     event?.stopPropagation();
     this.pendingSubEventDeleteId = subEvent.id;
+    this.pendingSubEventDeleteContext = context;
   }
 
   protected cancelSubEventDelete(): void {
     this.pendingSubEventDeleteId = null;
+    this.pendingSubEventDeleteContext = null;
   }
 
   protected confirmSubEventDelete(): void {
@@ -2062,10 +2069,11 @@ export class App {
     this.eventForm.subEvents = this.eventForm.subEvents.filter(item => item.id !== this.pendingSubEventDeleteId);
     this.updateMainEventBoundsFromSubEvents();
     this.pendingSubEventDeleteId = null;
+    this.pendingSubEventDeleteContext = null;
   }
 
   protected pendingSubEventDeleteTitle(): string {
-    return 'Delete sub event';
+    return this.pendingSubEventDeleteContext === 'stage' ? 'Delete stage event' : 'Delete sub event';
   }
 
   protected pendingSubEventDeleteLabel(): string {
@@ -2074,7 +2082,13 @@ export class App {
     }
     const item = this.eventForm.subEvents.find(subEvent => subEvent.id === this.pendingSubEventDeleteId);
     if (!item) {
-      return 'Delete this sub event?';
+      return this.pendingSubEventDeleteContext === 'stage' ? 'Delete this stage event?' : 'Delete this sub event?';
+    }
+    if (this.pendingSubEventDeleteContext === 'stage') {
+      const stageNumber = this.resolveSubEventStageNumber(item.id);
+      const stageLabel = stageNumber !== null ? `Stage ${stageNumber}` : 'Stage';
+      const eventName = item.name.trim() || 'Untitled';
+      return `Delete ${stageLabel} - ${eventName}?`;
     }
     return `Delete ${item.name}?`;
   }
@@ -2193,17 +2207,20 @@ export class App {
   }
 
   protected showSubEventInsertControls(): boolean {
-    return !this.subEventForm.id && this.eventForm.subEvents.length > 0;
+    return this.subEventInsertTargetSource().length > 0;
   }
 
   protected get subEventStageInsertOptions(): Array<{ id: string; label: string }> {
+    const source = this.subEventInsertTargetSource();
     if (this.isTournamentStageMandatoryContext()) {
-      return this.eventForm.subEvents.map((item, index) => ({
+      return source.map((item, index) => ({
+        stageNumber: this.resolveSubEventStageNumber(item.id) ?? (index + 1),
+        item
+      })).map(({ stageNumber, item }) => ({
         id: item.id,
-        label: `Stage ${index + 1} · ${item.name || 'Untitled'}`
+        label: `Stage ${stageNumber} · ${item.name || 'Untitled'}`
       }));
     }
-    const source = this.sortSubEventRefsByStartAsc(this.eventForm.subEvents);
     return source.map((item, index) => ({
       id: item.id,
       label: item.name || `Sub Event ${index + 1}`
@@ -2337,7 +2354,7 @@ export class App {
       createdByUserId: this.subEventCreatorId(item),
       groups: this.cloneSubEventGroups(item.groups)
     };
-    this.resetSubEventStageInsertControls();
+    this.resetSubEventStageInsertControls(item.id);
     this.showSubEventRequiredValidation = false;
     this.showSubEventOptionalPicker = false;
     this.showSubEventGroupForm = false;
@@ -2358,7 +2375,7 @@ export class App {
       createdByUserId: this.subEventCreatorId(stage.subEvent),
       groups: this.cloneSubEventGroups(stage.subEvent.groups)
     };
-    this.resetSubEventStageInsertControls();
+    this.resetSubEventStageInsertControls(stage.subEvent.id);
     this.showSubEventRequiredValidation = false;
     this.showSubEventOptionalPicker = false;
     this.showSubEventGroupForm = false;
@@ -2372,7 +2389,7 @@ export class App {
     if (!this.canDeleteSubEventItem(stage.subEvent)) {
       return;
     }
-    this.requestSubEventDelete(stage.subEvent, event);
+    this.requestSubEventDelete(stage.subEvent, event, 'stage');
     this.inlineItemActionMenu = null;
   }
 
@@ -2398,7 +2415,7 @@ export class App {
       this.inlineItemActionMenu = null;
       return;
     }
-    this.requestSubEventDelete(item);
+    this.requestSubEventDelete(item, event, tournamentMode ? 'stage' : 'subEvent');
     this.inlineItemActionMenu = null;
   }
 
@@ -2969,14 +2986,30 @@ export class App {
     };
   }
 
-  private resetSubEventStageInsertControls(): void {
+  private resetSubEventStageInsertControls(editingSubEventId: string | null = null): void {
     this.subEventStageInsertPlacement = 'after';
     const source = this.sortSubEventRefsByStartAsc(this.eventForm.subEvents);
     if (source.length === 0) {
       this.subEventStageInsertTargetId = null;
       return;
     }
-    this.subEventStageInsertTargetId = source[source.length - 1].id;
+    if (!editingSubEventId) {
+      this.subEventStageInsertTargetId = source[source.length - 1].id;
+      return;
+    }
+    const editingIndex = source.findIndex(item => item.id === editingSubEventId);
+    const options = source.filter(item => item.id !== editingSubEventId);
+    if (options.length === 0) {
+      this.subEventStageInsertTargetId = null;
+      return;
+    }
+    if (editingIndex <= 0) {
+      this.subEventStageInsertPlacement = 'before';
+      this.subEventStageInsertTargetId = options[0].id;
+      return;
+    }
+    this.subEventStageInsertPlacement = 'after';
+    this.subEventStageInsertTargetId = source[editingIndex - 1]?.id ?? options[options.length - 1].id;
   }
 
   private subEventInsertStageNumberPreview(): number | null {
@@ -3011,13 +3044,10 @@ export class App {
   }
 
   private applySubEventInsertTargetDateRangeToForm(): void {
-    if (this.subEventForm.id) {
-      return;
-    }
     if (!this.subEventStageInsertTargetId) {
       return;
     }
-    const source = this.sortSubEventRefsByStartAsc(this.eventForm.subEvents);
+    const source = this.subEventInsertTargetSource();
     const target = source.find(item => item.id === this.subEventStageInsertTargetId);
     if (!target) {
       return;
@@ -3134,6 +3164,14 @@ export class App {
         return a.index - b.index;
       })
       .map(entry => entry.item);
+  }
+
+  private subEventInsertTargetSource(): SubEventFormItem[] {
+    const source = this.sortSubEventRefsByStartAsc(this.eventForm.subEvents);
+    if (!this.subEventForm.id) {
+      return source;
+    }
+    return source.filter(item => item.id !== this.subEventForm.id);
   }
 
   private cloneSubEventGroups(groups: SubEventGroupItem[] | undefined): SubEventGroupItem[] {
@@ -3431,9 +3469,16 @@ export class App {
       suppliesPending: 3
     };
     if (existingId && this.eventForm.subEvents.some(item => item.id === existingId)) {
-      this.eventForm.subEvents = this.sortSubEventsByStartAsc(
-        this.eventForm.subEvents.map(item => item.id === existingId ? next : item)
+      const sourceWithoutCurrent = this.sortSubEventsByStartAsc(
+        this.eventForm.subEvents.filter(item => item.id !== existingId)
       );
+      const insertIndex = this.subEventInsertIndex(sourceWithoutCurrent);
+      const insertedItems = [
+        ...sourceWithoutCurrent.slice(0, insertIndex),
+        next,
+        ...sourceWithoutCurrent.slice(insertIndex)
+      ];
+      this.eventForm.subEvents = this.sortSubEventsByStartAsc(this.applyGapShiftAfterInsert(insertedItems, insertIndex));
       this.updateMainEventBoundsFromSubEvents();
       return true;
     }
@@ -3725,6 +3770,7 @@ export class App {
     this.pendingActivityDeleteRow = null;
     this.pendingActivityPublishRow = null;
     this.pendingSubEventDeleteId = null;
+    this.pendingSubEventDeleteContext = null;
     this.eventEditorClosePublishConfirmContext = null;
     this.showSubEventForm = false;
     this.subEventFormStageNumber = null;
@@ -3767,6 +3813,7 @@ export class App {
 
   protected closeStackedPopup(): void {
     this.pendingSubEventDeleteId = null;
+    this.pendingSubEventDeleteContext = null;
     this.eventEditorClosePublishConfirmContext = null;
     this.inlineItemActionMenu = null;
     this.subEventFormStageNumber = null;
