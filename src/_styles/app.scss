@@ -10588,19 +10588,33 @@ textarea {
 
 .subevent-group-form-grid {
   grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  align-items: start;
 }
 
-.subevent-group-stage-chip {
-  min-height: 26px;
-  border: 1px solid rgba(60, 90, 132, 0.3);
-  border-radius: 999px;
-  background: linear-gradient(180deg, #f3f7ff 0%, #e8eefb 100%);
-  color: #314f79;
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 0 0.54rem;
-  display: inline-flex;
-  align-items: center;
+.subevent-group-form-grid label {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.22rem !important;
+}
+
+.subevent-group-header {
+  align-items: flex-start;
+}
+
+.subevent-group-header-main {
+  min-width: 0;
+  display: grid;
+  gap: 0.16rem;
+}
+
+.subevent-group-stage-subtitle {
+  margin: 0;
+  color: rgba(35, 57, 88, 0.76);
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.24;
 }
 
 .subevent-leaderboard-overlay {
@@ -10953,6 +10967,18 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.subevent-leaderboard-placeholder-row td {
+  padding: 0.26rem 0.16rem;
+}
+
+.subevent-leaderboard-placeholder-line {
+  display: block;
+  width: 100%;
+  height: 0;
+  border-top: 1.5px solid rgba(36, 72, 116, 0.38);
+  opacity: 0.86;
 }
 
 .subevent-leaderboard-end-column {
@@ -14572,11 +14598,12 @@ textarea {
     justify-self: end;
   }
 
-  .subevent-group-stage-chip {
+  .subevent-group-stage-subtitle {
     max-width: 62vw;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    font-size: 0.7rem;
   }
 
   .experience-date-range-label {

@@ -4589,10 +4589,12 @@
     <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay" *ngIf="showSubEventGroupForm && superStackedPopup === 'eventSubEvents'">
       <div class="experience-form-overlay-backdrop" (click)="closeSubEventGroupPanel($event)"></div>
       <div class="experience-form-popup subevent-form-popup subevent-group-popup">
-        <div class="experience-form-header">
-          <h3>{{ subEventGroupFormTitle() }}</h3>
+        <div class="experience-form-header subevent-group-header">
+          <div class="subevent-group-header-main">
+            <h3>{{ subEventGroupFormTitle() }}</h3>
+            <p class="subevent-group-stage-subtitle" *ngIf="subEventGroupForm.stageTitle">{{ subEventGroupForm.stageTitle }}</p>
+          </div>
           <div class="experience-form-header-controls">
-            <span class="subevent-group-stage-chip" *ngIf="subEventGroupForm.stageTitle">{{ subEventGroupForm.stageTitle }}</span>
             <button
               type="button"
               class="popup-header-add-btn subevent-leaderboard-save-btn"
@@ -4697,20 +4699,29 @@
                             </tr>
                           </thead>
                           <tbody>
-                            <tr
-                              *ngFor="let row of subEventLeaderboardScoreRows(leaderboardStage, group); let rowIndex = index"
-                              [class.is-advance]="isSubEventLeaderboardAdvanceRow(leaderboardStage, rowIndex)"
-                              [class.subevent-leaderboard-row-clickable]="true"
-                              (click)="openSubEventLeaderboardMemberDetails(leaderboardStage, group, row.memberId, $event)"
-                            >
-                              <td>{{ rowIndex + 1 }}</td>
-                              <td class="subevent-leaderboard-member-cell">{{ row.memberName }}</td>
-                              <td>{{ row.total }}</td>
-                              <td>{{ row.updates }}</td>
-                              <td class="subevent-leaderboard-row-end">
-                                <mat-icon class="subevent-leaderboard-row-forward">chevron_right</mat-icon>
-                              </td>
-                            </tr>
+                            <ng-container *ngFor="let row of subEventLeaderboardScoreRows(leaderboardStage, group); let rowIndex = index">
+                              <tr
+                                *ngIf="!row.isPlaceholder"
+                                [class.is-advance]="isSubEventLeaderboardAdvanceRow(leaderboardStage, rowIndex)"
+                                class="subevent-leaderboard-row-clickable"
+                                (click)="openSubEventLeaderboardMemberDetails(leaderboardStage, group, row.memberId, $event)"
+                              >
+                                <td>{{ rowIndex + 1 }}</td>
+                                <td class="subevent-leaderboard-member-cell">{{ row.memberName }}</td>
+                                <td>{{ row.total }}</td>
+                                <td>{{ row.updates }}</td>
+                                <td class="subevent-leaderboard-row-end">
+                                  <mat-icon class="subevent-leaderboard-row-forward">chevron_right</mat-icon>
+                                </td>
+                              </tr>
+                              <tr class="subevent-leaderboard-placeholder-row" *ngIf="row.isPlaceholder" aria-hidden="true">
+                                <td>{{ rowIndex + 1 }}</td>
+                                <td colspan="3">
+                                  <span class="subevent-leaderboard-placeholder-line"></span>
+                                </td>
+                                <td class="subevent-leaderboard-row-end"></td>
+                              </tr>
+                            </ng-container>
                           </tbody>
                         </table>
                       </div>
@@ -4757,22 +4768,31 @@
                             </tr>
                           </thead>
                           <tbody>
-                            <tr
-                              *ngFor="let row of subEventLeaderboardFifaRows(leaderboardStage, group); let rowIndex = index"
-                              [class.is-advance]="isSubEventLeaderboardAdvanceRow(leaderboardStage, rowIndex)"
-                              [class.subevent-leaderboard-row-clickable]="true"
-                              (click)="openSubEventLeaderboardMemberDetails(leaderboardStage, group, row.memberId, $event)"
-                            >
-                              <td>{{ rowIndex + 1 }}</td>
-                              <td class="subevent-leaderboard-member-cell">{{ row.memberName }}</td>
-                              <td>{{ row.points }}</td>
-                              <td>{{ row.wins }}-{{ row.draws }}-{{ row.losses }}</td>
-                              <td>{{ row.goalsFor }}:{{ row.goalsAgainst }}</td>
-                              <td>{{ row.goalDiff }}</td>
-                              <td class="subevent-leaderboard-row-end">
-                                <mat-icon class="subevent-leaderboard-row-forward">chevron_right</mat-icon>
-                              </td>
-                            </tr>
+                            <ng-container *ngFor="let row of subEventLeaderboardFifaRows(leaderboardStage, group); let rowIndex = index">
+                              <tr
+                                *ngIf="!row.isPlaceholder"
+                                [class.is-advance]="isSubEventLeaderboardAdvanceRow(leaderboardStage, rowIndex)"
+                                class="subevent-leaderboard-row-clickable"
+                                (click)="openSubEventLeaderboardMemberDetails(leaderboardStage, group, row.memberId, $event)"
+                              >
+                                <td>{{ rowIndex + 1 }}</td>
+                                <td class="subevent-leaderboard-member-cell">{{ row.memberName }}</td>
+                                <td>{{ row.points }}</td>
+                                <td>{{ row.wins }}-{{ row.draws }}-{{ row.losses }}</td>
+                                <td>{{ row.goalsFor }}:{{ row.goalsAgainst }}</td>
+                                <td>{{ row.goalDiff }}</td>
+                                <td class="subevent-leaderboard-row-end">
+                                  <mat-icon class="subevent-leaderboard-row-forward">chevron_right</mat-icon>
+                                </td>
+                              </tr>
+                              <tr class="subevent-leaderboard-placeholder-row" *ngIf="row.isPlaceholder" aria-hidden="true">
+                                <td>{{ rowIndex + 1 }}</td>
+                                <td colspan="5">
+                                  <span class="subevent-leaderboard-placeholder-line"></span>
+                                </td>
+                                <td class="subevent-leaderboard-row-end"></td>
+                              </tr>
+                            </ng-container>
                           </tbody>
                         </table>
                       </div>

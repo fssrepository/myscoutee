@@ -392,6 +392,7 @@ interface SubEventLeaderboardScoreStandingRow {
   memberName: string;
   total: number;
   updates: number;
+  isPlaceholder?: boolean;
 }
 
 interface SubEventLeaderboardFifaStandingRow {
@@ -405,6 +406,7 @@ interface SubEventLeaderboardFifaStandingRow {
   goalsFor: number;
   goalsAgainst: number;
   goalDiff: number;
+  isPlaceholder?: boolean;
 }
 
 interface EventCapacityRange {
@@ -3132,14 +3134,32 @@ export class App {
 
   protected subEventLeaderboardScoreRows(stage: SubEventTournamentStage, group: SubEventTournamentGroup): SubEventLeaderboardScoreStandingRow[] {
     const members = this.subEventLeaderboardMembersForGroup(stage, group.id);
+    const filledMemberCount = this.subEventLeaderboardAssignedMemberCount(stage, group, members.length);
     const lookup = new Map<string, SubEventLeaderboardScoreStandingRow>();
-    for (const member of members) {
-      lookup.set(member.id, {
-        memberId: member.id,
-        memberName: member.name,
+    const activeRows: SubEventLeaderboardScoreStandingRow[] = [];
+    const placeholderRows: SubEventLeaderboardScoreStandingRow[] = [];
+    members.forEach((member, index) => {
+      if (index < filledMemberCount) {
+        const nextRow: SubEventLeaderboardScoreStandingRow = {
+          memberId: member.id,
+          memberName: member.name,
+          total: 0,
+          updates: 0
+        };
+        lookup.set(member.id, nextRow);
+        activeRows.push(nextRow);
+        return;
+      }
+      placeholderRows.push({
+        memberId: '',
+        memberName: '',
         total: 0,
-        updates: 0
+        updates: 0,
+        isPlaceholder: true
       });
+    });
+    if (activeRows.length === 0) {
+      return placeholderRows;
     }
     for (const entry of this.subEventLeaderboardScoreEntries(stage, group.id)) {
       const row = lookup.get(entry.memberId);
@@ -3149,21 +3169,42 @@ export class App {
       row.total += entry.value;
       row.updates += 1;
     }
-    return Array.from(lookup.values()).sort((a, b) => {
+    const sortedRows = activeRows.sort((a, b) => {
       if (a.total !== b.total) {
         return b.total - a.total;
       }
       return a.memberName.localeCompare(b.memberName);
     });
+    return [...sortedRows, ...placeholderRows];
   }
 
   protected subEventLeaderboardFifaRows(stage: SubEventTournamentStage, group: SubEventTournamentGroup): SubEventLeaderboardFifaStandingRow[] {
     const members = this.subEventLeaderboardMembersForGroup(stage, group.id);
+    const filledMemberCount = this.subEventLeaderboardAssignedMemberCount(stage, group, members.length);
     const lookup = new Map<string, SubEventLeaderboardFifaStandingRow>();
-    for (const member of members) {
-      lookup.set(member.id, {
-        memberId: member.id,
-        memberName: member.name,
+    const activeRows: SubEventLeaderboardFifaStandingRow[] = [];
+    const placeholderRows: SubEventLeaderboardFifaStandingRow[] = [];
+    members.forEach((member, index) => {
+      if (index < filledMemberCount) {
+        const nextRow: SubEventLeaderboardFifaStandingRow = {
+          memberId: member.id,
+          memberName: member.name,
+          points: 0,
+          played: 0,
+          wins: 0,
+          draws: 0,
+          losses: 0,
+          goalsFor: 0,
+          goalsAgainst: 0,
+          goalDiff: 0
+        };
+        lookup.set(member.id, nextRow);
+        activeRows.push(nextRow);
+        return;
+      }
+      placeholderRows.push({
+        memberId: '',
+        memberName: '',
         points: 0,
         played: 0,
         wins: 0,
@@ -3171,8 +3212,12 @@ export class App {
         losses: 0,
         goalsFor: 0,
         goalsAgainst: 0,
-        goalDiff: 0
+        goalDiff: 0,
+        isPlaceholder: true
       });
+    });
+    if (activeRows.length === 0) {
+      return placeholderRows;
     }
     for (const match of this.subEventLeaderboardFifaMatches(stage, group.id)) {
       const home = lookup.get(match.homeMemberId);
@@ -3201,11 +3246,10 @@ export class App {
         away.points += 1;
       }
     }
-    const rows = Array.from(lookup.values());
-    for (const row of rows) {
+    for (const row of activeRows) {
       row.goalDiff = row.goalsFor - row.goalsAgainst;
     }
-    return rows.sort((a, b) => {
+    const sortedRows = activeRows.sort((a, b) => {
       if (a.points !== b.points) {
         return b.points - a.points;
       }
@@ -3217,6 +3261,7 @@ export class App {
       }
       return a.memberName.localeCompare(b.memberName);
     });
+    return [...sortedRows, ...placeholderRows];
   }
 
   protected subEventLeaderboardFifaMatches(stage: SubEventTournamentStage, groupId: string): SubEventLeaderboardFifaMatch[] {
@@ -3232,6 +3277,38 @@ export class App {
   protected subEventLeaderboardMemberName(stage: SubEventTournamentStage, groupId: string, memberId: string): string {
     const member = this.subEventLeaderboardMembersForGroup(stage, groupId).find(entry => entry.id === memberId);
     return member?.name ?? 'Member';
+  }
+
+  private subEventLeaderboardAssignedMemberCount(
+    stage: SubEventTournamentStage,
+    group: SubEventTournamentGroup,
+    capacity: number
+  ): number {
+    const safeCapacity = Math.max(0, Math.trunc(capacity));
+    if (safeCapacity <= 0) {
+      return 0;
+    }
+    const totalAccepted = Math.max(0, Math.trunc(Number(stage.subEvent.membersAccepted) || 0));
+    const groupCount = Math.max(1, stage.groups.length);
+    const groupIndex = Math.max(0, stage.groups.findIndex(entry => entry.id === group.id));
+    const basePerGroup = Math.floor(totalAccepted / groupCount);
+    const remainder = totalAccepted % groupCount;
+    const distributedCount = basePerGroup + (groupIndex < remainder ? 1 : 0);
+    const inferredMembers = new Set<string>();
+    for (const entry of this.subEventLeaderboardScoreEntries(stage, group.id)) {
+      if (entry.memberId) {
+        inferredMembers.add(entry.memberId);
+      }
+    }
+    for (const match of this.subEventLeaderboardFifaMatches(stage, group.id)) {
+      if (match.homeMemberId) {
+        inferredMembers.add(match.homeMemberId);
+      }
+      if (match.awayMemberId) {
+        inferredMembers.add(match.awayMemberId);
+      }
+    }
+    return this.clampNumber(Math.max(distributedCount, inferredMembers.size), 0, safeCapacity);
   }
 
   protected onSubEventGroupCapacityMinChange(value: number | string): void {
