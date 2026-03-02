@@ -5039,6 +5039,7 @@
 }
 
 .activities-popup {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
@@ -5086,6 +5087,7 @@
   flex-direction: column;
   gap: 0.34rem;
   padding-right: 0;
+  transition: padding-bottom 180ms ease;
 }
 
 @media (min-width: 1024px) {
@@ -5143,7 +5145,7 @@
 .activities-scroll-list.activities-scroll-list-rates {
   scroll-snap-type: y mandatory !important;
   scroll-behavior: smooth !important;
-  padding-bottom: 5.2rem;
+  padding-bottom: 0;
 }
 
 .activities-scroll-list.activities-scroll-list-rates .activities-rate-profile-card.activities-row-item {
@@ -5161,7 +5163,7 @@
   scroll-snap-stop: normal !important;
 }
 
-.activities-scroll-list.activities-scroll-list-with-rate-editor {
+.activities-scroll-list.activities-scroll-list-rates.activities-scroll-list-with-rate-editor {
   padding-bottom: 5.2rem;
 }
 
@@ -6107,15 +6109,30 @@
 }
 
 .activities-rate-editor-dock {
-  position: sticky;
+  position: absolute;
+  left: 0;
+  right: 0;
   bottom: 0;
-  z-index: 4;
+  z-index: 26;
   border: 1px solid rgba(22, 40, 64, 0.2);
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 -8px 22px rgba(13, 24, 40, 0.14);
   padding: 0.52rem 0.62rem 0.62rem;
-  margin-top: auto;
+  margin-top: 0;
+  animation: activities-rate-dock-in 180ms ease;
+  transform-origin: bottom center;
+}
+
+@keyframes activities-rate-dock-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .activities-rate-editor-head {

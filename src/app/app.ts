@@ -7691,13 +7691,17 @@ export class App {
 
   protected onActivitiesScroll(event: Event): void {
     const target = event.target as HTMLElement;
-    if (this.isActivityRateEditorOpen()) {
-      this.clearActivityRateEditorState();
-      this.releaseActiveElementFocus();
-    }
     this.updateActivitiesStickyHeader(target.scrollTop || 0);
     this.updateActivitiesHeaderProgress();
     this.maybeLoadMoreActivities(target);
+  }
+
+  protected closeActivityRateEditorFromUserScroll(): void {
+    if (!this.isActivityRateEditorOpen()) {
+      return;
+    }
+    this.clearActivityRateEditorState();
+    this.releaseActiveElementFocus();
   }
 
   protected areCalendarBadgesReady(pageKey: string): boolean {
@@ -8755,6 +8759,7 @@ export class App {
       return;
     }
     this.selectedActivityRateId = row.id;
+    setTimeout(() => this.smoothRevealSelectedRateRowWhenLastRow(row.id), 0);
   }
 
   protected onActivitiesPopupSurfaceClick(event: MouseEvent): void {
@@ -8786,6 +8791,30 @@ export class App {
 
   protected isActivityRateEditorOpen(): boolean {
     return this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'rates' && !!this.selectedActivityRateId;
+  }
+
+  protected isSelectedActivityRateInLastRow(): boolean {
+    if (!this.isActivityRateEditorOpen() || !this.selectedActivityRateId) {
+      return false;
+    }
+    const scrollElement = this.activitiesScrollRef?.nativeElement;
+    if (!scrollElement) {
+      return false;
+    }
+    const targetRow = scrollElement.querySelector<HTMLElement>(
+      `[data-activity-rate-row-id="${this.selectedActivityRateId}"]`
+    );
+    if (!targetRow) {
+      return false;
+    }
+    const rateRows = Array.from(
+      scrollElement.querySelectorAll<HTMLElement>('.activities-rate-profile-card.activities-row-item')
+    );
+    if (rateRows.length === 0) {
+      return false;
+    }
+    const lastRowTop = rateRows.reduce((maxTop, row) => Math.max(maxTop, row.offsetTop), 0);
+    return targetRow.offsetTop >= lastRowTop - 1;
   }
 
   protected isSelectedActivityRateScore(score: number): boolean {
@@ -8896,6 +8925,40 @@ export class App {
       return;
     }
     this.clearActivityRateEditorState();
+  }
+
+  private smoothRevealSelectedRateRowWhenLastRow(rowId: string): void {
+    if (!this.isActivityRateEditorOpen()) {
+      return;
+    }
+    const scrollElement = this.activitiesScrollRef?.nativeElement;
+    if (!scrollElement) {
+      return;
+    }
+    const targetRow = scrollElement.querySelector<HTMLElement>(`[data-activity-rate-row-id="${rowId}"]`);
+    if (!targetRow) {
+      return;
+    }
+    const rateRows = Array.from(
+      scrollElement.querySelectorAll<HTMLElement>('.activities-rate-profile-card.activities-row-item')
+    );
+    if (rateRows.length === 0) {
+      return;
+    }
+    const lastRowTop = rateRows.reduce((maxTop, row) => Math.max(maxTop, row.offsetTop), 0);
+    if (targetRow.offsetTop < lastRowTop - 1) {
+      return;
+    }
+    const dock = globalThis.document?.querySelector<HTMLElement>('.activities-rate-editor-dock');
+    const dockHeight = Math.max(72, dock?.offsetHeight ?? 0);
+    const scrollRect = scrollElement.getBoundingClientRect();
+    const rowRect = targetRow.getBoundingClientRect();
+    const safeBottom = scrollRect.bottom - dockHeight - 8;
+    if (rowRect.bottom <= safeBottom) {
+      return;
+    }
+    const delta = rowRect.bottom - safeBottom;
+    scrollElement.scrollTo({ top: scrollElement.scrollTop + delta, behavior: 'smooth' });
   }
 
   private acceptInvitationFromRow(invitationId: string): void {

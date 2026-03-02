@@ -886,9 +886,11 @@
           <div
             class="experience-card-list assets-card-list activities-scroll-list"
             [class.activities-scroll-list-rates]="activitiesPrimaryFilter === 'rates'"
-            [class.activities-scroll-list-with-rate-editor]="isActivityRateEditorOpen()"
+            [class.activities-scroll-list-with-rate-editor]="isActivityRateEditorOpen() && isSelectedActivityRateInLastRow()"
             [class.activities-scroll-list-chat]="activitiesPrimaryFilter === 'chats'"
             #activitiesScroll
+            (wheel)="closeActivityRateEditorFromUserScroll()"
+            (touchmove)="closeActivityRateEditorFromUserScroll()"
             (scroll)="onActivitiesScroll($event)"
           >
             <div class="activities-sticky-header">{{ activitiesStickyHeader }}</div>
@@ -1011,6 +1013,7 @@
                     class="activities-rate-profile-card activities-row-item"
                     [class.is-rate-editor-selected]="isSelectedActivityRateRow(row)"
                     [class.activities-rate-row-no-snap]="groupIndex === groupedActivityRows.length - 1 && rowIndex === group.rows.length - 1"
+                    [attr.data-activity-rate-row-id]="row.id"
                     [attr.data-group-label]="group.label"
                   >
                     <div class="activities-rate-profile-stack" [ngClass]="activityRateCardContentClasses(row)" *ngIf="activityRateCardImageUrls(row) as imageUrls">
