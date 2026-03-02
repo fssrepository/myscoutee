@@ -559,6 +559,9 @@
           <ng-template #plainPopupTitle>
             <div class="popup-title">
               <h2>{{ getPopupTitle() }}</h2>
+              <p class="popup-subtitle-activities" *ngIf="activePopup === 'eventEditor' && isEventEditorReadOnly()">
+                {{ eventForm.title || 'Event' }}
+              </p>
               <p class="popup-subtitle-activities" *ngIf="activePopup === 'activities'">{{ activitiesHeaderLineOne() }}</p>
               <p class="popup-subtitle-activities popup-subtitle-activities-secondary" *ngIf="activePopup === 'activities' && activitiesHeaderLineTwo()">
                 {{ activitiesHeaderLineTwo() }}
@@ -612,19 +615,23 @@
         </div>
       </div>
       <button
-        class="chat-members-stack chat-members-stack-large chat-header-members"
+        class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger"
         type="button"
         *ngIf="showEventEditorHeaderMembersButton('active')"
         (click)="openEventEditorMembers($event)"
       >
-        <span class="chat-stack-avatar" *ngFor="let member of eventEditorHeaderMembers(); let i = index" [class]="'user-color-' + member.gender" [style.zIndex]="30 - i">{{ member.initials }}</span>
-        <span class="chat-stack-more" *ngIf="eventEditorHeaderHiddenMemberCount() > 0">+{{ eventEditorHeaderHiddenMemberCount() }}</span>
+        <span class="event-editor-members-invite">
+          <mat-icon>person_add</mat-icon>
+          <span>Invite members</span>
+        </span>
+        <span class="card-badge event-editor-members-pending-badge" *ngIf="eventEditorHeaderPendingMemberCount() > 0">{{ eventEditorHeaderPendingMemberCount() }}</span>
       </button>
       <div class="event-visibility-picker" *ngIf="activePopup === 'eventEditor'">
         <button
           type="button"
           class="popup-view-fab event-visibility-trigger"
           [ngClass]="eventVisibilityClass(eventForm.visibility)"
+          [class.event-editor-readonly-control]="isEventEditorReadOnly()"
           (click)="toggleEventVisibilityPicker($event)"
           aria-label="Open visibility selector"
         >
@@ -695,7 +702,7 @@
       <button
         type="button"
         class="popup-header-add-btn subevent-leaderboard-save-btn"
-        *ngIf="activePopup === 'eventEditor'"
+        *ngIf="activePopup === 'eventEditor' && !isEventEditorReadOnly()"
         (click)="saveEventEditorForm()"
         aria-label="Save event"
       >
@@ -1426,7 +1433,7 @@
         </div>
         <div class="popup-actions">
           <button type="button" class="link-btn" (click)="deleteSelectedInvitation($event)">Delete</button>
-          <button type="button" class="link-btn" (click)="openEventEditor()">Open Related Event</button>
+          <button type="button" class="link-btn" (click)="openInvitationRelatedEventEditor(false, $event)">Open Related Event</button>
         </div>
       </div>
 
@@ -1438,7 +1445,7 @@
         </div>
         <div class="popup-actions">
           <button type="button" class="link-btn" (click)="openEventEditor()" *ngIf="selectedEvent.isAdmin">Edit Event</button>
-          <button type="button" class="link-btn" *ngIf="!selectedEvent.isAdmin">Exit Event</button>
+          <button type="button" class="link-btn" *ngIf="!selectedEvent.isAdmin" (click)="openSelectedEventInReadOnlyEditor(false, $event)">View Event</button>
           <button type="button" class="link-btn">Open Event Chat</button>
         </div>
       </div>
@@ -1758,7 +1765,7 @@
                   <input #assetImageInput type="file" accept="image/*" hidden (change)="onAssetImageFileChange($event)" />
                   <button type="button" class="asset-image-dropzone" (click)="triggerAssetImageUpload($event)">
                     <div class="asset-image-preview" [style.backgroundImage]="assetForm.imageUrl ? 'url(' + assetForm.imageUrl + ')' : null">
-                      <span class="asset-image-plus">+</span>
+                      <span class="asset-image-plus" *ngIf="!isEventEditorReadOnly()">+</span>
                     </div>
                   </button>
                 </label>
@@ -1941,22 +1948,22 @@
               <label class="experience-description-field">
                 <span>Image</span>
                 <input #eventImageInput type="file" accept="image/*" hidden (change)="onEventImageFileChange($event)" />
-                <button type="button" class="asset-image-dropzone" (click)="triggerEventImageUpload($event)">
+                <button type="button" class="asset-image-dropzone" (click)="triggerEventImageUpload($event)" [disabled]="isEventEditorReadOnly()">
                   <div class="asset-image-preview" [style.backgroundImage]="eventForm.imageUrl ? 'url(' + eventForm.imageUrl + ')' : null">
-                    <span class="asset-image-plus">+</span>
+                    <span class="asset-image-plus" *ngIf="!isEventEditorReadOnly()">+</span>
                   </div>
                 </button>
               </label>
               <label class="experience-title-field">
                 <span>Name <span class="required-star">*</span></span>
-                <input type="text" [(ngModel)]="eventForm.title" [class.field-required-invalid]="eventEditorFieldInvalid('title')" />
+                <input type="text" [(ngModel)]="eventForm.title" [readonly]="isEventEditorReadOnly()" [class.field-required-invalid]="eventEditorFieldInvalid('title')" />
               </label>
               <label class="event-capacity-range-field">
                 <span>Capacity</span>
                 <div class="subevent-capacity-range">
-                  <input type="number" min="0" step="1" [ngModel]="eventForm.capacityMin" (ngModelChange)="onEventCapacityMinChange($event)" placeholder="Min" />
+                  <input type="number" min="0" step="1" [ngModel]="eventForm.capacityMin" (ngModelChange)="onEventCapacityMinChange($event)" [disabled]="isEventEditorReadOnly()" placeholder="Min" />
                   <span class="subevent-capacity-separator">-</span>
-                  <input type="number" [min]="eventForm.capacityMin ?? 0" step="1" [ngModel]="eventForm.capacityMax" (ngModelChange)="onEventCapacityMaxChange($event)" placeholder="Max" />
+                  <input type="number" [min]="eventForm.capacityMin ?? 0" step="1" [ngModel]="eventForm.capacityMax" (ngModelChange)="onEventCapacityMaxChange($event)" [disabled]="isEventEditorReadOnly()" placeholder="Max" />
                 </div>
               </label>
               <div class="event-intel-row">
@@ -1966,6 +1973,7 @@
                     class="event-blind-mode-card"
                     [ngClass]="eventBlindModeClass(eventForm.blindMode)"
                     (click)="toggleEventBlindMode($event)"
+                    [disabled]="isEventEditorReadOnly()"
                   >
                     <span class="event-blind-mode-title">
                       <mat-icon [class]="eventBlindModeClass(eventForm.blindMode)">{{ eventBlindModeIcon(eventForm.blindMode) }}</mat-icon>
@@ -1975,7 +1983,7 @@
                   </button>
                 </label>
                 <label class="event-topics-field event-topics-panel-field">
-                  <button type="button" class="event-topics-panel" [ngClass]="eventTopicsPanelClass()" (click)="openEventTopicsSelector($event)">
+                  <button type="button" class="event-topics-panel" [ngClass]="eventTopicsPanelClass()" [class.event-editor-readonly-control]="isEventEditorReadOnly()" (click)="openEventTopicsSelector($event)">
                     <span class="event-topics-panel-head">
                       <span class="event-topics-panel-title">
                         <mat-icon>{{ eventTopicsPanelIcon() }}</mat-icon>
@@ -1999,6 +2007,7 @@
                     class="event-auto-inviter-card"
                     [ngClass]="eventAutoInviterClass(eventForm.autoInviter)"
                     (click)="toggleEventAutoInviter($event)"
+                    [disabled]="isEventEditorReadOnly()"
                   >
                     <span class="event-auto-inviter-title">
                       <mat-icon [class]="eventAutoInviterClass(eventForm.autoInviter)">{{ eventAutoInviterIcon(eventForm.autoInviter) }}</mat-icon>
@@ -2010,7 +2019,7 @@
               </div>
               <label class="experience-description-field">
                 <span>Description <span class="required-star">*</span></span>
-                <textarea rows="4" [(ngModel)]="eventForm.description" [class.field-required-invalid]="eventEditorFieldInvalid('description')"></textarea>
+                <textarea rows="4" [(ngModel)]="eventForm.description" [readonly]="isEventEditorReadOnly()" [class.field-required-invalid]="eventEditorFieldInvalid('description')"></textarea>
               </label>
               <section class="event-schedule-panel">
                 <div class="event-schedule-panel-head">
@@ -2021,7 +2030,7 @@
                   <label class="event-frequency-label">
                     <ng-container *ngIf="!isMobileView; else mobileEventFrequencyButton">
                       <div class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select" [ngClass]="eventFrequencyClass(eventForm.frequency)">
-                        <mat-select [(ngModel)]="eventForm.frequency" [panelWidth]="null" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel event-frequency-options-panel">
+                        <mat-select [(ngModel)]="eventForm.frequency" [disabled]="isEventEditorReadOnly()" [panelWidth]="null" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel event-frequency-options-panel">
                           <mat-select-trigger>
                             <span class="status-option-content">
                               <mat-icon [class]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
@@ -2043,6 +2052,7 @@
                         class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select"
                         [ngClass]="eventFrequencyClass(eventForm.frequency)"
                         (click)="openMobileEventFrequencySelector($event)"
+                        [disabled]="isEventEditorReadOnly()"
                       >
                         <span class="status-option-content">
                           <mat-icon [class]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
@@ -2057,7 +2067,7 @@
                   <span>Start</span>
                   <div class="event-datetime-row">
                     <mat-form-field appearance="outline" class="event-date-field event-date-field-start" subscriptSizing="dynamic">
-                      <input matInput [matDatepicker]="eventStartPicker" [ngModel]="eventStartDateValue" (ngModelChange)="onEventStartDateChange($event)" />
+                      <input matInput [matDatepicker]="eventStartPicker" [ngModel]="eventStartDateValue" (ngModelChange)="onEventStartDateChange($event)" [disabled]="isEventEditorReadOnly()" />
                       <mat-datepicker-toggle matSuffix [for]="eventStartPicker"></mat-datepicker-toggle>
                       <mat-datepicker #eventStartPicker></mat-datepicker>
                     </mat-form-field>
@@ -2068,6 +2078,7 @@
                         [matTimepickerOpenOnClick]="true"
                         [ngModel]="eventStartTimeValue"
                         (ngModelChange)="onEventStartTimeChange($event)"
+                        [disabled]="isEventEditorReadOnly()"
                       />
                       <mat-timepicker-toggle matSuffix [for]="eventStartTimePicker"></mat-timepicker-toggle>
                       <mat-timepicker #eventStartTimePicker></mat-timepicker>
@@ -2078,7 +2089,7 @@
                   <span>End</span>
                   <div class="event-datetime-row">
                     <mat-form-field appearance="outline" class="event-date-field event-date-field-end" subscriptSizing="dynamic">
-                      <input matInput [matDatepicker]="eventEndPicker" [ngModel]="eventEndDateValue" (ngModelChange)="onEventEndDateChange($event)" />
+                      <input matInput [matDatepicker]="eventEndPicker" [ngModel]="eventEndDateValue" (ngModelChange)="onEventEndDateChange($event)" [disabled]="isEventEditorReadOnly()" />
                       <mat-datepicker-toggle matSuffix [for]="eventEndPicker"></mat-datepicker-toggle>
                       <mat-datepicker #eventEndPicker></mat-datepicker>
                     </mat-form-field>
@@ -2089,6 +2100,7 @@
                         [matTimepickerOpenOnClick]="true"
                         [ngModel]="eventEndTimeValue"
                         (ngModelChange)="onEventEndTimeChange($event)"
+                        [disabled]="isEventEditorReadOnly()"
                       />
                       <mat-timepicker-toggle matSuffix [for]="eventEndTimePicker"></mat-timepicker-toggle>
                       <mat-timepicker #eventEndTimePicker></mat-timepicker>
@@ -2164,6 +2176,7 @@
                     <button
                       type="button"
                       class="popup-header-add-btn subevent-leaderboard-save-btn"
+                      *ngIf="!isEventEditorReadOnly()"
                       (click)="saveSubEventForm($event)"
                       aria-label="Save sub event"
                     >
@@ -2917,9 +2930,21 @@
         <ng-template #defaultStackedTitle>
           <div class="popup-title">
             <h2>{{ getStackedPopupTitle() }}</h2>
+            <p class="popup-subtitle-activities" *ngIf="stackedPopup === 'eventEditor' && isEventEditorReadOnly()">
+              {{ eventForm.title || 'Event' }}
+            </p>
           </div>
         </ng-template>
         </ng-template>
+        <button
+          type="button"
+          class="activity-members-header-add-btn"
+          *ngIf="stackedPopup === 'activityMembers' && !activityMembersReadOnly"
+          (click)="openActivityInviteFriends($event)"
+          aria-label="Invite friends"
+        >
+          <mat-icon>add</mat-icon>
+        </button>
         <span class="header-members-count" *ngIf="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers'">
           {{ stackedPopup === 'activityMembers' ? activityMembersHeaderSummary() : (selectedChatMembers.length + ' members') }}
         </span>
@@ -2942,19 +2967,23 @@
           <mat-icon>done</mat-icon>
         </button>
         <button
-          class="chat-members-stack chat-members-stack-large chat-header-members"
+          class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger"
           type="button"
           *ngIf="showEventEditorHeaderMembersButton('stacked')"
           (click)="openEventEditorMembers($event)"
         >
-          <span class="chat-stack-avatar" *ngFor="let member of eventEditorHeaderMembers(); let i = index" [class]="'user-color-' + member.gender" [style.zIndex]="30 - i">{{ member.initials }}</span>
-          <span class="chat-stack-more" *ngIf="eventEditorHeaderHiddenMemberCount() > 0">+{{ eventEditorHeaderHiddenMemberCount() }}</span>
+          <span class="event-editor-members-invite">
+            <mat-icon>person_add</mat-icon>
+            <span>Invite members</span>
+          </span>
+          <span class="card-badge event-editor-members-pending-badge" *ngIf="eventEditorHeaderPendingMemberCount() > 0">{{ eventEditorHeaderPendingMemberCount() }}</span>
         </button>
         <div class="event-visibility-picker" *ngIf="stackedPopup === 'eventEditor'">
           <button
             type="button"
             class="popup-view-fab event-visibility-trigger"
             [ngClass]="eventVisibilityClass(eventForm.visibility)"
+            [class.event-editor-readonly-control]="isEventEditorReadOnly()"
             (click)="toggleEventVisibilityPicker($event)"
             aria-label="Open visibility selector"
           >
@@ -3001,7 +3030,7 @@
         <button
           type="button"
           class="popup-header-add-btn subevent-leaderboard-save-btn"
-          *ngIf="stackedPopup === 'eventEditor'"
+          *ngIf="stackedPopup === 'eventEditor' && !isEventEditorReadOnly()"
           (click)="saveEventEditorForm()"
           aria-label="Save event"
         >
@@ -3117,6 +3146,7 @@
                     <button
                       type="button"
                       class="experience-action-btn experience-action-delete"
+                      *ngIf="canDeleteActivityMember(member)"
                       (click)="removeActivityMember(member, $event)"
                       aria-label="Delete invitation"
                     >
@@ -3384,7 +3414,7 @@
         </div>
         <div class="popup-actions">
           <button type="button" class="link-btn" (click)="deleteSelectedInvitation($event)">Delete</button>
-          <button type="button" class="link-btn" (click)="openEventEditor(true)">Open Related Event</button>
+          <button type="button" class="link-btn" (click)="openInvitationRelatedEventEditor(true, $event)">Open Related Event</button>
         </div>
       </div>
 
@@ -3396,7 +3426,7 @@
         </div>
         <div class="popup-actions">
           <button type="button" class="link-btn" (click)="openEventEditor(true)" *ngIf="selectedEvent.isAdmin">Edit Event</button>
-          <button type="button" class="link-btn" *ngIf="!selectedEvent.isAdmin">Exit Event</button>
+          <button type="button" class="link-btn" *ngIf="!selectedEvent.isAdmin" (click)="openSelectedEventInReadOnlyEditor(true, $event)">View Event</button>
           <button type="button" class="link-btn">Open Event Chat</button>
         </div>
       </div>
@@ -3566,22 +3596,22 @@
               <label class="experience-description-field">
                 <span>Image</span>
                 <input #eventImageInput type="file" accept="image/*" hidden (change)="onEventImageFileChange($event)" />
-                <button type="button" class="asset-image-dropzone" (click)="triggerEventImageUpload($event)">
+                <button type="button" class="asset-image-dropzone" (click)="triggerEventImageUpload($event)" [disabled]="isEventEditorReadOnly()">
                   <div class="asset-image-preview" [style.backgroundImage]="eventForm.imageUrl ? 'url(' + eventForm.imageUrl + ')' : null">
-                    <span class="asset-image-plus">+</span>
+                    <span class="asset-image-plus" *ngIf="!isEventEditorReadOnly()">+</span>
                   </div>
                 </button>
               </label>
               <label class="experience-title-field">
                 <span>Name <span class="required-star">*</span></span>
-                <input type="text" [(ngModel)]="eventForm.title" [class.field-required-invalid]="eventEditorFieldInvalid('title')" />
+                <input type="text" [(ngModel)]="eventForm.title" [readonly]="isEventEditorReadOnly()" [class.field-required-invalid]="eventEditorFieldInvalid('title')" />
               </label>
               <label class="event-capacity-range-field">
                 <span>Capacity</span>
                 <div class="subevent-capacity-range">
-                  <input type="number" min="0" step="1" [ngModel]="eventForm.capacityMin" (ngModelChange)="onEventCapacityMinChange($event)" placeholder="Min" />
+                  <input type="number" min="0" step="1" [ngModel]="eventForm.capacityMin" (ngModelChange)="onEventCapacityMinChange($event)" [disabled]="isEventEditorReadOnly()" placeholder="Min" />
                   <span class="subevent-capacity-separator">-</span>
-                  <input type="number" [min]="eventForm.capacityMin ?? 0" step="1" [ngModel]="eventForm.capacityMax" (ngModelChange)="onEventCapacityMaxChange($event)" placeholder="Max" />
+                  <input type="number" [min]="eventForm.capacityMin ?? 0" step="1" [ngModel]="eventForm.capacityMax" (ngModelChange)="onEventCapacityMaxChange($event)" [disabled]="isEventEditorReadOnly()" placeholder="Max" />
                 </div>
               </label>
               <div class="event-intel-row">
@@ -3591,6 +3621,7 @@
                     class="event-blind-mode-card"
                     [ngClass]="eventBlindModeClass(eventForm.blindMode)"
                     (click)="toggleEventBlindMode($event)"
+                    [disabled]="isEventEditorReadOnly()"
                   >
                     <span class="event-blind-mode-title">
                       <mat-icon [class]="eventBlindModeClass(eventForm.blindMode)">{{ eventBlindModeIcon(eventForm.blindMode) }}</mat-icon>
@@ -3600,7 +3631,7 @@
                   </button>
                 </label>
                 <label class="event-topics-field event-topics-panel-field">
-                  <button type="button" class="event-topics-panel" [ngClass]="eventTopicsPanelClass()" (click)="openEventTopicsSelector($event)">
+                  <button type="button" class="event-topics-panel" [ngClass]="eventTopicsPanelClass()" [class.event-editor-readonly-control]="isEventEditorReadOnly()" (click)="openEventTopicsSelector($event)">
                     <span class="event-topics-panel-head">
                       <span class="event-topics-panel-title">
                         <mat-icon>{{ eventTopicsPanelIcon() }}</mat-icon>
@@ -3624,6 +3655,7 @@
                     class="event-auto-inviter-card"
                     [ngClass]="eventAutoInviterClass(eventForm.autoInviter)"
                     (click)="toggleEventAutoInviter($event)"
+                    [disabled]="isEventEditorReadOnly()"
                   >
                     <span class="event-auto-inviter-title">
                       <mat-icon [class]="eventAutoInviterClass(eventForm.autoInviter)">{{ eventAutoInviterIcon(eventForm.autoInviter) }}</mat-icon>
@@ -3635,7 +3667,7 @@
               </div>
               <label class="experience-description-field">
                 <span>Description <span class="required-star">*</span></span>
-                <textarea rows="4" [(ngModel)]="eventForm.description" [class.field-required-invalid]="eventEditorFieldInvalid('description')"></textarea>
+                <textarea rows="4" [(ngModel)]="eventForm.description" [readonly]="isEventEditorReadOnly()" [class.field-required-invalid]="eventEditorFieldInvalid('description')"></textarea>
               </label>
               <section class="event-schedule-panel">
                 <div class="event-schedule-panel-head">
@@ -3646,7 +3678,7 @@
                   <label class="event-frequency-label">
                     <ng-container *ngIf="!isMobileView; else mobileEventFrequencyButtonStacked">
                       <div class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select" [ngClass]="eventFrequencyClass(eventForm.frequency)">
-                        <mat-select [(ngModel)]="eventForm.frequency" [panelWidth]="null" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel event-frequency-options-panel">
+                        <mat-select [(ngModel)]="eventForm.frequency" [disabled]="isEventEditorReadOnly()" [panelWidth]="null" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel event-frequency-options-panel">
                           <mat-select-trigger>
                             <span class="status-option-content">
                               <mat-icon [class]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
@@ -3668,6 +3700,7 @@
                         class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select"
                         [ngClass]="eventFrequencyClass(eventForm.frequency)"
                         (click)="openMobileEventFrequencySelector($event)"
+                        [disabled]="isEventEditorReadOnly()"
                       >
                         <span class="status-option-content">
                           <mat-icon [class]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
@@ -3682,7 +3715,7 @@
                   <span>Start</span>
                   <div class="event-datetime-row">
                     <mat-form-field appearance="outline" class="event-date-field event-date-field-start" subscriptSizing="dynamic">
-                      <input matInput [matDatepicker]="eventStartPickerStacked" [ngModel]="eventStartDateValue" (ngModelChange)="onEventStartDateChange($event)" />
+                      <input matInput [matDatepicker]="eventStartPickerStacked" [ngModel]="eventStartDateValue" (ngModelChange)="onEventStartDateChange($event)" [disabled]="isEventEditorReadOnly()" />
                       <mat-datepicker-toggle matSuffix [for]="eventStartPickerStacked"></mat-datepicker-toggle>
                       <mat-datepicker #eventStartPickerStacked></mat-datepicker>
                     </mat-form-field>
@@ -3693,6 +3726,7 @@
                         [matTimepickerOpenOnClick]="true"
                         [ngModel]="eventStartTimeValue"
                         (ngModelChange)="onEventStartTimeChange($event)"
+                        [disabled]="isEventEditorReadOnly()"
                       />
                       <mat-timepicker-toggle matSuffix [for]="eventStartTimePickerStacked"></mat-timepicker-toggle>
                       <mat-timepicker #eventStartTimePickerStacked></mat-timepicker>
@@ -3703,7 +3737,7 @@
                   <span>End</span>
                   <div class="event-datetime-row">
                     <mat-form-field appearance="outline" class="event-date-field event-date-field-end" subscriptSizing="dynamic">
-                      <input matInput [matDatepicker]="eventEndPickerStacked" [ngModel]="eventEndDateValue" (ngModelChange)="onEventEndDateChange($event)" />
+                      <input matInput [matDatepicker]="eventEndPickerStacked" [ngModel]="eventEndDateValue" (ngModelChange)="onEventEndDateChange($event)" [disabled]="isEventEditorReadOnly()" />
                       <mat-datepicker-toggle matSuffix [for]="eventEndPickerStacked"></mat-datepicker-toggle>
                       <mat-datepicker #eventEndPickerStacked></mat-datepicker>
                     </mat-form-field>
@@ -3714,6 +3748,7 @@
                         [matTimepickerOpenOnClick]="true"
                         [ngModel]="eventEndTimeValue"
                         (ngModelChange)="onEventEndTimeChange($event)"
+                        [disabled]="isEventEditorReadOnly()"
                       />
                       <mat-timepicker-toggle matSuffix [for]="eventEndTimePickerStacked"></mat-timepicker-toggle>
                       <mat-timepicker #eventEndTimePickerStacked></mat-timepicker>
@@ -3789,6 +3824,7 @@
                     <button
                       type="button"
                       class="popup-header-add-btn subevent-leaderboard-save-btn"
+                      *ngIf="!isEventEditorReadOnly()"
                       (click)="saveSubEventForm($event)"
                       aria-label="Save sub event"
                     >
@@ -4166,15 +4202,6 @@
         <p>Try switching the type dropdown to All.</p>
       </div>
     </div>
-    <button
-      type="button"
-      class="activity-members-add-fab"
-      *ngIf="stackedPopup === 'activityMembers' && !activityMembersReadOnly"
-      (click)="openActivityInviteFriends($event)"
-      aria-label="Invite friends"
-    >
-      <mat-icon>add</mat-icon>
-    </button>
   </div>
 </section>
 
@@ -4304,6 +4331,7 @@
         <button
           type="button"
           class="popup-header-add-btn subevents-header-add-btn"
+          *ngIf="!isEventEditorReadOnly()"
           (click)="openSubEventPanel($event)"
           [attr.aria-label]="subEventAddButtonLabel()"
           [attr.title]="subEventAddButtonLabel()"
@@ -4315,13 +4343,15 @@
             type="button"
             class="popup-view-fab subevents-mode-trigger"
             [ngClass]="subEventsDisplayModeClass()"
+            [class.event-editor-readonly-control]="isEventEditorReadOnly()"
             (click)="toggleSubEventsDisplayModePicker($event)"
+            [disabled]="isEventEditorReadOnly()"
             aria-label="Open sub events mode selector"
           >
             <mat-icon class="subevents-mode-icon">{{ subEventsDisplayModeIcon() }}</mat-icon>
             <span>{{ subEventsDisplayMode }}</span>
           </button>
-          <div class="activities-view-picker-panel" *ngIf="showSubEventsDisplayModePicker">
+          <div class="activities-view-picker-panel" *ngIf="showSubEventsDisplayModePicker && !isEventEditorReadOnly()">
             <button
               type="button"
               class="activities-view-option"
@@ -4410,7 +4440,7 @@
                       <span class="subevent-stage-range-badge">{{ stage.rangeLabel }}</span>
                       <span class="subevent-stage-column-meta">{{ subEventStageMetaLabel(stage) }}</span>
                     </div>
-                    <div class="experience-item-actions subevent-stage-item-actions" *ngIf="canEditSubEventItem(stage.subEvent)">
+                    <div class="experience-item-actions subevent-stage-item-actions" *ngIf="canEditSubEventItem(stage.subEvent) || isEventEditorReadOnly()">
                       <button
                         type="button"
                         class="experience-action-btn experience-action-menu-trigger"
@@ -4430,7 +4460,7 @@
                         (click)="$event.stopPropagation()"
                       >
                         <div class="item-action-menu-title">{{ stage.title }}</div>
-                        <button type="button" class="item-action-menu-btn" (click)="runSubEventStageAddGroupAction(stage, $event)">
+                        <button type="button" class="item-action-menu-btn" *ngIf="!isEventEditorReadOnly()" (click)="runSubEventStageAddGroupAction(stage, $event)">
                           <mat-icon>group_add</mat-icon>
                           <span>Add Group</span>
                         </button>
@@ -4438,11 +4468,11 @@
                           <mat-icon>{{ subEventLeaderboardModeIcon(stage) }}</mat-icon>
                           <span>Leaderboard</span>
                         </button>
-                        <button type="button" class="item-action-menu-btn" (click)="runSubEventStageEditAction(stage, $event)">
+                        <button type="button" class="item-action-menu-btn" *ngIf="!isEventEditorReadOnly()" (click)="runSubEventStageEditAction(stage, $event)">
                           <mat-icon>edit</mat-icon>
                           <span>Edit Stage Event</span>
                         </button>
-                        <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="runSubEventStageDeleteAction(stage, $event)">
+                        <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" *ngIf="!isEventEditorReadOnly()" (click)="runSubEventStageDeleteAction(stage, $event)">
                           <mat-icon>delete</mat-icon>
                           <span>Delete Stage</span>
                         </button>
@@ -4621,6 +4651,7 @@
             <button
               type="button"
               class="popup-header-add-btn subevent-leaderboard-save-btn"
+              *ngIf="!isEventEditorReadOnly()"
               (click)="saveSubEventForm($event)"
               aria-label="Save sub event"
             >
@@ -4794,6 +4825,7 @@
             <button
               type="button"
               class="popup-header-add-btn subevent-leaderboard-save-btn"
+              *ngIf="!isEventEditorReadOnly()"
               (click)="saveSubEventGroupForm($event)"
               aria-label="Save group"
             >
@@ -4853,7 +4885,13 @@
                   (keydown.space)="toggleSubEventLeaderboardGroup(leaderboardStage, group, $event); $event.preventDefault()"
                 >
                   <span class="subevent-leaderboard-group-title">{{ group.groupLabel }}</span>
-                  <button type="button" class="subevent-leaderboard-group-add" (click)="openSubEventLeaderboardEntryPopup(leaderboardStage, group, $event)" aria-label="Add leaderboard entry">
+                  <button
+                    type="button"
+                    class="subevent-leaderboard-group-add"
+                    *ngIf="!isEventEditorReadOnly()"
+                    (click)="openSubEventLeaderboardEntryPopup(leaderboardStage, group, $event)"
+                    aria-label="Add leaderboard entry"
+                  >
                     <mat-icon>add</mat-icon>
                   </button>
                   <mat-icon class="subevent-leaderboard-group-arrow">{{ isSubEventLeaderboardGroupOpen(leaderboardStage, group) ? 'expand_less' : 'expand_more' }}</mat-icon>
@@ -5016,6 +5054,7 @@
             <button
               type="button"
               class="popup-header-add-btn subevent-leaderboard-save-btn"
+              *ngIf="!isEventEditorReadOnly()"
               (click)="saveSubEventLeaderboardEntryFromPopup($event)"
               [disabled]="!canSubmitSubEventLeaderboardEntry()"
               aria-label="Save leaderboard entry"
@@ -5375,7 +5414,7 @@
     <div class="demo-login-header">
       <div>
         <h2>Select demo user</h2>
-        <p>Login disabled mode. Choose one of the 12 users to open perspective-based data.</p>
+        <p>Login disabled mode. Choose one of the 50 users to open perspective-based data.</p>
       </div>
       <button mat-icon-button type="button" class="popup-close" (click)="closeDemoUserSelectorPopup()" aria-label="Close demo user popup">
         <span class="popup-close-glyph" aria-hidden="true">×</span>

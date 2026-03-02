@@ -817,6 +817,7 @@ export class App {
   protected activePopup: PopupType = null;
   protected stackedPopup: PopupType = null;
   protected eventEditorMode: EventEditorMode = 'edit';
+  protected eventEditorReadOnly = false;
   protected popupReturnTarget: PopupType = null;
   protected openPrivacyFab: { groupIndex: number; rowIndex: number } | null = null;
   protected privacyFabJustSelectedKey: string | null = null;
@@ -1207,6 +1208,8 @@ export class App {
   protected selectedEvent: EventMenuItem | null = null;
   protected selectedHostingEvent: HostingMenuItem | null = null;
   protected eventEditorTarget: EventEditorTarget = 'events';
+  private eventEditorSource: EventMenuItem | HostingMenuItem | null = null;
+  private eventEditorDraftMembersId: string | null = null;
   protected editingEventId: string | null = null;
   protected eventForm: EventEditorForm = this.defaultEventForm();
   protected showEventEditorRequiredValidation = false;
@@ -1337,6 +1340,7 @@ export class App {
   constructor(private readonly router: Router) {
     this.initializeProfileImageSlots();
     this.ensurePaginationTestEvents(30);
+    this.initializeEventEditorContextData();
     this.initializeProfileDetailForms();
     this.syncProfileFormFromActiveUser();
     this.initializeEntryFlow();
@@ -1385,6 +1389,182 @@ export class App {
 
       this.eventItemsByUser[userId] = [...events, ...synthetic];
     }
+  }
+
+  private initializeEventEditorContextData(): void {
+    const sources: Array<{ item: EventMenuItem | HostingMenuItem; isHosting: boolean }> = [];
+    for (const items of Object.values(this.eventItemsByUser)) {
+      for (const item of items) {
+        sources.push({ item, isHosting: false });
+      }
+    }
+    for (const items of Object.values(this.hostingItemsByUser)) {
+      for (const item of items) {
+        sources.push({ item, isHosting: true });
+      }
+    }
+
+    const visited = new Set<string>();
+    for (const source of sources) {
+      const id = source.item.id;
+      if (visited.has(id)) {
+        continue;
+      }
+      visited.add(id);
+
+      if (!this.eventCapacityById[id]) {
+        this.eventCapacityById[id] = this.seededEventCapacityRange(id);
+      }
+      if (!this.eventSubEventsById[id] || this.eventSubEventsById[id].length === 0) {
+        this.eventSubEventsById[id] = this.buildSeededSubEventsForEvent(source.item, source.isHosting);
+      }
+    }
+  }
+
+  private seededEventCapacityRange(eventId: string): EventCapacityRange {
+    const source = this.activityCapacityById[eventId];
+    if (source) {
+      const parts = source.split('/').map(part => Number.parseInt(part.trim(), 10));
+      if (parts.length >= 2 && Number.isFinite(parts[0]) && Number.isFinite(parts[1])) {
+        const min = Math.max(0, Math.min(parts[0], parts[1]));
+        const max = Math.max(min, parts[1]);
+        return { min, max };
+      }
+    }
+    const seed = this.hashText(`event-capacity:${eventId}`);
+    const max = 10 + (seed % 24);
+    const min = Math.max(0, Math.floor(max * 0.45));
+    return { min, max };
+  }
+
+  private buildSeededSubEventsForEvent(
+    source: EventMenuItem | HostingMenuItem,
+    isHosting: boolean
+  ): SubEventFormItem[] {
+    const dateSource = this.activityDateTimeRangeById[source.id];
+    const fallbackStartIso = isHosting
+      ? (this.hostingDatesById[source.id] ?? this.defaultEventStartIso())
+      : (this.eventDatesById[source.id] ?? this.defaultEventStartIso());
+    const start = new Date(dateSource?.startIso ?? fallbackStartIso);
+    const end = new Date(dateSource?.endIso ?? new Date(start.getTime() + (4 * 60 * 60 * 1000)).toISOString().slice(0, 19));
+    const startMs = Number.isNaN(start.getTime()) ? Date.now() : start.getTime();
+    const endMs = Number.isNaN(end.getTime()) || end.getTime() <= startMs
+      ? (startMs + (4 * 60 * 60 * 1000))
+      : end.getTime();
+    const seed = this.hashText(`event-subevents:${source.id}:${source.title}:${source.shortDescription}`);
+    const tournamentMode = (seed % 3) === 0;
+    if (tournamentMode) {
+      return this.buildSeededTournamentSubEvents(source, startMs, endMs, seed);
+    }
+    return this.buildSeededCasualSubEvents(source, startMs, endMs, seed);
+  }
+
+  private buildSeededCasualSubEvents(
+    source: EventMenuItem | HostingMenuItem,
+    startMs: number,
+    endMs: number,
+    seed: number
+  ): SubEventFormItem[] {
+    const count = 2 + (seed % 3);
+    const totalMs = Math.max(2 * 60 * 60 * 1000, endMs - startMs);
+    const slotMs = Math.max(45 * 60 * 1000, Math.floor(totalMs / count));
+    const eventCapacity = this.eventCapacityById[source.id] ?? this.seededEventCapacityRange(source.id);
+    const eventMax = this.normalizedEventCapacityValue(eventCapacity.max) ?? 0;
+    const names = ['Kickoff', 'Main Session', 'Side Activity', 'Wrap-up'];
+    const items: SubEventFormItem[] = [];
+    for (let index = 0; index < count; index += 1) {
+      const optional = index > 0 && ((seed + index) % 2 === 0);
+      const stageStartMs = startMs + (index * slotMs);
+      const stageEndMs = index === count - 1 ? endMs : Math.min(endMs, stageStartMs + slotMs);
+      const slice = 0.45 + (((seed + index) % 4) * 0.12);
+      const capacityMax = Math.max(0, Math.round(eventMax * slice));
+      const capacityMin = optional ? 0 : Math.max(0, Math.min(capacityMax, Math.floor(capacityMax * 0.55)));
+      const accepted = Math.min(capacityMax, Math.max(0, Math.floor(capacityMin * 0.7)));
+      items.push({
+        id: `seed-${source.id}-casual-${index + 1}`,
+        name: `${names[index] ?? `Session ${index + 1}`} · ${source.title}`,
+        description: `${source.shortDescription} (${index + 1}/${count})`,
+        startAt: this.toIsoDateTimeLocal(new Date(stageStartMs)),
+        endAt: this.toIsoDateTimeLocal(new Date(Math.max(stageStartMs + (30 * 60 * 1000), stageEndMs))),
+        createdByUserId: this.activeUser.id,
+        groups: [],
+        optional,
+        capacityMin,
+        capacityMax,
+        membersAccepted: accepted,
+        membersPending: Math.max(0, capacityMax - accepted),
+        carsPending: (seed + index) % 3,
+        accommodationPending: (seed + index + 1) % 3,
+        suppliesPending: (seed + index + 2) % 4
+      });
+    }
+    return this.sortSubEventsByStartAsc(items);
+  }
+
+  private buildSeededTournamentSubEvents(
+    source: EventMenuItem | HostingMenuItem,
+    startMs: number,
+    endMs: number,
+    seed: number
+  ): SubEventFormItem[] {
+    const stageNames = ['Qualifiers', 'Semifinals', 'Finals'];
+    const stageCount = 3;
+    const totalMs = Math.max(3 * 60 * 60 * 1000, endMs - startMs);
+    const slotMs = Math.max(60 * 60 * 1000, Math.floor(totalMs / stageCount));
+    const eventCapacity = this.eventCapacityById[source.id] ?? this.seededEventCapacityRange(source.id);
+    const eventMax = this.normalizedEventCapacityValue(eventCapacity.max) ?? 0;
+    const items: SubEventFormItem[] = [];
+
+    for (let index = 0; index < stageCount; index += 1) {
+      const groupCount = Math.max(1, 4 >> index);
+      const basePerGroupMax = Math.max(2, Math.ceil(Math.max(2, eventMax) / Math.max(1, groupCount * (index + 1))));
+      const groups: SubEventGroupItem[] = [];
+      for (let groupIndex = 0; groupIndex < groupCount; groupIndex += 1) {
+        const groupMax = Math.max(2, basePerGroupMax - (groupIndex % 2));
+        const groupMin = Math.max(0, Math.floor(groupMax * 0.6));
+        groups.push({
+          id: `seed-${source.id}-s${index + 1}-g${groupIndex + 1}`,
+          name: `Group ${String.fromCharCode(65 + groupIndex)}`,
+          capacityMin: groupMin,
+          capacityMax: groupMax,
+          source: 'generated'
+        });
+      }
+      const totals = this.groupCapacityTotals(groups);
+      const stageStartMs = startMs + (index * slotMs);
+      const stageEndMs = index === stageCount - 1 ? endMs : Math.min(endMs, stageStartMs + slotMs);
+      const accepted = Math.min(totals.max, Math.max(0, Math.floor(totals.min * 0.7)));
+      items.push({
+        id: `seed-${source.id}-tournament-${index + 1}`,
+        name: `${stageNames[index]} · ${source.title}`,
+        description: `${source.shortDescription} (${stageNames[index]})`,
+        startAt: this.toIsoDateTimeLocal(new Date(stageStartMs)),
+        endAt: this.toIsoDateTimeLocal(new Date(Math.max(stageStartMs + (45 * 60 * 1000), stageEndMs))),
+        createdByUserId: this.activeUser.id,
+        groups,
+        tournamentGroupCount: groups.length,
+        tournamentGroupCapacityMin: Math.max(0, ...groups.map(group => Number(group.capacityMin) || 0)),
+        tournamentGroupCapacityMax: Math.max(0, ...groups.map(group => Number(group.capacityMax) || 0)),
+        tournamentLeaderboardType: (seed + index) % 2 === 0 ? 'Score' : 'Fifa',
+        tournamentAdvancePerGroup: index === stageCount - 1 ? 0 : Math.max(1, 2 - index),
+        optional: false,
+        capacityMin: totals.min,
+        capacityMax: totals.max,
+        membersAccepted: accepted,
+        membersPending: Math.max(0, totals.max - accepted),
+        carsPending: (seed + index) % 2,
+        accommodationPending: (seed + index + 1) % 2,
+        suppliesPending: (seed + index + 2) % 3
+      });
+    }
+    return this.sortSubEventsByStartAsc(items);
+  }
+
+  private inferredSubEventsDisplayMode(items: SubEventFormItem[]): SubEventsDisplayMode {
+    if (items.some(item => !item.optional && (item.groups?.length ?? 0) > 0)) {
+      return 'Tournament';
+    }
+    return 'Casual';
   }
 
   protected get activeUser() {
@@ -1641,6 +1821,9 @@ export class App {
   protected openInvitationItem(item: InvitationMenuItem, closeMenu = true, stacked = false): void {
     this.activeMenuSection = 'invitations';
     this.selectedInvitation = item;
+    this.selectedEvent = this.eventItems.find(
+      event => this.normalizeText(event.title) === this.normalizeText(item.description)
+    ) ?? this.selectedEvent;
     this.showActivitiesViewPicker = false;
     if (stacked || this.activePopup === 'activities' || this.stackedPopup !== null) {
       this.stackedPopup = 'invitationActions';
@@ -1700,9 +1883,11 @@ export class App {
   protected openEventEditor(
     stacked = false,
     mode: EventEditorMode = 'edit',
-    source?: EventMenuItem | HostingMenuItem
+    source?: EventMenuItem | HostingMenuItem,
+    readOnly = false
   ): void {
     this.eventEditorMode = mode;
+    this.eventEditorReadOnly = mode === 'edit' && readOnly;
     this.showEventVisibilityPicker = false;
     this.showProfileStatusHeaderPicker = false;
     this.prepareEventEditorForm(mode, source);
@@ -1711,6 +1896,26 @@ export class App {
       return;
     }
     this.activePopup = 'eventEditor';
+  }
+
+  protected openSelectedEventInReadOnlyEditor(stacked = false, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.selectedEvent) {
+      return;
+    }
+    this.openEventEditor(stacked, 'edit', this.selectedEvent, true);
+  }
+
+  protected openInvitationRelatedEventEditor(stacked = false, event?: Event): void {
+    event?.stopPropagation();
+    const invitationDescription = this.selectedInvitation?.description ?? '';
+    const related = this.selectedInvitation
+      ? (this.eventItems.find(item => this.normalizeText(item.title) === this.normalizeText(invitationDescription)) ?? this.selectedEvent)
+      : this.selectedEvent;
+    if (!related) {
+      return;
+    }
+    this.openEventEditor(stacked, 'edit', related, true);
   }
 
   protected triggerEventImageUpload(event?: Event): void {
@@ -1731,6 +1936,9 @@ export class App {
 
   protected openEventTopicsSelector(event?: Event): void {
     event?.stopPropagation();
+    if (this.eventEditorReadOnly) {
+      return;
+    }
     const allowed = new Set(this.interestAllOptions());
     this.interestSelectorContext = null;
     this.interestSelectorSelected = this.eventForm.topics
@@ -1803,11 +2011,17 @@ export class App {
 
   protected toggleSubEventsDisplayModePicker(event?: Event): void {
     event?.stopPropagation();
+    if (this.eventEditorReadOnly) {
+      return;
+    }
     this.showSubEventsDisplayModePicker = !this.showSubEventsDisplayModePicker;
   }
 
   protected selectSubEventsDisplayMode(mode: SubEventsDisplayMode, event?: Event): void {
     event?.stopPropagation();
+    if (this.eventEditorReadOnly) {
+      return;
+    }
     this.subEventsDisplayMode = mode;
     this.showSubEventsDisplayModePicker = false;
     this.inlineItemActionMenu = null;
@@ -2160,11 +2374,17 @@ export class App {
 
   protected toggleEventVisibilityPicker(event?: Event): void {
     event?.stopPropagation();
+    if (this.eventEditorReadOnly) {
+      return;
+    }
     this.showEventVisibilityPicker = !this.showEventVisibilityPicker;
   }
 
   protected selectEventVisibility(option: EventVisibility, event?: Event): void {
     event?.stopPropagation();
+    if (this.eventEditorReadOnly) {
+      return;
+    }
     this.eventForm.visibility = option;
     this.showEventVisibilityPicker = false;
   }
@@ -2185,11 +2405,17 @@ export class App {
 
   protected toggleEventBlindMode(event?: Event): void {
     event?.stopPropagation();
+    if (this.eventEditorReadOnly) {
+      return;
+    }
     this.eventForm.blindMode = this.eventForm.blindMode === 'Blind Event' ? 'Open Event' : 'Blind Event';
   }
 
   protected toggleEventAutoInviter(event?: Event): void {
     event?.stopPropagation();
+    if (this.eventEditorReadOnly) {
+      return;
+    }
     this.eventForm.autoInviter = !this.eventForm.autoInviter;
   }
 
@@ -2213,6 +2439,9 @@ export class App {
 
   protected openSubEventPanel(event?: Event): void {
     event?.stopPropagation();
+    if (this.eventEditorReadOnly) {
+      return;
+    }
     this.subEventForm = this.defaultSubEventForm();
     const tournamentStageContext = this.isTournamentStageMandatoryContext();
     if (tournamentStageContext) {
@@ -2706,15 +2935,27 @@ export class App {
   }
 
   protected canEditSubEventItem(item: SubEventFormItem): boolean {
+    if (this.eventEditorReadOnly) {
+      return false;
+    }
     return this.subEventCreatorId(item) === this.activeUser.id;
   }
 
   protected canDeleteSubEventItem(item: SubEventFormItem): boolean {
+    if (this.eventEditorReadOnly) {
+      return false;
+    }
     return this.subEventCreatorId(item) === this.activeUser.id;
   }
 
   protected canJoinSubEventItem(item: SubEventFormItem): boolean {
-    return item.optional && this.subEventCreatorId(item) !== this.activeUser.id;
+    if (!item.optional) {
+      return false;
+    }
+    if (this.eventEditorReadOnly) {
+      return this.subEventsDisplayMode !== 'Tournament';
+    }
+    return this.subEventCreatorId(item) !== this.activeUser.id;
   }
 
   protected canManageSubEventItem(item: SubEventFormItem): boolean {
@@ -2837,6 +3078,14 @@ export class App {
     event.stopPropagation();
     this.openSubEventLeaderboardPopup(stage);
     this.inlineItemActionMenu = null;
+  }
+
+  protected canViewSubEventLeaderboard(stage: SubEventTournamentStage): boolean {
+    return this.eventEditorReadOnly || this.canEditSubEventItem(stage.subEvent);
+  }
+
+  protected isEventEditorReadOnly(): boolean {
+    return this.eventEditorReadOnly;
   }
 
   protected get subEventLeaderboardStage(): SubEventTournamentStage | null {
@@ -3566,6 +3815,9 @@ export class App {
   }
 
   protected onSubEventCapacityMinChange(value: number | string): void {
+    if (this.eventEditorReadOnly) {
+      return;
+    }
     const parsed = Number(value);
     const floor = 0;
     this.subEventForm.capacityMin = Math.max(floor, Number.isFinite(parsed) ? parsed : this.subEventForm.capacityMin);
@@ -3573,6 +3825,9 @@ export class App {
   }
 
   protected onSubEventCapacityMaxChange(value: number | string): void {
+    if (this.eventEditorReadOnly) {
+      return;
+    }
     const parsed = Number(value);
     const floor = 0;
     const next = Math.max(floor, Number.isFinite(parsed) ? parsed : this.subEventForm.capacityMax);
@@ -3598,6 +3853,9 @@ export class App {
   }
 
   protected onEventCapacityMinChange(value: number | string): void {
+    if (this.eventEditorReadOnly) {
+      return;
+    }
     this.eventForm.capacityMin = this.toEventCapacityInputValue(value);
     const normalizedMin = this.normalizedEventCapacityValue(this.eventForm.capacityMin);
     const normalizedMax = this.normalizedEventCapacityValue(this.eventForm.capacityMax);
@@ -3608,6 +3866,9 @@ export class App {
   }
 
   protected onEventCapacityMaxChange(value: number | string): void {
+    if (this.eventEditorReadOnly) {
+      return;
+    }
     this.eventForm.capacityMax = this.toEventCapacityInputValue(value);
     const normalizedMin = this.normalizedEventCapacityValue(this.eventForm.capacityMin);
     const normalizedMax = this.normalizedEventCapacityValue(this.eventForm.capacityMax);
@@ -3655,6 +3916,9 @@ export class App {
   }
 
   protected onEventStartDateChange(value: Date | null): void {
+    if (this.eventEditorReadOnly) {
+      return;
+    }
     this.eventStartDateValue = value;
     this.syncEventFormFromDateTimeControls();
     this.normalizeEventDateRange();
@@ -3663,6 +3927,9 @@ export class App {
   }
 
   protected onEventEndDateChange(value: Date | null): void {
+    if (this.eventEditorReadOnly) {
+      return;
+    }
     this.eventEndDateValue = value;
     this.syncEventFormFromDateTimeControls();
     this.normalizeEventDateRange();
@@ -3671,6 +3938,9 @@ export class App {
   }
 
   protected onEventStartTimeChange(value: Date | null): void {
+    if (this.eventEditorReadOnly) {
+      return;
+    }
     this.eventStartTimeValue = value;
     this.syncEventFormFromDateTimeControls();
     this.normalizeEventDateRange();
@@ -3679,6 +3949,9 @@ export class App {
   }
 
   protected onEventEndTimeChange(value: Date | null): void {
+    if (this.eventEditorReadOnly) {
+      return;
+    }
     this.eventEndTimeValue = value;
     this.syncEventFormFromDateTimeControls();
     this.normalizeEventDateRange();
@@ -3687,6 +3960,9 @@ export class App {
   }
 
   protected saveEventEditorForm(): void {
+    if (this.eventEditorReadOnly) {
+      return;
+    }
     this.syncEventFormFromDateTimeControls();
     const normalizedCapacity = this.normalizedEventCapacityRange();
     this.eventForm.capacityMin = normalizedCapacity.min;
@@ -3736,11 +4012,16 @@ export class App {
       : (this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'hosting' ? 'hosting' : 'events');
     this.eventEditorTarget = target;
     if (mode === 'edit' && source) {
+      this.eventEditorSource = source;
+      this.eventEditorDraftMembersId = null;
       this.editingEventId = source.id;
       this.eventForm = this.loadEventFormFromSource(source, target);
+      this.subEventsDisplayMode = this.inferredSubEventsDisplayMode(this.eventForm.subEvents);
       this.syncEventDateTimeControlsFromForm();
       return;
     }
+    this.eventEditorSource = null;
+    this.eventEditorDraftMembersId = `draft-${target}-${Date.now()}`;
     this.editingEventId = null;
     this.eventForm = this.defaultEventForm();
     this.eventForm.frequency = this.eventFrequencyOptions[0] ?? 'One-time';
@@ -3750,6 +4031,9 @@ export class App {
   private resolveEventEditorSource(explicitSource?: EventMenuItem | HostingMenuItem): EventMenuItem | HostingMenuItem | null {
     if (explicitSource) {
       return explicitSource;
+    }
+    if (this.eventEditorSource) {
+      return this.eventEditorSource;
     }
     if (this.activePopup === 'hostingEvent' || this.stackedPopup === 'hostingEvent') {
       return this.selectedHostingEvent;
@@ -3988,7 +4272,7 @@ export class App {
   }
 
   private openSubEventLeaderboardPopup(stage: SubEventTournamentStage): void {
-    if (!this.canEditSubEventItem(stage.subEvent)) {
+    if (!this.canViewSubEventLeaderboard(stage)) {
       return;
     }
     this.clearSubEventLeaderboardDetailsForStage(stage.subEvent.id);
@@ -5417,6 +5701,7 @@ export class App {
     this.pendingSubEventDeleteContext = null;
     this.pendingSubEventGroupDelete = null;
     this.eventEditorClosePublishConfirmContext = null;
+    this.eventEditorReadOnly = false;
     this.showSubEventForm = false;
     this.subEventFormStageNumber = null;
     this.showSubEventGroupForm = false;
@@ -5428,6 +5713,7 @@ export class App {
     this.showSubEventOptionalPicker = false;
     this.showSubEventRequiredValidation = false;
     this.showSubEventGroupRequiredValidation = false;
+    this.eventEditorSource = null;
     this.subEventGroupForm = this.defaultSubEventGroupForm();
     this.pendingActivityAction = 'delete';
     this.pendingActivityMemberDelete = null;
@@ -5464,6 +5750,10 @@ export class App {
   }
 
   protected closeStackedPopup(): void {
+    if (this.stackedPopup === 'eventEditor') {
+      this.eventEditorReadOnly = false;
+      this.eventEditorSource = null;
+    }
     if (this.stackedPopup === 'chat') {
       this.cancelChatInitialLoad();
       this.chatHeaderProgress = 0;
@@ -5730,7 +6020,10 @@ export class App {
       case 'hostingEvent':
         return this.selectedHostingEvent?.title ?? 'Hosting Event';
       case 'eventEditor':
-        return this.eventEditorMode === 'create' ? 'Create Event' : 'Edit Event';
+        if (this.eventEditorMode === 'create') {
+          return 'Create Event';
+        }
+        return this.eventEditorReadOnly ? 'View Event' : 'Edit Event';
       case 'eventExplore':
         return 'Event Explore';
       case 'profileEditor':
@@ -5775,7 +6068,10 @@ export class App {
       case 'hostingEvent':
         return this.selectedHostingEvent?.title ?? 'Hosting Event';
       case 'eventEditor':
-        return this.eventEditorMode === 'create' ? 'Create Event' : 'Edit Event';
+        if (this.eventEditorMode === 'create') {
+          return 'Create Event';
+        }
+        return this.eventEditorReadOnly ? 'View Event' : 'Edit Event';
       case 'eventExplore':
         return 'Event Explore';
       case 'supplyDetail':
@@ -9686,11 +9982,7 @@ export class App {
         this.openEventEditor(true, 'edit', row.source as EventMenuItem | HostingMenuItem);
         return;
       }
-      if (row.type === 'events') {
-        this.openEventItem(row.source as EventMenuItem, false, true);
-        return;
-      }
-      this.openHostingItem(row.source as HostingMenuItem, false, true);
+      this.openEventEditor(true, 'edit', row.source as EventMenuItem | HostingMenuItem, true);
       return;
     }
   }
@@ -9761,7 +10053,9 @@ export class App {
     if (!row) {
       return [];
     }
-    return this.getActivityMembersByRow(row).slice(0, limit);
+    return this.getActivityMembersByRow(row)
+      .filter(member => member.status === 'accepted')
+      .slice(0, limit);
   }
 
   protected eventEditorHeaderHiddenMemberCount(limit = 3): number {
@@ -9769,8 +10063,16 @@ export class App {
     if (!row) {
       return 0;
     }
-    const total = this.getActivityMembersByRow(row).length;
+    const total = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted').length;
     return total > limit ? total - limit : 0;
+  }
+
+  protected eventEditorHeaderPendingMemberCount(): number {
+    const row = this.eventEditorMembersRow();
+    if (!row) {
+      return 0;
+    }
+    return this.getActivityMembersByRow(row).filter(member => member.status === 'pending').length;
   }
 
   protected showEventEditorHeaderMembersButton(context: 'active' | 'stacked'): boolean {
@@ -9981,7 +10283,9 @@ export class App {
     if (this.selectedActivityMembersRow?.isAdmin === true) {
       return true;
     }
-    return entry.status === 'pending';
+    return entry.status === 'pending'
+      && entry.requestKind === 'invite'
+      && entry.invitedByActiveUser === true;
   }
 
   protected activityMemberStatusLabel(entry: ActivityMemberEntry): string {
@@ -11694,6 +11998,11 @@ export class App {
     if (cached) {
       return this.sortActivityMembersByActionTimeAsc([...cached]);
     }
+    if (row.id.startsWith('draft-')) {
+      const initial = [this.toActivityMemberEntry(this.activeUser, row, rowKey, { status: 'accepted', pendingSource: null, invitedByActiveUser: false })];
+      this.activityMembersByRowId[rowKey] = [...initial];
+      return initial;
+    }
     const forcedAcceptedCount = this.forcedAcceptedMembersByRowKey[rowKey];
     if (Number.isFinite(forcedAcceptedCount) && forcedAcceptedCount > 0) {
       const forced = this.buildForcedAcceptedMembers(row, rowKey, forcedAcceptedCount);
@@ -11792,26 +12101,55 @@ export class App {
       return null;
     }
     const source = this.resolveEventEditorSource();
-    if (!source) {
+    const draftId = this.eventEditorDraftMembersId;
+    const isDraft = !source && Boolean(draftId);
+    if (!source && !isDraft) {
       return null;
     }
-    const isHosting = this.eventEditorTarget === 'hosting' || this.isHostingSource(source);
+    const isHosting = source
+      ? (this.eventEditorTarget === 'hosting' || this.isHostingSource(source))
+      : this.eventEditorTarget === 'hosting';
+    const sourceIsAdmin = source ? (isHosting || ((source as EventMenuItem).isAdmin === true)) : true;
+    const canManageMembers = !this.eventEditorReadOnly && sourceIsAdmin;
+    const draftSource: EventMenuItem | HostingMenuItem = isHosting
+      ? {
+          id: draftId ?? 'draft-hosting',
+          avatar: this.activeUser.initials,
+          title: this.eventForm.title.trim() || 'New Event',
+          shortDescription: this.eventForm.description.trim() || 'Draft event',
+          timeframe: 'Draft',
+          activity: 0
+        }
+      : {
+          id: draftId ?? 'draft-event',
+          avatar: this.activeUser.initials,
+          title: this.eventForm.title.trim() || 'New Event',
+          shortDescription: this.eventForm.description.trim() || 'Draft event',
+          timeframe: 'Draft',
+          activity: 0,
+          isAdmin: true
+        };
+    const resolvedSource = source ?? draftSource;
+    const rowId = source?.id ?? draftSource.id;
     return {
-      id: source.id,
+      id: rowId,
       type: isHosting ? 'hosting' : 'events',
-      title: source.title,
-      subtitle: source.shortDescription,
-      detail: source.timeframe,
-      dateIso: this.eventDatesById[source.id] ?? this.defaultEventStartIso(),
-      distanceKm: this.eventDistanceById[source.id] ?? 10,
-      unread: source.activity,
-      metricScore: source.activity,
-      isAdmin: true,
-      source
+      title: resolvedSource.title,
+      subtitle: resolvedSource.shortDescription,
+      detail: resolvedSource.timeframe,
+      dateIso: source ? (this.eventDatesById[source.id] ?? this.defaultEventStartIso()) : this.eventForm.startAt,
+      distanceKm: source ? (this.eventDistanceById[source.id] ?? 10) : 0,
+      unread: resolvedSource.activity,
+      metricScore: resolvedSource.activity,
+      isAdmin: canManageMembers,
+      source: resolvedSource
     };
   }
 
   private shouldPromptEventEditorPublishOnClose(): boolean {
+    if (this.eventEditorReadOnly) {
+      return false;
+    }
     if (this.eventEditorTarget !== 'hosting') {
       return false;
     }
@@ -11826,6 +12164,9 @@ export class App {
   }
 
   private persistEventEditorIfValidForClose(): string | null {
+    if (this.eventEditorReadOnly) {
+      return null;
+    }
     this.syncEventFormFromDateTimeControls();
     const normalizedCapacity = this.normalizedEventCapacityRange();
     this.eventForm.capacityMin = normalizedCapacity.min;

@@ -3559,10 +3559,51 @@
 }
 
 .chat-header-members {
+  position: relative;
+  overflow: visible;
   cursor: pointer;
   border-radius: 999px;
   transition: transform 0.14s ease, background-color 0.16s ease;
   padding: 2px 4px 2px 2px;
+}
+
+.event-editor-members-trigger {
+  border: 1px solid rgba(160, 106, 44, 0.36);
+  background: linear-gradient(180deg, rgba(255, 246, 228, 0.98) 0%, rgba(252, 236, 201, 0.95) 100%);
+  min-height: 34px;
+  padding: 2px 10px 2px 4px;
+}
+
+.event-editor-members-invite {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 0 2px;
+  color: rgba(97, 57, 22, 0.95);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.event-editor-members-invite .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+  color: #ae661f;
+}
+
+.event-editor-members-pending-badge {
+  position: absolute;
+  top: -12px;
+  right: -10px;
+  min-width: 20px;
+  height: 20px;
+  font-size: 10px;
+  border: 1px solid #fff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.76);
+  z-index: 2;
 }
 
 .chat-header-members .chat-stack-avatar {
@@ -3955,6 +3996,27 @@
   transition: transform 0.14s ease, color 0.16s ease, background-color 0.16s ease;
 }
 
+.activity-members-header-add-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(42, 67, 101, 0.3);
+  background: linear-gradient(180deg, #eef4ff 0%, #dfe9ff 100%);
+  color: #275b98;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.14s ease, filter 0.16s ease, border-color 0.16s ease;
+}
+
+.activity-members-header-add-btn .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
 .activities-view-picker {
   position: relative;
   z-index: 60;
@@ -4063,6 +4125,15 @@
 .event-visibility-trigger.event-visibility-invitation {
   background: linear-gradient(180deg, #fff5ea 0%, #ffe9d9 100%);
   border-color: rgba(185, 113, 45, 0.36);
+}
+
+.event-visibility-trigger.event-editor-readonly-control,
+.event-topics-panel.event-editor-readonly-control,
+.subevents-mode-trigger.event-editor-readonly-control {
+  cursor: not-allowed;
+  opacity: 0.64;
+  filter: saturate(0.55);
+  box-shadow: none;
 }
 
 .event-visibility-public {
@@ -4392,6 +4463,29 @@
   color: #a35e1d;
 }
 
+.subevents-mode-trigger[disabled] {
+  cursor: not-allowed;
+  opacity: 0.62;
+  filter: saturate(0.72);
+  box-shadow: none;
+}
+
+.subevents-mode-trigger[disabled].subevents-mode-casual {
+  background: linear-gradient(180deg, #f1f4f1 0%, #e8ece8 100%);
+  border-color: rgba(89, 112, 94, 0.3);
+  color: rgba(58, 88, 65, 0.72);
+}
+
+.subevents-mode-trigger[disabled].subevents-mode-tournament {
+  background: linear-gradient(180deg, #f6f2ed 0%, #ece5db 100%);
+  border-color: rgba(131, 106, 82, 0.3);
+  color: rgba(111, 85, 53, 0.72);
+}
+
+.subevents-mode-trigger[disabled] .subevents-mode-icon {
+  color: currentColor;
+}
+
 .activities-view-option.subevents-mode-casual {
   background: linear-gradient(180deg, #f2faf3 0%, #e8f5eb 100%);
   color: #2d7d47;
@@ -4675,7 +4769,7 @@
   row-gap: 0.6rem;
   column-gap: 0.6rem;
   padding: 0.28rem 0.44rem 0.28rem 0.28rem;
-  display: grid;
+  //display: grid;
   align-content: start;
   overflow-y: auto;
   overflow-x: hidden;
@@ -6994,9 +7088,20 @@
     background: rgba(54, 90, 133, 0.08);
   }
 
+  .activity-members-header-add-btn:hover {
+    transform: translateY(-1px);
+    border-color: rgba(39, 76, 121, 0.46);
+    filter: brightness(1.04);
+  }
+
   .chat-header-members:hover {
     transform: translateY(-1px) scale(1.04);
     background: rgba(54, 90, 133, 0.08);
+  }
+
+  .event-editor-members-trigger:hover {
+    border-color: rgba(167, 103, 34, 0.52);
+    background: linear-gradient(180deg, rgba(255, 250, 237, 0.99) 0%, rgba(253, 241, 214, 0.97) 100%);
   }
 
   .chat-header-members:hover .chat-stack-avatar,
@@ -7013,6 +7118,7 @@
 .activities-card:active,
 .header-icon-btn:active,
 .popup-chat-event-btn:active,
+.activity-members-header-add-btn:active,
 .chat-header-members:active,
 .chat-send-btn:active,
 .chat-editor-icon-btn:active {
@@ -10783,6 +10889,7 @@ textarea {
   max-width: none;
   flex: 0 0 auto;
   position: relative;
+  margin: 0.5rem 0;
 }
 
 .event-subevent-card.event-subevent-card-group.event-subevent-card-optional {
