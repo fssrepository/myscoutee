@@ -7691,6 +7691,7 @@ export class App {
 
   protected onActivitiesScroll(event: Event): void {
     const target = event.target as HTMLElement;
+    this.clearActivityRateEditorState();
     this.updateActivitiesStickyHeader(target.scrollTop || 0);
     this.updateActivitiesHeaderProgress();
     this.maybeLoadMoreActivities(target);
@@ -8461,6 +8462,9 @@ export class App {
 
   protected selectActivityRateCardImage(row: ActivityListRow, imageIndex: number, event?: Event): void {
     event?.stopPropagation();
+    if (this.selectedActivityRateId && this.selectedActivityRateId !== row.id) {
+      this.clearActivityRateEditorState();
+    }
     const images = this.activityRateCardImageUrls(row);
     if (images.length === 0) {
       return;
@@ -8681,6 +8685,10 @@ export class App {
     return ownLabel ? ownLabel : 'Rate';
   }
 
+  protected isSelectedActivityRateRow(row: ActivityListRow): boolean {
+    return row.type === 'rates' && this.isActivityRateEditorOpen() && this.selectedActivityRateId === row.id;
+  }
+
   protected isPairReceivedRateRow(row: ActivityListRow): boolean {
     if (row.type !== 'rates') {
       return false;
@@ -8731,21 +8739,19 @@ export class App {
     if (row.type !== 'rates') {
       return;
     }
+    if (this.selectedActivityRateId === row.id) {
+      this.clearActivityRateEditorState();
+      return;
+    }
     this.selectedActivityRateId = row.id;
   }
 
   protected onActivitiesPopupSurfaceClick(event: MouseEvent): void {
-    if (this.activePopup !== 'activities' || this.activitiesPrimaryFilter !== 'rates' || !this.selectedActivityRateId) {
+    const target = event.target;
+    if (!(target instanceof Element)) {
       return;
     }
-    const target = event.target as HTMLElement | null;
-    if (!target) {
-      return;
-    }
-    if (target.closest('.activities-rate-editor-dock') || target.closest('.activities-rate-score-badge')) {
-      return;
-    }
-    this.selectedActivityRateId = null;
+    this.maybeDismissActivityRateEditor(target);
   }
 
   protected setSelectedActivityOwnRating(score: number): void {
@@ -8865,6 +8871,20 @@ export class App {
 
   private clearActivityRateEditorState(): void {
     this.selectedActivityRateId = null;
+  }
+
+  private maybeDismissActivityRateEditor(target: Element): void {
+    if (!this.isActivityRateEditorOpen()) {
+      return;
+    }
+    if (
+      target.closest('.activities-rate-editor-dock') ||
+      target.closest('.activities-rate-score-badge') ||
+      target.closest('.activities-rate-profile-card.is-rate-editor-selected')
+    ) {
+      return;
+    }
+    this.clearActivityRateEditorState();
   }
 
   private acceptInvitationFromRow(invitationId: string): void {
@@ -10351,6 +10371,7 @@ export class App {
     if (!(target instanceof Element)) {
       return;
     }
+    this.maybeDismissActivityRateEditor(target);
     if (this.inlineItemActionMenu && !target.closest('.item-action-menu') && !target.closest('.experience-action-menu-trigger')) {
       this.inlineItemActionMenu = null;
     }

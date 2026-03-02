@@ -1008,10 +1008,11 @@
                   <article
                     *ngIf="isRateStyleActivity(row)"
                     class="activities-rate-profile-card activities-row-item"
+                    [class.is-rate-editor-selected]="isSelectedActivityRateRow(row)"
                     [attr.data-group-label]="group.label"
                   >
                     <div class="activities-rate-profile-stack" [ngClass]="activityRateCardContentClasses(row)" *ngIf="activityRateCardImageUrls(row) as imageUrls">
-                      <div class="image-stack-indicators activities-rate-profile-indicators" *ngIf="imageUrls.length > 0">
+                      <div class="image-stack-indicators activities-rate-profile-indicators" *ngIf="imageUrls.length > 1">
                         <button
                           type="button"
                           class="image-stack-line"
@@ -1046,6 +1047,7 @@
                       <button
                         type="button"
                         class="activities-rate-score-badge activities-rate-score-badge-floating"
+                          [class.is-active]="isSelectedActivityRateRow(row)"
                           [class.is-pending]="isActivityRatePending(row)"
                           [class.is-disabled]="isPairReceivedRateRow(row)"
                           (click)="isPairReceivedRateRow(row) ? $event.stopPropagation() : openActivityRateEditor(row, $event)"
