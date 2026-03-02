@@ -1725,6 +1725,11 @@ export class App {
     this.openActivitiesPopup('rates', false);
   }
 
+  @HostListener('window:myscoutee-open-rates')
+  protected onGameHistoryOpenRates(): void {
+    this.openRatesShortcut();
+  }
+
   protected openChatShortcut(): void {
     this.openActivitiesPopup('chats', false);
   }
@@ -9131,7 +9136,7 @@ export class App {
 
     pushProfilePair('Interest', 'Values');
     pushProfilePair('Communication style', 'Love style');
-    pushProfilePair('Workout', 'Pets');
+    pushProfilePair('Workout', 'Pets', 'Workout · ');
     pushProfilePair('Languages', 'Horoscope');
     pushProfilePair('Height', 'Physique');
     pushProfilePair('Family plans', 'Children');

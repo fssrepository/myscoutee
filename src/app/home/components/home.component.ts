@@ -165,7 +165,9 @@ export class HomeComponent {
   }
 
   protected openHistory(): void {
-    this.localPopup = 'history';
+    if (typeof globalThis.dispatchEvent === 'function') {
+      globalThis.dispatchEvent(new CustomEvent('myscoutee-open-rates'));
+    }
   }
 
   protected closeLocalPopup(): void {

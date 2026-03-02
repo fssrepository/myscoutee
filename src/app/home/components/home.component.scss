@@ -145,6 +145,16 @@
   line-height: 16px;
 }
 
+.game-action-history {
+  border-color: #e4c67f;
+  background: linear-gradient(180deg, #fff7df 0%, #f6e8bf 100%);
+  color: #835d14;
+}
+
+.game-action-history .mat-icon {
+  color: #c8921e;
+}
+
 .filter-state-badge {
   border: 1px solid rgba(255, 255, 255, 0.46);
   border-radius: 999px;
