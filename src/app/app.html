@@ -1954,9 +1954,9 @@
               <label class="event-capacity-range-field">
                 <span>Capacity</span>
                 <div class="subevent-capacity-range">
-                  <input type="number" min="1" step="1" [ngModel]="eventForm.capacityMin" (ngModelChange)="onEventCapacityMinChange($event)" placeholder="Min" />
+                  <input type="number" min="0" step="1" [ngModel]="eventForm.capacityMin" (ngModelChange)="onEventCapacityMinChange($event)" placeholder="Min" />
                   <span class="subevent-capacity-separator">-</span>
-                  <input type="number" [min]="eventForm.capacityMin || 1" step="1" [ngModel]="eventForm.capacityMax" (ngModelChange)="onEventCapacityMaxChange($event)" placeholder="Max" />
+                  <input type="number" [min]="eventForm.capacityMin ?? 0" step="1" [ngModel]="eventForm.capacityMax" (ngModelChange)="onEventCapacityMaxChange($event)" placeholder="Max" />
                 </div>
               </label>
               <div class="event-intel-row">
@@ -2183,9 +2183,9 @@
                     <label class="subevent-capacity-range-field" *ngIf="subEventForm.optional">
                       <span>Capacity</span>
                       <div class="subevent-capacity-range">
-                        <input type="number" min="1" step="1" [ngModel]="subEventForm.capacityMin" (ngModelChange)="onSubEventCapacityMinChange($event)" placeholder="Min" />
+                        <input type="number" min="0" step="1" [ngModel]="subEventForm.capacityMin" (ngModelChange)="onSubEventCapacityMinChange($event)" placeholder="Min" />
                         <span class="subevent-capacity-separator">-</span>
-                        <input type="number" min="1" [max]="optionalSubEventMainMax() || null" step="1" [ngModel]="subEventForm.capacityMax" (input)="onSubEventCapacityMaxInput($event)" (ngModelChange)="onSubEventCapacityMaxChange($event)" placeholder="Max" />
+                        <input type="number" min="0" [max]="optionalSubEventMainMax() || null" step="1" [ngModel]="subEventForm.capacityMax" (input)="onSubEventCapacityMaxInput($event)" (ngModelChange)="onSubEventCapacityMaxChange($event)" placeholder="Max" />
                       </div>
                     </label>
                     <label class="subevent-stage-insert-field" *ngIf="showSubEventInsertControls()">
@@ -2252,7 +2252,7 @@
                             <span>Min Per Group</span>
                             <input
                               type="number"
-                              min="1"
+                              min="0"
                               step="1"
                               [ngModel]="subEventForm.tournamentGroupCapacityMin ?? ''"
                               (ngModelChange)="onTournamentGroupCapacityMinChange($event)"
@@ -2264,7 +2264,7 @@
                             <span>Max Per Group</span>
                             <input
                               type="number"
-                              min="1"
+                              min="0"
                               step="1"
                               [ngModel]="subEventForm.tournamentGroupCapacityMax ?? ''"
                               (ngModelChange)="onTournamentGroupCapacityMaxChange($event)"
@@ -2307,11 +2307,11 @@
                             <span>Advance Per Group</span>
                             <input
                               type="number"
-                              min="1"
+                              min="0"
                               step="1"
                               [ngModel]="subEventForm.tournamentAdvancePerGroup ?? ''"
                               (ngModelChange)="onTournamentAdvancePerGroupChange($event)"
-                              placeholder="1"
+                              placeholder="0"
                             />
                           </label>
                         </div>
@@ -3579,9 +3579,9 @@
               <label class="event-capacity-range-field">
                 <span>Capacity</span>
                 <div class="subevent-capacity-range">
-                  <input type="number" min="1" step="1" [ngModel]="eventForm.capacityMin" (ngModelChange)="onEventCapacityMinChange($event)" placeholder="Min" />
+                  <input type="number" min="0" step="1" [ngModel]="eventForm.capacityMin" (ngModelChange)="onEventCapacityMinChange($event)" placeholder="Min" />
                   <span class="subevent-capacity-separator">-</span>
-                  <input type="number" [min]="eventForm.capacityMin || 1" step="1" [ngModel]="eventForm.capacityMax" (ngModelChange)="onEventCapacityMaxChange($event)" placeholder="Max" />
+                  <input type="number" [min]="eventForm.capacityMin ?? 0" step="1" [ngModel]="eventForm.capacityMax" (ngModelChange)="onEventCapacityMaxChange($event)" placeholder="Max" />
                 </div>
               </label>
               <div class="event-intel-row">
@@ -3808,9 +3808,9 @@
                     <label class="subevent-capacity-range-field" *ngIf="subEventForm.optional">
                       <span>Capacity</span>
                       <div class="subevent-capacity-range">
-                        <input type="number" min="1" step="1" [ngModel]="subEventForm.capacityMin" (ngModelChange)="onSubEventCapacityMinChange($event)" placeholder="Min" />
+                        <input type="number" min="0" step="1" [ngModel]="subEventForm.capacityMin" (ngModelChange)="onSubEventCapacityMinChange($event)" placeholder="Min" />
                         <span class="subevent-capacity-separator">-</span>
-                        <input type="number" min="1" [max]="optionalSubEventMainMax() || null" step="1" [ngModel]="subEventForm.capacityMax" (input)="onSubEventCapacityMaxInput($event)" (ngModelChange)="onSubEventCapacityMaxChange($event)" placeholder="Max" />
+                        <input type="number" min="0" [max]="optionalSubEventMainMax() || null" step="1" [ngModel]="subEventForm.capacityMax" (input)="onSubEventCapacityMaxInput($event)" (ngModelChange)="onSubEventCapacityMaxChange($event)" placeholder="Max" />
                       </div>
                     </label>
                     <label class="subevent-stage-insert-field" *ngIf="showSubEventInsertControls()">
@@ -3877,7 +3877,7 @@
                             <span>Min Per Group</span>
                             <input
                               type="number"
-                              min="1"
+                              min="0"
                               step="1"
                               [ngModel]="subEventForm.tournamentGroupCapacityMin ?? ''"
                               (ngModelChange)="onTournamentGroupCapacityMinChange($event)"
@@ -3889,7 +3889,7 @@
                             <span>Max Per Group</span>
                             <input
                               type="number"
-                              min="1"
+                              min="0"
                               step="1"
                               [ngModel]="subEventForm.tournamentGroupCapacityMax ?? ''"
                               (ngModelChange)="onTournamentGroupCapacityMaxChange($event)"
@@ -3932,11 +3932,11 @@
                             <span>Advance Per Group</span>
                             <input
                               type="number"
-                              min="1"
+                              min="0"
                               step="1"
                               [ngModel]="subEventForm.tournamentAdvancePerGroup ?? ''"
                               (ngModelChange)="onTournamentAdvancePerGroupChange($event)"
-                              placeholder="1"
+                              placeholder="0"
                             />
                           </label>
                         </div>
@@ -4490,7 +4490,9 @@
           [class.event-subevent-card-mandatory]="!subEvent.optional"
           [class.event-subevent-card-group]="tournamentMode"
         >
-          <span class="event-subevent-group-label" *ngIf="groupLabel" [ngStyle]="subEventGroupBadgeStyle(group?.groupNumber || 1)">{{ groupLabel }}</span>
+          <span class="event-subevent-group-label" *ngIf="groupLabel" [ngStyle]="subEventGroupBadgeStyle(group?.groupNumber || 1)">
+            {{ groupLabel }} · {{ subEventTournamentGroupSourceLabel(group) }}
+          </span>
           <div class="event-subevent-card-head" *ngIf="!tournamentMode || canManageSubEventItem(subEvent)">
             <h4 *ngIf="!tournamentMode">{{ subEvent.name }}</h4>
             <div class="experience-item-actions event-subevent-item-actions" *ngIf="canManageSubEventItem(subEvent)">
@@ -4638,9 +4640,9 @@
             <label class="subevent-capacity-range-field" *ngIf="subEventForm.optional">
               <span>Capacity</span>
               <div class="subevent-capacity-range">
-                <input type="number" min="1" step="1" [ngModel]="subEventForm.capacityMin" (ngModelChange)="onSubEventCapacityMinChange($event)" placeholder="Min" />
+                <input type="number" min="0" step="1" [ngModel]="subEventForm.capacityMin" (ngModelChange)="onSubEventCapacityMinChange($event)" placeholder="Min" />
                 <span class="subevent-capacity-separator">-</span>
-                <input type="number" min="1" [max]="optionalSubEventMainMax() || null" step="1" [ngModel]="subEventForm.capacityMax" (input)="onSubEventCapacityMaxInput($event)" (ngModelChange)="onSubEventCapacityMaxChange($event)" placeholder="Max" />
+                <input type="number" min="0" [max]="optionalSubEventMainMax() || null" step="1" [ngModel]="subEventForm.capacityMax" (input)="onSubEventCapacityMaxInput($event)" (ngModelChange)="onSubEventCapacityMaxChange($event)" placeholder="Max" />
               </div>
             </label>
             <label class="subevent-stage-insert-field" *ngIf="showSubEventInsertControls()">
@@ -4707,7 +4709,7 @@
                     <span>Min Per Group</span>
                     <input
                       type="number"
-                      min="1"
+                      min="0"
                       step="1"
                       [ngModel]="subEventForm.tournamentGroupCapacityMin ?? ''"
                       (ngModelChange)="onTournamentGroupCapacityMinChange($event)"
@@ -4719,7 +4721,7 @@
                     <span>Max Per Group</span>
                     <input
                       type="number"
-                      min="1"
+                      min="0"
                       step="1"
                       [ngModel]="subEventForm.tournamentGroupCapacityMax ?? ''"
                       (ngModelChange)="onTournamentGroupCapacityMaxChange($event)"
@@ -4762,11 +4764,11 @@
                     <span>Advance Per Group</span>
                     <input
                       type="number"
-                      min="1"
+                      min="0"
                       step="1"
                       [ngModel]="subEventForm.tournamentAdvancePerGroup ?? ''"
                       (ngModelChange)="onTournamentAdvancePerGroupChange($event)"
-                      placeholder="1"
+                      placeholder="0"
                     />
                   </label>
                 </div>
@@ -4815,9 +4817,9 @@
             <label class="subevent-capacity-range-field">
               <span>Capacity</span>
               <div class="subevent-capacity-range">
-                <input type="number" min="1" step="1" [ngModel]="subEventGroupForm.capacityMin" (ngModelChange)="onSubEventGroupCapacityMinChange($event)" placeholder="Min" />
+                <input type="number" min="0" step="1" [ngModel]="subEventGroupForm.capacityMin" (ngModelChange)="onSubEventGroupCapacityMinChange($event)" placeholder="Min" />
                 <span class="subevent-capacity-separator">-</span>
-                <input type="number" min="1" step="1" [ngModel]="subEventGroupForm.capacityMax" (ngModelChange)="onSubEventGroupCapacityMaxChange($event)" placeholder="Max" />
+                <input type="number" min="0" step="1" [ngModel]="subEventGroupForm.capacityMax" (ngModelChange)="onSubEventGroupCapacityMaxChange($event)" placeholder="Max" />
               </div>
             </label>
           </div>

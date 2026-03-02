@@ -318,6 +318,7 @@ interface SubEventGroupItem {
   name: string;
   capacityMin?: number;
   capacityMax?: number;
+  source?: 'manual' | 'generated';
 }
 
 interface SubEventGroupFormItem {
@@ -327,6 +328,7 @@ interface SubEventGroupFormItem {
   name: string;
   capacityMin: number;
   capacityMax: number;
+  source: 'manual' | 'generated';
 }
 
 interface SubEventTournamentConfig {
@@ -340,6 +342,7 @@ interface SubEventTournamentGroup {
   id: string;
   groupNumber: number;
   groupLabel: string;
+  source: 'manual' | 'generated';
   subEvent: SubEventFormItem;
 }
 
@@ -888,7 +891,8 @@ export class App {
   protected pendingActivityPublishRow: ActivityListRow | null = null;
   protected pendingSubEventDeleteId: string | null = null;
   protected pendingSubEventDeleteContext: 'subEvent' | 'stage' | null = null;
-  protected pendingSubEventGroupDelete: { stageId: string; groupId: string; stageLabel: string; groupLabel: string } | null = null;
+  protected pendingSubEventGroupDelete:
+    { stageId: string; groupId: string; stageLabel: string; groupLabel: string; source: 'manual' | 'generated' } | null = null;
   protected eventEditorClosePublishConfirmContext: 'active' | 'stacked' | null = null;
   protected pendingActivityAction: 'delete' | 'exit' = 'delete';
   protected pendingActivityMemberDelete: ActivityMemberEntry | null = null;
@@ -1824,6 +1828,7 @@ export class App {
         id: group.id,
         groupNumber: groupIndex + 1,
         groupLabel: group.name,
+        source: this.normalizedSubEventGroupSource(group),
         subEvent
       }));
       return {
@@ -2269,7 +2274,8 @@ export class App {
       stageId: stage.id,
       groupId: group.id,
       stageLabel: `${stagePrefix} · ${stageName}`,
-      groupLabel: group.groupLabel
+      groupLabel: group.groupLabel,
+      source: group.source
     };
   }
 
@@ -2289,7 +2295,31 @@ export class App {
     }
     const currentGroups = this.materializedSubEventGroups(stage);
     const nextGroups = currentGroups.filter(group => group.id !== pending.groupId);
-    this.patchSubEventGroups(stage.id, nextGroups);
+    const stagePatch = {
+      ...stage,
+      tournamentGroupCount: stage.optional ? stage.tournamentGroupCount : Math.max(0, nextGroups.length)
+    };
+    const reconciledGroups = this.reconcileTournamentGroupsForStage(stagePatch, nextGroups);
+    const totals = this.groupCapacityTotals(reconciledGroups);
+    this.eventForm.subEvents = this.eventForm.subEvents.map(item => {
+      if (item.id !== stage.id) {
+        return item;
+      }
+      if (item.optional) {
+        return {
+          ...item,
+          groups: this.cloneSubEventGroups(reconciledGroups)
+        };
+      }
+      return {
+        ...item,
+        groups: this.cloneSubEventGroups(reconciledGroups),
+        tournamentGroupCount: reconciledGroups.length,
+        capacityMin: totals.min,
+        capacityMax: totals.max
+      };
+    });
+    this.updateMainEventBoundsFromSubEvents();
     this.clearSubEventLeaderboardGroup(stage.id, pending.groupId);
     this.pendingSubEventGroupDelete = null;
   }
@@ -2444,6 +2474,10 @@ export class App {
     return this.subEventGroupForm.id ? 'Edit Group' : 'Create Group';
   }
 
+  protected subEventTournamentGroupSourceLabel(group: SubEventTournamentGroup | null | undefined): string {
+    return group?.source === 'generated' ? 'Generated' : 'Manual';
+  }
+
   protected subEventGroupFieldInvalid(): boolean {
     return !this.subEventGroupForm.name.trim();
   }
@@ -2576,7 +2610,7 @@ export class App {
     }
     const parsed = Number(value);
     this.subEventForm.tournamentAdvancePerGroup = Number.isFinite(parsed)
-      ? Math.max(1, Math.trunc(parsed))
+      ? Math.max(0, Math.trunc(parsed))
       : this.subEventForm.tournamentAdvancePerGroup;
   }
 
@@ -2589,7 +2623,11 @@ export class App {
 
   protected tournamentEstimatedGroupCountLabel(): string {
     const config = this.tournamentStageConfigFromItem(this.subEventForm);
-    const estimated = this.tournamentEstimatedGroupCountRange(config.groupCapacityMin, config.groupCapacityMax);
+    const estimated = this.tournamentEstimatedGroupCountRange(
+      config.groupCapacityMin,
+      config.groupCapacityMax,
+      this.subEventForm
+    );
     return `${estimated.min} - ${estimated.max}`;
   }
 
@@ -2603,9 +2641,9 @@ export class App {
       return 'Final stage: no next-stage progression required.';
     }
     const nextConfig = this.tournamentStageConfigFromItem(nextStage);
-    const nextMin = Math.max(1, nextConfig.groupCount * nextConfig.groupCapacityMin);
+    const nextMin = Math.max(0, nextConfig.groupCount * nextConfig.groupCapacityMin);
     const nextMax = Math.max(nextMin, nextConfig.groupCount * nextConfig.groupCapacityMax);
-    const perGroupMin = Math.max(1, Math.floor(nextMin / config.groupCount));
+    const perGroupMin = Math.max(0, Math.floor(nextMin / config.groupCount));
     const perGroupMax = Math.max(perGroupMin, Math.ceil(nextMax / config.groupCount));
     const perGroupLabel = perGroupMin === perGroupMax ? String(perGroupMin) : `${perGroupMin} - ${perGroupMax}`;
     return `Auto advance / group: ${perGroupLabel} (from next stage capacity).`;
@@ -3348,7 +3386,7 @@ export class App {
 
   protected onSubEventGroupCapacityMinChange(value: number | string): void {
     const parsed = Number(value);
-    const nextMin = Math.max(1, Number.isFinite(parsed) ? Math.trunc(parsed) : this.subEventGroupForm.capacityMin);
+    const nextMin = Math.max(0, Number.isFinite(parsed) ? Math.trunc(parsed) : this.subEventGroupForm.capacityMin);
     this.subEventGroupForm.capacityMin = nextMin;
     if (this.subEventGroupForm.capacityMax < nextMin) {
       this.subEventGroupForm.capacityMax = nextMin;
@@ -3529,13 +3567,15 @@ export class App {
 
   protected onSubEventCapacityMinChange(value: number | string): void {
     const parsed = Number(value);
-    this.subEventForm.capacityMin = Math.max(1, Number.isFinite(parsed) ? parsed : this.subEventForm.capacityMin);
+    const floor = 0;
+    this.subEventForm.capacityMin = Math.max(floor, Number.isFinite(parsed) ? parsed : this.subEventForm.capacityMin);
     this.normalizeSubEventCapacityRange(true);
   }
 
   protected onSubEventCapacityMaxChange(value: number | string): void {
     const parsed = Number(value);
-    const next = Math.max(1, Number.isFinite(parsed) ? parsed : this.subEventForm.capacityMax);
+    const floor = 0;
+    const next = Math.max(floor, Number.isFinite(parsed) ? parsed : this.subEventForm.capacityMax);
     this.subEventForm.capacityMax = next;
     this.normalizeSubEventCapacityRange(true);
   }
@@ -3558,9 +3598,9 @@ export class App {
   }
 
   protected onEventCapacityMinChange(value: number | string): void {
-    this.eventForm.capacityMin = this.toCapacityInputValue(value);
-    const normalizedMin = this.normalizedCapacityValue(this.eventForm.capacityMin);
-    const normalizedMax = this.normalizedCapacityValue(this.eventForm.capacityMax);
+    this.eventForm.capacityMin = this.toEventCapacityInputValue(value);
+    const normalizedMin = this.normalizedEventCapacityValue(this.eventForm.capacityMin);
+    const normalizedMax = this.normalizedEventCapacityValue(this.eventForm.capacityMax);
     if (normalizedMin !== null && normalizedMax !== null && normalizedMax < normalizedMin) {
       this.eventForm.capacityMax = normalizedMin;
     }
@@ -3568,9 +3608,9 @@ export class App {
   }
 
   protected onEventCapacityMaxChange(value: number | string): void {
-    this.eventForm.capacityMax = this.toCapacityInputValue(value);
-    const normalizedMin = this.normalizedCapacityValue(this.eventForm.capacityMin);
-    const normalizedMax = this.normalizedCapacityValue(this.eventForm.capacityMax);
+    this.eventForm.capacityMax = this.toEventCapacityInputValue(value);
+    const normalizedMin = this.normalizedEventCapacityValue(this.eventForm.capacityMin);
+    const normalizedMax = this.normalizedEventCapacityValue(this.eventForm.capacityMax);
     if (normalizedMax !== null && normalizedMin !== null && normalizedMax < normalizedMin) {
       this.eventForm.capacityMax = normalizedMin;
     }
@@ -3737,8 +3777,8 @@ export class App {
       title: source.title,
       description: source.shortDescription,
       imageUrl: this.defaultAssetImage('Supplies', `event-${source.id}`),
-      capacityMin: this.normalizedCapacityValue(capacity.min),
-      capacityMax: this.normalizedCapacityValue(capacity.max),
+      capacityMin: this.normalizedEventCapacityValue(capacity.min),
+      capacityMax: this.normalizedEventCapacityValue(capacity.max),
       startAt: this.toIsoDateTimeLocal(fallbackStart),
       endAt: this.toIsoDateTimeLocal(end),
       frequency,
@@ -3834,8 +3874,8 @@ export class App {
       title: '',
       description: '',
       imageUrl: '',
-      capacityMin: null,
-      capacityMax: null,
+      capacityMin: 0,
+      capacityMax: 0,
       startAt: this.toIsoDateTimeLocal(start),
       endAt: this.toIsoDateTimeLocal(end),
       frequency: 'One-time',
@@ -3882,10 +3922,8 @@ export class App {
     const baseEnd = this.isoLocalDateTimeToDate(this.eventForm.endAt) ?? new Date(baseStart);
     const start = new Date(baseStart);
     const end = new Date(baseEnd.getTime() < baseStart.getTime() ? baseStart : baseEnd);
-    const mainMin = this.normalizedCapacityValue(this.eventForm.capacityMin);
-    const mainMax = this.normalizedCapacityValue(this.eventForm.capacityMax);
-    const initialMin = mainMax !== null ? Math.min(mainMin ?? 1, mainMax) : 4;
-    const initialMax = mainMax !== null ? mainMax : 6;
+    const initialMin = 0;
+    const initialMax = 0;
     return {
       id: '',
       name: '',
@@ -3895,7 +3933,7 @@ export class App {
       createdByUserId: this.activeUser.id,
       groups: [],
       tournamentLeaderboardType: 'Score',
-      tournamentAdvancePerGroup: 1,
+      tournamentAdvancePerGroup: 0,
       optional: true,
       capacityMin: initialMin,
       capacityMax: initialMax,
@@ -3915,14 +3953,15 @@ export class App {
       groupName?: string;
       groupCapacityMin?: number;
       groupCapacityMax?: number;
+      groupSource?: 'manual' | 'generated';
     }
   ): SubEventGroupFormItem {
     const stageId = stage?.id ?? '';
     const existingGroups = stage ? this.materializedSubEventGroups(stage) : [];
     const stageConfig = stage ? this.tournamentStageConfigFromItem(stage) : null;
-    const fallbackMin = stageConfig?.groupCapacityMin ?? 1;
+    const fallbackMin = stageConfig?.groupCapacityMin ?? 0;
     const fallbackMax = stageConfig?.groupCapacityMax ?? fallbackMin;
-    const nextMin = Math.max(1, Number(options?.groupCapacityMin) || fallbackMin);
+    const nextMin = Math.max(0, Number(options?.groupCapacityMin) || fallbackMin);
     const nextMax = Math.max(nextMin, Number(options?.groupCapacityMax) || fallbackMax);
     return {
       id: options?.groupId ?? '',
@@ -3930,7 +3969,8 @@ export class App {
       stageTitle: options?.stageTitle ?? stage?.name ?? '',
       name: options?.groupName ?? `Group ${existingGroups.length + 1}`,
       capacityMin: nextMin,
-      capacityMax: nextMax
+      capacityMax: nextMax,
+      source: options?.groupSource ?? 'manual'
     };
   }
 
@@ -4370,33 +4410,64 @@ export class App {
     if (!groups || groups.length === 0) {
       return [];
     }
-    return groups.map(group => ({ ...group }));
+    return groups.map(group => ({
+      ...group,
+      source: this.normalizedSubEventGroupSource(group)
+    }));
   }
 
   private subEventGroupsForStage(item: SubEventFormItem): SubEventGroupItem[] {
-    if (item.groups && item.groups.length > 0) {
-      return this.cloneSubEventGroups(item.groups);
-    }
-    return [];
+    return this.reconcileTournamentGroupsForStage(item, this.cloneSubEventGroups(item.groups));
   }
 
   private materializedSubEventGroups(item: SubEventFormItem): SubEventGroupItem[] {
-    if (item.groups && item.groups.length > 0) {
-      return this.cloneSubEventGroups(item.groups);
-    }
-    return [];
+    return this.reconcileTournamentGroupsForStage(item, this.cloneSubEventGroups(item.groups));
   }
 
-  private patchSubEventGroups(stageId: string, groups: SubEventGroupItem[]): void {
-    this.eventForm.subEvents = this.eventForm.subEvents.map(item => {
-      if (item.id !== stageId) {
-        return item;
-      }
-      return {
-        ...item,
-        groups: this.cloneSubEventGroups(groups)
-      };
-    });
+  private normalizedSubEventGroupSource(group: Partial<SubEventGroupItem> | undefined): 'manual' | 'generated' {
+    return group?.source === 'generated' ? 'generated' : 'manual';
+  }
+
+  private reconcileTournamentGroupsForStage(
+    item: SubEventFormItem,
+    sourceGroups: SubEventGroupItem[] = this.cloneSubEventGroups(item.groups)
+  ): SubEventGroupItem[] {
+    const normalizedGroups = sourceGroups.map(group => ({
+      ...group,
+      source: this.normalizedSubEventGroupSource(group)
+    }));
+    if (item.optional) {
+      return normalizedGroups;
+    }
+    const manualGroups = normalizedGroups
+      .filter(group => this.normalizedSubEventGroupSource(group) === 'manual')
+      .map(group => ({
+        ...group,
+        source: 'manual' as const
+      }));
+    const generatedGroups = normalizedGroups
+      .filter(group => this.normalizedSubEventGroupSource(group) === 'generated')
+      .map(group => ({
+        ...group,
+        source: 'generated' as const
+      }));
+    // Server-generated groups stay as provided; manual groups are shown first.
+    return [...manualGroups, ...generatedGroups];
+  }
+
+  private groupCapacityTotals(groups: SubEventGroupItem[]): { min: number; max: number } {
+    if (groups.length === 0) {
+      return { min: 0, max: 0 };
+    }
+    let totalMin = 0;
+    let totalMax = 0;
+    for (const group of groups) {
+      const min = Math.max(0, Number(group.capacityMin) || 0);
+      const max = Math.max(min, Number(group.capacityMax) || min);
+      totalMin += min;
+      totalMax += max;
+    }
+    return { min: Math.max(0, totalMin), max: Math.max(Math.max(0, totalMin), totalMax) };
   }
 
   private openSubEventGroupEditor(item: SubEventFormItem, group: SubEventTournamentGroup): void {
@@ -4408,7 +4479,8 @@ export class App {
       groupId: group.id,
       groupName: group.groupLabel,
       groupCapacityMin: sourceGroup?.capacityMin,
-      groupCapacityMax: sourceGroup?.capacityMax
+      groupCapacityMax: sourceGroup?.capacityMax,
+      groupSource: sourceGroup?.source ?? group.source
     });
     this.showSubEventGroupRequiredValidation = false;
     this.showSubEventForm = false;
@@ -4428,13 +4500,14 @@ export class App {
     const existingGroups = this.materializedSubEventGroups(stage);
     const existingId = this.subEventGroupForm.id;
     const nextId = existingId || `grp-${stageId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    const nextCapacityMin = Math.max(1, Number(this.subEventGroupForm.capacityMin) || 1);
+    const nextCapacityMin = Math.max(0, Number(this.subEventGroupForm.capacityMin) || 0);
     const nextCapacityMax = Math.max(nextCapacityMin, Number(this.subEventGroupForm.capacityMax) || nextCapacityMin);
     const nextEntry: SubEventGroupItem = {
       id: nextId,
       name: nextName,
       capacityMin: nextCapacityMin,
-      capacityMax: nextCapacityMax
+      capacityMax: nextCapacityMax,
+      source: 'manual'
     };
     let nextGroups: SubEventGroupItem[];
     if (existingId && existingGroups.some(group => group.id === existingId)) {
@@ -4442,7 +4515,27 @@ export class App {
     } else {
       nextGroups = [...existingGroups, nextEntry];
     }
-    this.patchSubEventGroups(stageId, nextGroups);
+    const reconciledGroups = this.reconcileTournamentGroupsForStage(stage, nextGroups);
+    const capacityTotals = this.groupCapacityTotals(reconciledGroups);
+    this.eventForm.subEvents = this.eventForm.subEvents.map(item => {
+      if (item.id !== stageId) {
+        return item;
+      }
+      if (item.optional) {
+        return {
+          ...item,
+          groups: this.cloneSubEventGroups(reconciledGroups)
+        };
+      }
+      return {
+        ...item,
+        groups: this.cloneSubEventGroups(reconciledGroups),
+        tournamentGroupCount: reconciledGroups.length,
+        capacityMin: capacityTotals.min,
+        capacityMax: capacityTotals.max
+      };
+    });
+    this.updateMainEventBoundsFromSubEvents();
     return true;
   }
 
@@ -4713,6 +4806,12 @@ export class App {
       : this.subEventForm.tournamentAdvancePerGroup;
     const nextCapacityMin = this.subEventForm.capacityMin;
     const nextCapacityMax = this.subEventForm.capacityMax;
+    const capacityFloor = 0;
+    const normalizedNextCapacityMin = Math.max(capacityFloor, Number(nextCapacityMin) || 0);
+    const normalizedNextCapacityMax = Math.max(
+      normalizedNextCapacityMin,
+      Number(nextCapacityMax) || normalizedNextCapacityMin
+    );
     const tournamentGroupCount = this.normalizedCapacityValue(this.subEventForm.tournamentGroupCount);
     const existingId = this.subEventForm.id;
     const creatorId = this.subEventForm.createdByUserId ?? this.activeUser.id;
@@ -4723,7 +4822,7 @@ export class App {
       ? this.subEventForm.groups
       : (existingItem?.groups?.length ? existingItem.groups : fallbackGroups);
     const groupsSource = baseGroupsSource;
-    const next: SubEventFormItem = {
+    let next: SubEventFormItem = {
       ...this.subEventForm,
       id: nextSubEventId,
       name,
@@ -4738,23 +4837,30 @@ export class App {
       tournamentGroupCapacityMax: tournamentConfig?.groupCapacityMax ?? this.subEventForm.tournamentGroupCapacityMax,
       tournamentLeaderboardType: tournamentLeaderboardType ?? undefined,
       tournamentAdvancePerGroup: tournamentAdvancePerGroup ?? undefined,
-      capacityMin: Math.max(1, Number(nextCapacityMin) || 1),
-      capacityMax: Math.max(
-        Math.max(1, Number(nextCapacityMin) || 1),
-        Number(nextCapacityMax) || Math.max(1, Number(nextCapacityMin) || 1)
-      ),
-      membersAccepted: Math.min(2, Math.max(1, Number(nextCapacityMin) || 1)),
+      capacityMin: normalizedNextCapacityMin,
+      capacityMax: normalizedNextCapacityMax,
+      membersAccepted: Math.min(2, normalizedNextCapacityMin),
       membersPending: Math.max(
         0,
-        Math.max(
-          Math.max(1, Number(nextCapacityMin) || 1),
-          Number(nextCapacityMax) || Math.max(1, Number(nextCapacityMin) || 1)
-        ) - Math.min(2, Math.max(1, Number(nextCapacityMin) || 1))
+        normalizedNextCapacityMax - Math.min(2, normalizedNextCapacityMin)
       ),
       carsPending: 1,
       accommodationPending: 2,
       suppliesPending: 3
     };
+    if (forceMandatoryTournament) {
+      const reconciledGroups = this.reconcileTournamentGroupsForStage(next, this.cloneSubEventGroups(next.groups));
+      const totals = this.groupCapacityTotals(reconciledGroups);
+      next = {
+        ...next,
+        groups: this.cloneSubEventGroups(reconciledGroups),
+        tournamentGroupCount: reconciledGroups.length,
+        capacityMin: totals.min,
+        capacityMax: totals.max,
+        membersAccepted: Math.min(next.membersAccepted, totals.max),
+        membersPending: Math.max(0, totals.max - Math.min(next.membersAccepted, totals.max))
+      };
+    }
     if (existingId && this.eventForm.subEvents.some(item => item.id === existingId)) {
       const sourceWithoutCurrent = this.sortSubEventsByStartAsc(
         this.eventForm.subEvents.filter(item => item.id !== existingId)
@@ -4809,7 +4915,7 @@ export class App {
     if (!Number.isFinite(parsed)) {
       return null;
     }
-    return Math.max(1, Math.trunc(parsed));
+    return Math.max(0, Math.trunc(parsed));
   }
 
   private normalizedCapacityValue(value: number | null | undefined): number | null {
@@ -4820,24 +4926,46 @@ export class App {
     if (!Number.isFinite(parsed)) {
       return null;
     }
-    return Math.max(1, Math.trunc(parsed));
+    return Math.max(0, Math.trunc(parsed));
   }
 
   private normalizedEventCapacityRange(): EventCapacityRange {
-    const min = this.normalizedCapacityValue(this.eventForm.capacityMin);
-    const max = this.normalizedCapacityValue(this.eventForm.capacityMax);
+    const min = this.normalizedEventCapacityValue(this.eventForm.capacityMin);
+    const max = this.normalizedEventCapacityValue(this.eventForm.capacityMax);
     if (min !== null && max !== null && max < min) {
       return { min, max: min };
     }
     return { min, max };
   }
 
+  private toEventCapacityInputValue(value: number | string): number | null {
+    if (value === '' || value === null || value === undefined) {
+      return null;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+    return Math.max(0, Math.trunc(parsed));
+  }
+
+  private normalizedEventCapacityValue(value: number | null | undefined): number | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+    return Math.max(0, Math.trunc(parsed));
+  }
+
   private toPositiveInt(value: number | string | null | undefined, fallback: number): number {
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) {
-      return Math.max(1, Math.trunc(fallback));
+      return Math.max(0, Math.trunc(fallback));
     }
-    return Math.max(1, Math.trunc(parsed));
+    return Math.max(0, Math.trunc(parsed));
   }
 
   private normalizedTournamentLeaderboardType(value: unknown): TournamentLeaderboardType {
@@ -4848,30 +4976,46 @@ export class App {
     value: number | string | null | undefined,
     maxPerGroupValue: number | string | null | undefined
   ): number {
-    const maxPerGroup = this.toPositiveInt(maxPerGroupValue, 1);
+    const maxPerGroup = this.toPositiveInt(maxPerGroupValue, 0);
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) {
-      return 1;
+      return 0;
     }
-    return this.clampNumber(Math.trunc(parsed), 1, maxPerGroup);
+    return this.clampNumber(Math.trunc(parsed), 0, maxPerGroup);
   }
 
   private tournamentEstimatedGroupCountRange(
     perGroupMinValue: number | string | null | undefined,
-    perGroupMaxValue: number | string | null | undefined
+    perGroupMaxValue: number | string | null | undefined,
+    contextItem?: Partial<SubEventFormItem>
   ): { min: number; max: number } {
     const rawMainMin = Number(this.eventForm.capacityMin);
     const rawMainMax = Number(this.eventForm.capacityMax);
     const mainMin = Number.isFinite(rawMainMin) ? Math.max(0, Math.trunc(rawMainMin)) : 0;
     const mainMaxBase = Number.isFinite(rawMainMax) ? Math.max(0, Math.trunc(rawMainMax)) : mainMin;
     const mainMax = Math.max(mainMin, mainMaxBase);
-    const perGroupMin = this.toPositiveInt(perGroupMinValue, 1);
+    const perGroupMin = this.toPositiveInt(perGroupMinValue, 0);
     const perGroupMax = this.toPositiveInt(perGroupMaxValue, perGroupMin);
-    if (mainMin <= 0 && mainMax <= 0) {
+    if (perGroupMin <= 0 || perGroupMax <= 0) {
       return { min: 0, max: 0 };
     }
-    const estimatedMinGroups = Math.max(1, Math.ceil(mainMin / perGroupMin));
-    const estimatedMaxGroups = Math.max(1, Math.ceil(mainMax / perGroupMax));
+    const manualGroups = this.cloneSubEventGroups(contextItem?.groups)
+      .filter(group => this.normalizedSubEventGroupSource(group) === 'manual');
+    const manualTotals = manualGroups.reduce(
+      (acc, group) => {
+        const min = Math.max(0, Number(group.capacityMin) || 0);
+        const max = Math.max(min, Number(group.capacityMax) || min);
+        return { min: acc.min + min, max: acc.max + max };
+      },
+      { min: 0, max: 0 }
+    );
+    const remainingMin = Math.max(0, mainMin - manualTotals.min);
+    const remainingMax = Math.max(0, mainMax - manualTotals.max);
+    if (remainingMin <= 0 && remainingMax <= 0) {
+      return { min: 0, max: 0 };
+    }
+    const estimatedMinGroups = remainingMin > 0 ? Math.max(0, Math.ceil(remainingMin / perGroupMin)) : 0;
+    const estimatedMaxGroups = remainingMax > 0 ? Math.max(0, Math.ceil(remainingMax / perGroupMax)) : 0;
     return {
       min: Math.min(estimatedMinGroups, estimatedMaxGroups),
       max: Math.max(estimatedMinGroups, estimatedMaxGroups)
@@ -4880,18 +5024,19 @@ export class App {
 
   private tournamentStageConfigFromItem(item: Partial<SubEventFormItem>): SubEventTournamentConfig {
     const explicitGroupCountRaw = Number(item.tournamentGroupCount);
-    const explicitGroupCount = Number.isFinite(explicitGroupCountRaw) && explicitGroupCountRaw > 0
-      ? Math.max(1, Math.trunc(explicitGroupCountRaw))
+    const explicitGroupCount = Number.isFinite(explicitGroupCountRaw) && explicitGroupCountRaw >= 0
+      ? Math.max(0, Math.trunc(explicitGroupCountRaw))
       : null;
     const fixedGroupCount = item.groups?.length ? item.groups.length : explicitGroupCount;
-    const groupCountForInference = this.clampNumber(fixedGroupCount ?? 1, 1, 64);
-    const itemMin = Math.max(1, Number(item.capacityMin) || 1);
+    const groupCountForInference = this.clampNumber(fixedGroupCount ?? 0, 0, 64);
+    const groupCountDivisor = Math.max(1, groupCountForInference);
+    const itemMin = Math.max(0, Number(item.capacityMin) || 0);
     const itemMax = Math.max(itemMin, Number(item.capacityMax) || itemMin);
-    const inferredGroupMin = Math.max(1, Math.ceil(itemMin / groupCountForInference));
-    const inferredGroupMax = Math.max(inferredGroupMin, Math.ceil(itemMax / groupCountForInference));
+    const inferredGroupMin = groupCountForInference > 0 ? Math.max(0, Math.ceil(itemMin / groupCountDivisor)) : 0;
+    const inferredGroupMax = groupCountForInference > 0 ? Math.max(inferredGroupMin, Math.ceil(itemMax / groupCountDivisor)) : 0;
     const groupCapacityMin = this.clampNumber(
       this.toPositiveInt(item.tournamentGroupCapacityMin, inferredGroupMin),
-      1,
+      0,
       9999
     );
     const groupCapacityMax = this.clampNumber(
@@ -4899,10 +5044,10 @@ export class App {
       groupCapacityMin,
       9999
     );
-    const estimatedRange = this.tournamentEstimatedGroupCountRange(groupCapacityMin, groupCapacityMax);
+    const estimatedRange = this.tournamentEstimatedGroupCountRange(groupCapacityMin, groupCapacityMax, item);
     const groupCount = this.clampNumber(
-      fixedGroupCount ?? (estimatedRange.max > 0 ? estimatedRange.max : 1),
-      1,
+      fixedGroupCount ?? (estimatedRange.max > 0 ? estimatedRange.max : 0),
+      0,
       64
     );
     return {
@@ -4924,9 +5069,9 @@ export class App {
     );
     const fixedGroupCount = this.subEventForm.groups?.length
       ? this.subEventForm.groups.length
-      : this.normalizedCapacityValue(this.subEventForm.tournamentGroupCount);
+      : this.normalizedEventCapacityValue(this.subEventForm.tournamentGroupCount);
     const estimated = this.tournamentEstimatedGroupCountRange(config.groupCapacityMin, config.groupCapacityMax);
-    const minGroups = fixedGroupCount ?? (estimated.min > 0 ? estimated.min : 1);
+    const minGroups = fixedGroupCount ?? (estimated.min > 0 ? estimated.min : 0);
     const maxGroups = fixedGroupCount ?? (estimated.max > 0 ? estimated.max : minGroups);
     this.subEventForm.capacityMin = minGroups * config.groupCapacityMin;
     this.subEventForm.capacityMax = Math.max(this.subEventForm.capacityMin, maxGroups * config.groupCapacityMax);
@@ -4962,8 +5107,10 @@ export class App {
         reference.tournamentAdvancePerGroup,
         referenceConfig.groupCapacityMax
       );
-      const nextTotal = Math.max(1, Math.ceil((referenceConfig.groupCount * referenceConfig.groupCapacityMax) / 2));
-      const nextGroupCount = Math.max(1, Math.ceil(nextTotal / referenceConfig.groupCapacityMax));
+      const nextTotal = Math.max(0, Math.ceil((referenceConfig.groupCount * referenceConfig.groupCapacityMax) / 2));
+      const nextGroupCount = referenceConfig.groupCapacityMax > 0
+        ? Math.max(0, Math.ceil(nextTotal / referenceConfig.groupCapacityMax))
+        : 0;
       this.applyTournamentStageConfigToForm({
         groupCount: nextGroupCount,
         groupCapacityMin: referenceConfig.groupCapacityMin,
@@ -4971,13 +5118,14 @@ export class App {
       });
       return;
     }
-    const mainMin = this.normalizedCapacityValue(this.eventForm.capacityMin) ?? 8;
-    const mainMax = this.normalizedCapacityValue(this.eventForm.capacityMax) ?? Math.max(mainMin, 16);
-    const defaultGroupCount = this.clampNumber(Math.max(1, Math.ceil(mainMax / 8)), 1, 64);
-    const defaultGroupMin = Math.max(1, Math.ceil(mainMin / defaultGroupCount));
-    const defaultGroupMax = Math.max(defaultGroupMin, Math.ceil(mainMax / defaultGroupCount));
+    const mainMin = this.normalizedEventCapacityValue(this.eventForm.capacityMin) ?? 0;
+    const mainMax = this.normalizedEventCapacityValue(this.eventForm.capacityMax) ?? mainMin;
+    const defaultGroupCount = this.clampNumber(Math.max(0, Math.ceil(mainMax / 8)), 0, 64);
+    const groupDivisor = Math.max(1, defaultGroupCount);
+    const defaultGroupMin = Math.max(0, Math.ceil(mainMin / groupDivisor));
+    const defaultGroupMax = Math.max(defaultGroupMin, Math.ceil(mainMax / groupDivisor));
     this.subEventForm.tournamentLeaderboardType = 'Score';
-    this.subEventForm.tournamentAdvancePerGroup = 1;
+    this.subEventForm.tournamentAdvancePerGroup = 0;
     this.applyTournamentStageConfigToForm({
       groupCount: defaultGroupCount,
       groupCapacityMin: defaultGroupMin,
@@ -5025,8 +5173,9 @@ export class App {
       this.normalizeTournamentStageConfigOnForm();
       return;
     }
-    let min = Math.max(1, Number(this.subEventForm.capacityMin) || 1);
-    let max = Math.max(1, Number(this.subEventForm.capacityMax) || min);
+    const floor = 0;
+    let min = Math.max(floor, Number(this.subEventForm.capacityMin) || 0);
+    let max = Math.max(floor, Number(this.subEventForm.capacityMax) || min);
     if (max < min) {
       min = max;
     }
@@ -5054,6 +5203,7 @@ export class App {
     if (this.eventForm.subEvents.length === 0) {
       return;
     }
+    const tournamentMode = this.subEventsDisplayMode === 'Tournament';
     let minStartMs: number | null = null;
     let maxEndMs: number | null = null;
     let minCapacity: number | null = null;
@@ -5070,13 +5220,18 @@ export class App {
         maxEndMs = maxEndMs === null ? endMs : Math.max(maxEndMs, endMs);
       }
 
-      const normalizedMin = this.normalizedCapacityValue(item.capacityMin);
-      const normalizedMax = this.normalizedCapacityValue(item.capacityMax);
+      const capacityFloor = 0;
+      const normalizedMin = this.normalizedCapacityValueWithFloor(item.capacityMin, capacityFloor);
+      const normalizedMax = this.normalizedCapacityValueWithFloor(item.capacityMax, capacityFloor);
       if (normalizedMin !== null) {
-        minCapacity = minCapacity === null ? normalizedMin : Math.min(minCapacity, normalizedMin);
+        minCapacity = minCapacity === null
+          ? normalizedMin
+          : (tournamentMode ? (minCapacity + normalizedMin) : Math.min(minCapacity, normalizedMin));
       }
       if (normalizedMax !== null) {
-        maxCapacity = maxCapacity === null ? normalizedMax : Math.max(maxCapacity, normalizedMax);
+        maxCapacity = maxCapacity === null
+          ? normalizedMax
+          : (tournamentMode ? (maxCapacity + normalizedMax) : Math.max(maxCapacity, normalizedMax));
       }
     }
 
@@ -5091,6 +5246,17 @@ export class App {
     if (maxCapacity !== null) {
       this.eventForm.capacityMax = Math.max(maxCapacity, this.eventForm.capacityMin ?? maxCapacity);
     }
+  }
+
+  private normalizedCapacityValueWithFloor(value: number | null | undefined, floor: number): number | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+    return Math.max(floor, Math.trunc(parsed));
   }
 
   private parseFrequencyFromTimeframe(timeframe: string): string {
