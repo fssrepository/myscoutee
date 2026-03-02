@@ -1190,6 +1190,7 @@ export class App {
     i5: '2 / 3'
   };
   protected readonly invitationItemsByUser: Record<string, InvitationMenuItem[]> = this.cloneMapItems(DEMO_INVITATIONS_BY_USER);
+  protected readonly chatItemsByUser: Record<string, ChatMenuItem[]> = this.cloneMapItems(DEMO_CHAT_BY_USER);
   protected readonly eventItemsByUser: Record<string, EventMenuItem[]> = this.cloneMapItems(DEMO_EVENTS_BY_USER);
   protected readonly hostingItemsByUser: Record<string, HostingMenuItem[]> = this.cloneMapItems(DEMO_HOSTING_BY_USER);
   private readonly acceptedInvitationIdsByUser: Record<string, string[]> = {};
@@ -1638,7 +1639,7 @@ export class App {
   }
 
   protected get chatItems(): ChatMenuItem[] {
-    return DEMO_CHAT_BY_USER[this.activeUser.id] ?? DEMO_CHAT_BY_USER['u1'];
+    return this.chatItemsByUser[this.activeUser.id] ?? this.chatItemsByUser['u1'] ?? [];
   }
 
   protected get invitationItems(): InvitationMenuItem[] {
@@ -10105,7 +10106,9 @@ export class App {
     if (!this.pendingActivityPublishRow) {
       return;
     }
-    this.hostingPublishedById[this.pendingActivityPublishRow.id] = true;
+    const row = this.pendingActivityPublishRow;
+    this.hostingPublishedById[row.id] = true;
+    this.ensurePublishedEventChatChannel(row.id, row.title, row.subtitle, this.eventDatesById[row.id] ?? this.defaultEventStartIso());
     this.pendingActivityPublishRow = null;
     this.resetActivitiesScroll();
   }
@@ -10234,6 +10237,9 @@ export class App {
     const context = this.eventEditorClosePublishConfirmContext;
     if (publishId) {
       this.hostingPublishedById[publishId] = true;
+      const title = this.eventForm.title.trim() || row?.title || 'Event';
+      const description = this.eventForm.description.trim() || row?.subtitle || 'Event channel';
+      this.ensurePublishedEventChatChannel(publishId, title, description, this.eventForm.startAt || this.defaultEventStartIso());
     }
     this.eventEditorClosePublishConfirmContext = null;
     if (context === 'stacked') {
@@ -12451,13 +12457,46 @@ export class App {
   }
 
   private getChatItemById(chatId: string): ChatMenuItem | undefined {
-    for (const entries of Object.values(DEMO_CHAT_BY_USER)) {
+    for (const entries of Object.values(this.chatItemsByUser)) {
       const match = entries.find(item => item.id === chatId);
       if (match) {
         return match;
       }
     }
     return undefined;
+  }
+
+  private ensurePublishedEventChatChannel(eventId: string, eventTitle: string, eventDescription: string, startAtIso: string): void {
+    const chatId = `c-event-${eventId}`;
+    if (this.chatItems.some(item => item.id === chatId)) {
+      return;
+    }
+    const title = eventTitle.trim() || 'Event';
+    const description = eventDescription.trim() || 'Event channel';
+    const firstMessage = `${title} / ${description}`;
+    const startAtDate = this.isoLocalDateTimeToDate(startAtIso) ?? new Date();
+    const sentAtIso = this.toIsoDateTime(startAtDate);
+    const nextChat: ChatMenuItem = {
+      id: chatId,
+      avatar: this.activeUser.initials,
+      title,
+      lastMessage: firstMessage,
+      lastSenderId: this.activeUser.id,
+      memberIds: [this.activeUser.id],
+      unread: 0
+    };
+    this.chatItemsByUser[this.activeUser.id] = [nextChat, ...this.chatItems];
+    this.chatDatesById[chatId] = sentAtIso;
+    this.chatHistoryById[chatId] = [{
+      id: `${chatId}-seed-1`,
+      sender: this.activeUser.name,
+      senderAvatar: this.toChatReader(this.activeUser),
+      text: firstMessage,
+      time: startAtDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }),
+      sentAtIso,
+      mine: true,
+      readBy: [this.toChatReader(this.activeUser)]
+    }];
   }
 
   private startChatInitialLoad(): void {
