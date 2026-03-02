@@ -886,7 +886,7 @@
           <div
             class="experience-card-list assets-card-list activities-scroll-list"
             [class.activities-scroll-list-rates]="activitiesPrimaryFilter === 'rates'"
-            [class.activities-scroll-list-with-rate-editor]="isActivityRateEditorOpen() && isSelectedActivityRateInLastRow()"
+            [class.activities-scroll-list-with-rate-editor]="isActivityRateEditorDockVisible()"
             [class.activities-scroll-list-chat]="activitiesPrimaryFilter === 'chats'"
             #activitiesScroll
             (wheel)="closeActivityRateEditorFromUserScroll()"
@@ -1216,7 +1216,7 @@
           </div>
         </ng-template>
 
-        <div class="activities-rate-editor-dock" *ngIf="isActivityRateEditorOpen() && !isCalendarLayoutView()">
+        <div class="activities-rate-editor-dock" [class.is-closing]="isActivityRateEditorClosing()" *ngIf="isActivityRateEditorDockVisible() && !isCalendarLayoutView()">
           <div class="activities-rate-editor-head">
             <span>Rate · {{ selectedActivityRateModeLabel() }} · {{ selectedActivityRateTitle() }}</span>
           </div>

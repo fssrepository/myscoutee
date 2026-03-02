@@ -909,6 +909,10 @@ export class App {
   private readonly weekCalendarEndHour = 23;
   private readonly weekCalendarSlotHeightPx = 34;
   protected selectedActivityRateId: string | null = null;
+  private lastActivityRateEditorLiftDelta = 0;
+  private activityRateEditorClosing = false;
+  private activityRateEditorCloseTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly activityRateEditorSlideDurationMs = 180;
   private readonly activityRateDraftById: Record<string, number> = {};
   private readonly activityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
   private readonly pendingActivityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
@@ -8761,12 +8765,16 @@ export class App {
     if (row.type !== 'rates') {
       return;
     }
+    this.cancelActivityRateEditorCloseTransition();
     if (this.selectedActivityRateId === row.id) {
       this.clearActivityRateEditorState();
       return;
     }
     this.selectedActivityRateId = row.id;
-    setTimeout(() => this.smoothRevealSelectedRateRowWhenLastRow(row.id), 0);
+    this.activityRateEditorClosing = false;
+    this.runAfterActivitiesRender(() => {
+      setTimeout(() => this.smoothRevealSelectedRateRowWhenNeeded(row.id), 40);
+    });
   }
 
   protected onActivitiesPopupSurfaceClick(event: MouseEvent): void {
@@ -8797,7 +8805,15 @@ export class App {
   }
 
   protected isActivityRateEditorOpen(): boolean {
-    return this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'rates' && !!this.selectedActivityRateId;
+    return this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'rates' && !!this.selectedActivityRateId && !this.activityRateEditorClosing;
+  }
+
+  protected isActivityRateEditorDockVisible(): boolean {
+    return this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'rates' && (!!this.selectedActivityRateId || this.activityRateEditorClosing);
+  }
+
+  protected isActivityRateEditorClosing(): boolean {
+    return this.activityRateEditorClosing;
   }
 
   protected isSelectedActivityRateInLastRow(): boolean {
@@ -8917,7 +8933,42 @@ export class App {
   }
 
   private clearActivityRateEditorState(): void {
-    this.selectedActivityRateId = null;
+    if (!this.selectedActivityRateId && !this.activityRateEditorClosing) {
+      return;
+    }
+    if (this.activityRateEditorClosing) {
+      return;
+    }
+    const scrollElement = this.activitiesScrollRef?.nativeElement;
+    const shouldReverseLift = this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'rates' && !!scrollElement && this.lastActivityRateEditorLiftDelta > 0;
+    const previousInlineSnapType = shouldReverseLift ? scrollElement.style.scrollSnapType : '';
+    const reverseDelta = this.lastActivityRateEditorLiftDelta;
+    this.activityRateEditorClosing = true;
+    this.cancelActivityRateEditorCloseTransition();
+    this.activityRateEditorCloseTimer = setTimeout(() => {
+      this.activityRateEditorCloseTimer = null;
+      this.activityRateEditorClosing = false;
+      this.selectedActivityRateId = null;
+      this.lastActivityRateEditorLiftDelta = 0;
+    }, this.activityRateEditorSlideDurationMs);
+    if (!shouldReverseLift || !scrollElement) {
+      return;
+    }
+    this.runAfterActivitiesRender(() => {
+      const targetTop = Math.max(0, scrollElement.scrollTop - reverseDelta);
+      scrollElement.style.scrollSnapType = 'none';
+      scrollElement.scrollTo({ top: targetTop, behavior: 'smooth' });
+      setTimeout(() => {
+        scrollElement.style.scrollSnapType = previousInlineSnapType;
+      }, 220);
+    });
+  }
+
+  private cancelActivityRateEditorCloseTransition(): void {
+    if (this.activityRateEditorCloseTimer) {
+      clearTimeout(this.activityRateEditorCloseTimer);
+      this.activityRateEditorCloseTimer = null;
+    }
   }
 
   private maybeDismissActivityRateEditor(target: Element): void {
@@ -8934,7 +8985,15 @@ export class App {
     this.clearActivityRateEditorState();
   }
 
-  private smoothRevealSelectedRateRowWhenLastRow(rowId: string): void {
+  private runAfterActivitiesRender(task: () => void): void {
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(task));
+      return;
+    }
+    setTimeout(task, 0);
+  }
+
+  private smoothRevealSelectedRateRowWhenNeeded(rowId: string): void {
     if (!this.isActivityRateEditorOpen()) {
       return;
     }
@@ -8946,26 +9005,30 @@ export class App {
     if (!targetRow) {
       return;
     }
-    const rateRows = Array.from(
-      scrollElement.querySelectorAll<HTMLElement>('.activities-rate-profile-card.activities-row-item')
-    );
-    if (rateRows.length === 0) {
-      return;
-    }
-    const lastRowTop = rateRows.reduce((maxTop, row) => Math.max(maxTop, row.offsetTop), 0);
-    if (targetRow.offsetTop < lastRowTop - 1) {
-      return;
-    }
     const dock = globalThis.document?.querySelector<HTMLElement>('.activities-rate-editor-dock');
-    const dockHeight = Math.max(72, dock?.offsetHeight ?? 0);
     const scrollRect = scrollElement.getBoundingClientRect();
     const rowRect = targetRow.getBoundingClientRect();
-    const safeBottom = scrollRect.bottom - dockHeight - 8;
-    if (rowRect.bottom <= safeBottom) {
+    const dockRect = dock?.getBoundingClientRect();
+    const fallbackDockTop = scrollRect.bottom - Math.max(72, dock?.offsetHeight ?? 72);
+    const dockTop = dockRect ? Math.min(dockRect.top, scrollRect.bottom) : fallbackDockTop;
+    const breathingRoom = this.isMobileView ? 6 : 8;
+    const revealBottom = dockTop - breathingRoom;
+    if (rowRect.bottom <= revealBottom) {
       return;
     }
-    const delta = rowRect.bottom - safeBottom;
-    scrollElement.scrollTo({ top: scrollElement.scrollTop + delta, behavior: 'smooth' });
+    const delta = rowRect.bottom - revealBottom;
+    const targetTop = Math.min(scrollElement.scrollTop + delta, Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight));
+    if (targetTop <= scrollElement.scrollTop + 0.5) {
+      this.lastActivityRateEditorLiftDelta = 0;
+      return;
+    }
+    this.lastActivityRateEditorLiftDelta = targetTop - scrollElement.scrollTop;
+    const previousSnapType = scrollElement.style.scrollSnapType;
+    scrollElement.style.scrollSnapType = 'none';
+    scrollElement.scrollTo({ top: targetTop, behavior: 'smooth' });
+    setTimeout(() => {
+      scrollElement.style.scrollSnapType = previousSnapType;
+    }, 220);
   }
 
   private acceptInvitationFromRow(invitationId: string): void {
