@@ -894,9 +894,9 @@
             <div class="activities-sticky-header">{{ activitiesStickyHeader }}</div>
 
             <ng-container *ngFor="let group of groupedActivityRows; let groupIndex = index; trackBy: trackByActivityGroup">
-              <div class="activities-group-marker" *ngIf="groupIndex > 0" [attr.data-group-label]="group.label">{{ group.label }}</div>
+              <div class="activities-group-marker" [attr.data-group-label]="group.label">{{ group.label }}</div>
 
-              <ng-container *ngFor="let row of group.rows; trackBy: trackByActivityRow">
+              <ng-container *ngFor="let row of group.rows; let rowIndex = index; trackBy: trackByActivityRow">
                 <article class="experience-item-card asset-item-card activities-row-item" [class.activities-row-item-full]="isActivityFull(row)" [attr.data-group-label]="group.label" *ngIf="isEventStyleActivity(row); else nonEventActivityRow">
                   <div class="asset-card-image" [appLazyBgImage]="activityImageUrl(row)">
                     <a
@@ -1010,6 +1010,7 @@
                     *ngIf="isRateStyleActivity(row)"
                     class="activities-rate-profile-card activities-row-item"
                     [class.is-rate-editor-selected]="isSelectedActivityRateRow(row)"
+                    [class.activities-rate-row-no-snap]="groupIndex === groupedActivityRows.length - 1 && rowIndex === group.rows.length - 1"
                     [attr.data-group-label]="group.label"
                   >
                     <div class="activities-rate-profile-stack" [ngClass]="activityRateCardContentClasses(row)" *ngIf="activityRateCardImageUrls(row) as imageUrls">
