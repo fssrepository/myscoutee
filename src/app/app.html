@@ -1035,7 +1035,12 @@
                     [attr.data-activity-rate-row-id]="row.id"
                     [attr.data-group-label]="group.label"
                   >
-                    <div class="activities-rate-profile-stack" [ngClass]="activityRateCardContentClasses(row)" *ngIf="activityRateCardImageUrls(row) as imageUrls">
+                    <div
+                      class="activities-rate-profile-stack"
+                      [ngClass]="activityRateCardContentClasses(row)"
+                      [class.is-pane-loading]="isActivityRateCardImageLoading(row)"
+                      *ngIf="activityRateCardImageUrls(row) as imageUrls"
+                    >
                       <div class="image-stack-indicators activities-rate-profile-indicators" *ngIf="imageUrls.length > 1">
                         <button
                           type="button"
@@ -1125,7 +1130,12 @@
                 class="activities-rate-profile-card activities-row-item activities-rates-fullscreen-card activities-rates-fullscreen-card-active"
                 [attr.data-activity-rate-row-id]="row.id"
               >
-                <div class="activities-rate-profile-stack" [ngClass]="activityRateCardContentClasses(row)" *ngIf="activityRateCardImageUrls(row) as imageUrls">
+                <div
+                  class="activities-rate-profile-stack"
+                  [ngClass]="activityRateCardContentClasses(row)"
+                  [class.is-pane-loading]="isActivityRateCardImageLoading(row)"
+                  *ngIf="activityRateCardImageUrls(row) as imageUrls"
+                >
                   <div class="image-stack-indicators activities-rate-profile-indicators" *ngIf="imageUrls.length > 1">
                     <button
                       type="button"

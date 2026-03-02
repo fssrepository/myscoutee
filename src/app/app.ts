@@ -923,6 +923,8 @@ export class App {
   private readonly activityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
   private readonly pendingActivityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
   private readonly activityRateCardActiveImageIndexById: Record<string, number> = {};
+  private readonly activityRateCardImageLoadingById: Record<string, boolean> = {};
+  private readonly activityRateCardLoadingTimerById: Record<string, ReturnType<typeof setTimeout>> = {};
   private readonly generatedRateItemsByUser: Record<string, RateMenuItem[]> = {};
   private lastActivityOpenKey: string | null = null;
   private lastActivityOpenAt = 0;
@@ -8513,6 +8515,10 @@ export class App {
     return images[this.activityRateCardActiveImageIndex(row)] ?? images[0] ?? '';
   }
 
+  protected isActivityRateCardImageLoading(row: ActivityListRow): boolean {
+    return this.activityRateCardImageLoadingById[row.id] === true;
+  }
+
   protected selectActivityRateCardImage(row: ActivityListRow, imageIndex: number, event?: Event): void {
     event?.stopPropagation();
     if (this.selectedActivityRateId && this.selectedActivityRateId !== row.id) {
@@ -8522,7 +8528,18 @@ export class App {
     if (images.length === 0) {
       return;
     }
-    this.activityRateCardActiveImageIndexById[row.id] = this.clampNumber(imageIndex, 0, images.length - 1);
+    const nextIndex = this.clampNumber(imageIndex, 0, images.length - 1);
+    this.activityRateCardActiveImageIndexById[row.id] = nextIndex;
+    if (this.activityRateCardLoadingTimerById[row.id]) {
+      clearTimeout(this.activityRateCardLoadingTimerById[row.id]);
+      delete this.activityRateCardLoadingTimerById[row.id];
+    }
+    this.activityRateCardImageLoadingById[row.id] = true;
+    const rowId = row.id;
+    this.activityRateCardLoadingTimerById[row.id] = setTimeout(() => {
+      this.activityRateCardImageLoadingById[rowId] = false;
+      delete this.activityRateCardLoadingTimerById[rowId];
+    }, 500);
   }
 
   protected activityRateCardPrimaryLine(row: ActivityListRow, cardIndex: number): string {

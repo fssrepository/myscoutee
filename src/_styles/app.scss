@@ -5883,6 +5883,21 @@
   background: linear-gradient(180deg, rgba(12, 22, 36, 0.04) 0%, rgba(7, 16, 28, 0.62) 66%, rgba(7, 16, 28, 0.84) 100%);
 }
 
+.activities-rate-profile-stack.is-pane-loading .activities-rate-profile-indicators .image-stack-line.active {
+  animation: activities-rate-pane-loading-pulse 500ms ease;
+}
+
+@keyframes activities-rate-pane-loading-pulse {
+  0% {
+    transform: scaleX(0.84);
+    opacity: 0.58;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
 .activities-rate-profile-indicators {
   position: absolute;
   top: 0.36rem;
