@@ -305,4 +305,4 @@ ticket qr code generator for event + voice recorder for person (voice can be att
 accept chat - tick right hand side
 
 -----
-game screen / assets screen finish / chat (accept action button) / ticket on main event
+game screen / assets screen finish / ticket on main event

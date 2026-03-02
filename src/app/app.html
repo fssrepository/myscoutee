@@ -624,14 +624,14 @@
         </div>
       </div>
       <button
-        class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger"
+        class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members"
         type="button"
         *ngIf="showEventEditorHeaderMembersButton('active')"
         (click)="openEventEditorMembers($event)"
       >
         <span class="event-editor-members-invite">
-          <mat-icon>person_add</mat-icon>
-          <span>Invite</span>
+          <mat-icon>groups</mat-icon>
+          <span>Members</span>
         </span>
         <span class="card-badge event-editor-members-pending-badge" *ngIf="eventEditorHeaderPendingMemberCount() > 0">{{ eventEditorHeaderPendingMemberCount() }}</span>
       </button>
@@ -811,11 +811,11 @@
             type="button"
             class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-hosting-draft-toggle"
             [class.is-active]="hostingPublicationFilter === 'drafts'"
-            (click)="selectHostingPublicationFilter(hostingPublicationFilter === 'drafts' ? 'published' : 'drafts')"
-            [attr.aria-label]="hostingPublicationFilter === 'drafts' ? 'Show published hosting' : 'Show non-published hosting'"
+            (click)="selectHostingPublicationFilter(hostingPublicationFilter === 'drafts' ? 'all' : 'drafts')"
+            [attr.aria-label]="hostingPublicationFilter === 'drafts' ? 'Show all hosting' : 'Show drafts only'"
           >
             <span class="status-option-content activities-hosting-draft-content">
-              <span class="activities-hosting-draft-label">{{ hostingPublicationFilter === 'drafts' ? 'Drafts' : 'Published' }}</span>
+              <span class="activities-hosting-draft-label">Drafts only</span>
             </span>
             <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="hostingDraftCount() > 0">{{ hostingDraftCount() }}</span>
           </button>
@@ -2950,10 +2950,10 @@
           </button>
         </div>
         <ng-template #stackedHeaderDefaultTitle>
-        <div class="popup-title popup-title-members" *ngIf="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers'; else defaultStackedTitle">
+        <div class="popup-title popup-title-members" *ngIf="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers' || isSubEventMembersPopup(); else defaultStackedTitle">
           <div class="popup-chat-title-block">
-            <h2>{{ stackedPopup === 'activityMembers' ? 'Members' : 'Chat Members' }}</h2>
-            <p>{{ stackedPopup === 'activityMembers' ? (selectedActivityMembersTitle || 'Event') : (selectedChatMembersItem?.title || 'Room') }}</p>
+            <h2>{{ isSubEventMembersPopup() ? subEventMembersHeaderTitle() : (stackedPopup === 'activityMembers' ? 'Members' : 'Chat Members') }}</h2>
+            <p>{{ isSubEventMembersPopup() ? subEventMembersHeaderSubtitle() : (stackedPopup === 'activityMembers' ? (selectedActivityMembersTitle || 'Event') : (selectedChatMembersItem?.title || 'Room')) }}</p>
           </div>
         </div>
         <ng-template #defaultStackedTitle>
@@ -2967,12 +2967,15 @@
         </ng-template>
         <button
           type="button"
-          class="activity-members-header-add-btn"
-          *ngIf="stackedPopup === 'activityMembers' && canShowActivityMembersInviteButton()"
-          (click)="openActivityInviteFriends($event)"
-          aria-label="Invite friends"
+          class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger activity-members-header-invite-trigger"
+          *ngIf="canShowStackedMembersInviteButton()"
+          (click)="openStackedMembersInviteFriends($event)"
+          [attr.aria-label]="isSubEventMembersPopup() ? 'Invite members' : 'Invite friends'"
         >
-          <mat-icon>add</mat-icon>
+          <span class="event-editor-members-invite">
+            <mat-icon>person_add</mat-icon>
+            <span>Invite</span>
+          </span>
         </button>
         <span class="header-members-count" *ngIf="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers'">
           {{ stackedPopup === 'activityMembers' ? activityMembersHeaderSummary() : (selectedChatMembers.length + ' members') }}
@@ -3005,14 +3008,14 @@
           <mat-icon>done</mat-icon>
         </button>
         <button
-          class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger"
+          class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members"
           type="button"
           *ngIf="showEventEditorHeaderMembersButton('stacked')"
           (click)="openEventEditorMembers($event)"
         >
           <span class="event-editor-members-invite">
-            <mat-icon>person_add</mat-icon>
-            <span>Invite</span>
+            <mat-icon>groups</mat-icon>
+            <span>Members</span>
           </span>
           <span class="card-badge event-editor-members-pending-badge" *ngIf="eventEditorHeaderPendingMemberCount() > 0">{{ eventEditorHeaderPendingMemberCount() }}</span>
         </button>
@@ -3106,6 +3109,7 @@
       class="popup-body"
       [class.popup-body-chat]="stackedPopup === 'chat'"
       [class.popup-body-members]="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers' || stackedPopup === 'assetMembers' || stackedPopup === 'subEventMembers' || stackedPopup === 'subEventAssets'"
+      [class.popup-body-subevent-members]="isSubEventMembersPopup()"
       [class.popup-body-experience]="stackedPopup === 'experienceSelector'"
       [class.popup-body-event-explore]="stackedPopup === 'eventExplore'"
       [class.popup-body-impressions]="stackedPopup === 'impressionsHost'"
@@ -3356,7 +3360,7 @@
         </section>
       </div>
 
-      <div *ngIf="stackedPopup === 'subEventAssets' && selectedSubEventBadgeContext" class="experience-popup assets-popup subevent-assets-popup">
+      <div *ngIf="stackedPopup === 'subEventAssets' && selectedSubEventBadgeContext" class="experience-popup assets-popup subevent-assets-popup" [class.subevent-members-popup]="subEventResourceFilter === 'Members'">
         <div class="experience-toolbar assets-toolbar">
           <div class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select" [ngClass]="subEventResourceTypeClass(subEventResourceFilter)">
             <mat-select
@@ -3384,67 +3388,140 @@
           </div>
           <button
             type="button"
-            class="popup-header-add-btn assets-add-btn"
-            (pointerdown)="handleSubEventQuickAction('Add item flow is ready for backend wiring.', $event)"
-            (click)="$event.preventDefault(); $event.stopPropagation()"
-            aria-label="Add sub-event resource"
+            class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select subevent-members-pending-toggle"
+            *ngIf="subEventResourceFilter === 'Members'; else subEventAssetsAddButton"
+            [class.is-active]="subEventMembersPendingOnly"
+            (click)="toggleSubEventMembersPendingOnly($event)"
+            [attr.aria-label]="subEventMembersPendingOnly ? 'Show all members' : 'Show pending members only'"
           >
-            <mat-icon>add</mat-icon>
+            <span class="status-option-content activities-hosting-draft-content">
+              <span class="activities-hosting-draft-label">Pending only</span>
+            </span>
+            <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="subEventMembersPendingCount() > 0">{{ subEventMembersPendingCount() }}</span>
           </button>
+          <ng-template #subEventAssetsAddButton>
+            <button
+              type="button"
+              class="popup-header-add-btn assets-add-btn"
+              (pointerdown)="handleSubEventQuickAction('Add item flow is ready for backend wiring.', $event)"
+              (click)="$event.preventDefault(); $event.stopPropagation()"
+              aria-label="Add sub-event resource"
+            >
+              <mat-icon>add</mat-icon>
+            </button>
+          </ng-template>
         </div>
 
-        <div class="experience-card-list assets-card-list">
-          <article class="experience-item-card asset-item-card" [ngClass]="subEventResourceTypeClass(card.type)" *ngFor="let card of subEventResourceCards">
-            <div class="asset-card-image" [appLazyBgImage]="card.imageUrl">
-              <a class="asset-source-icon" *ngIf="!card.isMembers && card.sourceLink" [href]="card.sourceLink" target="_blank" rel="noopener" (click)="$event.stopPropagation()" aria-label="Open source link">
-                <mat-icon>link</mat-icon>
-              </a>
-              <span class="asset-source-icon subevent-member-icon" *ngIf="card.isMembers">
-                <mat-icon>groups</mat-icon>
-              </span>
+        <div class="subevent-members-scroll-area" *ngIf="subEventResourceFilter === 'Members'; else subEventAssetsCardList">
+          <div class="subevent-members-grid">
+            <article
+              class="friends-picker-card subevent-member-image-card"
+              *ngFor="let member of subEventMembersOrdered"
+              [class.menu-open]="isSubEventMemberActionMenuOpen(member)"
+              [style.backgroundImage]="'url(' + member.avatarUrl + ')'"
+            >
               <button
                 type="button"
-                class="asset-occupancy-badge"
-                (pointerdown)="handleSubEventQuickAction('Assignment panel is ready for backend wiring.', $event)"
-                (click)="$event.preventDefault(); $event.stopPropagation()"
-                aria-label="Open assignments"
+                class="friends-picker-card-add-btn subevent-member-menu-trigger experience-action-menu-trigger"
+                [class.active]="isSubEventMemberActionMenuOpen(member)"
+                (click)="toggleSubEventMemberActionMenu(member, $event)"
+                aria-label="Open member actions"
               >
-                <span>{{ subEventResourceOccupancyLabel(card) }}</span>
-                <span class="card-badge asset-request-badge" *ngIf="card.pending > 0">{{ card.pending }}</span>
+                <mat-icon>more_vert</mat-icon>
               </button>
-            </div>
-            <div class="experience-item-head">
-              <span class="experience-item-icon">
-                <mat-icon>{{ subEventResourceTypeIcon(card.type) }}</mat-icon>
-              </span>
-              <div class="experience-item-meta">
-                <h4>{{ card.title }}</h4>
-                <p>{{ card.type }} · {{ card.subtitle }} · {{ card.city }}</p>
-              </div>
-              <div class="experience-item-actions">
-                <button
-                  type="button"
-                  class="experience-action-btn experience-action-edit"
-                  (pointerdown)="handleSubEventQuickAction('Edit flow is ready for backend wiring.', $event)"
-                  (click)="$event.preventDefault(); $event.stopPropagation()"
-                  aria-label="Edit sub-event resource"
-                >
-                  <mat-icon>edit</mat-icon>
-                </button>
-                <button
-                  type="button"
-                  class="experience-action-btn experience-action-delete"
-                  (pointerdown)="handleSubEventQuickAction('Delete flow is ready for backend wiring.', $event)"
-                  (click)="$event.preventDefault(); $event.stopPropagation()"
-                  aria-label="Delete sub-event resource"
-                >
+              <div
+                class="item-action-menu subevent-member-action-menu"
+                [class.is-open]="isSubEventMemberActionMenuOpen(member)"
+                [class.item-action-menu-mobile]="isMobileView"
+                [class.item-action-menu-desktop]="!isMobileView"
+                [class.is-open-up]="isSubEventMemberActionMenuOpenUp(member)"
+                [attr.aria-hidden]="!isSubEventMemberActionMenuOpen(member)"
+                (click)="$event.stopPropagation()"
+              >
+                <div class="item-action-menu-title">{{ member.name }}</div>
+                <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="removeSubEventMember(member, $event)">
                   <mat-icon>delete</mat-icon>
+                  <span>Delete</span>
+                </button>
+                <button type="button" class="item-action-menu-btn" (click)="toggleSubEventMemberRolePicker(member, $event)">
+                  <mat-icon>{{ subEventMemberRoleIcon(member.role) }}</mat-icon>
+                  <span>{{ subEventMemberRoleMenuLabel(member) }}</span>
+                  <mat-icon class="subevent-member-menu-chevron">{{ isSubEventMemberRolePickerOpen(member) ? 'keyboard_arrow_up' : 'keyboard_arrow_down' }}</mat-icon>
+                </button>
+                <div class="subevent-member-role-options" *ngIf="isSubEventMemberRolePickerOpen(member)">
+                  <button type="button" class="item-action-menu-btn subevent-member-role-option" [class.is-active]="member.role === 'Admin'" (click)="setSubEventMemberRole(member, 'Admin', $event)">
+                    <mat-icon>admin_panel_settings</mat-icon>
+                    <span>Admin</span>
+                    <mat-icon *ngIf="member.role === 'Admin'">check</mat-icon>
+                  </button>
+                  <button type="button" class="item-action-menu-btn subevent-member-role-option" [class.is-active]="member.role === 'Member'" (click)="setSubEventMemberRole(member, 'Member', $event)">
+                    <mat-icon>person</mat-icon>
+                    <span>Member</span>
+                    <mat-icon *ngIf="member.role === 'Member'">check</mat-icon>
+                  </button>
+                </div>
+              </div>
+              <div class="friends-picker-card-meta subevent-member-card-meta">
+                <h4>{{ member.name }}, {{ activityMemberAge(member) }}</h4>
+                <p>{{ member.role }} · {{ member.city }}</p>
+              </div>
+            </article>
+          </div>
+        </div>
+        <ng-template #subEventAssetsCardList>
+          <div class="experience-card-list assets-card-list subevent-assets-scroll-list">
+            <article class="experience-item-card asset-item-card" [ngClass]="subEventResourceTypeClass(card.type)" *ngFor="let card of subEventResourceCards">
+              <div class="asset-card-image" [appLazyBgImage]="card.imageUrl">
+                <a class="asset-source-icon" *ngIf="!card.isMembers && card.sourceLink" [href]="card.sourceLink" target="_blank" rel="noopener" (click)="$event.stopPropagation()" aria-label="Open source link">
+                  <mat-icon>link</mat-icon>
+                </a>
+                <span class="asset-source-icon subevent-member-icon" *ngIf="card.isMembers">
+                  <mat-icon>groups</mat-icon>
+                </span>
+                <button
+                  type="button"
+                  class="asset-occupancy-badge"
+                  (pointerdown)="handleSubEventQuickAction('Assignment panel is ready for backend wiring.', $event)"
+                  (click)="$event.preventDefault(); $event.stopPropagation()"
+                  aria-label="Open assignments"
+                >
+                  <span>{{ subEventResourceOccupancyLabel(card) }}</span>
+                  <span class="card-badge asset-request-badge" *ngIf="card.pending > 0">{{ card.pending }}</span>
                 </button>
               </div>
-            </div>
-            <p class="experience-item-description">{{ card.details }}</p>
-          </article>
-        </div>
+              <div class="experience-item-head">
+                <span class="experience-item-icon">
+                  <mat-icon>{{ subEventResourceTypeIcon(card.type) }}</mat-icon>
+                </span>
+                <div class="experience-item-meta">
+                  <h4>{{ card.title }}</h4>
+                  <p>{{ card.type }} · {{ card.subtitle }} · {{ card.city }}</p>
+                </div>
+                <div class="experience-item-actions">
+                  <button
+                    type="button"
+                    class="experience-action-btn experience-action-edit"
+                    (pointerdown)="handleSubEventQuickAction('Edit flow is ready for backend wiring.', $event)"
+                    (click)="$event.preventDefault(); $event.stopPropagation()"
+                    aria-label="Edit sub-event resource"
+                  >
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button
+                    type="button"
+                    class="experience-action-btn experience-action-delete"
+                    (pointerdown)="handleSubEventQuickAction('Delete flow is ready for backend wiring.', $event)"
+                    (click)="$event.preventDefault(); $event.stopPropagation()"
+                    aria-label="Delete sub-event resource"
+                  >
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+              </div>
+              <p class="experience-item-description">{{ card.details }}</p>
+            </article>
+          </div>
+        </ng-template>
       </div>
 
       <div *ngIf="stackedPopup === 'invitationActions' && selectedInvitation">
@@ -5336,7 +5413,7 @@
 </section>
 
 <section class="app-popup app-popup-stacked app-popup-super-stacked" *ngIf="superStackedPopup === 'activityInviteFriends'">
-  <div class="app-popup-backdrop" (click)="closeActivityInviteFriends(true)"></div>
+  <div class="app-popup-backdrop" (click)="closeActivityInviteFriends(false)"></div>
   <div class="app-popup-panel popup-panel-friends-picker" (click)="$event.stopPropagation()">
     <div class="popup-header popup-header-friends-picker">
       <div class="popup-title">
@@ -5359,7 +5436,17 @@
             </button>
           </div>
         </div>
-        <button mat-icon-button class="popup-close" (click)="closeActivityInviteFriends(true)" aria-label="Close">
+        <button
+          type="button"
+          class="popup-header-add-btn subevent-leaderboard-save-btn"
+          [class.form-save-invalid]="!canConfirmActivityInviteSelection()"
+          [disabled]="!canConfirmActivityInviteSelection()"
+          (click)="confirmActivityInviteSelection($event)"
+          aria-label="Invite selected members"
+        >
+          <mat-icon>done</mat-icon>
+        </button>
+        <button mat-icon-button class="popup-close" (click)="closeActivityInviteFriends(false)" aria-label="Close">
           <mat-icon>close</mat-icon>
         </button>
       </div>

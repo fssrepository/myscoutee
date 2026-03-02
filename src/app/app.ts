@@ -131,7 +131,7 @@ interface ChatPopupDayGroup {
 
 type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
 type ActivitiesSecondaryFilter = 'recent' | 'relevant' | 'past';
-type HostingPublicationFilter = 'published' | 'drafts';
+type HostingPublicationFilter = 'all' | 'drafts';
 type ActivitiesView = 'month' | 'week' | 'day' | 'distance';
 type EventExploreOrder = 'upcoming' | 'past-events' | 'nearby' | 'most-relevant' | 'top-rated';
 type RateFilterKey =
@@ -464,6 +464,7 @@ type ActivityMemberStatus = 'pending' | 'accepted';
 type ActivityPendingSource = 'admin' | 'member' | null;
 type ActivityInviteSort = 'recent' | 'relevant';
 type ActivityMemberRequestKind = 'invite' | 'join' | null;
+type ActivityMemberRole = 'Admin' | 'Member';
 
 interface AssetMemberRequest {
   id: string;
@@ -510,6 +511,7 @@ interface ActivityMemberEntry {
   gender: 'woman' | 'man';
   city: string;
   statusText: string;
+  role: ActivityMemberRole;
   status: ActivityMemberStatus;
   pendingSource: ActivityPendingSource;
   requestKind: ActivityMemberRequestKind;
@@ -874,12 +876,12 @@ export class App {
   protected activeMenuSection: MenuSection = 'chat';
   protected activitiesPrimaryFilter: ActivitiesPrimaryFilter = 'chats';
   protected activitiesSecondaryFilter: ActivitiesSecondaryFilter = 'recent';
-  protected hostingPublicationFilter: HostingPublicationFilter = 'published';
+  protected hostingPublicationFilter: HostingPublicationFilter = 'all';
   protected activitiesRateFilter: RateFilterKey = 'individual-given';
   protected activitiesView: ActivitiesView = 'week';
   protected showActivitiesViewPicker = false;
   protected showActivitiesSecondaryPicker = false;
-  protected inlineItemActionMenu: { scope: 'activity' | 'asset' | 'explore' | 'subEvent' | 'subEventStage'; id: string; title: string; openUp: boolean } | null = null;
+  protected inlineItemActionMenu: { scope: 'activity' | 'asset' | 'explore' | 'subEvent' | 'subEventStage' | 'subEventMember'; id: string; title: string; openUp: boolean } | null = null;
   protected showEventExploreOrderPicker = false;
   protected eventExploreOrder: EventExploreOrder = 'upcoming';
   protected eventExploreFilterFriendsOnly = false;
@@ -1285,7 +1287,11 @@ export class App {
   protected selectedSupplyContext: SupplyContext | null = null;
   protected selectedSubEventBadgeContext: SubEventBadgeContext | null = null;
   protected subEventResourceFilter: SubEventResourceFilter = 'Members';
+  protected subEventMembersPendingOnly = false;
   private subEventBadgePopupOrigin: 'active-event-editor' | 'stacked-event-editor' | null = null;
+  private subEventMembersRow: ActivityListRow | null = null;
+  private subEventMembersRowId: string | null = null;
+  private subEventMemberRolePickerUserId: string | null = null;
 
   protected profileForm = {
     fullName: '',
@@ -1485,7 +1491,7 @@ export class App {
       const accepted = Math.min(capacityMax, Math.max(0, Math.floor(capacityMin * 0.7)));
       items.push({
         id: `seed-${source.id}-casual-${index + 1}`,
-        name: `${names[index] ?? `Session ${index + 1}`} · ${source.title}`,
+        name: `${names[index] ?? `Session ${index + 1}`}`,
         description: `${source.shortDescription} (${index + 1}/${count})`,
         startAt: this.toIsoDateTimeLocal(new Date(stageStartMs)),
         endAt: this.toIsoDateTimeLocal(new Date(Math.max(stageStartMs + (30 * 60 * 1000), stageEndMs))),
@@ -1539,7 +1545,7 @@ export class App {
       const accepted = Math.min(totals.max, Math.max(0, Math.floor(totals.min * 0.7)));
       items.push({
         id: `seed-${source.id}-tournament-${index + 1}`,
-        name: `${stageNames[index]} · ${source.title}`,
+        name: `${stageNames[index]}`,
         description: `${source.shortDescription} (${stageNames[index]})`,
         startAt: this.toIsoDateTimeLocal(new Date(stageStartMs)),
         endAt: this.toIsoDateTimeLocal(new Date(Math.max(stageStartMs + (45 * 60 * 1000), stageEndMs))),
@@ -1752,7 +1758,7 @@ export class App {
     this.activePopup = 'activities';
     this.activitiesPrimaryFilter = primaryFilter;
     this.activitiesSecondaryFilter = 'recent';
-    this.hostingPublicationFilter = 'published';
+    this.hostingPublicationFilter = 'all';
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
     this.showEventExploreOrderPicker = false;
@@ -2051,7 +2057,7 @@ export class App {
         key: stageKey,
         stageNumber,
         title: `Stage ${stageNumber}`,
-        subtitle: subEvent.name,
+        subtitle: this.subEventDisplayName(subEvent),
         description: subEvent.description,
         rangeLabel: this.subEventCardRange(subEvent),
         subEvent,
@@ -3709,11 +3715,27 @@ export class App {
   protected openSubEventBadgePopup(type: 'Members' | 'Car' | 'Accommodation' | 'Supplies', item: SubEventFormItem, event?: Event): void {
     event?.stopPropagation();
     const isFromSubEventsSuperPopup = this.superStackedPopup === 'eventSubEvents';
+    const membersRow = this.eventEditorMembersRow();
     this.subEventBadgePopupOrigin = this.stackedPopup === 'eventEditor' ? 'stacked-event-editor' : 'active-event-editor';
     this.selectedSubEventBadgeContext = {
       subEvent: item,
       type
     };
+    if (membersRow) {
+      const rowKey = `${membersRow.type}:${membersRow.id}`;
+      const seededEntries = this.sortActivityMembersByActionTimeAsc(this.getActivityMembersByRow(membersRow));
+      this.subEventMembersRow = membersRow;
+      this.subEventMembersRowId = rowKey;
+      this.selectedActivityMembersRow = membersRow;
+      this.selectedActivityMembersRowId = rowKey;
+      this.selectedActivityMembers = [...seededEntries];
+      this.activityMembersByRowId[rowKey] = [...seededEntries];
+    } else {
+      this.subEventMembersRow = null;
+      this.subEventMembersRowId = null;
+    }
+    this.subEventMembersPendingOnly = false;
+    this.subEventMemberRolePickerUserId = null;
     this.subEventResourceFilter = type === 'Members' ? 'Members' : type;
     if (isFromSubEventsSuperPopup) {
       this.superStackedPopup = null;
@@ -3731,6 +3753,9 @@ export class App {
 
   protected selectSubEventResourceFilter(filter: SubEventResourceFilter): void {
     this.subEventResourceFilter = filter;
+    if (filter !== 'Members') {
+      this.subEventMembersPendingOnly = false;
+    }
   }
 
   protected subEventResourceTypeIcon(type: SubEventResourceFilter): string {
@@ -3764,26 +3789,263 @@ export class App {
     return subEvent.suppliesPending;
   }
 
+  protected isSubEventMembersPopup(): boolean {
+    if (!this.selectedSubEventBadgeContext) {
+      return false;
+    }
+    return this.stackedPopup === 'subEventMembers'
+      || (this.stackedPopup === 'subEventAssets' && this.subEventResourceFilter === 'Members');
+  }
+
+  protected subEventMembersHeaderTitle(): string {
+    const subEvent = this.selectedSubEventBadgeContext?.subEvent;
+    if (!subEvent) {
+      return 'Members';
+    }
+    const stageLabel = this.subEventMembersStageLabel(subEvent);
+    return stageLabel ? `Members - ${stageLabel}` : 'Members';
+  }
+
+  protected subEventMembersHeaderSubtitle(): string {
+    const subEventName = this.subEventDisplayName(this.selectedSubEventBadgeContext?.subEvent);
+    const eventName = this.subEventMembersEventTitle();
+    if (eventName && subEventName) {
+      return `${eventName} - ${subEventName}`;
+    }
+    return eventName || subEventName || 'Event';
+  }
+
+  protected get subEventMembersOrdered(): ActivityMemberEntry[] {
+    const entries = this.subEventMembersEntries();
+    if (!this.subEventMembersPendingOnly) {
+      return entries;
+    }
+    return entries.filter(member => member.status === 'pending');
+  }
+
+  protected canShowSubEventMembersInviteButton(): boolean {
+    return this.resolveSubEventMembersContext() !== null;
+  }
+
+  protected canShowStackedMembersInviteButton(): boolean {
+    if (this.isSubEventMembersPopup()) {
+      return this.canShowSubEventMembersInviteButton();
+    }
+    return this.stackedPopup === 'activityMembers' && this.canShowActivityMembersInviteButton();
+  }
+
+  protected openStackedMembersInviteFriends(event?: Event): void {
+    if (this.isSubEventMembersPopup()) {
+      this.openSubEventMembersInviteFriends(event);
+      return;
+    }
+    this.openActivityInviteFriends(event);
+  }
+
+  protected subEventMembersPendingCount(): number {
+    return this.subEventMembersEntries().filter(member => member.status === 'pending').length;
+  }
+
+  protected toggleSubEventMembersPendingOnly(event?: Event): void {
+    event?.stopPropagation();
+    if (this.subEventResourceFilter !== 'Members') {
+      return;
+    }
+    this.subEventMembersPendingOnly = !this.subEventMembersPendingOnly;
+  }
+
+  protected openSubEventMembersInviteFriends(event?: Event): void {
+    event?.stopPropagation();
+    const context = this.resolveSubEventMembersContext();
+    if (!context || !this.canShowSubEventMembersInviteButton()) {
+      return;
+    }
+    this.inlineItemActionMenu = null;
+    this.subEventMemberRolePickerUserId = null;
+    const seededEntries = this.subEventMembersEntries();
+    this.selectedActivityMembersRow = context.row;
+    this.selectedActivityMembersRowId = context.rowKey;
+    this.selectedActivityMembers = [...seededEntries];
+    this.selectedActivityMembersTitle = context.row.title;
+    this.openActivityInviteFriends(event);
+  }
+
+  protected toggleSubEventMemberActionMenu(member: ActivityMemberEntry, event: Event): void {
+    event.stopPropagation();
+    if (this.inlineItemActionMenu?.scope === 'subEventMember' && this.inlineItemActionMenu.id === member.userId) {
+      this.inlineItemActionMenu = null;
+      this.subEventMemberRolePickerUserId = null;
+      return;
+    }
+    this.subEventMemberRolePickerUserId = null;
+    this.inlineItemActionMenu = {
+      scope: 'subEventMember',
+      id: member.userId,
+      title: member.name,
+      openUp: this.shouldOpenInlineItemMenuUp(event)
+    };
+  }
+
+  protected isSubEventMemberActionMenuOpen(member: ActivityMemberEntry): boolean {
+    return this.inlineItemActionMenu?.scope === 'subEventMember' && this.inlineItemActionMenu.id === member.userId;
+  }
+
+  protected isSubEventMemberActionMenuOpenUp(member: ActivityMemberEntry): boolean {
+    return this.inlineItemActionMenu?.scope === 'subEventMember'
+      && this.inlineItemActionMenu.id === member.userId
+      && this.inlineItemActionMenu.openUp;
+  }
+
+  protected subEventMemberRoleIcon(role: ActivityMemberRole): string {
+    return role === 'Admin' ? 'admin_panel_settings' : 'person';
+  }
+
+  protected subEventMemberRoleMenuLabel(member: ActivityMemberEntry): string {
+    return `${member.role} role`;
+  }
+
+  protected toggleSubEventMemberRolePicker(member: ActivityMemberEntry, event: Event): void {
+    event.stopPropagation();
+    if (!this.isSubEventMemberActionMenuOpen(member)) {
+      return;
+    }
+    this.subEventMemberRolePickerUserId = this.subEventMemberRolePickerUserId === member.userId
+      ? null
+      : member.userId;
+  }
+
+  protected isSubEventMemberRolePickerOpen(member: ActivityMemberEntry): boolean {
+    return this.isSubEventMemberActionMenuOpen(member) && this.subEventMemberRolePickerUserId === member.userId;
+  }
+
+  protected setSubEventMemberRole(member: ActivityMemberEntry, role: ActivityMemberRole, event: Event): void {
+    event.stopPropagation();
+    this.updateSubEventMembersEntries(entries => entries.map(entry =>
+      entry.userId === member.userId
+        ? { ...entry, role }
+        : entry
+    ));
+    this.inlineItemActionMenu = null;
+    this.subEventMemberRolePickerUserId = null;
+  }
+
+  protected removeSubEventMember(member: ActivityMemberEntry, event: Event): void {
+    event.stopPropagation();
+    this.updateSubEventMembersEntries(entries => entries.filter(entry => entry.userId !== member.userId));
+    this.inlineItemActionMenu = null;
+    this.subEventMemberRolePickerUserId = null;
+  }
+
+  private subEventMembersStageLabel(subEvent: SubEventFormItem): string {
+    const baseName = this.subEventDisplayName(subEvent);
+    const mainToken = baseName.split('·')[0]?.trim() ?? '';
+    if (mainToken) {
+      return mainToken;
+    }
+    const stageNumber = this.resolveSubEventStageNumber(subEvent.id);
+    if (stageNumber !== null) {
+      return `Stage ${stageNumber}`;
+    }
+    return baseName;
+  }
+
+  private subEventMembersEventTitle(): string {
+    const explicit = this.eventForm.title.trim();
+    if (explicit) {
+      return explicit;
+    }
+    const fromContext = this.subEventMembersRow?.title?.trim() ?? this.selectedActivityMembersRow?.title?.trim() ?? '';
+    if (fromContext) {
+      return fromContext;
+    }
+    return 'Event';
+  }
+
+  private subEventDisplayName(subEvent: SubEventFormItem | null | undefined): string {
+    const raw = subEvent?.name?.trim() ?? '';
+    if (!raw) {
+      return '';
+    }
+    const eventName = this.subEventMembersEventTitle().trim();
+    if (!eventName) {
+      return raw;
+    }
+    const parts = raw.split('·').map(part => part.trim()).filter(Boolean);
+    if (parts.length < 2) {
+      return raw;
+    }
+    const trailing = parts[parts.length - 1];
+    if (this.normalizeText(trailing) !== this.normalizeText(eventName)) {
+      return raw;
+    }
+    return parts.slice(0, -1).join(' · ').trim() || raw;
+  }
+
+  private resolveSubEventMembersContext(): { row: ActivityListRow; rowKey: string } | null {
+    if (this.subEventMembersRow && this.subEventMembersRowId) {
+      return { row: this.subEventMembersRow, rowKey: this.subEventMembersRowId };
+    }
+    if (this.selectedActivityMembersRow && this.selectedActivityMembersRowId) {
+      return { row: this.selectedActivityMembersRow, rowKey: this.selectedActivityMembersRowId };
+    }
+    const row = this.eventEditorMembersRow();
+    if (!row) {
+      return null;
+    }
+    return { row, rowKey: `${row.type}:${row.id}` };
+  }
+
+  private subEventMembersEntries(): ActivityMemberEntry[] {
+    const context = this.resolveSubEventMembersContext();
+    if (!context) {
+      return [];
+    }
+    const cached = this.activityMembersByRowId[context.rowKey];
+    if (cached) {
+      return this.sortActivityMembersByActionTimeAsc([...cached]);
+    }
+    const seeded = this.sortActivityMembersByActionTimeAsc(this.getActivityMembersByRow(context.row));
+    this.activityMembersByRowId[context.rowKey] = [...seeded];
+    return seeded;
+  }
+
+  private updateSubEventMembersEntries(
+    updater: (entries: ActivityMemberEntry[]) => ActivityMemberEntry[]
+  ): void {
+    const context = this.resolveSubEventMembersContext();
+    if (!context) {
+      return;
+    }
+    const current = this.subEventMembersEntries();
+    const next = this.sortActivityMembersByActionTimeAsc(updater([...current]));
+    this.activityMembersByRowId[context.rowKey] = [...next];
+    if (this.selectedActivityMembersRowId === context.rowKey) {
+      this.selectedActivityMembers = [...next];
+    }
+  }
+
   protected get subEventResourceCards(): SubEventResourceCard[] {
     if (!this.selectedSubEventBadgeContext) {
       return [];
     }
     const subEvent = this.selectedSubEventBadgeContext.subEvent;
     if (this.subEventResourceFilter === 'Members') {
-      return this.eventEditor.members.map((member, index) => {
-        const pending = index >= subEvent.membersAccepted && index < subEvent.membersAccepted + subEvent.membersPending;
-        const memberSeed = this.hashText(`${subEvent.id}:${member.name}:${index}`);
+      const members = this.subEventMembersOrdered;
+      const capacity = Math.max(subEvent.capacityMax, Math.max(members.length, 1));
+      const accepted = members.filter(member => member.status === 'accepted').length;
+      return members.map((member, index) => {
+        const pending = member.status === 'pending';
         return {
-          id: `subevent-member-${index}`,
+          id: `subevent-member-${member.userId}-${index}`,
           type: 'Members',
           title: member.name,
           subtitle: member.role,
-          city: this.activeUser.city,
+          city: member.city,
           details: pending ? 'Pending member request for this sub event.' : 'Accepted for this sub event.',
-          imageUrl: `https://i.pravatar.cc/1200?img=${(memberSeed % 70) + 1}`,
+          imageUrl: member.avatarUrl,
           sourceLink: '',
-          capacityTotal: Math.max(subEvent.capacityMax, 1),
-          accepted: Math.min(subEvent.membersAccepted, Math.max(subEvent.capacityMax, 1)),
+          capacityTotal: capacity,
+          accepted,
           pending: pending ? 1 : 0,
           isMembers: true
         };
@@ -5738,6 +6000,10 @@ export class App {
     this.selectedAssetCardId = null;
     this.selectedSubEventBadgeContext = null;
     this.subEventBadgePopupOrigin = null;
+    this.subEventMembersPendingOnly = false;
+    this.subEventMembersRow = null;
+    this.subEventMembersRowId = null;
+    this.subEventMemberRolePickerUserId = null;
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
     this.showEventVisibilityPicker = false;
@@ -5768,6 +6034,7 @@ export class App {
     this.pendingActivityMemberDelete = null;
     this.activityMembersPopupOrigin = null;
     this.inlineItemActionMenu = null;
+    this.subEventMemberRolePickerUserId = null;
     this.activityMembersReadOnly = false;
     this.selectedActivityMembers = [];
     this.selectedActivityMembersTitle = '';
@@ -5813,6 +6080,7 @@ export class App {
     this.pendingSubEventGroupDelete = null;
     this.eventEditorClosePublishConfirmContext = null;
     this.inlineItemActionMenu = null;
+    this.subEventMemberRolePickerUserId = null;
     this.subEventFormStageNumber = null;
     this.showSubEventGroupForm = false;
     this.showSubEventGroupRequiredValidation = false;
@@ -5830,6 +6098,15 @@ export class App {
     }
     if (this.stackedPopup === 'subEventMembers' || this.stackedPopup === 'subEventAssets') {
       this.selectedSubEventBadgeContext = null;
+      this.subEventMembersPendingOnly = false;
+      this.subEventMembersRow = null;
+      this.subEventMembersRowId = null;
+      this.subEventMemberRolePickerUserId = null;
+      this.selectedActivityMembers = [];
+      this.selectedActivityMembersTitle = '';
+      this.selectedActivityMembersRowId = null;
+      this.selectedActivityMembersRow = null;
+      this.selectedActivityInviteUserIds = [];
       if (this.subEventBadgePopupOrigin === 'stacked-event-editor') {
         this.stackedPopup = 'eventEditor';
       } else {
@@ -6085,9 +6362,9 @@ export class App {
       case 'supplyDetail':
         return `${this.selectedSupplyContext?.type ?? 'Supply'} · ${this.selectedSupplyContext?.subEventTitle ?? ''}`.trim();
       case 'subEventMembers':
-        return `Members · ${this.selectedSubEventBadgeContext?.subEvent.name ?? ''}`.trim();
+        return `Members · ${this.subEventDisplayName(this.selectedSubEventBadgeContext?.subEvent)}`.trim();
       case 'subEventAssets':
-        return `${this.subEventResourceFilter} · ${this.selectedSubEventBadgeContext?.subEvent.name ?? ''}`.trim();
+        return `${this.subEventResourceFilter} · ${this.subEventDisplayName(this.selectedSubEventBadgeContext?.subEvent)}`.trim();
       case 'invitations':
         return 'Invitations';
       case 'events':
@@ -6127,9 +6404,9 @@ export class App {
       case 'supplyDetail':
         return `${this.selectedSupplyContext?.type ?? 'Supply'} · ${this.selectedSupplyContext?.subEventTitle ?? ''}`.trim();
       case 'subEventMembers':
-        return `Members · ${this.selectedSubEventBadgeContext?.subEvent.name ?? ''}`.trim();
+        return `Members · ${this.subEventDisplayName(this.selectedSubEventBadgeContext?.subEvent)}`.trim();
       case 'subEventAssets':
-        return `${this.subEventResourceFilter} · ${this.selectedSubEventBadgeContext?.subEvent.name ?? ''}`.trim();
+        return `${this.subEventResourceFilter} · ${this.subEventDisplayName(this.selectedSubEventBadgeContext?.subEvent)}`.trim();
       case 'valuesSelector':
         return 'Values';
       case 'interestSelector':
@@ -7939,7 +8216,7 @@ export class App {
     } else if (this.activitiesPrimaryFilter === 'hosting') {
       rows = this.eventItems
         .filter(item => item.isAdmin)
-        .filter(item => this.hostingPublicationFilter === 'drafts' ? !this.isHostingPublished(item.id) : this.isHostingPublished(item.id))
+        .filter(item => this.hostingPublicationFilter === 'drafts' ? !this.isHostingPublished(item.id) : true)
         .map(item => ({
         id: item.id,
         type: 'hosting',
@@ -8232,7 +8509,7 @@ export class App {
       this.commitPendingRateDirectionOverrides();
     }
     this.activitiesPrimaryFilter = filter;
-    this.hostingPublicationFilter = 'published';
+    this.hostingPublicationFilter = 'all';
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
     if (filter !== 'rates') {
@@ -9969,6 +10246,7 @@ export class App {
   protected closeInlineItemActionMenu(event?: Event): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
+    this.subEventMemberRolePickerUserId = null;
   }
 
   protected isActivityItemActionMenuOpen(row: ActivityListRow): boolean {
@@ -10260,12 +10538,24 @@ export class App {
     this.superStackedPopup = 'activityInviteFriends';
   }
 
-  protected closeActivityInviteFriends(applyInvitations = true): void {
+  protected closeActivityInviteFriends(applyInvitations = false): void {
     if (applyInvitations) {
       this.applySelectedActivityInvitations();
     }
     this.showActivityInviteSortPicker = false;
     this.superStackedPopup = null;
+  }
+
+  protected canConfirmActivityInviteSelection(): boolean {
+    return this.selectedActivityInviteUserIds.length > 0;
+  }
+
+  protected confirmActivityInviteSelection(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.canConfirmActivityInviteSelection()) {
+      return;
+    }
+    this.closeActivityInviteFriends(true);
   }
 
   protected toggleActivityInviteSortPicker(event?: Event): void {
@@ -10332,7 +10622,7 @@ export class App {
   }
 
   protected canShowActivityMembersInviteButton(): boolean {
-    return !this.activityMembersReadOnly && !this.eventEditorInvitationId;
+    return !this.activityMembersReadOnly;
   }
 
   protected activityInviteMetLabel(entry: ActivityMemberEntry): string {
@@ -11421,7 +11711,7 @@ export class App {
       return false;
     }
     const trigger = event.currentTarget as HTMLElement | null;
-    const actionWrap = trigger?.closest('.experience-item-actions') as HTMLElement | null;
+    const actionWrap = (trigger?.closest('.experience-item-actions') as HTMLElement | null) ?? trigger;
     if (!actionWrap) {
       return false;
     }
@@ -11482,6 +11772,7 @@ export class App {
     this.maybeDismissActivityRateEditor(target);
     if (this.inlineItemActionMenu && !target.closest('.item-action-menu') && !target.closest('.experience-action-menu-trigger')) {
       this.inlineItemActionMenu = null;
+      this.subEventMemberRolePickerUserId = null;
     }
     if (this.showUserMenu && !target.closest('.user-menu-panel') && !target.closest('.user-selector-btn-global')) {
       this.showUserMenu = false;
@@ -12261,6 +12552,7 @@ export class App {
         gender: template.gender,
         city: template.city,
         statusText: template.statusText,
+        role: isSelf && row.isAdmin ? 'Admin' : 'Member',
         status: 'accepted',
         pendingSource: null,
         requestKind: null,
@@ -12440,6 +12732,7 @@ export class App {
       gender: user.gender,
       city: user.city,
       statusText: user.statusText,
+      role: row.isAdmin && user.id === this.activeUser.id ? 'Admin' : 'Member',
       status: defaults.status,
       pendingSource: defaults.pendingSource,
       requestKind: defaults.status === 'pending' ? 'invite' : null,

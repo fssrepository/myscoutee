@@ -3574,6 +3574,11 @@
   padding: 2px 10px 2px 4px;
 }
 
+.event-editor-members-trigger-members {
+  border-color: rgba(64, 103, 150, 0.34);
+  background: linear-gradient(180deg, rgba(237, 246, 255, 0.98) 0%, rgba(219, 234, 252, 0.95) 100%);
+}
+
 .event-editor-members-invite {
   display: inline-flex;
   align-items: center;
@@ -3592,6 +3597,14 @@
   font-size: 16px;
   line-height: 16px;
   color: #ae661f;
+}
+
+.event-editor-members-trigger-members .event-editor-members-invite {
+  color: rgba(29, 63, 102, 0.95);
+}
+
+.event-editor-members-trigger-members .event-editor-members-invite .mat-icon {
+  color: #2e689f;
 }
 
 .event-editor-members-pending-badge {
@@ -3996,25 +4009,9 @@
   transition: transform 0.14s ease, color 0.16s ease, background-color 0.16s ease;
 }
 
-.activity-members-header-add-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 1px solid rgba(42, 67, 101, 0.3);
-  background: linear-gradient(180deg, #eef4ff 0%, #dfe9ff 100%);
-  color: #275b98;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: transform 0.14s ease, filter 0.16s ease, border-color 0.16s ease;
-}
-
-.activity-members-header-add-btn .mat-icon {
-  width: 18px;
-  height: 18px;
-  font-size: 18px;
-  line-height: 18px;
+.activity-members-header-invite-trigger {
+  min-height: 34px;
+  padding-right: 8px;
 }
 
 .activities-view-picker {
@@ -4375,6 +4372,10 @@
 
 .popup-body-members {
   height: 100%;
+}
+
+.popup-body.popup-body-members.popup-body-subevent-members {
+  overflow: hidden;
 }
 
 .app-popup-super-stacked {
@@ -7092,7 +7093,7 @@
     background: rgba(54, 90, 133, 0.08);
   }
 
-  .activity-members-header-add-btn:hover {
+  .activity-members-header-invite-trigger:hover {
     transform: translateY(-1px);
     border-color: rgba(39, 76, 121, 0.46);
     filter: brightness(1.04);
@@ -7106,6 +7107,11 @@
   .event-editor-members-trigger:hover {
     border-color: rgba(167, 103, 34, 0.52);
     background: linear-gradient(180deg, rgba(255, 250, 237, 0.99) 0%, rgba(253, 241, 214, 0.97) 100%);
+  }
+
+  .event-editor-members-trigger-members:hover {
+    border-color: rgba(57, 105, 162, 0.5);
+    background: linear-gradient(180deg, rgba(242, 250, 255, 0.99) 0%, rgba(229, 241, 255, 0.97) 100%);
   }
 
   .chat-header-members:hover .chat-stack-avatar,
@@ -7122,7 +7128,7 @@
 .activities-card:active,
 .header-icon-btn:active,
 .popup-chat-event-btn:active,
-.activity-members-header-add-btn:active,
+.activity-members-header-invite-trigger:active,
 .chat-header-members:active,
 .chat-send-btn:active,
 .chat-editor-icon-btn:active {
@@ -8614,9 +8620,9 @@ textarea {
 }
 
 .activities-hosting-draft-toggle {
-  background: linear-gradient(180deg, #45b86b 0%, #2f9a56 100%);
-  border-color: rgba(33, 118, 62, 0.58);
-  color: #ffffff;
+  background: linear-gradient(180deg, #fff4f5 0%, #ffe8eb 100%);
+  border-color: rgba(183, 88, 104, 0.42);
+  color: #9b3345;
   min-width: 108px;
   height: 36px;
   min-height: 36px;
@@ -8641,10 +8647,10 @@ textarea {
 }
 
 .activities-hosting-draft-toggle.is-active {
-  background: linear-gradient(180deg, #f15a5a 0%, #d83c3c 100%);
-  border-color: rgba(166, 29, 29, 0.58);
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(194, 50, 50, 0.34);
+  background: linear-gradient(180deg, #f7dde1 0%, #f2c8ce 100%);
+  border-color: rgba(167, 45, 66, 0.56);
+  color: #8b1f32;
+  box-shadow: 0 4px 12px rgba(186, 65, 86, 0.24);
 }
 
 .assets-toolbar .experience-filter-select.assets-compact-select .mat-mdc-select-trigger,
@@ -8655,6 +8661,22 @@ textarea {
 
 .assets-add-btn {
   margin-left: auto;
+}
+
+.subevent-members-pending-toggle {
+  margin-left: auto;
+  min-width: 120px;
+  min-height: 36px;
+  background: linear-gradient(180deg, #fff4f5 0%, #ffe8eb 100%);
+  border-color: rgba(183, 88, 104, 0.42);
+  color: #9b3345;
+}
+
+.subevent-members-pending-toggle.is-active {
+  background: linear-gradient(180deg, #f7dde1 0%, #f2c8ce 100%);
+  border-color: rgba(167, 45, 66, 0.56);
+  color: #8b1f32;
+  box-shadow: 0 4px 12px rgba(186, 65, 86, 0.24);
 }
 
 .activities-action-stack {
@@ -9354,7 +9376,104 @@ textarea {
 
 .subevent-assets-popup {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 0.62rem;
+  height: 100%;
+  min-height: 0;
+}
+
+.subevent-assets-scroll-list {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.subevent-members-popup .assets-toolbar {
+  position: relative;
+  z-index: 4;
+}
+
+.subevent-members-scroll-area {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.subevent-members-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 0.58rem;
+  align-content: start;
+}
+
+.subevent-member-image-card {
+  width: 100%;
+  min-height: 240px;
+  overflow: visible;
+  z-index: 0;
+  isolation: isolate;
+}
+
+.subevent-member-image-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(8, 16, 28, 0.14) 0%, rgba(8, 15, 28, 0.82) 100%);
+}
+
+.subevent-member-image-card.menu-open {
+  z-index: 18;
+}
+
+.subevent-member-action-menu {
+  z-index: 60;
+}
+
+.subevent-member-menu-trigger {
+  color: #214d85;
+}
+
+.subevent-member-menu-trigger.active {
+  background: #1f3f63;
+  border-color: rgba(255, 255, 255, 0.92);
+  color: #fff;
+}
+
+.subevent-member-menu-trigger .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.subevent-member-card-meta h4 {
+  color: #fff;
+}
+
+.subevent-member-card-meta p {
+  color: rgba(245, 249, 255, 0.96);
+}
+
+.subevent-member-menu-chevron {
+  margin-left: auto;
+}
+
+.subevent-member-role-options {
+  margin-top: 0.08rem;
+  padding-top: 0.18rem;
+  border-top: 1px solid rgba(37, 64, 101, 0.14);
+  display: grid;
+  gap: 0.14rem;
+}
+
+.subevent-member-role-option.is-active {
+  background: rgba(230, 239, 252, 0.76);
+  color: #1f3659;
+}
+
+.subevent-member-role-option .mat-icon:last-child {
+  margin-left: auto;
 }
 
 .subevent-assets-intro {
@@ -13153,6 +13272,14 @@ textarea {
   }
 
   .friends-picker-card {
+    min-height: 190px;
+  }
+
+  .subevent-members-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .subevent-member-image-card {
     min-height: 190px;
   }
 
