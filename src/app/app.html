@@ -703,6 +703,8 @@
         type="button"
         class="popup-header-add-btn subevent-leaderboard-save-btn"
         *ngIf="activePopup === 'eventEditor' && !isEventEditorReadOnly()"
+        [class.form-save-invalid]="!canSubmitEventEditorForm()"
+        [disabled]="!canSubmitEventEditorForm()"
         (click)="saveEventEditorForm()"
         aria-label="Save event"
       >
@@ -2177,6 +2179,8 @@
                       type="button"
                       class="popup-header-add-btn subevent-leaderboard-save-btn"
                       *ngIf="!isEventEditorReadOnly()"
+                      [class.form-save-invalid]="!canSubmitSubEventForm()"
+                      [disabled]="!canSubmitSubEventForm()"
                       (click)="saveSubEventForm($event)"
                       aria-label="Save sub event"
                     >
@@ -3031,6 +3035,8 @@
           type="button"
           class="popup-header-add-btn subevent-leaderboard-save-btn"
           *ngIf="stackedPopup === 'eventEditor' && !isEventEditorReadOnly()"
+          [class.form-save-invalid]="!canSubmitEventEditorForm()"
+          [disabled]="!canSubmitEventEditorForm()"
           (click)="saveEventEditorForm()"
           aria-label="Save event"
         >
@@ -3825,6 +3831,8 @@
                       type="button"
                       class="popup-header-add-btn subevent-leaderboard-save-btn"
                       *ngIf="!isEventEditorReadOnly()"
+                      [class.form-save-invalid]="!canSubmitSubEventForm()"
+                      [disabled]="!canSubmitSubEventForm()"
                       (click)="saveSubEventForm($event)"
                       aria-label="Save sub event"
                     >
@@ -4652,6 +4660,8 @@
               type="button"
               class="popup-header-add-btn subevent-leaderboard-save-btn"
               *ngIf="!isEventEditorReadOnly()"
+              [class.form-save-invalid]="!canSubmitSubEventForm()"
+              [disabled]="!canSubmitSubEventForm()"
               (click)="saveSubEventForm($event)"
               aria-label="Save sub event"
             >
@@ -4826,6 +4836,8 @@
               type="button"
               class="popup-header-add-btn subevent-leaderboard-save-btn"
               *ngIf="!isEventEditorReadOnly()"
+              [class.form-save-invalid]="!canSubmitSubEventGroupForm()"
+              [disabled]="!canSubmitSubEventGroupForm()"
               (click)="saveSubEventGroupForm($event)"
               aria-label="Save group"
             >
@@ -4843,7 +4855,7 @@
               <input
                 type="text"
                 [(ngModel)]="subEventGroupForm.name"
-                [class.field-required-invalid]="showSubEventGroupRequiredValidation && subEventGroupFieldInvalid()"
+                [class.field-required-invalid]="subEventGroupFieldInvalid()"
               />
             </label>
             <label class="subevent-capacity-range-field">
@@ -5054,6 +5066,7 @@
             <button
               type="button"
               class="popup-header-add-btn subevent-leaderboard-save-btn"
+              [class.form-save-invalid]="!canSubmitSubEventLeaderboardEntry()"
               *ngIf="!isEventEditorReadOnly()"
               (click)="saveSubEventLeaderboardEntryFromPopup($event)"
               [disabled]="!canSubmitSubEventLeaderboardEntry()"

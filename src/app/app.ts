@@ -2624,6 +2624,32 @@ export class App {
     return !this.subEventForm[field].trim();
   }
 
+  protected canSubmitEventEditorForm(): boolean {
+    if (this.eventEditorReadOnly) {
+      return false;
+    }
+    return Boolean(
+      this.eventForm.title.trim()
+      && this.eventForm.description.trim()
+      && this.eventForm.startAt
+      && this.eventForm.endAt
+    );
+  }
+
+  protected canSubmitSubEventForm(): boolean {
+    if (this.eventEditorReadOnly) {
+      return false;
+    }
+    return Boolean(this.subEventForm.name.trim() && this.subEventForm.description.trim());
+  }
+
+  protected canSubmitSubEventGroupForm(): boolean {
+    if (this.eventEditorReadOnly) {
+      return false;
+    }
+    return !this.subEventGroupFieldInvalid();
+  }
+
   protected onSubEventStartDateChange(value: Date | null): void {
     this.subEventStartDateValue = value;
     this.syncSubEventFormFromDateTimeControls();
@@ -4092,8 +4118,16 @@ export class App {
           ? { ...item, title, shortDescription, timeframe }
           : item
       );
+      this.eventItemsByUser[this.activeUser.id] = this.eventItems.map(item =>
+        item.id === this.editingEventId
+          ? { ...item, title, shortDescription, timeframe, isAdmin: true }
+          : item
+      );
       if (this.selectedHostingEvent?.id === this.editingEventId) {
         this.selectedHostingEvent = { ...this.selectedHostingEvent, title, shortDescription, timeframe };
+      }
+      if (this.selectedEvent?.id === this.editingEventId) {
+        this.selectedEvent = { ...this.selectedEvent, title, shortDescription, timeframe, isAdmin: true };
       }
       return;
     }
@@ -4113,6 +4147,7 @@ export class App {
     if (this.eventEditorTarget === 'hosting') {
       const id = `h${baseId}`;
       this.hostingDatesById[id] = this.eventForm.startAt;
+      this.eventDatesById[id] = this.eventForm.startAt;
       this.hostingPublishedById[id] = false;
       this.eventVisibilityById[id] = this.eventForm.visibility;
       this.eventBlindModeById[id] = this.eventForm.blindMode;
@@ -4127,8 +4162,19 @@ export class App {
         timeframe,
         activity: 1
       };
+      const nextEvent: EventMenuItem = {
+        id,
+        avatar: this.activeUser.initials,
+        title: this.eventForm.title.trim(),
+        shortDescription: this.eventForm.description.trim(),
+        timeframe,
+        activity: 1,
+        isAdmin: true
+      };
       this.hostingItemsByUser[this.activeUser.id] = [next, ...this.hostingItems];
+      this.eventItemsByUser[this.activeUser.id] = [nextEvent, ...this.eventItems];
       this.selectedHostingEvent = next;
+      this.selectedEvent = nextEvent;
       return;
     }
     const id = `e${baseId}`;
@@ -11999,7 +12045,7 @@ export class App {
       return this.sortActivityMembersByActionTimeAsc([...cached]);
     }
     if (row.id.startsWith('draft-')) {
-      const initial = [this.toActivityMemberEntry(this.activeUser, row, rowKey, { status: 'accepted', pendingSource: null, invitedByActiveUser: false })];
+      const initial: ActivityMemberEntry[] = [];
       this.activityMembersByRowId[rowKey] = [...initial];
       return initial;
     }
@@ -12100,7 +12146,7 @@ export class App {
     if (!isActiveEditor && !isStackedEditor) {
       return null;
     }
-    const source = this.resolveEventEditorSource();
+    const source = this.eventEditorMode === 'create' ? null : this.resolveEventEditorSource();
     const draftId = this.eventEditorDraftMembersId;
     const isDraft = !source && Boolean(draftId);
     if (!source && !isDraft) {
