@@ -1,3 +1,5 @@
+git submodule to grab the front end code, the backend will be in private repo
+
 Dictionary:
 -----------
 cloudflare reverse proxy
@@ -266,10 +268,8 @@ lazy load card image - card_no_edges.png (animate lazy load images in different 
 
 somehow we need to show that assets are occupied for that date on assets popup also inside the items (maybe it's a different view)
 
-On Fri, Feb 27, 2026 at 11:00 PM Peter Szabo <raxim.uk@gmail.com> wrote:
 https://chatgpt.com/codex
 
-On Fri, 27 Feb 2026, 22:59 Peter Szabo, <raxim.uk@gmail.com> wrote:
 assets hasn't any member acceptance,
 if someone is including your apartment into his own event, you will be a manager role of the event - the apartment should get some availability
 
@@ -304,45 +304,5 @@ ticket qr code generator for event + voice recorder for person (voice can be att
 
 accept chat - tick right hand side
 
-chat should load before the actual chat 10  items, as it's backward
-
-"+" button on chat, event, hosting
-
-profile status change - close profile, the 72% coloring and % changes accordingly
-
-every button on touchscreen while clicking should be an animated effect 
-
-invite friends - date is in new line
-
-chat - create some element before to make loading before
-
-don't make pull up/downs
-
-visibility of assets (public, private, friends only)
-
-lazy load images - paginator a horizontal progress and load (old myscoutee has it)
-
--------------------
-
-view event popups (invitations/events - view event menu item) - the rate is big profile images, not this small one
-members in the event editor header like in the case of chat
-
-in sub event editor - assets management popups
-
-Sub events header (name of the event and the number of stages)
-
-add group popup on mobile
-
-----
-
-git submodule to grab the front end code, the backend will be in private repo
-
----
-
-add manually group if there is group does exist
-
-you need to increase the max capacity of the main event accordingly
-manual groups are priority groups above the stage rule
-if you edit a generated group independently, it becomes manual group
-
-view event should look lke the same like edit, but read only
+-----
+game screen / assets screen finish / chat (accept action button) / ticket on main event
