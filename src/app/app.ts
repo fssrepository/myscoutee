@@ -18,7 +18,6 @@ import {
   DEMO_EVENTS_BY_USER,
   DEMO_HOSTING_BY_USER,
   DEMO_INVITATIONS_BY_USER,
-  DEMO_RATES_BY_USER,
   DemoUser,
   DEMO_USERS,
   EVENT_EDITOR_SAMPLE,
@@ -613,7 +612,7 @@ export class App {
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
 
-  protected readonly users = DEMO_USERS;
+  protected readonly users = this.buildExpandedDemoUsers(50);
   protected readonly profileTopTraits = PROFILE_PERSONALITY_TOP3;
   protected readonly profilePriorityTags = PROFILE_PRIORITY_TAGS;
   protected readonly profilePillars = PROFILE_PILLARS;
@@ -924,6 +923,7 @@ export class App {
   private readonly activityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
   private readonly pendingActivityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
   private readonly activityRateCardActiveImageIndexById: Record<string, number> = {};
+  private readonly generatedRateItemsByUser: Record<string, RateMenuItem[]> = {};
   private lastActivityOpenKey: string | null = null;
   private lastActivityOpenAt = 0;
   private calendarMonthFocusDate: Date | null = null;
@@ -1466,7 +1466,7 @@ export class App {
   }
 
   protected get rateItems(): RateMenuItem[] {
-    return DEMO_RATES_BY_USER[this.activeUser.id] ?? DEMO_RATES_BY_USER['u1'] ?? [];
+    return this.generatedRateItemsForUser(this.activeUser.id);
   }
 
   protected onUserSelect(): void {
@@ -7459,15 +7459,6 @@ export class App {
             source: item
           };
         });
-      if (rows.length === 0) {
-        rows = this.generatedRateRowsForFilter(this.activitiesRateFilter, 16);
-      } else if (rows.length < 12) {
-        const needed = 12 - rows.length;
-        const generated = this.generatedRateRowsForFilter(this.activitiesRateFilter, needed).filter(generatedRow =>
-          !rows.some(existingRow => existingRow.id === generatedRow.id)
-        );
-        rows = [...rows, ...generated];
-      }
     }
 
     const sorted = this.sortActivitiesRows(rows);
@@ -7770,7 +7761,7 @@ export class App {
   protected selectActivitiesRateFilter(filter: RateFilterKey): void {
     const filterChanged = filter !== this.activitiesRateFilter;
     if (filterChanged) {
-      this.commitPendingRateDirectionOverrides();
+      this.commitPendingRateDirectionOverrides(filter);
     }
     this.activitiesRateFilter = filter;
     this.selectedActivityRateId = null;
@@ -8497,21 +8488,12 @@ export class App {
     }
     const item = row.source as RateMenuItem;
     const user = this.activityRateUser(row);
-    const profileSlots = user ? (this.profileImageSlotsByUser[user.id] ?? []) : [];
-    const explicitProfile = profileSlots.filter((slot): slot is string => Boolean(slot)).slice(0, 6);
-    const explicitUser = (user?.images ?? []).filter(Boolean).slice(0, 6);
-    const explicit = [...explicitProfile, ...explicitUser.filter(url => !explicitProfile.includes(url))];
-    const fallbackUser: DemoUser = user ?? {
-      ...this.activeUser,
-      id: `rate-fallback-${row.id}`,
-      name: row.title,
-      gender: this.activeUser.gender
-    };
-    const generated = Array.from({ length: 6 }, (_, index) => this.profilePortraitUrlForUser(fallbackUser, index, `rate-${row.id}`));
-    const merged = [...explicit, ...generated.filter(url => !explicit.includes(url))];
+    const generated = Array.from({ length: 6 }, (_, index) =>
+      this.rateCardSeedImageUrl(row.id, user?.id ?? 'rate-fallback', user?.gender ?? this.activeUser.gender, index)
+    );
     const seededCount = 1 + (this.hashText(`rate-photo-count:${user?.id ?? row.id}`) % 4);
     const desiredCount = item.direction === 'met' ? Math.min(2, seededCount) : seededCount;
-    return merged.slice(0, Math.max(1, Math.min(4, desiredCount)));
+    return generated.slice(0, Math.max(1, Math.min(4, desiredCount)));
   }
 
   protected activityRateCardActiveImageIndex(row: ActivityListRow): number {
@@ -8698,49 +8680,23 @@ export class App {
     ];
   }
 
-  private generatedRateRowsForFilter(filter: RateFilterKey, count = 12): ActivityListRow[] {
-    const [modeKey, directionKey] = filter.split('-') as ['individual' | 'pair', RateMenuItem['direction']];
-    const fallbackUsers = this.users.filter(user => user.id !== this.activeUser.id);
-    const targetCount = Math.max(1, count);
-    return Array.from({ length: targetCount }, (_, index) => {
-      const user = fallbackUsers[index % fallbackUsers.length] ?? this.activeUser;
-      const seed = this.hashText(`generated-rate:${filter}:${user.id}:${index}`);
-      const dayOffset = seed % 21;
-      const scoreGiven = directionKey === 'met' ? 0 : 5 + (seed % 5);
-      const scoreReceived = directionKey === 'met' ? 0 : 4 + ((seed + 2) % 6);
-      const happenedAt = this.toIsoDateTime(this.addDays(new Date('2026-03-01T18:00:00'), -dayOffset));
-      const item: RateMenuItem = {
-        id: `generated-${filter}-${user.id}-${index + 1}`,
-        userId: user.id,
-        mode: modeKey,
-        direction: directionKey,
-        scoreGiven,
-        scoreReceived,
-        eventName: `${modeKey === 'pair' ? 'Pair' : 'Single'} ${directionKey} Session`,
-        happenedAt,
-        distanceKm: 2 + (seed % 34)
-      };
-      const ownScore = this.rateOwnScore(item);
-      return {
-        id: item.id,
-        type: 'rates' as const,
-        title: user.name,
-        subtitle: '',
-        detail: '',
-        dateIso: item.happenedAt,
-        distanceKm: item.distanceKm,
-        unread: 0,
-        metricScore: directionKey === 'mutual' ? ownScore + Math.max(item.scoreReceived, 0) : ownScore,
-        source: item
-      };
-    });
-  }
-
   private profilePortraitUrlForUser(user: DemoUser, index: number, context: string): string {
     const safeGender = user.gender === 'woman' ? 'women' : 'men';
     const seed = this.hashText(`portrait:${context}:${user.id}:${index}`);
     const pictureIndex = seed % 100;
     return `https://randomuser.me/api/portraits/${safeGender}/${pictureIndex}.jpg`;
+  }
+
+  private rateCardSeedImageUrl(
+    rowId: string,
+    userId: string,
+    gender: DemoUser['gender'],
+    index: number
+  ): string {
+    const hash = this.hashText(`rate-card-${userId}-${rowId}-${index + 1}`);
+    const genderFolder = gender === 'woman' ? 'women' : 'men';
+    const portraitIndex = hash % 100;
+    return `https://randomuser.me/api/portraits/${genderFolder}/${portraitIndex}.jpg`;
   }
 
   private toRateCardDateLabel(isoValue: string): string {
@@ -8846,11 +8802,9 @@ export class App {
       return;
     }
     const rateItem = row.source as RateMenuItem;
-    const direction = this.displayedRateDirection(rateItem);
-    if (direction === 'received') {
-      this.pendingActivityRateDirectionOverrideById[rateItem.id] = rateItem.mode === 'individual' ? 'mutual' : 'given';
-    } else if (direction === 'met') {
-      this.pendingActivityRateDirectionOverrideById[rateItem.id] = 'given';
+    const nextDirection = this.pendingDirectionAfterRating(rateItem);
+    if (nextDirection) {
+      this.pendingActivityRateDirectionOverrideById[rateItem.id] = nextDirection;
     }
     if (this.isRatesFullscreenModeActive()) {
       this.advanceActivitiesRatesFullscreenCard();
@@ -9016,11 +8970,47 @@ export class App {
     return this.activityRateDirectionOverrideById[item.id] ?? item.direction;
   }
 
-  private commitPendingRateDirectionOverrides(): void {
-    Object.assign(this.activityRateDirectionOverrideById, this.pendingActivityRateDirectionOverrideById);
-    for (const key of Object.keys(this.pendingActivityRateDirectionOverrideById)) {
-      delete this.pendingActivityRateDirectionOverrideById[key];
+  private pendingDirectionAfterRating(item: RateMenuItem): RateMenuItem['direction'] | null {
+    const direction = this.displayedRateDirection(item);
+    if (item.mode === 'individual') {
+      if (direction === 'given') {
+        return item.scoreReceived > 0 ? 'mutual' : 'given';
+      }
+      if (direction === 'received') {
+        return 'mutual';
+      }
+      return null;
     }
+    // Pair mode has only Given/Received lanes in current UI.
+    if (direction === 'received' || direction === 'met') {
+      return 'given';
+    }
+    return null;
+  }
+
+  private commitPendingRateDirectionOverrides(targetFilter?: RateFilterKey): void {
+    const target = targetFilter ? this.parseRateFilterKey(targetFilter) : null;
+    for (const [itemId, pendingDirection] of Object.entries(this.pendingActivityRateDirectionOverrideById)) {
+      if (!pendingDirection) {
+        continue;
+      }
+      if (target) {
+        const item = this.rateItems.find(candidate => candidate.id === itemId);
+        if (!item) {
+          continue;
+        }
+        if (item.mode !== target.mode || pendingDirection !== target.direction) {
+          continue;
+        }
+      }
+      this.activityRateDirectionOverrideById[itemId] = pendingDirection;
+      delete this.pendingActivityRateDirectionOverrideById[itemId];
+    }
+  }
+
+  private parseRateFilterKey(filter: RateFilterKey): { mode: 'individual' | 'pair'; direction: RateMenuItem['direction'] } {
+    const [mode, direction] = filter.split('-') as ['individual' | 'pair', RateMenuItem['direction']];
+    return { mode, direction };
   }
 
   private clearActivityRateEditorState(): void {
@@ -11927,6 +11917,45 @@ export class App {
     return Math.abs(hash);
   }
 
+  private buildExpandedDemoUsers(totalCount: number): DemoUser[] {
+    const baseUsers = DEMO_USERS;
+    if (baseUsers.length >= totalCount) {
+      return baseUsers.slice(0, totalCount);
+    }
+    const expanded: DemoUser[] = [...baseUsers];
+    const firstNamesWomen = ['Emma', 'Sophia', 'Olivia', 'Mia', 'Lina', 'Nora', 'Chloe', 'Ivy', 'Ava', 'Zoe'];
+    const firstNamesMen = ['Liam', 'Noah', 'Ethan', 'Mason', 'Lucas', 'Owen', 'Elijah', 'Leo', 'Ryan', 'Alex'];
+    const lastNames = ['Parker', 'Reed', 'Stone', 'Lane', 'Baker', 'Hale', 'Rivera', 'Turner', 'Brooks', 'Grant'];
+    const cities = ['Austin', 'Seattle', 'Chicago', 'Denver', 'Miami', 'Boston', 'Phoenix', 'Nashville', 'San Diego', 'Portland'];
+
+    for (let index = baseUsers.length; index < totalCount; index += 1) {
+      const id = `u${index + 1}`;
+      const template = baseUsers[index % baseUsers.length];
+      const gender = index % 2 === 0 ? 'woman' : 'man';
+      const firstNamePool = gender === 'woman' ? firstNamesWomen : firstNamesMen;
+      const firstName = firstNamePool[index % firstNamePool.length];
+      const lastName = lastNames[(index * 3) % lastNames.length];
+      const name = `${firstName} ${lastName}`;
+      const initials = `${firstName[0] ?? 'U'}${lastName[0] ?? 'S'}`.toUpperCase();
+      const age = 24 + (index % 12);
+      const birthday = new Date(1990 + (index % 11), index % 12, 1 + (index % 27));
+      const portraitFolder = gender === 'woman' ? 'women' : 'men';
+      const portraitIndex = (index * 7) % 100;
+      expanded.push({
+        ...template,
+        id,
+        name,
+        age,
+        birthday: birthday.toISOString().slice(0, 10),
+        city: cities[index % cities.length],
+        initials,
+        gender,
+        images: [`https://randomuser.me/api/portraits/${portraitFolder}/${portraitIndex}.jpg`]
+      });
+    }
+    return expanded;
+  }
+
   private resolveSectionBadge(values: number[], itemCount: number): number {
     const positiveTotal = values.reduce((sum, value) => sum + (value > 0 ? value : 0), 0);
     if (positiveTotal > 0) {
@@ -11970,6 +11999,69 @@ export class App {
       return sorted.sort((a, b) => b.metricScore - a.metricScore || this.toSortableDate(a.dateIso) - this.toSortableDate(b.dateIso));
     }
     return sorted.sort((a, b) => b.metricScore - a.metricScore || this.toSortableDate(b.dateIso) - this.toSortableDate(a.dateIso));
+  }
+
+  private generatedRateItemsForUser(userId: string): RateMenuItem[] {
+    if (this.generatedRateItemsByUser[userId]) {
+      return this.generatedRateItemsByUser[userId];
+    }
+    const otherUsers = this.users
+      .filter(user => user.id !== userId)
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const filterLanes: Array<{ mode: 'individual' | 'pair'; direction: RateMenuItem['direction'] }> = [
+      { mode: 'individual', direction: 'given' },
+      { mode: 'individual', direction: 'received' },
+      { mode: 'individual', direction: 'mutual' },
+      { mode: 'individual', direction: 'met' },
+      { mode: 'pair', direction: 'given' },
+      { mode: 'pair', direction: 'received' }
+    ];
+    const generated: RateMenuItem[] = [];
+    otherUsers.forEach((user, userIndex) => {
+      const laneIndex = userIndex % filterLanes.length;
+      const lane = filterLanes[laneIndex];
+      generated.push(this.buildGeneratedRateItemForLane(userId, user.id, lane.mode, lane.direction, laneIndex, userIndex));
+    });
+    this.generatedRateItemsByUser[userId] = generated;
+    return generated;
+  }
+
+  private buildGeneratedRateItemForLane(
+    activeUserId: string,
+    targetUserId: string,
+    mode: 'individual' | 'pair',
+    direction: RateMenuItem['direction'],
+    laneIndex: number,
+    userIndex: number
+  ): RateMenuItem {
+    const seed = this.hashText(`rate-grid:${activeUserId}:${targetUserId}:${mode}:${direction}`);
+    const happenedAt = this.toIsoDateTime(this.addDays(new Date('2026-03-01T20:00:00'), -((laneIndex * 17) + userIndex + 1)));
+    let scoreGiven = 0;
+    let scoreReceived = 0;
+    if (direction === 'given') {
+      scoreGiven = 4 + (seed % 7);
+      scoreReceived = seed % 2 === 0 ? 4 + ((seed + 2) % 7) : 0;
+    } else if (direction === 'received') {
+      scoreGiven = 0;
+      scoreReceived = 4 + ((seed + 3) % 7);
+    } else if (direction === 'mutual') {
+      scoreGiven = 4 + (seed % 7);
+      scoreReceived = 4 + ((seed + 5) % 7);
+    } else if (direction === 'met') {
+      scoreGiven = 4 + (seed % 7);
+      scoreReceived = 0;
+    }
+    return {
+      id: `rate-${activeUserId}-${mode}-${direction}-${targetUserId}`,
+      userId: targetUserId,
+      mode,
+      direction,
+      scoreGiven,
+      scoreReceived,
+      eventName: `${mode === 'pair' ? 'Pair' : 'Single'} ${direction}`,
+      happenedAt,
+      distanceKm: 2 + ((seed + laneIndex + userIndex) % 33)
+    };
   }
 
   private matchesRateFilter(item: RateMenuItem, filter: RateFilterKey): boolean {
