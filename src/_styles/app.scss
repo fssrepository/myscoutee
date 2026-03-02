@@ -5236,6 +5236,14 @@
   padding: 0.24rem 0.52rem;
 }
 
+.activities-group-marker.activities-group-marker-mobile-first-snap {
+  position: sticky;
+  top: 2.2rem;
+  z-index: 24;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
 .activities-scroll-list .asset-item-card,
 .activities-scroll-list .activities-card {
   scroll-snap-align: start;
