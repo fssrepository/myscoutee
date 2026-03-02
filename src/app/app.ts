@@ -8811,12 +8811,15 @@ export class App {
       return;
     }
     this.cancelActivityRateEditorCloseTransition();
+    const wasOpen = this.isActivityRateEditorOpen();
     if (this.selectedActivityRateId === row.id) {
       this.clearActivityRateEditorState();
       return;
     }
     const scrollElement = this.activitiesScrollRef?.nativeElement;
-    this.activityRateEditorOpenScrollTop = scrollElement ? scrollElement.scrollTop : null;
+    if (!wasOpen) {
+      this.activityRateEditorOpenScrollTop = scrollElement ? scrollElement.scrollTop : null;
+    }
     this.selectedActivityRateId = row.id;
     this.activityRateEditorClosing = false;
     this.runAfterActivitiesRender(() => {
@@ -9031,10 +9034,17 @@ export class App {
       return;
     }
     const scrollElement = this.activitiesScrollRef?.nativeElement;
-    const shouldReverseLift = this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'rates' && !!scrollElement && this.lastActivityRateEditorLiftDelta > 0;
+    const restoreTop = this.activityRateEditorOpenScrollTop;
+    const hasRestoreTop = Number.isFinite(restoreTop as number);
+    const shouldReverseLift =
+      this.activePopup === 'activities' &&
+      this.activitiesPrimaryFilter === 'rates' &&
+      !!scrollElement &&
+      (hasRestoreTop
+        ? scrollElement.scrollTop > (restoreTop as number) + 0.5
+        : this.lastActivityRateEditorLiftDelta > 0);
     const previousInlineSnapType = shouldReverseLift ? scrollElement.style.scrollSnapType : '';
     const reverseDelta = this.lastActivityRateEditorLiftDelta;
-    const restoreTop = this.activityRateEditorOpenScrollTop;
     this.activityRateEditorClosing = true;
     this.cancelActivityRateEditorCloseTransition();
     this.activityRateEditorCloseTimer = setTimeout(() => {
@@ -9187,7 +9197,9 @@ export class App {
     const breathingRoom = this.isMobileView ? 6 : 8;
     const revealBottom = dockTop - breathingRoom;
     if (rowBottom <= revealBottom) {
-      this.lastActivityRateEditorLiftDelta = 0;
+      if (!Number.isFinite(this.activityRateEditorOpenScrollTop as number)) {
+        this.lastActivityRateEditorLiftDelta = 0;
+      }
       return;
     }
     const delta = rowBottom - revealBottom;
