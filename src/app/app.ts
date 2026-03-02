@@ -7691,7 +7691,10 @@ export class App {
 
   protected onActivitiesScroll(event: Event): void {
     const target = event.target as HTMLElement;
-    this.clearActivityRateEditorState();
+    if (this.isActivityRateEditorOpen()) {
+      this.clearActivityRateEditorState();
+      this.releaseActiveElementFocus();
+    }
     this.updateActivitiesStickyHeader(target.scrollTop || 0);
     this.updateActivitiesHeaderProgress();
     this.maybeLoadMoreActivities(target);
@@ -8418,6 +8421,14 @@ export class App {
 
   protected trackByRateCardImage(index: number, imageUrl: string): string {
     return `${index}-${imageUrl}`;
+  }
+
+  protected trackByActivityGroup(index: number, group: ActivityGroup): string {
+    return `${index}:${group.label}`;
+  }
+
+  protected trackByActivityRow(index: number, row: ActivityListRow): string {
+    return `${row.type}:${row.id}`;
   }
 
   protected activityRateCardImageUrls(row: ActivityListRow): string[] {

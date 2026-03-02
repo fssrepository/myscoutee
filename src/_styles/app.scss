@@ -5140,6 +5140,20 @@
   scroll-snap-stop: normal;
 }
 
+.activities-scroll-list.activities-scroll-list-rates {
+  scroll-snap-type: none !important;
+  scroll-behavior: auto !important;
+  padding-bottom: 5.2rem;
+}
+
+.activities-scroll-list.activities-scroll-list-rates .asset-item-card,
+.activities-scroll-list.activities-scroll-list-rates .activities-card,
+.activities-scroll-list.activities-scroll-list-rates .activities-row-item,
+.activities-scroll-list.activities-scroll-list-rates .activities-group-marker {
+  scroll-snap-align: none !important;
+  scroll-snap-stop: normal !important;
+}
+
 .activities-scroll-list.activities-scroll-list-with-rate-editor {
   padding-bottom: 5.2rem;
 }

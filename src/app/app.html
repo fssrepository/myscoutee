@@ -885,6 +885,7 @@
         <ng-container *ngIf="!isCalendarLayoutView(); else activitiesCalendarLayout">
           <div
             class="experience-card-list assets-card-list activities-scroll-list"
+            [class.activities-scroll-list-rates]="activitiesPrimaryFilter === 'rates'"
             [class.activities-scroll-list-with-rate-editor]="isActivityRateEditorOpen()"
             [class.activities-scroll-list-chat]="activitiesPrimaryFilter === 'chats'"
             #activitiesScroll
@@ -892,10 +893,10 @@
           >
             <div class="activities-sticky-header">{{ activitiesStickyHeader }}</div>
 
-            <ng-container *ngFor="let group of groupedActivityRows; let groupIndex = index">
+            <ng-container *ngFor="let group of groupedActivityRows; let groupIndex = index; trackBy: trackByActivityGroup">
               <div class="activities-group-marker" *ngIf="groupIndex > 0" [attr.data-group-label]="group.label">{{ group.label }}</div>
 
-              <ng-container *ngFor="let row of group.rows">
+              <ng-container *ngFor="let row of group.rows; trackBy: trackByActivityRow">
                 <article class="experience-item-card asset-item-card activities-row-item" [class.activities-row-item-full]="isActivityFull(row)" [attr.data-group-label]="group.label" *ngIf="isEventStyleActivity(row); else nonEventActivityRow">
                   <div class="asset-card-image" [appLazyBgImage]="activityImageUrl(row)">
                     <a
