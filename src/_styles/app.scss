@@ -3957,7 +3957,7 @@
 
 .activities-view-picker {
   position: relative;
-  z-index: 20;
+  z-index: 60;
   margin-left: auto;
   display: inline-flex;
   align-items: center;
@@ -3966,7 +3966,7 @@
 
 .activities-secondary-picker {
   position: relative;
-  z-index: 21;
+  z-index: 61;
 }
 
 .activities-compact-select {
