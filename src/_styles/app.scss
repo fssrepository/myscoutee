@@ -5047,6 +5047,12 @@
   min-height: 0;
 }
 
+.activities-popup.activities-popup-rates-fullscreen {
+  background:
+    radial-gradient(120% 88% at 10% 0%, rgba(220, 234, 255, 0.72) 0%, rgba(220, 234, 255, 0) 56%),
+    linear-gradient(180deg, #f9fbff 0%, #eef4ff 58%, #eaf1ff 100%);
+}
+
 .activities-sticky-header {
   position: sticky;
   top: 0;
@@ -6130,6 +6136,12 @@
   pointer-events: none;
 }
 
+.activities-rate-editor-dock.is-permanent {
+  animation: none;
+  padding-top: 0.4rem;
+  padding-bottom: 0.52rem;
+}
+
 @keyframes activities-rate-dock-in {
   from {
     opacity: 0;
@@ -6150,6 +6162,114 @@
     opacity: 0;
     transform: translateY(10px);
   }
+}
+
+.activities-rates-fullscreen-toggle {
+  border-color: rgba(48, 85, 138, 0.34);
+  color: #2c5f9b;
+  background: linear-gradient(180deg, #f7fbff 0%, #edf4ff 100%);
+}
+
+.activities-rates-fullscreen-toggle.is-enter {
+  border-color: rgba(188, 138, 24, 0.5);
+  background: linear-gradient(180deg, #fff7df 0%, #ffefc6 100%);
+  color: #8d5d10;
+  box-shadow: 0 5px 13px rgba(180, 127, 23, 0.2);
+}
+
+.activities-rates-fullscreen-toggle.is-enter:hover {
+  border-color: rgba(171, 122, 19, 0.62);
+  background: linear-gradient(180deg, #ffefc9 0%, #ffe4ab 100%);
+  color: #7b4f0c;
+  box-shadow: 0 6px 14px rgba(166, 113, 16, 0.25);
+}
+
+.activities-rates-fullscreen-toggle.is-active {
+  border-color: rgba(23, 57, 108, 0.64);
+  background: linear-gradient(180deg, #dce9ff 0%, #cfe0ff 100%);
+  color: #173f76;
+  box-shadow: 0 6px 16px rgba(42, 79, 138, 0.26);
+}
+
+.activities-rates-fullscreen-toggle.is-exit {
+  border-color: rgba(26, 68, 124, 0.68);
+  background: linear-gradient(180deg, #d3e4ff 0%, #bfd7ff 100%);
+  color: #123d73;
+}
+
+.activities-rates-fullscreen {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  padding: 0 0 3.4rem;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
+}
+
+.activities-rates-fullscreen-deck {
+  position: relative;
+  width: 100%;
+  max-width: none;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.activities-rates-fullscreen-card {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  touch-action: pan-y;
+  height: 100%;
+  transform-origin: center center;
+}
+
+.activities-rates-fullscreen-card-active {
+  z-index: 2;
+  will-change: transform, opacity;
+  opacity: 1;
+  isolation: isolate;
+}
+.activities-rates-fullscreen-card-leaving {
+  z-index: 3;
+  transform-origin: top right;
+  animation: activities-rates-page-curl 380ms cubic-bezier(0.18, 0.64, 0.24, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes activities-rates-page-curl {
+  0% {
+    transform: perspective(1400px) translateX(0) translateY(0) rotateY(0deg) rotateZ(0deg) scale(1);
+    opacity: 1;
+  }
+  30% {
+    transform: perspective(1400px) translateX(-8%) translateY(1%) rotateY(-24deg) rotateZ(-2deg) scale(0.995);
+    opacity: 0.96;
+  }
+  100% {
+    transform: perspective(1400px) translateX(-104%) translateY(4%) rotateY(-68deg) rotateZ(-8deg) scale(0.965);
+    opacity: 0.2;
+  }
+}
+
+.activities-rates-fullscreen .activities-rate-profile-card {
+  min-height: 100%;
+  height: 100%;
+  width: 100%;
+  max-width: none;
+  background: #e6edf7;
+}
+
+.activities-rates-fullscreen .activities-rate-profile-stack {
+  min-height: 100%;
+  height: 100%;
+  background: #d7e1ef;
+}
+
+.activities-rates-fullscreen-card-active .activities-rate-profile-layer {
+  background-color: #d3ddea;
 }
 
 .activities-rate-editor-head {

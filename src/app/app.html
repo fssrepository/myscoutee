@@ -745,7 +745,7 @@
       [class.popup-body-impressions]="activePopup === 'impressionsHost'"
       [class.popup-body-image-editor]="activePopup === 'imageEditor'"
     >
-      <div *ngIf="activePopup === 'activities'" class="activities-popup" (click)="onActivitiesPopupSurfaceClick($event)">
+      <div *ngIf="activePopup === 'activities'" class="activities-popup" [class.activities-popup-rates-fullscreen]="isRatesFullscreenModeActive()" (click)="onActivitiesPopupSurfaceClick($event)">
         <div class="experience-toolbar assets-toolbar">
           <ng-container *ngIf="!isMobileView; else mobileActivitiesPrimaryFilterButton">
             <div class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-primary-filter-select" [ngClass]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)">
@@ -860,7 +860,25 @@
               </button>
             </ng-template>
           </ng-container>
-          <div class="activities-action-stack" *ngIf="shouldShowActivitiesExploreAction() || shouldShowActivitiesCreateAction()">
+          <div class="activities-action-stack" *ngIf="shouldShowActivitiesExploreAction() || shouldShowActivitiesCreateAction() || shouldShowRatesFullscreenToggle()">
+            <button
+              type="button"
+              class="popup-header-add-btn activities-rates-fullscreen-toggle is-enter"
+              *ngIf="shouldShowRatesFullscreenToggle() && !isRatesFullscreenModeActive()"
+              (click)="toggleActivitiesRatesFullscreenMode($event)"
+              aria-label="Open rates fullscreen mode"
+            >
+              <mat-icon>fullscreen</mat-icon>
+            </button>
+            <button
+              type="button"
+              class="popup-header-add-btn activities-rates-fullscreen-toggle is-active is-exit"
+              *ngIf="shouldShowRatesFullscreenToggle() && isRatesFullscreenModeActive()"
+              (click)="toggleActivitiesRatesFullscreenMode($event)"
+              aria-label="Exit rates fullscreen mode"
+            >
+              <mat-icon>fullscreen_exit</mat-icon>
+            </button>
             <button
               type="button"
               class="popup-header-add-btn activities-explore-btn"
@@ -883,16 +901,17 @@
         </div>
 
         <ng-container *ngIf="!isCalendarLayoutView(); else activitiesCalendarLayout">
-          <div
-            class="experience-card-list assets-card-list activities-scroll-list"
-            [class.activities-scroll-list-rates]="activitiesPrimaryFilter === 'rates'"
-            [class.activities-scroll-list-with-rate-editor]="isActivityRateEditorDockVisible()"
-            [class.activities-scroll-list-chat]="activitiesPrimaryFilter === 'chats'"
-            #activitiesScroll
-            (wheel)="closeActivityRateEditorFromUserScroll()"
-            (touchmove)="closeActivityRateEditorFromUserScroll()"
-            (scroll)="onActivitiesScroll($event)"
-          >
+          <ng-container *ngIf="!isRatesFullscreenModeActive(); else activitiesRatesFullscreenLayout">
+            <div
+              class="experience-card-list assets-card-list activities-scroll-list"
+              [class.activities-scroll-list-rates]="activitiesPrimaryFilter === 'rates'"
+              [class.activities-scroll-list-with-rate-editor]="isActivityRateEditorDockVisible()"
+              [class.activities-scroll-list-chat]="activitiesPrimaryFilter === 'chats'"
+              #activitiesScroll
+              (wheel)="closeActivityRateEditorFromUserScroll()"
+              (touchmove)="closeActivityRateEditorFromUserScroll()"
+              (scroll)="onActivitiesScroll($event)"
+            >
             <div class="activities-sticky-header">{{ activitiesStickyHeader }}</div>
 
             <ng-container *ngFor="let group of groupedActivityRows; let groupIndex = index; trackBy: trackByActivityGroup">
@@ -1068,12 +1087,91 @@
               </ng-container>
             </ng-container>
 
-            <div class="editor-list-card" *ngIf="!activitiesInitialLoadPending && filteredActivityRows.length === 0">
+              <div class="editor-list-card" *ngIf="!activitiesInitialLoadPending && filteredActivityRows.length === 0">
+                <h4>No items</h4>
+                <p>{{ activitiesEmptyLabel }}</p>
+              </div>
+            </div>
+          </ng-container>
+        </ng-container>
+
+        <ng-template #activitiesRatesFullscreenLayout>
+          <div class="activities-rates-fullscreen" *ngIf="currentActivitiesRatesFullscreenRow() as row; else activitiesRatesFullscreenEmpty">
+            <div class="activities-rates-fullscreen-deck">
+              <article
+                class="activities-rate-profile-card activities-row-item activities-rates-fullscreen-card activities-rates-fullscreen-card-leaving"
+                *ngIf="activitiesRatesFullscreenLeavingRow as leavingRow"
+                [attr.data-activity-rate-row-id]="leavingRow.id"
+              >
+                <div class="activities-rate-profile-stack" [ngClass]="activityRateCardContentClasses(leavingRow)">
+                  <div
+                    class="activities-rate-profile-layer activities-rate-profile-layer-active"
+                    [appLazyBgImage]="activityRateCardActiveImageUrl(leavingRow)"
+                  >
+                    <div class="activities-rate-profile-overlay" *ngIf="activityRateCardHasLine(leavingRow, activityRateCardActiveImageIndex(leavingRow))">
+                      <p class="activities-rate-profile-line activities-rate-profile-line-primary">
+                        {{ activityRateCardPrimaryLine(leavingRow, activityRateCardActiveImageIndex(leavingRow)) }}
+                      </p>
+                      <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
+                        {{ activityRateCardSecondaryLine(leavingRow, activityRateCardActiveImageIndex(leavingRow)) }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              <article
+                class="activities-rate-profile-card activities-row-item activities-rates-fullscreen-card activities-rates-fullscreen-card-active"
+                [attr.data-activity-rate-row-id]="row.id"
+              >
+                <div class="activities-rate-profile-stack" [ngClass]="activityRateCardContentClasses(row)" *ngIf="activityRateCardImageUrls(row) as imageUrls">
+                  <div class="image-stack-indicators activities-rate-profile-indicators" *ngIf="imageUrls.length > 1">
+                    <button
+                      type="button"
+                      class="image-stack-line"
+                      *ngFor="let imageUrl of imageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                      [class.active]="imageIndex === activityRateCardActiveImageIndex(row)"
+                      (click)="selectActivityRateCardImage(row, imageIndex, $event)"
+                      aria-label="Select profile image"
+                    ></button>
+                  </div>
+                  <div
+                    class="activities-rate-profile-layer activities-rate-profile-layer-active"
+                    [appLazyBgImage]="activityRateCardActiveImageUrl(row)"
+                  >
+                    <div class="activities-rate-profile-overlay" *ngIf="activityRateCardHasLine(row, activityRateCardActiveImageIndex(row))">
+                      <p class="activities-rate-profile-line activities-rate-profile-line-primary">
+                        {{ activityRateCardPrimaryLine(row, activityRateCardActiveImageIndex(row)) }}
+                      </p>
+                      <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
+                        {{ activityRateCardSecondaryLine(row, activityRateCardActiveImageIndex(row)) }}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="image-stack-hit-area activities-rate-profile-hit-area" *ngIf="imageUrls.length > 1">
+                    <button
+                      type="button"
+                      class="image-stack-hit-segment"
+                      *ngFor="let imageUrl of imageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                      (click)="selectActivityRateCardImage(row, imageIndex, $event)"
+                      aria-label="Select profile image"
+                    ></button>
+                  </div>
+                  <span class="activities-rate-score-badge activities-rate-score-badge-floating is-active">
+                    <mat-icon>star</mat-icon>
+                    <span>{{ activityRateBadgeLabel(row) }}</span>
+                  </span>
+                </div>
+              </article>
+            </div>
+          </div>
+          <ng-template #activitiesRatesFullscreenEmpty>
+            <div class="editor-list-card">
               <h4>No items</h4>
               <p>{{ activitiesEmptyLabel }}</p>
             </div>
-          </div>
-        </ng-container>
+          </ng-template>
+        </ng-template>
 
         <ng-template #activitiesCalendarLayout>
           <div class="activities-sticky-header activities-sticky-header-calendar">
@@ -1216,8 +1314,8 @@
           </div>
         </ng-template>
 
-        <div class="activities-rate-editor-dock" [class.is-closing]="isActivityRateEditorClosing()" *ngIf="isActivityRateEditorDockVisible() && !isCalendarLayoutView()">
-          <div class="activities-rate-editor-head">
+        <div class="activities-rate-editor-dock" [class.is-closing]="isActivityRateEditorClosing() && !isRatesFullscreenModeActive()" [class.is-permanent]="isRatesFullscreenModeActive()" *ngIf="isActivityRateEditorDockVisible() && !isCalendarLayoutView()">
+          <div class="activities-rate-editor-head" *ngIf="!isRatesFullscreenModeActive()">
             <span>Rate · {{ selectedActivityRateModeLabel() }} · {{ selectedActivityRateTitle() }}</span>
           </div>
           <div class="activities-rate-editor-stars">

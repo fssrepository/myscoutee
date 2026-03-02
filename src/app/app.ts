@@ -913,6 +913,12 @@ export class App {
   private activityRateEditorClosing = false;
   private activityRateEditorCloseTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly activityRateEditorSlideDurationMs = 180;
+  protected activitiesRatesFullscreenMode = false;
+  protected activitiesRatesFullscreenCardIndex = 0;
+  protected activitiesRatesFullscreenAnimating = false;
+  protected activitiesRatesFullscreenLeavingRow: ActivityListRow | null = null;
+  private activitiesRatesFullscreenAdvanceTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly activitiesRatesFullscreenSlideMs = 320;
   private readonly activityRateDraftById: Record<string, number> = {};
   private readonly activityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
   private readonly pendingActivityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
@@ -7720,6 +7726,9 @@ export class App {
     this.hostingPublicationFilter = 'published';
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
+    if (filter !== 'rates') {
+      this.disableActivitiesRatesFullscreenMode();
+    }
     if (filter === 'rates') {
       this.activitiesView = 'distance';
       this.selectedActivityRateId = null;
@@ -7764,6 +7773,11 @@ export class App {
     }
     this.activitiesRateFilter = filter;
     this.selectedActivityRateId = null;
+    if (this.activitiesRatesFullscreenMode) {
+      this.activitiesRatesFullscreenLeavingRow = null;
+      this.activitiesRatesFullscreenCardIndex = 0;
+      this.syncActivitiesRatesFullscreenSelection();
+    }
     this.showActivitiesSecondaryPicker = false;
     this.releaseActiveElementFocus();
     this.resetActivitiesScroll();
@@ -7775,6 +7789,33 @@ export class App {
 
   protected shouldShowActivitiesCreateAction(): boolean {
     return this.activitiesPrimaryFilter === 'hosting';
+  }
+
+  protected shouldShowRatesFullscreenToggle(): boolean {
+    return this.activitiesPrimaryFilter === 'rates' && !this.isCalendarLayoutView();
+  }
+
+  protected isRatesFullscreenModeActive(): boolean {
+    return this.shouldShowRatesFullscreenToggle() && this.activitiesRatesFullscreenMode;
+  }
+
+  protected toggleActivitiesRatesFullscreenMode(event: Event): void {
+    event.stopPropagation();
+    if (!this.shouldShowRatesFullscreenToggle()) {
+      return;
+    }
+    if (this.activitiesRatesFullscreenMode) {
+      this.disableActivitiesRatesFullscreenMode();
+      return;
+    }
+    this.activitiesRatesFullscreenMode = true;
+    this.activitiesRatesFullscreenCardIndex = 0;
+    this.activitiesRatesFullscreenAnimating = false;
+    this.activitiesRatesFullscreenLeavingRow = null;
+    this.cancelActivitiesRatesFullscreenAdvance();
+    this.cancelActivityRateEditorCloseTransition();
+    this.activityRateEditorClosing = false;
+    this.syncActivitiesRatesFullscreenSelection();
   }
 
   protected toggleActivitiesViewPicker(event: Event): void {
@@ -7800,6 +7841,9 @@ export class App {
   protected setActivitiesView(view: ActivitiesView, event?: Event): void {
     event?.stopPropagation();
     this.activitiesView = view;
+    if (view !== 'distance') {
+      this.disableActivitiesRatesFullscreenMode();
+    }
     this.calendarMonthAnchorPages = null;
     this.calendarWeekAnchorPages = null;
     this.calendarInitialPageIndexOverride = null;
@@ -8802,18 +8846,59 @@ export class App {
     } else if (direction === 'met') {
       this.pendingActivityRateDirectionOverrideById[rateItem.id] = 'given';
     }
+    if (this.isRatesFullscreenModeActive()) {
+      this.advanceActivitiesRatesFullscreenCard();
+    }
   }
 
   protected isActivityRateEditorOpen(): boolean {
+    if (this.isRatesFullscreenModeActive()) {
+      return true;
+    }
     return this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'rates' && !!this.selectedActivityRateId && !this.activityRateEditorClosing;
   }
 
   protected isActivityRateEditorDockVisible(): boolean {
+    if (this.isRatesFullscreenModeActive()) {
+      return this.currentActivitiesRatesFullscreenRow() !== null;
+    }
     return this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'rates' && (!!this.selectedActivityRateId || this.activityRateEditorClosing);
   }
 
   protected isActivityRateEditorClosing(): boolean {
     return this.activityRateEditorClosing;
+  }
+
+  protected currentActivitiesRatesFullscreenRow(): ActivityListRow | null {
+    if (!this.isRatesFullscreenModeActive()) {
+      return null;
+    }
+    const rows = this.activitiesRatesFullscreenRows();
+    if (rows.length === 0) {
+      return null;
+    }
+    const clampedIndex = Math.max(0, Math.min(this.activitiesRatesFullscreenCardIndex, rows.length - 1));
+    if (clampedIndex !== this.activitiesRatesFullscreenCardIndex) {
+      this.activitiesRatesFullscreenCardIndex = clampedIndex;
+    }
+    const row = rows[clampedIndex];
+    if (this.selectedActivityRateId !== row.id) {
+      this.selectedActivityRateId = row.id;
+    }
+    return row;
+  }
+
+  protected isActivitiesRatesFullscreenAnimating(): boolean {
+    return this.activitiesRatesFullscreenAnimating;
+  }
+
+  protected activitiesRatesFullscreenHeaderLabel(): string {
+    const currentRow = this.currentActivitiesRatesFullscreenRow();
+    if (!currentRow) {
+      return this.activitiesStickyHeader;
+    }
+    const group = this.groupedActivityRows.find(candidate => candidate.rows.some(row => row.id === currentRow.id));
+    return group?.label ?? this.activitiesStickyHeader;
   }
 
   protected isSelectedActivityRateInLastRow(): boolean {
@@ -8933,6 +9018,9 @@ export class App {
   }
 
   private clearActivityRateEditorState(): void {
+    if (this.isRatesFullscreenModeActive()) {
+      return;
+    }
     if (!this.selectedActivityRateId && !this.activityRateEditorClosing) {
       return;
     }
@@ -8969,6 +9057,71 @@ export class App {
       clearTimeout(this.activityRateEditorCloseTimer);
       this.activityRateEditorCloseTimer = null;
     }
+  }
+
+  private disableActivitiesRatesFullscreenMode(): void {
+    if (!this.activitiesRatesFullscreenMode) {
+      return;
+    }
+    this.activitiesRatesFullscreenMode = false;
+    this.activitiesRatesFullscreenAnimating = false;
+    this.activitiesRatesFullscreenLeavingRow = null;
+    this.activitiesRatesFullscreenCardIndex = 0;
+    this.cancelActivitiesRatesFullscreenAdvance();
+    this.activityRateEditorClosing = false;
+    this.selectedActivityRateId = null;
+    this.lastActivityRateEditorLiftDelta = 0;
+  }
+
+  private cancelActivitiesRatesFullscreenAdvance(): void {
+    if (this.activitiesRatesFullscreenAdvanceTimer) {
+      clearTimeout(this.activitiesRatesFullscreenAdvanceTimer);
+      this.activitiesRatesFullscreenAdvanceTimer = null;
+    }
+  }
+
+  private syncActivitiesRatesFullscreenSelection(): void {
+    if (!this.activitiesRatesFullscreenMode) {
+      return;
+    }
+    const rows = this.activitiesRatesFullscreenRows();
+    if (rows.length === 0) {
+      this.selectedActivityRateId = null;
+      this.activitiesRatesFullscreenCardIndex = 0;
+      return;
+    }
+    const clampedIndex = Math.max(0, Math.min(this.activitiesRatesFullscreenCardIndex, rows.length - 1));
+    this.activitiesRatesFullscreenCardIndex = clampedIndex;
+    this.selectedActivityRateId = rows[clampedIndex].id;
+  }
+
+  private advanceActivitiesRatesFullscreenCard(): void {
+    if (!this.isRatesFullscreenModeActive() || this.activitiesRatesFullscreenAnimating) {
+      return;
+    }
+    const rows = this.activitiesRatesFullscreenRows();
+    if (rows.length === 0) {
+      return;
+    }
+    const selectedIndex = this.selectedActivityRateId ? rows.findIndex(row => row.id === this.selectedActivityRateId) : -1;
+    const currentIndex = selectedIndex >= 0 ? selectedIndex : this.activitiesRatesFullscreenCardIndex;
+    if (currentIndex >= rows.length - 1) {
+      return;
+    }
+    this.activitiesRatesFullscreenLeavingRow = rows[currentIndex] ?? null;
+    this.activitiesRatesFullscreenAnimating = true;
+    this.activitiesRatesFullscreenCardIndex = Math.min(currentIndex + 1, rows.length - 1);
+    this.syncActivitiesRatesFullscreenSelection();
+    this.cancelActivitiesRatesFullscreenAdvance();
+    this.activitiesRatesFullscreenAdvanceTimer = setTimeout(() => {
+      this.activitiesRatesFullscreenAdvanceTimer = null;
+      this.activitiesRatesFullscreenAnimating = false;
+      this.activitiesRatesFullscreenLeavingRow = null;
+    }, this.activitiesRatesFullscreenSlideMs);
+  }
+
+  private activitiesRatesFullscreenRows(): ActivityListRow[] {
+    return this.filteredActivityRows.filter(row => row.type === 'rates');
   }
 
   private maybeDismissActivityRateEditor(target: Element): void {
