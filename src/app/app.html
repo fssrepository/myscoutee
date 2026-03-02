@@ -936,7 +936,6 @@
             <ng-container *ngFor="let group of groupedActivityRows; let groupIndex = index; trackBy: trackByActivityGroup">
               <div
                 class="activities-group-marker"
-                [class.activities-group-marker-mobile-first-snap]="shouldUseMobileStickySnapForFirstActivityGroupMarker(groupIndex)"
                 *ngIf="shouldShowActivityGroupMarker(groupIndex)"
                 [attr.data-group-label]="group.label"
               >

@@ -9007,13 +9007,6 @@ export class App {
     return true;
   }
 
-  protected shouldUseMobileStickySnapForFirstActivityGroupMarker(groupIndex: number): boolean {
-    return this.isMobileView
-      && groupIndex === 0
-      && this.shouldApplyEventActivityGroupMarkerRules()
-      && this.isActivitiesListScrollableNow();
-  }
-
   private shouldApplyEventActivityGroupMarkerRules(): boolean {
     return this.activitiesPrimaryFilter === 'events'
       || this.activitiesPrimaryFilter === 'invitations'
