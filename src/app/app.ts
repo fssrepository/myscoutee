@@ -881,7 +881,7 @@ export class App {
   protected activitiesView: ActivitiesView = 'week';
   protected showActivitiesViewPicker = false;
   protected showActivitiesSecondaryPicker = false;
-  protected inlineItemActionMenu: { scope: 'activity' | 'asset' | 'explore' | 'subEvent' | 'subEventStage' | 'subEventMember'; id: string; title: string; openUp: boolean } | null = null;
+  protected inlineItemActionMenu: { scope: 'activity' | 'activityMember' | 'asset' | 'explore' | 'subEvent' | 'subEventStage' | 'subEventMember'; id: string; title: string; openUp: boolean } | null = null;
   protected showEventExploreOrderPicker = false;
   protected eventExploreOrder: EventExploreOrder = 'upcoming';
   protected eventExploreFilterFriendsOnly = false;
@@ -10625,6 +10625,50 @@ export class App {
     return !this.activityMembersReadOnly;
   }
 
+  protected canShowActivityMemberActionMenu(entry: ActivityMemberEntry): boolean {
+    if (this.activityMembersReadOnly) {
+      return false;
+    }
+    return this.canApproveActivityMember(entry) || this.canDeleteActivityMember(entry);
+  }
+
+  protected toggleActivityMemberActionMenu(entry: ActivityMemberEntry, event: Event): void {
+    event.stopPropagation();
+    if (!this.canShowActivityMemberActionMenu(entry)) {
+      return;
+    }
+    if (this.inlineItemActionMenu?.scope === 'activityMember' && this.inlineItemActionMenu.id === entry.userId) {
+      this.inlineItemActionMenu = null;
+      return;
+    }
+    this.inlineItemActionMenu = {
+      scope: 'activityMember',
+      id: entry.userId,
+      title: entry.name,
+      openUp: this.shouldOpenInlineItemMenuUp(event)
+    };
+  }
+
+  protected isActivityMemberActionMenuOpen(entry: ActivityMemberEntry): boolean {
+    return this.inlineItemActionMenu?.scope === 'activityMember' && this.inlineItemActionMenu.id === entry.userId;
+  }
+
+  protected isActivityMemberActionMenuOpenUp(entry: ActivityMemberEntry): boolean {
+    return this.inlineItemActionMenu?.scope === 'activityMember'
+      && this.inlineItemActionMenu.id === entry.userId
+      && this.inlineItemActionMenu.openUp;
+  }
+
+  protected activityMemberMenuDeleteLabel(entry: ActivityMemberEntry): string {
+    if (entry.status === 'accepted') {
+      return 'Remove member';
+    }
+    if (entry.requestKind === 'join') {
+      return 'Reject request';
+    }
+    return 'Delete invitation';
+  }
+
   protected activityInviteMetLabel(entry: ActivityMemberEntry): string {
     const dateText = new Date(entry.metAtIso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     return `${entry.metWhere} · ${dateText}`;
@@ -10694,6 +10738,43 @@ export class App {
     return 'Waiting For Admin Approval';
   }
 
+  protected memberCardStatusIcon(entry: ActivityMemberEntry): string {
+    if (entry.status === 'accepted') {
+      return entry.role === 'Admin' ? 'admin_panel_settings' : 'person';
+    }
+    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
+      return 'pending_actions';
+    }
+    return 'outgoing_mail';
+  }
+
+  protected memberCardStatusClass(entry: ActivityMemberEntry): string {
+    if (entry.status === 'accepted') {
+      return entry.role === 'Admin' ? 'member-status-admin' : 'member-status-member';
+    }
+    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
+      return 'member-status-awaiting-approval';
+    }
+    return 'member-status-invite-pending';
+  }
+
+  protected memberCardToneClass(entry: ActivityMemberEntry): string {
+    if (entry.status === 'accepted') {
+      return entry.role === 'Admin' ? 'member-card-tone-admin' : 'member-card-tone-accepted';
+    }
+    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
+      return 'member-card-tone-awaiting-approval';
+    }
+    return 'member-card-tone-invite-pending';
+  }
+
+  protected memberCardStatusLabel(entry: ActivityMemberEntry): string {
+    if (entry.status === 'accepted') {
+      return entry.role === 'Admin' ? 'Admin' : 'Member';
+    }
+    return this.activityMemberStatusLabel(entry);
+  }
+
   protected approveActivityMember(entry: ActivityMemberEntry, event?: Event): void {
     event?.stopPropagation();
     if (!this.selectedActivityMembersRowId || !this.canApproveActivityMember(entry)) {
@@ -10712,6 +10793,7 @@ export class App {
         : item
     ));
     this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
+    this.inlineItemActionMenu = null;
   }
 
   protected removeActivityMember(entry: ActivityMemberEntry, event?: Event): void {
@@ -10720,6 +10802,7 @@ export class App {
       return;
     }
     this.pendingActivityMemberDelete = entry;
+    this.inlineItemActionMenu = null;
   }
 
   protected confirmRemoveActivityMember(): void {

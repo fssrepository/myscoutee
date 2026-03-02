@@ -8638,12 +8638,20 @@ textarea {
 .activities-hosting-draft-content {
   width: 100%;
   justify-content: center;
-  gap: 0.2rem;
+  gap: 0.26rem;
 }
 
 .activities-hosting-draft-label {
   font-weight: 700;
   letter-spacing: 0.01em;
+}
+
+.activities-toggle-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  line-height: 15px;
+  opacity: 0.9;
 }
 
 .activities-hosting-draft-toggle.is-active {
@@ -8664,7 +8672,7 @@ textarea {
 }
 
 .subevent-members-pending-toggle {
-  margin-left: auto;
+  margin-left: 0;
   min-width: 120px;
   min-height: 36px;
   background: linear-gradient(180deg, #fff4f5 0%, #ffe8eb 100%);
@@ -9406,12 +9414,20 @@ textarea {
   align-content: start;
 }
 
+.activity-members-grid {
+  align-content: start;
+}
+
 .subevent-member-image-card {
   width: 100%;
   min-height: 240px;
   overflow: visible;
   z-index: 0;
   isolation: isolate;
+}
+
+.activity-member-image-card {
+  min-height: 220px;
 }
 
 .subevent-member-image-card::after {
@@ -9426,11 +9442,44 @@ textarea {
   z-index: 18;
 }
 
+.member-card-status-chip {
+  position: absolute;
+  top: 0.48rem;
+  left: 0.48rem;
+  z-index: 4;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  box-shadow: 0 3px 10px rgba(10, 20, 34, 0.28);
+}
+
+.member-card-status-chip .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.subevent-member-menu-anchor {
+  position: absolute;
+  top: 0.48rem;
+  right: 0.48rem;
+  z-index: 5;
+}
+
 .subevent-member-action-menu {
   z-index: 60;
 }
 
 .subevent-member-menu-trigger {
+  position: relative;
+  top: auto;
+  right: auto;
   color: #214d85;
 }
 
@@ -9455,6 +9504,11 @@ textarea {
   color: rgba(245, 249, 255, 0.96);
 }
 
+.subevent-member-card-status {
+  color: rgba(245, 249, 255, 0.92) !important;
+  font-size: 0.72rem !important;
+}
+
 .subevent-member-menu-chevron {
   margin-left: auto;
 }
@@ -9474,6 +9528,43 @@ textarea {
 
 .subevent-member-role-option .mat-icon:last-child {
   margin-left: auto;
+}
+
+.member-card-tone-admin {
+  border-color: rgba(57, 108, 177, 0.56);
+}
+
+.member-card-tone-member,
+.member-card-tone-accepted {
+  border-color: rgba(57, 140, 94, 0.5);
+}
+
+.member-card-tone-invite-pending {
+  border-color: rgba(177, 124, 48, 0.58);
+}
+
+.member-card-tone-awaiting-approval {
+  border-color: rgba(184, 72, 92, 0.62);
+}
+
+.member-status-admin {
+  background: linear-gradient(180deg, #e8f0ff 0%, #d9e7ff 100%);
+  color: #2b5d9d;
+}
+
+.member-status-member {
+  background: linear-gradient(180deg, #ecfaef 0%, #dcf2e2 100%);
+  color: #2a7644;
+}
+
+.member-status-invite-pending {
+  background: linear-gradient(180deg, #fff6e8 0%, #ffe8c9 100%);
+  color: #9c6121;
+}
+
+.member-status-awaiting-approval {
+  background: linear-gradient(180deg, #fff0f3 0%, #ffdce3 100%);
+  color: #a93046;
 }
 
 .subevent-assets-intro {

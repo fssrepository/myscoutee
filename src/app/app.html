@@ -538,10 +538,6 @@
         <div class="popup-chat-title-block">
           <h2>{{ selectedChat.title }}</h2>
         </div>
-        <button class="chat-members-stack chat-members-stack-large chat-header-members" type="button" (click)="openChatMembers(selectedChat, $event, true)">
-          <span class="chat-stack-avatar" *ngFor="let member of getChatVisibleMembers(selectedChat); let i = index" [class]="'user-color-' + member.gender" [style.zIndex]="30 - i">{{ member.initials }}</span>
-          <span class="chat-stack-more" *ngIf="getChatHiddenMemberCount(selectedChat) > 0">+{{ getChatHiddenMemberCount(selectedChat) }}</span>
-        </button>
       </div>
       <ng-template #defaultPopupTitle>
         <div class="popup-title popup-title-members" *ngIf="activePopup === 'chatMembers'; else defaultPlainTitle">
@@ -815,6 +811,7 @@
             [attr.aria-label]="hostingPublicationFilter === 'drafts' ? 'Show all hosting' : 'Show drafts only'"
           >
             <span class="status-option-content activities-hosting-draft-content">
+              <mat-icon class="activities-toggle-icon">draft</mat-icon>
               <span class="activities-hosting-draft-label">Drafts only</span>
             </span>
             <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="hostingDraftCount() > 0">{{ hostingDraftCount() }}</span>
@@ -2944,10 +2941,6 @@
           <div class="popup-chat-title-block">
             <h2>{{ selectedChat.title }}</h2>
           </div>
-          <button class="chat-members-stack chat-members-stack-large chat-header-members" type="button" (click)="openChatMembers(selectedChat, $event, true)">
-            <span class="chat-stack-avatar" *ngFor="let member of getChatVisibleMembers(selectedChat); let i = index" [class]="'user-color-' + member.gender" [style.zIndex]="30 - i">{{ member.initials }}</span>
-            <span class="chat-stack-more" *ngIf="getChatHiddenMemberCount(selectedChat) > 0">+{{ getChatHiddenMemberCount(selectedChat) }}</span>
-          </button>
         </div>
         <ng-template #stackedHeaderDefaultTitle>
         <div class="popup-title popup-title-members" *ngIf="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers' || isSubEventMembersPopup(); else defaultStackedTitle">
@@ -3166,45 +3159,64 @@
       </div>
 
       <div *ngIf="stackedPopup === 'activityMembers'" class="activity-members-popup-wrap">
-        <div class="chat-members-popup-list activity-members-popup-list">
-          <article class="chat-members-popup-row activity-members-popup-row" [ngClass]="activityMemberStatusClass(member)" *ngFor="let member of activityMembersOrdered">
-            <span class="chat-members-popup-avatar" [class]="'user-color-' + member.gender">{{ member.initials }}</span>
-            <div class="chat-members-popup-meta">
-              <p class="member-name">{{ member.name }}, {{ activityMemberAge(member) }}</p>
-              <p class="member-city">{{ member.city }}</p>
-              <p class="member-action">{{ activityMemberActionDate(member) }}</p>
-            </div>
-            <div class="activity-members-side">
-              <ng-container *ngIf="!activityMembersReadOnly">
-                <ng-container *ngIf="canApproveActivityMember(member) || canDeleteActivityMember(member); else activityMemberActionsSpacer">
-                  <div class="experience-item-actions">
-                    <button
-                      type="button"
-                      class="experience-action-btn asset-accept-btn"
-                      *ngIf="canApproveActivityMember(member)"
-                      (click)="approveActivityMember(member, $event)"
-                      aria-label="Approve invitation"
-                    >
-                      <mat-icon>check</mat-icon>
-                    </button>
-                    <button
-                      type="button"
-                      class="experience-action-btn experience-action-delete"
-                      *ngIf="canDeleteActivityMember(member)"
-                      (click)="removeActivityMember(member, $event)"
-                      aria-label="Delete invitation"
-                    >
-                      <mat-icon>delete</mat-icon>
-                    </button>
-                  </div>
-                </ng-container>
-                <ng-template #activityMemberActionsSpacer>
-                  <span class="activity-member-actions-spacer" aria-hidden="true"></span>
-                </ng-template>
-              </ng-container>
-              <span class="chat-members-inline-badge activity-member-status-badge">{{ activityMemberStatusLabel(member) }}</span>
-            </div>
-          </article>
+        <div class="subevent-members-scroll-area activity-members-scroll-area">
+          <div class="subevent-members-grid activity-members-grid">
+            <article
+              class="friends-picker-card subevent-member-image-card activity-member-image-card"
+              [ngClass]="[memberCardToneClass(member), isActivityMemberActionMenuOpen(member) ? 'menu-open' : '']"
+              *ngFor="let member of activityMembersOrdered"
+              [style.backgroundImage]="'url(' + member.avatarUrl + ')'"
+            >
+              <span class="member-card-status-chip" [ngClass]="memberCardStatusClass(member)" [attr.title]="memberCardStatusLabel(member)">
+                <mat-icon>{{ memberCardStatusIcon(member) }}</mat-icon>
+              </span>
+              <div class="subevent-member-menu-anchor" *ngIf="canShowActivityMemberActionMenu(member)">
+                <button
+                  type="button"
+                  class="friends-picker-card-add-btn subevent-member-menu-trigger experience-action-menu-trigger"
+                  [class.active]="isActivityMemberActionMenuOpen(member)"
+                  (click)="toggleActivityMemberActionMenu(member, $event)"
+                  aria-label="Open member actions"
+                >
+                  <mat-icon>{{ isActivityMemberActionMenuOpen(member) ? 'close' : 'more_vert' }}</mat-icon>
+                </button>
+                <div
+                  class="item-action-menu subevent-member-action-menu"
+                  [class.is-open]="isActivityMemberActionMenuOpen(member)"
+                  [class.item-action-menu-mobile]="isMobileView"
+                  [class.item-action-menu-desktop]="!isMobileView"
+                  [class.is-open-up]="isActivityMemberActionMenuOpenUp(member)"
+                  [attr.aria-hidden]="!isActivityMemberActionMenuOpen(member)"
+                  (click)="$event.stopPropagation()"
+                >
+                  <div class="item-action-menu-title">{{ member.name }}</div>
+                  <button
+                    type="button"
+                    class="item-action-menu-btn item-action-menu-btn-publish"
+                    *ngIf="canApproveActivityMember(member)"
+                    (click)="approveActivityMember(member, $event)"
+                  >
+                    <mat-icon>check_circle</mat-icon>
+                    <span>Approve</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="item-action-menu-btn item-action-menu-btn-destructive"
+                    *ngIf="canDeleteActivityMember(member)"
+                    (click)="removeActivityMember(member, $event)"
+                  >
+                    <mat-icon>delete</mat-icon>
+                    <span>{{ activityMemberMenuDeleteLabel(member) }}</span>
+                  </button>
+                </div>
+              </div>
+              <div class="friends-picker-card-meta subevent-member-card-meta activity-member-card-meta">
+                <h4>{{ member.name }}, {{ activityMemberAge(member) }}</h4>
+                <p>{{ member.role }} · {{ member.city }}</p>
+                <p class="subevent-member-card-status">{{ activityMemberStatusLabel(member) }}</p>
+              </div>
+            </article>
+          </div>
         </div>
         <section class="experience-delete-confirm" *ngIf="pendingActivityMemberDelete">
           <div class="experience-delete-confirm-backdrop" (click)="cancelRemoveActivityMember()"></div>
@@ -3395,6 +3407,7 @@
             [attr.aria-label]="subEventMembersPendingOnly ? 'Show all members' : 'Show pending members only'"
           >
             <span class="status-option-content activities-hosting-draft-content">
+              <mat-icon class="activities-toggle-icon">pending_actions</mat-icon>
               <span class="activities-hosting-draft-label">Pending only</span>
             </span>
             <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="subEventMembersPendingCount() > 0">{{ subEventMembersPendingCount() }}</span>
@@ -3418,47 +3431,53 @@
               class="friends-picker-card subevent-member-image-card"
               *ngFor="let member of subEventMembersOrdered"
               [class.menu-open]="isSubEventMemberActionMenuOpen(member)"
+              [ngClass]="memberCardToneClass(member)"
               [style.backgroundImage]="'url(' + member.avatarUrl + ')'"
             >
-              <button
-                type="button"
-                class="friends-picker-card-add-btn subevent-member-menu-trigger experience-action-menu-trigger"
-                [class.active]="isSubEventMemberActionMenuOpen(member)"
-                (click)="toggleSubEventMemberActionMenu(member, $event)"
-                aria-label="Open member actions"
-              >
-                <mat-icon>more_vert</mat-icon>
-              </button>
-              <div
-                class="item-action-menu subevent-member-action-menu"
-                [class.is-open]="isSubEventMemberActionMenuOpen(member)"
-                [class.item-action-menu-mobile]="isMobileView"
-                [class.item-action-menu-desktop]="!isMobileView"
-                [class.is-open-up]="isSubEventMemberActionMenuOpenUp(member)"
-                [attr.aria-hidden]="!isSubEventMemberActionMenuOpen(member)"
-                (click)="$event.stopPropagation()"
-              >
-                <div class="item-action-menu-title">{{ member.name }}</div>
-                <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="removeSubEventMember(member, $event)">
-                  <mat-icon>delete</mat-icon>
-                  <span>Delete</span>
+              <span class="member-card-status-chip" [ngClass]="memberCardStatusClass(member)" [attr.title]="memberCardStatusLabel(member)">
+                <mat-icon>{{ memberCardStatusIcon(member) }}</mat-icon>
+              </span>
+              <div class="subevent-member-menu-anchor">
+                <button
+                  type="button"
+                  class="friends-picker-card-add-btn subevent-member-menu-trigger experience-action-menu-trigger"
+                  [class.active]="isSubEventMemberActionMenuOpen(member)"
+                  (click)="toggleSubEventMemberActionMenu(member, $event)"
+                  aria-label="Open member actions"
+                >
+                  <mat-icon>{{ isSubEventMemberActionMenuOpen(member) ? 'close' : 'more_vert' }}</mat-icon>
                 </button>
-                <button type="button" class="item-action-menu-btn" (click)="toggleSubEventMemberRolePicker(member, $event)">
-                  <mat-icon>{{ subEventMemberRoleIcon(member.role) }}</mat-icon>
-                  <span>{{ subEventMemberRoleMenuLabel(member) }}</span>
-                  <mat-icon class="subevent-member-menu-chevron">{{ isSubEventMemberRolePickerOpen(member) ? 'keyboard_arrow_up' : 'keyboard_arrow_down' }}</mat-icon>
-                </button>
-                <div class="subevent-member-role-options" *ngIf="isSubEventMemberRolePickerOpen(member)">
-                  <button type="button" class="item-action-menu-btn subevent-member-role-option" [class.is-active]="member.role === 'Admin'" (click)="setSubEventMemberRole(member, 'Admin', $event)">
-                    <mat-icon>admin_panel_settings</mat-icon>
-                    <span>Admin</span>
-                    <mat-icon *ngIf="member.role === 'Admin'">check</mat-icon>
+                <div
+                  class="item-action-menu subevent-member-action-menu"
+                  [class.is-open]="isSubEventMemberActionMenuOpen(member)"
+                  [class.item-action-menu-mobile]="isMobileView"
+                  [class.item-action-menu-desktop]="!isMobileView"
+                  [class.is-open-up]="isSubEventMemberActionMenuOpenUp(member)"
+                  [attr.aria-hidden]="!isSubEventMemberActionMenuOpen(member)"
+                  (click)="$event.stopPropagation()"
+                >
+                  <div class="item-action-menu-title">{{ member.name }}</div>
+                  <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="removeSubEventMember(member, $event)">
+                    <mat-icon>delete</mat-icon>
+                    <span>Delete</span>
                   </button>
-                  <button type="button" class="item-action-menu-btn subevent-member-role-option" [class.is-active]="member.role === 'Member'" (click)="setSubEventMemberRole(member, 'Member', $event)">
-                    <mat-icon>person</mat-icon>
-                    <span>Member</span>
-                    <mat-icon *ngIf="member.role === 'Member'">check</mat-icon>
+                  <button type="button" class="item-action-menu-btn" (click)="toggleSubEventMemberRolePicker(member, $event)">
+                    <mat-icon>{{ subEventMemberRoleIcon(member.role) }}</mat-icon>
+                    <span>{{ subEventMemberRoleMenuLabel(member) }}</span>
+                    <mat-icon class="subevent-member-menu-chevron">{{ isSubEventMemberRolePickerOpen(member) ? 'keyboard_arrow_up' : 'keyboard_arrow_down' }}</mat-icon>
                   </button>
+                  <div class="subevent-member-role-options" *ngIf="isSubEventMemberRolePickerOpen(member)">
+                    <button type="button" class="item-action-menu-btn subevent-member-role-option" [class.is-active]="member.role === 'Admin'" (click)="setSubEventMemberRole(member, 'Admin', $event)">
+                      <mat-icon>admin_panel_settings</mat-icon>
+                      <span>Admin</span>
+                      <mat-icon *ngIf="member.role === 'Admin'">check</mat-icon>
+                    </button>
+                    <button type="button" class="item-action-menu-btn subevent-member-role-option" [class.is-active]="member.role === 'Member'" (click)="setSubEventMemberRole(member, 'Member', $event)">
+                      <mat-icon>person</mat-icon>
+                      <span>Member</span>
+                      <mat-icon *ngIf="member.role === 'Member'">check</mat-icon>
+                    </button>
+                  </div>
                 </div>
               </div>
               <div class="friends-picker-card-meta subevent-member-card-meta">
