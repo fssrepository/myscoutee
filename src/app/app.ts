@@ -7704,7 +7704,7 @@ export class App {
     if (!this.isActivityRateEditorOpen()) {
       return;
     }
-    this.clearActivityRateEditorState();
+    this.clearActivityRateEditorState(true);
     this.releaseActiveElementFocus();
   }
 
@@ -7716,6 +7716,9 @@ export class App {
   }
 
   protected selectActivitiesPrimaryFilter(filter: ActivitiesPrimaryFilter): void {
+    if (this.activitiesPrimaryFilter === 'rates' || filter === 'rates') {
+      this.commitPendingRateDirectionOverrides();
+    }
     this.activitiesPrimaryFilter = filter;
     this.hostingPublicationFilter = 'published';
     this.showActivitiesViewPicker = false;
@@ -7754,6 +7757,9 @@ export class App {
   }
 
   protected selectActivitiesSecondaryFilter(filter: ActivitiesSecondaryFilter): void {
+    if (this.activitiesPrimaryFilter === 'rates') {
+      this.commitPendingRateDirectionOverrides();
+    }
     this.activitiesSecondaryFilter = filter;
     this.showActivitiesSecondaryPicker = false;
     this.releaseActiveElementFocus();
@@ -7831,6 +7837,9 @@ export class App {
 
   protected setActivitiesView(view: ActivitiesView, event?: Event): void {
     event?.stopPropagation();
+    if (this.activitiesPrimaryFilter === 'rates') {
+      this.commitPendingRateDirectionOverrides();
+    }
     this.activitiesView = view;
     if (view !== 'distance') {
       this.disableActivitiesRatesFullscreenMode();
@@ -8794,6 +8803,9 @@ export class App {
     this.activityRateEditorClosing = false;
     this.runAfterActivitiesRender(() => {
       setTimeout(() => this.smoothRevealSelectedRateRowWhenNeeded(row.id), 40);
+      if (!wasOpen) {
+        setTimeout(() => this.smoothRevealSelectedRateRowWhenNeeded(row.id), this.activityRateEditorSlideDurationMs + 40);
+      }
     });
   }
 
@@ -9027,7 +9039,7 @@ export class App {
     return { mode, direction };
   }
 
-  private clearActivityRateEditorState(): void {
+  private clearActivityRateEditorState(preserveScrollPosition = false): void {
     if (this.isRatesFullscreenModeActive()) {
       return;
     }
@@ -9041,6 +9053,7 @@ export class App {
     const restoreTop = this.activityRateEditorOpenScrollTop;
     const hasRestoreTop = Number.isFinite(restoreTop as number);
     const shouldReverseLift =
+      !preserveScrollPosition &&
       this.activePopup === 'activities' &&
       this.activitiesPrimaryFilter === 'rates' &&
       !!scrollElement &&
@@ -9175,7 +9188,7 @@ export class App {
     setTimeout(task, 0);
   }
 
-  private smoothRevealSelectedRateRowWhenNeeded(rowId: string): void {
+  private smoothRevealSelectedRateRowWhenNeeded(rowId: string, attempt = 0): void {
     if (!this.isActivityRateEditorOpen()) {
       return;
     }
@@ -9210,6 +9223,9 @@ export class App {
     const targetTop = Math.min(scrollElement.scrollTop + delta, Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight));
     if (targetTop <= scrollElement.scrollTop + 0.5) {
       this.lastActivityRateEditorLiftDelta = 0;
+      if (attempt < 1) {
+        setTimeout(() => this.smoothRevealSelectedRateRowWhenNeeded(rowId, attempt + 1), 120);
+      }
       return;
     }
     this.lastActivityRateEditorLiftDelta = targetTop - scrollElement.scrollTop;
