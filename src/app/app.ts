@@ -918,7 +918,7 @@ export class App {
   protected activitiesRatesFullscreenAnimating = false;
   protected activitiesRatesFullscreenLeavingRow: ActivityListRow | null = null;
   private activitiesRatesFullscreenAdvanceTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly activitiesRatesFullscreenSlideMs = 320;
+  private readonly activitiesRatesFullscreenSlideMs = 420;
   private readonly activityRateDraftById: Record<string, number> = {};
   private readonly activityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
   private readonly pendingActivityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
@@ -9064,8 +9064,7 @@ export class App {
       return;
     }
     this.activitiesRatesFullscreenMode = false;
-    this.activitiesRatesFullscreenAnimating = false;
-    this.activitiesRatesFullscreenLeavingRow = null;
+    this.finishActivitiesRatesFullscreenAdvance();
     this.activitiesRatesFullscreenCardIndex = 0;
     this.cancelActivitiesRatesFullscreenAdvance();
     this.activityRateEditorClosing = false;
@@ -9078,6 +9077,10 @@ export class App {
       clearTimeout(this.activitiesRatesFullscreenAdvanceTimer);
       this.activitiesRatesFullscreenAdvanceTimer = null;
     }
+  }
+
+  protected onActivitiesRatesFullscreenLeaveAnimationEnd(): void {
+    this.finishActivitiesRatesFullscreenAdvance();
   }
 
   private syncActivitiesRatesFullscreenSelection(): void {
@@ -9115,9 +9118,13 @@ export class App {
     this.cancelActivitiesRatesFullscreenAdvance();
     this.activitiesRatesFullscreenAdvanceTimer = setTimeout(() => {
       this.activitiesRatesFullscreenAdvanceTimer = null;
-      this.activitiesRatesFullscreenAnimating = false;
-      this.activitiesRatesFullscreenLeavingRow = null;
-    }, this.activitiesRatesFullscreenSlideMs);
+      this.finishActivitiesRatesFullscreenAdvance();
+    }, this.activitiesRatesFullscreenSlideMs + 80);
+  }
+
+  private finishActivitiesRatesFullscreenAdvance(): void {
+    this.activitiesRatesFullscreenAnimating = false;
+    this.activitiesRatesFullscreenLeavingRow = null;
   }
 
   private activitiesRatesFullscreenRows(): ActivityListRow[] {

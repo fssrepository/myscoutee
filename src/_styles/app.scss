@@ -6235,7 +6235,7 @@
 .activities-rates-fullscreen-card-leaving {
   z-index: 3;
   transform-origin: top right;
-  animation: activities-rates-page-curl 380ms cubic-bezier(0.18, 0.64, 0.24, 1) forwards;
+  animation: activities-rates-page-curl 420ms cubic-bezier(0.18, 0.64, 0.24, 1) forwards;
   pointer-events: none;
 }
 
@@ -6249,8 +6249,8 @@
     opacity: 0.96;
   }
   100% {
-    transform: perspective(1400px) translateX(-104%) translateY(4%) rotateY(-68deg) rotateZ(-8deg) scale(0.965);
-    opacity: 0.2;
+    transform: perspective(1400px) translateX(-145%) translateY(8%) rotateY(-82deg) rotateZ(-11deg) scale(0.94);
+    opacity: 0;
   }
 }
 
