@@ -12,7 +12,23 @@
   background:
     radial-gradient(circle at 20% -10%, rgba(133, 76, 255, 0.16), transparent 36%),
     radial-gradient(circle at 95% 0%, rgba(240, 78, 171, 0.14), transparent 34%),
-    #f5f6fb;
+    #f8faff;
+}
+
+.game-page.game-page-status-public {
+  background: linear-gradient(180deg, #e6f6ef 0%, #d9f0e6 100%);
+}
+
+.game-page.game-page-status-friends {
+  background: linear-gradient(180deg, #e8f1fd 0%, #dfeaf9 100%);
+}
+
+.game-page.game-page-status-host {
+  background: linear-gradient(180deg, #f6efe2 0%, #eee4d2 100%);
+}
+
+.game-page.game-page-status-inactive {
+  background: linear-gradient(180deg, #f2f3f5 0%, #e8ebef 100%);
 }
 
 .game-header {
