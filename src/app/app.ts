@@ -7761,11 +7761,8 @@ export class App {
   }
 
   protected selectActivitiesRateFilter(filter: RateFilterKey): void {
-    const filterChanged = filter !== this.activitiesRateFilter;
-    if (filterChanged) {
-      this.commitPendingRateDirectionOverrides(filter);
-    }
     this.activitiesRateFilter = filter;
+    this.commitPendingRateDirectionOverrides(filter);
     this.selectedActivityRateId = null;
     if (this.activitiesRatesFullscreenMode) {
       this.activitiesRatesFullscreenLeavingRow = null;
