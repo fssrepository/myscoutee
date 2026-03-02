@@ -1210,6 +1210,7 @@ export class App {
   protected eventEditorTarget: EventEditorTarget = 'events';
   private eventEditorSource: EventMenuItem | HostingMenuItem | null = null;
   private eventEditorDraftMembersId: string | null = null;
+  private eventEditorInvitationId: string | null = null;
   protected editingEventId: string | null = null;
   protected eventForm: EventEditorForm = this.defaultEventForm();
   protected showEventEditorRequiredValidation = false;
@@ -1821,15 +1822,10 @@ export class App {
   protected openInvitationItem(item: InvitationMenuItem, closeMenu = true, stacked = false): void {
     this.activeMenuSection = 'invitations';
     this.selectedInvitation = item;
-    this.selectedEvent = this.eventItems.find(
-      event => this.normalizeText(event.title) === this.normalizeText(item.description)
-    ) ?? this.selectedEvent;
     this.showActivitiesViewPicker = false;
-    if (stacked || this.activePopup === 'activities' || this.stackedPopup !== null) {
-      this.stackedPopup = 'invitationActions';
-      return;
-    }
-    this.activePopup = 'invitationActions';
+    const related = this.resolveRelatedEventFromInvitation(item);
+    const source = related ?? this.buildInvitationPreviewEventSource(item);
+    this.openEventEditor(stacked, 'edit', source, true, item.id);
     if (closeMenu) {
       this.closeUserMenu();
     }
@@ -1884,10 +1880,12 @@ export class App {
     stacked = false,
     mode: EventEditorMode = 'edit',
     source?: EventMenuItem | HostingMenuItem,
-    readOnly = false
+    readOnly = false,
+    invitationId: string | null = null
   ): void {
     this.eventEditorMode = mode;
     this.eventEditorReadOnly = mode === 'edit' && readOnly;
+    this.eventEditorInvitationId = invitationId;
     this.showEventVisibilityPicker = false;
     this.showProfileStatusHeaderPicker = false;
     this.prepareEventEditorForm(mode, source);
@@ -1908,14 +1906,11 @@ export class App {
 
   protected openInvitationRelatedEventEditor(stacked = false, event?: Event): void {
     event?.stopPropagation();
-    const invitationDescription = this.selectedInvitation?.description ?? '';
-    const related = this.selectedInvitation
-      ? (this.eventItems.find(item => this.normalizeText(item.title) === this.normalizeText(invitationDescription)) ?? this.selectedEvent)
-      : this.selectedEvent;
+    const related = this.resolveRelatedEventFromInvitation(this.selectedInvitation);
     if (!related) {
       return;
     }
-    this.openEventEditor(stacked, 'edit', related, true);
+    this.openEventEditor(stacked, 'edit', related, true, this.selectedInvitation?.id ?? null);
   }
 
   protected triggerEventImageUpload(event?: Event): void {
@@ -5760,6 +5755,7 @@ export class App {
     this.showSubEventRequiredValidation = false;
     this.showSubEventGroupRequiredValidation = false;
     this.eventEditorSource = null;
+    this.eventEditorInvitationId = null;
     this.subEventGroupForm = this.defaultSubEventGroupForm();
     this.pendingActivityAction = 'delete';
     this.pendingActivityMemberDelete = null;
@@ -5799,6 +5795,7 @@ export class App {
     if (this.stackedPopup === 'eventEditor') {
       this.eventEditorReadOnly = false;
       this.eventEditorSource = null;
+      this.eventEditorInvitationId = null;
     }
     if (this.stackedPopup === 'chat') {
       this.cancelChatInitialLoad();
@@ -9969,6 +9966,15 @@ export class App {
     this.inlineItemActionMenu = null;
   }
 
+  protected runActivityItemApproveAction(row: ActivityListRow, event: Event): void {
+    event.stopPropagation();
+    if (row.type !== 'invitations') {
+      return;
+    }
+    this.acceptInvitationAndMoveToEvents(row.source as InvitationMenuItem);
+    this.inlineItemActionMenu = null;
+  }
+
   protected runActivityItemPublishAction(row: ActivityListRow, event: Event): void {
     event.stopPropagation();
     this.publishHostingActivity(row, event);
@@ -9996,7 +10002,7 @@ export class App {
 
   protected activityPrimaryActionLabel(row: ActivityListRow): string {
     if (row.type === 'invitations') {
-      return 'View';
+      return 'View Event';
     }
     if (row.isAdmin) {
       return 'Edit';
@@ -10281,6 +10287,10 @@ export class App {
     return `${acceptedCount} members · ${pendingCount} pending`;
   }
 
+  protected canShowActivityMembersInviteButton(): boolean {
+    return !this.activityMembersReadOnly && !this.eventEditorInvitationId;
+  }
+
   protected activityInviteMetLabel(entry: ActivityMemberEntry): string {
     const dateText = new Date(entry.metAtIso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     return `${entry.metWhere} · ${dateText}`;
@@ -10328,6 +10338,9 @@ export class App {
   protected canDeleteActivityMember(entry: ActivityMemberEntry): boolean {
     if (this.selectedActivityMembersRow?.isAdmin === true) {
       return true;
+    }
+    if (this.eventEditorInvitationId) {
+      return false;
     }
     return entry.status === 'pending'
       && entry.requestKind === 'invite'
@@ -10491,12 +10504,46 @@ export class App {
     return this.selectedInvitation ? this.isInvitationAcceptedId(this.selectedInvitation.id) : false;
   }
 
+  protected shouldShowEventEditorInvitationApproveButton(context: 'active' | 'stacked'): boolean {
+    if (!this.eventEditorReadOnly) {
+      return false;
+    }
+    if (context === 'active' && this.activePopup !== 'eventEditor') {
+      return false;
+    }
+    if (context === 'stacked' && this.stackedPopup !== 'eventEditor') {
+      return false;
+    }
+    if (!this.eventEditorInvitationId) {
+      return false;
+    }
+    return this.invitationItems.some(item => item.id === this.eventEditorInvitationId);
+  }
+
+  protected approveEventEditorInvitation(event?: Event): void {
+    event?.stopPropagation();
+    const invitationId = this.eventEditorInvitationId;
+    if (!invitationId) {
+      return;
+    }
+    const invitation = this.invitationItems.find(item => item.id === invitationId);
+    if (!invitation) {
+      this.eventEditorInvitationId = null;
+      return;
+    }
+    this.acceptInvitationAndMoveToEvents(invitation);
+    if (this.selectedInvitation?.id === invitationId) {
+      this.selectedInvitation = null;
+    }
+    this.eventEditorInvitationId = null;
+  }
+
   protected approveSelectedInvitation(event?: Event): void {
     event?.stopPropagation();
     if (!this.selectedInvitation) {
       return;
     }
-    this.acceptInvitationFromRow(this.selectedInvitation.id);
+    this.acceptInvitationAndMoveToEvents(this.selectedInvitation);
   }
 
   protected deleteSelectedInvitation(event?: Event): void {
@@ -10520,6 +10567,62 @@ export class App {
     const next = this.invitationItems.filter(item => item.id !== invitationId);
     this.invitationItemsByUser[this.activeUser.id] = next;
     this.acceptedInvitationIdsByUser[this.activeUser.id] = (this.acceptedInvitationIdsByUser[this.activeUser.id] ?? []).filter(id => id !== invitationId);
+  }
+
+  private acceptInvitationAndMoveToEvents(invitation: InvitationMenuItem): void {
+    const titleKey = this.normalizeText(invitation.description);
+    const existingEvent = this.eventItems.find(item => this.normalizeText(item.title) === titleKey);
+    if (!existingEvent) {
+      const eventId = `inv-event-${invitation.id}`;
+      const invitedEvent: EventMenuItem = {
+        id: eventId,
+        avatar: this.initialsFromText(invitation.inviter),
+        title: invitation.description,
+        shortDescription: `Invited by ${invitation.inviter}`,
+        timeframe: invitation.when,
+        activity: Math.max(0, invitation.unread),
+        isAdmin: false
+      };
+      this.eventItemsByUser[this.activeUser.id] = [invitedEvent, ...this.eventItems];
+      this.eventDatesById[eventId] = this.invitationDatesById[invitation.id] ?? this.defaultEventStartIso();
+      this.eventDistanceById[eventId] = this.invitationDistanceById[invitation.id] ?? 10;
+      this.eventVisibilityById[eventId] = this.eventVisibilityById[eventId] ?? 'Invitation only';
+      this.eventBlindModeById[eventId] = this.eventBlindModeById[eventId] ?? 'Open Event';
+      this.eventAutoInviterById[eventId] = this.eventAutoInviterById[eventId] ?? false;
+      this.eventCapacityById[eventId] = this.eventCapacityById[eventId] ?? { min: 0, max: 0 };
+      this.eventSubEventsById[eventId] = this.eventSubEventsById[eventId] ?? [];
+    }
+    this.acceptInvitationFromRow(invitation.id);
+    this.removeInvitationById(invitation.id);
+    this.resetActivitiesScroll();
+  }
+
+  private resolveRelatedEventFromInvitation(invitation: InvitationMenuItem | null): EventMenuItem | HostingMenuItem | null {
+    if (!invitation) {
+      return null;
+    }
+    const invitationTitle = this.normalizeText(invitation.description);
+    const relatedEvent = this.eventItems.find(item => this.normalizeText(item.title) === invitationTitle);
+    if (relatedEvent) {
+      return relatedEvent;
+    }
+    const relatedHosting = this.hostingItems.find(item => this.normalizeText(item.title) === invitationTitle);
+    if (relatedHosting) {
+      return relatedHosting;
+    }
+    return null;
+  }
+
+  private buildInvitationPreviewEventSource(invitation: InvitationMenuItem): EventMenuItem {
+    return {
+      id: `inv-preview-${invitation.id}`,
+      avatar: this.initialsFromText(invitation.inviter),
+      title: invitation.description,
+      shortDescription: `Invited by ${invitation.inviter}`,
+      timeframe: invitation.when,
+      activity: Math.max(0, invitation.unread),
+      isAdmin: false
+    };
   }
 
   protected get chatPopupMessages(): ChatPopupMessage[] {
