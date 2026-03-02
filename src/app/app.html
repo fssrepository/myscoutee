@@ -896,7 +896,7 @@
             <div class="activities-sticky-header">{{ activitiesStickyHeader }}</div>
 
             <ng-container *ngFor="let group of groupedActivityRows; let groupIndex = index; trackBy: trackByActivityGroup">
-              <div class="activities-group-marker" [attr.data-group-label]="group.label">{{ group.label }}</div>
+              <div class="activities-group-marker" *ngIf="shouldShowActivityGroupMarker(groupIndex)" [attr.data-group-label]="group.label">{{ group.label }}</div>
 
               <ng-container *ngFor="let row of group.rows; let rowIndex = index; trackBy: trackByActivityRow">
                 <article class="experience-item-card asset-item-card activities-row-item" [class.activities-row-item-full]="isActivityFull(row)" [attr.data-group-label]="group.label" *ngIf="isEventStyleActivity(row); else nonEventActivityRow">
@@ -1266,12 +1266,11 @@
           </div>
           <ng-container *ngIf="!chatInitialLoadPending">
             <div class="chat-thread" (scroll)="onChatThreadScroll($event)">
-              <div class="chat-history-top-sentinel" *ngIf="hasMoreChatMessages()" aria-hidden="true"></div>
               <ng-container *ngFor="let dayGroup of chatPopupDayGroups; trackBy: trackByChatDayGroup">
                 <div class="chat-day-sticky">
                   <span class="chat-day-pill">{{ dayGroup.label }}</span>
                 </div>
-                <article class="chat-message" *ngFor="let message of dayGroup.messages; trackBy: trackByChatMessage" [class.mine]="message.mine">
+                <article class="chat-message" *ngFor="let message of dayGroup.messages; trackBy: trackByChatMessage" [class.mine]="message.mine" [attr.data-chat-message-id]="message.id">
                   <div class="chat-bubble">
                     <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">{{ message.senderAvatar.initials }}</span>
                     <div class="chat-message-content">
@@ -2940,12 +2939,11 @@
           </div>
           <ng-container *ngIf="!chatInitialLoadPending">
             <div class="chat-thread" (scroll)="onChatThreadScroll($event)">
-              <div class="chat-history-top-sentinel" *ngIf="hasMoreChatMessages()" aria-hidden="true"></div>
               <ng-container *ngFor="let dayGroup of chatPopupDayGroups; trackBy: trackByChatDayGroup">
                 <div class="chat-day-sticky">
                   <span class="chat-day-pill">{{ dayGroup.label }}</span>
                 </div>
-                <article class="chat-message" *ngFor="let message of dayGroup.messages; trackBy: trackByChatMessage" [class.mine]="message.mine">
+                <article class="chat-message" *ngFor="let message of dayGroup.messages; trackBy: trackByChatMessage" [class.mine]="message.mine" [attr.data-chat-message-id]="message.id">
                   <div class="chat-bubble">
                     <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">{{ message.senderAvatar.initials }}</span>
                     <div class="chat-message-content">

@@ -8435,6 +8435,13 @@ export class App {
     return `${row.type}:${row.id}`;
   }
 
+  protected shouldShowActivityGroupMarker(groupIndex: number): boolean {
+    if (groupIndex > 0) {
+      return true;
+    }
+    return this.activitiesPrimaryFilter !== 'chats';
+  }
+
   protected activityRateCardImageUrls(row: ActivityListRow): string[] {
     if (row.type !== 'rates') {
       return [];
@@ -9787,20 +9794,115 @@ export class App {
     }
     const beforeHeight = thread.scrollHeight;
     const beforeTop = thread.scrollTop;
+    const threadRect = thread.getBoundingClientRect();
+    const anchorMessage =
+      Array.from(thread.querySelectorAll<HTMLElement>('.chat-message[data-chat-message-id]'))
+        .find(message => message.getBoundingClientRect().bottom > threadRect.top + 8) ?? null;
+    const anchorMessageId = anchorMessage?.dataset['chatMessageId'] ?? null;
+    const anchorOffsetTop = anchorMessage ? anchorMessage.getBoundingClientRect().top - threadRect.top : 0;
     this.chatHistoryLoadingOlder = true;
     this.beginChatHeaderProgressLoading();
     this.chatHistoryLoadOlderTimer = setTimeout(() => {
       this.chatHistoryLoadOlderTimer = null;
       this.chatVisibleMessageCount = Math.min(this.chatVisibleMessageCount + this.chatHistoryPageSize, this.selectedChatHistory.length);
       this.cdr.detectChanges();
-      setTimeout(() => {
-        const afterHeight = thread.scrollHeight;
-        thread.scrollTop = beforeTop + (afterHeight - beforeHeight);
-        this.updateChatHeaderProgress(thread);
-        this.chatHistoryLoadingOlder = false;
-        this.endChatHeaderProgressLoading();
-      }, 0);
+      this.runAfterChatThreadRender(() => {
+        if (anchorMessageId) {
+          const restoredAnchor = thread.querySelector<HTMLElement>(`.chat-message[data-chat-message-id="${anchorMessageId}"]`);
+          if (restoredAnchor) {
+            const restoredThreadRect = thread.getBoundingClientRect();
+            const restoredOffsetTop = restoredAnchor.getBoundingClientRect().top - restoredThreadRect.top;
+            thread.scrollTop += restoredOffsetTop - anchorOffsetTop;
+          } else {
+            const afterHeight = thread.scrollHeight;
+            thread.scrollTop = beforeTop + (afterHeight - beforeHeight);
+          }
+        } else {
+          const afterHeight = thread.scrollHeight;
+          thread.scrollTop = beforeTop + (afterHeight - beforeHeight);
+        }
+        this.triggerChatHistoryArrivalBump(thread).finally(() => {
+          this.updateChatHeaderProgress(thread);
+          this.chatHistoryLoadingOlder = false;
+          this.endChatHeaderProgressLoading();
+        });
+      });
     }, this.activitiesPaginationLoadDelayMs);
+  }
+
+  private runAfterChatThreadRender(task: () => void): void {
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(task));
+      return;
+    }
+    setTimeout(task, 0);
+  }
+
+  private triggerChatHistoryArrivalBump(thread: HTMLElement): Promise<void> {
+    if (this.activePopup !== 'chat' && this.stackedPopup !== 'chat') {
+      return Promise.resolve();
+    }
+    const firstMessage = this.firstVisibleChatMessage(thread) ?? thread.querySelector<HTMLElement>('.chat-message');
+    const startTop = thread.scrollTop;
+    const messageHeight = firstMessage?.offsetHeight ?? 68;
+    const bumpDistance = Math.max(24, Math.round(messageHeight * 0.72));
+    const bumpTop = Math.max(0, startTop - bumpDistance);
+    if (bumpTop >= startTop - 0.5) {
+      return Promise.resolve();
+    }
+    if (typeof thread.animate !== 'function' || typeof globalThis.requestAnimationFrame !== 'function') {
+      thread.scrollTo({ top: bumpTop, behavior: 'smooth' });
+      return Promise.resolve();
+    }
+    return new Promise(resolve => {
+      const durationMs = 240;
+      const animation = thread.animate(
+        [
+          { transform: 'translateZ(0)' },
+          { transform: 'translateZ(0)' }
+        ],
+        {
+          duration: durationMs,
+          easing: 'linear',
+          fill: 'none'
+        }
+      );
+      let done = false;
+      const finish = () => {
+        if (done) {
+          return;
+        }
+        done = true;
+        thread.scrollTop = bumpTop;
+        resolve();
+      };
+      const tick = () => {
+        if (done) {
+          return;
+        }
+        const currentTime = typeof animation.currentTime === 'number' ? animation.currentTime : 0;
+        const progress = this.clampNumber(currentTime / durationMs, 0, 1);
+        // Smooth ease-out reveals the first half-row without an abrupt snap.
+        const eased = 1 - Math.pow(1 - progress, 3);
+        thread.scrollTop = startTop + (bumpTop - startTop) * eased;
+        if (progress >= 1 || animation.playState === 'finished' || animation.playState === 'idle') {
+          finish();
+          return;
+        }
+        globalThis.requestAnimationFrame(tick);
+      };
+      animation.oncancel = finish;
+      animation.onfinish = finish;
+      globalThis.requestAnimationFrame(tick);
+    });
+  }
+
+  private firstVisibleChatMessage(thread: HTMLElement): HTMLElement | null {
+    const threadRect = thread.getBoundingClientRect();
+    return (
+      Array.from(thread.querySelectorAll<HTMLElement>('.chat-message[data-chat-message-id]'))
+        .find(message => message.getBoundingClientRect().bottom > threadRect.top + 8) ?? null
+    );
   }
 
   protected sendChatMessage(): void {
