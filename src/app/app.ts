@@ -885,6 +885,7 @@ export class App {
   protected eventExploreFilterFriendsOnly = false;
   protected eventExploreFilterHasRooms = false;
   protected eventExploreFilterTopic = '';
+  protected activitiesListScrollable = true;
   protected activitiesStickyValue = '';
   protected eventExploreStickyValue = '';
   protected readonly activitiesPageSize = 10;
@@ -8992,7 +8993,27 @@ export class App {
     if (groupIndex > 0) {
       return true;
     }
-    return this.activitiesPrimaryFilter !== 'chats';
+    if (this.activitiesPrimaryFilter === 'chats') {
+      return false;
+    }
+    if (this.shouldApplyEventActivityGroupMarkerRules() && !this.isActivitiesListScrollableNow()) {
+      return false;
+    }
+    return true;
+  }
+
+  private shouldApplyEventActivityGroupMarkerRules(): boolean {
+    return this.activitiesPrimaryFilter === 'events'
+      || this.activitiesPrimaryFilter === 'invitations'
+      || this.activitiesPrimaryFilter === 'hosting';
+  }
+
+  private isActivitiesListScrollableNow(): boolean {
+    const listElement = this.activitiesScrollRef?.nativeElement;
+    if (!listElement) {
+      return this.activitiesListScrollable;
+    }
+    return Math.max(0, listElement.scrollHeight - listElement.clientHeight) > 1;
   }
 
   protected activityRateCardImageUrls(row: ActivityListRow): string[] {
@@ -10040,6 +10061,18 @@ export class App {
   }
 
   protected triggerActivitySecondaryAction(row: ActivityListRow): void {
+    if (row.type === 'invitations') {
+      this.removeInvitationById(row.id);
+      if (this.selectedInvitation?.id === row.id) {
+        this.selectedInvitation = null;
+      }
+      if (this.eventEditorInvitationId === row.id) {
+        this.eventEditorInvitationId = null;
+      }
+      this.refreshActivitiesStickyHeaderSoon();
+      this.refreshActivitiesHeaderProgressSoon();
+      return;
+    }
     this.pendingActivityAction = this.isExitActivityRow(row) ? 'exit' : 'delete';
     this.pendingActivityDeleteRow = row;
   }
@@ -13412,6 +13445,7 @@ export class App {
     }
 
     if (this.isCalendarLayoutView()) {
+      this.activitiesListScrollable = true;
       const calendarElement = this.activitiesCalendarScrollRef?.nativeElement;
       if (!calendarElement) {
         this.activitiesHeaderProgress = 0;
@@ -13428,10 +13462,12 @@ export class App {
 
     const listElement = this.activitiesScrollRef?.nativeElement;
     if (!listElement) {
+      this.activitiesListScrollable = false;
       this.activitiesHeaderProgress = 0;
       return;
     }
     const maxVerticalScroll = Math.max(0, listElement.scrollHeight - listElement.clientHeight);
+    this.activitiesListScrollable = maxVerticalScroll > 1;
     if (maxVerticalScroll <= 1) {
       this.activitiesHeaderProgress = 0;
       return;

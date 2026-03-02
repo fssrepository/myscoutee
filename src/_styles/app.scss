@@ -5243,6 +5243,10 @@
   scroll-snap-stop: normal;
 }
 
+.activities-scroll-list.activities-scroll-list-event-snap {
+  scroll-snap-type: y mandatory;
+}
+
 .activities-scroll-list.activities-scroll-list-rates {
   scroll-snap-type: y mandatory !important;
   scroll-behavior: smooth !important;
