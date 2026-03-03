@@ -889,6 +889,7 @@ export class App {
   protected showActivitiesViewPicker = false;
   protected showActivitiesSecondaryPicker = false;
   protected inlineItemActionMenu: { scope: 'activity' | 'activityMember' | 'asset' | 'explore' | 'subEvent' | 'subEventStage' | 'subEventMember' | 'subEventAsset'; id: string; title: string; openUp: boolean } | null = null;
+  private subEventAssetMenuIgnoreCloseUntilMs = 0;
   protected showEventExploreOrderPicker = false;
   protected eventExploreOrder: EventExploreOrder = 'upcoming';
   protected eventExploreFilterFriendsOnly = false;
@@ -3774,6 +3775,9 @@ export class App {
       this.subEventMembersRowId = null;
     }
     this.subEventMembersPendingOnly = false;
+    if (type !== 'Members') {
+      this.inlineItemActionMenu = null;
+    }
     this.subEventMemberRolePickerUserId = null;
     this.subEventAssetAssignContext = null;
     this.selectedSubEventAssignAssetIds = [];
@@ -3795,6 +3799,11 @@ export class App {
 
   protected selectSubEventResourceFilter(filter: SubEventResourceFilter): void {
     this.subEventResourceFilter = filter;
+    this.suppressSelectOverlayBackdropPointerEvents();
+    if (filter !== 'Members') {
+      this.inlineItemActionMenu = null;
+    }
+    this.subEventMemberRolePickerUserId = null;
     if (filter !== 'Members') {
       this.subEventMembersPendingOnly = false;
     }
@@ -4068,6 +4077,7 @@ export class App {
     }
     if (this.inlineItemActionMenu?.scope === 'subEventAsset' && this.inlineItemActionMenu.id === card.id) {
       this.inlineItemActionMenu = null;
+      this.subEventAssetMenuIgnoreCloseUntilMs = 0;
       return;
     }
     this.inlineItemActionMenu = {
@@ -4076,6 +4086,7 @@ export class App {
       title: card.title,
       openUp: this.shouldOpenInlineItemMenuUp(event)
     };
+    this.subEventAssetMenuIgnoreCloseUntilMs = Date.now() + 220;
   }
 
   protected isSubEventResourceItemActionMenuOpen(card: SubEventResourceCard): boolean {
@@ -11755,6 +11766,10 @@ export class App {
     return message.id;
   }
 
+  protected trackBySubEventResourceCard(_: number, card: SubEventResourceCard): string {
+    return card.id;
+  }
+
   protected hasMoreChatMessages(): boolean {
     return this.chatVisibleMessageCount < this.selectedChatHistory.length;
   }
@@ -12616,12 +12631,18 @@ export class App {
       return;
     }
     this.maybeDismissActivityRateEditor(target);
-    const clickedInlineActionControl = this.inlineItemActionMenu?.scope === 'subEventAsset'
-      ? this.didClickSubEventAssetActionControl(event)
-      : (target.closest('.item-action-menu') !== null || target.closest('.experience-action-menu-trigger') !== null);
+    const clickedInlineActionControl = this.didClickSubEventAssetActionControl(event);
+    if (
+      this.inlineItemActionMenu?.scope === 'subEventAsset'
+      && !clickedInlineActionControl
+      && Date.now() < this.subEventAssetMenuIgnoreCloseUntilMs
+    ) {
+      return;
+    }
     if (this.inlineItemActionMenu && !clickedInlineActionControl) {
       this.inlineItemActionMenu = null;
       this.subEventMemberRolePickerUserId = null;
+      this.subEventAssetMenuIgnoreCloseUntilMs = 0;
     }
     if (this.showUserMenu && !target.closest('.user-menu-panel') && !target.closest('.user-selector-btn-global')) {
       this.showUserMenu = false;
@@ -12688,6 +12709,42 @@ export class App {
       return false;
     }
     return target.closest('.item-action-menu') !== null || target.closest('.experience-action-menu-trigger') !== null;
+  }
+
+  private suppressSelectOverlayBackdropPointerEvents(): void {
+    if (typeof document === 'undefined' || typeof window === 'undefined') {
+      return;
+    }
+    const collectBackdrops = (): HTMLElement[] =>
+      Array.from(document.querySelectorAll<HTMLElement>('.cdk-overlay-backdrop.cdk-overlay-backdrop-showing'));
+    const disablePointerEvents = (backdrops: HTMLElement[]): void => {
+      for (const backdrop of backdrops) {
+        backdrop.style.pointerEvents = 'none';
+      }
+    };
+    const restorePointerEvents = (backdrops: HTMLElement[]): void => {
+      for (const backdrop of backdrops) {
+        if (!backdrop.isConnected) {
+          continue;
+        }
+        backdrop.style.removeProperty('pointer-events');
+      }
+    };
+
+    const nowBackdrops = collectBackdrops();
+    if (nowBackdrops.length > 0) {
+      disablePointerEvents(nowBackdrops);
+      window.setTimeout(() => restorePointerEvents(nowBackdrops), 220);
+    }
+
+    window.requestAnimationFrame(() => {
+      const frameBackdrops = collectBackdrops();
+      if (frameBackdrops.length === 0) {
+        return;
+      }
+      disablePointerEvents(frameBackdrops);
+      window.setTimeout(() => restorePointerEvents(frameBackdrops), 220);
+    });
   }
 
   private getInitialUserId(): string {

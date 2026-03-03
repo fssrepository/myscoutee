@@ -3487,7 +3487,7 @@
         </div>
         <ng-template #subEventAssetsCardList>
           <div class="experience-card-list assets-card-list subevent-assets-scroll-list">
-            <article class="experience-item-card asset-item-card" [ngClass]="subEventResourceTypeClass(card.type)" *ngFor="let card of subEventResourceCards">
+            <article class="experience-item-card asset-item-card" [ngClass]="subEventResourceTypeClass(card.type)" *ngFor="let card of subEventResourceCards; trackBy: trackBySubEventResourceCard">
               <div class="asset-card-image" [appLazyBgImage]="card.imageUrl">
                 <a class="asset-source-icon" *ngIf="!card.isMembers && card.sourceLink" [href]="card.sourceLink" target="_blank" rel="noopener" (click)="$event.stopPropagation()" aria-label="Open source link">
                   <mat-icon>link</mat-icon>
