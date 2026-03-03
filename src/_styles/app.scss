@@ -9073,17 +9073,17 @@ textarea {
 .ticket-scanner-frame {
   width: min(560px, 92vw);
   position: relative;
-  padding-top: 62px;
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 0;
 }
 
 .ticket-scanner-result-slot {
   width: min(560px, 92vw);
   height: 124px;
-  position: absolute;
-  left: 50%;
-  top: 0;
-  transform: translateX(-50%);
+  position: relative;
   z-index: 7;
+  margin-bottom: -1px;
 }
 
 .ticket-scanner-result-inline,
@@ -9244,8 +9244,7 @@ textarea {
   }
 
   .ticket-scanner-result-slot {
-    left: 0;
-    transform: none;
+    margin-bottom: -1px;
   }
 
   .ticket-scan-person-body {
