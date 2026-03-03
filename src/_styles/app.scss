@@ -9008,15 +9008,13 @@ textarea {
 
 .ticket-scan-person-card {
   width: var(--ticket-popup-content-width);
-  height: 136px;
+  height: 144px;
   border: 1px solid rgba(57, 90, 135, 0.24);
   border-radius: 12px;
-  padding: 0.56rem 0.72rem 0.62rem;
+  padding: 0.64rem 0.86rem;
   box-sizing: border-box;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  align-content: start;
-  gap: 0.38rem;
+  display: flex;
+  align-items: center;
   transition: border-color 200ms ease, background-color 200ms ease, box-shadow 200ms ease;
 }
 
@@ -9047,14 +9045,15 @@ textarea {
 
 .ticket-scan-person-body {
   display: grid;
-  grid-template-columns: 76px minmax(0, 1fr);
-  gap: 0.72rem;
+  width: 100%;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 0.82rem;
   align-items: center;
 }
 
 .ticket-scan-person-avatar {
-  width: 76px;
-  height: 76px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
   border: 2px solid rgba(48, 80, 124, 0.28);
   background: linear-gradient(180deg, #2f6fbe 0%, #2a588f 100%);
@@ -9071,9 +9070,9 @@ textarea {
 .ticket-scan-person-meta p {
   margin: 0.12rem 0 0;
   color: rgba(29, 53, 85, 0.86);
-  font-size: 0.82rem;
+  font-size: 0.95rem;
   font-weight: 650;
-  line-height: 1.25;
+  line-height: 1.28;
 }
 
 .ticket-scan-person-meta p:first-child {
@@ -9083,7 +9082,7 @@ textarea {
 
 .ticket-scan-person-meta p:last-child {
   color: rgba(38, 68, 108, 0.78);
-  font-size: 0.8rem;
+  font-size: 0.93rem;
   font-weight: 700;
 }
 
@@ -9097,7 +9096,7 @@ textarea {
 
 .ticket-scanner-result-slot {
   width: var(--ticket-popup-content-width);
-  height: 136px;
+  height: 144px;
   position: relative;
 }
 
