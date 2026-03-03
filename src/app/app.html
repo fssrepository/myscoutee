@@ -3498,10 +3498,11 @@
                 <button
                   type="button"
                   class="asset-occupancy-badge"
-                  (click)="$event.stopPropagation()"
-                  aria-label="Open assignments"
+                  (click)="canOpenSubEventAssetMembers(card) ? openSubEventAssetMembers(card, $event) : $event.stopPropagation()"
+                  [attr.aria-label]="canOpenSubEventAssetMembers(card) ? 'Open member requests' : 'Capacity'"
                 >
                   <span>{{ subEventResourceOccupancyLabel(card) }}</span>
+                  <span class="card-badge asset-request-badge" *ngIf="canOpenSubEventAssetMembers(card) && card.pending > 0">{{ card.pending }}</span>
                 </button>
               </div>
               <div class="experience-item-head">

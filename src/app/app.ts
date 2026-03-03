@@ -510,6 +510,13 @@ interface SubEventAssignedAssetSettings {
   addedByUserId: string;
 }
 
+interface SubEventAssetMembersContext {
+  subEventId: string;
+  assetId: string;
+  type: 'Car' | 'Accommodation';
+  ownerUserId: string | null;
+}
+
 interface ActivityMemberEntry {
   id: string;
   userId: string;
@@ -919,7 +926,8 @@ export class App {
   protected selectedActivityInviteUserIds: string[] = [];
   protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | 'eventSubEvents' | 'eventExploreTopicFilter' | 'impressionsHost' | 'subEventAssetAssign' | null = null;
   private readonly activityMembersByRowId: Record<string, ActivityMemberEntry[]> = {};
-  private activityMembersPopupOrigin: 'active-event-editor' | 'stacked-event-editor' | 'event-explore' | null = null;
+  private activityMembersPopupOrigin: 'active-event-editor' | 'stacked-event-editor' | 'event-explore' | 'subevent-asset' | null = null;
+  private subEventAssetMembersContext: SubEventAssetMembersContext | null = null;
   protected readonly activityRatingScale = Array.from({ length: 10 }, (_, index) => index + 1);
   private readonly weekCalendarStartHour = 0;
   private readonly weekCalendarEndHour = 23;
@@ -3775,6 +3783,7 @@ export class App {
       this.subEventMembersRowId = null;
     }
     this.subEventMembersPendingOnly = false;
+    this.subEventAssetMembersContext = null;
     if (type !== 'Members') {
       this.inlineItemActionMenu = null;
     }
@@ -3800,6 +3809,7 @@ export class App {
   protected selectSubEventResourceFilter(filter: SubEventResourceFilter): void {
     this.subEventResourceFilter = filter;
     this.suppressSelectOverlayBackdropPointerEvents();
+    this.subEventAssetMembersContext = null;
     if (filter !== 'Members') {
       this.inlineItemActionMenu = null;
     }
@@ -4099,6 +4109,62 @@ export class App {
       && this.inlineItemActionMenu.openUp;
   }
 
+  protected openSubEventAssetMembers(card: SubEventResourceCard, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.selectedSubEventBadgeContext || !card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
+      return;
+    }
+    const subEvent = this.selectedSubEventBadgeContext.subEvent;
+    const type = card.type;
+    const sourceCard = this.assetCards.find(item => item.id === card.sourceAssetId && item.type === type);
+    if (!sourceCard) {
+      return;
+    }
+    const settings = this.getSubEventAssignedAssetSettings(subEvent.id, type);
+    const ownerUserId = settings[card.sourceAssetId]?.addedByUserId ?? null;
+    const canManage = ownerUserId === this.activeUser.id;
+    const rowId = `subevent-asset-members:${subEvent.id}:${type}:${card.sourceAssetId}`;
+    const rowKey = `events:${rowId}`;
+    const membersRow: ActivityListRow = {
+      id: rowId,
+      type: 'events',
+      title: `${sourceCard.title} Members`,
+      subtitle: `${subEvent.name} · ${sourceCard.title}`,
+      detail: '',
+      dateIso: this.eventForm.startAt || this.defaultEventStartIso(),
+      distanceKm: 0,
+      unread: 0,
+      metricScore: 0,
+      isAdmin: canManage,
+      source: {} as EventMenuItem
+    };
+    this.subEventAssetMembersContext = {
+      subEventId: subEvent.id,
+      assetId: sourceCard.id,
+      type,
+      ownerUserId
+    };
+    this.pendingActivityMemberDelete = null;
+    this.activityMembersPendingOnly = false;
+    this.inlineItemActionMenu = null;
+    this.selectedActivityMembersRow = membersRow;
+    this.selectedActivityMembersRowId = rowKey;
+    this.selectedActivityMembers = this.subEventAssetMemberEntries(sourceCard);
+    this.activityMembersByRowId[rowKey] = [...this.selectedActivityMembers];
+    this.selectedActivityMembersTitle = `${sourceCard.title} · ${this.subEventDisplayName(subEvent)}`;
+    this.activityInviteSort = 'recent';
+    this.showActivityInviteSortPicker = false;
+    this.selectedActivityInviteUserIds = [];
+    this.activityMembersReadOnly = !canManage;
+    this.activityMembersPopupOrigin = 'subevent-asset';
+    this.superStackedPopup = null;
+    this.stackedPopup = 'activityMembers';
+  }
+
+  protected canOpenSubEventAssetMembers(card: SubEventResourceCard): boolean {
+    return !!card.sourceAssetId && (card.type === 'Car' || card.type === 'Accommodation');
+  }
+
   protected canJoinSubEventResourceCard(card: SubEventResourceCard): boolean {
     return !!card.sourceAssetId && (card.type === 'Car' || card.type === 'Accommodation');
   }
@@ -4133,7 +4199,7 @@ export class App {
           ...asset,
           requests: asset.requests.map(request =>
             request.id === requestId
-              ? { ...request, status: 'accepted' }
+              ? { ...request, status: 'pending', note: 'Join request from sub-event assets.' }
               : request
           )
         };
@@ -4146,8 +4212,8 @@ export class App {
             name: this.activeUser.name,
             initials: this.activeUser.initials,
             gender: this.activeUser.gender,
-            status: 'accepted',
-            note: 'Joined from sub-event assets.'
+            status: 'pending',
+            note: 'Join request from sub-event assets.'
           },
           ...asset.requests
         ]
@@ -6762,6 +6828,7 @@ export class App {
     if (this.stackedPopup === 'subEventMembers' || this.stackedPopup === 'subEventAssets') {
       const restoreSubEventsSuperPopup = this.subEventBadgeOpenedFromSubEventsPopup;
       this.selectedSubEventBadgeContext = null;
+      this.subEventAssetMembersContext = null;
       this.subEventMembersPendingOnly = false;
       this.subEventMembersRow = null;
       this.subEventMembersRowId = null;
@@ -6816,17 +6883,26 @@ export class App {
       this.selectedActivityInviteUserIds = [];
       this.showActivityInviteSortPicker = false;
       this.superStackedPopup = null;
+      if (this.activityMembersPopupOrigin === 'subevent-asset') {
+        this.activityMembersPopupOrigin = null;
+        this.subEventAssetMembersContext = null;
+        this.stackedPopup = 'subEventAssets';
+        return;
+      }
       if (this.activityMembersPopupOrigin === 'event-explore') {
         this.activityMembersPopupOrigin = null;
+        this.subEventAssetMembersContext = null;
         this.stackedPopup = 'eventExplore';
         return;
       }
       if (this.activityMembersPopupOrigin === 'stacked-event-editor') {
         this.activityMembersPopupOrigin = null;
+        this.subEventAssetMembersContext = null;
         this.stackedPopup = 'eventEditor';
         return;
       }
       this.activityMembersPopupOrigin = null;
+      this.subEventAssetMembersContext = null;
     }
     if (this.superStackedPopup === 'eventTopicsSelector' || this.superStackedPopup === 'eventSubEvents') {
       this.superStackedPopup = null;
@@ -11075,6 +11151,7 @@ export class App {
   protected openActivityMembers(row: ActivityListRow, event?: Event, source: 'default' | 'explore' = 'default'): void {
     event?.stopPropagation();
     const previousStackedPopup = this.stackedPopup;
+    this.subEventAssetMembersContext = null;
     this.activityMembersReadOnly = source === 'explore';
     if (source === 'explore' && previousStackedPopup === 'eventExplore') {
       this.activityMembersPopupOrigin = 'event-explore';
@@ -11480,6 +11557,7 @@ export class App {
         : item
     ));
     this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
+    this.syncSubEventAssetMembersRequestsFromSelection();
     this.inlineItemActionMenu = null;
   }
 
@@ -11500,6 +11578,7 @@ export class App {
     const targetId = this.pendingActivityMemberDelete.id;
     this.selectedActivityMembers = this.selectedActivityMembers.filter(item => item.id !== targetId);
     this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
+    this.syncSubEventAssetMembersRequestsFromSelection();
     this.pendingActivityMemberDelete = null;
   }
 
@@ -11514,6 +11593,9 @@ export class App {
   protected pendingActivityMemberDeleteLabel(): string {
     if (!this.pendingActivityMemberDelete) {
       return '';
+    }
+    if (this.subEventAssetMembersContext) {
+      return `Remove ${this.pendingActivityMemberDelete.name} from this asset?`;
     }
     return `Remove ${this.pendingActivityMemberDelete.name} from this event?`;
   }
@@ -13614,7 +13696,10 @@ export class App {
       return;
     }
     const selected = new Set(this.selectedActivityInviteUserIds);
-    const pendingSource: ActivityPendingSource = this.selectedActivityMembersRow.isAdmin ? 'admin' : 'member';
+    const isSubEventAssetMembers = this.subEventAssetMembersContext !== null;
+    const pendingSource: ActivityPendingSource = isSubEventAssetMembers
+      ? 'member'
+      : (this.selectedActivityMembersRow.isAdmin ? 'admin' : 'member');
     const nowIso = this.toIsoDateTime(new Date());
     const additions = this.activityInviteCandidates
       .filter(candidate => selected.has(candidate.userId))
@@ -13622,7 +13707,7 @@ export class App {
         ...candidate,
         status: 'pending' as const,
         pendingSource,
-        requestKind: 'invite' as const,
+        requestKind: isSubEventAssetMembers ? ('join' as const) : ('invite' as const),
         invitedByActiveUser: true,
         actionAtIso: nowIso
       }));
@@ -13637,11 +13722,87 @@ export class App {
     const ordered = this.sortActivityMembersByActionTimeAsc(next);
     this.selectedActivityMembers = ordered;
     this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...ordered];
+    this.syncSubEventAssetMembersRequestsFromSelection();
     const subEventContext = this.resolveSubEventMembersContext();
     if (subEventContext && subEventContext.rowKey === this.selectedActivityMembersRowId) {
       this.syncSelectedSubEventMembersCounts(ordered);
     }
     this.selectedActivityInviteUserIds = [];
+  }
+
+  private subEventAssetMemberEntries(card: AssetCard): ActivityMemberEntry[] {
+    const rowKey = this.selectedActivityMembersRowId ?? `events:subevent-asset-members:${card.id}`;
+    const seedBaseDate = new Date('2026-02-24T12:00:00');
+    const entries = card.requests.map(request => {
+      const matchedUser =
+        this.users.find(user => user.name === request.name && user.initials === request.initials)
+        ?? this.users.find(user => user.name === request.name)
+        ?? null;
+      const userId = matchedUser?.id ?? request.id;
+      const seed = this.hashText(`${rowKey}:${card.id}:${request.id}:${userId}`);
+      const actionAtIso = this.toIsoDateTime(this.addDays(seedBaseDate, -((seed % 90) + 1)));
+      const pendingSource: ActivityPendingSource = request.status === 'pending' ? 'member' : null;
+      const requestKind: ActivityMemberRequestKind = request.status === 'pending' ? 'join' : null;
+      return {
+        id: request.id,
+        userId,
+        name: request.name,
+        initials: request.initials,
+        gender: request.gender,
+        city: matchedUser?.city ?? card.city,
+        statusText: request.note,
+        role: 'Member' as const,
+        status: request.status,
+        pendingSource,
+        requestKind,
+        invitedByActiveUser: matchedUser?.id === this.activeUser.id,
+        metAtIso: actionAtIso,
+        actionAtIso,
+        metWhere: card.title,
+        relevance: 40 + (seed % 61),
+        avatarUrl: matchedUser?.images?.[0] || `https://i.pravatar.cc/1200?img=${(seed % 70) + 1}`
+      };
+    });
+    return this.sortActivityMembersByActionTimeAsc(entries);
+  }
+
+  private syncSubEventAssetMembersRequestsFromSelection(): void {
+    const context = this.subEventAssetMembersContext;
+    if (!context || !this.selectedActivityMembersRowId) {
+      return;
+    }
+    const now = Date.now();
+    this.assetCards = this.assetCards.map(card => {
+      if (card.id !== context.assetId || card.type !== context.type) {
+        return card;
+      }
+      const existingById = new Map(card.requests.map(request => [request.id, request] as const));
+      const existingByName = new Map(card.requests.map(request => [request.name.toLowerCase(), request] as const));
+      const nextRequests: AssetMemberRequest[] = this.selectedActivityMembers.map((entry, index) => {
+        const existing =
+          existingById.get(entry.id)
+          ?? existingByName.get(entry.name.toLowerCase())
+          ?? null;
+        const fallbackId = `asset-member-${now}-${index}`;
+        const requestId = existing?.id ?? (entry.id || fallbackId);
+        return {
+          id: requestId,
+          name: entry.name,
+          initials: entry.initials,
+          gender: entry.gender,
+          status: entry.status,
+          note: existing?.note ?? (entry.status === 'pending' ? 'Waiting for owner approval.' : 'Accepted for this asset.')
+        };
+      });
+      return {
+        ...card,
+        requests: nextRequests
+      };
+    });
+    const subEvent = this.findSubEventById(context.subEventId);
+    if (subEvent) {
+      this.syncSubEventAssetBadgeCounts(subEvent, context.type);
+    }
   }
 
   private toActivityMemberEntry(
