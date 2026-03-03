@@ -15095,7 +15095,7 @@ textarea {
 .demo-user-grid {
   padding: 0.92rem 1rem 1rem;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.45rem;
   overflow-y: auto;
   overflow-x: hidden;
