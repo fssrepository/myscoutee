@@ -3730,6 +3730,7 @@ export class App {
       this.selectedActivityMembersRowId = rowKey;
       this.selectedActivityMembers = [...seededEntries];
       this.activityMembersByRowId[rowKey] = [...seededEntries];
+      this.syncSelectedSubEventMembersCounts(seededEntries);
     } else {
       this.subEventMembersRow = null;
       this.subEventMembersRowId = null;
@@ -3778,7 +3779,7 @@ export class App {
     }
     const subEvent = this.selectedSubEventBadgeContext.subEvent;
     if (type === 'Members') {
-      return subEvent.membersPending;
+      return this.subEventMembersPendingCount();
     }
     if (type === 'Car') {
       return subEvent.carsPending;
@@ -3787,6 +3788,15 @@ export class App {
       return subEvent.accommodationPending;
     }
     return subEvent.suppliesPending;
+  }
+
+  protected subEventMembersBadgePendingCount(subEvent: SubEventFormItem): number {
+    const fallback = Math.max(0, Math.trunc(Number(subEvent.membersPending) || 0));
+    const membersRow = this.eventEditorMembersRow();
+    if (!membersRow) {
+      return fallback;
+    }
+    return this.getActivityMembersByRow(membersRow).filter(member => member.status === 'pending').length;
   }
 
   protected isSubEventMembersPopup(): boolean {
@@ -3813,6 +3823,16 @@ export class App {
       return `${eventName} - ${subEventName}`;
     }
     return eventName || subEventName || 'Event';
+  }
+
+  protected subEventMembersHeaderSummary(): string {
+    const members = this.subEventMembersEntries();
+    const pendingCount = members.filter(member => member.status === 'pending').length;
+    const acceptedCount = members.length - pendingCount;
+    if (pendingCount <= 0) {
+      return `${acceptedCount} members`;
+    }
+    return `${acceptedCount} members · ${pendingCount} pending`;
   }
 
   protected get subEventMembersOrdered(): ActivityMemberEntry[] {
@@ -4019,9 +4039,20 @@ export class App {
     const current = this.subEventMembersEntries();
     const next = this.sortActivityMembersByActionTimeAsc(updater([...current]));
     this.activityMembersByRowId[context.rowKey] = [...next];
+    this.syncSelectedSubEventMembersCounts(next);
     if (this.selectedActivityMembersRowId === context.rowKey) {
       this.selectedActivityMembers = [...next];
     }
+  }
+
+  private syncSelectedSubEventMembersCounts(entries: ActivityMemberEntry[]): void {
+    if (!this.selectedSubEventBadgeContext) {
+      return;
+    }
+    const acceptedCount = entries.filter(member => member.status === 'accepted').length;
+    const pendingCount = entries.filter(member => member.status === 'pending').length;
+    this.selectedSubEventBadgeContext.subEvent.membersAccepted = acceptedCount;
+    this.selectedSubEventBadgeContext.subEvent.membersPending = pendingCount;
   }
 
   protected get subEventResourceCards(): SubEventResourceCard[] {
@@ -12794,6 +12825,10 @@ export class App {
     const ordered = this.sortActivityMembersByActionTimeAsc(next);
     this.selectedActivityMembers = ordered;
     this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...ordered];
+    const subEventContext = this.resolveSubEventMembersContext();
+    if (subEventContext && subEventContext.rowKey === this.selectedActivityMembersRowId) {
+      this.syncSelectedSubEventMembersCounts(ordered);
+    }
     this.selectedActivityInviteUserIds = [];
   }
 

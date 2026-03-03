@@ -811,7 +811,7 @@
             [attr.aria-label]="hostingPublicationFilter === 'drafts' ? 'Show all hosting' : 'Show drafts only'"
           >
             <span class="status-option-content activities-hosting-draft-content">
-              <mat-icon class="activities-toggle-icon">draft</mat-icon>
+              <mat-icon class="activities-toggle-icon">drafts</mat-icon>
               <span class="activities-hosting-draft-label">Drafts only</span>
             </span>
             <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="hostingDraftCount() > 0">{{ hostingDraftCount() }}</span>
@@ -2961,6 +2961,7 @@
         <button
           type="button"
           class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger activity-members-header-invite-trigger"
+          [class.subevent-header-invite-trigger]="isSubEventMembersPopup()"
           *ngIf="canShowStackedMembersInviteButton()"
           (click)="openStackedMembersInviteFriends($event)"
           [attr.aria-label]="isSubEventMembersPopup() ? 'Invite members' : 'Invite friends'"
@@ -2970,6 +2971,9 @@
             <span>Invite</span>
           </span>
         </button>
+        <span class="header-members-count subevent-header-members-count" *ngIf="isSubEventMembersPopup()">
+          {{ subEventMembersHeaderSummary() }}
+        </span>
         <span class="header-members-count" *ngIf="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers'">
           {{ stackedPopup === 'activityMembers' ? activityMembersHeaderSummary() : (selectedChatMembers.length + ' members') }}
         </span>
@@ -3213,7 +3217,7 @@
               <div class="friends-picker-card-meta subevent-member-card-meta activity-member-card-meta">
                 <h4>{{ member.name }}, {{ activityMemberAge(member) }}</h4>
                 <p>{{ member.role }} · {{ member.city }}</p>
-                <p class="subevent-member-card-status">{{ activityMemberStatusLabel(member) }}</p>
+                <p class="subevent-member-card-status" *ngIf="member.status === 'pending'">{{ activityMemberStatusLabel(member) }}</p>
               </div>
             </article>
           </div>
@@ -3396,7 +3400,7 @@
                 </span>
               </mat-option>
             </mat-select>
-            <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="subEventResourceFilterCount(subEventResourceFilter) > 0">{{ subEventResourceFilterCount(subEventResourceFilter) }}</span>
+            <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="subEventResourceFilter !== 'Members' && subEventResourceFilterCount(subEventResourceFilter) > 0">{{ subEventResourceFilterCount(subEventResourceFilter) }}</span>
           </div>
           <button
             type="button"
@@ -3410,7 +3414,7 @@
               <mat-icon class="activities-toggle-icon">pending_actions</mat-icon>
               <span class="activities-hosting-draft-label">Pending only</span>
             </span>
-            <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="subEventMembersPendingCount() > 0">{{ subEventMembersPendingCount() }}</span>
+            <span class="rate-filter-count-badge rate-filter-trigger-badge subevent-members-pending-toggle-badge" *ngIf="subEventMembersPendingCount() > 0">{{ subEventMembersPendingCount() }}</span>
           </button>
           <ng-template #subEventAssetsAddButton>
             <button
@@ -3483,6 +3487,7 @@
               <div class="friends-picker-card-meta subevent-member-card-meta">
                 <h4>{{ member.name }}, {{ activityMemberAge(member) }}</h4>
                 <p>{{ member.role }} · {{ member.city }}</p>
+                <p class="subevent-member-card-status" *ngIf="member.status === 'pending'">{{ activityMemberStatusLabel(member) }}</p>
               </div>
             </article>
           </div>
@@ -4722,7 +4727,7 @@
                 <span class="event-subevent-badge-title">Members</span>
                 <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
               </span>
-              <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.membersPending > 0">{{ subEvent.membersPending }}</span>
+              <span class="card-badge event-subevent-badge-counter" *ngIf="subEventMembersBadgePendingCount(subEvent) > 0">{{ subEventMembersBadgePendingCount(subEvent) }}</span>
             </button>
             <button type="button" class="event-subevent-badge event-subevent-badge-car" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Car', subEvent, $event)">
               <span class="event-subevent-badge-icon"><mat-icon>directions_car</mat-icon></span>
@@ -5433,7 +5438,7 @@
 
 <section class="app-popup app-popup-stacked app-popup-super-stacked" *ngIf="superStackedPopup === 'activityInviteFriends'">
   <div class="app-popup-backdrop" (click)="closeActivityInviteFriends(false)"></div>
-  <div class="app-popup-panel popup-panel-friends-picker" (click)="$event.stopPropagation()">
+  <div class="app-popup-panel popup-panel-friends-picker popup-panel-friends-picker-members" (click)="$event.stopPropagation()">
     <div class="popup-header popup-header-friends-picker">
       <div class="popup-title">
         <h2>Invite Friends</h2>
