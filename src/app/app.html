@@ -3205,7 +3205,7 @@
               </div>
               <div class="friends-picker-card-meta subevent-member-card-meta activity-member-card-meta">
                 <h4>{{ member.name }}, {{ activityMemberAge(member) }}</h4>
-                <p>{{ member.role }} · {{ member.city }}</p>
+                <p>{{ activityMemberRoleLabel(member) }} · {{ member.city }}</p>
                 <p class="subevent-member-card-status" *ngIf="member.status === 'pending'">{{ activityMemberStatusLabel(member) }}</p>
               </div>
             </article>
@@ -3479,7 +3479,7 @@
               </div>
               <div class="friends-picker-card-meta subevent-member-card-meta">
                 <h4>{{ member.name }}, {{ activityMemberAge(member) }}</h4>
-                <p>{{ member.role }} · {{ member.city }}</p>
+                <p>{{ activityMemberRoleLabel(member) }} · {{ member.city }}</p>
                 <p class="subevent-member-card-status" *ngIf="member.status === 'pending'">{{ activityMemberStatusLabel(member) }}</p>
               </div>
             </article>

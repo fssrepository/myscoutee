@@ -464,10 +464,11 @@ type ActivityMemberStatus = 'pending' | 'accepted';
 type ActivityPendingSource = 'admin' | 'member' | null;
 type ActivityInviteSort = 'recent' | 'relevant';
 type ActivityMemberRequestKind = 'invite' | 'join' | null;
-type ActivityMemberRole = 'Admin' | 'Member';
+type ActivityMemberRole = 'Admin' | 'Member' | 'Manager';
 
 interface AssetMemberRequest {
   id: string;
+  userId?: string;
   name: string;
   initials: string;
   gender: 'woman' | 'man';
@@ -1318,8 +1319,8 @@ export class App {
   protected subEventAssetCapacityEditor:
     { subEventId: string; type: AssetType; assetId: string; title: string; capacityMin: number; capacityMax: number; capacityLimit: number } | null = null;
   protected subEventSupplyBringDialog:
-    { cardId: string; title: string; quantity: number; min: number; max: number } | null = null;
-  private readonly subEventSupplyBringCountByAssetId: Record<string, number> = {};
+    { subEventId: string; cardId: string; title: string; quantity: number; min: number; max: number } | null = null;
+  private readonly subEventSupplyBringCountByAssignmentKey: Record<string, Record<string, number>> = {};
   private stackedEventEditorOrigin: 'chat' | null = null;
 
   protected profileForm = {
@@ -4188,18 +4189,34 @@ export class App {
     if (!this.canJoinSubEventResourceCard(card) || !card.sourceAssetId) {
       return;
     }
+    const mainAcceptedIds = new Set(
+      this.mainEventMembersEntries()
+        .filter(member => member.status === 'accepted')
+        .map(member => member.userId)
+    );
+    const requiresEventAdminApproval = !mainAcceptedIds.has(this.activeUser.id);
+    if (requiresEventAdminApproval) {
+      this.ensureMainEventMemberPendingApproval(this.activeUser.id, this.toIsoDateTime(new Date()));
+    }
     const requestId = this.activeUser.id;
     this.assetCards = this.assetCards.map(asset => {
       if (asset.id !== card.sourceAssetId) {
         return asset;
       }
-      const existing = asset.requests.find(request => request.id === requestId);
+      const existing = asset.requests.find(request => this.resolveAssetRequestUserId(request) === requestId);
       if (existing) {
         return {
           ...asset,
           requests: asset.requests.map(request =>
-            request.id === requestId
-              ? { ...request, status: 'pending', note: 'Join request from sub-event assets.' }
+            this.resolveAssetRequestUserId(request) === requestId
+              ? {
+                  ...request,
+                  userId: this.activeUser.id,
+                  status: 'pending',
+                  note: requiresEventAdminApproval
+                    ? 'Waiting for event admin approval.'
+                    : 'Join request from sub-event assets.'
+                }
               : request
           )
         };
@@ -4209,11 +4226,14 @@ export class App {
         requests: [
           {
             id: requestId,
+            userId: this.activeUser.id,
             name: this.activeUser.name,
             initials: this.activeUser.initials,
             gender: this.activeUser.gender,
             status: 'pending',
-            note: 'Join request from sub-event assets.'
+            note: requiresEventAdminApproval
+              ? 'Waiting for event admin approval.'
+              : 'Join request from sub-event assets.'
           },
           ...asset.requests
         ]
@@ -4349,15 +4369,17 @@ export class App {
 
   protected openSubEventSupplyBringDialog(card: SubEventResourceCard, event: Event): void {
     event.stopPropagation();
-    if (!this.canBringSubEventSupplyCard(card) || !card.sourceAssetId) {
+    const subEventId = this.selectedSubEventBadgeContext?.subEvent.id ?? null;
+    if (!subEventId || !this.canBringSubEventSupplyCard(card) || !card.sourceAssetId) {
       return;
     }
     this.inlineItemActionMenu = null;
     const max = Math.max(1, card.capacityTotal);
     this.subEventSupplyBringDialog = {
+      subEventId,
       cardId: card.sourceAssetId,
       title: card.title,
-      quantity: this.clampNumber(this.subEventSupplyProvidedCount(card.sourceAssetId), 0, max),
+      quantity: this.clampNumber(this.subEventSupplyProvidedCountByUser(subEventId, card.sourceAssetId, this.activeUser.id), 0, max),
       min: 0,
       max
     };
@@ -4396,17 +4418,61 @@ export class App {
     if (!this.subEventSupplyBringDialog || !this.canSubmitSubEventSupplyBringDialog()) {
       return;
     }
-    this.subEventSupplyBringCountByAssetId[this.subEventSupplyBringDialog.cardId] = this.subEventSupplyBringDialog.quantity;
-    const subEvent = this.selectedSubEventBadgeContext?.subEvent;
+    const assignmentKey = this.subEventSupplyAssignmentKey(
+      this.subEventSupplyBringDialog.subEventId,
+      this.subEventSupplyBringDialog.cardId
+    );
+    const current = { ...(this.subEventSupplyBringCountByAssignmentKey[assignmentKey] ?? {}) };
+    current[this.activeUser.id] = this.clampNumber(
+      Math.trunc(this.subEventSupplyBringDialog.quantity),
+      this.subEventSupplyBringDialog.min,
+      this.subEventSupplyBringDialog.max
+    );
+    this.subEventSupplyBringCountByAssignmentKey[assignmentKey] = current;
+    this.normalizeSubEventSupplyContributionBucket(this.subEventSupplyBringDialog.subEventId, this.subEventSupplyBringDialog.cardId);
+    const subEvent = this.findSubEventById(this.subEventSupplyBringDialog.subEventId);
     if (subEvent) {
       this.syncSubEventAssetBadgeCounts(subEvent, 'Supplies');
     }
     this.subEventSupplyBringDialog = null;
   }
 
-  protected subEventSupplyProvidedCount(cardId: string): number {
-    const raw = this.subEventSupplyBringCountByAssetId[cardId] ?? 0;
-    return Math.max(0, Math.trunc(raw));
+  protected subEventSupplyProvidedCount(cardId: string, subEventId: string): number {
+    return Object.values(this.subEventSupplyContributionBucket(subEventId, cardId))
+      .reduce((sum, value) => sum + this.clampNumber(Math.trunc(value), 0, Number.MAX_SAFE_INTEGER), 0);
+  }
+
+  private subEventSupplyProvidedCountByUser(subEventId: string, cardId: string, userId: string): number {
+    return this.clampNumber(
+      Math.trunc(this.subEventSupplyContributionBucket(subEventId, cardId)[userId] ?? 0),
+      0,
+      Number.MAX_SAFE_INTEGER
+    );
+  }
+
+  private subEventSupplyAssignmentKey(subEventId: string, cardId: string): string {
+    return `${subEventId}:${cardId}`;
+  }
+
+  private subEventSupplyContributionBucket(subEventId: string, cardId: string): Record<string, number> {
+    return this.subEventSupplyBringCountByAssignmentKey[this.subEventSupplyAssignmentKey(subEventId, cardId)] ?? {};
+  }
+
+  private normalizeSubEventSupplyContributionBucket(subEventId: string, cardId: string): void {
+    const key = this.subEventSupplyAssignmentKey(subEventId, cardId);
+    const raw = this.subEventSupplyBringCountByAssignmentKey[key] ?? {};
+    const next: Record<string, number> = {};
+    for (const [userId, value] of Object.entries(raw)) {
+      const normalized = this.clampNumber(Math.trunc(value), 0, Number.MAX_SAFE_INTEGER);
+      if (normalized > 0) {
+        next[userId] = normalized;
+      }
+    }
+    if (Object.keys(next).length === 0) {
+      delete this.subEventSupplyBringCountByAssignmentKey[key];
+      return;
+    }
+    this.subEventSupplyBringCountByAssignmentKey[key] = next;
   }
 
   protected toggleSubEventMemberActionMenu(member: ActivityMemberEntry, event: Event): void {
@@ -4436,7 +4502,13 @@ export class App {
   }
 
   protected subEventMemberRoleIcon(role: ActivityMemberRole): string {
-    return role === 'Admin' ? 'admin_panel_settings' : 'person';
+    if (role === 'Admin') {
+      return 'admin_panel_settings';
+    }
+    if (role === 'Manager') {
+      return 'manage_accounts';
+    }
+    return 'person';
   }
 
   protected subEventMemberRoleMenuLabel(member: ActivityMemberEntry): string {
@@ -4574,6 +4646,83 @@ export class App {
     this.selectedSubEventBadgeContext.subEvent.membersPending = pendingCount;
   }
 
+  private resolveMainEventMembersContext(): { row: ActivityListRow; rowKey: string } | null {
+    if (this.subEventMembersRow && this.subEventMembersRowId) {
+      return { row: this.subEventMembersRow, rowKey: this.subEventMembersRowId };
+    }
+    const row = this.eventEditorMembersRow();
+    if (!row) {
+      return null;
+    }
+    return { row, rowKey: `${row.type}:${row.id}` };
+  }
+
+  private mainEventMembersEntries(): ActivityMemberEntry[] {
+    const context = this.resolveMainEventMembersContext();
+    if (!context) {
+      return [];
+    }
+    const cached = this.activityMembersByRowId[context.rowKey];
+    if (cached) {
+      return this.sortActivityMembersByActionTimeAsc([...cached]);
+    }
+    const seeded = this.sortActivityMembersByActionTimeAsc(this.getActivityMembersByRow(context.row));
+    this.activityMembersByRowId[context.rowKey] = [...seeded];
+    return seeded;
+  }
+
+  private ensureMainEventMemberPendingApproval(userId: string, actionAtIso: string): void {
+    const context = this.resolveMainEventMembersContext();
+    if (!context) {
+      return;
+    }
+    const user = this.users.find(item => item.id === userId);
+    if (!user) {
+      return;
+    }
+    const existing = this.mainEventMembersEntries();
+    if (existing.some(member => member.userId === userId)) {
+      return;
+    }
+    const next = this.sortActivityMembersByActionTimeAsc([
+      ...existing,
+      {
+        ...this.toActivityMemberEntry(user, context.row, context.rowKey, {
+          status: 'pending',
+          pendingSource: 'member',
+          invitedByActiveUser: true
+        }),
+        pendingSource: 'member',
+        requestKind: 'join',
+        actionAtIso,
+        statusText: 'Waiting for event admin approval.'
+      }
+    ]);
+    this.activityMembersByRowId[context.rowKey] = [...next];
+    this.syncSelectedSubEventMembersCounts(next);
+    if (this.selectedActivityMembersRowId === context.rowKey) {
+      this.selectedActivityMembers = [...next];
+    }
+  }
+
+  private isUserManagingAnySubEventAsset(userId: string): boolean {
+    const assignmentKeys = new Set<string>([
+      ...Object.keys(this.subEventAssignedAssetIdsByKey),
+      ...Object.keys(this.subEventAssignedAssetSettingsByKey)
+    ]);
+    for (const key of assignmentKeys) {
+      const parsed = this.parseSubEventAssetAssignmentKey(key);
+      if (!parsed) {
+        continue;
+      }
+      const settings = this.getSubEventAssignedAssetSettings(parsed.subEventId, parsed.type);
+      if (Object.values(settings).some(setting => setting.addedByUserId === userId)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private subEventAssignedAssetCards(subEventId: string, type: AssetType): AssetCard[] {
     const assignedIds = this.resolveSubEventAssignedAssetIds(subEventId, type);
     return assignedIds
@@ -4612,7 +4761,7 @@ export class App {
     const capacityMin = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMin ?? 0), 0);
     const pending = cards.reduce((sum, card) => sum + this.assetPendingCount(card), 0);
     if (type === 'Supplies') {
-      const joined = cards.reduce((sum, card) => sum + this.subEventSupplyProvidedCount(card.id), 0);
+      const joined = cards.reduce((sum, card) => sum + this.subEventSupplyProvidedCount(card.id, subEvent.id), 0);
       return { joined, capacityMin, capacityMax, pending };
     }
     const joinedMemberIds = new Set<string>();
@@ -4676,6 +4825,12 @@ export class App {
         capacityMax,
         addedByUserId: prev?.addedByUserId ?? this.activeUser.id
       };
+    }
+    if (context.type === 'Supplies') {
+      const removedIds = Object.keys(previousSettings).filter(assetId => !nextIds.includes(assetId));
+      for (const assetId of removedIds) {
+        delete this.subEventSupplyBringCountByAssignmentKey[this.subEventSupplyAssignmentKey(context.subEventId, assetId)];
+      }
     }
     this.subEventAssignedAssetIdsByKey[key] = [...nextIds];
     this.subEventAssignedAssetSettingsByKey[key] = nextSettings;
@@ -4766,15 +4921,16 @@ export class App {
       imageUrl: card.imageUrl,
       sourceLink: card.sourceLink,
       capacityTotal: settings[card.id]?.capacityMax ?? card.capacityTotal,
-      accepted: card.type === 'Supplies' ? this.subEventSupplyProvidedCount(card.id) : this.assetAcceptedCount(card),
+      accepted: card.type === 'Supplies' ? this.subEventSupplyProvidedCount(card.id, subEvent.id) : this.assetAcceptedCount(card),
       pending: this.assetPendingCount(card),
       isMembers: false
     }));
   }
 
   protected subEventResourceOccupancyLabel(card: SubEventResourceCard): string {
-    if (card.type === 'Supplies' && card.sourceAssetId) {
-      const supplied = this.subEventSupplyProvidedCount(card.sourceAssetId);
+    const subEventId = this.selectedSubEventBadgeContext?.subEvent.id ?? null;
+    if (card.type === 'Supplies' && card.sourceAssetId && subEventId) {
+      const supplied = this.subEventSupplyProvidedCount(card.sourceAssetId, subEventId);
       return `${supplied} / 1 - ${card.capacityTotal}`;
     }
     return `${card.accepted} / ${card.capacityTotal}`;
@@ -11457,6 +11613,27 @@ export class App {
     return this.users.find(user => user.id === entry.userId)?.age ?? 0;
   }
 
+  private activityMemberRole(entry: ActivityMemberEntry): ActivityMemberRole {
+    if (entry.role === 'Admin') {
+      return 'Admin';
+    }
+    if (this.subEventAssetMembersContext?.ownerUserId && entry.userId === this.subEventAssetMembersContext.ownerUserId) {
+      return 'Manager';
+    }
+    if (entry.role === 'Manager') {
+      return 'Manager';
+    }
+    const mainEventContext = this.resolveMainEventMembersContext();
+    if (
+      mainEventContext
+      && this.selectedActivityMembersRowId === mainEventContext.rowKey
+      && this.isUserManagingAnySubEventAsset(entry.userId)
+    ) {
+      return 'Manager';
+    }
+    return 'Member';
+  }
+
   protected activityMemberStatusClass(entry: ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return 'activity-member-approved';
@@ -11497,14 +11674,21 @@ export class App {
       return 'Waiting For Join Approval';
     }
     if (entry.pendingSource === 'admin') {
-      return 'Invitation Pending';
+      return this.subEventAssetMembersContext ? 'Waiting For Admin Approval' : 'Invitation Pending';
     }
     return 'Waiting For Admin Approval';
   }
 
   protected memberCardStatusIcon(entry: ActivityMemberEntry): string {
+    const role = this.activityMemberRole(entry);
     if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'admin_panel_settings' : 'person';
+      if (role === 'Admin') {
+        return 'admin_panel_settings';
+      }
+      if (role === 'Manager') {
+        return 'manage_accounts';
+      }
+      return 'person';
     }
     if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
       return 'pending_actions';
@@ -11513,8 +11697,15 @@ export class App {
   }
 
   protected memberCardStatusClass(entry: ActivityMemberEntry): string {
+    const role = this.activityMemberRole(entry);
     if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'member-status-admin' : 'member-status-member';
+      if (role === 'Admin') {
+        return 'member-status-admin';
+      }
+      if (role === 'Manager') {
+        return 'member-status-manager';
+      }
+      return 'member-status-member';
     }
     if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
       return 'member-status-awaiting-approval';
@@ -11523,8 +11714,15 @@ export class App {
   }
 
   protected memberCardToneClass(entry: ActivityMemberEntry): string {
+    const role = this.activityMemberRole(entry);
     if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'member-card-tone-admin' : 'member-card-tone-accepted';
+      if (role === 'Admin') {
+        return 'member-card-tone-admin';
+      }
+      if (role === 'Manager') {
+        return 'member-card-tone-manager';
+      }
+      return 'member-card-tone-accepted';
     }
     if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
       return 'member-card-tone-awaiting-approval';
@@ -11533,10 +11731,15 @@ export class App {
   }
 
   protected memberCardStatusLabel(entry: ActivityMemberEntry): string {
+    const role = this.activityMemberRole(entry);
     if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'Admin' : 'Member';
+      return role;
     }
     return this.activityMemberStatusLabel(entry);
+  }
+
+  protected activityMemberRoleLabel(entry: ActivityMemberEntry): string {
+    return this.activityMemberRole(entry);
   }
 
   protected approveActivityMember(entry: ActivityMemberEntry, event?: Event): void {
@@ -11544,6 +11747,7 @@ export class App {
     if (!this.selectedActivityMembersRowId || !this.canApproveActivityMember(entry)) {
       return;
     }
+    const shouldCascadeToAssets = this.isMainEventMembersSelection();
     const nowIso = this.toIsoDateTime(new Date());
     this.selectedActivityMembers = this.sortActivityMembersByActionTimeAsc(this.selectedActivityMembers.map(item =>
       item.id === entry.id
@@ -11557,6 +11761,9 @@ export class App {
         : item
     ));
     this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
+    if (shouldCascadeToAssets) {
+      this.promotePendingAssetRequestsAfterMainEventApproval(entry.userId);
+    }
     this.syncSubEventAssetMembersRequestsFromSelection();
     this.inlineItemActionMenu = null;
   }
@@ -11575,9 +11782,14 @@ export class App {
       this.pendingActivityMemberDelete = null;
       return;
     }
+    const shouldCascadeToAssets = this.isMainEventMembersSelection();
     const targetId = this.pendingActivityMemberDelete.id;
+    const removedUserId = this.pendingActivityMemberDelete.userId;
     this.selectedActivityMembers = this.selectedActivityMembers.filter(item => item.id !== targetId);
     this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
+    if (shouldCascadeToAssets) {
+      this.cascadeMainEventMemberRemovalToAssets(removedUserId);
+    }
     this.syncSubEventAssetMembersRequestsFromSelection();
     this.pendingActivityMemberDelete = null;
   }
@@ -11598,6 +11810,136 @@ export class App {
       return `Remove ${this.pendingActivityMemberDelete.name} from this asset?`;
     }
     return `Remove ${this.pendingActivityMemberDelete.name} from this event?`;
+  }
+
+  private isMainEventMembersSelection(): boolean {
+    if (this.subEventAssetMembersContext || !this.selectedActivityMembersRowId) {
+      return false;
+    }
+    const mainContext = this.resolveMainEventMembersContext();
+    return mainContext !== null && mainContext.rowKey === this.selectedActivityMembersRowId;
+  }
+
+  private promotePendingAssetRequestsAfterMainEventApproval(userId: string): void {
+    this.assetCards = this.assetCards.map(card => {
+      if (card.type !== 'Car' && card.type !== 'Accommodation') {
+        return card;
+      }
+      const requests = card.requests.map(request => {
+        if (this.resolveAssetRequestUserId(request) !== userId || request.status !== 'pending') {
+          return request;
+        }
+        return {
+          ...request,
+          note: 'Waiting for owner approval.'
+        };
+      });
+      return { ...card, requests };
+    });
+    this.syncAllSubEventAssetBadgeCounts();
+  }
+
+  private cascadeMainEventMemberRemovalToAssets(userId: string): void {
+    this.removeMainEventMemberFromAssetRequests(userId);
+    this.removeMainEventMemberSupplyContributions(userId);
+    this.cleanupMainEventMemberManagedAssets(userId);
+    this.syncAllSubEventAssetBadgeCounts();
+  }
+
+  private removeMainEventMemberFromAssetRequests(userId: string): void {
+    this.assetCards = this.assetCards.map(card => {
+      if (card.type !== 'Car' && card.type !== 'Accommodation') {
+        return card;
+      }
+      return {
+        ...card,
+        requests: card.requests.filter(request => this.resolveAssetRequestUserId(request) !== userId)
+      };
+    });
+  }
+
+  private removeMainEventMemberSupplyContributions(userId: string): void {
+    for (const key of Object.keys(this.subEventSupplyBringCountByAssignmentKey)) {
+      const current = this.subEventSupplyBringCountByAssignmentKey[key];
+      if (!current || !Object.prototype.hasOwnProperty.call(current, userId)) {
+        continue;
+      }
+      const next = { ...current };
+      delete next[userId];
+      if (Object.keys(next).length === 0) {
+        delete this.subEventSupplyBringCountByAssignmentKey[key];
+      } else {
+        this.subEventSupplyBringCountByAssignmentKey[key] = next;
+      }
+    }
+  }
+
+  private cleanupMainEventMemberManagedAssets(userId: string): void {
+    const assignmentKeys = new Set<string>([
+      ...Object.keys(this.subEventAssignedAssetIdsByKey),
+      ...Object.keys(this.subEventAssignedAssetSettingsByKey)
+    ]);
+    for (const key of assignmentKeys) {
+      const parsed = this.parseSubEventAssetAssignmentKey(key);
+      if (!parsed) {
+        continue;
+      }
+      const { subEventId, type } = parsed;
+      const currentSettings = this.getSubEventAssignedAssetSettings(subEventId, type);
+      const currentAssignedIds = this.subEventAssignedAssetIdsByKey[key] ?? [];
+      let nextSettings = { ...currentSettings };
+      let nextAssignedIds = [...currentAssignedIds];
+      let changed = false;
+      for (const [assetId, setting] of Object.entries(currentSettings)) {
+        if (setting.addedByUserId !== userId) {
+          continue;
+        }
+        changed = true;
+        if (type === 'Car' || type === 'Accommodation') {
+          delete nextSettings[assetId];
+          nextAssignedIds = nextAssignedIds.filter(id => id !== assetId);
+          continue;
+        }
+        const contributionKey = this.subEventSupplyAssignmentKey(subEventId, assetId);
+        const contributions = this.subEventSupplyBringCountByAssignmentKey[contributionKey] ?? {};
+        const nextManagerId = Object.entries(contributions)
+          .filter(([, quantity]) => this.clampNumber(Math.trunc(quantity), 0, Number.MAX_SAFE_INTEGER) > 0)
+          .sort((a, b) => b[1] - a[1])
+          .map(([contributorId]) => contributorId)[0] ?? null;
+        if (nextManagerId) {
+          nextSettings[assetId] = {
+            ...setting,
+            addedByUserId: nextManagerId
+          };
+          continue;
+        }
+        delete nextSettings[assetId];
+        nextAssignedIds = nextAssignedIds.filter(id => id !== assetId);
+        delete this.subEventSupplyBringCountByAssignmentKey[contributionKey];
+      }
+      if (!changed) {
+        continue;
+      }
+      this.subEventAssignedAssetSettingsByKey[key] = nextSettings;
+      this.subEventAssignedAssetIdsByKey[key] = nextAssignedIds;
+      const subEvent = this.findSubEventById(subEventId);
+      if (subEvent) {
+        this.syncSubEventAssetBadgeCounts(subEvent, type, nextAssignedIds);
+      }
+    }
+  }
+
+  private parseSubEventAssetAssignmentKey(key: string): { subEventId: string; type: AssetType } | null {
+    const separatorIndex = key.lastIndexOf(':');
+    if (separatorIndex <= 0) {
+      return null;
+    }
+    const subEventId = key.slice(0, separatorIndex);
+    const type = key.slice(separatorIndex + 1);
+    if (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies') {
+      return null;
+    }
+    return { subEventId, type };
   }
 
   protected pendingActivityConfirmTitle(): string {
@@ -12364,7 +12706,11 @@ export class App {
 
   private deleteAssetCard(cardId: string): void {
     this.assetCards = this.assetCards.filter(card => card.id !== cardId);
-    delete this.subEventSupplyBringCountByAssetId[cardId];
+    for (const key of Object.keys(this.subEventSupplyBringCountByAssignmentKey)) {
+      if (key.endsWith(`:${cardId}`)) {
+        delete this.subEventSupplyBringCountByAssignmentKey[key];
+      }
+    }
     for (const key of Object.keys(this.subEventAssignedAssetIdsByKey)) {
       const filtered = this.subEventAssignedAssetIdsByKey[key].filter(id => id !== cardId);
       this.subEventAssignedAssetIdsByKey[key] = filtered;
@@ -13133,6 +13479,7 @@ export class App {
     const user = this.users.find(item => item.id === userId) ?? this.users[0];
     return {
       id,
+      userId,
       name: user.name,
       initials: user.initials,
       gender: user.gender,
@@ -13697,20 +14044,40 @@ export class App {
     }
     const selected = new Set(this.selectedActivityInviteUserIds);
     const isSubEventAssetMembers = this.subEventAssetMembersContext !== null;
-    const pendingSource: ActivityPendingSource = isSubEventAssetMembers
-      ? 'member'
-      : (this.selectedActivityMembersRow.isAdmin ? 'admin' : 'member');
     const nowIso = this.toIsoDateTime(new Date());
+    const mainEventAcceptedIds = isSubEventAssetMembers
+      ? new Set(
+          this.mainEventMembersEntries()
+            .filter(member => member.status === 'accepted')
+            .map(member => member.userId)
+        )
+      : new Set<string>();
     const additions = this.activityInviteCandidates
       .filter(candidate => selected.has(candidate.userId))
-      .map(candidate => ({
-        ...candidate,
-        status: 'pending' as const,
-        pendingSource,
-        requestKind: isSubEventAssetMembers ? ('join' as const) : ('invite' as const),
-        invitedByActiveUser: true,
-        actionAtIso: nowIso
-      }));
+      .map(candidate => {
+        if (!isSubEventAssetMembers) {
+          return {
+            ...candidate,
+            status: 'pending' as const,
+            pendingSource: this.selectedActivityMembersRow!.isAdmin ? ('admin' as const) : ('member' as const),
+            requestKind: 'invite' as const,
+            invitedByActiveUser: true,
+            actionAtIso: nowIso
+          };
+        }
+        const requiresEventAdminApproval = !mainEventAcceptedIds.has(candidate.userId);
+        return {
+          ...candidate,
+          status: 'pending' as const,
+          pendingSource: requiresEventAdminApproval ? ('admin' as const) : ('member' as const),
+          requestKind: requiresEventAdminApproval ? ('invite' as const) : ('join' as const),
+          invitedByActiveUser: true,
+          statusText: requiresEventAdminApproval
+            ? 'Waiting for event admin approval.'
+            : 'Waiting for owner approval.',
+          actionAtIso: nowIso
+        };
+      });
     const byUserId = new Set(this.selectedActivityMembers.map(item => item.userId));
     const next = [...this.selectedActivityMembers];
     for (const item of additions) {
@@ -13722,6 +14089,13 @@ export class App {
     const ordered = this.sortActivityMembersByActionTimeAsc(next);
     this.selectedActivityMembers = ordered;
     this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...ordered];
+    if (isSubEventAssetMembers) {
+      for (const invited of additions) {
+        if (invited.pendingSource === 'admin') {
+          this.ensureMainEventMemberPendingApproval(invited.userId, nowIso);
+        }
+      }
+    }
     this.syncSubEventAssetMembersRequestsFromSelection();
     const subEventContext = this.resolveSubEventMembersContext();
     if (subEventContext && subEventContext.rowKey === this.selectedActivityMembersRowId) {
@@ -13733,16 +14107,29 @@ export class App {
   private subEventAssetMemberEntries(card: AssetCard): ActivityMemberEntry[] {
     const rowKey = this.selectedActivityMembersRowId ?? `events:subevent-asset-members:${card.id}`;
     const seedBaseDate = new Date('2026-02-24T12:00:00');
+    const ownerUserId = this.subEventAssetMembersContext?.ownerUserId ?? null;
+    const mainEventAcceptedIds = new Set(
+      this.mainEventMembersEntries()
+        .filter(member => member.status === 'accepted')
+        .map(member => member.userId)
+    );
     const entries = card.requests.map(request => {
+      const requestUserId = this.resolveAssetRequestUserId(request);
       const matchedUser =
-        this.users.find(user => user.name === request.name && user.initials === request.initials)
+        this.users.find(user => user.id === requestUserId)
+        ?? this.users.find(user => user.name === request.name && user.initials === request.initials)
         ?? this.users.find(user => user.name === request.name)
         ?? null;
-      const userId = matchedUser?.id ?? request.id;
+      const userId = matchedUser?.id ?? requestUserId;
+      const pendingRequiresMainEventApproval = request.status === 'pending' && !mainEventAcceptedIds.has(userId);
+      const pendingSource: ActivityPendingSource = request.status === 'pending'
+        ? (pendingRequiresMainEventApproval ? 'admin' : 'member')
+        : null;
+      const requestKind: ActivityMemberRequestKind = request.status === 'pending'
+        ? (pendingRequiresMainEventApproval ? 'invite' : 'join')
+        : null;
       const seed = this.hashText(`${rowKey}:${card.id}:${request.id}:${userId}`);
       const actionAtIso = this.toIsoDateTime(this.addDays(seedBaseDate, -((seed % 90) + 1)));
-      const pendingSource: ActivityPendingSource = request.status === 'pending' ? 'member' : null;
-      const requestKind: ActivityMemberRequestKind = request.status === 'pending' ? 'join' : null;
       return {
         id: request.id,
         userId,
@@ -13751,7 +14138,7 @@ export class App {
         gender: request.gender,
         city: matchedUser?.city ?? card.city,
         statusText: request.note,
-        role: 'Member' as const,
+        role: ownerUserId && userId === ownerUserId ? ('Manager' as const) : ('Member' as const),
         status: request.status,
         pendingSource,
         requestKind,
@@ -13766,6 +14153,17 @@ export class App {
     return this.sortActivityMembersByActionTimeAsc(entries);
   }
 
+  private resolveAssetRequestUserId(request: AssetMemberRequest): string {
+    if (request.userId) {
+      return request.userId;
+    }
+    const matchedUser =
+        this.users.find(user => user.name === request.name && user.initials === request.initials)
+        ?? this.users.find(user => user.name === request.name)
+        ?? null;
+    return matchedUser?.id ?? request.id;
+  }
+
   private syncSubEventAssetMembersRequestsFromSelection(): void {
     const context = this.subEventAssetMembersContext;
     if (!context || !this.selectedActivityMembersRowId) {
@@ -13777,21 +14175,31 @@ export class App {
         return card;
       }
       const existingById = new Map(card.requests.map(request => [request.id, request] as const));
+      const existingByUserId = new Map(
+        card.requests.map(request => [this.resolveAssetRequestUserId(request), request] as const)
+      );
       const existingByName = new Map(card.requests.map(request => [request.name.toLowerCase(), request] as const));
       const nextRequests: AssetMemberRequest[] = this.selectedActivityMembers.map((entry, index) => {
         const existing =
           existingById.get(entry.id)
+          ?? existingByUserId.get(entry.userId)
           ?? existingByName.get(entry.name.toLowerCase())
           ?? null;
         const fallbackId = `asset-member-${now}-${index}`;
         const requestId = existing?.id ?? (entry.id || fallbackId);
+        const note = entry.status !== 'pending'
+          ? (existing?.note ?? 'Accepted for this asset.')
+          : (entry.pendingSource === 'admin'
+            ? 'Waiting for event admin approval.'
+            : 'Waiting for owner approval.');
         return {
           id: requestId,
+          userId: entry.userId,
           name: entry.name,
           initials: entry.initials,
           gender: entry.gender,
           status: entry.status,
-          note: existing?.note ?? (entry.status === 'pending' ? 'Waiting for owner approval.' : 'Accepted for this asset.')
+          note
         };
       });
       return {

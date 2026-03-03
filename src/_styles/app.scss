@@ -9780,6 +9780,10 @@ textarea {
   border-color: rgba(57, 108, 177, 0.56);
 }
 
+.member-card-tone-manager {
+  border-color: rgba(131, 102, 42, 0.58);
+}
+
 .member-card-tone-member,
 .member-card-tone-accepted {
   border-color: rgba(57, 140, 94, 0.5);
@@ -9796,6 +9800,11 @@ textarea {
 .member-status-admin {
   background: linear-gradient(180deg, #e8f0ff 0%, #d9e7ff 100%);
   color: #2b5d9d;
+}
+
+.member-status-manager {
+  background: linear-gradient(180deg, #fff8e8 0%, #fbeecf 100%);
+  color: #956215;
 }
 
 .member-status-member {

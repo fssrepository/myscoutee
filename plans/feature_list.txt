@@ -323,3 +323,23 @@ for event there is an occupy (so all the places has been occupied on event explo
 
 when you land naturally there is a price for that item - you can set on the asstes editor screen
 (not sure whether we want to develop that route at the meoment - assets explore route)
+
+naturally it's double acceptance, so if you are inviting member outside the event 
+for a car then admin should accept first - if an admin deletes a member from the main event, 
+naturally deletes it from the car/accomodation also - and that kind of users who manages 
+an asset switching from Member to Manager role and inside the member list you should present 
+it's a manager - if an admin removes a manager then all the assets being handled by the manager 
+is also gone for car/accomodation for supplies if anyone else brought item for that supplies then 
+supplies stays but move the manager role to someone else who added item to it
+
+supplies stays does mean, remove the number of supplies what the manager added initially to that bucket
+
+report a user menu, request form etc. (for me by the users)
+
+ticket button on event (it's just generating a ticket) - from the menubar in the assets menu tickets will be avaiable
+(qr code reader + bought ticket)
+
+if someone has been scanned that the member panel might show blue tick on his image
+
+if you published the event you might not able to edit each things in it (lets think about it
+maybe automatically republishes it while editing nothing more)
