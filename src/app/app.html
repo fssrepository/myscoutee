@@ -5116,24 +5116,28 @@
           [class.event-subevent-card-optional]="subEvent.optional"
           [class.event-subevent-card-mandatory]="!subEvent.optional"
           [class.event-subevent-card-group]="tournamentMode"
+          [class.menu-open]="isSubEventItemActionMenuOpenWithKey(menuKey)"
         >
           <span class="event-subevent-group-label" *ngIf="groupLabel" [ngStyle]="subEventGroupBadgeStyle(group?.groupNumber || 1)">
             {{ groupLabel }} · {{ subEventTournamentGroupSourceLabel(group) }}
           </span>
-          <div class="event-subevent-card-head" *ngIf="!tournamentMode || canManageSubEventItem(subEvent)">
+          <div class="event-subevent-card-head">
             <h4 *ngIf="!tournamentMode">{{ subEvent.name }}</h4>
-            <div class="experience-item-actions event-subevent-item-actions" *ngIf="canManageSubEventItem(subEvent)">
+            <div class="experience-item-actions event-subevent-item-actions">
               <button
                 type="button"
-                class="experience-action-btn experience-action-menu-trigger"
+                class="experience-action-btn experience-action-menu-trigger event-subevent-resource-menu-trigger"
                 [class.is-open]="isSubEventItemActionMenuOpenWithKey(menuKey)"
                 (click)="toggleSubEventItemActionMenuWithKey(subEvent, menuKey, $event)"
                 [attr.aria-label]="isSubEventItemActionMenuOpenWithKey(menuKey) ? 'Close sub-event actions' : 'Open sub-event actions'"
               >
                 <mat-icon>{{ isSubEventItemActionMenuOpenWithKey(menuKey) ? 'close' : 'more_vert' }}</mat-icon>
+                <span class="rate-filter-count-badge rate-filter-trigger-badge event-subevent-resource-trigger-badge" *ngIf="subEventMenuPendingCount(subEvent, tournamentMode) > 0">
+                  {{ subEventMenuPendingCount(subEvent, tournamentMode) }}
+                </span>
               </button>
               <div
-                class="item-action-menu"
+                class="item-action-menu event-subevent-resource-menu"
                 [class.is-open]="isSubEventItemActionMenuOpenWithKey(menuKey)"
                 [class.item-action-menu-mobile]="isMobileView"
                 [class.item-action-menu-desktop]="!isMobileView"
@@ -5169,45 +5173,74 @@
                   <mat-icon>delete</mat-icon>
                   <span>Delete</span>
                 </button>
+                <div class="item-action-menu-divider" *ngIf="canManageSubEventItem(subEvent)"></div>
+                <div class="item-action-menu-section-label">Resources</div>
+                <button
+                  type="button"
+                  class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-members"
+                  [ngClass]="subEventCapacityStateClass(subEvent)"
+                  (click)="openSubEventBadgePopup('Members', subEvent, $event)"
+                  *ngIf="subEvent.optional || tournamentMode"
+                >
+                  <span class="subevent-resource-menu-item-icon"><mat-icon>groups</mat-icon></span>
+                  <span class="subevent-resource-menu-item-main">
+                    <span class="subevent-resource-menu-item-title">Members</span>
+                    <span class="subevent-resource-menu-item-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                  </span>
+                  <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="subEventMembersBadgePendingCount(subEvent) > 0">
+                    {{ subEventMembersBadgePendingCount(subEvent) }}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-car"
+                  [ngClass]="subEventAssetCapacityStateClass(subEvent, 'Car')"
+                  (click)="openSubEventBadgePopup('Car', subEvent, $event)"
+                >
+                  <span class="subevent-resource-menu-item-icon"><mat-icon>directions_car</mat-icon></span>
+                  <span class="subevent-resource-menu-item-main">
+                    <span class="subevent-resource-menu-item-title">Car</span>
+                    <span class="subevent-resource-menu-item-value">{{ subEventAssetCapacityLabel(subEvent, 'Car') }}</span>
+                  </span>
+                  <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="subEventAssetBadgePendingCount(subEvent, 'Car') > 0">
+                    {{ subEventAssetBadgePendingCount(subEvent, 'Car') }}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-accommodation"
+                  [ngClass]="subEventAssetCapacityStateClass(subEvent, 'Accommodation')"
+                  (click)="openSubEventBadgePopup('Accommodation', subEvent, $event)"
+                >
+                  <span class="subevent-resource-menu-item-icon"><mat-icon>hotel</mat-icon></span>
+                  <span class="subevent-resource-menu-item-main">
+                    <span class="subevent-resource-menu-item-title">Accommodation</span>
+                    <span class="subevent-resource-menu-item-value">{{ subEventAssetCapacityLabel(subEvent, 'Accommodation') }}</span>
+                  </span>
+                  <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="subEventAssetBadgePendingCount(subEvent, 'Accommodation') > 0">
+                    {{ subEventAssetBadgePendingCount(subEvent, 'Accommodation') }}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-supplies"
+                  [ngClass]="subEventAssetCapacityStateClass(subEvent, 'Supplies')"
+                  (click)="openSubEventBadgePopup('Supplies', subEvent, $event)"
+                >
+                  <span class="subevent-resource-menu-item-icon"><mat-icon>inventory_2</mat-icon></span>
+                  <span class="subevent-resource-menu-item-main">
+                    <span class="subevent-resource-menu-item-title">Supplies</span>
+                    <span class="subevent-resource-menu-item-value">{{ subEventAssetCapacityLabel(subEvent, 'Supplies') }}</span>
+                  </span>
+                  <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="subEventAssetBadgePendingCount(subEvent, 'Supplies') > 0">
+                    {{ subEventAssetBadgePendingCount(subEvent, 'Supplies') }}
+                  </span>
+                </button>
               </div>
             </div>
           </div>
           <p *ngIf="!tournamentMode">{{ subEvent.description || 'No description' }}</p>
           <span class="event-subevent-range-badge" *ngIf="!tournamentMode">{{ subEventCardRange(subEvent) }}</span>
-          <div class="event-subevent-badges">
-            <button type="button" class="event-subevent-badge event-subevent-badge-members" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Members', subEvent, $event)" *ngIf="subEvent.optional || tournamentMode">
-              <span class="event-subevent-badge-icon"><mat-icon>groups</mat-icon></span>
-              <span class="event-subevent-badge-text">
-                <span class="event-subevent-badge-title">Members</span>
-                <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
-              </span>
-              <span class="card-badge event-subevent-badge-counter" *ngIf="subEventMembersBadgePendingCount(subEvent) > 0">{{ subEventMembersBadgePendingCount(subEvent) }}</span>
-            </button>
-            <button type="button" class="event-subevent-badge event-subevent-badge-car" [ngClass]="subEventAssetCapacityStateClass(subEvent, 'Car')" (click)="openSubEventBadgePopup('Car', subEvent, $event)">
-              <span class="event-subevent-badge-icon"><mat-icon>directions_car</mat-icon></span>
-              <span class="event-subevent-badge-text">
-                <span class="event-subevent-badge-title">Car</span>
-                <span class="event-subevent-badge-value">{{ subEventAssetCapacityLabel(subEvent, 'Car') }}</span>
-              </span>
-              <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.carsPending > 0">{{ subEvent.carsPending }}</span>
-            </button>
-            <button type="button" class="event-subevent-badge event-subevent-badge-accommodation" [ngClass]="subEventAssetCapacityStateClass(subEvent, 'Accommodation')" (click)="openSubEventBadgePopup('Accommodation', subEvent, $event)">
-              <span class="event-subevent-badge-icon"><mat-icon>hotel</mat-icon></span>
-              <span class="event-subevent-badge-text">
-                <span class="event-subevent-badge-title">Accommodation</span>
-                <span class="event-subevent-badge-value">{{ subEventAssetCapacityLabel(subEvent, 'Accommodation') }}</span>
-              </span>
-              <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.accommodationPending > 0">{{ subEvent.accommodationPending }}</span>
-            </button>
-            <button type="button" class="event-subevent-badge event-subevent-badge-supplies" [ngClass]="subEventAssetCapacityStateClass(subEvent, 'Supplies')" (click)="openSubEventBadgePopup('Supplies', subEvent, $event)">
-              <span class="event-subevent-badge-icon"><mat-icon>inventory_2</mat-icon></span>
-              <span class="event-subevent-badge-text">
-                <span class="event-subevent-badge-title">Supplies</span>
-                <span class="event-subevent-badge-value">{{ subEventAssetCapacityLabel(subEvent, 'Supplies') }}</span>
-              </span>
-              <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.suppliesPending > 0">{{ subEvent.suppliesPending }}</span>
-            </button>
-          </div>
         </article>
       </ng-template>
     </div>

@@ -42,6 +42,8 @@ is also gone for car/accomodation for supplies if anyone else brought item for t
 supplies stays but move the manager role to someone else who added item to it
 supplies stays does mean, remove the number of supplies what the manager added initially to that bucket
 
+manager role (if one of the asset of yours has been asigned to an event, you are not an admin, you are amaneger of your asset)
+
 Base Design:
 -------
 Login button - either test users popup or login screen popup

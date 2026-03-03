@@ -2888,6 +2888,27 @@ export class App {
       : 'subevent-capacity-out-of-range';
   }
 
+  protected subEventAssetBadgePendingCount(item: SubEventFormItem, type: AssetType): number {
+    this.syncSubEventAssetBadgeCounts(item, type);
+    if (type === 'Car') {
+      return Math.max(0, Math.trunc(Number(item.carsPending) || 0));
+    }
+    if (type === 'Accommodation') {
+      return Math.max(0, Math.trunc(Number(item.accommodationPending) || 0));
+    }
+    return Math.max(0, Math.trunc(Number(item.suppliesPending) || 0));
+  }
+
+  protected subEventMenuPendingCount(item: SubEventFormItem, tournamentMode = false): number {
+    const members = item.optional || tournamentMode
+      ? this.subEventMembersBadgePendingCount(item)
+      : 0;
+    return members
+      + this.subEventAssetBadgePendingCount(item, 'Car')
+      + this.subEventAssetBadgePendingCount(item, 'Accommodation')
+      + this.subEventAssetBadgePendingCount(item, 'Supplies');
+  }
+
   protected subEventFormTitle(): string {
     let stageNumber = this.subEventFormStageNumber ?? (this.subEventForm.id ? this.resolveSubEventStageNumber(this.subEventForm.id) : null);
     if (!this.subEventForm.id && this.showSubEventInsertControls()) {
@@ -3891,6 +3912,7 @@ export class App {
 
   protected openSubEventBadgePopup(type: 'Members' | 'Car' | 'Accommodation' | 'Supplies', item: SubEventFormItem, event?: Event): void {
     event?.stopPropagation();
+    this.inlineItemActionMenu = null;
     const isFromSubEventsSuperPopup = this.superStackedPopup === 'eventSubEvents';
     this.subEventBadgeOpenedFromSubEventsPopup = isFromSubEventsSuperPopup;
     const membersRow = this.eventEditorMembersRow();
@@ -3915,9 +3937,6 @@ export class App {
     }
     this.subEventMembersPendingOnly = false;
     this.subEventAssetMembersContext = null;
-    if (type !== 'Members') {
-      this.inlineItemActionMenu = null;
-    }
     this.subEventMemberRolePickerUserId = null;
     this.subEventAssetAssignContext = null;
     this.selectedSubEventAssignAssetIds = [];

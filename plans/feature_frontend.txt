@@ -1,52 +1,33 @@
+lazy load card image - card_no_edges.png (animate lazy load images in different places also)
+for every data on profile has variable +%, if you fill it out
+report a user menu, request form etc. (for me by the users)
+for mobile touch animation on each clickable button whatever
+when you rate a user make blink effect on star badge and star popup bar (to show it's rated)
+
 Game - Default page
 -------------------
 
-https://chatgpt.com/codex
-
------
-shows the Tinder like panel on the left with 3 buttons on the header (profile-filter e.g.: profession match, school match, friends in common etc.),
+shows the Tinder like panel on the left with 3 buttons on the header
+(profile-filter e.g.: profession match, school match, friends in common etc.),
 history, type - (fab button - egyeni, parok - rotate screen status message))
 
-cards should show a message when the user was active (maybe wehther it's friends in common)
+cards should show a message when the user was active
 
-preload 10-15 photos, and paginating to the next stack, while the user finished on rating (the cards are on top of each other, so hiding each other)
+preload 10-15 photos, and paginating to the next stack, while the user finished on rating
+(the cards are on top of each other, so hiding each other)
 
-on pair rate - if the screen is rotated, the user of woman and the user of man cards (similar to what i described above) will be next to each other,
-anyway woman images the first 3-4 in red-orange line at the top of the image card, the man next to it in blue
+pair rate - met (a new option on ratings)
 
-there will be an arrow on the bottom of the image, the profile data is in two columns to be able to compare anyway in one column
+car and accomodation should get route and location as the event - map icon
+add the number of places - map has multiple routes - will be generated based on sub events location
+event/subevent - enter something as location, map button right hand side to verify the address
 
-car and accomodation should get route and location as the event - map icon - maybe accessibility of the car /accomodation owner??
-add the number of places
-
-map has multiple routes - will be generated based on sub events location
-(it's textual, not coordinates - google map can handle - car view as default)
-
-lazy load card image - card_no_edges.png (animate lazy load images in different places also)
-for every accordion a +%, if you fill it out
-
-friends in common filter on event explore
-
-expense (amount + currency) for event
-
-game screen / assets screen finish / ticket on main event
-
+chat:
+-----
 chat channel type (sub event optional / main event / group (stage))
-it should be visible - on chat main window, and the icon should be different on chat message window (make also the title and background color)
+it should be visible - on chat main window, and the icon should be different on chat message window
+(make also the title and background color)
 filter on chat main window based on that 3 variations + All also
-
-report a user menu, request form etc. (for me by the users)
-
-with game page development:
-1)  activities - ratings
-when you set a rate blink effect (both on mobile and desktop) on the rate bar and the star badge (make it nicely)
-2) for mobile touch animation on each clickable button whatever
-3) feedback/report a user
-
-members / pending badge on desktop maybe below the buttons right hand side
-
-group panel badges might not need to be there - group chat should go to group
-so it might show that asset popup of subevent screen (maybe two buttons)
 
 maybe a menu view event/view group and a badge just before x closing button
 maybe showing the same menu with drop down arrow as you have on role selector
