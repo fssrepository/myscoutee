@@ -504,6 +504,12 @@ interface SubEventResourceCard {
   isMembers: boolean;
 }
 
+interface SubEventAssignedAssetSettings {
+  capacityMin: number;
+  capacityMax: number;
+  addedByUserId: string;
+}
+
 interface ActivityMemberEntry {
   id: string;
   userId: string;
@@ -1298,7 +1304,10 @@ export class App {
   protected subEventAssetAssignContext: { subEventId: string; type: AssetType } | null = null;
   protected selectedSubEventAssignAssetIds: string[] = [];
   private readonly subEventAssignedAssetIdsByKey: Record<string, string[]> = {};
+  private readonly subEventAssignedAssetSettingsByKey: Record<string, Record<string, SubEventAssignedAssetSettings>> = {};
   private pendingSubEventAssetCreateAssignment: { subEventId: string; type: AssetType } | null = null;
+  protected subEventAssetCapacityEditor:
+    { subEventId: string; type: AssetType; assetId: string; title: string; capacityMin: number; capacityMax: number; capacityLimit: number } | null = null;
   protected subEventSupplyBringDialog:
     { cardId: string; title: string; quantity: number; min: number; max: number } | null = null;
   private readonly subEventSupplyBringCountByAssetId: Record<string, number> = {};
@@ -3768,6 +3777,7 @@ export class App {
     this.subEventMemberRolePickerUserId = null;
     this.subEventAssetAssignContext = null;
     this.selectedSubEventAssignAssetIds = [];
+    this.subEventAssetCapacityEditor = null;
     this.subEventResourceFilter = type === 'Members' ? 'Members' : type;
     if (isFromSubEventsSuperPopup) {
       this.superStackedPopup = null;
@@ -4086,6 +4096,16 @@ export class App {
     return !!card.sourceAssetId && card.type === 'Supplies';
   }
 
+  protected canEditSubEventResourceCapacity(card: SubEventResourceCard): boolean {
+    if (!card.sourceAssetId || card.type === 'Members' || !this.selectedSubEventBadgeContext) {
+      return false;
+    }
+    const subEventId = this.selectedSubEventBadgeContext.subEvent.id;
+    const type = card.type as AssetType;
+    const settings = this.getSubEventAssignedAssetSettings(subEventId, type);
+    return settings[card.sourceAssetId]?.addedByUserId === this.activeUser.id;
+  }
+
   protected runSubEventResourceJoinAction(card: SubEventResourceCard, event: Event): void {
     event.stopPropagation();
     if (!this.canJoinSubEventResourceCard(card) || !card.sourceAssetId) {
@@ -4129,17 +4149,116 @@ export class App {
     }
   }
 
-  protected runSubEventResourceEditAction(card: SubEventResourceCard, event: Event): void {
+  protected openSubEventResourceCapacityEditor(card: SubEventResourceCard, event: Event): void {
     event.stopPropagation();
-    if (!card.sourceAssetId) {
+    if (!this.selectedSubEventBadgeContext || !card.sourceAssetId || card.type === 'Members') {
       return;
     }
-    const source = this.assetCards.find(item => item.id === card.sourceAssetId);
+    if (!this.canEditSubEventResourceCapacity(card)) {
+      return;
+    }
+    const type = card.type as AssetType;
+    const source = this.assetCards.find(item => item.id === card.sourceAssetId && item.type === type);
     if (!source) {
       return;
     }
-    this.openAssetForm(source);
+    const subEventId = this.selectedSubEventBadgeContext.subEvent.id;
+    const settings = this.getSubEventAssignedAssetSettings(subEventId, type);
+    const setting = settings[card.sourceAssetId] ?? {
+      capacityMin: 0,
+      capacityMax: Math.max(0, source.capacityTotal),
+      addedByUserId: this.activeUser.id
+    };
+    const capacityLimit = Math.max(0, source.capacityTotal);
+    const capacityMax = this.clampNumber(Math.trunc(setting.capacityMax), 0, capacityLimit);
+    const capacityMin = this.clampNumber(Math.trunc(setting.capacityMin), 0, capacityMax);
+    this.subEventAssetCapacityEditor = {
+      subEventId,
+      type,
+      assetId: card.sourceAssetId,
+      title: card.title,
+      capacityMin,
+      capacityMax,
+      capacityLimit
+    };
     this.inlineItemActionMenu = null;
+  }
+
+  protected closeSubEventResourceCapacityEditor(event?: Event): void {
+    event?.stopPropagation();
+    this.subEventAssetCapacityEditor = null;
+  }
+
+  protected canSubmitSubEventResourceCapacityEditor(): boolean {
+    if (!this.subEventAssetCapacityEditor) {
+      return false;
+    }
+    const { capacityMin, capacityMax, capacityLimit } = this.subEventAssetCapacityEditor;
+    return Number.isFinite(capacityMin)
+      && Number.isFinite(capacityMax)
+      && capacityMin >= 0
+      && capacityMax >= capacityMin
+      && capacityMax <= capacityLimit;
+  }
+
+  protected onSubEventResourceCapacityMinChange(value: number | string): void {
+    if (!this.subEventAssetCapacityEditor) {
+      return;
+    }
+    const parsed = Number(value);
+    const capacityMin = this.clampNumber(
+      Number.isFinite(parsed) ? Math.trunc(parsed) : this.subEventAssetCapacityEditor.capacityMin,
+      0,
+      this.subEventAssetCapacityEditor.capacityMax
+    );
+    this.subEventAssetCapacityEditor = {
+      ...this.subEventAssetCapacityEditor,
+      capacityMin
+    };
+  }
+
+  protected onSubEventResourceCapacityMaxChange(value: number | string): void {
+    if (!this.subEventAssetCapacityEditor) {
+      return;
+    }
+    const parsed = Number(value);
+    const capacityMax = this.clampNumber(
+      Number.isFinite(parsed) ? Math.trunc(parsed) : this.subEventAssetCapacityEditor.capacityMax,
+      0,
+      this.subEventAssetCapacityEditor.capacityLimit
+    );
+    const capacityMin = Math.min(this.subEventAssetCapacityEditor.capacityMin, capacityMax);
+    this.subEventAssetCapacityEditor = {
+      ...this.subEventAssetCapacityEditor,
+      capacityMin,
+      capacityMax
+    };
+  }
+
+  protected saveSubEventResourceCapacityEditor(event?: Event): void {
+    event?.stopPropagation();
+    const editor = this.subEventAssetCapacityEditor;
+    if (!editor || !this.canSubmitSubEventResourceCapacityEditor()) {
+      return;
+    }
+    const key = this.subEventAssetAssignmentKey(editor.subEventId, editor.type);
+    const settings = { ...this.getSubEventAssignedAssetSettings(editor.subEventId, editor.type) };
+    const current = settings[editor.assetId] ?? {
+      capacityMin: 0,
+      capacityMax: editor.capacityLimit,
+      addedByUserId: this.activeUser.id
+    };
+    settings[editor.assetId] = {
+      ...current,
+      capacityMin: this.clampNumber(Math.trunc(editor.capacityMin), 0, editor.capacityMax),
+      capacityMax: this.clampNumber(Math.trunc(editor.capacityMax), 0, editor.capacityLimit)
+    };
+    this.subEventAssignedAssetSettingsByKey[key] = settings;
+    const subEvent = this.findSubEventById(editor.subEventId);
+    if (subEvent) {
+      this.syncSubEventAssetBadgeCounts(subEvent, editor.type);
+    }
+    this.subEventAssetCapacityEditor = null;
   }
 
   protected runSubEventResourceDeleteAction(card: SubEventResourceCard, event: Event): void {
@@ -4377,10 +4496,35 @@ export class App {
       .filter((card): card is AssetCard => card !== null);
   }
 
+  private getSubEventAssignedAssetSettings(subEventId: string, type: AssetType): Record<string, SubEventAssignedAssetSettings> {
+    const key = this.subEventAssetAssignmentKey(subEventId, type);
+    const assignedIds = this.resolveSubEventAssignedAssetIds(subEventId, type);
+    const existing = this.subEventAssignedAssetSettingsByKey[key] ?? {};
+    const next: Record<string, SubEventAssignedAssetSettings> = {};
+    for (const assetId of assignedIds) {
+      const source = this.assetCards.find(card => card.id === assetId && card.type === type);
+      if (!source) {
+        continue;
+      }
+      const prev = existing[assetId];
+      const capacityLimit = Math.max(0, source.capacityTotal);
+      const capacityMax = this.clampNumber(Math.trunc(prev?.capacityMax ?? capacityLimit), 0, capacityLimit);
+      const capacityMin = this.clampNumber(Math.trunc(prev?.capacityMin ?? 0), 0, capacityMax);
+      next[assetId] = {
+        capacityMin,
+        capacityMax,
+        addedByUserId: prev?.addedByUserId ?? this.activeUser.id
+      };
+    }
+    this.subEventAssignedAssetSettingsByKey[key] = next;
+    return next;
+  }
+
   private subEventAssetCapacityMetrics(subEvent: SubEventFormItem, type: AssetType): { joined: number; capacityMin: number; capacityMax: number; pending: number } {
     const cards = this.subEventAssignedAssetCards(subEvent.id, type);
-    const capacityMax = cards.reduce((sum, card) => sum + Math.max(0, card.capacityTotal), 0);
-    const capacityMin = cards.length;
+    const settings = this.getSubEventAssignedAssetSettings(subEvent.id, type);
+    const capacityMax = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMax ?? Math.max(0, card.capacityTotal)), 0);
+    const capacityMin = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMin ?? 0), 0);
     const pending = cards.reduce((sum, card) => sum + this.assetPendingCount(card), 0);
     if (type === 'Supplies') {
       const joined = cards.reduce((sum, card) => sum + this.subEventSupplyProvidedCount(card.id), 0);
@@ -4431,7 +4575,25 @@ export class App {
       allowedIds.has(id) && arr.indexOf(id) === index
     );
     const key = this.subEventAssetAssignmentKey(context.subEventId, context.type);
+    const previousSettings = this.subEventAssignedAssetSettingsByKey[key] ?? {};
+    const nextSettings: Record<string, SubEventAssignedAssetSettings> = {};
+    for (const assetId of nextIds) {
+      const source = this.assetCards.find(card => card.id === assetId && card.type === context.type);
+      if (!source) {
+        continue;
+      }
+      const capacityLimit = Math.max(0, source.capacityTotal);
+      const prev = previousSettings[assetId];
+      const capacityMax = this.clampNumber(Math.trunc(prev?.capacityMax ?? capacityLimit), 0, capacityLimit);
+      const capacityMin = this.clampNumber(Math.trunc(prev?.capacityMin ?? 0), 0, capacityMax);
+      nextSettings[assetId] = {
+        capacityMin,
+        capacityMax,
+        addedByUserId: prev?.addedByUserId ?? this.activeUser.id
+      };
+    }
     this.subEventAssignedAssetIdsByKey[key] = [...nextIds];
+    this.subEventAssignedAssetSettingsByKey[key] = nextSettings;
     const targetSubEvent = this.findSubEventById(context.subEventId);
     if (targetSubEvent) {
       this.syncSubEventAssetBadgeCounts(targetSubEvent, context.type, nextIds);
@@ -4503,6 +4665,7 @@ export class App {
 
     const resourceType = this.subEventResourceFilter as AssetType;
     const assignedIds = this.resolveSubEventAssignedAssetIds(subEvent.id, resourceType);
+    const settings = this.getSubEventAssignedAssetSettings(subEvent.id, resourceType);
     this.syncSubEventAssetBadgeCounts(subEvent, resourceType, assignedIds);
     const baseCards = assignedIds
       .map(id => this.assetCards.find(card => card.id === id && card.type === resourceType) ?? null)
@@ -4517,7 +4680,7 @@ export class App {
       details: card.details,
       imageUrl: card.imageUrl,
       sourceLink: card.sourceLink,
-      capacityTotal: card.capacityTotal,
+      capacityTotal: settings[card.id]?.capacityMax ?? card.capacityTotal,
       accepted: card.type === 'Supplies' ? this.subEventSupplyProvidedCount(card.id) : this.assetAcceptedCount(card),
       pending: this.assetPendingCount(card),
       isMembers: false
@@ -6466,6 +6629,7 @@ export class App {
     this.subEventMemberRolePickerUserId = null;
     this.subEventAssetAssignContext = null;
     this.selectedSubEventAssignAssetIds = [];
+    this.subEventAssetCapacityEditor = null;
     this.subEventSupplyBringDialog = null;
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
@@ -6585,6 +6749,7 @@ export class App {
       this.subEventMemberRolePickerUserId = null;
       this.subEventAssetAssignContext = null;
       this.selectedSubEventAssignAssetIds = [];
+      this.subEventAssetCapacityEditor = null;
       this.subEventSupplyBringDialog = null;
       this.selectedActivityMembers = [];
       this.selectedActivityMembersTitle = '';
@@ -12013,9 +12178,16 @@ export class App {
       if (createAssignment && createAssignment.type === payload.type) {
         const key = this.subEventAssetAssignmentKey(createAssignment.subEventId, createAssignment.type);
         const assignedIds = this.resolveSubEventAssignedAssetIds(createAssignment.subEventId, createAssignment.type);
-        if (!assignedIds.includes(id)) {
-          this.subEventAssignedAssetIdsByKey[key] = [...assignedIds, id];
-        }
+        const nextAssignedIds = assignedIds.includes(id) ? assignedIds : [...assignedIds, id];
+        this.subEventAssignedAssetIdsByKey[key] = [...nextAssignedIds];
+        const settings = this.getSubEventAssignedAssetSettings(createAssignment.subEventId, createAssignment.type);
+        const capacityMax = Math.max(0, payload.capacityTotal);
+        settings[id] = {
+          capacityMin: 0,
+          capacityMax,
+          addedByUserId: this.activeUser.id
+        };
+        this.subEventAssignedAssetSettingsByKey[key] = { ...settings };
         const targetSubEvent = this.findSubEventById(createAssignment.subEventId);
         if (targetSubEvent) {
           this.syncSubEventAssetBadgeCounts(targetSubEvent, createAssignment.type);
@@ -12087,6 +12259,13 @@ export class App {
     for (const key of Object.keys(this.subEventAssignedAssetIdsByKey)) {
       const filtered = this.subEventAssignedAssetIdsByKey[key].filter(id => id !== cardId);
       this.subEventAssignedAssetIdsByKey[key] = filtered;
+    }
+    for (const key of Object.keys(this.subEventAssignedAssetSettingsByKey)) {
+      if (this.subEventAssignedAssetSettingsByKey[key][cardId]) {
+        const next = { ...this.subEventAssignedAssetSettingsByKey[key] };
+        delete next[cardId];
+        this.subEventAssignedAssetSettingsByKey[key] = next;
+      }
     }
     if (this.selectedAssetCardId === cardId) {
       this.selectedAssetCardId = null;

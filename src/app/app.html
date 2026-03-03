@@ -3433,15 +3433,6 @@
             <div class="subevent-assets-toolbar-actions">
               <button
                 type="button"
-                class="popup-header-add-btn assets-add-btn subevent-assets-plus-btn"
-                *ngIf="subEventResourceFilter === 'Supplies'"
-                (click)="openSubEventResourceCreateForm($event)"
-                aria-label="Add supplies asset"
-              >
-                <mat-icon>add</mat-icon>
-              </button>
-              <button
-                type="button"
                 class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger subevent-assets-assign-trigger"
                 (click)="openSubEventAssetAssignPopup($event)"
                 aria-label="Assign sub-event resource"
@@ -3573,9 +3564,9 @@
                       <mat-icon>inventory</mat-icon>
                       <span>Bring Items</span>
                     </button>
-                    <button type="button" class="item-action-menu-btn" (click)="runSubEventResourceEditAction(card, $event)">
+                    <button type="button" class="item-action-menu-btn" *ngIf="canEditSubEventResourceCapacity(card)" (click)="openSubEventResourceCapacityEditor(card, $event)">
                       <mat-icon>edit</mat-icon>
-                      <span>Edit</span>
+                      <span>Edit Capacity</span>
                     </button>
                     <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="runSubEventResourceDeleteAction(card, $event)">
                       <mat-icon>delete</mat-icon>
@@ -3588,6 +3579,60 @@
             </article>
           </div>
         </ng-template>
+
+        <section class="experience-form-overlay asset-form-overlay subevent-asset-capacity-overlay" *ngIf="subEventAssetCapacityEditor">
+          <div class="experience-form-overlay-backdrop" (click)="closeSubEventResourceCapacityEditor($event)"></div>
+          <div class="experience-form-popup subevent-asset-capacity-popup">
+            <div class="experience-form-header">
+              <h3>Edit Capacity</h3>
+              <div class="experience-form-header-controls">
+                <button
+                  type="button"
+                  class="popup-header-add-btn subevent-leaderboard-save-btn"
+                  [class.form-save-invalid]="!canSubmitSubEventResourceCapacityEditor()"
+                  [disabled]="!canSubmitSubEventResourceCapacityEditor()"
+                  (click)="saveSubEventResourceCapacityEditor($event)"
+                  aria-label="Save capacity"
+                >
+                  <mat-icon>done</mat-icon>
+                </button>
+                <button type="button" class="experience-form-close-btn" (click)="closeSubEventResourceCapacityEditor($event)" aria-label="Close capacity editor">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            </div>
+            <div class="experience-form-body">
+              <div class="experience-form-grid subevent-asset-capacity-grid">
+                <label class="experience-form-row experience-form-row-full">
+                  <span>Asset</span>
+                  <input type="text" [ngModel]="subEventAssetCapacityEditor.title" readonly>
+                </label>
+                <label class="experience-form-row">
+                  <span>Min</span>
+                  <input
+                    type="number"
+                    min="0"
+                    [max]="subEventAssetCapacityEditor.capacityMax"
+                    step="1"
+                    [ngModel]="subEventAssetCapacityEditor.capacityMin"
+                    (ngModelChange)="onSubEventResourceCapacityMinChange($event)"
+                  >
+                </label>
+                <label class="experience-form-row">
+                  <span>Max</span>
+                  <input
+                    type="number"
+                    [min]="subEventAssetCapacityEditor.capacityMin"
+                    [max]="subEventAssetCapacityEditor.capacityLimit"
+                    step="1"
+                    [ngModel]="subEventAssetCapacityEditor.capacityMax"
+                    (ngModelChange)="onSubEventResourceCapacityMaxChange($event)"
+                  >
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <section class="experience-form-overlay asset-form-overlay" *ngIf="showAssetForm">
           <div class="experience-form-overlay-backdrop" (click)="closeAssetForm()"></div>
