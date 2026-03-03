@@ -482,7 +482,6 @@
           <button class="asset-shortcut-btn asset-shortcut-car" type="button" (click)="openAssetCarPopup()" aria-label="Car">
             <mat-icon>directions_car</mat-icon>
             <span class="asset-shortcut-label">Car</span>
-            <span class="card-badge menu-shortcut-badge" *ngIf="assetCarsBadge > 0">{{ assetCarsBadge }}</span>
           </button>
           <button
             class="asset-shortcut-btn asset-shortcut-accommodation"
@@ -492,12 +491,10 @@
           >
             <mat-icon>apartment</mat-icon>
             <span class="asset-shortcut-label">Accommodation</span>
-            <span class="card-badge menu-shortcut-badge" *ngIf="assetAccommodationBadge > 0">{{ assetAccommodationBadge }}</span>
           </button>
           <button class="asset-shortcut-btn asset-shortcut-supplies" type="button" (click)="openAssetSuppliesPopup()" aria-label="Supplies">
             <mat-icon>inventory_2</mat-icon>
             <span class="asset-shortcut-label">Supplies</span>
-            <span class="card-badge menu-shortcut-badge" *ngIf="assetSuppliesBadge > 0">{{ assetSuppliesBadge }}</span>
           </button>
         </div>
       </div>
@@ -517,6 +514,7 @@
     [class.popup-panel-image-editor]="activePopup === 'imageEditor'"
     [class.popup-panel-profile-editor]="activePopup === 'profileEditor'"
     [class.popup-panel-event-editor]="activePopup === 'eventEditor'"
+    [class.popup-panel-event-editor-readonly]="activePopup === 'eventEditor' && isEventEditorReadOnly()"
     [class.popup-panel-assets]="isAssetPopup"
     [class.popup-panel-activities]="activePopup === 'activities'"
     (click)="$event.stopPropagation()"
@@ -1609,11 +1607,9 @@
                   <span class="status-option-content">
                     <mat-icon [class]="assetTypeClass(option)">{{ assetTypeIcon(option) }}</mat-icon>
                     <span>{{ option }}</span>
-                    <span class="rate-filter-count-badge" *ngIf="assetFilterCount(option) > 0">{{ assetFilterCount(option) }}</span>
                   </span>
                 </mat-option>
               </mat-select>
-              <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="assetFilterCount(assetFilter) > 0">{{ assetFilterCount(assetFilter) }}</span>
             </div>
           </ng-container>
           <ng-template #mobileAssetFilterButton>
@@ -1628,7 +1624,6 @@
                 <span>{{ assetFilter }}</span>
               </span>
               <mat-icon>expand_more</mat-icon>
-              <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="assetFilterCount(assetFilter) > 0">{{ assetFilterCount(assetFilter) }}</span>
             </button>
           </ng-template>
           <button type="button" class="popup-header-add-btn assets-add-btn" (click)="openAssetForm()" aria-label="Add asset">
@@ -1646,14 +1641,9 @@
                   type="button"
                   class="asset-occupancy-badge"
                   (click)="card.type === 'Supplies' ? $event.stopPropagation() : openAssetMembers(card, $event)"
-                  [attr.aria-label]="card.type === 'Supplies' ? 'Supply count' : 'Open member requests'"
+                  [attr.aria-label]="card.type === 'Supplies' ? 'Capacity' : 'Open member requests'"
                 >
-                  <ng-container *ngIf="card.type === 'Supplies'; else assetMembersIcon">
-                    <span>{{ card.capacityTotal }}</span>
-                  </ng-container>
-                  <ng-template #assetMembersIcon>
-                    <mat-icon>groups</mat-icon>
-                  </ng-template>
+                  <span>{{ card.capacityTotal }}</span>
                 </button>
               </div>
             <div class="experience-item-head">
@@ -2881,6 +2871,7 @@
     [class.popup-panel-members]="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers'"
     [class.popup-panel-profile-editor]="stackedPopup === 'experienceSelector'"
     [class.popup-panel-event-editor]="stackedPopup === 'eventEditor'"
+    [class.popup-panel-event-editor-readonly]="stackedPopup === 'eventEditor' && isEventEditorReadOnly()"
     [class.popup-panel-asset-members]="stackedPopup === 'assetMembers' || stackedPopup === 'subEventMembers' || stackedPopup === 'subEventAssets'"
     (click)="$event.stopPropagation()"
   >
