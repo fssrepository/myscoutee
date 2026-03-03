@@ -1,0 +1,14 @@
+assets explore popup (there are public / friends assets)
+--------------------------------------------------------
+
+Assets Explore includes a popup with Public and Friends-only visibility.
+The menu bar shows an asset counter and allows selecting a borrowing date range, while badges serve a separate purpose.
+
+Assets can be filtered by date to display availability and capacity.
+For events, fully booked items appear as Occupied. 
+Each asset may have a price set in the Asset Editor, though the Explore route development is still undecided.
+
+Occupancy for selected dates must be clearly visible in both the popup and item view.
+Events also include an expense field with amount and currency.
+
+availability dates of assets (car/accomodation/suplies) to be able to lend

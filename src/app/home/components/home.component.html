@@ -1,4 +1,4 @@
-<div class="game-page">
+<div class="game-page" [ngClass]="gamePageStatusClass()">
   <header class="game-header">
     <a class="game-brand" aria-label="MyScoutee home">
       <img class="game-brand-mark" src="assets/logo/heart.png" alt="MyScoutee logo" />
@@ -13,7 +13,7 @@
         <mat-icon>filter_alt</mat-icon>
         <span class="filter-state-badge" [class.active]="isFilterActive">{{ isFilterActive ? 'ON' : 'OFF' }}</span>
       </button>
-      <button type="button" class="game-action-filter has-badge" (click)="openHistory()" aria-label="Open game history">
+      <button type="button" class="game-action-filter game-action-history has-badge" (click)="openHistory()" aria-label="Open game history">
         <mat-icon>history</mat-icon>
         <span class="history-badge">{{ activeUser.activities.game }}</span>
       </button>

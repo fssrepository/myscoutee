@@ -1,0 +1,34 @@
+lazy load card image - card_no_edges.png (animate lazy load images in different places also)
+for every data on profile has variable +%, if you fill it out
+report a user menu, request form etc. (for me by the users)
+for mobile touch animation on each clickable button whatever
+when you rate a user make blink effect on star badge and star popup bar (to show it's rated)
+
+Game - Default page
+-------------------
+
+shows the Tinder like panel on the left with 3 buttons on the header
+(profile-filter e.g.: profession match, school match, friends in common etc.),
+history, type - (fab button - egyeni, parok - rotate screen status message))
+
+cards should show a message when the user was active
+
+preload 10-15 photos, and paginating to the next stack, while the user finished on rating
+(the cards are on top of each other, so hiding each other)
+
+pair rate - met (a new option on ratings)
+
+car and accomodation should get route and location as the event - map icon
+add the number of places - map has multiple routes - will be generated based on sub events location
+event/subevent - enter something as location, map button right hand side to verify the address
+
+chat:
+-----
+chat channel type (sub event optional / main event / group (stage))
+it should be visible - on chat main window, and the icon should be different on chat message window
+(make also the title and background color)
+filter on chat main window based on that 3 variations + All also
+
+maybe a menu view event/view group and a badge just before x closing button
+maybe showing the same menu with drop down arrow as you have on role selector
+so it will show the assets button transformed to menu items and badge

@@ -75,6 +75,20 @@ export class HomeComponent {
     return this.users.find(user => user.id === this.activeUserId) ?? this.users[0];
   }
 
+  protected gamePageStatusClass(): string {
+    switch (this.activeUser.profileStatus) {
+      case 'friends only':
+        return 'game-page-status-friends';
+      case 'host only':
+        return 'game-page-status-host';
+      case 'inactive':
+        return 'game-page-status-inactive';
+      case 'public':
+      default:
+        return 'game-page-status-public';
+    }
+  }
+
   protected get candidatePool(): DemoUser[] {
     return this.users
       .filter(user => user.id !== this.activeUserId)
@@ -165,7 +179,9 @@ export class HomeComponent {
   }
 
   protected openHistory(): void {
-    this.localPopup = 'history';
+    if (typeof globalThis.dispatchEvent === 'function') {
+      globalThis.dispatchEvent(new CustomEvent('myscoutee-open-rates'));
+    }
   }
 
   protected closeLocalPopup(): void {
