@@ -1,75 +1,13 @@
-git submodule to grab the front end code, the backend will be in private repo
-
-Dictionary:
------------
-cloudflare reverse proxy
-base44 landing page (summary, GDPR popup)
-angular page on different server (login page, exact functionality)
-separate sensitive server passwords from the main code base (won't be uploaded to the github)
-redis streams for chat (remove mosquitto)
-Logo - heart in a circle by cutting the bottom part, so it can be an M and put a star on it
-
-Algorithm
----------
-Status of members (e.g.: event):
-A (Accepted), R (rejected), I (invited), K (kicked, maybe suspended/silenced), L (left), V (Verified),
-T (Timed-Out - invited, but not respond within a built-in timeframe), LL (late leave - payment is due),
-W (on waiting list), LD (left deleted), D (deleted), P (pending), Selected (S)
-
-if someone kicked out or late left then global score drops, not the mutual score, and it defines visibility
-time decay, if someone didn't meet with each other in 2 years time, can drop visibility (?? not sure, how to manage)
-if someone is inactive on the app, will be set "inactive" / host only mode automatically and the app asks to set it visible manually for the user
-the graph stays intact - inactive does mean logout from every event, and the frieds also do not see it - maybe Friends Only also needed
-
-if some requirement is not fulfilled on event, the event will be stopped (admin will be offered to stop or postpone etc.)
-notify a day before or so (maybe can be configurable not sure)
-
-if too many people rejects the invitation for a room, then the algorithm re-run for the left overs
-If somebody lefts, nobody replaces in random chat (avoid algorithm complexity - or simply use left overs)
-
-Base Design:
--------
-Login button - either test users popup or login screen popup
-Menu - will be updated based on websocket/mqtt message
-Main page - Logo + text on every main page with icon bar on the right side
-Filter buttons/Filter textbox - should be small (not the default angular one by saving space)
-badge - red counter, if more than 9, than 9+ (so only 2 digits appears - space)
-
-Menu
-----
-
-Menu items:
-Game
-Chat
-Invitations
-Events
-Hosting (lend out something should be figured out also - not just event creation - bycicle for example as supplies)
-+ button to add new event - (event explore)
-
-chat/invitations/events/hosting the same screen just a select filter box on the filter bar 
-(like in linked in - bottom half screen to select options)
-
 Game - Default page
 -------------------
 
-Menu Button:
+https://chatgpt.com/codex
+
+-----
 shows the Tinder like panel on the left with 3 buttons on the header (profile-filter e.g.: profession match, school match, friends in common etc.),
 history, type - (fab button - egyeni, parok - rotate screen status message))
 
-History button:
-which shows the votes in popup (filter bar: Adott, Kapott, Kolcsonos, Találkozott, Párok - Adott, Kapott, Találkozott,
-vote filter (large enough), how far the user is, when was active last time) filter textbox at the top (e.g.: filter for name)
-
-Red counter: to show the number of iteraction (how many people rated to you in any way)
-
-On the profile image, there is a horizontal lines at the top, showing how many images the user have.
-Clicking on that column vertically on the picture (Tinder like UI),
-showing the different picture of the user and different info about the user in the left bottom corner
-
 cards should show a message when the user was active (maybe wehther it's friends in common)
-
-below the user photo there is a star bar 1-10, clicking on that nice animating
-(middle of the image screen the user has been rated with 5 inside in the star, and move to the next user)
 
 preload 10-15 photos, and paginating to the next stack, while the user finished on rating (the cards are on top of each other, so hiding each other)
 
@@ -78,263 +16,24 @@ anyway woman images the first 3-4 in red-orange line at the top of the image car
 
 there will be an arrow on the bottom of the image, the profile data is in two columns to be able to compare anyway in one column
 
-Chat
-----
+car and accomodation should get route and location as the event - map icon - maybe accessibility of the car /accomodation owner??
+add the number of places
 
-accordion with the latest messages (sender's avatar and name of the last message, how many messages aren't read - red counter)
-history icon to go to popup for every messages (only the last message of the channel + sender avatar)
-
-clicking on each item - you can see the whole conversation
-
-in the header of the page event edit button (clicking on it event editor popup)
-
-the event editor button on the header shows the member button of the current chat users also, even if there is no event in place
-
-the chat window is two text box
-(the message area and the send message area - typing, read avatars etc. - normal chat, like facebook messenger)
-
-Invitations
------------
-
-accordion on the menu bar with invitations ordered by date asc
-inviter avatar icon + event description and when, if it's chat just the last message or so (should figure it out)
-
-clicking on invitation history icon, you can accept - maybe from the menu also or delete (but maybe it's safer inside the popup)
-
-Events
-------
-
-event drag to reorder the sub events?? (google maps has an example for it)
-
-there is a chat button in the header for the relevant chat window (with red counter)
 map has multiple routes - will be generated based on sub events location
 (it's textual, not coordinates - google map can handle - car view as default)
 
-exiting from an event close the chat also (maybe rejoining is an option)
-
-accordion on the menu bar with events (where the user is going, but not a host) ordered by date asc
-(only upcoming event)
-
-for an event card there is a default image, but you can replace (upload new one)
-
-no groups (topics (edit/filter page), which corresponds to the interest of the user in the profile page)
-
-event editor:
-user can replace the whole event with a button (clicking on the button shows an event filter where we can select an other event)
-clicking on the sub events, show a new screen, which has calendar / member view, left from the sub events a timeline
-can tournament set, so tournament phase on every sub events - tournament for non-admins only the current phase is not disabled
-
-both tournament header and date header is sticky while scrolling up changing with the current values
-
-the sub event panels has
-(the following button can be added dynamically to the event card:
-car, members, accessories and accomodation (assests) buttons with occupied / all places min - max - red if it's not fulfilled)
-there are also optional sub events (join first approach)
-
-the title of sub events panel is the event name/short desc/date range etc in many rows maybe
-
-explore button for accomodations, accessories etc. (renting out from a company)
-
-if there is only one sub event, then show the panel instead of a button to go to popup screen of subevents
-
-rules (fifa, rate) inside the sub event screen, ticket, discreet in the main page (in the tilte whether it's tournament)
-event start, event end, frequency, virtual or in person event
-
-all the popup has default view and member view
-
-accomodation popup:
-the users can rate that card (prefer)
-admin can remove accomodation from the list (in the header how many places we have, roms and for people)
-
-with + button, the accomodation form should contain:
-number of places (rooms and how many people)
-link (booking.com link which backend scraps with og: tags (Open Graph technology - you can scrap summary from html))
-
-car popup:
-you can assign your own car with + button, what you have already added to the screen
-or you can add a link for a car company - renting, even with a driver etc. (it needs to be registered to the system)
-add the number of places
-
-the car popup header should show, how many cars and places we have - where is the starting point/time of the car should be in the car panel list
-phone number or other accesibility of the owner on the car card
-
-if someone wants to be a passenger, can ask, and the driver can accept
-
-accessories:
-a list what you is required (e.g. food)
-with + button you can offer that - maybe you can select topics - and min - max, and how many offer has been added
-in the header - how many accessories, how many offered and how many are required
-
-members:
-Even on the main event a button should be there (as that ones are all of the participants)
-it's small pictures only (Tinder sized - e.g.: on upload screen)
-clicking on the icon show the profile of the user, but the image itself on the top right corner whether it's admin or not
-if it's admin that icon is clickable and you can set someone else to admin - (maybe kick out, suspend, silenced member etc.)
-
-here we can invite users (who we had the same event - so friends) - 
-click right top corner of pictures and it add chipt at the top with the avatar + name of the user
-(maybe that bar is below the header - don't mess the header up)
-
-event list - history button:
-----------------------------
-Create Event header - until you don't publish the event, it will be draft (maybe that message in 2nd line)
-you should publish (publish button in the header or in the cards) - in this case cancel/save can be removed (auto save)
-
-
-+ button to join to the event - new popup "event explore"
-can add feedback (rate 1-10 + vibes + whether recommend???) here + select user for chat invite etc. (friends or host only)
-
-event explore: (host only chat???)
---------------
-event list - show how many people is going and are there any ismeros (maybe photos in small circle)
-event has not enough members, event card should be red etc.
-
-you can join to an event individually also - should be accepted by the admin (it's like invitation, just the other way around)
-
-past event filter where you can see the vibes and rating to the event, and whether it has been recommended (host profile page, from menu bar "own events"
-+ explore events - all host can appear with the events, but you can choose past events filter)
-
-maybe the only external parameter is the host id itself, and based on that same page appears, little statistic at the top
-
-filter:
--------
-who is the host (textbox filter)
-recommendation - friends in common who were attending on an event, but the current user is not
-views (distance - users location, not the event location, calendar)
-own events filter (the events accordion in the menu does not show, only the popup to save space)
-
-main event:
------------
-ticket, dicreet, auto invite, - visibility - invitation only, friends, public, capacity, topics, description
-expense (amount + currency) - maybe for sub events also, and sum up in the header
-
-event/member grace shouldn't be configured by the user (system variable)
-
-tournament mode (stages - it can be only one stage with leaderboard, or multiple stages - fifa or simple value
-mutual rate does not make sense (removed))
-
-sub events - Name/Description/Date range/Optional/Capacity/Assets + Members
-
-(Assets + Member badge - 2nd line 2 / 3 - 5)
-
-Profile
--------
-while editing the profile on the popup, there will be a settings button, where you can delete profile, logout, gdpr etc.
-
+lazy load card image - card_no_edges.png (animate lazy load images in different places also)
 for every accordion a +%, if you fill it out
 
-popup header
+friends in common filter on event explore
 
-Event editor
-title of event
+expense (amount + currency) for event
 
-Chat
-title of chat
-
-top rated event ordering does mean (organizer is top rated by users, so show that event first)
-
-Friends Only?? on recommended, maybe it's in the filter bar
-
-there are places left, topics filter on events
-
-on the event explore the panels should get something like when on member selection screen, add the badge to the header
-so event editor opens, and you can assign members to it or add additional subevents, supplies etc.
-
-i think it shouldn't clone, it's join and invite other members
-
-assets button on sub event panel - red border, or sullyestett, de nem piros hatter szin, hogy elkulonuljon
-
-----------------------------------------
-given rate - pig image panels like on event (3 panels in one row instead of line - image can be increased, like game panel)
-
-assets (accomodation... add explore button, fix + button which is assign your own things
-what you have added to your asets from menu bar)
-
-reflect any changes on card (if you edit event) - the chat needs to have day separator (not sticky, just in the scrollable area)
-
-fix game screen, check how to make tournament ready
-
-while creating event, needs to create chat wehn publish
-
-on rate add another view or a button to make it large like the game, so you can go through on it like in the case of game
-
-on chat just only days does make sense, on rate not sure, and at the moment it has got 3 columns (for chat it shouldn't be i think)
-
-maybe the menu bar avatar colour should be the mabe screen background colour
-
-event view screen (everything disabled, just invite members and add assets not)
-
-lazy load card image - card_no_edges.png (animate lazy load images in different places also)
-
-somehow we need to show that assets are occupied for that date on assets popup also inside the items (maybe it's a different view)
-
-https://chatgpt.com/codex
-
-assets hasn't any member acceptance,
-if someone is including your apartment into his own event, you will be a manager role of the event - the apartment should get some availability
-
------
-Tournament mode
-
-sub event item panel in different popup, Sub Event button on main event might have badge - type badge (tournament) + arrow
-
-Sub Event should look like an event panel, just 3 colum, scroll backward, forward horizontally,
-you can popup a generator where you can put tier number, and in each tier how many room you have,
-so restrict the top 2 from each room to go to the next round, row does contain item panels 
-(room #1, #2 for each tier - similar what we have on the main event editor sub eventt panel)
-
-only + button on assets and member badge (booking.com link will be copied...)
-
-the + button should be an assign button wich popups up own assets
-
-clicking on an item badge (assets...show list screen about the available assets and over there should be an assign button wich gous to his own assets, what you can choose, create new one (invite members item panels - tick icon top right corner)
-
-the rate activities filter
-
-it's not lines similar like invite people panel but instead of tick icon, star icon with the value, also it can go to full screen on given - similar to the game 10 star bottom of the image, and you can go through each element (it's a different view on that part of the popup - next to day etc.) - the member images in small maybe that image stack style like on game, same user 3 image next to each other hidden)
-
-when you close the event editor popup, maybe a confirmation dialog appears before, would you like to publish the event??, maybe in the header you should add members like int the case of chat to invite
-
-when clicking on invitation, order, view make a load (activities)
-
-to simplify there is no asset explore, just you can assign assets of your own managed to the event, what you are attending
-naturally you can add not only your own apparent - you can assign to the event
-
-ticket qr code generator for event + voice recorder for person (voice can be attached to the profile)
-
-accept chat - tick right hand side
-
------
-
-!!!!!!!!!!!!!!!!!!!!! - chat channel type
 game screen / assets screen finish / ticket on main event
 
 chat channel type (sub event optional / main event / group (stage))
 it should be visible - on chat main window, and the icon should be different on chat message window (make also the title and background color)
 filter on chat main window based on that 3 variations + All also
-
-assets explore popup (there are public / friends assets)
-manager role (if one of the asset of yours has been asigned to an event, you are not an admin, you are amaneger of your asset)
-
-the assests from menubar is a counter and a day range if someone wants to borrom
-(badges should be there, but for different purpose)
-
-assets explore has date filter (so list out items for that date period + capacity)
-
-for event there is an occupy (so all the places has been occupied on event explore)
-
-when you land naturally there is a price for that item - you can set on the asstes editor screen
-(not sure whether we want to develop that route at the meoment - assets explore route)
-
-naturally it's double acceptance, so if you are inviting member outside the event 
-for a car then admin should accept first - if an admin deletes a member from the main event, 
-naturally deletes it from the car/accomodation also - and that kind of users who manages 
-an asset switching from Member to Manager role and inside the member list you should present 
-it's a manager - if an admin removes a manager then all the assets being handled by the manager 
-is also gone for car/accomodation for supplies if anyone else brought item for that supplies then 
-supplies stays but move the manager role to someone else who added item to it
-
-supplies stays does mean, remove the number of supplies what the manager added initially to that bucket
 
 report a user menu, request form etc. (for me by the users)
 

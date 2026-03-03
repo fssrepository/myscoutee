@@ -1,0 +1,17 @@
+assets explore popup (there are public / friends assets)
+--------------------------------------------------------
+
+manager role (if one of the asset of yours has been asigned to an event, you are not an admin, you are amaneger of your asset)
+
+the assests from menubar is a counter and a day range if someone wants to borrom
+(badges should be there, but for different purpose)
+
+assets explore has date filter (so list out items for that date period + capacity)
+
+for event there is an occupy (so all the places has been occupied on event explore)
+
+when you land naturally there is a price for that item - you can set on the asstes editor screen
+(not sure whether we want to develop that route at the meoment - assets explore route)
+
+somehow we need to show that assets are occupied for that date on assets popup also inside the items (maybe it's a different view)
+
