@@ -4290,13 +4290,21 @@ export class App {
     this.subEventSupplyBringDialog = null;
   }
 
-  protected adjustSubEventSupplyBringQuantity(delta: number, event?: Event): void {
-    event?.stopPropagation();
+  protected canSubmitSubEventSupplyBringDialog(): boolean {
+    if (!this.subEventSupplyBringDialog) {
+      return false;
+    }
+    const { quantity, min, max } = this.subEventSupplyBringDialog;
+    return Number.isFinite(quantity) && quantity >= min && quantity <= max;
+  }
+
+  protected onSubEventSupplyBringQuantityChange(value: number | string): void {
     if (!this.subEventSupplyBringDialog) {
       return;
     }
+    const parsed = Number(value);
     const next = this.clampNumber(
-      this.subEventSupplyBringDialog.quantity + delta,
+      Number.isFinite(parsed) ? Math.trunc(parsed) : this.subEventSupplyBringDialog.quantity,
       this.subEventSupplyBringDialog.min,
       this.subEventSupplyBringDialog.max
     );
@@ -4308,7 +4316,7 @@ export class App {
 
   protected confirmSubEventSupplyBringDialog(event?: Event): void {
     event?.stopPropagation();
-    if (!this.subEventSupplyBringDialog) {
+    if (!this.subEventSupplyBringDialog || !this.canSubmitSubEventSupplyBringDialog()) {
       return;
     }
     this.subEventSupplyBringCountByAssetId[this.subEventSupplyBringDialog.cardId] = this.subEventSupplyBringDialog.quantity;

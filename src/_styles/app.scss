@@ -5216,39 +5216,16 @@
   line-height: 14px;
 }
 
-.subevent-supply-bring-stepper {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.55rem;
-  margin: 0.3rem 0 0.2rem;
-}
-
-.subevent-asset-capacity-popup {
-  width: min(520px, calc(100vw - 1.4rem));
-  max-width: 100%;
-  height: auto;
-  max-height: min(420px, calc(100vh - 1.2rem));
-}
-
-.subevent-asset-capacity-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.subevent-supply-bring-stepper span {
-  min-width: 40px;
-  text-align: center;
-  font-size: 1rem;
-  font-weight: 800;
-  color: #1d3456;
-}
-
 .subevent-supply-bring-range {
   margin: 0;
-  font-size: 0.78rem;
-  font-weight: 700;
+  font-size: 0.76rem;
+  font-weight: 600;
   color: rgba(27, 47, 76, 0.75);
-  text-align: center;
+  text-align: left;
+}
+
+.subevent-supply-bring-overlay .subevent-group-form-grid {
+  gap: 0.28rem;
 }
 
 .event-topics-header + .popup-body-friends-picker .values-selector-popup .values-option-chip {

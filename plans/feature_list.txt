@@ -310,3 +310,13 @@ game screen / assets screen finish / ticket on main event
 chat channel type (sub event optional / main event / group (stage))
 it should be visible - on chat main window, and the icon should be different on chat message window (make also the title and background color)
 filter on chat main window based on that 3 variations + All also
+
+assets explore popup (there are public / friends assets)
+manager role (if one of the asset of yours has been asigned to an event, you are not an admin, you are amaneger of your asset)
+
+the assests from menubar is a counter and a day range if someone wants to borrom
+(badges should be there, but for different purpose)
+
+assets explore has date filter (so list out items for that date period + capacity)
+
+for event there is an occupy (so all the places has been occupied on event explore)

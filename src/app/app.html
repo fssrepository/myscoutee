@@ -3580,11 +3580,14 @@
           </div>
         </ng-template>
 
-        <section class="experience-form-overlay asset-form-overlay subevent-asset-capacity-overlay" *ngIf="subEventAssetCapacityEditor">
+        <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-capacity-overlay" *ngIf="subEventAssetCapacityEditor">
           <div class="experience-form-overlay-backdrop" (click)="closeSubEventResourceCapacityEditor($event)"></div>
-          <div class="experience-form-popup subevent-asset-capacity-popup">
-            <div class="experience-form-header">
-              <h3>Edit Capacity</h3>
+          <div class="experience-form-popup subevent-form-popup subevent-group-popup">
+            <div class="experience-form-header subevent-group-header">
+              <div class="subevent-group-header-main">
+                <h3>Edit Capacity</h3>
+                <p class="subevent-group-stage-subtitle" *ngIf="subEventAssetCapacityEditor">{{ subEventAssetCapacityEditor.title }}</p>
+              </div>
               <div class="experience-form-header-controls">
                 <button
                   type="button"
@@ -3601,36 +3604,34 @@
                 </button>
               </div>
             </div>
-            <div class="experience-form-body">
-              <div class="experience-form-grid subevent-asset-capacity-grid">
-                <label class="experience-form-row experience-form-row-full">
-                  <span>Asset</span>
-                  <input type="text" [ngModel]="subEventAssetCapacityEditor.title" readonly>
-                </label>
-                <label class="experience-form-row">
-                  <span>Min</span>
-                  <input
-                    type="number"
-                    min="0"
-                    [max]="subEventAssetCapacityEditor.capacityMax"
-                    step="1"
-                    [ngModel]="subEventAssetCapacityEditor.capacityMin"
-                    (ngModelChange)="onSubEventResourceCapacityMinChange($event)"
-                  >
-                </label>
-                <label class="experience-form-row">
-                  <span>Max</span>
-                  <input
-                    type="number"
-                    [min]="subEventAssetCapacityEditor.capacityMin"
-                    [max]="subEventAssetCapacityEditor.capacityLimit"
-                    step="1"
-                    [ngModel]="subEventAssetCapacityEditor.capacityMax"
-                    (ngModelChange)="onSubEventResourceCapacityMaxChange($event)"
-                  >
+            <section class="experience-form-panel subevent-form-panel subevent-group-form-panel">
+              <div class="experience-form-grid subevent-group-form-grid">
+                <label class="subevent-capacity-range-field">
+                  <span>Capacity</span>
+                  <div class="subevent-capacity-range">
+                    <input
+                      type="number"
+                      min="0"
+                      [max]="subEventAssetCapacityEditor.capacityMax"
+                      step="1"
+                      [ngModel]="subEventAssetCapacityEditor.capacityMin"
+                      (ngModelChange)="onSubEventResourceCapacityMinChange($event)"
+                      placeholder="Min"
+                    />
+                    <span class="subevent-capacity-separator">-</span>
+                    <input
+                      type="number"
+                      [min]="subEventAssetCapacityEditor.capacityMin"
+                      [max]="subEventAssetCapacityEditor.capacityLimit"
+                      step="1"
+                      [ngModel]="subEventAssetCapacityEditor.capacityMax"
+                      (ngModelChange)="onSubEventResourceCapacityMaxChange($event)"
+                      placeholder="Max"
+                    />
+                  </div>
                 </label>
               </div>
-            </div>
+            </section>
           </div>
         </section>
 
@@ -3731,21 +3732,47 @@
           </div>
         </section>
 
-        <section class="experience-delete-confirm" *ngIf="subEventSupplyBringDialog">
-          <div class="experience-delete-confirm-backdrop" (click)="cancelSubEventSupplyBringDialog()"></div>
-          <div class="experience-delete-confirm-panel">
-            <h4>Bring supplies</h4>
-            <p>{{ subEventSupplyBringDialog.title }}</p>
-            <div class="subevent-supply-bring-stepper">
-              <button type="button" class="experience-inline-btn" (click)="adjustSubEventSupplyBringQuantity(-1, $event)">-</button>
-              <span>{{ subEventSupplyBringDialog.quantity }}</span>
-              <button type="button" class="experience-inline-btn" (click)="adjustSubEventSupplyBringQuantity(1, $event)">+</button>
+        <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-supply-bring-overlay" *ngIf="subEventSupplyBringDialog">
+          <div class="experience-form-overlay-backdrop" (click)="cancelSubEventSupplyBringDialog()"></div>
+          <div class="experience-form-popup subevent-form-popup subevent-group-popup">
+            <div class="experience-form-header subevent-group-header">
+              <div class="subevent-group-header-main">
+                <h3>Bring Items</h3>
+                <p class="subevent-group-stage-subtitle" *ngIf="subEventSupplyBringDialog">{{ subEventSupplyBringDialog.title }}</p>
+              </div>
+              <div class="experience-form-header-controls">
+                <button
+                  type="button"
+                  class="popup-header-add-btn subevent-leaderboard-save-btn"
+                  [class.form-save-invalid]="!canSubmitSubEventSupplyBringDialog()"
+                  [disabled]="!canSubmitSubEventSupplyBringDialog()"
+                  (click)="confirmSubEventSupplyBringDialog($event)"
+                  aria-label="Save supply quantity"
+                >
+                  <mat-icon>done</mat-icon>
+                </button>
+                <button type="button" class="experience-form-close-btn" (click)="cancelSubEventSupplyBringDialog()" aria-label="Close bring items">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
             </div>
-            <p class="subevent-supply-bring-range">Range: {{ subEventSupplyBringDialog.min }} - {{ subEventSupplyBringDialog.max }}</p>
-            <div class="popup-actions">
-              <button type="button" class="link-btn neutral-btn" (click)="cancelSubEventSupplyBringDialog()">Cancel</button>
-              <button type="button" class="link-btn primary-btn" (click)="confirmSubEventSupplyBringDialog($event)">Save</button>
-            </div>
+            <section class="experience-form-panel subevent-form-panel subevent-group-form-panel">
+              <div class="experience-form-grid subevent-group-form-grid">
+                <label class="experience-title-field">
+                  <span>Items</span>
+                  <input
+                    type="number"
+                    [min]="subEventSupplyBringDialog.min"
+                    [max]="subEventSupplyBringDialog.max"
+                    step="1"
+                    [ngModel]="subEventSupplyBringDialog.quantity"
+                    (ngModelChange)="onSubEventSupplyBringQuantityChange($event)"
+                    placeholder="0"
+                  />
+                </label>
+                <p class="subevent-supply-bring-range">Range: {{ subEventSupplyBringDialog.min }} - {{ subEventSupplyBringDialog.max }}</p>
+              </div>
+            </section>
           </div>
         </section>
       </div>
