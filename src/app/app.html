@@ -2937,6 +2937,7 @@
         [class.popup-header-with-activities-progress]="stackedPopup === 'eventExplore'"
         [class.popup-header-with-chat-progress]="stackedPopup === 'chat' && selectedChat"
         [class.popup-header-members-invite-mobile-layout]="stackedPopup === 'activityMembers' || isSubEventMembersPopup()"
+        [class.popup-header-activity-members-pending-layout]="stackedPopup === 'activityMembers'"
       >
         <div class="popup-title popup-title-chat" *ngIf="stackedPopup === 'chat' && selectedChat; else stackedHeaderDefaultTitle">
           <div class="popup-chat-title-block">
@@ -2971,6 +2972,20 @@
             <mat-icon>person_add</mat-icon>
             <span>Invite</span>
           </span>
+        </button>
+        <button
+          type="button"
+          class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select subevent-members-pending-toggle activity-members-header-pending-toggle"
+          *ngIf="stackedPopup === 'activityMembers'"
+          [class.is-active]="activityMembersPendingOnly"
+          (click)="toggleActivityMembersPendingOnly($event)"
+          [attr.aria-label]="activityMembersPendingOnly ? 'Show all members' : 'Show pending members only'"
+        >
+          <span class="status-option-content activities-hosting-draft-content">
+            <mat-icon class="activities-toggle-icon">pending_actions</mat-icon>
+            <span class="activities-hosting-draft-label">Pending only</span>
+          </span>
+          <span class="rate-filter-count-badge rate-filter-trigger-badge activity-members-header-pending-badge" *ngIf="activityMembersPendingCount() > 0">{{ activityMembersPendingCount() }}</span>
         </button>
         <span class="header-members-count subevent-header-members-count members-header-summary-badge" *ngIf="isSubEventMembersPopup()">
           {{ subEventMembersHeaderSummary() }}

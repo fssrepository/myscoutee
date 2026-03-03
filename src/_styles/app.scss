@@ -4405,6 +4405,36 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  .popup-header.popup-header-activity-members-pending-layout {
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+  }
+
+  .popup-header.popup-header-activity-members-pending-layout .activity-members-header-pending-toggle {
+    grid-column: 3 / 4;
+    grid-row: 1 / 2;
+    margin-left: 0;
+  }
+
+  .popup-header.popup-header-activity-members-pending-layout .popup-close {
+    grid-column: 4 / 5;
+    grid-row: 1 / 2;
+  }
+
+  .popup-header.popup-header-activity-members-pending-layout .members-header-summary-badge {
+    grid-column: 1 / 5;
+    grid-row: 2 / 3;
+  }
+}
+
+.activity-members-header-pending-toggle {
+  min-height: 34px;
+  margin-left: 0;
+}
+
+.activity-members-header-pending-toggle .activity-members-header-pending-badge {
+  top: -8px;
+  right: -8px;
 }
 
 .popup-panel-members {

@@ -905,6 +905,7 @@ export class App {
   protected selectedActivityMembersRowId: string | null = null;
   protected selectedActivityMembersRow: ActivityListRow | null = null;
   protected activityMembersReadOnly = false;
+  protected activityMembersPendingOnly = false;
   protected activityInviteSort: ActivityInviteSort = 'recent';
   protected showActivityInviteSortPicker = false;
   protected selectedActivityInviteUserIds: string[] = [];
@@ -6067,6 +6068,7 @@ export class App {
     this.inlineItemActionMenu = null;
     this.subEventMemberRolePickerUserId = null;
     this.activityMembersReadOnly = false;
+    this.activityMembersPendingOnly = false;
     this.selectedActivityMembers = [];
     this.selectedActivityMembersTitle = '';
     this.selectedActivityMembersRowId = null;
@@ -6167,6 +6169,7 @@ export class App {
     if (this.stackedPopup === 'activityMembers') {
       this.pendingActivityMemberDelete = null;
       this.activityMembersReadOnly = false;
+      this.activityMembersPendingOnly = false;
       this.selectedActivityMembers = [];
       this.selectedActivityMembersTitle = '';
       this.selectedActivityMembersRowId = null;
@@ -10440,6 +10443,7 @@ export class App {
       this.activityMembersPopupOrigin = null;
     }
     this.pendingActivityMemberDelete = null;
+    this.activityMembersPendingOnly = false;
     this.selectedActivityMembersRowId = `${row.type}:${row.id}`;
     this.selectedActivityMembers = this.sortActivityMembersByActionTimeAsc(this.getActivityMembersByRow(row));
     this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
@@ -10640,7 +10644,20 @@ export class App {
   }
 
   protected get activityMembersOrdered(): ActivityMemberEntry[] {
-    return this.sortActivityMembersByActionTimeAsc(this.selectedActivityMembers);
+    const ordered = this.sortActivityMembersByActionTimeAsc(this.selectedActivityMembers);
+    if (!this.activityMembersPendingOnly) {
+      return ordered;
+    }
+    return ordered.filter(member => member.status === 'pending');
+  }
+
+  protected activityMembersPendingCount(): number {
+    return this.selectedActivityMembers.filter(member => member.status === 'pending').length;
+  }
+
+  protected toggleActivityMembersPendingOnly(event?: Event): void {
+    event?.stopPropagation();
+    this.activityMembersPendingOnly = !this.activityMembersPendingOnly;
   }
 
   protected activityMembersHeaderSummary(): string {
