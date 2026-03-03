@@ -8950,14 +8950,17 @@ textarea {
 .ticket-code-sheet,
 .ticket-scanner-sheet {
   width: min(760px, 100%);
-  border: 1px solid rgba(55, 86, 128, 0.22);
   border-radius: 14px;
-  background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
-  box-shadow: 0 16px 36px rgba(17, 32, 58, 0.2);
   padding: 1rem 1rem 1.12rem;
   display: grid;
   gap: 0.72rem;
   justify-items: center;
+}
+
+.ticket-code-sheet,
+.ticket-scanner-sheet,
+.ticket-scanner-frame {
+  --ticket-popup-content-width: min(680px, 96vw);
 }
 
 .ticket-code-sheet {
@@ -8965,7 +8968,7 @@ textarea {
 }
 
 .ticket-code-qr-wrap {
-  width: min(560px, 92vw);
+  width: var(--ticket-popup-content-width);
   aspect-ratio: 1 / 1;
   border: 1px solid rgba(40, 71, 112, 0.24);
   border-radius: 12px;
@@ -8985,13 +8988,13 @@ textarea {
 
 .ticket-scanner-sheet {
   justify-items: center;
-  align-content: center;
-  gap: 0.82rem;
+  align-content: start;
+  gap: 0.72rem;
 }
 
 .ticket-scan-person-card {
-  width: min(560px, 92vw);
-  height: 124px;
+  width: var(--ticket-popup-content-width);
+  height: 136px;
   border: 1px solid rgba(57, 90, 135, 0.24);
   border-radius: 12px;
   padding: 0.56rem 0.72rem 0.62rem;
@@ -9030,14 +9033,14 @@ textarea {
 
 .ticket-scan-person-body {
   display: grid;
-  grid-template-columns: 66px minmax(0, 1fr);
-  gap: 0.64rem;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 0.72rem;
   align-items: center;
 }
 
 .ticket-scan-person-avatar {
-  width: 66px;
-  height: 66px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
   border: 2px solid rgba(48, 80, 124, 0.28);
   background: linear-gradient(180deg, #2f6fbe 0%, #2a588f 100%);
@@ -9071,19 +9074,17 @@ textarea {
 }
 
 .ticket-scanner-frame {
-  width: min(560px, 92vw);
+  width: var(--ticket-popup-content-width);
   position: relative;
   display: grid;
   grid-template-rows: auto auto;
-  gap: 0;
+  gap: 0.72rem;
 }
 
 .ticket-scanner-result-slot {
-  width: min(560px, 92vw);
-  height: 124px;
+  width: var(--ticket-popup-content-width);
+  height: 136px;
   position: relative;
-  z-index: 7;
-  margin-bottom: -1px;
 }
 
 .ticket-scanner-result-inline,
@@ -9244,7 +9245,7 @@ textarea {
   }
 
   .ticket-scanner-result-slot {
-    margin-bottom: -1px;
+    margin-bottom: 0;
   }
 
   .ticket-scan-person-body {
@@ -15001,12 +15002,14 @@ textarea {
 .demo-login-panel {
   position: relative;
   z-index: 1;
-  width: min(980px, calc(100vw - 1.3rem));
+  width: min(1180px, calc(100vw - 1.3rem));
   max-height: calc(100vh - 1.4rem);
-  overflow: auto;
+  overflow: hidden;
   border-radius: 14px;
   background: #fff;
   padding: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .demo-login-header {
@@ -15081,6 +15084,9 @@ textarea {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.45rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
 }
 
 .demo-user-item {

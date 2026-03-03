@@ -3293,7 +3293,6 @@
       <div *ngIf="stackedPopup === 'ticketCode'" class="ticket-code-popup">
         <div class="ticket-code-sheet" *ngIf="selectedTicketRow">
           <div class="ticket-scan-person-card ticket-scan-person-card-ticket ticket-code-info-card">
-            <h4 class="ticket-scan-person-title">Event</h4>
             <div class="ticket-scan-person-body">
               <div class="ticket-scan-person-avatar" [style.backgroundImage]="ticketCodeAvatarUrl() ? 'url(' + ticketCodeAvatarUrl() + ')' : null">
                 <span *ngIf="!ticketCodeAvatarUrl()">{{ ticketCodeInitials() }}</span>
@@ -3316,7 +3315,6 @@
           <div class="ticket-scanner-frame">
             <div class="ticket-scanner-result-slot">
               <div class="ticket-scan-person-card ticket-scan-person-card-success ticket-scanner-result-inline" *ngIf="ticketScannerResult; else ticketScannerResultPlaceholder">
-                <h4 class="ticket-scan-person-title">Read successful</h4>
                 <div class="ticket-scan-person-body">
                   <div class="ticket-scan-person-avatar" [style.backgroundImage]="ticketScannerResultAvatarUrl() ? 'url(' + ticketScannerResultAvatarUrl() + ')' : null">
                     <span *ngIf="!ticketScannerResultAvatarUrl()">{{ ticketScannerResultInitials() }}</span>
@@ -3330,7 +3328,6 @@
               </div>
               <ng-template #ticketScannerResultPlaceholder>
                 <div class="ticket-scan-person-card ticket-scan-person-card-pending ticket-scanner-result-placeholder">
-                  <h4 class="ticket-scan-person-title">Read successful</h4>
                   <p class="ticket-scanner-result-placeholder-text">Scan a ticket to show attendee details.</p>
                 </div>
               </ng-template>
