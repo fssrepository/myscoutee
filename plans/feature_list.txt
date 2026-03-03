@@ -305,6 +305,8 @@ ticket qr code generator for event + voice recorder for person (voice can be att
 accept chat - tick right hand side
 
 -----
+
+!!!!!!!!!!!!!!!!!!!!! - chat channel type
 game screen / assets screen finish / ticket on main event
 
 chat channel type (sub event optional / main event / group (stage))
@@ -336,10 +338,17 @@ supplies stays does mean, remove the number of supplies what the manager added i
 
 report a user menu, request form etc. (for me by the users)
 
-ticket button on event (it's just generating a ticket) - from the menubar in the assets menu tickets will be avaiable
-(qr code reader + bought ticket)
+with game page development:
+1)  activities - ratings
+when you set a rate blink effect (both on mobile and desktop) on the rate bar and the star badge (make it nicely)
+2) for mobile touch animation on each clickable button whatever
+3) feedback/report a user
 
-if someone has been scanned that the member panel might show blue tick on his image
+members / pending badge on desktop maybe below the buttons right hand side
 
-if you published the event you might not able to edit each things in it (lets think about it
-maybe automatically republishes it while editing nothing more)
+group panel badges might not need to be there - group chat should go to group
+so it might show that asset popup of subevent screen (maybe two buttons)
+
+maybe a menu view event/view group and a badge just before x closing button
+maybe showing the same menu with drop down arrow as you have on role selector
+so it will show the assets button transformed to menu items and badge
