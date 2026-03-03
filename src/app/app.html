@@ -2936,6 +2936,7 @@
         [class.popup-header-chat]="stackedPopup === 'chat' && selectedChat"
         [class.popup-header-with-activities-progress]="stackedPopup === 'eventExplore'"
         [class.popup-header-with-chat-progress]="stackedPopup === 'chat' && selectedChat"
+        [class.popup-header-members-invite-mobile-layout]="stackedPopup === 'activityMembers' || isSubEventMembersPopup()"
       >
         <div class="popup-title popup-title-chat" *ngIf="stackedPopup === 'chat' && selectedChat; else stackedHeaderDefaultTitle">
           <div class="popup-chat-title-block">
@@ -2971,11 +2972,14 @@
             <span>Invite</span>
           </span>
         </button>
-        <span class="header-members-count subevent-header-members-count" *ngIf="isSubEventMembersPopup()">
+        <span class="header-members-count subevent-header-members-count members-header-summary-badge" *ngIf="isSubEventMembersPopup()">
           {{ subEventMembersHeaderSummary() }}
         </span>
-        <span class="header-members-count" *ngIf="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers'">
-          {{ stackedPopup === 'activityMembers' ? activityMembersHeaderSummary() : (selectedChatMembers.length + ' members') }}
+        <span class="header-members-count members-header-summary-badge" *ngIf="stackedPopup === 'activityMembers'">
+          {{ activityMembersHeaderSummary() }}
+        </span>
+        <span class="header-members-count" *ngIf="stackedPopup === 'chatMembers'">
+          {{ selectedChatMembers.length + ' members' }}
         </span>
         <button
           type="button"

@@ -4363,6 +4363,50 @@
   margin-left: 0;
 }
 
+@media (max-width: 760px) {
+  .popup-header.popup-header-members-invite-mobile-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-rows: auto auto;
+    column-gap: 0.32rem;
+    row-gap: 0.24rem;
+    align-items: center;
+  }
+
+  .popup-header.popup-header-members-invite-mobile-layout .popup-title {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
+    min-width: 0;
+    margin-right: 0;
+  }
+
+  .popup-header.popup-header-members-invite-mobile-layout .activity-members-header-invite-trigger {
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
+    margin-left: 0;
+  }
+
+  .popup-header.popup-header-members-invite-mobile-layout .popup-close {
+    grid-column: 3 / 4;
+    grid-row: 1 / 2;
+    margin-left: 0;
+  }
+
+  .popup-header.popup-header-members-invite-mobile-layout .members-header-summary-badge {
+    grid-column: 1 / 4;
+    grid-row: 2 / 3;
+    justify-self: auto;
+    margin-left: 0;
+  }
+
+  .popup-header.popup-header-members-invite-mobile-layout .popup-chat-title-block p {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 .popup-panel-members {
   height: min(86vh, 900px);
 }
