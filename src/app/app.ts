@@ -12105,9 +12105,12 @@ export class App {
     this.pendingSubEventAssetCreateAssignment = null;
     this.showAssetForm = true;
     this.showAssetVisibilityPicker = false;
+    const forcePrivateVisibility = this.isAssetPopup;
     if (card) {
       this.editingAssetId = card.id;
-      this.assetFormVisibility = this.assetVisibilityById[card.id] ?? 'Public';
+      this.assetFormVisibility = forcePrivateVisibility
+        ? 'Invitation only'
+        : (this.assetVisibilityById[card.id] ?? 'Public');
       this.assetForm = {
         type: card.type,
         title: card.title,
@@ -12121,7 +12124,7 @@ export class App {
       return;
     }
     this.editingAssetId = null;
-    this.assetFormVisibility = 'Public';
+    this.assetFormVisibility = forcePrivateVisibility ? 'Invitation only' : 'Public';
     this.assetForm = {
       type: this.activeAssetType,
       title: '',
@@ -12162,8 +12165,9 @@ export class App {
       imageUrl: this.assetForm.imageUrl.trim() || this.defaultAssetImage(this.assetForm.type),
       sourceLink: this.assetForm.sourceLink.trim() || this.defaultAssetSourceLink(this.assetForm.type)
     };
+    const resolvedVisibility: EventVisibility = this.isAssetPopup ? 'Invitation only' : this.assetFormVisibility;
     if (this.editingAssetId) {
-      this.assetVisibilityById[this.editingAssetId] = this.assetFormVisibility;
+      this.assetVisibilityById[this.editingAssetId] = resolvedVisibility;
       this.assetCards = this.assetCards.map(card =>
         card.id === this.editingAssetId
           ? {
@@ -12174,7 +12178,7 @@ export class App {
       );
     } else {
       const id = `asset-${Date.now()}`;
-      this.assetVisibilityById[id] = this.assetFormVisibility;
+      this.assetVisibilityById[id] = resolvedVisibility;
       this.assetCards = [
         {
           id,
@@ -12612,7 +12616,10 @@ export class App {
       return;
     }
     this.maybeDismissActivityRateEditor(target);
-    if (this.inlineItemActionMenu && !target.closest('.item-action-menu') && !target.closest('.experience-action-menu-trigger')) {
+    const clickedInlineActionControl = this.inlineItemActionMenu?.scope === 'subEventAsset'
+      ? this.didClickSubEventAssetActionControl(event)
+      : (target.closest('.item-action-menu') !== null || target.closest('.experience-action-menu-trigger') !== null);
+    if (this.inlineItemActionMenu && !clickedInlineActionControl) {
       this.inlineItemActionMenu = null;
       this.subEventMemberRolePickerUserId = null;
     }
@@ -12661,6 +12668,26 @@ export class App {
     if (this.showSubEventsDisplayModePicker && !target.closest('.subevents-mode-picker')) {
       this.showSubEventsDisplayModePicker = false;
     }
+  }
+
+  private didClickSubEventAssetActionControl(event: MouseEvent): boolean {
+    const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+    if (path.length > 0) {
+      for (const node of path) {
+        if (!(node instanceof Element)) {
+          continue;
+        }
+        if (node.classList.contains('item-action-menu') || node.classList.contains('experience-action-menu-trigger')) {
+          return true;
+        }
+      }
+      return false;
+    }
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return false;
+    }
+    return target.closest('.item-action-menu') !== null || target.closest('.experience-action-menu-trigger') !== null;
   }
 
   private getInitialUserId(): string {

@@ -320,3 +320,6 @@ the assests from menubar is a counter and a day range if someone wants to borrom
 assets explore has date filter (so list out items for that date period + capacity)
 
 for event there is an occupy (so all the places has been occupied on event explore)
+
+when you land naturally there is a price for that item - you can set on the asstes editor screen
+(not sure whether we want to develop that route at the meoment - assets explore route)

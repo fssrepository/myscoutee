@@ -1695,30 +1695,6 @@
             <div class="experience-form-header">
               <h3>{{ assetFormTitle }}</h3>
               <div class="experience-form-header-controls">
-                <div class="event-visibility-picker asset-visibility-picker">
-                  <button
-                    type="button"
-                    class="popup-view-fab event-visibility-trigger"
-                    [ngClass]="eventVisibilityClass(assetFormVisibility)"
-                    (click)="toggleAssetVisibilityPicker($event)"
-                    aria-label="Open asset visibility selector"
-                  >
-                    <mat-icon [class]="eventVisibilityClass(assetFormVisibility)">{{ eventVisibilityIcon(assetFormVisibility) }}</mat-icon>
-                    <span>{{ assetFormVisibility }}</span>
-                  </button>
-                  <div class="activities-view-picker-panel" *ngIf="showAssetVisibilityPicker">
-                    <button
-                      type="button"
-                      class="activities-view-option"
-                      [ngClass]="eventVisibilityClass(option)"
-                      *ngFor="let option of eventVisibilityOptions"
-                      (click)="selectAssetVisibility(option, $event)"
-                    >
-                      <mat-icon [class]="eventVisibilityClass(option)">{{ eventVisibilityIcon(option) }}</mat-icon>
-                      <span>{{ option }}</span>
-                    </button>
-                  </div>
-                </div>
                 <button type="button" class="popup-header-add-btn subevent-leaderboard-save-btn" (click)="saveAssetCard()" aria-label="Save asset">
                   <mat-icon>done</mat-icon>
                 </button>
