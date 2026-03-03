@@ -12,6 +12,7 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatInputModule } from '@angular/material/input';
 import { MatTimepickerModule } from '@angular/material/timepicker';
 import { FormsModule } from '@angular/forms';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { AlertService } from './shared/alert.service';
 import {
   DEMO_CHAT_BY_USER,
@@ -520,6 +521,7 @@ interface AssetCard {
   details: string;
   imageUrl: string;
   sourceLink: string;
+  routes?: string[];
   requests: AssetMemberRequest[];
 }
 
@@ -533,6 +535,7 @@ interface SubEventResourceCard {
   details: string;
   imageUrl: string;
   sourceLink: string;
+  routes: string[];
   capacityTotal: number;
   accepted: number;
   pending: number;
@@ -543,6 +546,7 @@ interface SubEventAssignedAssetSettings {
   capacityMin: number;
   capacityMax: number;
   addedByUserId: string;
+  routes: string[];
 }
 
 interface SubEventAssetMembersContext {
@@ -664,6 +668,7 @@ const APP_DATE_FORMATS = {
     MatInputModule,
     MatTimepickerModule,
     FormsModule,
+    DragDropModule,
     LazyBgImageDirective
   ],
   providers: [
@@ -943,7 +948,8 @@ export class App {
     capacityTotal: 4,
     details: '',
     imageUrl: '',
-    sourceLink: ''
+    sourceLink: '',
+    routes: []
   };
   protected assetFormVisibility: EventVisibility = 'Public';
   private readonly assetVisibilityById: Record<string, EventVisibility> = {};
@@ -1401,6 +1407,8 @@ export class App {
   private pendingSubEventAssetCreateAssignment: { subEventId: string; type: AssetType } | null = null;
   protected subEventAssetCapacityEditor:
     { subEventId: string; type: AssetType; assetId: string; title: string; capacityMin: number; capacityMax: number; capacityLimit: number } | null = null;
+  protected subEventAssetRouteEditor:
+    { subEventId: string; type: 'Car'; assetId: string; title: string; routes: string[] } | null = null;
   protected subEventSupplyBringDialog:
     { subEventId: string; cardId: string; title: string; quantity: number; min: number; max: number } | null = null;
   protected selectedSubEventSupplyContributionContext: { subEventId: string; assetId: string; title: string } | null = null;
@@ -3941,6 +3949,7 @@ export class App {
     this.subEventAssetAssignContext = null;
     this.selectedSubEventAssignAssetIds = [];
     this.subEventAssetCapacityEditor = null;
+    this.subEventAssetRouteEditor = null;
     this.subEventResourceFilter = type === 'Members' ? 'Members' : type;
     if (isFromSubEventsSuperPopup) {
       this.superStackedPopup = null;
@@ -4225,6 +4234,7 @@ export class App {
     const resourceType = this.subEventResourceFilter as AssetType;
     this.openAssetForm();
     this.assetForm.type = resourceType;
+    this.assetForm.routes = this.normalizeAssetRoutes(resourceType, this.assetForm.routes, '');
     this.pendingSubEventAssetCreateAssignment = subEventId
       ? { subEventId, type: resourceType }
       : null;
@@ -4387,6 +4397,133 @@ export class App {
     return settings[card.sourceAssetId]?.addedByUserId === this.activeUser.id;
   }
 
+  protected canEditSubEventResourceRoute(card: SubEventResourceCard): boolean {
+    return this.canEditSubEventResourceCapacity(card) && card.type === 'Car';
+  }
+
+  protected subEventResourceRouteMenuLabel(_card: SubEventResourceCard): string {
+    return 'Edit Route';
+  }
+
+  protected openSubEventResourceRouteEditor(card: SubEventResourceCard, event: Event): void {
+    event.stopPropagation();
+    if (!this.selectedSubEventBadgeContext || !card.sourceAssetId || !this.canEditSubEventResourceRoute(card)) {
+      return;
+    }
+    const type = card.type;
+    if (type !== 'Car') {
+      return;
+    }
+    const subEventId = this.selectedSubEventBadgeContext.subEvent.id;
+    const settings = this.getSubEventAssignedAssetSettings(subEventId, type);
+    const source = this.assetCards.find(item => item.id === card.sourceAssetId && item.type === type);
+    const routes = this.normalizeAssetRoutes(type, settings[card.sourceAssetId]?.routes ?? source?.routes, '');
+    this.subEventAssetRouteEditor = {
+      subEventId,
+      type,
+      assetId: card.sourceAssetId,
+      title: card.title,
+      routes
+    };
+    this.subEventAssetCapacityEditor = null;
+    this.inlineItemActionMenu = null;
+  }
+
+  protected closeSubEventResourceRouteEditor(event?: Event): void {
+    event?.stopPropagation();
+    this.subEventAssetRouteEditor = null;
+  }
+
+  protected subEventAssetRouteEditorSupportsMultiRoute(): boolean {
+    return !!this.subEventAssetRouteEditor;
+  }
+
+  protected onSubEventAssetRouteStopChange(index: number, value: string): void {
+    const editor = this.subEventAssetRouteEditor;
+    if (!editor || index < 0 || index >= editor.routes.length) {
+      return;
+    }
+    editor.routes[index] = value;
+  }
+
+  protected addSubEventAssetRouteStop(): void {
+    const editor = this.subEventAssetRouteEditor;
+    if (!editor) {
+      return;
+    }
+    editor.routes = [...editor.routes, ''];
+  }
+
+  protected removeSubEventAssetRouteStop(index: number): void {
+    const editor = this.subEventAssetRouteEditor;
+    if (!editor || index < 0 || index >= editor.routes.length) {
+      return;
+    }
+    editor.routes.splice(index, 1);
+  }
+
+  protected dropSubEventAssetRouteStop(event: CdkDragDrop<string[]>): void {
+    const editor = this.subEventAssetRouteEditor;
+    if (!editor) {
+      return;
+    }
+    if (event.previousIndex === event.currentIndex) {
+      return;
+    }
+    moveItemInArray(editor.routes, event.previousIndex, event.currentIndex);
+  }
+
+  protected openSubEventAssetRouteStopMap(index: number, event?: Event): void {
+    event?.stopPropagation();
+    const editor = this.subEventAssetRouteEditor;
+    if (!editor) {
+      return;
+    }
+    this.openGoogleMapsSearch(editor.routes[index] ?? '');
+  }
+
+  protected canOpenSubEventAssetRouteMap(): boolean {
+    const editor = this.subEventAssetRouteEditor;
+    return !!editor && editor.routes.some(stop => stop.trim().length > 0);
+  }
+
+  protected openSubEventAssetRouteMap(event?: Event): void {
+    event?.stopPropagation();
+    const editor = this.subEventAssetRouteEditor;
+    if (!editor) {
+      return;
+    }
+    this.openGoogleMapsDirections(editor.routes);
+  }
+
+  protected canSubmitSubEventResourceRouteEditor(): boolean {
+    const editor = this.subEventAssetRouteEditor;
+    return !!editor && editor.routes.some(stop => stop.trim().length > 0);
+  }
+
+  protected saveSubEventResourceRouteEditor(event?: Event): void {
+    event?.stopPropagation();
+    const editor = this.subEventAssetRouteEditor;
+    if (!editor || !this.canSubmitSubEventResourceRouteEditor()) {
+      return;
+    }
+    const key = this.subEventAssetAssignmentKey(editor.subEventId, editor.type);
+    const settings = { ...this.getSubEventAssignedAssetSettings(editor.subEventId, editor.type) };
+    const source = this.assetCards.find(item => item.id === editor.assetId && item.type === editor.type);
+    const current = settings[editor.assetId] ?? {
+      capacityMin: 0,
+      capacityMax: Math.max(0, source?.capacityTotal ?? 0),
+      addedByUserId: this.activeUser.id,
+      routes: []
+    };
+    settings[editor.assetId] = {
+      ...current,
+      routes: this.normalizeAssetRoutes(editor.type, editor.routes, '')
+    };
+    this.subEventAssignedAssetSettingsByKey[key] = settings;
+    this.subEventAssetRouteEditor = null;
+  }
+
   protected runSubEventResourceJoinAction(card: SubEventResourceCard, event: Event): void {
     event.stopPropagation();
     if (!this.canJoinSubEventResourceCard(card) || !card.sourceAssetId) {
@@ -4467,7 +4604,8 @@ export class App {
     const setting = settings[card.sourceAssetId] ?? {
       capacityMin: 0,
       capacityMax: Math.max(0, source.capacityTotal),
-      addedByUserId: this.activeUser.id
+      addedByUserId: this.activeUser.id,
+      routes: this.normalizeAssetRoutes(type, source.routes, '')
     };
     const capacityLimit = Math.max(0, source.capacityTotal);
     const capacityMax = this.clampNumber(Math.trunc(setting.capacityMax), 0, capacityLimit);
@@ -4481,6 +4619,7 @@ export class App {
       capacityMax,
       capacityLimit
     };
+    this.subEventAssetRouteEditor = null;
     this.inlineItemActionMenu = null;
   }
 
@@ -4546,7 +4685,8 @@ export class App {
     const current = settings[editor.assetId] ?? {
       capacityMin: 0,
       capacityMax: editor.capacityLimit,
-      addedByUserId: this.activeUser.id
+      addedByUserId: this.activeUser.id,
+      routes: []
     };
     settings[editor.assetId] = {
       ...current,
@@ -5081,7 +5221,8 @@ export class App {
       next[assetId] = {
         capacityMin,
         capacityMax,
-        addedByUserId: prev?.addedByUserId ?? this.activeUser.id
+        addedByUserId: prev?.addedByUserId ?? this.activeUser.id,
+        routes: this.normalizeAssetRoutes(type, prev?.routes, '')
       };
     }
     this.subEventAssignedAssetSettingsByKey[key] = next;
@@ -5157,7 +5298,8 @@ export class App {
       nextSettings[assetId] = {
         capacityMin,
         capacityMax,
-        addedByUserId: prev?.addedByUserId ?? this.activeUser.id
+        addedByUserId: prev?.addedByUserId ?? this.activeUser.id,
+        routes: this.normalizeAssetRoutes(context.type, prev?.routes, '')
       };
     }
     if (context.type === 'Supplies') {
@@ -5229,6 +5371,7 @@ export class App {
           details: pending ? 'Pending member request for this sub event.' : 'Accepted for this sub event.',
           imageUrl: member.avatarUrl,
           sourceLink: '',
+          routes: [],
           capacityTotal: capacity,
           accepted,
           pending: pending ? 1 : 0,
@@ -5254,6 +5397,7 @@ export class App {
       details: card.details,
       imageUrl: card.imageUrl,
       sourceLink: card.sourceLink,
+      routes: this.normalizeAssetRoutes(card.type, settings[card.id]?.routes ?? card.routes, ''),
       capacityTotal: settings[card.id]?.capacityMax ?? card.capacityTotal,
       accepted: card.type === 'Supplies' ? this.subEventSupplyProvidedCount(card.id, subEvent.id) : this.assetAcceptedCount(card),
       pending: this.assetPendingCount(card),
@@ -5268,6 +5412,25 @@ export class App {
       return `${supplied} / 1 - ${card.capacityTotal}`;
     }
     return `${card.accepted} / ${card.capacityTotal}`;
+  }
+
+  protected canOpenSubEventResourceMap(card: SubEventResourceCard): boolean {
+    if (!card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
+      return false;
+    }
+    return card.routes.some(stop => stop.trim().length > 0);
+  }
+
+  protected openSubEventResourceMap(card: SubEventResourceCard, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.canOpenSubEventResourceMap(card)) {
+      return;
+    }
+    if (card.type === 'Accommodation') {
+      this.openGoogleMapsSearch(card.routes[0] ?? card.city);
+      return;
+    }
+    this.openGoogleMapsDirections(card.routes);
   }
 
   protected subEventModeClass(optional: boolean): string {
@@ -7218,6 +7381,7 @@ export class App {
     this.subEventAssetAssignContext = null;
     this.selectedSubEventAssignAssetIds = [];
     this.subEventAssetCapacityEditor = null;
+    this.subEventAssetRouteEditor = null;
     this.subEventSupplyBringDialog = null;
     this.selectedSubEventSupplyContributionContext = null;
     this.pendingSubEventSupplyContributionDelete = null;
@@ -7361,6 +7525,7 @@ export class App {
       this.subEventAssetAssignContext = null;
       this.selectedSubEventAssignAssetIds = [];
       this.subEventAssetCapacityEditor = null;
+      this.subEventAssetRouteEditor = null;
       this.subEventSupplyBringDialog = null;
       this.selectedSubEventSupplyContributionContext = null;
       this.pendingSubEventSupplyContributionDelete = null;
@@ -10778,6 +10943,10 @@ export class App {
     return `${row.type}:${row.id}`;
   }
 
+  protected trackByIndex(index: number): number {
+    return index;
+  }
+
   protected shouldShowActivityGroupMarker(groupIndex: number): boolean {
     if (groupIndex > 0) {
       return true;
@@ -13190,6 +13359,22 @@ export class App {
     return `${this.assetOccupiedCount(card)} / ${card.capacityTotal}`;
   }
 
+  protected canOpenAssetMap(card: AssetCard): boolean {
+    if (card.type !== 'Accommodation') {
+      return false;
+    }
+    return this.normalizeAssetRoutes(card.type, card.routes, '').some(stop => stop.trim().length > 0);
+  }
+
+  protected openAssetMap(card: AssetCard, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.canOpenAssetMap(card)) {
+      return;
+    }
+    const routes = this.normalizeAssetRoutes(card.type, card.routes, '');
+    this.openGoogleMapsSearch(routes[0] ?? '');
+  }
+
   protected assetMemberStatusClass(member: AssetMemberRequest): string {
     return member.status === 'pending' ? 'asset-member-pending' : 'asset-member-accepted';
   }
@@ -13243,7 +13428,8 @@ export class App {
         capacityTotal: card.capacityTotal,
         details: card.details,
         imageUrl: card.imageUrl,
-        sourceLink: card.sourceLink
+        sourceLink: card.sourceLink,
+        routes: this.normalizeAssetRoutes(card.type, card.routes, '')
       };
       return;
     }
@@ -13257,7 +13443,8 @@ export class App {
       capacityTotal: this.activeAssetType === 'Supplies' ? 6 : 4,
       details: '',
       imageUrl: '',
-      sourceLink: ''
+      sourceLink: '',
+      routes: this.normalizeAssetRoutes(this.activeAssetType, [], '')
     };
   }
 
@@ -13272,10 +13459,89 @@ export class App {
     return `${this.editingAssetId ? 'Edit' : 'Add'} ${this.assetForm.type}`;
   }
 
+  protected assetFormSupportsRouteStops(): boolean {
+    return this.assetForm.type === 'Accommodation';
+  }
+
+  protected assetFormSupportsMultiRoute(): boolean {
+    return false;
+  }
+
+  protected get assetFormRouteStops(): string[] {
+    return this.normalizeAssetRoutes(this.assetForm.type, this.assetForm.routes, '');
+  }
+
+  protected onAssetFormRouteStopChange(index: number, value: string): void {
+    const routes = [...this.assetFormRouteStops];
+    if (index < 0 || index >= routes.length) {
+      return;
+    }
+    routes[index] = value;
+    this.assetForm.routes = this.normalizeAssetRoutes(this.assetForm.type, routes, '');
+  }
+
+  protected addAssetFormRouteStop(): void {
+    if (!this.assetFormSupportsMultiRoute()) {
+      return;
+    }
+    const routes = [...this.assetFormRouteStops, ''];
+    this.assetForm.routes = this.normalizeAssetRoutes(this.assetForm.type, routes, '');
+  }
+
+  protected removeAssetFormRouteStop(index: number): void {
+    if (!this.assetFormSupportsMultiRoute()) {
+      return;
+    }
+    const routes = this.assetFormRouteStops;
+    if (routes.length <= 1 || index < 0 || index >= routes.length) {
+      return;
+    }
+    routes.splice(index, 1);
+    this.assetForm.routes = this.normalizeAssetRoutes(this.assetForm.type, routes, '');
+  }
+
+  protected dropAssetFormRouteStop(event: CdkDragDrop<string[]>): void {
+    if (!this.assetFormSupportsMultiRoute()) {
+      return;
+    }
+    const routes = [...this.assetFormRouteStops];
+    if (event.previousIndex === event.currentIndex) {
+      return;
+    }
+    moveItemInArray(routes, event.previousIndex, event.currentIndex);
+    this.assetForm.routes = this.normalizeAssetRoutes(this.assetForm.type, routes, '');
+  }
+
+  protected openAssetFormRouteStopMap(index: number, event?: Event): void {
+    event?.stopPropagation();
+    const value = this.assetFormRouteStops[index] ?? '';
+    this.openGoogleMapsSearch(value);
+  }
+
+  protected canOpenAssetFormRouteMap(): boolean {
+    return this.assetFormSupportsRouteStops() && this.assetFormRouteStops.some(stop => stop.trim().length > 0);
+  }
+
+  protected openAssetFormRouteMap(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.assetFormSupportsRouteStops()) {
+      return;
+    }
+    if (this.assetForm.type === 'Accommodation') {
+      this.openGoogleMapsSearch(this.assetFormRouteStops[0] ?? '');
+      return;
+    }
+    this.openGoogleMapsDirections(this.assetFormRouteStops);
+  }
+
   protected saveAssetCard(): void {
     const title = this.assetForm.title.trim();
     const city = this.assetForm.city.trim();
-    if (!title || !city) {
+    const routes = this.normalizeAssetRoutes(this.assetForm.type, this.assetForm.routes, '');
+    const resolvedCity = this.assetForm.type === 'Accommodation'
+      ? (routes.find(stop => stop.trim().length > 0)?.trim() || '')
+      : city;
+    if (!title) {
       return;
     }
     const createAssignment = this.pendingSubEventAssetCreateAssignment;
@@ -13283,11 +13549,12 @@ export class App {
       type: this.assetForm.type,
       title,
       subtitle: this.assetForm.subtitle.trim() || this.defaultAssetSubtitle(this.assetForm.type),
-      city,
+      city: resolvedCity,
       capacityTotal: Math.max(1, Number(this.assetForm.capacityTotal) || (this.assetForm.type === 'Supplies' ? 6 : 4)),
       details: this.assetForm.details.trim() || this.defaultAssetDetails(this.assetForm.type),
       imageUrl: this.assetForm.imageUrl.trim() || this.defaultAssetImage(this.assetForm.type),
-      sourceLink: this.assetForm.sourceLink.trim() || this.defaultAssetSourceLink(this.assetForm.type)
+      sourceLink: this.assetForm.sourceLink.trim() || this.defaultAssetSourceLink(this.assetForm.type),
+      routes
     };
     const resolvedVisibility: EventVisibility = this.isAssetPopup ? 'Invitation only' : this.assetFormVisibility;
     if (this.editingAssetId) {
@@ -13321,7 +13588,8 @@ export class App {
         settings[id] = {
           capacityMin: 0,
           capacityMax,
-          addedByUserId: this.activeUser.id
+          addedByUserId: this.activeUser.id,
+          routes: this.normalizeAssetRoutes(createAssignment.type, payload.routes, '')
         };
         this.subEventAssignedAssetSettingsByKey[key] = { ...settings };
         const targetSubEvent = this.findSubEventById(createAssignment.subEventId);
@@ -14086,6 +14354,7 @@ export class App {
         details: 'Pickup from Downtown at 17:30. Luggage: 2 cabin bags.',
         imageUrl: this.defaultAssetImage('Car', 'car-1'),
         sourceLink: this.defaultAssetSourceLink('Car'),
+        routes: ['Austin Downtown', 'Round Rock', 'Lake Travis'],
         requests: [
           this.buildAssetRequest('asset-member-1', 'u4', 'pending', 'Needs one medium suitcase slot.'),
           this.buildAssetRequest('asset-member-2', 'u8', 'accepted', 'Can meet at 6th Street.'),
@@ -14102,6 +14371,7 @@ export class App {
         details: 'Airport run before midnight, fuel split evenly.',
         imageUrl: this.defaultAssetImage('Car', 'car-2'),
         sourceLink: this.defaultAssetSourceLink('Car'),
+        routes: ['Austin Airport', 'Domain Northside'],
         requests: [this.buildAssetRequest('asset-member-3', 'u6', 'pending', 'Landing at 22:40.')]
       },
       {
@@ -14114,6 +14384,7 @@ export class App {
         details: 'Check-in after 15:00. Quiet building, no smoking.',
         imageUrl: this.defaultAssetImage('Accommodation', 'acc-1'),
         sourceLink: this.defaultAssetSourceLink('Accommodation'),
+        routes: ['101 South Congress Ave, Austin'],
         requests: [
           this.buildAssetRequest('asset-member-4', 'u3', 'pending', 'Staying for 2 nights.'),
           this.buildAssetRequest('asset-member-5', 'u10', 'accepted', 'Can share room.')
@@ -14129,6 +14400,7 @@ export class App {
         details: 'Ideal for early risers. Parking available.',
         imageUrl: this.defaultAssetImage('Accommodation', 'acc-2'),
         sourceLink: this.defaultAssetSourceLink('Accommodation'),
+        routes: ['East 6th Street, Austin'],
         requests: [this.buildAssetRequest('asset-member-6', 'u11', 'pending', 'Arrives Friday evening.')]
       },
       {
@@ -14189,12 +14461,65 @@ export class App {
 
   private defaultAssetSourceLink(type: AssetType): string {
     if (type === 'Car') {
-      return 'https://www.google.com/search?tbm=isch&q=carpool+car+vehicle';
+      return 'https://www.google.com/maps/search/?api=1&query=carpool+pickup+point';
     }
     if (type === 'Accommodation') {
-      return 'https://www.google.com/search?tbm=isch&q=apartment+hotel+room+interior';
+      return 'https://www.google.com/maps/search/?api=1&query=accommodation+check-in';
     }
     return 'https://www.google.com/search?tbm=isch&q=event+supplies+equipment+kit';
+  }
+
+  private normalizeAssetRoutes(type: AssetType, routes: string[] | undefined | null, cityFallback: string): string[] {
+    if (type === 'Supplies') {
+      return [];
+    }
+    const cleaned = (routes ?? [])
+      .map(value => value.trim())
+      .filter((value, index, arr) => value.length > 0 && arr.indexOf(value) === index);
+    if (type === 'Accommodation') {
+      const first = cleaned[0] ?? cityFallback.trim();
+      return first ? [first] : [''];
+    }
+    if (cleaned.length > 0) {
+      return cleaned;
+    }
+    const fallback = cityFallback.trim();
+    return fallback ? [fallback] : [''];
+  }
+
+  private openGoogleMapsSearch(query: string): void {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      return;
+    }
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trimmed)}`;
+    this.openExternalUrl(url);
+  }
+
+  private openGoogleMapsDirections(stops: string[]): void {
+    const normalized = stops.map(stop => stop.trim()).filter(stop => stop.length > 0);
+    if (normalized.length === 0) {
+      return;
+    }
+    if (normalized.length === 1) {
+      this.openGoogleMapsSearch(normalized[0]);
+      return;
+    }
+    const origin = normalized[0];
+    const destination = normalized[normalized.length - 1];
+    const waypoints = normalized.slice(1, -1);
+    let url = `https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`;
+    if (waypoints.length > 0) {
+      url += `&waypoints=${encodeURIComponent(waypoints.join('|'))}`;
+    }
+    this.openExternalUrl(url);
+  }
+
+  private openExternalUrl(url: string): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 
   private defaultAssetSubtitle(type: AssetType): string {
