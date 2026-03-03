@@ -306,3 +306,7 @@ accept chat - tick right hand side
 
 -----
 game screen / assets screen finish / ticket on main event
+
+chat channel type (sub event optional / main event / group (stage))
+it should be visible - on chat main window, and the icon should be different on chat message window (make also the title and background color)
+filter on chat main window based on that 3 variations + All also

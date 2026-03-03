@@ -1645,12 +1645,15 @@
                 <button
                   type="button"
                   class="asset-occupancy-badge"
-                  *ngIf="canManageAssetMembers(card)"
-                  (click)="openAssetMembers(card, $event)"
-                  aria-label="Open member requests"
+                  (click)="card.type === 'Supplies' ? $event.stopPropagation() : openAssetMembers(card, $event)"
+                  [attr.aria-label]="card.type === 'Supplies' ? 'Supply count' : 'Open member requests'"
                 >
-                  <span>{{ assetOccupancyLabel(card) }}</span>
-                  <span class="card-badge asset-request-badge" *ngIf="assetPendingCount(card) > 0">{{ assetPendingCount(card) }}</span>
+                  <ng-container *ngIf="card.type === 'Supplies'; else assetMembersIcon">
+                    <span>{{ card.capacityTotal }}</span>
+                  </ng-container>
+                  <ng-template #assetMembersIcon>
+                    <mat-icon>groups</mat-icon>
+                  </ng-template>
                 </button>
               </div>
             <div class="experience-item-head">
@@ -2945,10 +2948,10 @@
           </div>
         </div>
         <ng-template #stackedHeaderDefaultTitle>
-        <div class="popup-title popup-title-members" *ngIf="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers' || isSubEventMembersPopup(); else defaultStackedTitle">
+        <div class="popup-title popup-title-members" *ngIf="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers' || isSubEventMembersPopup() || isSubEventAssetResourcePopup(); else defaultStackedTitle">
           <div class="popup-chat-title-block">
-            <h2>{{ isSubEventMembersPopup() ? subEventMembersHeaderTitle() : (stackedPopup === 'activityMembers' ? 'Members' : 'Chat Members') }}</h2>
-            <p>{{ isSubEventMembersPopup() ? subEventMembersHeaderSubtitle() : (stackedPopup === 'activityMembers' ? (selectedActivityMembersTitle || 'Event') : (selectedChatMembersItem?.title || 'Room')) }}</p>
+            <h2>{{ isSubEventMembersPopup() ? subEventMembersHeaderTitle() : (isSubEventAssetResourcePopup() ? subEventAssetsHeaderTitle() : (stackedPopup === 'activityMembers' ? 'Members' : 'Chat Members')) }}</h2>
+            <p>{{ isSubEventMembersPopup() ? subEventMembersHeaderSubtitle() : (isSubEventAssetResourcePopup() ? subEventAssetsHeaderSubtitle() : (stackedPopup === 'activityMembers' ? (selectedActivityMembersTitle || 'Event') : (selectedChatMembersItem?.title || 'Room'))) }}</p>
           </div>
         </div>
         <ng-template #defaultStackedTitle>
@@ -3424,7 +3427,7 @@
           <button
             type="button"
             class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select subevent-members-pending-toggle"
-            *ngIf="subEventResourceFilter === 'Members'; else subEventAssetsAddButton"
+            *ngIf="subEventResourceFilter === 'Members'; else subEventAssetsActionButtons"
             [class.is-active]="subEventMembersPendingOnly"
             (click)="toggleSubEventMembersPendingOnly($event)"
             [attr.aria-label]="subEventMembersPendingOnly ? 'Show all members' : 'Show pending members only'"
@@ -3435,16 +3438,29 @@
             </span>
             <span class="rate-filter-count-badge rate-filter-trigger-badge subevent-members-pending-toggle-badge" *ngIf="subEventMembersPendingCount() > 0">{{ subEventMembersPendingCount() }}</span>
           </button>
-          <ng-template #subEventAssetsAddButton>
-            <button
-              type="button"
-              class="popup-header-add-btn assets-add-btn"
-              (pointerdown)="handleSubEventQuickAction('Add item flow is ready for backend wiring.', $event)"
-              (click)="$event.preventDefault(); $event.stopPropagation()"
-              aria-label="Add sub-event resource"
-            >
-              <mat-icon>add</mat-icon>
-            </button>
+          <ng-template #subEventAssetsActionButtons>
+            <div class="subevent-assets-toolbar-actions">
+              <button
+                type="button"
+                class="popup-header-add-btn assets-add-btn subevent-assets-plus-btn"
+                *ngIf="subEventResourceFilter === 'Supplies'"
+                (click)="openSubEventResourceCreateForm($event)"
+                aria-label="Add supplies asset"
+              >
+                <mat-icon>add</mat-icon>
+              </button>
+              <button
+                type="button"
+                class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger subevent-assets-assign-trigger"
+                (click)="openSubEventAssetAssignPopup($event)"
+                aria-label="Assign sub-event resource"
+              >
+                <span class="event-editor-members-invite">
+                  <mat-icon>assignment_ind</mat-icon>
+                  <span>Assign</span>
+                </span>
+              </button>
+            </div>
           </ng-template>
         </div>
 
@@ -3524,12 +3540,10 @@
                 <button
                   type="button"
                   class="asset-occupancy-badge"
-                  (pointerdown)="handleSubEventQuickAction('Assignment panel is ready for backend wiring.', $event)"
-                  (click)="$event.preventDefault(); $event.stopPropagation()"
+                  (click)="$event.stopPropagation()"
                   aria-label="Open assignments"
                 >
                   <span>{{ subEventResourceOccupancyLabel(card) }}</span>
-                  <span class="card-badge asset-request-badge" *ngIf="card.pending > 0">{{ card.pending }}</span>
                 </button>
               </div>
               <div class="experience-item-head">
@@ -3543,28 +3557,161 @@
                 <div class="experience-item-actions">
                   <button
                     type="button"
-                    class="experience-action-btn experience-action-edit"
-                    (pointerdown)="handleSubEventQuickAction('Edit flow is ready for backend wiring.', $event)"
-                    (click)="$event.preventDefault(); $event.stopPropagation()"
-                    aria-label="Edit sub-event resource"
+                    class="experience-action-btn experience-action-menu-trigger"
+                    [class.is-open]="isSubEventResourceItemActionMenuOpen(card)"
+                    (click)="toggleSubEventResourceItemActionMenu(card, $event)"
+                    [attr.aria-label]="isSubEventResourceItemActionMenuOpen(card) ? 'Close asset actions' : 'Open asset actions'"
                   >
-                    <mat-icon>edit</mat-icon>
+                    <mat-icon>{{ isSubEventResourceItemActionMenuOpen(card) ? 'close' : 'more_vert' }}</mat-icon>
                   </button>
-                  <button
-                    type="button"
-                    class="experience-action-btn experience-action-delete"
-                    (pointerdown)="handleSubEventQuickAction('Delete flow is ready for backend wiring.', $event)"
-                    (click)="$event.preventDefault(); $event.stopPropagation()"
-                    aria-label="Delete sub-event resource"
+                  <div
+                    class="item-action-menu"
+                    [class.is-open]="isSubEventResourceItemActionMenuOpen(card)"
+                    [class.item-action-menu-mobile]="isMobileView"
+                    [class.item-action-menu-desktop]="!isMobileView"
+                    [class.is-open-up]="isSubEventResourceItemActionMenuOpenUp(card)"
+                    [attr.aria-hidden]="!isSubEventResourceItemActionMenuOpen(card)"
+                    (click)="$event.stopPropagation()"
                   >
-                    <mat-icon>delete</mat-icon>
-                  </button>
+                    <div class="item-action-menu-title">{{ card.title }}</div>
+                    <button type="button" class="item-action-menu-btn item-action-menu-btn-publish" *ngIf="canJoinSubEventResourceCard(card)" (click)="runSubEventResourceJoinAction(card, $event)">
+                      <mat-icon>login</mat-icon>
+                      <span>Join</span>
+                    </button>
+                    <button type="button" class="item-action-menu-btn item-action-menu-btn-warning" *ngIf="canBringSubEventSupplyCard(card)" (click)="openSubEventSupplyBringDialog(card, $event)">
+                      <mat-icon>inventory</mat-icon>
+                      <span>Bring Items</span>
+                    </button>
+                    <button type="button" class="item-action-menu-btn" (click)="runSubEventResourceEditAction(card, $event)">
+                      <mat-icon>edit</mat-icon>
+                      <span>Edit</span>
+                    </button>
+                    <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="runSubEventResourceDeleteAction(card, $event)">
+                      <mat-icon>delete</mat-icon>
+                      <span>Delete</span>
+                    </button>
+                  </div>
                 </div>
               </div>
               <p class="experience-item-description">{{ card.details }}</p>
             </article>
           </div>
         </ng-template>
+
+        <section class="experience-form-overlay asset-form-overlay" *ngIf="showAssetForm">
+          <div class="experience-form-overlay-backdrop" (click)="closeAssetForm()"></div>
+          <div class="experience-form-popup asset-form-popup">
+            <div class="experience-form-header">
+              <h3>{{ assetFormTitle }}</h3>
+              <div class="experience-form-header-controls">
+                <div class="event-visibility-picker asset-visibility-picker">
+                  <button
+                    type="button"
+                    class="popup-view-fab event-visibility-trigger"
+                    [ngClass]="eventVisibilityClass(assetFormVisibility)"
+                    (click)="toggleAssetVisibilityPicker($event)"
+                    aria-label="Open asset visibility selector"
+                  >
+                    <mat-icon [class]="eventVisibilityClass(assetFormVisibility)">{{ eventVisibilityIcon(assetFormVisibility) }}</mat-icon>
+                    <span>{{ assetFormVisibility }}</span>
+                  </button>
+                  <div class="activities-view-picker-panel" *ngIf="showAssetVisibilityPicker">
+                    <button
+                      type="button"
+                      class="activities-view-option"
+                      [ngClass]="eventVisibilityClass(option)"
+                      *ngFor="let option of eventVisibilityOptions"
+                      (click)="selectAssetVisibility(option, $event)"
+                    >
+                      <mat-icon [class]="eventVisibilityClass(option)">{{ eventVisibilityIcon(option) }}</mat-icon>
+                      <span>{{ option }}</span>
+                    </button>
+                  </div>
+                </div>
+                <button type="button" class="popup-header-add-btn subevent-leaderboard-save-btn" (click)="saveAssetCard()" aria-label="Save asset">
+                  <mat-icon>done</mat-icon>
+                </button>
+                <button type="button" class="experience-form-close-btn" (click)="closeAssetForm()" aria-label="Close asset form">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            </div>
+
+            <div class="experience-form-body">
+              <div class="experience-form-grid">
+                <label class="experience-form-row">
+                  <span>Type</span>
+                  <input type="text" [ngModel]="assetForm.type" readonly>
+                </label>
+                <label class="experience-form-row">
+                  <span>Title</span>
+                  <input type="text" [(ngModel)]="assetForm.title" placeholder="Enter title">
+                </label>
+                <label class="experience-form-row">
+                  <span>Subtitle</span>
+                  <input type="text" [(ngModel)]="assetForm.subtitle" placeholder="Enter subtitle">
+                </label>
+                <label class="experience-form-row">
+                  <span>City</span>
+                  <input type="text" [(ngModel)]="assetForm.city" placeholder="Enter city">
+                </label>
+                <label class="experience-form-row">
+                  <span>Capacity</span>
+                  <input type="number" min="1" [(ngModel)]="assetForm.capacityTotal">
+                </label>
+                <label class="experience-form-row">
+                  <span>Source link</span>
+                  <div class="experience-form-inline">
+                    <input type="text" [(ngModel)]="assetForm.sourceLink" placeholder="https://">
+                    <button type="button" class="experience-inline-btn" (click)="refreshAssetFromSourceLink()">Load</button>
+                  </div>
+                </label>
+                <label class="experience-form-row experience-form-row-full">
+                  <span>Details</span>
+                  <textarea rows="3" [(ngModel)]="assetForm.details" placeholder="Describe the asset"></textarea>
+                </label>
+                <label class="experience-form-row experience-form-row-full">
+                  <span>Image URL</span>
+                  <div class="experience-form-inline">
+                    <input type="text" [(ngModel)]="assetForm.imageUrl" placeholder="https://">
+                    <button type="button" class="experience-inline-btn" (click)="triggerAssetImageUpload()">Upload</button>
+                    <input #assetImageInput type="file" accept="image/*" hidden (change)="onAssetImageFileChange($event)">
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="experience-delete-confirm" *ngIf="pendingAssetDeleteCardId">
+          <div class="experience-delete-confirm-backdrop" (click)="cancelAssetDelete()"></div>
+          <div class="experience-delete-confirm-panel">
+            <h4>Delete asset</h4>
+            <p>{{ pendingAssetDeleteLabel() }}</p>
+            <div class="popup-actions">
+              <button type="button" class="link-btn neutral-btn" (click)="cancelAssetDelete()">Cancel</button>
+              <button type="button" class="link-btn experience-delete-btn" (click)="confirmAssetDelete()">Delete</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="experience-delete-confirm" *ngIf="subEventSupplyBringDialog">
+          <div class="experience-delete-confirm-backdrop" (click)="cancelSubEventSupplyBringDialog()"></div>
+          <div class="experience-delete-confirm-panel">
+            <h4>Bring supplies</h4>
+            <p>{{ subEventSupplyBringDialog.title }}</p>
+            <div class="subevent-supply-bring-stepper">
+              <button type="button" class="experience-inline-btn" (click)="adjustSubEventSupplyBringQuantity(-1, $event)">-</button>
+              <span>{{ subEventSupplyBringDialog.quantity }}</span>
+              <button type="button" class="experience-inline-btn" (click)="adjustSubEventSupplyBringQuantity(1, $event)">+</button>
+            </div>
+            <p class="subevent-supply-bring-range">Range: {{ subEventSupplyBringDialog.min }} - {{ subEventSupplyBringDialog.max }}</p>
+            <div class="popup-actions">
+              <button type="button" class="link-btn neutral-btn" (click)="cancelSubEventSupplyBringDialog()">Cancel</button>
+              <button type="button" class="link-btn primary-btn" (click)="confirmSubEventSupplyBringDialog($event)">Save</button>
+            </div>
+          </div>
+        </section>
       </div>
 
       <div *ngIf="stackedPopup === 'invitationActions' && selectedInvitation">
@@ -4748,27 +4895,27 @@
               </span>
               <span class="card-badge event-subevent-badge-counter" *ngIf="subEventMembersBadgePendingCount(subEvent) > 0">{{ subEventMembersBadgePendingCount(subEvent) }}</span>
             </button>
-            <button type="button" class="event-subevent-badge event-subevent-badge-car" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Car', subEvent, $event)">
+            <button type="button" class="event-subevent-badge event-subevent-badge-car" [ngClass]="subEventAssetCapacityStateClass(subEvent, 'Car')" (click)="openSubEventBadgePopup('Car', subEvent, $event)">
               <span class="event-subevent-badge-icon"><mat-icon>directions_car</mat-icon></span>
               <span class="event-subevent-badge-text">
                 <span class="event-subevent-badge-title">Car</span>
-                <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                <span class="event-subevent-badge-value">{{ subEventAssetCapacityLabel(subEvent, 'Car') }}</span>
               </span>
               <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.carsPending > 0">{{ subEvent.carsPending }}</span>
             </button>
-            <button type="button" class="event-subevent-badge event-subevent-badge-accommodation" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Accommodation', subEvent, $event)">
+            <button type="button" class="event-subevent-badge event-subevent-badge-accommodation" [ngClass]="subEventAssetCapacityStateClass(subEvent, 'Accommodation')" (click)="openSubEventBadgePopup('Accommodation', subEvent, $event)">
               <span class="event-subevent-badge-icon"><mat-icon>hotel</mat-icon></span>
               <span class="event-subevent-badge-text">
                 <span class="event-subevent-badge-title">Accommodation</span>
-                <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                <span class="event-subevent-badge-value">{{ subEventAssetCapacityLabel(subEvent, 'Accommodation') }}</span>
               </span>
               <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.accommodationPending > 0">{{ subEvent.accommodationPending }}</span>
             </button>
-            <button type="button" class="event-subevent-badge event-subevent-badge-supplies" [ngClass]="subEventCapacityStateClass(subEvent)" (click)="openSubEventBadgePopup('Supplies', subEvent, $event)">
+            <button type="button" class="event-subevent-badge event-subevent-badge-supplies" [ngClass]="subEventAssetCapacityStateClass(subEvent, 'Supplies')" (click)="openSubEventBadgePopup('Supplies', subEvent, $event)">
               <span class="event-subevent-badge-icon"><mat-icon>inventory_2</mat-icon></span>
               <span class="event-subevent-badge-text">
                 <span class="event-subevent-badge-title">Supplies</span>
-                <span class="event-subevent-badge-value">{{ subEventCapacityLabel(subEvent) }}</span>
+                <span class="event-subevent-badge-value">{{ subEventAssetCapacityLabel(subEvent, 'Supplies') }}</span>
               </span>
               <span class="card-badge event-subevent-badge-counter" *ngIf="subEvent.suppliesPending > 0">{{ subEvent.suppliesPending }}</span>
             </button>
@@ -5450,6 +5597,72 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="app-popup app-popup-stacked app-popup-super-stacked" *ngIf="superStackedPopup === 'subEventAssetAssign'">
+  <div class="app-popup-backdrop" (click)="closeSubEventAssetAssignPopup(false)"></div>
+  <div class="app-popup-panel popup-panel-friends-picker popup-panel-friends-picker-members popup-panel-subevent-asset-assign" (click)="$event.stopPropagation()">
+    <div class="popup-header popup-header-friends-picker">
+      <div class="popup-title popup-title-members">
+        <div class="popup-chat-title-block">
+          <h2>{{ subEventAssetAssignHeaderTitle() }}</h2>
+          <p>{{ subEventAssetAssignHeaderSubtitle() }}</p>
+        </div>
+      </div>
+      <div class="popup-header-inline-controls">
+        <button
+          type="button"
+          class="popup-header-add-btn subevent-leaderboard-save-btn"
+          [class.form-save-invalid]="!canConfirmSubEventAssetAssignSelection()"
+          [disabled]="!canConfirmSubEventAssetAssignSelection()"
+          (click)="confirmSubEventAssetAssignSelection($event)"
+          aria-label="Assign selected assets"
+        >
+          <mat-icon>done</mat-icon>
+        </button>
+        <button mat-icon-button class="popup-close" (click)="closeSubEventAssetAssignPopup(false)" aria-label="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </div>
+    <div class="popup-body popup-body-friends-picker popup-body-subevent-asset-assign">
+      <div class="friends-picker-chip-row" *ngIf="selectedSubEventAssetAssignChips.length > 0">
+        <button type="button" class="values-selected-chip friends-picker-chip subevent-asset-assign-chip" *ngFor="let chip of selectedSubEventAssetAssignChips" (click)="toggleSubEventAssetAssignCard(chip.id, $event)">
+          <mat-icon>{{ assetTypeIcon(chip.type) }}</mat-icon>
+          <span>{{ chip.title }}</span>
+          <mat-icon class="friends-picker-chip-remove">close</mat-icon>
+        </button>
+      </div>
+      <div class="experience-card-list assets-card-list subevent-asset-assign-list">
+        <article class="experience-item-card asset-item-card subevent-asset-assign-card" [ngClass]="assetTypeClass(card.type)" *ngFor="let card of subEventAssetAssignCandidates">
+          <div class="asset-card-image" [appLazyBgImage]="card.imageUrl">
+            <a class="asset-source-icon" [href]="card.sourceLink" target="_blank" rel="noopener" (click)="$event.stopPropagation()" aria-label="Open source link">
+              <mat-icon>link</mat-icon>
+            </a>
+            <button
+              type="button"
+              class="friends-picker-card-add-btn subevent-asset-assign-select-btn"
+              [class.active]="isSubEventAssetAssignCardSelected(card.id)"
+              (click)="toggleSubEventAssetAssignCard(card.id, $event)"
+              aria-label="Select asset"
+            >
+              <mat-icon>{{ isSubEventAssetAssignCardSelected(card.id) ? 'check' : 'add' }}</mat-icon>
+            </button>
+          </div>
+          <div class="experience-item-head">
+            <span class="experience-item-icon">
+              <mat-icon>{{ assetTypeIcon(card.type) }}</mat-icon>
+            </span>
+            <div class="experience-item-meta">
+              <h4>{{ card.title }}</h4>
+              <p>{{ card.type }} · {{ card.subtitle }} · {{ card.city }}</p>
+            </div>
+          </div>
+          <p class="experience-item-description">{{ card.details }}</p>
+        </article>
       </div>
     </div>
   </div>

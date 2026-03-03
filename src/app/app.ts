@@ -491,6 +491,7 @@ interface AssetCard {
 interface SubEventResourceCard {
   id: string;
   type: SubEventResourceFilter;
+  sourceAssetId: string | null;
   title: string;
   subtitle: string;
   city: string;
@@ -881,7 +882,7 @@ export class App {
   protected activitiesView: ActivitiesView = 'week';
   protected showActivitiesViewPicker = false;
   protected showActivitiesSecondaryPicker = false;
-  protected inlineItemActionMenu: { scope: 'activity' | 'activityMember' | 'asset' | 'explore' | 'subEvent' | 'subEventStage' | 'subEventMember'; id: string; title: string; openUp: boolean } | null = null;
+  protected inlineItemActionMenu: { scope: 'activity' | 'activityMember' | 'asset' | 'explore' | 'subEvent' | 'subEventStage' | 'subEventMember' | 'subEventAsset'; id: string; title: string; openUp: boolean } | null = null;
   protected showEventExploreOrderPicker = false;
   protected eventExploreOrder: EventExploreOrder = 'upcoming';
   protected eventExploreFilterFriendsOnly = false;
@@ -909,7 +910,7 @@ export class App {
   protected activityInviteSort: ActivityInviteSort = 'recent';
   protected showActivityInviteSortPicker = false;
   protected selectedActivityInviteUserIds: string[] = [];
-  protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | 'eventSubEvents' | 'eventExploreTopicFilter' | 'impressionsHost' | null = null;
+  protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | 'eventSubEvents' | 'eventExploreTopicFilter' | 'impressionsHost' | 'subEventAssetAssign' | null = null;
   private readonly activityMembersByRowId: Record<string, ActivityMemberEntry[]> = {};
   private activityMembersPopupOrigin: 'active-event-editor' | 'stacked-event-editor' | 'event-explore' | null = null;
   protected readonly activityRatingScale = Array.from({ length: 10 }, (_, index) => index + 1);
@@ -1290,9 +1291,18 @@ export class App {
   protected subEventResourceFilter: SubEventResourceFilter = 'Members';
   protected subEventMembersPendingOnly = false;
   private subEventBadgePopupOrigin: 'active-event-editor' | 'stacked-event-editor' | null = null;
+  private subEventBadgeOpenedFromSubEventsPopup = false;
   private subEventMembersRow: ActivityListRow | null = null;
   private subEventMembersRowId: string | null = null;
   private subEventMemberRolePickerUserId: string | null = null;
+  protected subEventAssetAssignContext: { subEventId: string; type: AssetType } | null = null;
+  protected selectedSubEventAssignAssetIds: string[] = [];
+  private readonly subEventAssignedAssetIdsByKey: Record<string, string[]> = {};
+  private pendingSubEventAssetCreateAssignment: { subEventId: string; type: AssetType } | null = null;
+  protected subEventSupplyBringDialog:
+    { cardId: string; title: string; quantity: number; min: number; max: number } | null = null;
+  private readonly subEventSupplyBringCountByAssetId: Record<string, number> = {};
+  private stackedEventEditorOrigin: 'chat' | null = null;
 
   protected profileForm = {
     fullName: '',
@@ -1903,10 +1913,13 @@ export class App {
     this.showEventVisibilityPicker = false;
     this.showProfileStatusHeaderPicker = false;
     this.prepareEventEditorForm(mode, source);
+    const previousStackedPopup = this.stackedPopup;
     if (stacked || this.stackedPopup !== null || this.activePopup === 'chat') {
+      this.stackedEventEditorOrigin = previousStackedPopup === 'chat' ? 'chat' : null;
       this.stackedPopup = 'eventEditor';
       return;
     }
+    this.stackedEventEditorOrigin = null;
     this.activePopup = 'eventEditor';
   }
 
@@ -1979,6 +1992,7 @@ export class App {
     if (this.superStackedPopup === 'eventSubEvents') {
       this.superStackedPopup = null;
     }
+    this.subEventBadgeOpenedFromSubEventsPopup = false;
     this.subEventStageArrowScrollLock = false;
     if (this.subEventStageArrowScrollUnlockTimer) {
       clearTimeout(this.subEventStageArrowScrollUnlockTimer);
@@ -2708,6 +2722,19 @@ export class App {
 
   protected subEventCapacityStateClass(item: SubEventFormItem): string {
     return item.membersAccepted >= item.capacityMin && item.membersAccepted <= item.capacityMax
+      ? 'subevent-capacity-in-range'
+      : 'subevent-capacity-out-of-range';
+  }
+
+  protected subEventAssetCapacityLabel(item: SubEventFormItem, type: AssetType): string {
+    this.syncSubEventAssetBadgeCounts(item, type);
+    const metrics = this.subEventAssetCapacityMetrics(item, type);
+    return `${metrics.joined} / ${metrics.capacityMin} - ${metrics.capacityMax}`;
+  }
+
+  protected subEventAssetCapacityStateClass(item: SubEventFormItem, type: AssetType): string {
+    const metrics = this.subEventAssetCapacityMetrics(item, type);
+    return metrics.joined >= metrics.capacityMin && metrics.joined <= metrics.capacityMax
       ? 'subevent-capacity-in-range'
       : 'subevent-capacity-out-of-range';
   }
@@ -3716,6 +3743,7 @@ export class App {
   protected openSubEventBadgePopup(type: 'Members' | 'Car' | 'Accommodation' | 'Supplies', item: SubEventFormItem, event?: Event): void {
     event?.stopPropagation();
     const isFromSubEventsSuperPopup = this.superStackedPopup === 'eventSubEvents';
+    this.subEventBadgeOpenedFromSubEventsPopup = isFromSubEventsSuperPopup;
     const membersRow = this.eventEditorMembersRow();
     this.subEventBadgePopupOrigin = this.stackedPopup === 'eventEditor' ? 'stacked-event-editor' : 'active-event-editor';
     this.selectedSubEventBadgeContext = {
@@ -3738,6 +3766,8 @@ export class App {
     }
     this.subEventMembersPendingOnly = false;
     this.subEventMemberRolePickerUserId = null;
+    this.subEventAssetAssignContext = null;
+    this.selectedSubEventAssignAssetIds = [];
     this.subEventResourceFilter = type === 'Members' ? 'Members' : type;
     if (isFromSubEventsSuperPopup) {
       this.superStackedPopup = null;
@@ -3782,6 +3812,7 @@ export class App {
     if (type === 'Members') {
       return this.subEventMembersPendingCount();
     }
+    this.syncSubEventAssetBadgeCounts(subEvent, type);
     if (type === 'Car') {
       return subEvent.carsPending;
     }
@@ -3808,6 +3839,13 @@ export class App {
       || (this.stackedPopup === 'subEventAssets' && this.subEventResourceFilter === 'Members');
   }
 
+  protected isSubEventAssetResourcePopup(): boolean {
+    if (!this.selectedSubEventBadgeContext) {
+      return false;
+    }
+    return this.stackedPopup === 'subEventAssets' && this.subEventResourceFilter !== 'Members';
+  }
+
   protected subEventMembersHeaderTitle(): string {
     const subEvent = this.selectedSubEventBadgeContext?.subEvent;
     if (!subEvent) {
@@ -3818,6 +3856,24 @@ export class App {
   }
 
   protected subEventMembersHeaderSubtitle(): string {
+    const subEventName = this.subEventDisplayName(this.selectedSubEventBadgeContext?.subEvent);
+    const eventName = this.subEventMembersEventTitle();
+    if (eventName && subEventName) {
+      return `${eventName} - ${subEventName}`;
+    }
+    return eventName || subEventName || 'Event';
+  }
+
+  protected subEventAssetsHeaderTitle(): string {
+    const subEvent = this.selectedSubEventBadgeContext?.subEvent;
+    if (!subEvent) {
+      return this.subEventResourceFilter;
+    }
+    const stageLabel = this.subEventMembersStageLabel(subEvent);
+    return stageLabel ? `${this.subEventResourceFilter} - ${stageLabel}` : `${this.subEventResourceFilter}`;
+  }
+
+  protected subEventAssetsHeaderSubtitle(): string {
     const subEventName = this.subEventDisplayName(this.selectedSubEventBadgeContext?.subEvent);
     const eventName = this.subEventMembersEventTitle();
     if (eventName && subEventName) {
@@ -3889,6 +3945,264 @@ export class App {
     this.selectedActivityMembers = [...seededEntries];
     this.selectedActivityMembersTitle = context.row.title;
     this.openActivityInviteFriends(event);
+  }
+
+  protected openSubEventAssetAssignPopup(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.selectedSubEventBadgeContext || this.subEventResourceFilter === 'Members') {
+      return;
+    }
+    const contextType = this.subEventResourceFilter as AssetType;
+    const subEventId = this.selectedSubEventBadgeContext.subEvent.id;
+    this.subEventAssetAssignContext = { subEventId, type: contextType };
+    this.selectedSubEventAssignAssetIds = [...this.resolveSubEventAssignedAssetIds(subEventId, contextType)];
+    this.superStackedPopup = 'subEventAssetAssign';
+  }
+
+  protected closeSubEventAssetAssignPopup(apply = false): void {
+    if (this.superStackedPopup === 'subEventAssetAssign' && apply) {
+      this.applySubEventAssetAssignments();
+    }
+    this.subEventAssetAssignContext = null;
+    this.selectedSubEventAssignAssetIds = [];
+    if (this.superStackedPopup === 'subEventAssetAssign') {
+      this.superStackedPopup = null;
+    }
+  }
+
+  protected canConfirmSubEventAssetAssignSelection(): boolean {
+    return this.selectedSubEventAssignAssetIds.length > 0;
+  }
+
+  protected confirmSubEventAssetAssignSelection(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.canConfirmSubEventAssetAssignSelection()) {
+      return;
+    }
+    this.closeSubEventAssetAssignPopup(true);
+  }
+
+  protected get subEventAssetAssignCandidates(): AssetCard[] {
+    const context = this.subEventAssetAssignContext;
+    if (!context) {
+      return [];
+    }
+    const assignedIds = new Set(this.resolveSubEventAssignedAssetIds(context.subEventId, context.type));
+    return this.assetCards
+      .filter(card => card.type === context.type)
+      .sort((a, b) => {
+        const aAssigned = assignedIds.has(a.id) ? 1 : 0;
+        const bAssigned = assignedIds.has(b.id) ? 1 : 0;
+        if (bAssigned !== aAssigned) {
+          return bAssigned - aAssigned;
+        }
+        return a.title.localeCompare(b.title);
+      });
+  }
+
+  protected get selectedSubEventAssetAssignChips(): AssetCard[] {
+    const selected = new Set(this.selectedSubEventAssignAssetIds);
+    return this.subEventAssetAssignCandidates.filter(card => selected.has(card.id));
+  }
+
+  protected subEventAssetAssignHeaderTitle(): string {
+    const typeLabel = this.subEventAssetAssignContext?.type ?? this.subEventResourceFilter;
+    const subEvent = this.selectedSubEventBadgeContext?.subEvent;
+    if (!subEvent) {
+      return `Assign ${typeLabel}`;
+    }
+    const stageLabel = this.subEventMembersStageLabel(subEvent);
+    return stageLabel ? `Assign ${typeLabel} - ${stageLabel}` : `Assign ${typeLabel}`;
+  }
+
+  protected subEventAssetAssignHeaderSubtitle(): string {
+    const subEventName = this.subEventDisplayName(this.selectedSubEventBadgeContext?.subEvent);
+    const eventName = this.subEventMembersEventTitle();
+    if (eventName && subEventName) {
+      return `${eventName} - ${subEventName}`;
+    }
+    return eventName || subEventName || 'Event';
+  }
+
+  protected toggleSubEventAssetAssignCard(cardId: string, event?: Event): void {
+    event?.stopPropagation();
+    if (this.selectedSubEventAssignAssetIds.includes(cardId)) {
+      this.selectedSubEventAssignAssetIds = this.selectedSubEventAssignAssetIds.filter(id => id !== cardId);
+      return;
+    }
+    this.selectedSubEventAssignAssetIds = [...this.selectedSubEventAssignAssetIds, cardId];
+  }
+
+  protected isSubEventAssetAssignCardSelected(cardId: string): boolean {
+    return this.selectedSubEventAssignAssetIds.includes(cardId);
+  }
+
+  protected openSubEventResourceCreateForm(event?: Event): void {
+    event?.stopPropagation();
+    if (this.subEventResourceFilter === 'Members') {
+      return;
+    }
+    const subEventId = this.selectedSubEventBadgeContext?.subEvent.id ?? null;
+    const resourceType = this.subEventResourceFilter as AssetType;
+    this.openAssetForm();
+    this.assetForm.type = resourceType;
+    this.pendingSubEventAssetCreateAssignment = subEventId
+      ? { subEventId, type: resourceType }
+      : null;
+  }
+
+  protected toggleSubEventResourceItemActionMenu(card: SubEventResourceCard, event: Event): void {
+    event.stopPropagation();
+    if (!card.sourceAssetId) {
+      return;
+    }
+    if (this.inlineItemActionMenu?.scope === 'subEventAsset' && this.inlineItemActionMenu.id === card.id) {
+      this.inlineItemActionMenu = null;
+      return;
+    }
+    this.inlineItemActionMenu = {
+      scope: 'subEventAsset',
+      id: card.id,
+      title: card.title,
+      openUp: this.shouldOpenInlineItemMenuUp(event)
+    };
+  }
+
+  protected isSubEventResourceItemActionMenuOpen(card: SubEventResourceCard): boolean {
+    return this.inlineItemActionMenu?.scope === 'subEventAsset' && this.inlineItemActionMenu.id === card.id;
+  }
+
+  protected isSubEventResourceItemActionMenuOpenUp(card: SubEventResourceCard): boolean {
+    return this.inlineItemActionMenu?.scope === 'subEventAsset'
+      && this.inlineItemActionMenu.id === card.id
+      && this.inlineItemActionMenu.openUp;
+  }
+
+  protected canJoinSubEventResourceCard(card: SubEventResourceCard): boolean {
+    return !!card.sourceAssetId && (card.type === 'Car' || card.type === 'Accommodation');
+  }
+
+  protected canBringSubEventSupplyCard(card: SubEventResourceCard): boolean {
+    return !!card.sourceAssetId && card.type === 'Supplies';
+  }
+
+  protected runSubEventResourceJoinAction(card: SubEventResourceCard, event: Event): void {
+    event.stopPropagation();
+    if (!this.canJoinSubEventResourceCard(card) || !card.sourceAssetId) {
+      return;
+    }
+    const requestId = this.activeUser.id;
+    this.assetCards = this.assetCards.map(asset => {
+      if (asset.id !== card.sourceAssetId) {
+        return asset;
+      }
+      const existing = asset.requests.find(request => request.id === requestId);
+      if (existing) {
+        return {
+          ...asset,
+          requests: asset.requests.map(request =>
+            request.id === requestId
+              ? { ...request, status: 'accepted' }
+              : request
+          )
+        };
+      }
+      return {
+        ...asset,
+        requests: [
+          {
+            id: requestId,
+            name: this.activeUser.name,
+            initials: this.activeUser.initials,
+            gender: this.activeUser.gender,
+            status: 'accepted',
+            note: 'Joined from sub-event assets.'
+          },
+          ...asset.requests
+        ]
+      };
+    });
+    this.inlineItemActionMenu = null;
+    const subEvent = this.selectedSubEventBadgeContext?.subEvent;
+    if (subEvent && card.type !== 'Members') {
+      this.syncSubEventAssetBadgeCounts(subEvent, card.type);
+    }
+  }
+
+  protected runSubEventResourceEditAction(card: SubEventResourceCard, event: Event): void {
+    event.stopPropagation();
+    if (!card.sourceAssetId) {
+      return;
+    }
+    const source = this.assetCards.find(item => item.id === card.sourceAssetId);
+    if (!source) {
+      return;
+    }
+    this.openAssetForm(source);
+    this.inlineItemActionMenu = null;
+  }
+
+  protected runSubEventResourceDeleteAction(card: SubEventResourceCard, event: Event): void {
+    event.stopPropagation();
+    if (!card.sourceAssetId) {
+      return;
+    }
+    this.requestAssetDelete(card.sourceAssetId);
+    this.inlineItemActionMenu = null;
+  }
+
+  protected openSubEventSupplyBringDialog(card: SubEventResourceCard, event: Event): void {
+    event.stopPropagation();
+    if (!this.canBringSubEventSupplyCard(card) || !card.sourceAssetId) {
+      return;
+    }
+    this.inlineItemActionMenu = null;
+    const max = Math.max(1, card.capacityTotal);
+    this.subEventSupplyBringDialog = {
+      cardId: card.sourceAssetId,
+      title: card.title,
+      quantity: this.clampNumber(this.subEventSupplyProvidedCount(card.sourceAssetId), 0, max),
+      min: 0,
+      max
+    };
+  }
+
+  protected cancelSubEventSupplyBringDialog(): void {
+    this.subEventSupplyBringDialog = null;
+  }
+
+  protected adjustSubEventSupplyBringQuantity(delta: number, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.subEventSupplyBringDialog) {
+      return;
+    }
+    const next = this.clampNumber(
+      this.subEventSupplyBringDialog.quantity + delta,
+      this.subEventSupplyBringDialog.min,
+      this.subEventSupplyBringDialog.max
+    );
+    this.subEventSupplyBringDialog = {
+      ...this.subEventSupplyBringDialog,
+      quantity: next
+    };
+  }
+
+  protected confirmSubEventSupplyBringDialog(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.subEventSupplyBringDialog) {
+      return;
+    }
+    this.subEventSupplyBringCountByAssetId[this.subEventSupplyBringDialog.cardId] = this.subEventSupplyBringDialog.quantity;
+    const subEvent = this.selectedSubEventBadgeContext?.subEvent;
+    if (subEvent) {
+      this.syncSubEventAssetBadgeCounts(subEvent, 'Supplies');
+    }
+    this.subEventSupplyBringDialog = null;
+  }
+
+  protected subEventSupplyProvidedCount(cardId: string): number {
+    const raw = this.subEventSupplyBringCountByAssetId[cardId] ?? 0;
+    return Math.max(0, Math.trunc(raw));
   }
 
   protected toggleSubEventMemberActionMenu(member: ActivityMemberEntry, event: Event): void {
@@ -4056,6 +4370,108 @@ export class App {
     this.selectedSubEventBadgeContext.subEvent.membersPending = pendingCount;
   }
 
+  private subEventAssignedAssetCards(subEventId: string, type: AssetType): AssetCard[] {
+    const assignedIds = this.resolveSubEventAssignedAssetIds(subEventId, type);
+    return assignedIds
+      .map(id => this.assetCards.find(card => card.id === id && card.type === type) ?? null)
+      .filter((card): card is AssetCard => card !== null);
+  }
+
+  private subEventAssetCapacityMetrics(subEvent: SubEventFormItem, type: AssetType): { joined: number; capacityMin: number; capacityMax: number; pending: number } {
+    const cards = this.subEventAssignedAssetCards(subEvent.id, type);
+    const capacityMax = cards.reduce((sum, card) => sum + Math.max(0, card.capacityTotal), 0);
+    const capacityMin = cards.length;
+    const pending = cards.reduce((sum, card) => sum + this.assetPendingCount(card), 0);
+    if (type === 'Supplies') {
+      const joined = cards.reduce((sum, card) => sum + this.subEventSupplyProvidedCount(card.id), 0);
+      return { joined, capacityMin, capacityMax, pending };
+    }
+    const joinedMemberIds = new Set<string>();
+    for (const card of cards) {
+      for (const request of card.requests) {
+        if (request.status === 'accepted') {
+          joinedMemberIds.add(request.id);
+        }
+      }
+    }
+    return { joined: joinedMemberIds.size, capacityMin, capacityMax, pending };
+  }
+
+  private subEventAssetAssignmentKey(subEventId: string, type: AssetType): string {
+    return `${subEventId}:${type}`;
+  }
+
+  private resolveSubEventAssignedAssetIds(subEventId: string, type: AssetType): string[] {
+    const key = this.subEventAssetAssignmentKey(subEventId, type);
+    const eligibleIds = this.assetCards.filter(card => card.type === type).map(card => card.id);
+    const eligible = new Set(eligibleIds);
+    const stored = this.subEventAssignedAssetIdsByKey[key];
+    if (!stored) {
+      this.subEventAssignedAssetIdsByKey[key] = [...eligibleIds];
+      return [...eligibleIds];
+    }
+    const normalized = stored.filter(id => eligible.has(id));
+    if (normalized.length !== stored.length) {
+      this.subEventAssignedAssetIdsByKey[key] = [...normalized];
+    }
+    return normalized;
+  }
+
+  private applySubEventAssetAssignments(): void {
+    const context = this.subEventAssetAssignContext;
+    if (!context) {
+      return;
+    }
+    const allowedIds = new Set(
+      this.assetCards
+        .filter(card => card.type === context.type)
+        .map(card => card.id)
+    );
+    const nextIds = this.selectedSubEventAssignAssetIds.filter((id, index, arr) =>
+      allowedIds.has(id) && arr.indexOf(id) === index
+    );
+    const key = this.subEventAssetAssignmentKey(context.subEventId, context.type);
+    this.subEventAssignedAssetIdsByKey[key] = [...nextIds];
+    const targetSubEvent = this.findSubEventById(context.subEventId);
+    if (targetSubEvent) {
+      this.syncSubEventAssetBadgeCounts(targetSubEvent, context.type, nextIds);
+    }
+  }
+
+  private syncSubEventAssetBadgeCounts(subEvent: SubEventFormItem, type: AssetType, assignedIds?: string[]): void {
+    if (assignedIds) {
+      const key = this.subEventAssetAssignmentKey(subEvent.id, type);
+      this.subEventAssignedAssetIdsByKey[key] = [...assignedIds];
+    }
+    const pending = this.subEventAssetCapacityMetrics(subEvent, type).pending;
+    if (type === 'Car') {
+      subEvent.carsPending = pending;
+      return;
+    }
+    if (type === 'Accommodation') {
+      subEvent.accommodationPending = pending;
+      return;
+    }
+    subEvent.suppliesPending = pending;
+  }
+
+  private syncAllSubEventAssetBadgeCounts(): void {
+    for (const subEvent of this.eventForm.subEvents) {
+      this.syncSubEventAssetBadgeCounts(subEvent, 'Car');
+      this.syncSubEventAssetBadgeCounts(subEvent, 'Accommodation');
+      this.syncSubEventAssetBadgeCounts(subEvent, 'Supplies');
+    }
+  }
+
+  private findSubEventById(subEventId: string): SubEventFormItem | null {
+    for (const subEvent of this.eventForm.subEvents) {
+      if (subEvent.id === subEventId) {
+        return subEvent;
+      }
+    }
+    return null;
+  }
+
   protected get subEventResourceCards(): SubEventResourceCard[] {
     if (!this.selectedSubEventBadgeContext) {
       return [];
@@ -4070,6 +4486,7 @@ export class App {
         return {
           id: `subevent-member-${member.userId}-${index}`,
           type: 'Members',
+          sourceAssetId: null,
           title: member.name,
           subtitle: member.role,
           city: member.city,
@@ -4084,10 +4501,16 @@ export class App {
       });
     }
 
-    const baseCards = this.assetCards.filter(card => card.type === this.subEventResourceFilter);
+    const resourceType = this.subEventResourceFilter as AssetType;
+    const assignedIds = this.resolveSubEventAssignedAssetIds(subEvent.id, resourceType);
+    this.syncSubEventAssetBadgeCounts(subEvent, resourceType, assignedIds);
+    const baseCards = assignedIds
+      .map(id => this.assetCards.find(card => card.id === id && card.type === resourceType) ?? null)
+      .filter((card): card is AssetCard => card !== null);
     return baseCards.map(card => ({
       id: `subevent-${card.id}`,
       type: card.type,
+      sourceAssetId: card.id,
       title: card.title,
       subtitle: card.subtitle,
       city: card.city,
@@ -4095,13 +4518,17 @@ export class App {
       imageUrl: card.imageUrl,
       sourceLink: card.sourceLink,
       capacityTotal: card.capacityTotal,
-      accepted: this.assetAcceptedCount(card),
+      accepted: card.type === 'Supplies' ? this.subEventSupplyProvidedCount(card.id) : this.assetAcceptedCount(card),
       pending: this.assetPendingCount(card),
       isMembers: false
     }));
   }
 
   protected subEventResourceOccupancyLabel(card: SubEventResourceCard): string {
+    if (card.type === 'Supplies' && card.sourceAssetId) {
+      const supplied = this.subEventSupplyProvidedCount(card.sourceAssetId);
+      return `${supplied} / 1 - ${card.capacityTotal}`;
+    }
     return `${card.accepted} / ${card.capacityTotal}`;
   }
 
@@ -6032,10 +6459,14 @@ export class App {
     this.selectedAssetCardId = null;
     this.selectedSubEventBadgeContext = null;
     this.subEventBadgePopupOrigin = null;
+    this.subEventBadgeOpenedFromSubEventsPopup = false;
     this.subEventMembersPendingOnly = false;
     this.subEventMembersRow = null;
     this.subEventMembersRowId = null;
     this.subEventMemberRolePickerUserId = null;
+    this.subEventAssetAssignContext = null;
+    this.selectedSubEventAssignAssetIds = [];
+    this.subEventSupplyBringDialog = null;
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
     this.showEventVisibilityPicker = false;
@@ -6076,6 +6507,7 @@ export class App {
     this.selectedActivityInviteUserIds = [];
     this.showActivityInviteSortPicker = false;
     this.superStackedPopup = null;
+    this.stackedEventEditorOrigin = null;
     this.clearActivityRateEditorState();
     this.cancelChatInitialLoad();
     this.cancelActivitiesPaginationLoad();
@@ -6099,6 +6531,7 @@ export class App {
   }
 
   protected closeStackedPopup(): void {
+    const closingStackedEventEditor = this.stackedPopup === 'eventEditor';
     if (this.stackedPopup === 'eventEditor') {
       this.eventEditorReadOnly = false;
       this.eventEditorSource = null;
@@ -6125,16 +6558,34 @@ export class App {
     this.cancelEventExplorePaginationLoad();
     this.clearEventExploreHeaderLoadingAnimation();
     this.eventExploreHeaderProgress = 0;
+    if (this.superStackedPopup === 'subEventAssetAssign') {
+      this.closeSubEventAssetAssignPopup(false);
+      return;
+    }
     if (this.superStackedPopup === 'impressionsHost') {
       this.superStackedPopup = null;
       return;
     }
+    if (closingStackedEventEditor && this.stackedEventEditorOrigin === 'chat') {
+      this.stackedEventEditorOrigin = null;
+      this.stackedPopup = 'chat';
+      this.showEventVisibilityPicker = false;
+      this.showProfileStatusHeaderPicker = false;
+      return;
+    }
+    if (closingStackedEventEditor) {
+      this.stackedEventEditorOrigin = null;
+    }
     if (this.stackedPopup === 'subEventMembers' || this.stackedPopup === 'subEventAssets') {
+      const restoreSubEventsSuperPopup = this.subEventBadgeOpenedFromSubEventsPopup;
       this.selectedSubEventBadgeContext = null;
       this.subEventMembersPendingOnly = false;
       this.subEventMembersRow = null;
       this.subEventMembersRowId = null;
       this.subEventMemberRolePickerUserId = null;
+      this.subEventAssetAssignContext = null;
+      this.selectedSubEventAssignAssetIds = [];
+      this.subEventSupplyBringDialog = null;
       this.selectedActivityMembers = [];
       this.selectedActivityMembersTitle = '';
       this.selectedActivityMembersRowId = null;
@@ -6146,6 +6597,10 @@ export class App {
         this.stackedPopup = null;
       }
       this.subEventBadgePopupOrigin = null;
+      this.subEventBadgeOpenedFromSubEventsPopup = false;
+      if (restoreSubEventsSuperPopup) {
+        this.superStackedPopup = 'eventSubEvents';
+      }
       return;
     }
     if (this.stackedPopup === 'valuesSelector') {
@@ -11448,10 +11903,6 @@ export class App {
     return `${this.assetOccupiedCount(card)} / ${card.capacityTotal}`;
   }
 
-  protected canManageAssetMembers(card: AssetCard): boolean {
-    return card.type !== 'Supplies';
-  }
-
   protected assetMemberStatusClass(member: AssetMemberRequest): string {
     return member.status === 'pending' ? 'asset-member-pending' : 'asset-member-accepted';
   }
@@ -11478,6 +11929,7 @@ export class App {
 
   protected openAssetForm(card?: AssetCard): void {
     this.pendingAssetMemberAction = null;
+    this.pendingSubEventAssetCreateAssignment = null;
     this.showAssetForm = true;
     this.showAssetVisibilityPicker = false;
     if (card) {
@@ -11513,6 +11965,7 @@ export class App {
     this.showAssetForm = false;
     this.showAssetVisibilityPicker = false;
     this.editingAssetId = null;
+    this.pendingSubEventAssetCreateAssignment = null;
   }
 
   protected get assetFormTitle(): string {
@@ -11525,6 +11978,7 @@ export class App {
     if (!title || !city) {
       return;
     }
+    const createAssignment = this.pendingSubEventAssetCreateAssignment;
     const payload: Omit<AssetCard, 'id' | 'requests'> = {
       type: this.assetForm.type,
       title,
@@ -11556,8 +12010,20 @@ export class App {
         },
         ...this.assetCards
       ];
+      if (createAssignment && createAssignment.type === payload.type) {
+        const key = this.subEventAssetAssignmentKey(createAssignment.subEventId, createAssignment.type);
+        const assignedIds = this.resolveSubEventAssignedAssetIds(createAssignment.subEventId, createAssignment.type);
+        if (!assignedIds.includes(id)) {
+          this.subEventAssignedAssetIdsByKey[key] = [...assignedIds, id];
+        }
+        const targetSubEvent = this.findSubEventById(createAssignment.subEventId);
+        if (targetSubEvent) {
+          this.syncSubEventAssetBadgeCounts(targetSubEvent, createAssignment.type);
+        }
+      }
     }
     this.closeAssetForm();
+    this.syncAllSubEventAssetBadgeCounts();
   }
 
   protected requestAssetDelete(cardId: string): void {
@@ -11617,11 +12083,17 @@ export class App {
 
   private deleteAssetCard(cardId: string): void {
     this.assetCards = this.assetCards.filter(card => card.id !== cardId);
+    delete this.subEventSupplyBringCountByAssetId[cardId];
+    for (const key of Object.keys(this.subEventAssignedAssetIdsByKey)) {
+      const filtered = this.subEventAssignedAssetIdsByKey[key].filter(id => id !== cardId);
+      this.subEventAssignedAssetIdsByKey[key] = filtered;
+    }
     if (this.selectedAssetCardId === cardId) {
       this.selectedAssetCardId = null;
       this.stackedPopup = null;
       this.pendingAssetMemberAction = null;
     }
+    this.syncAllSubEventAssetBadgeCounts();
   }
 
   protected queueAssetMemberAction(cardId: string, memberId: string, action: AssetRequestAction, event?: Event): void {
@@ -11892,6 +12364,58 @@ export class App {
       return;
     }
     this.openEventExplore();
+  }
+
+  @HostListener('window:keydown.escape', ['$event'])
+  onGlobalEscape(event: Event): void {
+    const keyboardEvent = event as KeyboardEvent;
+    if (keyboardEvent.defaultPrevented) {
+      return;
+    }
+    keyboardEvent.stopPropagation();
+    if (this.eventEditorClosePublishConfirmContext) {
+      this.cancelEventEditorCloseWithPublishPrompt();
+      return;
+    }
+    if (this.showUserSelector) {
+      this.closeDemoUserSelectorPopup();
+      return;
+    }
+    if (this.showFirebaseAuthPopup) {
+      this.closeFirebaseAuthPopup();
+      return;
+    }
+    if (this.superStackedPopup === 'subEventAssetAssign') {
+      this.closeSubEventAssetAssignPopup(false);
+      return;
+    }
+    if (this.superStackedPopup === 'activityInviteFriends') {
+      this.closeActivityInviteFriends(false);
+      return;
+    }
+    if (this.superStackedPopup === 'eventTopicsSelector') {
+      this.closeEventTopicsSelector(true);
+      return;
+    }
+    if (this.superStackedPopup === 'eventSubEvents') {
+      this.closeEventSubEventsPopup();
+      return;
+    }
+    if (this.superStackedPopup === 'eventExploreTopicFilter') {
+      this.closeEventExploreTopicFilterPopup();
+      return;
+    }
+    if (this.superStackedPopup === 'impressionsHost') {
+      this.closeSuperStackedImpressions();
+      return;
+    }
+    if (this.stackedPopup) {
+      this.handleStackedPopupHeaderClose();
+      return;
+    }
+    if (this.activePopup) {
+      this.handlePrimaryPopupHeaderClose();
+    }
   }
 
   @HostListener('document:click', ['$event'])
