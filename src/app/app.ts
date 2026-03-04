@@ -42,6 +42,8 @@ type MenuSection = 'game' | 'chat' | 'invitations' | 'events' | 'hosting';
 
 type PopupType =
   | 'activities'
+  | 'eventFeedback'
+  | 'eventFeedbackNote'
   | 'tickets'
   | 'chat'
   | 'chatMembers'
@@ -115,6 +117,46 @@ interface SubEventBadgeContext {
   type: 'Members' | 'Car' | 'Accommodation' | 'Supplies';
   groupId?: string;
   groupName?: string;
+}
+
+interface EventFeedbackOption {
+  value: string;
+  label: string;
+  icon: string;
+  impressionTag?: string;
+}
+
+interface EventFeedbackCard {
+  id: string;
+  eventId: string;
+  kind: 'event' | 'attendee';
+  attendeeUserId?: string;
+  icon: string;
+  toneClass: 'feedback-card-tone-event' | 'feedback-card-tone-attendee';
+  heading: string;
+  subheading: string;
+  questionPrimary: string;
+  questionSecondary: string;
+  primaryOptions: EventFeedbackOption[];
+  secondaryOptions: EventFeedbackOption[];
+  answerPrimary: string;
+  answerSecondary: string;
+}
+
+type EventFeedbackListFilter = 'pending' | 'feedbacked' | 'removed';
+
+interface EventFeedbackEventCard {
+  eventId: string;
+  title: string;
+  subtitle: string;
+  timeframe: string;
+  imageUrl: string;
+  startAtMs: number;
+  pendingCards: number;
+  totalCards: number;
+  isRemoved: boolean;
+  isFeedbacked: boolean;
+  feedbackedAtMs: number | null;
 }
 
 interface HelpCenterSection {
@@ -1465,12 +1507,36 @@ export class App {
     details: ''
   };
   protected reportUserSubmitMessage = '';
+  protected reportUserSubmitted = false;
   protected feedbackForm = {
     category: 'General',
     subject: '',
     details: ''
   };
   protected feedbackSubmitMessage = '';
+  protected feedbackSubmitted = false;
+  protected eventFeedbackCards: EventFeedbackCard[] = [];
+  protected eventFeedbackIndex = 0;
+  protected eventFeedbackListFilter: EventFeedbackListFilter = 'pending';
+  protected showEventFeedbackFilterPicker = false;
+  protected eventFeedbackListSubmitMessage = '';
+  protected eventFeedbackCardMenuEventId: string | null = null;
+  protected selectedEventFeedbackEventId: string | null = null;
+  protected eventFeedbackSubmittedState = false;
+  protected eventFeedbackSubmitMessage = '';
+  protected eventFeedbackNoteForm = {
+    eventId: '',
+    text: ''
+  };
+  protected eventFeedbackNoteSubmitted = false;
+  protected eventFeedbackNoteSubmitMessage = '';
+  private eventFeedbackTouchStartX: number | null = null;
+  private eventFeedbackTouchStartY: number | null = null;
+  private readonly submittedEventFeedbackByUser: Record<string, Record<string, true>> = {};
+  private readonly submittedEventFeedbackEventsByUser: Record<string, Record<string, string>> = {};
+  private readonly removedEventFeedbackEventsByUser: Record<string, Record<string, true>> = {};
+  private readonly organizerEventFeedbackNotesByUser: Record<string, Record<string, string>> = {};
+  private readonly eventFeedbackUnlockDelayMs = 2 * 60 * 60 * 1000;
   protected readonly reportUserReasons = [
     'Harassment',
     'Spam',
@@ -1485,6 +1551,35 @@ export class App {
     'Feature request',
     'UX improvement',
     'Performance'
+  ];
+  protected readonly eventFeedbackEventOverallOptions: EventFeedbackOption[] = [
+    { value: 'excellent', label: 'Excellent', icon: 'sentiment_very_satisfied', impressionTag: 'Host vibe' },
+    { value: 'good', label: 'Good', icon: 'sentiment_satisfied', impressionTag: 'Host reliability' },
+    { value: 'mixed', label: 'Mixed', icon: 'sentiment_neutral', impressionTag: 'Host consistency' },
+    { value: 'needs-work', label: 'Needs work', icon: 'sentiment_dissatisfied', impressionTag: 'Host quality' }
+  ];
+  protected readonly eventFeedbackHostImproveOptions: EventFeedbackOption[] = [
+    { value: 'timing', label: 'Improve timing', icon: 'schedule', impressionTag: 'Host organization' },
+    { value: 'communication', label: 'Improve communication', icon: 'campaign', impressionTag: 'Host communication' },
+    { value: 'resources', label: 'Improve resources', icon: 'inventory_2', impressionTag: 'Host planning' },
+    { value: 'none', label: 'No major change', icon: 'verified', impressionTag: 'Host consistency' }
+  ];
+  protected readonly eventFeedbackAttendeeCollabOptions: EventFeedbackOption[] = [
+    { value: 'great', label: 'Great teamwork', icon: 'handshake', impressionTag: 'Attendee teamwork' },
+    { value: 'reliable', label: 'Reliable', icon: 'verified_user', impressionTag: 'Attendee reliability' },
+    { value: 'neutral', label: 'Neutral', icon: 'sentiment_neutral', impressionTag: 'Attendee neutrality' },
+    { value: 'rough', label: 'Needs guidance', icon: 'warning_amber', impressionTag: 'Attendee fit' }
+  ];
+  protected readonly eventFeedbackAttendeeRejoinOptions: EventFeedbackOption[] = [
+    { value: 'yes', label: 'Would team up', icon: 'group', impressionTag: 'Attendee trust' },
+    { value: 'maybe', label: 'Maybe', icon: 'hourglass_top', impressionTag: 'Attendee compatibility' },
+    { value: 'no', label: 'Not now', icon: 'do_not_disturb_alt', impressionTag: 'Attendee risk' },
+    { value: 'context', label: 'Depends on role', icon: 'tune', impressionTag: 'Attendee role-fit' }
+  ];
+  protected readonly eventFeedbackListFilters: Array<{ key: EventFeedbackListFilter; label: string; icon: string }> = [
+    { key: 'pending', label: 'Pending', icon: 'schedule' },
+    { key: 'feedbacked', label: 'Feedbacked', icon: 'task_alt' },
+    { key: 'removed', label: 'Removed', icon: 'delete_outline' }
   ];
   protected readonly helpCenterSections: HelpCenterSection[] = [
     {
@@ -1933,16 +2028,12 @@ export class App {
     this.showUserSettingsMenu = false;
   }
 
-  protected onUserSettingsAction(action: 'help' | 'report-user' | 'send-feedback' | 'gdpr' | 'delete-account' | 'logout', event?: Event): void {
+  protected onUserSettingsAction(action: 'help' | 'send-feedback' | 'gdpr' | 'delete-account' | 'logout', event?: Event): void {
     event?.stopPropagation();
     switch (action) {
       case 'help':
         this.closeUserSettingsMenu();
         this.openHelpPopup();
-        return;
-      case 'report-user':
-        this.closeUserSettingsMenu();
-        this.openReportUserPopup();
         return;
       case 'send-feedback':
         this.closeUserSettingsMenu();
@@ -1983,6 +2074,589 @@ export class App {
     return this.helpCenterSections.find(section => section.id === this.helpCenterActiveSectionId) ?? this.helpCenterSections[0] ?? null;
   }
 
+  protected get eventFeedbackPendingCount(): number {
+    return this.eventFeedbackPendingItems.length;
+  }
+
+  protected get eventFeedbackFeedbackedCount(): number {
+    return this.eventFeedbackFeedbackedItems.length;
+  }
+
+  protected get eventFeedbackRemovedCount(): number {
+    return this.eventFeedbackRemovedItems.length;
+  }
+
+  protected get eventFeedbackFilterLabel(): string {
+    return this.eventFeedbackListFilters.find(item => item.key === this.eventFeedbackListFilter)?.label ?? 'Pending';
+  }
+
+  protected eventFeedbackFilterIcon(): string {
+    return this.eventFeedbackListFilters.find(item => item.key === this.eventFeedbackListFilter)?.icon ?? 'schedule';
+  }
+
+  protected eventFeedbackFilterCount(filter: EventFeedbackListFilter): number {
+    switch (filter) {
+      case 'feedbacked':
+        return this.eventFeedbackFeedbackedCount;
+      case 'removed':
+        return this.eventFeedbackRemovedCount;
+      case 'pending':
+      default:
+        return this.eventFeedbackPendingCount;
+    }
+  }
+
+  protected get eventFeedbackVisibleItems(): EventFeedbackEventCard[] {
+    switch (this.eventFeedbackListFilter) {
+      case 'feedbacked':
+        return this.eventFeedbackFeedbackedItems;
+      case 'removed':
+        return this.eventFeedbackRemovedItems;
+      case 'pending':
+      default:
+        return this.eventFeedbackPendingItems;
+    }
+  }
+
+  protected get hasEventFeedbackCards(): boolean {
+    return this.eventFeedbackCards.length > 0;
+  }
+
+  protected get activeEventFeedbackCard(): EventFeedbackCard | null {
+    return this.eventFeedbackCards[this.eventFeedbackIndex] ?? null;
+  }
+
+  protected get eventFeedbackDotIndices(): number[] {
+    return this.eventFeedbackCards.map((_, index) => index);
+  }
+
+  protected openEventFeedbackPopup(event?: Event): void {
+    event?.stopPropagation();
+    this.closeUserMenu();
+    this.eventFeedbackListFilter = 'pending';
+    this.showEventFeedbackFilterPicker = false;
+    this.eventFeedbackListSubmitMessage = '';
+    this.eventFeedbackCardMenuEventId = null;
+    this.selectedEventFeedbackEventId = null;
+    this.eventFeedbackCards = [];
+    this.eventFeedbackIndex = 0;
+    this.eventFeedbackSubmittedState = false;
+    this.eventFeedbackSubmitMessage = '';
+    this.eventFeedbackTouchStartX = null;
+    this.eventFeedbackTouchStartY = null;
+    this.activePopup = 'eventFeedback';
+  }
+
+  protected openReportUserFromFeedback(event?: Event): void {
+    event?.stopPropagation();
+    this.closeUserMenu();
+    this.openReportUserPopup();
+  }
+
+  protected toggleEventFeedbackFilterPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.showEventFeedbackFilterPicker = !this.showEventFeedbackFilterPicker;
+  }
+
+  protected selectEventFeedbackListFilter(filter: EventFeedbackListFilter, event?: Event): void {
+    event?.stopPropagation();
+    this.eventFeedbackListFilter = filter;
+    this.showEventFeedbackFilterPicker = false;
+    this.eventFeedbackCardMenuEventId = null;
+  }
+
+  protected closeEventFeedbackFilterPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.showEventFeedbackFilterPicker = false;
+  }
+
+  protected trackByEventFeedbackItem(index: number, item: EventFeedbackEventCard): string {
+    return item.eventId;
+  }
+
+  protected isEventFeedbackCardMenuOpen(item: EventFeedbackEventCard): boolean {
+    return this.eventFeedbackCardMenuEventId === item.eventId;
+  }
+
+  protected toggleEventFeedbackCardMenu(item: EventFeedbackEventCard, event?: Event): void {
+    event?.stopPropagation();
+    this.showEventFeedbackFilterPicker = false;
+    this.eventFeedbackCardMenuEventId = this.eventFeedbackCardMenuEventId === item.eventId ? null : item.eventId;
+  }
+
+  protected closeEventFeedbackCardMenu(event?: Event): void {
+    event?.stopPropagation();
+    this.eventFeedbackCardMenuEventId = null;
+  }
+
+  protected isEventFeedbackStartAvailable(item: EventFeedbackEventCard): boolean {
+    return !item.isRemoved && item.pendingCards > 0;
+  }
+
+  protected eventFeedbackItemStatusLine(item: EventFeedbackEventCard): string {
+    if (item.isRemoved) {
+      return 'Removed without feedback.';
+    }
+    if (item.isFeedbacked) {
+      return 'Feedbacked.';
+    }
+    return `${item.pendingCards}/${item.totalCards} feedback item${item.totalCards === 1 ? '' : 's'} pending.`;
+  }
+
+  protected eventFeedbackCurrentEventTitle(): string {
+    return this.eventTitleById(this.selectedEventFeedbackEventId ?? this.eventFeedbackNoteForm.eventId);
+  }
+
+  protected hasEventFeedbackOrganizerNote(eventId: string): boolean {
+    return Boolean(this.organizerEventFeedbackNotesByUser[this.activeUser.id]?.[eventId]?.trim());
+  }
+
+  protected startEventFeedback(item: EventFeedbackEventCard, event?: Event): void {
+    event?.stopPropagation();
+    this.closeEventFeedbackCardMenu();
+    this.showEventFeedbackFilterPicker = false;
+    this.restoreEventFeedbackEvent(item.eventId);
+    this.selectedEventFeedbackEventId = item.eventId;
+    this.eventFeedbackCards = this.pendingEventFeedbackCardsForEvent(item.eventId).map(card => ({ ...card }));
+    this.eventFeedbackIndex = 0;
+    this.eventFeedbackSubmittedState = false;
+    this.eventFeedbackSubmitMessage = '';
+    this.eventFeedbackTouchStartX = null;
+    this.eventFeedbackTouchStartY = null;
+    if (this.eventFeedbackCards.length === 0) {
+      this.eventFeedbackListSubmitMessage = `${item.title} is already in Feedbacked.`;
+      this.eventFeedbackListFilter = 'feedbacked';
+      return;
+    }
+    this.stackedPopup = 'eventFeedback';
+  }
+
+  protected removeEventFeedbackItem(item: EventFeedbackEventCard, event?: Event): void {
+    event?.stopPropagation();
+    this.markEventFeedbackEventRemoved(item.eventId);
+    this.closeEventFeedbackCardMenu();
+    this.eventFeedbackListSubmitMessage = `${item.title} moved to Removed without feedback.`;
+    this.eventFeedbackListFilter = 'removed';
+  }
+
+  protected restoreRemovedEventFeedbackItem(item: EventFeedbackEventCard, event?: Event): void {
+    event?.stopPropagation();
+    this.restoreEventFeedbackEvent(item.eventId);
+    this.closeEventFeedbackCardMenu();
+    this.eventFeedbackListSubmitMessage = `${item.title} moved back to Pending.`;
+    this.eventFeedbackListFilter = 'pending';
+  }
+
+  protected openEventFeedbackNotePopup(item: EventFeedbackEventCard, event?: Event): void {
+    event?.stopPropagation();
+    this.closeEventFeedbackCardMenu();
+    this.showEventFeedbackFilterPicker = false;
+    this.selectedEventFeedbackEventId = item.eventId;
+    this.eventFeedbackNoteForm = {
+      eventId: item.eventId,
+      text: this.organizerEventFeedbackNotesByUser[this.activeUser.id]?.[item.eventId] ?? ''
+    };
+    this.eventFeedbackNoteSubmitted = false;
+    this.eventFeedbackNoteSubmitMessage = '';
+    this.stackedPopup = 'eventFeedbackNote';
+  }
+
+  protected canSubmitEventFeedbackNote(): boolean {
+    return this.eventFeedbackNoteForm.text.trim().length >= 8;
+  }
+
+  protected submitEventFeedbackNote(): void {
+    if (!this.canSubmitEventFeedbackNote()) {
+      return;
+    }
+    const eventId = this.eventFeedbackNoteForm.eventId;
+    const nextByUser = { ...(this.organizerEventFeedbackNotesByUser[this.activeUser.id] ?? {}) };
+    nextByUser[eventId] = this.eventFeedbackNoteForm.text.trim();
+    this.organizerEventFeedbackNotesByUser[this.activeUser.id] = nextByUser;
+    this.eventFeedbackNoteSubmitted = true;
+    this.eventFeedbackNoteSubmitMessage = `Organizer feedback saved for ${this.eventTitleById(eventId)}.`;
+    this.eventFeedbackListSubmitMessage = this.eventFeedbackNoteSubmitMessage;
+  }
+
+  protected selectEventFeedbackSlide(index: number, event?: Event): void {
+    event?.stopPropagation();
+    if (index < 0 || index >= this.eventFeedbackCards.length) {
+      return;
+    }
+    this.eventFeedbackIndex = index;
+  }
+
+  protected previousEventFeedbackSlide(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.hasEventFeedbackCards || this.eventFeedbackIndex <= 0) {
+      return;
+    }
+    this.eventFeedbackIndex -= 1;
+  }
+
+  protected nextEventFeedbackSlide(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.hasEventFeedbackCards || this.eventFeedbackIndex >= this.eventFeedbackCards.length - 1) {
+      return;
+    }
+    this.eventFeedbackIndex += 1;
+  }
+
+  protected selectEventFeedbackPrimary(optionValue: string, event?: Event): void {
+    event?.stopPropagation();
+    const card = this.activeEventFeedbackCard;
+    if (!card || !card.primaryOptions.some(option => option.value === optionValue)) {
+      return;
+    }
+    card.answerPrimary = optionValue;
+  }
+
+  protected selectEventFeedbackSecondary(optionValue: string, event?: Event): void {
+    event?.stopPropagation();
+    const card = this.activeEventFeedbackCard;
+    if (!card || !card.secondaryOptions.some(option => option.value === optionValue)) {
+      return;
+    }
+    card.answerSecondary = optionValue;
+  }
+
+  protected isEventFeedbackPrimarySelected(optionValue: string): boolean {
+    return this.activeEventFeedbackCard?.answerPrimary === optionValue;
+  }
+
+  protected isEventFeedbackSecondarySelected(optionValue: string): boolean {
+    return this.activeEventFeedbackCard?.answerSecondary === optionValue;
+  }
+
+  protected activeEventFeedbackImpactSummary(): string {
+    const card = this.activeEventFeedbackCard;
+    if (!card) {
+      return '';
+    }
+    const tags = this.selectedImpressionTagsForCard(card);
+    return tags.join(' + ');
+  }
+
+  protected onEventFeedbackTouchStart(event: TouchEvent): void {
+    if (!this.hasEventFeedbackCards) {
+      return;
+    }
+    const touch = event.touches?.[0];
+    if (!touch) {
+      return;
+    }
+    this.eventFeedbackTouchStartX = touch.clientX;
+    this.eventFeedbackTouchStartY = touch.clientY;
+  }
+
+  protected onEventFeedbackTouchEnd(event: TouchEvent): void {
+    if (!this.hasEventFeedbackCards || this.eventFeedbackTouchStartX === null || this.eventFeedbackTouchStartY === null) {
+      this.eventFeedbackTouchStartX = null;
+      this.eventFeedbackTouchStartY = null;
+      return;
+    }
+    const touch = event.changedTouches?.[0];
+    if (!touch) {
+      this.eventFeedbackTouchStartX = null;
+      this.eventFeedbackTouchStartY = null;
+      return;
+    }
+    const deltaX = touch.clientX - this.eventFeedbackTouchStartX;
+    const deltaY = touch.clientY - this.eventFeedbackTouchStartY;
+    this.eventFeedbackTouchStartX = null;
+    this.eventFeedbackTouchStartY = null;
+    if (Math.abs(deltaX) < 46 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.1) {
+      return;
+    }
+    if (deltaX < 0) {
+      this.nextEventFeedbackSlide();
+      return;
+    }
+    this.previousEventFeedbackSlide();
+  }
+
+  protected canSubmitActiveEventFeedback(): boolean {
+    const card = this.activeEventFeedbackCard;
+    if (!card) {
+      return false;
+    }
+    if (this.isSelfAttendeeFeedbackCard(card)) {
+      return false;
+    }
+    return card.answerPrimary.trim().length > 0 && card.answerSecondary.trim().length > 0;
+  }
+
+  protected submitActiveEventFeedback(): void {
+    const card = this.activeEventFeedbackCard;
+    if (!card || this.isSelfAttendeeFeedbackCard(card) || !this.canSubmitActiveEventFeedback()) {
+      return;
+    }
+    this.markEventFeedbackSubmitted(card.id);
+    const impressionSummary = this.selectedImpressionTagsForCard(card);
+    const feedbackLabel = card.kind === 'event'
+      ? `Event feedback saved for ${this.eventTitleById(card.eventId)}.`
+      : 'Attendee feedback saved.';
+    this.eventFeedbackCards.splice(this.eventFeedbackIndex, 1);
+    if (this.eventFeedbackCards.length === 0) {
+      this.eventFeedbackIndex = 0;
+      this.markEventFeedbackEventSubmitted(card.eventId);
+      this.restoreEventFeedbackEvent(card.eventId);
+      this.eventFeedbackSubmittedState = true;
+      const summaryText = impressionSummary.length > 0
+        ? ` Impression sync: ${impressionSummary.join(', ')}.`
+        : '';
+      this.eventFeedbackSubmitMessage = `${feedbackLabel}${summaryText}`;
+      this.eventFeedbackListSubmitMessage = `${this.eventTitleById(card.eventId)} moved to Feedbacked.`;
+      this.eventFeedbackListFilter = 'feedbacked';
+      return;
+    }
+    if (this.eventFeedbackIndex >= this.eventFeedbackCards.length) {
+      this.eventFeedbackIndex = this.eventFeedbackCards.length - 1;
+    }
+    const remaining = this.eventFeedbackCards.length;
+    const summaryText = impressionSummary.length > 0
+      ? ` Impression sync: ${impressionSummary.join(', ')}.`
+      : '';
+    this.eventFeedbackSubmitMessage = `${feedbackLabel}${summaryText} ${remaining} feedback item${remaining === 1 ? '' : 's'} left.`;
+  }
+
+  private get pendingEventFeedbackCards(): EventFeedbackCard[] {
+    return this.buildEventFeedbackCards().filter(card => !this.isSelfAttendeeFeedbackCard(card) && !this.isEventFeedbackSubmitted(card.id));
+  }
+
+  private pendingEventFeedbackCardsForEvent(eventId: string): EventFeedbackCard[] {
+    return this.buildEventFeedbackCards().filter(card =>
+      card.eventId === eventId &&
+      !this.isSelfAttendeeFeedbackCard(card) &&
+      !this.isEventFeedbackSubmitted(card.id)
+    );
+  }
+
+  private get eventFeedbackAllItems(): EventFeedbackEventCard[] {
+    const countsByEvent = new Map<string, { pending: number; total: number }>();
+    for (const card of this.buildEventFeedbackCards()) {
+      if (this.isSelfAttendeeFeedbackCard(card)) {
+        continue;
+      }
+      const current = countsByEvent.get(card.eventId) ?? { pending: 0, total: 0 };
+      current.total += 1;
+      if (!this.isEventFeedbackSubmitted(card.id)) {
+        current.pending += 1;
+      }
+      countsByEvent.set(card.eventId, current);
+    }
+
+    const items: EventFeedbackEventCard[] = [];
+    const nowMs = Date.now();
+    for (const item of this.eventItems) {
+      if (item.isAdmin) {
+        continue;
+      }
+      const startMs = this.eventStartAtMs(item.id);
+      if (startMs === null || nowMs < startMs + this.eventFeedbackUnlockDelayMs) {
+        continue;
+      }
+      const counts = countsByEvent.get(item.id);
+      if (!counts || counts.total === 0) {
+        continue;
+      }
+      const isRemoved = this.isEventFeedbackEventRemoved(item.id);
+      const feedbackedAtMs = this.eventFeedbackEventSubmittedAtMs(item.id);
+      items.push({
+        eventId: item.id,
+        title: item.title,
+        subtitle: item.shortDescription,
+        timeframe: item.timeframe,
+        imageUrl: this.activityImageById[item.id] ?? `https://picsum.photos/seed/event-feedback-${item.id}/1200/700`,
+        startAtMs: startMs,
+        pendingCards: counts.pending,
+        totalCards: counts.total,
+        isRemoved,
+        isFeedbacked: !isRemoved && counts.pending === 0,
+        feedbackedAtMs
+      });
+    }
+    return items;
+  }
+
+  private get eventFeedbackPendingItems(): EventFeedbackEventCard[] {
+    return this.eventFeedbackAllItems
+      .filter(item => !item.isRemoved && item.pendingCards > 0)
+      .sort((a, b) => a.startAtMs - b.startAtMs);
+  }
+
+  private get eventFeedbackFeedbackedItems(): EventFeedbackEventCard[] {
+    return this.eventFeedbackAllItems
+      .filter(item => item.isFeedbacked)
+      .sort((a, b) => {
+        const first = a.feedbackedAtMs ?? a.startAtMs;
+        const second = b.feedbackedAtMs ?? b.startAtMs;
+        return second - first;
+      });
+  }
+
+  private get eventFeedbackRemovedItems(): EventFeedbackEventCard[] {
+    return this.eventFeedbackAllItems
+      .filter(item => item.isRemoved)
+      .sort((a, b) => b.startAtMs - a.startAtMs);
+  }
+
+  private isEventFeedbackSubmitted(cardId: string): boolean {
+    return Boolean(this.submittedEventFeedbackByUser[this.activeUser.id]?.[cardId]);
+  }
+
+  private markEventFeedbackSubmitted(cardId: string): void {
+    const current = { ...(this.submittedEventFeedbackByUser[this.activeUser.id] ?? {}) };
+    current[cardId] = true;
+    this.submittedEventFeedbackByUser[this.activeUser.id] = current;
+  }
+
+  private markEventFeedbackEventSubmitted(eventId: string): void {
+    const current = { ...(this.submittedEventFeedbackEventsByUser[this.activeUser.id] ?? {}) };
+    current[eventId] = new Date().toISOString();
+    this.submittedEventFeedbackEventsByUser[this.activeUser.id] = current;
+  }
+
+  private eventFeedbackEventSubmittedAtMs(eventId: string): number | null {
+    const iso = this.submittedEventFeedbackEventsByUser[this.activeUser.id]?.[eventId];
+    if (!iso) {
+      return null;
+    }
+    const ms = new Date(iso).getTime();
+    return Number.isNaN(ms) ? null : ms;
+  }
+
+  private isEventFeedbackEventRemoved(eventId: string): boolean {
+    return Boolean(this.removedEventFeedbackEventsByUser[this.activeUser.id]?.[eventId]);
+  }
+
+  private markEventFeedbackEventRemoved(eventId: string): void {
+    const current = { ...(this.removedEventFeedbackEventsByUser[this.activeUser.id] ?? {}) };
+    current[eventId] = true;
+    this.removedEventFeedbackEventsByUser[this.activeUser.id] = current;
+  }
+
+  private restoreEventFeedbackEvent(eventId: string): void {
+    const current = { ...(this.removedEventFeedbackEventsByUser[this.activeUser.id] ?? {}) };
+    delete current[eventId];
+    this.removedEventFeedbackEventsByUser[this.activeUser.id] = current;
+  }
+
+  private selectedImpressionTagsForCard(card: EventFeedbackCard): string[] {
+    const tags = new Set<string>();
+    const primary = card.primaryOptions.find(option => option.value === card.answerPrimary)?.impressionTag;
+    const secondary = card.secondaryOptions.find(option => option.value === card.answerSecondary)?.impressionTag;
+    if (primary) {
+      tags.add(primary);
+    }
+    if (secondary) {
+      tags.add(secondary);
+    }
+    return [...tags];
+  }
+
+  private buildEventFeedbackCards(): EventFeedbackCard[] {
+    const nowMs = Date.now();
+    const eventCards: EventFeedbackCard[] = [];
+    for (const item of this.eventItems) {
+      if (item.isAdmin) {
+        continue;
+      }
+      const startMs = this.eventStartAtMs(item.id);
+      if (startMs === null || nowMs < startMs + this.eventFeedbackUnlockDelayMs) {
+        continue;
+      }
+      const eventLabel = this.eventFeedbackWhenLabel(item.id);
+      const host = this.feedbackHostUserForEvent(item.id);
+      const attendee = this.feedbackAttendeeUserForEvent(item.id, host.id);
+      eventCards.push({
+        id: `feedback-event-${item.id}`,
+        eventId: item.id,
+        kind: 'event',
+        icon: 'event_available',
+        toneClass: 'feedback-card-tone-event',
+        heading: item.title,
+        subheading: `${eventLabel} · ${item.shortDescription}`,
+        questionPrimary: `How did ${item.title} feel for you overall?`,
+        questionSecondary: `What should ${host.name} improve next time?`,
+        primaryOptions: this.eventFeedbackEventOverallOptions,
+        secondaryOptions: this.eventFeedbackHostImproveOptions,
+        answerPrimary: '',
+        answerSecondary: ''
+      });
+      if (!attendee) {
+        continue;
+      }
+      eventCards.push({
+        id: `feedback-attendee-${item.id}-${attendee.id}`,
+        eventId: item.id,
+        kind: 'attendee',
+        attendeeUserId: attendee.id,
+        icon: 'groups',
+        toneClass: 'feedback-card-tone-attendee',
+        heading: `${attendee.name} · ${item.title}`,
+        subheading: `Attendee feedback · ${eventLabel}`,
+        questionPrimary: `How was collaboration with ${attendee.name} (${attendee.traitLabel}) during this event?`,
+        questionSecondary: `Would you team up with ${attendee.name} again in a future event?`,
+        primaryOptions: this.eventFeedbackAttendeeCollabOptions,
+        secondaryOptions: this.eventFeedbackAttendeeRejoinOptions,
+        answerPrimary: '',
+        answerSecondary: ''
+      });
+    }
+    return eventCards;
+  }
+
+  private feedbackHostUserForEvent(eventId: string): DemoUser {
+    const candidates = this.users.filter(user => user.id !== this.activeUser.id);
+    if (candidates.length === 0) {
+      return this.activeUser;
+    }
+    const index = this.hashText(`feedback-host:${eventId}`) % candidates.length;
+    return candidates[index] ?? candidates[0];
+  }
+
+  private feedbackAttendeeUserForEvent(eventId: string, hostId: string): DemoUser | null {
+    const candidates = this.users.filter(user => user.id !== this.activeUser.id && user.id !== hostId);
+    if (candidates.length === 0) {
+      return null;
+    }
+    const index = this.hashText(`feedback-attendee:${eventId}`) % candidates.length;
+    const selected = candidates[index] ?? candidates[0];
+    if (!selected || selected.id === this.activeUser.id) {
+      return null;
+    }
+    return selected;
+  }
+
+  private isSelfAttendeeFeedbackCard(card: EventFeedbackCard): boolean {
+    return card.kind === 'attendee' && card.attendeeUserId === this.activeUser.id;
+  }
+
+  private eventFeedbackWhenLabel(eventId: string): string {
+    const startMs = this.eventStartAtMs(eventId);
+    if (startMs === null) {
+      return 'Recent event';
+    }
+    const parsed = new Date(startMs);
+    const day = parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const time = parsed.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    return `${day} · ${time}`;
+  }
+
+  private eventStartAtMs(eventId: string): number | null {
+    const iso = this.eventDatesById[eventId];
+    if (!iso) {
+      return null;
+    }
+    const value = new Date(iso).getTime();
+    return Number.isNaN(value) ? null : value;
+  }
+
+  private eventTitleById(eventId: string): string {
+    return this.eventItems.find(item => item.id === eventId)?.title ?? 'this event';
+  }
+
   protected openReportUserPopup(): void {
     this.reportUserForm = {
       handle: '',
@@ -1990,6 +2664,7 @@ export class App {
       details: ''
     };
     this.reportUserSubmitMessage = '';
+    this.reportUserSubmitted = false;
     this.activePopup = 'reportUser';
   }
 
@@ -2000,6 +2675,7 @@ export class App {
       details: ''
     };
     this.feedbackSubmitMessage = '';
+    this.feedbackSubmitted = false;
     this.activePopup = 'sendFeedback';
   }
 
@@ -2010,6 +2686,7 @@ export class App {
       return;
     }
     this.reportUserSubmitMessage = `Report submitted successfully for ${target}. Our moderation team will review it.`;
+    this.reportUserSubmitted = true;
   }
 
   protected submitFeedback(): void {
@@ -2019,6 +2696,7 @@ export class App {
       return;
     }
     this.feedbackSubmitMessage = `Feedback sent successfully in "${this.feedbackForm.category}". Thank you for helping improve MyScoutee.`;
+    this.feedbackSubmitted = true;
   }
 
   protected openDeleteAccountConfirm(): void {
@@ -7833,6 +8511,20 @@ export class App {
     this.showEventVisibilityPicker = false;
     this.showAssetVisibilityPicker = false;
     this.showProfileStatusHeaderPicker = false;
+    this.showEventFeedbackFilterPicker = false;
+    this.eventFeedbackCards = [];
+    this.eventFeedbackIndex = 0;
+    this.eventFeedbackListFilter = 'pending';
+    this.eventFeedbackListSubmitMessage = '';
+    this.eventFeedbackCardMenuEventId = null;
+    this.selectedEventFeedbackEventId = null;
+    this.eventFeedbackSubmittedState = false;
+    this.eventFeedbackSubmitMessage = '';
+    this.eventFeedbackTouchStartX = null;
+    this.eventFeedbackTouchStartY = null;
+    this.eventFeedbackNoteForm = { eventId: '', text: '' };
+    this.eventFeedbackNoteSubmitted = false;
+    this.eventFeedbackNoteSubmitMessage = '';
     this.pendingActivityDeleteRow = null;
     this.pendingActivityPublishRow = null;
     this.pendingSubEventDeleteId = null;
@@ -7919,6 +8611,18 @@ export class App {
       this.ticketScannerResult = null;
       this.selectedTicketCodeValue = '';
       this.selectedTicketRow = null;
+      this.stackedPopup = null;
+      return;
+    }
+    if (this.stackedPopup === 'eventFeedback' || this.stackedPopup === 'eventFeedbackNote') {
+      this.eventFeedbackCards = [];
+      this.eventFeedbackIndex = 0;
+      this.eventFeedbackSubmittedState = false;
+      this.eventFeedbackSubmitMessage = '';
+      this.eventFeedbackTouchStartX = null;
+      this.eventFeedbackTouchStartY = null;
+      this.eventFeedbackNoteSubmitted = false;
+      this.eventFeedbackNoteSubmitMessage = '';
       this.stackedPopup = null;
       return;
     }
@@ -8269,6 +8973,10 @@ export class App {
         return 'Hosting';
       case 'helpCenter':
         return 'Help';
+      case 'eventFeedback':
+        return 'Event Feedback';
+      case 'eventFeedbackNote':
+        return 'Organizer Feedback';
       case 'reportUser':
         return 'Report User';
       case 'sendFeedback':
@@ -8303,6 +9011,10 @@ export class App {
         return this.eventEditorReadOnly ? 'View Event' : 'Edit Event';
       case 'eventExplore':
         return 'Event Explore';
+      case 'eventFeedback':
+        return `Event Feedback · ${this.eventFeedbackCurrentEventTitle()}`;
+      case 'eventFeedbackNote':
+        return `Organizer Feedback · ${this.eventFeedbackCurrentEventTitle()}`;
       case 'ticketCode':
         return 'Ticket';
       case 'ticketScanner':
