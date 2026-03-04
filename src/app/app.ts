@@ -117,6 +117,15 @@ interface SubEventBadgeContext {
   groupName?: string;
 }
 
+interface HelpCenterSection {
+  id: string;
+  icon: string;
+  title: string;
+  blurb: string;
+  details: string[];
+  points: string[];
+}
+
 interface ChatReadAvatar {
   id: string;
   initials: string;
@@ -1477,6 +1486,69 @@ export class App {
     'UX improvement',
     'Performance'
   ];
+  protected readonly helpCenterSections: HelpCenterSection[] = [
+    {
+      id: 'events',
+      icon: 'event_note',
+      title: 'Events and Sub Events',
+      blurb: 'Build the full event flow with stages or optional items.',
+      details: [
+        'Create a main event, then split execution into sub events for stages, side activities, or optional sessions.',
+        'Each sub event carries its own date range, description, and status so planning stays clean and trackable.'
+      ],
+      points: [
+        'Supports casual and tournament structures',
+        'Keeps stage context visible in related screens',
+        'Lets hosts edit details without losing hierarchy'
+      ]
+    },
+    {
+      id: 'resources',
+      icon: 'inventory_2',
+      title: 'Resources and Capacity',
+      blurb: 'Assign people, cars, accommodation, and supplies with limits.',
+      details: [
+        'Use resource menus to assign assets into sub events and groups, then adjust capacity ranges directly where needed.',
+        'Badges summarize pending requests and remaining capacity so action priorities are visible at a glance.'
+      ],
+      points: [
+        'Capacity min/max control per assignment',
+        'Contextual badges for pending requests',
+        'Route and location support for travel resources'
+      ]
+    },
+    {
+      id: 'activities',
+      icon: 'forum',
+      title: 'Activities and Chats',
+      blurb: 'Coordinate with context-aware channels and filters.',
+      details: [
+        'Chat channels follow event scope: main event, optional sub event, and group channels can all coexist.',
+        'Context actions in chat headers help jump directly to related event/sub-event views and resources.'
+      ],
+      points: [
+        'Fast channel filtering by context',
+        'Unread counters scoped to relevant channels',
+        'Works for both mobile and desktop flows'
+      ]
+    },
+    {
+      id: 'safety',
+      icon: 'verified_user',
+      title: 'Profiles and Safety',
+      blurb: 'Improve trust with profile quality and moderation tools.',
+      details: [
+        'Profile completion updates in real time as users fill key fields and detail sections.',
+        'Safety controls include report tools, privacy visibility options, and clear moderation pathways.'
+      ],
+      points: [
+        'Live profile completion feedback',
+        'Report user and feedback workflows',
+        'Privacy and access visibility controls'
+      ]
+    }
+  ];
+  protected helpCenterActiveSectionId = this.helpCenterSections[0]?.id ?? 'events';
   protected languageInput = '';
   protected showLanguagePanel = false;
   private readonly profileDetailsFormByUser: Record<string, ProfileDetailFormGroup[]> = {};
@@ -1898,7 +1970,17 @@ export class App {
   }
 
   protected openHelpPopup(): void {
+    this.helpCenterActiveSectionId = this.helpCenterSections[0]?.id ?? this.helpCenterActiveSectionId;
     this.activePopup = 'helpCenter';
+  }
+
+  protected selectHelpCenterSection(sectionId: string, event?: Event): void {
+    event?.stopPropagation();
+    this.helpCenterActiveSectionId = sectionId;
+  }
+
+  protected get activeHelpCenterSection(): HelpCenterSection | null {
+    return this.helpCenterSections.find(section => section.id === this.helpCenterActiveSectionId) ?? this.helpCenterSections[0] ?? null;
   }
 
   protected openReportUserPopup(): void {
@@ -9251,11 +9333,6 @@ export class App {
 
   protected getHoroscopeClass(value: string): string {
     return `zodiac-${this.normalizeText(value).replace(/\s+/g, '-')}`;
-  }
-
-  protected onHeaderPanelClick(event: MouseEvent): void {
-    event.stopPropagation();
-    this.openProfileEditor();
   }
 
   protected onBirthdayChange(value: Date | null): void {

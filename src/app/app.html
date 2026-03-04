@@ -286,11 +286,6 @@
       <div
         class="user-menu-header"
         [ngClass]="profileStatusClass(activeUser.profileStatus)"
-        role="button"
-        tabindex="0"
-        (click)="onHeaderPanelClick($event)"
-        (keydown.enter)="openProfileEditor()"
-        (keydown.space)="openProfileEditor(); $event.preventDefault()"
       >
         <button
           type="button"
@@ -372,9 +367,9 @@
             </span>
           </div>
         </div>
-        <span class="header-open-cue" aria-hidden="true">
+        <button type="button" class="header-open-cue" aria-label="Open profile editor" (click)="openProfileEditor()">
           <mat-icon>edit</mat-icon>
-        </span>
+        </button>
       </div>
 
       <div class="user-menu-content">
@@ -2730,24 +2725,32 @@
           <p>MyScoutee helps you plan events end-to-end: invite people, split into stages/groups, assign resources, and coordinate in context chats.</p>
         </article>
 
-        <div class="support-help-grid">
-          <article class="editor-list-card support-help-feature">
-            <h4><mat-icon>event_note</mat-icon><span>Events and Sub Events</span></h4>
-            <p>Create casual or tournament events, define timelines, and manage stage-by-stage planning from one place.</p>
-          </article>
-          <article class="editor-list-card support-help-feature">
-            <h4><mat-icon>inventory_2</mat-icon><span>Resources and Capacity</span></h4>
-            <p>Assign members, cars, accommodation, and supplies with capacity tracking, badges, and quick action menus.</p>
-          </article>
-          <article class="editor-list-card support-help-feature">
-            <h4><mat-icon>forum</mat-icon><span>Activities and Chats</span></h4>
-            <p>Use event, sub-event, and group channels to coordinate updates with contextual navigation to relevant screens.</p>
-          </article>
-          <article class="editor-list-card support-help-feature">
-            <h4><mat-icon>verified_user</mat-icon><span>Profiles and Safety</span></h4>
-            <p>Build profile completion, review privacy options, and use moderation tools to keep the community safe.</p>
-          </article>
+        <div class="support-help-tabs" role="tablist" aria-label="Help topics">
+          <button
+            type="button"
+            class="support-help-tab-btn"
+            role="tab"
+            *ngFor="let section of helpCenterSections"
+            [class.is-active]="section.id === helpCenterActiveSectionId"
+            [attr.aria-selected]="section.id === helpCenterActiveSectionId"
+            (click)="selectHelpCenterSection(section.id, $event)"
+          >
+            <span class="support-help-tab-head">
+              <mat-icon>{{ section.icon }}</mat-icon>
+              <span>{{ section.title }}</span>
+            </span>
+            <span class="support-help-tab-blurb">{{ section.blurb }}</span>
+          </button>
         </div>
+
+        <article class="editor-list-card support-help-detail" *ngIf="activeHelpCenterSection as section">
+          <h4><mat-icon>{{ section.icon }}</mat-icon><span>{{ section.title }}</span></h4>
+          <p class="support-help-detail-lead">{{ section.blurb }}</p>
+          <p *ngFor="let paragraph of section.details">{{ paragraph }}</p>
+          <ul class="support-help-detail-list">
+            <li *ngFor="let point of section.points">{{ point }}</li>
+          </ul>
+        </article>
       </div>
 
       <div *ngIf="activePopup === 'reportUser'" class="support-popup">

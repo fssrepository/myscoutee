@@ -14,5 +14,12 @@ pair rate - met (a new option on ratings)
 when you rate a user make blink effect on star badge and star popup bar - 
 game / activities rating (non-full/full screen mode) (to show it's rated)
 
+
+
 feedback for user/event (attendee/host impressions) - you can't rate your own event
-(user can do it after event has been finished, no input feedback message in this case)
+(user can do it after event has been finished by 2 hours, no input feedback message in this case)
+
+that should be also a trigger when you login and the events has been finished,
+so the system can automatically ask
+
+it will be coming from the route also
