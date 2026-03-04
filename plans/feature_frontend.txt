@@ -3,7 +3,6 @@ game / activities rating (non-full/full screen mode) (to show it's rated)
 
 Game - Default page
 -------------------
-shows the Tinder like panel on the left with 3 buttons on the header
 (profile-filter e.g.: profession match, school match, friends in common etc.),
 history, type - (fab button - egyeni, parok - rotate screen status message))
 
