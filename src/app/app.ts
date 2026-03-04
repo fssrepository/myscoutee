@@ -3179,6 +3179,14 @@ export class App {
     return count === 1 ? '1 item' : `${count} items`;
   }
 
+  protected subEventsCurrentHeaderLabel(): string {
+    const current = this.currentSubEventPanelState();
+    if (!current) {
+      return '';
+    }
+    return this.subEventPanelChipTitle(current.item, current.index);
+  }
+
   protected subEventLocationLabel(subEvent: SubEventFormItem | null | undefined): string {
     const location = this.normalizeLocationValue(subEvent?.location).trim();
     return location || 'Location pending';
@@ -3239,6 +3247,22 @@ export class App {
       borderColor: 'rgba(175, 78, 78, 0.34)',
       background: 'linear-gradient(180deg, #fff3f3 0%, #ffe9e9 100%)',
       color: '#8f3a3a'
+    };
+  }
+
+  private currentSubEventPanelState(): { item: SubEventFormItem; index: number } | null {
+    const source = this.sortSubEventRefsByStartAsc(this.eventForm.subEvents);
+    if (source.length === 0) {
+      return null;
+    }
+    const currentIndex = this.clampNumber(this.resolveCurrentSubEventIndex(source), 0, source.length - 1);
+    const current = source[currentIndex] ?? source[0] ?? null;
+    if (!current) {
+      return null;
+    }
+    return {
+      item: current,
+      index: currentIndex
     };
   }
 

@@ -2511,6 +2511,9 @@
                         <mat-icon>view_timeline</mat-icon>
                         <span class="event-subevents-panel-title-label">Sub Events</span>
                       </span>
+                      <span class="event-subevents-panel-current" *ngIf="eventForm.subEvents.length > 0">
+                        {{ subEventsCurrentHeaderLabel() }}
+                      </span>
                     </span>
                     <span class="event-subevents-panel-meta" *ngIf="eventForm.subEvents.length > 0">
                       <span class="event-subevents-panel-mode" [ngClass]="subEventsDisplayModeClass()">
@@ -2523,6 +2526,7 @@
                     </span>
                     <mat-icon class="event-subevents-chevron">chevron_right</mat-icon>
                   </span>
+                  <span class="event-subevents-panel-divider" *ngIf="eventForm.subEvents.length > 0" aria-hidden="true"></span>
                   <span class="event-subevents-panel-body" *ngIf="eventForm.subEvents.length > 0; else eventSubEventsPlaceholderMain">
                     <span
                       class="event-subevent-panel-chip"
@@ -5175,6 +5179,9 @@
                         <mat-icon>view_timeline</mat-icon>
                         <span class="event-subevents-panel-title-label">Sub Events</span>
                       </span>
+                      <span class="event-subevents-panel-current" *ngIf="eventForm.subEvents.length > 0">
+                        {{ subEventsCurrentHeaderLabel() }}
+                      </span>
                     </span>
                     <span class="event-subevents-panel-meta" *ngIf="eventForm.subEvents.length > 0">
                       <span class="event-subevents-panel-mode" [ngClass]="subEventsDisplayModeClass()">
@@ -5187,6 +5194,7 @@
                     </span>
                     <mat-icon class="event-subevents-chevron">chevron_right</mat-icon>
                   </span>
+                  <span class="event-subevents-panel-divider" *ngIf="eventForm.subEvents.length > 0" aria-hidden="true"></span>
                   <span class="event-subevents-panel-body" *ngIf="eventForm.subEvents.length > 0; else eventSubEventsPlaceholderStacked">
                     <span
                       class="event-subevent-panel-chip"

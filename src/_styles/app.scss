@@ -13213,6 +13213,18 @@ textarea {
   white-space: nowrap;
 }
 
+.event-subevents-panel-current {
+  display: block;
+  min-width: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.14;
+  color: rgba(74, 56, 34, 0.88);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .event-subevents-panel-mode {
   margin-left: 0;
   display: inline-flex;
@@ -13273,6 +13285,13 @@ textarea {
   align-items: stretch;
   gap: 0.34rem;
   min-height: 1.6rem;
+}
+
+.event-subevents-panel-divider {
+  display: block;
+  width: 100%;
+  border-top: 1px solid rgba(141, 122, 93, 0.36);
+  margin: 0.04rem 0 0.06rem;
 }
 
 .event-subevents-panel-meta {
@@ -17625,6 +17644,10 @@ textarea {
 
   .event-subevents-panel-meta {
     gap: 0.1rem;
+  }
+
+  .event-subevents-panel-current {
+    font-size: 0.62rem;
   }
 
   .event-subevent-panel-chip {
