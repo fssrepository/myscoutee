@@ -1543,6 +1543,7 @@ export class App {
   protected selectedEventFeedbackEventId: string | null = null;
   protected eventFeedbackSubmittedState = false;
   protected eventFeedbackSubmitMessage = '';
+  protected eventFeedbackSlideAnimClass = '';
   protected eventFeedbackNoteForm = {
     eventId: '',
     text: ''
@@ -1551,6 +1552,7 @@ export class App {
   protected eventFeedbackNoteSubmitMessage = '';
   private eventFeedbackTouchStartX: number | null = null;
   private eventFeedbackTouchStartY: number | null = null;
+  private eventFeedbackSlideAnimationTimer: ReturnType<typeof setTimeout> | null = null;
   private suppressUserMenuOutsideCloseUntilMs = 0;
   private readonly submittedEventFeedbackByUser: Record<string, Record<string, true>> = {};
   private readonly submittedEventFeedbackAnswersByUser: Record<string, Record<string, SubmittedEventFeedbackAnswer>> = {};
@@ -2174,6 +2176,11 @@ export class App {
     this.eventFeedbackIndex = 0;
     this.eventFeedbackSubmittedState = false;
     this.eventFeedbackSubmitMessage = '';
+    if (this.eventFeedbackSlideAnimationTimer) {
+      clearTimeout(this.eventFeedbackSlideAnimationTimer);
+      this.eventFeedbackSlideAnimationTimer = null;
+    }
+    this.eventFeedbackSlideAnimClass = '';
     this.eventFeedbackTouchStartX = null;
     this.eventFeedbackTouchStartY = null;
     this.activePopup = 'eventFeedback';
@@ -2252,6 +2259,11 @@ export class App {
     this.eventFeedbackIndex = 0;
     this.eventFeedbackSubmittedState = false;
     this.eventFeedbackSubmitMessage = '';
+    if (this.eventFeedbackSlideAnimationTimer) {
+      clearTimeout(this.eventFeedbackSlideAnimationTimer);
+      this.eventFeedbackSlideAnimationTimer = null;
+    }
+    this.eventFeedbackSlideAnimClass = '';
     this.eventFeedbackTouchStartX = null;
     this.eventFeedbackTouchStartY = null;
     if (this.eventFeedbackCards.length === 0) {
@@ -2314,7 +2326,12 @@ export class App {
     if (index < 0 || index >= this.eventFeedbackCards.length) {
       return;
     }
+    if (index === this.eventFeedbackIndex) {
+      return;
+    }
+    const direction = index > this.eventFeedbackIndex ? 'next' : 'prev';
     this.eventFeedbackIndex = index;
+    this.playEventFeedbackSlideAnimation(direction);
   }
 
   protected previousEventFeedbackSlide(event?: Event): void {
@@ -2323,6 +2340,7 @@ export class App {
       return;
     }
     this.eventFeedbackIndex -= 1;
+    this.playEventFeedbackSlideAnimation('prev');
   }
 
   protected nextEventFeedbackSlide(event?: Event): void {
@@ -2331,6 +2349,7 @@ export class App {
       return;
     }
     this.eventFeedbackIndex += 1;
+    this.playEventFeedbackSlideAnimation('next');
   }
 
   protected selectEventFeedbackPrimary(optionValue: string, event?: Event): void {
@@ -2448,6 +2467,24 @@ export class App {
     }
     const remaining = this.eventFeedbackCards.length;
     this.eventFeedbackSubmitMessage = `${feedbackLabel} ${remaining} feedback item${remaining === 1 ? '' : 's'} left.`;
+    this.playEventFeedbackSlideAnimation('next');
+  }
+
+  private playEventFeedbackSlideAnimation(direction: 'next' | 'prev'): void {
+    const nextClass = direction === 'next'
+      ? 'event-feedback-slide-enter-next'
+      : 'event-feedback-slide-enter-prev';
+    if (this.eventFeedbackSlideAnimationTimer) {
+      clearTimeout(this.eventFeedbackSlideAnimationTimer);
+      this.eventFeedbackSlideAnimationTimer = null;
+    }
+    this.eventFeedbackSlideAnimClass = '';
+    this.cdr.detectChanges();
+    this.eventFeedbackSlideAnimClass = nextClass;
+    this.eventFeedbackSlideAnimationTimer = setTimeout(() => {
+      this.eventFeedbackSlideAnimClass = '';
+      this.eventFeedbackSlideAnimationTimer = null;
+    }, 260);
   }
 
   private get pendingEventFeedbackCards(): EventFeedbackCard[] {
@@ -8629,6 +8666,11 @@ export class App {
     this.selectedEventFeedbackEventId = null;
     this.eventFeedbackSubmittedState = false;
     this.eventFeedbackSubmitMessage = '';
+    if (this.eventFeedbackSlideAnimationTimer) {
+      clearTimeout(this.eventFeedbackSlideAnimationTimer);
+      this.eventFeedbackSlideAnimationTimer = null;
+    }
+    this.eventFeedbackSlideAnimClass = '';
     this.eventFeedbackTouchStartX = null;
     this.eventFeedbackTouchStartY = null;
     this.eventFeedbackNoteForm = { eventId: '', text: '' };
@@ -8728,6 +8770,11 @@ export class App {
       this.eventFeedbackIndex = 0;
       this.eventFeedbackSubmittedState = false;
       this.eventFeedbackSubmitMessage = '';
+      if (this.eventFeedbackSlideAnimationTimer) {
+        clearTimeout(this.eventFeedbackSlideAnimationTimer);
+        this.eventFeedbackSlideAnimationTimer = null;
+      }
+      this.eventFeedbackSlideAnimClass = '';
       this.eventFeedbackTouchStartX = null;
       this.eventFeedbackTouchStartY = null;
       this.eventFeedbackNoteSubmitted = false;

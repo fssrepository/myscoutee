@@ -5433,11 +5433,11 @@
       <div *ngIf="stackedPopup === 'eventFeedback'" class="support-popup event-feedback-popup">
         <ng-container *ngIf="!eventFeedbackSubmittedState; else eventFeedbackSentState">
         <article class="editor-list-card support-card event-feedback-shell" *ngIf="activeEventFeedbackCard as card; else eventFeedbackSentState">
-          <span class="event-feedback-mobile-counter" *ngIf="isMobileView && hasEventFeedbackCards">{{ eventFeedbackSlideCounterLabel }}</span>
+          <span class="event-feedback-mobile-counter" *ngIf="hasEventFeedbackCards">{{ eventFeedbackSlideCounterLabel }}</span>
           <div class="event-feedback-card-wrap">
             <div
               class="event-feedback-card"
-              [ngClass]="card.toneClass"
+              [ngClass]="[card.toneClass, eventFeedbackSlideAnimClass]"
               (touchstart)="onEventFeedbackTouchStart($event)"
               (touchend)="onEventFeedbackTouchEnd($event)"
             >
