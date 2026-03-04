@@ -1,5 +1,5 @@
-lazy load card image - card_no_edges.png (animate lazy load images in different places also)
 for every data on profile has variable +%, if you fill it out
+
 report a user menu, request form etc. (for me by the users)
 for mobile touch animation on each clickable button whatever
 when you rate a user make blink effect on star badge and star popup bar (to show it's rated)
@@ -17,10 +17,6 @@ preload 10-15 photos, and paginating to the next stack, while the user finished 
 (the cards are on top of each other, so hiding each other)
 
 pair rate - met (a new option on ratings)
-
-car and accomodation should get route and location as the event - map icon
-add the number of places - map has multiple routes - will be generated based on sub events location
-event/subevent - enter something as location, map button right hand side to verify the address
 
 chat:
 -----

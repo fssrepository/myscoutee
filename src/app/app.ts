@@ -315,6 +315,7 @@ interface EventEditorForm {
   capacityMax: number | null;
   startAt: string;
   endAt: string;
+  location: string;
   frequency: string;
   visibility: EventVisibility;
   blindMode: EventBlindMode;
@@ -330,6 +331,7 @@ interface SubEventFormItem {
   description: string;
   startAt: string;
   endAt: string;
+  location?: string;
   createdByUserId?: string;
   groups?: SubEventGroupItem[];
   tournamentGroupCount?: number;
@@ -1347,6 +1349,7 @@ export class App {
   protected readonly eventVisibilityOptions: EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
   protected readonly eventBlindModeOptions: EventBlindMode[] = ['Open Event', 'Blind Event'];
   private readonly eventSubEventsById: Record<string, SubEventFormItem[]> = {};
+  private readonly eventLocationById: Record<string, string> = {};
   protected eventStartDateValue: Date | null = null;
   protected eventEndDateValue: Date | null = null;
   protected eventStartTimeValue: Date | null = null;
@@ -2152,7 +2155,70 @@ export class App {
 
   protected subEventsCountLabel(): string {
     const count = this.eventForm.subEvents.length;
-    return count === 1 ? '1 sub event' : `${count} sub events`;
+    return count === 1 ? '1 item' : `${count} items`;
+  }
+
+  protected subEventLocationLabel(subEvent: SubEventFormItem | null | undefined): string {
+    const location = this.normalizeLocationValue(subEvent?.location).trim();
+    return location || 'Location pending';
+  }
+
+  protected subEventPanelChipTitle(subEvent: SubEventFormItem, index: number): string {
+    const baseName = (subEvent.name || 'Untitled').trim() || 'Untitled';
+    if (this.subEventsDisplayMode !== 'Tournament') {
+      return baseName;
+    }
+    return `Stage ${index + 1} - ${baseName}`;
+  }
+
+  protected subEventPanelChipIsCurrent(subEvent: SubEventFormItem): boolean {
+    const source = this.sortSubEventRefsByStartAsc(this.eventForm.subEvents);
+    if (source.length === 0) {
+      return false;
+    }
+    const currentIndex = this.resolveCurrentSubEventIndex(source);
+    const current = source[currentIndex] ?? source[0] ?? null;
+    if (!current) {
+      return false;
+    }
+    if (current === subEvent) {
+      return true;
+    }
+    if (current.id && subEvent.id) {
+      return current.id === subEvent.id;
+    }
+    return current.startAt === subEvent.startAt
+      && current.endAt === subEvent.endAt
+      && current.name === subEvent.name;
+  }
+
+  protected subEventPanelChipStyle(index: number): Record<string, string> {
+    if (this.subEventsDisplayMode === 'Tournament') {
+      const totalStages = Math.max(1, this.eventForm.subEvents.length);
+      const stageNumber = this.clampNumber(index + 1, 1, totalStages);
+      const hue = this.subEventStageAccentHue(stageNumber, totalStages);
+      return {
+        borderColor: `hsl(${hue} 54% 58% / 0.52)`,
+        background: `linear-gradient(180deg, hsl(${hue} 92% 96%) 0%, hsl(${hue} 84% 90%) 100%)`,
+        color: `hsl(${hue} 48% 34%)`
+      };
+    }
+    const subEvent = this.eventForm.subEvents[index] ?? null;
+    if (!subEvent) {
+      return {};
+    }
+    if (subEvent.optional) {
+      return {
+        borderColor: 'rgba(63, 118, 188, 0.34)',
+        background: 'linear-gradient(180deg, #f1f9ff 0%, #e8f3ff 100%)',
+        color: '#2b5c95'
+      };
+    }
+    return {
+      borderColor: 'rgba(175, 78, 78, 0.34)',
+      background: 'linear-gradient(180deg, #fff3f3 0%, #ffe9e9 100%)',
+      color: '#8f3a3a'
+    };
   }
 
   protected subEventsDisplayModeClass(mode: SubEventsDisplayMode = this.subEventsDisplayMode): string {
@@ -2252,12 +2318,40 @@ export class App {
   }
 
   protected subEventStageAccentColor(stageNumber: number, totalStages: number): string {
+    const hue = this.subEventStageAccentHue(stageNumber, totalStages);
+    return `hsl(${hue} 72% 48%)`;
+  }
+
+  private subEventStageAccentHue(stageNumber: number, totalStages: number): number {
     if (totalStages <= 1) {
-      return 'hsl(210 72% 48%)';
+      return 210;
     }
     const ratio = this.clampNumber((stageNumber - 1) / (totalStages - 1), 0, 1);
-    const hue = Math.round(210 - (210 * ratio));
-    return `hsl(${hue} 72% 48%)`;
+    return Math.round(210 - (210 * ratio));
+  }
+
+  private resolveCurrentSubEventIndex(items: SubEventFormItem[]): number {
+    if (items.length === 0) {
+      return 0;
+    }
+    const now = Date.now();
+    for (let index = 0; index < items.length; index += 1) {
+      const startMs = new Date(items[index].startAt).getTime();
+      const endMs = new Date(items[index].endAt).getTime();
+      if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
+        continue;
+      }
+      if (startMs <= now && now <= endMs) {
+        return index;
+      }
+    }
+    for (let index = 0; index < items.length; index += 1) {
+      const startMs = new Date(items[index].startAt).getTime();
+      if (!Number.isNaN(startMs) && startMs > now) {
+        return index;
+      }
+    }
+    return Math.max(0, items.length - 1);
   }
 
   protected subEventStageMetaLabel(stage: SubEventTournamentStage): string {
@@ -2630,6 +2724,9 @@ export class App {
     this.subEventFormStageNumber = tournamentStageContext ? this.eventForm.subEvents.length + 1 : null;
     this.resetSubEventStageInsertControls();
     this.applySubEventInsertTargetDateRangeToForm();
+    if (this.isSubEventFormFirstInOrder()) {
+      this.subEventForm.location = this.normalizeLocationValue(this.eventForm.location);
+    }
     if (tournamentStageContext) {
       this.initializeTournamentStageConfigForCreate();
     }
@@ -2856,6 +2953,23 @@ export class App {
     this.syncSubEventFormFromDateTimeControls();
     this.normalizeSubEventDateRange();
     this.syncSubEventDateTimeControlsFromForm();
+  }
+
+  protected onSubEventLocationChange(value: string): void {
+    if (this.eventEditorReadOnly) {
+      return;
+    }
+    this.subEventForm.location = this.normalizeLocationValue(value);
+    if (!this.isSubEventFormFirstInOrder()) {
+      return;
+    }
+    this.eventForm.location = this.normalizeLocationValue(this.subEventForm.location);
+    this.syncFirstSubEventLocationFromMainEvent();
+  }
+
+  protected openSubEventLocationMap(event?: Event): void {
+    event?.stopPropagation();
+    this.openGoogleMapsSearch(this.subEventForm.location ?? '');
   }
 
   protected subEventCardRange(item: SubEventFormItem): string {
@@ -3202,6 +3316,16 @@ export class App {
     return this.canJoinSubEventItem(item) || this.canEditSubEventItem(item) || this.canDeleteSubEventItem(item);
   }
 
+  protected canOpenSubEventLocation(item: SubEventFormItem): boolean {
+    return this.normalizeLocationValue(item.location).trim().length > 0;
+  }
+
+  protected openSubEventLocation(item: SubEventFormItem, event?: Event): void {
+    event?.stopPropagation();
+    this.openGoogleMapsSearch(item.location ?? '');
+    this.inlineItemActionMenu = null;
+  }
+
   protected runSubEventItemJoinAction(item: SubEventFormItem, event: Event, group?: SubEventTournamentGroup): void {
     event.stopPropagation();
     if (!this.canJoinSubEventItem(item)) {
@@ -3232,6 +3356,7 @@ export class App {
     this.subEventForm = {
       ...item,
       optional: tournamentStageContext ? false : item.optional,
+      location: this.normalizeLocationValue(item.location),
       createdByUserId: this.subEventCreatorId(item),
       groups: this.cloneSubEventGroups(item.groups)
     };
@@ -3243,6 +3368,9 @@ export class App {
     this.showSubEventOptionalPicker = false;
     this.showSubEventGroupForm = false;
     this.syncSubEventDateTimeControlsFromForm();
+    if (this.isSubEventFormFirstInOrder()) {
+      this.subEventForm.location = this.normalizeLocationValue(this.eventForm.location);
+    }
     this.showSubEventForm = true;
     this.inlineItemActionMenu = null;
   }
@@ -3256,6 +3384,7 @@ export class App {
     this.subEventForm = {
       ...stage.subEvent,
       optional: false,
+      location: this.normalizeLocationValue(stage.subEvent.location),
       createdByUserId: this.subEventCreatorId(stage.subEvent),
       groups: this.cloneSubEventGroups(stage.subEvent.groups)
     };
@@ -3265,6 +3394,9 @@ export class App {
     this.showSubEventOptionalPicker = false;
     this.showSubEventGroupForm = false;
     this.syncSubEventDateTimeControlsFromForm();
+    if (this.isSubEventFormFirstInOrder()) {
+      this.subEventForm.location = this.normalizeLocationValue(this.eventForm.location);
+    }
     this.showSubEventForm = true;
     this.inlineItemActionMenu = null;
   }
@@ -5397,7 +5529,9 @@ export class App {
       details: card.details,
       imageUrl: card.imageUrl,
       sourceLink: card.sourceLink,
-      routes: this.normalizeAssetRoutes(card.type, settings[card.id]?.routes ?? card.routes, ''),
+      routes: card.type === 'Accommodation'
+        ? this.normalizeAssetRoutes(card.type, card.routes, card.city)
+        : this.normalizeAssetRoutes(card.type, settings[card.id]?.routes ?? card.routes, card.city),
       capacityTotal: settings[card.id]?.capacityMax ?? card.capacityTotal,
       accepted: card.type === 'Supplies' ? this.subEventSupplyProvidedCount(card.id, subEvent.id) : this.assetAcceptedCount(card),
       pending: this.assetPendingCount(card),
@@ -5418,7 +5552,7 @@ export class App {
     if (!card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
       return false;
     }
-    return card.routes.some(stop => stop.trim().length > 0);
+    return this.normalizeAssetRoutes(card.type, card.routes, card.city).some(stop => stop.trim().length > 0);
   }
 
   protected openSubEventResourceMap(card: SubEventResourceCard, event?: Event): void {
@@ -5426,11 +5560,16 @@ export class App {
     if (!this.canOpenSubEventResourceMap(card)) {
       return;
     }
-    if (card.type === 'Accommodation') {
-      this.openGoogleMapsSearch(card.routes[0] ?? card.city);
+    const type = card.type;
+    if (type !== 'Car' && type !== 'Accommodation') {
       return;
     }
-    this.openGoogleMapsDirections(card.routes);
+    const routes = this.normalizeAssetRoutes(type, card.routes, card.city);
+    if (type === 'Accommodation') {
+      this.openGoogleMapsSearch(routes[0] ?? card.city);
+      return;
+    }
+    this.openGoogleMapsDirections(routes);
   }
 
   protected subEventModeClass(optional: boolean): string {
@@ -5609,6 +5748,24 @@ export class App {
     this.syncEventDateTimeControlsFromForm();
   }
 
+  protected onEventLocationChange(value: string): void {
+    if (this.eventEditorReadOnly) {
+      return;
+    }
+    this.eventForm.location = this.normalizeLocationValue(value);
+    this.syncFirstSubEventLocationFromMainEvent();
+  }
+
+  protected openEventLocationMap(event?: Event): void {
+    event?.stopPropagation();
+    const routeStops = this.eventLocationRouteStops();
+    if (routeStops.length <= 1) {
+      this.openGoogleMapsSearch(routeStops[0] ?? this.eventForm.location);
+      return;
+    }
+    this.openGoogleMapsDirections(routeStops);
+  }
+
   protected saveEventEditorForm(): void {
     if (this.eventEditorReadOnly) {
       return;
@@ -5619,6 +5776,7 @@ export class App {
     this.eventForm.capacityMax = normalizedCapacity.max;
     this.normalizeExistingSubEventsCapacityAgainstMain();
     this.normalizeExistingSubEventsDateAgainstMain();
+    this.syncFirstSubEventLocationFromMainEvent();
     const title = this.eventForm.title.trim();
     const description = this.eventForm.description.trim();
     if (!title || !description || !this.eventForm.startAt || !this.eventForm.endAt) {
@@ -5707,6 +5865,10 @@ export class App {
     const end = new Date(fallbackStart.getTime() + 2 * 60 * 60 * 1000);
     const frequency = this.parseFrequencyFromTimeframe(source.timeframe);
     const capacity = this.eventCapacityById[source.id] ?? { min: null, max: null };
+    const loadedSubEvents = this.sortSubEventsByStartAsc(this.cloneSubEvents(this.eventSubEventsById[source.id] ?? []));
+    const fallbackLocation = this.normalizeLocationValue(this.firstSubEventByOrder(loadedSubEvents)?.location);
+    const location = this.normalizeLocationValue(this.eventLocationById[source.id]) || fallbackLocation;
+    const subEvents = this.withFirstSubEventLocation(loadedSubEvents, location);
     return {
       title: source.title,
       description: source.shortDescription,
@@ -5715,13 +5877,14 @@ export class App {
       capacityMax: this.normalizedEventCapacityValue(capacity.max),
       startAt: this.toIsoDateTimeLocal(fallbackStart),
       endAt: this.toIsoDateTimeLocal(end),
+      location,
       frequency,
       visibility: this.eventVisibilityById[source.id] ?? (target === 'hosting' ? 'Invitation only' : 'Public'),
       blindMode: this.eventBlindModeById[source.id] ?? 'Open Event',
       autoInviter: this.eventAutoInviterById[source.id] ?? false,
       ticketing: this.eventTicketingById[source.id] ?? false,
       topics: [...this.eventEditor.mainEvent.topics].slice(0, 5),
-      subEvents: this.sortSubEventsByStartAsc(this.cloneSubEvents(this.eventSubEventsById[source.id] ?? []))
+      subEvents
     };
   }
 
@@ -5737,6 +5900,7 @@ export class App {
     this.eventAutoInviterById[this.editingEventId] = this.eventForm.autoInviter;
     this.eventTicketingById[this.editingEventId] = this.eventForm.ticketing;
     this.eventCapacityById[this.editingEventId] = this.normalizedEventCapacityRange();
+    this.eventLocationById[this.editingEventId] = this.normalizeLocationValue(this.eventForm.location);
     this.eventSubEventsById[this.editingEventId] = this.cloneSubEvents(this.eventForm.subEvents);
     if (this.eventEditorTarget === 'hosting') {
       this.hostingItemsByUser[this.activeUser.id] = this.hostingItems.map(item =>
@@ -5780,6 +5944,7 @@ export class App {
       this.eventAutoInviterById[id] = this.eventForm.autoInviter;
       this.eventTicketingById[id] = this.eventForm.ticketing;
       this.eventCapacityById[id] = this.normalizedEventCapacityRange();
+      this.eventLocationById[id] = this.normalizeLocationValue(this.eventForm.location);
       this.eventSubEventsById[id] = this.cloneSubEvents(this.eventForm.subEvents);
       const next: HostingMenuItem = {
         id,
@@ -5811,6 +5976,7 @@ export class App {
     this.eventAutoInviterById[id] = this.eventForm.autoInviter;
     this.eventTicketingById[id] = this.eventForm.ticketing;
     this.eventCapacityById[id] = this.normalizedEventCapacityRange();
+    this.eventLocationById[id] = this.normalizeLocationValue(this.eventForm.location);
     this.eventSubEventsById[id] = this.cloneSubEvents(this.eventForm.subEvents);
     const next: EventMenuItem = {
       id,
@@ -5836,6 +6002,7 @@ export class App {
       capacityMax: 0,
       startAt: this.toIsoDateTimeLocal(start),
       endAt: this.toIsoDateTimeLocal(end),
+      location: '',
       frequency: 'One-time',
       visibility: 'Invitation only',
       blindMode: 'Open Event',
@@ -5889,6 +6056,7 @@ export class App {
       description: '',
       startAt: this.toIsoDateTimeLocal(start),
       endAt: this.toIsoDateTimeLocal(end),
+      location: '',
       createdByUserId: this.activeUser.id,
       groups: [],
       tournamentLeaderboardType: 'Score',
@@ -6316,8 +6484,82 @@ export class App {
   private cloneSubEvents(items: SubEventFormItem[]): SubEventFormItem[] {
     return items.map(item => ({
       ...item,
+      location: this.normalizeLocationValue(item.location),
       groups: this.cloneSubEventGroups(item.groups)
     }));
+  }
+
+  private normalizeLocationValue(value: string | null | undefined): string {
+    return typeof value === 'string' ? value : '';
+  }
+
+  private firstSubEventByOrder(items: readonly SubEventFormItem[] = this.eventForm.subEvents): SubEventFormItem | null {
+    const ordered = this.sortSubEventRefsByStartAsc(items);
+    return ordered[0] ?? null;
+  }
+
+  private withFirstSubEventLocation(items: SubEventFormItem[], location: string): SubEventFormItem[] {
+    if (!items.length) {
+      return items;
+    }
+    const first = this.firstSubEventByOrder(items);
+    if (!first) {
+      return items;
+    }
+    const normalizedLocation = this.normalizeLocationValue(location);
+    return items.map(item => item.id === first.id ? { ...item, location: normalizedLocation } : item);
+  }
+
+  private isSubEventFormFirstInOrder(): boolean {
+    if (this.subEventForm.id && this.eventForm.subEvents.some(item => item.id === this.subEventForm.id)) {
+      const sourceWithoutCurrent = this.sortSubEventsByStartAsc(
+        this.eventForm.subEvents.filter(item => item.id !== this.subEventForm.id)
+      );
+      return this.subEventInsertIndex(sourceWithoutCurrent) === 0;
+    }
+    const source = this.sortSubEventsByStartAsc(this.eventForm.subEvents);
+    return source.length === 0 || this.subEventInsertIndex(source) === 0;
+  }
+
+  private syncFirstSubEventLocationFromMainEvent(): void {
+    if (this.eventForm.subEvents.length === 0) {
+      return;
+    }
+    const normalizedLocation = this.normalizeLocationValue(this.eventForm.location);
+    this.eventForm.subEvents = this.withFirstSubEventLocation(this.eventForm.subEvents, normalizedLocation);
+    if (this.isSubEventFormFirstInOrder()) {
+      this.subEventForm.location = normalizedLocation;
+    }
+  }
+
+  private syncMainEventLocationFromFirstSubEvent(): void {
+    const first = this.firstSubEventByOrder();
+    if (!first) {
+      return;
+    }
+    const normalizedLocation = this.normalizeLocationValue(first.location);
+    this.eventForm.location = normalizedLocation;
+    if (this.isSubEventFormFirstInOrder()) {
+      this.subEventForm.location = normalizedLocation;
+    }
+  }
+
+  private eventLocationRouteStops(): string[] {
+    const subEventStops = this.sortSubEventsByStartAsc(this.eventForm.subEvents)
+      .map(item => this.normalizeLocationValue(item.location).trim())
+      .filter(stop => stop.length > 0);
+    const mainLocation = this.normalizeLocationValue(this.eventForm.location).trim();
+    const ordered = mainLocation ? [mainLocation, ...subEventStops] : subEventStops;
+    const seen = new Set<string>();
+    const unique: string[] = [];
+    for (const stop of ordered) {
+      if (seen.has(stop)) {
+        continue;
+      }
+      seen.add(stop);
+      unique.push(stop);
+    }
+    return unique;
   }
 
   private sortSubEventsByStartAsc(items: SubEventFormItem[]): SubEventFormItem[] {
@@ -6788,6 +7030,7 @@ export class App {
       description,
       startAt: fallbackStart,
       endAt: fallbackEnd,
+      location: this.normalizeLocationValue(this.subEventForm.location),
       optional: nextOptional,
       createdByUserId: creatorId,
       groups: this.cloneSubEventGroups(groupsSource),
@@ -7205,6 +7448,7 @@ export class App {
     if (maxCapacity !== null) {
       this.eventForm.capacityMax = Math.max(maxCapacity, this.eventForm.capacityMin ?? maxCapacity);
     }
+    this.syncMainEventLocationFromFirstSubEvent();
   }
 
   private normalizedCapacityValueWithFloor(value: number | null | undefined, floor: number): number | null {
@@ -13363,7 +13607,7 @@ export class App {
     if (card.type !== 'Accommodation') {
       return false;
     }
-    return this.normalizeAssetRoutes(card.type, card.routes, '').some(stop => stop.trim().length > 0);
+    return this.normalizeAssetRoutes(card.type, card.routes, card.city).some(stop => stop.trim().length > 0);
   }
 
   protected openAssetMap(card: AssetCard, event?: Event): void {
@@ -13371,8 +13615,8 @@ export class App {
     if (!this.canOpenAssetMap(card)) {
       return;
     }
-    const routes = this.normalizeAssetRoutes(card.type, card.routes, '');
-    this.openGoogleMapsSearch(routes[0] ?? '');
+    const routes = this.normalizeAssetRoutes(card.type, card.routes, card.city);
+    this.openGoogleMapsSearch(routes[0] ?? card.city);
   }
 
   protected assetMemberStatusClass(member: AssetMemberRequest): string {
@@ -13538,10 +13782,14 @@ export class App {
     const title = this.assetForm.title.trim();
     const city = this.assetForm.city.trim();
     const routes = this.normalizeAssetRoutes(this.assetForm.type, this.assetForm.routes, '');
+    const accommodationLocation = routes.find(stop => stop.trim().length > 0)?.trim() || '';
     const resolvedCity = this.assetForm.type === 'Accommodation'
-      ? (routes.find(stop => stop.trim().length > 0)?.trim() || '')
+      ? accommodationLocation
       : city;
     if (!title) {
+      return;
+    }
+    if (this.assetForm.type === 'Accommodation' && !accommodationLocation) {
       return;
     }
     const createAssignment = this.pendingSubEventAssetCreateAssignment;
@@ -14469,7 +14717,7 @@ export class App {
     return 'https://www.google.com/search?tbm=isch&q=event+supplies+equipment+kit';
   }
 
-  private normalizeAssetRoutes(type: AssetType, routes: string[] | undefined | null, cityFallback: string): string[] {
+  private normalizeAssetRoutes(type: AssetType, routes: string[] | undefined | null, _cityFallback: string): string[] {
     if (type === 'Supplies') {
       return [];
     }
@@ -14477,14 +14725,9 @@ export class App {
       .map(value => value.trim())
       .filter((value, index, arr) => value.length > 0 && arr.indexOf(value) === index);
     if (type === 'Accommodation') {
-      const first = cleaned[0] ?? cityFallback.trim();
-      return first ? [first] : [''];
+      return cleaned.length > 0 ? [cleaned[0]] : [''];
     }
-    if (cleaned.length > 0) {
-      return cleaned;
-    }
-    const fallback = cityFallback.trim();
-    return fallback ? [fallback] : [''];
+    return cleaned.length > 0 ? cleaned : [''];
   }
 
   private openGoogleMapsSearch(query: string): void {

@@ -1752,7 +1752,8 @@
               <div class="asset-card-image" [appLazyBgImage]="card.imageUrl">
                 <button
                   type="button"
-                  class="asset-source-icon"
+                  class="asset-source-icon asset-source-icon-route-map"
+                  [class.asset-source-icon-multiroute]="card.type === 'Car'"
                   *ngIf="canOpenAssetMap(card)"
                   (click)="openAssetMap(card, $event)"
                   [attr.aria-label]="card.type === 'Car' ? 'Open car route map' : 'Open accommodation location map'"
@@ -2249,27 +2250,55 @@
                   </div>
                 </label>
               </section>
+              <label class="experience-description-field event-location-field">
+                <span>Location</span>
+                <div class="asset-route-row asset-route-row-inline">
+                  <input
+                    type="text"
+                    [ngModel]="eventForm.location"
+                    (ngModelChange)="onEventLocationChange($event)"
+                    placeholder="Event route location"
+                    [readonly]="isEventEditorReadOnly()"
+                  />
+                  <button
+                    type="button"
+                    class="experience-action-btn asset-route-map-btn asset-route-main-map-btn event-location-map-btn"
+                    (click)="openEventLocationMap($event)"
+                    aria-label="Open event route on map"
+                  >
+                    <mat-icon>location_on</mat-icon>
+                  </button>
+                </div>
+              </label>
               <label class="event-subevents-field">
                 <button type="button" class="event-subevents-panel-trigger" (click)="openEventSubEventsPopup($event)">
                   <span class="event-subevents-panel-head">
                     <span class="event-subevents-panel-title">
-                      <mat-icon>view_timeline</mat-icon>
-                      <span>Sub Events</span>
+                      <span class="event-subevents-panel-title-main">
+                        <mat-icon>view_timeline</mat-icon>
+                        <span class="event-subevents-panel-title-label">Sub Events</span>
+                      </span>
+                    </span>
+                    <span class="event-subevents-panel-meta" *ngIf="eventForm.subEvents.length > 0">
                       <span class="event-subevents-panel-mode" [ngClass]="subEventsDisplayModeClass()">
                         <mat-icon>{{ subEventsDisplayModeIcon() }}</mat-icon>
                         <span>{{ subEventsDisplayMode }}</span>
                       </span>
-                    </span>
-                    <span class="event-subevents-panel-summary event-subevents-panel-summary-inline" *ngIf="eventForm.subEvents.length > 0">
-                      {{ subEventsCountLabel() }}
+                      <span class="event-subevents-panel-summary event-subevents-panel-summary-inline">
+                        {{ subEventsCountLabel() }}
+                      </span>
                     </span>
                     <mat-icon class="event-subevents-chevron">chevron_right</mat-icon>
                   </span>
                   <span class="event-subevents-panel-body" *ngIf="eventForm.subEvents.length > 0; else eventSubEventsPlaceholderMain">
-                    <span class="event-subevent-panel-chip" *ngFor="let subEvent of eventForm.subEvents">
-                      <span class="event-subevent-panel-chip-head">
-                        <span class="event-subevent-panel-chip-name">{{ subEvent.name || 'Untitled' }}</span>
-                      </span>
+                    <span
+                      class="event-subevent-panel-chip"
+                      *ngFor="let subEvent of eventForm.subEvents; let chipIndex = index"
+                      [class.event-subevent-panel-chip-current]="subEventPanelChipIsCurrent(subEvent)"
+                      [ngStyle]="subEventPanelChipStyle(chipIndex)"
+                    >
+                      <span class="event-subevent-panel-chip-name">{{ subEventPanelChipTitle(subEvent, chipIndex) }}</span>
+                      <span class="event-subevent-panel-chip-location">{{ subEventLocationLabel(subEvent) }}</span>
                       <span class="event-subevent-panel-chip-date">{{ subEventCardRange(subEvent) }}</span>
                     </span>
                   </span>
@@ -2398,6 +2427,25 @@
                           <mat-timepicker-toggle matSuffix [for]="subEventEndTimePickerMain"></mat-timepicker-toggle>
                           <mat-timepicker #subEventEndTimePickerMain></mat-timepicker>
                         </mat-form-field>
+                      </div>
+                    </label>
+                    <label class="experience-description-field subevent-location-field">
+                      <span>Location</span>
+                      <div class="asset-route-row asset-route-row-inline">
+                        <input
+                          type="text"
+                          [ngModel]="subEventForm.location"
+                          (ngModelChange)="onSubEventLocationChange($event)"
+                          placeholder="Sub event location"
+                        />
+                        <button
+                          type="button"
+                          class="experience-action-btn asset-route-map-btn"
+                          (click)="openSubEventLocationMap($event)"
+                          aria-label="Open sub event location on map"
+                        >
+                          <mat-icon>location_on</mat-icon>
+                        </button>
                       </div>
                     </label>
                     <fieldset class="subevent-tournament-fieldset" *ngIf="showTournamentStageConfigFields()">
@@ -3662,7 +3710,8 @@
               <div class="asset-card-image" [appLazyBgImage]="card.imageUrl">
                 <button
                   type="button"
-                  class="asset-source-icon"
+                  class="asset-source-icon asset-source-icon-route-map"
+                  [class.asset-source-icon-multiroute]="card.type === 'Car'"
                   *ngIf="canOpenSubEventResourceMap(card)"
                   (click)="openSubEventResourceMap(card, $event)"
                   [attr.aria-label]="card.type === 'Car' ? 'Open car route map' : 'Open accommodation location map'"
@@ -3879,6 +3928,7 @@
                       <button
                         type="button"
                         class="experience-action-btn experience-action-delete asset-route-delete-btn"
+                        *ngIf="subEventAssetRouteEditor.routes.length > 1"
                         (click)="removeSubEventAssetRouteStop(stopIndex)"
                         aria-label="Delete route stop"
                       >
@@ -4500,27 +4550,55 @@
                   </div>
                 </label>
               </section>
+              <label class="experience-description-field event-location-field">
+                <span>Location</span>
+                <div class="asset-route-row asset-route-row-inline">
+                  <input
+                    type="text"
+                    [ngModel]="eventForm.location"
+                    (ngModelChange)="onEventLocationChange($event)"
+                    placeholder="Event route location"
+                    [readonly]="isEventEditorReadOnly()"
+                  />
+                  <button
+                    type="button"
+                    class="experience-action-btn asset-route-map-btn asset-route-main-map-btn event-location-map-btn"
+                    (click)="openEventLocationMap($event)"
+                    aria-label="Open event route on map"
+                  >
+                    <mat-icon>location_on</mat-icon>
+                  </button>
+                </div>
+              </label>
               <label class="event-subevents-field">
                 <button type="button" class="event-subevents-panel-trigger" (click)="openEventSubEventsPopup($event)">
                   <span class="event-subevents-panel-head">
                     <span class="event-subevents-panel-title">
-                      <mat-icon>view_timeline</mat-icon>
-                      <span>Sub Events</span>
+                      <span class="event-subevents-panel-title-main">
+                        <mat-icon>view_timeline</mat-icon>
+                        <span class="event-subevents-panel-title-label">Sub Events</span>
+                      </span>
+                    </span>
+                    <span class="event-subevents-panel-meta" *ngIf="eventForm.subEvents.length > 0">
                       <span class="event-subevents-panel-mode" [ngClass]="subEventsDisplayModeClass()">
                         <mat-icon>{{ subEventsDisplayModeIcon() }}</mat-icon>
                         <span>{{ subEventsDisplayMode }}</span>
                       </span>
-                    </span>
-                    <span class="event-subevents-panel-summary event-subevents-panel-summary-inline" *ngIf="eventForm.subEvents.length > 0">
-                      {{ subEventsCountLabel() }}
+                      <span class="event-subevents-panel-summary event-subevents-panel-summary-inline">
+                        {{ subEventsCountLabel() }}
+                      </span>
                     </span>
                     <mat-icon class="event-subevents-chevron">chevron_right</mat-icon>
                   </span>
                   <span class="event-subevents-panel-body" *ngIf="eventForm.subEvents.length > 0; else eventSubEventsPlaceholderStacked">
-                    <span class="event-subevent-panel-chip" *ngFor="let subEvent of eventForm.subEvents">
-                      <span class="event-subevent-panel-chip-head">
-                        <span class="event-subevent-panel-chip-name">{{ subEvent.name || 'Untitled' }}</span>
-                      </span>
+                    <span
+                      class="event-subevent-panel-chip"
+                      *ngFor="let subEvent of eventForm.subEvents; let chipIndex = index"
+                      [class.event-subevent-panel-chip-current]="subEventPanelChipIsCurrent(subEvent)"
+                      [ngStyle]="subEventPanelChipStyle(chipIndex)"
+                    >
+                      <span class="event-subevent-panel-chip-name">{{ subEventPanelChipTitle(subEvent, chipIndex) }}</span>
+                      <span class="event-subevent-panel-chip-location">{{ subEventLocationLabel(subEvent) }}</span>
                       <span class="event-subevent-panel-chip-date">{{ subEventCardRange(subEvent) }}</span>
                     </span>
                   </span>
@@ -4649,6 +4727,25 @@
                           <mat-timepicker-toggle matSuffix [for]="subEventEndTimePickerStacked"></mat-timepicker-toggle>
                           <mat-timepicker #subEventEndTimePickerStacked></mat-timepicker>
                         </mat-form-field>
+                      </div>
+                    </label>
+                    <label class="experience-description-field subevent-location-field">
+                      <span>Location</span>
+                      <div class="asset-route-row asset-route-row-inline">
+                        <input
+                          type="text"
+                          [ngModel]="subEventForm.location"
+                          (ngModelChange)="onSubEventLocationChange($event)"
+                          placeholder="Sub event location"
+                        />
+                        <button
+                          type="button"
+                          class="experience-action-btn asset-route-map-btn"
+                          (click)="openSubEventLocationMap($event)"
+                          aria-label="Open sub event location on map"
+                        >
+                          <mat-icon>location_on</mat-icon>
+                        </button>
                       </div>
                     </label>
                     <fieldset class="subevent-tournament-fieldset" *ngIf="showTournamentStageConfigFields()">
@@ -5180,6 +5277,7 @@
                     <div class="subevent-stage-head-main">
                       <span class="subevent-stage-column-title">{{ stage.title }}</span>
                       <strong>{{ stage.subtitle }}</strong>
+                      <p class="subevent-stage-column-location">{{ subEventLocationLabel(stage.subEvent) }}</p>
                       <p class="subevent-stage-column-description">{{ stage.description || 'No description' }}</p>
                     </div>
                     <div class="subevent-stage-head-meta">
@@ -5213,6 +5311,15 @@
                         <button type="button" class="item-action-menu-btn" (click)="runSubEventStageLeaderboardAction(stage, $event)">
                           <mat-icon>{{ subEventLeaderboardModeIcon(stage) }}</mat-icon>
                           <span>Leaderboard</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="item-action-menu-btn"
+                          *ngIf="canOpenSubEventLocation(stage.subEvent)"
+                          (click)="openSubEventLocation(stage.subEvent, $event)"
+                        >
+                          <mat-icon>location_on</mat-icon>
+                          <span>Show on Map</span>
                         </button>
                         <button type="button" class="item-action-menu-btn" *ngIf="!isEventEditorReadOnly()" (click)="runSubEventStageEditAction(stage, $event)">
                           <mat-icon>edit</mat-icon>
@@ -5322,6 +5429,15 @@
                   <mat-icon>delete</mat-icon>
                   <span>Delete</span>
                 </button>
+                <button
+                  type="button"
+                  class="item-action-menu-btn"
+                  *ngIf="!tournamentMode && canOpenSubEventLocation(subEvent)"
+                  (click)="openSubEventLocation(subEvent, $event)"
+                >
+                  <mat-icon>location_on</mat-icon>
+                  <span>Show on Map</span>
+                </button>
                 <div class="item-action-menu-divider" *ngIf="canManageSubEventItem(subEvent)"></div>
                 <div class="item-action-menu-section-label">Resources</div>
                 <button
@@ -5388,6 +5504,7 @@
               </div>
             </div>
           </div>
+          <p class="event-subevent-popup-location" *ngIf="!tournamentMode">{{ subEventLocationLabel(subEvent) }}</p>
           <p *ngIf="!tournamentMode">{{ subEvent.description || 'No description' }}</p>
           <span class="event-subevent-range-badge" *ngIf="!tournamentMode">{{ subEventCardRange(subEvent) }}</span>
         </article>
@@ -5511,6 +5628,25 @@
                   <mat-timepicker-toggle matSuffix [for]="subEventEndTimePickerSuper"></mat-timepicker-toggle>
                   <mat-timepicker #subEventEndTimePickerSuper></mat-timepicker>
                 </mat-form-field>
+              </div>
+            </label>
+            <label class="experience-description-field subevent-location-field">
+              <span>Location</span>
+              <div class="asset-route-row asset-route-row-inline">
+                <input
+                  type="text"
+                  [ngModel]="subEventForm.location"
+                  (ngModelChange)="onSubEventLocationChange($event)"
+                  placeholder="Sub event location"
+                />
+                <button
+                  type="button"
+                  class="experience-action-btn asset-route-map-btn"
+                  (click)="openSubEventLocationMap($event)"
+                  aria-label="Open sub event location on map"
+                >
+                  <mat-icon>location_on</mat-icon>
+                </button>
               </div>
             </label>
             <fieldset class="subevent-tournament-fieldset" *ngIf="showTournamentStageConfigFields()">
