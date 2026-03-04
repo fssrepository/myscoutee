@@ -5789,10 +5789,10 @@
 }
 
 .event-feedback-card {
-  border: 1px solid rgba(44, 73, 113, 0.18);
-  border-radius: 12px;
-  background: #fff;
-  padding: 0.54rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   gap: 0.46rem;
@@ -5802,13 +5802,13 @@
 }
 
 .feedback-card-tone-event {
-  border-color: rgba(44, 99, 170, 0.32);
-  background: #fff;
+  border-color: transparent;
+  background: transparent;
 }
 
 .feedback-card-tone-attendee {
-  border-color: rgba(167, 86, 113, 0.3);
-  background: #fff;
+  border-color: transparent;
+  background: transparent;
 }
 
 .event-feedback-card-wrap {
@@ -5917,7 +5917,7 @@
 }
 
 .event-feedback-form {
-  margin-top: 0.3rem;
+  margin-top: 3rem;
   border: 1px solid rgba(58, 88, 127, 0.24);
   border-radius: 11px;
   padding: 0.5rem;
@@ -6032,7 +6032,7 @@
 
 .event-feedback-overlay-nav-btn {
   position: absolute;
-  top: 50%;
+  top: 32%;
   transform: translateY(-50%);
   width: 46px;
   height: 46px;
@@ -6050,11 +6050,11 @@
 }
 
 .event-feedback-overlay-nav-btn-prev {
-  left: -20px;
+  left: -15px;
 }
 
 .event-feedback-overlay-nav-btn-next {
-  right: -20px;
+  right: -15px;
 }
 
 .event-feedback-overlay-nav-btn .mat-icon {
@@ -6124,7 +6124,7 @@
   }
 
   .event-feedback-card {
-    padding: 0.46rem;
+    padding: 0;
     gap: 0.42rem;
   }
 
@@ -11413,7 +11413,6 @@ textarea {
 }
 
 .subevent-member-image-card {
-  width: 100%;
   min-height: 240px;
   overflow: visible;
   z-index: 0;
