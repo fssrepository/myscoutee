@@ -2444,33 +2444,36 @@ export class App {
   }
 
   protected submitActiveEventFeedback(): void {
+    if (this.eventFeedbackSubmittedState) {
+      return;
+    }
     const card = this.activeEventFeedbackCard;
     if (!card || this.isSelfAttendeeFeedbackCard(card)) {
       return;
     }
-    const impressionSummary = this.selectedImpressionTagsForCard(card);
-    this.markEventFeedbackSubmitted(card.id);
-    this.recordSubmittedEventFeedbackAnswer(card, impressionSummary);
-    const feedbackLabel = card.kind === 'event'
-      ? `Event feedback saved for ${this.eventTitleById(card.eventId)}.`
-      : 'Attendee feedback saved.';
-    this.eventFeedbackCards.splice(this.eventFeedbackIndex, 1);
-    if (this.eventFeedbackCards.length === 0) {
-      this.eventFeedbackIndex = 0;
-      this.markEventFeedbackEventSubmitted(card.eventId);
-      this.restoreEventFeedbackEvent(card.eventId);
-      this.eventFeedbackSubmittedState = true;
-      this.eventFeedbackSubmitMessage = feedbackLabel;
-      this.eventFeedbackListSubmitMessage = `${this.eventTitleById(card.eventId)} moved to Feedbacked.`;
-      this.eventFeedbackListFilter = 'feedbacked';
-      return;
+    this.eventFeedbackSubmittedState = true;
+    const eventId = card.eventId;
+    const eventTitle = this.eventTitleById(eventId);
+    const cardsToSubmit = [...this.eventFeedbackCards];
+    for (const feedbackCard of cardsToSubmit) {
+      const impressionSummary = this.selectedImpressionTagsForCard(feedbackCard);
+      this.markEventFeedbackSubmitted(feedbackCard.id);
+      this.recordSubmittedEventFeedbackAnswer(feedbackCard, impressionSummary);
     }
-    if (this.eventFeedbackIndex >= this.eventFeedbackCards.length) {
-      this.eventFeedbackIndex = this.eventFeedbackCards.length - 1;
+    this.markEventFeedbackEventSubmitted(eventId);
+    this.restoreEventFeedbackEvent(eventId);
+    this.eventFeedbackCards = [];
+    this.eventFeedbackIndex = 0;
+    this.eventFeedbackSubmitMessage = `Feedback submitted successfully for ${eventTitle}.`;
+    this.eventFeedbackListSubmitMessage = `${eventTitle} moved to Feedbacked.`;
+    this.eventFeedbackListFilter = 'feedbacked';
+    if (this.eventFeedbackSlideAnimationTimer) {
+      clearTimeout(this.eventFeedbackSlideAnimationTimer);
+      this.eventFeedbackSlideAnimationTimer = null;
     }
-    const remaining = this.eventFeedbackCards.length;
-    this.eventFeedbackSubmitMessage = `${feedbackLabel} ${remaining} feedback item${remaining === 1 ? '' : 's'} left.`;
-    this.playEventFeedbackSlideAnimation('next');
+    this.eventFeedbackSlideAnimClass = '';
+    this.eventFeedbackTouchStartX = null;
+    this.eventFeedbackTouchStartY = null;
   }
 
   private playEventFeedbackSlideAnimation(direction: 'next' | 'prev'): void {
