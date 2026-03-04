@@ -1527,6 +1527,8 @@ export class App {
   };
   protected reportUserSubmitMessage = '';
   protected reportUserSubmitted = false;
+  protected readonly reportUserHandleMinLength = 3;
+  protected readonly reportUserDetailsMinLength = 12;
   protected feedbackForm = {
     category: 'General',
     subject: '',
@@ -1713,6 +1715,7 @@ export class App {
   private ticketListScrollable = true;
 
   constructor(private readonly router: Router) {
+    this.normalizeAssetMediaLinks();
     this.initializeProfileImageSlots();
     this.ensurePaginationTestEvents(30);
     this.initializeEventEditorContextData();
@@ -2822,10 +2825,29 @@ export class App {
     this.activePopup = 'sendFeedback';
   }
 
+  protected get reportUserHandleLength(): number {
+    return this.reportUserForm.handle.trim().length;
+  }
+
+  protected get reportUserDetailsLength(): number {
+    return this.reportUserForm.details.trim().length;
+  }
+
+  protected get reportUserHandleValid(): boolean {
+    return this.reportUserHandleLength >= this.reportUserHandleMinLength;
+  }
+
+  protected get reportUserDetailsValid(): boolean {
+    return this.reportUserDetailsLength >= this.reportUserDetailsMinLength;
+  }
+
+  protected canSubmitReportUser(): boolean {
+    return this.reportUserHandleValid && this.reportUserDetailsValid;
+  }
+
   protected submitReportUser(): void {
     const target = this.reportUserForm.handle.trim();
-    const details = this.reportUserForm.details.trim();
-    if (!target || details.length < 6) {
+    if (!this.canSubmitReportUser()) {
       return;
     }
     this.reportUserSubmitMessage = `Report submitted successfully for ${target}. Our moderation team will review it.`;
@@ -15776,6 +15798,8 @@ export class App {
     this.showAssetVisibilityPicker = false;
     const forcePrivateVisibility = this.isAssetPopup;
     if (card) {
+      const imageUrl = this.normalizeAssetImageLink(card.type, card.imageUrl, card.id || card.title);
+      const sourceLink = this.normalizeAssetSourceLink(card.sourceLink, imageUrl);
       this.editingAssetId = card.id;
       this.assetFormVisibility = forcePrivateVisibility
         ? 'Invitation only'
@@ -15787,8 +15811,8 @@ export class App {
         city: card.city,
         capacityTotal: card.capacityTotal,
         details: card.details,
-        imageUrl: card.imageUrl,
-        sourceLink: card.sourceLink,
+        imageUrl,
+        sourceLink,
         routes: this.normalizeAssetRoutes(card.type, card.routes, '')
       };
       return;
@@ -15908,6 +15932,8 @@ export class App {
     if (this.assetForm.type === 'Accommodation' && !accommodationLocation) {
       return;
     }
+    const imageUrl = this.normalizeAssetImageLink(this.assetForm.type, this.assetForm.imageUrl, title || this.assetForm.subtitle || city);
+    const sourceLink = this.normalizeAssetSourceLink(this.assetForm.sourceLink, imageUrl);
     const createAssignment = this.pendingSubEventAssetCreateAssignment;
     const payload: Omit<AssetCard, 'id' | 'requests'> = {
       type: this.assetForm.type,
@@ -15916,8 +15942,8 @@ export class App {
       city: resolvedCity,
       capacityTotal: Math.max(1, Number(this.assetForm.capacityTotal) || (this.assetForm.type === 'Supplies' ? 6 : 4)),
       details: this.assetForm.details.trim() || this.defaultAssetDetails(this.assetForm.type),
-      imageUrl: this.assetForm.imageUrl.trim() || this.defaultAssetImage(this.assetForm.type),
-      sourceLink: this.assetForm.sourceLink.trim() || this.defaultAssetSourceLink(this.assetForm.type),
+      imageUrl,
+      sourceLink,
       routes
     };
     const resolvedVisibility: EventVisibility = this.isAssetPopup ? 'Invitation only' : this.assetFormVisibility;
@@ -16141,6 +16167,9 @@ export class App {
       } catch {
         return;
       }
+    }
+    if (!parsed || this.isGoogleMapsLikeLink(parsed.toString())) {
+      return;
     }
     const seed = `${this.assetForm.type.toLowerCase()}-${parsed.hostname.replace(/\./g, '-')}${parsed.pathname.replace(/[^\w-]/g, '-')}`;
     if (!this.assetForm.imageUrl.trim()) {
@@ -16729,7 +16758,7 @@ export class App {
         capacityTotal: 4,
         details: 'Pickup from Downtown at 17:30. Luggage: 2 cabin bags.',
         imageUrl: this.defaultAssetImage('Car', 'car-1'),
-        sourceLink: this.defaultAssetSourceLink('Car'),
+        sourceLink: this.defaultAssetImage('Car', 'car-1'),
         routes: ['Austin Downtown', 'Round Rock', 'Lake Travis'],
         requests: [
           this.buildAssetRequest('asset-member-1', 'u4', 'pending', 'Needs one medium suitcase slot.'),
@@ -16746,7 +16775,7 @@ export class App {
         capacityTotal: 4,
         details: 'Airport run before midnight, fuel split evenly.',
         imageUrl: this.defaultAssetImage('Car', 'car-2'),
-        sourceLink: this.defaultAssetSourceLink('Car'),
+        sourceLink: this.defaultAssetImage('Car', 'car-2'),
         routes: ['Austin Airport', 'Domain Northside'],
         requests: [this.buildAssetRequest('asset-member-3', 'u6', 'pending', 'Landing at 22:40.')]
       },
@@ -16759,7 +16788,7 @@ export class App {
         capacityTotal: 4,
         details: 'Check-in after 15:00. Quiet building, no smoking.',
         imageUrl: this.defaultAssetImage('Accommodation', 'acc-1'),
-        sourceLink: this.defaultAssetSourceLink('Accommodation'),
+        sourceLink: this.defaultAssetImage('Accommodation', 'acc-1'),
         routes: ['101 South Congress Ave, Austin'],
         requests: [
           this.buildAssetRequest('asset-member-4', 'u3', 'pending', 'Staying for 2 nights.'),
@@ -16775,7 +16804,7 @@ export class App {
         capacityTotal: 2,
         details: 'Ideal for early risers. Parking available.',
         imageUrl: this.defaultAssetImage('Accommodation', 'acc-2'),
-        sourceLink: this.defaultAssetSourceLink('Accommodation'),
+        sourceLink: this.defaultAssetImage('Accommodation', 'acc-2'),
         routes: ['East 6th Street, Austin'],
         requests: [this.buildAssetRequest('asset-member-6', 'u11', 'pending', 'Arrives Friday evening.')]
       },
@@ -16788,7 +16817,7 @@ export class App {
         capacityTotal: 6,
         details: 'Packed and ready in the garage. Pickup only.',
         imageUrl: this.defaultAssetImage('Supplies', 'sup-1'),
-        sourceLink: this.defaultAssetSourceLink('Supplies'),
+        sourceLink: this.defaultAssetImage('Supplies', 'sup-1'),
         requests: []
       },
       {
@@ -16800,7 +16829,7 @@ export class App {
         capacityTotal: 4,
         details: 'Can deliver to venue before 19:00.',
         imageUrl: this.defaultAssetImage('Supplies', 'sup-2'),
-        sourceLink: this.defaultAssetSourceLink('Supplies'),
+        sourceLink: this.defaultAssetImage('Supplies', 'sup-2'),
         requests: []
       }
     ];
@@ -16825,24 +16854,63 @@ export class App {
   }
 
   protected defaultAssetImage(type: AssetType, seed = type.toLowerCase()): string {
-    const lock = (this.hashText(`${type}:${seed}`) % 997) + 1;
-    if (type === 'Car') {
-      return `https://loremflickr.com/1200/700/car,road,vehicle?lock=${lock}`;
-    }
-    if (type === 'Accommodation') {
-      return `https://loremflickr.com/1200/700/apartment,hotel,interior?lock=${lock}`;
-    }
-    return `https://loremflickr.com/1200/700/camping,gear,equipment?lock=${lock}`;
+    const flavor = type === 'Car'
+      ? 'road'
+      : type === 'Accommodation'
+        ? 'stay'
+        : 'gear';
+    const normalizedSeed = encodeURIComponent(`${type.toLowerCase()}-${flavor}-${seed || type.toLowerCase()}`);
+    return `https://picsum.photos/seed/${normalizedSeed}/1200/700`;
   }
 
   private defaultAssetSourceLink(type: AssetType): string {
-    if (type === 'Car') {
-      return 'https://www.google.com/maps/search/?api=1&query=carpool+pickup+point';
+    return this.defaultAssetImage(type, `source-${type.toLowerCase()}`);
+  }
+
+  private normalizeAssetMediaLinks(): void {
+    this.assetCards = this.assetCards.map(card => {
+      const imageUrl = this.normalizeAssetImageLink(card.type, card.imageUrl, card.id || card.title);
+      const sourceLink = this.normalizeAssetSourceLink(card.sourceLink, imageUrl);
+      return {
+        ...card,
+        imageUrl,
+        sourceLink
+      };
+    });
+  }
+
+  private normalizeAssetImageLink(type: AssetType, imageUrl: string | null | undefined, seed: string): string {
+    const trimmed = (imageUrl ?? '').trim();
+    if (!trimmed || this.isGoogleMapsLikeLink(trimmed) || this.isLegacyGeneratedAssetImage(trimmed)) {
+      return this.defaultAssetImage(type, seed || type.toLowerCase());
     }
-    if (type === 'Accommodation') {
-      return 'https://www.google.com/maps/search/?api=1&query=accommodation+check-in';
+    return trimmed;
+  }
+
+  private normalizeAssetSourceLink(sourceLink: string | null | undefined, fallbackImageUrl: string): string {
+    const trimmed = (sourceLink ?? '').trim();
+    if (!trimmed || this.isGoogleMapsLikeLink(trimmed) || this.isLegacyGeneratedAssetImage(trimmed)) {
+      return fallbackImageUrl;
     }
-    return 'https://www.google.com/search?tbm=isch&q=event+supplies+equipment+kit';
+    return trimmed;
+  }
+
+  private isGoogleMapsLikeLink(value: string): boolean {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) {
+      return false;
+    }
+    return normalized.includes('google.com/maps')
+      || normalized.includes('maps.google.')
+      || normalized.includes('goo.gl/maps');
+  }
+
+  private isLegacyGeneratedAssetImage(value: string): boolean {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) {
+      return false;
+    }
+    return normalized.includes('loremflickr.com/');
   }
 
   private normalizeAssetRoutes(type: AssetType, routes: string[] | undefined | null, _cityFallback: string): string[] {

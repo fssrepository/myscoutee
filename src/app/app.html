@@ -2923,7 +2923,17 @@
           <form class="support-form" (ngSubmit)="submitReportUser()">
             <label>
               <span>User handle or email</span>
-              <input type="text" name="reportHandle" [(ngModel)]="reportUserForm.handle" placeholder="@username or email" />
+              <input
+                type="text"
+                name="reportHandle"
+                [(ngModel)]="reportUserForm.handle"
+                placeholder="@username or email"
+                [class.support-form-field-invalid]="!reportUserHandleValid"
+                required
+              />
+              <small class="support-form-help-text" [class.support-form-help-text-error]="!reportUserHandleValid">
+                Required. Minimum {{ reportUserHandleMinLength }} characters ({{ reportUserHandleLength }}/{{ reportUserHandleMinLength }}).
+              </small>
             </label>
             <label>
               <span>Reason</span>
@@ -2938,14 +2948,19 @@
                 name="reportDetails"
                 [(ngModel)]="reportUserForm.details"
                 placeholder="Add short details (what happened, when, and where)."
+                [class.support-form-field-invalid]="!reportUserDetailsValid"
+                required
               ></textarea>
+              <small class="support-form-help-text" [class.support-form-help-text-error]="!reportUserDetailsValid">
+                Required. Minimum {{ reportUserDetailsMinLength }} characters ({{ reportUserDetailsLength }}/{{ reportUserDetailsMinLength }}).
+              </small>
             </label>
             <div class="popup-actions support-actions">
               <button type="button" class="link-btn neutral-btn" (click)="closePopup()">Cancel</button>
               <button
                 type="submit"
                 class="link-btn primary-btn"
-                [disabled]="!reportUserForm.handle.trim() || reportUserForm.details.trim().length < 6"
+                [disabled]="!canSubmitReportUser()"
               >
                 Submit report
               </button>
@@ -5521,7 +5536,6 @@
             <button
               type="button"
               class="event-feedback-overlay-nav-btn event-feedback-overlay-nav-btn-prev"
-              *ngIf="!isMobileView"
               [disabled]="eventFeedbackIndex <= 0"
               (click)="previousEventFeedbackSlide($event)"
               aria-label="Previous feedback card"
@@ -5531,7 +5545,7 @@
             <button
               type="button"
               class="event-feedback-overlay-nav-btn event-feedback-overlay-nav-btn-next"
-              *ngIf="!isMobileView && !eventFeedbackOnLastSlide"
+              *ngIf="!eventFeedbackOnLastSlide"
               (click)="nextEventFeedbackSlide($event)"
               aria-label="Next feedback card"
             >

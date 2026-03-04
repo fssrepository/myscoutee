@@ -5669,18 +5669,45 @@
   flex-direction: column;
   gap: 0.48rem;
   margin-top: 0.54rem;
+  min-width: 0;
 }
 
 .support-form label {
   display: flex;
   flex-direction: column;
   gap: 0.22rem;
+  min-width: 0;
 }
 
 .support-form label > span {
   font-size: 0.75rem;
   font-weight: 700;
   color: rgba(29, 47, 72, 0.9);
+}
+
+.support-form input,
+.support-form select,
+.support-form textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.support-form .support-form-field-invalid {
+  border-color: rgba(186, 56, 68, 0.72) !important;
+  background: linear-gradient(180deg, #fff5f6 0%, #ffedef 100%);
+}
+
+.support-form-help-text {
+  font-size: 0.69rem;
+  font-weight: 700;
+  color: rgba(32, 58, 92, 0.62);
+  line-height: 1.25;
+}
+
+.support-form-help-text-error {
+  color: #9b2c37;
 }
 
 .support-submit-success {
@@ -5700,6 +5727,15 @@
 
 .support-actions {
   justify-content: flex-end;
+}
+
+.support-actions .primary-btn:disabled {
+  background: linear-gradient(180deg, #d9e2f2 0%, #c9d4e8 100%);
+  border-color: rgba(74, 103, 145, 0.32);
+  color: rgba(29, 51, 83, 0.72);
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 1;
 }
 
 .event-feedback-list-popup {
@@ -6068,7 +6104,7 @@
 
 .event-feedback-overlay-nav-btn {
   position: absolute;
-  top: 34%;
+  top: 16.8rem;
   transform: translateY(-50%);
   width: 46px;
   height: 46px;
@@ -6155,6 +6191,10 @@
 }
 
 @media (max-width: 720px) {
+  .event-feedback-overlay-nav-btn {
+    top: 13.5rem;
+  }
+
   .event-feedback-head {
     --event-feedback-identity-height: 188px;
     min-height: var(--event-feedback-identity-height);
@@ -8459,6 +8499,12 @@
     .chat-editor-icon-btn
   ):not(:disabled):not([aria-disabled='true']):active {
     animation: mobile-touch-feedback 0.2s ease;
+  }
+
+  .event-feedback-overlay-nav-btn:not(:disabled):active {
+    animation: none;
+    transform: translateY(-50%) scale(0.96);
+    filter: brightness(0.98);
   }
 }
 
@@ -11037,13 +11083,15 @@ textarea {
 
 .asset-occupancy-badge.asset-occupancy-badge-static {
   cursor: default;
+  border: 0;
+  box-shadow: none;
 }
 
 .asset-occupancy-badge.asset-occupancy-badge-static:hover,
 .asset-occupancy-badge.asset-occupancy-badge-static:active {
   transform: none;
   filter: none;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.7), 0 8px 16px rgba(255, 255, 255, 0.42);
+  box-shadow: none;
 }
 
 .asset-occupancy-badge .mat-icon {
