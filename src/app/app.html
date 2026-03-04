@@ -885,22 +885,38 @@
         <button
           type="button"
           class="popup-view-fab event-explore-order-trigger event-feedback-filter-trigger"
+          [ngClass]="eventFeedbackFilterOptionClass(eventFeedbackListFilter)"
           (click)="toggleEventFeedbackFilterPicker($event)"
           aria-label="Open event feedback filter"
         >
           <mat-icon>{{ eventFeedbackFilterIcon() }}</mat-icon>
           <span>{{ eventFeedbackFilterLabel }}</span>
+          <span
+            class="rate-filter-count-badge rate-filter-trigger-badge event-feedback-filter-trigger-badge"
+            [ngClass]="eventFeedbackFilterBadgeClass(eventFeedbackListFilter)"
+            *ngIf="eventFeedbackFilterCount(eventFeedbackListFilter) > 0"
+          >
+            {{ eventFeedbackFilterCount(eventFeedbackListFilter) }}
+          </span>
         </button>
         <div class="activities-view-picker-panel event-explore-order-panel" *ngIf="showEventFeedbackFilterPicker">
           <button
             type="button"
-            class="activities-view-option"
+            class="activities-view-option event-feedback-filter-option"
             *ngFor="let option of eventFeedbackListFilters"
+            [ngClass]="eventFeedbackFilterOptionClass(option.key)"
+            [class.is-active]="option.key === eventFeedbackListFilter"
             (click)="selectEventFeedbackListFilter(option.key, $event)"
           >
             <mat-icon>{{ option.icon }}</mat-icon>
             <span>{{ option.label }}</span>
-            <span class="rate-filter-count-badge" *ngIf="eventFeedbackFilterCount(option.key) > 0">{{ eventFeedbackFilterCount(option.key) }}</span>
+            <span
+              class="rate-filter-count-badge event-feedback-filter-option-count"
+              [ngClass]="eventFeedbackFilterBadgeClass(option.key)"
+              *ngIf="eventFeedbackFilterCount(option.key) > 0"
+            >
+              {{ eventFeedbackFilterCount(option.key) }}
+            </span>
           </button>
         </div>
       </div>

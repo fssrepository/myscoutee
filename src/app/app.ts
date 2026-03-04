@@ -2133,6 +2133,30 @@ export class App {
     }
   }
 
+  protected eventFeedbackFilterOptionClass(filter: EventFeedbackListFilter): string {
+    switch (filter) {
+      case 'feedbacked':
+        return 'event-feedback-filter-option-feedbacked';
+      case 'removed':
+        return 'event-feedback-filter-option-removed';
+      case 'pending':
+      default:
+        return 'event-feedback-filter-option-pending';
+    }
+  }
+
+  protected eventFeedbackFilterBadgeClass(filter: EventFeedbackListFilter): string {
+    switch (filter) {
+      case 'feedbacked':
+        return 'event-feedback-filter-badge-feedbacked';
+      case 'removed':
+        return 'event-feedback-filter-badge-removed';
+      case 'pending':
+      default:
+        return 'event-feedback-filter-badge-pending';
+    }
+  }
+
   protected get eventFeedbackVisibleItems(): EventFeedbackEventCard[] {
     switch (this.eventFeedbackListFilter) {
       case 'feedbacked':
