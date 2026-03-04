@@ -110,6 +110,8 @@ interface SupplyContext {
 interface SubEventBadgeContext {
   subEvent: SubEventFormItem;
   type: 'Members' | 'Car' | 'Accommodation' | 'Supplies';
+  groupId?: string;
+  groupName?: string;
 }
 
 interface ChatReadAvatar {
@@ -134,6 +136,9 @@ interface ChatPopupDayGroup {
   label: string;
   messages: ChatPopupMessage[];
 }
+
+type ChatChannelType = 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent';
+type ActivitiesChatContextFilter = 'all' | 'event' | 'subEvent' | 'group';
 
 type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
 type ActivitiesSecondaryFilter = 'recent' | 'relevant' | 'past';
@@ -482,6 +487,7 @@ interface MobileProfileSelectorSheet {
     | { kind: 'experienceType' }
     | { kind: 'assetFilter' }
     | { kind: 'activitiesPrimaryFilter' }
+    | { kind: 'activitiesChatContextFilter' }
     | { kind: 'activitiesRateFilter' }
     | { kind: 'eventFrequency' };
 }
@@ -959,13 +965,14 @@ export class App {
 
   protected activeMenuSection: MenuSection = 'chat';
   protected activitiesPrimaryFilter: ActivitiesPrimaryFilter = 'chats';
+  protected activitiesChatContextFilter: ActivitiesChatContextFilter = 'all';
   protected activitiesSecondaryFilter: ActivitiesSecondaryFilter = 'recent';
   protected hostingPublicationFilter: HostingPublicationFilter = 'all';
   protected activitiesRateFilter: RateFilterKey = 'individual-given';
   protected activitiesView: ActivitiesView = 'week';
   protected showActivitiesViewPicker = false;
   protected showActivitiesSecondaryPicker = false;
-  protected inlineItemActionMenu: { scope: 'activity' | 'activityMember' | 'asset' | 'explore' | 'subEvent' | 'subEventStage' | 'subEventMember' | 'subEventAsset'; id: string; title: string; openUp: boolean } | null = null;
+  protected inlineItemActionMenu: { scope: 'activity' | 'activityMember' | 'asset' | 'explore' | 'subEvent' | 'subEventStage' | 'subEventMember' | 'subEventAsset' | 'chatContext'; id: string; title: string; openUp: boolean } | null = null;
   private subEventAssetMenuIgnoreCloseUntilMs = 0;
   protected showEventExploreOrderPicker = false;
   protected eventExploreOrder: EventExploreOrder = 'upcoming';
@@ -1057,6 +1064,12 @@ export class App {
     { key: 'recent', label: 'Upcoming', icon: 'schedule' },
     { key: 'relevant', label: 'Relevant', icon: 'auto_awesome' },
     { key: 'past', label: 'Past', icon: 'history' }
+  ];
+  protected readonly activitiesChatContextFilters: Array<{ key: ActivitiesChatContextFilter; label: string; icon: string }> = [
+    { key: 'all', label: 'All', icon: 'forum' },
+    { key: 'event', label: 'Event', icon: 'event' },
+    { key: 'subEvent', label: 'Sub event', icon: 'event_available' },
+    { key: 'group', label: 'Group', icon: 'groups' }
   ];
   protected readonly rateFilters: Array<{ key: RateFilterKey; label: string }> = [
     { key: 'individual-given', label: 'Given' },
@@ -1350,6 +1363,8 @@ export class App {
   protected readonly eventBlindModeOptions: EventBlindMode[] = ['Open Event', 'Blind Event'];
   private readonly eventSubEventsById: Record<string, SubEventFormItem[]> = {};
   private readonly eventLocationById: Record<string, string> = {};
+  private readonly acceptedOptionalSubEventMembersByKey: Record<string, string[]> = {};
+  private readonly acceptedTournamentGroupMembersByKey: Record<string, string[]> = {};
   protected eventStartDateValue: Date | null = null;
   protected eventEndDateValue: Date | null = null;
   protected eventStartTimeValue: Date | null = null;
@@ -1398,7 +1413,7 @@ export class App {
   protected selectedSubEventBadgeContext: SubEventBadgeContext | null = null;
   protected subEventResourceFilter: SubEventResourceFilter = 'Members';
   protected subEventMembersPendingOnly = false;
-  private subEventBadgePopupOrigin: 'active-event-editor' | 'stacked-event-editor' | null = null;
+  private subEventBadgePopupOrigin: 'active-event-editor' | 'stacked-event-editor' | 'chat' | null = null;
   private subEventBadgeOpenedFromSubEventsPopup = false;
   private subEventMembersRow: ActivityListRow | null = null;
   private subEventMembersRowId: string | null = null;
@@ -3332,7 +3347,14 @@ export class App {
       return;
     }
     const targetLabel = group ? `${item.name} · ${group.groupLabel}` : item.name;
-    this.alertService.open(`Join request for ${targetLabel} is ready for backend wiring.`);
+    const eventId = this.resolveEventIdForSubEvent(item);
+    if (eventId && item.optional) {
+      this.attachUserToOptionalSubEvent(eventId, item.id, this.activeUser.id);
+    }
+    if (eventId && group) {
+      this.attachUserToTournamentGroup(eventId, item.id, group.id, this.activeUser.id);
+    }
+    this.alertService.open(`Joined ${targetLabel}.`);
     this.inlineItemActionMenu = null;
   }
 
@@ -4050,16 +4072,29 @@ export class App {
     this.showSubEventGroupForm = false;
   }
 
-  protected openSubEventBadgePopup(type: 'Members' | 'Car' | 'Accommodation' | 'Supplies', item: SubEventFormItem, event?: Event): void {
+  protected openSubEventBadgePopup(
+    type: 'Members' | 'Car' | 'Accommodation' | 'Supplies',
+    item: SubEventFormItem,
+    event?: Event,
+    group?: SubEventTournamentGroup | null
+  ): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
     const isFromSubEventsSuperPopup = this.superStackedPopup === 'eventSubEvents';
     this.subEventBadgeOpenedFromSubEventsPopup = isFromSubEventsSuperPopup;
     const membersRow = this.eventEditorMembersRow();
-    this.subEventBadgePopupOrigin = this.stackedPopup === 'eventEditor' ? 'stacked-event-editor' : 'active-event-editor';
+    if (this.stackedPopup === 'eventEditor') {
+      this.subEventBadgePopupOrigin = 'stacked-event-editor';
+    } else if (this.stackedPopup === 'chat') {
+      this.subEventBadgePopupOrigin = 'chat';
+    } else {
+      this.subEventBadgePopupOrigin = 'active-event-editor';
+    }
     this.selectedSubEventBadgeContext = {
       subEvent: item,
-      type
+      type,
+      groupId: group?.id,
+      groupName: group?.groupLabel
     };
     if (membersRow) {
       const rowKey = `${membersRow.type}:${membersRow.id}`;
@@ -5149,6 +5184,7 @@ export class App {
   protected removeSubEventMember(member: ActivityMemberEntry, event: Event): void {
     event.stopPropagation();
     this.updateSubEventMembersEntries(entries => entries.filter(entry => entry.userId !== member.userId));
+    this.detachUserFromSelectedSubEventChat(member.userId);
     this.inlineItemActionMenu = null;
     this.subEventMemberRolePickerUserId = null;
   }
@@ -7780,6 +7816,8 @@ export class App {
       this.selectedActivityInviteUserIds = [];
       if (this.subEventBadgePopupOrigin === 'stacked-event-editor') {
         this.stackedPopup = 'eventEditor';
+      } else if (this.subEventBadgePopupOrigin === 'chat') {
+        this.stackedPopup = 'chat';
       } else {
         this.stackedPopup = null;
       }
@@ -9201,6 +9239,25 @@ export class App {
     };
   }
 
+  protected openMobileActivitiesChatContextFilterSelector(event: Event): void {
+    if (!this.isMobileView || this.activitiesPrimaryFilter !== 'chats') {
+      return;
+    }
+    event.stopPropagation();
+    this.mobileProfileSelectorSheet = {
+      title: 'Chat Channels',
+      selected: this.activitiesChatContextFilter,
+      options: this.activitiesChatContextFilters.map(option => ({
+        value: option.key,
+        label: option.label,
+        icon: option.icon,
+        toneClass: this.activitiesChatContextFilterClass(option.key),
+        badge: this.activitiesChatContextFilterCount(option.key)
+      })),
+      context: { kind: 'activitiesChatContextFilter' }
+    };
+  }
+
   protected openMobileActivitiesRateFilterSelector(event: Event): void {
     if (!this.isMobileView) {
       return;
@@ -9340,6 +9397,13 @@ export class App {
     if (sheet.context.kind === 'activitiesPrimaryFilter') {
       if (this.activitiesPrimaryFilters.some(option => option.key === value)) {
         this.selectActivitiesPrimaryFilter(value as ActivitiesPrimaryFilter);
+      }
+      this.mobileProfileSelectorSheet = null;
+      return;
+    }
+    if (sheet.context.kind === 'activitiesChatContextFilter') {
+      if (this.activitiesChatContextFilters.some(option => option.key === value)) {
+        this.selectActivitiesChatContextFilter(value as ActivitiesChatContextFilter);
       }
       this.mobileProfileSelectorSheet = null;
       return;
@@ -9848,6 +9912,764 @@ export class App {
     return this.getChatMembersById(item.id).length;
   }
 
+  protected activityChatRowToneClass(row: ActivityListRow): string {
+    if (row.type !== 'chats') {
+      return '';
+    }
+    const chat = row.source as ChatMenuItem;
+    const channelType = this.chatChannelType(chat);
+    if (channelType === 'mainEvent') {
+      return 'activities-card-chat-main-event';
+    }
+    if (channelType === 'optionalSubEvent') {
+      return 'activities-card-chat-optional-sub-event';
+    }
+    if (channelType === 'groupSubEvent') {
+      return 'activities-card-chat-group-sub-event';
+    }
+    return '';
+  }
+
+  protected selectedChatHeaderActionIcon(): string {
+    if (!this.selectedChat) {
+      return 'event';
+    }
+    const channelType = this.chatChannelType(this.selectedChat);
+    if (channelType === 'groupSubEvent') {
+      return 'groups';
+    }
+    if (channelType === 'optionalSubEvent') {
+      return 'event_available';
+    }
+    return 'event';
+  }
+
+  protected selectedChatHasSubEventMenu(): boolean {
+    if (!this.selectedChat) {
+      return false;
+    }
+    const channelType = this.chatChannelType(this.selectedChat);
+    return channelType === 'optionalSubEvent' || channelType === 'groupSubEvent';
+  }
+
+  protected selectedChatHeaderActionLabel(): string {
+    if (!this.selectedChat) {
+      return 'View Event';
+    }
+    const channelType = this.chatChannelType(this.selectedChat);
+    if (channelType === 'groupSubEvent') {
+      return 'View Group';
+    }
+    if (channelType === 'optionalSubEvent') {
+      return 'View Sub Event';
+    }
+    return 'View Event';
+  }
+
+  protected selectedChatHeaderActionToneClass(): string {
+    if (!this.selectedChat) {
+      return 'popup-chat-context-btn-tone-main-event';
+    }
+    const channelType = this.chatChannelType(this.selectedChat);
+    if (channelType === 'optionalSubEvent') {
+      return 'popup-chat-context-btn-tone-optional';
+    }
+    if (channelType === 'groupSubEvent') {
+      return 'popup-chat-context-btn-tone-group';
+    }
+    return 'popup-chat-context-btn-tone-main-event';
+  }
+
+  protected selectedChatHeaderActionBadgeCount(): number {
+    const subEvent = this.selectedChatSubEvent();
+    if (!subEvent || !this.selectedChatHasSubEventMenu()) {
+      return 0;
+    }
+    return this.selectedChatSubEventResourceTotal(subEvent);
+  }
+
+  protected selectedChatContextMenuTitle(): string {
+    const subEvent = this.selectedChatSubEvent();
+    if (!subEvent) {
+      return this.selectedChat?.title ?? 'Chat';
+    }
+    const group = this.selectedChatGroup(subEvent);
+    if (group) {
+      return `${this.subEventDisplayName(subEvent) || subEvent.name} · ${group.name}`;
+    }
+    return this.subEventDisplayName(subEvent) || subEvent.name || (this.selectedChat?.title ?? 'Sub Event');
+  }
+
+  protected selectedChatShowsMembersResource(): boolean {
+    if (!this.selectedChatHasSubEventMenu()) {
+      return false;
+    }
+    const subEvent = this.selectedChatSubEvent();
+    if (!subEvent) {
+      return false;
+    }
+    return subEvent.optional || this.chatChannelType(this.selectedChat!) === 'groupSubEvent';
+  }
+
+  protected selectedChatResourceSummary(type: 'Members' | 'Car' | 'Accommodation' | 'Supplies'): string {
+    const subEvent = this.selectedChatSubEvent();
+    if (!subEvent) {
+      return '';
+    }
+    if (type === 'Members') {
+      return this.subEventCapacityLabel(subEvent);
+    }
+    return this.subEventAssetCapacityLabel(subEvent, type);
+  }
+
+  protected selectedChatResourcePending(type: 'Members' | 'Car' | 'Accommodation' | 'Supplies'): number {
+    const subEvent = this.selectedChatSubEvent();
+    if (!subEvent) {
+      return 0;
+    }
+    if (type === 'Members') {
+      return this.subEventMembersBadgePendingCount(subEvent);
+    }
+    return this.subEventAssetBadgePendingCount(subEvent, type);
+  }
+
+  protected toggleSelectedChatContextMenu(event: Event): void {
+    event.stopPropagation();
+    if (!this.selectedChat || !this.selectedChatHasSubEventMenu()) {
+      return;
+    }
+    const menuId = this.selectedChatContextMenuId();
+    if (this.inlineItemActionMenu?.scope === 'chatContext' && this.inlineItemActionMenu.id === menuId) {
+      this.inlineItemActionMenu = null;
+      return;
+    }
+    this.inlineItemActionMenu = {
+      scope: 'chatContext',
+      id: menuId,
+      title: this.selectedChat.title,
+      openUp: this.shouldOpenInlineItemMenuUp(event)
+    };
+  }
+
+  protected isSelectedChatContextMenuOpen(): boolean {
+    return this.inlineItemActionMenu?.scope === 'chatContext'
+      && this.inlineItemActionMenu.id === this.selectedChatContextMenuId();
+  }
+
+  protected isSelectedChatContextMenuOpenUp(): boolean {
+    return this.inlineItemActionMenu?.scope === 'chatContext'
+      && this.inlineItemActionMenu.id === this.selectedChatContextMenuId()
+      && this.inlineItemActionMenu.openUp;
+  }
+
+  protected openSelectedChatHeaderAction(event?: Event): void {
+    event?.stopPropagation();
+    if (this.selectedChatHasSubEventMenu()) {
+      if (event) {
+        this.toggleSelectedChatContextMenu(event);
+      }
+      return;
+    }
+    this.openSelectedChatEvent(event);
+  }
+
+  protected openSelectedChatSubEvent(event?: Event): void {
+    event?.stopPropagation();
+    const source = this.selectedChat ? this.resolveChatEventSource(this.selectedChat) : null;
+    if (!source) {
+      return;
+    }
+    this.inlineItemActionMenu = null;
+    this.openEventEditor(true, 'edit', source, true);
+    setTimeout(() => this.openEventSubEventsPopup(), 0);
+  }
+
+  protected openSelectedChatEvent(event?: Event): void {
+    event?.stopPropagation();
+    const source = this.selectedChat ? this.resolveChatEventSource(this.selectedChat) : null;
+    if (!source) {
+      return;
+    }
+    this.inlineItemActionMenu = null;
+    this.openEventEditor(true, 'edit', source, true);
+  }
+
+  protected openSelectedChatSubEventResource(
+    type: 'Members' | 'Car' | 'Accommodation' | 'Supplies',
+    event?: Event
+  ): void {
+    event?.stopPropagation();
+    const subEvent = this.selectedChatSubEvent();
+    if (!subEvent) {
+      return;
+    }
+    const group = this.selectedChat
+      && this.chatChannelType(this.selectedChat) === 'groupSubEvent'
+      ? this.selectedChatTournamentGroup(subEvent)
+      : null;
+    this.inlineItemActionMenu = null;
+    this.openSubEventBadgePopup(type, subEvent, undefined, group);
+  }
+
+  private selectedChatSubEventResourceTotal(subEvent: SubEventFormItem): number {
+    const chat = this.selectedChat;
+    if (!chat) {
+      return 0;
+    }
+    const isGroupChannel = this.chatChannelType(chat) === 'groupSubEvent';
+    return this.subEventMenuPendingCount(subEvent, isGroupChannel);
+  }
+
+  protected selectedChatSubEvent(): SubEventFormItem | null {
+    if (!this.selectedChat) {
+      return null;
+    }
+    return this.chatSubEventForItem(this.selectedChat);
+  }
+
+  private selectedChatTournamentGroup(subEvent: SubEventFormItem): SubEventTournamentGroup | null {
+    if (!this.selectedChat?.groupId) {
+      return null;
+    }
+    const groups = this.subEventGroupsForStage(subEvent);
+    const groupIndex = groups.findIndex(group => group.id === this.selectedChat!.groupId);
+    if (groupIndex < 0) {
+      return null;
+    }
+    const group = groups[groupIndex];
+    return {
+      key: `${subEvent.id}:g:${group.id}`,
+      id: group.id,
+      groupNumber: groupIndex + 1,
+      groupLabel: group.name,
+      source: this.normalizedSubEventGroupSource(group),
+      subEvent
+    };
+  }
+
+  private selectedChatGroup(subEvent: SubEventFormItem): SubEventGroupItem | null {
+    if (!this.selectedChat || !this.selectedChat.groupId) {
+      return null;
+    }
+    return this.subEventGroupsForStage(subEvent).find(group => group.id === this.selectedChat!.groupId) ?? null;
+  }
+
+  private selectedChatContextMenuId(): string {
+    return this.selectedChat ? `chat-context:${this.selectedChat.id}` : 'chat-context:none';
+  }
+
+  private chatChannelType(item: ChatMenuItem): ChatChannelType {
+    if (item.channelType === 'mainEvent' || item.channelType === 'optionalSubEvent' || item.channelType === 'groupSubEvent') {
+      return item.channelType;
+    }
+    return 'general';
+  }
+
+  private chatItemsForActivities(): ChatMenuItem[] {
+    const merged = new Map<string, ChatMenuItem>();
+    for (const item of this.chatItems) {
+      merged.set(item.id, {
+        ...item,
+        channelType: this.chatChannelType(item)
+      });
+    }
+    for (const contextual of this.buildContextualChatChannels()) {
+      merged.set(contextual.id, contextual);
+      if (!this.chatDatesById[contextual.id]) {
+        this.chatDatesById[contextual.id] = contextual.lastMessage
+          ? (contextual.subEventId
+            ? this.chatSubEventDateIso(contextual.eventId ?? '', contextual.subEventId)
+            : this.chatEventDateIso(contextual.eventId ?? ''))
+          : this.defaultEventStartIso();
+      }
+      if (!this.chatDistanceById[contextual.id]) {
+        this.chatDistanceById[contextual.id] = 2 + (this.hashText(`chat-distance:${contextual.id}`) % 18);
+      }
+    }
+    return [...merged.values()];
+  }
+
+  private buildContextualChatChannels(): ChatMenuItem[] {
+    const source = this.resolveChatFocusEventSource();
+    if (!source) {
+      return [];
+    }
+    const eventId = source.id;
+    const eventTitle = source.title.trim() || 'Event';
+    const subEvents = this.chatEventSubEvents(eventId);
+    const channels: ChatMenuItem[] = [
+      this.buildMainEventContextChat(eventId, eventTitle)
+    ];
+    if (subEvents.length === 0) {
+      return channels;
+    }
+
+    for (const [index, subEvent] of subEvents.entries()) {
+      const stageLabel = this.chatStageLabel(index);
+      if (subEvent.optional) {
+        if (!this.isActiveUserAttachedToOptionalSubEvent(eventId, subEvent.id)) {
+          continue;
+        }
+        channels.push(this.buildOptionalSubEventContextChat(eventId, eventTitle, subEvent, stageLabel));
+        continue;
+      }
+      const groups = this.subEventGroupsForStage(subEvent);
+      if (groups.length === 0) {
+        continue;
+      }
+      const activeGroup = this.activeUserTournamentGroup(eventId, subEvent, groups);
+      if (!activeGroup) {
+        continue;
+      }
+      channels.push(this.buildGroupSubEventContextChat(eventId, eventTitle, subEvent, activeGroup, stageLabel, groups));
+    }
+
+    return channels;
+  }
+
+  private buildMainEventContextChat(eventId: string, eventTitle: string): ChatMenuItem {
+    const memberIds = this.seededEventMemberIds(eventId, 8);
+    return this.buildContextChatItem({
+      id: `c-context-main-${eventId}`,
+      title: `${eventTitle} · Main Event`,
+      lastMessage: `Main event channel for ${eventTitle}.`,
+      eventId,
+      subEventId: '',
+      groupId: '',
+      channelType: 'mainEvent',
+      memberIds
+    });
+  }
+
+  private buildOptionalSubEventContextChat(
+    eventId: string,
+    eventTitle: string,
+    subEvent: SubEventFormItem,
+    stageLabel: string
+  ): ChatMenuItem {
+    const memberIds = this.optionalSubEventAcceptedMemberIds(eventId, subEvent.id);
+    return this.buildContextChatItem({
+      id: `c-context-optional-${eventId}-${subEvent.id}`,
+      title: `${subEvent.name || 'Optional Sub Event'} · Optional`,
+      lastMessage: `${stageLabel} optional channel in ${eventTitle}.`,
+      eventId,
+      subEventId: subEvent.id,
+      groupId: '',
+      channelType: 'optionalSubEvent',
+      memberIds
+    });
+  }
+
+  private buildGroupSubEventContextChat(
+    eventId: string,
+    eventTitle: string,
+    subEvent: SubEventFormItem,
+    group: SubEventGroupItem,
+    stageLabel: string,
+    groups: SubEventGroupItem[]
+  ): ChatMenuItem {
+    const memberIds = this.tournamentGroupAcceptedMemberIds(eventId, subEvent.id, group.id, groups);
+    return this.buildContextChatItem({
+      id: `c-context-group-${eventId}-${subEvent.id}-${group.id}`,
+      title: `${group.name} · Group Channel`,
+      lastMessage: `${stageLabel} group channel in ${eventTitle}.`,
+      eventId,
+      subEventId: subEvent.id,
+      groupId: group.id,
+      channelType: 'groupSubEvent',
+      memberIds
+    });
+  }
+
+  private buildContextChatItem(input: {
+    id: string;
+    title: string;
+    lastMessage: string;
+    eventId: string;
+    subEventId: string;
+    groupId: string;
+    channelType: ChatChannelType;
+    memberIds: string[];
+  }): ChatMenuItem {
+    const memberIds = this.uniqueUserIds([this.activeUser.id, ...input.memberIds]);
+    const senderCandidates = memberIds.filter(id => id !== this.activeUser.id);
+    const lastSenderId = senderCandidates[this.hashText(`chat-sender:${input.id}`) % Math.max(1, senderCandidates.length)]
+      ?? memberIds[0]
+      ?? this.activeUser.id;
+    const unread = this.hashText(`chat-unread:${input.id}`) % 4;
+    return {
+      id: input.id,
+      avatar: this.initialsFromText(input.title),
+      title: input.title,
+      lastMessage: input.lastMessage,
+      lastSenderId,
+      memberIds,
+      unread,
+      channelType: input.channelType,
+      eventId: input.eventId,
+      subEventId: input.subEventId || undefined,
+      groupId: input.groupId || undefined
+    };
+  }
+
+  private uniqueUserIds(ids: string[]): string[] {
+    const unique: string[] = [];
+    for (const id of ids) {
+      if (!id || unique.includes(id)) {
+        continue;
+      }
+      unique.push(id);
+    }
+    return unique;
+  }
+
+  private chatStageLabel(index: number): string {
+    return `Stage ${index + 1}`;
+  }
+
+  private chatEventDateIso(eventId: string): string {
+    return this.eventDatesById[eventId]
+      ?? this.hostingDatesById[eventId]
+      ?? this.defaultEventStartIso();
+  }
+
+  private chatSubEventDateIso(eventId: string, subEventId: string): string {
+    const subEvent = this.chatEventSubEvents(eventId).find(item => item.id === subEventId) ?? null;
+    return subEvent?.startAt || this.chatEventDateIso(eventId);
+  }
+
+  private resolveChatFocusEventSource(): EventMenuItem | HostingMenuItem | null {
+    if (this.activePopup === 'eventEditor' || this.stackedPopup === 'eventEditor') {
+      const editorSource = this.resolveEventEditorSource();
+      if (editorSource) {
+        return editorSource;
+      }
+    }
+    if (this.selectedEvent) {
+      return this.selectedEvent;
+    }
+    if (this.selectedHostingEvent) {
+      return this.selectedHostingEvent;
+    }
+    const managed = this.eventItems.find(item => item.isAdmin);
+    if (managed) {
+      return managed;
+    }
+    return this.eventItems[0] ?? this.hostingItems[0] ?? null;
+  }
+
+  private resolveChatEventSource(item: ChatMenuItem): EventMenuItem | HostingMenuItem | null {
+    const eventId = this.normalizeLocationValue(item.eventId).trim();
+    if (!eventId) {
+      return this.resolveChatFocusEventSource();
+    }
+    const fromEvents = this.eventItems.find(event => event.id === eventId);
+    if (fromEvents) {
+      return fromEvents;
+    }
+    const fromHosting = this.hostingItems.find(event => event.id === eventId);
+    if (fromHosting) {
+      return fromHosting;
+    }
+    const editorSource = this.resolveEventEditorSource();
+    if (editorSource?.id === eventId) {
+      return editorSource;
+    }
+    return {
+      id: eventId,
+      avatar: this.initialsFromText(item.title || 'Event'),
+      title: item.title || 'Event',
+      shortDescription: item.lastMessage || 'Event chat channel',
+      timeframe: '',
+      activity: item.unread,
+      isAdmin: false
+    };
+  }
+
+  private chatEventSubEvents(eventId: string): SubEventFormItem[] {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return [];
+    }
+    const editorSource = this.resolveEventEditorSource();
+    if ((this.activePopup === 'eventEditor' || this.stackedPopup === 'eventEditor') && editorSource?.id === normalizedEventId) {
+      return this.sortSubEventsByStartAsc(this.cloneSubEvents(this.eventForm.subEvents));
+    }
+    return this.sortSubEventsByStartAsc(this.cloneSubEvents(this.eventSubEventsById[normalizedEventId] ?? []));
+  }
+
+  private chatSubEventForItem(item: ChatMenuItem): SubEventFormItem | null {
+    const eventId = this.normalizeLocationValue(item.eventId).trim();
+    const subEventId = this.normalizeLocationValue(item.subEventId).trim();
+    if (!eventId || !subEventId) {
+      return null;
+    }
+    return this.chatEventSubEvents(eventId).find(subEvent => subEvent.id === subEventId) ?? null;
+  }
+
+  private isActiveUserAttachedToOptionalSubEvent(eventId: string, subEventId: string): boolean {
+    return this.optionalSubEventAcceptedMemberIds(eventId, subEventId).includes(this.activeUser.id);
+  }
+
+  private optionalSubEventAcceptedMemberIds(eventId: string, subEventId: string): string[] {
+    const key = this.optionalSubEventMembershipKey(eventId, subEventId);
+    const existing = this.acceptedOptionalSubEventMembersByKey[key];
+    if (existing && existing.length > 0) {
+      return existing;
+    }
+    const candidates = this.seededEventMemberIds(eventId, 10);
+    const seeded = candidates.filter(userId =>
+      (this.hashText(`optional-chat-member:${eventId}:${subEventId}:${userId}`) % 100) < 56
+    );
+    const fallback = seeded.length > 0 ? seeded : [candidates[0] ?? this.activeUser.id];
+    this.acceptedOptionalSubEventMembersByKey[key] = this.uniqueUserIds(fallback);
+    return this.acceptedOptionalSubEventMembersByKey[key];
+  }
+
+  private tournamentGroupAcceptedMemberIds(
+    eventId: string,
+    subEventId: string,
+    groupId: string,
+    groups: SubEventGroupItem[]
+  ): string[] {
+    const key = this.tournamentGroupMembershipKey(eventId, subEventId, groupId);
+    const existing = this.acceptedTournamentGroupMembersByKey[key];
+    if (existing && existing.length > 0) {
+      return existing;
+    }
+    const candidates = this.seededEventMemberIds(eventId, 12);
+    const seeded = candidates.filter(userId => this.seededTournamentGroupIdForUser(eventId, subEventId, groups, userId) === groupId);
+    const fallback = seeded.length > 0 ? seeded : [candidates[0] ?? this.activeUser.id];
+    this.acceptedTournamentGroupMembersByKey[key] = this.uniqueUserIds(fallback);
+    return this.acceptedTournamentGroupMembersByKey[key];
+  }
+
+  private activeUserTournamentGroup(
+    eventId: string,
+    subEvent: SubEventFormItem,
+    groups: SubEventGroupItem[]
+  ): SubEventGroupItem | null {
+    if (groups.length === 0) {
+      return null;
+    }
+    const explicitGroupId = this.explicitTournamentGroupIdForUser(eventId, subEvent.id, groups, this.activeUser.id);
+    const activeGroupId = explicitGroupId || this.seededTournamentGroupIdForUser(eventId, subEvent.id, groups, this.activeUser.id);
+    if (!activeGroupId) {
+      return null;
+    }
+    const memberIds = this.tournamentGroupAcceptedMemberIds(eventId, subEvent.id, activeGroupId, groups);
+    if (!memberIds.includes(this.activeUser.id)) {
+      return null;
+    }
+    return groups.find(group => group.id === activeGroupId) ?? null;
+  }
+
+  private seededTournamentGroupIdForUser(
+    eventId: string,
+    subEventId: string,
+    groups: SubEventGroupItem[],
+    userId: string
+  ): string {
+    if (groups.length === 0) {
+      return '';
+    }
+    const index = this.hashText(`group-chat-member:${eventId}:${subEventId}:${userId}`) % groups.length;
+    return groups[index]?.id ?? groups[0]?.id ?? '';
+  }
+
+  private explicitTournamentGroupIdForUser(
+    eventId: string,
+    subEventId: string,
+    groups: SubEventGroupItem[],
+    userId: string
+  ): string | null {
+    for (const group of groups) {
+      const key = this.tournamentGroupMembershipKey(eventId, subEventId, group.id);
+      const members = this.acceptedTournamentGroupMembersByKey[key];
+      if (members?.includes(userId)) {
+        return group.id;
+      }
+    }
+    return null;
+  }
+
+  private seededEventMemberIds(eventId: string, targetCount: number): string[] {
+    const count = Math.max(4, Math.min(Math.max(4, targetCount), this.users.length));
+    const others = this.users.filter(user => user.id !== this.activeUser.id);
+    const seeded: string[] = [this.activeUser.id];
+    if (others.length === 0) {
+      return seeded;
+    }
+    const seed = this.hashText(`event-members:${eventId}`);
+    for (let index = 0; index < others.length && seeded.length < count; index += 1) {
+      const candidate = others[(seed + (index * 3)) % others.length];
+      if (!seeded.includes(candidate.id)) {
+        seeded.push(candidate.id);
+      }
+    }
+    return seeded;
+  }
+
+  private optionalSubEventMembershipKey(eventId: string, subEventId: string): string {
+    return `${eventId}:${subEventId}`;
+  }
+
+  private tournamentGroupMembershipKey(eventId: string, subEventId: string, groupId: string): string {
+    return `${eventId}:${subEventId}:${groupId}`;
+  }
+
+  private attachUserToOptionalSubEvent(eventId: string, subEventId: string, userId: string): void {
+    const key = this.optionalSubEventMembershipKey(eventId, subEventId);
+    const next = new Set(this.optionalSubEventAcceptedMemberIds(eventId, subEventId));
+    next.add(userId);
+    this.acceptedOptionalSubEventMembersByKey[key] = [...next];
+  }
+
+  private detachUserFromOptionalSubEvent(eventId: string, subEventId: string, userId: string): void {
+    const key = this.optionalSubEventMembershipKey(eventId, subEventId);
+    const next = new Set(this.optionalSubEventAcceptedMemberIds(eventId, subEventId));
+    next.delete(userId);
+    this.acceptedOptionalSubEventMembersByKey[key] = [...next];
+  }
+
+  private attachUserToTournamentGroup(
+    eventId: string,
+    subEventId: string,
+    groupId: string,
+    userId: string
+  ): void {
+    const subEvent = this.chatEventSubEvents(eventId).find(item => item.id === subEventId) ?? null;
+    if (!subEvent) {
+      return;
+    }
+    const groups = this.subEventGroupsForStage(subEvent);
+    if (!groups.some(group => group.id === groupId)) {
+      return;
+    }
+    for (const group of groups) {
+      const key = this.tournamentGroupMembershipKey(eventId, subEventId, group.id);
+      const next = new Set(this.tournamentGroupAcceptedMemberIds(eventId, subEventId, group.id, groups));
+      next.delete(userId);
+      this.acceptedTournamentGroupMembersByKey[key] = [...next];
+    }
+    const targetKey = this.tournamentGroupMembershipKey(eventId, subEventId, groupId);
+    const target = new Set(this.acceptedTournamentGroupMembersByKey[targetKey] ?? []);
+    target.add(userId);
+    this.acceptedTournamentGroupMembersByKey[targetKey] = [...target];
+  }
+
+  private detachUserFromTournamentGroups(eventId: string, subEventId: string, userId: string): void {
+    const subEvent = this.chatEventSubEvents(eventId).find(item => item.id === subEventId) ?? null;
+    if (!subEvent) {
+      return;
+    }
+    const groups = this.subEventGroupsForStage(subEvent);
+    for (const group of groups) {
+      const key = this.tournamentGroupMembershipKey(eventId, subEventId, group.id);
+      const next = new Set(this.tournamentGroupAcceptedMemberIds(eventId, subEventId, group.id, groups));
+      next.delete(userId);
+      this.acceptedTournamentGroupMembersByKey[key] = [...next];
+    }
+  }
+
+  private attachUserToSelectedSubEventChat(userId: string): void {
+    const context = this.selectedSubEventBadgeContext;
+    const subEvent = context?.subEvent ?? null;
+    if (!subEvent) {
+      return;
+    }
+    const eventId = this.resolveEventIdForSubEvent(subEvent);
+    if (!eventId) {
+      return;
+    }
+    if (subEvent.optional) {
+      this.attachUserToOptionalSubEvent(eventId, subEvent.id, userId);
+    }
+    if (context?.groupId) {
+      this.attachUserToTournamentGroup(eventId, subEvent.id, context.groupId, userId);
+    }
+  }
+
+  private detachUserFromSelectedSubEventChat(userId: string): void {
+    const context = this.selectedSubEventBadgeContext;
+    const subEvent = context?.subEvent ?? null;
+    if (!subEvent) {
+      return;
+    }
+    const eventId = this.resolveEventIdForSubEvent(subEvent);
+    if (!eventId) {
+      return;
+    }
+    if (subEvent.optional) {
+      this.detachUserFromOptionalSubEvent(eventId, subEvent.id, userId);
+    }
+    if (context?.groupId) {
+      this.detachUserFromTournamentGroups(eventId, subEvent.id, userId);
+    }
+  }
+
+  private resolveEventIdForSubEvent(subEvent: SubEventFormItem): string | null {
+    const editorContainsSubEvent = this.eventForm.subEvents.some(item => item.id === subEvent.id);
+    if (editorContainsSubEvent) {
+      const editorSource = this.resolveEventEditorSource();
+      if (editorSource?.id) {
+        return editorSource.id;
+      }
+      if (this.editingEventId) {
+        return this.editingEventId;
+      }
+    }
+    for (const [eventId, items] of Object.entries(this.eventSubEventsById)) {
+      if (items.some(item => item.id === subEvent.id)) {
+        return eventId;
+      }
+    }
+    return this.normalizeLocationValue(this.selectedChat?.eventId).trim() || null;
+  }
+
+  private chatContextDetailLine(item: ChatMenuItem): string {
+    const channelType = this.chatChannelType(item);
+    if (channelType !== 'optionalSubEvent' && channelType !== 'groupSubEvent') {
+      return item.lastMessage.trim();
+    }
+    const subEvent = this.chatSubEventForItem(item);
+    const eventId = this.normalizeLocationValue(item.eventId).trim();
+    if (!subEvent || !eventId) {
+      return item.lastMessage.trim();
+    }
+    const ordered = this.chatEventSubEvents(eventId);
+    const stageIndex = ordered.findIndex(entry => entry.id === subEvent.id);
+    const stageLabel = this.chatStageLabel(Math.max(0, stageIndex));
+    if (channelType === 'groupSubEvent') {
+      const group = this.subEventGroupsForStage(subEvent).find(entry => entry.id === item.groupId);
+      const groupLabel = group?.name?.trim() || 'Group';
+      return `${stageLabel} - ${groupLabel}`;
+    }
+    const subEventLabel = this.subEventDisplayName(subEvent) || subEvent.name || 'Sub Event';
+    return `${stageLabel} - ${subEventLabel}`;
+  }
+
+  private matchesActivitiesChatContextFilter(item: ChatMenuItem): boolean {
+    if (this.activitiesPrimaryFilter !== 'chats' || this.activitiesChatContextFilter === 'all') {
+      return true;
+    }
+    return this.activityChatContextFilterKey(item) === this.activitiesChatContextFilter;
+  }
+
+  private activityChatContextFilterKey(item: ChatMenuItem): ActivitiesChatContextFilter | null {
+    const channelType = this.chatChannelType(item);
+    if (channelType === 'mainEvent') {
+      return 'event';
+    }
+    if (channelType === 'optionalSubEvent') {
+      return 'subEvent';
+    }
+    if (channelType === 'groupSubEvent') {
+      return 'group';
+    }
+    return null;
+  }
+
   protected get isActivitiesPopup(): boolean {
     return this.activePopup === 'activities';
   }
@@ -9867,14 +10689,16 @@ export class App {
   private buildFilteredActivityRowsBase(): ActivityListRow[] {
     let rows: ActivityListRow[] = [];
     if (this.activitiesPrimaryFilter === 'chats') {
-      rows = this.chatItems.map(item => {
+      rows = this.chatItemsForActivities()
+        .filter(item => this.matchesActivitiesChatContextFilter(item))
+        .map(item => {
         const sender = this.getChatLastSender(item);
         return {
           id: item.id,
           type: 'chats',
           title: sender.name,
           subtitle: item.title,
-          detail: item.lastMessage.trim(),
+          detail: this.chatContextDetailLine(item),
           dateIso: this.chatDatesById[item.id] ?? '2026-02-21T09:00:00',
           distanceKm: this.chatDistanceById[item.id] ?? 5,
           unread: item.unread,
@@ -10427,6 +11251,7 @@ export class App {
     this.hostingPublicationFilter = 'all';
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
+    this.activitiesChatContextFilter = 'all';
     if (filter !== 'rates') {
       this.disableActivitiesRatesFullscreenMode();
     }
@@ -10439,6 +11264,15 @@ export class App {
     } else {
       this.selectedActivityRateId = null;
     }
+    this.releaseActiveElementFocus();
+    this.resetActivitiesScroll();
+  }
+
+  protected selectActivitiesChatContextFilter(filter: ActivitiesChatContextFilter): void {
+    if (this.activitiesPrimaryFilter !== 'chats') {
+      return;
+    }
+    this.activitiesChatContextFilter = filter;
     this.releaseActiveElementFocus();
     this.resetActivitiesScroll();
   }
@@ -10969,6 +11803,14 @@ export class App {
     return this.activitiesPrimaryFilters.find(option => option.key === this.activitiesPrimaryFilter)?.icon ?? 'chat';
   }
 
+  protected activitiesChatContextFilterLabel(): string {
+    return this.activitiesChatContextFilters.find(option => option.key === this.activitiesChatContextFilter)?.label ?? 'All';
+  }
+
+  protected activitiesChatContextFilterIcon(): string {
+    return this.activitiesChatContextFilters.find(option => option.key === this.activitiesChatContextFilter)?.icon ?? 'forum';
+  }
+
   protected activitiesSecondaryFilterLabel(): string {
     return this.activitiesSecondaryFilterOptionLabel(this.activitiesSecondaryFilter);
   }
@@ -11064,6 +11906,32 @@ export class App {
     return 'activity-filter-rates';
   }
 
+  protected activitiesChatContextFilterCount(filter: ActivitiesChatContextFilter = this.activitiesChatContextFilter): number {
+    if (this.activitiesPrimaryFilter !== 'chats') {
+      return 0;
+    }
+    return this.chatItemsForActivities().filter(item => {
+      if (filter === 'all') {
+        return true;
+      }
+      const key = this.activityChatContextFilterKey(item);
+      return key === filter;
+    }).length;
+  }
+
+  protected activitiesChatContextFilterClass(filter: ActivitiesChatContextFilter = this.activitiesChatContextFilter): string {
+    if (filter === 'event') {
+      return 'chat-context-filter-event';
+    }
+    if (filter === 'subEvent') {
+      return 'chat-context-filter-sub-event';
+    }
+    if (filter === 'group') {
+      return 'chat-context-filter-group';
+    }
+    return 'chat-context-filter-all';
+  }
+
   protected activitiesSecondaryFilterClass(filter: ActivitiesSecondaryFilter = this.activitiesSecondaryFilter): string {
     if (filter === 'recent') {
       return 'activity-filter-secondary';
@@ -11081,7 +11949,7 @@ export class App {
   protected activitiesHeaderSelectionLine(): string {
     const primary = this.activitiesPrimaryFilterLabel();
     if (this.activitiesPrimaryFilter === 'chats') {
-      return primary;
+      return this.activitiesChatsHeaderLabel();
     }
     const secondary = this.activitiesSecondaryFilterLabel();
     if (this.activitiesPrimaryFilter === 'rates') {
@@ -11092,7 +11960,7 @@ export class App {
 
   protected activitiesHeaderLineOne(): string {
     if (this.activitiesPrimaryFilter === 'chats') {
-      return this.activitiesPrimaryFilterLabel();
+      return this.activitiesChatsHeaderLabel();
     }
     if (this.activitiesPrimaryFilter === 'rates') {
       const group = this.activitiesRateFilter.startsWith('individual') ? 'Single' : 'Pair';
@@ -11107,6 +11975,14 @@ export class App {
 
   protected activitiesHeaderLineTwo(): string {
     return '';
+  }
+
+  private activitiesChatsHeaderLabel(): string {
+    const primary = this.activitiesPrimaryFilterLabel();
+    if (this.activitiesChatContextFilter === 'all') {
+      return primary;
+    }
+    return `${primary} · ${this.activitiesChatContextFilterLabel()}`;
   }
 
   protected activitiesPrimaryPanelWidth(): string {
@@ -12823,6 +13699,7 @@ export class App {
         : item
     ));
     this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
+    this.attachUserToSelectedSubEventChat(entry.userId);
     if (shouldCascadeToAssets) {
       this.promotePendingAssetRequestsAfterMainEventApproval(entry.userId);
     }
@@ -12849,6 +13726,7 @@ export class App {
     const removedUserId = this.pendingActivityMemberDelete.userId;
     this.selectedActivityMembers = this.selectedActivityMembers.filter(item => item.id !== targetId);
     this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
+    this.detachUserFromSelectedSubEventChat(removedUserId);
     if (shouldCascadeToAssets) {
       this.cascadeMainEventMemberRemovalToAssets(removedUserId);
     }
@@ -15505,6 +16383,13 @@ export class App {
   }
 
   private getChatItemById(chatId: string): ChatMenuItem | undefined {
+    if (this.selectedChat?.id === chatId) {
+      return this.selectedChat;
+    }
+    const contextual = this.buildContextualChatChannels().find(item => item.id === chatId);
+    if (contextual) {
+      return contextual;
+    }
     for (const entries of Object.values(this.chatItemsByUser)) {
       const match = entries.find(item => item.id === chatId);
       if (match) {

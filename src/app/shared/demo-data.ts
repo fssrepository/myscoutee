@@ -35,6 +35,10 @@ export interface ChatMenuItem {
   lastSenderId: string;
   memberIds: string[];
   unread: number;
+  channelType?: 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent';
+  eventId?: string;
+  subEventId?: string;
+  groupId?: string;
 }
 
 export interface InvitationMenuItem {

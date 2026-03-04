@@ -140,17 +140,17 @@
         <section class="entry-footer-contact">
           <h3>Let&apos;s connect</h3>
           <div class="entry-footer-socials">
-            <a href="#" aria-label="MyScoutee on Instagram">
+            <a href="https://www.instagram.com/myscoutee1" target="_blank" rel="noopener noreferrer" aria-label="MyScoutee on Instagram">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm10 2H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3Zm-5 3.5A5.5 5.5 0 1 1 6.5 13 5.5 5.5 0 0 1 12 7.5Zm0 2A3.5 3.5 0 1 0 15.5 13 3.5 3.5 0 0 0 12 9.5ZM18.2 6.3a1.2 1.2 0 1 1-1.2 1.2 1.2 1.2 0 0 1 1.2-1.2Z"/>
               </svg>
             </a>
-            <a href="#" aria-label="MyScoutee on TikTok">
+            <a href="https://www.youtube.com/@myscoutee" target="_blank" rel="noopener noreferrer" aria-label="MyScoutee on YouTube">
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M14 3h2.2c.3 1.4 1.1 2.6 2.3 3.3 1 .6 2 .9 3.1.9V10c-1.8 0-3.5-.5-4.9-1.5V15a6 6 0 1 1-6-6c.5 0 1 0 1.4.2v2.6a3.5 3.5 0 1 0 2 3.2V3Z"/>
+                <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.8 31.8 0 0 0 0 12a31.8 31.8 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.8 31.8 0 0 0 24 12a31.8 31.8 0 0 0-.5-5.8ZM9.7 15.5V8.5l6.1 3.5-6.1 3.5Z"/>
               </svg>
             </a>
-            <a href="#" aria-label="MyScoutee on Facebook">
+            <a href="https://www.facebook.com/myscoutee" target="_blank" rel="noopener noreferrer" aria-label="MyScoutee on Facebook">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M13.5 22v-8h2.8l.4-3h-3.2V9.1c0-.9.3-1.5 1.6-1.5h1.7V4.9c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.8V11H8.5v3h2.3v8h2.7Z"/>
               </svg>
@@ -572,13 +572,113 @@
       <span class="header-members-count" *ngIf="activePopup === 'chatMembers'">{{ selectedChatMembers.length }} members</span>
       <button
         type="button"
-        class="popup-chat-event-btn"
-        aria-label="Open event editor"
-        *ngIf="activePopup === 'chat' && selectedChat"
-        (click)="openEventEditor(true)"
+        class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
+        [ngClass]="selectedChatHeaderActionToneClass()"
+        *ngIf="activePopup === 'chat' && selectedChat && !selectedChatHasSubEventMenu()"
+        (click)="openSelectedChatEvent($event)"
       >
-        <mat-icon>edit_calendar</mat-icon>
+        <span class="event-editor-members-invite">
+          <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
+          <span>{{ selectedChatHeaderActionLabel() }}</span>
+        </span>
       </button>
+      <div class="popup-chat-context-menu-wrap" *ngIf="activePopup === 'chat' && selectedChat && selectedChatHasSubEventMenu()">
+        <button
+          type="button"
+          class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
+          [ngClass]="selectedChatHeaderActionToneClass()"
+          [class.is-open]="isSelectedChatContextMenuOpen()"
+          (click)="toggleSelectedChatContextMenu($event)"
+          aria-label="Open chat context menu"
+        >
+          <span class="event-editor-members-invite">
+            <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
+            <span>{{ selectedChatHeaderActionLabel() }}</span>
+            <mat-icon class="popup-chat-context-chevron">expand_more</mat-icon>
+          </span>
+          <span class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge" *ngIf="selectedChatHeaderActionBadgeCount() > 0">
+            {{ selectedChatHeaderActionBadgeCount() }}
+          </span>
+        </button>
+        <div
+          class="item-action-menu event-subevent-resource-menu popup-chat-context-menu"
+          [class.is-open]="isSelectedChatContextMenuOpen()"
+          [class.item-action-menu-mobile]="isMobileView"
+          [class.item-action-menu-desktop]="!isMobileView"
+          [class.is-open-up]="isSelectedChatContextMenuOpenUp()"
+          [attr.aria-hidden]="!isSelectedChatContextMenuOpen()"
+          (click)="$event.stopPropagation()"
+        >
+          <div class="item-action-menu-title">{{ selectedChatContextMenuTitle() }}</div>
+          <button type="button" class="item-action-menu-btn" (click)="openSelectedChatEvent($event)">
+            <mat-icon>visibility</mat-icon>
+            <span>View Event</span>
+          </button>
+          <div class="item-action-menu-divider"></div>
+          <div class="item-action-menu-section-label">Resources</div>
+          <button
+            type="button"
+            class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-members"
+            [ngClass]="selectedChatSubEvent() ? subEventCapacityStateClass(selectedChatSubEvent()!) : ''"
+            *ngIf="selectedChatShowsMembersResource()"
+            (click)="openSelectedChatSubEventResource('Members', $event)"
+          >
+            <span class="subevent-resource-menu-item-icon"><mat-icon>groups</mat-icon></span>
+            <span class="subevent-resource-menu-item-main">
+              <span class="subevent-resource-menu-item-title">Members</span>
+              <span class="subevent-resource-menu-item-value">{{ selectedChatResourceSummary('Members') }}</span>
+            </span>
+            <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="selectedChatResourcePending('Members') > 0">
+              {{ selectedChatResourcePending('Members') }}
+            </span>
+          </button>
+          <button
+            type="button"
+            class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-car"
+            [ngClass]="selectedChatSubEvent() ? subEventAssetCapacityStateClass(selectedChatSubEvent()!, 'Car') : ''"
+            (click)="openSelectedChatSubEventResource('Car', $event)"
+          >
+            <span class="subevent-resource-menu-item-icon"><mat-icon>directions_car</mat-icon></span>
+            <span class="subevent-resource-menu-item-main">
+              <span class="subevent-resource-menu-item-title">Car</span>
+              <span class="subevent-resource-menu-item-value">{{ selectedChatResourceSummary('Car') }}</span>
+            </span>
+            <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="selectedChatResourcePending('Car') > 0">
+              {{ selectedChatResourcePending('Car') }}
+            </span>
+          </button>
+          <button
+            type="button"
+            class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-accommodation"
+            [ngClass]="selectedChatSubEvent() ? subEventAssetCapacityStateClass(selectedChatSubEvent()!, 'Accommodation') : ''"
+            (click)="openSelectedChatSubEventResource('Accommodation', $event)"
+          >
+            <span class="subevent-resource-menu-item-icon"><mat-icon>hotel</mat-icon></span>
+            <span class="subevent-resource-menu-item-main">
+              <span class="subevent-resource-menu-item-title">Accommodation</span>
+              <span class="subevent-resource-menu-item-value">{{ selectedChatResourceSummary('Accommodation') }}</span>
+            </span>
+            <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="selectedChatResourcePending('Accommodation') > 0">
+              {{ selectedChatResourcePending('Accommodation') }}
+            </span>
+          </button>
+          <button
+            type="button"
+            class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-supplies"
+            [ngClass]="selectedChatSubEvent() ? subEventAssetCapacityStateClass(selectedChatSubEvent()!, 'Supplies') : ''"
+            (click)="openSelectedChatSubEventResource('Supplies', $event)"
+          >
+            <span class="subevent-resource-menu-item-icon"><mat-icon>inventory_2</mat-icon></span>
+            <span class="subevent-resource-menu-item-main">
+              <span class="subevent-resource-menu-item-title">Supplies</span>
+              <span class="subevent-resource-menu-item-value">{{ selectedChatResourceSummary('Supplies') }}</span>
+            </span>
+            <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="selectedChatResourcePending('Supplies') > 0">
+              {{ selectedChatResourcePending('Supplies') }}
+            </span>
+          </button>
+        </div>
+      </div>
       <button
         type="button"
         class="popup-chat-event-btn popup-invitation-approve-btn"
@@ -827,6 +927,63 @@
               <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesPrimaryFilterCount(activitiesPrimaryFilter) > 0">{{ activitiesPrimaryFilterCount(activitiesPrimaryFilter) }}</span>
             </button>
           </ng-template>
+          <ng-container *ngIf="activitiesPrimaryFilter === 'chats'">
+            <ng-container *ngIf="!isMobileView; else mobileActivitiesChatContextFilterButton">
+              <div
+                class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-chat-context-filter-select"
+                [ngClass]="activitiesChatContextFilterClass(activitiesChatContextFilter)"
+              >
+                <mat-select
+                  [(ngModel)]="activitiesChatContextFilter"
+                  (ngModelChange)="selectActivitiesChatContextFilter($event)"
+                  panelWidth="260px"
+                  disableOptionCentering
+                  panelClass="selector-options-panel profile-bottom-sheet-panel activities-chat-context-options-panel"
+                >
+                  <mat-select-trigger>
+                    <span class="status-option-content">
+                      <mat-icon [class]="activitiesChatContextFilterClass(activitiesChatContextFilter)">{{ activitiesChatContextFilterIcon() }}</mat-icon>
+                      <span>{{ activitiesChatContextFilterLabel() }}</span>
+                    </span>
+                  </mat-select-trigger>
+                  <mat-option
+                    *ngFor="let option of activitiesChatContextFilters"
+                    [value]="option.key"
+                    class="status-option"
+                    [ngClass]="activitiesChatContextFilterClass(option.key)"
+                  >
+                    <span class="status-option-content">
+                      <mat-icon [class]="activitiesChatContextFilterClass(option.key)">{{ option.icon }}</mat-icon>
+                      <span>{{ option.label }}</span>
+                      <span class="rate-filter-count-badge" *ngIf="activitiesChatContextFilterCount(option.key) > 0">
+                        {{ activitiesChatContextFilterCount(option.key) }}
+                      </span>
+                    </span>
+                  </mat-option>
+                </mat-select>
+                <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesChatContextFilterCount(activitiesChatContextFilter) > 0">
+                  {{ activitiesChatContextFilterCount(activitiesChatContextFilter) }}
+                </span>
+              </div>
+            </ng-container>
+            <ng-template #mobileActivitiesChatContextFilterButton>
+              <button
+                type="button"
+                class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-chat-context-filter-select"
+                [ngClass]="activitiesChatContextFilterClass(activitiesChatContextFilter)"
+                (click)="openMobileActivitiesChatContextFilterSelector($event)"
+              >
+                <span class="status-option-content">
+                  <mat-icon [class]="activitiesChatContextFilterClass(activitiesChatContextFilter)">{{ activitiesChatContextFilterIcon() }}</mat-icon>
+                  <span>{{ activitiesChatContextFilterLabel() }}</span>
+                </span>
+                <mat-icon>expand_more</mat-icon>
+                <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesChatContextFilterCount(activitiesChatContextFilter) > 0">
+                  {{ activitiesChatContextFilterCount(activitiesChatContextFilter) }}
+                </span>
+              </button>
+            </ng-template>
+          </ng-container>
           <button
             *ngIf="isHostingPublicationFilterVisible()"
             type="button"
@@ -1072,6 +1229,7 @@
                     *ngIf="isActivityChatRow(row); else nonChatActivityCard"
                     type="button"
                     class="activities-card activities-card-btn activities-row-item activities-card-chat"
+                    [ngClass]="activityChatRowToneClass(row)"
                     [attr.data-group-label]="group.label"
                     (pointerup)="onActivityRowPointerUp(row, $event)"
                     (click)="onActivityRowClick(row, $event)"
@@ -3168,13 +3326,113 @@
         </span>
         <button
           type="button"
-          class="popup-chat-event-btn"
-          aria-label="Open event editor"
-          *ngIf="stackedPopup === 'chat' && selectedChat"
-          (click)="openEventEditor(true)"
+          class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
+          [ngClass]="selectedChatHeaderActionToneClass()"
+          *ngIf="stackedPopup === 'chat' && selectedChat && !selectedChatHasSubEventMenu()"
+          (click)="openSelectedChatEvent($event)"
         >
-          <mat-icon>edit_calendar</mat-icon>
+          <span class="event-editor-members-invite">
+            <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
+            <span>{{ selectedChatHeaderActionLabel() }}</span>
+          </span>
         </button>
+        <div class="popup-chat-context-menu-wrap" *ngIf="stackedPopup === 'chat' && selectedChat && selectedChatHasSubEventMenu()">
+          <button
+            type="button"
+            class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
+            [ngClass]="selectedChatHeaderActionToneClass()"
+            [class.is-open]="isSelectedChatContextMenuOpen()"
+            (click)="toggleSelectedChatContextMenu($event)"
+            aria-label="Open chat context menu"
+          >
+            <span class="event-editor-members-invite">
+              <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
+              <span>{{ selectedChatHeaderActionLabel() }}</span>
+              <mat-icon class="popup-chat-context-chevron">expand_more</mat-icon>
+            </span>
+            <span class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge" *ngIf="selectedChatHeaderActionBadgeCount() > 0">
+              {{ selectedChatHeaderActionBadgeCount() }}
+            </span>
+          </button>
+          <div
+            class="item-action-menu event-subevent-resource-menu popup-chat-context-menu"
+            [class.is-open]="isSelectedChatContextMenuOpen()"
+            [class.item-action-menu-mobile]="isMobileView"
+            [class.item-action-menu-desktop]="!isMobileView"
+            [class.is-open-up]="isSelectedChatContextMenuOpenUp()"
+            [attr.aria-hidden]="!isSelectedChatContextMenuOpen()"
+            (click)="$event.stopPropagation()"
+          >
+            <div class="item-action-menu-title">{{ selectedChatContextMenuTitle() }}</div>
+            <button type="button" class="item-action-menu-btn" (click)="openSelectedChatEvent($event)">
+              <mat-icon>visibility</mat-icon>
+              <span>View Event</span>
+            </button>
+            <div class="item-action-menu-divider"></div>
+            <div class="item-action-menu-section-label">Resources</div>
+            <button
+              type="button"
+              class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-members"
+              [ngClass]="selectedChatSubEvent() ? subEventCapacityStateClass(selectedChatSubEvent()!) : ''"
+              *ngIf="selectedChatShowsMembersResource()"
+              (click)="openSelectedChatSubEventResource('Members', $event)"
+            >
+              <span class="subevent-resource-menu-item-icon"><mat-icon>groups</mat-icon></span>
+              <span class="subevent-resource-menu-item-main">
+                <span class="subevent-resource-menu-item-title">Members</span>
+                <span class="subevent-resource-menu-item-value">{{ selectedChatResourceSummary('Members') }}</span>
+              </span>
+              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="selectedChatResourcePending('Members') > 0">
+                {{ selectedChatResourcePending('Members') }}
+              </span>
+            </button>
+            <button
+              type="button"
+              class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-car"
+              [ngClass]="selectedChatSubEvent() ? subEventAssetCapacityStateClass(selectedChatSubEvent()!, 'Car') : ''"
+              (click)="openSelectedChatSubEventResource('Car', $event)"
+            >
+              <span class="subevent-resource-menu-item-icon"><mat-icon>directions_car</mat-icon></span>
+              <span class="subevent-resource-menu-item-main">
+                <span class="subevent-resource-menu-item-title">Car</span>
+                <span class="subevent-resource-menu-item-value">{{ selectedChatResourceSummary('Car') }}</span>
+              </span>
+              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="selectedChatResourcePending('Car') > 0">
+                {{ selectedChatResourcePending('Car') }}
+              </span>
+            </button>
+            <button
+              type="button"
+              class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-accommodation"
+              [ngClass]="selectedChatSubEvent() ? subEventAssetCapacityStateClass(selectedChatSubEvent()!, 'Accommodation') : ''"
+              (click)="openSelectedChatSubEventResource('Accommodation', $event)"
+            >
+              <span class="subevent-resource-menu-item-icon"><mat-icon>hotel</mat-icon></span>
+              <span class="subevent-resource-menu-item-main">
+                <span class="subevent-resource-menu-item-title">Accommodation</span>
+                <span class="subevent-resource-menu-item-value">{{ selectedChatResourceSummary('Accommodation') }}</span>
+              </span>
+              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="selectedChatResourcePending('Accommodation') > 0">
+                {{ selectedChatResourcePending('Accommodation') }}
+              </span>
+            </button>
+            <button
+              type="button"
+              class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-supplies"
+              [ngClass]="selectedChatSubEvent() ? subEventAssetCapacityStateClass(selectedChatSubEvent()!, 'Supplies') : ''"
+              (click)="openSelectedChatSubEventResource('Supplies', $event)"
+            >
+              <span class="subevent-resource-menu-item-icon"><mat-icon>inventory_2</mat-icon></span>
+              <span class="subevent-resource-menu-item-main">
+                <span class="subevent-resource-menu-item-title">Supplies</span>
+                <span class="subevent-resource-menu-item-value">{{ selectedChatResourceSummary('Supplies') }}</span>
+              </span>
+              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="selectedChatResourcePending('Supplies') > 0">
+                {{ selectedChatResourcePending('Supplies') }}
+              </span>
+            </button>
+          </div>
+        </div>
         <button
           type="button"
           class="popup-chat-event-btn popup-invitation-approve-btn"
@@ -5444,7 +5702,7 @@
                   type="button"
                   class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-members"
                   [ngClass]="subEventCapacityStateClass(subEvent)"
-                  (click)="openSubEventBadgePopup('Members', subEvent, $event)"
+                  (click)="openSubEventBadgePopup('Members', subEvent, $event, group)"
                   *ngIf="subEvent.optional || tournamentMode"
                 >
                   <span class="subevent-resource-menu-item-icon"><mat-icon>groups</mat-icon></span>
@@ -5460,7 +5718,7 @@
                   type="button"
                   class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-car"
                   [ngClass]="subEventAssetCapacityStateClass(subEvent, 'Car')"
-                  (click)="openSubEventBadgePopup('Car', subEvent, $event)"
+                  (click)="openSubEventBadgePopup('Car', subEvent, $event, group)"
                 >
                   <span class="subevent-resource-menu-item-icon"><mat-icon>directions_car</mat-icon></span>
                   <span class="subevent-resource-menu-item-main">
@@ -5475,7 +5733,7 @@
                   type="button"
                   class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-accommodation"
                   [ngClass]="subEventAssetCapacityStateClass(subEvent, 'Accommodation')"
-                  (click)="openSubEventBadgePopup('Accommodation', subEvent, $event)"
+                  (click)="openSubEventBadgePopup('Accommodation', subEvent, $event, group)"
                 >
                   <span class="subevent-resource-menu-item-icon"><mat-icon>hotel</mat-icon></span>
                   <span class="subevent-resource-menu-item-main">
@@ -5490,7 +5748,7 @@
                   type="button"
                   class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-supplies"
                   [ngClass]="subEventAssetCapacityStateClass(subEvent, 'Supplies')"
-                  (click)="openSubEventBadgePopup('Supplies', subEvent, $event)"
+                  (click)="openSubEventBadgePopup('Supplies', subEvent, $event, group)"
                 >
                   <span class="subevent-resource-menu-item-icon"><mat-icon>inventory_2</mat-icon></span>
                   <span class="subevent-resource-menu-item-main">

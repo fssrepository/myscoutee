@@ -1,11 +1,11 @@
-for every data on profile has variable +%, if you fill it out
-
 report a user menu, request form etc. (for me by the users)
 for mobile touch animation on each clickable button whatever
 when you rate a user make blink effect on star badge and star popup bar (to show it's rated)
 
 Game - Default page
 -------------------
+on the profile the 72% should be changing based on how many fields has been filled out on the profile
+naturally any change on the profile editor will affect right away (both on menu bar and on the profile editor %)
 
 shows the Tinder like panel on the left with 3 buttons on the header
 (profile-filter e.g.: profession match, school match, friends in common etc.),
@@ -17,14 +17,3 @@ preload 10-15 photos, and paginating to the next stack, while the user finished 
 (the cards are on top of each other, so hiding each other)
 
 pair rate - met (a new option on ratings)
-
-chat:
------
-chat channel type (sub event optional / main event / group (stage))
-it should be visible - on chat main window, and the icon should be different on chat message window
-(make also the title and background color)
-filter on chat main window based on that 3 variations + All also
-
-maybe a menu view event/view group and a badge just before x closing button
-maybe showing the same menu with drop down arrow as you have on role selector
-so it will show the assets button transformed to menu items and badge
