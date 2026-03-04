@@ -2508,6 +2508,7 @@
   border-radius: 10px;
   background: transparent;
   color: rgba(24, 42, 66, 0.92);
+  text-decoration: none;
   min-height: 36px;
   padding: 0.46rem 0.54rem;
   text-align: left;
@@ -5436,6 +5437,87 @@
 .gdpr-right-item .gdpr-list,
 .gdpr-data-item .gdpr-list {
   margin-top: 0.26rem;
+}
+
+.support-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.support-help-hero {
+  background: linear-gradient(180deg, #edf4ff 0%, #f7fbff 100%);
+  border-color: rgba(50, 97, 173, 0.25);
+}
+
+.support-help-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.45rem;
+}
+
+.support-help-feature {
+  background: #fff;
+}
+
+.support-help-feature h4 {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+}
+
+.support-help-feature h4 .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+  color: #2c629e;
+}
+
+.support-help-feature p {
+  margin-top: 0.3rem;
+}
+
+.support-card {
+  background: #fff;
+}
+
+.support-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.48rem;
+  margin-top: 0.54rem;
+}
+
+.support-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+}
+
+.support-form label > span {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(29, 47, 72, 0.9);
+}
+
+.support-submit-success {
+  border: 1px solid rgba(41, 131, 84, 0.35);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(220, 249, 231, 0.95) 0%, rgba(208, 245, 223, 0.95) 100%);
+  color: #1f6f48;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.35;
+  padding: 0.52rem 0.58rem;
+}
+
+.support-form textarea {
+  min-height: 96px;
+}
+
+.support-actions {
+  justify-content: flex-end;
 }
 
 .activities-popup {

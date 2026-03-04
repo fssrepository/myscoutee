@@ -73,6 +73,9 @@ type PopupType =
   | 'valuesSelector'
   | 'interestSelector'
   | 'experienceSelector'
+  | 'helpCenter'
+  | 'reportUser'
+  | 'sendFeedback'
   | 'gdpr'
   | 'deleteAccountConfirm'
   | 'logoutConfirm'
@@ -1447,6 +1450,33 @@ export class App {
     traitLabel: '',
     about: ''
   };
+  protected reportUserForm = {
+    handle: '',
+    reason: 'Harassment',
+    details: ''
+  };
+  protected reportUserSubmitMessage = '';
+  protected feedbackForm = {
+    category: 'General',
+    subject: '',
+    details: ''
+  };
+  protected feedbackSubmitMessage = '';
+  protected readonly reportUserReasons = [
+    'Harassment',
+    'Spam',
+    'Impersonation',
+    'Hate speech',
+    'Scam / Fraud',
+    'Other'
+  ];
+  protected readonly feedbackCategories = [
+    'General',
+    'Bug report',
+    'Feature request',
+    'UX improvement',
+    'Performance'
+  ];
   protected languageInput = '';
   protected showLanguagePanel = false;
   private readonly profileDetailsFormByUser: Record<string, ProfileDetailFormGroup[]> = {};
@@ -1831,14 +1861,23 @@ export class App {
     this.showUserSettingsMenu = false;
   }
 
-  protected onUserSettingsAction(action: 'helper' | 'gdpr' | 'delete-account' | 'logout', event?: Event): void {
+  protected onUserSettingsAction(action: 'help' | 'report-user' | 'send-feedback' | 'gdpr' | 'delete-account' | 'logout', event?: Event): void {
     event?.stopPropagation();
     switch (action) {
-      case 'helper':
+      case 'help':
         this.closeUserSettingsMenu();
-        this.alertService.open('Helper center is ready for backend wiring.');
+        this.openHelpPopup();
+        return;
+      case 'report-user':
+        this.closeUserSettingsMenu();
+        this.openReportUserPopup();
+        return;
+      case 'send-feedback':
+        this.closeUserSettingsMenu();
+        this.openSendFeedbackPopup();
         return;
       case 'gdpr':
+        this.closeUserSettingsMenu();
         this.openGdprPopup();
         return;
       case 'delete-account':
@@ -1856,6 +1895,48 @@ export class App {
 
   protected openGdprPopup(): void {
     this.activePopup = 'gdpr';
+  }
+
+  protected openHelpPopup(): void {
+    this.activePopup = 'helpCenter';
+  }
+
+  protected openReportUserPopup(): void {
+    this.reportUserForm = {
+      handle: '',
+      reason: this.reportUserReasons[0] ?? 'Harassment',
+      details: ''
+    };
+    this.reportUserSubmitMessage = '';
+    this.activePopup = 'reportUser';
+  }
+
+  protected openSendFeedbackPopup(): void {
+    this.feedbackForm = {
+      category: this.feedbackCategories[0] ?? 'General',
+      subject: '',
+      details: ''
+    };
+    this.feedbackSubmitMessage = '';
+    this.activePopup = 'sendFeedback';
+  }
+
+  protected submitReportUser(): void {
+    const target = this.reportUserForm.handle.trim();
+    const details = this.reportUserForm.details.trim();
+    if (!target || details.length < 6) {
+      return;
+    }
+    this.reportUserSubmitMessage = `Report submitted successfully for ${target}. Our moderation team will review it.`;
+  }
+
+  protected submitFeedback(): void {
+    const subject = this.feedbackForm.subject.trim();
+    const details = this.feedbackForm.details.trim();
+    if (!subject || details.length < 8) {
+      return;
+    }
+    this.feedbackSubmitMessage = `Feedback sent successfully in "${this.feedbackForm.category}". Thank you for helping improve MyScoutee.`;
   }
 
   protected openDeleteAccountConfirm(): void {
@@ -8104,6 +8185,12 @@ export class App {
         return 'Events';
       case 'hosting':
         return 'Hosting';
+      case 'helpCenter':
+        return 'Help';
+      case 'reportUser':
+        return 'Report User';
+      case 'sendFeedback':
+        return 'Send Feedback';
       case 'logoutConfirm':
         return 'Kilépés';
       case 'gdpr':
@@ -8996,6 +9083,10 @@ export class App {
     }
   }
 
+  protected get profileCompletionPercent(): number {
+    return this.calculateProfileCompletionPercent();
+  }
+
   protected completionBadgeStyle(value: number): Record<string, string> {
     const clamped = Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
     const hue = Math.round((clamped / 100) * 120);
@@ -9004,6 +9095,70 @@ export class App {
       borderColor: `hsl(${hue}, 70%, 58%)`,
       color: `hsl(${hue}, 74%, 24%)`
     };
+  }
+
+  private calculateProfileCompletionPercent(): number {
+    let completed = 0;
+    let total = 0;
+
+    const add = (ok: boolean): void => {
+      total += 1;
+      if (ok) {
+        completed += 1;
+      }
+    };
+
+    const hasText = (value: string | null | undefined, minLength = 1): boolean =>
+      (value?.trim().length ?? 0) >= minLength;
+
+    const hasDetail = (label: string, minLength = 1): boolean => {
+      const row = this.profileDetailRowByLabel(this.activeUser.id, label);
+      return hasText(row?.value, minLength);
+    };
+
+    const languages = this.profileForm.languages.filter(item => hasText(item));
+    const imageCount = this.imageSlots.filter(slot => hasText(slot ?? '')).length;
+    const valuesCount = this.parseCommaValues(this.profileDetailRowByLabel(this.activeUser.id, 'Values')?.value ?? '').length;
+    const interestCount = this.parseCommaValues(this.profileDetailRowByLabel(this.activeUser.id, 'Interest')?.value ?? '').length;
+    const aboutLength = this.profileForm.about.trim().length;
+
+    add(hasText(this.profileForm.fullName));
+    add(this.profileForm.birthday instanceof Date);
+    add(hasText(this.profileForm.city));
+    add((this.profileForm.heightCm ?? 0) > 0);
+    add(hasText(this.profileForm.physique));
+    add(hasText(this.profileForm.horoscope));
+    add(hasText(this.profileForm.profileStatus));
+    add(languages.length > 0);
+    add(languages.length > 1);
+    add(languages.length > 2);
+    add(aboutLength >= 20);
+    add(aboutLength >= 80);
+    add(aboutLength >= 140);
+    add(valuesCount > 0);
+    add(valuesCount >= 3);
+    add(interestCount > 0);
+    add(interestCount >= 3);
+    add(hasDetail('Drinking'));
+    add(hasDetail('Smoking'));
+    add(hasDetail('Workout'));
+    add(hasDetail('Pets'));
+    add(hasDetail('Family plans'));
+    add(hasDetail('Children'));
+    add(hasDetail('Love style'));
+    add(hasDetail('Communication style'));
+    add(hasDetail('Sexual orientation'));
+    add(hasDetail('Religion'));
+    add(hasDetail('Gender'));
+
+    for (let index = 0; index < 8; index += 1) {
+      add(imageCount > index);
+    }
+
+    if (total === 0) {
+      return 0;
+    }
+    return Math.round((completed / total) * 100);
   }
 
   protected getProfileStatusIcon(value: ProfileStatus = this.activeUser.profileStatus): string {
@@ -14982,6 +15137,7 @@ export class App {
     user.initials = this.toInitials(user.name);
     user.images = this.imageSlots.filter((slot): slot is string => Boolean(slot));
     this.syncProfileBasicsIntoDetailRows(user);
+    user.completion = this.calculateProfileCompletionPercent();
     this.profileDetailsFormByUser[user.id] = this.profileDetailsForm;
     if (showAlert) {
       this.alertService.open('Profile saved');
@@ -15442,6 +15598,7 @@ export class App {
     this.imageSlots = slots ? [...slots] : this.createEmptyImageSlots();
     const firstFilled = this.imageSlots.findIndex(slot => Boolean(slot));
     this.selectedImageIndex = firstFilled >= 0 ? firstFilled : 0;
+    user.completion = this.calculateProfileCompletionPercent();
   }
 
   private syncProfileBasicsIntoDetailRows(user: DemoUser): void {

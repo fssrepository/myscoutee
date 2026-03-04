@@ -313,10 +313,28 @@
         </button>
 
         <div class="user-settings-menu" *ngIf="showUserSettingsMenu" (click)="$event.stopPropagation()">
-          <button type="button" class="user-settings-item" (click)="onUserSettingsAction('helper', $event)">
+          <button type="button" class="user-settings-item" (click)="onUserSettingsAction('help', $event)">
             <mat-icon>help_outline</mat-icon>
-            <span>Helper</span>
+            <span>Help</span>
           </button>
+          <button type="button" class="user-settings-item" (click)="onUserSettingsAction('report-user', $event)">
+            <mat-icon>flag</mat-icon>
+            <span>Report User</span>
+          </button>
+          <button type="button" class="user-settings-item" (click)="onUserSettingsAction('send-feedback', $event)">
+            <mat-icon>feedback</mat-icon>
+            <span>Send Feedback</span>
+          </button>
+          <a
+            class="user-settings-item"
+            href="https://github.com/fssrepository/myscoutee/issues"
+            target="_blank"
+            rel="noopener noreferrer"
+            (click)="closeUserSettingsMenu()"
+          >
+            <mat-icon>bug_report</mat-icon>
+            <span>Report Bugs</span>
+          </a>
           <button type="button" class="user-settings-item" (click)="onUserSettingsAction('gdpr', $event)">
             <mat-icon>policy</mat-icon>
             <span>Privacy</span>
@@ -341,8 +359,8 @@
               <ng-container *ngIf="!featuredImagePreview">{{ activeUser.initials }}</ng-container>
             </span>
             <span class="avatar-activity-badge" *ngIf="userBadgeCount > 0">{{ userBadgeCount }}</span>
-            <span class="avatar-bottom-pill avatar-bottom-pill-header" [ngStyle]="completionBadgeStyle(activeUser.completion)">
-              <span>{{ activeUser.completion }}%</span>
+            <span class="avatar-bottom-pill avatar-bottom-pill-header" [ngStyle]="completionBadgeStyle(profileCompletionPercent)">
+              <span>{{ profileCompletionPercent }}%</span>
             </span>
           </div>
 
@@ -2706,6 +2724,110 @@
         </div>
       </div>
 
+      <div *ngIf="activePopup === 'helpCenter'" class="support-popup support-help-popup">
+        <article class="editor-list-card support-help-hero">
+          <h4>What you can do in MyScoutee</h4>
+          <p>MyScoutee helps you plan events end-to-end: invite people, split into stages/groups, assign resources, and coordinate in context chats.</p>
+        </article>
+
+        <div class="support-help-grid">
+          <article class="editor-list-card support-help-feature">
+            <h4><mat-icon>event_note</mat-icon><span>Events and Sub Events</span></h4>
+            <p>Create casual or tournament events, define timelines, and manage stage-by-stage planning from one place.</p>
+          </article>
+          <article class="editor-list-card support-help-feature">
+            <h4><mat-icon>inventory_2</mat-icon><span>Resources and Capacity</span></h4>
+            <p>Assign members, cars, accommodation, and supplies with capacity tracking, badges, and quick action menus.</p>
+          </article>
+          <article class="editor-list-card support-help-feature">
+            <h4><mat-icon>forum</mat-icon><span>Activities and Chats</span></h4>
+            <p>Use event, sub-event, and group channels to coordinate updates with contextual navigation to relevant screens.</p>
+          </article>
+          <article class="editor-list-card support-help-feature">
+            <h4><mat-icon>verified_user</mat-icon><span>Profiles and Safety</span></h4>
+            <p>Build profile completion, review privacy options, and use moderation tools to keep the community safe.</p>
+          </article>
+        </div>
+      </div>
+
+      <div *ngIf="activePopup === 'reportUser'" class="support-popup">
+        <article class="editor-list-card support-card">
+          <h4>Report User</h4>
+          <p>Share what happened. Reports are reviewed by moderation, and we use them to improve trust and safety.</p>
+          <form class="support-form" (ngSubmit)="submitReportUser()">
+            <div class="support-submit-success" *ngIf="reportUserSubmitMessage">{{ reportUserSubmitMessage }}</div>
+            <label>
+              <span>User handle or email</span>
+              <input type="text" name="reportHandle" [(ngModel)]="reportUserForm.handle" placeholder="@username or email" />
+            </label>
+            <label>
+              <span>Reason</span>
+              <select name="reportReason" [(ngModel)]="reportUserForm.reason">
+                <option *ngFor="let item of reportUserReasons" [value]="item">{{ item }}</option>
+              </select>
+            </label>
+            <label>
+              <span>Details</span>
+              <textarea
+                rows="4"
+                name="reportDetails"
+                [(ngModel)]="reportUserForm.details"
+                placeholder="Add short details (what happened, when, and where)."
+              ></textarea>
+            </label>
+            <div class="popup-actions support-actions">
+              <button type="button" class="link-btn neutral-btn" (click)="closePopup()">Cancel</button>
+              <button
+                type="submit"
+                class="link-btn primary-btn"
+                [disabled]="!reportUserForm.handle.trim() || reportUserForm.details.trim().length < 6"
+              >
+                Submit report
+              </button>
+            </div>
+          </form>
+        </article>
+      </div>
+
+      <div *ngIf="activePopup === 'sendFeedback'" class="support-popup">
+        <article class="editor-list-card support-card">
+          <h4>Send Feedback</h4>
+          <p>Tell us what works well or what should be improved. Product feedback is triaged by category.</p>
+          <form class="support-form" (ngSubmit)="submitFeedback()">
+            <div class="support-submit-success" *ngIf="feedbackSubmitMessage">{{ feedbackSubmitMessage }}</div>
+            <label>
+              <span>Category</span>
+              <select name="feedbackCategory" [(ngModel)]="feedbackForm.category">
+                <option *ngFor="let item of feedbackCategories" [value]="item">{{ item }}</option>
+              </select>
+            </label>
+            <label>
+              <span>Subject</span>
+              <input type="text" name="feedbackSubject" [(ngModel)]="feedbackForm.subject" placeholder="Short summary" />
+            </label>
+            <label>
+              <span>Details</span>
+              <textarea
+                rows="4"
+                name="feedbackDetails"
+                [(ngModel)]="feedbackForm.details"
+                placeholder="Describe your feedback. Include steps if this is a bug."
+              ></textarea>
+            </label>
+            <div class="popup-actions support-actions">
+              <button type="button" class="link-btn neutral-btn" (click)="closePopup()">Cancel</button>
+              <button
+                type="submit"
+                class="link-btn primary-btn"
+                [disabled]="!feedbackForm.subject.trim() || feedbackForm.details.trim().length < 8"
+              >
+                Send feedback
+              </button>
+            </div>
+          </form>
+        </article>
+      </div>
+
       <div *ngIf="activePopup === 'gdpr'" class="gdpr-popup">
         <article class="editor-list-card gdpr-lead-card">
           <h4>{{ gdprContent.title }}</h4>
@@ -2793,8 +2915,8 @@
             <button type="button" class="avatar-edit-btn" aria-label="Open image editor" (click)="openImageEditor()">
               <mat-icon>edit</mat-icon>
             </button>
-            <span class="avatar-bottom-pill avatar-bottom-pill-header" [ngStyle]="completionBadgeStyle(activeUser.completion)">
-              <span>{{ activeUser.completion }}%</span>
+            <span class="avatar-bottom-pill avatar-bottom-pill-header" [ngStyle]="completionBadgeStyle(profileCompletionPercent)">
+              <span>{{ profileCompletionPercent }}%</span>
             </span>
           </div>
 

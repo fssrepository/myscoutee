@@ -1,12 +1,5 @@
-report a user menu, request form etc. (for me by the users)
-for mobile touch animation on each clickable button whatever
-when you rate a user make blink effect on star badge and star popup bar (to show it's rated)
-
 Game - Default page
 -------------------
-on the profile the 72% should be changing based on how many fields has been filled out on the profile
-naturally any change on the profile editor will affect right away (both on menu bar and on the profile editor %)
-
 shows the Tinder like panel on the left with 3 buttons on the header
 (profile-filter e.g.: profession match, school match, friends in common etc.),
 history, type - (fab button - egyeni, parok - rotate screen status message))
@@ -17,3 +10,9 @@ preload 10-15 photos, and paginating to the next stack, while the user finished 
 (the cards are on top of each other, so hiding each other)
 
 pair rate - met (a new option on ratings)
+
+when you rate a user make blink effect on star badge and star popup bar - 
+game / activities rating (non-full/full screen mode) (to show it's rated)
+
+feedback for user/event (attendee/host impressions) - you can't rate your own event
+(user can do it after event has been finished, no input feedback message in this case)
