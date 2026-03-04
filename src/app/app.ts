@@ -131,16 +131,35 @@ interface EventFeedbackCard {
   eventId: string;
   kind: 'event' | 'attendee';
   attendeeUserId?: string;
+  targetUserId?: string;
+  targetRole?: 'Admin' | 'Manager' | 'Member';
   icon: string;
-  toneClass: 'feedback-card-tone-event' | 'feedback-card-tone-attendee';
+  imageUrl: string;
+  toneClass: string;
   heading: string;
   subheading: string;
+  identityTitle?: string;
+  identitySubtitle?: string;
+  identityStatusClass?: string;
+  identityStatusIcon?: string;
   questionPrimary: string;
   questionSecondary: string;
   primaryOptions: EventFeedbackOption[];
   secondaryOptions: EventFeedbackOption[];
   answerPrimary: string;
   answerSecondary: string;
+}
+
+interface SubmittedEventFeedbackAnswer {
+  cardId: string;
+  eventId: string;
+  kind: 'event' | 'attendee';
+  targetUserId: string | null;
+  targetRole: 'Admin' | 'Manager' | 'Member';
+  primaryValue: string;
+  secondaryValue: string;
+  tags: string[];
+  submittedAtIso: string;
 }
 
 type EventFeedbackListFilter = 'pending' | 'feedbacked' | 'removed';
@@ -1532,7 +1551,9 @@ export class App {
   protected eventFeedbackNoteSubmitMessage = '';
   private eventFeedbackTouchStartX: number | null = null;
   private eventFeedbackTouchStartY: number | null = null;
+  private suppressUserMenuOutsideCloseUntilMs = 0;
   private readonly submittedEventFeedbackByUser: Record<string, Record<string, true>> = {};
+  private readonly submittedEventFeedbackAnswersByUser: Record<string, Record<string, SubmittedEventFeedbackAnswer>> = {};
   private readonly submittedEventFeedbackEventsByUser: Record<string, Record<string, string>> = {};
   private readonly removedEventFeedbackEventsByUser: Record<string, Record<string, true>> = {};
   private readonly organizerEventFeedbackNotesByUser: Record<string, Record<string, string>> = {};
@@ -2017,6 +2038,7 @@ export class App {
   protected closeUserMenu(): void {
     this.showUserMenu = false;
     this.showUserSettingsMenu = false;
+    this.suppressUserMenuOutsideCloseUntilMs = 0;
   }
 
   protected toggleUserSettingsMenu(event: MouseEvent): void {
@@ -2130,9 +2152,19 @@ export class App {
     return this.eventFeedbackCards.map((_, index) => index);
   }
 
+  protected get eventFeedbackOnLastSlide(): boolean {
+    return this.hasEventFeedbackCards && this.eventFeedbackIndex >= this.eventFeedbackCards.length - 1;
+  }
+
+  protected get eventFeedbackSlideCounterLabel(): string {
+    if (!this.hasEventFeedbackCards) {
+      return '0 / 0';
+    }
+    return `${this.eventFeedbackIndex + 1} / ${this.eventFeedbackCards.length}`;
+  }
+
   protected openEventFeedbackPopup(event?: Event): void {
     event?.stopPropagation();
-    this.closeUserMenu();
     this.eventFeedbackListFilter = 'pending';
     this.showEventFeedbackFilterPicker = false;
     this.eventFeedbackListSubmitMessage = '';
@@ -2149,7 +2181,6 @@ export class App {
 
   protected openReportUserFromFeedback(event?: Event): void {
     event?.stopPropagation();
-    this.closeUserMenu();
     this.openReportUserPopup();
   }
 
@@ -2328,6 +2359,13 @@ export class App {
     return this.activeEventFeedbackCard?.answerSecondary === optionValue;
   }
 
+  protected eventFeedbackOptionToneClass(card: EventFeedbackCard, option: EventFeedbackOption): string {
+    const section = option.impressionTag
+      ? this.feedbackSectionFromTag(card.kind, option.impressionTag)
+      : 'vibe';
+    return `event-feedback-option-tone-${section}`;
+  }
+
   protected activeEventFeedbackImpactSummary(): string {
     const card = this.activeEventFeedbackCard;
     if (!card) {
@@ -2380,19 +2418,17 @@ export class App {
     if (!card) {
       return false;
     }
-    if (this.isSelfAttendeeFeedbackCard(card)) {
-      return false;
-    }
-    return card.answerPrimary.trim().length > 0 && card.answerSecondary.trim().length > 0;
+    return !this.isSelfAttendeeFeedbackCard(card);
   }
 
   protected submitActiveEventFeedback(): void {
     const card = this.activeEventFeedbackCard;
-    if (!card || this.isSelfAttendeeFeedbackCard(card) || !this.canSubmitActiveEventFeedback()) {
+    if (!card || this.isSelfAttendeeFeedbackCard(card)) {
       return;
     }
-    this.markEventFeedbackSubmitted(card.id);
     const impressionSummary = this.selectedImpressionTagsForCard(card);
+    this.markEventFeedbackSubmitted(card.id);
+    this.recordSubmittedEventFeedbackAnswer(card, impressionSummary);
     const feedbackLabel = card.kind === 'event'
       ? `Event feedback saved for ${this.eventTitleById(card.eventId)}.`
       : 'Attendee feedback saved.';
@@ -2402,10 +2438,7 @@ export class App {
       this.markEventFeedbackEventSubmitted(card.eventId);
       this.restoreEventFeedbackEvent(card.eventId);
       this.eventFeedbackSubmittedState = true;
-      const summaryText = impressionSummary.length > 0
-        ? ` Impression sync: ${impressionSummary.join(', ')}.`
-        : '';
-      this.eventFeedbackSubmitMessage = `${feedbackLabel}${summaryText}`;
+      this.eventFeedbackSubmitMessage = feedbackLabel;
       this.eventFeedbackListSubmitMessage = `${this.eventTitleById(card.eventId)} moved to Feedbacked.`;
       this.eventFeedbackListFilter = 'feedbacked';
       return;
@@ -2414,10 +2447,7 @@ export class App {
       this.eventFeedbackIndex = this.eventFeedbackCards.length - 1;
     }
     const remaining = this.eventFeedbackCards.length;
-    const summaryText = impressionSummary.length > 0
-      ? ` Impression sync: ${impressionSummary.join(', ')}.`
-      : '';
-    this.eventFeedbackSubmitMessage = `${feedbackLabel}${summaryText} ${remaining} feedback item${remaining === 1 ? '' : 's'} left.`;
+    this.eventFeedbackSubmitMessage = `${feedbackLabel} ${remaining} feedback item${remaining === 1 ? '' : 's'} left.`;
   }
 
   private get pendingEventFeedbackCards(): EventFeedbackCard[] {
@@ -2568,15 +2598,22 @@ export class App {
       }
       const eventLabel = this.eventFeedbackWhenLabel(item.id);
       const host = this.feedbackHostUserForEvent(item.id);
-      const attendee = this.feedbackAttendeeUserForEvent(item.id, host.id);
+      const attendees = this.feedbackAttendeesForEvent(item.id, host.id);
       eventCards.push({
         id: `feedback-event-${item.id}`,
         eventId: item.id,
         kind: 'event',
+        targetUserId: host.id,
+        targetRole: 'Admin',
         icon: 'event_available',
-        toneClass: 'feedback-card-tone-event',
+        imageUrl: this.activityImageById[item.id] ?? `https://picsum.photos/seed/event-feedback-card-${item.id}/1200/700`,
+        toneClass: 'feedback-card-tone-event feedback-role-admin',
         heading: item.title,
         subheading: `${eventLabel} · ${item.shortDescription}`,
+        identityTitle: `${host.name} · Host`,
+        identitySubtitle: `Admin · ${host.city}`,
+        identityStatusClass: 'member-status-admin',
+        identityStatusIcon: 'admin_panel_settings',
         questionPrimary: `How did ${item.title} feel for you overall?`,
         questionSecondary: `What should ${host.name} improve next time?`,
         primaryOptions: this.eventFeedbackEventOverallOptions,
@@ -2584,25 +2621,32 @@ export class App {
         answerPrimary: '',
         answerSecondary: ''
       });
-      if (!attendee) {
-        continue;
+      for (const attendee of attendees) {
+        const attendeeRole = this.feedbackRoleForAttendee(item.id, attendee.id);
+        eventCards.push({
+          id: `feedback-attendee-${item.id}-${attendee.id}`,
+          eventId: item.id,
+          kind: 'attendee',
+          attendeeUserId: attendee.id,
+          targetUserId: attendee.id,
+          targetRole: attendeeRole,
+          icon: 'groups',
+          imageUrl: attendee.images?.[0] ?? `https://i.pravatar.cc/1200?img=${(this.hashText(`feedback-attendee:${item.id}:${attendee.id}`) % 70) + 1}`,
+          toneClass: `feedback-card-tone-attendee ${this.feedbackRoleToneClass(attendeeRole)}`,
+          heading: `${attendee.name} · ${item.title}`,
+          subheading: `Attendee feedback · ${eventLabel}`,
+          identityTitle: `${attendee.name}, ${attendee.age}`,
+          identitySubtitle: `${attendeeRole} · ${attendee.city}`,
+          identityStatusClass: this.feedbackRoleStatusClass(attendeeRole),
+          identityStatusIcon: this.feedbackRoleStatusIcon(attendeeRole),
+          questionPrimary: `How was collaboration with ${attendee.name} (${attendee.traitLabel}) during this event?`,
+          questionSecondary: `Would you team up with ${attendee.name} again in a future event?`,
+          primaryOptions: this.eventFeedbackAttendeeCollabOptions,
+          secondaryOptions: this.eventFeedbackAttendeeRejoinOptions,
+          answerPrimary: '',
+          answerSecondary: ''
+        });
       }
-      eventCards.push({
-        id: `feedback-attendee-${item.id}-${attendee.id}`,
-        eventId: item.id,
-        kind: 'attendee',
-        attendeeUserId: attendee.id,
-        icon: 'groups',
-        toneClass: 'feedback-card-tone-attendee',
-        heading: `${attendee.name} · ${item.title}`,
-        subheading: `Attendee feedback · ${eventLabel}`,
-        questionPrimary: `How was collaboration with ${attendee.name} (${attendee.traitLabel}) during this event?`,
-        questionSecondary: `Would you team up with ${attendee.name} again in a future event?`,
-        primaryOptions: this.eventFeedbackAttendeeCollabOptions,
-        secondaryOptions: this.eventFeedbackAttendeeRejoinOptions,
-        answerPrimary: '',
-        answerSecondary: ''
-      });
     }
     return eventCards;
   }
@@ -2616,17 +2660,79 @@ export class App {
     return candidates[index] ?? candidates[0];
   }
 
-  private feedbackAttendeeUserForEvent(eventId: string, hostId: string): DemoUser | null {
+  private feedbackAttendeesForEvent(eventId: string, hostId: string): DemoUser[] {
     const candidates = this.users.filter(user => user.id !== this.activeUser.id && user.id !== hostId);
     if (candidates.length === 0) {
-      return null;
+      return [];
     }
-    const index = this.hashText(`feedback-attendee:${eventId}`) % candidates.length;
-    const selected = candidates[index] ?? candidates[0];
-    if (!selected || selected.id === this.activeUser.id) {
-      return null;
+    const seed = this.hashText(`feedback-attendees:${eventId}`);
+    const desired = Math.min(candidates.length, 3 + (seed % 4));
+    const picked: DemoUser[] = [];
+    for (let index = 0; index < candidates.length && picked.length < desired; index += 1) {
+      const candidate = candidates[(seed + (index * 3)) % candidates.length];
+      if (!candidate || candidate.id === this.activeUser.id || picked.some(item => item.id === candidate.id)) {
+        continue;
+      }
+      picked.push(candidate);
     }
-    return selected;
+    return picked;
+  }
+
+  private feedbackRoleForAttendee(eventId: string, attendeeUserId: string): 'Admin' | 'Manager' | 'Member' {
+    const seed = this.hashText(`feedback-role:${eventId}:${attendeeUserId}`);
+    if (seed % 11 === 0) {
+      return 'Admin';
+    }
+    if (seed % 4 === 0) {
+      return 'Manager';
+    }
+    return 'Member';
+  }
+
+  private feedbackRoleToneClass(role: 'Admin' | 'Manager' | 'Member'): string {
+    if (role === 'Admin') {
+      return 'feedback-role-admin';
+    }
+    if (role === 'Manager') {
+      return 'feedback-role-manager';
+    }
+    return 'feedback-role-member';
+  }
+
+  private feedbackRoleStatusClass(role: 'Admin' | 'Manager' | 'Member'): string {
+    if (role === 'Admin') {
+      return 'member-status-admin';
+    }
+    if (role === 'Manager') {
+      return 'member-status-manager';
+    }
+    return 'member-status-member';
+  }
+
+  private feedbackRoleStatusIcon(role: 'Admin' | 'Manager' | 'Member'): string {
+    if (role === 'Admin') {
+      return 'admin_panel_settings';
+    }
+    if (role === 'Manager') {
+      return 'manage_accounts';
+    }
+    return 'person';
+  }
+
+  private recordSubmittedEventFeedbackAnswer(card: EventFeedbackCard, tags: string[]): void {
+    const byUser = { ...(this.submittedEventFeedbackAnswersByUser[this.activeUser.id] ?? {}) };
+    byUser[card.id] = {
+      cardId: card.id,
+      eventId: card.eventId,
+      kind: card.kind,
+      targetUserId: card.targetUserId ?? null,
+      targetRole: card.targetRole ?? 'Member',
+      primaryValue: card.answerPrimary,
+      secondaryValue: card.answerSecondary,
+      tags: [...tags],
+      submittedAtIso: this.toIsoDateTime(new Date())
+    };
+    this.submittedEventFeedbackAnswersByUser[this.activeUser.id] = byUser;
   }
 
   private isSelfAttendeeFeedbackCard(card: EventFeedbackCard): boolean {
@@ -8474,6 +8580,9 @@ export class App {
       this.popupReturnTarget = null;
       return;
     }
+    if (this.showUserMenu && (this.activePopup === 'eventFeedback' || this.activePopup === 'reportUser')) {
+      this.suppressUserMenuOutsideCloseUntilMs = Date.now() + 180;
+    }
     if (this.activePopup === 'profileEditor') {
       this.commitProfileForm(false);
     }
@@ -10496,7 +10605,15 @@ export class App {
   }
 
   protected get hostAverageRating(): string {
-    return '4.4';
+    const baseline = 4.4;
+    const scores = this.submittedEventFeedbackAnswersByKind('event')
+      .map(answer => this.feedbackScoreFromPrimary(answer.kind, answer.primaryValue))
+      .filter(score => Number.isFinite(score));
+    if (scores.length === 0) {
+      return baseline.toFixed(1);
+    }
+    const weighted = ((baseline * 8) + scores.reduce((sum, score) => sum + score, 0)) / (8 + scores.length);
+    return weighted.toFixed(1);
   }
 
   protected get hostTotalEvents(): number {
@@ -10530,7 +10647,7 @@ export class App {
   }
 
   protected get hostPeopleMet(): number {
-    return this.seededMetric(32, 90, 520);
+    return this.seededMetric(32, 90, 520) + this.submittedEventFeedbackAnswersByKind('event').length;
   }
 
   protected get hostVibeSummary(): string {
@@ -10545,10 +10662,26 @@ export class App {
   }
 
   protected get hostVibeBadgeItems(): string[] {
+    const feedbackBadges = this.feedbackBadgeItemsForSection('event', 'vibe');
+    if (feedbackBadges.length > 0) {
+      return feedbackBadges;
+    }
     return this.withContextIconItems(this.hostVibeSummary, this.vibeIcons);
   }
 
+  protected get hostPersonalityBadgeItems(): string[] {
+    const feedbackBadges = this.feedbackBadgeItemsForSection('event', 'personality');
+    if (feedbackBadges.length > 0) {
+      return feedbackBadges;
+    }
+    return ['🧠 Communication 60%', '🧩 Coordination 40%'];
+  }
+
   protected get hostCategoryBadgeItems(): string[] {
+    const feedbackBadges = this.feedbackBadgeItemsForSection('event', 'category');
+    if (feedbackBadges.length > 0) {
+      return feedbackBadges;
+    }
     return this.withContextIconItems(this.hostCategorySummary, this.categoryIcons);
   }
 
@@ -10562,6 +10695,10 @@ export class App {
   }
 
   protected get memberPersonalityBadgeItems(): string[] {
+    const feedbackBadges = this.feedbackBadgeItemsForSection('attendee', 'personality');
+    if (feedbackBadges.length > 0) {
+      return feedbackBadges;
+    }
     return this.memberTraitBreakdown
       .map(item => `${this.memberTraitIcons[item.label] ?? ''} ${item.label} ${item.value}`.trim())
       .filter(Boolean);
@@ -10585,7 +10722,7 @@ export class App {
   }
 
   protected get memberPeopleMet(): number {
-    return this.seededMetric(24, 80, 460);
+    return this.seededMetric(24, 80, 460) + this.submittedEventFeedbackAnswersByKind('attendee').length;
   }
 
   protected get memberReturneesSummary(): string {
@@ -10605,10 +10742,18 @@ export class App {
   }
 
   protected get memberVibeBadgeItems(): string[] {
+    const feedbackBadges = this.feedbackBadgeItemsForSection('attendee', 'vibe');
+    if (feedbackBadges.length > 0) {
+      return feedbackBadges;
+    }
     return this.withContextIconItems(this.memberVibeSummary, this.vibeIcons);
   }
 
   protected get memberCategoryBadgeItems(): string[] {
+    const feedbackBadges = this.feedbackBadgeItemsForSection('attendee', 'category');
+    if (feedbackBadges.length > 0) {
+      return feedbackBadges;
+    }
     return this.withContextIconItems(this.memberCategorySummary, this.categoryIcons);
   }
 
@@ -10616,6 +10761,108 @@ export class App {
     const personalityLen = this.badgeItemsLength(this.memberPersonalityBadgeItems);
     const vibeLen = this.badgeItemsLength(this.memberVibeBadgeItems);
     return personalityLen <= vibeLen ? 'badge-below-left' : 'badge-below-right';
+  }
+
+  private submittedEventFeedbackAnswersByKind(kind: 'event' | 'attendee'): SubmittedEventFeedbackAnswer[] {
+    return Object.values(this.submittedEventFeedbackAnswersByUser[this.activeUser.id] ?? {})
+      .filter(answer => answer.kind === kind);
+  }
+
+  private feedbackScoreFromPrimary(kind: 'event' | 'attendee', value: string): number {
+    if (kind === 'event') {
+      switch (value) {
+        case 'excellent':
+          return 5;
+        case 'good':
+          return 4;
+        case 'mixed':
+          return 3;
+        case 'needs-work':
+          return 2;
+        default:
+          return 3.5;
+      }
+    }
+    switch (value) {
+      case 'great':
+        return 5;
+      case 'reliable':
+        return 4.5;
+      case 'neutral':
+        return 3;
+      case 'rough':
+        return 2;
+      default:
+        return 3.5;
+    }
+  }
+
+  private feedbackBadgeItemsForSection(
+    kind: 'event' | 'attendee',
+    section: 'personality' | 'vibe' | 'category'
+  ): string[] {
+    const answers = this.submittedEventFeedbackAnswersByKind(kind);
+    if (answers.length === 0) {
+      return [];
+    }
+    const counts = new Map<string, number>();
+    for (const answer of answers) {
+      for (const tag of answer.tags) {
+        if (this.feedbackSectionFromTag(kind, tag) !== section) {
+          continue;
+        }
+        const label = this.feedbackBadgeLabel(tag);
+        counts.set(label, (counts.get(label) ?? 0) + 1);
+      }
+    }
+    if (counts.size === 0) {
+      return [];
+    }
+    const total = [...counts.values()].reduce((sum, value) => sum + value, 0);
+    return [...counts.entries()]
+      .sort((first, second) => second[1] - first[1])
+      .slice(0, 3)
+      .map(([label, count]) => `${this.feedbackSectionIcon(section)} ${label} ${Math.round((count / total) * 100)}%`);
+  }
+
+  private feedbackSectionFromTag(
+    kind: 'event' | 'attendee',
+    tag: string
+  ): 'personality' | 'vibe' | 'category' {
+    const normalized = this.normalizeText(tag);
+    if (kind === 'event') {
+      if (normalized.includes('communic') || normalized.includes('organ') || normalized.includes('consist')) {
+        return 'personality';
+      }
+      if (normalized.includes('plan') || normalized.includes('resource') || normalized.includes('quality')) {
+        return 'category';
+      }
+      return 'vibe';
+    }
+    if (normalized.includes('team') || normalized.includes('compat') || normalized.includes('role')) {
+      return 'personality';
+    }
+    if (normalized.includes('trust') || normalized.includes('risk') || normalized.includes('fit') || normalized.includes('guidance')) {
+      return 'category';
+    }
+    return 'vibe';
+  }
+
+  private feedbackBadgeLabel(tag: string): string {
+    return tag
+      .replace(/^Host\s+/i, '')
+      .replace(/^Attendee\s+/i, '')
+      .trim();
+  }
+
+  private feedbackSectionIcon(section: 'personality' | 'vibe' | 'category'): string {
+    if (section === 'personality') {
+      return '🧠';
+    }
+    if (section === 'category') {
+      return '🧭';
+    }
+    return '💬';
   }
 
   protected get activeHostTier(): string {
@@ -16096,7 +16343,17 @@ export class App {
       this.subEventMemberRolePickerUserId = null;
       this.subEventAssetMenuIgnoreCloseUntilMs = 0;
     }
-    if (this.showUserMenu && !target.closest('.user-menu-panel') && !target.closest('.user-selector-btn-global')) {
+    const keepUserMenuOpenForFeedbackFlow =
+      this.showUserMenu &&
+      (this.activePopup === 'eventFeedback' || this.activePopup === 'reportUser');
+    if (this.showUserMenu && Date.now() < this.suppressUserMenuOutsideCloseUntilMs) {
+      this.suppressUserMenuOutsideCloseUntilMs = 0;
+    } else if (
+      this.showUserMenu &&
+      !keepUserMenuOpenForFeedbackFlow &&
+      !target.closest('.user-menu-panel') &&
+      !target.closest('.user-selector-btn-global')
+    ) {
       this.showUserMenu = false;
       this.showUserSettingsMenu = false;
     }

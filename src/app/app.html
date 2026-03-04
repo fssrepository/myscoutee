@@ -562,6 +562,7 @@
     [class.popup-panel-event-editor-readonly]="activePopup === 'eventEditor' && isEventEditorReadOnly()"
     [class.popup-panel-assets]="isAssetPopup"
     [class.popup-panel-activities]="activePopup === 'activities'"
+    [class.popup-panel-event-feedback]="activePopup === 'eventFeedback'"
     (click)="$event.stopPropagation()"
   >
     <button
@@ -1779,6 +1780,16 @@
               </div>
               <div class="social-proof-chip-list">
                 <span class="social-proof-chip chip-vibe" *ngFor="let item of hostVibeBadgeItems">{{ item }}</span>
+              </div>
+            </div>
+
+            <div class="social-proof-section-block">
+              <div class="social-proof-section-head section-personality">
+                <span class="section-tag">Personality</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="social-proof-chip-list">
+                <span class="social-proof-chip chip-personality" *ngFor="let item of hostPersonalityBadgeItems">{{ item }}</span>
               </div>
             </div>
 
@@ -3490,6 +3501,7 @@
     [class.popup-panel-event-editor]="stackedPopup === 'eventEditor'"
     [class.popup-panel-event-editor-readonly]="stackedPopup === 'eventEditor' && isEventEditorReadOnly()"
     [class.popup-panel-asset-members]="stackedPopup === 'subEventMembers' || stackedPopup === 'subEventAssets' || stackedPopup === 'subEventSupplyContributions'"
+    [class.popup-panel-event-feedback]="stackedPopup === 'eventFeedback'"
     [class.popup-panel-ticket-fullscreen]="(stackedPopup === 'ticketCode' || stackedPopup === 'ticketScanner') && isMobileView"
     (click)="$event.stopPropagation()"
   >
@@ -3564,12 +3576,18 @@
           </div>
         </div>
         <ng-template #defaultStackedTitle>
-          <div class="popup-title">
-            <h2>{{ getStackedPopupTitle() }}</h2>
-            <p class="popup-subtitle-activities" *ngIf="stackedPopup === 'eventEditor' && isEventEditorReadOnly()">
-              {{ eventForm.title || 'Event' }}
-            </p>
+          <div class="popup-title popup-title-feedback" *ngIf="stackedPopup === 'eventFeedback'; else defaultStackedTitleGeneric">
+            <h2>Event Feedback</h2>
+            <p class="popup-subtitle-activities popup-subtitle-feedback-event">{{ eventFeedbackCurrentEventTitle() }}</p>
           </div>
+          <ng-template #defaultStackedTitleGeneric>
+            <div class="popup-title">
+              <h2>{{ getStackedPopupTitle() }}</h2>
+              <p class="popup-subtitle-activities" *ngIf="stackedPopup === 'eventEditor' && isEventEditorReadOnly()">
+                {{ eventForm.title || 'Event' }}
+              </p>
+            </div>
+          </ng-template>
         </ng-template>
         </ng-template>
         <button
@@ -3819,6 +3837,14 @@
         >
           <mat-icon>add</mat-icon>
         </button>
+        <button
+          type="button"
+          class="link-btn primary-btn event-feedback-header-submit-btn"
+          *ngIf="stackedPopup === 'eventFeedback' && !eventFeedbackSubmittedState && eventFeedbackOnLastSlide && activeEventFeedbackCard"
+          (click)="submitActiveEventFeedback()"
+        >
+          Submit feedback
+        </button>
         <button mat-icon-button class="popup-close" (click)="handleStackedPopupHeaderClose()" aria-label="Close">
           <mat-icon>close</mat-icon>
         </button>
@@ -3852,6 +3878,7 @@
       [class.popup-body-subevent-members]="isSubEventMembersPopup()"
       [class.popup-body-experience]="stackedPopup === 'experienceSelector'"
       [class.popup-body-event-explore]="stackedPopup === 'eventExplore'"
+      [class.popup-body-event-feedback]="stackedPopup === 'eventFeedback'"
       [class.popup-body-impressions]="stackedPopup === 'impressionsHost'"
     >
       <div *ngIf="stackedPopup === 'chat' && selectedChat" class="chat-popup-wrap">
@@ -4064,6 +4091,16 @@
             </div>
             <div class="social-proof-chip-list">
               <span class="social-proof-chip chip-vibe" *ngFor="let item of hostVibeBadgeItems">{{ item }}</span>
+            </div>
+          </div>
+
+          <div class="social-proof-section-block">
+            <div class="social-proof-section-head section-personality">
+              <span class="section-tag">Personality</span>
+              <span class="section-line"></span>
+            </div>
+            <div class="social-proof-chip-list">
+              <span class="social-proof-chip chip-personality" *ngFor="let item of hostPersonalityBadgeItems">{{ item }}</span>
             </div>
           </div>
 
@@ -5396,66 +5433,113 @@
       <div *ngIf="stackedPopup === 'eventFeedback'" class="support-popup event-feedback-popup">
         <ng-container *ngIf="!eventFeedbackSubmittedState; else eventFeedbackSentState">
         <article class="editor-list-card support-card event-feedback-shell" *ngIf="activeEventFeedbackCard as card; else eventFeedbackSentState">
-          <div
-            class="event-feedback-card"
-            [ngClass]="card.toneClass"
-            (touchstart)="onEventFeedbackTouchStart($event)"
-            (touchend)="onEventFeedbackTouchEnd($event)"
-          >
-            <div class="event-feedback-head">
-              <span class="event-feedback-icon">
-                <mat-icon>{{ card.icon }}</mat-icon>
-              </span>
-              <div class="event-feedback-head-copy">
-                <h4>{{ card.heading }}</h4>
-                <p>{{ card.subheading }}</p>
-                <p class="event-feedback-impact-line" *ngIf="activeEventFeedbackImpactSummary()">Impression sync: {{ activeEventFeedbackImpactSummary() }}</p>
-              </div>
-            </div>
-
-            <div class="event-feedback-question">
-              <h5>{{ card.questionPrimary }}</h5>
-              <div class="event-feedback-options">
-                <button
-                  type="button"
-                  class="event-feedback-option-btn"
-                  *ngFor="let option of card.primaryOptions"
-                  [class.is-selected]="isEventFeedbackPrimarySelected(option.value)"
-                  (click)="selectEventFeedbackPrimary(option.value, $event)"
+          <span class="event-feedback-mobile-counter" *ngIf="isMobileView && hasEventFeedbackCards">{{ eventFeedbackSlideCounterLabel }}</span>
+          <div class="event-feedback-card-wrap">
+            <div
+              class="event-feedback-card"
+              [ngClass]="card.toneClass"
+              (touchstart)="onEventFeedbackTouchStart($event)"
+              (touchend)="onEventFeedbackTouchEnd($event)"
+            >
+              <div class="event-feedback-head" [class.event-feedback-head-member]="card.kind === 'attendee'">
+                <article
+                  *ngIf="card.kind === 'event'; else attendeeFeedbackIdentityCard"
+                  class="experience-item-card asset-item-card event-feedback-event-card event-feedback-carousel-identity-card event-feedback-carousel-identity-event"
                 >
-                  <mat-icon>{{ option.icon }}</mat-icon>
-                  <span>{{ option.label }}</span>
-                </button>
+                  <div class="asset-card-image" [appLazyBgImage]="card.imageUrl"></div>
+                  <div class="experience-item-head">
+                    <span class="experience-item-icon event-feedback-leading-icon">
+                      <mat-icon>{{ card.icon }}</mat-icon>
+                    </span>
+                    <div class="experience-item-meta">
+                      <h4>{{ card.heading }}</h4>
+                      <p>{{ card.subheading }}</p>
+                      <p class="event-feedback-target-line" *ngIf="card.identityTitle">
+                        <mat-icon>{{ card.identityStatusIcon || 'admin_panel_settings' }}</mat-icon>
+                        <span>{{ card.identityTitle }}</span>
+                      </p>
+                    </div>
+                  </div>
+                </article>
+                <ng-template #attendeeFeedbackIdentityCard>
+                  <article
+                    class="friends-picker-card subevent-member-image-card activity-member-image-card event-feedback-carousel-identity-card event-feedback-carousel-identity-member"
+                    [style.backgroundImage]="'url(' + card.imageUrl + ')'"
+                  >
+                    <span class="member-card-status-chip" [ngClass]="card.identityStatusClass || 'member-status-member'">
+                      <mat-icon>{{ card.identityStatusIcon || 'person' }}</mat-icon>
+                    </span>
+                    <div class="friends-picker-card-meta subevent-member-card-meta activity-member-card-meta">
+                      <h4>{{ card.identityTitle || card.heading }}</h4>
+                      <p>{{ card.identitySubtitle || card.subheading }}</p>
+                    </div>
+                  </article>
+                </ng-template>
+              </div>
+
+              <div
+                class="event-feedback-form"
+                [class.event-feedback-form-event]="card.kind === 'event'"
+                [class.event-feedback-form-attendee]="card.kind === 'attendee'"
+              >
+                <div class="event-feedback-question event-feedback-question-primary">
+                  <h5>{{ card.questionPrimary }}</h5>
+                  <div class="event-feedback-options">
+                    <button
+                      type="button"
+                      class="event-feedback-option-btn"
+                      *ngFor="let option of card.primaryOptions"
+                      [class.is-selected]="isEventFeedbackPrimarySelected(option.value)"
+                      [ngClass]="eventFeedbackOptionToneClass(card, option)"
+                      (click)="selectEventFeedbackPrimary(option.value, $event)"
+                    >
+                      <mat-icon>{{ option.icon }}</mat-icon>
+                      <span>{{ option.label }}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="event-feedback-question event-feedback-question-secondary">
+                  <h5>{{ card.questionSecondary }}</h5>
+                  <div class="event-feedback-options">
+                    <button
+                      type="button"
+                      class="event-feedback-option-btn"
+                      *ngFor="let option of card.secondaryOptions"
+                      [class.is-selected]="isEventFeedbackSecondarySelected(option.value)"
+                      [ngClass]="eventFeedbackOptionToneClass(card, option)"
+                      (click)="selectEventFeedbackSecondary(option.value, $event)"
+                    >
+                      <mat-icon>{{ option.icon }}</mat-icon>
+                      <span>{{ option.label }}</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div class="event-feedback-question">
-              <h5>{{ card.questionSecondary }}</h5>
-              <div class="event-feedback-options">
-                <button
-                  type="button"
-                  class="event-feedback-option-btn"
-                  *ngFor="let option of card.secondaryOptions"
-                  [class.is-selected]="isEventFeedbackSecondarySelected(option.value)"
-                  (click)="selectEventFeedbackSecondary(option.value, $event)"
-                >
-                  <mat-icon>{{ option.icon }}</mat-icon>
-                  <span>{{ option.label }}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="event-feedback-carousel">
             <button
               type="button"
-              class="event-feedback-nav-btn"
+              class="event-feedback-overlay-nav-btn event-feedback-overlay-nav-btn-prev"
+              *ngIf="!isMobileView"
               [disabled]="eventFeedbackIndex <= 0"
               (click)="previousEventFeedbackSlide($event)"
               aria-label="Previous feedback card"
             >
               <mat-icon>chevron_left</mat-icon>
             </button>
+            <button
+              type="button"
+              class="event-feedback-overlay-nav-btn event-feedback-overlay-nav-btn-next"
+              *ngIf="!isMobileView && !eventFeedbackOnLastSlide"
+              (click)="nextEventFeedbackSlide($event)"
+              aria-label="Next feedback card"
+            >
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+          </div>
+
+          <div class="event-feedback-carousel">
             <div class="event-feedback-dots" role="tablist" aria-label="Feedback carousel slides">
               <button
                 type="button"
@@ -5466,29 +5550,9 @@
                 [attr.aria-label]="'Open feedback card ' + (index + 1)"
               ></button>
             </div>
-            <button
-              type="button"
-              class="event-feedback-nav-btn"
-              [disabled]="eventFeedbackIndex >= eventFeedbackCards.length - 1"
-              (click)="nextEventFeedbackSlide($event)"
-              aria-label="Next feedback card"
-            >
-              <mat-icon>chevron_right</mat-icon>
-            </button>
           </div>
 
           <div class="support-submit-success" *ngIf="eventFeedbackSubmitMessage">{{ eventFeedbackSubmitMessage }}</div>
-
-          <div class="popup-actions support-actions">
-            <button
-              type="button"
-              class="link-btn primary-btn"
-              [disabled]="!canSubmitActiveEventFeedback()"
-              (click)="submitActiveEventFeedback()"
-            >
-              Submit feedback
-            </button>
-          </div>
         </article>
         </ng-container>
       </div>
@@ -6825,6 +6889,16 @@
             </div>
             <div class="social-proof-chip-list">
               <span class="social-proof-chip chip-vibe" *ngFor="let item of hostVibeBadgeItems">{{ item }}</span>
+            </div>
+          </div>
+
+          <div class="social-proof-section-block">
+            <div class="social-proof-section-head section-personality">
+              <span class="section-tag">Personality</span>
+              <span class="section-line"></span>
+            </div>
+            <div class="social-proof-chip-list">
+              <span class="social-proof-chip chip-personality" *ngFor="let item of hostPersonalityBadgeItems">{{ item }}</span>
             </div>
           </div>
 
