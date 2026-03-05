@@ -1,3 +1,7 @@
+split into static modules (activities one module, everything else second module)
+
+duplication
+---------------
 I found 2 layers of duplication:
 
 Top-level popup implementations duplicated in activePopup and stackedPopup: 10 families
