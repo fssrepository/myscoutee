@@ -1496,6 +1496,19 @@
   background: rgba(106, 87, 168, 0.34);
 }
 
+.game-filter-group-tone-food {
+  color: #a5662f;
+  border-color: rgba(165, 102, 47, 0.36);
+}
+
+.game-filter-selector-option-group.game-filter-group-tone-food {
+  background: linear-gradient(180deg, rgba(255, 236, 221, 0.56) 0%, rgba(255, 236, 221, 0.32) 100%);
+}
+
+.game-filter-selector-option-group-line.game-filter-group-tone-food {
+  background: rgba(165, 102, 47, 0.3);
+}
+
 .game-filter-group-tone-active {
   color: #317c52;
   border-color: rgba(49, 124, 82, 0.36);
@@ -1507,6 +1520,19 @@
 
 .game-filter-selector-option-group-line.game-filter-group-tone-active {
   background: rgba(49, 124, 82, 0.34);
+}
+
+.game-filter-group-tone-mind {
+  color: #2f7b77;
+  border-color: rgba(47, 123, 119, 0.36);
+}
+
+.game-filter-selector-option-group.game-filter-group-tone-mind {
+  background: linear-gradient(180deg, rgba(220, 241, 239, 0.56) 0%, rgba(220, 241, 239, 0.32) 100%);
+}
+
+.game-filter-selector-option-group-line.game-filter-group-tone-mind {
+  background: rgba(47, 123, 119, 0.3);
 }
 
 .game-filter-group-tone-family {
@@ -1522,6 +1548,19 @@
   background: rgba(156, 94, 51, 0.3);
 }
 
+.game-filter-group-tone-ambition {
+  color: #8b4f67;
+  border-color: rgba(139, 79, 103, 0.34);
+}
+
+.game-filter-selector-option-group.game-filter-group-tone-ambition {
+  background: linear-gradient(180deg, rgba(249, 228, 236, 0.56) 0%, rgba(249, 228, 236, 0.32) 100%);
+}
+
+.game-filter-selector-option-group-line.game-filter-group-tone-ambition {
+  background: rgba(139, 79, 103, 0.3);
+}
+
 .game-filter-group-tone-lifestyle {
   color: #2f7b77;
   border-color: rgba(47, 123, 119, 0.34);
@@ -1533,6 +1572,19 @@
 
 .game-filter-selector-option-group-line.game-filter-group-tone-lifestyle {
   background: rgba(47, 123, 119, 0.3);
+}
+
+.game-filter-group-tone-beliefs {
+  color: #7a664a;
+  border-color: rgba(122, 102, 74, 0.34);
+}
+
+.game-filter-selector-option-group.game-filter-group-tone-beliefs {
+  background: linear-gradient(180deg, rgba(245, 238, 224, 0.56) 0%, rgba(245, 238, 224, 0.32) 100%);
+}
+
+.game-filter-selector-option-group-line.game-filter-group-tone-beliefs {
+  background: rgba(122, 102, 74, 0.3);
 }
 
 .game-filter-group-tone-identity {

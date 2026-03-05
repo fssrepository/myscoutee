@@ -98,19 +98,37 @@ export class HomeComponent implements OnDestroy {
       title: 'Social',
       icon: 'celebration',
       toneClass: 'game-filter-group-tone-social',
-      options: ['Social events', 'Coffee', 'Going out', 'Nightlife', 'Road trips', 'Travel']
+      options: ['#GoingOut', '#Nightlife', '#StayingIn', '#Brunch', '#WineTasting', '#CoffeeDates', '#ContentCreation', '#InfluencerLife']
     },
     {
       title: 'Arts',
       icon: 'palette',
       toneClass: 'game-filter-group-tone-arts',
-      options: ['Arts', 'Culture', 'Films', 'Books', 'Gaming', 'Tech']
+      options: ['#Music', '#Concerts', '#Festivals', '#Movies', '#TVShows', '#Theatre', '#Gaming', '#Anime', '#Books', '#Photography', '#Creativity']
+    },
+    {
+      title: 'Food',
+      icon: 'restaurant',
+      toneClass: 'game-filter-group-tone-food',
+      options: ['#Foodie', '#FineDining', '#StreetFood', '#Cooking', '#Cocktails', '#CraftBeer', '#Travel', '#LuxuryExperiences']
     },
     {
       title: 'Active',
       icon: 'hiking',
       toneClass: 'game-filter-group-tone-active',
-      options: ['Sports', 'Outdoors', 'Wellness', 'Nature']
+      options: ['#Sports', '#Gym', '#Running', '#Hiking', '#Outdoors', '#ExtremeSports', '#Yoga', '#Fitness']
+    },
+    {
+      title: 'Mind',
+      icon: 'self_improvement',
+      toneClass: 'game-filter-group-tone-mind',
+      options: ['#Wellness', '#Meditation', '#SelfDevelopment', '#MentalHealth', '#Spirituality', '#Biohacking', '#HealthyLifestyle']
+    },
+    {
+      title: 'Identity',
+      icon: 'public',
+      toneClass: 'game-filter-group-tone-identity',
+      options: ['#Sustainability', '#Entrepreneurship', '#CareerDriven', '#FamilyOriented', '#Activism', '#Tech', '#Minimalism']
     }
   ];
   private readonly gameFilterValuesGroups: GameFilterOptionGroup[] = [
@@ -118,25 +136,31 @@ export class HomeComponent implements OnDestroy {
       title: 'Family',
       icon: 'family_restroom',
       toneClass: 'game-filter-group-tone-family',
-      options: ['Family-first', 'Long-term focus', 'Stable home']
+      options: ['Long-term partnership', 'Marriage-oriented', 'Casual dating', 'Open / Exploring', 'Family-first', 'Wants children', 'Independent lifestyle']
+    },
+    {
+      title: 'Ambition',
+      icon: 'track_changes',
+      toneClass: 'game-filter-group-tone-ambition',
+      options: ['Career-focused', 'Entrepreneurial', 'Stability-focused', 'Balanced work-life', 'Freedom-oriented', 'Goal-driven']
     },
     {
       title: 'Lifestyle',
       icon: 'eco',
       toneClass: 'game-filter-group-tone-lifestyle',
-      options: ['Balanced lifestyle', 'Calm lifestyle', 'Social energy', 'Health focus']
+      options: ['Health & wellness focused', 'Fitness-driven', 'Mindfulness-oriented', 'Social / party lifestyle', 'Calm / home-centered', 'Adventure-driven', 'Balanced lifestyle']
     },
     {
-      title: 'Identity',
-      icon: 'public',
-      toneClass: 'game-filter-group-tone-identity',
-      options: ['Growth mindset', 'Community', 'Respect', 'Curiosity', 'Accountability']
+      title: 'Beliefs',
+      icon: 'auto_awesome',
+      toneClass: 'game-filter-group-tone-beliefs',
+      options: ['Faith-oriented', 'Spiritual but not religious', 'Secular', 'Traditional values', 'Progressive values', 'Community-driven', 'Social impact oriented', 'Environmentally conscious', 'Politically engaged', 'Apolitical']
     }
   ];
   private readonly userFacetById: Record<string, GameUserFacet> = {
     u1: {
-      interests: ['Outdoors', 'Road trips', 'Culture'],
-      values: ['Family-first', 'Balanced lifestyle', 'Community'],
+      interests: ['#Outdoors', '#Travel', '#Brunch'],
+      values: ['Family-first', 'Balanced lifestyle', 'Community-driven'],
       smoking: 'socially',
       drinking: 'socially',
       workout: 'daily',
@@ -149,8 +173,8 @@ export class HomeComponent implements OnDestroy {
       religion: 'hindu'
     },
     u2: {
-      interests: ['Sports', 'Gaming', 'Tech'],
-      values: ['Long-term focus', 'Accountability', 'Respect'],
+      interests: ['#Sports', '#Gaming', '#Tech'],
+      values: ['Career-focused', 'Goal-driven', 'Stability-focused'],
       smoking: 'never',
       drinking: 'socially',
       workout: 'few times / week',
@@ -163,8 +187,8 @@ export class HomeComponent implements OnDestroy {
       religion: 'not religious'
     },
     u3: {
-      interests: ['Culture', 'Arts', 'Outdoors'],
-      values: ['Growth mindset', 'Balanced lifestyle', 'Community'],
+      interests: ['#Concerts', '#Photography', '#Outdoors'],
+      values: ['Balanced lifestyle', 'Mindfulness-oriented', 'Community-driven'],
       smoking: 'never',
       drinking: 'occasionally',
       workout: 'few times / week',
@@ -177,8 +201,8 @@ export class HomeComponent implements OnDestroy {
       religion: 'spiritual'
     },
     u4: {
-      interests: ['Road trips', 'Outdoors', 'Sports'],
-      values: ['Social energy', 'Curiosity', 'Balanced lifestyle'],
+      interests: ['#Outdoors', '#Sports', '#Travel'],
+      values: ['Adventure-driven', 'Social / party lifestyle', 'Balanced lifestyle'],
       smoking: 'occasionally',
       drinking: 'socially',
       workout: 'daily',
@@ -191,8 +215,8 @@ export class HomeComponent implements OnDestroy {
       religion: 'christian'
     },
     u5: {
-      interests: ['Culture', 'Books', 'Wellness'],
-      values: ['Calm lifestyle', 'Respect', 'Growth mindset'],
+      interests: ['#Books', '#Wellness', '#Meditation'],
+      values: ['Calm / home-centered', 'Mindfulness-oriented', 'Progressive values'],
       smoking: 'never',
       drinking: 'never',
       workout: 'few times / week',
@@ -205,8 +229,8 @@ export class HomeComponent implements OnDestroy {
       religion: 'buddhist'
     },
     u6: {
-      interests: ['Travel', 'Outdoors', 'Social events'],
-      values: ['Social energy', 'Community', 'Health focus'],
+      interests: ['#Travel', '#Outdoors', '#GoingOut'],
+      values: ['Adventure-driven', 'Social / party lifestyle', 'Spiritual but not religious'],
       smoking: 'socially',
       drinking: 'socially',
       workout: 'weekly',
@@ -219,8 +243,8 @@ export class HomeComponent implements OnDestroy {
       religion: 'spiritual'
     },
     u7: {
-      interests: ['Gaming', 'Tech', 'Coffee'],
-      values: ['Accountability', 'Curiosity', 'Long-term focus'],
+      interests: ['#Gaming', '#Tech', '#CoffeeDates'],
+      values: ['Career-focused', 'Goal-driven', 'Secular'],
       smoking: 'never',
       drinking: 'occasionally',
       workout: 'weekly',
@@ -233,8 +257,8 @@ export class HomeComponent implements OnDestroy {
       religion: 'not religious'
     },
     u8: {
-      interests: ['Arts', 'Culture', 'Food'],
-      values: ['Community', 'Respect', 'Balanced lifestyle'],
+      interests: ['#Music', '#Movies', '#Foodie'],
+      values: ['Balanced lifestyle', 'Community-driven', 'Family-first'],
       smoking: 'occasionally',
       drinking: 'socially',
       workout: 'weekly',
@@ -247,8 +271,8 @@ export class HomeComponent implements OnDestroy {
       religion: 'christian'
     },
     u9: {
-      interests: ['Sports', 'Outdoors', 'Travel'],
-      values: ['Health focus', 'Accountability', 'Curiosity'],
+      interests: ['#Sports', '#Outdoors', '#Travel'],
+      values: ['Fitness-driven', 'Goal-driven', 'Stability-focused'],
       smoking: 'never',
       drinking: 'socially',
       workout: 'daily',
@@ -261,8 +285,8 @@ export class HomeComponent implements OnDestroy {
       religion: 'not religious'
     },
     u10: {
-      interests: ['Tech', 'Gaming', 'Films'],
-      values: ['Growth mindset', 'Long-term focus', 'Balanced lifestyle'],
+      interests: ['#Tech', '#Gaming', '#Movies'],
+      values: ['Balanced work-life', 'Career-focused', 'Progressive values'],
       smoking: 'occasionally',
       drinking: 'occasionally',
       workout: 'weekly',
@@ -275,8 +299,8 @@ export class HomeComponent implements OnDestroy {
       religion: 'not religious'
     },
     u11: {
-      interests: ['Wellness', 'Nature', 'Books'],
-      values: ['Calm lifestyle', 'Respect', 'Family-first'],
+      interests: ['#Wellness', '#Yoga', '#Books'],
+      values: ['Family-first', 'Health & wellness focused', 'Faith-oriented'],
       smoking: 'never',
       drinking: 'never',
       workout: 'few times / week',
@@ -289,8 +313,8 @@ export class HomeComponent implements OnDestroy {
       religion: 'hindu'
     },
     u12: {
-      interests: ['Food', 'Social events', 'Culture'],
-      values: ['Social energy', 'Community', 'Balanced lifestyle'],
+      interests: ['#Foodie', '#GoingOut', '#CoffeeDates'],
+      values: ['Social impact oriented', 'Community-driven', 'Balanced lifestyle'],
       smoking: 'socially',
       drinking: 'socially',
       workout: 'weekly',
@@ -322,6 +346,7 @@ export class HomeComponent implements OnDestroy {
   protected filterSelector: FilterSelectorKind | null = null;
   protected filterLanguageInput = '';
   private filterLanguageSuggestionPool: string[] = [];
+  private readonly failedCandidateImageUrls = new Set<string>();
   private ratingBarBlinkTimeout: ReturnType<typeof setTimeout> | null = null;
   private candidateImageIndicatorRevealTimer: ReturnType<typeof setTimeout> | null = null;
   private gameCardLeaveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1290,7 +1315,11 @@ export class HomeComponent implements OnDestroy {
       return null;
     }
     const safeIndex = Math.min(this.selectedCandidateImageIndex, this.candidateImageStack.length - 1);
-    return this.candidateImageStack[safeIndex] ?? null;
+    const imageUrl = this.candidateImageStack[safeIndex] ?? null;
+    if (!imageUrl || this.failedCandidateImageUrls.has(imageUrl)) {
+      return null;
+    }
+    return imageUrl;
   }
 
   protected gameCardIndicatorIndexes(count: number): number[] {
@@ -1306,6 +1335,15 @@ export class HomeComponent implements OnDestroy {
     if (hadPendingLoad) {
       this.triggerCandidateImageIndicatorReveal();
     }
+  }
+
+  protected onCandidateImageAssetError(imageUrl: string): void {
+    this.onCandidateImageAssetReady(imageUrl);
+    if (!imageUrl) {
+      return;
+    }
+    this.failedCandidateImageUrls.add(imageUrl);
+    this.cdr.markForCheck();
   }
 
   protected selectCandidateImage(index: number): void {
@@ -1754,8 +1792,10 @@ export class HomeComponent implements OnDestroy {
     if (explicitImages.length > 0) {
       return explicitImages;
     }
-    const base = `assets/profile/${candidate.id}`;
-    return ['a', 'b', 'c'].map(suffix => `${base}-${suffix}.svg`);
+    const numericId = Number(candidate.id.replace(/\D+/g, '')) || 1;
+    const portraitType = candidate.gender === 'woman' ? 'women' : 'men';
+    const indexes = [0, 24, 48].map(offset => ((numericId + offset - 1) % 99) + 1);
+    return indexes.map(index => `https://randomuser.me/api/portraits/${portraitType}/${index}.jpg`);
   }
 
   private initialsForCandidate(candidate: DemoUser): string {
