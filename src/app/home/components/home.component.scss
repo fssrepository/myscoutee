@@ -271,6 +271,31 @@
   z-index: 1;
 }
 
+.game-stack-header-progress {
+  position: absolute;
+  top: 0.2rem;
+  left: 1.24rem;
+  right: 1.24rem;
+  bottom: auto;
+  height: 4px;
+  border-radius: 999px;
+  overflow: hidden;
+  z-index: 12;
+  background: rgba(46, 114, 184, 0.16);
+}
+
+.game-stack-header-progress .activities-header-progress-fill {
+  background: linear-gradient(90deg, rgba(67, 96, 205, 0.98) 0%, rgba(52, 88, 206, 0.98) 100%);
+}
+
+.game-stack-header-progress .activities-header-progress-loading {
+  background: linear-gradient(270deg, rgba(235, 147, 33, 0.98) 0%, rgba(247, 190, 52, 0.98) 100%);
+}
+
+.game-stack-header-progress.is-loading.is-loading-overdue .activities-header-progress-loading {
+  background: linear-gradient(270deg, rgba(213, 54, 68, 0.98) 0%, rgba(196, 29, 42, 0.98) 100%);
+}
+
 .game-card-main-leaving {
   position: absolute;
   inset: 0;
@@ -313,6 +338,10 @@
 
 .card-content.card-content-empty {
   min-height: 92px;
+}
+
+.card-content.card-content-empty.card-content-empty-loading p {
+  color: rgba(32, 71, 113, 0.82);
 }
 
 .card-image-area {
@@ -445,6 +474,27 @@
   left: 0.56rem;
   right: 0.56rem;
   bottom: 0.56rem;
+}
+
+.game-card-active-badge {
+  position: absolute;
+  top: 0.82rem;
+  right: 0.56rem;
+  z-index: 11;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 225, 182, 0.56);
+  background: rgba(8, 34, 18, 0.74);
+  color: #e9ffef;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  padding: 0.17rem 0.5rem;
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: calc(100% - 1.24rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .game-pair-mini-card-empty {
@@ -1867,6 +1917,12 @@
   .game-layout-single {
     min-height: 0;
     flex: 1 1 auto;
+  }
+
+  .game-stack-header-progress {
+    height: 3px;
+    left: 1.08rem;
+    right: 1.08rem;
   }
 
   .game-card-deck,

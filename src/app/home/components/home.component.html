@@ -30,6 +30,15 @@
   <section class="game-layout-single">
     <div class="game-card-deck">
       <article class="card-stack game-card-main game-card-main-active">
+        <div
+          class="activities-header-progress game-stack-header-progress"
+          *ngIf="showGameStackHeaderProgress"
+          [class.is-loading]="gameStackHeaderProgressLoading"
+          [class.is-loading-overdue]="gameStackHeaderLoadingOverdue"
+        >
+          <span class="activities-header-progress-fill" [style.transform]="'scaleX(' + gameStackHeaderProgress + ')'"></span>
+          <span class="activities-header-progress-loading" [style.transform]="'scaleX(' + gameStackHeaderLoadingProgress + ')'"></span>
+        </div>
         <ng-container *ngIf="!isPairMode; else pairModeLayout">
           <ng-container *ngIf="activeCandidate as candidate; else noCandidateCard">
             <div class="card-image-area">
@@ -69,6 +78,7 @@
                     aria-label="Select profile image"
                   ></button>
                 </div>
+                <span class="game-card-active-badge" *ngIf="candidateActivityBadge(candidate) as activeBadge">{{ activeBadge }}</span>
                 <div class="game-card-image-overlay" *ngIf="gameCardOverlay(candidate, selectedCandidateImageIndex) as overlay">
                   <p class="game-card-image-overlay-primary">{{ overlay.primary }}</p>
                   <p class="game-card-image-overlay-secondary" *ngIf="overlay.secondary">{{ overlay.secondary }}</p>
@@ -117,6 +127,7 @@
                             (error)="onPairModeCandidateImageError(woman, 'woman', womanImage)"
                           />
                           <span class="game-pair-mini-card-label">Woman</span>
+                          <span class="game-card-active-badge" *ngIf="candidateActivityBadge(woman) as activeBadge">{{ activeBadge }}</span>
                           <div class="game-card-image-overlay" *ngIf="gameCardOverlay(woman, pairModeCandidateImageIndex('woman')) as overlay">
                             <p class="game-card-image-overlay-primary">{{ overlay.primary }}</p>
                             <p class="game-card-image-overlay-secondary" *ngIf="overlay.secondary">{{ overlay.secondary }}</p>
@@ -175,6 +186,7 @@
                             (error)="onPairModeCandidateImageError(man, 'man', manImage)"
                           />
                           <span class="game-pair-mini-card-label">Man</span>
+                          <span class="game-card-active-badge" *ngIf="candidateActivityBadge(man) as activeBadge">{{ activeBadge }}</span>
                           <div class="game-card-image-overlay" *ngIf="gameCardOverlay(man, pairModeCandidateImageIndex('man')) as overlay">
                             <p class="game-card-image-overlay-primary">{{ overlay.primary }}</p>
                             <p class="game-card-image-overlay-secondary" *ngIf="overlay.secondary">{{ overlay.secondary }}</p>
@@ -209,9 +221,9 @@
           </ng-container>
         </ng-template>
         <ng-template #noCandidateCard>
-          <div class="card-content card-content-empty">
-            <h2>No matching profiles</h2>
-            <p>Adjust age or profile traits in filter settings.</p>
+          <div class="card-content card-content-empty" [class.card-content-empty-loading]="isAwaitingMoreGameCards">
+            <h2>{{ noCandidateTitle }}</h2>
+            <p>{{ noCandidateDescription }}</p>
           </div>
         </ng-template>
       </article>

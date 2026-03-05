@@ -80,6 +80,11 @@ interface LeavingGameCardState {
   rating: number;
 }
 
+interface PairModeRoundState {
+  woman: DemoUser | null;
+  man: DemoUser | null;
+}
+
 const PUBLIC_PROFILE_DETAIL_LABELS = new Set(
   PROFILE_DETAILS.flatMap(group =>
     group.rows
@@ -101,6 +106,13 @@ export class HomeComponent implements OnDestroy {
   private static readonly AGE_MAX = 120;
   private static readonly HEIGHT_MIN_CM = 40;
   private static readonly HEIGHT_MAX_CM = 250;
+  private static readonly GAME_STACK_PRELOAD_THRESHOLD = 2;
+  private static readonly GAME_STACK_PAGE_SIZE_SINGLE = 4;
+  private static readonly GAME_STACK_PAGE_SIZE_PAIR = 2;
+  private static readonly GAME_STACK_PHOTO_PRELOAD_TARGET = 12;
+  private static readonly GAME_STACK_LOADING_WINDOW_MS = 3000;
+  private static readonly GAME_STACK_LOADING_TICK_MS = 16;
+  private static readonly GAME_STACK_LOAD_DELAY_MS = 1150;
   private readonly gameFilterInterestGroups: GameFilterOptionGroup[] = [
     {
       title: 'Social',
@@ -350,6 +362,10 @@ export class HomeComponent implements OnDestroy {
   protected isPairModeManImageLoading = false;
   protected isPairModeWomanImageIndicatorRevealing = false;
   protected isPairModeManImageIndicatorRevealing = false;
+  protected gameStackCardsLoaded = 0;
+  protected gameStackHeaderLoadingProgress = 0;
+  protected gameStackHeaderLoadingOverdue = false;
+  protected gameStackHeaderProgressLoading = false;
   protected candidateImageZoom = 1;
   protected candidateImagePanX = 0;
   protected candidateImagePanY = 0;
@@ -361,11 +377,20 @@ export class HomeComponent implements OnDestroy {
   protected filterLanguageInput = '';
   private filterLanguageSuggestionPool: string[] = [];
   private readonly failedCandidateImageUrls = new Set<string>();
+  private readonly preloadedGameImageUrls = new Set<string>();
+  private readonly pendingGameImageUrls = new Set<string>();
   private ratingBarBlinkTimeout: ReturnType<typeof setTimeout> | null = null;
   private candidateImageIndicatorRevealTimer: ReturnType<typeof setTimeout> | null = null;
   private pairModeWomanImageIndicatorRevealTimer: ReturnType<typeof setTimeout> | null = null;
   private pairModeManImageIndicatorRevealTimer: ReturnType<typeof setTimeout> | null = null;
   private gameCardLeaveTimer: ReturnType<typeof setTimeout> | null = null;
+  private gameStackPaginationKey = '';
+  private gameStackPaginating = false;
+  private gameStackLoadTimer: ReturnType<typeof setTimeout> | null = null;
+  private gameStackHeaderLoadingCounter = 0;
+  private gameStackHeaderLoadingInterval: ReturnType<typeof setInterval> | null = null;
+  private gameStackHeaderLoadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
+  private gameStackHeaderLoadingStartedAtMs = 0;
   private isCandidateImageDragging = false;
   private candidateDragOffsetX = 0;
   private candidateDragOffsetY = 0;
@@ -375,6 +400,8 @@ export class HomeComponent implements OnDestroy {
     this.gameFilter = this.cloneFilter(initialFilter);
     this.filterDraft = this.cloneFilter(initialFilter);
     this.refreshFilterLanguageSuggestionPool();
+    this.resetGameStackPaginationState();
+    this.preloadGameImageWindow();
     this.beginCandidateImageLoadingForCurrentSelection();
   }
 
@@ -393,6 +420,8 @@ export class HomeComponent implements OnDestroy {
       clearTimeout(this.gameCardLeaveTimer);
       this.gameCardLeaveTimer = null;
     }
+    this.cancelGameStackPaginationLoad();
+    this.clearGameStackHeaderLoadingAnimation();
   }
 
   protected get activeUser(): DemoUser {
@@ -421,10 +450,14 @@ export class HomeComponent implements OnDestroy {
 
   protected get activeCandidate(): DemoUser | null {
     const pool = this.candidatePool;
-    if (pool.length === 0) {
+    if (pool.length === 0 || this.cardIndex < 0) {
       return null;
     }
-    return pool[this.cardIndex % pool.length] ?? null;
+    const visibleCount = Math.min(this.gameStackCardsLoaded, pool.length);
+    if (this.cardIndex >= visibleCount) {
+      return null;
+    }
+    return pool[this.cardIndex] ?? null;
   }
 
   protected get pairModeWomanCandidate(): DemoUser | null {
@@ -445,6 +478,41 @@ export class HomeComponent implements OnDestroy {
 
   protected get hasFilteredCandidates(): boolean {
     return this.candidatePool.length > 0;
+  }
+
+  protected get isAwaitingMoreGameCards(): boolean {
+    return this.cardIndex >= this.gameStackCardsLoaded && this.hasMoreRoundsForCurrentMode();
+  }
+
+  protected get gameStackHeaderProgress(): number {
+    if (this.gameStackCardsLoaded <= 0) {
+      return 0;
+    }
+    return this.clamp(this.cardIndex / this.gameStackCardsLoaded, 0, 1);
+  }
+
+  protected get showGameStackHeaderProgress(): boolean {
+    return this.hasFilteredCandidates || this.gameStackHeaderProgressLoading;
+  }
+
+  protected get noCandidateTitle(): string {
+    if (this.isAwaitingMoreGameCards) {
+      return 'Loading more cards';
+    }
+    if (this.hasFilteredCandidates) {
+      return 'No cards available';
+    }
+    return 'No matching profiles';
+  }
+
+  protected get noCandidateDescription(): string {
+    if (this.isAwaitingMoreGameCards) {
+      return 'Preloading the next stack in the background.';
+    }
+    if (this.hasFilteredCandidates) {
+      return 'Change filters to get more cards.';
+    }
+    return 'Adjust age or profile traits in filter settings.';
   }
 
   protected get minAgeBound(): number {
@@ -643,27 +711,28 @@ export class HomeComponent implements OnDestroy {
       ? (this.pairModeWomanCandidate ?? this.pairModeManCandidate)
       : this.activeCandidate;
     if (!currentCandidate) {
+      this.maybeStartGameStackPaginationLoad();
       return;
     }
     this.triggerRatingBarBlink();
-    const cycleSize = this.isPairMode ? this.pairModeCycleSize() : this.candidatePool.length;
-    if (!this.isPairMode && cycleSize > 1) {
+    const hasUpcomingRound = this.cardIndex + 1 < this.totalRoundsForCurrentMode();
+    if (!this.isPairMode && hasUpcomingRound) {
       this.startGameCardLeaveAnimation(currentCandidate, value);
     }
     this.selectedRating = value;
-    if (cycleSize > 0) {
-      const nextIndex = this.cardIndex + 1;
-      this.cardIndex = nextIndex % cycleSize;
-    } else {
-      this.cardIndex = 0;
-    }
+    this.cardIndex += 1;
+    this.maybeStartGameStackPaginationLoad();
+    this.preloadGameImageWindow();
     this.resetCandidateImageState();
     this.beginCandidateImageLoadingForCurrentSelection();
   }
 
   protected togglePairMode(): void {
     this.isPairMode = !this.isPairMode;
+    this.cardIndex = 0;
     this.resetCandidateImageState();
+    this.resetGameStackPaginationState();
+    this.preloadGameImageWindow();
     this.beginCandidateImageLoadingForCurrentSelection();
   }
 
@@ -690,6 +759,8 @@ export class HomeComponent implements OnDestroy {
     this.gameFilter = this.normalizeFilter(this.filterDraft);
     this.cardIndex = 0;
     this.resetCandidateImageState();
+    this.resetGameStackPaginationState();
+    this.preloadGameImageWindow();
     this.beginCandidateImageLoadingForCurrentSelection();
     this.filterSelector = null;
     this.localPopup = null;
@@ -1444,6 +1515,7 @@ export class HomeComponent implements OnDestroy {
     if (!imageUrl || imageUrl !== this.candidateImage) {
       return;
     }
+    this.markGameImagePreloaded(imageUrl);
     const hadPendingLoad = this.isCandidateImageLoading;
     this.isCandidateImageLoading = false;
     if (hadPendingLoad) {
@@ -1456,6 +1528,7 @@ export class HomeComponent implements OnDestroy {
     if (!imageUrl) {
       return;
     }
+    this.pendingGameImageUrls.delete(imageUrl);
     this.failedCandidateImageUrls.add(imageUrl);
     const nextAvailableImageIndex = this.candidateImageStack.findIndex(url => !this.failedCandidateImageUrls.has(url));
     if (nextAvailableImageIndex >= 0 && nextAvailableImageIndex !== this.selectedCandidateImageIndex) {
@@ -1604,6 +1677,7 @@ export class HomeComponent implements OnDestroy {
     if (!this.isPairMode || !imageUrl) {
       return;
     }
+    this.markGameImagePreloaded(imageUrl);
     const currentImage = this.pairModeCandidateImage(candidate, gender);
     if (imageUrl !== currentImage) {
       return;
@@ -1641,6 +1715,7 @@ export class HomeComponent implements OnDestroy {
     if (!imageUrl) {
       return;
     }
+    this.pendingGameImageUrls.delete(imageUrl);
     this.failedCandidateImageUrls.add(imageUrl);
     const stack = this.pairModeCandidateImageStack(candidate);
     const nextAvailableImageIndex = stack.findIndex(url => !this.failedCandidateImageUrls.has(url));
@@ -1655,6 +1730,21 @@ export class HomeComponent implements OnDestroy {
     return candidate ? this.initialsForCandidate(candidate) : '∅';
   }
 
+  protected candidateActivityBadge(candidate: DemoUser | null): string | null {
+    if (!candidate) {
+      return null;
+    }
+    const status = candidate.statusText?.trim();
+    if (!status) {
+      return null;
+    }
+    const normalized = status.toLowerCase();
+    if (normalized.includes('active') || normalized.includes('akt')) {
+      return 'Active recently';
+    }
+    return status;
+  }
+
   @HostListener('window:active-user-changed')
   onActiveUserChanged(): void {
     this.activeUserId = this.getActiveUserId();
@@ -1665,6 +1755,8 @@ export class HomeComponent implements OnDestroy {
     this.refreshFilterLanguageSuggestionPool();
     this.cardIndex = 0;
     this.resetCandidateImageState();
+    this.resetGameStackPaginationState();
+    this.preloadGameImageWindow();
     this.beginCandidateImageLoadingForCurrentSelection();
   }
 
@@ -2025,17 +2117,40 @@ export class HomeComponent implements OnDestroy {
   }
 
   private pairModeCandidateForGender(gender: DemoUser['gender']): DemoUser | null {
-    const pool = this.candidatePool.filter(user => user.gender === gender);
-    if (pool.length === 0) {
+    const visibleCount = Math.min(this.gameStackCardsLoaded, this.pairModeCycleSize());
+    if (this.cardIndex < 0 || this.cardIndex >= visibleCount) {
       return null;
     }
-    return pool[this.cardIndex % pool.length] ?? null;
+    const round = this.pairModeRoundAt(this.cardIndex);
+    if (!round) {
+      return null;
+    }
+    return gender === 'woman' ? round.woman : round.man;
   }
 
   private pairModeCycleSize(): number {
-    const womanCount = this.candidatePool.filter(user => user.gender === 'woman').length;
-    const manCount = this.candidatePool.filter(user => user.gender === 'man').length;
-    return Math.max(womanCount, manCount);
+    return this.pairModeRounds().length;
+  }
+
+  private pairModeRounds(): PairModeRoundState[] {
+    const women = this.candidatePool.filter(user => user.gender === 'woman');
+    const men = this.candidatePool.filter(user => user.gender === 'man');
+    const total = Math.max(women.length, men.length);
+    return Array.from({ length: total }, (_, index) => ({
+      woman: women[index] ?? null,
+      man: men[index] ?? null
+    }));
+  }
+
+  private pairModeRoundAt(index: number): PairModeRoundState | null {
+    if (index < 0) {
+      return null;
+    }
+    const rounds = this.pairModeRounds();
+    if (index >= rounds.length) {
+      return null;
+    }
+    return rounds[index] ?? null;
   }
 
   private imageStackForCandidate(candidate: DemoUser): string[] {
@@ -2079,9 +2194,10 @@ export class HomeComponent implements OnDestroy {
       this.cdr.markForCheck();
       return;
     }
-    this.isCandidateImageLoading = true;
+    this.isCandidateImageLoading = !this.isGameImagePreloaded(this.candidateImage);
     this.isCandidateImageIndicatorRevealing = false;
     this.clearCandidateImageIndicatorRevealTimer();
+    this.cdr.markForCheck();
   }
 
   private triggerCandidateImageIndicatorReveal(): void {
@@ -2127,10 +2243,10 @@ export class HomeComponent implements OnDestroy {
       return;
     }
     if (gender === 'woman') {
-      this.isPairModeWomanImageLoading = true;
+      this.isPairModeWomanImageLoading = !this.isGameImagePreloaded(imageUrl);
       this.isPairModeWomanImageIndicatorRevealing = false;
     } else {
-      this.isPairModeManImageLoading = true;
+      this.isPairModeManImageLoading = !this.isGameImagePreloaded(imageUrl);
       this.isPairModeManImageIndicatorRevealing = false;
     }
     this.clearPairModeCandidateImageIndicatorRevealTimer(gender);
@@ -2232,6 +2348,257 @@ export class HomeComponent implements OnDestroy {
       return;
     }
     setTimeout(() => startBlink(), 0);
+  }
+
+  private totalRoundsForCurrentMode(): number {
+    if (this.isPairMode) {
+      return this.pairModeCycleSize();
+    }
+    return this.candidatePool.length;
+  }
+
+  private gameStackPaginationStateKey(): string {
+    const modeKey = this.isPairMode ? 'pair' : 'single';
+    const candidatesKey = this.candidatePool.map(user => user.id).join(',');
+    return `${this.activeUserId}|${modeKey}|${candidatesKey}`;
+  }
+
+  private gameStackPageSizeForCurrentMode(): number {
+    return this.isPairMode
+      ? HomeComponent.GAME_STACK_PAGE_SIZE_PAIR
+      : HomeComponent.GAME_STACK_PAGE_SIZE_SINGLE;
+  }
+
+  private hasMoreRoundsForCurrentMode(): boolean {
+    return this.gameStackCardsLoaded < this.totalRoundsForCurrentMode();
+  }
+
+  private resetGameStackPaginationState(): void {
+    this.cancelGameStackPaginationLoad();
+    this.clearGameStackHeaderLoadingAnimation();
+    this.gameStackPaginationKey = this.gameStackPaginationStateKey();
+    const totalRounds = this.totalRoundsForCurrentMode();
+    this.gameStackCardsLoaded = Math.min(totalRounds, this.gameStackPageSizeForCurrentMode());
+    this.cardIndex = Math.min(this.cardIndex, this.gameStackCardsLoaded);
+    this.cdr.markForCheck();
+  }
+
+  private maybeStartGameStackPaginationLoad(): void {
+    const stateKey = this.gameStackPaginationStateKey();
+    if (stateKey !== this.gameStackPaginationKey) {
+      this.resetGameStackPaginationState();
+    }
+    if (this.gameStackPaginating || this.gameStackHeaderProgressLoading) {
+      return;
+    }
+    if (!this.hasMoreRoundsForCurrentMode()) {
+      return;
+    }
+    const remainingCards = this.gameStackCardsLoaded - this.cardIndex;
+    if (remainingCards > HomeComponent.GAME_STACK_PRELOAD_THRESHOLD) {
+      return;
+    }
+    this.startGameStackPaginationLoad();
+  }
+
+  private startGameStackPaginationLoad(): void {
+    if (this.gameStackPaginating) {
+      return;
+    }
+    if (!this.hasMoreRoundsForCurrentMode()) {
+      return;
+    }
+    this.gameStackPaginating = true;
+    this.beginGameStackHeaderProgressLoading();
+    const delayMs = HomeComponent.GAME_STACK_LOAD_DELAY_MS;
+    this.gameStackLoadTimer = setTimeout(() => {
+      this.gameStackLoadTimer = null;
+      const totalRounds = this.totalRoundsForCurrentMode();
+      this.gameStackCardsLoaded = Math.min(totalRounds, this.gameStackCardsLoaded + this.gameStackPageSizeForCurrentMode());
+      this.gameStackPaginating = false;
+      this.endGameStackHeaderProgressLoading();
+      this.preloadGameImageWindow();
+      this.beginCandidateImageLoadingForCurrentSelection();
+      this.cdr.markForCheck();
+    }, delayMs);
+  }
+
+  private cancelGameStackPaginationLoad(): void {
+    if (this.gameStackLoadTimer) {
+      clearTimeout(this.gameStackLoadTimer);
+      this.gameStackLoadTimer = null;
+    }
+    this.gameStackPaginating = false;
+  }
+
+  private beginGameStackHeaderProgressLoading(): void {
+    this.gameStackHeaderLoadingCounter += 1;
+    if (this.gameStackHeaderLoadingCounter > 1) {
+      return;
+    }
+    this.gameStackHeaderProgressLoading = true;
+    this.gameStackHeaderLoadingOverdue = false;
+    this.gameStackHeaderLoadingProgress = 0.02;
+    this.gameStackHeaderLoadingStartedAtMs = this.nowMs();
+    if (this.gameStackHeaderLoadingCompleteTimer) {
+      clearTimeout(this.gameStackHeaderLoadingCompleteTimer);
+      this.gameStackHeaderLoadingCompleteTimer = null;
+    }
+    if (this.gameStackHeaderLoadingInterval) {
+      clearInterval(this.gameStackHeaderLoadingInterval);
+      this.gameStackHeaderLoadingInterval = null;
+    }
+    this.updateGameStackHeaderLoadingWindow();
+    this.gameStackHeaderLoadingInterval = setInterval(() => {
+      this.updateGameStackHeaderLoadingWindow();
+      this.cdr.markForCheck();
+    }, HomeComponent.GAME_STACK_LOADING_TICK_MS);
+    this.cdr.markForCheck();
+  }
+
+  private endGameStackHeaderProgressLoading(): void {
+    if (this.gameStackHeaderLoadingCounter === 0) {
+      return;
+    }
+    this.gameStackHeaderLoadingCounter = Math.max(0, this.gameStackHeaderLoadingCounter - 1);
+    if (this.gameStackHeaderLoadingCounter !== 0) {
+      return;
+    }
+    this.completeGameStackHeaderLoading();
+  }
+
+  private completeGameStackHeaderLoading(): void {
+    if (this.gameStackHeaderLoadingInterval) {
+      clearInterval(this.gameStackHeaderLoadingInterval);
+      this.gameStackHeaderLoadingInterval = null;
+    }
+    this.gameStackHeaderLoadingProgress = 1;
+    this.gameStackHeaderLoadingOverdue = false;
+    if (this.gameStackHeaderLoadingCompleteTimer) {
+      clearTimeout(this.gameStackHeaderLoadingCompleteTimer);
+    }
+    this.gameStackHeaderLoadingCompleteTimer = setTimeout(() => {
+      if (this.gameStackHeaderLoadingCounter !== 0) {
+        return;
+      }
+      this.gameStackHeaderProgressLoading = false;
+      this.gameStackHeaderLoadingProgress = 0;
+      this.gameStackHeaderLoadingOverdue = false;
+      this.gameStackHeaderLoadingStartedAtMs = 0;
+      this.gameStackHeaderLoadingCompleteTimer = null;
+      this.cdr.markForCheck();
+    }, 100);
+    this.cdr.markForCheck();
+  }
+
+  private updateGameStackHeaderLoadingWindow(): void {
+    if (!this.gameStackHeaderProgressLoading) {
+      return;
+    }
+    const elapsed = Math.max(0, this.nowMs() - this.gameStackHeaderLoadingStartedAtMs);
+    const nextProgress = this.clamp(elapsed / HomeComponent.GAME_STACK_LOADING_WINDOW_MS, 0, 1);
+    this.gameStackHeaderLoadingProgress = Math.max(this.gameStackHeaderLoadingProgress, nextProgress);
+    this.gameStackHeaderLoadingOverdue =
+      elapsed >= HomeComponent.GAME_STACK_LOADING_WINDOW_MS && this.gameStackHeaderLoadingCounter > 0;
+  }
+
+  private clearGameStackHeaderLoadingAnimation(): void {
+    if (this.gameStackHeaderLoadingInterval) {
+      clearInterval(this.gameStackHeaderLoadingInterval);
+      this.gameStackHeaderLoadingInterval = null;
+    }
+    if (this.gameStackHeaderLoadingCompleteTimer) {
+      clearTimeout(this.gameStackHeaderLoadingCompleteTimer);
+      this.gameStackHeaderLoadingCompleteTimer = null;
+    }
+    this.gameStackHeaderLoadingCounter = 0;
+    this.gameStackHeaderLoadingProgress = 0;
+    this.gameStackHeaderProgressLoading = false;
+    this.gameStackHeaderLoadingOverdue = false;
+    this.gameStackHeaderLoadingStartedAtMs = 0;
+  }
+
+  private preloadGameImageWindow(): void {
+    const totalRounds = this.totalRoundsForCurrentMode();
+    if (totalRounds === 0) {
+      return;
+    }
+    let preloadedCount = 0;
+    for (let roundIndex = this.cardIndex; roundIndex < totalRounds; roundIndex += 1) {
+      const roundCandidates = this.gameCandidatesForRound(roundIndex);
+      for (const candidate of roundCandidates) {
+        const stack = this.imageStackForCandidate(candidate);
+        for (const url of stack) {
+          if (!url || this.failedCandidateImageUrls.has(url)) {
+            continue;
+          }
+          if (this.isGameImagePreloaded(url)) {
+            continue;
+          }
+          this.preloadGameImageUrl(url);
+          preloadedCount += 1;
+          if (preloadedCount >= HomeComponent.GAME_STACK_PHOTO_PRELOAD_TARGET) {
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  private gameCandidatesForRound(roundIndex: number): DemoUser[] {
+    if (roundIndex < 0) {
+      return [];
+    }
+    if (this.isPairMode) {
+      const round = this.pairModeRoundAt(roundIndex);
+      if (!round) {
+        return [];
+      }
+      const candidates: DemoUser[] = [];
+      if (round.woman) {
+        candidates.push(round.woman);
+      }
+      if (round.man) {
+        candidates.push(round.man);
+      }
+      return candidates;
+    }
+    const candidate = this.candidatePool[roundIndex] ?? null;
+    return candidate ? [candidate] : [];
+  }
+
+  private preloadGameImageUrl(url: string): void {
+    if (!url || this.pendingGameImageUrls.has(url) || this.preloadedGameImageUrls.has(url)) {
+      return;
+    }
+    if (typeof Image === 'undefined') {
+      return;
+    }
+    this.pendingGameImageUrls.add(url);
+    const image = new Image();
+    image.onload = () => this.markGameImagePreloaded(url);
+    image.onerror = () => {
+      this.pendingGameImageUrls.delete(url);
+    };
+    image.src = url;
+  }
+
+  private markGameImagePreloaded(url: string): void {
+    if (!url) {
+      return;
+    }
+    this.pendingGameImageUrls.delete(url);
+    this.preloadedGameImageUrls.add(url);
+  }
+
+  private isGameImagePreloaded(url: string | null): boolean {
+    return !!url && this.preloadedGameImageUrls.has(url);
+  }
+
+  private nowMs(): number {
+    return typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now();
   }
 
   private parseHeightCm(height: string): number | null {

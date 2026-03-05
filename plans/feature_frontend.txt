@@ -2,8 +2,6 @@ Game - Default page
 -------------------
 cards should show a message when the user was active
 
-preload 10-15 photos, and paginating to the next stack, while the user finished on rating
-(the cards are on top of each other, so hiding each other)
 
 pair rate - met (a new option on ratings)
 
