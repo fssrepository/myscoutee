@@ -1339,51 +1339,105 @@
                     [attr.data-activity-rate-row-id]="row.id"
                     [attr.data-group-label]="group.label"
                   >
-                    <div
-                      class="activities-rate-profile-stack"
-                      [ngClass]="activityRateCardContentClasses(row)"
-                      [class.is-pane-loading]="isActivityRateCardImageLoading(row)"
-                      *ngIf="activityRateCardImageUrls(row) as imageUrls"
-                    >
-                      <div class="image-stack-indicators activities-rate-profile-indicators" *ngIf="imageUrls.length > 1">
-                        <button
-                          type="button"
-                          class="image-stack-line"
-                          *ngFor="let imageUrl of imageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-                          [class.active]="imageIndex === activityRateCardActiveImageIndex(row)"
-                          (click)="selectActivityRateCardImage(row, imageIndex, $event)"
-                          aria-label="Select profile image"
-                        ></button>
-                      </div>
+                    <ng-container *ngIf="isPairRateRow(row); else singleRateRowCardStack">
                       <div
-                        class="activities-rate-profile-layer activities-rate-profile-layer-active"
-                        [appLazyBgImage]="activityRateCardActiveImageUrl(row)"
+                        class="activities-rate-profile-stack activities-rate-profile-stack-pair-inline"
+                        [ngClass]="activityRateCardContentClasses(row)"
                       >
-                        <div class="activities-rate-profile-overlay" *ngIf="activityRateCardHasLine(row, activityRateCardActiveImageIndex(row))">
-                          <p class="activities-rate-profile-line activities-rate-profile-line-primary">
-                            {{ activityRateCardPrimaryLine(row, activityRateCardActiveImageIndex(row)) }}
-                          </p>
-                          <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
-                            {{ activityRateCardSecondaryLine(row, activityRateCardActiveImageIndex(row)) }}
-                          </p>
+                        <div class="activities-rate-pair-inline-grid">
+                          <div
+                            class="activities-rate-pair-inline-card activities-rate-pair-inline-card-woman"
+                            [class.is-pane-loading]="isActivityPairRateSlotImageLoading(row, 'woman')"
+                            *ngIf="activityPairRateSlotImageUrls(row, 'woman') as womanImageUrls"
+                          >
+                            <div
+                              class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators"
+                              *ngIf="womanImageUrls.length > 1"
+                            >
+                              <button
+                                type="button"
+                                class="image-stack-line"
+                                *ngFor="let imageUrl of womanImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                                [class.active]="imageIndex === activityPairRateSlotActiveImageIndex(row, 'woman')"
+                                (click)="selectActivityPairRateSlotImage(row, 'woman', imageIndex, $event)"
+                                aria-label="Select woman profile image"
+                              ></button>
+                            </div>
+                            <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="activityPairRateSlotActiveImageUrl(row, 'woman')">
+                              <span class="activities-rate-pair-inline-label">Woman</span>
+                              <div class="activities-rate-pair-inline-overlay">
+                                <p class="activities-rate-profile-line activities-rate-profile-line-primary">
+                                  {{ activityPairRateSlotPrimaryLine(row, 'woman') }}
+                                </p>
+                                <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
+                                  {{ activityPairRateSlotSecondaryLine(row, 'woman') }}
+                                </p>
+                              </div>
+                              <div class="image-stack-hit-area activities-rate-profile-hit-area activities-rate-pair-inline-hit-area" *ngIf="womanImageUrls.length > 1">
+                                <button
+                                  type="button"
+                                  class="image-stack-hit-segment"
+                                  *ngFor="let imageUrl of womanImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                                  (click)="selectActivityPairRateSlotImage(row, 'woman', imageIndex, $event)"
+                                  aria-label="Select woman profile image"
+                                ></button>
+                              </div>
+                              <span class="card-image-placeholder" *ngIf="!activityPairRateSlotActiveImageUrl(row, 'woman')">
+                                {{ activityPairRateSlotInitials(row, 'woman') }}
+                              </span>
+                            </div>
+                          </div>
+                          <div
+                            class="activities-rate-pair-inline-card activities-rate-pair-inline-card-man"
+                            [class.is-pane-loading]="isActivityPairRateSlotImageLoading(row, 'man')"
+                            *ngIf="activityPairRateSlotImageUrls(row, 'man') as manImageUrls"
+                          >
+                            <div
+                              class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators"
+                              *ngIf="manImageUrls.length > 1"
+                            >
+                              <button
+                                type="button"
+                                class="image-stack-line"
+                                *ngFor="let imageUrl of manImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                                [class.active]="imageIndex === activityPairRateSlotActiveImageIndex(row, 'man')"
+                                (click)="selectActivityPairRateSlotImage(row, 'man', imageIndex, $event)"
+                                aria-label="Select man profile image"
+                              ></button>
+                            </div>
+                            <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="activityPairRateSlotActiveImageUrl(row, 'man')">
+                              <span class="activities-rate-pair-inline-label">Man</span>
+                              <div class="activities-rate-pair-inline-overlay">
+                                <p class="activities-rate-profile-line activities-rate-profile-line-primary">
+                                  {{ activityPairRateSlotPrimaryLine(row, 'man') }}
+                                </p>
+                                <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
+                                  {{ activityPairRateSlotSecondaryLine(row, 'man') }}
+                                </p>
+                              </div>
+                              <div class="image-stack-hit-area activities-rate-profile-hit-area activities-rate-pair-inline-hit-area" *ngIf="manImageUrls.length > 1">
+                                <button
+                                  type="button"
+                                  class="image-stack-hit-segment"
+                                  *ngFor="let imageUrl of manImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                                  (click)="selectActivityPairRateSlotImage(row, 'man', imageIndex, $event)"
+                                  aria-label="Select man profile image"
+                                ></button>
+                              </div>
+                              <span class="card-image-placeholder" *ngIf="!activityPairRateSlotActiveImageUrl(row, 'man')">
+                                {{ activityPairRateSlotInitials(row, 'man') }}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div class="image-stack-hit-area activities-rate-profile-hit-area" *ngIf="imageUrls.length > 1">
                         <button
                           type="button"
-                          class="image-stack-hit-segment"
-                          *ngFor="let imageUrl of imageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-                          (click)="selectActivityRateCardImage(row, imageIndex, $event)"
-                          aria-label="Select profile image"
-                        ></button>
-                      </div>
-                      <button
-                        type="button"
-                        class="activities-rate-score-badge activities-rate-score-badge-floating"
+                          class="activities-rate-score-badge activities-rate-score-badge-between"
                           [class.is-active]="isSelectedActivityRateRow(row)"
                           [class.is-pending]="isActivityRatePending(row)"
                           [class.is-disabled]="isPairReceivedRateRow(row)"
                           [class.is-blink]="isActivityRateBlinking(row)"
+                          [disabled]="isPairReceivedRateRow(row)"
                           (click)="isPairReceivedRateRow(row) ? $event.stopPropagation() : openActivityRateEditor(row, $event)"
                           [attr.aria-label]="isPairReceivedRateRow(row) ? 'Received pair rating' : (isActivityRatePending(row) ? 'Add your rating' : 'Edit your rating')"
                         >
@@ -1391,6 +1445,62 @@
                           <span>{{ activityRateBadgeLabel(row) }}</span>
                         </button>
                       </div>
+                    </ng-container>
+                    <ng-template #singleRateRowCardStack>
+                      <div
+                        class="activities-rate-profile-stack"
+                        [ngClass]="activityRateCardContentClasses(row)"
+                        [class.is-pane-loading]="isActivityRateCardImageLoading(row)"
+                        *ngIf="activityRateCardImageUrls(row) as imageUrls"
+                      >
+                        <div class="image-stack-indicators activities-rate-profile-indicators" *ngIf="imageUrls.length > 1">
+                          <button
+                            type="button"
+                            class="image-stack-line"
+                            *ngFor="let imageUrl of imageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                            [class.active]="imageIndex === activityRateCardActiveImageIndex(row)"
+                            (click)="selectActivityRateCardImage(row, imageIndex, $event)"
+                            aria-label="Select profile image"
+                          ></button>
+                        </div>
+                        <div
+                          class="activities-rate-profile-layer activities-rate-profile-layer-active"
+                          [appLazyBgImage]="activityRateCardActiveImageUrl(row)"
+                        >
+                          <div class="activities-rate-profile-overlay" *ngIf="activityRateCardHasLine(row, activityRateCardActiveImageIndex(row))">
+                            <p class="activities-rate-profile-line activities-rate-profile-line-primary">
+                              {{ activityRateCardPrimaryLine(row, activityRateCardActiveImageIndex(row)) }}
+                            </p>
+                            <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
+                              {{ activityRateCardSecondaryLine(row, activityRateCardActiveImageIndex(row)) }}
+                            </p>
+                          </div>
+                        </div>
+                        <div class="image-stack-hit-area activities-rate-profile-hit-area" *ngIf="imageUrls.length > 1">
+                          <button
+                            type="button"
+                            class="image-stack-hit-segment"
+                            *ngFor="let imageUrl of imageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                            (click)="selectActivityRateCardImage(row, imageIndex, $event)"
+                            aria-label="Select profile image"
+                          ></button>
+                        </div>
+                        <button
+                          type="button"
+                          class="activities-rate-score-badge activities-rate-score-badge-floating"
+                            [class.is-active]="isSelectedActivityRateRow(row)"
+                            [class.is-pending]="isActivityRatePending(row)"
+                            [class.is-disabled]="isPairReceivedRateRow(row)"
+                            [class.is-blink]="isActivityRateBlinking(row)"
+                            [disabled]="isPairReceivedRateRow(row)"
+                            (click)="isPairReceivedRateRow(row) ? $event.stopPropagation() : openActivityRateEditor(row, $event)"
+                            [attr.aria-label]="isPairReceivedRateRow(row) ? 'Received pair rating' : (isActivityRatePending(row) ? 'Add your rating' : 'Edit your rating')"
+                          >
+                            <mat-icon>star</mat-icon>
+                            <span>{{ activityRateBadgeLabel(row) }}</span>
+                          </button>
+                        </div>
+                    </ng-template>
                     </article>
                   </ng-template>
                 </ng-template>
@@ -1441,6 +1551,7 @@
                     class="activities-rate-score-badge activities-rate-score-badge-floating is-active"
                     [class.is-pending]="isActivityRatePending(leavingRow)"
                     [class.is-disabled]="isPairReceivedRateRow(leavingRow)"
+                    [class.activities-rate-score-badge-floating-pair-overlap]="isPairRateRow(leavingRow)"
                     [class.is-blink]="isActivityRateBlinking(leavingRow)"
                   >
                     <mat-icon>star</mat-icon>
@@ -1493,6 +1604,9 @@
                   </div>
                   <span
                     class="activities-rate-score-badge activities-rate-score-badge-floating is-active"
+                    [class.is-pending]="isActivityRatePending(row)"
+                    [class.is-disabled]="isPairReceivedRateRow(row)"
+                    [class.activities-rate-score-badge-floating-pair-overlap]="isPairRateRow(row)"
                     [class.is-blink]="isActivityRateBlinking(row)"
                   >
                     <mat-icon>star</mat-icon>
@@ -1500,6 +1614,27 @@
                   </span>
                 </div>
               </article>
+
+              <button
+                type="button"
+                class="activities-rates-fullscreen-nav-btn activities-rates-fullscreen-nav-btn-prev"
+                *ngIf="isActivitiesRatesFullscreenReadOnlyNavigation()"
+                [disabled]="!canNavigateActivitiesRatesFullscreenPrev()"
+                (click)="navigateActivitiesRatesFullscreenPrev($event)"
+                aria-label="Previous rate card"
+              >
+                <mat-icon>chevron_left</mat-icon>
+              </button>
+              <button
+                type="button"
+                class="activities-rates-fullscreen-nav-btn activities-rates-fullscreen-nav-btn-next"
+                *ngIf="isActivitiesRatesFullscreenReadOnlyNavigation()"
+                [disabled]="!canNavigateActivitiesRatesFullscreenNext()"
+                (click)="navigateActivitiesRatesFullscreenNext($event)"
+                aria-label="Next rate card"
+              >
+                <mat-icon>chevron_right</mat-icon>
+              </button>
             </div>
           </div>
           <ng-template #activitiesRatesFullscreenEmpty>
@@ -1655,12 +1790,14 @@
           <div class="activities-rate-editor-head" *ngIf="!isRatesFullscreenModeActive()">
             <span>Rate · {{ selectedActivityRateModeLabel() }} · {{ selectedActivityRateTitle() }}</span>
           </div>
-          <div class="activities-rate-editor-stars" [class.is-blink]="isActivityRateBarBlinking">
+          <div class="activities-rate-editor-stars" [class.is-blink]="isActivityRateBarBlinking" [class.is-readonly]="isSelectedActivityRateReadOnly()">
             <button
               type="button"
               class="activities-rate-star-btn"
               *ngFor="let score of activityRatingScale"
               [class.filled]="isSelectedActivityRateScore(score)"
+              [class.is-disabled]="isSelectedActivityRateReadOnly()"
+              [disabled]="isSelectedActivityRateReadOnly()"
               (click)="setSelectedActivityOwnRating(score)"
               [attr.aria-label]="'Set rating ' + score"
             >

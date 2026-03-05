@@ -1108,6 +1108,9 @@ export class App {
   private readonly activityRateCardActiveImageIndexById: Record<string, number> = {};
   private readonly activityRateCardImageLoadingById: Record<string, boolean> = {};
   private readonly activityRateCardLoadingTimerById: Record<string, ReturnType<typeof setTimeout>> = {};
+  private readonly activityPairRateCardActiveImageIndexByKey: Record<string, number> = {};
+  private readonly activityPairRateCardImageLoadingByKey: Record<string, boolean> = {};
+  private readonly activityPairRateCardLoadingTimerByKey: Record<string, ReturnType<typeof setTimeout>> = {};
   private readonly generatedRateItemsByUser: Record<string, RateMenuItem[]> = {};
   private lastActivityOpenKey: string | null = null;
   private lastActivityOpenAt = 0;
@@ -13777,6 +13780,113 @@ export class App {
     ];
   }
 
+  protected activityPairRateSlotUser(row: ActivityListRow, gender: DemoUser['gender']): DemoUser | null {
+    if (row.type !== 'rates') {
+      return null;
+    }
+    const item = row.source as RateMenuItem;
+    const primary = this.users.find(user => user.id === item.userId) ?? null;
+    if (primary && primary.gender === gender) {
+      return primary;
+    }
+    const candidates = this.users.filter(user => user.gender === gender && user.id !== primary?.id);
+    if (candidates.length > 0) {
+      const seed = this.hashText(`pair-rate-slot:${row.id}:${gender}`);
+      return candidates[seed % candidates.length] ?? null;
+    }
+    if (primary && primary.gender !== gender) {
+      return primary;
+    }
+    return null;
+  }
+
+  protected activityPairRateSlotImageUrls(row: ActivityListRow, gender: DemoUser['gender']): string[] {
+    const user = this.activityPairRateSlotUser(row, gender);
+    if (!user) {
+      return [''];
+    }
+    const seededCount = 2 + (this.hashText(`pair-rate-photo-count:${row.id}:${gender}:${user.id}`) % 2);
+    return Array.from({ length: seededCount }, (_, index) =>
+      this.rateCardSeedImageUrl(`${row.id}-${gender}`, user.id, user.gender, index)
+    );
+  }
+
+  protected activityPairRateSlotActiveImageIndex(row: ActivityListRow, gender: DemoUser['gender']): number {
+    const images = this.activityPairRateSlotImageUrls(row, gender);
+    if (images.length === 0) {
+      return 0;
+    }
+    const key = this.activityPairRateSlotImageKey(row.id, gender);
+    const current = this.activityPairRateCardActiveImageIndexByKey[key] ?? 0;
+    return this.clampNumber(current, 0, images.length - 1);
+  }
+
+  protected activityPairRateSlotActiveImageUrl(row: ActivityListRow, gender: DemoUser['gender']): string {
+    const images = this.activityPairRateSlotImageUrls(row, gender);
+    if (images.length === 0) {
+      return '';
+    }
+    return images[this.activityPairRateSlotActiveImageIndex(row, gender)] ?? images[0] ?? '';
+  }
+
+  protected isActivityPairRateSlotImageLoading(row: ActivityListRow, gender: DemoUser['gender']): boolean {
+    const key = this.activityPairRateSlotImageKey(row.id, gender);
+    return this.activityPairRateCardImageLoadingByKey[key] === true;
+  }
+
+  protected selectActivityPairRateSlotImage(
+    row: ActivityListRow,
+    gender: DemoUser['gender'],
+    imageIndex: number,
+    event?: Event
+  ): void {
+    event?.stopPropagation();
+    const images = this.activityPairRateSlotImageUrls(row, gender);
+    if (images.length === 0) {
+      return;
+    }
+    const key = this.activityPairRateSlotImageKey(row.id, gender);
+    const nextIndex = this.clampNumber(imageIndex, 0, images.length - 1);
+    this.activityPairRateCardActiveImageIndexByKey[key] = nextIndex;
+    if (this.activityPairRateCardLoadingTimerByKey[key]) {
+      clearTimeout(this.activityPairRateCardLoadingTimerByKey[key]);
+      delete this.activityPairRateCardLoadingTimerByKey[key];
+    }
+    this.activityPairRateCardImageLoadingByKey[key] = true;
+    this.activityPairRateCardLoadingTimerByKey[key] = setTimeout(() => {
+      this.activityPairRateCardImageLoadingByKey[key] = false;
+      delete this.activityPairRateCardLoadingTimerByKey[key];
+    }, 500);
+  }
+
+  protected activityPairRateSlotPrimaryLine(row: ActivityListRow, gender: DemoUser['gender']): string {
+    const user = this.activityPairRateSlotUser(row, gender);
+    if (!user) {
+      return `${gender === 'woman' ? 'Woman' : 'Man'} · waiting`;
+    }
+    return `${user.name}, ${user.age}`;
+  }
+
+  protected activityPairRateSlotSecondaryLine(row: ActivityListRow, gender: DemoUser['gender']): string {
+    const user = this.activityPairRateSlotUser(row, gender);
+    if (!user) {
+      return 'No pair card yet';
+    }
+    return `${user.city} · ${row.distanceKm} km`;
+  }
+
+  protected activityPairRateSlotInitials(row: ActivityListRow, gender: DemoUser['gender']): string {
+    const user = this.activityPairRateSlotUser(row, gender);
+    if (!user) {
+      return '∅';
+    }
+    return this.initialsFromText(user.name);
+  }
+
+  private activityPairRateSlotImageKey(rowId: string, gender: DemoUser['gender']): string {
+    return `${rowId}:${gender}`;
+  }
+
   private profilePortraitUrlForUser(user: DemoUser, index: number, context: string): string {
     const safeGender = user.gender === 'woman' ? 'women' : 'men';
     const seed = this.hashText(`portrait:${context}:${user.id}:${index}`);
@@ -13826,6 +13936,87 @@ export class App {
     return item.mode === 'pair' && this.displayedRateDirection(item) === 'received';
   }
 
+  protected isPairRateRow(row: ActivityListRow): boolean {
+    if (row.type !== 'rates') {
+      return false;
+    }
+    const item = row.source as RateMenuItem;
+    return item.mode === 'pair';
+  }
+
+  protected isSelectedActivityRateReadOnly(): boolean {
+    const row = this.isRatesFullscreenModeActive()
+      ? this.currentActivitiesRatesFullscreenRow()
+      : this.selectedActivityRateRow();
+    return !!row && this.isPairReceivedRateRow(row);
+  }
+
+  protected isActivitiesRatesFullscreenReadOnlyNavigation(): boolean {
+    return this.isRatesFullscreenModeActive() && this.activitiesRateFilter === 'pair-received';
+  }
+
+  protected canNavigateActivitiesRatesFullscreenPrev(): boolean {
+    if (!this.isActivitiesRatesFullscreenReadOnlyNavigation()) {
+      return false;
+    }
+    return this.activitiesRatesFullscreenCardIndex > 0;
+  }
+
+  protected canNavigateActivitiesRatesFullscreenNext(): boolean {
+    if (!this.isActivitiesRatesFullscreenReadOnlyNavigation() || this.activitiesRatesFullscreenAnimating) {
+      return false;
+    }
+    const row = this.currentActivitiesRatesFullscreenRow();
+    if (!row) {
+      return false;
+    }
+    const allRows = this.activitiesRatesFullscreenAllRows();
+    const currentIndex = this.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, allRows.length - 1));
+    return currentIndex < allRows.length;
+  }
+
+  protected navigateActivitiesRatesFullscreenPrev(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isActivitiesRatesFullscreenReadOnlyNavigation() || this.activitiesRatesFullscreenAnimating) {
+      return;
+    }
+    const allRows = this.activitiesRatesFullscreenAllRows();
+    if (allRows.length === 0) {
+      return;
+    }
+    const currentIndex = this.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, allRows.length);
+    const previousIndex = Math.max(0, currentIndex - 1);
+    if (previousIndex === currentIndex) {
+      return;
+    }
+    this.activitiesRatesFullscreenCardIndex = previousIndex;
+    this.syncActivitiesRatesFullscreenSelection();
+  }
+
+  protected navigateActivitiesRatesFullscreenNext(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isActivitiesRatesFullscreenReadOnlyNavigation() || this.activitiesRatesFullscreenAnimating) {
+      return;
+    }
+    const row = this.currentActivitiesRatesFullscreenRow();
+    if (!row) {
+      return;
+    }
+    const allRows = this.activitiesRatesFullscreenAllRows();
+    if (allRows.length === 0) {
+      return;
+    }
+    const currentIndex = this.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, allRows.length - 1));
+    const hasUpcomingRound = currentIndex + 1 < allRows.length;
+    const nextIndex = Math.min(allRows.length, currentIndex + 1);
+    if (hasUpcomingRound) {
+      this.startActivitiesRatesFullscreenLeaveAnimation(row);
+    }
+    this.activitiesRatesFullscreenCardIndex = nextIndex;
+    this.updateActivitiesHeaderProgress();
+    this.maybeStartActivitiesRatesFullscreenPaginationLoad();
+  }
+
   protected activityOwnRatingValue(row: ActivityListRow): number {
     if (row.type !== 'rates') {
       return 0;
@@ -13868,6 +14059,9 @@ export class App {
     if (row.type !== 'rates') {
       return;
     }
+    if (this.isPairReceivedRateRow(row)) {
+      return;
+    }
     this.cancelActivityRateEditorCloseTransition();
     const wasOpen = this.isActivityRateEditorOpen();
     if (this.selectedActivityRateId === row.id) {
@@ -13902,6 +14096,9 @@ export class App {
       ? this.currentActivitiesRatesFullscreenRow()
       : this.selectedActivityRateRow();
     if (!row || row.type !== 'rates') {
+      return;
+    }
+    if (this.isPairReceivedRateRow(row)) {
       return;
     }
     this.selectedActivityRateId = row.id;
@@ -14014,6 +14211,9 @@ export class App {
 
   protected isActivityRateEditorDockVisible(): boolean {
     if (this.isRatesFullscreenModeActive()) {
+      if (this.isActivitiesRatesFullscreenReadOnlyNavigation()) {
+        return false;
+      }
       return this.currentActivitiesRatesFullscreenRow() !== null;
     }
     return this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'rates' && (!!this.selectedActivityRateId || this.activityRateEditorClosing);
