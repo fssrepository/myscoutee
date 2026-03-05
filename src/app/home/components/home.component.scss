@@ -405,6 +405,15 @@
   background: transparent;
 }
 
+.game-pair-mini-card-leaving {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  z-index: 5;
+  pointer-events: none;
+}
+
 .game-pair-mini-card-content {
   width: 100%;
   height: 100%;
@@ -420,6 +429,13 @@
   height: 100%;
   border-radius: 12px;
   overflow: hidden;
+}
+
+.game-pair-mini-image-frame .card-image-placeholder {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .game-pair-mini-photo {
@@ -522,6 +538,25 @@
   max-width: calc(100% - 1.24rem);
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.game-card-active-badge-leaving {
+  animation: game-card-active-badge-leaving 420ms cubic-bezier(0.18, 0.64, 0.24, 1) forwards;
+}
+
+@keyframes game-card-active-badge-leaving {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  45% {
+    opacity: 0.9;
+    transform: translate3d(-1px, 1px, 0) scale(0.98);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-4px, 6px, 0) scale(0.9);
+  }
 }
 
 .game-pair-mini-card-empty {

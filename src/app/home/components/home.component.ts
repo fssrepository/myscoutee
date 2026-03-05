@@ -356,6 +356,8 @@ export class HomeComponent implements OnDestroy {
   protected isCandidateImageLoading = false;
   protected isCandidateImageIndicatorRevealing = false;
   protected leavingGameCard: LeavingGameCardState | null = null;
+  protected leavingPairModeWomanCard: LeavingGameCardState | null = null;
+  protected leavingPairModeManCard: LeavingGameCardState | null = null;
   protected selectedCandidateImageIndex = 0;
   protected pairModeWomanImageIndex = 0;
   protected pairModeManImageIndex = 0;
@@ -729,8 +731,12 @@ export class HomeComponent implements OnDestroy {
     }
     this.triggerRatingBarBlink();
     const hasUpcomingRound = this.cardIndex + 1 < this.totalRoundsForCurrentMode();
-    if (!this.isPairMode && hasUpcomingRound) {
-      this.startGameCardLeaveAnimation(currentCandidate, value);
+    if (hasUpcomingRound) {
+      if (this.isPairMode) {
+        this.startPairModeCardLeaveAnimation(value);
+      } else {
+        this.startGameCardLeaveAnimation(currentCandidate, value);
+      }
     }
     this.selectedRating = value;
     this.cardIndex += 1;
@@ -2324,6 +2330,8 @@ export class HomeComponent implements OnDestroy {
   }
 
   private startGameCardLeaveAnimation(candidate: DemoUser, rating: number): void {
+    this.leavingPairModeWomanCard = null;
+    this.leavingPairModeManCard = null;
     const stack = this.imageStackForCandidate(candidate);
     const safeImageIndex = stack.length === 0 ? 0 : Math.min(this.selectedCandidateImageIndex, stack.length - 1);
     this.leavingGameCard = {
@@ -2340,9 +2348,52 @@ export class HomeComponent implements OnDestroy {
     }
     this.gameCardLeaveTimer = setTimeout(() => {
       this.leavingGameCard = null;
+      this.leavingPairModeWomanCard = null;
+      this.leavingPairModeManCard = null;
       this.gameCardLeaveTimer = null;
       this.cdr.markForCheck();
     }, 440);
+  }
+
+  private startPairModeCardLeaveAnimation(rating: number): void {
+    this.leavingGameCard = null;
+    this.leavingPairModeWomanCard = this.buildPairModeLeavingCardState(this.pairModeWomanCandidate, 'woman', rating);
+    this.leavingPairModeManCard = this.buildPairModeLeavingCardState(this.pairModeManCandidate, 'man', rating);
+    if (!this.leavingPairModeWomanCard && !this.leavingPairModeManCard) {
+      return;
+    }
+    if (this.gameCardLeaveTimer) {
+      clearTimeout(this.gameCardLeaveTimer);
+      this.gameCardLeaveTimer = null;
+    }
+    this.gameCardLeaveTimer = setTimeout(() => {
+      this.leavingGameCard = null;
+      this.leavingPairModeWomanCard = null;
+      this.leavingPairModeManCard = null;
+      this.gameCardLeaveTimer = null;
+      this.cdr.markForCheck();
+    }, 440);
+  }
+
+  private buildPairModeLeavingCardState(
+    candidate: DemoUser | null,
+    gender: DemoUser['gender'],
+    rating: number
+  ): LeavingGameCardState | null {
+    if (!candidate) {
+      return null;
+    }
+    const stack = this.pairModeCandidateImageStack(candidate);
+    const selectedImageIndex = gender === 'woman' ? this.pairModeWomanImageIndex : this.pairModeManImageIndex;
+    const safeImageIndex = stack.length === 0 ? 0 : Math.min(selectedImageIndex, stack.length - 1);
+    return {
+      candidate,
+      imageUrl: stack[safeImageIndex] ?? null,
+      imageCount: stack.length,
+      imageIndex: safeImageIndex,
+      initials: this.initialsForCandidate(candidate),
+      rating
+    };
   }
 
   private triggerRatingBarBlink(): void {

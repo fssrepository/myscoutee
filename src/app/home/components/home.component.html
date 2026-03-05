@@ -158,6 +158,25 @@
                     <p>No woman match</p>
                   </div>
                 </ng-template>
+                <div class="game-pair-mini-card-leaving game-card-main-leaving" *ngIf="leavingPairModeWomanCard as leavingWoman" aria-hidden="true">
+                  <div class="game-pair-mini-card-content">
+                    <div class="game-pair-mini-image-frame">
+                      <img class="game-pair-mini-photo" *ngIf="leavingWoman.imageUrl; else leavingWomanPlaceholder" [src]="leavingWoman.imageUrl" alt="" aria-hidden="true" />
+                      <ng-template #leavingWomanPlaceholder>
+                        <span class="card-image-placeholder">{{ leavingWoman.initials }}</span>
+                      </ng-template>
+                      <span class="game-pair-mini-card-label">Woman</span>
+                      <span
+                        class="game-card-active-badge game-card-active-badge-leaving"
+                        *ngIf="candidateActivityBadge(leavingWoman.candidate) as activeBadge"
+                      >{{ activeBadge }}</span>
+                      <div class="game-card-image-overlay" *ngIf="gameCardOverlay(leavingWoman.candidate, leavingWoman.imageIndex) as overlay">
+                        <p class="game-card-image-overlay-primary">{{ overlay.primary }}</p>
+                        <p class="game-card-image-overlay-secondary" *ngIf="overlay.secondary">{{ overlay.secondary }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </article>
 
               <article class="game-pair-mini-card game-pair-mini-card-man">
@@ -217,6 +236,25 @@
                     <p>No man match</p>
                   </div>
                 </ng-template>
+                <div class="game-pair-mini-card-leaving game-card-main-leaving" *ngIf="leavingPairModeManCard as leavingMan" aria-hidden="true">
+                  <div class="game-pair-mini-card-content">
+                    <div class="game-pair-mini-image-frame">
+                      <img class="game-pair-mini-photo" *ngIf="leavingMan.imageUrl; else leavingManPlaceholder" [src]="leavingMan.imageUrl" alt="" aria-hidden="true" />
+                      <ng-template #leavingManPlaceholder>
+                        <span class="card-image-placeholder">{{ leavingMan.initials }}</span>
+                      </ng-template>
+                      <span class="game-pair-mini-card-label">Man</span>
+                      <span
+                        class="game-card-active-badge game-card-active-badge-leaving"
+                        *ngIf="candidateActivityBadge(leavingMan.candidate) as activeBadge"
+                      >{{ activeBadge }}</span>
+                      <div class="game-card-image-overlay" *ngIf="gameCardOverlay(leavingMan.candidate, leavingMan.imageIndex) as overlay">
+                        <p class="game-card-image-overlay-primary">{{ overlay.primary }}</p>
+                        <p class="game-card-image-overlay-secondary" *ngIf="overlay.secondary">{{ overlay.secondary }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </article>
             </div>
           </ng-container>
