@@ -773,7 +773,7 @@ export class HomeComponent implements OnDestroy {
     this.gameFilter = this.normalizeFilter(this.filterDraft);
     this.cardIndex = 0;
     this.resetCandidateImageState();
-    this.resetGameStackPaginationState();
+    this.resetGameStackPaginationState(false);
     this.preloadGameImageWindow();
     this.maybeStartGameStackPaginationLoad();
     this.beginCandidateImageLoadingForCurrentSelection();
@@ -2391,14 +2391,16 @@ export class HomeComponent implements OnDestroy {
     return this.gameStackCardsLoaded < this.totalRoundsForCurrentMode();
   }
 
-  private resetGameStackPaginationState(): void {
+  private resetGameStackPaginationState(loadFirstPageImmediately = true): void {
     this.cancelGameStackPaginationLoad();
     this.clearGameStackHeaderLoadingAnimation();
     this.gameStackPaginationKey = this.gameStackPaginationStateKey();
     this.gameStackExhausted = false;
     this.gameStackNoMoreProbeCount = 0;
     const totalRounds = this.totalRoundsForCurrentMode();
-    this.gameStackCardsLoaded = Math.min(totalRounds, this.gameStackPageSizeForCurrentMode());
+    this.gameStackCardsLoaded = loadFirstPageImmediately
+      ? Math.min(totalRounds, this.gameStackPageSizeForCurrentMode())
+      : 0;
     this.cardIndex = Math.min(this.cardIndex, this.gameStackCardsLoaded);
     this.cdr.markForCheck();
   }
