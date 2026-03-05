@@ -1800,8 +1800,14 @@ export class HomeComponent implements OnDestroy {
     }
     const genderFolder = candidate.gender === 'woman' ? 'women' : 'men';
     const baseSeed = this.hashText(`game-card-image:${candidate.id}:${candidate.gender}`);
-    const indexes = [0, 17, 39].map(offset => (baseSeed + offset * 13) % 100);
-    return indexes.map(index => `https://randomuser.me/api/portraits/${genderFolder}/${index}.jpg`);
+    const portraitIndexes: number[] = [];
+    for (let offset = 0; offset < 8 && portraitIndexes.length < 3; offset += 1) {
+      const portraitIndex = (baseSeed + offset * 17) % 100;
+      if (!portraitIndexes.includes(portraitIndex)) {
+        portraitIndexes.push(portraitIndex);
+      }
+    }
+    return portraitIndexes.map(index => `https://randomuser.me/api/portraits/${genderFolder}/${index}.jpg`);
   }
 
   private initialsForCandidate(candidate: DemoUser): string {

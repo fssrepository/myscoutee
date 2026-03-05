@@ -1652,9 +1652,11 @@
   }
 
   .game-page {
-    min-height: auto;
+    min-height: 100svh;
+    min-height: 100dvh;
     border-radius: 14px;
     padding: 0.64rem;
+    box-sizing: border-box;
   }
 
   .game-header {
@@ -1665,8 +1667,19 @@
     justify-content: flex-end;
   }
 
+  .game-layout-single,
+  .game-card-deck,
+  .game-card-main {
+    min-height: 0;
+  }
+
+  .card-image-area,
+  .card-image-content {
+    min-height: 0;
+  }
+
   .card-image-area {
-    min-height: clamp(340px, 62dvh, 620px);
+    flex: 1 1 auto;
   }
 
   .rating-stars {
