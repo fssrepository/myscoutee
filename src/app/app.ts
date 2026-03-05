@@ -13988,7 +13988,6 @@ export class App {
     this.activitiesRatesPairSplitBounds = { left: bounds.left, width: bounds.width };
     this.activitiesRatesPairSplitPointerId = event.pointerId;
     this.isActivitiesRatesPairSplitDragging = true;
-    this.updateActivitiesRatesPairSplitFromClientX(event.clientX);
     if (event.cancelable) {
       event.preventDefault();
     }

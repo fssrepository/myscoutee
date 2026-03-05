@@ -8037,7 +8037,6 @@
 }
 
 .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid {
-  --activities-pair-split: 50%;
   --activities-pair-gap: clamp(0.28rem, 0.8vw, 0.52rem);
   --activities-pair-pad: 0.42rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
