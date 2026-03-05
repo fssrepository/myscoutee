@@ -7662,14 +7662,74 @@
   }
 
   .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid {
+    --activities-pair-gap: 0;
+    --activities-pair-pad: 0.3rem;
     width: 100%;
-    gap: 0.44rem;
-    padding: 0.3rem;
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    padding: var(--activities-pair-pad);
+  }
+
+  .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card {
+    min-width: 0;
+  }
+
+  .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card-woman {
+    flex: 0 0 var(--activities-pair-split);
+    width: var(--activities-pair-split);
+  }
+
+  .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card-man {
+    flex: 0 0 calc(100% - var(--activities-pair-split));
+    width: calc(100% - var(--activities-pair-split));
   }
 
   .activities-rates-fullscreen .activities-rate-profile-stack.activities-rate-profile-stack-pair-fullscreen {
     width: 100%;
     margin-inline: 0;
+  }
+
+  .activities-rates-pair-fullscreen-resize-handle {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    left: var(--activities-pair-split);
+    top: var(--activities-pair-pad);
+    bottom: var(--activities-pair-pad);
+    width: 20px;
+    transform: translateX(-50%);
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    z-index: 26;
+    touch-action: none;
+    cursor: ew-resize;
+  }
+
+  .activities-rates-pair-fullscreen-resize-handle::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  .activities-rates-pair-fullscreen-resize-handle-grip {
+    width: 4px;
+    height: 36%;
+    min-height: 52px;
+    border-radius: 999px;
+    border: 1px solid rgba(166, 196, 232, 0.74);
+    background: linear-gradient(180deg, rgba(241, 247, 255, 0.94) 0%, rgba(218, 232, 249, 0.9) 100%);
+    box-shadow:
+      0 0 0 1px rgba(9, 22, 40, 0.14),
+      0 8px 14px rgba(6, 18, 36, 0.34);
+  }
+
+  .activities-rate-profile-stack.activities-rate-profile-stack-pair-fullscreen.is-resizing .activities-rates-pair-fullscreen-resize-handle-grip {
+    background: linear-gradient(180deg, rgba(255, 247, 227, 0.96) 0%, rgba(255, 229, 165, 0.9) 100%);
+    border-color: rgba(218, 168, 51, 0.86);
   }
 
   .activities-rates-fullscreen-nav-btn {
@@ -7894,33 +7954,36 @@
 }
 
 .activities-rates-fullscreen .activities-rate-profile-stack.activities-rate-profile-stack-pair-fullscreen {
-  width: min(100%, 430px);
-  margin-inline: auto;
+  width: 100%;
+  margin-inline: 0;
 }
 
 .activities-rates-fullscreen .activities-rate-profile-stack.activities-rate-profile-stack-pair::before {
-  content: '';
-  position: absolute;
-  left: 0.44rem;
-  right: 0.44rem;
-  top: 50%;
-  height: 1px;
-  transform: translateY(-50%);
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.7) 50%, rgba(255, 255, 255, 0.28) 100%);
-  box-shadow: 0 0 0 1px rgba(13, 24, 42, 0.24);
-  z-index: 8;
-  pointer-events: none;
+  display: none;
 }
 
 .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid {
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: 0.56rem;
-  padding: 0.44rem;
+  --activities-pair-split: 50%;
+  --activities-pair-gap: clamp(0.28rem, 0.8vw, 0.52rem);
+  --activities-pair-pad: 0.44rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--activities-pair-gap);
+  padding: var(--activities-pair-pad);
 }
 
 .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card {
   min-height: 0;
+}
+
+.activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card.is-collapsed {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card.is-collapsed > * {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-indicators {
@@ -7931,6 +7994,15 @@
 
 .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-overlay {
   padding: 0.74rem 0.8rem 0.72rem;
+}
+
+.activities-rates-pair-fullscreen-resize-handle {
+  display: none;
+}
+
+.activities-rates-pair-fullscreen-resize-handle-grip {
+  display: block;
+  pointer-events: none;
 }
 
 .activities-rates-fullscreen-card-active .activities-rate-profile-layer {

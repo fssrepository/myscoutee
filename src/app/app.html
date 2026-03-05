@@ -1524,7 +1524,11 @@
                 [attr.data-activity-rate-row-id]="leavingRow.id"
               >
                 <ng-container *ngIf="isPairRateRow(leavingRow); else leavingFullscreenSingleRateCard">
-                  <div class="activities-rate-profile-stack activities-rate-profile-stack-pair-fullscreen" [ngClass]="activityRateCardContentClasses(leavingRow)">
+                  <div
+                    class="activities-rate-profile-stack activities-rate-profile-stack-pair-fullscreen"
+                    [ngClass]="activityRateCardContentClasses(leavingRow)"
+                    [style.--activities-pair-split]="activitiesRatesPairSplitCssValue"
+                  >
                     <div class="activities-rate-pair-inline-grid activities-rate-pair-fullscreen-grid">
                       <div class="activities-rate-pair-inline-card activities-rate-pair-inline-card-woman" *ngIf="activityPairRateSlotImageUrls(leavingRow, 'woman') as leavingWomanImageUrls">
                         <div
@@ -1634,11 +1638,18 @@
                 [attr.data-activity-rate-row-id]="row.id"
               >
                 <ng-container *ngIf="isPairRateRow(row); else fullscreenSingleRateCard">
-                  <div class="activities-rate-profile-stack activities-rate-profile-stack-pair-fullscreen" [ngClass]="activityRateCardContentClasses(row)">
+                  <div
+                    class="activities-rate-profile-stack activities-rate-profile-stack-pair-fullscreen"
+                    [ngClass]="activityRateCardContentClasses(row)"
+                    [style.--activities-pair-split]="activitiesRatesPairSplitCssValue"
+                    [class.is-resizing]="isActivitiesRatesPairSplitDragging"
+                    #activitiesRatesPairFullscreenStack
+                  >
                     <div class="activities-rate-pair-inline-grid activities-rate-pair-fullscreen-grid">
                       <div
                         class="activities-rate-pair-inline-card activities-rate-pair-inline-card-woman"
                         [class.is-pane-loading]="isActivityPairRateSlotImageLoading(row, 'woman')"
+                        [class.is-collapsed]="isActivitiesRatesPairWomanCollapsed"
                         *ngIf="activityPairRateSlotImageUrls(row, 'woman') as fullscreenWomanImageUrls"
                       >
                         <div
@@ -1679,9 +1690,21 @@
                         </div>
                       </div>
 
+                      <button
+                        type="button"
+                        class="activities-rates-pair-fullscreen-resize-handle"
+                        *ngIf="isActivitiesRatesPairMobileSplitEnabled()"
+                        aria-label="Resize pair cards"
+                        (pointerdown)="onActivitiesRatesPairSplitHandlePointerDown($event, activitiesRatesPairFullscreenStack)"
+                        (click)="$event.preventDefault(); $event.stopPropagation()"
+                      >
+                        <span class="activities-rates-pair-fullscreen-resize-handle-grip" aria-hidden="true"></span>
+                      </button>
+
                       <div
                         class="activities-rate-pair-inline-card activities-rate-pair-inline-card-man"
                         [class.is-pane-loading]="isActivityPairRateSlotImageLoading(row, 'man')"
+                        [class.is-collapsed]="isActivitiesRatesPairManCollapsed"
                         *ngIf="activityPairRateSlotImageUrls(row, 'man') as fullscreenManImageUrls"
                       >
                         <div

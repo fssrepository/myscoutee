@@ -1,4 +1,27 @@
-assets explore popup (there are public / friends assets)
+must
+----------------
+instagram account should be renamed from myscoutee1 to myscoutee
+after the other account deleted (deletion period ended apr 3)
+
+optional sub event does not need to cut another optional sub event
+(optional sub event can take place in the same time)
+
+pull up feature if you finished and of scrolling area (by luck figured out pull down behaviour)
+
+optional
+---------------------
+Friends in common filter for game screen
+
+activities rating - pair rate - met option or Separate friends flag
+(you can rate for pairs who does not know each other, but you know them)
+
+i think it can work in a way that two rectangles next to each other and a + in the middle for both
+click on "+" open new popup with friends, you can choose (there is one filter next to closing x in the header man/woman)
+clicking "+" on the right image is for woman, clicking on the right is for man
+when both has been selected star badge appear and you can rate
+it will go to the given list what you might be able to filter for (and somehow it shows that it's separated friends on the card)
+
+maybe
 --------------------------------------------------------
 
 Assets Explore includes a popup with Public and Friends-only visibility.
@@ -12,13 +35,3 @@ Occupancy for selected dates must be clearly visible in both the popup and item 
 Events also include an expense field with amount and currency.
 
 availability dates of assets (car/accomodation/suplies) to be able to lend
-
-instagram account should be renamed from myscoutee1 to myscoutee
-after the other account deleted (deletion period ended apr 3)
-
-optional sub event does not need to cut another optional sub event
-(optional sub event can take place in the same time)
-
-pull up feature if you finished and of scrolling area (by luck figured out pull down behaviour)
-
-Friends in common filter for game screen

@@ -766,6 +766,9 @@ export class App {
   private static readonly ENTRY_CONSENT_AUDIT_KEY = 'entry-gdpr-consent-audit';
   private static readonly ENTRY_CONSENT_VERSION = '2026-02-26-v1';
   private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
+  private static readonly ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT = 50;
+  private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MIN_PERCENT = 0;
+  private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT = 100;
 
   public readonly alertService = inject(AlertService);
   private readonly ngZone = inject(NgZone);
@@ -1094,10 +1097,14 @@ export class App {
   protected activitiesRatesFullscreenCardIndex = 0;
   protected activitiesRatesFullscreenAnimating = false;
   protected activitiesRatesFullscreenLeavingRow: ActivityListRow | null = null;
+  protected activitiesRatesPairSplitPercent = App.ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT;
+  protected isActivitiesRatesPairSplitDragging = false;
   private activitiesRatesFullscreenAdvanceTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly activitiesRatesFullscreenLeaveTimeoutMs = 440;
   private activitiesRatesFullscreenLoadStateKey = '';
   private activitiesRatesFullscreenLastTriggeredLoadedCount = 0;
+  private activitiesRatesPairSplitPointerId: number | null = null;
+  private activitiesRatesPairSplitBounds: { left: number; width: number } | null = null;
   protected isActivityRateBarBlinking = false;
   private activityRateBarBlinkTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly activityRateBlinkUntilByRowId: Record<string, number> = {};
@@ -8694,6 +8701,7 @@ export class App {
   }
 
   protected closePopup(): void {
+    this.stopActivitiesRatesPairSplitDrag();
     if (this.activePopup === 'imageEditor' && this.popupReturnTarget) {
       this.activePopup = this.popupReturnTarget;
       this.popupReturnTarget = null;
@@ -12756,6 +12764,7 @@ export class App {
   }
 
   protected selectActivitiesRateFilter(filter: RateFilterKey): void {
+    this.stopActivitiesRatesPairSplitDrag();
     this.activitiesRateFilter = filter;
     this.commitPendingRateDirectionOverrides(filter);
     this.selectedActivityRateId = null;
@@ -12794,6 +12803,7 @@ export class App {
       this.disableActivitiesRatesFullscreenMode();
       return;
     }
+    this.stopActivitiesRatesPairSplitDrag();
     this.activitiesRatesFullscreenMode = true;
     this.activitiesRatesFullscreenCardIndex = 0;
     this.activitiesRatesFullscreenAnimating = false;
@@ -13944,6 +13954,52 @@ export class App {
     return item.mode === 'pair';
   }
 
+  protected get activitiesRatesPairSplitCssValue(): string {
+    if (!this.isMobileView) {
+      return `${App.ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT}%`;
+    }
+    return `${this.activitiesRatesPairSplitPercent}%`;
+  }
+
+  protected get isActivitiesRatesPairWomanCollapsed(): boolean {
+    return this.isActivitiesRatesPairMobileSplitEnabled() && this.activitiesRatesPairSplitPercent <= 0.1;
+  }
+
+  protected get isActivitiesRatesPairManCollapsed(): boolean {
+    return this.isActivitiesRatesPairMobileSplitEnabled() && this.activitiesRatesPairSplitPercent >= 99.9;
+  }
+
+  protected isActivitiesRatesPairMobileSplitEnabled(): boolean {
+    if (!this.isRatesFullscreenModeActive() || !this.isMobileView) {
+      return false;
+    }
+    const row = this.currentActivitiesRatesFullscreenRow();
+    return !!row && this.isPairRateRow(row);
+  }
+
+  protected onActivitiesRatesPairSplitHandlePointerDown(event: PointerEvent, stackElement: HTMLElement): void {
+    if (!this.isActivitiesRatesPairMobileSplitEnabled() || this.activitiesRatesFullscreenAnimating || !stackElement) {
+      return;
+    }
+    const bounds = stackElement.getBoundingClientRect();
+    if (bounds.width <= 0) {
+      return;
+    }
+    this.activitiesRatesPairSplitBounds = { left: bounds.left, width: bounds.width };
+    this.activitiesRatesPairSplitPointerId = event.pointerId;
+    this.isActivitiesRatesPairSplitDragging = true;
+    this.updateActivitiesRatesPairSplitFromClientX(event.clientX);
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+    event.stopPropagation();
+    const target = event.currentTarget as HTMLElement | null;
+    if (target?.setPointerCapture) {
+      target.setPointerCapture(event.pointerId);
+    }
+    this.cdr.markForCheck();
+  }
+
   protected isSelectedActivityRateReadOnly(): boolean {
     const row = this.isRatesFullscreenModeActive()
       ? this.currentActivitiesRatesFullscreenRow()
@@ -14479,6 +14535,7 @@ export class App {
     if (!this.activitiesRatesFullscreenMode) {
       return;
     }
+    this.stopActivitiesRatesPairSplitDrag();
     this.activitiesRatesFullscreenMode = false;
     this.activitiesRatesFullscreenAnimating = false;
     this.activitiesRatesFullscreenLeavingRow = null;
@@ -14561,6 +14618,33 @@ export class App {
     this.activitiesRatesFullscreenAnimating = false;
     this.activitiesRatesFullscreenLeavingRow = null;
     this.syncActivitiesRatesFullscreenSelection();
+  }
+
+  private updateActivitiesRatesPairSplitFromClientX(clientX: number): void {
+    if (!this.activitiesRatesPairSplitBounds || this.activitiesRatesPairSplitBounds.width <= 0) {
+      return;
+    }
+    const relative = ((clientX - this.activitiesRatesPairSplitBounds.left) / this.activitiesRatesPairSplitBounds.width) * 100;
+    this.activitiesRatesPairSplitPercent = this.clampNumber(
+      relative,
+      App.ACTIVITIES_RATES_PAIR_SPLIT_MIN_PERCENT,
+      App.ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT
+    );
+    this.cdr.markForCheck();
+  }
+
+  private stopActivitiesRatesPairSplitDrag(): void {
+    if (
+      !this.isActivitiesRatesPairSplitDragging
+      && this.activitiesRatesPairSplitPointerId === null
+      && this.activitiesRatesPairSplitBounds === null
+    ) {
+      return;
+    }
+    this.isActivitiesRatesPairSplitDragging = false;
+    this.activitiesRatesPairSplitPointerId = null;
+    this.activitiesRatesPairSplitBounds = null;
+    this.cdr.markForCheck();
   }
 
   private activitiesRatesFullscreenRows(): ActivityListRow[] {
@@ -16907,6 +16991,33 @@ export class App {
     if (this.activePopup) {
       this.handlePrimaryPopupHeaderClose();
     }
+  }
+
+  @HostListener('window:pointermove', ['$event'])
+  onWindowPointerMoveForActivitiesRates(event: PointerEvent): void {
+    if (!this.isActivitiesRatesPairSplitDragging || this.activitiesRatesPairSplitPointerId !== event.pointerId) {
+      return;
+    }
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+    this.updateActivitiesRatesPairSplitFromClientX(event.clientX);
+  }
+
+  @HostListener('window:pointerup', ['$event'])
+  onWindowPointerUpForActivitiesRates(event: PointerEvent): void {
+    if (this.activitiesRatesPairSplitPointerId !== event.pointerId) {
+      return;
+    }
+    this.stopActivitiesRatesPairSplitDrag();
+  }
+
+  @HostListener('window:pointercancel', ['$event'])
+  onWindowPointerCancelForActivitiesRates(event: PointerEvent): void {
+    if (this.activitiesRatesPairSplitPointerId !== event.pointerId) {
+      return;
+    }
+    this.stopActivitiesRatesPairSplitDrag();
   }
 
   @HostListener('document:click', ['$event'])
