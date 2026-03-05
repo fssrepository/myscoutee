@@ -1096,6 +1096,8 @@ export class App {
   protected activitiesRatesFullscreenLeavingRow: ActivityListRow | null = null;
   private activitiesRatesFullscreenAdvanceTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly activitiesRatesFullscreenLeaveTimeoutMs = 440;
+  private activitiesRatesFullscreenLoadStateKey = '';
+  private activitiesRatesFullscreenLastTriggeredLoadedCount = 0;
   protected isActivityRateBarBlinking = false;
   private activityRateBarBlinkTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly activityRateBlinkUntilByRowId: Record<string, number> = {};
@@ -13977,19 +13979,30 @@ export class App {
     if (!this.isRatesFullscreenModeActive() || this.isCalendarLayoutView()) {
       return;
     }
+    const stateKey = this.activitiesPaginationStateKey();
+    if (stateKey !== this.activitiesRatesFullscreenLoadStateKey) {
+      this.activitiesRatesFullscreenLoadStateKey = stateKey;
+      this.activitiesRatesFullscreenLastTriggeredLoadedCount = 0;
+    }
     if (this.activitiesIsPaginating || this.activitiesHeaderProgressLoading) {
       return;
     }
     const allRows = this.activitiesRatesFullscreenAllRows();
     this.ensureActivitiesPaginationState(allRows.length);
-    if (this.activitiesVisibleCount >= allRows.length) {
-      return;
-    }
-    const remainingCards = this.activitiesVisibleCount - this.activitiesRatesFullscreenCardIndex;
+    const loadedCount = this.activitiesVisibleCount;
+    const remainingCards = loadedCount - this.activitiesRatesFullscreenCardIndex;
     if (!force && remainingCards > 2) {
       return;
     }
-    this.startActivitiesPaginationLoad();
+    // Trigger at most once per currently loaded stack size.
+    if (loadedCount <= this.activitiesRatesFullscreenLastTriggeredLoadedCount) {
+      return;
+    }
+    // Mirror game-stack probing behavior: even when no unseen local cards are known,
+    // still run a loading cycle near the end.
+    const allowEmptyResponse = loadedCount >= allRows.length;
+    this.activitiesRatesFullscreenLastTriggeredLoadedCount = loadedCount;
+    this.startActivitiesPaginationLoad(allowEmptyResponse);
   }
 
   protected isActivityRateEditorOpen(): boolean {
