@@ -501,7 +501,7 @@ export class HomeComponent implements OnDestroy {
     if (this.gameStackCardsLoaded <= 0) {
       return 0;
     }
-    return this.clamp(this.cardIndex / this.gameStackCardsLoaded, 0, 1);
+    return this.clamp((this.cardIndex + 1) / this.gameStackCardsLoaded, 0, 1);
   }
 
   protected get showGameStackHeaderProgress(): boolean {
@@ -2377,8 +2377,8 @@ export class HomeComponent implements OnDestroy {
 
   private gameStackPaginationStateKey(): string {
     const modeKey = this.isPairMode ? 'pair' : 'single';
-    const candidatesKey = this.candidatePool.map(user => user.id).join(',');
-    return `${this.activeUserId}|${modeKey}|${candidatesKey}`;
+    const filterKey = JSON.stringify(this.gameFilter);
+    return `${this.activeUserId}|${modeKey}|${filterKey}`;
   }
 
   private gameStackPageSizeForCurrentMode(): number {
@@ -2418,6 +2418,10 @@ export class HomeComponent implements OnDestroy {
     const remainingCards = this.gameStackCardsLoaded - this.cardIndex;
     if (remainingCards > HomeComponent.GAME_STACK_PRELOAD_THRESHOLD) {
       return;
+    }
+    if (this.gameStackExhausted && this.hasMoreRoundsForCurrentMode()) {
+      this.gameStackExhausted = false;
+      this.gameStackNoMoreProbeCount = 0;
     }
     if (this.gameStackExhausted) {
       return;
