@@ -10015,6 +10015,10 @@ export class App {
     }
   }
 
+  protected privacyTriggerIcon(value: DetailPrivacy, isOpen: boolean): string {
+    return isOpen ? 'close' : this.privacyStatusIcon(value);
+  }
+
   private initializeProfileDetailForms(): void {
     for (const user of this.users) {
       this.profileDetailsFormByUser[user.id] = this.createProfileDetailsFormForUser(user);

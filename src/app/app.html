@@ -3356,11 +3356,15 @@
                           <button
                             type="button"
                             class="profile-details-privacy-btn profile-details-privacy-trigger"
-                            [class]="privacyStatusClass(row.privacy)"
+                            [class.status-public]="row.privacy === 'Public'"
+                            [class.status-friends]="row.privacy === 'Friends'"
+                            [class.status-host]="row.privacy === 'Hosts'"
+                            [class.status-inactive]="row.privacy === 'Private'"
+                            [class.is-open]="isDetailPrivacyFabOpen(groupIndex, rowIndex)"
                             (click)="openDetailPrivacySelector(groupIndex, rowIndex, $event)"
-                            aria-label="Change visibility"
+                            [attr.aria-label]="isDetailPrivacyFabOpen(groupIndex, rowIndex) ? 'Close visibility menu' : 'Change visibility'"
                           >
-                            <mat-icon>{{ privacyStatusIcon(row.privacy) }}</mat-icon>
+                            <mat-icon>{{ privacyTriggerIcon(row.privacy, isDetailPrivacyFabOpen(groupIndex, rowIndex)) }}</mat-icon>
                           </button>
                           <div
                             class="item-action-menu item-action-menu-desktop profile-privacy-menu"
@@ -3407,11 +3411,15 @@
                     <button
                       type="button"
                       class="profile-details-privacy-btn profile-details-privacy-trigger"
-                      [class]="privacyStatusClass(experienceVisibilityValue('workspace'))"
+                      [class.status-public]="experienceVisibilityValue('workspace') === 'Public'"
+                      [class.status-friends]="experienceVisibilityValue('workspace') === 'Friends'"
+                      [class.status-host]="experienceVisibilityValue('workspace') === 'Hosts'"
+                      [class.status-inactive]="experienceVisibilityValue('workspace') === 'Private'"
+                      [class.is-open]="isExperiencePrivacyFabOpen('workspace')"
                       (click)="openExperiencePrivacySelector('workspace', $event)"
-                      aria-label="Change workspace visibility"
+                      [attr.aria-label]="isExperiencePrivacyFabOpen('workspace') ? 'Close workspace visibility menu' : 'Change workspace visibility'"
                     >
-                      <mat-icon>{{ privacyStatusIcon(experienceVisibilityValue('workspace')) }}</mat-icon>
+                      <mat-icon>{{ privacyTriggerIcon(experienceVisibilityValue('workspace'), isExperiencePrivacyFabOpen('workspace')) }}</mat-icon>
                     </button>
                     <div
                       class="item-action-menu item-action-menu-desktop profile-privacy-menu"
@@ -3452,11 +3460,15 @@
                     <button
                       type="button"
                       class="profile-details-privacy-btn profile-details-privacy-trigger"
-                      [class]="privacyStatusClass(experienceVisibilityValue('school'))"
+                      [class.status-public]="experienceVisibilityValue('school') === 'Public'"
+                      [class.status-friends]="experienceVisibilityValue('school') === 'Friends'"
+                      [class.status-host]="experienceVisibilityValue('school') === 'Hosts'"
+                      [class.status-inactive]="experienceVisibilityValue('school') === 'Private'"
+                      [class.is-open]="isExperiencePrivacyFabOpen('school')"
                       (click)="openExperiencePrivacySelector('school', $event)"
-                      aria-label="Change school visibility"
+                      [attr.aria-label]="isExperiencePrivacyFabOpen('school') ? 'Close school visibility menu' : 'Change school visibility'"
                     >
-                      <mat-icon>{{ privacyStatusIcon(experienceVisibilityValue('school')) }}</mat-icon>
+                      <mat-icon>{{ privacyTriggerIcon(experienceVisibilityValue('school'), isExperiencePrivacyFabOpen('school')) }}</mat-icon>
                     </button>
                     <div
                       class="item-action-menu item-action-menu-desktop profile-privacy-menu"
