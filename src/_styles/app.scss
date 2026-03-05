@@ -9912,6 +9912,11 @@ textarea {
   min-width: 170px;
   max-width: min(220px, 72vw);
   z-index: 30;
+  display: none;
+}
+
+.profile-details-privacy-fab .profile-privacy-menu.is-open {
+  display: grid;
 }
 
 .profile-privacy-menu-option {
