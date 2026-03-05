@@ -93,15 +93,45 @@
               <article class="game-pair-mini-card game-pair-mini-card-woman">
                 <ng-container *ngIf="pairModeWomanCandidate as woman; else pairModeWomanEmpty">
                   <div class="game-pair-mini-card-content">
-                    <ng-container *ngIf="pairModeCandidateImage(woman) as womanImage; else pairModeWomanFallback">
-                      <div class="game-pair-mini-image-frame">
-                        <img class="game-pair-mini-photo" [src]="womanImage" alt="" aria-hidden="true" />
-                        <span class="game-pair-mini-card-label">Woman</span>
-                        <div class="game-card-image-overlay" *ngIf="gameCardOverlay(woman, 0) as overlay">
-                          <p class="game-card-image-overlay-primary">{{ overlay.primary }}</p>
-                          <p class="game-card-image-overlay-secondary" *ngIf="overlay.secondary">{{ overlay.secondary }}</p>
+                    <ng-container *ngIf="pairModeCandidateImageStack(woman) as womanImageStack">
+                      <ng-container *ngIf="pairModeCandidateImage(woman, 'woman') as womanImage; else pairModeWomanFallback">
+                        <div class="game-pair-mini-image-frame">
+                          <div class="game-image-stack-indicators game-pair-mini-image-indicators" *ngIf="womanImageStack.length > 1">
+                            <button
+                              type="button"
+                              class="game-image-stack-line"
+                              *ngFor="let image of womanImageStack; let i = index"
+                              [class.active]="i === pairModeCandidateImageIndex('woman')"
+                              [class.is-loading]="i === pairModeCandidateImageIndex('woman') && isPairModeCandidateImageLoading('woman')"
+                              [class.is-revealing]="i === pairModeCandidateImageIndex('woman') && isPairModeCandidateImageIndicatorRevealing('woman')"
+                              (click)="selectPairModeCandidateImage('woman', i)"
+                              aria-label="Select woman profile image"
+                            ></button>
+                          </div>
+                          <img
+                            class="game-pair-mini-photo"
+                            [src]="womanImage"
+                            alt=""
+                            aria-hidden="true"
+                            (load)="onPairModeCandidateImageReady(woman, 'woman', womanImage)"
+                            (error)="onPairModeCandidateImageError(woman, 'woman', womanImage)"
+                          />
+                          <span class="game-pair-mini-card-label">Woman</span>
+                          <div class="game-card-image-overlay" *ngIf="gameCardOverlay(woman, pairModeCandidateImageIndex('woman')) as overlay">
+                            <p class="game-card-image-overlay-primary">{{ overlay.primary }}</p>
+                            <p class="game-card-image-overlay-secondary" *ngIf="overlay.secondary">{{ overlay.secondary }}</p>
+                          </div>
+                          <div class="game-image-hit-area" *ngIf="womanImageStack.length > 1">
+                            <button
+                              type="button"
+                              class="game-image-hit-segment"
+                              *ngFor="let image of womanImageStack; let i = index"
+                              (click)="selectPairModeCandidateImage('woman', i)"
+                              aria-label="Select woman profile image"
+                            ></button>
+                          </div>
                         </div>
-                      </div>
+                      </ng-container>
                     </ng-container>
                     <ng-template #pairModeWomanFallback>
                       <span class="game-pair-mini-card-label">Woman</span>
@@ -121,15 +151,45 @@
               <article class="game-pair-mini-card game-pair-mini-card-man">
                 <ng-container *ngIf="pairModeManCandidate as man; else pairModeManEmpty">
                   <div class="game-pair-mini-card-content">
-                    <ng-container *ngIf="pairModeCandidateImage(man) as manImage; else pairModeManFallback">
-                      <div class="game-pair-mini-image-frame">
-                        <img class="game-pair-mini-photo" [src]="manImage" alt="" aria-hidden="true" />
-                        <span class="game-pair-mini-card-label">Man</span>
-                        <div class="game-card-image-overlay" *ngIf="gameCardOverlay(man, 0) as overlay">
-                          <p class="game-card-image-overlay-primary">{{ overlay.primary }}</p>
-                          <p class="game-card-image-overlay-secondary" *ngIf="overlay.secondary">{{ overlay.secondary }}</p>
+                    <ng-container *ngIf="pairModeCandidateImageStack(man) as manImageStack">
+                      <ng-container *ngIf="pairModeCandidateImage(man, 'man') as manImage; else pairModeManFallback">
+                        <div class="game-pair-mini-image-frame">
+                          <div class="game-image-stack-indicators game-pair-mini-image-indicators" *ngIf="manImageStack.length > 1">
+                            <button
+                              type="button"
+                              class="game-image-stack-line"
+                              *ngFor="let image of manImageStack; let i = index"
+                              [class.active]="i === pairModeCandidateImageIndex('man')"
+                              [class.is-loading]="i === pairModeCandidateImageIndex('man') && isPairModeCandidateImageLoading('man')"
+                              [class.is-revealing]="i === pairModeCandidateImageIndex('man') && isPairModeCandidateImageIndicatorRevealing('man')"
+                              (click)="selectPairModeCandidateImage('man', i)"
+                              aria-label="Select man profile image"
+                            ></button>
+                          </div>
+                          <img
+                            class="game-pair-mini-photo"
+                            [src]="manImage"
+                            alt=""
+                            aria-hidden="true"
+                            (load)="onPairModeCandidateImageReady(man, 'man', manImage)"
+                            (error)="onPairModeCandidateImageError(man, 'man', manImage)"
+                          />
+                          <span class="game-pair-mini-card-label">Man</span>
+                          <div class="game-card-image-overlay" *ngIf="gameCardOverlay(man, pairModeCandidateImageIndex('man')) as overlay">
+                            <p class="game-card-image-overlay-primary">{{ overlay.primary }}</p>
+                            <p class="game-card-image-overlay-secondary" *ngIf="overlay.secondary">{{ overlay.secondary }}</p>
+                          </div>
+                          <div class="game-image-hit-area" *ngIf="manImageStack.length > 1">
+                            <button
+                              type="button"
+                              class="game-image-hit-segment"
+                              *ngFor="let image of manImageStack; let i = index"
+                              (click)="selectPairModeCandidateImage('man', i)"
+                              aria-label="Select man profile image"
+                            ></button>
+                          </div>
                         </div>
-                      </div>
+                      </ng-container>
                     </ng-container>
                     <ng-template #pairModeManFallback>
                       <span class="game-pair-mini-card-label">Man</span>
@@ -154,18 +214,6 @@
             <p>Adjust age or profile traits in filter settings.</p>
           </div>
         </ng-template>
-        <div class="rating-stars" [class.is-blink]="isRatingBarBlinking" *ngIf="hasCandidatesForCurrentMode">
-          <button
-            type="button"
-            class="star-btn"
-            *ngFor="let score of ratingScale"
-            [class.filled]="score <= selectedRating"
-            (click)="setRating(score)"
-            aria-label="Rate {{ score }}"
-          >
-            ★
-          </button>
-        </div>
       </article>
 
       <ng-container *ngIf="!isPairMode">
@@ -191,6 +239,20 @@
           </div>
         </article>
       </ng-container>
+    </div>
+    <div class="game-rating-dock" *ngIf="hasCandidatesForCurrentMode">
+      <div class="rating-stars" [class.is-blink]="isRatingBarBlinking">
+        <button
+          type="button"
+          class="star-btn"
+          *ngFor="let score of ratingScale"
+          [class.filled]="score <= selectedRating"
+          (click)="setRating(score)"
+          aria-label="Rate {{ score }}"
+        >
+          ★
+        </button>
+      </div>
     </div>
   </section>
 </div>
