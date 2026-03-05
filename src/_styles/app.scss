@@ -7221,6 +7221,10 @@
   padding: 0.42rem;
 }
 
+.activities-rate-pair-inline-grid:not(.activities-rate-pair-fullscreen-grid) {
+  gap: clamp(0.08rem, 0.32vw, 0.16rem);
+}
+
 .activities-rate-pair-inline-card {
   position: relative;
   min-width: 0;
@@ -7633,8 +7637,16 @@
     min-height: 224px;
   }
 
+  .activities-rate-profile-card.activities-rate-profile-card-pair-inline {
+    min-height: 208px;
+  }
+
   .activities-rate-profile-stack {
     min-height: 224px;
+  }
+
+  .activities-rate-profile-stack.activities-rate-profile-stack-pair-inline {
+    min-height: 208px;
   }
 
   .activities-rate-profile-indicators {
@@ -7652,8 +7664,11 @@
   }
 
   .activities-rate-pair-inline-grid {
-    gap: 0.24rem;
     padding: 0.3rem;
+  }
+
+  .activities-rate-pair-inline-grid:not(.activities-rate-pair-fullscreen-grid) {
+    gap: 0.06rem;
   }
 
   .activities-rate-pair-inline-overlay {
@@ -7670,20 +7685,34 @@
   .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid {
     --activities-pair-gap: 0;
     --activities-pair-pad: 0.3rem;
-    width: 100%;
     display: flex;
     align-items: stretch;
     gap: 0;
     padding: var(--activities-pair-pad);
+    overflow: hidden;
+  }
+
+  .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid::after {
+    content: '';
+    position: absolute;
+    top: var(--activities-pair-pad);
+    bottom: var(--activities-pair-pad);
+    left: var(--activities-pair-split);
+    width: 1px;
+    transform: translateX(-0.5px);
+    background: rgba(34, 54, 84, 0.58);
+    pointer-events: none;
+    z-index: 22;
   }
 
   .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card {
     min-width: 0;
+    max-width: 100%;
   }
 
   .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card-woman {
     flex: 0 0 var(--activities-pair-split);
-    width: var(--activities-pair-split);
+    width: auto;
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
     border-right-width: 0;
@@ -7691,10 +7720,10 @@
 
   .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card-man {
     flex: 0 0 calc(100% - var(--activities-pair-split));
-    width: calc(100% - var(--activities-pair-split));
+    width: auto;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
-    border-left-width: 1px;
+    border-left-width: 0;
   }
 
   .activities-rates-fullscreen .activities-rate-profile-stack.activities-rate-profile-stack-pair-fullscreen {
@@ -7990,6 +8019,7 @@
   grid-template-rows: minmax(0, 1fr);
   gap: var(--activities-pair-gap);
   padding: var(--activities-pair-pad);
+  box-sizing: border-box;
 }
 
 .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card {
@@ -8024,6 +8054,51 @@
 .activities-rates-pair-fullscreen-resize-handle-grip {
   display: block;
   pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid {
+    --activities-pair-gap: 0 !important;
+    --activities-pair-pad: 0.3rem !important;
+    display: flex;
+    gap: 0 !important;
+    padding: var(--activities-pair-pad) !important;
+    overflow: hidden;
+  }
+
+  .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid::after {
+    content: '';
+    position: absolute;
+    top: var(--activities-pair-pad);
+    bottom: var(--activities-pair-pad);
+    left: var(--activities-pair-split);
+    width: 1px;
+    transform: translateX(-0.5px);
+    background: rgba(34, 54, 84, 0.58);
+    pointer-events: none;
+    z-index: 22;
+  }
+
+  .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card-woman {
+    flex: 0 0 var(--activities-pair-split);
+    width: auto;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right-width: 0;
+  }
+
+  .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card-man {
+    flex: 0 0 calc(100% - var(--activities-pair-split));
+    width: auto;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left-width: 0;
+  }
 }
 
 .activities-rates-fullscreen-card-active .activities-rate-profile-layer {

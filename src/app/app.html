@@ -1334,6 +1334,7 @@
                   <article
                     *ngIf="isRateStyleActivity(row)"
                     class="activities-rate-profile-card activities-row-item"
+                    [class.activities-rate-profile-card-pair-inline]="isPairRateRow(row)"
                     [class.is-rate-editor-selected]="isSelectedActivityRateRow(row)"
                     [class.activities-rate-row-no-snap]="groupIndex === groupedActivityRows.length - 1 && rowIndex === group.rows.length - 1"
                     [attr.data-activity-rate-row-id]="row.id"
