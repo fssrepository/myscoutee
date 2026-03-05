@@ -1473,7 +1473,10 @@
                       aria-label="Select profile image"
                     ></button>
                   </div>
-                  <span class="activities-rate-score-badge activities-rate-score-badge-floating is-active">
+                  <span
+                    class="activities-rate-score-badge activities-rate-score-badge-floating is-active"
+                    [class.is-blink]="isActivityRateBlinking(row)"
+                  >
                     <mat-icon>star</mat-icon>
                     <span>{{ activityRateBadgeLabel(row) }}</span>
                   </span>

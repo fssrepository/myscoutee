@@ -1096,6 +1096,7 @@ export class App {
   protected activitiesRatesFullscreenLeavingRow: ActivityListRow | null = null;
   private activitiesRatesFullscreenAdvanceTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly activitiesRatesFullscreenSlideMs = 420;
+  private activitiesRatesFullscreenAdvanceAfterBlinkTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly activityRateBlinkUntilByRowId: Record<string, number> = {};
   private readonly activityRateBlinkTimeoutByRowId: Record<string, ReturnType<typeof setTimeout> | null> = {};
   private readonly activityRateDraftById: Record<string, number> = {};
@@ -13892,12 +13893,12 @@ export class App {
     }
     this.triggerActivityRateBlink(row.id);
     if (this.isRatesFullscreenModeActive()) {
-      this.advanceActivitiesRatesFullscreenCard();
+      this.scheduleActivitiesRatesFullscreenAdvanceAfterBlink();
     }
   }
 
   private triggerActivityRateBlink(rowId: string): void {
-    const durationMs = 1400;
+    const durationMs = 520;
     const nextUntil = Date.now() + durationMs;
     this.activityRateBlinkUntilByRowId[rowId] = nextUntil;
     const existingTimer = this.activityRateBlinkTimeoutByRowId[rowId];
@@ -13914,6 +13915,15 @@ export class App {
       }
       delete this.activityRateBlinkTimeoutByRowId[rowId];
     }, durationMs + 32);
+  }
+
+  private scheduleActivitiesRatesFullscreenAdvanceAfterBlink(): void {
+    this.cancelActivitiesRatesFullscreenAdvanceAfterBlink();
+    const delayMs = 520;
+    this.activitiesRatesFullscreenAdvanceAfterBlinkTimer = setTimeout(() => {
+      this.activitiesRatesFullscreenAdvanceAfterBlinkTimer = null;
+      this.advanceActivitiesRatesFullscreenCard();
+    }, delayMs);
   }
 
   protected isActivityRateEditorOpen(): boolean {
@@ -14180,6 +14190,7 @@ export class App {
     this.finishActivitiesRatesFullscreenAdvance();
     this.activitiesRatesFullscreenCardIndex = 0;
     this.cancelActivitiesRatesFullscreenAdvance();
+    this.cancelActivitiesRatesFullscreenAdvanceAfterBlink();
     this.activityRateEditorClosing = false;
     this.selectedActivityRateId = null;
     this.lastActivityRateEditorLiftDelta = 0;
@@ -14190,6 +14201,13 @@ export class App {
     if (this.activitiesRatesFullscreenAdvanceTimer) {
       clearTimeout(this.activitiesRatesFullscreenAdvanceTimer);
       this.activitiesRatesFullscreenAdvanceTimer = null;
+    }
+  }
+
+  private cancelActivitiesRatesFullscreenAdvanceAfterBlink(): void {
+    if (this.activitiesRatesFullscreenAdvanceAfterBlinkTimer) {
+      clearTimeout(this.activitiesRatesFullscreenAdvanceAfterBlinkTimer);
+      this.activitiesRatesFullscreenAdvanceAfterBlinkTimer = null;
     }
   }
 

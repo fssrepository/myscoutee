@@ -7408,7 +7408,7 @@
 }
 
 .activities-rate-score-badge.is-blink:not(.is-disabled) {
-  animation: activities-rate-badge-blink 0.42s ease-in-out 3;
+  animation: activities-rate-badge-blink 0.42s ease-in-out 1;
 }
 
 .activities-rate-score-badge.is-disabled {
@@ -7505,7 +7505,7 @@
 }
 
 .activities-rate-editor-dock.is-blink {
-  animation: activities-rate-dock-blink 0.5s ease-in-out 2;
+  animation: activities-rate-dock-blink 0.5s ease-in-out 1;
 }
 
 @keyframes activities-rate-dock-in {

@@ -28,69 +28,105 @@
   </header>
 
   <section class="game-layout-single">
-    <article class="card-stack game-card-main">
-      <div class="card-content" *ngIf="activeCandidate as candidate; else noCandidateCard">
-        <h2>{{ candidate.name }}, {{ candidate.age }}</h2>
-        <p>{{ candidate.city }} · {{ localizedStatusText(candidate.statusText) }}</p>
-        <p>{{ candidate.headline }}</p>
-      </div>
-      <ng-template #noCandidateCard>
-        <div class="card-content card-content-empty">
-          <h2>No matching profiles</h2>
-          <p>Adjust age or profile traits in filter settings.</p>
-        </div>
-      </ng-template>
-      <div class="game-image-stack-indicators" *ngIf="candidateImageStack.length > 1">
-        <button
-          type="button"
-          class="game-image-stack-line"
-          *ngFor="let image of candidateImageStack; let i = index"
-          [class.active]="i === selectedCandidateImageIndex"
-          (click)="selectCandidateImage(i)"
-          aria-label="Select profile image"
-        ></button>
-      </div>
-      <div class="card-image-area">
-        <div
-          class="card-image-content"
-          [style.backgroundImage]="candidateImage ? 'url(' + candidateImage + ')' : 'none'"
-          [style.transform]="'translate(' + candidateImagePanX + 'px,' + candidateImagePanY + 'px) scale(' + candidateImageZoom + ')'"
-          [class.is-draggable]="candidateImageZoom > 1"
-          (wheel)="onCandidateImageWheel($event)"
-          (mousedown)="onCandidateImageMouseDown($event)"
-          (mousemove)="onCandidateImageMouseMove($event)"
-          (mouseup)="onCandidateImageMouseUp()"
-          (mouseleave)="onCandidateImageMouseUp()"
-          (touchstart)="onCandidateImageTouchStart($event)"
-          (touchmove)="onCandidateImageTouchMove($event)"
-          (touchend)="onCandidateImageTouchEnd()"
-          (touchcancel)="onCandidateImageTouchEnd()"
-        >
-          <div class="game-image-hit-area" *ngIf="candidateImageStack.length > 1">
+    <div class="game-card-deck">
+      <article class="card-stack game-card-main game-card-main-active">
+        <ng-container *ngIf="activeCandidate as candidate; else noCandidateCard">
+          <div class="game-image-stack-indicators" *ngIf="candidateImageStack.length > 1">
             <button
               type="button"
-              class="game-image-hit-segment"
+              class="game-image-stack-line"
               *ngFor="let image of candidateImageStack; let i = index"
+              [class.active]="i === selectedCandidateImageIndex"
+              [class.is-loading]="i === selectedCandidateImageIndex && isCandidateImageLoading"
+              [class.is-revealing]="i === selectedCandidateImageIndex && isCandidateImageIndicatorRevealing"
               (click)="selectCandidateImage(i)"
               aria-label="Select profile image"
             ></button>
           </div>
-          <span class="card-image-placeholder" *ngIf="!candidateImage">{{ hasFilteredCandidates ? candidateInitials : '∅' }}</span>
+          <div class="card-image-area">
+            <img
+              class="game-image-load-probe"
+              *ngIf="candidateImage as currentImage"
+              [src]="currentImage"
+              alt=""
+              aria-hidden="true"
+              (load)="onCandidateImageAssetReady(currentImage)"
+              (error)="onCandidateImageAssetReady(currentImage)"
+            />
+            <div
+              class="card-image-content"
+              [style.backgroundImage]="candidateImage ? 'url(' + candidateImage + ')' : 'none'"
+              [style.transform]="'translate(' + candidateImagePanX + 'px,' + candidateImagePanY + 'px) scale(' + candidateImageZoom + ')'"
+              [class.is-draggable]="candidateImageZoom > 1"
+              (wheel)="onCandidateImageWheel($event)"
+              (mousedown)="onCandidateImageMouseDown($event)"
+              (mousemove)="onCandidateImageMouseMove($event)"
+              (mouseup)="onCandidateImageMouseUp()"
+              (mouseleave)="onCandidateImageMouseUp()"
+              (touchstart)="onCandidateImageTouchStart($event)"
+              (touchmove)="onCandidateImageTouchMove($event)"
+              (touchend)="onCandidateImageTouchEnd()"
+              (touchcancel)="onCandidateImageTouchEnd()"
+            >
+              <div class="game-card-image-overlay" *ngIf="gameCardOverlay(candidate, selectedCandidateImageIndex) as overlay">
+                <p class="game-card-image-overlay-primary">{{ overlay.primary }}</p>
+                <p class="game-card-image-overlay-secondary" *ngIf="overlay.secondary">{{ overlay.secondary }}</p>
+              </div>
+              <div class="game-image-hit-area" *ngIf="candidateImageStack.length > 1">
+                <button
+                  type="button"
+                  class="game-image-hit-segment"
+                  *ngFor="let image of candidateImageStack; let i = index"
+                  (click)="selectCandidateImage(i)"
+                  aria-label="Select profile image"
+                ></button>
+              </div>
+              <span class="card-image-placeholder" *ngIf="!candidateImage">{{ hasFilteredCandidates ? candidateInitials : '∅' }}</span>
+            </div>
+          </div>
+        </ng-container>
+        <ng-template #noCandidateCard>
+          <div class="card-content card-content-empty">
+            <h2>No matching profiles</h2>
+            <p>Adjust age or profile traits in filter settings.</p>
+          </div>
+        </ng-template>
+        <div class="rating-stars" [class.is-blink]="isRatingBarBlinking" *ngIf="activeCandidate">
+          <button
+            type="button"
+            class="star-btn"
+            *ngFor="let score of ratingScale"
+            [class.filled]="score <= selectedRating"
+            (click)="setRating(score)"
+            aria-label="Rate {{ score }}"
+          >
+            ★
+          </button>
         </div>
-      </div>
-      <div class="rating-stars" *ngIf="activeCandidate">
-        <button
-          type="button"
-          class="star-btn"
-          *ngFor="let score of ratingScale"
-          [class.filled]="score <= selectedRating"
-          (click)="setRating(score)"
-          aria-label="Rate {{ score }}"
-        >
-          ★
-        </button>
-      </div>
-    </article>
+      </article>
+
+      <article class="card-stack game-card-main game-card-main-leaving" *ngIf="leavingGameCard as leaving" aria-hidden="true">
+        <div class="game-image-stack-indicators" *ngIf="leaving.imageCount > 1">
+          <span
+            class="game-image-stack-line"
+            *ngFor="let marker of gameCardIndicatorIndexes(leaving.imageCount); let i = index"
+            [class.active]="i === leaving.imageIndex"
+          ></span>
+        </div>
+        <div class="card-image-area">
+          <div class="card-image-content" [style.backgroundImage]="leaving.imageUrl ? 'url(' + leaving.imageUrl + ')' : 'none'">
+            <div class="game-card-image-overlay" *ngIf="gameCardOverlay(leaving.candidate, leaving.imageIndex) as overlay">
+              <p class="game-card-image-overlay-primary">{{ overlay.primary }}</p>
+              <p class="game-card-image-overlay-secondary" *ngIf="overlay.secondary">{{ overlay.secondary }}</p>
+            </div>
+            <span class="card-image-placeholder" *ngIf="!leaving.imageUrl">{{ leaving.initials }}</span>
+          </div>
+        </div>
+        <div class="rating-stars rating-stars-static">
+          <span class="star-btn" *ngFor="let score of ratingScale" [class.filled]="score <= leaving.rating">★</span>
+        </div>
+      </article>
+    </div>
   </section>
 </div>
 
@@ -99,7 +135,7 @@
   <div class="game-popup-panel game-filter-popup-panel" (click)="$event.stopPropagation()">
     <header class="game-filter-popup-header">
       <h2>Game Filters</h2>
-      <div class="game-filter-popup-header-actions">
+      <div class="game-filter-popup-header-actions" [class.is-hidden]="hasOpenFilterSelector">
         <span class="popup-filter-meta" [class.active]="isFilterActive">
           {{ filterDraftMatchCount }} match{{ filterDraftMatchCount === 1 ? '' : 'es' }}
         </span>
@@ -461,7 +497,11 @@
           </div>
         </div>
 
-      <section class="game-filter-group game-filter-group-selector" *ngIf="filterSelector as selector" [ngClass]="filterSelectorToneClass(selector)">
+      <div class="game-filter-selector-overlay" *ngIf="filterSelector as selector">
+      <section
+        class="game-filter-selector-panel"
+        [ngClass]="filterSelectorToneClass(selector)"
+      >
           <div class="game-filter-selector-head">
             <button type="button" class="game-filter-selector-back" (click)="closeFilterSelector()">
               <mat-icon>arrow_back</mat-icon>
@@ -563,6 +603,7 @@
           </ng-template>
           </ng-template>
       </section>
+      </div>
     </div>
   </div>
 </section>

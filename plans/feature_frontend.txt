@@ -1,6 +1,3 @@
-when you rate a user make blink effect on star badge and star popup bar - 
-game / activities rating (non-full/full screen mode) (to show it's rated)
-
 Game - Default page
 -------------------
 history, type - (fab button - egyeni, parok - rotate screen status message))

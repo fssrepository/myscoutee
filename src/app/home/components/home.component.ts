@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, HostListener } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
@@ -71,6 +71,15 @@ interface GameFilterOptionGroup {
   options: string[];
 }
 
+interface LeavingGameCardState {
+  candidate: DemoUser;
+  imageUrl: string | null;
+  imageCount: number;
+  imageIndex: number;
+  initials: string;
+  rating: number;
+}
+
 @Component({
   selector: 'app-home',
   standalone: true,
@@ -79,7 +88,7 @@ interface GameFilterOptionGroup {
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss']
 })
-export class HomeComponent {
+export class HomeComponent implements OnDestroy {
   private static readonly AGE_MIN = 18;
   private static readonly AGE_MAX = 120;
   private static readonly HEIGHT_MIN_CM = 40;
@@ -298,6 +307,10 @@ export class HomeComponent {
   protected selectedRating = 7;
   protected isPairMode = false;
   protected cardIndex = 0;
+  protected isRatingBarBlinking = false;
+  protected isCandidateImageLoading = false;
+  protected isCandidateImageIndicatorRevealing = false;
+  protected leavingGameCard: LeavingGameCardState | null = null;
   protected selectedCandidateImageIndex = 0;
   protected candidateImageZoom = 1;
   protected candidateImagePanX = 0;
@@ -309,15 +322,34 @@ export class HomeComponent {
   protected filterSelector: FilterSelectorKind | null = null;
   protected filterLanguageInput = '';
   private filterLanguageSuggestionPool: string[] = [];
+  private ratingBarBlinkTimeout: ReturnType<typeof setTimeout> | null = null;
+  private candidateImageIndicatorRevealTimer: ReturnType<typeof setTimeout> | null = null;
+  private gameCardLeaveTimer: ReturnType<typeof setTimeout> | null = null;
   private isCandidateImageDragging = false;
   private candidateDragOffsetX = 0;
   private candidateDragOffsetY = 0;
   private activeTouchId: number | null = null;
-  constructor() {
+  constructor(private readonly cdr: ChangeDetectorRef) {
     const initialFilter = this.createInitialFilter();
     this.gameFilter = this.cloneFilter(initialFilter);
     this.filterDraft = this.cloneFilter(initialFilter);
     this.refreshFilterLanguageSuggestionPool();
+    this.beginCandidateImageLoadingForCurrentSelection();
+  }
+
+  ngOnDestroy(): void {
+    if (this.ratingBarBlinkTimeout) {
+      clearTimeout(this.ratingBarBlinkTimeout);
+      this.ratingBarBlinkTimeout = null;
+    }
+    if (this.candidateImageIndicatorRevealTimer) {
+      clearTimeout(this.candidateImageIndicatorRevealTimer);
+      this.candidateImageIndicatorRevealTimer = null;
+    }
+    if (this.gameCardLeaveTimer) {
+      clearTimeout(this.gameCardLeaveTimer);
+      this.gameCardLeaveTimer = null;
+    }
   }
 
   protected get activeUser(): DemoUser {
@@ -548,13 +580,20 @@ export class HomeComponent {
   }
 
   protected setRating(value: number): void {
-    if (!this.activeCandidate) {
+    const currentCandidate = this.activeCandidate;
+    if (!currentCandidate) {
       return;
+    }
+    this.triggerRatingBarBlink();
+    const candidatePool = this.candidatePool;
+    if (candidatePool.length > 1) {
+      this.startGameCardLeaveAnimation(currentCandidate, value);
     }
     this.selectedRating = value;
     const nextIndex = this.cardIndex + 1;
-    this.cardIndex = nextIndex % this.candidatePool.length;
+    this.cardIndex = nextIndex % candidatePool.length;
     this.resetCandidateImageState();
+    this.beginCandidateImageLoadingForCurrentSelection();
   }
 
   protected togglePairMode(): void {
@@ -584,6 +623,7 @@ export class HomeComponent {
     this.gameFilter = this.normalizeFilter(this.filterDraft);
     this.cardIndex = 0;
     this.resetCandidateImageState();
+    this.beginCandidateImageLoadingForCurrentSelection();
     this.filterSelector = null;
     this.localPopup = null;
   }
@@ -1205,16 +1245,44 @@ export class HomeComponent {
     return value;
   }
 
+  protected gameCardOverlay(candidate: DemoUser, imageIndex: number): { primary: string; secondary: string } {
+    const statusLabel = this.localizedStatusText(candidate.statusText);
+    const safeImageIndex = Math.max(0, imageIndex);
+    if (candidate.profileStatus !== 'public') {
+      return {
+        primary: `${candidate.name}, ${candidate.age}`,
+        secondary: safeImageIndex > 0 ? 'Public preview only' : `${candidate.city} · Public preview only`
+      };
+    }
+
+    const cards = [
+      {
+        primary: `${candidate.name}, ${candidate.age}`,
+        secondary: `${candidate.city} · ${statusLabel}`
+      },
+      {
+        primary: candidate.headline,
+        secondary: candidate.hostTier
+      },
+      {
+        primary: candidate.about,
+        secondary: `Languages · ${candidate.languages.join(', ')}`
+      },
+      {
+        primary: `${candidate.physique} · ${candidate.height}`,
+        secondary: `${candidate.horoscope} · ${candidate.traitLabel}`
+      }
+    ];
+
+    const selectedCard = cards[Math.min(safeImageIndex, cards.length - 1)] ?? cards[0];
+    return {
+      primary: selectedCard.primary ?? '',
+      secondary: selectedCard.secondary ?? ''
+    };
+  }
+
   protected get candidateImageStack(): string[] {
-    if (!this.activeCandidate) {
-      return [];
-    }
-    const explicitImages = (this.activeCandidate.images ?? []).filter(Boolean);
-    if (explicitImages.length > 0) {
-      return explicitImages;
-    }
-    const base = `assets/profile/${this.activeCandidate.id}`;
-    return ['a', 'b', 'c'].map(suffix => `${base}-${suffix}.svg`);
+    return this.activeCandidate ? this.imageStackForCandidate(this.activeCandidate) : [];
   }
 
   protected get candidateImage(): string | null {
@@ -1225,8 +1293,26 @@ export class HomeComponent {
     return this.candidateImageStack[safeIndex] ?? null;
   }
 
+  protected gameCardIndicatorIndexes(count: number): number[] {
+    return Array.from({ length: count }, (_, index) => index);
+  }
+
+  protected onCandidateImageAssetReady(imageUrl: string): void {
+    if (!imageUrl || imageUrl !== this.candidateImage) {
+      return;
+    }
+    const hadPendingLoad = this.isCandidateImageLoading;
+    this.isCandidateImageLoading = false;
+    if (hadPendingLoad) {
+      this.triggerCandidateImageIndicatorReveal();
+    }
+  }
+
   protected selectCandidateImage(index: number): void {
     if (index < 0 || index >= this.candidateImageStack.length) {
+      return;
+    }
+    if (index === this.selectedCandidateImageIndex) {
       return;
     }
     this.selectedCandidateImageIndex = index;
@@ -1234,6 +1320,7 @@ export class HomeComponent {
     this.candidateImagePanX = 0;
     this.candidateImagePanY = 0;
     this.isCandidateImageDragging = false;
+    this.beginCandidateImageLoadingForCurrentSelection();
   }
 
   protected onCandidateImageWheel(event: WheelEvent): void {
@@ -1299,17 +1386,7 @@ export class HomeComponent {
   }
 
   protected get candidateInitials(): string {
-    if (!this.activeCandidate) {
-      return 'NO';
-    }
-    const parts = this.activeCandidate.name.split(' ').filter(Boolean);
-    if (parts.length === 0) {
-      return 'U';
-    }
-    if (parts.length === 1) {
-      return parts[0].slice(0, 2).toUpperCase();
-    }
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return this.activeCandidate ? this.initialsForCandidate(this.activeCandidate) : 'NO';
   }
 
   @HostListener('window:active-user-changed')
@@ -1322,6 +1399,7 @@ export class HomeComponent {
     this.refreshFilterLanguageSuggestionPool();
     this.cardIndex = 0;
     this.resetCandidateImageState();
+    this.beginCandidateImageLoadingForCurrentSelection();
   }
 
   private getActiveUserId(): string {
@@ -1669,6 +1747,111 @@ export class HomeComponent {
         religion: 'not religious'
       }
     );
+  }
+
+  private imageStackForCandidate(candidate: DemoUser): string[] {
+    const explicitImages = (candidate.images ?? []).filter(Boolean);
+    if (explicitImages.length > 0) {
+      return explicitImages;
+    }
+    const base = `assets/profile/${candidate.id}`;
+    return ['a', 'b', 'c'].map(suffix => `${base}-${suffix}.svg`);
+  }
+
+  private initialsForCandidate(candidate: DemoUser): string {
+    const parts = candidate.name.split(' ').filter(Boolean);
+    if (parts.length === 0) {
+      return 'U';
+    }
+    if (parts.length === 1) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  }
+
+  private beginCandidateImageLoadingForCurrentSelection(): void {
+    if (!this.candidateImage) {
+      this.isCandidateImageLoading = false;
+      this.isCandidateImageIndicatorRevealing = false;
+      this.clearCandidateImageIndicatorRevealTimer();
+      this.cdr.markForCheck();
+      return;
+    }
+    this.isCandidateImageLoading = true;
+    this.isCandidateImageIndicatorRevealing = false;
+    this.clearCandidateImageIndicatorRevealTimer();
+  }
+
+  private triggerCandidateImageIndicatorReveal(): void {
+    this.clearCandidateImageIndicatorRevealTimer();
+    this.isCandidateImageIndicatorRevealing = false;
+    this.cdr.markForCheck();
+    const startReveal = () => {
+      this.isCandidateImageIndicatorRevealing = true;
+      this.cdr.markForCheck();
+      this.candidateImageIndicatorRevealTimer = setTimeout(() => {
+        this.isCandidateImageIndicatorRevealing = false;
+        this.candidateImageIndicatorRevealTimer = null;
+        this.cdr.markForCheck();
+      }, 320);
+    };
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => startReveal());
+      return;
+    }
+    setTimeout(() => startReveal(), 0);
+  }
+
+  private clearCandidateImageIndicatorRevealTimer(): void {
+    if (this.candidateImageIndicatorRevealTimer) {
+      clearTimeout(this.candidateImageIndicatorRevealTimer);
+      this.candidateImageIndicatorRevealTimer = null;
+    }
+  }
+
+  private startGameCardLeaveAnimation(candidate: DemoUser, rating: number): void {
+    const stack = this.imageStackForCandidate(candidate);
+    const safeImageIndex = stack.length === 0 ? 0 : Math.min(this.selectedCandidateImageIndex, stack.length - 1);
+    this.leavingGameCard = {
+      candidate,
+      imageUrl: stack[safeImageIndex] ?? null,
+      imageCount: stack.length,
+      imageIndex: safeImageIndex,
+      initials: this.initialsForCandidate(candidate),
+      rating
+    };
+    if (this.gameCardLeaveTimer) {
+      clearTimeout(this.gameCardLeaveTimer);
+      this.gameCardLeaveTimer = null;
+    }
+    this.gameCardLeaveTimer = setTimeout(() => {
+      this.leavingGameCard = null;
+      this.gameCardLeaveTimer = null;
+      this.cdr.markForCheck();
+    }, 440);
+  }
+
+  private triggerRatingBarBlink(): void {
+    if (this.ratingBarBlinkTimeout) {
+      clearTimeout(this.ratingBarBlinkTimeout);
+      this.ratingBarBlinkTimeout = null;
+    }
+    this.isRatingBarBlinking = false;
+    this.cdr.markForCheck();
+    const startBlink = () => {
+      this.isRatingBarBlinking = true;
+      this.cdr.markForCheck();
+      this.ratingBarBlinkTimeout = setTimeout(() => {
+        this.isRatingBarBlinking = false;
+        this.ratingBarBlinkTimeout = null;
+        this.cdr.markForCheck();
+      }, 420);
+    };
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => startBlink());
+      return;
+    }
+    setTimeout(() => startBlink(), 0);
   }
 
   private parseHeightCm(height: string): number | null {
