@@ -5,6 +5,7 @@ must
 
 optional
 ---------------------
+switch button on avatar menu (simple / middle / advanced)
 1) optional sub event can take place in the same time, does not need to be cut by another optional sub event
 2) Friends in common filter for game screen
 3) split the big module to smaller 2-3 static modules (chunks) to speed up the build
