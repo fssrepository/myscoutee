@@ -12,13 +12,13 @@
       <button
         type="button"
         class="game-action-filter has-badge"
-        [class.game-action-filter-has-matches]="hasFilteredCandidates"
-        [class.game-action-filter-no-matches]="!hasFilteredCandidates"
+        [class.game-action-filter-has-matches]="hasRemainingCandidatesForCurrentMode"
+        [class.game-action-filter-no-matches]="!hasRemainingCandidatesForCurrentMode"
         (click)="openFilter()"
         aria-label="Open profile filters"
       >
         <mat-icon>filter_alt</mat-icon>
-        <span class="filter-state-badge" [class.active]="isFilterActive">{{ candidatePool.length }}</span>
+        <span class="filter-state-badge" [class.active]="isFilterActive">{{ filterBadgeCount }}</span>
       </button>
       <button type="button" class="game-action-filter game-action-history has-badge" (click)="openHistory()" aria-label="Open game history">
         <mat-icon>history</mat-icon>
@@ -28,17 +28,18 @@
   </header>
 
   <section class="game-layout-single">
+    <div class="game-stack-progress-row" *ngIf="showGameStackHeaderProgress">
+      <div
+        class="activities-header-progress game-stack-header-progress"
+        [class.is-loading]="gameStackHeaderProgressLoading"
+        [class.is-loading-overdue]="gameStackHeaderLoadingOverdue"
+      >
+        <span class="activities-header-progress-fill" [style.transform]="'scaleX(' + gameStackHeaderProgress + ')'"></span>
+        <span class="activities-header-progress-loading" [style.transform]="'scaleX(' + gameStackHeaderLoadingProgress + ')'"></span>
+      </div>
+    </div>
     <div class="game-card-deck">
       <article class="card-stack game-card-main game-card-main-active">
-        <div
-          class="activities-header-progress game-stack-header-progress"
-          *ngIf="showGameStackHeaderProgress"
-          [class.is-loading]="gameStackHeaderProgressLoading"
-          [class.is-loading-overdue]="gameStackHeaderLoadingOverdue"
-        >
-          <span class="activities-header-progress-fill" [style.transform]="'scaleX(' + gameStackHeaderProgress + ')'"></span>
-          <span class="activities-header-progress-loading" [style.transform]="'scaleX(' + gameStackHeaderLoadingProgress + ')'"></span>
-        </div>
         <ng-container *ngIf="!isPairMode; else pairModeLayout">
           <ng-container *ngIf="activeCandidate as candidate; else noCandidateCard">
             <div class="card-image-area">
