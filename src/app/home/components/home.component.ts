@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
 import { MatSliderModule } from '@angular/material/slider';
-import { DEMO_USERS, DemoUser } from '../../shared/demo-data';
+import { DEMO_USERS, DemoUser, PROFILE_DETAILS } from '../../shared/demo-data';
 
 type LocalPopup = 'history' | 'filter' | null;
 type FilterSelectorKind =
@@ -79,6 +79,14 @@ interface LeavingGameCardState {
   initials: string;
   rating: number;
 }
+
+const PUBLIC_PROFILE_DETAIL_LABELS = new Set(
+  PROFILE_DETAILS.flatMap(group =>
+    group.rows
+      .filter(row => row.privacy === 'Public')
+      .map(row => row.label.trim().toLowerCase())
+  )
+);
 
 @Component({
   selector: 'app-home',
@@ -1262,48 +1270,120 @@ export class HomeComponent implements OnDestroy {
     }
   }
 
-  protected localizedStatusText(value: string): string {
-    const normalized = value.trim().toLowerCase();
-    if (normalized === 'aktív felhasználó') {
-      return 'Active user';
+  protected gameCardOverlay(candidate: DemoUser, imageIndex: number): { primary: string; secondary: string } | null {
+    const safeImageIndex = Math.max(0, imageIndex);
+    const cards = this.gameCardOverlayCards(candidate);
+    if (safeImageIndex >= cards.length) {
+      return null;
     }
-    return value;
+    return cards[safeImageIndex] ?? null;
   }
 
-  protected gameCardOverlay(candidate: DemoUser, imageIndex: number): { primary: string; secondary: string } {
-    const statusLabel = this.localizedStatusText(candidate.statusText);
-    const safeImageIndex = Math.max(0, imageIndex);
-    if (candidate.profileStatus !== 'public') {
-      return {
-        primary: `${candidate.name}, ${candidate.age}`,
-        secondary: safeImageIndex > 0 ? 'Public preview only' : `${candidate.city} · Public preview only`
-      };
-    }
-
-    const cards = [
-      {
-        primary: `${candidate.name}, ${candidate.age}`,
-        secondary: `${candidate.city} · ${statusLabel}`
-      },
-      {
-        primary: candidate.headline,
-        secondary: candidate.hostTier
-      },
-      {
-        primary: candidate.about,
-        secondary: `Languages · ${candidate.languages.join(', ')}`
-      },
-      {
-        primary: `${candidate.physique} · ${candidate.height}`,
-        secondary: `${candidate.horoscope} · ${candidate.traitLabel}`
+  private gameCardOverlayCards(candidate: DemoUser): Array<{ primary: string; secondary: string }> {
+    const cards: Array<{ primary: string; secondary: string }> = [];
+    const seen = new Set<string>();
+    const usedLabels = new Set<string>();
+    const pushPair = (primaryLabel: string, secondaryLabel: string): void => {
+      const normalizedPrimaryLabel = this.normalizeOverlayLabel(primaryLabel);
+      const normalizedSecondaryLabel = this.normalizeOverlayLabel(secondaryLabel);
+      if (usedLabels.has(normalizedPrimaryLabel) || usedLabels.has(normalizedSecondaryLabel)) {
+        return;
       }
-    ];
-
-    const selectedCard = cards[Math.min(safeImageIndex, cards.length - 1)] ?? cards[0];
-    return {
-      primary: selectedCard.primary ?? '',
-      secondary: selectedCard.secondary ?? ''
+      const primaryValue = this.publicOverlayDetailValue(candidate, primaryLabel);
+      const secondaryValue = this.publicOverlayDetailValue(candidate, secondaryLabel);
+      if (!primaryValue || !secondaryValue) {
+        return;
+      }
+      const primary = `${primaryLabel} · ${primaryValue}`;
+      const secondary = `${secondaryLabel} · ${secondaryValue}`;
+      const key = `${primary}::${secondary}`;
+      if (seen.has(key)) {
+        return;
+      }
+      seen.add(key);
+      usedLabels.add(normalizedPrimaryLabel);
+      usedLabels.add(normalizedSecondaryLabel);
+      cards.push({ primary, secondary });
     };
+
+    // Match the Activities rate-card pattern: fixed first pair, then prioritized detail pairs.
+    pushPair('Name', 'City');
+    pushPair('Languages', 'Horoscope');
+    pushPair('Workout', 'Pets');
+    pushPair('Gender', 'City');
+    pushPair('Height', 'Physique');
+    pushPair('Drinking', 'Smoking');
+    pushPair('Interest', 'Values');
+    pushPair('Communication style', 'Love style');
+    pushPair('Family plans', 'Children');
+    pushPair('Religion', 'Sexual orientation');
+
+    return cards;
+  }
+
+  private publicOverlayDetailValue(candidate: DemoUser, label: string): string {
+    const normalizedLabel = this.normalizeOverlayLabel(label);
+    if (!PUBLIC_PROFILE_DETAIL_LABELS.has(normalizedLabel)) {
+      return '';
+    }
+    const facet = this.userFacet(candidate);
+    switch (normalizedLabel) {
+      case 'name':
+        return candidate.name;
+      case 'city':
+        return candidate.city;
+      case 'languages':
+        return this.compactList(candidate.languages, 2);
+      case 'horoscope':
+        return candidate.horoscope;
+      case 'gender':
+        return candidate.gender === 'woman' ? 'Woman' : 'Man';
+      case 'workout':
+        return facet.workout;
+      case 'pets':
+        return facet.pets;
+      case 'height':
+        return candidate.height;
+      case 'physique':
+        return candidate.physique;
+      case 'drinking':
+        return facet.drinking;
+      case 'smoking':
+        return facet.smoking;
+      case 'interest':
+        return this.compactList(this.userInterests(candidate), 2);
+      case 'values':
+        return this.compactList(this.userValues(candidate), 2);
+      case 'communication style':
+        return facet.communicationStyle;
+      case 'love style':
+        return facet.loveStyle;
+      case 'family plans':
+        return facet.familyPlans;
+      case 'children':
+        return facet.children;
+      case 'religion':
+        return facet.religion;
+      case 'sexual orientation':
+        return facet.sexualOrientation;
+      default:
+        return '';
+    }
+  }
+
+  private normalizeOverlayLabel(value: string): string {
+    return value.trim().toLowerCase();
+  }
+
+  private compactList(values: string[], maxItems: number): string {
+    if (values.length === 0) {
+      return '';
+    }
+    const selected = values.slice(0, Math.max(1, maxItems));
+    if (values.length <= selected.length) {
+      return selected.join(', ');
+    }
+    return `${selected.join(', ')} +${values.length - selected.length}`;
   }
 
   protected get candidateImageStack(): string[] {
