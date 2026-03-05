@@ -66,6 +66,7 @@ interface GameUserFacet {
 
 interface GameFilterOptionGroup {
   title: string;
+  icon: string;
   toneClass: string;
   options: string[];
 }
@@ -86,16 +87,19 @@ export class HomeComponent {
   private readonly gameFilterInterestGroups: GameFilterOptionGroup[] = [
     {
       title: 'Social',
+      icon: 'celebration',
       toneClass: 'game-filter-group-tone-social',
       options: ['Social events', 'Coffee', 'Going out', 'Nightlife', 'Road trips', 'Travel']
     },
     {
       title: 'Arts',
+      icon: 'palette',
       toneClass: 'game-filter-group-tone-arts',
       options: ['Arts', 'Culture', 'Films', 'Books', 'Gaming', 'Tech']
     },
     {
       title: 'Active',
+      icon: 'hiking',
       toneClass: 'game-filter-group-tone-active',
       options: ['Sports', 'Outdoors', 'Wellness', 'Nature']
     }
@@ -103,16 +107,19 @@ export class HomeComponent {
   private readonly gameFilterValuesGroups: GameFilterOptionGroup[] = [
     {
       title: 'Family',
+      icon: 'family_restroom',
       toneClass: 'game-filter-group-tone-family',
       options: ['Family-first', 'Long-term focus', 'Stable home']
     },
     {
       title: 'Lifestyle',
+      icon: 'eco',
       toneClass: 'game-filter-group-tone-lifestyle',
       options: ['Balanced lifestyle', 'Calm lifestyle', 'Social energy', 'Health focus']
     },
     {
       title: 'Identity',
+      icon: 'public',
       toneClass: 'game-filter-group-tone-identity',
       options: ['Growth mindset', 'Community', 'Respect', 'Curiosity', 'Accountability']
     }
@@ -300,6 +307,8 @@ export class HomeComponent {
   protected filterDraft: GameFilterForm;
   protected gameFilter: GameFilterForm;
   protected filterSelector: FilterSelectorKind | null = null;
+  protected filterLanguageInput = '';
+  private filterLanguageSuggestionPool: string[] = [];
   private isCandidateImageDragging = false;
   private candidateDragOffsetX = 0;
   private candidateDragOffsetY = 0;
@@ -308,6 +317,7 @@ export class HomeComponent {
     const initialFilter = this.createInitialFilter();
     this.gameFilter = this.cloneFilter(initialFilter);
     this.filterDraft = this.cloneFilter(initialFilter);
+    this.refreshFilterLanguageSuggestionPool();
   }
 
   protected get activeUser(): DemoUser {
@@ -564,6 +574,8 @@ export class HomeComponent {
 
   protected openFilter(): void {
     this.filterDraft = this.cloneFilter(this.gameFilter);
+    this.filterLanguageInput = '';
+    this.refreshFilterLanguageSuggestionPool();
     this.filterSelector = null;
     this.localPopup = 'filter';
   }
@@ -578,11 +590,17 @@ export class HomeComponent {
 
   protected resetFilterDraft(): void {
     this.filterDraft = this.createInitialFilter();
+    this.filterLanguageInput = '';
+    this.refreshFilterLanguageSuggestionPool();
     this.filterSelector = null;
   }
 
   protected openFilterSelector(kind: FilterSelectorKind): void {
     this.filterSelector = kind;
+    if (kind === 'languages') {
+      this.filterLanguageInput = '';
+      this.refreshFilterLanguageSuggestionPool();
+    }
   }
 
   protected closeFilterSelector(): void {
@@ -602,6 +620,7 @@ export class HomeComponent {
         return;
       case 'languages':
         this.filterDraft.languages = [];
+        this.refreshFilterLanguageSuggestionPool();
         return;
       case 'genders':
         this.filterDraft.genders = [];
@@ -720,7 +739,62 @@ export class HomeComponent {
   }
 
   protected toggleFilterLanguage(language: string): void {
-    this.filterDraft.languages = this.toggleArraySelection(this.filterDraft.languages, language);
+    const normalized = language.trim();
+    if (!normalized) {
+      return;
+    }
+    const exists = this.filterDraft.languages.some(item => item.toLowerCase() === normalized.toLowerCase());
+    this.filterDraft.languages = exists
+      ? this.filterDraft.languages.filter(item => item.toLowerCase() !== normalized.toLowerCase())
+      : [...this.filterDraft.languages, normalized];
+    this.refreshFilterLanguageSuggestionPool();
+  }
+
+  protected submitFilterLanguageInput(event?: Event): void {
+    event?.stopPropagation();
+    const normalized = this.filterLanguageInput.trim();
+    if (!normalized) {
+      return;
+    }
+    const exists = this.filterDraft.languages.some(item => item.toLowerCase() === normalized.toLowerCase());
+    if (!exists) {
+      this.filterDraft.languages = [...this.filterDraft.languages, normalized];
+    }
+    this.filterLanguageInput = '';
+    this.refreshFilterLanguageSuggestionPool();
+  }
+
+  protected onFilterLanguageInputKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Enter' && event.key !== ',') {
+      return;
+    }
+    event.preventDefault();
+    this.submitFilterLanguageInput();
+  }
+
+  protected onFilterLanguageInputBlur(): void {
+    this.submitFilterLanguageInput();
+  }
+
+  protected selectFilterLanguage(value: string): void {
+    this.toggleFilterLanguage(value);
+    this.filterLanguageInput = '';
+  }
+
+  protected filterLanguageToneClass(value: string): string {
+    return `game-filter-language-tone-${this.filterLanguageToneIndex(value)}`;
+  }
+
+  protected get availableFilterLanguageSuggestions(): string[] {
+    const selected = new Set(this.filterDraft.languages.map(item => item.trim().toLowerCase()));
+    const query = this.filterLanguageInput.trim().toLowerCase();
+    return this.filterLanguageSuggestionPool
+      .filter(item => !selected.has(item.toLowerCase()))
+      .filter(item => query.length === 0 || item.toLowerCase().includes(query));
+  }
+
+  protected get availableFilterLanguageDisplaySuggestions(): string[] {
+    return this.availableFilterLanguageSuggestions.slice(0, 24);
   }
 
   protected toggleFilterGender(gender: DemoUser['gender']): void {
@@ -1076,7 +1150,8 @@ export class HomeComponent {
         this.filterDraft.physiques = this.filterDraft.physiques.filter(item => item !== value);
         return;
       case 'languages':
-        this.filterDraft.languages = this.filterDraft.languages.filter(item => item !== value);
+        this.filterDraft.languages = this.filterDraft.languages.filter(item => item.toLowerCase() !== value.toLowerCase());
+        this.refreshFilterLanguageSuggestionPool();
         return;
       case 'genders':
         if (value === 'woman' || value === 'man') {
@@ -1243,6 +1318,8 @@ export class HomeComponent {
     const initialFilter = this.createInitialFilter();
     this.gameFilter = this.cloneFilter(initialFilter);
     this.filterDraft = this.cloneFilter(initialFilter);
+    this.filterLanguageInput = '';
+    this.refreshFilterLanguageSuggestionPool();
     this.cardIndex = 0;
     this.resetCandidateImageState();
   }
@@ -1366,6 +1443,48 @@ export class HomeComponent {
   private toggleArraySelection<T extends string>(values: T[], target: T): T[] {
     const hasTarget = values.includes(target);
     return hasTarget ? values.filter(item => item !== target) : [...values, target];
+  }
+
+  private filterLanguageToneIndex(value: string): number {
+    const normalized = this.normalizeLanguageText(value);
+    if (!normalized) {
+      return 1;
+    }
+    let hash = 0;
+    for (const char of normalized) {
+      hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+    }
+    return (hash % 8) + 1;
+  }
+
+  private normalizeLanguageText(value: string): string {
+    return value.trim().toLowerCase();
+  }
+
+  private refreshFilterLanguageSuggestionPool(): void {
+    const pool = new Map<string, string>();
+    for (const item of this.availableLanguages) {
+      const normalized = this.normalizeLanguageText(item);
+      if (!normalized || pool.has(normalized)) {
+        continue;
+      }
+      pool.set(normalized, item.trim());
+    }
+    for (const item of this.filterLanguageSuggestionPool) {
+      const normalized = this.normalizeLanguageText(item);
+      if (!normalized || pool.has(normalized)) {
+        continue;
+      }
+      pool.set(normalized, item.trim());
+    }
+    for (const item of this.filterDraft.languages) {
+      const normalized = this.normalizeLanguageText(item);
+      if (!normalized || pool.has(normalized)) {
+        continue;
+      }
+      pool.set(normalized, item.trim());
+    }
+    this.filterLanguageSuggestionPool = Array.from(pool.values()).sort((a, b) => a.localeCompare(b));
   }
 
   private matchesFilter(user: DemoUser): boolean {

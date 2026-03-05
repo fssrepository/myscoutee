@@ -3151,7 +3151,16 @@
             </div>
             <textarea rows="3" maxlength="160" [(ngModel)]="profileForm.about"></textarea>
           </label>
-          <section class="profile-details-group" *ngFor="let group of profileDetailsForm; let groupIndex = index">
+          <section
+            class="profile-details-group"
+            [ngClass]="{
+              'profile-details-group-basics': group.title === 'Basics',
+              'profile-details-group-lifestyle': group.title === 'Lifestyle',
+              'profile-details-group-relationships': group.title === 'Relationships',
+              'profile-details-group-beliefs': group.title === 'Beliefs'
+            }"
+            *ngFor="let group of profileDetailsForm; let groupIndex = index"
+          >
                   <h4>{{ group.title }}</h4>
                   <div class="profile-form-grid profile-details-form-grid basics-moved-grid" *ngIf="group.title === 'Basics'; else nonBasicsGroup">
                     <label class="name-field">
@@ -3684,24 +3693,6 @@
       >
         <mat-icon>add</mat-icon>
       </button>
-      <div
-        class="values-header-chips"
-        *ngIf="
-          (stackedPopup === 'valuesSelector' || stackedPopup === 'interestSelector') &&
-          (stackedPopup === 'valuesSelector' ? valuesSelectorSelected : interestSelectorSelected).length > 0
-        "
-      >
-        <button
-          type="button"
-          class="values-selected-chip"
-          [class]="stackedPopup === 'valuesSelector' ? valuesOptionToneClass(item) : interestOptionToneClass(item)"
-          *ngFor="let item of (stackedPopup === 'valuesSelector' ? valuesSelectorSelected : interestSelectorSelected)"
-          (click)="stackedPopup === 'valuesSelector' ? removeValuesOption(item) : removeInterestOption(item)"
-        >
-          <span>{{ item }}</span>
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
     </div>
     <ng-template #defaultStackedHeader>
       <div
@@ -5746,41 +5737,101 @@
         </article>
       </ng-template>
 
-      <div *ngIf="stackedPopup === 'valuesSelector'" class="values-selector-popup">
-        <div class="values-selector-group" *ngFor="let group of beliefsValuesOptionGroups">
-          <div class="social-proof-section-head" [class]="group.toneClass">
-            <span class="section-tag">{{ group.icon }} {{ group.shortTitle }}</span>
-            <span class="section-line"></span>
+      <div *ngIf="stackedPopup === 'valuesSelector'" class="values-selector-popup profile-selector-popup">
+        <div class="profile-filter-selector-head">
+          <span class="profile-filter-selector-head-label">Values</span>
+          <button
+            type="button"
+            class="profile-filter-selector-clear"
+            [class.is-hidden]="valuesSelectorSelected.length === 0"
+            [disabled]="valuesSelectorSelected.length === 0"
+            [attr.aria-hidden]="valuesSelectorSelected.length === 0 ? 'true' : null"
+            (click)="clearValuesSelector()"
+          >
+            Clear
+          </button>
+        </div>
+        <div class="profile-filter-selector-selected" *ngIf="valuesSelectorSelected.length > 0; else valuesSelectorNoSelection">
+          <button
+            type="button"
+            class="profile-filter-selector-chip"
+            *ngFor="let item of valuesSelectorSelected"
+            (click)="removeValuesOption(item)"
+          >
+            <span>{{ item }}</span>
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <ng-template #valuesSelectorNoSelection>
+          <p class="profile-filter-selector-empty">No items selected yet.</p>
+        </ng-template>
+        <div class="values-selector-group profile-selector-option-group" [class]="group.toneClass" *ngFor="let group of beliefsValuesOptionGroups">
+          <div class="profile-selector-option-group-head">
+            <span class="profile-selector-option-group-tag" [class]="group.toneClass">
+              <mat-icon class="profile-selector-option-group-tag-icon">{{ profileSelectorToneIcon(group.toneClass) }}</mat-icon>
+              <span>{{ group.shortTitle }}</span>
+            </span>
+            <span class="profile-selector-option-group-line" [class]="group.toneClass"></span>
           </div>
-          <div class="social-proof-chip-list">
+          <div class="profile-selector-chip-grid">
             <button
               type="button"
-              class="social-proof-chip values-option-chip"
+              class="profile-selector-chip"
               [class.active]="isValuesOptionSelected(option)"
               *ngFor="let option of group.options"
               (click)="toggleValuesOption(option)"
             >
-              {{ option }}
+              <span>{{ option }}</span>
             </button>
           </div>
         </div>
       </div>
 
-      <div *ngIf="stackedPopup === 'interestSelector'" class="values-selector-popup">
-        <div class="values-selector-group" *ngFor="let group of interestOptionGroups">
-          <div class="social-proof-section-head" [class]="group.toneClass">
-            <span class="section-tag">{{ group.icon }} {{ group.shortTitle }}</span>
-            <span class="section-line"></span>
+      <div *ngIf="stackedPopup === 'interestSelector'" class="values-selector-popup profile-selector-popup">
+        <div class="profile-filter-selector-head">
+          <span class="profile-filter-selector-head-label">Interest</span>
+          <button
+            type="button"
+            class="profile-filter-selector-clear"
+            [class.is-hidden]="interestSelectorSelected.length === 0"
+            [disabled]="interestSelectorSelected.length === 0"
+            [attr.aria-hidden]="interestSelectorSelected.length === 0 ? 'true' : null"
+            (click)="clearInterestSelector()"
+          >
+            Clear
+          </button>
+        </div>
+        <div class="profile-filter-selector-selected" *ngIf="interestSelectorSelected.length > 0; else interestSelectorNoSelection">
+          <button
+            type="button"
+            class="profile-filter-selector-chip"
+            *ngFor="let item of interestSelectorSelected"
+            (click)="removeInterestOption(item)"
+          >
+            <span>{{ item }}</span>
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <ng-template #interestSelectorNoSelection>
+          <p class="profile-filter-selector-empty">No items selected yet.</p>
+        </ng-template>
+        <div class="values-selector-group profile-selector-option-group" [class]="group.toneClass" *ngFor="let group of interestOptionGroups">
+          <div class="profile-selector-option-group-head">
+            <span class="profile-selector-option-group-tag" [class]="group.toneClass">
+              <mat-icon class="profile-selector-option-group-tag-icon">{{ profileSelectorToneIcon(group.toneClass) }}</mat-icon>
+              <span>{{ group.shortTitle }}</span>
+            </span>
+            <span class="profile-selector-option-group-line" [class]="group.toneClass"></span>
           </div>
-          <div class="social-proof-chip-list">
+          <div class="profile-selector-chip-grid">
             <button
               type="button"
-              class="social-proof-chip values-option-chip"
+              class="profile-selector-chip"
               [class.active]="isInterestOptionSelected(option)"
               *ngFor="let option of group.options"
               (click)="toggleInterestOption(option)"
             >
-              {{ option }}
+              <span>{{ option }}</span>
             </button>
           </div>
         </div>

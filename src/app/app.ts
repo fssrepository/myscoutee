@@ -9635,6 +9635,11 @@ export class App {
     this.syncValuesContextToRow();
   }
 
+  protected clearValuesSelector(): void {
+    this.valuesSelectorSelected = [];
+    this.syncValuesContextToRow();
+  }
+
   protected toggleInterestOption(option: string): void {
     const allowed = this.interestAllOptions();
     if (!allowed.includes(option)) {
@@ -9658,6 +9663,14 @@ export class App {
     this.syncInterestContextToRow();
     if (this.superStackedPopup === 'eventTopicsSelector') {
       this.eventForm.topics = [...this.interestSelectorSelected];
+    }
+  }
+
+  protected clearInterestSelector(): void {
+    this.interestSelectorSelected = [];
+    this.syncInterestContextToRow();
+    if (this.superStackedPopup === 'eventTopicsSelector') {
+      this.eventForm.topics = [];
     }
   }
 
@@ -9685,6 +9698,33 @@ export class App {
       }
     }
     return '';
+  }
+
+  protected profileSelectorToneIcon(toneClass: string): string {
+    switch (toneClass) {
+      case 'section-family':
+        return 'family_restroom';
+      case 'section-ambition':
+        return 'rocket_launch';
+      case 'section-lifestyle':
+        return 'eco';
+      case 'section-beliefs':
+        return 'auto_awesome';
+      case 'section-social':
+        return 'celebration';
+      case 'section-arts':
+        return 'palette';
+      case 'section-food':
+        return 'restaurant';
+      case 'section-active':
+        return 'hiking';
+      case 'section-mind':
+        return 'self_improvement';
+      case 'section-identity':
+        return 'public';
+      default:
+        return 'label';
+    }
   }
 
   protected valuesRowSummary(value: string): string {
