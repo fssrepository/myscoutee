@@ -389,18 +389,34 @@
 }
 
 .game-pair-stack {
+  --game-pair-split: 50%;
+  --game-pair-gap: clamp(0.28rem, 0.8vw, 0.52rem);
+  --game-pair-pad: 0.42rem;
   margin: 0 var(--game-stack-inline-gap);
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: minmax(0, 1fr);
-  gap: clamp(0.28rem, 0.8vw, 0.52rem);
-  padding: 0.42rem;
+  gap: var(--game-pair-gap);
+  padding: var(--game-pair-pad);
   border: 1px solid rgba(34, 54, 84, 0.24);
   border-radius: 14px;
   background: linear-gradient(180deg, #1b2c45 0%, #132238 100%);
   box-sizing: border-box;
+  position: relative;
+}
+
+.game-pair-stack.is-resizing {
+  user-select: none;
+}
+
+.game-pair-resize-handle {
+  display: none;
+}
+
+.game-pair-resize-handle-grip {
+  display: block;
 }
 
 .game-pair-mini-card {
@@ -411,6 +427,16 @@
   min-height: 0;
   background: rgba(8, 17, 30, 0.18);
   box-shadow: 0 10px 22px rgba(6, 18, 36, 0.3);
+}
+
+.game-pair-mini-card.is-collapsed {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.game-pair-mini-card.is-collapsed .game-pair-mini-card-content {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .game-pair-mini-card-leaving {
@@ -2008,8 +2034,68 @@
 
   .game-pair-stack {
     height: 100%;
-    gap: 0.24rem;
-    padding: 0.3rem;
+    --game-pair-gap: 0;
+    --game-pair-pad: 0.3rem;
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .game-pair-mini-card {
+    min-width: 0;
+  }
+
+  .game-pair-mini-card-woman {
+    flex: 0 0 var(--game-pair-split);
+    width: var(--game-pair-split);
+  }
+
+  .game-pair-mini-card-man {
+    flex: 0 0 calc(100% - var(--game-pair-split));
+    width: calc(100% - var(--game-pair-split));
+  }
+
+  .game-pair-resize-handle {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    left: var(--game-pair-split);
+    top: var(--game-pair-pad);
+    bottom: var(--game-pair-pad);
+    width: 20px;
+    transform: translateX(-50%);
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    z-index: 26;
+    touch-action: none;
+    cursor: ew-resize;
+  }
+
+  .game-pair-resize-handle::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  .game-pair-resize-handle-grip {
+    width: 4px;
+    height: 36%;
+    min-height: 52px;
+    border-radius: 999px;
+    border: 1px solid rgba(166, 196, 232, 0.74);
+    background: linear-gradient(180deg, rgba(241, 247, 255, 0.94) 0%, rgba(218, 232, 249, 0.9) 100%);
+    box-shadow:
+      0 0 0 1px rgba(9, 22, 40, 0.14),
+      0 8px 14px rgba(6, 18, 36, 0.34);
+    pointer-events: none;
+  }
+
+  .game-pair-stack.is-resizing .game-pair-resize-handle-grip {
+    background: linear-gradient(180deg, rgba(255, 247, 227, 0.96) 0%, rgba(255, 229, 165, 0.9) 100%);
+    border-color: rgba(218, 168, 51, 0.86);
   }
 
   .card-image-area,

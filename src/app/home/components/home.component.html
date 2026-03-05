@@ -100,8 +100,13 @@
         </ng-container>
         <ng-template #pairModeLayout>
           <ng-container *ngIf="hasPairModeCandidates; else noCandidateCard">
-            <div class="game-pair-stack">
-              <article class="game-pair-mini-card game-pair-mini-card-woman">
+            <div
+              class="game-pair-stack"
+              [style.--game-pair-split]="pairModeSplitCssValue"
+              [class.is-resizing]="isPairModeSplitDragging"
+              #pairModeStack
+            >
+              <article class="game-pair-mini-card game-pair-mini-card-woman" [class.is-collapsed]="isPairModeWomanCollapsed">
                 <ng-container *ngIf="pairModeWomanCandidate as woman; else pairModeWomanEmpty">
                   <div class="game-pair-mini-card-content">
                     <ng-container *ngIf="pairModeCandidateImageStack(woman) as womanImageStack">
@@ -179,7 +184,17 @@
                 </div>
               </article>
 
-              <article class="game-pair-mini-card game-pair-mini-card-man">
+              <button
+                type="button"
+                class="game-pair-resize-handle"
+                aria-label="Resize pair cards"
+                (pointerdown)="onPairModeSplitHandlePointerDown($event, pairModeStack)"
+                (click)="$event.preventDefault(); $event.stopPropagation()"
+              >
+                <span class="game-pair-resize-handle-grip" aria-hidden="true"></span>
+              </button>
+
+              <article class="game-pair-mini-card game-pair-mini-card-man" [class.is-collapsed]="isPairModeManCollapsed">
                 <ng-container *ngIf="pairModeManCandidate as man; else pairModeManEmpty">
                   <div class="game-pair-mini-card-content">
                     <ng-container *ngIf="pairModeCandidateImageStack(man) as manImageStack">

@@ -106,6 +106,10 @@ export class HomeComponent implements OnDestroy {
   private static readonly AGE_MAX = 120;
   private static readonly HEIGHT_MIN_CM = 40;
   private static readonly HEIGHT_MAX_CM = 250;
+  private static readonly MOBILE_VIEWPORT_MAX_WIDTH_PX = 760;
+  private static readonly PAIR_MODE_SPLIT_DEFAULT_PERCENT = 50;
+  private static readonly PAIR_MODE_SPLIT_MIN_PERCENT = 0;
+  private static readonly PAIR_MODE_SPLIT_MAX_PERCENT = 100;
   private static readonly GAME_STACK_PRELOAD_THRESHOLD = 2;
   private static readonly GAME_STACK_PAGE_SIZE_SINGLE = 10;
   private static readonly GAME_STACK_PAGE_SIZE_PAIR = 10;
@@ -361,6 +365,8 @@ export class HomeComponent implements OnDestroy {
   protected selectedCandidateImageIndex = 0;
   protected pairModeWomanImageIndex = 0;
   protected pairModeManImageIndex = 0;
+  protected pairModeSplitPercent = HomeComponent.PAIR_MODE_SPLIT_DEFAULT_PERCENT;
+  protected isPairModeSplitDragging = false;
   protected isPairModeWomanImageLoading = false;
   protected isPairModeManImageLoading = false;
   protected isPairModeWomanImageIndicatorRevealing = false;
@@ -401,6 +407,8 @@ export class HomeComponent implements OnDestroy {
   private candidateDragOffsetX = 0;
   private candidateDragOffsetY = 0;
   private activeTouchId: number | null = null;
+  private pairModeSplitPointerId: number | null = null;
+  private pairModeSplitBounds: { left: number; width: number } | null = null;
   constructor(private readonly cdr: ChangeDetectorRef) {
     const initialFilter = this.createInitialFilter();
     this.gameFilter = this.cloneFilter(initialFilter);
@@ -413,6 +421,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.stopPairModeSplitDrag();
     if (this.ratingBarBlinkTimeout) {
       clearTimeout(this.ratingBarBlinkTimeout);
       this.ratingBarBlinkTimeout = null;
@@ -477,6 +486,21 @@ export class HomeComponent implements OnDestroy {
 
   protected get hasPairModeCandidates(): boolean {
     return this.pairModeWomanCandidate !== null && this.pairModeManCandidate !== null;
+  }
+
+  protected get pairModeSplitCssValue(): string {
+    if (!this.isCompactViewport()) {
+      return `${HomeComponent.PAIR_MODE_SPLIT_DEFAULT_PERCENT}%`;
+    }
+    return `${this.pairModeSplitPercent}%`;
+  }
+
+  protected get isPairModeWomanCollapsed(): boolean {
+    return this.isCompactViewport() && this.pairModeSplitPercent <= 0.1;
+  }
+
+  protected get isPairModeManCollapsed(): boolean {
+    return this.isCompactViewport() && this.pairModeSplitPercent >= 99.9;
   }
 
   protected get hasCandidatesForCurrentMode(): boolean {
@@ -722,6 +746,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected setRating(value: number): void {
+    this.stopPairModeSplitDrag();
     const currentCandidate = this.isPairMode
       ? (this.pairModeWomanCandidate ?? this.pairModeManCandidate)
       : this.activeCandidate;
@@ -747,6 +772,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected togglePairMode(): void {
+    this.stopPairModeSplitDrag();
     this.isPairMode = !this.isPairMode;
     this.cardIndex = 0;
     this.resetCandidateImageState();
@@ -1747,6 +1773,29 @@ export class HomeComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
+  protected onPairModeSplitHandlePointerDown(event: PointerEvent, stackElement: HTMLElement): void {
+    if (!this.isPairMode || !this.isCompactViewport() || !stackElement) {
+      return;
+    }
+    const bounds = stackElement.getBoundingClientRect();
+    if (bounds.width <= 0) {
+      return;
+    }
+    this.pairModeSplitBounds = { left: bounds.left, width: bounds.width };
+    this.pairModeSplitPointerId = event.pointerId;
+    this.isPairModeSplitDragging = true;
+    this.updatePairModeSplitFromClientX(event.clientX);
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+    event.stopPropagation();
+    const target = event.currentTarget as HTMLElement | null;
+    if (target?.setPointerCapture) {
+      target.setPointerCapture(event.pointerId);
+    }
+    this.cdr.markForCheck();
+  }
+
   protected pairModeCandidateInitials(candidate: DemoUser | null): string {
     return candidate ? this.initialsForCandidate(candidate) : '∅';
   }
@@ -1768,6 +1817,7 @@ export class HomeComponent implements OnDestroy {
 
   @HostListener('window:active-user-changed')
   onActiveUserChanged(): void {
+    this.stopPairModeSplitDrag();
     this.activeUserId = this.getActiveUserId();
     const initialFilter = this.createInitialFilter();
     this.gameFilter = this.cloneFilter(initialFilter);
@@ -1780,6 +1830,33 @@ export class HomeComponent implements OnDestroy {
     this.preloadGameImageWindow();
     this.maybeStartGameStackPaginationLoad();
     this.beginCandidateImageLoadingForCurrentSelection();
+  }
+
+  @HostListener('window:pointermove', ['$event'])
+  onWindowPointerMove(event: PointerEvent): void {
+    if (!this.isPairModeSplitDragging || this.pairModeSplitPointerId !== event.pointerId) {
+      return;
+    }
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+    this.updatePairModeSplitFromClientX(event.clientX);
+  }
+
+  @HostListener('window:pointerup', ['$event'])
+  onWindowPointerUp(event: PointerEvent): void {
+    if (this.pairModeSplitPointerId !== event.pointerId) {
+      return;
+    }
+    this.stopPairModeSplitDrag();
+  }
+
+  @HostListener('window:pointercancel', ['$event'])
+  onWindowPointerCancel(event: PointerEvent): void {
+    if (this.pairModeSplitPointerId !== event.pointerId) {
+      return;
+    }
+    this.stopPairModeSplitDrag();
   }
 
   private getActiveUserId(): string {
@@ -1796,11 +1873,39 @@ export class HomeComponent implements OnDestroy {
     this.candidateImagePanY = this.clamp(this.candidateImagePanY, -bound, bound);
   }
 
+  private updatePairModeSplitFromClientX(clientX: number): void {
+    if (!this.pairModeSplitBounds || this.pairModeSplitBounds.width <= 0) {
+      return;
+    }
+    const relative = ((clientX - this.pairModeSplitBounds.left) / this.pairModeSplitBounds.width) * 100;
+    this.pairModeSplitPercent = this.clamp(
+      relative,
+      HomeComponent.PAIR_MODE_SPLIT_MIN_PERCENT,
+      HomeComponent.PAIR_MODE_SPLIT_MAX_PERCENT
+    );
+    this.cdr.markForCheck();
+  }
+
+  private stopPairModeSplitDrag(): void {
+    if (!this.isPairModeSplitDragging && this.pairModeSplitPointerId === null && this.pairModeSplitBounds === null) {
+      return;
+    }
+    this.isPairModeSplitDragging = false;
+    this.pairModeSplitPointerId = null;
+    this.pairModeSplitBounds = null;
+    this.cdr.markForCheck();
+  }
+
+  private isCompactViewport(): boolean {
+    return typeof globalThis.innerWidth === 'number' && globalThis.innerWidth <= HomeComponent.MOBILE_VIEWPORT_MAX_WIDTH_PX;
+  }
+
   private clamp(value: number, min: number, max: number): number {
     return Math.min(max, Math.max(min, value));
   }
 
   private resetCandidateImageState(): void {
+    this.stopPairModeSplitDrag();
     this.selectedCandidateImageIndex = 0;
     this.pairModeWomanImageIndex = 0;
     this.pairModeManImageIndex = 0;
