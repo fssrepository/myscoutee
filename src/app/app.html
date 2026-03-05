@@ -1646,7 +1646,10 @@
                     [class.is-resizing]="isActivitiesRatesPairSplitDragging"
                     #activitiesRatesPairFullscreenStack
                   >
-                    <div class="activities-rate-pair-inline-grid activities-rate-pair-fullscreen-grid">
+                    <div
+                      class="activities-rate-pair-inline-grid activities-rate-pair-fullscreen-grid"
+                      #activitiesRatesPairFullscreenGrid
+                    >
                       <div
                         class="activities-rate-pair-inline-card activities-rate-pair-inline-card-woman"
                         [class.is-pane-loading]="isActivityPairRateSlotImageLoading(row, 'woman')"
@@ -1696,7 +1699,7 @@
                         class="activities-rates-pair-fullscreen-resize-handle"
                         *ngIf="isActivitiesRatesPairMobileSplitEnabled()"
                         aria-label="Resize pair cards"
-                        (pointerdown)="onActivitiesRatesPairSplitHandlePointerDown($event, activitiesRatesPairFullscreenStack)"
+                        (pointerdown)="onActivitiesRatesPairSplitHandlePointerDown($event, activitiesRatesPairFullscreenGrid)"
                         (click)="$event.preventDefault(); $event.stopPropagation()"
                       >
                         <span class="activities-rates-pair-fullscreen-resize-handle-grip" aria-hidden="true"></span>

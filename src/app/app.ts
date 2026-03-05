@@ -13977,17 +13977,18 @@ export class App {
     return !!row && this.isPairRateRow(row);
   }
 
-  protected onActivitiesRatesPairSplitHandlePointerDown(event: PointerEvent, stackElement: HTMLElement): void {
-    if (!this.isActivitiesRatesPairMobileSplitEnabled() || this.activitiesRatesFullscreenAnimating || !stackElement) {
+  protected onActivitiesRatesPairSplitHandlePointerDown(event: PointerEvent, splitContainerElement: HTMLElement): void {
+    if (!this.isActivitiesRatesPairMobileSplitEnabled() || this.activitiesRatesFullscreenAnimating || !splitContainerElement) {
       return;
     }
-    const bounds = stackElement.getBoundingClientRect();
+    const bounds = splitContainerElement.getBoundingClientRect();
     if (bounds.width <= 0) {
       return;
     }
     this.activitiesRatesPairSplitBounds = { left: bounds.left, width: bounds.width };
     this.activitiesRatesPairSplitPointerId = event.pointerId;
     this.isActivitiesRatesPairSplitDragging = true;
+    this.updateActivitiesRatesPairSplitFromClientX(event.clientX);
     if (event.cancelable) {
       event.preventDefault();
     }
