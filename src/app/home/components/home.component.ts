@@ -1601,7 +1601,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected onPairModeCandidateImageReady(candidate: DemoUser, gender: DemoUser['gender'], imageUrl: string): void {
-    if (!imageUrl) {
+    if (!this.isPairMode || !imageUrl) {
       return;
     }
     const currentImage = this.pairModeCandidateImage(candidate, gender);
@@ -1609,16 +1609,31 @@ export class HomeComponent implements OnDestroy {
       return;
     }
     const hadPendingLoad = this.isPairModeCandidateImageLoading(gender);
-    if (gender === 'woman') {
-      this.isPairModeWomanImageLoading = false;
-    } else {
-      this.isPairModeManImageLoading = false;
-    }
+    const finalizeReady = () => {
+      if (!this.isPairMode) {
+        return;
+      }
+      const latestImage = this.pairModeCandidateImage(candidate, gender);
+      if (latestImage !== imageUrl) {
+        return;
+      }
+      if (gender === 'woman') {
+        this.isPairModeWomanImageLoading = false;
+      } else {
+        this.isPairModeManImageLoading = false;
+      }
+      if (hadPendingLoad) {
+        this.triggerPairModeCandidateImageIndicatorReveal(gender);
+        return;
+      }
+      this.cdr.markForCheck();
+    };
     if (hadPendingLoad) {
-      this.triggerPairModeCandidateImageIndicatorReveal(gender);
+      // Keep loading class briefly visible so bounce animation is perceivable.
+      setTimeout(() => finalizeReady(), 180);
       return;
     }
-    this.cdr.markForCheck();
+    finalizeReady();
   }
 
   protected onPairModeCandidateImageError(candidate: DemoUser, gender: DemoUser['gender'], imageUrl: string): void {

@@ -32,18 +32,6 @@
       <article class="card-stack game-card-main game-card-main-active">
         <ng-container *ngIf="!isPairMode; else pairModeLayout">
           <ng-container *ngIf="activeCandidate as candidate; else noCandidateCard">
-            <div class="game-image-stack-indicators" *ngIf="candidateImageStack.length > 1">
-              <button
-                type="button"
-                class="game-image-stack-line"
-                *ngFor="let image of candidateImageStack; let i = index"
-                [class.active]="i === selectedCandidateImageIndex"
-                [class.is-loading]="i === selectedCandidateImageIndex && isCandidateImageLoading"
-                [class.is-revealing]="i === selectedCandidateImageIndex && isCandidateImageIndicatorRevealing"
-                (click)="selectCandidateImage(i)"
-                aria-label="Select profile image"
-              ></button>
-            </div>
             <div class="card-image-area">
               <img
                 class="game-image-load-probe"
@@ -69,6 +57,18 @@
                 (touchend)="onCandidateImageTouchEnd()"
                 (touchcancel)="onCandidateImageTouchEnd()"
               >
+                <div class="game-image-stack-indicators game-single-image-indicators" *ngIf="candidateImageStack.length > 1">
+                  <button
+                    type="button"
+                    class="game-image-stack-line"
+                    *ngFor="let image of candidateImageStack; let i = index"
+                    [class.active]="i === selectedCandidateImageIndex"
+                    [class.is-loading]="i === selectedCandidateImageIndex && isCandidateImageLoading"
+                    [class.is-revealing]="i === selectedCandidateImageIndex && isCandidateImageIndicatorRevealing"
+                    (click)="selectCandidateImage(i)"
+                    aria-label="Select profile image"
+                  ></button>
+                </div>
                 <div class="game-card-image-overlay" *ngIf="gameCardOverlay(candidate, selectedCandidateImageIndex) as overlay">
                   <p class="game-card-image-overlay-primary">{{ overlay.primary }}</p>
                   <p class="game-card-image-overlay-secondary" *ngIf="overlay.secondary">{{ overlay.secondary }}</p>
