@@ -329,6 +329,103 @@
   overflow: hidden;
 }
 
+.game-pair-stack {
+  margin: 0 0.72rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 0.56rem;
+}
+
+.game-pair-mini-card {
+  position: relative;
+  border-radius: 12px;
+  border: 1px dashed rgba(19, 34, 55, 0.2);
+  overflow: hidden;
+  min-height: 0;
+  background:
+    linear-gradient(155deg, rgba(219, 234, 255, 0.66), rgba(255, 241, 230, 0.54)),
+    #f8fbff;
+}
+
+.game-pair-mini-card-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.game-pair-mini-image-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.game-pair-mini-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.game-pair-mini-card-label {
+  position: absolute;
+  top: 0.54rem;
+  left: 0.56rem;
+  z-index: 5;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 229, 249, 0.42);
+  background: rgba(8, 18, 35, 0.62);
+  color: #f5f9ff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding: 0.16rem 0.45rem;
+}
+
+.game-pair-mini-card-woman .game-pair-mini-card-label {
+  background: rgba(109, 42, 118, 0.64);
+}
+
+.game-pair-mini-card-man .game-pair-mini-card-label {
+  background: rgba(36, 74, 127, 0.66);
+}
+
+.game-pair-mini-card .game-card-image-overlay {
+  left: 0.56rem;
+  right: 0.56rem;
+  bottom: 0.56rem;
+}
+
+.game-pair-mini-card-empty {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  color: rgba(28, 42, 61, 0.78);
+  text-align: center;
+}
+
+.game-pair-mini-card-empty .card-image-placeholder {
+  width: 66px;
+  height: 66px;
+  font-size: 1.26rem;
+}
+
+.game-pair-mini-card-empty p {
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
 .game-image-load-probe {
   position: absolute;
   width: 1px;
@@ -1621,10 +1718,29 @@
 }
 
 @media (min-width: 761px) {
+  .game-pair-mini-image-frame {
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  .game-pair-mini-photo {
+    width: auto;
+    height: 100%;
+    max-width: 100%;
+    object-fit: contain;
+  }
+
   .game-card-image-overlay {
     right: auto;
     width: clamp(250px, 34%, 420px);
     max-width: calc(100% - 1.44rem);
+  }
+
+  .game-pair-mini-card .game-card-image-overlay {
+    right: 0.56rem;
+    width: auto;
+    max-width: calc(100% - 1.12rem);
   }
 
   .game-filter-layout-columns {
@@ -1680,6 +1796,10 @@
   .game-card-deck,
   .game-card-main {
     min-height: 0;
+  }
+
+  .game-pair-stack {
+    gap: 0.44rem;
   }
 
   .card-image-area,

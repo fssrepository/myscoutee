@@ -417,6 +417,22 @@ export class HomeComponent implements OnDestroy {
     return pool[this.cardIndex % pool.length] ?? null;
   }
 
+  protected get pairModeWomanCandidate(): DemoUser | null {
+    return this.pairModeCandidateForGender('woman');
+  }
+
+  protected get pairModeManCandidate(): DemoUser | null {
+    return this.pairModeCandidateForGender('man');
+  }
+
+  protected get hasPairModeCandidates(): boolean {
+    return this.pairModeWomanCandidate !== null || this.pairModeManCandidate !== null;
+  }
+
+  protected get hasCandidatesForCurrentMode(): boolean {
+    return this.isPairMode ? this.hasPairModeCandidates : this.activeCandidate !== null;
+  }
+
   protected get hasFilteredCandidates(): boolean {
     return this.candidatePool.length > 0;
   }
@@ -613,24 +629,32 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected setRating(value: number): void {
-    const currentCandidate = this.activeCandidate;
+    const currentCandidate = this.isPairMode
+      ? (this.pairModeWomanCandidate ?? this.pairModeManCandidate)
+      : this.activeCandidate;
     if (!currentCandidate) {
       return;
     }
     this.triggerRatingBarBlink();
-    const candidatePool = this.candidatePool;
-    if (candidatePool.length > 1) {
+    const cycleSize = this.isPairMode ? this.pairModeCycleSize() : this.candidatePool.length;
+    if (!this.isPairMode && cycleSize > 1) {
       this.startGameCardLeaveAnimation(currentCandidate, value);
     }
     this.selectedRating = value;
-    const nextIndex = this.cardIndex + 1;
-    this.cardIndex = nextIndex % candidatePool.length;
+    if (cycleSize > 0) {
+      const nextIndex = this.cardIndex + 1;
+      this.cardIndex = nextIndex % cycleSize;
+    } else {
+      this.cardIndex = 0;
+    }
     this.resetCandidateImageState();
     this.beginCandidateImageLoadingForCurrentSelection();
   }
 
   protected togglePairMode(): void {
     this.isPairMode = !this.isPairMode;
+    this.resetCandidateImageState();
+    this.beginCandidateImageLoadingForCurrentSelection();
   }
 
   protected openHistory(): void {
@@ -1512,6 +1536,17 @@ export class HomeComponent implements OnDestroy {
     return this.activeCandidate ? this.initialsForCandidate(this.activeCandidate) : 'NO';
   }
 
+  protected pairModeCandidateImage(candidate: DemoUser | null): string | null {
+    if (!candidate) {
+      return null;
+    }
+    return this.imageStackForCandidate(candidate)[0] ?? null;
+  }
+
+  protected pairModeCandidateInitials(candidate: DemoUser | null): string {
+    return candidate ? this.initialsForCandidate(candidate) : '∅';
+  }
+
   @HostListener('window:active-user-changed')
   onActiveUserChanged(): void {
     this.activeUserId = this.getActiveUserId();
@@ -1871,6 +1906,20 @@ export class HomeComponent implements OnDestroy {
         religion: 'not religious'
       }
     );
+  }
+
+  private pairModeCandidateForGender(gender: DemoUser['gender']): DemoUser | null {
+    const pool = this.candidatePool.filter(user => user.gender === gender);
+    if (pool.length === 0) {
+      return null;
+    }
+    return pool[this.cardIndex % pool.length] ?? null;
+  }
+
+  private pairModeCycleSize(): number {
+    const womanCount = this.candidatePool.filter(user => user.gender === 'woman').length;
+    const manCount = this.candidatePool.filter(user => user.gender === 'man').length;
+    return Math.max(womanCount, manCount);
   }
 
   private imageStackForCandidate(candidate: DemoUser): string[] {
