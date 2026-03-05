@@ -2512,9 +2512,14 @@ export class HomeComponent implements OnDestroy {
       const totalRounds = this.totalRoundsForCurrentMode();
       const previousLoaded = this.gameStackCardsLoaded;
       this.gameStackCardsLoaded = Math.min(totalRounds, this.gameStackCardsLoaded + this.gameStackPageSizeForCurrentMode());
-      this.gameStackExhausted = this.gameStackCardsLoaded <= previousLoaded;
+      const loadedMoreCards = this.gameStackCardsLoaded > previousLoaded;
+      this.gameStackExhausted = !loadedMoreCards;
       this.gameStackPaginating = false;
-      this.endGameStackHeaderProgressLoading();
+      if (loadedMoreCards) {
+        this.endGameStackHeaderProgressLoading();
+      } else {
+        this.clearGameStackHeaderLoadingAnimation();
+      }
       this.preloadGameImageWindow();
       this.beginCandidateImageLoadingForCurrentSelection();
       this.cdr.markForCheck();

@@ -1,8 +1,5 @@
 Game - Default page
 -------------------
-cards should show a message when the user was active
-
-
 pair rate - met (a new option on ratings)
 
 ---------------
