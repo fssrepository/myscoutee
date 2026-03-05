@@ -9283,12 +9283,12 @@ export class App {
 
   protected get workspaceExperienceSummary(): string {
     const count = this.experienceEntries.filter(item => item.type === 'Workspace').length;
-    return `${count} entries`;
+    return `${count} items`;
   }
 
   protected get schoolExperienceSummary(): string {
     const count = this.experienceEntries.filter(item => item.type === 'School').length;
-    return `${count} entries`;
+    return `${count} items`;
   }
 
   protected workspaceExperiencePreviewEntries(limit = 2): Array<{ title: string; subtitle: string; date: string }> {
@@ -9668,6 +9668,16 @@ export class App {
     return `${selected[0]}, ${selected[1]} +${selected.length - 2}`;
   }
 
+  protected valuesRowPreviewOptions(value: string, max = 2): string[] {
+    const selected = this.parseCommaValues(value);
+    return selected.slice(0, Math.max(0, max));
+  }
+
+  protected valuesRowPreviewOverflow(value: string, max = 2): number {
+    const selected = this.parseCommaValues(value);
+    return Math.max(0, selected.length - Math.max(0, max));
+  }
+
   protected interestRowSummary(value: string): string {
     const selected = this.parseCommaValues(value);
     if (selected.length === 0) {
@@ -9677,6 +9687,16 @@ export class App {
       return selected.join(', ');
     }
     return `${selected[0]}, ${selected[1]} +${selected.length - 2}`;
+  }
+
+  protected interestRowPreviewOptions(value: string, max = 2): string[] {
+    const selected = this.parseCommaValues(value);
+    return selected.slice(0, Math.max(0, max));
+  }
+
+  protected interestRowPreviewOverflow(value: string, max = 2): number {
+    const selected = this.parseCommaValues(value);
+    return Math.max(0, selected.length - Math.max(0, max));
   }
 
   protected detailOptionClass(label: string, option: string, options: string[]): string {

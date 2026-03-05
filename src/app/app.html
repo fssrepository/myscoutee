@@ -3256,13 +3256,56 @@
                         <button
                           type="button"
                           class="profile-status-select-wrap selector-like profile-details-values-btn"
-                          [ngClass]="row.label === 'Values' ? valuesDominantToneClass(row.value) : interestDominantToneClass(row.value)"
+                          [ngClass]="row.label === 'Values' ? 'profile-details-values-tone-values' : 'profile-details-values-tone-interest'"
                           *ngIf="row.label === 'Values' || row.label === 'Interest'; else detailsSelect"
                           (click)="row.label === 'Values' ? openValuesSelector(groupIndex, rowIndex) : openInterestSelector(groupIndex, rowIndex)"
                         >
-                          <span class="status-option-content">
-                            <span>{{ row.label === 'Values' ? valuesRowSummary(row.value) : interestRowSummary(row.value) }}</span>
+                          <span class="status-option-content profile-details-selected-badges" *ngIf="row.label === 'Values'; else interestSummaryBadges">
+                            <ng-container *ngIf="valuesRowPreviewOptions(row.value, 1).length > 0; else valuesSummaryPlaceholder">
+                              <span class="profile-details-selected-chip-list">
+                                <span
+                                  class="values-selected-chip profile-details-inline-chip"
+                                  [class]="valuesOptionToneClass(item)"
+                                  *ngFor="let item of valuesRowPreviewOptions(row.value, 1)"
+                                >
+                                  {{ item }}
+                                </span>
+                              </span>
+                              <span
+                                class="profile-details-inline-overflow"
+                                *ngIf="valuesRowPreviewOverflow(row.value, 1) > 0"
+                              >
+                                +{{ valuesRowPreviewOverflow(row.value, 1) }}
+                              </span>
+                            </ng-container>
+                            <ng-template #valuesSummaryPlaceholder>
+                              <span class="profile-details-empty-summary">Select values</span>
+                            </ng-template>
                           </span>
+                          <ng-template #interestSummaryBadges>
+                            <span class="status-option-content profile-details-selected-badges">
+                              <ng-container *ngIf="interestRowPreviewOptions(row.value, 1).length > 0; else interestSummaryPlaceholder">
+                                <span class="profile-details-selected-chip-list">
+                                  <span
+                                    class="values-selected-chip profile-details-inline-chip"
+                                    [class]="interestOptionToneClass(item)"
+                                    *ngFor="let item of interestRowPreviewOptions(row.value, 1)"
+                                  >
+                                    {{ item }}
+                                  </span>
+                                </span>
+                                <span
+                                  class="profile-details-inline-overflow"
+                                  *ngIf="interestRowPreviewOverflow(row.value, 1) > 0"
+                                >
+                                  +{{ interestRowPreviewOverflow(row.value, 1) }}
+                                </span>
+                              </ng-container>
+                              <ng-template #interestSummaryPlaceholder>
+                                <span class="profile-details-empty-summary">Select interests</span>
+                              </ng-template>
+                            </span>
+                          </ng-template>
                           <mat-icon>chevron_right</mat-icon>
                         </button>
                         <ng-template #detailsSelect>
@@ -3331,20 +3374,11 @@
                 <div class="profile-details-control-row">
                   <button
                     type="button"
-                    class="profile-status-select-wrap selector-like profile-details-values-btn section-social profile-details-values-btn-multiline"
+                    class="profile-status-select-wrap selector-like profile-details-values-btn section-social"
                     (click)="openWorkspaceSelector()"
                   >
-                    <span class="status-option-content profile-details-multiline-content">
-                      <ng-container *ngIf="workspaceExperiencePreviewEntries().length > 0; else workspaceSummaryFallback">
-                        <span class="profile-details-mini-badge section-social" *ngFor="let item of workspaceExperiencePreviewEntries()">
-                          <span class="profile-details-mini-badge-title">{{ item.title }}</span>
-                          <span class="profile-details-mini-badge-subtitle">{{ item.subtitle }}</span>
-                          <span class="profile-details-mini-badge-date">{{ item.date }}</span>
-                        </span>
-                      </ng-container>
-                      <ng-template #workspaceSummaryFallback>
-                        <span>{{ workspaceExperienceSummary }}</span>
-                      </ng-template>
+                    <span class="status-option-content">
+                      <span>{{ workspaceExperienceSummary }}</span>
                     </span>
                     <mat-icon>chevron_right</mat-icon>
                   </button>
@@ -3366,20 +3400,11 @@
                 <div class="profile-details-control-row">
                   <button
                     type="button"
-                    class="profile-status-select-wrap selector-like profile-details-values-btn section-arts profile-details-values-btn-multiline"
+                    class="profile-status-select-wrap selector-like profile-details-values-btn section-arts"
                     (click)="openSchoolSelector()"
                   >
-                    <span class="status-option-content profile-details-multiline-content">
-                      <ng-container *ngIf="schoolExperiencePreviewEntries().length > 0; else schoolSummaryFallback">
-                        <span class="profile-details-mini-badge section-arts" *ngFor="let item of schoolExperiencePreviewEntries()">
-                          <span class="profile-details-mini-badge-title">{{ item.title }}</span>
-                          <span class="profile-details-mini-badge-subtitle">{{ item.subtitle }}</span>
-                          <span class="profile-details-mini-badge-date">{{ item.date }}</span>
-                        </span>
-                      </ng-container>
-                      <ng-template #schoolSummaryFallback>
-                        <span>{{ schoolExperienceSummary }}</span>
-                      </ng-template>
+                    <span class="status-option-content">
+                      <span>{{ schoolExperienceSummary }}</span>
                     </span>
                     <mat-icon>chevron_right</mat-icon>
                   </button>
@@ -3549,6 +3574,7 @@
     class="app-popup-panel"
     [class.popup-panel-members]="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers'"
     [class.popup-panel-profile-editor]="stackedPopup === 'experienceSelector'"
+    [class.popup-panel-profile-selector]="stackedPopup === 'valuesSelector' || stackedPopup === 'interestSelector'"
     [class.popup-panel-event-editor]="stackedPopup === 'eventEditor'"
     [class.popup-panel-event-editor-readonly]="stackedPopup === 'eventEditor' && isEventEditorReadOnly()"
     [class.popup-panel-asset-members]="stackedPopup === 'subEventMembers' || stackedPopup === 'subEventAssets' || stackedPopup === 'subEventSupplyContributions'"
