@@ -3,10 +3,16 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "build:gh": "ng build --configuration production --base-href /myscoutee/",
-    "watch": "ng build --watch --configuration development",
+    "start": "NG_BUILD_MAX_WORKERS=12 ng serve --configuration development",
+    "start:pcores": "taskset -c 0-3 env NG_BUILD_MAX_WORKERS=12 ng serve --configuration development",
+    "build": "NG_BUILD_MAX_WORKERS=12 ng build --configuration development",
+    "build:pcores": "taskset -c 0-3 env NG_BUILD_MAX_WORKERS=12 ng build --configuration development",
+    "build:prod": "NG_BUILD_MAX_WORKERS=12 ng build --configuration production",
+    "build:prod:pcores": "taskset -c 0-3 env NG_BUILD_MAX_WORKERS=12 ng build --configuration production",
+    "build:gh": "NG_BUILD_MAX_WORKERS=12 ng build --configuration production --base-href /myscoutee/",
+    "build:gh:pcores": "taskset -c 0-3 env NG_BUILD_MAX_WORKERS=12 ng build --configuration production --base-href /myscoutee/",
+    "watch": "NG_BUILD_MAX_WORKERS=12 ng build --watch --configuration development",
+    "watch:pcores": "taskset -c 0-3 env NG_BUILD_MAX_WORKERS=12 ng build --watch --configuration development",
     "test": "ng test"
   },
   "prettier": {

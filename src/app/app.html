@@ -3228,8 +3228,9 @@
                       <ng-container *ngIf="!isMobileView; else mobileLanguageSelectorButton">
                         <div class="language-filter">
                           <button type="button" mat-stroked-button class="language-select-btn" (click)="openMobileLanguageSelector($event)">
-                            <span class="label">{{ languageTriggerLabel() }}</span>
-                            <mat-icon class="arrow">expand_more</mat-icon>
+                            <span class="label">{{ languageTriggerPrimaryLabel() || 'Select languages' }}</span>
+                            <span class="count" *ngIf="languageTriggerOverflowCount() > 0">+{{ languageTriggerOverflowCount() }}</span>
+                            <mat-icon class="arrow">chevron_right</mat-icon>
                           </button>
                         </div>
                       </ng-container>
@@ -3243,7 +3244,7 @@
                             <mat-icon>language</mat-icon>
                             <span>{{ languageTriggerLabel() || 'Select languages' }}</span>
                           </span>
-                          <mat-icon>expand_more</mat-icon>
+                          <mat-icon>chevron_right</mat-icon>
                         </button>
                       </ng-template>
                     </label>

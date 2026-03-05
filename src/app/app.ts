@@ -10721,6 +10721,25 @@ export class App {
     return `${this.profileForm.languages[0]} +${this.profileForm.languages.length - 1}`;
   }
 
+  protected languageTriggerPrimaryLabel(maxVisible = 2): string {
+    const languages = this.profileForm.languages
+      .map(item => item.trim())
+      .filter(item => item.length > 0);
+    if (languages.length === 0) {
+      return '';
+    }
+    const visibleCount = Math.max(1, maxVisible);
+    return languages.slice(0, visibleCount).join(', ');
+  }
+
+  protected languageTriggerOverflowCount(maxVisible = 2): number {
+    const languages = this.profileForm.languages
+      .map(item => item.trim())
+      .filter(item => item.length > 0);
+    const visibleCount = Math.max(1, maxVisible);
+    return Math.max(0, languages.length - visibleCount);
+  }
+
   protected onLanguageInputFocus(): void {
     this.showLanguagePanel = true;
   }

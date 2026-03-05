@@ -8760,11 +8760,12 @@ textarea {
   -webkit-overflow-scrolling: touch;
   display: grid;
   align-content: start;
+  align-items: start;
   gap: 0.6rem;
   box-sizing: border-box;
   padding-right: 0.08rem;
-  padding-bottom: 1rem;
-  scroll-padding-bottom: 1rem;
+  padding-bottom: 0;
+  scroll-padding-bottom: 0;
 }
 
 .profile-editor-section {
@@ -9337,6 +9338,7 @@ textarea {
   color: rgba(26, 44, 69, 0.88);
   width: 100%;
   max-width: none;
+  justify-self: start;
   align-self: stretch;
   box-sizing: border-box;
 }
@@ -9444,6 +9446,13 @@ textarea {
 }
 
 .profile-details-structured {
+  --profile-details-main-width: 345px;
+  --profile-details-inline-gap: 0.72rem;
+  --profile-details-privacy-size: 34px;
+  --profile-details-control-span-width: calc(
+    var(--profile-details-main-width) + var(--profile-details-inline-gap) + var(--profile-details-privacy-size)
+  );
+  --profile-details-two-col-width: calc((var(--profile-details-control-span-width) * 2) + 0.72rem);
   display: grid;
   gap: 0.78rem;
   min-height: auto;
@@ -9475,9 +9484,10 @@ textarea {
 }
 
 .profile-form-grid.profile-details-form-grid.basics-moved-grid {
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  column-gap: 1rem;
-  row-gap: 0.9rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 0.72rem;
+  row-gap: 0.72rem;
+  align-items: start;
 }
 
 .profile-details-field {
@@ -9491,8 +9501,8 @@ textarea {
 
 .profile-details-control-row {
   display: grid;
-  grid-template-columns: auto auto;
-  gap: 0.72rem;
+  grid-template-columns: minmax(0, var(--profile-details-main-width)) var(--profile-details-privacy-size);
+  gap: var(--profile-details-inline-gap);
   align-items: center;
   justify-content: start;
 }
@@ -9505,7 +9515,7 @@ textarea {
 }
 
 .profile-details-values-btn {
-  width: 345px;
+  width: var(--profile-details-main-width);
   max-width: 100%;
   min-height: 36px;
   display: inline-flex;
@@ -15464,34 +15474,55 @@ textarea {
   color: #1f6a3b;
 }
 
-.name-field { grid-column: 1 / 7; }
-.city-field { grid-column: 7 / 13; }
+.name-field {
+  grid-column: 1 / 2;
+  grid-row: 1;
+  width: min(100%, var(--profile-details-control-span-width));
+  justify-self: start;
+}
+
+.city-field {
+  grid-column: 2 / 3;
+  grid-row: 1;
+  width: min(100%, var(--profile-details-control-span-width));
+  justify-self: start;
+}
+
 .birthday-field {
-  grid-column: 1 / 3;
+  grid-column: 1 / 2;
   grid-row: 2;
   justify-self: start;
+  width: min(100%, 198px);
 }
 
 .horoscope-field {
-  grid-column: 3 / 5;
+  grid-column: 1 / 2;
   grid-row: 2;
+  justify-self: start;
+  width: min(100%, 174px);
+  margin-inline-start: max(0px, calc(var(--profile-details-control-span-width) - 174px));
 }
 
 .height-field {
-  grid-column: 5 / 7;
+  grid-column: 2 / 3;
   grid-row: 2;
   justify-self: start;
+  width: min(100%, 148px);
 }
 
 .physique-field {
-  grid-column: 7 / 8;
+  grid-column: 2 / 3;
   grid-row: 2;
+  justify-self: start !important;
+  width: min(100%, 180px);
+  margin-inline-start: max(0px, calc(var(--profile-details-control-span-width) - 180px));
 }
 
 .languages-field {
-  grid-column: 10 / 13;
-  grid-row: 2;
-  justify-self: end;
+  grid-column: 1 / 2;
+  grid-row: 3;
+  justify-self: start;
+  width: min(100%, var(--profile-details-control-span-width));
 }
 
 .profile-form-grid input,
@@ -15514,6 +15545,18 @@ textarea {
   line-height: 1.2;
 }
 
+.basics-moved-grid > label {
+  min-width: 0;
+}
+
+.birthday-field,
+.horoscope-field,
+.height-field,
+.physique-field,
+.languages-field {
+  min-width: 0;
+}
+
 .height-field,
 .physique-field,
 .languages-field {
@@ -15521,27 +15564,65 @@ textarea {
 }
 
 .physique-field {
-  justify-self: center !important;
+  justify-self: start !important;
 }
 
 .birthday-field .date-input-wrap {
-  width: auto;
+  width: 100%;
 }
 
 .height-field input {
-  width: 100px;
-  max-width: 100px;
+  width: 100%;
+  max-width: none;
 }
 
 .physique-field .profile-status-select-wrap {
-  width: fit-content;
-  min-width: 170px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 36px;
+  height: 36px;
+  padding-top: 0;
+  padding-bottom: 0;
+  box-sizing: border-box;
 }
 
 .languages-field .language-filter {
-  width: fit-content;
+  width: 100%;
+  min-width: 100%;
+  max-width: none;
+}
+
+.name-field input,
+.city-field input {
+  width: 100%;
+  max-width: none;
   min-width: 0;
-  max-width: 100%;
+}
+
+.birthday-field .date-input-wrap input {
+  flex: 1 1 auto;
+  width: auto;
+  max-width: none;
+  min-width: 0;
+}
+
+.horoscope-field .readonly-select {
+  width: 100%;
+  max-width: none;
+  min-width: 0 !important;
+  min-height: 36px;
+  height: 36px;
+  margin-top: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  box-sizing: border-box;
+}
+
+.languages-field .language-select-btn {
+  width: 100%;
+  max-width: none;
+  justify-content: space-between;
 }
 
 .profile-basics-accordion .mat-expansion-panel-header {
@@ -15580,8 +15661,43 @@ textarea {
   padding-right: 0.44rem;
 }
 
+.horoscope-field .readonly-select {
+  cursor: default;
+  transition: none !important;
+  transform: none !important;
+  filter: none !important;
+}
+
+.horoscope-field .status-option-content,
+.physique-field .status-option-content {
+  min-width: 0;
+}
+
+.physique-field .status-option-content span:last-child,
+.horoscope-field .zodiac-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .horoscope-field .readonly-select:hover,
+  .horoscope-field .readonly-select:active {
+    transform: none !important;
+    filter: none !important;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .horoscope-field .readonly-select:active {
+    animation: none !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}
+
 .zodiac-symbol {
-  font-size: 1.28rem;
+  font-size: 1.1rem;
   font-weight: 800;
   line-height: 1;
 }
@@ -15639,15 +15755,25 @@ textarea {
 
 .language-select-btn .label {
   order: 1;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
+  min-width: 0;
   text-align: left;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.language-select-btn .arrow {
+.language-select-btn .count {
   order: 2;
+  flex: 0 0 auto;
+  margin-left: 0.16rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #2f5f93;
+}
+
+.language-select-btn .arrow {
+  order: 3;
   width: 19px;
   height: 19px;
   font-size: 19px;
@@ -15658,7 +15784,7 @@ textarea {
 }
 
 .language-select-btn .arrow.open {
-  transform: rotate(180deg);
+  transform: rotate(90deg);
 }
 
 .language-panel {
@@ -18364,76 +18490,69 @@ textarea {
     display: none;
   }
 
-  .profile-form-grid.profile-details-form-grid.basics-moved-grid {
-    grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
-    column-gap: 0.6rem;
-    row-gap: 0.65rem;
-  }
-
-  .name-field,
-  .city-field,
-  .physique-field,
-  .languages-field {
-    grid-column: 1 / -1;
-    justify-self: stretch;
-    grid-row: auto;
-  }
-
-  .birthday-field {
-    grid-column: 1 / 2;
-    justify-self: start;
-    grid-row: auto;
-  }
-
-  .horoscope-field {
-    grid-column: 2 / 3;
-    justify-self: start;
-    grid-row: auto;
-  }
-
-  .height-field {
-    grid-column: 1 / 2;
-    justify-self: start;
-    grid-row: auto;
-  }
-
-  .physique-field {
-    grid-column: 2 / 3;
-    justify-self: start !important;
-    grid-row: auto;
-  }
-
-  .languages-field {
-    justify-self: start;
+.profile-form-grid.profile-details-form-grid.basics-moved-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 0.52rem;
+    row-gap: 0.62rem;
+    justify-content: stretch;
   }
 
   .basics-moved-grid .name-field,
   .basics-moved-grid .city-field,
   .basics-moved-grid .languages-field {
     grid-column: 1 / -1;
-    justify-self: stretch;
-  }
-
-  .basics-moved-grid .birthday-field,
-  .basics-moved-grid .horoscope-field,
-  .basics-moved-grid .height-field,
-  .basics-moved-grid .physique-field {
-    grid-column: auto;
+    grid-row: auto;
     justify-self: stretch !important;
+    width: 100%;
   }
 
-  .height-field input,
-  .birthday-field .date-input-wrap input {
+  .basics-moved-grid .birthday-field {
+    grid-column: 1 / 2;
+    grid-row: auto;
+    justify-self: stretch !important;
     width: 100%;
+  }
+
+  .basics-moved-grid .horoscope-field {
+    grid-column: 2 / 3;
+    grid-row: auto;
+    justify-self: stretch !important;
+    width: 100%;
+    margin-inline-start: 0 !important;
+  }
+
+  .basics-moved-grid .height-field {
+    grid-column: 1 / 2;
+    grid-row: auto;
+    justify-self: stretch !important;
+    width: 100%;
+  }
+
+  .basics-moved-grid .physique-field {
+    grid-column: 2 / 3;
+    grid-row: auto;
+    justify-self: stretch !important;
+    width: 100%;
+    margin-inline-start: 0 !important;
   }
 
   .basics-moved-grid .date-input-wrap {
     width: 100%;
   }
 
-  .basics-moved-grid .birthday-field .date-input-wrap input {
-    min-width: 0;
+  .basics-moved-grid .name-field input,
+  .basics-moved-grid .city-field input,
+  .basics-moved-grid .height-field input {
+    width: 100%;
     max-width: none;
+    min-width: 0;
+  }
+
+  .basics-moved-grid .birthday-field .date-input-wrap input {
+    flex: 1 1 auto;
+    width: auto;
+    max-width: none;
+    min-width: 0;
   }
 
   .language-panel {
@@ -18443,60 +18562,33 @@ textarea {
     max-width: calc(100vw - 1rem);
   }
 
-  .birthday-field .date-input-wrap input {
-    max-width: 165px;
-  }
-
-  .basics-moved-grid .birthday-field .date-input-wrap input {
+  .basics-moved-grid .physique-field .profile-status-select-wrap,
+  .basics-moved-grid .horoscope-field .readonly-select,
+  .basics-moved-grid .languages-field .language-filter,
+  .basics-moved-grid .languages-field .language-select-btn {
+    width: 100%;
     max-width: none;
+    min-width: 0 !important;
+    box-sizing: border-box;
   }
 
-  .physique-field .profile-status-select-wrap,
-  .languages-field .language-filter,
-  .language-select-btn {
-    width: fit-content;
-    min-width: 0;
-    max-width: 100%;
+  .basics-moved-grid .horoscope-field .readonly-select {
+    min-height: 36px;
+    margin-top: 0;
+    justify-self: stretch;
+    padding-left: 0.34rem;
+    padding-right: 0.34rem;
   }
 
   .basics-moved-grid .physique-field .profile-status-select-wrap {
-    width: min(100%, 7rem);
-    max-width: 7rem;
-    min-width: 0;
     min-height: 36px;
     margin-top: 0;
-    justify-self: start;
-  }
-
-  .basics-moved-grid .horoscope-field .readonly-select {
-    width: min(100%, 6.3rem);
-    max-width: 6.3rem;
-    min-width: 0;
-    min-height: 36px;
-    margin-top: 0;
-    justify-self: start;
-  }
-
-  .basics-moved-grid .horoscope-field .readonly-select {
-    padding-left: 0.34rem;
-    padding-right: 0.34rem;
   }
 
   .basics-moved-grid .date-picker-btn {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-  }
-
-  .basics-moved-grid .languages-field .language-filter,
-  .basics-moved-grid .languages-field .language-select-btn {
-    width: fit-content;
-    max-width: 100%;
-  }
-
-  .basics-moved-grid .languages-field .language-filter {
-    width: 100%;
-    max-width: 100%;
   }
 
   .basics-moved-grid .languages-field .language-panel {
@@ -18506,10 +18598,7 @@ textarea {
     max-width: 100%;
   }
 
-  .horoscope-field .readonly-select {
-    width: fit-content;
-    max-width: 100%;
-  }
+  .horoscope-field .readonly-select { max-width: none; }
 
   .demo-user-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -18685,7 +18774,7 @@ textarea {
     min-height: 0;
     height: 100%;
     overflow: hidden !important;
-    padding-bottom: 0.74rem;
+    padding-bottom: 0;
   }
 
   .app-popup-panel.popup-panel-profile-editor .profile-editor-wrap {
@@ -18703,8 +18792,8 @@ textarea {
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
-    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
-    scroll-padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+    scroll-padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
