@@ -1798,9 +1798,10 @@ export class HomeComponent implements OnDestroy {
     if (explicitImages.length > 0) {
       return explicitImages;
     }
-    const numericId = Number(candidate.id.replace(/\D+/g, '')) || 1;
-    const indexes = [0, 17, 39].map(offset => ((numericId * 9 + offset - 1) % 70) + 1);
-    return indexes.map(index => `https://i.pravatar.cc/1200?img=${index}`);
+    const genderFolder = candidate.gender === 'woman' ? 'women' : 'men';
+    const baseSeed = this.hashText(`game-card-image:${candidate.id}:${candidate.gender}`);
+    const indexes = [0, 17, 39].map(offset => (baseSeed + offset * 13) % 100);
+    return indexes.map(index => `https://randomuser.me/api/portraits/${genderFolder}/${index}.jpg`);
   }
 
   private initialsForCandidate(candidate: DemoUser): string {
@@ -1902,5 +1903,13 @@ export class HomeComponent implements OnDestroy {
   private parseHeightCm(height: string): number | null {
     const parsed = Number.parseInt(height, 10);
     return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private hashText(value: string): number {
+    let hash = 0;
+    for (let index = 0; index < value.length; index += 1) {
+      hash = (hash * 31 + value.charCodeAt(index)) % 104729;
+    }
+    return Math.abs(hash);
   }
 }
