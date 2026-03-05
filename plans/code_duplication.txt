@@ -1,0 +1,13 @@
+I found 2 layers of duplication:
+
+Top-level popup implementations duplicated in activePopup and stackedPopup: 10 families
+chat, chatMembers, invitationActions, menuEvent, hostingEvent, impressionsHost, eventExplore, eventEditor, supplyDetail, eventFeedback
+(example pair: active eventEditor and stacked eventEditor).
+
+Nested form/dialog blocks duplicated: 4 families
+
+Sub-event form overlay: 3 copies (2568, 5344, 6471)
+Stage Rule fieldset: 3 copies (2707, 5483, 6610)
+Asset form overlay (showAssetForm): 2 copies (2063, 4673)
+Supply “Bring Items” overlay: 2 copies (4785, 4860)
+If you want, I can map which of these are safe to deduplicate first with lowest regression risk.

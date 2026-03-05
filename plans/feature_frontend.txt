@@ -1,6 +1,3 @@
 Game - Default page
 -------------------
 pair rate - met (a new option on ratings)
-
----------------
-on the edit stage event form rule set block - you should add a message, manually added groups blocks capacity from this ruleset, just for customisation only!
