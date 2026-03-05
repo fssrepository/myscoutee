@@ -1,14 +1,14 @@
 must
 ----------------
 1) instagram account should be renamed from myscoutee1 to myscoutee, after the other account deleted (deletion period ended apr 3)
-2) optional sub event can take place in the same time, does not need to be cut by another optional sub event
-3) pull up feature if you edned up bottom of the scrolling area (by luck figured out pull down behaviour)
+2) pull up feature if you edned up bottom of the scrolling area (by luck figured out pull down behaviour)
 
 optional
 ---------------------
-Friends in common filter for game screen
-
-activities rating - pair rate - met option or Separate friends flag
+1) optional sub event can take place in the same time, does not need to be cut by another optional sub event
+2) Friends in common filter for game screen
+3) split the big module to smaller 2-3 static modules (chunks) to speed up the build
+4) activities rating - pair rate - met option or Separate friends flag
 (you can rate for pairs who does not know each other, but you know them)
 
 i think it can work in a way that two rectangles next to each other and a + in the middle for both

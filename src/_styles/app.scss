@@ -7669,7 +7669,7 @@
 
   .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid {
     --activities-pair-gap: 0;
-    --activities-pair-pad: 0;
+    --activities-pair-pad: 0.3rem;
     width: 100%;
     display: flex;
     align-items: stretch;
@@ -7684,11 +7684,17 @@
   .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card-woman {
     flex: 0 0 var(--activities-pair-split);
     width: var(--activities-pair-split);
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right-width: 0;
   }
 
   .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card-man {
     flex: 0 0 calc(100% - var(--activities-pair-split));
     width: calc(100% - var(--activities-pair-split));
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left-width: 1px;
   }
 
   .activities-rates-fullscreen .activities-rate-profile-stack.activities-rate-profile-stack-pair-fullscreen {
@@ -7965,14 +7971,21 @@
   margin-inline: 0;
 }
 
+.activities-rates-fullscreen .activities-rate-profile-stack.activities-rate-profile-stack-pair-fullscreen.activities-rate-profile-stack-pair {
+  border-radius: 14px;
+  border: 1px solid rgba(34, 54, 84, 0.24);
+  background: linear-gradient(180deg, #1b2c45 0%, #132238 100%);
+  overflow: hidden;
+}
+
 .activities-rates-fullscreen .activities-rate-profile-stack.activities-rate-profile-stack-pair::before {
   display: none;
 }
 
 .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid {
   --activities-pair-split: 50%;
-  --activities-pair-gap: 0;
-  --activities-pair-pad: 0;
+  --activities-pair-gap: clamp(0.28rem, 0.8vw, 0.52rem);
+  --activities-pair-pad: 0.42rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: minmax(0, 1fr);
   gap: var(--activities-pair-gap);
@@ -7982,18 +7995,6 @@
 .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card {
   min-height: 0;
   box-sizing: border-box;
-}
-
-.activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card-woman {
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-  border-right-width: 0;
-}
-
-.activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card-man {
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
-  border-left-width: 0;
 }
 
 .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card.is-collapsed {
