@@ -1700,6 +1700,7 @@
                         *ngIf="isActivitiesRatesPairMobileSplitEnabled()"
                         aria-label="Resize pair cards"
                         (pointerdown)="onActivitiesRatesPairSplitHandlePointerDown($event, activitiesRatesPairFullscreenGrid)"
+                        (touchstart)="onActivitiesRatesPairSplitHandleTouchStart($event, activitiesRatesPairFullscreenGrid)"
                         (click)="$event.preventDefault(); $event.stopPropagation()"
                       >
                         <span class="activities-rates-pair-fullscreen-resize-handle-grip" aria-hidden="true"></span>

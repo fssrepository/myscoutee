@@ -1105,6 +1105,8 @@ export class App {
   private activitiesRatesFullscreenLastTriggeredLoadedCount = 0;
   private activitiesRatesPairSplitPointerId: number | null = null;
   private activitiesRatesPairSplitBounds: { left: number; width: number } | null = null;
+  private activitiesRatesPairSplitDragStartClientX: number | null = null;
+  private activitiesRatesPairSplitDragStartPercent: number | null = null;
   protected isActivityRateBarBlinking = false;
   private activityRateBarBlinkTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly activityRateBlinkUntilByRowId: Record<string, number> = {};
@@ -13987,8 +13989,9 @@ export class App {
     }
     this.activitiesRatesPairSplitBounds = { left: bounds.left, width: bounds.width };
     this.activitiesRatesPairSplitPointerId = event.pointerId;
+    this.activitiesRatesPairSplitDragStartClientX = event.clientX;
+    this.activitiesRatesPairSplitDragStartPercent = this.activitiesRatesPairSplitPercent;
     this.isActivitiesRatesPairSplitDragging = true;
-    this.updateActivitiesRatesPairSplitFromClientX(event.clientX);
     if (event.cancelable) {
       event.preventDefault();
     }
@@ -13997,6 +14000,30 @@ export class App {
     if (target?.setPointerCapture) {
       target.setPointerCapture(event.pointerId);
     }
+    this.cdr.markForCheck();
+  }
+
+  protected onActivitiesRatesPairSplitHandleTouchStart(event: TouchEvent, splitContainerElement: HTMLElement): void {
+    if (!this.isActivitiesRatesPairMobileSplitEnabled() || this.activitiesRatesFullscreenAnimating || !splitContainerElement) {
+      return;
+    }
+    const touch = event.touches?.[0] ?? event.changedTouches?.[0];
+    if (!touch) {
+      return;
+    }
+    const bounds = splitContainerElement.getBoundingClientRect();
+    if (bounds.width <= 0) {
+      return;
+    }
+    this.activitiesRatesPairSplitBounds = { left: bounds.left, width: bounds.width };
+    this.activitiesRatesPairSplitPointerId = -1;
+    this.activitiesRatesPairSplitDragStartClientX = touch.clientX;
+    this.activitiesRatesPairSplitDragStartPercent = this.activitiesRatesPairSplitPercent;
+    this.isActivitiesRatesPairSplitDragging = true;
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+    event.stopPropagation();
     this.cdr.markForCheck();
   }
 
@@ -14633,6 +14660,27 @@ export class App {
     this.cdr.markForCheck();
   }
 
+  private updateActivitiesRatesPairSplitFromDragDelta(clientX: number): void {
+    if (!this.activitiesRatesPairSplitBounds || this.activitiesRatesPairSplitBounds.width <= 0) {
+      return;
+    }
+    if (
+      this.activitiesRatesPairSplitDragStartClientX === null
+      || this.activitiesRatesPairSplitDragStartPercent === null
+    ) {
+      this.updateActivitiesRatesPairSplitFromClientX(clientX);
+      return;
+    }
+    const deltaPercent =
+      ((clientX - this.activitiesRatesPairSplitDragStartClientX) / this.activitiesRatesPairSplitBounds.width) * 100;
+    this.activitiesRatesPairSplitPercent = this.clampNumber(
+      this.activitiesRatesPairSplitDragStartPercent + deltaPercent,
+      App.ACTIVITIES_RATES_PAIR_SPLIT_MIN_PERCENT,
+      App.ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT
+    );
+    this.cdr.markForCheck();
+  }
+
   private isActivitiesRatesPairCompactViewport(): boolean {
     return typeof globalThis.innerWidth === 'number' && globalThis.innerWidth <= 760;
   }
@@ -14648,6 +14696,8 @@ export class App {
     this.isActivitiesRatesPairSplitDragging = false;
     this.activitiesRatesPairSplitPointerId = null;
     this.activitiesRatesPairSplitBounds = null;
+    this.activitiesRatesPairSplitDragStartClientX = null;
+    this.activitiesRatesPairSplitDragStartPercent = null;
     this.cdr.markForCheck();
   }
 
@@ -17005,7 +17055,7 @@ export class App {
     if (event.cancelable) {
       event.preventDefault();
     }
-    this.updateActivitiesRatesPairSplitFromClientX(event.clientX);
+    this.updateActivitiesRatesPairSplitFromDragDelta(event.clientX);
   }
 
   @HostListener('window:pointerup', ['$event'])
@@ -17019,6 +17069,43 @@ export class App {
   @HostListener('window:pointercancel', ['$event'])
   onWindowPointerCancelForActivitiesRates(event: PointerEvent): void {
     if (this.activitiesRatesPairSplitPointerId !== event.pointerId) {
+      return;
+    }
+    this.stopActivitiesRatesPairSplitDrag();
+  }
+
+  @HostListener('window:touchmove', ['$event'])
+  onWindowTouchMoveForActivitiesRates(event: TouchEvent): void {
+    if (!this.isActivitiesRatesPairSplitDragging || this.activitiesRatesPairSplitPointerId !== -1) {
+      return;
+    }
+    const touch = event.touches?.[0] ?? event.changedTouches?.[0];
+    if (!touch) {
+      return;
+    }
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+    this.updateActivitiesRatesPairSplitFromDragDelta(touch.clientX);
+  }
+
+  @HostListener('window:touchend', ['$event'])
+  onWindowTouchEndForActivitiesRates(event: TouchEvent): void {
+    if (this.activitiesRatesPairSplitPointerId !== -1) {
+      return;
+    }
+    if (!event.changedTouches?.length) {
+      return;
+    }
+    this.stopActivitiesRatesPairSplitDrag();
+  }
+
+  @HostListener('window:touchcancel', ['$event'])
+  onWindowTouchCancelForActivitiesRates(event: TouchEvent): void {
+    if (this.activitiesRatesPairSplitPointerId !== -1) {
+      return;
+    }
+    if (!event.changedTouches?.length) {
       return;
     }
     this.stopActivitiesRatesPairSplitDrag();
