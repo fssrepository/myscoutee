@@ -246,11 +246,12 @@
   display: flex;
   flex-direction: column;
   gap: 0.56rem;
+  --game-stack-inline-gap: 0.28rem;
 }
 
 .game-stack-progress-row {
   flex: 0 0 auto;
-  padding: 0 0.72rem;
+  padding: 0 var(--game-stack-inline-gap);
 }
 
 .game-card-deck {
@@ -372,7 +373,7 @@
 }
 
 .card-image-area {
-  margin: 0 0.72rem;
+  margin: 0 var(--game-stack-inline-gap);
   border-radius: 12px;
   border: 0;
   flex: 1 1 auto;
@@ -388,21 +389,28 @@
 }
 
 .game-pair-stack {
-  margin: 0 0.72rem;
+  margin: 0 var(--game-stack-inline-gap);
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: 0.56rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  gap: clamp(0.28rem, 0.8vw, 0.52rem);
+  padding: 0.42rem;
+  border: 1px solid rgba(34, 54, 84, 0.24);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #1b2c45 0%, #132238 100%);
+  box-sizing: border-box;
 }
 
 .game-pair-mini-card {
   position: relative;
   border-radius: 12px;
-  border: 0;
+  border: 1px solid rgba(255, 255, 255, 0.28);
   overflow: hidden;
   min-height: 0;
-  background: transparent;
+  background: rgba(8, 17, 30, 0.18);
+  box-shadow: 0 10px 22px rgba(6, 18, 36, 0.3);
 }
 
 .game-pair-mini-card-leaving {
@@ -448,13 +456,13 @@
 
 .game-pair-mini-image-indicators {
   position: absolute;
-  top: 0.2rem;
-  left: 0.52rem;
-  right: 0.52rem;
+  top: 0.28rem;
+  left: 0.34rem;
+  right: 0.34rem;
   margin: 0;
   z-index: 10;
-  padding: 0.16rem 0.34rem;
-  border-radius: 8px;
+  padding: 0.12rem 0.24rem;
+  border-radius: 7px;
   background: rgba(10, 18, 31, 0.38);
   gap: 5px;
 }
@@ -491,8 +499,8 @@
 
 .game-pair-mini-card-label {
   position: absolute;
-  top: 0.82rem;
-  left: 0.56rem;
+  top: 0.64rem;
+  left: 0.52rem;
   z-index: 5;
   border-radius: 999px;
   border: 1px solid rgba(212, 229, 249, 0.42);
@@ -514,14 +522,16 @@
 }
 
 .game-pair-mini-card .game-card-image-overlay {
-  left: 0.56rem;
-  right: 0.56rem;
-  bottom: 0.56rem;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0.7rem 0.72rem 0.68rem;
+  border-radius: 0;
 }
 
 .game-card-active-badge {
   position: absolute;
-  top: 0.82rem;
+  top: 0.64rem;
   right: 0.56rem;
   z-index: 11;
   border-radius: 999px;
@@ -760,7 +770,7 @@
 }
 
 .rating-stars {
-  margin: 0.56rem 0.72rem 0.72rem;
+  margin: 0.56rem var(--game-stack-inline-gap) 0.72rem;
   flex: 0 0 auto;
   display: grid;
   grid-template-columns: repeat(10, minmax(0, 1fr));
@@ -769,7 +779,7 @@
 
 .game-rating-dock {
   flex: 0 0 auto;
-  padding: 0 0.72rem 0.72rem;
+  padding: 0 var(--game-stack-inline-gap) 0.72rem;
 }
 
 .game-rating-dock .rating-stars {
@@ -1899,16 +1909,16 @@
 
 @media (min-width: 761px) {
   .game-pair-mini-image-frame {
-    width: fit-content;
-    max-width: 100%;
-    margin: 0 auto;
+    width: 100%;
+    max-width: none;
+    margin: 0;
   }
 
   .game-pair-mini-photo {
-    width: auto;
+    width: 100%;
     height: 100%;
-    max-width: 100%;
-    object-fit: contain;
+    max-width: none;
+    object-fit: cover;
   }
 
   .game-card-image-overlay {
@@ -1918,9 +1928,9 @@
   }
 
   .game-pair-mini-card .game-card-image-overlay {
-    right: 0.56rem;
+    right: 0;
     width: auto;
-    max-width: calc(100% - 1.12rem);
+    max-width: none;
   }
 
   .game-filter-layout-columns {
@@ -1963,7 +1973,7 @@
     height: 100dvh;
     max-height: 100dvh;
     border-radius: 14px;
-    padding: 0.64rem;
+    padding: 0.64rem 0.25rem;
     box-sizing: border-box;
     overflow: hidden;
   }
@@ -1979,10 +1989,11 @@
   .game-layout-single {
     min-height: 0;
     flex: 1 1 auto;
+    --game-stack-inline-gap: 0.2rem;
   }
 
   .game-stack-progress-row {
-    padding: 0 0.64rem;
+    padding: 0 var(--game-stack-inline-gap);
   }
 
   .game-stack-header-progress {
@@ -1997,7 +2008,8 @@
 
   .game-pair-stack {
     height: 100%;
-    gap: 0.44rem;
+    gap: 0.24rem;
+    padding: 0.3rem;
   }
 
   .card-image-area,
@@ -2015,7 +2027,7 @@
   }
 
   .game-rating-dock {
-    padding: 0 0.64rem calc(0.64rem + env(safe-area-inset-bottom));
+    padding: 0 var(--game-stack-inline-gap) calc(0.64rem + env(safe-area-inset-bottom));
   }
 
   .star-btn {
