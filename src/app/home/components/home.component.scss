@@ -2048,11 +2048,27 @@
   .game-pair-mini-card-woman {
     flex: 0 0 var(--game-pair-split);
     width: var(--game-pair-split);
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right-width: 0;
   }
 
   .game-pair-mini-card-man {
     flex: 0 0 calc(100% - var(--game-pair-split));
     width: calc(100% - var(--game-pair-split));
+    margin-left: -1px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  .game-pair-mini-card-woman .game-pair-mini-image-frame {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .game-pair-mini-card-man .game-pair-mini-image-frame {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
   }
 
   .game-pair-resize-handle {

@@ -13955,7 +13955,7 @@ export class App {
   }
 
   protected get activitiesRatesPairSplitCssValue(): string {
-    if (!this.isMobileView) {
+    if (!this.isActivitiesRatesPairCompactViewport()) {
       return `${App.ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT}%`;
     }
     return `${this.activitiesRatesPairSplitPercent}%`;
@@ -13970,7 +13970,7 @@ export class App {
   }
 
   protected isActivitiesRatesPairMobileSplitEnabled(): boolean {
-    if (!this.isRatesFullscreenModeActive() || !this.isMobileView) {
+    if (!this.isRatesFullscreenModeActive() || !this.isActivitiesRatesPairCompactViewport()) {
       return false;
     }
     const row = this.currentActivitiesRatesFullscreenRow();
@@ -14631,6 +14631,10 @@ export class App {
       App.ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT
     );
     this.cdr.markForCheck();
+  }
+
+  private isActivitiesRatesPairCompactViewport(): boolean {
+    return typeof globalThis.innerWidth === 'number' && globalThis.innerWidth <= 760;
   }
 
   private stopActivitiesRatesPairSplitDrag(): void {

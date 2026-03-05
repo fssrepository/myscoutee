@@ -7502,16 +7502,22 @@
 
 .activities-rates-fullscreen .activities-rate-score-badge-floating.activities-rate-score-badge-floating-pair-overlap {
   top: 50%;
-  right: 0.42rem;
-  transform: translateY(-50%);
+  left: var(--activities-pair-split, 50%);
+  right: auto;
+  transform: translate(-50%, -50%);
+  min-width: 68px;
+  width: max-content;
+  max-width: calc(100% - 0.8rem);
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .activities-rates-fullscreen .activities-rate-score-badge-floating.activities-rate-score-badge-floating-pair-overlap.is-active:not(.is-disabled) {
-  transform: translateY(-50%) scale(1.03);
+  transform: translate(-50%, -50%);
 }
 
 .activities-rates-fullscreen .activities-rate-score-badge-floating.activities-rate-score-badge-floating-pair-overlap:not(.is-disabled):active {
-  transform: translateY(-50%) scale(0.96);
+  transform: translate(-50%, -50%);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -7678,11 +7684,17 @@
   .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card-woman {
     flex: 0 0 var(--activities-pair-split);
     width: var(--activities-pair-split);
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right-width: 0;
   }
 
   .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card-man {
     flex: 0 0 calc(100% - var(--activities-pair-split));
     width: calc(100% - var(--activities-pair-split));
+    margin-left: -1px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
   }
 
   .activities-rates-fullscreen .activities-rate-profile-stack.activities-rate-profile-stack-pair-fullscreen {
@@ -7879,7 +7891,8 @@
   cursor: pointer;
   box-shadow: 0 8px 18px rgba(17, 36, 62, 0.22);
   transition: transform 130ms ease, box-shadow 130ms ease, background-color 130ms ease, color 130ms ease;
-  z-index: 30;
+  z-index: 38;
+  pointer-events: auto;
 }
 
 .activities-rates-fullscreen-nav-btn-prev {
