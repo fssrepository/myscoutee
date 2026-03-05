@@ -1967,11 +1967,11 @@
   }
 
   .game-page {
-    min-height: 100svh;
-    min-height: 100dvh;
-    height: 100svh;
-    height: 100dvh;
-    max-height: 100dvh;
+    min-height: calc(100svh - 1rem);
+    min-height: calc(100dvh - 1rem);
+    height: calc(100svh - 1rem);
+    height: calc(100dvh - 1rem);
+    max-height: calc(100dvh - 1rem);
     border-radius: 14px;
     padding: 0.64rem 0.25rem;
     box-sizing: border-box;
