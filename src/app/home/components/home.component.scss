@@ -190,7 +190,7 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.18);
   color: rgba(255, 255, 255, 0.95);
-  font-size: 0.6rem;
+  font-size: 0.8rem;
   font-weight: 800;
   line-height: 1;
   min-width: 18px;
@@ -358,7 +358,8 @@
   position: absolute;
   left: 0.72rem;
   right: 0.72rem;
-  top: 0.68rem;
+  top: auto;
+  bottom: 0.68rem;
   z-index: 4;
   border-radius: 12px;
   padding: 0.54rem 0.66rem 0.6rem;
@@ -1618,6 +1619,12 @@
 }
 
 @media (min-width: 761px) {
+  .game-card-image-overlay {
+    right: auto;
+    width: clamp(250px, 34%, 420px);
+    max-width: calc(100% - 1.44rem);
+  }
+
   .game-filter-layout-columns {
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) minmax(0, 1fr);
     align-items: stretch;
