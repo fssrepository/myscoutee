@@ -112,7 +112,7 @@ export class HomeComponent implements OnDestroy {
   private static readonly GAME_STACK_PHOTO_PRELOAD_TARGET = 12;
   private static readonly GAME_STACK_LOADING_WINDOW_MS = 3000;
   private static readonly GAME_STACK_LOADING_TICK_MS = 16;
-  private static readonly GAME_STACK_LOAD_DELAY_MS = 1150;
+  private static readonly GAME_STACK_LOAD_DELAY_MS = 1500;
   private static readonly GAME_STACK_TEST_JOINER_BATCH_SIZE = 10;
   private readonly gameFilterInterestGroups: GameFilterOptionGroup[] = [
     {
@@ -509,21 +509,21 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get noCandidateTitle(): string {
-    if (this.isAwaitingMoreGameCards) {
-      return 'Loading more cards';
-    }
     if (this.hasFilteredCandidates) {
       return 'No cards available';
+    }
+    if (this.isAwaitingMoreGameCards) {
+      return 'Loading more cards';
     }
     return 'No matching profiles';
   }
 
   protected get noCandidateDescription(): string {
-    if (this.isAwaitingMoreGameCards) {
-      return 'Preloading the next stack in the background.';
-    }
     if (this.hasFilteredCandidates) {
       return 'Change filters to get more cards.';
+    }
+    if (this.isAwaitingMoreGameCards) {
+      return 'Preloading the next stack in the background.';
     }
     return 'Adjust age or profile traits in filter settings.';
   }
