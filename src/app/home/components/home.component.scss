@@ -389,15 +389,15 @@
 
 .game-pair-mini-image-indicators .game-image-stack-line {
   height: 3px;
-  background: rgba(220, 233, 252, 0.76);
+  background: rgba(242, 181, 93, 0.68);
 }
 
 .game-pair-mini-image-indicators .game-image-stack-line.active {
-  background: rgba(43, 97, 170, 0.78);
+  background: rgba(116, 255, 193, 0.98);
 }
 
 .game-pair-mini-image-indicators .game-image-stack-line.active.is-loading {
-  background: rgba(109, 124, 148, 0.62);
+  background: rgba(255, 225, 164, 0.95);
   animation: game-image-line-loading 840ms ease-in-out infinite;
 }
 
@@ -560,18 +560,18 @@
   border: 0;
   height: 3px;
   border-radius: 999px;
-  background: rgba(49, 78, 117, 0.24);
+  background: rgba(242, 181, 93, 0.68);
   cursor: pointer;
   padding: 0;
   transform-origin: center center;
 }
 
 .game-image-stack-line.active {
-  background: rgba(43, 97, 170, 0.78);
+  background: rgba(116, 255, 193, 0.98);
 }
 
 .game-image-stack-line.active.is-loading {
-  background: rgba(109, 124, 148, 0.62);
+  background: rgba(255, 225, 164, 0.95);
   animation: game-image-line-loading 840ms ease-in-out infinite;
 }
 
@@ -594,12 +594,12 @@
   0% {
     transform: scaleX(0.22);
     opacity: 0.72;
-    background: rgba(133, 148, 171, 0.7);
+    background: rgba(255, 225, 164, 0.95);
   }
   100% {
     transform: scaleX(1);
     opacity: 1;
-    background: rgba(43, 97, 170, 0.78);
+    background: rgba(116, 255, 193, 0.98);
   }
 }
 

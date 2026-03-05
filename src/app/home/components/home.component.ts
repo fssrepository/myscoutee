@@ -1630,7 +1630,7 @@ export class HomeComponent implements OnDestroy {
     };
     if (hadPendingLoad) {
       // Keep loading class briefly visible so bounce animation is perceivable.
-      setTimeout(() => finalizeReady(), 180);
+      setTimeout(() => finalizeReady(), 80);
       return;
     }
     finalizeReady();
