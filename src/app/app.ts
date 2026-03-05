@@ -14019,7 +14019,7 @@ export class App {
   }
 
   protected canNavigateActivitiesRatesFullscreenNext(): boolean {
-    if (!this.isActivitiesRatesFullscreenReadOnlyNavigation() || this.activitiesRatesFullscreenAnimating) {
+    if (!this.isActivitiesRatesFullscreenReadOnlyNavigation()) {
       return false;
     }
     const row = this.currentActivitiesRatesFullscreenRow();
