@@ -1,3 +1,5 @@
 Game - Default page
 -------------------
 pair rate - met (a new option on ratings)
+
+Separate friends - Friends in common
