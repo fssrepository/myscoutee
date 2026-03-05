@@ -1343,6 +1343,11 @@ export class HomeComponent implements OnDestroy {
       return;
     }
     this.failedCandidateImageUrls.add(imageUrl);
+    const nextAvailableImageIndex = this.candidateImageStack.findIndex(url => !this.failedCandidateImageUrls.has(url));
+    if (nextAvailableImageIndex >= 0 && nextAvailableImageIndex !== this.selectedCandidateImageIndex) {
+      this.selectCandidateImage(nextAvailableImageIndex);
+      return;
+    }
     this.cdr.markForCheck();
   }
 
@@ -1465,6 +1470,7 @@ export class HomeComponent implements OnDestroy {
     this.candidateImagePanY = 0;
     this.isCandidateImageDragging = false;
     this.activeTouchId = null;
+    this.failedCandidateImageUrls.clear();
   }
 
   private createInitialFilter(): GameFilterForm {
@@ -1793,9 +1799,8 @@ export class HomeComponent implements OnDestroy {
       return explicitImages;
     }
     const numericId = Number(candidate.id.replace(/\D+/g, '')) || 1;
-    const portraitType = candidate.gender === 'woman' ? 'women' : 'men';
-    const indexes = [0, 24, 48].map(offset => ((numericId + offset - 1) % 99) + 1);
-    return indexes.map(index => `https://randomuser.me/api/portraits/${portraitType}/${index}.jpg`);
+    const indexes = [0, 17, 39].map(offset => ((numericId * 9 + offset - 1) % 70) + 1);
+    return indexes.map(index => `https://i.pravatar.cc/1200?img=${index}`);
   }
 
   private initialsForCandidate(candidate: DemoUser): string {

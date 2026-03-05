@@ -6,6 +6,8 @@
   max-width: 980px;
   margin: 0 auto;
   min-height: calc(100vh - 3rem);
+  display: flex;
+  flex-direction: column;
   border: 1px solid rgba(21, 38, 62, 0.14);
   border-radius: 16px;
   padding: 0.74rem;
@@ -239,10 +241,16 @@
 
 .game-layout-single {
   margin-top: 0.68rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
 }
 
 .game-card-deck {
   position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
 }
 
 .game-card-main {
@@ -251,6 +259,10 @@
   background: #fff;
   overflow: hidden;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .game-card-main-active {
@@ -305,7 +317,8 @@
   margin: 0 0.72rem;
   border-radius: 12px;
   border: 1px dashed rgba(19, 34, 55, 0.2);
-  min-height: calc(100vh - 12.5rem);
+  flex: 1 1 auto;
+  min-height: clamp(360px, 62vh, 760px);
   background:
     linear-gradient(155deg, rgba(219, 234, 255, 0.66), rgba(255, 241, 230, 0.54)),
     #f8fbff;
@@ -353,6 +366,7 @@
   color: #f5f9ff;
   border: 1px solid rgba(213, 227, 248, 0.22);
   backdrop-filter: blur(2px);
+  pointer-events: none;
 }
 
 .game-card-image-overlay-primary,
@@ -444,7 +458,7 @@
 
 .game-image-hit-area {
   position: absolute;
-  inset: 10px;
+  inset: 0;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 4px;
@@ -456,6 +470,8 @@
   background: transparent;
   padding: 0;
   cursor: pointer;
+  width: 100%;
+  height: 100%;
 }
 
 .card-image-placeholder {
@@ -474,6 +490,7 @@
 
 .rating-stars {
   margin: 0.56rem 0.72rem 0.72rem;
+  flex: 0 0 auto;
   display: grid;
   grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 0.32rem;
@@ -1649,7 +1666,7 @@
   }
 
   .card-image-area {
-    min-height: calc(100vh - 20.5rem);
+    min-height: clamp(280px, 56dvh, 540px);
   }
 
   .rating-stars {
