@@ -1,7 +1,5 @@
 Game - Default page
 -------------------
-history, type - (fab button - egyeni, parok - rotate screen status message))
-
 cards should show a message when the user was active
 
 preload 10-15 photos, and paginating to the next stack, while the user finished on rating
