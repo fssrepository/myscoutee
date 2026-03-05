@@ -3331,12 +3331,20 @@
                 <div class="profile-details-control-row">
                   <button
                     type="button"
-                    class="profile-status-select-wrap selector-like profile-details-values-btn section-social"
+                    class="profile-status-select-wrap selector-like profile-details-values-btn section-social profile-details-values-btn-multiline"
                     (click)="openWorkspaceSelector()"
                   >
-                    <span class="status-option-content">
-                      <mat-icon>apartment</mat-icon>
-                      <span>{{ workspaceExperienceSummary }}</span>
+                    <span class="status-option-content profile-details-multiline-content">
+                      <ng-container *ngIf="workspaceExperiencePreviewEntries().length > 0; else workspaceSummaryFallback">
+                        <span class="profile-details-mini-badge section-social" *ngFor="let item of workspaceExperiencePreviewEntries()">
+                          <span class="profile-details-mini-badge-title">{{ item.title }}</span>
+                          <span class="profile-details-mini-badge-subtitle">{{ item.subtitle }}</span>
+                          <span class="profile-details-mini-badge-date">{{ item.date }}</span>
+                        </span>
+                      </ng-container>
+                      <ng-template #workspaceSummaryFallback>
+                        <span>{{ workspaceExperienceSummary }}</span>
+                      </ng-template>
                     </span>
                     <mat-icon>chevron_right</mat-icon>
                   </button>
@@ -3358,12 +3366,20 @@
                 <div class="profile-details-control-row">
                   <button
                     type="button"
-                    class="profile-status-select-wrap selector-like profile-details-values-btn section-arts"
+                    class="profile-status-select-wrap selector-like profile-details-values-btn section-arts profile-details-values-btn-multiline"
                     (click)="openSchoolSelector()"
                   >
-                    <span class="status-option-content">
-                      <mat-icon>school</mat-icon>
-                      <span>{{ schoolExperienceSummary }}</span>
+                    <span class="status-option-content profile-details-multiline-content">
+                      <ng-container *ngIf="schoolExperiencePreviewEntries().length > 0; else schoolSummaryFallback">
+                        <span class="profile-details-mini-badge section-arts" *ngFor="let item of schoolExperiencePreviewEntries()">
+                          <span class="profile-details-mini-badge-title">{{ item.title }}</span>
+                          <span class="profile-details-mini-badge-subtitle">{{ item.subtitle }}</span>
+                          <span class="profile-details-mini-badge-date">{{ item.date }}</span>
+                        </span>
+                      </ng-container>
+                      <ng-template #schoolSummaryFallback>
+                        <span>{{ schoolExperienceSummary }}</span>
+                      </ng-template>
                     </span>
                     <mat-icon>chevron_right</mat-icon>
                   </button>

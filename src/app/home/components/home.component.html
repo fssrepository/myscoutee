@@ -11,7 +11,7 @@
       </button>
       <button type="button" class="game-action-filter has-badge" (click)="openFilter()" aria-label="Open profile filters">
         <mat-icon>filter_alt</mat-icon>
-        <span class="filter-state-badge" [class.active]="isFilterActive">{{ isFilterActive ? 'ON' : 'OFF' }}</span>
+        <span class="filter-state-badge" [class.active]="isFilterActive">{{ candidatePool.length }}</span>
       </button>
       <button type="button" class="game-action-filter game-action-history has-badge" (click)="openHistory()" aria-label="Open game history">
         <mat-icon>history</mat-icon>
@@ -30,7 +30,7 @@
       <ng-template #noCandidateCard>
         <div class="card-content card-content-empty">
           <h2>No matching profiles</h2>
-          <p>Adjust age, distance, or profile traits in filter settings.</p>
+          <p>Adjust age or profile traits in filter settings.</p>
         </div>
       </ng-template>
       <div class="game-image-stack-indicators" *ngIf="candidateImageStack.length > 1">
@@ -90,154 +90,358 @@
 <section class="game-popup" *ngIf="localPopup === 'filter'">
   <div class="game-popup-backdrop" (click)="closeLocalPopup()"></div>
   <div class="game-popup-panel game-filter-popup-panel" (click)="$event.stopPropagation()">
-    <header>
-      <h2>
-        Game Filters
+    <header class="game-filter-popup-header">
+      <h2>Game Filters</h2>
+      <div class="game-filter-popup-header-actions">
         <span class="popup-filter-meta" [class.active]="isFilterActive">
-          {{ isFilterActive ? 'Active' : 'Off' }} · {{ candidatePool.length }} match{{ candidatePool.length === 1 ? '' : 'es' }}
+          {{ filterDraftMatchCount }} match{{ filterDraftMatchCount === 1 ? '' : 'es' }}
         </span>
-      </h2>
-      <button type="button" (click)="closeLocalPopup()">×</button>
+        <button type="button" class="game-popup-apply-btn" (click)="applyFilter()" aria-label="Apply filters">
+          <mat-icon>check</mat-icon>
+        </button>
+        <button type="button" class="game-popup-close-btn" (click)="closeLocalPopup()" aria-label="Close filter popup">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
     </header>
     <div class="game-popup-body game-filter-body">
-      <section class="game-filter-section">
-        <div class="game-filter-section-head">
-          <h3>Age Range</h3>
-          <span class="game-filter-value-badge">{{ filterDraft.ageMin }} - {{ filterDraft.ageMax }}</span>
-        </div>
-        <div class="game-filter-slider-wrap">
-          <mat-slider [min]="minAgeBound" [max]="maxAgeBound" [step]="1">
-            <input
-              matSliderStartThumb
-              [ngModel]="filterDraft.ageMin"
-              (ngModelChange)="onAgeMinChange($event)"
-            />
-            <input
-              matSliderEndThumb
-              [ngModel]="filterDraft.ageMax"
-              (ngModelChange)="onAgeMaxChange($event)"
-            />
-          </mat-slider>
-        </div>
-      </section>
+      <ng-container *ngIf="!hasOpenFilterSelector; else filterSelectorView">
+        <section class="game-filter-group game-filter-group-basics">
+          <div class="game-filter-group-head">
+            <h3>Basics</h3>
+          </div>
 
-      <section class="game-filter-section">
-        <div class="game-filter-section-head">
-          <h3>Height Range (cm)</h3>
-          <span class="game-filter-value-badge">{{ filterDraft.heightMinCm }} - {{ filterDraft.heightMaxCm }}</span>
-        </div>
-        <div class="game-filter-slider-wrap">
-          <mat-slider [min]="minHeightBoundCm" [max]="maxHeightBoundCm" [step]="1">
-            <input
-              matSliderStartThumb
-              [ngModel]="filterDraft.heightMinCm"
-              (ngModelChange)="onHeightMinChange($event)"
-            />
-            <input
-              matSliderEndThumb
-              [ngModel]="filterDraft.heightMaxCm"
-              (ngModelChange)="onHeightMaxChange($event)"
-            />
-          </mat-slider>
-        </div>
-      </section>
+          <div class="game-filter-section-head">
+            <h4>Age Range</h4>
+            <span class="game-filter-value-badge">{{ filterDraft.ageMin }} - {{ filterDraft.ageMax }}</span>
+          </div>
+          <div class="game-filter-slider-wrap">
+            <mat-slider [min]="minAgeBound" [max]="maxAgeBound" [step]="1">
+              <input
+                matSliderStartThumb
+                [ngModel]="filterDraft.ageMin"
+                (ngModelChange)="onAgeMinChange($event)"
+              />
+              <input
+                matSliderEndThumb
+                [ngModel]="filterDraft.ageMax"
+                (ngModelChange)="onAgeMaxChange($event)"
+              />
+            </mat-slider>
+          </div>
 
-      <section class="game-filter-section">
-        <div class="game-filter-section-head">
-          <h3>Maximum Distance</h3>
-          <span class="game-filter-value-badge">{{ filterDraft.maxDistanceKm }} km</span>
-        </div>
-        <div class="game-filter-distance">
-          <mat-slider [min]="0" [max]="500" [step]="5">
-            <input
-              matSliderThumb
-              [ngModel]="filterDraft.maxDistanceKm"
-              (ngModelChange)="onDistanceChange($event)"
-            />
-          </mat-slider>
-        </div>
-      </section>
+          <div class="game-filter-section-head">
+            <h4>Height Range (cm)</h4>
+            <span class="game-filter-value-badge">{{ filterDraft.heightMinCm }} - {{ filterDraft.heightMaxCm }}</span>
+          </div>
+          <div class="game-filter-slider-wrap">
+            <mat-slider [min]="minHeightBoundCm" [max]="maxHeightBoundCm" [step]="1">
+              <input
+                matSliderStartThumb
+                [ngModel]="filterDraft.heightMinCm"
+                (ngModelChange)="onHeightMinChange($event)"
+              />
+              <input
+                matSliderEndThumb
+                [ngModel]="filterDraft.heightMaxCm"
+                (ngModelChange)="onHeightMaxChange($event)"
+              />
+            </mat-slider>
+          </div>
+        </section>
 
-      <section class="game-filter-section">
-        <h3>Physique</h3>
-        <div class="game-filter-chip-grid">
-          <button
-            type="button"
-            class="game-filter-chip"
-            *ngFor="let physique of availablePhysiques"
-            [class.active]="isPhysiqueSelected(physique)"
-            (click)="toggleFilterPhysique(physique)"
-          >
-            <span>{{ physique }}</span>
+        <section class="game-filter-group game-filter-group-lifestyle">
+          <div class="game-filter-group-head">
+            <h3>Lifestyle</h3>
+          </div>
+
+          <button type="button" class="game-filter-nav-btn game-filter-selector-tone-interest" (click)="openFilterSelector('interests')">
+            <span class="game-filter-nav-copy">
+              <span class="game-filter-nav-title">Interest</span>
+              <span class="game-filter-nav-summary" *ngIf="filterSelectorHasSelection('interests'); else anyInterest">
+                {{ filterSelectorPreview('interests').join(', ') }}<ng-container *ngIf="filterSelectorExtraCount('interests') > 0"> +{{ filterSelectorExtraCount('interests') }}</ng-container>
+              </span>
+              <ng-template #anyInterest>
+                <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
+              </ng-template>
+            </span>
+            <mat-icon>chevron_right</mat-icon>
           </button>
-        </div>
-      </section>
 
-      <section class="game-filter-section">
-        <h3>Languages</h3>
-        <div class="game-filter-chip-grid">
-          <button
-            type="button"
-            class="game-filter-chip"
-            *ngFor="let language of availableLanguages"
-            [class.active]="isLanguageSelected(language)"
-            (click)="toggleFilterLanguage(language)"
-          >
-            <span>{{ language }}</span>
+          <button type="button" class="game-filter-nav-btn game-filter-selector-tone-languages" (click)="openFilterSelector('languages')">
+            <span class="game-filter-nav-copy">
+              <span class="game-filter-nav-title">Languages</span>
+              <span class="game-filter-nav-summary" *ngIf="filterSelectorHasSelection('languages'); else anyLanguages">
+                {{ filterSelectorPreview('languages').join(', ') }}<ng-container *ngIf="filterSelectorExtraCount('languages') > 0"> +{{ filterSelectorExtraCount('languages') }}</ng-container>
+              </span>
+              <ng-template #anyLanguages>
+                <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
+              </ng-template>
+            </span>
+            <mat-icon>chevron_right</mat-icon>
           </button>
-        </div>
-      </section>
 
-      <section class="game-filter-section">
-        <h3>Gender</h3>
-        <div class="game-filter-chip-grid">
-          <button
-            type="button"
-            class="game-filter-chip"
-            *ngFor="let option of genderFilterOptions"
-            [class.active]="isGenderSelected(option.value)"
-            (click)="toggleFilterGender(option.value)"
-          >
-            <mat-icon>{{ option.icon }}</mat-icon>
-            <span>{{ option.label }}</span>
+          <button type="button" class="game-filter-nav-btn game-filter-selector-tone-physique" (click)="openFilterSelector('physiques')">
+            <span class="game-filter-nav-copy">
+              <span class="game-filter-nav-title">Physique</span>
+              <span class="game-filter-nav-summary" *ngIf="filterSelectorHasSelection('physiques'); else anyPhysique">
+                {{ filterSelectorPreview('physiques').join(', ') }}<ng-container *ngIf="filterSelectorExtraCount('physiques') > 0"> +{{ filterSelectorExtraCount('physiques') }}</ng-container>
+              </span>
+              <ng-template #anyPhysique>
+                <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
+              </ng-template>
+            </span>
+            <mat-icon>chevron_right</mat-icon>
           </button>
-        </div>
-      </section>
-
-      <section class="game-filter-section">
-        <h3>Horoscope</h3>
-        <div class="game-filter-chip-grid">
-          <button
-            type="button"
-            class="game-filter-chip"
-            *ngFor="let horoscope of availableHoroscopes"
-            [class.active]="isHoroscopeSelected(horoscope)"
-            (click)="toggleFilterHoroscope(horoscope)"
-          >
-            <span>{{ horoscope }}</span>
+          <button type="button" class="game-filter-nav-btn game-filter-selector-tone-smoking" (click)="openFilterSelector('smoking')">
+            <span class="game-filter-nav-copy">
+              <span class="game-filter-nav-title">Smoking</span>
+              <span class="game-filter-nav-summary" *ngIf="filterSelectorHasSelection('smoking'); else anySmoking">
+                {{ filterSelectorPreview('smoking').join(', ') }}<ng-container *ngIf="filterSelectorExtraCount('smoking') > 0"> +{{ filterSelectorExtraCount('smoking') }}</ng-container>
+              </span>
+              <ng-template #anySmoking>
+                <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
+              </ng-template>
+            </span>
+            <mat-icon>chevron_right</mat-icon>
           </button>
-        </div>
-      </section>
-
-      <section class="game-filter-section">
-        <h3>Top Trait</h3>
-        <div class="game-filter-chip-grid">
-          <button
-            type="button"
-            class="game-filter-chip"
-            *ngFor="let trait of availableTraitLabels"
-            [class.active]="isTraitLabelSelected(trait)"
-            (click)="toggleFilterTraitLabel(trait)"
-          >
-            <span>{{ trait }}</span>
+          <button type="button" class="game-filter-nav-btn game-filter-selector-tone-drinking" (click)="openFilterSelector('drinking')">
+            <span class="game-filter-nav-copy">
+              <span class="game-filter-nav-title">Drinking</span>
+              <span class="game-filter-nav-summary" *ngIf="filterSelectorHasSelection('drinking'); else anyDrinking">
+                {{ filterSelectorPreview('drinking').join(', ') }}<ng-container *ngIf="filterSelectorExtraCount('drinking') > 0"> +{{ filterSelectorExtraCount('drinking') }}</ng-container>
+              </span>
+              <ng-template #anyDrinking>
+                <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
+              </ng-template>
+            </span>
+            <mat-icon>chevron_right</mat-icon>
           </button>
-        </div>
-      </section>
+          <button type="button" class="game-filter-nav-btn game-filter-selector-tone-workout" (click)="openFilterSelector('workout')">
+            <span class="game-filter-nav-copy">
+              <span class="game-filter-nav-title">Workout</span>
+              <span class="game-filter-nav-summary" *ngIf="filterSelectorHasSelection('workout'); else anyWorkout">
+                {{ filterSelectorPreview('workout').join(', ') }}<ng-container *ngIf="filterSelectorExtraCount('workout') > 0"> +{{ filterSelectorExtraCount('workout') }}</ng-container>
+              </span>
+              <ng-template #anyWorkout>
+                <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
+              </ng-template>
+            </span>
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+          <button type="button" class="game-filter-nav-btn game-filter-selector-tone-pets" (click)="openFilterSelector('pets')">
+            <span class="game-filter-nav-copy">
+              <span class="game-filter-nav-title">Pets</span>
+              <span class="game-filter-nav-summary" *ngIf="filterSelectorHasSelection('pets'); else anyPets">
+                {{ filterSelectorPreview('pets').join(', ') }}<ng-container *ngIf="filterSelectorExtraCount('pets') > 0"> +{{ filterSelectorExtraCount('pets') }}</ng-container>
+              </span>
+              <ng-template #anyPets>
+                <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
+              </ng-template>
+            </span>
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        </section>
 
-      <div class="game-filter-actions">
-        <button type="button" class="filter-btn filter-btn-reset" (click)="resetFilterDraft()">Reset</button>
-        <button type="button" class="filter-btn filter-btn-apply" (click)="applyFilter()">Apply</button>
-      </div>
+        <section class="game-filter-group game-filter-group-relationships">
+          <div class="game-filter-group-head">
+            <h3>Relationships</h3>
+          </div>
+
+          <button type="button" class="game-filter-nav-btn game-filter-selector-tone-gender" (click)="openFilterSelector('genders')">
+            <span class="game-filter-nav-copy">
+              <span class="game-filter-nav-title">Gender</span>
+              <span class="game-filter-nav-summary" *ngIf="filterSelectorHasSelection('genders'); else anyGender">
+                {{ filterSelectorPreview('genders').join(', ') }}<ng-container *ngIf="filterSelectorExtraCount('genders') > 0"> +{{ filterSelectorExtraCount('genders') }}</ng-container>
+              </span>
+              <ng-template #anyGender>
+                <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
+              </ng-template>
+            </span>
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+
+          <button type="button" class="game-filter-nav-btn game-filter-selector-tone-traits" (click)="openFilterSelector('traitLabels')">
+            <span class="game-filter-nav-copy">
+              <span class="game-filter-nav-title">Top Trait</span>
+              <span class="game-filter-nav-summary" *ngIf="filterSelectorHasSelection('traitLabels'); else anyTrait">
+                {{ filterSelectorPreview('traitLabels').join(', ') }}<ng-container *ngIf="filterSelectorExtraCount('traitLabels') > 0"> +{{ filterSelectorExtraCount('traitLabels') }}</ng-container>
+              </span>
+              <ng-template #anyTrait>
+                <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
+              </ng-template>
+            </span>
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+          <button type="button" class="game-filter-nav-btn game-filter-selector-tone-family" (click)="openFilterSelector('familyPlans')">
+            <span class="game-filter-nav-copy">
+              <span class="game-filter-nav-title">Family plans</span>
+              <span class="game-filter-nav-summary" *ngIf="filterSelectorHasSelection('familyPlans'); else anyFamilyPlans">
+                {{ filterSelectorPreview('familyPlans').join(', ') }}<ng-container *ngIf="filterSelectorExtraCount('familyPlans') > 0"> +{{ filterSelectorExtraCount('familyPlans') }}</ng-container>
+              </span>
+              <ng-template #anyFamilyPlans>
+                <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
+              </ng-template>
+            </span>
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+          <button type="button" class="game-filter-nav-btn game-filter-selector-tone-children" (click)="openFilterSelector('children')">
+            <span class="game-filter-nav-copy">
+              <span class="game-filter-nav-title">Children</span>
+              <span class="game-filter-nav-summary" *ngIf="filterSelectorHasSelection('children'); else anyChildren">
+                {{ filterSelectorPreview('children').join(', ') }}<ng-container *ngIf="filterSelectorExtraCount('children') > 0"> +{{ filterSelectorExtraCount('children') }}</ng-container>
+              </span>
+              <ng-template #anyChildren>
+                <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
+              </ng-template>
+            </span>
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+          <button type="button" class="game-filter-nav-btn game-filter-selector-tone-love" (click)="openFilterSelector('loveStyles')">
+            <span class="game-filter-nav-copy">
+              <span class="game-filter-nav-title">Love style</span>
+              <span class="game-filter-nav-summary" *ngIf="filterSelectorHasSelection('loveStyles'); else anyLoveStyles">
+                {{ filterSelectorPreview('loveStyles').join(', ') }}<ng-container *ngIf="filterSelectorExtraCount('loveStyles') > 0"> +{{ filterSelectorExtraCount('loveStyles') }}</ng-container>
+              </span>
+              <ng-template #anyLoveStyles>
+                <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
+              </ng-template>
+            </span>
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+          <button type="button" class="game-filter-nav-btn game-filter-selector-tone-communication" (click)="openFilterSelector('communicationStyles')">
+            <span class="game-filter-nav-copy">
+              <span class="game-filter-nav-title">Communication style</span>
+              <span class="game-filter-nav-summary" *ngIf="filterSelectorHasSelection('communicationStyles'); else anyCommunicationStyles">
+                {{ filterSelectorPreview('communicationStyles').join(', ') }}<ng-container *ngIf="filterSelectorExtraCount('communicationStyles') > 0"> +{{ filterSelectorExtraCount('communicationStyles') }}</ng-container>
+              </span>
+              <ng-template #anyCommunicationStyles>
+                <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
+              </ng-template>
+            </span>
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+          <button type="button" class="game-filter-nav-btn game-filter-selector-tone-orientation" (click)="openFilterSelector('sexualOrientations')">
+            <span class="game-filter-nav-copy">
+              <span class="game-filter-nav-title">Sexual orientation</span>
+              <span class="game-filter-nav-summary" *ngIf="filterSelectorHasSelection('sexualOrientations'); else anySexualOrientations">
+                {{ filterSelectorPreview('sexualOrientations').join(', ') }}<ng-container *ngIf="filterSelectorExtraCount('sexualOrientations') > 0"> +{{ filterSelectorExtraCount('sexualOrientations') }}</ng-container>
+              </span>
+              <ng-template #anySexualOrientations>
+                <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
+              </ng-template>
+            </span>
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        </section>
+
+        <section class="game-filter-group game-filter-group-beliefs">
+          <div class="game-filter-group-head">
+            <h3>Beliefs</h3>
+          </div>
+
+          <button type="button" class="game-filter-nav-btn game-filter-selector-tone-values" (click)="openFilterSelector('values')">
+            <span class="game-filter-nav-copy">
+              <span class="game-filter-nav-title">Values</span>
+              <span class="game-filter-nav-summary" *ngIf="filterSelectorHasSelection('values'); else anyValues">
+                {{ filterSelectorPreview('values').join(', ') }}<ng-container *ngIf="filterSelectorExtraCount('values') > 0"> +{{ filterSelectorExtraCount('values') }}</ng-container>
+              </span>
+              <ng-template #anyValues>
+                <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
+              </ng-template>
+            </span>
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+
+          <button type="button" class="game-filter-nav-btn game-filter-selector-tone-horoscope" (click)="openFilterSelector('horoscopes')">
+            <span class="game-filter-nav-copy">
+              <span class="game-filter-nav-title">Horoscope</span>
+              <span class="game-filter-nav-summary" *ngIf="filterSelectorHasSelection('horoscopes'); else anyHoroscope">
+                {{ filterSelectorPreview('horoscopes').join(', ') }}<ng-container *ngIf="filterSelectorExtraCount('horoscopes') > 0"> +{{ filterSelectorExtraCount('horoscopes') }}</ng-container>
+              </span>
+              <ng-template #anyHoroscope>
+                <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
+              </ng-template>
+            </span>
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+          <button type="button" class="game-filter-nav-btn game-filter-selector-tone-religion" (click)="openFilterSelector('religions')">
+            <span class="game-filter-nav-copy">
+              <span class="game-filter-nav-title">Religion</span>
+              <span class="game-filter-nav-summary" *ngIf="filterSelectorHasSelection('religions'); else anyReligions">
+                {{ filterSelectorPreview('religions').join(', ') }}<ng-container *ngIf="filterSelectorExtraCount('religions') > 0"> +{{ filterSelectorExtraCount('religions') }}</ng-container>
+              </span>
+              <ng-template #anyReligions>
+                <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
+              </ng-template>
+            </span>
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        </section>
+      </ng-container>
+
+      <ng-template #filterSelectorView>
+        <section class="game-filter-group game-filter-group-selector" *ngIf="filterSelector as selector" [ngClass]="filterSelectorToneClass(selector)">
+          <div class="game-filter-selector-head">
+            <button type="button" class="game-filter-selector-back" (click)="closeFilterSelector()">
+              <mat-icon>arrow_back</mat-icon>
+              <span>{{ activeFilterSelectorTitle }}</span>
+            </button>
+            <button type="button" class="game-filter-selector-clear" *ngIf="activeFilterSelectorHasSelection()" (click)="clearActiveFilterSelector()">
+              Clear
+            </button>
+          </div>
+
+          <div class="game-filter-selector-selected" *ngIf="filterSelectorSelectedValues(selector).length > 0; else selectorNoSelection">
+            <button
+              type="button"
+              class="game-filter-selector-chip"
+              *ngFor="let value of filterSelectorSelectedValues(selector)"
+              (click)="removeFilterSelectorValue(selector, value, $event)"
+            >
+              <span>{{ filterSelectorValueLabel(selector, value) }}</span>
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <ng-template #selectorNoSelection>
+            <p class="game-filter-selector-empty">No items selected yet.</p>
+          </ng-template>
+
+          <ng-container *ngIf="activeFilterSelectorUsesGroups; else flatSelectorOptions">
+            <section class="game-filter-selector-option-group" *ngFor="let group of activeFilterSelectorOptionGroups">
+              <div class="game-filter-selector-option-group-head">
+                <span class="game-filter-selector-option-group-tag" [ngClass]="group.toneClass">{{ group.title }}</span>
+                <span class="game-filter-selector-option-group-line" [ngClass]="group.toneClass"></span>
+              </div>
+              <div class="game-filter-chip-grid">
+                <button
+                  type="button"
+                  class="game-filter-chip"
+                  *ngFor="let option of group.options"
+                  [class.active]="isActiveFilterSelectorOptionSelected(option)"
+                  (click)="toggleActiveFilterSelectorOption(option)"
+                >
+                  <span>{{ option }}</span>
+                </button>
+              </div>
+            </section>
+          </ng-container>
+          <ng-template #flatSelectorOptions>
+            <div class="game-filter-chip-grid">
+              <button
+                type="button"
+                class="game-filter-chip"
+                *ngFor="let option of activeFilterSelectorOptions"
+                [class.active]="isActiveFilterSelectorOptionSelected(option.value)"
+                (click)="toggleActiveFilterSelectorOption(option.value)"
+              >
+                <mat-icon *ngIf="option.icon">{{ option.icon }}</mat-icon>
+                <span>{{ option.label }}</span>
+              </button>
+            </div>
+          </ng-template>
+        </section>
+      </ng-template>
     </div>
   </div>
 </section>

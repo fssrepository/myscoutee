@@ -3,7 +3,6 @@ game / activities rating (non-full/full screen mode) (to show it's rated)
 
 Game - Default page
 -------------------
-(profile-filter e.g.: profession match, school match, friends in common etc.),
 history, type - (fab button - egyeni, parok - rotate screen status message))
 
 cards should show a message when the user was active
@@ -12,3 +11,16 @@ preload 10-15 photos, and paginating to the next stack, while the user finished 
 (the cards are on top of each other, so hiding each other)
 
 pair rate - met (a new option on ratings)
+
+on the edit stage event form rule set block - you should add a message, manually added groups blocks capacity from this ruleset, just for customisation only!
+
+-----------
+
+reiterating as it was confusing and you forgot to change (or you changed something else)
+1) tranform values/interest/schools and workpaces to a button similar look and feel that sub events main page in the profile editor
+2) in the game filter popup interest/interest is the same look and feel than what you will do in the profile editor
+other items are e.g.: physique/languages/horoscope and items on the lifestyle/relationship/beliefs sections are a bit different
+on filter bar it's multiselect values (same popup or drop downbox, but as it's multivalue, you add chips at the top of the selected items, and the chips has a x, so you can remove it from the selection)
+3) the filter popup on game should be organized as on profile editor (so use the same block style to categorize the filtering options)
+4) the closing button on game filter popup is not the same look and feel then elsewhere
+5) remove the "off" title from the filter badge on game menu and from the adge also in the popup, but that matches badge should go just right befroe the closing button

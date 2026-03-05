@@ -9291,6 +9291,14 @@ export class App {
     return `${count} entries`;
   }
 
+  protected workspaceExperiencePreviewEntries(limit = 2): Array<{ title: string; subtitle: string; date: string }> {
+    return this.experiencePreviewEntriesForType('Workspace', limit);
+  }
+
+  protected schoolExperiencePreviewEntries(limit = 2): Array<{ title: string; subtitle: string; date: string }> {
+    return this.experiencePreviewEntriesForType('School', limit);
+  }
+
   protected openExperienceSelector(filter: 'All' | 'Workspace' | 'School' = 'All'): void {
     this.experienceFilter = filter;
     this.pendingExperienceDeleteId = null;
@@ -9305,6 +9313,18 @@ export class App {
 
   protected openSchoolSelector(): void {
     this.openExperienceSelector('School');
+  }
+
+  private experiencePreviewEntriesForType(type: 'Workspace' | 'School', limit: number): Array<{ title: string; subtitle: string; date: string }> {
+    return this.experienceEntries
+      .filter(item => item.type === type)
+      .sort((a, b) => this.toSortableDate(b.dateFrom) - this.toSortableDate(a.dateFrom))
+      .slice(0, limit)
+      .map(item => ({
+        title: item.org,
+        subtitle: item.title,
+        date: `${item.dateFrom} - ${item.dateTo || 'Present'}`
+      }));
   }
 
   protected experienceTypeIcon(type: ExperienceEntry['type']): string {

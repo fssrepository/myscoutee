@@ -9518,6 +9518,67 @@ textarea {
   color: rgba(44, 67, 100, 0.72);
 }
 
+.profile-details-values-btn-multiline {
+  min-height: 56px;
+  align-items: flex-start;
+  padding-top: 0.36rem;
+  padding-bottom: 0.36rem;
+}
+
+.profile-details-values-btn .status-option-content.profile-details-multiline-content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+  min-width: 0;
+  width: 100%;
+  align-items: stretch;
+  justify-content: flex-start;
+  text-transform: none;
+}
+
+.profile-details-mini-badge {
+  border-radius: 9px;
+  border: 1px solid rgba(47, 86, 133, 0.24);
+  background: linear-gradient(180deg, #f8fbff 0%, #edf4ff 100%);
+  padding: 0.26rem 0.4rem;
+  display: grid;
+  gap: 0.08rem;
+  min-width: 0;
+  flex: 1 1 142px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.profile-details-mini-badge.section-social {
+  border-color: rgba(45, 94, 168, 0.26);
+  background: linear-gradient(180deg, #ecf4ff 0%, #e1ecfb 100%);
+}
+
+.profile-details-mini-badge.section-arts {
+  border-color: rgba(103, 76, 164, 0.26);
+  background: linear-gradient(180deg, #f2edfb 0%, #e9e2f9 100%);
+}
+
+.profile-details-mini-badge-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.14;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-details-mini-badge-subtitle,
+.profile-details-mini-badge-date {
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: rgba(35, 60, 92, 0.84);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .profile-details-select .status-option-content {
   color: #1f3f67;
   font-size: 0.82rem;
