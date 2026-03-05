@@ -3284,21 +3284,21 @@
                           </span>
                           <ng-template #interestSummaryBadges>
                             <span class="status-option-content profile-details-selected-badges">
-                              <ng-container *ngIf="interestRowPreviewOptions(row.value, 1).length > 0; else interestSummaryPlaceholder">
+                              <ng-container *ngIf="interestRowPreviewOptions(row.value, 2).length > 0; else interestSummaryPlaceholder">
                                 <span class="profile-details-selected-chip-list">
                                   <span
                                     class="values-selected-chip profile-details-inline-chip"
                                     [class]="interestOptionToneClass(item)"
-                                    *ngFor="let item of interestRowPreviewOptions(row.value, 1)"
+                                    *ngFor="let item of interestRowPreviewOptions(row.value, 2)"
                                   >
                                     {{ item }}
                                   </span>
                                 </span>
                                 <span
                                   class="profile-details-inline-overflow"
-                                  *ngIf="interestRowPreviewOverflow(row.value, 1) > 0"
+                                  *ngIf="interestRowPreviewOverflow(row.value, 2) > 0"
                                 >
-                                  +{{ interestRowPreviewOverflow(row.value, 1) }}
+                                  +{{ interestRowPreviewOverflow(row.value, 2) }}
                                 </span>
                               </ng-container>
                               <ng-template #interestSummaryPlaceholder>
@@ -3350,6 +3350,8 @@
                         </ng-template>
                         <div
                           class="profile-details-privacy-fab"
+                          [class.open]="!isMobileView && isDetailPrivacyFabOpen(groupIndex, rowIndex)"
+                          [class.is-just-selected]="isDetailPrivacyJustSelected(groupIndex, rowIndex)"
                         >
                           <button
                             type="button"
@@ -3360,6 +3362,25 @@
                           >
                             <mat-icon>{{ privacyStatusIcon(row.privacy) }}</mat-icon>
                           </button>
+                          <div
+                            class="item-action-menu item-action-menu-desktop profile-privacy-menu"
+                            *ngIf="!isMobileView"
+                            [class.is-open]="isDetailPrivacyFabOpen(groupIndex, rowIndex)"
+                            [attr.aria-hidden]="!isDetailPrivacyFabOpen(groupIndex, rowIndex)"
+                            (click)="$event.stopPropagation()"
+                          >
+                            <button
+                              type="button"
+                              class="item-action-menu-btn profile-privacy-menu-option"
+                              [class]="privacyStatusClass(option)"
+                              *ngFor="let option of detailPrivacyOptions"
+                              (click)="selectDetailPrivacy(groupIndex, rowIndex, option, $event)"
+                            >
+                              <mat-icon>{{ privacyStatusIcon(option) }}</mat-icon>
+                              <span>{{ option }}</span>
+                              <mat-icon class="profile-privacy-menu-check" *ngIf="row.privacy === option">done</mat-icon>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -3382,7 +3403,7 @@
                     </span>
                     <mat-icon>chevron_right</mat-icon>
                   </button>
-                  <div class="profile-details-privacy-fab">
+                  <div class="profile-details-privacy-fab" [class.open]="!isMobileView && isExperiencePrivacyFabOpen('workspace')">
                     <button
                       type="button"
                       class="profile-details-privacy-btn profile-details-privacy-trigger"
@@ -3392,6 +3413,25 @@
                     >
                       <mat-icon>{{ privacyStatusIcon(experienceVisibilityValue('workspace')) }}</mat-icon>
                     </button>
+                    <div
+                      class="item-action-menu item-action-menu-desktop profile-privacy-menu"
+                      *ngIf="!isMobileView"
+                      [class.is-open]="isExperiencePrivacyFabOpen('workspace')"
+                      [attr.aria-hidden]="!isExperiencePrivacyFabOpen('workspace')"
+                      (click)="$event.stopPropagation()"
+                    >
+                      <button
+                        type="button"
+                        class="item-action-menu-btn profile-privacy-menu-option"
+                        [class]="privacyStatusClass(option)"
+                        *ngFor="let option of detailPrivacyOptions"
+                        (click)="selectExperiencePrivacy('workspace', option, $event)"
+                      >
+                        <mat-icon>{{ privacyStatusIcon(option) }}</mat-icon>
+                        <span>{{ option }}</span>
+                        <mat-icon class="profile-privacy-menu-check" *ngIf="experienceVisibilityValue('workspace') === option">done</mat-icon>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -3408,7 +3448,7 @@
                     </span>
                     <mat-icon>chevron_right</mat-icon>
                   </button>
-                  <div class="profile-details-privacy-fab">
+                  <div class="profile-details-privacy-fab" [class.open]="!isMobileView && isExperiencePrivacyFabOpen('school')">
                     <button
                       type="button"
                       class="profile-details-privacy-btn profile-details-privacy-trigger"
@@ -3418,6 +3458,25 @@
                     >
                       <mat-icon>{{ privacyStatusIcon(experienceVisibilityValue('school')) }}</mat-icon>
                     </button>
+                    <div
+                      class="item-action-menu item-action-menu-desktop profile-privacy-menu"
+                      *ngIf="!isMobileView"
+                      [class.is-open]="isExperiencePrivacyFabOpen('school')"
+                      [attr.aria-hidden]="!isExperiencePrivacyFabOpen('school')"
+                      (click)="$event.stopPropagation()"
+                    >
+                      <button
+                        type="button"
+                        class="item-action-menu-btn profile-privacy-menu-option"
+                        [class]="privacyStatusClass(option)"
+                        *ngFor="let option of detailPrivacyOptions"
+                        (click)="selectExperiencePrivacy('school', option, $event)"
+                      >
+                        <mat-icon>{{ privacyStatusIcon(option) }}</mat-icon>
+                        <span>{{ option }}</span>
+                        <mat-icon class="profile-privacy-menu-check" *ngIf="experienceVisibilityValue('school') === option">done</mat-icon>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

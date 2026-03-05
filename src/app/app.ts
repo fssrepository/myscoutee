@@ -976,7 +976,9 @@ export class App {
   protected eventEditorReadOnly = false;
   protected popupReturnTarget: PopupType = null;
   protected openPrivacyFab: { groupIndex: number; rowIndex: number } | null = null;
+  protected openExperiencePrivacyFab: 'workspace' | 'school' | null = null;
   protected privacyFabJustSelectedKey: string | null = null;
+  protected readonly detailPrivacyOptions: DetailPrivacy[] = ['Public', 'Friends', 'Hosts', 'Private'];
   protected mobileProfileSelectorSheet: MobileProfileSelectorSheet | null = null;
   protected valuesSelectorContext: { groupIndex: number; rowIndex: number } | null = null;
   protected valuesSelectorSelected: string[] = [];
@@ -9501,6 +9503,7 @@ export class App {
       this.openPrivacyFab?.groupIndex === groupIndex &&
       this.openPrivacyFab?.rowIndex === rowIndex;
     this.openPrivacyFab = isOpen ? null : { groupIndex, rowIndex };
+    this.openExperiencePrivacyFab = null;
   }
 
   protected isDetailPrivacyFabOpen(groupIndex: number, rowIndex: number): boolean {
@@ -9539,6 +9542,14 @@ export class App {
     if (!row) {
       return;
     }
+    if (!this.isMobileView) {
+      const isOpen =
+        this.openPrivacyFab?.groupIndex === groupIndex &&
+        this.openPrivacyFab?.rowIndex === rowIndex;
+      this.openPrivacyFab = isOpen ? null : { groupIndex, rowIndex };
+      this.openExperiencePrivacyFab = null;
+      return;
+    }
     this.mobileProfileSelectorSheet = {
       title: `${row.label} visibility`,
       selected: row.privacy,
@@ -9549,12 +9560,31 @@ export class App {
 
   protected openExperiencePrivacySelector(type: 'workspace' | 'school', event: Event): void {
     event.stopPropagation();
+    if (!this.isMobileView) {
+      this.openExperiencePrivacyFab = this.openExperiencePrivacyFab === type ? null : type;
+      this.openPrivacyFab = null;
+      return;
+    }
     this.mobileProfileSelectorSheet = {
       title: `${type === 'workspace' ? 'Workspace' : 'School'} visibility`,
       selected: this.experienceVisibility[type],
       options: this.privacySelectorOptions(),
       context: { kind: 'experiencePrivacy', type }
     };
+  }
+
+  protected isExperiencePrivacyFabOpen(type: 'workspace' | 'school'): boolean {
+    return this.openExperiencePrivacyFab === type;
+  }
+
+  protected selectExperiencePrivacy(
+    type: 'workspace' | 'school',
+    privacy: DetailPrivacy,
+    event: MouseEvent
+  ): void {
+    event.stopPropagation();
+    this.experienceVisibility[type] = privacy;
+    this.openExperiencePrivacyFab = null;
   }
 
   protected openValuesSelector(groupIndex: number, rowIndex: number): void {
@@ -16540,6 +16570,9 @@ export class App {
     }
     if (this.openPrivacyFab && !target.closest('.profile-details-privacy-fab')) {
       this.openPrivacyFab = null;
+    }
+    if (this.openExperiencePrivacyFab && !target.closest('.profile-details-privacy-fab')) {
+      this.openExperiencePrivacyFab = null;
     }
     if (this.showActivitiesViewPicker && !target.closest('.activities-view-picker') && !target.closest('.popup-view-fab')) {
       this.showActivitiesViewPicker = false;
