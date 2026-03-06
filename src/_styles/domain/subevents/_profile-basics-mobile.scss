@@ -1,0 +1,451 @@
+
+.birthday-field {
+  grid-column: 1 / 2;
+  grid-row: 2;
+  justify-self: start;
+  width: min(100%, 198px);
+}
+
+.horoscope-field {
+  grid-column: 1 / 2;
+  grid-row: 2;
+  justify-self: start;
+  width: min(100%, 174px);
+  margin-inline-start: max(0px, calc(var(--profile-details-control-span-width) - 174px));
+}
+
+.height-field {
+  grid-column: 2 / 3;
+  grid-row: 2;
+  justify-self: start;
+  width: min(100%, 148px);
+}
+
+.physique-field {
+  grid-column: 2 / 3;
+  grid-row: 2;
+  justify-self: start !important;
+  width: min(100%, 142px);
+  margin-inline-start: max(0px, calc(var(--profile-details-control-span-width) - 142px));
+}
+
+.languages-field {
+  grid-column: 1 / 2;
+  grid-row: 3;
+  justify-self: start;
+  width: min(100%, var(--profile-details-control-span-width));
+}
+
+.profile-form-grid input,
+.profile-form-grid select {
+  min-height: 36px;
+  padding-top: 0.36rem;
+  padding-bottom: 0.36rem;
+  box-sizing: border-box;
+}
+
+.profile-form-grid .profile-status-select-wrap.selector-like {
+  min-height: 36px;
+}
+
+.profile-form-grid .mat-mdc-select-trigger {
+  min-height: 28px;
+}
+
+.profile-form-grid .mat-mdc-select-value {
+  line-height: 1.2;
+}
+
+.basics-moved-grid > label {
+  min-width: 0;
+}
+
+.birthday-field,
+.horoscope-field,
+.height-field,
+.physique-field,
+.languages-field {
+  min-width: 0;
+}
+
+.height-field,
+.physique-field,
+.languages-field {
+  align-self: start;
+}
+
+.physique-field {
+  justify-self: start !important;
+}
+
+.birthday-field .date-input-wrap {
+  width: 100%;
+}
+
+.height-field input {
+  width: 100%;
+  max-width: none;
+}
+
+.physique-field .profile-status-select-wrap {
+  width: min(100%, 142px);
+  min-width: 0 !important;
+  max-width: 142px;
+  min-height: 36px;
+  height: 36px;
+  padding-top: 0;
+  padding-bottom: 0;
+  box-sizing: border-box;
+  justify-self: start;
+}
+
+.physique-field .profile-status-select-wrap .mat-mdc-select-trigger {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.18rem;
+}
+
+.physique-field .profile-status-select-wrap .mat-mdc-select-arrow-wrapper {
+  margin-left: 0;
+  justify-self: end;
+}
+
+.languages-field .language-filter {
+  width: 100%;
+  min-width: 100%;
+  max-width: none;
+}
+
+.name-field input,
+.city-field input {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+.birthday-field .date-input-wrap input {
+  flex: 1 1 auto;
+  width: auto;
+  max-width: none;
+  min-width: 0;
+}
+
+.horoscope-field .readonly-select {
+  width: 100%;
+  max-width: none;
+  min-width: 0 !important;
+  min-height: 36px;
+  height: 36px;
+  margin-top: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  box-sizing: border-box;
+}
+
+.languages-field .language-select-btn {
+  width: 100%;
+  max-width: none;
+  justify-content: space-between;
+}
+
+.profile-basics-accordion .mat-expansion-panel-header {
+  min-height: 46px;
+}
+
+.profile-basics-accordion .mat-expansion-panel-header .mat-content {
+  align-items: center;
+}
+
+.profile-basics-accordion .mat-expansion-panel-content,
+.profile-basics-accordion .mat-expansion-panel-body {
+  overflow: visible !important;
+}
+
+.basics-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+}
+
+.basics-title .mat-icon {
+  width: 19px;
+  height: 19px;
+  font-size: 19px;
+  line-height: 19px;
+}
+
+.readonly-select {
+  width: fit-content;
+  min-width: 0;
+  max-width: 130px;
+  justify-content: center;
+  margin-top: 2px;
+  padding-left: 0.44rem;
+  padding-right: 0.44rem;
+}
+
+.horoscope-field .readonly-select {
+  cursor: default;
+  transition: none !important;
+  transform: none !important;
+  filter: none !important;
+}
+
+.horoscope-field .status-option-content,
+.physique-field .status-option-content {
+  min-width: 0;
+}
+
+.physique-field .status-option-content span:last-child,
+.horoscope-field .zodiac-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .horoscope-field .readonly-select:hover,
+  .horoscope-field .readonly-select:active {
+    transform: none !important;
+    filter: none !important;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .horoscope-field .readonly-select:active {
+    animation: none !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}
+
+.zodiac-symbol {
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.zodiac-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  min-width: 0;
+  text-align: center;
+}
+
+.zodiac-aries { background: #fdf1f1; color: #9f2f2f; }
+.zodiac-taurus { background: #f7f3eb; color: #6e4b2b; }
+.zodiac-gemini { background: #fdf8e9; color: #7d5a12; }
+.zodiac-cancer { background: #eef4ff; color: #2d5b8e; }
+.zodiac-leo { background: #fff3e8; color: #8f4b0d; }
+.zodiac-virgo { background: #edf8ef; color: #2b6b3d; }
+.zodiac-libra { background: #f2eefc; color: #60439d; }
+.zodiac-scorpio { background: #f9edf2; color: #7b3150; }
+.zodiac-sagittarius { background: #eef1ff; color: #2f4a9a; }
+.zodiac-capricorn { background: #eff2f5; color: #364653; }
+.zodiac-aquarius { background: #ebf7fb; color: #1d5f7a; }
+.zodiac-pisces { background: #eef2ff; color: #294b8f; }
+
+.physique-slim { color: #3f7ab3; }
+.physique-lean { color: #3f8f5f; }
+.physique-athletic { color: #2f7e4d; }
+.physique-fit { color: #465fbb; }
+.physique-curvy { color: #a14875; }
+.physique-muscular { color: #7d4f24; }
+.physique-average { color: #4d667f; }
+
+.language-filter {
+  position: relative;
+}
+
+.language-select-btn {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  border-radius: 999px;
+  border-color: rgba(79, 117, 170, 0.34);
+  background: linear-gradient(180deg, #eaf2ff 0%, #dfe9f9 100%);
+  box-shadow: 0 2px 6px rgba(38, 60, 92, 0.08);
+  color: rgba(30, 56, 90, 0.92);
+  gap: 0.26rem;
+  padding: 0 0.72rem 0 0.8rem;
+}
+
+.language-select-btn .mdc-button__label {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  gap: 0.35rem;
+}
+
+.language-select-btn.active {
+  background: linear-gradient(180deg, #edf4ff 0%, #e3ecfb 100%);
+}
+
+.language-select-btn .label {
+  order: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-right: 0;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.language-select-btn .count {
+  order: 2;
+  flex: 0 0 auto;
+  margin-left: 0.12rem;
+  margin-right: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #2f5f93;
+  white-space: nowrap;
+}
+
+.language-select-btn .arrow {
+  order: 3;
+  width: 19px;
+  height: 19px;
+  font-size: 19px;
+  line-height: 19px;
+  transition: transform 0.18s ease;
+  margin-left: auto;
+  flex: 0 0 19px;
+}
+
+.language-select-btn .arrow.open {
+  transform: rotate(90deg);
+}
+
+.language-panel {
+  position: absolute;
+  top: auto;
+  bottom: calc(100% + 0.4rem);
+  left: auto;
+  right: 0;
+  min-width: 0;
+  width: 300px;
+  max-width: min(340px, calc(100vw - 1.2rem));
+  z-index: 80;
+  padding: 0.55rem;
+  border-radius: 14px;
+  border: 1px solid #d5deeb;
+  background: #ffffff;
+  box-shadow: 0 14px 36px rgba(27, 46, 74, 0.2);
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.language-chip-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  border: 1px solid #c8d3e2;
+  border-radius: 12px;
+  background: #f8f9fb;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  row-gap: 0.22rem;
+  padding: 0.36rem 0.62rem;
+  box-sizing: border-box;
+}
+
+.language-chip-set-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.26rem;
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.language-chip-set-inline .mat-mdc-chip {
+  min-height: 22px;
+  border-radius: 999px;
+  background: #e8f0fb;
+  color: #274a76;
+  margin-right: 0;
+}
+
+.language-chip-set-inline .mat-mdc-chip.language-tone-1,
+.mobile-profile-language-chip.language-tone-1,
+.mat-mdc-option.language-tone-1,
+.mobile-profile-selector-option.language-tone-1 {
+  background: #eaf4ff;
+  border-color: rgba(63, 122, 179, 0.34);
+  color: #2f6090;
+}
+
+.language-chip-set-inline .mat-mdc-chip.language-tone-2,
+.mobile-profile-language-chip.language-tone-2,
+.mat-mdc-option.language-tone-2,
+.mobile-profile-selector-option.language-tone-2 {
+  background: #edf8f4;
+  border-color: rgba(75, 127, 113, 0.34);
+  color: #2f695b;
+}
+
+.language-chip-set-inline .mat-mdc-chip.language-tone-3,
+.mobile-profile-language-chip.language-tone-3,
+.mat-mdc-option.language-tone-3,
+.mobile-profile-selector-option.language-tone-3 {
+  background: #f1f2ff;
+  border-color: rgba(70, 95, 187, 0.34);
+  color: #394f9c;
+}
+
+.language-chip-set-inline .mat-mdc-chip.language-tone-4,
+.mobile-profile-language-chip.language-tone-4,
+.mat-mdc-option.language-tone-4,
+.mobile-profile-selector-option.language-tone-4 {
+  background: #fff2f8;
+  border-color: rgba(161, 72, 117, 0.34);
+  color: #8d3f66;
+}
+
+.language-chip-set-inline .mat-mdc-chip.language-tone-5,
+.mobile-profile-language-chip.language-tone-5,
+.mat-mdc-option.language-tone-5,
+.mobile-profile-selector-option.language-tone-5 {
+  background: #fbf4ea;
+  border-color: rgba(125, 79, 36, 0.34);
+  color: #704822;
+}
+
+.language-chip-set-inline .mat-mdc-chip.language-tone-6,
+.mobile-profile-language-chip.language-tone-6,
+.mat-mdc-option.language-tone-6,
+.mobile-profile-selector-option.language-tone-6 {
+  background: #eff4f9;
+  border-color: rgba(77, 102, 127, 0.34);
+  color: #415872;
+}
+
+.language-chip-set-inline .mat-mdc-chip.language-tone-7,
+.mobile-profile-language-chip.language-tone-7,
+.mat-mdc-option.language-tone-7,
+.mobile-profile-selector-option.language-tone-7 {
+  background: #f7f5ea;
+  border-color: rgba(128, 109, 66, 0.34);
+  color: #746237;
+}
+
+.language-chip-set-inline .mat-mdc-chip.language-tone-8,
+.mobile-profile-language-chip.language-tone-8,
+.mat-mdc-option.language-tone-8,
+.mobile-profile-selector-option.language-tone-8 {
+  background: #edf5ff;
+  border-color: rgba(45, 122, 160, 0.34);
+  color: #2f6782;
+}

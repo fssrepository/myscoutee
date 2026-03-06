@@ -270,7 +270,6 @@
 <main class="main">
   <div class="content content-single">
     <button
-      mat-icon-button
       class="user-selector-btn-global"
       style="position: fixed; top: 0.95rem; right: 1rem; left: auto; inset-inline-end: 1rem; inset-inline-start: auto;"
       [class.is-hidden]="showUserMenu"
@@ -1003,7 +1002,6 @@
                     <span>{{ option.label }}</span>
                     <span class="status-option-tail">
                       <span class="rate-filter-count-badge" *ngIf="activitiesPrimaryFilterCount(option.key) > 0">{{ activitiesPrimaryFilterCount(option.key) }}</span>
-                      <mat-icon class="activities-option-check" *ngIf="activitiesPrimaryFilter === option.key">check</mat-icon>
                     </span>
                   </span>
                 </mat-option>
@@ -1058,7 +1056,6 @@
                         <span class="rate-filter-count-badge" *ngIf="activitiesChatContextFilterCount(option.key) > 0">
                           {{ activitiesChatContextFilterCount(option.key) }}
                         </span>
-                        <mat-icon class="activities-option-check" *ngIf="activitiesChatContextFilter === option.key">check</mat-icon>
                       </span>
                     </span>
                   </mat-option>
@@ -1137,7 +1134,6 @@
                         <span>{{ option.label }}</span>
                         <span class="status-option-tail">
                           <span class="rate-filter-count-badge" *ngIf="rateFilterCount(option.key) > 0">{{ rateFilterCount(option.key) }}</span>
-                          <mat-icon class="activities-option-check" *ngIf="activitiesRateFilter === option.key">check</mat-icon>
                         </span>
                       </span>
                     </mat-option>

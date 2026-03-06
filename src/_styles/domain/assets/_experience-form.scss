@@ -1,0 +1,434 @@
+
+.experience-form-panel.event-visibility-friends {
+  background: linear-gradient(180deg, #f4faf2 0%, #edf7eb 100%);
+  border-color: rgba(54, 129, 72, 0.24);
+}
+
+.experience-form-panel.event-visibility-invitation {
+  background: linear-gradient(180deg, #fff5f2 0%, #ffefea 100%);
+  border-color: rgba(176, 86, 66, 0.24);
+}
+
+.experience-form-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.9rem;
+}
+
+.experience-form-overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 16, 30, 0.54);
+  backdrop-filter: blur(2px);
+}
+
+.experience-form-popup {
+  position: relative;
+  z-index: 1;
+  width: min(860px, calc(100vw - 2rem));
+  max-height: calc(100vh - 1.8rem);
+  overflow: hidden;
+  border-radius: 16px;
+  background: #fff;
+  box-sizing: border-box;
+  border: 1px solid rgba(42, 66, 102, 0.28);
+  box-shadow: 0 24px 60px rgba(14, 32, 58, 0.26);
+  display: flex;
+  flex-direction: column;
+}
+
+.experience-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.82rem 1rem;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%);
+}
+
+.experience-form-header h3 {
+  margin: 0;
+  font-size: 1.12rem;
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.subevent-form-header-title {
+  min-width: 0;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.08rem;
+}
+
+.subevent-form-header-title p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: rgba(53, 79, 114, 0.86);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.experience-form-header-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.44rem;
+}
+
+.asset-visibility-picker {
+  margin-left: 0;
+}
+
+.experience-form-close-btn {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(235, 242, 255, 0.9);
+  color: rgba(39, 87, 148, 0.94);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.experience-form-close-btn .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.experience-delete-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 4200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.8rem;
+}
+
+.experience-delete-confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 16, 30, 0.46);
+}
+
+.experience-delete-confirm-panel {
+  position: relative;
+  z-index: 1;
+  width: min(420px, 100%);
+  border: 1px solid rgba(42, 67, 101, 0.28);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.72rem;
+  display: grid;
+  gap: 0.4rem;
+  text-align: center;
+  justify-items: center;
+}
+
+.experience-delete-confirm-panel h4 {
+  margin: 0;
+  font-size: 0.94rem;
+  color: #1f3252;
+}
+
+.experience-delete-confirm-panel p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgba(23, 41, 66, 0.72);
+}
+
+.experience-delete-confirm-panel .popup-actions {
+  justify-content: center;
+}
+
+.experience-delete-btn {
+  background: #d73838;
+  border-color: #b42a2a;
+  color: #fff;
+}
+
+.experience-publish-btn {
+  background: linear-gradient(180deg, #e8f9f1 0%, #d8f2e5 100%);
+  border-color: rgba(39, 132, 91, 0.48);
+  color: #20714f;
+}
+
+.experience-form-panel h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #223d62;
+}
+
+.experience-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  justify-content: stretch;
+  column-gap: 1rem;
+  row-gap: 0.9rem;
+}
+
+.experience-form-grid label {
+  display: grid;
+  grid-template-rows: min-content;
+  gap: 0 !important;
+  font-weight: 600;
+  color: rgba(26, 44, 69, 0.88);
+}
+
+.required-star {
+  color: #bf2f2f;
+  font-weight: 800;
+}
+
+.experience-form-panel input,
+.experience-form-panel textarea {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid rgba(136, 156, 186, 0.5);
+  border-radius: 10px;
+  background: #fff;
+  color: #1d3556;
+  padding: 0.56rem 0.72rem;
+  font-size: 0.88rem;
+  line-height: 1.25;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.experience-form-panel input:focus,
+.experience-form-panel textarea:focus {
+  outline: 0;
+  border-color: rgba(52, 103, 182, 0.72);
+  box-shadow: 0 0 0 3px rgba(55, 116, 212, 0.14);
+}
+
+.experience-form-panel textarea {
+  resize: vertical;
+  min-height: 96px;
+}
+
+.experience-form-panel input.field-required-invalid,
+.experience-form-panel textarea.field-required-invalid {
+  border-color: #c83232 !important;
+  box-shadow: 0 0 0 2px rgba(200, 50, 50, 0.16);
+}
+
+.experience-form-panel input.field-required-invalid:focus,
+.experience-form-panel textarea.field-required-invalid:focus {
+  border-color: #b61f1f !important;
+  box-shadow: 0 0 0 3px rgba(182, 31, 31, 0.24);
+}
+
+.experience-form-actions {
+  justify-content: center;
+  padding-top: 0.2rem;
+}
+
+.experience-form-actions .link-btn {
+  min-height: 38px;
+  height: 38px;
+  min-width: 90px;
+  padding: 0 1.1rem;
+  border-radius: 999px;
+  font-size: 0.92rem;
+  line-height: 1;
+}
+
+.experience-type-select {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 40px;
+}
+
+.experience-title-field,
+.experience-city-field {
+  width: 100%;
+}
+
+.experience-date-range-field {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  background: transparent;
+}
+
+.experience-type-select.experience-filter-workspace {
+  background: linear-gradient(180deg, #fff1f3 0%, #ffe6ea 100%);
+  border-color: rgba(169, 72, 90, 0.32);
+}
+
+.experience-type-select.experience-filter-school {
+  background: linear-gradient(180deg, #eaf4ff 0%, #e1ecfb 100%);
+  border-color: rgba(45, 94, 168, 0.32);
+}
+
+.experience-type-select.experience-filter-online {
+  background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
+  border-color: rgba(44, 126, 72, 0.32);
+}
+
+.experience-type-select.experience-filter-project {
+  background: linear-gradient(180deg, #f4f0ff 0%, #e9e3fb 100%);
+  border-color: rgba(88, 78, 159, 0.32);
+}
+
+.experience-type-select.asset-filter-car {
+  background: linear-gradient(180deg, #eef6ff 0%, #e2efff 100%);
+  border-color: rgba(43, 111, 179, 0.32);
+}
+
+.experience-type-select.asset-filter-accommodation {
+  background: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
+  border-color: rgba(37, 127, 95, 0.32);
+}
+
+.experience-type-select.asset-filter-supplies {
+  background: linear-gradient(180deg, #fff5ec 0%, #feead9 100%);
+  border-color: rgba(151, 92, 41, 0.32);
+}
+
+.experience-type-select.asset-filter-members {
+  background: linear-gradient(180deg, #f0f5ff 0%, #e4ecfb 100%);
+  border-color: rgba(67, 96, 141, 0.32);
+}
+
+.mat-mdc-option.status-option.experience-filter-online {
+  background: linear-gradient(0deg, #ffffff, #edf8ee);
+}
+
+.mat-mdc-option.status-option.experience-filter-project {
+  background: linear-gradient(0deg, #ffffff, #f4f0ff);
+}
+
+.mat-mdc-option.status-option.asset-filter-car {
+  background: linear-gradient(0deg, #ffffff, #eef6ff);
+}
+
+.mat-mdc-option.status-option.asset-filter-accommodation {
+  background: linear-gradient(0deg, #ffffff, #edf9f4);
+}
+
+.mat-mdc-option.status-option.asset-filter-supplies {
+  background: linear-gradient(0deg, #ffffff, #fff5ec);
+}
+
+.mat-mdc-option.status-option.asset-filter-ticket {
+  background: linear-gradient(0deg, #ffffff, #eef5ff);
+}
+
+.mat-mdc-option.status-option.asset-filter-members {
+  background: linear-gradient(0deg, #ffffff, #f0f5ff);
+}
+
+.mat-mdc-option.status-option.activity-filter-chat {
+  background: linear-gradient(0deg, #ffffff, #eef5ff);
+}
+
+.mat-mdc-option.status-option.activity-filter-invitations {
+  background: linear-gradient(0deg, #ffffff, #f4f0ff);
+}
+
+.mat-mdc-option.status-option.activity-filter-events {
+  background: linear-gradient(0deg, #ffffff, #fff3e8);
+}
+
+.mat-mdc-option.status-option.activity-filter-hosting {
+  background: linear-gradient(0deg, #ffffff, #eef9f8);
+}
+
+.mat-mdc-option.status-option.activity-filter-rates {
+  background: linear-gradient(0deg, #ffffff, #fff5de);
+}
+
+.mat-mdc-option.status-option.activity-filter-secondary {
+  background: linear-gradient(0deg, #ffffff, #f1f4fa);
+}
+
+.mat-mdc-option.status-option.chat-context-filter-all {
+  background: linear-gradient(0deg, #ffffff, #f1f4fa);
+}
+
+.mat-mdc-option.status-option.chat-context-filter-event {
+  background: linear-gradient(0deg, #ffffff, #eef5ff);
+}
+
+.mat-mdc-option.status-option.chat-context-filter-sub-event {
+  background: linear-gradient(0deg, #ffffff, #fff5ec);
+}
+
+.mat-mdc-option.status-option.chat-context-filter-group {
+  background: linear-gradient(0deg, #ffffff, #edf9f4);
+}
+
+.mat-mdc-option.status-option.rate-filter-group-option {
+  background: #fff;
+  opacity: 1;
+  pointer-events: none;
+  min-height: 28px;
+  color: #111827;
+}
+
+.rate-filter-group-label {
+  font-weight: 900;
+  font-size: 0.64rem;
+  color: #111827;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.activities-rate-options-panel .mat-mdc-option.status-option.rate-filter-group-option.mdc-list-item--disabled,
+.activities-rate-options-panel .mat-mdc-option.status-option.rate-filter-group-option.mat-mdc-option-disabled {
+  opacity: 1 !important;
+  color: #111827 !important;
+}
+
+.activities-rate-options-panel .mat-mdc-option.status-option.rate-filter-group-option.mdc-list-item--disabled .rate-filter-group-label,
+.activities-rate-options-panel .mat-mdc-option.status-option.rate-filter-group-option.mat-mdc-option-disabled .rate-filter-group-label {
+  opacity: 1 !important;
+  color: #111827 !important;
+}
+
+.mat-mdc-option.status-option.rate-filter-group-option.is-group-separator {
+  border-top: 1px solid rgba(92, 110, 140, 0.28);
+  margin-top: 0.28rem;
+  padding-top: 0.34rem;
+}
+
+.rate-filter-item-individual-given {
+  color: #a1485a;
+}
+
+.rate-filter-item-individual-received {
+  color: #2d5ea8;
+}
+
+.rate-filter-item-individual-mutual {
+  color: #4f68a8;
+}
+
+.rate-filter-item-individual-met {
+  color: #2d7d47;
+}
+
+.rate-filter-item-pair-given {
+  color: #8a5428;
+}
+
+.rate-filter-item-pair-received {
+  color: #236d51;
+}
+
+.mat-mdc-option.status-option.rate-filter-item-individual-given {
+  background: linear-gradient(0deg, #ffffff, #fff1f3);
+}

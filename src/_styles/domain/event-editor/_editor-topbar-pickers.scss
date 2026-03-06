@@ -1,0 +1,421 @@
+
+.event-explore-order-trigger {
+  flex-wrap: nowrap;
+}
+
+.event-explore-order-trigger.event-explore-order-upcoming {
+  background: linear-gradient(180deg, #edf7ff 0%, #e3f1ff 100%);
+  border-color: rgba(44, 111, 184, 0.34);
+}
+
+.event-explore-order-trigger.event-explore-order-past-events {
+  background: linear-gradient(180deg, #f4f5f8 0%, #eceef3 100%);
+  border-color: rgba(91, 102, 124, 0.34);
+}
+
+.event-explore-order-trigger.event-explore-order-nearby {
+  background: linear-gradient(180deg, #eef9f3 0%, #e4f3eb 100%);
+  border-color: rgba(43, 124, 85, 0.34);
+}
+
+.event-explore-order-trigger.event-explore-order-most-relevant {
+  background: linear-gradient(180deg, #f3f1ff 0%, #ece8ff 100%);
+  border-color: rgba(96, 83, 164, 0.34);
+}
+
+.event-explore-order-trigger.event-explore-order-top-rated {
+  background: linear-gradient(180deg, #fff8e8 0%, #fff1d9 100%);
+  border-color: rgba(185, 118, 31, 0.35);
+}
+
+.event-explore-order-upcoming {
+  color: #2c6fb8;
+}
+
+.event-explore-order-past-events {
+  color: #5f697c;
+}
+
+.event-explore-order-nearby {
+  color: #2f7e56;
+}
+
+.event-explore-order-most-relevant {
+  color: #5d4ea2;
+}
+
+.event-explore-order-top-rated {
+  color: #b7761f;
+}
+
+.event-explore-order-panel .activities-view-option.event-explore-order-upcoming {
+  background: linear-gradient(0deg, #ffffff, #edf7ff);
+}
+
+.event-explore-order-panel .activities-view-option.event-explore-order-past-events {
+  background: linear-gradient(0deg, #ffffff, #f4f5f8);
+}
+
+.event-explore-order-panel .activities-view-option.event-explore-order-nearby {
+  background: linear-gradient(0deg, #ffffff, #eef9f3);
+}
+
+.event-explore-order-panel .activities-view-option.event-explore-order-most-relevant {
+  background: linear-gradient(0deg, #ffffff, #f3f1ff);
+}
+
+.event-explore-order-panel .activities-view-option.event-explore-order-top-rated {
+  background: linear-gradient(0deg, #ffffff, #fff8e8);
+}
+
+.profile-status-header-picker .event-visibility-trigger.status-public {
+  background: linear-gradient(180deg, #e6f6ef 0%, #d9f0e6 100%);
+  border-color: rgba(47, 143, 102, 0.34);
+}
+
+.profile-status-header-picker .event-visibility-trigger.status-friends {
+  background: linear-gradient(180deg, #e8f1fd 0%, #dfeaf9 100%);
+  border-color: rgba(27, 87, 161, 0.34);
+}
+
+.profile-status-header-picker .event-visibility-trigger.status-host {
+  background: linear-gradient(180deg, #f6efe2 0%, #eee4d2 100%);
+  border-color: rgba(135, 88, 15, 0.36);
+}
+
+.profile-status-header-picker .event-visibility-trigger.status-inactive {
+  background: linear-gradient(180deg, #f2f3f5 0%, #e8ebef 100%);
+  border-color: rgba(91, 101, 115, 0.32);
+}
+
+.profile-status-header-picker .event-visibility-trigger .mat-icon.status-public,
+.profile-status-header-picker .activities-view-option.status-public .mat-icon {
+  color: #2f8f66;
+}
+
+.profile-status-header-picker .event-visibility-trigger .mat-icon.status-friends,
+.profile-status-header-picker .activities-view-option.status-friends .mat-icon {
+  color: #1b57a1;
+}
+
+.profile-status-header-picker .event-visibility-trigger .mat-icon.status-host,
+.profile-status-header-picker .activities-view-option.status-host .mat-icon {
+  color: #87580f;
+}
+
+.profile-status-header-picker .event-visibility-trigger .mat-icon.status-inactive,
+.profile-status-header-picker .activities-view-option.status-inactive .mat-icon {
+  color: #5b6573;
+}
+
+.profile-status-header-picker .activities-view-option.status-public {
+  background: linear-gradient(0deg, #ffffff, #e6f6ef);
+}
+
+.profile-status-header-picker .activities-view-option.status-friends {
+  background: linear-gradient(0deg, #ffffff, #e8f1fd);
+}
+
+.profile-status-header-picker .activities-view-option.status-host {
+  background: linear-gradient(0deg, #ffffff, #f6efe2);
+}
+
+.profile-status-header-picker .activities-view-option.status-inactive {
+  background: linear-gradient(0deg, #ffffff, #f2f3f5);
+}
+
+.activities-view-picker-panel {
+  position: absolute;
+  top: calc(100% + 0.32rem);
+  right: 0;
+  border: 1px solid rgba(39, 62, 94, 0.22);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(17, 29, 48, 0.22);
+  padding: 0.24rem;
+  min-width: 128px;
+  z-index: 40;
+  display: grid;
+  gap: 0.16rem;
+}
+
+.activities-view-option {
+  border: 0;
+  background: #fff;
+  border-radius: 8px;
+  min-height: 32px;
+  padding: 0.34rem 0.44rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  color: #1e3658;
+  cursor: pointer;
+}
+
+.activities-view-option .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+
+.activities-view-option span {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.popup-chat-event-btn .mat-icon {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+}
+
+.header-members-count {
+  margin-left: auto;
+  min-width: fit-content;
+  height: 22px;
+  border-radius: 999px;
+  padding: 0 9px;
+  background: #dbe2eb;
+  color: rgba(24, 39, 61, 0.82);
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.subevent-header-invite-trigger {
+  margin-left: auto;
+}
+
+.subevent-header-members-count {
+  margin-left: 0;
+}
+
+@media (min-width: 761px) {
+  .popup-header.popup-header-activity-members-pending-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-rows: auto auto;
+    column-gap: 0.34rem;
+    row-gap: 0.18rem;
+    align-items: center;
+  }
+
+  .popup-header.popup-header-activity-members-pending-layout .popup-title {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
+    min-width: 0;
+    margin-right: 0;
+  }
+
+  .popup-header.popup-header-activity-members-pending-layout .activity-members-header-invite-trigger {
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
+    margin-left: 0;
+  }
+
+  .popup-header.popup-header-activity-members-pending-layout .activity-members-header-pending-toggle {
+    grid-column: 3 / 4;
+    grid-row: 1 / 2;
+    margin-left: 0;
+  }
+
+  .popup-header.popup-header-activity-members-pending-layout .popup-close {
+    grid-column: 4 / 5;
+    grid-row: 1 / 2;
+    margin-left: 0;
+  }
+
+  .popup-header.popup-header-activity-members-pending-layout .members-header-summary-badge {
+    grid-column: 2 / 4;
+    grid-row: 2 / 3;
+    justify-self: center;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .popup-header.popup-header-members-invite-mobile-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-rows: auto auto;
+    column-gap: 0.32rem;
+    row-gap: 0.24rem;
+    align-items: center;
+  }
+
+  .popup-header.popup-header-members-invite-mobile-layout .popup-title {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
+    min-width: 0;
+    margin-right: 0;
+  }
+
+  .popup-header.popup-header-members-invite-mobile-layout .activity-members-header-invite-trigger {
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
+    margin-left: 0;
+  }
+
+  .popup-header.popup-header-members-invite-mobile-layout .popup-close {
+    grid-column: 3 / 4;
+    grid-row: 1 / 2;
+    margin-left: 0;
+  }
+
+  .popup-header.popup-header-members-invite-mobile-layout .members-header-summary-badge {
+    grid-column: 1 / 4;
+    grid-row: 2 / 3;
+    justify-self: auto;
+    margin-left: 0;
+  }
+
+  .popup-header.popup-header-members-invite-mobile-layout .popup-chat-title-block p {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .popup-header.popup-header-activity-members-pending-layout {
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+  }
+
+  .popup-header.popup-header-activity-members-pending-layout .activity-members-header-pending-toggle {
+    grid-column: 3 / 4;
+    grid-row: 1 / 2;
+    margin-left: 0;
+  }
+
+  .popup-header.popup-header-activity-members-pending-layout .popup-close {
+    grid-column: 4 / 5;
+    grid-row: 1 / 2;
+  }
+
+  .popup-header.popup-header-activity-members-pending-layout .members-header-summary-badge {
+    grid-column: 1 / 5;
+    grid-row: 2 / 3;
+  }
+}
+
+.activity-members-header-pending-toggle {
+  min-height: 34px;
+  margin-left: 0;
+}
+
+.activity-members-header-pending-toggle .activity-members-header-pending-badge {
+  top: -8px;
+  right: -8px;
+}
+
+.popup-panel-members {
+  height: min(86vh, 900px);
+}
+
+.popup-body {
+  padding: 0.4rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.72rem;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.popup-body-members {
+  height: 100%;
+}
+
+.popup-body.popup-body-members.popup-body-subevent-members {
+  overflow: hidden;
+}
+
+.popup-body.popup-body-event-feedback {
+  overflow: hidden;
+  padding: 0.34rem;
+}
+
+.app-popup-super-stacked {
+  z-index: 3600;
+}
+
+.popup-panel-subevent-asset-assign {
+  width: min(1060px, calc(100vw - 1.2rem));
+  height: calc(100vh - 1.2rem);
+}
+
+.app-popup-panel.popup-panel-event-subevents {
+  width: min(1060px, calc(100vw - 1.2rem));
+  height: calc(100vh - 1.2rem);
+}
+
+.event-topics-header {
+  justify-content: flex-start;
+}
+
+.event-topics-header .popup-title {
+  margin-right: 0;
+}
+
+.event-subevents-header {
+  align-items: center;
+}
+
+.event-subevents-popup-title {
+  min-width: 0;
+  flex: 1;
+}
+
+.subevents-header-controls {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.subevents-mode-picker {
+  margin-left: 0;
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.subevents-mode-trigger {
+  min-height: 32px;
+  border-width: 1px;
+  gap: 0.38rem;
+  padding: 0 0.62rem;
+}
+
+.subevents-mode-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.subevents-mode-trigger.subevents-mode-casual {
+  background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
+  border-color: rgba(44, 126, 72, 0.36);
+  color: #2d7d47;
+}
+
+.subevents-mode-trigger.subevents-mode-casual .subevents-mode-icon,
+.activities-view-option.subevents-mode-casual .subevents-mode-icon {
+  color: #2d7d47;
+}
+
+.subevents-mode-trigger.subevents-mode-tournament {
+  background: linear-gradient(180deg, #fff3e8 0%, #ffe8d2 100%);
+  border-color: rgba(183, 110, 40, 0.4);
+  color: #a35e1d;
+}
+
+.subevents-mode-trigger.subevents-mode-tournament .subevents-mode-icon,
+.activities-view-option.subevents-mode-tournament .subevents-mode-icon {
+  color: #a35e1d;
+}

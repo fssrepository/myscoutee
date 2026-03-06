@@ -1,0 +1,166 @@
+app-profile-editor-image-editor-screen {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+
+app-profile-editor-image-editor-screen .image-editor-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.46rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 0.28rem;
+  box-sizing: border-box;
+}
+
+app-profile-editor-image-editor-screen .image-editor-main {
+  position: relative;
+  min-height: 0;
+  border: 1px dashed rgba(18, 31, 51, 0.28);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(18, 31, 51, 0.7);
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-color: #fbfdff;
+  overflow: hidden;
+  flex: 1 1 0;
+  max-height: calc(100% - 108px);
+}
+
+app-profile-editor-image-editor-screen .image-stack-indicators {
+  position: absolute;
+  width: auto !important;
+  top: -0.1rem;
+  left: 0.25rem;
+  right: 0.25rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+}
+
+app-profile-editor-image-editor-screen .image-stack-line {
+  height: 3px;
+  border-radius: 999px;
+  border: 0;
+  background: rgba(49, 78, 117, 0.24);
+  box-shadow: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+app-profile-editor-image-editor-screen .image-stack-line.active {
+  background: rgba(43, 97, 170, 0.78);
+}
+
+app-profile-editor-image-editor-screen .image-stack-hit-area {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 4px;
+  z-index: 2;
+}
+
+app-profile-editor-image-editor-screen .image-stack-hit-segment {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+app-profile-editor-image-editor-screen .image-editor-hint {
+  font-size: 0.78rem;
+  color: rgba(18, 31, 51, 0.72);
+}
+
+app-profile-editor-image-editor-screen .image-file-input-hidden {
+  display: none;
+}
+
+app-profile-editor-image-editor-screen .image-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.34rem;
+}
+
+app-profile-editor-image-editor-screen .image-editor-grid button {
+  position: relative;
+  border: 1px solid rgba(18, 31, 51, 0.18);
+  border-radius: 10px;
+  min-height: 56px;
+  background: #fff;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+app-profile-editor-image-editor-screen .image-editor-grid button.slot-featured {
+  border-color: rgba(204, 130, 27, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(226, 158, 41, 0.46);
+}
+
+app-profile-editor-image-editor-screen .image-editor-grid button.slot-featured.slot-selected {
+  box-shadow: 0 0 0 2px rgba(228, 156, 52, 0.28), inset 0 0 0 1px rgba(226, 158, 41, 0.52);
+}
+
+app-profile-editor-image-editor-screen .image-editor-grid .slot-selected {
+  border-color: #4d86c2;
+  box-shadow: 0 0 0 2px rgba(77, 134, 194, 0.18);
+}
+
+app-profile-editor-image-editor-screen .slot-index {
+  position: absolute;
+  top: 4px;
+  left: 5px;
+  font-size: 10px;
+  color: rgba(17, 30, 50, 0.72);
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 8px;
+  padding: 0 4px;
+}
+
+app-profile-editor-image-editor-screen .slot-add {
+  font-size: 1.1rem;
+  color: rgba(17, 30, 50, 0.7);
+}
+
+app-profile-editor-image-editor-screen .remove-slot {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(16, 29, 49, 0.78);
+  color: #fff;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  app-profile-editor-image-editor-screen .image-editor-main {
+    max-height: calc(100% - 168px);
+  }
+
+  app-profile-editor-image-editor-screen .image-editor-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

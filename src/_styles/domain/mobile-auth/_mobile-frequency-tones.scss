@@ -1,0 +1,97 @@
+
+.mobile-profile-selector-option.event-frequency-monthly {
+  background: linear-gradient(180deg, #e8f2ff 0%, #dceaff 100%);
+  border-color: rgba(36, 103, 168, 0.42);
+}
+
+.mobile-profile-selector-option.blind-mode-open {
+  background: linear-gradient(180deg, #eaf5ff 0%, #e1edfb 100%);
+  border-color: rgba(45, 100, 171, 0.36);
+}
+
+.mobile-profile-selector-option.blind-mode-blind {
+  background: linear-gradient(180deg, #fff0f2 0%, #fde5e9 100%);
+  border-color: rgba(184, 76, 98, 0.42);
+}
+
+.mobile-profile-language-entry {
+  margin-top: 0.42rem;
+  display: grid;
+  gap: 0.48rem;
+}
+
+.mobile-profile-language-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.mobile-profile-language-chip {
+  border: 1px solid rgba(57, 87, 130, 0.26);
+  border-radius: 999px;
+  background: #edf3fc;
+  color: #1f3f67;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.mobile-profile-language-chip .mat-icon {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+  line-height: 14px;
+}
+
+.mobile-profile-language-input-wrap {
+  position: relative;
+  display: block;
+}
+
+.mobile-profile-language-input-wrap input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(58, 81, 114, 0.24);
+  border-radius: 10px;
+  padding: 0.5rem 2.1rem 0.5rem 0.58rem;
+  background: #f8fafd;
+}
+
+.mobile-profile-language-submit-btn {
+  position: absolute;
+  right: 0.38rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(56, 83, 119, 0.24);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #edf3fb 0%, #e3ecf8 100%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.mobile-profile-language-submit-btn .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+  color: #34577f;
+}
+
+.mobile-profile-language-submit-btn:active {
+  transform: translateY(-50%) scale(0.96);
+}
+
+@media (max-width: 960px) {
+  .demo-user-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+

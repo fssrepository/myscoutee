@@ -6,7 +6,6 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   templateUrl: './profile-editor-image-editor-screen.component.html',
-  styleUrl: './profile-editor-image-editor-screen.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ProfileEditorImageEditorScreenComponent implements OnChanges {

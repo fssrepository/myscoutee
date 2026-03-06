@@ -1,0 +1,420 @@
+
+.subevent-optional-picker-panel {
+  left: auto;
+  right: 0;
+  top: calc(100% + 0.32rem);
+  min-width: 176px;
+  z-index: 8;
+}
+
+.subevent-optional-picker-panel .activities-view-option.subevent-mode-mandatory {
+  background: linear-gradient(0deg, #ffffff, #fff0f0);
+  color: #a23d3d;
+}
+
+.subevent-optional-picker-panel .activities-view-option.subevent-mode-optional {
+  background: linear-gradient(0deg, #ffffff, #eef6ff);
+  color: #2d5ea8;
+}
+
+.event-date-field,
+.event-time-field {
+  width: 100%;
+  --mat-form-field-filled-container-color: transparent;
+  --mdc-filled-text-field-container-color: transparent;
+  --mat-form-field-state-layer-color: transparent;
+  --mat-form-field-hover-state-layer-opacity: 0;
+  --mat-form-field-focus-state-layer-opacity: 0;
+  --mat-form-field-outlined-outline-width: 0;
+  --mat-form-field-outlined-focus-outline-width: 0;
+  --mdc-outlined-text-field-outline-color: transparent;
+  --mdc-outlined-text-field-focus-outline-color: transparent;
+  --mdc-outlined-text-field-hover-outline-color: transparent;
+  padding-left: 0 !important;
+  margin: 0 !important;
+
+}
+
+.event-date-field .mdc-text-field--filled,
+.event-time-field .mdc-text-field--filled {
+  --mdc-filled-text-field-container-color: transparent;
+}
+
+.event-date-field .mdc-text-field--filled:not(.mdc-text-field--disabled)::before,
+.event-date-field .mdc-text-field--filled:not(.mdc-text-field--disabled)::after,
+.event-time-field .mdc-text-field--filled:not(.mdc-text-field--disabled)::before,
+.event-time-field .mdc-text-field--filled:not(.mdc-text-field--disabled)::after {
+  border-bottom: 0 !important;
+}
+
+.event-date-field .mat-mdc-text-field-wrapper::before,
+.event-date-field .mat-mdc-text-field-wrapper::after,
+.event-time-field .mat-mdc-text-field-wrapper::before,
+.event-time-field .mat-mdc-text-field-wrapper::after {
+  border-bottom: 0 !important;
+}
+
+.event-date-field .mat-mdc-text-field-wrapper,
+.event-time-field .mat-mdc-text-field-wrapper {
+  min-height: 42px;
+  border-radius: 0;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0;
+  padding-left: 0 !important;
+}
+
+.event-date-field .mdc-text-field,
+.event-time-field .mdc-text-field {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0;
+}
+
+.event-date-field .mat-mdc-form-field-focus-overlay,
+.event-time-field .mat-mdc-form-field-focus-overlay {
+  background-color: transparent !important;
+  opacity: 0 !important;
+}
+
+.event-date-field .mdc-notched-outline__leading,
+.event-date-field .mdc-notched-outline__notch,
+.event-date-field .mdc-notched-outline__trailing,
+.event-time-field .mdc-notched-outline__leading,
+.event-time-field .mdc-notched-outline__notch,
+.event-time-field .mdc-notched-outline__trailing {
+  border: 0 !important;
+}
+
+.event-date-field-start .mat-mdc-text-field-wrapper,
+.event-time-field-start .mat-mdc-text-field-wrapper {
+  background: transparent !important;
+}
+
+.event-date-field-end .mat-mdc-text-field-wrapper,
+.event-time-field-end .mat-mdc-text-field-wrapper {
+  background: transparent !important;
+}
+
+.event-date-field .mat-mdc-form-field-subscript-wrapper,
+.event-time-field .mat-mdc-form-field-subscript-wrapper {
+  display: none;
+}
+
+.event-date-field .mat-mdc-form-field-infix,
+.event-time-field .mat-mdc-form-field-infix {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  min-height: 34px !important;
+  height: 34px;
+  display: flex;
+  align-items: center;
+}
+
+.event-date-field .mat-mdc-form-field-flex,
+.event-time-field .mat-mdc-form-field-flex {
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+  align-items: center !important;
+}
+
+.event-date-field .mdc-line-ripple,
+.event-time-field .mdc-line-ripple {
+  display: none !important;
+  opacity: 0 !important;
+  transform: scaleX(0) !important;
+}
+
+.event-date-field .mat-mdc-form-field-line-ripple,
+.event-time-field .mat-mdc-form-field-line-ripple {
+  display: none !important;
+  opacity: 0 !important;
+  transform: scaleX(0) !important;
+}
+
+.event-date-field .mdc-line-ripple--deactivating,
+.event-time-field .mdc-line-ripple--deactivating,
+.event-date-field .mdc-line-ripple--active,
+.event-time-field .mdc-line-ripple--active {
+  display: none !important;
+  opacity: 0 !important;
+  transform: scaleX(0) !important;
+}
+
+.event-date-field .mat-mdc-form-field-bottom-align,
+.event-time-field .mat-mdc-form-field-bottom-align {
+  display: none;
+}
+
+.event-date-field input.mat-mdc-input-element,
+.event-time-field input.mat-mdc-input-element {
+  border: 1px solid rgba(136, 156, 186, 0.5) !important;
+  border-radius: 11px;
+  background: #fff !important;
+  color: #1d3556;
+  min-height: 36px;
+  padding: 0 0.7rem;
+  box-sizing: border-box;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.experience-form-panel .event-date-field input.mat-mdc-input-element,
+.experience-form-panel .event-time-field input.mat-mdc-input-element {
+  border: 1px solid rgba(136, 156, 186, 0.5) !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+
+.event-date-field input.mat-mdc-input-element:focus,
+.event-time-field input.mat-mdc-input-element:focus {
+  border-color: rgba(52, 103, 182, 0.72) !important;
+  box-shadow: 0 0 0 3px rgba(55, 116, 212, 0.14) !important;
+}
+
+.event-date-field-start input.mat-mdc-input-element,
+.event-time-field-start input.mat-mdc-input-element {
+  border-color: transparent;
+}
+
+.event-date-field-end input.mat-mdc-input-element,
+.event-time-field-end input.mat-mdc-input-element {
+  border-color: transparent;
+}
+
+.event-date-field .mat-datepicker-toggle,
+.event-time-field .mat-timepicker-toggle {
+  margin: 0 !important;
+  align-self: center !important;
+}
+
+.event-date-field .mat-datepicker-toggle .mat-mdc-icon-button,
+.event-time-field .mat-timepicker-toggle .mat-mdc-icon-button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.event-frequency-select.event-frequency-one-time {
+  background: linear-gradient(180deg, #fff3e6 0%, #ffe8d4 100%);
+  border-color: rgba(196, 114, 34, 0.42);
+}
+
+.event-frequency-select.event-frequency-daily {
+  background: linear-gradient(180deg, #fff4cf 0%, #ffe7b2 100%);
+  border-color: rgba(188, 138, 21, 0.44);
+}
+
+.event-frequency-select.event-frequency-weekly {
+  background: linear-gradient(180deg, #eaf8fb 0%, #dff2f6 100%);
+  border-color: rgba(39, 134, 150, 0.42);
+}
+
+.event-frequency-select.event-frequency-bi-weekly {
+  background: linear-gradient(180deg, #f3efff 0%, #ebe3fd 100%);
+  border-color: rgba(105, 78, 168, 0.42);
+}
+
+.event-frequency-select.event-frequency-monthly {
+  background: linear-gradient(180deg, #e8f2ff 0%, #dceaff 100%);
+  border-color: rgba(36, 103, 168, 0.42);
+}
+
+.event-frequency-one-time {
+  color: #d07d33;
+}
+
+.event-frequency-daily {
+  color: #c8921e;
+}
+
+.event-frequency-weekly {
+  color: #2f8e9d;
+}
+
+.event-frequency-bi-weekly {
+  color: #7358b0;
+}
+
+.event-frequency-monthly {
+  color: #295d96;
+}
+
+.mat-mdc-option.status-option.event-frequency-one-time {
+  background: linear-gradient(0deg, #ffffff, #fff3e8);
+}
+
+.mat-mdc-option.status-option.event-frequency-daily {
+  background: linear-gradient(0deg, #ffffff, #fff5de);
+}
+
+.mat-mdc-option.status-option.event-frequency-weekly {
+  background: linear-gradient(0deg, #ffffff, #eef9f8);
+}
+
+.mat-mdc-option.status-option.event-frequency-bi-weekly {
+  background: linear-gradient(0deg, #ffffff, #f4f0ff);
+}
+
+.mat-mdc-option.status-option.event-frequency-monthly {
+  background: linear-gradient(0deg, #ffffff, #eef6ff);
+}
+
+.event-frequency-select .status-option-content {
+  font-weight: 700;
+}
+
+.event-frequency-select {
+  width: fit-content !important;
+  min-width: 0 !important;
+  max-width: 100%;
+  justify-self: start;
+  position: relative;
+  overflow: visible;
+}
+
+.event-frequency-select .mat-mdc-select {
+  width: auto !important;
+  min-width: 0 !important;
+}
+
+.event-frequency-select .mat-mdc-select-trigger,
+.event-frequency-select .status-option-content {
+  width: auto !important;
+  min-width: 0;
+}
+
+.event-frequency-options-panel .mat-mdc-option .mat-pseudo-checkbox,
+.event-frequency-options-panel .mat-mdc-option .mat-pseudo-checkbox-minimal,
+.event-frequency-options-panel .mat-mdc-option .mat-mdc-option-pseudo-checkbox,
+.event-frequency-options-panel .mat-mdc-option .mdc-list-item__end {
+  display: none !important;
+}
+
+.event-frequency-options-panel .mat-mdc-option.status-option .status-option-content {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  column-gap: 0.34rem;
+}
+
+.mat-mdc-select-panel.event-frequency-options-panel {
+  min-width: 190px !important;
+}
+
+.mobile-profile-selector-option.experience-filter-workspace {
+  background: linear-gradient(180deg, #fff1f3 0%, #ffe6ea 100%);
+  border-color: rgba(169, 72, 90, 0.32);
+}
+
+.mobile-profile-selector-option.experience-filter-school {
+  background: linear-gradient(180deg, #eaf4ff 0%, #e1ecfb 100%);
+  border-color: rgba(45, 94, 168, 0.32);
+}
+
+.mobile-profile-selector-option.experience-filter-online {
+  background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
+  border-color: rgba(44, 126, 72, 0.32);
+}
+
+.mobile-profile-selector-option.experience-filter-project {
+  background: linear-gradient(180deg, #f4f0ff 0%, #e9e3fb 100%);
+  border-color: rgba(88, 78, 159, 0.32);
+}
+
+.mobile-profile-selector-option.asset-filter-car {
+  background: linear-gradient(180deg, #eef6ff 0%, #e2efff 100%);
+  border-color: rgba(43, 111, 179, 0.32);
+}
+
+.mobile-profile-selector-option.asset-filter-accommodation {
+  background: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
+  border-color: rgba(37, 127, 95, 0.32);
+}
+
+.mobile-profile-selector-option.asset-filter-supplies {
+  background: linear-gradient(180deg, #fff5ec 0%, #feead9 100%);
+  border-color: rgba(151, 92, 41, 0.32);
+}
+
+.mobile-profile-selector-option.asset-filter-ticket {
+  background: linear-gradient(180deg, #eef5ff 0%, #e2edff 100%);
+  border-color: rgba(53, 109, 183, 0.3);
+}
+
+.mobile-profile-selector-option.activity-filter-rates {
+  background: linear-gradient(180deg, #fff7df 0%, #ffefc8 100%);
+  border-color: rgba(200, 146, 30, 0.34);
+}
+
+.mobile-profile-selector-option.activity-filter-chat {
+  background: linear-gradient(180deg, #f2f7ff 0%, #e8f2ff 100%);
+  border-color: rgba(63, 116, 178, 0.32);
+}
+
+.mobile-profile-selector-option.activity-filter-invitations {
+  background: linear-gradient(180deg, #f6f4ff 0%, #efeafd 100%);
+  border-color: rgba(115, 88, 176, 0.32);
+}
+
+.mobile-profile-selector-option.activity-filter-events {
+  background: linear-gradient(180deg, #fff7f0 0%, #ffefdf 100%);
+  border-color: rgba(208, 125, 51, 0.32);
+}
+
+.mobile-profile-selector-option.activity-filter-hosting {
+  background: linear-gradient(180deg, #f1fbfa 0%, #e6f5f2 100%);
+  border-color: rgba(47, 142, 157, 0.32);
+}
+
+.mobile-profile-selector-option.chat-context-filter-all {
+  background: linear-gradient(180deg, #f4f6fb 0%, #edf2f8 100%);
+  border-color: rgba(84, 110, 145, 0.28);
+}
+
+.mobile-profile-selector-option.chat-context-filter-event {
+  background: linear-gradient(180deg, #f2f7ff 0%, #e8f2ff 100%);
+  border-color: rgba(63, 116, 178, 0.32);
+}
+
+.mobile-profile-selector-option.chat-context-filter-sub-event {
+  background: linear-gradient(180deg, #fff5ec 0%, #feead9 100%);
+  border-color: rgba(151, 92, 41, 0.32);
+}
+
+.mobile-profile-selector-option.chat-context-filter-group {
+  background: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
+  border-color: rgba(37, 127, 95, 0.32);
+}
+
+.mobile-profile-selector-option.rate-filter-item-individual-given {
+  background: linear-gradient(180deg, #fff1f3 0%, #ffe6ea 100%);
+  border-color: rgba(169, 72, 90, 0.32);
+  color: #a1485a;
+}
+
+.mobile-profile-selector-option.rate-filter-item-individual-received {
+  background: linear-gradient(180deg, #eaf4ff 0%, #e1ecfb 100%);
+  border-color: rgba(45, 94, 168, 0.32);
+  color: #2d5ea8;
+}
+
+.mobile-profile-selector-option.rate-filter-item-individual-mutual {
+  background: linear-gradient(180deg, #f2f3ff 0%, #e8eafb 100%);
+  border-color: rgba(79, 104, 168, 0.32);
+  color: #4f68a8;
+}
+
+.mobile-profile-selector-option.rate-filter-item-individual-met {
+  background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
+  border-color: rgba(44, 126, 72, 0.32);
+  color: #2d7d47;
+}
+

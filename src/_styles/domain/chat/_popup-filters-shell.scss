@@ -1,0 +1,437 @@
+
+.profile-privacy-menu-option.status-public {
+  background: linear-gradient(180deg, #e6f6ef 0%, #d9f0e6 100%);
+  border-color: rgba(47, 143, 102, 0.34);
+}
+
+.profile-privacy-menu-option.status-friends {
+  background: linear-gradient(180deg, #e8f1fd 0%, #dfeaf9 100%);
+  border-color: rgba(27, 87, 161, 0.34);
+}
+
+.profile-privacy-menu-option.status-host {
+  background: linear-gradient(180deg, #f6efe2 0%, #eee4d2 100%);
+  border-color: rgba(135, 88, 15, 0.36);
+}
+
+.profile-privacy-menu-option.status-inactive {
+  background: linear-gradient(180deg, #f2f3f5 0%, #e8ebef 100%);
+  border-color: rgba(91, 101, 115, 0.32);
+}
+
+.profile-privacy-menu-check {
+  margin-left: auto;
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+  line-height: 14px;
+}
+
+.profile-details-privacy-fab .privacy-fab-actions {
+  position: absolute;
+  right: calc(100% + 0.36rem);
+  top: 50%;
+  transform: translateY(-50%) scale(0.94);
+  transform-origin: right center;
+  display: inline-flex;
+  gap: 0.28rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.16s ease, opacity 0.16s ease;
+  z-index: 12;
+}
+
+.profile-details-privacy-fab.open .privacy-fab-actions {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(-50%) scale(1);
+}
+
+.profile-details-privacy-fab .privacy-fab-actions .profile-details-privacy-btn {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+}
+
+.profile-details-privacy-fab .privacy-fab-actions .profile-details-privacy-btn .mat-icon {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+  line-height: 14px;
+}
+
+.profile-details-privacy-fab.is-just-selected .profile-details-privacy-trigger {
+  animation: privacy-fab-select-pulse 0.26s ease;
+}
+
+@keyframes privacy-fab-select-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(55, 95, 142, 0.12);
+  }
+  45% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 4px rgba(55, 95, 142, 0.08);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(55, 95, 142, 0);
+  }
+}
+
+.profile-details-privacy-btn .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.16s ease, opacity 0.16s ease;
+}
+
+.profile-details-privacy-btn.is-open {
+  box-shadow: 0 4px 10px rgba(21, 39, 68, 0.16);
+}
+
+.profile-details-privacy-btn.is-open .mat-icon {
+  transform: rotate(90deg) scale(1.04);
+}
+
+.popup-header-selector {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.popup-header-selector .popup-title-values {
+  margin-right: 0;
+  flex: 1 1 auto;
+}
+
+.popup-header-add-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(30, 88, 152, 0.46);
+  border-radius: 50%;
+  background: linear-gradient(180deg, #e2f0ff 0%, #c5dbf8 100%);
+  color: #15457c;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+  box-shadow: 0 2px 8px rgba(31, 79, 132, 0.18);
+}
+
+.popup-header-add-btn .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.popup-header-add-btn:hover {
+  background: linear-gradient(180deg, #d4e8ff 0%, #b5d1f3 100%);
+  border-color: rgba(27, 74, 130, 0.6);
+  color: #103966;
+  box-shadow: 0 4px 10px rgba(28, 69, 114, 0.24);
+  transform: translateY(-1px);
+}
+
+.popup-header-add-btn:active {
+  transform: scale(0.92);
+  box-shadow: 0 1px 4px rgba(36, 74, 121, 0.2);
+}
+
+.popup-header-add-btn.form-save-invalid,
+.popup-header-add-btn.form-save-invalid:disabled {
+  border-color: rgba(147, 31, 31, 0.86);
+  background: linear-gradient(180deg, #ef5c5c 0%, #cb2f2f 100%);
+  color: #fff;
+  opacity: 1;
+  cursor: not-allowed;
+  box-shadow: 0 2px 8px rgba(122, 25, 25, 0.22);
+  transform: none;
+}
+
+.values-selector-popup {
+  display: grid;
+  gap: 0.68rem;
+}
+
+.experience-popup {
+  position: relative;
+  display: grid;
+  gap: 0.72rem;
+  padding-bottom: 0.5rem;
+  align-content: start;
+}
+
+.experience-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 0.46rem;
+  margin-bottom: -0.16rem;
+}
+
+.experience-toolbar .popup-header-add-btn {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.experience-filter-select {
+  min-width: 100px !important;
+  width: 100px !important;
+  max-width: 100px !important;
+  height: 36px;
+  padding-left: 0.6rem;
+  padding-right: 0.36rem;
+}
+
+.experience-popup .experience-filter-select .mat-mdc-select {
+  min-width: 0 !important;
+}
+
+.experience-popup .experience-filter-select .status-option-content {
+  min-width: 0;
+}
+
+.experience-filter-select.experience-filter-all {
+  background: linear-gradient(180deg, #efe8ff 0%, #e8defc 100%);
+  border-color: rgba(103, 76, 164, 0.32);
+}
+
+.experience-filter-select.experience-filter-workspace {
+  background: linear-gradient(180deg, #fff1f3 0%, #ffe6ea 100%);
+  border-color: rgba(169, 72, 90, 0.32);
+}
+
+.experience-filter-select.experience-filter-school {
+  background: linear-gradient(180deg, #eaf4ff 0%, #e1ecfb 100%);
+  border-color: rgba(45, 94, 168, 0.32);
+}
+
+.experience-filter-select.asset-filter-car {
+  background: linear-gradient(180deg, #eef6ff 0%, #e2efff 100%);
+  border-color: rgba(43, 111, 179, 0.32);
+}
+
+.experience-filter-select.asset-filter-accommodation {
+  background: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
+  border-color: rgba(37, 127, 95, 0.32);
+}
+
+.experience-filter-select.asset-filter-supplies {
+  background: linear-gradient(180deg, #fff5ec 0%, #feead9 100%);
+  border-color: rgba(151, 92, 41, 0.32);
+}
+
+.experience-filter-select.asset-filter-ticket {
+  background: linear-gradient(180deg, #eef5ff 0%, #e2edff 100%);
+  border-color: rgba(53, 109, 183, 0.3);
+}
+
+.experience-filter-all {
+  color: #694ea6;
+}
+
+.experience-filter-workspace {
+  color: #a1485a;
+}
+
+.experience-filter-school {
+  color: #2d5ea8;
+}
+
+.experience-filter-online {
+  color: #2d7d47;
+}
+
+.experience-filter-project {
+  color: #5f4ca0;
+}
+
+.asset-filter-car {
+  color: #295d96;
+}
+
+.asset-filter-accommodation {
+  color: #236d51;
+}
+
+.asset-filter-supplies {
+  color: #8a5428;
+}
+
+.asset-filter-ticket {
+  color: #2d5f99;
+}
+
+.experience-filter-select.activity-filter-chat {
+  background: linear-gradient(180deg, #f2f7ff 0%, #e8f2ff 100%);
+  border-color: rgba(63, 116, 178, 0.32);
+}
+
+.experience-filter-select.activity-filter-invitations {
+  background: linear-gradient(180deg, #f6f4ff 0%, #efeafd 100%);
+  border-color: rgba(115, 88, 176, 0.32);
+}
+
+.experience-filter-select.activity-filter-events {
+  background: linear-gradient(180deg, #fff7f0 0%, #ffefdf 100%);
+  border-color: rgba(208, 125, 51, 0.32);
+}
+
+.experience-filter-select.activity-filter-hosting {
+  background: linear-gradient(180deg, #f1fbfa 0%, #e6f5f2 100%);
+  border-color: rgba(47, 142, 157, 0.32);
+}
+
+.experience-filter-select.activity-filter-rates {
+  background: linear-gradient(180deg, #fff7df 0%, #ffefc8 100%);
+  border-color: rgba(200, 146, 30, 0.34);
+}
+
+.experience-filter-select.rate-filter-item-individual-given {
+  background: linear-gradient(180deg, #fff1f3 0%, #ffe6ea 100%);
+  border-color: rgba(169, 72, 90, 0.32);
+}
+
+.experience-filter-select.rate-filter-item-individual-received {
+  background: linear-gradient(180deg, #eaf4ff 0%, #e1ecfb 100%);
+  border-color: rgba(45, 94, 168, 0.32);
+}
+
+.experience-filter-select.rate-filter-item-individual-mutual {
+  background: linear-gradient(180deg, #f2f3ff 0%, #e8eafb 100%);
+  border-color: rgba(79, 104, 168, 0.32);
+}
+
+.experience-filter-select.rate-filter-item-individual-met {
+  background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
+  border-color: rgba(44, 126, 72, 0.32);
+}
+
+.experience-filter-select.rate-filter-item-pair-given {
+  background: linear-gradient(180deg, #fff5ec 0%, #feead9 100%);
+  border-color: rgba(151, 92, 41, 0.32);
+}
+
+.experience-filter-select.rate-filter-item-pair-received {
+  background: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
+  border-color: rgba(37, 127, 95, 0.32);
+}
+
+.experience-filter-select.activity-filter-secondary {
+  background: linear-gradient(180deg, #f4f6fb 0%, #eef2f8 100%);
+  border-color: rgba(94, 114, 146, 0.28);
+}
+
+.experience-filter-select.chat-context-filter-all {
+  background: linear-gradient(180deg, #f4f6fb 0%, #edf2f8 100%);
+  border-color: rgba(84, 110, 145, 0.28);
+}
+
+.experience-filter-select.chat-context-filter-event {
+  background: linear-gradient(180deg, #f2f7ff 0%, #e8f2ff 100%);
+  border-color: rgba(63, 116, 178, 0.32);
+}
+
+.experience-filter-select.chat-context-filter-sub-event {
+  background: linear-gradient(180deg, #fff5ec 0%, #feead9 100%);
+  border-color: rgba(151, 92, 41, 0.32);
+}
+
+.experience-filter-select.chat-context-filter-group {
+  background: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
+  border-color: rgba(37, 127, 95, 0.32);
+}
+
+.activity-filter-chat {
+  color: #3f74b2;
+}
+
+.activity-filter-invitations {
+  color: #7358b0;
+}
+
+.activity-filter-events {
+  color: #d07d33;
+}
+
+.activity-filter-hosting {
+  color: #2f8e9d;
+}
+
+.activity-filter-rates {
+  color: #c8921e;
+}
+
+.activity-filter-secondary {
+  color: #4f668a;
+}
+
+.chat-context-filter-all {
+  color: #4f668a;
+}
+
+.chat-context-filter-event {
+  color: #3f74b2;
+}
+
+.chat-context-filter-sub-event {
+  color: #8a5428;
+}
+
+.chat-context-filter-group {
+  color: #236d51;
+}
+
+.assets-popup {
+  position: relative;
+}
+
+.popup-body.popup-body-assets-tickets {
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.assets-popup.assets-popup-tickets {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+}
+
+.assets-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tickets-popup {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+}
+
+.tickets-toolbar {
+  justify-content: flex-start;
+}
+
+.ticket-toolbar-scanner-btn {
+  margin-left: auto;
+  width: auto;
+  min-height: 34px;
+  height: 34px;
+  padding: 0 0.72rem;
+  border-radius: 999px;
+  gap: 0.34rem;
+  border-color: rgba(153, 48, 48, 0.5);
+  background: linear-gradient(180deg, #ffe6e6 0%, #ffd7d7 100%);
+  color: #8f1f1f;
+}

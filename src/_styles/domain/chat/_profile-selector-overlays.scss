@@ -1,0 +1,430 @@
+
+.selector-options-panel .mat-mdc-option {
+  background: #fff;
+}
+
+.mat-mdc-select-panel.selector-options-panel,
+.mat-mdc-select-panel.status-options-panel {
+  margin-top: 8px !important;
+  margin-bottom: 8px !important;
+}
+
+.mat-mdc-select-panel.selector-options-panel.mat-mdc-select-panel-above,
+.mat-mdc-select-panel.status-options-panel.mat-mdc-select-panel-above,
+.cdk-overlay-pane .mat-mdc-select-panel.selector-options-panel.mat-mdc-select-panel-above,
+.cdk-overlay-pane .mat-mdc-select-panel.status-options-panel.mat-mdc-select-panel-above {
+  margin-top: 0 !important;
+  margin-bottom: 18px !important;
+  transform: translateY(-10px) !important;
+}
+
+/* Move the actual positioned overlay pane up when select opens above. */
+.cdk-overlay-pane.mat-mdc-select-panel-above {
+  transform: translateY(-14px) !important;
+}
+
+/* Avoid consuming the next click when closing asset/sub-event filter selects. */
+.cdk-overlay-container:has(.assets-filter-options-panel) .cdk-overlay-backdrop {
+  pointer-events: none !important;
+}
+
+.selector-options-panel .mat-mdc-option:not(:last-child) {
+  border-bottom: 1px solid #e6edf7;
+}
+
+.selector-options-panel .mat-mdc-option.status-option.status-public,
+.status-options-panel .mat-mdc-option.status-option.status-public {
+  --mdc-list-list-item-container-color: #def3e9;
+  --mat-mdc-option-selected-container-color: #def3e9;
+  background: linear-gradient(0deg, #ffffff, #def3e9) !important;
+}
+
+.selector-options-panel .mat-mdc-option.status-option.status-friends,
+.status-options-panel .mat-mdc-option.status-option.status-friends {
+  --mdc-list-list-item-container-color: #e3eefb;
+  --mat-mdc-option-selected-container-color: #e3eefb;
+  background: linear-gradient(0deg, #ffffff, #e3eefb) !important;
+}
+
+.selector-options-panel .mat-mdc-option.status-option.status-host,
+.status-options-panel .mat-mdc-option.status-option.status-host {
+  --mdc-list-list-item-container-color: #f3ead8;
+  --mat-mdc-option-selected-container-color: #f3ead8;
+  background: linear-gradient(0deg, #ffffff, #f3ead8) !important;
+}
+
+.selector-options-panel .mat-mdc-option.status-option.status-inactive,
+.status-options-panel .mat-mdc-option.status-option.status-inactive {
+  --mdc-list-list-item-container-color: #eceff3;
+  --mat-mdc-option-selected-container-color: #eceff3;
+  background: linear-gradient(0deg, #ffffff, #eceff3) !important;
+}
+
+/* Mirror physique behavior: direct option tinting by item class */
+.mat-mdc-option.status-option.status-public {
+  background: linear-gradient(0deg, #ffffff, #def3e9) !important;
+}
+
+.mat-mdc-option.status-option.status-friends {
+  background: linear-gradient(0deg, #ffffff, #e3eefb) !important;
+}
+
+.mat-mdc-option.status-option.status-host {
+  background: linear-gradient(0deg, #ffffff, #f3ead8) !important;
+}
+
+.mat-mdc-option.status-option.status-inactive {
+  background: linear-gradient(0deg, #ffffff, #eceff3) !important;
+}
+
+.selector-options-panel .mat-mdc-option.status-option.status-public .status-option-content,
+.selector-options-panel .mat-mdc-option.status-option.status-public .status-option-content .mat-icon,
+.status-options-panel .mat-mdc-option.status-option.status-public .status-option-content,
+.status-options-panel .mat-mdc-option.status-option.status-public .status-option-content .mat-icon {
+  color: #2f8f66 !important;
+}
+
+.selector-options-panel .mat-mdc-option.status-option.status-public .mdc-list-item__ripple::before,
+.status-options-panel .mat-mdc-option.status-option.status-public .mdc-list-item__ripple::before {
+  background-color: #def3e9 !important;
+}
+
+.selector-options-panel .mat-mdc-option.status-option.status-friends .status-option-content,
+.selector-options-panel .mat-mdc-option.status-option.status-friends .status-option-content .mat-icon,
+.status-options-panel .mat-mdc-option.status-option.status-friends .status-option-content,
+.status-options-panel .mat-mdc-option.status-option.status-friends .status-option-content .mat-icon {
+  color: #1b57a1 !important;
+}
+
+.selector-options-panel .mat-mdc-option.status-option.status-friends .mdc-list-item__ripple::before,
+.status-options-panel .mat-mdc-option.status-option.status-friends .mdc-list-item__ripple::before {
+  background-color: #e3eefb !important;
+}
+
+.selector-options-panel .mat-mdc-option.status-option.status-host .status-option-content,
+.selector-options-panel .mat-mdc-option.status-option.status-host .status-option-content .mat-icon,
+.status-options-panel .mat-mdc-option.status-option.status-host .status-option-content,
+.status-options-panel .mat-mdc-option.status-option.status-host .status-option-content .mat-icon {
+  color: #87580f !important;
+}
+
+.selector-options-panel .mat-mdc-option.status-option.status-host .mdc-list-item__ripple::before,
+.status-options-panel .mat-mdc-option.status-option.status-host .mdc-list-item__ripple::before {
+  background-color: #f3ead8 !important;
+}
+
+.selector-options-panel .mat-mdc-option.status-option.status-inactive .status-option-content,
+.selector-options-panel .mat-mdc-option.status-option.status-inactive .status-option-content .mat-icon,
+.status-options-panel .mat-mdc-option.status-option.status-inactive .status-option-content,
+.status-options-panel .mat-mdc-option.status-option.status-inactive .status-option-content .mat-icon {
+  color: #5b6573 !important;
+}
+
+.selector-options-panel .mat-mdc-option.status-option.status-inactive .mdc-list-item__ripple::before,
+.status-options-panel .mat-mdc-option.status-option.status-inactive .mdc-list-item__ripple::before {
+  background-color: #eceff3 !important;
+}
+
+.mat-mdc-option.status-option.physique-slim {
+  background: #eaf4ff;
+}
+
+.mat-mdc-option.status-option.physique-lean {
+  background: #edf8f4;
+}
+
+.mat-mdc-option.status-option.physique-athletic {
+  background: #e8f5ec;
+}
+
+.mat-mdc-option.status-option.physique-fit {
+  background: #f1f2ff;
+}
+
+.mat-mdc-option.status-option.physique-curvy {
+  background: #fff2f8;
+}
+
+.mat-mdc-option.status-option.physique-muscular {
+  background: #fbf4ea;
+}
+
+.mat-mdc-option.status-option.physique-average {
+  background: #eff4f9;
+}
+
+.mat-mdc-option.status-option.physique-slim .status-option-content {
+  color: #3f7ab3;
+}
+
+.mat-mdc-option.status-option.physique-lean .status-option-content {
+  color: #3f8f5f;
+}
+
+.mat-mdc-option.status-option.physique-athletic .status-option-content {
+  color: #2f7e4d;
+}
+
+.mat-mdc-option.status-option.physique-fit .status-option-content {
+  color: #465fbb;
+}
+
+.mat-mdc-option.status-option.physique-curvy .status-option-content {
+  color: #a14875;
+}
+
+.mat-mdc-option.status-option.physique-muscular .status-option-content {
+  color: #7d4f24;
+}
+
+.mat-mdc-option.status-option.physique-average .status-option-content {
+  color: #4d667f;
+}
+
+.mat-mdc-select-panel.physique-options-panel {
+  width: min(300px, calc(100vw - 1.4rem)) !important;
+  max-width: min(320px, calc(100vw - 1.4rem)) !important;
+  min-width: min(260px, calc(100vw - 1.4rem)) !important;
+  overflow-x: hidden !important;
+}
+
+.physique-options-panel .mat-mdc-option {
+  min-width: 0;
+  padding-right: 8px;
+}
+
+.physique-options-panel .mat-mdc-option .mat-pseudo-checkbox {
+  margin-left: 4px;
+  margin-right: 0;
+}
+
+.physique-options-panel .mat-mdc-option .mdc-list-item__primary-text {
+  width: 100%;
+  min-width: 0;
+}
+
+.physique-options-panel .status-option-content {
+  min-width: 0;
+}
+
+.physique-options-panel .status-option-content span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.physique-select-wrap.physique-slim {
+  background: linear-gradient(180deg, #eaf3fb 0%, #dfebf8 100%);
+  border-color: rgba(63, 122, 179, 0.34);
+}
+
+.physique-select-wrap.physique-lean {
+  background: linear-gradient(180deg, #eaf6ee 0%, #def0e5 100%);
+  border-color: rgba(63, 143, 95, 0.34);
+}
+
+.physique-select-wrap.physique-athletic {
+  background: linear-gradient(180deg, #e8f5ec 0%, #dff0e6 100%);
+  border-color: rgba(47, 126, 77, 0.34);
+}
+
+.physique-select-wrap.physique-fit {
+  background: linear-gradient(180deg, #ebf0ff 0%, #e1e8fc 100%);
+  border-color: rgba(70, 95, 187, 0.34);
+}
+
+.physique-select-wrap.physique-curvy {
+  background: linear-gradient(180deg, #f7edf3 0%, #f0e3ec 100%);
+  border-color: rgba(161, 72, 117, 0.36);
+}
+
+.physique-select-wrap.physique-muscular {
+  background: linear-gradient(180deg, #f6efe9 0%, #ede3d8 100%);
+  border-color: rgba(125, 79, 36, 0.36);
+}
+
+.physique-select-wrap.physique-average {
+  background: linear-gradient(180deg, #eef2f6 0%, #e5ebf1 100%);
+  border-color: rgba(77, 102, 127, 0.34);
+}
+
+.physique-select-wrap.physique-slim .status-option-content .mat-icon { color: #3f7ab3; }
+.physique-select-wrap.physique-lean .status-option-content .mat-icon { color: #3f8f5f; }
+.physique-select-wrap.physique-athletic .status-option-content .mat-icon { color: #2f7e4d; }
+.physique-select-wrap.physique-fit .status-option-content .mat-icon { color: #465fbb; }
+.physique-select-wrap.physique-curvy .status-option-content .mat-icon { color: #a14875; }
+.physique-select-wrap.physique-muscular .status-option-content .mat-icon { color: #7d4f24; }
+.physique-select-wrap.physique-average .status-option-content .mat-icon { color: #4d667f; }
+
+.profile-about-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.26rem;
+  font-size: 0.77rem;
+  color: rgba(26, 44, 69, 0.88);
+  width: 100%;
+  max-width: none;
+  justify-self: start;
+  align-self: stretch;
+  box-sizing: border-box;
+}
+
+.profile-about-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: #1f3252;
+}
+
+.profile-about-field small {
+  align-self: auto;
+  color: rgba(26, 44, 69, 0.65);
+  font-size: 0.7rem;
+}
+
+.profile-about-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.profile-status-field .profile-status-select-wrap {
+  width: 100%;
+  max-width: 360px;
+}
+
+.profile-status-trigger {
+  min-height: 40px;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.profile-status-trigger .status-option-content {
+  min-width: 0;
+}
+
+.date-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.birthday-field .date-input-wrap input {
+  max-width: 150px;
+}
+
+.date-picker-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(32, 57, 89, 0.24);
+  background: #f6faff;
+  color: #2f5f93;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.date-picker-btn .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.readonly-field {
+  min-height: 34px;
+  border: 1px solid rgba(15, 27, 47, 0.16);
+  border-radius: 10px;
+  padding: 0.4rem 0.56rem;
+  background: #f7fafe;
+  color: #23476f;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.26rem;
+  font-weight: 700;
+}
+
+.readonly-field .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.profile-form-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: 1rem;
+  row-gap: 0.9rem;
+  padding-top: 0.3rem;
+}
+
+.profile-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.77rem;
+  color: rgba(26, 44, 69, 0.88);
+}
+
+.profile-details-structured {
+  --profile-details-main-width: 345px;
+  --profile-details-inline-gap: 0.72rem;
+  --profile-details-privacy-size: 34px;
+  --profile-details-control-span-width: calc(
+    var(--profile-details-main-width) + var(--profile-details-inline-gap) + var(--profile-details-privacy-size)
+  );
+  --profile-details-two-col-width: calc((var(--profile-details-control-span-width) * 2) + 0.72rem);
+  display: grid;
+  align-content: start;
+  grid-auto-rows: max-content;
+  gap: 0.78rem;
+  min-height: auto;
+  height: max-content;
+  align-self: start;
+  overflow: visible;
+  padding-right: 0;
+}
+
+.profile-details-group {
+  border: 1px solid rgba(21, 38, 62, 0.14);
+  border-radius: 12px;
+  background: rgba(253, 254, 255, 0.92);
+  padding: 0.74rem;
+  min-width: 0;
+}
+
+.profile-details-group h4 {
+  margin: 0 0 0.56rem;
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: #1f3252;
+}
+
+.profile-details-group.profile-details-group-basics {
+  background: linear-gradient(180deg, #f2f7ff 0%, #e8f0fb 100%);
+  border-color: rgba(58, 108, 168, 0.28);
+}
+
+.profile-details-group.profile-details-group-basics h4 {
+  color: #214772;
+}
+
+.profile-details-group.profile-details-group-beliefs {
+  background: linear-gradient(180deg, #f4f1ff 0%, #ebe6fb 100%);
+  border-color: rgba(98, 84, 163, 0.28);
+}
+
+.profile-details-group.profile-details-group-beliefs h4 {
+  color: #4f438b;
+}
+
+.profile-details-group.profile-details-group-lifestyle {
+  background: linear-gradient(180deg, #eef8f3 0%, #e4f2ea 100%);
+  border-color: rgba(49, 124, 82, 0.28);
+}

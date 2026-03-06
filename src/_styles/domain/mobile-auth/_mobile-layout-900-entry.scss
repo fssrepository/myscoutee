@@ -1,0 +1,197 @@
+
+@media (max-width: 900px) {
+  .app-popup,
+  .app-popup-stacked {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .demo-login-overlay {
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .demo-login-panel {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    min-height: 100dvh;
+    margin: 0 !important;
+    border-radius: 0;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .demo-user-grid {
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  .app-popup-panel,
+  .app-popup-panel.popup-panel-profile-editor,
+  .app-popup-panel.popup-panel-image-editor,
+  .popup-panel-members {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    min-height: 100dvh;
+    margin: 0 !important;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .experience-form-overlay {
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .experience-form-popup {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100svh;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100svh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .experience-form-panel {
+    min-height: 0;
+    flex: 1 1 auto;
+    border-radius: 0;
+  }
+
+  .app-popup-panel.popup-panel-profile-editor .popup-body {
+    display: flex !important;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden !important;
+    overflow-x: hidden !important;
+    padding-bottom: 0;
+  }
+
+  .app-popup-panel.popup-panel-profile-editor .profile-editor-wrap {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .app-popup-panel.popup-panel-profile-editor .profile-editor-scroll-area {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-bottom: calc(0.74rem + env(safe-area-inset-bottom));
+    scroll-padding-bottom: calc(0.74rem + env(safe-area-inset-bottom));
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* How it works: contextual progression colors (blue -> red) */
+.entry-steps-grid .entry-step-card:nth-child(1) {
+  background: linear-gradient(180deg, #eef5ff 0%, #ffffff 100%);
+  border-color: rgba(62, 125, 229, 0.3);
+}
+
+.entry-steps-grid .entry-step-card:nth-child(2) {
+  background: linear-gradient(180deg, #f2eeff 0%, #ffffff 100%);
+  border-color: rgba(120, 90, 228, 0.3);
+}
+
+.entry-steps-grid .entry-step-card:nth-child(3) {
+  background: linear-gradient(180deg, #fff0f9 0%, #ffffff 100%);
+  border-color: rgba(226, 83, 168, 0.3);
+}
+
+.entry-steps-grid .entry-step-card:nth-child(4) {
+  background: linear-gradient(180deg, #fff1eb 0%, #ffffff 100%);
+  border-color: rgba(239, 108, 74, 0.3);
+}
+
+.entry-steps-grid .entry-step-card:nth-child(1)::before {
+  background: linear-gradient(90deg, #3d85e7, #5ca1ff);
+}
+
+.entry-steps-grid .entry-step-card:nth-child(2)::before {
+  background: linear-gradient(90deg, #6752dd, #8a63ee);
+}
+
+.entry-steps-grid .entry-step-card:nth-child(3)::before {
+  background: linear-gradient(90deg, #db4ea8, #f167bc);
+}
+
+.entry-steps-grid .entry-step-card:nth-child(4)::before {
+  background: linear-gradient(90deg, #eb6745, #ff8a5e);
+}
+
+.entry-steps-grid .entry-step-card:nth-child(1) .entry-step-index {
+  color: #2f76d8;
+  background: linear-gradient(135deg, #deedff 0%, #ebf4ff 100%);
+}
+
+.entry-steps-grid .entry-step-card:nth-child(2) .entry-step-index {
+  color: #6848d1;
+  background: linear-gradient(135deg, #ece5ff 0%, #f3eeff 100%);
+}
+
+.entry-steps-grid .entry-step-card:nth-child(3) .entry-step-index {
+  color: #d14699;
+  background: linear-gradient(135deg, #ffe5f3 0%, #fff0f8 100%);
+}
+
+.entry-steps-grid .entry-step-card:nth-child(4) .entry-step-index {
+  color: #dc5b3c;
+  background: linear-gradient(135deg, #ffe7df 0%, #fff1ec 100%);
+}
+
+.entry-steps-grid .entry-step-card:nth-child(1) .entry-card-icon {
+  background: linear-gradient(135deg, #dcecff 0%, #eaf3ff 100%);
+  box-shadow: inset 0 0 0 1px rgba(62, 125, 229, 0.26);
+}
+
+.entry-steps-grid .entry-step-card:nth-child(1) .entry-card-icon .mat-icon {
+  color: #2f76d8;
+}
+
+.entry-steps-grid .entry-step-card:nth-child(2) .entry-card-icon {
+  background: linear-gradient(135deg, #ece5ff 0%, #f3edff 100%);
+  box-shadow: inset 0 0 0 1px rgba(120, 90, 228, 0.26);
+}
+
+.entry-steps-grid .entry-step-card:nth-child(2) .entry-card-icon .mat-icon {
+  color: #6848d1;
+}
+
+.entry-steps-grid .entry-step-card:nth-child(3) .entry-card-icon {
+  background: linear-gradient(135deg, #ffe4f3 0%, #fff0f8 100%);
+  box-shadow: inset 0 0 0 1px rgba(226, 83, 168, 0.26);
+}
+
+.entry-steps-grid .entry-step-card:nth-child(3) .entry-card-icon .mat-icon {
+  color: #d14699;
+}
+
+.entry-steps-grid .entry-step-card:nth-child(4) .entry-card-icon {
+  background: linear-gradient(135deg, #ffe7df 0%, #fff1ec 100%);
+  box-shadow: inset 0 0 0 1px rgba(239, 108, 74, 0.28);
+}
+
+.entry-steps-grid .entry-step-card:nth-child(4) .entry-card-icon .mat-icon {
+  color: #dc5b3c;
+}

@@ -1,0 +1,124 @@
+.profile-status-select-wrap {
+  min-width: 174px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  border: 1px solid #c8d3e2;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(38, 60, 92, 0.08);
+  padding: 0.12rem 0.5rem 0.12rem 0.84rem;
+  background: #f8f9fb;
+}
+
+.profile-status-select-wrap.status-public {
+  background: linear-gradient(180deg, #e6f6ef 0%, #d9f0e6 100%);
+  border-color: rgba(47, 143, 102, 0.34);
+}
+
+.profile-status-select-wrap.status-friends {
+  background: linear-gradient(180deg, #e8f1fd 0%, #dfeaf9 100%);
+  border-color: rgba(27, 87, 161, 0.34);
+}
+
+.profile-status-select-wrap.status-host {
+  background: linear-gradient(180deg, #f6efe2 0%, #eee4d2 100%);
+  border-color: rgba(135, 88, 15, 0.36);
+}
+
+.profile-status-select-wrap.status-inactive {
+  background: linear-gradient(180deg, #f2f3f5 0%, #e8ebef 100%);
+  border-color: rgba(91, 101, 115, 0.32);
+}
+
+.profile-status-select-wrap .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+  color: #566b86;
+}
+
+.profile-status-select-wrap .mat-mdc-select {
+  min-width: 80px;
+  width: 100%;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: lowercase;
+}
+
+.profile-status-select-wrap .mat-mdc-select-trigger {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.profile-status-select-wrap .mat-mdc-select-arrow-wrapper {
+  margin-left: auto;
+}
+
+.status-option-content {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.2rem;
+  text-transform: lowercase;
+  width: 100%;
+  min-width: 0;
+}
+
+.status-option-content span:last-child {
+  white-space: nowrap;
+}
+
+.status-option-content .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+  flex: 0 0 16px;
+}
+
+.status-option-content .status-public { color: #2f8f66; }
+.status-option-content .status-friends { color: #1b57a1; }
+.status-option-content .status-host { color: #87580f; }
+.status-option-content .status-inactive { color: #5b6573; }
+
+.profile-status-select-wrap.status-public .status-option-content .mat-icon {
+  color: #2f8f66;
+}
+
+.profile-status-select-wrap.status-friends .status-option-content .mat-icon {
+  color: #1b57a1;
+}
+
+.profile-status-select-wrap.status-host .status-option-content .mat-icon {
+  color: #87580f;
+}
+
+.profile-status-select-wrap.status-inactive .status-option-content .mat-icon {
+  color: #5b6573;
+}
+
+.mat-mdc-option.status-option {
+  background: #fff;
+}
+
+.mat-mdc-option.status-option:not(:last-child) {
+  border-bottom: 1px solid #e6edf7;
+}
+
+.mat-mdc-option.status-option.status-hidden-selected {
+  display: none;
+}
+
+.selector-options-panel .mat-mdc-option.hide-selected-option,
+.status-options-panel .mat-mdc-option.hide-selected-option {
+  min-height: 0 !important;
+  height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  border: 0 !important;
+  margin: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+}

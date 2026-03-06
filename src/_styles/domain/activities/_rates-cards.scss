@@ -1,0 +1,450 @@
+.activities-card-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  text-align: left;
+}
+
+.activities-card-chat {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.activities-card-chat-main-event {
+  border-color: rgba(43, 97, 161, 0.34);
+  background: linear-gradient(180deg, #f4f9ff 0%, #ebf3ff 100%);
+}
+
+.activities-card-chat-optional-sub-event {
+  border-color: rgba(143, 84, 26, 0.32);
+  background: linear-gradient(180deg, #fff9f0 0%, #fff3e1 100%);
+}
+
+.activities-card-chat-group-sub-event {
+  border-color: rgba(51, 131, 92, 0.34);
+  background: linear-gradient(180deg, #f3fcf5 0%, #e9f7ee 100%);
+}
+
+.activities-card-chat-main-event .activities-card-title {
+  color: #224d7f;
+}
+
+.activities-card-chat-optional-sub-event .activities-card-title {
+  color: #86521f;
+}
+
+.activities-card-chat-group-sub-event .activities-card-title {
+  color: #216b4e;
+}
+
+.activities-card-event,
+.activities-card-rate {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: stretch;
+}
+
+.activities-card-event {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.activities-card-event .activities-card-avatar {
+  display: none;
+}
+
+.activities-card-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.activities-card-main {
+  min-width: 0;
+  padding-right: 0;
+}
+
+.activities-event-card-body,
+.activities-rate-card-body {
+  min-width: 0;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.activities-rate-card-head {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.activities-card-rates .activities-rate-card-body {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding-right: 4.4rem;
+}
+
+.activities-card-rates .activities-rate-card-head {
+  position: absolute;
+  right: 0;
+}
+
+.activities-card-rates .activities-rate-score-badge {
+  position: static;
+}
+
+.activities-rate-profile-card {
+  position: relative;
+  width: 100%;
+  min-height: 264px;
+  border: 1px solid rgba(34, 54, 84, 0.24);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #1b2c45 0%, #132238 100%);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.activities-rate-profile-card.is-rate-editor-selected {
+  border-color: rgba(214, 160, 42, 0.68);
+  box-shadow: 0 10px 24px rgba(147, 105, 25, 0.34);
+}
+
+.activities-rate-profile-card.is-rate-editor-selected .activities-rate-profile-layer {
+  border-color: rgba(238, 196, 92, 0.78);
+  box-shadow:
+    0 0 0 2px rgba(246, 220, 144, 0.56),
+    0 14px 28px rgba(8, 20, 38, 0.42);
+}
+
+.activities-rate-profile-stack {
+  position: relative;
+  min-height: 264px;
+  height: 100%;
+}
+
+.activities-rate-profile-stack.activities-rate-profile-stack-pair-inline {
+  min-height: 264px;
+}
+
+.activities-rate-profile-stack.activities-rate-profile-stack-pair-fullscreen {
+  min-height: 100%;
+  height: 100%;
+}
+
+.activities-rate-pair-inline-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(0.28rem, 0.8vw, 0.52rem);
+  padding: 0.42rem;
+}
+
+.activities-rate-pair-inline-grid:not(.activities-rate-pair-fullscreen-grid) {
+  gap: clamp(0.08rem, 0.32vw, 0.16rem);
+}
+
+.activities-rate-pair-inline-card {
+  position: relative;
+  min-width: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 10px 22px rgba(6, 18, 36, 0.3);
+}
+
+.activities-rate-pair-inline-layer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.activities-rate-pair-inline-layer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(12, 22, 36, 0.02) 0%, rgba(7, 16, 28, 0.58) 66%, rgba(7, 16, 28, 0.84) 100%);
+}
+
+.activities-rate-pair-inline-layer .card-image-placeholder {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+}
+
+.activities-rate-pair-inline-card.is-pane-loading .activities-rate-profile-indicators .image-stack-line.active {
+  animation: activities-rate-pane-loading-pulse 500ms ease;
+}
+
+.activities-rate-pair-inline-label {
+  position: absolute;
+  top: 0.64rem;
+  left: 0.52rem;
+  z-index: 5;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 229, 249, 0.42);
+  color: #f5f9ff;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding: 0.16rem 0.42rem;
+  background: rgba(8, 18, 35, 0.62);
+}
+
+.activities-rate-pair-inline-card-woman .activities-rate-pair-inline-label {
+  background: rgba(109, 42, 118, 0.64);
+}
+
+.activities-rate-pair-inline-card-man .activities-rate-pair-inline-label {
+  background: rgba(36, 74, 127, 0.66);
+}
+
+.activities-rate-pair-inline-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  display: grid;
+  gap: 0.14rem;
+  padding: 0.7rem 0.72rem 0.68rem;
+}
+
+.activities-rate-pair-inline-card .activities-rate-profile-indicators.activities-rate-pair-inline-indicators {
+  top: 0.28rem;
+  left: 0.34rem;
+  right: 0.34rem;
+  padding: 0.12rem 0.24rem;
+  border-radius: 7px;
+}
+
+.activities-rate-pair-inline-hit-area {
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+}
+
+.activities-rate-profile-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: 14px;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  box-shadow: 0 12px 24px rgba(6, 18, 36, 0.34);
+}
+
+.activities-rate-profile-layer-active {
+  pointer-events: none;
+}
+
+.activities-rate-profile-layer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(12, 22, 36, 0.04) 0%, rgba(7, 16, 28, 0.62) 66%, rgba(7, 16, 28, 0.84) 100%);
+}
+
+.activities-rate-profile-stack.is-pane-loading .activities-rate-profile-indicators .image-stack-line.active {
+  animation: activities-rate-pane-loading-pulse 500ms ease;
+}
+
+@keyframes activities-rate-pane-loading-pulse {
+  0% {
+    transform: scaleX(0.84);
+    opacity: 0.58;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+.activities-rate-profile-indicators {
+  position: absolute;
+  top: 0.36rem;
+  left: 0.52rem;
+  right: 0.52rem;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  align-items: center;
+  padding: 0.16rem 0.34rem;
+  border-radius: 8px;
+  background: rgba(10, 18, 31, 0.38);
+  gap: 5px;
+}
+
+.activities-rate-profile-indicators .image-stack-line {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  height: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(28, 42, 64, 0.36);
+  background: rgba(167, 177, 192, 0.9);
+  opacity: 1;
+  cursor: pointer;
+}
+
+.activities-rate-profile-indicators .image-stack-line.active {
+  border-color: rgba(248, 252, 255, 0.86);
+  background: rgba(250, 252, 255, 0.98);
+  box-shadow: 0 0 0 1px rgba(10, 20, 34, 0.12);
+}
+
+.activities-rate-profile-hit-area {
+  position: absolute;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 4px;
+  top: 0.2rem;
+  left: 0.2rem;
+  right: 0.2rem;
+  bottom: 0.2rem;
+  z-index: 4;
+}
+
+.activities-rate-profile-hit-area .image-stack-hit-segment {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.activities-rate-profile-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  display: grid;
+  gap: 0.14rem;
+  padding: 0.74rem 0.8rem 0.72rem;
+}
+
+.activities-rate-profile-line {
+  margin: 0;
+  color: #f5f9ff !important;
+  -webkit-text-fill-color: #f5f9ff;
+  text-shadow: 0 2px 9px rgba(2, 8, 16, 0.96);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activities-rate-profile-line-primary {
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.activities-rate-profile-line-secondary {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: rgba(237, 245, 255, 0.98) !important;
+  -webkit-text-fill-color: rgba(237, 245, 255, 0.98);
+}
+
+.activities-rate-profile-stack-single.activities-rate-profile-stack-given .activities-rate-profile-layer {
+  border-color: rgba(63, 136, 208, 0.52);
+}
+
+.activities-rate-profile-stack-single.activities-rate-profile-stack-received .activities-rate-profile-layer {
+  border-color: rgba(53, 160, 114, 0.52);
+}
+
+.activities-rate-profile-stack-single.activities-rate-profile-stack-mutual .activities-rate-profile-layer {
+  border-color: rgba(176, 121, 48, 0.52);
+}
+
+.activities-rate-profile-stack-single.activities-rate-profile-stack-met .activities-rate-profile-layer {
+  border-color: rgba(104, 118, 139, 0.52);
+}
+
+.activities-rate-profile-stack-pair.activities-rate-profile-stack-given .activities-rate-profile-layer {
+  border-color: rgba(141, 93, 201, 0.52);
+}
+
+.activities-rate-profile-stack-pair.activities-rate-profile-stack-received .activities-rate-profile-layer {
+  border-color: rgba(197, 92, 150, 0.52);
+}
+
+.activities-rate-score-badge {
+  min-height: 26px;
+  border: 2px solid rgba(187, 136, 22, 0.58);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff9e9 0%, #fff1cb 100%);
+  color: #9f6915;
+  font-size: 0.76rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+  padding: 0.16rem 0.56rem;
+  cursor: pointer;
+  transform: translateY(0) scale(1);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 245, 215, 0.72),
+    0 0 0 rgba(226, 171, 47, 0);
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    filter 0.2s ease;
+}
+
+.activities-rate-score-badge .mat-icon {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+  line-height: 14px;
+}
+
+.activities-rate-score-badge-floating {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.3rem;
+  z-index: 24;
+  min-width: 68px;
+  justify-content: center;
+}
+
+.activities-rate-score-badge-between {
+  --activities-rate-badge-between-y: -50%;
+  position: absolute;
+  left: 50%;
+  right: auto;
+  top: 50%;
+  z-index: 24;
+  min-width: 68px;
+  width: max-content;
+  max-width: calc(100% - 0.8rem);
+  justify-content: center;
+  white-space: nowrap;
+  transform: translate(-50%, var(--activities-rate-badge-between-y));
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, filter 0.2s ease;
+}

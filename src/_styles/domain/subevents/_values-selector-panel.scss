@@ -1,0 +1,420 @@
+.mobile-profile-selector-option.rate-filter-item-pair-given {
+  background: linear-gradient(180deg, #fff5ec 0%, #feead9 100%);
+  border-color: rgba(151, 92, 41, 0.32);
+  color: #8a5428;
+}
+
+.mobile-profile-selector-option.rate-filter-item-pair-received {
+  background: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
+  border-color: rgba(37, 127, 95, 0.32);
+  color: #236d51;
+}
+
+.values-header-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+  flex: 0 0 100%;
+  margin-left: 0;
+  margin-top: 0.34rem;
+  max-width: 100%;
+  overflow: visible;
+  white-space: normal;
+  padding-bottom: 0;
+}
+
+.popup-title-values {
+  margin-right: 0.38rem;
+}
+
+.values-selected-chip {
+  border: 1px solid rgba(76, 99, 136, 0.3);
+  background: linear-gradient(180deg, #f7f9ff 0%, #eef3ff 100%);
+  color: #24416a;
+  border-radius: 999px;
+  min-height: 26px;
+  padding: 0.18rem 0.46rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.26rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.values-selected-chip .mat-icon {
+  width: 12px;
+  height: 12px;
+  font-size: 12px;
+  line-height: 12px;
+}
+
+.values-selected-chip.section-family {
+  background: linear-gradient(180deg, #fff1ea 0%, #ffe6dd 100%);
+  border-color: rgba(160, 90, 51, 0.32);
+  color: #8b4d2b;
+}
+
+.values-selected-chip.section-ambition {
+  background: linear-gradient(180deg, #fff7e8 0%, #ffefd7 100%);
+  border-color: rgba(160, 106, 20, 0.32);
+  color: #9a6614;
+}
+
+.values-selected-chip.section-lifestyle {
+  background: linear-gradient(180deg, #eaf8f5 0%, #e0f2ee 100%);
+  border-color: rgba(45, 125, 120, 0.32);
+  color: #2a6e6a;
+}
+
+.values-selected-chip.section-beliefs {
+  background: linear-gradient(180deg, #f0ecff 0%, #e8e1fa 100%);
+  border-color: rgba(95, 78, 160, 0.32);
+  color: #564793;
+}
+
+.values-selected-chip.section-social {
+  background: linear-gradient(180deg, #ecf4ff 0%, #e1ecfb 100%);
+  border-color: rgba(45, 94, 168, 0.32);
+  color: #2d5ea8;
+}
+
+.values-selected-chip.section-arts {
+  background: linear-gradient(180deg, #f2edfb 0%, #e9e2f9 100%);
+  border-color: rgba(103, 76, 164, 0.32);
+  color: #654ca1;
+}
+
+.values-selected-chip.section-food {
+  background: linear-gradient(180deg, #fff4e8 0%, #fee9d6 100%);
+  border-color: rgba(170, 97, 28, 0.32);
+  color: #9d611c;
+}
+
+.values-selected-chip.section-active {
+  background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
+  border-color: rgba(44, 126, 72, 0.32);
+  color: #2d7d47;
+}
+
+.values-selected-chip.section-mind {
+  background: linear-gradient(180deg, #eaf8f6 0%, #def1ee 100%);
+  border-color: rgba(37, 124, 118, 0.32);
+  color: #2d7d78;
+}
+
+.values-selected-chip.section-identity {
+  background: linear-gradient(180deg, #f4f0ff 0%, #e9e3fb 100%);
+  border-color: rgba(88, 78, 159, 0.32);
+  color: #5a4ea0;
+}
+
+.values-selector-group {
+  display: grid;
+  gap: 0.34rem;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .values-selector-popup.profile-selector-popup {
+  gap: 0.56rem;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-filter-selector-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.44rem;
+  padding-bottom: 0.22rem;
+  border-bottom: 1px solid rgba(74, 102, 139, 0.22);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-filter-selector-head-label {
+  color: #203c64;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-filter-selector-clear {
+  border: 1px solid rgba(41, 73, 110, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #284970;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.3rem 0.52rem;
+  cursor: pointer;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-filter-selector-clear.is-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-filter-selector-selected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.34rem;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-filter-selector-chip {
+  border: 1px solid rgba(35, 68, 107, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #234368;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.26rem 0.48rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.16rem;
+  cursor: pointer;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-filter-selector-chip .mat-icon {
+  width: 13px;
+  height: 13px;
+  font-size: 13px;
+  line-height: 13px;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-filter-selector-empty {
+  margin: 0;
+  font-size: 0.74rem;
+  color: rgba(31, 54, 86, 0.62);
+  font-style: italic;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group {
+  display: grid;
+  gap: 0.34rem;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 0.4rem 0.42rem;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-tag {
+  border-radius: 999px;
+  border: 1px solid rgba(52, 86, 128, 0.28);
+  background: rgba(255, 255, 255, 0.74);
+  color: #2f527d;
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding: 0.2rem 0.52rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-tag-icon {
+  width: 12px;
+  height: 12px;
+  font-size: 12px;
+  line-height: 12px;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-line {
+  display: block;
+  width: 100%;
+  height: 1px;
+  background: rgba(84, 111, 147, 0.34);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.36rem;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-chip {
+  border: 1px solid rgba(41, 70, 106, 0.22);
+  border-radius: 999px;
+  background: #f4f8ff;
+  color: #234066;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.3rem 0.58rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.26rem;
+  cursor: pointer;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease, box-shadow 0.14s ease;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-chip.active {
+  border-color: rgba(27, 85, 158, 0.5);
+  background: linear-gradient(180deg, #dcebff 0%, #cfe3ff 100%);
+  color: #123e70;
+  box-shadow: inset 0 0 0 1px rgba(30, 73, 127, 0.24), 0 1px 2px rgba(24, 53, 86, 0.16);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group.section-family {
+  background: linear-gradient(180deg, rgba(255, 232, 219, 0.52) 0%, rgba(255, 232, 219, 0.3) 100%);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group.section-ambition {
+  background: linear-gradient(180deg, rgba(255, 242, 216, 0.52) 0%, rgba(255, 242, 216, 0.3) 100%);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group.section-lifestyle {
+  background: linear-gradient(180deg, rgba(221, 241, 239, 0.56) 0%, rgba(221, 241, 239, 0.32) 100%);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group.section-beliefs {
+  background: linear-gradient(180deg, rgba(230, 226, 250, 0.56) 0%, rgba(230, 226, 250, 0.32) 100%);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group.section-social {
+  background: linear-gradient(180deg, rgba(223, 236, 255, 0.5) 0%, rgba(223, 236, 255, 0.28) 100%);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group.section-arts {
+  background: linear-gradient(180deg, rgba(235, 227, 255, 0.5) 0%, rgba(235, 227, 255, 0.28) 100%);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group.section-food {
+  background: linear-gradient(180deg, rgba(255, 236, 221, 0.52) 0%, rgba(255, 236, 221, 0.3) 100%);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group.section-active {
+  background: linear-gradient(180deg, rgba(222, 243, 231, 0.56) 0%, rgba(222, 243, 231, 0.32) 100%);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group.section-mind {
+  background: linear-gradient(180deg, rgba(219, 242, 238, 0.56) 0%, rgba(219, 242, 238, 0.32) 100%);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group.section-identity {
+  background: linear-gradient(180deg, rgba(230, 226, 250, 0.56) 0%, rgba(230, 226, 250, 0.32) 100%);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-tag.section-family {
+  border-color: rgba(156, 94, 51, 0.34);
+  color: #9c5e33;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-tag.section-ambition {
+  border-color: rgba(160, 106, 20, 0.34);
+  color: #9b6717;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-tag.section-lifestyle {
+  border-color: rgba(47, 123, 119, 0.34);
+  color: #2f7b77;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-tag.section-beliefs {
+  border-color: rgba(95, 78, 160, 0.34);
+  color: #5f4ea0;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-tag.section-social {
+  border-color: rgba(47, 106, 175, 0.36);
+  color: #2f6aaf;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-tag.section-arts {
+  border-color: rgba(106, 87, 168, 0.36);
+  color: #6a57a8;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-tag.section-food {
+  border-color: rgba(170, 97, 28, 0.34);
+  color: #a55e18;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-tag.section-active {
+  border-color: rgba(49, 124, 82, 0.36);
+  color: #317c52;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-tag.section-mind {
+  border-color: rgba(37, 124, 118, 0.34);
+  color: #2b7c76;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-tag.section-identity {
+  border-color: rgba(98, 84, 163, 0.34);
+  color: #6254a3;
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-line.section-family {
+  background: rgba(156, 94, 51, 0.3);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-line.section-ambition {
+  background: rgba(160, 106, 20, 0.32);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-line.section-lifestyle {
+  background: rgba(47, 123, 119, 0.3);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-line.section-beliefs {
+  background: rgba(95, 78, 160, 0.3);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-line.section-social {
+  background: rgba(47, 106, 175, 0.34);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-line.section-arts {
+  background: rgba(106, 87, 168, 0.34);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-line.section-food {
+  background: rgba(170, 97, 28, 0.32);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-line.section-active {
+  background: rgba(49, 124, 82, 0.34);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-line.section-mind {
+  background: rgba(37, 124, 118, 0.34);
+}
+
+:is(.popup-panel-profile-selector, .profile-editor-screen-body) .profile-selector-option-group-line.section-identity {
+  background: rgba(98, 84, 163, 0.3);
+}
+
+.values-option-chip {
+  cursor: pointer;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.values-option-chip.active {
+  background: linear-gradient(180deg, #e8f2ec 0%, #ddeee5 100%);
+  border-color: rgba(44, 124, 72, 0.35);
+  color: #1f6a3b;
+}
+
+.name-field {
+  grid-column: 1 / 2;
+  grid-row: 1;
+  width: min(100%, var(--profile-details-control-span-width));
+  justify-self: start;
+}
+
+.city-field {
+  grid-column: 2 / 3;
+  grid-row: 1;
+  width: min(100%, var(--profile-details-control-span-width));
+  justify-self: start;
+}

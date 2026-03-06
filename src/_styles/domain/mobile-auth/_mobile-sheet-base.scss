@@ -1,0 +1,422 @@
+
+.mobile-profile-selector-handle {
+  width: 42px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(44, 67, 100, 0.24);
+  margin: 0.08rem auto 0.52rem;
+}
+
+.mobile-profile-selector-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0 0.14rem;
+  color: #1c3354;
+  font-size: 0.94rem;
+  font-weight: 800;
+  position: relative;
+}
+
+.mobile-profile-selector-title .mat-icon {
+  width: 17px;
+  height: 17px;
+  font-size: 17px;
+  line-height: 17px;
+}
+
+.mobile-profile-selector-close-btn {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(56, 83, 119, 0.24);
+  border-radius: 50%;
+  background: linear-gradient(180deg, #edf3fb 0%, #e3ecf8 100%);
+  color: #34577f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.mobile-profile-selector-close-btn .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.mobile-profile-selector-options {
+  margin-top: 0.42rem;
+  display: grid;
+  gap: 0.32rem;
+  justify-items: center;
+  max-height: min(64vh, 520px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+
+.mobile-profile-selector-option {
+  width: max-content;
+  min-width: 220px;
+  max-width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(58, 81, 114, 0.24);
+  border-radius: 12px;
+  background: #f7f9fd;
+  color: #1f3f67;
+  min-height: 42px;
+  padding: 0.46rem 0.62rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mobile-profile-selector-option-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.36rem;
+  min-width: 0;
+  text-align: left;
+}
+
+.mobile-profile-selector-option-main .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.mobile-profile-selector-option.active {
+  box-shadow: inset 0 0 0 1px rgba(24, 46, 76, 0.24);
+  filter: brightness(0.95);
+}
+
+.mobile-profile-selector-option.mobile-profile-selector-option-group,
+.mobile-profile-selector-option.mobile-profile-selector-option-group:disabled {
+  width: fit-content;
+  min-width: 0;
+  justify-content: flex-start;
+  border: 1px solid rgba(92, 110, 140, 0.22);
+  border-radius: 7px;
+  background: linear-gradient(180deg, #f8fbff 0%, #eef3fa 100%);
+  color: rgba(31, 54, 88, 0.8);
+  min-height: 26px;
+  padding: 0.18rem 0.44rem;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: default;
+  opacity: 1;
+  box-shadow: none;
+  filter: none;
+  justify-self: start;
+}
+
+.mobile-profile-selector-option.mobile-profile-selector-option-group .mobile-profile-selector-option-main {
+  gap: 0.26rem;
+}
+
+.mobile-profile-selector-option.mobile-profile-selector-option-group .mobile-profile-selector-option-main span {
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.mobile-profile-selector-option.mobile-profile-selector-option-group.is-group-separator-mobile {
+  border-top: 0;
+  margin-top: 0.28rem;
+  padding-top: 0.18rem;
+}
+
+.mobile-profile-selector-option.mobile-profile-selector-option-group.rate-filter-group-single {
+  background: linear-gradient(180deg, #eef3fb 0%, #e7edf8 100%);
+  border-color: rgba(84, 104, 136, 0.3);
+  color: #3f5779;
+}
+
+.mobile-profile-selector-option.mobile-profile-selector-option-group.rate-filter-group-pair {
+  background: linear-gradient(180deg, #eef8f5 0%, #e5f2ee 100%);
+  border-color: rgba(47, 142, 125, 0.3);
+  color: #2a6c61;
+}
+
+.mobile-profile-selector-option.status-public {
+  background: linear-gradient(180deg, #e6f6ef 0%, #d9f0e6 100%);
+  border-color: rgba(47, 143, 102, 0.34);
+}
+
+.mobile-profile-selector-option.status-friends {
+  background: linear-gradient(180deg, #e8f1fd 0%, #dfeaf9 100%);
+  border-color: rgba(27, 87, 161, 0.34);
+}
+
+.mobile-profile-selector-option.status-host {
+  background: linear-gradient(180deg, #f6efe2 0%, #eee4d2 100%);
+  border-color: rgba(135, 88, 15, 0.36);
+}
+
+.mobile-profile-selector-option.status-inactive {
+  background: linear-gradient(180deg, #f2f3f5 0%, #e8ebef 100%);
+  border-color: rgba(91, 101, 115, 0.32);
+}
+
+/* How it works: visual card redesign */
+#how .entry-steps-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.82rem;
+}
+
+#how .entry-step-card-visual {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 30px;
+  border: 2px solid rgba(73, 124, 223, 0.45);
+  background: #ffffff;
+  box-shadow: 0 10px 22px rgba(24, 39, 77, 0.08);
+}
+
+#how .entry-step-card-visual .entry-step-headline {
+  padding: 0.78rem 0.9rem 0.16rem;
+  display: flex;
+  align-items: center;
+  gap: 0.52rem;
+}
+
+#how .entry-step-card-visual .entry-step-index {
+  min-width: 42px;
+  min-height: 42px;
+  border-radius: 12px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.12rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  background: #eaf3ff;
+  color: #2666de;
+}
+
+#how .entry-step-card-visual h3 {
+  margin: 0;
+  color: #121a48;
+  font-size: clamp(1.04rem, 1.28vw, 1.28rem);
+  line-height: 1.14;
+  letter-spacing: -0.015em;
+  font-weight: 780;
+}
+
+#how .entry-step-card-visual > p {
+  margin: 0;
+  padding: 0.02rem 0.9rem 0.7rem;
+  color: #3a3f6c;
+  font-size: clamp(0.76rem, 0.92vw, 0.92rem);
+  line-height: 1.28;
+  font-weight: 500;
+}
+
+#how .entry-step-card-visual > p strong {
+  color: #11174a;
+  font-weight: 780;
+}
+
+#how .entry-step-card-visual .entry-step-visual {
+  position: relative;
+  height: 208px;
+  border-top: 1px solid rgba(63, 86, 131, 0.08);
+  overflow: hidden;
+  background: #f4f7ff;
+}
+
+#how .entry-step-card-visual .entry-step-visual::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('../../../assets/logo/cards_no_edges.png');
+  background-repeat: no-repeat;
+  background-size: 200% 286%;
+  background-position: var(--slice-x, 0%) var(--slice-y, 0%);
+}
+
+#how .entry-step-card-visual-1 {
+  border-color: rgba(62, 129, 248, 0.58);
+}
+
+#how .entry-step-card-visual-1 .entry-step-index {
+  background: #e8f2ff;
+  color: #1f66e2;
+}
+
+#how .entry-step-card-visual-1 .entry-step-visual {
+  --slice-x: 0%;
+  --slice-y: 23%;
+}
+
+#how .entry-step-card-visual-2 {
+  border-color: rgba(133, 76, 255, 0.58);
+}
+
+#how .entry-step-card-visual-2 .entry-step-index {
+  background: #efe7ff;
+  color: #7a3eff;
+}
+
+#how .entry-step-card-visual-2 .entry-step-visual {
+  --slice-x: 100%;
+  --slice-y: 23%;
+}
+
+#how .entry-step-card-visual-3 {
+  border-color: rgba(243, 82, 181, 0.58);
+}
+
+#how .entry-step-card-visual-3 .entry-step-index {
+  background: #ffe9f6;
+  color: #f04ea8;
+}
+
+#how .entry-step-card-visual-3 .entry-step-visual {
+  --slice-x: 0%;
+  --slice-y: 99%;
+}
+
+#how .entry-step-card-visual-4 {
+  border-color: rgba(255, 132, 88, 0.58);
+}
+
+#how .entry-step-card-visual-4 .entry-step-index {
+  background: #ffe9e1;
+  color: #f16633;
+}
+
+#how .entry-step-card-visual-4 .entry-step-visual {
+  --slice-x: 100%;
+  --slice-y: 99%;
+}
+
+@media (max-width: 900px) {
+  #how .entry-steps-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #how .entry-step-card-visual .entry-step-visual {
+    height: 162px;
+  }
+
+  #how .entry-step-card-visual h3 {
+    font-size: clamp(0.92rem, 4.3vw, 1.02rem);
+    line-height: 1.12;
+  }
+
+  #how .entry-step-card-visual > p {
+    font-size: clamp(0.74rem, 3.1vw, 0.82rem);
+    line-height: 1.24;
+  }
+
+  #how .entry-step-card-visual .entry-step-index {
+    min-width: 38px;
+    min-height: 38px;
+    font-size: 0.95rem;
+  }
+}
+
+.mobile-profile-selector-option.detail-tone-1 {
+  background: linear-gradient(180deg, #eef5ff 0%, #e3eefc 100%);
+  border-color: rgba(46, 102, 181, 0.32);
+}
+
+.mobile-profile-selector-option.detail-tone-2 {
+  background: linear-gradient(180deg, #eef9f3 0%, #e3f4ea 100%);
+  border-color: rgba(40, 125, 72, 0.32);
+}
+
+.mobile-profile-selector-option.detail-tone-3 {
+  background: linear-gradient(180deg, #fff4ea 0%, #ffecdd 100%);
+  border-color: rgba(165, 94, 24, 0.32);
+}
+
+.mobile-profile-selector-option.detail-tone-4 {
+  background: linear-gradient(180deg, #f2f1ff 0%, #e8e5fb 100%);
+  border-color: rgba(97, 82, 164, 0.32);
+}
+
+.mobile-profile-selector-option.detail-tone-5 {
+  background: linear-gradient(180deg, #f6f9ef 0%, #edf3e1 100%);
+  border-color: rgba(95, 128, 36, 0.32);
+}
+
+.mobile-profile-selector-option.detail-tone-6 {
+  background: linear-gradient(180deg, #fff1f4 0%, #f9e6ed 100%);
+  border-color: rgba(160, 70, 111, 0.32);
+}
+
+.mobile-profile-selector-option.detail-tone-7 {
+  background: linear-gradient(180deg, #edf8ff 0%, #e2f0fb 100%);
+  border-color: rgba(45, 122, 160, 0.32);
+}
+
+.mobile-profile-selector-option.detail-tone-8 {
+  background: linear-gradient(180deg, #f6f3ea 0%, #eee9dc 100%);
+  border-color: rgba(128, 109, 66, 0.32);
+}
+
+.mobile-profile-selector-option.physique-slim {
+  background: #eaf4ff;
+  border-color: rgba(63, 122, 179, 0.34);
+}
+
+.mobile-profile-selector-option.physique-lean {
+  background: #edf8f4;
+  border-color: rgba(75, 127, 113, 0.34);
+}
+
+.mobile-profile-selector-option.physique-athletic {
+  background: #e8f5ec;
+  border-color: rgba(47, 126, 77, 0.34);
+}
+
+.mobile-profile-selector-option.physique-fit {
+  background: #f1f2ff;
+  border-color: rgba(70, 95, 187, 0.34);
+}
+
+.mobile-profile-selector-option.physique-curvy {
+  background: #fff2f8;
+  border-color: rgba(161, 72, 117, 0.34);
+}
+
+.mobile-profile-selector-option.physique-muscular {
+  background: #fbf4ea;
+  border-color: rgba(125, 79, 36, 0.34);
+}
+
+.mobile-profile-selector-option.physique-average {
+  background: #eff4f9;
+  border-color: rgba(77, 102, 127, 0.34);
+}
+
+.mobile-profile-selector-option.event-frequency-one-time {
+  background: linear-gradient(180deg, #fff3e6 0%, #ffe8d4 100%);
+  border-color: rgba(196, 114, 34, 0.42);
+}
+
+.mobile-profile-selector-option.event-frequency-daily {
+  background: linear-gradient(180deg, #fff4cf 0%, #ffe7b2 100%);
+  border-color: rgba(188, 138, 21, 0.44);
+}
+
+.mobile-profile-selector-option.event-frequency-weekly {
+  background: linear-gradient(180deg, #eaf8fb 0%, #dff2f6 100%);
+  border-color: rgba(39, 134, 150, 0.42);
+}
+
+.mobile-profile-selector-option.event-frequency-bi-weekly {
+  background: linear-gradient(180deg, #f3efff 0%, #ebe3fd 100%);
+  border-color: rgba(105, 78, 168, 0.42);
+}

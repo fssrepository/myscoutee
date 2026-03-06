@@ -1,0 +1,422 @@
+
+.activity-members-add-fab .mat-icon {
+  width: 22px;
+  height: 22px;
+  font-size: 22px;
+  line-height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 760px) {
+  .event-subevents-grid-popup.event-subevents-grid-popup-desktop .event-subevent-card:not(.event-subevent-card-group) {
+    flex: 1 1 auto;
+    max-width: 100%;
+    width: auto;
+  }
+
+  .activity-members-add-fab {
+    right: 0.6rem;
+    bottom: max(0.6rem, env(safe-area-inset-bottom));
+  }
+
+  .event-subevents-add-fab {
+    right: 0.7rem;
+    bottom: max(0.7rem, env(safe-area-inset-bottom));
+    width: 54px;
+    height: 54px;
+  }
+
+  .event-subevents-add-fab .mat-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 28px;
+    line-height: 28px;
+  }
+
+  .event-explore-order-trigger {
+    padding: 0 0.5rem;
+  }
+
+  .event-explore-order-trigger span {
+    max-width: 6.6rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .activities-action-stack {
+    gap: 0.28rem;
+  }
+}
+
+
+.chat-members-popup-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.chat-members-popup-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.chat-members-popup-meta p {
+  margin: 0;
+}
+
+.chat-members-popup-meta p:first-child {
+  font-size: 0.85rem;
+  color: rgba(20, 32, 52, 0.9);
+  font-weight: 700;
+}
+
+.chat-members-popup-meta p:last-child {
+  font-size: 0.75rem;
+  color: rgba(20, 32, 52, 0.65);
+}
+
+.chat-members-popup-meta .member-name {
+  font-size: 0.85rem;
+  color: rgba(20, 32, 52, 0.9);
+  font-weight: 700;
+}
+
+.chat-members-popup-meta .member-city {
+  font-size: 0.75rem;
+  color: rgba(20, 32, 52, 0.68);
+  font-family: 'Avenir Next', 'Segoe UI', sans-serif;
+  font-weight: 500;
+}
+
+.chat-members-popup-meta .member-action {
+  font-size: 0.71rem;
+  color: rgba(20, 32, 52, 0.58);
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', ui-monospace, monospace;
+  letter-spacing: 0.01em;
+}
+
+:where(
+  button,
+  a[href],
+  [role='button'],
+  .link-btn,
+  .popup-view-fab,
+  .activities-view-option,
+  .item-action-menu-btn,
+  .profile-status-select-wrap,
+  .event-topics-panel,
+  .event-subevents-panel-trigger,
+  .menu-shortcut-btn,
+  .impression-shortcut-btn,
+  .asset-shortcut-btn,
+  .feedback-shortcut-btn,
+  .game-entry,
+  .card-header,
+  .activities-card,
+  .header-icon-btn,
+  .popup-chat-event-btn,
+  .activity-members-header-invite-trigger,
+  .chat-header-members,
+  .chat-send-btn,
+  .chat-editor-icon-btn
+) {
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--interactive-motion-duration) var(--interactive-motion-ease),
+    filter var(--interactive-motion-duration) var(--interactive-motion-ease),
+    box-shadow var(--interactive-motion-duration) var(--interactive-motion-ease),
+    background-color var(--interactive-motion-duration) var(--interactive-motion-ease),
+    border-color var(--interactive-motion-duration) var(--interactive-motion-ease),
+    color var(--interactive-motion-duration) var(--interactive-motion-ease);
+  transform-origin: center;
+}
+
+:where(
+  button,
+  a[href],
+  [role='button'],
+  .link-btn,
+  .popup-view-fab,
+  .activities-view-option,
+  .item-action-menu-btn,
+  .profile-status-select-wrap,
+  .event-topics-panel,
+  .event-subevents-panel-trigger,
+  .menu-shortcut-btn,
+  .impression-shortcut-btn,
+  .asset-shortcut-btn,
+  .feedback-shortcut-btn,
+  .game-entry,
+  .card-header,
+  .activities-card,
+  .header-icon-btn,
+  .popup-chat-event-btn,
+  .activity-members-header-invite-trigger,
+  .chat-header-members,
+  .chat-send-btn,
+  .chat-editor-icon-btn
+):focus-visible {
+  outline: 2px solid rgba(66, 110, 182, 0.44);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(
+    button,
+    a[href],
+    [role='button'],
+    .link-btn,
+    .popup-view-fab,
+    .activities-view-option,
+    .item-action-menu-btn,
+    .profile-status-select-wrap,
+    .event-topics-panel,
+    .event-subevents-panel-trigger,
+    .menu-shortcut-btn,
+    .impression-shortcut-btn,
+    .asset-shortcut-btn,
+    .feedback-shortcut-btn,
+    .game-entry,
+    .card-header,
+    .activities-card,
+    .header-icon-btn,
+    .popup-chat-event-btn,
+    .activity-members-header-invite-trigger,
+    .chat-header-members,
+    .chat-send-btn,
+    .chat-editor-icon-btn
+  ):not(:disabled):not([aria-disabled='true']):hover {
+    transform: translateY(var(--interactive-hover-lift)) scale(var(--interactive-hover-scale));
+    filter: brightness(var(--interactive-hover-brightness));
+  }
+
+  :where(
+    button,
+    a[href],
+    [role='button'],
+    .link-btn,
+    .popup-view-fab,
+    .activities-view-option,
+    .item-action-menu-btn,
+    .profile-status-select-wrap,
+    .event-topics-panel,
+    .event-subevents-panel-trigger,
+    .menu-shortcut-btn,
+    .impression-shortcut-btn,
+    .asset-shortcut-btn,
+    .feedback-shortcut-btn,
+    .game-entry,
+    .card-header,
+    .activities-card,
+    .header-icon-btn,
+    .popup-chat-event-btn,
+    .activity-members-header-invite-trigger,
+    .chat-header-members,
+    .chat-send-btn,
+    .chat-editor-icon-btn
+  ):not(:disabled):not([aria-disabled='true']):active {
+    transform: scale(var(--interactive-press-scale));
+    filter: brightness(var(--interactive-press-brightness));
+  }
+
+  .menu-shortcut-btn:hover,
+  .impression-shortcut-btn:hover,
+  .asset-shortcut-btn:hover,
+  .feedback-shortcut-btn:hover,
+  .game-entry:hover,
+  .card-header:hover,
+  .activities-card:hover {
+    box-shadow: 0 3px 10px rgba(16, 29, 48, 0.14);
+  }
+
+  .header-icon-btn:hover,
+  .chat-send-btn:hover,
+  .chat-editor-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.96);
+    border-color: rgba(41, 71, 109, 0.34);
+  }
+
+  .popup-chat-event-btn:hover {
+    color: #1f3f66;
+    background: rgba(54, 90, 133, 0.08);
+  }
+
+  .activity-members-header-invite-trigger:hover {
+    border-color: rgba(39, 76, 121, 0.46);
+  }
+
+  .chat-header-members:hover {
+    background: rgba(54, 90, 133, 0.08);
+  }
+
+  .event-editor-members-trigger:hover {
+    border-color: rgba(167, 103, 34, 0.52);
+    background: linear-gradient(180deg, rgba(255, 250, 237, 0.99) 0%, rgba(253, 241, 214, 0.97) 100%);
+  }
+
+  .event-editor-members-trigger-members:hover {
+    border-color: rgba(57, 105, 162, 0.5);
+    background: linear-gradient(180deg, rgba(242, 250, 255, 0.99) 0%, rgba(229, 241, 255, 0.97) 100%);
+  }
+
+  .popup-chat-context-btn.popup-chat-context-btn-tone-main-event:hover {
+    border-color: rgba(43, 97, 161, 0.46);
+    background: linear-gradient(180deg, #f2f8ff 0%, #e6f0ff 100%);
+  }
+
+  .popup-chat-context-btn.popup-chat-context-btn-tone-optional:hover {
+    border-color: rgba(143, 84, 26, 0.46);
+    background: linear-gradient(180deg, #fff7eb 0%, #ffefd8 100%);
+  }
+
+  .popup-chat-context-btn.popup-chat-context-btn-tone-group:hover {
+    border-color: rgba(51, 131, 92, 0.46);
+    background: linear-gradient(180deg, #f0faef 0%, #e3f3e7 100%);
+  }
+
+  .chat-header-members:hover .chat-stack-avatar,
+  .chat-members-stack:hover .chat-stack-avatar {
+    transform: translateY(var(--interactive-hover-lift));
+  }
+
+  .event-feedback-overlay-nav-btn:not(:disabled):hover {
+    transform: translateY(-50%) !important;
+    filter: brightness(1.03) !important;
+  }
+
+  .event-feedback-overlay-nav-btn:not(:disabled):active {
+    transform: translateY(-50%) scale(0.96) !important;
+    filter: brightness(0.98) !important;
+  }
+}
+
+@keyframes mobile-touch-feedback {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  45% {
+    transform: scale(var(--interactive-press-scale));
+    filter: brightness(var(--interactive-press-brightness));
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  :where(
+    button,
+    a[href],
+    [role='button'],
+    .link-btn,
+    .popup-view-fab,
+    .activities-view-option,
+    .item-action-menu-btn,
+    .profile-status-select-wrap,
+    .event-topics-panel,
+    .event-subevents-panel-trigger,
+    .menu-shortcut-btn,
+    .impression-shortcut-btn,
+    .asset-shortcut-btn,
+    .game-entry,
+    .card-header,
+    .activities-card,
+    .header-icon-btn,
+    .popup-chat-event-btn,
+    .activity-members-header-invite-trigger,
+    .chat-header-members,
+    .chat-send-btn,
+    .chat-editor-icon-btn
+  ):not(:disabled):not([aria-disabled='true']):active {
+    animation: mobile-touch-feedback 0.2s ease;
+  }
+
+  .event-feedback-overlay-nav-btn:not(:disabled):active {
+    animation: none;
+    transform: translateY(-50%) scale(0.96);
+    filter: brightness(0.98);
+  }
+}
+
+textarea,
+input,
+select {
+  width: 100%;
+  border: 1px solid rgba(15, 27, 47, 0.16);
+  border-radius: 10px;
+  padding: 0.48rem 0.56rem;
+  font: inherit;
+  color: var(--text-main);
+  background: #fff;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.popup-actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.link-btn {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: #fff;
+  color: #1f3350;
+  font: inherit;
+  font-size: 0.83rem;
+  padding: 0.38rem 0.76rem;
+  cursor: pointer;
+}
+
+.neutral-btn {
+  background: #f2f4fa;
+  border-color: rgba(23, 33, 54, 0.12);
+}
+
+.primary-btn {
+  background: #4776b7;
+  border-color: #4776b7;
+  color: #fff;
+}
+
+.editor-list-card {
+  border: 1px solid rgba(13, 25, 44, 0.12);
+  border-radius: 11px;
+  padding: 0.56rem;
+  background: #fbfdff;
+}
+
+.editor-list-card h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-main);
+}
+
+.editor-list-card p {
+  margin-top: 0.26rem;
+  font-size: 0.78rem;
+}
+
+.event-main-card {
+  background: linear-gradient(180deg, rgba(70, 123, 181, 0.08), rgba(255, 255, 255, 0.95));
+  position: sticky;
+  top: 0.2rem;
+  z-index: 3;
+  box-shadow: 0 4px 16px rgba(33, 53, 80, 0.12);
+}
