@@ -1,0 +1,43 @@
+<div class="image-editor-wrap">
+  <div class="image-editor-main" [style.backgroundImage]="selectedImagePreview ? 'url(' + selectedImagePreview + ')' : 'none'">
+    <div class="image-stack-indicators" *ngIf="imageStackSlots.length > 0">
+      <button
+        type="button"
+        class="image-stack-line"
+        *ngFor="let slotIndex of imageStackSlots"
+        [class.active]="slotIndex === selectedImageIndex"
+        (click)="selectImageFromStack(slotIndex)"
+        aria-label="Select image"
+      ></button>
+    </div>
+
+    <div class="image-stack-hit-area" *ngIf="imageStackSlots.length > 0">
+      <button
+        type="button"
+        class="image-stack-hit-segment"
+        *ngFor="let slotIndex of imageStackSlots"
+        (click)="selectImageFromStack(slotIndex)"
+        aria-label="Select image"
+      ></button>
+    </div>
+    <span *ngIf="!selectedImagePreview">Select a slot to upload image</span>
+  </div>
+
+  <p class="image-editor-hint">Click a thumbnail to upload or replace image.</p>
+  <input #slotImageInput class="image-file-input-hidden" type="file" accept="image/*" (change)="onSlotImageFileChange($event)" />
+
+  <div class="image-editor-grid">
+    <button
+      type="button"
+      *ngFor="let slot of imageSlots; let i = index"
+      [class.slot-selected]="selectedImageIndex === i"
+      [class.slot-featured]="i === 0"
+      [style.backgroundImage]="slot ? 'url(' + slot + ')' : 'none'"
+      (click)="selectImageSlot(i)"
+    >
+      <span class="slot-index">{{ i + 1 }}</span>
+      <span *ngIf="!slot" class="slot-add">+</span>
+      <span *ngIf="slot" class="remove-slot" (click)="$event.stopPropagation(); removeImage(i)">×</span>
+    </button>
+  </div>
+</div>

@@ -1,0 +1,151 @@
+<div class="experience-popup">
+  <div class="experience-toolbar">
+    <div class="profile-status-select-wrap selector-like experience-filter-select" [ngClass]="filterClass(filter)">
+      <mat-select
+        [(ngModel)]="filter"
+        panelWidth="240px"
+        disableOptionCentering
+        panelClass="selector-options-panel profile-bottom-sheet-panel"
+      >
+        <mat-select-trigger>
+          <span class="status-option-content">
+            <mat-icon [class]="filterClass(filter)">{{ filterIcon(filter) }}</mat-icon>
+            <span>{{ filter }}</span>
+          </span>
+        </mat-select-trigger>
+
+        <mat-option
+          *ngFor="let option of filterOptions"
+          [value]="option"
+          class="status-option"
+          [ngClass]="filterClass(option)"
+        >
+          <span class="status-option-content">
+            <mat-icon [class]="filterClass(option)">{{ filterIcon(option) }}</mat-icon>
+            <span>{{ option }}</span>
+          </span>
+        </mat-option>
+      </mat-select>
+    </div>
+
+    <button type="button" class="popup-header-add-btn" (click)="openForm()" aria-label="Add experience">
+      <mat-icon>add</mat-icon>
+    </button>
+  </div>
+
+  <div class="experience-card-list">
+    <article class="experience-item-card" [ngClass]="typeClass(item.type)" *ngFor="let item of filteredEntries">
+      <div class="experience-item-head">
+        <span class="experience-item-icon">
+          <mat-icon>{{ typeIcon(item.type) }}</mat-icon>
+        </span>
+        <div class="experience-item-meta">
+          <h4>{{ item.title }}</h4>
+          <p>{{ item.org }} · {{ item.city }}</p>
+        </div>
+        <div class="experience-item-actions">
+          <button type="button" class="experience-action-btn experience-action-edit" (click)="openForm(item)" aria-label="Edit experience">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button type="button" class="experience-action-btn experience-action-delete" (click)="requestDelete(item.id)" aria-label="Delete experience">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      </div>
+      <p class="experience-item-description">{{ item.description }}</p>
+      <p class="experience-item-dates">{{ item.dateFrom }} - {{ item.dateTo }}</p>
+    </article>
+  </div>
+
+  <section class="experience-delete-confirm" *ngIf="pendingDeleteId">
+    <div class="experience-delete-confirm-backdrop" (click)="cancelDelete()"></div>
+    <div class="experience-delete-confirm-panel">
+      <h4>Delete experience?</h4>
+      <p>This entry will be removed from your profile.</p>
+      <div class="popup-actions">
+        <button type="button" class="link-btn neutral-btn" (click)="cancelDelete()">Cancel</button>
+        <button type="button" class="link-btn experience-delete-btn" (click)="confirmDelete()">Delete</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="experience-form-overlay" *ngIf="showForm">
+    <div class="experience-form-overlay-backdrop" (click)="closeForm()"></div>
+    <div class="experience-form-popup">
+      <div class="experience-form-header">
+        <h3>{{ editingExperienceId ? 'Edit Experience' : 'Add Experience' }}</h3>
+        <button type="button" class="experience-form-close-btn" (click)="closeForm()" aria-label="Close add experience">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <section class="experience-form-panel">
+        <div class="experience-form-grid">
+          <label class="experience-type-field">
+            <span>Type</span>
+            <div class="profile-status-select-wrap selector-like experience-type-select" [ngClass]="typeToneClass(form.type)">
+              <mat-select [(ngModel)]="form.type" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel">
+                <mat-select-trigger>
+                  <span class="status-option-content">
+                    <mat-icon [class]="typeToneClass(form.type)">{{ typeIcon(form.type) }}</mat-icon>
+                    <span>{{ form.type }}</span>
+                  </span>
+                </mat-select-trigger>
+                <mat-option *ngFor="let option of typeOptions" [value]="option" class="status-option" [ngClass]="typeToneClass(option)">
+                  <span class="status-option-content">
+                    <mat-icon [class]="typeToneClass(option)">{{ typeIcon(option) }}</mat-icon>
+                    <span>{{ option }}</span>
+                  </span>
+                </mat-option>
+              </mat-select>
+            </div>
+          </label>
+
+          <label class="experience-title-field">
+            <span>Title</span>
+            <input type="text" [(ngModel)]="form.title" />
+          </label>
+
+          <label class="experience-org-field">
+            <span>Organization</span>
+            <input type="text" [(ngModel)]="form.org" />
+          </label>
+
+          <label class="experience-city-field">
+            <span>City</span>
+            <input type="text" [(ngModel)]="form.city" />
+          </label>
+
+          <label class="experience-date-range-label">
+            <span>Date range</span>
+            <mat-form-field appearance="fill" class="experience-date-range-field" subscriptSizing="dynamic">
+              <mat-label>Enter a date range</mat-label>
+              <mat-date-range-input [rangePicker]="experienceDateRangePicker">
+                <input matStartDate [(ngModel)]="rangeStart" name="experienceRangeStart" placeholder="YYYY/MM/DD" />
+                <input matEndDate [(ngModel)]="rangeEnd" name="experienceRangeEnd" placeholder="YYYY/MM/DD" />
+              </mat-date-range-input>
+              <mat-datepicker-toggle matSuffix [for]="experienceDateRangePicker"></mat-datepicker-toggle>
+              <mat-hint>YYYY/MM - YYYY/MM</mat-hint>
+              <mat-date-range-picker #experienceDateRangePicker></mat-date-range-picker>
+            </mat-form-field>
+          </label>
+
+          <label class="experience-description-field">
+            <span>Description</span>
+            <textarea rows="4" [(ngModel)]="form.description"></textarea>
+          </label>
+        </div>
+
+        <div class="popup-actions experience-form-actions">
+          <button type="button" class="link-btn neutral-btn" (click)="closeForm()">Cancel</button>
+          <button type="button" class="link-btn primary-btn" (click)="saveEntry()">Save</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <div *ngIf="filteredEntries.length === 0" class="editor-list-card">
+    <h4>No entries in this filter</h4>
+    <p>Try switching the type dropdown to All.</p>
+  </div>
+</div>

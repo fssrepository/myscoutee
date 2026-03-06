@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, ElementRef, HostListener, Injectable, NgZone, ViewChild, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, Injectable, NgZone, ViewChild, ViewEncapsulation, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -37,6 +37,8 @@ import {
 import { GDPR_CONTENT } from './shared/gdpr-data';
 import { environment } from '../environments/environment';
 import { LazyBgImageDirective } from './shared/lazy-bg-image.directive';
+import { ProfileEditorComponent } from './profile-editor/components/profile-editor.component';
+import { ProfileEditorScreen } from './profile-editor/profile-editor-state.machine';
 
 type MenuSection = 'game' | 'chat' | 'invitations' | 'events' | 'hosting';
 
@@ -64,7 +66,6 @@ type PopupType =
   | 'subEventMembers'
   | 'subEventAssets'
   | 'profileEditor'
-  | 'imageEditor'
   | 'imageUpload'
   | 'supplyDetail'
   | 'assetMembers'
@@ -72,9 +73,6 @@ type PopupType =
   | 'ticketCode'
   | 'ticketScanner'
   | 'activityMembers'
-  | 'valuesSelector'
-  | 'interestSelector'
-  | 'experienceSelector'
   | 'helpCenter'
   | 'reportUser'
   | 'sendFeedback'
@@ -551,13 +549,6 @@ interface MobileProfileSelectorSheet {
   selected: string;
   options: MobileProfileSelectorOption[];
   context:
-    | { kind: 'profileStatus' }
-    | { kind: 'physique' }
-    | { kind: 'language' }
-    | { kind: 'detailPrivacy'; groupIndex: number; rowIndex: number }
-    | { kind: 'experiencePrivacy'; type: 'workspace' | 'school' }
-    | { kind: 'detailValue'; groupIndex: number; rowIndex: number }
-    | { kind: 'experienceType' }
     | { kind: 'assetFilter' }
     | { kind: 'activitiesPrimaryFilter' }
     | { kind: 'activitiesChatContextFilter' }
@@ -750,14 +741,15 @@ const APP_DATE_FORMATS = {
     MatTimepickerModule,
     FormsModule,
     DragDropModule,
-    LazyBgImageDirective
+    LazyBgImageDirective,
+    ProfileEditorComponent
   ],
   providers: [
     { provide: DateAdapter, useClass: YearMonthDayDateAdapter },
     { provide: MAT_DATE_FORMATS, useValue: APP_DATE_FORMATS }
   ],
+  encapsulation: ViewEncapsulation.None,
   templateUrl: './app.html',
-  styleUrl: '../_styles/app.scss'
 })
 export class App {
   private static readonly DEMO_ACTIVE_USER_KEY = 'demo-active-user';
@@ -977,36 +969,12 @@ export class App {
   protected stackedPopup: PopupType = null;
   protected eventEditorMode: EventEditorMode = 'edit';
   protected eventEditorReadOnly = false;
-  protected popupReturnTarget: PopupType = null;
-  protected openPrivacyFab: { groupIndex: number; rowIndex: number } | null = null;
-  protected openExperiencePrivacyFab: 'workspace' | 'school' | null = null;
-  protected privacyFabJustSelectedKey: string | null = null;
   protected readonly detailPrivacyOptions: DetailPrivacy[] = ['Public', 'Friends', 'Hosts', 'Private'];
   protected mobileProfileSelectorSheet: MobileProfileSelectorSheet | null = null;
-  protected valuesSelectorContext: { groupIndex: number; rowIndex: number } | null = null;
-  protected valuesSelectorSelected: string[] = [];
-  protected interestSelectorContext: { groupIndex: number; rowIndex: number } | null = null;
   protected interestSelectorSelected: string[] = [];
   protected experienceVisibility: Record<'workspace' | 'school', DetailPrivacy> = {
     workspace: 'Public',
     school: 'Public'
-  };
-  protected readonly experienceFilterOptions: Array<'All' | 'Workspace' | 'School'> = ['All', 'Workspace', 'School'];
-  protected readonly experienceTypeOptions: Array<ExperienceEntry['type']> = ['Workspace', 'School', 'Online Session', 'Additional Project'];
-  protected experienceFilter: 'All' | 'Workspace' | 'School' = 'All';
-  protected editingExperienceId: string | null = null;
-  protected pendingExperienceDeleteId: string | null = null;
-  protected showExperienceForm = false;
-  protected experienceRangeStart: Date | null = null;
-  protected experienceRangeEnd: Date | null = null;
-  protected experienceForm: Omit<ExperienceEntry, 'id'> = {
-    type: 'Workspace',
-    title: '',
-    org: '',
-    city: '',
-    dateFrom: '',
-    dateTo: '',
-    description: ''
   };
   protected experienceEntries: ExperienceEntry[] = this.buildSampleExperienceEntries();
   protected readonly assetTypeOptions: AssetType[] = ['Car', 'Accommodation', 'Supplies'];
@@ -1486,9 +1454,8 @@ export class App {
   protected chatHeaderLoadingOverdue = false;
 
   protected imageSlots: Array<string | null> = [];
-  protected selectedImageIndex = 0;
-  protected pendingSlotUploadIndex: number | null = null;
-  @ViewChild('slotImageInput') private slotImageInput?: ElementRef<HTMLInputElement>;
+  protected profileEditorScreen: ProfileEditorScreen = 'main';
+  @ViewChild(ProfileEditorComponent) private profileEditorComponent?: ProfileEditorComponent;
   @ViewChild('assetImageInput') private assetImageInput?: ElementRef<HTMLInputElement>;
   @ViewChild('eventImageInput') private eventImageInput?: ElementRef<HTMLInputElement>;
   @ViewChild('activitiesScroll') private activitiesScrollRef?: ElementRef<HTMLDivElement>;
@@ -1687,11 +1654,8 @@ export class App {
     }
   ];
   protected helpCenterActiveSectionId = this.helpCenterSections[0]?.id ?? 'events';
-  protected languageInput = '';
-  protected showLanguagePanel = false;
   private readonly profileDetailsFormByUser: Record<string, ProfileDetailFormGroup[]> = {};
   private readonly profileImageSlotsByUser: Record<string, Array<string | null>> = {};
-  private readonly languageSheetHeightCssVar = '--mobile-language-sheet-height';
   private activitiesHeaderLoadingCounter = 0;
   private activitiesHeaderLoadingInterval: ReturnType<typeof setInterval> | null = null;
   private activitiesHeaderLoadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
@@ -2961,7 +2925,6 @@ export class App {
     this.showEventExploreOrderPicker = false;
     this.showEventVisibilityPicker = false;
     this.showAssetVisibilityPicker = false;
-    this.showProfileStatusHeaderPicker = false;
     this.activitiesView = 'day';
     this.clearActivityRateEditorState();
     this.activitiesStickyValue = '';
@@ -3111,7 +3074,6 @@ export class App {
     this.eventEditorReadOnly = mode === 'edit' && readOnly;
     this.eventEditorInvitationId = invitationId;
     this.showEventVisibilityPicker = false;
-    this.showProfileStatusHeaderPicker = false;
     this.prepareEventEditorForm(mode, source);
     const previousStackedPopup = this.stackedPopup;
     if (stacked || this.stackedPopup !== null || this.activePopup === 'chat') {
@@ -3162,7 +3124,6 @@ export class App {
       return;
     }
     const allowed = new Set(this.interestAllOptions());
-    this.interestSelectorContext = null;
     this.interestSelectorSelected = this.eventForm.topics
       .filter(item => allowed.has(item))
       .slice(0, 5);
@@ -6789,17 +6750,6 @@ export class App {
     this.showAssetVisibilityPicker = false;
   }
 
-  protected toggleProfileStatusHeaderPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.showProfileStatusHeaderPicker = !this.showProfileStatusHeaderPicker;
-  }
-
-  protected selectProfileStatusFromHeader(option: ProfileStatus, event?: Event): void {
-    event?.stopPropagation();
-    this.profileForm.profileStatus = option;
-    this.showProfileStatusHeaderPicker = false;
-  }
-
   protected eventFrequencyAscii(option: string): string {
     switch (option) {
       case 'Daily':
@@ -8685,17 +8635,53 @@ export class App {
 
   protected openProfileEditor(): void {
     this.syncProfileFormFromActiveUser();
-    this.popupReturnTarget = null;
+    this.profileEditorScreen = 'main';
     this.showProfileStatusHeaderPicker = false;
     this.showUserSettingsMenu = false;
     this.activePopup = 'profileEditor';
   }
 
-  protected openImageEditor(): void {
-    if (this.activePopup === 'profileEditor') {
-      this.popupReturnTarget = 'profileEditor';
+  protected handleProfileExperienceEntriesChange(entries: ExperienceEntry[]): void {
+    this.experienceEntries = [...entries];
+  }
+
+  protected handleProfileExperienceVisibilityChange(visibility: Record<'workspace' | 'school', DetailPrivacy>): void {
+    this.experienceVisibility = { ...visibility };
+  }
+
+  protected handleProfileLanguageSuggestionsChange(suggestions: string[]): void {
+    this.languageSuggestions = [...suggestions];
+  }
+
+  protected handleProfileImageSlotsChange(slots: Array<string | null>): void {
+    this.imageSlots = [...slots];
+    this.persistActiveUserImageSlots();
+  }
+
+  protected handleProfileEditorScreenChange(screen: ProfileEditorScreen): void {
+    this.profileEditorScreen = screen;
+    if (screen !== 'main') {
+      this.showProfileStatusHeaderPicker = false;
     }
-    this.activePopup = 'imageEditor';
+  }
+
+  protected handleProfileEditorHeaderBack(event?: Event): void {
+    event?.stopPropagation();
+    if (this.activePopup !== 'profileEditor' || this.profileEditorScreen === 'main') {
+      return;
+    }
+    this.profileEditorComponent?.goBackFromHostHeader();
+  }
+
+  protected toggleProfileStatusHeaderPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.showProfileStatusHeaderPicker = !this.showProfileStatusHeaderPicker;
+  }
+
+  protected selectProfileStatusFromHeader(option: ProfileStatus, event?: Event): void {
+    event?.stopPropagation();
+    this.profileForm.profileStatus = option;
+    this.showProfileStatusHeaderPicker = false;
   }
 
   protected openLogoutConfirm(): void {
@@ -8704,11 +8690,7 @@ export class App {
 
   protected closePopup(): void {
     this.stopActivitiesRatesPairSplitDrag();
-    if (this.activePopup === 'imageEditor' && this.popupReturnTarget) {
-      this.activePopup = this.popupReturnTarget;
-      this.popupReturnTarget = null;
-      return;
-    }
+    this.showProfileStatusHeaderPicker = false;
     if (this.showUserMenu && (this.activePopup === 'eventFeedback' || this.activePopup === 'reportUser')) {
       this.suppressUserMenuOutsideCloseUntilMs = Date.now() + 180;
     }
@@ -8717,7 +8699,7 @@ export class App {
     }
     this.activePopup = null;
     this.stackedPopup = null;
-    this.popupReturnTarget = null;
+    this.profileEditorScreen = 'main';
     this.closeAssetForm();
     this.pendingAssetDeleteCardId = null;
     this.pendingAssetMemberAction = null;
@@ -8748,7 +8730,6 @@ export class App {
     this.showActivitiesSecondaryPicker = false;
     this.showEventVisibilityPicker = false;
     this.showAssetVisibilityPicker = false;
-    this.showProfileStatusHeaderPicker = false;
     this.showEventFeedbackFilterPicker = false;
     this.eventFeedbackCards = [];
     this.eventFeedbackIndex = 0;
@@ -8903,7 +8884,6 @@ export class App {
       this.stackedEventEditorOrigin = null;
       this.stackedPopup = 'chat';
       this.showEventVisibilityPicker = false;
-      this.showProfileStatusHeaderPicker = false;
       return;
     }
     if (closingStackedEventEditor) {
@@ -8949,20 +8929,6 @@ export class App {
       this.stackedPopup = 'subEventAssets';
       return;
     }
-    if (this.stackedPopup === 'valuesSelector') {
-      this.valuesSelectorContext = null;
-      this.valuesSelectorSelected = [];
-    }
-    if (this.stackedPopup === 'interestSelector') {
-      this.interestSelectorContext = null;
-      this.interestSelectorSelected = [];
-    }
-    if (this.stackedPopup === 'experienceSelector') {
-      this.editingExperienceId = null;
-      this.pendingExperienceDeleteId = null;
-      this.showExperienceForm = false;
-      this.resetExperienceForm();
-    }
     if (this.stackedPopup === 'assetMembers') {
       this.pendingAssetMemberAction = null;
       this.selectedAssetCardId = null;
@@ -9004,7 +8970,6 @@ export class App {
     }
     this.stackedPopup = null;
     this.showEventVisibilityPicker = false;
-    this.showProfileStatusHeaderPicker = false;
     if (this.activePopup === 'chat') {
       this.scrollChatToBottom();
     }
@@ -9013,7 +8978,8 @@ export class App {
   protected confirmLogout(): void {
     this.activePopup = null;
     this.stackedPopup = null;
-    this.popupReturnTarget = null;
+    this.profileEditorScreen = 'main';
+    this.showProfileStatusHeaderPicker = false;
     this.showUserMenu = false;
     this.showUserSettingsMenu = false;
     this.showUserSelector = false;
@@ -9202,9 +9168,7 @@ export class App {
       case 'eventExplore':
         return 'Event Explore';
       case 'profileEditor':
-        return 'Profile Editor';
-      case 'imageEditor':
-        return 'Image Editor';
+        return this.profileEditorPopupTitle();
       case 'imageUpload':
         return 'Upload Image';
       case 'supplyDetail':
@@ -9235,6 +9199,21 @@ export class App {
         return 'Privacy';
       default:
         return '';
+    }
+  }
+
+  private profileEditorPopupTitle(): string {
+    switch (this.profileEditorScreen) {
+      case 'values':
+        return 'Values';
+      case 'interest':
+        return 'Interest';
+      case 'experience':
+        return 'Experience';
+      case 'imageEditor':
+        return 'Image Editor';
+      default:
+        return 'Profile Editor';
     }
   }
 
@@ -9273,388 +9252,11 @@ export class App {
         return `Members · ${this.subEventDisplayName(this.selectedSubEventBadgeContext?.subEvent)}`.trim();
       case 'subEventAssets':
         return `${this.subEventResourceFilter} · ${this.subEventDisplayName(this.selectedSubEventBadgeContext?.subEvent)}`.trim();
-      case 'valuesSelector':
-        return 'Values';
-      case 'interestSelector':
-        return 'Interest';
-      case 'experienceSelector':
-        return 'Experience';
       case 'assetMembers':
         return this.selectedAssetCard ? `${this.selectedAssetCard.title} · Members` : 'Members';
       default:
         return '';
     }
-  }
-
-  protected get filteredExperienceEntries(): ExperienceEntry[] {
-    const filtered = this.experienceEntries.filter(item => {
-      if (this.experienceFilter === 'All') {
-        return true;
-      }
-      return item.type === this.experienceFilter;
-    });
-    return [...filtered].sort((a, b) => this.toSortableDate(b.dateFrom) - this.toSortableDate(a.dateFrom));
-  }
-
-  protected get experienceSummary(): string {
-    return `${this.experienceEntries.length} entries`;
-  }
-
-  protected get workspaceExperienceSummary(): string {
-    const count = this.experienceEntries.filter(item => item.type === 'Workspace').length;
-    return `${count} items`;
-  }
-
-  protected get schoolExperienceSummary(): string {
-    const count = this.experienceEntries.filter(item => item.type === 'School').length;
-    return `${count} items`;
-  }
-
-  protected workspaceExperiencePreviewEntries(limit = 2): Array<{ title: string; subtitle: string; date: string }> {
-    return this.experiencePreviewEntriesForType('Workspace', limit);
-  }
-
-  protected schoolExperiencePreviewEntries(limit = 2): Array<{ title: string; subtitle: string; date: string }> {
-    return this.experiencePreviewEntriesForType('School', limit);
-  }
-
-  protected openExperienceSelector(filter: 'All' | 'Workspace' | 'School' = 'All'): void {
-    this.experienceFilter = filter;
-    this.pendingExperienceDeleteId = null;
-    this.editingExperienceId = null;
-    this.resetExperienceForm();
-    this.stackedPopup = 'experienceSelector';
-  }
-
-  protected openWorkspaceSelector(): void {
-    this.openExperienceSelector('Workspace');
-  }
-
-  protected openSchoolSelector(): void {
-    this.openExperienceSelector('School');
-  }
-
-  private experiencePreviewEntriesForType(type: 'Workspace' | 'School', limit: number): Array<{ title: string; subtitle: string; date: string }> {
-    return this.experienceEntries
-      .filter(item => item.type === type)
-      .sort((a, b) => this.toSortableDate(b.dateFrom) - this.toSortableDate(a.dateFrom))
-      .slice(0, limit)
-      .map(item => ({
-        title: item.org,
-        subtitle: item.title,
-        date: `${item.dateFrom} - ${item.dateTo || 'Present'}`
-      }));
-  }
-
-  protected experienceTypeIcon(type: ExperienceEntry['type']): string {
-    switch (type) {
-      case 'Workspace':
-        return 'apartment';
-      case 'School':
-        return 'school';
-      case 'Online Session':
-        return 'videocam';
-      default:
-        return 'rocket_launch';
-    }
-  }
-
-  protected experienceTypeClass(type: ExperienceEntry['type']): string {
-    switch (type) {
-      case 'Workspace':
-        return 'experience-card-workspace';
-      case 'School':
-        return 'experience-card-school';
-      case 'Online Session':
-        return 'experience-card-online';
-      default:
-        return 'experience-card-project';
-    }
-  }
-
-  protected experienceFilterIcon(option: 'All' | 'Workspace' | 'School'): string {
-    if (option === 'Workspace') {
-      return 'apartment';
-    }
-    if (option === 'School') {
-      return 'school';
-    }
-    return 'filter_alt';
-  }
-
-  protected experienceFilterClass(option: 'All' | 'Workspace' | 'School'): string {
-    if (option === 'Workspace') {
-      return 'experience-filter-workspace';
-    }
-    if (option === 'School') {
-      return 'experience-filter-school';
-    }
-    return 'experience-filter-all';
-  }
-
-  protected experienceTypeToneClass(type: ExperienceEntry['type']): string {
-    switch (type) {
-      case 'Workspace':
-        return 'experience-filter-workspace';
-      case 'School':
-        return 'experience-filter-school';
-      case 'Online Session':
-        return 'experience-filter-online';
-      default:
-        return 'experience-filter-project';
-    }
-  }
-
-  protected openExperienceForm(entry?: ExperienceEntry): void {
-    this.pendingExperienceDeleteId = null;
-    this.showExperienceForm = true;
-    if (entry) {
-      this.editingExperienceId = entry.id;
-      this.experienceForm = {
-        type: entry.type,
-        title: entry.title,
-        org: entry.org,
-        city: entry.city,
-        dateFrom: entry.dateFrom,
-        dateTo: entry.dateTo === 'Present' ? '' : entry.dateTo,
-        description: entry.description
-      };
-      this.experienceRangeStart = this.fromYearMonth(entry.dateFrom);
-      this.experienceRangeEnd = entry.dateTo === 'Present' ? null : this.fromYearMonth(entry.dateTo);
-    } else {
-      this.editingExperienceId = null;
-      this.resetExperienceForm();
-    }
-  }
-
-  protected closeExperienceForm(): void {
-    this.showExperienceForm = false;
-    this.editingExperienceId = null;
-    this.resetExperienceForm();
-  }
-
-  protected saveExperienceEntry(): void {
-    if (!this.experienceForm.title.trim() || !this.experienceForm.org.trim() || !this.experienceRangeStart) {
-      return;
-    }
-    const dateFrom = this.toYearMonth(this.experienceRangeStart);
-    if (!dateFrom) {
-      return;
-    }
-    const dateTo = this.experienceRangeEnd ? this.toYearMonth(this.experienceRangeEnd) : 'Present';
-    const payload: Omit<ExperienceEntry, 'id'> = {
-      ...this.experienceForm,
-      dateFrom,
-      title: this.experienceForm.title.trim(),
-      org: this.experienceForm.org.trim(),
-      city: this.experienceForm.city.trim(),
-      dateTo: dateTo || 'Present',
-      description: this.experienceForm.description.trim()
-    };
-    if (this.editingExperienceId) {
-      this.experienceEntries = this.experienceEntries.map(item =>
-        item.id === this.editingExperienceId
-          ? {
-              ...item,
-              ...payload
-            }
-          : item
-      );
-    } else {
-      this.experienceEntries = [
-        ...this.experienceEntries,
-        {
-          id: `exp-${Date.now()}`,
-          ...payload
-        }
-      ];
-    }
-    this.showExperienceForm = false;
-    this.editingExperienceId = null;
-    this.resetExperienceForm();
-  }
-
-  protected requestExperienceDelete(entryId: string): void {
-    this.pendingExperienceDeleteId = entryId;
-  }
-
-  protected cancelExperienceDelete(): void {
-    this.pendingExperienceDeleteId = null;
-  }
-
-  protected confirmExperienceDelete(): void {
-    if (!this.pendingExperienceDeleteId) {
-      return;
-    }
-    this.experienceEntries = this.experienceEntries.filter(item => item.id !== this.pendingExperienceDeleteId);
-    this.pendingExperienceDeleteId = null;
-  }
-
-  protected privacyIcon(value: 'Public' | 'Friends' | 'Hosts' | 'Private'): string {
-    switch (value) {
-      case 'Public':
-        return '🔓';
-      case 'Friends':
-        return '👥';
-      case 'Hosts':
-        return '🎤';
-      default:
-        return '🔒';
-    }
-  }
-
-  protected cycleDetailPrivacy(groupIndex: number, rowIndex: number): void {
-    const group = this.profileDetailsForm[groupIndex];
-    const row = group?.rows[rowIndex];
-    if (!row) {
-      return;
-    }
-    const order: DetailPrivacy[] = ['Public', 'Friends', 'Hosts', 'Private'];
-    const currentIndex = order.indexOf(row.privacy);
-    row.privacy = order[(currentIndex + 1 + order.length) % order.length];
-  }
-
-  protected toggleDetailPrivacyFab(groupIndex: number, rowIndex: number, event: MouseEvent): void {
-    event.stopPropagation();
-    const isOpen =
-      this.openPrivacyFab?.groupIndex === groupIndex &&
-      this.openPrivacyFab?.rowIndex === rowIndex;
-    this.openPrivacyFab = isOpen ? null : { groupIndex, rowIndex };
-    this.openExperiencePrivacyFab = null;
-  }
-
-  protected isDetailPrivacyFabOpen(groupIndex: number, rowIndex: number): boolean {
-    return this.openPrivacyFab?.groupIndex === groupIndex && this.openPrivacyFab?.rowIndex === rowIndex;
-  }
-
-  protected selectDetailPrivacy(
-    groupIndex: number,
-    rowIndex: number,
-    privacy: DetailPrivacy,
-    event: MouseEvent
-  ): void {
-    event.stopPropagation();
-    const row = this.profileDetailsForm[groupIndex]?.rows[rowIndex];
-    if (!row) {
-      return;
-    }
-    row.privacy = privacy;
-    this.openPrivacyFab = null;
-    const key = this.detailPrivacyFabKey(groupIndex, rowIndex);
-    this.privacyFabJustSelectedKey = key;
-    setTimeout(() => {
-      if (this.privacyFabJustSelectedKey === key) {
-        this.privacyFabJustSelectedKey = null;
-      }
-    }, 280);
-  }
-
-  protected isDetailPrivacyJustSelected(groupIndex: number, rowIndex: number): boolean {
-    return this.privacyFabJustSelectedKey === this.detailPrivacyFabKey(groupIndex, rowIndex);
-  }
-
-  protected openDetailPrivacySelector(groupIndex: number, rowIndex: number, event: Event): void {
-    event.stopPropagation();
-    const row = this.profileDetailsForm[groupIndex]?.rows[rowIndex];
-    if (!row) {
-      return;
-    }
-    if (!this.isMobileView) {
-      const isOpen =
-        this.openPrivacyFab?.groupIndex === groupIndex &&
-        this.openPrivacyFab?.rowIndex === rowIndex;
-      this.openPrivacyFab = isOpen ? null : { groupIndex, rowIndex };
-      this.openExperiencePrivacyFab = null;
-      return;
-    }
-    this.mobileProfileSelectorSheet = {
-      title: `${row.label} visibility`,
-      selected: row.privacy,
-      options: this.privacySelectorOptions(),
-      context: { kind: 'detailPrivacy', groupIndex, rowIndex }
-    };
-  }
-
-  protected openExperiencePrivacySelector(type: 'workspace' | 'school', event: Event): void {
-    event.stopPropagation();
-    if (!this.isMobileView) {
-      this.openExperiencePrivacyFab = this.openExperiencePrivacyFab === type ? null : type;
-      this.openPrivacyFab = null;
-      return;
-    }
-    this.mobileProfileSelectorSheet = {
-      title: `${type === 'workspace' ? 'Workspace' : 'School'} visibility`,
-      selected: this.experienceVisibility[type],
-      options: this.privacySelectorOptions(),
-      context: { kind: 'experiencePrivacy', type }
-    };
-  }
-
-  protected isExperiencePrivacyFabOpen(type: 'workspace' | 'school'): boolean {
-    return this.openExperiencePrivacyFab === type;
-  }
-
-  protected selectExperiencePrivacy(
-    type: 'workspace' | 'school',
-    privacy: DetailPrivacy,
-    event: MouseEvent
-  ): void {
-    event.stopPropagation();
-    this.experienceVisibility[type] = privacy;
-    this.openExperiencePrivacyFab = null;
-  }
-
-  protected openValuesSelector(groupIndex: number, rowIndex: number): void {
-    const row = this.profileDetailsForm[groupIndex]?.rows[rowIndex];
-    if (!row) {
-      return;
-    }
-    const allowed = new Set(this.beliefsValuesAllOptions());
-    this.valuesSelectorContext = { groupIndex, rowIndex };
-    this.valuesSelectorSelected = this.parseCommaValues(row.value)
-      .filter(item => allowed.has(item))
-      .slice(0, 5);
-    this.syncValuesContextToRow();
-    this.stackedPopup = 'valuesSelector';
-  }
-
-  protected openInterestSelector(groupIndex: number, rowIndex: number): void {
-    const row = this.profileDetailsForm[groupIndex]?.rows[rowIndex];
-    if (!row) {
-      return;
-    }
-    const allowed = new Set(this.interestAllOptions());
-    this.interestSelectorContext = { groupIndex, rowIndex };
-    this.interestSelectorSelected = this.parseCommaValues(row.value)
-      .filter(item => allowed.has(item))
-      .slice(0, 5);
-    this.syncInterestContextToRow();
-    this.stackedPopup = 'interestSelector';
-  }
-
-  protected toggleValuesOption(option: string): void {
-    const allowed = this.beliefsValuesAllOptions();
-    if (!allowed.includes(option)) {
-      return;
-    }
-    const exists = this.valuesSelectorSelected.includes(option);
-    if (!exists && this.valuesSelectorSelected.length >= 5) {
-      return;
-    }
-    this.valuesSelectorSelected = exists
-      ? this.valuesSelectorSelected.filter(item => item !== option)
-      : [...this.valuesSelectorSelected, option];
-    this.syncValuesContextToRow();
-  }
-
-  protected removeValuesOption(option: string): void {
-    this.valuesSelectorSelected = this.valuesSelectorSelected.filter(item => item !== option);
-    this.syncValuesContextToRow();
-  }
-
-  protected clearValuesSelector(): void {
-    this.valuesSelectorSelected = [];
-    this.syncValuesContextToRow();
   }
 
   protected toggleInterestOption(option: string): void {
@@ -9669,7 +9271,6 @@ export class App {
     this.interestSelectorSelected = exists
       ? this.interestSelectorSelected.filter(item => item !== option)
       : [...this.interestSelectorSelected, option];
-    this.syncInterestContextToRow();
     if (this.superStackedPopup === 'eventTopicsSelector') {
       this.eventForm.topics = [...this.interestSelectorSelected];
     }
@@ -9677,35 +9278,13 @@ export class App {
 
   protected removeInterestOption(option: string): void {
     this.interestSelectorSelected = this.interestSelectorSelected.filter(item => item !== option);
-    this.syncInterestContextToRow();
     if (this.superStackedPopup === 'eventTopicsSelector') {
       this.eventForm.topics = [...this.interestSelectorSelected];
     }
   }
 
-  protected clearInterestSelector(): void {
-    this.interestSelectorSelected = [];
-    this.syncInterestContextToRow();
-    if (this.superStackedPopup === 'eventTopicsSelector') {
-      this.eventForm.topics = [];
-    }
-  }
-
   protected isInterestOptionSelected(option: string): boolean {
     return this.interestSelectorSelected.includes(option);
-  }
-
-  protected isValuesOptionSelected(option: string): boolean {
-    return this.valuesSelectorSelected.includes(option);
-  }
-
-  protected valuesOptionToneClass(option: string): string {
-    for (const group of this.beliefsValuesOptionGroups) {
-      if (group.options.includes(option)) {
-        return group.toneClass;
-      }
-    }
-    return '';
   }
 
   protected interestOptionToneClass(option: string): string {
@@ -9715,365 +9294,6 @@ export class App {
       }
     }
     return '';
-  }
-
-  protected profileSelectorToneIcon(toneClass: string): string {
-    switch (toneClass) {
-      case 'section-family':
-        return 'family_restroom';
-      case 'section-ambition':
-        return 'rocket_launch';
-      case 'section-lifestyle':
-        return 'eco';
-      case 'section-beliefs':
-        return 'auto_awesome';
-      case 'section-social':
-        return 'celebration';
-      case 'section-arts':
-        return 'palette';
-      case 'section-food':
-        return 'restaurant';
-      case 'section-active':
-        return 'hiking';
-      case 'section-mind':
-        return 'self_improvement';
-      case 'section-identity':
-        return 'public';
-      default:
-        return 'label';
-    }
-  }
-
-  protected valuesRowSummary(value: string): string {
-    const selected = this.parseCommaValues(value);
-    if (selected.length === 0) {
-      return 'Select values';
-    }
-    if (selected.length <= 2) {
-      return selected.join(', ');
-    }
-    return `${selected[0]}, ${selected[1]} +${selected.length - 2}`;
-  }
-
-  protected valuesRowPreviewOptions(value: string, max = 2): string[] {
-    const selected = this.parseCommaValues(value);
-    return selected.slice(0, Math.max(0, max));
-  }
-
-  protected valuesRowPreviewOverflow(value: string, max = 2): number {
-    const selected = this.parseCommaValues(value);
-    return Math.max(0, selected.length - Math.max(0, max));
-  }
-
-  protected interestRowSummary(value: string): string {
-    const selected = this.parseCommaValues(value);
-    if (selected.length === 0) {
-      return 'Select interests';
-    }
-    if (selected.length <= 2) {
-      return selected.join(', ');
-    }
-    return `${selected[0]}, ${selected[1]} +${selected.length - 2}`;
-  }
-
-  protected interestRowPreviewOptions(value: string, max = 2): string[] {
-    const selected = this.parseCommaValues(value);
-    return selected.slice(0, Math.max(0, max));
-  }
-
-  protected interestRowPreviewOverflow(value: string, max = 2): number {
-    const selected = this.parseCommaValues(value);
-    return Math.max(0, selected.length - Math.max(0, max));
-  }
-
-  protected detailOptionClass(label: string, option: string, options: string[]): string {
-    if (label === 'Values') {
-      return this.valuesDominantToneClass(option);
-    }
-    if (label === 'Interest') {
-      return this.interestDominantToneClass(option);
-    }
-    return this.detailToneFromOptions(option, options);
-  }
-
-  protected detailSelectedClass(label: string, value: string, options: string[]): string {
-    if (label === 'Values') {
-      return this.valuesDominantToneClass(value);
-    }
-    if (label === 'Interest') {
-      return this.interestDominantToneClass(value);
-    }
-    return this.detailToneFromOptions(value, options);
-  }
-
-  protected detailOptionIcon(label: string, option: string): string {
-    const normalizedLabel = this.normalizeText(label);
-    const normalizedOption = this.normalizeText(option);
-
-    if (normalizedLabel.includes('drinking')) {
-      if (normalizedOption.includes('never')) {
-        return 'no_drinks';
-      }
-      if (normalizedOption.includes('socially')) {
-        return 'groups';
-      }
-      if (normalizedOption.includes('occasionally')) {
-        return 'event';
-      }
-      return 'nightlife';
-    }
-    if (normalizedLabel.includes('smoking')) {
-      if (normalizedOption.includes('never')) {
-        return 'smoke_free';
-      }
-      if (normalizedOption.includes('trying')) {
-        return 'healing';
-      }
-      if (normalizedOption.includes('socially')) {
-        return 'group';
-      }
-      return 'smoking_rooms';
-    }
-    if (normalizedLabel.includes('workout')) {
-      if (normalizedOption.includes('daily')) {
-        return 'whatshot';
-      }
-      if (normalizedOption.includes('4x')) {
-        return 'fitness_center';
-      }
-      if (normalizedOption.includes('2-3x')) {
-        return 'directions_run';
-      }
-      return 'self_improvement';
-    }
-    if (normalizedLabel.includes('pets')) {
-      if (normalizedOption.includes('dog')) {
-        return 'pets';
-      }
-      if (normalizedOption.includes('cat')) {
-        return 'cat';
-      }
-      if (normalizedOption.includes('all')) {
-        return 'cruelty_free';
-      }
-      return 'block';
-    }
-    if (normalizedLabel.includes('family')) {
-      if (normalizedOption.includes('want')) {
-        return 'child_care';
-      }
-      if (normalizedOption.includes('open')) {
-        return 'family_restroom';
-      }
-      if (normalizedOption.includes('not sure')) {
-        return 'help_outline';
-      }
-      return 'do_not_disturb_alt';
-    }
-    if (normalizedLabel.includes('children')) {
-      if (normalizedOption === 'yes') {
-        return 'child_friendly';
-      }
-      if (normalizedOption === 'no') {
-        return 'do_not_disturb_alt';
-      }
-      return 'privacy_tip';
-    }
-    if (normalizedLabel.includes('love')) {
-      if (normalizedOption.includes('long-term')) {
-        return 'favorite';
-      }
-      if (normalizedOption.includes('slow-burn')) {
-        return 'hourglass_bottom';
-      }
-      if (normalizedOption.includes('open')) {
-        return 'hub';
-      }
-      return 'explore';
-    }
-    if (normalizedLabel.includes('communication')) {
-      if (normalizedOption.includes('direct')) {
-        return 'campaign';
-      }
-      if (normalizedOption.includes('calm')) {
-        return 'record_voice_over';
-      }
-      if (normalizedOption.includes('playful')) {
-        return 'mood';
-      }
-      return 'forum';
-    }
-    if (normalizedLabel.includes('orientation')) {
-      if (normalizedOption.includes('straight')) {
-        return 'person';
-      }
-      if (normalizedOption.includes('bisexual')) {
-        return 'diversity_3';
-      }
-      if (normalizedOption.includes('gay') || normalizedOption.includes('lesbian')) {
-        return 'favorite';
-      }
-      if (normalizedOption.includes('pansexual')) {
-        return 'all_inclusive';
-      }
-      if (normalizedOption.includes('asexual')) {
-        return 'do_not_disturb_on';
-      }
-      return 'privacy_tip';
-    }
-    if (normalizedLabel === 'gender') {
-      if (normalizedOption.includes('woman')) {
-        return 'female';
-      }
-      if (normalizedOption.includes('man')) {
-        return 'male';
-      }
-      if (normalizedOption.includes('non-binary')) {
-        return 'transgender';
-      }
-      return 'privacy_tip';
-    }
-    if (normalizedLabel.includes('religion')) {
-      if (normalizedOption.includes('spiritual')) {
-        return 'self_improvement';
-      }
-      if (normalizedOption.includes('christian')) {
-        return 'church';
-      }
-      if (normalizedOption.includes('muslim')) {
-        return 'mosque';
-      }
-      if (normalizedOption.includes('jewish')) {
-        return 'synagogue';
-      }
-      if (normalizedOption.includes('buddhist') || normalizedOption.includes('hindu')) {
-        return 'temple_buddhist';
-      }
-      if (normalizedOption.includes('atheist')) {
-        return 'public_off';
-      }
-      return 'privacy_tip';
-    }
-
-    if (normalizedOption.includes('never')) {
-      return 'block';
-    }
-    if (normalizedOption.includes('daily')) {
-      return 'today';
-    }
-    const iconPool = [
-      'radio_button_checked',
-      'diamond',
-      'bolt',
-      'eco',
-      'favorite',
-      'nightlife',
-      'star',
-      'palette',
-      'self_improvement',
-      'travel_explore',
-      'psychology',
-      'celebration'
-    ];
-    let hash = 0;
-    for (let i = 0; i < normalizedOption.length; i += 1) {
-      hash = ((hash << 5) - hash + normalizedOption.charCodeAt(i)) | 0;
-    }
-    const safeIndex = Math.abs(hash) % iconPool.length;
-    return iconPool[safeIndex];
-  }
-
-  protected valuesDominantToneClass(value: string): string {
-    const selected = this.parseCommaValues(value);
-    if (selected.length === 0) {
-      return 'section-beliefs';
-    }
-
-    const counts: Record<string, number> = {};
-    for (const option of selected) {
-      const tone = this.valuesOptionToneClass(option);
-      if (!tone) {
-        continue;
-      }
-      counts[tone] = (counts[tone] ?? 0) + 1;
-    }
-
-    let bestTone = '';
-    let bestCount = 0;
-    for (const [tone, count] of Object.entries(counts)) {
-      if (count > bestCount) {
-        bestTone = tone;
-        bestCount = count;
-      }
-    }
-
-    // Tie or empty: follow the first selected option's category.
-    if (!bestTone || Object.values(counts).filter(count => count === bestCount).length > 1) {
-      const firstTone = this.valuesOptionToneClass(selected[0]);
-      return firstTone || 'section-beliefs';
-    }
-    return bestTone;
-  }
-
-  protected interestDominantToneClass(value: string): string {
-    const selected = this.parseCommaValues(value);
-    if (selected.length === 0) {
-      return 'section-social';
-    }
-    const counts: Record<string, number> = {};
-    for (const option of selected) {
-      const tone = this.interestOptionToneClass(option);
-      if (!tone) {
-        continue;
-      }
-      counts[tone] = (counts[tone] ?? 0) + 1;
-    }
-
-    let bestTone = '';
-    let bestCount = 0;
-    for (const [tone, count] of Object.entries(counts)) {
-      if (count > bestCount) {
-        bestTone = tone;
-        bestCount = count;
-      }
-    }
-
-    if (!bestTone || Object.values(counts).filter(count => count === bestCount).length > 1) {
-      const firstTone = this.interestOptionToneClass(selected[0]);
-      return firstTone || 'section-social';
-    }
-
-    return bestTone;
-  }
-
-  protected privacyStatusClass(value: 'Public' | 'Friends' | 'Hosts' | 'Private'): string {
-    switch (value) {
-      case 'Public':
-        return 'status-public';
-      case 'Friends':
-        return 'status-friends';
-      case 'Hosts':
-        return 'status-host';
-      default:
-        return 'status-inactive';
-    }
-  }
-
-  protected privacyStatusIcon(value: 'Public' | 'Friends' | 'Hosts' | 'Private'): string {
-    switch (value) {
-      case 'Public':
-        return 'public';
-      case 'Friends':
-        return 'groups';
-      case 'Hosts':
-        return 'stadium';
-      default:
-        return 'visibility_off';
-    }
-  }
-
-  protected privacyTriggerIcon(value: DetailPrivacy, isOpen: boolean): string {
-    return isOpen ? 'close' : this.privacyStatusIcon(value);
   }
 
   private initializeProfileDetailForms(): void {
@@ -10181,39 +9401,11 @@ export class App {
     return selected;
   }
 
-  private syncValuesContextToRow(): void {
-    if (!this.valuesSelectorContext) {
-      return;
-    }
-    const row = this.profileDetailsForm[this.valuesSelectorContext.groupIndex]?.rows[this.valuesSelectorContext.rowIndex];
-    if (!row) {
-      return;
-    }
-    row.value = this.valuesSelectorSelected.join(', ');
-  }
-
-  private syncInterestContextToRow(): void {
-    if (!this.interestSelectorContext) {
-      return;
-    }
-    const row = this.profileDetailsForm[this.interestSelectorContext.groupIndex]?.rows[this.interestSelectorContext.rowIndex];
-    if (!row) {
-      return;
-    }
-    row.value = this.interestSelectorSelected.join(', ');
-  }
-
   private parseCommaValues(value: string): string[] {
     return value
       .split(',')
       .map(item => item.trim())
       .filter(Boolean);
-  }
-
-  private detailToneFromOptions(value: string, options: string[]): string {
-    const index = options.findIndex(item => this.normalizeText(item) === this.normalizeText(value));
-    const paletteIndex = (index >= 0 ? index : 0) % 8;
-    return `detail-tone-${paletteIndex + 1}`;
   }
 
   private beliefsValuesAllOptions(): string[] {
@@ -10234,6 +9426,19 @@ export class App {
         return 'status-host';
       default:
         return 'status-inactive';
+    }
+  }
+
+  protected getProfileStatusIcon(value: ProfileStatus = this.activeUser.profileStatus): string {
+    switch (value) {
+      case 'public':
+        return 'public';
+      case 'friends only':
+        return 'groups';
+      case 'host only':
+        return 'stadium';
+      default:
+        return 'visibility_off';
     }
   }
 
@@ -10315,103 +9520,6 @@ export class App {
     return Math.round((completed / total) * 100);
   }
 
-  protected getProfileStatusIcon(value: ProfileStatus = this.activeUser.profileStatus): string {
-    switch (value) {
-      case 'public':
-        return 'public';
-      case 'friends only':
-        return 'groups';
-      case 'host only':
-        return 'stadium';
-      default:
-        return 'visibility_off';
-    }
-  }
-
-  protected getPhysiqueIcon(value: string): string {
-    const normalized = this.normalizeText(value);
-    if (normalized.includes('slim')) {
-      return 'directions_run';
-    }
-    if (normalized.includes('lean')) {
-      return 'self_improvement';
-    }
-    if (normalized.includes('athletic')) {
-      return 'fitness_center';
-    }
-    if (normalized.includes('fit')) {
-      return 'sports_gymnastics';
-    }
-    if (normalized.includes('curvy')) {
-      return 'accessibility';
-    }
-    if (normalized.includes('muscular')) {
-      return 'sports_mma';
-    }
-    return 'accessibility_new';
-  }
-
-  protected getPhysiqueClass(value: string): string {
-    const normalized = this.normalizeText(value);
-    if (normalized.includes('slim')) {
-      return 'physique-slim';
-    }
-    if (normalized.includes('lean')) {
-      return 'physique-lean';
-    }
-    if (normalized.includes('fit')) {
-      return 'physique-fit';
-    }
-    if (normalized.includes('athletic')) {
-      return 'physique-athletic';
-    }
-    if (normalized.includes('curvy')) {
-      return 'physique-curvy';
-    }
-    if (normalized.includes('muscular')) {
-      return 'physique-muscular';
-    }
-    return 'physique-average';
-  }
-
-  protected getHoroscopeSymbol(value: string): string {
-    switch (value) {
-      case 'Aries':
-        return '♈';
-      case 'Taurus':
-        return '♉';
-      case 'Gemini':
-        return '♊';
-      case 'Cancer':
-        return '♋';
-      case 'Leo':
-        return '♌';
-      case 'Virgo':
-        return '♍';
-      case 'Libra':
-        return '♎';
-      case 'Scorpio':
-        return '♏';
-      case 'Sagittarius':
-        return '♐';
-      case 'Capricorn':
-        return '♑';
-      case 'Aquarius':
-        return '♒';
-      default:
-        return '♓';
-    }
-  }
-
-  protected getHoroscopeClass(value: string): string {
-    return `zodiac-${this.normalizeText(value).replace(/\s+/g, '-')}`;
-  }
-
-  protected onBirthdayChange(value: Date | null): void {
-    this.profileForm.birthday = value;
-    this.profileForm.horoscope = value ? this.getHoroscopeByDate(value) : '';
-  }
-
   protected get isMobileView(): boolean {
     if (typeof window === 'undefined') {
       return false;
@@ -10419,93 +9527,6 @@ export class App {
     const isNarrowViewport = window.matchMedia('(max-width: 760px)').matches;
     const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
     return isNarrowViewport && hasCoarsePointer;
-  }
-
-  protected onProfileStatusChange(value: ProfileStatus): void {
-    this.profileForm.profileStatus = value;
-  }
-
-  protected openProfileStatusSelector(event: Event): void {
-    event.stopPropagation();
-    this.mobileProfileSelectorSheet = {
-      title: 'Profile Status',
-      selected: this.profileForm.profileStatus,
-      options: this.profileStatusOptions.map(option => ({
-        value: option.value,
-        label: option.value,
-        icon: option.icon,
-        toneClass: this.profileStatusClass(option.value)
-      })),
-      context: { kind: 'profileStatus' }
-    };
-  }
-
-  protected openMobilePhysiqueSelector(event: Event): void {
-    event.stopPropagation();
-    this.mobileProfileSelectorSheet = {
-      title: 'Physique',
-      selected: this.profileForm.physique,
-      options: this.physiqueOptions.map(option => ({
-        value: option,
-        label: option,
-        icon: this.getPhysiqueIcon(option),
-        toneClass: this.getPhysiqueClass(option)
-      })),
-      context: { kind: 'physique' }
-    };
-  }
-
-  protected openMobileLanguageSelector(event: Event): void {
-    event.stopPropagation();
-    if (typeof document !== 'undefined' && typeof window !== 'undefined') {
-      const stableHeight = Math.max(window.innerHeight - 6, 320);
-      document.documentElement.style.setProperty(this.languageSheetHeightCssVar, `${stableHeight}px`);
-    }
-    this.languageInput = '';
-    this.mobileProfileSelectorSheet = {
-      title: 'Languages',
-      selected: '',
-      options: this.languageSuggestions.map(option => ({
-        value: option,
-        label: option,
-        icon: 'language'
-      })),
-      context: { kind: 'language' }
-    };
-  }
-
-  protected openMobileDetailValueSelector(groupIndex: number, rowIndex: number, event: Event): void {
-    event.stopPropagation();
-    const row = this.profileDetailsForm[groupIndex]?.rows[rowIndex];
-    if (!row) {
-      return;
-    }
-    this.mobileProfileSelectorSheet = {
-      title: row.label,
-      selected: row.value,
-      options: row.options.map(option => ({
-        value: option,
-        label: option,
-        icon: this.detailOptionIcon(row.label, option),
-        toneClass: this.detailOptionClass(row.label, option, row.options)
-      })),
-      context: { kind: 'detailValue', groupIndex, rowIndex }
-    };
-  }
-
-  protected openMobileExperienceTypeSelector(event: Event): void {
-    event.stopPropagation();
-    this.mobileProfileSelectorSheet = {
-      title: 'Experience Type',
-      selected: this.experienceForm.type,
-      options: this.experienceTypeOptions.map(option => ({
-        value: option,
-        label: option,
-        icon: this.experienceTypeIcon(option),
-        toneClass: this.experienceTypeToneClass(option)
-      })),
-      context: { kind: 'experienceType' }
-    };
   }
 
   protected openMobileAssetFilterSelector(event: Event): void {
@@ -10613,82 +9634,16 @@ export class App {
   }
 
   protected closeMobileProfileSelectorSheet(): void {
-    if (typeof document !== 'undefined') {
-      document.documentElement.style.removeProperty(this.languageSheetHeightCssVar);
-    }
     this.mobileProfileSelectorSheet = null;
   }
 
-  protected submitMobileLanguageAndClose(event: Event): void {
-    event.stopPropagation();
-    this.addCustomLanguage();
-    this.closeMobileProfileSelectorSheet();
-  }
-
   protected isMobileSelectorOptionActive(value: string): boolean {
-    const sheet = this.mobileProfileSelectorSheet;
-    if (!sheet) {
-      return false;
-    }
-    if (sheet.context.kind === 'language') {
-      return this.profileForm.languages.some(item => item.toLowerCase() === value.toLowerCase());
-    }
-    return sheet.selected === value;
+    return this.mobileProfileSelectorSheet?.selected === value;
   }
 
   protected selectMobileProfileSelectorOption(value: string): void {
     const sheet = this.mobileProfileSelectorSheet;
     if (!sheet) {
-      return;
-    }
-    if (sheet.context.kind === 'profileStatus') {
-      if (this.profileStatusOptions.some(option => option.value === value)) {
-        this.profileForm.profileStatus = value as ProfileStatus;
-      }
-      this.mobileProfileSelectorSheet = null;
-      return;
-    }
-    if (sheet.context.kind === 'physique') {
-      if (this.physiqueOptions.includes(value)) {
-        this.profileForm.physique = value;
-      }
-      this.mobileProfileSelectorSheet = null;
-      return;
-    }
-    if (sheet.context.kind === 'language') {
-      const exists = this.profileForm.languages.some(item => item.toLowerCase() === value.toLowerCase());
-      if (exists) {
-        this.profileForm.languages = this.profileForm.languages.filter(item => item.toLowerCase() !== value.toLowerCase());
-      } else {
-        this.profileForm.languages = [...this.profileForm.languages, value];
-      }
-      this.languageInput = '';
-      this.mobileProfileSelectorSheet = {
-        ...sheet,
-        selected: this.profileForm.languages.join(', ')
-      };
-      return;
-    }
-    if (sheet.context.kind === 'detailPrivacy') {
-      const row = this.profileDetailsForm[sheet.context.groupIndex]?.rows[sheet.context.rowIndex];
-      if (row && this.isDetailPrivacy(value)) {
-        row.privacy = value;
-      }
-      this.mobileProfileSelectorSheet = null;
-      return;
-    }
-    if (sheet.context.kind === 'experiencePrivacy') {
-      if (this.isDetailPrivacy(value)) {
-        this.experienceVisibility[sheet.context.type] = value;
-      }
-      this.mobileProfileSelectorSheet = null;
-      return;
-    }
-    if (sheet.context.kind === 'experienceType') {
-      if (this.experienceTypeOptions.includes(value as ExperienceEntry['type'])) {
-        this.experienceForm.type = value as ExperienceEntry['type'];
-      }
-      this.mobileProfileSelectorSheet = null;
       return;
     }
     if (sheet.context.kind === 'assetFilter') {
@@ -10726,143 +9681,7 @@ export class App {
       this.mobileProfileSelectorSheet = null;
       return;
     }
-    const row = this.profileDetailsForm[sheet.context.groupIndex]?.rows[sheet.context.rowIndex];
-    if (row && row.options.includes(value)) {
-      row.value = value;
-    }
     this.mobileProfileSelectorSheet = null;
-  }
-
-  protected experienceVisibilityValue(type: 'workspace' | 'school'): DetailPrivacy {
-    return this.experienceVisibility[type];
-  }
-
-  protected toggleExperiencePrivacy(type: 'workspace' | 'school', event: Event): void {
-    event.stopPropagation();
-    const order: DetailPrivacy[] = ['Public', 'Friends', 'Hosts', 'Private'];
-    const current = this.experienceVisibility[type];
-    const index = order.indexOf(current);
-    this.experienceVisibility[type] = order[(index + 1 + order.length) % order.length];
-  }
-
-  protected toggleLanguagePanel(): void {
-    this.showLanguagePanel = !this.showLanguagePanel;
-  }
-
-  protected addCustomLanguage(value = this.languageInput): void {
-    const normalized = value.trim();
-    if (!normalized) {
-      return;
-    }
-    if (!this.profileForm.languages.some(item => item.toLowerCase() === normalized.toLowerCase())) {
-      this.profileForm.languages = [...this.profileForm.languages, normalized];
-    }
-    if (!this.languageSuggestions.some(item => item.toLowerCase() === normalized.toLowerCase())) {
-      this.languageSuggestions.push(normalized);
-    }
-    this.languageInput = '';
-  }
-
-  protected selectLanguage(value: string): void {
-    this.addCustomLanguage(value);
-    this.showLanguagePanel = true;
-  }
-
-  protected languageTriggerLabel(): string {
-    if (this.profileForm.languages.length === 0) {
-      return '';
-    }
-    if (this.profileForm.languages.length === 1) {
-      return this.profileForm.languages[0];
-    }
-    return `${this.profileForm.languages[0]} +${this.profileForm.languages.length - 1}`;
-  }
-
-  protected languageTriggerPrimaryLabel(maxVisible = 2): string {
-    const languages = this.profileForm.languages
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
-    if (languages.length === 0) {
-      return '';
-    }
-    const visibleCount = Math.max(1, maxVisible);
-    return languages.slice(0, visibleCount).join(', ');
-  }
-
-  protected languageTriggerOverflowCount(maxVisible = 2): number {
-    const languages = this.profileForm.languages
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
-    const visibleCount = Math.max(1, maxVisible);
-    return Math.max(0, languages.length - visibleCount);
-  }
-
-  protected onLanguageInputFocus(): void {
-    this.showLanguagePanel = true;
-  }
-
-  protected onLanguagePanelClick(event: MouseEvent): void {
-    event.stopPropagation();
-  }
-
-  protected onLanguageInputContainerClick(event: MouseEvent): void {
-    event.stopPropagation();
-    this.showLanguagePanel = true;
-  }
-
-  protected onLanguageInputBlur(): void {
-    this.addCustomLanguage();
-  }
-
-  protected onLanguageInputKeydown(event: KeyboardEvent): void {
-    if (event.key !== 'Enter' && event.key !== ',') {
-      return;
-    }
-    event.preventDefault();
-    this.addCustomLanguage();
-  }
-
-  protected removeLanguage(value: string): void {
-    this.profileForm.languages = this.profileForm.languages.filter(item => item !== value);
-  }
-
-  protected languageToneClass(value: string): string {
-    return `language-tone-${this.languageToneIndex(value)}`;
-  }
-
-  protected languageToneIndex(value: string): number {
-    const normalized = this.normalizeText(value);
-    if (!normalized) {
-      return 1;
-    }
-    let hash = 0;
-    for (const char of normalized) {
-      hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-    }
-    return (hash % 8) + 1;
-  }
-
-  protected get availableLanguageSuggestions(): string[] {
-    const query = this.languageInput.trim().toLowerCase();
-    return this.languageSuggestions.filter(item => {
-      const isSelected = this.profileForm.languages.some(selected => selected.toLowerCase() === item.toLowerCase());
-      if (isSelected) {
-        return false;
-      }
-      return query.length === 0 ? true : item.toLowerCase().includes(query);
-    });
-  }
-
-  protected get availableLanguageDisplaySuggestions(): string[] {
-    return this.availableLanguageSuggestions.slice(0, 20);
-  }
-
-  protected get availableProfileStatusOptions(): Array<{ value: ProfileStatus; icon: string }> {
-    return this.profileStatusOptions.filter(option => option.value !== this.profileForm.profileStatus);
-  }
-
-  protected get availablePhysiqueOptions(): string[] {
-    return this.physiqueOptions.filter(option => option !== this.profileForm.physique);
   }
 
   protected get hostSocialProofBaseMetrics(): Array<{ label: string; value: string }> {
@@ -13470,16 +12289,16 @@ export class App {
     return `${primary} · ${this.activitiesChatContextFilterLabel()}`;
   }
 
-  protected activitiesPrimaryPanelWidth(): string {
-    return '260px';
+  protected activitiesPrimaryPanelWidth(): string | null {
+    return '252px';
   }
 
-  protected activitiesRatePanelWidth(): string {
-    return '320px';
+  protected activitiesRatePanelWidth(): string | null {
+    return '360px';
   }
 
-  protected assetFilterPanelWidth(): string {
-    return '248px';
+  protected assetFilterPanelWidth(): string | null {
+    return '280px';
   }
 
   protected onActivityRowClick(row: ActivityListRow, event?: Event): void {
@@ -16834,49 +15653,6 @@ export class App {
     }
   }
 
-  protected selectImageSlot(index: number): void {
-    this.selectedImageIndex = index;
-    if (this.imageSlots[index]) {
-      return;
-    }
-    this.pendingSlotUploadIndex = index;
-    this.slotImageInput?.nativeElement.click();
-  }
-
-  protected removeImage(index: number): void {
-    this.revokeObjectUrl(this.imageSlots[index]);
-    this.imageSlots[index] = null;
-    this.persistActiveUserImageSlots();
-    if (this.selectedImageIndex === index) {
-      const nearest = this.findNearestFilledImageIndex(index);
-      this.selectedImageIndex = nearest >= 0 ? nearest : 0;
-    }
-  }
-
-  protected selectImageFromStack(index: number): void {
-    if (!this.imageSlots[index]) {
-      return;
-    }
-    this.selectedImageIndex = index;
-  }
-
-  protected onSlotImageFileChange(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    const file = target.files?.[0];
-    const slotIndex = this.pendingSlotUploadIndex;
-    this.pendingSlotUploadIndex = null;
-    if (!file || slotIndex === null) {
-      target.value = '';
-      return;
-    }
-
-    this.revokeObjectUrl(this.imageSlots[slotIndex]);
-    this.imageSlots[slotIndex] = URL.createObjectURL(file);
-    this.selectedImageIndex = slotIndex;
-    this.persistActiveUserImageSlots();
-    target.value = '';
-  }
-
   protected saveProfile(): void {
     this.commitProfileForm(true);
   }
@@ -16904,32 +15680,8 @@ export class App {
     }
   }
 
-  protected get selectedImagePreview(): string | null {
-    return this.imageSlots[this.selectedImageIndex] ?? null;
-  }
-
   protected get featuredImagePreview(): string | null {
     return this.imageSlots[0] ?? null;
-  }
-
-  protected get imageStackSlots(): number[] {
-    return this.imageSlots
-      .map((slot, index) => (slot ? index : -1))
-      .filter(index => index >= 0);
-  }
-
-  private findNearestFilledImageIndex(fromIndex: number): number {
-    for (let distance = 1; distance < this.imageSlots.length; distance += 1) {
-      const right = fromIndex + distance;
-      if (right < this.imageSlots.length && this.imageSlots[right]) {
-        return right;
-      }
-      const left = fromIndex - distance;
-      if (left >= 0 && this.imageSlots[left]) {
-        return left;
-      }
-    }
-    return this.imageSlots.findIndex(slot => Boolean(slot));
   }
 
   private revokeObjectUrl(value: string | null): void {
@@ -17148,23 +15900,6 @@ export class App {
     if (this.showUserSettingsMenu && !target.closest('.user-settings-menu') && !target.closest('.user-menu-settings-btn')) {
       this.showUserSettingsMenu = false;
     }
-    if (
-      this.showLanguagePanel &&
-      (target.closest('.cdk-overlay-pane') ||
-        target.closest('.cdk-overlay-container') ||
-        target.closest('.mat-mdc-autocomplete-panel'))
-    ) {
-      return;
-    }
-    if (this.showLanguagePanel && !target.closest('.language-filter')) {
-      this.showLanguagePanel = false;
-    }
-    if (this.openPrivacyFab && !target.closest('.profile-details-privacy-fab')) {
-      this.openPrivacyFab = null;
-    }
-    if (this.openExperiencePrivacyFab && !target.closest('.profile-details-privacy-fab')) {
-      this.openExperiencePrivacyFab = null;
-    }
     if (this.showActivitiesViewPicker && !target.closest('.activities-view-picker') && !target.closest('.popup-view-fab')) {
       this.showActivitiesViewPicker = false;
     }
@@ -17364,27 +16099,10 @@ export class App {
     this.showFirebaseAuthPopup = false;
     this.activePopup = null;
     this.stackedPopup = null;
-    this.popupReturnTarget = null;
+    this.profileEditorScreen = 'main';
+    this.showProfileStatusHeaderPicker = false;
     this.clearActivityRateEditorState();
     this.router.navigate(['/game']);
-  }
-
-  private detailPrivacyFabKey(groupIndex: number, rowIndex: number): string {
-    return `${groupIndex}-${rowIndex}`;
-  }
-
-  private privacySelectorOptions(): MobileProfileSelectorOption[] {
-    const order: DetailPrivacy[] = ['Public', 'Friends', 'Hosts', 'Private'];
-    return order.map(option => ({
-      value: option,
-      label: option,
-      icon: this.privacyStatusIcon(option),
-      toneClass: this.privacyStatusClass(option)
-    }));
-  }
-
-  private isDetailPrivacy(value: string): value is DetailPrivacy {
-    return value === 'Public' || value === 'Friends' || value === 'Hosts' || value === 'Private';
   }
 
   private initializeProfileImageSlots(): void {
@@ -17433,8 +16151,6 @@ export class App {
     this.syncProfileBasicsIntoDetailRows(user);
     const slots = this.profileImageSlotsByUser[user.id];
     this.imageSlots = slots ? [...slots] : this.createEmptyImageSlots();
-    const firstFilled = this.imageSlots.findIndex(slot => Boolean(slot));
-    this.selectedImageIndex = firstFilled >= 0 ? firstFilled : 0;
     user.completion = this.calculateProfileCompletionPercent();
   }
 
@@ -17749,47 +16465,6 @@ export class App {
         description: 'Leads social graph and trust product areas.'
       }
     ];
-  }
-
-  private resetExperienceForm(): void {
-    this.experienceForm = {
-      type: 'Workspace',
-      title: '',
-      org: '',
-      city: '',
-      dateFrom: '',
-      dateTo: '',
-      description: ''
-    };
-    this.experienceRangeStart = null;
-    this.experienceRangeEnd = null;
-  }
-
-  private fromYearMonth(value: string): Date | null {
-    if (!value || value === 'Present') {
-      return null;
-    }
-    const match = value.trim().match(/^(\d{4})[/-](\d{1,2})(?:[/-](\d{1,2}))?$/);
-    if (!match) {
-      return null;
-    }
-    const year = Number.parseInt(match[1], 10);
-    const month = Number.parseInt(match[2], 10);
-    const day = match[3] ? Number.parseInt(match[3], 10) : 1;
-    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day) || month < 1 || month > 12 || day < 1 || day > 31) {
-      return null;
-    }
-    return new Date(year, month - 1, day);
-  }
-
-  private toYearMonth(value: Date | null): string {
-    if (!value) {
-      return '';
-    }
-    const year = value.getFullYear();
-    const month = `${value.getMonth() + 1}`.padStart(2, '0');
-    const day = `${value.getDate()}`.padStart(2, '0');
-    return `${year}/${month}/${day}`;
   }
 
   private toSortableDate(value: string): number {

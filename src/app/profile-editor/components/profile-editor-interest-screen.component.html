@@ -1,0 +1,54 @@
+<div class="values-selector-popup profile-selector-popup">
+  <div class="profile-filter-selector-head">
+    <span class="profile-filter-selector-head-label">Interest</span>
+    <button
+      type="button"
+      class="profile-filter-selector-clear"
+      [class.is-hidden]="selected.length === 0"
+      [disabled]="selected.length === 0"
+      [attr.aria-hidden]="selected.length === 0 ? 'true' : null"
+      (click)="clearRequested.emit()"
+    >
+      Clear
+    </button>
+  </div>
+
+  <div class="profile-filter-selector-selected" *ngIf="selected.length > 0; else interestSelectorNoSelection">
+    <button
+      type="button"
+      class="profile-filter-selector-chip"
+      *ngFor="let item of selected"
+      (click)="removeRequested.emit(item)"
+    >
+      <span>{{ item }}</span>
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <ng-template #interestSelectorNoSelection>
+    <p class="profile-filter-selector-empty">No items selected yet.</p>
+  </ng-template>
+
+  <div class="values-selector-group profile-selector-option-group" [class]="group.toneClass" *ngFor="let group of groups">
+    <div class="profile-selector-option-group-head">
+      <span class="profile-selector-option-group-tag" [class]="group.toneClass">
+        <mat-icon class="profile-selector-option-group-tag-icon">{{ toneIcon(group.toneClass) }}</mat-icon>
+        <span>{{ group.shortTitle }}</span>
+      </span>
+      <span class="profile-selector-option-group-line" [class]="group.toneClass"></span>
+    </div>
+
+    <div class="profile-selector-chip-grid">
+      <button
+        type="button"
+        class="profile-selector-chip"
+        [class.active]="isSelected(option)"
+        *ngFor="let option of group.options"
+        (click)="toggleRequested.emit(option)"
+      >
+        <span>{{ option }}</span>
+      </button>
+    </div>
+  </div>
+</div>
+

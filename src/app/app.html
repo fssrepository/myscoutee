@@ -269,7 +269,14 @@
 <ng-container *ngIf="!showEntryShell">
 <main class="main">
   <div class="content content-single">
-    <button mat-icon-button class="user-selector-btn-global" [class.is-hidden]="showUserMenu" (click)="onUserSelect()" aria-label="Open user menu">
+    <button
+      mat-icon-button
+      class="user-selector-btn-global"
+      style="position: fixed; top: 0.95rem; right: 1rem; left: auto; inset-inline-end: 1rem; inset-inline-start: auto;"
+      [class.is-hidden]="showUserMenu"
+      (click)="onUserSelect()"
+      aria-label="Open user menu"
+    >
       <span
         class="user-initial"
         [ngClass]="['user-color-' + activeUser.gender, featuredImagePreview ? 'has-photo' : '']"
@@ -556,7 +563,6 @@
   <div
     class="app-popup-panel"
     [class.popup-panel-members]="activePopup === 'chatMembers'"
-    [class.popup-panel-image-editor]="activePopup === 'imageEditor'"
     [class.popup-panel-profile-editor]="activePopup === 'profileEditor'"
     [class.popup-panel-event-editor]="activePopup === 'eventEditor'"
     [class.popup-panel-event-editor-readonly]="activePopup === 'eventEditor' && isEventEditorReadOnly()"
@@ -577,7 +583,17 @@
       [class.popup-header-chat]="activePopup === 'chat' && selectedChat"
       [class.popup-header-with-activities-progress]="activePopup === 'activities' || activePopup === 'eventExplore'"
       [class.popup-header-with-chat-progress]="activePopup === 'chat' && selectedChat"
+      [class.popup-header-profile-secondary]="activePopup === 'profileEditor' && profileEditorScreen !== 'main'"
     >
+      <button
+        mat-icon-button
+        class="popup-back-btn"
+        *ngIf="activePopup === 'profileEditor' && profileEditorScreen !== 'main'"
+        (click)="handleProfileEditorHeaderBack($event)"
+        aria-label="Back"
+      >
+        <mat-icon>arrow_back</mat-icon>
+      </button>
       <div class="popup-title popup-title-chat" *ngIf="activePopup === 'chat' && selectedChat; else defaultPopupTitle">
         <div class="popup-chat-title-block">
           <h2>{{ selectedChat.title }}</h2>
@@ -801,7 +817,7 @@
           </button>
         </div>
       </div>
-      <div class="event-visibility-picker profile-status-header-picker" *ngIf="activePopup === 'profileEditor'">
+      <div class="event-visibility-picker profile-status-header-picker" *ngIf="activePopup === 'profileEditor' && profileEditorScreen === 'main'">
         <button
           type="button"
           class="popup-view-fab event-visibility-trigger"
@@ -963,7 +979,6 @@
       [class.popup-body-assets-tickets]="isTicketAssetPopup()"
       [class.popup-body-event-explore]="activePopup === 'eventExplore'"
       [class.popup-body-impressions]="activePopup === 'impressionsHost'"
-      [class.popup-body-image-editor]="activePopup === 'imageEditor'"
     >
       <div *ngIf="activePopup === 'activities'" class="activities-popup" [class.activities-popup-rates-fullscreen]="isRatesFullscreenModeActive()" (click)="onActivitiesPopupSurfaceClick($event)">
         <div class="experience-toolbar assets-toolbar">
@@ -986,7 +1001,10 @@
                   <span class="status-option-content">
                     <mat-icon [class]="activitiesPrimaryFilterClass(option.key)">{{ option.icon }}</mat-icon>
                     <span>{{ option.label }}</span>
-                    <span class="rate-filter-count-badge" *ngIf="activitiesPrimaryFilterCount(option.key) > 0">{{ activitiesPrimaryFilterCount(option.key) }}</span>
+                    <span class="status-option-tail">
+                      <span class="rate-filter-count-badge" *ngIf="activitiesPrimaryFilterCount(option.key) > 0">{{ activitiesPrimaryFilterCount(option.key) }}</span>
+                      <mat-icon class="activities-option-check" *ngIf="activitiesPrimaryFilter === option.key">check</mat-icon>
+                    </span>
                   </span>
                 </mat-option>
               </mat-select>
@@ -1017,7 +1035,7 @@
                 <mat-select
                   [(ngModel)]="activitiesChatContextFilter"
                   (ngModelChange)="selectActivitiesChatContextFilter($event)"
-                  panelWidth="260px"
+                  panelWidth="240px"
                   disableOptionCentering
                   panelClass="selector-options-panel profile-bottom-sheet-panel activities-chat-context-options-panel"
                 >
@@ -1036,8 +1054,11 @@
                     <span class="status-option-content">
                       <mat-icon [class]="activitiesChatContextFilterClass(option.key)">{{ option.icon }}</mat-icon>
                       <span>{{ option.label }}</span>
-                      <span class="rate-filter-count-badge" *ngIf="activitiesChatContextFilterCount(option.key) > 0">
-                        {{ activitiesChatContextFilterCount(option.key) }}
+                      <span class="status-option-tail">
+                        <span class="rate-filter-count-badge" *ngIf="activitiesChatContextFilterCount(option.key) > 0">
+                          {{ activitiesChatContextFilterCount(option.key) }}
+                        </span>
+                        <mat-icon class="activities-option-check" *ngIf="activitiesChatContextFilter === option.key">check</mat-icon>
                       </span>
                     </span>
                   </mat-option>
@@ -1114,7 +1135,10 @@
                       <span class="status-option-content">
                         <mat-icon [class]="[activitiesRateFilterClass(option.key), rateFilterOptionClass(option.key)]">{{ activitiesRateFilterIcon(option.key) }}</mat-icon>
                         <span>{{ option.label }}</span>
-                        <span class="rate-filter-count-badge" *ngIf="rateFilterCount(option.key) > 0">{{ rateFilterCount(option.key) }}</span>
+                        <span class="status-option-tail">
+                          <span class="rate-filter-count-badge" *ngIf="rateFilterCount(option.key) > 0">{{ rateFilterCount(option.key) }}</span>
+                          <mat-icon class="activities-option-check" *ngIf="activitiesRateFilter === option.key">check</mat-icon>
+                        </span>
                       </span>
                     </mat-option>
                   </ng-container>
@@ -3472,443 +3496,30 @@
         </article>
       </div>
 
-      <div *ngIf="activePopup === 'profileEditor'" class="profile-editor-wrap">
-        <div class="profile-identity-card profile-identity-card-large" [ngClass]="profileStatusClass(profileForm.profileStatus)">
-          <div class="avatar-stack avatar-stack-editor">
-            <span
-              class="user-avatar user-avatar-large"
-              [ngClass]="['user-color-' + activeUser.gender, featuredImagePreview ? 'has-photo' : '']"
-              [style.backgroundImage]="featuredImagePreview ? 'url(' + featuredImagePreview + ')' : null"
-            >
-              <ng-container *ngIf="!featuredImagePreview">{{ activeUser.initials }}</ng-container>
-            </span>
-            <button type="button" class="avatar-edit-btn" aria-label="Open image editor" (click)="openImageEditor()">
-              <mat-icon>edit</mat-icon>
-            </button>
-            <span class="avatar-bottom-pill avatar-bottom-pill-header" [ngStyle]="completionBadgeStyle(profileCompletionPercent)">
-              <span>{{ profileCompletionPercent }}%</span>
-            </span>
-          </div>
-
-          <div class="profile-header-text">
-            <h3 class="profile-name-line">
-              <span>{{ (profileForm.fullName || activeUser.name) + ', ' + profileEditorAge }}</span>
-            </h3>
-            <span class="profile-city-line">
-              <mat-icon>location_on</mat-icon>
-              <span>{{ profileForm.city || activeUser.city }}</span>
-            </span>
-          </div>
-        </div>
-
-        <div class="profile-editor-scroll-area">
-          <div class="profile-details-structured">
-            <label class="profile-about-field">
-              <div class="profile-about-head">
-                <span>About me</span>
-                <small>{{ profileForm.about.length }}/160</small>
-              </div>
-              <textarea rows="3" maxlength="160" [(ngModel)]="profileForm.about"></textarea>
-            </label>
-            <section
-              class="profile-details-group"
-              [ngClass]="{
-                'profile-details-group-basics': group.title === 'Basics',
-                'profile-details-group-lifestyle': group.title === 'Lifestyle',
-                'profile-details-group-relationships': group.title === 'Relationships',
-                'profile-details-group-beliefs': group.title === 'Beliefs'
-              }"
-              *ngFor="let group of profileDetailsForm; let groupIndex = index"
-            >
-                  <h4>{{ group.title }}</h4>
-                  <div class="profile-form-grid profile-details-form-grid basics-moved-grid" *ngIf="group.title === 'Basics'; else nonBasicsGroup">
-                    <label class="name-field">
-                      <span>Name</span>
-                      <input type="text" [(ngModel)]="profileForm.fullName" />
-                    </label>
-                    <label class="city-field">
-                      <span>City</span>
-                      <input type="text" [(ngModel)]="profileForm.city" />
-                    </label>
-                    <label class="birthday-field">
-                      <span>Birthday</span>
-                      <div class="date-input-wrap">
-                        <input [matDatepicker]="birthdayPicker" [(ngModel)]="profileForm.birthday" (ngModelChange)="onBirthdayChange($event)" />
-                        <button type="button" class="date-picker-btn" (click)="birthdayPicker.open()" aria-label="Open birthday picker">
-                          <mat-icon>calendar_month</mat-icon>
-                        </button>
-                        <mat-datepicker #birthdayPicker></mat-datepicker>
-                      </div>
-                    </label>
-                    <label class="horoscope-field">
-                      <span>Horoscope</span>
-                      <div class="profile-status-select-wrap selector-like readonly-select" [class]="getHoroscopeClass(profileForm.horoscope)">
-                        <span class="zodiac-symbol">{{ getHoroscopeSymbol(profileForm.horoscope) }}</span>
-                        <span class="zodiac-label">{{ profileForm.horoscope }}</span>
-                      </div>
-                    </label>
-                    <label class="height-field">
-                      <span>Height (cm)</span>
-                      <input type="number" min="0" step="1" [(ngModel)]="profileForm.heightCm" />
-                    </label>
-                    <label class="physique-field">
-                      <span>Physique</span>
-                      <ng-container *ngIf="!isMobileView; else mobilePhysiqueSelectorButton">
-                        <div class="profile-status-select-wrap selector-like physique-select-wrap" [class]="getPhysiqueClass(profileForm.physique)">
-                          <mat-select [(ngModel)]="profileForm.physique" disableOptionCentering panelClass="selector-options-panel physique-options-panel profile-bottom-sheet-panel">
-                            <mat-select-trigger>
-                              <span class="status-option-content">
-                                <mat-icon [class]="getPhysiqueClass(profileForm.physique)">{{ getPhysiqueIcon(profileForm.physique) }}</mat-icon>
-                                <span>{{ profileForm.physique }}</span>
-                              </span>
-                            </mat-select-trigger>
-                            <mat-option
-                              *ngFor="let item of physiqueOptions"
-                              [value]="item"
-                              [class]="'status-option ' + getPhysiqueClass(item)"
-                              [class.hide-selected-option]="item === profileForm.physique"
-                            >
-                              <span class="status-option-content">
-                                <mat-icon [class]="getPhysiqueClass(item)">{{ getPhysiqueIcon(item) }}</mat-icon>
-                                <span>{{ item }}</span>
-                              </span>
-                            </mat-option>
-                          </mat-select>
-                        </div>
-                      </ng-container>
-                      <ng-template #mobilePhysiqueSelectorButton>
-                        <button
-                          type="button"
-                          class="profile-status-select-wrap selector-like physique-select-wrap"
-                          [ngClass]="getPhysiqueClass(profileForm.physique)"
-                          (click)="openMobilePhysiqueSelector($event)"
-                        >
-                          <span class="status-option-content">
-                            <mat-icon [class]="getPhysiqueClass(profileForm.physique)">{{ getPhysiqueIcon(profileForm.physique) }}</mat-icon>
-                            <span>{{ profileForm.physique }}</span>
-                          </span>
-                          <mat-icon>expand_more</mat-icon>
-                        </button>
-                      </ng-template>
-                    </label>
-                    <label class="languages-field">
-                      <span>Languages</span>
-                      <ng-container *ngIf="!isMobileView; else mobileLanguageSelectorButton">
-                        <div class="language-filter">
-                          <button type="button" mat-stroked-button class="language-select-btn" (click)="openMobileLanguageSelector($event)">
-                            <span class="label">{{ languageTriggerPrimaryLabel() || 'Select languages' }}</span>
-                            <span class="count" *ngIf="languageTriggerOverflowCount() > 0">+{{ languageTriggerOverflowCount() }}</span>
-                            <mat-icon class="arrow">chevron_right</mat-icon>
-                          </button>
-                        </div>
-                      </ng-container>
-                      <ng-template #mobileLanguageSelectorButton>
-                        <button
-                          type="button"
-                          class="profile-status-select-wrap selector-like language-mobile-trigger"
-                          (click)="openMobileLanguageSelector($event)"
-                        >
-                          <span class="status-option-content">
-                            <mat-icon>language</mat-icon>
-                            <span>{{ languageTriggerLabel() || 'Select languages' }}</span>
-                          </span>
-                          <mat-icon>chevron_right</mat-icon>
-                        </button>
-                      </ng-template>
-                    </label>
-                  </div>
-                  <ng-template #nonBasicsGroup>
-                    <div class="profile-form-grid profile-details-form-grid">
-                    <div class="profile-details-field" *ngFor="let row of group.rows; let rowIndex = index">
-                      <span>{{ row.label }}</span>
-                      <div class="profile-details-control-row">
-                        <button
-                          type="button"
-                          class="profile-status-select-wrap selector-like profile-details-values-btn"
-                          [ngClass]="row.label === 'Values' ? 'profile-details-values-tone-values' : 'profile-details-values-tone-interest'"
-                          *ngIf="row.label === 'Values' || row.label === 'Interest'; else detailsSelect"
-                          (click)="row.label === 'Values' ? openValuesSelector(groupIndex, rowIndex) : openInterestSelector(groupIndex, rowIndex)"
-                        >
-                          <span class="status-option-content profile-details-selected-badges" *ngIf="row.label === 'Values'; else interestSummaryBadges">
-                            <ng-container *ngIf="valuesRowPreviewOptions(row.value, 1).length > 0; else valuesSummaryPlaceholder">
-                              <span class="profile-details-selected-chip-list">
-                                <span
-                                  class="values-selected-chip profile-details-inline-chip"
-                                  [class]="valuesOptionToneClass(item)"
-                                  *ngFor="let item of valuesRowPreviewOptions(row.value, 1)"
-                                >
-                                  {{ item }}
-                                </span>
-                              </span>
-                              <span
-                                class="profile-details-inline-overflow"
-                                *ngIf="valuesRowPreviewOverflow(row.value, 1) > 0"
-                              >
-                                +{{ valuesRowPreviewOverflow(row.value, 1) }}
-                              </span>
-                            </ng-container>
-                            <ng-template #valuesSummaryPlaceholder>
-                              <span class="profile-details-empty-summary">Select values</span>
-                            </ng-template>
-                          </span>
-                          <ng-template #interestSummaryBadges>
-                            <span class="status-option-content profile-details-selected-badges">
-                              <ng-container *ngIf="interestRowPreviewOptions(row.value, 2).length > 0; else interestSummaryPlaceholder">
-                                <span class="profile-details-selected-chip-list">
-                                  <span
-                                    class="values-selected-chip profile-details-inline-chip"
-                                    [class]="interestOptionToneClass(item)"
-                                    *ngFor="let item of interestRowPreviewOptions(row.value, 2)"
-                                  >
-                                    {{ item }}
-                                  </span>
-                                </span>
-                                <span
-                                  class="profile-details-inline-overflow"
-                                  *ngIf="interestRowPreviewOverflow(row.value, 2) > 0"
-                                >
-                                  +{{ interestRowPreviewOverflow(row.value, 2) }}
-                                </span>
-                              </ng-container>
-                              <ng-template #interestSummaryPlaceholder>
-                                <span class="profile-details-empty-summary">Select interests</span>
-                              </ng-template>
-                            </span>
-                          </ng-template>
-                          <mat-icon>chevron_right</mat-icon>
-                        </button>
-                        <ng-template #detailsSelect>
-                        <ng-container *ngIf="!isMobileView; else mobileDetailSelectButton">
-                          <div class="profile-status-select-wrap selector-like profile-details-select" [ngClass]="detailSelectedClass(row.label, row.value, row.options)">
-                            <mat-select [(ngModel)]="row.value" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel">
-                              <mat-select-trigger>
-                                <span class="status-option-content">
-                                  <mat-icon>{{ detailOptionIcon(row.label, row.value) }}</mat-icon>
-                                  <span>{{ row.value }}</span>
-                                </span>
-                              </mat-select-trigger>
-                              <mat-option
-                                *ngFor="let item of row.options"
-                                [value]="item"
-                                class="status-option"
-                                [ngClass]="detailOptionClass(row.label, item, row.options)"
-                                [class.hide-selected-option]="item === row.value"
-                              >
-                                <span class="status-option-content">
-                                  <mat-icon>{{ detailOptionIcon(row.label, item) }}</mat-icon>
-                                  <span>{{ item }}</span>
-                                </span>
-                              </mat-option>
-                            </mat-select>
-                          </div>
-                        </ng-container>
-                        <ng-template #mobileDetailSelectButton>
-                          <button
-                            type="button"
-                            class="profile-status-select-wrap selector-like profile-details-select"
-                            [ngClass]="detailSelectedClass(row.label, row.value, row.options)"
-                            (click)="openMobileDetailValueSelector(groupIndex, rowIndex, $event)"
-                          >
-                            <span class="status-option-content">
-                              <mat-icon>{{ detailOptionIcon(row.label, row.value) }}</mat-icon>
-                              <span>{{ row.value }}</span>
-                            </span>
-                            <mat-icon>expand_more</mat-icon>
-                          </button>
-                        </ng-template>
-                        </ng-template>
-                        <div
-                          class="profile-details-privacy-fab"
-                          [class.open]="!isMobileView && isDetailPrivacyFabOpen(groupIndex, rowIndex)"
-                          [class.is-just-selected]="isDetailPrivacyJustSelected(groupIndex, rowIndex)"
-                        >
-                          <button
-                            type="button"
-                            class="profile-details-privacy-btn profile-details-privacy-trigger"
-                            [class.status-public]="row.privacy === 'Public'"
-                            [class.status-friends]="row.privacy === 'Friends'"
-                            [class.status-host]="row.privacy === 'Hosts'"
-                            [class.status-inactive]="row.privacy === 'Private'"
-                            [class.is-open]="isDetailPrivacyFabOpen(groupIndex, rowIndex)"
-                            (click)="openDetailPrivacySelector(groupIndex, rowIndex, $event)"
-                            [attr.aria-label]="isDetailPrivacyFabOpen(groupIndex, rowIndex) ? 'Close visibility menu' : 'Change visibility'"
-                          >
-                            <mat-icon>{{ privacyTriggerIcon(row.privacy, isDetailPrivacyFabOpen(groupIndex, rowIndex)) }}</mat-icon>
-                          </button>
-                          <div
-                            class="item-action-menu item-action-menu-desktop profile-privacy-menu"
-                            *ngIf="!isMobileView"
-                            [class.is-open]="isDetailPrivacyFabOpen(groupIndex, rowIndex)"
-                            [attr.aria-hidden]="!isDetailPrivacyFabOpen(groupIndex, rowIndex)"
-                            (click)="$event.stopPropagation()"
-                          >
-                            <button
-                              type="button"
-                              class="item-action-menu-btn profile-privacy-menu-option"
-                              [class]="privacyStatusClass(option)"
-                              *ngFor="let option of detailPrivacyOptions"
-                              (click)="selectDetailPrivacy(groupIndex, rowIndex, option, $event)"
-                            >
-                              <mat-icon>{{ privacyStatusIcon(option) }}</mat-icon>
-                              <span>{{ option }}</span>
-                              <mat-icon class="profile-privacy-menu-check" *ngIf="row.privacy === option">done</mat-icon>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    </div>
-                  </ng-template>
-            </section>
-            <section class="profile-details-group experience-selector-card">
-              <h4>Experience</h4>
-              <div class="experience-selector-grid">
-                <div class="experience-selector-row">
-                  <span>Workspace</span>
-                  <div class="profile-details-control-row">
-                    <button
-                      type="button"
-                      class="profile-status-select-wrap selector-like profile-details-values-btn section-social"
-                      (click)="openWorkspaceSelector()"
-                    >
-                      <span class="status-option-content">
-                        <span>{{ workspaceExperienceSummary }}</span>
-                      </span>
-                      <mat-icon>chevron_right</mat-icon>
-                    </button>
-                    <div class="profile-details-privacy-fab" [class.open]="!isMobileView && isExperiencePrivacyFabOpen('workspace')">
-                      <button
-                        type="button"
-                        class="profile-details-privacy-btn profile-details-privacy-trigger"
-                        [class.status-public]="experienceVisibilityValue('workspace') === 'Public'"
-                        [class.status-friends]="experienceVisibilityValue('workspace') === 'Friends'"
-                        [class.status-host]="experienceVisibilityValue('workspace') === 'Hosts'"
-                        [class.status-inactive]="experienceVisibilityValue('workspace') === 'Private'"
-                        [class.is-open]="isExperiencePrivacyFabOpen('workspace')"
-                        (click)="openExperiencePrivacySelector('workspace', $event)"
-                        [attr.aria-label]="isExperiencePrivacyFabOpen('workspace') ? 'Close workspace visibility menu' : 'Change workspace visibility'"
-                      >
-                        <mat-icon>{{ privacyTriggerIcon(experienceVisibilityValue('workspace'), isExperiencePrivacyFabOpen('workspace')) }}</mat-icon>
-                      </button>
-                      <div
-                        class="item-action-menu item-action-menu-desktop profile-privacy-menu"
-                        *ngIf="!isMobileView"
-                        [class.is-open]="isExperiencePrivacyFabOpen('workspace')"
-                        [attr.aria-hidden]="!isExperiencePrivacyFabOpen('workspace')"
-                        (click)="$event.stopPropagation()"
-                      >
-                        <button
-                          type="button"
-                          class="item-action-menu-btn profile-privacy-menu-option"
-                          [class]="privacyStatusClass(option)"
-                          *ngFor="let option of detailPrivacyOptions"
-                          (click)="selectExperiencePrivacy('workspace', option, $event)"
-                        >
-                          <mat-icon>{{ privacyStatusIcon(option) }}</mat-icon>
-                          <span>{{ option }}</span>
-                          <mat-icon class="profile-privacy-menu-check" *ngIf="experienceVisibilityValue('workspace') === option">done</mat-icon>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="experience-selector-row">
-                  <span>School</span>
-                  <div class="profile-details-control-row">
-                    <button
-                      type="button"
-                      class="profile-status-select-wrap selector-like profile-details-values-btn section-arts"
-                      (click)="openSchoolSelector()"
-                    >
-                      <span class="status-option-content">
-                        <span>{{ schoolExperienceSummary }}</span>
-                      </span>
-                      <mat-icon>chevron_right</mat-icon>
-                    </button>
-                    <div class="profile-details-privacy-fab" [class.open]="!isMobileView && isExperiencePrivacyFabOpen('school')">
-                      <button
-                        type="button"
-                        class="profile-details-privacy-btn profile-details-privacy-trigger"
-                        [class.status-public]="experienceVisibilityValue('school') === 'Public'"
-                        [class.status-friends]="experienceVisibilityValue('school') === 'Friends'"
-                        [class.status-host]="experienceVisibilityValue('school') === 'Hosts'"
-                        [class.status-inactive]="experienceVisibilityValue('school') === 'Private'"
-                        [class.is-open]="isExperiencePrivacyFabOpen('school')"
-                        (click)="openExperiencePrivacySelector('school', $event)"
-                        [attr.aria-label]="isExperiencePrivacyFabOpen('school') ? 'Close school visibility menu' : 'Change school visibility'"
-                      >
-                        <mat-icon>{{ privacyTriggerIcon(experienceVisibilityValue('school'), isExperiencePrivacyFabOpen('school')) }}</mat-icon>
-                      </button>
-                      <div
-                        class="item-action-menu item-action-menu-desktop profile-privacy-menu"
-                        *ngIf="!isMobileView"
-                        [class.is-open]="isExperiencePrivacyFabOpen('school')"
-                        [attr.aria-hidden]="!isExperiencePrivacyFabOpen('school')"
-                        (click)="$event.stopPropagation()"
-                      >
-                        <button
-                          type="button"
-                          class="item-action-menu-btn profile-privacy-menu-option"
-                          [class]="privacyStatusClass(option)"
-                          *ngFor="let option of detailPrivacyOptions"
-                          (click)="selectExperiencePrivacy('school', option, $event)"
-                        >
-                          <mat-icon>{{ privacyStatusIcon(option) }}</mat-icon>
-                          <span>{{ option }}</span>
-                          <mat-icon class="profile-privacy-menu-check" *ngIf="experienceVisibilityValue('school') === option">done</mat-icon>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </div>
-        </div>
-
-      </div>
-
-      <div *ngIf="activePopup === 'imageEditor'" class="image-editor-wrap">
-        <div class="image-stack-indicators" *ngIf="imageStackSlots.length > 0">
-          <button
-            type="button"
-            class="image-stack-line"
-            *ngFor="let slotIndex of imageStackSlots"
-            [class.active]="slotIndex === selectedImageIndex"
-            (click)="selectImageFromStack(slotIndex)"
-            aria-label="Select image"
-          ></button>
-        </div>
-        <div class="image-editor-main" [style.backgroundImage]="selectedImagePreview ? 'url(' + selectedImagePreview + ')' : 'none'">
-          <div class="image-stack-hit-area" *ngIf="imageStackSlots.length > 0">
-            <button
-              type="button"
-              class="image-stack-hit-segment"
-              *ngFor="let slotIndex of imageStackSlots"
-              (click)="selectImageFromStack(slotIndex)"
-              aria-label="Select image"
-            ></button>
-          </div>
-          <span *ngIf="!selectedImagePreview">Select a slot to upload image</span>
-        </div>
-        <p class="image-editor-hint">Click a thumbnail to upload or replace image.</p>
-        <input #slotImageInput class="image-file-input-hidden" type="file" accept="image/*" (change)="onSlotImageFileChange($event)" />
-
-        <div class="image-editor-grid">
-          <button
-            type="button"
-            *ngFor="let slot of imageSlots; let i = index"
-            [class.slot-selected]="selectedImageIndex === i"
-            [class.slot-featured]="i === 0"
-            [style.backgroundImage]="slot ? 'url(' + slot + ')' : 'none'"
-            (click)="selectImageSlot(i)"
-          >
-            <span class="slot-index">{{ i + 1 }}</span>
-            <span *ngIf="!slot" class="slot-add">+</span>
-            <span *ngIf="slot" class="remove-slot" (click)="$event.stopPropagation(); removeImage(i)">×</span>
-          </button>
-        </div>
-      </div>
+      <app-profile-editor
+        #profileEditorComponent
+        *ngIf="activePopup === 'profileEditor'"
+        [activeUser]="activeUser"
+        [profileForm]="profileForm"
+        [profileDetailsForm]="profileDetailsForm"
+        [profileStatusOptions]="profileStatusOptions"
+        [physiqueOptions]="physiqueOptions"
+        [beliefsValuesOptionGroups]="beliefsValuesOptionGroups"
+        [interestOptionGroups]="interestOptionGroups"
+        [detailPrivacyOptions]="detailPrivacyOptions"
+        [experienceEntries]="experienceEntries"
+        [experienceVisibility]="experienceVisibility"
+        [languageSuggestions]="languageSuggestions"
+        [imageSlots]="imageSlots"
+        [featuredImagePreview]="featuredImagePreview"
+        [profileCompletionPercent]="profileCompletionPercent"
+        [profileEditorAge]="profileEditorAge"
+        (imageSlotsChange)="handleProfileImageSlotsChange($event)"
+        (screenChange)="handleProfileEditorScreenChange($event)"
+        (experienceEntriesChange)="handleProfileExperienceEntriesChange($event)"
+        (experienceVisibilityChange)="handleProfileExperienceVisibilityChange($event)"
+        (languageSuggestionsChange)="handleProfileLanguageSuggestionsChange($event)"
+      ></app-profile-editor>
     </div>
   </div>
 </section>
@@ -3917,24 +3528,14 @@
   <div class="mobile-profile-selector-backdrop" (click)="$event.stopPropagation(); closeMobileProfileSelectorSheet()"></div>
   <div
     class="mobile-profile-selector-sheet"
-    [class.mobile-profile-selector-sheet-language]="mobileProfileSelectorSheet.context.kind === 'language'"
     (click)="$event.stopPropagation()"
   >
     <div class="mobile-profile-selector-handle" aria-hidden="true"></div>
     <div class="mobile-profile-selector-title">
       <mat-icon>list</mat-icon>
       <span>{{ mobileProfileSelectorSheet.title }}</span>
-      <button
-        *ngIf="mobileProfileSelectorSheet.context.kind === 'language'"
-        type="button"
-        class="mobile-profile-selector-close-btn"
-        (click)="closeMobileProfileSelectorSheet(); $event.stopPropagation()"
-        aria-label="Close language popup"
-      >
-        <mat-icon>close</mat-icon>
-      </button>
     </div>
-    <div class="mobile-profile-selector-options" *ngIf="mobileProfileSelectorSheet.context.kind !== 'language'; else mobileLanguageSelectorSheet">
+    <div class="mobile-profile-selector-options">
       <button
         type="button"
         class="mobile-profile-selector-option"
@@ -3953,55 +3554,6 @@
         <mat-icon *ngIf="!option.disabled && option.badge === undefined && isMobileSelectorOptionActive(option.value)">check</mat-icon>
       </button>
     </div>
-    <ng-template #mobileLanguageSelectorSheet>
-      <div class="mobile-profile-language-entry" (click)="$event.stopPropagation()">
-        <div class="mobile-profile-language-chips" *ngIf="profileForm.languages.length > 0">
-          <button
-            type="button"
-            class="mobile-profile-language-chip"
-            [ngClass]="languageToneClass(item)"
-            *ngFor="let item of profileForm.languages"
-            (click)="removeLanguage(item)"
-          >
-            <span>{{ item }}</span>
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-        <label class="mobile-profile-language-input-wrap">
-          <input
-            type="text"
-            [(ngModel)]="languageInput"
-            (keydown)="onLanguageInputKeydown($event)"
-            (blur)="onLanguageInputBlur()"
-            placeholder="Type language"
-          />
-          <button
-            type="button"
-            class="mobile-profile-language-submit-btn"
-            (click)="submitMobileLanguageAndClose($event)"
-            aria-label="Save language search and close"
-          >
-            <mat-icon>search</mat-icon>
-          </button>
-        </label>
-      </div>
-      <div class="mobile-profile-selector-options">
-        <button
-          type="button"
-          class="mobile-profile-selector-option"
-          *ngFor="let item of availableLanguageDisplaySuggestions"
-          [class.active]="isMobileSelectorOptionActive(item)"
-          [ngClass]="languageToneClass(item)"
-          (click)="selectMobileProfileSelectorOption(item)"
-        >
-          <span class="mobile-profile-selector-option-main">
-            <mat-icon>language</mat-icon>
-            <span>{{ item }}</span>
-          </span>
-          <mat-icon *ngIf="isMobileSelectorOptionActive(item)">check</mat-icon>
-        </button>
-      </div>
-    </ng-template>
   </div>
 </section>
 
@@ -4013,8 +3565,6 @@
   <div
     class="app-popup-panel"
     [class.popup-panel-members]="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers'"
-    [class.popup-panel-profile-editor]="stackedPopup === 'experienceSelector'"
-    [class.popup-panel-profile-selector]="stackedPopup === 'valuesSelector' || stackedPopup === 'interestSelector'"
     [class.popup-panel-event-editor]="stackedPopup === 'eventEditor'"
     [class.popup-panel-event-editor-readonly]="stackedPopup === 'eventEditor' && isEventEditorReadOnly()"
     [class.popup-panel-asset-members]="stackedPopup === 'subEventMembers' || stackedPopup === 'subEventAssets' || stackedPopup === 'subEventSupplyContributions'"
@@ -4024,44 +3574,12 @@
   >
     <div
       class="popup-header"
-      [class.popup-header-selector]="stackedPopup === 'valuesSelector' || stackedPopup === 'interestSelector' || stackedPopup === 'experienceSelector'"
-      *ngIf="
-        stackedPopup === 'valuesSelector' ||
-        stackedPopup === 'interestSelector' ||
-        stackedPopup === 'experienceSelector';
-        else defaultStackedHeader
-      "
+      [class.popup-header-chat]="stackedPopup === 'chat' && selectedChat"
+      [class.popup-header-with-activities-progress]="stackedPopup === 'eventExplore'"
+      [class.popup-header-with-chat-progress]="stackedPopup === 'chat' && selectedChat"
+      [class.popup-header-members-invite-mobile-layout]="stackedPopup === 'activityMembers' || isSubEventMembersPopup()"
+      [class.popup-header-activity-members-pending-layout]="stackedPopup === 'activityMembers'"
     >
-      <button
-        mat-icon-button
-        class="popup-back-btn"
-        (click)="showExperienceForm ? closeExperienceForm() : closeStackedPopup()"
-        aria-label="Back"
-      >
-        <mat-icon>arrow_back</mat-icon>
-      </button>
-      <div class="popup-title popup-title-values">
-        <h2>{{ getStackedPopupTitle() }}</h2>
-      </div>
-      <button
-        *ngIf="stackedPopup === 'experienceSelector'"
-        type="button"
-        class="popup-header-add-btn"
-        (click)="openExperienceForm()"
-        aria-label="Add experience"
-      >
-        <mat-icon>add</mat-icon>
-      </button>
-    </div>
-    <ng-template #defaultStackedHeader>
-      <div
-        class="popup-header"
-        [class.popup-header-chat]="stackedPopup === 'chat' && selectedChat"
-        [class.popup-header-with-activities-progress]="stackedPopup === 'eventExplore'"
-        [class.popup-header-with-chat-progress]="stackedPopup === 'chat' && selectedChat"
-        [class.popup-header-members-invite-mobile-layout]="stackedPopup === 'activityMembers' || isSubEventMembersPopup()"
-        [class.popup-header-activity-members-pending-layout]="stackedPopup === 'activityMembers'"
-      >
         <div class="popup-title popup-title-chat" *ngIf="stackedPopup === 'chat' && selectedChat; else stackedHeaderDefaultTitle">
           <div class="popup-chat-title-block">
             <h2>{{ selectedChat.title }}</h2>
@@ -4368,14 +3886,12 @@
           <span class="activities-header-progress-loading" [style.transform]="'scaleX(' + eventExploreHeaderLoadingProgress + ')'"></span>
         </div>
       </div>
-    </ng-template>
 
     <div
       class="popup-body"
       [class.popup-body-chat]="stackedPopup === 'chat'"
       [class.popup-body-members]="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers' || stackedPopup === 'subEventMembers' || stackedPopup === 'subEventAssets' || stackedPopup === 'subEventSupplyContributions'"
       [class.popup-body-subevent-members]="isSubEventMembersPopup()"
-      [class.popup-body-experience]="stackedPopup === 'experienceSelector'"
       [class.popup-body-event-explore]="stackedPopup === 'eventExplore'"
       [class.popup-body-event-feedback]="stackedPopup === 'eventFeedback'"
       [class.popup-body-impressions]="stackedPopup === 'impressionsHost'"
@@ -6099,262 +5615,6 @@
         </article>
       </ng-template>
 
-      <div *ngIf="stackedPopup === 'valuesSelector'" class="values-selector-popup profile-selector-popup">
-        <div class="profile-filter-selector-head">
-          <span class="profile-filter-selector-head-label">Values</span>
-          <button
-            type="button"
-            class="profile-filter-selector-clear"
-            [class.is-hidden]="valuesSelectorSelected.length === 0"
-            [disabled]="valuesSelectorSelected.length === 0"
-            [attr.aria-hidden]="valuesSelectorSelected.length === 0 ? 'true' : null"
-            (click)="clearValuesSelector()"
-          >
-            Clear
-          </button>
-        </div>
-        <div class="profile-filter-selector-selected" *ngIf="valuesSelectorSelected.length > 0; else valuesSelectorNoSelection">
-          <button
-            type="button"
-            class="profile-filter-selector-chip"
-            *ngFor="let item of valuesSelectorSelected"
-            (click)="removeValuesOption(item)"
-          >
-            <span>{{ item }}</span>
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-        <ng-template #valuesSelectorNoSelection>
-          <p class="profile-filter-selector-empty">No items selected yet.</p>
-        </ng-template>
-        <div class="values-selector-group profile-selector-option-group" [class]="group.toneClass" *ngFor="let group of beliefsValuesOptionGroups">
-          <div class="profile-selector-option-group-head">
-            <span class="profile-selector-option-group-tag" [class]="group.toneClass">
-              <mat-icon class="profile-selector-option-group-tag-icon">{{ profileSelectorToneIcon(group.toneClass) }}</mat-icon>
-              <span>{{ group.shortTitle }}</span>
-            </span>
-            <span class="profile-selector-option-group-line" [class]="group.toneClass"></span>
-          </div>
-          <div class="profile-selector-chip-grid">
-            <button
-              type="button"
-              class="profile-selector-chip"
-              [class.active]="isValuesOptionSelected(option)"
-              *ngFor="let option of group.options"
-              (click)="toggleValuesOption(option)"
-            >
-              <span>{{ option }}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div *ngIf="stackedPopup === 'interestSelector'" class="values-selector-popup profile-selector-popup">
-        <div class="profile-filter-selector-head">
-          <span class="profile-filter-selector-head-label">Interest</span>
-          <button
-            type="button"
-            class="profile-filter-selector-clear"
-            [class.is-hidden]="interestSelectorSelected.length === 0"
-            [disabled]="interestSelectorSelected.length === 0"
-            [attr.aria-hidden]="interestSelectorSelected.length === 0 ? 'true' : null"
-            (click)="clearInterestSelector()"
-          >
-            Clear
-          </button>
-        </div>
-        <div class="profile-filter-selector-selected" *ngIf="interestSelectorSelected.length > 0; else interestSelectorNoSelection">
-          <button
-            type="button"
-            class="profile-filter-selector-chip"
-            *ngFor="let item of interestSelectorSelected"
-            (click)="removeInterestOption(item)"
-          >
-            <span>{{ item }}</span>
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-        <ng-template #interestSelectorNoSelection>
-          <p class="profile-filter-selector-empty">No items selected yet.</p>
-        </ng-template>
-        <div class="values-selector-group profile-selector-option-group" [class]="group.toneClass" *ngFor="let group of interestOptionGroups">
-          <div class="profile-selector-option-group-head">
-            <span class="profile-selector-option-group-tag" [class]="group.toneClass">
-              <mat-icon class="profile-selector-option-group-tag-icon">{{ profileSelectorToneIcon(group.toneClass) }}</mat-icon>
-              <span>{{ group.shortTitle }}</span>
-            </span>
-            <span class="profile-selector-option-group-line" [class]="group.toneClass"></span>
-          </div>
-          <div class="profile-selector-chip-grid">
-            <button
-              type="button"
-              class="profile-selector-chip"
-              [class.active]="isInterestOptionSelected(option)"
-              *ngFor="let option of group.options"
-              (click)="toggleInterestOption(option)"
-            >
-              <span>{{ option }}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div *ngIf="stackedPopup === 'experienceSelector'" class="experience-popup">
-        <div class="experience-toolbar">
-          <div
-            class="profile-status-select-wrap selector-like experience-filter-select"
-            [ngClass]="experienceFilterClass(experienceFilter)"
-          >
-            <mat-select
-              [(ngModel)]="experienceFilter"
-              disableOptionCentering
-              panelClass="selector-options-panel profile-bottom-sheet-panel"
-            >
-              <mat-select-trigger>
-                <span class="status-option-content">
-                  <mat-icon [class]="experienceFilterClass(experienceFilter)">{{ experienceFilterIcon(experienceFilter) }}</mat-icon>
-                  <span>{{ experienceFilter }}</span>
-                </span>
-              </mat-select-trigger>
-              <mat-option
-                *ngFor="let option of experienceFilterOptions"
-                [value]="option"
-                class="status-option"
-                [ngClass]="experienceFilterClass(option)"
-              >
-                <span class="status-option-content">
-                  <mat-icon [class]="experienceFilterClass(option)">{{ experienceFilterIcon(option) }}</mat-icon>
-                  <span>{{ option }}</span>
-                </span>
-              </mat-option>
-            </mat-select>
-          </div>
-        </div>
-
-        <div class="experience-card-list">
-          <article class="experience-item-card" [ngClass]="experienceTypeClass(item.type)" *ngFor="let item of filteredExperienceEntries">
-            <div class="experience-item-head">
-              <span class="experience-item-icon">
-                <mat-icon>{{ experienceTypeIcon(item.type) }}</mat-icon>
-              </span>
-              <div class="experience-item-meta">
-                <h4>{{ item.title }}</h4>
-                <p>{{ item.org }} · {{ item.city }}</p>
-              </div>
-              <div class="experience-item-actions">
-                <button type="button" class="experience-action-btn experience-action-edit" (click)="openExperienceForm(item)" aria-label="Edit experience">
-                  <mat-icon>edit</mat-icon>
-                </button>
-                <button type="button" class="experience-action-btn experience-action-delete" (click)="requestExperienceDelete(item.id)" aria-label="Delete experience">
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </div>
-            </div>
-            <p class="experience-item-description">{{ item.description }}</p>
-            <p class="experience-item-dates">{{ item.dateFrom }} - {{ item.dateTo }}</p>
-          </article>
-        </div>
-
-        <section class="experience-delete-confirm" *ngIf="pendingExperienceDeleteId">
-          <div class="experience-delete-confirm-backdrop" (click)="cancelExperienceDelete()"></div>
-          <div class="experience-delete-confirm-panel">
-            <h4>Delete experience?</h4>
-            <p>This entry will be removed from your profile.</p>
-            <div class="popup-actions">
-              <button type="button" class="link-btn neutral-btn" (click)="cancelExperienceDelete()">Cancel</button>
-              <button type="button" class="link-btn experience-delete-btn" (click)="confirmExperienceDelete()">Delete</button>
-            </div>
-          </div>
-        </section>
-
-        <section class="experience-form-overlay" *ngIf="showExperienceForm">
-          <div class="experience-form-overlay-backdrop" (click)="closeExperienceForm()"></div>
-          <div class="experience-form-popup">
-            <div class="experience-form-header">
-              <h3>{{ editingExperienceId ? 'Edit Experience' : 'Add Experience' }}</h3>
-              <button type="button" class="experience-form-close-btn" (click)="closeExperienceForm()" aria-label="Close add experience">
-                <mat-icon>close</mat-icon>
-              </button>
-            </div>
-            <section class="experience-form-panel">
-              <div class="experience-form-grid">
-                <label class="experience-type-field">
-                  <span>Type</span>
-                  <ng-container *ngIf="!isMobileView; else mobileExperienceTypeButton">
-                    <div class="profile-status-select-wrap selector-like experience-type-select" [ngClass]="experienceTypeToneClass(experienceForm.type)">
-                      <mat-select [(ngModel)]="experienceForm.type" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel">
-                        <mat-select-trigger>
-                          <span class="status-option-content">
-                            <mat-icon [class]="experienceTypeToneClass(experienceForm.type)">{{ experienceTypeIcon(experienceForm.type) }}</mat-icon>
-                            <span>{{ experienceForm.type }}</span>
-                          </span>
-                        </mat-select-trigger>
-                        <mat-option *ngFor="let option of experienceTypeOptions" [value]="option" class="status-option" [ngClass]="experienceTypeToneClass(option)">
-                          <span class="status-option-content">
-                            <mat-icon [class]="experienceTypeToneClass(option)">{{ experienceTypeIcon(option) }}</mat-icon>
-                            <span>{{ option }}</span>
-                          </span>
-                        </mat-option>
-                      </mat-select>
-                    </div>
-                  </ng-container>
-                  <ng-template #mobileExperienceTypeButton>
-                    <button
-                      type="button"
-                      class="profile-status-select-wrap selector-like experience-type-select"
-                      [ngClass]="experienceTypeToneClass(experienceForm.type)"
-                      (click)="openMobileExperienceTypeSelector($event)"
-                    >
-                      <span class="status-option-content">
-                        <mat-icon [class]="experienceTypeToneClass(experienceForm.type)">{{ experienceTypeIcon(experienceForm.type) }}</mat-icon>
-                        <span>{{ experienceForm.type }}</span>
-                      </span>
-                      <mat-icon>expand_more</mat-icon>
-                    </button>
-                  </ng-template>
-                </label>
-                <label class="experience-title-field">
-                  <span>Title</span>
-                  <input type="text" [(ngModel)]="experienceForm.title" />
-                </label>
-                <label class="experience-org-field">
-                  <span>Organization</span>
-                  <input type="text" [(ngModel)]="experienceForm.org" />
-                </label>
-                <label class="experience-city-field">
-                  <span>City</span>
-                  <input type="text" [(ngModel)]="experienceForm.city" />
-                </label>
-                <label class="experience-date-range-label">
-                  <span>Date range</span>
-                  <mat-form-field appearance="fill" class="experience-date-range-field" subscriptSizing="dynamic">
-                    <mat-label>Enter a date range</mat-label>
-                    <mat-date-range-input [rangePicker]="experienceDateRangePicker">
-                      <input matStartDate [(ngModel)]="experienceRangeStart" name="experienceRangeStart" placeholder="YYYY/MM/DD" />
-                      <input matEndDate [(ngModel)]="experienceRangeEnd" name="experienceRangeEnd" placeholder="YYYY/MM/DD" />
-                    </mat-date-range-input>
-                    <mat-datepicker-toggle matSuffix [for]="experienceDateRangePicker"></mat-datepicker-toggle>
-                    <mat-hint>YYYY/MM - YYYY/MM</mat-hint>
-                    <mat-date-range-picker #experienceDateRangePicker></mat-date-range-picker>
-                  </mat-form-field>
-                </label>
-                <label class="experience-description-field">
-                  <span>Description</span>
-                  <textarea rows="4" [(ngModel)]="experienceForm.description"></textarea>
-                </label>
-              </div>
-              <div class="popup-actions experience-form-actions">
-                <button type="button" class="link-btn neutral-btn" (click)="closeExperienceForm()">Cancel</button>
-                <button type="button" class="link-btn primary-btn" (click)="saveExperienceEntry()">Save</button>
-              </div>
-            </section>
-          </div>
-        </section>
-      </div>
-      <div *ngIf="stackedPopup === 'experienceSelector' && filteredExperienceEntries.length === 0" class="editor-list-card">
-        <h4>No entries in this filter</h4>
-        <p>Try switching the type dropdown to All.</p>
-      </div>
     </div>
   </div>
 </section>

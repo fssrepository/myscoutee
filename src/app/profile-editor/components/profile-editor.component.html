@@ -1,0 +1,437 @@
+<div class="profile-editor-wrap" [class.profile-editor-wrap-secondary]="currentScreen !== 'main'">
+  <ng-container *ngIf="currentScreen === 'main'; else secondaryScreen">
+    <div class="profile-identity-card profile-identity-card-large" [ngClass]="profileStatusClass(profileForm.profileStatus)">
+      <div class="avatar-stack avatar-stack-editor">
+        <span
+          class="user-avatar user-avatar-large"
+          [ngClass]="['user-color-' + activeUser.gender, featuredImagePreview ? 'has-photo' : '']"
+          [style.backgroundImage]="featuredImagePreview ? 'url(' + featuredImagePreview + ')' : null"
+        >
+          <ng-container *ngIf="!featuredImagePreview">{{ activeUser.initials }}</ng-container>
+        </span>
+        <button type="button" class="avatar-edit-btn" aria-label="Open image editor" (click)="openImageEditor()">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <span class="avatar-bottom-pill avatar-bottom-pill-header" [ngStyle]="completionBadgeStyle(profileCompletionPercent)">
+          <span>{{ profileCompletionPercent }}%</span>
+        </span>
+      </div>
+
+      <div class="profile-header-text">
+        <h3 class="profile-name-line">
+          <span>{{ (profileForm.fullName || activeUser.name) + ', ' + profileEditorAge }}</span>
+        </h3>
+        <span class="profile-city-line">
+          <mat-icon>location_on</mat-icon>
+          <span>{{ profileForm.city || activeUser.city }}</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="profile-editor-scroll-area">
+      <div class="profile-details-structured">
+        <label class="profile-about-field">
+          <div class="profile-about-head">
+            <span>About me</span>
+            <small>{{ profileForm.about.length }}/160</small>
+          </div>
+          <textarea rows="3" maxlength="160" [(ngModel)]="profileForm.about"></textarea>
+        </label>
+
+        <section
+          class="profile-details-group"
+          [ngClass]="{
+            'profile-details-group-basics': group.title === 'Basics',
+            'profile-details-group-lifestyle': group.title === 'Lifestyle',
+            'profile-details-group-relationships': group.title === 'Relationships',
+            'profile-details-group-beliefs': group.title === 'Beliefs'
+          }"
+          *ngFor="let group of profileDetailsForm; let groupIndex = index"
+        >
+          <h4>{{ group.title }}</h4>
+
+          <div class="profile-form-grid profile-details-form-grid basics-moved-grid" *ngIf="group.title === 'Basics'; else nonBasicsGroup">
+            <label class="name-field">
+              <span>Name</span>
+              <input type="text" [(ngModel)]="profileForm.fullName" />
+            </label>
+
+            <label class="city-field">
+              <span>City</span>
+              <input type="text" [(ngModel)]="profileForm.city" />
+            </label>
+
+            <label class="birthday-field">
+              <span>Birthday</span>
+              <div class="date-input-wrap">
+                <input [matDatepicker]="birthdayPicker" [(ngModel)]="profileForm.birthday" (ngModelChange)="onBirthdayChange($event)" />
+                <button type="button" class="date-picker-btn" (click)="birthdayPicker.open()" aria-label="Open birthday picker">
+                  <mat-icon>calendar_month</mat-icon>
+                </button>
+                <mat-datepicker #birthdayPicker></mat-datepicker>
+              </div>
+            </label>
+
+            <label class="horoscope-field">
+              <span>Horoscope</span>
+              <div class="profile-status-select-wrap selector-like readonly-select" [class]="getHoroscopeClass(profileForm.horoscope)">
+                <span class="zodiac-symbol">{{ getHoroscopeSymbol(profileForm.horoscope) }}</span>
+                <span class="zodiac-label">{{ profileForm.horoscope }}</span>
+              </div>
+            </label>
+
+            <label class="height-field">
+              <span>Height (cm)</span>
+              <input type="number" min="0" step="1" [(ngModel)]="profileForm.heightCm" />
+            </label>
+
+            <label class="physique-field">
+              <span>Physique</span>
+              <div class="profile-status-select-wrap selector-like physique-select-wrap" [class]="getPhysiqueClass(profileForm.physique)">
+                <mat-select [(ngModel)]="profileForm.physique" panelWidth="380px" disableOptionCentering panelClass="selector-options-panel physique-options-panel profile-bottom-sheet-panel">
+                  <mat-select-trigger>
+                    <span class="status-option-content">
+                      <mat-icon [class]="getPhysiqueClass(profileForm.physique)">{{ getPhysiqueIcon(profileForm.physique) }}</mat-icon>
+                      <span>{{ profileForm.physique }}</span>
+                    </span>
+                  </mat-select-trigger>
+                  <mat-option
+                    *ngFor="let item of physiqueOptions"
+                    [value]="item"
+                    [class]="'status-option ' + getPhysiqueClass(item)"
+                    [class.hide-selected-option]="item === profileForm.physique"
+                  >
+                    <span class="status-option-content">
+                      <mat-icon [class]="getPhysiqueClass(item)">{{ getPhysiqueIcon(item) }}</mat-icon>
+                      <span>{{ item }}</span>
+                    </span>
+                  </mat-option>
+                </mat-select>
+              </div>
+            </label>
+
+            <label class="languages-field">
+              <span>Languages</span>
+              <div class="language-filter">
+                <button type="button" class="language-select-btn" (click)="openLanguageSelector($event)">
+                  <span class="label">{{ languageTriggerPrimaryLabel() || 'Select languages' }}</span>
+                  <span class="count" *ngIf="languageTriggerOverflowCount() > 0">+{{ languageTriggerOverflowCount() }}</span>
+                  <mat-icon class="arrow">chevron_right</mat-icon>
+                </button>
+              </div>
+            </label>
+          </div>
+
+          <ng-template #nonBasicsGroup>
+            <div class="profile-form-grid profile-details-form-grid">
+              <div class="profile-details-field" *ngFor="let row of group.rows; let rowIndex = index">
+                <span>{{ row.label }}</span>
+                <div class="profile-details-control-row">
+                  <button
+                    type="button"
+                    class="profile-status-select-wrap selector-like profile-details-values-btn"
+                    [ngClass]="row.label === 'Values' ? 'profile-details-values-tone-values' : 'profile-details-values-tone-interest'"
+                    *ngIf="row.label === 'Values' || row.label === 'Interest'; else detailsSelect"
+                    (click)="row.label === 'Values' ? openValuesSelector(groupIndex, rowIndex) : openInterestSelector(groupIndex, rowIndex)"
+                  >
+                    <span class="status-option-content profile-details-selected-badges" *ngIf="row.label === 'Values'; else interestSummaryBadges">
+                      <ng-container *ngIf="valuesRowPreviewOptions(row.value, 1).length > 0; else valuesSummaryPlaceholder">
+                        <span class="profile-details-selected-chip-list">
+                          <span
+                            class="values-selected-chip profile-details-inline-chip"
+                            [class]="valuesOptionToneClass(item)"
+                            *ngFor="let item of valuesRowPreviewOptions(row.value, 1)"
+                          >
+                            {{ item }}
+                          </span>
+                        </span>
+                        <span class="profile-details-inline-overflow" *ngIf="valuesRowPreviewOverflow(row.value, 1) > 0">
+                          +{{ valuesRowPreviewOverflow(row.value, 1) }}
+                        </span>
+                      </ng-container>
+                      <ng-template #valuesSummaryPlaceholder>
+                        <span class="profile-details-empty-summary">Select values</span>
+                      </ng-template>
+                    </span>
+
+                    <ng-template #interestSummaryBadges>
+                      <span class="status-option-content profile-details-selected-badges">
+                        <ng-container *ngIf="interestRowPreviewOptions(row.value, 2).length > 0; else interestSummaryPlaceholder">
+                          <span class="profile-details-selected-chip-list">
+                            <span
+                              class="values-selected-chip profile-details-inline-chip"
+                              [class]="interestOptionToneClass(item)"
+                              *ngFor="let item of interestRowPreviewOptions(row.value, 2)"
+                            >
+                              {{ item }}
+                            </span>
+                          </span>
+                          <span class="profile-details-inline-overflow" *ngIf="interestRowPreviewOverflow(row.value, 2) > 0">
+                            +{{ interestRowPreviewOverflow(row.value, 2) }}
+                          </span>
+                        </ng-container>
+                        <ng-template #interestSummaryPlaceholder>
+                          <span class="profile-details-empty-summary">Select interests</span>
+                        </ng-template>
+                      </span>
+                    </ng-template>
+                    <mat-icon>chevron_right</mat-icon>
+                  </button>
+
+                  <ng-template #detailsSelect>
+                    <div class="profile-status-select-wrap selector-like profile-details-select" [ngClass]="detailSelectedClass(row.label, row.value, row.options)">
+                      <mat-select [(ngModel)]="row.value" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel">
+                        <mat-select-trigger>
+                          <span class="status-option-content">
+                            <mat-icon>{{ detailOptionIcon(row.label, row.value) }}</mat-icon>
+                            <span>{{ row.value }}</span>
+                          </span>
+                        </mat-select-trigger>
+                        <mat-option *ngFor="let option of row.options" [value]="option" [ngClass]="detailOptionClass(row.label, option, row.options)" class="status-option">
+                          <span class="status-option-content">
+                            <mat-icon>{{ detailOptionIcon(row.label, option) }}</mat-icon>
+                            <span>{{ option }}</span>
+                          </span>
+                        </mat-option>
+                      </mat-select>
+                    </div>
+                  </ng-template>
+
+                  <div class="profile-details-privacy-fab" [class.open]="isDetailPrivacyFabOpen(groupIndex, rowIndex)" [class.is-just-selected]="isDetailPrivacyJustSelected(groupIndex, rowIndex)">
+                    <button
+                      type="button"
+                      class="profile-details-privacy-btn profile-details-privacy-trigger"
+                      [class.status-public]="row.privacy === 'Public'"
+                      [class.status-friends]="row.privacy === 'Friends'"
+                      [class.status-host]="row.privacy === 'Hosts'"
+                      [class.status-inactive]="row.privacy === 'Private'"
+                      [class.is-open]="isDetailPrivacyFabOpen(groupIndex, rowIndex)"
+                      (click)="openDetailPrivacySelector(groupIndex, rowIndex, $event)"
+                      [attr.aria-label]="isDetailPrivacyFabOpen(groupIndex, rowIndex) ? 'Close visibility menu' : 'Change visibility'"
+                    >
+                      <mat-icon>{{ privacyTriggerIcon(row.privacy, isDetailPrivacyFabOpen(groupIndex, rowIndex)) }}</mat-icon>
+                    </button>
+
+                    <div
+                      class="item-action-menu item-action-menu-desktop profile-privacy-menu"
+                      [class.is-open]="isDetailPrivacyFabOpen(groupIndex, rowIndex)"
+                      [attr.aria-hidden]="!isDetailPrivacyFabOpen(groupIndex, rowIndex)"
+                      (click)="$event.stopPropagation()"
+                    >
+                      <button
+                        type="button"
+                        class="item-action-menu-btn profile-privacy-menu-option"
+                        [class]="privacyStatusClass(option)"
+                        *ngFor="let option of detailPrivacyOptions"
+                        (click)="selectDetailPrivacy(groupIndex, rowIndex, option, $event)"
+                      >
+                        <mat-icon>{{ privacyStatusIcon(option) }}</mat-icon>
+                        <span>{{ option }}</span>
+                        <mat-icon class="profile-privacy-menu-check" *ngIf="row.privacy === option">done</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </ng-template>
+        </section>
+
+        <section class="profile-details-group profile-details-group-relationships">
+          <h4>Experience</h4>
+          <div class="experience-selector-grid">
+            <div class="experience-selector-row">
+              <span>Workspace</span>
+              <div class="profile-details-control-row">
+                <button type="button" class="profile-status-select-wrap selector-like profile-details-values-btn section-social" (click)="openWorkspaceSelector()">
+                  <span class="status-option-content">
+                    <span>{{ workspaceExperienceSummary }}</span>
+                  </span>
+                  <mat-icon>chevron_right</mat-icon>
+                </button>
+
+                <div class="profile-details-privacy-fab" [class.open]="isExperiencePrivacyFabOpen('workspace')">
+                  <button
+                    type="button"
+                    class="profile-details-privacy-btn profile-details-privacy-trigger"
+                    [class.status-public]="experienceVisibilityValue('workspace') === 'Public'"
+                    [class.status-friends]="experienceVisibilityValue('workspace') === 'Friends'"
+                    [class.status-host]="experienceVisibilityValue('workspace') === 'Hosts'"
+                    [class.status-inactive]="experienceVisibilityValue('workspace') === 'Private'"
+                    [class.is-open]="isExperiencePrivacyFabOpen('workspace')"
+                    (click)="openExperiencePrivacySelector('workspace', $event)"
+                    [attr.aria-label]="isExperiencePrivacyFabOpen('workspace') ? 'Close workspace visibility menu' : 'Change workspace visibility'"
+                  >
+                    <mat-icon>{{ privacyTriggerIcon(experienceVisibilityValue('workspace'), isExperiencePrivacyFabOpen('workspace')) }}</mat-icon>
+                  </button>
+                  <div
+                    class="item-action-menu item-action-menu-desktop profile-privacy-menu"
+                    [class.is-open]="isExperiencePrivacyFabOpen('workspace')"
+                    [attr.aria-hidden]="!isExperiencePrivacyFabOpen('workspace')"
+                    (click)="$event.stopPropagation()"
+                  >
+                    <button
+                      type="button"
+                      class="item-action-menu-btn profile-privacy-menu-option"
+                      [class]="privacyStatusClass(option)"
+                      *ngFor="let option of detailPrivacyOptions"
+                      (click)="selectExperiencePrivacy('workspace', option, $event)"
+                    >
+                      <mat-icon>{{ privacyStatusIcon(option) }}</mat-icon>
+                      <span>{{ option }}</span>
+                      <mat-icon class="profile-privacy-menu-check" *ngIf="experienceVisibilityValue('workspace') === option">done</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="experience-selector-row">
+              <span>School</span>
+              <div class="profile-details-control-row">
+                <button type="button" class="profile-status-select-wrap selector-like profile-details-values-btn section-arts" (click)="openSchoolSelector()">
+                  <span class="status-option-content">
+                    <span>{{ schoolExperienceSummary }}</span>
+                  </span>
+                  <mat-icon>chevron_right</mat-icon>
+                </button>
+
+                <div class="profile-details-privacy-fab" [class.open]="isExperiencePrivacyFabOpen('school')">
+                  <button
+                    type="button"
+                    class="profile-details-privacy-btn profile-details-privacy-trigger"
+                    [class.status-public]="experienceVisibilityValue('school') === 'Public'"
+                    [class.status-friends]="experienceVisibilityValue('school') === 'Friends'"
+                    [class.status-host]="experienceVisibilityValue('school') === 'Hosts'"
+                    [class.status-inactive]="experienceVisibilityValue('school') === 'Private'"
+                    [class.is-open]="isExperiencePrivacyFabOpen('school')"
+                    (click)="openExperiencePrivacySelector('school', $event)"
+                    [attr.aria-label]="isExperiencePrivacyFabOpen('school') ? 'Close school visibility menu' : 'Change school visibility'"
+                  >
+                    <mat-icon>{{ privacyTriggerIcon(experienceVisibilityValue('school'), isExperiencePrivacyFabOpen('school')) }}</mat-icon>
+                  </button>
+                  <div
+                    class="item-action-menu item-action-menu-desktop profile-privacy-menu"
+                    [class.is-open]="isExperiencePrivacyFabOpen('school')"
+                    [attr.aria-hidden]="!isExperiencePrivacyFabOpen('school')"
+                    (click)="$event.stopPropagation()"
+                  >
+                    <button
+                      type="button"
+                      class="item-action-menu-btn profile-privacy-menu-option"
+                      [class]="privacyStatusClass(option)"
+                      *ngFor="let option of detailPrivacyOptions"
+                      (click)="selectExperiencePrivacy('school', option, $event)"
+                    >
+                      <mat-icon>{{ privacyStatusIcon(option) }}</mat-icon>
+                      <span>{{ option }}</span>
+                      <mat-icon class="profile-privacy-menu-check" *ngIf="experienceVisibilityValue('school') === option">done</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </ng-container>
+
+  <ng-template #secondaryScreen>
+    <div class="profile-editor-screen-body" [class.profile-editor-screen-body-image-editor]="currentScreen === 'imageEditor'">
+      <app-profile-editor-values-screen
+        *ngIf="currentScreen === 'values'"
+        [groups]="beliefsValuesOptionGroups"
+        [selected]="valuesSelectorSelected"
+        (clearRequested)="clearValuesSelector()"
+        (removeRequested)="removeValuesOption($event)"
+        (toggleRequested)="toggleValuesOption($event)"
+      ></app-profile-editor-values-screen>
+
+      <app-profile-editor-interest-screen
+        *ngIf="currentScreen === 'interest'"
+        [groups]="interestOptionGroups"
+        [selected]="interestSelectorSelected"
+        (clearRequested)="clearInterestSelector()"
+        (removeRequested)="removeInterestOption($event)"
+        (toggleRequested)="toggleInterestOption($event)"
+      ></app-profile-editor-interest-screen>
+
+      <app-profile-editor-experience-screen
+        *ngIf="currentScreen === 'experience'"
+        [entries]="experienceEntries"
+        [preferredFilter]="experiencePreferredFilter"
+        (entriesChange)="onExperienceEntriesChanged($event)"
+      ></app-profile-editor-experience-screen>
+
+      <app-profile-editor-image-editor-screen
+        *ngIf="currentScreen === 'imageEditor'"
+        [imageSlots]="imageSlots"
+        (imageSlotsChange)="onImageSlotsChanged($event)"
+      ></app-profile-editor-image-editor-screen>
+    </div>
+  </ng-template>
+
+  <section class="mobile-profile-selector-sheet-wrap" *ngIf="showLanguageSelector" (click)="$event.stopPropagation()">
+    <div class="mobile-profile-selector-backdrop" (click)="closeLanguageSelector()"></div>
+    <div class="mobile-profile-selector-sheet mobile-profile-selector-sheet-language" (click)="$event.stopPropagation()">
+      <div class="mobile-profile-selector-handle" aria-hidden="true"></div>
+      <div class="mobile-profile-selector-title">
+        <mat-icon>list</mat-icon>
+        <span>Languages</span>
+        <button type="button" class="mobile-profile-selector-close-btn" (click)="closeLanguageSelector()" aria-label="Close language popup">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="mobile-profile-language-entry" (click)="$event.stopPropagation()">
+        <div class="mobile-profile-language-chips" *ngIf="profileForm.languages.length > 0">
+          <button
+            type="button"
+            class="mobile-profile-language-chip"
+            [ngClass]="languageToneClass(item)"
+            *ngFor="let item of profileForm.languages"
+            (click)="removeLanguage(item)"
+          >
+            <span>{{ item }}</span>
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <label class="mobile-profile-language-input-wrap">
+          <input
+            type="text"
+            [(ngModel)]="languageInput"
+            (keydown)="onLanguageInputKeydown($event)"
+            (blur)="onLanguageInputBlur()"
+            placeholder="Type language"
+          />
+          <button
+            type="button"
+            class="mobile-profile-language-submit-btn"
+            (click)="submitLanguageAndClose($event)"
+            aria-label="Save language search and close"
+          >
+            <mat-icon>search</mat-icon>
+          </button>
+        </label>
+      </div>
+
+      <div class="mobile-profile-selector-options">
+        <button
+          type="button"
+          class="mobile-profile-selector-option"
+          *ngFor="let item of availableLanguageDisplaySuggestions"
+          [class.active]="isLanguageSelected(item)"
+          [ngClass]="languageToneClass(item)"
+          (click)="selectLanguage(item)"
+        >
+          <span class="mobile-profile-selector-option-main">
+            <mat-icon>language</mat-icon>
+            <span>{{ item }}</span>
+          </span>
+          <mat-icon *ngIf="isLanguageSelected(item)">check</mat-icon>
+        </button>
+      </div>
+    </div>
+  </section>
+</div>

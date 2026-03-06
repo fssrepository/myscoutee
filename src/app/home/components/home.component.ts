@@ -390,8 +390,11 @@ export class HomeComponent implements OnDestroy {
   private readonly pendingGameImageUrls = new Set<string>();
   private ratingBarBlinkTimeout: ReturnType<typeof setTimeout> | null = null;
   private candidateImageIndicatorRevealTimer: ReturnType<typeof setTimeout> | null = null;
+  private candidateImageLoadingPulseTimer: ReturnType<typeof setTimeout> | null = null;
   private pairModeWomanImageIndicatorRevealTimer: ReturnType<typeof setTimeout> | null = null;
   private pairModeManImageIndicatorRevealTimer: ReturnType<typeof setTimeout> | null = null;
+  private pairModeWomanImageLoadingPulseTimer: ReturnType<typeof setTimeout> | null = null;
+  private pairModeManImageLoadingPulseTimer: ReturnType<typeof setTimeout> | null = null;
   private gameCardLeaveTimer: ReturnType<typeof setTimeout> | null = null;
   private gameStackPaginationKey = '';
   private gameStackPaginating = false;
@@ -430,8 +433,11 @@ export class HomeComponent implements OnDestroy {
       clearTimeout(this.candidateImageIndicatorRevealTimer);
       this.candidateImageIndicatorRevealTimer = null;
     }
+    this.clearCandidateImageLoadingPulseTimer();
     this.clearPairModeCandidateImageIndicatorRevealTimer('woman');
     this.clearPairModeCandidateImageIndicatorRevealTimer('man');
+    this.clearPairModeCandidateImageLoadingPulseTimer('woman');
+    this.clearPairModeCandidateImageLoadingPulseTimer('man');
     if (this.gameCardLeaveTimer) {
       clearTimeout(this.gameCardLeaveTimer);
       this.gameCardLeaveTimer = null;
@@ -1563,6 +1569,7 @@ export class HomeComponent implements OnDestroy {
       return;
     }
     this.markGameImagePreloaded(imageUrl);
+    this.clearCandidateImageLoadingPulseTimer();
     const hadPendingLoad = this.isCandidateImageLoading;
     this.isCandidateImageLoading = false;
     if (hadPendingLoad) {
@@ -1590,6 +1597,7 @@ export class HomeComponent implements OnDestroy {
       return;
     }
     if (index === this.selectedCandidateImageIndex) {
+      this.pulseCandidateImageLoadingIndicator();
       return;
     }
     this.selectedCandidateImageIndex = index;
@@ -1598,6 +1606,9 @@ export class HomeComponent implements OnDestroy {
     this.candidateImagePanY = 0;
     this.isCandidateImageDragging = false;
     this.beginCandidateImageLoadingForCurrentSelection();
+    if (!this.isCandidateImageLoading) {
+      this.pulseCandidateImageLoadingIndicator();
+    }
   }
 
   protected onCandidateImageWheel(event: WheelEvent): void {
@@ -1710,6 +1721,7 @@ export class HomeComponent implements OnDestroy {
       return;
     }
     if (index === this.pairModeCandidateImageIndex(gender)) {
+      this.pulsePairModeCandidateImageLoadingIndicator(gender);
       return;
     }
     if (gender === 'woman') {
@@ -1718,6 +1730,9 @@ export class HomeComponent implements OnDestroy {
       this.pairModeManImageIndex = index;
     }
     this.beginPairModeCandidateImageLoading(gender);
+    if (!this.isPairModeCandidateImageLoading(gender)) {
+      this.pulsePairModeCandidateImageLoadingIndicator(gender);
+    }
   }
 
   protected onPairModeCandidateImageReady(candidate: DemoUser, gender: DemoUser['gender'], imageUrl: string): void {
@@ -1729,6 +1744,7 @@ export class HomeComponent implements OnDestroy {
     if (imageUrl !== currentImage) {
       return;
     }
+    this.clearPairModeCandidateImageLoadingPulseTimer(gender);
     const hadPendingLoad = this.isPairModeCandidateImageLoading(gender);
     const finalizeReady = () => {
       if (!this.isPairMode) {
@@ -1913,6 +1929,8 @@ export class HomeComponent implements OnDestroy {
     this.isPairModeManImageLoading = false;
     this.isPairModeWomanImageIndicatorRevealing = false;
     this.isPairModeManImageIndicatorRevealing = false;
+    this.isCandidateImageLoading = false;
+    this.isCandidateImageIndicatorRevealing = false;
     this.candidateImageZoom = 1;
     this.candidateImagePanX = 0;
     this.candidateImagePanY = 0;
@@ -1920,6 +1938,9 @@ export class HomeComponent implements OnDestroy {
     this.activeTouchId = null;
     this.clearPairModeCandidateImageIndicatorRevealTimer('woman');
     this.clearPairModeCandidateImageIndicatorRevealTimer('man');
+    this.clearCandidateImageLoadingPulseTimer();
+    this.clearPairModeCandidateImageLoadingPulseTimer('woman');
+    this.clearPairModeCandidateImageLoadingPulseTimer('man');
     this.failedCandidateImageUrls.clear();
   }
 
@@ -2309,6 +2330,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private beginCandidateImageLoadingForCurrentSelection(): void {
+    this.clearCandidateImageLoadingPulseTimer();
     if (this.isPairMode) {
       this.beginPairModeCandidateImageLoading('woman');
       this.beginPairModeCandidateImageLoading('man');
@@ -2356,7 +2378,29 @@ export class HomeComponent implements OnDestroy {
     }
   }
 
+  private pulseCandidateImageLoadingIndicator(): void {
+    this.clearCandidateImageLoadingPulseTimer();
+    this.isCandidateImageLoading = true;
+    this.isCandidateImageIndicatorRevealing = false;
+    this.clearCandidateImageIndicatorRevealTimer();
+    this.cdr.markForCheck();
+    this.candidateImageLoadingPulseTimer = setTimeout(() => {
+      this.isCandidateImageLoading = false;
+      this.candidateImageLoadingPulseTimer = null;
+      this.triggerCandidateImageIndicatorReveal();
+    }, 260);
+  }
+
+  private clearCandidateImageLoadingPulseTimer(): void {
+    if (!this.candidateImageLoadingPulseTimer) {
+      return;
+    }
+    clearTimeout(this.candidateImageLoadingPulseTimer);
+    this.candidateImageLoadingPulseTimer = null;
+  }
+
   private beginPairModeCandidateImageLoading(gender: DemoUser['gender']): void {
+    this.clearPairModeCandidateImageLoadingPulseTimer(gender);
     const candidate = gender === 'woman' ? this.pairModeWomanCandidate : this.pairModeManCandidate;
     const imageUrl = this.pairModeCandidateImage(candidate, gender);
     if (!imageUrl) {
@@ -2380,6 +2424,34 @@ export class HomeComponent implements OnDestroy {
     }
     this.clearPairModeCandidateImageIndicatorRevealTimer(gender);
     this.cdr.markForCheck();
+  }
+
+  private pulsePairModeCandidateImageLoadingIndicator(gender: DemoUser['gender']): void {
+    this.clearPairModeCandidateImageLoadingPulseTimer(gender);
+    if (gender === 'woman') {
+      this.isPairModeWomanImageLoading = true;
+      this.isPairModeWomanImageIndicatorRevealing = false;
+    } else {
+      this.isPairModeManImageLoading = true;
+      this.isPairModeManImageIndicatorRevealing = false;
+    }
+    this.clearPairModeCandidateImageIndicatorRevealTimer(gender);
+    this.cdr.markForCheck();
+    const timer = setTimeout(() => {
+      if (gender === 'woman') {
+        this.isPairModeWomanImageLoading = false;
+        this.pairModeWomanImageLoadingPulseTimer = null;
+      } else {
+        this.isPairModeManImageLoading = false;
+        this.pairModeManImageLoadingPulseTimer = null;
+      }
+      this.triggerPairModeCandidateImageIndicatorReveal(gender);
+    }, 260);
+    if (gender === 'woman') {
+      this.pairModeWomanImageLoadingPulseTimer = timer;
+      return;
+    }
+    this.pairModeManImageLoadingPulseTimer = timer;
   }
 
   private triggerPairModeCandidateImageIndicatorReveal(gender: DemoUser['gender']): void {
@@ -2432,6 +2504,22 @@ export class HomeComponent implements OnDestroy {
       clearTimeout(this.pairModeManImageIndicatorRevealTimer);
       this.pairModeManImageIndicatorRevealTimer = null;
     }
+  }
+
+  private clearPairModeCandidateImageLoadingPulseTimer(gender: DemoUser['gender']): void {
+    if (gender === 'woman') {
+      if (!this.pairModeWomanImageLoadingPulseTimer) {
+        return;
+      }
+      clearTimeout(this.pairModeWomanImageLoadingPulseTimer);
+      this.pairModeWomanImageLoadingPulseTimer = null;
+      return;
+    }
+    if (!this.pairModeManImageLoadingPulseTimer) {
+      return;
+    }
+    clearTimeout(this.pairModeManImageLoadingPulseTimer);
+    this.pairModeManImageLoadingPulseTimer = null;
   }
 
   private startGameCardLeaveAnimation(candidate: DemoUser, rating: number): void {
