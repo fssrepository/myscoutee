@@ -1,0 +1,175 @@
+<section class="editor-list-card">
+  <div class="editor-card-section">
+    <!-- Image Upload -->
+    <div class="editor-image-section">
+      <input #eventImageInput type="file" accept="image/*" hidden (change)="onImageFileChange($event)" />
+      <button type="button" class="asset-image-dropzone" (click)="triggerEventImageUpload($event)" [disabled]="readOnly">
+        <div class="asset-image-preview" [style.backgroundImage]="localForm.imageUrl ? 'url(' + localForm.imageUrl + ')' : null">
+          <span class="asset-image-plus" *ngIf="!readOnly">+</span>
+        </div>
+      </button>
+    </div>
+
+    <!-- Title -->
+    <label class="editor-field">
+      <span>Name <span class="required-star">*</span></span>
+      <input type="text" [(ngModel)]="localForm.title" [readonly]="readOnly" [class.field-required-invalid]="fieldInvalid('title')" (ngModelChange)="onFieldChange()" />
+    </label>
+
+    <!-- Capacity -->
+    <label class="editor-field">
+      <span>Capacity</span>
+      <div class="subevent-capacity-range">
+        <input type="number" min="0" step="1" [(ngModel)]="localForm.capacityMin" [disabled]="readOnly" placeholder="Min" (ngModelChange)="onFieldChange()" />
+        <span class="subevent-capacity-separator">-</span>
+        <input type="number" [min]="localForm.capacityMin ?? 0" step="1" [(ngModel)]="localForm.capacityMax" [disabled]="readOnly" placeholder="Max" (ngModelChange)="onFieldChange()" />
+      </div>
+    </label>
+
+    <!-- Blind Mode Toggle -->
+    <label class="editor-toggle-field">
+      <span>Blind Event</span>
+      <button 
+        type="button" 
+        class="toggle-btn" 
+        [class.active]="localForm.blindMode === 'Blind Event'"
+        (click)="onBlindModeChange(localForm.blindMode === 'Open Event' ? 'Blind Event' : 'Open Event')"
+        [disabled]="readOnly"
+      >
+        <span class="toggle-indicator"></span>
+      </button>
+    </label>
+
+    <!-- Topics -->
+    <label class="editor-field event-topics-field event-topics-panel-field">
+      <button type="button" class="event-topics-panel" [class.event-editor-readonly-control]="readOnly" (click)="onTopicsChange(localForm.topics)">
+        <span class="event-topics-panel-head">
+          <span>Topics</span>
+          <span class="event-topics-count" *ngIf="localForm.topics.length">{{ localForm.topics.length }}</span>
+        </span>
+        <span class="event-topics-list" *ngIf="localForm.topics.length">
+          <span class="event-topic-chip" *ngFor="let topic of localForm.topics">{{ topic }}</span>
+        </span>
+        <span class="event-topics-empty" *ngIf="!localForm.topics.length">Select topics</span>
+      </button>
+    </label>
+
+    <!-- Auto Inviter Toggle -->
+    <label class="editor-toggle-field">
+      <span>Auto-inviter</span>
+      <button 
+        type="button" 
+        class="toggle-btn" 
+        [class.active]="localForm.autoInviter"
+        (click)="localForm.autoInviter = !localForm.autoInviter; onFieldChange()"
+        [disabled]="readOnly"
+      >
+        <span class="toggle-indicator"></span>
+      </button>
+    </label>
+
+    <!-- Ticketing Toggle -->
+    <label class="editor-toggle-field">
+      <span>Ticketing</span>
+      <button 
+        type="button" 
+        class="toggle-btn" 
+        [class.active]="localForm.ticketing"
+        (click)="localForm.ticketing = !localForm.ticketing; onFieldChange()"
+        [disabled]="readOnly"
+      >
+        <span class="toggle-indicator"></span>
+      </button>
+    </label>
+
+    <!-- Description -->
+    <label class="editor-field">
+      <span>Description <span class="required-star">*</span></span>
+      <textarea rows="4" [(ngModel)]="localForm.description" [readonly]="readOnly" [class.field-required-invalid]="fieldInvalid('description')" (ngModelChange)="onFieldChange()"></textarea>
+    </label>
+
+    <!-- Frequency -->
+    <label class="editor-field">
+      <span>Frequency</span>
+      <div class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select">
+        <mat-select [(ngModel)]="localForm.frequency" [disabled]="readOnly" panelClass="selector-options-panel" (ngModelChange)="onFrequencyChange($event)">
+          <mat-option *ngFor="let option of frequencyOptions" [value]="option">{{ option }}</mat-option>
+        </mat-select>
+      </div>
+    </label>
+
+    <!-- Date/Time -->
+    <div class="editor-field-row">
+      <label class="editor-field">
+        <span>Start</span>
+        <mat-form-field appearance="outline" class="event-date-field">
+          <input matInput [matDatepicker]="startPicker" [(ngModel)]="localForm.startAt" [disabled]="readOnly" (ngModelChange)="onFieldChange()" />
+          <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
+          <mat-datepicker #startPicker></mat-datepicker>
+        </mat-form-field>
+      </label>
+
+      <label class="editor-field">
+        <span>End</span>
+        <mat-form-field appearance="outline" class="event-date-field">
+          <input matInput [matDatepicker]="endPicker" [(ngModel)]="localForm.endAt" [disabled]="readOnly" (ngModelChange)="onFieldChange()" />
+          <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
+          <mat-datepicker #endPicker></mat-datepicker>
+        </mat-form-field>
+      </label>
+    </div>
+
+    <!-- Location -->
+    <label class="editor-field">
+      <span>Location</span>
+      <input 
+        type="text" 
+        [(ngModel)]="localForm.location" 
+        [readonly]="readOnly"
+        placeholder="Event route location"
+        (ngModelChange)="onFieldChange()"
+      />
+    </label>
+
+    <!-- Sub-Events Section -->
+    <div class="editor-section-divider"></div>
+    
+    <div class="subevents-section">
+      <div class="subevents-header">
+        <h3>Sub-events</h3>
+        <button 
+          type="button" 
+          class="popup-header-add-btn subevents-header-add-btn"
+          *ngIf="!readOnly"
+          (click)="onOpenSubEvents()"
+        >
+          <mat-icon>add</mat-icon>
+        </button>
+      </div>
+      
+      <div class="subevents-list" *ngIf="localForm.subEvents.length">
+        <div class="subevent-item" *ngFor="let subEvent of localForm.subEvents">
+          <span class="subevent-name">{{ subEvent.name || 'Unnamed sub-event' }}</span>
+          <span class="subevent-date">{{ subEvent.startAt | date:'short' }}</span>
+        </div>
+      </div>
+      
+      <div class="subevents-empty" *ngIf="!localForm.subEvents.length">
+        No sub-events yet
+      </div>
+    </div>
+  </div>
+
+  <!-- Save Button -->
+  <div class="editor-actions" *ngIf="!readOnly">
+    <button 
+      type="button" 
+      class="popup-header-add-btn subevent-leaderboard-save-btn"
+      [class.form-save-invalid]="!canSubmit()"
+      [disabled]="!canSubmit()"
+      (click)="onSave()"
+    >
+      Save Event
+    </button>
+  </div>
+</section>

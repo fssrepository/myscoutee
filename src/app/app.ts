@@ -38,6 +38,7 @@ import {
 import { GDPR_CONTENT } from './shared/gdpr-data';
 import { environment } from '../environments/environment';
 import { LazyBgImageDirective } from './shared/lazy-bg-image.directive';
+import { EventEditorModule } from './event-editor/event-editor.module';
 import { AppDemoGenerators } from './shared/app-demo-generators';
 import { AppUtils } from './shared/app-utils';
 import { AppCalendarHelpers } from './shared/app-calendar-helpers';
@@ -119,7 +120,8 @@ const APP_DATE_FORMATS = {
     MatTimepickerModule,
     FormsModule,
     DragDropModule,
-    LazyBgImageDirective
+    LazyBgImageDirective,
+    EventEditorModule
   ],
   providers: [
     { provide: DateAdapter, useClass: YearMonthDayDateAdapter },
@@ -279,7 +281,7 @@ export class App {
   protected activityInviteSort: AppTypes.ActivityInviteSort = 'recent';
   protected showActivityInviteSortPicker = false;
   protected selectedActivityInviteUserIds: string[] = [];
-  protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | 'eventSubEvents' | 'eventExploreTopicFilter' | 'impressionsHost' | 'subEventAssetAssign' | null = null;
+  protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | 'eventSubEvents' | 'eventExploreTopicFilter' | 'impressionsHost' | 'subEventAssetAssign' | 'eventMembers' | null = null;
   private readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
   private activityMembersPopupOrigin: 'active-event-editor' | 'stacked-event-editor' | 'event-explore' | 'subevent-asset' | null = null;
   private subEventAssetMembersContext: AppTypes.SubEventAssetMembersContext | null = null;
@@ -1757,6 +1759,31 @@ export class App {
     this.revokeObjectUrl(this.eventForm.imageUrl);
     this.eventForm.imageUrl = URL.createObjectURL(file);
     target.value = '';
+  }
+
+  // Event Editor Component handlers (incremental wiring)
+  protected onEventEditorFormChange(form: AppTypes.EventEditorForm): void {
+    this.eventForm = form;
+  }
+
+  protected onEventVisibilityPickerChange(visibility: AppTypes.EventVisibility): void {
+    this.eventForm.visibility = visibility;
+  }
+
+  protected onEventTopicsSelectorChange(topics: string[]): void {
+    this.eventForm.topics = topics;
+  }
+
+  protected onEventFrequencyChange(frequency: string): void {
+    this.eventForm.frequency = frequency;
+  }
+
+  protected onEventBlindModeChange(blindMode: AppTypes.EventBlindMode): void {
+    this.eventForm.blindMode = blindMode;
+  }
+
+  protected openEventMembersPopup(): void {
+    this.superStackedPopup = 'eventMembers';
   }
 
   protected openEventTopicsSelector(event?: Event): void {
