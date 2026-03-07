@@ -12489,13 +12489,12 @@ export class App {
     if (!this.isActivitiesRatesFullscreenReadOnlyNavigation()) {
       return false;
     }
-    const row = this.currentActivitiesRatesFullscreenRow();
-    if (!row) {
+    const allRows = this.activitiesRatesFullscreenAllRows();
+    if (allRows.length === 0) {
       return false;
     }
-    const allRows = this.activitiesRatesFullscreenAllRows();
     const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, allRows.length - 1));
-    return currentIndex < allRows.length;
+    return currentIndex < allRows.length - 1;
   }
 
   protected navigateActivitiesRatesFullscreenPrev(event?: Event): void {
@@ -12503,17 +12502,22 @@ export class App {
     if (!this.isActivitiesRatesFullscreenReadOnlyNavigation() || this.activitiesRatesFullscreenAnimating) {
       return;
     }
+    const row = this.currentActivitiesRatesFullscreenRow();
+    if (!row) {
+      return;
+    }
     const allRows = this.activitiesRatesFullscreenAllRows();
     if (allRows.length === 0) {
       return;
     }
-    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, allRows.length);
+    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, allRows.length - 1));
     const previousIndex = Math.max(0, currentIndex - 1);
     if (previousIndex === currentIndex) {
       return;
     }
+    this.startActivitiesRatesFullscreenLeaveAnimation(row);
     this.activitiesRatesFullscreenCardIndex = previousIndex;
-    this.syncActivitiesRatesFullscreenSelection();
+    this.updateActivitiesHeaderProgress();
   }
 
   protected navigateActivitiesRatesFullscreenNext(event?: Event): void {
@@ -12530,11 +12534,11 @@ export class App {
       return;
     }
     const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, allRows.length - 1));
-    const hasUpcomingRound = currentIndex + 1 < allRows.length;
-    const nextIndex = Math.min(allRows.length, currentIndex + 1);
-    if (hasUpcomingRound) {
-      this.startActivitiesRatesFullscreenLeaveAnimation(row);
+    const nextIndex = Math.min(allRows.length - 1, currentIndex + 1);
+    if (nextIndex === currentIndex) {
+      return;
     }
+    this.startActivitiesRatesFullscreenLeaveAnimation(row);
     this.activitiesRatesFullscreenCardIndex = nextIndex;
     this.updateActivitiesHeaderProgress();
     this.maybeStartActivitiesRatesFullscreenPaginationLoad();

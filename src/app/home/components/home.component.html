@@ -271,6 +271,16 @@
                   </div>
                 </div>
               </article>
+
+              <span
+                class="game-pair-rating-badge"
+                [class.is-blink]="isRatingBarBlinking"
+                [style.left]="pairModeSplitCssValue"
+                aria-hidden="true"
+              >
+                <mat-icon>star</mat-icon>
+                <span>{{ selectedRating }}</span>
+              </span>
             </div>
           </ng-container>
         </ng-template>
@@ -305,6 +315,7 @@
           </div>
         </article>
       </ng-container>
+
     </div>
     <div class="game-rating-dock" *ngIf="hasCandidatesForCurrentMode">
       <div class="rating-stars" [class.is-blink]="isRatingBarBlinking">
