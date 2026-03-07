@@ -1,0 +1,199 @@
+<div class="experience-popup assets-popup">
+  <div class="experience-toolbar assets-toolbar">
+    <div class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select" [ngClass]="assetTypeClass(assetFilter)">
+      <mat-select
+        [(ngModel)]="assetFilter"
+        (ngModelChange)="selectAssetFilter($event)"
+        [panelWidth]="assetFilterPanelWidth()"
+        disableOptionCentering
+        panelClass="selector-options-panel profile-bottom-sheet-panel assets-filter-options-panel"
+      >
+        <mat-select-trigger>
+          <span class="status-option-content">
+            <mat-icon [class]="assetTypeClass(assetFilter)">{{ assetTypeIcon(assetFilter) }}</mat-icon>
+            <span>{{ assetFilter }}</span>
+          </span>
+        </mat-select-trigger>
+        <mat-option *ngFor="let option of assetFilterOptions" [value]="option" class="status-option" [ngClass]="assetTypeClass(option)">
+          <span class="status-option-content">
+            <mat-icon [class]="assetTypeClass(option)">{{ assetTypeIcon(option) }}</mat-icon>
+            <span>{{ option }}</span>
+          </span>
+        </mat-option>
+      </mat-select>
+    </div>
+    <button
+      type="button"
+      class="popup-header-add-btn assets-add-btn"
+      (click)="openAssetForm()"
+      aria-label="Add asset"
+    >
+      <mat-icon>add</mat-icon>
+    </button>
+  </div>
+
+  <div class="experience-card-list assets-card-list">
+    <article class="experience-item-card asset-item-card" [ngClass]="assetTypeClass(card.type)" *ngFor="let card of filteredAssetCards; trackBy: trackByCardId">
+      <div class="asset-card-image" [appLazyBgImage]="card.imageUrl">
+        <button
+          type="button"
+          class="asset-source-icon asset-source-icon-route-map"
+          [class.asset-source-icon-multiroute]="card.type === 'Car'"
+          *ngIf="canOpenAssetMap(card)"
+          (click)="openAssetMap(card, $event)"
+          [attr.aria-label]="card.type === 'Car' ? 'Open car route map' : 'Open accommodation location map'"
+        >
+          <mat-icon>location_on</mat-icon>
+        </button>
+        <span class="asset-occupancy-badge asset-occupancy-badge-static" aria-hidden="true">
+          <span>{{ card.capacityTotal }}</span>
+        </span>
+      </div>
+      <div class="experience-item-head">
+        <span class="experience-item-icon">
+          <mat-icon>{{ assetTypeIcon(card.type) }}</mat-icon>
+        </span>
+        <div class="experience-item-meta">
+          <h4>{{ card.title }}</h4>
+          <p>{{ card.type }} · {{ card.subtitle }} · {{ card.city }}</p>
+        </div>
+        <div class="experience-item-actions">
+          <button
+            type="button"
+            class="experience-action-btn experience-action-menu-trigger"
+            [class.is-open]="isAssetItemActionMenuOpen(card)"
+            (click)="toggleAssetItemActionMenu(card, $event)"
+            [attr.aria-label]="isAssetItemActionMenuOpen(card) ? 'Close asset actions' : 'Open asset actions'"
+          >
+            <mat-icon>{{ isAssetItemActionMenuOpen(card) ? 'close' : 'more_vert' }}</mat-icon>
+          </button>
+          <div
+            class="item-action-menu"
+            [class.is-open]="isAssetItemActionMenuOpen(card)"
+            [class.item-action-menu-mobile]="isMobileView"
+            [class.item-action-menu-desktop]="!isMobileView"
+            [class.is-open-up]="isAssetItemActionMenuOpenUp(card)"
+            [attr.aria-hidden]="!isAssetItemActionMenuOpen(card)"
+            (click)="$event.stopPropagation()"
+          >
+            <div class="item-action-menu-title">{{ card.title }}</div>
+            <button type="button" class="item-action-menu-btn" (click)="runAssetItemEditAction(card, $event)">
+              <mat-icon>edit</mat-icon>
+              <span>Edit</span>
+            </button>
+            <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="runAssetItemDeleteAction(card, $event)">
+              <mat-icon>delete</mat-icon>
+              <span>Delete</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <p class="experience-item-description">{{ card.details }}</p>
+    </article>
+  </div>
+
+  <section class="experience-form-overlay asset-form-overlay" *ngIf="showAssetForm">
+    <div class="experience-form-overlay-backdrop" (click)="closeAssetForm()"></div>
+    <div class="experience-form-popup asset-form-popup">
+      <div class="experience-form-header">
+        <h3>{{ assetFormTitle }}</h3>
+        <div class="experience-form-header-controls">
+          <button type="button" class="popup-header-add-btn subevent-leaderboard-save-btn" (click)="saveAssetCard()" aria-label="Save asset">
+            <mat-icon>done</mat-icon>
+          </button>
+          <button type="button" class="experience-form-close-btn" (click)="closeAssetForm()" aria-label="Close asset form">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </div>
+      <section class="experience-form-panel">
+        <div class="experience-form-grid">
+          <label>
+            <span>Type</span>
+            <div class="profile-status-select-wrap selector-like experience-type-select" [ngClass]="assetTypeClass(assetForm.type)">
+              <mat-select [(ngModel)]="assetForm.type" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel">
+                <mat-select-trigger>
+                  <span class="status-option-content">
+                    <mat-icon [class]="assetTypeClass(assetForm.type)">{{ assetTypeIcon(assetForm.type) }}</mat-icon>
+                    <span>{{ assetForm.type }}</span>
+                  </span>
+                </mat-select-trigger>
+                <mat-option *ngFor="let option of assetTypeOptions" [value]="option" class="status-option" [ngClass]="assetTypeClass(option)">
+                  <span class="status-option-content">
+                    <mat-icon [class]="assetTypeClass(option)">{{ assetTypeIcon(option) }}</mat-icon>
+                    <span>{{ option }}</span>
+                  </span>
+                </mat-option>
+              </mat-select>
+            </div>
+          </label>
+          <label>
+            <span>Title</span>
+            <input type="text" [(ngModel)]="assetForm.title" />
+          </label>
+          <label>
+            <span>Subtitle</span>
+            <input type="text" [(ngModel)]="assetForm.subtitle" />
+          </label>
+          <label>
+            <span>Total capacity</span>
+            <input type="number" min="1" step="1" [(ngModel)]="assetForm.capacityTotal" />
+          </label>
+          <label class="experience-description-field">
+            <span>Details</span>
+            <textarea rows="3" [(ngModel)]="assetForm.details"></textarea>
+          </label>
+          <label class="experience-description-field" *ngIf="assetForm.type === 'Accommodation'">
+            <span>Location</span>
+            <div class="asset-route-row asset-route-row-inline">
+              <input
+                type="text"
+                [ngModel]="assetFormRouteStops[0]"
+                (ngModelChange)="onAssetFormRouteStopChange(0, $event)"
+                placeholder="Accommodation address"
+              />
+              <button
+                type="button"
+                class="experience-action-btn asset-route-map-btn"
+                (click)="openAssetFormRouteStopMap(0, $event)"
+                aria-label="Open location on map"
+              >
+                <mat-icon>location_on</mat-icon>
+              </button>
+            </div>
+          </label>
+          <label class="experience-description-field">
+            <span>Source link</span>
+            <div class="asset-source-row">
+              <input type="text" [(ngModel)]="assetForm.sourceLink" placeholder="https://..." />
+              <button type="button" class="asset-source-refresh-btn" (click)="refreshAssetFromSourceLink()" aria-label="Refresh from source">
+                <mat-icon>refresh</mat-icon>
+              </button>
+            </div>
+          </label>
+          <label class="experience-description-field">
+            <span>Image</span>
+            <input #assetImageInput type="file" accept="image/*" hidden (change)="onAssetImageFileChange($event)" />
+            <button type="button" class="asset-image-dropzone" (click)="triggerAssetImageUpload($event)">
+              <div class="asset-image-preview" [style.backgroundImage]="assetForm.imageUrl ? 'url(' + assetForm.imageUrl + ')' : null">
+                <span class="asset-image-plus" *ngIf="!readOnly">+</span>
+              </div>
+            </button>
+          </label>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <section class="experience-delete-confirm" *ngIf="pendingAssetDeleteCardId">
+    <div class="experience-delete-confirm-backdrop" (click)="cancelAssetDelete()"></div>
+    <div class="experience-delete-confirm-panel">
+      <h4>Delete asset</h4>
+      <p>{{ pendingAssetDeleteLabel() }}</p>
+      <div class="popup-actions">
+        <button type="button" class="link-btn neutral-btn" (click)="cancelAssetDelete()">Cancel</button>
+        <button type="button" class="link-btn experience-delete-btn" (click)="confirmAssetDelete()">Delete</button>
+      </div>
+    </div>
+  </section>
+</div>

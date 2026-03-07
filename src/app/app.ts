@@ -40,6 +40,7 @@ import { LazyBgImageDirective } from './shared/lazy-bg-image.directive';
 import { ProfileEditorComponent } from './profile-editor/components/profile-editor.component';
 import { ProfileEditorScreen } from './profile-editor/profile-editor-state.machine';
 import { EventEditorMembersPopupComponent } from './event-editor/components/event-editor-members-popup.component';
+import { EventEditorAssetsPopupComponent } from './event-editor/components/event-editor-assets-popup.component';
 
 type MenuSection = 'game' | 'chat' | 'invitations' | 'events' | 'hosting';
 
@@ -743,7 +744,8 @@ const APP_DATE_FORMATS = {
     DragDropModule,
     LazyBgImageDirective,
     ProfileEditorComponent,
-    EventEditorMembersPopupComponent
+    EventEditorMembersPopupComponent,
+    EventEditorAssetsPopupComponent
   ],
   providers: [
     { provide: DateAdapter, useClass: YearMonthDayDateAdapter },
@@ -15014,6 +15016,10 @@ export class App {
     return 'Car';
   }
 
+  protected assetPopupFilterWithoutTicket(): AssetType {
+    return this.assetFilter === 'Ticket' ? this.activeAssetType : this.assetFilter;
+  }
+
   protected get filteredAssetCards(): AssetCard[] {
     if (this.assetFilter === 'Ticket') {
       return [];
@@ -15127,6 +15133,24 @@ export class App {
       return;
     }
     this.activePopup = 'assetsSupplies';
+  }
+
+  protected handleAssetsPopupCardUpsert(card: AssetCard): void {
+    const normalized: AssetCard = {
+      ...card,
+      imageUrl: this.normalizeAssetImageLink(card.type, card.imageUrl, card.id || card.title),
+      sourceLink: this.normalizeAssetSourceLink(card.sourceLink, card.imageUrl),
+      routes: this.normalizeAssetRoutes(card.type, card.routes, '')
+    };
+    this.assetVisibilityById[normalized.id] = 'Invitation only';
+    this.assetCards = this.assetCards.some(existing => existing.id === normalized.id)
+      ? this.assetCards.map(existing => (existing.id === normalized.id ? normalized : existing))
+      : [normalized, ...this.assetCards];
+    this.syncAllSubEventAssetBadgeCounts();
+  }
+
+  protected handleAssetsPopupCardDelete(cardId: string): void {
+    this.deleteAssetCard(cardId);
   }
 
   protected openAssetMembers(card: AssetCard, event?: Event): void {
