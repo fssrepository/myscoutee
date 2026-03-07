@@ -1,0 +1,297 @@
+<!-- Event Editor Popup - Full Screen Modal -->
+<div class="app-popup" *ngIf="eventEditorService.isOpenBoolean()">
+  <div class="app-popup-backdrop" (click)="close()"></div>
+  <div class="app-popup-panel popup-panel-event-editor" [class.popup-panel-event-editor-readonly]="eventEditorService.readOnly()">
+    
+    <!-- Header -->
+    <div class="popup-header popup-header-with-activities-progress">
+      <div class="popup-title">
+        <h2>{{ getPopupTitle() }}</h2>
+        <p class="popup-subtitle-activities" *ngIf="eventEditorService.readOnly() && eventForm.title">
+          {{ eventForm.title }}
+        </p>
+      </div>
+      
+      <!-- Header Actions: Members button -->
+      <button 
+        type="button" 
+        class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members"
+        (click)="requestOpenMembers()"
+      >
+        <span class="event-editor-members-invite">
+          <mat-icon>groups</mat-icon>
+          <span>Members</span>
+        </span>
+      </button>
+      
+      <!-- Visibility Picker (Public/Private/Invitation Only) -->
+      <div class="event-visibility-picker">
+        <button 
+          type="button" 
+          class="popup-view-fab event-visibility-trigger"
+          [ngClass]="eventVisibilityClass(eventForm.visibility)"
+          (click)="toggleVisibilityPicker()"
+          aria-label="Open visibility selector"
+        >
+          <mat-icon [ngClass]="eventVisibilityClass(eventForm.visibility)">{{ getVisibilityIcon(eventForm.visibility) }}</mat-icon>
+          <span>{{ eventForm.visibility }}</span>
+        </button>
+        <!-- Visibility dropdown -->
+        <div class="activities-view-picker-panel" *ngIf="isVisibilityPickerOpen">
+          <button 
+            type="button" 
+            class="activities-view-option"
+            [ngClass]="eventVisibilityClass(option)"
+            *ngFor="let option of visibilityOptions"
+            (click)="selectVisibility(option)"
+          >
+            <mat-icon [ngClass]="eventVisibilityClass(option)">{{ getVisibilityIcon(option) }}</mat-icon>
+            <span>{{ option }}</span>
+          </button>
+        </div>
+      </div>
+      
+      <button mat-icon-button class="popup-close" (click)="close()" aria-label="Close">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="popup-body">
+      <section class="editor-list-card">
+        <div class="experience-form-panel" [ngClass]="eventVisibilityClass(eventForm.visibility)">
+          <div class="experience-form-grid">
+            
+            <!-- Cover Image -->
+            <label class="experience-description-field">
+              <span>Image</span>
+              <input #eventImageInput type="file" accept="image/*" hidden (change)="onEventImageFileChange($event)" />
+              <button type="button" class="asset-image-dropzone" (click)="triggerEventImageUpload($event)" [disabled]="eventEditorService.readOnly()">
+                <div class="asset-image-preview" [style.backgroundImage]="eventForm.imageUrl ? 'url(' + eventForm.imageUrl + ')' : null">
+                  <span class="asset-image-plus" *ngIf="!eventEditorService.readOnly()">+</span>
+                </div>
+              </button>
+            </label>
+
+            <!-- Event Name -->
+            <label class="experience-title-field">
+              <span>Name <span class="required-star">*</span></span>
+              <input type="text" [(ngModel)]="eventForm.title" [readonly]="eventEditorService.readOnly()" />
+            </label>
+
+            <!-- Capacity -->
+            <label class="event-capacity-range-field">
+              <span>Capacity</span>
+              <div class="subevent-capacity-range">
+                <input type="number" min="0" step="1" [ngModel]="eventForm.capacityMin" (ngModelChange)="onEventCapacityMinChange($event)" [disabled]="eventEditorService.readOnly()" placeholder="Min" />
+                <span class="subevent-capacity-separator">-</span>
+                <input type="number" [min]="eventForm.capacityMin ?? 0" step="1" [ngModel]="eventForm.capacityMax" (ngModelChange)="onEventCapacityMaxChange($event)" [disabled]="eventEditorService.readOnly()" placeholder="Max" />
+              </div>
+            </label>
+
+            <!-- Intel Row -->
+            <div class="event-intel-row">
+              
+              <!-- Blind Mode -->
+              <label class="event-blind-mode-field">
+                <button 
+                  type="button" 
+                  class="event-blind-mode-card"
+                  [ngClass]="eventBlindModeClass(eventForm.blindMode)"
+                  [disabled]="eventEditorService.readOnly()"
+                  (click)="toggleEventBlindMode($event)"
+                >
+                  <span class="event-blind-mode-title">
+                    <mat-icon [ngClass]="eventBlindModeClass(eventForm.blindMode)">{{ eventBlindModeIcon(eventForm.blindMode) }}</mat-icon>
+                    <span>{{ eventForm.blindMode }}</span>
+                  </span>
+                  <span class="event-blind-mode-description">{{ eventBlindModeDescription(eventForm.blindMode) }}</span>
+                </button>
+              </label>
+
+              <!-- Topics -->
+              <label class="event-topics-field event-topics-panel-field">
+                <button 
+                  type="button" 
+                  class="event-topics-panel" 
+                  [ngClass]="eventTopicsPanelClass()"
+                  [disabled]="eventEditorService.readOnly()"
+                  (click)="requestOpenTopics()"
+                >
+                  <span class="event-topics-panel-head">
+                    <span class="event-topics-panel-title">
+                      <mat-icon>{{ eventTopicsPanelIcon() }}</mat-icon>
+                      <span>Topics</span>
+                    </span>
+                    <mat-icon class="event-topics-chevron">chevron_right</mat-icon>
+                  </span>
+                  <span class="event-topics-panel-body" *ngIf="eventForm.topics.length > 0; else eventTopicsPlaceholderMain">
+                    <span class="values-selected-chip event-topic-pill" *ngFor="let topic of eventForm.topics" [ngClass]="interestOptionToneClass(topic)">
+                      {{ eventTopicLabel(topic) }}
+                    </span>
+                  </span>
+                  <ng-template #eventTopicsPlaceholderMain>
+                    <span class="event-topics-panel-placeholder">Select topics</span>
+                  </ng-template>
+                </button>
+              </label>
+
+              <!-- Auto-inviter -->
+              <label class="event-auto-inviter-field">
+                <button 
+                  type="button" 
+                  class="event-auto-inviter-card"
+                  [ngClass]="eventAutoInviterClass(eventForm.autoInviter)"
+                  [disabled]="eventEditorService.readOnly()"
+                  (click)="toggleEventAutoInviter($event)"
+                >
+                  <span class="event-auto-inviter-title">
+                    <mat-icon [ngClass]="eventAutoInviterClass(eventForm.autoInviter)">{{ eventAutoInviterIcon(eventForm.autoInviter) }}</mat-icon>
+                    <span>{{ eventAutoInviterLabel(eventForm.autoInviter) }}</span>
+                  </span>
+                  <span class="event-auto-inviter-description">{{ eventAutoInviterDescription(eventForm.autoInviter) }}</span>
+                </button>
+              </label>
+
+              <!-- Ticketing -->
+              <label class="event-ticketing-field">
+                <button 
+                  type="button" 
+                  class="event-ticketing-card"
+                  [ngClass]="eventTicketingClass(eventForm.ticketing)"
+                  [disabled]="eventEditorService.readOnly()"
+                  (click)="toggleEventTicketing($event)"
+                >
+                  <span class="event-ticketing-title">
+                    <mat-icon [ngClass]="eventTicketingClass(eventForm.ticketing)">{{ eventTicketingIcon(eventForm.ticketing) }}</mat-icon>
+                    <span>{{ eventTicketingLabel(eventForm.ticketing) }}</span>
+                  </span>
+                  <span class="event-ticketing-description">{{ eventTicketingDescription(eventForm.ticketing) }}</span>
+                </button>
+              </label>
+
+            </div>
+
+            <!-- Description -->
+            <label class="experience-description-field">
+              <span>Description <span class="required-star">*</span></span>
+              <textarea rows="4" [(ngModel)]="eventForm.description" [readonly]="eventEditorService.readOnly()"></textarea>
+            </label>
+
+            <!-- Schedule -->
+            <section class="event-schedule-panel">
+              <div class="event-schedule-panel-head">
+                <span class="event-schedule-panel-title">
+                  <mat-icon>calendar_month</mat-icon>
+                  <span>Date</span>
+                </span>
+                <label class="event-frequency-label">
+                  <div class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select" [ngClass]="eventFrequencyClass(eventForm.frequency)">
+                    <mat-select [(ngModel)]="eventForm.frequency" [disabled]="eventEditorService.readOnly()" panelWidth="" disableOptionCentering>
+                      <mat-select-trigger>
+                        <span class="status-option-content">
+                          <mat-icon [ngClass]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
+                          <span>{{ eventForm.frequency }}</span>
+                        </span>
+                      </mat-select-trigger>
+                      <mat-option *ngFor="let option of eventFrequencyOptions" [value]="option" class="status-option" [ngClass]="eventFrequencyClass(option)">
+                        <span class="status-option-content">
+                          <mat-icon [ngClass]="eventFrequencyClass(option)">{{ eventFrequencyIcon(option) }}</mat-icon>
+                          <span>{{ option }}</span>
+                        </span>
+                      </mat-option>
+                    </mat-select>
+                  </div>
+                </label>
+              </div>
+              
+              <label class="event-datetime-label">
+                <span>Start</span>
+                <div class="event-datetime-row">
+                  <mat-form-field appearance="outline" class="event-date-field event-date-field-start" subscriptSizing="dynamic">
+                    <input matInput [matDatepicker]="eventStartPicker" [ngModel]="eventStartDateValue" (ngModelChange)="onEventStartDateChange($event)" [disabled]="eventEditorService.readOnly()" />
+                    <mat-datepicker-toggle matSuffix [for]="eventStartPicker"></mat-datepicker-toggle>
+                    <mat-datepicker #eventStartPicker></mat-datepicker>
+                  </mat-form-field>
+                  <input type="time" [ngModel]="eventStartTimeValue" (ngModelChange)="onEventStartTimeChange($event)" [disabled]="eventEditorService.readOnly()" />
+                </div>
+              </label>
+              
+              <label class="event-datetime-label">
+                <span>End</span>
+                <div class="event-datetime-row">
+                  <mat-form-field appearance="outline" class="event-date-field event-date-field-end" subscriptSizing="dynamic">
+                    <input matInput [matDatepicker]="eventEndPicker" [ngModel]="eventEndDateValue" (ngModelChange)="onEventEndDateChange($event)" [disabled]="eventEditorService.readOnly()" />
+                    <mat-datepicker-toggle matSuffix [for]="eventEndPicker"></mat-datepicker-toggle>
+                    <mat-datepicker #eventEndPicker></mat-datepicker>
+                  </mat-form-field>
+                  <input type="time" [ngModel]="eventEndTimeValue" (ngModelChange)="onEventEndTimeChange($event)" [disabled]="eventEditorService.readOnly()" />
+                </div>
+              </label>
+            </section>
+
+            <!-- Location -->
+            <label class="experience-description-field event-location-field">
+              <span>Location</span>
+              <div class="asset-route-row asset-route-row-inline">
+                <input
+                  type="text"
+                  [ngModel]="eventForm.location"
+                  (ngModelChange)="onEventLocationChange($event)"
+                  placeholder="Event route location"
+                  [readonly]="eventEditorService.readOnly()"
+                />
+                <button
+                  type="button"
+                  class="experience-action-btn asset-route-map-btn asset-route-main-map-btn event-location-map-btn"
+                  (click)="requestOpenLocationMap()"
+                  aria-label="Open event route on map"
+                >
+                  <mat-icon>location_on</mat-icon>
+                </button>
+              </div>
+            </label>
+
+            <!-- Sub Events -->
+            <label class="event-subevents-field">
+              <button type="button" class="event-subevents-panel-trigger" (click)="requestOpenSubEvents()">
+                <span class="event-subevents-panel-head">
+                  <span class="event-subevents-panel-title">
+                    <span class="event-subevents-panel-title-main">
+                      <mat-icon>view_timeline</mat-icon>
+                      <span class="event-subevents-panel-title-label">Sub Events</span>
+                    </span>
+                    <span class="event-subevents-panel-current" *ngIf="eventForm.subEvents.length > 0">
+                      {{ subEventsCurrentHeaderLabel() }}
+                    </span>
+                  </span>
+                  <span class="event-subevents-panel-meta" *ngIf="eventForm.subEvents.length > 0">
+                    <span class="event-subevents-panel-mode">
+                      <mat-icon>view_list</mat-icon>
+                      <span>{{ subEventsDisplayMode }}</span>
+                    </span>
+                    <span class="event-subevents-panel-summary event-subevents-panel-summary-inline">
+                      {{ subEventsCountLabel() }}
+                    </span>
+                  </span>
+                  <mat-icon class="event-subevents-chevron">chevron_right</mat-icon>
+                </span>
+              </button>
+            </label>
+
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Footer -->
+    <div class="popup-footer">
+      <button mat-stroked-button type="button" (click)="close()">Cancel</button>
+      <button mat-flat-button color="primary" type="button" class="popup-header-add-btn" (click)="save()" *ngIf="!eventEditorService.readOnly()">
+        <mat-icon>done</mat-icon>
+        Save
+      </button>
+    </div>
+
+  </div>
+</div>

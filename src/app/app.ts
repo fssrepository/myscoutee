@@ -14,6 +14,8 @@ import { MatTimepickerModule } from '@angular/material/timepicker';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { AlertService } from './shared/alert.service';
+import { EventEditorService } from './shared/event-editor.service';
+import { EventEditorModule } from './event-editor/event-editor.module';
 import {
   APP_DEMO_DATA,
   DEMO_CHAT_BY_USER,
@@ -119,7 +121,8 @@ const APP_DATE_FORMATS = {
     MatTimepickerModule,
     FormsModule,
     DragDropModule,
-    LazyBgImageDirective
+    LazyBgImageDirective,
+    EventEditorModule
   ],
   providers: [
     { provide: DateAdapter, useClass: YearMonthDayDateAdapter },
@@ -140,6 +143,7 @@ export class App {
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT = 100;
 
   public readonly alertService = inject(AlertService);
+  protected readonly eventEditorService = inject(EventEditorService);
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -602,7 +606,9 @@ export class App {
   private ticketScannerDetectBusy = false;
   private ticketListScrollable = true;
 
-  constructor(private readonly router: Router) {
+  constructor(
+    private readonly router: Router
+  ) {
     this.normalizeAssetMediaLinks();
     this.initializeProfileImageSlots();
     this.ensurePaginationTestEvents(30);
@@ -611,6 +617,14 @@ export class App {
     this.syncProfileFormFromActiveUser();
     this.initializeEntryFlow();
     this.router.navigate(['/game']);
+    
+    // Listen for events from EventEditorPopupComponent
+    if (typeof window !== 'undefined') {
+      window.addEventListener('app:openSubEvents', () => this.openEventSubEventsPopup());
+      window.addEventListener('app:openMembers', () => this.openEventEditorMembers());
+      window.addEventListener('app:openTopics', () => this.openEventTopicsSelector());
+      window.addEventListener('app:openLocationMap', () => this.openEventLocationMap());
+    }
   }
 
   private ensurePaginationTestEvents(minEventsPerUser: number): void {
@@ -13515,11 +13529,12 @@ export class App {
       return;
     }
     if (row.type === 'events' || row.type === 'hosting') {
+      // Use the service to signal to the event-editor module
       if (row.isAdmin) {
-        this.openEventEditor(true, 'edit', row.source as EventMenuItem | HostingMenuItem);
+        this.eventEditorService.openEdit(row.source);
         return;
       }
-      this.openEventEditor(true, 'edit', row.source as EventMenuItem | HostingMenuItem, true);
+      this.eventEditorService.openView(row.source);
       return;
     }
   }
@@ -13528,7 +13543,8 @@ export class App {
     if (row.type !== 'events' && row.type !== 'hosting') {
       return;
     }
-    this.openEventEditor(true, 'edit', row.source as EventMenuItem | HostingMenuItem, true);
+    // Use the service to signal to the event-editor module
+    this.eventEditorService.openView(row.source);
   }
 
   protected triggerActivitySecondaryAction(row: AppTypes.ActivityListRow): void {

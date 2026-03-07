@@ -1170,7 +1170,7 @@
               type="button"
               class="popup-header-add-btn activities-add-btn"
               *ngIf="shouldShowActivitiesCreateAction()"
-              (click)="openEventEditor(true, 'create')"
+              (click)="eventEditorService.openCreate()"
               aria-label="Create event"
             >
               <mat-icon>add</mat-icon>
@@ -2671,7 +2671,7 @@
       </ng-template>
 
       <div *ngIf="activePopup === 'eventEditor'">
-        <ng-container [ngTemplateOutlet]="eventEditorFormTemplate"></ng-container>
+        <!-- Event editor form moved to event-editor module -->
       </div>
 
       <ng-template #eventEditorFormTemplate>
@@ -7787,3 +7787,9 @@
     </div>
   </div>
 </section>
+
+<app-event-editor-popup
+  [class.visible]="eventEditorService.isOpen()"
+></app-event-editor-popup>
+
+
