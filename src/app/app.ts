@@ -42,6 +42,7 @@ import { AppDemoGenerators } from './shared/app-demo-generators';
 import { AppUtils } from './shared/app-utils';
 import { AppCalendarHelpers } from './shared/app-calendar-helpers';
 import { AppSubEventHelpers } from './shared/app-sub-event-helpers';
+import { APP_STATIC_DATA } from './shared/app-static-data';
 import type * as AppTypes from './shared/app-types';
 
 @Injectable()
@@ -148,187 +149,18 @@ export class App {
   protected readonly profilePillars = PROFILE_PILLARS;
   protected profileDetailsForm: AppTypes.ProfileDetailFormGroup[] = [];
   protected readonly profileExperience = PROFILE_EXPERIENCE;
-  // Labels aligned with /plans context files:
-  // - event_vibes.txt
-  // - personality_traits.txt
-  // - personality_interest.txt
-  // - feature_list.txt
-  protected readonly vibeCategories = ['Energetic', 'Social', 'Deep', 'Relaxed', 'Creative', 'Exclusive', 'Focused'];
-  protected readonly hostedEventTypes = ['Road Trip', 'Game Night', 'Brunch', 'Hiking', 'Coffee Meetup', 'Sports'];
-  protected readonly vibeIcons: Record<string, string> = {
-    Energetic: '🔥',
-    Social: '💬',
-    Deep: '🧠',
-    Relaxed: '🌿',
-    Creative: '🎨',
-    Exclusive: '🥂',
-    Focused: '🎯'
-  };
-  protected readonly categoryIcons: Record<string, string> = {
-    Sports: '🏅',
-    'Road Trip': '🛣️',
-    Outdoors: '🌲',
-    Games: '🎮',
-    Culture: '🎭'
-  };
-  protected readonly memberTraitIcons: Record<string, string> = {
-    Adventurer: '🔥',
-    'Deep Thinker': '🧠',
-    Empath: '💛'
-  };
+  protected readonly vibeCategories = APP_STATIC_DATA.vibeCategories;
+  protected readonly hostedEventTypes = APP_STATIC_DATA.hostedEventTypes;
+  protected readonly vibeIcons: Record<string, string> = APP_STATIC_DATA.vibeIcons;
+  protected readonly categoryIcons: Record<string, string> = APP_STATIC_DATA.categoryIcons;
+  protected readonly memberTraitIcons: Record<string, string> = APP_STATIC_DATA.memberTraitIcons;
   protected readonly eventEditor = EVENT_EDITOR_SAMPLE;
-  protected readonly physiqueOptions = ['Slim', 'Lean', 'Athletic', 'Fit', 'Curvy', 'Average', 'Muscular'];
-  protected languageSuggestions = [
-    'English',
-    'Spanish',
-    'French',
-    'German',
-    'Italian',
-    'Portuguese',
-    'Hungarian',
-    'Romanian',
-    'Polish',
-    'Dutch',
-    'Turkish',
-    'Arabic',
-    'Hindi',
-    'Japanese',
-    'Korean',
-    'Mandarin'
-  ];
-  protected readonly profileStatusOptions: Array<{ value: AppTypes.ProfileStatus; icon: string }> = [
-    { value: 'public', icon: 'public' },
-    { value: 'friends only', icon: 'groups' },
-    { value: 'host only', icon: 'stadium' },
-    { value: 'inactive', icon: 'visibility_off' }
-  ];
-  protected readonly profileDetailValueOptions: Record<string, string[]> = {
-    Drinking: ['Never', 'Socially', 'Occasionally', 'Weekends only'],
-    Smoking: ['Never', 'Socially', 'Occasionally', 'Trying to quit'],
-    Workout: ['Daily', '4x / week', '2-3x / week', 'Rarely'],
-    Pets: ['Dog-friendly', 'Cat-friendly', 'All pets welcome', 'No pets'],
-    'Family plans': ['Wants children', 'Open to children', 'Not sure yet', 'Does not want children'],
-    Children: ['No', 'Yes', 'Prefer not to say'],
-    'Love style': ['Long-term partnership', 'Slow-burn connection', 'Open relationship', 'Exploring'],
-    'Communication style': ['Direct + warm', 'Calm + reflective', 'Playful + light', 'Honest + concise'],
-    'Sexual orientation': ['Straight', 'Bisexual', 'Gay', 'Lesbian', 'Pansexual', 'Asexual', 'Prefer not to say'],
-    Gender: ['Woman', 'Man', 'Non-binary', 'Prefer not to say'],
-    Religion: ['Spiritual but not religious', 'Christian', 'Muslim', 'Jewish', 'Buddhist', 'Hindu', 'Atheist', 'Prefer not to say'],
-    Values: [
-      'Family-first, social impact, balanced life',
-      'Career-driven, growth-oriented, adventurous',
-      'Sustainability, empathy, community',
-      'Creativity, freedom, authenticity'
-    ]
-  };
-  protected readonly beliefsValuesOptionGroups: AppTypes.ValuesOptionGroup[] = [
-    {
-      title: 'Relationship & Family',
-      shortTitle: 'Family',
-      icon: '👪',
-      toneClass: 'section-family',
-      options: [
-        'Long-term partnership',
-        'Marriage-oriented',
-        'Casual dating',
-        'Open / Exploring',
-        'Family-first',
-        'Wants children',
-        'Independent lifestyle'
-      ]
-    },
-    {
-      title: 'Life Focus & Ambition',
-      shortTitle: 'Ambition',
-      icon: '🎯',
-      toneClass: 'section-ambition',
-      options: [
-        'Career-focused',
-        'Entrepreneurial',
-        'Stability-focused',
-        'Balanced work-life',
-        'Freedom-oriented',
-        'Goal-driven'
-      ]
-    },
-    {
-      title: 'Lifestyle Orientation',
-      shortTitle: 'Lifestyle',
-      icon: '🌿',
-      toneClass: 'section-lifestyle',
-      options: [
-        'Health & wellness focused',
-        'Fitness-driven',
-        'Mindfulness-oriented',
-        'Social / party lifestyle',
-        'Calm / home-centered',
-        'Adventure-driven',
-        'Balanced lifestyle'
-      ]
-    },
-    {
-      title: 'Beliefs & Worldview',
-      shortTitle: 'Beliefs',
-      icon: '✨',
-      toneClass: 'section-beliefs',
-      options: [
-        'Faith-oriented',
-        'Spiritual but not religious',
-        'Secular',
-        'Traditional values',
-        'Progressive values',
-        'Community-driven',
-        'Social impact oriented',
-        'Environmentally conscious',
-        'Politically engaged',
-        'Apolitical'
-      ]
-    }
-  ];
-  protected readonly interestOptionGroups: AppTypes.InterestOptionGroup[] = [
-    {
-      title: 'Social & Lifestyle',
-      shortTitle: 'Social',
-      icon: '🥂',
-      toneClass: 'section-social',
-      options: ['#GoingOut', '#Nightlife', '#StayingIn', '#Brunch', '#WineTasting', '#CoffeeDates', '#ContentCreation', '#InfluencerLife']
-    },
-    {
-      title: 'Arts & Entertainment',
-      shortTitle: 'Arts',
-      icon: '🎭',
-      toneClass: 'section-arts',
-      options: ['#Music', '#Concerts', '#Festivals', '#Movies', '#TVShows', '#Theatre', '#Gaming', '#Anime', '#Books', '#Photography', '#Creativity']
-    },
-    {
-      title: 'Food & Experiences',
-      shortTitle: 'Food',
-      icon: '🍽',
-      toneClass: 'section-food',
-      options: ['#Foodie', '#FineDining', '#StreetFood', '#Cooking', '#Cocktails', '#CraftBeer', '#Travel', '#LuxuryExperiences']
-    },
-    {
-      title: 'Active & Adventure',
-      shortTitle: 'Active',
-      icon: '🏕',
-      toneClass: 'section-active',
-      options: ['#Sports', '#Gym', '#Running', '#Hiking', '#Outdoors', '#ExtremeSports', '#Yoga', '#Fitness']
-    },
-    {
-      title: 'Mind & Wellness',
-      shortTitle: 'Mind',
-      icon: '🧘',
-      toneClass: 'section-mind',
-      options: ['#Wellness', '#Meditation', '#SelfDevelopment', '#MentalHealth', '#Spirituality', '#Biohacking', '#HealthyLifestyle']
-    },
-    {
-      title: 'Values & Identity',
-      shortTitle: 'Identity',
-      icon: '🌍',
-      toneClass: 'section-identity',
-      options: ['#Sustainability', '#Entrepreneurship', '#CareerDriven', '#FamilyOriented', '#Activism', '#Tech', '#Minimalism']
-    }
-  ];
+  protected readonly physiqueOptions = APP_STATIC_DATA.physiqueOptions;
+  protected languageSuggestions = [...APP_STATIC_DATA.languageSuggestions];
+  protected readonly profileStatusOptions: Array<{ value: AppTypes.ProfileStatus; icon: string }> = APP_STATIC_DATA.profileStatusOptions;
+  protected readonly profileDetailValueOptions: Record<string, string[]> = APP_STATIC_DATA.profileDetailValueOptions;
+  protected readonly beliefsValuesOptionGroups: AppTypes.ValuesOptionGroup[] = APP_STATIC_DATA.beliefsValuesOptionGroups;
+  protected readonly interestOptionGroups: AppTypes.InterestOptionGroup[] = APP_STATIC_DATA.interestOptionGroups;
 
   protected showUserMenu = false;
   protected showUserSettingsMenu = false;
@@ -349,7 +181,7 @@ export class App {
   protected openPrivacyFab: { groupIndex: number; rowIndex: number } | null = null;
   protected openExperiencePrivacyFab: 'workspace' | 'school' | null = null;
   protected privacyFabJustSelectedKey: string | null = null;
-  protected readonly detailPrivacyOptions: AppTypes.DetailPrivacy[] = ['Public', 'Friends', 'Hosts', 'Private'];
+  protected readonly detailPrivacyOptions: AppTypes.DetailPrivacy[] = APP_STATIC_DATA.detailPrivacyOptions;
   protected mobileProfileSelectorSheet: AppTypes.MobileProfileSelectorSheet | null = null;
   protected valuesSelectorContext: { groupIndex: number; rowIndex: number } | null = null;
   protected valuesSelectorSelected: string[] = [];
@@ -359,8 +191,8 @@ export class App {
     workspace: 'Public',
     school: 'Public'
   };
-  protected readonly experienceFilterOptions: Array<'All' | 'Workspace' | 'School'> = ['All', 'Workspace', 'School'];
-  protected readonly experienceTypeOptions: Array<AppTypes.ExperienceEntry['type']> = ['Workspace', 'School', 'Online Session', 'Additional Project'];
+  protected readonly experienceFilterOptions: Array<'All' | 'Workspace' | 'School'> = APP_STATIC_DATA.experienceFilterOptions;
+  protected readonly experienceTypeOptions: Array<AppTypes.ExperienceEntry['type']> = APP_STATIC_DATA.experienceTypeOptions;
   protected experienceFilter: 'All' | 'Workspace' | 'School' = 'All';
   protected editingExperienceId: string | null = null;
   protected pendingExperienceDeleteId: string | null = null;
@@ -377,8 +209,8 @@ export class App {
     description: ''
   };
   protected experienceEntries: AppTypes.ExperienceEntry[] = AppDemoGenerators.buildSampleExperienceEntries();
-  protected readonly assetTypeOptions: AppTypes.AssetType[] = ['Car', 'Accommodation', 'Supplies'];
-  protected readonly assetFilterOptions: AppTypes.AssetFilterType[] = ['Car', 'Accommodation', 'Supplies', 'Ticket'];
+  protected readonly assetTypeOptions: AppTypes.AssetType[] = APP_STATIC_DATA.assetTypeOptions;
+  protected readonly assetFilterOptions: AppTypes.AssetFilterType[] = APP_STATIC_DATA.assetFilterOptions;
   protected assetFilter: AppTypes.AssetFilterType = 'Car';
   protected assetCards: AppTypes.AssetCard[] = AppDemoGenerators.buildSampleAssetCards(this.users);
   protected ticketStickyValue = '';
@@ -451,7 +283,7 @@ export class App {
   private readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
   private activityMembersPopupOrigin: 'active-event-editor' | 'stacked-event-editor' | 'event-explore' | 'subevent-asset' | null = null;
   private subEventAssetMembersContext: AppTypes.SubEventAssetMembersContext | null = null;
-  protected readonly activityRatingScale = Array.from({ length: 10 }, (_, index) => index + 1);
+  protected readonly activityRatingScale = APP_STATIC_DATA.activityRatingScale;
   private readonly weekCalendarStartHour = 0;
   private readonly weekCalendarEndHour = 23;
   private readonly weekCalendarSlotHeightPx = 34;
@@ -586,8 +418,8 @@ export class App {
   protected subEventEndTimeValue: Date | null = null;
   protected showEventVisibilityPicker = false;
   protected showProfileStatusHeaderPicker = false;
-  protected readonly eventVisibilityOptions: AppTypes.EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
-  protected readonly eventBlindModeOptions: AppTypes.EventBlindMode[] = ['Open Event', 'Blind Event'];
+  protected readonly eventVisibilityOptions: AppTypes.EventVisibility[] = APP_STATIC_DATA.eventVisibilityOptions;
+  protected readonly eventBlindModeOptions: AppTypes.EventBlindMode[] = APP_STATIC_DATA.eventBlindModeOptions;
   private readonly eventSubEventsById: Record<string, AppTypes.SubEventFormItem[]> = {};
   private readonly eventLocationById: Record<string, string> = {};
   private readonly acceptedOptionalSubEventMembersByKey: Record<string, string[]> = {};
@@ -596,8 +428,8 @@ export class App {
   protected eventEndDateValue: Date | null = null;
   protected eventStartTimeValue: Date | null = null;
   protected eventEndTimeValue: Date | null = null;
-  protected readonly subEventsDisplayModeOptions: AppTypes.SubEventsDisplayMode[] = ['Casual', 'Tournament'];
-  protected readonly tournamentLeaderboardTypeOptions: AppTypes.TournamentLeaderboardType[] = ['Score', 'Fifa'];
+  protected readonly subEventsDisplayModeOptions: AppTypes.SubEventsDisplayMode[] = APP_STATIC_DATA.subEventsDisplayModeOptions;
+  protected readonly tournamentLeaderboardTypeOptions: AppTypes.TournamentLeaderboardType[] = APP_STATIC_DATA.tournamentLeaderboardTypeOptions;
   protected subEventsDisplayMode: AppTypes.SubEventsDisplayMode = 'Casual';
   protected showSubEventsDisplayModePicker = false;
   protected subEventStagePageIndex = 0;
@@ -716,112 +548,14 @@ export class App {
   private readonly removedEventFeedbackEventsByUser: Record<string, Record<string, true>> = {};
   private readonly organizerEventFeedbackNotesByUser: Record<string, Record<string, string>> = {};
   private readonly eventFeedbackUnlockDelayMs = 2 * 60 * 60 * 1000;
-  protected readonly reportUserReasons = [
-    'Harassment',
-    'Spam',
-    'Impersonation',
-    'Hate speech',
-    'Scam / Fraud',
-    'Other'
-  ];
-  protected readonly feedbackCategories = [
-    'General',
-    'Bug report',
-    'Feature request',
-    'UX improvement',
-    'Performance'
-  ];
-  protected readonly eventFeedbackEventOverallOptions: AppTypes.EventFeedbackOption[] = [
-    { value: 'excellent', label: 'Excellent', icon: 'sentiment_very_satisfied', impressionTag: 'Host vibe' },
-    { value: 'good', label: 'Good', icon: 'sentiment_satisfied', impressionTag: 'Host reliability' },
-    { value: 'mixed', label: 'Mixed', icon: 'sentiment_neutral', impressionTag: 'Host consistency' },
-    { value: 'needs-work', label: 'Needs work', icon: 'sentiment_dissatisfied', impressionTag: 'Host quality' }
-  ];
-  protected readonly eventFeedbackHostImproveOptions: AppTypes.EventFeedbackOption[] = [
-    { value: 'timing', label: 'Improve timing', icon: 'schedule', impressionTag: 'Host organization' },
-    { value: 'communication', label: 'Improve communication', icon: 'campaign', impressionTag: 'Host communication' },
-    { value: 'resources', label: 'Improve resources', icon: 'inventory_2', impressionTag: 'Host planning' },
-    { value: 'none', label: 'No major change', icon: 'verified', impressionTag: 'Host consistency' }
-  ];
-  protected readonly eventFeedbackAttendeeCollabOptions: AppTypes.EventFeedbackOption[] = [
-    { value: 'great', label: 'Great teamwork', icon: 'handshake', impressionTag: 'Attendee teamwork' },
-    { value: 'reliable', label: 'Reliable', icon: 'verified_user', impressionTag: 'Attendee reliability' },
-    { value: 'neutral', label: 'Neutral', icon: 'sentiment_neutral', impressionTag: 'Attendee neutrality' },
-    { value: 'rough', label: 'Needs guidance', icon: 'warning_amber', impressionTag: 'Attendee fit' }
-  ];
-  protected readonly eventFeedbackAttendeeRejoinOptions: AppTypes.EventFeedbackOption[] = [
-    { value: 'yes', label: 'Would team up', icon: 'group', impressionTag: 'Attendee trust' },
-    { value: 'maybe', label: 'Maybe', icon: 'hourglass_top', impressionTag: 'Attendee compatibility' },
-    { value: 'no', label: 'Not now', icon: 'do_not_disturb_alt', impressionTag: 'Attendee risk' },
-    { value: 'context', label: 'Depends on role', icon: 'tune', impressionTag: 'Attendee role-fit' }
-  ];
-  protected readonly eventFeedbackListFilters: Array<{ key: AppTypes.EventFeedbackListFilter; label: string; icon: string }> = [
-    { key: 'pending', label: 'Pending', icon: 'schedule' },
-    { key: 'feedbacked', label: 'Feedbacked', icon: 'task_alt' },
-    { key: 'removed', label: 'Removed', icon: 'delete_outline' }
-  ];
-  protected readonly helpCenterSections: AppTypes.HelpCenterSection[] = [
-    {
-      id: 'events',
-      icon: 'event_note',
-      title: 'Events and Sub Events',
-      blurb: 'Build the full event flow with stages or optional items.',
-      details: [
-        'Create a main event, then split execution into sub events for stages, side activities, or optional sessions.',
-        'Each sub event carries its own date range, description, and status so planning stays clean and trackable.'
-      ],
-      points: [
-        'Supports casual and tournament structures',
-        'Keeps stage context visible in related screens',
-        'Lets hosts edit details without losing hierarchy'
-      ]
-    },
-    {
-      id: 'resources',
-      icon: 'inventory_2',
-      title: 'Resources and Capacity',
-      blurb: 'Assign people, cars, accommodation, and supplies with limits.',
-      details: [
-        'Use resource menus to assign assets into sub events and groups, then adjust capacity ranges directly where needed.',
-        'Badges summarize pending requests and remaining capacity so action priorities are visible at a glance.'
-      ],
-      points: [
-        'Capacity min/max control per assignment',
-        'Contextual badges for pending requests',
-        'Route and location support for travel resources'
-      ]
-    },
-    {
-      id: 'activities',
-      icon: 'forum',
-      title: 'Activities and Chats',
-      blurb: 'Coordinate with context-aware channels and filters.',
-      details: [
-        'Chat channels follow event scope: main event, optional sub event, and group channels can all coexist.',
-        'Context actions in chat headers help jump directly to related event/sub-event views and resources.'
-      ],
-      points: [
-        'Fast channel filtering by context',
-        'Unread counters scoped to relevant channels',
-        'Works for both mobile and desktop flows'
-      ]
-    },
-    {
-      id: 'safety',
-      icon: 'verified_user',
-      title: 'Profiles and Safety',
-      blurb: 'Improve trust with profile quality and moderation tools.',
-      details: [
-        'Profile completion updates in real time as users fill key fields and detail sections.',
-        'Safety controls include report tools, privacy visibility options, and clear moderation pathways.'
-      ],
-      points: [
-        'Live profile completion feedback',
-        'Report user and feedback workflows',
-        'Privacy and access visibility controls'
-      ]
-    }
-  ];
+  protected readonly reportUserReasons = APP_STATIC_DATA.reportUserReasons;
+  protected readonly feedbackCategories = APP_STATIC_DATA.feedbackCategories;
+  protected readonly eventFeedbackEventOverallOptions: AppTypes.EventFeedbackOption[] = APP_STATIC_DATA.eventFeedbackEventOverallOptions;
+  protected readonly eventFeedbackHostImproveOptions: AppTypes.EventFeedbackOption[] = APP_STATIC_DATA.eventFeedbackHostImproveOptions;
+  protected readonly eventFeedbackAttendeeCollabOptions: AppTypes.EventFeedbackOption[] = APP_STATIC_DATA.eventFeedbackAttendeeCollabOptions;
+  protected readonly eventFeedbackAttendeeRejoinOptions: AppTypes.EventFeedbackOption[] = APP_STATIC_DATA.eventFeedbackAttendeeRejoinOptions;
+  protected readonly eventFeedbackListFilters: Array<{ key: AppTypes.EventFeedbackListFilter; label: string; icon: string }> = APP_STATIC_DATA.eventFeedbackListFilters;
+  protected readonly helpCenterSections: AppTypes.HelpCenterSection[] = APP_STATIC_DATA.helpCenterSections;
   protected helpCenterActiveSectionId = this.helpCenterSections[0]?.id ?? 'events';
   protected languageInput = '';
   protected showLanguagePanel = false;
@@ -945,158 +679,21 @@ export class App {
       visited.add(id);
 
       if (!this.eventCapacityById[id]) {
-        this.eventCapacityById[id] = this.seededEventCapacityRange(id);
+        this.eventCapacityById[id] = AppDemoGenerators.seededEventCapacityRange(id, this.activityCapacityById);
       }
       if (!this.eventSubEventsById[id] || this.eventSubEventsById[id].length === 0) {
-        this.eventSubEventsById[id] = this.buildSeededSubEventsForEvent(source.item, source.isHosting);
-      }
-    }
-  }
-
-  private seededEventCapacityRange(eventId: string): AppTypes.EventCapacityRange {
-    const source = this.activityCapacityById[eventId];
-    if (source) {
-      const parts = source.split('/').map(part => Number.parseInt(part.trim(), 10));
-      if (parts.length >= 2 && Number.isFinite(parts[0]) && Number.isFinite(parts[1])) {
-        const min = Math.max(0, Math.min(parts[0], parts[1]));
-        const max = Math.max(min, parts[1]);
-        return { min, max };
-      }
-    }
-    const seed = AppDemoGenerators.hashText(`event-capacity:${eventId}`);
-    const max = 10 + (seed % 24);
-    const min = Math.max(0, Math.floor(max * 0.45));
-    return { min, max };
-  }
-
-  private buildSeededSubEventsForEvent(
-    source: EventMenuItem | HostingMenuItem,
-    isHosting: boolean
-  ): AppTypes.SubEventFormItem[] {
-    const dateSource = this.activityDateTimeRangeById[source.id];
-    const fallbackStartIso = isHosting
-      ? (this.hostingDatesById[source.id] ?? this.defaultEventStartIso())
-      : (this.eventDatesById[source.id] ?? this.defaultEventStartIso());
-    const start = new Date(dateSource?.startIso ?? fallbackStartIso);
-    const end = new Date(dateSource?.endIso ?? new Date(start.getTime() + (4 * 60 * 60 * 1000)).toISOString().slice(0, 19));
-    const startMs = Number.isNaN(start.getTime()) ? Date.now() : start.getTime();
-    const endMs = Number.isNaN(end.getTime()) || end.getTime() <= startMs
-      ? (startMs + (4 * 60 * 60 * 1000))
-      : end.getTime();
-    const seed = AppDemoGenerators.hashText(`event-subevents:${source.id}:${source.title}:${source.shortDescription}`);
-    const tournamentMode = (seed % 3) === 0;
-    if (tournamentMode) {
-      return this.buildSeededTournamentSubEvents(source, startMs, endMs, seed);
-    }
-    return this.buildSeededCasualSubEvents(source, startMs, endMs, seed);
-  }
-
-  private buildSeededCasualSubEvents(
-    source: EventMenuItem | HostingMenuItem,
-    startMs: number,
-    endMs: number,
-    seed: number
-  ): AppTypes.SubEventFormItem[] {
-    const count = 2 + (seed % 3);
-    const totalMs = Math.max(2 * 60 * 60 * 1000, endMs - startMs);
-    const slotMs = Math.max(45 * 60 * 1000, Math.floor(totalMs / count));
-    const eventCapacity = this.eventCapacityById[source.id] ?? this.seededEventCapacityRange(source.id);
-    const eventMax = this.normalizedEventCapacityValue(eventCapacity.max) ?? 0;
-    const names = ['Kickoff', 'Main Session', 'Side Activity', 'Wrap-up'];
-    const items: AppTypes.SubEventFormItem[] = [];
-    for (let index = 0; index < count; index += 1) {
-      const optional = index > 0 && ((seed + index) % 2 === 0);
-      const stageStartMs = startMs + (index * slotMs);
-      const stageEndMs = index === count - 1 ? endMs : Math.min(endMs, stageStartMs + slotMs);
-      const slice = 0.45 + (((seed + index) % 4) * 0.12);
-      const capacityMax = Math.max(0, Math.round(eventMax * slice));
-      const capacityMin = optional ? 0 : Math.max(0, Math.min(capacityMax, Math.floor(capacityMax * 0.55)));
-      const accepted = Math.min(capacityMax, Math.max(0, Math.floor(capacityMin * 0.7)));
-      items.push({
-        id: `seed-${source.id}-casual-${index + 1}`,
-        name: `${names[index] ?? `Session ${index + 1}`}`,
-        description: `${source.shortDescription} (${index + 1}/${count})`,
-        startAt: AppUtils.toIsoDateTimeLocal(new Date(stageStartMs)),
-        endAt: AppUtils.toIsoDateTimeLocal(new Date(Math.max(stageStartMs + (30 * 60 * 1000), stageEndMs))),
-        createdByUserId: this.activeUser.id,
-        groups: [],
-        optional,
-        capacityMin,
-        capacityMax,
-        membersAccepted: accepted,
-        membersPending: Math.max(0, capacityMax - accepted),
-        carsPending: (seed + index) % 3,
-        accommodationPending: (seed + index + 1) % 3,
-        suppliesPending: (seed + index + 2) % 4
-      });
-    }
-    return this.sortSubEventsByStartAsc(items);
-  }
-
-  private buildSeededTournamentSubEvents(
-    source: EventMenuItem | HostingMenuItem,
-    startMs: number,
-    endMs: number,
-    seed: number
-  ): AppTypes.SubEventFormItem[] {
-    const stageNames = ['Qualifiers', 'Semifinals', 'Finals'];
-    const stageCount = 3;
-    const totalMs = Math.max(3 * 60 * 60 * 1000, endMs - startMs);
-    const slotMs = Math.max(60 * 60 * 1000, Math.floor(totalMs / stageCount));
-    const eventCapacity = this.eventCapacityById[source.id] ?? this.seededEventCapacityRange(source.id);
-    const eventMax = this.normalizedEventCapacityValue(eventCapacity.max) ?? 0;
-    const items: AppTypes.SubEventFormItem[] = [];
-
-    for (let index = 0; index < stageCount; index += 1) {
-      const groupCount = Math.max(1, 4 >> index);
-      const basePerGroupMax = Math.max(2, Math.ceil(Math.max(2, eventMax) / Math.max(1, groupCount * (index + 1))));
-      const groups: AppTypes.SubEventGroupItem[] = [];
-      for (let groupIndex = 0; groupIndex < groupCount; groupIndex += 1) {
-        const groupMax = Math.max(2, basePerGroupMax - (groupIndex % 2));
-        const groupMin = Math.max(0, Math.floor(groupMax * 0.6));
-        groups.push({
-          id: `seed-${source.id}-s${index + 1}-g${groupIndex + 1}`,
-          name: `Group ${String.fromCharCode(65 + groupIndex)}`,
-          capacityMin: groupMin,
-          capacityMax: groupMax,
-          source: 'generated'
+        this.eventSubEventsById[id] = AppDemoGenerators.buildSeededSubEventsForEvent(source.item, {
+          isHosting: source.isHosting,
+          activityDateTimeRangeById: this.activityDateTimeRangeById,
+          hostingDatesById: this.hostingDatesById,
+          eventDatesById: this.eventDatesById,
+          eventCapacityById: this.eventCapacityById,
+          activityCapacityById: this.activityCapacityById,
+          defaultStartIso: this.defaultEventStartIso(),
+          activeUserId: this.activeUser.id
         });
       }
-      const totals = this.groupCapacityTotals(groups);
-      const stageStartMs = startMs + (index * slotMs);
-      const stageEndMs = index === stageCount - 1 ? endMs : Math.min(endMs, stageStartMs + slotMs);
-      const accepted = Math.min(totals.max, Math.max(0, Math.floor(totals.min * 0.7)));
-      items.push({
-        id: `seed-${source.id}-tournament-${index + 1}`,
-        name: `${stageNames[index]}`,
-        description: `${source.shortDescription} (${stageNames[index]})`,
-        startAt: AppUtils.toIsoDateTimeLocal(new Date(stageStartMs)),
-        endAt: AppUtils.toIsoDateTimeLocal(new Date(Math.max(stageStartMs + (45 * 60 * 1000), stageEndMs))),
-        createdByUserId: this.activeUser.id,
-        groups,
-        tournamentGroupCount: groups.length,
-        tournamentGroupCapacityMin: Math.max(0, ...groups.map(group => Number(group.capacityMin) || 0)),
-        tournamentGroupCapacityMax: Math.max(0, ...groups.map(group => Number(group.capacityMax) || 0)),
-        tournamentLeaderboardType: (seed + index) % 2 === 0 ? 'Score' : 'Fifa',
-        tournamentAdvancePerGroup: index === stageCount - 1 ? 0 : Math.max(1, 2 - index),
-        optional: false,
-        capacityMin: totals.min,
-        capacityMax: totals.max,
-        membersAccepted: accepted,
-        membersPending: Math.max(0, totals.max - accepted),
-        carsPending: (seed + index) % 2,
-        accommodationPending: (seed + index + 1) % 2,
-        suppliesPending: (seed + index + 2) % 3
-      });
     }
-    return this.sortSubEventsByStartAsc(items);
-  }
-
-  private inferredSubEventsDisplayMode(items: AppTypes.SubEventFormItem[]): AppTypes.SubEventsDisplayMode {
-    if (items.some(item => !item.optional && (item.groups?.length ?? 0) > 0)) {
-      return 'Tournament';
-    }
-    return 'Casual';
   }
 
   protected get activeUser() {
@@ -1807,137 +1404,18 @@ export class App {
   }
 
   private buildEventFeedbackCards(): AppTypes.EventFeedbackCard[] {
-    const nowMs = Date.now();
-    const eventCards: AppTypes.EventFeedbackCard[] = [];
-    for (const item of this.eventItems) {
-      if (item.isAdmin) {
-        continue;
-      }
-      const startMs = this.eventStartAtMs(item.id);
-      if (startMs === null || nowMs < startMs + this.eventFeedbackUnlockDelayMs) {
-        continue;
-      }
-      const eventLabel = this.eventFeedbackWhenLabel(item.id);
-      const host = this.feedbackHostUserForEvent(item.id);
-      const attendees = this.feedbackAttendeesForEvent(item.id, host.id);
-      eventCards.push({
-        id: `feedback-event-${item.id}`,
-        eventId: item.id,
-        kind: 'event',
-        targetUserId: host.id,
-        targetRole: 'Admin',
-        icon: 'event_available',
-        imageUrl: this.activityImageById[item.id] ?? `https://picsum.photos/seed/event-feedback-card-${item.id}/1200/700`,
-        toneClass: 'feedback-card-tone-event feedback-role-admin',
-        heading: item.title,
-        subheading: `${eventLabel} · ${item.shortDescription}`,
-        identityTitle: `${host.name} · Host`,
-        identitySubtitle: `Admin · ${host.city}`,
-        identityStatusClass: 'member-status-admin',
-        identityStatusIcon: 'admin_panel_settings',
-        questionPrimary: `How did ${item.title} feel for you overall?`,
-        questionSecondary: `What should ${host.name} improve next time?`,
-        primaryOptions: this.eventFeedbackEventOverallOptions,
-        secondaryOptions: this.eventFeedbackHostImproveOptions,
-        answerPrimary: '',
-        answerSecondary: ''
-      });
-      for (const attendee of attendees) {
-        const attendeeRole = this.feedbackRoleForAttendee(item.id, attendee.id);
-        eventCards.push({
-          id: `feedback-attendee-${item.id}-${attendee.id}`,
-          eventId: item.id,
-          kind: 'attendee',
-          attendeeUserId: attendee.id,
-          targetUserId: attendee.id,
-          targetRole: attendeeRole,
-          icon: 'groups',
-          imageUrl: attendee.images?.[0] ?? `https://i.pravatar.cc/1200?img=${(AppDemoGenerators.hashText(`feedback-attendee:${item.id}:${attendee.id}`) % 70) + 1}`,
-          toneClass: `feedback-card-tone-attendee ${this.feedbackRoleToneClass(attendeeRole)}`,
-          heading: `${attendee.name} · ${item.title}`,
-          subheading: `Attendee feedback · ${eventLabel}`,
-          identityTitle: `${attendee.name}, ${attendee.age}`,
-          identitySubtitle: `${attendeeRole} · ${attendee.city}`,
-          identityStatusClass: this.feedbackRoleStatusClass(attendeeRole),
-          identityStatusIcon: this.feedbackRoleStatusIcon(attendeeRole),
-          questionPrimary: `How was collaboration with ${attendee.name} (${attendee.traitLabel}) during this event?`,
-          questionSecondary: `Would you team up with ${attendee.name} again in a future event?`,
-          primaryOptions: this.eventFeedbackAttendeeCollabOptions,
-          secondaryOptions: this.eventFeedbackAttendeeRejoinOptions,
-          answerPrimary: '',
-          answerSecondary: ''
-        });
-      }
-    }
-    return eventCards;
-  }
-
-  private feedbackHostUserForEvent(eventId: string): DemoUser {
-    const candidates = this.users.filter(user => user.id !== this.activeUser.id);
-    if (candidates.length === 0) {
-      return this.activeUser;
-    }
-    const index = AppDemoGenerators.hashText(`feedback-host:${eventId}`) % candidates.length;
-    return candidates[index] ?? candidates[0];
-  }
-
-  private feedbackAttendeesForEvent(eventId: string, hostId: string): DemoUser[] {
-    const candidates = this.users.filter(user => user.id !== this.activeUser.id && user.id !== hostId);
-    if (candidates.length === 0) {
-      return [];
-    }
-    const seed = AppDemoGenerators.hashText(`feedback-attendees:${eventId}`);
-    const desired = Math.min(candidates.length, 3 + (seed % 4));
-    const picked: DemoUser[] = [];
-    for (let index = 0; index < candidates.length && picked.length < desired; index += 1) {
-      const candidate = candidates[(seed + (index * 3)) % candidates.length];
-      if (!candidate || candidate.id === this.activeUser.id || picked.some(item => item.id === candidate.id)) {
-        continue;
-      }
-      picked.push(candidate);
-    }
-    return picked;
-  }
-
-  private feedbackRoleForAttendee(eventId: string, attendeeUserId: string): 'Admin' | 'Manager' | 'Member' {
-    const seed = AppDemoGenerators.hashText(`feedback-role:${eventId}:${attendeeUserId}`);
-    if (seed % 11 === 0) {
-      return 'Admin';
-    }
-    if (seed % 4 === 0) {
-      return 'Manager';
-    }
-    return 'Member';
-  }
-
-  private feedbackRoleToneClass(role: 'Admin' | 'Manager' | 'Member'): string {
-    if (role === 'Admin') {
-      return 'feedback-role-admin';
-    }
-    if (role === 'Manager') {
-      return 'feedback-role-manager';
-    }
-    return 'feedback-role-member';
-  }
-
-  private feedbackRoleStatusClass(role: 'Admin' | 'Manager' | 'Member'): string {
-    if (role === 'Admin') {
-      return 'member-status-admin';
-    }
-    if (role === 'Manager') {
-      return 'member-status-manager';
-    }
-    return 'member-status-member';
-  }
-
-  private feedbackRoleStatusIcon(role: 'Admin' | 'Manager' | 'Member'): string {
-    if (role === 'Admin') {
-      return 'admin_panel_settings';
-    }
-    if (role === 'Manager') {
-      return 'manage_accounts';
-    }
-    return 'person';
+    return AppDemoGenerators.buildEventFeedbackCards({
+      eventItems: this.eventItems,
+      users: this.users,
+      activeUser: this.activeUser,
+      eventDatesById: this.eventDatesById,
+      activityImageById: this.activityImageById,
+      eventFeedbackUnlockDelayMs: this.eventFeedbackUnlockDelayMs,
+      eventOverallOptions: this.eventFeedbackEventOverallOptions,
+      hostImproveOptions: this.eventFeedbackHostImproveOptions,
+      attendeeCollabOptions: this.eventFeedbackAttendeeCollabOptions,
+      attendeeRejoinOptions: this.eventFeedbackAttendeeRejoinOptions
+    });
   }
 
   private recordSubmittedEventFeedbackAnswer(card: AppTypes.EventFeedbackCard, tags: string[]): void {
@@ -1958,17 +1436,6 @@ export class App {
 
   private isSelfAttendeeFeedbackCard(card: AppTypes.EventFeedbackCard): boolean {
     return card.kind === 'attendee' && card.attendeeUserId === this.activeUser.id;
-  }
-
-  private eventFeedbackWhenLabel(eventId: string): string {
-    const startMs = this.eventStartAtMs(eventId);
-    if (startMs === null) {
-      return 'Recent event';
-    }
-    const parsed = new Date(startMs);
-    const day = parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    const time = parsed.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    return `${day} · ${time}`;
   }
 
   private eventStartAtMs(eventId: string): number | null {
@@ -6078,7 +5545,7 @@ export class App {
       this.eventEditorDraftMembersId = null;
       this.editingEventId = source.id;
       this.eventForm = this.loadEventFormFromSource(source, target);
-      this.subEventsDisplayMode = this.inferredSubEventsDisplayMode(this.eventForm.subEvents);
+      this.subEventsDisplayMode = AppDemoGenerators.inferredSubEventsDisplayMode(this.eventForm.subEvents);
       this.syncEventDateTimeControlsFromForm();
       return;
     }
@@ -11432,7 +10899,7 @@ export class App {
     return this.isTicketListScrollableNow();
   }
 
-  protected readonly calendarWeekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  protected readonly calendarWeekdayLabels = APP_STATIC_DATA.calendarWeekdayLabels;
   protected readonly calendarWeekHours = Array.from(
     { length: this.weekCalendarEndHour - this.weekCalendarStartHour + 1 },
     (_, index) => this.weekCalendarStartHour + index
