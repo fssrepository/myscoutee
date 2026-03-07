@@ -140,17 +140,17 @@
         <section class="entry-footer-contact">
           <h3>Let&apos;s connect</h3>
           <div class="entry-footer-socials">
-            <a href="#" aria-label="MyScoutee on Instagram">
+            <a href="https://www.instagram.com/myscoutee1" target="_blank" rel="noopener noreferrer" aria-label="MyScoutee on Instagram">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm10 2H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3Zm-5 3.5A5.5 5.5 0 1 1 6.5 13 5.5 5.5 0 0 1 12 7.5Zm0 2A3.5 3.5 0 1 0 15.5 13 3.5 3.5 0 0 0 12 9.5ZM18.2 6.3a1.2 1.2 0 1 1-1.2 1.2 1.2 1.2 0 0 1 1.2-1.2Z"/>
               </svg>
             </a>
-            <a href="#" aria-label="MyScoutee on TikTok">
+            <a href="https://www.youtube.com/@myscoutee" target="_blank" rel="noopener noreferrer" aria-label="MyScoutee on YouTube">
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M14 3h2.2c.3 1.4 1.1 2.6 2.3 3.3 1 .6 2 .9 3.1.9V10c-1.8 0-3.5-.5-4.9-1.5V15a6 6 0 1 1-6-6c.5 0 1 0 1.4.2v2.6a3.5 3.5 0 1 0 2 3.2V3Z"/>
+                <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.8 31.8 0 0 0 0 12a31.8 31.8 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.8 31.8 0 0 0 24 12a31.8 31.8 0 0 0-.5-5.8ZM9.7 15.5V8.5l6.1 3.5-6.1 3.5Z"/>
               </svg>
             </a>
-            <a href="#" aria-label="MyScoutee on Facebook">
+            <a href="https://www.facebook.com/myscoutee" target="_blank" rel="noopener noreferrer" aria-label="MyScoutee on Facebook">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M13.5 22v-8h2.8l.4-3h-3.2V9.1c0-.9.3-1.5 1.6-1.5h1.7V4.9c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.8V11H8.5v3h2.3v8h2.7Z"/>
               </svg>
@@ -286,11 +286,6 @@
       <div
         class="user-menu-header"
         [ngClass]="profileStatusClass(activeUser.profileStatus)"
-        role="button"
-        tabindex="0"
-        (click)="onHeaderPanelClick($event)"
-        (keydown.enter)="openProfileEditor()"
-        (keydown.space)="openProfileEditor(); $event.preventDefault()"
       >
         <button
           type="button"
@@ -313,10 +308,24 @@
         </button>
 
         <div class="user-settings-menu" *ngIf="showUserSettingsMenu" (click)="$event.stopPropagation()">
-          <button type="button" class="user-settings-item" (click)="onUserSettingsAction('helper', $event)">
+          <button type="button" class="user-settings-item" (click)="onUserSettingsAction('help', $event)">
             <mat-icon>help_outline</mat-icon>
-            <span>Helper</span>
+            <span>Help</span>
           </button>
+          <button type="button" class="user-settings-item" (click)="onUserSettingsAction('send-feedback', $event)">
+            <mat-icon>feedback</mat-icon>
+            <span>Send Feedback</span>
+          </button>
+          <a
+            class="user-settings-item"
+            href="https://github.com/fssrepository/myscoutee/issues"
+            target="_blank"
+            rel="noopener noreferrer"
+            (click)="closeUserSettingsMenu()"
+          >
+            <mat-icon>bug_report</mat-icon>
+            <span>Report Bugs</span>
+          </a>
           <button type="button" class="user-settings-item" (click)="onUserSettingsAction('gdpr', $event)">
             <mat-icon>policy</mat-icon>
             <span>Privacy</span>
@@ -341,8 +350,8 @@
               <ng-container *ngIf="!featuredImagePreview">{{ activeUser.initials }}</ng-container>
             </span>
             <span class="avatar-activity-badge" *ngIf="userBadgeCount > 0">{{ userBadgeCount }}</span>
-            <span class="avatar-bottom-pill avatar-bottom-pill-header" [ngStyle]="completionBadgeStyle(activeUser.completion)">
-              <span>{{ activeUser.completion }}%</span>
+            <span class="avatar-bottom-pill avatar-bottom-pill-header" [ngStyle]="completionBadgeStyle(profileCompletionPercent)">
+              <span>{{ profileCompletionPercent }}%</span>
             </span>
           </div>
 
@@ -354,9 +363,9 @@
             </span>
           </div>
         </div>
-        <span class="header-open-cue" aria-hidden="true">
+        <button type="button" class="header-open-cue" aria-label="Open profile editor" (click)="openProfileEditor()">
           <mat-icon>edit</mat-icon>
-        </span>
+        </button>
       </div>
 
       <div class="user-menu-content">
@@ -501,6 +510,38 @@
             <span class="asset-shortcut-label">Ticket</span>
           </button>
         </div>
+
+        <div class="social-proof-section-head section-feedback activities-header impressions-menu-header">
+          <span class="section-tag">
+            <mat-icon>rate_review</mat-icon>
+            <span>Feedback</span>
+          </span>
+          <span class="section-line"></span>
+        </div>
+
+        <div class="feedback-shortcuts">
+          <button
+            class="feedback-shortcut-btn feedback-shortcut-event"
+            type="button"
+            (click)="openEventFeedbackPopup($event)"
+            aria-label="Open event feedback"
+            title="Event Feedback"
+          >
+            <mat-icon>rate_review</mat-icon>
+            <span class="feedback-shortcut-label">Event Feedback</span>
+            <span class="card-badge menu-shortcut-badge" *ngIf="eventFeedbackPendingCount > 0">{{ eventFeedbackPendingCount }}</span>
+          </button>
+          <button
+            class="feedback-shortcut-btn feedback-shortcut-report"
+            type="button"
+            (click)="openReportUserFromFeedback($event)"
+            aria-label="Open report user"
+            title="Report User"
+          >
+            <mat-icon>flag</mat-icon>
+            <span class="feedback-shortcut-label">Report User</span>
+          </button>
+        </div>
       </div>
     </aside>
 
@@ -521,6 +562,7 @@
     [class.popup-panel-event-editor-readonly]="activePopup === 'eventEditor' && isEventEditorReadOnly()"
     [class.popup-panel-assets]="isAssetPopup"
     [class.popup-panel-activities]="activePopup === 'activities'"
+    [class.popup-panel-event-feedback]="activePopup === 'eventFeedback'"
     (click)="$event.stopPropagation()"
   >
     <button
@@ -572,13 +614,113 @@
       <span class="header-members-count" *ngIf="activePopup === 'chatMembers'">{{ selectedChatMembers.length }} members</span>
       <button
         type="button"
-        class="popup-chat-event-btn"
-        aria-label="Open event editor"
-        *ngIf="activePopup === 'chat' && selectedChat"
-        (click)="openEventEditor(true)"
+        class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
+        [ngClass]="selectedChatHeaderActionToneClass()"
+        *ngIf="activePopup === 'chat' && selectedChat && !selectedChatHasSubEventMenu()"
+        (click)="openSelectedChatEvent($event)"
       >
-        <mat-icon>edit_calendar</mat-icon>
+        <span class="event-editor-members-invite">
+          <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
+          <span>{{ selectedChatHeaderActionLabel() }}</span>
+        </span>
       </button>
+      <div class="popup-chat-context-menu-wrap" *ngIf="activePopup === 'chat' && selectedChat && selectedChatHasSubEventMenu()">
+        <button
+          type="button"
+          class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
+          [ngClass]="selectedChatHeaderActionToneClass()"
+          [class.is-open]="isSelectedChatContextMenuOpen()"
+          (click)="toggleSelectedChatContextMenu($event)"
+          aria-label="Open chat context menu"
+        >
+          <span class="event-editor-members-invite">
+            <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
+            <span>{{ selectedChatHeaderActionLabel() }}</span>
+            <mat-icon class="popup-chat-context-chevron">expand_more</mat-icon>
+          </span>
+          <span class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge" *ngIf="selectedChatHeaderActionBadgeCount() > 0">
+            {{ selectedChatHeaderActionBadgeCount() }}
+          </span>
+        </button>
+        <div
+          class="item-action-menu event-subevent-resource-menu popup-chat-context-menu"
+          [class.is-open]="isSelectedChatContextMenuOpen()"
+          [class.item-action-menu-mobile]="isMobileView"
+          [class.item-action-menu-desktop]="!isMobileView"
+          [class.is-open-up]="isSelectedChatContextMenuOpenUp()"
+          [attr.aria-hidden]="!isSelectedChatContextMenuOpen()"
+          (click)="$event.stopPropagation()"
+        >
+          <div class="item-action-menu-title">{{ selectedChatContextMenuTitle() }}</div>
+          <button type="button" class="item-action-menu-btn" (click)="openSelectedChatEvent($event)">
+            <mat-icon>visibility</mat-icon>
+            <span>View Event</span>
+          </button>
+          <div class="item-action-menu-divider"></div>
+          <div class="item-action-menu-section-label">Resources</div>
+          <button
+            type="button"
+            class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-members"
+            [ngClass]="selectedChatSubEvent() ? subEventCapacityStateClass(selectedChatSubEvent()!) : ''"
+            *ngIf="selectedChatShowsMembersResource()"
+            (click)="openSelectedChatSubEventResource('Members', $event)"
+          >
+            <span class="subevent-resource-menu-item-icon"><mat-icon>groups</mat-icon></span>
+            <span class="subevent-resource-menu-item-main">
+              <span class="subevent-resource-menu-item-title">Members</span>
+              <span class="subevent-resource-menu-item-value">{{ selectedChatResourceSummary('Members') }}</span>
+            </span>
+            <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="selectedChatResourcePending('Members') > 0">
+              {{ selectedChatResourcePending('Members') }}
+            </span>
+          </button>
+          <button
+            type="button"
+            class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-car"
+            [ngClass]="selectedChatSubEvent() ? subEventAssetCapacityStateClass(selectedChatSubEvent()!, 'Car') : ''"
+            (click)="openSelectedChatSubEventResource('Car', $event)"
+          >
+            <span class="subevent-resource-menu-item-icon"><mat-icon>directions_car</mat-icon></span>
+            <span class="subevent-resource-menu-item-main">
+              <span class="subevent-resource-menu-item-title">Car</span>
+              <span class="subevent-resource-menu-item-value">{{ selectedChatResourceSummary('Car') }}</span>
+            </span>
+            <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="selectedChatResourcePending('Car') > 0">
+              {{ selectedChatResourcePending('Car') }}
+            </span>
+          </button>
+          <button
+            type="button"
+            class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-accommodation"
+            [ngClass]="selectedChatSubEvent() ? subEventAssetCapacityStateClass(selectedChatSubEvent()!, 'Accommodation') : ''"
+            (click)="openSelectedChatSubEventResource('Accommodation', $event)"
+          >
+            <span class="subevent-resource-menu-item-icon"><mat-icon>hotel</mat-icon></span>
+            <span class="subevent-resource-menu-item-main">
+              <span class="subevent-resource-menu-item-title">Accommodation</span>
+              <span class="subevent-resource-menu-item-value">{{ selectedChatResourceSummary('Accommodation') }}</span>
+            </span>
+            <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="selectedChatResourcePending('Accommodation') > 0">
+              {{ selectedChatResourcePending('Accommodation') }}
+            </span>
+          </button>
+          <button
+            type="button"
+            class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-supplies"
+            [ngClass]="selectedChatSubEvent() ? subEventAssetCapacityStateClass(selectedChatSubEvent()!, 'Supplies') : ''"
+            (click)="openSelectedChatSubEventResource('Supplies', $event)"
+          >
+            <span class="subevent-resource-menu-item-icon"><mat-icon>inventory_2</mat-icon></span>
+            <span class="subevent-resource-menu-item-main">
+              <span class="subevent-resource-menu-item-title">Supplies</span>
+              <span class="subevent-resource-menu-item-value">{{ selectedChatResourceSummary('Supplies') }}</span>
+            </span>
+            <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="selectedChatResourcePending('Supplies') > 0">
+              {{ selectedChatResourcePending('Supplies') }}
+            </span>
+          </button>
+        </div>
+      </div>
       <button
         type="button"
         class="popup-chat-event-btn popup-invitation-approve-btn"
@@ -739,6 +881,45 @@
           </button>
         </div>
       </div>
+      <div class="event-explore-order-picker event-feedback-filter-picker" *ngIf="activePopup === 'eventFeedback'">
+        <button
+          type="button"
+          class="popup-view-fab event-explore-order-trigger event-feedback-filter-trigger"
+          [ngClass]="eventFeedbackFilterOptionClass(eventFeedbackListFilter)"
+          (click)="toggleEventFeedbackFilterPicker($event)"
+          aria-label="Open event feedback filter"
+        >
+          <mat-icon>{{ eventFeedbackFilterIcon() }}</mat-icon>
+          <span>{{ eventFeedbackFilterLabel }}</span>
+          <span
+            class="rate-filter-count-badge rate-filter-trigger-badge event-feedback-filter-trigger-badge"
+            [ngClass]="eventFeedbackFilterBadgeClass(eventFeedbackListFilter)"
+            *ngIf="eventFeedbackFilterCount(eventFeedbackListFilter) > 0"
+          >
+            {{ eventFeedbackFilterCount(eventFeedbackListFilter) }}
+          </span>
+        </button>
+        <div class="activities-view-picker-panel event-explore-order-panel" *ngIf="showEventFeedbackFilterPicker">
+          <button
+            type="button"
+            class="activities-view-option event-feedback-filter-option"
+            *ngFor="let option of eventFeedbackListFilters"
+            [ngClass]="eventFeedbackFilterOptionClass(option.key)"
+            [class.is-active]="option.key === eventFeedbackListFilter"
+            (click)="selectEventFeedbackListFilter(option.key, $event)"
+          >
+            <mat-icon>{{ option.icon }}</mat-icon>
+            <span>{{ option.label }}</span>
+            <span
+              class="rate-filter-count-badge event-feedback-filter-option-count"
+              [ngClass]="eventFeedbackFilterBadgeClass(option.key)"
+              *ngIf="eventFeedbackFilterCount(option.key) > 0"
+            >
+              {{ eventFeedbackFilterCount(option.key) }}
+            </span>
+          </button>
+        </div>
+      </div>
       <button mat-icon-button class="popup-close" (click)="handlePrimaryPopupHeaderClose()" aria-label="Close">
         <mat-icon>close</mat-icon>
       </button>
@@ -827,6 +1008,63 @@
               <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesPrimaryFilterCount(activitiesPrimaryFilter) > 0">{{ activitiesPrimaryFilterCount(activitiesPrimaryFilter) }}</span>
             </button>
           </ng-template>
+          <ng-container *ngIf="activitiesPrimaryFilter === 'chats'">
+            <ng-container *ngIf="!isMobileView; else mobileActivitiesChatContextFilterButton">
+              <div
+                class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-chat-context-filter-select"
+                [ngClass]="activitiesChatContextFilterClass(activitiesChatContextFilter)"
+              >
+                <mat-select
+                  [(ngModel)]="activitiesChatContextFilter"
+                  (ngModelChange)="selectActivitiesChatContextFilter($event)"
+                  panelWidth="260px"
+                  disableOptionCentering
+                  panelClass="selector-options-panel profile-bottom-sheet-panel activities-chat-context-options-panel"
+                >
+                  <mat-select-trigger>
+                    <span class="status-option-content">
+                      <mat-icon [class]="activitiesChatContextFilterClass(activitiesChatContextFilter)">{{ activitiesChatContextFilterIcon() }}</mat-icon>
+                      <span>{{ activitiesChatContextFilterLabel() }}</span>
+                    </span>
+                  </mat-select-trigger>
+                  <mat-option
+                    *ngFor="let option of activitiesChatContextFilters"
+                    [value]="option.key"
+                    class="status-option"
+                    [ngClass]="activitiesChatContextFilterClass(option.key)"
+                  >
+                    <span class="status-option-content">
+                      <mat-icon [class]="activitiesChatContextFilterClass(option.key)">{{ option.icon }}</mat-icon>
+                      <span>{{ option.label }}</span>
+                      <span class="rate-filter-count-badge" *ngIf="activitiesChatContextFilterCount(option.key) > 0">
+                        {{ activitiesChatContextFilterCount(option.key) }}
+                      </span>
+                    </span>
+                  </mat-option>
+                </mat-select>
+                <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesChatContextFilterCount(activitiesChatContextFilter) > 0">
+                  {{ activitiesChatContextFilterCount(activitiesChatContextFilter) }}
+                </span>
+              </div>
+            </ng-container>
+            <ng-template #mobileActivitiesChatContextFilterButton>
+              <button
+                type="button"
+                class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-chat-context-filter-select"
+                [ngClass]="activitiesChatContextFilterClass(activitiesChatContextFilter)"
+                (click)="openMobileActivitiesChatContextFilterSelector($event)"
+              >
+                <span class="status-option-content">
+                  <mat-icon [class]="activitiesChatContextFilterClass(activitiesChatContextFilter)">{{ activitiesChatContextFilterIcon() }}</mat-icon>
+                  <span>{{ activitiesChatContextFilterLabel() }}</span>
+                </span>
+                <mat-icon>expand_more</mat-icon>
+                <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesChatContextFilterCount(activitiesChatContextFilter) > 0">
+                  {{ activitiesChatContextFilterCount(activitiesChatContextFilter) }}
+                </span>
+              </button>
+            </ng-template>
+          </ng-container>
           <button
             *ngIf="isHostingPublicationFilterVisible()"
             type="button"
@@ -1072,6 +1310,7 @@
                     *ngIf="isActivityChatRow(row); else nonChatActivityCard"
                     type="button"
                     class="activities-card activities-card-btn activities-row-item activities-card-chat"
+                    [ngClass]="activityChatRowToneClass(row)"
                     [attr.data-group-label]="group.label"
                     (pointerup)="onActivityRowPointerUp(row, $event)"
                     (click)="onActivityRowClick(row, $event)"
@@ -1095,56 +1334,111 @@
                   <article
                     *ngIf="isRateStyleActivity(row)"
                     class="activities-rate-profile-card activities-row-item"
+                    [class.activities-rate-profile-card-pair-inline]="isPairRateRow(row)"
                     [class.is-rate-editor-selected]="isSelectedActivityRateRow(row)"
                     [class.activities-rate-row-no-snap]="groupIndex === groupedActivityRows.length - 1 && rowIndex === group.rows.length - 1"
                     [attr.data-activity-rate-row-id]="row.id"
                     [attr.data-group-label]="group.label"
                   >
-                    <div
-                      class="activities-rate-profile-stack"
-                      [ngClass]="activityRateCardContentClasses(row)"
-                      [class.is-pane-loading]="isActivityRateCardImageLoading(row)"
-                      *ngIf="activityRateCardImageUrls(row) as imageUrls"
-                    >
-                      <div class="image-stack-indicators activities-rate-profile-indicators" *ngIf="imageUrls.length > 1">
-                        <button
-                          type="button"
-                          class="image-stack-line"
-                          *ngFor="let imageUrl of imageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-                          [class.active]="imageIndex === activityRateCardActiveImageIndex(row)"
-                          (click)="selectActivityRateCardImage(row, imageIndex, $event)"
-                          aria-label="Select profile image"
-                        ></button>
-                      </div>
+                    <ng-container *ngIf="isPairRateRow(row); else singleRateRowCardStack">
                       <div
-                        class="activities-rate-profile-layer activities-rate-profile-layer-active"
-                        [appLazyBgImage]="activityRateCardActiveImageUrl(row)"
+                        class="activities-rate-profile-stack activities-rate-profile-stack-pair-inline"
+                        [ngClass]="activityRateCardContentClasses(row)"
                       >
-                        <div class="activities-rate-profile-overlay" *ngIf="activityRateCardHasLine(row, activityRateCardActiveImageIndex(row))">
-                          <p class="activities-rate-profile-line activities-rate-profile-line-primary">
-                            {{ activityRateCardPrimaryLine(row, activityRateCardActiveImageIndex(row)) }}
-                          </p>
-                          <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
-                            {{ activityRateCardSecondaryLine(row, activityRateCardActiveImageIndex(row)) }}
-                          </p>
+                        <div class="activities-rate-pair-inline-grid">
+                          <div
+                            class="activities-rate-pair-inline-card activities-rate-pair-inline-card-woman"
+                            [class.is-pane-loading]="isActivityPairRateSlotImageLoading(row, 'woman')"
+                            *ngIf="activityPairRateSlotImageUrls(row, 'woman') as womanImageUrls"
+                          >
+                            <div
+                              class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators"
+                              *ngIf="womanImageUrls.length > 1"
+                            >
+                              <button
+                                type="button"
+                                class="image-stack-line"
+                                *ngFor="let imageUrl of womanImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                                [class.active]="imageIndex === activityPairRateSlotActiveImageIndex(row, 'woman')"
+                                (click)="selectActivityPairRateSlotImage(row, 'woman', imageIndex, $event)"
+                                aria-label="Select woman profile image"
+                              ></button>
+                            </div>
+                            <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="activityPairRateSlotActiveImageUrl(row, 'woman')">
+                              <span class="activities-rate-pair-inline-label">Woman</span>
+                              <div class="activities-rate-pair-inline-overlay">
+                                <p class="activities-rate-profile-line activities-rate-profile-line-primary">
+                                  {{ activityPairRateSlotPrimaryLine(row, 'woman') }}
+                                </p>
+                                <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
+                                  {{ activityPairRateSlotSecondaryLine(row, 'woman') }}
+                                </p>
+                              </div>
+                              <div class="image-stack-hit-area activities-rate-profile-hit-area activities-rate-pair-inline-hit-area" *ngIf="womanImageUrls.length > 1">
+                                <button
+                                  type="button"
+                                  class="image-stack-hit-segment"
+                                  *ngFor="let imageUrl of womanImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                                  (click)="selectActivityPairRateSlotImage(row, 'woman', imageIndex, $event)"
+                                  aria-label="Select woman profile image"
+                                ></button>
+                              </div>
+                              <span class="card-image-placeholder" *ngIf="!activityPairRateSlotActiveImageUrl(row, 'woman')">
+                                {{ activityPairRateSlotInitials(row, 'woman') }}
+                              </span>
+                            </div>
+                          </div>
+                          <div
+                            class="activities-rate-pair-inline-card activities-rate-pair-inline-card-man"
+                            [class.is-pane-loading]="isActivityPairRateSlotImageLoading(row, 'man')"
+                            *ngIf="activityPairRateSlotImageUrls(row, 'man') as manImageUrls"
+                          >
+                            <div
+                              class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators"
+                              *ngIf="manImageUrls.length > 1"
+                            >
+                              <button
+                                type="button"
+                                class="image-stack-line"
+                                *ngFor="let imageUrl of manImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                                [class.active]="imageIndex === activityPairRateSlotActiveImageIndex(row, 'man')"
+                                (click)="selectActivityPairRateSlotImage(row, 'man', imageIndex, $event)"
+                                aria-label="Select man profile image"
+                              ></button>
+                            </div>
+                            <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="activityPairRateSlotActiveImageUrl(row, 'man')">
+                              <span class="activities-rate-pair-inline-label">Man</span>
+                              <div class="activities-rate-pair-inline-overlay">
+                                <p class="activities-rate-profile-line activities-rate-profile-line-primary">
+                                  {{ activityPairRateSlotPrimaryLine(row, 'man') }}
+                                </p>
+                                <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
+                                  {{ activityPairRateSlotSecondaryLine(row, 'man') }}
+                                </p>
+                              </div>
+                              <div class="image-stack-hit-area activities-rate-profile-hit-area activities-rate-pair-inline-hit-area" *ngIf="manImageUrls.length > 1">
+                                <button
+                                  type="button"
+                                  class="image-stack-hit-segment"
+                                  *ngFor="let imageUrl of manImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                                  (click)="selectActivityPairRateSlotImage(row, 'man', imageIndex, $event)"
+                                  aria-label="Select man profile image"
+                                ></button>
+                              </div>
+                              <span class="card-image-placeholder" *ngIf="!activityPairRateSlotActiveImageUrl(row, 'man')">
+                                {{ activityPairRateSlotInitials(row, 'man') }}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div class="image-stack-hit-area activities-rate-profile-hit-area" *ngIf="imageUrls.length > 1">
                         <button
                           type="button"
-                          class="image-stack-hit-segment"
-                          *ngFor="let imageUrl of imageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-                          (click)="selectActivityRateCardImage(row, imageIndex, $event)"
-                          aria-label="Select profile image"
-                        ></button>
-                      </div>
-                      <button
-                        type="button"
-                        class="activities-rate-score-badge activities-rate-score-badge-floating"
+                          class="activities-rate-score-badge activities-rate-score-badge-between"
                           [class.is-active]="isSelectedActivityRateRow(row)"
                           [class.is-pending]="isActivityRatePending(row)"
                           [class.is-disabled]="isPairReceivedRateRow(row)"
                           [class.is-blink]="isActivityRateBlinking(row)"
+                          [disabled]="isPairReceivedRateRow(row)"
                           (click)="isPairReceivedRateRow(row) ? $event.stopPropagation() : openActivityRateEditor(row, $event)"
                           [attr.aria-label]="isPairReceivedRateRow(row) ? 'Received pair rating' : (isActivityRatePending(row) ? 'Add your rating' : 'Edit your rating')"
                         >
@@ -1152,6 +1446,62 @@
                           <span>{{ activityRateBadgeLabel(row) }}</span>
                         </button>
                       </div>
+                    </ng-container>
+                    <ng-template #singleRateRowCardStack>
+                      <div
+                        class="activities-rate-profile-stack"
+                        [ngClass]="activityRateCardContentClasses(row)"
+                        [class.is-pane-loading]="isActivityRateCardImageLoading(row)"
+                        *ngIf="activityRateCardImageUrls(row) as imageUrls"
+                      >
+                        <div class="image-stack-indicators activities-rate-profile-indicators" *ngIf="imageUrls.length > 1">
+                          <button
+                            type="button"
+                            class="image-stack-line"
+                            *ngFor="let imageUrl of imageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                            [class.active]="imageIndex === activityRateCardActiveImageIndex(row)"
+                            (click)="selectActivityRateCardImage(row, imageIndex, $event)"
+                            aria-label="Select profile image"
+                          ></button>
+                        </div>
+                        <div
+                          class="activities-rate-profile-layer activities-rate-profile-layer-active"
+                          [appLazyBgImage]="activityRateCardActiveImageUrl(row)"
+                        >
+                          <div class="activities-rate-profile-overlay" *ngIf="activityRateCardHasLine(row, activityRateCardActiveImageIndex(row))">
+                            <p class="activities-rate-profile-line activities-rate-profile-line-primary">
+                              {{ activityRateCardPrimaryLine(row, activityRateCardActiveImageIndex(row)) }}
+                            </p>
+                            <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
+                              {{ activityRateCardSecondaryLine(row, activityRateCardActiveImageIndex(row)) }}
+                            </p>
+                          </div>
+                        </div>
+                        <div class="image-stack-hit-area activities-rate-profile-hit-area" *ngIf="imageUrls.length > 1">
+                          <button
+                            type="button"
+                            class="image-stack-hit-segment"
+                            *ngFor="let imageUrl of imageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                            (click)="selectActivityRateCardImage(row, imageIndex, $event)"
+                            aria-label="Select profile image"
+                          ></button>
+                        </div>
+                        <button
+                          type="button"
+                          class="activities-rate-score-badge activities-rate-score-badge-floating"
+                            [class.is-active]="isSelectedActivityRateRow(row)"
+                            [class.is-pending]="isActivityRatePending(row)"
+                            [class.is-disabled]="isPairReceivedRateRow(row)"
+                            [class.is-blink]="isActivityRateBlinking(row)"
+                            [disabled]="isPairReceivedRateRow(row)"
+                            (click)="isPairReceivedRateRow(row) ? $event.stopPropagation() : openActivityRateEditor(row, $event)"
+                            [attr.aria-label]="isPairReceivedRateRow(row) ? 'Received pair rating' : (isActivityRatePending(row) ? 'Add your rating' : 'Edit your rating')"
+                          >
+                            <mat-icon>star</mat-icon>
+                            <span>{{ activityRateBadgeLabel(row) }}</span>
+                          </button>
+                        </div>
+                    </ng-template>
                     </article>
                   </ng-template>
                 </ng-template>
@@ -1173,79 +1523,323 @@
                 class="activities-rate-profile-card activities-row-item activities-rates-fullscreen-card activities-rates-fullscreen-card-leaving"
                 *ngIf="activitiesRatesFullscreenLeavingRow as leavingRow"
                 [attr.data-activity-rate-row-id]="leavingRow.id"
-                (animationend)="onActivitiesRatesFullscreenLeaveAnimationEnd()"
+                (animationend)="onActivitiesRatesFullscreenLeaveAnimationEnd($event)"
               >
-                <div class="activities-rate-profile-stack" [ngClass]="activityRateCardContentClasses(leavingRow)">
+                <ng-container *ngIf="isPairRateRow(leavingRow); else leavingFullscreenSingleRateCard">
                   <div
-                    class="activities-rate-profile-layer activities-rate-profile-layer-active"
-                    [appLazyBgImage]="activityRateCardActiveImageUrl(leavingRow)"
+                    class="activities-rate-profile-stack activities-rate-profile-stack-pair-fullscreen"
+                    [ngClass]="activityRateCardContentClasses(leavingRow)"
+                    [style.--activities-pair-split]="activitiesRatesPairSplitCssValue"
                   >
-                    <div class="activities-rate-profile-overlay" *ngIf="activityRateCardHasLine(leavingRow, activityRateCardActiveImageIndex(leavingRow))">
-                      <p class="activities-rate-profile-line activities-rate-profile-line-primary">
-                        {{ activityRateCardPrimaryLine(leavingRow, activityRateCardActiveImageIndex(leavingRow)) }}
-                      </p>
-                      <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
-                        {{ activityRateCardSecondaryLine(leavingRow, activityRateCardActiveImageIndex(leavingRow)) }}
-                      </p>
+                    <div class="activities-rate-pair-inline-grid activities-rate-pair-fullscreen-grid">
+                      <div class="activities-rate-pair-inline-card activities-rate-pair-inline-card-woman" *ngIf="activityPairRateSlotImageUrls(leavingRow, 'woman') as leavingWomanImageUrls">
+                        <div
+                          class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators"
+                          *ngIf="leavingWomanImageUrls.length > 1"
+                        >
+                          <span
+                            class="image-stack-line"
+                            *ngFor="let imageUrl of leavingWomanImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                            [class.active]="imageIndex === activityPairRateSlotActiveImageIndex(leavingRow, 'woman')"
+                          ></span>
+                        </div>
+                        <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="activityPairRateSlotActiveImageUrl(leavingRow, 'woman')">
+                          <span class="activities-rate-pair-inline-label">Woman</span>
+                          <div class="activities-rate-pair-inline-overlay">
+                            <p class="activities-rate-profile-line activities-rate-profile-line-primary">
+                              {{ activityPairRateSlotPrimaryLine(leavingRow, 'woman') }}
+                            </p>
+                            <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
+                              {{ activityPairRateSlotSecondaryLine(leavingRow, 'woman') }}
+                            </p>
+                          </div>
+                          <span class="card-image-placeholder" *ngIf="!activityPairRateSlotActiveImageUrl(leavingRow, 'woman')">
+                            {{ activityPairRateSlotInitials(leavingRow, 'woman') }}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div class="activities-rate-pair-inline-card activities-rate-pair-inline-card-man" *ngIf="activityPairRateSlotImageUrls(leavingRow, 'man') as leavingManImageUrls">
+                        <div
+                          class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators"
+                          *ngIf="leavingManImageUrls.length > 1"
+                        >
+                          <span
+                            class="image-stack-line"
+                            *ngFor="let imageUrl of leavingManImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                            [class.active]="imageIndex === activityPairRateSlotActiveImageIndex(leavingRow, 'man')"
+                          ></span>
+                        </div>
+                        <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="activityPairRateSlotActiveImageUrl(leavingRow, 'man')">
+                          <span class="activities-rate-pair-inline-label">Man</span>
+                          <div class="activities-rate-pair-inline-overlay">
+                            <p class="activities-rate-profile-line activities-rate-profile-line-primary">
+                              {{ activityPairRateSlotPrimaryLine(leavingRow, 'man') }}
+                            </p>
+                            <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
+                              {{ activityPairRateSlotSecondaryLine(leavingRow, 'man') }}
+                            </p>
+                          </div>
+                          <span class="card-image-placeholder" *ngIf="!activityPairRateSlotActiveImageUrl(leavingRow, 'man')">
+                            {{ activityPairRateSlotInitials(leavingRow, 'man') }}
+                          </span>
+                        </div>
+                      </div>
                     </div>
+                    <span
+                      class="activities-rate-score-badge activities-rate-score-badge-floating activities-rate-score-badge-floating-pair-overlap activities-rate-score-badge-between is-active"
+                      [class.is-pending]="isActivityRatePending(leavingRow)"
+                      [class.is-disabled]="isPairReceivedRateRow(leavingRow)"
+                      [class.is-blink]="isActivityRateBlinking(leavingRow)"
+                    >
+                      <mat-icon>star</mat-icon>
+                      <span>{{ activityRateBadgeLabel(leavingRow) }}</span>
+                    </span>
                   </div>
-                </div>
+                </ng-container>
+                <ng-template #leavingFullscreenSingleRateCard>
+                  <div class="activities-rate-profile-stack" [ngClass]="activityRateCardContentClasses(leavingRow)">
+                    <div
+                      class="image-stack-indicators activities-rate-profile-indicators"
+                      *ngIf="activityRateCardImageUrls(leavingRow).length > 1"
+                    >
+                      <span
+                        class="image-stack-line"
+                        *ngFor="let imageUrl of activityRateCardImageUrls(leavingRow); let imageIndex = index; trackBy: trackByRateCardImage"
+                        [class.active]="imageIndex === activityRateCardActiveImageIndex(leavingRow)"
+                      ></span>
+                    </div>
+                    <div
+                      class="activities-rate-profile-layer activities-rate-profile-layer-active"
+                      [appLazyBgImage]="activityRateCardActiveImageUrl(leavingRow)"
+                    >
+                      <div class="activities-rate-profile-overlay" *ngIf="activityRateCardHasLine(leavingRow, activityRateCardActiveImageIndex(leavingRow))">
+                        <p class="activities-rate-profile-line activities-rate-profile-line-primary">
+                          {{ activityRateCardPrimaryLine(leavingRow, activityRateCardActiveImageIndex(leavingRow)) }}
+                        </p>
+                        <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
+                          {{ activityRateCardSecondaryLine(leavingRow, activityRateCardActiveImageIndex(leavingRow)) }}
+                        </p>
+                      </div>
+                    </div>
+                    <span
+                      class="activities-rate-score-badge activities-rate-score-badge-floating is-active"
+                      [class.is-pending]="isActivityRatePending(leavingRow)"
+                      [class.is-disabled]="isPairReceivedRateRow(leavingRow)"
+                      [class.is-blink]="isActivityRateBlinking(leavingRow)"
+                    >
+                      <mat-icon>star</mat-icon>
+                      <span>{{ activityRateBadgeLabel(leavingRow) }}</span>
+                    </span>
+                  </div>
+                </ng-template>
               </article>
 
               <article
                 class="activities-rate-profile-card activities-row-item activities-rates-fullscreen-card activities-rates-fullscreen-card-active"
                 [attr.data-activity-rate-row-id]="row.id"
               >
-                <div
-                  class="activities-rate-profile-stack"
-                  [ngClass]="activityRateCardContentClasses(row)"
-                  [class.is-pane-loading]="isActivityRateCardImageLoading(row)"
-                  *ngIf="activityRateCardImageUrls(row) as imageUrls"
-                >
-                  <div class="image-stack-indicators activities-rate-profile-indicators" *ngIf="imageUrls.length > 1">
-                    <button
-                      type="button"
-                      class="image-stack-line"
-                      *ngFor="let imageUrl of imageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-                      [class.active]="imageIndex === activityRateCardActiveImageIndex(row)"
-                      (click)="selectActivityRateCardImage(row, imageIndex, $event)"
-                      aria-label="Select profile image"
-                    ></button>
-                  </div>
+                <ng-container *ngIf="isPairRateRow(row); else fullscreenSingleRateCard">
                   <div
-                    class="activities-rate-profile-layer activities-rate-profile-layer-active"
-                    [appLazyBgImage]="activityRateCardActiveImageUrl(row)"
+                    class="activities-rate-profile-stack activities-rate-profile-stack-pair-fullscreen"
+                    [ngClass]="activityRateCardContentClasses(row)"
+                    [style.--activities-pair-split]="activitiesRatesPairSplitCssValue"
+                    [class.is-resizing]="isActivitiesRatesPairSplitDragging"
+                    #activitiesRatesPairFullscreenStack
                   >
-                    <div class="activities-rate-profile-overlay" *ngIf="activityRateCardHasLine(row, activityRateCardActiveImageIndex(row))">
-                      <p class="activities-rate-profile-line activities-rate-profile-line-primary">
-                        {{ activityRateCardPrimaryLine(row, activityRateCardActiveImageIndex(row)) }}
-                      </p>
-                      <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
-                        {{ activityRateCardSecondaryLine(row, activityRateCardActiveImageIndex(row)) }}
-                      </p>
+                    <div
+                      class="activities-rate-pair-inline-grid activities-rate-pair-fullscreen-grid"
+                      #activitiesRatesPairFullscreenGrid
+                    >
+                      <div
+                        class="activities-rate-pair-inline-card activities-rate-pair-inline-card-woman"
+                        [class.is-pane-loading]="isActivityPairRateSlotImageLoading(row, 'woman')"
+                        [class.is-collapsed]="isActivitiesRatesPairWomanCollapsed"
+                        *ngIf="activityPairRateSlotImageUrls(row, 'woman') as fullscreenWomanImageUrls"
+                      >
+                        <div
+                          class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators"
+                          *ngIf="fullscreenWomanImageUrls.length > 1"
+                        >
+                          <button
+                            type="button"
+                            class="image-stack-line"
+                            *ngFor="let imageUrl of fullscreenWomanImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                            [class.active]="imageIndex === activityPairRateSlotActiveImageIndex(row, 'woman')"
+                            (click)="selectActivityPairRateSlotImage(row, 'woman', imageIndex, $event)"
+                            aria-label="Select woman profile image"
+                          ></button>
+                        </div>
+                        <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="activityPairRateSlotActiveImageUrl(row, 'woman')">
+                          <span class="activities-rate-pair-inline-label">Woman</span>
+                          <div class="activities-rate-pair-inline-overlay">
+                            <p class="activities-rate-profile-line activities-rate-profile-line-primary">
+                              {{ activityPairRateSlotPrimaryLine(row, 'woman') }}
+                            </p>
+                            <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
+                              {{ activityPairRateSlotSecondaryLine(row, 'woman') }}
+                            </p>
+                          </div>
+                          <div class="image-stack-hit-area activities-rate-profile-hit-area activities-rate-pair-inline-hit-area" *ngIf="fullscreenWomanImageUrls.length > 1">
+                            <button
+                              type="button"
+                              class="image-stack-hit-segment"
+                              *ngFor="let imageUrl of fullscreenWomanImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                              (click)="selectActivityPairRateSlotImage(row, 'woman', imageIndex, $event)"
+                              aria-label="Select woman profile image"
+                            ></button>
+                          </div>
+                          <span class="card-image-placeholder" *ngIf="!activityPairRateSlotActiveImageUrl(row, 'woman')">
+                            {{ activityPairRateSlotInitials(row, 'woman') }}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        class="activities-rates-pair-fullscreen-resize-handle"
+                        *ngIf="isActivitiesRatesPairMobileSplitEnabled()"
+                        aria-label="Resize pair cards"
+                        (pointerdown)="onActivitiesRatesPairSplitHandlePointerDown($event, activitiesRatesPairFullscreenGrid)"
+                        (touchstart)="onActivitiesRatesPairSplitHandleTouchStart($event, activitiesRatesPairFullscreenGrid)"
+                        (click)="$event.preventDefault(); $event.stopPropagation()"
+                      >
+                        <span class="activities-rates-pair-fullscreen-resize-handle-grip" aria-hidden="true"></span>
+                      </button>
+
+                      <div
+                        class="activities-rate-pair-inline-card activities-rate-pair-inline-card-man"
+                        [class.is-pane-loading]="isActivityPairRateSlotImageLoading(row, 'man')"
+                        [class.is-collapsed]="isActivitiesRatesPairManCollapsed"
+                        *ngIf="activityPairRateSlotImageUrls(row, 'man') as fullscreenManImageUrls"
+                      >
+                        <div
+                          class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators"
+                          *ngIf="fullscreenManImageUrls.length > 1"
+                        >
+                          <button
+                            type="button"
+                            class="image-stack-line"
+                            *ngFor="let imageUrl of fullscreenManImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                            [class.active]="imageIndex === activityPairRateSlotActiveImageIndex(row, 'man')"
+                            (click)="selectActivityPairRateSlotImage(row, 'man', imageIndex, $event)"
+                            aria-label="Select man profile image"
+                          ></button>
+                        </div>
+                        <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="activityPairRateSlotActiveImageUrl(row, 'man')">
+                          <span class="activities-rate-pair-inline-label">Man</span>
+                          <div class="activities-rate-pair-inline-overlay">
+                            <p class="activities-rate-profile-line activities-rate-profile-line-primary">
+                              {{ activityPairRateSlotPrimaryLine(row, 'man') }}
+                            </p>
+                            <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
+                              {{ activityPairRateSlotSecondaryLine(row, 'man') }}
+                            </p>
+                          </div>
+                          <div class="image-stack-hit-area activities-rate-profile-hit-area activities-rate-pair-inline-hit-area" *ngIf="fullscreenManImageUrls.length > 1">
+                            <button
+                              type="button"
+                              class="image-stack-hit-segment"
+                              *ngFor="let imageUrl of fullscreenManImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                              (click)="selectActivityPairRateSlotImage(row, 'man', imageIndex, $event)"
+                              aria-label="Select man profile image"
+                            ></button>
+                          </div>
+                          <span class="card-image-placeholder" *ngIf="!activityPairRateSlotActiveImageUrl(row, 'man')">
+                            {{ activityPairRateSlotInitials(row, 'man') }}
+                          </span>
+                        </div>
+                      </div>
                     </div>
+                    <span
+                      class="activities-rate-score-badge activities-rate-score-badge-floating activities-rate-score-badge-floating-pair-overlap activities-rate-score-badge-between is-active"
+                      [class.is-pending]="isActivityRatePending(row)"
+                      [class.is-disabled]="isPairReceivedRateRow(row)"
+                      [class.is-blink]="isActivityRateBlinking(row)"
+                    >
+                      <mat-icon>star</mat-icon>
+                      <span>{{ activityRateBadgeLabel(row) }}</span>
+                    </span>
                   </div>
-                  <div class="image-stack-hit-area activities-rate-profile-hit-area" *ngIf="imageUrls.length > 1">
-                    <button
-                      type="button"
-                      class="image-stack-hit-segment"
-                      *ngFor="let imageUrl of imageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-                      (click)="selectActivityRateCardImage(row, imageIndex, $event)"
-                      aria-label="Select profile image"
-                    ></button>
+                </ng-container>
+                <ng-template #fullscreenSingleRateCard>
+                  <div
+                    class="activities-rate-profile-stack"
+                    [ngClass]="activityRateCardContentClasses(row)"
+                    [class.is-pane-loading]="isActivityRateCardImageLoading(row)"
+                    *ngIf="activityRateCardImageUrls(row) as imageUrls"
+                  >
+                    <div class="image-stack-indicators activities-rate-profile-indicators" *ngIf="imageUrls.length > 1">
+                      <button
+                        type="button"
+                        class="image-stack-line"
+                        *ngFor="let imageUrl of imageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                        [class.active]="imageIndex === activityRateCardActiveImageIndex(row)"
+                        (click)="selectActivityRateCardImage(row, imageIndex, $event)"
+                        aria-label="Select profile image"
+                      ></button>
+                    </div>
+                    <div
+                      class="activities-rate-profile-layer activities-rate-profile-layer-active"
+                      [appLazyBgImage]="activityRateCardActiveImageUrl(row)"
+                    >
+                      <div class="activities-rate-profile-overlay" *ngIf="activityRateCardHasLine(row, activityRateCardActiveImageIndex(row))">
+                        <p class="activities-rate-profile-line activities-rate-profile-line-primary">
+                          {{ activityRateCardPrimaryLine(row, activityRateCardActiveImageIndex(row)) }}
+                        </p>
+                        <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
+                          {{ activityRateCardSecondaryLine(row, activityRateCardActiveImageIndex(row)) }}
+                        </p>
+                      </div>
+                    </div>
+                    <div class="image-stack-hit-area activities-rate-profile-hit-area" *ngIf="imageUrls.length > 1">
+                      <button
+                        type="button"
+                        class="image-stack-hit-segment"
+                        *ngFor="let imageUrl of imageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                        (click)="selectActivityRateCardImage(row, imageIndex, $event)"
+                        aria-label="Select profile image"
+                      ></button>
+                    </div>
+                    <span
+                      class="activities-rate-score-badge activities-rate-score-badge-floating is-active"
+                      [class.is-pending]="isActivityRatePending(row)"
+                      [class.is-disabled]="isPairReceivedRateRow(row)"
+                      [class.is-blink]="isActivityRateBlinking(row)"
+                    >
+                      <mat-icon>star</mat-icon>
+                      <span>{{ activityRateBadgeLabel(row) }}</span>
+                    </span>
                   </div>
-                  <span class="activities-rate-score-badge activities-rate-score-badge-floating is-active">
-                    <mat-icon>star</mat-icon>
-                    <span>{{ activityRateBadgeLabel(row) }}</span>
-                  </span>
-                </div>
+                </ng-template>
               </article>
+
+              <button
+                type="button"
+                class="activities-rates-fullscreen-nav-btn activities-rates-fullscreen-nav-btn-prev"
+                *ngIf="isActivitiesRatesFullscreenReadOnlyNavigation()"
+                [disabled]="!canNavigateActivitiesRatesFullscreenPrev()"
+                (click)="navigateActivitiesRatesFullscreenPrev($event)"
+                aria-label="Previous rate card"
+              >
+                <mat-icon>chevron_left</mat-icon>
+              </button>
+              <button
+                type="button"
+                class="activities-rates-fullscreen-nav-btn activities-rates-fullscreen-nav-btn-next"
+                *ngIf="isActivitiesRatesFullscreenReadOnlyNavigation()"
+                [disabled]="!canNavigateActivitiesRatesFullscreenNext()"
+                (click)="navigateActivitiesRatesFullscreenNext($event)"
+                aria-label="Next rate card"
+              >
+                <mat-icon>chevron_right</mat-icon>
+              </button>
             </div>
           </div>
           <ng-template #activitiesRatesFullscreenEmpty>
             <div class="editor-list-card">
-              <h4>No items</h4>
-              <p>{{ activitiesEmptyLabel }}</p>
+              <h4>{{ activitiesRatesFullscreenEmptyTitle() }}</h4>
+              <p>{{ activitiesRatesFullscreenEmptyDescription() }}</p>
             </div>
           </ng-template>
         </ng-template>
@@ -1391,16 +1985,18 @@
           </div>
         </ng-template>
 
-        <div class="activities-rate-editor-dock" [class.is-closing]="isActivityRateEditorClosing() && !isRatesFullscreenModeActive()" [class.is-permanent]="isRatesFullscreenModeActive()" [class.is-blink]="isSelectedActivityRateBlinking()" *ngIf="isActivityRateEditorDockVisible() && !isCalendarLayoutView()">
+        <div class="activities-rate-editor-dock" [class.is-closing]="isActivityRateEditorClosing() && !isRatesFullscreenModeActive()" [class.is-permanent]="isRatesFullscreenModeActive()" *ngIf="isActivityRateEditorDockVisible() && !isCalendarLayoutView()">
           <div class="activities-rate-editor-head" *ngIf="!isRatesFullscreenModeActive()">
             <span>Rate · {{ selectedActivityRateModeLabel() }} · {{ selectedActivityRateTitle() }}</span>
           </div>
-          <div class="activities-rate-editor-stars">
+          <div class="activities-rate-editor-stars" [class.is-blink]="isActivityRateBarBlinking" [class.is-readonly]="isSelectedActivityRateReadOnly()">
             <button
               type="button"
               class="activities-rate-star-btn"
               *ngFor="let score of activityRatingScale"
               [class.filled]="isSelectedActivityRateScore(score)"
+              [class.is-disabled]="isSelectedActivityRateReadOnly()"
+              [disabled]="isSelectedActivityRateReadOnly()"
               (click)="setSelectedActivityOwnRating(score)"
               [attr.aria-label]="'Set rating ' + score"
             >
@@ -1557,6 +2153,16 @@
               </div>
               <div class="social-proof-chip-list">
                 <span class="social-proof-chip chip-vibe" *ngFor="let item of hostVibeBadgeItems">{{ item }}</span>
+              </div>
+            </div>
+
+            <div class="social-proof-section-block">
+              <div class="social-proof-section-head section-personality">
+                <span class="section-tag">Personality</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="social-proof-chip-list">
+                <span class="social-proof-chip chip-personality" *ngFor="let item of hostPersonalityBadgeItems">{{ item }}</span>
               </div>
             </div>
 
@@ -1752,7 +2358,8 @@
               <div class="asset-card-image" [appLazyBgImage]="card.imageUrl">
                 <button
                   type="button"
-                  class="asset-source-icon"
+                  class="asset-source-icon asset-source-icon-route-map"
+                  [class.asset-source-icon-multiroute]="card.type === 'Car'"
                   *ngIf="canOpenAssetMap(card)"
                   (click)="openAssetMap(card, $event)"
                   [attr.aria-label]="card.type === 'Car' ? 'Open car route map' : 'Open accommodation location map'"
@@ -2249,27 +2856,59 @@
                   </div>
                 </label>
               </section>
+              <label class="experience-description-field event-location-field">
+                <span>Location</span>
+                <div class="asset-route-row asset-route-row-inline">
+                  <input
+                    type="text"
+                    [ngModel]="eventForm.location"
+                    (ngModelChange)="onEventLocationChange($event)"
+                    placeholder="Event route location"
+                    [readonly]="isEventEditorReadOnly()"
+                  />
+                  <button
+                    type="button"
+                    class="experience-action-btn asset-route-map-btn asset-route-main-map-btn event-location-map-btn"
+                    (click)="openEventLocationMap($event)"
+                    aria-label="Open event route on map"
+                  >
+                    <mat-icon>location_on</mat-icon>
+                  </button>
+                </div>
+              </label>
               <label class="event-subevents-field">
                 <button type="button" class="event-subevents-panel-trigger" (click)="openEventSubEventsPopup($event)">
                   <span class="event-subevents-panel-head">
                     <span class="event-subevents-panel-title">
-                      <mat-icon>view_timeline</mat-icon>
-                      <span>Sub Events</span>
+                      <span class="event-subevents-panel-title-main">
+                        <mat-icon>view_timeline</mat-icon>
+                        <span class="event-subevents-panel-title-label">Sub Events</span>
+                      </span>
+                      <span class="event-subevents-panel-current" *ngIf="eventForm.subEvents.length > 0">
+                        {{ subEventsCurrentHeaderLabel() }}
+                      </span>
+                    </span>
+                    <span class="event-subevents-panel-meta" *ngIf="eventForm.subEvents.length > 0">
                       <span class="event-subevents-panel-mode" [ngClass]="subEventsDisplayModeClass()">
                         <mat-icon>{{ subEventsDisplayModeIcon() }}</mat-icon>
                         <span>{{ subEventsDisplayMode }}</span>
                       </span>
-                    </span>
-                    <span class="event-subevents-panel-summary event-subevents-panel-summary-inline" *ngIf="eventForm.subEvents.length > 0">
-                      {{ subEventsCountLabel() }}
+                      <span class="event-subevents-panel-summary event-subevents-panel-summary-inline">
+                        {{ subEventsCountLabel() }}
+                      </span>
                     </span>
                     <mat-icon class="event-subevents-chevron">chevron_right</mat-icon>
                   </span>
+                  <span class="event-subevents-panel-divider" *ngIf="eventForm.subEvents.length > 0" aria-hidden="true"></span>
                   <span class="event-subevents-panel-body" *ngIf="eventForm.subEvents.length > 0; else eventSubEventsPlaceholderMain">
-                    <span class="event-subevent-panel-chip" *ngFor="let subEvent of eventForm.subEvents">
-                      <span class="event-subevent-panel-chip-head">
-                        <span class="event-subevent-panel-chip-name">{{ subEvent.name || 'Untitled' }}</span>
-                      </span>
+                    <span
+                      class="event-subevent-panel-chip"
+                      *ngFor="let subEvent of eventForm.subEvents; let chipIndex = index"
+                      [class.event-subevent-panel-chip-current]="subEventPanelChipIsCurrent(subEvent)"
+                      [ngStyle]="subEventPanelChipStyle(chipIndex)"
+                    >
+                      <span class="event-subevent-panel-chip-name">{{ subEventPanelChipTitle(subEvent, chipIndex) }}</span>
+                      <span class="event-subevent-panel-chip-location">{{ subEventLocationLabel(subEvent) }}</span>
                       <span class="event-subevent-panel-chip-date">{{ subEventCardRange(subEvent) }}</span>
                     </span>
                   </span>
@@ -2400,8 +3039,30 @@
                         </mat-form-field>
                       </div>
                     </label>
+                    <label class="experience-description-field subevent-location-field">
+                      <span>Location</span>
+                      <div class="asset-route-row asset-route-row-inline">
+                        <input
+                          type="text"
+                          [ngModel]="subEventForm.location"
+                          (ngModelChange)="onSubEventLocationChange($event)"
+                          placeholder="Sub event location"
+                        />
+                        <button
+                          type="button"
+                          class="experience-action-btn asset-route-map-btn"
+                          (click)="openSubEventLocationMap($event)"
+                          aria-label="Open sub event location on map"
+                        >
+                          <mat-icon>location_on</mat-icon>
+                        </button>
+                      </div>
+                    </label>
                     <fieldset class="subevent-tournament-fieldset" *ngIf="showTournamentStageConfigFields()">
                       <legend>Stage Rule</legend>
+                      <p class="subevent-tournament-hint subevent-tournament-hint-warning">
+                        Manual groups reduce capacity for auto groups.<br>Customization only!
+                      </p>
                       <div class="subevent-tournament-grid">
                         <div class="subevent-tournament-range-row">
                           <label class="subevent-tournament-field subevent-tournament-range-field">
@@ -2500,6 +3161,244 @@
         </div>
       </div>
 
+      <div *ngIf="activePopup === 'eventFeedback'" class="support-popup event-feedback-list-popup" (click)="closeEventFeedbackCardMenu(); closeEventFeedbackFilterPicker()">
+        <div class="support-submit-success" *ngIf="eventFeedbackListSubmitMessage">{{ eventFeedbackListSubmitMessage }}</div>
+        <div class="experience-card-list assets-card-list event-feedback-event-list" *ngIf="eventFeedbackVisibleItems.length > 0; else emptyEventFeedbackListState">
+          <article
+            class="experience-item-card asset-item-card event-feedback-event-card"
+            [class.is-feedbacked]="item.isFeedbacked"
+            [class.is-removed]="item.isRemoved"
+            *ngFor="let item of eventFeedbackVisibleItems; trackBy: trackByEventFeedbackItem"
+            (click)="closeEventFeedbackCardMenu()"
+          >
+            <div class="asset-card-image" [appLazyBgImage]="item.imageUrl">
+              <button
+                type="button"
+                class="asset-occupancy-badge event-feedback-start-badge"
+                [disabled]="!isEventFeedbackStartAvailable(item)"
+                (click)="startEventFeedback(item, $event)"
+                aria-label="Start event feedback"
+              >
+                <span>{{ item.isRemoved ? 'Removed' : (item.isFeedbacked ? 'Feedbacked' : 'Start Feedback') }}</span>
+              </button>
+            </div>
+            <div class="experience-item-head">
+              <span class="experience-item-icon event-feedback-leading-icon">
+                <mat-icon>{{ item.isFeedbacked ? 'task_alt' : (item.isRemoved ? 'delete_outline' : 'rate_review') }}</mat-icon>
+              </span>
+              <div class="experience-item-meta">
+                <h4>{{ item.title }}</h4>
+                <p>{{ item.subtitle }}</p>
+              </div>
+              <div class="experience-item-actions">
+                <button
+                  type="button"
+                  class="experience-action-btn experience-action-menu-trigger"
+                  [class.is-open]="isEventFeedbackCardMenuOpen(item)"
+                  (click)="toggleEventFeedbackCardMenu(item, $event)"
+                  [attr.aria-label]="isEventFeedbackCardMenuOpen(item) ? 'Close event feedback actions' : 'Open event feedback actions'"
+                >
+                  <mat-icon>{{ isEventFeedbackCardMenuOpen(item) ? 'close' : 'more_vert' }}</mat-icon>
+                </button>
+                <div
+                  class="item-action-menu"
+                  [class.is-open]="isEventFeedbackCardMenuOpen(item)"
+                  [class.item-action-menu-mobile]="isMobileView"
+                  [class.item-action-menu-desktop]="!isMobileView"
+                  [attr.aria-hidden]="!isEventFeedbackCardMenuOpen(item)"
+                  (click)="$event.stopPropagation()"
+                >
+                  <div class="item-action-menu-title">{{ item.title }}</div>
+                  <button
+                    type="button"
+                    class="item-action-menu-btn"
+                    *ngIf="isEventFeedbackStartAvailable(item)"
+                    (click)="startEventFeedback(item, $event)"
+                  >
+                    <mat-icon>play_arrow</mat-icon>
+                    <span>Start Feedback</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="item-action-menu-btn item-action-menu-btn-destructive"
+                    *ngIf="!item.isRemoved && !item.isFeedbacked"
+                    (click)="removeEventFeedbackItem(item, $event)"
+                  >
+                    <mat-icon>remove_circle</mat-icon>
+                    <span>Remove</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="item-action-menu-btn"
+                    *ngIf="item.isRemoved"
+                    (click)="restoreRemovedEventFeedbackItem(item, $event)"
+                  >
+                    <mat-icon>restore</mat-icon>
+                    <span>Restore</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="item-action-menu-btn"
+                    (click)="openEventFeedbackNotePopup(item, $event)"
+                  >
+                    <mat-icon>edit_note</mat-icon>
+                    <span>{{ hasEventFeedbackOrganizerNote(item.eventId) ? 'Edit Organizer Note' : 'Add Organizer Note' }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <p class="event-feedback-event-time">{{ item.timeframe }}</p>
+            <p class="event-feedback-event-meta">{{ eventFeedbackItemStatusLine(item) }}</p>
+          </article>
+        </div>
+      </div>
+
+      <ng-template #emptyEventFeedbackListState>
+        <article class="editor-list-card support-card event-feedback-empty-card">
+          <h4>Event Feedback</h4>
+          <p *ngIf="eventFeedbackListFilter === 'pending'">No pending events yet. New items appear about 2 hours after event start.</p>
+          <p *ngIf="eventFeedbackListFilter === 'feedbacked'">No feedbacked events yet.</p>
+          <p *ngIf="eventFeedbackListFilter === 'removed'">No removed events.</p>
+        </article>
+      </ng-template>
+
+      <div *ngIf="activePopup === 'helpCenter'" class="support-popup support-help-popup">
+        <article class="editor-list-card support-help-hero">
+          <h4>What you can do in MyScoutee</h4>
+          <p>MyScoutee helps you plan events end-to-end: invite people, split into stages/groups, assign resources, and coordinate in context chats.</p>
+        </article>
+
+        <div class="support-help-tabs" role="tablist" aria-label="Help topics">
+          <button
+            type="button"
+            class="support-help-tab-btn"
+            role="tab"
+            *ngFor="let section of helpCenterSections"
+            [class.is-active]="section.id === helpCenterActiveSectionId"
+            [attr.aria-selected]="section.id === helpCenterActiveSectionId"
+            (click)="selectHelpCenterSection(section.id, $event)"
+          >
+            <span class="support-help-tab-head">
+              <mat-icon>{{ section.icon }}</mat-icon>
+              <span>{{ section.title }}</span>
+            </span>
+            <span class="support-help-tab-blurb">{{ section.blurb }}</span>
+          </button>
+        </div>
+
+        <article class="editor-list-card support-help-detail" *ngIf="activeHelpCenterSection as section">
+          <h4><mat-icon>{{ section.icon }}</mat-icon><span>{{ section.title }}</span></h4>
+          <p class="support-help-detail-lead">{{ section.blurb }}</p>
+          <p *ngFor="let paragraph of section.details">{{ paragraph }}</p>
+          <ul class="support-help-detail-list">
+            <li *ngFor="let point of section.points">{{ point }}</li>
+          </ul>
+        </article>
+      </div>
+
+      <div *ngIf="activePopup === 'reportUser'" class="support-popup">
+        <article class="editor-list-card support-card" *ngIf="!reportUserSubmitted; else reportUserSubmittedState">
+          <h4>Report User</h4>
+          <p>Share what happened. Reports are reviewed by moderation, and we use them to improve trust and safety.</p>
+          <form class="support-form" (ngSubmit)="submitReportUser()">
+            <label>
+              <span>User handle or email</span>
+              <input
+                type="text"
+                name="reportHandle"
+                [(ngModel)]="reportUserForm.handle"
+                placeholder="@username or email"
+                [class.support-form-field-invalid]="!reportUserHandleValid"
+                required
+              />
+              <small class="support-form-help-text" [class.support-form-help-text-error]="!reportUserHandleValid">
+                Required. Minimum {{ reportUserHandleMinLength }} characters ({{ reportUserHandleLength }}/{{ reportUserHandleMinLength }}).
+              </small>
+            </label>
+            <label>
+              <span>Reason</span>
+              <select name="reportReason" [(ngModel)]="reportUserForm.reason">
+                <option *ngFor="let item of reportUserReasons" [value]="item">{{ item }}</option>
+              </select>
+            </label>
+            <label>
+              <span>Details</span>
+              <textarea
+                rows="4"
+                name="reportDetails"
+                [(ngModel)]="reportUserForm.details"
+                placeholder="Add short details (what happened, when, and where)."
+                [class.support-form-field-invalid]="!reportUserDetailsValid"
+                required
+              ></textarea>
+              <small class="support-form-help-text" [class.support-form-help-text-error]="!reportUserDetailsValid">
+                Required. Minimum {{ reportUserDetailsMinLength }} characters ({{ reportUserDetailsLength }}/{{ reportUserDetailsMinLength }}).
+              </small>
+            </label>
+            <div class="popup-actions support-actions">
+              <button type="button" class="link-btn neutral-btn" (click)="closePopup()">Cancel</button>
+              <button
+                type="submit"
+                class="link-btn primary-btn"
+                [disabled]="!canSubmitReportUser()"
+              >
+                Submit report
+              </button>
+            </div>
+          </form>
+        </article>
+      </div>
+
+      <ng-template #reportUserSubmittedState>
+        <article class="editor-list-card support-card event-feedback-empty-card">
+          <div class="support-submit-success">{{ reportUserSubmitMessage }}</div>
+        </article>
+      </ng-template>
+
+      <div *ngIf="activePopup === 'sendFeedback'" class="support-popup">
+        <article class="editor-list-card support-card" *ngIf="!feedbackSubmitted; else sendFeedbackSubmittedState">
+          <h4>Send Feedback</h4>
+          <p>Tell us what works well or what should be improved. Product feedback is triaged by category.</p>
+          <form class="support-form" (ngSubmit)="submitFeedback()">
+            <label>
+              <span>Category</span>
+              <select name="feedbackCategory" [(ngModel)]="feedbackForm.category">
+                <option *ngFor="let item of feedbackCategories" [value]="item">{{ item }}</option>
+              </select>
+            </label>
+            <label>
+              <span>Subject</span>
+              <input type="text" name="feedbackSubject" [(ngModel)]="feedbackForm.subject" placeholder="Short summary" />
+            </label>
+            <label>
+              <span>Details</span>
+              <textarea
+                rows="4"
+                name="feedbackDetails"
+                [(ngModel)]="feedbackForm.details"
+                placeholder="Describe your feedback. Include steps if this is a bug."
+              ></textarea>
+            </label>
+            <div class="popup-actions support-actions">
+              <button type="button" class="link-btn neutral-btn" (click)="closePopup()">Cancel</button>
+              <button
+                type="submit"
+                class="link-btn primary-btn"
+                [disabled]="!feedbackForm.subject.trim() || feedbackForm.details.trim().length < 8"
+              >
+                Send feedback
+              </button>
+            </div>
+          </form>
+        </article>
+      </div>
+
+      <ng-template #sendFeedbackSubmittedState>
+        <article class="editor-list-card support-card event-feedback-empty-card">
+          <div class="support-submit-success">{{ feedbackSubmitMessage }}</div>
+        </article>
+      </ng-template>
+
       <div *ngIf="activePopup === 'gdpr'" class="gdpr-popup">
         <article class="editor-list-card gdpr-lead-card">
           <h4>{{ gdprContent.title }}</h4>
@@ -2587,8 +3486,8 @@
             <button type="button" class="avatar-edit-btn" aria-label="Open image editor" (click)="openImageEditor()">
               <mat-icon>edit</mat-icon>
             </button>
-            <span class="avatar-bottom-pill avatar-bottom-pill-header" [ngStyle]="completionBadgeStyle(activeUser.completion)">
-              <span>{{ activeUser.completion }}%</span>
+            <span class="avatar-bottom-pill avatar-bottom-pill-header" [ngStyle]="completionBadgeStyle(profileCompletionPercent)">
+              <span>{{ profileCompletionPercent }}%</span>
             </span>
           </div>
 
@@ -2604,15 +3503,24 @@
         </div>
 
         <div class="profile-editor-scroll-area">
-        <div class="profile-details-structured">
-          <label class="profile-about-field">
-            <div class="profile-about-head">
-              <span>About me</span>
-              <small>{{ profileForm.about.length }}/160</small>
-            </div>
-            <textarea rows="3" maxlength="160" [(ngModel)]="profileForm.about"></textarea>
-          </label>
-          <section class="profile-details-group" *ngFor="let group of profileDetailsForm; let groupIndex = index">
+          <div class="profile-details-structured">
+            <label class="profile-about-field">
+              <div class="profile-about-head">
+                <span>About me</span>
+                <small>{{ profileForm.about.length }}/160</small>
+              </div>
+              <textarea rows="3" maxlength="160" [(ngModel)]="profileForm.about"></textarea>
+            </label>
+            <section
+              class="profile-details-group"
+              [ngClass]="{
+                'profile-details-group-basics': group.title === 'Basics',
+                'profile-details-group-lifestyle': group.title === 'Lifestyle',
+                'profile-details-group-relationships': group.title === 'Relationships',
+                'profile-details-group-beliefs': group.title === 'Beliefs'
+              }"
+              *ngFor="let group of profileDetailsForm; let groupIndex = index"
+            >
                   <h4>{{ group.title }}</h4>
                   <div class="profile-form-grid profile-details-form-grid basics-moved-grid" *ngIf="group.title === 'Basics'; else nonBasicsGroup">
                     <label class="name-field">
@@ -2689,8 +3597,9 @@
                       <ng-container *ngIf="!isMobileView; else mobileLanguageSelectorButton">
                         <div class="language-filter">
                           <button type="button" mat-stroked-button class="language-select-btn" (click)="openMobileLanguageSelector($event)">
-                            <span class="label">{{ languageTriggerLabel() }}</span>
-                            <mat-icon class="arrow">expand_more</mat-icon>
+                            <span class="label">{{ languageTriggerPrimaryLabel() || 'Select languages' }}</span>
+                            <span class="count" *ngIf="languageTriggerOverflowCount() > 0">+{{ languageTriggerOverflowCount() }}</span>
+                            <mat-icon class="arrow">chevron_right</mat-icon>
                           </button>
                         </div>
                       </ng-container>
@@ -2704,7 +3613,7 @@
                             <mat-icon>language</mat-icon>
                             <span>{{ languageTriggerLabel() || 'Select languages' }}</span>
                           </span>
-                          <mat-icon>expand_more</mat-icon>
+                          <mat-icon>chevron_right</mat-icon>
                         </button>
                       </ng-template>
                     </label>
@@ -2717,13 +3626,56 @@
                         <button
                           type="button"
                           class="profile-status-select-wrap selector-like profile-details-values-btn"
-                          [ngClass]="row.label === 'Values' ? valuesDominantToneClass(row.value) : interestDominantToneClass(row.value)"
+                          [ngClass]="row.label === 'Values' ? 'profile-details-values-tone-values' : 'profile-details-values-tone-interest'"
                           *ngIf="row.label === 'Values' || row.label === 'Interest'; else detailsSelect"
                           (click)="row.label === 'Values' ? openValuesSelector(groupIndex, rowIndex) : openInterestSelector(groupIndex, rowIndex)"
                         >
-                          <span class="status-option-content">
-                            <span>{{ row.label === 'Values' ? valuesRowSummary(row.value) : interestRowSummary(row.value) }}</span>
+                          <span class="status-option-content profile-details-selected-badges" *ngIf="row.label === 'Values'; else interestSummaryBadges">
+                            <ng-container *ngIf="valuesRowPreviewOptions(row.value, 1).length > 0; else valuesSummaryPlaceholder">
+                              <span class="profile-details-selected-chip-list">
+                                <span
+                                  class="values-selected-chip profile-details-inline-chip"
+                                  [class]="valuesOptionToneClass(item)"
+                                  *ngFor="let item of valuesRowPreviewOptions(row.value, 1)"
+                                >
+                                  {{ item }}
+                                </span>
+                              </span>
+                              <span
+                                class="profile-details-inline-overflow"
+                                *ngIf="valuesRowPreviewOverflow(row.value, 1) > 0"
+                              >
+                                +{{ valuesRowPreviewOverflow(row.value, 1) }}
+                              </span>
+                            </ng-container>
+                            <ng-template #valuesSummaryPlaceholder>
+                              <span class="profile-details-empty-summary">Select values</span>
+                            </ng-template>
                           </span>
+                          <ng-template #interestSummaryBadges>
+                            <span class="status-option-content profile-details-selected-badges">
+                              <ng-container *ngIf="interestRowPreviewOptions(row.value, 2).length > 0; else interestSummaryPlaceholder">
+                                <span class="profile-details-selected-chip-list">
+                                  <span
+                                    class="values-selected-chip profile-details-inline-chip"
+                                    [class]="interestOptionToneClass(item)"
+                                    *ngFor="let item of interestRowPreviewOptions(row.value, 2)"
+                                  >
+                                    {{ item }}
+                                  </span>
+                                </span>
+                                <span
+                                  class="profile-details-inline-overflow"
+                                  *ngIf="interestRowPreviewOverflow(row.value, 2) > 0"
+                                >
+                                  +{{ interestRowPreviewOverflow(row.value, 2) }}
+                                </span>
+                              </ng-container>
+                              <ng-template #interestSummaryPlaceholder>
+                                <span class="profile-details-empty-summary">Select interests</span>
+                              </ng-template>
+                            </span>
+                          </ng-template>
                           <mat-icon>chevron_right</mat-icon>
                         </button>
                         <ng-template #detailsSelect>
@@ -2768,82 +3720,151 @@
                         </ng-template>
                         <div
                           class="profile-details-privacy-fab"
+                          [class.open]="!isMobileView && isDetailPrivacyFabOpen(groupIndex, rowIndex)"
+                          [class.is-just-selected]="isDetailPrivacyJustSelected(groupIndex, rowIndex)"
                         >
                           <button
                             type="button"
                             class="profile-details-privacy-btn profile-details-privacy-trigger"
-                            [class]="privacyStatusClass(row.privacy)"
+                            [class.status-public]="row.privacy === 'Public'"
+                            [class.status-friends]="row.privacy === 'Friends'"
+                            [class.status-host]="row.privacy === 'Hosts'"
+                            [class.status-inactive]="row.privacy === 'Private'"
+                            [class.is-open]="isDetailPrivacyFabOpen(groupIndex, rowIndex)"
                             (click)="openDetailPrivacySelector(groupIndex, rowIndex, $event)"
-                            aria-label="Change visibility"
+                            [attr.aria-label]="isDetailPrivacyFabOpen(groupIndex, rowIndex) ? 'Close visibility menu' : 'Change visibility'"
                           >
-                            <mat-icon>{{ privacyStatusIcon(row.privacy) }}</mat-icon>
+                            <mat-icon>{{ privacyTriggerIcon(row.privacy, isDetailPrivacyFabOpen(groupIndex, rowIndex)) }}</mat-icon>
                           </button>
+                          <div
+                            class="item-action-menu item-action-menu-desktop profile-privacy-menu"
+                            *ngIf="!isMobileView"
+                            [class.is-open]="isDetailPrivacyFabOpen(groupIndex, rowIndex)"
+                            [attr.aria-hidden]="!isDetailPrivacyFabOpen(groupIndex, rowIndex)"
+                            (click)="$event.stopPropagation()"
+                          >
+                            <button
+                              type="button"
+                              class="item-action-menu-btn profile-privacy-menu-option"
+                              [class]="privacyStatusClass(option)"
+                              *ngFor="let option of detailPrivacyOptions"
+                              (click)="selectDetailPrivacy(groupIndex, rowIndex, option, $event)"
+                            >
+                              <mat-icon>{{ privacyStatusIcon(option) }}</mat-icon>
+                              <span>{{ option }}</span>
+                              <mat-icon class="profile-privacy-menu-check" *ngIf="row.privacy === option">done</mat-icon>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
                     </div>
                   </ng-template>
-          </section>
-          <section class="profile-details-group experience-selector-card">
-            <h4>Experience</h4>
-            <div class="experience-selector-grid">
-              <div class="experience-selector-row">
-                <span>Workspace</span>
-                <div class="profile-details-control-row">
-                  <button
-                    type="button"
-                    class="profile-status-select-wrap selector-like profile-details-values-btn section-social"
-                    (click)="openWorkspaceSelector()"
-                  >
-                    <span class="status-option-content">
-                      <mat-icon>apartment</mat-icon>
-                      <span>{{ workspaceExperienceSummary }}</span>
-                    </span>
-                    <mat-icon>chevron_right</mat-icon>
-                  </button>
-                  <div class="profile-details-privacy-fab">
+            </section>
+            <section class="profile-details-group experience-selector-card">
+              <h4>Experience</h4>
+              <div class="experience-selector-grid">
+                <div class="experience-selector-row">
+                  <span>Workspace</span>
+                  <div class="profile-details-control-row">
                     <button
                       type="button"
-                      class="profile-details-privacy-btn profile-details-privacy-trigger"
-                      [class]="privacyStatusClass(experienceVisibilityValue('workspace'))"
-                      (click)="openExperiencePrivacySelector('workspace', $event)"
-                      aria-label="Change workspace visibility"
+                      class="profile-status-select-wrap selector-like profile-details-values-btn section-social"
+                      (click)="openWorkspaceSelector()"
                     >
-                      <mat-icon>{{ privacyStatusIcon(experienceVisibilityValue('workspace')) }}</mat-icon>
+                      <span class="status-option-content">
+                        <span>{{ workspaceExperienceSummary }}</span>
+                      </span>
+                      <mat-icon>chevron_right</mat-icon>
                     </button>
+                    <div class="profile-details-privacy-fab" [class.open]="!isMobileView && isExperiencePrivacyFabOpen('workspace')">
+                      <button
+                        type="button"
+                        class="profile-details-privacy-btn profile-details-privacy-trigger"
+                        [class.status-public]="experienceVisibilityValue('workspace') === 'Public'"
+                        [class.status-friends]="experienceVisibilityValue('workspace') === 'Friends'"
+                        [class.status-host]="experienceVisibilityValue('workspace') === 'Hosts'"
+                        [class.status-inactive]="experienceVisibilityValue('workspace') === 'Private'"
+                        [class.is-open]="isExperiencePrivacyFabOpen('workspace')"
+                        (click)="openExperiencePrivacySelector('workspace', $event)"
+                        [attr.aria-label]="isExperiencePrivacyFabOpen('workspace') ? 'Close workspace visibility menu' : 'Change workspace visibility'"
+                      >
+                        <mat-icon>{{ privacyTriggerIcon(experienceVisibilityValue('workspace'), isExperiencePrivacyFabOpen('workspace')) }}</mat-icon>
+                      </button>
+                      <div
+                        class="item-action-menu item-action-menu-desktop profile-privacy-menu"
+                        *ngIf="!isMobileView"
+                        [class.is-open]="isExperiencePrivacyFabOpen('workspace')"
+                        [attr.aria-hidden]="!isExperiencePrivacyFabOpen('workspace')"
+                        (click)="$event.stopPropagation()"
+                      >
+                        <button
+                          type="button"
+                          class="item-action-menu-btn profile-privacy-menu-option"
+                          [class]="privacyStatusClass(option)"
+                          *ngFor="let option of detailPrivacyOptions"
+                          (click)="selectExperiencePrivacy('workspace', option, $event)"
+                        >
+                          <mat-icon>{{ privacyStatusIcon(option) }}</mat-icon>
+                          <span>{{ option }}</span>
+                          <mat-icon class="profile-privacy-menu-check" *ngIf="experienceVisibilityValue('workspace') === option">done</mat-icon>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="experience-selector-row">
+                  <span>School</span>
+                  <div class="profile-details-control-row">
+                    <button
+                      type="button"
+                      class="profile-status-select-wrap selector-like profile-details-values-btn section-arts"
+                      (click)="openSchoolSelector()"
+                    >
+                      <span class="status-option-content">
+                        <span>{{ schoolExperienceSummary }}</span>
+                      </span>
+                      <mat-icon>chevron_right</mat-icon>
+                    </button>
+                    <div class="profile-details-privacy-fab" [class.open]="!isMobileView && isExperiencePrivacyFabOpen('school')">
+                      <button
+                        type="button"
+                        class="profile-details-privacy-btn profile-details-privacy-trigger"
+                        [class.status-public]="experienceVisibilityValue('school') === 'Public'"
+                        [class.status-friends]="experienceVisibilityValue('school') === 'Friends'"
+                        [class.status-host]="experienceVisibilityValue('school') === 'Hosts'"
+                        [class.status-inactive]="experienceVisibilityValue('school') === 'Private'"
+                        [class.is-open]="isExperiencePrivacyFabOpen('school')"
+                        (click)="openExperiencePrivacySelector('school', $event)"
+                        [attr.aria-label]="isExperiencePrivacyFabOpen('school') ? 'Close school visibility menu' : 'Change school visibility'"
+                      >
+                        <mat-icon>{{ privacyTriggerIcon(experienceVisibilityValue('school'), isExperiencePrivacyFabOpen('school')) }}</mat-icon>
+                      </button>
+                      <div
+                        class="item-action-menu item-action-menu-desktop profile-privacy-menu"
+                        *ngIf="!isMobileView"
+                        [class.is-open]="isExperiencePrivacyFabOpen('school')"
+                        [attr.aria-hidden]="!isExperiencePrivacyFabOpen('school')"
+                        (click)="$event.stopPropagation()"
+                      >
+                        <button
+                          type="button"
+                          class="item-action-menu-btn profile-privacy-menu-option"
+                          [class]="privacyStatusClass(option)"
+                          *ngFor="let option of detailPrivacyOptions"
+                          (click)="selectExperiencePrivacy('school', option, $event)"
+                        >
+                          <mat-icon>{{ privacyStatusIcon(option) }}</mat-icon>
+                          <span>{{ option }}</span>
+                          <mat-icon class="profile-privacy-menu-check" *ngIf="experienceVisibilityValue('school') === option">done</mat-icon>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div class="experience-selector-row">
-                <span>School</span>
-                <div class="profile-details-control-row">
-                  <button
-                    type="button"
-                    class="profile-status-select-wrap selector-like profile-details-values-btn section-arts"
-                    (click)="openSchoolSelector()"
-                  >
-                    <span class="status-option-content">
-                      <mat-icon>school</mat-icon>
-                      <span>{{ schoolExperienceSummary }}</span>
-                    </span>
-                    <mat-icon>chevron_right</mat-icon>
-                  </button>
-                  <div class="profile-details-privacy-fab">
-                    <button
-                      type="button"
-                      class="profile-details-privacy-btn profile-details-privacy-trigger"
-                      [class]="privacyStatusClass(experienceVisibilityValue('school'))"
-                      (click)="openExperiencePrivacySelector('school', $event)"
-                      aria-label="Change school visibility"
-                    >
-                      <mat-icon>{{ privacyStatusIcon(experienceVisibilityValue('school')) }}</mat-icon>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
+            </section>
+          </div>
         </div>
 
       </div>
@@ -2994,9 +4015,11 @@
     class="app-popup-panel"
     [class.popup-panel-members]="stackedPopup === 'chatMembers' || stackedPopup === 'activityMembers'"
     [class.popup-panel-profile-editor]="stackedPopup === 'experienceSelector'"
+    [class.popup-panel-profile-selector]="stackedPopup === 'valuesSelector' || stackedPopup === 'interestSelector'"
     [class.popup-panel-event-editor]="stackedPopup === 'eventEditor'"
     [class.popup-panel-event-editor-readonly]="stackedPopup === 'eventEditor' && isEventEditorReadOnly()"
     [class.popup-panel-asset-members]="stackedPopup === 'subEventMembers' || stackedPopup === 'subEventAssets' || stackedPopup === 'subEventSupplyContributions'"
+    [class.popup-panel-event-feedback]="stackedPopup === 'eventFeedback'"
     [class.popup-panel-ticket-fullscreen]="(stackedPopup === 'ticketCode' || stackedPopup === 'ticketScanner') && isMobileView"
     (click)="$event.stopPropagation()"
   >
@@ -3030,24 +4053,6 @@
       >
         <mat-icon>add</mat-icon>
       </button>
-      <div
-        class="values-header-chips"
-        *ngIf="
-          (stackedPopup === 'valuesSelector' || stackedPopup === 'interestSelector') &&
-          (stackedPopup === 'valuesSelector' ? valuesSelectorSelected : interestSelectorSelected).length > 0
-        "
-      >
-        <button
-          type="button"
-          class="values-selected-chip"
-          [class]="stackedPopup === 'valuesSelector' ? valuesOptionToneClass(item) : interestOptionToneClass(item)"
-          *ngFor="let item of (stackedPopup === 'valuesSelector' ? valuesSelectorSelected : interestSelectorSelected)"
-          (click)="stackedPopup === 'valuesSelector' ? removeValuesOption(item) : removeInterestOption(item)"
-        >
-          <span>{{ item }}</span>
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
     </div>
     <ng-template #defaultStackedHeader>
       <div
@@ -3071,12 +4076,18 @@
           </div>
         </div>
         <ng-template #defaultStackedTitle>
-          <div class="popup-title">
-            <h2>{{ getStackedPopupTitle() }}</h2>
-            <p class="popup-subtitle-activities" *ngIf="stackedPopup === 'eventEditor' && isEventEditorReadOnly()">
-              {{ eventForm.title || 'Event' }}
-            </p>
+          <div class="popup-title popup-title-feedback" *ngIf="stackedPopup === 'eventFeedback'; else defaultStackedTitleGeneric">
+            <h2>Event Feedback</h2>
+            <p class="popup-subtitle-activities popup-subtitle-feedback-event">{{ eventFeedbackCurrentEventTitle() }}</p>
           </div>
+          <ng-template #defaultStackedTitleGeneric>
+            <div class="popup-title">
+              <h2>{{ getStackedPopupTitle() }}</h2>
+              <p class="popup-subtitle-activities" *ngIf="stackedPopup === 'eventEditor' && isEventEditorReadOnly()">
+                {{ eventForm.title || 'Event' }}
+              </p>
+            </div>
+          </ng-template>
         </ng-template>
         </ng-template>
         <button
@@ -3120,13 +4131,113 @@
         </span>
         <button
           type="button"
-          class="popup-chat-event-btn"
-          aria-label="Open event editor"
-          *ngIf="stackedPopup === 'chat' && selectedChat"
-          (click)="openEventEditor(true)"
+          class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
+          [ngClass]="selectedChatHeaderActionToneClass()"
+          *ngIf="stackedPopup === 'chat' && selectedChat && !selectedChatHasSubEventMenu()"
+          (click)="openSelectedChatEvent($event)"
         >
-          <mat-icon>edit_calendar</mat-icon>
+          <span class="event-editor-members-invite">
+            <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
+            <span>{{ selectedChatHeaderActionLabel() }}</span>
+          </span>
         </button>
+        <div class="popup-chat-context-menu-wrap" *ngIf="stackedPopup === 'chat' && selectedChat && selectedChatHasSubEventMenu()">
+          <button
+            type="button"
+            class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
+            [ngClass]="selectedChatHeaderActionToneClass()"
+            [class.is-open]="isSelectedChatContextMenuOpen()"
+            (click)="toggleSelectedChatContextMenu($event)"
+            aria-label="Open chat context menu"
+          >
+            <span class="event-editor-members-invite">
+              <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
+              <span>{{ selectedChatHeaderActionLabel() }}</span>
+              <mat-icon class="popup-chat-context-chevron">expand_more</mat-icon>
+            </span>
+            <span class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge" *ngIf="selectedChatHeaderActionBadgeCount() > 0">
+              {{ selectedChatHeaderActionBadgeCount() }}
+            </span>
+          </button>
+          <div
+            class="item-action-menu event-subevent-resource-menu popup-chat-context-menu"
+            [class.is-open]="isSelectedChatContextMenuOpen()"
+            [class.item-action-menu-mobile]="isMobileView"
+            [class.item-action-menu-desktop]="!isMobileView"
+            [class.is-open-up]="isSelectedChatContextMenuOpenUp()"
+            [attr.aria-hidden]="!isSelectedChatContextMenuOpen()"
+            (click)="$event.stopPropagation()"
+          >
+            <div class="item-action-menu-title">{{ selectedChatContextMenuTitle() }}</div>
+            <button type="button" class="item-action-menu-btn" (click)="openSelectedChatEvent($event)">
+              <mat-icon>visibility</mat-icon>
+              <span>View Event</span>
+            </button>
+            <div class="item-action-menu-divider"></div>
+            <div class="item-action-menu-section-label">Resources</div>
+            <button
+              type="button"
+              class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-members"
+              [ngClass]="selectedChatSubEvent() ? subEventCapacityStateClass(selectedChatSubEvent()!) : ''"
+              *ngIf="selectedChatShowsMembersResource()"
+              (click)="openSelectedChatSubEventResource('Members', $event)"
+            >
+              <span class="subevent-resource-menu-item-icon"><mat-icon>groups</mat-icon></span>
+              <span class="subevent-resource-menu-item-main">
+                <span class="subevent-resource-menu-item-title">Members</span>
+                <span class="subevent-resource-menu-item-value">{{ selectedChatResourceSummary('Members') }}</span>
+              </span>
+              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="selectedChatResourcePending('Members') > 0">
+                {{ selectedChatResourcePending('Members') }}
+              </span>
+            </button>
+            <button
+              type="button"
+              class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-car"
+              [ngClass]="selectedChatSubEvent() ? subEventAssetCapacityStateClass(selectedChatSubEvent()!, 'Car') : ''"
+              (click)="openSelectedChatSubEventResource('Car', $event)"
+            >
+              <span class="subevent-resource-menu-item-icon"><mat-icon>directions_car</mat-icon></span>
+              <span class="subevent-resource-menu-item-main">
+                <span class="subevent-resource-menu-item-title">Car</span>
+                <span class="subevent-resource-menu-item-value">{{ selectedChatResourceSummary('Car') }}</span>
+              </span>
+              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="selectedChatResourcePending('Car') > 0">
+                {{ selectedChatResourcePending('Car') }}
+              </span>
+            </button>
+            <button
+              type="button"
+              class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-accommodation"
+              [ngClass]="selectedChatSubEvent() ? subEventAssetCapacityStateClass(selectedChatSubEvent()!, 'Accommodation') : ''"
+              (click)="openSelectedChatSubEventResource('Accommodation', $event)"
+            >
+              <span class="subevent-resource-menu-item-icon"><mat-icon>hotel</mat-icon></span>
+              <span class="subevent-resource-menu-item-main">
+                <span class="subevent-resource-menu-item-title">Accommodation</span>
+                <span class="subevent-resource-menu-item-value">{{ selectedChatResourceSummary('Accommodation') }}</span>
+              </span>
+              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="selectedChatResourcePending('Accommodation') > 0">
+                {{ selectedChatResourcePending('Accommodation') }}
+              </span>
+            </button>
+            <button
+              type="button"
+              class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-supplies"
+              [ngClass]="selectedChatSubEvent() ? subEventAssetCapacityStateClass(selectedChatSubEvent()!, 'Supplies') : ''"
+              (click)="openSelectedChatSubEventResource('Supplies', $event)"
+            >
+              <span class="subevent-resource-menu-item-icon"><mat-icon>inventory_2</mat-icon></span>
+              <span class="subevent-resource-menu-item-main">
+                <span class="subevent-resource-menu-item-title">Supplies</span>
+                <span class="subevent-resource-menu-item-value">{{ selectedChatResourceSummary('Supplies') }}</span>
+              </span>
+              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="selectedChatResourcePending('Supplies') > 0">
+                {{ selectedChatResourcePending('Supplies') }}
+              </span>
+            </button>
+          </div>
+        </div>
         <button
           type="button"
           class="popup-chat-event-btn popup-invitation-approve-btn"
@@ -3226,6 +4337,14 @@
         >
           <mat-icon>add</mat-icon>
         </button>
+        <button
+          type="button"
+          class="link-btn primary-btn event-feedback-header-submit-btn"
+          *ngIf="stackedPopup === 'eventFeedback' && !eventFeedbackSubmittedState && eventFeedbackOnLastSlide && activeEventFeedbackCard"
+          (click)="submitActiveEventFeedback()"
+        >
+          Submit feedback
+        </button>
         <button mat-icon-button class="popup-close" (click)="handleStackedPopupHeaderClose()" aria-label="Close">
           <mat-icon>close</mat-icon>
         </button>
@@ -3259,6 +4378,7 @@
       [class.popup-body-subevent-members]="isSubEventMembersPopup()"
       [class.popup-body-experience]="stackedPopup === 'experienceSelector'"
       [class.popup-body-event-explore]="stackedPopup === 'eventExplore'"
+      [class.popup-body-event-feedback]="stackedPopup === 'eventFeedback'"
       [class.popup-body-impressions]="stackedPopup === 'impressionsHost'"
     >
       <div *ngIf="stackedPopup === 'chat' && selectedChat" class="chat-popup-wrap">
@@ -3475,6 +4595,16 @@
           </div>
 
           <div class="social-proof-section-block">
+            <div class="social-proof-section-head section-personality">
+              <span class="section-tag">Personality</span>
+              <span class="section-line"></span>
+            </div>
+            <div class="social-proof-chip-list">
+              <span class="social-proof-chip chip-personality" *ngFor="let item of hostPersonalityBadgeItems">{{ item }}</span>
+            </div>
+          </div>
+
+          <div class="social-proof-section-block">
             <div class="social-proof-section-head section-category">
               <span class="section-tag">Category</span>
               <span class="section-line"></span>
@@ -3662,7 +4792,8 @@
               <div class="asset-card-image" [appLazyBgImage]="card.imageUrl">
                 <button
                   type="button"
-                  class="asset-source-icon"
+                  class="asset-source-icon asset-source-icon-route-map"
+                  [class.asset-source-icon-multiroute]="card.type === 'Car'"
                   *ngIf="canOpenSubEventResourceMap(card)"
                   (click)="openSubEventResourceMap(card, $event)"
                   [attr.aria-label]="card.type === 'Car' ? 'Open car route map' : 'Open accommodation location map'"
@@ -3879,6 +5010,7 @@
                       <button
                         type="button"
                         class="experience-action-btn experience-action-delete asset-route-delete-btn"
+                        *ngIf="subEventAssetRouteEditor.routes.length > 1"
                         (click)="removeSubEventAssetRouteStop(stopIndex)"
                         aria-label="Delete route stop"
                       >
@@ -4500,27 +5632,59 @@
                   </div>
                 </label>
               </section>
+              <label class="experience-description-field event-location-field">
+                <span>Location</span>
+                <div class="asset-route-row asset-route-row-inline">
+                  <input
+                    type="text"
+                    [ngModel]="eventForm.location"
+                    (ngModelChange)="onEventLocationChange($event)"
+                    placeholder="Event route location"
+                    [readonly]="isEventEditorReadOnly()"
+                  />
+                  <button
+                    type="button"
+                    class="experience-action-btn asset-route-map-btn asset-route-main-map-btn event-location-map-btn"
+                    (click)="openEventLocationMap($event)"
+                    aria-label="Open event route on map"
+                  >
+                    <mat-icon>location_on</mat-icon>
+                  </button>
+                </div>
+              </label>
               <label class="event-subevents-field">
                 <button type="button" class="event-subevents-panel-trigger" (click)="openEventSubEventsPopup($event)">
                   <span class="event-subevents-panel-head">
                     <span class="event-subevents-panel-title">
-                      <mat-icon>view_timeline</mat-icon>
-                      <span>Sub Events</span>
+                      <span class="event-subevents-panel-title-main">
+                        <mat-icon>view_timeline</mat-icon>
+                        <span class="event-subevents-panel-title-label">Sub Events</span>
+                      </span>
+                      <span class="event-subevents-panel-current" *ngIf="eventForm.subEvents.length > 0">
+                        {{ subEventsCurrentHeaderLabel() }}
+                      </span>
+                    </span>
+                    <span class="event-subevents-panel-meta" *ngIf="eventForm.subEvents.length > 0">
                       <span class="event-subevents-panel-mode" [ngClass]="subEventsDisplayModeClass()">
                         <mat-icon>{{ subEventsDisplayModeIcon() }}</mat-icon>
                         <span>{{ subEventsDisplayMode }}</span>
                       </span>
-                    </span>
-                    <span class="event-subevents-panel-summary event-subevents-panel-summary-inline" *ngIf="eventForm.subEvents.length > 0">
-                      {{ subEventsCountLabel() }}
+                      <span class="event-subevents-panel-summary event-subevents-panel-summary-inline">
+                        {{ subEventsCountLabel() }}
+                      </span>
                     </span>
                     <mat-icon class="event-subevents-chevron">chevron_right</mat-icon>
                   </span>
+                  <span class="event-subevents-panel-divider" *ngIf="eventForm.subEvents.length > 0" aria-hidden="true"></span>
                   <span class="event-subevents-panel-body" *ngIf="eventForm.subEvents.length > 0; else eventSubEventsPlaceholderStacked">
-                    <span class="event-subevent-panel-chip" *ngFor="let subEvent of eventForm.subEvents">
-                      <span class="event-subevent-panel-chip-head">
-                        <span class="event-subevent-panel-chip-name">{{ subEvent.name || 'Untitled' }}</span>
-                      </span>
+                    <span
+                      class="event-subevent-panel-chip"
+                      *ngFor="let subEvent of eventForm.subEvents; let chipIndex = index"
+                      [class.event-subevent-panel-chip-current]="subEventPanelChipIsCurrent(subEvent)"
+                      [ngStyle]="subEventPanelChipStyle(chipIndex)"
+                    >
+                      <span class="event-subevent-panel-chip-name">{{ subEventPanelChipTitle(subEvent, chipIndex) }}</span>
+                      <span class="event-subevent-panel-chip-location">{{ subEventLocationLabel(subEvent) }}</span>
                       <span class="event-subevent-panel-chip-date">{{ subEventCardRange(subEvent) }}</span>
                     </span>
                   </span>
@@ -4651,8 +5815,30 @@
                         </mat-form-field>
                       </div>
                     </label>
+                    <label class="experience-description-field subevent-location-field">
+                      <span>Location</span>
+                      <div class="asset-route-row asset-route-row-inline">
+                        <input
+                          type="text"
+                          [ngModel]="subEventForm.location"
+                          (ngModelChange)="onSubEventLocationChange($event)"
+                          placeholder="Sub event location"
+                        />
+                        <button
+                          type="button"
+                          class="experience-action-btn asset-route-map-btn"
+                          (click)="openSubEventLocationMap($event)"
+                          aria-label="Open sub event location on map"
+                        >
+                          <mat-icon>location_on</mat-icon>
+                        </button>
+                      </div>
+                    </label>
                     <fieldset class="subevent-tournament-fieldset" *ngIf="showTournamentStageConfigFields()">
                       <legend>Stage Rule</legend>
+                      <p class="subevent-tournament-hint subevent-tournament-hint-warning">
+                        Manual groups reduce capacity for auto groups.<br>Customization only!
+                      </p>
                       <div class="subevent-tournament-grid">
                         <div class="subevent-tournament-range-row">
                           <label class="subevent-tournament-field subevent-tournament-range-field">
@@ -4751,41 +5937,264 @@
         </div>
       </div>
 
-      <div *ngIf="stackedPopup === 'valuesSelector'" class="values-selector-popup">
-        <div class="values-selector-group" *ngFor="let group of beliefsValuesOptionGroups">
-          <div class="social-proof-section-head" [class]="group.toneClass">
-            <span class="section-tag">{{ group.icon }} {{ group.shortTitle }}</span>
-            <span class="section-line"></span>
-          </div>
-          <div class="social-proof-chip-list">
+      <div *ngIf="stackedPopup === 'eventFeedback'" class="support-popup event-feedback-popup">
+        <ng-container *ngIf="!eventFeedbackSubmittedState; else eventFeedbackSentState">
+        <article class="editor-list-card support-card event-feedback-shell" *ngIf="activeEventFeedbackCard as card; else eventFeedbackSentState">
+          <span class="event-feedback-mobile-counter" *ngIf="hasEventFeedbackCards">{{ eventFeedbackSlideCounterLabel }}</span>
+          <div class="event-feedback-card-wrap">
+            <div
+              class="event-feedback-card"
+              [ngClass]="[card.toneClass, eventFeedbackSlideAnimClass]"
+              (touchstart)="onEventFeedbackTouchStart($event)"
+              (touchend)="onEventFeedbackTouchEnd($event)"
+            >
+              <div class="event-feedback-head" [class.event-feedback-head-member]="card.kind === 'attendee'">
+                <article
+                  *ngIf="card.kind === 'event'; else attendeeFeedbackIdentityCard"
+                  class="experience-item-card asset-item-card event-feedback-event-card event-feedback-carousel-identity-card event-feedback-carousel-identity-event"
+                >
+                  <div class="asset-card-image" [appLazyBgImage]="card.imageUrl"></div>
+                  <div class="experience-item-head">
+                    <span class="experience-item-icon event-feedback-leading-icon">
+                      <mat-icon>{{ card.icon }}</mat-icon>
+                    </span>
+                    <div class="experience-item-meta">
+                      <h4>{{ card.heading }}</h4>
+                      <p>{{ card.subheading }}</p>
+                      <p class="event-feedback-target-line" *ngIf="card.identityTitle">
+                        <mat-icon>{{ card.identityStatusIcon || 'admin_panel_settings' }}</mat-icon>
+                        <span>{{ card.identityTitle }}</span>
+                      </p>
+                    </div>
+                  </div>
+                </article>
+                <ng-template #attendeeFeedbackIdentityCard>
+                  <article
+                    class="friends-picker-card subevent-member-image-card activity-member-image-card event-feedback-carousel-identity-card event-feedback-carousel-identity-member"
+                    [style.backgroundImage]="'url(' + card.imageUrl + ')'"
+                  >
+                    <span class="member-card-status-chip" [ngClass]="card.identityStatusClass || 'member-status-member'">
+                      <mat-icon>{{ card.identityStatusIcon || 'person' }}</mat-icon>
+                    </span>
+                    <div class="friends-picker-card-meta subevent-member-card-meta activity-member-card-meta">
+                      <h4>{{ card.identityTitle || card.heading }}</h4>
+                      <p>{{ card.identitySubtitle || card.subheading }}</p>
+                    </div>
+                  </article>
+                </ng-template>
+              </div>
+
+              <div
+                class="event-feedback-form"
+                [class.event-feedback-form-event]="card.kind === 'event'"
+                [class.event-feedback-form-attendee]="card.kind === 'attendee'"
+              >
+                <div class="event-feedback-question event-feedback-question-primary">
+                  <h5>{{ card.questionPrimary }}</h5>
+                  <div class="event-feedback-options">
+                    <button
+                      type="button"
+                      class="event-feedback-option-btn"
+                      *ngFor="let option of card.primaryOptions"
+                      [class.is-selected]="isEventFeedbackPrimarySelected(option.value)"
+                      [ngClass]="eventFeedbackOptionToneClass(card, option)"
+                      (click)="selectEventFeedbackPrimary(option.value, $event)"
+                    >
+                      <mat-icon>{{ option.icon }}</mat-icon>
+                      <span>{{ option.label }}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="event-feedback-question event-feedback-question-secondary">
+                  <h5>{{ card.questionSecondary }}</h5>
+                  <div class="event-feedback-options">
+                    <button
+                      type="button"
+                      class="event-feedback-option-btn"
+                      *ngFor="let option of card.secondaryOptions"
+                      [class.is-selected]="isEventFeedbackSecondarySelected(option.value)"
+                      [ngClass]="eventFeedbackOptionToneClass(card, option)"
+                      (click)="selectEventFeedbackSecondary(option.value, $event)"
+                    >
+                      <mat-icon>{{ option.icon }}</mat-icon>
+                      <span>{{ option.label }}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <button
               type="button"
-              class="social-proof-chip values-option-chip"
+              class="event-feedback-overlay-nav-btn event-feedback-overlay-nav-btn-prev"
+              [disabled]="eventFeedbackIndex <= 0"
+              (click)="previousEventFeedbackSlide($event)"
+              aria-label="Previous feedback card"
+            >
+              <mat-icon>chevron_left</mat-icon>
+            </button>
+            <button
+              type="button"
+              class="event-feedback-overlay-nav-btn event-feedback-overlay-nav-btn-next"
+              *ngIf="!eventFeedbackOnLastSlide"
+              (click)="nextEventFeedbackSlide($event)"
+              aria-label="Next feedback card"
+            >
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+          </div>
+
+          <div class="event-feedback-carousel">
+            <div class="event-feedback-dots" role="tablist" aria-label="Feedback carousel slides">
+              <button
+                type="button"
+                class="event-feedback-dot"
+                [class.is-active]="eventFeedbackIndex === index"
+                *ngFor="let index of eventFeedbackDotIndices"
+                (click)="selectEventFeedbackSlide(index, $event)"
+                [attr.aria-label]="'Open feedback card ' + (index + 1)"
+              ></button>
+            </div>
+          </div>
+
+          <div class="support-submit-success" *ngIf="eventFeedbackSubmitMessage">{{ eventFeedbackSubmitMessage }}</div>
+        </article>
+        </ng-container>
+      </div>
+
+      <ng-template #eventFeedbackSentState>
+        <article class="editor-list-card support-card event-feedback-empty-card">
+          <div class="support-submit-success" *ngIf="eventFeedbackSubmitMessage">{{ eventFeedbackSubmitMessage }}</div>
+        </article>
+      </ng-template>
+
+      <div *ngIf="stackedPopup === 'eventFeedbackNote'" class="support-popup">
+        <article class="editor-list-card support-card" *ngIf="!eventFeedbackNoteSubmitted; else eventFeedbackNoteSubmittedState">
+          <h4>Organizer Feedback</h4>
+          <p>Add textual feedback for the event organizer of {{ eventFeedbackCurrentEventTitle() }}.</p>
+          <form class="support-form" (ngSubmit)="submitEventFeedbackNote()">
+            <label>
+              <span>Feedback</span>
+              <textarea
+                rows="4"
+                name="eventFeedbackNote"
+                [(ngModel)]="eventFeedbackNoteForm.text"
+                placeholder="What should be improved for this event next time?"
+              ></textarea>
+            </label>
+            <div class="popup-actions support-actions">
+              <button type="button" class="link-btn neutral-btn" (click)="closeStackedPopup()">Cancel</button>
+              <button type="submit" class="link-btn primary-btn" [disabled]="!canSubmitEventFeedbackNote()">Submit feedback</button>
+            </div>
+          </form>
+        </article>
+      </div>
+
+      <ng-template #eventFeedbackNoteSubmittedState>
+        <article class="editor-list-card support-card event-feedback-empty-card">
+          <div class="support-submit-success">{{ eventFeedbackNoteSubmitMessage }}</div>
+          <div class="popup-actions support-actions">
+            <button type="button" class="link-btn primary-btn" (click)="closeStackedPopup()">Done</button>
+          </div>
+        </article>
+      </ng-template>
+
+      <div *ngIf="stackedPopup === 'valuesSelector'" class="values-selector-popup profile-selector-popup">
+        <div class="profile-filter-selector-head">
+          <span class="profile-filter-selector-head-label">Values</span>
+          <button
+            type="button"
+            class="profile-filter-selector-clear"
+            [class.is-hidden]="valuesSelectorSelected.length === 0"
+            [disabled]="valuesSelectorSelected.length === 0"
+            [attr.aria-hidden]="valuesSelectorSelected.length === 0 ? 'true' : null"
+            (click)="clearValuesSelector()"
+          >
+            Clear
+          </button>
+        </div>
+        <div class="profile-filter-selector-selected" *ngIf="valuesSelectorSelected.length > 0; else valuesSelectorNoSelection">
+          <button
+            type="button"
+            class="profile-filter-selector-chip"
+            *ngFor="let item of valuesSelectorSelected"
+            (click)="removeValuesOption(item)"
+          >
+            <span>{{ item }}</span>
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <ng-template #valuesSelectorNoSelection>
+          <p class="profile-filter-selector-empty">No items selected yet.</p>
+        </ng-template>
+        <div class="values-selector-group profile-selector-option-group" [class]="group.toneClass" *ngFor="let group of beliefsValuesOptionGroups">
+          <div class="profile-selector-option-group-head">
+            <span class="profile-selector-option-group-tag" [class]="group.toneClass">
+              <mat-icon class="profile-selector-option-group-tag-icon">{{ profileSelectorToneIcon(group.toneClass) }}</mat-icon>
+              <span>{{ group.shortTitle }}</span>
+            </span>
+            <span class="profile-selector-option-group-line" [class]="group.toneClass"></span>
+          </div>
+          <div class="profile-selector-chip-grid">
+            <button
+              type="button"
+              class="profile-selector-chip"
               [class.active]="isValuesOptionSelected(option)"
               *ngFor="let option of group.options"
               (click)="toggleValuesOption(option)"
             >
-              {{ option }}
+              <span>{{ option }}</span>
             </button>
           </div>
         </div>
       </div>
 
-      <div *ngIf="stackedPopup === 'interestSelector'" class="values-selector-popup">
-        <div class="values-selector-group" *ngFor="let group of interestOptionGroups">
-          <div class="social-proof-section-head" [class]="group.toneClass">
-            <span class="section-tag">{{ group.icon }} {{ group.shortTitle }}</span>
-            <span class="section-line"></span>
+      <div *ngIf="stackedPopup === 'interestSelector'" class="values-selector-popup profile-selector-popup">
+        <div class="profile-filter-selector-head">
+          <span class="profile-filter-selector-head-label">Interest</span>
+          <button
+            type="button"
+            class="profile-filter-selector-clear"
+            [class.is-hidden]="interestSelectorSelected.length === 0"
+            [disabled]="interestSelectorSelected.length === 0"
+            [attr.aria-hidden]="interestSelectorSelected.length === 0 ? 'true' : null"
+            (click)="clearInterestSelector()"
+          >
+            Clear
+          </button>
+        </div>
+        <div class="profile-filter-selector-selected" *ngIf="interestSelectorSelected.length > 0; else interestSelectorNoSelection">
+          <button
+            type="button"
+            class="profile-filter-selector-chip"
+            *ngFor="let item of interestSelectorSelected"
+            (click)="removeInterestOption(item)"
+          >
+            <span>{{ item }}</span>
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <ng-template #interestSelectorNoSelection>
+          <p class="profile-filter-selector-empty">No items selected yet.</p>
+        </ng-template>
+        <div class="values-selector-group profile-selector-option-group" [class]="group.toneClass" *ngFor="let group of interestOptionGroups">
+          <div class="profile-selector-option-group-head">
+            <span class="profile-selector-option-group-tag" [class]="group.toneClass">
+              <mat-icon class="profile-selector-option-group-tag-icon">{{ profileSelectorToneIcon(group.toneClass) }}</mat-icon>
+              <span>{{ group.shortTitle }}</span>
+            </span>
+            <span class="profile-selector-option-group-line" [class]="group.toneClass"></span>
           </div>
-          <div class="social-proof-chip-list">
+          <div class="profile-selector-chip-grid">
             <button
               type="button"
-              class="social-proof-chip values-option-chip"
+              class="profile-selector-chip"
               [class.active]="isInterestOptionSelected(option)"
               *ngFor="let option of group.options"
               (click)="toggleInterestOption(option)"
             >
-              {{ option }}
+              <span>{{ option }}</span>
             </button>
           </div>
         </div>
@@ -5180,6 +6589,7 @@
                     <div class="subevent-stage-head-main">
                       <span class="subevent-stage-column-title">{{ stage.title }}</span>
                       <strong>{{ stage.subtitle }}</strong>
+                      <p class="subevent-stage-column-location">{{ subEventLocationLabel(stage.subEvent) }}</p>
                       <p class="subevent-stage-column-description">{{ stage.description || 'No description' }}</p>
                     </div>
                     <div class="subevent-stage-head-meta">
@@ -5213,6 +6623,15 @@
                         <button type="button" class="item-action-menu-btn" (click)="runSubEventStageLeaderboardAction(stage, $event)">
                           <mat-icon>{{ subEventLeaderboardModeIcon(stage) }}</mat-icon>
                           <span>Leaderboard</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="item-action-menu-btn"
+                          *ngIf="canOpenSubEventLocation(stage.subEvent)"
+                          (click)="openSubEventLocation(stage.subEvent, $event)"
+                        >
+                          <mat-icon>location_on</mat-icon>
+                          <span>Show on Map</span>
                         </button>
                         <button type="button" class="item-action-menu-btn" *ngIf="!isEventEditorReadOnly()" (click)="runSubEventStageEditAction(stage, $event)">
                           <mat-icon>edit</mat-icon>
@@ -5322,13 +6741,22 @@
                   <mat-icon>delete</mat-icon>
                   <span>Delete</span>
                 </button>
+                <button
+                  type="button"
+                  class="item-action-menu-btn"
+                  *ngIf="!tournamentMode && canOpenSubEventLocation(subEvent)"
+                  (click)="openSubEventLocation(subEvent, $event)"
+                >
+                  <mat-icon>location_on</mat-icon>
+                  <span>Show on Map</span>
+                </button>
                 <div class="item-action-menu-divider" *ngIf="canManageSubEventItem(subEvent)"></div>
                 <div class="item-action-menu-section-label">Resources</div>
                 <button
                   type="button"
                   class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-members"
                   [ngClass]="subEventCapacityStateClass(subEvent)"
-                  (click)="openSubEventBadgePopup('Members', subEvent, $event)"
+                  (click)="openSubEventBadgePopup('Members', subEvent, $event, group)"
                   *ngIf="subEvent.optional || tournamentMode"
                 >
                   <span class="subevent-resource-menu-item-icon"><mat-icon>groups</mat-icon></span>
@@ -5344,7 +6772,7 @@
                   type="button"
                   class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-car"
                   [ngClass]="subEventAssetCapacityStateClass(subEvent, 'Car')"
-                  (click)="openSubEventBadgePopup('Car', subEvent, $event)"
+                  (click)="openSubEventBadgePopup('Car', subEvent, $event, group)"
                 >
                   <span class="subevent-resource-menu-item-icon"><mat-icon>directions_car</mat-icon></span>
                   <span class="subevent-resource-menu-item-main">
@@ -5359,7 +6787,7 @@
                   type="button"
                   class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-accommodation"
                   [ngClass]="subEventAssetCapacityStateClass(subEvent, 'Accommodation')"
-                  (click)="openSubEventBadgePopup('Accommodation', subEvent, $event)"
+                  (click)="openSubEventBadgePopup('Accommodation', subEvent, $event, group)"
                 >
                   <span class="subevent-resource-menu-item-icon"><mat-icon>hotel</mat-icon></span>
                   <span class="subevent-resource-menu-item-main">
@@ -5374,7 +6802,7 @@
                   type="button"
                   class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-supplies"
                   [ngClass]="subEventAssetCapacityStateClass(subEvent, 'Supplies')"
-                  (click)="openSubEventBadgePopup('Supplies', subEvent, $event)"
+                  (click)="openSubEventBadgePopup('Supplies', subEvent, $event, group)"
                 >
                   <span class="subevent-resource-menu-item-icon"><mat-icon>inventory_2</mat-icon></span>
                   <span class="subevent-resource-menu-item-main">
@@ -5388,6 +6816,7 @@
               </div>
             </div>
           </div>
+          <p class="event-subevent-popup-location" *ngIf="!tournamentMode">{{ subEventLocationLabel(subEvent) }}</p>
           <p *ngIf="!tournamentMode">{{ subEvent.description || 'No description' }}</p>
           <span class="event-subevent-range-badge" *ngIf="!tournamentMode">{{ subEventCardRange(subEvent) }}</span>
         </article>
@@ -5513,8 +6942,30 @@
                 </mat-form-field>
               </div>
             </label>
+            <label class="experience-description-field subevent-location-field">
+              <span>Location</span>
+              <div class="asset-route-row asset-route-row-inline">
+                <input
+                  type="text"
+                  [ngModel]="subEventForm.location"
+                  (ngModelChange)="onSubEventLocationChange($event)"
+                  placeholder="Sub event location"
+                />
+                <button
+                  type="button"
+                  class="experience-action-btn asset-route-map-btn"
+                  (click)="openSubEventLocationMap($event)"
+                  aria-label="Open sub event location on map"
+                >
+                  <mat-icon>location_on</mat-icon>
+                </button>
+              </div>
+            </label>
             <fieldset class="subevent-tournament-fieldset" *ngIf="showTournamentStageConfigFields()">
               <legend>Stage Rule</legend>
+              <p class="subevent-tournament-hint subevent-tournament-hint-warning">
+                Manual groups reduce capacity for auto groups.<br>Customization only!
+              </p>
               <div class="subevent-tournament-grid">
                 <div class="subevent-tournament-range-row">
                   <label class="subevent-tournament-field subevent-tournament-range-field">
@@ -6004,6 +7455,16 @@
             </div>
             <div class="social-proof-chip-list">
               <span class="social-proof-chip chip-vibe" *ngFor="let item of hostVibeBadgeItems">{{ item }}</span>
+            </div>
+          </div>
+
+          <div class="social-proof-section-block">
+            <div class="social-proof-section-head section-personality">
+              <span class="section-tag">Personality</span>
+              <span class="section-line"></span>
+            </div>
+            <div class="social-proof-chip-list">
+              <span class="social-proof-chip chip-personality" *ngFor="let item of hostPersonalityBadgeItems">{{ item }}</span>
             </div>
           </div>
 
