@@ -1,0 +1,80 @@
+<div class="activity-members-popup-wrap">
+  <div class="subevent-members-scroll-area activity-members-scroll-area">
+    <div class="subevent-members-grid activity-members-grid">
+      <article
+        class="friends-picker-card subevent-member-image-card activity-member-image-card"
+        [ngClass]="[memberCardToneClass(member), isActivityMemberActionMenuOpen(member) ? 'menu-open' : '']"
+        *ngFor="let member of membersToRender; trackBy: trackByMemberId"
+        [style.backgroundImage]="'url(' + member.avatarUrl + ')'"
+      >
+        <span class="member-card-status-chip" [ngClass]="memberCardStatusClass(member)" [attr.title]="memberCardStatusLabel(member)">
+          <mat-icon>{{ memberCardStatusIcon(member) }}</mat-icon>
+        </span>
+        <div class="subevent-member-menu-anchor" *ngIf="canShowActivityMemberActionMenu(member)">
+          <button
+            type="button"
+            class="friends-picker-card-add-btn subevent-member-menu-trigger experience-action-menu-trigger"
+            [class.active]="isActivityMemberActionMenuOpen(member)"
+            (click)="toggleActivityMemberActionMenu(member, $event)"
+            aria-label="Open member actions"
+          >
+            <mat-icon>{{ isActivityMemberActionMenuOpen(member) ? 'close' : 'more_vert' }}</mat-icon>
+          </button>
+          <div
+            class="item-action-menu subevent-member-action-menu"
+            [class.is-open]="isActivityMemberActionMenuOpen(member)"
+            [class.item-action-menu-mobile]="isMobileView"
+            [class.item-action-menu-desktop]="!isMobileView"
+            [class.is-open-up]="isActivityMemberActionMenuOpenUp(member)"
+            [attr.aria-hidden]="!isActivityMemberActionMenuOpen(member)"
+            (click)="$event.stopPropagation()"
+          >
+            <div class="item-action-menu-title">{{ member.name }}</div>
+            <button
+              type="button"
+              class="item-action-menu-btn item-action-menu-btn-publish"
+              *ngIf="canApproveActivityMember(member)"
+              (click)="approveActivityMember(member, $event)"
+            >
+              <mat-icon>check_circle</mat-icon>
+              <span>Approve</span>
+            </button>
+            <button
+              type="button"
+              class="item-action-menu-btn item-action-menu-btn-destructive"
+              *ngIf="canDeleteActivityMember(member)"
+              (click)="removeActivityMember(member, $event)"
+            >
+              <mat-icon>delete</mat-icon>
+              <span>{{ activityMemberMenuDeleteLabel(member) }}</span>
+            </button>
+          </div>
+        </div>
+        <div class="friends-picker-card-meta subevent-member-card-meta activity-member-card-meta">
+          <h4>{{ member.name }}, {{ activityMemberAge(member) }}</h4>
+          <p>{{ activityMemberRoleLabel(member) }} · {{ member.city }}</p>
+          <p class="subevent-member-card-status" *ngIf="member.status === 'pending'">{{ activityMemberStatusLabel(member) }}</p>
+        </div>
+      </article>
+    </div>
+  </div>
+
+  <section class="experience-delete-confirm" *ngIf="pendingActivityMemberDelete">
+    <div class="experience-delete-confirm-backdrop" (click)="cancelRemoveActivityMember()"></div>
+    <div class="experience-delete-confirm-panel">
+      <h4>{{ pendingActivityMemberDeleteTitle() }}</h4>
+      <p>{{ pendingActivityMemberDeleteLabel() }}</p>
+      <div class="popup-actions">
+        <button type="button" class="link-btn neutral-btn" (click)="cancelRemoveActivityMember()">Cancel</button>
+        <button type="button" class="link-btn experience-delete-btn" (click)="confirmRemoveActivityMember()">Remove</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<app-event-editor-activity-invite-friends-popup
+  [open]="inviteOpen"
+  [candidates]="inviteCandidates"
+  (close)="onCloseInvite()"
+  (confirm)="onConfirmInvite($event)"
+></app-event-editor-activity-invite-friends-popup>

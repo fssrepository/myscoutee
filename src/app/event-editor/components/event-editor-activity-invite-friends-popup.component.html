@@ -1,0 +1,77 @@
+<section class="app-popup app-popup-stacked app-popup-super-stacked" *ngIf="open">
+  <div class="app-popup-backdrop" (click)="onCloseInvite()"></div>
+  <div class="app-popup-panel popup-panel-friends-picker popup-panel-friends-picker-members" (click)="$event.stopPropagation()">
+    <div class="popup-header popup-header-friends-picker">
+      <div class="popup-title">
+        <h2>Invite Friends</h2>
+      </div>
+      <div class="popup-header-inline-controls">
+        <div class="friends-picker-sort">
+          <button type="button" class="popup-view-fab" (click)="toggleActivityInviteSortPicker($event)" aria-label="Open invite sort">
+            <mat-icon>{{ activityInviteSort === 'recent' ? 'schedule' : 'auto_awesome' }}</mat-icon>
+            <span>{{ activityInviteSort === 'recent' ? 'Recent' : 'Relevant' }}</span>
+          </button>
+          <div class="activities-view-picker-panel" *ngIf="showActivityInviteSortPicker">
+            <button type="button" class="activities-view-option" (click)="selectActivityInviteSort('recent')">
+              <mat-icon>schedule</mat-icon>
+              <span>Recent</span>
+            </button>
+            <button type="button" class="activities-view-option" (click)="selectActivityInviteSort('relevant')">
+              <mat-icon>auto_awesome</mat-icon>
+              <span>Relevant</span>
+            </button>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="popup-header-add-btn subevent-leaderboard-save-btn"
+          [class.form-save-invalid]="!canConfirmActivityInviteSelection()"
+          [disabled]="!canConfirmActivityInviteSelection()"
+          (click)="confirmActivityInviteSelection($event)"
+          aria-label="Invite selected members"
+        >
+          <mat-icon>done</mat-icon>
+        </button>
+        <button mat-icon-button class="popup-close" (click)="onCloseInvite($event)" aria-label="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <div class="popup-body popup-body-friends-picker">
+      <div class="friends-picker-chip-row" *ngIf="selectedActivityInviteChips.length > 0">
+        <button
+          type="button"
+          class="values-selected-chip friends-picker-chip"
+          *ngFor="let chip of selectedActivityInviteChips; trackBy: trackByUserId"
+          (click)="toggleActivityInviteFriend(chip.userId, $event)"
+        >
+          <span class="friends-picker-chip-avatar" [class]="'user-color-' + chip.gender">{{ chip.initials }}</span>
+          <span>{{ chip.name }}</span>
+          <mat-icon class="friends-picker-chip-remove">close</mat-icon>
+        </button>
+      </div>
+      <div class="friends-picker-grid">
+        <article
+          class="friends-picker-card"
+          *ngFor="let candidate of activityInviteCandidates; trackBy: trackByUserId"
+          [style.backgroundImage]="'url(' + candidate.avatarUrl + ')'"
+        >
+          <button
+            type="button"
+            class="friends-picker-card-add-btn"
+            [class.active]="isActivityInviteFriendSelected(candidate.userId)"
+            (click)="toggleActivityInviteFriend(candidate.userId, $event)"
+            aria-label="Select friend"
+          >
+            <mat-icon>{{ isActivityInviteFriendSelected(candidate.userId) ? 'check' : 'add' }}</mat-icon>
+          </button>
+          <div class="friends-picker-card-meta">
+            <h4>{{ candidate.name }}</h4>
+            <p>{{ activityInviteMetLabel(candidate) }}</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
