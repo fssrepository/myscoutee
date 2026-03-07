@@ -511,12 +511,12 @@
 .game-pair-mini-image-indicators .game-image-stack-line.active.is-loading,
 .game-single-image-indicators .game-image-stack-line.active.is-loading {
   background: rgba(229, 236, 245, 0.98);
-  animation: game-image-line-loading 840ms ease-in-out infinite;
+  animation: game-image-line-loading 500ms ease 1;
 }
 
 .game-pair-mini-image-indicators .game-image-stack-line.active.is-revealing,
 .game-single-image-indicators .game-image-stack-line.active.is-revealing {
-  animation: game-image-line-reveal 320ms cubic-bezier(0.2, 0.74, 0.26, 1) 1;
+  animation: game-image-line-reveal 240ms ease-out 1;
 }
 
 .game-pair-mini-image-frame .game-image-hit-area {
@@ -768,28 +768,28 @@
 
 .game-image-stack-line.active.is-loading {
   background: rgba(229, 236, 245, 0.98);
-  animation: game-image-line-loading 840ms ease-in-out infinite;
+  animation: game-image-line-loading 500ms ease 1;
 }
 
 .game-image-stack-line.active.is-revealing {
-  animation: game-image-line-reveal 320ms cubic-bezier(0.2, 0.74, 0.26, 1) 1;
+  animation: game-image-line-reveal 240ms ease-out 1;
 }
 
 @keyframes game-image-line-loading {
-  0%, 100% {
-    transform: scaleX(1);
-    opacity: 0.96;
+  0% {
+    transform: scaleX(0.84);
+    opacity: 0.58;
   }
-  50% {
-    transform: scaleX(0.34);
-    opacity: 0.62;
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
   }
 }
 
 @keyframes game-image-line-reveal {
   0% {
-    transform: scaleX(0.22);
-    opacity: 0.72;
+    transform: scaleX(0.92);
+    opacity: 0.88;
     background: rgba(215, 225, 238, 0.95);
   }
   100% {

@@ -2358,7 +2358,7 @@ export class HomeComponent implements OnDestroy {
         this.isCandidateImageLoading = false;
         this.isCandidateImageIndicatorRevealing = false;
         this.cdr.markForCheck();
-      }, 140);
+      }, 420);
       this.cdr.markForCheck();
       return;
     }
@@ -2440,7 +2440,7 @@ export class HomeComponent implements OnDestroy {
           this.isPairModeWomanImageLoading = false;
           this.isPairModeWomanImageIndicatorRevealing = false;
           this.cdr.markForCheck();
-        }, 140);
+        }, 420);
       } else {
         this.isPairModeManImageLoading = true;
         this.pairModeManImageLoadingPulseTimer = setTimeout(() => {
@@ -2451,7 +2451,7 @@ export class HomeComponent implements OnDestroy {
           this.isPairModeManImageLoading = false;
           this.isPairModeManImageIndicatorRevealing = false;
           this.cdr.markForCheck();
-        }, 140);
+        }, 420);
       }
       this.cdr.markForCheck();
       return;
