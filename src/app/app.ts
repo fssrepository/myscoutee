@@ -15,6 +15,7 @@ import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { AlertService } from './shared/alert.service';
 import {
+  APP_DEMO_DATA,
   DEMO_CHAT_BY_USER,
   DEMO_EVENTS_BY_USER,
   DEMO_HOSTING_BY_USER,
@@ -37,644 +38,12 @@ import {
 import { GDPR_CONTENT } from './shared/gdpr-data';
 import { environment } from '../environments/environment';
 import { LazyBgImageDirective } from './shared/lazy-bg-image.directive';
-
-type MenuSection = 'game' | 'chat' | 'invitations' | 'events' | 'hosting';
-
-type PopupType =
-  | 'activities'
-  | 'eventFeedback'
-  | 'eventFeedbackNote'
-  | 'tickets'
-  | 'chat'
-  | 'chatMembers'
-  | 'impressionsHost'
-  | 'impressionsMember'
-  | 'assetsCar'
-  | 'assetsAccommodation'
-  | 'assetsSupplies'
-  | 'assetsTickets'
-  | 'invitations'
-  | 'events'
-  | 'hosting'
-  | 'menuEvent'
-  | 'hostingEvent'
-  | 'invitationActions'
-  | 'eventEditor'
-  | 'eventExplore'
-  | 'subEventMembers'
-  | 'subEventAssets'
-  | 'profileEditor'
-  | 'imageEditor'
-  | 'imageUpload'
-  | 'supplyDetail'
-  | 'assetMembers'
-  | 'subEventSupplyContributions'
-  | 'ticketCode'
-  | 'ticketScanner'
-  | 'activityMembers'
-  | 'valuesSelector'
-  | 'interestSelector'
-  | 'experienceSelector'
-  | 'helpCenter'
-  | 'reportUser'
-  | 'sendFeedback'
-  | 'gdpr'
-  | 'deleteAccountConfirm'
-  | 'logoutConfirm'
-  | null;
-
-type AuthMode = 'selector' | 'firebase';
-
-interface FirebaseAuthProfile {
-  id: string;
-  name: string;
-  email: string;
-  initials: string;
-}
-
-interface EntryConsentState {
-  version: string;
-  accepted: boolean;
-  acceptedAtIso: string;
-}
-
-interface EntryConsentAuditRecord {
-  tsIso: string;
-  action: 'accepted' | 'rejected';
-  version: string;
-  source: 'entry';
-  userAgent: string;
-}
-
-interface SupplyContext {
-  subEventId: string;
-  subEventTitle: string;
-  type: string;
-}
-
-interface SubEventBadgeContext {
-  subEvent: SubEventFormItem;
-  type: 'Members' | 'Car' | 'Accommodation' | 'Supplies';
-  groupId?: string;
-  groupName?: string;
-}
-
-interface EventFeedbackOption {
-  value: string;
-  label: string;
-  icon: string;
-  impressionTag?: string;
-}
-
-interface EventFeedbackCard {
-  id: string;
-  eventId: string;
-  kind: 'event' | 'attendee';
-  attendeeUserId?: string;
-  targetUserId?: string;
-  targetRole?: 'Admin' | 'Manager' | 'Member';
-  icon: string;
-  imageUrl: string;
-  toneClass: string;
-  heading: string;
-  subheading: string;
-  identityTitle?: string;
-  identitySubtitle?: string;
-  identityStatusClass?: string;
-  identityStatusIcon?: string;
-  questionPrimary: string;
-  questionSecondary: string;
-  primaryOptions: EventFeedbackOption[];
-  secondaryOptions: EventFeedbackOption[];
-  answerPrimary: string;
-  answerSecondary: string;
-}
-
-interface SubmittedEventFeedbackAnswer {
-  cardId: string;
-  eventId: string;
-  kind: 'event' | 'attendee';
-  targetUserId: string | null;
-  targetRole: 'Admin' | 'Manager' | 'Member';
-  primaryValue: string;
-  secondaryValue: string;
-  tags: string[];
-  submittedAtIso: string;
-}
-
-type EventFeedbackListFilter = 'pending' | 'feedbacked' | 'removed';
-
-interface EventFeedbackEventCard {
-  eventId: string;
-  title: string;
-  subtitle: string;
-  timeframe: string;
-  imageUrl: string;
-  startAtMs: number;
-  pendingCards: number;
-  totalCards: number;
-  isRemoved: boolean;
-  isFeedbacked: boolean;
-  feedbackedAtMs: number | null;
-}
-
-interface HelpCenterSection {
-  id: string;
-  icon: string;
-  title: string;
-  blurb: string;
-  details: string[];
-  points: string[];
-}
-
-interface ChatReadAvatar {
-  id: string;
-  initials: string;
-  gender: 'woman' | 'man';
-}
-
-interface ChatPopupMessage {
-  id: string;
-  sender: string;
-  senderAvatar: ChatReadAvatar;
-  text: string;
-  time: string;
-  sentAtIso: string;
-  mine: boolean;
-  readBy: ChatReadAvatar[];
-}
-
-interface ChatPopupDayGroup {
-  key: string;
-  label: string;
-  messages: ChatPopupMessage[];
-}
-
-type ChatChannelType = 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent';
-type ActivitiesChatContextFilter = 'all' | 'event' | 'subEvent' | 'group';
-
-type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
-type ActivitiesSecondaryFilter = 'recent' | 'relevant' | 'past';
-type HostingPublicationFilter = 'all' | 'drafts';
-type ActivitiesView = 'month' | 'week' | 'day' | 'distance';
-type EventExploreOrder = 'upcoming' | 'past-events' | 'nearby' | 'most-relevant' | 'top-rated';
-type RateFilterKey =
-  | 'individual-given'
-  | 'individual-received'
-  | 'individual-mutual'
-  | 'individual-met'
-  | 'pair-given'
-  | 'pair-received';
-
-type RateFilterEntry =
-  | { kind: 'group'; label: string }
-  | { kind: 'item'; key: RateFilterKey; label: string };
-
-interface ActivityListRow {
-  id: string;
-  type: ActivitiesPrimaryFilter;
-  title: string;
-  subtitle: string;
-  detail: string;
-  dateIso: string;
-  distanceKm: number;
-  unread: number;
-  metricScore: number;
-  isAdmin?: boolean;
-  source: ChatMenuItem | InvitationMenuItem | EventMenuItem | HostingMenuItem | RateMenuItem;
-}
-
-interface ActivityGroup {
-  label: string;
-  rows: ActivityListRow[];
-}
-
-interface TicketScanPayload {
-  code: string;
-  holderUserId: string;
-  holderName: string;
-  holderAge: number;
-  holderCity: string;
-  holderRole: ActivityMemberRole;
-  eventId: string;
-  eventTitle: string;
-  eventSubtitle: string;
-  eventTimeframe: string;
-  eventDateLabel: string;
-  issuedAtIso: string;
-}
-
-interface BrowserBarcodeDetectorResult {
-  rawValue?: string;
-}
-
-interface BrowserBarcodeDetector {
-  detect(image: ImageBitmapSource): Promise<BrowserBarcodeDetectorResult[]>;
-}
-
-interface BrowserBarcodeDetectorConstructor {
-  new(options?: { formats?: string[] }): BrowserBarcodeDetector;
-}
-
-interface CalendarDayCell {
-  key: string;
-  date: Date;
-  dayNumber: number;
-  inCurrentMonth: boolean;
-  isToday: boolean;
-  rows: ActivityListRow[];
-}
-
-interface CalendarMonthPage {
-  key: string;
-  label: string;
-  weeks: CalendarMonthWeek[];
-}
-
-interface CalendarMonthWeek {
-  start: Date;
-  end: Date;
-  days: CalendarDayCell[];
-  spans: CalendarMonthSpan[];
-}
-
-interface CalendarMonthSpan {
-  key: string;
-  row: ActivityListRow;
-  startCol: number;
-  endCol: number;
-  lane: number;
-}
-
-interface CalendarWeekPage {
-  key: string;
-  label: string;
-  days: CalendarDayCell[];
-}
-
-interface ActivityDateTimeRange {
-  startIso: string;
-  endIso: string;
-}
-
-interface CalendarTimedBadge {
-  row: ActivityListRow;
-  topPct: number;
-  heightPct: number;
-}
-
-interface EventExploreCard {
-  id: string;
-  title: string;
-  subtitle: string;
-  timeframe: string;
-  imageUrl: string;
-  distanceKm: number;
-  relevance: number;
-  rating: number;
-  startSort: number;
-  isPast: boolean;
-  sourceType: 'event' | 'hosting';
-}
-
-interface EventExploreGroup {
-  label: string;
-  cards: EventExploreCard[];
-}
-
-type SubEventCard = (typeof EVENT_EDITOR_SAMPLE.subEvents)[number];
-type ProfileStatus = 'public' | 'friends only' | 'host only' | 'inactive';
-type DetailPrivacy = 'Public' | 'Friends' | 'Hosts' | 'Private';
-
-interface ProfileDetailFormRow {
-  label: string;
-  value: string;
-  privacy: DetailPrivacy;
-  options: string[];
-}
-
-interface ProfileDetailFormGroup {
-  title: string;
-  rows: ProfileDetailFormRow[];
-}
-
-interface ValuesOptionGroup {
-  title: string;
-  shortTitle: string;
-  icon: string;
-  toneClass: string;
-  options: string[];
-}
-
-interface InterestOptionGroup {
-  title: string;
-  shortTitle: string;
-  icon: string;
-  toneClass: string;
-  options: string[];
-}
-
-interface ExperienceEntry {
-  id: string;
-  type: 'Workspace' | 'School' | 'Online Session' | 'Additional Project';
-  title: string;
-  org: string;
-  city: string;
-  dateFrom: string;
-  dateTo: string;
-  description: string;
-}
-
-interface EventEditorForm {
-  title: string;
-  description: string;
-  imageUrl: string;
-  capacityMin: number | null;
-  capacityMax: number | null;
-  startAt: string;
-  endAt: string;
-  location: string;
-  frequency: string;
-  visibility: EventVisibility;
-  blindMode: EventBlindMode;
-  autoInviter: boolean;
-  ticketing: boolean;
-  topics: string[];
-  subEvents: SubEventFormItem[];
-}
-
-interface SubEventFormItem {
-  id: string;
-  name: string;
-  description: string;
-  startAt: string;
-  endAt: string;
-  location?: string;
-  createdByUserId?: string;
-  groups?: SubEventGroupItem[];
-  tournamentGroupCount?: number;
-  tournamentGroupCapacityMin?: number;
-  tournamentGroupCapacityMax?: number;
-  tournamentLeaderboardType?: TournamentLeaderboardType;
-  tournamentAdvancePerGroup?: number;
-  optional: boolean;
-  capacityMin: number;
-  capacityMax: number;
-  membersAccepted: number;
-  membersPending: number;
-  carsPending: number;
-  accommodationPending: number;
-  suppliesPending: number;
-}
-
-interface SubEventGroupItem {
-  id: string;
-  name: string;
-  capacityMin?: number;
-  capacityMax?: number;
-  source?: 'manual' | 'generated';
-}
-
-interface SubEventGroupFormItem {
-  id: string;
-  stageId: string;
-  stageTitle: string;
-  name: string;
-  capacityMin: number;
-  capacityMax: number;
-  source: 'manual' | 'generated';
-}
-
-interface SubEventTournamentConfig {
-  groupCount: number;
-  groupCapacityMin: number;
-  groupCapacityMax: number;
-}
-
-interface SubEventTournamentGroup {
-  key: string;
-  id: string;
-  groupNumber: number;
-  groupLabel: string;
-  source: 'manual' | 'generated';
-  subEvent: SubEventFormItem;
-}
-
-interface SubEventTournamentStage {
-  key: string;
-  stageNumber: number;
-  title: string;
-  subtitle: string;
-  description: string;
-  rangeLabel: string;
-  subEvent: SubEventFormItem;
-  groups: SubEventTournamentGroup[];
-  isCurrent: boolean;
-}
-
-interface SubEventLeaderboardMember {
-  id: string;
-  name: string;
-}
-
-interface SubEventLeaderboardScoreEntry {
-  id: string;
-  stageId: string;
-  groupId: string;
-  memberId: string;
-  value: number;
-  note: string;
-  createdAtMs: number;
-}
-
-interface SubEventLeaderboardFifaMatch {
-  id: string;
-  stageId: string;
-  groupId: string;
-  homeMemberId: string;
-  awayMemberId: string;
-  homeScore: number;
-  awayScore: number;
-  note: string;
-  createdAtMs: number;
-}
-
-interface SubEventLeaderboardFormItem {
-  groupId: string;
-  memberId: string;
-  scoreValue: number | null;
-  note: string;
-  homeMemberId: string;
-  awayMemberId: string;
-  homeScore: number | null;
-  awayScore: number | null;
-}
-
-interface SubEventLeaderboardScoreStandingRow {
-  memberId: string;
-  memberName: string;
-  total: number;
-  updates: number;
-  isPlaceholder?: boolean;
-}
-
-interface SubEventLeaderboardFifaStandingRow {
-  memberId: string;
-  memberName: string;
-  points: number;
-  played: number;
-  wins: number;
-  draws: number;
-  losses: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  goalDiff: number;
-  isPlaceholder?: boolean;
-}
-
-interface EventCapacityRange {
-  min: number | null;
-  max: number | null;
-}
-
-interface MobileProfileSelectorOption {
-  value: string;
-  label: string;
-  icon: string;
-  toneClass?: string;
-  badge?: number;
-  disabled?: boolean;
-}
-
-interface MobileProfileSelectorSheet {
-  title: string;
-  selected: string;
-  options: MobileProfileSelectorOption[];
-  context:
-    | { kind: 'profileStatus' }
-    | { kind: 'physique' }
-    | { kind: 'language' }
-    | { kind: 'detailPrivacy'; groupIndex: number; rowIndex: number }
-    | { kind: 'experiencePrivacy'; type: 'workspace' | 'school' }
-    | { kind: 'detailValue'; groupIndex: number; rowIndex: number }
-    | { kind: 'experienceType' }
-    | { kind: 'assetFilter' }
-    | { kind: 'activitiesPrimaryFilter' }
-    | { kind: 'activitiesChatContextFilter' }
-    | { kind: 'activitiesRateFilter' }
-    | { kind: 'eventFrequency' };
-}
-
-type AssetType = 'Car' | 'Accommodation' | 'Supplies';
-type AssetFilterType = AssetType | 'Ticket';
-type SubEventResourceFilter = 'Members' | AssetType;
-type SubEventsDisplayMode = 'Casual' | 'Tournament';
-type TournamentLeaderboardType = 'Score' | 'Fifa';
-type AssetRequestAction = 'accept' | 'remove';
-type EventEditorMode = 'edit' | 'create';
-type EventEditorTarget = 'events' | 'hosting';
-type EventVisibility = 'Public' | 'Friends only' | 'Invitation only';
-type EventBlindMode = 'Open Event' | 'Blind Event';
-type AssetRequestStatus = 'pending' | 'accepted';
-type ActivityMemberStatus = 'pending' | 'accepted';
-type ActivityPendingSource = 'admin' | 'member' | null;
-type ActivityInviteSort = 'recent' | 'relevant';
-type ActivityMemberRequestKind = 'invite' | 'join' | null;
-type ActivityMemberRole = 'Admin' | 'Member' | 'Manager';
-
-interface AssetMemberRequest {
-  id: string;
-  userId?: string;
-  name: string;
-  initials: string;
-  gender: 'woman' | 'man';
-  status: AssetRequestStatus;
-  note: string;
-}
-
-interface AssetCard {
-  id: string;
-  type: AssetType;
-  title: string;
-  subtitle: string;
-  city: string;
-  capacityTotal: number;
-  details: string;
-  imageUrl: string;
-  sourceLink: string;
-  routes?: string[];
-  requests: AssetMemberRequest[];
-}
-
-interface SubEventResourceCard {
-  id: string;
-  type: SubEventResourceFilter;
-  sourceAssetId: string | null;
-  title: string;
-  subtitle: string;
-  city: string;
-  details: string;
-  imageUrl: string;
-  sourceLink: string;
-  routes: string[];
-  capacityTotal: number;
-  accepted: number;
-  pending: number;
-  isMembers: boolean;
-}
-
-interface SubEventAssignedAssetSettings {
-  capacityMin: number;
-  capacityMax: number;
-  addedByUserId: string;
-  routes: string[];
-}
-
-interface SubEventAssetMembersContext {
-  subEventId: string;
-  assetId: string;
-  type: 'Car' | 'Accommodation';
-  ownerUserId: string | null;
-}
-
-interface SubEventSupplyContributionEntry {
-  id: string;
-  userId: string;
-  quantity: number;
-  addedAtIso: string;
-}
-
-interface SubEventSupplyContributionRow {
-  id: string;
-  userId: string;
-  name: string;
-  initials: string;
-  gender: 'woman' | 'man';
-  age: number;
-  city: string;
-  addedAtIso: string;
-  quantity: number;
-}
-
-interface ActivityMemberEntry {
-  id: string;
-  userId: string;
-  name: string;
-  initials: string;
-  gender: 'woman' | 'man';
-  city: string;
-  statusText: string;
-  role: ActivityMemberRole;
-  status: ActivityMemberStatus;
-  pendingSource: ActivityPendingSource;
-  requestKind: ActivityMemberRequestKind;
-  invitedByActiveUser: boolean;
-  metAtIso: string;
-  actionAtIso: string;
-  metWhere: string;
-  relevance: number;
-  avatarUrl: string;
-}
+import { AppDemoGenerators } from './shared/app-demo-generators';
+import { AppUtils } from './shared/app-utils';
+import { AppCalendarHelpers } from './shared/app-calendar-helpers';
+import { AppSubEventHelpers } from './shared/app-sub-event-helpers';
+import { APP_STATIC_DATA } from './shared/app-static-data';
+import type * as AppTypes from './shared/app-types';
 
 @Injectable()
 class YearMonthDayDateAdapter extends NativeDateAdapter {
@@ -774,232 +143,63 @@ export class App {
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
 
-  protected readonly users = this.buildExpandedDemoUsers(50);
+  protected readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
   protected readonly profileTopTraits = PROFILE_PERSONALITY_TOP3;
   protected readonly profilePriorityTags = PROFILE_PRIORITY_TAGS;
   protected readonly profilePillars = PROFILE_PILLARS;
-  protected profileDetailsForm: ProfileDetailFormGroup[] = [];
+  protected profileDetailsForm: AppTypes.ProfileDetailFormGroup[] = [];
   protected readonly profileExperience = PROFILE_EXPERIENCE;
-  // Labels aligned with /plans context files:
-  // - event_vibes.txt
-  // - personality_traits.txt
-  // - personality_interest.txt
-  // - feature_list.txt
-  protected readonly vibeCategories = ['Energetic', 'Social', 'Deep', 'Relaxed', 'Creative', 'Exclusive', 'Focused'];
-  protected readonly hostedEventTypes = ['Road Trip', 'Game Night', 'Brunch', 'Hiking', 'Coffee Meetup', 'Sports'];
-  protected readonly vibeIcons: Record<string, string> = {
-    Energetic: '🔥',
-    Social: '💬',
-    Deep: '🧠',
-    Relaxed: '🌿',
-    Creative: '🎨',
-    Exclusive: '🥂',
-    Focused: '🎯'
-  };
-  protected readonly categoryIcons: Record<string, string> = {
-    Sports: '🏅',
-    'Road Trip': '🛣️',
-    Outdoors: '🌲',
-    Games: '🎮',
-    Culture: '🎭'
-  };
-  protected readonly memberTraitIcons: Record<string, string> = {
-    Adventurer: '🔥',
-    'Deep Thinker': '🧠',
-    Empath: '💛'
-  };
+  protected readonly vibeCategories = APP_STATIC_DATA.vibeCategories;
+  protected readonly hostedEventTypes = APP_STATIC_DATA.hostedEventTypes;
+  protected readonly vibeIcons: Record<string, string> = APP_STATIC_DATA.vibeIcons;
+  protected readonly categoryIcons: Record<string, string> = APP_STATIC_DATA.categoryIcons;
+  protected readonly memberTraitIcons: Record<string, string> = APP_STATIC_DATA.memberTraitIcons;
   protected readonly eventEditor = EVENT_EDITOR_SAMPLE;
-  protected readonly physiqueOptions = ['Slim', 'Lean', 'Athletic', 'Fit', 'Curvy', 'Average', 'Muscular'];
-  protected languageSuggestions = [
-    'English',
-    'Spanish',
-    'French',
-    'German',
-    'Italian',
-    'Portuguese',
-    'Hungarian',
-    'Romanian',
-    'Polish',
-    'Dutch',
-    'Turkish',
-    'Arabic',
-    'Hindi',
-    'Japanese',
-    'Korean',
-    'Mandarin'
-  ];
-  protected readonly profileStatusOptions: Array<{ value: ProfileStatus; icon: string }> = [
-    { value: 'public', icon: 'public' },
-    { value: 'friends only', icon: 'groups' },
-    { value: 'host only', icon: 'stadium' },
-    { value: 'inactive', icon: 'visibility_off' }
-  ];
-  protected readonly profileDetailValueOptions: Record<string, string[]> = {
-    Drinking: ['Never', 'Socially', 'Occasionally', 'Weekends only'],
-    Smoking: ['Never', 'Socially', 'Occasionally', 'Trying to quit'],
-    Workout: ['Daily', '4x / week', '2-3x / week', 'Rarely'],
-    Pets: ['Dog-friendly', 'Cat-friendly', 'All pets welcome', 'No pets'],
-    'Family plans': ['Wants children', 'Open to children', 'Not sure yet', 'Does not want children'],
-    Children: ['No', 'Yes', 'Prefer not to say'],
-    'Love style': ['Long-term partnership', 'Slow-burn connection', 'Open relationship', 'Exploring'],
-    'Communication style': ['Direct + warm', 'Calm + reflective', 'Playful + light', 'Honest + concise'],
-    'Sexual orientation': ['Straight', 'Bisexual', 'Gay', 'Lesbian', 'Pansexual', 'Asexual', 'Prefer not to say'],
-    Gender: ['Woman', 'Man', 'Non-binary', 'Prefer not to say'],
-    Religion: ['Spiritual but not religious', 'Christian', 'Muslim', 'Jewish', 'Buddhist', 'Hindu', 'Atheist', 'Prefer not to say'],
-    Values: [
-      'Family-first, social impact, balanced life',
-      'Career-driven, growth-oriented, adventurous',
-      'Sustainability, empathy, community',
-      'Creativity, freedom, authenticity'
-    ]
-  };
-  protected readonly beliefsValuesOptionGroups: ValuesOptionGroup[] = [
-    {
-      title: 'Relationship & Family',
-      shortTitle: 'Family',
-      icon: '👪',
-      toneClass: 'section-family',
-      options: [
-        'Long-term partnership',
-        'Marriage-oriented',
-        'Casual dating',
-        'Open / Exploring',
-        'Family-first',
-        'Wants children',
-        'Independent lifestyle'
-      ]
-    },
-    {
-      title: 'Life Focus & Ambition',
-      shortTitle: 'Ambition',
-      icon: '🎯',
-      toneClass: 'section-ambition',
-      options: [
-        'Career-focused',
-        'Entrepreneurial',
-        'Stability-focused',
-        'Balanced work-life',
-        'Freedom-oriented',
-        'Goal-driven'
-      ]
-    },
-    {
-      title: 'Lifestyle Orientation',
-      shortTitle: 'Lifestyle',
-      icon: '🌿',
-      toneClass: 'section-lifestyle',
-      options: [
-        'Health & wellness focused',
-        'Fitness-driven',
-        'Mindfulness-oriented',
-        'Social / party lifestyle',
-        'Calm / home-centered',
-        'Adventure-driven',
-        'Balanced lifestyle'
-      ]
-    },
-    {
-      title: 'Beliefs & Worldview',
-      shortTitle: 'Beliefs',
-      icon: '✨',
-      toneClass: 'section-beliefs',
-      options: [
-        'Faith-oriented',
-        'Spiritual but not religious',
-        'Secular',
-        'Traditional values',
-        'Progressive values',
-        'Community-driven',
-        'Social impact oriented',
-        'Environmentally conscious',
-        'Politically engaged',
-        'Apolitical'
-      ]
-    }
-  ];
-  protected readonly interestOptionGroups: InterestOptionGroup[] = [
-    {
-      title: 'Social & Lifestyle',
-      shortTitle: 'Social',
-      icon: '🥂',
-      toneClass: 'section-social',
-      options: ['#GoingOut', '#Nightlife', '#StayingIn', '#Brunch', '#WineTasting', '#CoffeeDates', '#ContentCreation', '#InfluencerLife']
-    },
-    {
-      title: 'Arts & Entertainment',
-      shortTitle: 'Arts',
-      icon: '🎭',
-      toneClass: 'section-arts',
-      options: ['#Music', '#Concerts', '#Festivals', '#Movies', '#TVShows', '#Theatre', '#Gaming', '#Anime', '#Books', '#Photography', '#Creativity']
-    },
-    {
-      title: 'Food & Experiences',
-      shortTitle: 'Food',
-      icon: '🍽',
-      toneClass: 'section-food',
-      options: ['#Foodie', '#FineDining', '#StreetFood', '#Cooking', '#Cocktails', '#CraftBeer', '#Travel', '#LuxuryExperiences']
-    },
-    {
-      title: 'Active & Adventure',
-      shortTitle: 'Active',
-      icon: '🏕',
-      toneClass: 'section-active',
-      options: ['#Sports', '#Gym', '#Running', '#Hiking', '#Outdoors', '#ExtremeSports', '#Yoga', '#Fitness']
-    },
-    {
-      title: 'Mind & Wellness',
-      shortTitle: 'Mind',
-      icon: '🧘',
-      toneClass: 'section-mind',
-      options: ['#Wellness', '#Meditation', '#SelfDevelopment', '#MentalHealth', '#Spirituality', '#Biohacking', '#HealthyLifestyle']
-    },
-    {
-      title: 'Values & Identity',
-      shortTitle: 'Identity',
-      icon: '🌍',
-      toneClass: 'section-identity',
-      options: ['#Sustainability', '#Entrepreneurship', '#CareerDriven', '#FamilyOriented', '#Activism', '#Tech', '#Minimalism']
-    }
-  ];
+  protected readonly physiqueOptions = APP_STATIC_DATA.physiqueOptions;
+  protected languageSuggestions = [...APP_STATIC_DATA.languageSuggestions];
+  protected readonly profileStatusOptions: Array<{ value: AppTypes.ProfileStatus; icon: string }> = APP_STATIC_DATA.profileStatusOptions;
+  protected readonly profileDetailValueOptions: Record<string, string[]> = APP_STATIC_DATA.profileDetailValueOptions;
+  protected readonly beliefsValuesOptionGroups: AppTypes.ValuesOptionGroup[] = APP_STATIC_DATA.beliefsValuesOptionGroups;
+  protected readonly interestOptionGroups: AppTypes.InterestOptionGroup[] = APP_STATIC_DATA.interestOptionGroups;
 
   protected showUserMenu = false;
   protected showUserSettingsMenu = false;
   protected readonly gdprContent = GDPR_CONTENT;
-  protected readonly authMode: AuthMode = this.resolveAuthMode();
+  protected readonly authMode: AppTypes.AuthMode = this.resolveAuthMode();
   protected showEntryShell = true;
   protected showEntryConsentPopup = false;
   protected entryConsentViewOnly = false;
   protected showUserSelector = false;
   protected showFirebaseAuthPopup = false;
   protected firebaseAuthIsBusy = false;
-  protected firebaseAuthProfile: FirebaseAuthProfile | null = null;
-  protected activePopup: PopupType = null;
-  protected stackedPopup: PopupType = null;
-  protected eventEditorMode: EventEditorMode = 'edit';
+  protected firebaseAuthProfile: AppTypes.FirebaseAuthProfile | null = null;
+  protected activePopup: AppTypes.PopupType = null;
+  protected stackedPopup: AppTypes.PopupType = null;
+  protected eventEditorMode: AppTypes.EventEditorMode = 'edit';
   protected eventEditorReadOnly = false;
-  protected popupReturnTarget: PopupType = null;
+  protected popupReturnTarget: AppTypes.PopupType = null;
   protected openPrivacyFab: { groupIndex: number; rowIndex: number } | null = null;
   protected openExperiencePrivacyFab: 'workspace' | 'school' | null = null;
   protected privacyFabJustSelectedKey: string | null = null;
-  protected readonly detailPrivacyOptions: DetailPrivacy[] = ['Public', 'Friends', 'Hosts', 'Private'];
-  protected mobileProfileSelectorSheet: MobileProfileSelectorSheet | null = null;
+  protected readonly detailPrivacyOptions: AppTypes.DetailPrivacy[] = APP_STATIC_DATA.detailPrivacyOptions;
+  protected mobileProfileSelectorSheet: AppTypes.MobileProfileSelectorSheet | null = null;
   protected valuesSelectorContext: { groupIndex: number; rowIndex: number } | null = null;
   protected valuesSelectorSelected: string[] = [];
   protected interestSelectorContext: { groupIndex: number; rowIndex: number } | null = null;
   protected interestSelectorSelected: string[] = [];
-  protected experienceVisibility: Record<'workspace' | 'school', DetailPrivacy> = {
+  protected experienceVisibility: Record<'workspace' | 'school', AppTypes.DetailPrivacy> = {
     workspace: 'Public',
     school: 'Public'
   };
-  protected readonly experienceFilterOptions: Array<'All' | 'Workspace' | 'School'> = ['All', 'Workspace', 'School'];
-  protected readonly experienceTypeOptions: Array<ExperienceEntry['type']> = ['Workspace', 'School', 'Online Session', 'Additional Project'];
+  protected readonly experienceFilterOptions: Array<'All' | 'Workspace' | 'School'> = APP_STATIC_DATA.experienceFilterOptions;
+  protected readonly experienceTypeOptions: Array<AppTypes.ExperienceEntry['type']> = APP_STATIC_DATA.experienceTypeOptions;
   protected experienceFilter: 'All' | 'Workspace' | 'School' = 'All';
   protected editingExperienceId: string | null = null;
   protected pendingExperienceDeleteId: string | null = null;
   protected showExperienceForm = false;
   protected experienceRangeStart: Date | null = null;
   protected experienceRangeEnd: Date | null = null;
-  protected experienceForm: Omit<ExperienceEntry, 'id'> = {
+  protected experienceForm: Omit<AppTypes.ExperienceEntry, 'id'> = {
     type: 'Workspace',
     title: '',
     org: '',
@@ -1008,25 +208,25 @@ export class App {
     dateTo: '',
     description: ''
   };
-  protected experienceEntries: ExperienceEntry[] = this.buildSampleExperienceEntries();
-  protected readonly assetTypeOptions: AssetType[] = ['Car', 'Accommodation', 'Supplies'];
-  protected readonly assetFilterOptions: AssetFilterType[] = ['Car', 'Accommodation', 'Supplies', 'Ticket'];
-  protected assetFilter: AssetFilterType = 'Car';
-  protected assetCards: AssetCard[] = this.buildSampleAssetCards();
+  protected experienceEntries: AppTypes.ExperienceEntry[] = AppDemoGenerators.buildSampleExperienceEntries();
+  protected readonly assetTypeOptions: AppTypes.AssetType[] = APP_STATIC_DATA.assetTypeOptions;
+  protected readonly assetFilterOptions: AppTypes.AssetFilterType[] = APP_STATIC_DATA.assetFilterOptions;
+  protected assetFilter: AppTypes.AssetFilterType = 'Car';
+  protected assetCards: AppTypes.AssetCard[] = AppDemoGenerators.buildSampleAssetCards(this.users);
   protected ticketStickyValue = '';
   protected ticketDateOrder: 'upcoming' | 'past' = 'upcoming';
   protected showTicketOrderPicker = false;
-  protected selectedTicketRow: ActivityListRow | null = null;
+  protected selectedTicketRow: AppTypes.ActivityListRow | null = null;
   protected selectedTicketCodeValue = '';
   protected ticketScannerState: 'idle' | 'reading' | 'success' = 'idle';
-  protected ticketScannerResult: TicketScanPayload | null = null;
+  protected ticketScannerResult: AppTypes.TicketScanPayload | null = null;
   protected showAssetForm = false;
   protected showAssetVisibilityPicker = false;
   protected editingAssetId: string | null = null;
   protected selectedAssetCardId: string | null = null;
   protected pendingAssetDeleteCardId: string | null = null;
-  protected pendingAssetMemberAction: { cardId: string; memberId: string; action: AssetRequestAction } | null = null;
-  protected assetForm: Omit<AssetCard, 'id' | 'requests'> = {
+  protected pendingAssetMemberAction: { cardId: string; memberId: string; action: AppTypes.AssetRequestAction } | null = null;
+  protected assetForm: Omit<AppTypes.AssetCard, 'id' | 'requests'> = {
     type: 'Car',
     title: '',
     subtitle: '',
@@ -1037,23 +237,23 @@ export class App {
     sourceLink: '',
     routes: []
   };
-  protected assetFormVisibility: EventVisibility = 'Public';
-  private readonly assetVisibilityById: Record<string, EventVisibility> = {};
+  protected assetFormVisibility: AppTypes.EventVisibility = 'Public';
+  private readonly assetVisibilityById: Record<string, AppTypes.EventVisibility> = {};
   protected activeUserId = this.getInitialUserId();
 
-  protected activeMenuSection: MenuSection = 'chat';
-  protected activitiesPrimaryFilter: ActivitiesPrimaryFilter = 'chats';
-  protected activitiesChatContextFilter: ActivitiesChatContextFilter = 'all';
-  protected activitiesSecondaryFilter: ActivitiesSecondaryFilter = 'recent';
-  protected hostingPublicationFilter: HostingPublicationFilter = 'all';
-  protected activitiesRateFilter: RateFilterKey = 'individual-given';
-  protected activitiesView: ActivitiesView = 'week';
+  protected activeMenuSection: AppTypes.MenuSection = 'chat';
+  protected activitiesPrimaryFilter: AppTypes.ActivitiesPrimaryFilter = 'chats';
+  protected activitiesChatContextFilter: AppTypes.ActivitiesChatContextFilter = 'all';
+  protected activitiesSecondaryFilter: AppTypes.ActivitiesSecondaryFilter = 'recent';
+  protected hostingPublicationFilter: AppTypes.HostingPublicationFilter = 'all';
+  protected activitiesRateFilter: AppTypes.RateFilterKey = 'individual-given';
+  protected activitiesView: AppTypes.ActivitiesView = 'week';
   protected showActivitiesViewPicker = false;
   protected showActivitiesSecondaryPicker = false;
   protected inlineItemActionMenu: { scope: 'activity' | 'activityMember' | 'asset' | 'explore' | 'subEvent' | 'subEventStage' | 'subEventMember' | 'subEventAsset' | 'chatContext'; id: string; title: string; openUp: boolean } | null = null;
   private subEventAssetMenuIgnoreCloseUntilMs = 0;
   protected showEventExploreOrderPicker = false;
-  protected eventExploreOrder: EventExploreOrder = 'upcoming';
+  protected eventExploreOrder: AppTypes.EventExploreOrder = 'upcoming';
   protected eventExploreFilterFriendsOnly = false;
   protected eventExploreFilterHasRooms = false;
   protected eventExploreFilterTopic = '';
@@ -1061,29 +261,29 @@ export class App {
   protected activitiesStickyValue = '';
   protected eventExploreStickyValue = '';
   protected readonly activitiesPageSize = 10;
-  protected pendingActivityDeleteRow: ActivityListRow | null = null;
-  protected pendingActivityPublishRow: ActivityListRow | null = null;
+  protected pendingActivityDeleteRow: AppTypes.ActivityListRow | null = null;
+  protected pendingActivityPublishRow: AppTypes.ActivityListRow | null = null;
   protected pendingSubEventDeleteId: string | null = null;
   protected pendingSubEventDeleteContext: 'subEvent' | 'stage' | null = null;
   protected pendingSubEventGroupDelete:
     { stageId: string; groupId: string; stageLabel: string; groupLabel: string; source: 'manual' | 'generated' } | null = null;
   protected eventEditorClosePublishConfirmContext: 'active' | 'stacked' | null = null;
   protected pendingActivityAction: 'delete' | 'exit' = 'delete';
-  protected pendingActivityMemberDelete: ActivityMemberEntry | null = null;
-  protected selectedActivityMembers: ActivityMemberEntry[] = [];
+  protected pendingActivityMemberDelete: AppTypes.ActivityMemberEntry | null = null;
+  protected selectedActivityMembers: AppTypes.ActivityMemberEntry[] = [];
   protected selectedActivityMembersTitle = '';
   protected selectedActivityMembersRowId: string | null = null;
-  protected selectedActivityMembersRow: ActivityListRow | null = null;
+  protected selectedActivityMembersRow: AppTypes.ActivityListRow | null = null;
   protected activityMembersReadOnly = false;
   protected activityMembersPendingOnly = false;
-  protected activityInviteSort: ActivityInviteSort = 'recent';
+  protected activityInviteSort: AppTypes.ActivityInviteSort = 'recent';
   protected showActivityInviteSortPicker = false;
   protected selectedActivityInviteUserIds: string[] = [];
   protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | 'eventSubEvents' | 'eventExploreTopicFilter' | 'impressionsHost' | 'subEventAssetAssign' | null = null;
-  private readonly activityMembersByRowId: Record<string, ActivityMemberEntry[]> = {};
+  private readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
   private activityMembersPopupOrigin: 'active-event-editor' | 'stacked-event-editor' | 'event-explore' | 'subevent-asset' | null = null;
-  private subEventAssetMembersContext: SubEventAssetMembersContext | null = null;
-  protected readonly activityRatingScale = Array.from({ length: 10 }, (_, index) => index + 1);
+  private subEventAssetMembersContext: AppTypes.SubEventAssetMembersContext | null = null;
+  protected readonly activityRatingScale = APP_STATIC_DATA.activityRatingScale;
   private readonly weekCalendarStartHour = 0;
   private readonly weekCalendarEndHour = 23;
   private readonly weekCalendarSlotHeightPx = 34;
@@ -1096,7 +296,7 @@ export class App {
   protected activitiesRatesFullscreenMode = false;
   protected activitiesRatesFullscreenCardIndex = 0;
   protected activitiesRatesFullscreenAnimating = false;
-  protected activitiesRatesFullscreenLeavingRow: ActivityListRow | null = null;
+  protected activitiesRatesFullscreenLeavingRow: AppTypes.ActivityListRow | null = null;
   protected activitiesRatesPairSplitPercent = App.ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT;
   protected isActivitiesRatesPairSplitDragging = false;
   private activitiesRatesFullscreenAdvanceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1142,270 +342,38 @@ export class App {
   private calendarWeekAnchorsHydrated = false;
   private calendarMonthPagesCacheKey = '';
   private calendarWeekPagesCacheKey = '';
-  private calendarMonthPagesCache: CalendarMonthPage[] = [];
-  private calendarWeekPagesCache: CalendarWeekPage[] = [];
-  protected readonly activitiesPrimaryFilters: Array<{ key: ActivitiesPrimaryFilter; label: string; icon: string }> = [
-    { key: 'rates', label: 'Rates', icon: 'star' },
-    { key: 'chats', label: 'Chats', icon: 'chat' },
-    { key: 'invitations', label: 'Invitations', icon: 'mail' },
-    { key: 'events', label: 'Events', icon: 'event' },
-    { key: 'hosting', label: 'Hosting', icon: 'stadium' }
-  ];
-  protected readonly activitiesSecondaryFilters: Array<{ key: ActivitiesSecondaryFilter; label: string; icon: string }> = [
-    { key: 'recent', label: 'Upcoming', icon: 'schedule' },
-    { key: 'relevant', label: 'Relevant', icon: 'auto_awesome' },
-    { key: 'past', label: 'Past', icon: 'history' }
-  ];
-  protected readonly activitiesChatContextFilters: Array<{ key: ActivitiesChatContextFilter; label: string; icon: string }> = [
-    { key: 'all', label: 'All', icon: 'forum' },
-    { key: 'event', label: 'Event', icon: 'event' },
-    { key: 'subEvent', label: 'Sub event', icon: 'event_available' },
-    { key: 'group', label: 'Group', icon: 'groups' }
-  ];
-  protected readonly rateFilters: Array<{ key: RateFilterKey; label: string }> = [
-    { key: 'individual-given', label: 'Given' },
-    { key: 'individual-received', label: 'Received' },
-    { key: 'individual-mutual', label: 'Mutual' },
-    { key: 'individual-met', label: 'Met' },
-    { key: 'pair-given', label: 'Given' },
-    { key: 'pair-received', label: 'Received' }
-  ];
-  protected readonly rateFilterEntries: RateFilterEntry[] = [
-    { kind: 'group', label: 'Single Rate' },
-    { kind: 'item', key: 'individual-given', label: 'Given' },
-    { kind: 'item', key: 'individual-received', label: 'Received' },
-    { kind: 'item', key: 'individual-mutual', label: 'Mutual' },
-    { kind: 'item', key: 'individual-met', label: 'Met' },
-    { kind: 'group', label: 'Pair Rate' },
-    { kind: 'item', key: 'pair-given', label: 'Given' },
-    { kind: 'item', key: 'pair-received', label: 'Received' }
-  ];
-  protected readonly activitiesViewOptions: Array<{ key: ActivitiesView; label: string; icon: string }> = [
-    { key: 'month', label: 'Month', icon: 'calendar_month' },
-    { key: 'week', label: 'Week', icon: 'date_range' },
-    { key: 'day', label: 'Day', icon: 'today' },
-    { key: 'distance', label: 'Distance', icon: 'social_distance' }
-  ];
-  protected readonly eventExploreOrderOptions: Array<{ key: EventExploreOrder; label: string; icon: string }> = [
-    { key: 'upcoming', label: 'Upcoming', icon: 'event_upcoming' },
-    { key: 'past-events', label: 'Past Events', icon: 'history' },
-    { key: 'nearby', label: 'Nearby', icon: 'near_me' },
-    { key: 'most-relevant', label: 'Most Relevant', icon: 'auto_awesome' },
-    { key: 'top-rated', label: 'Top Rated', icon: 'emoji_events' }
-  ];
-  protected readonly eventDatesById: Record<string, string> = {
-    e1: '2026-02-27T09:00:00',
-    e2: '2026-03-08T10:00:00',
-    e3: '2026-03-12T19:30:00',
-    e6: '2026-03-14T17:00:00',
-    e7: '2026-03-16T09:30:00',
-    e8: '2026-02-27T11:15:00',
-    e9: '2026-02-27T13:30:00',
-    e10: '2026-03-14T18:15:00',
-    e11: '2026-03-28T09:00:00',
-    e12: '2026-04-26T10:00:00',
-    e4: '2026-02-28T08:00:00',
-    e5: '2026-03-03T18:00:00'
-  };
-  protected readonly hostingDatesById: Record<string, string> = {
-    h1: '2026-02-27T18:00:00',
-    h2: '2026-04-04T16:00:00',
-    h3: '2026-03-01T09:30:00',
-    h4: '2026-03-05T18:00:00'
-  };
-  protected readonly eventVisibilityById: Record<string, EventVisibility> = {
-    e1: 'Invitation only',
-    e2: 'Public',
-    e3: 'Friends only',
-    e4: 'Invitation only',
-    e5: 'Friends only',
-    e6: 'Public',
-    e7: 'Invitation only',
-    e8: 'Public',
-    e9: 'Friends only',
-    e10: 'Invitation only',
-    e11: 'Friends only',
-    e12: 'Public',
-    h1: 'Invitation only',
-    h2: 'Friends only',
-    h3: 'Public',
-    h4: 'Friends only'
-  };
-  protected readonly eventBlindModeById: Record<string, EventBlindMode> = {
-    e1: 'Open Event',
-    e2: 'Open Event',
-    e3: 'Blind Event',
-    e4: 'Open Event',
-    e5: 'Open Event',
-    e6: 'Blind Event',
-    e7: 'Open Event',
-    e8: 'Open Event',
-    e9: 'Blind Event',
-    e10: 'Open Event',
-    e11: 'Open Event',
-    e12: 'Blind Event',
-    h1: 'Blind Event',
-    h2: 'Open Event',
-    h3: 'Open Event',
-    h4: 'Blind Event'
-  };
-  protected readonly eventAutoInviterById: Record<string, boolean> = {
-    e1: true,
-    e2: true,
-    e3: false,
-    e4: true,
-    e5: false,
-    e6: true,
-    e7: true,
-    e8: false,
-    e9: false,
-    e10: true,
-    e11: true,
-    e12: false,
-    h1: true,
-    h2: false,
-    h3: true,
-    h4: false
-  };
-  protected readonly eventTicketingById: Record<string, boolean> = {
-    e1: true,
-    e2: true,
-    e3: false,
-    e4: false,
-    e5: false,
-    e6: false,
-    e7: false,
-    e8: false,
-    e9: false,
-    e10: false,
-    e11: false,
-    e12: false,
-    h1: true,
-    h2: false,
-    h3: false,
-    h4: false
-  };
-  protected readonly hostingPublishedById: Record<string, boolean> = {
-    e1: true,
-    e4: true,
-    e5: true,
-    e7: false,
-    e10: true,
-    e11: false,
-    h1: true,
-    h2: true,
-    h3: false,
-    h4: false
-  };
+  private calendarMonthPagesCache: AppTypes.CalendarMonthPage[] = [];
+  private calendarWeekPagesCache: AppTypes.CalendarWeekPage[] = [];
+  protected readonly activitiesPrimaryFilters: Array<{ key: AppTypes.ActivitiesPrimaryFilter; label: string; icon: string }> = [...APP_DEMO_DATA.activitiesPrimaryFilters];
+  protected readonly activitiesSecondaryFilters: Array<{ key: AppTypes.ActivitiesSecondaryFilter; label: string; icon: string }> = [...APP_DEMO_DATA.activitiesSecondaryFilters];
+  protected readonly activitiesChatContextFilters: Array<{ key: AppTypes.ActivitiesChatContextFilter; label: string; icon: string }> = [...APP_DEMO_DATA.activitiesChatContextFilters];
+  protected readonly rateFilters: Array<{ key: AppTypes.RateFilterKey; label: string }> = [...APP_DEMO_DATA.rateFilters];
+  protected readonly rateFilterEntries: AppTypes.RateFilterEntry[] = [...APP_DEMO_DATA.rateFilterEntries];
+  protected readonly activitiesViewOptions: Array<{ key: AppTypes.ActivitiesView; label: string; icon: string }> = [...APP_DEMO_DATA.activitiesViewOptions];
+  protected readonly eventExploreOrderOptions: Array<{ key: AppTypes.EventExploreOrder; label: string; icon: string }> = [...APP_DEMO_DATA.eventExploreOrderOptions];
+  protected readonly eventDatesById: Record<string, string> = { ...APP_DEMO_DATA.eventDatesById };
+  protected readonly hostingDatesById: Record<string, string> = { ...APP_DEMO_DATA.hostingDatesById };
+  protected readonly eventVisibilityById: Record<string, AppTypes.EventVisibility> = { ...APP_DEMO_DATA.eventVisibilityById };
+  protected readonly eventBlindModeById: Record<string, AppTypes.EventBlindMode> = { ...APP_DEMO_DATA.eventBlindModeById };
+  protected readonly eventAutoInviterById: Record<string, boolean> = { ...APP_DEMO_DATA.eventAutoInviterById };
+  protected readonly eventTicketingById: Record<string, boolean> = { ...APP_DEMO_DATA.eventTicketingById };
+  protected readonly hostingPublishedById: Record<string, boolean> = { ...APP_DEMO_DATA.hostingPublishedById };
   private readonly forcedAcceptedMembersByRowKey: Record<string, number> = { 'events:e8': 20 };
-  protected readonly eventCapacityById: Record<string, EventCapacityRange> = {};
-  protected readonly invitationDatesById: Record<string, string> = {
-    i1: '2026-02-21T20:00:00',
-    i2: '2026-02-22T15:00:00',
-    i3: '2026-02-21T09:15:00',
-    i4: '2026-02-22T18:30:00',
-    i5: '2026-02-23T18:00:00'
-  };
-  protected readonly chatDatesById: Record<string, string> = {
-    c1: '2026-02-21T09:11:00',
-    c2: '2026-02-22T18:40:00',
-    c3: '2026-02-23T10:09:00',
-    c4: '2026-02-22T12:30:00',
-    c5: '2026-02-23T17:40:00'
-  };
-  protected readonly chatDistanceById: Record<string, number> = { c1: 5, c2: 10, c3: 15, c4: 8, c5: 12 };
-  protected readonly invitationDistanceById: Record<string, number> = { i1: 10, i2: 15, i3: 5, i4: 12, i5: 18 };
-  protected readonly eventDistanceById: Record<string, number> = { e1: 20, e2: 10, e3: 15, e6: 35, e7: 45, e8: 20, e9: 20, e10: 35, e11: 30, e12: 40, e4: 5, e5: 25 };
-  protected readonly activityDateTimeRangeById: Record<string, ActivityDateTimeRange> = {
-    e1: { startIso: '2026-02-27T09:00:00', endIso: '2026-03-01T12:00:00' },
-    e2: { startIso: '2026-03-08T10:00:00', endIso: '2026-03-08T19:00:00' },
-    e3: { startIso: '2026-03-12T19:30:00', endIso: '2026-03-12T23:00:00' },
-    e6: { startIso: '2026-03-14T17:00:00', endIso: '2026-03-14T20:30:00' },
-    e7: { startIso: '2026-03-16T09:30:00', endIso: '2026-03-16T11:30:00' },
-    e8: { startIso: '2026-02-27T11:15:00', endIso: '2026-02-27T13:00:00' },
-    e9: { startIso: '2026-02-27T13:30:00', endIso: '2026-02-27T15:30:00' },
-    e10: { startIso: '2026-03-14T18:15:00', endIso: '2026-03-14T21:15:00' },
-    e11: { startIso: '2026-03-28T09:00:00', endIso: '2026-05-06T21:00:00' },
-    e12: { startIso: '2026-04-26T10:00:00', endIso: '2026-06-02T20:00:00' },
-    h1: { startIso: '2026-02-27T18:00:00', endIso: '2026-02-27T21:00:00' },
-    h2: { startIso: '2026-04-04T16:00:00', endIso: '2026-04-04T20:00:00' },
-    h3: { startIso: '2026-03-01T09:30:00', endIso: '2026-03-01T12:00:00' },
-    h4: { startIso: '2026-03-05T18:00:00', endIso: '2026-03-05T21:00:00' }
-  };
-  protected readonly hostingDistanceById: Record<string, number> = { h1: 5, h2: 20, h3: 10, h4: 15 };
-  protected readonly activityImageById: Record<string, string> = {
-    e1: 'https://picsum.photos/seed/event-e1/1200/700',
-    e2: 'https://picsum.photos/seed/event-e2/1200/700',
-    e3: 'https://picsum.photos/seed/event-e3/1200/700',
-    e6: 'https://picsum.photos/seed/event-e6/1200/700',
-    e7: 'https://picsum.photos/seed/event-e7/1200/700',
-    e8: 'https://picsum.photos/seed/event-e8/1200/700',
-    e9: 'https://picsum.photos/seed/event-e9/1200/700',
-    e10: 'https://picsum.photos/seed/event-e10/1200/700',
-    e11: 'https://picsum.photos/seed/event-e11/1200/700',
-    e12: 'https://picsum.photos/seed/event-e12/1200/700',
-    e4: 'https://picsum.photos/seed/event-e4/1200/700',
-    e5: 'https://picsum.photos/seed/event-e5/1200/700',
-    h1: 'https://picsum.photos/seed/event-h1/1200/700',
-    h2: 'https://picsum.photos/seed/event-h2/1200/700',
-    h3: 'https://picsum.photos/seed/event-h3/1200/700',
-    h4: 'https://picsum.photos/seed/event-h4/1200/700',
-    i1: 'https://picsum.photos/seed/event-i1/1200/700',
-    i2: 'https://picsum.photos/seed/event-i2/1200/700',
-    i3: 'https://picsum.photos/seed/event-i3/1200/700',
-    i4: 'https://picsum.photos/seed/event-i4/1200/700',
-    i5: 'https://picsum.photos/seed/event-i5/1200/700'
-  };
-  protected readonly activitySourceLinkById: Record<string, string> = {
-    e1: 'https://example.com/events/e1',
-    e2: 'https://example.com/events/e2',
-    e3: 'https://example.com/events/e3',
-    e6: 'https://example.com/events/e6',
-    e7: 'https://example.com/events/e7',
-    e8: 'https://example.com/events/e8',
-    e9: 'https://example.com/events/e9',
-    e10: 'https://example.com/events/e10',
-    e11: 'https://example.com/events/e11',
-    e12: 'https://example.com/events/e12',
-    e4: 'https://example.com/events/e4',
-    e5: 'https://example.com/events/e5',
-    h1: 'https://example.com/hosting/h1',
-    h2: 'https://example.com/hosting/h2',
-    h3: 'https://example.com/hosting/h3',
-    h4: 'https://example.com/hosting/h4',
-    i1: 'https://example.com/invitations/i1',
-    i2: 'https://example.com/invitations/i2',
-    i3: 'https://example.com/invitations/i3',
-    i4: 'https://example.com/invitations/i4',
-    i5: 'https://example.com/invitations/i5'
-  };
-  protected readonly activityCapacityById: Record<string, string> = {
-    e1: '24 / 28',
-    e2: '13 / 16',
-    e3: '18 / 20',
-    e6: '20 / 24',
-    e7: '9 / 12',
-    e8: '20 / 20',
-    e9: '18 / 22',
-    e10: '19 / 24',
-    e11: '41 / 60',
-    e12: '28 / 40',
-    e4: '10 / 12',
-    e5: '14 / 18',
-    h1: '20 / 24',
-    h2: '16 / 22',
-    h3: '9 / 12',
-    h4: '11 / 15',
-    i1: '2 / 4',
-    i2: '1 / 2',
-    i3: '3 / 4',
-    i4: '1 / 3',
-    i5: '2 / 3'
-  };
-  protected readonly invitationItemsByUser: Record<string, InvitationMenuItem[]> = this.cloneMapItems(DEMO_INVITATIONS_BY_USER);
-  protected readonly chatItemsByUser: Record<string, ChatMenuItem[]> = this.cloneMapItems(DEMO_CHAT_BY_USER);
-  protected readonly eventItemsByUser: Record<string, EventMenuItem[]> = this.cloneMapItems(DEMO_EVENTS_BY_USER);
-  protected readonly hostingItemsByUser: Record<string, HostingMenuItem[]> = this.cloneMapItems(DEMO_HOSTING_BY_USER);
+  protected readonly eventCapacityById: Record<string, AppTypes.EventCapacityRange> = {};
+  protected readonly invitationDatesById: Record<string, string> = { ...APP_DEMO_DATA.invitationDatesById };
+  protected readonly chatDatesById: Record<string, string> = { ...APP_DEMO_DATA.chatDatesById };
+  protected readonly chatDistanceById: Record<string, number> = { ...APP_DEMO_DATA.chatDistanceById };
+  protected readonly invitationDistanceById: Record<string, number> = { ...APP_DEMO_DATA.invitationDistanceById };
+  protected readonly eventDistanceById: Record<string, number> = { ...APP_DEMO_DATA.eventDistanceById };
+  protected readonly activityDateTimeRangeById: Record<string, AppTypes.ActivityDateTimeRange> = { ...APP_DEMO_DATA.activityDateTimeRangeById };
+  protected readonly hostingDistanceById: Record<string, number> = { ...APP_DEMO_DATA.hostingDistanceById };
+  protected readonly activityImageById: Record<string, string> = { ...APP_DEMO_DATA.activityImageById };
+  protected readonly activitySourceLinkById: Record<string, string> = { ...APP_DEMO_DATA.activitySourceLinkById };
+  protected readonly activityCapacityById: Record<string, string> = { ...APP_DEMO_DATA.activityCapacityById };
+  protected readonly invitationItemsByUser: Record<string, InvitationMenuItem[]> = AppUtils.cloneMapItems(DEMO_INVITATIONS_BY_USER);
+  protected readonly chatItemsByUser: Record<string, ChatMenuItem[]> = AppUtils.cloneMapItems(DEMO_CHAT_BY_USER);
+  protected readonly eventItemsByUser: Record<string, EventMenuItem[]> = AppUtils.cloneMapItems(DEMO_EVENTS_BY_USER);
+  protected readonly hostingItemsByUser: Record<string, HostingMenuItem[]> = AppUtils.cloneMapItems(DEMO_HOSTING_BY_USER);
   private readonly acceptedInvitationIdsByUser: Record<string, string[]> = {};
 
   protected selectedChat: ChatMenuItem | null = null;
@@ -1416,43 +384,43 @@ export class App {
   protected chatVisibleMessageCount = this.chatHistoryPageSize;
   protected chatInitialLoadPending = false;
   protected chatDraftMessage = '';
-  private readonly chatHistoryById: Record<string, ChatPopupMessage[]> = {};
+  private readonly chatHistoryById: Record<string, AppTypes.ChatPopupMessage[]> = {};
   private chatHistoryLoadingOlder = false;
   private chatHistoryLoadOlderTimer: ReturnType<typeof setTimeout> | null = null;
   protected selectedInvitation: InvitationMenuItem | null = null;
   protected selectedEvent: EventMenuItem | null = null;
   protected selectedHostingEvent: HostingMenuItem | null = null;
-  protected eventEditorTarget: EventEditorTarget = 'events';
+  protected eventEditorTarget: AppTypes.EventEditorTarget = 'events';
   private eventEditorSource: EventMenuItem | HostingMenuItem | null = null;
   private eventEditorDraftMembersId: string | null = null;
   private eventEditorInvitationId: string | null = null;
   protected editingEventId: string | null = null;
-  protected eventForm: EventEditorForm = this.defaultEventForm();
+  protected eventForm: AppTypes.EventEditorForm = this.defaultEventForm();
   protected showEventEditorRequiredValidation = false;
   protected showSubEventForm = false;
   protected showSubEventOptionalPicker = false;
-  protected subEventForm: SubEventFormItem = this.defaultSubEventForm();
+  protected subEventForm: AppTypes.SubEventFormItem = this.defaultSubEventForm();
   protected showSubEventRequiredValidation = false;
   protected subEventFormStageNumber: number | null = null;
   protected subEventStageInsertPlacement: 'before' | 'after' = 'after';
   protected subEventStageInsertTargetId: string | null = null;
   protected showSubEventGroupForm = false;
   protected showSubEventGroupRequiredValidation = false;
-  protected subEventGroupForm: SubEventGroupFormItem = this.defaultSubEventGroupForm();
+  protected subEventGroupForm: AppTypes.SubEventGroupFormItem = this.defaultSubEventGroupForm();
   protected showSubEventLeaderboardPopup = false;
   protected showSubEventLeaderboardForm = false;
   protected subEventLeaderboardStageId: string | null = null;
   protected subEventLeaderboardEditingGroupId: string | null = null;
-  protected subEventLeaderboardForm: SubEventLeaderboardFormItem = this.defaultSubEventLeaderboardForm();
+  protected subEventLeaderboardForm: AppTypes.SubEventLeaderboardFormItem = this.defaultSubEventLeaderboardForm();
   protected subEventStartDateValue: Date | null = null;
   protected subEventEndDateValue: Date | null = null;
   protected subEventStartTimeValue: Date | null = null;
   protected subEventEndTimeValue: Date | null = null;
   protected showEventVisibilityPicker = false;
   protected showProfileStatusHeaderPicker = false;
-  protected readonly eventVisibilityOptions: EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
-  protected readonly eventBlindModeOptions: EventBlindMode[] = ['Open Event', 'Blind Event'];
-  private readonly eventSubEventsById: Record<string, SubEventFormItem[]> = {};
+  protected readonly eventVisibilityOptions: AppTypes.EventVisibility[] = APP_STATIC_DATA.eventVisibilityOptions;
+  protected readonly eventBlindModeOptions: AppTypes.EventBlindMode[] = APP_STATIC_DATA.eventBlindModeOptions;
+  private readonly eventSubEventsById: Record<string, AppTypes.SubEventFormItem[]> = {};
   private readonly eventLocationById: Record<string, string> = {};
   private readonly acceptedOptionalSubEventMembersByKey: Record<string, string[]> = {};
   private readonly acceptedTournamentGroupMembersByKey: Record<string, string[]> = {};
@@ -1460,16 +428,16 @@ export class App {
   protected eventEndDateValue: Date | null = null;
   protected eventStartTimeValue: Date | null = null;
   protected eventEndTimeValue: Date | null = null;
-  protected readonly subEventsDisplayModeOptions: SubEventsDisplayMode[] = ['Casual', 'Tournament'];
-  protected readonly tournamentLeaderboardTypeOptions: TournamentLeaderboardType[] = ['Score', 'Fifa'];
-  protected subEventsDisplayMode: SubEventsDisplayMode = 'Casual';
+  protected readonly subEventsDisplayModeOptions: AppTypes.SubEventsDisplayMode[] = APP_STATIC_DATA.subEventsDisplayModeOptions;
+  protected readonly tournamentLeaderboardTypeOptions: AppTypes.TournamentLeaderboardType[] = APP_STATIC_DATA.tournamentLeaderboardTypeOptions;
+  protected subEventsDisplayMode: AppTypes.SubEventsDisplayMode = 'Casual';
   protected showSubEventsDisplayModePicker = false;
   protected subEventStagePageIndex = 0;
   private subEventStageArrowScrollLock = false;
   private subEventStageArrowScrollUnlockTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly subEventLeaderboardMembersByGroupId: Record<string, SubEventLeaderboardMember[]> = {};
-  private readonly subEventLeaderboardScoreEntriesByGroupKey: Record<string, SubEventLeaderboardScoreEntry[]> = {};
-  private readonly subEventLeaderboardFifaMatchesByGroupKey: Record<string, SubEventLeaderboardFifaMatch[]> = {};
+  private readonly subEventLeaderboardMembersByGroupId: Record<string, AppTypes.SubEventLeaderboardMember[]> = {};
+  private readonly subEventLeaderboardScoreEntriesByGroupKey: Record<string, AppTypes.SubEventLeaderboardScoreEntry[]> = {};
+  private readonly subEventLeaderboardFifaMatchesByGroupKey: Record<string, AppTypes.SubEventLeaderboardFifaMatch[]> = {};
   private readonly subEventLeaderboardOpenGroups: Record<string, boolean> = {};
   private readonly subEventLeaderboardDetailMemberByGroupKey: Record<string, string | null> = {};
   protected activitiesHeaderProgress = 0;
@@ -1500,29 +468,29 @@ export class App {
 
   protected eventSupplyTypes: string[] = ['Cars', 'Members', 'Accessories', 'Accommodation'];
   protected newSupplyType = '';
-  protected selectedSupplyContext: SupplyContext | null = null;
-  protected selectedSubEventBadgeContext: SubEventBadgeContext | null = null;
-  protected subEventResourceFilter: SubEventResourceFilter = 'Members';
+  protected selectedSupplyContext: AppTypes.SupplyContext | null = null;
+  protected selectedSubEventBadgeContext: AppTypes.SubEventBadgeContext | null = null;
+  protected subEventResourceFilter: AppTypes.SubEventResourceFilter = 'Members';
   protected subEventMembersPendingOnly = false;
   private subEventBadgePopupOrigin: 'active-event-editor' | 'stacked-event-editor' | 'chat' | null = null;
   private subEventBadgeOpenedFromSubEventsPopup = false;
-  private subEventMembersRow: ActivityListRow | null = null;
+  private subEventMembersRow: AppTypes.ActivityListRow | null = null;
   private subEventMembersRowId: string | null = null;
   private subEventMemberRolePickerUserId: string | null = null;
-  protected subEventAssetAssignContext: { subEventId: string; type: AssetType } | null = null;
+  protected subEventAssetAssignContext: { subEventId: string; type: AppTypes.AssetType } | null = null;
   protected selectedSubEventAssignAssetIds: string[] = [];
   private readonly subEventAssignedAssetIdsByKey: Record<string, string[]> = {};
-  private readonly subEventAssignedAssetSettingsByKey: Record<string, Record<string, SubEventAssignedAssetSettings>> = {};
-  private pendingSubEventAssetCreateAssignment: { subEventId: string; type: AssetType } | null = null;
+  private readonly subEventAssignedAssetSettingsByKey: Record<string, Record<string, AppTypes.SubEventAssignedAssetSettings>> = {};
+  private pendingSubEventAssetCreateAssignment: { subEventId: string; type: AppTypes.AssetType } | null = null;
   protected subEventAssetCapacityEditor:
-    { subEventId: string; type: AssetType; assetId: string; title: string; capacityMin: number; capacityMax: number; capacityLimit: number } | null = null;
+    { subEventId: string; type: AppTypes.AssetType; assetId: string; title: string; capacityMin: number; capacityMax: number; capacityLimit: number } | null = null;
   protected subEventAssetRouteEditor:
     { subEventId: string; type: 'Car'; assetId: string; title: string; routes: string[] } | null = null;
   protected subEventSupplyBringDialog:
     { subEventId: string; cardId: string; title: string; quantity: number; min: number; max: number } | null = null;
   protected selectedSubEventSupplyContributionContext: { subEventId: string; assetId: string; title: string } | null = null;
   protected pendingSubEventSupplyContributionDelete: { subEventId: string; assetId: string; entryId: string; label: string } | null = null;
-  private readonly subEventSupplyContributionEntriesByAssignmentKey: Record<string, SubEventSupplyContributionEntry[]> = {};
+  private readonly subEventSupplyContributionEntriesByAssignmentKey: Record<string, AppTypes.SubEventSupplyContributionEntry[]> = {};
   private stackedEventEditorOrigin: 'chat' | null = null;
 
   protected profileForm = {
@@ -1533,7 +501,7 @@ export class App {
     physique: '',
     languages: [] as string[],
     horoscope: '',
-    profileStatus: 'public' as ProfileStatus,
+    profileStatus: 'public' as AppTypes.ProfileStatus,
     hostTier: '',
     traitLabel: '',
     about: ''
@@ -1554,9 +522,9 @@ export class App {
   };
   protected feedbackSubmitMessage = '';
   protected feedbackSubmitted = false;
-  protected eventFeedbackCards: EventFeedbackCard[] = [];
+  protected eventFeedbackCards: AppTypes.EventFeedbackCard[] = [];
   protected eventFeedbackIndex = 0;
-  protected eventFeedbackListFilter: EventFeedbackListFilter = 'pending';
+  protected eventFeedbackListFilter: AppTypes.EventFeedbackListFilter = 'pending';
   protected showEventFeedbackFilterPicker = false;
   protected eventFeedbackListSubmitMessage = '';
   protected eventFeedbackCardMenuEventId: string | null = null;
@@ -1575,121 +543,23 @@ export class App {
   private eventFeedbackSlideAnimationTimer: ReturnType<typeof setTimeout> | null = null;
   private suppressUserMenuOutsideCloseUntilMs = 0;
   private readonly submittedEventFeedbackByUser: Record<string, Record<string, true>> = {};
-  private readonly submittedEventFeedbackAnswersByUser: Record<string, Record<string, SubmittedEventFeedbackAnswer>> = {};
+  private readonly submittedEventFeedbackAnswersByUser: Record<string, Record<string, AppTypes.SubmittedEventFeedbackAnswer>> = {};
   private readonly submittedEventFeedbackEventsByUser: Record<string, Record<string, string>> = {};
   private readonly removedEventFeedbackEventsByUser: Record<string, Record<string, true>> = {};
   private readonly organizerEventFeedbackNotesByUser: Record<string, Record<string, string>> = {};
   private readonly eventFeedbackUnlockDelayMs = 2 * 60 * 60 * 1000;
-  protected readonly reportUserReasons = [
-    'Harassment',
-    'Spam',
-    'Impersonation',
-    'Hate speech',
-    'Scam / Fraud',
-    'Other'
-  ];
-  protected readonly feedbackCategories = [
-    'General',
-    'Bug report',
-    'Feature request',
-    'UX improvement',
-    'Performance'
-  ];
-  protected readonly eventFeedbackEventOverallOptions: EventFeedbackOption[] = [
-    { value: 'excellent', label: 'Excellent', icon: 'sentiment_very_satisfied', impressionTag: 'Host vibe' },
-    { value: 'good', label: 'Good', icon: 'sentiment_satisfied', impressionTag: 'Host reliability' },
-    { value: 'mixed', label: 'Mixed', icon: 'sentiment_neutral', impressionTag: 'Host consistency' },
-    { value: 'needs-work', label: 'Needs work', icon: 'sentiment_dissatisfied', impressionTag: 'Host quality' }
-  ];
-  protected readonly eventFeedbackHostImproveOptions: EventFeedbackOption[] = [
-    { value: 'timing', label: 'Improve timing', icon: 'schedule', impressionTag: 'Host organization' },
-    { value: 'communication', label: 'Improve communication', icon: 'campaign', impressionTag: 'Host communication' },
-    { value: 'resources', label: 'Improve resources', icon: 'inventory_2', impressionTag: 'Host planning' },
-    { value: 'none', label: 'No major change', icon: 'verified', impressionTag: 'Host consistency' }
-  ];
-  protected readonly eventFeedbackAttendeeCollabOptions: EventFeedbackOption[] = [
-    { value: 'great', label: 'Great teamwork', icon: 'handshake', impressionTag: 'Attendee teamwork' },
-    { value: 'reliable', label: 'Reliable', icon: 'verified_user', impressionTag: 'Attendee reliability' },
-    { value: 'neutral', label: 'Neutral', icon: 'sentiment_neutral', impressionTag: 'Attendee neutrality' },
-    { value: 'rough', label: 'Needs guidance', icon: 'warning_amber', impressionTag: 'Attendee fit' }
-  ];
-  protected readonly eventFeedbackAttendeeRejoinOptions: EventFeedbackOption[] = [
-    { value: 'yes', label: 'Would team up', icon: 'group', impressionTag: 'Attendee trust' },
-    { value: 'maybe', label: 'Maybe', icon: 'hourglass_top', impressionTag: 'Attendee compatibility' },
-    { value: 'no', label: 'Not now', icon: 'do_not_disturb_alt', impressionTag: 'Attendee risk' },
-    { value: 'context', label: 'Depends on role', icon: 'tune', impressionTag: 'Attendee role-fit' }
-  ];
-  protected readonly eventFeedbackListFilters: Array<{ key: EventFeedbackListFilter; label: string; icon: string }> = [
-    { key: 'pending', label: 'Pending', icon: 'schedule' },
-    { key: 'feedbacked', label: 'Feedbacked', icon: 'task_alt' },
-    { key: 'removed', label: 'Removed', icon: 'delete_outline' }
-  ];
-  protected readonly helpCenterSections: HelpCenterSection[] = [
-    {
-      id: 'events',
-      icon: 'event_note',
-      title: 'Events and Sub Events',
-      blurb: 'Build the full event flow with stages or optional items.',
-      details: [
-        'Create a main event, then split execution into sub events for stages, side activities, or optional sessions.',
-        'Each sub event carries its own date range, description, and status so planning stays clean and trackable.'
-      ],
-      points: [
-        'Supports casual and tournament structures',
-        'Keeps stage context visible in related screens',
-        'Lets hosts edit details without losing hierarchy'
-      ]
-    },
-    {
-      id: 'resources',
-      icon: 'inventory_2',
-      title: 'Resources and Capacity',
-      blurb: 'Assign people, cars, accommodation, and supplies with limits.',
-      details: [
-        'Use resource menus to assign assets into sub events and groups, then adjust capacity ranges directly where needed.',
-        'Badges summarize pending requests and remaining capacity so action priorities are visible at a glance.'
-      ],
-      points: [
-        'Capacity min/max control per assignment',
-        'Contextual badges for pending requests',
-        'Route and location support for travel resources'
-      ]
-    },
-    {
-      id: 'activities',
-      icon: 'forum',
-      title: 'Activities and Chats',
-      blurb: 'Coordinate with context-aware channels and filters.',
-      details: [
-        'Chat channels follow event scope: main event, optional sub event, and group channels can all coexist.',
-        'Context actions in chat headers help jump directly to related event/sub-event views and resources.'
-      ],
-      points: [
-        'Fast channel filtering by context',
-        'Unread counters scoped to relevant channels',
-        'Works for both mobile and desktop flows'
-      ]
-    },
-    {
-      id: 'safety',
-      icon: 'verified_user',
-      title: 'Profiles and Safety',
-      blurb: 'Improve trust with profile quality and moderation tools.',
-      details: [
-        'Profile completion updates in real time as users fill key fields and detail sections.',
-        'Safety controls include report tools, privacy visibility options, and clear moderation pathways.'
-      ],
-      points: [
-        'Live profile completion feedback',
-        'Report user and feedback workflows',
-        'Privacy and access visibility controls'
-      ]
-    }
-  ];
+  protected readonly reportUserReasons = APP_STATIC_DATA.reportUserReasons;
+  protected readonly feedbackCategories = APP_STATIC_DATA.feedbackCategories;
+  protected readonly eventFeedbackEventOverallOptions: AppTypes.EventFeedbackOption[] = APP_STATIC_DATA.eventFeedbackEventOverallOptions;
+  protected readonly eventFeedbackHostImproveOptions: AppTypes.EventFeedbackOption[] = APP_STATIC_DATA.eventFeedbackHostImproveOptions;
+  protected readonly eventFeedbackAttendeeCollabOptions: AppTypes.EventFeedbackOption[] = APP_STATIC_DATA.eventFeedbackAttendeeCollabOptions;
+  protected readonly eventFeedbackAttendeeRejoinOptions: AppTypes.EventFeedbackOption[] = APP_STATIC_DATA.eventFeedbackAttendeeRejoinOptions;
+  protected readonly eventFeedbackListFilters: Array<{ key: AppTypes.EventFeedbackListFilter; label: string; icon: string }> = APP_STATIC_DATA.eventFeedbackListFilters;
+  protected readonly helpCenterSections: AppTypes.HelpCenterSection[] = APP_STATIC_DATA.helpCenterSections;
   protected helpCenterActiveSectionId = this.helpCenterSections[0]?.id ?? 'events';
   protected languageInput = '';
   protected showLanguagePanel = false;
-  private readonly profileDetailsFormByUser: Record<string, ProfileDetailFormGroup[]> = {};
+  private readonly profileDetailsFormByUser: Record<string, AppTypes.ProfileDetailFormGroup[]> = {};
   private readonly profileImageSlotsByUser: Record<string, Array<string | null>> = {};
   private readonly languageSheetHeightCssVar = '--mobile-language-sheet-height';
   private activitiesHeaderLoadingCounter = 0;
@@ -1809,158 +679,21 @@ export class App {
       visited.add(id);
 
       if (!this.eventCapacityById[id]) {
-        this.eventCapacityById[id] = this.seededEventCapacityRange(id);
+        this.eventCapacityById[id] = AppDemoGenerators.seededEventCapacityRange(id, this.activityCapacityById);
       }
       if (!this.eventSubEventsById[id] || this.eventSubEventsById[id].length === 0) {
-        this.eventSubEventsById[id] = this.buildSeededSubEventsForEvent(source.item, source.isHosting);
-      }
-    }
-  }
-
-  private seededEventCapacityRange(eventId: string): EventCapacityRange {
-    const source = this.activityCapacityById[eventId];
-    if (source) {
-      const parts = source.split('/').map(part => Number.parseInt(part.trim(), 10));
-      if (parts.length >= 2 && Number.isFinite(parts[0]) && Number.isFinite(parts[1])) {
-        const min = Math.max(0, Math.min(parts[0], parts[1]));
-        const max = Math.max(min, parts[1]);
-        return { min, max };
-      }
-    }
-    const seed = this.hashText(`event-capacity:${eventId}`);
-    const max = 10 + (seed % 24);
-    const min = Math.max(0, Math.floor(max * 0.45));
-    return { min, max };
-  }
-
-  private buildSeededSubEventsForEvent(
-    source: EventMenuItem | HostingMenuItem,
-    isHosting: boolean
-  ): SubEventFormItem[] {
-    const dateSource = this.activityDateTimeRangeById[source.id];
-    const fallbackStartIso = isHosting
-      ? (this.hostingDatesById[source.id] ?? this.defaultEventStartIso())
-      : (this.eventDatesById[source.id] ?? this.defaultEventStartIso());
-    const start = new Date(dateSource?.startIso ?? fallbackStartIso);
-    const end = new Date(dateSource?.endIso ?? new Date(start.getTime() + (4 * 60 * 60 * 1000)).toISOString().slice(0, 19));
-    const startMs = Number.isNaN(start.getTime()) ? Date.now() : start.getTime();
-    const endMs = Number.isNaN(end.getTime()) || end.getTime() <= startMs
-      ? (startMs + (4 * 60 * 60 * 1000))
-      : end.getTime();
-    const seed = this.hashText(`event-subevents:${source.id}:${source.title}:${source.shortDescription}`);
-    const tournamentMode = (seed % 3) === 0;
-    if (tournamentMode) {
-      return this.buildSeededTournamentSubEvents(source, startMs, endMs, seed);
-    }
-    return this.buildSeededCasualSubEvents(source, startMs, endMs, seed);
-  }
-
-  private buildSeededCasualSubEvents(
-    source: EventMenuItem | HostingMenuItem,
-    startMs: number,
-    endMs: number,
-    seed: number
-  ): SubEventFormItem[] {
-    const count = 2 + (seed % 3);
-    const totalMs = Math.max(2 * 60 * 60 * 1000, endMs - startMs);
-    const slotMs = Math.max(45 * 60 * 1000, Math.floor(totalMs / count));
-    const eventCapacity = this.eventCapacityById[source.id] ?? this.seededEventCapacityRange(source.id);
-    const eventMax = this.normalizedEventCapacityValue(eventCapacity.max) ?? 0;
-    const names = ['Kickoff', 'Main Session', 'Side Activity', 'Wrap-up'];
-    const items: SubEventFormItem[] = [];
-    for (let index = 0; index < count; index += 1) {
-      const optional = index > 0 && ((seed + index) % 2 === 0);
-      const stageStartMs = startMs + (index * slotMs);
-      const stageEndMs = index === count - 1 ? endMs : Math.min(endMs, stageStartMs + slotMs);
-      const slice = 0.45 + (((seed + index) % 4) * 0.12);
-      const capacityMax = Math.max(0, Math.round(eventMax * slice));
-      const capacityMin = optional ? 0 : Math.max(0, Math.min(capacityMax, Math.floor(capacityMax * 0.55)));
-      const accepted = Math.min(capacityMax, Math.max(0, Math.floor(capacityMin * 0.7)));
-      items.push({
-        id: `seed-${source.id}-casual-${index + 1}`,
-        name: `${names[index] ?? `Session ${index + 1}`}`,
-        description: `${source.shortDescription} (${index + 1}/${count})`,
-        startAt: this.toIsoDateTimeLocal(new Date(stageStartMs)),
-        endAt: this.toIsoDateTimeLocal(new Date(Math.max(stageStartMs + (30 * 60 * 1000), stageEndMs))),
-        createdByUserId: this.activeUser.id,
-        groups: [],
-        optional,
-        capacityMin,
-        capacityMax,
-        membersAccepted: accepted,
-        membersPending: Math.max(0, capacityMax - accepted),
-        carsPending: (seed + index) % 3,
-        accommodationPending: (seed + index + 1) % 3,
-        suppliesPending: (seed + index + 2) % 4
-      });
-    }
-    return this.sortSubEventsByStartAsc(items);
-  }
-
-  private buildSeededTournamentSubEvents(
-    source: EventMenuItem | HostingMenuItem,
-    startMs: number,
-    endMs: number,
-    seed: number
-  ): SubEventFormItem[] {
-    const stageNames = ['Qualifiers', 'Semifinals', 'Finals'];
-    const stageCount = 3;
-    const totalMs = Math.max(3 * 60 * 60 * 1000, endMs - startMs);
-    const slotMs = Math.max(60 * 60 * 1000, Math.floor(totalMs / stageCount));
-    const eventCapacity = this.eventCapacityById[source.id] ?? this.seededEventCapacityRange(source.id);
-    const eventMax = this.normalizedEventCapacityValue(eventCapacity.max) ?? 0;
-    const items: SubEventFormItem[] = [];
-
-    for (let index = 0; index < stageCount; index += 1) {
-      const groupCount = Math.max(1, 4 >> index);
-      const basePerGroupMax = Math.max(2, Math.ceil(Math.max(2, eventMax) / Math.max(1, groupCount * (index + 1))));
-      const groups: SubEventGroupItem[] = [];
-      for (let groupIndex = 0; groupIndex < groupCount; groupIndex += 1) {
-        const groupMax = Math.max(2, basePerGroupMax - (groupIndex % 2));
-        const groupMin = Math.max(0, Math.floor(groupMax * 0.6));
-        groups.push({
-          id: `seed-${source.id}-s${index + 1}-g${groupIndex + 1}`,
-          name: `Group ${String.fromCharCode(65 + groupIndex)}`,
-          capacityMin: groupMin,
-          capacityMax: groupMax,
-          source: 'generated'
+        this.eventSubEventsById[id] = AppDemoGenerators.buildSeededSubEventsForEvent(source.item, {
+          isHosting: source.isHosting,
+          activityDateTimeRangeById: this.activityDateTimeRangeById,
+          hostingDatesById: this.hostingDatesById,
+          eventDatesById: this.eventDatesById,
+          eventCapacityById: this.eventCapacityById,
+          activityCapacityById: this.activityCapacityById,
+          defaultStartIso: this.defaultEventStartIso(),
+          activeUserId: this.activeUser.id
         });
       }
-      const totals = this.groupCapacityTotals(groups);
-      const stageStartMs = startMs + (index * slotMs);
-      const stageEndMs = index === stageCount - 1 ? endMs : Math.min(endMs, stageStartMs + slotMs);
-      const accepted = Math.min(totals.max, Math.max(0, Math.floor(totals.min * 0.7)));
-      items.push({
-        id: `seed-${source.id}-tournament-${index + 1}`,
-        name: `${stageNames[index]}`,
-        description: `${source.shortDescription} (${stageNames[index]})`,
-        startAt: this.toIsoDateTimeLocal(new Date(stageStartMs)),
-        endAt: this.toIsoDateTimeLocal(new Date(Math.max(stageStartMs + (45 * 60 * 1000), stageEndMs))),
-        createdByUserId: this.activeUser.id,
-        groups,
-        tournamentGroupCount: groups.length,
-        tournamentGroupCapacityMin: Math.max(0, ...groups.map(group => Number(group.capacityMin) || 0)),
-        tournamentGroupCapacityMax: Math.max(0, ...groups.map(group => Number(group.capacityMax) || 0)),
-        tournamentLeaderboardType: (seed + index) % 2 === 0 ? 'Score' : 'Fifa',
-        tournamentAdvancePerGroup: index === stageCount - 1 ? 0 : Math.max(1, 2 - index),
-        optional: false,
-        capacityMin: totals.min,
-        capacityMax: totals.max,
-        membersAccepted: accepted,
-        membersPending: Math.max(0, totals.max - accepted),
-        carsPending: (seed + index) % 2,
-        accommodationPending: (seed + index + 1) % 2,
-        suppliesPending: (seed + index + 2) % 3
-      });
     }
-    return this.sortSubEventsByStartAsc(items);
-  }
-
-  private inferredSubEventsDisplayMode(items: SubEventFormItem[]): SubEventsDisplayMode {
-    if (items.some(item => !item.optional && (item.groups?.length ?? 0) > 0)) {
-      return 'Tournament';
-    }
-    return 'Casual';
   }
 
   protected get activeUser() {
@@ -1985,21 +718,21 @@ export class App {
   }
 
   protected get chatBadge(): number {
-    return this.resolveSectionBadge(
+    return AppDemoGenerators.resolveSectionBadge(
       this.chatItems.map(item => item.unread),
       this.chatItems.length
     );
   }
 
   protected get invitationsBadge(): number {
-    return this.resolveSectionBadge(
+    return AppDemoGenerators.resolveSectionBadge(
       this.invitationItems.map(item => item.unread),
       this.invitationItems.length
     );
   }
 
   protected get eventsBadge(): number {
-    return this.resolveSectionBadge(
+    return AppDemoGenerators.resolveSectionBadge(
       this.eventItems.map(item => item.activity),
       this.eventItems.length
     );
@@ -2007,7 +740,7 @@ export class App {
 
   protected get hostingBadge(): number {
     const adminEvents = this.eventItems.filter(item => item.isAdmin);
-    return this.resolveSectionBadge(
+    return AppDemoGenerators.resolveSectionBadge(
       adminEvents.map(item => item.activity),
       adminEvents.length
     );
@@ -2115,7 +848,7 @@ export class App {
     this.helpCenterActiveSectionId = sectionId;
   }
 
-  protected get activeHelpCenterSection(): HelpCenterSection | null {
+  protected get activeHelpCenterSection(): AppTypes.HelpCenterSection | null {
     return this.helpCenterSections.find(section => section.id === this.helpCenterActiveSectionId) ?? this.helpCenterSections[0] ?? null;
   }
 
@@ -2139,7 +872,7 @@ export class App {
     return this.eventFeedbackListFilters.find(item => item.key === this.eventFeedbackListFilter)?.icon ?? 'schedule';
   }
 
-  protected eventFeedbackFilterCount(filter: EventFeedbackListFilter): number {
+  protected eventFeedbackFilterCount(filter: AppTypes.EventFeedbackListFilter): number {
     switch (filter) {
       case 'feedbacked':
         return this.eventFeedbackFeedbackedCount;
@@ -2151,7 +884,7 @@ export class App {
     }
   }
 
-  protected eventFeedbackFilterOptionClass(filter: EventFeedbackListFilter): string {
+  protected eventFeedbackFilterOptionClass(filter: AppTypes.EventFeedbackListFilter): string {
     switch (filter) {
       case 'feedbacked':
         return 'event-feedback-filter-option-feedbacked';
@@ -2163,7 +896,7 @@ export class App {
     }
   }
 
-  protected eventFeedbackFilterBadgeClass(filter: EventFeedbackListFilter): string {
+  protected eventFeedbackFilterBadgeClass(filter: AppTypes.EventFeedbackListFilter): string {
     switch (filter) {
       case 'feedbacked':
         return 'event-feedback-filter-badge-feedbacked';
@@ -2175,7 +908,7 @@ export class App {
     }
   }
 
-  protected get eventFeedbackVisibleItems(): EventFeedbackEventCard[] {
+  protected get eventFeedbackVisibleItems(): AppTypes.EventFeedbackEventCard[] {
     switch (this.eventFeedbackListFilter) {
       case 'feedbacked':
         return this.eventFeedbackFeedbackedItems;
@@ -2191,7 +924,7 @@ export class App {
     return this.eventFeedbackCards.length > 0;
   }
 
-  protected get activeEventFeedbackCard(): EventFeedbackCard | null {
+  protected get activeEventFeedbackCard(): AppTypes.EventFeedbackCard | null {
     return this.eventFeedbackCards[this.eventFeedbackIndex] ?? null;
   }
 
@@ -2241,7 +974,7 @@ export class App {
     this.showEventFeedbackFilterPicker = !this.showEventFeedbackFilterPicker;
   }
 
-  protected selectEventFeedbackListFilter(filter: EventFeedbackListFilter, event?: Event): void {
+  protected selectEventFeedbackListFilter(filter: AppTypes.EventFeedbackListFilter, event?: Event): void {
     event?.stopPropagation();
     this.eventFeedbackListFilter = filter;
     this.showEventFeedbackFilterPicker = false;
@@ -2253,15 +986,15 @@ export class App {
     this.showEventFeedbackFilterPicker = false;
   }
 
-  protected trackByEventFeedbackItem(index: number, item: EventFeedbackEventCard): string {
+  protected trackByEventFeedbackItem(index: number, item: AppTypes.EventFeedbackEventCard): string {
     return item.eventId;
   }
 
-  protected isEventFeedbackCardMenuOpen(item: EventFeedbackEventCard): boolean {
+  protected isEventFeedbackCardMenuOpen(item: AppTypes.EventFeedbackEventCard): boolean {
     return this.eventFeedbackCardMenuEventId === item.eventId;
   }
 
-  protected toggleEventFeedbackCardMenu(item: EventFeedbackEventCard, event?: Event): void {
+  protected toggleEventFeedbackCardMenu(item: AppTypes.EventFeedbackEventCard, event?: Event): void {
     event?.stopPropagation();
     this.showEventFeedbackFilterPicker = false;
     this.eventFeedbackCardMenuEventId = this.eventFeedbackCardMenuEventId === item.eventId ? null : item.eventId;
@@ -2272,11 +1005,11 @@ export class App {
     this.eventFeedbackCardMenuEventId = null;
   }
 
-  protected isEventFeedbackStartAvailable(item: EventFeedbackEventCard): boolean {
+  protected isEventFeedbackStartAvailable(item: AppTypes.EventFeedbackEventCard): boolean {
     return !item.isRemoved && item.pendingCards > 0;
   }
 
-  protected eventFeedbackItemStatusLine(item: EventFeedbackEventCard): string {
+  protected eventFeedbackItemStatusLine(item: AppTypes.EventFeedbackEventCard): string {
     if (item.isRemoved) {
       return 'Removed without feedback.';
     }
@@ -2294,7 +1027,7 @@ export class App {
     return Boolean(this.organizerEventFeedbackNotesByUser[this.activeUser.id]?.[eventId]?.trim());
   }
 
-  protected startEventFeedback(item: EventFeedbackEventCard, event?: Event): void {
+  protected startEventFeedback(item: AppTypes.EventFeedbackEventCard, event?: Event): void {
     event?.stopPropagation();
     this.closeEventFeedbackCardMenu();
     this.showEventFeedbackFilterPicker = false;
@@ -2319,7 +1052,7 @@ export class App {
     this.stackedPopup = 'eventFeedback';
   }
 
-  protected removeEventFeedbackItem(item: EventFeedbackEventCard, event?: Event): void {
+  protected removeEventFeedbackItem(item: AppTypes.EventFeedbackEventCard, event?: Event): void {
     event?.stopPropagation();
     this.markEventFeedbackEventRemoved(item.eventId);
     this.closeEventFeedbackCardMenu();
@@ -2327,7 +1060,7 @@ export class App {
     this.eventFeedbackListFilter = 'removed';
   }
 
-  protected restoreRemovedEventFeedbackItem(item: EventFeedbackEventCard, event?: Event): void {
+  protected restoreRemovedEventFeedbackItem(item: AppTypes.EventFeedbackEventCard, event?: Event): void {
     event?.stopPropagation();
     this.restoreEventFeedbackEvent(item.eventId);
     this.closeEventFeedbackCardMenu();
@@ -2335,7 +1068,7 @@ export class App {
     this.eventFeedbackListFilter = 'pending';
   }
 
-  protected openEventFeedbackNotePopup(item: EventFeedbackEventCard, event?: Event): void {
+  protected openEventFeedbackNotePopup(item: AppTypes.EventFeedbackEventCard, event?: Event): void {
     event?.stopPropagation();
     this.closeEventFeedbackCardMenu();
     this.showEventFeedbackFilterPicker = false;
@@ -2423,7 +1156,7 @@ export class App {
     return this.activeEventFeedbackCard?.answerSecondary === optionValue;
   }
 
-  protected eventFeedbackOptionToneClass(card: EventFeedbackCard, option: EventFeedbackOption): string {
+  protected eventFeedbackOptionToneClass(card: AppTypes.EventFeedbackCard, option: AppTypes.EventFeedbackOption): string {
     const section = option.impressionTag
       ? this.feedbackSectionFromTag(card.kind, option.impressionTag)
       : 'vibe';
@@ -2535,11 +1268,11 @@ export class App {
     }, 260);
   }
 
-  private get pendingEventFeedbackCards(): EventFeedbackCard[] {
+  private get pendingEventFeedbackCards(): AppTypes.EventFeedbackCard[] {
     return this.buildEventFeedbackCards().filter(card => !this.isSelfAttendeeFeedbackCard(card) && !this.isEventFeedbackSubmitted(card.id));
   }
 
-  private pendingEventFeedbackCardsForEvent(eventId: string): EventFeedbackCard[] {
+  private pendingEventFeedbackCardsForEvent(eventId: string): AppTypes.EventFeedbackCard[] {
     return this.buildEventFeedbackCards().filter(card =>
       card.eventId === eventId &&
       !this.isSelfAttendeeFeedbackCard(card) &&
@@ -2547,7 +1280,7 @@ export class App {
     );
   }
 
-  private get eventFeedbackAllItems(): EventFeedbackEventCard[] {
+  private get eventFeedbackAllItems(): AppTypes.EventFeedbackEventCard[] {
     const countsByEvent = new Map<string, { pending: number; total: number }>();
     for (const card of this.buildEventFeedbackCards()) {
       if (this.isSelfAttendeeFeedbackCard(card)) {
@@ -2561,7 +1294,7 @@ export class App {
       countsByEvent.set(card.eventId, current);
     }
 
-    const items: EventFeedbackEventCard[] = [];
+    const items: AppTypes.EventFeedbackEventCard[] = [];
     const nowMs = Date.now();
     for (const item of this.eventItems) {
       if (item.isAdmin) {
@@ -2594,13 +1327,13 @@ export class App {
     return items;
   }
 
-  private get eventFeedbackPendingItems(): EventFeedbackEventCard[] {
+  private get eventFeedbackPendingItems(): AppTypes.EventFeedbackEventCard[] {
     return this.eventFeedbackAllItems
       .filter(item => !item.isRemoved && item.pendingCards > 0)
       .sort((a, b) => a.startAtMs - b.startAtMs);
   }
 
-  private get eventFeedbackFeedbackedItems(): EventFeedbackEventCard[] {
+  private get eventFeedbackFeedbackedItems(): AppTypes.EventFeedbackEventCard[] {
     return this.eventFeedbackAllItems
       .filter(item => item.isFeedbacked)
       .sort((a, b) => {
@@ -2610,7 +1343,7 @@ export class App {
       });
   }
 
-  private get eventFeedbackRemovedItems(): EventFeedbackEventCard[] {
+  private get eventFeedbackRemovedItems(): AppTypes.EventFeedbackEventCard[] {
     return this.eventFeedbackAllItems
       .filter(item => item.isRemoved)
       .sort((a, b) => b.startAtMs - a.startAtMs);
@@ -2657,7 +1390,7 @@ export class App {
     this.removedEventFeedbackEventsByUser[this.activeUser.id] = current;
   }
 
-  private selectedImpressionTagsForCard(card: EventFeedbackCard): string[] {
+  private selectedImpressionTagsForCard(card: AppTypes.EventFeedbackCard): string[] {
     const tags = new Set<string>();
     const primary = card.primaryOptions.find(option => option.value === card.answerPrimary)?.impressionTag;
     const secondary = card.secondaryOptions.find(option => option.value === card.answerSecondary)?.impressionTag;
@@ -2670,141 +1403,22 @@ export class App {
     return [...tags];
   }
 
-  private buildEventFeedbackCards(): EventFeedbackCard[] {
-    const nowMs = Date.now();
-    const eventCards: EventFeedbackCard[] = [];
-    for (const item of this.eventItems) {
-      if (item.isAdmin) {
-        continue;
-      }
-      const startMs = this.eventStartAtMs(item.id);
-      if (startMs === null || nowMs < startMs + this.eventFeedbackUnlockDelayMs) {
-        continue;
-      }
-      const eventLabel = this.eventFeedbackWhenLabel(item.id);
-      const host = this.feedbackHostUserForEvent(item.id);
-      const attendees = this.feedbackAttendeesForEvent(item.id, host.id);
-      eventCards.push({
-        id: `feedback-event-${item.id}`,
-        eventId: item.id,
-        kind: 'event',
-        targetUserId: host.id,
-        targetRole: 'Admin',
-        icon: 'event_available',
-        imageUrl: this.activityImageById[item.id] ?? `https://picsum.photos/seed/event-feedback-card-${item.id}/1200/700`,
-        toneClass: 'feedback-card-tone-event feedback-role-admin',
-        heading: item.title,
-        subheading: `${eventLabel} · ${item.shortDescription}`,
-        identityTitle: `${host.name} · Host`,
-        identitySubtitle: `Admin · ${host.city}`,
-        identityStatusClass: 'member-status-admin',
-        identityStatusIcon: 'admin_panel_settings',
-        questionPrimary: `How did ${item.title} feel for you overall?`,
-        questionSecondary: `What should ${host.name} improve next time?`,
-        primaryOptions: this.eventFeedbackEventOverallOptions,
-        secondaryOptions: this.eventFeedbackHostImproveOptions,
-        answerPrimary: '',
-        answerSecondary: ''
-      });
-      for (const attendee of attendees) {
-        const attendeeRole = this.feedbackRoleForAttendee(item.id, attendee.id);
-        eventCards.push({
-          id: `feedback-attendee-${item.id}-${attendee.id}`,
-          eventId: item.id,
-          kind: 'attendee',
-          attendeeUserId: attendee.id,
-          targetUserId: attendee.id,
-          targetRole: attendeeRole,
-          icon: 'groups',
-          imageUrl: attendee.images?.[0] ?? `https://i.pravatar.cc/1200?img=${(this.hashText(`feedback-attendee:${item.id}:${attendee.id}`) % 70) + 1}`,
-          toneClass: `feedback-card-tone-attendee ${this.feedbackRoleToneClass(attendeeRole)}`,
-          heading: `${attendee.name} · ${item.title}`,
-          subheading: `Attendee feedback · ${eventLabel}`,
-          identityTitle: `${attendee.name}, ${attendee.age}`,
-          identitySubtitle: `${attendeeRole} · ${attendee.city}`,
-          identityStatusClass: this.feedbackRoleStatusClass(attendeeRole),
-          identityStatusIcon: this.feedbackRoleStatusIcon(attendeeRole),
-          questionPrimary: `How was collaboration with ${attendee.name} (${attendee.traitLabel}) during this event?`,
-          questionSecondary: `Would you team up with ${attendee.name} again in a future event?`,
-          primaryOptions: this.eventFeedbackAttendeeCollabOptions,
-          secondaryOptions: this.eventFeedbackAttendeeRejoinOptions,
-          answerPrimary: '',
-          answerSecondary: ''
-        });
-      }
-    }
-    return eventCards;
+  private buildEventFeedbackCards(): AppTypes.EventFeedbackCard[] {
+    return AppDemoGenerators.buildEventFeedbackCards({
+      eventItems: this.eventItems,
+      users: this.users,
+      activeUser: this.activeUser,
+      eventDatesById: this.eventDatesById,
+      activityImageById: this.activityImageById,
+      eventFeedbackUnlockDelayMs: this.eventFeedbackUnlockDelayMs,
+      eventOverallOptions: this.eventFeedbackEventOverallOptions,
+      hostImproveOptions: this.eventFeedbackHostImproveOptions,
+      attendeeCollabOptions: this.eventFeedbackAttendeeCollabOptions,
+      attendeeRejoinOptions: this.eventFeedbackAttendeeRejoinOptions
+    });
   }
 
-  private feedbackHostUserForEvent(eventId: string): DemoUser {
-    const candidates = this.users.filter(user => user.id !== this.activeUser.id);
-    if (candidates.length === 0) {
-      return this.activeUser;
-    }
-    const index = this.hashText(`feedback-host:${eventId}`) % candidates.length;
-    return candidates[index] ?? candidates[0];
-  }
-
-  private feedbackAttendeesForEvent(eventId: string, hostId: string): DemoUser[] {
-    const candidates = this.users.filter(user => user.id !== this.activeUser.id && user.id !== hostId);
-    if (candidates.length === 0) {
-      return [];
-    }
-    const seed = this.hashText(`feedback-attendees:${eventId}`);
-    const desired = Math.min(candidates.length, 3 + (seed % 4));
-    const picked: DemoUser[] = [];
-    for (let index = 0; index < candidates.length && picked.length < desired; index += 1) {
-      const candidate = candidates[(seed + (index * 3)) % candidates.length];
-      if (!candidate || candidate.id === this.activeUser.id || picked.some(item => item.id === candidate.id)) {
-        continue;
-      }
-      picked.push(candidate);
-    }
-    return picked;
-  }
-
-  private feedbackRoleForAttendee(eventId: string, attendeeUserId: string): 'Admin' | 'Manager' | 'Member' {
-    const seed = this.hashText(`feedback-role:${eventId}:${attendeeUserId}`);
-    if (seed % 11 === 0) {
-      return 'Admin';
-    }
-    if (seed % 4 === 0) {
-      return 'Manager';
-    }
-    return 'Member';
-  }
-
-  private feedbackRoleToneClass(role: 'Admin' | 'Manager' | 'Member'): string {
-    if (role === 'Admin') {
-      return 'feedback-role-admin';
-    }
-    if (role === 'Manager') {
-      return 'feedback-role-manager';
-    }
-    return 'feedback-role-member';
-  }
-
-  private feedbackRoleStatusClass(role: 'Admin' | 'Manager' | 'Member'): string {
-    if (role === 'Admin') {
-      return 'member-status-admin';
-    }
-    if (role === 'Manager') {
-      return 'member-status-manager';
-    }
-    return 'member-status-member';
-  }
-
-  private feedbackRoleStatusIcon(role: 'Admin' | 'Manager' | 'Member'): string {
-    if (role === 'Admin') {
-      return 'admin_panel_settings';
-    }
-    if (role === 'Manager') {
-      return 'manage_accounts';
-    }
-    return 'person';
-  }
-
-  private recordSubmittedEventFeedbackAnswer(card: EventFeedbackCard, tags: string[]): void {
+  private recordSubmittedEventFeedbackAnswer(card: AppTypes.EventFeedbackCard, tags: string[]): void {
     const byUser = { ...(this.submittedEventFeedbackAnswersByUser[this.activeUser.id] ?? {}) };
     byUser[card.id] = {
       cardId: card.id,
@@ -2815,24 +1429,13 @@ export class App {
       primaryValue: card.answerPrimary,
       secondaryValue: card.answerSecondary,
       tags: [...tags],
-      submittedAtIso: this.toIsoDateTime(new Date())
+      submittedAtIso: AppUtils.toIsoDateTime(new Date())
     };
     this.submittedEventFeedbackAnswersByUser[this.activeUser.id] = byUser;
   }
 
-  private isSelfAttendeeFeedbackCard(card: EventFeedbackCard): boolean {
+  private isSelfAttendeeFeedbackCard(card: AppTypes.EventFeedbackCard): boolean {
     return card.kind === 'attendee' && card.attendeeUserId === this.activeUser.id;
-  }
-
-  private eventFeedbackWhenLabel(eventId: string): string {
-    const startMs = this.eventStartAtMs(eventId);
-    if (startMs === null) {
-      return 'Recent event';
-    }
-    const parsed = new Date(startMs);
-    const day = parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    const time = parsed.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    return `${day} · ${time}`;
   }
 
   private eventStartAtMs(eventId: string): number | null {
@@ -2950,7 +1553,7 @@ export class App {
     this.openActivitiesPopup('hosting', false);
   }
 
-  protected openActivitiesPopup(primaryFilter: ActivitiesPrimaryFilter, closeMenu = true): void {
+  protected openActivitiesPopup(primaryFilter: AppTypes.ActivitiesPrimaryFilter, closeMenu = true): void {
     this.commitPendingRateDirectionOverrides();
     this.activePopup = 'activities';
     this.activitiesPrimaryFilter = primaryFilter;
@@ -3102,7 +1705,7 @@ export class App {
 
   protected openEventEditor(
     stacked = false,
-    mode: EventEditorMode = 'edit',
+    mode: AppTypes.EventEditorMode = 'edit',
     source?: EventMenuItem | HostingMenuItem,
     readOnly = false,
     invitationId: string | null = null
@@ -3232,12 +1835,12 @@ export class App {
     return this.subEventPanelChipTitle(current.item, current.index);
   }
 
-  protected subEventLocationLabel(subEvent: SubEventFormItem | null | undefined): string {
+  protected subEventLocationLabel(subEvent: AppTypes.SubEventFormItem | null | undefined): string {
     const location = this.normalizeLocationValue(subEvent?.location).trim();
     return location || 'Location pending';
   }
 
-  protected subEventPanelChipTitle(subEvent: SubEventFormItem, index: number): string {
+  protected subEventPanelChipTitle(subEvent: AppTypes.SubEventFormItem, index: number): string {
     const baseName = (subEvent.name || 'Untitled').trim() || 'Untitled';
     if (this.subEventsDisplayMode !== 'Tournament') {
       return baseName;
@@ -3245,7 +1848,7 @@ export class App {
     return `Stage ${index + 1} - ${baseName}`;
   }
 
-  protected subEventPanelChipIsCurrent(subEvent: SubEventFormItem): boolean {
+  protected subEventPanelChipIsCurrent(subEvent: AppTypes.SubEventFormItem): boolean {
     const source = this.sortSubEventRefsByStartAsc(this.eventForm.subEvents);
     if (source.length === 0) {
       return false;
@@ -3269,7 +1872,7 @@ export class App {
   protected subEventPanelChipStyle(index: number): Record<string, string> {
     if (this.subEventsDisplayMode === 'Tournament') {
       const totalStages = Math.max(1, this.eventForm.subEvents.length);
-      const stageNumber = this.clampNumber(index + 1, 1, totalStages);
+      const stageNumber = AppUtils.clampNumber(index + 1, 1, totalStages);
       const hue = this.subEventStageAccentHue(stageNumber, totalStages);
       return {
         borderColor: `hsl(${hue} 54% 58% / 0.52)`,
@@ -3295,12 +1898,12 @@ export class App {
     };
   }
 
-  private currentSubEventPanelState(): { item: SubEventFormItem; index: number } | null {
+  private currentSubEventPanelState(): { item: AppTypes.SubEventFormItem; index: number } | null {
     const source = this.sortSubEventRefsByStartAsc(this.eventForm.subEvents);
     if (source.length === 0) {
       return null;
     }
-    const currentIndex = this.clampNumber(this.resolveCurrentSubEventIndex(source), 0, source.length - 1);
+    const currentIndex = AppUtils.clampNumber(this.resolveCurrentSubEventIndex(source), 0, source.length - 1);
     const current = source[currentIndex] ?? source[0] ?? null;
     if (!current) {
       return null;
@@ -3311,11 +1914,11 @@ export class App {
     };
   }
 
-  protected subEventsDisplayModeClass(mode: SubEventsDisplayMode = this.subEventsDisplayMode): string {
+  protected subEventsDisplayModeClass(mode: AppTypes.SubEventsDisplayMode = this.subEventsDisplayMode): string {
     return mode === 'Tournament' ? 'subevents-mode-tournament' : 'subevents-mode-casual';
   }
 
-  protected subEventsDisplayModeIcon(mode: SubEventsDisplayMode = this.subEventsDisplayMode): string {
+  protected subEventsDisplayModeIcon(mode: AppTypes.SubEventsDisplayMode = this.subEventsDisplayMode): string {
     return mode === 'Tournament' ? 'emoji_events' : 'groups';
   }
 
@@ -3327,7 +1930,7 @@ export class App {
     this.showSubEventsDisplayModePicker = !this.showSubEventsDisplayModePicker;
   }
 
-  protected selectSubEventsDisplayMode(mode: SubEventsDisplayMode, event?: Event): void {
+  protected selectSubEventsDisplayMode(mode: AppTypes.SubEventsDisplayMode, event?: Event): void {
     event?.stopPropagation();
     if (this.eventEditorReadOnly) {
       return;
@@ -3338,12 +1941,12 @@ export class App {
     this.resetSubEventStagePaging();
   }
 
-  protected get subEventTournamentStages(): SubEventTournamentStage[] {
+  protected get subEventTournamentStages(): AppTypes.SubEventTournamentStage[] {
     const source = this.eventForm.subEvents;
     if (source.length === 0) {
       return [];
     }
-    const currentStageNumber = this.resolveCurrentTournamentStageNumber(source);
+    const currentStageNumber = AppSubEventHelpers.resolveCurrentTournamentStageNumber(source);
     return source.map((subEvent, index) => {
       const stageNumber = index + 1;
       const stageKey = subEvent.id || `stage-${stageNumber}`;
@@ -3369,7 +1972,7 @@ export class App {
     });
   }
 
-  protected get subEventTournamentStagePages(): SubEventTournamentStage[][] {
+  protected get subEventTournamentStagePages(): AppTypes.SubEventTournamentStage[][] {
     const stages = this.subEventTournamentStages;
     if (!this.isSubEventSwipeViewport) {
       return stages.length > 0 ? [stages] : [];
@@ -3378,14 +1981,14 @@ export class App {
       return [];
     }
     const pageSize = this.subEventStagePageSize();
-    const pages: SubEventTournamentStage[][] = [];
+    const pages: AppTypes.SubEventTournamentStage[][] = [];
     for (let index = 0; index < stages.length; index += pageSize) {
       pages.push(stages.slice(index, index + pageSize));
     }
     return pages;
   }
 
-  protected subEventStagePlaceholders(page: SubEventTournamentStage[]): number[] {
+  protected subEventStagePlaceholders(page: AppTypes.SubEventTournamentStage[]): number[] {
     const expectedColumns = this.subEventStagePageSize();
     const missing = Math.max(0, expectedColumns - page.length);
     return Array.from({ length: missing }, (_, index) => index);
@@ -3395,11 +1998,11 @@ export class App {
     return index;
   }
 
-  protected trackBySubEventStage(_: number, stage: SubEventTournamentStage): string {
+  protected trackBySubEventStage(_: number, stage: AppTypes.SubEventTournamentStage): string {
     return stage.key;
   }
 
-  protected trackBySubEventTournamentGroup(_: number, group: SubEventTournamentGroup): string {
+  protected trackBySubEventTournamentGroup(_: number, group: AppTypes.SubEventTournamentGroup): string {
     return group.key;
   }
 
@@ -3416,11 +2019,11 @@ export class App {
     if (totalStages <= 1) {
       return 210;
     }
-    const ratio = this.clampNumber((stageNumber - 1) / (totalStages - 1), 0, 1);
+    const ratio = AppUtils.clampNumber((stageNumber - 1) / (totalStages - 1), 0, 1);
     return Math.round(210 - (210 * ratio));
   }
 
-  private resolveCurrentSubEventIndex(items: SubEventFormItem[]): number {
+  private resolveCurrentSubEventIndex(items: AppTypes.SubEventFormItem[]): number {
     if (items.length === 0) {
       return 0;
     }
@@ -3444,7 +2047,7 @@ export class App {
     return Math.max(0, items.length - 1);
   }
 
-  protected subEventStageMetaLabel(stage: SubEventTournamentStage): string {
+  protected subEventStageMetaLabel(stage: AppTypes.SubEventTournamentStage): string {
     return `${stage.groups.length} groups`;
   }
 
@@ -3553,7 +2156,7 @@ export class App {
       }
       return this.subEventStagePageIndex < maxIndex;
     }
-    const starts = this.subEventDesktopPageStarts(this.subEventTournamentStages.length);
+    const starts = AppSubEventHelpers.subEventDesktopPageStarts(this.subEventTournamentStages.length);
     if (starts.length <= 1) {
       return false;
     }
@@ -3566,7 +2169,7 @@ export class App {
       return this.subEventStagePageIndex < maxIndex;
     }
     const currentOffset = scrollElement.scrollLeft;
-    const offsets = this.subEventDesktopPageOffsets(scrollElement, starts);
+    const offsets = AppSubEventHelpers.subEventDesktopPageOffsets(scrollElement, starts);
     const epsilon = 1;
     if (direction < 0) {
       return offsets.some(offset => offset < (currentOffset - epsilon));
@@ -3582,7 +2185,7 @@ export class App {
     }
     if (this.isSubEventSwipeViewport) {
       const maxIndex = Math.max(0, this.subEventTournamentStagePages.length - 1);
-      const nextIndex = this.clampNumber(
+      const nextIndex = AppUtils.clampNumber(
         this.subEventStagePageIndex + direction,
         0,
         maxIndex
@@ -3595,8 +2198,8 @@ export class App {
       scrollElement.scrollTo({ left: step * nextIndex, behavior: 'smooth' });
       return;
     }
-    const starts = this.subEventDesktopPageStarts(this.subEventTournamentStages.length);
-    const offsets = this.subEventDesktopPageOffsets(scrollElement, starts);
+    const starts = AppSubEventHelpers.subEventDesktopPageStarts(this.subEventTournamentStages.length);
+    const offsets = AppSubEventHelpers.subEventDesktopPageOffsets(scrollElement, starts);
     const currentOffset = scrollElement.scrollLeft;
     const epsilon = 1;
     let targetPageIndex: number | null = null;
@@ -3688,7 +2291,7 @@ export class App {
     }
   }
 
-  protected eventVisibilityIcon(option: EventVisibility): string {
+  protected eventVisibilityIcon(option: AppTypes.EventVisibility): string {
     switch (option) {
       case 'Public':
         return 'public';
@@ -3699,7 +2302,7 @@ export class App {
     }
   }
 
-  protected eventVisibilityClass(option: EventVisibility): string {
+  protected eventVisibilityClass(option: AppTypes.EventVisibility): string {
     switch (option) {
       case 'Public':
         return 'event-visibility-public';
@@ -3718,7 +2321,7 @@ export class App {
     this.showEventVisibilityPicker = !this.showEventVisibilityPicker;
   }
 
-  protected selectEventVisibility(option: EventVisibility, event?: Event): void {
+  protected selectEventVisibility(option: AppTypes.EventVisibility, event?: Event): void {
     event?.stopPropagation();
     if (this.eventEditorReadOnly) {
       return;
@@ -3727,15 +2330,15 @@ export class App {
     this.showEventVisibilityPicker = false;
   }
 
-  protected eventBlindModeIcon(option: EventBlindMode): string {
+  protected eventBlindModeIcon(option: AppTypes.EventBlindMode): string {
     return option === 'Blind Event' ? 'visibility_off' : 'visibility';
   }
 
-  protected eventBlindModeClass(option: EventBlindMode): string {
+  protected eventBlindModeClass(option: AppTypes.EventBlindMode): string {
     return option === 'Blind Event' ? 'blind-mode-blind' : 'blind-mode-open';
   }
 
-  protected eventBlindModeDescription(option: EventBlindMode): string {
+  protected eventBlindModeDescription(option: AppTypes.EventBlindMode): string {
     return option === 'Blind Event'
       ? 'Attendees won’t see each other before the event.'
       : 'Attendees can preview each other before the event.';
@@ -3848,7 +2451,7 @@ export class App {
   }
 
   protected requestSubEventDelete(
-    subEvent: SubEventFormItem,
+    subEvent: AppTypes.SubEventFormItem,
     event?: Event,
     context: 'subEvent' | 'stage' = 'subEvent'
   ): void {
@@ -3858,8 +2461,8 @@ export class App {
   }
 
   protected requestSubEventGroupDelete(
-    stage: SubEventFormItem,
-    group: SubEventTournamentGroup,
+    stage: AppTypes.SubEventFormItem,
+    group: AppTypes.SubEventTournamentGroup,
     event?: Event
   ): void {
     event?.stopPropagation();
@@ -4062,45 +2665,45 @@ export class App {
     this.openGoogleMapsSearch(this.subEventForm.location ?? '');
   }
 
-  protected subEventCardRange(item: SubEventFormItem): string {
+  protected subEventCardRange(item: AppTypes.SubEventFormItem): string {
     const start = new Date(item.startAt);
     const end = new Date(item.endAt);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       return 'Date pending';
     }
-    const startLabel = `${this.pad2(start.getMonth() + 1)}/${this.pad2(start.getDate())} ${this.pad2(start.getHours())}:${this.pad2(start.getMinutes())}`;
-    const endLabel = `${this.pad2(end.getMonth() + 1)}/${this.pad2(end.getDate())} ${this.pad2(end.getHours())}:${this.pad2(end.getMinutes())}`;
+    const startLabel = `${AppUtils.pad2(start.getMonth() + 1)}/${AppUtils.pad2(start.getDate())} ${AppUtils.pad2(start.getHours())}:${AppUtils.pad2(start.getMinutes())}`;
+    const endLabel = `${AppUtils.pad2(end.getMonth() + 1)}/${AppUtils.pad2(end.getDate())} ${AppUtils.pad2(end.getHours())}:${AppUtils.pad2(end.getMinutes())}`;
     return `${startLabel} - ${endLabel}`;
   }
 
-  protected subEventCardMeta(item: SubEventFormItem): string {
+  protected subEventCardMeta(item: AppTypes.SubEventFormItem): string {
     return item.optional ? 'Optional' : 'Mandatory';
   }
 
-  protected subEventCapacityLabel(item: SubEventFormItem): string {
+  protected subEventCapacityLabel(item: AppTypes.SubEventFormItem): string {
     return `${item.membersAccepted} / ${item.capacityMin} - ${item.capacityMax}`;
   }
 
-  protected subEventCapacityStateClass(item: SubEventFormItem): string {
+  protected subEventCapacityStateClass(item: AppTypes.SubEventFormItem): string {
     return item.membersAccepted >= item.capacityMin && item.membersAccepted <= item.capacityMax
       ? 'subevent-capacity-in-range'
       : 'subevent-capacity-out-of-range';
   }
 
-  protected subEventAssetCapacityLabel(item: SubEventFormItem, type: AssetType): string {
+  protected subEventAssetCapacityLabel(item: AppTypes.SubEventFormItem, type: AppTypes.AssetType): string {
     this.syncSubEventAssetBadgeCounts(item, type);
     const metrics = this.subEventAssetCapacityMetrics(item, type);
     return `${metrics.joined} / ${metrics.capacityMin} - ${metrics.capacityMax}`;
   }
 
-  protected subEventAssetCapacityStateClass(item: SubEventFormItem, type: AssetType): string {
+  protected subEventAssetCapacityStateClass(item: AppTypes.SubEventFormItem, type: AppTypes.AssetType): string {
     const metrics = this.subEventAssetCapacityMetrics(item, type);
     return metrics.joined >= metrics.capacityMin && metrics.joined <= metrics.capacityMax
       ? 'subevent-capacity-in-range'
       : 'subevent-capacity-out-of-range';
   }
 
-  protected subEventAssetBadgePendingCount(item: SubEventFormItem, type: AssetType): number {
+  protected subEventAssetBadgePendingCount(item: AppTypes.SubEventFormItem, type: AppTypes.AssetType): number {
     this.syncSubEventAssetBadgeCounts(item, type);
     if (type === 'Car') {
       return Math.max(0, Math.trunc(Number(item.carsPending) || 0));
@@ -4111,7 +2714,7 @@ export class App {
     return Math.max(0, Math.trunc(Number(item.suppliesPending) || 0));
   }
 
-  protected subEventMenuPendingCount(item: SubEventFormItem, tournamentMode = false): number {
+  protected subEventMenuPendingCount(item: AppTypes.SubEventFormItem, tournamentMode = false): number {
     const members = item.optional || tournamentMode
       ? this.subEventMembersBadgePendingCount(item)
       : 0;
@@ -4147,7 +2750,7 @@ export class App {
     return this.subEventGroupForm.id ? 'Edit Group' : 'Create Group';
   }
 
-  protected subEventTournamentGroupSourceLabel(group: SubEventTournamentGroup | null | undefined): string {
+  protected subEventTournamentGroupSourceLabel(group: AppTypes.SubEventTournamentGroup | null | undefined): string {
     return group?.source === 'generated' ? 'Generated' : 'Manual';
   }
 
@@ -4256,23 +2859,23 @@ export class App {
     this.normalizeTournamentStageConfigOnForm();
   }
 
-  protected tournamentLeaderboardTypeValue(): TournamentLeaderboardType {
+  protected tournamentLeaderboardTypeValue(): AppTypes.TournamentLeaderboardType {
     return this.normalizedTournamentLeaderboardType(this.subEventForm.tournamentLeaderboardType);
   }
 
   protected tournamentLeaderboardTypeIcon(
-    value: TournamentLeaderboardType = this.tournamentLeaderboardTypeValue()
+    value: AppTypes.TournamentLeaderboardType = this.tournamentLeaderboardTypeValue()
   ): string {
     return value === 'Fifa' ? 'sports_soccer' : 'leaderboard';
   }
 
   protected tournamentLeaderboardTypeClass(
-    value: TournamentLeaderboardType = this.tournamentLeaderboardTypeValue()
+    value: AppTypes.TournamentLeaderboardType = this.tournamentLeaderboardTypeValue()
   ): string {
     return value === 'Fifa' ? 'tournament-leaderboard-fifa' : 'tournament-leaderboard-score';
   }
 
-  protected onTournamentLeaderboardTypeChange(value: TournamentLeaderboardType | string | null | undefined): void {
+  protected onTournamentLeaderboardTypeChange(value: AppTypes.TournamentLeaderboardType | string | null | undefined): void {
     this.subEventForm.tournamentLeaderboardType = this.normalizedTournamentLeaderboardType(value);
   }
 
@@ -4322,12 +2925,12 @@ export class App {
     return `Auto advance / group: ${perGroupLabel} (from next stage capacity).`;
   }
 
-  protected toggleSubEventItemActionMenu(item: SubEventFormItem, event: Event): void {
+  protected toggleSubEventItemActionMenu(item: AppTypes.SubEventFormItem, event: Event): void {
     event.stopPropagation();
     this.toggleSubEventItemActionMenuWithKey(item, item.id, event);
   }
 
-  protected toggleSubEventItemActionMenuWithKey(item: SubEventFormItem, menuKey: string, event: Event): void {
+  protected toggleSubEventItemActionMenuWithKey(item: AppTypes.SubEventFormItem, menuKey: string, event: Event): void {
     event.stopPropagation();
     if (this.inlineItemActionMenu?.scope === 'subEvent' && this.inlineItemActionMenu.id === menuKey) {
       this.inlineItemActionMenu = null;
@@ -4336,7 +2939,7 @@ export class App {
     this.inlineItemActionMenu = { scope: 'subEvent', id: menuKey, title: item.name, openUp: this.shouldOpenInlineItemMenuUp(event) };
   }
 
-  protected isSubEventItemActionMenuOpen(item: SubEventFormItem): boolean {
+  protected isSubEventItemActionMenuOpen(item: AppTypes.SubEventFormItem): boolean {
     return this.isSubEventItemActionMenuOpenWithKey(item.id);
   }
 
@@ -4344,7 +2947,7 @@ export class App {
     return this.inlineItemActionMenu?.scope === 'subEvent' && this.inlineItemActionMenu.id === menuKey;
   }
 
-  protected isSubEventItemActionMenuOpenUp(item: SubEventFormItem): boolean {
+  protected isSubEventItemActionMenuOpenUp(item: AppTypes.SubEventFormItem): boolean {
     return this.isSubEventItemActionMenuOpenUpWithKey(item.id);
   }
 
@@ -4354,7 +2957,7 @@ export class App {
       && this.inlineItemActionMenu.openUp;
   }
 
-  protected toggleSubEventStageActionMenu(stage: SubEventTournamentStage, event: Event): void {
+  protected toggleSubEventStageActionMenu(stage: AppTypes.SubEventTournamentStage, event: Event): void {
     event.stopPropagation();
     if (this.inlineItemActionMenu?.scope === 'subEventStage' && this.inlineItemActionMenu.id === stage.key) {
       this.inlineItemActionMenu = null;
@@ -4368,31 +2971,31 @@ export class App {
     };
   }
 
-  protected isSubEventStageActionMenuOpen(stage: SubEventTournamentStage): boolean {
+  protected isSubEventStageActionMenuOpen(stage: AppTypes.SubEventTournamentStage): boolean {
     return this.inlineItemActionMenu?.scope === 'subEventStage' && this.inlineItemActionMenu.id === stage.key;
   }
 
-  protected isSubEventStageActionMenuOpenUp(stage: SubEventTournamentStage): boolean {
+  protected isSubEventStageActionMenuOpenUp(stage: AppTypes.SubEventTournamentStage): boolean {
     return this.inlineItemActionMenu?.scope === 'subEventStage'
       && this.inlineItemActionMenu.id === stage.key
       && this.inlineItemActionMenu.openUp;
   }
 
-  protected canEditSubEventItem(item: SubEventFormItem): boolean {
+  protected canEditSubEventItem(item: AppTypes.SubEventFormItem): boolean {
     if (this.eventEditorReadOnly) {
       return false;
     }
     return this.subEventCreatorId(item) === this.activeUser.id;
   }
 
-  protected canDeleteSubEventItem(item: SubEventFormItem): boolean {
+  protected canDeleteSubEventItem(item: AppTypes.SubEventFormItem): boolean {
     if (this.eventEditorReadOnly) {
       return false;
     }
     return this.subEventCreatorId(item) === this.activeUser.id;
   }
 
-  protected canJoinSubEventItem(item: SubEventFormItem): boolean {
+  protected canJoinSubEventItem(item: AppTypes.SubEventFormItem): boolean {
     if (!item.optional) {
       return false;
     }
@@ -4402,21 +3005,21 @@ export class App {
     return this.subEventCreatorId(item) !== this.activeUser.id;
   }
 
-  protected canManageSubEventItem(item: SubEventFormItem): boolean {
+  protected canManageSubEventItem(item: AppTypes.SubEventFormItem): boolean {
     return this.canJoinSubEventItem(item) || this.canEditSubEventItem(item) || this.canDeleteSubEventItem(item);
   }
 
-  protected canOpenSubEventLocation(item: SubEventFormItem): boolean {
+  protected canOpenSubEventLocation(item: AppTypes.SubEventFormItem): boolean {
     return this.normalizeLocationValue(item.location).trim().length > 0;
   }
 
-  protected openSubEventLocation(item: SubEventFormItem, event?: Event): void {
+  protected openSubEventLocation(item: AppTypes.SubEventFormItem, event?: Event): void {
     event?.stopPropagation();
     this.openGoogleMapsSearch(item.location ?? '');
     this.inlineItemActionMenu = null;
   }
 
-  protected runSubEventItemJoinAction(item: SubEventFormItem, event: Event, group?: SubEventTournamentGroup): void {
+  protected runSubEventItemJoinAction(item: AppTypes.SubEventFormItem, event: Event, group?: AppTypes.SubEventTournamentGroup): void {
     event.stopPropagation();
     if (!this.canJoinSubEventItem(item)) {
       return;
@@ -4434,9 +3037,9 @@ export class App {
   }
 
   protected runSubEventItemEditAction(
-    item: SubEventFormItem,
+    item: AppTypes.SubEventFormItem,
     event: Event,
-    group?: SubEventTournamentGroup,
+    group?: AppTypes.SubEventTournamentGroup,
     tournamentMode = false
   ): void {
     event.stopPropagation();
@@ -4472,7 +3075,7 @@ export class App {
     this.inlineItemActionMenu = null;
   }
 
-  protected runSubEventStageEditAction(stage: SubEventTournamentStage, event: Event): void {
+  protected runSubEventStageEditAction(stage: AppTypes.SubEventTournamentStage, event: Event): void {
     event.stopPropagation();
     if (!this.canEditSubEventItem(stage.subEvent)) {
       return;
@@ -4498,7 +3101,7 @@ export class App {
     this.inlineItemActionMenu = null;
   }
 
-  protected runSubEventStageDeleteAction(stage: SubEventTournamentStage, event: Event): void {
+  protected runSubEventStageDeleteAction(stage: AppTypes.SubEventTournamentStage, event: Event): void {
     event.stopPropagation();
     if (!this.canDeleteSubEventItem(stage.subEvent)) {
       return;
@@ -4508,9 +3111,9 @@ export class App {
   }
 
   protected runSubEventItemDeleteAction(
-    item: SubEventFormItem,
+    item: AppTypes.SubEventFormItem,
     event: Event,
-    group?: SubEventTournamentGroup,
+    group?: AppTypes.SubEventTournamentGroup,
     tournamentMode = false
   ): void {
     event.stopPropagation();
@@ -4526,7 +3129,7 @@ export class App {
     this.inlineItemActionMenu = null;
   }
 
-  protected runSubEventStageAddGroupAction(stage: SubEventTournamentStage, event: Event): void {
+  protected runSubEventStageAddGroupAction(stage: AppTypes.SubEventTournamentStage, event: Event): void {
     event.stopPropagation();
     if (!this.canEditSubEventItem(stage.subEvent)) {
       return;
@@ -4543,13 +3146,13 @@ export class App {
     this.inlineItemActionMenu = null;
   }
 
-  protected runSubEventStageLeaderboardAction(stage: SubEventTournamentStage, event: Event): void {
+  protected runSubEventStageLeaderboardAction(stage: AppTypes.SubEventTournamentStage, event: Event): void {
     event.stopPropagation();
     this.openSubEventLeaderboardPopup(stage);
     this.inlineItemActionMenu = null;
   }
 
-  protected canViewSubEventLeaderboard(stage: SubEventTournamentStage): boolean {
+  protected canViewSubEventLeaderboard(stage: AppTypes.SubEventTournamentStage): boolean {
     return this.eventEditorReadOnly || this.canEditSubEventItem(stage.subEvent);
   }
 
@@ -4557,7 +3160,7 @@ export class App {
     return this.eventEditorReadOnly;
   }
 
-  protected get subEventLeaderboardStage(): SubEventTournamentStage | null {
+  protected get subEventLeaderboardStage(): AppTypes.SubEventTournamentStage | null {
     if (!this.subEventLeaderboardStageId) {
       return null;
     }
@@ -4580,20 +3183,20 @@ export class App {
     return `${stage.subtitle} · ${stage.rangeLabel}`;
   }
 
-  protected subEventLeaderboardMode(stage: SubEventTournamentStage | null = this.subEventLeaderboardStage): TournamentLeaderboardType {
+  protected subEventLeaderboardMode(stage: AppTypes.SubEventTournamentStage | null = this.subEventLeaderboardStage): AppTypes.TournamentLeaderboardType {
     if (!stage) {
       return 'Score';
     }
     return this.normalizedTournamentLeaderboardType(stage.subEvent.tournamentLeaderboardType);
   }
 
-  protected subEventLeaderboardModeIcon(stage: SubEventTournamentStage | null = this.subEventLeaderboardStage): string {
+  protected subEventLeaderboardModeIcon(stage: AppTypes.SubEventTournamentStage | null = this.subEventLeaderboardStage): string {
     return this.tournamentLeaderboardTypeIcon(this.subEventLeaderboardMode(stage));
   }
 
   protected openSubEventLeaderboardEntryPopup(
-    stage: SubEventTournamentStage,
-    group: SubEventTournamentGroup,
+    stage: AppTypes.SubEventTournamentStage,
+    group: AppTypes.SubEventTournamentGroup,
     event?: Event
   ): void {
     event?.stopPropagation();
@@ -4717,7 +3320,7 @@ export class App {
     this.subEventLeaderboardForm.awayScore = Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : null;
   }
 
-  protected subEventLeaderboardMembersForCurrentGroup(): SubEventLeaderboardMember[] {
+  protected subEventLeaderboardMembersForCurrentGroup(): AppTypes.SubEventLeaderboardMember[] {
     const stage = this.subEventLeaderboardStage;
     if (!stage) {
       return [];
@@ -4771,7 +3374,7 @@ export class App {
     const mode = this.subEventLeaderboardMode(stage);
     if (mode === 'Score') {
       const nextValue = Number(this.subEventLeaderboardForm.scoreValue);
-      const nextEntry: SubEventLeaderboardScoreEntry = {
+      const nextEntry: AppTypes.SubEventLeaderboardScoreEntry = {
         id: `score-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         stageId: stage.subEvent.id,
         groupId,
@@ -4797,7 +3400,7 @@ export class App {
     const existingIndex = matches.findIndex(
       match => this.subEventLeaderboardMatchPairKey(match.homeMemberId, match.awayMemberId) === pairKey
     );
-    const nextMatch: SubEventLeaderboardFifaMatch = {
+    const nextMatch: AppTypes.SubEventLeaderboardFifaMatch = {
       id: existingIndex >= 0
         ? matches[existingIndex].id
         : `fifa-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -4830,20 +3433,20 @@ export class App {
     this.closeSubEventLeaderboardEntryPopup();
   }
 
-  protected subEventLeaderboardAdvanceCount(stage: SubEventTournamentStage): number {
+  protected subEventLeaderboardAdvanceCount(stage: AppTypes.SubEventTournamentStage): number {
     return this.normalizedTournamentAdvancePerGroup(
       stage.subEvent.tournamentAdvancePerGroup,
       stage.subEvent.tournamentGroupCapacityMax ?? stage.subEvent.capacityMax
     );
   }
 
-  protected isSubEventLeaderboardGroupOpen(stage: SubEventTournamentStage, group: SubEventTournamentGroup): boolean {
+  protected isSubEventLeaderboardGroupOpen(stage: AppTypes.SubEventTournamentStage, group: AppTypes.SubEventTournamentGroup): boolean {
     const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, group.id);
     const explicit = this.subEventLeaderboardOpenGroups[key];
     return explicit ?? false;
   }
 
-  protected toggleSubEventLeaderboardGroup(stage: SubEventTournamentStage, group: SubEventTournamentGroup, event?: Event): void {
+  protected toggleSubEventLeaderboardGroup(stage: AppTypes.SubEventTournamentStage, group: AppTypes.SubEventTournamentGroup, event?: Event): void {
     event?.stopPropagation();
     const currentIsOpen = this.isSubEventLeaderboardGroupOpen(stage, group);
     for (const stageGroup of stage.groups) {
@@ -4854,15 +3457,15 @@ export class App {
     this.subEventLeaderboardOpenGroups[targetKey] = !currentIsOpen;
   }
 
-  protected subEventLeaderboardHasMemberDetails(stage: SubEventTournamentStage, group: SubEventTournamentGroup): boolean {
+  protected subEventLeaderboardHasMemberDetails(stage: AppTypes.SubEventTournamentStage, group: AppTypes.SubEventTournamentGroup): boolean {
     const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, group.id);
     const memberId = this.subEventLeaderboardDetailMemberByGroupKey[key];
     return !!memberId;
   }
 
   protected openSubEventLeaderboardMemberDetails(
-    stage: SubEventTournamentStage,
-    group: SubEventTournamentGroup,
+    stage: AppTypes.SubEventTournamentStage,
+    group: AppTypes.SubEventTournamentGroup,
     memberId: string,
     event?: Event
   ): void {
@@ -4872,8 +3475,8 @@ export class App {
   }
 
   protected closeSubEventLeaderboardMemberDetails(
-    stage: SubEventTournamentStage,
-    group: SubEventTournamentGroup,
+    stage: AppTypes.SubEventTournamentStage,
+    group: AppTypes.SubEventTournamentGroup,
     event?: Event
   ): void {
     event?.stopPropagation();
@@ -4881,7 +3484,7 @@ export class App {
     this.subEventLeaderboardDetailMemberByGroupKey[key] = null;
   }
 
-  protected subEventLeaderboardDetailMemberName(stage: SubEventTournamentStage, group: SubEventTournamentGroup): string {
+  protected subEventLeaderboardDetailMemberName(stage: AppTypes.SubEventTournamentStage, group: AppTypes.SubEventTournamentGroup): string {
     const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, group.id);
     const memberId = this.subEventLeaderboardDetailMemberByGroupKey[key];
     if (!memberId) {
@@ -4892,9 +3495,9 @@ export class App {
   }
 
   protected subEventLeaderboardScoreHistory(
-    stage: SubEventTournamentStage,
-    group: SubEventTournamentGroup
-  ): SubEventLeaderboardScoreEntry[] {
+    stage: AppTypes.SubEventTournamentStage,
+    group: AppTypes.SubEventTournamentGroup
+  ): AppTypes.SubEventLeaderboardScoreEntry[] {
     const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, group.id);
     const selectedMemberId = this.subEventLeaderboardDetailMemberByGroupKey[key];
     if (!selectedMemberId) {
@@ -4906,9 +3509,9 @@ export class App {
   }
 
   protected subEventLeaderboardFifaHistory(
-    stage: SubEventTournamentStage,
-    group: SubEventTournamentGroup
-  ): SubEventLeaderboardFifaMatch[] {
+    stage: AppTypes.SubEventTournamentStage,
+    group: AppTypes.SubEventTournamentGroup
+  ): AppTypes.SubEventLeaderboardFifaMatch[] {
     const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, group.id);
     const selectedMemberId = this.subEventLeaderboardDetailMemberByGroupKey[key];
     if (!selectedMemberId) {
@@ -4923,15 +3526,15 @@ export class App {
     return value > 0 ? `+${value}` : `${value}`;
   }
 
-  protected subEventLeaderboardScoreRows(stage: SubEventTournamentStage, group: SubEventTournamentGroup): SubEventLeaderboardScoreStandingRow[] {
+  protected subEventLeaderboardScoreRows(stage: AppTypes.SubEventTournamentStage, group: AppTypes.SubEventTournamentGroup): AppTypes.SubEventLeaderboardScoreStandingRow[] {
     const members = this.subEventLeaderboardMembersForGroup(stage, group.id);
     const filledMemberCount = this.subEventLeaderboardAssignedMemberCount(stage, group, members.length);
-    const lookup = new Map<string, SubEventLeaderboardScoreStandingRow>();
-    const activeRows: SubEventLeaderboardScoreStandingRow[] = [];
-    const placeholderRows: SubEventLeaderboardScoreStandingRow[] = [];
+    const lookup = new Map<string, AppTypes.SubEventLeaderboardScoreStandingRow>();
+    const activeRows: AppTypes.SubEventLeaderboardScoreStandingRow[] = [];
+    const placeholderRows: AppTypes.SubEventLeaderboardScoreStandingRow[] = [];
     members.forEach((member, index) => {
       if (index < filledMemberCount) {
-        const nextRow: SubEventLeaderboardScoreStandingRow = {
+        const nextRow: AppTypes.SubEventLeaderboardScoreStandingRow = {
           memberId: member.id,
           memberName: member.name,
           total: 0,
@@ -4969,15 +3572,15 @@ export class App {
     return [...sortedRows, ...placeholderRows];
   }
 
-  protected subEventLeaderboardFifaRows(stage: SubEventTournamentStage, group: SubEventTournamentGroup): SubEventLeaderboardFifaStandingRow[] {
+  protected subEventLeaderboardFifaRows(stage: AppTypes.SubEventTournamentStage, group: AppTypes.SubEventTournamentGroup): AppTypes.SubEventLeaderboardFifaStandingRow[] {
     const members = this.subEventLeaderboardMembersForGroup(stage, group.id);
     const filledMemberCount = this.subEventLeaderboardAssignedMemberCount(stage, group, members.length);
-    const lookup = new Map<string, SubEventLeaderboardFifaStandingRow>();
-    const activeRows: SubEventLeaderboardFifaStandingRow[] = [];
-    const placeholderRows: SubEventLeaderboardFifaStandingRow[] = [];
+    const lookup = new Map<string, AppTypes.SubEventLeaderboardFifaStandingRow>();
+    const activeRows: AppTypes.SubEventLeaderboardFifaStandingRow[] = [];
+    const placeholderRows: AppTypes.SubEventLeaderboardFifaStandingRow[] = [];
     members.forEach((member, index) => {
       if (index < filledMemberCount) {
-        const nextRow: SubEventLeaderboardFifaStandingRow = {
+        const nextRow: AppTypes.SubEventLeaderboardFifaStandingRow = {
           memberId: member.id,
           memberName: member.name,
           points: 0,
@@ -5055,24 +3658,24 @@ export class App {
     return [...sortedRows, ...placeholderRows];
   }
 
-  protected subEventLeaderboardFifaMatches(stage: SubEventTournamentStage, groupId: string): SubEventLeaderboardFifaMatch[] {
+  protected subEventLeaderboardFifaMatches(stage: AppTypes.SubEventTournamentStage, groupId: string): AppTypes.SubEventLeaderboardFifaMatch[] {
     const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, groupId);
     return [...(this.subEventLeaderboardFifaMatchesByGroupKey[key] ?? [])]
       .sort((a, b) => b.createdAtMs - a.createdAtMs);
   }
 
-  protected isSubEventLeaderboardAdvanceRow(stage: SubEventTournamentStage, rowIndex: number): boolean {
+  protected isSubEventLeaderboardAdvanceRow(stage: AppTypes.SubEventTournamentStage, rowIndex: number): boolean {
     return rowIndex < this.subEventLeaderboardAdvanceCount(stage);
   }
 
-  protected subEventLeaderboardMemberName(stage: SubEventTournamentStage, groupId: string, memberId: string): string {
+  protected subEventLeaderboardMemberName(stage: AppTypes.SubEventTournamentStage, groupId: string, memberId: string): string {
     const member = this.subEventLeaderboardMembersForGroup(stage, groupId).find(entry => entry.id === memberId);
     return member?.name ?? 'Member';
   }
 
   private subEventLeaderboardAssignedMemberCount(
-    stage: SubEventTournamentStage,
-    group: SubEventTournamentGroup,
+    stage: AppTypes.SubEventTournamentStage,
+    group: AppTypes.SubEventTournamentGroup,
     capacity: number
   ): number {
     const safeCapacity = Math.max(0, Math.trunc(capacity));
@@ -5099,7 +3702,7 @@ export class App {
         inferredMembers.add(match.awayMemberId);
       }
     }
-    return this.clampNumber(Math.max(distributedCount, inferredMembers.size), 0, safeCapacity);
+    return AppUtils.clampNumber(Math.max(distributedCount, inferredMembers.size), 0, safeCapacity);
   }
 
   protected onSubEventGroupCapacityMinChange(value: number | string): void {
@@ -5149,9 +3752,9 @@ export class App {
 
   protected openSubEventBadgePopup(
     type: 'Members' | 'Car' | 'Accommodation' | 'Supplies',
-    item: SubEventFormItem,
+    item: AppTypes.SubEventFormItem,
     event?: Event,
-    group?: SubEventTournamentGroup | null
+    group?: AppTypes.SubEventTournamentGroup | null
   ): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
@@ -5205,9 +3808,9 @@ export class App {
     this.alertService.open(message);
   }
 
-  protected readonly subEventResourceFilterOptions: SubEventResourceFilter[] = ['Members', 'Car', 'Accommodation', 'Supplies'];
+  protected readonly subEventResourceFilterOptions: AppTypes.SubEventResourceFilter[] = [...APP_DEMO_DATA.subEventResourceFilterOptions];
 
-  protected selectSubEventResourceFilter(filter: SubEventResourceFilter): void {
+  protected selectSubEventResourceFilter(filter: AppTypes.SubEventResourceFilter): void {
     this.subEventResourceFilter = filter;
     this.suppressSelectOverlayBackdropPointerEvents();
     this.subEventAssetMembersContext = null;
@@ -5220,21 +3823,21 @@ export class App {
     }
   }
 
-  protected subEventResourceTypeIcon(type: SubEventResourceFilter): string {
+  protected subEventResourceTypeIcon(type: AppTypes.SubEventResourceFilter): string {
     if (type === 'Members') {
       return 'groups';
     }
     return this.assetTypeIcon(type);
   }
 
-  protected subEventResourceTypeClass(type: SubEventResourceFilter): string {
+  protected subEventResourceTypeClass(type: AppTypes.SubEventResourceFilter): string {
     if (type === 'Members') {
       return 'asset-filter-members';
     }
     return this.assetTypeClass(type);
   }
 
-  protected subEventResourceFilterCount(type: SubEventResourceFilter): number {
+  protected subEventResourceFilterCount(type: AppTypes.SubEventResourceFilter): number {
     if (!this.selectedSubEventBadgeContext) {
       return 0;
     }
@@ -5252,7 +3855,7 @@ export class App {
     return subEvent.suppliesPending;
   }
 
-  protected subEventMembersBadgePendingCount(subEvent: SubEventFormItem): number {
+  protected subEventMembersBadgePendingCount(subEvent: AppTypes.SubEventFormItem): number {
     const fallback = Math.max(0, Math.trunc(Number(subEvent.membersPending) || 0));
     const membersRow = this.eventEditorMembersRow();
     if (!membersRow) {
@@ -5322,7 +3925,7 @@ export class App {
     return `${acceptedCount} members · ${pendingCount} pending`;
   }
 
-  protected get subEventMembersOrdered(): ActivityMemberEntry[] {
+  protected get subEventMembersOrdered(): AppTypes.ActivityMemberEntry[] {
     const entries = this.subEventMembersEntries();
     if (!this.subEventMembersPendingOnly) {
       return entries;
@@ -5382,7 +3985,7 @@ export class App {
     if (!this.selectedSubEventBadgeContext || this.subEventResourceFilter === 'Members') {
       return;
     }
-    const contextType = this.subEventResourceFilter as AssetType;
+    const contextType = this.subEventResourceFilter as AppTypes.AssetType;
     const subEventId = this.selectedSubEventBadgeContext.subEvent.id;
     this.subEventAssetAssignContext = { subEventId, type: contextType };
     this.selectedSubEventAssignAssetIds = [...this.resolveSubEventAssignedAssetIds(subEventId, contextType)];
@@ -5412,7 +4015,7 @@ export class App {
     this.closeSubEventAssetAssignPopup(true);
   }
 
-  protected get subEventAssetAssignCandidates(): AssetCard[] {
+  protected get subEventAssetAssignCandidates(): AppTypes.AssetCard[] {
     const context = this.subEventAssetAssignContext;
     if (!context) {
       return [];
@@ -5430,7 +4033,7 @@ export class App {
       });
   }
 
-  protected get selectedSubEventAssetAssignChips(): AssetCard[] {
+  protected get selectedSubEventAssetAssignChips(): AppTypes.AssetCard[] {
     const selected = new Set(this.selectedSubEventAssignAssetIds);
     return this.subEventAssetAssignCandidates.filter(card => selected.has(card.id));
   }
@@ -5473,7 +4076,7 @@ export class App {
       return;
     }
     const subEventId = this.selectedSubEventBadgeContext?.subEvent.id ?? null;
-    const resourceType = this.subEventResourceFilter as AssetType;
+    const resourceType = this.subEventResourceFilter as AppTypes.AssetType;
     this.openAssetForm();
     this.assetForm.type = resourceType;
     this.assetForm.routes = this.normalizeAssetRoutes(resourceType, this.assetForm.routes, '');
@@ -5482,7 +4085,7 @@ export class App {
       : null;
   }
 
-  protected toggleSubEventResourceItemActionMenu(card: SubEventResourceCard, event: Event): void {
+  protected toggleSubEventResourceItemActionMenu(card: AppTypes.SubEventResourceCard, event: Event): void {
     event.stopPropagation();
     if (!card.sourceAssetId) {
       return;
@@ -5501,17 +4104,17 @@ export class App {
     this.subEventAssetMenuIgnoreCloseUntilMs = Date.now() + 220;
   }
 
-  protected isSubEventResourceItemActionMenuOpen(card: SubEventResourceCard): boolean {
+  protected isSubEventResourceItemActionMenuOpen(card: AppTypes.SubEventResourceCard): boolean {
     return this.inlineItemActionMenu?.scope === 'subEventAsset' && this.inlineItemActionMenu.id === card.id;
   }
 
-  protected isSubEventResourceItemActionMenuOpenUp(card: SubEventResourceCard): boolean {
+  protected isSubEventResourceItemActionMenuOpenUp(card: AppTypes.SubEventResourceCard): boolean {
     return this.inlineItemActionMenu?.scope === 'subEventAsset'
       && this.inlineItemActionMenu.id === card.id
       && this.inlineItemActionMenu.openUp;
   }
 
-  protected openSubEventAssetMembers(card: SubEventResourceCard, event?: Event): void {
+  protected openSubEventAssetMembers(card: AppTypes.SubEventResourceCard, event?: Event): void {
     event?.stopPropagation();
     if (!this.selectedSubEventBadgeContext || !card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
       return;
@@ -5527,7 +4130,7 @@ export class App {
     const canManage = ownerUserId === this.activeUser.id;
     const rowId = `subevent-asset-members:${subEvent.id}:${type}:${card.sourceAssetId}`;
     const rowKey = `events:${rowId}`;
-    const membersRow: ActivityListRow = {
+    const membersRow: AppTypes.ActivityListRow = {
       id: rowId,
       type: 'events',
       title: `${sourceCard.title} Members`,
@@ -5563,7 +4166,7 @@ export class App {
     this.stackedPopup = 'activityMembers';
   }
 
-  protected openSubEventResourceBadgeDetails(card: SubEventResourceCard, event?: Event): void {
+  protected openSubEventResourceBadgeDetails(card: AppTypes.SubEventResourceCard, event?: Event): void {
     event?.stopPropagation();
     if (!this.canOpenSubEventResourceBadgeDetails(card)) {
       return;
@@ -5575,11 +4178,11 @@ export class App {
     this.openSubEventSupplyContributionsPopup(card, event);
   }
 
-  protected canOpenSubEventAssetMembers(card: SubEventResourceCard): boolean {
+  protected canOpenSubEventAssetMembers(card: AppTypes.SubEventResourceCard): boolean {
     return !!card.sourceAssetId && (card.type === 'Car' || card.type === 'Accommodation');
   }
 
-  protected canOpenSubEventResourceBadgeDetails(card: SubEventResourceCard): boolean {
+  protected canOpenSubEventResourceBadgeDetails(card: AppTypes.SubEventResourceCard): boolean {
     return !!card.sourceAssetId && (card.type === 'Car' || card.type === 'Accommodation' || card.type === 'Supplies');
   }
 
@@ -5606,7 +4209,7 @@ export class App {
     return eventName || subEventName || 'Event';
   }
 
-  private openSubEventSupplyContributionsPopup(card: SubEventResourceCard, event?: Event): void {
+  private openSubEventSupplyContributionsPopup(card: AppTypes.SubEventResourceCard, event?: Event): void {
     event?.stopPropagation();
     if (!this.selectedSubEventBadgeContext || card.type !== 'Supplies' || !card.sourceAssetId) {
       return;
@@ -5621,33 +4224,33 @@ export class App {
     this.stackedPopup = 'subEventSupplyContributions';
   }
 
-  protected canJoinSubEventResourceCard(card: SubEventResourceCard): boolean {
+  protected canJoinSubEventResourceCard(card: AppTypes.SubEventResourceCard): boolean {
     return !!card.sourceAssetId && (card.type === 'Car' || card.type === 'Accommodation');
   }
 
-  protected canBringSubEventSupplyCard(card: SubEventResourceCard): boolean {
+  protected canBringSubEventSupplyCard(card: AppTypes.SubEventResourceCard): boolean {
     return !!card.sourceAssetId && card.type === 'Supplies';
   }
 
-  protected canEditSubEventResourceCapacity(card: SubEventResourceCard): boolean {
+  protected canEditSubEventResourceCapacity(card: AppTypes.SubEventResourceCard): boolean {
     if (!card.sourceAssetId || card.type === 'Members' || !this.selectedSubEventBadgeContext) {
       return false;
     }
     const subEventId = this.selectedSubEventBadgeContext.subEvent.id;
-    const type = card.type as AssetType;
+    const type = card.type as AppTypes.AssetType;
     const settings = this.getSubEventAssignedAssetSettings(subEventId, type);
     return settings[card.sourceAssetId]?.addedByUserId === this.activeUser.id;
   }
 
-  protected canEditSubEventResourceRoute(card: SubEventResourceCard): boolean {
+  protected canEditSubEventResourceRoute(card: AppTypes.SubEventResourceCard): boolean {
     return this.canEditSubEventResourceCapacity(card) && card.type === 'Car';
   }
 
-  protected subEventResourceRouteMenuLabel(_card: SubEventResourceCard): string {
+  protected subEventResourceRouteMenuLabel(_card: AppTypes.SubEventResourceCard): string {
     return 'Edit Route';
   }
 
-  protected openSubEventResourceRouteEditor(card: SubEventResourceCard, event: Event): void {
+  protected openSubEventResourceRouteEditor(card: AppTypes.SubEventResourceCard, event: Event): void {
     event.stopPropagation();
     if (!this.selectedSubEventBadgeContext || !card.sourceAssetId || !this.canEditSubEventResourceRoute(card)) {
       return;
@@ -5766,7 +4369,7 @@ export class App {
     this.subEventAssetRouteEditor = null;
   }
 
-  protected runSubEventResourceJoinAction(card: SubEventResourceCard, event: Event): void {
+  protected runSubEventResourceJoinAction(card: AppTypes.SubEventResourceCard, event: Event): void {
     event.stopPropagation();
     if (!this.canJoinSubEventResourceCard(card) || !card.sourceAssetId) {
       return;
@@ -5778,19 +4381,19 @@ export class App {
     );
     const requiresEventAdminApproval = !mainAcceptedIds.has(this.activeUser.id);
     if (requiresEventAdminApproval) {
-      this.ensureMainEventMemberPendingApproval(this.activeUser.id, this.toIsoDateTime(new Date()));
+      this.ensureMainEventMemberPendingApproval(this.activeUser.id, AppUtils.toIsoDateTime(new Date()));
     }
     const requestId = this.activeUser.id;
     this.assetCards = this.assetCards.map(asset => {
       if (asset.id !== card.sourceAssetId) {
         return asset;
       }
-      const existing = asset.requests.find(request => this.resolveAssetRequestUserId(request) === requestId);
+      const existing = asset.requests.find(request => AppUtils.resolveAssetRequestUserId(request, this.users) === requestId);
       if (existing) {
         return {
           ...asset,
           requests: asset.requests.map(request =>
-            this.resolveAssetRequestUserId(request) === requestId
+            AppUtils.resolveAssetRequestUserId(request, this.users) === requestId
               ? {
                   ...request,
                   userId: this.activeUser.id,
@@ -5828,7 +4431,7 @@ export class App {
     }
   }
 
-  protected openSubEventResourceCapacityEditor(card: SubEventResourceCard, event: Event): void {
+  protected openSubEventResourceCapacityEditor(card: AppTypes.SubEventResourceCard, event: Event): void {
     event.stopPropagation();
     if (!this.selectedSubEventBadgeContext || !card.sourceAssetId || card.type === 'Members') {
       return;
@@ -5836,7 +4439,7 @@ export class App {
     if (!this.canEditSubEventResourceCapacity(card)) {
       return;
     }
-    const type = card.type as AssetType;
+    const type = card.type as AppTypes.AssetType;
     const source = this.assetCards.find(item => item.id === card.sourceAssetId && item.type === type);
     if (!source) {
       return;
@@ -5850,8 +4453,8 @@ export class App {
       routes: this.normalizeAssetRoutes(type, source.routes, '')
     };
     const capacityLimit = Math.max(0, source.capacityTotal);
-    const capacityMax = this.clampNumber(Math.trunc(setting.capacityMax), 0, capacityLimit);
-    const capacityMin = this.clampNumber(Math.trunc(setting.capacityMin), 0, capacityMax);
+    const capacityMax = AppUtils.clampNumber(Math.trunc(setting.capacityMax), 0, capacityLimit);
+    const capacityMin = AppUtils.clampNumber(Math.trunc(setting.capacityMin), 0, capacityMax);
     this.subEventAssetCapacityEditor = {
       subEventId,
       type,
@@ -5887,7 +4490,7 @@ export class App {
       return;
     }
     const parsed = Number(value);
-    const capacityMin = this.clampNumber(
+    const capacityMin = AppUtils.clampNumber(
       Number.isFinite(parsed) ? Math.trunc(parsed) : this.subEventAssetCapacityEditor.capacityMin,
       0,
       this.subEventAssetCapacityEditor.capacityMax
@@ -5903,7 +4506,7 @@ export class App {
       return;
     }
     const parsed = Number(value);
-    const capacityMax = this.clampNumber(
+    const capacityMax = AppUtils.clampNumber(
       Number.isFinite(parsed) ? Math.trunc(parsed) : this.subEventAssetCapacityEditor.capacityMax,
       0,
       this.subEventAssetCapacityEditor.capacityLimit
@@ -5932,8 +4535,8 @@ export class App {
     };
     settings[editor.assetId] = {
       ...current,
-      capacityMin: this.clampNumber(Math.trunc(editor.capacityMin), 0, editor.capacityMax),
-      capacityMax: this.clampNumber(Math.trunc(editor.capacityMax), 0, editor.capacityLimit)
+      capacityMin: AppUtils.clampNumber(Math.trunc(editor.capacityMin), 0, editor.capacityMax),
+      capacityMax: AppUtils.clampNumber(Math.trunc(editor.capacityMax), 0, editor.capacityLimit)
     };
     this.subEventAssignedAssetSettingsByKey[key] = settings;
     const subEvent = this.findSubEventById(editor.subEventId);
@@ -5943,7 +4546,7 @@ export class App {
     this.subEventAssetCapacityEditor = null;
   }
 
-  protected runSubEventResourceDeleteAction(card: SubEventResourceCard, event: Event): void {
+  protected runSubEventResourceDeleteAction(card: AppTypes.SubEventResourceCard, event: Event): void {
     event.stopPropagation();
     if (!card.sourceAssetId) {
       return;
@@ -5952,7 +4555,7 @@ export class App {
     this.inlineItemActionMenu = null;
   }
 
-  protected openSubEventSupplyBringDialog(card: SubEventResourceCard, event?: Event): void {
+  protected openSubEventSupplyBringDialog(card: AppTypes.SubEventResourceCard, event?: Event): void {
     event?.stopPropagation();
     const subEventId = this.selectedSubEventBadgeContext?.subEvent.id ?? null;
     if (!subEventId || !this.canBringSubEventSupplyCard(card) || !card.sourceAssetId) {
@@ -6008,7 +4611,7 @@ export class App {
       return;
     }
     const parsed = Number(value);
-    const next = this.clampNumber(
+    const next = AppUtils.clampNumber(
       Number.isFinite(parsed) ? Math.trunc(parsed) : this.subEventSupplyBringDialog.quantity,
       this.subEventSupplyBringDialog.min,
       this.subEventSupplyBringDialog.max
@@ -6028,14 +4631,14 @@ export class App {
       this.subEventSupplyBringDialog.subEventId,
       this.subEventSupplyBringDialog.cardId
     );
-    const quantity = this.clampNumber(
+    const quantity = AppUtils.clampNumber(
       Math.trunc(this.subEventSupplyBringDialog.quantity),
       this.subEventSupplyBringDialog.min,
       this.subEventSupplyBringDialog.max
     );
     if (quantity > 0) {
-      const nowIso = this.toIsoDateTime(new Date());
-      const nextEntry: SubEventSupplyContributionEntry = {
+      const nowIso = AppUtils.toIsoDateTime(new Date());
+      const nextEntry: AppTypes.SubEventSupplyContributionEntry = {
         id: `subevent-supply-row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         userId: this.activeUser.id,
         quantity,
@@ -6055,10 +4658,10 @@ export class App {
 
   protected subEventSupplyProvidedCount(cardId: string, subEventId: string): number {
     return this.subEventSupplyContributionEntries(subEventId, cardId)
-      .reduce((sum, entry) => sum + this.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0);
+      .reduce((sum, entry) => sum + AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0);
   }
 
-  protected get subEventSupplyContributionRows(): SubEventSupplyContributionRow[] {
+  protected get subEventSupplyContributionRows(): AppTypes.SubEventSupplyContributionRow[] {
     const context = this.selectedSubEventSupplyContributionContext;
     if (!context) {
       return [];
@@ -6070,15 +4673,15 @@ export class App {
         id: entry.id,
         userId: entry.userId,
         name: user?.name ?? 'Unknown member',
-        initials: user?.initials ?? this.toInitials(user?.name ?? 'Unknown'),
+        initials: user?.initials ?? AppUtils.initialsFromText(user?.name ?? 'Unknown'),
         gender: user?.gender ?? 'woman',
         age,
         city: user?.city ?? '',
         addedAtIso: entry.addedAtIso,
-        quantity: this.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER)
+        quantity: AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER)
       };
     });
-    return rows.sort((a, b) => this.toSortableDate(b.addedAtIso) - this.toSortableDate(a.addedAtIso));
+    return rows.sort((a, b) => AppUtils.toSortableDate(b.addedAtIso) - AppUtils.toSortableDate(a.addedAtIso));
   }
 
   protected subEventSupplyContributionAddedLabel(addedAtIso: string): string {
@@ -6090,7 +4693,7 @@ export class App {
   }
 
   protected subEventSupplyContributionQuantityLabel(quantity: number): string {
-    const normalized = this.clampNumber(Math.trunc(quantity), 0, Number.MAX_SAFE_INTEGER);
+    const normalized = AppUtils.clampNumber(Math.trunc(quantity), 0, Number.MAX_SAFE_INTEGER);
     return normalized === 1 ? '1 item' : `${normalized} items`;
   }
 
@@ -6100,18 +4703,18 @@ export class App {
       return 0;
     }
     return this.subEventSupplyContributionEntries(context.subEventId, context.assetId)
-      .reduce((sum, entry) => sum + this.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0);
+      .reduce((sum, entry) => sum + AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0);
   }
 
   protected subEventSupplyContributionTotalLabel(): string {
     return this.subEventSupplyContributionQuantityLabel(this.subEventSupplyContributionTotalQuantity());
   }
 
-  protected canDeleteSubEventSupplyContribution(row: SubEventSupplyContributionRow): boolean {
+  protected canDeleteSubEventSupplyContribution(row: AppTypes.SubEventSupplyContributionRow): boolean {
     return row.userId === this.activeUser.id;
   }
 
-  protected requestDeleteSubEventSupplyContribution(row: SubEventSupplyContributionRow, event?: Event): void {
+  protected requestDeleteSubEventSupplyContribution(row: AppTypes.SubEventSupplyContributionRow, event?: Event): void {
     event?.stopPropagation();
     if (!this.canDeleteSubEventSupplyContribution(row)) {
       return;
@@ -6156,16 +4759,16 @@ export class App {
     return `${subEventId}:${cardId}`;
   }
 
-  private subEventSupplyContributionEntries(subEventId: string, cardId: string): SubEventSupplyContributionEntry[] {
+  private subEventSupplyContributionEntries(subEventId: string, cardId: string): AppTypes.SubEventSupplyContributionEntry[] {
     return this.subEventSupplyContributionEntriesByAssignmentKey[this.subEventSupplyAssignmentKey(subEventId, cardId)] ?? [];
   }
 
   private normalizeSubEventSupplyContributionEntries(subEventId: string, cardId: string): void {
     const key = this.subEventSupplyAssignmentKey(subEventId, cardId);
     const raw = this.subEventSupplyContributionEntriesByAssignmentKey[key] ?? [];
-    const next: SubEventSupplyContributionEntry[] = [];
+    const next: AppTypes.SubEventSupplyContributionEntry[] = [];
     for (const entry of raw) {
-      const quantity = this.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER);
+      const quantity = AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER);
       if (quantity > 0) {
         next.push({
           ...entry,
@@ -6191,7 +4794,7 @@ export class App {
     this.selectedSubEventSupplyContributionContext = { ...context };
   }
 
-  protected toggleSubEventMemberActionMenu(member: ActivityMemberEntry, event: Event): void {
+  protected toggleSubEventMemberActionMenu(member: AppTypes.ActivityMemberEntry, event: Event): void {
     event.stopPropagation();
     if (this.inlineItemActionMenu?.scope === 'subEventMember' && this.inlineItemActionMenu.id === member.userId) {
       this.inlineItemActionMenu = null;
@@ -6207,17 +4810,17 @@ export class App {
     };
   }
 
-  protected isSubEventMemberActionMenuOpen(member: ActivityMemberEntry): boolean {
+  protected isSubEventMemberActionMenuOpen(member: AppTypes.ActivityMemberEntry): boolean {
     return this.inlineItemActionMenu?.scope === 'subEventMember' && this.inlineItemActionMenu.id === member.userId;
   }
 
-  protected isSubEventMemberActionMenuOpenUp(member: ActivityMemberEntry): boolean {
+  protected isSubEventMemberActionMenuOpenUp(member: AppTypes.ActivityMemberEntry): boolean {
     return this.inlineItemActionMenu?.scope === 'subEventMember'
       && this.inlineItemActionMenu.id === member.userId
       && this.inlineItemActionMenu.openUp;
   }
 
-  protected subEventMemberRoleIcon(role: ActivityMemberRole): string {
+  protected subEventMemberRoleIcon(role: AppTypes.ActivityMemberRole): string {
     if (role === 'Admin') {
       return 'admin_panel_settings';
     }
@@ -6227,11 +4830,11 @@ export class App {
     return 'person';
   }
 
-  protected subEventMemberRoleMenuLabel(member: ActivityMemberEntry): string {
+  protected subEventMemberRoleMenuLabel(member: AppTypes.ActivityMemberEntry): string {
     return `${member.role} role`;
   }
 
-  protected toggleSubEventMemberRolePicker(member: ActivityMemberEntry, event: Event): void {
+  protected toggleSubEventMemberRolePicker(member: AppTypes.ActivityMemberEntry, event: Event): void {
     event.stopPropagation();
     if (!this.isSubEventMemberActionMenuOpen(member)) {
       return;
@@ -6241,11 +4844,11 @@ export class App {
       : member.userId;
   }
 
-  protected isSubEventMemberRolePickerOpen(member: ActivityMemberEntry): boolean {
+  protected isSubEventMemberRolePickerOpen(member: AppTypes.ActivityMemberEntry): boolean {
     return this.isSubEventMemberActionMenuOpen(member) && this.subEventMemberRolePickerUserId === member.userId;
   }
 
-  protected setSubEventMemberRole(member: ActivityMemberEntry, role: ActivityMemberRole, event: Event): void {
+  protected setSubEventMemberRole(member: AppTypes.ActivityMemberEntry, role: AppTypes.ActivityMemberRole, event: Event): void {
     event.stopPropagation();
     this.updateSubEventMembersEntries(entries => entries.map(entry =>
       entry.userId === member.userId
@@ -6256,7 +4859,7 @@ export class App {
     this.subEventMemberRolePickerUserId = null;
   }
 
-  protected removeSubEventMember(member: ActivityMemberEntry, event: Event): void {
+  protected removeSubEventMember(member: AppTypes.ActivityMemberEntry, event: Event): void {
     event.stopPropagation();
     this.updateSubEventMembersEntries(entries => entries.filter(entry => entry.userId !== member.userId));
     this.detachUserFromSelectedSubEventChat(member.userId);
@@ -6264,7 +4867,7 @@ export class App {
     this.subEventMemberRolePickerUserId = null;
   }
 
-  private subEventMembersStageLabel(subEvent: SubEventFormItem): string {
+  private subEventMembersStageLabel(subEvent: AppTypes.SubEventFormItem): string {
     const baseName = this.subEventDisplayName(subEvent);
     const mainToken = baseName.split('·')[0]?.trim() ?? '';
     if (mainToken) {
@@ -6289,7 +4892,7 @@ export class App {
     return 'Event';
   }
 
-  private subEventDisplayName(subEvent: SubEventFormItem | null | undefined): string {
+  private subEventDisplayName(subEvent: AppTypes.SubEventFormItem | null | undefined): string {
     const raw = subEvent?.name?.trim() ?? '';
     if (!raw) {
       return '';
@@ -6303,13 +4906,13 @@ export class App {
       return raw;
     }
     const trailing = parts[parts.length - 1];
-    if (this.normalizeText(trailing) !== this.normalizeText(eventName)) {
+    if (AppUtils.normalizeText(trailing) !== AppUtils.normalizeText(eventName)) {
       return raw;
     }
     return parts.slice(0, -1).join(' · ').trim() || raw;
   }
 
-  private resolveSubEventMembersContext(): { row: ActivityListRow; rowKey: string } | null {
+  private resolveSubEventMembersContext(): { row: AppTypes.ActivityListRow; rowKey: string } | null {
     if (this.subEventMembersRow && this.subEventMembersRowId) {
       return { row: this.subEventMembersRow, rowKey: this.subEventMembersRowId };
     }
@@ -6323,7 +4926,7 @@ export class App {
     return { row, rowKey: `${row.type}:${row.id}` };
   }
 
-  private subEventMembersEntries(): ActivityMemberEntry[] {
+  private subEventMembersEntries(): AppTypes.ActivityMemberEntry[] {
     const context = this.resolveSubEventMembersContext();
     if (!context) {
       return [];
@@ -6338,7 +4941,7 @@ export class App {
   }
 
   private updateSubEventMembersEntries(
-    updater: (entries: ActivityMemberEntry[]) => ActivityMemberEntry[]
+    updater: (entries: AppTypes.ActivityMemberEntry[]) => AppTypes.ActivityMemberEntry[]
   ): void {
     const context = this.resolveSubEventMembersContext();
     if (!context) {
@@ -6353,7 +4956,7 @@ export class App {
     }
   }
 
-  private syncSelectedSubEventMembersCounts(entries: ActivityMemberEntry[]): void {
+  private syncSelectedSubEventMembersCounts(entries: AppTypes.ActivityMemberEntry[]): void {
     if (!this.selectedSubEventBadgeContext) {
       return;
     }
@@ -6363,7 +4966,7 @@ export class App {
     this.selectedSubEventBadgeContext.subEvent.membersPending = pendingCount;
   }
 
-  private resolveMainEventMembersContext(): { row: ActivityListRow; rowKey: string } | null {
+  private resolveMainEventMembersContext(): { row: AppTypes.ActivityListRow; rowKey: string } | null {
     if (this.subEventMembersRow && this.subEventMembersRowId) {
       return { row: this.subEventMembersRow, rowKey: this.subEventMembersRowId };
     }
@@ -6374,7 +4977,7 @@ export class App {
     return { row, rowKey: `${row.type}:${row.id}` };
   }
 
-  private mainEventMembersEntries(): ActivityMemberEntry[] {
+  private mainEventMembersEntries(): AppTypes.ActivityMemberEntry[] {
     const context = this.resolveMainEventMembersContext();
     if (!context) {
       return [];
@@ -6404,11 +5007,18 @@ export class App {
     const next = this.sortActivityMembersByActionTimeAsc([
       ...existing,
       {
-        ...this.toActivityMemberEntry(user, context.row, context.rowKey, {
-          status: 'pending',
-          pendingSource: 'member',
-          invitedByActiveUser: true
-        }),
+        ...AppDemoGenerators.toActivityMemberEntry(
+          user,
+          context.row,
+          context.rowKey,
+          this.activeUser.id,
+          {
+            status: 'pending',
+            pendingSource: 'member',
+            invitedByActiveUser: true
+          },
+          APP_DEMO_DATA.activityMemberMetPlaces
+        ),
         pendingSource: 'member',
         requestKind: 'join',
         actionAtIso,
@@ -6440,18 +5050,18 @@ export class App {
     return false;
   }
 
-  private subEventAssignedAssetCards(subEventId: string, type: AssetType): AssetCard[] {
+  private subEventAssignedAssetCards(subEventId: string, type: AppTypes.AssetType): AppTypes.AssetCard[] {
     const assignedIds = this.resolveSubEventAssignedAssetIds(subEventId, type);
     return assignedIds
       .map(id => this.assetCards.find(card => card.id === id && card.type === type) ?? null)
-      .filter((card): card is AssetCard => card !== null);
+      .filter((card): card is AppTypes.AssetCard => card !== null);
   }
 
-  private getSubEventAssignedAssetSettings(subEventId: string, type: AssetType): Record<string, SubEventAssignedAssetSettings> {
+  private getSubEventAssignedAssetSettings(subEventId: string, type: AppTypes.AssetType): Record<string, AppTypes.SubEventAssignedAssetSettings> {
     const key = this.subEventAssetAssignmentKey(subEventId, type);
     const assignedIds = this.resolveSubEventAssignedAssetIds(subEventId, type);
     const existing = this.subEventAssignedAssetSettingsByKey[key] ?? {};
-    const next: Record<string, SubEventAssignedAssetSettings> = {};
+    const next: Record<string, AppTypes.SubEventAssignedAssetSettings> = {};
     for (const assetId of assignedIds) {
       const source = this.assetCards.find(card => card.id === assetId && card.type === type);
       if (!source) {
@@ -6459,8 +5069,8 @@ export class App {
       }
       const prev = existing[assetId];
       const capacityLimit = Math.max(0, source.capacityTotal);
-      const capacityMax = this.clampNumber(Math.trunc(prev?.capacityMax ?? capacityLimit), 0, capacityLimit);
-      const capacityMin = this.clampNumber(Math.trunc(prev?.capacityMin ?? 0), 0, capacityMax);
+      const capacityMax = AppUtils.clampNumber(Math.trunc(prev?.capacityMax ?? capacityLimit), 0, capacityLimit);
+      const capacityMin = AppUtils.clampNumber(Math.trunc(prev?.capacityMin ?? 0), 0, capacityMax);
       next[assetId] = {
         capacityMin,
         capacityMax,
@@ -6472,7 +5082,7 @@ export class App {
     return next;
   }
 
-  private subEventAssetCapacityMetrics(subEvent: SubEventFormItem, type: AssetType): { joined: number; capacityMin: number; capacityMax: number; pending: number } {
+  private subEventAssetCapacityMetrics(subEvent: AppTypes.SubEventFormItem, type: AppTypes.AssetType): { joined: number; capacityMin: number; capacityMax: number; pending: number } {
     const cards = this.subEventAssignedAssetCards(subEvent.id, type);
     const settings = this.getSubEventAssignedAssetSettings(subEvent.id, type);
     const capacityMax = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMax ?? Math.max(0, card.capacityTotal)), 0);
@@ -6493,11 +5103,11 @@ export class App {
     return { joined: joinedMemberIds.size, capacityMin, capacityMax, pending };
   }
 
-  private subEventAssetAssignmentKey(subEventId: string, type: AssetType): string {
+  private subEventAssetAssignmentKey(subEventId: string, type: AppTypes.AssetType): string {
     return `${subEventId}:${type}`;
   }
 
-  private resolveSubEventAssignedAssetIds(subEventId: string, type: AssetType): string[] {
+  private resolveSubEventAssignedAssetIds(subEventId: string, type: AppTypes.AssetType): string[] {
     const key = this.subEventAssetAssignmentKey(subEventId, type);
     const eligibleIds = this.assetCards.filter(card => card.type === type).map(card => card.id);
     const eligible = new Set(eligibleIds);
@@ -6528,7 +5138,7 @@ export class App {
     );
     const key = this.subEventAssetAssignmentKey(context.subEventId, context.type);
     const previousSettings = this.subEventAssignedAssetSettingsByKey[key] ?? {};
-    const nextSettings: Record<string, SubEventAssignedAssetSettings> = {};
+    const nextSettings: Record<string, AppTypes.SubEventAssignedAssetSettings> = {};
     for (const assetId of nextIds) {
       const source = this.assetCards.find(card => card.id === assetId && card.type === context.type);
       if (!source) {
@@ -6536,8 +5146,8 @@ export class App {
       }
       const capacityLimit = Math.max(0, source.capacityTotal);
       const prev = previousSettings[assetId];
-      const capacityMax = this.clampNumber(Math.trunc(prev?.capacityMax ?? capacityLimit), 0, capacityLimit);
-      const capacityMin = this.clampNumber(Math.trunc(prev?.capacityMin ?? 0), 0, capacityMax);
+      const capacityMax = AppUtils.clampNumber(Math.trunc(prev?.capacityMax ?? capacityLimit), 0, capacityLimit);
+      const capacityMin = AppUtils.clampNumber(Math.trunc(prev?.capacityMin ?? 0), 0, capacityMax);
       nextSettings[assetId] = {
         capacityMin,
         capacityMax,
@@ -6559,7 +5169,7 @@ export class App {
     }
   }
 
-  private syncSubEventAssetBadgeCounts(subEvent: SubEventFormItem, type: AssetType, assignedIds?: string[]): void {
+  private syncSubEventAssetBadgeCounts(subEvent: AppTypes.SubEventFormItem, type: AppTypes.AssetType, assignedIds?: string[]): void {
     if (assignedIds) {
       const key = this.subEventAssetAssignmentKey(subEvent.id, type);
       this.subEventAssignedAssetIdsByKey[key] = [...assignedIds];
@@ -6584,7 +5194,7 @@ export class App {
     }
   }
 
-  private findSubEventById(subEventId: string): SubEventFormItem | null {
+  private findSubEventById(subEventId: string): AppTypes.SubEventFormItem | null {
     for (const subEvent of this.eventForm.subEvents) {
       if (subEvent.id === subEventId) {
         return subEvent;
@@ -6593,7 +5203,7 @@ export class App {
     return null;
   }
 
-  protected get subEventResourceCards(): SubEventResourceCard[] {
+  protected get subEventResourceCards(): AppTypes.SubEventResourceCard[] {
     if (!this.selectedSubEventBadgeContext) {
       return [];
     }
@@ -6623,13 +5233,13 @@ export class App {
       });
     }
 
-    const resourceType = this.subEventResourceFilter as AssetType;
+    const resourceType = this.subEventResourceFilter as AppTypes.AssetType;
     const assignedIds = this.resolveSubEventAssignedAssetIds(subEvent.id, resourceType);
     const settings = this.getSubEventAssignedAssetSettings(subEvent.id, resourceType);
     this.syncSubEventAssetBadgeCounts(subEvent, resourceType, assignedIds);
     const baseCards = assignedIds
       .map(id => this.assetCards.find(card => card.id === id && card.type === resourceType) ?? null)
-      .filter((card): card is AssetCard => card !== null);
+      .filter((card): card is AppTypes.AssetCard => card !== null);
     return baseCards.map(card => ({
       id: `subevent-${card.id}`,
       type: card.type,
@@ -6650,7 +5260,7 @@ export class App {
     }));
   }
 
-  protected subEventResourceOccupancyLabel(card: SubEventResourceCard): string {
+  protected subEventResourceOccupancyLabel(card: AppTypes.SubEventResourceCard): string {
     const subEventId = this.selectedSubEventBadgeContext?.subEvent.id ?? null;
     if (card.type === 'Supplies' && card.sourceAssetId && subEventId) {
       const supplied = this.subEventSupplyProvidedCount(card.sourceAssetId, subEventId);
@@ -6659,14 +5269,14 @@ export class App {
     return `${card.accepted} / ${card.capacityTotal}`;
   }
 
-  protected canOpenSubEventResourceMap(card: SubEventResourceCard): boolean {
+  protected canOpenSubEventResourceMap(card: AppTypes.SubEventResourceCard): boolean {
     if (!card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
       return false;
     }
     return this.normalizeAssetRoutes(card.type, card.routes, card.city).some(stop => stop.trim().length > 0);
   }
 
-  protected openSubEventResourceMap(card: SubEventResourceCard, event?: Event): void {
+  protected openSubEventResourceMap(card: AppTypes.SubEventResourceCard, event?: Event): void {
     event?.stopPropagation();
     if (!this.canOpenSubEventResourceMap(card)) {
       return;
@@ -6783,7 +5393,7 @@ export class App {
     this.showAssetVisibilityPicker = !this.showAssetVisibilityPicker;
   }
 
-  protected selectAssetVisibility(option: EventVisibility, event?: Event): void {
+  protected selectAssetVisibility(option: AppTypes.EventVisibility, event?: Event): void {
     event?.stopPropagation();
     this.assetFormVisibility = option;
     this.showAssetVisibilityPicker = false;
@@ -6794,7 +5404,7 @@ export class App {
     this.showProfileStatusHeaderPicker = !this.showProfileStatusHeaderPicker;
   }
 
-  protected selectProfileStatusFromHeader(option: ProfileStatus, event?: Event): void {
+  protected selectProfileStatusFromHeader(option: AppTypes.ProfileStatus, event?: Event): void {
     event?.stopPropagation();
     this.profileForm.profileStatus = option;
     this.showProfileStatusHeaderPicker = false;
@@ -6916,7 +5526,7 @@ export class App {
     this.closePopup();
   }
 
-  private prepareEventEditorForm(mode: EventEditorMode, explicitSource?: EventMenuItem | HostingMenuItem): void {
+  private prepareEventEditorForm(mode: AppTypes.EventEditorMode, explicitSource?: EventMenuItem | HostingMenuItem): void {
     const source = this.resolveEventEditorSource(explicitSource);
     this.showSubEventForm = false;
     this.subEventFormStageNumber = null;
@@ -6935,7 +5545,7 @@ export class App {
       this.eventEditorDraftMembersId = null;
       this.editingEventId = source.id;
       this.eventForm = this.loadEventFormFromSource(source, target);
-      this.subEventsDisplayMode = this.inferredSubEventsDisplayMode(this.eventForm.subEvents);
+      this.subEventsDisplayMode = AppDemoGenerators.inferredSubEventsDisplayMode(this.eventForm.subEvents);
       this.syncEventDateTimeControlsFromForm();
       return;
     }
@@ -6967,7 +5577,7 @@ export class App {
     return this.hostingItems.some(item => item.id === source.id);
   }
 
-  private loadEventFormFromSource(source: EventMenuItem | HostingMenuItem, target: EventEditorTarget): EventEditorForm {
+  private loadEventFormFromSource(source: EventMenuItem | HostingMenuItem, target: AppTypes.EventEditorTarget): AppTypes.EventEditorForm {
     const startIso = target === 'hosting'
       ? (this.hostingDatesById[source.id] ?? this.defaultEventStartIso())
       : (this.eventDatesById[source.id] ?? this.defaultEventStartIso());
@@ -6983,11 +5593,11 @@ export class App {
     return {
       title: source.title,
       description: source.shortDescription,
-      imageUrl: this.defaultAssetImage('Supplies', `event-${source.id}`),
+      imageUrl: AppDemoGenerators.defaultAssetImage('Supplies', `event-${source.id}`),
       capacityMin: this.normalizedEventCapacityValue(capacity.min),
       capacityMax: this.normalizedEventCapacityValue(capacity.max),
-      startAt: this.toIsoDateTimeLocal(fallbackStart),
-      endAt: this.toIsoDateTimeLocal(end),
+      startAt: AppUtils.toIsoDateTimeLocal(fallbackStart),
+      endAt: AppUtils.toIsoDateTimeLocal(end),
       location,
       frequency,
       visibility: this.eventVisibilityById[source.id] ?? (target === 'hosting' ? 'Invitation only' : 'Public'),
@@ -7102,7 +5712,7 @@ export class App {
     this.selectedEvent = next;
   }
 
-  private defaultEventForm(): EventEditorForm {
+  private defaultEventForm(): AppTypes.EventEditorForm {
     const start = new Date();
     const end = new Date(start.getTime());
     return {
@@ -7111,8 +5721,8 @@ export class App {
       imageUrl: '',
       capacityMin: 0,
       capacityMax: 0,
-      startAt: this.toIsoDateTimeLocal(start),
-      endAt: this.toIsoDateTimeLocal(end),
+      startAt: AppUtils.toIsoDateTimeLocal(start),
+      endAt: AppUtils.toIsoDateTimeLocal(end),
       location: '',
       frequency: 'One-time',
       visibility: 'Invitation only',
@@ -7132,7 +5742,7 @@ export class App {
     }
     if (end.getTime() <= start.getTime()) {
       const nextEnd = new Date(start.getTime() + 60 * 60 * 1000);
-      this.eventForm.endAt = this.toIsoDateTimeLocal(nextEnd);
+      this.eventForm.endAt = AppUtils.toIsoDateTimeLocal(nextEnd);
     }
     const allowed = this.contextualFrequencyOptions(this.eventForm.startAt, this.eventForm.endAt);
     if (!allowed.includes(this.eventForm.frequency)) {
@@ -7141,22 +5751,22 @@ export class App {
   }
 
   private syncEventDateTimeControlsFromForm(): void {
-    this.eventStartDateValue = this.isoLocalDateTimeToDate(this.eventForm.startAt);
-    this.eventEndDateValue = this.isoLocalDateTimeToDate(this.eventForm.endAt);
-    this.eventStartTimeValue = this.isoLocalDateTimeToDate(this.eventForm.startAt);
-    this.eventEndTimeValue = this.isoLocalDateTimeToDate(this.eventForm.endAt);
+    this.eventStartDateValue = AppUtils.isoLocalDateTimeToDate(this.eventForm.startAt);
+    this.eventEndDateValue = AppUtils.isoLocalDateTimeToDate(this.eventForm.endAt);
+    this.eventStartTimeValue = AppUtils.isoLocalDateTimeToDate(this.eventForm.startAt);
+    this.eventEndTimeValue = AppUtils.isoLocalDateTimeToDate(this.eventForm.endAt);
   }
 
   private syncEventFormFromDateTimeControls(): void {
-    this.eventForm.startAt = this.applyDatePartToIsoLocal(this.eventForm.startAt, this.eventStartDateValue);
-    this.eventForm.startAt = this.applyTimePartFromDateToIsoLocal(this.eventForm.startAt, this.eventStartTimeValue);
-    this.eventForm.endAt = this.applyDatePartToIsoLocal(this.eventForm.endAt, this.eventEndDateValue);
-    this.eventForm.endAt = this.applyTimePartFromDateToIsoLocal(this.eventForm.endAt, this.eventEndTimeValue);
+    this.eventForm.startAt = AppUtils.applyDatePartToIsoLocal(this.eventForm.startAt, this.eventStartDateValue);
+    this.eventForm.startAt = AppUtils.applyTimePartFromDateToIsoLocal(this.eventForm.startAt, this.eventStartTimeValue);
+    this.eventForm.endAt = AppUtils.applyDatePartToIsoLocal(this.eventForm.endAt, this.eventEndDateValue);
+    this.eventForm.endAt = AppUtils.applyTimePartFromDateToIsoLocal(this.eventForm.endAt, this.eventEndTimeValue);
   }
 
-  private defaultSubEventForm(): SubEventFormItem {
-    const baseStart = this.isoLocalDateTimeToDate(this.eventForm.startAt) ?? new Date();
-    const baseEnd = this.isoLocalDateTimeToDate(this.eventForm.endAt) ?? new Date(baseStart);
+  private defaultSubEventForm(): AppTypes.SubEventFormItem {
+    const baseStart = AppUtils.isoLocalDateTimeToDate(this.eventForm.startAt) ?? new Date();
+    const baseEnd = AppUtils.isoLocalDateTimeToDate(this.eventForm.endAt) ?? new Date(baseStart);
     const start = new Date(baseStart);
     const end = new Date(baseEnd.getTime() < baseStart.getTime() ? baseStart : baseEnd);
     const initialMin = 0;
@@ -7165,8 +5775,8 @@ export class App {
       id: '',
       name: '',
       description: '',
-      startAt: this.toIsoDateTimeLocal(start),
-      endAt: this.toIsoDateTimeLocal(end),
+      startAt: AppUtils.toIsoDateTimeLocal(start),
+      endAt: AppUtils.toIsoDateTimeLocal(end),
       location: '',
       createdByUserId: this.activeUser.id,
       groups: [],
@@ -7184,7 +5794,7 @@ export class App {
   }
 
   private defaultSubEventGroupForm(
-    stage: SubEventFormItem | null = null,
+    stage: AppTypes.SubEventFormItem | null = null,
     options?: {
       stageTitle?: string;
       groupId?: string;
@@ -7193,7 +5803,7 @@ export class App {
       groupCapacityMax?: number;
       groupSource?: 'manual' | 'generated';
     }
-  ): SubEventGroupFormItem {
+  ): AppTypes.SubEventGroupFormItem {
     const stageId = stage?.id ?? '';
     const existingGroups = stage ? this.materializedSubEventGroups(stage) : [];
     const stageConfig = stage ? this.tournamentStageConfigFromItem(stage) : null;
@@ -7212,7 +5822,7 @@ export class App {
     };
   }
 
-  private defaultSubEventLeaderboardForm(): SubEventLeaderboardFormItem {
+  private defaultSubEventLeaderboardForm(): AppTypes.SubEventLeaderboardFormItem {
     return {
       groupId: '',
       memberId: '',
@@ -7225,7 +5835,7 @@ export class App {
     };
   }
 
-  private openSubEventLeaderboardPopup(stage: SubEventTournamentStage): void {
+  private openSubEventLeaderboardPopup(stage: AppTypes.SubEventTournamentStage): void {
     if (!this.canViewSubEventLeaderboard(stage)) {
       return;
     }
@@ -7254,7 +5864,7 @@ export class App {
     this.onSubEventLeaderboardGroupChange(nextGroupId);
   }
 
-  private syncSubEventLeaderboardFifaFormFromLatestMatch(stage: SubEventTournamentStage): void {
+  private syncSubEventLeaderboardFifaFormFromLatestMatch(stage: AppTypes.SubEventTournamentStage): void {
     if (this.subEventLeaderboardMode(stage) !== 'Fifa') {
       return;
     }
@@ -7292,7 +5902,7 @@ export class App {
     return `${pair[0]}::${pair[1]}`;
   }
 
-  private resolveLeaderboardGroupId(stage: SubEventTournamentStage, requestedGroupId: string | null | undefined): string {
+  private resolveLeaderboardGroupId(stage: AppTypes.SubEventTournamentStage, requestedGroupId: string | null | undefined): string {
     const fallback = stage.groups[0]?.id ?? '';
     if (!requestedGroupId) {
       return fallback;
@@ -7300,24 +5910,24 @@ export class App {
     return stage.groups.some(group => group.id === requestedGroupId) ? requestedGroupId : fallback;
   }
 
-  private subEventLeaderboardGroupCapacity(stage: SubEventTournamentStage, groupId: string): number {
+  private subEventLeaderboardGroupCapacity(stage: AppTypes.SubEventTournamentStage, groupId: string): number {
     const sourceGroup = this.subEventGroupsForStage(stage.subEvent).find(entry => entry.id === groupId);
     const groupMax = Number(sourceGroup?.capacityMax);
     if (Number.isFinite(groupMax) && groupMax > 0) {
-      return this.clampNumber(Math.trunc(groupMax), 2, 128);
+      return AppUtils.clampNumber(Math.trunc(groupMax), 2, 128);
     }
     const stageMax = Number(stage.subEvent.tournamentGroupCapacityMax);
     if (Number.isFinite(stageMax) && stageMax > 0) {
-      return this.clampNumber(Math.trunc(stageMax), 2, 128);
+      return AppUtils.clampNumber(Math.trunc(stageMax), 2, 128);
     }
     const fallbackMax = Number(stage.subEvent.capacityMax);
     if (Number.isFinite(fallbackMax) && fallbackMax > 0) {
-      return this.clampNumber(Math.trunc(fallbackMax), 2, 128);
+      return AppUtils.clampNumber(Math.trunc(fallbackMax), 2, 128);
     }
     return 4;
   }
 
-  private ensureSubEventLeaderboardMembers(stage: SubEventTournamentStage): void {
+  private ensureSubEventLeaderboardMembers(stage: AppTypes.SubEventTournamentStage): void {
     for (const group of stage.groups) {
       const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, group.id);
       if (this.subEventLeaderboardOpenGroups[key] === undefined) {
@@ -7342,7 +5952,7 @@ export class App {
     }
   }
 
-  private subEventLeaderboardMembersForGroup(stage: SubEventTournamentStage, groupId: string): SubEventLeaderboardMember[] {
+  private subEventLeaderboardMembersForGroup(stage: AppTypes.SubEventTournamentStage, groupId: string): AppTypes.SubEventLeaderboardMember[] {
     const resolvedGroupId = this.resolveLeaderboardGroupId(stage, groupId);
     if (!resolvedGroupId) {
       return [];
@@ -7352,7 +5962,7 @@ export class App {
     return this.subEventLeaderboardMembersByGroupId[key] ?? [];
   }
 
-  private subEventLeaderboardScoreEntries(stage: SubEventTournamentStage, groupId: string): SubEventLeaderboardScoreEntry[] {
+  private subEventLeaderboardScoreEntries(stage: AppTypes.SubEventTournamentStage, groupId: string): AppTypes.SubEventLeaderboardScoreEntry[] {
     const key = this.subEventLeaderboardStageGroupKey(stage.subEvent.id, groupId);
     return this.subEventLeaderboardScoreEntriesByGroupKey[key] ?? [];
   }
@@ -7452,7 +6062,7 @@ export class App {
       : Math.min(count + 1, targetIndex + 2);
   }
 
-  private subEventInsertIndex(items: SubEventFormItem[]): number {
+  private subEventInsertIndex(items: AppTypes.SubEventFormItem[]): number {
     if (items.length === 0) {
       return 0;
     }
@@ -7498,7 +6108,7 @@ export class App {
     this.syncSubEventDateTimeControlsFromForm();
   }
 
-  private applyGapShiftAfterInsert(items: SubEventFormItem[], insertIndex: number): SubEventFormItem[] {
+  private applyGapShiftAfterInsert(items: AppTypes.SubEventFormItem[], insertIndex: number): AppTypes.SubEventFormItem[] {
     const nextItems = this.cloneSubEvents(items);
     const inserted = nextItems[insertIndex] ?? null;
     if (!inserted) {
@@ -7536,7 +6146,7 @@ export class App {
       }
     }
     if (trimCandidate) {
-      trimCandidate.item.endAt = this.toIsoDateTimeLocal(new Date(insertedStartMs));
+      trimCandidate.item.endAt = AppUtils.toIsoDateTimeLocal(new Date(insertedStartMs));
     }
 
     const firstShiftOverlap = ordered.find(entry =>
@@ -7558,25 +6168,25 @@ export class App {
       if (entry.item.id === insertedId || entry.startMs < shiftStartMs) {
         continue;
       }
-      entry.item.startAt = this.toIsoDateTimeLocal(new Date(entry.startMs + shiftMs));
-      entry.item.endAt = this.toIsoDateTimeLocal(new Date(entry.endMs + shiftMs));
+      entry.item.startAt = AppUtils.toIsoDateTimeLocal(new Date(entry.startMs + shiftMs));
+      entry.item.endAt = AppUtils.toIsoDateTimeLocal(new Date(entry.endMs + shiftMs));
     }
 
     return nextItems;
   }
 
   private syncSubEventDateTimeControlsFromForm(): void {
-    this.subEventStartDateValue = this.isoLocalDateTimeToDate(this.subEventForm.startAt);
-    this.subEventEndDateValue = this.isoLocalDateTimeToDate(this.subEventForm.endAt);
-    this.subEventStartTimeValue = this.isoLocalDateTimeToDate(this.subEventForm.startAt);
-    this.subEventEndTimeValue = this.isoLocalDateTimeToDate(this.subEventForm.endAt);
+    this.subEventStartDateValue = AppUtils.isoLocalDateTimeToDate(this.subEventForm.startAt);
+    this.subEventEndDateValue = AppUtils.isoLocalDateTimeToDate(this.subEventForm.endAt);
+    this.subEventStartTimeValue = AppUtils.isoLocalDateTimeToDate(this.subEventForm.startAt);
+    this.subEventEndTimeValue = AppUtils.isoLocalDateTimeToDate(this.subEventForm.endAt);
   }
 
   private syncSubEventFormFromDateTimeControls(): void {
-    this.subEventForm.startAt = this.applyDatePartToIsoLocal(this.subEventForm.startAt, this.subEventStartDateValue);
-    this.subEventForm.startAt = this.applyTimePartFromDateToIsoLocal(this.subEventForm.startAt, this.subEventStartTimeValue);
-    this.subEventForm.endAt = this.applyDatePartToIsoLocal(this.subEventForm.endAt, this.subEventEndDateValue);
-    this.subEventForm.endAt = this.applyTimePartFromDateToIsoLocal(this.subEventForm.endAt, this.subEventEndTimeValue);
+    this.subEventForm.startAt = AppUtils.applyDatePartToIsoLocal(this.subEventForm.startAt, this.subEventStartDateValue);
+    this.subEventForm.startAt = AppUtils.applyTimePartFromDateToIsoLocal(this.subEventForm.startAt, this.subEventStartTimeValue);
+    this.subEventForm.endAt = AppUtils.applyDatePartToIsoLocal(this.subEventForm.endAt, this.subEventEndDateValue);
+    this.subEventForm.endAt = AppUtils.applyTimePartFromDateToIsoLocal(this.subEventForm.endAt, this.subEventEndTimeValue);
   }
 
   private normalizeSubEventDateRange(): void {
@@ -7588,11 +6198,11 @@ export class App {
     if (end.getTime() < start.getTime()) {
       end = new Date(start.getTime() + 60 * 60 * 1000);
     }
-    this.subEventForm.startAt = this.toIsoDateTimeLocal(start);
-    this.subEventForm.endAt = this.toIsoDateTimeLocal(end);
+    this.subEventForm.startAt = AppUtils.toIsoDateTimeLocal(start);
+    this.subEventForm.endAt = AppUtils.toIsoDateTimeLocal(end);
   }
 
-  private cloneSubEvents(items: SubEventFormItem[]): SubEventFormItem[] {
+  private cloneSubEvents(items: AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] {
     return items.map(item => ({
       ...item,
       location: this.normalizeLocationValue(item.location),
@@ -7604,12 +6214,12 @@ export class App {
     return typeof value === 'string' ? value : '';
   }
 
-  private firstSubEventByOrder(items: readonly SubEventFormItem[] = this.eventForm.subEvents): SubEventFormItem | null {
+  private firstSubEventByOrder(items: readonly AppTypes.SubEventFormItem[] = this.eventForm.subEvents): AppTypes.SubEventFormItem | null {
     const ordered = this.sortSubEventRefsByStartAsc(items);
     return ordered[0] ?? null;
   }
 
-  private withFirstSubEventLocation(items: SubEventFormItem[], location: string): SubEventFormItem[] {
+  private withFirstSubEventLocation(items: AppTypes.SubEventFormItem[], location: string): AppTypes.SubEventFormItem[] {
     if (!items.length) {
       return items;
     }
@@ -7673,7 +6283,7 @@ export class App {
     return unique;
   }
 
-  private sortSubEventsByStartAsc(items: SubEventFormItem[]): SubEventFormItem[] {
+  private sortSubEventsByStartAsc(items: AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] {
     const source = this.cloneSubEvents(items);
     return source
       .map((item, index) => ({
@@ -7692,7 +6302,7 @@ export class App {
       .map(entry => entry.item);
   }
 
-  private sortSubEventRefsByStartAsc(items: readonly SubEventFormItem[]): SubEventFormItem[] {
+  private sortSubEventRefsByStartAsc(items: readonly AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] {
     return items
       .map((item, index) => ({
         item,
@@ -7710,7 +6320,7 @@ export class App {
       .map(entry => entry.item);
   }
 
-  private subEventInsertTargetSource(): SubEventFormItem[] {
+  private subEventInsertTargetSource(): AppTypes.SubEventFormItem[] {
     const source = this.sortSubEventRefsByStartAsc(this.eventForm.subEvents);
     if (!this.subEventForm.id) {
       return source;
@@ -7718,7 +6328,7 @@ export class App {
     return source.filter(item => item.id !== this.subEventForm.id);
   }
 
-  private cloneSubEventGroups(groups: SubEventGroupItem[] | undefined): SubEventGroupItem[] {
+  private cloneSubEventGroups(groups: AppTypes.SubEventGroupItem[] | undefined): AppTypes.SubEventGroupItem[] {
     if (!groups || groups.length === 0) {
       return [];
     }
@@ -7728,22 +6338,22 @@ export class App {
     }));
   }
 
-  private subEventGroupsForStage(item: SubEventFormItem): SubEventGroupItem[] {
+  private subEventGroupsForStage(item: AppTypes.SubEventFormItem): AppTypes.SubEventGroupItem[] {
     return this.reconcileTournamentGroupsForStage(item, this.cloneSubEventGroups(item.groups));
   }
 
-  private materializedSubEventGroups(item: SubEventFormItem): SubEventGroupItem[] {
+  private materializedSubEventGroups(item: AppTypes.SubEventFormItem): AppTypes.SubEventGroupItem[] {
     return this.reconcileTournamentGroupsForStage(item, this.cloneSubEventGroups(item.groups));
   }
 
-  private normalizedSubEventGroupSource(group: Partial<SubEventGroupItem> | undefined): 'manual' | 'generated' {
+  private normalizedSubEventGroupSource(group: Partial<AppTypes.SubEventGroupItem> | undefined): 'manual' | 'generated' {
     return group?.source === 'generated' ? 'generated' : 'manual';
   }
 
   private reconcileTournamentGroupsForStage(
-    item: SubEventFormItem,
-    sourceGroups: SubEventGroupItem[] = this.cloneSubEventGroups(item.groups)
-  ): SubEventGroupItem[] {
+    item: AppTypes.SubEventFormItem,
+    sourceGroups: AppTypes.SubEventGroupItem[] = this.cloneSubEventGroups(item.groups)
+  ): AppTypes.SubEventGroupItem[] {
     const normalizedGroups = sourceGroups.map(group => ({
       ...group,
       source: this.normalizedSubEventGroupSource(group)
@@ -7767,7 +6377,7 @@ export class App {
     return [...manualGroups, ...generatedGroups];
   }
 
-  private groupCapacityTotals(groups: SubEventGroupItem[]): { min: number; max: number } {
+  private groupCapacityTotals(groups: AppTypes.SubEventGroupItem[]): { min: number; max: number } {
     if (groups.length === 0) {
       return { min: 0, max: 0 };
     }
@@ -7782,7 +6392,7 @@ export class App {
     return { min: Math.max(0, totalMin), max: Math.max(Math.max(0, totalMin), totalMax) };
   }
 
-  private openSubEventGroupEditor(item: SubEventFormItem, group: SubEventTournamentGroup): void {
+  private openSubEventGroupEditor(item: AppTypes.SubEventFormItem, group: AppTypes.SubEventTournamentGroup): void {
     const stageIndex = this.eventForm.subEvents.findIndex(entry => entry.id === item.id);
     const stageLabel = stageIndex >= 0 ? `Stage ${stageIndex + 1} · ${item.name}` : item.name;
     const sourceGroup = this.materializedSubEventGroups(item).find(entry => entry.id === group.id);
@@ -7814,14 +6424,14 @@ export class App {
     const nextId = existingId || `grp-${stageId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const nextCapacityMin = Math.max(0, Number(this.subEventGroupForm.capacityMin) || 0);
     const nextCapacityMax = Math.max(nextCapacityMin, Number(this.subEventGroupForm.capacityMax) || nextCapacityMin);
-    const nextEntry: SubEventGroupItem = {
+    const nextEntry: AppTypes.SubEventGroupItem = {
       id: nextId,
       name: nextName,
       capacityMin: nextCapacityMin,
       capacityMax: nextCapacityMax,
       source: 'manual'
     };
-    let nextGroups: SubEventGroupItem[];
+    let nextGroups: AppTypes.SubEventGroupItem[];
     if (existingId && existingGroups.some(group => group.id === existingId)) {
       nextGroups = existingGroups.map(group => group.id === existingId ? nextEntry : group);
     } else {
@@ -7873,7 +6483,7 @@ export class App {
     return `${startLabel} - ${endLabel}`;
   }
 
-  private subEventCreatorId(item: SubEventFormItem): string {
+  private subEventCreatorId(item: AppTypes.SubEventFormItem): string {
     return item.createdByUserId ?? this.activeUser.id;
   }
 
@@ -7896,79 +6506,18 @@ export class App {
     return window.matchMedia('(max-width: 760px)').matches;
   }
 
-  private subEventDesktopPageStarts(totalStages: number): number[] {
-    const visibleColumns = 3;
-    if (totalStages <= 0) {
-      return [0];
-    }
-    if (totalStages <= visibleColumns) {
-      return [0];
-    }
-    const starts: number[] = [0];
-    const lastStart = totalStages - visibleColumns;
-    for (let start = visibleColumns; start < lastStart; start += visibleColumns) {
-      starts.push(start);
-    }
-    if (starts[starts.length - 1] !== lastStart) {
-      starts.push(lastStart);
-    }
-    return starts;
-  }
-
-  private subEventDesktopNearestStartIndex(values: number[], currentValue: number): number {
-    if (values.length === 0) {
-      return 0;
-    }
-    let nearestIndex = 0;
-    let nearestDiff = Number.POSITIVE_INFINITY;
-    for (let index = 0; index < values.length; index += 1) {
-      const diff = Math.abs(values[index] - currentValue);
-      if (diff < nearestDiff) {
-        nearestDiff = diff;
-        nearestIndex = index;
-      }
-    }
-    return nearestIndex;
-  }
-
-  private subEventDesktopPageOffsets(scrollElement: HTMLElement, starts: number[]): number[] {
-    const stageOffsets = this.subEventDesktopStageOffsets(scrollElement);
-    const maxIndex = Math.max(0, stageOffsets.length - 1);
-    if (stageOffsets.length === 0) {
-      return starts.map(() => 0);
-    }
-    return starts.map(start => stageOffsets[this.clampNumber(start, 0, maxIndex)] ?? 0);
-  }
-
-  private subEventDesktopStageOffsets(scrollElement: HTMLElement): number[] {
-    const columns = Array.from(
-      scrollElement.querySelectorAll<HTMLElement>('.subevent-stage-column:not(.subevent-stage-column-placeholder)')
-    );
-    if (columns.length === 0) {
-      return [];
-    }
-    const scrollRect = scrollElement.getBoundingClientRect();
-    return columns.map((column, index) => {
-      const left = column.getBoundingClientRect().left - scrollRect.left + scrollElement.scrollLeft;
-      if (Number.isFinite(left)) {
-        return Math.max(0, left);
-      }
-      return Math.max(0, index * (scrollElement.clientWidth || 1));
-    });
-  }
-
   private syncSubEventStagePageIndexFromScroll(scrollElement: HTMLElement): void {
     if (this.isSubEventSwipeViewport) {
       const step = scrollElement.clientWidth || 1;
       const nextIndex = Math.round(scrollElement.scrollLeft / step);
       const maxIndex = Math.max(0, this.subEventTournamentStagePages.length - 1);
-      this.subEventStagePageIndex = this.clampNumber(nextIndex, 0, maxIndex);
+      this.subEventStagePageIndex = AppUtils.clampNumber(nextIndex, 0, maxIndex);
       return;
     }
-    const starts = this.subEventDesktopPageStarts(this.subEventTournamentStages.length);
-    const offsets = this.subEventDesktopPageOffsets(scrollElement, starts);
+    const starts = AppSubEventHelpers.subEventDesktopPageStarts(this.subEventTournamentStages.length);
+    const offsets = AppSubEventHelpers.subEventDesktopPageOffsets(scrollElement, starts);
     const currentOffset = scrollElement.scrollLeft;
-    this.subEventStagePageIndex = this.subEventDesktopNearestStartIndex(offsets, currentOffset);
+    this.subEventStagePageIndex = AppSubEventHelpers.subEventDesktopNearestStartIndex(offsets, currentOffset);
   }
 
   private lockSubEventStagePageIndexForArrowNavigation(targetPageIndex: number, scrollElement: HTMLElement): void {
@@ -7996,21 +6545,21 @@ export class App {
       if (pages.length === 0) {
         return null;
       }
-      const pageIndex = this.clampNumber(this.subEventStagePageIndex, 0, pages.length - 1);
+      const pageIndex = AppUtils.clampNumber(this.subEventStagePageIndex, 0, pages.length - 1);
       const pageSize = this.subEventStagePageSize();
-      const start = this.clampNumber(pageIndex * pageSize, 0, Math.max(0, total - 1));
+      const start = AppUtils.clampNumber(pageIndex * pageSize, 0, Math.max(0, total - 1));
       const pageLength = Math.max(1, pages[pageIndex]?.length ?? 0);
-      const end = this.clampNumber(start + pageLength - 1, start, total - 1);
+      const end = AppUtils.clampNumber(start + pageLength - 1, start, total - 1);
       return { start, end };
     }
-    const starts = this.subEventDesktopPageStarts(total);
-    const startIndex = this.clampNumber(this.subEventStagePageIndex, 0, Math.max(0, starts.length - 1));
-    const start = this.clampNumber(starts[startIndex] ?? 0, 0, Math.max(0, total - 1));
-    const end = this.clampNumber(start + 2, start, total - 1);
+    const starts = AppSubEventHelpers.subEventDesktopPageStarts(total);
+    const startIndex = AppUtils.clampNumber(this.subEventStagePageIndex, 0, Math.max(0, starts.length - 1));
+    const start = AppUtils.clampNumber(starts[startIndex] ?? 0, 0, Math.max(0, total - 1));
+    const end = AppUtils.clampNumber(start + 2, start, total - 1);
     return { start, end };
   }
 
-  private subEventPreviousStage(): SubEventTournamentStage | null {
+  private subEventPreviousStage(): AppTypes.SubEventTournamentStage | null {
     const bounds = this.subEventVisibleStageBounds();
     if (!bounds || bounds.start <= 0) {
       return null;
@@ -8018,7 +6567,7 @@ export class App {
     return this.subEventTournamentStages[bounds.start - 1] ?? null;
   }
 
-  private subEventNextStage(): SubEventTournamentStage | null {
+  private subEventNextStage(): AppTypes.SubEventTournamentStage | null {
     const bounds = this.subEventVisibleStageBounds();
     const stages = this.subEventTournamentStages;
     if (!bounds || bounds.end >= (stages.length - 1)) {
@@ -8027,7 +6576,7 @@ export class App {
     return stages[bounds.end + 1] ?? null;
   }
 
-  private subEventVisibleStageEdges(): { start: SubEventTournamentStage; end: SubEventTournamentStage } | null {
+  private subEventVisibleStageEdges(): { start: AppTypes.SubEventTournamentStage; end: AppTypes.SubEventTournamentStage } | null {
     const bounds = this.subEventVisibleStageBounds();
     if (!bounds) {
       return null;
@@ -8041,37 +6590,13 @@ export class App {
     return { start, end };
   }
 
-  private subEventVisibleStagesForRangeLabel(): SubEventTournamentStage[] {
+  private subEventVisibleStagesForRangeLabel(): AppTypes.SubEventTournamentStage[] {
     const stages = this.subEventTournamentStages;
     const bounds = this.subEventVisibleStageBounds();
     if (!bounds) {
       return [];
     }
     return stages.slice(bounds.start, bounds.end + 1);
-  }
-
-  private resolveCurrentTournamentStageNumber(items: SubEventFormItem[]): number {
-    if (items.length === 0) {
-      return 1;
-    }
-    const now = Date.now();
-    for (let index = 0; index < items.length; index += 1) {
-      const start = new Date(items[index].startAt).getTime();
-      const end = new Date(items[index].endAt).getTime();
-      if (Number.isNaN(start) || Number.isNaN(end)) {
-        continue;
-      }
-      if (start <= now && now <= end) {
-        return index + 1;
-      }
-    }
-    for (let index = 0; index < items.length; index += 1) {
-      const start = new Date(items[index].startAt).getTime();
-      if (!Number.isNaN(start) && start > now) {
-        return index + 1;
-      }
-    }
-    return items.length;
   }
 
   private resetSubEventStagePaging(): void {
@@ -8129,12 +6654,12 @@ export class App {
     const creatorId = this.subEventForm.createdByUserId ?? this.activeUser.id;
     const nextSubEventId = existingId || `se-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const existingItem = existingId ? this.eventForm.subEvents.find(item => item.id === existingId) : null;
-    const fallbackGroups: SubEventGroupItem[] = [];
+    const fallbackGroups: AppTypes.SubEventGroupItem[] = [];
     const baseGroupsSource = this.subEventForm.groups?.length
       ? this.subEventForm.groups
       : (existingItem?.groups?.length ? existingItem.groups : fallbackGroups);
     const groupsSource = baseGroupsSource;
-    let next: SubEventFormItem = {
+    let next: AppTypes.SubEventFormItem = {
       ...this.subEventForm,
       id: nextSubEventId,
       name,
@@ -8220,17 +6745,6 @@ export class App {
     return options;
   }
 
-  private toCapacityInputValue(value: number | string): number | null {
-    if (value === '' || value === null || value === undefined) {
-      return null;
-    }
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) {
-      return null;
-    }
-    return Math.max(0, Math.trunc(parsed));
-  }
-
   private normalizedCapacityValue(value: number | null | undefined): number | null {
     if (value === null || value === undefined) {
       return null;
@@ -8242,7 +6756,7 @@ export class App {
     return Math.max(0, Math.trunc(parsed));
   }
 
-  private normalizedEventCapacityRange(): EventCapacityRange {
+  private normalizedEventCapacityRange(): AppTypes.EventCapacityRange {
     const min = this.normalizedEventCapacityValue(this.eventForm.capacityMin);
     const max = this.normalizedEventCapacityValue(this.eventForm.capacityMax);
     if (min !== null && max !== null && max < min) {
@@ -8281,7 +6795,7 @@ export class App {
     return Math.max(0, Math.trunc(parsed));
   }
 
-  private normalizedTournamentLeaderboardType(value: unknown): TournamentLeaderboardType {
+  private normalizedTournamentLeaderboardType(value: unknown): AppTypes.TournamentLeaderboardType {
     return value === 'Fifa' ? 'Fifa' : 'Score';
   }
 
@@ -8294,13 +6808,13 @@ export class App {
     if (!Number.isFinite(parsed)) {
       return 0;
     }
-    return this.clampNumber(Math.trunc(parsed), 0, maxPerGroup);
+    return AppUtils.clampNumber(Math.trunc(parsed), 0, maxPerGroup);
   }
 
   private tournamentEstimatedGroupCountRange(
     perGroupMinValue: number | string | null | undefined,
     perGroupMaxValue: number | string | null | undefined,
-    contextItem?: Partial<SubEventFormItem>
+    contextItem?: Partial<AppTypes.SubEventFormItem>
   ): { min: number; max: number } {
     const rawMainMin = Number(this.eventForm.capacityMin);
     const rawMainMax = Number(this.eventForm.capacityMax);
@@ -8335,30 +6849,30 @@ export class App {
     };
   }
 
-  private tournamentStageConfigFromItem(item: Partial<SubEventFormItem>): SubEventTournamentConfig {
+  private tournamentStageConfigFromItem(item: Partial<AppTypes.SubEventFormItem>): AppTypes.SubEventTournamentConfig {
     const explicitGroupCountRaw = Number(item.tournamentGroupCount);
     const explicitGroupCount = Number.isFinite(explicitGroupCountRaw) && explicitGroupCountRaw >= 0
       ? Math.max(0, Math.trunc(explicitGroupCountRaw))
       : null;
     const fixedGroupCount = item.groups?.length ? item.groups.length : explicitGroupCount;
-    const groupCountForInference = this.clampNumber(fixedGroupCount ?? 0, 0, 64);
+    const groupCountForInference = AppUtils.clampNumber(fixedGroupCount ?? 0, 0, 64);
     const groupCountDivisor = Math.max(1, groupCountForInference);
     const itemMin = Math.max(0, Number(item.capacityMin) || 0);
     const itemMax = Math.max(itemMin, Number(item.capacityMax) || itemMin);
     const inferredGroupMin = groupCountForInference > 0 ? Math.max(0, Math.ceil(itemMin / groupCountDivisor)) : 0;
     const inferredGroupMax = groupCountForInference > 0 ? Math.max(inferredGroupMin, Math.ceil(itemMax / groupCountDivisor)) : 0;
-    const groupCapacityMin = this.clampNumber(
+    const groupCapacityMin = AppUtils.clampNumber(
       this.toPositiveInt(item.tournamentGroupCapacityMin, inferredGroupMin),
       0,
       9999
     );
-    const groupCapacityMax = this.clampNumber(
+    const groupCapacityMax = AppUtils.clampNumber(
       this.toPositiveInt(item.tournamentGroupCapacityMax, groupCapacityMin),
       groupCapacityMin,
       9999
     );
     const estimatedRange = this.tournamentEstimatedGroupCountRange(groupCapacityMin, groupCapacityMax, item);
-    const groupCount = this.clampNumber(
+    const groupCount = AppUtils.clampNumber(
       fixedGroupCount ?? (estimatedRange.max > 0 ? estimatedRange.max : 0),
       0,
       64
@@ -8370,7 +6884,7 @@ export class App {
     };
   }
 
-  private applyTournamentStageConfigToForm(config: SubEventTournamentConfig): void {
+  private applyTournamentStageConfigToForm(config: AppTypes.SubEventTournamentConfig): void {
     this.subEventForm.tournamentGroupCapacityMin = config.groupCapacityMin;
     this.subEventForm.tournamentGroupCapacityMax = config.groupCapacityMax;
     this.subEventForm.tournamentLeaderboardType = this.normalizedTournamentLeaderboardType(
@@ -8390,7 +6904,7 @@ export class App {
     this.subEventForm.capacityMax = Math.max(this.subEventForm.capacityMin, maxGroups * config.groupCapacityMax);
   }
 
-  private tournamentInsertReferenceStage(): SubEventFormItem | null {
+  private tournamentInsertReferenceStage(): AppTypes.SubEventFormItem | null {
     const source = this.sortSubEventRefsByStartAsc(this.eventForm.subEvents);
     if (source.length === 0) {
       return null;
@@ -8433,7 +6947,7 @@ export class App {
     }
     const mainMin = this.normalizedEventCapacityValue(this.eventForm.capacityMin) ?? 0;
     const mainMax = this.normalizedEventCapacityValue(this.eventForm.capacityMax) ?? mainMin;
-    const defaultGroupCount = this.clampNumber(Math.max(0, Math.ceil(mainMax / 8)), 0, 64);
+    const defaultGroupCount = AppUtils.clampNumber(Math.max(0, Math.ceil(mainMax / 8)), 0, 64);
     const groupDivisor = Math.max(1, defaultGroupCount);
     const defaultGroupMin = Math.max(0, Math.ceil(mainMin / groupDivisor));
     const defaultGroupMax = Math.max(defaultGroupMin, Math.ceil(mainMax / groupDivisor));
@@ -8446,7 +6960,7 @@ export class App {
     });
   }
 
-  private initializeTournamentStageConfigForEdit(item: SubEventFormItem): void {
+  private initializeTournamentStageConfigForEdit(item: AppTypes.SubEventFormItem): void {
     if (!this.isTournamentStageMandatoryContext()) {
       return;
     }
@@ -8459,13 +6973,13 @@ export class App {
     this.applyTournamentStageConfigToForm(config);
   }
 
-  private normalizeTournamentStageConfigOnForm(): SubEventTournamentConfig {
+  private normalizeTournamentStageConfigOnForm(): AppTypes.SubEventTournamentConfig {
     const normalized = this.tournamentStageConfigFromItem(this.subEventForm);
     this.applyTournamentStageConfigToForm(normalized);
     return normalized;
   }
 
-  private nextTournamentStageForCurrentDraft(): SubEventFormItem | null {
+  private nextTournamentStageForCurrentDraft(): AppTypes.SubEventFormItem | null {
     const source = this.subEventInsertTargetSource();
     if (source.length === 0 || !this.subEventStageInsertTargetId) {
       return null;
@@ -8549,8 +7063,8 @@ export class App {
     }
 
     if (minStartMs !== null && maxEndMs !== null) {
-      this.eventForm.startAt = this.toIsoDateTimeLocal(new Date(minStartMs));
-      this.eventForm.endAt = this.toIsoDateTimeLocal(new Date(maxEndMs));
+      this.eventForm.startAt = AppUtils.toIsoDateTimeLocal(new Date(minStartMs));
+      this.eventForm.endAt = AppUtils.toIsoDateTimeLocal(new Date(maxEndMs));
       this.syncEventDateTimeControlsFromForm();
     }
     if (minCapacity !== null) {
@@ -8617,70 +7131,7 @@ export class App {
   }
 
   private defaultEventStartIso(): string {
-    return this.toIsoDateTime(new Date());
-  }
-
-  private pad2(value: number): string {
-    return `${value}`.padStart(2, '0');
-  }
-
-  private toIsoDateTimeLocal(value: Date): string {
-    const year = value.getFullYear();
-    const month = `${value.getMonth() + 1}`.padStart(2, '0');
-    const day = `${value.getDate()}`.padStart(2, '0');
-    const hours = `${value.getHours()}`.padStart(2, '0');
-    const minutes = `${value.getMinutes()}`.padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  }
-
-  private isoLocalDateTimeToDate(value: string): Date | null {
-    if (!value) {
-      return null;
-    }
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-
-  private isoLocalTimePart(value: string): string {
-    const parsed = this.isoLocalDateTimeToDate(value);
-    if (!parsed) {
-      return '12:00';
-    }
-    const hours = `${parsed.getHours()}`.padStart(2, '0');
-    const minutes = `${parsed.getMinutes()}`.padStart(2, '0');
-    return `${hours}:${minutes}`;
-  }
-
-  private applyDatePartToIsoLocal(current: string, date: Date | null): string {
-    if (!date) {
-      return current;
-    }
-    const base = this.isoLocalDateTimeToDate(current) ?? new Date();
-    const next = new Date(base);
-    next.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
-    return this.toIsoDateTimeLocal(next);
-  }
-
-  private applyTimePartToIsoLocal(current: string, time: string): string {
-    const base = this.isoLocalDateTimeToDate(current) ?? new Date();
-    const [hoursRaw, minutesRaw] = time.split(':');
-    const hours = Number.parseInt(hoursRaw ?? '', 10);
-    const minutes = Number.parseInt(minutesRaw ?? '', 10);
-    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
-      return current;
-    }
-    const next = new Date(base);
-    next.setHours(hours, minutes, 0, 0);
-    return this.toIsoDateTimeLocal(next);
-  }
-
-  private applyTimePartFromDateToIsoLocal(current: string, value: Date | null): string {
-    if (!value) {
-      return current;
-    }
-    const hours = value.getHours();
-    const minutes = value.getMinutes();
-    return this.applyTimePartToIsoLocal(current, `${`${hours}`.padStart(2, '0')}:${`${minutes}`.padStart(2, '0')}`);
+    return AppUtils.toIsoDateTime(new Date());
   }
 
   protected openProfileEditor(): void {
@@ -9091,7 +7542,7 @@ export class App {
     }
     this.firebaseAuthIsBusy = true;
     const user = this.activeUser;
-    const profile: FirebaseAuthProfile = {
+    const profile: AppTypes.FirebaseAuthProfile = {
       id: `oauth-${Date.now()}`,
       name: user.name,
       email: `${user.id}@myscoutee.local`,
@@ -9145,7 +7596,7 @@ export class App {
 
   protected acceptEntryConsent(): void {
     const nowIso = new Date().toISOString();
-    const consent: EntryConsentState = {
+    const consent: AppTypes.EntryConsentState = {
       version: App.ENTRY_CONSENT_VERSION,
       accepted: true,
       acceptedAtIso: nowIso
@@ -9286,14 +7737,14 @@ export class App {
     }
   }
 
-  protected get filteredExperienceEntries(): ExperienceEntry[] {
+  protected get filteredExperienceEntries(): AppTypes.ExperienceEntry[] {
     const filtered = this.experienceEntries.filter(item => {
       if (this.experienceFilter === 'All') {
         return true;
       }
       return item.type === this.experienceFilter;
     });
-    return [...filtered].sort((a, b) => this.toSortableDate(b.dateFrom) - this.toSortableDate(a.dateFrom));
+    return [...filtered].sort((a, b) => AppUtils.toSortableDate(b.dateFrom) - AppUtils.toSortableDate(a.dateFrom));
   }
 
   protected get experienceSummary(): string {
@@ -9337,7 +7788,7 @@ export class App {
   private experiencePreviewEntriesForType(type: 'Workspace' | 'School', limit: number): Array<{ title: string; subtitle: string; date: string }> {
     return this.experienceEntries
       .filter(item => item.type === type)
-      .sort((a, b) => this.toSortableDate(b.dateFrom) - this.toSortableDate(a.dateFrom))
+      .sort((a, b) => AppUtils.toSortableDate(b.dateFrom) - AppUtils.toSortableDate(a.dateFrom))
       .slice(0, limit)
       .map(item => ({
         title: item.org,
@@ -9346,7 +7797,7 @@ export class App {
       }));
   }
 
-  protected experienceTypeIcon(type: ExperienceEntry['type']): string {
+  protected experienceTypeIcon(type: AppTypes.ExperienceEntry['type']): string {
     switch (type) {
       case 'Workspace':
         return 'apartment';
@@ -9359,7 +7810,7 @@ export class App {
     }
   }
 
-  protected experienceTypeClass(type: ExperienceEntry['type']): string {
+  protected experienceTypeClass(type: AppTypes.ExperienceEntry['type']): string {
     switch (type) {
       case 'Workspace':
         return 'experience-card-workspace';
@@ -9392,7 +7843,7 @@ export class App {
     return 'experience-filter-all';
   }
 
-  protected experienceTypeToneClass(type: ExperienceEntry['type']): string {
+  protected experienceTypeToneClass(type: AppTypes.ExperienceEntry['type']): string {
     switch (type) {
       case 'Workspace':
         return 'experience-filter-workspace';
@@ -9405,7 +7856,7 @@ export class App {
     }
   }
 
-  protected openExperienceForm(entry?: ExperienceEntry): void {
+  protected openExperienceForm(entry?: AppTypes.ExperienceEntry): void {
     this.pendingExperienceDeleteId = null;
     this.showExperienceForm = true;
     if (entry) {
@@ -9419,8 +7870,8 @@ export class App {
         dateTo: entry.dateTo === 'Present' ? '' : entry.dateTo,
         description: entry.description
       };
-      this.experienceRangeStart = this.fromYearMonth(entry.dateFrom);
-      this.experienceRangeEnd = entry.dateTo === 'Present' ? null : this.fromYearMonth(entry.dateTo);
+      this.experienceRangeStart = AppUtils.fromYearMonth(entry.dateFrom);
+      this.experienceRangeEnd = entry.dateTo === 'Present' ? null : AppUtils.fromYearMonth(entry.dateTo);
     } else {
       this.editingExperienceId = null;
       this.resetExperienceForm();
@@ -9437,12 +7888,12 @@ export class App {
     if (!this.experienceForm.title.trim() || !this.experienceForm.org.trim() || !this.experienceRangeStart) {
       return;
     }
-    const dateFrom = this.toYearMonth(this.experienceRangeStart);
+    const dateFrom = AppUtils.toYearMonth(this.experienceRangeStart);
     if (!dateFrom) {
       return;
     }
-    const dateTo = this.experienceRangeEnd ? this.toYearMonth(this.experienceRangeEnd) : 'Present';
-    const payload: Omit<ExperienceEntry, 'id'> = {
+    const dateTo = this.experienceRangeEnd ? AppUtils.toYearMonth(this.experienceRangeEnd) : 'Present';
+    const payload: Omit<AppTypes.ExperienceEntry, 'id'> = {
       ...this.experienceForm,
       dateFrom,
       title: this.experienceForm.title.trim(),
@@ -9509,7 +7960,7 @@ export class App {
     if (!row) {
       return;
     }
-    const order: DetailPrivacy[] = ['Public', 'Friends', 'Hosts', 'Private'];
+    const order: AppTypes.DetailPrivacy[] = ['Public', 'Friends', 'Hosts', 'Private'];
     const currentIndex = order.indexOf(row.privacy);
     row.privacy = order[(currentIndex + 1 + order.length) % order.length];
   }
@@ -9530,7 +7981,7 @@ export class App {
   protected selectDetailPrivacy(
     groupIndex: number,
     rowIndex: number,
-    privacy: DetailPrivacy,
+    privacy: AppTypes.DetailPrivacy,
     event: MouseEvent
   ): void {
     event.stopPropagation();
@@ -9596,7 +8047,7 @@ export class App {
 
   protected selectExperiencePrivacy(
     type: 'workspace' | 'school',
-    privacy: DetailPrivacy,
+    privacy: AppTypes.DetailPrivacy,
     event: MouseEvent
   ): void {
     event.stopPropagation();
@@ -9807,8 +8258,8 @@ export class App {
   }
 
   protected detailOptionIcon(label: string, option: string): string {
-    const normalizedLabel = this.normalizeText(label);
-    const normalizedOption = this.normalizeText(option);
+    const normalizedLabel = AppUtils.normalizeText(label);
+    const normalizedOption = AppUtils.normalizeText(option);
 
     if (normalizedLabel.includes('drinking')) {
       if (normalizedOption.includes('never')) {
@@ -10072,7 +8523,7 @@ export class App {
     }
   }
 
-  protected privacyTriggerIcon(value: DetailPrivacy, isOpen: boolean): string {
+  protected privacyTriggerIcon(value: AppTypes.DetailPrivacy, isOpen: boolean): string {
     return isOpen ? 'close' : this.privacyStatusIcon(value);
   }
 
@@ -10082,7 +8533,7 @@ export class App {
     }
   }
 
-  private profileDetailsForUser(userId: string): ProfileDetailFormGroup[] {
+  private profileDetailsForUser(userId: string): AppTypes.ProfileDetailFormGroup[] {
     const existing = this.profileDetailsFormByUser[userId];
     if (existing) {
       return existing;
@@ -10093,11 +8544,7 @@ export class App {
     return generated;
   }
 
-  private createProfileDetailsForm(): ProfileDetailFormGroup[] {
-    return this.createProfileDetailsFormForUser(this.activeUser);
-  }
-
-  private createProfileDetailsFormForUser(user: DemoUser): ProfileDetailFormGroup[] {
+  private createProfileDetailsFormForUser(user: DemoUser): AppTypes.ProfileDetailFormGroup[] {
     const beliefsValuesOptions = this.beliefsValuesAllOptions();
     const interestOptions = this.interestAllOptions();
     return PROFILE_DETAILS.map((group: ProfileGroup) => ({
@@ -10123,7 +8570,7 @@ export class App {
       case 'City':
         return user.city;
       case 'Birthday': {
-        const parsed = this.fromIsoDate(user.birthday);
+        const parsed = AppUtils.fromIsoDate(user.birthday);
         return parsed
           ? parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
           : fallback;
@@ -10160,7 +8607,7 @@ export class App {
     if (options.length === 0) {
       return '';
     }
-    const seed = this.hashText(`profile-detail:${user.id}:${context}`);
+    const seed = AppDemoGenerators.hashText(`profile-detail:${user.id}:${context}`);
     return options[seed % options.length] ?? options[0];
   }
 
@@ -10168,7 +8615,7 @@ export class App {
     if (options.length === 0 || count <= 0) {
       return [];
     }
-    const start = this.hashText(`profile-detail-list:${user.id}:${context}`) % options.length;
+    const start = AppDemoGenerators.hashText(`profile-detail-list:${user.id}:${context}`) % options.length;
     const selected: string[] = [];
     let index = start;
     while (selected.length < Math.min(count, options.length)) {
@@ -10211,7 +8658,7 @@ export class App {
   }
 
   private detailToneFromOptions(value: string, options: string[]): string {
-    const index = options.findIndex(item => this.normalizeText(item) === this.normalizeText(value));
+    const index = options.findIndex(item => AppUtils.normalizeText(item) === AppUtils.normalizeText(value));
     const paletteIndex = (index >= 0 ? index : 0) % 8;
     return `detail-tone-${paletteIndex + 1}`;
   }
@@ -10224,7 +8671,7 @@ export class App {
     return this.interestOptionGroups.flatMap(group => group.options);
   }
 
-  protected profileStatusClass(value: ProfileStatus = this.activeUser.profileStatus): string {
+  protected profileStatusClass(value: AppTypes.ProfileStatus = this.activeUser.profileStatus): string {
     switch (value) {
       case 'public':
         return 'status-public';
@@ -10315,7 +8762,7 @@ export class App {
     return Math.round((completed / total) * 100);
   }
 
-  protected getProfileStatusIcon(value: ProfileStatus = this.activeUser.profileStatus): string {
+  protected getProfileStatusIcon(value: AppTypes.ProfileStatus = this.activeUser.profileStatus): string {
     switch (value) {
       case 'public':
         return 'public';
@@ -10329,7 +8776,7 @@ export class App {
   }
 
   protected getPhysiqueIcon(value: string): string {
-    const normalized = this.normalizeText(value);
+    const normalized = AppUtils.normalizeText(value);
     if (normalized.includes('slim')) {
       return 'directions_run';
     }
@@ -10352,7 +8799,7 @@ export class App {
   }
 
   protected getPhysiqueClass(value: string): string {
-    const normalized = this.normalizeText(value);
+    const normalized = AppUtils.normalizeText(value);
     if (normalized.includes('slim')) {
       return 'physique-slim';
     }
@@ -10404,12 +8851,12 @@ export class App {
   }
 
   protected getHoroscopeClass(value: string): string {
-    return `zodiac-${this.normalizeText(value).replace(/\s+/g, '-')}`;
+    return `zodiac-${AppUtils.normalizeText(value).replace(/\s+/g, '-')}`;
   }
 
   protected onBirthdayChange(value: Date | null): void {
     this.profileForm.birthday = value;
-    this.profileForm.horoscope = value ? this.getHoroscopeByDate(value) : '';
+    this.profileForm.horoscope = value ? AppUtils.horoscopeByDate(value) : '';
   }
 
   protected get isMobileView(): boolean {
@@ -10421,7 +8868,7 @@ export class App {
     return isNarrowViewport && hasCoarsePointer;
   }
 
-  protected onProfileStatusChange(value: ProfileStatus): void {
+  protected onProfileStatusChange(value: AppTypes.ProfileStatus): void {
     this.profileForm.profileStatus = value;
   }
 
@@ -10643,7 +9090,7 @@ export class App {
     }
     if (sheet.context.kind === 'profileStatus') {
       if (this.profileStatusOptions.some(option => option.value === value)) {
-        this.profileForm.profileStatus = value as ProfileStatus;
+        this.profileForm.profileStatus = value as AppTypes.ProfileStatus;
       }
       this.mobileProfileSelectorSheet = null;
       return;
@@ -10685,36 +9132,36 @@ export class App {
       return;
     }
     if (sheet.context.kind === 'experienceType') {
-      if (this.experienceTypeOptions.includes(value as ExperienceEntry['type'])) {
-        this.experienceForm.type = value as ExperienceEntry['type'];
+      if (this.experienceTypeOptions.includes(value as AppTypes.ExperienceEntry['type'])) {
+        this.experienceForm.type = value as AppTypes.ExperienceEntry['type'];
       }
       this.mobileProfileSelectorSheet = null;
       return;
     }
     if (sheet.context.kind === 'assetFilter') {
-      if (this.assetFilterOptions.includes(value as AssetFilterType)) {
-        this.selectAssetFilter(value as AssetFilterType);
+      if (this.assetFilterOptions.includes(value as AppTypes.AssetFilterType)) {
+        this.selectAssetFilter(value as AppTypes.AssetFilterType);
       }
       this.mobileProfileSelectorSheet = null;
       return;
     }
     if (sheet.context.kind === 'activitiesPrimaryFilter') {
       if (this.activitiesPrimaryFilters.some(option => option.key === value)) {
-        this.selectActivitiesPrimaryFilter(value as ActivitiesPrimaryFilter);
+        this.selectActivitiesPrimaryFilter(value as AppTypes.ActivitiesPrimaryFilter);
       }
       this.mobileProfileSelectorSheet = null;
       return;
     }
     if (sheet.context.kind === 'activitiesChatContextFilter') {
       if (this.activitiesChatContextFilters.some(option => option.key === value)) {
-        this.selectActivitiesChatContextFilter(value as ActivitiesChatContextFilter);
+        this.selectActivitiesChatContextFilter(value as AppTypes.ActivitiesChatContextFilter);
       }
       this.mobileProfileSelectorSheet = null;
       return;
     }
     if (sheet.context.kind === 'activitiesRateFilter') {
       if (this.rateFilters.some(option => option.key === value)) {
-        this.selectActivitiesRateFilter(value as RateFilterKey);
+        this.selectActivitiesRateFilter(value as AppTypes.RateFilterKey);
       }
       this.mobileProfileSelectorSheet = null;
       return;
@@ -10733,13 +9180,13 @@ export class App {
     this.mobileProfileSelectorSheet = null;
   }
 
-  protected experienceVisibilityValue(type: 'workspace' | 'school'): DetailPrivacy {
+  protected experienceVisibilityValue(type: 'workspace' | 'school'): AppTypes.DetailPrivacy {
     return this.experienceVisibility[type];
   }
 
   protected toggleExperiencePrivacy(type: 'workspace' | 'school', event: Event): void {
     event.stopPropagation();
-    const order: DetailPrivacy[] = ['Public', 'Friends', 'Hosts', 'Private'];
+    const order: AppTypes.DetailPrivacy[] = ['Public', 'Friends', 'Hosts', 'Private'];
     const current = this.experienceVisibility[type];
     const index = order.indexOf(current);
     this.experienceVisibility[type] = order[(index + 1 + order.length) % order.length];
@@ -10831,7 +9278,7 @@ export class App {
   }
 
   protected languageToneIndex(value: string): number {
-    const normalized = this.normalizeText(value);
+    const normalized = AppUtils.normalizeText(value);
     if (!normalized) {
       return 1;
     }
@@ -10857,7 +9304,7 @@ export class App {
     return this.availableLanguageSuggestions.slice(0, 20);
   }
 
-  protected get availableProfileStatusOptions(): Array<{ value: ProfileStatus; icon: string }> {
+  protected get availableProfileStatusOptions(): Array<{ value: AppTypes.ProfileStatus; icon: string }> {
     return this.profileStatusOptions.filter(option => option.value !== this.profileForm.profileStatus);
   }
 
@@ -10867,10 +9314,10 @@ export class App {
 
   protected get hostSocialProofBaseMetrics(): Array<{ label: string; value: string }> {
     return [
-      { label: 'Average crown rating', value: `${(this.seededMetric(1, 38, 50) / 10).toFixed(1)} / 5.0` },
-      { label: 'Attendance rate', value: `${this.seededMetric(2, 74, 99)}%` },
-      { label: 'No-show ratio', value: `${this.seededMetric(3, 1, 16)}%` },
-      { label: 'Repeat attendees', value: `${this.seededMetric(4, 36, 92)}%` }
+      { label: 'Average crown rating', value: `${(AppDemoGenerators.seededMetric(this.activeUser, 1, 38, 50) / 10).toFixed(1)} / 5.0` },
+      { label: 'Attendance rate', value: `${AppDemoGenerators.seededMetric(this.activeUser, 2, 74, 99)}%` },
+      { label: 'No-show ratio', value: `${AppDemoGenerators.seededMetric(this.activeUser, 3, 1, 16)}%` },
+      { label: 'Repeat attendees', value: `${AppDemoGenerators.seededMetric(this.activeUser, 4, 36, 92)}%` }
     ];
   }
 
@@ -10887,15 +9334,15 @@ export class App {
   }
 
   protected get hostTotalEvents(): number {
-    return this.seededMetric(9, 12, 80);
+    return AppDemoGenerators.seededMetric(this.activeUser, 9, 12, 80);
   }
 
   protected get hostAttendanceTotal(): number {
-    return this.hostTotalEvents * this.seededMetric(18, 8, 14);
+    return this.hostTotalEvents * AppDemoGenerators.seededMetric(this.activeUser, 18, 8, 14);
   }
 
   protected get hostAttendanceAttended(): number {
-    return Math.floor(this.hostAttendanceTotal * (this.seededMetric(2, 74, 96) / 100));
+    return Math.floor(this.hostAttendanceTotal * (AppDemoGenerators.seededMetric(this.activeUser, 2, 74, 96) / 100));
   }
 
   protected get hostAttendanceNoShow(): number {
@@ -10911,23 +9358,23 @@ export class App {
   }
 
   protected get hostRepeatSummary(): string {
-    const total = this.seededMetric(19, 60, 220);
-    const repeat = Math.floor(total * (this.seededMetric(4, 36, 84) / 100));
+    const total = AppDemoGenerators.seededMetric(this.activeUser, 19, 60, 220);
+    const repeat = Math.floor(total * (AppDemoGenerators.seededMetric(this.activeUser, 4, 36, 84) / 100));
     return `${repeat}`;
   }
 
   protected get hostPeopleMet(): number {
-    return this.seededMetric(32, 90, 520) + this.submittedEventFeedbackAnswersByKind('event').length;
+    return AppDemoGenerators.seededMetric(this.activeUser, 32, 90, 520) + this.submittedEventFeedbackAnswersByKind('event').length;
   }
 
   protected get hostVibeSummary(): string {
-    const vibe = this.vibeCategories[this.seededMetric(5, 0, this.vibeCategories.length - 1)];
-    return `${vibe} ${this.seededMetric(20, 18, 86)}%`;
+    const vibe = this.vibeCategories[AppDemoGenerators.seededMetric(this.activeUser, 5, 0, this.vibeCategories.length - 1)];
+    return `${vibe} ${AppDemoGenerators.seededMetric(this.activeUser, 20, 18, 86)}%`;
   }
 
   protected get hostCategorySummary(): string {
-    const sports = this.seededMetric(21, 8, 48);
-    const roadTrip = this.seededMetric(22, 6, 36);
+    const sports = AppDemoGenerators.seededMetric(this.activeUser, 21, 8, 48);
+    const roadTrip = AppDemoGenerators.seededMetric(this.activeUser, 22, 6, 36);
     return `Sports ${sports}%, Road Trip ${roadTrip}%`;
   }
 
@@ -10936,7 +9383,7 @@ export class App {
     if (feedbackBadges.length > 0) {
       return feedbackBadges;
     }
-    return this.withContextIconItems(this.hostVibeSummary, this.vibeIcons);
+    return AppUtils.withContextIconItems(this.hostVibeSummary, this.vibeIcons);
   }
 
   protected get hostPersonalityBadgeItems(): string[] {
@@ -10952,7 +9399,7 @@ export class App {
     if (feedbackBadges.length > 0) {
       return feedbackBadges;
     }
-    return this.withContextIconItems(this.hostCategorySummary, this.categoryIcons);
+    return AppUtils.withContextIconItems(this.hostCategorySummary, this.categoryIcons);
   }
 
   protected get memberTraitBreakdown(): Array<{ label: string; value: string }> {
@@ -10980,7 +9427,7 @@ export class App {
 
   protected get memberAttendanceSummary(): string {
     const total = 100;
-    const attended = this.seededMetric(23, 4, 96);
+    const attended = AppDemoGenerators.seededMetric(this.activeUser, 23, 4, 96);
     return `${attended} / ${total}`;
   }
 
@@ -10992,23 +9439,23 @@ export class App {
   }
 
   protected get memberPeopleMet(): number {
-    return this.seededMetric(24, 80, 460) + this.submittedEventFeedbackAnswersByKind('attendee').length;
+    return AppDemoGenerators.seededMetric(this.activeUser, 24, 80, 460) + this.submittedEventFeedbackAnswersByKind('attendee').length;
   }
 
   protected get memberReturneesSummary(): string {
     const total = this.memberPeopleMet;
-    const repeat = Math.floor(total * (this.seededMetric(33, 18, 72) / 100));
+    const repeat = Math.floor(total * (AppDemoGenerators.seededMetric(this.activeUser, 33, 18, 72) / 100));
     return `${repeat}`;
   }
 
   protected get memberVibeSummary(): string {
-    const first = this.vibeCategories[this.seededMetric(25, 0, this.vibeCategories.length - 1)];
-    const second = this.vibeCategories[this.seededMetric(26, 0, this.vibeCategories.length - 1)];
-    return `${first} ${this.seededMetric(27, 18, 74)}%, ${second} ${this.seededMetric(28, 12, 62)}%`;
+    const first = this.vibeCategories[AppDemoGenerators.seededMetric(this.activeUser, 25, 0, this.vibeCategories.length - 1)];
+    const second = this.vibeCategories[AppDemoGenerators.seededMetric(this.activeUser, 26, 0, this.vibeCategories.length - 1)];
+    return `${first} ${AppDemoGenerators.seededMetric(this.activeUser, 27, 18, 74)}%, ${second} ${AppDemoGenerators.seededMetric(this.activeUser, 28, 12, 62)}%`;
   }
 
   protected get memberCategorySummary(): string {
-    return `Outdoors ${this.seededMetric(29, 40, 95)}%, Games ${this.seededMetric(30, 35, 95)}%, Culture ${this.seededMetric(31, 25, 90)}%`;
+    return `Outdoors ${AppDemoGenerators.seededMetric(this.activeUser, 29, 40, 95)}%, Games ${AppDemoGenerators.seededMetric(this.activeUser, 30, 35, 95)}%, Culture ${AppDemoGenerators.seededMetric(this.activeUser, 31, 25, 90)}%`;
   }
 
   protected get memberVibeBadgeItems(): string[] {
@@ -11016,7 +9463,7 @@ export class App {
     if (feedbackBadges.length > 0) {
       return feedbackBadges;
     }
-    return this.withContextIconItems(this.memberVibeSummary, this.vibeIcons);
+    return AppUtils.withContextIconItems(this.memberVibeSummary, this.vibeIcons);
   }
 
   protected get memberCategoryBadgeItems(): string[] {
@@ -11024,16 +9471,16 @@ export class App {
     if (feedbackBadges.length > 0) {
       return feedbackBadges;
     }
-    return this.withContextIconItems(this.memberCategorySummary, this.categoryIcons);
+    return AppUtils.withContextIconItems(this.memberCategorySummary, this.categoryIcons);
   }
 
   protected get memberCategoryPlacementClass(): string {
-    const personalityLen = this.badgeItemsLength(this.memberPersonalityBadgeItems);
-    const vibeLen = this.badgeItemsLength(this.memberVibeBadgeItems);
+    const personalityLen = AppUtils.badgeItemsLength(this.memberPersonalityBadgeItems);
+    const vibeLen = AppUtils.badgeItemsLength(this.memberVibeBadgeItems);
     return personalityLen <= vibeLen ? 'badge-below-left' : 'badge-below-right';
   }
 
-  private submittedEventFeedbackAnswersByKind(kind: 'event' | 'attendee'): SubmittedEventFeedbackAnswer[] {
+  private submittedEventFeedbackAnswersByKind(kind: 'event' | 'attendee'): AppTypes.SubmittedEventFeedbackAnswer[] {
     return Object.values(this.submittedEventFeedbackAnswersByUser[this.activeUser.id] ?? {})
       .filter(answer => answer.kind === kind);
   }
@@ -11099,7 +9546,7 @@ export class App {
     kind: 'event' | 'attendee',
     tag: string
   ): 'personality' | 'vibe' | 'category' {
-    const normalized = this.normalizeText(tag);
+    const normalized = AppUtils.normalizeText(tag);
     if (kind === 'event') {
       if (normalized.includes('communic') || normalized.includes('organ') || normalized.includes('consist')) {
         return 'personality';
@@ -11144,7 +9591,7 @@ export class App {
   }
 
   protected get memberImpressionTitle(): string {
-    const normalized = this.normalizeText(this.activeMemberTrait);
+    const normalized = AppUtils.normalizeText(this.activeMemberTrait);
     if (normalized.includes('empat') || normalized.includes('empath')) {
       return 'Empathetic Attendee';
     }
@@ -11173,7 +9620,7 @@ export class App {
   }
 
   protected get hostTierBadgeIcon(): string {
-    const tier = this.normalizeText(this.activeHostTier);
+    const tier = AppUtils.normalizeText(this.activeHostTier);
     if (tier.includes('platinum')) return '👑';
     if (tier.includes('gold')) return '🥇';
     if (tier.includes('silver')) return '🥈';
@@ -11181,7 +9628,7 @@ export class App {
   }
 
   protected getHostTierIcon(hostTier: string): string {
-    const normalized = this.normalizeText(hostTier);
+    const normalized = AppUtils.normalizeText(hostTier);
     if (normalized.includes('platinum')) {
       return 'diamond';
     }
@@ -11198,7 +9645,7 @@ export class App {
   }
 
   protected getHostTierColorClass(hostTier: string): string {
-    const normalized = this.normalizeText(hostTier);
+    const normalized = AppUtils.normalizeText(hostTier);
     if (normalized.includes('platinum')) {
       return 'icon-tier-platinum';
     }
@@ -11215,7 +9662,7 @@ export class App {
   }
 
   protected getHostTierToneClass(hostTier: string): string {
-    const normalized = this.normalizeText(hostTier);
+    const normalized = AppUtils.normalizeText(hostTier);
     if (normalized.includes('platinum')) {
       return 'impression-shortcut-tone-platinum';
     }
@@ -11232,7 +9679,7 @@ export class App {
   }
 
   protected getTraitIcon(traitLabel: string): string {
-    const normalized = this.normalizeText(traitLabel);
+    const normalized = AppUtils.normalizeText(traitLabel);
     if (normalized.includes('kreat') || normalized.includes('creative')) {
       return 'palette';
     }
@@ -11261,7 +9708,7 @@ export class App {
   }
 
   protected getTraitColorClass(traitLabel: string): string {
-    const normalized = this.normalizeText(traitLabel);
+    const normalized = AppUtils.normalizeText(traitLabel);
     if (normalized.includes('kreat') || normalized.includes('creative')) {
       return 'icon-trait-creative';
     }
@@ -11290,7 +9737,7 @@ export class App {
   }
 
   protected getTraitToneClass(traitLabel: string): string {
-    const normalized = this.normalizeText(traitLabel);
+    const normalized = AppUtils.normalizeText(traitLabel);
     if (normalized.includes('kreat') || normalized.includes('creative')) {
       return 'impression-shortcut-tone-creative';
     }
@@ -11335,7 +9782,7 @@ export class App {
   }
 
   protected getInvitationActionSummary(invitation: InvitationMenuItem): string {
-    const text = this.normalizeText(invitation.description);
+    const text = AppUtils.normalizeText(invitation.description);
     if (text.includes('jazz') || text.includes('music')) {
       return 'You were added to music + check-in coordination';
     }
@@ -11373,7 +9820,7 @@ export class App {
     return this.getChatMembersById(item.id).length;
   }
 
-  protected activityChatRowToneClass(row: ActivityListRow): string {
+  protected activityChatRowToneClass(row: AppTypes.ActivityListRow): string {
     if (row.type !== 'chats') {
       return '';
     }
@@ -11572,7 +10019,7 @@ export class App {
     this.openSubEventBadgePopup(type, subEvent, undefined, group);
   }
 
-  private selectedChatSubEventResourceTotal(subEvent: SubEventFormItem): number {
+  private selectedChatSubEventResourceTotal(subEvent: AppTypes.SubEventFormItem): number {
     const chat = this.selectedChat;
     if (!chat) {
       return 0;
@@ -11581,14 +10028,14 @@ export class App {
     return this.subEventMenuPendingCount(subEvent, isGroupChannel);
   }
 
-  protected selectedChatSubEvent(): SubEventFormItem | null {
+  protected selectedChatSubEvent(): AppTypes.SubEventFormItem | null {
     if (!this.selectedChat) {
       return null;
     }
     return this.chatSubEventForItem(this.selectedChat);
   }
 
-  private selectedChatTournamentGroup(subEvent: SubEventFormItem): SubEventTournamentGroup | null {
+  private selectedChatTournamentGroup(subEvent: AppTypes.SubEventFormItem): AppTypes.SubEventTournamentGroup | null {
     if (!this.selectedChat?.groupId) {
       return null;
     }
@@ -11608,7 +10055,7 @@ export class App {
     };
   }
 
-  private selectedChatGroup(subEvent: SubEventFormItem): SubEventGroupItem | null {
+  private selectedChatGroup(subEvent: AppTypes.SubEventFormItem): AppTypes.SubEventGroupItem | null {
     if (!this.selectedChat || !this.selectedChat.groupId) {
       return null;
     }
@@ -11619,7 +10066,7 @@ export class App {
     return this.selectedChat ? `chat-context:${this.selectedChat.id}` : 'chat-context:none';
   }
 
-  private chatChannelType(item: ChatMenuItem): ChatChannelType {
+  private chatChannelType(item: ChatMenuItem): AppTypes.ChatChannelType {
     if (item.channelType === 'mainEvent' || item.channelType === 'optionalSubEvent' || item.channelType === 'groupSubEvent') {
       return item.channelType;
     }
@@ -11644,7 +10091,7 @@ export class App {
           : this.defaultEventStartIso();
       }
       if (!this.chatDistanceById[contextual.id]) {
-        this.chatDistanceById[contextual.id] = 2 + (this.hashText(`chat-distance:${contextual.id}`) % 18);
+        this.chatDistanceById[contextual.id] = 2 + (AppDemoGenerators.hashText(`chat-distance:${contextual.id}`) % 18);
       }
     }
     return [...merged.values()];
@@ -11689,7 +10136,7 @@ export class App {
   }
 
   private buildMainEventContextChat(eventId: string, eventTitle: string): ChatMenuItem {
-    const memberIds = this.seededEventMemberIds(eventId, 8);
+    const memberIds = AppDemoGenerators.seededEventMemberIds(eventId, 8, this.users, this.activeUser.id);
     return this.buildContextChatItem({
       id: `c-context-main-${eventId}`,
       title: `${eventTitle} · Main Event`,
@@ -11705,7 +10152,7 @@ export class App {
   private buildOptionalSubEventContextChat(
     eventId: string,
     eventTitle: string,
-    subEvent: SubEventFormItem,
+    subEvent: AppTypes.SubEventFormItem,
     stageLabel: string
   ): ChatMenuItem {
     const memberIds = this.optionalSubEventAcceptedMemberIds(eventId, subEvent.id);
@@ -11724,10 +10171,10 @@ export class App {
   private buildGroupSubEventContextChat(
     eventId: string,
     eventTitle: string,
-    subEvent: SubEventFormItem,
-    group: SubEventGroupItem,
+    subEvent: AppTypes.SubEventFormItem,
+    group: AppTypes.SubEventGroupItem,
     stageLabel: string,
-    groups: SubEventGroupItem[]
+    groups: AppTypes.SubEventGroupItem[]
   ): ChatMenuItem {
     const memberIds = this.tournamentGroupAcceptedMemberIds(eventId, subEvent.id, group.id, groups);
     return this.buildContextChatItem({
@@ -11749,18 +10196,18 @@ export class App {
     eventId: string;
     subEventId: string;
     groupId: string;
-    channelType: ChatChannelType;
+    channelType: AppTypes.ChatChannelType;
     memberIds: string[];
   }): ChatMenuItem {
     const memberIds = this.uniqueUserIds([this.activeUser.id, ...input.memberIds]);
     const senderCandidates = memberIds.filter(id => id !== this.activeUser.id);
-    const lastSenderId = senderCandidates[this.hashText(`chat-sender:${input.id}`) % Math.max(1, senderCandidates.length)]
+    const lastSenderId = senderCandidates[AppDemoGenerators.hashText(`chat-sender:${input.id}`) % Math.max(1, senderCandidates.length)]
       ?? memberIds[0]
       ?? this.activeUser.id;
-    const unread = this.hashText(`chat-unread:${input.id}`) % 4;
+    const unread = AppDemoGenerators.hashText(`chat-unread:${input.id}`) % 4;
     return {
       id: input.id,
-      avatar: this.initialsFromText(input.title),
+      avatar: AppUtils.initialsFromText(input.title),
       title: input.title,
       lastMessage: input.lastMessage,
       lastSenderId,
@@ -11838,7 +10285,7 @@ export class App {
     }
     return {
       id: eventId,
-      avatar: this.initialsFromText(item.title || 'Event'),
+      avatar: AppUtils.initialsFromText(item.title || 'Event'),
       title: item.title || 'Event',
       shortDescription: item.lastMessage || 'Event chat channel',
       timeframe: '',
@@ -11847,7 +10294,7 @@ export class App {
     };
   }
 
-  private chatEventSubEvents(eventId: string): SubEventFormItem[] {
+  private chatEventSubEvents(eventId: string): AppTypes.SubEventFormItem[] {
     const normalizedEventId = eventId.trim();
     if (!normalizedEventId) {
       return [];
@@ -11859,7 +10306,7 @@ export class App {
     return this.sortSubEventsByStartAsc(this.cloneSubEvents(this.eventSubEventsById[normalizedEventId] ?? []));
   }
 
-  private chatSubEventForItem(item: ChatMenuItem): SubEventFormItem | null {
+  private chatSubEventForItem(item: ChatMenuItem): AppTypes.SubEventFormItem | null {
     const eventId = this.normalizeLocationValue(item.eventId).trim();
     const subEventId = this.normalizeLocationValue(item.subEventId).trim();
     if (!eventId || !subEventId) {
@@ -11878,9 +10325,9 @@ export class App {
     if (existing && existing.length > 0) {
       return existing;
     }
-    const candidates = this.seededEventMemberIds(eventId, 10);
+    const candidates = AppDemoGenerators.seededEventMemberIds(eventId, 10, this.users, this.activeUser.id);
     const seeded = candidates.filter(userId =>
-      (this.hashText(`optional-chat-member:${eventId}:${subEventId}:${userId}`) % 100) < 56
+      (AppDemoGenerators.hashText(`optional-chat-member:${eventId}:${subEventId}:${userId}`) % 100) < 56
     );
     const fallback = seeded.length > 0 ? seeded : [candidates[0] ?? this.activeUser.id];
     this.acceptedOptionalSubEventMembersByKey[key] = this.uniqueUserIds(fallback);
@@ -11891,15 +10338,15 @@ export class App {
     eventId: string,
     subEventId: string,
     groupId: string,
-    groups: SubEventGroupItem[]
+    groups: AppTypes.SubEventGroupItem[]
   ): string[] {
     const key = this.tournamentGroupMembershipKey(eventId, subEventId, groupId);
     const existing = this.acceptedTournamentGroupMembersByKey[key];
     if (existing && existing.length > 0) {
       return existing;
     }
-    const candidates = this.seededEventMemberIds(eventId, 12);
-    const seeded = candidates.filter(userId => this.seededTournamentGroupIdForUser(eventId, subEventId, groups, userId) === groupId);
+    const candidates = AppDemoGenerators.seededEventMemberIds(eventId, 12, this.users, this.activeUser.id);
+    const seeded = candidates.filter(userId => AppDemoGenerators.seededTournamentGroupIdForUser(eventId, subEventId, groups, userId) === groupId);
     const fallback = seeded.length > 0 ? seeded : [candidates[0] ?? this.activeUser.id];
     this.acceptedTournamentGroupMembersByKey[key] = this.uniqueUserIds(fallback);
     return this.acceptedTournamentGroupMembersByKey[key];
@@ -11907,14 +10354,14 @@ export class App {
 
   private activeUserTournamentGroup(
     eventId: string,
-    subEvent: SubEventFormItem,
-    groups: SubEventGroupItem[]
-  ): SubEventGroupItem | null {
+    subEvent: AppTypes.SubEventFormItem,
+    groups: AppTypes.SubEventGroupItem[]
+  ): AppTypes.SubEventGroupItem | null {
     if (groups.length === 0) {
       return null;
     }
     const explicitGroupId = this.explicitTournamentGroupIdForUser(eventId, subEvent.id, groups, this.activeUser.id);
-    const activeGroupId = explicitGroupId || this.seededTournamentGroupIdForUser(eventId, subEvent.id, groups, this.activeUser.id);
+    const activeGroupId = explicitGroupId || AppDemoGenerators.seededTournamentGroupIdForUser(eventId, subEvent.id, groups, this.activeUser.id);
     if (!activeGroupId) {
       return null;
     }
@@ -11925,23 +10372,10 @@ export class App {
     return groups.find(group => group.id === activeGroupId) ?? null;
   }
 
-  private seededTournamentGroupIdForUser(
-    eventId: string,
-    subEventId: string,
-    groups: SubEventGroupItem[],
-    userId: string
-  ): string {
-    if (groups.length === 0) {
-      return '';
-    }
-    const index = this.hashText(`group-chat-member:${eventId}:${subEventId}:${userId}`) % groups.length;
-    return groups[index]?.id ?? groups[0]?.id ?? '';
-  }
-
   private explicitTournamentGroupIdForUser(
     eventId: string,
     subEventId: string,
-    groups: SubEventGroupItem[],
+    groups: AppTypes.SubEventGroupItem[],
     userId: string
   ): string | null {
     for (const group of groups) {
@@ -11952,23 +10386,6 @@ export class App {
       }
     }
     return null;
-  }
-
-  private seededEventMemberIds(eventId: string, targetCount: number): string[] {
-    const count = Math.max(4, Math.min(Math.max(4, targetCount), this.users.length));
-    const others = this.users.filter(user => user.id !== this.activeUser.id);
-    const seeded: string[] = [this.activeUser.id];
-    if (others.length === 0) {
-      return seeded;
-    }
-    const seed = this.hashText(`event-members:${eventId}`);
-    for (let index = 0; index < others.length && seeded.length < count; index += 1) {
-      const candidate = others[(seed + (index * 3)) % others.length];
-      if (!seeded.includes(candidate.id)) {
-        seeded.push(candidate.id);
-      }
-    }
-    return seeded;
   }
 
   private optionalSubEventMembershipKey(eventId: string, subEventId: string): string {
@@ -12069,7 +10486,7 @@ export class App {
     }
   }
 
-  private resolveEventIdForSubEvent(subEvent: SubEventFormItem): string | null {
+  private resolveEventIdForSubEvent(subEvent: AppTypes.SubEventFormItem): string | null {
     const editorContainsSubEvent = this.eventForm.subEvents.some(item => item.id === subEvent.id);
     if (editorContainsSubEvent) {
       const editorSource = this.resolveEventEditorSource();
@@ -12117,7 +10534,7 @@ export class App {
     return this.activityChatContextFilterKey(item) === this.activitiesChatContextFilter;
   }
 
-  private activityChatContextFilterKey(item: ChatMenuItem): ActivitiesChatContextFilter | null {
+  private activityChatContextFilterKey(item: ChatMenuItem): AppTypes.ActivitiesChatContextFilter | null {
     const channelType = this.chatChannelType(item);
     if (channelType === 'mainEvent') {
       return 'event';
@@ -12135,7 +10552,7 @@ export class App {
     return this.activePopup === 'activities';
   }
 
-  protected get filteredActivityRows(): ActivityListRow[] {
+  protected get filteredActivityRows(): AppTypes.ActivityListRow[] {
     const rows = this.buildFilteredActivityRowsBase();
     if (this.isCalendarLayoutView()) {
       return rows;
@@ -12147,8 +10564,8 @@ export class App {
     return rows.slice(0, Math.min(this.activitiesVisibleCount, rows.length));
   }
 
-  private buildFilteredActivityRowsBase(): ActivityListRow[] {
-    let rows: ActivityListRow[] = [];
+  private buildFilteredActivityRowsBase(): AppTypes.ActivityListRow[] {
+    let rows: AppTypes.ActivityListRow[] = [];
     if (this.activitiesPrimaryFilter === 'chats') {
       rows = this.chatItemsForActivities()
         .filter(item => this.matchesActivitiesChatContextFilter(item))
@@ -12182,7 +10599,7 @@ export class App {
       }));
     } else if (this.activitiesPrimaryFilter === 'events') {
       rows = [
-        ...this.eventItems.map<ActivityListRow>(item => ({
+        ...this.eventItems.map<AppTypes.ActivityListRow>(item => ({
           id: item.id,
           type: 'events',
           title: item.title,
@@ -12243,19 +10660,19 @@ export class App {
     return sorted;
   }
 
-  protected get eventStyleActivityRows(): ActivityListRow[] {
+  protected get eventStyleActivityRows(): AppTypes.ActivityListRow[] {
     return this.filteredActivityRows.filter(row => this.isEventStyleActivity(row));
   }
 
-  protected get nonEventStyleActivityRows(): ActivityListRow[] {
+  protected get nonEventStyleActivityRows(): AppTypes.ActivityListRow[] {
     return this.filteredActivityRows.filter(row => !this.isEventStyleActivity(row));
   }
 
-  protected get groupedActivityRows(): ActivityGroup[] {
+  protected get groupedActivityRows(): AppTypes.ActivityGroup[] {
     const rows = this.filteredActivityRows;
-    const grouped: ActivityGroup[] = [];
+    const grouped: AppTypes.ActivityGroup[] = [];
     for (const row of rows) {
-      const label = this.activityGroupLabel(row);
+      const label = AppUtils.activityGroupLabel(row, this.activitiesView, APP_DEMO_DATA.activityGroupLabels);
       const lastGroup = grouped[grouped.length - 1];
       if (!lastGroup || lastGroup.label !== label) {
         grouped.push({ label, rows: [row] });
@@ -12266,10 +10683,10 @@ export class App {
     return grouped;
   }
 
-  protected get ticketRows(): ActivityListRow[] {
+  protected get ticketRows(): AppTypes.ActivityListRow[] {
     const eventRows = this.eventItems
       .filter(item => this.eventTicketingById[item.id] === true)
-      .map<ActivityListRow>(item => ({
+      .map<AppTypes.ActivityListRow>(item => ({
         id: item.id,
         type: 'events',
         title: item.title,
@@ -12284,7 +10701,7 @@ export class App {
       }));
     const hostingRows = this.hostingItems
       .filter(item => this.eventTicketingById[item.id] === true)
-      .map<ActivityListRow>(item => ({
+      .map<AppTypes.ActivityListRow>(item => ({
         id: item.id,
         type: 'hosting',
         title: item.title,
@@ -12297,15 +10714,15 @@ export class App {
         isAdmin: true,
         source: item
       }));
-    const ordered = [...eventRows, ...hostingRows].sort((a, b) => this.toSortableDate(a.dateIso) - this.toSortableDate(b.dateIso));
+    const ordered = [...eventRows, ...hostingRows].sort((a, b) => AppUtils.toSortableDate(a.dateIso) - AppUtils.toSortableDate(b.dateIso));
     if (this.ticketDateOrder === 'upcoming') {
       return ordered.reverse();
     }
     return ordered;
   }
 
-  protected get groupedTicketRows(): ActivityGroup[] {
-    const grouped: ActivityGroup[] = [];
+  protected get groupedTicketRows(): AppTypes.ActivityGroup[] {
+    const grouped: AppTypes.ActivityGroup[] = [];
     for (const row of this.ticketRows) {
       const label = this.ticketGroupLabel(row.dateIso);
       const lastGroup = grouped[grouped.length - 1];
@@ -12355,11 +10772,11 @@ export class App {
     setTimeout(() => this.syncTicketScrollOnOpen(), 0);
   }
 
-  protected ticketCardMetaLine(row: ActivityListRow): string {
+  protected ticketCardMetaLine(row: AppTypes.ActivityListRow): string {
     return `${row.type === 'hosting' ? 'Hosting' : 'Event'} · ${this.activityDateLabel(row)} · ${row.distanceKm} km`;
   }
 
-  protected openTicketCodePopup(row: ActivityListRow, event?: Event): void {
+  protected openTicketCodePopup(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
     this.selectedTicketRow = row;
     this.selectedTicketCodeValue = this.encodeTicketPayload(this.createTicketScanPayload(row));
@@ -12482,7 +10899,7 @@ export class App {
     return this.isTicketListScrollableNow();
   }
 
-  protected readonly calendarWeekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  protected readonly calendarWeekdayLabels = APP_STATIC_DATA.calendarWeekdayLabels;
   protected readonly calendarWeekHours = Array.from(
     { length: this.weekCalendarEndHour - this.weekCalendarStartHour + 1 },
     (_, index) => this.weekCalendarStartHour + index
@@ -12492,11 +10909,13 @@ export class App {
     return this.activitiesView === 'month' || this.activitiesView === 'week';
   }
 
-  protected get calendarMonthPages(): CalendarMonthPage[] {
+  protected get calendarMonthPages(): AppTypes.CalendarMonthPage[] {
     if (this.activitiesView !== 'month') {
       return [];
     }
     const rows = this.filteredActivityRows;
+    const resolveActivityDateRange = (row: AppTypes.ActivityListRow) =>
+      AppCalendarHelpers.activityDateRange(row, this.activityDateTimeRangeById);
     const monthAnchors = this.monthAnchorsForRows(rows);
     const cacheKey = [
       this.activeUserId,
@@ -12505,23 +10924,27 @@ export class App {
       this.hostingPublicationFilter,
       this.activitiesRateFilter,
       this.activitiesView,
-      this.calendarRowsSignature(rows),
-      monthAnchors.map(anchor => this.monthKey(anchor)).join(',')
+      AppCalendarHelpers.calendarRowsSignature(rows, this.activityDateTimeRangeById),
+      monthAnchors.map(anchor => AppCalendarHelpers.monthKey(anchor)).join(',')
     ].join('|');
     if (cacheKey === this.calendarMonthPagesCacheKey) {
       return this.calendarMonthPagesCache;
     }
-    const rowsByDate = this.buildActivityRowsByDate(rows);
-    this.calendarMonthPagesCache = monthAnchors.map(anchor => this.buildMonthPage(anchor, rowsByDate, rows));
+    const rowsByDate = AppCalendarHelpers.buildActivityRowsByDate(rows, resolveActivityDateRange);
+    this.calendarMonthPagesCache = monthAnchors.map(anchor =>
+      AppCalendarHelpers.buildMonthPage(anchor, rowsByDate, rows, resolveActivityDateRange)
+    );
     this.calendarMonthPagesCacheKey = cacheKey;
     return this.calendarMonthPagesCache;
   }
 
-  protected get calendarWeekPages(): CalendarWeekPage[] {
+  protected get calendarWeekPages(): AppTypes.CalendarWeekPage[] {
     if (this.activitiesView !== 'week') {
       return [];
     }
     const rows = this.filteredActivityRows;
+    const resolveActivityDateRange = (row: AppTypes.ActivityListRow) =>
+      AppCalendarHelpers.activityDateRange(row, this.activityDateTimeRangeById);
     const weekAnchors = this.weekAnchorsForRows(rows);
     const cacheKey = [
       this.activeUserId,
@@ -12530,14 +10953,14 @@ export class App {
       this.hostingPublicationFilter,
       this.activitiesRateFilter,
       this.activitiesView,
-      this.calendarRowsSignature(rows),
-      weekAnchors.map(anchor => this.dateKey(anchor)).join(',')
+      AppCalendarHelpers.calendarRowsSignature(rows, this.activityDateTimeRangeById),
+      weekAnchors.map(anchor => AppCalendarHelpers.dateKey(anchor)).join(',')
     ].join('|');
     if (cacheKey === this.calendarWeekPagesCacheKey) {
       return this.calendarWeekPagesCache;
     }
-    const rowsByDate = this.buildActivityRowsByDate(rows);
-    this.calendarWeekPagesCache = weekAnchors.map(anchor => this.buildWeekPage(anchor, rowsByDate));
+    const rowsByDate = AppCalendarHelpers.buildActivityRowsByDate(rows, resolveActivityDateRange);
+    this.calendarWeekPagesCache = weekAnchors.map(anchor => AppCalendarHelpers.buildWeekPage(anchor, rowsByDate));
     this.calendarWeekPagesCacheKey = cacheKey;
     return this.calendarWeekPagesCache;
   }
@@ -12546,15 +10969,15 @@ export class App {
     return `${`${hour}`.padStart(2, '0')}:00`;
   }
 
-  protected weekDayTimedBadges(day: CalendarDayCell): CalendarTimedBadge[] {
+  protected weekDayTimedBadges(day: AppTypes.CalendarDayCell): AppTypes.CalendarTimedBadge[] {
     const dayStart = new Date(day.date);
     dayStart.setHours(this.weekCalendarStartHour, 0, 0, 0);
     const dayEnd = new Date(day.date);
     dayEnd.setHours(this.weekCalendarEndHour + 1, 0, 0, 0);
     const totalMinutes = (dayEnd.getTime() - dayStart.getTime()) / 60000;
-    const badges: CalendarTimedBadge[] = [];
+    const badges: AppTypes.CalendarTimedBadge[] = [];
     for (const row of day.rows) {
-      const range = this.activityDateRange(row);
+      const range = AppCalendarHelpers.activityDateRange(row, this.activityDateTimeRangeById);
       if (!range) {
         continue;
       }
@@ -12574,29 +10997,29 @@ export class App {
     return badges;
   }
 
-  protected monthRateCount(day: CalendarDayCell): number {
+  protected monthRateCount(day: AppTypes.CalendarDayCell): number {
     if (this.activitiesPrimaryFilter !== 'rates') {
       return 0;
     }
     return day.rows.length;
   }
 
-  protected monthRateHeatClass(day: CalendarDayCell): string {
-    return this.rateHeatClass(this.monthRateCount(day));
+  protected monthRateHeatClass(day: AppTypes.CalendarDayCell): string {
+    return AppCalendarHelpers.rateHeatClass(this.monthRateCount(day));
   }
 
-  protected weekRateDayCount(day: CalendarDayCell): number {
+  protected weekRateDayCount(day: AppTypes.CalendarDayCell): number {
     if (this.activitiesPrimaryFilter !== 'rates') {
       return 0;
     }
     return day.rows.length;
   }
 
-  protected weekRateDayHeatClass(day: CalendarDayCell): string {
-    return this.rateHeatClass(this.weekRateDayCount(day));
+  protected weekRateDayHeatClass(day: AppTypes.CalendarDayCell): string {
+    return AppCalendarHelpers.rateHeatClass(this.weekRateDayCount(day));
   }
 
-  protected weekRateHourCount(day: CalendarDayCell, hour: number): number {
+  protected weekRateHourCount(day: AppTypes.CalendarDayCell, hour: number): number {
     if (this.activitiesPrimaryFilter !== 'rates') {
       return 0;
     }
@@ -12604,11 +11027,16 @@ export class App {
     slotStart.setHours(hour, 0, 0, 0);
     const slotEnd = new Date(slotStart);
     slotEnd.setHours(hour + 1, 0, 0, 0);
-    return this.countOverlappingRows(day.rows, slotStart, slotEnd);
+    return AppCalendarHelpers.countOverlappingRows(
+      day.rows,
+      slotStart,
+      slotEnd,
+      row => AppCalendarHelpers.activityDateRange(row, this.activityDateTimeRangeById)
+    );
   }
 
   protected rateHeatClassByCount(count: number): string {
-    return this.rateHeatClass(count);
+    return AppCalendarHelpers.rateHeatClass(count);
   }
 
   protected rateCountLabel(value: number): string {
@@ -12618,16 +11046,16 @@ export class App {
     return value > 99 ? '99+' : `${value}`;
   }
 
-  protected monthWeekLaneCount(week: CalendarMonthWeek): number {
+  protected monthWeekLaneCount(week: AppTypes.CalendarMonthWeek): number {
     if (week.spans.length === 0) {
       return 0;
     }
     return week.spans.reduce((maxLane, span) => Math.max(maxLane, span.lane + 1), 0);
   }
 
-  protected calendarBadgeToneClass(row: ActivityListRow): string {
+  protected calendarBadgeToneClass(row: AppTypes.ActivityListRow): string {
     const paletteSize = 8;
-    const toneIndex = (this.hashText(row.id) % paletteSize) + 1;
+    const toneIndex = (AppDemoGenerators.hashText(row.id) % paletteSize) + 1;
     return `calendar-badge-tone-${toneIndex}`;
   }
 
@@ -12652,11 +11080,11 @@ export class App {
     return this.activitiesPrimaryFilter === 'rates';
   }
 
-  protected isActivityChatRow(row: ActivityListRow): boolean {
+  protected isActivityChatRow(row: AppTypes.ActivityListRow): boolean {
     return row.type === 'chats';
   }
 
-  protected activityRowAvatarInitials(row: ActivityListRow): string {
+  protected activityRowAvatarInitials(row: AppTypes.ActivityListRow): string {
     if (row.type === 'rates') {
       const rate = row.source as RateMenuItem;
       return this.users.find(user => user.id === rate.userId)?.initials ?? 'U';
@@ -12668,7 +11096,7 @@ export class App {
     return this.activeUser.initials;
   }
 
-  protected activityRowAvatarClass(row: ActivityListRow): string {
+  protected activityRowAvatarClass(row: AppTypes.ActivityListRow): string {
     if (row.type === 'rates') {
       const rate = row.source as RateMenuItem;
       const gender = this.users.find(user => user.id === rate.userId)?.gender ?? 'woman';
@@ -12704,7 +11132,7 @@ export class App {
     return this.activitiesCalendarBadgesReadyDelayKeys.has(this.calendarBadgeDelayKey(pageKey));
   }
 
-  protected selectActivitiesPrimaryFilter(filter: ActivitiesPrimaryFilter): void {
+  protected selectActivitiesPrimaryFilter(filter: AppTypes.ActivitiesPrimaryFilter): void {
     if (this.activitiesPrimaryFilter === 'rates' || filter === 'rates') {
       this.commitPendingRateDirectionOverrides();
     }
@@ -12729,7 +11157,7 @@ export class App {
     this.resetActivitiesScroll();
   }
 
-  protected selectActivitiesChatContextFilter(filter: ActivitiesChatContextFilter): void {
+  protected selectActivitiesChatContextFilter(filter: AppTypes.ActivitiesChatContextFilter): void {
     if (this.activitiesPrimaryFilter !== 'chats') {
       return;
     }
@@ -12738,7 +11166,7 @@ export class App {
     this.resetActivitiesScroll();
   }
 
-  protected selectHostingPublicationFilter(filter: HostingPublicationFilter): void {
+  protected selectHostingPublicationFilter(filter: AppTypes.HostingPublicationFilter): void {
     if (this.activitiesPrimaryFilter !== 'hosting' || this.hostingPublicationFilter === filter) {
       return;
     }
@@ -12755,7 +11183,7 @@ export class App {
     return this.eventItems.filter(item => item.isAdmin && !this.isHostingPublished(item.id)).length;
   }
 
-  protected selectActivitiesSecondaryFilter(filter: ActivitiesSecondaryFilter): void {
+  protected selectActivitiesSecondaryFilter(filter: AppTypes.ActivitiesSecondaryFilter): void {
     if (this.activitiesPrimaryFilter === 'rates') {
       this.commitPendingRateDirectionOverrides();
     }
@@ -12765,7 +11193,7 @@ export class App {
     this.resetActivitiesScroll();
   }
 
-  protected selectActivitiesRateFilter(filter: RateFilterKey): void {
+  protected selectActivitiesRateFilter(filter: AppTypes.RateFilterKey): void {
     this.stopActivitiesRatesPairSplitDrag();
     this.activitiesRateFilter = filter;
     this.commitPendingRateDirectionOverrides(filter);
@@ -12838,7 +11266,7 @@ export class App {
     this.showActivitiesSecondaryPicker = !this.showActivitiesSecondaryPicker;
   }
 
-  protected setActivitiesView(view: ActivitiesView, event?: Event): void {
+  protected setActivitiesView(view: AppTypes.ActivitiesView, event?: Event): void {
     event?.stopPropagation();
     if (this.activitiesPrimaryFilter === 'rates') {
       this.commitPendingRateDirectionOverrides();
@@ -12862,7 +11290,7 @@ export class App {
     this.showEventExploreOrderPicker = !this.showEventExploreOrderPicker;
   }
 
-  protected selectEventExploreOrder(order: EventExploreOrder, event?: Event): void {
+  protected selectEventExploreOrder(order: AppTypes.EventExploreOrder, event?: Event): void {
     event?.stopPropagation();
     this.eventExploreOrder = order;
     this.showEventExploreOrderPicker = false;
@@ -12897,7 +11325,7 @@ export class App {
 
   protected selectEventExploreTopicFilter(topic: string, event?: Event): void {
     event?.stopPropagation();
-    const nextTopic = this.normalizeText(topic) === this.normalizeText(this.eventExploreFilterTopic) ? '' : topic;
+    const nextTopic = AppUtils.normalizeText(topic) === AppUtils.normalizeText(this.eventExploreFilterTopic) ? '' : topic;
     this.eventExploreFilterTopic = nextTopic;
     this.eventExploreStickyValue = '';
     this.resetEventExploreScroll();
@@ -12920,15 +11348,15 @@ export class App {
     }));
   }
 
-  protected eventExploreOrderLabel(order: EventExploreOrder = this.eventExploreOrder): string {
+  protected eventExploreOrderLabel(order: AppTypes.EventExploreOrder = this.eventExploreOrder): string {
     return this.eventExploreOrderOptions.find(option => option.key === order)?.label ?? 'Upcoming';
   }
 
-  protected eventExploreOrderIcon(order: EventExploreOrder = this.eventExploreOrder): string {
+  protected eventExploreOrderIcon(order: AppTypes.EventExploreOrder = this.eventExploreOrder): string {
     return this.eventExploreOrderOptions.find(option => option.key === order)?.icon ?? 'event_upcoming';
   }
 
-  protected eventExploreOrderClass(order: EventExploreOrder = this.eventExploreOrder): string {
+  protected eventExploreOrderClass(order: AppTypes.EventExploreOrder = this.eventExploreOrder): string {
     if (order === 'upcoming') {
       return 'event-explore-order-upcoming';
     }
@@ -12984,7 +11412,7 @@ export class App {
     this.eventExploreStickyValue = activeRow.dataset['eventExploreGroupLabel'] ?? groups[0].label;
   }
 
-  protected get eventExploreCards(): EventExploreCard[] {
+  protected get eventExploreCards(): AppTypes.EventExploreCard[] {
     const cards = this.buildEventExploreCardsBase();
     this.ensureEventExplorePaginationState(cards.length);
     if (this.eventExploreInitialLoadPending) {
@@ -12993,16 +11421,28 @@ export class App {
     return cards.slice(0, Math.min(this.eventExploreVisibleCount, cards.length));
   }
 
-  private buildEventExploreCardsBase(): EventExploreCard[] {
+  private buildEventExploreCardsBase(): AppTypes.EventExploreCard[] {
     const now = Date.now();
-    const events: EventExploreCard[] = this.eventItems.map(item => this.toEventExploreCard(item, 'event', now));
-    const hosting: EventExploreCard[] = this.hostingItems.map(item => this.toEventExploreCard(item, 'hosting', now));
-    const selectedTopic = this.normalizeText(this.eventExploreTopicLabel(this.eventExploreFilterTopic));
+    const eventExploreContext = {
+      eventDatesById: this.eventDatesById,
+      hostingDatesById: this.hostingDatesById,
+      eventDistanceById: this.eventDistanceById,
+      hostingDistanceById: this.hostingDistanceById,
+      activityImageById: this.activityImageById,
+      defaultStartIso: this.defaultEventStartIso()
+    };
+    const events: AppTypes.EventExploreCard[] = this.eventItems.map(item =>
+      AppDemoGenerators.toEventExploreCard(item, 'event', now, eventExploreContext)
+    );
+    const hosting: AppTypes.EventExploreCard[] = this.hostingItems.map(item =>
+      AppDemoGenerators.toEventExploreCard(item, 'hosting', now, eventExploreContext)
+    );
+    const selectedTopic = AppUtils.normalizeText(this.eventExploreTopicLabel(this.eventExploreFilterTopic));
     const cards = [...events, ...hosting]
       .filter(card => this.eventExploreVisibilityRaw(card) !== 'Invitation only')
       .filter(card => !this.eventExploreFilterFriendsOnly || this.eventExploreFriendsGoingMatch(card))
       .filter(card => !this.eventExploreFilterHasRooms || this.eventExploreHasRooms(card))
-      .filter(card => !selectedTopic || this.eventExploreTopics(card).some(topic => this.normalizeText(this.eventExploreTopicLabel(topic)) === selectedTopic));
+      .filter(card => !selectedTopic || this.eventExploreTopics(card).some(topic => AppUtils.normalizeText(this.eventExploreTopicLabel(topic)) === selectedTopic));
 
     if (this.eventExploreOrder === 'upcoming') {
       return [...cards].sort((a, b) => {
@@ -13029,9 +11469,9 @@ export class App {
     return [...cards].sort((a, b) => b.relevance - a.relevance || a.startSort - b.startSort);
   }
 
-  protected get eventExploreGroupedCards(): EventExploreGroup[] {
+  protected get eventExploreGroupedCards(): AppTypes.EventExploreGroup[] {
     const cards = this.eventExploreCards;
-    const grouped: EventExploreGroup[] = [];
+    const grouped: AppTypes.EventExploreGroup[] = [];
     for (const card of cards) {
       const label = this.eventExploreGroupLabel(card);
       const lastGroup = grouped[grouped.length - 1];
@@ -13044,16 +11484,16 @@ export class App {
     return grouped;
   }
 
-  protected eventExploreCreatorInitials(card: EventExploreCard): string {
+  protected eventExploreCreatorInitials(card: AppTypes.EventExploreCard): string {
     const source = this.resolveEventExploreSource(card);
     if (!source?.avatar) {
-      return this.initialsFromText(card.title);
+      return AppUtils.initialsFromText(card.title);
     }
-    return this.initialsFromText(source.avatar);
+    return AppUtils.initialsFromText(source.avatar);
   }
 
-  protected eventExploreCreatorToneClass(card: EventExploreCard): string {
-    const rating = this.clampNumber(card.rating, 0, 10);
+  protected eventExploreCreatorToneClass(card: AppTypes.EventExploreCard): string {
+    const rating = AppUtils.clampNumber(card.rating, 0, 10);
     if (rating <= 3.0) {
       return 'event-explore-rating-cool';
     }
@@ -13069,30 +11509,30 @@ export class App {
     return 'event-explore-rating-warm';
   }
 
-  protected eventExploreCreatorAvatarToneClass(card: EventExploreCard): string {
-    const toneIndex = (this.hashText(`${card.sourceType}:${card.id}:${this.eventExploreCreatorInitials(card)}`) % 8) + 1;
+  protected eventExploreCreatorAvatarToneClass(card: AppTypes.EventExploreCard): string {
+    const toneIndex = (AppDemoGenerators.hashText(`${card.sourceType}:${card.id}:${this.eventExploreCreatorInitials(card)}`) % 8) + 1;
     return `activities-source-tone-${toneIndex}`;
   }
 
-  protected eventExploreVisibility(card: EventExploreCard): EventVisibility {
+  protected eventExploreVisibility(card: AppTypes.EventExploreCard): AppTypes.EventVisibility {
     return this.eventExploreVisibilityRaw(card);
   }
 
-  protected eventExploreVisibilityCircleClass(card: EventExploreCard): string {
+  protected eventExploreVisibilityCircleClass(card: AppTypes.EventExploreCard): string {
     return `experience-item-icon-${this.eventVisibilityClass(this.eventExploreVisibility(card))}`;
   }
 
-  protected eventExploreHasRooms(card: EventExploreCard): boolean {
+  protected eventExploreHasRooms(card: AppTypes.EventExploreCard): boolean {
     const metrics = this.eventExploreCapacityMetrics(card);
     return metrics.total > metrics.current;
   }
 
-  protected eventExploreIsFull(card: EventExploreCard): boolean {
+  protected eventExploreIsFull(card: AppTypes.EventExploreCard): boolean {
     const metrics = this.eventExploreCapacityMetrics(card);
     return metrics.total > 0 && metrics.current >= metrics.total;
   }
 
-  protected eventExploreHasFriendGoing(card: EventExploreCard): boolean {
+  protected eventExploreHasFriendGoing(card: AppTypes.EventExploreCard): boolean {
     const row = this.eventExploreRow(card);
     if (!row) {
       return false;
@@ -13100,31 +11540,31 @@ export class App {
     return this.getActivityMembersByRow(row).some(member =>
       member.status === 'accepted'
       && member.userId !== this.activeUser.id
-      && this.isFriendOfActiveUser(member.userId)
+      && AppDemoGenerators.isFriendOfActiveUser(member.userId, this.activeUser.id)
     );
   }
 
-  protected eventExploreFriendsGoingMatch(card: EventExploreCard): boolean {
+  protected eventExploreFriendsGoingMatch(card: AppTypes.EventExploreCard): boolean {
     return this.eventExploreVisibilityRaw(card) !== 'Invitation only' && this.eventExploreHasFriendGoing(card);
   }
 
-  protected isEventExploreOpenEvent(card: EventExploreCard): boolean {
+  protected isEventExploreOpenEvent(card: AppTypes.EventExploreCard): boolean {
     return this.eventExploreBlindMode(card) === 'Open Event';
   }
 
-  protected eventExploreBlindMode(card: EventExploreCard): EventBlindMode {
+  protected eventExploreBlindMode(card: AppTypes.EventExploreCard): AppTypes.EventBlindMode {
     return this.eventBlindModeById[card.id] ?? 'Open Event';
   }
 
-  protected eventExploreMembersVisibilityIcon(card: EventExploreCard): string {
+  protected eventExploreMembersVisibilityIcon(card: AppTypes.EventExploreCard): string {
     return this.eventBlindModeIcon(this.eventExploreBlindMode(card));
   }
 
-  protected eventExploreMembersVisibilityClass(card: EventExploreCard): string {
+  protected eventExploreMembersVisibilityClass(card: AppTypes.EventExploreCard): string {
     return this.eventBlindModeClass(this.eventExploreBlindMode(card));
   }
 
-  protected eventExploreMembersLabel(card: EventExploreCard): string {
+  protected eventExploreMembersLabel(card: AppTypes.EventExploreCard): string {
     const metrics = this.eventExploreCapacityMetrics(card);
     if (metrics.total <= 0) {
       return '0 / 0';
@@ -13132,12 +11572,12 @@ export class App {
     return `${metrics.current} / ${metrics.total}`;
   }
 
-  protected eventExploreOpenSpots(card: EventExploreCard): number {
+  protected eventExploreOpenSpots(card: AppTypes.EventExploreCard): number {
     const metrics = this.eventExploreCapacityMetrics(card);
     return Math.max(0, metrics.total - metrics.current);
   }
 
-  private eventExploreCapacityMetrics(card: EventExploreCard): { current: number; total: number } {
+  private eventExploreCapacityMetrics(card: AppTypes.EventExploreCard): { current: number; total: number } {
     const row = this.eventExploreRow(card);
     if (!row) {
       return { current: 0, total: 0 };
@@ -13147,13 +11587,13 @@ export class App {
     return { current, total };
   }
 
-  private eventExploreGroupLabel(card: EventExploreCard): string {
+  private eventExploreGroupLabel(card: AppTypes.EventExploreCard): string {
     if (this.eventExploreOrder === 'nearby') {
       const bucket = Math.max(5, Math.ceil(card.distanceKm / 5) * 5);
       return `${bucket} km`;
     }
     if (this.eventExploreOrder === 'top-rated') {
-      const bucket = Math.max(1, Math.min(10, Math.round(this.clampNumber(card.rating, 0, 10))));
+      const bucket = Math.max(1, Math.min(10, Math.round(AppUtils.clampNumber(card.rating, 0, 10))));
       return `${bucket} / 10`;
     }
     const parsed = new Date(card.startSort);
@@ -13163,7 +11603,7 @@ export class App {
     return parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   }
 
-  protected openEventExploreMembers(card: EventExploreCard, event: Event): void {
+  protected openEventExploreMembers(card: AppTypes.EventExploreCard, event: Event): void {
     event.stopPropagation();
     const row = this.eventExploreRow(card);
     if (!row) {
@@ -13191,7 +11631,7 @@ export class App {
     }
   }
 
-  protected eventExploreTopics(card: EventExploreCard): string[] {
+  protected eventExploreTopics(card: AppTypes.EventExploreCard): string[] {
     const source = this.resolveEventExploreSource(card);
     if (!source) {
       return [];
@@ -13200,7 +11640,7 @@ export class App {
     if (pool.length === 0) {
       return [];
     }
-    const seed = this.hashText(`${card.sourceType}:${card.id}:${source.title}`);
+    const seed = AppDemoGenerators.hashText(`${card.sourceType}:${card.id}:${source.title}`);
     const count = 2 + (seed % 2);
     const result: string[] = [];
     for (let index = 0; index < pool.length && result.length < count; index += 1) {
@@ -13216,7 +11656,7 @@ export class App {
     return topic.replace(/^#+\s*/, '');
   }
 
-  protected toggleEventExploreItemActionMenu(card: EventExploreCard, event: Event): void {
+  protected toggleEventExploreItemActionMenu(card: AppTypes.EventExploreCard, event: Event): void {
     event.stopPropagation();
     if (this.inlineItemActionMenu?.scope === 'explore' && this.inlineItemActionMenu.id === card.id) {
       this.inlineItemActionMenu = null;
@@ -13225,17 +11665,17 @@ export class App {
     this.inlineItemActionMenu = { scope: 'explore', id: card.id, title: card.title, openUp: this.shouldOpenInlineItemMenuUp(event) };
   }
 
-  protected isEventExploreItemActionMenuOpen(card: EventExploreCard): boolean {
+  protected isEventExploreItemActionMenuOpen(card: AppTypes.EventExploreCard): boolean {
     return this.inlineItemActionMenu?.scope === 'explore' && this.inlineItemActionMenu.id === card.id;
   }
 
-  protected isEventExploreItemActionMenuOpenUp(card: EventExploreCard): boolean {
+  protected isEventExploreItemActionMenuOpenUp(card: AppTypes.EventExploreCard): boolean {
     return this.inlineItemActionMenu?.scope === 'explore'
       && this.inlineItemActionMenu.id === card.id
       && this.inlineItemActionMenu.openUp;
   }
 
-  protected runEventExploreViewAction(card: EventExploreCard, stacked: boolean, event: Event): void {
+  protected runEventExploreViewAction(card: AppTypes.EventExploreCard, stacked: boolean, event: Event): void {
     event.stopPropagation();
     const source = this.resolveEventExploreSource(card);
     if (!source) {
@@ -13250,7 +11690,7 @@ export class App {
     this.inlineItemActionMenu = null;
   }
 
-  protected runEventExploreJoinAction(card: EventExploreCard, event: Event): void {
+  protected runEventExploreJoinAction(card: AppTypes.EventExploreCard, event: Event): void {
     event.stopPropagation();
     this.alertService.open(`Join request for ${card.title} is ready for backend wiring.`);
     this.inlineItemActionMenu = null;
@@ -13280,7 +11720,7 @@ export class App {
     return this.activitiesSecondaryFilterOptionLabel(this.activitiesSecondaryFilter);
   }
 
-  protected activitiesSecondaryFilterOptionLabel(filter: ActivitiesSecondaryFilter): string {
+  protected activitiesSecondaryFilterOptionLabel(filter: AppTypes.ActivitiesSecondaryFilter): string {
     if (filter === 'recent') {
       return this.activitiesPrimaryFilter === 'rates' ? 'Recent' : 'Upcoming';
     }
@@ -13300,7 +11740,7 @@ export class App {
     return `${group} · ${filter.label}`;
   }
 
-  protected activitiesRateFilterIcon(key: RateFilterKey = this.activitiesRateFilter): string {
+  protected activitiesRateFilterIcon(key: AppTypes.RateFilterKey = this.activitiesRateFilter): string {
     switch (key) {
       case 'individual-given':
         return 'north_east';
@@ -13319,7 +11759,7 @@ export class App {
     }
   }
 
-  protected rateFilterOptionClass(key: RateFilterKey): string {
+  protected rateFilterOptionClass(key: AppTypes.RateFilterKey): string {
     return `rate-filter-item-${key}`;
   }
 
@@ -13327,7 +11767,7 @@ export class App {
     return label === 'Pair';
   }
 
-  protected rateFilterCount(filter: RateFilterKey): number {
+  protected rateFilterCount(filter: AppTypes.RateFilterKey): number {
     return this.rateItems.filter(item => this.matchesRateFilter(item, filter)).length;
   }
 
@@ -13339,7 +11779,7 @@ export class App {
     return this.rateItems.length;
   }
 
-  protected activitiesPrimaryFilterCount(filter: ActivitiesPrimaryFilter): number {
+  protected activitiesPrimaryFilterCount(filter: AppTypes.ActivitiesPrimaryFilter): number {
     if (filter === 'rates') {
       return this.gameBadge;
     }
@@ -13355,7 +11795,7 @@ export class App {
     return this.hostingBadge;
   }
 
-  protected activitiesPrimaryFilterClass(filter: ActivitiesPrimaryFilter = this.activitiesPrimaryFilter): string {
+  protected activitiesPrimaryFilterClass(filter: AppTypes.ActivitiesPrimaryFilter = this.activitiesPrimaryFilter): string {
     if (filter === 'chats') {
       return 'activity-filter-chat';
     }
@@ -13371,7 +11811,7 @@ export class App {
     return 'activity-filter-rates';
   }
 
-  protected activitiesChatContextFilterCount(filter: ActivitiesChatContextFilter = this.activitiesChatContextFilter): number {
+  protected activitiesChatContextFilterCount(filter: AppTypes.ActivitiesChatContextFilter = this.activitiesChatContextFilter): number {
     if (this.activitiesPrimaryFilter !== 'chats') {
       return 0;
     }
@@ -13384,7 +11824,7 @@ export class App {
     }).length;
   }
 
-  protected activitiesChatContextFilterClass(filter: ActivitiesChatContextFilter = this.activitiesChatContextFilter): string {
+  protected activitiesChatContextFilterClass(filter: AppTypes.ActivitiesChatContextFilter = this.activitiesChatContextFilter): string {
     if (filter === 'event') {
       return 'chat-context-filter-event';
     }
@@ -13397,7 +11837,7 @@ export class App {
     return 'chat-context-filter-all';
   }
 
-  protected activitiesSecondaryFilterClass(filter: ActivitiesSecondaryFilter = this.activitiesSecondaryFilter): string {
+  protected activitiesSecondaryFilterClass(filter: AppTypes.ActivitiesSecondaryFilter = this.activitiesSecondaryFilter): string {
     if (filter === 'recent') {
       return 'activity-filter-secondary';
     }
@@ -13407,7 +11847,7 @@ export class App {
     return 'activity-filter-secondary';
   }
 
-  protected activitiesRateFilterClass(filter: RateFilterKey = this.activitiesRateFilter): string {
+  protected activitiesRateFilterClass(filter: AppTypes.RateFilterKey = this.activitiesRateFilter): string {
     return filter.startsWith('individual') ? 'activity-filter-rates' : 'activity-filter-rates';
   }
 
@@ -13482,18 +11922,18 @@ export class App {
     return '248px';
   }
 
-  protected onActivityRowClick(row: ActivityListRow, event?: Event): void {
+  protected onActivityRowClick(row: AppTypes.ActivityListRow, event?: Event): void {
     this.openActivityRow(row, event);
   }
 
-  protected onActivityRowPointerUp(row: ActivityListRow, event: PointerEvent): void {
+  protected onActivityRowPointerUp(row: AppTypes.ActivityListRow, event: PointerEvent): void {
     if (event.button !== 0) {
       return;
     }
     this.openActivityRow(row, event);
   }
 
-  private openActivityRow(row: ActivityListRow, event?: Event): void {
+  private openActivityRow(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
     const key = `${row.type}:${row.id}`;
     const now = Date.now();
@@ -13521,18 +11961,18 @@ export class App {
     this.selectedActivityRateId = null;
   }
 
-  protected activityChatMemberCount(row: ActivityListRow): number {
+  protected activityChatMemberCount(row: AppTypes.ActivityListRow): number {
     if (row.type !== 'chats') {
       return 0;
     }
     return this.getChatMemberCount(row.source as ChatMenuItem);
   }
 
-  protected isEventStyleActivity(row: ActivityListRow): boolean {
+  protected isEventStyleActivity(row: AppTypes.ActivityListRow): boolean {
     return row.type === 'events' || row.type === 'hosting' || row.type === 'invitations';
   }
 
-  protected isRateStyleActivity(row: ActivityListRow): boolean {
+  protected isRateStyleActivity(row: AppTypes.ActivityListRow): boolean {
     return row.type === 'rates';
   }
 
@@ -13540,11 +11980,11 @@ export class App {
     return `${index}-${imageUrl}`;
   }
 
-  protected trackByActivityGroup(index: number, group: ActivityGroup): string {
+  protected trackByActivityGroup(index: number, group: AppTypes.ActivityGroup): string {
     return `${index}:${group.label}`;
   }
 
-  protected trackByActivityRow(index: number, row: ActivityListRow): string {
+  protected trackByActivityRow(index: number, row: AppTypes.ActivityListRow): string {
     return `${row.type}:${row.id}`;
   }
 
@@ -13579,7 +12019,7 @@ export class App {
     return Math.max(0, listElement.scrollHeight - listElement.clientHeight) > 1;
   }
 
-  protected activityRateCardImageUrls(row: ActivityListRow): string[] {
+  protected activityRateCardImageUrls(row: AppTypes.ActivityListRow): string[] {
     if (row.type !== 'rates') {
       return [];
     }
@@ -13588,21 +12028,21 @@ export class App {
     const generated = Array.from({ length: 6 }, (_, index) =>
       this.rateCardSeedImageUrl(row.id, user?.id ?? 'rate-fallback', user?.gender ?? this.activeUser.gender, index)
     );
-    const seededCount = 1 + (this.hashText(`rate-photo-count:${user?.id ?? row.id}`) % 4);
+    const seededCount = 1 + (AppDemoGenerators.hashText(`rate-photo-count:${user?.id ?? row.id}`) % 4);
     const desiredCount = item.direction === 'met' ? Math.min(2, seededCount) : seededCount;
     return generated.slice(0, Math.max(1, Math.min(4, desiredCount)));
   }
 
-  protected activityRateCardActiveImageIndex(row: ActivityListRow): number {
+  protected activityRateCardActiveImageIndex(row: AppTypes.ActivityListRow): number {
     const images = this.activityRateCardImageUrls(row);
     if (images.length === 0) {
       return 0;
     }
     const current = this.activityRateCardActiveImageIndexById[row.id] ?? 0;
-    return this.clampNumber(current, 0, images.length - 1);
+    return AppUtils.clampNumber(current, 0, images.length - 1);
   }
 
-  protected activityRateCardActiveImageUrl(row: ActivityListRow): string {
+  protected activityRateCardActiveImageUrl(row: AppTypes.ActivityListRow): string {
     const images = this.activityRateCardImageUrls(row);
     if (images.length === 0) {
       return '';
@@ -13610,11 +12050,11 @@ export class App {
     return images[this.activityRateCardActiveImageIndex(row)] ?? images[0] ?? '';
   }
 
-  protected isActivityRateCardImageLoading(row: ActivityListRow): boolean {
+  protected isActivityRateCardImageLoading(row: AppTypes.ActivityListRow): boolean {
     return this.activityRateCardImageLoadingById[row.id] === true;
   }
 
-  protected selectActivityRateCardImage(row: ActivityListRow, imageIndex: number, event?: Event): void {
+  protected selectActivityRateCardImage(row: AppTypes.ActivityListRow, imageIndex: number, event?: Event): void {
     event?.stopPropagation();
     if (this.selectedActivityRateId && this.selectedActivityRateId !== row.id) {
       this.clearActivityRateEditorState();
@@ -13623,7 +12063,7 @@ export class App {
     if (images.length === 0) {
       return;
     }
-    const nextIndex = this.clampNumber(imageIndex, 0, images.length - 1);
+    const nextIndex = AppUtils.clampNumber(imageIndex, 0, images.length - 1);
     this.activityRateCardActiveImageIndexById[row.id] = nextIndex;
     if (this.activityRateCardLoadingTimerById[row.id]) {
       clearTimeout(this.activityRateCardLoadingTimerById[row.id]);
@@ -13637,17 +12077,17 @@ export class App {
     }, 500);
   }
 
-  protected activityRateCardPrimaryLine(row: ActivityListRow, cardIndex: number): string {
+  protected activityRateCardPrimaryLine(row: AppTypes.ActivityListRow, cardIndex: number): string {
     const line = this.activityRateCardLines(row, cardIndex);
     return line.primary;
   }
 
-  protected activityRateCardSecondaryLine(row: ActivityListRow, cardIndex: number): string {
+  protected activityRateCardSecondaryLine(row: AppTypes.ActivityListRow, cardIndex: number): string {
     const line = this.activityRateCardLines(row, cardIndex);
     return line.secondary;
   }
 
-  private activityRateCardLines(row: ActivityListRow, cardIndex: number): { primary: string; secondary: string } {
+  private activityRateCardLines(row: AppTypes.ActivityListRow, cardIndex: number): { primary: string; secondary: string } {
     const user = this.activityRateUser(row);
     if (!user) {
       return cardIndex === 0
@@ -13663,7 +12103,7 @@ export class App {
     const cards: Array<{ primary: string; secondary: string }> = [
       { primary: `${user.name}, ${user.age}`, secondary: `${user.city} · ${row.distanceKm} km` }
     ];
-    const pushCard = (privacy: DetailPrivacy, primary: string, secondary: string) => {
+    const pushCard = (privacy: AppTypes.DetailPrivacy, primary: string, secondary: string) => {
       const normalizedPrimary = primary.trim();
       const normalizedSecondary = secondary.trim();
       if (!normalizedPrimary || !normalizedSecondary) {
@@ -13737,11 +12177,11 @@ export class App {
     return value;
   }
 
-  private profileDetailRowByLabel(userId: string, label: string): ProfileDetailFormRow | null {
-    const target = this.normalizeText(label);
+  private profileDetailRowByLabel(userId: string, label: string): AppTypes.ProfileDetailFormRow | null {
+    const target = AppUtils.normalizeText(label);
     for (const group of this.profileDetailsForUser(userId)) {
       for (const row of group.rows) {
-        if (this.normalizeText(row.label) === target) {
+        if (AppUtils.normalizeText(row.label) === target) {
           return row;
         }
       }
@@ -13749,9 +12189,9 @@ export class App {
     return null;
   }
 
-  private canViewRateCardDetail(user: DemoUser, privacy: DetailPrivacy): boolean {
+  private canViewRateCardDetail(user: DemoUser, privacy: AppTypes.DetailPrivacy): boolean {
     const isSelf = user.id === this.activeUser.id;
-    const isFriend = this.isFriendOfActiveUser(user.id);
+    const isFriend = AppDemoGenerators.isFriendOfActiveUser(user.id, this.activeUser.id);
     const isHost = this.hostingItems.length > 0 || this.eventItems.some(item => item.isAdmin);
 
     if (user.profileStatus === 'inactive' && !isSelf) {
@@ -13778,12 +12218,12 @@ export class App {
     return isSelf;
   }
 
-  protected activityRateCardHasLine(row: ActivityListRow, cardIndex: number): boolean {
+  protected activityRateCardHasLine(row: AppTypes.ActivityListRow, cardIndex: number): boolean {
     const card = this.activityRateCardLines(row, cardIndex);
     return card.primary.length > 0 && card.secondary.length > 0;
   }
 
-  protected activityRateCardContentClasses(row: ActivityListRow): string[] {
+  protected activityRateCardContentClasses(row: AppTypes.ActivityListRow): string[] {
     const item = row.source as RateMenuItem;
     const directionClass = this.displayedRateDirection(item);
     return [
@@ -13792,7 +12232,7 @@ export class App {
     ];
   }
 
-  protected activityPairRateSlotUser(row: ActivityListRow, gender: DemoUser['gender']): DemoUser | null {
+  protected activityPairRateSlotUser(row: AppTypes.ActivityListRow, gender: DemoUser['gender']): DemoUser | null {
     if (row.type !== 'rates') {
       return null;
     }
@@ -13803,7 +12243,7 @@ export class App {
     }
     const candidates = this.users.filter(user => user.gender === gender && user.id !== primary?.id);
     if (candidates.length > 0) {
-      const seed = this.hashText(`pair-rate-slot:${row.id}:${gender}`);
+      const seed = AppDemoGenerators.hashText(`pair-rate-slot:${row.id}:${gender}`);
       return candidates[seed % candidates.length] ?? null;
     }
     if (primary && primary.gender !== gender) {
@@ -13812,28 +12252,28 @@ export class App {
     return null;
   }
 
-  protected activityPairRateSlotImageUrls(row: ActivityListRow, gender: DemoUser['gender']): string[] {
+  protected activityPairRateSlotImageUrls(row: AppTypes.ActivityListRow, gender: DemoUser['gender']): string[] {
     const user = this.activityPairRateSlotUser(row, gender);
     if (!user) {
       return [''];
     }
-    const seededCount = 2 + (this.hashText(`pair-rate-photo-count:${row.id}:${gender}:${user.id}`) % 2);
+    const seededCount = 2 + (AppDemoGenerators.hashText(`pair-rate-photo-count:${row.id}:${gender}:${user.id}`) % 2);
     return Array.from({ length: seededCount }, (_, index) =>
       this.rateCardSeedImageUrl(`${row.id}-${gender}`, user.id, user.gender, index)
     );
   }
 
-  protected activityPairRateSlotActiveImageIndex(row: ActivityListRow, gender: DemoUser['gender']): number {
+  protected activityPairRateSlotActiveImageIndex(row: AppTypes.ActivityListRow, gender: DemoUser['gender']): number {
     const images = this.activityPairRateSlotImageUrls(row, gender);
     if (images.length === 0) {
       return 0;
     }
     const key = this.activityPairRateSlotImageKey(row.id, gender);
     const current = this.activityPairRateCardActiveImageIndexByKey[key] ?? 0;
-    return this.clampNumber(current, 0, images.length - 1);
+    return AppUtils.clampNumber(current, 0, images.length - 1);
   }
 
-  protected activityPairRateSlotActiveImageUrl(row: ActivityListRow, gender: DemoUser['gender']): string {
+  protected activityPairRateSlotActiveImageUrl(row: AppTypes.ActivityListRow, gender: DemoUser['gender']): string {
     const images = this.activityPairRateSlotImageUrls(row, gender);
     if (images.length === 0) {
       return '';
@@ -13841,13 +12281,13 @@ export class App {
     return images[this.activityPairRateSlotActiveImageIndex(row, gender)] ?? images[0] ?? '';
   }
 
-  protected isActivityPairRateSlotImageLoading(row: ActivityListRow, gender: DemoUser['gender']): boolean {
+  protected isActivityPairRateSlotImageLoading(row: AppTypes.ActivityListRow, gender: DemoUser['gender']): boolean {
     const key = this.activityPairRateSlotImageKey(row.id, gender);
     return this.activityPairRateCardImageLoadingByKey[key] === true;
   }
 
   protected selectActivityPairRateSlotImage(
-    row: ActivityListRow,
+    row: AppTypes.ActivityListRow,
     gender: DemoUser['gender'],
     imageIndex: number,
     event?: Event
@@ -13858,7 +12298,7 @@ export class App {
       return;
     }
     const key = this.activityPairRateSlotImageKey(row.id, gender);
-    const nextIndex = this.clampNumber(imageIndex, 0, images.length - 1);
+    const nextIndex = AppUtils.clampNumber(imageIndex, 0, images.length - 1);
     this.activityPairRateCardActiveImageIndexByKey[key] = nextIndex;
     if (this.activityPairRateCardLoadingTimerByKey[key]) {
       clearTimeout(this.activityPairRateCardLoadingTimerByKey[key]);
@@ -13871,7 +12311,7 @@ export class App {
     }, 500);
   }
 
-  protected activityPairRateSlotPrimaryLine(row: ActivityListRow, gender: DemoUser['gender']): string {
+  protected activityPairRateSlotPrimaryLine(row: AppTypes.ActivityListRow, gender: DemoUser['gender']): string {
     const user = this.activityPairRateSlotUser(row, gender);
     if (!user) {
       return `${gender === 'woman' ? 'Woman' : 'Man'} · waiting`;
@@ -13879,7 +12319,7 @@ export class App {
     return `${user.name}, ${user.age}`;
   }
 
-  protected activityPairRateSlotSecondaryLine(row: ActivityListRow, gender: DemoUser['gender']): string {
+  protected activityPairRateSlotSecondaryLine(row: AppTypes.ActivityListRow, gender: DemoUser['gender']): string {
     const user = this.activityPairRateSlotUser(row, gender);
     if (!user) {
       return 'No pair card yet';
@@ -13887,12 +12327,12 @@ export class App {
     return `${user.city} · ${row.distanceKm} km`;
   }
 
-  protected activityPairRateSlotInitials(row: ActivityListRow, gender: DemoUser['gender']): string {
+  protected activityPairRateSlotInitials(row: AppTypes.ActivityListRow, gender: DemoUser['gender']): string {
     const user = this.activityPairRateSlotUser(row, gender);
     if (!user) {
       return '∅';
     }
-    return this.initialsFromText(user.name);
+    return AppUtils.initialsFromText(user.name);
   }
 
   private activityPairRateSlotImageKey(rowId: string, gender: DemoUser['gender']): string {
@@ -13901,7 +12341,7 @@ export class App {
 
   private profilePortraitUrlForUser(user: DemoUser, index: number, context: string): string {
     const safeGender = user.gender === 'woman' ? 'women' : 'men';
-    const seed = this.hashText(`portrait:${context}:${user.id}:${index}`);
+    const seed = AppDemoGenerators.hashText(`portrait:${context}:${user.id}:${index}`);
     const pictureIndex = seed % 100;
     return `https://randomuser.me/api/portraits/${safeGender}/${pictureIndex}.jpg`;
   }
@@ -13912,7 +12352,7 @@ export class App {
     gender: DemoUser['gender'],
     index: number
   ): string {
-    const hash = this.hashText(`rate-card-${userId}-${rowId}-${index + 1}`);
+    const hash = AppDemoGenerators.hashText(`rate-card-${userId}-${rowId}-${index + 1}`);
     const genderFolder = gender === 'woman' ? 'women' : 'men';
     const portraitIndex = hash % 100;
     return `https://randomuser.me/api/portraits/${genderFolder}/${portraitIndex}.jpg`;
@@ -13926,21 +12366,21 @@ export class App {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 
-  protected activityRateBadgeLabel(row: ActivityListRow): string {
+  protected activityRateBadgeLabel(row: AppTypes.ActivityListRow): string {
     const ownLabel = this.activityOwnRatingLabel(row);
     return ownLabel ? ownLabel : 'Rate';
   }
 
-  protected isSelectedActivityRateRow(row: ActivityListRow): boolean {
+  protected isSelectedActivityRateRow(row: AppTypes.ActivityListRow): boolean {
     return row.type === 'rates' && this.isActivityRateEditorOpen() && this.selectedActivityRateId === row.id;
   }
 
-  protected isActivityRateBlinking(row: ActivityListRow): boolean {
+  protected isActivityRateBlinking(row: AppTypes.ActivityListRow): boolean {
     const until = this.activityRateBlinkUntilByRowId[row.id] ?? 0;
     return until > Date.now();
   }
 
-  protected isPairReceivedRateRow(row: ActivityListRow): boolean {
+  protected isPairReceivedRateRow(row: AppTypes.ActivityListRow): boolean {
     if (row.type !== 'rates') {
       return false;
     }
@@ -13948,7 +12388,7 @@ export class App {
     return item.mode === 'pair' && this.displayedRateDirection(item) === 'received';
   }
 
-  protected isPairRateRow(row: ActivityListRow): boolean {
+  protected isPairRateRow(row: AppTypes.ActivityListRow): boolean {
     if (row.type !== 'rates') {
       return false;
     }
@@ -14049,13 +12489,12 @@ export class App {
     if (!this.isActivitiesRatesFullscreenReadOnlyNavigation()) {
       return false;
     }
-    const row = this.currentActivitiesRatesFullscreenRow();
-    if (!row) {
+    const allRows = this.activitiesRatesFullscreenAllRows();
+    if (allRows.length === 0) {
       return false;
     }
-    const allRows = this.activitiesRatesFullscreenAllRows();
-    const currentIndex = this.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, allRows.length - 1));
-    return currentIndex < allRows.length;
+    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, allRows.length - 1));
+    return currentIndex < allRows.length - 1;
   }
 
   protected navigateActivitiesRatesFullscreenPrev(event?: Event): void {
@@ -14063,17 +12502,22 @@ export class App {
     if (!this.isActivitiesRatesFullscreenReadOnlyNavigation() || this.activitiesRatesFullscreenAnimating) {
       return;
     }
+    const row = this.currentActivitiesRatesFullscreenRow();
+    if (!row) {
+      return;
+    }
     const allRows = this.activitiesRatesFullscreenAllRows();
     if (allRows.length === 0) {
       return;
     }
-    const currentIndex = this.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, allRows.length);
+    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, allRows.length - 1));
     const previousIndex = Math.max(0, currentIndex - 1);
     if (previousIndex === currentIndex) {
       return;
     }
+    this.startActivitiesRatesFullscreenLeaveAnimation(row);
     this.activitiesRatesFullscreenCardIndex = previousIndex;
-    this.syncActivitiesRatesFullscreenSelection();
+    this.updateActivitiesHeaderProgress();
   }
 
   protected navigateActivitiesRatesFullscreenNext(event?: Event): void {
@@ -14089,18 +12533,18 @@ export class App {
     if (allRows.length === 0) {
       return;
     }
-    const currentIndex = this.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, allRows.length - 1));
-    const hasUpcomingRound = currentIndex + 1 < allRows.length;
-    const nextIndex = Math.min(allRows.length, currentIndex + 1);
-    if (hasUpcomingRound) {
-      this.startActivitiesRatesFullscreenLeaveAnimation(row);
+    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, allRows.length - 1));
+    const nextIndex = Math.min(allRows.length - 1, currentIndex + 1);
+    if (nextIndex === currentIndex) {
+      return;
     }
+    this.startActivitiesRatesFullscreenLeaveAnimation(row);
     this.activitiesRatesFullscreenCardIndex = nextIndex;
     this.updateActivitiesHeaderProgress();
     this.maybeStartActivitiesRatesFullscreenPaginationLoad();
   }
 
-  protected activityOwnRatingValue(row: ActivityListRow): number {
+  protected activityOwnRatingValue(row: AppTypes.ActivityListRow): number {
     if (row.type !== 'rates') {
       return 0;
     }
@@ -14118,12 +12562,12 @@ export class App {
     return this.rateOwnScore(item);
   }
 
-  protected activityOwnRatingLabel(row: ActivityListRow): string {
+  protected activityOwnRatingLabel(row: AppTypes.ActivityListRow): string {
     const value = this.activityOwnRatingValue(row);
     return value > 0 ? `${value}` : '';
   }
 
-  protected isActivityRatePending(row: ActivityListRow): boolean {
+  protected isActivityRatePending(row: AppTypes.ActivityListRow): boolean {
     if (row.type !== 'rates') {
       return false;
     }
@@ -14137,7 +12581,7 @@ export class App {
     return !this.hasOwnRating(item);
   }
 
-  protected openActivityRateEditor(row: ActivityListRow, event: Event): void {
+  protected openActivityRateEditor(row: AppTypes.ActivityListRow, event: Event): void {
     event.stopPropagation();
     if (row.type !== 'rates') {
       return;
@@ -14200,7 +12644,7 @@ export class App {
       this.triggerActivityRateBlinks(row.id);
       return;
     }
-    const currentIndex = this.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, allRows.length - 1));
+    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, allRows.length - 1));
     const hasUpcomingRound = currentIndex + 1 < allRows.length;
     const nextIndex = Math.min(allRows.length, currentIndex + 1);
     this.triggerActivityRateBlinks(row.id, () => {
@@ -14306,7 +12750,7 @@ export class App {
     return this.activityRateEditorClosing;
   }
 
-  protected currentActivitiesRatesFullscreenRow(): ActivityListRow | null {
+  protected currentActivitiesRatesFullscreenRow(): AppTypes.ActivityListRow | null {
     if (!this.isRatesFullscreenModeActive()) {
       return null;
     }
@@ -14397,7 +12841,7 @@ export class App {
     return item.mode === 'pair' ? 'Pair' : 'Single';
   }
 
-  private selectedActivityRateRow(): ActivityListRow | null {
+  private selectedActivityRateRow(): AppTypes.ActivityListRow | null {
     if (!this.selectedActivityRateId) {
       return null;
     }
@@ -14408,20 +12852,12 @@ export class App {
     return Math.min(10, Math.max(1, Math.round(value)));
   }
 
-  private activityRateUser(row: ActivityListRow): DemoUser | null {
+  private activityRateUser(row: AppTypes.ActivityListRow): DemoUser | null {
     if (row.type !== 'rates') {
       return null;
     }
     const item = row.source as RateMenuItem;
     return this.users.find(user => user.id === item.userId) ?? null;
-  }
-
-  private compactBirthdayLabel(birthdayIso: string): string {
-    const parsed = new Date(birthdayIso);
-    if (Number.isNaN(parsed.getTime())) {
-      return 'N/A';
-    }
-    return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 
   private rateOwnScore(item: RateMenuItem): number {
@@ -14479,7 +12915,7 @@ export class App {
     return null;
   }
 
-  private commitPendingRateDirectionOverrides(targetFilter?: RateFilterKey): void {
+  private commitPendingRateDirectionOverrides(targetFilter?: AppTypes.RateFilterKey): void {
     const target = targetFilter ? this.parseRateFilterKey(targetFilter) : null;
     for (const [itemId, pendingDirection] of Object.entries(this.pendingActivityRateDirectionOverrideById)) {
       if (!pendingDirection) {
@@ -14499,7 +12935,7 @@ export class App {
     }
   }
 
-  private parseRateFilterKey(filter: RateFilterKey): { mode: 'individual' | 'pair'; direction: RateMenuItem['direction'] } {
+  private parseRateFilterKey(filter: AppTypes.RateFilterKey): { mode: 'individual' | 'pair'; direction: RateMenuItem['direction'] } {
     const [mode, direction] = filter.split('-') as ['individual' | 'pair', RateMenuItem['direction']];
     return { mode, direction };
   }
@@ -14631,7 +13067,7 @@ export class App {
     this.updateActivitiesHeaderProgress();
   }
 
-  private startActivitiesRatesFullscreenLeaveAnimation(row: ActivityListRow): void {
+  private startActivitiesRatesFullscreenLeaveAnimation(row: AppTypes.ActivityListRow): void {
     this.activitiesRatesFullscreenLeavingRow = row;
     this.activitiesRatesFullscreenAnimating = true;
     this.cancelActivitiesRatesFullscreenAdvance();
@@ -14652,7 +13088,7 @@ export class App {
       return;
     }
     const relative = ((clientX - this.activitiesRatesPairSplitBounds.left) / this.activitiesRatesPairSplitBounds.width) * 100;
-    this.activitiesRatesPairSplitPercent = this.clampNumber(
+    this.activitiesRatesPairSplitPercent = AppUtils.clampNumber(
       relative,
       App.ACTIVITIES_RATES_PAIR_SPLIT_MIN_PERCENT,
       App.ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT
@@ -14673,7 +13109,7 @@ export class App {
     }
     const deltaPercent =
       ((clientX - this.activitiesRatesPairSplitDragStartClientX) / this.activitiesRatesPairSplitBounds.width) * 100;
-    this.activitiesRatesPairSplitPercent = this.clampNumber(
+    this.activitiesRatesPairSplitPercent = AppUtils.clampNumber(
       this.activitiesRatesPairSplitDragStartPercent + deltaPercent,
       App.ACTIVITIES_RATES_PAIR_SPLIT_MIN_PERCENT,
       App.ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT
@@ -14701,11 +13137,11 @@ export class App {
     this.cdr.markForCheck();
   }
 
-  private activitiesRatesFullscreenRows(): ActivityListRow[] {
+  private activitiesRatesFullscreenRows(): AppTypes.ActivityListRow[] {
     return this.filteredActivityRows.filter(row => row.type === 'rates');
   }
 
-  private activitiesRatesFullscreenAllRows(): ActivityListRow[] {
+  private activitiesRatesFullscreenAllRows(): AppTypes.ActivityListRow[] {
     return this.buildFilteredActivityRowsBase().filter(row => row.type === 'rates');
   }
 
@@ -14792,7 +13228,7 @@ export class App {
     return (this.acceptedInvitationIdsByUser[this.activeUser.id] ?? []).includes(invitationId);
   }
 
-  private acceptedInvitationRowsAsEvents(): ActivityListRow[] {
+  private acceptedInvitationRowsAsEvents(): AppTypes.ActivityListRow[] {
     const acceptedIds = new Set(this.acceptedInvitationIdsByUser[this.activeUser.id] ?? []);
     if (acceptedIds.size === 0) {
       return [];
@@ -14825,7 +13261,7 @@ export class App {
       });
   }
 
-  protected activityTypeLabel(row: ActivityListRow): string {
+  protected activityTypeLabel(row: AppTypes.ActivityListRow): string {
     if (row.type === 'events') {
       return 'Event';
     }
@@ -14841,7 +13277,7 @@ export class App {
     return 'Chat';
   }
 
-  protected activityDateLabel(row: ActivityListRow): string {
+  protected activityDateLabel(row: AppTypes.ActivityListRow): string {
     const parsed = new Date(row.dateIso);
     if (Number.isNaN(parsed.getTime())) {
       return row.detail;
@@ -14854,58 +13290,58 @@ export class App {
     });
   }
 
-  protected activityImageUrl(row: ActivityListRow): string {
+  protected activityImageUrl(row: AppTypes.ActivityListRow): string {
     return this.activityImageById[row.id] ?? 'https://picsum.photos/seed/event-default/1200/700';
   }
 
-  protected activitySourceLink(row: ActivityListRow): string {
+  protected activitySourceLink(row: AppTypes.ActivityListRow): string {
     return this.activitySourceLinkById[row.id] ?? 'https://example.com/events';
   }
 
-  protected showActivitySourceIcon(row: ActivityListRow): boolean {
+  protected showActivitySourceIcon(row: AppTypes.ActivityListRow): boolean {
     return row.type === 'events' || row.type === 'invitations';
   }
 
-  protected activitySourceAvatarLabel(row: ActivityListRow): string {
+  protected activitySourceAvatarLabel(row: AppTypes.ActivityListRow): string {
     if (row.type === 'invitations') {
       const invitation = row.source as InvitationMenuItem;
-      return this.initialsFromText(invitation.inviter);
+      return AppUtils.initialsFromText(invitation.inviter);
     }
     if (row.type === 'events') {
       const event = row.source as EventMenuItem;
-      const explicitOwner = this.findUserByName(event.avatar || '');
+      const explicitOwner = AppUtils.findUserByName(this.users, event.avatar || '');
       if (explicitOwner) {
         return explicitOwner.initials;
       }
-      const fallbackOwner = this.users[this.hashText(`${row.id}-${event.title}`) % this.users.length];
-      return fallbackOwner?.initials ?? this.initialsFromText(event.title);
+      const fallbackOwner = this.users[AppDemoGenerators.hashText(`${row.id}-${event.title}`) % this.users.length];
+      return fallbackOwner?.initials ?? AppUtils.initialsFromText(event.title);
     }
     if (row.type === 'hosting') {
       const hosting = row.source as HostingMenuItem;
-      return this.initialsFromText(hosting.avatar || hosting.title);
+      return AppUtils.initialsFromText(hosting.avatar || hosting.title);
     }
-    return this.initialsFromText(row.title);
+    return AppUtils.initialsFromText(row.title);
   }
 
-  protected activitySourceAvatarClass(row: ActivityListRow): string {
+  protected activitySourceAvatarClass(row: AppTypes.ActivityListRow): string {
     const toneSeed = row.type === 'invitations'
       ? `${row.id}-${(row.source as InvitationMenuItem).inviter}`
       : `${row.id}-${row.title}`;
-    const toneIndex = (this.hashText(toneSeed) % 8) + 1;
+    const toneIndex = (AppDemoGenerators.hashText(toneSeed) % 8) + 1;
     return `activities-source-tone-${toneIndex}`;
   }
 
-  protected activityCapacityLabel(row: ActivityListRow): string {
+  protected activityCapacityLabel(row: AppTypes.ActivityListRow): string {
     const acceptedMembersCount = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted').length;
     const capacityTotal = this.activityCapacityTotal(row, acceptedMembersCount);
     return `${acceptedMembersCount} / ${capacityTotal}`;
   }
 
-  protected activityPendingMemberCount(row: ActivityListRow): number {
+  protected activityPendingMemberCount(row: AppTypes.ActivityListRow): number {
     return this.getActivityMembersByRow(row).filter(member => member.status === 'pending').length;
   }
 
-  protected isActivityFull(row: ActivityListRow): boolean {
+  protected isActivityFull(row: AppTypes.ActivityListRow): boolean {
     if (row.type !== 'events') {
       return false;
     }
@@ -14914,7 +13350,7 @@ export class App {
     return capacityTotal > 0 && acceptedMembersCount >= capacityTotal;
   }
 
-  private activityCapacityTotal(row: ActivityListRow, fallbackBase = 0): number {
+  private activityCapacityTotal(row: AppTypes.ActivityListRow, fallbackBase = 0): number {
     const source = this.activityCapacityById[row.id];
     if (source) {
       const parts = source.split('/').map(part => Number.parseInt(part.trim(), 10));
@@ -14925,11 +13361,11 @@ export class App {
     return Math.max(fallbackBase, 4);
   }
 
-  private activityVisibility(row: ActivityListRow): EventVisibility {
+  private activityVisibility(row: AppTypes.ActivityListRow): AppTypes.EventVisibility {
     return this.eventVisibilityById[row.id] ?? (row.type === 'hosting' ? 'Invitation only' : 'Public');
   }
 
-  protected activityTypeIcon(row: ActivityListRow): string {
+  protected activityTypeIcon(row: AppTypes.ActivityListRow): string {
     if (row.type === 'events') {
       return 'event';
     }
@@ -14945,30 +13381,30 @@ export class App {
     return 'chat';
   }
 
-  protected activityLeadingIcon(row: ActivityListRow): string {
+  protected activityLeadingIcon(row: AppTypes.ActivityListRow): string {
     if (row.type === 'hosting' || row.type === 'events') {
       return this.eventVisibilityIcon(this.activityVisibility(row));
     }
     return this.activityTypeIcon(row);
   }
 
-  protected activityLeadingIconCircleClass(row: ActivityListRow): string {
+  protected activityLeadingIconCircleClass(row: AppTypes.ActivityListRow): string {
     if (row.type !== 'hosting' && row.type !== 'events') {
       return '';
     }
     return `experience-item-icon-${this.eventVisibilityClass(this.activityVisibility(row))}`;
   }
 
-  protected activityMetaLine(row: ActivityListRow): string {
+  protected activityMetaLine(row: AppTypes.ActivityListRow): string {
     return `${this.activityTypeLabel(row)} · ${this.activityDateLabel(row)} · ${row.distanceKm} km`;
   }
 
-  protected openActivityFromInlineControl(row: ActivityListRow, event: Event): void {
+  protected openActivityFromInlineControl(row: AppTypes.ActivityListRow, event: Event): void {
     event.stopPropagation();
     this.onActivityRowClick(row);
   }
 
-  protected toggleActivityItemActionMenu(row: ActivityListRow, event: Event): void {
+  protected toggleActivityItemActionMenu(row: AppTypes.ActivityListRow, event: Event): void {
     event.stopPropagation();
     if (this.inlineItemActionMenu?.scope === 'activity' && this.inlineItemActionMenu.id === row.id) {
       this.inlineItemActionMenu = null;
@@ -14983,29 +13419,29 @@ export class App {
     this.subEventMemberRolePickerUserId = null;
   }
 
-  protected isActivityItemActionMenuOpen(row: ActivityListRow): boolean {
+  protected isActivityItemActionMenuOpen(row: AppTypes.ActivityListRow): boolean {
     return this.inlineItemActionMenu?.scope === 'activity' && this.inlineItemActionMenu.id === row.id;
   }
 
-  protected isActivityItemActionMenuOpenUp(row: ActivityListRow): boolean {
+  protected isActivityItemActionMenuOpenUp(row: AppTypes.ActivityListRow): boolean {
     return this.inlineItemActionMenu?.scope === 'activity'
       && this.inlineItemActionMenu.id === row.id
       && this.inlineItemActionMenu.openUp;
   }
 
-  protected runActivityItemPrimaryAction(row: ActivityListRow, event: Event): void {
+  protected runActivityItemPrimaryAction(row: AppTypes.ActivityListRow, event: Event): void {
     event.stopPropagation();
     this.openActivityPrimaryAction(row);
     this.inlineItemActionMenu = null;
   }
 
-  protected runActivityItemSecondaryAction(row: ActivityListRow, event: Event): void {
+  protected runActivityItemSecondaryAction(row: AppTypes.ActivityListRow, event: Event): void {
     event.stopPropagation();
     this.triggerActivitySecondaryAction(row);
     this.inlineItemActionMenu = null;
   }
 
-  protected runActivityItemApproveAction(row: ActivityListRow, event: Event): void {
+  protected runActivityItemApproveAction(row: AppTypes.ActivityListRow, event: Event): void {
     event.stopPropagation();
     if (row.type !== 'invitations') {
       return;
@@ -15014,23 +13450,23 @@ export class App {
     this.inlineItemActionMenu = null;
   }
 
-  protected runActivityItemPublishAction(row: ActivityListRow, event: Event): void {
+  protected runActivityItemPublishAction(row: AppTypes.ActivityListRow, event: Event): void {
     event.stopPropagation();
     this.publishHostingActivity(row, event);
     this.inlineItemActionMenu = null;
   }
 
-  protected runActivityItemViewAction(row: ActivityListRow, event: Event): void {
+  protected runActivityItemViewAction(row: AppTypes.ActivityListRow, event: Event): void {
     event.stopPropagation();
     this.openActivityViewAction(row);
     this.inlineItemActionMenu = null;
   }
 
-  protected canManageActivityRow(row: ActivityListRow): boolean {
+  protected canManageActivityRow(row: AppTypes.ActivityListRow): boolean {
     return row.type === 'invitations' || row.type === 'events' || row.type === 'hosting';
   }
 
-  protected shouldShowActivityPublishAction(row: ActivityListRow): boolean {
+  protected shouldShowActivityPublishAction(row: AppTypes.ActivityListRow): boolean {
     return row.type === 'hosting'
       && row.isAdmin === true
       && this.activitiesPrimaryFilter === 'hosting'
@@ -15038,18 +13474,18 @@ export class App {
       && !this.isHostingPublished(row.id);
   }
 
-  protected shouldShowActivityViewAction(row: ActivityListRow): boolean {
+  protected shouldShowActivityViewAction(row: AppTypes.ActivityListRow): boolean {
     return row.type === 'events' && row.isAdmin === true;
   }
 
-  protected activityPrimaryActionIcon(row: ActivityListRow): string {
+  protected activityPrimaryActionIcon(row: AppTypes.ActivityListRow): string {
     if (row.type === 'invitations') {
       return 'visibility';
     }
     return row.isAdmin ? 'edit' : 'visibility';
   }
 
-  protected activityPrimaryActionLabel(row: ActivityListRow): string {
+  protected activityPrimaryActionLabel(row: AppTypes.ActivityListRow): string {
     if (row.type === 'invitations') {
       return 'View Event';
     }
@@ -15059,11 +13495,11 @@ export class App {
     return 'View Event';
   }
 
-  protected activitySecondaryActionIcon(row: ActivityListRow): string {
+  protected activitySecondaryActionIcon(row: AppTypes.ActivityListRow): string {
     return this.isExitActivityRow(row) ? 'logout' : 'delete';
   }
 
-  protected activitySecondaryActionLabel(row: ActivityListRow): string {
+  protected activitySecondaryActionLabel(row: AppTypes.ActivityListRow): string {
     if (this.isExitActivityRow(row)) {
       return 'Exit';
     }
@@ -15073,7 +13509,7 @@ export class App {
     return 'Delete';
   }
 
-  protected openActivityPrimaryAction(row: ActivityListRow): void {
+  protected openActivityPrimaryAction(row: AppTypes.ActivityListRow): void {
     if (row.type === 'invitations') {
       this.openInvitationItem(row.source as InvitationMenuItem, false, true);
       return;
@@ -15088,14 +13524,14 @@ export class App {
     }
   }
 
-  protected openActivityViewAction(row: ActivityListRow): void {
+  protected openActivityViewAction(row: AppTypes.ActivityListRow): void {
     if (row.type !== 'events' && row.type !== 'hosting') {
       return;
     }
     this.openEventEditor(true, 'edit', row.source as EventMenuItem | HostingMenuItem, true);
   }
 
-  protected triggerActivitySecondaryAction(row: ActivityListRow): void {
+  protected triggerActivitySecondaryAction(row: AppTypes.ActivityListRow): void {
     if (row.type === 'invitations') {
       this.removeInvitationById(row.id);
       if (this.selectedInvitation?.id === row.id) {
@@ -15112,7 +13548,7 @@ export class App {
     this.pendingActivityDeleteRow = row;
   }
 
-  protected publishHostingActivity(row: ActivityListRow, event?: Event): void {
+  protected publishHostingActivity(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
     if (!this.shouldShowActivityPublishAction(row)) {
       return;
@@ -15146,11 +13582,11 @@ export class App {
     this.pendingActivityPublishRow = null;
   }
 
-  protected isExitActivityRow(row: ActivityListRow): boolean {
+  protected isExitActivityRow(row: AppTypes.ActivityListRow): boolean {
     return (row.type === 'events' || row.type === 'hosting') && row.isAdmin !== true;
   }
 
-  protected openActivityMembers(row: ActivityListRow, event?: Event, source: 'default' | 'explore' = 'default'): void {
+  protected openActivityMembers(row: AppTypes.ActivityListRow, event?: Event, source: 'default' | 'explore' = 'default'): void {
     event?.stopPropagation();
     const previousStackedPopup = this.stackedPopup;
     this.subEventAssetMembersContext = null;
@@ -15172,7 +13608,7 @@ export class App {
     this.stackedPopup = 'activityMembers';
   }
 
-  protected eventEditorHeaderMembers(limit = 3): ActivityMemberEntry[] {
+  protected eventEditorHeaderMembers(limit = 3): AppTypes.ActivityMemberEntry[] {
     const row = this.eventEditorMembersRow();
     if (!row) {
       return [];
@@ -15316,7 +13752,7 @@ export class App {
     this.showActivityInviteSortPicker = !this.showActivityInviteSortPicker;
   }
 
-  protected selectActivityInviteSort(sort: ActivityInviteSort): void {
+  protected selectActivityInviteSort(sort: AppTypes.ActivityInviteSort): void {
     this.activityInviteSort = sort;
     this.showActivityInviteSortPicker = false;
   }
@@ -15334,34 +13770,41 @@ export class App {
     return this.selectedActivityInviteUserIds.includes(userId);
   }
 
-  protected get activityInviteCandidates(): ActivityMemberEntry[] {
+  protected get activityInviteCandidates(): AppTypes.ActivityMemberEntry[] {
     if (!this.selectedActivityMembersRow) {
       return [];
     }
     const existing = new Set(this.selectedActivityMembers.map(member => member.userId));
     const candidates = this.users
       .filter(user => user.id !== this.activeUser.id && !existing.has(user.id))
-      .map(user => this.toActivityMemberEntry(user, this.selectedActivityMembersRow!, this.selectedActivityMembersRowId!, {
-        status: 'pending',
-        pendingSource: this.selectedActivityMembersRow?.isAdmin ? 'admin' : 'member',
-        invitedByActiveUser: true
-      }));
+      .map(user => AppDemoGenerators.toActivityMemberEntry(
+        user,
+        this.selectedActivityMembersRow!,
+        this.selectedActivityMembersRowId!,
+        this.activeUser.id,
+        {
+          status: 'pending',
+          pendingSource: this.selectedActivityMembersRow?.isAdmin ? 'admin' : 'member',
+          invitedByActiveUser: true
+        },
+        APP_DEMO_DATA.activityMemberMetPlaces
+      ));
     return [...candidates].sort((a, b) => {
       if (this.activityInviteSort === 'relevant') {
         if (b.relevance !== a.relevance) {
           return b.relevance - a.relevance;
         }
       }
-      return this.toSortableDate(b.metAtIso) - this.toSortableDate(a.metAtIso);
+      return AppUtils.toSortableDate(b.metAtIso) - AppUtils.toSortableDate(a.metAtIso);
     });
   }
 
-  protected get selectedActivityInviteChips(): ActivityMemberEntry[] {
+  protected get selectedActivityInviteChips(): AppTypes.ActivityMemberEntry[] {
     const selected = new Set(this.selectedActivityInviteUserIds);
     return this.activityInviteCandidates.filter(item => selected.has(item.userId));
   }
 
-  protected get activityMembersOrdered(): ActivityMemberEntry[] {
+  protected get activityMembersOrdered(): AppTypes.ActivityMemberEntry[] {
     const ordered = this.sortActivityMembersByActionTimeAsc(this.selectedActivityMembers);
     if (!this.activityMembersPendingOnly) {
       return ordered;
@@ -15391,14 +13834,14 @@ export class App {
     return !this.activityMembersReadOnly;
   }
 
-  protected canShowActivityMemberActionMenu(entry: ActivityMemberEntry): boolean {
+  protected canShowActivityMemberActionMenu(entry: AppTypes.ActivityMemberEntry): boolean {
     if (this.activityMembersReadOnly) {
       return false;
     }
     return this.canApproveActivityMember(entry) || this.canDeleteActivityMember(entry);
   }
 
-  protected toggleActivityMemberActionMenu(entry: ActivityMemberEntry, event: Event): void {
+  protected toggleActivityMemberActionMenu(entry: AppTypes.ActivityMemberEntry, event: Event): void {
     event.stopPropagation();
     if (!this.canShowActivityMemberActionMenu(entry)) {
       return;
@@ -15415,17 +13858,17 @@ export class App {
     };
   }
 
-  protected isActivityMemberActionMenuOpen(entry: ActivityMemberEntry): boolean {
+  protected isActivityMemberActionMenuOpen(entry: AppTypes.ActivityMemberEntry): boolean {
     return this.inlineItemActionMenu?.scope === 'activityMember' && this.inlineItemActionMenu.id === entry.userId;
   }
 
-  protected isActivityMemberActionMenuOpenUp(entry: ActivityMemberEntry): boolean {
+  protected isActivityMemberActionMenuOpenUp(entry: AppTypes.ActivityMemberEntry): boolean {
     return this.inlineItemActionMenu?.scope === 'activityMember'
       && this.inlineItemActionMenu.id === entry.userId
       && this.inlineItemActionMenu.openUp;
   }
 
-  protected activityMemberMenuDeleteLabel(entry: ActivityMemberEntry): string {
+  protected activityMemberMenuDeleteLabel(entry: AppTypes.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return 'Remove member';
     }
@@ -15435,12 +13878,12 @@ export class App {
     return 'Delete invitation';
   }
 
-  protected activityInviteMetLabel(entry: ActivityMemberEntry): string {
+  protected activityInviteMetLabel(entry: AppTypes.ActivityMemberEntry): string {
     const dateText = new Date(entry.metAtIso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     return `${entry.metWhere} · ${dateText}`;
   }
 
-  protected activityMemberActionDate(entry: ActivityMemberEntry): string {
+  protected activityMemberActionDate(entry: AppTypes.ActivityMemberEntry): string {
     const when = new Date(entry.actionAtIso);
     const dateText = Number.isNaN(when.getTime())
       ? new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
@@ -15449,17 +13892,17 @@ export class App {
   }
 
   protected chatMemberActionDate(member: DemoUser): string {
-    const seed = this.hashText(`${this.selectedChatMembersItem?.id ?? 'chat'}:${member.id}`);
-    const when = this.addDays(new Date('2026-02-25T12:00:00'), -(seed % 28));
+    const seed = AppDemoGenerators.hashText(`${this.selectedChatMembersItem?.id ?? 'chat'}:${member.id}`);
+    const when = AppUtils.addDays(new Date('2026-02-25T12:00:00'), -(seed % 28));
     const dateText = when.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     return `${dateText}`;
   }
 
-  protected activityMemberAge(entry: ActivityMemberEntry): number {
+  protected activityMemberAge(entry: AppTypes.ActivityMemberEntry): number {
     return this.users.find(user => user.id === entry.userId)?.age ?? 0;
   }
 
-  private activityMemberRole(entry: ActivityMemberEntry): ActivityMemberRole {
+  private activityMemberRole(entry: AppTypes.ActivityMemberEntry): AppTypes.ActivityMemberRole {
     if (entry.role === 'Admin') {
       return 'Admin';
     }
@@ -15480,7 +13923,7 @@ export class App {
     return 'Member';
   }
 
-  protected activityMemberStatusClass(entry: ActivityMemberEntry): string {
+  protected activityMemberStatusClass(entry: AppTypes.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return 'activity-member-approved';
     }
@@ -15493,14 +13936,14 @@ export class App {
     return 'activity-member-pending-admin-approval';
   }
 
-  protected canApproveActivityMember(entry: ActivityMemberEntry): boolean {
+  protected canApproveActivityMember(entry: AppTypes.ActivityMemberEntry): boolean {
     if (this.selectedActivityMembersRow?.isAdmin !== true) {
       return false;
     }
     return entry.status === 'pending' && (entry.pendingSource === 'member' || entry.requestKind === 'join');
   }
 
-  protected canDeleteActivityMember(entry: ActivityMemberEntry): boolean {
+  protected canDeleteActivityMember(entry: AppTypes.ActivityMemberEntry): boolean {
     if (this.selectedActivityMembersRow?.isAdmin === true) {
       return true;
     }
@@ -15512,7 +13955,7 @@ export class App {
       && entry.invitedByActiveUser === true;
   }
 
-  protected activityMemberStatusLabel(entry: ActivityMemberEntry): string {
+  protected activityMemberStatusLabel(entry: AppTypes.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return 'Approved';
     }
@@ -15525,7 +13968,7 @@ export class App {
     return 'Waiting For Admin Approval';
   }
 
-  protected memberCardStatusIcon(entry: ActivityMemberEntry): string {
+  protected memberCardStatusIcon(entry: AppTypes.ActivityMemberEntry): string {
     const role = this.activityMemberRole(entry);
     if (entry.status === 'accepted') {
       if (role === 'Admin') {
@@ -15542,7 +13985,7 @@ export class App {
     return 'outgoing_mail';
   }
 
-  protected memberCardStatusClass(entry: ActivityMemberEntry): string {
+  protected memberCardStatusClass(entry: AppTypes.ActivityMemberEntry): string {
     const role = this.activityMemberRole(entry);
     if (entry.status === 'accepted') {
       if (role === 'Admin') {
@@ -15559,7 +14002,7 @@ export class App {
     return 'member-status-invite-pending';
   }
 
-  protected memberCardToneClass(entry: ActivityMemberEntry): string {
+  protected memberCardToneClass(entry: AppTypes.ActivityMemberEntry): string {
     const role = this.activityMemberRole(entry);
     if (entry.status === 'accepted') {
       if (role === 'Admin') {
@@ -15576,7 +14019,7 @@ export class App {
     return 'member-card-tone-invite-pending';
   }
 
-  protected memberCardStatusLabel(entry: ActivityMemberEntry): string {
+  protected memberCardStatusLabel(entry: AppTypes.ActivityMemberEntry): string {
     const role = this.activityMemberRole(entry);
     if (entry.status === 'accepted') {
       return role;
@@ -15584,17 +14027,17 @@ export class App {
     return this.activityMemberStatusLabel(entry);
   }
 
-  protected activityMemberRoleLabel(entry: ActivityMemberEntry): string {
+  protected activityMemberRoleLabel(entry: AppTypes.ActivityMemberEntry): string {
     return this.activityMemberRole(entry);
   }
 
-  protected approveActivityMember(entry: ActivityMemberEntry, event?: Event): void {
+  protected approveActivityMember(entry: AppTypes.ActivityMemberEntry, event?: Event): void {
     event?.stopPropagation();
     if (!this.selectedActivityMembersRowId || !this.canApproveActivityMember(entry)) {
       return;
     }
     const shouldCascadeToAssets = this.isMainEventMembersSelection();
-    const nowIso = this.toIsoDateTime(new Date());
+    const nowIso = AppUtils.toIsoDateTime(new Date());
     this.selectedActivityMembers = this.sortActivityMembersByActionTimeAsc(this.selectedActivityMembers.map(item =>
       item.id === entry.id
         ? {
@@ -15615,7 +14058,7 @@ export class App {
     this.inlineItemActionMenu = null;
   }
 
-  protected removeActivityMember(entry: ActivityMemberEntry, event?: Event): void {
+  protected removeActivityMember(entry: AppTypes.ActivityMemberEntry, event?: Event): void {
     event?.stopPropagation();
     if (!this.selectedActivityMembersRowId || !this.canDeleteActivityMember(entry)) {
       return;
@@ -15674,7 +14117,7 @@ export class App {
         return card;
       }
       const requests = card.requests.map(request => {
-        if (this.resolveAssetRequestUserId(request) !== userId || request.status !== 'pending') {
+        if (AppUtils.resolveAssetRequestUserId(request, this.users) !== userId || request.status !== 'pending') {
           return request;
         }
         return {
@@ -15701,7 +14144,7 @@ export class App {
       }
       return {
         ...card,
-        requests: card.requests.filter(request => this.resolveAssetRequestUserId(request) !== userId)
+        requests: card.requests.filter(request => AppUtils.resolveAssetRequestUserId(request, this.users) !== userId)
       };
     });
   }
@@ -15750,7 +14193,7 @@ export class App {
         const contributionKey = this.subEventSupplyAssignmentKey(subEventId, assetId);
         const contributions = this.subEventSupplyContributionEntriesByAssignmentKey[contributionKey] ?? [];
         const contributionTotals = contributions.reduce<Record<string, number>>((acc, entry) => {
-          const quantity = this.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER);
+          const quantity = AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER);
           if (quantity <= 0) {
             return acc;
           }
@@ -15783,7 +14226,7 @@ export class App {
     }
   }
 
-  private parseSubEventAssetAssignmentKey(key: string): { subEventId: string; type: AssetType } | null {
+  private parseSubEventAssetAssignmentKey(key: string): { subEventId: string; type: AppTypes.AssetType } | null {
     const separatorIndex = key.lastIndexOf(':');
     if (separatorIndex <= 0) {
       return null;
@@ -15832,7 +14275,7 @@ export class App {
     this.pendingActivityAction = 'delete';
   }
 
-  private applyActivityExit(row: ActivityListRow): void {
+  private applyActivityExit(row: AppTypes.ActivityListRow): void {
     if (row.type === 'events') {
       this.eventItemsByUser[this.activeUser.id] = this.eventItems.filter(item => item.id !== row.id);
       return;
@@ -15843,13 +14286,13 @@ export class App {
     }
   }
 
-  protected deleteActivityEvent(row: ActivityListRow, event: Event): void {
+  protected deleteActivityEvent(row: AppTypes.ActivityListRow, event: Event): void {
     event.stopPropagation();
     this.pendingActivityAction = 'delete';
     this.pendingActivityDeleteRow = row;
   }
 
-  protected editActivityEvent(row: ActivityListRow, event: Event): void {
+  protected editActivityEvent(row: AppTypes.ActivityListRow, event: Event): void {
     event.stopPropagation();
     if (row.type === 'invitations') {
       this.openInvitationItem(row.source as InvitationMenuItem, false, true);
@@ -15860,7 +14303,7 @@ export class App {
     }
   }
 
-  private applyActivityDelete(row: ActivityListRow): void {
+  private applyActivityDelete(row: AppTypes.ActivityListRow): void {
     if (row.type === 'invitations') {
       this.removeInvitationById(row.id);
       return;
@@ -15878,7 +14321,7 @@ export class App {
     }
   }
 
-  protected isInvitationAccepted(row: ActivityListRow): boolean {
+  protected isInvitationAccepted(row: AppTypes.ActivityListRow): boolean {
     return row.type === 'invitations' && this.isInvitationAcceptedId(row.id);
   }
 
@@ -15952,13 +14395,13 @@ export class App {
   }
 
   private acceptInvitationAndMoveToEvents(invitation: InvitationMenuItem): void {
-    const titleKey = this.normalizeText(invitation.description);
-    const existingEvent = this.eventItems.find(item => this.normalizeText(item.title) === titleKey);
+    const titleKey = AppUtils.normalizeText(invitation.description);
+    const existingEvent = this.eventItems.find(item => AppUtils.normalizeText(item.title) === titleKey);
     if (!existingEvent) {
       const eventId = `inv-event-${invitation.id}`;
       const invitedEvent: EventMenuItem = {
         id: eventId,
-        avatar: this.initialsFromText(invitation.inviter),
+        avatar: AppUtils.initialsFromText(invitation.inviter),
         title: invitation.description,
         shortDescription: `Invited by ${invitation.inviter}`,
         timeframe: invitation.when,
@@ -15984,12 +14427,12 @@ export class App {
     if (!invitation) {
       return null;
     }
-    const invitationTitle = this.normalizeText(invitation.description);
-    const relatedEvent = this.eventItems.find(item => this.normalizeText(item.title) === invitationTitle);
+    const invitationTitle = AppUtils.normalizeText(invitation.description);
+    const relatedEvent = this.eventItems.find(item => AppUtils.normalizeText(item.title) === invitationTitle);
     if (relatedEvent) {
       return relatedEvent;
     }
-    const relatedHosting = this.hostingItems.find(item => this.normalizeText(item.title) === invitationTitle);
+    const relatedHosting = this.hostingItems.find(item => AppUtils.normalizeText(item.title) === invitationTitle);
     if (relatedHosting) {
       return relatedHosting;
     }
@@ -15999,7 +14442,7 @@ export class App {
   private buildInvitationPreviewEventSource(invitation: InvitationMenuItem): EventMenuItem {
     return {
       id: `inv-preview-${invitation.id}`,
-      avatar: this.initialsFromText(invitation.inviter),
+      avatar: AppUtils.initialsFromText(invitation.inviter),
       title: invitation.description,
       shortDescription: `Invited by ${invitation.inviter}`,
       timeframe: invitation.when,
@@ -16008,7 +14451,7 @@ export class App {
     };
   }
 
-  protected get chatPopupMessages(): ChatPopupMessage[] {
+  protected get chatPopupMessages(): AppTypes.ChatPopupMessage[] {
     const history = this.selectedChatHistory;
     if (history.length === 0) {
       return [];
@@ -16017,12 +14460,12 @@ export class App {
     return history.slice(start);
   }
 
-  protected get chatPopupDayGroups(): ChatPopupDayGroup[] {
-    const groups: ChatPopupDayGroup[] = [];
+  protected get chatPopupDayGroups(): AppTypes.ChatPopupDayGroup[] {
+    const groups: AppTypes.ChatPopupDayGroup[] = [];
     for (const message of this.chatPopupMessages) {
       const parsed = new Date(message.sentAtIso);
-      const day = Number.isNaN(parsed.getTime()) ? this.dateOnly(new Date()) : this.dateOnly(parsed);
-      const key = this.dateKey(day);
+      const day = Number.isNaN(parsed.getTime()) ? AppUtils.dateOnly(new Date()) : AppUtils.dateOnly(parsed);
+      const key = AppCalendarHelpers.dateKey(day);
       const last = groups[groups.length - 1];
       if (!last || last.key !== key) {
         groups.push({
@@ -16037,15 +14480,15 @@ export class App {
     return groups;
   }
 
-  protected trackByChatDayGroup(_: number, group: ChatPopupDayGroup): string {
+  protected trackByChatDayGroup(_: number, group: AppTypes.ChatPopupDayGroup): string {
     return group.key;
   }
 
-  protected trackByChatMessage(_: number, message: ChatPopupMessage): string {
+  protected trackByChatMessage(_: number, message: AppTypes.ChatPopupMessage): string {
     return message.id;
   }
 
-  protected trackBySubEventResourceCard(_: number, card: SubEventResourceCard): string {
+  protected trackBySubEventResourceCard(_: number, card: AppTypes.SubEventResourceCard): string {
     return card.id;
   }
 
@@ -16156,7 +14599,7 @@ export class App {
           return;
         }
         const currentTime = typeof animation.currentTime === 'number' ? animation.currentTime : 0;
-        const progress = this.clampNumber(currentTime / durationMs, 0, 1);
+        const progress = AppUtils.clampNumber(currentTime / durationMs, 0, 1);
         // Smooth ease-out reveals the first half-row without an abrupt snap.
         const eased = 1 - Math.pow(1 - progress, 3);
         thread.scrollTop = startTop + (bumpTop - startTop) * eased;
@@ -16201,7 +14644,7 @@ export class App {
       senderAvatar: this.toChatReader(this.activeUser),
       text,
       time,
-      sentAtIso: this.toIsoDateTime(now),
+      sentAtIso: AppUtils.toIsoDateTime(now),
       mine: true,
       readBy: []
     });
@@ -16231,7 +14674,7 @@ export class App {
     this.activePopup = 'supplyDetail';
   }
 
-  protected getSupplyStat(subEvent: SubEventCard, type: string): string {
+  protected getSupplyStat(subEvent: AppTypes.SubEventCard, type: string): string {
     const normalized = type.toLowerCase();
     if (normalized.includes('car')) {
       return subEvent.requirements.cars;
@@ -16248,7 +14691,7 @@ export class App {
     return '0 / 0';
   }
 
-  protected isSupplyStatIncomplete(subEvent: SubEventCard, type: string): boolean {
+  protected isSupplyStatIncomplete(subEvent: AppTypes.SubEventCard, type: string): boolean {
     const values = this.getSupplyStat(subEvent, type).split('/');
     if (values.length !== 2) {
       return false;
@@ -16307,7 +14750,7 @@ export class App {
     return this.isAssetPopup && this.assetFilter === 'Ticket';
   }
 
-  protected get activeAssetType(): AssetType {
+  protected get activeAssetType(): AppTypes.AssetType {
     if (this.activePopup === 'assetsAccommodation') {
       return 'Accommodation';
     }
@@ -16317,21 +14760,21 @@ export class App {
     return 'Car';
   }
 
-  protected get filteredAssetCards(): AssetCard[] {
+  protected get filteredAssetCards(): AppTypes.AssetCard[] {
     if (this.assetFilter === 'Ticket') {
       return [];
     }
     return this.assetCards.filter(card => card.type === this.assetFilter);
   }
 
-  protected get selectedAssetCard(): AssetCard | null {
+  protected get selectedAssetCard(): AppTypes.AssetCard | null {
     if (!this.selectedAssetCardId) {
       return null;
     }
     return this.assetCards.find(card => card.id === this.selectedAssetCardId) ?? null;
   }
 
-  protected assetTypeIcon(type: AssetFilterType): string {
+  protected assetTypeIcon(type: AppTypes.AssetFilterType): string {
     if (type === 'Car') {
       return 'directions_car';
     }
@@ -16344,7 +14787,7 @@ export class App {
     return 'inventory_2';
   }
 
-  protected assetTypeClass(type: AssetFilterType): string {
+  protected assetTypeClass(type: AppTypes.AssetFilterType): string {
     if (type === 'Car') {
       return 'asset-filter-car';
     }
@@ -16360,7 +14803,7 @@ export class App {
     return 'asset-filter-car';
   }
 
-  protected assetFilterCount(type: AssetFilterType): number {
+  protected assetFilterCount(type: AppTypes.AssetFilterType): number {
     if (type === 'Car') {
       return this.assetCarsBadge;
     }
@@ -16373,30 +14816,30 @@ export class App {
     return this.assetSuppliesBadge;
   }
 
-  protected assetPendingCount(card: AssetCard): number {
+  protected assetPendingCount(card: AppTypes.AssetCard): number {
     return card.requests.filter(member => member.status === 'pending').length;
   }
 
-  protected assetAcceptedCount(card: AssetCard): number {
+  protected assetAcceptedCount(card: AppTypes.AssetCard): number {
     return card.requests.filter(member => member.status === 'accepted').length;
   }
 
-  protected assetOccupiedCount(card: AssetCard): number {
+  protected assetOccupiedCount(card: AppTypes.AssetCard): number {
     return this.assetAcceptedCount(card);
   }
 
-  protected assetOccupancyLabel(card: AssetCard): string {
+  protected assetOccupancyLabel(card: AppTypes.AssetCard): string {
     return `${this.assetOccupiedCount(card)} / ${card.capacityTotal}`;
   }
 
-  protected canOpenAssetMap(card: AssetCard): boolean {
+  protected canOpenAssetMap(card: AppTypes.AssetCard): boolean {
     if (card.type !== 'Accommodation') {
       return false;
     }
     return this.normalizeAssetRoutes(card.type, card.routes, card.city).some(stop => stop.trim().length > 0);
   }
 
-  protected openAssetMap(card: AssetCard, event?: Event): void {
+  protected openAssetMap(card: AppTypes.AssetCard, event?: Event): void {
     event?.stopPropagation();
     if (!this.canOpenAssetMap(card)) {
       return;
@@ -16405,11 +14848,11 @@ export class App {
     this.openGoogleMapsSearch(routes[0] ?? card.city);
   }
 
-  protected assetMemberStatusClass(member: AssetMemberRequest): string {
+  protected assetMemberStatusClass(member: AppTypes.AssetMemberRequest): string {
     return member.status === 'pending' ? 'asset-member-pending' : 'asset-member-accepted';
   }
 
-  protected selectAssetFilter(filter: AssetFilterType): void {
+  protected selectAssetFilter(filter: AppTypes.AssetFilterType): void {
     this.assetFilter = filter;
     if (filter !== 'Ticket') {
       this.showTicketOrderPicker = false;
@@ -16432,14 +14875,14 @@ export class App {
     this.activePopup = 'assetsSupplies';
   }
 
-  protected openAssetMembers(card: AssetCard, event?: Event): void {
+  protected openAssetMembers(card: AppTypes.AssetCard, event?: Event): void {
     event?.stopPropagation();
     this.selectedAssetCardId = card.id;
     this.pendingAssetMemberAction = null;
     this.stackedPopup = 'assetMembers';
   }
 
-  protected openAssetForm(card?: AssetCard): void {
+  protected openAssetForm(card?: AppTypes.AssetCard): void {
     this.pendingAssetMemberAction = null;
     this.pendingSubEventAssetCreateAssignment = null;
     this.showAssetForm = true;
@@ -16583,18 +15026,18 @@ export class App {
     const imageUrl = this.normalizeAssetImageLink(this.assetForm.type, this.assetForm.imageUrl, title || this.assetForm.subtitle || city);
     const sourceLink = this.normalizeAssetSourceLink(this.assetForm.sourceLink, imageUrl);
     const createAssignment = this.pendingSubEventAssetCreateAssignment;
-    const payload: Omit<AssetCard, 'id' | 'requests'> = {
+    const payload: Omit<AppTypes.AssetCard, 'id' | 'requests'> = {
       type: this.assetForm.type,
       title,
-      subtitle: this.assetForm.subtitle.trim() || this.defaultAssetSubtitle(this.assetForm.type),
+      subtitle: this.assetForm.subtitle.trim() || AppDemoGenerators.defaultAssetSubtitle(this.assetForm.type),
       city: resolvedCity,
       capacityTotal: Math.max(1, Number(this.assetForm.capacityTotal) || (this.assetForm.type === 'Supplies' ? 6 : 4)),
-      details: this.assetForm.details.trim() || this.defaultAssetDetails(this.assetForm.type),
+      details: this.assetForm.details.trim() || AppDemoGenerators.defaultAssetDetails(this.assetForm.type),
       imageUrl,
       sourceLink,
       routes
     };
-    const resolvedVisibility: EventVisibility = this.isAssetPopup ? 'Invitation only' : this.assetFormVisibility;
+    const resolvedVisibility: AppTypes.EventVisibility = this.isAssetPopup ? 'Invitation only' : this.assetFormVisibility;
     if (this.editingAssetId) {
       this.assetVisibilityById[this.editingAssetId] = resolvedVisibility;
       this.assetCards = this.assetCards.map(card =>
@@ -16644,7 +15087,7 @@ export class App {
     this.pendingAssetDeleteCardId = cardId;
   }
 
-  protected toggleAssetItemActionMenu(card: AssetCard, event: Event): void {
+  protected toggleAssetItemActionMenu(card: AppTypes.AssetCard, event: Event): void {
     event.stopPropagation();
     if (this.inlineItemActionMenu?.scope === 'asset' && this.inlineItemActionMenu.id === card.id) {
       this.inlineItemActionMenu = null;
@@ -16653,23 +15096,23 @@ export class App {
     this.inlineItemActionMenu = { scope: 'asset', id: card.id, title: card.title, openUp: this.shouldOpenInlineItemMenuUp(event) };
   }
 
-  protected isAssetItemActionMenuOpen(card: AssetCard): boolean {
+  protected isAssetItemActionMenuOpen(card: AppTypes.AssetCard): boolean {
     return this.inlineItemActionMenu?.scope === 'asset' && this.inlineItemActionMenu.id === card.id;
   }
 
-  protected isAssetItemActionMenuOpenUp(card: AssetCard): boolean {
+  protected isAssetItemActionMenuOpenUp(card: AppTypes.AssetCard): boolean {
     return this.inlineItemActionMenu?.scope === 'asset'
       && this.inlineItemActionMenu.id === card.id
       && this.inlineItemActionMenu.openUp;
   }
 
-  protected runAssetItemEditAction(card: AssetCard, event: Event): void {
+  protected runAssetItemEditAction(card: AppTypes.AssetCard, event: Event): void {
     event.stopPropagation();
     this.openAssetForm(card);
     this.inlineItemActionMenu = null;
   }
 
-  protected runAssetItemDeleteAction(card: AssetCard, event: Event): void {
+  protected runAssetItemDeleteAction(card: AppTypes.AssetCard, event: Event): void {
     event.stopPropagation();
     this.requestAssetDelete(card.id);
     this.inlineItemActionMenu = null;
@@ -16721,7 +15164,7 @@ export class App {
     this.syncAllSubEventAssetBadgeCounts();
   }
 
-  protected queueAssetMemberAction(cardId: string, memberId: string, action: AssetRequestAction, event?: Event): void {
+  protected queueAssetMemberAction(cardId: string, memberId: string, action: AppTypes.AssetRequestAction, event?: Event): void {
     event?.stopPropagation();
     this.pendingAssetMemberAction = { cardId, memberId, action };
   }
@@ -16760,7 +15203,7 @@ export class App {
     this.pendingAssetMemberAction = null;
   }
 
-  protected isAssetMemberActionPending(cardId: string, memberId: string, action: AssetRequestAction): boolean {
+  protected isAssetMemberActionPending(cardId: string, memberId: string, action: AppTypes.AssetRequestAction): boolean {
     return (
       this.pendingAssetMemberAction?.cardId === cardId &&
       this.pendingAssetMemberAction?.memberId === memberId &&
@@ -16821,7 +15264,7 @@ export class App {
     }
     const seed = `${this.assetForm.type.toLowerCase()}-${parsed.hostname.replace(/\./g, '-')}${parsed.pathname.replace(/[^\w-]/g, '-')}`;
     if (!this.assetForm.imageUrl.trim()) {
-      this.assetForm.imageUrl = this.defaultAssetImage(this.assetForm.type, seed);
+      this.assetForm.imageUrl = AppDemoGenerators.defaultAssetImage(this.assetForm.type, seed);
     }
     if (!this.assetForm.title.trim()) {
       this.assetForm.title = `${this.assetForm.type} · ${parsed.hostname.replace(/^www\./, '')}`;
@@ -16884,9 +15327,9 @@ export class App {
   private commitProfileForm(showAlert: boolean): void {
     const user = this.activeUser;
     user.name = this.profileForm.fullName.trim() || user.name;
-    const birthday = this.profileForm.birthday ? this.toIsoDate(this.profileForm.birthday) : user.birthday;
+    const birthday = this.profileForm.birthday ? AppUtils.toIsoDate(this.profileForm.birthday) : user.birthday;
     user.birthday = birthday;
-    user.age = this.getAgeFromIsoDate(birthday);
+    user.age = AppUtils.ageFromIsoDate(birthday, user.age);
     user.city = this.profileForm.city.trim() || user.city;
     user.height = this.profileForm.heightCm ? `${this.profileForm.heightCm} cm` : user.height;
     user.physique = this.profileForm.physique || user.physique;
@@ -16894,7 +15337,7 @@ export class App {
     user.horoscope = this.profileForm.horoscope || user.horoscope;
     user.profileStatus = this.profileForm.profileStatus;
     user.about = this.profileForm.about.trim().slice(0, 160);
-    user.initials = this.toInitials(user.name);
+    user.initials = AppUtils.initialsFromText(user.name);
     user.images = this.imageSlots.filter((slot): slot is string => Boolean(slot));
     this.syncProfileBasicsIntoDetailRows(user);
     user.completion = this.calculateProfileCompletionPercent();
@@ -16955,14 +15398,14 @@ export class App {
     return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
   }
 
-  private resolveEventExploreSource(card: EventExploreCard): EventMenuItem | HostingMenuItem | null {
+  private resolveEventExploreSource(card: AppTypes.EventExploreCard): EventMenuItem | HostingMenuItem | null {
     if (card.sourceType === 'hosting') {
       return this.hostingItems.find(item => item.id === card.id) ?? null;
     }
     return this.eventItems.find(item => item.id === card.id) ?? null;
   }
 
-  private eventExploreRow(card: EventExploreCard): ActivityListRow | null {
+  private eventExploreRow(card: AppTypes.EventExploreCard): AppTypes.ActivityListRow | null {
     const source = this.resolveEventExploreSource(card);
     if (!source) {
       return null;
@@ -17258,7 +15701,7 @@ export class App {
     return this.users[0].id;
   }
 
-  private resolveAuthMode(): AuthMode {
+  private resolveAuthMode(): AppTypes.AuthMode {
     const configured = (environment as { authMode?: string }).authMode;
     if (configured === 'firebase' || configured === 'selector') {
       return configured;
@@ -17285,13 +15728,13 @@ export class App {
     this.showFirebaseAuthPopup = false;
   }
 
-  private loadEntryConsentState(): EntryConsentState | null {
+  private loadEntryConsentState(): AppTypes.EntryConsentState | null {
     const raw = localStorage.getItem(App.ENTRY_CONSENT_KEY);
     if (!raw) {
       return null;
     }
     try {
-      const parsed = JSON.parse(raw) as Partial<EntryConsentState>;
+      const parsed = JSON.parse(raw) as Partial<AppTypes.EntryConsentState>;
       if (
         parsed.version !== App.ENTRY_CONSENT_VERSION ||
         parsed.accepted !== true ||
@@ -17310,8 +15753,8 @@ export class App {
     }
   }
 
-  private appendEntryConsentAudit(action: EntryConsentAuditRecord['action'], tsIso: string): void {
-    const record: EntryConsentAuditRecord = {
+  private appendEntryConsentAudit(action: AppTypes.EntryConsentAuditRecord['action'], tsIso: string): void {
+    const record: AppTypes.EntryConsentAuditRecord = {
       tsIso,
       action,
       version: App.ENTRY_CONSENT_VERSION,
@@ -17324,26 +15767,26 @@ export class App {
     localStorage.setItem(App.ENTRY_CONSENT_AUDIT_KEY, JSON.stringify(trimmed));
   }
 
-  private loadEntryConsentAudit(): EntryConsentAuditRecord[] {
+  private loadEntryConsentAudit(): AppTypes.EntryConsentAuditRecord[] {
     const raw = localStorage.getItem(App.ENTRY_CONSENT_AUDIT_KEY);
     if (!raw) {
       return [];
     }
     try {
-      const parsed = JSON.parse(raw) as EntryConsentAuditRecord[];
+      const parsed = JSON.parse(raw) as AppTypes.EntryConsentAuditRecord[];
       return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];
     }
   }
 
-  private loadFirebaseAuthProfile(): FirebaseAuthProfile | null {
+  private loadFirebaseAuthProfile(): AppTypes.FirebaseAuthProfile | null {
     const raw = localStorage.getItem(App.FIREBASE_AUTH_PROFILE_KEY);
     if (!raw) {
       return null;
     }
     try {
-      const parsed = JSON.parse(raw) as Partial<FirebaseAuthProfile>;
+      const parsed = JSON.parse(raw) as Partial<AppTypes.FirebaseAuthProfile>;
       if (!parsed.id || !parsed.name || !parsed.email || !parsed.initials) {
         return null;
       }
@@ -17373,8 +15816,8 @@ export class App {
     return `${groupIndex}-${rowIndex}`;
   }
 
-  private privacySelectorOptions(): MobileProfileSelectorOption[] {
-    const order: DetailPrivacy[] = ['Public', 'Friends', 'Hosts', 'Private'];
+  private privacySelectorOptions(): AppTypes.MobileProfileSelectorOption[] {
+    const order: AppTypes.DetailPrivacy[] = ['Public', 'Friends', 'Hosts', 'Private'];
     return order.map(option => ({
       value: option,
       label: option,
@@ -17383,7 +15826,7 @@ export class App {
     }));
   }
 
-  private isDetailPrivacy(value: string): value is DetailPrivacy {
+  private isDetailPrivacy(value: string): value is AppTypes.DetailPrivacy {
     return value === 'Public' || value === 'Friends' || value === 'Hosts' || value === 'Private';
   }
 
@@ -17396,7 +15839,7 @@ export class App {
           slots[index] = url;
         });
       } else {
-        const count = 1 + (this.hashText(`profile-image-count:${user.id}`) % 4);
+        const count = 1 + (AppDemoGenerators.hashText(`profile-image-count:${user.id}`) % 4);
         for (let index = 0; index < count; index += 1) {
           slots[index] = this.profilePortraitUrlForUser(user, index, 'profile-seed');
         }
@@ -17415,7 +15858,7 @@ export class App {
 
   private syncProfileFormFromActiveUser(): void {
     const user = this.activeUser;
-    const birthday = this.fromIsoDate(user.birthday);
+    const birthday = AppUtils.fromIsoDate(user.birthday);
     this.profileDetailsForm = this.profileDetailsForUser(user.id);
     this.profileForm = {
       fullName: user.name,
@@ -17424,7 +15867,7 @@ export class App {
       heightCm: Number.parseInt(user.height, 10) || null,
       physique: user.physique,
       languages: [...user.languages],
-      horoscope: birthday ? this.getHoroscopeByDate(birthday) : user.horoscope,
+      horoscope: birthday ? AppUtils.horoscopeByDate(birthday) : user.horoscope,
       profileStatus: user.profileStatus,
       hostTier: user.hostTier,
       traitLabel: user.traitLabel,
@@ -17446,7 +15889,7 @@ export class App {
       }
       row.value = value;
     };
-    const birthdayDate = this.fromIsoDate(user.birthday);
+    const birthdayDate = AppUtils.fromIsoDate(user.birthday);
     setRowValue('Name', user.name);
     setRowValue('City', user.city);
     setRowValue(
@@ -17462,126 +15905,6 @@ export class App {
     setRowValue('Gender', user.gender === 'woman' ? 'Woman' : 'Man');
   }
 
-  private buildSampleAssetCards(): AssetCard[] {
-    return [
-      {
-        id: 'asset-car-1',
-        type: 'Car',
-        title: 'City-to-Lake SUV',
-        subtitle: 'Hyundai Tucson · Automatic',
-        city: 'Austin',
-        capacityTotal: 4,
-        details: 'Pickup from Downtown at 17:30. Luggage: 2 cabin bags.',
-        imageUrl: this.defaultAssetImage('Car', 'car-1'),
-        sourceLink: this.defaultAssetImage('Car', 'car-1'),
-        routes: ['Austin Downtown', 'Round Rock', 'Lake Travis'],
-        requests: [
-          this.buildAssetRequest('asset-member-1', 'u4', 'pending', 'Needs one medium suitcase slot.'),
-          this.buildAssetRequest('asset-member-2', 'u8', 'accepted', 'Can meet at 6th Street.'),
-          this.buildAssetRequest('asset-member-7', 'u2', 'accepted', 'Travels light with backpack only.')
-        ]
-      },
-      {
-        id: 'asset-car-2',
-        type: 'Car',
-        title: 'Airport Shuttle Hatchback',
-        subtitle: 'Volkswagen Golf · Manual',
-        city: 'Austin',
-        capacityTotal: 4,
-        details: 'Airport run before midnight, fuel split evenly.',
-        imageUrl: this.defaultAssetImage('Car', 'car-2'),
-        sourceLink: this.defaultAssetImage('Car', 'car-2'),
-        routes: ['Austin Airport', 'Domain Northside'],
-        requests: [this.buildAssetRequest('asset-member-3', 'u6', 'pending', 'Landing at 22:40.')]
-      },
-      {
-        id: 'asset-acc-1',
-        type: 'Accommodation',
-        title: 'South Congress Loft',
-        subtitle: '2 bedrooms · 1 living room',
-        city: 'Austin',
-        capacityTotal: 4,
-        details: 'Check-in after 15:00. Quiet building, no smoking.',
-        imageUrl: this.defaultAssetImage('Accommodation', 'acc-1'),
-        sourceLink: this.defaultAssetImage('Accommodation', 'acc-1'),
-        routes: ['101 South Congress Ave, Austin'],
-        requests: [
-          this.buildAssetRequest('asset-member-4', 'u3', 'pending', 'Staying for 2 nights.'),
-          this.buildAssetRequest('asset-member-5', 'u10', 'accepted', 'Can share room.')
-        ]
-      },
-      {
-        id: 'asset-acc-2',
-        type: 'Accommodation',
-        title: 'Eastside Guest Room',
-        subtitle: 'Private room · Shared bathroom',
-        city: 'Austin',
-        capacityTotal: 2,
-        details: 'Ideal for early risers. Parking available.',
-        imageUrl: this.defaultAssetImage('Accommodation', 'acc-2'),
-        sourceLink: this.defaultAssetImage('Accommodation', 'acc-2'),
-        routes: ['East 6th Street, Austin'],
-        requests: [this.buildAssetRequest('asset-member-6', 'u11', 'pending', 'Arrives Friday evening.')]
-      },
-      {
-        id: 'asset-sup-1',
-        type: 'Supplies',
-        title: 'Camping Gear Kit',
-        subtitle: 'Tent + lamps + first aid',
-        city: 'Austin',
-        capacityTotal: 6,
-        details: 'Packed and ready in the garage. Pickup only.',
-        imageUrl: this.defaultAssetImage('Supplies', 'sup-1'),
-        sourceLink: this.defaultAssetImage('Supplies', 'sup-1'),
-        requests: []
-      },
-      {
-        id: 'asset-sup-2',
-        type: 'Supplies',
-        title: 'Game Night Box',
-        subtitle: 'Board games + cards + speakers',
-        city: 'Austin',
-        capacityTotal: 4,
-        details: 'Can deliver to venue before 19:00.',
-        imageUrl: this.defaultAssetImage('Supplies', 'sup-2'),
-        sourceLink: this.defaultAssetImage('Supplies', 'sup-2'),
-        requests: []
-      }
-    ];
-  }
-
-  private buildAssetRequest(
-    id: string,
-    userId: string,
-    status: AssetRequestStatus,
-    note: string
-  ): AssetMemberRequest {
-    const user = this.users.find(item => item.id === userId) ?? this.users[0];
-    return {
-      id,
-      userId,
-      name: user.name,
-      initials: user.initials,
-      gender: user.gender,
-      status,
-      note
-    };
-  }
-
-  protected defaultAssetImage(type: AssetType, seed = type.toLowerCase()): string {
-    const flavor = type === 'Car'
-      ? 'road'
-      : type === 'Accommodation'
-        ? 'stay'
-        : 'gear';
-    const normalizedSeed = encodeURIComponent(`${type.toLowerCase()}-${flavor}-${seed || type.toLowerCase()}`);
-    return `https://picsum.photos/seed/${normalizedSeed}/1200/700`;
-  }
-
-  private defaultAssetSourceLink(type: AssetType): string {
-    return this.defaultAssetImage(type, `source-${type.toLowerCase()}`);
-  }
-
   private normalizeAssetMediaLinks(): void {
     this.assetCards = this.assetCards.map(card => {
       const imageUrl = this.normalizeAssetImageLink(card.type, card.imageUrl, card.id || card.title);
@@ -17594,10 +15917,10 @@ export class App {
     });
   }
 
-  private normalizeAssetImageLink(type: AssetType, imageUrl: string | null | undefined, seed: string): string {
+  private normalizeAssetImageLink(type: AppTypes.AssetType, imageUrl: string | null | undefined, seed: string): string {
     const trimmed = (imageUrl ?? '').trim();
     if (!trimmed || this.isGoogleMapsLikeLink(trimmed) || this.isLegacyGeneratedAssetImage(trimmed)) {
-      return this.defaultAssetImage(type, seed || type.toLowerCase());
+      return AppDemoGenerators.defaultAssetImage(type, seed || type.toLowerCase());
     }
     return trimmed;
   }
@@ -17628,7 +15951,7 @@ export class App {
     return normalized.includes('loremflickr.com/');
   }
 
-  private normalizeAssetRoutes(type: AssetType, routes: string[] | undefined | null, _cityFallback: string): string[] {
+  private normalizeAssetRoutes(type: AppTypes.AssetType, routes: string[] | undefined | null, _cityFallback: string): string[] {
     if (type === 'Supplies') {
       return [];
     }
@@ -17676,81 +15999,6 @@ export class App {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
-  private defaultAssetSubtitle(type: AssetType): string {
-    if (type === 'Car') {
-      return 'Seats + luggage capacity';
-    }
-    if (type === 'Accommodation') {
-      return 'Rooms + sleeping spots';
-    }
-    return 'Packed items + delivery window';
-  }
-
-  private defaultAssetDetails(type: AssetType): string {
-    if (type === 'Car') {
-      return 'Route, pickup time, and luggage constraints are confirmed.';
-    }
-    if (type === 'Accommodation') {
-      return 'Check-in details, room setup, and stay notes are confirmed.';
-    }
-    return 'Item condition, handoff location, and timing are confirmed.';
-  }
-
-  private buildSampleExperienceEntries(): ExperienceEntry[] {
-    return [
-      {
-        id: 'exp-1',
-        type: 'School',
-        title: 'BSc Computer Science',
-        org: 'State University',
-        city: 'Austin',
-        dateFrom: '2014-09',
-        dateTo: '2018-06',
-        description: 'Software engineering and distributed systems.'
-      },
-      {
-        id: 'exp-2',
-        type: 'Additional Project',
-        title: 'Community Event Platform',
-        org: 'Independent Project',
-        city: 'Austin',
-        dateFrom: '2018-09',
-        dateTo: '2019-05',
-        description: 'Built MVP with profile, event, and chat modules.'
-      },
-      {
-        id: 'exp-3',
-        type: 'Workspace',
-        title: 'Community Lead',
-        org: 'Studio Tide',
-        city: 'Chicago',
-        dateFrom: '2019-06',
-        dateTo: '2021-08',
-        description: 'Owned member engagement and host onboarding.'
-      },
-      {
-        id: 'exp-4',
-        type: 'Online Session',
-        title: 'Remote Product Sprint',
-        org: 'Northwind Labs',
-        city: 'Online',
-        dateFrom: '2021-10',
-        dateTo: '2022-02',
-        description: 'Cross-functional delivery for profile editor v2.'
-      },
-      {
-        id: 'exp-5',
-        type: 'Workspace',
-        title: 'Product Manager',
-        org: 'Northwind Labs',
-        city: 'Austin',
-        dateFrom: '2022-03',
-        dateTo: 'Present',
-        description: 'Leads social graph and trust product areas.'
-      }
-    ];
-  }
-
   private resetExperienceForm(): void {
     this.experienceForm = {
       type: 'Workspace',
@@ -17763,85 +16011,6 @@ export class App {
     };
     this.experienceRangeStart = null;
     this.experienceRangeEnd = null;
-  }
-
-  private fromYearMonth(value: string): Date | null {
-    if (!value || value === 'Present') {
-      return null;
-    }
-    const match = value.trim().match(/^(\d{4})[/-](\d{1,2})(?:[/-](\d{1,2}))?$/);
-    if (!match) {
-      return null;
-    }
-    const year = Number.parseInt(match[1], 10);
-    const month = Number.parseInt(match[2], 10);
-    const day = match[3] ? Number.parseInt(match[3], 10) : 1;
-    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day) || month < 1 || month > 12 || day < 1 || day > 31) {
-      return null;
-    }
-    return new Date(year, month - 1, day);
-  }
-
-  private toYearMonth(value: Date | null): string {
-    if (!value) {
-      return '';
-    }
-    const year = value.getFullYear();
-    const month = `${value.getMonth() + 1}`.padStart(2, '0');
-    const day = `${value.getDate()}`.padStart(2, '0');
-    return `${year}/${month}/${day}`;
-  }
-
-  private toSortableDate(value: string): number {
-    if (!value) {
-      return Number.POSITIVE_INFINITY;
-    }
-    const safe = value.replace(/\//g, '-');
-
-    // First, support full ISO date-time values directly (e.g. 2026-02-25T12:34:56).
-    const direct = new Date(safe);
-    if (!Number.isNaN(direct.getTime())) {
-      return direct.getTime();
-    }
-
-    // Fallback for date-only and year-month values used elsewhere in the app.
-    if (/^\d{4}-\d{2}-\d{2}$/.test(safe)) {
-      return new Date(`${safe}T00:00:00`).getTime();
-    }
-    if (/^\d{4}-\d{2}$/.test(safe)) {
-      return new Date(`${safe}-01T00:00:00`).getTime();
-    }
-    return Number.POSITIVE_INFINITY;
-  }
-
-  private toEventExploreCard(
-    source: EventMenuItem | HostingMenuItem,
-    sourceType: 'event' | 'hosting',
-    nowEpochMs: number
-  ): EventExploreCard {
-    const startIso = sourceType === 'event'
-      ? (this.eventDatesById[source.id] ?? this.defaultEventStartIso())
-      : (this.hostingDatesById[source.id] ?? this.defaultEventStartIso());
-    const startSort = this.toSortableDate(startIso);
-    const seed = this.hashText(`${sourceType}:${source.id}:${source.title}`);
-    const rating = 6 + ((seed % 35) / 10);
-    const relevance = 50 + (seed % 51);
-    const distanceKm = sourceType === 'event'
-      ? (this.eventDistanceById[source.id] ?? (5 + (seed % 35)))
-      : (this.hostingDistanceById[source.id] ?? (5 + (seed % 35)));
-    return {
-      id: source.id,
-      title: source.title,
-      subtitle: source.shortDescription,
-      timeframe: source.timeframe,
-      imageUrl: this.activityImageById[source.id] ?? `https://picsum.photos/seed/event-explore-${source.id}/1200/700`,
-      distanceKm,
-      relevance,
-      rating,
-      startSort,
-      isPast: startSort < nowEpochMs,
-      sourceType
-    };
   }
 
   protected get profileCardBirthday(): string {
@@ -17859,97 +16028,7 @@ export class App {
     if (!this.profileForm.birthday) {
       return this.activeUser.age;
     }
-    return this.getAgeFromIsoDate(this.toIsoDate(this.profileForm.birthday));
-  }
-
-  private fromIsoDate(value: string): Date | null {
-    if (!value) {
-      return null;
-    }
-    const parsed = new Date(`${value}T00:00:00`);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-
-  private toIsoDate(value: Date): string {
-    const year = value.getFullYear();
-    const month = `${value.getMonth() + 1}`.padStart(2, '0');
-    const day = `${value.getDate()}`.padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
-  private toIsoDateTime(value: Date): string {
-    const year = value.getFullYear();
-    const month = `${value.getMonth() + 1}`.padStart(2, '0');
-    const day = `${value.getDate()}`.padStart(2, '0');
-    const hours = `${value.getHours()}`.padStart(2, '0');
-    const minutes = `${value.getMinutes()}`.padStart(2, '0');
-    const seconds = `${value.getSeconds()}`.padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
-  }
-
-  private getAgeFromIsoDate(value: string): number {
-    const birthday = this.fromIsoDate(value);
-    if (!birthday) {
-      return this.activeUser.age;
-    }
-    const now = new Date();
-    let age = now.getFullYear() - birthday.getFullYear();
-    const monthDiff = now.getMonth() - birthday.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birthday.getDate())) {
-      age -= 1;
-    }
-    return age;
-  }
-
-  private getHoroscopeByDate(value: Date): string {
-    const month = value.getMonth() + 1;
-    const day = value.getDate();
-    if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return 'Aquarius';
-    if ((month === 2 && day >= 19) || (month === 3 && day <= 20)) return 'Pisces';
-    if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return 'Aries';
-    if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return 'Taurus';
-    if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) return 'Gemini';
-    if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) return 'Cancer';
-    if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) return 'Leo';
-    if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) return 'Virgo';
-    if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) return 'Libra';
-    if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) return 'Scorpio';
-    if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) return 'Sagittarius';
-    return 'Capricorn';
-  }
-
-  private seededMetric(offset: number, min: number, max: number): number {
-    const source = `${this.activeUser.id}-${this.activeUser.name}-${this.activeUser.city}-${offset}`;
-    let hash = 0;
-    for (let i = 0; i < source.length; i += 1) {
-      hash = (hash * 31 + source.charCodeAt(i)) >>> 0;
-    }
-    return min + (hash % (max - min + 1));
-  }
-
-  private withContextIconItems(summary: string, iconMap: Record<string, string>): string[] {
-    return summary
-      .split(',')
-      .map(part => {
-        const trimmed = part.trim();
-        const key = Object.keys(iconMap).find(label => trimmed.startsWith(label));
-        return key ? `${iconMap[key]} ${trimmed}` : trimmed;
-      });
-  }
-
-  private badgeItemsLength(items: string[]): number {
-    return items.reduce((sum, item) => sum + item.length, 0);
-  }
-
-  private toInitials(name: string): string {
-    const parts = name.split(' ').filter(Boolean);
-    if (!parts.length) {
-      return 'U';
-    }
-    if (parts.length === 1) {
-      return parts[0].slice(0, 2).toUpperCase();
-    }
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return AppUtils.ageFromIsoDate(AppUtils.toIsoDate(this.profileForm.birthday), this.activeUser.age);
   }
 
   private getChatMembersById(chatId: string): DemoUser[] {
@@ -17979,7 +16058,7 @@ export class App {
     if (!others.length) {
       return [this.activeUser];
     }
-    const seed = this.hashText(chatId);
+    const seed = AppDemoGenerators.hashText(chatId);
     const offsets = [0, 3, 7, 11, 15, 19];
     const memberCount = 3 + (seed % 3);
     const picked: DemoUser[] = [];
@@ -17998,110 +16077,48 @@ export class App {
     return picked;
   }
 
-  private getActivityMembersByRow(row: ActivityListRow): ActivityMemberEntry[] {
+  private getActivityMembersByRow(row: AppTypes.ActivityListRow): AppTypes.ActivityMemberEntry[] {
     const rowKey = `${row.type}:${row.id}`;
     const cached = this.activityMembersByRowId[rowKey];
     if (cached) {
       return this.sortActivityMembersByActionTimeAsc([...cached]);
     }
     if (row.id.startsWith('draft-')) {
-      const initial: ActivityMemberEntry[] = [];
+      const initial: AppTypes.ActivityMemberEntry[] = [];
       this.activityMembersByRowId[rowKey] = [...initial];
       return initial;
     }
     const forcedAcceptedCount = this.forcedAcceptedMembersByRowKey[rowKey];
     if (Number.isFinite(forcedAcceptedCount) && forcedAcceptedCount > 0) {
-      const forced = this.buildForcedAcceptedMembers(row, rowKey, forcedAcceptedCount);
-      this.activityMembersByRowId[rowKey] = [...forced];
-      return forced;
+      const forced = AppDemoGenerators.buildForcedAcceptedMembers(
+        row,
+        rowKey,
+        forcedAcceptedCount,
+        this.users,
+        this.activeUser,
+        APP_DEMO_DATA.activityMemberDefaults.forcedMetWhere
+      );
+      const orderedForced = this.sortActivityMembersByActionTimeAsc(forced);
+      this.activityMembersByRowId[rowKey] = [...orderedForced];
+      return orderedForced;
     }
-    const others = this.users.filter(user => user.id !== this.activeUser.id);
-    if (others.length === 0) {
-      return [this.toActivityMemberEntry(this.activeUser, row, rowKey, { status: 'accepted', pendingSource: null, invitedByActiveUser: false })];
-    }
-    const seed = this.hashText(`${row.type}:${row.id}`);
-    const acceptedTarget = row.type === 'invitations' ? 2 + (seed % 3) : 4 + (seed % 3);
-    const pendingTarget = row.type === 'invitations' ? 1 + ((seed >> 2) % 2) : 1 + ((seed >> 3) % 3);
-    const picked: DemoUser[] = [this.activeUser];
-    const offsets = [0, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29];
-    for (const offset of offsets) {
-      const candidate = others[(seed + offset) % others.length];
-      if (!picked.some(item => item.id === candidate.id)) {
-        picked.push(candidate);
-      }
-      if (picked.length >= acceptedTarget) {
-        break;
-      }
-    }
-    const accepted = picked.map(user => this.toActivityMemberEntry(user, row, rowKey, { status: 'accepted', pendingSource: null, invitedByActiveUser: false }));
-    const acceptedIds = new Set(accepted.map(item => item.userId));
-    const pendingPool = others.filter(user => !acceptedIds.has(user.id));
-    const pendingCount = Math.min(pendingTarget, pendingPool.length);
-    for (let index = 0; index < pendingCount; index += 1) {
-      const user = pendingPool[index];
-      const isJoinRequest = ((seed + index) % 3) === 0;
-      const pendingSource: ActivityPendingSource = row.isAdmin ? 'admin' : 'member';
-      const baseEntry = this.toActivityMemberEntry(user, row, rowKey, {
-        status: 'pending',
-        pendingSource: isJoinRequest ? 'member' : pendingSource,
-        invitedByActiveUser: !isJoinRequest
-      });
-      accepted.push({
-        ...baseEntry,
-        requestKind: isJoinRequest ? 'join' : 'invite'
-      });
-    }
-    const ordered = this.sortActivityMembersByActionTimeAsc(accepted);
+    const generated = AppDemoGenerators.generateActivityMembersForRow(
+      row,
+      rowKey,
+      this.users,
+      this.activeUser,
+      APP_DEMO_DATA.activityMemberMetPlaces
+    );
+    const ordered = this.sortActivityMembersByActionTimeAsc(generated);
     this.activityMembersByRowId[rowKey] = [...ordered];
     return ordered;
   }
 
-  private buildForcedAcceptedMembers(row: ActivityListRow, rowKey: string, count: number): ActivityMemberEntry[] {
-    const templates = this.users.length > 0 ? this.users : [this.activeUser];
-    const members: ActivityMemberEntry[] = [];
-    const cappedCount = Math.max(1, count);
-    for (let index = 0; index < cappedCount; index += 1) {
-      const template = templates[index % templates.length];
-      const ordinal = Math.floor(index / templates.length);
-      const isSelf = index === 0;
-      const userId = isSelf ? this.activeUser.id : `${template.id}-force-${ordinal + 1}-${index + 1}`;
-      const when = this.addDays(new Date('2026-02-24T12:00:00'), -((index % 30) + 1));
-      members.push({
-        id: `${rowKey}:${userId}`,
-        userId,
-        name: isSelf ? this.activeUser.name : template.name,
-        initials: template.initials,
-        gender: template.gender,
-        city: template.city,
-        statusText: template.statusText,
-        role: isSelf && row.isAdmin ? 'Admin' : 'Member',
-        status: 'accepted',
-        pendingSource: null,
-        requestKind: null,
-        invitedByActiveUser: false,
-        metAtIso: this.toIsoDateTime(when),
-        actionAtIso: this.toIsoDateTime(when),
-        metWhere: 'Event Explore',
-        relevance: 60 + ((index * 7) % 40),
-        avatarUrl: `https://i.pravatar.cc/1200?img=${(this.hashText(`${rowKey}:${userId}`) % 70) + 1}`
-      });
-    }
-    return this.sortActivityMembersByActionTimeAsc(members);
-  }
-
-  private isFriendOfActiveUser(userId: string): boolean {
-    if (!userId || userId === this.activeUser.id) {
-      return false;
-    }
-    const seed = this.hashText(`${this.activeUser.id}:friend:${userId}`);
-    return (seed % 100) < 45;
-  }
-
-  private eventExploreVisibilityRaw(card: EventExploreCard): EventVisibility {
+  private eventExploreVisibilityRaw(card: AppTypes.EventExploreCard): AppTypes.EventVisibility {
     return this.eventVisibilityById[card.id] ?? 'Public';
   }
 
-  private eventEditorMembersRow(): ActivityListRow | null {
+  private eventEditorMembersRow(): AppTypes.ActivityListRow | null {
     const isActiveEditor = this.activePopup === 'eventEditor';
     const isStackedEditor = this.stackedPopup === 'eventEditor';
     if (!isActiveEditor && !isStackedEditor) {
@@ -18211,7 +16228,7 @@ export class App {
     }
     const selected = new Set(this.selectedActivityInviteUserIds);
     const isSubEventAssetMembers = this.subEventAssetMembersContext !== null;
-    const nowIso = this.toIsoDateTime(new Date());
+    const nowIso = AppUtils.toIsoDateTime(new Date());
     const mainEventAcceptedIds = isSubEventAssetMembers
       ? new Set(
           this.mainEventMembersEntries()
@@ -18271,7 +16288,7 @@ export class App {
     this.selectedActivityInviteUserIds = [];
   }
 
-  private subEventAssetMemberEntries(card: AssetCard): ActivityMemberEntry[] {
+  private subEventAssetMemberEntries(card: AppTypes.AssetCard): AppTypes.ActivityMemberEntry[] {
     const rowKey = this.selectedActivityMembersRowId ?? `events:subevent-asset-members:${card.id}`;
     const seedBaseDate = new Date('2026-02-24T12:00:00');
     const ownerUserId = this.subEventAssetMembersContext?.ownerUserId ?? null;
@@ -18281,7 +16298,7 @@ export class App {
         .map(member => member.userId)
     );
     const entries = card.requests.map(request => {
-      const requestUserId = this.resolveAssetRequestUserId(request);
+      const requestUserId = AppUtils.resolveAssetRequestUserId(request, this.users);
       const matchedUser =
         this.users.find(user => user.id === requestUserId)
         ?? this.users.find(user => user.name === request.name && user.initials === request.initials)
@@ -18289,14 +16306,14 @@ export class App {
         ?? null;
       const userId = matchedUser?.id ?? requestUserId;
       const pendingRequiresMainEventApproval = request.status === 'pending' && !mainEventAcceptedIds.has(userId);
-      const pendingSource: ActivityPendingSource = request.status === 'pending'
+      const pendingSource: AppTypes.ActivityPendingSource = request.status === 'pending'
         ? (pendingRequiresMainEventApproval ? 'admin' : 'member')
         : null;
-      const requestKind: ActivityMemberRequestKind = request.status === 'pending'
+      const requestKind: AppTypes.ActivityMemberRequestKind = request.status === 'pending'
         ? (pendingRequiresMainEventApproval ? 'invite' : 'join')
         : null;
-      const seed = this.hashText(`${rowKey}:${card.id}:${request.id}:${userId}`);
-      const actionAtIso = this.toIsoDateTime(this.addDays(seedBaseDate, -((seed % 90) + 1)));
+      const seed = AppDemoGenerators.hashText(`${rowKey}:${card.id}:${request.id}:${userId}`);
+      const actionAtIso = AppUtils.toIsoDateTime(AppUtils.addDays(seedBaseDate, -((seed % 90) + 1)));
       return {
         id: request.id,
         userId,
@@ -18320,17 +16337,6 @@ export class App {
     return this.sortActivityMembersByActionTimeAsc(entries);
   }
 
-  private resolveAssetRequestUserId(request: AssetMemberRequest): string {
-    if (request.userId) {
-      return request.userId;
-    }
-    const matchedUser =
-        this.users.find(user => user.name === request.name && user.initials === request.initials)
-        ?? this.users.find(user => user.name === request.name)
-        ?? null;
-    return matchedUser?.id ?? request.id;
-  }
-
   private syncSubEventAssetMembersRequestsFromSelection(): void {
     const context = this.subEventAssetMembersContext;
     if (!context || !this.selectedActivityMembersRowId) {
@@ -18343,10 +16349,10 @@ export class App {
       }
       const existingById = new Map(card.requests.map(request => [request.id, request] as const));
       const existingByUserId = new Map(
-        card.requests.map(request => [this.resolveAssetRequestUserId(request), request] as const)
+        card.requests.map(request => [AppUtils.resolveAssetRequestUserId(request, this.users), request] as const)
       );
       const existingByName = new Map(card.requests.map(request => [request.name.toLowerCase(), request] as const));
-      const nextRequests: AssetMemberRequest[] = this.selectedActivityMembers.map((entry, index) => {
+      const nextRequests: AppTypes.AssetMemberRequest[] = this.selectedActivityMembers.map((entry, index) => {
         const existing =
           existingById.get(entry.id)
           ?? existingByUserId.get(entry.userId)
@@ -18380,39 +16386,8 @@ export class App {
     }
   }
 
-  private toActivityMemberEntry(
-    user: DemoUser,
-    row: ActivityListRow,
-    rowKey: string,
-    defaults: { status: ActivityMemberStatus; pendingSource: ActivityPendingSource; invitedByActiveUser: boolean }
-  ): ActivityMemberEntry {
-    const seed = this.hashText(`${rowKey}:${user.id}`);
-    const metAt = this.addDays(new Date('2026-02-24T12:00:00'), -((seed % 220) + 1));
-    const metPlaces = ['City Center Meetup', 'Board Game Night', 'Coffee Social', 'Hiking Group', 'Music Event', 'Brunch Table'];
-    const place = metPlaces[seed % metPlaces.length];
-    return {
-      id: `${rowKey}:${user.id}`,
-      userId: user.id,
-      name: user.name,
-      initials: user.initials,
-      gender: user.gender,
-      city: user.city,
-      statusText: user.statusText,
-      role: row.isAdmin && user.id === this.activeUser.id ? 'Admin' : 'Member',
-      status: defaults.status,
-      pendingSource: defaults.pendingSource,
-      requestKind: defaults.status === 'pending' ? 'invite' : null,
-      invitedByActiveUser: defaults.invitedByActiveUser,
-      metAtIso: this.toIsoDateTime(metAt),
-      actionAtIso: this.toIsoDateTime(metAt),
-      metWhere: place,
-      relevance: 40 + (seed % 61),
-      avatarUrl: `https://i.pravatar.cc/1200?img=${(seed % 70) + 1}`
-    };
-  }
-
-  private sortActivityMembersByActionTimeAsc(entries: ActivityMemberEntry[]): ActivityMemberEntry[] {
-    return [...entries].sort((a, b) => this.toSortableDate(b.actionAtIso) - this.toSortableDate(a.actionAtIso));
+  private sortActivityMembersByActionTimeAsc(entries: AppTypes.ActivityMemberEntry[]): AppTypes.ActivityMemberEntry[] {
+    return [...entries].sort((a, b) => AppUtils.toSortableDate(b.actionAtIso) - AppUtils.toSortableDate(a.actionAtIso));
   }
 
   private getChatItemById(chatId: string): ChatMenuItem | undefined {
@@ -18440,8 +16415,8 @@ export class App {
     const title = eventTitle.trim() || 'Event';
     const description = eventDescription.trim() || 'Event channel';
     const firstMessage = `${title} / ${description}`;
-    const startAtDate = this.isoLocalDateTimeToDate(startAtIso) ?? new Date();
-    const sentAtIso = this.toIsoDateTime(startAtDate);
+    const startAtDate = AppUtils.isoLocalDateTimeToDate(startAtIso) ?? new Date();
+    const sentAtIso = AppUtils.toIsoDateTime(startAtDate);
     const nextChat: ChatMenuItem = {
       id: chatId,
       avatar: this.activeUser.initials,
@@ -18482,13 +16457,13 @@ export class App {
   }
 
   private chatDayLabel(value: Date): string {
-    const day = this.dateOnly(value);
-    const today = this.dateOnly(new Date());
-    if (this.dateKey(day) === this.dateKey(today)) {
+    const day = AppUtils.dateOnly(value);
+    const today = AppUtils.dateOnly(new Date());
+    if (AppCalendarHelpers.dateKey(day) === AppCalendarHelpers.dateKey(today)) {
       return 'Today';
     }
-    const yesterday = this.addDays(today, -1);
-    if (this.dateKey(day) === this.dateKey(yesterday)) {
+    const yesterday = AppUtils.addDays(today, -1);
+    if (AppCalendarHelpers.dateKey(day) === AppCalendarHelpers.dateKey(yesterday)) {
       return 'Yesterday';
     }
     return day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
@@ -18524,10 +16499,10 @@ export class App {
       this.chatHeaderProgress = 1;
       return;
     }
-    this.chatHeaderProgress = this.clampNumber(chatThread.scrollTop / maxVerticalScroll, 0, 1);
+    this.chatHeaderProgress = AppUtils.clampNumber(chatThread.scrollTop / maxVerticalScroll, 0, 1);
   }
 
-  private get selectedChatHistory(): ChatPopupMessage[] {
+  private get selectedChatHistory(): AppTypes.ChatPopupMessage[] {
     if (!this.selectedChat) {
       return [];
     }
@@ -18545,28 +16520,28 @@ export class App {
     this.chatHistoryById[this.selectedChat.id] = this.buildChatHistory(this.selectedChat);
   }
 
-  private buildChatHistory(chat: ChatMenuItem): ChatPopupMessage[] {
+  private buildChatHistory(chat: ChatMenuItem): AppTypes.ChatPopupMessage[] {
     const members = this.getChatMembersById(chat.id);
     const lastSender = members[0] ?? this.getChatLastSender(chat);
     const starter = members[1] ?? members[0] ?? this.activeUser;
     const memberB = members[2] ?? starter;
     const memberC = members[3] ?? memberB;
     const me = this.activeUser;
-    const anchor = new Date(this.chatDatesById[chat.id] ?? this.toIsoDateTime(new Date()));
+    const anchor = new Date(this.chatDatesById[chat.id] ?? AppUtils.toIsoDateTime(new Date()));
     const chatAnchor = Number.isNaN(anchor.getTime()) ? new Date() : anchor;
     const at = (minutesBefore: number): Date => new Date(chatAnchor.getTime() - (minutesBefore * 60 * 1000));
 
     const byId = (id: string) => this.users.find(user => user.id === id);
-    const toMessage = (id: string, text: string, sentAt: Date, readByIds: string[], forceMine = false, suffix = ''): ChatPopupMessage => {
+    const toMessage = (id: string, text: string, sentAt: Date, readByIds: string[], forceMine = false, suffix = ''): AppTypes.ChatPopupMessage => {
       const senderUser = byId(id) ?? starter;
       const time = sentAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
       return {
-        id: `${chat.id}-${id}-${sentAt.getTime()}-${suffix || this.hashText(text)}`,
+        id: `${chat.id}-${id}-${sentAt.getTime()}-${suffix || AppDemoGenerators.hashText(text)}`,
         sender: senderUser.name,
         senderAvatar: this.toChatReader(senderUser),
         text,
         time,
-        sentAtIso: this.toIsoDateTime(sentAt),
+        sentAtIso: AppUtils.toIsoDateTime(sentAt),
         mine: forceMine || senderUser.id === me.id,
         readBy: readByIds
           .map(readerId => byId(readerId))
@@ -18575,7 +16550,7 @@ export class App {
       };
     };
 
-    const seed = this.hashText(`${chat.id}:${chat.title}`);
+    const seed = AppDemoGenerators.hashText(`${chat.id}:${chat.title}`);
     const olderPool = [
       'Shared updated ETA for everyone.',
       'Pinned the checklist in this room.',
@@ -18586,7 +16561,7 @@ export class App {
       'Synced on arrival windows.',
       'Collected final confirmations.'
     ];
-    const olderMessages: ChatPopupMessage[] = [];
+    const olderMessages: AppTypes.ChatPopupMessage[] = [];
     const olderCount = 36;
     const olderBaseStart = new Date(chatAnchor.getTime() - ((olderCount + 12) * 40 * 60 * 1000));
     for (let index = olderCount - 1; index >= 0; index -= 1) {
@@ -18600,7 +16575,7 @@ export class App {
       olderMessages.push(toMessage(senderId, text, sentAt, readByIds, senderId === me.id, `older-${index}`));
     }
 
-    let recentMessages: ChatPopupMessage[];
+    let recentMessages: AppTypes.ChatPopupMessage[];
     if (chat.id === 'c1') {
       recentMessages = [
         toMessage(starter.id, 'I opened this room to lock transport before 8 PM.', at(13), [memberB.id]),
@@ -18630,7 +16605,7 @@ export class App {
     return [...olderMessages, ...recentMessages];
   }
 
-  private toChatReader(user: DemoUser): ChatReadAvatar {
+  private toChatReader(user: DemoUser): AppTypes.ChatReadAvatar {
     return {
       id: user.id,
       initials: user.initials,
@@ -18638,96 +16613,24 @@ export class App {
     };
   }
 
-  private hashText(value: string): number {
-    let hash = 0;
-    for (let index = 0; index < value.length; index += 1) {
-      hash = (hash * 31 + value.charCodeAt(index)) % 104729;
-    }
-    return Math.abs(hash);
-  }
-
-  private buildExpandedDemoUsers(totalCount: number): DemoUser[] {
-    const baseUsers = DEMO_USERS;
-    if (baseUsers.length >= totalCount) {
-      return baseUsers.slice(0, totalCount);
-    }
-    const expanded: DemoUser[] = [...baseUsers];
-    const firstNamesWomen = ['Emma', 'Sophia', 'Olivia', 'Mia', 'Lina', 'Nora', 'Chloe', 'Ivy', 'Ava', 'Zoe'];
-    const firstNamesMen = ['Liam', 'Noah', 'Ethan', 'Mason', 'Lucas', 'Owen', 'Elijah', 'Leo', 'Ryan', 'Alex'];
-    const lastNames = ['Parker', 'Reed', 'Stone', 'Lane', 'Baker', 'Hale', 'Rivera', 'Turner', 'Brooks', 'Grant'];
-    const cities = ['Austin', 'Seattle', 'Chicago', 'Denver', 'Miami', 'Boston', 'Phoenix', 'Nashville', 'San Diego', 'Portland'];
-
-    for (let index = baseUsers.length; index < totalCount; index += 1) {
-      const id = `u${index + 1}`;
-      const template = baseUsers[index % baseUsers.length];
-      const gender = index % 2 === 0 ? 'woman' : 'man';
-      const firstNamePool = gender === 'woman' ? firstNamesWomen : firstNamesMen;
-      const firstName = firstNamePool[index % firstNamePool.length];
-      const lastName = lastNames[(index * 3) % lastNames.length];
-      const name = `${firstName} ${lastName}`;
-      const initials = `${firstName[0] ?? 'U'}${lastName[0] ?? 'S'}`.toUpperCase();
-      const age = 24 + (index % 12);
-      const birthday = new Date(1990 + (index % 11), index % 12, 1 + (index % 27));
-      const portraitFolder = gender === 'woman' ? 'women' : 'men';
-      const portraitIndex = (index * 7) % 100;
-      expanded.push({
-        ...template,
-        id,
-        name,
-        age,
-        birthday: birthday.toISOString().slice(0, 10),
-        city: cities[index % cities.length],
-        initials,
-        gender,
-        images: [`https://randomuser.me/api/portraits/${portraitFolder}/${portraitIndex}.jpg`]
-      });
-    }
-    return expanded;
-  }
-
-  private resolveSectionBadge(values: number[], itemCount: number): number {
-    const positiveTotal = values.reduce((sum, value) => sum + (value > 0 ? value : 0), 0);
-    if (positiveTotal > 0) {
-      return positiveTotal;
-    }
-    return itemCount;
-  }
-
-  private getSupplyGapByKey(key: 'cars' | 'accommodation' | 'accessories'): number {
-    return this.eventEditor.subEvents.reduce((maxGap, subEvent) => {
-      const requirement = subEvent.requirements[key];
-      return Math.max(maxGap, this.parseSupplyGap(requirement));
-    }, 0);
-  }
-
-  private parseSupplyGap(value: string): number {
-    const [currentRaw, totalRaw] = value.split('/');
-    const current = Number.parseInt(currentRaw?.trim() ?? '', 10);
-    const total = Number.parseInt(totalRaw?.trim() ?? '', 10);
-    if (!Number.isFinite(current) || !Number.isFinite(total)) {
-      return 0;
-    }
-    return Math.max(0, total - current);
-  }
-
-  private sortActivitiesRows(rows: ActivityListRow[]): ActivityListRow[] {
+  private sortActivitiesRows(rows: AppTypes.ActivityListRow[]): AppTypes.ActivityListRow[] {
     const sorted = [...rows];
     if (this.activitiesSecondaryFilter === 'recent') {
       if (this.activitiesPrimaryFilter === 'events' || this.activitiesPrimaryFilter === 'hosting') {
-        return sorted.sort((a, b) => this.toSortableDate(a.dateIso) - this.toSortableDate(b.dateIso));
+        return sorted.sort((a, b) => AppUtils.toSortableDate(a.dateIso) - AppUtils.toSortableDate(b.dateIso));
       }
-      return sorted.sort((a, b) => this.toSortableDate(b.dateIso) - this.toSortableDate(a.dateIso));
+      return sorted.sort((a, b) => AppUtils.toSortableDate(b.dateIso) - AppUtils.toSortableDate(a.dateIso));
     }
     if (this.activitiesSecondaryFilter === 'past') {
-      return sorted.sort((a, b) => this.toSortableDate(b.dateIso) - this.toSortableDate(a.dateIso));
+      return sorted.sort((a, b) => AppUtils.toSortableDate(b.dateIso) - AppUtils.toSortableDate(a.dateIso));
     }
     if (this.activitiesPrimaryFilter === 'rates') {
-      return sorted.sort((a, b) => b.metricScore - a.metricScore || this.toSortableDate(b.dateIso) - this.toSortableDate(a.dateIso));
+      return sorted.sort((a, b) => b.metricScore - a.metricScore || AppUtils.toSortableDate(b.dateIso) - AppUtils.toSortableDate(a.dateIso));
     }
     if (this.activitiesPrimaryFilter === 'events' || this.activitiesPrimaryFilter === 'hosting') {
-      return sorted.sort((a, b) => b.metricScore - a.metricScore || this.toSortableDate(a.dateIso) - this.toSortableDate(b.dateIso));
+      return sorted.sort((a, b) => b.metricScore - a.metricScore || AppUtils.toSortableDate(a.dateIso) - AppUtils.toSortableDate(b.dateIso));
     }
-    return sorted.sort((a, b) => b.metricScore - a.metricScore || this.toSortableDate(b.dateIso) - this.toSortableDate(a.dateIso));
+    return sorted.sort((a, b) => b.metricScore - a.metricScore || AppUtils.toSortableDate(b.dateIso) - AppUtils.toSortableDate(a.dateIso));
   }
 
   private generatedRateItemsForUser(userId: string): RateMenuItem[] {
@@ -18763,8 +16666,8 @@ export class App {
     laneIndex: number,
     userIndex: number
   ): RateMenuItem {
-    const seed = this.hashText(`rate-grid:${activeUserId}:${targetUserId}:${mode}:${direction}`);
-    const happenedAt = this.toIsoDateTime(this.addDays(new Date('2026-03-01T20:00:00'), -((laneIndex * 17) + userIndex + 1)));
+    const seed = AppDemoGenerators.hashText(`rate-grid:${activeUserId}:${targetUserId}:${mode}:${direction}`);
+    const happenedAt = AppUtils.toIsoDateTime(AppUtils.addDays(new Date('2026-03-01T20:00:00'), -((laneIndex * 17) + userIndex + 1)));
     let scoreGiven = 0;
     let scoreReceived = 0;
     if (direction === 'given') {
@@ -18793,7 +16696,7 @@ export class App {
     };
   }
 
-  private matchesRateFilter(item: RateMenuItem, filter: RateFilterKey): boolean {
+  private matchesRateFilter(item: RateMenuItem, filter: AppTypes.RateFilterKey): boolean {
     const [modeKey, directionKey] = filter.split('-') as ['individual' | 'pair', 'given' | 'received' | 'mutual' | 'met'];
     return item.mode === modeKey && this.displayedRateDirection(item) === directionKey;
   }
@@ -19040,30 +16943,30 @@ export class App {
     this.navigateActivitiesCalendarTo(this.currentCalendarPageIndex() + 1, event);
   }
 
-  protected trackByCalendarPageKey(_: number, page: CalendarMonthPage | CalendarWeekPage): string {
+  protected trackByCalendarPageKey(_: number, page: AppTypes.CalendarMonthPage | AppTypes.CalendarWeekPage): string {
     return page.key;
   }
 
-  protected trackByCalendarMonthWeekKey(_: number, week: CalendarMonthWeek): string {
-    return this.dateKey(week.start);
+  protected trackByCalendarMonthWeekKey(_: number, week: AppTypes.CalendarMonthWeek): string {
+    return AppCalendarHelpers.dateKey(week.start);
   }
 
-  protected trackByCalendarDayKey(_: number, day: CalendarDayCell): string {
+  protected trackByCalendarDayKey(_: number, day: AppTypes.CalendarDayCell): string {
     return day.key;
   }
 
   private initialCalendarPageIndex(): number {
-    const today = this.dateOnly(new Date());
+    const today = AppUtils.dateOnly(new Date());
     if (this.activitiesView === 'month') {
-      const focus = this.calendarMonthFocusDate ? this.startOfMonth(this.calendarMonthFocusDate) : this.startOfMonth(today);
-      const monthKey = this.monthKey(focus);
+      const focus = this.calendarMonthFocusDate ? AppUtils.startOfMonth(this.calendarMonthFocusDate) : AppUtils.startOfMonth(today);
+      const monthKey = AppCalendarHelpers.monthKey(focus);
       const pages = this.calendarMonthPages;
       const pageIndex = pages.findIndex(page => page.key === monthKey);
       return pageIndex >= 0 ? pageIndex : Math.min(this.calendarAnchorRadius, Math.max(0, pages.length - 1));
     }
     if (this.activitiesView === 'week') {
-      const focus = this.calendarWeekFocusDate ? this.startOfWeekMonday(this.calendarWeekFocusDate) : this.startOfWeekMonday(today);
-      const weekKey = this.dateKey(focus);
+      const focus = this.calendarWeekFocusDate ? AppUtils.startOfWeekMonday(this.calendarWeekFocusDate) : AppUtils.startOfWeekMonday(today);
+      const weekKey = AppCalendarHelpers.dateKey(focus);
       const pages = this.calendarWeekPages;
       const pageIndex = pages.findIndex(page => page.key === weekKey);
       return pageIndex >= 0 ? pageIndex : Math.min(this.calendarAnchorRadius, Math.max(0, pages.length - 1));
@@ -19071,285 +16974,24 @@ export class App {
     return 0;
   }
 
-  private buildActivityRowsByDate(rows: ActivityListRow[]): Map<string, ActivityListRow[]> {
-    const byDate = new Map<string, ActivityListRow[]>();
-    for (const row of rows) {
-      const range = this.activityDateRange(row);
-      if (!range) {
-        continue;
-      }
-      let cursor = this.dateOnly(range.start);
-      const endDate = this.dateOnly(range.end);
-      while (cursor.getTime() <= endDate.getTime()) {
-        const key = this.dateKey(cursor);
-        const current = byDate.get(key) ?? [];
-        current.push(row);
-        byDate.set(key, current);
-        cursor = this.addDays(cursor, 1);
-      }
-    }
-    return byDate;
-  }
-
-  private activityDateRange(row: ActivityListRow): { start: Date; end: Date } | null {
-    if (row.type === 'rates') {
-      const point = new Date(row.dateIso);
-      if (Number.isNaN(point.getTime())) {
-        return null;
-      }
-      // Rates are point-in-time events for calendar heat/count views.
-      return { start: point, end: new Date(point.getTime() + 60 * 1000) };
-    }
-    const explicit = this.activityDateTimeRangeById[row.id];
-    if (explicit) {
-      const start = new Date(explicit.startIso);
-      const end = new Date(explicit.endIso);
-      if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && end.getTime() > start.getTime()) {
-        return { start, end };
-      }
-    }
-    const parsed = new Date(row.dateIso);
-    if (Number.isNaN(parsed.getTime())) {
-      return null;
-    }
-    const fallbackEnd = new Date(parsed.getTime() + 2 * 60 * 60 * 1000);
-    return { start: parsed, end: fallbackEnd };
-  }
-
-  private monthAnchorsForRows(rows: ActivityListRow[]): Date[] {
+  private monthAnchorsForRows(rows: AppTypes.ActivityListRow[]): Date[] {
     if (this.calendarMonthAnchorPages && this.calendarMonthAnchorPages.length > 0) {
       return [...this.calendarMonthAnchorPages];
     }
-    const todayMonth = this.startOfMonth(this.dateOnly(new Date()));
-    const focusMonth = this.calendarMonthFocusDate ? this.startOfMonth(this.calendarMonthFocusDate) : todayMonth;
-    this.calendarMonthAnchorPages = this.buildMonthAnchorWindow(focusMonth);
+    const todayMonth = AppUtils.startOfMonth(AppUtils.dateOnly(new Date()));
+    const focusMonth = this.calendarMonthFocusDate ? AppUtils.startOfMonth(this.calendarMonthFocusDate) : todayMonth;
+    this.calendarMonthAnchorPages = AppUtils.buildMonthAnchorWindow(focusMonth, this.calendarAnchorRadius);
     return [...this.calendarMonthAnchorPages];
   }
 
-  private weekAnchorsForRows(rows: ActivityListRow[]): Date[] {
+  private weekAnchorsForRows(rows: AppTypes.ActivityListRow[]): Date[] {
     if (this.calendarWeekAnchorPages && this.calendarWeekAnchorPages.length > 0) {
       return [...this.calendarWeekAnchorPages];
     }
-    const todayWeek = this.startOfWeekMonday(this.dateOnly(new Date()));
-    const focusWeek = this.calendarWeekFocusDate ? this.startOfWeekMonday(this.calendarWeekFocusDate) : todayWeek;
-    this.calendarWeekAnchorPages = this.buildWeekAnchorWindow(focusWeek);
+    const todayWeek = AppUtils.startOfWeekMonday(AppUtils.dateOnly(new Date()));
+    const focusWeek = this.calendarWeekFocusDate ? AppUtils.startOfWeekMonday(this.calendarWeekFocusDate) : todayWeek;
+    this.calendarWeekAnchorPages = AppUtils.buildWeekAnchorWindow(focusWeek, this.calendarAnchorRadius);
     return [...this.calendarWeekAnchorPages];
-  }
-
-  private calendarRowsSignature(rows: ActivityListRow[]): string {
-    return rows
-      .map(row => {
-        const range = this.activityDateTimeRangeById[row.id];
-        const rangeSignature = range ? `${range.startIso}:${range.endIso}` : '';
-        return `${row.type}:${row.id}:${row.dateIso}:${rangeSignature}`;
-      })
-      .join(',');
-  }
-
-  private buildMonthPage(anchor: Date, rowsByDate: Map<string, ActivityListRow[]>, rows: ActivityListRow[]): CalendarMonthPage {
-    const firstDay = this.startOfMonth(anchor);
-    const firstWeekStart = this.startOfWeekMonday(firstDay);
-    const monthEnd = this.endOfMonth(anchor);
-    const lastWeekEnd = this.endOfWeekSunday(monthEnd);
-    const weeks: CalendarMonthWeek[] = [];
-    let cursor = this.dateOnly(firstWeekStart);
-    while (cursor.getTime() <= lastWeekEnd.getTime()) {
-      const weekStart = this.dateOnly(cursor);
-      const weekEnd = this.addDays(weekStart, 6);
-      const days: CalendarDayCell[] = [];
-      for (let day = 0; day < 7; day += 1) {
-        const date = this.addDays(cursor, day);
-        days.push(this.buildCalendarDayCell(date, rowsByDate, firstDay.getMonth()));
-      }
-      weeks.push({
-        start: weekStart,
-        end: weekEnd,
-        days,
-        spans: this.buildMonthWeekSpans(weekStart, weekEnd, rows)
-      });
-      cursor = this.addDays(cursor, 7);
-    }
-    return {
-      key: this.monthKey(anchor),
-      label: anchor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-      weeks
-    };
-  }
-
-  private buildWeekPage(anchor: Date, rowsByDate: Map<string, ActivityListRow[]>): CalendarWeekPage {
-    const start = this.startOfWeekMonday(anchor);
-    const days: CalendarDayCell[] = [];
-    for (let day = 0; day < 7; day += 1) {
-      const date = this.addDays(start, day);
-      days.push(this.buildCalendarDayCell(date, rowsByDate, date.getMonth()));
-    }
-    const end = this.addDays(start, 6);
-    return {
-      key: this.dateKey(start),
-      label: this.weekRangeLabel(start, end),
-      days
-    };
-  }
-
-  private buildMonthWeekSpans(weekStart: Date, weekEnd: Date, rows: ActivityListRow[]): CalendarMonthSpan[] {
-    const spansBase: Array<{ row: ActivityListRow; startCol: number; endCol: number }> = [];
-    for (const row of rows) {
-      const range = this.activityDateRange(row);
-      if (!range) {
-        continue;
-      }
-      const startDate = this.dateOnly(range.start);
-      const endDate = this.dateOnly(range.end);
-      if (!this.dateRangeOverlaps(startDate, endDate, weekStart, weekEnd)) {
-        continue;
-      }
-      const visibleStart = startDate.getTime() < weekStart.getTime() ? weekStart : startDate;
-      const visibleEnd = endDate.getTime() > weekEnd.getTime() ? weekEnd : endDate;
-      spansBase.push({
-        row,
-        startCol: Math.max(0, this.dayDiff(weekStart, visibleStart)),
-        endCol: Math.min(6, this.dayDiff(weekStart, visibleEnd))
-      });
-    }
-
-    spansBase.sort((a, b) => a.startCol - b.startCol || b.endCol - a.endCol);
-    const lanes: Array<Array<{ startCol: number; endCol: number }>> = [];
-    const spans: CalendarMonthSpan[] = [];
-
-    for (const span of spansBase) {
-      let laneIndex = 0;
-      while (laneIndex < lanes.length) {
-        const conflict = lanes[laneIndex].some(item => !(span.endCol < item.startCol || span.startCol > item.endCol));
-        if (!conflict) {
-          break;
-        }
-        laneIndex += 1;
-      }
-      if (!lanes[laneIndex]) {
-        lanes[laneIndex] = [];
-      }
-      lanes[laneIndex].push({ startCol: span.startCol, endCol: span.endCol });
-      spans.push({
-        key: `${span.row.id}-${this.dateKey(weekStart)}-${span.startCol}-${span.endCol}-${laneIndex}`,
-        row: span.row,
-        startCol: span.startCol,
-        endCol: span.endCol,
-        lane: laneIndex
-      });
-    }
-
-    return spans;
-  }
-
-  private buildCalendarDayCell(date: Date, rowsByDate: Map<string, ActivityListRow[]>, currentMonthIndex: number): CalendarDayCell {
-    const safeDate = this.dateOnly(date);
-    const key = this.dateKey(safeDate);
-    const todayKey = this.dateKey(this.dateOnly(new Date()));
-    return {
-      key,
-      date: safeDate,
-      dayNumber: safeDate.getDate(),
-      inCurrentMonth: safeDate.getMonth() === currentMonthIndex,
-      isToday: key === todayKey,
-      rows: rowsByDate.get(key) ?? []
-    };
-  }
-
-  private weekRangeLabel(start: Date, end: Date): string {
-    const startLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const endLabel = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    return `${startLabel} - ${endLabel}`;
-  }
-
-  private dayDiff(from: Date, to: Date): number {
-    const ms = this.dateOnly(to).getTime() - this.dateOnly(from).getTime();
-    return Math.floor(ms / 86400000);
-  }
-
-  private dateRangeOverlaps(startA: Date, endA: Date, startB: Date, endB: Date): boolean {
-    return startA.getTime() <= endB.getTime() && endA.getTime() >= startB.getTime();
-  }
-
-  private countOverlappingRows(rows: ActivityListRow[], start: Date, end: Date): number {
-    let count = 0;
-    for (const row of rows) {
-      const range = this.activityDateRange(row);
-      if (!range) {
-        continue;
-      }
-      if (range.start.getTime() < end.getTime() && range.end.getTime() > start.getTime()) {
-        count += 1;
-      }
-    }
-    return count;
-  }
-
-  private rateHeatClass(count: number): string {
-    if (count <= 0) {
-      return 'activities-rate-heat-0';
-    }
-    const clamped = Math.min(100, count);
-    const normalized = (clamped - 1) / 99;
-    if (normalized <= 0.16) {
-      return 'activities-rate-heat-1';
-    }
-    if (normalized <= 0.32) {
-      return 'activities-rate-heat-2';
-    }
-    if (normalized <= 0.5) {
-      return 'activities-rate-heat-3';
-    }
-    if (normalized <= 0.68) {
-      return 'activities-rate-heat-4';
-    }
-    if (normalized <= 0.84) {
-      return 'activities-rate-heat-5';
-    }
-    return 'activities-rate-heat-6';
-  }
-
-  private dateOnly(value: Date): Date {
-    return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-  }
-
-  private dateKey(value: Date): string {
-    const year = value.getFullYear();
-    const month = `${value.getMonth() + 1}`.padStart(2, '0');
-    const day = `${value.getDate()}`.padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
-  private monthKey(value: Date): string {
-    const year = value.getFullYear();
-    const month = `${value.getMonth() + 1}`.padStart(2, '0');
-    return `${year}-${month}`;
-  }
-
-  private parseDateKey(value: string): Date | null {
-    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!match) {
-      return null;
-    }
-    const year = Number.parseInt(match[1], 10);
-    const month = Number.parseInt(match[2], 10);
-    const day = Number.parseInt(match[3], 10);
-    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
-      return null;
-    }
-    return this.dateOnly(new Date(year, month - 1, day));
-  }
-
-  private parseMonthKey(value: string): Date | null {
-    const match = value.match(/^(\d{4})-(\d{2})$/);
-    if (!match) {
-      return null;
-    }
-    const year = Number.parseInt(match[1], 10);
-    const month = Number.parseInt(match[2], 10);
-    if (!Number.isFinite(year) || !Number.isFinite(month)) {
-      return null;
-    }
-    return this.startOfMonth(new Date(year, month - 1, 1));
   }
 
   private currentCalendarPageIndex(): number {
@@ -19409,12 +17051,12 @@ export class App {
     const edgePage = atLeftEdge ? pages[0] : pages[pages.length - 1];
     if (this.activitiesView === 'month') {
       this.calendarMonthFocusDate =
-        this.parseMonthKey(edgePage.key) ??
-        this.startOfMonth(this.dateOnly(new Date()));
+        AppCalendarHelpers.parseMonthKey(edgePage.key) ??
+        AppUtils.startOfMonth(AppUtils.dateOnly(new Date()));
     } else {
       this.calendarWeekFocusDate =
-        this.parseDateKey(edgePage.key) ??
-        this.startOfWeekMonday(this.dateOnly(new Date()));
+        AppCalendarHelpers.parseDateKey(edgePage.key) ??
+        AppUtils.startOfWeekMonday(AppUtils.dateOnly(new Date()));
     }
     this.shiftCalendarPages(atLeftEdge ? -1 : 1);
     const stabilizeAfterShift = () => {
@@ -19466,7 +17108,7 @@ export class App {
         this.activitiesHeaderProgress = 0;
         return;
       }
-      this.activitiesHeaderProgress = this.clampNumber((this.activitiesRatesFullscreenCardIndex + 1) / loadedCount, 0, 1);
+      this.activitiesHeaderProgress = AppUtils.clampNumber((this.activitiesRatesFullscreenCardIndex + 1) / loadedCount, 0, 1);
       return;
     }
 
@@ -19482,7 +17124,7 @@ export class App {
         this.activitiesHeaderProgress = 0;
         return;
       }
-      this.activitiesHeaderProgress = this.clampNumber(calendarElement.scrollLeft / maxHorizontalScroll, 0, 1);
+      this.activitiesHeaderProgress = AppUtils.clampNumber(calendarElement.scrollLeft / maxHorizontalScroll, 0, 1);
       return;
     }
 
@@ -19498,7 +17140,7 @@ export class App {
       this.activitiesHeaderProgress = 0;
       return;
     }
-    this.activitiesHeaderProgress = this.clampNumber(listElement.scrollTop / maxVerticalScroll, 0, 1);
+    this.activitiesHeaderProgress = AppUtils.clampNumber(listElement.scrollTop / maxVerticalScroll, 0, 1);
   }
 
   private maybeLoadMoreActivities(scrollElement: HTMLElement): void {
@@ -19521,18 +17163,6 @@ export class App {
       return;
     }
     this.startActivitiesPaginationLoad();
-  }
-
-  private forceLoadMoreActivities(scrollElement: HTMLElement): void {
-    if (this.activePopup !== 'activities' || this.isCalendarLayoutView() || this.activitiesIsPaginating) {
-      return;
-    }
-    const rows = this.buildFilteredActivityRowsBase();
-    this.ensureActivitiesPaginationState(rows.length);
-    this.activitiesPaginationAwaitScrollReset = false;
-    // Pull-up explicitly triggers a server-like refresh route too, even if
-    // there are no currently unseen local rows.
-    this.startActivitiesPaginationLoad(true);
   }
 
   private startActivitiesPaginationLoad(allowEmptyResponse = false): void {
@@ -19691,7 +17321,7 @@ export class App {
       return;
     }
     const elapsed = Math.max(0, performance.now() - this.activitiesHeaderLoadingStartedAtMs);
-    const nextProgress = this.clampNumber(elapsed / this.activitiesHeaderLoadingWindowMs, 0, 1);
+    const nextProgress = AppUtils.clampNumber(elapsed / this.activitiesHeaderLoadingWindowMs, 0, 1);
     this.activitiesHeaderLoadingProgress = Math.max(this.activitiesHeaderLoadingProgress, nextProgress);
     this.activitiesHeaderLoadingOverdue = elapsed >= this.activitiesHeaderLoadingWindowMs && this.activitiesHeaderLoadingCounter > 0;
   }
@@ -19728,7 +17358,7 @@ export class App {
       this.eventExploreHeaderProgress = 0;
       return;
     }
-    this.eventExploreHeaderProgress = this.clampNumber(listElement.scrollTop / maxVerticalScroll, 0, 1);
+    this.eventExploreHeaderProgress = AppUtils.clampNumber(listElement.scrollTop / maxVerticalScroll, 0, 1);
   }
 
   private maybeLoadMoreEventExplore(scrollElement: HTMLElement): void {
@@ -19786,7 +17416,7 @@ export class App {
       this.eventExploreOrder,
       this.eventExploreFilterFriendsOnly ? 'friends' : 'all',
       this.eventExploreFilterHasRooms ? 'rooms' : 'all',
-      this.normalizeText(this.eventExploreFilterTopic)
+      AppUtils.normalizeText(this.eventExploreFilterTopic)
     ].join('|');
   }
 
@@ -19905,7 +17535,7 @@ export class App {
       return;
     }
     const elapsed = Math.max(0, performance.now() - this.eventExploreHeaderLoadingStartedAtMs);
-    const nextProgress = this.clampNumber(elapsed / this.activitiesHeaderLoadingWindowMs, 0, 1);
+    const nextProgress = AppUtils.clampNumber(elapsed / this.activitiesHeaderLoadingWindowMs, 0, 1);
     this.eventExploreHeaderLoadingProgress = Math.max(this.eventExploreHeaderLoadingProgress, nextProgress);
     this.eventExploreHeaderLoadingOverdue =
       elapsed >= this.activitiesHeaderLoadingWindowMs && this.eventExploreHeaderLoadingCounter > 0;
@@ -20019,7 +17649,7 @@ export class App {
       return;
     }
     const elapsed = Math.max(0, performance.now() - this.chatHeaderLoadingStartedAtMs);
-    const nextProgress = this.clampNumber(elapsed / this.activitiesHeaderLoadingWindowMs, 0, 1);
+    const nextProgress = AppUtils.clampNumber(elapsed / this.activitiesHeaderLoadingWindowMs, 0, 1);
     this.chatHeaderLoadingProgress = Math.max(this.chatHeaderLoadingProgress, nextProgress);
     this.chatHeaderLoadingOverdue = elapsed >= this.activitiesHeaderLoadingWindowMs && this.chatHeaderLoadingCounter > 0;
   }
@@ -20195,10 +17825,6 @@ export class App {
     });
   }
 
-  private clampNumber(value: number, min: number, max: number): number {
-    return Math.min(max, Math.max(min, value));
-  }
-
   private shiftCalendarPages(direction: -1 | 1): void {
     if (this.activitiesView === 'month') {
       const pages = this.calendarMonthAnchorPages ?? this.monthAnchorsForRows([]);
@@ -20207,10 +17833,10 @@ export class App {
       }
       if (direction < 0) {
         const first = pages[0];
-        this.calendarMonthAnchorPages = [this.addMonths(first, -1), ...pages.slice(0, pages.length - 1)];
+        this.calendarMonthAnchorPages = [AppUtils.addMonths(first, -1), ...pages.slice(0, pages.length - 1)];
       } else {
         const last = pages[pages.length - 1];
-        this.calendarMonthAnchorPages = [...pages.slice(1), this.addMonths(last, 1)];
+        this.calendarMonthAnchorPages = [...pages.slice(1), AppUtils.addMonths(last, 1)];
       }
       return;
     }
@@ -20220,10 +17846,10 @@ export class App {
     }
     if (direction < 0) {
       const first = pages[0];
-      this.calendarWeekAnchorPages = [this.addDays(first, -7), ...pages.slice(0, pages.length - 1)];
+      this.calendarWeekAnchorPages = [AppUtils.addDays(first, -7), ...pages.slice(0, pages.length - 1)];
     } else {
       const last = pages[pages.length - 1];
-      this.calendarWeekAnchorPages = [...pages.slice(1), this.addDays(last, 7)];
+      this.calendarWeekAnchorPages = [...pages.slice(1), AppUtils.addDays(last, 7)];
     }
   }
 
@@ -20248,22 +17874,16 @@ export class App {
     setTimeout(() => {
       if (this.activitiesView === 'month' && this.calendarMonthAnchorPages?.length === 1) {
         const focus = this.calendarMonthAnchorPages[0];
-        this.calendarMonthAnchorPages = this.buildMonthAnchorWindow(focus);
+        this.calendarMonthAnchorPages = AppUtils.buildMonthAnchorWindow(focus, this.calendarAnchorRadius);
       } else if (this.activitiesView === 'week' && this.calendarWeekAnchorPages?.length === 1) {
         const focus = this.calendarWeekAnchorPages[0];
-        this.calendarWeekAnchorPages = this.buildWeekAnchorWindow(focus);
+        this.calendarWeekAnchorPages = AppUtils.buildWeekAnchorWindow(focus, this.calendarAnchorRadius);
       } else {
         return;
       }
       this.calendarInitialPageIndexOverride = this.calendarAnchorRadius;
       this.resetActivitiesScroll();
     }, 0);
-  }
-
-  private addDays(value: Date, days: number): Date {
-    const copy = new Date(value);
-    copy.setDate(copy.getDate() + days);
-    return this.dateOnly(copy);
   }
 
   private syncTicketScrollOnOpen(): void {
@@ -20320,9 +17940,9 @@ export class App {
     return parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   }
 
-  private createTicketScanPayload(row: ActivityListRow): TicketScanPayload {
-    const issuedAtIso = this.toIsoDateTime(new Date());
-    const code = `TKT-${row.id}-${this.hashText(`${this.activeUser.id}:${row.id}:${issuedAtIso}`)}`;
+  private createTicketScanPayload(row: AppTypes.ActivityListRow): AppTypes.TicketScanPayload {
+    const issuedAtIso = AppUtils.toIsoDateTime(new Date());
+    const code = `TKT-${row.id}-${AppDemoGenerators.hashText(`${this.activeUser.id}:${row.id}:${issuedAtIso}`)}`;
     return {
       code,
       holderUserId: this.activeUser.id,
@@ -20339,7 +17959,7 @@ export class App {
     };
   }
 
-  private encodeTicketPayload(payload: TicketScanPayload): string {
+  private encodeTicketPayload(payload: AppTypes.TicketScanPayload): string {
     try {
       const json = JSON.stringify(payload);
       if (typeof TextEncoder === 'undefined' || typeof btoa === 'undefined') {
@@ -20356,7 +17976,7 @@ export class App {
     }
   }
 
-  private decodeTicketPayload(encoded: string): TicketScanPayload | null {
+  private decodeTicketPayload(encoded: string): AppTypes.TicketScanPayload | null {
     try {
       if (typeof TextDecoder === 'undefined' || typeof atob === 'undefined') {
         return null;
@@ -20364,7 +17984,7 @@ export class App {
       const binary = atob(encoded);
       const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
       const json = new TextDecoder().decode(bytes);
-      const parsed = JSON.parse(json) as Partial<TicketScanPayload>;
+      const parsed = JSON.parse(json) as Partial<AppTypes.TicketScanPayload>;
       if (
         typeof parsed.code !== 'string'
         || typeof parsed.holderUserId !== 'string'
@@ -20402,7 +18022,7 @@ export class App {
     void this.startTicketScannerSession();
   }
 
-  private selectedTicketPayload(): TicketScanPayload | null {
+  private selectedTicketPayload(): AppTypes.TicketScanPayload | null {
     const decoded = this.decodeTicketPayload(this.selectedTicketCodeValue);
     if (decoded) {
       return decoded;
@@ -20422,11 +18042,11 @@ export class App {
       eventSubtitle: this.selectedTicketRow.subtitle,
       eventTimeframe: this.selectedTicketRow.detail,
       eventDateLabel: this.activityDateLabel(this.selectedTicketRow),
-      issuedAtIso: this.toIsoDateTime(new Date())
+      issuedAtIso: AppUtils.toIsoDateTime(new Date())
     };
   }
 
-  private ticketPayloadAvatarUrl(payload: TicketScanPayload | null): string {
+  private ticketPayloadAvatarUrl(payload: AppTypes.TicketScanPayload | null): string {
     const user = this.ticketPayloadUser(payload);
     if (!user) {
       return '';
@@ -20436,19 +18056,15 @@ export class App {
     return first ?? this.profilePortraitUrlForUser(user, 0, 'ticket-scan');
   }
 
-  private ticketPayloadInitials(payload: TicketScanPayload): string {
+  private ticketPayloadInitials(payload: AppTypes.TicketScanPayload): string {
     const user = this.ticketPayloadUser(payload);
     if (user) {
       return user.initials;
     }
-    return this.toInitials(payload.holderName);
+    return AppUtils.initialsFromText(payload.holderName);
   }
 
-  private ticketScannerResultUser(): DemoUser | null {
-    return this.ticketPayloadUser(this.ticketScannerResult);
-  }
-
-  private ticketPayloadUser(payload: TicketScanPayload | null): DemoUser | null {
+  private ticketPayloadUser(payload: AppTypes.TicketScanPayload | null): DemoUser | null {
     if (!payload?.holderUserId) {
       return null;
     }
@@ -20527,7 +18143,7 @@ export class App {
     }, 1200);
   }
 
-  private startTicketScannerDetectionLoop(detector: BrowserBarcodeDetector, videoElement: HTMLVideoElement): void {
+  private startTicketScannerDetectionLoop(detector: AppTypes.BrowserBarcodeDetector, videoElement: HTMLVideoElement): void {
     this.cancelTicketScannerDetectionLoop();
     this.ticketScannerDetectBusy = false;
     const tick = (): void => {
@@ -20556,7 +18172,7 @@ export class App {
     this.ticketScannerDetectionFrame = requestAnimationFrame(tick);
   }
 
-  private ticketScannerPayloadFromResults(results: BrowserBarcodeDetectorResult[]): TicketScanPayload | null {
+  private ticketScannerPayloadFromResults(results: AppTypes.BrowserBarcodeDetectorResult[]): AppTypes.TicketScanPayload | null {
     for (const result of results) {
       const raw = `${result.rawValue ?? ''}`.trim();
       if (!raw) {
@@ -20570,7 +18186,7 @@ export class App {
     return null;
   }
 
-  private applyTicketScannerSuccess(payload: TicketScanPayload): void {
+  private applyTicketScannerSuccess(payload: AppTypes.TicketScanPayload): void {
     this.cancelTicketScannerTimer();
     this.ticketScannerResult = payload;
     this.ticketScannerState = 'success';
@@ -20638,8 +18254,8 @@ export class App {
     }
   }
 
-  private createBrowserBarcodeDetector(): BrowserBarcodeDetector | null {
-    const maybeCtor = (globalThis as { BarcodeDetector?: BrowserBarcodeDetectorConstructor }).BarcodeDetector;
+  private createBrowserBarcodeDetector(): AppTypes.BrowserBarcodeDetector | null {
+    const maybeCtor = (globalThis as { BarcodeDetector?: AppTypes.BrowserBarcodeDetectorConstructor }).BarcodeDetector;
     if (typeof maybeCtor !== 'function') {
       return null;
     }
@@ -20654,105 +18270,4 @@ export class App {
     }
   }
 
-  private buildMonthAnchorWindow(focusMonth: Date): Date[] {
-    const radius = this.calendarAnchorRadius;
-    const anchors: Date[] = [];
-    for (let offset = -radius; offset <= radius; offset += 1) {
-      anchors.push(this.addMonths(focusMonth, offset));
-    }
-    return anchors;
-  }
-
-  private buildWeekAnchorWindow(focusWeek: Date): Date[] {
-    const radius = this.calendarAnchorRadius;
-    const anchors: Date[] = [];
-    for (let offset = -radius; offset <= radius; offset += 1) {
-      anchors.push(this.addDays(focusWeek, offset * 7));
-    }
-    return anchors;
-  }
-
-  private addMonths(value: Date, months: number): Date {
-    const copy = new Date(value.getFullYear(), value.getMonth() + months, 1);
-    return this.dateOnly(copy);
-  }
-
-  private startOfMonth(value: Date): Date {
-    return this.dateOnly(new Date(value.getFullYear(), value.getMonth(), 1));
-  }
-
-  private endOfMonth(value: Date): Date {
-    return this.dateOnly(new Date(value.getFullYear(), value.getMonth() + 1, 0));
-  }
-
-  private startOfWeekMonday(value: Date): Date {
-    const copy = this.dateOnly(value);
-    const day = copy.getDay();
-    const mondayOffset = day === 0 ? -6 : 1 - day;
-    return this.addDays(copy, mondayOffset);
-  }
-
-  private endOfWeekSunday(value: Date): Date {
-    return this.addDays(this.startOfWeekMonday(value), 6);
-  }
-
-  private activityGroupLabel(row: ActivityListRow): string {
-    if (this.activitiesView === 'distance') {
-      const bucket = Math.max(5, Math.ceil(row.distanceKm / 5) * 5);
-      return `${bucket} km`;
-    }
-    const parsed = new Date(row.dateIso);
-    if (Number.isNaN(parsed.getTime())) {
-      return 'Date unavailable';
-    }
-    if (this.activitiesView === 'day') {
-      return parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    }
-    if (this.activitiesView === 'month') {
-      return parsed.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    }
-    return `Week ${this.isoWeekNumber(parsed)}, ${parsed.getFullYear()}`;
-  }
-
-  private isoWeekNumber(date: Date): number {
-    const copy = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    const day = copy.getUTCDay() || 7;
-    copy.setUTCDate(copy.getUTCDate() + 4 - day);
-    const yearStart = new Date(Date.UTC(copy.getUTCFullYear(), 0, 1));
-    return Math.ceil((((copy.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-  }
-
-  private cloneMapItems<T>(input: Record<string, T[]>): Record<string, T[]> {
-    const output: Record<string, T[]> = {};
-    for (const [key, value] of Object.entries(input)) {
-      output[key] = value.map(item => ({ ...item }));
-    }
-    return output;
-  }
-
-  private normalizeText(value: string): string {
-    return value
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
-  }
-
-  private initialsFromText(value: string): string {
-    const words = value
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
-    if (words.length === 0) {
-      return 'U';
-    }
-    if (words.length === 1) {
-      return words[0].slice(0, 2).toUpperCase();
-    }
-    return `${words[0][0] ?? ''}${words[1][0] ?? ''}`.toUpperCase();
-  }
-
-  private findUserByName(name: string): DemoUser | undefined {
-    const target = this.normalizeText(name);
-    return this.users.find(user => this.normalizeText(user.name) === target);
-  }
 }

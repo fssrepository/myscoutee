@@ -390,8 +390,11 @@ export class HomeComponent implements OnDestroy {
   private readonly pendingGameImageUrls = new Set<string>();
   private ratingBarBlinkTimeout: ReturnType<typeof setTimeout> | null = null;
   private candidateImageIndicatorRevealTimer: ReturnType<typeof setTimeout> | null = null;
+  private candidateImageLoadingPulseTimer: ReturnType<typeof setTimeout> | null = null;
   private pairModeWomanImageIndicatorRevealTimer: ReturnType<typeof setTimeout> | null = null;
   private pairModeManImageIndicatorRevealTimer: ReturnType<typeof setTimeout> | null = null;
+  private pairModeWomanImageLoadingPulseTimer: ReturnType<typeof setTimeout> | null = null;
+  private pairModeManImageLoadingPulseTimer: ReturnType<typeof setTimeout> | null = null;
   private gameCardLeaveTimer: ReturnType<typeof setTimeout> | null = null;
   private gameStackPaginationKey = '';
   private gameStackPaginating = false;
@@ -417,7 +420,7 @@ export class HomeComponent implements OnDestroy {
     this.resetGameStackPaginationState();
     this.preloadGameImageWindow();
     this.maybeStartGameStackPaginationLoad();
-    this.beginCandidateImageLoadingForCurrentSelection();
+    this.beginCandidateImageLoadingForCurrentSelection(true);
   }
 
   ngOnDestroy(): void {
@@ -430,8 +433,11 @@ export class HomeComponent implements OnDestroy {
       clearTimeout(this.candidateImageIndicatorRevealTimer);
       this.candidateImageIndicatorRevealTimer = null;
     }
+    this.clearCandidateImageLoadingPulseTimer();
     this.clearPairModeCandidateImageIndicatorRevealTimer('woman');
     this.clearPairModeCandidateImageIndicatorRevealTimer('man');
+    this.clearPairModeCandidateImageLoadingPulseTimer('woman');
+    this.clearPairModeCandidateImageLoadingPulseTimer('man');
     if (this.gameCardLeaveTimer) {
       clearTimeout(this.gameCardLeaveTimer);
       this.gameCardLeaveTimer = null;
@@ -768,7 +774,7 @@ export class HomeComponent implements OnDestroy {
     this.maybeStartGameStackPaginationLoad();
     this.preloadGameImageWindow();
     this.resetCandidateImageState();
-    this.beginCandidateImageLoadingForCurrentSelection();
+    this.beginCandidateImageLoadingForCurrentSelection(true);
   }
 
   protected togglePairMode(): void {
@@ -779,7 +785,7 @@ export class HomeComponent implements OnDestroy {
     this.resetGameStackPaginationState();
     this.preloadGameImageWindow();
     this.maybeStartGameStackPaginationLoad();
-    this.beginCandidateImageLoadingForCurrentSelection();
+    this.beginCandidateImageLoadingForCurrentSelection(true);
   }
 
   protected openHistory(): void {
@@ -808,7 +814,7 @@ export class HomeComponent implements OnDestroy {
     this.resetGameStackPaginationState(false);
     this.preloadGameImageWindow();
     this.maybeStartGameStackPaginationLoad();
-    this.beginCandidateImageLoadingForCurrentSelection();
+    this.beginCandidateImageLoadingForCurrentSelection(true);
     this.filterSelector = null;
     this.localPopup = null;
   }
@@ -1563,6 +1569,9 @@ export class HomeComponent implements OnDestroy {
       return;
     }
     this.markGameImagePreloaded(imageUrl);
+    if (this.candidateImageLoadingPulseTimer) {
+      return;
+    }
     const hadPendingLoad = this.isCandidateImageLoading;
     this.isCandidateImageLoading = false;
     if (hadPendingLoad) {
@@ -1597,7 +1606,7 @@ export class HomeComponent implements OnDestroy {
     this.candidateImagePanX = 0;
     this.candidateImagePanY = 0;
     this.isCandidateImageDragging = false;
-    this.beginCandidateImageLoadingForCurrentSelection();
+    this.beginCandidateImageLoadingForCurrentSelection(true);
   }
 
   protected onCandidateImageWheel(event: WheelEvent): void {
@@ -1717,7 +1726,7 @@ export class HomeComponent implements OnDestroy {
     } else {
       this.pairModeManImageIndex = index;
     }
-    this.beginPairModeCandidateImageLoading(gender);
+    this.beginPairModeCandidateImageLoading(gender, true);
   }
 
   protected onPairModeCandidateImageReady(candidate: DemoUser, gender: DemoUser['gender'], imageUrl: string): void {
@@ -1725,6 +1734,12 @@ export class HomeComponent implements OnDestroy {
       return;
     }
     this.markGameImagePreloaded(imageUrl);
+    const hasForcedPulseTimer = gender === 'woman'
+      ? this.pairModeWomanImageLoadingPulseTimer !== null
+      : this.pairModeManImageLoadingPulseTimer !== null;
+    if (hasForcedPulseTimer) {
+      return;
+    }
     const currentImage = this.pairModeCandidateImage(candidate, gender);
     if (imageUrl !== currentImage) {
       return;
@@ -1829,7 +1844,7 @@ export class HomeComponent implements OnDestroy {
     this.resetGameStackPaginationState();
     this.preloadGameImageWindow();
     this.maybeStartGameStackPaginationLoad();
-    this.beginCandidateImageLoadingForCurrentSelection();
+    this.beginCandidateImageLoadingForCurrentSelection(true);
   }
 
   @HostListener('window:pointermove', ['$event'])
@@ -1920,6 +1935,9 @@ export class HomeComponent implements OnDestroy {
     this.activeTouchId = null;
     this.clearPairModeCandidateImageIndicatorRevealTimer('woman');
     this.clearPairModeCandidateImageIndicatorRevealTimer('man');
+    this.clearCandidateImageLoadingPulseTimer();
+    this.clearPairModeCandidateImageLoadingPulseTimer('woman');
+    this.clearPairModeCandidateImageLoadingPulseTimer('man');
     this.failedCandidateImageUrls.clear();
   }
 
@@ -2308,10 +2326,10 @@ export class HomeComponent implements OnDestroy {
     return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
   }
 
-  private beginCandidateImageLoadingForCurrentSelection(): void {
+  private beginCandidateImageLoadingForCurrentSelection(forceLoadingPulse = false): void {
     if (this.isPairMode) {
-      this.beginPairModeCandidateImageLoading('woman');
-      this.beginPairModeCandidateImageLoading('man');
+      this.beginPairModeCandidateImageLoading('woman', forceLoadingPulse);
+      this.beginPairModeCandidateImageLoading('man', forceLoadingPulse);
       this.maybeStartGameStackPaginationLoad();
       return;
     }
@@ -2319,13 +2337,35 @@ export class HomeComponent implements OnDestroy {
       this.isCandidateImageLoading = false;
       this.isCandidateImageIndicatorRevealing = false;
       this.clearCandidateImageIndicatorRevealTimer();
+      this.clearCandidateImageLoadingPulseTimer();
       this.maybeStartGameStackPaginationLoad();
       this.cdr.markForCheck();
       return;
     }
-    this.isCandidateImageLoading = !this.isGameImagePreloaded(this.candidateImage);
+    const activeImage = this.candidateImage;
+    const isPreloaded = this.isGameImagePreloaded(activeImage);
+    this.isCandidateImageLoading = !isPreloaded;
     this.isCandidateImageIndicatorRevealing = false;
     this.clearCandidateImageIndicatorRevealTimer();
+    this.clearCandidateImageLoadingPulseTimer();
+    if (forceLoadingPulse && isPreloaded) {
+      this.isCandidateImageLoading = true;
+      this.candidateImageLoadingPulseTimer = setTimeout(() => {
+        this.candidateImageLoadingPulseTimer = null;
+        if (this.isPairMode || this.candidateImage !== activeImage) {
+          return;
+        }
+        this.isCandidateImageLoading = false;
+        this.isCandidateImageIndicatorRevealing = false;
+        this.cdr.markForCheck();
+      }, 420);
+      this.cdr.markForCheck();
+      return;
+    }
+    if (!this.isCandidateImageLoading) {
+      this.triggerCandidateImageIndicatorReveal();
+      return;
+    }
     this.cdr.markForCheck();
   }
 
@@ -2356,7 +2396,14 @@ export class HomeComponent implements OnDestroy {
     }
   }
 
-  private beginPairModeCandidateImageLoading(gender: DemoUser['gender']): void {
+  private clearCandidateImageLoadingPulseTimer(): void {
+    if (this.candidateImageLoadingPulseTimer) {
+      clearTimeout(this.candidateImageLoadingPulseTimer);
+      this.candidateImageLoadingPulseTimer = null;
+    }
+  }
+
+  private beginPairModeCandidateImageLoading(gender: DemoUser['gender'], forceLoadingPulse = false): void {
     const candidate = gender === 'woman' ? this.pairModeWomanCandidate : this.pairModeManCandidate;
     const imageUrl = this.pairModeCandidateImage(candidate, gender);
     if (!imageUrl) {
@@ -2368,17 +2415,51 @@ export class HomeComponent implements OnDestroy {
         this.isPairModeManImageIndicatorRevealing = false;
       }
       this.clearPairModeCandidateImageIndicatorRevealTimer(gender);
+      this.clearPairModeCandidateImageLoadingPulseTimer(gender);
       this.cdr.markForCheck();
       return;
     }
+    const isPreloaded = this.isGameImagePreloaded(imageUrl);
     if (gender === 'woman') {
-      this.isPairModeWomanImageLoading = !this.isGameImagePreloaded(imageUrl);
+      this.isPairModeWomanImageLoading = !isPreloaded;
       this.isPairModeWomanImageIndicatorRevealing = false;
     } else {
-      this.isPairModeManImageLoading = !this.isGameImagePreloaded(imageUrl);
+      this.isPairModeManImageLoading = !isPreloaded;
       this.isPairModeManImageIndicatorRevealing = false;
     }
     this.clearPairModeCandidateImageIndicatorRevealTimer(gender);
+    this.clearPairModeCandidateImageLoadingPulseTimer(gender);
+    if (forceLoadingPulse && isPreloaded) {
+      if (gender === 'woman') {
+        this.isPairModeWomanImageLoading = true;
+        this.pairModeWomanImageLoadingPulseTimer = setTimeout(() => {
+          this.pairModeWomanImageLoadingPulseTimer = null;
+          if (!this.isPairMode || this.pairModeCandidateImage(this.pairModeWomanCandidate, 'woman') !== imageUrl) {
+            return;
+          }
+          this.isPairModeWomanImageLoading = false;
+          this.isPairModeWomanImageIndicatorRevealing = false;
+          this.cdr.markForCheck();
+        }, 420);
+      } else {
+        this.isPairModeManImageLoading = true;
+        this.pairModeManImageLoadingPulseTimer = setTimeout(() => {
+          this.pairModeManImageLoadingPulseTimer = null;
+          if (!this.isPairMode || this.pairModeCandidateImage(this.pairModeManCandidate, 'man') !== imageUrl) {
+            return;
+          }
+          this.isPairModeManImageLoading = false;
+          this.isPairModeManImageIndicatorRevealing = false;
+          this.cdr.markForCheck();
+        }, 420);
+      }
+      this.cdr.markForCheck();
+      return;
+    }
+    if (!this.isPairModeCandidateImageLoading(gender)) {
+      this.triggerPairModeCandidateImageIndicatorReveal(gender);
+      return;
+    }
     this.cdr.markForCheck();
   }
 
@@ -2431,6 +2512,20 @@ export class HomeComponent implements OnDestroy {
     if (this.pairModeManImageIndicatorRevealTimer) {
       clearTimeout(this.pairModeManImageIndicatorRevealTimer);
       this.pairModeManImageIndicatorRevealTimer = null;
+    }
+  }
+
+  private clearPairModeCandidateImageLoadingPulseTimer(gender: DemoUser['gender']): void {
+    if (gender === 'woman') {
+      if (this.pairModeWomanImageLoadingPulseTimer) {
+        clearTimeout(this.pairModeWomanImageLoadingPulseTimer);
+        this.pairModeWomanImageLoadingPulseTimer = null;
+      }
+      return;
+    }
+    if (this.pairModeManImageLoadingPulseTimer) {
+      clearTimeout(this.pairModeManImageLoadingPulseTimer);
+      this.pairModeManImageLoadingPulseTimer = null;
     }
   }
 
@@ -2626,7 +2721,7 @@ export class HomeComponent implements OnDestroy {
         this.clearGameStackHeaderLoadingAnimation();
       }
       this.preloadGameImageWindow();
-      this.beginCandidateImageLoadingForCurrentSelection();
+      this.beginCandidateImageLoadingForCurrentSelection(true);
       this.cdr.markForCheck();
     }, delayMs);
   }

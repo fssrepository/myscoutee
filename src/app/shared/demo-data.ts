@@ -808,3 +808,399 @@ export const EVENT_EDITOR_SAMPLE = {
     { name: 'Lina Park', role: 'Member' }
   ]
 };
+
+export const DEMO_ACTIVITIES_PRIMARY_FILTERS: Array<{
+  key: 'rates' | 'chats' | 'invitations' | 'events' | 'hosting';
+  label: string;
+  icon: string;
+}> = [
+  { key: 'rates', label: 'Rates', icon: 'star' },
+  { key: 'chats', label: 'Chats', icon: 'chat' },
+  { key: 'invitations', label: 'Invitations', icon: 'mail' },
+  { key: 'events', label: 'Events', icon: 'event' },
+  { key: 'hosting', label: 'Hosting', icon: 'stadium' }
+];
+
+export const DEMO_ACTIVITIES_SECONDARY_FILTERS: Array<{
+  key: 'recent' | 'relevant' | 'past';
+  label: string;
+  icon: string;
+}> = [
+  { key: 'recent', label: 'Upcoming', icon: 'schedule' },
+  { key: 'relevant', label: 'Relevant', icon: 'auto_awesome' },
+  { key: 'past', label: 'Past', icon: 'history' }
+];
+
+export const DEMO_ACTIVITIES_CHAT_CONTEXT_FILTERS: Array<{
+  key: 'all' | 'event' | 'subEvent' | 'group';
+  label: string;
+  icon: string;
+}> = [
+  { key: 'all', label: 'All', icon: 'forum' },
+  { key: 'event', label: 'Event', icon: 'event' },
+  { key: 'subEvent', label: 'Sub event', icon: 'event_available' },
+  { key: 'group', label: 'Group', icon: 'groups' }
+];
+
+export const DEMO_RATE_FILTERS: Array<{
+  key: 'individual-given' | 'individual-received' | 'individual-mutual' | 'individual-met' | 'pair-given' | 'pair-received';
+  label: string;
+}> = [
+  { key: 'individual-given', label: 'Given' },
+  { key: 'individual-received', label: 'Received' },
+  { key: 'individual-mutual', label: 'Mutual' },
+  { key: 'individual-met', label: 'Met' },
+  { key: 'pair-given', label: 'Given' },
+  { key: 'pair-received', label: 'Received' }
+];
+
+export const DEMO_RATE_FILTER_ENTRIES: Array<
+  | { kind: 'group'; label: string }
+  | {
+    kind: 'item';
+    key: 'individual-given' | 'individual-received' | 'individual-mutual' | 'individual-met' | 'pair-given' | 'pair-received';
+    label: string;
+  }
+> = [
+  { kind: 'group', label: 'Single Rate' },
+  { kind: 'item', key: 'individual-given', label: 'Given' },
+  { kind: 'item', key: 'individual-received', label: 'Received' },
+  { kind: 'item', key: 'individual-mutual', label: 'Mutual' },
+  { kind: 'item', key: 'individual-met', label: 'Met' },
+  { kind: 'group', label: 'Pair Rate' },
+  { kind: 'item', key: 'pair-given', label: 'Given' },
+  { kind: 'item', key: 'pair-received', label: 'Received' }
+];
+
+export const DEMO_ACTIVITIES_VIEW_OPTIONS: Array<{
+  key: 'month' | 'week' | 'day' | 'distance';
+  label: string;
+  icon: string;
+}> = [
+  { key: 'month', label: 'Month', icon: 'calendar_month' },
+  { key: 'week', label: 'Week', icon: 'date_range' },
+  { key: 'day', label: 'Day', icon: 'today' },
+  { key: 'distance', label: 'Distance', icon: 'social_distance' }
+];
+
+export const DEMO_EVENT_EXPLORE_ORDER_OPTIONS: Array<{
+  key: 'upcoming' | 'past-events' | 'nearby' | 'most-relevant' | 'top-rated';
+  label: string;
+  icon: string;
+}> = [
+  { key: 'upcoming', label: 'Upcoming', icon: 'event_upcoming' },
+  { key: 'past-events', label: 'Past Events', icon: 'history' },
+  { key: 'nearby', label: 'Nearby', icon: 'near_me' },
+  { key: 'most-relevant', label: 'Most Relevant', icon: 'auto_awesome' },
+  { key: 'top-rated', label: 'Top Rated', icon: 'emoji_events' }
+];
+
+export const DEMO_EVENT_DATES_BY_ID: Record<string, string> = {
+  e1: '2026-02-27T09:00:00',
+  e2: '2026-03-08T10:00:00',
+  e3: '2026-03-12T19:30:00',
+  e6: '2026-03-14T17:00:00',
+  e7: '2026-03-16T09:30:00',
+  e8: '2026-02-27T11:15:00',
+  e9: '2026-02-27T13:30:00',
+  e10: '2026-03-14T18:15:00',
+  e11: '2026-03-28T09:00:00',
+  e12: '2026-04-26T10:00:00',
+  e4: '2026-02-28T08:00:00',
+  e5: '2026-03-03T18:00:00'
+};
+
+export const DEMO_HOSTING_DATES_BY_ID: Record<string, string> = {
+  h1: '2026-02-27T18:00:00',
+  h2: '2026-04-04T16:00:00',
+  h3: '2026-03-01T09:30:00',
+  h4: '2026-03-05T18:00:00'
+};
+
+export const DEMO_EVENT_VISIBILITY_BY_ID: Record<string, 'Public' | 'Friends only' | 'Invitation only'> = {
+  e1: 'Invitation only',
+  e2: 'Public',
+  e3: 'Friends only',
+  e4: 'Invitation only',
+  e5: 'Friends only',
+  e6: 'Public',
+  e7: 'Invitation only',
+  e8: 'Public',
+  e9: 'Friends only',
+  e10: 'Invitation only',
+  e11: 'Friends only',
+  e12: 'Public',
+  h1: 'Invitation only',
+  h2: 'Friends only',
+  h3: 'Public',
+  h4: 'Friends only'
+};
+
+export const DEMO_EVENT_BLIND_MODE_BY_ID: Record<string, 'Open Event' | 'Blind Event'> = {
+  e1: 'Open Event',
+  e2: 'Open Event',
+  e3: 'Blind Event',
+  e4: 'Open Event',
+  e5: 'Open Event',
+  e6: 'Blind Event',
+  e7: 'Open Event',
+  e8: 'Open Event',
+  e9: 'Blind Event',
+  e10: 'Open Event',
+  e11: 'Open Event',
+  e12: 'Blind Event',
+  h1: 'Blind Event',
+  h2: 'Open Event',
+  h3: 'Open Event',
+  h4: 'Blind Event'
+};
+
+export const DEMO_EVENT_AUTO_INVITER_BY_ID: Record<string, boolean> = {
+  e1: true,
+  e2: true,
+  e3: false,
+  e4: true,
+  e5: false,
+  e6: true,
+  e7: true,
+  e8: false,
+  e9: false,
+  e10: true,
+  e11: true,
+  e12: false,
+  h1: true,
+  h2: false,
+  h3: true,
+  h4: false
+};
+
+export const DEMO_EVENT_TICKETING_BY_ID: Record<string, boolean> = {
+  e1: true,
+  e2: true,
+  e3: false,
+  e4: false,
+  e5: false,
+  e6: false,
+  e7: false,
+  e8: false,
+  e9: false,
+  e10: false,
+  e11: false,
+  e12: false,
+  h1: true,
+  h2: false,
+  h3: false,
+  h4: false
+};
+
+export const DEMO_HOSTING_PUBLISHED_BY_ID: Record<string, boolean> = {
+  e1: true,
+  e4: true,
+  e5: true,
+  e7: false,
+  e10: true,
+  e11: false,
+  h1: true,
+  h2: true,
+  h3: false,
+  h4: false
+};
+
+export const DEMO_INVITATION_DATES_BY_ID: Record<string, string> = {
+  i1: '2026-02-21T20:00:00',
+  i2: '2026-02-22T15:00:00',
+  i3: '2026-02-21T09:15:00',
+  i4: '2026-02-22T18:30:00',
+  i5: '2026-02-23T18:00:00'
+};
+
+export const DEMO_CHAT_DATES_BY_ID: Record<string, string> = {
+  c1: '2026-02-21T09:11:00',
+  c2: '2026-02-22T18:40:00',
+  c3: '2026-02-23T10:09:00',
+  c4: '2026-02-22T12:30:00',
+  c5: '2026-02-23T17:40:00'
+};
+
+export const DEMO_CHAT_DISTANCE_BY_ID: Record<string, number> = {
+  c1: 5,
+  c2: 10,
+  c3: 15,
+  c4: 8,
+  c5: 12
+};
+
+export const DEMO_INVITATION_DISTANCE_BY_ID: Record<string, number> = {
+  i1: 10,
+  i2: 15,
+  i3: 5,
+  i4: 12,
+  i5: 18
+};
+
+export const DEMO_EVENT_DISTANCE_BY_ID: Record<string, number> = {
+  e1: 20,
+  e2: 10,
+  e3: 15,
+  e6: 35,
+  e7: 45,
+  e8: 20,
+  e9: 20,
+  e10: 35,
+  e11: 30,
+  e12: 40,
+  e4: 5,
+  e5: 25
+};
+
+export const DEMO_ACTIVITY_DATE_TIME_RANGE_BY_ID: Record<string, { startIso: string; endIso: string }> = {
+  e1: { startIso: '2026-02-27T09:00:00', endIso: '2026-03-01T12:00:00' },
+  e2: { startIso: '2026-03-08T10:00:00', endIso: '2026-03-08T19:00:00' },
+  e3: { startIso: '2026-03-12T19:30:00', endIso: '2026-03-12T23:00:00' },
+  e6: { startIso: '2026-03-14T17:00:00', endIso: '2026-03-14T20:30:00' },
+  e7: { startIso: '2026-03-16T09:30:00', endIso: '2026-03-16T11:30:00' },
+  e8: { startIso: '2026-02-27T11:15:00', endIso: '2026-02-27T13:00:00' },
+  e9: { startIso: '2026-02-27T13:30:00', endIso: '2026-02-27T15:30:00' },
+  e10: { startIso: '2026-03-14T18:15:00', endIso: '2026-03-14T21:15:00' },
+  e11: { startIso: '2026-03-28T09:00:00', endIso: '2026-05-06T21:00:00' },
+  e12: { startIso: '2026-04-26T10:00:00', endIso: '2026-06-02T20:00:00' },
+  h1: { startIso: '2026-02-27T18:00:00', endIso: '2026-02-27T21:00:00' },
+  h2: { startIso: '2026-04-04T16:00:00', endIso: '2026-04-04T20:00:00' },
+  h3: { startIso: '2026-03-01T09:30:00', endIso: '2026-03-01T12:00:00' },
+  h4: { startIso: '2026-03-05T18:00:00', endIso: '2026-03-05T21:00:00' }
+};
+
+export const DEMO_HOSTING_DISTANCE_BY_ID: Record<string, number> = {
+  h1: 5,
+  h2: 20,
+  h3: 10,
+  h4: 15
+};
+
+export const DEMO_ACTIVITY_IMAGE_BY_ID: Record<string, string> = {
+  e1: 'https://picsum.photos/seed/event-e1/1200/700',
+  e2: 'https://picsum.photos/seed/event-e2/1200/700',
+  e3: 'https://picsum.photos/seed/event-e3/1200/700',
+  e6: 'https://picsum.photos/seed/event-e6/1200/700',
+  e7: 'https://picsum.photos/seed/event-e7/1200/700',
+  e8: 'https://picsum.photos/seed/event-e8/1200/700',
+  e9: 'https://picsum.photos/seed/event-e9/1200/700',
+  e10: 'https://picsum.photos/seed/event-e10/1200/700',
+  e11: 'https://picsum.photos/seed/event-e11/1200/700',
+  e12: 'https://picsum.photos/seed/event-e12/1200/700',
+  e4: 'https://picsum.photos/seed/event-e4/1200/700',
+  e5: 'https://picsum.photos/seed/event-e5/1200/700',
+  h1: 'https://picsum.photos/seed/event-h1/1200/700',
+  h2: 'https://picsum.photos/seed/event-h2/1200/700',
+  h3: 'https://picsum.photos/seed/event-h3/1200/700',
+  h4: 'https://picsum.photos/seed/event-h4/1200/700',
+  i1: 'https://picsum.photos/seed/event-i1/1200/700',
+  i2: 'https://picsum.photos/seed/event-i2/1200/700',
+  i3: 'https://picsum.photos/seed/event-i3/1200/700',
+  i4: 'https://picsum.photos/seed/event-i4/1200/700',
+  i5: 'https://picsum.photos/seed/event-i5/1200/700'
+};
+
+export const DEMO_ACTIVITY_SOURCE_LINK_BY_ID: Record<string, string> = {
+  e1: 'https://example.com/events/e1',
+  e2: 'https://example.com/events/e2',
+  e3: 'https://example.com/events/e3',
+  e6: 'https://example.com/events/e6',
+  e7: 'https://example.com/events/e7',
+  e8: 'https://example.com/events/e8',
+  e9: 'https://example.com/events/e9',
+  e10: 'https://example.com/events/e10',
+  e11: 'https://example.com/events/e11',
+  e12: 'https://example.com/events/e12',
+  e4: 'https://example.com/events/e4',
+  e5: 'https://example.com/events/e5',
+  h1: 'https://example.com/hosting/h1',
+  h2: 'https://example.com/hosting/h2',
+  h3: 'https://example.com/hosting/h3',
+  h4: 'https://example.com/hosting/h4',
+  i1: 'https://example.com/invitations/i1',
+  i2: 'https://example.com/invitations/i2',
+  i3: 'https://example.com/invitations/i3',
+  i4: 'https://example.com/invitations/i4',
+  i5: 'https://example.com/invitations/i5'
+};
+
+export const DEMO_ACTIVITY_CAPACITY_BY_ID: Record<string, string> = {
+  e1: '24 / 28',
+  e2: '13 / 16',
+  e3: '18 / 20',
+  e6: '20 / 24',
+  e7: '9 / 12',
+  e8: '20 / 20',
+  e9: '18 / 22',
+  e10: '19 / 24',
+  e11: '41 / 60',
+  e12: '28 / 40',
+  e4: '10 / 12',
+  e5: '14 / 18',
+  h1: '20 / 24',
+  h2: '16 / 22',
+  h3: '9 / 12',
+  h4: '11 / 15',
+  i1: '2 / 4',
+  i2: '1 / 2',
+  i3: '3 / 4',
+  i4: '1 / 3',
+  i5: '2 / 3'
+};
+
+export const DEMO_SUB_EVENT_RESOURCE_FILTER_OPTIONS: Array<'Members' | 'Car' | 'Accommodation' | 'Supplies'> = [
+  'Members',
+  'Car',
+  'Accommodation',
+  'Supplies'
+];
+
+export const DEMO_ACTIVITY_GROUP_LABELS = {
+  dateUnavailable: 'Date unavailable',
+  weekPrefix: 'Week'
+};
+
+export const DEMO_ACTIVITY_MEMBER_MET_PLACES = [
+  'City Center Meetup',
+  'Board Game Night',
+  'Coffee Social',
+  'Hiking Group',
+  'Music Event',
+  'Brunch Table'
+];
+
+export const DEMO_ACTIVITY_MEMBER_DEFAULTS = {
+  forcedMetWhere: 'Event Explore'
+};
+
+export const APP_DEMO_DATA = {
+  activitiesPrimaryFilters: DEMO_ACTIVITIES_PRIMARY_FILTERS,
+  activitiesSecondaryFilters: DEMO_ACTIVITIES_SECONDARY_FILTERS,
+  activitiesChatContextFilters: DEMO_ACTIVITIES_CHAT_CONTEXT_FILTERS,
+  rateFilters: DEMO_RATE_FILTERS,
+  rateFilterEntries: DEMO_RATE_FILTER_ENTRIES,
+  activitiesViewOptions: DEMO_ACTIVITIES_VIEW_OPTIONS,
+  eventExploreOrderOptions: DEMO_EVENT_EXPLORE_ORDER_OPTIONS,
+  eventDatesById: DEMO_EVENT_DATES_BY_ID,
+  hostingDatesById: DEMO_HOSTING_DATES_BY_ID,
+  eventVisibilityById: DEMO_EVENT_VISIBILITY_BY_ID,
+  eventBlindModeById: DEMO_EVENT_BLIND_MODE_BY_ID,
+  eventAutoInviterById: DEMO_EVENT_AUTO_INVITER_BY_ID,
+  eventTicketingById: DEMO_EVENT_TICKETING_BY_ID,
+  hostingPublishedById: DEMO_HOSTING_PUBLISHED_BY_ID,
+  invitationDatesById: DEMO_INVITATION_DATES_BY_ID,
+  chatDatesById: DEMO_CHAT_DATES_BY_ID,
+  chatDistanceById: DEMO_CHAT_DISTANCE_BY_ID,
+  invitationDistanceById: DEMO_INVITATION_DISTANCE_BY_ID,
+  eventDistanceById: DEMO_EVENT_DISTANCE_BY_ID,
+  activityDateTimeRangeById: DEMO_ACTIVITY_DATE_TIME_RANGE_BY_ID,
+  hostingDistanceById: DEMO_HOSTING_DISTANCE_BY_ID,
+  activityImageById: DEMO_ACTIVITY_IMAGE_BY_ID,
+  activitySourceLinkById: DEMO_ACTIVITY_SOURCE_LINK_BY_ID,
+  activityCapacityById: DEMO_ACTIVITY_CAPACITY_BY_ID,
+  subEventResourceFilterOptions: DEMO_SUB_EVENT_RESOURCE_FILTER_OPTIONS,
+  activityGroupLabels: DEMO_ACTIVITY_GROUP_LABELS,
+  activityMemberMetPlaces: DEMO_ACTIVITY_MEMBER_MET_PLACES,
+  activityMemberDefaults: DEMO_ACTIVITY_MEMBER_DEFAULTS
+};

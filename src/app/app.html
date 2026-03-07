@@ -1523,6 +1523,7 @@
                 class="activities-rate-profile-card activities-row-item activities-rates-fullscreen-card activities-rates-fullscreen-card-leaving"
                 *ngIf="activitiesRatesFullscreenLeavingRow as leavingRow"
                 [attr.data-activity-rate-row-id]="leavingRow.id"
+                (animationend)="onActivitiesRatesFullscreenLeaveAnimationEnd($event)"
               >
                 <ng-container *ngIf="isPairRateRow(leavingRow); else leavingFullscreenSingleRateCard">
                   <div
