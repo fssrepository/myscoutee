@@ -405,16 +405,11 @@
   }
 }
 
-.assets-toolbar .experience-filter-select {
-  min-width: 188px;
-  width: 188px;
-  max-width: 188px;
-}
-
 .assets-toolbar .experience-filter-select.assets-compact-select {
   min-width: 0;
-  width: fit-content;
-  max-width: 100%;
+  width: auto;
+  max-width: max-content;
+  flex: 0 0 auto;
   position: relative;
   overflow: visible;
 }

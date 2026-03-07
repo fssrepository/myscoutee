@@ -183,20 +183,36 @@
 }
 
 .experience-filter-select {
-  min-width: 130px !important;
-  width: 130px !important;
-  max-width: 130px !important;
+  min-width: 0 !important;
+  width: auto !important;
+  max-width: max-content !important;
+  flex: 0 0 auto;
   height: 36px;
   padding-left: 0.6rem;
   padding-right: 0.36rem;
 }
 
-.experience-popup .experience-filter-select .mat-mdc-select {
+.experience-filter-select .mat-mdc-select,
+.experience-filter-select .mat-mdc-select-trigger {
   min-width: 0 !important;
+  width: auto !important;
+  font-family: inherit;
 }
 
-.experience-popup .experience-filter-select .status-option-content {
+.experience-filter-select .mat-mdc-select,
+.experience-filter-select .mat-mdc-select-value,
+.experience-filter-select .mat-mdc-select-value-text {
+  font-weight: 400;
+}
+
+.experience-filter-select .status-option-content {
   min-width: 0;
+  width: auto;
+}
+
+.experience-filter-select .mat-mdc-select-arrow-wrapper,
+.experience-filter-select > .mat-icon:last-child {
+  margin-left: 0.34rem;
 }
 
 .experience-filter-select.experience-filter-all {

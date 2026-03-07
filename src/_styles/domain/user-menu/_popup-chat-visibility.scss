@@ -241,39 +241,6 @@
   z-index: 61;
 }
 
-.activities-compact-select {
-  width: fit-content !important;
-  min-width: 0 !important;
-  max-width: 100%;
-}
-
-.activities-compact-select .mat-mdc-select-trigger {
-  width: 100% !important;
-  min-width: 0;
-}
-
-.activities-compact-select .status-option-content {
-  width: 100%;
-  min-width: 0;
-}
-
-.activities-compact-select .mat-mdc-select-arrow-wrapper,
-.activities-compact-select > .mat-icon:last-child {
-  margin-left: 0.54rem;
-}
-
-.activities-rate-filter-select .status-option-content {
-  gap: 0.34rem;
-}
-
-.activities-rate-filter-select .mat-mdc-select-arrow-wrapper {
-  margin-left: 0.54rem;
-}
-
-.activities-rate-filter-select > .mat-icon:last-child {
-  margin-left: 0.54rem;
-}
-
 .activities-rate-filter-select {
   position: relative;
   overflow: visible;
@@ -287,6 +254,11 @@
 .activities-chat-context-filter-select {
   position: relative;
   overflow: visible;
+}
+
+.experience-toolbar.activities-toolbar-chats {
+  justify-content: flex-start;
+  gap: 0.28rem;
 }
 
 .popup-view-fab {
@@ -314,10 +286,7 @@
   white-space: nowrap;
 }
 
-.popup-body.popup-body-activities .popup-view-fab span,
-.popup-body.popup-body-activities .profile-status-select-wrap.activities-compact-select .mat-mdc-select,
-.popup-body.popup-body-activities .profile-status-select-wrap.activities-compact-select .status-option-content span:last-child,
-.popup-body.popup-body-activities .profile-status-select-wrap.activities-compact-select .mat-mdc-select-value-text {
+.popup-body.popup-body-activities .popup-view-fab span {
   font-weight: 400 !important;
 }
 

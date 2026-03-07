@@ -51,15 +51,11 @@
   font-variation-settings: 'FILL' 1;
 }
 
+.assets-toolbar .experience-filter-select.assets-compact-select .mat-mdc-select,
 .assets-toolbar .experience-filter-select.assets-compact-select .mat-mdc-select-trigger,
 .assets-toolbar .experience-filter-select.assets-compact-select .status-option-content {
-  width: 100%;
+  width: auto !important;
   min-width: 0;
-}
-
-.assets-toolbar .experience-filter-select.assets-compact-select .mat-mdc-select-arrow-wrapper,
-.assets-toolbar .experience-filter-select.assets-compact-select > .mat-icon:last-child {
-  margin-left: 0.54rem;
 }
 
 .assets-add-btn {
