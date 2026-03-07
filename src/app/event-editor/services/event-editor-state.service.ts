@@ -45,6 +45,25 @@ export class EventEditorStateService {
   // Invitation
   readonly invitationId = signal<string | null>(null);
   
+  // Event saved signal - app.ts can listen to this to refresh lists
+  readonly eventSaved = signal<EventEditorForm | null>(null);
+  
+  // Additional UI state
+  readonly showSubEventOptionalPicker = signal(false);
+  readonly subEventFormStageNumber = signal<number | null>(null);
+  readonly subEventStageInsertPlacement = signal<'before' | 'after'>('after');
+  readonly subEventStageInsertTargetId = signal<string | null>(null);
+  readonly showSubEventLeaderboardPopup = signal(false);
+  readonly showSubEventLeaderboardForm = signal(false);
+  readonly subEventLeaderboardStageId = signal<string | null>(null);
+  readonly subEventLeaderboardEditingGroupId = signal<string | null>(null);
+  readonly subEventStartDateValue = signal<Date | null>(null);
+  readonly subEventEndDateValue = signal<Date | null>(null);
+  readonly subEventStartTimeValue = signal<Date | null>(null);
+  readonly subEventEndTimeValue = signal<Date | null>(null);
+  readonly showEventVisibilityPicker = signal(false);
+  readonly showProfileStatusHeaderPicker = signal(false);
+  
   // Computed values
   readonly canSubmit = computed(() => {
     if (this.readOnly()) return false;
@@ -64,6 +83,25 @@ export class EventEditorStateService {
     const stage = this.editingStage();
     if (!stage) return false;
     return true;
+  });
+
+  // Publish confirm computed
+  readonly publishConfirmTitle = computed(() => {
+    const context = this.publishConfirmContext();
+    if (!context) return '';
+    return context === 'active' ? 'Close Event Editor?' : 'Close Stacked Event Editor?';
+  });
+
+  readonly publishConfirmLabel = computed(() => {
+    const context = this.publishConfirmContext();
+    if (!context) return '';
+    return 'You have unsaved changes. Are you sure you want to close?';
+  });
+
+  // Members - placeholder until properly wired
+  readonly pendingMemberCount = computed(() => {
+    // TODO: Wire up with actual member data from membersRow
+    return 0;
   });
 
   // Actions
@@ -99,6 +137,27 @@ export class EventEditorStateService {
     this.publishConfirmContext.set(null);
     this.membersRow.set(null);
     this.invitationId.set(null);
+    this.eventSaved.set(null);
+    // Reset additional UI state
+    this.showSubEventOptionalPicker.set(false);
+    this.subEventFormStageNumber.set(null);
+    this.subEventStageInsertPlacement.set('after');
+    this.subEventStageInsertTargetId.set(null);
+    this.showSubEventLeaderboardPopup.set(false);
+    this.showSubEventLeaderboardForm.set(false);
+    this.subEventLeaderboardStageId.set(null);
+    this.subEventLeaderboardEditingGroupId.set(null);
+    this.subEventStartDateValue.set(null);
+    this.subEventEndDateValue.set(null);
+    this.subEventStartTimeValue.set(null);
+    this.subEventEndTimeValue.set(null);
+    this.showEventVisibilityPicker.set(false);
+    this.showProfileStatusHeaderPicker.set(false);
+  }
+  
+  saveAndClose(form: EventEditorForm): void {
+    this.eventSaved.set(form);
+    this.closeEditor();
   }
   
   updateForm(updates: Partial<EventEditorForm>): void {

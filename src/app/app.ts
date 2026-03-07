@@ -39,6 +39,7 @@ import { GDPR_CONTENT } from './shared/gdpr-data';
 import { environment } from '../environments/environment';
 import { LazyBgImageDirective } from './shared/lazy-bg-image.directive';
 import { EventEditorModule } from './event-editor/event-editor.module';
+import { EventEditorStateService } from './event-editor/services/event-editor-state.service';
 import { AppDemoGenerators } from './shared/app-demo-generators';
 import { AppUtils } from './shared/app-utils';
 import { AppCalendarHelpers } from './shared/app-calendar-helpers';
@@ -142,6 +143,7 @@ export class App {
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT = 100;
 
   public readonly alertService = inject(AlertService);
+  protected readonly eventEditorState = inject(EventEditorStateService);
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -269,7 +271,6 @@ export class App {
   protected pendingSubEventDeleteContext: 'subEvent' | 'stage' | null = null;
   protected pendingSubEventGroupDelete:
     { stageId: string; groupId: string; stageLabel: string; groupLabel: string; source: 'manual' | 'generated' } | null = null;
-  protected eventEditorClosePublishConfirmContext: 'active' | 'stacked' | null = null;
   protected pendingActivityAction: 'delete' | 'exit' = 'delete';
   protected pendingActivityMemberDelete: AppTypes.ActivityMemberEntry | null = null;
   protected selectedActivityMembers: AppTypes.ActivityMemberEntry[] = [];
@@ -1712,9 +1713,17 @@ export class App {
     readOnly = false,
     invitationId: string | null = null
   ): void {
-    this.eventEditorMode = mode;
-    this.eventEditorReadOnly = mode === 'edit' && readOnly;
-    this.eventEditorInvitationId = invitationId;
+    // Update the service state
+    const target = source && this.isHostingSource(source)
+      ? 'hosting'
+      : (this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'hosting' ? 'hosting' : 'events');
+    this.eventEditorState.openEditor({
+      mode,
+      target: target as AppTypes.EventEditorTarget,
+      readOnly: mode === 'edit' && readOnly,
+      invitationId
+    });
+    
     this.showEventVisibilityPicker = false;
     this.showProfileStatusHeaderPicker = false;
     this.prepareEventEditorForm(mode, source);
@@ -1788,7 +1797,7 @@ export class App {
 
   protected openEventTopicsSelector(event?: Event): void {
     event?.stopPropagation();
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return;
     }
     const allowed = new Set(this.interestAllOptions());
@@ -1951,7 +1960,7 @@ export class App {
 
   protected toggleSubEventsDisplayModePicker(event?: Event): void {
     event?.stopPropagation();
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return;
     }
     this.showSubEventsDisplayModePicker = !this.showSubEventsDisplayModePicker;
@@ -1959,7 +1968,7 @@ export class App {
 
   protected selectSubEventsDisplayMode(mode: AppTypes.SubEventsDisplayMode, event?: Event): void {
     event?.stopPropagation();
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return;
     }
     this.subEventsDisplayMode = mode;
@@ -2342,7 +2351,7 @@ export class App {
 
   protected toggleEventVisibilityPicker(event?: Event): void {
     event?.stopPropagation();
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return;
     }
     this.showEventVisibilityPicker = !this.showEventVisibilityPicker;
@@ -2350,7 +2359,7 @@ export class App {
 
   protected selectEventVisibility(option: AppTypes.EventVisibility, event?: Event): void {
     event?.stopPropagation();
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return;
     }
     this.eventForm.visibility = option;
@@ -2373,7 +2382,7 @@ export class App {
 
   protected toggleEventBlindMode(event?: Event): void {
     event?.stopPropagation();
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return;
     }
     this.eventForm.blindMode = this.eventForm.blindMode === 'Blind Event' ? 'Open Event' : 'Blind Event';
@@ -2381,7 +2390,7 @@ export class App {
 
   protected toggleEventAutoInviter(event?: Event): void {
     event?.stopPropagation();
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return;
     }
     this.eventForm.autoInviter = !this.eventForm.autoInviter;
@@ -2407,7 +2416,7 @@ export class App {
 
   protected toggleEventTicketing(event?: Event): void {
     event?.stopPropagation();
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return;
     }
     this.eventForm.ticketing = !this.eventForm.ticketing;
@@ -2433,7 +2442,7 @@ export class App {
 
   protected openSubEventPanel(event?: Event): void {
     event?.stopPropagation();
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return;
     }
     this.subEventForm = this.defaultSubEventForm();
@@ -2622,7 +2631,7 @@ export class App {
   }
 
   protected canSubmitEventEditorForm(): boolean {
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return false;
     }
     return Boolean(
@@ -2634,14 +2643,14 @@ export class App {
   }
 
   protected canSubmitSubEventForm(): boolean {
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return false;
     }
     return Boolean(this.subEventForm.name.trim() && this.subEventForm.description.trim());
   }
 
   protected canSubmitSubEventGroupForm(): boolean {
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return false;
     }
     return !this.subEventGroupFieldInvalid();
@@ -2676,7 +2685,7 @@ export class App {
   }
 
   protected onSubEventLocationChange(value: string): void {
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return;
     }
     this.subEventForm.location = this.normalizeLocationValue(value);
@@ -3009,14 +3018,14 @@ export class App {
   }
 
   protected canEditSubEventItem(item: AppTypes.SubEventFormItem): boolean {
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return false;
     }
     return this.subEventCreatorId(item) === this.activeUser.id;
   }
 
   protected canDeleteSubEventItem(item: AppTypes.SubEventFormItem): boolean {
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return false;
     }
     return this.subEventCreatorId(item) === this.activeUser.id;
@@ -3026,7 +3035,7 @@ export class App {
     if (!item.optional) {
       return false;
     }
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return this.subEventsDisplayMode !== 'Tournament';
     }
     return this.subEventCreatorId(item) !== this.activeUser.id;
@@ -3180,11 +3189,11 @@ export class App {
   }
 
   protected canViewSubEventLeaderboard(stage: AppTypes.SubEventTournamentStage): boolean {
-    return this.eventEditorReadOnly || this.canEditSubEventItem(stage.subEvent);
+    return this.eventEditorState.readOnly() || this.canEditSubEventItem(stage.subEvent);
   }
 
   protected isEventEditorReadOnly(): boolean {
-    return this.eventEditorReadOnly;
+    return this.eventEditorState.readOnly();
   }
 
   protected get subEventLeaderboardStage(): AppTypes.SubEventTournamentStage | null {
@@ -5352,7 +5361,7 @@ export class App {
   }
 
   protected onSubEventCapacityMinChange(value: number | string): void {
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return;
     }
     const parsed = Number(value);
@@ -5362,7 +5371,7 @@ export class App {
   }
 
   protected onSubEventCapacityMaxChange(value: number | string): void {
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return;
     }
     const parsed = Number(value);
@@ -5390,7 +5399,7 @@ export class App {
   }
 
   protected onEventCapacityMinChange(value: number | string): void {
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return;
     }
     this.eventForm.capacityMin = this.toEventCapacityInputValue(value);
@@ -5403,7 +5412,7 @@ export class App {
   }
 
   protected onEventCapacityMaxChange(value: number | string): void {
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return;
     }
     this.eventForm.capacityMax = this.toEventCapacityInputValue(value);
@@ -5453,7 +5462,7 @@ export class App {
   }
 
   protected onEventStartDateChange(value: Date | null): void {
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return;
     }
     this.eventStartDateValue = value;
@@ -5464,7 +5473,7 @@ export class App {
   }
 
   protected onEventEndDateChange(value: Date | null): void {
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return;
     }
     this.eventEndDateValue = value;
@@ -5475,7 +5484,7 @@ export class App {
   }
 
   protected onEventStartTimeChange(value: Date | null): void {
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return;
     }
     this.eventStartTimeValue = value;
@@ -5486,7 +5495,7 @@ export class App {
   }
 
   protected onEventEndTimeChange(value: Date | null): void {
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return;
     }
     this.eventEndTimeValue = value;
@@ -5497,7 +5506,7 @@ export class App {
   }
 
   protected onEventLocationChange(value: string): void {
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return;
     }
     this.eventForm.location = this.normalizeLocationValue(value);
@@ -5515,29 +5524,14 @@ export class App {
   }
 
   protected saveEventEditorForm(): void {
-    if (this.eventEditorReadOnly) {
-      return;
+    // Check if there's a saved event from the service
+    const savedEvent = this.eventEditorState.eventSaved();
+    if (savedEvent) {
+      // TODO: Refresh event list based on savedEvent
+      // For now, just close the popup
     }
-    this.syncEventFormFromDateTimeControls();
-    const normalizedCapacity = this.normalizedEventCapacityRange();
-    this.eventForm.capacityMin = normalizedCapacity.min;
-    this.eventForm.capacityMax = normalizedCapacity.max;
-    this.normalizeExistingSubEventsCapacityAgainstMain();
-    this.normalizeExistingSubEventsDateAgainstMain();
-    this.syncFirstSubEventLocationFromMainEvent();
-    const title = this.eventForm.title.trim();
-    const description = this.eventForm.description.trim();
-    if (!title || !description || !this.eventForm.startAt || !this.eventForm.endAt) {
-      this.showEventEditorRequiredValidation = true;
-      return;
-    }
-    this.showEventEditorRequiredValidation = false;
-    this.normalizeEventDateRange();
-    if (this.editingEventId) {
-      this.updateExistingEventFromForm();
-    } else {
-      this.insertCreatedEventFromForm();
-    }
+    
+    // Close the popup
     if (this.stackedPopup === 'eventEditor') {
       this.closeStackedPopup();
       return;
@@ -7251,7 +7245,6 @@ export class App {
     this.pendingSubEventDeleteId = null;
     this.pendingSubEventDeleteContext = null;
     this.pendingSubEventGroupDelete = null;
-    this.eventEditorClosePublishConfirmContext = null;
     this.eventEditorReadOnly = false;
     this.showSubEventForm = false;
     this.subEventFormStageNumber = null;
@@ -7673,10 +7666,10 @@ export class App {
       case 'hostingEvent':
         return this.selectedHostingEvent?.title ?? 'Hosting Event';
       case 'eventEditor':
-        if (this.eventEditorMode === 'create') {
+        if (this.eventEditorState.mode() === 'create') {
           return 'Create Event';
         }
-        return this.eventEditorReadOnly ? 'View Event' : 'Edit Event';
+        return this.eventEditorState.readOnly() ? 'View Event' : 'Edit Event';
       case 'eventExplore':
         return 'Event Explore';
       case 'profileEditor':
@@ -7731,10 +7724,10 @@ export class App {
       case 'hostingEvent':
         return this.selectedHostingEvent?.title ?? 'Hosting Event';
       case 'eventEditor':
-        if (this.eventEditorMode === 'create') {
+        if (this.eventEditorState.mode() === 'create') {
           return 'Create Event';
         }
-        return this.eventEditorReadOnly ? 'View Event' : 'Edit Event';
+        return this.eventEditorState.readOnly() ? 'View Event' : 'Edit Event';
       case 'eventExplore':
         return 'Event Explore';
       case 'eventFeedback':
@@ -13564,7 +13557,7 @@ export class App {
       if (this.selectedInvitation?.id === row.id) {
         this.selectedInvitation = null;
       }
-      if (this.eventEditorInvitationId === row.id) {
+      if (this.eventEditorState.invitationId() === row.id) {
         this.eventEditorInvitationId = null;
       }
       this.refreshActivitiesStickyHeaderSoon();
@@ -13686,7 +13679,7 @@ export class App {
 
   protected handlePrimaryPopupHeaderClose(): void {
     if (this.activePopup === 'eventEditor' && this.shouldPromptEventEditorPublishOnClose()) {
-      this.eventEditorClosePublishConfirmContext = 'active';
+      this.eventEditorState.openPublishConfirm('active');
       return;
     }
     this.closePopup();
@@ -13694,7 +13687,7 @@ export class App {
 
   protected handleStackedPopupHeaderClose(): void {
     if (this.stackedPopup === 'eventEditor' && this.shouldPromptEventEditorPublishOnClose()) {
-      this.eventEditorClosePublishConfirmContext = 'stacked';
+      this.eventEditorState.openPublishConfirm('stacked');
       return;
     }
     this.closeStackedPopup();
@@ -13974,7 +13967,7 @@ export class App {
     if (this.selectedActivityMembersRow?.isAdmin === true) {
       return true;
     }
-    if (this.eventEditorInvitationId) {
+    if (this.eventEditorState.invitationId()) {
       return false;
     }
     return entry.status === 'pending'
@@ -14357,7 +14350,7 @@ export class App {
   }
 
   protected shouldShowEventEditorInvitationApproveButton(context: 'active' | 'stacked'): boolean {
-    if (!this.eventEditorReadOnly) {
+    if (!this.eventEditorState.readOnly()) {
       return false;
     }
     if (context === 'active' && this.activePopup !== 'eventEditor') {
@@ -14366,15 +14359,15 @@ export class App {
     if (context === 'stacked' && this.stackedPopup !== 'eventEditor') {
       return false;
     }
-    if (!this.eventEditorInvitationId) {
+    if (!this.eventEditorState.invitationId()) {
       return false;
     }
-    return this.invitationItems.some(item => item.id === this.eventEditorInvitationId);
+    return this.invitationItems.some(item => item.id === this.eventEditorState.invitationId());
   }
 
   protected approveEventEditorInvitation(event?: Event): void {
     event?.stopPropagation();
-    const invitationId = this.eventEditorInvitationId;
+    const invitationId = this.eventEditorState.invitationId();
     if (!invitationId) {
       return;
     }
@@ -16151,7 +16144,7 @@ export class App {
     if (!isActiveEditor && !isStackedEditor) {
       return null;
     }
-    const source = this.eventEditorMode === 'create' ? null : this.resolveEventEditorSource();
+    const source = this.eventEditorState.mode() === 'create' ? null : this.resolveEventEditorSource();
     const draftId = this.eventEditorDraftMembersId;
     const isDraft = !source && Boolean(draftId);
     if (!source && !isDraft) {
@@ -16161,7 +16154,7 @@ export class App {
       ? (this.eventEditorTarget === 'hosting' || this.isHostingSource(source))
       : this.eventEditorTarget === 'hosting';
     const sourceIsAdmin = source ? (isHosting || ((source as EventMenuItem).isAdmin === true)) : true;
-    const canManageMembers = !this.eventEditorReadOnly && sourceIsAdmin;
+    const canManageMembers = !this.eventEditorState.readOnly() && sourceIsAdmin;
     const draftSource: EventMenuItem | HostingMenuItem = isHosting
       ? {
           id: draftId ?? 'draft-hosting',
@@ -16198,7 +16191,7 @@ export class App {
   }
 
   private shouldPromptEventEditorPublishOnClose(): boolean {
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return false;
     }
     if (this.eventEditorTarget !== 'hosting') {
@@ -16215,7 +16208,7 @@ export class App {
   }
 
   private persistEventEditorIfValidForClose(): string | null {
-    if (this.eventEditorReadOnly) {
+    if (this.eventEditorState.readOnly()) {
       return null;
     }
     this.syncEventFormFromDateTimeControls();

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, inject } from '@angular/core';
+import { Component, Output, EventEmitter, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -8,7 +8,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import type { EventEditorForm, EventEditorMode, EventEditorTarget, EventVisibility, EventBlindMode } from '../../../shared/app-types';
+import type { EventVisibility, EventBlindMode } from '../../../shared/app-types';
 import { EventEditorStateService } from '../../services/event-editor-state.service';
 
 @Component({
@@ -28,23 +28,11 @@ import { EventEditorStateService } from '../../services/event-editor-state.servi
   templateUrl: './event-editor.component.html',
   styleUrls: ['./event-editor.component.scss']
 })
-export class EventEditorComponent implements OnChanges {
-  @Input() mode: EventEditorMode = 'edit';
-  @Input() readOnly = false;
-  @Input() target: EventEditorTarget = 'events';
-  @Input() isStacked = false;
-  @Input() form!: EventEditorForm;
-  @Input() showValidation = false;
-  
+export class EventEditorComponent implements OnInit {
   @Output() save = new EventEmitter<void>();
   @Output() cancel = new EventEmitter<void>();
-  @Output() formChange = new EventEmitter<EventEditorForm>();
   @Output() openSubEvents = new EventEmitter<void>();
   @Output() openMembers = new EventEmitter<void>();
-  @Output() visibilityChange = new EventEmitter<EventVisibility>();
-  @Output() topicsChange = new EventEmitter<string[]>();
-  @Output() frequencyChange = new EventEmitter<string>();
-  @Output() blindModeChange = new EventEmitter<EventBlindMode>();
   
   protected state = inject(EventEditorStateService);
   
@@ -53,40 +41,52 @@ export class EventEditorComponent implements OnChanges {
   readonly blindModeOptions: EventBlindMode[] = ['Open Event', 'Blind Event'];
   readonly frequencyOptions = ['One-time', 'Daily', 'Weekly', 'Monthly'];
   
-  // Track local form state
-  protected localForm: EventEditorForm = this.getEmptyForm();
-  
-  ngOnChanges(): void {
-    if (this.form) {
-      this.localForm = { ...this.form };
+  ngOnInit(): void {
+    // Initialize with default form if empty
+    const currentForm = this.state.form();
+    if (!currentForm.title && !currentForm.description) {
+      this.state.setForm(this.state['defaultForm']());
     }
   }
   
+  protected get form() {
+    return this.state.form();
+  }
+  
+  protected get mode() {
+    return this.state.mode();
+  }
+  
+  protected get readOnly() {
+    return this.state.readOnly();
+  }
+  
+  protected get showValidation() {
+    return this.state.showRequiredValidation();
+  }
+  
   protected onFieldChange(): void {
-    this.formChange.emit(this.localForm);
+    // Form is updated via the service, no need to emit
   }
   
   protected canSubmit(): boolean {
-    if (this.readOnly) return false;
-    return Boolean(
-      this.localForm.title.trim() && 
-      this.localForm.description.trim() && 
-      this.localForm.startAt && 
-      this.localForm.endAt
-    );
+    return this.state.canSubmit();
   }
   
   protected fieldInvalid(field: 'title' | 'description'): boolean {
     if (!this.showValidation) return false;
-    return !this.localForm[field].trim();
+    return !this.form[field].trim();
   }
   
   protected onSave(): void {
-    this.formChange.emit(this.localForm);
-    this.save.emit();
+    if (this.state.validateRequired()) {
+      this.state.saveAndClose(this.state.form());
+      this.save.emit();
+    }
   }
   
   protected onCancel(): void {
+    this.state.closeEditor();
     this.cancel.emit();
   }
   
@@ -97,29 +97,61 @@ export class EventEditorComponent implements OnChanges {
   protected onOpenMembers(): void {
     this.openMembers.emit();
   }
+
+  protected onPublishConfirmCancel(): void {
+    this.state.closePublishConfirm();
+  }
+
+  protected onPublishConfirmClose(): void {
+    this.state.closePublishConfirm();
+    this.state.closeEditor();
+    this.cancel.emit();
+  }
   
   protected onVisibilityChange(visibility: EventVisibility): void {
-    this.localForm.visibility = visibility;
-    this.visibilityChange.emit(visibility);
-    this.onFieldChange();
+    this.state.updateForm({ visibility });
   }
   
   protected onTopicsChange(topics: string[]): void {
-    this.localForm.topics = topics;
-    this.topicsChange.emit(topics);
-    this.onFieldChange();
+    this.state.updateForm({ topics });
   }
   
   protected onFrequencyChange(frequency: string): void {
-    this.localForm.frequency = frequency;
-    this.frequencyChange.emit(frequency);
-    this.onFieldChange();
+    this.state.updateForm({ frequency });
   }
   
   protected onBlindModeChange(blindMode: EventBlindMode): void {
-    this.localForm.blindMode = blindMode;
-    this.blindModeChange.emit(blindMode);
-    this.onFieldChange();
+    this.state.updateForm({ blindMode });
+  }
+  
+  protected onTitleChange(value: string): void {
+    this.state.updateForm({ title: value });
+  }
+  
+  protected onDescriptionChange(value: string): void {
+    this.state.updateForm({ description: value });
+  }
+  
+  protected onLocationChange(value: string): void {
+    this.state.updateForm({ location: value });
+  }
+  
+  protected onCapacityMinChange(value: string): void {
+    const num = parseInt(value, 10);
+    this.state.updateForm({ capacityMin: isNaN(num) ? null : num });
+  }
+  
+  protected onCapacityMaxChange(value: string): void {
+    const num = parseInt(value, 10);
+    this.state.updateForm({ capacityMax: isNaN(num) ? null : num });
+  }
+  
+  protected onStartAtChange(value: string): void {
+    this.state.updateForm({ startAt: value });
+  }
+  
+  protected onEndAtChange(value: string): void {
+    this.state.updateForm({ endAt: value });
   }
   
   protected getTitle(): string {
@@ -128,7 +160,7 @@ export class EventEditorComponent implements OnChanges {
   }
   
   protected getVisibilityClass(): string {
-    switch (this.localForm.visibility) {
+    switch (this.form.visibility) {
       case 'Public': return 'visibility-public';
       case 'Friends only': return 'visibility-friends';
       case 'Invitation only': return 'visibility-invite';
@@ -150,33 +182,16 @@ export class EventEditorComponent implements OnChanges {
     const file = input.files[0];
     const reader = new FileReader();
     reader.onload = () => {
-      this.localForm.imageUrl = reader.result as string;
-      this.onFieldChange();
+      this.state.updateForm({ imageUrl: reader.result as string });
     };
     reader.readAsDataURL(file);
   }
   
-  private getEmptyForm(): EventEditorForm {
-    const now = new Date();
-    const end = new Date(now);
-    end.setHours(end.getHours() + 2);
-    
-    return {
-      title: '',
-      description: '',
-      imageUrl: '',
-      capacityMin: null,
-      capacityMax: null,
-      startAt: now.toISOString(),
-      endAt: end.toISOString(),
-      location: '',
-      frequency: 'One-time',
-      visibility: 'Public',
-      blindMode: 'Open Event',
-      autoInviter: false,
-      ticketing: false,
-      topics: [],
-      subEvents: []
-    };
+  protected onAutoInviterChange(): void {
+    this.state.updateForm({ autoInviter: !this.form.autoInviter });
+  }
+  
+  protected onTicketingChange(): void {
+    this.state.updateForm({ ticketing: !this.form.ticketing });
   }
 }

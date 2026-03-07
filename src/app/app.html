@@ -774,33 +774,7 @@
           <mat-icon>groups</mat-icon>
           <span>Members</span>
         </span>
-        <span class="card-badge event-editor-members-pending-badge" *ngIf="eventEditorHeaderPendingMemberCount() > 0">{{ eventEditorHeaderPendingMemberCount() }}</span>
       </button>
-      <div class="event-visibility-picker" *ngIf="activePopup === 'eventEditor'">
-        <button
-          type="button"
-          class="popup-view-fab event-visibility-trigger"
-          [ngClass]="eventVisibilityClass(eventForm.visibility)"
-          [class.event-editor-readonly-control]="isEventEditorReadOnly()"
-          (click)="toggleEventVisibilityPicker($event)"
-          aria-label="Open visibility selector"
-        >
-          <mat-icon [class]="eventVisibilityClass(eventForm.visibility)">{{ eventVisibilityIcon(eventForm.visibility) }}</mat-icon>
-          <span>{{ eventForm.visibility }}</span>
-        </button>
-        <div class="activities-view-picker-panel" *ngIf="showEventVisibilityPicker">
-          <button
-            type="button"
-            class="activities-view-option"
-            [ngClass]="eventVisibilityClass(option)"
-            *ngFor="let option of eventVisibilityOptions"
-            (click)="selectEventVisibility(option, $event)"
-          >
-            <mat-icon [class]="eventVisibilityClass(option)">{{ eventVisibilityIcon(option) }}</mat-icon>
-            <span>{{ option }}</span>
-          </button>
-        </div>
-      </div>
       <div class="event-visibility-picker profile-status-header-picker" *ngIf="activePopup === 'profileEditor'">
         <button
           type="button"
@@ -849,17 +823,6 @@
           </button>
         </div>
       </div>
-      <button
-        type="button"
-        class="popup-header-add-btn subevent-leaderboard-save-btn"
-        *ngIf="activePopup === 'eventEditor' && !isEventEditorReadOnly()"
-        [class.form-save-invalid]="!canSubmitEventEditorForm()"
-        [disabled]="!canSubmitEventEditorForm()"
-        (click)="saveEventEditorForm()"
-        aria-label="Save event"
-      >
-        <mat-icon>done</mat-icon>
-      </button>
       <div class="ticket-order-picker" *ngIf="isTicketAssetPopup()">
         <button
           type="button"
@@ -2672,21 +2635,10 @@
 
       <div *ngIf="activePopup === 'eventEditor'">
         <app-event-editor
-          [mode]="eventEditorMode"
-          [readOnly]="isEventEditorReadOnly()"
-          [target]="'events'"
-          [isStacked]="false"
-          [form]="eventForm"
-          [showValidation]="showEventEditorRequiredValidation"
           (save)="saveEventEditorForm()"
           (cancel)="cancelEventEditorForm()"
-          (formChange)="onEventEditorFormChange($event)"
           (openSubEvents)="openEventSubEventsPopup()"
           (openMembers)="openEventMembersPopup()"
-          (visibilityChange)="onEventVisibilityPickerChange($event)"
-          (topicsChange)="onEventTopicsSelectorChange($event)"
-          (frequencyChange)="onEventFrequencyChange($event)"
-          (blindModeChange)="onEventBlindModeChange($event)"
         ></app-event-editor>
       </div>
 
@@ -3811,33 +3763,7 @@
             <mat-icon>groups</mat-icon>
             <span>Members</span>
           </span>
-          <span class="card-badge event-editor-members-pending-badge" *ngIf="eventEditorHeaderPendingMemberCount() > 0">{{ eventEditorHeaderPendingMemberCount() }}</span>
         </button>
-        <div class="event-visibility-picker" *ngIf="stackedPopup === 'eventEditor'">
-          <button
-            type="button"
-            class="popup-view-fab event-visibility-trigger"
-            [ngClass]="eventVisibilityClass(eventForm.visibility)"
-            [class.event-editor-readonly-control]="isEventEditorReadOnly()"
-            (click)="toggleEventVisibilityPicker($event)"
-            aria-label="Open visibility selector"
-          >
-            <mat-icon [class]="eventVisibilityClass(eventForm.visibility)">{{ eventVisibilityIcon(eventForm.visibility) }}</mat-icon>
-            <span>{{ eventForm.visibility }}</span>
-          </button>
-          <div class="activities-view-picker-panel" *ngIf="showEventVisibilityPicker">
-            <button
-              type="button"
-              class="activities-view-option"
-              [ngClass]="eventVisibilityClass(option)"
-              *ngFor="let option of eventVisibilityOptions"
-              (click)="selectEventVisibility(option, $event)"
-            >
-              <mat-icon [class]="eventVisibilityClass(option)">{{ eventVisibilityIcon(option) }}</mat-icon>
-              <span>{{ option }}</span>
-            </button>
-          </div>
-        </div>
         <div class="event-explore-order-picker" *ngIf="stackedPopup === 'eventExplore'">
           <button
             type="button"
@@ -3862,17 +3788,6 @@
             </button>
           </div>
         </div>
-        <button
-          type="button"
-          class="popup-header-add-btn subevent-leaderboard-save-btn"
-          *ngIf="stackedPopup === 'eventEditor' && !isEventEditorReadOnly()"
-          [class.form-save-invalid]="!canSubmitEventEditorForm()"
-          [disabled]="!canSubmitEventEditorForm()"
-          (click)="saveEventEditorForm()"
-          aria-label="Save event"
-        >
-          <mat-icon>done</mat-icon>
-        </button>
         <button
           type="button"
           class="popup-header-add-btn subevent-supply-contribution-add-btn"
@@ -4997,21 +4912,10 @@
 
       <div *ngIf="stackedPopup === 'eventEditor'">
         <app-event-editor
-          [mode]="eventEditorMode"
-          [readOnly]="isEventEditorReadOnly()"
-          [target]="'events'"
-          [isStacked]="true"
-          [form]="eventForm"
-          [showValidation]="showEventEditorRequiredValidation"
           (save)="saveEventEditorForm()"
           (cancel)="cancelEventEditorForm()"
-          (formChange)="onEventEditorFormChange($event)"
           (openSubEvents)="openEventSubEventsPopup()"
           (openMembers)="openEventMembersPopup()"
-          (visibilityChange)="onEventVisibilityPickerChange($event)"
-          (topicsChange)="onEventTopicsSelectorChange($event)"
-          (frequencyChange)="onEventFrequencyChange($event)"
-          (blindModeChange)="onEventBlindModeChange($event)"
         ></app-event-editor>
       </div>
 
@@ -6757,18 +6661,6 @@
           </div>
         </article>
       </div>
-    </div>
-  </div>
-</section>
-
-<section class="experience-delete-confirm" *ngIf="eventEditorClosePublishConfirmContext">
-  <div class="experience-delete-confirm-backdrop" (click)="cancelEventEditorCloseWithPublishPrompt()"></div>
-  <div class="experience-delete-confirm-panel">
-    <h4>{{ eventEditorClosePublishConfirmTitle() }}</h4>
-    <p>{{ eventEditorClosePublishConfirmLabel() }}</p>
-    <div class="popup-actions">
-      <button type="button" class="link-btn neutral-btn" (click)="cancelEventEditorCloseWithPublishPrompt()">Cancel</button>
-      <button type="button" class="link-btn experience-publish-btn" (click)="confirmEventEditorCloseWithPublish()">Publish</button>
     </div>
   </div>
 </section>
