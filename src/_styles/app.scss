@@ -18050,6 +18050,7 @@ textarea {
 
 .mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-selector-options {
   flex: 1 1 auto;
+  overflow-x: hidden;
   overflow-y: auto;
   margin-top: 0.18rem;
   justify-items: stretch;
