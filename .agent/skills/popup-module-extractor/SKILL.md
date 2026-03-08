@@ -169,6 +169,10 @@ Use the same extraction/stabilization pattern as default for other module splits
 - Do not delete or wholesale-rewrite already-validated popup HTML/SCSS while addressing incremental regressions.
 - Do not delete large existing SCSS/HTML blocks unless the user explicitly requests deletion and approves scope first.
 - NEVER DELETE A VALIDATED SCSS FILE OR RECREATE IT FROM SCRATCH DURING REGRESSION FIXES; PATCH INCREMENTALLY.
+- NEVER DELETE VALIDATED INTERACTION/MOTION BLOCKS (`:HOST` TOKENS, HOVER/ACTIVE/TOUCH FEEDBACK, FOCUS STYLES); PATCH SELECTORS IN PLACE.
+- NEVER DELETE OR REVERT ANY ELEMENT THE USER EXPLICITLY ASKED TO KEEP, UNLESS THE USER EXPLICITLY APPROVES THAT REVERT.
+- SCSS IS INCREMENTAL-ONLY BY DEFAULT: DO NOT WHOLESALE-REWRITE, TRUNCATE, OR REPLACE WHOLE COMPONENT STYLESHEETS; PATCH SELECTORS/DECLARATIONS IN PLACE.
+- FOR SCSS, EXPLICIT USER APPROVAL IS MANDATORY BEFORE ANY LARGE-SCOPE REWRITE OR DELETION.
 - Do not change untouched working areas of a validated screen when the user requested only targeted fixes.
 - NEVER TOUCH UNREQUESTED AREAS OF A TESTED SCREEN.
 - If a broad accidental diff happens, revert that broad change and re-apply as minimal targeted patches.

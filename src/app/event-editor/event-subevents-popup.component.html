@@ -158,7 +158,7 @@
                             <mat-icon>group_add</mat-icon>
                             <span>Add Group</span>
                           </button>
-                          <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('leaderboard', stage, $event)">
+                          <button type="button" class="item-action-menu-btn" (click)="openStageLeaderboard(stage, $event)">
                             <mat-icon>public</mat-icon>
                             <span>Leaderboard</span>
                           </button>
@@ -303,6 +303,8 @@
     [open]="showLeaderboardPopup"
     [title]="leaderboardPopupTitle()"
     [subtitle]="'Stage standings and results'"
+    [readOnly]="readOnly"
+    [mode]="leaderboardMode()"
     [groups]="leaderboardGroups()"
     (close)="closeLeaderboardPopup($event)"
   ></app-event-subevent-leaderboard-popup>

@@ -227,6 +227,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (this.readOnly) {
       return;
     }
+    this.showLeaderboardPopup = false;
+    this.leaderboardPopupStageKey = null;
+    this.leaderboardPopupStageTitle = '';
     this.showGroupForm = false;
     this.openStageMenuKey = null;
     this.openGroupMenuKey = null;
@@ -569,7 +572,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
         this.openCreateGroupForm(stage, event);
         return;
       case 'leaderboard':
-        this.openLeaderboardPopup(stage, event);
+        this.openStageLeaderboard(stage, event);
         return;
       case 'edit-stage':
         this.openEditStageForm(stage, event);
@@ -580,6 +583,12 @@ export class EventSubeventsPopupComponent implements OnChanges {
       default:
         return;
     }
+  }
+
+  protected openStageLeaderboard(stage: EventSubeventsStageCard, event: Event): void {
+    event.stopPropagation();
+    this.openStageMenuKey = null;
+    this.openLeaderboardPopup(stage, event);
   }
 
   protected isGroupActionMenuOpen(row: EventSubeventsStageRow): boolean {
@@ -1110,13 +1119,28 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
     const source = this.workingSubEvents[stage.sourceIndex];
     const advancePerGroup = Math.max(0, Math.trunc(Number(source?.tournamentAdvancePerGroup) || 0));
+    const sourceGroups = this.cloneGroups(source?.groups);
+    const fallbackStageCapacity = Math.max(
+      0,
+      Math.trunc(Number(source?.tournamentGroupCapacityMax ?? source?.capacityMax) || 0)
+    );
 
     return stage.rows.map(row => ({
       key: row.key,
       title: row.groupName,
       pending: this.toPendingCount(row.pending),
-      advancePerGroup
+      advancePerGroup,
+      memberCount: this.resolveLeaderboardGroupMemberCount(row, sourceGroups, fallbackStageCapacity)
     }));
+  }
+
+  protected leaderboardMode(): TournamentLeaderboardType {
+    const stage = this.leaderboardStageCard();
+    if (!stage) {
+      return 'Score';
+    }
+    const source = this.workingSubEvents[stage.sourceIndex];
+    return this.normalizedTournamentLeaderboardType(source?.tournamentLeaderboardType);
   }
 
   protected trackByStageRowKey(_: number, row: EventSubeventsStageRow): string {
@@ -1202,11 +1226,31 @@ export class EventSubeventsPopupComponent implements OnChanges {
     }];
   }
 
+  private resolveLeaderboardGroupMemberCount(
+    row: EventSubeventsStageRow,
+    sourceGroups: EventSubeventsGroupItem[],
+    fallbackStageCapacity: number
+  ): number {
+    const sourceGroup = row.groupId ? sourceGroups.find(group => group.id === row.groupId) : null;
+    const explicit = Number(sourceGroup?.capacityMax);
+    if (Number.isFinite(explicit) && explicit > 0) {
+      return Math.max(2, Math.trunc(explicit));
+    }
+    if (fallbackStageCapacity > 0) {
+      return Math.max(2, fallbackStageCapacity);
+    }
+    const pending = this.toPendingCount(row.pending);
+    return Math.max(2, pending);
+  }
+
   private openEditStageForm(stage: EventSubeventsStageCard, event: Event): void {
     event.stopPropagation();
     if (this.readOnly) {
       return;
     }
+    this.showLeaderboardPopup = false;
+    this.leaderboardPopupStageKey = null;
+    this.leaderboardPopupStageTitle = '';
     this.showGroupForm = false;
     this.showSubEventOptionalPicker = false;
     const sourceItem = this.workingSubEvents[stage.sourceIndex];
@@ -1249,6 +1293,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (this.readOnly) {
       return;
     }
+    this.showLeaderboardPopup = false;
+    this.leaderboardPopupStageKey = null;
+    this.leaderboardPopupStageTitle = '';
     this.showSubEventForm = false;
     this.groupFormSourceIndex = stage.sourceIndex;
     const sourceItem = this.workingSubEvents[stage.sourceIndex];
@@ -1276,6 +1323,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (this.readOnly) {
       return;
     }
+    this.showLeaderboardPopup = false;
+    this.leaderboardPopupStageKey = null;
+    this.leaderboardPopupStageTitle = '';
     this.showSubEventForm = false;
     this.groupFormSourceIndex = row.stageSourceIndex;
     this.groupFormGroupId = row.groupId;
@@ -1298,6 +1348,13 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   private openLeaderboardPopup(stage: EventSubeventsStageCard, event: Event): void {
     event.stopPropagation();
+    this.showSubEventForm = false;
+    this.showSubEventOptionalPicker = false;
+    this.showGroupForm = false;
+    this.groupFormSourceIndex = null;
+    this.groupFormGroupId = null;
+    this.groupFormStageTitle = '';
+    this.groupForm = this.createEmptyGroupForm();
     this.leaderboardPopupStageKey = stage.key;
     this.leaderboardPopupStageTitle = stage.subtitle;
     this.showLeaderboardPopup = true;
