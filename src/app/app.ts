@@ -12164,11 +12164,9 @@ export class App {
   }
 
   private isActivitiesListScrollableNow(): boolean {
-    const listElement = this.activitiesScrollRef?.nativeElement;
-    if (!listElement) {
-      return this.activitiesListScrollable;
-    }
-    return Math.max(0, listElement.scrollHeight - listElement.clientHeight) > 1;
+    // Keep template checks deterministic; live DOM reads here can flip during a single
+    // change-detection pass and trigger NG0100 in dev mode.
+    return this.activitiesListScrollable;
   }
 
   protected activityRateCardImageUrls(row: AppTypes.ActivityListRow): string[] {

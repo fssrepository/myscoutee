@@ -643,7 +643,6 @@
           [class.item-action-menu-mobile]="isMobileView"
           [class.item-action-menu-desktop]="!isMobileView"
           [class.is-open-up]="isSelectedChatContextMenuOpenUp()"
-          [attr.aria-hidden]="!isSelectedChatContextMenuOpen()"
           (click)="$event.stopPropagation()"
         >
           <div class="item-action-menu-title">{{ selectedChatContextMenuTitle() }}</div>
@@ -1193,7 +1192,6 @@
                         [class.item-action-menu-mobile]="isMobileView"
                         [class.item-action-menu-desktop]="!isMobileView"
                         [class.is-open-up]="isActivityItemActionMenuOpenUp(row)"
-                        [attr.aria-hidden]="!isActivityItemActionMenuOpen(row)"
                         (click)="$event.stopPropagation()"
                       >
                         <div class="item-action-menu-title">{{ row.title }}</div>
@@ -2333,7 +2331,6 @@
                     [class.item-action-menu-mobile]="isMobileView"
                     [class.item-action-menu-desktop]="!isMobileView"
                     [class.is-open-up]="isAssetItemActionMenuOpenUp(card)"
-                    [attr.aria-hidden]="!isAssetItemActionMenuOpen(card)"
                     (click)="$event.stopPropagation()"
                   >
                     <div class="item-action-menu-title">{{ card.title }}</div>
@@ -2572,7 +2569,6 @@
                     [class.item-action-menu-mobile]="isMobileView"
                     [class.item-action-menu-desktop]="!isMobileView"
                     [class.is-open-up]="isEventExploreItemActionMenuOpenUp(card)"
-                    [attr.aria-hidden]="!isEventExploreItemActionMenuOpen(card)"
                     (click)="$event.stopPropagation()"
                   >
                     <div class="item-action-menu-title">{{ card.title }}</div>
@@ -2668,7 +2664,6 @@
                   [class.is-open]="isEventFeedbackCardMenuOpen(item)"
                   [class.item-action-menu-mobile]="isMobileView"
                   [class.item-action-menu-desktop]="!isMobileView"
-                  [attr.aria-hidden]="!isEventFeedbackCardMenuOpen(item)"
                   (click)="$event.stopPropagation()"
                 >
                   <div class="item-action-menu-title">{{ item.title }}</div>
@@ -3203,7 +3198,6 @@
                             class="item-action-menu item-action-menu-desktop profile-privacy-menu"
                             *ngIf="!isMobileView"
                             [class.is-open]="isDetailPrivacyFabOpen(groupIndex, rowIndex)"
-                            [attr.aria-hidden]="!isDetailPrivacyFabOpen(groupIndex, rowIndex)"
                             (click)="$event.stopPropagation()"
                           >
                             <button
@@ -3258,7 +3252,6 @@
                         class="item-action-menu item-action-menu-desktop profile-privacy-menu"
                         *ngIf="!isMobileView"
                         [class.is-open]="isExperiencePrivacyFabOpen('workspace')"
-                        [attr.aria-hidden]="!isExperiencePrivacyFabOpen('workspace')"
                         (click)="$event.stopPropagation()"
                       >
                         <button
@@ -3307,7 +3300,6 @@
                         class="item-action-menu item-action-menu-desktop profile-privacy-menu"
                         *ngIf="!isMobileView"
                         [class.is-open]="isExperiencePrivacyFabOpen('school')"
-                        [attr.aria-hidden]="!isExperiencePrivacyFabOpen('school')"
                         (click)="$event.stopPropagation()"
                       >
                         <button
@@ -3624,7 +3616,6 @@
             [class.item-action-menu-mobile]="isMobileView"
             [class.item-action-menu-desktop]="!isMobileView"
             [class.is-open-up]="isSelectedChatContextMenuOpenUp()"
-            [attr.aria-hidden]="!isSelectedChatContextMenuOpen()"
             (click)="$event.stopPropagation()"
           >
             <div class="item-action-menu-title">{{ selectedChatContextMenuTitle() }}</div>
@@ -3917,7 +3908,6 @@
                   [class.item-action-menu-mobile]="isMobileView"
                   [class.item-action-menu-desktop]="!isMobileView"
                   [class.is-open-up]="isActivityMemberActionMenuOpenUp(member)"
-                  [attr.aria-hidden]="!isActivityMemberActionMenuOpen(member)"
                   (click)="$event.stopPropagation()"
                 >
                   <div class="item-action-menu-title">{{ member.name }}</div>
@@ -4153,7 +4143,6 @@
                   [class.item-action-menu-mobile]="isMobileView"
                   [class.item-action-menu-desktop]="!isMobileView"
                   [class.is-open-up]="isSubEventMemberActionMenuOpenUp(member)"
-                  [attr.aria-hidden]="!isSubEventMemberActionMenuOpen(member)"
                   (click)="$event.stopPropagation()"
                 >
                   <div class="item-action-menu-title">{{ member.name }}</div>
@@ -4239,7 +4228,6 @@
                     [class.item-action-menu-mobile]="isMobileView"
                     [class.item-action-menu-desktop]="!isMobileView"
                     [class.is-open-up]="isSubEventResourceItemActionMenuOpenUp(card)"
-                    [attr.aria-hidden]="!isSubEventResourceItemActionMenuOpen(card)"
                     (click)="$event.stopPropagation()"
                   >
                     <div class="item-action-menu-title">{{ card.title }}</div>
@@ -4815,7 +4803,6 @@
                     [class.item-action-menu-mobile]="isMobileView"
                     [class.item-action-menu-desktop]="!isMobileView"
                     [class.is-open-up]="isEventExploreItemActionMenuOpenUp(card)"
-                    [attr.aria-hidden]="!isEventExploreItemActionMenuOpen(card)"
                     (click)="$event.stopPropagation()"
                   >
                     <div class="item-action-menu-title">{{ card.title }}</div>

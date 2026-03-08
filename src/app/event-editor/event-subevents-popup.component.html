@@ -314,7 +314,6 @@
                     [class.is-open]="isCasualActionMenuOpen(subEvent, index)"
                     [class.item-action-menu-mobile]="isMobileViewport"
                     [class.item-action-menu-desktop]="!isMobileViewport"
-                    [attr.aria-hidden]="!isCasualActionMenuOpen(subEvent, index)"
                     (click)="$event.stopPropagation()"
                   >
                     <div class="item-action-menu-title">{{ casualCardTitle(subEvent, index) }}</div>
