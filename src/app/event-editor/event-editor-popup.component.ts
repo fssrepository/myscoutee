@@ -29,6 +29,8 @@ interface EventEditorSubEventItem {
   optional?: boolean;
   startAt?: string;
   endAt?: string;
+  capacityMin?: number;
+  capacityMax?: number;
   groups?: EventEditorSubEventGroupItem[];
   membersPending?: number;
   membersAccepted?: number;
@@ -220,10 +222,14 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       groups: (item.groups ?? []).map(group => ({ ...group }))
     }));
     this.eventForm.subEvents = this.cloneSubEvents(mapped);
+    this.syncMainEventBoundsFromSubEvents();
+    this.syncDateTimeControlsFromForm();
   }
 
   updateSubEventsDisplayMode(mode: SubEventsDisplayMode): void {
     this.subEventsDisplayMode = mode;
+    this.syncMainEventBoundsFromSubEvents();
+    this.syncDateTimeControlsFromForm();
   }
 
   requestOpenTopics(): void {
@@ -739,8 +745,77 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
   }
 
+  private syncMainEventBoundsFromSubEvents(): void {
+    if (this.eventForm.subEvents.length === 0) {
+      return;
+    }
+
+    const tournamentMode = this.subEventsDisplayMode === 'Tournament';
+    let minStartMs: number | null = null;
+    let maxEndMs: number | null = null;
+    let minCapacity: number | null = null;
+    let maxCapacity: number | null = null;
+
+    for (const item of this.eventForm.subEvents) {
+      let startMs = this.parseDateValue(item.startAt)?.getTime() ?? Number.NaN;
+      let endMs = this.parseDateValue(item.endAt)?.getTime() ?? Number.NaN;
+      if (!Number.isNaN(startMs) && !Number.isNaN(endMs)) {
+        if (endMs <= startMs) {
+          endMs = startMs + (60 * 60 * 1000);
+        }
+        minStartMs = minStartMs === null ? startMs : Math.min(minStartMs, startMs);
+        maxEndMs = maxEndMs === null ? endMs : Math.max(maxEndMs, endMs);
+      }
+
+      const normalizedMin = this.normalizedCapacityValueWithFloor(item.capacityMin, 0);
+      const normalizedMax = this.normalizedCapacityValueWithFloor(item.capacityMax, 0);
+      if (normalizedMin !== null) {
+        minCapacity = minCapacity === null
+          ? normalizedMin
+          : (tournamentMode ? (minCapacity + normalizedMin) : Math.min(minCapacity, normalizedMin));
+      }
+      if (normalizedMax !== null) {
+        maxCapacity = maxCapacity === null
+          ? normalizedMax
+          : (tournamentMode ? (maxCapacity + normalizedMax) : Math.max(maxCapacity, normalizedMax));
+      }
+    }
+
+    if (minStartMs !== null && maxEndMs !== null) {
+      this.eventForm.startAt = AppUtils.toIsoDateTimeLocal(new Date(minStartMs));
+      this.eventForm.endAt = AppUtils.toIsoDateTimeLocal(new Date(maxEndMs));
+    }
+    if (minCapacity !== null) {
+      this.eventForm.capacityMin = minCapacity;
+    }
+    if (maxCapacity !== null) {
+      this.eventForm.capacityMax = Math.max(maxCapacity, this.eventForm.capacityMin ?? maxCapacity);
+    }
+
+    const first = this.firstSubEventByOrder();
+    if (first) {
+      this.eventForm.location = this.normalizeLocation(first.location);
+    }
+  }
+
   private cloneSubEvents(items: readonly EventEditorSubEventItem[]): EventEditorSubEventItem[] {
     return items.map(item => ({ ...item }));
+  }
+
+  private firstSubEventByOrder(items: readonly EventEditorSubEventItem[] = this.eventForm.subEvents): EventEditorSubEventItem | null {
+    const ordered = this.sortSubEventRefsByStartAsc(items);
+    return ordered[0] ?? null;
+  }
+
+  private normalizedCapacityValueWithFloor(value: unknown, floor: number): number | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+    return Math.max(floor, Math.trunc(parsed));
   }
 
   private normalizeVisibility(value: unknown): EventVisibility {

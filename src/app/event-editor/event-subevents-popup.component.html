@@ -299,82 +299,13 @@
     (capacityMaxChange)="onGroupCapacityMaxChange($event)"
   ></app-event-subevent-group-form-popup>
 
-  <section class="experience-form-overlay subevent-form-overlay subevent-leaderboard-overlay" *ngIf="showLeaderboardPopup" (click)="closeLeaderboardPopup($event)">
-    <div class="experience-form-overlay-backdrop"></div>
-    <article class="experience-form-popup subevent-form-popup subevent-leaderboard-popup" (click)="$event.stopPropagation()">
-      <div class="experience-form-header subevent-leaderboard-header">
-        <div class="subevent-leaderboard-header-main">
-          <h3>{{ leaderboardPopupTitle() }}</h3>
-          <p>Stage standings and results</p>
-        </div>
-        <div class="experience-form-header-controls">
-          <button type="button" class="experience-form-close-btn" (click)="closeLeaderboardPopup($event)" aria-label="Close leaderboard">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </div>
-
-      <section class="experience-form-panel subevent-form-panel subevent-leaderboard-panel">
-        <ng-container *ngIf="leaderboardStageCard() as stage; else leaderboardEmptyState">
-          <div class="subevent-leaderboard-groups">
-            <article class="subevent-leaderboard-group" *ngFor="let row of stage.rows; trackBy: trackByStageRowKey">
-              <div
-                class="subevent-leaderboard-group-head"
-                role="button"
-                tabindex="0"
-                (click)="toggleLeaderboardGroup(row.key, $event)"
-                (keydown.enter)="toggleLeaderboardGroup(row.key, $event)"
-                (keydown.space)="toggleLeaderboardGroup(row.key, $event); $event.preventDefault()"
-              >
-                <span class="subevent-leaderboard-group-title">{{ row.groupName }}</span>
-                <mat-icon class="subevent-leaderboard-group-arrow">{{ isLeaderboardGroupOpen(row.key) ? 'expand_less' : 'expand_more' }}</mat-icon>
-              </div>
-              <div class="subevent-leaderboard-group-body" *ngIf="isLeaderboardGroupOpen(row.key)">
-                <p class="subevent-leaderboard-advance-line">Top 1 advance from this group.</p>
-                <div class="subevent-leaderboard-table-wrap">
-                  <table class="subevent-leaderboard-table subevent-leaderboard-table-score">
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>Member</th>
-                        <th>Score</th>
-                        <th>Updates</th>
-                        <th class="subevent-leaderboard-end-column" aria-hidden="true"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <ng-container *ngFor="let index of leaderboardRowIndexes(row); let rowIndex = index; trackBy: trackByIndex">
-                        <tr *ngIf="rowIndex < row.pending">
-                          <td>{{ rowIndex + 1 }}</td>
-                          <td class="subevent-leaderboard-member-cell">Member {{ rowIndex + 1 }}</td>
-                          <td>0</td>
-                          <td>0</td>
-                          <td class="subevent-leaderboard-row-end"></td>
-                        </tr>
-                        <tr class="subevent-leaderboard-placeholder-row" *ngIf="rowIndex >= row.pending" aria-hidden="true">
-                          <td>{{ rowIndex + 1 }}</td>
-                          <td colspan="3">
-                            <span class="subevent-leaderboard-placeholder-line"></span>
-                          </td>
-                          <td class="subevent-leaderboard-row-end"></td>
-                        </tr>
-                      </ng-container>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </article>
-          </div>
-        </ng-container>
-        <ng-template #leaderboardEmptyState>
-          <div class="editor-list-card event-subevents-empty-state">
-            <h4>Stage not available</h4>
-            <p>Return to Sub Events and open Leaderboard from a stage menu.</p>
-          </div>
-        </ng-template>
-      </section>
-    </article>
-  </section>
+  <app-event-subevent-leaderboard-popup
+    [open]="showLeaderboardPopup"
+    [title]="leaderboardPopupTitle()"
+    [subtitle]="'Stage standings and results'"
+    [groups]="leaderboardGroups()"
+    (close)="closeLeaderboardPopup($event)"
+  ></app-event-subevent-leaderboard-popup>
 
   <section class="experience-delete-confirm" *ngIf="pendingDeleteTarget">
     <div class="experience-delete-confirm-backdrop" (click)="cancelDeleteTarget($event)"></div>

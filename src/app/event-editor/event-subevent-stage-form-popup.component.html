@@ -50,8 +50,8 @@
     </div>
 
     <section class="experience-form-panel subevent-form-panel" [ngClass]="modeClass">
-      <div class="experience-form-grid subevent-form-grid">
-        <label class="experience-title-field">
+      <div class="experience-form-grid subevent-form-grid" [class.subevent-form-grid-with-insert]="showInsertControls">
+        <label class="experience-title-field subevent-name-field">
           <span>Name <span class="required-star">*</span></span>
           <input type="text" [(ngModel)]="model.name" [class.field-required-invalid]="invalidName" placeholder="Stage name" />
         </label>
@@ -127,15 +127,33 @@
 
         <label class="event-datetime-label">
           <span>Start</span>
-          <div class="event-datetime-row subevents-native-datetime-row">
-            <input type="datetime-local" [(ngModel)]="model.startAt" />
+          <div class="event-datetime-row">
+            <mat-form-field appearance="outline" class="event-date-field event-date-field-start" subscriptSizing="dynamic">
+              <input matInput [matDatepicker]="subEventStartPicker" [ngModel]="subEventStartDateValue" (ngModelChange)="onStartDateChange($event)" />
+              <mat-datepicker-toggle matSuffix [for]="subEventStartPicker"></mat-datepicker-toggle>
+              <mat-datepicker #subEventStartPicker></mat-datepicker>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="event-time-field event-time-field-start" subscriptSizing="dynamic">
+              <input matInput [matTimepicker]="subEventStartTimePicker" [matTimepickerOpenOnClick]="true" [ngModel]="subEventStartTimeValue" (ngModelChange)="onStartTimeChange($event)" />
+              <mat-timepicker-toggle matSuffix [for]="subEventStartTimePicker"></mat-timepicker-toggle>
+              <mat-timepicker #subEventStartTimePicker></mat-timepicker>
+            </mat-form-field>
           </div>
         </label>
 
         <label class="event-datetime-label">
           <span>End</span>
-          <div class="event-datetime-row subevents-native-datetime-row">
-            <input type="datetime-local" [(ngModel)]="model.endAt" />
+          <div class="event-datetime-row">
+            <mat-form-field appearance="outline" class="event-date-field event-date-field-end" subscriptSizing="dynamic">
+              <input matInput [matDatepicker]="subEventEndPicker" [ngModel]="subEventEndDateValue" (ngModelChange)="onEndDateChange($event)" />
+              <mat-datepicker-toggle matSuffix [for]="subEventEndPicker"></mat-datepicker-toggle>
+              <mat-datepicker #subEventEndPicker></mat-datepicker>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="event-time-field event-time-field-end" subscriptSizing="dynamic">
+              <input matInput [matTimepicker]="subEventEndTimePicker" [matTimepickerOpenOnClick]="true" [ngModel]="subEventEndTimeValue" (ngModelChange)="onEndTimeChange($event)" />
+              <mat-timepicker-toggle matSuffix [for]="subEventEndTimePicker"></mat-timepicker-toggle>
+              <mat-timepicker #subEventEndTimePicker></mat-timepicker>
+            </mat-form-field>
           </div>
         </label>
 

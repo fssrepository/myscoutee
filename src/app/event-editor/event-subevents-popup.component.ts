@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { EventSubeventGroupFormPopupComponent } from './event-subevent-group-form-popup.component';
+import { EventSubeventLeaderboardGroup, EventSubeventLeaderboardPopupComponent } from './event-subevent-leaderboard-popup.component';
 import { EventSubeventStageFormPopupComponent } from './event-subevent-stage-form-popup.component';
 import { AppUtils } from '../shared/app-utils';
 
@@ -75,6 +76,7 @@ interface EventSubeventsStageCard {
 }
 
 interface SubEventFormModel {
+  id?: string;
   name: string;
   description: string;
   location: string;
@@ -83,10 +85,12 @@ interface SubEventFormModel {
   optional: boolean;
   capacityMin: number;
   capacityMax: number;
+  tournamentGroupCount?: number;
   tournamentGroupCapacityMin?: number;
   tournamentGroupCapacityMax?: number;
   tournamentLeaderboardType?: TournamentLeaderboardType;
   tournamentAdvancePerGroup?: number;
+  groups?: readonly EventSubeventsGroupItem[];
 }
 
 interface GroupFormModel {
@@ -112,7 +116,8 @@ interface DeleteTargetState {
     MatButtonModule,
     MatIconModule,
     EventSubeventStageFormPopupComponent,
-    EventSubeventGroupFormPopupComponent
+    EventSubeventGroupFormPopupComponent,
+    EventSubeventLeaderboardPopupComponent
   ],
   templateUrl: './event-subevents-popup.component.html',
   styleUrl: './event-subevents-popup.component.scss'
@@ -154,7 +159,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
   protected showLeaderboardPopup = false;
   protected leaderboardPopupStageKey: string | null = null;
   protected leaderboardPopupStageTitle = '';
-  protected leaderboardGroupOpenState: Record<string, boolean> = {};
 
   protected pendingDeleteTarget: DeleteTargetState | null = null;
 
@@ -164,7 +168,10 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['subEvents']) {
-      this.workingSubEvents = this.cloneSubEvents(this.subEvents);
+      this.workingSubEvents = this.cloneSubEvents(this.subEvents).map(item => ({
+        ...item,
+        id: item.id ?? this.nextId('subevent')
+      }));
       this.clampStagePageIndex();
     }
 
@@ -237,6 +244,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     const fallbackStageMax = Math.max(fallbackStageMin, this.defaultStageCapacityMax(fallbackStageMin));
 
     this.subEventForm = {
+      id: undefined,
       name: defaultName,
       description: '',
       location: '',
@@ -245,10 +253,12 @@ export class EventSubeventsPopupComponent implements OnChanges {
       optional: this.displayMode !== 'Tournament',
       capacityMin: fallbackStageMin,
       capacityMax: fallbackStageMax,
+      tournamentGroupCount: undefined,
       tournamentGroupCapacityMin: fallbackGroupMin,
       tournamentGroupCapacityMax: fallbackGroupMax,
       tournamentLeaderboardType: this.defaultTournamentLeaderboardType(),
-      tournamentAdvancePerGroup: this.defaultTournamentAdvancePerGroup()
+      tournamentAdvancePerGroup: this.defaultTournamentAdvancePerGroup(),
+      groups: []
     };
 
     this.showSubEventOptionalPicker = false;
@@ -650,7 +660,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected showSubEventInsertControls(): boolean {
-    return this.subEventFormMode !== 'edit' && this.subEventInsertTargetSource().length > 0;
+    return this.subEventInsertTargetSource().length > 0;
   }
 
   protected subEventInsertFieldLabel(): string {
@@ -662,7 +672,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return source.map((item, index) => ({
       id: item.id ?? `subevent-option-${index}`,
       label: this.displayMode === 'Tournament'
-        ? `Stage ${index + 1} · ${item.name ?? item.title ?? 'Untitled'}`
+        ? `Stage ${this.resolveStageNumberById(item.id) ?? (index + 1)} · ${item.name ?? item.title ?? 'Untitled'}`
         : `${item.name ?? item.title ?? `Sub Event ${index + 1}`}`
     }));
   }
@@ -780,66 +790,92 @@ export class EventSubeventsPopupComponent implements OnChanges {
       return;
     }
     this.normalizeSubEventCapacityRange();
-    if (this.displayMode === 'Tournament') {
+    const forceMandatoryTournament = this.displayMode === 'Tournament';
+    if (forceMandatoryTournament) {
       this.normalizeTournamentStageConfigOnForm();
     }
 
     const dateRange = this.normalizedInputDateRange(this.subEventForm.startAt, this.subEventForm.endAt);
-    const baseItem: EventSubeventsItem = {
-      id: this.subEventFormMode === 'edit'
-        ? (this.workingSubEvents[this.subEventFormSourceIndex ?? -1]?.id ?? this.nextId('subevent'))
-        : this.nextId('subevent'),
+    const existingId = this.editingSubEventId();
+    const existingItem = existingId
+      ? this.workingSubEvents.find(item => item.id === existingId) ?? null
+      : null;
+    const normalizedCapacityMin = Math.max(0, Math.trunc(Number(this.subEventForm.capacityMin) || 0));
+    const normalizedCapacityMax = Math.max(
+      normalizedCapacityMin,
+      Math.trunc(Number(this.subEventForm.capacityMax) || normalizedCapacityMin)
+    );
+
+    const baseGroupsSource = (this.subEventForm.groups?.length ?? 0) > 0
+      ? this.subEventForm.groups
+      : ((existingItem?.groups?.length ?? 0) > 0 ? existingItem?.groups : []);
+
+    let baseItem: EventSubeventsItem = {
+      id: existingId ?? this.nextId('subevent'),
       name: this.subEventForm.name.trim(),
       title: this.subEventForm.name.trim(),
       description: this.subEventForm.description.trim(),
       location: this.subEventForm.location.trim(),
-      optional: this.displayMode === 'Tournament' ? false : this.subEventForm.optional,
+      optional: forceMandatoryTournament ? false : this.subEventForm.optional,
       startAt: dateRange.startAt,
       endAt: dateRange.endAt,
-      capacityMin: Math.max(0, Math.trunc(Number(this.subEventForm.capacityMin) || 0)),
-      capacityMax: Math.max(
-        Math.max(0, Math.trunc(Number(this.subEventForm.capacityMin) || 0)),
-        Math.trunc(Number(this.subEventForm.capacityMax) || Math.max(0, Math.trunc(Number(this.subEventForm.capacityMin) || 0)))
-      ),
-      tournamentGroupCapacityMin: this.displayMode === 'Tournament'
+      capacityMin: normalizedCapacityMin,
+      capacityMax: normalizedCapacityMax,
+      tournamentGroupCount: this.normalizedNonNegativeInt(this.subEventForm.tournamentGroupCount) ?? undefined,
+      tournamentGroupCapacityMin: forceMandatoryTournament
         ? this.defaultTournamentGroupCapacityMin(this.subEventForm)
         : undefined,
-      tournamentGroupCapacityMax: this.displayMode === 'Tournament'
+      tournamentGroupCapacityMax: forceMandatoryTournament
         ? this.defaultTournamentGroupCapacityMax(this.defaultTournamentGroupCapacityMin(this.subEventForm), this.subEventForm)
         : undefined,
-      tournamentLeaderboardType: this.displayMode === 'Tournament'
+      tournamentLeaderboardType: forceMandatoryTournament
         ? this.normalizedTournamentLeaderboardType(this.subEventForm.tournamentLeaderboardType)
         : undefined,
-      tournamentAdvancePerGroup: this.displayMode === 'Tournament'
+      tournamentAdvancePerGroup: forceMandatoryTournament
         ? Math.max(0, Math.trunc(Number(this.subEventForm.tournamentAdvancePerGroup) || 0))
         : undefined,
-      groups: this.displayMode === 'Tournament'
-        ? this.ensureStageGroups(this.subEventFormMode, this.subEventFormSourceIndex, this.subEventForm)
+      groups: forceMandatoryTournament
+        ? this.ensureStageGroups(this.subEventFormMode, this.subEventFormSourceIndex, {
+          ...this.subEventForm,
+          groups: this.cloneGroups(baseGroupsSource)
+        })
         : [],
-      membersPending: 6,
-      membersAccepted: 0,
-      carsPending: 0,
-      accommodationPending: 0,
-      suppliesPending: 0
+      membersAccepted: existingItem ? this.toPendingCount(existingItem.membersAccepted ?? 0) : Math.min(2, normalizedCapacityMin),
+      membersPending: existingItem
+        ? this.toPendingCount(existingItem.membersPending ?? 0)
+        : Math.max(0, normalizedCapacityMax - Math.min(2, normalizedCapacityMin)),
+      carsPending: existingItem ? this.toPendingCount(existingItem.carsPending ?? 0) : 1,
+      accommodationPending: existingItem ? this.toPendingCount(existingItem.accommodationPending ?? 0) : 2,
+      suppliesPending: existingItem ? this.toPendingCount(existingItem.suppliesPending ?? 0) : 3
     };
-
-    if (this.subEventFormMode === 'edit' && this.subEventFormSourceIndex !== null) {
-      const target = this.workingSubEvents[this.subEventFormSourceIndex];
-      if (target) {
-        this.workingSubEvents[this.subEventFormSourceIndex] = {
-          ...target,
-          ...baseItem,
-          groups: this.displayMode === 'Tournament' ? this.ensureStageGroups('edit', this.subEventFormSourceIndex, this.subEventForm) : []
-        };
-      }
-    } else {
-      const insertIndex = this.subEventInsertIndex(this.workingSubEvents);
-      this.workingSubEvents = [
-        ...this.workingSubEvents.slice(0, insertIndex),
-        baseItem,
-        ...this.workingSubEvents.slice(insertIndex)
-      ];
+    if (forceMandatoryTournament) {
+      const reconciledGroups = this.reconcileTournamentGroupsForStage(baseItem, this.cloneGroups(baseItem.groups));
+      const totals = this.groupCapacityTotals(reconciledGroups);
+      const accepted = Math.min(this.toPendingCount(baseItem.membersAccepted ?? 0), totals.max);
+      baseItem = {
+        ...baseItem,
+        groups: this.cloneGroups(reconciledGroups),
+        tournamentGroupCount: reconciledGroups.length,
+        capacityMin: totals.min,
+        capacityMax: totals.max,
+        membersAccepted: accepted,
+        membersPending: Math.max(0, totals.max - accepted)
+      };
     }
+
+    const sourceWithoutCurrent = this.sortSubEventsByStartAsc(
+      existingId
+        ? this.workingSubEvents.filter(item => item.id !== existingId)
+        : this.workingSubEvents
+    );
+    const insertIndex = this.subEventInsertIndex(sourceWithoutCurrent);
+    const insertedItems = [
+      ...sourceWithoutCurrent.slice(0, insertIndex),
+      baseItem,
+      ...sourceWithoutCurrent.slice(insertIndex)
+    ];
+
+    this.workingSubEvents = this.sortSubEventsByStartAsc(this.applyGapShiftAfterInsert(insertedItems, insertIndex));
 
     this.closeSubEventForm();
     this.emitWorkingSubEvents();
@@ -908,7 +944,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
             Math.max(0, Number(this.groupForm.capacityMin) || 0),
             Number(this.groupForm.capacityMax) || Math.max(0, Number(this.groupForm.capacityMin) || 0)
           ),
-          membersPending: this.toPendingCount(current?.membersPending ?? this.groupForm.membersPending)
+          membersPending: this.toPendingCount(current?.membersPending ?? this.groupForm.membersPending),
+          source: 'manual'
         };
       }
     } else {
@@ -927,7 +964,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
     this.workingSubEvents[this.groupFormSourceIndex] = {
       ...stageItem,
-      groups
+      ...this.stageWithReconciledGroups(stageItem, groups)
     };
 
     this.closeGroupForm();
@@ -948,7 +985,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.showLeaderboardPopup = false;
     this.leaderboardPopupStageKey = null;
     this.leaderboardPopupStageTitle = '';
-    this.leaderboardGroupOpenState = {};
   }
 
   protected requestDeleteStage(stage: EventSubeventsStageCard, event: Event): void {
@@ -1011,7 +1047,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     const groups = this.cloneGroups(stage.groups).filter(group => group.id !== target.groupId);
     this.workingSubEvents[target.stageSourceIndex] = {
       ...stage,
-      groups
+      ...this.stageWithReconciledGroups(stage, groups)
     };
     this.pendingDeleteTarget = null;
     this.emitWorkingSubEvents();
@@ -1043,7 +1079,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   protected subEventFormTitle(): string {
     if (this.displayMode === 'Tournament') {
       let stageNumber = this.subEventFormMode === 'edit'
-        ? (this.subEventFormSourceIndex !== null ? this.subEventFormSourceIndex + 1 : null)
+        ? this.resolveStageNumberById(this.editingSubEventId())
         : this.subEventInsertStageNumberPreview();
       if (stageNumber === null) {
         stageNumber = this.workingSubEvents.length + 1;
@@ -1064,6 +1100,23 @@ export class EventSubeventsPopupComponent implements OnChanges {
       return 'Leaderboard';
     }
     return `${this.leaderboardPopupStageTitle} Leaderboard`;
+  }
+
+  protected leaderboardGroups(): EventSubeventLeaderboardGroup[] {
+    const stage = this.leaderboardStageCard();
+    if (!stage) {
+      return [];
+    }
+
+    const source = this.workingSubEvents[stage.sourceIndex];
+    const advancePerGroup = Math.max(0, Math.trunc(Number(source?.tournamentAdvancePerGroup) || 0));
+
+    return stage.rows.map(row => ({
+      key: row.key,
+      title: row.groupName,
+      pending: this.toPendingCount(row.pending),
+      advancePerGroup
+    }));
   }
 
   protected trackByStageRowKey(_: number, row: EventSubeventsStageRow): string {
@@ -1092,20 +1145,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
       return null;
     }
     return this.stageCards.find(stage => stage.key === key) ?? null;
-  }
-
-  protected toggleLeaderboardGroup(groupKey: string, event: Event): void {
-    event.stopPropagation();
-    this.leaderboardGroupOpenState[groupKey] = !this.isLeaderboardGroupOpen(groupKey);
-  }
-
-  protected isLeaderboardGroupOpen(groupKey: string): boolean {
-    return this.leaderboardGroupOpenState[groupKey] !== false;
-  }
-
-  protected leaderboardRowIndexes(row: EventSubeventsStageRow): number[] {
-    const count = Math.max(4, this.toPendingCount(row.pending));
-    return Array.from({ length: count }, (_, index) => index);
   }
 
   protected stagePlaceholdersForPage(page: readonly EventSubeventsStageCard[]): number[] {
@@ -1178,6 +1217,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.subEventFormMode = 'edit';
     this.subEventFormSourceIndex = stage.sourceIndex;
     this.subEventForm = {
+      id: sourceItem.id,
       name: `${sourceItem.name ?? sourceItem.title ?? stage.subtitle}`.trim(),
       description: `${sourceItem.description ?? ''}`.trim(),
       location: `${sourceItem.location ?? ''}`.trim(),
@@ -1189,6 +1229,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
         Math.max(0, Number(sourceItem.capacityMin) || 0),
         Number(sourceItem.capacityMax) || Math.max(0, Number(sourceItem.capacityMin) || 0)
       ),
+      tournamentGroupCount: this.normalizedNonNegativeInt(sourceItem.tournamentGroupCount) ?? undefined,
       tournamentGroupCapacityMin: Number.isFinite(Number(sourceItem.tournamentGroupCapacityMin))
         ? Math.max(0, Math.trunc(Number(sourceItem.tournamentGroupCapacityMin)))
         : this.defaultTournamentGroupCapacityMin(),
@@ -1196,7 +1237,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
         ? Math.max(0, Math.trunc(Number(sourceItem.tournamentGroupCapacityMax)))
         : this.defaultTournamentGroupCapacityMax(this.defaultTournamentGroupCapacityMin()),
       tournamentLeaderboardType: this.normalizedTournamentLeaderboardType(sourceItem.tournamentLeaderboardType),
-      tournamentAdvancePerGroup: Math.max(0, Math.trunc(Number(sourceItem.tournamentAdvancePerGroup) || 0))
+      tournamentAdvancePerGroup: Math.max(0, Math.trunc(Number(sourceItem.tournamentAdvancePerGroup) || 0)),
+      groups: this.cloneGroups(sourceItem.groups)
     };
     this.resetSubEventStageInsertControls(sourceItem.id ?? null);
     this.showSubEventForm = true;
@@ -1258,10 +1300,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
     event.stopPropagation();
     this.leaderboardPopupStageKey = stage.key;
     this.leaderboardPopupStageTitle = stage.subtitle;
-    this.leaderboardGroupOpenState = stage.rows.reduce((next, row) => {
-      next[row.key] = true;
-      return next;
-    }, {} as Record<string, boolean>);
     this.showLeaderboardPopup = true;
   }
 
@@ -1279,6 +1317,10 @@ export class EventSubeventsPopupComponent implements OnChanges {
       if (existing.length > 0) {
         return existing;
       }
+    }
+
+    if ((draft.groups?.length ?? 0) > 0) {
+      return this.cloneGroups(draft.groups);
     }
 
     return [{
@@ -1346,6 +1388,60 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return normalized === 'manual' ? 'manual' : 'generated';
   }
 
+  private reconcileTournamentGroupsForStage(
+    item: EventSubeventsItem,
+    sourceGroups: EventSubeventsGroupItem[] = this.cloneGroups(item.groups)
+  ): EventSubeventsGroupItem[] {
+    const normalizedGroups = sourceGroups.map(group => ({
+      ...group,
+      source: this.normalizeGroupSource(group.source)
+    }));
+    if (item.optional) {
+      return normalizedGroups;
+    }
+    const manualGroups = normalizedGroups
+      .filter(group => this.normalizeGroupSource(group.source) === 'manual')
+      .map(group => ({ ...group, source: 'manual' as const }));
+    const generatedGroups = normalizedGroups
+      .filter(group => this.normalizeGroupSource(group.source) === 'generated')
+      .map(group => ({ ...group, source: 'generated' as const }));
+    return [...manualGroups, ...generatedGroups];
+  }
+
+  private groupCapacityTotals(groups: EventSubeventsGroupItem[]): { min: number; max: number } {
+    if (groups.length === 0) {
+      return { min: 0, max: 0 };
+    }
+    let totalMin = 0;
+    let totalMax = 0;
+    for (const group of groups) {
+      const min = Math.max(0, Number(group.capacityMin) || 0);
+      const max = Math.max(min, Number(group.capacityMax) || min);
+      totalMin += min;
+      totalMax += max;
+    }
+    return {
+      min: Math.max(0, totalMin),
+      max: Math.max(Math.max(0, totalMin), totalMax)
+    };
+  }
+
+  private stageWithReconciledGroups(stage: EventSubeventsItem, groups: EventSubeventsGroupItem[]): Partial<EventSubeventsItem> {
+    const reconciledGroups = this.reconcileTournamentGroupsForStage(stage, groups);
+    if (stage.optional) {
+      return {
+        groups: this.cloneGroups(reconciledGroups)
+      };
+    }
+    const totals = this.groupCapacityTotals(reconciledGroups);
+    return {
+      groups: this.cloneGroups(reconciledGroups),
+      tournamentGroupCount: reconciledGroups.length,
+      capacityMin: totals.min,
+      capacityMax: totals.max
+    };
+  }
+
   private stageAccentHue(stageNumber: number, totalStages: number): number {
     if (totalStages <= 1) {
       return 210;
@@ -1357,6 +1453,15 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private stageAccentColorByNumber(stageNumber: number): string {
     const total = Math.max(this.stageCards.length, 1);
     return `hsl(${this.stageAccentHue(stageNumber, total)} 76% 54%)`;
+  }
+
+  private resolveStageNumberById(stageId: string | null | undefined): number | null {
+    if (!stageId) {
+      return null;
+    }
+    const source = this.sortSubEventRefsByStartAsc(this.workingSubEvents);
+    const index = source.findIndex(item => item.id === stageId);
+    return index >= 0 ? index + 1 : null;
   }
 
   private readViewportWidth(): number {
@@ -1448,67 +1553,188 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   private resetSubEventStageInsertControls(editingSubEventId: string | null = null): void {
     this.subEventStageInsertPlacement = 'after';
-    const source = this.subEventInsertTargetSource(editingSubEventId);
-    this.subEventStageInsertTargetId = source.length > 0 ? (source[source.length - 1].id ?? null) : null;
+    const source = this.sortSubEventRefsByStartAsc(this.workingSubEvents);
+    if (source.length === 0) {
+      this.subEventStageInsertTargetId = null;
+      return;
+    }
+    if (!editingSubEventId) {
+      this.subEventStageInsertTargetId = source[source.length - 1]?.id ?? null;
+      return;
+    }
+
+    const editingIndex = source.findIndex(item => item.id === editingSubEventId);
+    const options = source.filter(item => item.id !== editingSubEventId);
+    if (options.length === 0) {
+      this.subEventStageInsertTargetId = null;
+      return;
+    }
+    if (editingIndex <= 0) {
+      this.subEventStageInsertPlacement = 'before';
+      this.subEventStageInsertTargetId = options[0]?.id ?? null;
+      return;
+    }
+    this.subEventStageInsertPlacement = 'after';
+    this.subEventStageInsertTargetId = source[editingIndex - 1]?.id ?? options[options.length - 1]?.id ?? null;
   }
 
-  private subEventInsertTargetSource(editingSubEventId: string | null = null): EventSubeventsItem[] {
-    const source = this.sortedEntries.map(entry => entry.item);
+  private subEventInsertTargetSource(): EventSubeventsItem[] {
+    const source = this.sortSubEventRefsByStartAsc(this.workingSubEvents);
+    const editingSubEventId = this.editingSubEventId();
     if (!editingSubEventId) {
       return source;
     }
     return source.filter(item => item.id !== editingSubEventId);
   }
 
+  private editingSubEventId(): string | null {
+    if (this.subEventFormMode !== 'edit') {
+      return null;
+    }
+    if (this.subEventForm.id) {
+      return this.subEventForm.id;
+    }
+    if (this.subEventFormSourceIndex === null) {
+      return null;
+    }
+    return this.workingSubEvents[this.subEventFormSourceIndex]?.id ?? null;
+  }
+
   private subEventInsertIndex(items: EventSubeventsItem[]): number {
-    if (!this.showSubEventInsertControls() || !this.subEventStageInsertTargetId) {
-      return items.length;
+    if (items.length === 0) {
+      return 0;
     }
-    const targetIndex = items.findIndex(item => item.id === this.subEventStageInsertTargetId);
-    if (targetIndex < 0) {
-      return items.length;
-    }
+
+    const fallbackTargetIndex = items.length - 1;
+    const requestedTargetIndex = this.subEventStageInsertTargetId
+      ? items.findIndex(item => item.id === this.subEventStageInsertTargetId)
+      : -1;
+    const targetIndex = requestedTargetIndex >= 0 ? requestedTargetIndex : fallbackTargetIndex;
     return this.subEventStageInsertPlacement === 'before' ? targetIndex : targetIndex + 1;
   }
 
   private applySubEventInsertTargetDateRangeToForm(): void {
-    if (this.subEventFormMode === 'edit' || !this.subEventStageInsertTargetId) {
+    if (!this.subEventStageInsertTargetId) {
       return;
     }
     const source = this.subEventInsertTargetSource();
-    const target = source.find(item => item.id === this.subEventStageInsertTargetId);
+    const targetIndex = source.findIndex(item => item.id === this.subEventStageInsertTargetId);
+    if (targetIndex < 0) {
+      return;
+    }
+    const target = source[targetIndex];
     if (!target) {
       return;
     }
-    const targetStart = this.parseDateValue(target.startAt);
-    const targetEnd = this.parseDateValue(target.endAt);
-    if (!targetStart || !targetEnd) {
+    const previous = source[targetIndex - 1] ?? null;
+    const next = source[targetIndex + 1] ?? null;
+    const beforeStartBoundary = previous?.endAt ?? target.startAt;
+    const beforeEndBoundary = target.startAt;
+    const afterStartBoundary = target.endAt;
+    const afterEndBoundary = next?.startAt ?? target.endAt;
+
+    const draftStartAt = this.subEventStageInsertPlacement === 'before'
+      ? beforeStartBoundary
+      : afterStartBoundary;
+    const draftEndAt = this.subEventStageInsertPlacement === 'before'
+      ? beforeEndBoundary
+      : afterEndBoundary;
+
+    if (!draftStartAt || !draftEndAt) {
       return;
     }
-    const durationMs = 2 * 60 * 60 * 1000;
-    const draftStart = this.subEventStageInsertPlacement === 'before'
-      ? new Date(targetStart.getTime() - durationMs)
-      : new Date(targetEnd.getTime());
-    const draftEnd = this.subEventStageInsertPlacement === 'before'
-      ? new Date(targetStart.getTime())
-      : new Date(targetEnd.getTime() + durationMs);
-    this.subEventForm.startAt = this.toInputDateTime(draftStart);
-    this.subEventForm.endAt = this.toInputDateTime(draftEnd);
+    this.subEventForm = {
+      ...this.subEventForm,
+      startAt: draftStartAt,
+      endAt: draftEndAt
+    };
   }
 
   private subEventInsertStageNumberPreview(): number | null {
-    const source = this.subEventInsertTargetSource();
-    if (source.length === 0) {
-      return null;
+    const source = this.sortSubEventRefsByStartAsc(this.workingSubEvents);
+    const count = source.length;
+    if (!this.showSubEventInsertControls()) {
+      return count > 0 ? count + 1 : 1;
     }
+    const fallback = count + 1;
     if (!this.subEventStageInsertTargetId) {
-      return source.length + 1;
+      return fallback;
     }
     const targetIndex = source.findIndex(item => item.id === this.subEventStageInsertTargetId);
     if (targetIndex < 0) {
-      return source.length + 1;
+      return fallback;
     }
-    return this.subEventStageInsertPlacement === 'before' ? targetIndex + 1 : targetIndex + 2;
+    return this.subEventStageInsertPlacement === 'before'
+      ? targetIndex + 1
+      : Math.min(count + 1, targetIndex + 2);
+  }
+
+  private applyGapShiftAfterInsert(items: EventSubeventsItem[], insertIndex: number): EventSubeventsItem[] {
+    const nextItems = this.cloneSubEvents(items);
+    const inserted = nextItems[insertIndex] ?? null;
+    if (!inserted) {
+      return nextItems;
+    }
+
+    const insertedId = inserted.id;
+    const insertedStartMs = this.parseDateValue(inserted.startAt)?.getTime();
+    const insertedEndMs = this.parseDateValue(inserted.endAt)?.getTime();
+    if (!Number.isFinite(insertedStartMs) || !Number.isFinite(insertedEndMs)) {
+      return nextItems;
+    }
+
+    const ordered = nextItems
+      .map((item, index) => ({
+        item,
+        index,
+        startMs: this.parseDateValue(item.startAt)?.getTime(),
+        endMs: this.parseDateValue(item.endAt)?.getTime()
+      }))
+      .filter(entry => Number.isFinite(entry.startMs) && Number.isFinite(entry.endMs))
+      .sort((a, b) => {
+        if ((a.startMs as number) !== (b.startMs as number)) {
+          return (a.startMs as number) - (b.startMs as number);
+        }
+        return a.index - b.index;
+      });
+
+    let trimCandidate: (typeof ordered)[number] | null = null;
+    for (const entry of ordered) {
+      if (entry.item.id === insertedId) {
+        continue;
+      }
+      if ((entry.startMs as number) < (insertedStartMs as number) && (entry.endMs as number) > (insertedStartMs as number)) {
+        trimCandidate = entry;
+      }
+    }
+    if (trimCandidate) {
+      trimCandidate.item.endAt = AppUtils.toIsoDateTimeLocal(new Date(insertedStartMs as number));
+    }
+
+    const firstShiftOverlap = ordered.find(entry =>
+      entry.item.id !== insertedId
+      && (entry.startMs as number) >= (insertedStartMs as number)
+      && (entry.startMs as number) < (insertedEndMs as number)
+    );
+    if (!firstShiftOverlap) {
+      return nextItems;
+    }
+
+    const shiftStartMs = firstShiftOverlap.startMs as number;
+    const shiftMs = (insertedEndMs as number) - shiftStartMs;
+    if (shiftMs <= 0) {
+      return nextItems;
+    }
+
+    for (const entry of ordered) {
+      if (entry.item.id === insertedId || (entry.startMs as number) < shiftStartMs) {
+        continue;
+      }
+      entry.item.startAt = AppUtils.toIsoDateTimeLocal(new Date((entry.startMs as number) + shiftMs));
+      entry.item.endAt = AppUtils.toIsoDateTimeLocal(new Date((entry.endMs as number) + shiftMs));
+    }
+
+    return nextItems;
   }
 
   private normalizedTournamentLeaderboardType(value: unknown): TournamentLeaderboardType {
@@ -1590,8 +1816,20 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.subEventForm.tournamentGroupCapacityMax = max;
   }
 
+  private normalizedNonNegativeInt(value: unknown): number | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+    return Math.max(0, Math.trunc(parsed));
+  }
+
   private createEmptySubEventForm(): SubEventFormModel {
     return {
+      id: undefined,
       name: '',
       description: '',
       location: '',
@@ -1600,10 +1838,12 @@ export class EventSubeventsPopupComponent implements OnChanges {
       optional: this.displayMode !== 'Tournament',
       capacityMin: 4,
       capacityMax: 7,
+      tournamentGroupCount: undefined,
       tournamentGroupCapacityMin: 4,
       tournamentGroupCapacityMax: 7,
       tournamentLeaderboardType: 'Score',
-      tournamentAdvancePerGroup: 0
+      tournamentAdvancePerGroup: 0,
+      groups: []
     };
   }
 
@@ -1634,7 +1874,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.showLeaderboardPopup = false;
     this.leaderboardPopupStageKey = null;
     this.leaderboardPopupStageTitle = '';
-    this.leaderboardGroupOpenState = {};
     this.pendingDeleteTarget = null;
     this.onStageSwipeCancel();
   }
@@ -1644,6 +1883,38 @@ export class EventSubeventsPopupComponent implements OnChanges {
       ...item,
       groups: this.cloneGroups(item.groups)
     }));
+  }
+
+  private sortSubEventsByStartAsc(items: EventSubeventsItem[]): EventSubeventsItem[] {
+    return this.cloneSubEvents(items)
+      .map((item, index) => ({
+        item,
+        index,
+        startMs: this.parseDateValue(item.startAt)?.getTime() ?? Number.POSITIVE_INFINITY
+      }))
+      .sort((a, b) => {
+        if (a.startMs !== b.startMs) {
+          return a.startMs - b.startMs;
+        }
+        return a.index - b.index;
+      })
+      .map(entry => entry.item);
+  }
+
+  private sortSubEventRefsByStartAsc(items: readonly EventSubeventsItem[]): EventSubeventsItem[] {
+    return items
+      .map((item, index) => ({
+        item,
+        index,
+        startMs: this.parseDateValue(item.startAt)?.getTime() ?? Number.POSITIVE_INFINITY
+      }))
+      .sort((a, b) => {
+        if (a.startMs !== b.startMs) {
+          return a.startMs - b.startMs;
+        }
+        return a.index - b.index;
+      })
+      .map(entry => entry.item);
   }
 
   private cloneGroups(groups: readonly EventSubeventsGroupItem[] | undefined): EventSubeventsGroupItem[] {

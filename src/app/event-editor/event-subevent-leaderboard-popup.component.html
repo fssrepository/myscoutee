@@ -1,0 +1,118 @@
+<section class="experience-form-overlay subevent-form-overlay subevent-leaderboard-overlay" *ngIf="open" (click)="close.emit($event)">
+  <div class="experience-form-overlay-backdrop"></div>
+  <article class="experience-form-popup subevent-form-popup subevent-leaderboard-popup" (click)="$event.stopPropagation()">
+    <div class="experience-form-header subevent-leaderboard-header">
+      <div class="subevent-leaderboard-header-main">
+        <h3>{{ title }}</h3>
+        <p>{{ subtitle }}</p>
+      </div>
+      <div class="experience-form-header-controls">
+        <button type="button" class="experience-form-close-btn" (click)="close.emit($event)" aria-label="Close leaderboard">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <section class="experience-form-panel subevent-form-panel subevent-leaderboard-panel">
+      <ng-container *ngIf="groups.length > 0; else leaderboardEmptyState">
+        <div class="subevent-leaderboard-groups">
+          <article class="subevent-leaderboard-group" *ngFor="let group of groups; trackBy: trackByGroup">
+            <div
+              class="subevent-leaderboard-group-head"
+              role="button"
+              tabindex="0"
+              (click)="toggleGroup(group.key, $event)"
+              (keydown.enter)="toggleGroup(group.key, $event)"
+              (keydown.space)="toggleGroup(group.key, $event); $event.preventDefault()"
+            >
+              <div class="subevent-leaderboard-group-head-main">
+                <span class="subevent-leaderboard-group-title">{{ group.title }}</span>
+                <span class="subevent-leaderboard-advance-line">Top {{ group.advancePerGroup }} advance from this group.</span>
+              </div>
+              <button
+                type="button"
+                class="subevent-leaderboard-group-add"
+                (click)="toggleGroup(group.key, $event)"
+                [attr.aria-label]="isGroupOpen(group.key) ? 'Collapse group' : 'Expand group'"
+              >
+                <mat-icon>{{ isGroupOpen(group.key) ? 'remove' : 'add' }}</mat-icon>
+              </button>
+            </div>
+
+            <div class="subevent-leaderboard-group-body" *ngIf="isGroupOpen(group.key)">
+              <div class="subevent-leaderboard-table-wrap">
+                <table class="subevent-leaderboard-table subevent-leaderboard-table-score">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Member</th>
+                      <th>Score</th>
+                      <th>Updates</th>
+                      <th class="subevent-leaderboard-end-column" aria-hidden="true"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <ng-container *ngFor="let member of membersForGroup(group); let rowIndex = index; trackBy: trackByMember">
+                      <tr
+                        *ngIf="rowIndex < group.pending; else leaderboardPlaceholderRow"
+                        class="subevent-leaderboard-member-row"
+                        [class.is-advance]="member.isAdvance"
+                        role="button"
+                        tabindex="0"
+                        (click)="openMember(group, member, rowIndex + 1, $event)"
+                        (keydown.enter)="openMember(group, member, rowIndex + 1, $event)"
+                      >
+                        <td>{{ rowIndex + 1 }}</td>
+                        <td class="subevent-leaderboard-member-cell">{{ member.name }}</td>
+                        <td [class.subevent-leaderboard-advance-value]="member.isAdvance">{{ member.score }}</td>
+                        <td [class.subevent-leaderboard-advance-value]="member.isAdvance">{{ member.updates }}</td>
+                        <td class="subevent-leaderboard-row-end"><mat-icon>chevron_right</mat-icon></td>
+                      </tr>
+                      <ng-template #leaderboardPlaceholderRow>
+                        <tr class="subevent-leaderboard-placeholder-row" aria-hidden="true">
+                          <td>{{ rowIndex + 1 }}</td>
+                          <td colspan="3"><span class="subevent-leaderboard-placeholder-line"></span></td>
+                          <td class="subevent-leaderboard-row-end"></td>
+                        </tr>
+                      </ng-template>
+                    </ng-container>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </article>
+        </div>
+      </ng-container>
+      <ng-template #leaderboardEmptyState>
+        <div class="editor-list-card event-subevents-empty-state">
+          <h4>Stage not available</h4>
+          <p>Return to Sub Events and open Leaderboard from a stage menu.</p>
+        </div>
+      </ng-template>
+    </section>
+  </article>
+
+  <section class="subevent-leaderboard-member-overlay" *ngIf="selectedMember" (click)="closeMember($event)">
+    <div class="subevent-leaderboard-member-sheet" (click)="$event.stopPropagation()">
+      <header>
+        <div class="subevent-leaderboard-member-title">
+          <h4>{{ selectedMember.groupTitle }} · #{{ selectedMember.rank }}</h4>
+          <p>{{ selectedMember.member.name }}</p>
+        </div>
+        <button type="button" class="experience-form-close-btn" (click)="closeMember($event)" aria-label="Close member details">
+          <mat-icon>close</mat-icon>
+        </button>
+      </header>
+      <dl class="subevent-leaderboard-member-stats">
+        <div>
+          <dt>Score</dt>
+          <dd>{{ selectedMember.member.score }}</dd>
+        </div>
+        <div>
+          <dt>Updates</dt>
+          <dd>{{ selectedMember.member.updates }}</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+</section>

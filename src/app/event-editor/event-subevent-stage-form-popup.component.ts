@@ -1,8 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { MatNativeDateModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTimepickerModule } from '@angular/material/timepicker';
+import { AppUtils } from '../shared/app-utils';
 
 type SubEventModeClass = 'subevent-mode-mandatory' | 'subevent-mode-optional';
 type StageInsertPlacement = 'before' | 'after';
@@ -26,11 +32,21 @@ interface StageFormModel {
 @Component({
   selector: 'app-event-subevent-stage-form-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, MatSelectModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatIconModule,
+    MatSelectModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatDatepickerModule,
+    MatTimepickerModule,
+    MatNativeDateModule
+  ],
   templateUrl: './event-subevent-stage-form-popup.component.html',
   styleUrls: ['./event-subevent-stage-form-popup.component.scss']
 })
-export class EventSubeventStageFormPopupComponent {
+export class EventSubeventStageFormPopupComponent implements OnChanges {
   @Input() open = false;
   @Input() parentTitle = '';
   @Input() title = 'Create Stage Event';
@@ -78,7 +94,105 @@ export class EventSubeventStageFormPopupComponent {
   @Output() readonly tournamentLeaderboardTypeChange = new EventEmitter<TournamentLeaderboardType | string | null | undefined>();
   @Output() readonly tournamentAdvancePerGroupChange = new EventEmitter<number | string>();
 
+  protected subEventStartDateValue: Date | null = null;
+  protected subEventStartTimeValue: Date | null = null;
+  protected subEventEndDateValue: Date | null = null;
+  protected subEventEndTimeValue: Date | null = null;
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['model'] || changes['open']) {
+      this.syncDateTimeControlsFromModel();
+    }
+  }
+
+  protected onStartDateChange(value: Date | null): void {
+    this.subEventStartDateValue = value;
+    this.model.startAt = AppUtils.applyDatePartToIsoLocal(this.ensureIsoLocal(this.model.startAt), value);
+    this.normalizeDateRange();
+    this.syncDateTimeControlsFromModel();
+  }
+
+  protected onStartTimeChange(value: Date | null): void {
+    this.subEventStartTimeValue = value;
+    this.model.startAt = AppUtils.applyTimePartFromDateToIsoLocal(this.ensureIsoLocal(this.model.startAt), value);
+    this.normalizeDateRange();
+    this.syncDateTimeControlsFromModel();
+  }
+
+  protected onEndDateChange(value: Date | null): void {
+    this.subEventEndDateValue = value;
+    this.model.endAt = AppUtils.applyDatePartToIsoLocal(this.ensureIsoLocal(this.model.endAt), value);
+    this.normalizeDateRange();
+    this.syncDateTimeControlsFromModel();
+  }
+
+  protected onEndTimeChange(value: Date | null): void {
+    this.subEventEndTimeValue = value;
+    this.model.endAt = AppUtils.applyTimePartFromDateToIsoLocal(this.ensureIsoLocal(this.model.endAt), value);
+    this.normalizeDateRange();
+    this.syncDateTimeControlsFromModel();
+  }
+
   protected trackByInsertOption(_: number, option: { id: string }): string {
     return option.id;
+  }
+
+  private ensureIsoLocal(value: string): string {
+    const parsed = this.parseDateTime(value) ?? new Date();
+    return AppUtils.toIsoDateTimeLocal(parsed);
+  }
+
+  private normalizeDateRange(): void {
+    const start = this.parseDateTime(this.model.startAt) ?? new Date();
+    const currentEnd = this.parseDateTime(this.model.endAt);
+    const safeEnd = currentEnd && currentEnd.getTime() > start.getTime()
+      ? currentEnd
+      : new Date(start.getTime() + (60 * 60 * 1000));
+
+    this.model.startAt = AppUtils.toIsoDateTimeLocal(start);
+    this.model.endAt = AppUtils.toIsoDateTimeLocal(safeEnd);
+  }
+
+  private syncDateTimeControlsFromModel(): void {
+    this.subEventStartDateValue = this.parseDateTime(this.model.startAt);
+    this.subEventStartTimeValue = this.parseDateTime(this.model.startAt);
+    this.subEventEndDateValue = this.parseDateTime(this.model.endAt);
+    this.subEventEndTimeValue = this.parseDateTime(this.model.endAt);
+  }
+
+  private parseDateTime(value: unknown): Date | null {
+    const raw = `${value ?? ''}`.trim();
+    if (!raw) {
+      return null;
+    }
+
+    // Handle dd/mm/yyyy, hh:mm formats produced by older local state.
+    const legacyPattern = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s+(\d{1,2}):(\d{2})$/);
+    if (legacyPattern) {
+      const day = Number.parseInt(legacyPattern[1] ?? '', 10);
+      const month = Number.parseInt(legacyPattern[2] ?? '', 10);
+      const year = Number.parseInt(legacyPattern[3] ?? '', 10);
+      const hours = Number.parseInt(legacyPattern[4] ?? '', 10);
+      const minutes = Number.parseInt(legacyPattern[5] ?? '', 10);
+      if ([day, month, year, hours, minutes].every(Number.isFinite)) {
+        return new Date(year, month - 1, day, hours, minutes, 0, 0);
+      }
+    }
+
+    const isoLikePattern = raw.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2}),?\s+(\d{1,2}):(\d{2})$/);
+    if (isoLikePattern) {
+      const year = Number.parseInt(isoLikePattern[1] ?? '', 10);
+      const month = Number.parseInt(isoLikePattern[2] ?? '', 10);
+      const day = Number.parseInt(isoLikePattern[3] ?? '', 10);
+      const hours = Number.parseInt(isoLikePattern[4] ?? '', 10);
+      const minutes = Number.parseInt(isoLikePattern[5] ?? '', 10);
+      if ([day, month, year, hours, minutes].every(Number.isFinite)) {
+        return new Date(year, month - 1, day, hours, minutes, 0, 0);
+      }
+    }
+
+    const normalized = raw.replace(/\//g, '-');
+    const parsed = new Date(normalized);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 }

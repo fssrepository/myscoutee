@@ -1,5 +1,112 @@
 :host {
   display: contents;
+  --interactive-motion-duration: 0.16s;
+  --interactive-motion-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --interactive-hover-lift: -1px;
+  --interactive-hover-scale: 1.01;
+  --interactive-hover-brightness: 1.02;
+  --interactive-press-scale: 0.98;
+  --interactive-press-brightness: 0.96;
+}
+
+:where(
+  .subevents-add-btn,
+  .subevents-mode-trigger,
+  .activities-view-option.subevents-mode-option,
+  .activities-calendar-nav-btn,
+  .experience-action-btn,
+  .item-action-menu-btn,
+  .popup-header-add-btn,
+  .experience-form-close-btn,
+  .subevent-leaderboard-group-head,
+  .subevent-leaderboard-group-add,
+  .link-btn
+) {
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--interactive-motion-duration) var(--interactive-motion-ease),
+    filter var(--interactive-motion-duration) var(--interactive-motion-ease),
+    box-shadow var(--interactive-motion-duration) var(--interactive-motion-ease),
+    background-color var(--interactive-motion-duration) var(--interactive-motion-ease),
+    border-color var(--interactive-motion-duration) var(--interactive-motion-ease),
+    color var(--interactive-motion-duration) var(--interactive-motion-ease);
+  transform-origin: center;
+}
+
+:where(
+  .subevents-add-btn,
+  .subevents-mode-trigger,
+  .activities-view-option.subevents-mode-option,
+  .activities-calendar-nav-btn,
+  .experience-action-btn,
+  .item-action-menu-btn,
+  .popup-header-add-btn,
+  .experience-form-close-btn,
+  .subevent-leaderboard-group-head,
+  .subevent-leaderboard-group-add,
+  .link-btn
+):focus-visible {
+  outline: 2px solid rgba(66, 110, 182, 0.44);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(
+    .subevents-add-btn,
+    .subevents-mode-trigger,
+    .activities-view-option.subevents-mode-option,
+    .activities-calendar-nav-btn,
+    .experience-action-btn,
+    .item-action-menu-btn,
+    .popup-header-add-btn,
+    .experience-form-close-btn,
+    .subevent-leaderboard-group-head,
+    .subevent-leaderboard-group-add,
+    .link-btn
+  ):not(:disabled):not([aria-disabled='true']) {
+    &:hover {
+      transform: translateY(var(--interactive-hover-lift)) scale(var(--interactive-hover-scale));
+      filter: brightness(var(--interactive-hover-brightness));
+    }
+
+    &:active {
+      transform: scale(var(--interactive-press-scale));
+      filter: brightness(var(--interactive-press-brightness));
+    }
+  }
+}
+
+@keyframes mobile-touch-feedback {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  45% {
+    transform: scale(var(--interactive-press-scale));
+    filter: brightness(var(--interactive-press-brightness));
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  :where(
+    .subevents-add-btn,
+    .subevents-mode-trigger,
+    .activities-view-option.subevents-mode-option,
+    .activities-calendar-nav-btn,
+    .experience-action-btn,
+    .item-action-menu-btn,
+    .popup-header-add-btn,
+    .experience-form-close-btn,
+    .subevent-leaderboard-group-head,
+    .subevent-leaderboard-group-add,
+    .link-btn
+  ):not(:disabled):not([aria-disabled='true']):active {
+    animation: mobile-touch-feedback 0.2s ease;
+  }
 }
 
 .subevents-overlay {
@@ -87,22 +194,6 @@
   gap: 0.52rem;
 }
 
-.popup-view-fab,
-.popup-header-add-btn,
-.activities-calendar-nav-btn,
-.experience-action-btn,
-.experience-form-close-btn {
-  transition: transform 0.14s ease, box-shadow 0.14s ease, background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
-}
-
-.popup-view-fab:active,
-.popup-header-add-btn:active,
-.activities-calendar-nav-btn:active,
-.experience-action-btn:active,
-.experience-form-close-btn:active {
-  transform: scale(0.96);
-}
-
 .subevents-add-btn {
   width: 31px;
   height: 31px;
@@ -145,70 +236,118 @@
 }
 
 .subevents-mode-trigger {
-  border: 1px solid rgba(153, 109, 56, 0.38);
+  border: 1px solid rgba(39, 62, 94, 0.22);
   border-radius: 999px;
-  background: linear-gradient(180deg, #fff7e9 0%, #fdebcf 100%);
-  color: #89501f;
-  min-height: 34px;
-  padding: 0 0.8rem;
+  background: #f3f7ff;
+  color: #2c4c74;
+  min-height: 32px;
+  padding: 0 0.62rem;
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.38rem;
   font-size: 0.74rem;
   font-weight: 700;
+  line-height: 1;
   cursor: pointer;
-  transition: transform 0.14s ease, box-shadow 0.14s ease, background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--interactive-motion-duration, 0.14s) var(--interactive-motion-ease, ease),
+    filter var(--interactive-motion-duration, 0.14s) var(--interactive-motion-ease, ease),
+    box-shadow var(--interactive-motion-duration, 0.14s) var(--interactive-motion-ease, ease),
+    background-color var(--interactive-motion-duration, 0.14s) var(--interactive-motion-ease, ease),
+    border-color var(--interactive-motion-duration, 0.14s) var(--interactive-motion-ease, ease),
+    color var(--interactive-motion-duration, 0.14s) var(--interactive-motion-ease, ease);
 }
 
 .subevents-mode-trigger .subevents-mode-icon {
-  width: 15px;
-  height: 15px;
-  font-size: 15px;
-  line-height: 15px;
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
 }
 
 .subevents-mode-trigger.subevents-mode-casual {
-  border-color: rgba(70, 139, 90, 0.42);
-  background: linear-gradient(180deg, #edf8ef 0%, #e1f1e5 100%);
-  color: #2e8b55;
+  background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
+  border-color: rgba(44, 126, 72, 0.36);
+  color: #2d7d47;
 }
 
 .subevents-mode-trigger.subevents-mode-tournament {
-  border-color: rgba(153, 109, 56, 0.38);
-  background: linear-gradient(180deg, #fff7e9 0%, #fdebcf 100%);
-  color: #9c5f24;
+  background: linear-gradient(180deg, #fff3e8 0%, #ffe8d2 100%);
+  border-color: rgba(183, 110, 40, 0.4);
+  color: #a35e1d;
+}
+
+.subevents-mode-trigger.subevents-mode-casual .subevents-mode-icon,
+.activities-view-option.subevents-mode-option.subevents-mode-casual .subevents-mode-icon {
+  color: #2d7d47;
+}
+
+.subevents-mode-trigger.subevents-mode-tournament .subevents-mode-icon,
+.activities-view-option.subevents-mode-option.subevents-mode-tournament .subevents-mode-icon {
+  color: #a35e1d;
+}
+
+.subevents-mode-trigger[disabled] {
+  cursor: not-allowed;
+  opacity: 0.62;
+  filter: saturate(0.72);
+  box-shadow: none;
+}
+
+.subevents-mode-trigger[disabled].subevents-mode-casual {
+  background: linear-gradient(180deg, #f1f4f1 0%, #e8ece8 100%);
+  border-color: rgba(89, 112, 94, 0.3);
+  color: rgba(58, 88, 65, 0.72);
+}
+
+.subevents-mode-trigger[disabled].subevents-mode-tournament {
+  background: linear-gradient(180deg, #f6f2ed 0%, #ece5db 100%);
+  border-color: rgba(131, 106, 82, 0.3);
+  color: rgba(111, 85, 53, 0.72);
+}
+
+.subevents-mode-trigger[disabled] .subevents-mode-icon {
+  color: currentColor;
 }
 
 .activities-view-picker-panel.subevents-mode-panel {
   position: absolute;
-  top: calc(100% + 0.28rem);
+  top: calc(100% + 0.32rem);
   right: 0;
   z-index: 20;
-  min-width: 174px;
-  border: 1px solid rgba(73, 96, 127, 0.25);
-  border-radius: 11px;
+  min-width: 128px;
+  border: 1px solid rgba(39, 62, 94, 0.22);
+  border-radius: 10px;
   background: #fff;
-  box-shadow: 0 10px 22px rgba(20, 32, 51, 0.2);
-  padding: 0.26rem;
+  box-shadow: 0 10px 24px rgba(17, 29, 48, 0.22);
+  padding: 0.24rem;
   display: grid;
-  gap: 0.18rem;
+  gap: 0.16rem;
 }
 
 .activities-view-option.subevents-mode-option {
-  border: 1px solid transparent;
-  border-radius: 10px;
-  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  background: #fff;
   min-height: 32px;
-  padding: 0.32rem 0.5rem;
+  padding: 0.34rem 0.44rem;
   display: inline-flex;
   align-items: center;
   gap: 0.34rem;
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   font-weight: 700;
-  color: #233d61;
+  color: #1e3658;
   cursor: pointer;
   text-align: left;
-  transition: transform 0.14s ease, background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease, box-shadow 0.14s ease;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--interactive-motion-duration, 0.14s) var(--interactive-motion-ease, ease),
+    filter var(--interactive-motion-duration, 0.14s) var(--interactive-motion-ease, ease),
+    box-shadow var(--interactive-motion-duration, 0.14s) var(--interactive-motion-ease, ease),
+    background-color var(--interactive-motion-duration, 0.14s) var(--interactive-motion-ease, ease),
+    border-color var(--interactive-motion-duration, 0.14s) var(--interactive-motion-ease, ease),
+    color var(--interactive-motion-duration, 0.14s) var(--interactive-motion-ease, ease);
 }
 
 .activities-view-option.subevents-mode-option .subevents-mode-icon {
@@ -219,15 +358,27 @@
 }
 
 .activities-view-option.subevents-mode-option.subevents-mode-casual {
-  background: linear-gradient(180deg, #edf8ef 0%, #e1f1e5 100%);
-  border-color: rgba(70, 139, 90, 0.26);
-  color: #2e8b55;
+  background: linear-gradient(180deg, #f2faf3 0%, #e8f5eb 100%);
+  color: #2d7d47;
 }
 
 .activities-view-option.subevents-mode-option.subevents-mode-tournament {
-  background: linear-gradient(180deg, #fff7e9 0%, #fdebcf 100%);
-  border-color: rgba(153, 109, 56, 0.26);
-  color: #9c5f24;
+  background: linear-gradient(180deg, #fff7ef 0%, #ffefdf 100%);
+  color: #a35e1d;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .subevents-mode-trigger:not(:disabled):hover,
+  .activities-view-option.subevents-mode-option:hover {
+    transform: translateY(var(--interactive-hover-lift, -1px)) scale(var(--interactive-hover-scale, 1.01));
+    filter: brightness(var(--interactive-hover-brightness, 1.02));
+  }
+}
+
+.subevents-mode-trigger:not(:disabled):active,
+.activities-view-option.subevents-mode-option:active {
+  transform: scale(var(--interactive-press-scale, 0.97));
+  filter: brightness(var(--interactive-press-brightness, 0.98));
 }
 
 .subevents-body {
@@ -1374,7 +1525,7 @@
   }
 
   .activities-view-picker-panel.subevents-mode-panel {
-    min-width: 160px;
+    min-width: 136px;
   }
 
   .experience-form-overlay {
