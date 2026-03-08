@@ -646,6 +646,19 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.openLeaderboardPopup(stage, event);
   }
 
+  protected canOpenStageLocation(stage: EventSubeventsStageCard): boolean {
+    const source = this.workingSubEvents[stage.sourceIndex] ?? null;
+    return this.canOpenSubEventLocation(source);
+  }
+
+  protected openStageLocation(stage: EventSubeventsStageCard, event?: Event): void {
+    const source = this.workingSubEvents[stage.sourceIndex] ?? null;
+    if (!source) {
+      return;
+    }
+    this.openSubEventLocation(source, event);
+  }
+
   protected isGroupActionMenuOpen(row: EventSubeventsStageRow): boolean {
     return this.openGroupMenuKey === row.key;
   }
@@ -834,6 +847,22 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (!query || typeof window === 'undefined') {
       return;
     }
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, '_blank', 'noopener,noreferrer');
+  }
+
+  protected canOpenSubEventLocation(item: EventSubeventsItem | null | undefined): boolean {
+    return `${item?.location ?? ''}`.trim().length > 0;
+  }
+
+  protected openSubEventLocation(item: EventSubeventsItem | null | undefined, event?: Event): void {
+    event?.stopPropagation();
+    const query = `${item?.location ?? ''}`.trim();
+    if (!query || typeof window === 'undefined') {
+      return;
+    }
+    this.openStageMenuKey = null;
+    this.openGroupMenuKey = null;
+    this.openCasualMenuKey = null;
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, '_blank', 'noopener,noreferrer');
   }
 
