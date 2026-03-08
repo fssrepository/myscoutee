@@ -5557,6 +5557,13 @@ export class App {
       return;
     }
     this.eventForm.capacityMax = this.toEventCapacityInputValue(value);
+    this.enforceOpenSubEventCapacityAgainstMain();
+  }
+
+  protected onEventCapacityMaxBlur(): void {
+    if (this.eventEditorReadOnly) {
+      return;
+    }
     const normalizedMin = this.normalizedEventCapacityValue(this.eventForm.capacityMin);
     const normalizedMax = this.normalizedEventCapacityValue(this.eventForm.capacityMax);
     if (normalizedMax !== null && normalizedMin !== null && normalizedMax < normalizedMin) {
