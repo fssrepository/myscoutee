@@ -15,7 +15,6 @@ import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { AlertService } from './shared/alert.service';
 import { EventEditorService } from './shared/event-editor.service';
-import { EventEditorModule } from './event-editor/event-editor.module';
 import {
   APP_DEMO_DATA,
   DEMO_CHAT_BY_USER,
@@ -105,7 +104,7 @@ const APP_DATE_FORMATS = {
 };
 
 @Component({
-  selector: 'app-root',
+  selector: 'app-core',
   imports: [
     CommonModule,
     RouterOutlet,
@@ -121,8 +120,7 @@ const APP_DATE_FORMATS = {
     MatTimepickerModule,
     FormsModule,
     DragDropModule,
-    LazyBgImageDirective,
-    EventEditorModule
+    LazyBgImageDirective
   ],
   providers: [
     { provide: DateAdapter, useClass: YearMonthDayDateAdapter },
