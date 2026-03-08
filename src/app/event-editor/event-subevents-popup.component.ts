@@ -3,17 +3,23 @@ import { Component, EventEmitter, HostListener, Input, OnChanges, Output, Simple
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { EventSubeventGroupFormPopupComponent } from './event-subevent-group-form-popup.component';
+import { EventSubeventStageFormPopupComponent } from './event-subevent-stage-form-popup.component';
 import { AppUtils } from '../shared/app-utils';
 
 type SubEventsDisplayMode = 'Casual' | 'Tournament';
 type StageMenuAction = 'add-group' | 'leaderboard' | 'edit-stage' | 'delete-stage';
 type GroupMenuAction = 'edit-group' | 'delete-group';
+type StageInsertPlacement = 'before' | 'after';
+type TournamentLeaderboardType = 'Score' | 'Fifa';
 
 export interface EventSubeventsGroupItem {
   id?: string;
   name?: string;
   source?: string;
   membersPending?: number;
+  capacityMin?: number;
+  capacityMax?: number;
 }
 
 export interface EventSubeventsItem {
@@ -25,6 +31,13 @@ export interface EventSubeventsItem {
   optional?: boolean;
   startAt?: string;
   endAt?: string;
+  capacityMin?: number;
+  capacityMax?: number;
+  tournamentGroupCount?: number;
+  tournamentGroupCapacityMin?: number;
+  tournamentGroupCapacityMax?: number;
+  tournamentLeaderboardType?: TournamentLeaderboardType;
+  tournamentAdvancePerGroup?: number;
   groups?: readonly EventSubeventsGroupItem[];
   membersPending?: number;
   membersAccepted?: number;
@@ -67,10 +80,19 @@ interface SubEventFormModel {
   location: string;
   startAt: string;
   endAt: string;
+  optional: boolean;
+  capacityMin: number;
+  capacityMax: number;
+  tournamentGroupCapacityMin?: number;
+  tournamentGroupCapacityMax?: number;
+  tournamentLeaderboardType?: TournamentLeaderboardType;
+  tournamentAdvancePerGroup?: number;
 }
 
 interface GroupFormModel {
   name: string;
+  capacityMin: number;
+  capacityMax: number;
   membersPending: number;
 }
 
@@ -84,7 +106,14 @@ interface DeleteTargetState {
 @Component({
   selector: 'app-event-subevents-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatButtonModule,
+    MatIconModule,
+    EventSubeventStageFormPopupComponent,
+    EventSubeventGroupFormPopupComponent
+  ],
   templateUrl: './event-subevents-popup.component.html',
   styleUrl: './event-subevents-popup.component.scss'
 })
@@ -111,6 +140,10 @@ export class EventSubeventsPopupComponent implements OnChanges {
   protected subEventFormMode: 'create' | 'edit' = 'create';
   protected subEventFormSourceIndex: number | null = null;
   protected subEventForm: SubEventFormModel = this.createEmptySubEventForm();
+  protected showSubEventOptionalPicker = false;
+  protected subEventStageInsertPlacement: StageInsertPlacement = 'after';
+  protected subEventStageInsertTargetId: string | null = null;
+  protected readonly tournamentLeaderboardTypeOptions: readonly TournamentLeaderboardType[] = ['Score', 'Fifa'];
 
   protected showGroupForm = false;
   protected groupFormSourceIndex: number | null = null;
@@ -172,6 +205,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (!target?.closest('.subevents-group-actions')) {
       this.openGroupMenuKey = null;
     }
+    if (!target?.closest('.subevent-optional-field')) {
+      this.showSubEventOptionalPicker = false;
+    }
   }
 
   protected requestClose(): void {
@@ -184,6 +220,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (this.readOnly) {
       return;
     }
+    this.showGroupForm = false;
     this.openStageMenuKey = null;
     this.openGroupMenuKey = null;
     this.subEventFormMode = 'create';
@@ -193,14 +230,29 @@ export class EventSubeventsPopupComponent implements OnChanges {
     const end = new Date(start.getTime() + (2 * 60 * 60 * 1000));
     const stageNumber = this.workingSubEvents.length + 1;
     const defaultName = this.displayMode === 'Tournament' ? `Stage ${stageNumber}` : `Sub Event ${stageNumber}`;
+    this.resetSubEventStageInsertControls();
+    const fallbackGroupMin = this.defaultTournamentGroupCapacityMin();
+    const fallbackGroupMax = this.defaultTournamentGroupCapacityMax(fallbackGroupMin);
+    const fallbackStageMin = Math.max(fallbackGroupMin, this.defaultStageCapacityMin());
+    const fallbackStageMax = Math.max(fallbackStageMin, this.defaultStageCapacityMax(fallbackStageMin));
 
     this.subEventForm = {
       name: defaultName,
       description: '',
       location: '',
       startAt: this.toInputDateTime(start),
-      endAt: this.toInputDateTime(end)
+      endAt: this.toInputDateTime(end),
+      optional: this.displayMode !== 'Tournament',
+      capacityMin: fallbackStageMin,
+      capacityMax: fallbackStageMax,
+      tournamentGroupCapacityMin: fallbackGroupMin,
+      tournamentGroupCapacityMax: fallbackGroupMax,
+      tournamentLeaderboardType: this.defaultTournamentLeaderboardType(),
+      tournamentAdvancePerGroup: this.defaultTournamentAdvancePerGroup()
     };
+
+    this.showSubEventOptionalPicker = false;
+    this.applySubEventInsertTargetDateRangeToForm();
     this.showSubEventForm = true;
   }
 
@@ -545,6 +597,171 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.requestDeleteGroup(row, event);
   }
 
+  protected subEventModeClass(optional: boolean): 'subevent-mode-mandatory' | 'subevent-mode-optional' {
+    return optional ? 'subevent-mode-optional' : 'subevent-mode-mandatory';
+  }
+
+  protected subEventModeIcon(optional: boolean): string {
+    return optional ? 'toggle_on' : 'block';
+  }
+
+  protected toggleSubEventOptionalPicker(event?: Event): void {
+    event?.stopPropagation();
+    if (this.displayMode === 'Tournament') {
+      this.showSubEventOptionalPicker = false;
+      return;
+    }
+    this.showSubEventOptionalPicker = !this.showSubEventOptionalPicker;
+  }
+
+  protected selectSubEventOptional(optional: boolean): void {
+    if (this.displayMode === 'Tournament') {
+      this.subEventForm.optional = false;
+      this.showSubEventOptionalPicker = false;
+      return;
+    }
+    this.subEventForm.optional = optional;
+    if (optional) {
+      this.normalizeSubEventCapacityRange();
+    }
+    this.showSubEventOptionalPicker = false;
+  }
+
+  protected onSubEventCapacityMinChange(value: number | string): void {
+    const parsed = Number(value);
+    this.subEventForm.capacityMin = Math.max(0, Number.isFinite(parsed) ? Math.trunc(parsed) : this.subEventForm.capacityMin);
+    this.normalizeSubEventCapacityRange();
+  }
+
+  protected onSubEventCapacityMaxChange(value: number | string): void {
+    if (value === '' || value === null || value === undefined) {
+      return;
+    }
+    const parsed = Number(value);
+    this.subEventForm.capacityMax = Math.max(
+      Math.max(0, this.subEventForm.capacityMin),
+      Number.isFinite(parsed) ? Math.trunc(parsed) : this.subEventForm.capacityMax
+    );
+    this.normalizeSubEventCapacityRange();
+  }
+
+  protected showSubEventOptionalToggle(): boolean {
+    return this.displayMode !== 'Tournament';
+  }
+
+  protected showSubEventInsertControls(): boolean {
+    return this.subEventFormMode !== 'edit' && this.subEventInsertTargetSource().length > 0;
+  }
+
+  protected subEventInsertFieldLabel(): string {
+    return this.displayMode === 'Tournament' ? 'Insert Stage' : 'Insert Sub Event';
+  }
+
+  protected get subEventStageInsertOptions(): Array<{ id: string; label: string }> {
+    const source = this.subEventInsertTargetSource();
+    return source.map((item, index) => ({
+      id: item.id ?? `subevent-option-${index}`,
+      label: this.displayMode === 'Tournament'
+        ? `Stage ${index + 1} · ${item.name ?? item.title ?? 'Untitled'}`
+        : `${item.name ?? item.title ?? `Sub Event ${index + 1}`}`
+    }));
+  }
+
+  protected trackBySubEventStageInsertOption(_: number, option: { id: string }): string {
+    return option.id;
+  }
+
+  protected selectSubEventStageInsertPlacement(placement: StageInsertPlacement): void {
+    if (this.subEventStageInsertPlacement === placement) {
+      return;
+    }
+    this.subEventStageInsertPlacement = placement;
+    this.applySubEventInsertTargetDateRangeToForm();
+  }
+
+  protected onSubEventStageInsertTargetChange(value: string | null | undefined): void {
+    const nextValue = value || null;
+    if (this.subEventStageInsertTargetId === nextValue) {
+      return;
+    }
+    this.subEventStageInsertTargetId = nextValue;
+    this.applySubEventInsertTargetDateRangeToForm();
+  }
+
+  protected showTournamentStageConfigFields(): boolean {
+    return this.displayMode === 'Tournament';
+  }
+
+  protected onTournamentGroupCapacityMinChange(value: number | string): void {
+    if (value === '' || value === null || value === undefined) {
+      this.subEventForm.tournamentGroupCapacityMin = undefined;
+      return;
+    }
+    const parsed = Number(value);
+    this.subEventForm.tournamentGroupCapacityMin = Number.isFinite(parsed)
+      ? Math.max(0, Math.trunc(parsed))
+      : this.subEventForm.tournamentGroupCapacityMin;
+    this.normalizeTournamentStageConfigOnForm();
+  }
+
+  protected onTournamentGroupCapacityMaxChange(value: number | string): void {
+    if (value === '' || value === null || value === undefined) {
+      this.subEventForm.tournamentGroupCapacityMax = undefined;
+      return;
+    }
+    const parsed = Number(value);
+    this.subEventForm.tournamentGroupCapacityMax = Number.isFinite(parsed)
+      ? Math.max(0, Math.trunc(parsed))
+      : this.subEventForm.tournamentGroupCapacityMax;
+    this.normalizeTournamentStageConfigOnForm();
+  }
+
+  protected tournamentLeaderboardTypeValue(): TournamentLeaderboardType {
+    return this.normalizedTournamentLeaderboardType(this.subEventForm.tournamentLeaderboardType);
+  }
+
+  protected tournamentLeaderboardTypeIcon(value: TournamentLeaderboardType = this.tournamentLeaderboardTypeValue()): string {
+    return value === 'Fifa' ? 'sports_soccer' : 'leaderboard';
+  }
+
+  protected tournamentLeaderboardTypeClass(value: TournamentLeaderboardType = this.tournamentLeaderboardTypeValue()): string {
+    return value === 'Fifa' ? 'tournament-leaderboard-fifa' : 'tournament-leaderboard-score';
+  }
+
+  protected onTournamentLeaderboardTypeChange(value: TournamentLeaderboardType | string | null | undefined): void {
+    this.subEventForm.tournamentLeaderboardType = this.normalizedTournamentLeaderboardType(value);
+  }
+
+  protected onTournamentAdvancePerGroupChange(value: number | string): void {
+    if (value === '' || value === null || value === undefined) {
+      this.subEventForm.tournamentAdvancePerGroup = undefined;
+      return;
+    }
+    const parsed = Number(value);
+    this.subEventForm.tournamentAdvancePerGroup = Number.isFinite(parsed)
+      ? Math.max(0, Math.trunc(parsed))
+      : this.subEventForm.tournamentAdvancePerGroup;
+  }
+
+  protected tournamentEstimatedGroupCountLabel(): string {
+    const groupMin = this.defaultTournamentGroupCapacityMin();
+    const groupMax = this.defaultTournamentGroupCapacityMax(groupMin);
+    const stageMin = Math.max(0, Math.trunc(Number(this.subEventForm.capacityMin) || 0));
+    const stageMax = Math.max(stageMin, Math.trunc(Number(this.subEventForm.capacityMax) || stageMin));
+    const estimateMin = Math.max(1, Math.ceil(stageMin / Math.max(1, groupMax)));
+    const estimateMax = Math.max(estimateMin, Math.ceil(stageMax / Math.max(1, groupMin)));
+    return `${estimateMin} - ${estimateMax}`;
+  }
+
+  protected openSubEventLocationMap(event?: Event): void {
+    event?.stopPropagation();
+    const query = `${this.subEventForm.location ?? ''}`.trim();
+    if (!query || typeof window === 'undefined') {
+      return;
+    }
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, '_blank', 'noopener,noreferrer');
+  }
+
   protected canSaveSubEventForm(): boolean {
     if (this.readOnly) {
       return false;
@@ -562,6 +779,10 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (!this.canSaveSubEventForm()) {
       return;
     }
+    this.normalizeSubEventCapacityRange();
+    if (this.displayMode === 'Tournament') {
+      this.normalizeTournamentStageConfigOnForm();
+    }
 
     const dateRange = this.normalizedInputDateRange(this.subEventForm.startAt, this.subEventForm.endAt);
     const baseItem: EventSubeventsItem = {
@@ -572,10 +793,29 @@ export class EventSubeventsPopupComponent implements OnChanges {
       title: this.subEventForm.name.trim(),
       description: this.subEventForm.description.trim(),
       location: this.subEventForm.location.trim(),
-      optional: this.displayMode !== 'Tournament',
+      optional: this.displayMode === 'Tournament' ? false : this.subEventForm.optional,
       startAt: dateRange.startAt,
       endAt: dateRange.endAt,
-      groups: this.displayMode === 'Tournament' ? this.ensureStageGroups(this.subEventFormMode, this.subEventFormSourceIndex) : [],
+      capacityMin: Math.max(0, Math.trunc(Number(this.subEventForm.capacityMin) || 0)),
+      capacityMax: Math.max(
+        Math.max(0, Math.trunc(Number(this.subEventForm.capacityMin) || 0)),
+        Math.trunc(Number(this.subEventForm.capacityMax) || Math.max(0, Math.trunc(Number(this.subEventForm.capacityMin) || 0)))
+      ),
+      tournamentGroupCapacityMin: this.displayMode === 'Tournament'
+        ? this.defaultTournamentGroupCapacityMin(this.subEventForm)
+        : undefined,
+      tournamentGroupCapacityMax: this.displayMode === 'Tournament'
+        ? this.defaultTournamentGroupCapacityMax(this.defaultTournamentGroupCapacityMin(this.subEventForm), this.subEventForm)
+        : undefined,
+      tournamentLeaderboardType: this.displayMode === 'Tournament'
+        ? this.normalizedTournamentLeaderboardType(this.subEventForm.tournamentLeaderboardType)
+        : undefined,
+      tournamentAdvancePerGroup: this.displayMode === 'Tournament'
+        ? Math.max(0, Math.trunc(Number(this.subEventForm.tournamentAdvancePerGroup) || 0))
+        : undefined,
+      groups: this.displayMode === 'Tournament'
+        ? this.ensureStageGroups(this.subEventFormMode, this.subEventFormSourceIndex, this.subEventForm)
+        : [],
       membersPending: 6,
       membersAccepted: 0,
       carsPending: 0,
@@ -589,11 +829,16 @@ export class EventSubeventsPopupComponent implements OnChanges {
         this.workingSubEvents[this.subEventFormSourceIndex] = {
           ...target,
           ...baseItem,
-          groups: this.displayMode === 'Tournament' ? this.ensureStageGroups('edit', this.subEventFormSourceIndex) : []
+          groups: this.displayMode === 'Tournament' ? this.ensureStageGroups('edit', this.subEventFormSourceIndex, this.subEventForm) : []
         };
       }
     } else {
-      this.workingSubEvents = [...this.workingSubEvents, baseItem];
+      const insertIndex = this.subEventInsertIndex(this.workingSubEvents);
+      this.workingSubEvents = [
+        ...this.workingSubEvents.slice(0, insertIndex),
+        baseItem,
+        ...this.workingSubEvents.slice(insertIndex)
+      ];
     }
 
     this.closeSubEventForm();
@@ -604,6 +849,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
   protected closeSubEventForm(event?: Event): void {
     event?.stopPropagation();
     this.showSubEventForm = false;
+    this.showSubEventOptionalPicker = false;
+    this.resetSubEventStageInsertControls();
     this.subEventFormMode = 'create';
     this.subEventFormSourceIndex = null;
     this.subEventForm = this.createEmptySubEventForm();
@@ -614,6 +861,26 @@ export class EventSubeventsPopupComponent implements OnChanges {
       return false;
     }
     return Boolean(this.groupForm.name.trim());
+  }
+
+  protected onGroupCapacityMinChange(value: number | string): void {
+    const parsed = Number(value);
+    const nextMin = Math.max(0, Number.isFinite(parsed) ? Math.trunc(parsed) : this.groupForm.capacityMin);
+    this.groupForm.capacityMin = nextMin;
+    if (this.groupForm.capacityMax < nextMin) {
+      this.groupForm.capacityMax = nextMin;
+    }
+  }
+
+  protected onGroupCapacityMaxChange(value: number | string): void {
+    if (value === '' || value === null || value === undefined) {
+      return;
+    }
+    const parsed = Number(value);
+    this.groupForm.capacityMax = Math.max(
+      this.groupForm.capacityMin,
+      Number.isFinite(parsed) ? Math.trunc(parsed) : this.groupForm.capacityMax
+    );
   }
 
   protected saveGroupForm(event: Event): void {
@@ -632,17 +899,28 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (this.groupFormGroupId) {
       const targetIndex = groups.findIndex(group => group.id === this.groupFormGroupId);
       if (targetIndex >= 0) {
+        const current = groups[targetIndex];
         groups[targetIndex] = {
-          ...groups[targetIndex],
+          ...current,
           name: this.groupForm.name.trim(),
-          membersPending: this.toPendingCount(this.groupForm.membersPending)
+          capacityMin: Math.max(0, Number(this.groupForm.capacityMin) || 0),
+          capacityMax: Math.max(
+            Math.max(0, Number(this.groupForm.capacityMin) || 0),
+            Number(this.groupForm.capacityMax) || Math.max(0, Number(this.groupForm.capacityMin) || 0)
+          ),
+          membersPending: this.toPendingCount(current?.membersPending ?? this.groupForm.membersPending)
         };
       }
     } else {
       groups.push({
         id: this.nextId('group'),
         name: this.groupForm.name.trim(),
-        source: 'generated',
+        source: 'manual',
+        capacityMin: Math.max(0, Number(this.groupForm.capacityMin) || 0),
+        capacityMax: Math.max(
+          Math.max(0, Number(this.groupForm.capacityMin) || 0),
+          Number(this.groupForm.capacityMax) || Math.max(0, Number(this.groupForm.capacityMin) || 0)
+        ),
         membersPending: this.toPendingCount(this.groupForm.membersPending)
       });
     }
@@ -763,10 +1041,18 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected subEventFormTitle(): string {
-    if (this.subEventFormMode === 'edit') {
-      return this.displayMode === 'Tournament' ? 'Edit Stage Event' : 'Edit Sub Event';
+    if (this.displayMode === 'Tournament') {
+      let stageNumber = this.subEventFormMode === 'edit'
+        ? (this.subEventFormSourceIndex !== null ? this.subEventFormSourceIndex + 1 : null)
+        : this.subEventInsertStageNumberPreview();
+      if (stageNumber === null) {
+        stageNumber = this.workingSubEvents.length + 1;
+      }
+      return this.subEventFormMode === 'edit'
+        ? `Edit Stage ${stageNumber} Event`
+        : `Create Stage ${stageNumber} Event`;
     }
-    return this.displayMode === 'Tournament' ? 'Create Stage Event' : 'Create Sub Event';
+    return this.subEventFormMode === 'edit' ? 'Edit Sub Event' : 'Create Sub Event';
   }
 
   protected groupFormTitle(): string {
@@ -882,6 +1168,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (this.readOnly) {
       return;
     }
+    this.showGroupForm = false;
+    this.showSubEventOptionalPicker = false;
     const sourceItem = this.workingSubEvents[stage.sourceIndex];
     if (!sourceItem) {
       return;
@@ -894,8 +1182,23 @@ export class EventSubeventsPopupComponent implements OnChanges {
       description: `${sourceItem.description ?? ''}`.trim(),
       location: `${sourceItem.location ?? ''}`.trim(),
       startAt: this.toInputDateTime(this.parseDateValue(sourceItem.startAt) ?? new Date()),
-      endAt: this.toInputDateTime(this.parseDateValue(sourceItem.endAt) ?? new Date(Date.now() + (2 * 60 * 60 * 1000)))
+      endAt: this.toInputDateTime(this.parseDateValue(sourceItem.endAt) ?? new Date(Date.now() + (2 * 60 * 60 * 1000))),
+      optional: sourceItem.optional ?? (this.displayMode !== 'Tournament'),
+      capacityMin: Math.max(0, Number(sourceItem.capacityMin) || 0),
+      capacityMax: Math.max(
+        Math.max(0, Number(sourceItem.capacityMin) || 0),
+        Number(sourceItem.capacityMax) || Math.max(0, Number(sourceItem.capacityMin) || 0)
+      ),
+      tournamentGroupCapacityMin: Number.isFinite(Number(sourceItem.tournamentGroupCapacityMin))
+        ? Math.max(0, Math.trunc(Number(sourceItem.tournamentGroupCapacityMin)))
+        : this.defaultTournamentGroupCapacityMin(),
+      tournamentGroupCapacityMax: Number.isFinite(Number(sourceItem.tournamentGroupCapacityMax))
+        ? Math.max(0, Math.trunc(Number(sourceItem.tournamentGroupCapacityMax)))
+        : this.defaultTournamentGroupCapacityMax(this.defaultTournamentGroupCapacityMin()),
+      tournamentLeaderboardType: this.normalizedTournamentLeaderboardType(sourceItem.tournamentLeaderboardType),
+      tournamentAdvancePerGroup: Math.max(0, Math.trunc(Number(sourceItem.tournamentAdvancePerGroup) || 0))
     };
+    this.resetSubEventStageInsertControls(sourceItem.id ?? null);
     this.showSubEventForm = true;
   }
 
@@ -904,13 +1207,23 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (this.readOnly) {
       return;
     }
+    this.showSubEventForm = false;
     this.groupFormSourceIndex = stage.sourceIndex;
-    const nextIndex = this.cloneGroups(this.workingSubEvents[stage.sourceIndex]?.groups).length;
+    const sourceItem = this.workingSubEvents[stage.sourceIndex];
+    const stageGroups = this.cloneGroups(sourceItem?.groups);
+    const nextIndex = stageGroups.length;
     const letter = String.fromCharCode(65 + (nextIndex % 26));
+    const reference = stageGroups[stageGroups.length - 1];
+    const fallbackMin = Math.max(0, Number(sourceItem?.tournamentGroupCapacityMin) || 4);
+    const fallbackMax = Math.max(fallbackMin, Number(sourceItem?.tournamentGroupCapacityMax) || 7);
+    const capacityMin = Math.max(0, Number(reference?.capacityMin) || fallbackMin);
+    const capacityMax = Math.max(capacityMin, Number(reference?.capacityMax) || fallbackMax);
     this.groupFormGroupId = null;
     this.groupFormStageTitle = stage.subtitle;
     this.groupForm = {
       name: `Group ${letter}`,
+      capacityMin,
+      capacityMax,
       membersPending: 6
     };
     this.showGroupForm = true;
@@ -921,11 +1234,21 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (this.readOnly) {
       return;
     }
+    this.showSubEventForm = false;
     this.groupFormSourceIndex = row.stageSourceIndex;
     this.groupFormGroupId = row.groupId;
     this.groupFormStageTitle = this.workingSubEvents[row.stageSourceIndex]?.name ?? '';
+    const sourceItem = this.workingSubEvents[row.stageSourceIndex];
+    const group = this.cloneGroups(this.workingSubEvents[row.stageSourceIndex]?.groups)
+      .find(entry => entry.id === row.groupId);
+    const fallbackMin = Math.max(0, Number(sourceItem?.tournamentGroupCapacityMin) || 4);
+    const fallbackMax = Math.max(fallbackMin, Number(sourceItem?.tournamentGroupCapacityMax) || 7);
+    const capacityMin = Math.max(0, Number(group?.capacityMin) || fallbackMin);
+    const capacityMax = Math.max(capacityMin, Number(group?.capacityMax) || fallbackMax);
     this.groupForm = {
       name: row.groupName,
+      capacityMin,
+      capacityMax,
       membersPending: this.toPendingCount(row.pending)
     };
     this.showGroupForm = true;
@@ -942,7 +1265,11 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.showLeaderboardPopup = true;
   }
 
-  private ensureStageGroups(mode: 'create' | 'edit', sourceIndex: number | null): EventSubeventsGroupItem[] {
+  private ensureStageGroups(
+    mode: 'create' | 'edit',
+    sourceIndex: number | null,
+    draft: SubEventFormModel
+  ): EventSubeventsGroupItem[] {
     if (this.displayMode !== 'Tournament') {
       return [];
     }
@@ -958,6 +1285,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
       id: this.nextId('group'),
       name: 'Group A',
       source: 'generated',
+      capacityMin: this.defaultTournamentGroupCapacityMin(draft),
+      capacityMax: this.defaultTournamentGroupCapacityMax(this.defaultTournamentGroupCapacityMin(draft), draft),
       membersPending: 6
     }];
   }
@@ -1110,19 +1439,179 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return lastEnd ? new Date(lastEnd.getTime()) : new Date();
   }
 
+  private normalizeSubEventCapacityRange(): void {
+    const min = Math.max(0, Math.trunc(Number(this.subEventForm.capacityMin) || 0));
+    const max = Math.max(min, Math.trunc(Number(this.subEventForm.capacityMax) || min));
+    this.subEventForm.capacityMin = min;
+    this.subEventForm.capacityMax = max;
+  }
+
+  private resetSubEventStageInsertControls(editingSubEventId: string | null = null): void {
+    this.subEventStageInsertPlacement = 'after';
+    const source = this.subEventInsertTargetSource(editingSubEventId);
+    this.subEventStageInsertTargetId = source.length > 0 ? (source[source.length - 1].id ?? null) : null;
+  }
+
+  private subEventInsertTargetSource(editingSubEventId: string | null = null): EventSubeventsItem[] {
+    const source = this.sortedEntries.map(entry => entry.item);
+    if (!editingSubEventId) {
+      return source;
+    }
+    return source.filter(item => item.id !== editingSubEventId);
+  }
+
+  private subEventInsertIndex(items: EventSubeventsItem[]): number {
+    if (!this.showSubEventInsertControls() || !this.subEventStageInsertTargetId) {
+      return items.length;
+    }
+    const targetIndex = items.findIndex(item => item.id === this.subEventStageInsertTargetId);
+    if (targetIndex < 0) {
+      return items.length;
+    }
+    return this.subEventStageInsertPlacement === 'before' ? targetIndex : targetIndex + 1;
+  }
+
+  private applySubEventInsertTargetDateRangeToForm(): void {
+    if (this.subEventFormMode === 'edit' || !this.subEventStageInsertTargetId) {
+      return;
+    }
+    const source = this.subEventInsertTargetSource();
+    const target = source.find(item => item.id === this.subEventStageInsertTargetId);
+    if (!target) {
+      return;
+    }
+    const targetStart = this.parseDateValue(target.startAt);
+    const targetEnd = this.parseDateValue(target.endAt);
+    if (!targetStart || !targetEnd) {
+      return;
+    }
+    const durationMs = 2 * 60 * 60 * 1000;
+    const draftStart = this.subEventStageInsertPlacement === 'before'
+      ? new Date(targetStart.getTime() - durationMs)
+      : new Date(targetEnd.getTime());
+    const draftEnd = this.subEventStageInsertPlacement === 'before'
+      ? new Date(targetStart.getTime())
+      : new Date(targetEnd.getTime() + durationMs);
+    this.subEventForm.startAt = this.toInputDateTime(draftStart);
+    this.subEventForm.endAt = this.toInputDateTime(draftEnd);
+  }
+
+  private subEventInsertStageNumberPreview(): number | null {
+    const source = this.subEventInsertTargetSource();
+    if (source.length === 0) {
+      return null;
+    }
+    if (!this.subEventStageInsertTargetId) {
+      return source.length + 1;
+    }
+    const targetIndex = source.findIndex(item => item.id === this.subEventStageInsertTargetId);
+    if (targetIndex < 0) {
+      return source.length + 1;
+    }
+    return this.subEventStageInsertPlacement === 'before' ? targetIndex + 1 : targetIndex + 2;
+  }
+
+  private normalizedTournamentLeaderboardType(value: unknown): TournamentLeaderboardType {
+    return `${value ?? ''}`.trim().toLowerCase() === 'fifa' ? 'Fifa' : 'Score';
+  }
+
+  private defaultTournamentLeaderboardType(): TournamentLeaderboardType {
+    return this.normalizedTournamentLeaderboardType(this.subEventForm.tournamentLeaderboardType);
+  }
+
+  private defaultTournamentAdvancePerGroup(): number {
+    return Math.max(0, Math.trunc(Number(this.subEventForm.tournamentAdvancePerGroup) || 0));
+  }
+
+  private defaultTournamentGroupCapacityMin(draft: SubEventFormModel = this.subEventForm): number {
+    const fromDraft = Number(draft.tournamentGroupCapacityMin);
+    if (Number.isFinite(fromDraft)) {
+      return Math.max(0, Math.trunc(fromDraft));
+    }
+    const reference = this.referenceSubEventForDraft();
+    const fromReference = Number(reference?.tournamentGroupCapacityMin);
+    if (Number.isFinite(fromReference)) {
+      return Math.max(0, Math.trunc(fromReference));
+    }
+    return 4;
+  }
+
+  private defaultTournamentGroupCapacityMax(min: number, draft: SubEventFormModel = this.subEventForm): number {
+    const fromDraft = Number(draft.tournamentGroupCapacityMax);
+    if (Number.isFinite(fromDraft)) {
+      return Math.max(min, Math.trunc(fromDraft));
+    }
+    const reference = this.referenceSubEventForDraft();
+    const fromReference = Number(reference?.tournamentGroupCapacityMax);
+    if (Number.isFinite(fromReference)) {
+      return Math.max(min, Math.trunc(fromReference));
+    }
+    return Math.max(min, 7);
+  }
+
+  private defaultStageCapacityMin(): number {
+    const reference = this.referenceSubEventForDraft();
+    const fromReference = Number(reference?.capacityMin);
+    if (Number.isFinite(fromReference)) {
+      return Math.max(0, Math.trunc(fromReference));
+    }
+    return 4;
+  }
+
+  private defaultStageCapacityMax(min: number): number {
+    const reference = this.referenceSubEventForDraft();
+    const fromReference = Number(reference?.capacityMax);
+    if (Number.isFinite(fromReference)) {
+      return Math.max(min, Math.trunc(fromReference));
+    }
+    return Math.max(min, 7);
+  }
+
+  private referenceSubEventForDraft(): EventSubeventsItem | null {
+    const source = this.subEventInsertTargetSource();
+    if (source.length === 0) {
+      const entries = this.sortedEntries;
+      return entries.length > 0 ? entries[entries.length - 1].item : null;
+    }
+    if (!this.subEventStageInsertTargetId) {
+      return source[source.length - 1] ?? null;
+    }
+    const index = source.findIndex(item => item.id === this.subEventStageInsertTargetId);
+    if (index < 0) {
+      return source[source.length - 1] ?? null;
+    }
+    return source[index] ?? null;
+  }
+
+  private normalizeTournamentStageConfigOnForm(): void {
+    const min = this.defaultTournamentGroupCapacityMin();
+    const max = this.defaultTournamentGroupCapacityMax(min);
+    this.subEventForm.tournamentGroupCapacityMin = min;
+    this.subEventForm.tournamentGroupCapacityMax = max;
+  }
+
   private createEmptySubEventForm(): SubEventFormModel {
     return {
       name: '',
       description: '',
       location: '',
       startAt: '',
-      endAt: ''
+      endAt: '',
+      optional: this.displayMode !== 'Tournament',
+      capacityMin: 4,
+      capacityMax: 7,
+      tournamentGroupCapacityMin: 4,
+      tournamentGroupCapacityMax: 7,
+      tournamentLeaderboardType: 'Score',
+      tournamentAdvancePerGroup: 0
     };
   }
 
   private createEmptyGroupForm(): GroupFormModel {
     return {
       name: '',
+      capacityMin: 4,
+      capacityMax: 7,
       membersPending: 6
     };
   }
@@ -1132,6 +1621,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.openStageMenuKey = null;
     this.openGroupMenuKey = null;
     this.showSubEventForm = false;
+    this.showSubEventOptionalPicker = false;
+    this.resetSubEventStageInsertControls();
     this.subEventFormMode = 'create';
     this.subEventFormSourceIndex = null;
     this.subEventForm = this.createEmptySubEventForm();

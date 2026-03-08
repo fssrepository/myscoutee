@@ -43,6 +43,8 @@ interface EventEditorSubEventGroupItem {
   name?: string;
   source?: string;
   membersPending?: number;
+  capacityMin?: number;
+  capacityMax?: number;
 }
 
 interface EventEditorSavePayload {

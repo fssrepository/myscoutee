@@ -1,0 +1,606 @@
+:host {
+  display: block;
+}
+
+.experience-form-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3900;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.experience-form-overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(12, 20, 34, 0.56);
+}
+
+.experience-form-popup {
+  position: relative;
+  z-index: 1;
+  width: min(760px, calc(100vw - 2rem));
+  border-radius: 14px;
+  border: 1px solid rgba(98, 120, 156, 0.34);
+  background: linear-gradient(180deg, #f7fbff 0%, #edf3fb 100%);
+  box-shadow: 0 22px 46px rgba(10, 18, 32, 0.3);
+  overflow: hidden;
+}
+
+.subevent-form-popup {
+  width: min(760px, calc(100vw - 2rem));
+}
+
+.experience-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  padding: 0.56rem 0.7rem;
+  border-bottom: 1px solid rgba(86, 110, 146, 0.22);
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.subevent-form-header-title h3,
+.experience-form-header h3 {
+  margin: 0;
+  color: #1f3858;
+  font-size: 1.24rem;
+  font-weight: 800;
+}
+
+.subevent-form-header-title p {
+  margin: 0.16rem 0 0;
+  color: rgba(31, 54, 85, 0.74);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.experience-form-header-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.popup-header-add-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  border: 1px solid rgba(94, 118, 154, 0.34);
+  background: #edf4fb;
+  color: #284f7d;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+}
+
+.popup-header-add-btn .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+  pointer-events: none;
+}
+
+.popup-header-add-btn.subevent-leaderboard-save-btn {
+  border-color: rgba(46, 121, 69, 0.46);
+  background: linear-gradient(180deg, #e6faec 0%, #c9f0d5 100%);
+  color: #1f6f39;
+}
+
+.popup-header-add-btn.subevent-leaderboard-save-btn:hover {
+  border-color: rgba(38, 98, 58, 0.64);
+  background: linear-gradient(180deg, #d8f5e2 0%, #b8e8c8 100%);
+  color: #175a2d;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(24, 84, 44, 0.22);
+}
+
+.popup-header-add-btn:disabled {
+  opacity: 0.54;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.popup-header-add-btn.form-save-invalid:disabled {
+  opacity: 1;
+  box-shadow: 0 2px 8px rgba(122, 25, 25, 0.22);
+}
+
+.experience-form-close-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  border: 1px solid rgba(94, 118, 154, 0.34);
+  background: #edf4fb;
+  color: #284f7d;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+}
+
+.experience-form-close-btn .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+  pointer-events: none;
+}
+
+.experience-form-close-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(31, 79, 132, 0.2);
+}
+
+.experience-form-close-btn:active,
+.popup-header-add-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.experience-form-panel {
+  background: linear-gradient(180deg, #f1f8ff 0%, #e7f2ff 100%);
+  border-color: rgba(61, 100, 148, 0.28);
+  padding: 0.7rem;
+}
+
+.subevent-form-panel.subevent-mode-mandatory {
+  background: linear-gradient(180deg, #fff3f3 0%, #ffe9e9 100%);
+  border-color: rgba(175, 78, 78, 0.28);
+}
+
+.subevent-form-panel.subevent-mode-optional {
+  background: linear-gradient(180deg, #f1f9ff 0%, #e8f3ff 100%);
+  border-color: rgba(63, 118, 188, 0.28);
+}
+
+.subevent-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+}
+
+.experience-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.52rem;
+}
+
+.experience-title-field,
+.experience-description-field,
+.subevent-location-field {
+  grid-column: 1 / -1;
+}
+
+.experience-form-grid label {
+  display: grid;
+  gap: 0.22rem;
+  align-items: start;
+}
+
+.experience-form-grid label > span {
+  color: rgba(26, 52, 84, 0.82);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.required-star {
+  color: #b93232;
+}
+
+.experience-form-panel input,
+.experience-form-panel textarea {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid rgba(136, 156, 186, 0.5);
+  border-radius: 10px;
+  background: #fff;
+  color: #1d3556;
+  padding: 0.3rem 0.56rem;
+  box-sizing: border-box;
+  font-size: 0.84rem;
+}
+
+.experience-form-panel textarea {
+  min-height: 86px;
+  resize: vertical;
+}
+
+.experience-form-panel input:focus,
+.experience-form-panel textarea:focus {
+  border-color: rgba(52, 103, 182, 0.72);
+  box-shadow: 0 0 0 3px rgba(55, 116, 212, 0.14);
+  outline: none;
+}
+
+.experience-form-panel input.field-required-invalid,
+.experience-form-panel textarea.field-required-invalid {
+  border-color: rgba(171, 43, 43, 0.64);
+  box-shadow: 0 0 0 1px rgba(171, 43, 43, 0.16);
+}
+
+.event-datetime-row.subevents-native-datetime-row {
+  display: block;
+}
+
+.event-datetime-row.subevents-native-datetime-row input[type='datetime-local'] {
+  width: 100%;
+}
+
+.subevent-capacity-range-field {
+  width: 100%;
+}
+
+.subevent-capacity-range {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.subevent-capacity-range input {
+  width: 100%;
+}
+
+.subevent-capacity-separator {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: rgba(31, 56, 89, 0.72);
+  line-height: 1;
+}
+
+.subevent-optional-field {
+  display: grid;
+  gap: 0.32rem;
+  position: relative;
+}
+
+.subevent-optional-field-header {
+  gap: 0;
+}
+
+.subevent-optional-toggle {
+  min-height: 38px;
+  border: 1px solid rgba(73, 105, 146, 0.32);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f2f7ff 0%, #e7f0fd 100%);
+  color: #2b5e98;
+  padding: 0 0.72rem;
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.subevent-optional-toggle .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.subevent-optional-toggle .mat-icon:last-child {
+  margin-left: auto;
+}
+
+.subevent-optional-toggle.subevent-mode-mandatory {
+  background: linear-gradient(180deg, #fff0f0 0%, #ffe4e4 100%);
+  border-color: rgba(176, 70, 70, 0.34);
+  color: #a23d3d;
+}
+
+.subevent-optional-toggle.subevent-mode-optional {
+  background: linear-gradient(180deg, #eef6ff 0%, #e3efff 100%);
+  border-color: rgba(53, 113, 185, 0.34);
+  color: #2d5ea8;
+}
+
+.subevent-optional-toggle-static {
+  cursor: default;
+}
+
+.subevent-stage-insert-field {
+  width: 100%;
+}
+
+.subevent-stage-insert-controls {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.46rem;
+  width: 100%;
+}
+
+.subevent-stage-insert-mode {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(52, 85, 126, 0.28);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f6f9ff 0%, #edf4ff 100%);
+  overflow: hidden;
+}
+
+.subevent-stage-insert-mode-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #2f4e76;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  min-height: 30px;
+  padding: 0 0.58rem;
+  cursor: pointer;
+}
+
+.subevent-stage-insert-mode-btn + .subevent-stage-insert-mode-btn {
+  border-left: 1px solid rgba(52, 85, 126, 0.22);
+}
+
+.subevent-stage-insert-mode-btn.is-active {
+  background: linear-gradient(180deg, #dbe9ff 0%, #cfdefb 100%);
+  color: #1f4678;
+}
+
+.subevent-stage-insert-target-select {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid rgba(67, 102, 147, 0.28);
+  border-radius: 8px;
+  background: #fff;
+  min-height: 32px;
+  padding: 0 0.48rem;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.subevent-stage-insert-target-select .mat-mdc-select {
+  width: 100%;
+  color: #1f3c62;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.subevent-stage-insert-target-select .mat-mdc-select-trigger {
+  min-height: 30px;
+}
+
+.subevent-stage-insert-target-select .mat-mdc-select-value,
+.subevent-stage-insert-target-select .mat-mdc-select-value-text,
+.subevent-stage-insert-option-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subevent-stage-insert-target-select .mat-mdc-select-arrow-wrapper {
+  margin-left: auto;
+  padding-left: 0.3rem;
+}
+
+.subevent-tournament-fieldset {
+  grid-column: 1 / -1;
+  margin: 0;
+  border: 1px solid rgba(53, 88, 130, 0.3);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f7fbff 0%, #edf5ff 100%);
+  padding: 0.5rem 0.58rem 0.54rem;
+  display: grid;
+  gap: 0.44rem;
+}
+
+.subevent-tournament-fieldset > legend {
+  padding: 0 0.36rem;
+  color: #294d79;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.subevent-tournament-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.44rem 0.52rem;
+}
+
+.subevent-tournament-field {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.subevent-tournament-field > span {
+  color: rgba(26, 52, 84, 0.82);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.subevent-tournament-field > input {
+  width: 100%;
+  min-height: 30px;
+  border: 1px solid rgba(61, 98, 143, 0.3);
+  border-radius: 8px;
+  background: #fff;
+  color: #1f3f68;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 0.2rem 0.46rem;
+  box-sizing: border-box;
+}
+
+.subevent-tournament-field-readonly > input {
+  background: #eff5fc;
+  color: #2d4f78;
+}
+
+.subevent-tournament-range-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 0.42rem;
+}
+
+.subevent-tournament-range-field {
+  min-width: 0;
+}
+
+.subevent-tournament-rule-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.44rem 0.52rem;
+}
+
+.subevent-tournament-select {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid rgba(61, 98, 143, 0.3);
+  border-radius: 8px;
+  background: #fff;
+  min-height: 30px;
+  padding: 0 0.46rem;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.subevent-tournament-select .mat-mdc-select {
+  width: 100%;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.subevent-tournament-select .mat-mdc-select-trigger {
+  min-height: 28px;
+}
+
+.subevent-tournament-select .mat-mdc-select-arrow-wrapper {
+  margin-left: auto;
+  padding-left: 0.3rem;
+}
+
+.subevent-tournament-select-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.26rem;
+}
+
+.subevent-tournament-select-trigger .mat-icon {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+  line-height: 14px;
+}
+
+.subevent-tournament-select.tournament-leaderboard-score {
+  background: linear-gradient(180deg, #f2f8ff 0%, #e8f1ff 100%);
+  border-color: rgba(56, 102, 170, 0.36);
+  color: #2e5ea8;
+}
+
+.subevent-tournament-select.tournament-leaderboard-fifa {
+  background: linear-gradient(180deg, #fff4e9 0%, #ffe9d4 100%);
+  border-color: rgba(181, 110, 40, 0.4);
+  color: #a35f1d;
+}
+
+.subevent-tournament-leaderboard-option-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+}
+
+.subevent-tournament-leaderboard-option-content .mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  line-height: 15px;
+}
+
+.subevent-tournament-leaderboard-option.tournament-leaderboard-score {
+  background: linear-gradient(180deg, #f5f9ff 0%, #edf3ff 100%);
+  color: #2e5ea8;
+}
+
+.subevent-tournament-leaderboard-option.tournament-leaderboard-fifa {
+  background: linear-gradient(180deg, #fff8ef 0%, #fff0df 100%);
+  color: #a35f1d;
+}
+
+.subevent-tournament-hint {
+  margin: 0;
+  color: rgba(35, 62, 97, 0.76);
+  font-size: 0.68rem;
+  line-height: 1.3;
+}
+
+.subevent-tournament-hint.subevent-tournament-hint-warning {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.22rem 0.56rem;
+  border: 1px solid rgba(177, 54, 54, 0.38);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff1f1 0%, #ffe5e5 100%);
+  color: #8d2f2f;
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.subevent-optional-picker-panel {
+  left: auto;
+  right: 0;
+  top: calc(100% + 0.32rem);
+  min-width: 176px;
+  z-index: 8;
+}
+
+.subevent-optional-picker-panel .activities-view-option.subevent-mode-mandatory {
+  background: linear-gradient(0deg, #ffffff, #fff0f0);
+  color: #a23d3d;
+}
+
+.subevent-optional-picker-panel .activities-view-option.subevent-mode-optional {
+  background: linear-gradient(0deg, #ffffff, #eef6ff);
+  color: #2d5ea8;
+}
+
+@media (max-width: 920px) {
+  .experience-form-overlay {
+    padding: 0.6rem;
+  }
+
+  .experience-form-popup,
+  .subevent-form-popup {
+    width: calc(100vw - 1.2rem);
+  }
+
+  .subevent-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .subevent-stage-insert-controls {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.34rem;
+  }
+
+  .subevent-stage-insert-mode-btn {
+    min-height: 28px;
+    font-size: 0.7rem;
+    padding: 0 0.5rem;
+  }
+
+  .subevent-tournament-rule-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

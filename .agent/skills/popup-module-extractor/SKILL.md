@@ -14,7 +14,8 @@ Use the same extraction/stabilization pattern as default for other module splits
 
 - Implement each extracted unit as explicit component files (`*.ts`, `*.html`, `*.scss`).
 - Keep styles component-local and self-contained; avoid relying on monolith/global stylesheet rules.
-- During extraction, migrate relevant style blocks from monolith SCSS into the component SCSS and delete stale global rules.
+- During extraction, migrate relevant style blocks from monolith SCSS into the component SCSS.
+- Do not delete or replace already-validated SCSS blocks while extracting; keep them and apply incremental diffs unless the user explicitly approves scoped deletion.
 
 ### 0.5. Regression lock mode (mandatory after first user validation)
 
@@ -78,6 +79,9 @@ Use the same extraction/stabilization pattern as default for other module splits
   - creation actions must still open their form popups when baseline does
   - stage/group menu actions must remain functional and routed to real forms/flows
   - avoid direct data insertion shortcuts that bypass baseline UX
+- FOR INCREMENTAL EXTRACTIONS, KEEP EXISTING POPUP BUSINESS LOGIC AS SOURCE OF TRUTH AND REWIRE THROUGH SHARED SERVICE/EVENT CONTRACTS.
+- DO NOT RE-IMPLEMENT FULL POPUP LOGIC BY COPYING FROM MONOLITH `APP.TS` WHEN THE TASK IS LIST-PANEL MOVE/REWIRE.
+- IF A POPUP IS OUT OF EXTRACTION SCOPE, KEEP IT IN PLACE AND TRIGGER IT VIA EXISTING SHARED FLOW.
 - Keep extracted popup dimensions close to baseline unless explicitly requested otherwise.
 - Preserve baseline typography and visual rhythm during extraction:
   - keep font family, size, weight, line height, and casing consistent with source screen
@@ -164,9 +168,12 @@ Use the same extraction/stabilization pattern as default for other module splits
 - Do not scope fixes only to the popup if extraction has broken related modules; stabilize all affected modules in the same slice.
 - Do not delete or wholesale-rewrite already-validated popup HTML/SCSS while addressing incremental regressions.
 - Do not delete large existing SCSS/HTML blocks unless the user explicitly requests deletion and approves scope first.
+- NEVER DELETE A VALIDATED SCSS FILE OR RECREATE IT FROM SCRATCH DURING REGRESSION FIXES; PATCH INCREMENTALLY.
 - Do not change untouched working areas of a validated screen when the user requested only targeted fixes.
 - NEVER TOUCH UNREQUESTED AREAS OF A TESTED SCREEN.
 - If a broad accidental diff happens, revert that broad change and re-apply as minimal targeted patches.
+- ALWAYS CREATE EXTRACTED POPUP COMPONENTS AS SELF-CONTAINED `*.TS + *.HTML + *.SCSS` FILE SETS; DO NOT SHIP INLINE TEMPLATE/STYLE SHORTCUTS IN THIS WORKFLOW.
+- NEVER BREAK STABLE POPUP BEHAVIOR DURING LIST-PANEL EXTRACTION; REUSE EXISTING SERVICE-DRIVEN FLOW FIRST, THEN EXTRACT POPUPS ONLY WHEN EXPLICITLY REQUESTED.
 
 ## Completion checklist
 

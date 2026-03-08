@@ -1,0 +1,240 @@
+<section class="experience-form-overlay subevent-form-overlay" *ngIf="open" (click)="cancel.emit($event)">
+  <div class="experience-form-overlay-backdrop"></div>
+  <article class="experience-form-popup subevent-form-popup" (click)="$event.stopPropagation()">
+    <div class="experience-form-header">
+      <div class="subevent-form-header-title">
+        <h3>{{ title }}</h3>
+        <p *ngIf="parentTitle">{{ parentTitle }}</p>
+      </div>
+      <div class="experience-form-header-controls">
+        <ng-container *ngIf="showOptionalToggle; else subEventMandatoryHeader">
+          <label class="subevent-optional-field subevent-optional-field-header">
+            <button type="button" class="subevent-optional-toggle" [ngClass]="modeClass" (click)="toggleOptionalPicker.emit($event)">
+              <mat-icon>{{ modeIcon }}</mat-icon>
+              <span>{{ model.optional ? 'Optional' : 'Mandatory' }}</span>
+              <mat-icon>expand_more</mat-icon>
+            </button>
+            <div class="activities-view-picker-panel subevent-optional-picker-panel" *ngIf="showOptionalPicker">
+              <button type="button" class="activities-view-option subevent-mode-mandatory" (click)="selectOptional.emit(false); $event.stopPropagation()">
+                <mat-icon>block</mat-icon>
+                <span>Mandatory</span>
+              </button>
+              <button type="button" class="activities-view-option subevent-mode-optional" (click)="selectOptional.emit(true); $event.stopPropagation()">
+                <mat-icon>toggle_on</mat-icon>
+                <span>Optional</span>
+              </button>
+            </div>
+          </label>
+        </ng-container>
+        <ng-template #subEventMandatoryHeader>
+          <span class="subevent-optional-toggle subevent-mode-mandatory subevent-optional-toggle-static">
+            <mat-icon>block</mat-icon>
+            <span>Mandatory</span>
+          </span>
+        </ng-template>
+        <button
+          type="button"
+          class="popup-header-add-btn subevent-leaderboard-save-btn"
+          *ngIf="!readOnly"
+          [class.form-save-invalid]="!canSave"
+          [disabled]="!canSave"
+          (click)="save.emit($event)"
+          aria-label="Save sub event"
+        >
+          <mat-icon>done</mat-icon>
+        </button>
+        <button type="button" class="experience-form-close-btn" (click)="cancel.emit($event)" aria-label="Close sub event form">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <section class="experience-form-panel subevent-form-panel" [ngClass]="modeClass">
+      <div class="experience-form-grid subevent-form-grid">
+        <label class="experience-title-field">
+          <span>Name <span class="required-star">*</span></span>
+          <input type="text" [(ngModel)]="model.name" [class.field-required-invalid]="invalidName" placeholder="Stage name" />
+        </label>
+
+        <label class="subevent-capacity-range-field" *ngIf="model.optional">
+          <span>Capacity</span>
+          <div class="subevent-capacity-range">
+            <input
+              type="number"
+              min="0"
+              step="1"
+              [ngModel]="model.capacityMin"
+              (ngModelChange)="capacityMinChange.emit($event)"
+              placeholder="Min"
+            />
+            <span class="subevent-capacity-separator">-</span>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              [ngModel]="model.capacityMax"
+              (ngModelChange)="capacityMaxChange.emit($event)"
+              placeholder="Max"
+            />
+          </div>
+        </label>
+
+        <label class="subevent-stage-insert-field" *ngIf="showInsertControls">
+          <span>{{ insertFieldLabel }}</span>
+          <div class="subevent-stage-insert-controls">
+            <span class="subevent-stage-insert-mode">
+              <button
+                type="button"
+                class="subevent-stage-insert-mode-btn"
+                [class.is-active]="insertPlacement === 'before'"
+                (click)="selectInsertPlacement.emit('before')"
+              >
+                Before
+              </button>
+              <button
+                type="button"
+                class="subevent-stage-insert-mode-btn"
+                [class.is-active]="insertPlacement === 'after'"
+                (click)="selectInsertPlacement.emit('after')"
+              >
+                After
+              </button>
+            </span>
+            <div class="subevent-stage-insert-target-select">
+              <mat-select
+                [ngModel]="insertTargetId"
+                (ngModelChange)="insertTargetChange.emit($event)"
+                [panelWidth]="null"
+                disableOptionCentering
+                panelClass="selector-options-panel profile-bottom-sheet-panel subevent-stage-insert-options-panel"
+              >
+                <mat-option
+                  *ngFor="let option of insertOptions; trackBy: trackByInsertOption"
+                  [value]="option.id"
+                  class="status-option"
+                >
+                  <span class="subevent-stage-insert-option-label">{{ option.label }}</span>
+                </mat-option>
+              </mat-select>
+            </div>
+          </div>
+        </label>
+
+        <label class="experience-description-field">
+          <span>Description <span class="required-star">*</span></span>
+          <textarea rows="3" [(ngModel)]="model.description" [class.field-required-invalid]="invalidDescription" placeholder="Describe this stage"></textarea>
+        </label>
+
+        <label class="event-datetime-label">
+          <span>Start</span>
+          <div class="event-datetime-row subevents-native-datetime-row">
+            <input type="datetime-local" [(ngModel)]="model.startAt" />
+          </div>
+        </label>
+
+        <label class="event-datetime-label">
+          <span>End</span>
+          <div class="event-datetime-row subevents-native-datetime-row">
+            <input type="datetime-local" [(ngModel)]="model.endAt" />
+          </div>
+        </label>
+
+        <label class="experience-description-field subevent-location-field">
+          <span>Location</span>
+          <div class="asset-route-row asset-route-row-inline">
+            <input type="text" [(ngModel)]="model.location" placeholder="Sub event location" />
+            <button
+              type="button"
+              class="experience-action-btn asset-route-map-btn"
+              (click)="openLocationMap.emit($event)"
+              aria-label="Open sub event location on map"
+            >
+              <mat-icon>location_on</mat-icon>
+            </button>
+          </div>
+        </label>
+
+        <fieldset class="subevent-tournament-fieldset" *ngIf="showTournamentFields">
+          <legend>Stage Rule</legend>
+          <p class="subevent-tournament-hint subevent-tournament-hint-warning">
+            Manual groups reduce capacity for auto groups.<br />Customization only!
+          </p>
+          <div class="subevent-tournament-grid">
+            <div class="subevent-tournament-range-row">
+              <label class="subevent-tournament-field subevent-tournament-range-field">
+                <span>Min Per Group</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  [ngModel]="model.tournamentGroupCapacityMin ?? ''"
+                  (ngModelChange)="tournamentGroupCapacityMinChange.emit($event)"
+                  placeholder="Min"
+                />
+              </label>
+              <span class="subevent-capacity-separator">-</span>
+              <label class="subevent-tournament-field subevent-tournament-range-field">
+                <span>Max Per Group</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  [ngModel]="model.tournamentGroupCapacityMax ?? ''"
+                  (ngModelChange)="tournamentGroupCapacityMaxChange.emit($event)"
+                  placeholder="Max"
+                />
+              </label>
+            </div>
+            <div class="subevent-tournament-rule-row">
+              <label class="subevent-tournament-field">
+                <span>Leaderboard Type</span>
+                <div class="subevent-tournament-select" [ngClass]="tournamentLeaderboardTypeClass">
+                  <mat-select
+                    [ngModel]="tournamentLeaderboardTypeValue"
+                    (ngModelChange)="tournamentLeaderboardTypeChange.emit($event)"
+                    [panelWidth]="null"
+                    disableOptionCentering
+                    panelClass="selector-options-panel profile-bottom-sheet-panel subevent-tournament-leaderboard-options-panel"
+                  >
+                    <mat-select-trigger>
+                      <span class="subevent-tournament-select-trigger">
+                        <mat-icon>{{ tournamentLeaderboardTypeIcon }}</mat-icon>
+                        <span>{{ tournamentLeaderboardTypeValue }}</span>
+                      </span>
+                    </mat-select-trigger>
+                    <mat-option
+                      *ngFor="let option of tournamentLeaderboardTypeOptions"
+                      [value]="option"
+                      class="status-option subevent-tournament-leaderboard-option"
+                      [ngClass]="option === 'Fifa' ? 'tournament-leaderboard-fifa' : 'tournament-leaderboard-score'"
+                    >
+                      <span class="subevent-tournament-leaderboard-option-content">
+                        <mat-icon>{{ option === 'Fifa' ? 'sports_soccer' : 'leaderboard' }}</mat-icon>
+                        <span>{{ option }}</span>
+                      </span>
+                    </mat-option>
+                  </mat-select>
+                </div>
+              </label>
+              <label class="subevent-tournament-field">
+                <span>Advance Per Group</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  [ngModel]="model.tournamentAdvancePerGroup ?? ''"
+                  (ngModelChange)="tournamentAdvancePerGroupChange.emit($event)"
+                  placeholder="0"
+                />
+              </label>
+            </div>
+            <label class="subevent-tournament-field subevent-tournament-field-readonly">
+              <span>Estimated Group Count</span>
+              <input type="text" [value]="tournamentEstimatedGroupCountLabel" readonly />
+            </label>
+          </div>
+        </fieldset>
+      </div>
+    </section>
+  </article>
+</section>

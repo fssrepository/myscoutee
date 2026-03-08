@@ -71,7 +71,8 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Use separate `*.ts`, `*.html`, and `*.scss` files for each component; do not use inline templates or inline styles in this project.
 - Keep component SCSS self-contained and scoped to the component.
 - Do not introduce new dependencies on monolith/global stylesheet rules for extracted or new components.
-- When moving UI out of monolith files, migrate required styles into the component-local SCSS and remove obsolete monolith style rules.
+- When moving UI out of monolith files, migrate required styles into the component-local SCSS.
+- Do not delete or recreate already-validated SCSS blocks/files during regression fixes; use incremental selector-level patches unless the user explicitly approves scoped deletion.
 
 ### Local dev server coordination
 
@@ -144,7 +145,9 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - If a fix needs a broad rewrite to proceed, request explicit approval before applying it.
 - If a broad accidental diff is introduced, revert that broad part and re-implement as minimal patches.
 - NEVER DELETE OR WHOLESALE-REWRITE VALIDATED SCSS/HTML BLOCKS WITHOUT EXPLICIT USER APPROVAL.
+- NEVER DELETE A VALIDATED SCSS FILE OR RECREATE IT FROM SCRATCH DURING INCREMENTAL FIXES.
 - NEVER TOUCH UNREQUESTED AREAS OF A TESTED SCREEN.
+- ALWAYS IMPLEMENT NEW/EXTRACTED UI COMPONENTS AS SELF-CONTAINED `*.TS + *.HTML + *.SCSS` FILES IN THIS PROJECT; NO INLINE TEMPLATE/STYLE SHORTCUTS.
 
 ### Repeated-screen generalization protocol
 

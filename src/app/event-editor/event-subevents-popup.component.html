@@ -247,106 +247,57 @@
     </div>
   </article>
 
-  <section class="experience-form-overlay subevent-form-overlay" *ngIf="showSubEventForm" (click)="closeSubEventForm($event)">
-    <div class="experience-form-overlay-backdrop"></div>
-    <article class="experience-form-popup subevent-form-popup" (click)="$event.stopPropagation()">
-      <div class="experience-form-header">
-        <div class="subevent-form-header-title">
-          <h3>{{ subEventFormTitle() }}</h3>
-          <p *ngIf="parentTitle">{{ parentTitle }}</p>
-        </div>
-        <div class="experience-form-header-controls">
-          <button
-            type="button"
-            class="popup-header-add-btn subevent-leaderboard-save-btn"
-            [class.form-save-invalid]="!canSaveSubEventForm()"
-            [disabled]="!canSaveSubEventForm()"
-            (click)="saveSubEventForm($event)"
-            aria-label="Save sub event"
-          >
-            <mat-icon>done</mat-icon>
-          </button>
-          <button type="button" class="experience-form-close-btn" (click)="closeSubEventForm($event)" aria-label="Close sub event form">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </div>
+  <app-event-subevent-stage-form-popup
+    [open]="showSubEventForm"
+    [parentTitle]="parentTitle"
+    [title]="subEventFormTitle()"
+    [readOnly]="readOnly"
+    [model]="subEventForm"
+    [canSave]="canSaveSubEventForm()"
+    [invalidName]="subEventFieldInvalid('name')"
+    [invalidDescription]="subEventFieldInvalid('description')"
+    [showOptionalToggle]="showSubEventOptionalToggle()"
+    [showOptionalPicker]="showSubEventOptionalPicker"
+    [modeClass]="subEventModeClass(subEventForm.optional)"
+    [modeIcon]="subEventModeIcon(subEventForm.optional)"
+    [showInsertControls]="showSubEventInsertControls()"
+    [insertFieldLabel]="subEventInsertFieldLabel()"
+    [insertPlacement]="subEventStageInsertPlacement"
+    [insertTargetId]="subEventStageInsertTargetId"
+    [insertOptions]="subEventStageInsertOptions"
+    [showTournamentFields]="showTournamentStageConfigFields()"
+    [tournamentLeaderboardTypeOptions]="tournamentLeaderboardTypeOptions"
+    [tournamentLeaderboardTypeValue]="tournamentLeaderboardTypeValue()"
+    [tournamentLeaderboardTypeClass]="tournamentLeaderboardTypeClass()"
+    [tournamentLeaderboardTypeIcon]="tournamentLeaderboardTypeIcon()"
+    [tournamentEstimatedGroupCountLabel]="tournamentEstimatedGroupCountLabel()"
+    (save)="saveSubEventForm($event)"
+    (cancel)="closeSubEventForm($event)"
+    (toggleOptionalPicker)="toggleSubEventOptionalPicker($event)"
+    (selectOptional)="selectSubEventOptional($event)"
+    (capacityMinChange)="onSubEventCapacityMinChange($event)"
+    (capacityMaxChange)="onSubEventCapacityMaxChange($event)"
+    (selectInsertPlacement)="selectSubEventStageInsertPlacement($event)"
+    (insertTargetChange)="onSubEventStageInsertTargetChange($event)"
+    (openLocationMap)="openSubEventLocationMap($event)"
+    (tournamentGroupCapacityMinChange)="onTournamentGroupCapacityMinChange($event)"
+    (tournamentGroupCapacityMaxChange)="onTournamentGroupCapacityMaxChange($event)"
+    (tournamentLeaderboardTypeChange)="onTournamentLeaderboardTypeChange($event)"
+    (tournamentAdvancePerGroupChange)="onTournamentAdvancePerGroupChange($event)"
+  ></app-event-subevent-stage-form-popup>
 
-      <section class="experience-form-panel subevent-form-panel subevent-mode-mandatory">
-        <div class="experience-form-grid subevent-form-grid">
-          <label class="experience-title-field">
-            <span>Name <span class="required-star">*</span></span>
-            <input type="text" [(ngModel)]="subEventForm.name" [class.field-required-invalid]="subEventFieldInvalid('name')" placeholder="Stage name" />
-          </label>
-
-          <label class="experience-description-field">
-            <span>Description <span class="required-star">*</span></span>
-            <textarea rows="3" [(ngModel)]="subEventForm.description" [class.field-required-invalid]="subEventFieldInvalid('description')" placeholder="Describe this stage"></textarea>
-          </label>
-
-          <label class="event-datetime-label">
-            <span>Start</span>
-            <div class="event-datetime-row subevents-native-datetime-row">
-              <input type="datetime-local" [(ngModel)]="subEventForm.startAt" />
-            </div>
-          </label>
-
-          <label class="event-datetime-label">
-            <span>End</span>
-            <div class="event-datetime-row subevents-native-datetime-row">
-              <input type="datetime-local" [(ngModel)]="subEventForm.endAt" />
-            </div>
-          </label>
-
-          <label class="experience-description-field subevent-location-field">
-            <span>Location</span>
-            <input type="text" [(ngModel)]="subEventForm.location" placeholder="Location" />
-          </label>
-        </div>
-      </section>
-    </article>
-  </section>
-
-  <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay" *ngIf="showGroupForm" (click)="closeGroupForm($event)">
-    <div class="experience-form-overlay-backdrop"></div>
-    <article class="experience-form-popup subevent-form-popup subevent-group-popup" (click)="$event.stopPropagation()">
-      <div class="experience-form-header subevent-group-header">
-        <div class="subevent-group-header-main">
-          <h3>{{ groupFormTitle() }}</h3>
-          <p class="subevent-group-stage-subtitle" *ngIf="groupFormStageTitle">{{ groupFormStageTitle }}</p>
-        </div>
-        <div class="experience-form-header-controls">
-          <button
-            type="button"
-            class="popup-header-add-btn subevent-leaderboard-save-btn"
-            [class.form-save-invalid]="!canSaveGroupForm()"
-            [disabled]="!canSaveGroupForm()"
-            (click)="saveGroupForm($event)"
-            aria-label="Save group"
-          >
-            <mat-icon>done</mat-icon>
-          </button>
-          <button type="button" class="experience-form-close-btn" (click)="closeGroupForm($event)" aria-label="Close group form">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </div>
-
-      <section class="experience-form-panel subevent-form-panel subevent-group-form-panel">
-        <div class="experience-form-grid subevent-group-form-grid">
-          <label class="experience-title-field">
-            <span>Name <span class="required-star">*</span></span>
-            <input type="text" [(ngModel)]="groupForm.name" [class.field-required-invalid]="groupFieldInvalid()" placeholder="Group name" />
-          </label>
-
-          <label>
-            <span>Pending Members</span>
-            <input type="number" min="0" step="1" [(ngModel)]="groupForm.membersPending" />
-          </label>
-        </div>
-      </section>
-    </article>
-  </section>
+  <app-event-subevent-group-form-popup
+    [open]="showGroupForm"
+    [title]="groupFormTitle()"
+    [stageTitle]="groupFormStageTitle"
+    [model]="groupForm"
+    [canSave]="canSaveGroupForm()"
+    [invalidName]="groupFieldInvalid()"
+    (save)="saveGroupForm($event)"
+    (cancel)="closeGroupForm($event)"
+    (capacityMinChange)="onGroupCapacityMinChange($event)"
+    (capacityMaxChange)="onGroupCapacityMaxChange($event)"
+  ></app-event-subevent-group-form-popup>
 
   <section class="experience-form-overlay subevent-form-overlay subevent-leaderboard-overlay" *ngIf="showLeaderboardPopup" (click)="closeLeaderboardPopup($event)">
     <div class="experience-form-overlay-backdrop"></div>
