@@ -1,4 +1,4 @@
 interface:
   display_name: "Angular TS Standards"
   short_description: "Angular + TypeScript coding standards"
-  default_prompt: "Use $angular-typescript-web-standards to implement or review Angular code with strict typing, signals, and WCAG AA accessibility guardrails."
+  default_prompt: "Use $angular-typescript-web-standards to implement or review Angular code with strict typing, signals, WCAG AA guardrails, screenshot parity checks, and touched-file comparison against master as the stable baseline. NEVER DELETE OR WHOLESALE-REWRITE VALIDATED SCSS/HTML BLOCKS WITHOUT EXPLICIT USER APPROVAL."

@@ -1,4 +1,4 @@
 interface:
   display_name: "Popup Module Extractor"
   short_description: "Extract monolith screens into popup modules"
-  default_prompt: "Use $popup-module-extractor to extract selected screens from app.ts/app.html/app.scss into popup modules with signals-first state (event-editor style), trim monolith files, and stabilize with screenshot parity checks."
+  default_prompt: "Use $popup-module-extractor to extract selected screens from app.ts/app.html/app.scss into popup modules with signals-first state, trim legacy monolith blocks, enforce screenshot parity, and verify touched files against master before completion. NEVER DELETE OR WHOLESALE-REWRITE VALIDATED SCSS/HTML BLOCKS WITHOUT EXPLICIT USER APPROVAL."

@@ -79,6 +79,37 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Do not start a second watcher or serve process when one is already running.
 - Do not invoke Angular MCP `devserver.start` when the user already runs a local dev server.
 - Use explicit user confirmation for rebuild status when relying on a user-managed server.
+- Prefer reading the user-provided dev-server log (for example `.agent/logs/ng-serve.log`) to confirm build/rebuild status.
+- Do not run separate one-off build commands (`npm run build`, `ng build`) while a user-managed dev server is active, unless the user explicitly requests it.
+
+### Branch baseline protocol (stable comparison)
+
+- When working on any non-`master` branch, treat `master` as the stable baseline unless the user specifies another baseline branch.
+- Before editing, inspect divergence from baseline:
+  - `git rev-parse --abbrev-ref HEAD`
+  - `git merge-base master HEAD`
+  - `git diff --name-status master...HEAD`
+- Limit review scope to files touched by the current branch when validating regressions, then include any directly coupled Angular/template/style files.
+- For behavior regressions, compare feature-branch behavior against `master` for:
+  - routes and navigation flow
+  - component inputs/outputs and event contracts
+  - template structure/states (loading, empty, error, data)
+  - SCSS visual parity and responsive breakpoints
+  - strict typing and build/test status
+- If a file differs from `master` and needs refactor, preserve branch intent first, then apply standards; do not blindly overwrite with baseline.
+- Before final completion of a refactor slice, perform touched-file baseline verification:
+  - `git diff --name-only -- <touched files>`
+  - `git diff master -- <touched files>`
+  - `git show master:<path>` for each behavior-critical template/TS/SCSS file in the slice
+- Do not mark work complete until every touched behavior-critical file is explicitly checked against `master` for:
+  - missing actions/routes/menu handlers
+  - disabled or inert controls compared to baseline
+  - popup/form flow regressions (open/edit/save/delete paths)
+  - width/typography/layout drift visible in screenshots
+- In status reports, always state:
+  - current branch name
+  - baseline branch used for stability checks
+  - exact files compared against baseline
 
 ### Screenshot comparison protocol
 
@@ -88,6 +119,32 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Report every detected mismatch with precise location and severity.
 - Re-check after fixes by comparing new screenshots to the original baseline.
 - End reports with `No additional differences found` only after a full pass confirms parity.
+- Do not replace feature-complete UI with simplified approximations when screenshot parity is required; preserve existing controls, action menus, and motion behavior unless explicitly redesigned.
+- Do not replace form-based interaction flows with silent direct mutations (for example: `+` must still open creation form popup when original flow did).
+- Any visible action control from baseline (header/stage/group three-dot menus, add buttons, etc.) must be wired end-to-end; no inert buttons and no placeholder-only menu actions.
+- Keep popup/container dimensions and spacing aligned to baseline intent; treat large width/height drift as parity failure.
+- Preserve baseline typography decisions unless explicitly changed:
+  - font family
+  - font size and line height
+  - font weight and letter spacing
+  - text casing
+- Treat popup width/height, card widths, header height, and key control sizing as hard parity constraints when screenshots indicate fixed visual rhythm.
+
+### Tested-screen freeze protocol (regression-safe patching)
+
+- If the user says a screen is already tested/approved, freeze the approved areas and patch only reported deviations.
+- Do not replace full template or stylesheet files when addressing incremental UI regressions.
+- Keep changes surgical:
+  - touch only related selectors, classes, handlers, and bindings
+  - keep existing working controls/routes/menus untouched
+  - avoid broad refactors while in regression-fix mode
+- Preserve baseline behavior contracts during visual fixes:
+  - action buttons must keep their original popup/form flow
+  - menu order, iconography, and enabled/disabled behavior must stay aligned unless explicitly requested
+- If a fix needs a broad rewrite to proceed, request explicit approval before applying it.
+- If a broad accidental diff is introduced, revert that broad part and re-implement as minimal patches.
+- NEVER DELETE OR WHOLESALE-REWRITE VALIDATED SCSS/HTML BLOCKS WITHOUT EXPLICIT USER APPROVAL.
+- NEVER TOUCH UNREQUESTED AREAS OF A TESTED SCREEN.
 
 ### Repeated-screen generalization protocol
 
@@ -114,3 +171,7 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Keep behavior stable after each slice and run verification after each step.
 - Report progress by slice and explicitly list what remains.
 - Use iterative delivery for high-risk files: complete one slice end-to-end before starting the next.
+- Extraction is not complete until legacy code is trimmed from monolith sources:
+  - remove moved markup from `app.html`
+  - remove obsolete listeners/openers/wrappers from `app.ts`
+  - remove or reduce dead style blocks from `app.scss`

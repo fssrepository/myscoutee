@@ -14,12 +14,14 @@ import { Subscription } from 'rxjs';
 import { EventEditorService } from '../shared/event-editor.service';
 import { APP_STATIC_DATA } from '../shared/app-static-data';
 import { AppUtils } from '../shared/app-utils';
+import { EventSubeventsPopupComponent, EventSubeventsItem } from './event-subevents-popup.component';
 
 type EventVisibility = 'Public' | 'Friends only' | 'Invitation only';
 type EventBlindMode = 'Open Event' | 'Blind Event';
 type SubEventsDisplayMode = 'Casual' | 'Tournament';
 
 interface EventEditorSubEventItem {
+  description?: string;
   id?: string;
   name?: string;
   title?: string;
@@ -27,8 +29,20 @@ interface EventEditorSubEventItem {
   optional?: boolean;
   startAt?: string;
   endAt?: string;
-  groups?: unknown[];
+  groups?: EventEditorSubEventGroupItem[];
+  membersPending?: number;
+  membersAccepted?: number;
+  carsPending?: number;
+  accommodationPending?: number;
+  suppliesPending?: number;
   [key: string]: unknown;
+}
+
+interface EventEditorSubEventGroupItem {
+  id?: string;
+  name?: string;
+  source?: string;
+  membersPending?: number;
 }
 
 interface EventEditorSavePayload {
@@ -64,7 +78,8 @@ interface EventEditorSavePayload {
     MatDatepickerModule,
     MatTimepickerModule,
     MatNativeDateModule,
-    MatOptionModule
+    MatOptionModule,
+    EventSubeventsPopupComponent
   ],
   templateUrl: './event-editor-popup.component.html',
   styleUrls: ['./event-editor-popup.component.scss']
@@ -77,6 +92,16 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   private openSubscription?: Subscription;
   private closeSubscription?: Subscription;
+  private readonly openSubEventsFromAppHandler = () => {
+    if (!this.eventEditorService.isOpen()) {
+      return;
+    }
+    this.showEventVisibilityPicker = false;
+    this.showSubEventsPopup = true;
+  };
+  private readonly closeSubEventsFromAppHandler = () => {
+    this.showSubEventsPopup = false;
+  };
 
   constructor() {
     effect(() => {
@@ -85,6 +110,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
       if (!isOpen) {
         this.showEventVisibilityPicker = false;
+        this.showSubEventsPopup = false;
         return;
       }
 
@@ -100,16 +126,27 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.openSubscription = this.eventEditorService.onOpen$.subscribe(() => {
       this.showEventVisibilityPicker = false;
+      this.showSubEventsPopup = false;
     });
 
     this.closeSubscription = this.eventEditorService.onClose$.subscribe(() => {
       this.showEventVisibilityPicker = false;
+      this.showSubEventsPopup = false;
     });
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('app:openSubEvents', this.openSubEventsFromAppHandler);
+      window.addEventListener('app:closeSubEvents', this.closeSubEventsFromAppHandler);
+    }
   }
 
   ngOnDestroy(): void {
     this.openSubscription?.unsubscribe();
     this.closeSubscription?.unsubscribe();
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('app:openSubEvents', this.openSubEventsFromAppHandler);
+      window.removeEventListener('app:closeSubEvents', this.closeSubEventsFromAppHandler);
+    }
   }
 
   eventForm = {
@@ -137,12 +174,14 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   subEventsDisplayMode: SubEventsDisplayMode = 'Casual';
   showEventVisibilityPicker = false;
+  showSubEventsPopup = false;
 
   readonly visibilityOptions: EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
   readonly eventFrequencyOptions = ['One-time', 'Daily', 'Weekly', 'Bi-weekly', 'Monthly'];
 
   close(): void {
     this.showEventVisibilityPicker = false;
+    this.showSubEventsPopup = false;
     this.eventEditorService.close();
   }
 
@@ -166,7 +205,23 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   requestOpenSubEvents(): void {
     this.showEventVisibilityPicker = false;
-    window.dispatchEvent(new CustomEvent('app:openSubEvents'));
+    this.showSubEventsPopup = true;
+  }
+
+  closeSubEventsPopup(): void {
+    this.showSubEventsPopup = false;
+  }
+
+  handleSubEventsChange(subEvents: readonly EventSubeventsItem[]): void {
+    const mapped: EventEditorSubEventItem[] = subEvents.map(item => ({
+      ...item,
+      groups: (item.groups ?? []).map(group => ({ ...group }))
+    }));
+    this.eventForm.subEvents = this.cloneSubEvents(mapped);
+  }
+
+  updateSubEventsDisplayMode(mode: SubEventsDisplayMode): void {
+    this.subEventsDisplayMode = mode;
   }
 
   requestOpenTopics(): void {
@@ -186,6 +241,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       ?? source?.pendingMembers
       ?? source?.pending
       ?? source?.pendingInvites
+      ?? source?.activity
+      ?? source?.unread
       ?? 0;
     const pendingCount = Number(pendingRaw);
     if (!Number.isFinite(pendingCount) || pendingCount <= 0) {

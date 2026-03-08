@@ -615,7 +615,6 @@ export class App {
     
     // Listen for events from EventEditorPopupComponent
     if (typeof window !== 'undefined') {
-      window.addEventListener('app:openSubEvents', () => this.openEventSubEventsPopup());
       window.addEventListener('app:openMembers', () => this.openEventEditorMembers());
       window.addEventListener('app:openTopics', () => this.openEventTopicsSelector());
       window.addEventListener('app:openLocationMap', () => this.openEventLocationMap());
@@ -1948,44 +1947,15 @@ export class App {
 
   protected openEventSubEventsPopup(event?: Event): void {
     event?.stopPropagation();
-    this.eventForm.subEvents = this.sortSubEventsByStartAsc(this.eventForm.subEvents);
-    this.showSubEventsDisplayModePicker = false;
-    this.showSubEventForm = false;
-    this.subEventFormStageNumber = null;
-    this.showSubEventGroupForm = false;
-    this.showSubEventLeaderboardPopup = false;
-    this.showSubEventLeaderboardForm = false;
-    this.subEventLeaderboardStageId = null;
-    this.subEventLeaderboardEditingGroupId = null;
-    this.showSubEventOptionalPicker = false;
-    this.showSubEventGroupRequiredValidation = false;
-    this.pendingSubEventGroupDelete = null;
-    this.resetSubEventStagePaging();
-    this.superStackedPopup = 'eventSubEvents';
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('app:openSubEvents'));
+    }
   }
 
   protected closeEventSubEventsPopup(): void {
-    if (this.superStackedPopup === 'eventSubEvents') {
-      this.superStackedPopup = null;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('app:closeSubEvents'));
     }
-    this.subEventBadgeOpenedFromSubEventsPopup = false;
-    this.subEventStageArrowScrollLock = false;
-    if (this.subEventStageArrowScrollUnlockTimer) {
-      clearTimeout(this.subEventStageArrowScrollUnlockTimer);
-      this.subEventStageArrowScrollUnlockTimer = null;
-    }
-    this.inlineItemActionMenu = null;
-    this.showSubEventsDisplayModePicker = false;
-    this.subEventFormStageNumber = null;
-    this.showSubEventForm = false;
-    this.showSubEventGroupForm = false;
-    this.showSubEventLeaderboardPopup = false;
-    this.showSubEventLeaderboardForm = false;
-    this.subEventLeaderboardStageId = null;
-    this.subEventLeaderboardEditingGroupId = null;
-    this.showSubEventGroupRequiredValidation = false;
-    this.pendingSubEventGroupDelete = null;
-    this.reopenEventEditorPopupFromState(true);
   }
 
   protected eventSubEventsParentTitle(): string {

@@ -1,0 +1,439 @@
+<section class="subevents-overlay" *ngIf="open">
+  <div class="subevents-backdrop" (click)="requestClose()"></div>
+
+  <article class="subevents-panel" (click)="$event.stopPropagation()">
+    <header class="subevents-header">
+      <button mat-icon-button type="button" class="subevents-back-btn" (click)="requestClose()" aria-label="Back to event editor">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+
+      <div class="subevents-title">
+        <h2>Sub Events</h2>
+        <p *ngIf="parentTitle">{{ parentTitle }}</p>
+      </div>
+
+      <div class="subevents-actions">
+        <button
+          type="button"
+          class="subevents-add-btn"
+          [class.is-disabled]="readOnly"
+          [disabled]="readOnly"
+          (click)="openCreateSubEventForm($event)"
+          aria-label="Add sub event"
+        >
+          <mat-icon>add</mat-icon>
+        </button>
+
+        <div class="subevents-mode-picker">
+          <button
+            type="button"
+            class="popup-view-fab subevents-mode-trigger"
+            [class.subevents-mode-tournament]="displayMode === 'Tournament'"
+            [class.subevents-mode-casual]="displayMode === 'Casual'"
+            [disabled]="readOnly"
+            [class.is-disabled]="readOnly"
+            (click)="toggleDisplayModePicker($event)"
+            aria-label="Change sub events mode"
+          >
+            <mat-icon class="subevents-mode-icon">{{ currentDisplayModeIcon() }}</mat-icon>
+            <span>{{ displayMode }}</span>
+          </button>
+
+          <div class="activities-view-picker-panel subevents-mode-panel" *ngIf="showDisplayModePicker">
+            <button
+              type="button"
+              class="activities-view-option subevents-mode-option"
+              *ngFor="let mode of displayModeOptions"
+              [class.subevents-mode-tournament]="mode === 'Tournament'"
+              [class.subevents-mode-casual]="mode === 'Casual'"
+              (click)="selectDisplayMode(mode, $event)"
+            >
+              <mat-icon class="subevents-mode-icon">{{ currentDisplayModeIcon(mode) }}</mat-icon>
+              <span>{{ mode }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="subevents-body">
+      <ng-container *ngIf="sortedSubEvents.length > 0; else subeventsEmptyState">
+        <ng-container *ngIf="displayMode === 'Tournament'; else subeventsCasualMode">
+          <div class="subevents-period-head">
+            <span class="subevents-period-nav subevents-period-nav-left">
+              <button
+                type="button"
+                class="activities-calendar-nav-btn subevents-period-nav-btn"
+                (click)="scrollStagePages(-1, $event)"
+                [disabled]="!canScrollStagePages(-1)"
+                aria-label="Previous stage page"
+              >
+                <mat-icon>chevron_left</mat-icon>
+              </button>
+              <span class="subevents-period-neighbor" [class.is-empty]="!previousStageLabel()" [style.color]="previousStageColor()">
+                {{ previousStageLabel() }}
+              </span>
+            </span>
+
+            <span class="subevents-period-center">
+              <span class="subevents-period-current">
+                <span class="subevents-period-current-start" [style.color]="visibleStageStartColor()">
+                  {{ visibleStageStartLabel() }}
+                </span>
+                <ng-container *ngIf="visibleStageHasRange()">
+                  <span class="subevents-period-current-separator">-</span>
+                  <span class="subevents-period-current-end" [style.color]="visibleStageEndColor()">
+                    {{ visibleStageEndLabel() }}
+                  </span>
+                </ng-container>
+              </span>
+              <span class="subevents-period-range" *ngIf="stagePeriodLabel()">{{ stagePeriodLabel() }}</span>
+            </span>
+
+            <span class="subevents-period-nav subevents-period-nav-right">
+              <span class="subevents-period-neighbor" [class.is-empty]="!nextStageLabel()" [style.color]="nextStageColor()">
+                {{ nextStageLabel() }}
+              </span>
+              <button
+                type="button"
+                class="activities-calendar-nav-btn subevents-period-nav-btn"
+                (click)="scrollStagePages(1, $event)"
+                [disabled]="!canScrollStagePages(1)"
+                aria-label="Next stage page"
+              >
+                <mat-icon>chevron_right</mat-icon>
+              </button>
+            </span>
+          </div>
+
+          <div
+            class="subevents-stage-viewport"
+            (touchstart)="onStageSwipeStart($event)"
+            (touchmove)="onStageSwipeMove($event)"
+            (touchend)="onStageSwipeEnd($event)"
+            (touchcancel)="onStageSwipeCancel()"
+          >
+            <div class="subevents-stage-track" [style.transform]="'translateX(-' + (stagePageIndex * 100) + '%)'">
+              <section class="subevents-stage-page" *ngFor="let page of stagePages; trackBy: trackByStagePageIndex">
+                <div class="subevents-stage-grid" [class.subevents-stage-grid-mobile]="isMobileViewport">
+                  <article
+                    class="subevents-stage-card"
+                    *ngFor="let stage of page; trackBy: trackByStageKey"
+                    [style.--stage-accent]="stageAccentColor(stage)"
+                  >
+                    <header class="subevents-stage-head">
+                      <div class="subevents-stage-head-main">
+                        <span class="subevents-stage-step">{{ stage.title | uppercase }}</span>
+                        <strong>{{ stage.subtitle }}</strong>
+                        <p class="subevents-stage-location">{{ stage.location }}</p>
+                        <p class="subevents-stage-description">{{ stage.description || 'No description' }}</p>
+                      </div>
+                      <div class="subevents-stage-head-meta">
+                        <span class="subevents-stage-range">{{ stage.rangeLabel }}</span>
+                        <span class="subevents-stage-groups">{{ stage.groupsLabel }}</span>
+                      </div>
+                      <div class="experience-item-actions subevents-stage-actions">
+                        <button
+                          type="button"
+                          class="experience-action-btn experience-action-menu-trigger subevents-stage-menu-btn"
+                          [class.is-open]="isStageActionMenuOpen(stage)"
+                          (click)="toggleStageActionMenu(stage, $event)"
+                          [attr.aria-label]="isStageActionMenuOpen(stage) ? 'Close stage actions' : 'Open stage actions'"
+                        >
+                          <span class="subevents-menu-icon-stack" [class.is-open]="isStageActionMenuOpen(stage)">
+                            <mat-icon class="subevents-menu-icon-dots">more_vert</mat-icon>
+                            <mat-icon class="subevents-menu-icon-close">close</mat-icon>
+                          </span>
+                        </button>
+                        <div
+                          class="item-action-menu subevents-stage-menu"
+                          *ngIf="isStageActionMenuOpen(stage)"
+                          [class.is-open]="isStageActionMenuOpen(stage)"
+                          [class.item-action-menu-mobile]="isMobileViewport"
+                          [class.item-action-menu-desktop]="!isMobileViewport"
+                          (click)="$event.stopPropagation()"
+                        >
+                          <div class="item-action-menu-title">{{ stage.title }}</div>
+                          <button type="button" class="item-action-menu-btn" *ngIf="!readOnly" (click)="runStageMenuAction('add-group', stage, $event)">
+                            <mat-icon>group_add</mat-icon>
+                            <span>Add Group</span>
+                          </button>
+                          <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('leaderboard', stage, $event)">
+                            <mat-icon>public</mat-icon>
+                            <span>Leaderboard</span>
+                          </button>
+                          <button type="button" class="item-action-menu-btn" *ngIf="!readOnly" (click)="runStageMenuAction('edit-stage', stage, $event)">
+                            <mat-icon>edit</mat-icon>
+                            <span>Edit Stage Event</span>
+                          </button>
+                          <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" *ngIf="!readOnly" (click)="runStageMenuAction('delete-stage', stage, $event)">
+                            <mat-icon>delete</mat-icon>
+                            <span>Delete Stage</span>
+                          </button>
+                        </div>
+                      </div>
+                    </header>
+
+                    <div class="subevents-stage-body">
+                      <article class="subevents-group-row" *ngFor="let row of stage.rows; trackBy: trackByStageRowKey" [attr.data-tone]="stageRowToneClass(stage, row)">
+                        <span class="subevents-group-title">{{ row.label }}</span>
+                        <div class="experience-item-actions subevents-group-actions" *ngIf="!readOnly">
+                          <button
+                            type="button"
+                            class="experience-action-btn experience-action-menu-trigger subevents-group-menu-btn"
+                            [class.is-open]="isGroupActionMenuOpen(row)"
+                            (click)="toggleGroupActionMenu(row, $event)"
+                            aria-label="Group actions"
+                          >
+                            <span class="subevents-menu-icon-stack" [class.is-open]="isGroupActionMenuOpen(row)">
+                              <mat-icon class="subevents-menu-icon-dots">more_vert</mat-icon>
+                              <mat-icon class="subevents-menu-icon-close">close</mat-icon>
+                            </span>
+                          </button>
+                          <div
+                            class="item-action-menu subevents-group-menu"
+                            *ngIf="isGroupActionMenuOpen(row)"
+                            [class.is-open]="isGroupActionMenuOpen(row)"
+                            [class.item-action-menu-mobile]="isMobileViewport"
+                            [class.item-action-menu-desktop]="!isMobileViewport"
+                            (click)="$event.stopPropagation()"
+                          >
+                            <button type="button" class="item-action-menu-btn" (click)="runGroupMenuAction('edit-group', row, $event)">
+                              <mat-icon>edit</mat-icon>
+                              <span>Edit Group</span>
+                            </button>
+                            <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="runGroupMenuAction('delete-group', row, $event)">
+                              <mat-icon>delete</mat-icon>
+                              <span>Delete Group</span>
+                            </button>
+                          </div>
+                        </div>
+                        <span class="subevents-group-badge" *ngIf="row.pending > 0">{{ row.pending }}</span>
+                      </article>
+                    </div>
+                  </article>
+
+                  <article class="subevents-stage-card subevents-stage-placeholder" *ngFor="let placeholder of stagePlaceholdersForPage(page); trackBy: trackByIndex" aria-hidden="true"></article>
+                </div>
+              </section>
+            </div>
+          </div>
+        </ng-container>
+
+        <ng-template #subeventsCasualMode>
+          <section class="subevents-casual-grid">
+            <article
+              class="subevents-casual-card"
+              *ngFor="let subEvent of sortedSubEvents; let index = index; trackBy: trackByIndex"
+              [attr.data-tone]="casualCardToneClass(subEvent)"
+            >
+              <header>
+                <strong>{{ casualCardTitle(subEvent, index) }}</strong>
+                <span class="subevents-casual-range">{{ casualCardRange(subEvent) }}</span>
+              </header>
+              <p>{{ subEvent.location || 'Location pending' }}</p>
+              <span class="subevents-casual-resources">{{ casualCardResources(subEvent) }}</span>
+            </article>
+          </section>
+        </ng-template>
+      </ng-container>
+
+      <ng-template #subeventsEmptyState>
+        <div class="subevents-empty-state">
+          <h4>No sub events yet</h4>
+          <p>Use + to add the first sub event.</p>
+        </div>
+      </ng-template>
+    </div>
+  </article>
+
+  <section class="experience-form-overlay subevent-form-overlay" *ngIf="showSubEventForm" (click)="closeSubEventForm($event)">
+    <div class="experience-form-overlay-backdrop"></div>
+    <article class="experience-form-popup subevent-form-popup" (click)="$event.stopPropagation()">
+      <div class="experience-form-header">
+        <div class="subevent-form-header-title">
+          <h3>{{ subEventFormTitle() }}</h3>
+          <p *ngIf="parentTitle">{{ parentTitle }}</p>
+        </div>
+        <div class="experience-form-header-controls">
+          <button
+            type="button"
+            class="popup-header-add-btn subevent-leaderboard-save-btn"
+            [class.form-save-invalid]="!canSaveSubEventForm()"
+            [disabled]="!canSaveSubEventForm()"
+            (click)="saveSubEventForm($event)"
+            aria-label="Save sub event"
+          >
+            <mat-icon>done</mat-icon>
+          </button>
+          <button type="button" class="experience-form-close-btn" (click)="closeSubEventForm($event)" aria-label="Close sub event form">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <section class="experience-form-panel subevent-form-panel subevent-mode-mandatory">
+        <div class="experience-form-grid subevent-form-grid">
+          <label class="experience-title-field">
+            <span>Name <span class="required-star">*</span></span>
+            <input type="text" [(ngModel)]="subEventForm.name" [class.field-required-invalid]="subEventFieldInvalid('name')" placeholder="Stage name" />
+          </label>
+
+          <label class="experience-description-field">
+            <span>Description <span class="required-star">*</span></span>
+            <textarea rows="3" [(ngModel)]="subEventForm.description" [class.field-required-invalid]="subEventFieldInvalid('description')" placeholder="Describe this stage"></textarea>
+          </label>
+
+          <label class="event-datetime-label">
+            <span>Start</span>
+            <div class="event-datetime-row subevents-native-datetime-row">
+              <input type="datetime-local" [(ngModel)]="subEventForm.startAt" />
+            </div>
+          </label>
+
+          <label class="event-datetime-label">
+            <span>End</span>
+            <div class="event-datetime-row subevents-native-datetime-row">
+              <input type="datetime-local" [(ngModel)]="subEventForm.endAt" />
+            </div>
+          </label>
+
+          <label class="experience-description-field subevent-location-field">
+            <span>Location</span>
+            <input type="text" [(ngModel)]="subEventForm.location" placeholder="Location" />
+          </label>
+        </div>
+      </section>
+    </article>
+  </section>
+
+  <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay" *ngIf="showGroupForm" (click)="closeGroupForm($event)">
+    <div class="experience-form-overlay-backdrop"></div>
+    <article class="experience-form-popup subevent-form-popup subevent-group-popup" (click)="$event.stopPropagation()">
+      <div class="experience-form-header subevent-group-header">
+        <div class="subevent-group-header-main">
+          <h3>{{ groupFormTitle() }}</h3>
+          <p class="subevent-group-stage-subtitle" *ngIf="groupFormStageTitle">{{ groupFormStageTitle }}</p>
+        </div>
+        <div class="experience-form-header-controls">
+          <button
+            type="button"
+            class="popup-header-add-btn subevent-leaderboard-save-btn"
+            [class.form-save-invalid]="!canSaveGroupForm()"
+            [disabled]="!canSaveGroupForm()"
+            (click)="saveGroupForm($event)"
+            aria-label="Save group"
+          >
+            <mat-icon>done</mat-icon>
+          </button>
+          <button type="button" class="experience-form-close-btn" (click)="closeGroupForm($event)" aria-label="Close group form">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <section class="experience-form-panel subevent-form-panel subevent-group-form-panel">
+        <div class="experience-form-grid subevent-group-form-grid">
+          <label class="experience-title-field">
+            <span>Name <span class="required-star">*</span></span>
+            <input type="text" [(ngModel)]="groupForm.name" [class.field-required-invalid]="groupFieldInvalid()" placeholder="Group name" />
+          </label>
+
+          <label>
+            <span>Pending Members</span>
+            <input type="number" min="0" step="1" [(ngModel)]="groupForm.membersPending" />
+          </label>
+        </div>
+      </section>
+    </article>
+  </section>
+
+  <section class="experience-form-overlay subevent-form-overlay subevent-leaderboard-overlay" *ngIf="showLeaderboardPopup" (click)="closeLeaderboardPopup($event)">
+    <div class="experience-form-overlay-backdrop"></div>
+    <article class="experience-form-popup subevent-form-popup subevent-leaderboard-popup" (click)="$event.stopPropagation()">
+      <div class="experience-form-header subevent-leaderboard-header">
+        <div class="subevent-leaderboard-header-main">
+          <h3>{{ leaderboardPopupTitle() }}</h3>
+          <p>Stage standings and results</p>
+        </div>
+        <div class="experience-form-header-controls">
+          <button type="button" class="experience-form-close-btn" (click)="closeLeaderboardPopup($event)" aria-label="Close leaderboard">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <section class="experience-form-panel subevent-form-panel subevent-leaderboard-panel">
+        <ng-container *ngIf="leaderboardStageCard() as stage; else leaderboardEmptyState">
+          <div class="subevent-leaderboard-groups">
+            <article class="subevent-leaderboard-group" *ngFor="let row of stage.rows; trackBy: trackByStageRowKey">
+              <div
+                class="subevent-leaderboard-group-head"
+                role="button"
+                tabindex="0"
+                (click)="toggleLeaderboardGroup(row.key, $event)"
+                (keydown.enter)="toggleLeaderboardGroup(row.key, $event)"
+                (keydown.space)="toggleLeaderboardGroup(row.key, $event); $event.preventDefault()"
+              >
+                <span class="subevent-leaderboard-group-title">{{ row.groupName }}</span>
+                <mat-icon class="subevent-leaderboard-group-arrow">{{ isLeaderboardGroupOpen(row.key) ? 'expand_less' : 'expand_more' }}</mat-icon>
+              </div>
+              <div class="subevent-leaderboard-group-body" *ngIf="isLeaderboardGroupOpen(row.key)">
+                <p class="subevent-leaderboard-advance-line">Top 1 advance from this group.</p>
+                <div class="subevent-leaderboard-table-wrap">
+                  <table class="subevent-leaderboard-table subevent-leaderboard-table-score">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Member</th>
+                        <th>Score</th>
+                        <th>Updates</th>
+                        <th class="subevent-leaderboard-end-column" aria-hidden="true"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <ng-container *ngFor="let index of leaderboardRowIndexes(row); let rowIndex = index; trackBy: trackByIndex">
+                        <tr *ngIf="rowIndex < row.pending">
+                          <td>{{ rowIndex + 1 }}</td>
+                          <td class="subevent-leaderboard-member-cell">Member {{ rowIndex + 1 }}</td>
+                          <td>0</td>
+                          <td>0</td>
+                          <td class="subevent-leaderboard-row-end"></td>
+                        </tr>
+                        <tr class="subevent-leaderboard-placeholder-row" *ngIf="rowIndex >= row.pending" aria-hidden="true">
+                          <td>{{ rowIndex + 1 }}</td>
+                          <td colspan="3">
+                            <span class="subevent-leaderboard-placeholder-line"></span>
+                          </td>
+                          <td class="subevent-leaderboard-row-end"></td>
+                        </tr>
+                      </ng-container>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </article>
+          </div>
+        </ng-container>
+        <ng-template #leaderboardEmptyState>
+          <div class="editor-list-card event-subevents-empty-state">
+            <h4>Stage not available</h4>
+            <p>Return to Sub Events and open Leaderboard from a stage menu.</p>
+          </div>
+        </ng-template>
+      </section>
+    </article>
+  </section>
+
+  <section class="experience-delete-confirm" *ngIf="pendingDeleteTarget">
+    <div class="experience-delete-confirm-backdrop" (click)="cancelDeleteTarget($event)"></div>
+    <div class="experience-delete-confirm-panel" (click)="$event.stopPropagation()">
+      <h4>{{ deleteTargetTitle() }}</h4>
+      <p>{{ deleteTargetDescription() }}</p>
+      <div class="popup-actions">
+        <button type="button" class="link-btn neutral-btn" (click)="cancelDeleteTarget($event)">Cancel</button>
+        <button type="button" class="link-btn experience-delete-btn" (click)="confirmDeleteTarget($event)">Delete</button>
+      </div>
+    </div>
+  </section>
+</section>

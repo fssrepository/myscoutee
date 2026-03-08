@@ -348,4 +348,15 @@
       </section>
     </div>
   </div>
+
+  <app-event-subevents-popup
+    [open]="showSubEventsPopup"
+    [readOnly]="eventEditorService.readOnly()"
+    [parentTitle]="eventForm.title"
+    [subEvents]="eventForm.subEvents"
+    [displayMode]="subEventsDisplayMode"
+    (close)="closeSubEventsPopup()"
+    (subEventsChange)="handleSubEventsChange($event)"
+    (displayModeChange)="updateSubEventsDisplayMode($event)"
+  ></app-event-subevents-popup>
 </div>
