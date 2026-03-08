@@ -1,0 +1,4 @@
+interface:
+  display_name: "Angular TS Standards"
+  short_description: "Angular + TypeScript coding standards"
+  default_prompt: "Use $angular-typescript-web-standards to implement or review Angular code with strict typing, signals, and WCAG AA accessibility guardrails."
