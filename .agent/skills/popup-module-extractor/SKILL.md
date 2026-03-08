@@ -10,6 +10,12 @@ Use the same extraction/stabilization pattern as default for other module splits
 
 ## Extraction workflow
 
+### 0. Enforce component isolation baseline
+
+- Implement each extracted unit as explicit component files (`*.ts`, `*.html`, `*.scss`).
+- Keep styles component-local and self-contained; avoid relying on monolith/global stylesheet rules.
+- During extraction, migrate relevant style blocks from monolith SCSS into the component SCSS and delete stale global rules.
+
 ### 1. Define extraction scope
 
 - Ask for the exact screens/popups to extract in the current slice.
