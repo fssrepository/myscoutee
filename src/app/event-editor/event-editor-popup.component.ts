@@ -125,6 +125,15 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
       this.resetForm();
     });
+
+    effect(() => {
+      const request = this.eventEditorService.subEventResourcePopupRequest();
+      if (!request || typeof window === 'undefined') {
+        return;
+      }
+      window.dispatchEvent(new CustomEvent('app:openSubEventResourcePopupFromEventEditor', { detail: request }));
+      this.eventEditorService.clearSubEventResourcePopupRequest();
+    });
   }
 
   ngOnInit(): void {

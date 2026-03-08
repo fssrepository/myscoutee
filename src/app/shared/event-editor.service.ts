@@ -8,6 +8,17 @@ export interface EventEditorState {
   readOnly?: boolean;
 }
 
+export type EventEditorSubEventResourceType = 'Members' | 'Car' | 'Accommodation' | 'Supplies';
+
+export interface EventEditorSubEventResourcePopupRequest {
+  type: EventEditorSubEventResourceType;
+  subEvent: any;
+  group?: {
+    id?: string | null;
+    groupLabel?: string;
+  } | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -23,12 +34,14 @@ export class EventEditorService {
   
   // Signal for read-only mode (used for view)
   private _readOnly = signal(false);
+  private _subEventResourcePopupRequest = signal<EventEditorSubEventResourcePopupRequest | null>(null);
   
   // Public readonly signals
   readonly isOpen = this._isOpen.asReadonly();
   readonly mode = this._mode.asReadonly();
   readonly sourceEvent = this._sourceEvent.asReadonly();
   readonly readOnly = this._readOnly.asReadonly();
+  readonly subEventResourcePopupRequest = this._subEventResourcePopupRequest.asReadonly();
   
   // Computed value for easy template usage
   readonly isOpenBoolean = computed(() => this._isOpen());
@@ -87,6 +100,7 @@ export class EventEditorService {
     this._isOpen.set(false);
     this._sourceEvent.set(null);
     this._readOnly.set(false);
+    this._subEventResourcePopupRequest.set(null);
     this._onClose.next();
   }
 
@@ -130,5 +144,13 @@ export class EventEditorService {
    */
   get isReadOnly(): boolean {
     return this._readOnly();
+  }
+
+  requestSubEventResourcePopup(request: EventEditorSubEventResourcePopupRequest): void {
+    this._subEventResourcePopupRequest.set(request);
+  }
+
+  clearSubEventResourcePopupRequest(): void {
+    this._subEventResourcePopupRequest.set(null);
   }
 }

@@ -3788,6 +3788,17 @@
   z-index: 2400;
 }
 
+.app-popup-stacked.app-popup-stacked-over-subevents {
+  z-index: 3200;
+  padding: 0.6rem;
+  align-items: center;
+}
+
+.app-popup-stacked.app-popup-stacked-over-subevents .app-popup-panel.popup-panel-asset-members {
+  height: calc(100dvh - 1.2rem);
+  max-height: calc(100dvh - 1.2rem);
+}
+
 .app-popup-stacked .app-popup-backdrop {
   background: rgba(8, 14, 27, 0.62);
 }

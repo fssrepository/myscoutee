@@ -3471,6 +3471,7 @@
 
 <section
   class="app-popup app-popup-stacked"
+  [class.app-popup-stacked-over-subevents]="stackedPopup === 'subEventAssets' || stackedPopup === 'subEventMembers' || stackedPopup === 'subEventSupplyContributions'"
   *ngIf="stackedPopup"
 >
   <div class="app-popup-backdrop" (click)="closeStackedPopup()"></div>

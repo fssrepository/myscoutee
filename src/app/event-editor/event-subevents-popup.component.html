@@ -202,17 +202,78 @@
                             [class.item-action-menu-desktop]="!isMobileViewport"
                             (click)="$event.stopPropagation()"
                           >
+                            <div class="item-action-menu-title">{{ row.groupName }}</div>
                             <button type="button" class="item-action-menu-btn" (click)="runGroupMenuAction('edit-group', row, $event)">
                               <mat-icon>edit</mat-icon>
-                              <span>Edit Group</span>
+                              <span>Edit</span>
                             </button>
                             <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="runGroupMenuAction('delete-group', row, $event)">
                               <mat-icon>delete</mat-icon>
-                              <span>Delete Group</span>
+                              <span>Delete</span>
+                            </button>
+                            <div class="item-action-menu-divider"></div>
+                            <div class="item-action-menu-section-label">Resources</div>
+                            <button
+                              type="button"
+                              class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-members"
+                              (click)="openSubEventResourcePopup('Members', sortedSubEvents[row.stageSourceIndex], $event, row)"
+                            >
+                              <span class="subevent-resource-menu-item-icon"><mat-icon>groups</mat-icon></span>
+                              <span class="subevent-resource-menu-item-main">
+                                <span class="subevent-resource-menu-item-title">Members</span>
+                                <span class="subevent-resource-menu-item-value">{{ subEventMembersResourceLabel(sortedSubEvents[row.stageSourceIndex], row) }}</span>
+                              </span>
+                              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Members', row) > 0">
+                                {{ resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Members', row) }}
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-car"
+                              (click)="openSubEventResourcePopup('Car', sortedSubEvents[row.stageSourceIndex], $event, row)"
+                            >
+                              <span class="subevent-resource-menu-item-icon"><mat-icon>directions_car</mat-icon></span>
+                              <span class="subevent-resource-menu-item-main">
+                                <span class="subevent-resource-menu-item-title">Car</span>
+                                <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(sortedSubEvents[row.stageSourceIndex], 'Car', row) }}</span>
+                              </span>
+                              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Car', row) > 0">
+                                {{ resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Car', row) }}
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-accommodation"
+                              (click)="openSubEventResourcePopup('Accommodation', sortedSubEvents[row.stageSourceIndex], $event, row)"
+                            >
+                              <span class="subevent-resource-menu-item-icon"><mat-icon>hotel</mat-icon></span>
+                              <span class="subevent-resource-menu-item-main">
+                                <span class="subevent-resource-menu-item-title">Accommodation</span>
+                                <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(sortedSubEvents[row.stageSourceIndex], 'Accommodation', row) }}</span>
+                              </span>
+                              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Accommodation', row) > 0">
+                                {{ resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Accommodation', row) }}
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-supplies"
+                              (click)="openSubEventResourcePopup('Supplies', sortedSubEvents[row.stageSourceIndex], $event, row)"
+                            >
+                              <span class="subevent-resource-menu-item-icon"><mat-icon>inventory_2</mat-icon></span>
+                              <span class="subevent-resource-menu-item-main">
+                                <span class="subevent-resource-menu-item-title">Supplies</span>
+                                <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(sortedSubEvents[row.stageSourceIndex], 'Supplies', row) }}</span>
+                              </span>
+                              <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Supplies', row) > 0">
+                                {{ resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Supplies', row) }}
+                              </span>
                             </button>
                           </div>
                         </div>
-                        <span class="subevents-group-badge" *ngIf="row.pending > 0">{{ row.pending }}</span>
+                        <span class="subevents-group-badge" *ngIf="groupMenuPendingCount(sortedSubEvents[row.stageSourceIndex], row) > 0">
+                          {{ groupMenuPendingCount(sortedSubEvents[row.stageSourceIndex], row) }}
+                        </span>
                       </article>
                     </div>
                   </article>
@@ -271,13 +332,68 @@
                     </button>
                     <div class="item-action-menu-divider"></div>
                     <div class="item-action-menu-section-label">Resources</div>
-                    <div class="subevents-casual-resources-line">{{ casualCardResources(subEvent) }}</div>
+                    <button
+                      type="button"
+                      class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-members"
+                      *ngIf="subEvent.optional"
+                      (click)="openSubEventResourcePopup('Members', subEvent, $event)"
+                    >
+                      <span class="subevent-resource-menu-item-icon"><mat-icon>groups</mat-icon></span>
+                      <span class="subevent-resource-menu-item-main">
+                        <span class="subevent-resource-menu-item-title">Members</span>
+                        <span class="subevent-resource-menu-item-value">{{ subEventMembersResourceLabel(subEvent) }}</span>
+                      </span>
+                      <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(subEvent, 'Members') > 0">
+                        {{ resourcePendingCount(subEvent, 'Members') }}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-car"
+                      (click)="openSubEventResourcePopup('Car', subEvent, $event)"
+                    >
+                      <span class="subevent-resource-menu-item-icon"><mat-icon>directions_car</mat-icon></span>
+                      <span class="subevent-resource-menu-item-main">
+                        <span class="subevent-resource-menu-item-title">Car</span>
+                        <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(subEvent, 'Car') }}</span>
+                      </span>
+                      <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(subEvent, 'Car') > 0">
+                        {{ resourcePendingCount(subEvent, 'Car') }}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-accommodation"
+                      (click)="openSubEventResourcePopup('Accommodation', subEvent, $event)"
+                    >
+                      <span class="subevent-resource-menu-item-icon"><mat-icon>hotel</mat-icon></span>
+                      <span class="subevent-resource-menu-item-main">
+                        <span class="subevent-resource-menu-item-title">Accommodation</span>
+                        <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(subEvent, 'Accommodation') }}</span>
+                      </span>
+                      <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(subEvent, 'Accommodation') > 0">
+                        {{ resourcePendingCount(subEvent, 'Accommodation') }}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-supplies"
+                      (click)="openSubEventResourcePopup('Supplies', subEvent, $event)"
+                    >
+                      <span class="subevent-resource-menu-item-icon"><mat-icon>inventory_2</mat-icon></span>
+                      <span class="subevent-resource-menu-item-main">
+                        <span class="subevent-resource-menu-item-title">Supplies</span>
+                        <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(subEvent, 'Supplies') }}</span>
+                      </span>
+                      <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(subEvent, 'Supplies') > 0">
+                        {{ resourcePendingCount(subEvent, 'Supplies') }}
+                      </span>
+                    </button>
                   </div>
                 </div>
               </header>
               <p class="subevents-casual-location">{{ subEvent.location || 'Location pending' }}</p>
               <p class="subevents-casual-description">{{ subEvent.description || 'No description' }}</p>
-              <span class="subevents-casual-resources">{{ casualCardResources(subEvent) }}</span>
             </article>
           </section>
         </ng-template>

@@ -619,6 +619,7 @@ export class App {
       window.addEventListener('app:openTopics', () => this.openEventTopicsSelector());
       window.addEventListener('app:openLocationMap', () => this.openEventLocationMap());
       window.addEventListener('app:saveEventEditor', (event) => this.handleModuleEventEditorSave(event));
+      window.addEventListener('app:openSubEventResourcePopupFromEventEditor', (event) => this.handleModuleSubEventResourcePopup(event));
     }
   }
 
@@ -1829,6 +1830,40 @@ export class App {
       : {};
     this.applyModuleEventEditorPayload(payload);
     this.persistModuleEventEditorPayload();
+  }
+
+  private handleModuleSubEventResourcePopup(event: Event): void {
+    const customEvent = event as CustomEvent<Record<string, unknown>>;
+    const payload = (customEvent.detail && typeof customEvent.detail === 'object')
+      ? customEvent.detail
+      : {};
+
+    const typeRaw = `${payload['type'] ?? ''}`.trim();
+    const type = (typeRaw === 'Members' || typeRaw === 'Car' || typeRaw === 'Accommodation' || typeRaw === 'Supplies')
+      ? typeRaw as 'Members' | 'Car' | 'Accommodation' | 'Supplies'
+      : null;
+    if (!type) {
+      return;
+    }
+
+    const subEvent = (payload['subEvent'] && typeof payload['subEvent'] === 'object')
+      ? payload['subEvent'] as AppTypes.SubEventFormItem
+      : null;
+    if (!subEvent) {
+      return;
+    }
+
+    const groupRaw = (payload['group'] && typeof payload['group'] === 'object')
+      ? payload['group'] as { id?: unknown; groupLabel?: unknown }
+      : null;
+    const group = groupRaw
+      ? {
+        id: typeof groupRaw.id === 'string' ? groupRaw.id : undefined,
+        groupLabel: typeof groupRaw.groupLabel === 'string' ? groupRaw.groupLabel : undefined
+      }
+      : undefined;
+
+    this.openSubEventBadgePopup(type, subEvent, undefined, group as AppTypes.SubEventTournamentGroup | undefined);
   }
 
   private applyModuleEventEditorPayload(payload: Record<string, unknown>): void {

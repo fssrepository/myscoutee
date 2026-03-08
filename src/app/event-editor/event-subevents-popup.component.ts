@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,6 +7,7 @@ import { EventSubeventGroupFormPopupComponent } from './event-subevent-group-for
 import { EventSubeventLeaderboardGroup, EventSubeventLeaderboardPopupComponent } from './event-subevent-leaderboard-popup.component';
 import { EventSubeventStageFormPopupComponent } from './event-subevent-stage-form-popup.component';
 import { AppUtils } from '../shared/app-utils';
+import { EventEditorService, EventEditorSubEventResourceType } from '../shared/event-editor.service';
 
 type SubEventsDisplayMode = 'Casual' | 'Tournament';
 type StageMenuAction = 'add-group' | 'leaderboard' | 'edit-stage' | 'delete-stage';
@@ -123,6 +124,8 @@ interface DeleteTargetState {
   styleUrl: './event-subevents-popup.component.scss'
 })
 export class EventSubeventsPopupComponent implements OnChanges {
+  private readonly eventEditorService = inject(EventEditorService);
+
   @Input() open = false;
   @Input() readOnly = false;
   @Input() parentTitle = '';
@@ -555,6 +558,68 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return `Members ${acceptedMembers}/${Math.max(acceptedMembers, members + acceptedMembers)} · Car ${cars} · Accommodation ${accommodation} · Supplies ${supplies}`;
   }
 
+  protected subEventMembersResourceLabel(item: EventSubeventsItem, row?: EventSubeventsStageRow | null): string {
+    const accepted = this.toPendingCount(item.membersAccepted);
+    const { min, max } = this.resourceCapacityRange(item, row);
+    return `${accepted} / ${min} - ${max}`;
+  }
+
+  protected subEventAssetResourceLabel(
+    item: EventSubeventsItem,
+    type: Exclude<EventEditorSubEventResourceType, 'Members'>,
+    row?: EventSubeventsStageRow | null
+  ): string {
+    const pending = this.resourcePendingCount(item, type, row);
+    const max = this.resourceCapacityRange(item, row).max;
+    return `${pending} / 0 - ${max}`;
+  }
+
+  protected resourcePendingCount(
+    item: EventSubeventsItem,
+    type: EventEditorSubEventResourceType,
+    row?: EventSubeventsStageRow | null
+  ): number {
+    if (type === 'Members') {
+      if (row) {
+        return this.toPendingCount(row.pending);
+      }
+      return this.toPendingCount(item.membersPending);
+    }
+    if (type === 'Car') {
+      return this.toPendingCount(item.carsPending);
+    }
+    if (type === 'Accommodation') {
+      return this.toPendingCount(item.accommodationPending);
+    }
+    return this.toPendingCount(item.suppliesPending);
+  }
+
+  protected openSubEventResourcePopup(
+    type: EventEditorSubEventResourceType,
+    item: EventSubeventsItem,
+    event: Event,
+    row?: EventSubeventsStageRow | null
+  ): void {
+    event.stopPropagation();
+    this.openStageMenuKey = null;
+    this.openGroupMenuKey = null;
+    this.openCasualMenuKey = null;
+
+    const group = row ? {
+      id: row.groupId,
+      groupLabel: row.groupName
+    } : null;
+
+    this.eventEditorService.requestSubEventResourcePopup({
+      type,
+      subEvent: {
+        ...item,
+        id: item.id ?? this.nextId('subevent')
+      },
+      group
+    });
+  }
+
   protected casualCardMenuKey(item: EventSubeventsItem, index: number): string {
     return item.id ?? `casual-${index}`;
   }
@@ -568,6 +633,14 @@ export class EventSubeventsPopupComponent implements OnChanges {
     const cars = this.toPendingCount(item.carsPending);
     const accommodation = this.toPendingCount(item.accommodationPending);
     const supplies = this.toPendingCount(item.suppliesPending);
+    return members + cars + accommodation + supplies;
+  }
+
+  protected groupMenuPendingCount(item: EventSubeventsItem, row: EventSubeventsStageRow): number {
+    const members = this.resourcePendingCount(item, 'Members', row);
+    const cars = this.resourcePendingCount(item, 'Car', row);
+    const accommodation = this.resourcePendingCount(item, 'Accommodation', row);
+    const supplies = this.resourcePendingCount(item, 'Supplies', row);
     return members + cars + accommodation + supplies;
   }
 
@@ -1560,6 +1633,20 @@ export class EventSubeventsPopupComponent implements OnChanges {
       }
     }
     return -1;
+  }
+
+  private resourceCapacityRange(item: EventSubeventsItem, row?: EventSubeventsStageRow | null): { min: number; max: number } {
+    if (row) {
+      const stage = this.workingSubEvents[row.stageSourceIndex];
+      const sourceGroup = this.cloneGroups(stage?.groups).find(group => group.id === row.groupId);
+      const min = Math.max(0, Number(sourceGroup?.capacityMin ?? stage?.capacityMin) || 0);
+      const max = Math.max(min, Number(sourceGroup?.capacityMax ?? stage?.capacityMax) || min);
+      return { min, max };
+    }
+
+    const min = Math.max(0, Number(item.capacityMin) || 0);
+    const max = Math.max(min, Number(item.capacityMax) || min);
+    return { min, max };
   }
 
   private reconcileTournamentGroupsForStage(
