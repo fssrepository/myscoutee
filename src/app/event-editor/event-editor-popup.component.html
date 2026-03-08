@@ -1,68 +1,79 @@
-<!-- Event Editor Popup - Full Screen Modal -->
-<div class="app-popup" *ngIf="eventEditorService.isOpenBoolean()">
+<div class="app-popup event-editor-popup-shell" *ngIf="eventEditorService.isOpenBoolean()">
   <div class="app-popup-backdrop" (click)="close()"></div>
   <div class="app-popup-panel popup-panel-event-editor" [class.popup-panel-event-editor-readonly]="eventEditorService.readOnly()">
-    
-    <!-- Header -->
-    <div class="popup-header popup-header-with-activities-progress">
+    <div class="popup-header" (click)="$event.stopPropagation()">
       <div class="popup-title">
         <h2>{{ getPopupTitle() }}</h2>
         <p class="popup-subtitle-activities" *ngIf="eventEditorService.readOnly() && eventForm.title">
           {{ eventForm.title }}
         </p>
       </div>
-      
-      <!-- Header Actions: Members button -->
-      <button 
-        type="button" 
-        class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members"
+
+      <button
+        class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
+        type="button"
         (click)="requestOpenMembers()"
       >
         <span class="event-editor-members-invite">
           <mat-icon>groups</mat-icon>
           <span>Members</span>
         </span>
+        <span
+          class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge"
+          *ngIf="eventEditorHeaderPendingMemberCount() > 0"
+        >
+          {{ eventEditorHeaderPendingMemberCount() }}
+        </span>
       </button>
-      
-      <!-- Visibility Picker (Public/Private/Invitation Only) -->
-      <div class="event-visibility-picker">
-        <button 
-          type="button" 
+
+      <div class="event-visibility-picker" (click)="$event.stopPropagation()">
+        <button
+          type="button"
           class="popup-view-fab event-visibility-trigger"
           [ngClass]="eventVisibilityClass(eventForm.visibility)"
-          (click)="toggleVisibilityPicker()"
+          [class.event-editor-readonly-control]="eventEditorService.readOnly()"
+          [disabled]="eventEditorService.readOnly()"
+          (click)="toggleEventVisibilityPicker($event)"
           aria-label="Open visibility selector"
         >
           <mat-icon [ngClass]="eventVisibilityClass(eventForm.visibility)">{{ getVisibilityIcon(eventForm.visibility) }}</mat-icon>
           <span>{{ eventForm.visibility }}</span>
         </button>
-        <!-- Visibility dropdown -->
-        <div class="activities-view-picker-panel" *ngIf="isVisibilityPickerOpen">
-          <button 
-            type="button" 
+        <div class="activities-view-picker-panel" *ngIf="showEventVisibilityPicker">
+          <button
+            type="button"
             class="activities-view-option"
             [ngClass]="eventVisibilityClass(option)"
             *ngFor="let option of visibilityOptions"
-            (click)="selectVisibility(option)"
+            (click)="selectVisibility(option, $event)"
           >
             <mat-icon [ngClass]="eventVisibilityClass(option)">{{ getVisibilityIcon(option) }}</mat-icon>
             <span>{{ option }}</span>
           </button>
         </div>
       </div>
-      
-      <button mat-icon-button class="popup-close" (click)="close()" aria-label="Close">
+
+      <button
+        type="button"
+        class="popup-header-add-btn subevent-leaderboard-save-btn"
+        *ngIf="!eventEditorService.readOnly()"
+        [class.form-save-invalid]="!canSubmitEventEditorForm()"
+        [disabled]="!canSubmitEventEditorForm()"
+        (click)="saveEventEditorForm()"
+        aria-label="Save event"
+      >
+        <mat-icon>done</mat-icon>
+      </button>
+
+      <button type="button" class="popup-close" (click)="close()" aria-label="Close">
         <mat-icon>close</mat-icon>
       </button>
     </div>
 
-    <!-- Body -->
     <div class="popup-body">
       <section class="editor-list-card">
         <div class="experience-form-panel" [ngClass]="eventVisibilityClass(eventForm.visibility)">
           <div class="experience-form-grid">
-            
-            <!-- Cover Image -->
             <label class="experience-description-field">
               <span>Image</span>
               <input #eventImageInput type="file" accept="image/*" hidden (change)="onEventImageFileChange($event)" />
@@ -73,29 +84,38 @@
               </button>
             </label>
 
-            <!-- Event Name -->
             <label class="experience-title-field">
               <span>Name <span class="required-star">*</span></span>
-              <input type="text" [(ngModel)]="eventForm.title" [readonly]="eventEditorService.readOnly()" />
+              <input
+                type="text"
+                [(ngModel)]="eventForm.title"
+                [readonly]="eventEditorService.readOnly()"
+                [class.field-required-invalid]="eventEditorFieldInvalid('title')"
+              />
             </label>
 
-            <!-- Capacity -->
             <label class="event-capacity-range-field">
               <span>Capacity</span>
               <div class="subevent-capacity-range">
                 <input type="number" min="0" step="1" [ngModel]="eventForm.capacityMin" (ngModelChange)="onEventCapacityMinChange($event)" [disabled]="eventEditorService.readOnly()" placeholder="Min" />
                 <span class="subevent-capacity-separator">-</span>
-                <input type="number" [min]="eventForm.capacityMin ?? 0" step="1" [ngModel]="eventForm.capacityMax" (ngModelChange)="onEventCapacityMaxChange($event)" [disabled]="eventEditorService.readOnly()" placeholder="Max" />
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  [ngModel]="eventForm.capacityMax"
+                  (ngModelChange)="onEventCapacityMaxChange($event)"
+                  (blur)="onEventCapacityMaxBlur()"
+                  [disabled]="eventEditorService.readOnly()"
+                  placeholder="Max"
+                />
               </div>
             </label>
 
-            <!-- Intel Row -->
             <div class="event-intel-row">
-              
-              <!-- Blind Mode -->
               <label class="event-blind-mode-field">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   class="event-blind-mode-card"
                   [ngClass]="eventBlindModeClass(eventForm.blindMode)"
                   [disabled]="eventEditorService.readOnly()"
@@ -109,12 +129,12 @@
                 </button>
               </label>
 
-              <!-- Topics -->
               <label class="event-topics-field event-topics-panel-field">
-                <button 
-                  type="button" 
-                  class="event-topics-panel" 
+                <button
+                  type="button"
+                  class="event-topics-panel"
                   [ngClass]="eventTopicsPanelClass()"
+                  [class.event-editor-readonly-control]="eventEditorService.readOnly()"
                   [disabled]="eventEditorService.readOnly()"
                   (click)="requestOpenTopics()"
                 >
@@ -136,10 +156,9 @@
                 </button>
               </label>
 
-              <!-- Auto-inviter -->
               <label class="event-auto-inviter-field">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   class="event-auto-inviter-card"
                   [ngClass]="eventAutoInviterClass(eventForm.autoInviter)"
                   [disabled]="eventEditorService.readOnly()"
@@ -153,10 +172,9 @@
                 </button>
               </label>
 
-              <!-- Ticketing -->
               <label class="event-ticketing-field">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   class="event-ticketing-card"
                   [ngClass]="eventTicketingClass(eventForm.ticketing)"
                   [disabled]="eventEditorService.readOnly()"
@@ -169,16 +187,18 @@
                   <span class="event-ticketing-description">{{ eventTicketingDescription(eventForm.ticketing) }}</span>
                 </button>
               </label>
-
             </div>
 
-            <!-- Description -->
             <label class="experience-description-field">
               <span>Description <span class="required-star">*</span></span>
-              <textarea rows="4" [(ngModel)]="eventForm.description" [readonly]="eventEditorService.readOnly()"></textarea>
+              <textarea
+                rows="4"
+                [(ngModel)]="eventForm.description"
+                [readonly]="eventEditorService.readOnly()"
+                [class.field-required-invalid]="eventEditorFieldInvalid('description')"
+              ></textarea>
             </label>
 
-            <!-- Schedule -->
             <section class="event-schedule-panel">
               <div class="event-schedule-panel-head">
                 <span class="event-schedule-panel-title">
@@ -187,7 +207,13 @@
                 </span>
                 <label class="event-frequency-label">
                   <div class="profile-status-select-wrap selector-like experience-filter-select event-frequency-select" [ngClass]="eventFrequencyClass(eventForm.frequency)">
-                    <mat-select [(ngModel)]="eventForm.frequency" [disabled]="eventEditorService.readOnly()" panelWidth="" disableOptionCentering>
+                    <mat-select
+                      [(ngModel)]="eventForm.frequency"
+                      [disabled]="eventEditorService.readOnly()"
+                      [panelWidth]="null"
+                      disableOptionCentering
+                      panelClass="selector-options-panel profile-bottom-sheet-panel event-frequency-options-panel"
+                    >
                       <mat-select-trigger>
                         <span class="status-option-content">
                           <mat-icon [ngClass]="eventFrequencyClass(eventForm.frequency)">{{ eventFrequencyIcon(eventForm.frequency) }}</mat-icon>
@@ -204,7 +230,7 @@
                   </div>
                 </label>
               </div>
-              
+
               <label class="event-datetime-label">
                 <span>Start</span>
                 <div class="event-datetime-row">
@@ -213,10 +239,21 @@
                     <mat-datepicker-toggle matSuffix [for]="eventStartPicker"></mat-datepicker-toggle>
                     <mat-datepicker #eventStartPicker></mat-datepicker>
                   </mat-form-field>
-                  <input type="time" [ngModel]="eventStartTimeValue" (ngModelChange)="onEventStartTimeChange($event)" [disabled]="eventEditorService.readOnly()" />
+                  <mat-form-field appearance="outline" class="event-time-field event-time-field-start" subscriptSizing="dynamic">
+                    <input
+                      matInput
+                      [matTimepicker]="eventStartTimePicker"
+                      [matTimepickerOpenOnClick]="true"
+                      [ngModel]="eventStartTimeValue"
+                      (ngModelChange)="onEventStartTimeChange($event)"
+                      [disabled]="eventEditorService.readOnly()"
+                    />
+                    <mat-timepicker-toggle matSuffix [for]="eventStartTimePicker"></mat-timepicker-toggle>
+                    <mat-timepicker #eventStartTimePicker></mat-timepicker>
+                  </mat-form-field>
                 </div>
               </label>
-              
+
               <label class="event-datetime-label">
                 <span>End</span>
                 <div class="event-datetime-row">
@@ -225,12 +262,22 @@
                     <mat-datepicker-toggle matSuffix [for]="eventEndPicker"></mat-datepicker-toggle>
                     <mat-datepicker #eventEndPicker></mat-datepicker>
                   </mat-form-field>
-                  <input type="time" [ngModel]="eventEndTimeValue" (ngModelChange)="onEventEndTimeChange($event)" [disabled]="eventEditorService.readOnly()" />
+                  <mat-form-field appearance="outline" class="event-time-field event-time-field-end" subscriptSizing="dynamic">
+                    <input
+                      matInput
+                      [matTimepicker]="eventEndTimePicker"
+                      [matTimepickerOpenOnClick]="true"
+                      [ngModel]="eventEndTimeValue"
+                      (ngModelChange)="onEventEndTimeChange($event)"
+                      [disabled]="eventEditorService.readOnly()"
+                    />
+                    <mat-timepicker-toggle matSuffix [for]="eventEndTimePicker"></mat-timepicker-toggle>
+                    <mat-timepicker #eventEndTimePicker></mat-timepicker>
+                  </mat-form-field>
                 </div>
               </label>
             </section>
 
-            <!-- Location -->
             <label class="experience-description-field event-location-field">
               <span>Location</span>
               <div class="asset-route-row asset-route-row-inline">
@@ -252,7 +299,6 @@
               </div>
             </label>
 
-            <!-- Sub Events -->
             <label class="event-subevents-field">
               <button type="button" class="event-subevents-panel-trigger" (click)="requestOpenSubEvents()">
                 <span class="event-subevents-panel-head">
@@ -266,8 +312,8 @@
                     </span>
                   </span>
                   <span class="event-subevents-panel-meta" *ngIf="eventForm.subEvents.length > 0">
-                    <span class="event-subevents-panel-mode">
-                      <mat-icon>view_list</mat-icon>
+                    <span class="event-subevents-panel-mode" [ngClass]="subEventsDisplayModeClass()">
+                      <mat-icon>{{ subEventsDisplayModeIcon() }}</mat-icon>
                       <span>{{ subEventsDisplayMode }}</span>
                     </span>
                     <span class="event-subevents-panel-summary event-subevents-panel-summary-inline">
@@ -276,22 +322,30 @@
                   </span>
                   <mat-icon class="event-subevents-chevron">chevron_right</mat-icon>
                 </span>
+                <span class="event-subevents-panel-divider" *ngIf="eventForm.subEvents.length > 0" aria-hidden="true"></span>
+                <span class="event-subevents-panel-body" *ngIf="eventForm.subEvents.length > 0; else eventSubeventsPlaceholder">
+                  <span
+                    class="event-subevent-panel-chip"
+                    *ngFor="let subEvent of eventForm.subEvents; let index = index"
+                    [class.event-subevent-panel-chip-current]="subEventPanelChipIsCurrent(subEvent)"
+                    [ngStyle]="subEventPanelChipStyle(index)"
+                  >
+                    <span class="event-subevent-panel-chip-head">
+                      <span class="event-subevent-panel-chip-name">{{ subEventPanelChipTitle(subEvent, index) }}</span>
+                    </span>
+                    <span class="event-subevent-panel-chip-location">{{ subEventLocationLabel(subEvent) }}</span>
+                    <span class="event-subevent-panel-chip-date">{{ subEventCardRange(subEvent) }}</span>
+                  </span>
+                </span>
+                <ng-template #eventSubeventsPlaceholder>
+                  <span class="event-subevents-panel-placeholder">Open sub events</span>
+                </ng-template>
+                <span class="card-badge event-subevents-panel-counter" *ngIf="eventForm.subEvents.length > 0">{{ eventForm.subEvents.length }}</span>
               </button>
             </label>
-
           </div>
         </div>
       </section>
     </div>
-
-    <!-- Footer -->
-    <div class="popup-footer">
-      <button mat-stroked-button type="button" (click)="close()">Cancel</button>
-      <button mat-flat-button color="primary" type="button" class="popup-header-add-btn" (click)="save()" *ngIf="!eventEditorService.readOnly()">
-        <mat-icon>done</mat-icon>
-        Save
-      </button>
-    </div>
-
   </div>
 </div>

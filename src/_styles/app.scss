@@ -3830,10 +3830,6 @@
   height: calc(100vh - 1.2rem);
 }
 
-.app-popup-panel.popup-panel-event-editor {
-  height: calc(100vh - 1.2rem);
-}
-
 .app-popup-panel.popup-panel-activities {
   height: calc(100vh - 1.2rem);
 }
@@ -4325,47 +4321,11 @@
   border-color: rgba(185, 113, 45, 0.36);
 }
 
-.event-visibility-trigger.event-editor-readonly-control,
-.event-topics-panel.event-editor-readonly-control,
 .subevents-mode-trigger.event-editor-readonly-control {
   cursor: not-allowed;
   opacity: 0.64;
   filter: saturate(0.55);
   box-shadow: none;
-}
-
-.popup-panel-event-editor-readonly .experience-form-panel input[readonly],
-.popup-panel-event-editor-readonly .experience-form-panel input[disabled],
-.popup-panel-event-editor-readonly .experience-form-panel textarea[readonly],
-.popup-panel-event-editor-readonly .experience-form-panel textarea[disabled] {
-  background: linear-gradient(180deg, #f3f6fa 0%, #e8edf5 100%);
-  border-color: rgba(122, 140, 168, 0.42);
-  color: rgba(58, 76, 103, 0.9);
-  box-shadow: none;
-  cursor: not-allowed;
-  opacity: 1;
-}
-
-.popup-panel-event-editor-readonly .experience-form-panel input[readonly]:focus,
-.popup-panel-event-editor-readonly .experience-form-panel input[disabled]:focus,
-.popup-panel-event-editor-readonly .experience-form-panel textarea[readonly]:focus,
-.popup-panel-event-editor-readonly .experience-form-panel textarea[disabled]:focus {
-  border-color: rgba(122, 140, 168, 0.42);
-  box-shadow: none;
-}
-
-.popup-panel-event-editor-readonly .event-datetime-row .mat-mdc-form-field-disabled .mat-mdc-text-field-wrapper {
-  background: linear-gradient(180deg, #f3f6fa 0%, #e8edf5 100%);
-}
-
-.popup-panel-event-editor-readonly .event-datetime-row .mat-mdc-form-field-disabled .mdc-text-field__input {
-  color: rgba(58, 76, 103, 0.9) !important;
-  -webkit-text-fill-color: rgba(58, 76, 103, 0.9) !important;
-}
-
-.popup-panel-event-editor-readonly .event-datetime-row .mat-mdc-form-field-disabled .mat-mdc-form-field-icon-suffix,
-.popup-panel-event-editor-readonly .event-datetime-row .mat-mdc-form-field-disabled .mat-icon {
-  color: rgba(95, 116, 145, 0.8) !important;
 }
 
 .event-visibility-public {
@@ -12682,6 +12642,19 @@ textarea {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.experience-item-meta p.activities-event-meta-row {
+  margin-top: 0.03rem;
+  font-weight: 700;
+}
+
+.experience-item-meta p.activities-event-meta-row-date {
+  color: rgba(23, 41, 66, 0.75);
+}
+
+.experience-item-meta p.activities-event-meta-row-location {
+  color: rgba(23, 41, 66, 0.64);
 }
 
 .experience-item-actions {

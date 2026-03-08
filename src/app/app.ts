@@ -271,7 +271,6 @@ export class App {
   protected pendingSubEventDeleteContext: 'subEvent' | 'stage' | null = null;
   protected pendingSubEventGroupDelete:
     { stageId: string; groupId: string; stageLabel: string; groupLabel: string; source: 'manual' | 'generated' } | null = null;
-  protected eventEditorClosePublishConfirmContext: 'active' | 'stacked' | null = null;
   protected pendingActivityAction: 'delete' | 'exit' = 'delete';
   protected pendingActivityMemberDelete: AppTypes.ActivityMemberEntry | null = null;
   protected selectedActivityMembers: AppTypes.ActivityMemberEntry[] = [];
@@ -420,7 +419,6 @@ export class App {
   protected subEventEndDateValue: Date | null = null;
   protected subEventStartTimeValue: Date | null = null;
   protected subEventEndTimeValue: Date | null = null;
-  protected showEventVisibilityPicker = false;
   protected showProfileStatusHeaderPicker = false;
   protected readonly eventVisibilityOptions: AppTypes.EventVisibility[] = APP_STATIC_DATA.eventVisibilityOptions;
   protected readonly eventBlindModeOptions: AppTypes.EventBlindMode[] = APP_STATIC_DATA.eventBlindModeOptions;
@@ -462,7 +460,6 @@ export class App {
   protected pendingSlotUploadIndex: number | null = null;
   @ViewChild('slotImageInput') private slotImageInput?: ElementRef<HTMLInputElement>;
   @ViewChild('assetImageInput') private assetImageInput?: ElementRef<HTMLInputElement>;
-  @ViewChild('eventImageInput') private eventImageInput?: ElementRef<HTMLInputElement>;
   @ViewChild('activitiesScroll') private activitiesScrollRef?: ElementRef<HTMLDivElement>;
   @ViewChild('activitiesCalendarScroll') private activitiesCalendarScrollRef?: ElementRef<HTMLDivElement>;
   @ViewChild('eventExploreScroll') private eventExploreScrollRef?: ElementRef<HTMLDivElement>;
@@ -624,6 +621,7 @@ export class App {
       window.addEventListener('app:openMembers', () => this.openEventEditorMembers());
       window.addEventListener('app:openTopics', () => this.openEventTopicsSelector());
       window.addEventListener('app:openLocationMap', () => this.openEventLocationMap());
+      window.addEventListener('app:saveEventEditor', (event) => this.handleModuleEventEditorSave(event));
     }
   }
 
@@ -1576,7 +1574,6 @@ export class App {
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
     this.showEventExploreOrderPicker = false;
-    this.showEventVisibilityPicker = false;
     this.showAssetVisibilityPicker = false;
     this.showProfileStatusHeaderPicker = false;
     this.activitiesView = 'day';
@@ -1727,17 +1724,27 @@ export class App {
     this.eventEditorMode = mode;
     this.eventEditorReadOnly = mode === 'edit' && readOnly;
     this.eventEditorInvitationId = invitationId;
-    this.showEventVisibilityPicker = false;
     this.showProfileStatusHeaderPicker = false;
     this.prepareEventEditorForm(mode, source);
     const previousStackedPopup = this.stackedPopup;
-    if (stacked || this.stackedPopup !== null || this.activePopup === 'chat') {
-      this.stackedEventEditorOrigin = previousStackedPopup === 'chat' ? 'chat' : null;
-      this.stackedPopup = 'eventEditor';
+    this.stackedEventEditorOrigin = (stacked || this.stackedPopup !== null || this.activePopup === 'chat')
+      ? (previousStackedPopup === 'chat' ? 'chat' : null)
+      : null;
+    const resolvedSource = source ?? this.resolveEventEditorSource();
+    if (mode === 'create') {
+      this.eventEditorService.openCreate();
       return;
     }
-    this.stackedEventEditorOrigin = null;
-    this.activePopup = 'eventEditor';
+    if (!resolvedSource) {
+      this.eventEditorService.openCreate();
+      return;
+    }
+    const moduleSource = this.buildEventEditorModuleSource(resolvedSource);
+    if (this.eventEditorReadOnly) {
+      this.eventEditorService.openView(moduleSource);
+      return;
+    }
+    this.eventEditorService.openEdit(moduleSource);
   }
 
   protected openSelectedEventInReadOnlyEditor(stacked = false, event?: Event): void {
@@ -1757,20 +1764,178 @@ export class App {
     this.openEventEditor(stacked, 'edit', related, true, this.selectedInvitation?.id ?? null);
   }
 
-  protected triggerEventImageUpload(event?: Event): void {
-    event?.stopPropagation();
-    this.eventImageInput?.nativeElement.click();
-  }
-
-  protected onEventImageFileChange(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    const file = target.files?.[0];
-    if (!file) {
+  private reopenEventEditorPopupFromState(force = false): void {
+    if (!force && this.eventEditorService.isOpen()) {
       return;
     }
-    this.revokeObjectUrl(this.eventForm.imageUrl);
-    this.eventForm.imageUrl = URL.createObjectURL(file);
-    target.value = '';
+    const source = this.resolveEventEditorSource();
+    if (this.eventEditorMode === 'create' || !source) {
+      this.eventEditorService.openCreate();
+      return;
+    }
+    const moduleSource = this.buildEventEditorModuleSource(source);
+    if (this.eventEditorReadOnly) {
+      this.eventEditorService.openView(moduleSource);
+      return;
+    }
+    this.eventEditorService.openEdit(moduleSource);
+  }
+
+  private buildEventEditorModuleSource(source: EventMenuItem | HostingMenuItem): Record<string, unknown> {
+    const row = this.buildEventEditorActivityRow(source);
+    const pendingMembersCount = this.activityPendingMemberCount(row);
+    return {
+      ...source,
+      title: this.eventForm.title.trim() || source.title,
+      description: this.eventForm.description.trim() || source.shortDescription,
+      imageUrl: this.eventForm.imageUrl
+        || this.activityImageById[source.id]
+        || AppDemoGenerators.defaultAssetImage('Supplies', `event-${source.id}`),
+      visibility: this.eventForm.visibility,
+      frequency: this.eventForm.frequency,
+      location: this.eventForm.location,
+      capacityMin: this.eventForm.capacityMin,
+      capacityMax: this.eventForm.capacityMax,
+      blindMode: this.eventForm.blindMode,
+      autoInviter: this.eventForm.autoInviter,
+      ticketing: this.eventForm.ticketing,
+      topics: [...this.eventForm.topics],
+      subEvents: this.cloneSubEvents(this.eventForm.subEvents),
+      subEventsDisplayMode: this.subEventsDisplayMode,
+      startAt: this.eventForm.startAt,
+      endAt: this.eventForm.endAt,
+      pendingMembersCount
+    };
+  }
+
+  private buildEventEditorActivityRow(source: EventMenuItem | HostingMenuItem): AppTypes.ActivityListRow {
+    const isHosting = this.eventEditorTarget === 'hosting' || this.isHostingSource(source);
+    return {
+      id: source.id,
+      type: isHosting ? 'hosting' : 'events',
+      title: source.title,
+      subtitle: source.shortDescription,
+      detail: source.timeframe,
+      dateIso: this.eventDatesById[source.id] ?? this.defaultEventStartIso(),
+      distanceKm: this.eventDistanceById[source.id] ?? 0,
+      unread: source.activity,
+      metricScore: source.activity,
+      isAdmin: isHosting ? true : (source as EventMenuItem).isAdmin === true,
+      source
+    };
+  }
+
+  private handleModuleEventEditorSave(event: Event): void {
+    const customEvent = event as CustomEvent<Record<string, unknown>>;
+    const payload = (customEvent.detail && typeof customEvent.detail === 'object')
+      ? customEvent.detail
+      : {};
+    this.applyModuleEventEditorPayload(payload);
+    this.persistModuleEventEditorPayload();
+  }
+
+  private applyModuleEventEditorPayload(payload: Record<string, unknown>): void {
+    if (typeof payload['title'] === 'string') {
+      this.eventForm.title = payload['title'];
+    }
+    if (typeof payload['description'] === 'string') {
+      this.eventForm.description = payload['description'];
+    }
+    if (typeof payload['imageUrl'] === 'string') {
+      this.eventForm.imageUrl = payload['imageUrl'];
+    }
+    if (typeof payload['location'] === 'string') {
+      this.eventForm.location = this.normalizeLocationValue(payload['location']);
+    }
+    if (typeof payload['frequency'] === 'string' && payload['frequency'].trim()) {
+      this.eventForm.frequency = payload['frequency'].trim();
+    }
+
+    const visibility = payload['visibility'];
+    if (typeof visibility === 'string' && this.eventVisibilityOptions.includes(visibility as AppTypes.EventVisibility)) {
+      this.eventForm.visibility = visibility as AppTypes.EventVisibility;
+    }
+
+    const blindMode = payload['blindMode'];
+    if (blindMode === 'Blind Event' || blindMode === 'Open Event') {
+      this.eventForm.blindMode = blindMode;
+    }
+
+    if ('autoInviter' in payload) {
+      this.eventForm.autoInviter = payload['autoInviter'] === true || payload['autoInviter'] === 'true';
+    }
+    if ('ticketing' in payload) {
+      this.eventForm.ticketing = payload['ticketing'] === true || payload['ticketing'] === 'true';
+    }
+
+    if ('capacityMin' in payload) {
+      this.eventForm.capacityMin = this.toEventCapacityInputValue(payload['capacityMin'] as number | string);
+    }
+    if ('capacityMax' in payload) {
+      this.eventForm.capacityMax = this.toEventCapacityInputValue(payload['capacityMax'] as number | string);
+    }
+    const normalizedMin = this.normalizedEventCapacityValue(this.eventForm.capacityMin);
+    const normalizedMax = this.normalizedEventCapacityValue(this.eventForm.capacityMax);
+    if (normalizedMin !== null && normalizedMax !== null && normalizedMax < normalizedMin) {
+      this.eventForm.capacityMax = normalizedMin;
+    }
+
+    const topics = payload['topics'];
+    if (Array.isArray(topics)) {
+      this.eventForm.topics = topics
+        .map(item => `${item ?? ''}`.trim().replace(/^#+/, ''))
+        .filter(item => item.length > 0)
+        .slice(0, 5);
+    }
+
+    const subEvents = payload['subEvents'];
+    if (Array.isArray(subEvents)) {
+      this.eventForm.subEvents = this.cloneSubEvents(subEvents as AppTypes.SubEventFormItem[]);
+    }
+
+    const subEventsDisplayMode = payload['subEventsDisplayMode'];
+    if (subEventsDisplayMode === 'Tournament' || subEventsDisplayMode === 'Casual') {
+      this.subEventsDisplayMode = subEventsDisplayMode;
+    }
+
+    if (typeof payload['startAt'] === 'string' && payload['startAt'].trim()) {
+      this.eventForm.startAt = payload['startAt'].trim();
+    }
+    if (typeof payload['endAt'] === 'string' && payload['endAt'].trim()) {
+      this.eventForm.endAt = payload['endAt'].trim();
+    }
+
+    this.syncEventDateTimeControlsFromForm();
+  }
+
+  private persistModuleEventEditorPayload(): void {
+    if (this.eventEditorReadOnly) {
+      return;
+    }
+
+    this.syncEventFormFromDateTimeControls();
+    const normalizedCapacity = this.normalizedEventCapacityRange();
+    this.eventForm.capacityMin = normalizedCapacity.min;
+    this.eventForm.capacityMax = normalizedCapacity.max;
+    this.syncFirstSubEventLocationFromMainEvent();
+
+    const title = this.eventForm.title.trim();
+    const description = this.eventForm.description.trim();
+    if (!title || !description || !this.eventForm.startAt || !this.eventForm.endAt) {
+      this.showEventEditorRequiredValidation = true;
+      return;
+    }
+
+    this.showEventEditorRequiredValidation = false;
+    this.normalizeEventDateRange();
+    if (this.editingEventId) {
+      this.updateExistingEventFromForm();
+    } else {
+      this.insertCreatedEventFromForm();
+    }
+
+    this.eventEditorService.close();
+    this.refreshActivitiesStickyHeaderSoon();
   }
 
   protected openEventTopicsSelector(event?: Event): void {
@@ -1778,12 +1943,8 @@ export class App {
     if (this.eventEditorReadOnly) {
       return;
     }
-    const allowed = new Set(this.interestAllOptions());
     this.interestSelectorContext = null;
-    this.interestSelectorSelected = this.eventForm.topics
-      .filter(item => allowed.has(item))
-      .slice(0, 5);
-    this.eventForm.topics = [...this.interestSelectorSelected];
+    this.interestSelectorSelected = this.resolveInterestSelectorValues(this.eventForm.topics);
     this.superStackedPopup = 'eventTopicsSelector';
   }
 
@@ -1826,6 +1987,7 @@ export class App {
     this.subEventLeaderboardEditingGroupId = null;
     this.showSubEventGroupRequiredValidation = false;
     this.pendingSubEventGroupDelete = null;
+    this.reopenEventEditorPopupFromState(true);
   }
 
   protected eventSubEventsParentTitle(): string {
@@ -2242,17 +2404,24 @@ export class App {
 
   protected closeEventTopicsSelector(apply = true): void {
     if (apply) {
-      this.eventForm.topics = [...this.interestSelectorSelected];
+      this.eventForm.topics = this.interestSelectorSelected
+        .map(item => `${item ?? ''}`.trim().replace(/^#+/, ''))
+        .filter(item => item.length > 0)
+        .slice(0, 5);
     } else {
-      const allowed = new Set(this.interestAllOptions());
-      this.interestSelectorSelected = this.eventForm.topics.filter(item => allowed.has(item)).slice(0, 5);
+      this.interestSelectorSelected = this.resolveInterestSelectorValues(this.eventForm.topics);
     }
     this.superStackedPopup = null;
+    this.reopenEventEditorPopupFromState(true);
   }
 
   protected eventTopicToneClass(option: string): string {
+    const normalizedOption = this.normalizeTopicToken(option);
+    if (!normalizedOption) {
+      return '';
+    }
     for (const group of this.interestOptionGroups) {
-      if (group.options.includes(option)) {
+      if (group.options.some(groupOption => this.normalizeTopicToken(groupOption) === normalizedOption)) {
         return group.toneClass;
       }
     }
@@ -2269,6 +2438,35 @@ export class App {
 
   protected eventTopicsPanelIcon(): string {
     return 'sell';
+  }
+
+  private normalizeTopicToken(value: unknown): string {
+    return `${value ?? ''}`.trim().replace(/^#+/, '').toLowerCase();
+  }
+
+  private resolveInterestSelectorValues(values: readonly string[]): string[] {
+    const byNormalizedToken = new Map<string, string>();
+    for (const option of this.interestAllOptions()) {
+      const normalized = this.normalizeTopicToken(option);
+      if (normalized) {
+        byNormalizedToken.set(normalized, option);
+      }
+    }
+    const resolved: string[] = [];
+    const seen = new Set<string>();
+    for (const value of values) {
+      const normalized = this.normalizeTopicToken(value);
+      const canonical = byNormalizedToken.get(normalized);
+      if (!canonical || seen.has(canonical)) {
+        continue;
+      }
+      seen.add(canonical);
+      resolved.push(canonical);
+      if (resolved.length >= 5) {
+        break;
+      }
+    }
+    return resolved;
   }
 
   protected get eventFrequencyOptions(): string[] {
@@ -2325,23 +2523,6 @@ export class App {
       default:
         return 'event-visibility-invitation';
     }
-  }
-
-  protected toggleEventVisibilityPicker(event?: Event): void {
-    event?.stopPropagation();
-    if (this.eventEditorReadOnly) {
-      return;
-    }
-    this.showEventVisibilityPicker = !this.showEventVisibilityPicker;
-  }
-
-  protected selectEventVisibility(option: AppTypes.EventVisibility, event?: Event): void {
-    event?.stopPropagation();
-    if (this.eventEditorReadOnly) {
-      return;
-    }
-    this.eventForm.visibility = option;
-    this.showEventVisibilityPicker = false;
   }
 
   protected eventBlindModeIcon(option: AppTypes.EventBlindMode): string {
@@ -2600,24 +2781,8 @@ export class App {
     this.showSubEventOptionalPicker = false;
   }
 
-  protected eventEditorFieldInvalid(field: 'title' | 'description'): boolean {
-    return !this.eventForm[field].trim();
-  }
-
   protected subEventFieldInvalid(field: 'name' | 'description'): boolean {
     return !this.subEventForm[field].trim();
-  }
-
-  protected canSubmitEventEditorForm(): boolean {
-    if (this.eventEditorReadOnly) {
-      return false;
-    }
-    return Boolean(
-      this.eventForm.title.trim()
-      && this.eventForm.description.trim()
-      && this.eventForm.startAt
-      && this.eventForm.endAt
-    );
   }
 
   protected canSubmitSubEventForm(): boolean {
@@ -3775,7 +3940,7 @@ export class App {
     const isFromSubEventsSuperPopup = this.superStackedPopup === 'eventSubEvents';
     this.subEventBadgeOpenedFromSubEventsPopup = isFromSubEventsSuperPopup;
     const membersRow = this.eventEditorMembersRow();
-    if (this.stackedPopup === 'eventEditor') {
+    if (this.eventEditorService.isOpen()) {
       this.subEventBadgePopupOrigin = 'stacked-event-editor';
     } else if (this.stackedPopup === 'chat') {
       this.subEventBadgePopupOrigin = 'chat';
@@ -5501,45 +5666,6 @@ export class App {
     this.openGoogleMapsDirections(routeStops);
   }
 
-  protected saveEventEditorForm(): void {
-    if (this.eventEditorReadOnly) {
-      return;
-    }
-    this.syncEventFormFromDateTimeControls();
-    const normalizedCapacity = this.normalizedEventCapacityRange();
-    this.eventForm.capacityMin = normalizedCapacity.min;
-    this.eventForm.capacityMax = normalizedCapacity.max;
-    this.normalizeExistingSubEventsCapacityAgainstMain();
-    this.normalizeExistingSubEventsDateAgainstMain();
-    this.syncFirstSubEventLocationFromMainEvent();
-    const title = this.eventForm.title.trim();
-    const description = this.eventForm.description.trim();
-    if (!title || !description || !this.eventForm.startAt || !this.eventForm.endAt) {
-      this.showEventEditorRequiredValidation = true;
-      return;
-    }
-    this.showEventEditorRequiredValidation = false;
-    this.normalizeEventDateRange();
-    if (this.editingEventId) {
-      this.updateExistingEventFromForm();
-    } else {
-      this.insertCreatedEventFromForm();
-    }
-    if (this.stackedPopup === 'eventEditor') {
-      this.closeStackedPopup();
-      return;
-    }
-    this.closePopup();
-  }
-
-  protected cancelEventEditorForm(): void {
-    if (this.stackedPopup === 'eventEditor') {
-      this.closeStackedPopup();
-      return;
-    }
-    this.closePopup();
-  }
-
   private prepareEventEditorForm(mode: AppTypes.EventEditorMode, explicitSource?: EventMenuItem | HostingMenuItem): void {
     const source = this.resolveEventEditorSource(explicitSource);
     this.showSubEventForm = false;
@@ -5592,12 +5718,16 @@ export class App {
   }
 
   private loadEventFormFromSource(source: EventMenuItem | HostingMenuItem, target: AppTypes.EventEditorTarget): AppTypes.EventEditorForm {
+    const dateRange = this.activityDateTimeRangeById[source.id];
     const startIso = target === 'hosting'
-      ? (this.hostingDatesById[source.id] ?? this.defaultEventStartIso())
-      : (this.eventDatesById[source.id] ?? this.defaultEventStartIso());
+      ? (this.hostingDatesById[source.id] ?? this.eventDatesById[source.id] ?? dateRange?.startIso ?? this.defaultEventStartIso())
+      : (this.eventDatesById[source.id] ?? this.hostingDatesById[source.id] ?? dateRange?.startIso ?? this.defaultEventStartIso());
     const start = new Date(startIso);
     const fallbackStart = Number.isNaN(start.getTime()) ? new Date(this.defaultEventStartIso()) : start;
-    const end = new Date(fallbackStart.getTime() + 2 * 60 * 60 * 1000);
+    const endFromRange = new Date(dateRange?.endIso ?? '');
+    const end = !Number.isNaN(endFromRange.getTime()) && endFromRange.getTime() > fallbackStart.getTime()
+      ? endFromRange
+      : new Date(fallbackStart.getTime() + 2 * 60 * 60 * 1000);
     const frequency = this.parseFrequencyFromTimeframe(source.timeframe);
     const capacity = this.eventCapacityById[source.id] ?? { min: null, max: null };
     const loadedSubEvents = this.sortSubEventsByStartAsc(this.cloneSubEvents(this.eventSubEventsById[source.id] ?? []));
@@ -5607,7 +5737,7 @@ export class App {
     return {
       title: source.title,
       description: source.shortDescription,
-      imageUrl: AppDemoGenerators.defaultAssetImage('Supplies', `event-${source.id}`),
+      imageUrl: this.activityImageById[source.id] ?? AppDemoGenerators.defaultAssetImage('Supplies', `event-${source.id}`),
       capacityMin: this.normalizedEventCapacityValue(capacity.min),
       capacityMax: this.normalizedEventCapacityValue(capacity.max),
       startAt: AppUtils.toIsoDateTimeLocal(fallbackStart),
@@ -5637,7 +5767,17 @@ export class App {
     this.eventCapacityById[this.editingEventId] = this.normalizedEventCapacityRange();
     this.eventLocationById[this.editingEventId] = this.normalizeLocationValue(this.eventForm.location);
     this.eventSubEventsById[this.editingEventId] = this.cloneSubEvents(this.eventForm.subEvents);
+    this.eventDatesById[this.editingEventId] = this.eventForm.startAt;
+    this.activityDateTimeRangeById[this.editingEventId] = {
+      startIso: this.eventForm.startAt,
+      endIso: this.eventForm.endAt
+    };
+    this.syncActivityCapacityLabelFromEventForm(this.editingEventId);
+    if (this.eventForm.imageUrl) {
+      this.activityImageById[this.editingEventId] = this.eventForm.imageUrl;
+    }
     if (this.eventEditorTarget === 'hosting') {
+      this.hostingDatesById[this.editingEventId] = this.eventForm.startAt;
       this.hostingItemsByUser[this.activeUser.id] = this.hostingItems.map(item =>
         item.id === this.editingEventId
           ? { ...item, title, shortDescription, timeframe }
@@ -5673,6 +5813,10 @@ export class App {
       const id = `h${baseId}`;
       this.hostingDatesById[id] = this.eventForm.startAt;
       this.eventDatesById[id] = this.eventForm.startAt;
+      this.activityDateTimeRangeById[id] = {
+        startIso: this.eventForm.startAt,
+        endIso: this.eventForm.endAt
+      };
       this.hostingPublishedById[id] = false;
       this.eventVisibilityById[id] = this.eventForm.visibility;
       this.eventBlindModeById[id] = this.eventForm.blindMode;
@@ -5681,6 +5825,8 @@ export class App {
       this.eventCapacityById[id] = this.normalizedEventCapacityRange();
       this.eventLocationById[id] = this.normalizeLocationValue(this.eventForm.location);
       this.eventSubEventsById[id] = this.cloneSubEvents(this.eventForm.subEvents);
+      this.syncActivityCapacityLabelFromEventForm(id);
+      this.activityImageById[id] = this.eventForm.imageUrl || AppDemoGenerators.defaultAssetImage('Supplies', `event-${id}`);
       const next: HostingMenuItem = {
         id,
         avatar: this.activeUser.initials,
@@ -5706,6 +5852,10 @@ export class App {
     }
     const id = `e${baseId}`;
     this.eventDatesById[id] = this.eventForm.startAt;
+    this.activityDateTimeRangeById[id] = {
+      startIso: this.eventForm.startAt,
+      endIso: this.eventForm.endAt
+    };
     this.eventVisibilityById[id] = this.eventForm.visibility;
     this.eventBlindModeById[id] = this.eventForm.blindMode;
     this.eventAutoInviterById[id] = this.eventForm.autoInviter;
@@ -5713,6 +5863,8 @@ export class App {
     this.eventCapacityById[id] = this.normalizedEventCapacityRange();
     this.eventLocationById[id] = this.normalizeLocationValue(this.eventForm.location);
     this.eventSubEventsById[id] = this.cloneSubEvents(this.eventForm.subEvents);
+    this.syncActivityCapacityLabelFromEventForm(id);
+    this.activityImageById[id] = this.eventForm.imageUrl || AppDemoGenerators.defaultAssetImage('Supplies', `event-${id}`);
     const next: EventMenuItem = {
       id,
       avatar: this.activeUser.initials,
@@ -7211,7 +7363,6 @@ export class App {
     this.pendingSubEventSupplyContributionDelete = null;
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
-    this.showEventVisibilityPicker = false;
     this.showAssetVisibilityPicker = false;
     this.showProfileStatusHeaderPicker = false;
     this.showEventFeedbackFilterPicker = false;
@@ -7238,7 +7389,6 @@ export class App {
     this.pendingSubEventDeleteId = null;
     this.pendingSubEventDeleteContext = null;
     this.pendingSubEventGroupDelete = null;
-    this.eventEditorClosePublishConfirmContext = null;
     this.eventEditorReadOnly = false;
     this.showSubEventForm = false;
     this.subEventFormStageNumber = null;
@@ -7292,12 +7442,6 @@ export class App {
   }
 
   protected closeStackedPopup(): void {
-    const closingStackedEventEditor = this.stackedPopup === 'eventEditor';
-    if (this.stackedPopup === 'eventEditor') {
-      this.eventEditorReadOnly = false;
-      this.eventEditorSource = null;
-      this.eventEditorInvitationId = null;
-    }
     if (this.stackedPopup === 'chat') {
       this.cancelChatInitialLoad();
       this.chatHeaderProgress = 0;
@@ -7342,7 +7486,6 @@ export class App {
     this.pendingSubEventDeleteId = null;
     this.pendingSubEventDeleteContext = null;
     this.pendingSubEventGroupDelete = null;
-    this.eventEditorClosePublishConfirmContext = null;
     this.inlineItemActionMenu = null;
     this.subEventMemberRolePickerUserId = null;
     this.subEventFormStageNumber = null;
@@ -7363,16 +7506,6 @@ export class App {
     if (this.superStackedPopup === 'impressionsHost') {
       this.superStackedPopup = null;
       return;
-    }
-    if (closingStackedEventEditor && this.stackedEventEditorOrigin === 'chat') {
-      this.stackedEventEditorOrigin = null;
-      this.stackedPopup = 'chat';
-      this.showEventVisibilityPicker = false;
-      this.showProfileStatusHeaderPicker = false;
-      return;
-    }
-    if (closingStackedEventEditor) {
-      this.stackedEventEditorOrigin = null;
     }
     if (this.stackedPopup === 'subEventMembers' || this.stackedPopup === 'subEventAssets') {
       const restoreSubEventsSuperPopup = this.subEventBadgeOpenedFromSubEventsPopup;
@@ -7395,7 +7528,8 @@ export class App {
       this.selectedActivityMembersRow = null;
       this.selectedActivityInviteUserIds = [];
       if (this.subEventBadgePopupOrigin === 'stacked-event-editor') {
-        this.stackedPopup = 'eventEditor';
+        this.stackedPopup = null;
+        this.reopenEventEditorPopupFromState();
       } else if (this.subEventBadgePopupOrigin === 'chat') {
         this.stackedPopup = 'chat';
       } else {
@@ -7458,7 +7592,8 @@ export class App {
       if (this.activityMembersPopupOrigin === 'stacked-event-editor') {
         this.activityMembersPopupOrigin = null;
         this.subEventAssetMembersContext = null;
-        this.stackedPopup = 'eventEditor';
+        this.stackedPopup = null;
+        this.reopenEventEditorPopupFromState();
         return;
       }
       this.activityMembersPopupOrigin = null;
@@ -7468,7 +7603,6 @@ export class App {
       this.superStackedPopup = null;
     }
     this.stackedPopup = null;
-    this.showEventVisibilityPicker = false;
     this.showProfileStatusHeaderPicker = false;
     if (this.activePopup === 'chat') {
       this.scrollChatToBottom();
@@ -7659,11 +7793,6 @@ export class App {
         return this.selectedEvent?.title ?? 'Event';
       case 'hostingEvent':
         return this.selectedHostingEvent?.title ?? 'Hosting Event';
-      case 'eventEditor':
-        if (this.eventEditorMode === 'create') {
-          return 'Create Event';
-        }
-        return this.eventEditorReadOnly ? 'View Event' : 'Edit Event';
       case 'eventExplore':
         return 'Event Explore';
       case 'profileEditor':
@@ -7717,11 +7846,6 @@ export class App {
         return this.selectedEvent?.title ?? 'Event';
       case 'hostingEvent':
         return this.selectedHostingEvent?.title ?? 'Hosting Event';
-      case 'eventEditor':
-        if (this.eventEditorMode === 'create') {
-          return 'Create Event';
-        }
-        return this.eventEditorReadOnly ? 'View Event' : 'Edit Event';
       case 'eventExplore':
         return 'Event Explore';
       case 'eventFeedback':
@@ -8174,8 +8298,12 @@ export class App {
   }
 
   protected interestOptionToneClass(option: string): string {
+    const normalizedOption = this.normalizeTopicToken(option);
+    if (!normalizedOption) {
+      return '';
+    }
     for (const group of this.interestOptionGroups) {
-      if (group.options.includes(option)) {
+      if (group.options.some(groupOption => this.normalizeTopicToken(groupOption) === normalizedOption)) {
         return group.toneClass;
       }
     }
@@ -10261,7 +10389,7 @@ export class App {
   }
 
   private resolveChatFocusEventSource(): EventMenuItem | HostingMenuItem | null {
-    if (this.activePopup === 'eventEditor' || this.stackedPopup === 'eventEditor') {
+    if (this.eventEditorService.isOpen()) {
       const editorSource = this.resolveEventEditorSource();
       if (editorSource) {
         return editorSource;
@@ -10314,7 +10442,7 @@ export class App {
       return [];
     }
     const editorSource = this.resolveEventEditorSource();
-    if ((this.activePopup === 'eventEditor' || this.stackedPopup === 'eventEditor') && editorSource?.id === normalizedEventId) {
+    if (this.eventEditorService.isOpen() && editorSource?.id === normalizedEventId) {
       return this.sortSubEventsByStartAsc(this.cloneSubEvents(this.eventForm.subEvents));
     }
     return this.sortSubEventsByStartAsc(this.cloneSubEvents(this.eventSubEventsById[normalizedEventId] ?? []));
@@ -13375,6 +13503,30 @@ export class App {
     return Math.max(fallbackBase, 4);
   }
 
+  private syncActivityCapacityLabelFromEventForm(eventId: string): void {
+    const current = this.parseActivityCapacityLabel(this.activityCapacityById[eventId]);
+    const accepted = current.accepted ?? 0;
+    const fallbackTotal = current.total ?? 4;
+    const normalized = this.normalizedEventCapacityRange();
+    const configuredTotal = normalized.max ?? normalized.min ?? fallbackTotal;
+    const total = Math.max(accepted, configuredTotal, 0);
+    this.activityCapacityById[eventId] = `${accepted} / ${Math.trunc(total)}`;
+  }
+
+  private parseActivityCapacityLabel(value: string | null | undefined): { accepted: number | null; total: number | null } {
+    const raw = `${value ?? ''}`.trim();
+    if (!raw.includes('/')) {
+      return { accepted: null, total: null };
+    }
+    const [acceptedRaw, totalRaw] = raw.split('/');
+    const acceptedParsed = Number.parseInt((acceptedRaw ?? '').trim(), 10);
+    const totalParsed = Number.parseInt((totalRaw ?? '').trim(), 10);
+    return {
+      accepted: Number.isFinite(acceptedParsed) ? Math.max(0, acceptedParsed) : null,
+      total: Number.isFinite(totalParsed) ? Math.max(0, totalParsed) : null
+    };
+  }
+
   private activityVisibility(row: AppTypes.ActivityListRow): AppTypes.EventVisibility {
     return this.eventVisibilityById[row.id] ?? (row.type === 'hosting' ? 'Invitation only' : 'Public');
   }
@@ -13409,8 +13561,68 @@ export class App {
     return `experience-item-icon-${this.eventVisibilityClass(this.activityVisibility(row))}`;
   }
 
+  protected activityDateRangeMetaLine(row: AppTypes.ActivityListRow): string {
+    const dateRange = AppCalendarHelpers.activityDateRange(row, this.activityDateTimeRangeById);
+    if (!dateRange) {
+      return this.activityDateLabel(row);
+    }
+    return this.formatActivityDateRange(dateRange.start, dateRange.end);
+  }
+
+  protected activityLocationMetaLine(row: AppTypes.ActivityListRow): string {
+    const location = this.activityEventLocationLabel(row);
+    if (!location) {
+      return '';
+    }
+    const distance = this.activityDistanceLabel(row.distanceKm);
+    return `${location} (${distance})`;
+  }
+
   protected activityMetaLine(row: AppTypes.ActivityListRow): string {
     return `${this.activityTypeLabel(row)} · ${this.activityDateLabel(row)} · ${row.distanceKm} km`;
+  }
+
+  private formatActivityDateRange(start: Date, end: Date): string {
+    const safeStart = new Date(start);
+    const safeEnd = new Date(end);
+    if (Number.isNaN(safeStart.getTime()) || Number.isNaN(safeEnd.getTime())) {
+      return '';
+    }
+    const normalizedEnd = safeEnd.getTime() > safeStart.getTime()
+      ? safeEnd
+      : new Date(safeStart.getTime() + 2 * 60 * 60 * 1000);
+    const startDateLabel = safeStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const startTimeLabel = safeStart.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const endTimeLabel = normalizedEnd.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    if (safeStart.toDateString() === normalizedEnd.toDateString()) {
+      return `${startDateLabel}, ${startTimeLabel} - ${endTimeLabel}`;
+    }
+    const endDateLabel = normalizedEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `${startDateLabel}, ${startTimeLabel} - ${endDateLabel}, ${endTimeLabel}`;
+  }
+
+  private activityEventLocationLabel(row: AppTypes.ActivityListRow): string {
+    const fromMap = this.normalizeLocationValue(this.eventLocationById[row.id]).trim();
+    if (fromMap) {
+      return fromMap;
+    }
+    const subEvents = this.eventSubEventsById[row.id] ?? [];
+    const fromSubEvent = this.normalizeLocationValue(this.firstSubEventByOrder(subEvents)?.location).trim();
+    if (fromSubEvent) {
+      return fromSubEvent;
+    }
+    const source = (row.source && typeof row.source === 'object') ? row.source as unknown as Record<string, unknown> : null;
+    const sourceLocation = this.normalizeLocationValue((source?.['location'] as string | undefined) ?? '').trim();
+    return sourceLocation;
+  }
+
+  private activityDistanceLabel(distanceKm: number): string {
+    const numeric = Number(distanceKm);
+    if (!Number.isFinite(numeric)) {
+      return '0 km';
+    }
+    const rounded = Math.round(numeric * 10) / 10;
+    return Number.isInteger(rounded) ? `${rounded} km` : `${rounded.toFixed(1)} km`;
   }
 
   protected openActivityFromInlineControl(row: AppTypes.ActivityListRow, event: Event): void {
@@ -13529,12 +13741,7 @@ export class App {
       return;
     }
     if (row.type === 'events' || row.type === 'hosting') {
-      // Use the service to signal to the event-editor module
-      if (row.isAdmin) {
-        this.eventEditorService.openEdit(row.source);
-        return;
-      }
-      this.eventEditorService.openView(row.source);
+      this.openEventEditor(true, 'edit', row.source as EventMenuItem | HostingMenuItem, row.isAdmin !== true);
       return;
     }
   }
@@ -13543,8 +13750,7 @@ export class App {
     if (row.type !== 'events' && row.type !== 'hosting') {
       return;
     }
-    // Use the service to signal to the event-editor module
-    this.eventEditorService.openView(row.source);
+    this.openEventEditor(true, 'edit', row.source as EventMenuItem | HostingMenuItem, true);
   }
 
   protected triggerActivitySecondaryAction(row: AppTypes.ActivityListRow): void {
@@ -13624,112 +13830,26 @@ export class App {
     this.stackedPopup = 'activityMembers';
   }
 
-  protected eventEditorHeaderMembers(limit = 3): AppTypes.ActivityMemberEntry[] {
-    const row = this.eventEditorMembersRow();
-    if (!row) {
-      return [];
-    }
-    return this.getActivityMembersByRow(row)
-      .filter(member => member.status === 'accepted')
-      .slice(0, limit);
-  }
-
-  protected eventEditorHeaderHiddenMemberCount(limit = 3): number {
-    const row = this.eventEditorMembersRow();
-    if (!row) {
-      return 0;
-    }
-    const total = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted').length;
-    return total > limit ? total - limit : 0;
-  }
-
-  protected eventEditorHeaderPendingMemberCount(): number {
-    const row = this.eventEditorMembersRow();
-    if (!row) {
-      return 0;
-    }
-    return this.getActivityMembersByRow(row).filter(member => member.status === 'pending').length;
-  }
-
-  protected showEventEditorHeaderMembersButton(context: 'active' | 'stacked'): boolean {
-    if (context === 'active' && this.activePopup !== 'eventEditor') {
-      return false;
-    }
-    if (context === 'stacked' && this.stackedPopup !== 'eventEditor') {
-      return false;
-    }
-    return this.eventEditorMembersRow() !== null;
-  }
-
   protected openEventEditorMembers(event?: Event): void {
     event?.stopPropagation();
     const row = this.eventEditorMembersRow();
     if (!row) {
       return;
     }
+    const moduleEditorOpen = this.eventEditorService.isOpen();
+    if (moduleEditorOpen) {
+      this.eventEditorService.close();
+    }
     this.openActivityMembers(row, event);
-    this.activityMembersPopupOrigin = this.stackedPopup === 'activityMembers' && this.activePopup === 'eventEditor'
-      ? 'active-event-editor'
-      : 'stacked-event-editor';
+    this.activityMembersPopupOrigin = moduleEditorOpen ? 'stacked-event-editor' : null;
   }
 
   protected handlePrimaryPopupHeaderClose(): void {
-    if (this.activePopup === 'eventEditor' && this.shouldPromptEventEditorPublishOnClose()) {
-      this.eventEditorClosePublishConfirmContext = 'active';
-      return;
-    }
     this.closePopup();
   }
 
   protected handleStackedPopupHeaderClose(): void {
-    if (this.stackedPopup === 'eventEditor' && this.shouldPromptEventEditorPublishOnClose()) {
-      this.eventEditorClosePublishConfirmContext = 'stacked';
-      return;
-    }
     this.closeStackedPopup();
-  }
-
-  protected eventEditorClosePublishConfirmTitle(): string {
-    return 'Publish event';
-  }
-
-  protected eventEditorClosePublishConfirmLabel(): string {
-    const row = this.eventEditorMembersRow();
-    if (!row) {
-      const title = this.eventForm.title.trim();
-      return title ? `Publish ${title} before closing?` : 'Publish this event before closing?';
-    }
-    return `Publish ${row.title} before closing?`;
-  }
-
-  protected cancelEventEditorCloseWithPublishPrompt(): void {
-    this.persistEventEditorIfValidForClose();
-    const context = this.eventEditorClosePublishConfirmContext;
-    this.eventEditorClosePublishConfirmContext = null;
-    if (context === 'stacked') {
-      this.closeStackedPopup();
-      return;
-    }
-    this.closePopup();
-  }
-
-  protected confirmEventEditorCloseWithPublish(): void {
-    const row = this.eventEditorMembersRow();
-    const persistedId = this.persistEventEditorIfValidForClose();
-    const publishId = persistedId ?? row?.id ?? this.editingEventId;
-    const context = this.eventEditorClosePublishConfirmContext;
-    if (publishId) {
-      this.hostingPublishedById[publishId] = true;
-      const title = this.eventForm.title.trim() || row?.title || 'Event';
-      const description = this.eventForm.description.trim() || row?.subtitle || 'Event channel';
-      this.ensurePublishedEventChatChannel(publishId, title, description, this.eventForm.startAt || this.defaultEventStartIso());
-    }
-    this.eventEditorClosePublishConfirmContext = null;
-    if (context === 'stacked') {
-      this.closeStackedPopup();
-      return;
-    }
-    this.closePopup();
   }
 
   protected openActivityInviteFriends(event?: Event): void {
@@ -14343,40 +14463,6 @@ export class App {
 
   protected selectedInvitationIsAccepted(): boolean {
     return this.selectedInvitation ? this.isInvitationAcceptedId(this.selectedInvitation.id) : false;
-  }
-
-  protected shouldShowEventEditorInvitationApproveButton(context: 'active' | 'stacked'): boolean {
-    if (!this.eventEditorReadOnly) {
-      return false;
-    }
-    if (context === 'active' && this.activePopup !== 'eventEditor') {
-      return false;
-    }
-    if (context === 'stacked' && this.stackedPopup !== 'eventEditor') {
-      return false;
-    }
-    if (!this.eventEditorInvitationId) {
-      return false;
-    }
-    return this.invitationItems.some(item => item.id === this.eventEditorInvitationId);
-  }
-
-  protected approveEventEditorInvitation(event?: Event): void {
-    event?.stopPropagation();
-    const invitationId = this.eventEditorInvitationId;
-    if (!invitationId) {
-      return;
-    }
-    const invitation = this.invitationItems.find(item => item.id === invitationId);
-    if (!invitation) {
-      this.eventEditorInvitationId = null;
-      return;
-    }
-    this.acceptInvitationAndMoveToEvents(invitation);
-    if (this.selectedInvitation?.id === invitationId) {
-      this.selectedInvitation = null;
-    }
-    this.eventEditorInvitationId = null;
   }
 
   protected approveSelectedInvitation(event?: Event): void {
@@ -15461,10 +15547,6 @@ export class App {
       return;
     }
     keyboardEvent.stopPropagation();
-    if (this.eventEditorClosePublishConfirmContext) {
-      this.cancelEventEditorCloseWithPublishPrompt();
-      return;
-    }
     if (this.showUserSelector) {
       this.closeDemoUserSelectorPopup();
       return;
@@ -15495,6 +15577,10 @@ export class App {
     }
     if (this.superStackedPopup === 'impressionsHost') {
       this.closeSuperStackedImpressions();
+      return;
+    }
+    if (this.eventEditorService.isOpen()) {
+      this.eventEditorService.close();
       return;
     }
     if (this.stackedPopup) {
@@ -15635,9 +15721,6 @@ export class App {
     }
     if (this.showActivityInviteSortPicker && !target.closest('.friends-picker-sort') && !target.closest('.popup-view-fab')) {
       this.showActivityInviteSortPicker = false;
-    }
-    if (this.showEventVisibilityPicker && !target.closest('.event-visibility-picker') && !target.closest('.popup-view-fab')) {
-      this.showEventVisibilityPicker = false;
     }
     if (this.showAssetVisibilityPicker && !target.closest('.asset-visibility-picker') && !target.closest('.popup-view-fab')) {
       this.showAssetVisibilityPicker = false;
@@ -16135,9 +16218,8 @@ export class App {
   }
 
   private eventEditorMembersRow(): AppTypes.ActivityListRow | null {
-    const isActiveEditor = this.activePopup === 'eventEditor';
-    const isStackedEditor = this.stackedPopup === 'eventEditor';
-    if (!isActiveEditor && !isStackedEditor) {
+    const isModuleEditorOpen = this.eventEditorService.isOpen();
+    if (!isModuleEditorOpen) {
       return null;
     }
     const source = this.eventEditorMode === 'create' ? null : this.resolveEventEditorSource();
@@ -16184,48 +16266,6 @@ export class App {
       isAdmin: canManageMembers,
       source: resolvedSource
     };
-  }
-
-  private shouldPromptEventEditorPublishOnClose(): boolean {
-    if (this.eventEditorReadOnly) {
-      return false;
-    }
-    if (this.eventEditorTarget !== 'hosting') {
-      return false;
-    }
-    if (this.editingEventId) {
-      return !this.isHostingPublished(this.editingEventId);
-    }
-    return this.hasEventEditorRequiredFields();
-  }
-
-  private hasEventEditorRequiredFields(): boolean {
-    return Boolean(this.eventForm.title.trim() && this.eventForm.description.trim() && this.eventForm.startAt && this.eventForm.endAt);
-  }
-
-  private persistEventEditorIfValidForClose(): string | null {
-    if (this.eventEditorReadOnly) {
-      return null;
-    }
-    this.syncEventFormFromDateTimeControls();
-    const normalizedCapacity = this.normalizedEventCapacityRange();
-    this.eventForm.capacityMin = normalizedCapacity.min;
-    this.eventForm.capacityMax = normalizedCapacity.max;
-    this.normalizeExistingSubEventsCapacityAgainstMain();
-    this.normalizeExistingSubEventsDateAgainstMain();
-    if (!this.hasEventEditorRequiredFields()) {
-      return null;
-    }
-    this.showEventEditorRequiredValidation = false;
-    this.normalizeEventDateRange();
-    if (this.editingEventId) {
-      this.updateExistingEventFromForm();
-      return this.editingEventId;
-    }
-    this.insertCreatedEventFromForm();
-    return this.eventEditorTarget === 'hosting'
-      ? (this.selectedHostingEvent?.id ?? null)
-      : (this.selectedEvent?.id ?? null);
   }
 
   private releaseActiveElementFocus(): void {
