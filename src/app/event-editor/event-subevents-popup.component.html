@@ -227,11 +227,48 @@
               *ngFor="let subEvent of sortedSubEvents; let index = index; trackBy: trackByIndex"
               [attr.data-tone]="casualCardToneClass(subEvent)"
             >
-              <header>
+              <header class="subevents-casual-head">
                 <strong>{{ casualCardTitle(subEvent, index) }}</strong>
-                <span class="subevents-casual-range">{{ casualCardRange(subEvent) }}</span>
+                <div class="subevents-casual-actions">
+                  <span class="subevents-casual-range">{{ casualCardRange(subEvent) }}</span>
+                  <button
+                    type="button"
+                    class="experience-action-btn experience-action-menu-trigger subevents-casual-menu-btn"
+                    [class.is-open]="isCasualActionMenuOpen(subEvent, index)"
+                    (click)="toggleCasualActionMenu(subEvent, index, $event)"
+                    [attr.aria-label]="isCasualActionMenuOpen(subEvent, index) ? 'Close sub event actions' : 'Open sub event actions'"
+                  >
+                    <span class="subevents-menu-icon-stack" [class.is-open]="isCasualActionMenuOpen(subEvent, index)">
+                      <mat-icon class="subevents-menu-icon-dots">more_vert</mat-icon>
+                      <mat-icon class="subevents-menu-icon-close">close</mat-icon>
+                    </span>
+                    <span class="subevents-group-badge" *ngIf="casualMenuPendingCount(subEvent) > 0">{{ casualMenuPendingCount(subEvent) }}</span>
+                  </button>
+                  <div
+                    class="item-action-menu subevents-casual-menu"
+                    [class.is-open]="isCasualActionMenuOpen(subEvent, index)"
+                    [class.item-action-menu-mobile]="isMobileViewport"
+                    [class.item-action-menu-desktop]="!isMobileViewport"
+                    [attr.aria-hidden]="!isCasualActionMenuOpen(subEvent, index)"
+                    (click)="$event.stopPropagation()"
+                  >
+                    <div class="item-action-menu-title">{{ casualCardTitle(subEvent, index) }}</div>
+                    <button type="button" class="item-action-menu-btn" *ngIf="!readOnly" (click)="runCasualMenuAction('edit', subEvent, index, $event)">
+                      <mat-icon>edit</mat-icon>
+                      <span>Edit</span>
+                    </button>
+                    <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" *ngIf="!readOnly" (click)="runCasualMenuAction('delete', subEvent, index, $event)">
+                      <mat-icon>delete</mat-icon>
+                      <span>Delete</span>
+                    </button>
+                    <div class="item-action-menu-divider"></div>
+                    <div class="item-action-menu-section-label">Resources</div>
+                    <div class="subevents-casual-resources-line">{{ casualCardResources(subEvent) }}</div>
+                  </div>
+                </div>
               </header>
-              <p>{{ subEvent.location || 'Location pending' }}</p>
+              <p class="subevents-casual-location">{{ subEvent.location || 'Location pending' }}</p>
+              <p class="subevents-casual-description">{{ subEvent.description || 'No description' }}</p>
               <span class="subevents-casual-resources">{{ casualCardResources(subEvent) }}</span>
             </article>
           </section>

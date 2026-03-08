@@ -784,6 +784,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (minStartMs !== null && maxEndMs !== null) {
       this.eventForm.startAt = AppUtils.toIsoDateTimeLocal(new Date(minStartMs));
       this.eventForm.endAt = AppUtils.toIsoDateTimeLocal(new Date(maxEndMs));
+      this.syncDateTimeControlsFromForm();
     }
     if (minCapacity !== null) {
       this.eventForm.capacityMin = minCapacity;

@@ -907,16 +907,20 @@
 
 .subevents-casual-grid {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.52rem;
+  align-items: start;
 }
 
 .subevents-casual-card {
+  position: relative;
   border: 1px solid rgba(91, 122, 164, 0.3);
   border-radius: 12px;
   padding: 0.54rem 0.62rem;
   background: #eef4fc;
   display: grid;
-  gap: 0.26rem;
+  gap: 0.22rem;
+  min-height: 0;
 }
 
 .subevents-casual-card[data-tone='subevents-casual-card-mandatory'] {
@@ -929,33 +933,98 @@
   background: linear-gradient(180deg, #eef6ff 0%, #e5f1ff 100%);
 }
 
-.subevents-casual-card header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.42rem;
+.subevents-casual-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.32rem;
 }
 
 .subevents-casual-card strong {
+  min-width: 0;
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.14;
+  font-weight: 800;
   color: #203552;
 }
 
-.subevents-casual-range {
-  color: #4f6786;
-  font-size: 0.74rem;
-  font-weight: 700;
+.subevents-casual-actions {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  justify-self: end;
 }
 
-.subevents-casual-card p {
+.subevents-casual-range {
+  min-height: 22px;
+  border: 1px solid rgba(121, 135, 156, 0.26);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f3f5f8 0%, #e8ecf2 100%);
+  color: #435369;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.54rem;
+  white-space: nowrap;
+}
+
+.subevents-casual-menu-btn {
+  position: relative;
   margin: 0;
-  color: #496584;
-  font-size: 0.8rem;
+}
+
+.subevents-casual-menu-btn .subevents-group-badge {
+  top: -9px;
+  right: -9px;
+}
+
+.subevents-casual-menu.item-action-menu {
+  width: 246px;
+  max-width: min(320px, 75vw);
+  z-index: 240;
+}
+
+.subevents-casual-location,
+.subevents-casual-description {
+  margin: 0;
+  color: rgba(30, 50, 77, 0.82);
+  font-size: 0.72rem;
+  line-height: 1.25;
+  width: 100%;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+}
+
+.subevents-casual-location {
+  color: rgba(30, 58, 95, 0.86);
+  font-weight: 700;
+  -webkit-line-clamp: 1;
+}
+
+.subevents-casual-description {
+  -webkit-line-clamp: 2;
 }
 
 .subevents-casual-resources {
-  color: #3f5877;
-  font-size: 0.72rem;
+  color: rgba(24, 43, 71, 0.78);
+  font-size: 0.7rem;
   font-weight: 700;
+  line-height: 1.2;
+}
+
+.subevents-casual-resources-line {
+  padding: 0.2rem 0.5rem 0.32rem;
+  color: rgba(44, 67, 98, 0.92);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.3;
 }
 
 .subevents-empty-state {
@@ -1426,49 +1495,51 @@
 .experience-delete-confirm {
   position: fixed;
   inset: 0;
-  z-index: 3950;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
+  z-index: 4200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.8rem;
 }
 
 .experience-delete-confirm-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(10, 18, 33, 0.58);
+  background: rgba(8, 16, 30, 0.46);
 }
 
 .experience-delete-confirm-panel {
   position: relative;
   z-index: 1;
-  width: min(420px, calc(100vw - 2rem));
-  border-radius: 14px;
-  border: 1px solid rgba(86, 110, 146, 0.24);
-  background: linear-gradient(180deg, #f7fbff 0%, #edf3fb 100%);
-  box-shadow: 0 18px 34px rgba(10, 18, 32, 0.3);
-  overflow: hidden;
-  padding: 0.7rem;
+  width: min(420px, 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(42, 67, 101, 0.28);
+  background: #fff;
+  box-shadow: 0 16px 30px rgba(12, 20, 36, 0.26);
+  padding: 0.72rem;
   display: grid;
-  gap: 0.5rem;
+  gap: 0.4rem;
+  text-align: center;
+  justify-items: center;
 }
 
 .experience-delete-confirm-panel h4 {
   margin: 0;
-  color: #1f3858;
-  font-size: 1.1rem;
-  font-weight: 800;
+  color: #1f3252;
+  font-size: 0.94rem;
+  font-weight: 700;
 }
 
 .experience-delete-confirm-panel p {
   margin: 0;
-  color: rgba(31, 54, 85, 0.74);
-  font-size: 0.86rem;
+  color: rgba(23, 41, 66, 0.72);
+  font-size: 0.8rem;
   font-weight: 700;
 }
 
 .popup-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   align-items: center;
   gap: 0.5rem;
 }
@@ -1490,9 +1561,9 @@
 }
 
 .link-btn.experience-delete-btn {
-  border-color: rgba(176, 49, 49, 0.44);
-  background: linear-gradient(180deg, #ffefef 0%, #ffe1e1 100%);
-  color: #a43131;
+  border-color: #b42a2a;
+  background: #d73838;
+  color: #fff;
 }
 
 @media (max-width: 920px) {
@@ -1515,12 +1586,17 @@
     grid-template-columns: 1fr;
   }
 
+  .subevents-casual-grid {
+    grid-template-columns: 1fr;
+  }
+
   .subevents-stage-card {
     min-height: 0;
   }
 
   .subevents-stage-menu.item-action-menu,
-  .subevents-group-menu.item-action-menu {
+  .subevents-group-menu.item-action-menu,
+  .subevents-casual-menu.item-action-menu {
     width: 208px;
   }
 

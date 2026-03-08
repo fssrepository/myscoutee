@@ -101,7 +101,7 @@ interface GroupFormModel {
 }
 
 interface DeleteTargetState {
-  kind: 'stage' | 'group';
+  kind: 'stage' | 'group' | 'subevent';
   stageSourceIndex: number;
   groupId: string | null;
   label: string;
@@ -140,6 +140,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   protected openStageMenuKey: string | null = null;
   protected openGroupMenuKey: string | null = null;
+  protected openCasualMenuKey: string | null = null;
 
   protected showSubEventForm = false;
   protected subEventFormMode: 'create' | 'edit' = 'create';
@@ -212,6 +213,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (!target?.closest('.subevents-group-actions')) {
       this.openGroupMenuKey = null;
     }
+    if (!target?.closest('.subevents-casual-actions')) {
+      this.openCasualMenuKey = null;
+    }
     if (!target?.closest('.subevent-optional-field')) {
       this.showSubEventOptionalPicker = false;
     }
@@ -233,6 +237,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.showGroupForm = false;
     this.openStageMenuKey = null;
     this.openGroupMenuKey = null;
+    this.openCasualMenuKey = null;
     this.subEventFormMode = 'create';
     this.subEventFormSourceIndex = null;
 
@@ -550,6 +555,55 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return `Members ${acceptedMembers}/${Math.max(acceptedMembers, members + acceptedMembers)} · Car ${cars} · Accommodation ${accommodation} · Supplies ${supplies}`;
   }
 
+  protected casualCardMenuKey(item: EventSubeventsItem, index: number): string {
+    return item.id ?? `casual-${index}`;
+  }
+
+  protected isCasualActionMenuOpen(item: EventSubeventsItem, index: number): boolean {
+    return this.openCasualMenuKey === this.casualCardMenuKey(item, index);
+  }
+
+  protected casualMenuPendingCount(item: EventSubeventsItem): number {
+    const members = item.optional ? this.toPendingCount(item.membersPending) : 0;
+    const cars = this.toPendingCount(item.carsPending);
+    const accommodation = this.toPendingCount(item.accommodationPending);
+    const supplies = this.toPendingCount(item.suppliesPending);
+    return members + cars + accommodation + supplies;
+  }
+
+  protected toggleCasualActionMenu(item: EventSubeventsItem, index: number, event: Event): void {
+    event.stopPropagation();
+    this.openStageMenuKey = null;
+    this.openGroupMenuKey = null;
+    const key = this.casualCardMenuKey(item, index);
+    this.openCasualMenuKey = this.openCasualMenuKey === key ? null : key;
+  }
+
+  protected runCasualMenuAction(action: 'edit' | 'delete', item: EventSubeventsItem, index: number, event: Event): void {
+    event.stopPropagation();
+    this.openCasualMenuKey = null;
+    if (this.readOnly) {
+      return;
+    }
+
+    const sourceIndex = this.sourceIndexForItem(item, index);
+    if (sourceIndex < 0) {
+      return;
+    }
+
+    if (action === 'edit') {
+      this.openEditSubEventFormAtIndex(sourceIndex);
+      return;
+    }
+
+    this.pendingDeleteTarget = {
+      kind: 'subevent',
+      stageSourceIndex: sourceIndex,
+      groupId: null,
+      label: this.casualCardTitle(item, index)
+    };
+  }
+
   protected isStageActionMenuOpen(stage: EventSubeventsStageCard): boolean {
     return this.openStageMenuKey === stage.key;
   }
@@ -557,6 +611,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   protected toggleStageActionMenu(stage: EventSubeventsStageCard, event: Event): void {
     event.stopPropagation();
     this.openGroupMenuKey = null;
+    this.openCasualMenuKey = null;
     this.openStageMenuKey = this.openStageMenuKey === stage.key ? null : stage.key;
   }
 
@@ -598,6 +653,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   protected toggleGroupActionMenu(row: EventSubeventsStageRow, event: Event): void {
     event.stopPropagation();
     this.openStageMenuKey = null;
+    this.openCasualMenuKey = null;
     this.openGroupMenuKey = this.openGroupMenuKey === row.key ? null : row.key;
   }
 
@@ -1034,7 +1090,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       return;
     }
 
-    if (target.kind === 'stage') {
+    if (target.kind === 'stage' || target.kind === 'subevent') {
       this.workingSubEvents = this.workingSubEvents.filter((_, index) => index !== target.stageSourceIndex);
       this.pendingDeleteTarget = null;
       this.emitWorkingSubEvents();
@@ -1067,7 +1123,10 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (!target) {
       return 'Delete';
     }
-    return target.kind === 'stage' ? 'Delete Stage' : 'Delete Group';
+    if (target.kind === 'group') {
+      return 'Delete Group';
+    }
+    return target.kind === 'stage' ? 'Delete Stage' : 'Delete Sub Event';
   }
 
   protected deleteTargetDescription(): string {
@@ -1076,6 +1135,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
       return '';
     }
     if (target.kind === 'stage') {
+      return `Delete ${target.label}?`;
+    }
+    if (target.kind === 'subevent') {
       return `Delete ${target.label}?`;
     }
     return `Delete ${target.label}?`;
@@ -1243,26 +1305,31 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return Math.max(2, pending);
   }
 
-  private openEditStageForm(stage: EventSubeventsStageCard, event: Event): void {
-    event.stopPropagation();
+  private openEditSubEventFormAtIndex(sourceIndex: number): void {
     if (this.readOnly) {
       return;
     }
+    this.openStageMenuKey = null;
+    this.openGroupMenuKey = null;
+    this.openCasualMenuKey = null;
     this.showLeaderboardPopup = false;
     this.leaderboardPopupStageKey = null;
     this.leaderboardPopupStageTitle = '';
     this.showGroupForm = false;
     this.showSubEventOptionalPicker = false;
-    const sourceItem = this.workingSubEvents[stage.sourceIndex];
+    const sourceItem = this.workingSubEvents[sourceIndex];
     if (!sourceItem) {
       return;
     }
 
     this.subEventFormMode = 'edit';
-    this.subEventFormSourceIndex = stage.sourceIndex;
+    this.subEventFormSourceIndex = sourceIndex;
+    const fallbackName = this.displayMode === 'Tournament'
+      ? `Stage ${sourceIndex + 1}`
+      : `Sub Event ${sourceIndex + 1}`;
     this.subEventForm = {
       id: sourceItem.id,
-      name: `${sourceItem.name ?? sourceItem.title ?? stage.subtitle}`.trim(),
+      name: `${sourceItem.name ?? sourceItem.title ?? fallbackName}`.trim(),
       description: `${sourceItem.description ?? ''}`.trim(),
       location: `${sourceItem.location ?? ''}`.trim(),
       startAt: this.toInputDateTime(this.parseDateValue(sourceItem.startAt) ?? new Date()),
@@ -1286,6 +1353,11 @@ export class EventSubeventsPopupComponent implements OnChanges {
     };
     this.resetSubEventStageInsertControls(sourceItem.id ?? null);
     this.showSubEventForm = true;
+  }
+
+  private openEditStageForm(stage: EventSubeventsStageCard, event: Event): void {
+    event.stopPropagation();
+    this.openEditSubEventFormAtIndex(stage.sourceIndex);
   }
 
   private openCreateGroupForm(stage: EventSubeventsStageCard, event: Event): void {
@@ -1443,6 +1515,22 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private normalizeGroupSource(value: unknown): 'manual' | 'generated' {
     const normalized = `${value ?? ''}`.trim().toLowerCase();
     return normalized === 'manual' ? 'manual' : 'generated';
+  }
+
+  private sourceIndexForItem(item: EventSubeventsItem, fallbackIndex = -1): number {
+    if (item.id) {
+      const byId = this.workingSubEvents.findIndex(entry => entry.id === item.id);
+      if (byId >= 0) {
+        return byId;
+      }
+    }
+    if (fallbackIndex >= 0 && fallbackIndex < this.sortedEntries.length) {
+      const entry = this.sortedEntries[fallbackIndex];
+      if (entry) {
+        return entry.sourceIndex;
+      }
+    }
+    return -1;
   }
 
   private reconcileTournamentGroupsForStage(
@@ -1917,6 +2005,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.showDisplayModePicker = false;
     this.openStageMenuKey = null;
     this.openGroupMenuKey = null;
+    this.openCasualMenuKey = null;
     this.showSubEventForm = false;
     this.showSubEventOptionalPicker = false;
     this.resetSubEventStageInsertControls();
