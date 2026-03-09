@@ -582,9 +582,18 @@ export class App {
     
     // Listen for events from EventEditorPopupComponent
     if (typeof window !== 'undefined') {
-      window.addEventListener('app:openMembers', () => this.openEventEditorMembers());
-      window.addEventListener('app:openTopics', () => this.openEventTopicsSelector());
-      window.addEventListener('app:openLocationMap', () => this.openEventLocationMap());
+      window.addEventListener('app:openMembers', (event) => {
+        this.syncModuleEventEditorDraftFromEvent(event);
+        this.openEventEditorMembers();
+      });
+      window.addEventListener('app:openTopics', (event) => {
+        this.syncModuleEventEditorDraftFromEvent(event);
+        this.openEventTopicsSelector();
+      });
+      window.addEventListener('app:openLocationMap', (event) => {
+        this.syncModuleEventEditorDraftFromEvent(event);
+        this.openEventLocationMap();
+      });
       window.addEventListener('app:saveEventEditor', (event) => this.handleModuleEventEditorSave(event));
       window.addEventListener('app:openSubEventResourcePopupFromEventEditor', (event) => this.handleModuleSubEventResourcePopup(event));
     }
@@ -1739,7 +1748,7 @@ export class App {
     }
     const source = this.resolveEventEditorSource();
     if (this.eventEditorMode === 'create' || !source) {
-      this.eventEditorService.openCreate();
+      this.eventEditorService.open('create', this.buildEventEditorCreateDraftSource());
       return;
     }
     const moduleSource = this.buildEventEditorModuleSource(source);
@@ -1775,6 +1784,28 @@ export class App {
       endAt: this.eventForm.endAt,
       pendingMembersCount
     };
+  }
+
+  private buildEventEditorCreateDraftSource(): Record<string, unknown> {
+    const draftSource: EventMenuItem | HostingMenuItem = this.eventEditorTarget === 'hosting'
+      ? {
+          id: this.eventEditorDraftMembersId ?? 'draft-hosting',
+          avatar: this.activeUser.initials,
+          title: '',
+          shortDescription: '',
+          timeframe: '',
+          activity: 0
+        }
+      : {
+          id: this.eventEditorDraftMembersId ?? 'draft-events',
+          avatar: this.activeUser.initials,
+          title: '',
+          shortDescription: '',
+          timeframe: '',
+          activity: 0,
+          isAdmin: true
+        };
+    return this.buildEventEditorModuleSource(draftSource);
   }
 
   private buildModuleEventEditorSubEvents(items: readonly AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] {
@@ -1818,12 +1849,25 @@ export class App {
   }
 
   private handleModuleEventEditorSave(event: Event): void {
-    const customEvent = event as CustomEvent<Record<string, unknown>>;
-    const payload = (customEvent.detail && typeof customEvent.detail === 'object')
-      ? customEvent.detail
-      : {};
+    const payload = this.moduleEventEditorPayloadFromEvent(event) ?? {};
     this.applyModuleEventEditorPayload(payload);
     this.persistModuleEventEditorPayload();
+  }
+
+  private syncModuleEventEditorDraftFromEvent(event: Event): void {
+    const payload = this.moduleEventEditorPayloadFromEvent(event);
+    if (!payload) {
+      return;
+    }
+    this.applyModuleEventEditorPayload(payload);
+  }
+
+  private moduleEventEditorPayloadFromEvent(event: Event): Record<string, unknown> | null {
+    const customEvent = event as CustomEvent<Record<string, unknown>>;
+    if (!customEvent.detail || typeof customEvent.detail !== 'object') {
+      return null;
+    }
+    return customEvent.detail;
   }
 
   private handleModuleSubEventResourcePopup(event: Event): void {
@@ -10704,7 +10748,7 @@ export class App {
     const source = this.activityCapacityById[row.id];
     if (source) {
       const parts = source.split('/').map(part => Number.parseInt(part.trim(), 10));
-      if (parts.length >= 2 && Number.isFinite(parts[1]) && parts[1] > 0) {
+      if (parts.length >= 2 && Number.isFinite(parts[1]) && parts[1] >= 0) {
         return parts[1];
       }
     }

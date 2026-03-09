@@ -213,7 +213,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   requestOpenMembers(): void {
     this.showEventVisibilityPicker = false;
-    window.dispatchEvent(new CustomEvent('app:openMembers'));
+    window.dispatchEvent(new CustomEvent<EventEditorSavePayload>('app:openMembers', {
+      detail: this.buildEventEditorPayload()
+    }));
   }
 
   requestOpenSubEvents(): void {
@@ -243,12 +245,16 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   requestOpenTopics(): void {
     this.showEventVisibilityPicker = false;
-    window.dispatchEvent(new CustomEvent('app:openTopics'));
+    window.dispatchEvent(new CustomEvent<EventEditorSavePayload>('app:openTopics', {
+      detail: this.buildEventEditorPayload()
+    }));
   }
 
   requestOpenLocationMap(): void {
     this.showEventVisibilityPicker = false;
-    window.dispatchEvent(new CustomEvent('app:openLocationMap'));
+    window.dispatchEvent(new CustomEvent<EventEditorSavePayload>('app:openLocationMap', {
+      detail: this.buildEventEditorPayload()
+    }));
   }
 
   eventEditorHeaderPendingMemberCount(): number {
@@ -296,8 +302,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
 
     this.normalizeEventDateRange();
+    window.dispatchEvent(new CustomEvent<EventEditorSavePayload>('app:saveEventEditor', {
+      detail: this.buildEventEditorPayload()
+    }));
+  }
 
-    const payload: EventEditorSavePayload = {
+  private buildEventEditorPayload(): EventEditorSavePayload {
+    return {
       title: this.eventForm.title.trim(),
       description: this.eventForm.description.trim(),
       imageUrl: this.eventForm.imageUrl,
@@ -315,8 +326,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       startAt: this.eventForm.startAt,
       endAt: this.eventForm.endAt
     };
-
-    window.dispatchEvent(new CustomEvent<EventEditorSavePayload>('app:saveEventEditor', { detail: payload }));
   }
 
   toggleEventVisibilityPicker(event?: Event): void {
