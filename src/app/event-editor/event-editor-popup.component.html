@@ -95,18 +95,20 @@
             </label>
 
             <label class="event-capacity-range-field">
-              <span>Capacity</span>
+              <span>Capacity <span class="required-star">*</span></span>
               <div class="subevent-capacity-range">
-                <input type="number" min="0" step="1" [ngModel]="eventForm.capacityMin" (ngModelChange)="onEventCapacityMinChange($event)" [disabled]="eventEditorService.readOnly()" placeholder="Min" />
+                <input type="number" min="0" step="1" required [ngModel]="eventForm.capacityMin" (ngModelChange)="onEventCapacityMinChange($event)" [disabled]="eventEditorService.readOnly()" [class.field-required-invalid]="eventEditorFieldInvalid('capacityMin')" placeholder="Min" />
                 <span class="subevent-capacity-separator">-</span>
                 <input
                   type="number"
                   min="0"
                   step="1"
+                  required
                   [ngModel]="eventForm.capacityMax"
                   (ngModelChange)="onEventCapacityMaxChange($event)"
                   (blur)="onEventCapacityMaxBlur()"
                   [disabled]="eventEditorService.readOnly()"
+                  [class.field-required-invalid]="eventEditorFieldInvalid('capacityMax')"
                   placeholder="Max"
                 />
               </div>

@@ -169,8 +169,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     visibility: 'Public' as EventVisibility,
     frequency: 'One-time',
     location: '',
-    capacityMin: null as number | null,
-    capacityMax: null as number | null,
+    capacityMin: 0 as number | null,
+    capacityMax: 0 as number | null,
     blindMode: 'Open Event' as EventBlindMode,
     autoInviter: false,
     ticketing: false,
@@ -268,7 +268,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return Math.floor(pendingCount);
   }
 
-  eventEditorFieldInvalid(field: 'title' | 'description'): boolean {
+  eventEditorFieldInvalid(field: 'title' | 'description' | 'capacityMin' | 'capacityMax'): boolean {
+    if (field === 'capacityMin' || field === 'capacityMax') {
+      return this.eventForm[field] === null;
+    }
     return !this.eventForm[field].trim();
   }
 
@@ -280,6 +283,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return Boolean(
       this.eventForm.title.trim()
       && this.eventForm.description.trim()
+      && this.eventForm.capacityMin !== null
+      && this.eventForm.capacityMax !== null
       && this.eventForm.startAt
       && this.eventForm.endAt
     );
@@ -299,8 +304,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       visibility: this.eventForm.visibility,
       frequency: this.eventForm.frequency,
       location: this.eventForm.location,
-      capacityMin: this.eventForm.capacityMin,
-      capacityMax: this.eventForm.capacityMax,
+      capacityMin: this.eventForm.capacityMin ?? 0,
+      capacityMax: this.eventForm.capacityMax ?? 0,
       blindMode: this.eventForm.blindMode,
       autoInviter: this.eventForm.autoInviter,
       ticketing: this.eventForm.ticketing,
@@ -676,8 +681,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       visibility: this.normalizeVisibility(source.visibility),
       frequency: this.normalizeFrequency(source.frequency),
       location: this.normalizeLocation(source.location),
-      capacityMin: this.toCapacityInputValue(source.capacityMin ?? sourceCapacity?.min),
-      capacityMax: this.toCapacityInputValue(source.capacityMax ?? sourceCapacity?.max),
+      capacityMin: this.toCapacityInputValue(source.capacityMin ?? sourceCapacity?.min) ?? 0,
+      capacityMax: this.toCapacityInputValue(source.capacityMax ?? sourceCapacity?.max) ?? 0,
       blindMode: this.normalizeBlindMode(source.blindMode ?? source.matchingMode),
       autoInviter: this.normalizeAutoInviter(source.autoInviter ?? source.inviteMode),
       ticketing: this.normalizeTicketing(source.ticketing ?? source.ticketType),
@@ -707,8 +712,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       visibility: 'Public',
       frequency: 'One-time',
       location: '',
-      capacityMin: null,
-      capacityMax: null,
+      capacityMin: 0,
+      capacityMax: 0,
       blindMode: 'Open Event',
       autoInviter: false,
       ticketing: false,

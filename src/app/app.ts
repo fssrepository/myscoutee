@@ -356,6 +356,7 @@ export class App {
   protected readonly hostingPublishedById: Record<string, boolean> = { ...APP_DEMO_DATA.hostingPublishedById };
   private readonly forcedAcceptedMembersByRowKey: Record<string, number> = { 'events:e8': 20 };
   protected readonly eventCapacityById: Record<string, AppTypes.EventCapacityRange> = {};
+  private readonly eventFrequencyById: Record<string, string> = {};
   protected readonly invitationDatesById: Record<string, string> = { ...APP_DEMO_DATA.invitationDatesById };
   protected readonly chatDatesById: Record<string, string> = { ...APP_DEMO_DATA.chatDatesById };
   protected readonly chatDistanceById: Record<string, number> = { ...APP_DEMO_DATA.chatDistanceById };
@@ -400,6 +401,7 @@ export class App {
   private readonly eventLocationById: Record<string, string> = {};
   private readonly acceptedOptionalSubEventMembersByKey: Record<string, string[]> = {};
   private readonly acceptedTournamentGroupMembersByKey: Record<string, string[]> = {};
+  private readonly userCreatedEventIds = new Set<string>();
   protected eventStartDateValue: Date | null = null;
   protected eventEndDateValue: Date | null = null;
   protected eventStartTimeValue: Date | null = null;
@@ -4002,7 +4004,7 @@ export class App {
     const end = !Number.isNaN(endFromRange.getTime()) && endFromRange.getTime() > fallbackStart.getTime()
       ? endFromRange
       : new Date(fallbackStart.getTime() + 2 * 60 * 60 * 1000);
-    const frequency = this.parseFrequencyFromTimeframe(source.timeframe);
+    const frequency = this.eventFrequencyById[source.id] ?? this.parseFrequencyFromTimeframe(source.timeframe);
     const capacity = this.eventCapacityById[source.id] ?? { min: null, max: null };
     const loadedSubEvents = this.sortSubEventsByStartAsc(this.cloneSubEvents(this.eventSubEventsById[source.id] ?? []));
     const fallbackLocation = this.normalizeLocationValue(this.firstSubEventByOrder(loadedSubEvents)?.location);
@@ -4038,6 +4040,7 @@ export class App {
     this.eventBlindModeById[this.editingEventId] = this.eventForm.blindMode;
     this.eventAutoInviterById[this.editingEventId] = this.eventForm.autoInviter;
     this.eventTicketingById[this.editingEventId] = this.eventForm.ticketing;
+    this.eventFrequencyById[this.editingEventId] = this.eventForm.frequency;
     this.eventCapacityById[this.editingEventId] = this.normalizedEventCapacityRange();
     this.eventLocationById[this.editingEventId] = this.normalizeLocationValue(this.eventForm.location);
     this.eventSubEventsById[this.editingEventId] = this.cloneSubEvents(this.eventForm.subEvents);
@@ -4083,8 +4086,11 @@ export class App {
   private insertCreatedEventFromForm(): void {
     const baseId = Date.now();
     const timeframe = this.buildEventTimeframeLabel(this.eventForm.startAt, this.eventForm.endAt, this.eventForm.frequency);
+    const normalizedCapacity = this.normalizedEventCapacityRange();
+    const initialCapacityTotal = Math.max(0, Math.trunc(normalizedCapacity.max ?? normalizedCapacity.min ?? 0));
     if (this.eventEditorTarget === 'hosting') {
       const id = `h${baseId}`;
+      this.userCreatedEventIds.add(id);
       this.hostingDatesById[id] = this.eventForm.startAt;
       this.eventDatesById[id] = this.eventForm.startAt;
       this.activityDateTimeRangeById[id] = {
@@ -4096,10 +4102,11 @@ export class App {
       this.eventBlindModeById[id] = this.eventForm.blindMode;
       this.eventAutoInviterById[id] = this.eventForm.autoInviter;
       this.eventTicketingById[id] = this.eventForm.ticketing;
+      this.eventFrequencyById[id] = this.eventForm.frequency;
       this.eventCapacityById[id] = this.normalizedEventCapacityRange();
       this.eventLocationById[id] = this.normalizeLocationValue(this.eventForm.location);
       this.eventSubEventsById[id] = this.cloneSubEvents(this.eventForm.subEvents);
-      this.syncActivityCapacityLabelFromEventForm(id);
+      this.activityCapacityById[id] = `0 / ${initialCapacityTotal}`;
       this.activityImageById[id] = this.eventForm.imageUrl || AppDemoGenerators.defaultAssetImage('Supplies', `event-${id}`);
       const next: HostingMenuItem = {
         id,
@@ -4107,7 +4114,7 @@ export class App {
         title: this.eventForm.title.trim(),
         shortDescription: this.eventForm.description.trim(),
         timeframe,
-        activity: 1
+        activity: 0
       };
       const nextEvent: EventMenuItem = {
         id,
@@ -4115,7 +4122,7 @@ export class App {
         title: this.eventForm.title.trim(),
         shortDescription: this.eventForm.description.trim(),
         timeframe,
-        activity: 1,
+        activity: 0,
         isAdmin: true
       };
       this.hostingItemsByUser[this.activeUser.id] = [next, ...this.hostingItems];
@@ -4125,6 +4132,7 @@ export class App {
       return;
     }
     const id = `e${baseId}`;
+    this.userCreatedEventIds.add(id);
     this.eventDatesById[id] = this.eventForm.startAt;
     this.activityDateTimeRangeById[id] = {
       startIso: this.eventForm.startAt,
@@ -4134,10 +4142,11 @@ export class App {
     this.eventBlindModeById[id] = this.eventForm.blindMode;
     this.eventAutoInviterById[id] = this.eventForm.autoInviter;
     this.eventTicketingById[id] = this.eventForm.ticketing;
+    this.eventFrequencyById[id] = this.eventForm.frequency;
     this.eventCapacityById[id] = this.normalizedEventCapacityRange();
     this.eventLocationById[id] = this.normalizeLocationValue(this.eventForm.location);
     this.eventSubEventsById[id] = this.cloneSubEvents(this.eventForm.subEvents);
-    this.syncActivityCapacityLabelFromEventForm(id);
+    this.activityCapacityById[id] = `0 / ${initialCapacityTotal}`;
     this.activityImageById[id] = this.eventForm.imageUrl || AppDemoGenerators.defaultAssetImage('Supplies', `event-${id}`);
     const next: EventMenuItem = {
       id,
@@ -4145,7 +4154,7 @@ export class App {
       title: this.eventForm.title.trim(),
       shortDescription: this.eventForm.description.trim(),
       timeframe,
-      activity: 1,
+      activity: 0,
       isAdmin: true
     };
     this.eventItemsByUser[this.activeUser.id] = [next, ...this.eventItems];
@@ -4483,6 +4492,9 @@ export class App {
 
   private parseFrequencyFromTimeframe(timeframe: string): string {
     const normalized = timeframe.toLowerCase();
+    if (normalized.includes('2nd') || normalized.includes('bi-weekly') || normalized.includes('biweekly')) {
+      return 'Bi-weekly';
+    }
     if (normalized.includes('every')) {
       return 'Weekly';
     }
@@ -13375,6 +13387,11 @@ export class App {
       this.activityMembersByRowId[rowKey] = [...initial];
       return initial;
     }
+    if ((row.type === 'events' || row.type === 'hosting') && this.isUserCreatedEventLikeId(row.id)) {
+      const initial: AppTypes.ActivityMemberEntry[] = [];
+      this.activityMembersByRowId[rowKey] = [...initial];
+      return initial;
+    }
     const forcedAcceptedCount = this.forcedAcceptedMembersByRowKey[rowKey];
     if (Number.isFinite(forcedAcceptedCount) && forcedAcceptedCount > 0) {
       const forced = AppDemoGenerators.buildForcedAcceptedMembers(
@@ -13399,6 +13416,21 @@ export class App {
     const ordered = this.sortActivityMembersByActionTimeAsc(generated);
     this.activityMembersByRowId[rowKey] = [...ordered];
     return ordered;
+  }
+
+  private isUserCreatedEventLikeId(id: string): boolean {
+    return this.userCreatedEventIds.has(id) || /^[eh]\d{11,}$/.test(id);
+  }
+
+  private syncMirroredEventMembersCache(
+    row: AppTypes.ActivityListRow,
+    entries: AppTypes.ActivityMemberEntry[]
+  ): void {
+    if (row.type !== 'events' && row.type !== 'hosting') {
+      return;
+    }
+    const mirrorType = row.type === 'events' ? 'hosting' : 'events';
+    this.activityMembersByRowId[`${mirrorType}:${row.id}`] = [...entries];
   }
 
   private eventExploreVisibilityRaw(card: AppTypes.EventExploreCard): AppTypes.EventVisibility {
@@ -13517,6 +13549,9 @@ export class App {
     const ordered = this.sortActivityMembersByActionTimeAsc(next);
     this.selectedActivityMembers = ordered;
     this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...ordered];
+    if (this.selectedActivityMembersRow) {
+      this.syncMirroredEventMembersCache(this.selectedActivityMembersRow, ordered);
+    }
     if (isSubEventAssetMembers) {
       for (const invited of additions) {
         if (invited.pendingSource === 'admin') {
