@@ -1,5 +1,6 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { Subject } from 'rxjs';
+import type * as AppTypes from './app-types';
 
 export interface EventEditorState {
   isOpen: boolean;
@@ -39,6 +40,20 @@ export class EventEditorService {
   private _readOnly = signal(false);
   private _subEventResourcePopupRequest = signal<EventEditorSubEventResourcePopupRequest | null>(null);
   
+  // ===== Activities State =====
+  private _activitiesOpen = signal(false);
+  private _activitiesPrimaryFilter = signal<AppTypes.ActivitiesPrimaryFilter>('chats');
+  private _activitiesSecondaryFilter = signal<AppTypes.ActivitiesSecondaryFilter>('recent');
+  private _activitiesChatContextFilter = signal<AppTypes.ActivitiesChatContextFilter>('all');
+  private _activitiesHostingPublicationFilter = signal<AppTypes.HostingPublicationFilter>('all');
+  private _activitiesRateFilter = signal<AppTypes.RateFilterKey>('pair-received');
+  private _activitiesView = signal<'day' | 'week' | 'month' | 'distance'>('day');
+  private _activitiesShowViewPicker = signal(false);
+  private _activitiesShowSecondaryPicker = signal(false);
+  private _activitiesStickyValue = signal('');
+  private _activitiesRatesFullscreenMode = signal(false);
+  private _activitiesSelectedRateId = signal<string | null>(null);
+  
   // Public readonly signals
   readonly isOpen = this._isOpen.asReadonly();
   readonly mode = this._mode.asReadonly();
@@ -46,8 +61,23 @@ export class EventEditorService {
   readonly readOnly = this._readOnly.asReadonly();
   readonly subEventResourcePopupRequest = this._subEventResourcePopupRequest.asReadonly();
   
-  // Computed value for easy template usage
+  // Activities public signals
+  readonly activitiesOpen = this._activitiesOpen.asReadonly();
+  readonly activitiesPrimaryFilter = this._activitiesPrimaryFilter.asReadonly();
+  readonly activitiesSecondaryFilter = this._activitiesSecondaryFilter.asReadonly();
+  readonly activitiesChatContextFilter = this._activitiesChatContextFilter.asReadonly();
+  readonly activitiesHostingPublicationFilter = this._activitiesHostingPublicationFilter.asReadonly();
+  readonly activitiesRateFilter = this._activitiesRateFilter.asReadonly();
+  readonly activitiesView = this._activitiesView.asReadonly();
+  readonly activitiesShowViewPicker = this._activitiesShowViewPicker.asReadonly();
+  readonly activitiesShowSecondaryPicker = this._activitiesShowSecondaryPicker.asReadonly();
+  readonly activitiesStickyValue = this._activitiesStickyValue.asReadonly();
+  readonly activitiesRatesFullscreenMode = this._activitiesRatesFullscreenMode.asReadonly();
+  readonly activitiesSelectedRateId = this._activitiesSelectedRateId.asReadonly();
+  
+  // Computed values
   readonly isOpenBoolean = computed(() => this._isOpen());
+  readonly activitiesOpenBoolean = computed(() => this._activitiesOpen());
   
   // Subjects for open/close events
   private _onOpen = new Subject<void>();
@@ -61,9 +91,6 @@ export class EventEditorService {
 
   /**
    * Open the event editor
-   * @param mode - 'create' or 'edit' mode
-   * @param sourceEvent - optional event data to edit/view
-   * @param readOnly - optional flag for view-only mode
    */
   open(mode: 'create' | 'edit' = 'create', sourceEvent?: any, readOnly?: boolean): void {
     this._mode.set(mode);
@@ -73,32 +100,18 @@ export class EventEditorService {
     this._onOpen.next();
   }
 
-  /**
-   * Open the event in view mode (read-only)
-   * @param sourceEvent - the event data to view
-   */
   openView(sourceEvent: any): void {
     this.open('edit', sourceEvent, true);
   }
 
-  /**
-   * Open the event in edit mode
-   * @param sourceEvent - the event data to edit
-   */
   openEdit(sourceEvent: any): void {
     this.open('edit', sourceEvent, false);
   }
 
-  /**
-   * Open the editor in create mode
-   */
   openCreate(): void {
     this.open('create');
   }
 
-  /**
-   * Close the event editor
-   */
   close(): void {
     this._isOpen.set(false);
     this._sourceEvent.set(null);
@@ -107,12 +120,6 @@ export class EventEditorService {
     this._onClose.next();
   }
 
-  /**
-   * Toggle the event editor open/close
-   * @param mode - mode to use when opening (if currently closed)
-   * @param sourceEvent - optional event data to edit/view
-   * @param readOnly - optional flag for view-only mode
-   */
   toggle(mode: 'create' | 'edit' = 'create', sourceEvent?: any, readOnly?: boolean): void {
     if (this._isOpen()) {
       this.close();
@@ -121,30 +128,18 @@ export class EventEditorService {
     }
   }
 
-  /**
-   * Check if editor is currently open
-   */
   get isCurrentlyOpen(): boolean {
     return this._isOpen();
   }
 
-  /**
-   * Get current mode
-   */
   get currentMode(): 'create' | 'edit' {
     return this._mode();
   }
 
-  /**
-   * Get current source event
-   */
   get currentSourceEvent(): any {
     return this._sourceEvent();
   }
 
-  /**
-   * Check if in read-only mode
-   */
   get isReadOnly(): boolean {
     return this._readOnly();
   }
@@ -155,5 +150,139 @@ export class EventEditorService {
 
   clearSubEventResourcePopupRequest(): void {
     this._subEventResourcePopupRequest.set(null);
+  }
+
+  // ===== Activities Methods =====
+
+  /**
+   * Open the activities popup
+   */
+  openActivities(primaryFilter: AppTypes.ActivitiesPrimaryFilter = 'chats'): void {
+    this._activitiesOpen.set(true);
+    this._activitiesPrimaryFilter.set(primaryFilter);
+    this._activitiesSecondaryFilter.set('recent');
+    this._activitiesHostingPublicationFilter.set('all');
+    this._activitiesShowViewPicker.set(false);
+    this._activitiesShowSecondaryPicker.set(false);
+    this._activitiesView.set('day');
+    this._activitiesStickyValue.set('');
+    this._activitiesRatesFullscreenMode.set(false);
+    this._activitiesSelectedRateId.set(null);
+  }
+
+  /**
+   * Close the activities popup
+   */
+  closeActivities(): void {
+    this._activitiesOpen.set(false);
+  }
+
+  /**
+   * Check if activities popup is open
+   */
+  get isActivitiesOpen(): boolean {
+    return this._activitiesOpen();
+  }
+
+  /**
+   * Set primary filter
+   */
+  setActivitiesPrimaryFilter(filter: AppTypes.ActivitiesPrimaryFilter): void {
+    this._activitiesPrimaryFilter.set(filter);
+    this._activitiesHostingPublicationFilter.set('all');
+    this._activitiesShowViewPicker.set(false);
+    this._activitiesShowSecondaryPicker.set(false);
+    this._activitiesChatContextFilter.set('all');
+    if (filter !== 'rates') {
+      this._activitiesRatesFullscreenMode.set(false);
+    }
+    if (filter === 'rates') {
+      this._activitiesView.set('distance');
+      this._activitiesSelectedRateId.set(null);
+    } else if (filter === 'chats') {
+      this._activitiesView.set('day');
+      this._activitiesSelectedRateId.set(null);
+    } else {
+      this._activitiesSelectedRateId.set(null);
+    }
+  }
+
+  /**
+   * Set secondary filter
+   */
+  setActivitiesSecondaryFilter(filter: AppTypes.ActivitiesSecondaryFilter): void {
+    this._activitiesSecondaryFilter.set(filter);
+    this._activitiesShowSecondaryPicker.set(false);
+  }
+
+  /**
+   * Set chat context filter
+   */
+  setActivitiesChatContextFilter(filter: AppTypes.ActivitiesChatContextFilter): void {
+    this._activitiesChatContextFilter.set(filter);
+  }
+
+  /**
+   * Set hosting publication filter
+   */
+  setActivitiesHostingPublicationFilter(filter: AppTypes.HostingPublicationFilter): void {
+    this._activitiesHostingPublicationFilter.set(filter);
+  }
+
+  /**
+   * Set rate filter
+   */
+  setActivitiesRateFilter(filter: AppTypes.RateFilterKey): void {
+    this._activitiesRateFilter.set(filter);
+  }
+
+  /**
+   * Set view
+   */
+  setActivitiesView(view: 'day' | 'week' | 'month' | 'distance'): void {
+    this._activitiesView.set(view);
+    if (view !== 'distance') {
+      this._activitiesStickyValue.set('');
+    }
+  }
+
+  /**
+   * Toggle view picker
+   */
+  toggleActivitiesViewPicker(): void {
+    this._activitiesShowViewPicker.set(!this._activitiesShowViewPicker());
+    this._activitiesShowSecondaryPicker.set(false);
+  }
+
+  /**
+   * Toggle secondary picker
+   */
+  toggleActivitiesSecondaryPicker(): void {
+    this._activitiesShowSecondaryPicker.set(!this._activitiesShowSecondaryPicker());
+    this._activitiesShowViewPicker.set(false);
+  }
+
+  /**
+   * Set sticky value
+   */
+  setActivitiesStickyValue(value: string): void {
+    this._activitiesStickyValue.set(value);
+  }
+
+  /**
+   * Set rates fullscreen mode
+   */
+  setActivitiesRatesFullscreenMode(enabled: boolean): void {
+    this._activitiesRatesFullscreenMode.set(enabled);
+    if (!enabled) {
+      this._activitiesSelectedRateId.set(null);
+    }
+  }
+
+  /**
+   * Set selected rate id
+   */
+  setActivitiesSelectedRateId(rateId: string | null): void {
+    this._activitiesSelectedRateId.set(rateId);
   }
 }

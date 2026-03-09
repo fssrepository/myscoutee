@@ -1,0 +1,158 @@
+<div class="activities-popup" [class.activities-popup-rates-fullscreen]="isRatesFullscreenModeActive" (click)="onPopupSurfaceClick($event)">
+  <!-- Toolbar -->
+  <div class="experience-toolbar assets-toolbar">
+    <!-- Primary Filter -->
+    <div class="activity-primary-filter">
+      <button
+        type="button"
+        class="popup-view-fab activity-filter-trigger"
+        [ngClass]="activitiesPrimaryFilterClass()"
+        *ngFor="let option of activitiesPrimaryFilters"
+        (click)="onPrimaryFilterClick(option.key, $event)"
+        [attr.aria-label]="'Filter: ' + option.label"
+      >
+        <mat-icon>{{ option.icon }}</mat-icon>
+      </button>
+    </div>
+
+    <!-- Rate Filter -->
+    <div class="rate-filter-section" *ngIf="isRateFilterVisible">
+      <div class="rate-filter-picker">
+        <mat-select
+          [value]="activitiesRateFilter"
+          (selectionChange)="onRateFilterChange($event.value)"
+          class="rate-filter-select"
+        >
+          <mat-option *ngFor="let filter of rateFilters" [value]="filter.key">
+            <span class="rate-filter-option">
+              <span>{{ filter.label }}</span>
+            </span>
+          </mat-option>
+        </mat-select>
+      </div>
+    </div>
+
+    <!-- Hosting Publication Filter -->
+    <div class="hosting-filter-section" *ngIf="isHostingPublicationFilterVisible">
+      <button
+        type="button"
+        class="popup-view-fab"
+        [ngClass]="hostingPublicationFilter === 'all' ? 'active' : ''"
+        (click)="onHostingPublicationFilterClick('all', $event)"
+      >
+        All
+      </button>
+      <button
+        type="button"
+        class="popup-view-fab"
+        [ngClass]="hostingPublicationFilter === 'drafts' ? 'active' : ''"
+        (click)="onHostingPublicationFilterClick('drafts', $event)"
+      >
+        Drafts
+      </button>
+    </div>
+
+    <!-- View Picker -->
+    <div class="activities-view-picker">
+      <!-- Secondary Filter -->
+      <div class="activities-secondary-picker" *ngIf="!isCalendarLayoutView && activitiesPrimaryFilter !== 'chats'">
+        <button
+          type="button"
+          class="popup-view-fab"
+          (click)="toggleSecondaryPicker($event)"
+          [attr.aria-label]="'Open secondary filter: ' + activitiesSecondaryFilterLabel"
+        >
+          <mat-icon>{{ activitiesSecondaryFilterIcon }}</mat-icon>
+        </button>
+        <div class="activities-view-picker-panel" *ngIf="showActivitiesSecondaryPicker">
+          <button
+            type="button"
+            class="activities-view-option"
+            *ngFor="let option of activitiesSecondaryFilters"
+            [ngClass]="activitiesSecondaryFilterClass(option.key)"
+            (click)="onSecondaryFilterClick(option.key, $event)"
+          >
+            <mat-icon>{{ option.icon }}</mat-icon>
+            <span>{{ option.label }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Chat Context Filter -->
+      <ng-container *ngIf="activitiesPrimaryFilter === 'chats'">
+        <div class="activities-chat-context-picker" *ngIf="!isMobileView; else mobileActivitiesChatContextFilterButton">
+          <mat-select
+            [value]="activitiesChatContextFilter"
+            (selectionChange)="onChatContextFilterClick($event.value)"
+            class="chat-context-filter-select"
+          >
+            <mat-option *ngFor="let option of activitiesChatContextFilters" [value]="option.key">
+              <span class="chat-context-filter-option">
+                <mat-icon>{{ option.icon }}</mat-icon>
+                <span>{{ option.label }}</span>
+              </span>
+            </mat-option>
+          </mat-select>
+        </div>
+        <ng-template #mobileActivitiesChatContextFilterButton>
+          <button
+            type="button"
+            class="popup-view-fab"
+            (click)="toggleSecondaryPicker($event)"
+          >
+            <mat-icon>{{ activitiesChatContextFilterIcon }}</mat-icon>
+          </button>
+        </ng-template>
+      </ng-container>
+
+      <!-- View Toggle -->
+      <button
+        type="button"
+        class="popup-view-fab"
+        *ngIf="activitiesPrimaryFilter !== 'chats'"
+        (click)="toggleViewPicker($event)"
+        [attr.aria-label]="'Open view selector'"
+      >
+        <mat-icon>view_agenda</mat-icon>
+      </button>
+      <div class="activities-view-picker-panel" *ngIf="showActivitiesViewPicker && activitiesPrimaryFilter !== 'chats'">
+        <button
+          type="button"
+          class="activities-view-option"
+          *ngFor="let option of activitiesViewOptions"
+          (click)="onViewChange(option.key, $event)"
+        >
+          <mat-icon>{{ option.icon }}</mat-icon>
+          <span>{{ option.label }}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="activities-actions">
+      <button
+        type="button"
+        class="popup-header-add-btn activities-explore-btn"
+        *ngIf="shouldShowActivitiesExploreAction"
+      >
+        <mat-icon>explore</mat-icon>
+      </button>
+      <button
+        type="button"
+        class="popup-header-add-btn activities-add-btn"
+        *ngIf="shouldShowActivitiesCreateAction"
+      >
+        <mat-icon>add</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Content Area - Placeholder for now -->
+  <div class="activities-content">
+    <div class="editor-list-card">
+      <h4>Activities</h4>
+      <p>{{ activitiesHeaderLineOne }}</p>
+      <p class="activities-empty-hint">{{ activitiesEmptyLabel }}</p>
+    </div>
+  </div>
+</div>

@@ -1541,6 +1541,9 @@ export class App {
 
   protected openActivitiesPopup(primaryFilter: AppTypes.ActivitiesPrimaryFilter, closeMenu = true): void {
     this.commitPendingRateDirectionOverrides();
+    // Delegate to EventEditorService - the popup is now in event-editor module
+    this.eventEditorService.openActivities(primaryFilter);
+    // Keep local state for now for compatibility with existing code
     this.activePopup = 'activities';
     this.activitiesPrimaryFilter = primaryFilter;
     this.activitiesSecondaryFilter = 'recent';

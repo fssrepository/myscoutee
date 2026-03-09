@@ -12,18 +12,33 @@ import { EventEditorService } from './shared/event-editor.service';
     <ng-container *ngIf="eventEditorPopupComponent() as popupComponent">
       <ng-container *ngComponentOutlet="popupComponent"></ng-container>
     </ng-container>
+    <ng-container *ngIf="activitiesPopupComponent() as activitiesComponent">
+      <ng-container *ngComponentOutlet="activitiesComponent"></ng-container>
+    </ng-container>
   `
 })
 export class AppShellComponent {
   private readonly eventEditorService = inject(EventEditorService);
   private readonly eventEditorPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly activitiesPopupComponentRef = signal<Type<unknown> | null>(null);
+  
   protected readonly eventEditorPopupComponent = this.eventEditorPopupComponentRef.asReadonly();
+  protected readonly activitiesPopupComponent = this.activitiesPopupComponentRef.asReadonly();
 
   constructor() {
+    // Event editor popup lazy loading
     effect(() => {
       const isOpen = this.eventEditorService.isOpen();
       if (isOpen && !this.eventEditorPopupComponentRef()) {
         void this.ensureEventEditorPopupLoaded();
+      }
+    });
+    
+    // Activities popup lazy loading
+    effect(() => {
+      const isActivitiesOpen = this.eventEditorService.activitiesOpen();
+      if (isActivitiesOpen && !this.activitiesPopupComponentRef()) {
+        void this.ensureActivitiesPopupLoaded();
       }
     });
   }
@@ -34,5 +49,13 @@ export class AppShellComponent {
     }
     const module = await import('./event-editor/event-editor-popup.component');
     this.eventEditorPopupComponentRef.set(module.EventEditorPopupComponent);
+  }
+  
+  private async ensureActivitiesPopupLoaded(): Promise<void> {
+    if (this.activitiesPopupComponentRef()) {
+      return;
+    }
+    const module = await import('./event-editor/event-activities-popup.component');
+    this.activitiesPopupComponentRef.set(module.EventActivitiesPopupComponent);
   }
 }
