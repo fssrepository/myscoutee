@@ -101,6 +101,10 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected readonly activitySourceLinkById: Record<string, string> = { ...APP_DEMO_DATA.activitySourceLinkById };
   protected readonly activityCapacityById: Record<string, string> = { ...APP_DEMO_DATA.activityCapacityById };
   protected readonly eventVisibilityById: Record<string, AppTypes.EventVisibility> = { ...APP_DEMO_DATA.eventVisibilityById };
+  private readonly eventCapacityById: Record<string, AppTypes.EventCapacityRange> = {};
+  private readonly eventSubEventsById: Record<string, AppTypes.SubEventFormItem[]> = {};
+  private readonly acceptedOptionalSubEventMembersByKey: Record<string, string[]> = {};
+  private readonly acceptedTournamentGroupMembersByKey: Record<string, string[]> = {};
   private readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
   private readonly forcedAcceptedMembersByRowKey: Record<string, number> = { 'events:e8': 20 };
   private readonly generatedRateItemsByUser: Record<string, RateMenuItem[]> = {};
@@ -480,6 +484,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     }
 
     this.ensurePaginationTestEvents(30);
+    this.initializeEventEditorContextData();
     this.refreshSectionBadges();
   }
 
@@ -521,6 +526,41 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     }
 
     this.eventItems = [...this.eventItems, ...synthetic];
+  }
+
+  private initializeEventEditorContextData(): void {
+    const sources: Array<{ item: EventMenuItem | HostingMenuItem; isHosting: boolean }> = [];
+    for (const item of this.eventItems) {
+      sources.push({ item, isHosting: false });
+    }
+    for (const item of this.hostingItems) {
+      sources.push({ item, isHosting: true });
+    }
+
+    const visited = new Set<string>();
+    for (const source of sources) {
+      const id = source.item.id;
+      if (visited.has(id)) {
+        continue;
+      }
+      visited.add(id);
+
+      if (!this.eventCapacityById[id]) {
+        this.eventCapacityById[id] = AppDemoGenerators.seededEventCapacityRange(id, this.activityCapacityById);
+      }
+      if (!this.eventSubEventsById[id] || this.eventSubEventsById[id].length === 0) {
+        this.eventSubEventsById[id] = AppDemoGenerators.buildSeededSubEventsForEvent(source.item, {
+          isHosting: source.isHosting,
+          activityDateTimeRangeById: this.activityDateTimeRangeById,
+          hostingDatesById: this.hostingDatesById,
+          eventDatesById: this.eventDatesById,
+          eventCapacityById: this.eventCapacityById,
+          activityCapacityById: this.activityCapacityById,
+          defaultStartIso: this.defaultEventStartIso(),
+          activeUserId: this.activeUser.id
+        });
+      }
+    }
   }
 
   private refreshSectionBadges(): void {
@@ -3485,7 +3525,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       merged.set(contextual.id, contextual);
       if (!this.chatDatesById[contextual.id]) {
         this.chatDatesById[contextual.id] = contextual.lastMessage
-          ? (this.eventDatesById[contextual.eventId ?? ''] ?? this.defaultEventStartIso())
+          ? (contextual.subEventId
+            ? this.chatSubEventDateIso(contextual.eventId ?? '', contextual.subEventId)
+            : this.chatEventDateIso(contextual.eventId ?? ''))
           : this.defaultEventStartIso();
       }
       if (!this.chatDistanceById[contextual.id]) {
@@ -3496,74 +3538,372 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   private buildContextualChatChannels(): ChatMenuItem[] {
-    const sourceEvents = this.eventItems
-      .filter(item => item.isAdmin)
-      .slice(0, 6);
-    const channels: ChatMenuItem[] = [];
-    for (const event of sourceEvents) {
-      const eventLabel = event.title.trim() || 'Event';
-      channels.push(
-        this.buildContextChatItem(
-          `ctx-main-${event.id}`,
-          eventLabel,
-          'mainEvent',
-          event.id,
-          null,
-          null,
-          `Main room live for ${eventLabel}.`,
-          1
-        ),
-        this.buildContextChatItem(
-          `ctx-opt-${event.id}`,
-          `${eventLabel} · Optional`,
-          'optionalSubEvent',
-          event.id,
-          `${event.id}-optional`,
-          null,
-          'Optional side stage confirmed for tonight.',
-          0
-        ),
-        this.buildContextChatItem(
-          `ctx-group-${event.id}`,
-          `${eventLabel} · Group`,
-          'groupSubEvent',
-          event.id,
-          `${event.id}-group`,
-          `${event.id}-g1`,
-          'Group assignments are synced for the next round.',
-          1
-        )
-      );
+    const source = this.resolveChatFocusEventSource();
+    if (!source) {
+      return [];
+    }
+    const eventId = source.id;
+    const eventTitle = source.title.trim() || 'Event';
+    const subEvents = this.chatEventSubEvents(eventId);
+    const channels: ChatMenuItem[] = [
+      this.buildMainEventContextChat(eventId, eventTitle)
+    ];
+    if (subEvents.length === 0) {
+      return channels;
+    }
+
+    for (const [index, subEvent] of subEvents.entries()) {
+      const stageLabel = this.chatStageLabel(index);
+      if (subEvent.optional) {
+        if (!this.isActiveUserAttachedToOptionalSubEvent(eventId, subEvent.id)) {
+          continue;
+        }
+        channels.push(this.buildOptionalSubEventContextChat(eventId, eventTitle, subEvent, stageLabel));
+        continue;
+      }
+      const groups = this.subEventGroupsForStage(subEvent);
+      if (groups.length === 0) {
+        continue;
+      }
+      const activeGroup = this.activeUserTournamentGroup(eventId, subEvent, groups);
+      if (!activeGroup) {
+        continue;
+      }
+      channels.push(this.buildGroupSubEventContextChat(eventId, eventTitle, subEvent, activeGroup, stageLabel, groups));
     }
     return channels;
   }
 
-  private buildContextChatItem(
-    id: string,
-    title: string,
-    channelType: ChatMenuItem['channelType'],
-    eventId: string,
-    subEventId: string | null,
-    groupId: string | null,
-    lastMessage: string,
-    unread: number
-  ): ChatMenuItem {
+  private buildMainEventContextChat(eventId: string, eventTitle: string): ChatMenuItem {
     const memberIds = AppDemoGenerators.seededEventMemberIds(eventId, 8, this.users, this.activeUser.id);
-    const senderId = memberIds[1] ?? memberIds[0] ?? this.activeUser.id;
-    const sender = this.userById(senderId) ?? this.activeUser;
+    return this.buildContextChatItem({
+      id: `c-context-main-${eventId}`,
+      title: `${eventTitle} · Main Event`,
+      lastMessage: `Main event channel for ${eventTitle}.`,
+      eventId,
+      subEventId: '',
+      groupId: '',
+      channelType: 'mainEvent',
+      memberIds
+    });
+  }
+
+  private buildOptionalSubEventContextChat(
+    eventId: string,
+    eventTitle: string,
+    subEvent: AppTypes.SubEventFormItem,
+    stageLabel: string
+  ): ChatMenuItem {
+    const memberIds = this.optionalSubEventAcceptedMemberIds(eventId, subEvent.id);
+    return this.buildContextChatItem({
+      id: `c-context-optional-${eventId}-${subEvent.id}`,
+      title: `${subEvent.name || 'Optional Sub Event'} · Optional`,
+      lastMessage: `${stageLabel} optional channel in ${eventTitle}.`,
+      eventId,
+      subEventId: subEvent.id,
+      groupId: '',
+      channelType: 'optionalSubEvent',
+      memberIds
+    });
+  }
+
+  private buildGroupSubEventContextChat(
+    eventId: string,
+    eventTitle: string,
+    subEvent: AppTypes.SubEventFormItem,
+    group: AppTypes.SubEventGroupItem,
+    stageLabel: string,
+    groups: AppTypes.SubEventGroupItem[]
+  ): ChatMenuItem {
+    const memberIds = this.tournamentGroupAcceptedMemberIds(eventId, subEvent.id, group.id, groups);
+    return this.buildContextChatItem({
+      id: `c-context-group-${eventId}-${subEvent.id}-${group.id}`,
+      title: `${group.name} · Group Channel`,
+      lastMessage: `${stageLabel} group channel in ${eventTitle}.`,
+      eventId,
+      subEventId: subEvent.id,
+      groupId: group.id,
+      channelType: 'groupSubEvent',
+      memberIds
+    });
+  }
+
+  private buildContextChatItem(input: {
+    id: string;
+    title: string;
+    lastMessage: string;
+    eventId: string;
+    subEventId: string;
+    groupId: string;
+    channelType: AppTypes.ChatChannelType;
+    memberIds: string[];
+  }): ChatMenuItem {
+    const memberIds = this.uniqueUserIds([this.activeUser.id, ...input.memberIds]);
+    const senderCandidates = memberIds.filter(id => id !== this.activeUser.id);
+    const lastSenderId = senderCandidates[AppDemoGenerators.hashText(`chat-sender:${input.id}`) % Math.max(1, senderCandidates.length)]
+      ?? memberIds[0]
+      ?? this.activeUser.id;
+    const unread = AppDemoGenerators.hashText(`chat-unread:${input.id}`) % 4;
     return {
-      id,
-      avatar: sender.initials,
-      title,
-      lastMessage,
-      lastSenderId: senderId,
+      id: input.id,
+      avatar: AppUtils.initialsFromText(input.title),
+      title: input.title,
+      lastMessage: input.lastMessage,
+      lastSenderId,
       memberIds,
       unread,
-      channelType: channelType ?? 'general',
-      eventId,
-      subEventId: subEventId ?? undefined,
-      groupId: groupId ?? undefined
+      channelType: input.channelType,
+      eventId: input.eventId,
+      subEventId: input.subEventId || undefined,
+      groupId: input.groupId || undefined
     };
+  }
+
+  private uniqueUserIds(ids: string[]): string[] {
+    const unique: string[] = [];
+    for (const id of ids) {
+      if (!id || unique.includes(id)) {
+        continue;
+      }
+      unique.push(id);
+    }
+    return unique;
+  }
+
+  private chatStageLabel(index: number): string {
+    return `Stage ${index + 1}`;
+  }
+
+  private chatEventDateIso(eventId: string): string {
+    return this.eventDatesById[eventId]
+      ?? this.hostingDatesById[eventId]
+      ?? this.defaultEventStartIso();
+  }
+
+  private chatSubEventDateIso(eventId: string, subEventId: string): string {
+    const subEvent = this.chatEventSubEvents(eventId).find(item => item.id === subEventId) ?? null;
+    return subEvent?.startAt || this.chatEventDateIso(eventId);
+  }
+
+  private resolveChatFocusEventSource(): EventMenuItem | HostingMenuItem | null {
+    const editorSource = this.resolveEventEditorSource();
+    if (editorSource) {
+      return editorSource;
+    }
+    const managed = this.eventItems.find(item => item.isAdmin);
+    if (managed) {
+      return managed;
+    }
+    return this.eventItems[0] ?? this.hostingItems[0] ?? null;
+  }
+
+  private resolveEventEditorSource(): EventMenuItem | HostingMenuItem | null {
+    if (!this.eventEditorService.isOpen()) {
+      return null;
+    }
+    const source = this.eventEditorService.sourceEvent();
+    if (!source || typeof source !== 'object') {
+      return null;
+    }
+    const sourceId = typeof (source as { id?: unknown }).id === 'string'
+      ? ((source as { id: string }).id.trim())
+      : '';
+    if (!sourceId) {
+      return null;
+    }
+    const eventMatch = this.eventItems.find(item => item.id === sourceId);
+    if (eventMatch) {
+      return eventMatch;
+    }
+    const hostingMatch = this.hostingItems.find(item => item.id === sourceId);
+    if (hostingMatch) {
+      return hostingMatch;
+    }
+    const fallbackSource = source as Partial<EventMenuItem | HostingMenuItem>;
+    return {
+      id: sourceId,
+      avatar: typeof fallbackSource.avatar === 'string' ? fallbackSource.avatar : AppUtils.initialsFromText(typeof fallbackSource.title === 'string' ? fallbackSource.title : 'Event'),
+      title: typeof fallbackSource.title === 'string' ? fallbackSource.title : 'Event',
+      shortDescription: typeof fallbackSource.shortDescription === 'string' ? fallbackSource.shortDescription : '',
+      timeframe: typeof fallbackSource.timeframe === 'string' ? fallbackSource.timeframe : '',
+      activity: Number.isFinite(Number(fallbackSource.activity)) ? Number(fallbackSource.activity) : 0,
+      ...(typeof (fallbackSource as EventMenuItem).isAdmin === 'boolean'
+        ? { isAdmin: (fallbackSource as EventMenuItem).isAdmin }
+        : {})
+    } as EventMenuItem | HostingMenuItem;
+  }
+
+  private chatEventSubEvents(eventId: string): AppTypes.SubEventFormItem[] {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return [];
+    }
+    return this.sortSubEventsByStartAsc(this.cloneSubEvents(this.eventSubEventsById[normalizedEventId] ?? []));
+  }
+
+  private chatSubEventForItem(item: ChatMenuItem): AppTypes.SubEventFormItem | null {
+    const eventId = this.normalizeLocationValue(item.eventId).trim();
+    const subEventId = this.normalizeLocationValue(item.subEventId).trim();
+    if (!eventId || !subEventId) {
+      return null;
+    }
+    return this.chatEventSubEvents(eventId).find(subEvent => subEvent.id === subEventId) ?? null;
+  }
+
+  private isActiveUserAttachedToOptionalSubEvent(eventId: string, subEventId: string): boolean {
+    return this.optionalSubEventAcceptedMemberIds(eventId, subEventId).includes(this.activeUser.id);
+  }
+
+  private optionalSubEventAcceptedMemberIds(eventId: string, subEventId: string): string[] {
+    const key = this.optionalSubEventMembershipKey(eventId, subEventId);
+    const existing = this.acceptedOptionalSubEventMembersByKey[key];
+    if (existing && existing.length > 0) {
+      return existing;
+    }
+    const candidates = AppDemoGenerators.seededEventMemberIds(eventId, 10, this.users, this.activeUser.id);
+    const seeded = candidates.filter(userId =>
+      (AppDemoGenerators.hashText(`optional-chat-member:${eventId}:${subEventId}:${userId}`) % 100) < 56
+    );
+    const fallback = seeded.length > 0 ? seeded : [candidates[0] ?? this.activeUser.id];
+    this.acceptedOptionalSubEventMembersByKey[key] = this.uniqueUserIds(fallback);
+    return this.acceptedOptionalSubEventMembersByKey[key];
+  }
+
+  private tournamentGroupAcceptedMemberIds(
+    eventId: string,
+    subEventId: string,
+    groupId: string,
+    groups: AppTypes.SubEventGroupItem[]
+  ): string[] {
+    const key = this.tournamentGroupMembershipKey(eventId, subEventId, groupId);
+    const existing = this.acceptedTournamentGroupMembersByKey[key];
+    if (existing && existing.length > 0) {
+      return existing;
+    }
+    const candidates = AppDemoGenerators.seededEventMemberIds(eventId, 12, this.users, this.activeUser.id);
+    const seeded = candidates.filter(userId => AppDemoGenerators.seededTournamentGroupIdForUser(eventId, subEventId, groups, userId) === groupId);
+    const fallback = seeded.length > 0 ? seeded : [candidates[0] ?? this.activeUser.id];
+    this.acceptedTournamentGroupMembersByKey[key] = this.uniqueUserIds(fallback);
+    return this.acceptedTournamentGroupMembersByKey[key];
+  }
+
+  private activeUserTournamentGroup(
+    eventId: string,
+    subEvent: AppTypes.SubEventFormItem,
+    groups: AppTypes.SubEventGroupItem[]
+  ): AppTypes.SubEventGroupItem | null {
+    if (groups.length === 0) {
+      return null;
+    }
+    const explicitGroupId = this.explicitTournamentGroupIdForUser(eventId, subEvent.id, groups, this.activeUser.id);
+    const activeGroupId = explicitGroupId || AppDemoGenerators.seededTournamentGroupIdForUser(eventId, subEvent.id, groups, this.activeUser.id);
+    if (!activeGroupId) {
+      return null;
+    }
+    const memberIds = this.tournamentGroupAcceptedMemberIds(eventId, subEvent.id, activeGroupId, groups);
+    if (!memberIds.includes(this.activeUser.id)) {
+      return null;
+    }
+    return groups.find(group => group.id === activeGroupId) ?? null;
+  }
+
+  private explicitTournamentGroupIdForUser(
+    eventId: string,
+    subEventId: string,
+    groups: AppTypes.SubEventGroupItem[],
+    userId: string
+  ): string | null {
+    for (const group of groups) {
+      const key = this.tournamentGroupMembershipKey(eventId, subEventId, group.id);
+      const members = this.acceptedTournamentGroupMembersByKey[key];
+      if (members?.includes(userId)) {
+        return group.id;
+      }
+    }
+    return null;
+  }
+
+  private optionalSubEventMembershipKey(eventId: string, subEventId: string): string {
+    return `${eventId}:${subEventId}`;
+  }
+
+  private tournamentGroupMembershipKey(eventId: string, subEventId: string, groupId: string): string {
+    return `${eventId}:${subEventId}:${groupId}`;
+  }
+
+  private cloneSubEvents(items: AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] {
+    return items.map(item => ({
+      ...item,
+      location: this.normalizeLocationValue(item.location),
+      groups: this.cloneSubEventGroups(item.groups)
+    }));
+  }
+
+  private normalizeLocationValue(value: string | null | undefined): string {
+    return typeof value === 'string' ? value : '';
+  }
+
+  private sortSubEventsByStartAsc(items: AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] {
+    const source = this.cloneSubEvents(items);
+    return source
+      .map((item, index) => ({
+        item,
+        index,
+        startMs: new Date(item.startAt).getTime()
+      }))
+      .sort((a, b) => {
+        const aTime = Number.isNaN(a.startMs) ? Number.POSITIVE_INFINITY : a.startMs;
+        const bTime = Number.isNaN(b.startMs) ? Number.POSITIVE_INFINITY : b.startMs;
+        if (aTime !== bTime) {
+          return aTime - bTime;
+        }
+        return a.index - b.index;
+      })
+      .map(entry => entry.item);
+  }
+
+  private cloneSubEventGroups(groups: AppTypes.SubEventGroupItem[] | undefined): AppTypes.SubEventGroupItem[] {
+    if (!groups || groups.length === 0) {
+      return [];
+    }
+    return groups.map(group => ({
+      ...group,
+      source: this.normalizedSubEventGroupSource(group)
+    }));
+  }
+
+  private subEventGroupsForStage(item: AppTypes.SubEventFormItem): AppTypes.SubEventGroupItem[] {
+    return this.reconcileTournamentGroupsForStage(item, this.cloneSubEventGroups(item.groups));
+  }
+
+  private normalizedSubEventGroupSource(group: Partial<AppTypes.SubEventGroupItem> | undefined): 'manual' | 'generated' {
+    return group?.source === 'generated' ? 'generated' : 'manual';
+  }
+
+  private reconcileTournamentGroupsForStage(
+    item: AppTypes.SubEventFormItem,
+    sourceGroups: AppTypes.SubEventGroupItem[] = this.cloneSubEventGroups(item.groups)
+  ): AppTypes.SubEventGroupItem[] {
+    const normalizedGroups = sourceGroups.map(group => ({
+      ...group,
+      source: this.normalizedSubEventGroupSource(group)
+    }));
+    if (item.optional) {
+      return normalizedGroups;
+    }
+    const manualGroups = normalizedGroups
+      .filter(group => this.normalizedSubEventGroupSource(group) === 'manual')
+      .map(group => ({
+        ...group,
+        source: 'manual' as const
+      }));
+    const generatedGroups = normalizedGroups
+      .filter(group => this.normalizedSubEventGroupSource(group) === 'generated')
+      .map(group => ({
+        ...group,
+        source: 'generated' as const
+      }));
+    return [...manualGroups, ...generatedGroups];
   }
 
   private defaultEventStartIso(): string {
@@ -3571,26 +3911,92 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return typeof iso === 'string' && iso.trim().length > 0 ? iso : '2026-03-01T09:00:00';
   }
 
+  private getChatItemById(chatId: string): ChatMenuItem | undefined {
+    const contextual = this.buildContextualChatChannels().find(item => item.id === chatId);
+    if (contextual) {
+      return contextual;
+    }
+    return this.chatItems.find(item => item.id === chatId);
+  }
+
+  private getChatMembersById(chatId: string): DemoUser[] {
+    const chatItem = this.getChatItemById(chatId);
+    const explicitMembers = (chatItem?.memberIds ?? [])
+      .map(memberId => this.users.find(user => user.id === memberId))
+      .filter((user): user is DemoUser => Boolean(user));
+    const lastSender = chatItem?.lastSenderId ? this.users.find(user => user.id === chatItem.lastSenderId) ?? null : null;
+
+    const orderedMembers: DemoUser[] = [];
+    if (lastSender) {
+      orderedMembers.push(lastSender);
+    }
+    for (const member of explicitMembers) {
+      if (!orderedMembers.some(item => item.id === member.id)) {
+        orderedMembers.push(member);
+      }
+    }
+    if (!orderedMembers.some(item => item.id === this.activeUser.id)) {
+      orderedMembers.push(this.activeUser);
+    }
+    if (orderedMembers.length > 0) {
+      return orderedMembers;
+    }
+
+    const others = this.users.filter(user => user.id !== this.activeUser.id);
+    if (!others.length) {
+      return [this.activeUser];
+    }
+    const seed = AppDemoGenerators.hashText(chatId);
+    const offsets = [0, 3, 7, 11, 15, 19];
+    const memberCount = 3 + (seed % 3);
+    const picked: DemoUser[] = [];
+    for (const offset of offsets) {
+      const user = others[(seed + offset) % others.length];
+      if (!picked.some(item => item.id === user.id)) {
+        picked.push(user);
+      }
+      if (picked.length === memberCount) {
+        break;
+      }
+    }
+    while (picked.length < memberCount) {
+      picked.push(others[picked.length % others.length]);
+    }
+    return picked;
+  }
+
   private getChatLastSender(item: ChatMenuItem): DemoUser {
-    return this.userById(item.lastSenderId) ?? this.userById(item.memberIds[0] ?? '') ?? this.activeUser;
+    return this.userById(item.lastSenderId) ?? this.getChatMembersById(item.id)[0] ?? this.activeUser;
   }
 
   private getChatMemberCount(item: ChatMenuItem): number {
-    return item.memberIds.length > 0 ? item.memberIds.length : 1;
+    return this.getChatMembersById(item.id).length;
+  }
+
+  private subEventDisplayName(subEvent: AppTypes.SubEventFormItem | null | undefined): string {
+    return subEvent?.name?.trim() ?? '';
   }
 
   private chatContextDetailLine(item: ChatMenuItem): string {
     const channelType = this.chatChannelType(item);
-    if (channelType === 'mainEvent') {
-      return `Main event · ${item.lastMessage}`;
+    if (channelType !== 'optionalSubEvent' && channelType !== 'groupSubEvent') {
+      return item.lastMessage.trim();
     }
-    if (channelType === 'optionalSubEvent') {
-      return `Sub event · ${item.lastMessage}`;
+    const subEvent = this.chatSubEventForItem(item);
+    const eventId = this.normalizeLocationValue(item.eventId).trim();
+    if (!subEvent || !eventId) {
+      return item.lastMessage.trim();
     }
+    const ordered = this.chatEventSubEvents(eventId);
+    const stageIndex = ordered.findIndex(entry => entry.id === subEvent.id);
+    const stageLabel = this.chatStageLabel(Math.max(0, stageIndex));
     if (channelType === 'groupSubEvent') {
-      return `Group room · ${item.lastMessage}`;
+      const group = this.subEventGroupsForStage(subEvent).find(entry => entry.id === item.groupId);
+      const groupLabel = group?.name?.trim() || 'Group';
+      return `${stageLabel} - ${groupLabel}`;
     }
-    return item.lastMessage;
+    const subEventLabel = this.subEventDisplayName(subEvent) || subEvent.name || 'Sub Event';
+    return `${stageLabel} - ${subEventLabel}`;
   }
 
   private matchesActivitiesChatContextFilter(item: ChatMenuItem): boolean {
