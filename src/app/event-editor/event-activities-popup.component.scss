@@ -2166,6 +2166,27 @@
   font-size: 16px;
   line-height: 16px;
 }
+.experience-item-icon.experience-item-icon-event-visibility-public {
+  background: linear-gradient(180deg, #eef7ff 0%, #e5f2ff 100%);
+  border-color: rgba(46, 111, 178, 0.34);
+}
+.experience-item-icon.experience-item-icon-event-visibility-friends {
+  background: linear-gradient(180deg, #f1f8ef 0%, #e9f3e6 100%);
+  border-color: rgba(54, 129, 72, 0.34);
+}
+.experience-item-icon.experience-item-icon-event-visibility-invitation {
+  background: linear-gradient(180deg, #fff5ea 0%, #ffe9d9 100%);
+  border-color: rgba(185, 113, 45, 0.36);
+}
+.experience-item-icon.experience-item-icon-event-visibility-public .mat-icon {
+  color: #2f6cae;
+}
+.experience-item-icon.experience-item-icon-event-visibility-friends .mat-icon {
+  color: #368148;
+}
+.experience-item-icon.experience-item-icon-event-visibility-invitation .mat-icon {
+  color: #b9712d;
+}
 .experience-item-meta {
   min-width: 0;
 }

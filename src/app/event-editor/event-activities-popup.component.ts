@@ -97,6 +97,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected readonly activityImageById: Record<string, string> = { ...APP_DEMO_DATA.activityImageById };
   protected readonly activitySourceLinkById: Record<string, string> = { ...APP_DEMO_DATA.activitySourceLinkById };
   protected readonly activityCapacityById: Record<string, string> = { ...APP_DEMO_DATA.activityCapacityById };
+  protected readonly eventVisibilityById: Record<string, AppTypes.EventVisibility> = { ...APP_DEMO_DATA.eventVisibilityById };
   private readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
   private readonly forcedAcceptedMembersByRowKey: Record<string, number> = { 'events:e8': 20 };
   private readonly generatedRateItemsByUser: Record<string, RateMenuItem[]> = {};
@@ -972,7 +973,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   protected showActivitySourceIcon(row: AppTypes.ActivityListRow): boolean {
-    return row.type === 'events' || row.type === 'hosting' || row.type === 'invitations';
+    return row.type === 'events' || row.type === 'invitations';
   }
 
   protected activitySourceLink(row: AppTypes.ActivityListRow): string {
@@ -992,7 +993,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       const invitation = row.source as InvitationMenuItem;
       return AppUtils.initialsFromText(invitation.inviter);
     }
-    if (row.type === 'events' || row.type === 'hosting') {
+    if (row.type === 'events') {
       const event = row.source as EventMenuItem;
       const explicitOwner = AppUtils.findUserByName(this.users, event.avatar || '');
       if (explicitOwner) {
@@ -1000,6 +1001,10 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       }
       const fallbackOwner = this.users[AppDemoGenerators.hashText(`${row.id}-${event.title}`) % this.users.length];
       return fallbackOwner?.initials ?? AppUtils.initialsFromText(event.title);
+    }
+    if (row.type === 'hosting') {
+      const hosting = row.source as HostingMenuItem;
+      return AppUtils.initialsFromText(hosting.avatar || hosting.title);
     }
     return AppUtils.initialsFromText(row.title);
   }
@@ -1071,13 +1076,59 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activityLeadingIcon(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'hosting')     { return 'star'; }
-    if (row.type === 'invitations') { return 'mail'; }
-    return 'event';
+    if (row.type === 'hosting' || row.type === 'events') {
+      return this.eventVisibilityIcon(this.activityVisibility(row));
+    }
+    return this.activityTypeIcon(row);
   }
 
   protected activityLeadingIconCircleClass(row: AppTypes.ActivityListRow): string {
-    return `activity-icon-${row.type}`;
+    if (row.type !== 'hosting' && row.type !== 'events') {
+      return '';
+    }
+    return `experience-item-icon-${this.eventVisibilityClass(this.activityVisibility(row))}`;
+  }
+
+  private activityVisibility(row: AppTypes.ActivityListRow): AppTypes.EventVisibility {
+    return this.eventVisibilityById[row.id] ?? (row.type === 'hosting' ? 'Invitation only' : 'Public');
+  }
+
+  protected activityTypeIcon(row: AppTypes.ActivityListRow): string {
+    if (row.type === 'events') {
+      return 'event';
+    }
+    if (row.type === 'hosting') {
+      return 'stadium';
+    }
+    if (row.type === 'invitations') {
+      return 'mail';
+    }
+    if (row.type === 'rates') {
+      return 'star';
+    }
+    return 'chat';
+  }
+
+  private eventVisibilityIcon(option: AppTypes.EventVisibility): string {
+    switch (option) {
+      case 'Public':
+        return 'public';
+      case 'Friends only':
+        return 'groups';
+      default:
+        return 'mail_lock';
+    }
+  }
+
+  private eventVisibilityClass(option: AppTypes.EventVisibility): string {
+    switch (option) {
+      case 'Public':
+        return 'event-visibility-public';
+      case 'Friends only':
+        return 'event-visibility-friends';
+      default:
+        return 'event-visibility-invitation';
+    }
   }
 
   protected activityDateRangeMetaLine(row: AppTypes.ActivityListRow): string {
