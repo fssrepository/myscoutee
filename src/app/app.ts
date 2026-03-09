@@ -595,7 +595,7 @@ export class App {
         if (!item) {
           return;
         }
-        this.openChatItem(item, false, false);
+        this.openChatItem(item, false, true);
         return;
       }
       this.openActivityMembers(request.row);

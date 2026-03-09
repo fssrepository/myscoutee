@@ -56,6 +56,9 @@ import type * as AppTypes from '../shared/app-types';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventActivitiesPopupComponent implements OnDestroy {
+  private static readonly ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT = 50;
+  private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MIN_PERCENT = 0;
+  private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT = 100;
 
   // ── injected ──────────────────────────────────────────────────────────────
   private readonly cdr = inject(ChangeDetectorRef);
@@ -194,9 +197,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected activitiesRatesFullscreenAnimating    = false;
   protected activitiesRatesFullscreenLeavingRow: AppTypes.ActivityListRow | null = null;
   protected isActivitiesRatesPairSplitDragging    = false;
-  protected activitiesRatesPairSplitPercent       = 50;
-  protected isActivitiesRatesPairWomanCollapsed   = false;
-  protected isActivitiesRatesPairManCollapsed     = false;
+  protected activitiesRatesPairSplitPercent       = EventActivitiesPopupComponent.ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT;
   private readonly activitiesRatesFullscreenLeaveTimeoutMs = 440;
   private activitiesRatesFullscreenAdvanceTimer: ReturnType<typeof setTimeout> | null = null;
   private activitiesRatesFullscreenLoadStateKey              = '';
@@ -938,12 +939,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       const rate = row.source as RateMenuItem;
       return this.userById(rate.userId)?.initials ?? 'U';
     }
-    if (row.type === 'chats') {
-      return this.getChatLastSender(row.source as ChatMenuItem).initials;
-    }
     const source = row.source as { avatar?: string };
     if (source?.avatar) { return source.avatar.slice(0, 2).toUpperCase(); }
-    return this.activeUser?.initials ?? 'U';
+    return this.activeUser.initials;
   }
 
   protected activityRowAvatarClass(row: AppTypes.ActivityListRow): string {
@@ -957,6 +955,31 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return `user-color-${this.getChatLastSender(chat).gender}`;
     }
     return 'user-color-man';
+  }
+
+  protected activityChatRowToneClass(row: AppTypes.ActivityListRow): string {
+    if (row.type !== 'chats') {
+      return '';
+    }
+    const chat = row.source as ChatMenuItem;
+    const channelType = this.chatChannelType(chat);
+    if (channelType === 'mainEvent') {
+      return 'activities-card-chat-main-event';
+    }
+    if (channelType === 'optionalSubEvent') {
+      return 'activities-card-chat-optional-sub-event';
+    }
+    if (channelType === 'groupSubEvent') {
+      return 'activities-card-chat-group-sub-event';
+    }
+    return '';
+  }
+
+  protected activityChatMemberCount(row: AppTypes.ActivityListRow): number {
+    if (row.type !== 'chats') {
+      return 0;
+    }
+    return this.getChatMemberCount(row.source as ChatMenuItem);
   }
 
   protected activityRowBadge(row: AppTypes.ActivityListRow): number {
@@ -1299,7 +1322,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
     if (row.type === 'chats') {
-      this.closeActivitiesPopup();
       this.eventEditorService.requestActivitiesNavigation({ type: 'chat', item: row.source as ChatMenuItem });
       return;
     }
@@ -1690,42 +1712,118 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   // =========================================================================
 
   protected get activitiesRatesPairSplitCssValue(): string {
+    if (!this.isActivitiesRatesPairCompactViewport()) {
+      return `${EventActivitiesPopupComponent.ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT}%`;
+    }
     return `${this.activitiesRatesPairSplitPercent}%`;
   }
 
-  protected startActivitiesRatesPairSplitDrag(event: PointerEvent): void {
-    event.preventDefault();
-    const grid = this.activitiesRatesPairFullscreenGridRef?.nativeElement;
-    if (!grid) { return; }
-    const rect = grid.getBoundingClientRect();
-    this.activitiesRatesPairSplitBounds        = { left: rect.left, width: rect.width };
-    this.activitiesRatesPairSplitPointerId     = event.pointerId;
-    this.activitiesRatesPairSplitDragStartClientX   = event.clientX;
-    this.activitiesRatesPairSplitDragStartPercent   = this.activitiesRatesPairSplitPercent;
-    this.isActivitiesRatesPairSplitDragging    = true;
-    (event.target as HTMLElement).setPointerCapture(event.pointerId);
+  protected get isActivitiesRatesPairWomanCollapsed(): boolean {
+    return this.isActivitiesRatesPairMobileSplitEnabled() && this.activitiesRatesPairSplitPercent <= 0.1;
   }
 
-  protected moveActivitiesRatesPairSplitDrag(event: PointerEvent): void {
-    if (!this.isActivitiesRatesPairSplitDragging || !this.activitiesRatesPairSplitBounds) { return; }
-    const pct = ((event.clientX - this.activitiesRatesPairSplitBounds.left) / this.activitiesRatesPairSplitBounds.width) * 100;
-    this.activitiesRatesPairSplitPercent = Math.max(0, Math.min(100, pct));
+  protected get isActivitiesRatesPairManCollapsed(): boolean {
+    return this.isActivitiesRatesPairMobileSplitEnabled() && this.activitiesRatesPairSplitPercent >= 99.9;
+  }
+
+  protected isActivitiesRatesPairMobileSplitEnabled(): boolean {
+    if (!this.isRatesFullscreenModeActive() || !this.isActivitiesRatesPairCompactViewport()) {
+      return false;
+    }
+    const row = this.currentActivitiesRatesFullscreenRow();
+    return !!row && this.isPairRateRow(row);
+  }
+
+  protected onActivitiesRatesPairSplitHandlePointerDown(event: PointerEvent, splitContainerElement: HTMLElement): void {
+    if (!this.isActivitiesRatesPairMobileSplitEnabled() || this.activitiesRatesFullscreenAnimating || !splitContainerElement) {
+      return;
+    }
+    const bounds = splitContainerElement.getBoundingClientRect();
+    if (bounds.width <= 0) {
+      return;
+    }
+    this.activitiesRatesPairSplitBounds = { left: bounds.left, width: bounds.width };
+    this.activitiesRatesPairSplitPointerId = event.pointerId;
+    this.activitiesRatesPairSplitDragStartClientX = event.clientX;
+    this.activitiesRatesPairSplitDragStartPercent = this.activitiesRatesPairSplitPercent;
+    this.isActivitiesRatesPairSplitDragging = true;
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+    event.stopPropagation();
+    const target = event.currentTarget as HTMLElement | null;
+    if (target?.setPointerCapture) {
+      target.setPointerCapture(event.pointerId);
+    }
     this.cdr.markForCheck();
   }
 
-  protected stopActivitiesRatesPairSplitDrag(event?: PointerEvent): void {
-    if (!this.isActivitiesRatesPairSplitDragging) { return; }
-    this.isActivitiesRatesPairSplitDragging         = false;
-    this.activitiesRatesPairSplitPointerId          = null;
-    this.activitiesRatesPairSplitBounds             = null;
-    this.activitiesRatesPairSplitDragStartClientX   = null;
-    this.activitiesRatesPairSplitDragStartPercent   = null;
+  protected onActivitiesRatesPairSplitHandleTouchStart(event: TouchEvent, splitContainerElement: HTMLElement): void {
+    if (!this.isActivitiesRatesPairMobileSplitEnabled() || this.activitiesRatesFullscreenAnimating || !splitContainerElement) {
+      return;
+    }
+    const touch = event.touches?.[0] ?? event.changedTouches?.[0];
+    if (!touch) {
+      return;
+    }
+    const bounds = splitContainerElement.getBoundingClientRect();
+    if (bounds.width <= 0) {
+      return;
+    }
+    this.activitiesRatesPairSplitBounds = { left: bounds.left, width: bounds.width };
+    this.activitiesRatesPairSplitPointerId = -1;
+    this.activitiesRatesPairSplitDragStartClientX = touch.clientX;
+    this.activitiesRatesPairSplitDragStartPercent = this.activitiesRatesPairSplitPercent;
+    this.isActivitiesRatesPairSplitDragging = true;
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+    event.stopPropagation();
     this.cdr.markForCheck();
   }
 
   // =========================================================================
   // Fullscreen rates navigation
   // =========================================================================
+
+  protected isActivitiesRatesFullscreenReadOnlyNavigation(): boolean {
+    return this.isRatesFullscreenModeActive() && this.activitiesRateFilter === 'pair-received';
+  }
+
+  protected canNavigateActivitiesRatesFullscreenPrev(): boolean {
+    if (!this.isActivitiesRatesFullscreenReadOnlyNavigation()) {
+      return false;
+    }
+    return this.activitiesRatesFullscreenCardIndex > 0;
+  }
+
+  protected canNavigateActivitiesRatesFullscreenNext(): boolean {
+    if (!this.isActivitiesRatesFullscreenReadOnlyNavigation()) {
+      return false;
+    }
+    const allRows = this.activitiesRatesFullscreenAllRows();
+    if (allRows.length === 0) {
+      return false;
+    }
+    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, allRows.length - 1));
+    return currentIndex < allRows.length - 1;
+  }
+
+  protected navigateActivitiesRatesFullscreenPrev(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isActivitiesRatesFullscreenReadOnlyNavigation() || this.activitiesRatesFullscreenAnimating) {
+      return;
+    }
+    this.activitiesRatesFullscreenPrev(event as Event);
+  }
+
+  protected navigateActivitiesRatesFullscreenNext(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isActivitiesRatesFullscreenReadOnlyNavigation() || this.activitiesRatesFullscreenAnimating) {
+      return;
+    }
+    this.activitiesRatesFullscreenNext(event as Event);
+  }
 
   protected activitiesRatesFullscreenAllRows(): AppTypes.ActivityListRow[] {
     return this.filteredActivityRows;
@@ -1739,35 +1837,41 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected activitiesRatesFullscreenNext(event: Event): void {
     event.stopPropagation();
     if (this.activitiesRatesFullscreenAnimating) { return; }
+    const row = this.currentActivitiesRatesFullscreenRow();
+    if (!row) { return; }
     const rows = this.activitiesRatesFullscreenAllRows();
-    if (this.activitiesRatesFullscreenCardIndex >= rows.length - 1) { return; }
-    this.activitiesRatesFullscreenLeavingRow = rows[this.activitiesRatesFullscreenCardIndex] ?? null;
-    this.activitiesRatesFullscreenCardIndex += 1;
-    this.activitiesRatesFullscreenAnimating  = true;
+    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, rows.length - 1));
+    const nextIndex = Math.min(rows.length - 1, currentIndex + 1);
+    if (nextIndex === currentIndex) { return; }
+    this.startActivitiesRatesFullscreenLeaveAnimation(row);
+    this.activitiesRatesFullscreenCardIndex = nextIndex;
     this.syncActivitiesRatesFullscreenSelection();
-    this.cancelActivitiesRatesFullscreenAdvance();
-    this.activitiesRatesFullscreenAdvanceTimer = setTimeout(() => {
-      this.activitiesRatesFullscreenLeavingRow = null;
-      this.activitiesRatesFullscreenAnimating  = false;
-      this.activitiesRatesFullscreenAdvanceTimer = null;
-      this.cdr.markForCheck();
-    }, this.activitiesRatesFullscreenLeaveTimeoutMs);
     this.cdr.markForCheck();
   }
 
   protected activitiesRatesFullscreenPrev(event: Event): void {
     event.stopPropagation();
-    if (this.activitiesRatesFullscreenAnimating || this.activitiesRatesFullscreenCardIndex === 0) { return; }
-    this.activitiesRatesFullscreenCardIndex -= 1;
+    if (this.activitiesRatesFullscreenAnimating) { return; }
+    const row = this.currentActivitiesRatesFullscreenRow();
+    if (!row) { return; }
+    const rows = this.activitiesRatesFullscreenAllRows();
+    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, rows.length - 1));
+    const previousIndex = Math.max(0, currentIndex - 1);
+    if (previousIndex === currentIndex) { return; }
+    this.startActivitiesRatesFullscreenLeaveAnimation(row);
+    this.activitiesRatesFullscreenCardIndex = previousIndex;
     this.syncActivitiesRatesFullscreenSelection();
     this.cdr.markForCheck();
   }
 
-  protected onActivitiesRatesFullscreenLeaveAnimationEnd(_event: AnimationEvent): void {
-    this.activitiesRatesFullscreenLeavingRow = null;
-    this.activitiesRatesFullscreenAnimating  = false;
-    this.cancelActivitiesRatesFullscreenAdvance();
-    this.cdr.markForCheck();
+  protected onActivitiesRatesFullscreenLeaveAnimationEnd(event: AnimationEvent): void {
+    if (event.animationName !== 'activities-rates-page-curl') {
+      return;
+    }
+    if (event.currentTarget !== event.target) {
+      return;
+    }
+    this.finishActivitiesRatesFullscreenAdvance();
   }
 
   protected activitiesRatesFullscreenEmptyTitle(): string {
@@ -1820,6 +1924,77 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   private syncActivitiesRatesFullscreenSelection(): void {
     const row = this.currentActivitiesRatesFullscreenRow();
     this.eventEditorService.setActivitiesSelectedRateId(row?.id ?? null);
+  }
+
+  private startActivitiesRatesFullscreenLeaveAnimation(row: AppTypes.ActivityListRow): void {
+    this.activitiesRatesFullscreenLeavingRow = row;
+    this.activitiesRatesFullscreenAnimating = true;
+    this.cancelActivitiesRatesFullscreenAdvance();
+    this.activitiesRatesFullscreenAdvanceTimer = setTimeout(() => {
+      this.activitiesRatesFullscreenAdvanceTimer = null;
+      this.finishActivitiesRatesFullscreenAdvance();
+    }, this.activitiesRatesFullscreenLeaveTimeoutMs);
+  }
+
+  private finishActivitiesRatesFullscreenAdvance(): void {
+    this.activitiesRatesFullscreenAnimating = false;
+    this.activitiesRatesFullscreenLeavingRow = null;
+    this.syncActivitiesRatesFullscreenSelection();
+    this.cdr.markForCheck();
+  }
+
+  private updateActivitiesRatesPairSplitFromClientX(clientX: number): void {
+    if (!this.activitiesRatesPairSplitBounds || this.activitiesRatesPairSplitBounds.width <= 0) {
+      return;
+    }
+    const relative = ((clientX - this.activitiesRatesPairSplitBounds.left) / this.activitiesRatesPairSplitBounds.width) * 100;
+    this.activitiesRatesPairSplitPercent = AppUtils.clampNumber(
+      relative,
+      EventActivitiesPopupComponent.ACTIVITIES_RATES_PAIR_SPLIT_MIN_PERCENT,
+      EventActivitiesPopupComponent.ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT
+    );
+    this.cdr.markForCheck();
+  }
+
+  private updateActivitiesRatesPairSplitFromDragDelta(clientX: number): void {
+    if (!this.activitiesRatesPairSplitBounds || this.activitiesRatesPairSplitBounds.width <= 0) {
+      return;
+    }
+    if (
+      this.activitiesRatesPairSplitDragStartClientX === null
+      || this.activitiesRatesPairSplitDragStartPercent === null
+    ) {
+      this.updateActivitiesRatesPairSplitFromClientX(clientX);
+      return;
+    }
+    const deltaPercent =
+      ((clientX - this.activitiesRatesPairSplitDragStartClientX) / this.activitiesRatesPairSplitBounds.width) * 100;
+    this.activitiesRatesPairSplitPercent = AppUtils.clampNumber(
+      this.activitiesRatesPairSplitDragStartPercent + deltaPercent,
+      EventActivitiesPopupComponent.ACTIVITIES_RATES_PAIR_SPLIT_MIN_PERCENT,
+      EventActivitiesPopupComponent.ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT
+    );
+    this.cdr.markForCheck();
+  }
+
+  private isActivitiesRatesPairCompactViewport(): boolean {
+    return typeof globalThis.innerWidth === 'number' && globalThis.innerWidth <= 760;
+  }
+
+  private stopActivitiesRatesPairSplitDrag(): void {
+    if (
+      !this.isActivitiesRatesPairSplitDragging
+      && this.activitiesRatesPairSplitPointerId === null
+      && this.activitiesRatesPairSplitBounds === null
+    ) {
+      return;
+    }
+    this.isActivitiesRatesPairSplitDragging = false;
+    this.activitiesRatesPairSplitPointerId = null;
+    this.activitiesRatesPairSplitBounds = null;
+    this.activitiesRatesPairSplitDragStartClientX = null;
+    this.activitiesRatesPairSplitDragStartPercent = null;
+    this.cdr.markForCheck();
   }
 
   // =========================================================================

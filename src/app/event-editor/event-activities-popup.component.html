@@ -441,7 +441,7 @@
                 >
                   <ng-container *ngIf="isPairRateRow(row); else singleRateRowCardStack">
                     <div
-                      class="activities-rate-profile-stack activities-rate-profile-stack-pair"
+                      class="activities-rate-profile-stack activities-rate-profile-stack-pair-inline"
                       [ngClass]="activityRateCardContentClasses(row)"
                       *ngIf="activityPairRateSlotImageUrls(row, 'woman') as womanImageUrls"
                     >
@@ -604,23 +604,26 @@
 
               <!-- Chat row -->
               <ng-template #chatActivityRow>
-                <article
-                  class="activities-row-item activities-chat-row activities-row-item-clickable"
+                <button
+                  type="button"
+                  class="activities-card activities-card-btn activities-row-item activities-card-chat activities-row-item-clickable"
+                  [ngClass]="activityChatRowToneClass(row)"
                   [attr.data-group-label]="group.label"
                   (click)="onActivityRowClick(row, $event)"
                 >
-                  <span class="activities-chat-avatar" [ngClass]="activityRowAvatarClass(row)">
+                  <span class="activities-card-avatar" [class]="activityRowAvatarClass(row)">
                     {{ activityRowAvatarInitials(row) }}
                   </span>
-                  <div class="activities-chat-meta">
-                    <div class="activities-chat-meta-top">
-                      <span class="activities-chat-title">{{ row.title }}</span>
-                      <span class="activities-chat-time">{{ row.dateIso | date:'HH:mm' }}</span>
-                    </div>
-                    <p class="activities-chat-preview">{{ row.subtitle }}</p>
+                  <div class="activities-card-main">
+                    <p class="activities-card-title">{{ row.title }}</p>
+                    <p class="activities-card-subtitle">{{ row.subtitle }}</p>
+                    <p class="activities-card-detail">{{ row.detail }}</p>
                   </div>
-                  <span class="badge-dot activities-chat-badge" *ngIf="activityRowBadge(row) > 0">{{ activityRowBadge(row) }}</span>
-                </article>
+                  <span class="activities-chat-members-badge">
+                    <span>{{ activityChatMemberCount(row) }} members</span>
+                    <span class="card-badge asset-request-badge activities-chat-unread-badge" *ngIf="row.unread > 0">{{ row.unread }}</span>
+                  </span>
+                </button>
               </ng-template>
             </ng-template>
 
@@ -779,6 +782,18 @@
                   <span class="card-image-placeholder" *ngIf="!activityPairRateSlotActiveImageUrl(row, 'woman')">{{ activityPairRateSlotInitials(row, 'woman') }}</span>
                 </div>
 
+                <button
+                  type="button"
+                  class="activities-rates-pair-fullscreen-resize-handle"
+                  *ngIf="isActivitiesRatesPairMobileSplitEnabled()"
+                  aria-label="Resize pair cards"
+                  (pointerdown)="onActivitiesRatesPairSplitHandlePointerDown($event, activitiesRatesPairFullscreenGrid)"
+                  (touchstart)="onActivitiesRatesPairSplitHandleTouchStart($event, activitiesRatesPairFullscreenGrid)"
+                  (click)="$event.preventDefault(); $event.stopPropagation()"
+                >
+                  <span class="activities-rates-pair-fullscreen-resize-handle-grip" aria-hidden="true"></span>
+                </button>
+
                 <div
                   class="activities-rate-pair-inline-card activities-rate-pair-inline-card-man"
                   [class.is-pane-loading]="isActivityPairRateSlotImageLoading(row, 'man')"
@@ -814,16 +829,6 @@
                   <span class="card-image-placeholder" *ngIf="!activityPairRateSlotActiveImageUrl(row, 'man')">{{ activityPairRateSlotInitials(row, 'man') }}</span>
                 </div>
               </div>
-
-              <!-- Pair split drag handle -->
-              <div
-                class="activities-rate-pair-split-handle"
-                (pointerdown)="startActivitiesRatesPairSplitDrag($event)"
-                (pointermove)="moveActivitiesRatesPairSplitDrag($event)"
-                (pointerup)="stopActivitiesRatesPairSplitDrag($event)"
-                (pointercancel)="stopActivitiesRatesPairSplitDrag($event)"
-                aria-hidden="true"
-              ></div>
 
               <span
                 class="activities-rate-score-badge activities-rate-score-badge-floating activities-rate-score-badge-floating-pair-overlap activities-rate-score-badge-between is-active"
@@ -881,32 +886,28 @@
           </ng-template>
         </article>
 
-      </div><!-- /fullscreen-deck -->
-
-      <!-- Fullscreen navigation -->
-      <div class="activities-rates-fullscreen-nav">
         <button
           type="button"
-          class="activities-rates-fullscreen-nav-btn"
-          (click)="activitiesRatesFullscreenPrev($event)"
-          [disabled]="activitiesRatesFullscreenCardIndex === 0 || activitiesRatesFullscreenAnimating"
+          class="activities-rates-fullscreen-nav-btn activities-rates-fullscreen-nav-btn-prev"
+          *ngIf="isActivitiesRatesFullscreenReadOnlyNavigation()"
+          [disabled]="!canNavigateActivitiesRatesFullscreenPrev()"
+          (click)="navigateActivitiesRatesFullscreenPrev($event)"
           aria-label="Previous rate card"
         >
           <mat-icon>chevron_left</mat-icon>
         </button>
-        <span class="activities-rates-fullscreen-counter">
-          {{ activitiesRatesFullscreenCardIndex + 1 }} / {{ activitiesRatesFullscreenAllRows().length }}
-        </span>
         <button
           type="button"
-          class="activities-rates-fullscreen-nav-btn"
-          (click)="activitiesRatesFullscreenNext($event)"
-          [disabled]="activitiesRatesFullscreenAnimating"
+          class="activities-rates-fullscreen-nav-btn activities-rates-fullscreen-nav-btn-next"
+          *ngIf="isActivitiesRatesFullscreenReadOnlyNavigation()"
+          [disabled]="!canNavigateActivitiesRatesFullscreenNext()"
+          (click)="navigateActivitiesRatesFullscreenNext($event)"
           aria-label="Next rate card"
         >
           <mat-icon>chevron_right</mat-icon>
         </button>
-      </div>
+
+      </div><!-- /fullscreen-deck -->
     </div><!-- /fullscreen has-row -->
 
     <ng-template #activitiesRatesFullscreenEmpty>

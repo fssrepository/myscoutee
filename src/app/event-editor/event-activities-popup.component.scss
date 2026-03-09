@@ -925,6 +925,73 @@
   color: #216b4e;
 }
 .activities-card-event,
+.activities-card-rate {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: stretch;
+}
+
+.activities-card-event {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.activities-card-event .activities-card-avatar {
+  display: none;
+}
+
+.activities-card-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.activities-card-main {
+  min-width: 0;
+  padding-right: 0;
+}
+
+.activities-event-card-body,
+.activities-rate-card-body {
+  min-width: 0;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.activities-rate-card-head {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.activities-card-rates .activities-rate-card-body {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding-right: 4.4rem;
+}
+
+.activities-card-rates .activities-rate-card-head {
+  position: absolute;
+  right: 0;
+}
+
+.activities-card-rates .activities-rate-score-badge {
+  position: static;
+}
+
+.user-color-woman {
+  background: linear-gradient(145deg, #d3754c, #ac4a24);
+}
+
+.user-color-man {
+  background: linear-gradient(145deg, #3572a4, #194364);
+}
 
 // ─── Rate Profile Card ───────────────────────────────────────────────────
 .activities-rate-profile-card {
@@ -2747,20 +2814,6 @@
 }
 :host ::ng-deep .mat-mdc-option.status-option:not(:last-child) {
   border-bottom: 1px solid #e6edf7;
-}
-:host ::ng-deep .activities-rate-options-panel .mat-mdc-option .mat-pseudo-checkbox,
-:host ::ng-deep .activities-rate-options-panel .mat-mdc-option .mat-pseudo-checkbox-minimal,
-:host ::ng-deep .activities-rate-options-panel .mat-mdc-option .mat-mdc-option-pseudo-checkbox,
-:host ::ng-deep .activities-rate-options-panel .mat-mdc-option .mdc-list-item__end,
-:host ::ng-deep .activities-primary-options-panel .mat-mdc-option .mat-pseudo-checkbox,
-:host ::ng-deep .activities-primary-options-panel .mat-mdc-option .mat-pseudo-checkbox-minimal,
-:host ::ng-deep .activities-primary-options-panel .mat-mdc-option .mat-mdc-option-pseudo-checkbox,
-:host ::ng-deep .activities-primary-options-panel .mat-mdc-option .mdc-list-item__end,
-:host ::ng-deep .activities-chat-context-options-panel .mat-mdc-option .mat-pseudo-checkbox,
-:host ::ng-deep .activities-chat-context-options-panel .mat-mdc-option .mat-pseudo-checkbox-minimal,
-:host ::ng-deep .activities-chat-context-options-panel .mat-mdc-option .mat-mdc-option-pseudo-checkbox,
-:host ::ng-deep .activities-chat-context-options-panel .mat-mdc-option .mdc-list-item__end {
-  display: none !important;
 }
 :host ::ng-deep .activities-rate-options-panel .mat-mdc-option.status-option .status-option-content,
 :host ::ng-deep .activities-primary-options-panel .mat-mdc-option.status-option .status-option-content,
