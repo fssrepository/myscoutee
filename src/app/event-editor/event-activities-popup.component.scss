@@ -4,6 +4,17 @@
 // in a global stylesheet because Angular Material CDK renders panels outside the
 // component shadow / encapsulation boundary.
 
+:host {
+  --interactive-motion-duration: 0.16s;
+  --interactive-motion-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --interactive-hover-lift: -1px;
+  --interactive-hover-scale: 1.01;
+  --interactive-hover-brightness: 1.02;
+  --interactive-press-scale: 0.98;
+  --interactive-press-brightness: 0.96;
+  font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
+}
+
 .app-popup {
   position: fixed;
   inset: 0;
@@ -1611,6 +1622,14 @@
   font-weight: 700;
 }
 .activities-card-title,
+.activities-card-subtitle,
+.activities-card-detail {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .activities-card-title {
   font-size: 0.83rem;
   font-weight: 800;
@@ -2767,6 +2786,144 @@
   right: -8px;
   margin-left: 0;
   z-index: 2;
+}
+
+:where(
+  button,
+  a[href],
+  [role='button'],
+  .link-btn,
+  .popup-view-fab,
+  .activities-view-option,
+  .item-action-menu-btn,
+  .profile-status-select-wrap,
+  .experience-item-card,
+  .activities-row-item,
+  .activities-rate-profile-card,
+  .activities-chat-row,
+  .activities-card,
+  .header-icon-btn,
+  .chat-header-members
+) {
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--interactive-motion-duration) var(--interactive-motion-ease),
+    filter var(--interactive-motion-duration) var(--interactive-motion-ease),
+    box-shadow var(--interactive-motion-duration) var(--interactive-motion-ease),
+    background-color var(--interactive-motion-duration) var(--interactive-motion-ease),
+    border-color var(--interactive-motion-duration) var(--interactive-motion-ease),
+    color var(--interactive-motion-duration) var(--interactive-motion-ease);
+  transform-origin: center;
+}
+
+:where(
+  button,
+  a[href],
+  [role='button'],
+  .link-btn,
+  .popup-view-fab,
+  .activities-view-option,
+  .item-action-menu-btn,
+  .profile-status-select-wrap,
+  .experience-item-card,
+  .activities-row-item,
+  .activities-rate-profile-card,
+  .activities-chat-row,
+  .activities-card,
+  .header-icon-btn,
+  .chat-header-members
+):focus-visible {
+  outline: 2px solid rgba(66, 110, 182, 0.44);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(
+    button,
+    a[href],
+    [role='button'],
+    .link-btn,
+    .popup-view-fab,
+    .activities-view-option,
+    .item-action-menu-btn,
+    .profile-status-select-wrap,
+    .experience-item-card,
+    .activities-row-item,
+    .activities-rate-profile-card,
+    .activities-chat-row,
+    .activities-card,
+    .header-icon-btn,
+    .chat-header-members
+  ):not(:disabled):not([aria-disabled='true']):hover {
+    transform: translateY(var(--interactive-hover-lift)) scale(var(--interactive-hover-scale));
+    filter: brightness(var(--interactive-hover-brightness));
+  }
+
+  :where(
+    button,
+    a[href],
+    [role='button'],
+    .link-btn,
+    .popup-view-fab,
+    .activities-view-option,
+    .item-action-menu-btn,
+    .profile-status-select-wrap,
+    .experience-item-card,
+    .activities-row-item,
+    .activities-rate-profile-card,
+    .activities-chat-row,
+    .activities-card,
+    .header-icon-btn,
+    .chat-header-members
+  ):not(:disabled):not([aria-disabled='true']):active {
+    transform: scale(var(--interactive-press-scale));
+    filter: brightness(var(--interactive-press-brightness));
+  }
+
+  .activities-card:hover,
+  .activities-row-item:hover,
+  .experience-item-card:hover,
+  .activities-rate-profile-card:hover,
+  .activities-chat-row:hover {
+    box-shadow: 0 3px 10px rgba(16, 29, 48, 0.14);
+  }
+}
+
+@keyframes mobile-touch-feedback {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  45% {
+    transform: scale(var(--interactive-press-scale));
+    filter: brightness(var(--interactive-press-brightness));
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  :where(
+    button,
+    a[href],
+    [role='button'],
+    .link-btn,
+    .popup-view-fab,
+    .activities-view-option,
+    .item-action-menu-btn,
+    .profile-status-select-wrap,
+    .experience-item-card,
+    .activities-row-item,
+    .activities-rate-profile-card,
+    .activities-chat-row,
+    .activities-card,
+    .header-icon-btn,
+    .chat-header-members
+  ):not(:disabled):not([aria-disabled='true']):active {
+    animation: mobile-touch-feedback 0.2s ease;
+  }
 }
 
 @media (max-width: 900px) {

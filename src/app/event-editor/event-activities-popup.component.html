@@ -13,7 +13,7 @@
         <div class="activities-secondary-picker" *ngIf="!isCalendarLayoutView() && activitiesPrimaryFilter !== 'chats'">
           <button
             type="button"
-            class="popup-view-fab activities-secondary-trigger"
+            class="popup-view-fab"
             (click)="toggleActivitiesSecondaryPicker($event)"
             [attr.aria-label]="'Open secondary filter: ' + activitiesSecondaryFilterLabel()"
           >
@@ -24,7 +24,6 @@
             <button
               type="button"
               class="activities-view-option"
-              [ngClass]="activitiesSecondaryFilterClass(option.key)"
               *ngFor="let option of activitiesSecondaryFilters"
               (click)="selectActivitiesSecondaryFilter(option.key)"
             >
@@ -36,7 +35,7 @@
 
         <button
           type="button"
-          class="popup-view-fab activities-view-trigger"
+          class="popup-view-fab"
           *ngIf="activitiesPrimaryFilter !== 'chats'"
           (click)="toggleActivitiesViewPicker($event)"
           [attr.aria-label]="'Open view selector: ' + activityViewLabel()"

@@ -25,7 +25,6 @@ import {
   DEMO_EVENTS_BY_USER,
   DEMO_HOSTING_BY_USER,
   DEMO_INVITATIONS_BY_USER,
-  DEMO_RATES_BY_USER,
   DEMO_USERS,
   RateMenuItem,
   type ChatMenuItem,
@@ -65,13 +64,16 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   // ── Self-contained data state (no host inputs) ───────────────────────────
   protected isMobileView = false;
-  protected activeUser: DemoUser = DEMO_USERS[0];
+  protected readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
+  protected activeUser: DemoUser = this.users[0] ?? DEMO_USERS[0];
 
   protected chatItems: ChatMenuItem[] = [...(DEMO_CHAT_BY_USER[this.activeUser.id] ?? [])];
   protected eventItems: EventMenuItem[] = [...(DEMO_EVENTS_BY_USER[this.activeUser.id] ?? [])];
   protected hostingItems: HostingMenuItem[] = [...(DEMO_HOSTING_BY_USER[this.activeUser.id] ?? [])];
   protected invitationItems: InvitationMenuItem[] = [...(DEMO_INVITATIONS_BY_USER[this.activeUser.id] ?? [])];
-  protected rateItems: RateMenuItem[] = [...(DEMO_RATES_BY_USER[this.activeUser.id] ?? [])];
+  protected get rateItems(): RateMenuItem[] {
+    return this.generatedRateItemsForUser(this.activeUser.id);
+  }
 
   protected chatBadge = this.activeUser.activities.chat;
   protected eventsBadge = this.activeUser.activities.events;
@@ -97,6 +99,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected readonly activityCapacityById: Record<string, string> = { ...APP_DEMO_DATA.activityCapacityById };
   private readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
   private readonly forcedAcceptedMembersByRowKey: Record<string, number> = { 'events:e8': 20 };
+  private readonly generatedRateItemsByUser: Record<string, RateMenuItem[]> = {};
 
   // ── Outputs kept for direct-template usage; not used via ngComponentOutlet ─
   /** User clicked on a chat row. */
@@ -384,7 +387,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   private hydrateStandaloneFallbackState(): void {
     if (!this.activeUser) {
-      this.activeUser = DEMO_USERS[0];
+      this.activeUser = this.users[0] ?? DEMO_USERS[0];
     }
     const userId = this.activeUser.id;
 
@@ -399,9 +402,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     }
     if (this.invitationItems.length === 0) {
       this.invitationItems = [...(DEMO_INVITATIONS_BY_USER[userId] ?? [])];
-    }
-    if (this.rateItems.length === 0) {
-      this.rateItems = [...(DEMO_RATES_BY_USER[userId] ?? [])];
     }
 
     this.ensurePaginationTestEvents(30);
@@ -461,9 +461,10 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.eventItems.map(item => item.activity),
       this.eventItems.length
     );
+    const adminEvents = this.eventItems.filter(item => item.isAdmin);
     this.hostingBadge = AppDemoGenerators.resolveSectionBadge(
-      this.hostingItems.map(item => item.activity),
-      this.hostingItems.length
+      adminEvents.map(item => item.activity),
+      adminEvents.length
     );
     this.gameBadge = this.activeUser.activities.game;
   }
@@ -501,7 +502,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   private buildFilteredActivityRowsBase(): AppTypes.ActivityListRow[] {
     let rows: AppTypes.ActivityListRow[] = [];
     if (this.activitiesPrimaryFilter === 'chats') {
-      rows = this.chatItems
+      rows = this.chatItemsForActivities()
         .filter(item => this.matchesActivitiesChatContextFilter(item))
         .map(item => this.chatToActivityRow(item));
     } else if (this.activitiesPrimaryFilter === 'invitations') {
@@ -509,12 +510,13 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     } else if (this.activitiesPrimaryFilter === 'events') {
       rows = this.eventItems.map(item => this.eventToActivityRow(item, this.activitiesSecondaryFilter));
     } else if (this.activitiesPrimaryFilter === 'hosting') {
-      rows = this.hostingItems
+      rows = this.eventItems
+        .filter(item => item.isAdmin)
         .filter(item => this.hostingPublicationFilter === 'drafts' ? !this.isHostingPublished(item.id) : true)
-        .map(item => this.hostingToActivityRow(item));
+        .map(item => this.hostingEventToActivityRow(item));
     } else {
       rows = this.rateItems
-        .filter(item => this.matchesRateFilter(item, this.activitiesRateFilter))
+        .filter(item => item.userId !== this.activeUser.id && this.matchesRateFilter(item, this.activitiesRateFilter))
         .map(item => this.rateToActivityRow(item));
     }
     const sorted = this.sortActivitiesRows(rows);
@@ -641,7 +643,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   protected activitiesChatContextFilterCount(filter: AppTypes.ActivitiesChatContextFilter = this.activitiesChatContextFilter): number {
     if (this.activitiesPrimaryFilter !== 'chats') { return 0; }
-    return this.chatItems.filter(item => {
+    return this.chatItemsForActivities().filter(item => {
       if (filter === 'all') { return true; }
       return this.activityChatContextFilterKey(item) === filter;
     }).length;
@@ -724,7 +726,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   protected hostingDraftCount(): number {
-    return this.hostingItems.filter(item => !this.isHostingPublished(item.id)).length;
+    return this.eventItems.filter(item => item.isAdmin && !this.isHostingPublished(item.id)).length;
   }
 
   protected shouldShowActivitiesExploreAction(): boolean {
@@ -935,6 +937,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       const rate = row.source as RateMenuItem;
       return this.userById(rate.userId)?.initials ?? 'U';
     }
+    if (row.type === 'chats') {
+      return this.getChatLastSender(row.source as ChatMenuItem).initials;
+    }
     const source = row.source as { avatar?: string };
     if (source?.avatar) { return source.avatar.slice(0, 2).toUpperCase(); }
     return this.activeUser?.initials ?? 'U';
@@ -948,7 +953,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     }
     if (row.type === 'chats') {
       const chat = row.source as ChatMenuItem;
-      return `user-color-${(chat as { lastSenderGender?: string }).lastSenderGender ?? 'woman'}`;
+      return `user-color-${this.getChatLastSender(chat).gender}`;
     }
     return 'user-color-man';
   }
@@ -967,7 +972,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   protected showActivitySourceIcon(row: AppTypes.ActivityListRow): boolean {
-    return row.type === 'events' || row.type === 'invitations';
+    return row.type === 'events' || row.type === 'hosting' || row.type === 'invitations';
   }
 
   protected activitySourceLink(row: AppTypes.ActivityListRow): string {
@@ -987,18 +992,14 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       const invitation = row.source as InvitationMenuItem;
       return AppUtils.initialsFromText(invitation.inviter);
     }
-    if (row.type === 'events') {
+    if (row.type === 'events' || row.type === 'hosting') {
       const event = row.source as EventMenuItem;
-      const explicitOwner = AppUtils.findUserByName(DEMO_USERS, event.avatar || '');
+      const explicitOwner = AppUtils.findUserByName(this.users, event.avatar || '');
       if (explicitOwner) {
         return explicitOwner.initials;
       }
-      const fallbackOwner = DEMO_USERS[AppDemoGenerators.hashText(`${row.id}-${event.title}`) % DEMO_USERS.length];
+      const fallbackOwner = this.users[AppDemoGenerators.hashText(`${row.id}-${event.title}`) % this.users.length];
       return fallbackOwner?.initials ?? AppUtils.initialsFromText(event.title);
-    }
-    if (row.type === 'hosting') {
-      const hosting = row.source as HostingMenuItem;
-      return AppUtils.initialsFromText(hosting.avatar || hosting.title);
     }
     return AppUtils.initialsFromText(row.title);
   }
@@ -1045,7 +1046,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
         row,
         rowKey,
         forcedAcceptedCount,
-        DEMO_USERS,
+        this.users,
         this.activeUser,
         APP_DEMO_DATA.activityMemberDefaults.forcedMetWhere
       );
@@ -1056,7 +1057,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     const generated = AppDemoGenerators.generateActivityMembersForRow(
       row,
       rowKey,
-      DEMO_USERS,
+      this.users,
       this.activeUser,
       APP_DEMO_DATA.activityMemberMetPlaces
     );
@@ -1080,11 +1081,31 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activityDateRangeMetaLine(row: AppTypes.ActivityListRow): string {
-    return (row.source as { timeframe?: string })?.timeframe ?? '';
+    return `${this.activityTypeLabel(row)} · ${this.activityDateLabel(row)} · ${row.distanceKm} km`;
   }
 
   protected activityLocationMetaLine(row: AppTypes.ActivityListRow): string {
     return (row.source as { city?: string })?.city ?? '';
+  }
+
+  private activityTypeLabel(row: AppTypes.ActivityListRow): string {
+    if (row.type === 'hosting') {
+      return 'Hosting';
+    }
+    if (row.type === 'invitations') {
+      return 'Invitation';
+    }
+    return 'Event';
+  }
+
+  private activityDateLabel(row: AppTypes.ActivityListRow): string {
+    const parsed = new Date(row.dateIso);
+    if (Number.isNaN(parsed.getTime())) {
+      return (row.source as { timeframe?: string })?.timeframe ?? 'Date unavailable';
+    }
+    return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      + ', '
+      + parsed.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   }
 
   protected canManageActivityRow(row: AppTypes.ActivityListRow): boolean {
@@ -1343,30 +1364,70 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   // Rate card – image stack helpers
   // =========================================================================
 
-  protected activityRateCardImageUrls(_row: AppTypes.ActivityListRow): string[] {
-    return [];
+  protected activityRateCardImageUrls(row: AppTypes.ActivityListRow): string[] {
+    if (row.type !== 'rates') {
+      return [];
+    }
+    const item = row.source as RateMenuItem;
+    const user = this.activityRateUser(row);
+    const generated = Array.from({ length: 6 }, (_, index) =>
+      this.rateCardSeedImageUrl(row.id, user?.id ?? 'rate-fallback', user?.gender ?? this.activeUser.gender, index)
+    );
+    const seededCount = 1 + (AppDemoGenerators.hashText(`rate-photo-count:${user?.id ?? row.id}`) % 4);
+    const desiredCount = item.direction === 'met' ? Math.min(2, seededCount) : seededCount;
+    return generated.slice(0, Math.max(1, Math.min(4, desiredCount)));
   }
 
   protected activityRateCardActiveImageIndex(row: AppTypes.ActivityListRow): number {
-    return this.activityRateCardActiveImageIndexById[row.id] ?? 0;
+    const images = this.activityRateCardImageUrls(row);
+    if (images.length === 0) {
+      return 0;
+    }
+    const current = this.activityRateCardActiveImageIndexById[row.id] ?? 0;
+    return AppUtils.clampNumber(current, 0, images.length - 1);
   }
 
   protected activityRateCardActiveImageUrl(row: AppTypes.ActivityListRow): string {
-    const urls  = this.activityRateCardImageUrls(row);
-    const index = this.activityRateCardActiveImageIndex(row);
-    return urls[index] ?? '';
+    const images = this.activityRateCardImageUrls(row);
+    if (images.length === 0) {
+      return '';
+    }
+    return images[this.activityRateCardActiveImageIndex(row)] ?? images[0] ?? '';
   }
 
-  protected activityRateCardHasLine(_row: AppTypes.ActivityListRow, _index: number): boolean {
-    return false;
+  protected activityRateCardHasLine(row: AppTypes.ActivityListRow, cardIndex: number): boolean {
+    const card = this.activityRateCardLines(row, cardIndex);
+    return card.primary.length > 0 && card.secondary.length > 0;
   }
 
-  protected activityRateCardPrimaryLine(_row: AppTypes.ActivityListRow, _index: number): string {
-    return '';
+  protected activityRateCardPrimaryLine(row: AppTypes.ActivityListRow, cardIndex: number): string {
+    return this.activityRateCardLines(row, cardIndex).primary;
   }
 
-  protected activityRateCardSecondaryLine(_row: AppTypes.ActivityListRow, _index: number): string {
-    return '';
+  protected activityRateCardSecondaryLine(row: AppTypes.ActivityListRow, cardIndex: number): string {
+    return this.activityRateCardLines(row, cardIndex).secondary;
+  }
+
+  private activityRateCardLines(row: AppTypes.ActivityListRow, cardIndex: number): { primary: string; secondary: string } {
+    const user = this.activityRateUser(row);
+    if (!user) {
+      return cardIndex === 0
+        ? { primary: row.title, secondary: `${row.distanceKm} km` }
+        : { primary: '', secondary: '' };
+    }
+    const item = row.source as RateMenuItem;
+    const modeLabel = item.mode === 'pair' ? 'Pair' : 'Single';
+    const direction = this.displayedRateDirection(item);
+    const directionLabel = `${direction.charAt(0).toUpperCase()}${direction.slice(1)}`;
+    const happenedOn = this.toRateCardDateLabel(item.happenedAt);
+    const cards: Array<{ primary: string; secondary: string }> = [
+      { primary: `${user.name}, ${user.age}`, secondary: `${user.city} · ${row.distanceKm} km` },
+      { primary: `${modeLabel} · ${directionLabel}`, secondary: `${item.eventName} · ${happenedOn}` }
+    ];
+    if (cardIndex < 0 || cardIndex >= cards.length) {
+      return { primary: '', secondary: '' };
+    }
+    return cards[cardIndex] ?? { primary: '', secondary: '' };
   }
 
   protected isActivityRateCardImageLoading(row: AppTypes.ActivityListRow): boolean {
@@ -1375,12 +1436,33 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   protected selectActivityRateCardImage(row: AppTypes.ActivityListRow, index: number, event: Event): void {
     event.stopPropagation();
-    this.activityRateCardActiveImageIndexById[row.id] = index;
+    const images = this.activityRateCardImageUrls(row);
+    if (images.length === 0) {
+      return;
+    }
+    const nextIndex = AppUtils.clampNumber(index, 0, images.length - 1);
+    this.activityRateCardActiveImageIndexById[row.id] = nextIndex;
+    if (this.activityRateCardLoadingTimerById[row.id]) {
+      clearTimeout(this.activityRateCardLoadingTimerById[row.id]);
+      delete this.activityRateCardLoadingTimerById[row.id];
+    }
+    this.activityRateCardImageLoadingById[row.id] = true;
+    const rowId = row.id;
+    this.activityRateCardLoadingTimerById[row.id] = setTimeout(() => {
+      this.activityRateCardImageLoadingById[rowId] = false;
+      delete this.activityRateCardLoadingTimerById[rowId];
+      this.cdr.markForCheck();
+    }, 500);
     this.cdr.markForCheck();
   }
 
   protected activityRateCardContentClasses(row: AppTypes.ActivityListRow): string[] {
-    return [];
+    const item = row.source as RateMenuItem;
+    const directionClass = this.displayedRateDirection(item);
+    return [
+      item.mode === 'pair' ? 'activities-rate-profile-stack-pair' : 'activities-rate-profile-stack-single',
+      `activities-rate-profile-stack-${directionClass}`
+    ];
   }
 
   // ── Pair rate card helpers ─────────────────────────────────────────────────
@@ -1392,43 +1474,126 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   protected isPairReceivedRateRow(row: AppTypes.ActivityListRow): boolean {
     const rate = row.source as RateMenuItem;
-    return rate.mode === 'pair' && rate.direction === 'received';
+    return rate.mode === 'pair' && this.displayedRateDirection(rate) === 'received';
   }
 
-  protected activityPairRateSlotImageUrls(_row: AppTypes.ActivityListRow, _slot: 'man' | 'woman'): string[] {
-    return [];
+  protected activityPairRateSlotUser(row: AppTypes.ActivityListRow, gender: DemoUser['gender']): DemoUser | null {
+    if (row.type !== 'rates') {
+      return null;
+    }
+    const item = row.source as RateMenuItem;
+    const primary = this.users.find(user => user.id === item.userId) ?? null;
+    if (primary && primary.gender === gender) {
+      return primary;
+    }
+    const candidates = this.users.filter(user => user.gender === gender && user.id !== primary?.id);
+    if (candidates.length > 0) {
+      const seed = AppDemoGenerators.hashText(`pair-rate-slot:${row.id}:${gender}`);
+      return candidates[seed % candidates.length] ?? null;
+    }
+    if (primary && primary.gender !== gender) {
+      return primary;
+    }
+    return null;
+  }
+
+  protected activityPairRateSlotImageUrls(row: AppTypes.ActivityListRow, gender: DemoUser['gender']): string[] {
+    const user = this.activityPairRateSlotUser(row, gender);
+    if (!user) {
+      return [''];
+    }
+    const seededCount = 2 + (AppDemoGenerators.hashText(`pair-rate-photo-count:${row.id}:${gender}:${user.id}`) % 2);
+    return Array.from({ length: seededCount }, (_, index) =>
+      this.rateCardSeedImageUrl(`${row.id}-${gender}`, user.id, user.gender, index)
+    );
   }
 
   protected activityPairRateSlotActiveImageIndex(row: AppTypes.ActivityListRow, slot: 'man' | 'woman'): number {
-    return this.activityPairRateCardActiveImageIndexByKey[`${row.id}-${slot}`] ?? 0;
+    const images = this.activityPairRateSlotImageUrls(row, slot);
+    if (images.length === 0) {
+      return 0;
+    }
+    const key = this.activityPairRateSlotImageKey(row.id, slot);
+    const current = this.activityPairRateCardActiveImageIndexByKey[key] ?? 0;
+    return AppUtils.clampNumber(current, 0, images.length - 1);
   }
 
   protected activityPairRateSlotActiveImageUrl(row: AppTypes.ActivityListRow, slot: 'man' | 'woman'): string {
-    const urls  = this.activityPairRateSlotImageUrls(row, slot);
-    const index = this.activityPairRateSlotActiveImageIndex(row, slot);
-    return urls[index] ?? '';
+    const images = this.activityPairRateSlotImageUrls(row, slot);
+    if (images.length === 0) {
+      return '';
+    }
+    return images[this.activityPairRateSlotActiveImageIndex(row, slot)] ?? images[0] ?? '';
   }
 
-  protected activityPairRateSlotInitials(_row: AppTypes.ActivityListRow, _slot: 'man' | 'woman'): string {
-    return '?';
+  protected activityPairRateSlotInitials(row: AppTypes.ActivityListRow, slot: 'man' | 'woman'): string {
+    const user = this.activityPairRateSlotUser(row, slot);
+    if (!user) {
+      return '∅';
+    }
+    return AppUtils.initialsFromText(user.name);
   }
 
-  protected activityPairRateSlotPrimaryLine(_row: AppTypes.ActivityListRow, _slot: 'man' | 'woman'): string {
-    return '';
+  protected activityPairRateSlotPrimaryLine(row: AppTypes.ActivityListRow, slot: 'man' | 'woman'): string {
+    const user = this.activityPairRateSlotUser(row, slot);
+    if (!user) {
+      return `${slot === 'woman' ? 'Woman' : 'Man'} · waiting`;
+    }
+    return `${user.name}, ${user.age}`;
   }
 
-  protected activityPairRateSlotSecondaryLine(_row: AppTypes.ActivityListRow, _slot: 'man' | 'woman'): string {
-    return '';
+  protected activityPairRateSlotSecondaryLine(row: AppTypes.ActivityListRow, slot: 'man' | 'woman'): string {
+    const user = this.activityPairRateSlotUser(row, slot);
+    if (!user) {
+      return 'No pair card yet';
+    }
+    return `${user.city} · ${row.distanceKm} km`;
   }
 
   protected isActivityPairRateSlotImageLoading(row: AppTypes.ActivityListRow, slot: 'man' | 'woman'): boolean {
-    return this.activityPairRateCardImageLoadingByKey[`${row.id}-${slot}`] ?? false;
+    const key = this.activityPairRateSlotImageKey(row.id, slot);
+    return this.activityPairRateCardImageLoadingByKey[key] ?? false;
   }
 
   protected selectActivityPairRateSlotImage(row: AppTypes.ActivityListRow, slot: 'man' | 'woman', index: number, event: Event): void {
     event.stopPropagation();
-    this.activityPairRateCardActiveImageIndexByKey[`${row.id}-${slot}`] = index;
+    const images = this.activityPairRateSlotImageUrls(row, slot);
+    if (images.length === 0) {
+      return;
+    }
+    const key = this.activityPairRateSlotImageKey(row.id, slot);
+    const nextIndex = AppUtils.clampNumber(index, 0, images.length - 1);
+    this.activityPairRateCardActiveImageIndexByKey[key] = nextIndex;
+    if (this.activityPairRateCardLoadingTimerByKey[key]) {
+      clearTimeout(this.activityPairRateCardLoadingTimerByKey[key]);
+      delete this.activityPairRateCardLoadingTimerByKey[key];
+    }
+    this.activityPairRateCardImageLoadingByKey[key] = true;
+    this.activityPairRateCardLoadingTimerByKey[key] = setTimeout(() => {
+      this.activityPairRateCardImageLoadingByKey[key] = false;
+      delete this.activityPairRateCardLoadingTimerByKey[key];
+      this.cdr.markForCheck();
+    }, 500);
     this.cdr.markForCheck();
+  }
+
+  private activityPairRateSlotImageKey(rowId: string, gender: DemoUser['gender']): string {
+    return `${rowId}:${gender}`;
+  }
+
+  private rateCardSeedImageUrl(rowId: string, userId: string, gender: DemoUser['gender'], index: number): string {
+    const hash = AppDemoGenerators.hashText(`rate-card-${userId}-${rowId}-${index + 1}`);
+    const genderFolder = gender === 'woman' ? 'women' : 'men';
+    const portraitIndex = hash % 100;
+    return `https://randomuser.me/api/portraits/${genderFolder}/${portraitIndex}.jpg`;
+  }
+
+  private toRateCardDateLabel(isoValue: string): string {
+    const date = new Date(isoValue);
+    if (Number.isNaN(date.getTime())) {
+      return 'Unknown';
+    }
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 
   // ── Rate badge ─────────────────────────────────────────────────────────────
@@ -2461,34 +2626,224 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return this.publishedHostingIds.has(id);
   }
 
+  private generatedRateItemsForUser(userId: string): RateMenuItem[] {
+    if (this.generatedRateItemsByUser[userId]) {
+      return this.generatedRateItemsByUser[userId];
+    }
+    const otherUsers = this.users
+      .filter(user => user.id !== userId)
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const filterLanes: Array<{ mode: 'individual' | 'pair'; direction: RateMenuItem['direction'] }> = [
+      { mode: 'individual', direction: 'given' },
+      { mode: 'individual', direction: 'received' },
+      { mode: 'individual', direction: 'mutual' },
+      { mode: 'individual', direction: 'met' },
+      { mode: 'pair', direction: 'given' },
+      { mode: 'pair', direction: 'received' }
+    ];
+    const generated: RateMenuItem[] = [];
+    otherUsers.forEach((user, userIndex) => {
+      const laneIndex = userIndex % filterLanes.length;
+      const lane = filterLanes[laneIndex];
+      generated.push(this.buildGeneratedRateItemForLane(userId, user.id, lane.mode, lane.direction, laneIndex, userIndex));
+    });
+    this.generatedRateItemsByUser[userId] = generated;
+    return generated;
+  }
+
+  private buildGeneratedRateItemForLane(
+    activeUserId: string,
+    targetUserId: string,
+    mode: 'individual' | 'pair',
+    direction: RateMenuItem['direction'],
+    laneIndex: number,
+    userIndex: number
+  ): RateMenuItem {
+    const seed = AppDemoGenerators.hashText(`rate-grid:${activeUserId}:${targetUserId}:${mode}:${direction}`);
+    const happenedAt = AppUtils.toIsoDateTime(AppUtils.addDays(new Date('2026-03-01T20:00:00'), -((laneIndex * 17) + userIndex + 1)));
+    let scoreGiven = 0;
+    let scoreReceived = 0;
+    if (direction === 'given') {
+      scoreGiven = 4 + (seed % 7);
+      scoreReceived = seed % 2 === 0 ? 4 + ((seed + 2) % 7) : 0;
+    } else if (direction === 'received') {
+      scoreGiven = 0;
+      scoreReceived = 4 + ((seed + 3) % 7);
+    } else if (direction === 'mutual') {
+      scoreGiven = 4 + (seed % 7);
+      scoreReceived = 4 + ((seed + 5) % 7);
+    } else if (direction === 'met') {
+      scoreGiven = 4 + (seed % 7);
+      scoreReceived = 0;
+    }
+    return {
+      id: `rate-${activeUserId}-${mode}-${direction}-${targetUserId}`,
+      userId: targetUserId,
+      mode,
+      direction,
+      scoreGiven,
+      scoreReceived,
+      eventName: `${mode === 'pair' ? 'Pair' : 'Single'} ${direction}`,
+      happenedAt,
+      distanceKm: 2 + ((seed + laneIndex + userIndex) % 33)
+    };
+  }
+
+  private chatChannelType(item: ChatMenuItem): AppTypes.ChatChannelType {
+    if (item.channelType === 'mainEvent' || item.channelType === 'optionalSubEvent' || item.channelType === 'groupSubEvent') {
+      return item.channelType;
+    }
+    return 'general';
+  }
+
+  private chatItemsForActivities(): ChatMenuItem[] {
+    const merged = new Map<string, ChatMenuItem>();
+    for (const item of this.chatItems) {
+      merged.set(item.id, {
+        ...item,
+        channelType: this.chatChannelType(item)
+      });
+    }
+    for (const contextual of this.buildContextualChatChannels()) {
+      merged.set(contextual.id, contextual);
+      if (!this.chatDatesById[contextual.id]) {
+        this.chatDatesById[contextual.id] = contextual.lastMessage
+          ? (this.eventDatesById[contextual.eventId ?? ''] ?? this.defaultEventStartIso())
+          : this.defaultEventStartIso();
+      }
+      if (!this.chatDistanceById[contextual.id]) {
+        this.chatDistanceById[contextual.id] = 2 + (AppDemoGenerators.hashText(`chat-distance:${contextual.id}`) % 18);
+      }
+    }
+    return [...merged.values()];
+  }
+
+  private buildContextualChatChannels(): ChatMenuItem[] {
+    const sourceEvents = this.eventItems
+      .filter(item => item.isAdmin)
+      .slice(0, 6);
+    const channels: ChatMenuItem[] = [];
+    for (const event of sourceEvents) {
+      const eventLabel = event.title.trim() || 'Event';
+      channels.push(
+        this.buildContextChatItem(
+          `ctx-main-${event.id}`,
+          eventLabel,
+          'mainEvent',
+          event.id,
+          null,
+          null,
+          `Main room live for ${eventLabel}.`,
+          1
+        ),
+        this.buildContextChatItem(
+          `ctx-opt-${event.id}`,
+          `${eventLabel} · Optional`,
+          'optionalSubEvent',
+          event.id,
+          `${event.id}-optional`,
+          null,
+          'Optional side stage confirmed for tonight.',
+          0
+        ),
+        this.buildContextChatItem(
+          `ctx-group-${event.id}`,
+          `${eventLabel} · Group`,
+          'groupSubEvent',
+          event.id,
+          `${event.id}-group`,
+          `${event.id}-g1`,
+          'Group assignments are synced for the next round.',
+          1
+        )
+      );
+    }
+    return channels;
+  }
+
+  private buildContextChatItem(
+    id: string,
+    title: string,
+    channelType: ChatMenuItem['channelType'],
+    eventId: string,
+    subEventId: string | null,
+    groupId: string | null,
+    lastMessage: string,
+    unread: number
+  ): ChatMenuItem {
+    const memberIds = AppDemoGenerators.seededEventMemberIds(eventId, 8, this.users, this.activeUser.id);
+    const senderId = memberIds[1] ?? memberIds[0] ?? this.activeUser.id;
+    const sender = this.userById(senderId) ?? this.activeUser;
+    return {
+      id,
+      avatar: sender.initials,
+      title,
+      lastMessage,
+      lastSenderId: senderId,
+      memberIds,
+      unread,
+      channelType: channelType ?? 'general',
+      eventId,
+      subEventId: subEventId ?? undefined,
+      groupId: groupId ?? undefined
+    };
+  }
+
+  private defaultEventStartIso(): string {
+    const iso = this.eventDatesById['e1'];
+    return typeof iso === 'string' && iso.trim().length > 0 ? iso : '2026-03-01T09:00:00';
+  }
+
+  private getChatLastSender(item: ChatMenuItem): DemoUser {
+    return this.userById(item.lastSenderId) ?? this.userById(item.memberIds[0] ?? '') ?? this.activeUser;
+  }
+
+  private getChatMemberCount(item: ChatMenuItem): number {
+    return item.memberIds.length > 0 ? item.memberIds.length : 1;
+  }
+
+  private chatContextDetailLine(item: ChatMenuItem): string {
+    const channelType = this.chatChannelType(item);
+    if (channelType === 'mainEvent') {
+      return `Main event · ${item.lastMessage}`;
+    }
+    if (channelType === 'optionalSubEvent') {
+      return `Sub event · ${item.lastMessage}`;
+    }
+    if (channelType === 'groupSubEvent') {
+      return `Group room · ${item.lastMessage}`;
+    }
+    return item.lastMessage;
+  }
+
   private matchesActivitiesChatContextFilter(item: ChatMenuItem): boolean {
-    const filter = this.activitiesChatContextFilter;
-    if (filter === 'all') { return true; }
-    return this.activityChatContextFilterKey(item) === filter;
+    if (this.activitiesPrimaryFilter !== 'chats' || this.activitiesChatContextFilter === 'all') {
+      return true;
+    }
+    return this.activityChatContextFilterKey(item) === this.activitiesChatContextFilter;
   }
 
   private activityChatContextFilterKey(item: ChatMenuItem): AppTypes.ActivitiesChatContextFilter | null {
-    const context = (item as { context?: string }).context;
-    if (context === 'event')     { return 'event'; }
-    if (context === 'subEvent')  { return 'subEvent'; }
-    if (context === 'group')     { return 'group'; }
+    const channelType = this.chatChannelType(item);
+    if (channelType === 'mainEvent') {
+      return 'event';
+    }
+    if (channelType === 'optionalSubEvent') {
+      return 'subEvent';
+    }
+    if (channelType === 'groupSubEvent') {
+      return 'group';
+    }
     return null;
   }
 
   private matchesRateFilter(item: RateMenuItem, filter: AppTypes.RateFilterKey): boolean {
-    if (filter.startsWith('individual')) {
-      if (item.mode === 'pair') { return false; }
-      if (filter === 'individual-given')    { return item.direction === 'given'; }
-      if (filter === 'individual-received') { return item.direction === 'received'; }
-      if (filter === 'individual-mutual')   { return item.direction === 'mutual'; }
-      if (filter === 'individual-met')      { return item.direction === 'met'; }
-    }
-    if (filter.startsWith('pair')) {
-      if (item.mode !== 'pair') { return false; }
-      if (filter === 'pair-given')    { return item.direction === 'given'; }
-      if (filter === 'pair-received') { return item.direction === 'received'; }
-    }
-    return true;
+    const [modeKey, directionKey] = filter.split('-') as ['individual' | 'pair', 'given' | 'received' | 'mutual' | 'met'];
+    return item.mode === modeKey && this.displayedRateDirection(item) === directionKey;
+  }
+
+  private displayedRateDirection(item: RateMenuItem): RateMenuItem['direction'] {
+    return this.activityRateDirectionOverrideById[item.id] ?? item.direction;
   }
 
   private commitPendingRateDirectionOverrides(_nextFilter?: AppTypes.RateFilterKey): void {
@@ -2500,19 +2855,28 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     }
   }
 
+  private activityRateUser(row: AppTypes.ActivityListRow): DemoUser | null {
+    if (row.type !== 'rates') {
+      return null;
+    }
+    const item = row.source as RateMenuItem;
+    return this.users.find(user => user.id === item.userId) ?? null;
+  }
+
   // ── Row converters ─────────────────────────────────────────────────────────
 
   private chatToActivityRow(item: ChatMenuItem): AppTypes.ActivityListRow {
+    const sender = this.getChatLastSender(item);
     return {
       id: item.id,
       type: 'chats',
-      title: item.title,
-      subtitle: (item as { lastMessage?: string }).lastMessage ?? '',
-      detail: (item as { context?: string }).context ?? '',
+      title: sender.name,
+      subtitle: item.title,
+      detail: this.chatContextDetailLine(item),
       dateIso: this.chatDatesById[item.id] ?? '2026-02-21T09:00:00',
       distanceKm: this.chatDistanceById[item.id] ?? 5,
       unread: item.unread,
-      metricScore: item.unread * 10,
+      metricScore: item.unread * 10 + this.getChatMemberCount(item),
       source: item
     };
   }
@@ -2533,15 +2897,15 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     };
   }
 
-  private hostingToActivityRow(item: HostingMenuItem): AppTypes.ActivityListRow {
+  private hostingEventToActivityRow(item: EventMenuItem): AppTypes.ActivityListRow {
     return {
       id: item.id,
       type: 'hosting',
       title: item.title,
       subtitle: item.shortDescription,
       detail: item.timeframe,
-      dateIso: this.hostingDatesById[item.id] ?? this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
-      distanceKm: this.hostingDistanceById[item.id] ?? this.eventDistanceById[item.id] ?? 10,
+      dateIso: this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
+      distanceKm: this.eventDistanceById[item.id] ?? 10,
       unread: item.activity,
       metricScore: 20 + item.activity,
       isAdmin: true,
@@ -2565,18 +2929,29 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   private rateToActivityRow(item: RateMenuItem): AppTypes.ActivityListRow {
+    const user = this.users.find(candidate => candidate.id === item.userId) ?? this.activeUser;
+    const direction = this.displayedRateDirection(item);
+    const ownScore = this.rateOwnScore(item);
     return {
       id: item.id,
       type: 'rates',
-      title: item.eventName ?? '',
+      title: user.name,
       subtitle: '',
       detail: '',
       dateIso: item.happenedAt ?? '',
       distanceKm: item.distanceKm ?? 0,
       unread: 0,
-      metricScore: item.scoreGiven ?? 0,
+      metricScore: direction === 'mutual' ? ownScore + Math.max(item.scoreReceived, 0) : ownScore,
       source: item
     };
+  }
+
+  private rateOwnScore(item: RateMenuItem): number {
+    const direction = this.displayedRateDirection(item);
+    if (direction === 'given' || direction === 'mutual' || direction === 'met') {
+      return Math.max(item.scoreGiven, 0);
+    }
+    return Math.max(item.scoreReceived, 0);
   }
 
   private openActivityRowInEventModule(row: AppTypes.ActivityListRow, readOnly: boolean): void {
@@ -2624,7 +2999,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   // ── User lookup ────────────────────────────────────────────────────────────
 
   private userById(userId: string): DemoUser | undefined {
-    return DEMO_USERS.find(u => u.id === userId);
+    return this.users.find(u => u.id === userId);
   }
 
   // ── Calendar navigation shortcuts (template aliases) ──────────────────────
