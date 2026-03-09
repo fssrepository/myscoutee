@@ -263,6 +263,25 @@
   display: grid;
   gap: 0.16rem;
 }
+.activities-mobile-rate-filter-picker {
+  position: relative;
+}
+.activities-mobile-rate-filter-panel {
+  top: calc(100% + 0.24rem);
+  right: 0;
+  min-width: 210px;
+  z-index: 65;
+}
+.activities-mobile-rate-filter-group {
+  justify-content: flex-start;
+  cursor: default;
+  pointer-events: none;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: rgba(25, 48, 79, 0.62);
+  background: linear-gradient(180deg, #f6f9ff 0%, #edf3ff 100%);
+}
 .activities-view-option {
   border: 0;
   background: #fff;
@@ -1281,11 +1300,11 @@
   right: auto !important;
   transform: translate(-50%, var(--activities-rate-badge-between-y)) !important;
 }
-.activities-rate-profile-stack-pair-inline .activities-rate-score-badge-between:not(.is-disabled):hover,
-.activities-rate-profile-stack-pair-inline .activities-rate-score-badge-between:not(.is-disabled):active,
-.activities-rate-profile-stack-pair-inline .activities-rate-score-badge-between.is-active:not(.is-disabled),
-.activities-rate-profile-stack-pair-inline .activities-rate-score-badge-between.is-active.is-pending:not(.is-disabled),
-.activities-rate-profile-stack-pair-inline .activities-rate-score-badge-between.is-disabled {
+.activities-rate-profile-stack-pair-inline button.activities-rate-score-badge-between:not(.is-disabled):hover,
+.activities-rate-profile-stack-pair-inline button.activities-rate-score-badge-between:not(.is-disabled):active,
+.activities-rate-profile-stack-pair-inline button.activities-rate-score-badge-between.is-active:not(.is-disabled),
+.activities-rate-profile-stack-pair-inline button.activities-rate-score-badge-between.is-active.is-pending:not(.is-disabled),
+.activities-rate-profile-stack-pair-inline button.activities-rate-score-badge-between.is-disabled {
   left: 50% !important;
   right: auto !important;
   transform: translate(-50%, 0) !important;
@@ -1310,18 +1329,18 @@
   transform: translate(-50%, var(--activities-rate-badge-between-y));
 }
 @media (hover: hover) and (pointer: fine) {
-  .activities-rate-score-badge:not(.is-disabled):hover {
+  button.activities-rate-score-badge:not(.is-disabled):hover {
     transform: translateY(-1px) scale(1.03);
     box-shadow: 0 6px 14px rgba(203, 150, 34, 0.28);
     filter: saturate(1.05);
   }
 }
-.activities-rate-score-badge:not(.is-disabled):active {
+button.activities-rate-score-badge:not(.is-disabled):active {
   transform: translateY(0) scale(0.96);
   box-shadow: 0 2px 8px rgba(146, 105, 16, 0.22);
 }
-.activities-rate-score-badge-between:not(.is-disabled):hover,
-.activities-rate-score-badge-between:not(.is-disabled):active {
+button.activities-rate-score-badge-between:not(.is-disabled):hover,
+button.activities-rate-score-badge-between:not(.is-disabled):active {
   transform: translate(-50%, var(--activities-rate-badge-between-y));
 }
 .activities-rate-score-badge.is-pending {
@@ -1369,6 +1388,11 @@
 .activities-rate-score-badge[disabled] {
   pointer-events: none;
 }
+span.activities-rate-score-badge {
+  pointer-events: none;
+  cursor: default;
+  transition: none;
+}
 .activities-rate-score-badge.is-disabled .activities-rate-score-star {
   color: #7a8799;
 }
@@ -1382,15 +1406,15 @@
   transition: transform 0.18s ease, color 0.2s ease;
 }
 @media (hover: hover) and (pointer: fine) {
-  .activities-rate-score-badge:not(.is-disabled):hover .activities-rate-score-star {
+  button.activities-rate-score-badge:not(.is-disabled):hover .activities-rate-score-star {
     transform: rotate(-9deg) scale(1.1);
   }
 }
-.activities-rate-score-badge:not(.is-disabled):active .activities-rate-score-star {
+button.activities-rate-score-badge:not(.is-disabled):active .activities-rate-score-star {
   transform: rotate(0deg) scale(0.92);
 }
-.activities-rate-score-badge-between:not(.is-disabled):hover .activities-rate-score-star,
-.activities-rate-score-badge-between:not(.is-disabled):active .activities-rate-score-star {
+button.activities-rate-score-badge-between:not(.is-disabled):hover .activities-rate-score-star,
+button.activities-rate-score-badge-between:not(.is-disabled):active .activities-rate-score-star {
   transform: none;
 }
 

@@ -154,6 +154,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected activitiesView: AppTypes.ActivitiesView                          = 'day';
   protected showActivitiesViewPicker     = false;
   protected showActivitiesSecondaryPicker = false;
+  protected showActivitiesRatePicker      = false;
 
   // ── Inline action menu ────────────────────────────────────────────────────
   protected inlineItemActionMenu: {
@@ -322,6 +323,70 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.syncMobileViewFromViewport();
   }
 
+  @HostListener('window:pointermove', ['$event'])
+  protected onWindowPointerMoveForActivitiesRates(event: PointerEvent): void {
+    if (!this.isActivitiesRatesPairSplitDragging || this.activitiesRatesPairSplitPointerId !== event.pointerId) {
+      return;
+    }
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+    this.updateActivitiesRatesPairSplitFromDragDelta(event.clientX);
+  }
+
+  @HostListener('window:pointerup', ['$event'])
+  protected onWindowPointerUpForActivitiesRates(event: PointerEvent): void {
+    if (this.activitiesRatesPairSplitPointerId !== event.pointerId) {
+      return;
+    }
+    this.stopActivitiesRatesPairSplitDrag();
+  }
+
+  @HostListener('window:pointercancel', ['$event'])
+  protected onWindowPointerCancelForActivitiesRates(event: PointerEvent): void {
+    if (this.activitiesRatesPairSplitPointerId !== event.pointerId) {
+      return;
+    }
+    this.stopActivitiesRatesPairSplitDrag();
+  }
+
+  @HostListener('window:touchmove', ['$event'])
+  protected onWindowTouchMoveForActivitiesRates(event: TouchEvent): void {
+    if (!this.isActivitiesRatesPairSplitDragging || this.activitiesRatesPairSplitPointerId !== -1) {
+      return;
+    }
+    const touch = event.touches?.[0] ?? event.changedTouches?.[0];
+    if (!touch) {
+      return;
+    }
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+    this.updateActivitiesRatesPairSplitFromDragDelta(touch.clientX);
+  }
+
+  @HostListener('window:touchend', ['$event'])
+  protected onWindowTouchEndForActivitiesRates(event: TouchEvent): void {
+    if (this.activitiesRatesPairSplitPointerId !== -1) {
+      return;
+    }
+    if (!event.changedTouches?.length) {
+      return;
+    }
+    this.stopActivitiesRatesPairSplitDrag();
+  }
+
+  @HostListener('window:touchcancel', ['$event'])
+  protected onWindowTouchCancelForActivitiesRates(event: TouchEvent): void {
+    if (this.activitiesRatesPairSplitPointerId !== -1) {
+      return;
+    }
+    if (!event.changedTouches?.length) {
+      return;
+    }
+    this.stopActivitiesRatesPairSplitDrag();
+  }
+
   /** Called once each time the service opens the popup. */
   private onActivitiesOpened(): void {
     this.resetActivitiesStateForOpen();
@@ -351,6 +416,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.activitiesCalendarBadgeDelayPageKey = '';
     this.activitiesCalendarBadgesLoadingActive = false;
     this.activitiesCalendarBadgesReadyDelayKeys.clear();
+    this.showActivitiesRatePicker = false;
   }
 
   ngOnDestroy(): void {
@@ -762,6 +828,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.disableActivitiesRatesFullscreenMode();
     }
     this.eventEditorService.setActivitiesPrimaryFilter(filter);
+    this.showActivitiesRatePicker = false;
     this.resetActivitiesScroll();
     this.cdr.markForCheck();
   }
@@ -785,6 +852,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.commitPendingRateDirectionOverrides();
     }
     this.eventEditorService.setActivitiesSecondaryFilter(filter);
+    this.showActivitiesRatePicker = false;
     this.resetActivitiesScroll();
     this.cdr.markForCheck();
   }
@@ -802,6 +870,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.syncActivitiesRatesFullscreenSelection();
     }
     this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesRatePicker = false;
     this.resetActivitiesScroll();
     this.cdr.markForCheck();
   }
@@ -809,12 +878,14 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected toggleActivitiesViewPicker(event: Event): void {
     event.stopPropagation();
     if (this.activitiesPrimaryFilter === 'chats') { return; }
+    this.showActivitiesRatePicker = false;
     this.eventEditorService.toggleActivitiesViewPicker();
   }
 
   protected toggleActivitiesSecondaryPicker(event: Event): void {
     event.stopPropagation();
     if (this.activitiesPrimaryFilter === 'chats') { return; }
+    this.showActivitiesRatePicker = false;
     this.eventEditorService.toggleActivitiesSecondaryPicker();
   }
 
@@ -827,6 +898,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.disableActivitiesRatesFullscreenMode();
     }
     this.eventEditorService.setActivitiesView(view as 'day' | 'week' | 'month' | 'distance');
+    this.showActivitiesRatePicker = false;
     this.resetActivitiesScroll(view === 'month' || view === 'week');
     this.cdr.markForCheck();
   }
@@ -835,6 +907,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   protected openMobileActivitiesPrimaryFilterSelector(event: Event): void {
     event.stopPropagation();
+    this.showActivitiesRatePicker = false;
     // In a full implementation this would open a bottom-sheet.
     // For now we toggle a simplified picker state.
     this.showActivitiesViewPicker = !this.showActivitiesViewPicker;
@@ -842,12 +915,18 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   protected openMobileActivitiesChatContextFilterSelector(event: Event): void {
     event.stopPropagation();
+    this.showActivitiesRatePicker = false;
     this.showActivitiesSecondaryPicker = !this.showActivitiesSecondaryPicker;
   }
 
   protected openMobileActivitiesRateFilterSelector(event: Event): void {
     event.stopPropagation();
-    this.showActivitiesSecondaryPicker = !this.showActivitiesSecondaryPicker;
+    if (!this.isMobileView || this.activitiesPrimaryFilter !== 'rates') {
+      return;
+    }
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesRatePicker = !this.showActivitiesRatePicker;
   }
 
   // ── Event editor / explore – call EventEditorService directly ────────────
@@ -3211,9 +3290,10 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   // =========================================================================
 
   protected onActivitiesPopupSurfaceClick(event: MouseEvent): void {
-    if (this.showActivitiesViewPicker || this.showActivitiesSecondaryPicker) {
+    if (this.showActivitiesViewPicker || this.showActivitiesSecondaryPicker || this.showActivitiesRatePicker) {
       this.showActivitiesViewPicker      = false;
       this.showActivitiesSecondaryPicker = false;
+      this.showActivitiesRatePicker = false;
       this.cdr.markForCheck();
     }
     if (this.inlineItemActionMenu) {

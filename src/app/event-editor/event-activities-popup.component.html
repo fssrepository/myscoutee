@@ -239,19 +239,36 @@
         </div>
       </ng-container>
       <ng-template #mobileActivitiesRateFilterButton>
-        <button
-          type="button"
-          class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-rate-filter-select"
-          [ngClass]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]"
-          (click)="openMobileActivitiesRateFilterSelector($event)"
-        >
-          <span class="status-option-content">
-            <mat-icon [class]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]">{{ activitiesRateFilterIcon(activitiesRateFilter) }}</mat-icon>
-            <span>{{ activitiesRateFilterLabel() }}</span>
-          </span>
-          <mat-icon>expand_more</mat-icon>
-          <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="totalRateFilterCount() > 0">{{ totalRateFilterCount() }}</span>
-        </button>
+        <div class="activities-mobile-rate-filter-picker">
+          <button
+            type="button"
+            class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-rate-filter-select"
+            [ngClass]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]"
+            (click)="openMobileActivitiesRateFilterSelector($event)"
+          >
+            <span class="status-option-content">
+              <mat-icon [class]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]">{{ activitiesRateFilterIcon(activitiesRateFilter) }}</mat-icon>
+              <span>{{ activitiesRateFilterLabel() }}</span>
+            </span>
+            <mat-icon>expand_more</mat-icon>
+            <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="totalRateFilterCount() > 0">{{ totalRateFilterCount() }}</span>
+          </button>
+          <div class="activities-view-picker-panel activities-mobile-rate-filter-panel" *ngIf="showActivitiesRatePicker">
+            <ng-container *ngFor="let option of rateFilterEntries">
+              <span class="activities-view-option activities-mobile-rate-filter-group" *ngIf="option.kind === 'group'">{{ option.label }}</span>
+              <button
+                type="button"
+                class="activities-view-option"
+                *ngIf="option.kind === 'item'"
+                (click)="selectActivitiesRateFilter(option.key)"
+              >
+                <mat-icon [class]="[activitiesRateFilterClass(option.key), rateFilterOptionClass(option.key)]">{{ activitiesRateFilterIcon(option.key) }}</mat-icon>
+                <span>{{ option.label }}</span>
+                <span class="rate-filter-count-badge" *ngIf="rateFilterCount(option.key) > 0">{{ rateFilterCount(option.key) }}</span>
+              </button>
+            </ng-container>
+          </div>
+        </div>
       </ng-template>
     </ng-container>
 
