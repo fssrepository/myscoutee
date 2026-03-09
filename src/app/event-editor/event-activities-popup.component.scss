@@ -263,9 +263,12 @@
   display: grid;
   gap: 0.16rem;
 }
+.activities-mobile-primary-filter-picker,
+.activities-mobile-chat-context-filter-picker,
 .activities-mobile-rate-filter-picker {
   position: relative;
 }
+.activities-mobile-filter-panel,
 .activities-mobile-rate-filter-panel {
   top: calc(100% + 0.24rem);
   right: 0;
@@ -1023,6 +1026,35 @@
   overflow: hidden;
   box-sizing: border-box;
 }
+.activities-rate-profile-card .image-stack-line,
+.activities-rate-profile-card .image-stack-hit-segment {
+  transition: none !important;
+}
+
+.activities-rate-profile-card .image-stack-line:hover,
+.activities-rate-profile-card .image-stack-line:active,
+.activities-rate-profile-card .image-stack-hit-segment:hover,
+.activities-rate-profile-card .image-stack-hit-segment:active {
+  transform: none !important;
+  filter: none !important;
+  animation: none !important;
+}
+
+.activities-rate-profile-card button.activities-rate-score-badge {
+  transition: none !important;
+}
+
+.activities-rate-profile-card button.activities-rate-score-badge:hover,
+.activities-rate-profile-card button.activities-rate-score-badge:active {
+  transform: none !important;
+  filter: none !important;
+  animation: none !important;
+}
+
+.activities-rate-profile-card button.activities-rate-score-badge .activities-rate-score-star {
+  transition: none !important;
+  transform: none !important;
+}
 .activities-rate-profile-card.is-rate-editor-selected {
   border-color: rgba(214, 160, 42, 0.68);
   box-shadow: 0 10px 24px rgba(147, 105, 25, 0.34);
@@ -1091,6 +1123,16 @@
 }
 .activities-rate-pair-inline-card.is-pane-loading .activities-rate-profile-indicators .image-stack-line.active {
   animation: activities-rate-pane-loading-pulse 500ms ease;
+}
+@keyframes activities-rate-pane-loading-pulse {
+  0% {
+    transform: scaleX(0.84);
+    opacity: 0.58;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
 }
 .activities-rate-pair-inline-label {
   position: absolute;
@@ -1443,6 +1485,27 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   padding-top: 0.4rem;
   padding-bottom: 0.52rem;
 }
+@keyframes activities-rate-dock-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes activities-rate-dock-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
 
 // ─── Fullscreen Toggle Button ────────────────────────────────────────────
 .activities-rates-fullscreen-toggle {
@@ -1561,6 +1624,20 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   pointer-events: none;
   animation: activities-rates-page-curl 420ms cubic-bezier(0.18, 0.64, 0.24, 1) forwards;
 }
+@keyframes activities-rates-page-curl {
+  0% {
+    transform: perspective(1400px) translateX(0) translateY(0) rotateY(0deg) rotateZ(0deg) scale(1);
+    opacity: 1;
+  }
+  30% {
+    transform: perspective(1400px) translateX(-8%) translateY(1%) rotateY(-24deg) rotateZ(-2deg) scale(0.995);
+    opacity: 0.96;
+  }
+  100% {
+    transform: perspective(1400px) translateX(-145%) translateY(8%) rotateY(-82deg) rotateZ(-11deg) scale(0.94);
+    opacity: 0;
+  }
+}
 .activities-rates-fullscreen .activities-rate-profile-card {
   min-height: 100%;
   height: 100%;
@@ -1665,6 +1742,14 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
 }
 .activities-rate-editor-stars.is-blink {
   animation: game-rating-stars-blink 0.42s ease-in-out 1;
+}
+@keyframes game-rating-stars-blink {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.12) saturate(1.1);
+  }
 }
 .activities-rate-editor-stars.is-readonly {
   opacity: 0.92;

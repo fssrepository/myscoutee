@@ -105,19 +105,33 @@
       </div>
     </ng-container>
     <ng-template #mobileActivitiesPrimaryFilterButton>
-      <button
-        type="button"
-        class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-primary-filter-select"
-        [ngClass]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)"
-        (click)="openMobileActivitiesPrimaryFilterSelector($event)"
-      >
-        <span class="status-option-content">
-          <mat-icon [class]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)">{{ activitiesPrimaryFilterIcon() }}</mat-icon>
-          <span>{{ activitiesPrimaryFilterLabel() }}</span>
-        </span>
-        <mat-icon>expand_more</mat-icon>
-        <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesPrimaryFilterCount(activitiesPrimaryFilter) > 0">{{ activitiesPrimaryFilterCount(activitiesPrimaryFilter) }}</span>
-      </button>
+      <div class="activities-mobile-primary-filter-picker">
+        <button
+          type="button"
+          class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-primary-filter-select"
+          [ngClass]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)"
+          (click)="openMobileActivitiesPrimaryFilterSelector($event)"
+        >
+          <span class="status-option-content">
+            <mat-icon [class]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)">{{ activitiesPrimaryFilterIcon() }}</mat-icon>
+            <span>{{ activitiesPrimaryFilterLabel() }}</span>
+          </span>
+          <mat-icon>expand_more</mat-icon>
+          <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesPrimaryFilterCount(activitiesPrimaryFilter) > 0">{{ activitiesPrimaryFilterCount(activitiesPrimaryFilter) }}</span>
+        </button>
+        <div class="activities-view-picker-panel activities-mobile-filter-panel" *ngIf="showActivitiesPrimaryPicker">
+          <button
+            type="button"
+            class="activities-view-option"
+            *ngFor="let option of activitiesPrimaryFilters"
+            (click)="selectActivitiesPrimaryFilter(option.key)"
+          >
+            <mat-icon [class]="activitiesPrimaryFilterClass(option.key)">{{ option.icon }}</mat-icon>
+            <span>{{ option.label }}</span>
+            <span class="rate-filter-count-badge" *ngIf="activitiesPrimaryFilterCount(option.key) > 0">{{ activitiesPrimaryFilterCount(option.key) }}</span>
+          </button>
+        </div>
+      </div>
     </ng-template>
 
     <!-- Chat context filter (chats tab only) -->
@@ -161,21 +175,37 @@
         </div>
       </ng-container>
       <ng-template #mobileActivitiesChatContextFilterButton>
-        <button
-          type="button"
-          class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-chat-context-filter-select"
-          [ngClass]="activitiesChatContextFilterClass(activitiesChatContextFilter)"
-          (click)="openMobileActivitiesChatContextFilterSelector($event)"
-        >
-          <span class="status-option-content">
-            <mat-icon [class]="activitiesChatContextFilterClass(activitiesChatContextFilter)">{{ activitiesChatContextFilterIcon() }}</mat-icon>
-            <span>{{ activitiesChatContextFilterLabel() }}</span>
-          </span>
-          <mat-icon>expand_more</mat-icon>
-          <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesChatContextFilterCount(activitiesChatContextFilter) > 0">
-            {{ activitiesChatContextFilterCount(activitiesChatContextFilter) }}
-          </span>
-        </button>
+        <div class="activities-mobile-chat-context-filter-picker">
+          <button
+            type="button"
+            class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-chat-context-filter-select"
+            [ngClass]="activitiesChatContextFilterClass(activitiesChatContextFilter)"
+            (click)="openMobileActivitiesChatContextFilterSelector($event)"
+          >
+            <span class="status-option-content">
+              <mat-icon [class]="activitiesChatContextFilterClass(activitiesChatContextFilter)">{{ activitiesChatContextFilterIcon() }}</mat-icon>
+              <span>{{ activitiesChatContextFilterLabel() }}</span>
+            </span>
+            <mat-icon>expand_more</mat-icon>
+            <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesChatContextFilterCount(activitiesChatContextFilter) > 0">
+              {{ activitiesChatContextFilterCount(activitiesChatContextFilter) }}
+            </span>
+          </button>
+          <div class="activities-view-picker-panel activities-mobile-filter-panel" *ngIf="showActivitiesChatContextPicker">
+            <button
+              type="button"
+              class="activities-view-option"
+              *ngFor="let option of activitiesChatContextFilters"
+              (click)="selectActivitiesChatContextFilter(option.key)"
+            >
+              <mat-icon [class]="activitiesChatContextFilterClass(option.key)">{{ option.icon }}</mat-icon>
+              <span>{{ option.label }}</span>
+              <span class="rate-filter-count-badge" *ngIf="activitiesChatContextFilterCount(option.key) > 0">
+                {{ activitiesChatContextFilterCount(option.key) }}
+              </span>
+            </button>
+          </div>
+        </div>
       </ng-template>
     </ng-container>
 
@@ -451,10 +481,9 @@
             <ng-template #nonEventActivityRow>
               <ng-container *ngIf="row.type === 'rates'; else chatActivityRow">
                 <article
-                  class="activities-rate-profile-card activities-row-item activities-row-item-clickable"
+                  class="activities-rate-profile-card activities-row-item"
                   [attr.data-activity-rate-row-id]="row.id"
                   [attr.data-group-label]="group.label"
-                  (click)="onActivityRowClick(row, $event)"
                 >
                   <ng-container *ngIf="isPairRateRow(row); else singleRateRowCardStack">
                     <div

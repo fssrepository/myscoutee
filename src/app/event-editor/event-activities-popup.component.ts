@@ -154,6 +154,8 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected activitiesView: AppTypes.ActivitiesView                          = 'day';
   protected showActivitiesViewPicker     = false;
   protected showActivitiesSecondaryPicker = false;
+  protected showActivitiesPrimaryPicker = false;
+  protected showActivitiesChatContextPicker = false;
   protected showActivitiesRatePicker      = false;
 
   // ── Inline action menu ────────────────────────────────────────────────────
@@ -192,6 +194,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   private readonly activityPairRateCardActiveImageIndexByKey: Record<string, number>                   = {};
   private readonly activityPairRateCardImageLoadingByKey: Record<string, boolean>                      = {};
   private readonly activityPairRateCardLoadingTimerByKey: Record<string, ReturnType<typeof setTimeout>> = {};
+  private lastRateIndicatorPulseRowId: string | null = null;
 
   // ── Fullscreen rates ──────────────────────────────────────────────────────
   protected activitiesRatesFullscreenMode         = false;
@@ -416,6 +419,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.activitiesCalendarBadgeDelayPageKey = '';
     this.activitiesCalendarBadgesLoadingActive = false;
     this.activitiesCalendarBadgesReadyDelayKeys.clear();
+    this.lastRateIndicatorPulseRowId = null;
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesChatContextPicker = false;
     this.showActivitiesRatePicker = false;
   }
 
@@ -828,6 +834,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.disableActivitiesRatesFullscreenMode();
     }
     this.eventEditorService.setActivitiesPrimaryFilter(filter);
+    this.lastRateIndicatorPulseRowId = null;
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesChatContextPicker = false;
     this.showActivitiesRatePicker = false;
     this.resetActivitiesScroll();
     this.cdr.markForCheck();
@@ -836,6 +845,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected selectActivitiesChatContextFilter(filter: AppTypes.ActivitiesChatContextFilter): void {
     if (this.activitiesPrimaryFilter !== 'chats') { return; }
     this.eventEditorService.setActivitiesChatContextFilter(filter);
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesRatePicker = false;
     this.resetActivitiesScroll();
     this.cdr.markForCheck();
   }
@@ -852,6 +864,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.commitPendingRateDirectionOverrides();
     }
     this.eventEditorService.setActivitiesSecondaryFilter(filter);
+    this.lastRateIndicatorPulseRowId = null;
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesChatContextPicker = false;
     this.showActivitiesRatePicker = false;
     this.resetActivitiesScroll();
     this.cdr.markForCheck();
@@ -862,6 +877,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.activitiesRateFilter = filter;
     this.commitPendingRateDirectionOverrides(filter);
     this.eventEditorService.setActivitiesRateFilter(filter);
+    this.lastRateIndicatorPulseRowId = null;
     this.selectedActivityRateId = null;
     this.eventEditorService.setActivitiesSelectedRateId(null);
     if (this.activitiesRatesFullscreenMode) {
@@ -869,6 +885,8 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.activitiesRatesFullscreenCardIndex  = 0;
       this.syncActivitiesRatesFullscreenSelection();
     }
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesChatContextPicker = false;
     this.showActivitiesSecondaryPicker = false;
     this.showActivitiesRatePicker = false;
     this.resetActivitiesScroll();
@@ -878,6 +896,8 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected toggleActivitiesViewPicker(event: Event): void {
     event.stopPropagation();
     if (this.activitiesPrimaryFilter === 'chats') { return; }
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesChatContextPicker = false;
     this.showActivitiesRatePicker = false;
     this.eventEditorService.toggleActivitiesViewPicker();
   }
@@ -885,6 +905,8 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected toggleActivitiesSecondaryPicker(event: Event): void {
     event.stopPropagation();
     if (this.activitiesPrimaryFilter === 'chats') { return; }
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesChatContextPicker = false;
     this.showActivitiesRatePicker = false;
     this.eventEditorService.toggleActivitiesSecondaryPicker();
   }
@@ -898,6 +920,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.disableActivitiesRatesFullscreenMode();
     }
     this.eventEditorService.setActivitiesView(view as 'day' | 'week' | 'month' | 'distance');
+    this.lastRateIndicatorPulseRowId = null;
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesChatContextPicker = false;
     this.showActivitiesRatePicker = false;
     this.resetActivitiesScroll(view === 'month' || view === 'week');
     this.cdr.markForCheck();
@@ -906,17 +931,27 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   // ── Mobile bottom-sheet openers (delegates back to parent if needed) ───────
 
   protected openMobileActivitiesPrimaryFilterSelector(event: Event): void {
+    if (!this.isMobileView) {
+      return;
+    }
     event.stopPropagation();
+    this.showActivitiesChatContextPicker = false;
     this.showActivitiesRatePicker = false;
-    // In a full implementation this would open a bottom-sheet.
-    // For now we toggle a simplified picker state.
-    this.showActivitiesViewPicker = !this.showActivitiesViewPicker;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesPrimaryPicker = !this.showActivitiesPrimaryPicker;
   }
 
   protected openMobileActivitiesChatContextFilterSelector(event: Event): void {
+    if (!this.isMobileView || this.activitiesPrimaryFilter !== 'chats') {
+      return;
+    }
     event.stopPropagation();
+    this.showActivitiesPrimaryPicker = false;
     this.showActivitiesRatePicker = false;
-    this.showActivitiesSecondaryPicker = !this.showActivitiesSecondaryPicker;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesChatContextPicker = !this.showActivitiesChatContextPicker;
   }
 
   protected openMobileActivitiesRateFilterSelector(event: Event): void {
@@ -924,6 +959,8 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (!this.isMobileView || this.activitiesPrimaryFilter !== 'rates') {
       return;
     }
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesChatContextPicker = false;
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
     this.showActivitiesRatePicker = !this.showActivitiesRatePicker;
@@ -1446,6 +1483,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.selectedActivityRateId = row.id;
     this.eventEditorService.setActivitiesSelectedRateId(row.id);
     this.activityRateEditorClosing = false;
+    this.pulseRateIndicatorForRow(row);
     this.runAfterActivitiesRender(() => {
       setTimeout(() => this.smoothRevealSelectedRateRowWhenNeeded(row.id), 40);
       if (!wasOpen) {
@@ -1584,6 +1622,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.activityRateEditorClosing = false;
       this.selectedActivityRateId = null;
       this.eventEditorService.setActivitiesSelectedRateId(null);
+      this.lastRateIndicatorPulseRowId = null;
       this.lastActivityRateEditorLiftDelta = 0;
       this.activityRateEditorOpenScrollTop = null;
     }, this.activityRateEditorSlideDurationMs);
@@ -1892,6 +1931,45 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.activityPairRateCardLoadingTimerByKey[key] = setTimeout(() => {
       this.activityPairRateCardImageLoadingByKey[key] = false;
       delete this.activityPairRateCardLoadingTimerByKey[key];
+      this.cdr.markForCheck();
+    }, 500);
+    this.cdr.markForCheck();
+  }
+
+  private pulseRateIndicatorForRow(row: AppTypes.ActivityListRow | null): void {
+    if (!row || row.type !== 'rates') {
+      return;
+    }
+    if (this.lastRateIndicatorPulseRowId === row.id) {
+      return;
+    }
+    this.lastRateIndicatorPulseRowId = row.id;
+    if (this.isPairRateRow(row)) {
+      (['woman', 'man'] as const).forEach(slot => {
+        const key = this.activityPairRateSlotImageKey(row.id, slot);
+        if (this.activityPairRateCardLoadingTimerByKey[key]) {
+          clearTimeout(this.activityPairRateCardLoadingTimerByKey[key]);
+          delete this.activityPairRateCardLoadingTimerByKey[key];
+        }
+        this.activityPairRateCardImageLoadingByKey[key] = true;
+        this.activityPairRateCardLoadingTimerByKey[key] = setTimeout(() => {
+          this.activityPairRateCardImageLoadingByKey[key] = false;
+          delete this.activityPairRateCardLoadingTimerByKey[key];
+          this.cdr.markForCheck();
+        }, 500);
+      });
+      this.cdr.markForCheck();
+      return;
+    }
+    const rowId = row.id;
+    if (this.activityRateCardLoadingTimerById[rowId]) {
+      clearTimeout(this.activityRateCardLoadingTimerById[rowId]);
+      delete this.activityRateCardLoadingTimerById[rowId];
+    }
+    this.activityRateCardImageLoadingById[rowId] = true;
+    this.activityRateCardLoadingTimerById[rowId] = setTimeout(() => {
+      this.activityRateCardImageLoadingById[rowId] = false;
+      delete this.activityRateCardLoadingTimerById[rowId];
       this.cdr.markForCheck();
     }, 500);
     this.cdr.markForCheck();
@@ -2313,6 +2391,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.selectedActivityRateId = null;
     this.lastActivityRateEditorLiftDelta = 0;
     this.activityRateEditorOpenScrollTop = null;
+    this.lastRateIndicatorPulseRowId = null;
     this.eventEditorService.setActivitiesRatesFullscreenMode(false);
     this.eventEditorService.setActivitiesSelectedRateId(null);
     this.updateActivitiesHeaderProgress();
@@ -2354,6 +2433,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     }
     this.selectedActivityRateId = allRows[this.activitiesRatesFullscreenCardIndex]?.id ?? null;
     this.eventEditorService.setActivitiesSelectedRateId(this.selectedActivityRateId);
+    this.pulseRateIndicatorForRow(allRows[this.activitiesRatesFullscreenCardIndex] ?? null);
     this.updateActivitiesHeaderProgress();
   }
 
@@ -3290,9 +3370,17 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   // =========================================================================
 
   protected onActivitiesPopupSurfaceClick(event: MouseEvent): void {
-    if (this.showActivitiesViewPicker || this.showActivitiesSecondaryPicker || this.showActivitiesRatePicker) {
+    if (
+      this.showActivitiesViewPicker
+      || this.showActivitiesSecondaryPicker
+      || this.showActivitiesPrimaryPicker
+      || this.showActivitiesChatContextPicker
+      || this.showActivitiesRatePicker
+    ) {
       this.showActivitiesViewPicker      = false;
       this.showActivitiesSecondaryPicker = false;
+      this.showActivitiesPrimaryPicker = false;
+      this.showActivitiesChatContextPicker = false;
       this.showActivitiesRatePicker = false;
       this.cdr.markForCheck();
     }
