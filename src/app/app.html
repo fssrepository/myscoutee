@@ -5639,30 +5639,6 @@
   </div>
 </section>
 
-<section class="experience-delete-confirm" *ngIf="pendingSubEventDeleteId">
-  <div class="experience-delete-confirm-backdrop" (click)="cancelSubEventDelete()"></div>
-  <div class="experience-delete-confirm-panel">
-    <h4>{{ pendingSubEventDeleteTitle() }}</h4>
-    <p>{{ pendingSubEventDeleteLabel() }}</p>
-    <div class="popup-actions">
-      <button type="button" class="link-btn neutral-btn" (click)="cancelSubEventDelete()">Cancel</button>
-      <button type="button" class="link-btn experience-delete-btn" (click)="confirmSubEventDelete()">Delete</button>
-    </div>
-  </div>
-</section>
-
-<section class="experience-delete-confirm" *ngIf="pendingSubEventGroupDelete">
-  <div class="experience-delete-confirm-backdrop" (click)="cancelSubEventGroupDelete()"></div>
-  <div class="experience-delete-confirm-panel">
-    <h4>{{ pendingSubEventGroupDeleteTitle() }}</h4>
-    <p>{{ pendingSubEventGroupDeleteLabel() }}</p>
-    <div class="popup-actions">
-      <button type="button" class="link-btn neutral-btn" (click)="cancelSubEventGroupDelete()">Cancel</button>
-      <button type="button" class="link-btn experience-delete-btn" (click)="confirmSubEventGroupDelete()">Delete</button>
-    </div>
-  </div>
-</section>
-
 <section class="logout-confirm" *ngIf="activePopup === 'logoutConfirm'">
   <div class="logout-confirm-backdrop" (click)="closePopup()"></div>
   <div class="logout-confirm-panel" (click)="$event.stopPropagation()">
