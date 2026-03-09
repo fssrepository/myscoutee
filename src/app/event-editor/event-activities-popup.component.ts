@@ -741,7 +741,7 @@ export class EventActivitiesPopupComponent implements OnInit, OnDestroy {
 
   protected activityRowBadge(row: AppTypes.ActivityListRow): number {
     if (row.type === 'chats') {
-      return (row.source as ChatMenuItem).badge ?? 0;
+      return row.unread ?? 0;
     }
     return 0;
   }
