@@ -2320,7 +2320,7 @@ export class App {
   ): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
-    const membersRow = this.eventEditorMembersRow();
+    const popupMembersContext = this.popupMembersContextForSubEvent(item, group?.id);
     if (this.eventEditorService.isOpen()) {
       this.subEventBadgePopupOrigin = 'stacked-event-editor';
     } else if (this.stackedPopup === 'chat') {
@@ -2334,12 +2334,12 @@ export class App {
       groupId: group?.id,
       groupName: group?.groupLabel
     };
-    if (membersRow) {
-      const rowKey = `${membersRow.type}:${membersRow.id}`;
-      const seededEntries = this.sortActivityMembersByActionTimeAsc(this.getActivityMembersByRow(membersRow));
-      this.subEventMembersRow = membersRow;
+    if (popupMembersContext) {
+      this.subEventMembersRow = popupMembersContext.row;
+      const rowKey = popupMembersContext.rowKey;
+      const seededEntries = this.sortActivityMembersByActionTimeAsc(popupMembersContext.entries);
       this.subEventMembersRowId = rowKey;
-      this.selectedActivityMembersRow = membersRow;
+      this.selectedActivityMembersRow = popupMembersContext.row;
       this.selectedActivityMembersRowId = rowKey;
       this.selectedActivityMembers = [...seededEntries];
       this.activityMembersByRowId[rowKey] = [...seededEntries];
@@ -2357,6 +2357,106 @@ export class App {
     this.subEventAssetRouteEditor = null;
     this.subEventResourceFilter = type === 'Members' ? 'Members' : type;
     this.stackedPopup = 'subEventAssets';
+  }
+
+  private popupMembersContextForSubEvent(
+    item: AppTypes.SubEventFormItem,
+    groupId?: string
+  ): { row: AppTypes.ActivityListRow; rowKey: string; entries: AppTypes.ActivityMemberEntry[] } | null {
+    const editorRow = this.eventEditorMembersRow();
+    if (editorRow) {
+      const rowKey = `${editorRow.type}:${editorRow.id}`;
+      return {
+        row: editorRow,
+        rowKey,
+        entries: this.sortActivityMembersByActionTimeAsc(this.getActivityMembersByRow(editorRow))
+      };
+    }
+
+    if (this.stackedPopup !== 'chat' && this.activePopup !== 'chat') {
+      return null;
+    }
+    const chat = this.selectedChat;
+    if (!chat) {
+      return null;
+    }
+    const groups = this.subEventGroupsForStage(item);
+    const group = groupId ? (groups.find(entry => entry.id === groupId) ?? null) : null;
+    const target = this.contextualSubEventMemberTargets(item, group, groups);
+    const unread = this.contextualChatUnreadCount(chat);
+    const row: AppTypes.ActivityListRow = {
+      id: `subevent-members:${chat.id}`,
+      type: 'chats',
+      title: chat.title,
+      subtitle: chat.title,
+      detail: this.chatContextDetailLine(chat),
+      dateIso: this.chatDatesById[chat.id] ?? this.defaultEventStartIso(),
+      distanceKm: this.chatDistanceById[chat.id] ?? 0,
+      unread,
+      metricScore: unread,
+      source: chat
+    };
+    const rowKey = `${row.type}:${row.id}`;
+    return {
+      row,
+      rowKey,
+      entries: this.seededChatSubEventMembersEntries(row, rowKey, chat.id, target)
+    };
+  }
+
+  private seededChatSubEventMembersEntries(
+    row: AppTypes.ActivityListRow,
+    rowKey: string,
+    chatId: string,
+    target: { accepted: number; pending: number; total: number }
+  ): AppTypes.ActivityMemberEntry[] {
+    const chatMemberIds = this.getChatMembersById(chatId).map(member => member.id);
+    const memberIds = this.contextualChatMemberIds(
+      `chat-popup-members:${chatId}`,
+      chatMemberIds,
+      target.total
+    );
+    const users = memberIds
+      .map(userId => this.users.find(user => user.id === userId) ?? null)
+      .filter((user): user is DemoUser => Boolean(user));
+    const seedBaseDate = new Date('2026-03-01T12:00:00');
+    const entries = users.map((user, index) => {
+      const accepted = index < target.accepted;
+      const defaults = accepted
+        ? AppDemoGenerators.toActivityMemberEntry(
+            user,
+            row,
+            rowKey,
+            this.activeUser.id,
+            {
+              status: 'accepted',
+              pendingSource: null,
+              invitedByActiveUser: false
+            },
+            APP_DEMO_DATA.activityMemberMetPlaces
+          )
+        : AppDemoGenerators.toActivityMemberEntry(
+            user,
+            row,
+            rowKey,
+            this.activeUser.id,
+            {
+              status: 'pending',
+              pendingSource: 'member',
+              invitedByActiveUser: user.id === this.activeUser.id
+            },
+            APP_DEMO_DATA.activityMemberMetPlaces
+          );
+      return {
+        ...defaults,
+        status: accepted ? ('accepted' as const) : ('pending' as const),
+        pendingSource: accepted ? null : ('member' as const),
+        requestKind: accepted ? null : ('join' as const),
+        statusText: accepted ? defaults.statusText : 'Waiting for owner approval.',
+        actionAtIso: AppUtils.toIsoDateTime(AppUtils.addDays(seedBaseDate, -(index + 1)))
+      };
+    });
+    return this.sortActivityMembersByActionTimeAsc(entries);
   }
 
   protected handleSubEventQuickAction(message: string, event?: Event): void {
@@ -7289,11 +7389,11 @@ export class App {
   }
 
   protected selectedChatHeaderActionBadgeCount(): number {
-    const subEvent = this.selectedChatSubEvent();
-    if (!subEvent || !this.selectedChatHasSubEventMenu()) {
+    const chat = this.selectedChat;
+    if (!chat) {
       return 0;
     }
-    return this.selectedChatSubEventResourceTotal(subEvent);
+    return this.contextualChatUnreadCount(chat);
   }
 
   protected selectedChatContextMenuTitle(): string {
@@ -7425,7 +7525,7 @@ export class App {
       return 0;
     }
     const isGroupChannel = this.chatChannelType(chat) === 'groupSubEvent';
-    return this.subEventMenuPendingCount(subEvent, isGroupChannel);
+    return this.contextualSubEventPendingTotal(subEvent, subEvent.optional || isGroupChannel);
   }
 
   protected selectedChatSubEvent(): AppTypes.SubEventFormItem | null {
@@ -7476,10 +7576,12 @@ export class App {
   private chatItemsForActivities(): ChatMenuItem[] {
     const merged = new Map<string, ChatMenuItem>();
     for (const item of this.chatItems) {
-      merged.set(item.id, {
+      const normalized: ChatMenuItem = {
         ...item,
         channelType: this.chatChannelType(item)
-      });
+      };
+      normalized.unread = this.contextualChatUnreadCount(normalized);
+      merged.set(item.id, normalized);
     }
     for (const contextual of this.buildContextualChatChannels()) {
       merged.set(contextual.id, contextual);
@@ -7536,7 +7638,7 @@ export class App {
   }
 
   private buildMainEventContextChat(eventId: string, eventTitle: string): ChatMenuItem {
-    const memberIds = AppDemoGenerators.seededEventMemberIds(eventId, 8, this.users, this.activeUser.id);
+    const memberIds = this.mainEventContextMemberIds(eventId);
     return this.buildContextChatItem({
       id: `c-context-main-${eventId}`,
       title: `${eventTitle} · Main Event`,
@@ -7555,7 +7657,13 @@ export class App {
     subEvent: AppTypes.SubEventFormItem,
     stageLabel: string
   ): ChatMenuItem {
-    const memberIds = this.optionalSubEventAcceptedMemberIds(eventId, subEvent.id);
+    const acceptedMemberIds = this.optionalSubEventAcceptedMemberIds(eventId, subEvent.id);
+    const target = this.contextualSubEventMemberTargets(subEvent);
+    const memberIds = this.contextualChatMemberIds(
+      `chat-optional:${eventId}:${subEvent.id}`,
+      acceptedMemberIds,
+      target.accepted
+    );
     return this.buildContextChatItem({
       id: `c-context-optional-${eventId}-${subEvent.id}`,
       title: `${subEvent.name || 'Optional Sub Event'} · Optional`,
@@ -7576,7 +7684,13 @@ export class App {
     stageLabel: string,
     groups: AppTypes.SubEventGroupItem[]
   ): ChatMenuItem {
-    const memberIds = this.tournamentGroupAcceptedMemberIds(eventId, subEvent.id, group.id, groups);
+    const acceptedMemberIds = this.tournamentGroupAcceptedMemberIds(eventId, subEvent.id, group.id, groups);
+    const target = this.contextualSubEventMemberTargets(subEvent, group, groups);
+    const memberIds = this.contextualChatMemberIds(
+      `chat-group:${eventId}:${subEvent.id}:${group.id}`,
+      acceptedMemberIds,
+      target.accepted
+    );
     return this.buildContextChatItem({
       id: `c-context-group-${eventId}-${subEvent.id}-${group.id}`,
       title: `${group.name} · Group Channel`,
@@ -7604,19 +7718,139 @@ export class App {
     const lastSenderId = senderCandidates[AppDemoGenerators.hashText(`chat-sender:${input.id}`) % Math.max(1, senderCandidates.length)]
       ?? memberIds[0]
       ?? this.activeUser.id;
-    const unread = AppDemoGenerators.hashText(`chat-unread:${input.id}`) % 4;
-    return {
+    const item: ChatMenuItem = {
       id: input.id,
       avatar: AppUtils.initialsFromText(input.title),
       title: input.title,
       lastMessage: input.lastMessage,
       lastSenderId,
       memberIds,
-      unread,
+      unread: 0,
       channelType: input.channelType,
       eventId: input.eventId,
       subEventId: input.subEventId || undefined,
       groupId: input.groupId || undefined
+    };
+    item.unread = this.contextualChatUnreadCount(item);
+    return item;
+  }
+
+  private contextualChatUnreadCount(item: ChatMenuItem): number {
+    const channelType = this.chatChannelType(item);
+    if (channelType === 'optionalSubEvent' || channelType === 'groupSubEvent') {
+      const subEvent = this.chatSubEventForItem(item);
+      if (!subEvent) {
+        return 0;
+      }
+      return this.contextualSubEventPendingTotal(subEvent, subEvent.optional || channelType === 'groupSubEvent');
+    }
+    if (channelType === 'mainEvent') {
+      return this.mainEventContextPendingCount(item);
+    }
+    return Math.max(0, Math.trunc(Number(item.unread) || 0));
+  }
+
+  private contextualChatMemberIds(seedKey: string, acceptedMemberIds: string[], targetTotal: number): string[] {
+    const accepted = this.uniqueUserIds(acceptedMemberIds);
+    const desiredTotal = Math.max(accepted.length, targetTotal);
+    if (desiredTotal <= accepted.length) {
+      return accepted;
+    }
+    const seeded = AppDemoGenerators.seededEventMemberIds(
+      seedKey,
+      Math.max(desiredTotal, 4),
+      this.users,
+      this.activeUser.id
+    );
+    return this.uniqueUserIds([...accepted, ...seeded]).slice(0, desiredTotal);
+  }
+
+  private contextualSubEventMemberTargets(
+    subEvent: AppTypes.SubEventFormItem,
+    group: AppTypes.SubEventGroupItem | null = null,
+    groups: AppTypes.SubEventGroupItem[] = []
+  ): { accepted: number; pending: number; total: number } {
+    const acceptedBase = this.chatCountValue(subEvent.membersAccepted);
+    const pendingBase = this.chatCountValue(subEvent.membersPending);
+    if (!group) {
+      const total = Math.max(acceptedBase, acceptedBase + pendingBase);
+      return { accepted: acceptedBase, pending: pendingBase, total };
+    }
+    const stageCapacityMax = Math.max(
+      1,
+      this.chatCountValue(subEvent.capacityMax),
+      groups.reduce((sum, item) => sum + this.chatCountValue(item.capacityMax), 0),
+      acceptedBase + pendingBase
+    );
+    const groupCapacityMax = Math.max(
+      1,
+      this.chatCountValue(group.capacityMax),
+      Math.round(stageCapacityMax / Math.max(1, groups.length))
+    );
+    const ratio = groupCapacityMax / stageCapacityMax;
+    const accepted = Math.min(groupCapacityMax, Math.max(0, Math.round(acceptedBase * ratio)));
+    const groupPendingRaw = this.chatCountValue((group as { membersPending?: unknown }).membersPending);
+    const pendingByShare = Math.max(0, Math.round(pendingBase * ratio));
+    const pending = Math.min(Math.max(0, groupCapacityMax - accepted), Math.max(groupPendingRaw, pendingByShare));
+    const total = Math.max(accepted, accepted + pending);
+    return { accepted, pending, total };
+  }
+
+  private chatCountValue(value: unknown): number {
+    return Math.max(0, Math.trunc(Number(value) || 0));
+  }
+
+  private contextualSubEventPendingTotal(subEvent: AppTypes.SubEventFormItem, includeMembers = true): number {
+    const members = includeMembers ? this.chatCountValue(subEvent.membersPending) : 0;
+    return members
+      + this.subEventAssetBadgePendingCount(subEvent, 'Car')
+      + this.subEventAssetBadgePendingCount(subEvent, 'Accommodation')
+      + this.subEventAssetBadgePendingCount(subEvent, 'Supplies');
+  }
+
+  private mainEventContextMemberIds(eventId: string): string[] {
+    const source = this.eventItems.find(item => item.id === eventId)
+      ?? this.hostingItems.find(item => item.id === eventId)
+      ?? null;
+    if (!source) {
+      return AppDemoGenerators.seededEventMemberIds(eventId, 8, this.users, this.activeUser.id);
+    }
+    const row = this.buildChatSourceActivityRow(source);
+    const members = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted');
+    const memberIds = this.uniqueUserIds(members.map(member => member.userId));
+    if (memberIds.length > 0) {
+      return memberIds;
+    }
+    return AppDemoGenerators.seededEventMemberIds(eventId, 8, this.users, this.activeUser.id);
+  }
+
+  private mainEventContextPendingCount(item: ChatMenuItem): number {
+    const source = this.resolveChatEventSource(item);
+    if (!source) {
+      return 0;
+    }
+    const row = this.buildChatSourceActivityRow(source);
+    const eventPending = this.getActivityMembersByRow(row).filter(member => member.status === 'pending').length;
+    const eventId = this.normalizeLocationValue(item.eventId).trim() || source.id;
+    const subEventsPending = this.chatEventSubEvents(eventId)
+      .reduce((sum, subEvent) => sum + this.contextualSubEventPendingTotal(subEvent, true), 0);
+    return eventPending + subEventsPending;
+  }
+
+  private buildChatSourceActivityRow(source: EventMenuItem | HostingMenuItem): AppTypes.ActivityListRow {
+    const isHosting = this.isHostingSource(source);
+    return {
+      id: source.id,
+      type: isHosting ? 'hosting' : 'events',
+      title: source.title,
+      subtitle: source.shortDescription,
+      detail: source.timeframe,
+      dateIso: this.eventDatesById[source.id] ?? this.hostingDatesById[source.id] ?? this.defaultEventStartIso(),
+      distanceKm: this.eventDistanceById[source.id] ?? this.hostingDistanceById[source.id] ?? 0,
+      unread: source.activity,
+      metricScore: source.activity,
+      isAdmin: isHosting ? true : (source as EventMenuItem).isAdmin === true,
+      source
     };
   }
 
@@ -7721,16 +7955,28 @@ export class App {
 
   private optionalSubEventAcceptedMemberIds(eventId: string, subEventId: string): string[] {
     const key = this.optionalSubEventMembershipKey(eventId, subEventId);
+    const subEvent = this.chatEventSubEvents(eventId).find(item => item.id === subEventId) ?? null;
+    const targetAccepted = subEvent
+      ? this.contextualSubEventMemberTargets(subEvent).accepted
+      : 0;
     const existing = this.acceptedOptionalSubEventMembersByKey[key];
-    if (existing && existing.length > 0) {
+    if (existing && existing.length === targetAccepted) {
       return existing;
     }
-    const candidates = AppDemoGenerators.seededEventMemberIds(eventId, 10, this.users, this.activeUser.id);
-    const seeded = candidates.filter(userId =>
-      (AppDemoGenerators.hashText(`optional-chat-member:${eventId}:${subEventId}:${userId}`) % 100) < 56
+    const candidates = AppDemoGenerators.seededEventMemberIds(
+      `optional-chat-member:${eventId}:${subEventId}`,
+      Math.max(targetAccepted, 4),
+      this.users,
+      this.activeUser.id
     );
-    const fallback = seeded.length > 0 ? seeded : [candidates[0] ?? this.activeUser.id];
-    this.acceptedOptionalSubEventMembersByKey[key] = this.uniqueUserIds(fallback);
+    let accepted = targetAccepted > 0
+      ? candidates.slice(0, targetAccepted)
+      : [];
+    if (targetAccepted > 0 && !accepted.includes(this.activeUser.id)) {
+      const withoutActive = accepted.filter(id => id !== this.activeUser.id);
+      accepted = this.uniqueUserIds([this.activeUser.id, ...withoutActive]).slice(0, targetAccepted);
+    }
+    this.acceptedOptionalSubEventMembersByKey[key] = this.uniqueUserIds(accepted);
     return this.acceptedOptionalSubEventMembersByKey[key];
   }
 
@@ -7741,14 +7987,26 @@ export class App {
     groups: AppTypes.SubEventGroupItem[]
   ): string[] {
     const key = this.tournamentGroupMembershipKey(eventId, subEventId, groupId);
+    const subEvent = this.chatEventSubEvents(eventId).find(item => item.id === subEventId) ?? null;
+    const group = groups.find(item => item.id === groupId) ?? null;
+    const targetAccepted = subEvent && group
+      ? this.contextualSubEventMemberTargets(subEvent, group, groups).accepted
+      : 0;
     const existing = this.acceptedTournamentGroupMembersByKey[key];
-    if (existing && existing.length > 0) {
+    if (existing && existing.length === targetAccepted) {
       return existing;
     }
-    const candidates = AppDemoGenerators.seededEventMemberIds(eventId, 12, this.users, this.activeUser.id);
+    const candidates = AppDemoGenerators.seededEventMemberIds(eventId, this.users.length, this.users, this.activeUser.id);
     const seeded = candidates.filter(userId => AppDemoGenerators.seededTournamentGroupIdForUser(eventId, subEventId, groups, userId) === groupId);
-    const fallback = seeded.length > 0 ? seeded : [candidates[0] ?? this.activeUser.id];
-    this.acceptedTournamentGroupMembersByKey[key] = this.uniqueUserIds(fallback);
+    let accepted = targetAccepted > 0
+      ? seeded.slice(0, targetAccepted)
+      : [];
+    const activeGroupId = AppDemoGenerators.seededTournamentGroupIdForUser(eventId, subEventId, groups, this.activeUser.id);
+    if (targetAccepted > 0 && activeGroupId === groupId && !accepted.includes(this.activeUser.id)) {
+      const withoutActive = accepted.filter(id => id !== this.activeUser.id);
+      accepted = this.uniqueUserIds([this.activeUser.id, ...withoutActive]).slice(0, targetAccepted);
+    }
+    this.acceptedTournamentGroupMembersByKey[key] = this.uniqueUserIds(accepted);
     return this.acceptedTournamentGroupMembersByKey[key];
   }
 
@@ -7936,7 +8194,7 @@ export class App {
 
   private activityChatContextFilterKey(item: ChatMenuItem): AppTypes.ActivitiesChatContextFilter | null {
     const channelType = this.chatChannelType(item);
-    if (channelType === 'mainEvent') {
+    if (channelType === 'mainEvent' || channelType === 'general') {
       return 'event';
     }
     if (channelType === 'optionalSubEvent') {
@@ -7971,6 +8229,7 @@ export class App {
         .filter(item => this.matchesActivitiesChatContextFilter(item))
         .map(item => {
         const sender = this.getChatLastSender(item);
+        const unread = this.contextualChatUnreadCount(item);
         return {
           id: item.id,
           type: 'chats',
@@ -7979,8 +8238,8 @@ export class App {
           detail: this.chatContextDetailLine(item),
           dateIso: this.chatDatesById[item.id] ?? '2026-02-21T09:00:00',
           distanceKm: this.chatDistanceById[item.id] ?? 5,
-          unread: item.unread,
-          metricScore: item.unread * 10 + this.getChatMemberCount(item),
+          unread,
+          metricScore: unread * 10 + this.getChatMemberCount(item),
           source: item
         };
       });

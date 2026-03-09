@@ -613,6 +613,9 @@
           <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
           <span>{{ selectedChatHeaderActionLabel() }}</span>
         </span>
+        <span class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge" *ngIf="selectedChatHeaderActionBadgeCount() > 0">
+          {{ selectedChatHeaderActionBadgeCount() }}
+        </span>
       </button>
       <div class="popup-chat-context-menu-wrap" *ngIf="activePopup === 'chat' && selectedChat && selectedChatHasSubEventMenu()">
         <button
@@ -2484,6 +2487,9 @@
           <span class="event-editor-members-invite">
             <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
             <span>{{ selectedChatHeaderActionLabel() }}</span>
+          </span>
+          <span class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge" *ngIf="selectedChatHeaderActionBadgeCount() > 0">
+            {{ selectedChatHeaderActionBadgeCount() }}
           </span>
         </button>
         <div class="popup-chat-context-menu-wrap" *ngIf="stackedPopup === 'chat' && selectedChat && selectedChatHasSubEventMenu()">
