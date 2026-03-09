@@ -354,6 +354,7 @@ export class App {
   protected readonly eventAutoInviterById: Record<string, boolean> = { ...APP_DEMO_DATA.eventAutoInviterById };
   protected readonly eventTicketingById: Record<string, boolean> = { ...APP_DEMO_DATA.eventTicketingById };
   protected readonly hostingPublishedById: Record<string, boolean> = { ...APP_DEMO_DATA.hostingPublishedById };
+  private readonly supportedEventFrequencyOptions = ['One-time', 'Daily', 'Weekly', 'Bi-weekly', 'Monthly'];
   private readonly forcedAcceptedMembersByRowKey: Record<string, number> = { 'events:e8': 20 };
   protected readonly eventCapacityById: Record<string, AppTypes.EventCapacityRange> = {};
   private readonly eventFrequencyById: Record<string, string> = {};
@@ -4193,7 +4194,7 @@ export class App {
       const nextEnd = new Date(start.getTime() + 60 * 60 * 1000);
       this.eventForm.endAt = AppUtils.toIsoDateTimeLocal(nextEnd);
     }
-    const allowed = this.contextualFrequencyOptions(this.eventForm.startAt, this.eventForm.endAt);
+    const allowed = this.supportedEventFrequencyOptions;
     if (!allowed.includes(this.eventForm.frequency)) {
       this.eventForm.frequency = allowed[0] ?? 'One-time';
     }
@@ -12741,7 +12742,7 @@ export class App {
       return;
     }
     if (popupEvent.detail.type === 'eventEditor') {
-      this.openEventEditor();
+      this.openEventEditor(false, 'create');
       return;
     }
     this.openEventExplore();

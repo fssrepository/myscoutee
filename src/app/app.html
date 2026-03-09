@@ -1107,7 +1107,7 @@
               type="button"
               class="popup-header-add-btn activities-add-btn"
               *ngIf="shouldShowActivitiesCreateAction()"
-              (click)="eventEditorService.openCreate()"
+              (click)="openEventEditor(false, 'create')"
               aria-label="Create event"
             >
               <mat-icon>add</mat-icon>
