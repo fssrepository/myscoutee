@@ -334,18 +334,14 @@
               *ngIf="isEventStyleActivity(row); else nonEventActivityRow"
             >
               <div class="asset-card-image" [appLazyBgImage]="activityImageUrl(row)">
-                <a
+                <span
                   class="asset-source-icon activities-source-avatar"
                   *ngIf="showActivitySourceIcon(row)"
-                  [href]="activitySourceLink(row)"
-                  target="_blank"
-                  rel="noopener"
-                  (click)="$event.stopPropagation()"
-                  aria-label="Open source link"
+                  aria-hidden="true"
                   [ngClass]="activitySourceAvatarClass(row)"
                 >
                   <span>{{ activitySourceAvatarLabel(row) }}</span>
-                </a>
+                </span>
                 <button
                   type="button"
                   class="asset-occupancy-badge"
@@ -438,7 +434,7 @@
             <ng-template #nonEventActivityRow>
               <ng-container *ngIf="row.type === 'rates'; else chatActivityRow">
                 <article
-                  class="activities-rate-profile-card activities-row-item"
+                  class="activities-rate-profile-card activities-row-item activities-row-item-clickable"
                   [attr.data-activity-rate-row-id]="row.id"
                   [attr.data-group-label]="group.label"
                   (click)="onActivityRowClick(row, $event)"
@@ -609,7 +605,7 @@
               <!-- Chat row -->
               <ng-template #chatActivityRow>
                 <article
-                  class="activities-row-item activities-chat-row"
+                  class="activities-row-item activities-chat-row activities-row-item-clickable"
                   [attr.data-group-label]="group.label"
                   (click)="onActivityRowClick(row, $event)"
                 >
