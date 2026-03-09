@@ -1,158 +1,1054 @@
-<div class="activities-popup" [class.activities-popup-rates-fullscreen]="isRatesFullscreenModeActive" (click)="onPopupSurfaceClick($event)">
-  <!-- Toolbar -->
-  <div class="experience-toolbar assets-toolbar">
-    <!-- Primary Filter -->
-    <div class="activity-primary-filter">
-      <button
-        type="button"
-        class="popup-view-fab activity-filter-trigger"
-        [ngClass]="activitiesPrimaryFilterClass()"
-        *ngFor="let option of activitiesPrimaryFilters"
-        (click)="onPrimaryFilterClick(option.key, $event)"
-        [attr.aria-label]="'Filter: ' + option.label"
-      >
-        <mat-icon>{{ option.icon }}</mat-icon>
-      </button>
-    </div>
+<div class="activities-popup" [class.activities-popup-rates-fullscreen]="isRatesFullscreenModeActive()" (click)="onActivitiesPopupSurfaceClick($event)">
 
-    <!-- Rate Filter -->
-    <div class="rate-filter-section" *ngIf="isRateFilterVisible">
-      <div class="rate-filter-picker">
+  <!-- ───── Toolbar ───── -->
+  <div class="experience-toolbar assets-toolbar">
+
+    <!-- Primary filter — desktop mat-select / mobile button -->
+    <ng-container *ngIf="!isMobileView; else mobileActivitiesPrimaryFilterButton">
+      <div
+        class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-primary-filter-select"
+        [ngClass]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)"
+      >
         <mat-select
-          [value]="activitiesRateFilter"
-          (selectionChange)="onRateFilterChange($event.value)"
-          class="rate-filter-select"
+          [(ngModel)]="activitiesPrimaryFilter"
+          (ngModelChange)="selectActivitiesPrimaryFilter($event)"
+          [panelWidth]="activitiesPrimaryPanelWidth()"
+          disableOptionCentering
+          panelClass="selector-options-panel profile-bottom-sheet-panel activities-primary-options-panel"
         >
-          <mat-option *ngFor="let filter of rateFilters" [value]="filter.key">
-            <span class="rate-filter-option">
-              <span>{{ filter.label }}</span>
+          <mat-select-trigger>
+            <span class="status-option-content">
+              <mat-icon [class]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)">{{ activitiesPrimaryFilterIcon() }}</mat-icon>
+              <span>{{ activitiesPrimaryFilterLabel() }}</span>
+            </span>
+          </mat-select-trigger>
+          <mat-option *ngFor="let option of activitiesPrimaryFilters" [value]="option.key" class="status-option" [ngClass]="activitiesPrimaryFilterClass(option.key)">
+            <span class="status-option-content">
+              <mat-icon [class]="activitiesPrimaryFilterClass(option.key)">{{ option.icon }}</mat-icon>
+              <span>{{ option.label }}</span>
+              <span class="rate-filter-count-badge" *ngIf="activitiesPrimaryFilterCount(option.key) > 0">{{ activitiesPrimaryFilterCount(option.key) }}</span>
             </span>
           </mat-option>
         </mat-select>
+        <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesPrimaryFilterCount(activitiesPrimaryFilter) > 0">{{ activitiesPrimaryFilterCount(activitiesPrimaryFilter) }}</span>
       </div>
-    </div>
-
-    <!-- Hosting Publication Filter -->
-    <div class="hosting-filter-section" *ngIf="isHostingPublicationFilterVisible">
+    </ng-container>
+    <ng-template #mobileActivitiesPrimaryFilterButton>
       <button
         type="button"
-        class="popup-view-fab"
-        [ngClass]="hostingPublicationFilter === 'all' ? 'active' : ''"
-        (click)="onHostingPublicationFilterClick('all', $event)"
+        class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-primary-filter-select"
+        [ngClass]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)"
+        (click)="openMobileActivitiesPrimaryFilterSelector($event)"
       >
-        All
+        <span class="status-option-content">
+          <mat-icon [class]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)">{{ activitiesPrimaryFilterIcon() }}</mat-icon>
+          <span>{{ activitiesPrimaryFilterLabel() }}</span>
+        </span>
+        <mat-icon>expand_more</mat-icon>
+        <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesPrimaryFilterCount(activitiesPrimaryFilter) > 0">{{ activitiesPrimaryFilterCount(activitiesPrimaryFilter) }}</span>
       </button>
-      <button
-        type="button"
-        class="popup-view-fab"
-        [ngClass]="hostingPublicationFilter === 'drafts' ? 'active' : ''"
-        (click)="onHostingPublicationFilterClick('drafts', $event)"
-      >
-        Drafts
-      </button>
-    </div>
+    </ng-template>
 
-    <!-- View Picker -->
-    <div class="activities-view-picker">
-      <!-- Secondary Filter -->
-      <div class="activities-secondary-picker" *ngIf="!isCalendarLayoutView && activitiesPrimaryFilter !== 'chats'">
-        <button
-          type="button"
-          class="popup-view-fab"
-          (click)="toggleSecondaryPicker($event)"
-          [attr.aria-label]="'Open secondary filter: ' + activitiesSecondaryFilterLabel"
+    <!-- Chat context filter (chats tab only) -->
+    <ng-container *ngIf="activitiesPrimaryFilter === 'chats'">
+      <ng-container *ngIf="!isMobileView; else mobileActivitiesChatContextFilterButton">
+        <div
+          class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-chat-context-filter-select"
+          [ngClass]="activitiesChatContextFilterClass(activitiesChatContextFilter)"
         >
-          <mat-icon>{{ activitiesSecondaryFilterIcon }}</mat-icon>
-        </button>
-        <div class="activities-view-picker-panel" *ngIf="showActivitiesSecondaryPicker">
-          <button
-            type="button"
-            class="activities-view-option"
-            *ngFor="let option of activitiesSecondaryFilters"
-            [ngClass]="activitiesSecondaryFilterClass(option.key)"
-            (click)="onSecondaryFilterClick(option.key, $event)"
-          >
-            <mat-icon>{{ option.icon }}</mat-icon>
-            <span>{{ option.label }}</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Chat Context Filter -->
-      <ng-container *ngIf="activitiesPrimaryFilter === 'chats'">
-        <div class="activities-chat-context-picker" *ngIf="!isMobileView; else mobileActivitiesChatContextFilterButton">
           <mat-select
-            [value]="activitiesChatContextFilter"
-            (selectionChange)="onChatContextFilterClick($event.value)"
-            class="chat-context-filter-select"
+            [(ngModel)]="activitiesChatContextFilter"
+            (ngModelChange)="selectActivitiesChatContextFilter($event)"
+            panelWidth="260px"
+            disableOptionCentering
+            panelClass="selector-options-panel profile-bottom-sheet-panel activities-chat-context-options-panel"
           >
-            <mat-option *ngFor="let option of activitiesChatContextFilters" [value]="option.key">
-              <span class="chat-context-filter-option">
-                <mat-icon>{{ option.icon }}</mat-icon>
+            <mat-select-trigger>
+              <span class="status-option-content">
+                <mat-icon [class]="activitiesChatContextFilterClass(activitiesChatContextFilter)">{{ activitiesChatContextFilterIcon() }}</mat-icon>
+                <span>{{ activitiesChatContextFilterLabel() }}</span>
+              </span>
+            </mat-select-trigger>
+            <mat-option
+              *ngFor="let option of activitiesChatContextFilters"
+              [value]="option.key"
+              class="status-option"
+              [ngClass]="activitiesChatContextFilterClass(option.key)"
+            >
+              <span class="status-option-content">
+                <mat-icon [class]="activitiesChatContextFilterClass(option.key)">{{ option.icon }}</mat-icon>
                 <span>{{ option.label }}</span>
+                <span class="rate-filter-count-badge" *ngIf="activitiesChatContextFilterCount(option.key) > 0">
+                  {{ activitiesChatContextFilterCount(option.key) }}
+                </span>
               </span>
             </mat-option>
           </mat-select>
+          <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesChatContextFilterCount(activitiesChatContextFilter) > 0">
+            {{ activitiesChatContextFilterCount(activitiesChatContextFilter) }}
+          </span>
         </div>
-        <ng-template #mobileActivitiesChatContextFilterButton>
-          <button
-            type="button"
-            class="popup-view-fab"
-            (click)="toggleSecondaryPicker($event)"
-          >
-            <mat-icon>{{ activitiesChatContextFilterIcon }}</mat-icon>
-          </button>
-        </ng-template>
       </ng-container>
-
-      <!-- View Toggle -->
-      <button
-        type="button"
-        class="popup-view-fab"
-        *ngIf="activitiesPrimaryFilter !== 'chats'"
-        (click)="toggleViewPicker($event)"
-        [attr.aria-label]="'Open view selector'"
-      >
-        <mat-icon>view_agenda</mat-icon>
-      </button>
-      <div class="activities-view-picker-panel" *ngIf="showActivitiesViewPicker && activitiesPrimaryFilter !== 'chats'">
+      <ng-template #mobileActivitiesChatContextFilterButton>
         <button
           type="button"
-          class="activities-view-option"
-          *ngFor="let option of activitiesViewOptions"
-          (click)="onViewChange(option.key, $event)"
+          class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-chat-context-filter-select"
+          [ngClass]="activitiesChatContextFilterClass(activitiesChatContextFilter)"
+          (click)="openMobileActivitiesChatContextFilterSelector($event)"
         >
-          <mat-icon>{{ option.icon }}</mat-icon>
-          <span>{{ option.label }}</span>
+          <span class="status-option-content">
+            <mat-icon [class]="activitiesChatContextFilterClass(activitiesChatContextFilter)">{{ activitiesChatContextFilterIcon() }}</mat-icon>
+            <span>{{ activitiesChatContextFilterLabel() }}</span>
+          </span>
+          <mat-icon>expand_more</mat-icon>
+          <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesChatContextFilterCount(activitiesChatContextFilter) > 0">
+            {{ activitiesChatContextFilterCount(activitiesChatContextFilter) }}
+          </span>
         </button>
-      </div>
-    </div>
+      </ng-template>
+    </ng-container>
 
-    <!-- Action Buttons -->
-    <div class="activities-actions">
+    <!-- Hosting: drafts-only toggle -->
+    <button
+      *ngIf="isHostingPublicationFilterVisible()"
+      type="button"
+      class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-hosting-draft-toggle"
+      [class.is-active]="hostingPublicationFilter === 'drafts'"
+      (click)="selectHostingPublicationFilter(hostingPublicationFilter === 'drafts' ? 'all' : 'drafts')"
+      [attr.aria-label]="hostingPublicationFilter === 'drafts' ? 'Show all hosting' : 'Show drafts only'"
+    >
+      <span class="status-option-content activities-hosting-draft-content">
+        <mat-icon class="activities-toggle-icon">drafts</mat-icon>
+        <span class="activities-hosting-draft-label">Drafts only</span>
+      </span>
+      <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="hostingDraftCount() > 0">{{ hostingDraftCount() }}</span>
+    </button>
+
+    <!-- Rate filter (rates tab only) -->
+    <ng-container *ngIf="isRateFilterVisible()">
+      <ng-container *ngIf="!isMobileView; else mobileActivitiesRateFilterButton">
+        <div
+          class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-rate-filter-select"
+          [ngClass]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]"
+        >
+          <mat-select
+            [(ngModel)]="activitiesRateFilter"
+            (ngModelChange)="selectActivitiesRateFilter($event)"
+            [panelWidth]="activitiesRatePanelWidth()"
+            disableOptionCentering
+            panelClass="selector-options-panel profile-bottom-sheet-panel activities-rate-options-panel"
+          >
+            <mat-select-trigger>
+              <span class="status-option-content">
+                <mat-icon [class]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]">{{ activitiesRateFilterIcon(activitiesRateFilter) }}</mat-icon>
+                <span>{{ activitiesRateFilterLabel() }}</span>
+              </span>
+            </mat-select-trigger>
+            <ng-container *ngFor="let option of rateFilterEntries">
+              <mat-option *ngIf="option.kind === 'group'" class="status-option rate-filter-group-option" [class.is-group-separator]="isRateGroupSeparator(option.label)" disabled>
+                <span class="status-option-content rate-filter-group-label">
+                  <span>{{ option.label }}</span>
+                </span>
+              </mat-option>
+              <mat-option
+                *ngIf="option.kind === 'item'"
+                [value]="option.key"
+                class="status-option"
+                [ngClass]="[activitiesRateFilterClass(option.key), rateFilterOptionClass(option.key)]"
+              >
+                <span class="status-option-content">
+                  <mat-icon [class]="[activitiesRateFilterClass(option.key), rateFilterOptionClass(option.key)]">{{ activitiesRateFilterIcon(option.key) }}</mat-icon>
+                  <span>{{ option.label }}</span>
+                  <span class="rate-filter-count-badge" *ngIf="rateFilterCount(option.key) > 0">{{ rateFilterCount(option.key) }}</span>
+                </span>
+              </mat-option>
+            </ng-container>
+          </mat-select>
+          <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="totalRateFilterCount() > 0">{{ totalRateFilterCount() }}</span>
+        </div>
+      </ng-container>
+      <ng-template #mobileActivitiesRateFilterButton>
+        <button
+          type="button"
+          class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-rate-filter-select"
+          [ngClass]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]"
+          (click)="openMobileActivitiesRateFilterSelector($event)"
+        >
+          <span class="status-option-content">
+            <mat-icon [class]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]">{{ activitiesRateFilterIcon(activitiesRateFilter) }}</mat-icon>
+            <span>{{ activitiesRateFilterLabel() }}</span>
+          </span>
+          <mat-icon>expand_more</mat-icon>
+          <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="totalRateFilterCount() > 0">{{ totalRateFilterCount() }}</span>
+        </button>
+      </ng-template>
+    </ng-container>
+
+    <!-- Action stack: fullscreen toggle / explore / create -->
+    <div class="activities-action-stack" *ngIf="shouldShowActivitiesExploreAction() || shouldShowActivitiesCreateAction() || shouldShowRatesFullscreenToggle()">
+      <button
+        type="button"
+        class="popup-header-add-btn activities-rates-fullscreen-toggle is-enter"
+        *ngIf="shouldShowRatesFullscreenToggle() && !isRatesFullscreenModeActive()"
+        (click)="toggleActivitiesRatesFullscreenMode($event)"
+        aria-label="Open rates fullscreen mode"
+      >
+        <mat-icon>fullscreen</mat-icon>
+      </button>
+      <button
+        type="button"
+        class="popup-header-add-btn activities-rates-fullscreen-toggle is-active is-exit"
+        *ngIf="shouldShowRatesFullscreenToggle() && isRatesFullscreenModeActive()"
+        (click)="toggleActivitiesRatesFullscreenMode($event)"
+        aria-label="Exit rates fullscreen mode"
+      >
+        <mat-icon>fullscreen_exit</mat-icon>
+      </button>
       <button
         type="button"
         class="popup-header-add-btn activities-explore-btn"
-        *ngIf="shouldShowActivitiesExploreAction"
+        *ngIf="shouldShowActivitiesExploreAction()"
+        (click)="requestOpenEventExplore()"
+        aria-label="Explore events"
       >
         <mat-icon>explore</mat-icon>
       </button>
       <button
         type="button"
         class="popup-header-add-btn activities-add-btn"
-        *ngIf="shouldShowActivitiesCreateAction"
+        *ngIf="shouldShowActivitiesCreateAction()"
+        (click)="requestOpenEventEditor()"
+        aria-label="Create event"
       >
         <mat-icon>add</mat-icon>
       </button>
     </div>
-  </div>
+  </div><!-- /toolbar -->
 
-  <!-- Content Area - Placeholder for now -->
-  <div class="activities-content">
-    <div class="editor-list-card">
-      <h4>Activities</h4>
-      <p>{{ activitiesHeaderLineOne }}</p>
-      <p class="activities-empty-hint">{{ activitiesEmptyLabel }}</p>
+
+  <!-- ───── List / Calendar layout ───── -->
+  <ng-container *ngIf="!isCalendarLayoutView(); else activitiesCalendarLayout">
+    <ng-container *ngIf="!isRatesFullscreenModeActive(); else activitiesRatesFullscreenLayout">
+
+      <!-- Scroll list -->
+      <div
+        class="experience-card-list assets-card-list activities-scroll-list"
+        [class.activities-scroll-list-rates]="activitiesPrimaryFilter === 'rates'"
+        [class.activities-scroll-list-event-snap]="activitiesPrimaryFilter === 'events' || activitiesPrimaryFilter === 'hosting' || activitiesPrimaryFilter === 'invitations'"
+        [class.activities-scroll-list-with-rate-editor]="isActivityRateEditorDockVisible()"
+        [class.activities-scroll-list-chat]="activitiesPrimaryFilter === 'chats'"
+        #activitiesScroll
+        (wheel)="closeActivityRateEditorFromUserScroll()"
+        (touchmove)="closeActivityRateEditorFromUserScroll()"
+        (scroll)="onActivitiesScroll($event)"
+      >
+        <div class="activities-sticky-header">{{ activitiesStickyHeader }}</div>
+
+        <ng-container *ngFor="let group of groupedActivityRows; let groupIndex = index; trackBy: trackByActivityGroup">
+          <div
+            class="activities-group-marker"
+            *ngIf="shouldShowActivityGroupMarker(groupIndex)"
+            [attr.data-group-label]="group.label"
+          >
+            {{ group.label }}
+          </div>
+
+          <ng-container *ngFor="let row of group.rows; let rowIndex = index; trackBy: trackByActivityRow">
+
+            <!-- Event-style card -->
+            <article
+              class="experience-item-card asset-item-card activities-row-item"
+              [class.activities-row-item-full]="isActivityFull(row)"
+              [attr.data-group-label]="group.label"
+              *ngIf="isEventStyleActivity(row); else nonEventActivityRow"
+            >
+              <div class="asset-card-image" [appLazyBgImage]="activityImageUrl(row)">
+                <a
+                  class="asset-source-icon activities-source-avatar"
+                  *ngIf="showActivitySourceIcon(row)"
+                  [href]="activitySourceLink(row)"
+                  target="_blank"
+                  rel="noopener"
+                  (click)="$event.stopPropagation()"
+                  aria-label="Open source link"
+                  [ngClass]="activitySourceAvatarClass(row)"
+                >
+                  <span>{{ activitySourceAvatarLabel(row) }}</span>
+                </a>
+                <button
+                  type="button"
+                  class="asset-occupancy-badge"
+                  [class.asset-occupancy-badge-full]="isActivityFull(row)"
+                  (click)="openActivityMembers(row, $event)"
+                  aria-label="Open members"
+                >
+                  <span>{{ activityCapacityLabel(row) }}</span>
+                  <ng-container *ngIf="activityPendingMemberCount(row) as pendingMemberCount">
+                    <span class="card-badge asset-request-badge" *ngIf="pendingMemberCount > 0">{{ pendingMemberCount }}</span>
+                  </ng-container>
+                </button>
+              </div>
+              <div class="experience-item-head">
+                <span class="experience-item-icon" [ngClass]="activityLeadingIconCircleClass(row)">
+                  <mat-icon>{{ activityLeadingIcon(row) }}</mat-icon>
+                </span>
+                <div class="experience-item-meta">
+                  <h4>{{ row.title }}</h4>
+                  <p class="activities-event-meta-row activities-event-meta-row-date">{{ activityDateRangeMetaLine(row) }}</p>
+                  <p class="activities-event-meta-row activities-event-meta-row-location" *ngIf="activityLocationMetaLine(row) as locationMetaLine">{{ locationMetaLine }}</p>
+                </div>
+                <div class="experience-item-actions" *ngIf="canManageActivityRow(row)">
+                  <button
+                    type="button"
+                    class="experience-action-btn experience-action-menu-trigger"
+                    [class.is-open]="isActivityItemActionMenuOpen(row)"
+                    (click)="toggleActivityItemActionMenu(row, $event)"
+                    [attr.aria-label]="isActivityItemActionMenuOpen(row) ? 'Close activity actions' : 'Open activity actions'"
+                  >
+                    <mat-icon>{{ isActivityItemActionMenuOpen(row) ? 'close' : 'more_vert' }}</mat-icon>
+                  </button>
+                  <div
+                    class="item-action-menu"
+                    [class.is-open]="isActivityItemActionMenuOpen(row)"
+                    [class.item-action-menu-mobile]="isMobileView"
+                    [class.item-action-menu-desktop]="!isMobileView"
+                    [class.is-open-up]="isActivityItemActionMenuOpenUp(row)"
+                    (click)="$event.stopPropagation()"
+                  >
+                    <div class="item-action-menu-title">{{ row.title }}</div>
+                    <button
+                      type="button"
+                      class="item-action-menu-btn item-action-menu-btn-publish"
+                      *ngIf="shouldShowActivityPublishAction(row)"
+                      (click)="runActivityItemPublishAction(row, $event)"
+                    >
+                      <mat-icon>campaign</mat-icon>
+                      <span>Publish</span>
+                    </button>
+                    <button type="button" class="item-action-menu-btn" (click)="runActivityItemPrimaryAction(row, $event)">
+                      <mat-icon>{{ activityPrimaryActionIcon(row) }}</mat-icon>
+                      <span>{{ activityPrimaryActionLabel(row) }}</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="item-action-menu-btn"
+                      *ngIf="shouldShowActivityViewAction(row)"
+                      (click)="runActivityItemViewAction(row, $event)"
+                    >
+                      <mat-icon>visibility</mat-icon>
+                      <span>View Event</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="item-action-menu-btn item-action-menu-btn-publish"
+                      *ngIf="row.type === 'invitations'"
+                      (click)="runActivityItemApproveAction(row, $event)"
+                    >
+                      <mat-icon>done</mat-icon>
+                      <span>Accept</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="item-action-menu-btn"
+                      [class.item-action-menu-btn-destructive]="!isExitActivityRow(row)"
+                      [class.item-action-menu-btn-warning]="isExitActivityRow(row)"
+                      (click)="runActivityItemSecondaryAction(row, $event)"
+                    >
+                      <mat-icon>{{ activitySecondaryActionIcon(row) }}</mat-icon>
+                      <span>{{ activitySecondaryActionLabel(row) }}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <p class="experience-item-description">{{ row.subtitle }}</p>
+            </article>
+
+            <!-- Non-event row -->
+            <ng-template #nonEventActivityRow>
+              <ng-container *ngIf="row.type === 'rates'; else chatActivityRow">
+                <article
+                  class="activities-rate-profile-card activities-row-item"
+                  [attr.data-activity-rate-row-id]="row.id"
+                  [attr.data-group-label]="group.label"
+                  (click)="onActivityRowClick(row, $event)"
+                >
+                  <ng-container *ngIf="isPairRateRow(row); else singleRateRowCardStack">
+                    <div
+                      class="activities-rate-profile-stack activities-rate-profile-stack-pair"
+                      [ngClass]="activityRateCardContentClasses(row)"
+                      *ngIf="activityPairRateSlotImageUrls(row, 'woman') as womanImageUrls"
+                    >
+                      <div class="activities-rate-pair-inline-grid">
+                        <div
+                          class="activities-rate-pair-inline-card activities-rate-pair-inline-card-woman"
+                          [class.is-pane-loading]="isActivityPairRateSlotImageLoading(row, 'woman')"
+                          *ngIf="activityPairRateSlotImageUrls(row, 'woman') as womanUrls"
+                        >
+                          <div class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators" *ngIf="womanUrls.length > 1">
+                            <button
+                              type="button"
+                              class="image-stack-line"
+                              *ngFor="let imageUrl of womanUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                              [class.active]="imageIndex === activityPairRateSlotActiveImageIndex(row, 'woman')"
+                              (click)="selectActivityPairRateSlotImage(row, 'woman', imageIndex, $event)"
+                              aria-label="Select woman profile image"
+                            ></button>
+                          </div>
+                          <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="activityPairRateSlotActiveImageUrl(row, 'woman')">
+                            <span class="activities-rate-pair-inline-label">Woman</span>
+                            <div class="activities-rate-pair-inline-overlay">
+                              <p class="activities-rate-profile-line activities-rate-profile-line-primary">
+                                {{ activityPairRateSlotPrimaryLine(row, 'woman') }}
+                              </p>
+                              <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
+                                {{ activityPairRateSlotSecondaryLine(row, 'woman') }}
+                              </p>
+                            </div>
+                          </div>
+                          <div class="image-stack-hit-area activities-rate-profile-hit-area activities-rate-pair-inline-hit-area" *ngIf="womanUrls.length > 1">
+                            <button
+                              type="button"
+                              class="image-stack-hit-segment"
+                              *ngFor="let imageUrl of womanUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                              (click)="selectActivityPairRateSlotImage(row, 'woman', imageIndex, $event)"
+                              aria-label="Select woman profile image"
+                            ></button>
+                          </div>
+                          <span class="card-image-placeholder" *ngIf="!activityPairRateSlotActiveImageUrl(row, 'woman')">
+                            {{ activityPairRateSlotInitials(row, 'woman') }}
+                          </span>
+                        </div>
+
+                        <div
+                          class="activities-rate-pair-inline-card activities-rate-pair-inline-card-man"
+                          [class.is-pane-loading]="isActivityPairRateSlotImageLoading(row, 'man')"
+                          *ngIf="activityPairRateSlotImageUrls(row, 'man') as manImageUrls"
+                        >
+                          <div class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators" *ngIf="manImageUrls.length > 1">
+                            <button
+                              type="button"
+                              class="image-stack-line"
+                              *ngFor="let imageUrl of manImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                              [class.active]="imageIndex === activityPairRateSlotActiveImageIndex(row, 'man')"
+                              (click)="selectActivityPairRateSlotImage(row, 'man', imageIndex, $event)"
+                              aria-label="Select man profile image"
+                            ></button>
+                          </div>
+                          <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="activityPairRateSlotActiveImageUrl(row, 'man')">
+                            <span class="activities-rate-pair-inline-label">Man</span>
+                            <div class="activities-rate-pair-inline-overlay">
+                              <p class="activities-rate-profile-line activities-rate-profile-line-primary">
+                                {{ activityPairRateSlotPrimaryLine(row, 'man') }}
+                              </p>
+                              <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
+                                {{ activityPairRateSlotSecondaryLine(row, 'man') }}
+                              </p>
+                            </div>
+                          </div>
+                          <div class="image-stack-hit-area activities-rate-profile-hit-area activities-rate-pair-inline-hit-area" *ngIf="manImageUrls.length > 1">
+                            <button
+                              type="button"
+                              class="image-stack-hit-segment"
+                              *ngFor="let imageUrl of manImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                              (click)="selectActivityPairRateSlotImage(row, 'man', imageIndex, $event)"
+                              aria-label="Select man profile image"
+                            ></button>
+                          </div>
+                          <span class="card-image-placeholder" *ngIf="!activityPairRateSlotActiveImageUrl(row, 'man')">
+                            {{ activityPairRateSlotInitials(row, 'man') }}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        class="activities-rate-score-badge activities-rate-score-badge-between"
+                        [class.is-active]="isSelectedActivityRateRow(row)"
+                        [class.is-pending]="isActivityRatePending(row)"
+                        [class.is-disabled]="isPairReceivedRateRow(row)"
+                        [class.is-blink]="isActivityRateBlinking(row)"
+                        [disabled]="isPairReceivedRateRow(row)"
+                        (click)="isPairReceivedRateRow(row) ? $event.stopPropagation() : openActivityRateEditor(row, $event)"
+                        [attr.aria-label]="isPairReceivedRateRow(row) ? 'Received pair rating' : (isActivityRatePending(row) ? 'Add your rating' : 'Edit your rating')"
+                      >
+                        <mat-icon>star</mat-icon>
+                        <span>{{ activityRateBadgeLabel(row) }}</span>
+                      </button>
+                    </div>
+                  </ng-container>
+
+                  <ng-template #singleRateRowCardStack>
+                    <div
+                      class="activities-rate-profile-stack"
+                      [ngClass]="activityRateCardContentClasses(row)"
+                      [class.is-pane-loading]="isActivityRateCardImageLoading(row)"
+                      *ngIf="activityRateCardImageUrls(row) as imageUrls"
+                    >
+                      <div class="image-stack-indicators activities-rate-profile-indicators" *ngIf="imageUrls.length > 1">
+                        <button
+                          type="button"
+                          class="image-stack-line"
+                          *ngFor="let imageUrl of imageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                          [class.active]="imageIndex === activityRateCardActiveImageIndex(row)"
+                          (click)="selectActivityRateCardImage(row, imageIndex, $event)"
+                          aria-label="Select profile image"
+                        ></button>
+                      </div>
+                      <div
+                        class="activities-rate-profile-layer activities-rate-profile-layer-active"
+                        [appLazyBgImage]="activityRateCardActiveImageUrl(row)"
+                      >
+                        <div class="activities-rate-profile-overlay" *ngIf="activityRateCardHasLine(row, activityRateCardActiveImageIndex(row))">
+                          <p class="activities-rate-profile-line activities-rate-profile-line-primary">
+                            {{ activityRateCardPrimaryLine(row, activityRateCardActiveImageIndex(row)) }}
+                          </p>
+                          <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
+                            {{ activityRateCardSecondaryLine(row, activityRateCardActiveImageIndex(row)) }}
+                          </p>
+                        </div>
+                      </div>
+                      <div class="image-stack-hit-area activities-rate-profile-hit-area" *ngIf="imageUrls.length > 1">
+                        <button
+                          type="button"
+                          class="image-stack-hit-segment"
+                          *ngFor="let imageUrl of imageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                          (click)="selectActivityRateCardImage(row, imageIndex, $event)"
+                          aria-label="Select profile image"
+                        ></button>
+                      </div>
+                      <button
+                        type="button"
+                        class="activities-rate-score-badge activities-rate-score-badge-floating"
+                        [class.is-active]="isSelectedActivityRateRow(row)"
+                        [class.is-pending]="isActivityRatePending(row)"
+                        [class.is-disabled]="isPairReceivedRateRow(row)"
+                        [class.is-blink]="isActivityRateBlinking(row)"
+                        [disabled]="isPairReceivedRateRow(row)"
+                        (click)="isPairReceivedRateRow(row) ? $event.stopPropagation() : openActivityRateEditor(row, $event)"
+                        [attr.aria-label]="isPairReceivedRateRow(row) ? 'Received pair rating' : (isActivityRatePending(row) ? 'Add your rating' : 'Edit your rating')"
+                      >
+                        <mat-icon>star</mat-icon>
+                        <span>{{ activityRateBadgeLabel(row) }}</span>
+                      </button>
+                    </div>
+                  </ng-template>
+                </article>
+              </ng-container>
+
+              <!-- Chat row -->
+              <ng-template #chatActivityRow>
+                <article
+                  class="activities-row-item activities-chat-row"
+                  [attr.data-group-label]="group.label"
+                  (click)="onActivityRowClick(row, $event)"
+                >
+                  <span class="activities-chat-avatar" [ngClass]="activityRowAvatarClass(row)">
+                    {{ activityRowAvatarInitials(row) }}
+                  </span>
+                  <div class="activities-chat-meta">
+                    <div class="activities-chat-meta-top">
+                      <span class="activities-chat-title">{{ row.title }}</span>
+                      <span class="activities-chat-time">{{ row.dateIso | date:'HH:mm' }}</span>
+                    </div>
+                    <p class="activities-chat-preview">{{ row.subtitle }}</p>
+                  </div>
+                  <span class="badge-dot activities-chat-badge" *ngIf="activityRowBadge(row) > 0">{{ activityRowBadge(row) }}</span>
+                </article>
+              </ng-template>
+            </ng-template>
+
+          </ng-container>
+        </ng-container>
+
+        <div class="editor-list-card" *ngIf="!activitiesInitialLoadPending && filteredActivityRows.length === 0">
+          <h4>No items</h4>
+          <p>{{ activitiesEmptyLabel }}</p>
+        </div>
+      </div><!-- /scroll list -->
+
+    </ng-container><!-- /!isRatesFullscreenModeActive -->
+  </ng-container><!-- /!isCalendarLayoutView -->
+
+
+  <!-- ───── Rates fullscreen layout ───── -->
+  <ng-template #activitiesRatesFullscreenLayout>
+    <div class="activities-rates-fullscreen" *ngIf="currentActivitiesRatesFullscreenRow() as row; else activitiesRatesFullscreenEmpty">
+      <div class="activities-rates-fullscreen-deck">
+
+        <!-- Leaving card -->
+        <article
+          class="activities-rate-profile-card activities-row-item activities-rates-fullscreen-card activities-rates-fullscreen-card-leaving"
+          *ngIf="activitiesRatesFullscreenLeavingRow as leavingRow"
+          [attr.data-activity-rate-row-id]="leavingRow.id"
+          (animationend)="onActivitiesRatesFullscreenLeaveAnimationEnd($event)"
+        >
+          <ng-container *ngIf="isPairRateRow(leavingRow); else leavingFullscreenSingleRateCard">
+            <div
+              class="activities-rate-profile-stack activities-rate-profile-stack-pair-fullscreen"
+              [ngClass]="activityRateCardContentClasses(leavingRow)"
+              [style.--activities-pair-split]="activitiesRatesPairSplitCssValue"
+            >
+              <div class="activities-rate-pair-inline-grid activities-rate-pair-fullscreen-grid">
+                <div class="activities-rate-pair-inline-card activities-rate-pair-inline-card-woman" *ngIf="activityPairRateSlotImageUrls(leavingRow, 'woman') as leavingWomanImageUrls">
+                  <div class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators" *ngIf="leavingWomanImageUrls.length > 1">
+                    <span
+                      class="image-stack-line"
+                      *ngFor="let imageUrl of leavingWomanImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                      [class.active]="imageIndex === activityPairRateSlotActiveImageIndex(leavingRow, 'woman')"
+                    ></span>
+                  </div>
+                  <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="activityPairRateSlotActiveImageUrl(leavingRow, 'woman')">
+                    <span class="activities-rate-pair-inline-label">Woman</span>
+                    <div class="activities-rate-pair-inline-overlay">
+                      <p class="activities-rate-profile-line activities-rate-profile-line-primary">{{ activityPairRateSlotPrimaryLine(leavingRow, 'woman') }}</p>
+                      <p class="activities-rate-profile-line activities-rate-profile-line-secondary">{{ activityPairRateSlotSecondaryLine(leavingRow, 'woman') }}</p>
+                    </div>
+                    <span class="card-image-placeholder" *ngIf="!activityPairRateSlotActiveImageUrl(leavingRow, 'woman')">{{ activityPairRateSlotInitials(leavingRow, 'woman') }}</span>
+                  </div>
+                </div>
+                <div class="activities-rate-pair-inline-card activities-rate-pair-inline-card-man" *ngIf="activityPairRateSlotImageUrls(leavingRow, 'man') as leavingManImageUrls">
+                  <div class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators" *ngIf="leavingManImageUrls.length > 1">
+                    <span
+                      class="image-stack-line"
+                      *ngFor="let imageUrl of leavingManImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                      [class.active]="imageIndex === activityPairRateSlotActiveImageIndex(leavingRow, 'man')"
+                    ></span>
+                  </div>
+                  <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="activityPairRateSlotActiveImageUrl(leavingRow, 'man')">
+                    <span class="activities-rate-pair-inline-label">Man</span>
+                    <div class="activities-rate-pair-inline-overlay">
+                      <p class="activities-rate-profile-line activities-rate-profile-line-primary">{{ activityPairRateSlotPrimaryLine(leavingRow, 'man') }}</p>
+                      <p class="activities-rate-profile-line activities-rate-profile-line-secondary">{{ activityPairRateSlotSecondaryLine(leavingRow, 'man') }}</p>
+                    </div>
+                    <span class="card-image-placeholder" *ngIf="!activityPairRateSlotActiveImageUrl(leavingRow, 'man')">{{ activityPairRateSlotInitials(leavingRow, 'man') }}</span>
+                  </div>
+                </div>
+              </div>
+              <span
+                class="activities-rate-score-badge activities-rate-score-badge-floating activities-rate-score-badge-floating-pair-overlap activities-rate-score-badge-between is-active"
+                [class.is-pending]="isActivityRatePending(leavingRow)"
+                [class.is-disabled]="isPairReceivedRateRow(leavingRow)"
+                [class.is-blink]="isActivityRateBlinking(leavingRow)"
+              >
+                <mat-icon>star</mat-icon>
+                <span>{{ activityRateBadgeLabel(leavingRow) }}</span>
+              </span>
+            </div>
+          </ng-container>
+          <ng-template #leavingFullscreenSingleRateCard>
+            <div class="activities-rate-profile-stack" [ngClass]="activityRateCardContentClasses(leavingRow)">
+              <div class="image-stack-indicators activities-rate-profile-indicators" *ngIf="activityRateCardImageUrls(leavingRow).length > 1">
+                <span
+                  class="image-stack-line"
+                  *ngFor="let imageUrl of activityRateCardImageUrls(leavingRow); let imageIndex = index; trackBy: trackByRateCardImage"
+                  [class.active]="imageIndex === activityRateCardActiveImageIndex(leavingRow)"
+                ></span>
+              </div>
+              <div class="activities-rate-profile-layer activities-rate-profile-layer-active" [appLazyBgImage]="activityRateCardActiveImageUrl(leavingRow)">
+                <div class="activities-rate-profile-overlay" *ngIf="activityRateCardHasLine(leavingRow, activityRateCardActiveImageIndex(leavingRow))">
+                  <p class="activities-rate-profile-line activities-rate-profile-line-primary">{{ activityRateCardPrimaryLine(leavingRow, activityRateCardActiveImageIndex(leavingRow)) }}</p>
+                  <p class="activities-rate-profile-line activities-rate-profile-line-secondary">{{ activityRateCardSecondaryLine(leavingRow, activityRateCardActiveImageIndex(leavingRow)) }}</p>
+                </div>
+              </div>
+              <span
+                class="activities-rate-score-badge activities-rate-score-badge-floating is-active"
+                [class.is-pending]="isActivityRatePending(leavingRow)"
+                [class.is-disabled]="isPairReceivedRateRow(leavingRow)"
+                [class.is-blink]="isActivityRateBlinking(leavingRow)"
+              >
+                <mat-icon>star</mat-icon>
+                <span>{{ activityRateBadgeLabel(leavingRow) }}</span>
+              </span>
+            </div>
+          </ng-template>
+        </article>
+
+        <!-- Active card -->
+        <article
+          class="activities-rate-profile-card activities-row-item activities-rates-fullscreen-card activities-rates-fullscreen-card-active"
+          [attr.data-activity-rate-row-id]="row.id"
+        >
+          <ng-container *ngIf="isPairRateRow(row); else fullscreenSingleRateCard">
+            <div
+              class="activities-rate-profile-stack activities-rate-profile-stack-pair-fullscreen"
+              [ngClass]="activityRateCardContentClasses(row)"
+              [style.--activities-pair-split]="activitiesRatesPairSplitCssValue"
+              [class.is-resizing]="isActivitiesRatesPairSplitDragging"
+              #activitiesRatesPairFullscreenStack
+            >
+              <div class="activities-rate-pair-inline-grid activities-rate-pair-fullscreen-grid" #activitiesRatesPairFullscreenGrid>
+                <div
+                  class="activities-rate-pair-inline-card activities-rate-pair-inline-card-woman"
+                  [class.is-pane-loading]="isActivityPairRateSlotImageLoading(row, 'woman')"
+                  [class.is-collapsed]="isActivitiesRatesPairWomanCollapsed"
+                  *ngIf="activityPairRateSlotImageUrls(row, 'woman') as fullscreenWomanImageUrls"
+                >
+                  <div class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators" *ngIf="fullscreenWomanImageUrls.length > 1">
+                    <button
+                      type="button"
+                      class="image-stack-line"
+                      *ngFor="let imageUrl of fullscreenWomanImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                      [class.active]="imageIndex === activityPairRateSlotActiveImageIndex(row, 'woman')"
+                      (click)="selectActivityPairRateSlotImage(row, 'woman', imageIndex, $event)"
+                      aria-label="Select woman profile image"
+                    ></button>
+                  </div>
+                  <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="activityPairRateSlotActiveImageUrl(row, 'woman')">
+                    <span class="activities-rate-pair-inline-label">Woman</span>
+                    <div class="activities-rate-pair-inline-overlay">
+                      <p class="activities-rate-profile-line activities-rate-profile-line-primary">{{ activityPairRateSlotPrimaryLine(row, 'woman') }}</p>
+                      <p class="activities-rate-profile-line activities-rate-profile-line-secondary">{{ activityPairRateSlotSecondaryLine(row, 'woman') }}</p>
+                    </div>
+                  </div>
+                  <div class="image-stack-hit-area activities-rate-profile-hit-area activities-rate-pair-inline-hit-area" *ngIf="fullscreenWomanImageUrls.length > 1">
+                    <button
+                      type="button"
+                      class="image-stack-hit-segment"
+                      *ngFor="let imageUrl of fullscreenWomanImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                      (click)="selectActivityPairRateSlotImage(row, 'woman', imageIndex, $event)"
+                      aria-label="Select woman profile image"
+                    ></button>
+                  </div>
+                  <span class="card-image-placeholder" *ngIf="!activityPairRateSlotActiveImageUrl(row, 'woman')">{{ activityPairRateSlotInitials(row, 'woman') }}</span>
+                </div>
+
+                <div
+                  class="activities-rate-pair-inline-card activities-rate-pair-inline-card-man"
+                  [class.is-pane-loading]="isActivityPairRateSlotImageLoading(row, 'man')"
+                  [class.is-collapsed]="isActivitiesRatesPairManCollapsed"
+                  *ngIf="activityPairRateSlotImageUrls(row, 'man') as fullscreenManImageUrls"
+                >
+                  <div class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators" *ngIf="fullscreenManImageUrls.length > 1">
+                    <button
+                      type="button"
+                      class="image-stack-line"
+                      *ngFor="let imageUrl of fullscreenManImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                      [class.active]="imageIndex === activityPairRateSlotActiveImageIndex(row, 'man')"
+                      (click)="selectActivityPairRateSlotImage(row, 'man', imageIndex, $event)"
+                      aria-label="Select man profile image"
+                    ></button>
+                  </div>
+                  <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="activityPairRateSlotActiveImageUrl(row, 'man')">
+                    <span class="activities-rate-pair-inline-label">Man</span>
+                    <div class="activities-rate-pair-inline-overlay">
+                      <p class="activities-rate-profile-line activities-rate-profile-line-primary">{{ activityPairRateSlotPrimaryLine(row, 'man') }}</p>
+                      <p class="activities-rate-profile-line activities-rate-profile-line-secondary">{{ activityPairRateSlotSecondaryLine(row, 'man') }}</p>
+                    </div>
+                  </div>
+                  <div class="image-stack-hit-area activities-rate-profile-hit-area activities-rate-pair-inline-hit-area" *ngIf="fullscreenManImageUrls.length > 1">
+                    <button
+                      type="button"
+                      class="image-stack-hit-segment"
+                      *ngFor="let imageUrl of fullscreenManImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                      (click)="selectActivityPairRateSlotImage(row, 'man', imageIndex, $event)"
+                      aria-label="Select man profile image"
+                    ></button>
+                  </div>
+                  <span class="card-image-placeholder" *ngIf="!activityPairRateSlotActiveImageUrl(row, 'man')">{{ activityPairRateSlotInitials(row, 'man') }}</span>
+                </div>
+              </div>
+
+              <!-- Pair split drag handle -->
+              <div
+                class="activities-rate-pair-split-handle"
+                (pointerdown)="startActivitiesRatesPairSplitDrag($event)"
+                (pointermove)="moveActivitiesRatesPairSplitDrag($event)"
+                (pointerup)="stopActivitiesRatesPairSplitDrag($event)"
+                (pointercancel)="stopActivitiesRatesPairSplitDrag($event)"
+                aria-hidden="true"
+              ></div>
+
+              <span
+                class="activities-rate-score-badge activities-rate-score-badge-floating activities-rate-score-badge-floating-pair-overlap activities-rate-score-badge-between is-active"
+                [class.is-pending]="isActivityRatePending(row)"
+                [class.is-disabled]="isPairReceivedRateRow(row)"
+                [class.is-blink]="isActivityRateBlinking(row)"
+              >
+                <mat-icon>star</mat-icon>
+                <span>{{ activityRateBadgeLabel(row) }}</span>
+              </span>
+            </div>
+          </ng-container>
+          <ng-template #fullscreenSingleRateCard>
+            <div
+              class="activities-rate-profile-stack"
+              [ngClass]="activityRateCardContentClasses(row)"
+              [class.is-pane-loading]="isActivityRateCardImageLoading(row)"
+              *ngIf="activityRateCardImageUrls(row) as fullscreenImageUrls"
+            >
+              <div class="image-stack-indicators activities-rate-profile-indicators" *ngIf="fullscreenImageUrls.length > 1">
+                <button
+                  type="button"
+                  class="image-stack-line"
+                  *ngFor="let imageUrl of fullscreenImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                  [class.active]="imageIndex === activityRateCardActiveImageIndex(row)"
+                  (click)="selectActivityRateCardImage(row, imageIndex, $event)"
+                  aria-label="Select profile image"
+                ></button>
+              </div>
+              <div class="activities-rate-profile-layer activities-rate-profile-layer-active" [appLazyBgImage]="activityRateCardActiveImageUrl(row)">
+                <div class="activities-rate-profile-overlay" *ngIf="activityRateCardHasLine(row, activityRateCardActiveImageIndex(row))">
+                  <p class="activities-rate-profile-line activities-rate-profile-line-primary">{{ activityRateCardPrimaryLine(row, activityRateCardActiveImageIndex(row)) }}</p>
+                  <p class="activities-rate-profile-line activities-rate-profile-line-secondary">{{ activityRateCardSecondaryLine(row, activityRateCardActiveImageIndex(row)) }}</p>
+                </div>
+              </div>
+              <div class="image-stack-hit-area activities-rate-profile-hit-area" *ngIf="fullscreenImageUrls.length > 1">
+                <button
+                  type="button"
+                  class="image-stack-hit-segment"
+                  *ngFor="let imageUrl of fullscreenImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
+                  (click)="selectActivityRateCardImage(row, imageIndex, $event)"
+                  aria-label="Select profile image"
+                ></button>
+              </div>
+              <span
+                class="activities-rate-score-badge activities-rate-score-badge-floating is-active"
+                [class.is-pending]="isActivityRatePending(row)"
+                [class.is-disabled]="isPairReceivedRateRow(row)"
+                [class.is-blink]="isActivityRateBlinking(row)"
+              >
+                <mat-icon>star</mat-icon>
+                <span>{{ activityRateBadgeLabel(row) }}</span>
+              </span>
+            </div>
+          </ng-template>
+        </article>
+
+      </div><!-- /fullscreen-deck -->
+
+      <!-- Fullscreen navigation -->
+      <div class="activities-rates-fullscreen-nav">
+        <button
+          type="button"
+          class="activities-rates-fullscreen-nav-btn"
+          (click)="activitiesRatesFullscreenPrev($event)"
+          [disabled]="activitiesRatesFullscreenCardIndex === 0 || activitiesRatesFullscreenAnimating"
+          aria-label="Previous rate card"
+        >
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <span class="activities-rates-fullscreen-counter">
+          {{ activitiesRatesFullscreenCardIndex + 1 }} / {{ activitiesRatesFullscreenAllRows().length }}
+        </span>
+        <button
+          type="button"
+          class="activities-rates-fullscreen-nav-btn"
+          (click)="activitiesRatesFullscreenNext($event)"
+          [disabled]="activitiesRatesFullscreenAnimating"
+          aria-label="Next rate card"
+        >
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+    </div><!-- /fullscreen has-row -->
+
+    <ng-template #activitiesRatesFullscreenEmpty>
+      <div class="activities-rates-fullscreen-empty">
+        <h4>{{ activitiesRatesFullscreenEmptyTitle() }}</h4>
+        <p>{{ activitiesRatesFullscreenEmptyDescription() }}</p>
+      </div>
+    </ng-template>
+  </ng-template><!-- /activitiesRatesFullscreenLayout -->
+
+
+  <!-- ───── Calendar layout ───── -->
+  <ng-template #activitiesCalendarLayout>
+    <div class="activities-calendar-toolbar">
+      <span class="activities-calendar-nav">
+        <button
+          type="button"
+          class="activities-calendar-nav-btn"
+          (click)="calendarPrev($event)"
+          aria-label="Previous period"
+        >
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <button
+          type="button"
+          class="activities-calendar-nav-btn activities-calendar-nav-today-btn"
+          (click)="calendarToday($event)"
+          aria-label="Go to today"
+        >
+          Today
+        </button>
+        <button
+          type="button"
+          class="activities-calendar-nav-btn"
+          (click)="calendarNext($event)"
+          aria-label="Next period"
+        >
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </span>
+    </div>
+
+    <div
+      class="activities-calendar-scroll"
+      [class.activities-calendar-scroll-month]="activitiesView === 'month'"
+      [class.activities-calendar-scroll-week]="activitiesView === 'week'"
+      #activitiesCalendarScroll
+      (scroll)="onActivitiesCalendarScroll($event)"
+    >
+      <!-- Month pages -->
+      <ng-container *ngIf="activitiesView === 'month'; else activitiesWeekPages">
+        <section
+          class="activities-calendar-page activities-calendar-page-month"
+          *ngFor="let page of calendarMonthPages"
+          [style.--month-week-count]="page.weeks.length"
+        >
+          <div class="activities-calendar-weekdays">
+            <span *ngFor="let dayLabel of calendarWeekdayLabels">{{ dayLabel }}</span>
+          </div>
+          <div class="activities-month-grid">
+            <div class="activities-month-week" *ngFor="let week of page.weeks">
+              <div
+                class="activities-month-cell"
+                *ngFor="let day of week.days"
+                [class.outside]="!day.inCurrentMonth"
+                [class.today]="day.isToday"
+                [class.activities-month-cell-rates]="activitiesPrimaryFilter === 'rates'"
+              >
+                <div class="activities-month-day-num">{{ day.dayNumber }}</div>
+                <div
+                  class="activities-month-rate-count"
+                  *ngIf="areCalendarBadgesReady(page.key) && activitiesPrimaryFilter === 'rates' && monthRateCount(day) as rateCount"
+                  [ngClass]="monthRateHeatClass(day)"
+                >
+                  {{ rateCountLabel(rateCount) }}
+                </div>
+              </div>
+              <div class="activities-month-week-spans" *ngIf="areCalendarBadgesReady(page.key) && activitiesPrimaryFilter !== 'rates' && week.spans.length > 0">
+                <button
+                  type="button"
+                  class="activities-calendar-badge activities-month-span-badge"
+                  [ngClass]="calendarBadgeToneClass(span.row)"
+                  *ngFor="let span of week.spans"
+                  [style.left.%]="(span.startCol * 100) / 7"
+                  [style.width.%]="((span.endCol - span.startCol + 1) * 100) / 7"
+                  [style.top.px]="18 + (span.lane * 20)"
+                  (click)="onActivityRowClick(span.row, $event)"
+                >
+                  <span>{{ span.row.title }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </ng-container>
+
+      <!-- Week pages -->
+      <ng-template #activitiesWeekPages>
+        <section
+          class="activities-calendar-page activities-calendar-page-week"
+          *ngFor="let page of calendarWeekPages"
+        >
+          <div class="activities-week-board">
+            <div class="activities-week-board-corner"></div>
+            <div class="activities-week-board-day-head" *ngFor="let day of page.days; let dayIndex = index" [class.today]="day.isToday">
+              <span>{{ calendarWeekdayLabels[dayIndex] }}</span>
+              <strong>{{ day.dayNumber }}</strong>
+              <div
+                class="activities-week-rate-count"
+                *ngIf="areCalendarBadgesReady(page.key) && activitiesPrimaryFilter === 'rates' && weekRateDayCount(day) as rateCount"
+                [ngClass]="weekRateDayHeatClass(day)"
+              >
+                {{ rateCountLabel(rateCount) }}
+              </div>
+            </div>
+            <div class="activities-week-hours-col">
+              <div class="activities-week-hour-label" *ngFor="let hour of calendarWeekHours">
+                {{ weekHourLabel(hour) }}
+              </div>
+            </div>
+            <div class="activities-week-day-col" *ngFor="let day of page.days" [class.today]="day.isToday" [class.activities-week-day-col-rates]="activitiesPrimaryFilter === 'rates'">
+              <ng-container *ngIf="activitiesPrimaryFilter === 'rates'; else weekEventBadges">
+                <div class="activities-week-hour-slot activities-week-rate-slot" *ngFor="let hour of calendarWeekHours">
+                  <div
+                    class="activities-week-rate-badge"
+                    *ngIf="areCalendarBadgesReady(page.key) && weekRateHourCount(day, hour) as hourCount"
+                    [ngClass]="rateHeatClassByCount(hourCount)"
+                  >
+                    {{ rateCountLabel(hourCount) }}
+                  </div>
+                </div>
+              </ng-container>
+              <ng-template #weekEventBadges>
+                <div class="activities-week-hour-slot" *ngFor="let hour of calendarWeekHours"></div>
+                <button
+                  type="button"
+                  class="activities-calendar-badge activities-week-timed-badge"
+                  [ngClass]="calendarBadgeToneClass(badge.row)"
+                  *ngFor="let badge of (areCalendarBadgesReady(page.key) ? weekDayTimedBadges(day) : [])"
+                  [style.top.%]="badge.topPct"
+                  [style.height.%]="badge.heightPct"
+                  (click)="onActivityRowClick(badge.row, $event)"
+                >
+                  <span>{{ badge.row.title }}</span>
+                </button>
+              </ng-template>
+            </div>
+          </div>
+        </section>
+      </ng-template>
+
+      <div class="editor-list-card" *ngIf="!activitiesInitialLoadPending && filteredActivityRows.length === 0">
+        <h4>No items</h4>
+        <p>{{ activitiesEmptyLabel }}</p>
+      </div>
+    </div><!-- /calendar-scroll -->
+  </ng-template><!-- /activitiesCalendarLayout -->
+
+
+  <!-- ───── Rate editor dock ───── -->
+  <div
+    class="activities-rate-editor-dock"
+    [class.is-closing]="isActivityRateEditorClosing() && !isRatesFullscreenModeActive()"
+    [class.is-permanent]="isRatesFullscreenModeActive()"
+    *ngIf="isActivityRateEditorDockVisible() && !isCalendarLayoutView()"
+  >
+    <div class="activities-rate-editor-head" *ngIf="!isRatesFullscreenModeActive()">
+      <span>Rate · {{ selectedActivityRateModeLabel() }} · {{ selectedActivityRateTitle() }}</span>
+    </div>
+    <div class="activities-rate-editor-stars" [class.is-blink]="isActivityRateBarBlinking" [class.is-readonly]="isSelectedActivityRateReadOnly()">
+      <button
+        type="button"
+        class="activities-rate-star-btn"
+        *ngFor="let score of activityRatingScale"
+        [class.filled]="isSelectedActivityRateScore(score)"
+        [class.is-disabled]="isSelectedActivityRateReadOnly()"
+        [disabled]="isSelectedActivityRateReadOnly()"
+        (click)="setSelectedActivityOwnRating(score)"
+        [attr.aria-label]="'Set rating ' + score"
+      >
+        ★
+      </button>
     </div>
   </div>
-</div>
+
+  <!-- ───── Delete confirm ───── -->
+  <section class="experience-delete-confirm" *ngIf="pendingActivityDeleteRow">
+    <div class="experience-delete-confirm-backdrop" (click)="cancelActivityDelete()"></div>
+    <div class="experience-delete-confirm-panel">
+      <h4>{{ pendingActivityConfirmTitle() }}</h4>
+      <p>{{ pendingActivityDeleteLabel() }}</p>
+      <div class="popup-actions">
+        <button type="button" class="link-btn neutral-btn" (click)="cancelActivityDelete()">Cancel</button>
+        <button type="button" class="link-btn experience-delete-btn" (click)="confirmActivityDelete()">{{ pendingActivityConfirmActionLabel() }}</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───── Publish confirm ───── -->
+  <section class="experience-delete-confirm" *ngIf="pendingActivityPublishRow">
+    <div class="experience-delete-confirm-backdrop" (click)="cancelActivityPublish()"></div>
+    <div class="experience-delete-confirm-panel">
+      <h4>{{ pendingActivityPublishTitle() }}</h4>
+      <p>{{ pendingActivityPublishLabel() }}</p>
+      <div class="popup-actions">
+        <button type="button" class="link-btn neutral-btn" (click)="cancelActivityPublish()">Cancel</button>
+        <button type="button" class="link-btn experience-publish-btn" (click)="confirmActivityPublish()">Publish</button>
+      </div>
+    </div>
+  </section>
+
+</div><!-- /activities-popup -->
