@@ -199,6 +199,34 @@
   position: relative;
   overflow: visible;
 }
+.popup-view-fab {
+  height: 34px;
+  border: 1px solid rgba(39, 62, 94, 0.22);
+  border-radius: 999px;
+  background: #f3f7ff;
+  color: #2c4c74;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.62rem;
+  cursor: pointer;
+}
+.popup-view-fab .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+.popup-view-fab span {
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.popup-body.popup-body-activities .popup-view-fab span,
+.popup-body.popup-body-activities .profile-status-select-wrap.activities-compact-select .mat-mdc-select,
+.popup-body.popup-body-activities .profile-status-select-wrap.activities-compact-select .status-option-content span:last-child,
+.popup-body.popup-body-activities .profile-status-select-wrap.activities-compact-select .mat-mdc-select-value-text {
+  font-weight: 400 !important;
+}
 .activities-view-picker-panel .activities-view-option.event-visibility-public {
   background: linear-gradient(0deg, #ffffff, #eef7ff);
 }
@@ -303,7 +331,6 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
   scroll-snap-type: y proximity;
   scroll-padding-top: 2.6rem;
   scroll-behavior: smooth;

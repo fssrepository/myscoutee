@@ -9,6 +9,53 @@
           {{ activitiesHeaderLineTwo() }}
         </p>
       </div>
+      <div class="activities-view-picker">
+        <div class="activities-secondary-picker" *ngIf="!isCalendarLayoutView() && activitiesPrimaryFilter !== 'chats'">
+          <button
+            type="button"
+            class="popup-view-fab activities-secondary-trigger"
+            (click)="toggleActivitiesSecondaryPicker($event)"
+            [attr.aria-label]="'Open secondary filter: ' + activitiesSecondaryFilterLabel()"
+          >
+            <mat-icon>{{ activitiesSecondaryFilterIcon() }}</mat-icon>
+            <span>{{ activitiesSecondaryFilterLabel() }}</span>
+          </button>
+          <div class="activities-view-picker-panel" *ngIf="showActivitiesSecondaryPicker">
+            <button
+              type="button"
+              class="activities-view-option"
+              [ngClass]="activitiesSecondaryFilterClass(option.key)"
+              *ngFor="let option of activitiesSecondaryFilters"
+              (click)="selectActivitiesSecondaryFilter(option.key)"
+            >
+              <mat-icon>{{ option.icon }}</mat-icon>
+              <span>{{ activitiesSecondaryFilterOptionLabel(option.key) }}</span>
+            </button>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="popup-view-fab activities-view-trigger"
+          *ngIf="activitiesPrimaryFilter !== 'chats'"
+          (click)="toggleActivitiesViewPicker($event)"
+          [attr.aria-label]="'Open view selector: ' + activityViewLabel()"
+        >
+          <mat-icon>view_agenda</mat-icon>
+          <span>{{ activityViewLabel() }}</span>
+        </button>
+        <div class="activities-view-picker-panel" *ngIf="showActivitiesViewPicker && activitiesPrimaryFilter !== 'chats'">
+          <button
+            type="button"
+            class="activities-view-option"
+            *ngFor="let option of activitiesViewOptions"
+            (click)="setActivitiesView(option.key, $event)"
+          >
+            <mat-icon>{{ option.icon }}</mat-icon>
+            <span>{{ option.label }}</span>
+          </button>
+        </div>
+      </div>
       <button type="button" class="popup-close" (click)="closeActivitiesPopup()" aria-label="Close">
         <mat-icon>close</mat-icon>
       </button>

@@ -94,6 +94,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected invitationDistanceById: Record<string, number> = { ...APP_DEMO_DATA.invitationDistanceById };
   protected readonly activityImageById: Record<string, string> = { ...APP_DEMO_DATA.activityImageById };
   protected readonly activitySourceLinkById: Record<string, string> = { ...APP_DEMO_DATA.activitySourceLinkById };
+  protected readonly activityCapacityById: Record<string, string> = { ...APP_DEMO_DATA.activityCapacityById };
+  private readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
+  private readonly forcedAcceptedMembersByRowKey: Record<string, number> = { 'events:e8': 20 };
 
   // ── Outputs kept for direct-template usage; not used via ngComponentOutlet ─
   /** User clicked on a chat row. */
@@ -401,21 +404,68 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.rateItems = [...(DEMO_RATES_BY_USER[userId] ?? [])];
     }
 
-    if (this.chatBadge === 0 && this.chatItems.length > 0) {
-      this.chatBadge = this.activeUser.activities.chat;
+    this.ensurePaginationTestEvents(30);
+    this.refreshSectionBadges();
+  }
+
+  private ensurePaginationTestEvents(minEventsPerUser: number): void {
+    if (this.eventItems.length >= minEventsPerUser) {
+      return;
     }
-    if (this.eventsBadge === 0 && this.eventItems.length > 0) {
-      this.eventsBadge = this.activeUser.activities.events;
+
+    const needed = minEventsPerUser - this.eventItems.length;
+    const synthetic: EventMenuItem[] = [];
+    for (let index = 0; index < needed; index += 1) {
+      const seq = this.eventItems.length + index + 1;
+      const id = `ex-${this.activeUser.id}-${seq}`;
+      const start = new Date(2026, 2, 1 + (index * 2), 10 + (index % 6), (index % 2) * 30, 0, 0);
+      const end = new Date(start.getTime() + ((2 + (index % 3)) * 60 * 60 * 1000));
+      const isAdmin = (seq % 4) === 0;
+      const title = `Pagination Test Event ${seq}`;
+      const timeframe = `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+
+      synthetic.push({
+        id,
+        avatar: this.activeUser.initials,
+        title,
+        shortDescription: `Synthetic feed item ${seq} to validate activities infinite loading.`,
+        timeframe,
+        activity: (index % 5) + 1,
+        isAdmin
+      });
+
+      this.eventDatesById[id] = start.toISOString().slice(0, 19);
+      this.eventDistanceById[id] = 3 + (index % 42);
+      this.activityDateTimeRangeById[id] = {
+        startIso: start.toISOString().slice(0, 19),
+        endIso: end.toISOString().slice(0, 19)
+      };
+      this.activityImageById[id] = `https://picsum.photos/seed/event-${id}/1200/700`;
+      this.activitySourceLinkById[id] = `https://example.com/events/${id}`;
+      this.activityCapacityById[id] = `${6 + (index % 18)} / ${12 + (index % 24)}`;
     }
-    if (this.hostingBadge === 0 && this.hostingItems.length > 0) {
-      this.hostingBadge = this.activeUser.activities.hosting;
-    }
-    if (this.invitationsBadge === 0 && this.invitationItems.length > 0) {
-      this.invitationsBadge = this.activeUser.activities.invitations;
-    }
-    if (this.gameBadge === 0 && this.rateItems.length > 0) {
-      this.gameBadge = this.activeUser.activities.game;
-    }
+
+    this.eventItems = [...this.eventItems, ...synthetic];
+  }
+
+  private refreshSectionBadges(): void {
+    this.chatBadge = AppDemoGenerators.resolveSectionBadge(
+      this.chatItems.map(item => item.unread),
+      this.chatItems.length
+    );
+    this.invitationsBadge = AppDemoGenerators.resolveSectionBadge(
+      this.invitationItems.map(item => item.unread),
+      this.invitationItems.length
+    );
+    this.eventsBadge = AppDemoGenerators.resolveSectionBadge(
+      this.eventItems.map(item => item.activity),
+      this.eventItems.length
+    );
+    this.hostingBadge = AppDemoGenerators.resolveSectionBadge(
+      this.hostingItems.map(item => item.activity),
+      this.hostingItems.length
+    );
+    this.gameBadge = this.activeUser.activities.game;
   }
 
   private syncMobileViewFromViewport(): void {
@@ -583,6 +633,10 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       group: 'chat-context-filter-group'
     };
     return map[filter] ?? 'chat-context-filter-all';
+  }
+
+  protected activitiesSecondaryFilterClass(_filter: AppTypes.ActivitiesSecondaryFilter = this.activitiesSecondaryFilter): string {
+    return 'activity-filter-secondary';
   }
 
   protected activitiesChatContextFilterCount(filter: AppTypes.ActivitiesChatContextFilter = this.activitiesChatContextFilter): number {
@@ -861,8 +915,11 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   private isActivitiesListScrollableNow(): boolean {
-    // Keep this deterministic during CD to avoid oscillating marker visibility.
-    return this.activitiesListScrollable;
+    const listElement = this.activitiesScrollRef?.nativeElement;
+    if (!listElement) {
+      return this.activitiesListScrollable;
+    }
+    return Math.max(0, listElement.scrollHeight - listElement.clientHeight) > 1;
   }
 
   protected isEventStyleActivity(row: AppTypes.ActivityListRow): boolean {
@@ -947,15 +1004,69 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activityCapacityLabel(row: AppTypes.ActivityListRow): string {
-    return (row.source as { capacityLabel?: string })?.capacityLabel ?? '';
+    const acceptedMembersCount = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted').length;
+    const capacityTotal = this.activityCapacityTotal(row, acceptedMembersCount);
+    return `${acceptedMembersCount} / ${capacityTotal}`;
   }
 
   protected activityPendingMemberCount(row: AppTypes.ActivityListRow): number {
-    return (row.source as { pendingMemberCount?: number })?.pendingMemberCount ?? 0;
+    return this.getActivityMembersByRow(row).filter(member => member.status === 'pending').length;
   }
 
   protected isActivityFull(row: AppTypes.ActivityListRow): boolean {
-    return !!(row.source as { isFull?: boolean })?.isFull;
+    if (row.type !== 'events') {
+      return false;
+    }
+    const acceptedMembersCount = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted').length;
+    const capacityTotal = this.activityCapacityTotal(row, acceptedMembersCount);
+    return capacityTotal > 0 && acceptedMembersCount >= capacityTotal;
+  }
+
+  private activityCapacityTotal(row: AppTypes.ActivityListRow, fallbackBase = 0): number {
+    const source = this.activityCapacityById[row.id];
+    if (source) {
+      const parts = source.split('/').map(part => Number.parseInt(part.trim(), 10));
+      if (parts.length >= 2 && Number.isFinite(parts[1]) && parts[1] >= 0) {
+        return parts[1];
+      }
+    }
+    return Math.max(fallbackBase, 4);
+  }
+
+  private getActivityMembersByRow(row: AppTypes.ActivityListRow): AppTypes.ActivityMemberEntry[] {
+    const rowKey = `${row.type}:${row.id}`;
+    const cached = this.activityMembersByRowId[rowKey];
+    if (cached) {
+      return this.sortActivityMembersByActionTimeDesc([...cached]);
+    }
+    const forcedAcceptedCount = this.forcedAcceptedMembersByRowKey[rowKey];
+    if (Number.isFinite(forcedAcceptedCount) && forcedAcceptedCount > 0) {
+      const forced = AppDemoGenerators.buildForcedAcceptedMembers(
+        row,
+        rowKey,
+        forcedAcceptedCount,
+        DEMO_USERS,
+        this.activeUser,
+        APP_DEMO_DATA.activityMemberDefaults.forcedMetWhere
+      );
+      const orderedForced = this.sortActivityMembersByActionTimeDesc(forced);
+      this.activityMembersByRowId[rowKey] = [...orderedForced];
+      return orderedForced;
+    }
+    const generated = AppDemoGenerators.generateActivityMembersForRow(
+      row,
+      rowKey,
+      DEMO_USERS,
+      this.activeUser,
+      APP_DEMO_DATA.activityMemberMetPlaces
+    );
+    const ordered = this.sortActivityMembersByActionTimeDesc(generated);
+    this.activityMembersByRowId[rowKey] = [...ordered];
+    return ordered;
+  }
+
+  private sortActivityMembersByActionTimeDesc(entries: AppTypes.ActivityMemberEntry[]): AppTypes.ActivityMemberEntry[] {
+    return [...entries].sort((a, b) => AppUtils.toSortableDate(b.actionAtIso) - AppUtils.toSortableDate(a.actionAtIso));
   }
 
   protected activityLeadingIcon(row: AppTypes.ActivityListRow): string {
@@ -1129,7 +1240,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   protected openActivityMembers(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
-    this.closeActivitiesPopup();
     this.eventEditorService.requestActivitiesNavigation({ type: 'members', row });
   }
 
