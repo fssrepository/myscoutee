@@ -1,4 +1,29 @@
-<div class="activities-popup" [class.activities-popup-rates-fullscreen]="isRatesFullscreenModeActive()" (click)="onActivitiesPopupSurfaceClick($event)">
+<div class="app-popup" *ngIf="eventEditorService.activitiesOpenBoolean()">
+  <div class="app-popup-backdrop" (click)="closeActivitiesPopup()"></div>
+  <div class="app-popup-panel popup-panel-activities" (click)="$event.stopPropagation()">
+    <div class="popup-header popup-header-with-activities-progress">
+      <div class="popup-title">
+        <h2>Activities</h2>
+        <p class="popup-subtitle-activities">{{ activitiesHeaderLineOne() }}</p>
+        <p class="popup-subtitle-activities popup-subtitle-activities-secondary" *ngIf="activitiesHeaderLineTwo()">
+          {{ activitiesHeaderLineTwo() }}
+        </p>
+      </div>
+      <button type="button" class="popup-close" (click)="closeActivitiesPopup()" aria-label="Close">
+        <mat-icon>close</mat-icon>
+      </button>
+      <div
+        class="activities-header-progress"
+        [class.is-loading]="activitiesHeaderProgressLoading"
+        [class.is-loading-overdue]="activitiesHeaderLoadingOverdue"
+        aria-hidden="true"
+      >
+        <span class="activities-header-progress-fill" [style.transform]="'scaleX(' + activitiesHeaderProgress + ')'"></span>
+        <span class="activities-header-progress-loading" [style.transform]="'scaleX(' + activitiesHeaderLoadingProgress + ')'"></span>
+      </div>
+    </div>
+    <div class="popup-body popup-body-activities">
+      <div class="activities-popup" [class.activities-popup-rates-fullscreen]="isRatesFullscreenModeActive()" (click)="onActivitiesPopupSurfaceClick($event)">
 
   <!-- ───── Toolbar ───── -->
   <div class="experience-toolbar assets-toolbar">
@@ -1051,4 +1076,7 @@
     </div>
   </section>
 
-</div><!-- /activities-popup -->
+      </div><!-- /activities-popup -->
+    </div><!-- /popup-body -->
+  </div><!-- /app-popup-panel -->
+</div><!-- /app-popup -->

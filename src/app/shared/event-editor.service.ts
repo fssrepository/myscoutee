@@ -23,6 +23,11 @@ export interface EventEditorSubEventResourcePopupRequest {
   } | null;
 }
 
+export type ActivitiesNavigationRequest =
+  | { type: 'eventExplore' }
+  | { type: 'chat'; item: unknown }
+  | { type: 'members'; row: AppTypes.ActivityListRow };
+
 @Injectable({
   providedIn: 'root'
 })
@@ -53,6 +58,7 @@ export class EventEditorService {
   private _activitiesStickyValue = signal('');
   private _activitiesRatesFullscreenMode = signal(false);
   private _activitiesSelectedRateId = signal<string | null>(null);
+  private _activitiesNavigationRequest = signal<ActivitiesNavigationRequest | null>(null);
   
   // Public readonly signals
   readonly isOpen = this._isOpen.asReadonly();
@@ -74,6 +80,7 @@ export class EventEditorService {
   readonly activitiesStickyValue = this._activitiesStickyValue.asReadonly();
   readonly activitiesRatesFullscreenMode = this._activitiesRatesFullscreenMode.asReadonly();
   readonly activitiesSelectedRateId = this._activitiesSelectedRateId.asReadonly();
+  readonly activitiesNavigationRequest = this._activitiesNavigationRequest.asReadonly();
   
   // Computed values
   readonly isOpenBoolean = computed(() => this._isOpen());
@@ -284,5 +291,13 @@ export class EventEditorService {
    */
   setActivitiesSelectedRateId(rateId: string | null): void {
     this._activitiesSelectedRateId.set(rateId);
+  }
+
+  requestActivitiesNavigation(request: ActivitiesNavigationRequest): void {
+    this._activitiesNavigationRequest.set(request);
+  }
+
+  clearActivitiesNavigationRequest(): void {
+    this._activitiesNavigationRequest.set(null);
   }
 }

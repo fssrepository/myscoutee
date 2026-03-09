@@ -40,6 +40,10 @@ export class AppShellComponent {
       if (isActivitiesOpen && !this.activitiesPopupComponentRef()) {
         void this.ensureActivitiesPopupLoaded();
       }
+      // Warm-load editor chunk while activities is open to avoid first-click flash.
+      if (isActivitiesOpen && !this.eventEditorPopupComponentRef()) {
+        void this.ensureEventEditorPopupLoaded();
+      }
     });
   }
 

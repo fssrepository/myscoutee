@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, ElementRef, HostListener, Injectable, NgZone, ViewChild, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, Injectable, NgZone, ViewChild, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -579,6 +579,27 @@ export class App {
     this.syncProfileFormFromActiveUser();
     this.initializeEntryFlow();
     this.router.navigate(['/game']);
+
+    effect(() => {
+      const request = this.eventEditorService.activitiesNavigationRequest();
+      if (!request) {
+        return;
+      }
+      this.eventEditorService.clearActivitiesNavigationRequest();
+      if (request.type === 'eventExplore') {
+        this.openEventExplore(false);
+        return;
+      }
+      if (request.type === 'chat') {
+        const item = request.item as ChatMenuItem | undefined;
+        if (!item) {
+          return;
+        }
+        this.openChatItem(item, false, false);
+        return;
+      }
+      this.openActivityMembers(request.row);
+    });
     
     // Listen for events from EventEditorPopupComponent
     if (typeof window !== 'undefined') {
@@ -1540,30 +1561,10 @@ export class App {
   }
 
   protected openActivitiesPopup(primaryFilter: AppTypes.ActivitiesPrimaryFilter, closeMenu = true): void {
-    this.commitPendingRateDirectionOverrides();
-    // Delegate to EventEditorService - the popup is now in event-editor module
+    if (this.activePopup || this.stackedPopup || this.superStackedPopup) {
+      this.closePopup();
+    }
     this.eventEditorService.openActivities(primaryFilter);
-    // Keep local state for now for compatibility with existing code
-    this.activePopup = 'activities';
-    this.activitiesPrimaryFilter = primaryFilter;
-    this.activitiesSecondaryFilter = 'recent';
-    this.hostingPublicationFilter = 'all';
-    this.showActivitiesViewPicker = false;
-    this.showActivitiesSecondaryPicker = false;
-    this.showEventExploreOrderPicker = false;
-    this.showAssetVisibilityPicker = false;
-    this.showProfileStatusHeaderPicker = false;
-    this.activitiesView = 'day';
-    this.clearActivityRateEditorState();
-    this.activitiesStickyValue = '';
-    this.calendarMonthFocusDate = null;
-    this.calendarWeekFocusDate = null;
-    this.calendarInitialPageIndexOverride = null;
-    this.calendarMonthAnchorPages = null;
-    this.calendarWeekAnchorPages = null;
-    this.calendarMonthAnchorsHydrated = false;
-    this.calendarWeekAnchorsHydrated = false;
-    this.resetActivitiesScroll();
     if (closeMenu) {
       this.closeUserMenu();
     }

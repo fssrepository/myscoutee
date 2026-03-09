@@ -5,11 +5,10 @@ import {
   effect,
   ElementRef,
   EventEmitter,
+  HostListener,
   inject,
-  Input,
   NgZone,
   OnDestroy,
-  OnInit,
   Output,
   ViewChild
 } from '@angular/core';
@@ -22,6 +21,11 @@ import { LazyBgImageDirective } from '../shared/lazy-bg-image.directive';
 import { APP_STATIC_DATA } from '../shared/app-static-data';
 import {
   APP_DEMO_DATA,
+  DEMO_CHAT_BY_USER,
+  DEMO_EVENTS_BY_USER,
+  DEMO_HOSTING_BY_USER,
+  DEMO_INVITATIONS_BY_USER,
+  DEMO_RATES_BY_USER,
   DEMO_USERS,
   RateMenuItem,
   type ChatMenuItem,
@@ -52,46 +56,44 @@ import type * as AppTypes from '../shared/app-types';
   styleUrl: './event-activities-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class EventActivitiesPopupComponent implements OnInit, OnDestroy {
+export class EventActivitiesPopupComponent implements OnDestroy {
 
   // ── injected ──────────────────────────────────────────────────────────────
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
   protected readonly eventEditorService = inject(EventEditorService);
 
-  // ── Data @Inputs (provided by the host App component via DI or bindings) ──
-  // NOTE: because this component is mounted via ngComponentOutlet with no
-  // bindings, these must be satisfied by a shared data service in your app.
-  // Keep them as @Inputs for testability and for cases where the component is
-  // used directly in a template.
-  @Input() isMobileView = false;
-  @Input() activeUser!: DemoUser;
+  // ── Self-contained data state (no host inputs) ───────────────────────────
+  protected isMobileView = false;
+  protected activeUser: DemoUser = DEMO_USERS[0];
 
-  @Input() chatItems: ChatMenuItem[]            = [];
-  @Input() eventItems: EventMenuItem[]          = [];
-  @Input() hostingItems: HostingMenuItem[]      = [];
-  @Input() invitationItems: InvitationMenuItem[] = [];
-  @Input() rateItems: RateMenuItem[]             = [];
+  protected chatItems: ChatMenuItem[] = [...(DEMO_CHAT_BY_USER[this.activeUser.id] ?? [])];
+  protected eventItems: EventMenuItem[] = [...(DEMO_EVENTS_BY_USER[this.activeUser.id] ?? [])];
+  protected hostingItems: HostingMenuItem[] = [...(DEMO_HOSTING_BY_USER[this.activeUser.id] ?? [])];
+  protected invitationItems: InvitationMenuItem[] = [...(DEMO_INVITATIONS_BY_USER[this.activeUser.id] ?? [])];
+  protected rateItems: RateMenuItem[] = [...(DEMO_RATES_BY_USER[this.activeUser.id] ?? [])];
 
-  @Input() chatBadge        = 0;
-  @Input() eventsBadge      = 0;
-  @Input() hostingBadge     = 0;
-  @Input() invitationsBadge = 0;
-  @Input() gameBadge        = 0;
+  protected chatBadge = this.activeUser.activities.chat;
+  protected eventsBadge = this.activeUser.activities.events;
+  protected hostingBadge = this.activeUser.activities.hosting;
+  protected invitationsBadge = this.activeUser.activities.invitations;
+  protected gameBadge = this.activeUser.activities.game;
 
-  @Input() publishedHostingIds: ReadonlySet<string> = new Set();
+  protected publishedHostingIds: ReadonlySet<string> = this.defaultPublishedHostingIds();
 
-  @Input() activityDateTimeRangeById: Record<string, AppTypes.ActivityDateTimeRange> = {};
+  protected activityDateTimeRangeById: Record<string, AppTypes.ActivityDateTimeRange> = { ...APP_DEMO_DATA.activityDateTimeRangeById };
 
-  @Input() chatDatesById: Record<string, string>        = {};
-  @Input() eventDatesById: Record<string, string>       = {};
-  @Input() hostingDatesById: Record<string, string>     = {};
-  @Input() invitationDatesById: Record<string, string>  = {};
+  protected chatDatesById: Record<string, string> = { ...APP_DEMO_DATA.chatDatesById };
+  protected eventDatesById: Record<string, string> = { ...APP_DEMO_DATA.eventDatesById };
+  protected hostingDatesById: Record<string, string> = { ...APP_DEMO_DATA.hostingDatesById };
+  protected invitationDatesById: Record<string, string> = { ...APP_DEMO_DATA.invitationDatesById };
 
-  @Input() chatDistanceById: Record<string, number>       = {};
-  @Input() eventDistanceById: Record<string, number>      = {};
-  @Input() hostingDistanceById: Record<string, number>    = {};
-  @Input() invitationDistanceById: Record<string, number> = {};
+  protected chatDistanceById: Record<string, number> = { ...APP_DEMO_DATA.chatDistanceById };
+  protected eventDistanceById: Record<string, number> = { ...APP_DEMO_DATA.eventDistanceById };
+  protected hostingDistanceById: Record<string, number> = { ...APP_DEMO_DATA.hostingDistanceById };
+  protected invitationDistanceById: Record<string, number> = { ...APP_DEMO_DATA.invitationDistanceById };
+  protected readonly activityImageById: Record<string, string> = { ...APP_DEMO_DATA.activityImageById };
+  protected readonly activitySourceLinkById: Record<string, string> = { ...APP_DEMO_DATA.activitySourceLinkById };
 
   // ── Outputs kept for direct-template usage; not used via ngComponentOutlet ─
   /** User clicked on a chat row. */
@@ -261,10 +263,11 @@ export class EventActivitiesPopupComponent implements OnInit, OnDestroy {
   // Lifecycle
   // =========================================================================
 
-  ngOnInit(): void {
+  constructor() {
+    this.hydrateStandaloneFallbackState();
+    this.syncMobileViewFromViewport();
+
     // Sync service signal state → local properties so OnPush CD fires.
-    // Using effect() inside a constructor/ngOnInit keeps it tied to this
-    // component's injector and is cleaned up automatically on destroy.
     effect(() => {
       const svc = this.eventEditorService;
       this.activitiesPrimaryFilter       = svc.activitiesPrimaryFilter() as AppTypes.ActivitiesPrimaryFilter;
@@ -279,20 +282,59 @@ export class EventActivitiesPopupComponent implements OnInit, OnDestroy {
       this.activitiesRatesFullscreenMode = svc.activitiesRatesFullscreenMode();
       this.selectedActivityRateId        = svc.activitiesSelectedRateId();
       this.cdr.markForCheck();
-    }, { allowSignalWrites: false });
+    });
 
     // React to open events: reset scroll state whenever the popup is opened.
     effect(() => {
       if (this.eventEditorService.activitiesOpen()) {
         this.onActivitiesOpened();
       }
-    }, { allowSignalWrites: false });
+    });
+  }
+
+  @HostListener('window:keydown.escape', ['$event'])
+  protected onEscapePressed(event: Event): void {
+    if (!this.eventEditorService.activitiesOpen()) {
+      return;
+    }
+    event.stopPropagation();
+    this.closeActivitiesPopup();
+  }
+
+  @HostListener('window:resize')
+  protected onViewportResize(): void {
+    this.syncMobileViewFromViewport();
   }
 
   /** Called once each time the service opens the popup. */
   private onActivitiesOpened(): void {
+    this.resetActivitiesStateForOpen();
     this.clearActivityRateEditorState();
     this.resetActivitiesScroll();
+  }
+
+  private resetActivitiesStateForOpen(): void {
+    this.inlineItemActionMenu = null;
+    this.pendingActivityDeleteRow = null;
+    this.pendingActivityPublishRow = null;
+    this.pendingActivityAction = 'delete';
+    this.activitiesStickyValue = '';
+    this.calendarMonthFocusDate = null;
+    this.calendarWeekFocusDate = null;
+    this.calendarInitialPageIndexOverride = null;
+    this.suppressCalendarEdgeSettle = false;
+    this.calendarMonthAnchorPages = null;
+    this.calendarWeekAnchorPages = null;
+    this.calendarMonthAnchorsHydrated = false;
+    this.calendarWeekAnchorsHydrated = false;
+    this.calendarMonthPagesCacheKey = '';
+    this.calendarWeekPagesCacheKey = '';
+    this.calendarMonthPagesCache = [];
+    this.calendarWeekPagesCache = [];
+    this.activitiesCalendarBadgesLoadingDelayKey = '';
+    this.activitiesCalendarBadgeDelayPageKey = '';
+    this.activitiesCalendarBadgesLoadingActive = false;
+    this.activitiesCalendarBadgesReadyDelayKeys.clear();
   }
 
   ngOnDestroy(): void {
@@ -317,6 +359,69 @@ export class EventActivitiesPopupComponent implements OnInit, OnDestroy {
     if (this.calendarPostSettleTimer) {
       clearTimeout(this.calendarPostSettleTimer);
     }
+  }
+
+  private defaultPublishedHostingIds(): ReadonlySet<string> {
+    const ids = new Set<string>();
+    const published = APP_DEMO_DATA.hostingPublishedById as Record<string, boolean>;
+    for (const [id, isPublished] of Object.entries(published)) {
+      if (isPublished !== false) {
+        ids.add(id);
+      }
+    }
+    return ids;
+  }
+
+  private hydrateStandaloneFallbackState(): void {
+    if (!this.activeUser) {
+      this.activeUser = DEMO_USERS[0];
+    }
+    const userId = this.activeUser.id;
+
+    if (this.chatItems.length === 0) {
+      this.chatItems = [...(DEMO_CHAT_BY_USER[userId] ?? [])];
+    }
+    if (this.eventItems.length === 0) {
+      this.eventItems = [...(DEMO_EVENTS_BY_USER[userId] ?? [])];
+    }
+    if (this.hostingItems.length === 0) {
+      this.hostingItems = [...(DEMO_HOSTING_BY_USER[userId] ?? [])];
+    }
+    if (this.invitationItems.length === 0) {
+      this.invitationItems = [...(DEMO_INVITATIONS_BY_USER[userId] ?? [])];
+    }
+    if (this.rateItems.length === 0) {
+      this.rateItems = [...(DEMO_RATES_BY_USER[userId] ?? [])];
+    }
+
+    if (this.chatBadge === 0 && this.chatItems.length > 0) {
+      this.chatBadge = this.activeUser.activities.chat;
+    }
+    if (this.eventsBadge === 0 && this.eventItems.length > 0) {
+      this.eventsBadge = this.activeUser.activities.events;
+    }
+    if (this.hostingBadge === 0 && this.hostingItems.length > 0) {
+      this.hostingBadge = this.activeUser.activities.hosting;
+    }
+    if (this.invitationsBadge === 0 && this.invitationItems.length > 0) {
+      this.invitationsBadge = this.activeUser.activities.invitations;
+    }
+    if (this.gameBadge === 0 && this.rateItems.length > 0) {
+      this.gameBadge = this.activeUser.activities.game;
+    }
+  }
+
+  private syncMobileViewFromViewport(): void {
+    if (typeof window === 'undefined') {
+      this.isMobileView = false;
+      return;
+    }
+    const next = window.innerWidth <= 860;
+    if (next === this.isMobileView) {
+      return;
+    }
+    this.isMobileView = next;
+    this.cdr.markForCheck();
   }
 
   // =========================================================================
@@ -436,6 +541,25 @@ export class EventActivitiesPopupComponent implements OnInit, OnDestroy {
     return '220px';
   }
 
+  protected activitiesHeaderLineOne(): string {
+    if (this.activitiesPrimaryFilter === 'chats') {
+      return this.activitiesChatsHeaderLabel();
+    }
+    if (this.activitiesPrimaryFilter === 'rates') {
+      const group = this.activitiesRateFilter.startsWith('individual') ? 'Single' : 'Pair';
+      const label = this.rateFilters.find(option => option.key === this.activitiesRateFilter)?.label ?? 'Given';
+      return `${group} Rate · ${label}`;
+    }
+    if (this.activitiesView === 'month' || this.activitiesView === 'week') {
+      return this.activitiesPrimaryFilterLabel();
+    }
+    return `${this.activitiesPrimaryFilterLabel()} · ${this.activitiesSecondaryFilterLabel()}`;
+  }
+
+  protected activitiesHeaderLineTwo(): string {
+    return '';
+  }
+
   protected activitiesChatContextFilterLabel(): string {
     return this.activitiesChatContextFilters.find(o => o.key === this.activitiesChatContextFilter)?.label ?? 'All';
   }
@@ -460,6 +584,14 @@ export class EventActivitiesPopupComponent implements OnInit, OnDestroy {
       if (filter === 'all') { return true; }
       return this.activityChatContextFilterKey(item) === filter;
     }).length;
+  }
+
+  private activitiesChatsHeaderLabel(): string {
+    const primary = this.activitiesPrimaryFilterLabel();
+    if (this.activitiesChatContextFilter === 'all') {
+      return primary;
+    }
+    return `${primary} · ${this.activitiesChatContextFilterLabel()}`;
   }
 
   protected activitiesSecondaryFilterLabel(): string {
@@ -651,7 +783,9 @@ export class EventActivitiesPopupComponent implements OnInit, OnDestroy {
   // ── Event editor / explore – call EventEditorService directly ────────────
 
   protected requestOpenEventEditor(): void {
+    this.scheduleActivitiesReturnOnEditorClose();
     this.eventEditorService.open('create');
+    this.closeActivitiesPopup();
   }
 
   protected requestOpenEventEditorForRow(
@@ -659,18 +793,18 @@ export class EventActivitiesPopupComponent implements OnInit, OnDestroy {
     readOnly = false,
     stacked = true
   ): void {
+    this.scheduleActivitiesReturnOnEditorClose();
     this.eventEditorService.open(
       'edit',
       row.source as EventMenuItem | HostingMenuItem,
       readOnly
     );
+    this.closeActivitiesPopup();
   }
 
   protected requestOpenEventExplore(): void {
-    // The explore popup is a separate concern; delegate via service if it
-    // exposes that method, otherwise dispatch a custom event as fallback.
-    // Extend EventEditorService with openExplore() when needed.
-    globalThis.dispatchEvent(new CustomEvent('app:open-event-explore'));
+    this.closeActivitiesPopup();
+    this.eventEditorService.requestActivitiesNavigation({ type: 'eventExplore' });
   }
 
   // =========================================================================
@@ -749,23 +883,44 @@ export class EventActivitiesPopupComponent implements OnInit, OnDestroy {
   // ── Event-style rows ───────────────────────────────────────────────────────
 
   protected activityImageUrl(row: AppTypes.ActivityListRow): string {
-    return (row.source as { imageUrl?: string })?.imageUrl ?? '';
+    return this.activityImageById[row.id] ?? `https://picsum.photos/seed/event-${row.id}/1200/700`;
   }
 
   protected showActivitySourceIcon(row: AppTypes.ActivityListRow): boolean {
-    return !!(row.source as { sourceLink?: string })?.sourceLink;
+    return row.type === 'events' || row.type === 'invitations';
   }
 
   protected activitySourceLink(row: AppTypes.ActivityListRow): string {
-    return (row.source as { sourceLink?: string })?.sourceLink ?? '#';
+    return this.activitySourceLinkById[row.id] ?? `https://example.com/events/${row.id}`;
   }
 
   protected activitySourceAvatarClass(row: AppTypes.ActivityListRow): string {
-    return 'activities-source-avatar-default';
+    const toneSeed = row.type === 'invitations'
+      ? `${row.id}-${(row.source as InvitationMenuItem).inviter}`
+      : `${row.id}-${row.title}`;
+    const toneIndex = (AppDemoGenerators.hashText(toneSeed) % 8) + 1;
+    return `activities-source-tone-${toneIndex}`;
   }
 
   protected activitySourceAvatarLabel(row: AppTypes.ActivityListRow): string {
-    return (row.source as { sourceName?: string })?.sourceName?.slice(0, 2) ?? '';
+    if (row.type === 'invitations') {
+      const invitation = row.source as InvitationMenuItem;
+      return AppUtils.initialsFromText(invitation.inviter);
+    }
+    if (row.type === 'events') {
+      const event = row.source as EventMenuItem;
+      const explicitOwner = AppUtils.findUserByName(DEMO_USERS, event.avatar || '');
+      if (explicitOwner) {
+        return explicitOwner.initials;
+      }
+      const fallbackOwner = DEMO_USERS[AppDemoGenerators.hashText(`${row.id}-${event.title}`) % DEMO_USERS.length];
+      return fallbackOwner?.initials ?? AppUtils.initialsFromText(event.title);
+    }
+    if (row.type === 'hosting') {
+      const hosting = row.source as HostingMenuItem;
+      return AppUtils.initialsFromText(hosting.avatar || hosting.title);
+    }
+    return AppUtils.initialsFromText(row.title);
   }
 
   protected activityCapacityLabel(row: AppTypes.ActivityListRow): string {
@@ -858,30 +1013,25 @@ export class EventActivitiesPopupComponent implements OnInit, OnDestroy {
   protected runActivityItemPrimaryAction(row: AppTypes.ActivityListRow, event: Event): void {
     event.stopPropagation();
     this.inlineItemActionMenu = null;
-    if (row.type === 'hosting' || row.type === 'events') {
-      this.eventEditorService.open(
-        'edit',
-        row.source as EventMenuItem | HostingMenuItem,
-        false
-      );
-    }
+    this.openActivityRowInEventModule(row, false);
   }
 
   protected runActivityItemViewAction(row: AppTypes.ActivityListRow, event: Event): void {
     event.stopPropagation();
     this.inlineItemActionMenu = null;
+    this.scheduleActivitiesReturnOnEditorClose();
     this.eventEditorService.open(
       'edit',
       row.source as EventMenuItem | HostingMenuItem,
       true
     );
+    this.closeActivitiesPopup();
   }
 
   protected runActivityItemApproveAction(row: AppTypes.ActivityListRow, event: Event): void {
     event.stopPropagation();
     this.inlineItemActionMenu = null;
-    // Invitation approval – delegate to parent via openActivityRow
-    this.openActivityRow.emit(row);
+    this.openActivityRowInEventModule(row, true);
   }
 
   protected runActivityItemSecondaryAction(row: AppTypes.ActivityListRow, event: Event): void {
@@ -945,19 +1095,21 @@ export class EventActivitiesPopupComponent implements OnInit, OnDestroy {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
     if (row.type === 'chats') {
-      this.openChatItem.emit(row.source as ChatMenuItem);
+      this.closeActivitiesPopup();
+      this.eventEditorService.requestActivitiesNavigation({ type: 'chat', item: row.source as ChatMenuItem });
       return;
     }
     if (row.type === 'rates') {
       this.openActivityRateEditor(row, event as Event);
       return;
     }
-    this.openActivityRow.emit(row);
+    this.openActivityRowInEventModule(row, true);
   }
 
   protected openActivityMembers(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
-    this.openActivityMembersEvent.emit({ row, event });
+    this.closeActivitiesPopup();
+    this.eventEditorService.requestActivitiesNavigation({ type: 'members', row });
   }
 
   // =========================================================================
@@ -2296,6 +2448,56 @@ export class EventActivitiesPopupComponent implements OnInit, OnDestroy {
     };
   }
 
+  private openActivityRowInEventModule(row: AppTypes.ActivityListRow, readOnly: boolean): void {
+    if (row.type === 'events' || row.type === 'hosting') {
+      this.scheduleActivitiesReturnOnEditorClose();
+      this.eventEditorService.open(
+        'edit',
+        row.source as EventMenuItem | HostingMenuItem,
+        readOnly
+      );
+      this.closeActivitiesPopup();
+      return;
+    }
+
+    if (row.type === 'invitations') {
+      const invitation = row.source as InvitationMenuItem;
+      const source = this.resolveRelatedEventFromInvitation(invitation) ?? this.buildInvitationPreviewEventSource(invitation);
+      this.scheduleActivitiesReturnOnEditorClose();
+      this.eventEditorService.open('edit', source, true);
+      this.closeActivitiesPopup();
+    }
+  }
+
+  private scheduleActivitiesReturnOnEditorClose(): void {
+    this.eventEditorService.scheduleReturnToActivitiesAfterNextEditorClose(this.activitiesPrimaryFilter);
+  }
+
+  private resolveRelatedEventFromInvitation(invitation: InvitationMenuItem): EventMenuItem | HostingMenuItem | null {
+    const invitationTitle = AppUtils.normalizeText(invitation.description);
+    const relatedEvent = this.eventItems.find(item => AppUtils.normalizeText(item.title) === invitationTitle);
+    if (relatedEvent) {
+      return relatedEvent;
+    }
+    const relatedHosting = this.hostingItems.find(item => AppUtils.normalizeText(item.title) === invitationTitle);
+    if (relatedHosting) {
+      return relatedHosting;
+    }
+    return null;
+  }
+
+  private buildInvitationPreviewEventSource(invitation: InvitationMenuItem): EventMenuItem {
+    return {
+      id: `inv-preview-${invitation.id}`,
+      avatar: AppUtils.initialsFromText(invitation.inviter),
+      title: invitation.description,
+      shortDescription: `Invited by ${invitation.inviter}`,
+      timeframe: invitation.when,
+      activity: Math.max(0, invitation.unread),
+      isAdmin: false
+    };
+  }
+
   // ── User lookup ────────────────────────────────────────────────────────────
 
   private userById(userId: string): DemoUser | undefined {
@@ -2330,33 +2532,125 @@ export class EventActivitiesPopupComponent implements OnInit, OnDestroy {
   // ── Header progress loading ────────────────────────────────────────────────
 
   private beginActivitiesHeaderProgressLoading(): void {
-    this.activitiesHeaderLoadingCounter++;
+    this.activitiesHeaderLoadingCounter += 1;
+    if (this.activitiesHeaderLoadingCounter > 1) {
+      return;
+    }
     this.activitiesHeaderProgressLoading = true;
-    this.activitiesHeaderLoadingStartedAtMs = Date.now();
-    this.cdr.markForCheck();
+    this.activitiesHeaderLoadingOverdue = false;
+    this.activitiesHeaderLoadingProgress = 0.02;
+    this.activitiesHeaderLoadingStartedAtMs = performance.now();
+    this.flushActivitiesHeaderProgress();
+    if (this.activitiesHeaderLoadingCompleteTimer) {
+      clearTimeout(this.activitiesHeaderLoadingCompleteTimer);
+      this.activitiesHeaderLoadingCompleteTimer = null;
+    }
+    if (this.activitiesHeaderLoadingInterval) {
+      clearInterval(this.activitiesHeaderLoadingInterval);
+      this.activitiesHeaderLoadingInterval = null;
+    }
+    this.updateActivitiesHeaderLoadingWindow();
+    this.activitiesHeaderLoadingInterval = this.ngZone.runOutsideAngular(() =>
+      setInterval(() => {
+        this.updateActivitiesHeaderLoadingWindow();
+        this.flushActivitiesHeaderProgress();
+      }, this.activitiesHeaderLoadingTickMs)
+    );
   }
 
   private endActivitiesHeaderProgressLoading(): void {
-    if (this.activitiesHeaderLoadingCounter > 0) {
-      this.activitiesHeaderLoadingCounter--;
-    }
     if (this.activitiesHeaderLoadingCounter === 0) {
-      this.activitiesHeaderProgressLoading = false;
-      this.activitiesHeaderProgress = 0;
-      this.cdr.markForCheck();
+      return;
     }
+    this.activitiesHeaderLoadingCounter = Math.max(0, this.activitiesHeaderLoadingCounter - 1);
+    if (this.activitiesHeaderLoadingCounter !== 0) {
+      return;
+    }
+    this.completeActivitiesHeaderLoading();
+  }
+
+  private completeActivitiesHeaderLoading(): void {
+    if (this.activitiesHeaderLoadingInterval) {
+      clearInterval(this.activitiesHeaderLoadingInterval);
+      this.activitiesHeaderLoadingInterval = null;
+    }
+    // Success path: snap the loading bar to full width immediately.
+    this.activitiesHeaderLoadingProgress = 1;
+    this.activitiesHeaderLoadingOverdue = false;
+    this.flushActivitiesHeaderProgress();
+    if (this.activitiesHeaderLoadingCompleteTimer) {
+      clearTimeout(this.activitiesHeaderLoadingCompleteTimer);
+    }
+    this.activitiesHeaderLoadingCompleteTimer = this.ngZone.runOutsideAngular(() =>
+      setTimeout(() => {
+        this.ngZone.run(() => {
+          if (this.activitiesHeaderLoadingCounter !== 0) {
+            return;
+          }
+          this.activitiesHeaderProgressLoading = false;
+          this.activitiesHeaderLoadingProgress = 0;
+          this.activitiesHeaderLoadingOverdue = false;
+          this.activitiesHeaderLoadingStartedAtMs = 0;
+          this.activitiesHeaderLoadingCompleteTimer = null;
+          this.updateActivitiesHeaderProgress();
+          this.refreshActivitiesHeaderProgressSoon();
+          this.flushActivitiesHeaderProgress();
+        });
+      }, 100)
+    );
   }
 
   private updateActivitiesHeaderProgress(): void {
-    if (!this.activitiesHeaderProgressLoading) {
-      this.activitiesHeaderProgress = 0;
-      this.cdr.markForCheck();
+    if (this.isRatesFullscreenModeActive()) {
+      this.activitiesListScrollable = false;
+      const loadedCount = this.activitiesRatesFullscreenAllRows().length;
+      if (loadedCount <= 0) {
+        this.activitiesHeaderProgress = 0;
+        return;
+      }
+      this.activitiesHeaderProgress = AppUtils.clampNumber((this.activitiesRatesFullscreenCardIndex + 1) / loadedCount, 0, 1);
       return;
     }
-    const elapsed = Date.now() - this.activitiesHeaderLoadingStartedAtMs;
-    const ratio   = Math.min(elapsed / this.activitiesHeaderLoadingWindowMs, 1);
-    this.activitiesHeaderProgress = Math.round(ratio * 100);
-    this.cdr.markForCheck();
+
+    if (this.isCalendarLayoutView()) {
+      this.activitiesListScrollable = true;
+      const calendarElement = this.activitiesCalendarScrollRef?.nativeElement;
+      if (!calendarElement) {
+        this.activitiesHeaderProgress = 0;
+        return;
+      }
+      const maxHorizontalScroll = Math.max(0, calendarElement.scrollWidth - calendarElement.clientWidth);
+      if (maxHorizontalScroll <= 1) {
+        this.activitiesHeaderProgress = 0;
+        return;
+      }
+      this.activitiesHeaderProgress = AppUtils.clampNumber(calendarElement.scrollLeft / maxHorizontalScroll, 0, 1);
+      return;
+    }
+
+    const listElement = this.activitiesScrollRef?.nativeElement;
+    if (!listElement) {
+      this.activitiesListScrollable = false;
+      this.activitiesHeaderProgress = 0;
+      return;
+    }
+    const maxVerticalScroll = Math.max(0, listElement.scrollHeight - listElement.clientHeight);
+    this.activitiesListScrollable = maxVerticalScroll > 1;
+    if (maxVerticalScroll <= 1) {
+      this.activitiesHeaderProgress = 0;
+      return;
+    }
+    this.activitiesHeaderProgress = AppUtils.clampNumber(listElement.scrollTop / maxVerticalScroll, 0, 1);
+  }
+
+  private updateActivitiesHeaderLoadingWindow(): void {
+    if (!this.activitiesHeaderProgressLoading) {
+      return;
+    }
+    const elapsed = Math.max(0, performance.now() - this.activitiesHeaderLoadingStartedAtMs);
+    const nextProgress = AppUtils.clampNumber(elapsed / this.activitiesHeaderLoadingWindowMs, 0, 1);
+    this.activitiesHeaderLoadingProgress = Math.max(this.activitiesHeaderLoadingProgress, nextProgress);
+    this.activitiesHeaderLoadingOverdue = elapsed >= this.activitiesHeaderLoadingWindowMs && this.activitiesHeaderLoadingCounter > 0;
   }
 
   private clearActivitiesHeaderLoadingAnimation(): void {
@@ -2368,23 +2662,55 @@ export class EventActivitiesPopupComponent implements OnInit, OnDestroy {
       clearTimeout(this.activitiesHeaderLoadingCompleteTimer);
       this.activitiesHeaderLoadingCompleteTimer = null;
     }
+    this.activitiesHeaderLoadingCounter = 0;
+    this.activitiesHeaderLoadingProgress = 0;
+    this.activitiesHeaderProgressLoading = false;
+    this.activitiesHeaderLoadingOverdue = false;
+    this.activitiesHeaderLoadingStartedAtMs = 0;
+    this.flushActivitiesHeaderProgress();
   }
 
   private refreshActivitiesStickyHeaderSoon(): void {
-    setTimeout(() => {
-      const el = this.activitiesScrollRef?.nativeElement;
-      if (el) { this.updateActivitiesStickyHeader(el.scrollTop); }
+    const refresh = () => {
+      this.updateActivitiesStickyHeader(this.activitiesScrollRef?.nativeElement?.scrollTop ?? 0);
       this.cdr.markForCheck();
-    }, 0);
+    };
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(refresh));
+      return;
+    }
+    setTimeout(refresh, 0);
   }
 
   private refreshActivitiesHeaderProgressSoon(): void {
-    if (this.activitiesHeaderFlushScheduled) { return; }
-    this.activitiesHeaderFlushScheduled = true;
-    setTimeout(() => {
-      this.activitiesHeaderFlushScheduled = false;
+    const refresh = () => {
       this.updateActivitiesHeaderProgress();
-      this.cdr.markForCheck();
-    }, this.activitiesHeaderLoadingTickMs);
+      this.flushActivitiesHeaderProgress();
+    };
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(refresh));
+      return;
+    }
+    setTimeout(refresh, 0);
+  }
+
+  private flushActivitiesHeaderProgress(): void {
+    if (this.activitiesHeaderFlushScheduled) {
+      return;
+    }
+    this.activitiesHeaderFlushScheduled = true;
+    this.ngZone.runOutsideAngular(() => {
+      const flush = () => {
+        this.ngZone.run(() => {
+          this.activitiesHeaderFlushScheduled = false;
+          this.cdr.markForCheck();
+        });
+      };
+      if (typeof globalThis.requestAnimationFrame === 'function') {
+        globalThis.requestAnimationFrame(() => flush());
+        return;
+      }
+      setTimeout(flush, 0);
+    });
   }
 }
