@@ -16,6 +16,9 @@ export interface EventEditorSubEventResourcePopupRequest {
   group?: {
     id?: string | null;
     groupLabel?: string;
+    pending?: number;
+    capacityMin?: number;
+    capacityMax?: number;
   } | null;
 }
 

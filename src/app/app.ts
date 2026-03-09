@@ -1766,12 +1766,35 @@ export class App {
       autoInviter: this.eventForm.autoInviter,
       ticketing: this.eventForm.ticketing,
       topics: [...this.eventForm.topics],
-      subEvents: this.cloneSubEvents(this.eventForm.subEvents),
+      subEvents: this.buildModuleEventEditorSubEvents(this.eventForm.subEvents),
       subEventsDisplayMode: this.subEventsDisplayMode,
       startAt: this.eventForm.startAt,
       endAt: this.eventForm.endAt,
       pendingMembersCount
     };
+  }
+
+  private buildModuleEventEditorSubEvents(items: readonly AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] {
+    return this.cloneSubEvents([...items]).map(item => {
+      const cars = this.subEventAssetCapacityMetrics(item, 'Car');
+      const accommodation = this.subEventAssetCapacityMetrics(item, 'Accommodation');
+      const supplies = this.subEventAssetCapacityMetrics(item, 'Supplies');
+      return {
+        ...item,
+        carsAccepted: cars.joined,
+        carsPending: cars.pending,
+        carsCapacityMin: cars.capacityMin,
+        carsCapacityMax: cars.capacityMax,
+        accommodationAccepted: accommodation.joined,
+        accommodationPending: accommodation.pending,
+        accommodationCapacityMin: accommodation.capacityMin,
+        accommodationCapacityMax: accommodation.capacityMax,
+        suppliesAccepted: supplies.joined,
+        suppliesPending: supplies.pending,
+        suppliesCapacityMin: supplies.capacityMin,
+        suppliesCapacityMax: supplies.capacityMax
+      };
+    });
   }
 
   private buildEventEditorActivityRow(source: EventMenuItem | HostingMenuItem): AppTypes.ActivityListRow {
@@ -1822,16 +1845,35 @@ export class App {
     }
 
     const groupRaw = (payload['group'] && typeof payload['group'] === 'object')
-      ? payload['group'] as { id?: unknown; groupLabel?: unknown }
+      ? payload['group'] as { id?: unknown; groupLabel?: unknown; pending?: unknown; capacityMin?: unknown; capacityMax?: unknown }
       : null;
     const group = groupRaw
       ? {
         id: typeof groupRaw.id === 'string' ? groupRaw.id : undefined,
-        groupLabel: typeof groupRaw.groupLabel === 'string' ? groupRaw.groupLabel : undefined
+        groupLabel: typeof groupRaw.groupLabel === 'string' ? groupRaw.groupLabel : undefined,
+        pending: Number.isFinite(Number(groupRaw.pending)) ? Math.max(0, Math.trunc(Number(groupRaw.pending))) : undefined,
+        capacityMin: Number.isFinite(Number(groupRaw.capacityMin)) ? Math.max(0, Math.trunc(Number(groupRaw.capacityMin))) : undefined,
+        capacityMax: Number.isFinite(Number(groupRaw.capacityMax)) ? Math.max(0, Math.trunc(Number(groupRaw.capacityMax))) : undefined
       }
       : undefined;
-
-    this.openSubEventBadgePopup(type, subEvent, undefined, group as AppTypes.SubEventTournamentGroup | undefined);
+    const popupSubEvent = group
+      ? {
+        ...subEvent,
+        membersPending: type === 'Members' ? group.pending ?? subEvent.membersPending : subEvent.membersPending,
+        capacityMin: group.capacityMin ?? subEvent.capacityMin,
+        capacityMax: group.capacityMax ?? subEvent.capacityMax,
+        carsPending: type === 'Car' ? group.pending ?? subEvent.carsPending : subEvent.carsPending,
+        carsCapacityMin: type === 'Car' ? group.capacityMin ?? subEvent.carsCapacityMin : subEvent.carsCapacityMin,
+        carsCapacityMax: type === 'Car' ? group.capacityMax ?? subEvent.carsCapacityMax : subEvent.carsCapacityMax,
+        accommodationPending: type === 'Accommodation' ? group.pending ?? subEvent.accommodationPending : subEvent.accommodationPending,
+        accommodationCapacityMin: type === 'Accommodation' ? group.capacityMin ?? subEvent.accommodationCapacityMin : subEvent.accommodationCapacityMin,
+        accommodationCapacityMax: type === 'Accommodation' ? group.capacityMax ?? subEvent.accommodationCapacityMax : subEvent.accommodationCapacityMax,
+        suppliesPending: type === 'Supplies' ? group.pending ?? subEvent.suppliesPending : subEvent.suppliesPending,
+        suppliesCapacityMin: type === 'Supplies' ? group.capacityMin ?? subEvent.suppliesCapacityMin : subEvent.suppliesCapacityMin,
+        suppliesCapacityMax: type === 'Supplies' ? group.capacityMax ?? subEvent.suppliesCapacityMax : subEvent.suppliesCapacityMax
+      }
+      : subEvent;
+    this.openSubEventBadgePopup(type, popupSubEvent, undefined, group);
   }
 
   private applyModuleEventEditorPayload(payload: Record<string, unknown>): void {
@@ -2223,7 +2265,7 @@ export class App {
     type: 'Members' | 'Car' | 'Accommodation' | 'Supplies',
     item: AppTypes.SubEventFormItem,
     event?: Event,
-    group?: AppTypes.SubEventTournamentGroup | null
+    group?: Partial<Pick<AppTypes.SubEventTournamentGroup, 'id' | 'groupLabel'>> | null
   ): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
@@ -2306,17 +2348,22 @@ export class App {
       return 0;
     }
     const subEvent = this.selectedSubEventBadgeContext.subEvent;
+    const isGroupScoped = this.isGroupScopedSubEventResourceContext();
     if (type === 'Members') {
-      return this.subEventMembersPendingCount();
+      return isGroupScoped
+        ? Math.max(0, Math.trunc(Number(subEvent.membersPending) || 0))
+        : this.subEventMembersPendingCount();
     }
-    this.syncSubEventAssetBadgeCounts(subEvent, type);
+    if (!isGroupScoped) {
+      this.syncSubEventAssetBadgeCounts(subEvent, type);
+    }
     if (type === 'Car') {
-      return subEvent.carsPending;
+      return Math.max(0, Math.trunc(Number(subEvent.carsPending) || 0));
     }
     if (type === 'Accommodation') {
-      return subEvent.accommodationPending;
+      return Math.max(0, Math.trunc(Number(subEvent.accommodationPending) || 0));
     }
-    return subEvent.suppliesPending;
+    return Math.max(0, Math.trunc(Number(subEvent.suppliesPending) || 0));
   }
 
   protected subEventMembersBadgePendingCount(subEvent: AppTypes.SubEventFormItem): number {
@@ -2380,6 +2427,15 @@ export class App {
   }
 
   protected subEventMembersHeaderSummary(): string {
+    if (this.isGroupScopedSubEventResourceContext()) {
+      const subEvent = this.selectedSubEventBadgeContext?.subEvent;
+      const pendingCount = Math.max(0, Math.trunc(Number(subEvent?.membersPending) || 0));
+      const acceptedCount = Math.max(0, Math.trunc(Number(subEvent?.membersAccepted) || 0));
+      if (pendingCount <= 0) {
+        return `${acceptedCount} members`;
+      }
+      return `${acceptedCount} members · ${pendingCount} pending`;
+    }
     const members = this.subEventMembersEntries();
     const pendingCount = members.filter(member => member.status === 'pending').length;
     const acceptedCount = members.length - pendingCount;
@@ -2417,6 +2473,9 @@ export class App {
   }
 
   protected subEventMembersPendingCount(): number {
+    if (this.isGroupScopedSubEventResourceContext()) {
+      return Math.max(0, Math.trunc(Number(this.selectedSubEventBadgeContext?.subEvent.membersPending) || 0));
+    }
     return this.subEventMembersEntries().filter(member => member.status === 'pending').length;
   }
 
@@ -3421,13 +3480,18 @@ export class App {
   }
 
   private syncSelectedSubEventMembersCounts(entries: AppTypes.ActivityMemberEntry[]): void {
-    if (!this.selectedSubEventBadgeContext) {
+    if (!this.selectedSubEventBadgeContext || this.isGroupScopedSubEventResourceContext()) {
       return;
     }
     const acceptedCount = entries.filter(member => member.status === 'accepted').length;
     const pendingCount = entries.filter(member => member.status === 'pending').length;
     this.selectedSubEventBadgeContext.subEvent.membersAccepted = acceptedCount;
     this.selectedSubEventBadgeContext.subEvent.membersPending = pendingCount;
+  }
+
+  private isGroupScopedSubEventResourceContext(): boolean {
+    const groupId = this.selectedSubEventBadgeContext?.groupId;
+    return typeof groupId === 'string' && groupId.trim().length > 0;
   }
 
   private resolveMainEventMembersContext(): { row: AppTypes.ActivityListRow; rowKey: string } | null {

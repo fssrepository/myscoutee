@@ -46,6 +46,15 @@ export interface EventSubeventsItem {
   carsPending?: number;
   accommodationPending?: number;
   suppliesPending?: number;
+  carsAccepted?: number;
+  accommodationAccepted?: number;
+  suppliesAccepted?: number;
+  carsCapacityMin?: number;
+  carsCapacityMax?: number;
+  accommodationCapacityMin?: number;
+  accommodationCapacityMax?: number;
+  suppliesCapacityMin?: number;
+  suppliesCapacityMax?: number;
 }
 
 interface EventSubeventsStageRow {
@@ -569,9 +578,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
     type: Exclude<EventEditorSubEventResourceType, 'Members'>,
     row?: EventSubeventsStageRow | null
   ): string {
-    const pending = this.resourcePendingCount(item, type, row);
-    const max = this.resourceCapacityRange(item, row).max;
-    return `${pending} / 0 - ${max}`;
+    const joined = this.resourceJoinedCount(item, type);
+    const { min, max } = this.resourceAssetCapacityRange(item, type, row);
+    return `${joined} / ${min} - ${max}`;
   }
 
   protected resourcePendingCount(
@@ -605,10 +614,20 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.openGroupMenuKey = null;
     this.openCasualMenuKey = null;
 
-    const group = row ? {
-      id: row.groupId,
-      groupLabel: row.groupName
-    } : null;
+    const group = row
+      ? (() => {
+        const range = type === 'Members'
+          ? this.resourceCapacityRange(item, row)
+          : this.resourceAssetCapacityRange(item, type, row);
+        return {
+          id: row.groupId,
+          groupLabel: row.groupName,
+          pending: this.resourcePendingCount(item, type, row),
+          capacityMin: range.min,
+          capacityMax: range.max
+        };
+      })()
+      : null;
 
     this.eventEditorService.requestSubEventResourcePopup({
       type,
@@ -1647,6 +1666,48 @@ export class EventSubeventsPopupComponent implements OnChanges {
     const min = Math.max(0, Number(item.capacityMin) || 0);
     const max = Math.max(min, Number(item.capacityMax) || min);
     return { min, max };
+  }
+
+  private resourceJoinedCount(item: EventSubeventsItem, type: Exclude<EventEditorSubEventResourceType, 'Members'>): number {
+    if (type === 'Car') {
+      return this.toPendingCount(item.carsAccepted);
+    }
+    if (type === 'Accommodation') {
+      return this.toPendingCount(item.accommodationAccepted);
+    }
+    return this.toPendingCount(item.suppliesAccepted);
+  }
+
+  private resourceAssetCapacityRange(
+    item: EventSubeventsItem,
+    type: Exclude<EventEditorSubEventResourceType, 'Members'>,
+    row?: EventSubeventsStageRow | null
+  ): { min: number; max: number } {
+    const fallback = this.resourceCapacityRange(item, row);
+    if (type === 'Car') {
+      return this.normalizeAssetCapacityRange(item.carsCapacityMin, item.carsCapacityMax, fallback);
+    }
+    if (type === 'Accommodation') {
+      return this.normalizeAssetCapacityRange(item.accommodationCapacityMin, item.accommodationCapacityMax, fallback);
+    }
+    return this.normalizeAssetCapacityRange(item.suppliesCapacityMin, item.suppliesCapacityMax, fallback);
+  }
+
+  private normalizeAssetCapacityRange(
+    minValue: unknown,
+    maxValue: unknown,
+    fallback: { min: number; max: number }
+  ): { min: number; max: number } {
+    const minCandidate = Number(minValue);
+    const resolvedMin = Number.isFinite(minCandidate) && minCandidate >= 0
+      ? Math.trunc(minCandidate)
+      : fallback.min;
+    const maxCandidate = Number(maxValue);
+    const fallbackMax = Math.max(resolvedMin, fallback.max);
+    const resolvedMax = Number.isFinite(maxCandidate) && maxCandidate >= resolvedMin
+      ? Math.trunc(maxCandidate)
+      : fallbackMax;
+    return { min: resolvedMin, max: resolvedMax };
   }
 
   private reconcileTournamentGroupsForStage(

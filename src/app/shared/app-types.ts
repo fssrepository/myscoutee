@@ -388,6 +388,15 @@ export interface SubEventFormItem {
   carsPending: number;
   accommodationPending: number;
   suppliesPending: number;
+  carsAccepted?: number;
+  accommodationAccepted?: number;
+  suppliesAccepted?: number;
+  carsCapacityMin?: number;
+  carsCapacityMax?: number;
+  accommodationCapacityMin?: number;
+  accommodationCapacityMax?: number;
+  suppliesCapacityMin?: number;
+  suppliesCapacityMax?: number;
 }
 
 export interface SubEventGroupItem {
@@ -638,4 +647,3 @@ export interface ActivityMemberEntry {
   relevance: number;
   avatarUrl: string;
 }
-
