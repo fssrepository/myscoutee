@@ -175,6 +175,10 @@ export class EventEditorService {
     this._activitiesStickyValue.set('');
     this._activitiesRatesFullscreenMode.set(false);
     this._activitiesSelectedRateId.set(null);
+    if (primaryFilter === 'rates') {
+      this._activitiesRateFilter.set('individual-given');
+      this._activitiesView.set('distance');
+    }
   }
 
   /**
@@ -204,6 +208,7 @@ export class EventEditorService {
       this._activitiesRatesFullscreenMode.set(false);
     }
     if (filter === 'rates') {
+      this._activitiesRateFilter.set('individual-given');
       this._activitiesView.set('distance');
       this._activitiesSelectedRateId.set(null);
     } else if (filter === 'chats') {

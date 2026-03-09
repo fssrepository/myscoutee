@@ -775,7 +775,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   protected isRateGroupSeparator(label: string): boolean {
-    return label === 'Pair';
+    return label.trim().toLowerCase().includes('pair');
   }
 
   protected rateFilterCount(filter: AppTypes.RateFilterKey): number {

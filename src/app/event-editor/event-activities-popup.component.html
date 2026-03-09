@@ -124,6 +124,7 @@
             type="button"
             class="activities-view-option"
             *ngFor="let option of activitiesPrimaryFilters"
+            [ngClass]="[activitiesPrimaryFilterClass(option.key), option.key === activitiesPrimaryFilter ? 'active' : '']"
             (click)="selectActivitiesPrimaryFilter(option.key)"
           >
             <mat-icon [class]="activitiesPrimaryFilterClass(option.key)">{{ option.icon }}</mat-icon>
@@ -196,6 +197,7 @@
               type="button"
               class="activities-view-option"
               *ngFor="let option of activitiesChatContextFilters"
+              [ngClass]="[activitiesChatContextFilterClass(option.key), option.key === activitiesChatContextFilter ? 'active' : '']"
               (click)="selectActivitiesChatContextFilter(option.key)"
             >
               <mat-icon [class]="activitiesChatContextFilterClass(option.key)">{{ option.icon }}</mat-icon>
@@ -284,16 +286,34 @@
             <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="totalRateFilterCount() > 0">{{ totalRateFilterCount() }}</span>
           </button>
           <div class="activities-view-picker-panel activities-mobile-rate-filter-panel" *ngIf="showActivitiesRatePicker">
+            <div class="activities-mobile-sheet-title activities-mobile-rate-sheet-title">
+              <mat-icon>list</mat-icon>
+              <span>Rate Type</span>
+            </div>
             <ng-container *ngFor="let option of rateFilterEntries">
-              <span class="activities-view-option activities-mobile-rate-filter-group" *ngIf="option.kind === 'group'">{{ option.label }}</span>
+              <span
+                class="activities-view-option activities-mobile-rate-filter-group mobile-profile-selector-option mobile-profile-selector-option-group"
+                [class.rate-filter-group-single]="!isRateGroupSeparator(option.label)"
+                [class.rate-filter-group-pair]="isRateGroupSeparator(option.label)"
+                [class.is-group-separator-mobile]="isRateGroupSeparator(option.label)"
+                *ngIf="option.kind === 'group'"
+              >
+                <span class="mobile-profile-selector-option-main">
+                  <mat-icon>{{ isRateGroupSeparator(option.label) ? 'groups_2' : 'person' }}</mat-icon>
+                  <span>{{ option.label }}</span>
+                </span>
+              </span>
               <button
                 type="button"
                 class="activities-view-option"
                 *ngIf="option.kind === 'item'"
+                [ngClass]="[activitiesRateFilterClass(option.key), rateFilterOptionClass(option.key), option.key === activitiesRateFilter ? 'active' : '']"
                 (click)="selectActivitiesRateFilter(option.key)"
               >
-                <mat-icon [class]="[activitiesRateFilterClass(option.key), rateFilterOptionClass(option.key)]">{{ activitiesRateFilterIcon(option.key) }}</mat-icon>
-                <span>{{ option.label }}</span>
+                <span class="mobile-profile-selector-option-main">
+                  <mat-icon [class]="[activitiesRateFilterClass(option.key), rateFilterOptionClass(option.key)]">{{ activitiesRateFilterIcon(option.key) }}</mat-icon>
+                  <span>{{ option.label }}</span>
+                </span>
                 <span class="rate-filter-count-badge" *ngIf="rateFilterCount(option.key) > 0">{{ rateFilterCount(option.key) }}</span>
               </button>
             </ng-container>
