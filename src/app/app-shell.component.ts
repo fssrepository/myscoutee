@@ -9,11 +9,11 @@ import { EventEditorService } from './shared/event-editor.service';
   imports: [CommonModule, App],
   template: `
     <app-core></app-core>
-    <ng-container *ngIf="eventEditorPopupComponent() as popupComponent">
-      <ng-container *ngComponentOutlet="popupComponent"></ng-container>
-    </ng-container>
     <ng-container *ngIf="activitiesPopupComponent() as activitiesComponent">
       <ng-container *ngComponentOutlet="activitiesComponent"></ng-container>
+    </ng-container>
+    <ng-container *ngIf="eventEditorPopupComponent() as popupComponent">
+      <ng-container *ngComponentOutlet="popupComponent"></ng-container>
     </ng-container>
   `
 })

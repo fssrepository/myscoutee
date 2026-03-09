@@ -12832,6 +12832,7 @@ export class App {
       return;
     }
     if (this.eventEditorService.isOpen()) {
+      keyboardEvent.preventDefault();
       this.eventEditorService.close();
       return;
     }

@@ -294,7 +294,14 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscapePressed(event: Event): void {
+    const keyboardEvent = event as KeyboardEvent;
+    if (keyboardEvent.defaultPrevented) {
+      return;
+    }
     if (!this.eventEditorService.activitiesOpen()) {
+      return;
+    }
+    if (this.eventEditorService.isOpen()) {
       return;
     }
     event.stopPropagation();
@@ -783,9 +790,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   // ── Event editor / explore – call EventEditorService directly ────────────
 
   protected requestOpenEventEditor(): void {
-    this.scheduleActivitiesReturnOnEditorClose();
     this.eventEditorService.open('create');
-    this.closeActivitiesPopup();
   }
 
   protected requestOpenEventEditorForRow(
@@ -793,13 +798,11 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     readOnly = false,
     stacked = true
   ): void {
-    this.scheduleActivitiesReturnOnEditorClose();
     this.eventEditorService.open(
       'edit',
       row.source as EventMenuItem | HostingMenuItem,
       readOnly
     );
-    this.closeActivitiesPopup();
   }
 
   protected requestOpenEventExplore(): void {
@@ -839,7 +842,27 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   protected shouldShowActivityGroupMarker(groupIndex: number): boolean {
-    return groupIndex > 0;
+    if (groupIndex > 0) {
+      return true;
+    }
+    if (this.activitiesPrimaryFilter === 'chats') {
+      return false;
+    }
+    if (this.shouldApplyEventActivityGroupMarkerRules() && !this.isActivitiesListScrollableNow()) {
+      return false;
+    }
+    return true;
+  }
+
+  private shouldApplyEventActivityGroupMarkerRules(): boolean {
+    return this.activitiesPrimaryFilter === 'events'
+      || this.activitiesPrimaryFilter === 'invitations'
+      || this.activitiesPrimaryFilter === 'hosting';
+  }
+
+  private isActivitiesListScrollableNow(): boolean {
+    // Keep this deterministic during CD to avoid oscillating marker visibility.
+    return this.activitiesListScrollable;
   }
 
   protected isEventStyleActivity(row: AppTypes.ActivityListRow): boolean {
@@ -1019,13 +1042,11 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected runActivityItemViewAction(row: AppTypes.ActivityListRow, event: Event): void {
     event.stopPropagation();
     this.inlineItemActionMenu = null;
-    this.scheduleActivitiesReturnOnEditorClose();
     this.eventEditorService.open(
       'edit',
       row.source as EventMenuItem | HostingMenuItem,
       true
     );
-    this.closeActivitiesPopup();
   }
 
   protected runActivityItemApproveAction(row: AppTypes.ActivityListRow, event: Event): void {
@@ -2450,27 +2471,19 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   private openActivityRowInEventModule(row: AppTypes.ActivityListRow, readOnly: boolean): void {
     if (row.type === 'events' || row.type === 'hosting') {
-      this.scheduleActivitiesReturnOnEditorClose();
       this.eventEditorService.open(
         'edit',
         row.source as EventMenuItem | HostingMenuItem,
         readOnly
       );
-      this.closeActivitiesPopup();
       return;
     }
 
     if (row.type === 'invitations') {
       const invitation = row.source as InvitationMenuItem;
       const source = this.resolveRelatedEventFromInvitation(invitation) ?? this.buildInvitationPreviewEventSource(invitation);
-      this.scheduleActivitiesReturnOnEditorClose();
       this.eventEditorService.open('edit', source, true);
-      this.closeActivitiesPopup();
     }
-  }
-
-  private scheduleActivitiesReturnOnEditorClose(): void {
-    this.eventEditorService.scheduleReturnToActivitiesAfterNextEditorClose(this.activitiesPrimaryFilter);
   }
 
   private resolveRelatedEventFromInvitation(invitation: InvitationMenuItem): EventMenuItem | HostingMenuItem | null {
