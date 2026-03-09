@@ -7,6 +7,10 @@ description: Enforce Angular and TypeScript standards for scalable, maintainable
 
 Apply this skill as a guardrail set for Angular and TypeScript tasks.
 
+## Critical rule
+
+- NEVER USE ANY `GIT HEAD` COMMANDS.
+
 ## Standard instructions (unchanged from baseline)
 
 You are an expert in TypeScript, Angular, and scalable web application development. You write functional, maintainable, performant, and accessible code following Angular and TypeScript best practices.
@@ -87,9 +91,9 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 
 - When working on any non-`master` branch, treat `master` as the stable baseline unless the user specifies another baseline branch.
 - Before editing, inspect divergence from baseline:
-  - `git rev-parse --abbrev-ref HEAD`
-  - `git merge-base master HEAD`
-  - `git diff --name-status master...HEAD`
+  - `git branch --show-current`
+  - `git merge-base master $(git branch --show-current)`
+  - `git diff --name-status master...$(git branch --show-current)`
 - Limit review scope to files touched by the current branch when validating regressions, then include any directly coupled Angular/template/style files.
 - For behavior regressions, compare feature-branch behavior against `master` for:
   - routes and navigation flow

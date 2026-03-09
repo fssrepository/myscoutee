@@ -8,6 +8,10 @@ description: Extract selected UI screens from monolith Angular files into dedica
 Use this skill for incremental popup extraction in monolith Angular apps where routes are limited and popup modules are the chosen architecture.
 Use the same extraction/stabilization pattern as default for other module splits when requested.
 
+## Critical rule
+
+- NEVER USE ANY `GIT HEAD` COMMANDS.
+
 ## Extraction workflow
 
 ### 0. Enforce component isolation baseline
@@ -133,9 +137,9 @@ Use the same extraction/stabilization pattern as default for other module splits
 
 - On non-`master` branches, use `master` as the default stability baseline unless the user names a different baseline.
 - Before edits, inspect branch divergence:
-  - `git rev-parse --abbrev-ref HEAD`
-  - `git merge-base master HEAD`
-  - `git diff --name-status master...HEAD`
+  - `git branch --show-current`
+  - `git merge-base master $(git branch --show-current)`
+  - `git diff --name-status master...$(git branch --show-current)`
 - For extraction regressions, compare behavior against baseline for:
   - popup open/close flows
   - event contracts between monolith and extracted component
