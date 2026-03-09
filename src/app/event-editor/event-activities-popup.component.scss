@@ -1282,11 +1282,48 @@
   transform: translate(-50%, var(--activities-rate-badge-between-y)) !important;
 }
 .activities-rate-profile-stack-pair-inline .activities-rate-score-badge-between:not(.is-disabled):hover,
+.activities-rate-profile-stack-pair-inline .activities-rate-score-badge-between:not(.is-disabled):active,
+.activities-rate-profile-stack-pair-inline .activities-rate-score-badge-between.is-active:not(.is-disabled),
+.activities-rate-profile-stack-pair-inline .activities-rate-score-badge-between.is-active.is-pending:not(.is-disabled),
+.activities-rate-profile-stack-pair-inline .activities-rate-score-badge-between.is-disabled {
+  left: 50% !important;
+  right: auto !important;
+  transform: translate(-50%, 0) !important;
+}
+.activities-rates-fullscreen .activities-rate-score-badge-floating.activities-rate-score-badge-floating-pair-overlap {
+  --activities-rate-badge-between-y: 0;
+  top: auto;
+  bottom: clamp(3.2rem, 11%, 4.6rem);
+  left: var(--activities-pair-split, 50%);
+  right: auto;
+  transform: translate(-50%, var(--activities-rate-badge-between-y));
+  min-width: 68px;
+  width: max-content;
+  max-width: calc(100% - 0.8rem);
+  justify-content: center;
+  white-space: nowrap;
+}
+.activities-rates-fullscreen .activities-rate-score-badge-floating.activities-rate-score-badge-floating-pair-overlap.is-active:not(.is-disabled) {
+  transform: translate(-50%, var(--activities-rate-badge-between-y));
+}
+.activities-rates-fullscreen .activities-rate-score-badge-floating.activities-rate-score-badge-floating-pair-overlap:not(.is-disabled):active {
+  transform: translate(-50%, var(--activities-rate-badge-between-y));
+}
+@media (hover: hover) and (pointer: fine) {
+  .activities-rate-score-badge:not(.is-disabled):hover {
+    transform: translateY(-1px) scale(1.03);
+    box-shadow: 0 6px 14px rgba(203, 150, 34, 0.28);
+    filter: saturate(1.05);
+  }
+}
 .activities-rate-score-badge:not(.is-disabled):active {
   transform: translateY(0) scale(0.96);
   box-shadow: 0 2px 8px rgba(146, 105, 16, 0.22);
 }
 .activities-rate-score-badge-between:not(.is-disabled):hover,
+.activities-rate-score-badge-between:not(.is-disabled):active {
+  transform: translate(-50%, var(--activities-rate-badge-between-y));
+}
 .activities-rate-score-badge.is-pending {
   border-color: rgba(187, 56, 71, 0.62);
   background: linear-gradient(180deg, #ffe9ed 0%, #ffd9df 100%);
@@ -1302,6 +1339,9 @@
   transform: translateY(-1px) scale(1.03);
 }
 .activities-rate-score-badge-between.is-active:not(.is-disabled),
+.activities-rate-score-badge-between.is-active.is-pending:not(.is-disabled) {
+  transform: translate(-50%, var(--activities-rate-badge-between-y));
+}
 .activities-rate-score-badge.is-active.is-pending:not(.is-disabled) {
   border-color: rgba(188, 53, 72, 0.72);
   background: linear-gradient(180deg, #ffdce4 0%, #ffc8d3 100%);
@@ -1341,10 +1381,18 @@
   line-height: 1;
   transition: transform 0.18s ease, color 0.2s ease;
 }
+@media (hover: hover) and (pointer: fine) {
+  .activities-rate-score-badge:not(.is-disabled):hover .activities-rate-score-star {
+    transform: rotate(-9deg) scale(1.1);
+  }
+}
 .activities-rate-score-badge:not(.is-disabled):active .activities-rate-score-star {
   transform: rotate(0deg) scale(0.92);
 }
 .activities-rate-score-badge-between:not(.is-disabled):hover .activities-rate-score-star,
+.activities-rate-score-badge-between:not(.is-disabled):active .activities-rate-score-star {
+  transform: none;
+}
 
 // ─── Rate Editor Dock ────────────────────────────────────────────────────
 .activities-rate-editor-dock {
