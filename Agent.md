@@ -6,6 +6,7 @@ Required local skills to follow in this project:
 
 - `.agent/skills/popup-module-extractor/SKILL.md`
 - `.agent/skills/angular-typescript-web-standards/SKILL.md`
+- `.agent/skills/incremental-parity-skill-rules/SKILL.md`
 
 Rule for this repo:
 

@@ -186,6 +186,22 @@ export class ActivitiesDbContextService {
     this._eventChatSession.set(null);
   }
 
+  touchEventChatSession(): void {
+    const session = this._eventChatSession();
+    if (!session) {
+      return;
+    }
+    this._eventChatSession.set({
+      ...session,
+      context: session.context
+        ? {
+            ...session.context,
+            resources: session.context.resources.map(resource => ({ ...resource }))
+          }
+        : null
+    });
+  }
+
   async loadEventChatMessages(chat: ChatMenuItem): Promise<AppTypes.ChatPopupMessage[]> {
     return this.dataSource.loadChatMessages(chat);
   }

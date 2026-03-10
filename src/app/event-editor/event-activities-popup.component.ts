@@ -4508,6 +4508,26 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     accepted: number,
     pending: number
   ): { capacityMin: number; capacityMax: number } {
+    const assignedIds = this.resolveSubEventAssignedAssetIds(subEvent.id, type);
+    const assignedCards = assignedIds
+      .map(id => this.assetCards.find(card => card.id === id && card.type === type) ?? null)
+      .filter((card): card is AppTypes.AssetCard => card !== null);
+    if (assignedCards.length > 0) {
+      const capacityMin = 0;
+      const capacityMax = assignedCards.reduce((sum, card) => sum + Math.max(0, Math.trunc(Number(card.capacityTotal) || 0)), 0);
+      if (type === 'Car') {
+        subEvent.carsCapacityMin = capacityMin;
+        subEvent.carsCapacityMax = capacityMax;
+      } else if (type === 'Accommodation') {
+        subEvent.accommodationCapacityMin = capacityMin;
+        subEvent.accommodationCapacityMax = capacityMax;
+      } else {
+        subEvent.suppliesCapacityMin = capacityMin;
+        subEvent.suppliesCapacityMax = capacityMax;
+      }
+      return { capacityMin, capacityMax };
+    }
+
     const observed = Math.max(accepted, accepted + pending);
     if (type === 'Car') {
       const min = Math.max(0, Math.trunc(Number(subEvent.carsCapacityMin) || 0));

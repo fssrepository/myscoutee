@@ -1,4 +1,4 @@
-<div class="app-popup app-popup-stacked event-chat-popup-shell" *ngIf="session() as chatSession">
+<div class="app-popup app-popup-stacked app-popup-stacked-over-activities event-chat-popup-shell" *ngIf="session() as chatSession">
   <div class="app-popup-backdrop" (click)="close()"></div>
   <div class="app-popup-panel popup-panel-event-chat" (click)="$event.stopPropagation()">
     <button
@@ -12,7 +12,6 @@
       <div class="popup-title popup-title-chat">
         <div class="popup-chat-title-block">
           <h2>{{ chatSession.item.title }}</h2>
-          <p *ngIf="chatSession.item.lastMessage">{{ chatSession.item.lastMessage }}</p>
         </div>
       </div>
 
@@ -60,8 +59,6 @@
         <div
           class="item-action-menu event-subevent-resource-menu popup-chat-context-menu"
           [class.is-open]="isSelectedChatContextMenuOpen()"
-          [class.item-action-menu-mobile]="isMobileView()"
-          [class.item-action-menu-desktop]="!isMobileView()"
           [class.is-open-up]="isSelectedChatContextMenuOpenUp()"
           (click)="$event.stopPropagation()"
         >

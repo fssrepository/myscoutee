@@ -172,8 +172,39 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected selectedChatResources(): EventChatResourceContext[] {
-    return (this.session()?.context?.resources ?? [])
-      .filter(resource => resource.visible);
+    const session = this.session();
+    const resources = (session?.context?.resources ?? []).filter(resource => resource.visible);
+    const subEvent = session?.context?.subEvent;
+    if (!subEvent) {
+      return resources;
+    }
+    return resources.map(resource => {
+      if (resource.type === 'Members') {
+        const accepted = this.chatCountValue(subEvent.membersAccepted);
+        const pending = this.chatCountValue(subEvent.membersPending);
+        const capacityMin = this.chatCountValue(subEvent.capacityMin);
+        const capacityMax = Math.max(capacityMin, this.chatCountValue(subEvent.capacityMax));
+        return {
+          ...resource,
+          summary: `${accepted} / ${capacityMin} - ${capacityMax}`,
+          pending,
+          stateClass: accepted >= capacityMin && accepted <= capacityMax
+            ? 'subevent-capacity-in-range'
+            : 'subevent-capacity-out-of-range'
+        };
+      }
+      const accepted = this.chatSubEventAssetAcceptedCount(subEvent, resource.type);
+      const pending = this.chatSubEventAssetPendingCount(subEvent, resource.type);
+      const { capacityMin, capacityMax } = this.chatSubEventAssetCapacityBounds(subEvent, resource.type, accepted, pending);
+      return {
+        ...resource,
+        summary: `${accepted} / ${capacityMin} - ${capacityMax}`,
+        pending,
+        stateClass: accepted >= capacityMin && accepted <= capacityMax
+          ? 'subevent-capacity-in-range'
+          : 'subevent-capacity-out-of-range'
+      };
+    });
   }
 
   protected isMobileView(): boolean {
@@ -423,6 +454,52 @@ export class EventChatPopupComponent implements OnDestroy {
   private initialChatVisibleMessageCount(totalMessages: number): number {
     const chunkSize = this.chatHistoryPageSize * this.chatInitialVisiblePageCount;
     return Math.min(totalMessages, Math.max(this.chatHistoryPageSize, chunkSize));
+  }
+
+  private chatCountValue(value: unknown): number {
+    return Math.max(0, Math.trunc(Number(value) || 0));
+  }
+
+  private chatSubEventAssetAcceptedCount(subEvent: AppTypes.SubEventFormItem, type: AppTypes.AssetType): number {
+    if (type === 'Car') {
+      return this.chatCountValue(subEvent.carsAccepted);
+    }
+    if (type === 'Accommodation') {
+      return this.chatCountValue(subEvent.accommodationAccepted);
+    }
+    return this.chatCountValue(subEvent.suppliesAccepted);
+  }
+
+  private chatSubEventAssetPendingCount(subEvent: AppTypes.SubEventFormItem, type: AppTypes.AssetType): number {
+    if (type === 'Car') {
+      return this.chatCountValue(subEvent.carsPending);
+    }
+    if (type === 'Accommodation') {
+      return this.chatCountValue(subEvent.accommodationPending);
+    }
+    return this.chatCountValue(subEvent.suppliesPending);
+  }
+
+  private chatSubEventAssetCapacityBounds(
+    subEvent: AppTypes.SubEventFormItem,
+    type: AppTypes.AssetType,
+    accepted: number,
+    pending: number
+  ): { capacityMin: number; capacityMax: number } {
+    const observed = Math.max(accepted, accepted + pending);
+    if (type === 'Car') {
+      const capacityMin = this.chatCountValue(subEvent.carsCapacityMin);
+      const capacityMax = Math.max(capacityMin, this.chatCountValue(subEvent.carsCapacityMax) || observed);
+      return { capacityMin, capacityMax };
+    }
+    if (type === 'Accommodation') {
+      const capacityMin = this.chatCountValue(subEvent.accommodationCapacityMin);
+      const capacityMax = Math.max(capacityMin, this.chatCountValue(subEvent.accommodationCapacityMax) || observed);
+      return { capacityMin, capacityMax };
+    }
+    const capacityMin = this.chatCountValue(subEvent.suppliesCapacityMin);
+    const capacityMax = Math.max(capacityMin, this.chatCountValue(subEvent.suppliesCapacityMax) || observed);
+    return { capacityMin, capacityMax };
   }
 
   private shouldOpenContextMenuUp(event: Event): boolean {

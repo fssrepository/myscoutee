@@ -2514,10 +2514,13 @@ export class App {
     const editorRow = this.eventEditorMembersRow();
     if (editorRow) {
       const rowKey = `${editorRow.type}:${editorRow.id}`;
+      const cached = this.activityMembersByRowId[rowKey];
       return {
         row: editorRow,
         rowKey,
-        entries: this.sortActivityMembersByActionTimeAsc(this.getActivityMembersByRow(editorRow))
+        entries: cached
+          ? this.sortActivityMembersByActionTimeAsc([...cached])
+          : this.sortActivityMembersByActionTimeAsc(this.getActivityMembersByRow(editorRow))
       };
     }
 
@@ -2546,10 +2549,13 @@ export class App {
       source: chat
     };
     const rowKey = `${row.type}:${row.id}`;
+    const cached = this.activityMembersByRowId[rowKey];
     return {
       row,
       rowKey,
-      entries: this.seededChatSubEventMembersEntries(row, rowKey, chat.id, target)
+      entries: cached
+        ? this.sortActivityMembersByActionTimeAsc([...cached])
+        : this.seededChatSubEventMembersEntries(row, rowKey, chat.id, target)
     };
   }
 
@@ -3781,13 +3787,14 @@ export class App {
   }
 
   private syncSelectedSubEventMembersCounts(entries: AppTypes.ActivityMemberEntry[]): void {
-    if (!this.selectedSubEventBadgeContext || this.isGroupScopedSubEventResourceContext()) {
+    if (!this.selectedSubEventBadgeContext) {
       return;
     }
     const acceptedCount = entries.filter(member => member.status === 'accepted').length;
     const pendingCount = entries.filter(member => member.status === 'pending').length;
     this.selectedSubEventBadgeContext.subEvent.membersAccepted = acceptedCount;
     this.selectedSubEventBadgeContext.subEvent.membersPending = pendingCount;
+    this.activitiesContext.touchEventChatSession();
   }
 
   private isGroupScopedSubEventResourceContext(): boolean {
@@ -4038,13 +4045,16 @@ export class App {
     const pending = this.subEventAssetCapacityMetrics(subEvent, type).pending;
     if (type === 'Car') {
       subEvent.carsPending = pending;
+      this.activitiesContext.touchEventChatSession();
       return;
     }
     if (type === 'Accommodation') {
       subEvent.accommodationPending = pending;
+      this.activitiesContext.touchEventChatSession();
       return;
     }
     subEvent.suppliesPending = pending;
+    this.activitiesContext.touchEventChatSession();
   }
 
   private syncAllSubEventAssetBadgeCounts(): void {
