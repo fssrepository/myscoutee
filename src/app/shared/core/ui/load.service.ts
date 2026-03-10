@@ -1,42 +1,27 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 
-export type LoadStatus = 'idle' | 'loading' | 'success' | 'error' | 'timeout';
+import { AppContext, type LoadState, type LoadStatus } from '../app.context';
 
-export interface LoadState {
-  status: LoadStatus;
-  error: string | null;
-  loadedAtIso: string | null;
-}
-
-const DEFAULT_LOAD_STATE: LoadState = {
-  status: 'idle',
-  error: null,
-  loadedAtIso: null
-};
+export type { LoadState, LoadStatus } from '../app.context';
 
 @Injectable({
   providedIn: 'root'
 })
 export class LoadService {
-  private readonly _states = signal<Record<string, LoadState>>({});
-
-  readonly states = this._states.asReadonly();
+  private readonly appContext = inject(AppContext);
 
   selectState(contextKey: string) {
-    return computed(() => this._states()[contextKey] ?? DEFAULT_LOAD_STATE);
+    return this.appContext.selectLoadingState(contextKey);
   }
 
   setStatus(contextKey: string, status: LoadStatus, message?: string): LoadState {
-    const current = this._states()[contextKey] ?? DEFAULT_LOAD_STATE;
+    const current = this.appContext.getLoadingState(contextKey);
     const next: LoadState = {
       status,
       error: message ?? (status === 'loading' || status === 'success' ? null : current.error),
       loadedAtIso: status === 'success' ? new Date().toISOString() : current.loadedAtIso
     };
-    this._states.update(states => ({
-      ...states,
-      [contextKey]: next
-    }));
+    this.appContext.setLoadingState(contextKey, next);
     return next;
   }
 }
