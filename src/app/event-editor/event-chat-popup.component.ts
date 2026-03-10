@@ -40,14 +40,17 @@ export class EventChatPopupComponent implements OnDestroy {
   private chatThreadRef?: ElementRef<HTMLDivElement>;
 
   protected readonly session = computed(() => this.activitiesContext.eventChatSession());
-  protected readonly chatPopupMessages = computed(() => {
+  protected get chatPopupMessages(): AppTypes.ChatPopupMessage[] {
     if (this.allMessages.length === 0) {
       return [];
     }
     const start = Math.max(0, this.allMessages.length - this.chatVisibleMessageCount);
     return this.allMessages.slice(start);
-  });
-  protected readonly groupedMessages = computed(() => this.toDayGroups(this.chatPopupMessages()));
+  }
+
+  protected get groupedMessages(): AppTypes.ChatPopupDayGroup[] {
+    return this.toDayGroups(this.chatPopupMessages);
+  }
 
   protected chatInitialLoadPending = false;
   protected chatHistoryLoadingOlder = false;
@@ -269,43 +272,30 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected onChatThreadScroll(event: Event): void {
     const thread = event.target as HTMLElement | null;
+    if (thread) {
+      this.updateChatHeaderProgress(thread);
+    }
+    if (this.chatHistoryLoadingOlder || !this.hasMoreChatMessages()) {
+      return;
+    }
     if (!thread) {
-      return;
-    }
-    this.updateChatHeaderProgress(thread);
-    if (this.chatHistoryLoadingOlder) {
-      // If user scrolls away while delayed top-pagination is pending, cancel it to avoid jump-back.
-      if (thread.scrollTop > 96) {
-        this.cancelChatHistoryLoadOlder();
-        this.endChatHeaderProgressLoading();
-        this.cdr.markForCheck();
-      }
-      return;
-    }
-    if (!this.hasMoreChatMessages()) {
       return;
     }
     if (thread.scrollTop > 48) {
       return;
     }
+    const beforeHeight = thread.scrollHeight;
+    const beforeTop = thread.scrollTop;
+    const threadRect = thread.getBoundingClientRect();
+    const anchorMessage =
+      Array.from(thread.querySelectorAll<HTMLElement>('.chat-message[data-chat-message-id]'))
+        .find(message => message.getBoundingClientRect().bottom > threadRect.top + 8) ?? null;
+    const anchorMessageId = anchorMessage?.dataset['chatMessageId'] ?? null;
+    const anchorOffsetTop = anchorMessage ? anchorMessage.getBoundingClientRect().top - threadRect.top : 0;
     this.chatHistoryLoadingOlder = true;
     this.beginChatHeaderProgressLoading();
     this.chatHistoryLoadOlderTimer = setTimeout(() => {
       this.chatHistoryLoadOlderTimer = null;
-      if (thread.scrollTop > 96) {
-        this.chatHistoryLoadingOlder = false;
-        this.endChatHeaderProgressLoading();
-        this.cdr.markForCheck();
-        return;
-      }
-      const beforeHeight = thread.scrollHeight;
-      const beforeTop = thread.scrollTop;
-      const threadRect = thread.getBoundingClientRect();
-      const anchorMessage =
-        Array.from(thread.querySelectorAll<HTMLElement>('.chat-message[data-chat-message-id]'))
-          .find(message => message.getBoundingClientRect().bottom > threadRect.top + 8) ?? null;
-      const anchorMessageId = anchorMessage?.dataset['chatMessageId'] ?? null;
-      const anchorOffsetTop = anchorMessage ? anchorMessage.getBoundingClientRect().top - threadRect.top : 0;
       this.chatVisibleMessageCount = Math.min(this.chatVisibleMessageCount + this.chatHistoryPageSize, this.allMessages.length);
       this.cdr.detectChanges();
       this.runAfterThreadRender(() => {

@@ -114,7 +114,7 @@
           </div>
           <ng-container *ngIf="!chatInitialLoadPending">
             <div class="chat-thread" #chatThread (scroll)="onChatThreadScroll($event)">
-              <ng-container *ngFor="let dayGroup of groupedMessages(); trackBy: trackByDayGroup">
+              <ng-container *ngFor="let dayGroup of groupedMessages; trackBy: trackByDayGroup">
                 <div class="chat-day-sticky">
                   <span class="chat-day-pill">{{ dayGroup.label }}</span>
                 </div>
