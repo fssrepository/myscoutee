@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { DemoUsersRepository } from '../repositories/users.repository';
 import { AppDemoGenerators } from '../../../app-demo-generators';
 import type {
   UserService,
@@ -25,7 +26,7 @@ const DEMO_USERS_ROUTE_DELAY_CONFIG: DemoUsersRouteDelayEntry[] = [
   providedIn: 'root'
 })
 export class DemoUsersService implements UserService {
-  private readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
+  private readonly usersRepository = inject(DemoUsersRepository);
   private readonly router = inject(Router);
 
   async queryAvailableDemoUsers(): Promise<UsersQueryResponse> {
@@ -36,7 +37,7 @@ export class DemoUsersService implements UserService {
       });
     }
     return {
-      users: this.users.map(user => this.cloneUser(user))
+      users: this.usersRepository.queryAvailableDemoUsers()
     };
   }
 

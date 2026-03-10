@@ -36,4 +36,15 @@ export class AppContext {
       [contextKey]: next
     }));
   }
+
+  setStatus(contextKey: string, status: LoadStatus, message?: string): LoadState {
+    const current = this.getLoadingState(contextKey);
+    const next: LoadState = {
+      status,
+      error: message ?? (status === 'loading' || status === 'success' ? null : current.error),
+      loadedAtIso: status === 'success' ? new Date().toISOString() : current.loadedAtIso
+    };
+    this.setLoadingState(contextKey, next);
+    return next;
+  }
 }
