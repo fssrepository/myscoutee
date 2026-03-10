@@ -4599,7 +4599,7 @@
         <span class="popup-close-glyph" aria-hidden="true">×</span>
       </button>
     </div>
-    <ng-container *ngIf="usersLoadState().status === 'loading'; else demoUserSelectorReady">
+    <ng-container *ngIf="demoSelectorLoading; else demoUserSelectorReady">
       <div class="demo-user-grid demo-user-grid-loading">
         <p class="demo-user-loading-copy">Loading demo users...</p>
       </div>

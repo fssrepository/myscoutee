@@ -16,8 +16,7 @@ import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-
 import { AlertService } from './shared/alert.service';
 import { ActivitiesDbContextService } from './shared/activities-db-context.service';
 import { EventEditorService } from './shared/event-editor.service';
-import { UsersService, USERS_LOAD_CONTEXT_KEY } from './shared/core/users.service';
-import { LoadService } from './shared/core/ui/load.service';
+import { UsersService } from './shared/core/users.service';
 import type { UserDto } from './shared/core/user.interface';
 import {
   APP_DEMO_DATA,
@@ -147,8 +146,6 @@ export class App {
   protected readonly activitiesContext = inject(ActivitiesDbContextService);
   protected readonly eventEditorService = inject(EventEditorService);
   protected readonly usersService = inject(UsersService);
-  protected readonly usersLoadService = inject(LoadService);
-  protected readonly usersLoadState = this.usersLoadService.selectState(USERS_LOAD_CONTEXT_KEY);
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -180,6 +177,7 @@ export class App {
   protected entryConsentViewOnly = false;
   protected showUserSelector = false;
   protected demoSelectorUsers: UserDto[] = [];
+  protected demoSelectorLoading = false;
   protected showFirebaseAuthPopup = false;
   protected firebaseAuthIsBusy = false;
   protected firebaseAuthProfile: AppTypes.FirebaseAuthProfile | null = null;
@@ -5491,13 +5489,19 @@ export class App {
 
   protected closeDemoUserSelectorPopup(): void {
     this.showUserSelector = false;
+    this.demoSelectorLoading = false;
   }
 
   private openDemoUserSelectorPopup(): void {
     this.showUserSelector = true;
     this.demoSelectorUsers = [];
+    this.demoSelectorLoading = true;
     void this.usersService.loadAvailableDemoUsers().then(users => {
       this.demoSelectorUsers = users;
+      this.demoSelectorLoading = false;
+      this.cdr.markForCheck();
+    }).catch(() => {
+      this.demoSelectorLoading = false;
       this.cdr.markForCheck();
     });
   }
