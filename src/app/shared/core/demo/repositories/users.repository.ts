@@ -51,23 +51,6 @@ export class DemoUsersRepository {
       .map(user => this.cloneUser(user));
   }
 
-  syncUsers(users: readonly UserDto[]): UserDto[] {
-    const usersById: Record<string, UserDto> = {};
-    const userIds: string[] = [];
-    for (const user of users) {
-      usersById[user.id] = this.cloneUser(user);
-      userIds.push(user.id);
-    }
-    this.memoryDb.write(current => ({
-      ...current,
-      [DEMO_USERS_TABLE_NAME]: {
-        byId: usersById,
-        ids: userIds
-      }
-    }));
-    return this.queryAvailableDemoUsers();
-  }
-
   private cloneUser(user: UserDto): UserDto {
     return {
       ...user,
