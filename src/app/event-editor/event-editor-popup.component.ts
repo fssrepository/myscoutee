@@ -109,7 +109,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   constructor() {
     effect(() => {
-      const sourceEvent = this.eventEditorService.sourceEvent();
+      const sourceEvent: any = this.eventEditorService.sourceEvent();
       const isOpen = this.eventEditorService.isOpen();
 
       if (!isOpen) {
@@ -258,7 +258,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   eventEditorHeaderPendingMemberCount(): number {
-    const source = this.eventEditorService.sourceEvent();
+    const source: any = this.eventEditorService.sourceEvent();
     const pendingRaw = source?.pendingMembersCount
       ?? source?.pendingCount
       ?? source?.pendingMembers
@@ -673,7 +673,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.showEventVisibilityPicker = false;
   }
 
-  private populateFormFromSourceEvent(sourceEvent: Record<string, unknown>): void {
+  private populateFormFromSourceEvent(sourceEvent: any): void {
     const source = sourceEvent as any;
     const startAtDate = this.parseDateValue(source.startAt ?? source.startDate);
     const endAtDate = this.parseDateValue(source.endAt ?? source.endDate);

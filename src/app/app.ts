@@ -14,6 +14,7 @@ import { MatTimepickerModule } from '@angular/material/timepicker';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { AlertService } from './shared/alert.service';
+import { ActivitiesDbContextService } from './shared/activities-db-context.service';
 import { EventEditorService } from './shared/event-editor.service';
 import {
   APP_DEMO_DATA,
@@ -140,6 +141,7 @@ export class App {
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT = 100;
 
   public readonly alertService = inject(AlertService);
+  protected readonly activitiesContext = inject(ActivitiesDbContextService);
   protected readonly eventEditorService = inject(EventEditorService);
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -581,21 +583,27 @@ export class App {
     this.router.navigate(['/game']);
 
     effect(() => {
-      const request = this.eventEditorService.activitiesNavigationRequest();
+      const request = this.activitiesContext.activitiesNavigationRequest();
       if (!request) {
         return;
       }
-      this.eventEditorService.clearActivitiesNavigationRequest();
-      if (request.type === 'eventExplore') {
-        this.openEventExplore(false);
+      this.activitiesContext.clearActivitiesNavigationRequest();
+      if (request.type === 'chatResource') {
+        setTimeout(() => {
+          this.openSubEventBadgePopup(
+            request.resourceType,
+            request.subEvent,
+            undefined,
+            request.group
+              ? { id: request.group.id, groupLabel: request.group.groupLabel }
+              : undefined,
+            'active-event-editor'
+          );
+        }, 0);
         return;
       }
-      if (request.type === 'chat') {
-        const item = request.item as ChatMenuItem | undefined;
-        if (!item) {
-          return;
-        }
-        this.openChatItem(item, false, true);
+      if (request.type === 'eventExplore') {
+        this.openEventExplore(false, request.stacked ?? false);
         return;
       }
       if (request.type === 'eventEditorCreate') {
@@ -1574,7 +1582,7 @@ export class App {
     if (this.activePopup || this.stackedPopup || this.superStackedPopup) {
       this.closePopup();
     }
-    this.eventEditorService.openActivities(primaryFilter);
+    this.activitiesContext.openActivities(primaryFilter);
     if (closeMenu) {
       this.closeUserMenu();
     }
@@ -2088,7 +2096,7 @@ export class App {
     }
     const resolvedMembers = membersSnapshot ?? this.resolveActivitiesEventSyncMembersSnapshot(eventId, target);
 
-    this.eventEditorService.emitActivitiesEventSync({
+    this.activitiesContext.emitActivitiesEventSync({
       id: eventId,
       target,
       title: source.title,
@@ -2452,12 +2460,15 @@ export class App {
     type: 'Members' | 'Car' | 'Accommodation' | 'Supplies',
     item: AppTypes.SubEventFormItem,
     event?: Event,
-    group?: Partial<Pick<AppTypes.SubEventTournamentGroup, 'id' | 'groupLabel'>> | null
+    group?: Partial<Pick<AppTypes.SubEventTournamentGroup, 'id' | 'groupLabel'>> | null,
+    originOverride?: 'active-event-editor' | 'stacked-event-editor' | 'chat'
   ): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
     const popupMembersContext = this.popupMembersContextForSubEvent(item, group?.id);
-    if (this.eventEditorService.isOpen()) {
+    if (originOverride) {
+      this.subEventBadgePopupOrigin = originOverride;
+    } else if (this.eventEditorService.isOpen()) {
       this.subEventBadgePopupOrigin = 'stacked-event-editor';
     } else if (this.stackedPopup === 'chat') {
       this.subEventBadgePopupOrigin = 'chat';

@@ -1,4 +1,4 @@
-<div class="app-popup" *ngIf="eventEditorService.activitiesOpenBoolean()">
+<div class="app-popup" *ngIf="activitiesContext.activitiesOpenBoolean()">
   <div class="app-popup-backdrop" (click)="closeActivitiesPopup()"></div>
   <div class="app-popup-panel popup-panel-activities" (click)="$event.stopPropagation()">
     <div class="popup-header popup-header-with-activities-progress">
@@ -1188,4 +1188,5 @@
       </div><!-- /activities-popup -->
     </div><!-- /popup-body -->
   </div><!-- /app-popup-panel -->
+  <app-event-chat-popup></app-event-chat-popup>
 </div><!-- /app-popup -->

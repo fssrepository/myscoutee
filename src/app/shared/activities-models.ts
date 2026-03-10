@@ -1,0 +1,85 @@
+import type * as AppTypes from './app-types';
+import type { ChatMenuItem } from './demo-data';
+
+export type ActivitiesNavigationRequest =
+  | { type: 'eventExplore'; stacked?: boolean }
+  | {
+      type: 'chatResource';
+      item: ChatMenuItem;
+      resourceType: 'Members' | 'Car' | 'Accommodation' | 'Supplies';
+      subEvent: AppTypes.SubEventFormItem;
+      group?: { id: string; groupLabel: string } | null;
+    }
+  | { type: 'members'; row: AppTypes.ActivityListRow }
+  | { type: 'eventEditorCreate'; target: AppTypes.EventEditorTarget }
+  | { type: 'eventEditor'; row: AppTypes.ActivityListRow; readOnly: boolean };
+
+export type EventChatContextTone =
+  | 'popup-chat-context-btn-tone-main-event'
+  | 'popup-chat-context-btn-tone-optional'
+  | 'popup-chat-context-btn-tone-group';
+
+export interface EventChatResourceContext {
+  type: 'Members' | 'Car' | 'Accommodation' | 'Supplies';
+  icon: string;
+  title: string;
+  typeClass: string;
+  summary: string;
+  pending: number;
+  stateClass: string;
+  visible: boolean;
+}
+
+export interface EventChatContext {
+  channelType: AppTypes.ChatChannelType;
+  hasSubEventMenu: boolean;
+  actionIcon: string;
+  actionLabel: string;
+  actionToneClass: EventChatContextTone;
+  actionBadgeCount: number;
+  menuTitle: string;
+  eventRow: AppTypes.ActivityListRow | null;
+  subEventRow: AppTypes.ActivityListRow | null;
+  subEvent: AppTypes.SubEventFormItem | null;
+  group: { id: string; label: string } | null;
+  resources: EventChatResourceContext[];
+}
+
+export interface ActivitiesEventSyncPayload {
+  id: string;
+  target: AppTypes.EventEditorTarget;
+  title: string;
+  shortDescription: string;
+  timeframe: string;
+  activity: number;
+  isAdmin: boolean;
+  startAt: string;
+  distanceKm: number;
+  imageUrl: string;
+  acceptedMembers?: number;
+  pendingMembers?: number;
+  capacityTotal?: number;
+  syncKey: string;
+}
+
+export interface EventChatSession {
+  item: ChatMenuItem;
+  openedAtIso: string;
+  context: EventChatContext | null;
+}
+
+export interface ActivitiesPageRequest {
+  primaryFilter: AppTypes.ActivitiesPrimaryFilter;
+  secondaryFilter: AppTypes.ActivitiesSecondaryFilter;
+  chatContextFilter: AppTypes.ActivitiesChatContextFilter;
+  hostingPublicationFilter: AppTypes.HostingPublicationFilter;
+  rateFilter: AppTypes.RateFilterKey;
+  view: AppTypes.ActivitiesView;
+  page: number;
+  pageSize: number;
+}
+
+export interface ActivitiesPageResult {
+  rows: AppTypes.ActivityListRow[];
+  total: number;
+}

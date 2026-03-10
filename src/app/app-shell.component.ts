@@ -1,6 +1,7 @@
 import { Component, Type, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { App } from './app';
+import { ActivitiesDbContextService } from './shared/activities-db-context.service';
 import { EventEditorService } from './shared/event-editor.service';
 
 @Component({
@@ -18,6 +19,7 @@ import { EventEditorService } from './shared/event-editor.service';
   `
 })
 export class AppShellComponent {
+  private readonly activitiesContext = inject(ActivitiesDbContextService);
   private readonly eventEditorService = inject(EventEditorService);
   private readonly eventEditorPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly activitiesPopupComponentRef = signal<Type<unknown> | null>(null);
@@ -36,7 +38,7 @@ export class AppShellComponent {
     
     // Activities popup lazy loading
     effect(() => {
-      const isActivitiesOpen = this.eventEditorService.activitiesOpen();
+      const isActivitiesOpen = this.activitiesContext.activitiesOpen();
       if (isActivitiesOpen && !this.activitiesPopupComponentRef()) {
         void this.ensureActivitiesPopupLoaded();
       }
@@ -45,6 +47,7 @@ export class AppShellComponent {
         void this.ensureEventEditorPopupLoaded();
       }
     });
+
   }
 
   private async ensureEventEditorPopupLoaded(): Promise<void> {

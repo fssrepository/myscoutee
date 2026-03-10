@@ -36,8 +36,11 @@ import {
 import { AppCalendarHelpers } from '../shared/app-calendar-helpers';
 import { AppDemoGenerators } from '../shared/app-demo-generators';
 import { AppUtils } from '../shared/app-utils';
-import { ActivitiesEventSyncPayload, EventEditorService } from '../shared/event-editor.service';
+import { ActivitiesDbContextService } from '../shared/activities-db-context.service';
+import { EventEditorService } from '../shared/event-editor.service';
+import type { ActivitiesEventSyncPayload, ActivitiesPageRequest, EventChatContext, EventChatResourceContext } from '../shared/activities-models';
 import type * as AppTypes from '../shared/app-types';
+import { EventChatPopupComponent } from './event-chat-popup.component';
 
 // ---------------------------------------------------------------------------
 
@@ -49,7 +52,8 @@ import type * as AppTypes from '../shared/app-types';
     FormsModule,
     MatIconModule,
     MatSelectModule,
-    LazyBgImageDirective
+    LazyBgImageDirective,
+    EventChatPopupComponent
   ],
   templateUrl: './event-activities-popup.component.html',
   styleUrl: './event-activities-popup.component.scss',
@@ -63,7 +67,8 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   // ── injected ──────────────────────────────────────────────────────────────
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
-  protected readonly eventEditorService = inject(EventEditorService);
+  protected readonly activitiesContext = inject(ActivitiesDbContextService);
+  private readonly eventEditorService = inject(EventEditorService);
 
   // ── Self-contained data state (no host inputs) ───────────────────────────
   protected isMobileView = false;
@@ -263,6 +268,10 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   private activitiesLoadMoreTimer: ReturnType<typeof setTimeout> | null = null;
   private activitiesIsPaginating    = false;
   private activitiesPaginationAwaitScrollReset = false;
+  private serverPageRows: AppTypes.ActivityListRow[] = [];
+  private serverPageTotalRows = 0;
+  private serverPageIndex = 0;
+  private serverPageStateKey = '';
   private readonly activitiesPaginationLoadDelayMs = 1000;
 
   // ── Header progress ───────────────────────────────────────────────────────
@@ -288,7 +297,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
     // Sync service signal state → local properties so OnPush CD fires.
     effect(() => {
-      const svc = this.eventEditorService;
+      const svc = this.activitiesContext;
       this.activitiesPrimaryFilter       = svc.activitiesPrimaryFilter() as AppTypes.ActivitiesPrimaryFilter;
       this.activitiesChatContextFilter   = svc.activitiesChatContextFilter() as AppTypes.ActivitiesChatContextFilter;
       this.activitiesSecondaryFilter     = svc.activitiesSecondaryFilter() as AppTypes.ActivitiesSecondaryFilter;
@@ -305,18 +314,18 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
     // React to open events: reset scroll state whenever the popup is opened.
     effect(() => {
-      if (this.eventEditorService.activitiesOpen()) {
+      if (this.activitiesContext.activitiesOpen()) {
         this.onActivitiesOpened();
       }
     });
 
     effect(() => {
-      const sync = this.eventEditorService.activitiesEventSync();
+      const sync = this.activitiesContext.activitiesEventSync();
       if (!sync) {
         return;
       }
       this.applyActivitiesEventSync(sync);
-      this.eventEditorService.clearActivitiesEventSync();
+      this.activitiesContext.clearActivitiesEventSync();
       this.cdr.markForCheck();
     });
   }
@@ -327,7 +336,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (keyboardEvent.defaultPrevented) {
       return;
     }
-    if (!this.eventEditorService.activitiesOpen()) {
+    if (!this.activitiesContext.activitiesOpen()) {
       return;
     }
     if (this.eventEditorService.isOpen()) {
@@ -614,12 +623,16 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   // =========================================================================
 
   protected closeActivitiesPopup(): void {
-    this.eventEditorService.closeActivities();
+    this.activitiesContext.closeActivities();
   }
 
   // =========================================================================
   // Derived lists (computed on demand – no signals here for compat)
   // =========================================================================
+
+  private shouldUseServerSidePagination(): boolean {
+    return this.activitiesContext.dataMode === 'http';
+  }
 
   protected get filteredActivityRows(): AppTypes.ActivityListRow[] {
     const rows = this.buildFilteredActivityRowsBase();
@@ -627,6 +640,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   private buildFilteredActivityRowsBase(): AppTypes.ActivityListRow[] {
+    if (this.shouldUseServerSidePagination()) {
+      return [...this.serverPageRows];
+    }
     let rows: AppTypes.ActivityListRow[] = [];
     if (this.activitiesPrimaryFilter === 'chats') {
       rows = this.chatItemsForActivities()
@@ -885,7 +901,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (filter !== 'rates') {
       this.disableActivitiesRatesFullscreenMode();
     }
-    this.eventEditorService.setActivitiesPrimaryFilter(filter);
+    this.activitiesContext.setActivitiesPrimaryFilter(filter);
     this.lastRateIndicatorPulseRowId = null;
     this.showActivitiesPrimaryPicker = false;
     this.showActivitiesChatContextPicker = false;
@@ -896,7 +912,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   protected selectActivitiesChatContextFilter(filter: AppTypes.ActivitiesChatContextFilter): void {
     if (this.activitiesPrimaryFilter !== 'chats') { return; }
-    this.eventEditorService.setActivitiesChatContextFilter(filter);
+    this.activitiesContext.setActivitiesChatContextFilter(filter);
     this.showActivitiesChatContextPicker = false;
     this.showActivitiesPrimaryPicker = false;
     this.showActivitiesRatePicker = false;
@@ -906,7 +922,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   protected selectHostingPublicationFilter(filter: AppTypes.HostingPublicationFilter): void {
     if (this.activitiesPrimaryFilter !== 'hosting' || this.hostingPublicationFilter === filter) { return; }
-    this.eventEditorService.setActivitiesHostingPublicationFilter(filter);
+    this.activitiesContext.setActivitiesHostingPublicationFilter(filter);
     this.resetActivitiesScroll();
     this.cdr.markForCheck();
   }
@@ -915,7 +931,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (this.activitiesPrimaryFilter === 'rates') {
       this.commitPendingRateDirectionOverrides();
     }
-    this.eventEditorService.setActivitiesSecondaryFilter(filter);
+    this.activitiesContext.setActivitiesSecondaryFilter(filter);
     this.lastRateIndicatorPulseRowId = null;
     this.showActivitiesPrimaryPicker = false;
     this.showActivitiesChatContextPicker = false;
@@ -928,10 +944,10 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.stopActivitiesRatesPairSplitDrag();
     this.activitiesRateFilter = filter;
     this.commitPendingRateDirectionOverrides(filter);
-    this.eventEditorService.setActivitiesRateFilter(filter);
+    this.activitiesContext.setActivitiesRateFilter(filter);
     this.lastRateIndicatorPulseRowId = null;
     this.selectedActivityRateId = null;
-    this.eventEditorService.setActivitiesSelectedRateId(null);
+    this.activitiesContext.setActivitiesSelectedRateId(null);
     if (this.activitiesRatesFullscreenMode) {
       this.activitiesRatesFullscreenLeavingRow = null;
       this.activitiesRatesFullscreenCardIndex  = 0;
@@ -951,7 +967,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.showActivitiesPrimaryPicker = false;
     this.showActivitiesChatContextPicker = false;
     this.showActivitiesRatePicker = false;
-    this.eventEditorService.toggleActivitiesViewPicker();
+    this.activitiesContext.toggleActivitiesViewPicker();
   }
 
   protected toggleActivitiesSecondaryPicker(event: Event): void {
@@ -960,7 +976,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.showActivitiesPrimaryPicker = false;
     this.showActivitiesChatContextPicker = false;
     this.showActivitiesRatePicker = false;
-    this.eventEditorService.toggleActivitiesSecondaryPicker();
+    this.activitiesContext.toggleActivitiesSecondaryPicker();
   }
 
   protected setActivitiesView(view: AppTypes.ActivitiesView, event?: Event): void {
@@ -971,7 +987,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (view !== 'distance') {
       this.disableActivitiesRatesFullscreenMode();
     }
-    this.eventEditorService.setActivitiesView(view as 'day' | 'week' | 'month' | 'distance');
+    this.activitiesContext.setActivitiesView(view as 'day' | 'week' | 'month' | 'distance');
     this.lastRateIndicatorPulseRowId = null;
     this.showActivitiesPrimaryPicker = false;
     this.showActivitiesChatContextPicker = false;
@@ -1022,7 +1038,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   protected requestOpenEventEditor(): void {
     const target: AppTypes.EventEditorTarget = this.activitiesPrimaryFilter === 'hosting' ? 'hosting' : 'events';
-    this.eventEditorService.requestActivitiesNavigation({
+    this.activitiesContext.requestActivitiesNavigation({
       type: 'eventEditorCreate',
       target
     });
@@ -1033,7 +1049,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     readOnly = false,
     stacked = true
   ): void {
-    this.eventEditorService.requestActivitiesNavigation({
+    this.activitiesContext.requestActivitiesNavigation({
       type: 'eventEditor',
       row,
       readOnly
@@ -1042,7 +1058,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   protected requestOpenEventExplore(): void {
     this.closeActivitiesPopup();
-    this.eventEditorService.requestActivitiesNavigation({ type: 'eventExplore' });
+    this.activitiesContext.requestActivitiesNavigation({ type: 'eventExplore' });
   }
 
   // =========================================================================
@@ -1425,7 +1441,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected runActivityItemViewAction(row: AppTypes.ActivityListRow, event: Event): void {
     event.stopPropagation();
     this.inlineItemActionMenu = null;
-    this.eventEditorService.requestActivitiesNavigation({
+    this.activitiesContext.requestActivitiesNavigation({
       type: 'eventEditor',
       row,
       readOnly: true
@@ -1499,7 +1515,8 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
     if (row.type === 'chats') {
-      this.eventEditorService.requestActivitiesNavigation({ type: 'chat', item: row.source as ChatMenuItem });
+      const chat = row.source as ChatMenuItem;
+      this.activitiesContext.openEventChat(chat, this.buildEventChatContext(chat));
       return;
     }
     if (row.type === 'rates') {
@@ -1511,7 +1528,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   protected openActivityMembers(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
-    this.eventEditorService.requestActivitiesNavigation({ type: 'members', row });
+    this.activitiesContext.requestActivitiesNavigation({ type: 'members', row });
   }
 
   // =========================================================================
@@ -1537,7 +1554,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.activityRateEditorOpenScrollTop = scrollElement ? scrollElement.scrollTop : null;
     }
     this.selectedActivityRateId = row.id;
-    this.eventEditorService.setActivitiesSelectedRateId(row.id);
+    this.activitiesContext.setActivitiesSelectedRateId(row.id);
     this.activityRateEditorClosing = false;
     this.pulseRateIndicatorForRow(row);
     this.runAfterActivitiesRender(() => {
@@ -1620,7 +1637,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return;
     }
     this.selectedActivityRateId = row.id;
-    this.eventEditorService.setActivitiesSelectedRateId(row.id);
+    this.activitiesContext.setActivitiesSelectedRateId(row.id);
     this.activityRateDraftById[row.id] = normalized;
     const rateItem = row.source as RateMenuItem;
     const nextDirection = this.pendingDirectionAfterRating(rateItem);
@@ -1677,7 +1694,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.activityRateEditorCloseTimer = null;
       this.activityRateEditorClosing = false;
       this.selectedActivityRateId = null;
-      this.eventEditorService.setActivitiesSelectedRateId(null);
+      this.activitiesContext.setActivitiesSelectedRateId(null);
       this.lastRateIndicatorPulseRowId = null;
       this.lastActivityRateEditorLiftDelta = 0;
       this.activityRateEditorOpenScrollTop = null;
@@ -2405,7 +2422,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.cancelActivityRateEditorCloseTransition();
     this.activityRateEditorClosing = false;
     this.syncActivitiesRatesFullscreenSelection();
-    this.eventEditorService.setActivitiesRatesFullscreenMode(true);
+    this.activitiesContext.setActivitiesRatesFullscreenMode(true);
     this.maybeStartActivitiesRatesFullscreenPaginationLoad();
     this.refreshActivitiesHeaderProgressSoon();
   }
@@ -2426,8 +2443,8 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.lastActivityRateEditorLiftDelta = 0;
     this.activityRateEditorOpenScrollTop = null;
     this.lastRateIndicatorPulseRowId = null;
-    this.eventEditorService.setActivitiesRatesFullscreenMode(false);
-    this.eventEditorService.setActivitiesSelectedRateId(null);
+    this.activitiesContext.setActivitiesRatesFullscreenMode(false);
+    this.activitiesContext.setActivitiesSelectedRateId(null);
     this.updateActivitiesHeaderProgress();
     this.refreshActivitiesHeaderProgressSoon();
   }
@@ -2446,7 +2463,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     const allRows = this.activitiesRatesFullscreenAllRows();
     if (allRows.length === 0) {
       this.selectedActivityRateId = null;
-      this.eventEditorService.setActivitiesSelectedRateId(null);
+      this.activitiesContext.setActivitiesSelectedRateId(null);
       this.activitiesRatesFullscreenCardIndex = 0;
       this.updateActivitiesHeaderProgress();
       return;
@@ -2460,12 +2477,12 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     }
     if (this.activitiesRatesFullscreenCardIndex >= allRows.length) {
       this.selectedActivityRateId = null;
-      this.eventEditorService.setActivitiesSelectedRateId(null);
+      this.activitiesContext.setActivitiesSelectedRateId(null);
       this.updateActivitiesHeaderProgress();
       return;
     }
     this.selectedActivityRateId = allRows[this.activitiesRatesFullscreenCardIndex]?.id ?? null;
-    this.eventEditorService.setActivitiesSelectedRateId(this.selectedActivityRateId);
+    this.activitiesContext.setActivitiesSelectedRateId(this.selectedActivityRateId);
     this.pulseRateIndicatorForRow(allRows[this.activitiesRatesFullscreenCardIndex] ?? null);
     this.updateActivitiesHeaderProgress();
   }
@@ -3172,6 +3189,12 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.activitiesPaginationKey = this.activitiesPaginationStateKey();
       this.activitiesVisibleCount = 0;
       this.activitiesPaginationAwaitScrollReset = false;
+      if (this.shouldUseServerSidePagination()) {
+        this.serverPageRows = [];
+        this.serverPageTotalRows = 0;
+        this.serverPageIndex = 0;
+        this.serverPageStateKey = this.activitiesPaginationKey;
+      }
       this.activitiesInitialLoadPending = true;
       this.startActivitiesPaginationLoad(true);
     }
@@ -3225,7 +3248,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   private setStickyValue(value: string): void {
     this.activitiesStickyValue = value;
-    this.eventEditorService.setActivitiesStickyValue(value);
+    this.activitiesContext.setActivitiesStickyValue(value);
   }
 
   private seedActivitiesStickyHeader(): void {
@@ -3299,8 +3322,13 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return;
     }
     const rows = this.buildFilteredActivityRowsBase();
-    this.ensureActivitiesPaginationState(rows.length);
-    if (this.activitiesVisibleCount >= rows.length) {
+    if (!this.shouldUseServerSidePagination()) {
+      this.ensureActivitiesPaginationState(rows.length);
+    }
+    const totalRows = this.shouldUseServerSidePagination()
+      ? (this.serverPageTotalRows > 0 ? this.serverPageTotalRows : rows.length)
+      : rows.length;
+    if (this.activitiesVisibleCount >= totalRows) {
       return;
     }
     const remainingPx = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
@@ -3317,6 +3345,14 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   private startActivitiesPaginationLoad(allowEmptyResponse = false): void {
+    if (this.shouldUseServerSidePagination()) {
+      this.startServerActivitiesPaginationLoad(allowEmptyResponse);
+      return;
+    }
+    this.startLocalActivitiesPaginationLoad(allowEmptyResponse);
+  }
+
+  private startLocalActivitiesPaginationLoad(allowEmptyResponse = false): void {
     if (this.activitiesIsPaginating) {
       return;
     }
@@ -3347,6 +3383,61 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     }, this.activitiesPaginationLoadDelayMs);
   }
 
+  private startServerActivitiesPaginationLoad(allowEmptyResponse = false): void {
+    if (this.activitiesIsPaginating) {
+      return;
+    }
+    if (!allowEmptyResponse && this.serverPageTotalRows > 0 && this.serverPageRows.length >= this.serverPageTotalRows) {
+      return;
+    }
+    this.activitiesIsPaginating = true;
+    this.beginActivitiesHeaderProgressLoading();
+
+    const currentStateKey = this.activitiesPaginationStateKey();
+    this.serverPageStateKey = currentStateKey;
+    const request: ActivitiesPageRequest = {
+      primaryFilter: this.activitiesPrimaryFilter,
+      secondaryFilter: this.activitiesSecondaryFilter,
+      chatContextFilter: this.activitiesChatContextFilter,
+      hostingPublicationFilter: this.hostingPublicationFilter,
+      rateFilter: this.activitiesRateFilter,
+      view: this.activitiesView,
+      page: this.serverPageIndex,
+      pageSize: this.activitiesPageSize
+    };
+
+    void this.activitiesContext.loadActivitiesPage(request)
+      .then(page => {
+        if (this.serverPageStateKey !== currentStateKey) {
+          return;
+        }
+        const nextRows = page?.rows ?? [];
+        this.serverPageRows = this.serverPageIndex === 0
+          ? [...nextRows]
+          : [...this.serverPageRows, ...nextRows];
+        this.serverPageTotalRows = page
+          ? Math.max(this.serverPageRows.length, Math.max(0, Math.trunc(page.total)))
+          : this.serverPageRows.length;
+        if (nextRows.length > 0) {
+          this.serverPageIndex += 1;
+        }
+        this.activitiesVisibleCount = this.serverPageRows.length;
+        this.activitiesInitialLoadPending = false;
+      })
+      .catch(() => {
+        this.activitiesInitialLoadPending = false;
+      })
+      .finally(() => {
+        this.activitiesIsPaginating = false;
+        this.activitiesPaginationAwaitScrollReset = true;
+        this.endActivitiesHeaderProgressLoading();
+        this.refreshActivitiesStickyHeaderSoon();
+        this.updateActivitiesHeaderProgress();
+        this.refreshActivitiesHeaderProgressSoon();
+        this.cdr.markForCheck();
+      });
+  }
+
   private shouldStartActivitiesPreload(scrollElement: HTMLElement): boolean {
     const rows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.activities-row-item'));
     if (rows.length === 0) {
@@ -3361,6 +3452,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   private ensureActivitiesPaginationState(totalRows: number): void {
+    if (this.shouldUseServerSidePagination()) {
+      return;
+    }
     const nextKey = this.activitiesPaginationStateKey();
     if (nextKey === this.activitiesPaginationKey) {
       return;
@@ -3393,6 +3487,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (this.activitiesIsPaginating) {
       this.activitiesIsPaginating = false;
       this.endActivitiesHeaderProgressLoading();
+    }
+    if (this.shouldUseServerSidePagination()) {
+      this.serverPageStateKey = '';
     }
     this.activitiesPaginationAwaitScrollReset = false;
     this.activitiesInitialLoadPending = false;
@@ -4208,6 +4305,225 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return `${stageLabel} - ${subEventLabel}`;
   }
 
+  private buildEventChatContext(chat: ChatMenuItem): EventChatContext {
+    const channelType = this.chatChannelType(chat);
+    const subEvent = this.chatSubEventForItem(chat);
+    const group = this.eventChatGroup(chat, subEvent);
+    const source = this.resolveChatEventSource(chat);
+    const eventRow = source ? this.buildChatSourceActivityRow(source) : null;
+    const hasSubEventMenu = channelType === 'optionalSubEvent' || channelType === 'groupSubEvent';
+    return {
+      channelType,
+      hasSubEventMenu,
+      actionIcon: this.eventChatActionIcon(channelType),
+      actionLabel: this.eventChatActionLabel(channelType),
+      actionToneClass: this.eventChatActionTone(channelType),
+      actionBadgeCount: this.contextualChatUnreadCount(chat),
+      menuTitle: this.eventChatMenuTitle(chat, subEvent, group),
+      eventRow,
+      subEventRow: eventRow,
+      subEvent,
+      group,
+      resources: this.eventChatResources(channelType, subEvent)
+    };
+  }
+
+  private eventChatActionIcon(channelType: AppTypes.ChatChannelType): string {
+    if (channelType === 'groupSubEvent') {
+      return 'groups';
+    }
+    if (channelType === 'optionalSubEvent') {
+      return 'event_available';
+    }
+    return 'event';
+  }
+
+  private eventChatActionLabel(channelType: AppTypes.ChatChannelType): string {
+    if (channelType === 'groupSubEvent') {
+      return 'View Group';
+    }
+    if (channelType === 'optionalSubEvent') {
+      return 'View Sub Event';
+    }
+    return 'View Event';
+  }
+
+  private eventChatActionTone(channelType: AppTypes.ChatChannelType): EventChatContext['actionToneClass'] {
+    if (channelType === 'optionalSubEvent') {
+      return 'popup-chat-context-btn-tone-optional';
+    }
+    if (channelType === 'groupSubEvent') {
+      return 'popup-chat-context-btn-tone-group';
+    }
+    return 'popup-chat-context-btn-tone-main-event';
+  }
+
+  private eventChatGroup(
+    chat: ChatMenuItem,
+    subEvent: AppTypes.SubEventFormItem | null
+  ): EventChatContext['group'] {
+    if (!subEvent || !chat.groupId) {
+      return null;
+    }
+    const group = this.subEventGroupsForStage(subEvent).find(item => item.id === chat.groupId) ?? null;
+    if (!group) {
+      return null;
+    }
+    return {
+      id: group.id,
+      label: group.name
+    };
+  }
+
+  private eventChatMenuTitle(
+    chat: ChatMenuItem,
+    subEvent: AppTypes.SubEventFormItem | null,
+    group: EventChatContext['group']
+  ): string {
+    if (!subEvent) {
+      return chat.title;
+    }
+    const subEventLabel = this.subEventDisplayName(subEvent) || subEvent.name || chat.title;
+    if (group) {
+      return `${subEventLabel} · ${group.label}`;
+    }
+    return subEventLabel;
+  }
+
+  private eventChatResources(
+    channelType: AppTypes.ChatChannelType,
+    subEvent: AppTypes.SubEventFormItem | null
+  ): EventChatResourceContext[] {
+    if (!subEvent) {
+      return [];
+    }
+    const includeMembers = channelType === 'optionalSubEvent' || channelType === 'groupSubEvent';
+    return [
+      {
+        type: 'Members',
+        icon: 'groups',
+        title: 'Members',
+        typeClass: 'event-subevent-badge-members',
+        summary: this.subEventCapacityLabelForChat(subEvent),
+        pending: Math.max(0, Math.trunc(Number(subEvent.membersPending) || 0)),
+        stateClass: this.subEventCapacityStateClassForChat(subEvent),
+        visible: includeMembers
+      },
+      {
+        type: 'Car',
+        icon: 'directions_car',
+        title: 'Car',
+        typeClass: 'event-subevent-badge-car',
+        summary: this.subEventAssetCapacityLabelForChat(subEvent, 'Car'),
+        pending: this.subEventAssetPendingCountForChat(subEvent, 'Car'),
+        stateClass: this.subEventAssetCapacityStateClassForChat(subEvent, 'Car'),
+        visible: true
+      },
+      {
+        type: 'Accommodation',
+        icon: 'hotel',
+        title: 'Accommodation',
+        typeClass: 'event-subevent-badge-accommodation',
+        summary: this.subEventAssetCapacityLabelForChat(subEvent, 'Accommodation'),
+        pending: this.subEventAssetPendingCountForChat(subEvent, 'Accommodation'),
+        stateClass: this.subEventAssetCapacityStateClassForChat(subEvent, 'Accommodation'),
+        visible: true
+      },
+      {
+        type: 'Supplies',
+        icon: 'inventory_2',
+        title: 'Supplies',
+        typeClass: 'event-subevent-badge-supplies',
+        summary: this.subEventAssetCapacityLabelForChat(subEvent, 'Supplies'),
+        pending: this.subEventAssetPendingCountForChat(subEvent, 'Supplies'),
+        stateClass: this.subEventAssetCapacityStateClassForChat(subEvent, 'Supplies'),
+        visible: true
+      }
+    ];
+  }
+
+  private subEventCapacityLabelForChat(item: AppTypes.SubEventFormItem): string {
+    return `${item.membersAccepted} / ${item.capacityMin} - ${item.capacityMax}`;
+  }
+
+  private subEventCapacityStateClassForChat(item: AppTypes.SubEventFormItem): string {
+    return item.membersAccepted >= item.capacityMin && item.membersAccepted <= item.capacityMax
+      ? 'subevent-capacity-in-range'
+      : 'subevent-capacity-out-of-range';
+  }
+
+  private subEventAssetCapacityLabelForChat(item: AppTypes.SubEventFormItem, type: AppTypes.AssetType): string {
+    const metrics = this.subEventAssetCapacityMetricsForChat(item, type);
+    return `${metrics.joined} / ${metrics.capacityMin} - ${metrics.capacityMax}`;
+  }
+
+  private subEventAssetCapacityStateClassForChat(item: AppTypes.SubEventFormItem, type: AppTypes.AssetType): string {
+    const metrics = this.subEventAssetCapacityMetricsForChat(item, type);
+    return metrics.joined >= metrics.capacityMin && metrics.joined <= metrics.capacityMax
+      ? 'subevent-capacity-in-range'
+      : 'subevent-capacity-out-of-range';
+  }
+
+  private subEventAssetPendingCountForChat(item: AppTypes.SubEventFormItem, type: AppTypes.AssetType): number {
+    this.syncSubEventAssetBadgeCounts(item, type);
+    if (type === 'Car') {
+      return Math.max(0, Math.trunc(Number(item.carsPending) || 0));
+    }
+    if (type === 'Accommodation') {
+      return Math.max(0, Math.trunc(Number(item.accommodationPending) || 0));
+    }
+    return Math.max(0, Math.trunc(Number(item.suppliesPending) || 0));
+  }
+
+  private subEventAssetCapacityMetricsForChat(
+    subEvent: AppTypes.SubEventFormItem,
+    type: AppTypes.AssetType
+  ): { joined: number; capacityMin: number; capacityMax: number } {
+    const pending = this.subEventAssetPendingCountForChat(subEvent, type);
+    const accepted = this.subEventAssetAcceptedCountForChat(subEvent, type);
+    const bounds = this.subEventAssetCapacityBoundsForChat(subEvent, type, accepted, pending);
+    return {
+      joined: accepted,
+      capacityMin: bounds.capacityMin,
+      capacityMax: bounds.capacityMax
+    };
+  }
+
+  private subEventAssetAcceptedCountForChat(subEvent: AppTypes.SubEventFormItem, type: AppTypes.AssetType): number {
+    if (type === 'Car') {
+      return Math.max(0, Math.trunc(Number(subEvent.carsAccepted) || 0));
+    }
+    if (type === 'Accommodation') {
+      return Math.max(0, Math.trunc(Number(subEvent.accommodationAccepted) || 0));
+    }
+    if (type === 'Supplies') {
+      return Math.max(0, Math.trunc(Number(subEvent.suppliesAccepted) || 0));
+    }
+    return 0;
+  }
+
+  private subEventAssetCapacityBoundsForChat(
+    subEvent: AppTypes.SubEventFormItem,
+    type: AppTypes.AssetType,
+    accepted: number,
+    pending: number
+  ): { capacityMin: number; capacityMax: number } {
+    const observed = Math.max(accepted, accepted + pending);
+    if (type === 'Car') {
+      const min = Math.max(0, Math.trunc(Number(subEvent.carsCapacityMin) || 0));
+      const max = Math.max(min, Math.trunc(Number(subEvent.carsCapacityMax) || observed));
+      return { capacityMin: min, capacityMax: max };
+    }
+    if (type === 'Accommodation') {
+      const min = Math.max(0, Math.trunc(Number(subEvent.accommodationCapacityMin) || 0));
+      const max = Math.max(min, Math.trunc(Number(subEvent.accommodationCapacityMax) || observed));
+      return { capacityMin: min, capacityMax: max };
+    }
+    const min = Math.max(0, Math.trunc(Number(subEvent.suppliesCapacityMin) || 0));
+    const max = Math.max(min, Math.trunc(Number(subEvent.suppliesCapacityMax) || observed));
+    return { capacityMin: min, capacityMax: max };
+  }
+
   private matchesActivitiesChatContextFilter(item: ChatMenuItem): boolean {
     if (this.activitiesPrimaryFilter !== 'chats' || this.activitiesChatContextFilter === 'all') {
       return true;
@@ -4420,7 +4736,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (row.type !== 'events' && row.type !== 'hosting' && row.type !== 'invitations') {
       return;
     }
-    this.eventEditorService.requestActivitiesNavigation({
+    this.activitiesContext.requestActivitiesNavigation({
       type: 'eventEditor',
       row,
       readOnly: row.type === 'invitations' ? true : readOnly
