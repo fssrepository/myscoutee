@@ -71,6 +71,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly headerLoadingTickMs = 16;
 
   private loadSequence = 0;
+  private loadedSessionKey: string | null = null;
   private chatHistoryLoadOlderTimer: ReturnType<typeof setTimeout> | null = null;
   private chatInitialLoadTimer: ReturnType<typeof setTimeout> | null = null;
   private chatHeaderLoadingCounter = 0;
@@ -81,6 +82,12 @@ export class EventChatPopupComponent implements OnDestroy {
   constructor() {
     effect(() => {
       const session = this.session();
+      const sessionKey = session ? `${session.item.id}:${session.openedAtIso}` : null;
+      if (session && this.loadedSessionKey === sessionKey) {
+        this.cdr.markForCheck();
+        return;
+      }
+      this.loadedSessionKey = sessionKey;
       this.loadSequence += 1;
       const sequence = this.loadSequence;
       this.draftMessage = '';
@@ -92,6 +99,7 @@ export class EventChatPopupComponent implements OnDestroy {
       this.cancelChatHistoryLoadOlder();
       this.cancelChatInitialLoadTimer();
       if (!session) {
+        this.loadedSessionKey = null;
         this.chatInitialLoadPending = false;
         this.clearChatHeaderLoadingAnimation();
         this.cdr.markForCheck();
@@ -136,6 +144,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.cancelChatHistoryLoadOlder();
     this.cancelChatInitialLoadTimer();
     this.clearChatHeaderLoadingAnimation();
+    this.loadedSessionKey = null;
     this.activitiesContext.closeEventChat();
   }
 

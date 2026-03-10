@@ -59,6 +59,8 @@
         <div
           class="item-action-menu event-subevent-resource-menu popup-chat-context-menu"
           [class.is-open]="isSelectedChatContextMenuOpen()"
+          [class.item-action-menu-mobile]="isMobileView()"
+          [class.item-action-menu-desktop]="!isMobileView()"
           [class.is-open-up]="isSelectedChatContextMenuOpenUp()"
           (click)="$event.stopPropagation()"
         >

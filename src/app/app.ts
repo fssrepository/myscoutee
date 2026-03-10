@@ -3960,10 +3960,6 @@ export class App {
     const eligible = new Set(eligibleIds);
     const stored = this.subEventAssignedAssetIdsByKey[key];
     if (!stored) {
-      if (this.shouldStartWithNoAssignedAssets(subEventId, type)) {
-        this.subEventAssignedAssetIdsByKey[key] = [];
-        return [];
-      }
       this.subEventAssignedAssetIdsByKey[key] = [...eligibleIds];
       return [...eligibleIds];
     }
@@ -3972,23 +3968,6 @@ export class App {
       this.subEventAssignedAssetIdsByKey[key] = [...normalized];
     }
     return normalized;
-  }
-
-  private shouldStartWithNoAssignedAssets(subEventId: string, type: AppTypes.AssetType): boolean {
-    if (this.subEventBadgePopupOrigin !== 'chat') {
-      return false;
-    }
-    const contextSubEvent = this.selectedSubEventBadgeContext?.subEvent;
-    if (!contextSubEvent || contextSubEvent.id !== subEventId) {
-      return false;
-    }
-    if (type === 'Car') {
-      return Math.max(0, Math.trunc(Number(contextSubEvent.carsCapacityMax) || 0)) <= 0;
-    }
-    if (type === 'Accommodation') {
-      return Math.max(0, Math.trunc(Number(contextSubEvent.accommodationCapacityMax) || 0)) <= 0;
-    }
-    return Math.max(0, Math.trunc(Number(contextSubEvent.suppliesCapacityMax) || 0)) <= 0;
   }
 
   private applySubEventAssetAssignments(): void {
