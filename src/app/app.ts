@@ -16,6 +16,7 @@ import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-
 import { AlertService } from './shared/alert.service';
 import { ActivitiesDbContextService } from './shared/activities-db-context.service';
 import { EventEditorService } from './shared/event-editor.service';
+import { UsersService, USERS_POPUP_KEY_DEMO_SELECTOR } from './shared/core/users';
 import {
   APP_DEMO_DATA,
   DEMO_CHAT_BY_USER,
@@ -143,6 +144,7 @@ export class App {
   public readonly alertService = inject(AlertService);
   protected readonly activitiesContext = inject(ActivitiesDbContextService);
   protected readonly eventEditorService = inject(EventEditorService);
+  protected readonly usersService = inject(UsersService);
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -5453,7 +5455,7 @@ export class App {
       this.closeUserMenu();
       return;
     }
-    this.showUserSelector = true;
+    this.openDemoUserSelectorPopup();
     this.closeUserMenu();
   }
 
@@ -5474,7 +5476,7 @@ export class App {
       this.showFirebaseAuthPopup = true;
       return;
     }
-    this.showUserSelector = true;
+    this.openDemoUserSelectorPopup();
   }
 
   protected closeFirebaseAuthPopup(): void {
@@ -5484,6 +5486,16 @@ export class App {
 
   protected closeDemoUserSelectorPopup(): void {
     this.showUserSelector = false;
+  }
+
+  private openDemoUserSelectorPopup(): void {
+    this.showUserSelector = true;
+    void this.usersService.loadAvailableDemoUsers({
+      preferCached: true,
+      popupKey: USERS_POPUP_KEY_DEMO_SELECTOR
+    }).then(() => {
+      this.cdr.markForCheck();
+    });
   }
 
   protected scrollEntryTo(sectionId: string, event?: Event): void {
@@ -13817,10 +13829,6 @@ export class App {
   }
 
   private resolveAuthMode(): AppTypes.AuthMode {
-    const configured = (environment as { authMode?: string }).authMode;
-    if (configured === 'firebase' || configured === 'selector') {
-      return configured;
-    }
     return environment.loginEnabled ? 'firebase' : 'selector';
   }
 
