@@ -3,20 +3,19 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../../environments/environment';
 import type {
-  UsersDataSource,
-  UsersDataSourceQueryOptions,
-  UsersQueryResponse
-} from '../../../users/users-data-source';
-import type { UserDto } from '../../../users/dtos/user.dto';
+  UserService,
+  UsersQueryResponse,
+  UserDto
+} from '../../../interfaces/user.interface';
 
 @Injectable({
   providedIn: 'root'
 })
-export class HttpUsersService implements UsersDataSource {
+export class HttpUsersService implements UserService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async queryAvailableDemoUsers(_options: UsersDataSourceQueryOptions = {}): Promise<UsersQueryResponse> {
+  async queryAvailableDemoUsers(): Promise<UsersQueryResponse> {
     try {
       const response = await this.http
         .get<UserDto[] | null>(`${this.apiBaseUrl}/auth/demo-users`)

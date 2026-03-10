@@ -1,4 +1,4 @@
-import type { UserDto } from '../../../users/dtos/user.dto';
+import type { UserDto } from '../../../interfaces/user.interface';
 
 export const DEMO_USERS_TABLE_NAME = 'demoUsers' as const;
 

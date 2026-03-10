@@ -1,24 +1,35 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { Router } from '@angular/router';
 
 import { AppDemoGenerators } from '../../../../app-demo-generators';
 import type {
-  UsersDataSource,
-  UsersDataSourceQueryOptions,
-  UsersQueryResponse
-} from '../../../users/users-data-source';
-import type { UserDto } from '../../../users/dtos/user.dto';
+  UserService,
+  UsersQueryResponse,
+  UserDto
+} from '../../../interfaces/user.interface';
+
+interface DemoUsersRouteDelayEntry {
+  routePrefix: string;
+  additionalDelayMs: number;
+}
+
+const DEFAULT_DEMO_USERS_DELAY_MS = 300;
+const DEMO_USERS_ROUTE_DELAY_CONFIG: DemoUsersRouteDelayEntry[] = [
+  {
+    routePrefix: '/game',
+    additionalDelayMs: 0
+  }
+];
 
 @Injectable({
   providedIn: 'root'
 })
-export class DemoUsersService implements UsersDataSource {
+export class DemoUsersService implements UserService {
   private readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
-  private static readonly DEFAULT_USERS_ADDITIONAL_DELAY_MS = 0;
+  private readonly router = inject(Router);
 
-  async queryAvailableDemoUsers(options: UsersDataSourceQueryOptions = {}): Promise<UsersQueryResponse> {
-    const additionalDelayMs = this.normalizeDelayMs(
-      options.demoAdditionalDelayMs ?? DemoUsersService.DEFAULT_USERS_ADDITIONAL_DELAY_MS
-    );
+  async queryAvailableDemoUsers(): Promise<UsersQueryResponse> {
+    const additionalDelayMs = this.resolveAdditionalDelayMsForRoute(this.router.url);
     if (additionalDelayMs > 0) {
       await new Promise<void>(resolve => {
         setTimeout(() => resolve(), additionalDelayMs);
@@ -27,6 +38,43 @@ export class DemoUsersService implements UsersDataSource {
     return {
       users: this.users.map(user => this.cloneUser(user))
     };
+  }
+
+  private resolveAdditionalDelayMsForRoute(url: string): number {
+    const normalizedUrl = this.normalizeRouteUrl(url);
+    let bestMatchLength = -1;
+    let selectedDelayMs = DEFAULT_DEMO_USERS_DELAY_MS;
+
+    for (const entry of DEMO_USERS_ROUTE_DELAY_CONFIG) {
+      const normalizedPrefix = this.normalizeRouteUrl(entry.routePrefix);
+      if (!this.isRoutePrefixMatch(normalizedUrl, normalizedPrefix)) {
+        continue;
+      }
+      if (normalizedPrefix.length <= bestMatchLength) {
+        continue;
+      }
+      bestMatchLength = normalizedPrefix.length;
+      selectedDelayMs = entry.additionalDelayMs;
+    }
+
+    return this.normalizeDelayMs(selectedDelayMs);
+  }
+
+  private normalizeRouteUrl(url: string): string {
+    const [pathOnly] = url.split('?');
+    const [withoutHash] = (pathOnly || '').split('#');
+    const trimmed = withoutHash.trim();
+    if (!trimmed || trimmed === '/') {
+      return '/';
+    }
+    return trimmed.startsWith('/') ? trimmed.replace(/\/+$/, '') : `/${trimmed}`.replace(/\/+$/, '');
+  }
+
+  private isRoutePrefixMatch(url: string, prefix: string): boolean {
+    if (prefix === '/') {
+      return true;
+    }
+    return url === prefix || url.startsWith(`${prefix}/`);
   }
 
   private normalizeDelayMs(value: number): number {

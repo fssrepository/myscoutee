@@ -26,3 +26,11 @@ export interface UserDto {
     hosting: number;
   };
 }
+
+export interface UsersQueryResponse {
+  users: UserDto[];
+}
+
+export interface UserService {
+  queryAvailableDemoUsers(): Promise<UsersQueryResponse>;
+}

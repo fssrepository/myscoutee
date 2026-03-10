@@ -1,18 +1,13 @@
 import { Injectable, inject } from '@angular/core';
-import { Router } from '@angular/router';
 
 import { environment } from '../../../../environments/environment';
-import { DemoUsersRepository } from '../demo/users';
-import type { UserDto } from './dtos/user.dto';
-import { USERS_DATA_SOURCE } from './users-data-source';
-import { resolveDemoUsersQueryOptionsForRoute } from '../demo/users/services/users-route-query-config';
+import { DemoUsersRepository, DemoUsersService } from '../demo/users';
+import { HttpUsersService } from '../http/users';
+import type { UserDto, UserService } from '../interfaces/user.interface';
 
 export interface UsersQueryOptions {
   preferCached?: boolean;
-  popupKey?: string;
-  routeUrl?: string;
   requestTimeoutMs?: number;
-  demoAdditionalDelayMs?: number;
 }
 
 @Injectable({
@@ -21,8 +16,8 @@ export interface UsersQueryOptions {
 export class UsersService {
   private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 3000;
   private readonly usersRepository = inject(DemoUsersRepository);
-  private readonly usersDataSource = inject(USERS_DATA_SOURCE);
-  private readonly router = inject(Router);
+  private readonly demoUsersService = inject(DemoUsersService);
+  private readonly httpUsersService = inject(HttpUsersService);
   private readonly demoModeEnabled = !environment.loginEnabled;
 
   readonly usersTable = this.usersRepository.usersTable;
@@ -30,6 +25,10 @@ export class UsersService {
   readonly demoUsersLoading = this.usersRepository.demoUsersLoading;
   readonly demoUsersLoadedAtIso = this.usersRepository.demoUsersLoadedAtIso;
   readonly demoUsersError = this.usersRepository.demoUsersError;
+
+  private get userService(): UserService {
+    return this.demoModeEnabled ? this.demoUsersService : this.httpUsersService;
+  }
 
   queryAvailableDemoUsers(): UserDto[] {
     return this.usersRepository.queryAvailableDemoUsers();
@@ -41,7 +40,7 @@ export class UsersService {
     if (!this.demoModeEnabled) {
       try {
         const response = await this.withRequestTimeout(
-          this.usersDataSource.queryAvailableDemoUsers(),
+          this.userService.queryAvailableDemoUsers(),
           requestTimeoutMs
         );
         return response.users;
@@ -58,18 +57,10 @@ export class UsersService {
       }
     }
 
-    const routeQueryOptions = resolveDemoUsersQueryOptionsForRoute(
-      options.routeUrl ?? this.router.url,
-      options.popupKey,
-      {
-        demoAdditionalDelayMs: options.demoAdditionalDelayMs
-      }
-    );
-
     this.usersRepository.beginDemoUsersLoad();
     try {
       const response = await this.withRequestTimeout(
-        this.usersDataSource.queryAvailableDemoUsers(routeQueryOptions),
+        this.userService.queryAvailableDemoUsers(),
         requestTimeoutMs
       );
       return this.usersRepository.completeDemoUsersLoad(response.users);

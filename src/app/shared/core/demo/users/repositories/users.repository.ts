@@ -1,6 +1,6 @@
 import { computed, Injectable, inject } from '@angular/core';
 
-import type { UserDto } from '../../../users/dtos/user.dto';
+import type { UserDto } from '../../../interfaces/user.interface';
 import { DEMO_USERS_TABLE_NAME } from '../models/users.model';
 import { DemoUsersMemoryDb } from './users.memory-db';
 
