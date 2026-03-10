@@ -4599,14 +4599,14 @@
         <span class="popup-close-glyph" aria-hidden="true">×</span>
       </button>
     </div>
-    <ng-container *ngIf="usersService.demoUsersLoading(); else demoUserSelectorReady">
+    <ng-container *ngIf="usersLoadState().status === 'loading'; else demoUserSelectorReady">
       <div class="demo-user-grid demo-user-grid-loading">
         <p class="demo-user-loading-copy">Loading demo users...</p>
       </div>
     </ng-container>
     <ng-template #demoUserSelectorReady>
-      <div class="demo-user-grid" *ngIf="usersService.demoUsers().length > 0; else demoUserSelectorEmpty">
-        <button type="button" class="demo-user-item" *ngFor="let user of usersService.demoUsers()" (click)="selectLoginUser(user.id)">
+      <div class="demo-user-grid" *ngIf="demoSelectorUsers.length > 0; else demoUserSelectorEmpty">
+        <button type="button" class="demo-user-item" *ngFor="let user of demoSelectorUsers" (click)="selectLoginUser(user.id)">
           <span class="user-avatar" [class]="'user-color-' + user.gender">{{ user.initials }}</span>
           <span class="demo-user-name">{{ user.name }}</span>
           <span class="demo-user-meta">{{ user.gender }} · {{ user.city }}</span>
