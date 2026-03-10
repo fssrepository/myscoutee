@@ -848,6 +848,26 @@
     max-height: none;
   }
 
+  .item-action-menu.item-action-menu-mobile {
+    position: fixed;
+    left: 50%;
+    right: auto;
+    top: auto;
+    bottom: env(safe-area-inset-bottom, 0px);
+    width: min(100vw - 1.6rem, 27rem);
+    min-width: 0;
+    max-width: calc(100vw - 1.6rem);
+    max-height: min(70vh, 32rem);
+    overflow-y: auto;
+    border-radius: 14px 14px 0 0;
+    box-shadow: 0 22px 48px rgba(11, 24, 43, 0.32);
+    transform: translate(-50%, 0);
+  }
+
+  .item-action-menu.item-action-menu-mobile.is-open {
+    animation: item-action-menu-mobile-sheet-in 0.2s ease-out;
+  }
+
   .chat-compose-box textarea {
     min-height: 66px;
   }
@@ -859,6 +879,6 @@
 
 @media (max-width: 720px) {
   .popup-chat-context-btn .event-editor-members-invite > span {
-    display: none;
+    display: inline;
   }
 }

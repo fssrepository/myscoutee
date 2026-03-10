@@ -3964,6 +3964,13 @@ export class App {
       return [...eligibleIds];
     }
     const normalized = stored.filter(id => eligible.has(id));
+    if (normalized.length === 0 && eligibleIds.length > 0) {
+      const existingSettings = this.subEventAssignedAssetSettingsByKey[key] ?? {};
+      if (Object.keys(existingSettings).length === 0) {
+        this.subEventAssignedAssetIdsByKey[key] = [...eligibleIds];
+        return [...eligibleIds];
+      }
+    }
     if (normalized.length !== stored.length) {
       this.subEventAssignedAssetIdsByKey[key] = [...normalized];
     }
