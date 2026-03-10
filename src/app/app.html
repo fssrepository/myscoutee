@@ -2966,11 +2966,13 @@
           <ng-container *ngIf="!isMobilePopupSheetViewport; else mobileSubEventResourceFilterButton">
             <div class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select" [ngClass]="subEventResourceTypeClass(subEventResourceFilter)">
               <mat-select
+                #subEventResourceFilterSelect="matSelect"
                 [(ngModel)]="subEventResourceFilter"
                 (ngModelChange)="selectSubEventResourceFilter($event)"
+                (openedChange)="onSubEventResourceFilterOpened($event, subEventResourceFilterSelect)"
                 [panelWidth]="assetFilterPanelWidth()"
                 disableOptionCentering
-                panelClass="selector-options-panel profile-bottom-sheet-panel assets-filter-options-panel"
+                panelClass="assets-filter-options-panel subevent-resource-options-panel"
               >
                 <mat-select-trigger>
                   <span class="status-option-content">
@@ -3007,7 +3009,7 @@
           </ng-template>
           <button
             type="button"
-            class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select subevent-members-pending-toggle activities-hosting-draft-toggle"
+            class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select subevent-members-pending-toggle"
             *ngIf="subEventResourceFilter === 'Members'; else subEventAssetsActionButtons"
             [class.is-active]="subEventMembersPendingOnly"
             (click)="toggleSubEventMembersPendingOnly($event)"

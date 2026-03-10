@@ -9611,11 +9611,6 @@ textarea {
   transform: translateY(-10px) !important;
 }
 
-/* Move the actual positioned overlay pane up when select opens above. */
-.cdk-overlay-pane.mat-mdc-select-panel-above {
-  transform: translateY(-14px) !important;
-}
-
 /* Avoid consuming the next click when closing asset/sub-event filter selects. */
 .cdk-overlay-container:has(.assets-filter-options-panel) .cdk-overlay-backdrop {
   pointer-events: none !important;
@@ -12220,7 +12215,7 @@ textarea {
   overflow-x: hidden;
 }
 
-.subevent-members-popup .assets-toolbar {
+.subevent-assets-popup .assets-toolbar {
   position: relative;
   z-index: 4;
 }
@@ -13439,6 +13434,17 @@ textarea {
   width: 100%;
   min-width: 0;
   column-gap: 0.34rem;
+}
+
+.mat-mdc-select-panel.subevent-resource-options-panel {
+  margin-top: 8px !important;
+  margin-bottom: 8px !important;
+}
+
+.mat-mdc-select-panel.subevent-resource-options-panel.mat-mdc-select-panel-above,
+.cdk-overlay-pane .mat-mdc-select-panel.subevent-resource-options-panel.mat-mdc-select-panel-above {
+  margin-top: 0 !important;
+  margin-bottom: 18px !important;
 }
 
 .assets-filter-options-panel .mat-mdc-option.status-option .status-option-content {

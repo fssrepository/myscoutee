@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { DateAdapter, MAT_DATE_FORMATS, MatNativeDateModule, NativeDateAdapter } from '@angular/material/core';
-import { MatSelectModule } from '@angular/material/select';
+import { MatSelect, MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
@@ -2636,6 +2636,26 @@ export class App {
     } else if (previous !== 'Members') {
       this.subEventMembersPendingOnly = true;
     }
+  }
+
+  protected onSubEventResourceFilterOpened(isOpen: boolean, select: MatSelect): void {
+    if (!isOpen || this.stackedPopup !== 'subEventAssets' || typeof window === 'undefined') {
+      return;
+    }
+    const repositionOverlay = (
+      select as unknown as { _overlayDir?: { overlayRef?: { updatePosition: () => void } } }
+    )._overlayDir?.overlayRef;
+    const reposition = (): void => {
+      if (!select.panelOpen) {
+        return;
+      }
+      repositionOverlay?.updatePosition();
+    };
+    window.requestAnimationFrame(() => {
+      reposition();
+      window.setTimeout(reposition, 0);
+      window.setTimeout(reposition, 40);
+    });
   }
 
   protected subEventResourceTypeIcon(type: AppTypes.SubEventResourceFilter): string {
