@@ -11,10 +11,10 @@ import { MatTimepickerModule } from '@angular/material/timepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatOptionModule } from '@angular/material/core';
 import { Subscription } from 'rxjs';
-import { EventEditorService } from '../shared/event-editor.service';
-import { APP_STATIC_DATA } from '../shared/app-static-data';
-import { AppUtils } from '../shared/app-utils';
-import { EventSubeventsPopupComponent, EventSubeventsItem } from './event-subevents-popup.component';
+import { EventEditorService } from '../../../shared/event-editor.service';
+import { APP_STATIC_DATA } from '../../../shared/app-static-data';
+import { AppUtils } from '../../../shared/app-utils';
+import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
 
 type EventVisibility = 'Public' | 'Friends only' | 'Invitation only';
 type EventBlindMode = 'Open Event' | 'Blind Event';

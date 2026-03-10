@@ -8,7 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTimepickerModule } from '@angular/material/timepicker';
-import { AppUtils } from '../shared/app-utils';
+import { AppUtils } from '../../../shared/app-utils';
 
 type SubEventModeClass = 'subevent-mode-mandatory' | 'subevent-mode-optional';
 type StageInsertPlacement = 'before' | 'after';

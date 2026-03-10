@@ -1,4 +1,4 @@
-@use './activity-interactions.shared' as shared;
+@use '../activity-interactions.shared' as shared;
 
 @include shared.host-motion-vars();
 @include shared.interactive-feedback('.popup-header-add-btn, .experience-form-close-btn');

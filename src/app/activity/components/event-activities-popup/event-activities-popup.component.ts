@@ -17,8 +17,8 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 
-import { LazyBgImageDirective } from '../shared/lazy-bg-image.directive';
-import { APP_STATIC_DATA } from '../shared/app-static-data';
+import { LazyBgImageDirective } from '../../../shared/lazy-bg-image.directive';
+import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import {
   APP_DEMO_DATA,
   DEMO_CHAT_BY_USER,
@@ -32,15 +32,15 @@ import {
   type HostingMenuItem,
   type InvitationMenuItem,
   type DemoUser
-} from '../shared/demo-data';
-import { AppCalendarHelpers } from '../shared/app-calendar-helpers';
-import { AppDemoGenerators } from '../shared/app-demo-generators';
-import { AppUtils } from '../shared/app-utils';
-import { ActivitiesDbContextService } from '../shared/activities-db-context.service';
-import { EventEditorService } from '../shared/event-editor.service';
-import type { ActivitiesEventSyncPayload, ActivitiesPageRequest, EventChatContext, EventChatResourceContext } from '../shared/activities-models';
-import type * as AppTypes from '../shared/app-types';
-import { EventChatPopupComponent } from './event-chat-popup.component';
+} from '../../../shared/demo-data';
+import { AppCalendarHelpers } from '../../../shared/app-calendar-helpers';
+import { AppDemoGenerators } from '../../../shared/app-demo-generators';
+import { AppUtils } from '../../../shared/app-utils';
+import { ActivitiesDbContextService } from '../../../shared/activities-db-context.service';
+import { EventEditorService } from '../../../shared/event-editor.service';
+import type { ActivitiesEventSyncPayload, ActivitiesPageRequest, EventChatContext, EventChatResourceContext } from '../../../shared/activities-models';
+import type * as AppTypes from '../../../shared/app-types';
+import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
 
 // ---------------------------------------------------------------------------
 

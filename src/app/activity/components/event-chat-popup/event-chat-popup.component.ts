@@ -15,12 +15,12 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import type * as AppTypes from '../shared/app-types';
-import { AppUtils } from '../shared/app-utils';
-import { ActivitiesDbContextService } from '../shared/activities-db-context.service';
-import { EventEditorService } from '../shared/event-editor.service';
-import type { EventChatResourceContext } from '../shared/activities-models';
-import type { EventMenuItem } from '../shared/demo-data';
+import type * as AppTypes from '../../../shared/app-types';
+import { AppUtils } from '../../../shared/app-utils';
+import { ActivitiesDbContextService } from '../../../shared/activities-db-context.service';
+import { EventEditorService } from '../../../shared/event-editor.service';
+import type { EventChatResourceContext } from '../../../shared/activities-models';
+import type { EventMenuItem } from '../../../shared/demo-data';
 
 @Component({
   selector: 'app-event-chat-popup',

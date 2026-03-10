@@ -54,7 +54,7 @@ export class AppShellComponent {
     if (this.eventEditorPopupComponentRef()) {
       return;
     }
-    const module = await import('./activity/event-editor-popup.component');
+    const module = await import('./activity/components/event-editor-popup/event-editor-popup.component');
     this.eventEditorPopupComponentRef.set(module.EventEditorPopupComponent);
   }
   
@@ -62,7 +62,7 @@ export class AppShellComponent {
     if (this.activitiesPopupComponentRef()) {
       return;
     }
-    const module = await import('./activity/event-activities-popup.component');
+    const module = await import('./activity/components/event-activities-popup/event-activities-popup.component');
     this.activitiesPopupComponentRef.set(module.EventActivitiesPopupComponent);
   }
 }
