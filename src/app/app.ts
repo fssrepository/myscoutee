@@ -17,7 +17,7 @@ import { AlertService } from './shared/alert.service';
 import { ActivitiesDbContextService } from './shared/activities-db-context.service';
 import { EventEditorService } from './shared/event-editor.service';
 import { UsersService } from './shared/core/users.service';
-import type { UserDto } from './shared/core/user.interface';
+import type { DemoUserListItemDto, UserDto } from './shared/core/user.interface';
 import {
   APP_DEMO_DATA,
   DEMO_CHAT_BY_USER,
@@ -176,7 +176,7 @@ export class App {
   protected showEntryConsentPopup = false;
   protected entryConsentViewOnly = false;
   protected showUserSelector = false;
-  protected demoSelectorUsers: UserDto[] = [];
+  protected demoSelectorUsers: DemoUserListItemDto[] = [];
   protected demoSelectorLoading = false;
   protected showFirebaseAuthPopup = false;
   protected firebaseAuthIsBusy = false;
@@ -5444,12 +5444,20 @@ export class App {
   }
 
   protected selectLoginUser(userId: string): void {
+    if (this.demoSelectorLoading) {
+      return;
+    }
+    this.demoSelectorLoading = true;
     this.activeUserId = userId;
     localStorage.setItem(App.DEMO_ACTIVE_USER_KEY, userId);
-    this.syncProfileFormFromActiveUser();
-    this.activeMenuSection = 'chat';
-    window.dispatchEvent(new CustomEvent('active-user-changed'));
-    this.completeEntryFlow();
+    void this.hydrateUserAfterLogin(userId).finally(() => {
+      this.syncProfileFormFromActiveUser();
+      this.activeMenuSection = 'chat';
+      window.dispatchEvent(new CustomEvent('active-user-changed'));
+      this.demoSelectorLoading = false;
+      this.completeEntryFlow();
+      this.cdr.markForCheck();
+    });
   }
 
   protected openUserSelector(): void {
@@ -5532,6 +5540,46 @@ export class App {
     this.firebaseAuthProfile = profile;
     this.firebaseAuthIsBusy = false;
     this.completeEntryFlow();
+  }
+
+  private async hydrateUserAfterLogin(userId: string): Promise<void> {
+    const loadedUser = await this.usersService.loadUserById(userId);
+    if (!loadedUser) {
+      return;
+    }
+    this.applyLoadedUserDetails(loadedUser);
+  }
+
+  private applyLoadedUserDetails(user: UserDto): void {
+    const current = this.users.find(candidate => candidate.id === user.id);
+    if (!current) {
+      return;
+    }
+
+    Object.assign(current, {
+      ...user,
+      languages: [...(user.languages ?? [])],
+      images: [...(user.images ?? [])],
+      activities: {
+        ...user.activities
+      }
+    });
+
+    delete this.profileDetailsFormByUser[current.id];
+    this.syncLoadedUserImageSlots(current);
+  }
+
+  private syncLoadedUserImageSlots(user: DemoUser): void {
+    const loadedImages = (user.images ?? []).filter(image => image.trim().length > 0).slice(0, 8);
+    if (loadedImages.length === 0) {
+      return;
+    }
+
+    const slots = this.createEmptyImageSlots();
+    loadedImages.forEach((image, index) => {
+      slots[index] = image;
+    });
+    this.profileImageSlotsByUser[user.id] = slots;
   }
 
   protected get isFirebaseAuthMode(): boolean {

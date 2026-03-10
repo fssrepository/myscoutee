@@ -3,11 +3,12 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { DemoUsersService } from './demo';
 import { HttpUsersService } from './http';
-import type { UserDto, UserService } from './user.interface';
+import type { DemoUserListItemDto, UserDto, UserService } from './user.interface';
 import { type LoadStatus } from './app.context';
 import { AppContext } from './app.context';
 
 export const USERS_LOAD_CONTEXT_KEY = 'users-selector';
+export const USER_BY_ID_LOAD_CONTEXT_KEY = 'user-by-id';
 
 class RequestTimeoutError extends Error {
   constructor() {
@@ -31,10 +32,15 @@ export class UsersService {
     return this.demoModeEnabled ? this.demoUsersService : this.httpUsersService;
   }
 
-  async loadAvailableDemoUsers(requestTimeoutMs?: number): Promise<UserDto[]> {
+  async loadAvailableDemoUsers(requestTimeoutMs?: number): Promise<DemoUserListItemDto[]> {
+    if (!this.demoModeEnabled) {
+      this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'success');
+      return [];
+    }
+
     const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
 
-    this.setLoadStatus('loading');
+    this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'loading');
 
     try {
       const response = await this.withRequestTimeout(
@@ -42,21 +48,56 @@ export class UsersService {
         normalizedTimeoutMs
       );
 
-      this.setLoadStatus('success');
+      this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'success');
       return response.users;
     } catch (error) {
       if (error instanceof RequestTimeoutError) {
-        this.setLoadStatus('timeout', 'Users request timeout.');
+        this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'timeout', 'Users request timeout.');
         return [];
       }
 
-      this.setLoadStatus('error', 'Unable to load demo users.');
+      this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'error', 'Unable to load demo users.');
       return [];
     }
   }
 
-  private setLoadStatus(status: LoadStatus, message?: string): void {
-    this.appCtx.setStatus(USERS_LOAD_CONTEXT_KEY, status, message);
+  async loadUserById(userId: string, requestTimeoutMs?: number): Promise<UserDto | null> {
+    const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
+    const normalizedUserId = userId.trim();
+
+    if (!normalizedUserId) {
+      this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Missing user id.');
+      return null;
+    }
+
+    this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'loading');
+
+    try {
+      const response = await this.withRequestTimeout(
+        this.userService.queryUserById(normalizedUserId),
+        normalizedTimeoutMs
+      );
+
+      if (!response.user) {
+        this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'User details not found.');
+        return null;
+      }
+
+      this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
+      return response.user;
+    } catch (error) {
+      if (error instanceof RequestTimeoutError) {
+        this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'timeout', 'User details request timeout.');
+        return null;
+      }
+
+      this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Unable to load user details.');
+      return null;
+    }
+  }
+
+  private setLoadStatus(contextKey: string, status: LoadStatus, message?: string): void {
+    this.appCtx.setStatus(contextKey, status, message);
   }
 
   private resolveRequestTimeoutMs(value?: number): number {

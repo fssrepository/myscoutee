@@ -5,7 +5,8 @@ import { DemoUsersRepository } from '../repositories/users.repository';
 import { resolveAdditionalDelayMsForRoute } from '../config';
 import type {
   UserService,
-  UsersQueryResponse
+  UserByIdQueryResponse,
+  UsersListQueryResponse
 } from '../../user.interface';
 
 @Injectable({
@@ -15,7 +16,7 @@ export class DemoUsersService implements UserService {
   private readonly usersRepository = inject(DemoUsersRepository);
   private readonly router = inject(Router);
 
-  async queryAvailableDemoUsers(): Promise<UsersQueryResponse> {
+  async queryAvailableDemoUsers(): Promise<UsersListQueryResponse> {
     const additionalDelayMs = resolveAdditionalDelayMsForRoute(this.router.url);
     if (additionalDelayMs > 0) {
       await new Promise<void>(resolve => {
@@ -24,6 +25,18 @@ export class DemoUsersService implements UserService {
     }
     return {
       users: this.usersRepository.queryAvailableDemoUsers()
+    };
+  }
+
+  async queryUserById(userId: string): Promise<UserByIdQueryResponse> {
+    const additionalDelayMs = resolveAdditionalDelayMsForRoute(this.router.url);
+    if (additionalDelayMs > 0) {
+      await new Promise<void>(resolve => {
+        setTimeout(() => resolve(), additionalDelayMs);
+      });
+    }
+    return {
+      user: this.usersRepository.queryUserById(userId)
     };
   }
 }

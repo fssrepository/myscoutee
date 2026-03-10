@@ -1,7 +1,7 @@
 import { computed, Injectable, inject } from '@angular/core';
 
 import { AppDemoGenerators } from '../../../app-demo-generators';
-import type { UserDto } from '../../user.interface';
+import type { DemoUserListItemDto, UserDto } from '../../user.interface';
 import { DEMO_USERS_TABLE_NAME } from '../models/users.model';
 import { DemoUsersMemoryDb } from '../models/db';
 
@@ -22,7 +22,7 @@ export class DemoUsersRepository {
   init(users: readonly UserDto[] = AppDemoGenerators.buildExpandedDemoUsers(DemoUsersRepository.DEFAULT_DEMO_USERS_COUNT)): UserDto[] {
     const current = this.memoryDb.read()[DEMO_USERS_TABLE_NAME];
     if (current.ids.length > 0) {
-      return this.queryAvailableDemoUsers();
+      return this.queryAllUsers();
     }
 
     const usersById: Record<string, UserDto> = {};
@@ -40,10 +40,26 @@ export class DemoUsersRepository {
       }
     }));
 
-    return this.queryAvailableDemoUsers();
+    return this.queryAllUsers();
   }
 
-  queryAvailableDemoUsers(): UserDto[] {
+  queryAvailableDemoUsers(): DemoUserListItemDto[] {
+    const users = this.memoryDb.read()[DEMO_USERS_TABLE_NAME];
+    return users.ids
+      .map(id => users.byId[id])
+      .filter((user): user is UserDto => Boolean(user))
+      .map(user => this.toDemoUserListItem(user));
+  }
+
+  queryUserById(userId: string): UserDto | null {
+    const user = this.memoryDb.read()[DEMO_USERS_TABLE_NAME].byId[userId];
+    if (!user) {
+      return null;
+    }
+    return this.cloneUser(user);
+  }
+
+  private queryAllUsers(): UserDto[] {
     const users = this.memoryDb.read()[DEMO_USERS_TABLE_NAME];
     return users.ids
       .map(id => users.byId[id])
@@ -59,6 +75,16 @@ export class DemoUsersRepository {
       activities: {
         ...user.activities
       }
+    };
+  }
+
+  private toDemoUserListItem(user: UserDto): DemoUserListItemDto {
+    return {
+      id: user.id,
+      name: user.name,
+      city: user.city,
+      initials: user.initials,
+      gender: user.gender
     };
   }
 }

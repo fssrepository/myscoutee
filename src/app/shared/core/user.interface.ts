@@ -1,3 +1,11 @@
+export interface DemoUserListItemDto {
+  id: string;
+  name: string;
+  city: string;
+  initials: string;
+  gender: 'woman' | 'man';
+}
+
 export interface UserDto {
   id: string;
   name: string;
@@ -27,10 +35,15 @@ export interface UserDto {
   };
 }
 
-export interface UsersQueryResponse {
-  users: UserDto[];
+export interface UsersListQueryResponse {
+  users: DemoUserListItemDto[];
+}
+
+export interface UserByIdQueryResponse {
+  user: UserDto | null;
 }
 
 export interface UserService {
-  queryAvailableDemoUsers(): Promise<UsersQueryResponse>;
+  queryAvailableDemoUsers(): Promise<UsersListQueryResponse>;
+  queryUserById(userId: string): Promise<UserByIdQueryResponse>;
 }

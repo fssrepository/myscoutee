@@ -3,8 +3,10 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type {
+  DemoUserListItemDto,
+  UserByIdQueryResponse,
   UserService,
-  UsersQueryResponse,
+  UsersListQueryResponse,
   UserDto
 } from '../../user.interface';
 
@@ -15,7 +17,7 @@ export class HttpUsersService implements UserService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async queryAvailableDemoUsers(): Promise<UsersQueryResponse> {
+  async queryAvailableDemoUsers(): Promise<UsersListQueryResponse> {
     try {
       const response = await this.http
         .get<UserDto[] | null>(`${this.apiBaseUrl}/auth/demo-users`)
@@ -24,10 +26,28 @@ export class HttpUsersService implements UserService {
         return { users: [] };
       }
       return {
-        users: response.map(user => this.cloneUser(user))
+        users: response
+          .map(user => this.cloneUser(user))
+          .map(user => this.toDemoUserListItem(user))
       };
     } catch {
       return { users: [] };
+    }
+  }
+
+  async queryUserById(_userId: string): Promise<UserByIdQueryResponse> {
+    try {
+      const me = await this.http
+        .get<UserDto | null>(`${this.apiBaseUrl}/auth/me`)
+        .toPromise();
+      if (!me) {
+        return { user: null };
+      }
+      return {
+        user: this.cloneUser(me)
+      };
+    } catch {
+      return { user: null };
     }
   }
 
@@ -43,6 +63,16 @@ export class HttpUsersService implements UserService {
         events: Math.max(0, Math.trunc(Number(user.activities?.events) || 0)),
         hosting: Math.max(0, Math.trunc(Number(user.activities?.hosting) || 0))
       }
+    };
+  }
+
+  private toDemoUserListItem(user: UserDto): DemoUserListItemDto {
+    return {
+      id: user.id,
+      name: user.name,
+      city: user.city,
+      initials: user.initials,
+      gender: user.gender
     };
   }
 }
