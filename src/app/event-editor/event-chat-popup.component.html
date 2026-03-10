@@ -1,4 +1,4 @@
-<div class="app-popup app-popup-stacked app-popup-stacked-over-activities event-chat-popup-shell" *ngIf="session() as chatSession">
+<div class="app-popup app-popup-stacked event-chat-popup-shell" *ngIf="session() as chatSession">
   <div class="app-popup-backdrop" (click)="close()"></div>
   <div class="app-popup-panel popup-panel-event-chat" (click)="$event.stopPropagation()">
     <button
@@ -12,6 +12,7 @@
       <div class="popup-title popup-title-chat">
         <div class="popup-chat-title-block">
           <h2>{{ chatSession.item.title }}</h2>
+          <p *ngIf="chatSession.item.lastMessage">{{ chatSession.item.lastMessage }}</p>
         </div>
       </div>
 
@@ -26,7 +27,10 @@
           <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
           <span>{{ selectedChatHeaderActionLabel() }}</span>
         </span>
-        <span class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge" *ngIf="selectedChatHeaderActionBadgeCount() > 0">
+        <span
+          class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge"
+          *ngIf="selectedChatHeaderActionBadgeCount() > 0"
+        >
           {{ selectedChatHeaderActionBadgeCount() }}
         </span>
       </button>
@@ -45,7 +49,10 @@
             <span>{{ selectedChatHeaderActionLabel() }}</span>
             <mat-icon class="popup-chat-context-chevron">expand_more</mat-icon>
           </span>
-          <span class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge" *ngIf="selectedChatHeaderActionBadgeCount() > 0">
+          <span
+            class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge"
+            *ngIf="selectedChatHeaderActionBadgeCount() > 0"
+          >
             {{ selectedChatHeaderActionBadgeCount() }}
           </span>
         </button>

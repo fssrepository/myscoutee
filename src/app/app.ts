@@ -589,6 +589,7 @@ export class App {
       }
       this.activitiesContext.clearActivitiesNavigationRequest();
       if (request.type === 'chatResource') {
+        this.eventEditorService.isOpen();
         setTimeout(() => {
           this.openSubEventBadgePopup(
             request.resourceType,
@@ -597,7 +598,7 @@ export class App {
             request.group
               ? { id: request.group.id, groupLabel: request.group.groupLabel }
               : undefined,
-            'active-event-editor'
+            'chat'
           );
         }, 0);
         return;
@@ -2520,10 +2521,11 @@ export class App {
       };
     }
 
-    if (this.stackedPopup !== 'chat' && this.activePopup !== 'chat') {
+    const chatSessionItem = this.activitiesContext.eventChatSession()?.item ?? null;
+    if (!chatSessionItem && this.stackedPopup !== 'chat' && this.activePopup !== 'chat') {
       return null;
     }
-    const chat = this.selectedChat;
+    const chat = chatSessionItem ?? this.selectedChat;
     if (!chat) {
       return null;
     }
@@ -3951,6 +3953,10 @@ export class App {
     const eligible = new Set(eligibleIds);
     const stored = this.subEventAssignedAssetIdsByKey[key];
     if (!stored) {
+      if (this.shouldStartWithNoAssignedAssets(subEventId, type)) {
+        this.subEventAssignedAssetIdsByKey[key] = [];
+        return [];
+      }
       this.subEventAssignedAssetIdsByKey[key] = [...eligibleIds];
       return [...eligibleIds];
     }
@@ -3959,6 +3965,23 @@ export class App {
       this.subEventAssignedAssetIdsByKey[key] = [...normalized];
     }
     return normalized;
+  }
+
+  private shouldStartWithNoAssignedAssets(subEventId: string, type: AppTypes.AssetType): boolean {
+    if (this.subEventBadgePopupOrigin !== 'chat') {
+      return false;
+    }
+    const contextSubEvent = this.selectedSubEventBadgeContext?.subEvent;
+    if (!contextSubEvent || contextSubEvent.id !== subEventId) {
+      return false;
+    }
+    if (type === 'Car') {
+      return Math.max(0, Math.trunc(Number(contextSubEvent.carsCapacityMax) || 0)) <= 0;
+    }
+    if (type === 'Accommodation') {
+      return Math.max(0, Math.trunc(Number(contextSubEvent.accommodationCapacityMax) || 0)) <= 0;
+    }
+    return Math.max(0, Math.trunc(Number(contextSubEvent.suppliesCapacityMax) || 0)) <= 0;
   }
 
   private applySubEventAssetAssignments(): void {
@@ -5058,7 +5081,7 @@ export class App {
         this.stackedPopup = null;
         this.reopenEventEditorPopupFromState();
       } else if (this.subEventBadgePopupOrigin === 'chat') {
-        this.stackedPopup = 'chat';
+        this.stackedPopup = null;
       } else {
         this.stackedPopup = null;
       }

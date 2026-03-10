@@ -69,6 +69,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private loadSequence = 0;
   private chatHistoryLoadOlderTimer: ReturnType<typeof setTimeout> | null = null;
+  private chatInitialLoadTimer: ReturnType<typeof setTimeout> | null = null;
   private chatHeaderLoadingCounter = 0;
   private chatHeaderLoadingInterval: ReturnType<typeof setInterval> | null = null;
   private chatHeaderLoadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
@@ -86,6 +87,7 @@ export class EventChatPopupComponent implements OnDestroy {
       this.chatVisibleMessageCount = this.chatHistoryPageSize;
       this.chatHeaderProgress = 0;
       this.cancelChatHistoryLoadOlder();
+      this.cancelChatInitialLoadTimer();
       if (!session) {
         this.chatInitialLoadPending = false;
         this.clearChatHeaderLoadingAnimation();
@@ -96,31 +98,32 @@ export class EventChatPopupComponent implements OnDestroy {
       // Warm event-editor service path while chat is active to reduce first-action flicker.
       this.eventEditorService.isOpen();
       this.beginChatHeaderProgressLoading();
+      const loadStartedAtMs = performance.now();
       this.cdr.markForCheck();
       void this.activitiesContext.loadEventChatMessages(session.item)
         .then(nextMessages => {
           if (sequence !== this.loadSequence) {
             return;
           }
-          this.allMessages = [...nextMessages]
-            .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
-          this.chatVisibleMessageCount = this.initialChatVisibleMessageCount(this.allMessages.length);
-          this.endChatHeaderProgressLoading();
-          this.cdr.markForCheck();
+          this.finishInitialChatLoad(
+            sequence,
+            [...nextMessages]
+              .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso)),
+            loadStartedAtMs
+          );
         })
         .catch(() => {
           if (sequence !== this.loadSequence) {
             return;
           }
-          this.allMessages = [];
-          this.endChatHeaderProgressLoading();
-          this.cdr.markForCheck();
+          this.finishInitialChatLoad(sequence, [], loadStartedAtMs);
         });
     });
   }
 
   ngOnDestroy(): void {
     this.cancelChatHistoryLoadOlder();
+    this.cancelChatInitialLoadTimer();
     this.clearChatHeaderLoadingAnimation();
   }
 
@@ -128,6 +131,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.showContextMenu = false;
     this.contextMenuOpenUp = false;
     this.cancelChatHistoryLoadOlder();
+    this.cancelChatInitialLoadTimer();
     this.clearChatHeaderLoadingAnimation();
     this.activitiesContext.closeEventChat();
   }
@@ -183,7 +187,6 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!row) {
       return;
     }
-    this.activitiesContext.closeEventChat();
     this.activitiesContext.requestActivitiesNavigation({
       type: 'eventEditor',
       row,
@@ -270,25 +273,39 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     this.updateChatHeaderProgress(thread);
-    if (this.chatHistoryLoadingOlder || !this.hasMoreChatMessages()) {
+    if (this.chatHistoryLoadingOlder) {
+      // If user scrolls away while delayed top-pagination is pending, cancel it to avoid jump-back.
+      if (thread.scrollTop > 96) {
+        this.cancelChatHistoryLoadOlder();
+        this.endChatHeaderProgressLoading();
+        this.cdr.markForCheck();
+      }
+      return;
+    }
+    if (!this.hasMoreChatMessages()) {
       return;
     }
     if (thread.scrollTop > 48) {
       return;
     }
-
-    const beforeHeight = thread.scrollHeight;
-    const beforeTop = thread.scrollTop;
-    const threadRect = thread.getBoundingClientRect();
-    const anchorMessage =
-      Array.from(thread.querySelectorAll<HTMLElement>('.chat-message[data-chat-message-id]'))
-        .find(message => message.getBoundingClientRect().bottom > threadRect.top + 8) ?? null;
-    const anchorMessageId = anchorMessage?.dataset['chatMessageId'] ?? null;
-    const anchorOffsetTop = anchorMessage ? anchorMessage.getBoundingClientRect().top - threadRect.top : 0;
     this.chatHistoryLoadingOlder = true;
     this.beginChatHeaderProgressLoading();
     this.chatHistoryLoadOlderTimer = setTimeout(() => {
       this.chatHistoryLoadOlderTimer = null;
+      if (thread.scrollTop > 96) {
+        this.chatHistoryLoadingOlder = false;
+        this.endChatHeaderProgressLoading();
+        this.cdr.markForCheck();
+        return;
+      }
+      const beforeHeight = thread.scrollHeight;
+      const beforeTop = thread.scrollTop;
+      const threadRect = thread.getBoundingClientRect();
+      const anchorMessage =
+        Array.from(thread.querySelectorAll<HTMLElement>('.chat-message[data-chat-message-id]'))
+          .find(message => message.getBoundingClientRect().bottom > threadRect.top + 8) ?? null;
+      const anchorMessageId = anchorMessage?.dataset['chatMessageId'] ?? null;
+      const anchorOffsetTop = anchorMessage ? anchorMessage.getBoundingClientRect().top - threadRect.top : 0;
       this.chatVisibleMessageCount = Math.min(this.chatVisibleMessageCount + this.chatHistoryPageSize, this.allMessages.length);
       this.cdr.detectChanges();
       this.runAfterThreadRender(() => {
@@ -630,6 +647,40 @@ export class EventChatPopupComponent implements OnDestroy {
     clearTimeout(this.chatHistoryLoadOlderTimer);
     this.chatHistoryLoadOlderTimer = null;
     this.chatHistoryLoadingOlder = false;
+  }
+
+  private finishInitialChatLoad(
+    sequence: number,
+    messages: AppTypes.ChatPopupMessage[],
+    loadStartedAtMs: number
+  ): void {
+    const elapsedMs = Math.max(0, performance.now() - loadStartedAtMs);
+    const remainingMs = Math.max(0, this.chatLoadOlderDelayMs - elapsedMs);
+    const commit = () => {
+      this.chatInitialLoadTimer = null;
+      if (sequence !== this.loadSequence) {
+        return;
+      }
+      this.allMessages = [...messages];
+      this.chatVisibleMessageCount = this.initialChatVisibleMessageCount(this.allMessages.length);
+      this.endChatHeaderProgressLoading();
+      this.cdr.markForCheck();
+    };
+    if (remainingMs <= 0) {
+      commit();
+      return;
+    }
+    this.chatInitialLoadTimer = setTimeout(() => {
+      this.ngZone.run(() => commit());
+    }, remainingMs);
+  }
+
+  private cancelChatInitialLoadTimer(): void {
+    if (!this.chatInitialLoadTimer) {
+      return;
+    }
+    clearTimeout(this.chatInitialLoadTimer);
+    this.chatInitialLoadTimer = null;
   }
 
   private scrollThreadToBottom(): void {
