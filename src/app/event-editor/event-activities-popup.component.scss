@@ -1765,7 +1765,7 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   box-shadow: 0 4px 10px rgba(17, 36, 62, 0.12);
   cursor: default;
 }
-.activities-rates-fullscreen-card-leaving {
+.activities-rate-profile-card.activities-row-item.activities-rates-fullscreen-card-leaving {
   z-index: 3;
   transform-origin: top right;
   pointer-events: none;

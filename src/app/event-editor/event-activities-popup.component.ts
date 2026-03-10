@@ -2301,35 +2301,13 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     }
     const allRows = this.activitiesRatesFullscreenAllRows();
     if (allRows.length === 0) {
-      this.selectedActivityRateId = null;
-      this.eventEditorService.setActivitiesSelectedRateId(null);
-      this.activitiesRatesFullscreenCardIndex = 0;
       return null;
     }
-    if (this.activitiesRatesFullscreenCardIndex < 0) {
-      this.activitiesRatesFullscreenCardIndex = 0;
-    }
-    const maxAllowedIndex = allRows.length;
-    if (this.activitiesRatesFullscreenCardIndex > maxAllowedIndex) {
-      this.activitiesRatesFullscreenCardIndex = maxAllowedIndex;
-    }
-    const visibleCount = this.activitiesRatesFullscreenRows().length;
-    if (this.activitiesRatesFullscreenCardIndex >= visibleCount || this.activitiesRatesFullscreenCardIndex >= allRows.length) {
-      this.selectedActivityRateId = null;
-      this.eventEditorService.setActivitiesSelectedRateId(null);
+    const currentIndex = this.activitiesRatesFullscreenCardIndex;
+    if (currentIndex < 0 || currentIndex >= allRows.length) {
       return null;
     }
-    const row = allRows[this.activitiesRatesFullscreenCardIndex] ?? null;
-    if (!row) {
-      this.selectedActivityRateId = null;
-      this.eventEditorService.setActivitiesSelectedRateId(null);
-      return null;
-    }
-    if (!this.activitiesRatesFullscreenAnimating && this.selectedActivityRateId !== row.id) {
-      this.selectedActivityRateId = row.id;
-      this.eventEditorService.setActivitiesSelectedRateId(row.id);
-    }
-    return row;
+    return allRows[currentIndex] ?? null;
   }
 
   protected activitiesRatesFullscreenNext(event: Event): void {
@@ -2466,8 +2444,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (this.activitiesRatesFullscreenCardIndex > maxAllowedIndex) {
       this.activitiesRatesFullscreenCardIndex = maxAllowedIndex;
     }
-    const visibleCount = this.activitiesRatesFullscreenRows().length;
-    if (this.activitiesRatesFullscreenCardIndex >= visibleCount || this.activitiesRatesFullscreenCardIndex >= allRows.length) {
+    if (this.activitiesRatesFullscreenCardIndex >= allRows.length) {
       this.selectedActivityRateId = null;
       this.eventEditorService.setActivitiesSelectedRateId(null);
       this.updateActivitiesHeaderProgress();
@@ -4572,7 +4549,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   private updateActivitiesHeaderProgress(): void {
     if (this.isRatesFullscreenModeActive()) {
       this.activitiesListScrollable = false;
-      const loadedCount = this.activitiesRatesFullscreenRows().length;
+      const loadedCount = this.activitiesRatesFullscreenAllRows().length;
       if (loadedCount <= 0) {
         this.activitiesHeaderProgress = 0;
         return;
