@@ -26,7 +26,26 @@ export interface EventEditorSubEventResourcePopupRequest {
 export type ActivitiesNavigationRequest =
   | { type: 'eventExplore' }
   | { type: 'chat'; item: unknown }
-  | { type: 'members'; row: AppTypes.ActivityListRow };
+  | { type: 'members'; row: AppTypes.ActivityListRow }
+  | { type: 'eventEditorCreate'; target: AppTypes.EventEditorTarget }
+  | { type: 'eventEditor'; row: AppTypes.ActivityListRow; readOnly: boolean };
+
+export interface ActivitiesEventSyncPayload {
+  id: string;
+  target: AppTypes.EventEditorTarget;
+  title: string;
+  shortDescription: string;
+  timeframe: string;
+  activity: number;
+  isAdmin: boolean;
+  startAt: string;
+  distanceKm: number;
+  imageUrl: string;
+  acceptedMembers?: number;
+  pendingMembers?: number;
+  capacityTotal?: number;
+  syncKey: string;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -59,6 +78,7 @@ export class EventEditorService {
   private _activitiesRatesFullscreenMode = signal(false);
   private _activitiesSelectedRateId = signal<string | null>(null);
   private _activitiesNavigationRequest = signal<ActivitiesNavigationRequest | null>(null);
+  private _activitiesEventSync = signal<ActivitiesEventSyncPayload | null>(null);
   
   // Public readonly signals
   readonly isOpen = this._isOpen.asReadonly();
@@ -81,6 +101,7 @@ export class EventEditorService {
   readonly activitiesRatesFullscreenMode = this._activitiesRatesFullscreenMode.asReadonly();
   readonly activitiesSelectedRateId = this._activitiesSelectedRateId.asReadonly();
   readonly activitiesNavigationRequest = this._activitiesNavigationRequest.asReadonly();
+  readonly activitiesEventSync = this._activitiesEventSync.asReadonly();
   
   // Computed values
   readonly isOpenBoolean = computed(() => this._isOpen());
@@ -304,5 +325,16 @@ export class EventEditorService {
 
   clearActivitiesNavigationRequest(): void {
     this._activitiesNavigationRequest.set(null);
+  }
+
+  emitActivitiesEventSync(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): void {
+    this._activitiesEventSync.set({
+      ...payload,
+      syncKey: `${payload.id}:${Date.now()}`
+    });
+  }
+
+  clearActivitiesEventSync(): void {
+    this._activitiesEventSync.set(null);
   }
 }

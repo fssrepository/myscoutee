@@ -36,7 +36,7 @@ import {
 import { AppCalendarHelpers } from '../shared/app-calendar-helpers';
 import { AppDemoGenerators } from '../shared/app-demo-generators';
 import { AppUtils } from '../shared/app-utils';
-import { EventEditorService } from '../shared/event-editor.service';
+import { ActivitiesEventSyncPayload, EventEditorService } from '../shared/event-editor.service';
 import type * as AppTypes from '../shared/app-types';
 
 // ---------------------------------------------------------------------------
@@ -308,6 +308,16 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       if (this.eventEditorService.activitiesOpen()) {
         this.onActivitiesOpened();
       }
+    });
+
+    effect(() => {
+      const sync = this.eventEditorService.activitiesEventSync();
+      if (!sync) {
+        return;
+      }
+      this.applyActivitiesEventSync(sync);
+      this.eventEditorService.clearActivitiesEventSync();
+      this.cdr.markForCheck();
     });
   }
 
@@ -1011,7 +1021,11 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   // ── Event editor / explore – call EventEditorService directly ────────────
 
   protected requestOpenEventEditor(): void {
-    this.eventEditorService.open('create');
+    const target: AppTypes.EventEditorTarget = this.activitiesPrimaryFilter === 'hosting' ? 'hosting' : 'events';
+    this.eventEditorService.requestActivitiesNavigation({
+      type: 'eventEditorCreate',
+      target
+    });
   }
 
   protected requestOpenEventEditorForRow(
@@ -1019,11 +1033,11 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     readOnly = false,
     stacked = true
   ): void {
-    this.eventEditorService.open(
-      'edit',
-      row.source as EventMenuItem | HostingMenuItem,
+    this.eventEditorService.requestActivitiesNavigation({
+      type: 'eventEditor',
+      row,
       readOnly
-    );
+    });
   }
 
   protected requestOpenEventExplore(): void {
@@ -1411,11 +1425,11 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected runActivityItemViewAction(row: AppTypes.ActivityListRow, event: Event): void {
     event.stopPropagation();
     this.inlineItemActionMenu = null;
-    this.eventEditorService.open(
-      'edit',
-      row.source as EventMenuItem | HostingMenuItem,
-      true
-    );
+    this.eventEditorService.requestActivitiesNavigation({
+      type: 'eventEditor',
+      row,
+      readOnly: true
+    });
   }
 
   protected runActivityItemApproveAction(row: AppTypes.ActivityListRow, event: Event): void {
@@ -4403,20 +4417,14 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   private openActivityRowInEventModule(row: AppTypes.ActivityListRow, readOnly: boolean): void {
-    if (row.type === 'events' || row.type === 'hosting') {
-      this.eventEditorService.open(
-        'edit',
-        row.source as EventMenuItem | HostingMenuItem,
-        readOnly
-      );
+    if (row.type !== 'events' && row.type !== 'hosting' && row.type !== 'invitations') {
       return;
     }
-
-    if (row.type === 'invitations') {
-      const invitation = row.source as InvitationMenuItem;
-      const source = this.resolveRelatedEventFromInvitation(invitation) ?? this.buildInvitationPreviewEventSource(invitation);
-      this.eventEditorService.open('edit', source, true);
-    }
+    this.eventEditorService.requestActivitiesNavigation({
+      type: 'eventEditor',
+      row,
+      readOnly: row.type === 'invitations' ? true : readOnly
+    });
   }
 
   private resolveRelatedEventFromInvitation(invitation: InvitationMenuItem): EventMenuItem | HostingMenuItem | null {
@@ -4442,6 +4450,226 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       activity: Math.max(0, invitation.unread),
       isAdmin: false
     };
+  }
+
+  private applyActivitiesEventSync(sync: ActivitiesEventSyncPayload): void {
+    let eventUpdated = false;
+    let hostingUpdated = false;
+
+    this.eventItems = this.eventItems.map(item => {
+      if (item.id !== sync.id) {
+        return item;
+      }
+      eventUpdated = true;
+      return {
+        ...item,
+        title: sync.title,
+        shortDescription: sync.shortDescription,
+        timeframe: sync.timeframe,
+        activity: sync.activity,
+        isAdmin: sync.isAdmin || item.isAdmin
+      };
+    });
+
+    this.hostingItems = this.hostingItems.map(item => {
+      if (item.id !== sync.id) {
+        return item;
+      }
+      hostingUpdated = true;
+      return {
+        ...item,
+        title: sync.title,
+        shortDescription: sync.shortDescription,
+        timeframe: sync.timeframe,
+        activity: sync.activity
+      };
+    });
+
+    if (!eventUpdated) {
+      const nextEvent: EventMenuItem = {
+        id: sync.id,
+        avatar: AppUtils.initialsFromText(sync.title),
+        title: sync.title,
+        shortDescription: sync.shortDescription,
+        timeframe: sync.timeframe,
+        activity: sync.activity,
+        isAdmin: sync.isAdmin || sync.target === 'hosting'
+      };
+      this.eventItems = [nextEvent, ...this.eventItems];
+    }
+
+    if (sync.target === 'hosting' && !hostingUpdated) {
+      const nextHosting: HostingMenuItem = {
+        id: sync.id,
+        avatar: AppUtils.initialsFromText(sync.title),
+        title: sync.title,
+        shortDescription: sync.shortDescription,
+        timeframe: sync.timeframe,
+        activity: sync.activity
+      };
+      this.hostingItems = [nextHosting, ...this.hostingItems];
+    }
+
+    this.eventDatesById[sync.id] = sync.startAt;
+    this.hostingDatesById[sync.id] = sync.startAt;
+    this.eventDistanceById[sync.id] = sync.distanceKm;
+    this.hostingDistanceById[sync.id] = sync.distanceKm;
+    if (sync.imageUrl.trim().length > 0) {
+      this.activityImageById[sync.id] = sync.imageUrl;
+    }
+
+    this.applyActivitiesEventMemberSnapshot(sync);
+    this.refreshSectionBadges();
+  }
+
+  private applyActivitiesEventMemberSnapshot(sync: ActivitiesEventSyncPayload): void {
+    const acceptedRaw = Number(sync.acceptedMembers);
+    const pendingRaw = Number(sync.pendingMembers);
+    const hasAccepted = Number.isFinite(acceptedRaw);
+    const hasPending = Number.isFinite(pendingRaw);
+    if (!hasAccepted && !hasPending) {
+      return;
+    }
+    const acceptedMembers = hasAccepted ? Math.max(0, Math.trunc(acceptedRaw)) : 0;
+    const pendingMembers = hasPending ? Math.max(0, Math.trunc(pendingRaw)) : 0;
+    const capacityRaw = Number(sync.capacityTotal);
+    const capacityTotal = Number.isFinite(capacityRaw)
+      ? Math.max(acceptedMembers, Math.trunc(capacityRaw))
+      : Math.max(acceptedMembers, this.activityCapacityTotal({
+        id: sync.id,
+        type: 'events',
+        title: sync.title,
+        subtitle: sync.shortDescription,
+        detail: sync.timeframe,
+        dateIso: sync.startAt,
+        distanceKm: sync.distanceKm,
+        unread: sync.activity,
+        metricScore: sync.activity,
+        isAdmin: sync.isAdmin,
+        source: {
+          id: sync.id,
+          avatar: AppUtils.initialsFromText(sync.title),
+          title: sync.title,
+          shortDescription: sync.shortDescription,
+          timeframe: sync.timeframe,
+          activity: sync.activity,
+          isAdmin: sync.isAdmin
+        } as EventMenuItem
+      }, acceptedMembers));
+    this.activityCapacityById[sync.id] = `${acceptedMembers} / ${capacityTotal}`;
+
+    const eventSource = this.eventItems.find(item => item.id === sync.id) ?? {
+      id: sync.id,
+      avatar: AppUtils.initialsFromText(sync.title),
+      title: sync.title,
+      shortDescription: sync.shortDescription,
+      timeframe: sync.timeframe,
+      activity: sync.activity,
+      isAdmin: sync.isAdmin
+    };
+    const hostingSource = this.hostingItems.find(item => item.id === sync.id) ?? {
+      id: sync.id,
+      avatar: AppUtils.initialsFromText(sync.title),
+      title: sync.title,
+      shortDescription: sync.shortDescription,
+      timeframe: sync.timeframe,
+      activity: sync.activity
+    };
+
+    const eventRow: AppTypes.ActivityListRow = {
+      id: sync.id,
+      type: 'events',
+      title: sync.title,
+      subtitle: sync.shortDescription,
+      detail: sync.timeframe,
+      dateIso: sync.startAt,
+      distanceKm: sync.distanceKm,
+      unread: sync.activity,
+      metricScore: sync.activity,
+      isAdmin: sync.isAdmin,
+      source: eventSource
+    };
+    const hostingRow: AppTypes.ActivityListRow = {
+      id: sync.id,
+      type: 'hosting',
+      title: sync.title,
+      subtitle: sync.shortDescription,
+      detail: sync.timeframe,
+      dateIso: sync.startAt,
+      distanceKm: sync.distanceKm,
+      unread: sync.activity,
+      metricScore: sync.activity,
+      isAdmin: true,
+      source: hostingSource
+    };
+
+    const eventRowKey = `${eventRow.type}:${eventRow.id}`;
+    const hostingRowKey = `${hostingRow.type}:${hostingRow.id}`;
+    this.activityMembersByRowId[eventRowKey] = this.buildSyncedActivityMembersForRow(eventRow, acceptedMembers, pendingMembers);
+    this.activityMembersByRowId[hostingRowKey] = this.buildSyncedActivityMembersForRow(hostingRow, acceptedMembers, pendingMembers);
+    this.forcedAcceptedMembersByRowKey[eventRowKey] = acceptedMembers;
+    this.forcedAcceptedMembersByRowKey[hostingRowKey] = acceptedMembers;
+  }
+
+  private buildSyncedActivityMembersForRow(
+    row: AppTypes.ActivityListRow,
+    acceptedMembers: number,
+    pendingMembers: number
+  ): AppTypes.ActivityMemberEntry[] {
+    if (acceptedMembers <= 0 && pendingMembers <= 0) {
+      return [];
+    }
+    const rowKey = `${row.type}:${row.id}`;
+    const seed = AppDemoGenerators.hashText(`${rowKey}:${acceptedMembers}:${pendingMembers}`);
+    const candidates = [this.activeUser, ...this.users.filter(user => user.id !== this.activeUser.id)];
+    const used = new Set<string>();
+    const pickUser = (offset: number): DemoUser => {
+      if (candidates.length === 0) {
+        return this.activeUser;
+      }
+      for (let index = 0; index < candidates.length; index += 1) {
+        const candidate = candidates[(seed + offset + index) % candidates.length];
+        if (!used.has(candidate.id) || used.size >= candidates.length) {
+          used.add(candidate.id);
+          return candidate;
+        }
+      }
+      return this.activeUser;
+    };
+
+    const entries: AppTypes.ActivityMemberEntry[] = [];
+    for (let index = 0; index < acceptedMembers; index += 1) {
+      const user = pickUser(index);
+      entries.push(AppDemoGenerators.toActivityMemberEntry(
+        user,
+        row,
+        rowKey,
+        this.activeUser.id,
+        { status: 'accepted', pendingSource: null, invitedByActiveUser: false },
+        APP_DEMO_DATA.activityMemberMetPlaces
+      ));
+    }
+    for (let index = 0; index < pendingMembers; index += 1) {
+      const user = pickUser(acceptedMembers + index);
+      const isJoinRequest = ((seed + index) % 3) === 0;
+      const pendingSource: AppTypes.ActivityPendingSource = isJoinRequest
+        ? 'member'
+        : (row.isAdmin ? 'admin' : 'member');
+      const entry = AppDemoGenerators.toActivityMemberEntry(
+        user,
+        row,
+        rowKey,
+        this.activeUser.id,
+        { status: 'pending', pendingSource, invitedByActiveUser: !isJoinRequest },
+        APP_DEMO_DATA.activityMemberMetPlaces
+      );
+      entries.push({
+        ...entry,
+        requestKind: isJoinRequest ? 'join' : 'invite',
+        statusText: isJoinRequest ? 'Waiting for admin approval.' : 'Invitation pending.'
+      });
+    }
+    return this.sortActivityMembersByActionTimeDesc(entries);
   }
 
   // ── User lookup ────────────────────────────────────────────────────────────

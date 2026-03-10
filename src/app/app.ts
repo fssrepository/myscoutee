@@ -598,7 +598,17 @@ export class App {
         this.openChatItem(item, false, true);
         return;
       }
-      this.openActivityMembers(request.row);
+      if (request.type === 'eventEditorCreate') {
+        this.openEventEditor(true, 'create', undefined, false, null, request.target);
+        return;
+      }
+      if (request.type === 'eventEditor') {
+        this.openEventEditorFromActivitiesRequest(request.row, request.readOnly);
+        return;
+      }
+      if (request.type === 'members') {
+        this.openActivityMembers(request.row);
+      }
     });
     
     // Listen for events from EventEditorPopupComponent
@@ -1697,13 +1707,14 @@ export class App {
     mode: AppTypes.EventEditorMode = 'edit',
     source?: EventMenuItem | HostingMenuItem,
     readOnly = false,
-    invitationId: string | null = null
+    invitationId: string | null = null,
+    targetOverride?: AppTypes.EventEditorTarget
   ): void {
     this.eventEditorMode = mode;
     this.eventEditorReadOnly = mode === 'edit' && readOnly;
     this.eventEditorInvitationId = invitationId;
     this.showProfileStatusHeaderPicker = false;
-    this.prepareEventEditorForm(mode, source);
+    this.prepareEventEditorForm(mode, source, targetOverride);
     const previousStackedPopup = this.stackedPopup;
     this.stackedEventEditorOrigin = (stacked || this.stackedPopup !== null || this.activePopup === 'chat')
       ? (previousStackedPopup === 'chat' ? 'chat' : null)
@@ -1740,6 +1751,36 @@ export class App {
       return;
     }
     this.openEventEditor(stacked, 'edit', related, true, this.selectedInvitation?.id ?? null);
+  }
+
+  private openEventEditorFromActivitiesRequest(row: AppTypes.ActivityListRow, readOnly: boolean): void {
+    if (row.type === 'invitations') {
+      const invitationSource = row.source as InvitationMenuItem;
+      const invitation = this.invitationItems.find(item => item.id === invitationSource.id) ?? invitationSource;
+      const related = this.resolveRelatedEventFromInvitation(invitation);
+      const source = related ?? this.buildInvitationPreviewEventSource(invitation);
+      this.openEventEditor(true, 'edit', source, true, invitation.id);
+      return;
+    }
+    if (row.type !== 'events' && row.type !== 'hosting') {
+      return;
+    }
+    const rowSource = row.source as EventMenuItem | HostingMenuItem;
+    const rowSourceId = typeof rowSource?.id === 'string' ? rowSource.id.trim() : '';
+    let source = rowSourceId
+      ? (this.eventItems.find(item => item.id === rowSourceId)
+        ?? this.hostingItems.find(item => item.id === rowSourceId)
+        ?? null)
+      : null;
+    if (!source && typeof rowSource?.title === 'string' && rowSource.title.trim()) {
+      const titleKey = AppUtils.normalizeText(rowSource.title);
+      source = this.eventItems.find(item => AppUtils.normalizeText(item.title) === titleKey)
+        ?? this.hostingItems.find(item => AppUtils.normalizeText(item.title) === titleKey)
+        ?? null;
+    }
+    source = source ?? rowSource;
+    const effectiveReadOnly = readOnly || (row.type === 'events' && row.isAdmin !== true);
+    this.openEventEditor(true, 'edit', source, effectiveReadOnly);
   }
 
   protected isEventEditorReadOnly(): boolean {
@@ -2021,14 +2062,109 @@ export class App {
 
     this.showEventEditorRequiredValidation = false;
     this.normalizeEventDateRange();
-    if (this.editingEventId) {
-      this.updateExistingEventFromForm();
-    } else {
-      this.insertCreatedEventFromForm();
+    const savedEventId = this.editingEventId
+      ? this.updateExistingEventFromForm()
+      : this.insertCreatedEventFromForm();
+    if (savedEventId) {
+      this.emitActivitiesEventSync(savedEventId, this.eventEditorTarget);
     }
 
     this.eventEditorService.close();
     this.refreshActivitiesStickyHeaderSoon();
+  }
+
+  private emitActivitiesEventSync(
+    eventId: string,
+    target: AppTypes.EventEditorTarget,
+    membersSnapshot?: { acceptedMembers: number; pendingMembers: number; capacityTotal: number }
+  ): void {
+    const eventItem = this.eventItems.find(item => item.id === eventId) ?? null;
+    const hostingItem = this.hostingItems.find(item => item.id === eventId) ?? null;
+    const source = target === 'hosting'
+      ? (hostingItem ?? eventItem)
+      : (eventItem ?? hostingItem);
+    if (!source) {
+      return;
+    }
+    const resolvedMembers = membersSnapshot ?? this.resolveActivitiesEventSyncMembersSnapshot(eventId, target);
+
+    this.eventEditorService.emitActivitiesEventSync({
+      id: eventId,
+      target,
+      title: source.title,
+      shortDescription: source.shortDescription,
+      timeframe: source.timeframe,
+      activity: Math.max(0, Math.trunc(Number(source.activity) || 0)),
+      isAdmin: target === 'hosting' ? true : ((eventItem as EventMenuItem | null)?.isAdmin === true),
+      startAt: this.eventDatesById[eventId] ?? this.hostingDatesById[eventId] ?? this.defaultEventStartIso(),
+      distanceKm: this.eventDistanceById[eventId] ?? this.hostingDistanceById[eventId] ?? 0,
+      imageUrl: this.activityImageById[eventId] ?? '',
+      acceptedMembers: resolvedMembers?.acceptedMembers,
+      pendingMembers: resolvedMembers?.pendingMembers,
+      capacityTotal: resolvedMembers?.capacityTotal
+    });
+  }
+
+  private resolveActivitiesEventSyncMembersSnapshot(
+    eventId: string,
+    target: AppTypes.EventEditorTarget
+  ): { acceptedMembers: number; pendingMembers: number; capacityTotal: number } | null {
+    const eventItem = this.eventItems.find(item => item.id === eventId) ?? null;
+    const hostingItem = this.hostingItems.find(item => item.id === eventId) ?? null;
+    const source = target === 'hosting'
+      ? (hostingItem ?? eventItem)
+      : (eventItem ?? hostingItem);
+    if (!source) {
+      return null;
+    }
+    const rowType: 'events' | 'hosting' = target === 'hosting' ? 'hosting' : 'events';
+    const row: AppTypes.ActivityListRow = {
+      id: source.id,
+      type: rowType,
+      title: source.title,
+      subtitle: source.shortDescription,
+      detail: source.timeframe,
+      dateIso: this.eventDatesById[source.id] ?? this.hostingDatesById[source.id] ?? this.defaultEventStartIso(),
+      distanceKm: this.eventDistanceById[source.id] ?? this.hostingDistanceById[source.id] ?? 0,
+      unread: Math.max(0, Math.trunc(Number(source.activity) || 0)),
+      metricScore: Math.max(0, Math.trunc(Number(source.activity) || 0)),
+      isAdmin: rowType === 'hosting' ? true : ((eventItem as EventMenuItem | null)?.isAdmin === true),
+      source
+    };
+    const members = this.getActivityMembersByRow(row);
+    const acceptedMembers = members.filter(member => member.status === 'accepted').length;
+    const pendingMembers = members.filter(member => member.status === 'pending').length;
+    const capacityTotal = this.activityCapacityTotal(row, acceptedMembers);
+    this.activityCapacityById[eventId] = `${acceptedMembers} / ${capacityTotal}`;
+    return {
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal
+    };
+  }
+
+  private emitActivitiesEventSyncForSelectedMembersRow(): void {
+    if (!this.selectedActivityMembersRow || !this.selectedActivityMembersRowId) {
+      return;
+    }
+    const row = this.selectedActivityMembersRow;
+    if (row.type !== 'events' && row.type !== 'hosting') {
+      return;
+    }
+    const existsInEvents = this.eventItems.some(item => item.id === row.id);
+    const existsInHosting = this.hostingItems.some(item => item.id === row.id);
+    if (!existsInEvents && !existsInHosting) {
+      return;
+    }
+    const acceptedMembers = this.selectedActivityMembers.filter(member => member.status === 'accepted').length;
+    const pendingMembers = this.selectedActivityMembers.filter(member => member.status === 'pending').length;
+    const capacityTotal = this.activityCapacityTotal(row, acceptedMembers);
+    this.activityCapacityById[row.id] = `${acceptedMembers} / ${capacityTotal}`;
+    this.emitActivitiesEventSync(
+      row.id,
+      row.type === 'hosting' ? 'hosting' : 'events',
+      { acceptedMembers, pendingMembers, capacityTotal }
+    );
   }
 
   protected openEventTopicsSelector(event?: Event): void {
@@ -3537,6 +3673,7 @@ export class App {
     event.stopPropagation();
     this.updateSubEventMembersEntries(entries => entries.filter(entry => entry.userId !== member.userId));
     this.detachUserFromSelectedSubEventChat(member.userId);
+    this.emitActivitiesEventSyncForSelectedMembersRow();
     this.inlineItemActionMenu = null;
     this.subEventMemberRolePickerUserId = null;
   }
@@ -3708,6 +3845,17 @@ export class App {
     this.syncSelectedSubEventMembersCounts(next);
     if (this.selectedActivityMembersRowId === context.rowKey) {
       this.selectedActivityMembers = [...next];
+    }
+    if (context.row.type === 'events' || context.row.type === 'hosting') {
+      const acceptedMembers = next.filter(member => member.status === 'accepted').length;
+      const pendingMembers = next.filter(member => member.status === 'pending').length;
+      const capacityTotal = this.activityCapacityTotal(context.row, acceptedMembers);
+      this.activityCapacityById[context.row.id] = `${acceptedMembers} / ${capacityTotal}`;
+      this.emitActivitiesEventSync(
+        context.row.id,
+        context.row.type === 'hosting' ? 'hosting' : 'events',
+        { acceptedMembers, pendingMembers, capacityTotal }
+      );
     }
   }
 
@@ -4098,12 +4246,16 @@ export class App {
     this.openGoogleMapsDirections(routeStops);
   }
 
-  private prepareEventEditorForm(mode: AppTypes.EventEditorMode, explicitSource?: EventMenuItem | HostingMenuItem): void {
+  private prepareEventEditorForm(
+    mode: AppTypes.EventEditorMode,
+    explicitSource?: EventMenuItem | HostingMenuItem,
+    targetOverride?: AppTypes.EventEditorTarget
+  ): void {
     const source = this.resolveEventEditorSource(explicitSource);
     this.showEventEditorRequiredValidation = false;
-    const target = source && this.isHostingSource(source)
+    const target = targetOverride ?? (source && this.isHostingSource(source)
       ? 'hosting'
-      : (this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'hosting' ? 'hosting' : 'events');
+      : (this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'hosting' ? 'hosting' : 'events'));
     this.eventEditorTarget = target;
     if (mode === 'edit' && source) {
       this.eventEditorSource = source;
@@ -4178,9 +4330,9 @@ export class App {
     };
   }
 
-  private updateExistingEventFromForm(): void {
+  private updateExistingEventFromForm(): string | null {
     if (!this.editingEventId) {
-      return;
+      return null;
     }
     const timeframe = this.buildEventTimeframeLabel(this.eventForm.startAt, this.eventForm.endAt, this.eventForm.frequency);
     const title = this.eventForm.title.trim();
@@ -4220,7 +4372,7 @@ export class App {
       if (this.selectedEvent?.id === this.editingEventId) {
         this.selectedEvent = { ...this.selectedEvent, title, shortDescription, timeframe, isAdmin: true };
       }
-      return;
+      return this.editingEventId;
     }
     this.eventItemsByUser[this.activeUser.id] = this.eventItems.map(item =>
       item.id === this.editingEventId
@@ -4230,9 +4382,10 @@ export class App {
     if (this.selectedEvent?.id === this.editingEventId) {
       this.selectedEvent = { ...this.selectedEvent, title, shortDescription, timeframe };
     }
+    return this.editingEventId;
   }
 
-  private insertCreatedEventFromForm(): void {
+  private insertCreatedEventFromForm(): string {
     const baseId = Date.now();
     const timeframe = this.buildEventTimeframeLabel(this.eventForm.startAt, this.eventForm.endAt, this.eventForm.frequency);
     const normalizedCapacity = this.normalizedEventCapacityRange();
@@ -4278,7 +4431,7 @@ export class App {
       this.eventItemsByUser[this.activeUser.id] = [nextEvent, ...this.eventItems];
       this.selectedHostingEvent = next;
       this.selectedEvent = nextEvent;
-      return;
+      return id;
     }
     const id = `e${baseId}`;
     this.userCreatedEventIds.add(id);
@@ -4308,6 +4461,7 @@ export class App {
     };
     this.eventItemsByUser[this.activeUser.id] = [next, ...this.eventItems];
     this.selectedEvent = next;
+    return id;
   }
 
   private defaultEventForm(): AppTypes.EventEditorForm {
@@ -11706,6 +11860,7 @@ export class App {
       this.promotePendingAssetRequestsAfterMainEventApproval(entry.userId);
     }
     this.syncSubEventAssetMembersRequestsFromSelection();
+    this.emitActivitiesEventSyncForSelectedMembersRow();
     this.inlineItemActionMenu = null;
   }
 
@@ -11733,6 +11888,7 @@ export class App {
       this.cascadeMainEventMemberRemovalToAssets(removedUserId);
     }
     this.syncSubEventAssetMembersRequestsFromSelection();
+    this.emitActivitiesEventSyncForSelectedMembersRow();
     this.pendingActivityMemberDelete = null;
   }
 
@@ -13873,6 +14029,7 @@ export class App {
     if (subEventContext && subEventContext.rowKey === this.selectedActivityMembersRowId) {
       this.syncSelectedSubEventMembersCounts(ordered);
     }
+    this.emitActivitiesEventSyncForSelectedMembersRow();
     this.selectedActivityInviteUserIds = [];
   }
 
