@@ -590,8 +590,8 @@ export class App {
       }
       this.activitiesContext.clearActivitiesNavigationRequest();
       if (request.type === 'chatResource') {
-        this.seedSubEventAssetAssignmentsFromNavigationRequest(request.subEvent.id, request.assetAssignmentIds);
         this.seedSubEventResourceFallbackCardsFromNavigationRequest(request.assetCardsByType);
+        this.seedSubEventAssetAssignmentsFromNavigationRequest(request.subEvent.id, request.assetAssignmentIds);
         this.eventEditorService.isOpen();
         setTimeout(() => {
           this.openSubEventBadgePopup(
@@ -3243,6 +3243,7 @@ export class App {
       routes: this.normalizeAssetRoutes(editor.type, editor.routes, '')
     };
     this.subEventAssignedAssetSettingsByKey[key] = settings;
+    this.refreshEventChatSessionResourceContext(editor.subEventId);
     this.subEventAssetRouteEditor = null;
   }
 
@@ -3416,9 +3417,11 @@ export class App {
       capacityMax: AppUtils.clampNumber(Math.trunc(editor.capacityMax), 0, editor.capacityLimit)
     };
     this.subEventAssignedAssetSettingsByKey[key] = settings;
-    const subEvent = this.findSubEventById(editor.subEventId);
+    const subEvent = this.resolveSubEventForResourceSync(editor.subEventId);
     if (subEvent) {
       this.syncSubEventAssetBadgeCounts(subEvent, editor.type);
+    } else {
+      this.refreshEventChatSessionResourceContext(editor.subEventId);
     }
     this.subEventAssetCapacityEditor = null;
   }
@@ -3526,9 +3529,11 @@ export class App {
     }
     this.normalizeSubEventSupplyContributionEntries(this.subEventSupplyBringDialog.subEventId, this.subEventSupplyBringDialog.cardId);
     this.refreshSubEventSupplyContributionRows();
-    const subEvent = this.findSubEventById(this.subEventSupplyBringDialog.subEventId);
+    const subEvent = this.resolveSubEventForResourceSync(this.subEventSupplyBringDialog.subEventId);
     if (subEvent) {
       this.syncSubEventAssetBadgeCounts(subEvent, 'Supplies');
+    } else {
+      this.refreshEventChatSessionResourceContext(this.subEventSupplyBringDialog.subEventId);
     }
     this.subEventSupplyBringDialog = null;
   }
@@ -3625,9 +3630,11 @@ export class App {
     this.subEventSupplyContributionEntriesByAssignmentKey[key] = current.filter(entry => entry.id !== pending.entryId);
     this.normalizeSubEventSupplyContributionEntries(pending.subEventId, pending.assetId);
     this.refreshSubEventSupplyContributionRows();
-    const subEvent = this.findSubEventById(pending.subEventId);
+    const subEvent = this.resolveSubEventForResourceSync(pending.subEventId);
     if (subEvent) {
       this.syncSubEventAssetBadgeCounts(subEvent, 'Supplies');
+    } else {
+      this.refreshEventChatSessionResourceContext(pending.subEventId);
     }
     this.pendingSubEventSupplyContributionDelete = null;
   }
@@ -4015,7 +4022,10 @@ export class App {
       if (!Array.isArray(raw)) {
         continue;
       }
-      const allowedIds = new Set(this.assetCards.filter(card => card.type === type).map(card => card.id));
+      const allowedIds = new Set([
+        ...this.assetCards.filter(card => card.type === type).map(card => card.id),
+        ...(this.subEventResourceFallbackCardsByType?.[type] ?? []).map(card => card.id)
+      ]);
       const normalized = raw.filter((id, index, arr): id is string =>
         typeof id === 'string' && arr.indexOf(id) === index && allowedIds.has(id)
       );
@@ -4159,10 +4169,12 @@ export class App {
     }
     this.subEventAssignedAssetIdsByKey[key] = [...nextIds];
     this.subEventAssignedAssetSettingsByKey[key] = nextSettings;
-    const targetSubEvent = this.findSubEventById(context.subEventId);
+    const targetSubEvent = this.resolveSubEventForResourceSync(context.subEventId);
     if (targetSubEvent) {
       this.syncSubEventAssetBadgeCounts(targetSubEvent, context.type, nextIds);
+      return;
     }
+    this.refreshEventChatSessionResourceContext(context.subEventId);
   }
 
   private syncSubEventAssetBadgeCounts(subEvent: AppTypes.SubEventFormItem, type: AppTypes.AssetType, assignedIds?: string[]): void {
@@ -4170,19 +4182,28 @@ export class App {
       const key = this.subEventAssetAssignmentKey(subEvent.id, type);
       this.subEventAssignedAssetIdsByKey[key] = [...assignedIds];
     }
-    const pending = this.subEventAssetCapacityMetrics(subEvent, type).pending;
+    const metrics = this.subEventAssetCapacityMetrics(subEvent, type);
     if (type === 'Car') {
-      subEvent.carsPending = pending;
-      this.activitiesContext.touchEventChatSession();
+      subEvent.carsAccepted = metrics.joined;
+      subEvent.carsPending = metrics.pending;
+      subEvent.carsCapacityMin = metrics.capacityMin;
+      subEvent.carsCapacityMax = metrics.capacityMax;
+      this.refreshEventChatSessionResourceContext(subEvent.id);
       return;
     }
     if (type === 'Accommodation') {
-      subEvent.accommodationPending = pending;
-      this.activitiesContext.touchEventChatSession();
+      subEvent.accommodationAccepted = metrics.joined;
+      subEvent.accommodationPending = metrics.pending;
+      subEvent.accommodationCapacityMin = metrics.capacityMin;
+      subEvent.accommodationCapacityMax = metrics.capacityMax;
+      this.refreshEventChatSessionResourceContext(subEvent.id);
       return;
     }
-    subEvent.suppliesPending = pending;
-    this.activitiesContext.touchEventChatSession();
+    subEvent.suppliesAccepted = metrics.joined;
+    subEvent.suppliesPending = metrics.pending;
+    subEvent.suppliesCapacityMin = metrics.capacityMin;
+    subEvent.suppliesCapacityMax = metrics.capacityMax;
+    this.refreshEventChatSessionResourceContext(subEvent.id);
   }
 
   private syncAllSubEventAssetBadgeCounts(): void {
@@ -4200,6 +4221,84 @@ export class App {
       }
     }
     return null;
+  }
+
+  private resolveSubEventForResourceSync(subEventId: string): AppTypes.SubEventFormItem | null {
+    const fromEditor = this.findSubEventById(subEventId);
+    if (fromEditor) {
+      return fromEditor;
+    }
+    const selected = this.selectedSubEventBadgeContext?.subEvent ?? null;
+    if (selected?.id === subEventId) {
+      return selected;
+    }
+    return null;
+  }
+
+  private eventChatResourceAssignmentIdsForSubEvent(subEventId: string): Partial<Record<AppTypes.AssetType, string[]>> {
+    return {
+      Car: [...this.resolveSubEventAssignedAssetIds(subEventId, 'Car')],
+      Accommodation: [...this.resolveSubEventAssignedAssetIds(subEventId, 'Accommodation')],
+      Supplies: [...this.resolveSubEventAssignedAssetIds(subEventId, 'Supplies')]
+    };
+  }
+
+  private eventChatResourceCardsByTypeForSubEvent(): Partial<Record<AppTypes.AssetType, AppTypes.AssetCard[]>> {
+    return {
+      Car: this.assetCards
+        .filter(card => card.type === 'Car')
+        .map(card => ({ ...card, requests: [...card.requests] })),
+      Accommodation: this.assetCards
+        .filter(card => card.type === 'Accommodation')
+        .map(card => ({ ...card, requests: [...card.requests] })),
+      Supplies: this.assetCards
+        .filter(card => card.type === 'Supplies')
+        .map(card => ({ ...card, requests: [...card.requests] }))
+    };
+  }
+
+  private subEventSnapshotForEventChat(subEvent: AppTypes.SubEventFormItem): AppTypes.SubEventFormItem {
+    const cars = this.subEventAssetCapacityMetrics(subEvent, 'Car');
+    const accommodation = this.subEventAssetCapacityMetrics(subEvent, 'Accommodation');
+    const supplies = this.subEventAssetCapacityMetrics(subEvent, 'Supplies');
+    return {
+      ...subEvent,
+      carsAccepted: cars.joined,
+      carsPending: cars.pending,
+      carsCapacityMin: cars.capacityMin,
+      carsCapacityMax: cars.capacityMax,
+      accommodationAccepted: accommodation.joined,
+      accommodationPending: accommodation.pending,
+      accommodationCapacityMin: accommodation.capacityMin,
+      accommodationCapacityMax: accommodation.capacityMax,
+      suppliesAccepted: supplies.joined,
+      suppliesPending: supplies.pending,
+      suppliesCapacityMin: supplies.capacityMin,
+      suppliesCapacityMax: supplies.capacityMax
+    };
+  }
+
+  private refreshEventChatSessionResourceContext(changedSubEventId?: string): void {
+    this.activitiesContext.touchEventChatSession(context => {
+      const contextSubEventId = context.subEvent?.id ?? '';
+      if (!contextSubEventId) {
+        return context;
+      }
+      if (changedSubEventId && contextSubEventId !== changedSubEventId) {
+        return context;
+      }
+      const sourceSubEvent = this.resolveSubEventForResourceSync(contextSubEventId) ?? context.subEvent;
+      if (!sourceSubEvent) {
+        return context;
+      }
+      return {
+        ...context,
+        subEvent: this.subEventSnapshotForEventChat(sourceSubEvent),
+        assetAssignmentIds: this.eventChatResourceAssignmentIdsForSubEvent(contextSubEventId),
+        assetCardsByType: this.eventChatResourceCardsByTypeForSubEvent(),
+        resources: context.resources.map(resource => ({ ...resource }))
+      };
+    });
   }
 
   protected get subEventResourceCards(): AppTypes.SubEventResourceCard[] {
@@ -4233,25 +4332,6 @@ export class App {
     }
 
     const resourceType = this.subEventResourceFilter as AppTypes.AssetType;
-    const chatScopedCards = this.subEventResourceCardsForChat(resourceType);
-    if (chatScopedCards) {
-      return chatScopedCards.map(card => ({
-        id: `subevent-${card.id}`,
-        type: card.type,
-        sourceAssetId: card.id,
-        title: card.title,
-        subtitle: card.subtitle,
-        city: card.city,
-        details: card.details,
-        imageUrl: card.imageUrl,
-        sourceLink: card.sourceLink,
-        routes: this.normalizeAssetRoutes(card.type, card.routes, card.city),
-        capacityTotal: card.capacityTotal,
-        accepted: card.type === 'Supplies' ? this.subEventSupplyProvidedCount(card.id, subEvent.id) : this.assetAcceptedCount(card),
-        pending: this.assetPendingCount(card),
-        isMembers: false
-      }));
-    }
     const assignedIds = this.resolveSubEventAssignedAssetIds(subEvent.id, resourceType);
     const settings = this.getSubEventAssignedAssetSettings(subEvent.id, resourceType);
     this.syncSubEventAssetBadgeCounts(subEvent, resourceType, assignedIds);
@@ -4259,7 +4339,7 @@ export class App {
       .map(id => this.assetCards.find(card => card.id === id && card.type === resourceType) ?? null)
       .filter((card): card is AppTypes.AssetCard => card !== null);
     if (baseCards.length === 0) {
-      const fallbackCards = this.subEventResourceFallbackCardsByType?.[resourceType] ?? [];
+      const fallbackCards = this.subEventResourceCardsForChat(resourceType) ?? this.subEventResourceFallbackCardsByType?.[resourceType] ?? [];
       baseCards = fallbackCards.length > 0
         ? fallbackCards.map(card => ({ ...card, requests: [...card.requests] }))
         : this.assetCards.filter(card => card.type === resourceType);
@@ -4289,10 +4369,10 @@ export class App {
       return null;
     }
     const snapshot = this.subEventResourceFallbackCardsByType?.[type] ?? [];
-    if (snapshot.length > 0) {
-      return snapshot.map(card => ({ ...card, requests: [...card.requests] }));
+    if (snapshot.length === 0) {
+      return null;
     }
-    return this.assetCards.filter(card => card.type === type);
+    return snapshot.map(card => ({ ...card, requests: [...card.requests] }));
   }
 
   protected subEventResourceOccupancyLabel(card: AppTypes.SubEventResourceCard): string {
@@ -7912,7 +7992,12 @@ export class App {
       ? this.selectedChatTournamentGroup(subEvent)
       : null;
     this.inlineItemActionMenu = null;
-    this.openSubEventBadgePopup(type, subEvent, undefined, group);
+    this.seedSubEventResourceFallbackCardsFromNavigationRequest(this.eventChatResourceCardsByTypeForSubEvent());
+    this.seedSubEventAssetAssignmentsFromNavigationRequest(
+      subEvent.id,
+      this.eventChatResourceAssignmentIdsForSubEvent(subEvent.id)
+    );
+    this.openSubEventBadgePopup(type, subEvent, undefined, group, 'chat');
   }
 
   private selectedChatSubEventResourceTotal(subEvent: AppTypes.SubEventFormItem): number {
@@ -13088,9 +13173,11 @@ export class App {
           routes: this.normalizeAssetRoutes(createAssignment.type, payload.routes, '')
         };
         this.subEventAssignedAssetSettingsByKey[key] = { ...settings };
-        const targetSubEvent = this.findSubEventById(createAssignment.subEventId);
+        const targetSubEvent = this.resolveSubEventForResourceSync(createAssignment.subEventId);
         if (targetSubEvent) {
           this.syncSubEventAssetBadgeCounts(targetSubEvent, createAssignment.type);
+        } else {
+          this.refreshEventChatSessionResourceContext(createAssignment.subEventId);
         }
       }
     }
@@ -13216,6 +13303,7 @@ export class App {
       };
     });
     this.pendingAssetMemberAction = null;
+    this.syncAllSubEventAssetBadgeCounts();
   }
 
   protected isAssetMemberActionPending(cardId: string, memberId: string, action: AppTypes.AssetRequestAction): boolean {
@@ -14367,10 +14455,12 @@ export class App {
         requests: nextRequests
       };
     });
-    const subEvent = this.findSubEventById(context.subEventId);
+    const subEvent = this.resolveSubEventForResourceSync(context.subEventId);
     if (subEvent) {
       this.syncSubEventAssetBadgeCounts(subEvent, context.type);
+      return;
     }
+    this.refreshEventChatSessionResourceContext(context.subEventId);
   }
 
   private sortActivityMembersByActionTimeAsc(entries: AppTypes.ActivityMemberEntry[]): AppTypes.ActivityMemberEntry[] {

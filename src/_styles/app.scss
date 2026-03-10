@@ -4718,6 +4718,11 @@
   z-index: 3600;
 }
 
+.app-popup-super-stacked.app-popup-super-stacked-over-subevents {
+  padding: 0.6rem;
+  align-items: center;
+}
+
 .popup-panel-friends-picker {
   width: min(980px, calc(100vw - 1rem));
   height: min(92vh, 980px);

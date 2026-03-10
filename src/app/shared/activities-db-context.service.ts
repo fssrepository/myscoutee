@@ -186,19 +186,22 @@ export class ActivitiesDbContextService {
     this._eventChatSession.set(null);
   }
 
-  touchEventChatSession(): void {
+  touchEventChatSession(contextUpdater?: (context: EventChatContext) => EventChatContext): void {
     const session = this._eventChatSession();
     if (!session) {
       return;
     }
+    const clonedContext = session.context
+      ? {
+          ...session.context,
+          resources: session.context.resources.map(resource => ({ ...resource }))
+        }
+      : null;
     this._eventChatSession.set({
       ...session,
-      context: session.context
-        ? {
-            ...session.context,
-            resources: session.context.resources.map(resource => ({ ...resource }))
-          }
-        : null
+      context: clonedContext && contextUpdater
+        ? contextUpdater(clonedContext)
+        : clonedContext
     });
   }
 
