@@ -1,9 +1,12 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, computed, inject } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
-import { DemoUsersService } from './demo';
+import { DemoUsersRepository, DemoUsersService } from './demo';
 import { HttpUsersService } from './http';
 import type { UserDto, UserService } from './user.interface';
+import { LoadService, type LoadStatus } from './ui/load.service';
+
+const USERS_LOAD_CONTEXT_KEY = 'users-selector';
 
 class RequestTimeoutError extends Error {
   constructor() {
@@ -17,53 +20,53 @@ class RequestTimeoutError extends Error {
 })
 export class UsersService {
   private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 3000;
+  private readonly usersRepository = inject(DemoUsersRepository);
   private readonly demoUsersService = inject(DemoUsersService);
   private readonly httpUsersService = inject(HttpUsersService);
+  private readonly loadContext = inject(LoadService);
+  private readonly loadState = this.loadContext.selectState(USERS_LOAD_CONTEXT_KEY);
   private readonly demoModeEnabled = !environment.loginEnabled;
 
-  readonly usersTable = this.demoUsersService.usersTable;
-  readonly demoUsers = this.demoUsersService.demoUsers;
-  readonly demoUsersLoading = this.demoUsersService.demoUsersLoading;
-  readonly demoUsersLoadStatus = this.demoUsersService.demoUsersLoadStatus;
-  readonly demoUsersLoadedAtIso = this.demoUsersService.demoUsersLoadedAtIso;
-  readonly demoUsersError = this.demoUsersService.demoUsersError;
+  readonly usersTable = this.usersRepository.usersTable;
+  readonly demoUsers = this.usersRepository.demoUsers;
+  readonly demoUsersLoading = computed(() => this.loadState().status === 'loading');
+  readonly demoUsersLoadStatus = computed(() => this.loadState().status);
+  readonly demoUsersLoadedAtIso = computed(() => this.loadState().loadedAtIso);
+  readonly demoUsersError = computed(() => this.loadState().error);
 
   private get userService(): UserService {
     return this.demoModeEnabled ? this.demoUsersService : this.httpUsersService;
   }
 
   queryAvailableDemoUsers(): UserDto[] {
-    return this.demoUsersService.queryCachedUsers();
+    return this.usersRepository.queryAvailableDemoUsers();
   }
 
   async loadAvailableDemoUsers(requestTimeoutMs?: number): Promise<UserDto[]> {
     const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
 
-    if (!this.demoModeEnabled) {
-      try {
-        const response = await this.withRequestTimeout(
-          this.userService.queryAvailableDemoUsers(),
-          normalizedTimeoutMs
-        );
-        return response.users;
-      } catch {
-        return [];
-      }
-    }
+    this.setLoadStatus('loading');
 
-    this.demoUsersService.setLoadStatus('loading');
     try {
       const response = await this.withRequestTimeout(
         this.userService.queryAvailableDemoUsers(),
         normalizedTimeoutMs
       );
-      return this.demoUsersService.syncUsers(response.users);
+      const syncedUsers = this.usersRepository.syncUsers(response.users);
+      this.setLoadStatus('success');
+      return syncedUsers;
     } catch (error) {
       if (error instanceof RequestTimeoutError) {
-        return this.demoUsersService.setLoadStatus('timeout', 'Users request timeout.');
+        this.setLoadStatus('timeout', 'Users request timeout.');
+        return this.usersRepository.queryAvailableDemoUsers();
       }
-      return this.demoUsersService.setLoadStatus('error', 'Unable to load demo users.');
+      this.setLoadStatus('error', 'Unable to load demo users.');
+      return this.usersRepository.queryAvailableDemoUsers();
     }
+  }
+
+  private setLoadStatus(status: LoadStatus, message?: string): void {
+    this.loadContext.setStatus(USERS_LOAD_CONTEXT_KEY, status, message);
   }
 
   private resolveRequestTimeoutMs(value?: number): number {

@@ -9,11 +9,7 @@ export class DemoUsersMemoryDb {
   private readonly _tables = signal<DemoUsersMemorySchema>({
     [DEMO_USERS_TABLE_NAME]: {
       byId: {},
-      ids: [],
-      loading: false,
-      status: 'idle',
-      loadedAtIso: null,
-      error: null
+      ids: []
     }
   });
 

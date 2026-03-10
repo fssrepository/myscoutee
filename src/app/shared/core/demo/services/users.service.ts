@@ -2,13 +2,11 @@ import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { AppDemoGenerators } from '../../../app-demo-generators';
-import { DemoUsersRepository } from '../repositories/users.repository';
 import type {
   UserService,
   UsersQueryResponse,
   UserDto
 } from '../../user.interface';
-import type { UsersLoadStatus } from '../models/users.model';
 
 interface DemoUsersRouteDelayEntry {
   routePrefix: string;
@@ -29,14 +27,6 @@ const DEMO_USERS_ROUTE_DELAY_CONFIG: DemoUsersRouteDelayEntry[] = [
 export class DemoUsersService implements UserService {
   private readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
   private readonly router = inject(Router);
-  private readonly usersRepository = inject(DemoUsersRepository);
-
-  readonly usersTable = this.usersRepository.usersTable;
-  readonly demoUsers = this.usersRepository.demoUsers;
-  readonly demoUsersLoading = this.usersRepository.demoUsersLoading;
-  readonly demoUsersLoadStatus = this.usersRepository.demoUsersLoadStatus;
-  readonly demoUsersLoadedAtIso = this.usersRepository.demoUsersLoadedAtIso;
-  readonly demoUsersError = this.usersRepository.demoUsersError;
 
   async queryAvailableDemoUsers(): Promise<UsersQueryResponse> {
     const additionalDelayMs = this.resolveAdditionalDelayMsForRoute(this.router.url);
@@ -48,18 +38,6 @@ export class DemoUsersService implements UserService {
     return {
       users: this.users.map(user => this.cloneUser(user))
     };
-  }
-
-  queryCachedUsers(): UserDto[] {
-    return this.usersRepository.queryAvailableDemoUsers();
-  }
-
-  setLoadStatus(status: UsersLoadStatus, message?: string): UserDto[] {
-    return this.usersRepository.setLoadStatus(status, message);
-  }
-
-  syncUsers(users: readonly UserDto[]): UserDto[] {
-    return this.usersRepository.syncUsers(users);
   }
 
   private resolveAdditionalDelayMsForRoute(url: string): number {
