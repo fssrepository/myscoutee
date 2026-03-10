@@ -387,8 +387,6 @@ export class App {
   private readonly acceptedInvitationIdsByUser: Record<string, string[]> = {};
 
   protected selectedChat: ChatMenuItem | null = null;
-  protected selectedChatMembers: DemoUser[] = [];
-  protected selectedChatMembersItem: ChatMenuItem | null = null;
   protected readonly chatHistoryPageSize = 10;
   private readonly chatInitialVisiblePageCount = 2;
   protected chatVisibleMessageCount = this.chatHistoryPageSize;
@@ -1643,7 +1641,7 @@ export class App {
     this.chatDraftMessage = '';
     this.chatHistoryLoadingOlder = false;
     this.showActivitiesViewPicker = false;
-    if (stacked || this.activePopup === 'activities' || this.stackedPopup !== null) {
+    if (stacked || this.stackedPopup !== null) {
       this.stackedPopup = 'chat';
       this.startChatInitialLoad();
       return;
@@ -1654,18 +1652,6 @@ export class App {
     if (closeMenu) {
       this.closeUserMenu();
     }
-  }
-
-  protected openChatMembers(item: ChatMenuItem, event?: Event, stacked = false): void {
-    event?.stopPropagation();
-    this.selectedChatMembersItem = item;
-    this.selectedChatMembers = this.getChatMembersById(item.id);
-    if (stacked || this.activePopup === 'chat' || this.stackedPopup !== null) {
-      this.stackedPopup = 'chatMembers';
-      return;
-    }
-    this.activePopup = 'chatMembers';
-    this.closeUserMenu();
   }
 
   protected openInvitationItem(item: InvitationMenuItem, closeMenu = true, stacked = false): void {
@@ -1684,7 +1670,7 @@ export class App {
     this.activeMenuSection = 'events';
     this.selectedEvent = item;
     this.showActivitiesViewPicker = false;
-    if (stacked || this.activePopup === 'activities' || this.stackedPopup !== null) {
+    if (stacked || this.stackedPopup !== null) {
       this.stackedPopup = 'menuEvent';
       return;
     }
@@ -1698,7 +1684,7 @@ export class App {
     this.activeMenuSection = 'hosting';
     this.selectedHostingEvent = item;
     this.showActivitiesViewPicker = false;
-    if (stacked || this.activePopup === 'activities' || this.stackedPopup !== null) {
+    if (stacked || this.stackedPopup !== null) {
       this.stackedPopup = 'hostingEvent';
       return;
     }
@@ -1713,7 +1699,7 @@ export class App {
     this.showEventExploreOrderPicker = false;
     this.eventExploreStickyValue = '';
     this.eventExploreHeaderProgress = 0;
-    if (stacked || this.stackedPopup !== null || this.activePopup === 'activities') {
+    if (stacked || this.stackedPopup !== null) {
       this.stackedPopup = 'eventExplore';
       this.resetEventExploreScroll();
       return;
@@ -5648,8 +5634,6 @@ export class App {
         return 'Activities';
       case 'chat':
         return this.selectedChat?.title ?? 'Chat';
-      case 'chatMembers':
-        return 'Chat Members';
       case 'activityMembers':
         return 'Members';
       case 'impressionsHost':
@@ -5715,8 +5699,6 @@ export class App {
     switch (this.stackedPopup) {
       case 'chat':
         return this.selectedChat?.title ?? 'Chat';
-      case 'chatMembers':
-        return 'Chat Members';
       case 'impressionsHost':
         return 'Impressions';
       case 'invitationActions':
@@ -12109,13 +12091,6 @@ export class App {
     const dateText = Number.isNaN(when.getTime())
       ? new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
       : when.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-    return `${dateText}`;
-  }
-
-  protected chatMemberActionDate(member: DemoUser): string {
-    const seed = AppDemoGenerators.hashText(`${this.selectedChatMembersItem?.id ?? 'chat'}:${member.id}`);
-    const when = AppUtils.addDays(new Date('2026-02-25T12:00:00'), -(seed % 28));
-    const dateText = when.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     return `${dateText}`;
   }
 
