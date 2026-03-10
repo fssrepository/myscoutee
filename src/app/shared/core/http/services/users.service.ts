@@ -6,7 +6,7 @@ import type {
   UserService,
   UsersQueryResponse,
   UserDto
-} from '../../base/interfaces/user.interface';
+} from '../../user.interface';
 
 @Injectable({
   providedIn: 'root'

@@ -1,7 +1,7 @@
 import { computed, Injectable, inject } from '@angular/core';
 
 import type { UserDto } from '../../user.interface';
-import { DEMO_USERS_TABLE_NAME } from '../models/users.model';
+import { DEMO_USERS_TABLE_NAME, type UsersLoadStatus } from '../models/users.model';
 import { DemoUsersMemoryDb } from '../models/db';
 
 @Injectable({
@@ -13,6 +13,7 @@ export class DemoUsersRepository {
   readonly usersTable = computed(() => this.memoryDb.read()[DEMO_USERS_TABLE_NAME]);
   readonly demoUsers = computed(() => this.queryAvailableDemoUsers());
   readonly demoUsersLoading = computed(() => this.memoryDb.read()[DEMO_USERS_TABLE_NAME].loading);
+  readonly demoUsersLoadStatus = computed(() => this.memoryDb.read()[DEMO_USERS_TABLE_NAME].status);
   readonly demoUsersLoadedAtIso = computed(() => this.memoryDb.read()[DEMO_USERS_TABLE_NAME].loadedAtIso);
   readonly demoUsersError = computed(() => this.memoryDb.read()[DEMO_USERS_TABLE_NAME].error);
 
@@ -24,18 +25,20 @@ export class DemoUsersRepository {
       .map(user => this.cloneUser(user));
   }
 
-  beginDemoUsersLoad(): void {
+  setLoadStatus(status: UsersLoadStatus, message?: string): UserDto[] {
     this.memoryDb.write(current => ({
       ...current,
       [DEMO_USERS_TABLE_NAME]: {
         ...current[DEMO_USERS_TABLE_NAME],
-        loading: true,
-        error: null
+        loading: status === 'loading',
+        status,
+        error: message ?? null
       }
     }));
+    return this.queryAvailableDemoUsers();
   }
 
-  completeDemoUsersLoad(users: readonly UserDto[]): UserDto[] {
+  syncUsers(users: readonly UserDto[]): UserDto[] {
     const usersById: Record<string, UserDto> = {};
     const userIds: string[] = [];
     for (const user of users) {
@@ -48,20 +51,9 @@ export class DemoUsersRepository {
         byId: usersById,
         ids: userIds,
         loading: false,
+        status: 'success',
         loadedAtIso: new Date().toISOString(),
         error: null
-      }
-    }));
-    return this.queryAvailableDemoUsers();
-  }
-
-  failDemoUsersLoad(message: string): UserDto[] {
-    this.memoryDb.write(current => ({
-      ...current,
-      [DEMO_USERS_TABLE_NAME]: {
-        ...current[DEMO_USERS_TABLE_NAME],
-        loading: false,
-        error: message
       }
     }));
     return this.queryAvailableDemoUsers();

@@ -16,7 +16,7 @@ import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-
 import { AlertService } from './shared/alert.service';
 import { ActivitiesDbContextService } from './shared/activities-db-context.service';
 import { EventEditorService } from './shared/event-editor.service';
-import { UsersService } from './shared/core/users';
+import { UsersService } from './shared/core/users.service';
 import {
   APP_DEMO_DATA,
   DEMO_CHAT_BY_USER,
@@ -5490,9 +5490,7 @@ export class App {
 
   private openDemoUserSelectorPopup(): void {
     this.showUserSelector = true;
-    void this.usersService.loadAvailableDemoUsers({
-      preferCached: true
-    }).then(() => {
+    void this.usersService.loadAvailableDemoUsers().then(() => {
       this.cdr.markForCheck();
     });
   }

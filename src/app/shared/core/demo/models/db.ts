@@ -11,6 +11,7 @@ export class DemoUsersMemoryDb {
       byId: {},
       ids: [],
       loading: false,
+      status: 'idle',
       loadedAtIso: null,
       error: null
     }
