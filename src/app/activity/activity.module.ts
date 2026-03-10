@@ -15,4 +15,4 @@ import { EventEditorPopupComponent } from './event-editor-popup.component';
     EventEditorPopupComponent
   ]
 })
-export class EventEditorModule { }
+export class ActivityModule { }
