@@ -1,6 +1,9 @@
 import type * as AppTypes from './app-types';
 import type { ChatMenuItem } from './demo-data';
 
+export type SubEventAssetAssignmentIds = Partial<Record<AppTypes.AssetType, string[]>>;
+export type SubEventAssetCardsByType = Partial<Record<AppTypes.AssetType, AppTypes.AssetCard[]>>;
+
 export type ActivitiesNavigationRequest =
   | { type: 'eventExplore'; stacked?: boolean }
   | {
@@ -9,6 +12,8 @@ export type ActivitiesNavigationRequest =
       resourceType: 'Members' | 'Car' | 'Accommodation' | 'Supplies';
       subEvent: AppTypes.SubEventFormItem;
       group?: { id: string; groupLabel: string } | null;
+      assetAssignmentIds?: SubEventAssetAssignmentIds;
+      assetCardsByType?: SubEventAssetCardsByType;
     }
   | { type: 'members'; row: AppTypes.ActivityListRow }
   | { type: 'eventEditorCreate'; target: AppTypes.EventEditorTarget }
@@ -42,6 +47,8 @@ export interface EventChatContext {
   subEventRow: AppTypes.ActivityListRow | null;
   subEvent: AppTypes.SubEventFormItem | null;
   group: { id: string; label: string } | null;
+  assetAssignmentIds: SubEventAssetAssignmentIds;
+  assetCardsByType: SubEventAssetCardsByType;
   resources: EventChatResourceContext[];
 }
 

@@ -4324,6 +4324,8 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       subEventRow: eventRow,
       subEvent,
       group,
+      assetAssignmentIds: subEvent ? this.eventChatResourceAssignmentIds(subEvent) : {},
+      assetCardsByType: this.eventChatResourceCardsByType(),
       resources: this.eventChatResources(channelType, subEvent)
     };
   }
@@ -4440,6 +4442,22 @@ export class EventActivitiesPopupComponent implements OnDestroy {
         visible: true
       }
     ];
+  }
+
+  private eventChatResourceAssignmentIds(subEvent: AppTypes.SubEventFormItem): Record<AppTypes.AssetType, string[]> {
+    return {
+      Car: [...this.resolveSubEventAssignedAssetIds(subEvent.id, 'Car')],
+      Accommodation: [...this.resolveSubEventAssignedAssetIds(subEvent.id, 'Accommodation')],
+      Supplies: [...this.resolveSubEventAssignedAssetIds(subEvent.id, 'Supplies')]
+    };
+  }
+
+  private eventChatResourceCardsByType(): Record<AppTypes.AssetType, AppTypes.AssetCard[]> {
+    return {
+      Car: this.assetCards.filter(card => card.type === 'Car').map(card => ({ ...card, requests: [...card.requests] })),
+      Accommodation: this.assetCards.filter(card => card.type === 'Accommodation').map(card => ({ ...card, requests: [...card.requests] })),
+      Supplies: this.assetCards.filter(card => card.type === 'Supplies').map(card => ({ ...card, requests: [...card.requests] }))
+    };
   }
 
   private subEventCapacityLabelForChat(item: AppTypes.SubEventFormItem): string {

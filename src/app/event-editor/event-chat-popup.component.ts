@@ -269,6 +269,8 @@ export class EventChatPopupComponent implements OnDestroy {
       item: session.item,
       resourceType: type,
       subEvent: context.subEvent,
+      assetAssignmentIds: context.assetAssignmentIds,
+      assetCardsByType: context.assetCardsByType,
       group: context.group
         ? {
             id: context.group.id,
