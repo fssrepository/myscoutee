@@ -1,12 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-import { environment } from '../../../../../../environments/environment';
+import { environment } from '../../../../../environments/environment';
 import type {
   UserService,
   UsersQueryResponse,
   UserDto
-} from '../../../interfaces/user.interface';
+} from '../../base/interfaces/user.interface';
 
 @Injectable({
   providedIn: 'root'

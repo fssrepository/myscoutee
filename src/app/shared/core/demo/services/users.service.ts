@@ -1,12 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
-import { AppDemoGenerators } from '../../../../app-demo-generators';
+import { AppDemoGenerators } from '../../../app-demo-generators';
 import type {
   UserService,
   UsersQueryResponse,
   UserDto
-} from '../../../interfaces/user.interface';
+} from '../../user.interface';
 
 interface DemoUsersRouteDelayEntry {
   routePrefix: string;

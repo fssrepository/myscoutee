@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
-import { DEMO_USERS_TABLE_NAME, type DemoUsersMemorySchema } from '../models/users.model';
+import { DEMO_USERS_TABLE_NAME, type DemoUsersMemorySchema } from './users.model';
 
 @Injectable({
   providedIn: 'root'

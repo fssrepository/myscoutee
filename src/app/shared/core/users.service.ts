@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 
-import { environment } from '../../../../environments/environment';
-import { DemoUsersRepository, DemoUsersService } from '../demo/users';
-import { HttpUsersService } from '../http/users';
+import { environment } from '../../../../../environments/environment';
+import { DemoUsersRepository, DemoUsersService } from '../../demo';
+import { HttpUsersService } from '../../http';
 import type { UserDto, UserService } from '../interfaces/user.interface';
 
 export interface UsersQueryOptions {

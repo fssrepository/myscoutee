@@ -1,8 +1,8 @@
 import { computed, Injectable, inject } from '@angular/core';
 
-import type { UserDto } from '../../../interfaces/user.interface';
+import type { UserDto } from '../../user.interface';
 import { DEMO_USERS_TABLE_NAME } from '../models/users.model';
-import { DemoUsersMemoryDb } from './users.memory-db';
+import { DemoUsersMemoryDb } from '../models/db';
 
 @Injectable({
   providedIn: 'root'
