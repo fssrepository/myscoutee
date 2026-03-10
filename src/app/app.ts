@@ -215,7 +215,12 @@ export class App {
   protected readonly assetTypeOptions: AppTypes.AssetType[] = APP_STATIC_DATA.assetTypeOptions;
   protected readonly assetFilterOptions: AppTypes.AssetFilterType[] = APP_STATIC_DATA.assetFilterOptions;
   protected assetFilter: AppTypes.AssetFilterType = 'Car';
-  protected assetCards: AppTypes.AssetCard[] = AppDemoGenerators.buildSampleAssetCards(this.users);
+  private readonly seedAssetCards: AppTypes.AssetCard[] = AppDemoGenerators.buildSampleAssetCards(this.users);
+  protected assetCards: AppTypes.AssetCard[] = this.seedAssetCards.map(card => ({
+    ...card,
+    routes: [...(card.routes ?? [])],
+    requests: [...card.requests]
+  }));
   protected ticketStickyValue = '';
   protected ticketDateOrder: 'upcoming' | 'past' = 'upcoming';
   protected showTicketOrderPicker = false;
@@ -4344,6 +4349,11 @@ export class App {
         ? fallbackCards.map(card => ({ ...card, requests: [...card.requests] }))
         : this.assetCards.filter(card => card.type === resourceType);
     }
+    if (baseCards.length === 0) {
+      baseCards = this.seedAssetCards
+        .filter(card => card.type === resourceType)
+        .map(card => ({ ...card, routes: [...(card.routes ?? [])], requests: [...card.requests] }));
+    }
     return baseCards.map(card => ({
       id: `subevent-${card.id}`,
       type: card.type,
@@ -7992,12 +8002,23 @@ export class App {
       ? this.selectedChatTournamentGroup(subEvent)
       : null;
     this.inlineItemActionMenu = null;
-    this.seedSubEventResourceFallbackCardsFromNavigationRequest(this.eventChatResourceCardsByTypeForSubEvent());
-    this.seedSubEventAssetAssignmentsFromNavigationRequest(
-      subEvent.id,
-      this.eventChatResourceAssignmentIdsForSubEvent(subEvent.id)
-    );
-    this.openSubEventBadgePopup(type, subEvent, undefined, group, 'chat');
+    if (!this.selectedChat) {
+      return;
+    }
+    this.activitiesContext.requestActivitiesNavigation({
+      type: 'chatResource',
+      item: this.selectedChat,
+      resourceType: type,
+      subEvent,
+      group: group
+        ? {
+            id: group.id,
+            groupLabel: group.groupLabel
+          }
+        : null,
+      assetAssignmentIds: this.eventChatResourceAssignmentIdsForSubEvent(subEvent.id),
+      assetCardsByType: this.eventChatResourceCardsByTypeForSubEvent()
+    });
   }
 
   private selectedChatSubEventResourceTotal(subEvent: AppTypes.SubEventFormItem): number {
