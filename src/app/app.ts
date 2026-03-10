@@ -2496,14 +2496,14 @@ export class App {
       this.subEventMembersRow = null;
       this.subEventMembersRowId = null;
     }
-    this.subEventMembersPendingOnly = false;
+    this.subEventMembersPendingOnly = type === 'Members';
     this.subEventAssetMembersContext = null;
     this.subEventMemberRolePickerUserId = null;
     this.subEventAssetAssignContext = null;
     this.selectedSubEventAssignAssetIds = [];
     this.subEventAssetCapacityEditor = null;
     this.subEventAssetRouteEditor = null;
-    this.subEventResourceFilter = type === 'Members' ? 'Members' : type;
+    this.subEventResourceFilter = this.normalizeSubEventResourceFilter(type === 'Members' ? 'Members' : type, type);
     this.stackedPopup = 'subEventAssets';
   }
 
@@ -2620,18 +2620,21 @@ export class App {
     this.alertService.open(message);
   }
 
-  protected readonly subEventResourceFilterOptions: AppTypes.SubEventResourceFilter[] = [...APP_DEMO_DATA.subEventResourceFilterOptions];
+  protected readonly subEventResourceFilterOptions: AppTypes.SubEventResourceFilter[] = ['Members', 'Car', 'Accommodation', 'Supplies'];
 
   protected selectSubEventResourceFilter(filter: AppTypes.SubEventResourceFilter): void {
-    this.subEventResourceFilter = filter;
+    const previous = this.subEventResourceFilter;
+    this.subEventResourceFilter = this.normalizeSubEventResourceFilter(filter);
     this.suppressSelectOverlayBackdropPointerEvents();
     this.subEventAssetMembersContext = null;
-    if (filter !== 'Members') {
+    if (this.subEventResourceFilter !== 'Members') {
       this.inlineItemActionMenu = null;
     }
     this.subEventMemberRolePickerUserId = null;
-    if (filter !== 'Members') {
+    if (this.subEventResourceFilter !== 'Members') {
       this.subEventMembersPendingOnly = false;
+    } else if (previous !== 'Members') {
+      this.subEventMembersPendingOnly = true;
     }
   }
 
@@ -2668,6 +2671,9 @@ export class App {
     }
     if (type === 'Accommodation') {
       return Math.max(0, Math.trunc(Number(subEvent.accommodationPending) || 0));
+    }
+    if (type !== 'Supplies') {
+      return 0;
     }
     return Math.max(0, Math.trunc(Number(subEvent.suppliesPending) || 0));
   }
@@ -2745,6 +2751,21 @@ export class App {
     const members = this.subEventMembersEntries();
     const pendingCount = members.filter(member => member.status === 'pending').length;
     const acceptedCount = members.length - pendingCount;
+    if (pendingCount <= 0) {
+      return `${acceptedCount} members`;
+    }
+    return `${acceptedCount} members · ${pendingCount} pending`;
+  }
+
+  protected subEventAssetsHeaderSummary(): string {
+    const context = this.selectedSubEventBadgeContext;
+    if (!context || this.subEventResourceFilter === 'Members') {
+      return '0 members';
+    }
+    const resourceType = this.subEventResourceFilter as AppTypes.AssetType;
+    const metrics = this.subEventAssetCapacityMetrics(context.subEvent, resourceType);
+    const acceptedCount = Math.max(0, Math.trunc(Number(metrics.joined) || 0));
+    const pendingCount = Math.max(0, Math.trunc(Number(metrics.pending) || 0));
     if (pendingCount <= 0) {
       return `${acceptedCount} members`;
     }
@@ -3966,15 +3987,51 @@ export class App {
     const normalized = stored.filter(id => eligible.has(id));
     if (normalized.length === 0 && eligibleIds.length > 0) {
       const existingSettings = this.subEventAssignedAssetSettingsByKey[key] ?? {};
-      if (Object.keys(existingSettings).length === 0) {
-        this.subEventAssignedAssetIdsByKey[key] = [...eligibleIds];
-        return [...eligibleIds];
-      }
+      const settingIds = Object.keys(existingSettings).filter(id => eligible.has(id));
+      const recoveredIds = settingIds.length > 0 ? settingIds : eligibleIds;
+      this.subEventAssignedAssetIdsByKey[key] = [...recoveredIds];
+      return [...recoveredIds];
     }
     if (normalized.length !== stored.length) {
       this.subEventAssignedAssetIdsByKey[key] = [...normalized];
     }
     return normalized;
+  }
+
+  private normalizeSubEventResourceFilter(
+    filter: AppTypes.SubEventResourceFilter | string | null | undefined,
+    preferred?: AppTypes.SubEventResourceFilter | string | null | undefined
+  ): AppTypes.SubEventResourceFilter {
+    const parsedFilter = this.parseSubEventResourceFilter(filter);
+    if (parsedFilter) {
+      return parsedFilter;
+    }
+    const parsedPreferred = this.parseSubEventResourceFilter(preferred);
+    if (parsedPreferred) {
+      return parsedPreferred;
+    }
+    const parsedCurrent = this.parseSubEventResourceFilter(this.subEventResourceFilter);
+    if (parsedCurrent) {
+      return parsedCurrent;
+    }
+    return 'Members';
+  }
+
+  private parseSubEventResourceFilter(value: unknown): AppTypes.SubEventResourceFilter | null {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'members') {
+      return 'Members';
+    }
+    if (normalized === 'car') {
+      return 'Car';
+    }
+    if (normalized === 'accommodation') {
+      return 'Accommodation';
+    }
+    if (normalized === 'supplies') {
+      return 'Supplies';
+    }
+    return null;
   }
 
   private applySubEventAssetAssignments(): void {
@@ -6552,6 +6609,13 @@ export class App {
     return isNarrowViewport && hasCoarsePointer;
   }
 
+  protected get isMobilePopupSheetViewport(): boolean {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return window.matchMedia('(max-width: 900px)').matches;
+  }
+
   protected onProfileStatusChange(value: AppTypes.ProfileStatus): void {
     this.profileForm.profileStatus = value;
   }
@@ -6652,6 +6716,26 @@ export class App {
         badge: this.assetFilterCount(option)
       })),
       context: { kind: 'assetFilter' }
+    };
+  }
+
+  protected openMobileSubEventResourceFilterSelector(event: Event): void {
+    if (!this.isMobilePopupSheetViewport || this.stackedPopup !== 'subEventAssets' || !this.selectedSubEventBadgeContext) {
+      return;
+    }
+    event.stopPropagation();
+    const selected = this.normalizeSubEventResourceFilter(this.subEventResourceFilter);
+    this.mobileProfileSelectorSheet = {
+      title: 'Resources',
+      selected,
+      options: this.subEventResourceFilterOptions.map(option => ({
+        value: option,
+        label: option.toLowerCase(),
+        icon: this.subEventResourceTypeIcon(option),
+        toneClass: this.subEventResourceTypeClass(option),
+        badge: this.subEventResourceFilterCount(option)
+      })),
+      context: { kind: 'subEventResourceFilter' }
     };
   }
 
@@ -6826,6 +6910,12 @@ export class App {
       if (this.assetFilterOptions.includes(value as AppTypes.AssetFilterType)) {
         this.selectAssetFilter(value as AppTypes.AssetFilterType);
       }
+      this.mobileProfileSelectorSheet = null;
+      return;
+    }
+    if (sheet.context.kind === 'subEventResourceFilter') {
+      const filter = this.normalizeSubEventResourceFilter(value);
+      this.selectSubEventResourceFilter(filter);
       this.mobileProfileSelectorSheet = null;
       return;
     }

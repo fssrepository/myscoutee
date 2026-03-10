@@ -2468,6 +2468,9 @@
         <span class="header-members-count subevent-header-members-count members-header-summary-badge" *ngIf="isSubEventMembersPopup()">
           {{ subEventMembersHeaderSummary() }}
         </span>
+        <span class="header-members-count members-header-summary-badge" *ngIf="isSubEventAssetResourcePopup()">
+          {{ subEventAssetsHeaderSummary() }}
+        </span>
         <span class="header-members-count members-header-summary-badge" *ngIf="stackedPopup === 'activityMembers'">
           {{ activityMembersHeaderSummary() }}
         </span>
@@ -2960,33 +2963,51 @@
 
       <div *ngIf="stackedPopup === 'subEventAssets' && selectedSubEventBadgeContext" class="experience-popup assets-popup subevent-assets-popup" [class.subevent-members-popup]="subEventResourceFilter === 'Members'">
         <div class="experience-toolbar assets-toolbar">
-          <div class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select" [ngClass]="subEventResourceTypeClass(subEventResourceFilter)">
-            <mat-select
-              [(ngModel)]="subEventResourceFilter"
-              (ngModelChange)="selectSubEventResourceFilter($event)"
-              [panelWidth]="assetFilterPanelWidth()"
-              disableOptionCentering
-              panelClass="selector-options-panel profile-bottom-sheet-panel assets-filter-options-panel"
+          <ng-container *ngIf="!isMobilePopupSheetViewport; else mobileSubEventResourceFilterButton">
+            <div class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select" [ngClass]="subEventResourceTypeClass(subEventResourceFilter)">
+              <mat-select
+                [(ngModel)]="subEventResourceFilter"
+                (ngModelChange)="selectSubEventResourceFilter($event)"
+                [panelWidth]="assetFilterPanelWidth()"
+                disableOptionCentering
+                panelClass="selector-options-panel profile-bottom-sheet-panel assets-filter-options-panel"
+              >
+                <mat-select-trigger>
+                  <span class="status-option-content">
+                    <mat-icon [class]="subEventResourceTypeClass(subEventResourceFilter)">{{ subEventResourceTypeIcon(subEventResourceFilter) }}</mat-icon>
+                    <span>{{ subEventResourceFilter.toLowerCase() }}</span>
+                  </span>
+                </mat-select-trigger>
+                <mat-option *ngFor="let option of subEventResourceFilterOptions" [value]="option" class="status-option" [ngClass]="subEventResourceTypeClass(option)">
+                  <span class="status-option-content">
+                    <mat-icon [class]="subEventResourceTypeClass(option)">{{ subEventResourceTypeIcon(option) }}</mat-icon>
+                    <span>{{ option.toLowerCase() }}</span>
+                    <span class="rate-filter-count-badge" *ngIf="subEventResourceFilterCount(option) > 0">{{ subEventResourceFilterCount(option) }}</span>
+                  </span>
+                </mat-option>
+              </mat-select>
+              <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="subEventResourceFilter !== 'Members' && subEventResourceFilterCount(subEventResourceFilter) > 0">{{ subEventResourceFilterCount(subEventResourceFilter) }}</span>
+            </div>
+          </ng-container>
+          <ng-template #mobileSubEventResourceFilterButton>
+            <button
+              type="button"
+              class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select"
+              [ngClass]="subEventResourceTypeClass(subEventResourceFilter)"
+              (click)="openMobileSubEventResourceFilterSelector($event)"
+              aria-label="Open resource filter"
             >
-              <mat-select-trigger>
-                <span class="status-option-content">
-                  <mat-icon [class]="subEventResourceTypeClass(subEventResourceFilter)">{{ subEventResourceTypeIcon(subEventResourceFilter) }}</mat-icon>
-                  <span>{{ subEventResourceFilter.toLowerCase() }}</span>
-                </span>
-              </mat-select-trigger>
-              <mat-option *ngFor="let option of subEventResourceFilterOptions" [value]="option" class="status-option" [ngClass]="subEventResourceTypeClass(option)">
-                <span class="status-option-content">
-                  <mat-icon [class]="subEventResourceTypeClass(option)">{{ subEventResourceTypeIcon(option) }}</mat-icon>
-                  <span>{{ option.toLowerCase() }}</span>
-                  <span class="rate-filter-count-badge" *ngIf="subEventResourceFilterCount(option) > 0">{{ subEventResourceFilterCount(option) }}</span>
-                </span>
-              </mat-option>
-            </mat-select>
-            <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="subEventResourceFilter !== 'Members' && subEventResourceFilterCount(subEventResourceFilter) > 0">{{ subEventResourceFilterCount(subEventResourceFilter) }}</span>
-          </div>
+              <span class="status-option-content">
+                <mat-icon [class]="subEventResourceTypeClass(subEventResourceFilter)">{{ subEventResourceTypeIcon(subEventResourceFilter) }}</mat-icon>
+                <span>{{ subEventResourceFilter.toLowerCase() }}</span>
+              </span>
+              <mat-icon>expand_more</mat-icon>
+              <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="subEventResourceFilter !== 'Members' && subEventResourceFilterCount(subEventResourceFilter) > 0">{{ subEventResourceFilterCount(subEventResourceFilter) }}</span>
+            </button>
+          </ng-template>
           <button
             type="button"
-            class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select subevent-members-pending-toggle"
+            class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select subevent-members-pending-toggle activities-hosting-draft-toggle"
             *ngIf="subEventResourceFilter === 'Members'; else subEventAssetsActionButtons"
             [class.is-active]="subEventMembersPendingOnly"
             (click)="toggleSubEventMembersPendingOnly($event)"

@@ -531,6 +531,7 @@ export interface MobileProfileSelectorSheet {
     | { kind: 'detailValue'; groupIndex: number; rowIndex: number }
     | { kind: 'experienceType' }
     | { kind: 'assetFilter' }
+    | { kind: 'subEventResourceFilter' }
     | { kind: 'activitiesPrimaryFilter' }
     | { kind: 'activitiesChatContextFilter' }
     | { kind: 'activitiesRateFilter' }
