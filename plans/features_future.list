@@ -1,3 +1,23 @@
+activities - event
+
+at the moment there is separated event/invitation/hosting
+
+but what if we have only one event 
++ (All/invitation only/hosting only) filter button next to it
++ when chose hosting only (drafts only)
++ "+" button animated menu (explore/create event menu items) - always visible (on any event combination)
+menu should propagate that select
+
+maybe Active Events/Invitations/Hosting only - not sure (active events does not include invitations)
+maybe there is an all (so everything is visble - so invitation can be viewed the user to decide whether he is available)
+all is not selected from the menu
+
+-----
+
+request to join - if there is slots, you can choose from the menu -> like the request to join has a ">"
+event editor should show for public or friends whether it's for group  of people or individual can join
+
+
 must
 ----------------
 1) instagram account should be renamed from myscoutee1 to myscoutee, after the other account deleted (deletion period ended apr 3)
