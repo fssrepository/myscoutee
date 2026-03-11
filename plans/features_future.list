@@ -12,10 +12,23 @@ maybe Active Events/Invitations/Hosting only - not sure (active events does not 
 maybe there is an all (so everything is visble - so invitation can be viewed the user to decide whether he is available)
 all is not selected from the menu
 
+red counter won't go on events filter button, it's going to the all/active events filter button
+
 -----
 
 request to join - if there is slots, you can choose from the menu -> like the request to join has a ">"
 event editor should show for public or friends whether it's for group  of people or individual can join
+
+on event item, go to the chat menu - + red counter on the three dot menu??? - so if anybody joined to the slot, needs to see
+not sure about slot handling on event page - as there is only one event (maybe it's a separate screen)
+
+regarding to stage group - members menu item is separated from the resources and the other three is assets
+so we have a members page and whe have a filter bar page with only the assets (members is not there,
+very similar to the main event members screen, so that area won't be customized)
+
+and we can have a separate assets module then
+
+maybe put a contacts icon and it's going to rates met???
 
 
 must
