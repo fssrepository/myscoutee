@@ -2333,7 +2333,7 @@
 
   .entry-section,
   .entry-final-cta {
-    padding: 1rem 0;
+    padding: 0 0;
   }
 }
 
@@ -17836,7 +17836,7 @@ textarea {
 #how .entry-section-head h2 {
   display: inline-flex;
   align-items: center;
-  padding: 0.28rem 0.72rem;
+  padding: 0.28rem 0.72rem 0.28rem 1.6rem;
   border-radius: 50px 0 0 0;
   border: 1px solid rgba(93, 120, 222, 0.34);
   background: linear-gradient(135deg, rgba(232, 241, 255, 0.95) 0%, rgba(244, 235, 255, 0.95) 100%);
@@ -17987,7 +17987,7 @@ textarea {
   }
 
   #how .entry-section-head h2 {
-    padding: 0.26rem 0.62rem;
+    padding: 0.26rem 0.62rem 0.26rem 1.6rem;
     font-size: clamp(1.12rem, 5.5vw, 1.24rem);
   }
 
