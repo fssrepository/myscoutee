@@ -52,3 +52,8 @@ Occupancy for selected dates must be clearly visible in both the popup and item 
 Events also include an expense field with amount and currency.
 
 availability dates of assets (car/accomodation/suplies) to be able to lend
+
+it was a parser of cv to load schools and workspaces in the old myscoutee
+
+make a slot on/off button on event editor (multiple dates can be added - with byweekly, one time etc.),
+if it's public or friends (so when it explores it can decide the slots also)
