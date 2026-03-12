@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { resolveAdditionalDelayMsForRoute } from '../config';
 import { DemoUsersRepository } from '../repositories/users.repository';
+import { DemoUsersRatingsRepository } from '../repositories/users-ratings.repository';
 import type {
   UserDto,
   UserGameCardsQueryRequest,
@@ -18,6 +19,7 @@ import type {
 export class DemoGameService implements UserGameService {
   private static readonly USER_GAME_CARDS_ROUTE = '/game-cards/query';
   private readonly usersRepository = inject(DemoUsersRepository);
+  private readonly usersRatingsRepository = inject(DemoUsersRatingsRepository);
 
   queryGameCardsUsersSnapshot(): UserDto[] {
     return this.usersRepository.queryGameStackUsers();
@@ -29,7 +31,7 @@ export class DemoGameService implements UserGameService {
     rating: number,
     mode: 'single' | 'pair' = 'single'
   ): void {
-    this.usersRepository.enqueueGameCardRatingOutbox(raterUserId, ratedUserId, rating, mode);
+    this.usersRatingsRepository.enqueueGameCardRatingOutbox(raterUserId, ratedUserId, rating, mode);
   }
 
   async syncUserRatesBatch(rates: UserRateRecord[]): Promise<UserRatesSyncResult> {
@@ -40,7 +42,7 @@ export class DemoGameService implements UserGameService {
         error: null
       };
     }
-    const syncedRateIds = this.usersRepository.upsertGameCardRatings(rates);
+    const syncedRateIds = this.usersRatingsRepository.upsertGameCardRatings(rates);
     const syncedIds = new Set(syncedRateIds);
     const failedRateIds = rates
       .map(rate => rate.id.trim())
