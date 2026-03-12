@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { MatSliderModule } from '@angular/material/slider';
 import { DemoUser, PROFILE_DETAILS } from '../../shared/demo-data';
 import { AppContext } from '../../shared/core/app.context';
-import { USER_BY_ID_LOAD_CONTEXT_KEY } from '../../shared/core/users.service';
+import { USER_BY_ID_LOAD_CONTEXT_KEY, UsersService } from '../../shared/core/users.service';
 import { GameService, USER_GAME_CARDS_LOAD_CONTEXT_KEY } from '../../shared/core/game.service';
 
 type LocalPopup = 'history' | 'filter' | null;
@@ -424,7 +424,8 @@ export class HomeComponent implements OnDestroy {
   constructor(
     private readonly cdr: ChangeDetectorRef,
     private readonly appCtx: AppContext,
-    private readonly gameService: GameService
+    private readonly gameService: GameService,
+    private readonly usersService: UsersService
   ) {
     this.users = this.gameService.getGameCardsUsersSnapshot() as DemoUser[];
     this.activeUserId = this.getActiveUserId();
@@ -830,7 +831,7 @@ export class HomeComponent implements OnDestroy {
       return;
     }
     const currentCandidate = this.isPairMode
-      ? (this.pairModeWomanCandidate ?? this.pairModeManCandidate)
+      ? (this.hasPairModeCandidates ? this.pairModeWomanCandidate : null)
       : this.activeCandidate;
     if (!currentCandidate) {
       this.maybeStartGameStackPaginationLoad();
@@ -839,12 +840,11 @@ export class HomeComponent implements OnDestroy {
     if (this.isPairMode) {
       const woman = this.pairModeWomanCandidate;
       const man = this.pairModeManCandidate;
-      if (woman) {
-        this.gameService.recordUserGameCardRating(this.activeUserId, woman.id, value, 'pair');
+      if (!woman || !man) {
+        this.maybeStartGameStackPaginationLoad();
+        return;
       }
-      if (man) {
-        this.gameService.recordUserGameCardRating(this.activeUserId, man.id, value, 'pair');
-      }
+      this.gameService.recordUserGameCardPairRating(this.activeUserId, woman.id, man.id, value);
     } else {
       this.gameService.recordUserGameCardRating(this.activeUserId, currentCandidate.id, value, 'single');
     }
@@ -879,16 +879,7 @@ export class HomeComponent implements OnDestroy {
     this.resetCandidateImageState();
     this.resetGameStackPaginationState(false);
     this.gameInitialCardsLoadPending = true;
-    if (!this.isPairMode) {
-      void this.reloadServiceCardStack();
-      return;
-    }
-    this.resetGameStackPaginationState(true);
-    this.preloadGameImageWindow();
-    this.maybeStartGameStackPaginationLoad();
-    this.beginCandidateImageLoadingForCurrentSelection(true);
-    this.gameInitialCardsLoadPending = false;
-    this.cdr.markForCheck();
+    void this.reloadServiceCardStack();
   }
 
   protected openHistory(): void {
@@ -912,7 +903,7 @@ export class HomeComponent implements OnDestroy {
 
   protected applyFilter(): void {
     this.gameFilter = this.normalizeFilter(this.filterDraft);
-    this.appCtx.setUserFilterPreferences(this.activeUserId, this.gameFilter);
+    void this.usersService.saveUserFilterPreferences(this.activeUserId, this.gameFilter);
     this.appCtx.clearUserFilterCountOverride(this.activeUserId);
     this.resetServiceCardState();
     this.cardIndex = 0;

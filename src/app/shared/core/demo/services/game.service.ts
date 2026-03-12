@@ -4,19 +4,19 @@ import { resolveAdditionalDelayMsForRoute } from '../config';
 import { DemoUsersRepository } from '../repositories/users.repository';
 import { DemoUsersRatingsRepository } from '../repositories/users-ratings.repository';
 import type {
-  UserDto,
   UserGameCardsQueryRequest,
   UserGameCardsQueryResponse,
+  UserGameDataService,
   UserGameFilterPreferencesDto,
-  UserGameService,
   UserRateRecord,
   UserRatesSyncResult
-} from '../../user.interface';
+} from '../../base/interfaces/game.interface';
+import type { UserDto } from '../../base/interfaces/user.interface';
 
 @Injectable({
   providedIn: 'root'
 })
-export class DemoGameService implements UserGameService {
+export class DemoGameService implements UserGameDataService {
   private static readonly USER_GAME_CARDS_ROUTE = '/game-cards/query';
   private readonly usersRepository = inject(DemoUsersRepository);
   private readonly usersRatingsRepository = inject(DemoUsersRatingsRepository);

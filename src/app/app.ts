@@ -5580,23 +5580,41 @@ export class App {
       return;
     }
 
+    current.name = (user.name ?? '').trim() || current.name;
+    current.birthday = (user.birthday ?? '').trim() || current.birthday;
+    if (Number.isFinite(user.age)) {
+      current.age = Math.max(18, Math.min(120, Math.trunc(Number(user.age))));
+    }
+    current.city = (user.city ?? '').trim() || current.city;
+    current.height = (user.height ?? '').trim() || current.height;
+    current.physique = (user.physique ?? '').trim() || current.physique;
+    current.languages = Array.isArray(user.languages) && user.languages.length > 0
+      ? [...user.languages]
+      : [...current.languages];
+    current.horoscope = (user.horoscope ?? '').trim() || current.horoscope;
+    current.initials = (user.initials ?? '').trim() || current.initials;
+    current.gender = user.gender === 'man' ? 'man' : 'woman';
     if (Number.isFinite(user.completion)) {
       current.completion = Math.max(0, Math.min(100, Math.trunc(Number(user.completion))));
     }
-    if ((user.statusText ?? '').trim().length > 0) {
-      current.statusText = user.statusText;
-    }
-    if ((user.hostTier ?? '').trim().length > 0) {
-      current.hostTier = user.hostTier;
-    }
-    if ((user.traitLabel ?? '').trim().length > 0) {
-      current.traitLabel = user.traitLabel;
-    }
-    if (Array.isArray(user.images) && user.images.length > 0) {
+    current.statusText = (user.statusText ?? '').trim() || current.statusText;
+    current.hostTier = (user.hostTier ?? '').trim() || current.hostTier;
+    current.traitLabel = (user.traitLabel ?? '').trim() || current.traitLabel;
+    current.headline = (user.headline ?? '').trim() || current.headline;
+    current.about = (user.about ?? '').trim() || current.about;
+    current.profileStatus = user.profileStatus ?? current.profileStatus;
+    if (Array.isArray(user.images)) {
       current.images = [...user.images];
     }
+    current.activities = {
+      game: Math.max(0, Math.trunc(Number(user.activities?.game) || current.activities.game)),
+      chat: Math.max(0, Math.trunc(Number(user.activities?.chat) || current.activities.chat)),
+      invitations: Math.max(0, Math.trunc(Number(user.activities?.invitations) || current.activities.invitations)),
+      events: Math.max(0, Math.trunc(Number(user.activities?.events) || current.activities.events)),
+      hosting: Math.max(0, Math.trunc(Number(user.activities?.hosting) || current.activities.hosting))
+    };
 
-    delete this.profileDetailsFormByUser[current.id];
+    this.syncProfileBasicsIntoDetailRows(current);
     this.syncLoadedUserImageSlots(current);
   }
 
@@ -13554,6 +13572,7 @@ export class App {
     this.syncProfileBasicsIntoDetailRows(user);
     user.completion = this.calculateProfileCompletionPercent();
     this.profileDetailsFormByUser[user.id] = this.profileDetailsForm;
+    void this.usersService.saveUserProfile(user);
     if (showAlert) {
       this.alertService.open('Profile saved');
     }
@@ -14053,6 +14072,8 @@ export class App {
 
   private persistActiveUserImageSlots(): void {
     this.profileImageSlotsByUser[this.activeUser.id] = [...this.imageSlots];
+    this.activeUser.images = this.imageSlots.filter((slot): slot is string => Boolean(slot));
+    void this.usersService.saveUserProfile(this.activeUser);
   }
 
   private syncProfileFormFromActiveUser(): void {

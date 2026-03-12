@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 
 import {
+  USER_FILTER_PREFERENCES_TABLE_NAME,
   USERS_TABLE_NAME,
   USER_RATES_TABLE_NAME,
   USER_RATES_OUTBOX_TABLE_NAME,
@@ -48,6 +49,10 @@ export class AppMemoryDb {
         ids: []
       },
       [USER_RATES_OUTBOX_TABLE_NAME]: {
+        byId: {},
+        ids: []
+      },
+      [USER_FILTER_PREFERENCES_TABLE_NAME]: {
         byId: {},
         ids: []
       }
@@ -136,8 +141,12 @@ export class AppMemoryDb {
     const users = await this.readIndexedDbEntry(db, USERS_TABLE_NAME);
     const rates = await this.readIndexedDbEntry(db, USER_RATES_TABLE_NAME);
     const outbox = await this.readIndexedDbEntry(db, USER_RATES_OUTBOX_TABLE_NAME);
+    const filterPreferences = await this.readIndexedDbEntry(db, USER_FILTER_PREFERENCES_TABLE_NAME);
 
-    const hasSegmentedState = users !== null || rates !== null || outbox !== null;
+    const hasSegmentedState = users !== null
+      || rates !== null
+      || outbox !== null
+      || filterPreferences !== null;
     if (!hasSegmentedState) {
       const legacy = await this.readIndexedDbEntry(db, AppMemoryDb.LEGACY_INDEXED_DB_STATE_KEY);
       if (legacy !== null) {
@@ -156,6 +165,9 @@ export class AppMemoryDb {
     if (outbox !== null) {
       partialState[USER_RATES_OUTBOX_TABLE_NAME] = outbox as DemoUsersMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME];
     }
+    if (filterPreferences !== null) {
+      partialState[USER_FILTER_PREFERENCES_TABLE_NAME] = filterPreferences as DemoUsersMemorySchema[typeof USER_FILTER_PREFERENCES_TABLE_NAME];
+    }
     return this.normalizeState(partialState, this.createEmptyState());
   }
 
@@ -170,6 +182,7 @@ export class AppMemoryDb {
       store.put(state[USERS_TABLE_NAME], USERS_TABLE_NAME);
       store.put(state[USER_RATES_TABLE_NAME], USER_RATES_TABLE_NAME);
       store.put(state[USER_RATES_OUTBOX_TABLE_NAME], USER_RATES_OUTBOX_TABLE_NAME);
+      store.put(state[USER_FILTER_PREFERENCES_TABLE_NAME], USER_FILTER_PREFERENCES_TABLE_NAME);
       store.delete(AppMemoryDb.LEGACY_INDEXED_DB_STATE_KEY);
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
@@ -223,6 +236,7 @@ export class AppMemoryDb {
     const usersSource = source[USERS_TABLE_NAME] as Partial<DemoUsersMemorySchema[typeof USERS_TABLE_NAME]> | undefined;
     const ratesSource = source[USER_RATES_TABLE_NAME] as Partial<DemoUsersMemorySchema[typeof USER_RATES_TABLE_NAME]> | undefined;
     const outboxSource = source[USER_RATES_OUTBOX_TABLE_NAME] as Partial<DemoUsersMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]> | undefined;
+    const filterPreferencesSource = source[USER_FILTER_PREFERENCES_TABLE_NAME] as Partial<DemoUsersMemorySchema[typeof USER_FILTER_PREFERENCES_TABLE_NAME]> | undefined;
     return {
       [USERS_TABLE_NAME]: {
         byId: usersSource?.byId && typeof usersSource.byId === 'object'
@@ -247,6 +261,14 @@ export class AppMemoryDb {
         ids: Array.isArray(outboxSource?.ids)
           ? outboxSource.ids.map(id => String(id))
           : [...fallback[USER_RATES_OUTBOX_TABLE_NAME].ids]
+      },
+      [USER_FILTER_PREFERENCES_TABLE_NAME]: {
+        byId: filterPreferencesSource?.byId && typeof filterPreferencesSource.byId === 'object'
+          ? { ...filterPreferencesSource.byId }
+          : { ...fallback[USER_FILTER_PREFERENCES_TABLE_NAME].byId },
+        ids: Array.isArray(filterPreferencesSource?.ids)
+          ? filterPreferencesSource.ids.map(id => String(id))
+          : [...fallback[USER_FILTER_PREFERENCES_TABLE_NAME].ids]
       }
     };
   }

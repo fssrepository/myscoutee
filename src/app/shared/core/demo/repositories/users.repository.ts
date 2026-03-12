@@ -2,9 +2,18 @@ import { computed, Injectable, inject } from '@angular/core';
 
 import { AppDemoGenerators } from '../../../app-demo-generators';
 import { environment } from '../../../../../environments/environment';
-import type { DemoUserListItemDto, UserDto, UserRateOutboxRecord, UserRateRecord } from '../../user.interface';
+import type {
+  UserGameFilterPreferencesDto,
+  UserRateOutboxRecord,
+  UserRateRecord
+} from '../../base/interfaces/game.interface';
+import type {
+  DemoUserListItemDto,
+  UserDto
+} from '../../base/interfaces/user.interface';
 import {
   type DemoUsersMemorySchema,
+  USER_FILTER_PREFERENCES_TABLE_NAME,
   USERS_TABLE_NAME,
   USER_RATES_OUTBOX_TABLE_NAME,
   USER_RATES_TABLE_NAME
@@ -102,6 +111,14 @@ export class DemoUsersRepository {
       [USER_RATES_OUTBOX_TABLE_NAME]: {
         byId: nextOutboxById,
         ids: nextOutboxIds
+      },
+      [USER_FILTER_PREFERENCES_TABLE_NAME]: {
+        byId: Object.fromEntries(
+          state[USER_FILTER_PREFERENCES_TABLE_NAME].ids
+            .filter(userId => validUserIds.has(userId))
+            .map(userId => [userId, { ...state[USER_FILTER_PREFERENCES_TABLE_NAME].byId[userId] }])
+        ) as DemoUsersMemorySchema[typeof USER_FILTER_PREFERENCES_TABLE_NAME]['byId'],
+        ids: state[USER_FILTER_PREFERENCES_TABLE_NAME].ids.filter(userId => validUserIds.has(userId))
       }
     };
   }
@@ -132,6 +149,60 @@ export class DemoUsersRepository {
     return this.cloneUser(user);
   }
 
+  upsertUser(user: UserDto): UserDto {
+    const normalizedUser = this.cloneUser(user);
+    this.memoryDb.write(state => {
+      const usersTable = state[USERS_TABLE_NAME];
+      const exists = Object.prototype.hasOwnProperty.call(usersTable.byId, normalizedUser.id);
+      return {
+        ...state,
+        [USERS_TABLE_NAME]: {
+          byId: {
+            ...usersTable.byId,
+            [normalizedUser.id]: normalizedUser
+          },
+          ids: exists ? [...usersTable.ids] : [...usersTable.ids, normalizedUser.id]
+        }
+      };
+    });
+    return this.cloneUser(normalizedUser);
+  }
+
+  queryUserFilterPreferences(userId: string): UserGameFilterPreferencesDto | null {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    const table = this.memoryDb.read()[USER_FILTER_PREFERENCES_TABLE_NAME];
+    const preferences = table.byId[normalizedUserId];
+    if (!preferences) {
+      return null;
+    }
+    return this.cloneFilterPreferences(preferences);
+  }
+
+  upsertUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const normalizedPreferences = this.cloneFilterPreferences(preferences);
+    this.memoryDb.write(state => {
+      const table = state[USER_FILTER_PREFERENCES_TABLE_NAME];
+      const exists = Object.prototype.hasOwnProperty.call(table.byId, normalizedUserId);
+      return {
+        ...state,
+        [USER_FILTER_PREFERENCES_TABLE_NAME]: {
+          byId: {
+            ...table.byId,
+            [normalizedUserId]: normalizedPreferences
+          },
+          ids: exists ? [...table.ids] : [...table.ids, normalizedUserId]
+        }
+      };
+    });
+  }
+
   queryGameStackUsers(raterUserId?: string): UserDto[] {
     const users = this.queryUsersFromTable(USERS_TABLE_NAME);
     const normalizedRaterId = raterUserId?.trim() ?? '';
@@ -154,6 +225,10 @@ export class DemoUsersRepository {
       [USER_RATES_TABLE_NAME]: {
         byId: {},
         ids: []
+      },
+      [USER_FILTER_PREFERENCES_TABLE_NAME]: {
+        byId: {},
+        ids: []
       }
     }));
   }
@@ -174,6 +249,29 @@ export class DemoUsersRepository {
       activities: {
         ...user.activities
       }
+    };
+  }
+
+  private cloneFilterPreferences(preferences: UserGameFilterPreferencesDto): UserGameFilterPreferencesDto {
+    return {
+      ...preferences,
+      interests: [...(preferences.interests ?? [])],
+      values: [...(preferences.values ?? [])],
+      physiques: [...(preferences.physiques ?? [])],
+      languages: [...(preferences.languages ?? [])],
+      genders: [...(preferences.genders ?? [])],
+      horoscopes: [...(preferences.horoscopes ?? [])],
+      traitLabels: [...(preferences.traitLabels ?? [])],
+      smoking: [...(preferences.smoking ?? [])],
+      drinking: [...(preferences.drinking ?? [])],
+      workout: [...(preferences.workout ?? [])],
+      pets: [...(preferences.pets ?? [])],
+      familyPlans: [...(preferences.familyPlans ?? [])],
+      children: [...(preferences.children ?? [])],
+      loveStyles: [...(preferences.loveStyles ?? [])],
+      communicationStyles: [...(preferences.communicationStyles ?? [])],
+      sexualOrientations: [...(preferences.sexualOrientations ?? [])],
+      religions: [...(preferences.religions ?? [])]
     };
   }
 

@@ -4,18 +4,18 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import { UsersRatingsRepository } from '../../base/repositories/users-ratings.repository';
 import type {
-  UserDto,
   UserGameCardsQueryRequest,
   UserGameCardsQueryResponse,
-  UserGameService,
+  UserGameDataService,
   UserRateRecord,
   UserRatesSyncResult
-} from '../../user.interface';
+} from '../../base/interfaces/game.interface';
+import type { UserDto } from '../../base/interfaces/user.interface';
 
 @Injectable({
   providedIn: 'root'
 })
-export class HttpGameService implements UserGameService {
+export class HttpGameService implements UserGameDataService {
   private static readonly USER_GAME_CARDS_QUERY_ROUTE = '/game-cards/query';
   private static readonly USER_RATES_SYNC_ROUTE = '/user-rates/sync';
   private readonly http = inject(HttpClient);

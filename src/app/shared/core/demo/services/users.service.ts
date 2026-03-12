@@ -3,12 +3,12 @@ import { Injectable, inject } from '@angular/core';
 import { DemoUsersRepository } from '../repositories/users.repository';
 import { resolveAdditionalDelayMsForRoute } from '../config';
 import type {
-  UserService,
   UserByIdQueryResponse,
   UserDto,
-  UserGameFilterPreferencesDto,
+  UserService,
   UsersListQueryResponse
-} from '../../user.interface';
+} from '../../base/interfaces/user.interface';
+import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -41,11 +41,25 @@ export class DemoUsersService implements UserService {
     const user = this.usersRepository.queryUserById(normalizedUserId);
     const allUsers = this.usersRepository.queryGameStackUsers(normalizedUserId);
     const filterCount = allUsers.length;
+    const persistedFilterPreferences = this.usersRepository.queryUserFilterPreferences(normalizedUserId);
     return {
       user,
       filterCount,
-      filterPreferences: user ? this.buildDefaultFilterPreferences(user) : null
+      filterPreferences: user
+        ? (persistedFilterPreferences ?? this.buildDefaultFilterPreferences(user))
+        : null
     };
+  }
+
+  async saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void> {
+    this.usersRepository.upsertUserFilterPreferences(userId, preferences);
+  }
+
+  async saveUserProfile(user: UserDto): Promise<UserDto | null> {
+    if (!user?.id?.trim()) {
+      return null;
+    }
+    return this.usersRepository.upsertUser(user);
   }
 
   private buildDefaultFilterPreferences(user: UserDto): UserGameFilterPreferencesDto {

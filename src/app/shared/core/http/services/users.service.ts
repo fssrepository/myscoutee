@@ -5,11 +5,11 @@ import { environment } from '../../../../../environments/environment';
 import type {
   DemoUserListItemDto,
   UserByIdQueryResponse,
-  UserGameFilterPreferencesDto,
   UserService,
   UsersListQueryResponse,
   UserDto
-} from '../../user.interface';
+} from '../../base/interfaces/user.interface';
+import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -55,6 +55,40 @@ export class HttpUsersService implements UserService {
       };
     } catch {
       return { user: null };
+    }
+  }
+
+  async saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    try {
+      await this.http
+        .post(`${this.apiBaseUrl}/auth/me/filter-preferences`, {
+          userId: normalizedUserId,
+          filterPreferences: preferences
+        })
+        .toPromise();
+    } catch {
+      // Keep UI state optimistic if backend endpoint is unavailable.
+    }
+  }
+
+  async saveUserProfile(user: UserDto): Promise<UserDto | null> {
+    if (!user?.id?.trim()) {
+      return null;
+    }
+    try {
+      const response = await this.http
+        .post<UserDto | null>(`${this.apiBaseUrl}/auth/me/profile`, user)
+        .toPromise();
+      if (!response) {
+        return this.cloneUser(user);
+      }
+      return this.cloneUser(response);
+    } catch {
+      return this.cloneUser(user);
     }
   }
 

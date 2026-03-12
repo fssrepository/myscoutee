@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 
-import type { UserRateRecord } from '../../user.interface';
+import type { UserRateRecord } from '../../base/interfaces/game.interface';
 import { UsersRatingsRepository } from '../../base/repositories/users-ratings.repository';
 import { USER_RATES_TABLE_NAME } from '../models/users.model';
 
