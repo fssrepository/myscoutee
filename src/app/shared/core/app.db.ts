@@ -110,7 +110,7 @@ export class AppMemoryDb {
   }
 
   private async readFromIndexedDb(): Promise<DemoUsersMemorySchema | null> {
-    const primaryDb = await this.openIndexedDb(AppMemoryDb.INDEXED_DB_NAME);
+    const primaryDb = await this.openIndexedDb(AppMemoryDb.INDEXED_DB_NAME, true);
     if (primaryDb) {
       const primarySnapshot = await this.readStateFromIndexedDb(primaryDb);
       if (primarySnapshot) {
@@ -119,7 +119,7 @@ export class AppMemoryDb {
     }
 
     for (const legacyDbName of AppMemoryDb.LEGACY_INDEXED_DB_NAMES) {
-      const legacyDb = await this.openIndexedDb(legacyDbName);
+      const legacyDb = await this.openIndexedDb(legacyDbName, false);
       if (!legacyDb) {
         continue;
       }
@@ -160,7 +160,7 @@ export class AppMemoryDb {
   }
 
   private async persistToIndexedDb(state: DemoUsersMemorySchema): Promise<void> {
-    const db = await this.openIndexedDb(AppMemoryDb.INDEXED_DB_NAME);
+    const db = await this.openIndexedDb(AppMemoryDb.INDEXED_DB_NAME, true);
     if (!db) {
       return;
     }
@@ -187,19 +187,32 @@ export class AppMemoryDb {
     });
   }
 
-  private openIndexedDb(dbName: string): Promise<IDBDatabase | null> {
+  private openIndexedDb(dbName: string, createIfMissing: boolean): Promise<IDBDatabase | null> {
     if (typeof indexedDB === 'undefined') {
       return Promise.resolve(null);
     }
     return new Promise<IDBDatabase | null>(resolve => {
       const request = indexedDB.open(dbName, AppMemoryDb.INDEXED_DB_VERSION);
+      let rejectedMissingDb = false;
       request.onupgradeneeded = () => {
+        if (!createIfMissing) {
+          rejectedMissingDb = true;
+          request.transaction?.abort();
+          return;
+        }
         const db = request.result;
         if (!db.objectStoreNames.contains(AppMemoryDb.INDEXED_DB_STORE)) {
           db.createObjectStore(AppMemoryDb.INDEXED_DB_STORE);
         }
       };
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => {
+        if (rejectedMissingDb) {
+          request.result.close();
+          resolve(null);
+          return;
+        }
+        resolve(request.result);
+      };
       request.onerror = () => resolve(null);
       request.onblocked = () => resolve(null);
     });
