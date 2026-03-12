@@ -397,7 +397,7 @@
           >
             <span
               class="card-badge menu-shortcut-badge menu-shortcut-badge-empty"
-              *ngIf="hostImpressionsBadge > 0 || hostImpressionsChangedBadgeVisible"
+              *ngIf="hostImpressionsBadge > 0"
             ></span>
             <mat-icon [class]="getHostTierColorClass(activeHostTier)">{{ getHostTierIcon(activeHostTier) }}</mat-icon>
             <span class="impression-shortcut-label">
@@ -416,7 +416,7 @@
           >
             <span
               class="card-badge menu-shortcut-badge menu-shortcut-badge-empty"
-              *ngIf="memberImpressionsBadge > 0 || memberImpressionsChangedBadgeVisible"
+              *ngIf="memberImpressionsBadge > 0"
             ></span>
             <mat-icon [class]="getTraitColorClass(activeMemberTrait)">{{ getTraitIcon(activeMemberTrait) }}</mat-icon>
             <span class="impression-shortcut-label">
@@ -547,7 +547,7 @@
           >
             <mat-icon>rate_review</mat-icon>
             <span class="feedback-shortcut-label">Event Feedback</span>
-            <span class="card-badge menu-shortcut-badge" *ngIf="eventFeedbackPendingCount > 0">{{ eventFeedbackPendingCount }}</span>
+            <span class="card-badge menu-shortcut-badge" *ngIf="eventFeedbackBadge > 0">{{ eventFeedbackBadge }}</span>
           </button>
           <button
             class="feedback-shortcut-btn feedback-shortcut-report"

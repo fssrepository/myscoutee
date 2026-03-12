@@ -24,6 +24,7 @@ export interface UserRealtimeCountersDto {
   events?: number;
   hosting?: number;
   tickets?: number;
+  feedback?: number;
   impressionsHostChanged?: boolean;
   impressionsMemberChanged?: boolean;
 }

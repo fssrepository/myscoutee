@@ -3,7 +3,7 @@ import type { UserGameFilterPreferencesDto } from './game.interface';
 import type { UserImpressionsDto, UserImpressionsSectionDto } from './user.interface';
 
 export type LoadStatus = 'idle' | 'loading' | 'success' | 'error' | 'timeout';
-export type ActivityCounterKey = 'game' | 'chat' | 'invitations' | 'events' | 'hosting' | 'tickets';
+export type ActivityCounterKey = 'game' | 'chat' | 'invitations' | 'events' | 'hosting' | 'tickets' | 'feedback';
 
 export interface ActivityCounters {
   game: number;
@@ -12,6 +12,7 @@ export interface ActivityCounters {
   events: number;
   hosting: number;
   tickets: number;
+  feedback: number;
 }
 
 export interface LoadState {
@@ -32,7 +33,8 @@ const ACTIVITY_COUNTER_KEYS: ActivityCounterKey[] = [
   'invitations',
   'events',
   'hosting',
-  'tickets'
+  'tickets',
+  'feedback'
 ];
 
 @Injectable({

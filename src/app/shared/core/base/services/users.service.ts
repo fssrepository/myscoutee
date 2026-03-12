@@ -213,6 +213,7 @@ export class UsersService {
         events: normalizeCounter(counters.events),
         hosting: normalizeCounter(counters.hosting),
         tickets: normalizeCounter(counters.tickets),
+        feedback: normalizeCounter(counters.feedback),
         impressionsHostChanged: counters.impressionsHostChanged === true,
         impressionsMemberChanged: counters.impressionsMemberChanged === true
       },

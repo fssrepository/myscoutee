@@ -23,9 +23,11 @@ export class DemoUsersService implements UserService {
   private static readonly DEMO_USERS_ROUTE = '/auth/demo-users';
   private static readonly USER_BY_ID_ROUTE = '/auth/me';
   private static readonly USER_REALTIME_LONG_POLL_ROUTE = '/auth/me/realtime/long-poll';
+  private static readonly USER_REALTIME_LONG_POLL_SIMULATION_STEP_MS = 30000;
   private static readonly MAX_PROFILE_IMAGE_SLOTS = 8;
   private readonly usersRepository = inject(DemoUsersRepository);
   private readonly realtimeCursorByUserId: Record<string, number> = {};
+  private readonly realtimeLastAdvanceAtByUserId: Record<string, number> = {};
 
   async queryAvailableDemoUsers(): Promise<UsersListQueryResponse> {
     const additionalDelayMs = resolveAdditionalDelayMsForRoute(DemoUsersService.DEMO_USERS_ROUTE);
@@ -63,7 +65,7 @@ export class DemoUsersService implements UserService {
 
   async queryUserRealtimeLongPoll(
     userId: string,
-    _cursor?: string | null
+    cursor?: string | null
   ): Promise<UserRealtimeLongPollResponseDto | null> {
     const additionalDelayMs = resolveAdditionalDelayMsForRoute(DemoUsersService.USER_REALTIME_LONG_POLL_ROUTE);
     if (additionalDelayMs > 0) {
@@ -80,8 +82,7 @@ export class DemoUsersService implements UserService {
       return null;
     }
     const user = this.withResolvedImpressions(loadedUser);
-    const nextCursor = (this.realtimeCursorByUserId[normalizedUserId] ?? 0) + 1;
-    this.realtimeCursorByUserId[normalizedUserId] = nextCursor;
+    const nextCursor = this.resolveRealtimeCursor(normalizedUserId, this.parseRealtimeCursor(cursor));
     const counters = this.buildSimulatedRealtimeCounters(user, nextCursor);
     const impressions = this.buildSimulatedRealtimeImpressions(user.impressions, counters, nextCursor);
     return {
@@ -91,6 +92,43 @@ export class DemoUsersService implements UserService {
       cursor: String(nextCursor),
       serverTsIso: new Date().toISOString()
     };
+  }
+
+  private parseRealtimeCursor(cursor: string | null | undefined): number | null {
+    const normalized = cursor?.trim() ?? '';
+    if (!normalized) {
+      return null;
+    }
+    const parsed = Number.parseInt(normalized, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return null;
+    }
+    return Math.trunc(parsed);
+  }
+
+  private resolveRealtimeCursor(userId: string, cursor: number | null): number {
+    const now = Date.now();
+    if (cursor === null) {
+      this.realtimeCursorByUserId[userId] = 0;
+      this.realtimeLastAdvanceAtByUserId[userId] = 0;
+    }
+    const storedCursor = this.realtimeCursorByUserId[userId] ?? 0;
+    const currentCursor = cursor !== null
+      ? Math.max(storedCursor, cursor)
+      : storedCursor;
+    this.realtimeCursorByUserId[userId] = currentCursor;
+
+    const lastAdvanceAt = this.realtimeLastAdvanceAtByUserId[userId] ?? 0;
+    const shouldAdvance = currentCursor <= 0
+      || (now - lastAdvanceAt) >= DemoUsersService.USER_REALTIME_LONG_POLL_SIMULATION_STEP_MS;
+    if (!shouldAdvance) {
+      return currentCursor;
+    }
+
+    const nextCursor = currentCursor + 1;
+    this.realtimeCursorByUserId[userId] = nextCursor;
+    this.realtimeLastAdvanceAtByUserId[userId] = now;
+    return nextCursor;
   }
 
   async saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void> {
@@ -287,6 +325,7 @@ export class DemoUsersService implements UserService {
     const gamePending = buildPendingTotal('game', 2, 2);
     const chatPending = buildPendingTotal('chat', 3, 2);
     const invitationsPending = buildPendingTotal('invitations', 2, 3);
+    const feedbackPending = buildPendingTotal('feedback', 2, 3);
     return {
       game: gamePending,
       chat: chatPending,
@@ -294,6 +333,7 @@ export class DemoUsersService implements UserService {
       events: eventsPending,
       hosting: hostingPending,
       tickets: Math.max(0, Math.trunc((eventsPending + hostingPending) / 2)),
+      feedback: feedbackPending,
       impressionsHostChanged: AppDemoGenerators.hashText(`${user.id}:${cursor}:imp-host`) % 3 === 0,
       impressionsMemberChanged: AppDemoGenerators.hashText(`${user.id}:${cursor}:imp-member`) % 3 === 0
     };

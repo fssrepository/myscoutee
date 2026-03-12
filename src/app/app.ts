@@ -777,32 +777,24 @@ export class App {
 
   protected get userBadgeCount(): number {
     return (
+      this.hostImpressionsBadge +
+      this.memberImpressionsBadge +
       this.gameBadge +
       this.chatBadge +
       this.invitationsBadge +
       this.eventsBadge +
       this.hostingBadge +
-      this.assetCarsBadge +
-      this.assetAccommodationBadge +
-      this.assetSuppliesBadge +
+      this.eventFeedbackBadge +
       this.assetTicketsBadge
     );
   }
 
   protected get hostImpressionsBadge(): number {
-    return this.impressionSectionCounter(this.activeUserImpressionsSection('host')?.unreadCount);
+    return this.currentUserImpressionsChangeFlags().host ? 1 : 0;
   }
 
   protected get memberImpressionsBadge(): number {
-    return this.impressionSectionCounter(this.activeUserImpressionsSection('member')?.unreadCount);
-  }
-
-  protected get hostImpressionsChangedBadgeVisible(): boolean {
-    return this.hostImpressionsBadge === 0 && this.currentUserImpressionsChangeFlags().host;
-  }
-
-  protected get memberImpressionsChangedBadgeVisible(): boolean {
-    return this.memberImpressionsBadge === 0 && this.currentUserImpressionsChangeFlags().member;
+    return this.currentUserImpressionsChangeFlags().member ? 1 : 0;
   }
 
   protected get hostImpressionsTopMetricsPulse(): boolean {
@@ -974,6 +966,10 @@ export class App {
 
   protected get eventFeedbackPendingCount(): number {
     return this.eventFeedbackPendingItems.length;
+  }
+
+  protected get eventFeedbackBadge(): number {
+    return this.resolveActivityCounter('feedback', this.eventFeedbackPendingCount);
   }
 
   protected get eventFeedbackFeedbackedCount(): number {
@@ -14539,7 +14535,8 @@ export class App {
       invitations: this.normalizeRealtimeCounterValue(this.invitationsBadge),
       events: this.normalizeRealtimeCounterValue(this.eventsBadge),
       hosting: this.normalizeRealtimeCounterValue(this.hostingBadge),
-      tickets: this.normalizeRealtimeCounterValue(this.assetTicketsBadge)
+      tickets: this.normalizeRealtimeCounterValue(this.assetTicketsBadge),
+      feedback: this.normalizeRealtimeCounterValue(this.eventFeedbackPendingCount)
     };
   }
 
@@ -14619,7 +14616,7 @@ export class App {
     }
     const base = this.resolveUserRealtimeBaseCounters(normalizedUserId);
     const next: Partial<Record<ActivityCounterKey, number>> = {};
-    const keys: ActivityCounterKey[] = ['game', 'chat', 'invitations', 'events', 'hosting', 'tickets'];
+    const keys: ActivityCounterKey[] = ['game', 'chat', 'invitations', 'events', 'hosting', 'tickets', 'feedback'];
     for (const key of keys) {
       if (pendingPatch[key] === undefined) {
         continue;
@@ -14642,7 +14639,8 @@ export class App {
         invitations: this.normalizeRealtimeCounterValue(existing.invitations),
         events: this.normalizeRealtimeCounterValue(existing.events),
         hosting: this.normalizeRealtimeCounterValue(existing.hosting),
-        tickets: this.normalizeRealtimeCounterValue(existing.tickets)
+        tickets: this.normalizeRealtimeCounterValue(existing.tickets),
+        feedback: this.normalizeRealtimeCounterValue(existing.feedback)
       };
     }
     const user = this.users.find(candidate => candidate.id === normalizedUserId);
@@ -14652,7 +14650,8 @@ export class App {
       invitations: this.normalizeRealtimeCounterValue(user?.activities.invitations),
       events: this.normalizeRealtimeCounterValue(user?.activities.events),
       hosting: this.normalizeRealtimeCounterValue(user?.activities.hosting),
-      tickets: this.normalizeRealtimeCounterValue(this.resolveUserRealtimeTicketBase(normalizedUserId))
+      tickets: this.normalizeRealtimeCounterValue(this.resolveUserRealtimeTicketBase(normalizedUserId)),
+      feedback: this.normalizeRealtimeCounterValue(this.resolveUserRealtimeFeedbackBase(normalizedUserId))
     };
     this.userRealtimeBaseCountersByUserId[normalizedUserId] = resolved;
     return resolved;
@@ -14661,6 +14660,13 @@ export class App {
   private resolveUserRealtimeTicketBase(userId: string): number {
     if (userId === this.activeUser.id) {
       return this.ticketRows.length;
+    }
+    return 0;
+  }
+
+  private resolveUserRealtimeFeedbackBase(userId: string): number {
+    if (userId === this.activeUser.id) {
+      return this.eventFeedbackPendingCount;
     }
     return 0;
   }
@@ -14688,6 +14694,7 @@ export class App {
     const events = normalize(counters?.events);
     const hosting = normalize(counters?.hosting);
     const tickets = normalize(counters?.tickets);
+    const feedback = normalize(counters?.feedback);
     if (game !== undefined) {
       patch.game = game;
     }
@@ -14705,6 +14712,9 @@ export class App {
     }
     if (tickets !== undefined) {
       patch.tickets = tickets;
+    }
+    if (feedback !== undefined) {
+      patch.feedback = feedback;
     }
     return patch;
   }

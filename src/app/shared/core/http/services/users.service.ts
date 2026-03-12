@@ -244,7 +244,8 @@ export class HttpUsersService implements UserService {
         invitations: user.activities.invitations,
         events: user.activities.events,
         hosting: user.activities.hosting,
-        tickets: Math.max(0, Math.trunc((user.activities.events + user.activities.hosting) / 2))
+        tickets: Math.max(0, Math.trunc((user.activities.events + user.activities.hosting) / 2)),
+        feedback: 0
       }),
       impressions: this.cloneImpressions(user.impressions),
       cursor,
@@ -266,6 +267,7 @@ export class HttpUsersService implements UserService {
     const events = normalize(counters.events);
     const hosting = normalize(counters.hosting);
     const tickets = normalize(counters.tickets);
+    const feedback = normalize(counters.feedback);
     if (game !== undefined) {
       normalized.game = game;
     }
@@ -283,6 +285,9 @@ export class HttpUsersService implements UserService {
     }
     if (tickets !== undefined) {
       normalized.tickets = tickets;
+    }
+    if (feedback !== undefined) {
+      normalized.feedback = feedback;
     }
     normalized.impressionsHostChanged = counters.impressionsHostChanged === true;
     normalized.impressionsMemberChanged = counters.impressionsMemberChanged === true;
