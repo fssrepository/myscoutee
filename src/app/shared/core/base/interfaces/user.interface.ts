@@ -47,9 +47,15 @@ export interface UserByIdQueryResponse {
   filterPreferences?: UserGameFilterPreferencesDto | null;
 }
 
+export interface UserProfileImageUploadResult {
+  uploaded: boolean;
+  imageUrl: string | null;
+}
+
 export interface UserService {
   queryAvailableDemoUsers(): Promise<UsersListQueryResponse>;
   queryUserById(userId: string): Promise<UserByIdQueryResponse>;
   saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void>;
   saveUserProfile(user: UserDto): Promise<UserDto | null>;
+  uploadUserProfileImage(userId: string, file: File, slotIndex: number): Promise<UserProfileImageUploadResult>;
 }

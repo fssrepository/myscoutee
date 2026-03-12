@@ -13542,12 +13542,8 @@ export class App {
       target.value = '';
       return;
     }
-
-    this.revokeObjectUrl(this.imageSlots[slotIndex]);
-    this.imageSlots[slotIndex] = URL.createObjectURL(file);
-    this.selectedImageIndex = slotIndex;
-    this.persistActiveUserImageSlots();
     target.value = '';
+    void this.uploadAndRefreshProfileImageSlot(file, slotIndex);
   }
 
   protected saveProfile(): void {
@@ -13568,7 +13564,7 @@ export class App {
     user.profileStatus = this.profileForm.profileStatus;
     user.about = this.profileForm.about.trim().slice(0, 160);
     user.initials = AppUtils.initialsFromText(user.name);
-    user.images = this.imageSlots.filter((slot): slot is string => Boolean(slot));
+    user.images = this.collectPersistedProfileImages(user.images ?? []);
     this.syncProfileBasicsIntoDetailRows(user);
     user.completion = this.calculateProfileCompletionPercent();
     this.profileDetailsFormByUser[user.id] = this.profileDetailsForm;
@@ -13604,6 +13600,63 @@ export class App {
       }
     }
     return this.imageSlots.findIndex(slot => Boolean(slot));
+  }
+
+  private async uploadAndRefreshProfileImageSlot(file: File, slotIndex: number): Promise<void> {
+    const userId = this.activeUser.id;
+    const previousImage = this.imageSlots[slotIndex] ?? null;
+    this.syncActiveUserImageSlotsState(true);
+    if (this.usersService.demoModeEnabled) {
+      // Ensure generated/profile-seeded slots are persisted before demo upload merges by slot index.
+      await this.usersService.saveUserProfile(this.activeUser);
+    }
+    const uploadResult = await this.usersService.uploadUserProfileImage(userId, file, slotIndex);
+    if (!uploadResult.uploaded) {
+      this.alertService.open('Unable to upload image');
+      return;
+    }
+    const verifiedImageUrl = await this.reloadUploadedImageUrl(userId, slotIndex, uploadResult.imageUrl);
+    if (!verifiedImageUrl) {
+      this.alertService.open('Image uploaded but profile refresh failed');
+      return;
+    }
+    this.revokeObjectUrl(previousImage);
+    this.imageSlots[slotIndex] = verifiedImageUrl;
+    this.selectedImageIndex = this.resolveSelectedImageIndexAfterUpload(slotIndex);
+    this.syncActiveUserImageSlotsState(true);
+    if (this.usersService.demoModeEnabled) {
+      await this.usersService.saveUserProfile(this.activeUser);
+    }
+    this.cdr.markForCheck();
+  }
+
+  private async reloadUploadedImageUrl(
+    userId: string,
+    slotIndex: number,
+    uploadedImageUrl: string | null
+  ): Promise<string | null> {
+    if (uploadedImageUrl) {
+      return uploadedImageUrl;
+    }
+    const loadedUser = await this.usersService.loadUserById(userId);
+    if (!loadedUser) {
+      return null;
+    }
+    const loadedImages = (loadedUser.images ?? [])
+      .map(image => image.trim())
+      .filter(image => image.length > 0);
+    if (slotIndex >= 0 && slotIndex < loadedImages.length) {
+      return loadedImages[slotIndex] ?? null;
+    }
+    return loadedImages[loadedImages.length - 1] ?? null;
+  }
+
+  private resolveSelectedImageIndexAfterUpload(slotIndex: number): number {
+    if (slotIndex >= 0 && slotIndex < this.imageSlots.length && this.imageSlots[slotIndex]) {
+      return slotIndex;
+    }
+    const firstFilled = this.imageSlots.findIndex(slot => Boolean(slot));
+    return firstFilled >= 0 ? firstFilled : 0;
   }
 
   private revokeObjectUrl(value: string | null): void {
@@ -14071,9 +14124,57 @@ export class App {
   }
 
   private persistActiveUserImageSlots(): void {
-    this.profileImageSlotsByUser[this.activeUser.id] = [...this.imageSlots];
-    this.activeUser.images = this.imageSlots.filter((slot): slot is string => Boolean(slot));
+    this.syncActiveUserImageSlotsState();
     void this.usersService.saveUserProfile(this.activeUser);
+  }
+
+  private collectPersistedProfileImages(existingImages: readonly string[] = []): string[] {
+    const merged: string[] = [];
+    const seen = new Set<string>();
+    const pushIfValid = (value: string | null | undefined): void => {
+      const normalized = value?.trim() ?? '';
+      if (!normalized || seen.has(normalized)) {
+        return;
+      }
+      merged.push(normalized);
+      seen.add(normalized);
+    };
+    for (const image of existingImages) {
+      pushIfValid(image);
+    }
+    for (const slot of this.imageSlots) {
+      pushIfValid(slot);
+    }
+    return merged;
+  }
+
+  private syncActiveUserImageSlotsState(preserveExisting = false): void {
+    const previousImages = [...(this.activeUser.images ?? [])];
+    this.profileImageSlotsByUser[this.activeUser.id] = [...this.imageSlots];
+    const nextImages = this.collectPersistedProfileImages();
+    if (!preserveExisting) {
+      this.activeUser.images = nextImages;
+      return;
+    }
+    const merged: string[] = [];
+    const pushed = new Set<string>();
+    for (const image of previousImages) {
+      const normalized = image?.trim() ?? '';
+      if (!normalized) {
+        continue;
+      }
+      merged.push(normalized);
+      pushed.add(normalized);
+    }
+    for (const image of nextImages) {
+      const normalized = image?.trim() ?? '';
+      if (!normalized || pushed.has(normalized)) {
+        continue;
+      }
+      merged.push(normalized);
+      pushed.add(normalized);
+    }
+    this.activeUser.images = merged;
   }
 
   private syncProfileFormFromActiveUser(): void {

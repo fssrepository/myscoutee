@@ -8,6 +8,7 @@ import { HttpUsersService } from '../../http';
 import type {
   DemoUserListItemDto,
   UserDto,
+  UserProfileImageUploadResult,
   UserService
 } from '../interfaces/user.interface';
 import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface';
@@ -120,6 +121,21 @@ export class UsersService {
 
   async saveUserProfile(user: UserDto): Promise<UserDto | null> {
     return this.userService.saveUserProfile(user);
+  }
+
+  async uploadUserProfileImage(
+    userId: string,
+    file: File,
+    slotIndex: number
+  ): Promise<UserProfileImageUploadResult> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return {
+        uploaded: false,
+        imageUrl: null
+      };
+    }
+    return this.userService.uploadUserProfileImage(normalizedUserId, file, slotIndex);
   }
 
   private setLoadStatus(contextKey: string, status: LoadStatus, message?: string): void {

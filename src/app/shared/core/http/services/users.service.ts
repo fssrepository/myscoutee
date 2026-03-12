@@ -5,6 +5,7 @@ import { environment } from '../../../../../environments/environment';
 import type {
   DemoUserListItemDto,
   UserByIdQueryResponse,
+  UserProfileImageUploadResult,
   UserService,
   UsersListQueryResponse,
   UserDto
@@ -15,6 +16,8 @@ import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.in
   providedIn: 'root'
 })
 export class HttpUsersService implements UserService {
+  private static readonly PROFILE_IMAGE_UPLOAD_ROUTE = '/auth/me/profile-image';
+  private static readonly MAX_PROFILE_IMAGE_SLOTS = 8;
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
@@ -92,6 +95,56 @@ export class HttpUsersService implements UserService {
     }
   }
 
+  async uploadUserProfileImage(
+    userId: string,
+    file: File,
+    slotIndex: number
+  ): Promise<UserProfileImageUploadResult> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return {
+        uploaded: false,
+        imageUrl: null
+      };
+    }
+    const normalizedSlotIndex = this.resolveSlotIndex(slotIndex);
+    if (normalizedSlotIndex === null) {
+      return {
+        uploaded: false,
+        imageUrl: null
+      };
+    }
+    const formData = new FormData();
+    formData.append('image', file, file.name);
+    formData.append('slotIndex', String(normalizedSlotIndex));
+    formData.append('userId', normalizedUserId);
+    try {
+      type UploadResponse = {
+        imageUrl?: string | null;
+        url?: string | null;
+      };
+      const response = await this.http
+        .post<UploadResponse | null>(`${this.apiBaseUrl}${HttpUsersService.PROFILE_IMAGE_UPLOAD_ROUTE}`, formData)
+        .toPromise();
+      const resolvedImageUrl =
+        (typeof response?.imageUrl === 'string' && response.imageUrl.trim().length > 0
+          ? response.imageUrl.trim()
+          : null)
+        ?? (typeof response?.url === 'string' && response.url.trim().length > 0
+          ? response.url.trim()
+          : null);
+      return {
+        uploaded: true,
+        imageUrl: resolvedImageUrl
+      };
+    } catch {
+      return {
+        uploaded: false,
+        imageUrl: null
+      };
+    }
+  }
+
   private cloneUser(user: UserDto): UserDto {
     return {
       ...user,
@@ -115,5 +168,16 @@ export class HttpUsersService implements UserService {
       initials: user.initials,
       gender: user.gender
     };
+  }
+
+  private resolveSlotIndex(slotIndex: number): number | null {
+    if (!Number.isFinite(slotIndex)) {
+      return null;
+    }
+    const normalized = Math.trunc(Number(slotIndex));
+    if (normalized < 0 || normalized >= HttpUsersService.MAX_PROFILE_IMAGE_SLOTS) {
+      return null;
+    }
+    return normalized;
   }
 }
