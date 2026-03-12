@@ -3,12 +3,13 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { DemoUsersService } from './demo';
 import { HttpUsersService } from './http';
-import type { DemoUserListItemDto, UserDto, UserService } from './user.interface';
+import type { DemoUserListItemDto, UserDto, UserGameBootstrapDto, UserService } from './user.interface';
 import { type LoadStatus } from './app.context';
 import { AppContext } from './app.context';
 
 export const USERS_LOAD_CONTEXT_KEY = 'users-selector';
 export const USER_BY_ID_LOAD_CONTEXT_KEY = 'user-by-id';
+export const USER_GAME_BOOTSTRAP_LOAD_CONTEXT_KEY = 'user-game-bootstrap';
 
 class RequestTimeoutError extends Error {
   constructor() {
@@ -92,6 +93,54 @@ export class UsersService {
       }
 
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Unable to load user details.');
+      return null;
+    }
+  }
+
+  async loadUserGameBootstrapById(
+    userId: string,
+    requestTimeoutMs?: number
+  ): Promise<UserGameBootstrapDto | null> {
+    const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
+    const normalizedUserId = userId.trim();
+
+    if (!normalizedUserId) {
+      this.setLoadStatus(USER_GAME_BOOTSTRAP_LOAD_CONTEXT_KEY, 'error', 'Missing user id.');
+      return null;
+    }
+
+    this.setLoadStatus(USER_GAME_BOOTSTRAP_LOAD_CONTEXT_KEY, 'loading');
+
+    try {
+      const response = await this.withRequestTimeout(
+        this.userService.queryUserGameBootstrapById(normalizedUserId),
+        normalizedTimeoutMs
+      );
+      if (!response.bootstrap) {
+        this.setLoadStatus(USER_GAME_BOOTSTRAP_LOAD_CONTEXT_KEY, 'success');
+        return null;
+      }
+      this.setLoadStatus(USER_GAME_BOOTSTRAP_LOAD_CONTEXT_KEY, 'success');
+      return {
+        filterCount: Math.max(0, Math.trunc(Number(response.bootstrap.filterCount) || 0)),
+        firstCardUserIds: (response.bootstrap.firstCardUserIds ?? [])
+          .map(id => id.trim())
+          .filter(id => id.length > 0)
+      };
+    } catch (error) {
+      if (error instanceof RequestTimeoutError) {
+        this.setLoadStatus(
+          USER_GAME_BOOTSTRAP_LOAD_CONTEXT_KEY,
+          'timeout',
+          'User game bootstrap request timeout.'
+        );
+        return null;
+      }
+      this.setLoadStatus(
+        USER_GAME_BOOTSTRAP_LOAD_CONTEXT_KEY,
+        'error',
+        'Unable to load user game bootstrap.'
+      );
       return null;
     }
   }

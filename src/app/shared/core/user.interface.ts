@@ -43,7 +43,17 @@ export interface UserByIdQueryResponse {
   user: UserDto | null;
 }
 
+export interface UserGameBootstrapDto {
+  filterCount: number;
+  firstCardUserIds: string[];
+}
+
+export interface UserGameBootstrapQueryResponse {
+  bootstrap: UserGameBootstrapDto | null;
+}
+
 export interface UserService {
   queryAvailableDemoUsers(): Promise<UsersListQueryResponse>;
   queryUserById(userId: string): Promise<UserByIdQueryResponse>;
+  queryUserGameBootstrapById(userId: string): Promise<UserGameBootstrapQueryResponse>;
 }

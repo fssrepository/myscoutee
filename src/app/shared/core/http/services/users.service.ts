@@ -4,6 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type {
   DemoUserListItemDto,
+  UserGameBootstrapQueryResponse,
   UserByIdQueryResponse,
   UserService,
   UsersListQueryResponse,
@@ -48,6 +49,35 @@ export class HttpUsersService implements UserService {
       };
     } catch {
       return { user: null };
+    }
+  }
+
+  async queryUserGameBootstrapById(_userId: string): Promise<UserGameBootstrapQueryResponse> {
+    try {
+      const response = await this.http
+        .get<{ filterCount?: number; firstCardUserIds?: string[] } | null>(
+          `${this.apiBaseUrl}/auth/me/home-bootstrap`
+        )
+        .toPromise();
+      if (!response) {
+        return { bootstrap: null };
+      }
+      const filterCount = Number.isFinite(response.filterCount)
+        ? Math.max(0, Math.trunc(Number(response.filterCount)))
+        : 0;
+      const firstCardUserIds = Array.isArray(response.firstCardUserIds)
+        ? response.firstCardUserIds
+          .map(id => String(id).trim())
+          .filter(id => id.length > 0)
+        : [];
+      return {
+        bootstrap: {
+          filterCount,
+          firstCardUserIds
+        }
+      };
+    } catch {
+      return { bootstrap: null };
     }
   }
 

@@ -4,6 +4,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
 import { MatSliderModule } from '@angular/material/slider';
 import { DEMO_USERS, DemoUser, PROFILE_DETAILS } from '../../shared/demo-data';
+import { AppDemoGenerators } from '../../shared/app-demo-generators';
+import { AppContext } from '../../shared/core/app.context';
 
 type LocalPopup = 'history' | 'filter' | null;
 type FilterSelectorKind =
@@ -352,7 +354,7 @@ export class HomeComponent implements OnDestroy {
       religion: 'spiritual'
     }
   };
-  private users = DEMO_USERS;
+  private users = AppDemoGenerators.buildExpandedDemoUsers(50, DEMO_USERS);
   protected selectedRating = 7;
   protected isPairMode = false;
   protected cardIndex = 0;
@@ -375,6 +377,7 @@ export class HomeComponent implements OnDestroy {
   protected gameStackHeaderLoadingProgress = 0;
   protected gameStackHeaderLoadingOverdue = false;
   protected gameStackHeaderProgressLoading = false;
+  protected gameInitialCardsLoadPending = false;
   protected candidateImageZoom = 1;
   protected candidateImagePanX = 0;
   protected candidateImagePanY = 0;
@@ -412,7 +415,10 @@ export class HomeComponent implements OnDestroy {
   private activeTouchId: number | null = null;
   private pairModeSplitPointerId: number | null = null;
   private pairModeSplitBounds: { left: number; width: number } | null = null;
-  constructor(private readonly cdr: ChangeDetectorRef) {
+  constructor(
+    private readonly cdr: ChangeDetectorRef,
+    private readonly appCtx: AppContext
+  ) {
     const initialFilter = this.createInitialFilter();
     this.gameFilter = this.cloneFilter(initialFilter);
     this.filterDraft = this.cloneFilter(initialFilter);
@@ -448,6 +454,10 @@ export class HomeComponent implements OnDestroy {
 
   protected get activeUser(): DemoUser {
     return this.users.find(user => user.id === this.activeUserId) ?? this.users[0];
+  }
+
+  protected get historyBadgeCount(): number {
+    return this.appCtx.resolveUserCounter(this.activeUser.id, 'game', this.activeUser.activities.game);
   }
 
   protected gamePageStatusClass(): string {
@@ -518,6 +528,9 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get filterBadgeCount(): number {
+    if (this.gameInitialCardsLoadPending) {
+      return 0;
+    }
     return Math.max(0, this.totalRoundsForCurrentMode() - this.cardIndex);
   }
 
@@ -541,21 +554,21 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get noCandidateTitle(): string {
+    if (this.gameInitialCardsLoadPending || this.isAwaitingMoreGameCards) {
+      return 'Loading more cards';
+    }
     if (this.hasFilteredCandidates) {
       return 'No cards available';
-    }
-    if (this.isAwaitingMoreGameCards) {
-      return 'Loading more cards';
     }
     return 'No matching profiles';
   }
 
   protected get noCandidateDescription(): string {
+    if (this.gameInitialCardsLoadPending || this.isAwaitingMoreGameCards) {
+      return 'Preloading the next stack in the background.';
+    }
     if (this.hasFilteredCandidates) {
       return 'Change filters to get more cards.';
-    }
-    if (this.isAwaitingMoreGameCards) {
-      return 'Preloading the next stack in the background.';
     }
     return 'Adjust age or profile traits in filter settings.';
   }
@@ -1841,10 +1854,26 @@ export class HomeComponent implements OnDestroy {
     this.refreshFilterLanguageSuggestionPool();
     this.cardIndex = 0;
     this.resetCandidateImageState();
-    this.resetGameStackPaginationState();
+    this.resetGameStackPaginationState(false);
+    this.gameInitialCardsLoadPending = true;
+    this.beginGameStackHeaderProgressLoading();
+    this.cdr.markForCheck();
+  }
+
+  @HostListener('window:active-user-cards-bootstrap', ['$event'])
+  onActiveUserCardsBootstrap(event: Event): void {
+    const custom = event as CustomEvent<{ userId?: string }>;
+    const targetUserId = custom.detail?.userId;
+    if (targetUserId && targetUserId !== this.activeUserId) {
+      return;
+    }
+    this.resetGameStackPaginationState(true);
     this.preloadGameImageWindow();
     this.maybeStartGameStackPaginationLoad();
     this.beginCandidateImageLoadingForCurrentSelection(true);
+    this.gameInitialCardsLoadPending = false;
+    this.endGameStackHeaderProgressLoading();
+    this.cdr.markForCheck();
   }
 
   @HostListener('window:pointermove', ['$event'])

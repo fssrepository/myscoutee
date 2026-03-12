@@ -16,8 +16,9 @@ import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-
 import { AlertService } from './shared/alert.service';
 import { ActivitiesDbContextService } from './shared/activities-db-context.service';
 import { EventEditorService } from './shared/event-editor.service';
+import { AppContext, type ActivityCounterKey } from './shared/core/app.context';
 import { UsersService } from './shared/core/users.service';
-import type { DemoUserListItemDto, UserDto } from './shared/core/user.interface';
+import type { DemoUserListItemDto, UserDto, UserGameBootstrapDto } from './shared/core/user.interface';
 import {
   APP_DEMO_DATA,
   DEMO_CHAT_BY_USER,
@@ -146,6 +147,7 @@ export class App {
   protected readonly activitiesContext = inject(ActivitiesDbContextService);
   protected readonly eventEditorService = inject(EventEditorService);
   protected readonly usersService = inject(UsersService);
+  private readonly appCtx = inject(AppContext);
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -752,36 +754,44 @@ export class App {
   }
 
   protected get gameBadge(): number {
-    return this.activeUser.activities.game;
+    return this.resolveActivityCounter('game', this.activeUser.activities.game);
   }
 
   protected get chatBadge(): number {
-    return AppDemoGenerators.resolveSectionBadge(
+    const fallback = AppDemoGenerators.resolveSectionBadge(
       this.chatItems.map(item => item.unread),
       this.chatItems.length
     );
+    return this.resolveActivityCounter('chat', fallback);
   }
 
   protected get invitationsBadge(): number {
-    return AppDemoGenerators.resolveSectionBadge(
+    const fallback = AppDemoGenerators.resolveSectionBadge(
       this.invitationItems.map(item => item.unread),
       this.invitationItems.length
     );
+    return this.resolveActivityCounter('invitations', fallback);
   }
 
   protected get eventsBadge(): number {
-    return AppDemoGenerators.resolveSectionBadge(
+    const fallback = AppDemoGenerators.resolveSectionBadge(
       this.eventItems.map(item => item.activity),
       this.eventItems.length
     );
+    return this.resolveActivityCounter('events', fallback);
   }
 
   protected get hostingBadge(): number {
     const adminEvents = this.eventItems.filter(item => item.isAdmin);
-    return AppDemoGenerators.resolveSectionBadge(
+    const fallback = AppDemoGenerators.resolveSectionBadge(
       adminEvents.map(item => item.activity),
       adminEvents.length
     );
+    return this.resolveActivityCounter('hosting', fallback);
+  }
+
+  private resolveActivityCounter(key: ActivityCounterKey, fallbackValue: number): number {
+    return this.appCtx.resolveUserCounter(this.activeUser.id, key, fallbackValue);
   }
 
   protected get assetCarsBadge(): number {
@@ -5436,12 +5446,20 @@ export class App {
     this.demoSelectorLoading = true;
     this.activeUserId = userId;
     localStorage.setItem(App.DEMO_ACTIVE_USER_KEY, userId);
+    this.appCtx.clearUserCounterOverrides(userId);
+    this.syncProfileFormFromActiveUser();
+    this.activeMenuSection = 'chat';
+    this.completeEntryFlow();
+    this.demoSelectorLoading = false;
+    this.emitActiveUserChanged();
+    this.cdr.markForCheck();
+
     void this.hydrateUserAfterLogin(userId).finally(() => {
+      if (this.activeUserId !== userId) {
+        this.cdr.markForCheck();
+        return;
+      }
       this.syncProfileFormFromActiveUser();
-      this.activeMenuSection = 'chat';
-      window.dispatchEvent(new CustomEvent('active-user-changed'));
-      this.demoSelectorLoading = false;
-      this.completeEntryFlow();
       this.cdr.markForCheck();
     });
   }
@@ -5524,16 +5542,52 @@ export class App {
     localStorage.setItem(App.FIREBASE_AUTH_PROFILE_KEY, JSON.stringify(profile));
     localStorage.setItem(App.DEMO_ACTIVE_USER_KEY, this.activeUserId);
     this.firebaseAuthProfile = profile;
-    this.firebaseAuthIsBusy = false;
+    this.appCtx.clearUserCounterOverrides(this.activeUserId);
+    this.syncProfileFormFromActiveUser();
+    this.activeMenuSection = 'chat';
     this.completeEntryFlow();
+    this.emitActiveUserChanged();
+    void this.hydrateUserAfterLogin(this.activeUserId).finally(() => {
+      this.firebaseAuthIsBusy = false;
+      this.syncProfileFormFromActiveUser();
+      this.cdr.markForCheck();
+    });
+  }
+
+  private emitActiveUserChanged(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const userId = this.activeUserId;
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('active-user-changed', { detail: { userId } }));
+    }, 0);
+  }
+
+  private emitActiveUserCardsBootstrap(userId: string, bootstrap?: UserGameBootstrapDto | null): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('active-user-cards-bootstrap', {
+        detail: {
+          userId,
+          filterCount: bootstrap?.filterCount ?? null,
+          firstCardUserIds: bootstrap?.firstCardUserIds ?? null
+        }
+      }));
+    }, 0);
   }
 
   private async hydrateUserAfterLogin(userId: string): Promise<void> {
     const loadedUser = await this.usersService.loadUserById(userId);
-    if (!loadedUser) {
-      return;
+    if (loadedUser) {
+      this.applyLoadedUserDetails(loadedUser);
     }
-    this.applyLoadedUserDetails(loadedUser);
+    const gameBootstrap = await this.usersService.loadUserGameBootstrapById(userId);
+    if (this.activeUserId === userId) {
+      this.emitActiveUserCardsBootstrap(userId, gameBootstrap);
+    }
   }
 
   private applyLoadedUserDetails(user: UserDto): void {
@@ -5542,14 +5596,21 @@ export class App {
       return;
     }
 
-    Object.assign(current, {
-      ...user,
-      languages: [...(user.languages ?? [])],
-      images: [...(user.images ?? [])],
-      activities: {
-        ...user.activities
-      }
-    });
+    if (Number.isFinite(user.completion)) {
+      current.completion = Math.max(0, Math.min(100, Math.trunc(Number(user.completion))));
+    }
+    if ((user.statusText ?? '').trim().length > 0) {
+      current.statusText = user.statusText;
+    }
+    if ((user.hostTier ?? '').trim().length > 0) {
+      current.hostTier = user.hostTier;
+    }
+    if ((user.traitLabel ?? '').trim().length > 0) {
+      current.traitLabel = user.traitLabel;
+    }
+    if (Array.isArray(user.images) && user.images.length > 0) {
+      current.images = [...user.images];
+    }
 
     delete this.profileDetailsFormByUser[current.id];
     this.syncLoadedUserImageSlots(current);
