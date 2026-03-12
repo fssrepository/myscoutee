@@ -9,6 +9,8 @@ import type {
   UserGameCardsQueryRequest,
   UserGameCardsQueryResponse,
   UserGameFilterPreferencesDto,
+  UserRateOutboxRecord,
+  UserRateRecord,
   UsersListQueryResponse
 } from '../../user.interface';
 
@@ -32,6 +34,26 @@ export class DemoUsersService implements UserService {
     mode: 'single' | 'pair' = 'single'
   ): void {
     this.usersRepository.upsertGameCardRating(raterUserId, ratedUserId, rating, mode);
+  }
+
+  queryPendingUserRatesOutbox(limit?: number): UserRateOutboxRecord[] {
+    return this.usersRepository.queryPendingUserRatesOutbox(limit);
+  }
+
+  markUserRatesOutboxSynced(outboxIds: string[]): void {
+    this.usersRepository.markUserRatesOutboxSynced(outboxIds);
+  }
+
+  markUserRatesOutboxFailed(outboxIds: string[], message?: string): void {
+    this.usersRepository.markUserRatesOutboxFailed(outboxIds, message);
+  }
+
+  requeueFailedUserRatesOutbox(outboxIds: string[]): void {
+    this.usersRepository.requeueFailedUserRatesOutbox(outboxIds);
+  }
+
+  queryUserRatesByUserId(userId: string): UserRateRecord[] {
+    return this.usersRepository.queryUserRatesByUserId(userId);
   }
 
   async queryAvailableDemoUsers(): Promise<UsersListQueryResponse> {

@@ -1,15 +1,20 @@
 import { computed, Injectable, inject } from '@angular/core';
 
 import { AppDemoGenerators } from '../../../app-demo-generators';
-import type { DemoUserListItemDto, UserDto } from '../../user.interface';
-import { USERS_TABLE_NAME, USER_RATES_TABLE_NAME, type UserRateRecord } from '../models/users.model';
+import type { DemoUserListItemDto, UserDto, UserRateOutboxRecord, UserRateRecord } from '../../user.interface';
+import {
+  type DemoUsersMemorySchema,
+  USERS_TABLE_NAME,
+  USER_RATES_OUTBOX_TABLE_NAME,
+  USER_RATES_TABLE_NAME
+} from '../models/users.model';
 import { DemoUsersMemoryDb } from '../models/db';
 
 @Injectable({
   providedIn: 'root'
 })
 export class DemoUsersRepository {
-  private static readonly DEFAULT_DEMO_USERS_COUNT = 51;
+  private static readonly DEFAULT_DEMO_USERS_COUNT = 50;
   private readonly memoryDb = inject(DemoUsersMemoryDb);
 
   readonly usersTable = computed(() => this.memoryDb.read()[USERS_TABLE_NAME]);
@@ -23,6 +28,10 @@ export class DemoUsersRepository {
     const state = this.memoryDb.read();
     const usersTable = state[USERS_TABLE_NAME];
     if (usersTable.ids.length > 0) {
+      if (usersTable.ids.length !== DemoUsersRepository.DEFAULT_DEMO_USERS_COUNT) {
+        const reseededUsersTable = this.buildRecordCollection(users.map(user => this.cloneUser(user)));
+        this.memoryDb.write(currentState => this.reseedUsersAndPruneRelations(currentState, reseededUsersTable));
+      }
       return this.queryUsersFromTable(USERS_TABLE_NAME);
     }
 
@@ -34,6 +43,60 @@ export class DemoUsersRepository {
     }));
 
     return this.queryUsersFromTable(USERS_TABLE_NAME);
+  }
+
+  private reseedUsersAndPruneRelations(
+    state: DemoUsersMemorySchema,
+    usersTable: { byId: Record<string, UserDto>; ids: string[] }
+  ): DemoUsersMemorySchema {
+    const validUserIds = new Set(usersTable.ids);
+    const currentRates = state[USER_RATES_TABLE_NAME];
+    const nextRatesById: Record<string, UserRateRecord> = {};
+    const nextRateIds: string[] = [];
+    for (const rateId of currentRates.ids) {
+      const record = currentRates.byId[rateId];
+      if (!record) {
+        continue;
+      }
+      if (!validUserIds.has(record.fromUserId) || !validUserIds.has(record.toUserId)) {
+        continue;
+      }
+      nextRatesById[rateId] = { ...record };
+      nextRateIds.push(rateId);
+    }
+    const validRateIds = new Set(nextRateIds);
+    const currentOutbox = state[USER_RATES_OUTBOX_TABLE_NAME];
+    const nextOutboxById: Record<string, UserRateOutboxRecord> = {};
+    const nextOutboxIds: string[] = [];
+    for (const outboxId of currentOutbox.ids) {
+      const record = currentOutbox.byId[outboxId];
+      if (!record) {
+        continue;
+      }
+      if (!validRateIds.has(record.rateId)) {
+        continue;
+      }
+      if (!validUserIds.has(record.payload.fromUserId) || !validUserIds.has(record.payload.toUserId)) {
+        continue;
+      }
+      nextOutboxById[outboxId] = {
+        ...record,
+        payload: { ...record.payload }
+      };
+      nextOutboxIds.push(outboxId);
+    }
+    return {
+      ...state,
+      [USERS_TABLE_NAME]: usersTable,
+      [USER_RATES_TABLE_NAME]: {
+        byId: nextRatesById,
+        ids: nextRateIds
+      },
+      [USER_RATES_OUTBOX_TABLE_NAME]: {
+        byId: nextOutboxById,
+        ids: nextOutboxIds
+      }
+    };
   }
 
   private buildRecordCollection(users: readonly UserDto[]): { byId: Record<string, UserDto>; ids: string[] } {
@@ -101,6 +164,126 @@ export class DemoUsersRepository {
       .map(record => ({ ...record }));
   }
 
+  queryPendingUserRatesOutbox(limit = 50): UserRateOutboxRecord[] {
+    const maxItems = Math.max(1, Math.trunc(Number(limit) || 50));
+    const outboxTable = this.memoryDb.read()[USER_RATES_OUTBOX_TABLE_NAME];
+    return outboxTable.ids
+      .map(id => outboxTable.byId[id])
+      .filter((record): record is UserRateOutboxRecord => Boolean(record))
+      .filter(record => record.status === 'pending')
+      .sort((left, right) => left.queuedAtIso.localeCompare(right.queuedAtIso))
+      .slice(0, maxItems)
+      .map(record => ({
+        ...record,
+        payload: { ...record.payload }
+      }));
+  }
+
+  markUserRatesOutboxSynced(outboxIds: string[]): void {
+    const normalizedIds = outboxIds
+      .map(id => id.trim())
+      .filter(id => id.length > 0);
+    if (normalizedIds.length === 0) {
+      return;
+    }
+    const lookup = new Set(normalizedIds);
+    this.memoryDb.write(state => {
+      const table = state[USER_RATES_OUTBOX_TABLE_NAME];
+      const byId = { ...table.byId };
+      const nextIds: string[] = [];
+      for (const id of table.ids) {
+        if (lookup.has(id)) {
+          delete byId[id];
+          continue;
+        }
+        nextIds.push(id);
+      }
+      return {
+        ...state,
+        [USER_RATES_OUTBOX_TABLE_NAME]: {
+          byId,
+          ids: nextIds
+        }
+      };
+    });
+  }
+
+  markUserRatesOutboxFailed(outboxIds: string[], message?: string): void {
+    const normalizedIds = outboxIds
+      .map(id => id.trim())
+      .filter(id => id.length > 0);
+    if (normalizedIds.length === 0) {
+      return;
+    }
+    const lookup = new Set(normalizedIds);
+    this.memoryDb.write(state => {
+      const table = state[USER_RATES_OUTBOX_TABLE_NAME];
+      const byId = { ...table.byId };
+      const nowIso = new Date().toISOString();
+      for (const id of table.ids) {
+        if (!lookup.has(id)) {
+          continue;
+        }
+        const record = byId[id];
+        if (!record) {
+          continue;
+        }
+        byId[id] = {
+          ...record,
+          status: 'pending',
+          updatedAtIso: nowIso,
+          lastTriedAtIso: nowIso,
+          retryCount: record.retryCount + 1,
+          lastError: message?.trim() || 'Sync failed'
+        };
+      }
+      return {
+        ...state,
+        [USER_RATES_OUTBOX_TABLE_NAME]: {
+          byId,
+          ids: [...table.ids]
+        }
+      };
+    });
+  }
+
+  requeueFailedUserRatesOutbox(outboxIds: string[]): void {
+    const normalizedIds = outboxIds
+      .map(id => id.trim())
+      .filter(id => id.length > 0);
+    if (normalizedIds.length === 0) {
+      return;
+    }
+    const lookup = new Set(normalizedIds);
+    this.memoryDb.write(state => {
+      const table = state[USER_RATES_OUTBOX_TABLE_NAME];
+      const byId = { ...table.byId };
+      const nowIso = new Date().toISOString();
+      for (const id of table.ids) {
+        if (!lookup.has(id)) {
+          continue;
+        }
+        const record = byId[id];
+        if (!record) {
+          continue;
+        }
+        byId[id] = {
+          ...record,
+          status: 'pending',
+          updatedAtIso: nowIso,
+          lastError: null
+        };
+      }
+      return {
+        ...state,
+        [USER_RATES_OUTBOX_TABLE_NAME]: {
+          byId,
+          ids: [...table.ids]
+        }
+      };
+    });
+  }
+
   upsertGameCardRating(
     raterUserId: string,
     ratedUserId: string,
@@ -118,6 +301,7 @@ export class DemoUsersRepository {
     }
     this.memoryDb.write(state => {
       const table = state[USER_RATES_TABLE_NAME];
+      const outboxTable = state[USER_RATES_OUTBOX_TABLE_NAME];
       const nowIso = new Date().toISOString();
       const recordId = `game-card:${normalizedRaterId}:${normalizedRatedUserId}`;
       const previous = table.byId[recordId];
@@ -131,6 +315,21 @@ export class DemoUsersRepository {
         createdAtIso: previous?.createdAtIso ?? nowIso,
         updatedAtIso: nowIso
       };
+      const outboxId = `upsert:${recordId}`;
+      const previousOutbox = outboxTable.byId[outboxId];
+      const nextOutboxRecord: UserRateOutboxRecord = {
+        id: outboxId,
+        rateId: recordId,
+        action: 'upsert',
+        payload: nextRecord,
+        status: 'pending',
+        retryCount: previousOutbox?.retryCount ?? 0,
+        queuedAtIso: previousOutbox?.queuedAtIso ?? nowIso,
+        updatedAtIso: nowIso,
+        lastTriedAtIso: previousOutbox?.lastTriedAtIso ?? null,
+        syncedAtIso: null,
+        lastError: null
+      };
       return {
         ...state,
         [USER_RATES_TABLE_NAME]: {
@@ -139,6 +338,13 @@ export class DemoUsersRepository {
             [recordId]: nextRecord
           },
           ids: previous ? table.ids : [...table.ids, recordId]
+        },
+        [USER_RATES_OUTBOX_TABLE_NAME]: {
+          byId: {
+            ...outboxTable.byId,
+            [outboxId]: nextOutboxRecord
+          },
+          ids: previousOutbox ? outboxTable.ids : [...outboxTable.ids, outboxId]
         }
       };
     });

@@ -8,6 +8,7 @@ import type {
   UserGameCardsQueryRequest,
   UserGameCardsQueryResponse,
   UserGameFilterPreferencesDto,
+  UserRateRecord,
   UserService,
   UsersListQueryResponse,
   UserDto
@@ -18,6 +19,7 @@ import type {
 })
 export class HttpUsersService implements UserService {
   private static readonly USER_GAME_CARDS_QUERY_ROUTE = '/game-cards/query';
+  private static readonly USER_RATES_SYNC_ROUTE = '/user-rates/sync';
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
@@ -100,6 +102,54 @@ export class HttpUsersService implements UserService {
       };
     } catch {
       return { cards: null };
+    }
+  }
+
+  async syncUserRatesBatch(
+    rates: UserRateRecord[]
+  ): Promise<{ syncedRateIds: string[]; failedRateIds: string[]; error: string | null }> {
+    if (rates.length === 0) {
+      return {
+        syncedRateIds: [],
+        failedRateIds: [],
+        error: null
+      };
+    }
+    try {
+      const response = await this.http
+        .post<{ syncedRateIds?: string[]; failedRateIds?: string[] } | null>(
+          `${this.apiBaseUrl}${HttpUsersService.USER_RATES_SYNC_ROUTE}`,
+          { rates }
+        )
+        .toPromise();
+      if (!response) {
+        return {
+          syncedRateIds: [],
+          failedRateIds: rates.map(rate => rate.id),
+          error: 'Empty sync response'
+        };
+      }
+      const syncedRateIds = Array.isArray(response.syncedRateIds)
+        ? response.syncedRateIds
+          .map(id => String(id).trim())
+          .filter(id => id.length > 0)
+        : [];
+      const failedRateIds = Array.isArray(response.failedRateIds)
+        ? response.failedRateIds
+          .map(id => String(id).trim())
+          .filter(id => id.length > 0)
+        : [];
+      return {
+        syncedRateIds,
+        failedRateIds,
+        error: null
+      };
+    } catch {
+      return {
+        syncedRateIds: [],
+        failedRateIds: rates.map(rate => rate.id),
+        error: 'User rates sync request failed'
+      };
     }
   }
 

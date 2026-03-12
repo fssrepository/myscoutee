@@ -8,6 +8,7 @@ import type {
   UserDto,
   UserGameCardsDto,
   UserGameCardsQueryRequest,
+  UserRateOutboxRecord,
   UserService
 } from './user.interface';
 import { type LoadStatus } from './app.context';
@@ -41,12 +42,21 @@ class RequestTimeoutError extends Error {
 })
 export class UsersService {
   private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 3000;
+  private static readonly USER_RATES_OUTBOX_SYNC_INTERVAL_MS = 30000;
+  private static readonly USER_RATES_OUTBOX_SYNC_BATCH_SIZE = 50;
   private readonly demoUsersService = inject(DemoUsersService);
   private readonly httpUsersService = inject(HttpUsersService);
   private readonly appCtx = inject(AppContext);
   private readonly userGameCardsStackStateByUserId: Record<string, UserGameCardsStackState> = {};
+  private userRatesOutboxSyncInFlight = false;
+  private userRatesOutboxSyncTimer: ReturnType<typeof setInterval> | null = null;
+  private userRatesOutboxSyncKickTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly demoModeEnabled = !environment.loginEnabled;
+
+  constructor() {
+    this.startUserRatesOutboxSyncLoop();
+  }
 
   private get userService(): UserService {
     return this.demoModeEnabled ? this.demoUsersService : this.httpUsersService;
@@ -63,10 +73,9 @@ export class UsersService {
     rating: number,
     mode: 'single' | 'pair' = 'single'
   ): void {
-    if (!this.demoModeEnabled) {
-      return;
-    }
+    // Always persist locally first so rating intent survives browser restarts and can be synced in batch.
     this.demoUsersService.recordGameCardRating(raterUserId, ratedUserId, rating, mode);
+    this.scheduleUserRatesOutboxFlushFromNow();
   }
 
   async loadAvailableDemoUsers(requestTimeoutMs?: number): Promise<DemoUserListItemDto[]> {
@@ -336,6 +345,86 @@ export class UsersService {
     };
     this.userGameCardsStackStateByUserId[userId] = next;
     return next;
+  }
+
+  private startUserRatesOutboxSyncLoop(): void {
+    if (this.userRatesOutboxSyncTimer) {
+      return;
+    }
+    this.userRatesOutboxSyncTimer = setInterval(() => {
+      void this.flushUserRatesOutboxBatch();
+    }, UsersService.USER_RATES_OUTBOX_SYNC_INTERVAL_MS);
+    setTimeout(() => {
+      void this.flushUserRatesOutboxBatch();
+    }, 0);
+  }
+
+  private scheduleUserRatesOutboxFlushFromNow(): void {
+    if (this.userRatesOutboxSyncKickTimer) {
+      clearTimeout(this.userRatesOutboxSyncKickTimer);
+      this.userRatesOutboxSyncKickTimer = null;
+    }
+    this.userRatesOutboxSyncKickTimer = setTimeout(() => {
+      this.userRatesOutboxSyncKickTimer = null;
+      void this.flushUserRatesOutboxBatch();
+    }, UsersService.USER_RATES_OUTBOX_SYNC_INTERVAL_MS);
+  }
+
+  private async flushUserRatesOutboxBatch(): Promise<void> {
+    if (this.userRatesOutboxSyncInFlight) {
+      return;
+    }
+    const batch = this.demoUsersService.queryPendingUserRatesOutbox(
+      UsersService.USER_RATES_OUTBOX_SYNC_BATCH_SIZE
+    );
+    if (batch.length === 0) {
+      return;
+    }
+    this.userRatesOutboxSyncInFlight = true;
+    try {
+      if (this.demoModeEnabled) {
+        this.demoUsersService.markUserRatesOutboxSynced(batch.map(item => item.id));
+        return;
+      }
+      const syncResult = await this.httpUsersService.syncUserRatesBatch(
+        batch.map(item => item.payload)
+      );
+      this.applyUserRatesSyncResult(batch, syncResult.syncedRateIds, syncResult.failedRateIds, syncResult.error);
+    } finally {
+      this.userRatesOutboxSyncInFlight = false;
+    }
+  }
+
+  private applyUserRatesSyncResult(
+    batch: UserRateOutboxRecord[],
+    syncedRateIds: string[],
+    failedRateIds: string[],
+    error: string | null
+  ): void {
+    const outboxIdByRateId = new Map<string, string>();
+    for (const item of batch) {
+      outboxIdByRateId.set(item.rateId, item.id);
+    }
+    const syncedOutboxIds = syncedRateIds
+      .map(rateId => outboxIdByRateId.get(rateId) ?? null)
+      .filter((id): id is string => Boolean(id));
+    const failedOutboxIds = failedRateIds
+      .map(rateId => outboxIdByRateId.get(rateId) ?? null)
+      .filter((id): id is string => Boolean(id));
+
+    const touched = new Set([...syncedOutboxIds, ...failedOutboxIds]);
+    const unresolvedOutboxIds = batch
+      .map(item => item.id)
+      .filter(id => !touched.has(id));
+
+    if (syncedOutboxIds.length > 0) {
+      this.demoUsersService.markUserRatesOutboxSynced(syncedOutboxIds);
+    }
+
+    const allFailedOutboxIds = [...failedOutboxIds, ...unresolvedOutboxIds];
+    if (allFailedOutboxIds.length > 0) {
+      this.demoUsersService.markUserRatesOutboxFailed(allFailedOutboxIds, error ?? undefined);
+    }
   }
 
   private setLoadStatus(contextKey: string, status: LoadStatus, message?: string): void {

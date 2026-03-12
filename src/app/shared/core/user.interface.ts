@@ -86,6 +86,31 @@ export interface UserGameCardsQueryResponse {
   cards: UserGameCardsDto | null;
 }
 
+export interface UserRateRecord {
+  id: string;
+  fromUserId: string;
+  toUserId: string;
+  rate: number;
+  mode: 'single' | 'pair';
+  source: 'game-card';
+  createdAtIso: string;
+  updatedAtIso: string;
+}
+
+export interface UserRateOutboxRecord {
+  id: string;
+  rateId: string;
+  action: 'upsert';
+  payload: UserRateRecord;
+  status: 'pending' | 'synced' | 'failed';
+  retryCount: number;
+  queuedAtIso: string;
+  updatedAtIso: string;
+  lastTriedAtIso: string | null;
+  syncedAtIso: string | null;
+  lastError: string | null;
+}
+
 export interface UserService {
   queryAvailableDemoUsers(): Promise<UsersListQueryResponse>;
   queryUserById(userId: string): Promise<UserByIdQueryResponse>;
