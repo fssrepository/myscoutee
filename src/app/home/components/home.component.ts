@@ -5,7 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { MatSliderModule } from '@angular/material/slider';
 import { DemoUser, PROFILE_DETAILS } from '../../shared/demo-data';
 import { AppContext } from '../../shared/core/app.context';
-import { USER_BY_ID_LOAD_CONTEXT_KEY, USER_GAME_CARDS_LOAD_CONTEXT_KEY, UsersService } from '../../shared/core/users.service';
+import { USER_BY_ID_LOAD_CONTEXT_KEY } from '../../shared/core/users.service';
+import { GameService, USER_GAME_CARDS_LOAD_CONTEXT_KEY } from '../../shared/core/game.service';
 
 type LocalPopup = 'history' | 'filter' | null;
 type FilterSelectorKind =
@@ -423,9 +424,9 @@ export class HomeComponent implements OnDestroy {
   constructor(
     private readonly cdr: ChangeDetectorRef,
     private readonly appCtx: AppContext,
-    private readonly usersService: UsersService
+    private readonly gameService: GameService
   ) {
-    this.users = this.usersService.getGameCardsUsersSnapshot() as DemoUser[];
+    this.users = this.gameService.getGameCardsUsersSnapshot() as DemoUser[];
     this.activeUserId = this.getActiveUserId();
     const initialFilter = this.createInitialFilter();
     this.gameFilter = this.cloneFilter(initialFilter);
@@ -526,7 +527,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get candidatePool(): DemoUser[] {
-    const serviceStack = this.usersService.getUserGameCardsStackSnapshot(this.activeUserId);
+    const serviceStack = this.gameService.getUserGameCardsStackSnapshot(this.activeUserId);
     if (!this.isPairMode && (serviceStack.cardUserIds.length > 0 || serviceStack.nextCursor !== null)) {
       const usersById = new Map(this.users.map(user => [user.id, user] as const));
       return serviceStack.cardUserIds
@@ -838,13 +839,13 @@ export class HomeComponent implements OnDestroy {
       const woman = this.pairModeWomanCandidate;
       const man = this.pairModeManCandidate;
       if (woman) {
-        this.usersService.recordUserGameCardRating(this.activeUserId, woman.id, value, 'pair');
+        this.gameService.recordUserGameCardRating(this.activeUserId, woman.id, value, 'pair');
       }
       if (man) {
-        this.usersService.recordUserGameCardRating(this.activeUserId, man.id, value, 'pair');
+        this.gameService.recordUserGameCardRating(this.activeUserId, man.id, value, 'pair');
       }
     } else {
-      this.usersService.recordUserGameCardRating(this.activeUserId, currentCandidate.id, value, 'single');
+      this.gameService.recordUserGameCardRating(this.activeUserId, currentCandidate.id, value, 'single');
     }
     this.selectedRating = value;
     this.triggerRatingBarBlink();
@@ -1966,7 +1967,7 @@ export class HomeComponent implements OnDestroy {
 
   private resetServiceCardState(): void {
     this.clearPendingRatingAdvanceTimer();
-    this.usersService.resetUserGameCardsStack(this.activeUserId);
+    this.gameService.resetUserGameCardsStack(this.activeUserId);
   }
 
   private clearPendingRatingAdvanceTimer(): void {
@@ -1985,12 +1986,12 @@ export class HomeComponent implements OnDestroy {
   }
 
   private async reloadServiceCardStack(): Promise<void> {
-    if (this.usersService.isUserGameCardsStackRequestInFlight(this.activeUserId)) {
+    if (this.gameService.isUserGameCardsStackRequestInFlight(this.activeUserId)) {
       return;
     }
     const requestUserId = this.activeUserId;
     try {
-      await this.usersService.loadInitialUserGameCardsStackPage(
+      await this.gameService.loadInitialUserGameCardsStackPage(
         this.activeUserId,
         this.gameFilter,
         this.gameStackPageSizeForCurrentMode()
@@ -2786,7 +2787,7 @@ export class HomeComponent implements OnDestroy {
     if (this.isPairMode) {
       return this.pairModeCycleSize();
     }
-    const serviceStack = this.usersService.getUserGameCardsStackSnapshot(this.activeUserId);
+    const serviceStack = this.gameService.getUserGameCardsStackSnapshot(this.activeUserId);
     if (serviceStack.cardUserIds.length > 0 || serviceStack.nextCursor !== null) {
       return this.appCtx.resolveUserFilterCount(this.activeUserId, serviceStack.cardUserIds.length);
     }
@@ -2850,7 +2851,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private startGameStackPaginationLoad(): void {
-    if (!this.isPairMode && this.usersService.shouldUseUserGameCardsStack(this.activeUserId)) {
+    if (!this.isPairMode && this.gameService.shouldUseUserGameCardsStack(this.activeUserId)) {
       this.startServiceCardPaginationLoad();
       return;
     }
@@ -2898,17 +2899,17 @@ export class HomeComponent implements OnDestroy {
   }
 
   private startServiceCardPaginationLoad(): void {
-    if (this.gameStackPaginating || this.usersService.isUserGameCardsStackRequestInFlight(this.activeUserId)) {
+    if (this.gameStackPaginating || this.gameService.isUserGameCardsStackRequestInFlight(this.activeUserId)) {
       return;
     }
-    const serviceStackBefore = this.usersService.getUserGameCardsStackSnapshot(this.activeUserId);
+    const serviceStackBefore = this.gameService.getUserGameCardsStackSnapshot(this.activeUserId);
     if (!serviceStackBefore.nextCursor && serviceStackBefore.cardUserIds.length > 0) {
       this.gameStackExhausted = true;
       return;
     }
 
     this.gameStackPaginating = true;
-    void this.usersService.loadNextUserGameCardsStackPage(
+    void this.gameService.loadNextUserGameCardsStackPage(
       this.activeUserId,
       this.gameFilter,
       this.gameStackPageSizeForCurrentMode()

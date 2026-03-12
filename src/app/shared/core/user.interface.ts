@@ -114,5 +114,21 @@ export interface UserRateOutboxRecord {
 export interface UserService {
   queryAvailableDemoUsers(): Promise<UsersListQueryResponse>;
   queryUserById(userId: string): Promise<UserByIdQueryResponse>;
+}
+
+export interface UserGameService {
+  queryGameCardsUsersSnapshot(): UserDto[];
+  recordGameCardRating(
+    raterUserId: string,
+    ratedUserId: string,
+    rating: number,
+    mode?: 'single' | 'pair'
+  ): void;
   queryUserGameCardsByFilter(request: UserGameCardsQueryRequest): Promise<UserGameCardsQueryResponse>;
+}
+
+export interface UserRatesSyncResult {
+  syncedRateIds: string[];
+  failedRateIds: string[];
+  error: string | null;
 }

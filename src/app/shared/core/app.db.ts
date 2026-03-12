@@ -5,14 +5,16 @@ import {
   USER_RATES_TABLE_NAME,
   USER_RATES_OUTBOX_TABLE_NAME,
   type DemoUsersMemorySchema
-} from './users.model';
+} from './demo/models/users.model';
 
 @Injectable({
   providedIn: 'root'
 })
-export class DemoUsersMemoryDb {
-  private static readonly STORAGE_KEY = 'myscoutee.demo.db.v1';
-  private static readonly INDEXED_DB_NAME = 'myscoutee-demo-db';
+export class AppMemoryDb {
+  private static readonly STORAGE_KEY = 'myscoutee.memory.db.v1';
+  private static readonly LEGACY_STORAGE_KEYS = ['myscoutee.demo.db.v1'];
+  private static readonly INDEXED_DB_NAME = 'myscoutee-memory-db';
+  private static readonly LEGACY_INDEXED_DB_NAMES = ['myscoutee-demo-db'];
   private static readonly INDEXED_DB_VERSION = 1;
   private static readonly INDEXED_DB_STORE = 'tables';
   private static readonly LEGACY_INDEXED_DB_STATE_KEY = 'current';
@@ -58,7 +60,7 @@ export class DemoUsersMemoryDb {
       return fallback;
     }
     try {
-      const raw = localStorage.getItem(DemoUsersMemoryDb.STORAGE_KEY);
+      const raw = localStorage.getItem(AppMemoryDb.STORAGE_KEY) ?? this.readLegacyStorageRaw();
       if (!raw) {
         return fallback;
       }
@@ -69,12 +71,22 @@ export class DemoUsersMemoryDb {
     }
   }
 
+  private readLegacyStorageRaw(): string | null {
+    for (const key of AppMemoryDb.LEGACY_STORAGE_KEYS) {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        return raw;
+      }
+    }
+    return null;
+  }
+
   private persist(state: DemoUsersMemorySchema): void {
     if (!this.canUseStorage()) {
       return;
     }
     try {
-      localStorage.setItem(DemoUsersMemoryDb.STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(AppMemoryDb.STORAGE_KEY, JSON.stringify(state));
     } catch {
       // Ignore quota/private-mode write failures in demo mode.
     }
@@ -86,26 +98,52 @@ export class DemoUsersMemoryDb {
       return;
     }
     const normalized = this.normalizeState(snapshot);
+    const current = this._tables();
+    const currentHasUsers = current[USERS_TABLE_NAME].ids.length > 0;
+    const incomingHasUsers = normalized[USERS_TABLE_NAME].ids.length > 0;
+    if (currentHasUsers && !incomingHasUsers) {
+      return;
+    }
     this._tables.set(normalized);
     this.persist(normalized);
+    void this.persistToIndexedDb(normalized);
   }
 
   private async readFromIndexedDb(): Promise<DemoUsersMemorySchema | null> {
-    const db = await this.openIndexedDb();
-    if (!db) {
-      return null;
+    const primaryDb = await this.openIndexedDb(AppMemoryDb.INDEXED_DB_NAME);
+    if (primaryDb) {
+      const primarySnapshot = await this.readStateFromIndexedDb(primaryDb);
+      if (primarySnapshot) {
+        return primarySnapshot;
+      }
     }
+
+    for (const legacyDbName of AppMemoryDb.LEGACY_INDEXED_DB_NAMES) {
+      const legacyDb = await this.openIndexedDb(legacyDbName);
+      if (!legacyDb) {
+        continue;
+      }
+      const legacySnapshot = await this.readStateFromIndexedDb(legacyDb);
+      if (legacySnapshot) {
+        return legacySnapshot;
+      }
+    }
+
+    return null;
+  }
+
+  private async readStateFromIndexedDb(db: IDBDatabase): Promise<DemoUsersMemorySchema | null> {
     const users = await this.readIndexedDbEntry(db, USERS_TABLE_NAME);
     const rates = await this.readIndexedDbEntry(db, USER_RATES_TABLE_NAME);
     const outbox = await this.readIndexedDbEntry(db, USER_RATES_OUTBOX_TABLE_NAME);
 
     const hasSegmentedState = users !== null || rates !== null || outbox !== null;
     if (!hasSegmentedState) {
-      const legacy = await this.readIndexedDbEntry(db, DemoUsersMemoryDb.LEGACY_INDEXED_DB_STATE_KEY);
+      const legacy = await this.readIndexedDbEntry(db, AppMemoryDb.LEGACY_INDEXED_DB_STATE_KEY);
       if (legacy !== null) {
         return this.normalizeState(legacy, this.createEmptyState());
       }
-      return this.createEmptyState();
+      return null;
     }
 
     const partialState: Partial<DemoUsersMemorySchema> = {};
@@ -122,17 +160,17 @@ export class DemoUsersMemoryDb {
   }
 
   private async persistToIndexedDb(state: DemoUsersMemorySchema): Promise<void> {
-    const db = await this.openIndexedDb();
+    const db = await this.openIndexedDb(AppMemoryDb.INDEXED_DB_NAME);
     if (!db) {
       return;
     }
     await new Promise<void>(resolve => {
-      const tx = db.transaction(DemoUsersMemoryDb.INDEXED_DB_STORE, 'readwrite');
-      const store = tx.objectStore(DemoUsersMemoryDb.INDEXED_DB_STORE);
+      const tx = db.transaction(AppMemoryDb.INDEXED_DB_STORE, 'readwrite');
+      const store = tx.objectStore(AppMemoryDb.INDEXED_DB_STORE);
       store.put(state[USERS_TABLE_NAME], USERS_TABLE_NAME);
       store.put(state[USER_RATES_TABLE_NAME], USER_RATES_TABLE_NAME);
       store.put(state[USER_RATES_OUTBOX_TABLE_NAME], USER_RATES_OUTBOX_TABLE_NAME);
-      store.delete(DemoUsersMemoryDb.LEGACY_INDEXED_DB_STATE_KEY);
+      store.delete(AppMemoryDb.LEGACY_INDEXED_DB_STATE_KEY);
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
       tx.onabort = () => resolve();
@@ -141,27 +179,24 @@ export class DemoUsersMemoryDb {
 
   private readIndexedDbEntry(db: IDBDatabase, key: string): Promise<unknown | null> {
     return new Promise<unknown | null>(resolve => {
-      const tx = db.transaction(DemoUsersMemoryDb.INDEXED_DB_STORE, 'readonly');
-      const store = tx.objectStore(DemoUsersMemoryDb.INDEXED_DB_STORE);
+      const tx = db.transaction(AppMemoryDb.INDEXED_DB_STORE, 'readonly');
+      const store = tx.objectStore(AppMemoryDb.INDEXED_DB_STORE);
       const request = store.get(key);
       request.onsuccess = () => resolve(request.result ?? null);
       request.onerror = () => resolve(null);
     });
   }
 
-  private openIndexedDb(): Promise<IDBDatabase | null> {
+  private openIndexedDb(dbName: string): Promise<IDBDatabase | null> {
     if (typeof indexedDB === 'undefined') {
       return Promise.resolve(null);
     }
     return new Promise<IDBDatabase | null>(resolve => {
-      const request = indexedDB.open(
-        DemoUsersMemoryDb.INDEXED_DB_NAME,
-        DemoUsersMemoryDb.INDEXED_DB_VERSION
-      );
+      const request = indexedDB.open(dbName, AppMemoryDb.INDEXED_DB_VERSION);
       request.onupgradeneeded = () => {
         const db = request.result;
-        if (!db.objectStoreNames.contains(DemoUsersMemoryDb.INDEXED_DB_STORE)) {
-          db.createObjectStore(DemoUsersMemoryDb.INDEXED_DB_STORE);
+        if (!db.objectStoreNames.contains(AppMemoryDb.INDEXED_DB_STORE)) {
+          db.createObjectStore(AppMemoryDb.INDEXED_DB_STORE);
         }
       };
       request.onsuccess = () => resolve(request.result);

@@ -1,34 +1,16 @@
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
-import { DemoUsersService } from './demo';
-import { HttpUsersService } from './http';
-import type {
-  DemoUserListItemDto,
-  UserDto,
-  UserGameCardsDto,
-  UserGameCardsQueryRequest,
-  UserRateOutboxRecord,
-  UserService
-} from './user.interface';
 import { type LoadStatus } from './app.context';
 import { AppContext } from './app.context';
+import { DemoUsersService } from './demo';
+import { HttpUsersService } from './http';
+import type { DemoUserListItemDto, UserDto, UserService } from './user.interface';
+
+export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
 
 export const USERS_LOAD_CONTEXT_KEY = 'users-selector';
 export const USER_BY_ID_LOAD_CONTEXT_KEY = 'user-by-id';
-export const USER_GAME_CARDS_LOAD_CONTEXT_KEY = 'user-game-cards';
-
-interface UserGameCardsStackState {
-  cardUserIds: string[];
-  nextCursor: string | null;
-  requestInFlight: boolean;
-}
-
-export interface UserGameCardsStackSnapshot {
-  cardUserIds: string[];
-  nextCursor: string | null;
-  requestInFlight: boolean;
-}
 
 class RequestTimeoutError extends Error {
   constructor() {
@@ -42,40 +24,14 @@ class RequestTimeoutError extends Error {
 })
 export class UsersService {
   private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 3000;
-  private static readonly USER_RATES_OUTBOX_SYNC_INTERVAL_MS = 30000;
-  private static readonly USER_RATES_OUTBOX_SYNC_BATCH_SIZE = 50;
   private readonly demoUsersService = inject(DemoUsersService);
   private readonly httpUsersService = inject(HttpUsersService);
   private readonly appCtx = inject(AppContext);
-  private readonly userGameCardsStackStateByUserId: Record<string, UserGameCardsStackState> = {};
-  private userRatesOutboxSyncInFlight = false;
-  private userRatesOutboxSyncTimer: ReturnType<typeof setInterval> | null = null;
-  private userRatesOutboxSyncKickTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly demoModeEnabled = !environment.loginEnabled;
 
-  constructor() {
-    this.startUserRatesOutboxSyncLoop();
-  }
-
   private get userService(): UserService {
     return this.demoModeEnabled ? this.demoUsersService : this.httpUsersService;
-  }
-
-  getGameCardsUsersSnapshot(): UserDto[] {
-    // Keep game-card user catalog ownership in repository/service layer.
-    return this.demoUsersService.queryGameCardsUsersSnapshot();
-  }
-
-  recordUserGameCardRating(
-    raterUserId: string,
-    ratedUserId: string,
-    rating: number,
-    mode: 'single' | 'pair' = 'single'
-  ): void {
-    // Always persist locally first so rating intent survives browser restarts and can be synced in batch.
-    this.demoUsersService.recordGameCardRating(raterUserId, ratedUserId, rating, mode);
-    this.scheduleUserRatesOutboxFlushFromNow();
   }
 
   async loadAvailableDemoUsers(requestTimeoutMs?: number): Promise<DemoUserListItemDto[]> {
@@ -145,285 +101,6 @@ export class UsersService {
 
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Unable to load user details.');
       return null;
-    }
-  }
-
-  async loadUserGameCardsByFilter(
-    request: UserGameCardsQueryRequest,
-    requestTimeoutMs?: number
-  ): Promise<UserGameCardsDto | null> {
-    const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
-    const normalizedUserId = request.userId.trim();
-
-    if (!normalizedUserId) {
-      this.setLoadStatus(USER_GAME_CARDS_LOAD_CONTEXT_KEY, 'error', 'Missing user id.');
-      return null;
-    }
-
-    this.setLoadStatus(USER_GAME_CARDS_LOAD_CONTEXT_KEY, 'loading');
-
-    try {
-      const response = await this.withRequestTimeout(
-        this.userService.queryUserGameCardsByFilter({
-          userId: normalizedUserId,
-          filterPreferences: request.filterPreferences ?? null,
-          cursor: request.cursor ?? null,
-          pageSize: request.pageSize
-        }),
-        normalizedTimeoutMs
-      );
-      if (!response.cards) {
-        this.setLoadStatus(USER_GAME_CARDS_LOAD_CONTEXT_KEY, 'success');
-        return null;
-      }
-      this.setLoadStatus(USER_GAME_CARDS_LOAD_CONTEXT_KEY, 'success');
-      return {
-        filterCount: Math.max(0, Math.trunc(Number(response.cards.filterCount) || 0)),
-        cardUserIds: (response.cards.cardUserIds ?? [])
-          .map(id => id.trim())
-          .filter(id => id.length > 0),
-        nextCursor: typeof response.cards.nextCursor === 'string' && response.cards.nextCursor.trim().length > 0
-          ? response.cards.nextCursor.trim()
-          : null
-      };
-    } catch (error) {
-      if (error instanceof RequestTimeoutError) {
-        this.setLoadStatus(
-          USER_GAME_CARDS_LOAD_CONTEXT_KEY,
-          'timeout',
-          'User game cards request timeout.'
-        );
-        return null;
-      }
-      this.setLoadStatus(
-        USER_GAME_CARDS_LOAD_CONTEXT_KEY,
-        'error',
-        'Unable to load user game cards.'
-      );
-      return null;
-    }
-  }
-
-  async loadUserGameCardsPage(
-    userId: string,
-    filterPreferences: UserGameCardsQueryRequest['filterPreferences'],
-    cursor: UserGameCardsQueryRequest['cursor'],
-    pageSize: UserGameCardsQueryRequest['pageSize'],
-    requestTimeoutMs?: number
-  ): Promise<UserGameCardsDto | null> {
-    return this.loadUserGameCardsByFilter(
-      {
-        userId,
-        filterPreferences: filterPreferences ?? null,
-        cursor: cursor ?? null,
-        pageSize
-      },
-      requestTimeoutMs
-    );
-  }
-
-  getUserGameCardsStackSnapshot(userId: string): UserGameCardsStackSnapshot {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return {
-        cardUserIds: [],
-        nextCursor: null,
-        requestInFlight: false
-      };
-    }
-    const state = this.ensureUserGameCardsStackState(normalizedUserId);
-    return {
-      cardUserIds: [...state.cardUserIds],
-      nextCursor: state.nextCursor,
-      requestInFlight: state.requestInFlight
-    };
-  }
-
-  resetUserGameCardsStack(userId: string): void {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return;
-    }
-    this.userGameCardsStackStateByUserId[normalizedUserId] = {
-      cardUserIds: [],
-      nextCursor: null,
-      requestInFlight: false
-    };
-  }
-
-  isUserGameCardsStackRequestInFlight(userId: string): boolean {
-    return this.getUserGameCardsStackSnapshot(userId).requestInFlight;
-  }
-
-  shouldUseUserGameCardsStack(userId: string): boolean {
-    const snapshot = this.getUserGameCardsStackSnapshot(userId);
-    return snapshot.cardUserIds.length > 0
-      || snapshot.nextCursor !== null
-      || this.appCtx.getUserFilterCountOverride(userId) !== null;
-  }
-
-  async loadInitialUserGameCardsStackPage(
-    userId: string,
-    filterPreferences: UserGameCardsQueryRequest['filterPreferences'],
-    pageSize: UserGameCardsQueryRequest['pageSize'],
-    requestTimeoutMs?: number
-  ): Promise<UserGameCardsStackSnapshot> {
-    return this.loadUserGameCardsStackPage(userId, filterPreferences, pageSize, true, requestTimeoutMs);
-  }
-
-  async loadNextUserGameCardsStackPage(
-    userId: string,
-    filterPreferences: UserGameCardsQueryRequest['filterPreferences'],
-    pageSize: UserGameCardsQueryRequest['pageSize'],
-    requestTimeoutMs?: number
-  ): Promise<UserGameCardsStackSnapshot> {
-    return this.loadUserGameCardsStackPage(userId, filterPreferences, pageSize, false, requestTimeoutMs);
-  }
-
-  private async loadUserGameCardsStackPage(
-    userId: string,
-    filterPreferences: UserGameCardsQueryRequest['filterPreferences'],
-    pageSize: UserGameCardsQueryRequest['pageSize'],
-    reset: boolean,
-    requestTimeoutMs?: number
-  ): Promise<UserGameCardsStackSnapshot> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return this.getUserGameCardsStackSnapshot(userId);
-    }
-    const state = this.ensureUserGameCardsStackState(normalizedUserId);
-    if (state.requestInFlight) {
-      return this.getUserGameCardsStackSnapshot(normalizedUserId);
-    }
-    if (!reset && state.nextCursor === null && state.cardUserIds.length > 0) {
-      return this.getUserGameCardsStackSnapshot(normalizedUserId);
-    }
-    state.requestInFlight = true;
-    const existingIds = reset ? [] : [...state.cardUserIds];
-    const existingCursor = reset ? null : state.nextCursor;
-    try {
-      const cards = await this.loadUserGameCardsPage(
-        normalizedUserId,
-        filterPreferences,
-        existingCursor,
-        pageSize,
-        requestTimeoutMs
-      );
-      if (cards) {
-        this.appCtx.setUserFilterCountOverride(normalizedUserId, cards.filterCount);
-        const next = [...existingIds];
-        const seen = new Set(next);
-        for (const id of cards.cardUserIds) {
-          const normalizedId = id.trim();
-          if (!normalizedId || normalizedId === normalizedUserId || seen.has(normalizedId)) {
-            continue;
-          }
-          seen.add(normalizedId);
-          next.push(normalizedId);
-        }
-        state.cardUserIds = next;
-        state.nextCursor = cards.nextCursor;
-      } else if (reset) {
-        state.cardUserIds = [];
-        state.nextCursor = null;
-      }
-    } finally {
-      state.requestInFlight = false;
-    }
-    return this.getUserGameCardsStackSnapshot(normalizedUserId);
-  }
-
-  private ensureUserGameCardsStackState(userId: string): UserGameCardsStackState {
-    const existing = this.userGameCardsStackStateByUserId[userId];
-    if (existing) {
-      return existing;
-    }
-    const next: UserGameCardsStackState = {
-      cardUserIds: [],
-      nextCursor: null,
-      requestInFlight: false
-    };
-    this.userGameCardsStackStateByUserId[userId] = next;
-    return next;
-  }
-
-  private startUserRatesOutboxSyncLoop(): void {
-    if (this.userRatesOutboxSyncTimer) {
-      return;
-    }
-    this.userRatesOutboxSyncTimer = setInterval(() => {
-      void this.flushUserRatesOutboxBatch();
-    }, UsersService.USER_RATES_OUTBOX_SYNC_INTERVAL_MS);
-    setTimeout(() => {
-      void this.flushUserRatesOutboxBatch();
-    }, 0);
-  }
-
-  private scheduleUserRatesOutboxFlushFromNow(): void {
-    if (this.userRatesOutboxSyncKickTimer) {
-      clearTimeout(this.userRatesOutboxSyncKickTimer);
-      this.userRatesOutboxSyncKickTimer = null;
-    }
-    this.userRatesOutboxSyncKickTimer = setTimeout(() => {
-      this.userRatesOutboxSyncKickTimer = null;
-      void this.flushUserRatesOutboxBatch();
-    }, UsersService.USER_RATES_OUTBOX_SYNC_INTERVAL_MS);
-  }
-
-  private async flushUserRatesOutboxBatch(): Promise<void> {
-    if (this.userRatesOutboxSyncInFlight) {
-      return;
-    }
-    const batch = this.demoUsersService.queryPendingUserRatesOutbox(
-      UsersService.USER_RATES_OUTBOX_SYNC_BATCH_SIZE
-    );
-    if (batch.length === 0) {
-      return;
-    }
-    this.userRatesOutboxSyncInFlight = true;
-    try {
-      if (this.demoModeEnabled) {
-        this.demoUsersService.markUserRatesOutboxSynced(batch.map(item => item.id));
-        return;
-      }
-      const syncResult = await this.httpUsersService.syncUserRatesBatch(
-        batch.map(item => item.payload)
-      );
-      this.applyUserRatesSyncResult(batch, syncResult.syncedRateIds, syncResult.failedRateIds, syncResult.error);
-    } finally {
-      this.userRatesOutboxSyncInFlight = false;
-    }
-  }
-
-  private applyUserRatesSyncResult(
-    batch: UserRateOutboxRecord[],
-    syncedRateIds: string[],
-    failedRateIds: string[],
-    error: string | null
-  ): void {
-    const outboxIdByRateId = new Map<string, string>();
-    for (const item of batch) {
-      outboxIdByRateId.set(item.rateId, item.id);
-    }
-    const syncedOutboxIds = syncedRateIds
-      .map(rateId => outboxIdByRateId.get(rateId) ?? null)
-      .filter((id): id is string => Boolean(id));
-    const failedOutboxIds = failedRateIds
-      .map(rateId => outboxIdByRateId.get(rateId) ?? null)
-      .filter((id): id is string => Boolean(id));
-
-    const touched = new Set([...syncedOutboxIds, ...failedOutboxIds]);
-    const unresolvedOutboxIds = batch
-      .map(item => item.id)
-      .filter(id => !touched.has(id));
-
-    if (syncedOutboxIds.length > 0) {
-      this.demoUsersService.markUserRatesOutboxSynced(syncedOutboxIds);
-    }
-
-    const allFailedOutboxIds = [...failedOutboxIds, ...unresolvedOutboxIds];
-    if (allFailedOutboxIds.length > 0) {
-      this.demoUsersService.markUserRatesOutboxFailed(allFailedOutboxIds, error ?? undefined);
     }
   }
 
