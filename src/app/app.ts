@@ -18,7 +18,10 @@ import { ActivitiesDbContextService } from './shared/activities-db-context.servi
 import { EventEditorService } from './shared/event-editor.service';
 import { AppContext, type ActivityCounterKey } from './shared/core/app.context';
 import { UsersService } from './shared/core/users.service';
-import type { DemoUserListItemDto, UserDto, UserGameBootstrapDto } from './shared/core/user.interface';
+import type {
+  DemoUserListItemDto,
+  UserDto
+} from './shared/core/user.interface';
 import {
   APP_DEMO_DATA,
   DEMO_CHAT_BY_USER,
@@ -591,6 +594,7 @@ export class App {
     this.initializeProfileDetailForms();
     this.syncProfileFormFromActiveUser();
     this.initializeEntryFlow();
+    this.appCtx.setActiveUserId(this.activeUserId);
     this.router.navigate(['/game']);
 
     effect(() => {
@@ -749,7 +753,8 @@ export class App {
       this.hostingBadge +
       this.assetCarsBadge +
       this.assetAccommodationBadge +
-      this.assetSuppliesBadge
+      this.assetSuppliesBadge +
+      this.assetTicketsBadge
     );
   }
 
@@ -810,6 +815,10 @@ export class App {
     return this.assetCards
       .filter(card => card.type === 'Supplies')
       .reduce((sum, card) => sum + this.assetPendingCount(card), 0);
+  }
+
+  protected get assetTicketsBadge(): number {
+    return this.resolveActivityCounter('tickets', this.ticketRows.length);
   }
 
   protected get chatItems(): ChatMenuItem[] {
@@ -5445,13 +5454,15 @@ export class App {
     }
     this.demoSelectorLoading = true;
     this.activeUserId = userId;
+    this.appCtx.setActiveUserId(userId);
     localStorage.setItem(App.DEMO_ACTIVE_USER_KEY, userId);
     this.appCtx.clearUserCounterOverrides(userId);
+    this.appCtx.clearUserFilterCountOverride(userId);
+    this.appCtx.clearUserFilterPreferences(userId);
     this.syncProfileFormFromActiveUser();
     this.activeMenuSection = 'chat';
     this.completeEntryFlow();
     this.demoSelectorLoading = false;
-    this.emitActiveUserChanged();
     this.cdr.markForCheck();
 
     void this.hydrateUserAfterLogin(userId).finally(() => {
@@ -5542,11 +5553,13 @@ export class App {
     localStorage.setItem(App.FIREBASE_AUTH_PROFILE_KEY, JSON.stringify(profile));
     localStorage.setItem(App.DEMO_ACTIVE_USER_KEY, this.activeUserId);
     this.firebaseAuthProfile = profile;
+    this.appCtx.setActiveUserId(this.activeUserId);
     this.appCtx.clearUserCounterOverrides(this.activeUserId);
+    this.appCtx.clearUserFilterCountOverride(this.activeUserId);
+    this.appCtx.clearUserFilterPreferences(this.activeUserId);
     this.syncProfileFormFromActiveUser();
     this.activeMenuSection = 'chat';
     this.completeEntryFlow();
-    this.emitActiveUserChanged();
     void this.hydrateUserAfterLogin(this.activeUserId).finally(() => {
       this.firebaseAuthIsBusy = false;
       this.syncProfileFormFromActiveUser();
@@ -5554,39 +5567,10 @@ export class App {
     });
   }
 
-  private emitActiveUserChanged(): void {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    const userId = this.activeUserId;
-    window.setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('active-user-changed', { detail: { userId } }));
-    }, 0);
-  }
-
-  private emitActiveUserCardsBootstrap(userId: string, bootstrap?: UserGameBootstrapDto | null): void {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    window.setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('active-user-cards-bootstrap', {
-        detail: {
-          userId,
-          filterCount: bootstrap?.filterCount ?? null,
-          firstCardUserIds: bootstrap?.firstCardUserIds ?? null
-        }
-      }));
-    }, 0);
-  }
-
   private async hydrateUserAfterLogin(userId: string): Promise<void> {
     const loadedUser = await this.usersService.loadUserById(userId);
     if (loadedUser) {
       this.applyLoadedUserDetails(loadedUser);
-    }
-    const gameBootstrap = await this.usersService.loadUserGameBootstrapById(userId);
-    if (this.activeUserId === userId) {
-      this.emitActiveUserCardsBootstrap(userId, gameBootstrap);
     }
   }
 
@@ -13036,7 +13020,7 @@ export class App {
       return this.assetAccommodationBadge;
     }
     if (type === 'Ticket') {
-      return this.ticketRows.length;
+      return this.assetTicketsBadge;
     }
     return this.assetSuppliesBadge;
   }

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, OnDestroy } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
@@ -6,6 +6,7 @@ import { MatSliderModule } from '@angular/material/slider';
 import { DEMO_USERS, DemoUser, PROFILE_DETAILS } from '../../shared/demo-data';
 import { AppDemoGenerators } from '../../shared/app-demo-generators';
 import { AppContext } from '../../shared/core/app.context';
+import { USER_BY_ID_LOAD_CONTEXT_KEY, USER_GAME_CARDS_LOAD_CONTEXT_KEY, UsersService } from '../../shared/core/users.service';
 
 type LocalPopup = 'history' | 'filter' | null;
 type FilterSelectorKind =
@@ -415,9 +416,13 @@ export class HomeComponent implements OnDestroy {
   private activeTouchId: number | null = null;
   private pairModeSplitPointerId: number | null = null;
   private pairModeSplitBounds: { left: number; width: number } | null = null;
+  private awaitingUserBootstrap = false;
+  private awaitingUserByIdLoadingSeen = false;
+  private lastHandledActiveUserId = '';
   constructor(
     private readonly cdr: ChangeDetectorRef,
-    private readonly appCtx: AppContext
+    private readonly appCtx: AppContext,
+    private readonly usersService: UsersService
   ) {
     const initialFilter = this.createInitialFilter();
     this.gameFilter = this.cloneFilter(initialFilter);
@@ -427,6 +432,48 @@ export class HomeComponent implements OnDestroy {
     this.preloadGameImageWindow();
     this.maybeStartGameStackPaginationLoad();
     this.beginCandidateImageLoadingForCurrentSelection(true);
+    const activeUserIdSignal = this.appCtx.activeUserId;
+    const userByIdLoadState = this.appCtx.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
+    const userGameCardsLoadState = this.appCtx.selectLoadingState(USER_GAME_CARDS_LOAD_CONTEXT_KEY);
+    effect(() => {
+      const targetUserId = activeUserIdSignal().trim();
+      if (!targetUserId || targetUserId === this.lastHandledActiveUserId) {
+        return;
+      }
+      this.lastHandledActiveUserId = targetUserId;
+      this.handleActiveUserChanged(targetUserId);
+    });
+    effect(() => {
+      if (!this.awaitingUserBootstrap) {
+        return;
+      }
+      const status = userByIdLoadState().status;
+      if (status === 'loading') {
+        this.awaitingUserByIdLoadingSeen = true;
+        return;
+      }
+      if (status === 'idle' || !this.awaitingUserByIdLoadingSeen) {
+        return;
+      }
+      this.awaitingUserBootstrap = false;
+      this.awaitingUserByIdLoadingSeen = false;
+      void this.reloadServiceCardStack();
+    });
+    effect(() => {
+      const status = userGameCardsLoadState().status;
+      if (status === 'loading') {
+        this.beginGameStackHeaderProgressLoading();
+        return;
+      }
+      if (status === 'success') {
+        this.endGameStackHeaderProgressLoading();
+        return;
+      }
+      if (status === 'error' || status === 'timeout') {
+        this.clearGameStackHeaderLoadingAnimation();
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   ngOnDestroy(): void {
@@ -475,6 +522,13 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get candidatePool(): DemoUser[] {
+    const serviceStack = this.usersService.getUserGameCardsStackSnapshot(this.activeUserId);
+    if (!this.isPairMode && (serviceStack.cardUserIds.length > 0 || serviceStack.nextCursor !== null)) {
+      const usersById = new Map(this.users.map(user => [user.id, user] as const));
+      return serviceStack.cardUserIds
+        .map(id => usersById.get(id))
+        .filter((user): user is DemoUser => Boolean(user));
+    }
     return this.users
       .filter(user => user.id !== this.activeUserId)
       .filter(user => this.matchesFilter(user));
@@ -793,12 +847,22 @@ export class HomeComponent implements OnDestroy {
   protected togglePairMode(): void {
     this.stopPairModeSplitDrag();
     this.isPairMode = !this.isPairMode;
+    this.appCtx.clearUserFilterCountOverride(this.activeUserId);
+    this.resetServiceCardState();
     this.cardIndex = 0;
     this.resetCandidateImageState();
-    this.resetGameStackPaginationState();
+    this.resetGameStackPaginationState(false);
+    this.gameInitialCardsLoadPending = true;
+    if (!this.isPairMode) {
+      void this.reloadServiceCardStack();
+      return;
+    }
+    this.resetGameStackPaginationState(true);
     this.preloadGameImageWindow();
     this.maybeStartGameStackPaginationLoad();
     this.beginCandidateImageLoadingForCurrentSelection(true);
+    this.gameInitialCardsLoadPending = false;
+    this.cdr.markForCheck();
   }
 
   protected openHistory(): void {
@@ -822,14 +886,16 @@ export class HomeComponent implements OnDestroy {
 
   protected applyFilter(): void {
     this.gameFilter = this.normalizeFilter(this.filterDraft);
+    this.appCtx.setUserFilterPreferences(this.activeUserId, this.gameFilter);
+    this.appCtx.clearUserFilterCountOverride(this.activeUserId);
+    this.resetServiceCardState();
     this.cardIndex = 0;
     this.resetCandidateImageState();
     this.resetGameStackPaginationState(false);
-    this.preloadGameImageWindow();
-    this.maybeStartGameStackPaginationLoad();
-    this.beginCandidateImageLoadingForCurrentSelection(true);
+    this.gameInitialCardsLoadPending = true;
     this.filterSelector = null;
     this.localPopup = null;
+    void this.reloadServiceCardStack();
   }
 
   protected resetFilterDraft(): void {
@@ -1843,37 +1909,69 @@ export class HomeComponent implements OnDestroy {
     return status;
   }
 
-  @HostListener('window:active-user-changed')
-  onActiveUserChanged(): void {
+  private handleActiveUserChanged(userId: string): void {
     this.stopPairModeSplitDrag();
-    this.activeUserId = this.getActiveUserId();
+    this.activeUserId = userId;
+    this.resetServiceCardState();
     const initialFilter = this.createInitialFilter();
     this.gameFilter = this.cloneFilter(initialFilter);
     this.filterDraft = this.cloneFilter(initialFilter);
+    this.applyFilterPreferencesFromAppContext();
     this.filterLanguageInput = '';
     this.refreshFilterLanguageSuggestionPool();
     this.cardIndex = 0;
     this.resetCandidateImageState();
     this.resetGameStackPaginationState(false);
     this.gameInitialCardsLoadPending = true;
-    this.beginGameStackHeaderProgressLoading();
+    this.awaitingUserBootstrap = true;
+    this.awaitingUserByIdLoadingSeen = false;
+    const expectedUserId = this.activeUserId;
+    setTimeout(() => {
+      if (
+        !this.awaitingUserBootstrap
+        || this.awaitingUserByIdLoadingSeen
+        || this.activeUserId !== expectedUserId
+      ) {
+        return;
+      }
+      this.awaitingUserBootstrap = false;
+      void this.reloadServiceCardStack();
+    }, 0);
     this.cdr.markForCheck();
   }
 
-  @HostListener('window:active-user-cards-bootstrap', ['$event'])
-  onActiveUserCardsBootstrap(event: Event): void {
-    const custom = event as CustomEvent<{ userId?: string }>;
-    const targetUserId = custom.detail?.userId;
-    if (targetUserId && targetUserId !== this.activeUserId) {
+  private resetServiceCardState(): void {
+    this.usersService.resetUserGameCardsStack(this.activeUserId);
+  }
+
+  private applyFilterPreferencesFromAppContext(): void {
+    const next = this.appCtx.resolveUserFilterPreferences(this.activeUserId, this.createInitialFilter());
+    this.gameFilter = this.normalizeFilter(next);
+    this.filterDraft = this.cloneFilter(this.gameFilter);
+    this.refreshFilterLanguageSuggestionPool();
+  }
+
+  private async reloadServiceCardStack(): Promise<void> {
+    if (this.usersService.isUserGameCardsStackRequestInFlight(this.activeUserId)) {
       return;
     }
-    this.resetGameStackPaginationState(true);
-    this.preloadGameImageWindow();
-    this.maybeStartGameStackPaginationLoad();
-    this.beginCandidateImageLoadingForCurrentSelection(true);
-    this.gameInitialCardsLoadPending = false;
-    this.endGameStackHeaderProgressLoading();
-    this.cdr.markForCheck();
+    const requestUserId = this.activeUserId;
+    try {
+      await this.usersService.loadInitialUserGameCardsStackPage(
+        this.activeUserId,
+        this.gameFilter,
+        this.gameStackPageSizeForCurrentMode()
+      );
+      if (requestUserId !== this.activeUserId) {
+        return;
+      }
+      this.resetGameStackPaginationState(true);
+      this.preloadGameImageWindow();
+      this.beginCandidateImageLoadingForCurrentSelection(true);
+    } finally {
+      this.gameInitialCardsLoadPending = false;
+      this.cdr.markForCheck();
+    }
   }
 
   @HostListener('window:pointermove', ['$event'])
@@ -2652,6 +2750,10 @@ export class HomeComponent implements OnDestroy {
     if (this.isPairMode) {
       return this.pairModeCycleSize();
     }
+    const serviceStack = this.usersService.getUserGameCardsStackSnapshot(this.activeUserId);
+    if (serviceStack.cardUserIds.length > 0 || serviceStack.nextCursor !== null) {
+      return this.appCtx.resolveUserFilterCount(this.activeUserId, serviceStack.cardUserIds.length);
+    }
     return this.candidatePool.length;
   }
 
@@ -2712,6 +2814,10 @@ export class HomeComponent implements OnDestroy {
   }
 
   private startGameStackPaginationLoad(): void {
+    if (!this.isPairMode && this.usersService.shouldUseUserGameCardsStack(this.activeUserId)) {
+      this.startServiceCardPaginationLoad();
+      return;
+    }
     if (this.gameStackPaginating) {
       return;
     }
@@ -2753,6 +2859,37 @@ export class HomeComponent implements OnDestroy {
       this.beginCandidateImageLoadingForCurrentSelection(true);
       this.cdr.markForCheck();
     }, delayMs);
+  }
+
+  private startServiceCardPaginationLoad(): void {
+    if (this.gameStackPaginating || this.usersService.isUserGameCardsStackRequestInFlight(this.activeUserId)) {
+      return;
+    }
+    const serviceStackBefore = this.usersService.getUserGameCardsStackSnapshot(this.activeUserId);
+    if (!serviceStackBefore.nextCursor && serviceStackBefore.cardUserIds.length > 0) {
+      this.gameStackExhausted = true;
+      return;
+    }
+
+    this.gameStackPaginating = true;
+    void this.usersService.loadNextUserGameCardsStackPage(
+      this.activeUserId,
+      this.gameFilter,
+      this.gameStackPageSizeForCurrentMode()
+    ).then(serviceStack => {
+      const previousLoaded = this.gameStackCardsLoaded;
+      const totalRounds = this.totalRoundsForCurrentMode();
+      this.gameStackCardsLoaded = Math.min(totalRounds, serviceStack.cardUserIds.length);
+      const loadedMoreCards = this.gameStackCardsLoaded > previousLoaded;
+      this.gameStackExhausted = !loadedMoreCards && !serviceStack.nextCursor;
+      this.preloadGameImageWindow();
+      this.beginCandidateImageLoadingForCurrentSelection(true);
+    }).catch(() => {
+      this.gameStackExhausted = true;
+    }).finally(() => {
+      this.gameStackPaginating = false;
+      this.cdr.markForCheck();
+    });
   }
 
   private cancelGameStackPaginationLoad(): void {

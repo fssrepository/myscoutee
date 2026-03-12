@@ -1,27 +1,37 @@
+export type DemoUsersDelayKey = 'demoUsers' | 'userById' | 'userGameCards';
+
 export interface ConfigEntry {
   routePrefix: string;
-  additionalDelayMs: number;
+  demoUsersDelayMs: number;
+  userByIdDelayMs: number;
+  userGameCardsDelayMs: number;
 }
 
 interface DemoUsersRouteConfig {
-  defaultAdditionalDelayMs: number;
+  defaultDemoUsersDelayMs: number;
+  defaultUserByIdDelayMs: number;
+  defaultUserGameCardsDelayMs: number;
   entries: ConfigEntry[];
 }
 
 const ROUTE_CONFIG: DemoUsersRouteConfig = {
-  defaultAdditionalDelayMs: 300,
+  defaultDemoUsersDelayMs: 300,
+  defaultUserByIdDelayMs: 300,
+  defaultUserGameCardsDelayMs: 300,
   entries: [
     {
       routePrefix: '/game',
-      additionalDelayMs: 0
+      demoUsersDelayMs: 0,
+      userByIdDelayMs: 0,
+      userGameCardsDelayMs: 1500
     }
   ]
 };
 
-export function resolveAdditionalDelayMsForRoute(url: string): number {
+export function resolveAdditionalDelayMsForRoute(url: string, key: DemoUsersDelayKey): number {
   const normalizedUrl = normalizeRouteUrl(url);
   let bestMatchLength = -1;
-  let selectedDelayMs = ROUTE_CONFIG.defaultAdditionalDelayMs;
+  let selectedEntry: ConfigEntry | null = null;
 
   for (const entry of ROUTE_CONFIG.entries) {
     const normalizedPrefix = normalizeRouteUrl(entry.routePrefix);
@@ -32,7 +42,21 @@ export function resolveAdditionalDelayMsForRoute(url: string): number {
       continue;
     }
     bestMatchLength = normalizedPrefix.length;
-    selectedDelayMs = entry.additionalDelayMs;
+    selectedEntry = entry;
+  }
+
+  let selectedDelayMs: number;
+  switch (key) {
+    case 'demoUsers':
+      selectedDelayMs = selectedEntry?.demoUsersDelayMs ?? ROUTE_CONFIG.defaultDemoUsersDelayMs;
+      break;
+    case 'userById':
+      selectedDelayMs = selectedEntry?.userByIdDelayMs ?? ROUTE_CONFIG.defaultUserByIdDelayMs;
+      break;
+    case 'userGameCards':
+    default:
+      selectedDelayMs = selectedEntry?.userGameCardsDelayMs ?? ROUTE_CONFIG.defaultUserGameCardsDelayMs;
+      break;
   }
 
   return normalizeDelayMs(selectedDelayMs);

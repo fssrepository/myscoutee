@@ -1,7 +1,8 @@
 import { Injectable, computed, signal } from '@angular/core';
+import type { UserGameFilterPreferencesDto } from './user.interface';
 
 export type LoadStatus = 'idle' | 'loading' | 'success' | 'error' | 'timeout';
-export type ActivityCounterKey = 'game' | 'chat' | 'invitations' | 'events' | 'hosting';
+export type ActivityCounterKey = 'game' | 'chat' | 'invitations' | 'events' | 'hosting' | 'tickets';
 
 export interface ActivityCounters {
   game: number;
@@ -9,6 +10,7 @@ export interface ActivityCounters {
   invitations: number;
   events: number;
   hosting: number;
+  tickets: number;
 }
 
 export interface LoadState {
@@ -23,7 +25,14 @@ export const DEFAULT_LOAD_STATE: LoadState = {
   loadedAtIso: null
 };
 
-const ACTIVITY_COUNTER_KEYS: ActivityCounterKey[] = ['game', 'chat', 'invitations', 'events', 'hosting'];
+const ACTIVITY_COUNTER_KEYS: ActivityCounterKey[] = [
+  'game',
+  'chat',
+  'invitations',
+  'events',
+  'hosting',
+  'tickets'
+];
 
 @Injectable({
   providedIn: 'root'
@@ -31,9 +40,15 @@ const ACTIVITY_COUNTER_KEYS: ActivityCounterKey[] = ['game', 'chat', 'invitation
 export class AppContext {
   private readonly _loadingState = signal<Record<string, LoadState>>({});
   private readonly _counterOverridesByUserId = signal<Record<string, Partial<ActivityCounters>>>({});
+  private readonly _filterCountByUserId = signal<Record<string, number>>({});
+  private readonly _filterPreferencesByUserId = signal<Record<string, UserGameFilterPreferencesDto>>({});
+  private readonly _activeUserId = signal<string>('');
 
   readonly loadingState = this._loadingState.asReadonly();
   readonly counterOverridesByUserId = this._counterOverridesByUserId.asReadonly();
+  readonly filterCountByUserId = this._filterCountByUserId.asReadonly();
+  readonly filterPreferencesByUserId = this._filterPreferencesByUserId.asReadonly();
+  readonly activeUserId = this._activeUserId.asReadonly();
 
   selectLoadingState(contextKey: string) {
     return computed(() => this._loadingState()[contextKey] ?? DEFAULT_LOAD_STATE);
@@ -59,6 +74,15 @@ export class AppContext {
     };
     this.setLoadingState(contextKey, next);
     return next;
+  }
+
+  getActiveUserId(): string {
+    return this._activeUserId();
+  }
+
+  setActiveUserId(userId: string): void {
+    const normalizedUserId = userId.trim();
+    this._activeUserId.set(normalizedUserId);
   }
 
   getUserCounterOverride(userId: string, key: ActivityCounterKey): number | null {
@@ -165,10 +189,224 @@ export class AppContext {
     return this.normalizeCounterValue(fallbackValue);
   }
 
+  getUserFilterCountOverride(userId: string): number | null {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    const value = this._filterCountByUserId()[normalizedUserId];
+    if (!Number.isFinite(value)) {
+      return null;
+    }
+    return this.normalizeCounterValue(value as number);
+  }
+
+  setUserFilterCountOverride(userId: string, value: number): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const normalizedValue = this.normalizeCounterValue(value);
+    this._filterCountByUserId.update(state => ({
+      ...state,
+      [normalizedUserId]: normalizedValue
+    }));
+  }
+
+  clearUserFilterCountOverride(userId: string): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    this._filterCountByUserId.update(state => {
+      if (!Object.prototype.hasOwnProperty.call(state, normalizedUserId)) {
+        return state;
+      }
+      const { [normalizedUserId]: _removed, ...rest } = state;
+      return rest;
+    });
+  }
+
+  resolveUserFilterCount(userId: string, fallbackValue: number): number {
+    const override = this.getUserFilterCountOverride(userId);
+    if (override !== null) {
+      return override;
+    }
+    return this.normalizeCounterValue(fallbackValue);
+  }
+
+  getUserFilterPreferences(userId: string): UserGameFilterPreferencesDto | null {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    const preferences = this._filterPreferencesByUserId()[normalizedUserId];
+    if (!preferences) {
+      return null;
+    }
+    return { ...preferences };
+  }
+
+  resolveUserFilterPreferences<T extends UserGameFilterPreferencesDto>(userId: string, fallback: T): T {
+    const normalizedFallback = this.normalizeFilterPreferences(fallback) as T;
+    const preferences = this.getUserFilterPreferences(userId);
+    if (!preferences) {
+      return { ...normalizedFallback };
+    }
+    return this.normalizeFilterPreferences({
+      ...normalizedFallback,
+      ...preferences
+    }) as T;
+  }
+
+  setUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    this._filterPreferencesByUserId.update(state => ({
+      ...state,
+      [normalizedUserId]: this.normalizeFilterPreferences(preferences)
+    }));
+  }
+
+  clearUserFilterPreferences(userId: string): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    this._filterPreferencesByUserId.update(state => {
+      if (!Object.prototype.hasOwnProperty.call(state, normalizedUserId)) {
+        return state;
+      }
+      const { [normalizedUserId]: _removed, ...rest } = state;
+      return rest;
+    });
+  }
+
   private normalizeCounterValue(value: number): number {
     if (!Number.isFinite(value)) {
       return 0;
     }
     return Math.max(0, Math.trunc(Number(value)));
+  }
+
+  private normalizeFilterPreferences(
+    preferences: UserGameFilterPreferencesDto
+  ): UserGameFilterPreferencesDto {
+    const normalizeNumber = (value: unknown): number | undefined => {
+      if (!Number.isFinite(value)) {
+        return undefined;
+      }
+      return Math.max(0, Math.trunc(Number(value)));
+    };
+    const normalizeStringArray = (values: unknown): string[] | undefined => {
+      if (!Array.isArray(values)) {
+        return undefined;
+      }
+      const normalized = values
+        .map(value => String(value).trim())
+        .filter(value => value.length > 0);
+      return normalized.length > 0 ? normalized : [];
+    };
+    const normalizeGenderArray = (values: unknown): Array<'woman' | 'man'> | undefined => {
+      if (!Array.isArray(values)) {
+        return undefined;
+      }
+      const normalized = values
+        .map(value => String(value).trim().toLowerCase())
+        .filter((value): value is 'woman' | 'man' => value === 'woman' || value === 'man');
+      return normalized.length > 0 ? normalized : [];
+    };
+
+    const normalized: UserGameFilterPreferencesDto = {};
+    const ageMin = normalizeNumber(preferences.ageMin);
+    const ageMax = normalizeNumber(preferences.ageMax);
+    const heightMinCm = normalizeNumber(preferences.heightMinCm);
+    const heightMaxCm = normalizeNumber(preferences.heightMaxCm);
+    if (ageMin !== undefined) {
+      normalized.ageMin = ageMin;
+    }
+    if (ageMax !== undefined) {
+      normalized.ageMax = ageMax;
+    }
+    if (heightMinCm !== undefined) {
+      normalized.heightMinCm = heightMinCm;
+    }
+    if (heightMaxCm !== undefined) {
+      normalized.heightMaxCm = heightMaxCm;
+    }
+
+    const interests = normalizeStringArray(preferences.interests);
+    const values = normalizeStringArray(preferences.values);
+    const physiques = normalizeStringArray(preferences.physiques);
+    const languages = normalizeStringArray(preferences.languages);
+    const genders = normalizeGenderArray(preferences.genders);
+    const horoscopes = normalizeStringArray(preferences.horoscopes);
+    const traitLabels = normalizeStringArray(preferences.traitLabels);
+    const smoking = normalizeStringArray(preferences.smoking);
+    const drinking = normalizeStringArray(preferences.drinking);
+    const workout = normalizeStringArray(preferences.workout);
+    const pets = normalizeStringArray(preferences.pets);
+    const familyPlans = normalizeStringArray(preferences.familyPlans);
+    const children = normalizeStringArray(preferences.children);
+    const loveStyles = normalizeStringArray(preferences.loveStyles);
+    const communicationStyles = normalizeStringArray(preferences.communicationStyles);
+    const sexualOrientations = normalizeStringArray(preferences.sexualOrientations);
+    const religions = normalizeStringArray(preferences.religions);
+
+    if (interests) {
+      normalized.interests = interests;
+    }
+    if (values) {
+      normalized.values = values;
+    }
+    if (physiques) {
+      normalized.physiques = physiques;
+    }
+    if (languages) {
+      normalized.languages = languages;
+    }
+    if (genders) {
+      normalized.genders = genders;
+    }
+    if (horoscopes) {
+      normalized.horoscopes = horoscopes;
+    }
+    if (traitLabels) {
+      normalized.traitLabels = traitLabels;
+    }
+    if (smoking) {
+      normalized.smoking = smoking;
+    }
+    if (drinking) {
+      normalized.drinking = drinking;
+    }
+    if (workout) {
+      normalized.workout = workout;
+    }
+    if (pets) {
+      normalized.pets = pets;
+    }
+    if (familyPlans) {
+      normalized.familyPlans = familyPlans;
+    }
+    if (children) {
+      normalized.children = children;
+    }
+    if (loveStyles) {
+      normalized.loveStyles = loveStyles;
+    }
+    if (communicationStyles) {
+      normalized.communicationStyles = communicationStyles;
+    }
+    if (sexualOrientations) {
+      normalized.sexualOrientations = sexualOrientations;
+    }
+    if (religions) {
+      normalized.religions = religions;
+    }
+
+    return normalized;
   }
 }

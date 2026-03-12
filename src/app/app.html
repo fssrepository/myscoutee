@@ -517,6 +517,7 @@
           <button class="asset-shortcut-btn asset-shortcut-ticket" type="button" (click)="openAssetTicketsPopup()" aria-label="Ticket">
             <mat-icon>qr_code_2</mat-icon>
             <span class="asset-shortcut-label">Ticket</span>
+            <span class="card-badge menu-shortcut-badge" *ngIf="assetTicketsBadge > 0">{{ assetTicketsBadge }}</span>
           </button>
         </div>
 

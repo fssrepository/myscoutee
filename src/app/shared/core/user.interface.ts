@@ -41,19 +41,53 @@ export interface UsersListQueryResponse {
 
 export interface UserByIdQueryResponse {
   user: UserDto | null;
+  filterCount?: number;
+  filterPreferences?: UserGameFilterPreferencesDto | null;
 }
 
-export interface UserGameBootstrapDto {
+export interface UserGameFilterPreferencesDto {
+  ageMin?: number;
+  ageMax?: number;
+  heightMinCm?: number;
+  heightMaxCm?: number;
+  interests?: string[];
+  values?: string[];
+  physiques?: string[];
+  languages?: string[];
+  genders?: Array<'woman' | 'man'>;
+  horoscopes?: string[];
+  traitLabels?: string[];
+  smoking?: string[];
+  drinking?: string[];
+  workout?: string[];
+  pets?: string[];
+  familyPlans?: string[];
+  children?: string[];
+  loveStyles?: string[];
+  communicationStyles?: string[];
+  sexualOrientations?: string[];
+  religions?: string[];
+}
+
+export interface UserGameCardsQueryRequest {
+  userId: string;
+  filterPreferences?: UserGameFilterPreferencesDto | null;
+  cursor?: string | null;
+  pageSize?: number;
+}
+
+export interface UserGameCardsDto {
   filterCount: number;
-  firstCardUserIds: string[];
+  cardUserIds: string[];
+  nextCursor: string | null;
 }
 
-export interface UserGameBootstrapQueryResponse {
-  bootstrap: UserGameBootstrapDto | null;
+export interface UserGameCardsQueryResponse {
+  cards: UserGameCardsDto | null;
 }
 
 export interface UserService {
   queryAvailableDemoUsers(): Promise<UsersListQueryResponse>;
   queryUserById(userId: string): Promise<UserByIdQueryResponse>;
-  queryUserGameBootstrapById(userId: string): Promise<UserGameBootstrapQueryResponse>;
+  queryUserGameCardsByFilter(request: UserGameCardsQueryRequest): Promise<UserGameCardsQueryResponse>;
 }

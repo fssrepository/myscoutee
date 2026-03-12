@@ -4,8 +4,10 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type {
   DemoUserListItemDto,
-  UserGameBootstrapQueryResponse,
   UserByIdQueryResponse,
+  UserGameCardsQueryRequest,
+  UserGameCardsQueryResponse,
+  UserGameFilterPreferencesDto,
   UserService,
   UsersListQueryResponse,
   UserDto
@@ -38,46 +40,65 @@ export class HttpUsersService implements UserService {
 
   async queryUserById(_userId: string): Promise<UserByIdQueryResponse> {
     try {
+      type HttpUserByIdResponse = UserDto & {
+        filterCount?: number;
+        filterPreferences?: UserGameFilterPreferencesDto | null;
+      };
       const me = await this.http
-        .get<UserDto | null>(`${this.apiBaseUrl}/auth/me`)
+        .get<HttpUserByIdResponse | null>(`${this.apiBaseUrl}/auth/me`)
         .toPromise();
       if (!me) {
         return { user: null };
       }
       return {
-        user: this.cloneUser(me)
+        user: this.cloneUser(me),
+        filterCount: Number.isFinite(me.filterCount) ? Math.max(0, Math.trunc(Number(me.filterCount))) : undefined,
+        filterPreferences: me.filterPreferences ?? null
       };
     } catch {
       return { user: null };
     }
   }
 
-  async queryUserGameBootstrapById(_userId: string): Promise<UserGameBootstrapQueryResponse> {
+  async queryUserGameCardsByFilter(request: UserGameCardsQueryRequest): Promise<UserGameCardsQueryResponse> {
+    const normalizedUserId = request.userId.trim();
+    if (!normalizedUserId) {
+      return { cards: null };
+    }
     try {
       const response = await this.http
-        .get<{ filterCount?: number; firstCardUserIds?: string[] } | null>(
-          `${this.apiBaseUrl}/auth/me/home-bootstrap`
+        .post<{ filterCount?: number; cardUserIds?: string[]; nextCursor?: string | null } | null>(
+          `${this.apiBaseUrl}/auth/me/game-cards/query`,
+          {
+            filterPreferences: request.filterPreferences ?? null,
+            cursor: request.cursor ?? null,
+            pageSize: Number.isFinite(request.pageSize) ? Math.max(1, Math.min(50, Math.trunc(Number(request.pageSize)))) : 10
+          }
         )
         .toPromise();
       if (!response) {
-        return { bootstrap: null };
+        return { cards: null };
       }
       const filterCount = Number.isFinite(response.filterCount)
         ? Math.max(0, Math.trunc(Number(response.filterCount)))
         : 0;
-      const firstCardUserIds = Array.isArray(response.firstCardUserIds)
-        ? response.firstCardUserIds
+      const cardUserIds = Array.isArray(response.cardUserIds)
+        ? response.cardUserIds
           .map(id => String(id).trim())
           .filter(id => id.length > 0)
         : [];
+      const nextCursor = typeof response.nextCursor === 'string' && response.nextCursor.trim().length > 0
+        ? response.nextCursor.trim()
+        : null;
       return {
-        bootstrap: {
+        cards: {
           filterCount,
-          firstCardUserIds
+          cardUserIds,
+          nextCursor
         }
       };
     } catch {
-      return { bootstrap: null };
+      return { cards: null };
     }
   }
 
