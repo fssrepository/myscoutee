@@ -1,34 +1,32 @@
-export type DemoUsersDelayKey = 'demoUsers' | 'userById' | 'userGameCards';
-
 export interface ConfigEntry {
   routePrefix: string;
-  demoUsersDelayMs: number;
-  userByIdDelayMs: number;
-  userGameCardsDelayMs: number;
+  demoDelayMs: number;
 }
 
 interface DemoUsersRouteConfig {
-  defaultDemoUsersDelayMs: number;
-  defaultUserByIdDelayMs: number;
-  defaultUserGameCardsDelayMs: number;
+  defaultDemoDelayMs: number;
   entries: ConfigEntry[];
 }
 
 const ROUTE_CONFIG: DemoUsersRouteConfig = {
-  defaultDemoUsersDelayMs: 300,
-  defaultUserByIdDelayMs: 300,
-  defaultUserGameCardsDelayMs: 300,
+  defaultDemoDelayMs: 300,
   entries: [
     {
-      routePrefix: '/game',
-      demoUsersDelayMs: 0,
-      userByIdDelayMs: 0,
-      userGameCardsDelayMs: 1500
+      routePrefix: '/auth/demo-users',
+      demoDelayMs: 0
+    },
+    {
+      routePrefix: '/auth/me',
+      demoDelayMs: 0
+    },
+    {
+      routePrefix: '/game-cards/query',
+      demoDelayMs: 1500
     }
   ]
 };
 
-export function resolveAdditionalDelayMsForRoute(url: string, key: DemoUsersDelayKey): number {
+export function resolveAdditionalDelayMsForRoute(url: string): number {
   const normalizedUrl = normalizeRouteUrl(url);
   let bestMatchLength = -1;
   let selectedEntry: ConfigEntry | null = null;
@@ -45,21 +43,7 @@ export function resolveAdditionalDelayMsForRoute(url: string, key: DemoUsersDela
     selectedEntry = entry;
   }
 
-  let selectedDelayMs: number;
-  switch (key) {
-    case 'demoUsers':
-      selectedDelayMs = selectedEntry?.demoUsersDelayMs ?? ROUTE_CONFIG.defaultDemoUsersDelayMs;
-      break;
-    case 'userById':
-      selectedDelayMs = selectedEntry?.userByIdDelayMs ?? ROUTE_CONFIG.defaultUserByIdDelayMs;
-      break;
-    case 'userGameCards':
-    default:
-      selectedDelayMs = selectedEntry?.userGameCardsDelayMs ?? ROUTE_CONFIG.defaultUserGameCardsDelayMs;
-      break;
-  }
-
-  return normalizeDelayMs(selectedDelayMs);
+  return normalizeDelayMs(selectedEntry?.demoDelayMs ?? ROUTE_CONFIG.defaultDemoDelayMs);
 }
 
 function normalizeRouteUrl(url: string): string {

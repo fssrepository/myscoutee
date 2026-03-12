@@ -274,6 +274,7 @@
 
               <span
                 class="game-pair-rating-badge"
+                *ngIf="selectedRating > 0"
                 [class.is-blink]="isRatingBarBlinking"
                 [style.left]="pairModeSplitCssValue"
                 aria-hidden="true"
@@ -340,9 +341,6 @@
     <header class="game-filter-popup-header">
       <h2>Game Filters</h2>
       <div class="game-filter-popup-header-actions" [class.is-hidden]="hasOpenFilterSelector">
-        <span class="popup-filter-meta" [class.active]="isFilterActive">
-          {{ filterDraftMatchCount }} match{{ filterDraftMatchCount === 1 ? '' : 'es' }}
-        </span>
         <button type="button" class="game-popup-apply-btn" (click)="applyFilter()" aria-label="Apply filters">
           <mat-icon>check</mat-icon>
         </button>

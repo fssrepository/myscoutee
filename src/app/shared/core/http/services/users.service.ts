@@ -17,6 +17,7 @@ import type {
   providedIn: 'root'
 })
 export class HttpUsersService implements UserService {
+  private static readonly USER_GAME_CARDS_QUERY_ROUTE = '/game-cards/query';
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
@@ -68,7 +69,7 @@ export class HttpUsersService implements UserService {
     try {
       const response = await this.http
         .post<{ filterCount?: number; cardUserIds?: string[]; nextCursor?: string | null } | null>(
-          `${this.apiBaseUrl}/auth/me/game-cards/query`,
+          `${this.apiBaseUrl}${HttpUsersService.USER_GAME_CARDS_QUERY_ROUTE}`,
           {
             filterPreferences: request.filterPreferences ?? null,
             cursor: request.cursor ?? null,

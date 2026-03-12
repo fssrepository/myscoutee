@@ -52,6 +52,23 @@ export class UsersService {
     return this.demoModeEnabled ? this.demoUsersService : this.httpUsersService;
   }
 
+  getGameCardsUsersSnapshot(): UserDto[] {
+    // Keep game-card user catalog ownership in repository/service layer.
+    return this.demoUsersService.queryGameCardsUsersSnapshot();
+  }
+
+  recordUserGameCardRating(
+    raterUserId: string,
+    ratedUserId: string,
+    rating: number,
+    mode: 'single' | 'pair' = 'single'
+  ): void {
+    if (!this.demoModeEnabled) {
+      return;
+    }
+    this.demoUsersService.recordGameCardRating(raterUserId, ratedUserId, rating, mode);
+  }
+
   async loadAvailableDemoUsers(requestTimeoutMs?: number): Promise<DemoUserListItemDto[]> {
     if (!this.demoModeEnabled) {
       this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'success');

@@ -1,7 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Router } from '@angular/router';
 
-import { AppDemoGenerators } from '../../../app-demo-generators';
 import { DemoUsersRepository } from '../repositories/users.repository';
 import { resolveAdditionalDelayMsForRoute } from '../config';
 import type {
@@ -18,11 +16,26 @@ import type {
   providedIn: 'root'
 })
 export class DemoUsersService implements UserService {
+  private static readonly DEMO_USERS_ROUTE = '/auth/demo-users';
+  private static readonly USER_BY_ID_ROUTE = '/auth/me';
+  private static readonly USER_GAME_CARDS_ROUTE = '/game-cards/query';
   private readonly usersRepository = inject(DemoUsersRepository);
-  private readonly router = inject(Router);
+
+  queryGameCardsUsersSnapshot(): UserDto[] {
+    return this.usersRepository.queryGameStackUsers();
+  }
+
+  recordGameCardRating(
+    raterUserId: string,
+    ratedUserId: string,
+    rating: number,
+    mode: 'single' | 'pair' = 'single'
+  ): void {
+    this.usersRepository.upsertGameCardRating(raterUserId, ratedUserId, rating, mode);
+  }
 
   async queryAvailableDemoUsers(): Promise<UsersListQueryResponse> {
-    const additionalDelayMs = resolveAdditionalDelayMsForRoute(this.router.url, 'demoUsers');
+    const additionalDelayMs = resolveAdditionalDelayMsForRoute(DemoUsersService.DEMO_USERS_ROUTE);
     if (additionalDelayMs > 0) {
       await new Promise<void>(resolve => {
         setTimeout(() => resolve(), additionalDelayMs);
@@ -34,7 +47,7 @@ export class DemoUsersService implements UserService {
   }
 
   async queryUserById(userId: string): Promise<UserByIdQueryResponse> {
-    const additionalDelayMs = resolveAdditionalDelayMsForRoute(this.router.url, 'userById');
+    const additionalDelayMs = resolveAdditionalDelayMsForRoute(DemoUsersService.USER_BY_ID_ROUTE);
     if (additionalDelayMs > 0) {
       await new Promise<void>(resolve => {
         setTimeout(() => resolve(), additionalDelayMs);
@@ -42,8 +55,8 @@ export class DemoUsersService implements UserService {
     }
     const normalizedUserId = userId.trim();
     const user = this.usersRepository.queryUserById(normalizedUserId);
-    const allUsers = AppDemoGenerators.buildExpandedDemoUsers(50);
-    const filterCount = allUsers.filter(candidate => candidate.id !== normalizedUserId).length;
+    const allUsers = this.usersRepository.queryGameStackUsers(normalizedUserId);
+    const filterCount = allUsers.length;
     return {
       user,
       filterCount,
@@ -52,7 +65,7 @@ export class DemoUsersService implements UserService {
   }
 
   async queryUserGameCardsByFilter(request: UserGameCardsQueryRequest): Promise<UserGameCardsQueryResponse> {
-    const additionalDelayMs = resolveAdditionalDelayMsForRoute(this.router.url, 'userGameCards');
+    const additionalDelayMs = resolveAdditionalDelayMsForRoute(DemoUsersService.USER_GAME_CARDS_ROUTE);
     if (additionalDelayMs > 0) {
       await new Promise<void>(resolve => {
         setTimeout(() => resolve(), additionalDelayMs);
@@ -64,9 +77,8 @@ export class DemoUsersService implements UserService {
     }
     const pageSize = this.resolvePageSize(request.pageSize);
     const offset = this.resolveOffset(request.cursor);
-    const allUsers = AppDemoGenerators.buildExpandedDemoUsers(50);
+    const allUsers = this.usersRepository.queryGameStackUsers(normalizedUserId);
     const filtered = allUsers
-      .filter(user => user.id !== normalizedUserId)
       .filter(user => this.matchesFilterPreferences(user, request.filterPreferences ?? null));
     const cardUserIds = filtered
       .slice(offset, offset + pageSize)

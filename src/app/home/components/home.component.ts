@@ -3,8 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
 import { MatSliderModule } from '@angular/material/slider';
-import { DEMO_USERS, DemoUser, PROFILE_DETAILS } from '../../shared/demo-data';
-import { AppDemoGenerators } from '../../shared/app-demo-generators';
+import { DemoUser, PROFILE_DETAILS } from '../../shared/demo-data';
 import { AppContext } from '../../shared/core/app.context';
 import { USER_BY_ID_LOAD_CONTEXT_KEY, USER_GAME_CARDS_LOAD_CONTEXT_KEY, UsersService } from '../../shared/core/users.service';
 
@@ -120,6 +119,7 @@ export class HomeComponent implements OnDestroy {
   private static readonly GAME_STACK_LOADING_WINDOW_MS = 3000;
   private static readonly GAME_STACK_LOADING_TICK_MS = 16;
   private static readonly GAME_STACK_LOAD_DELAY_MS = 1500;
+  private static readonly GAME_RATING_CONFIRMATION_MS = 120;
   private static readonly GAME_STACK_TEST_JOINER_BATCH_SIZE = 10;
   private readonly gameFilterInterestGroups: GameFilterOptionGroup[] = [
     {
@@ -355,8 +355,8 @@ export class HomeComponent implements OnDestroy {
       religion: 'spiritual'
     }
   };
-  private users = AppDemoGenerators.buildExpandedDemoUsers(50, DEMO_USERS);
-  protected selectedRating = 7;
+  private users: DemoUser[] = [];
+  protected selectedRating = 0;
   protected isPairMode = false;
   protected cardIndex = 0;
   protected isRatingBarBlinking = false;
@@ -383,7 +383,7 @@ export class HomeComponent implements OnDestroy {
   protected candidateImagePanX = 0;
   protected candidateImagePanY = 0;
   protected localPopup: LocalPopup = null;
-  protected activeUserId = this.getActiveUserId();
+  protected activeUserId = '';
   protected filterDraft: GameFilterForm;
   protected gameFilter: GameFilterForm;
   protected filterSelector: FilterSelectorKind | null = null;
@@ -393,6 +393,7 @@ export class HomeComponent implements OnDestroy {
   private readonly preloadedGameImageUrls = new Set<string>();
   private readonly pendingGameImageUrls = new Set<string>();
   private ratingBarBlinkTimeout: ReturnType<typeof setTimeout> | null = null;
+  private ratingAdvanceTimer: ReturnType<typeof setTimeout> | null = null;
   private candidateImageIndicatorRevealTimer: ReturnType<typeof setTimeout> | null = null;
   private candidateImageLoadingPulseTimer: ReturnType<typeof setTimeout> | null = null;
   private pairModeWomanImageIndicatorRevealTimer: ReturnType<typeof setTimeout> | null = null;
@@ -424,6 +425,8 @@ export class HomeComponent implements OnDestroy {
     private readonly appCtx: AppContext,
     private readonly usersService: UsersService
   ) {
+    this.users = this.usersService.getGameCardsUsersSnapshot() as DemoUser[];
+    this.activeUserId = this.getActiveUserId();
     const initialFilter = this.createInitialFilter();
     this.gameFilter = this.cloneFilter(initialFilter);
     this.filterDraft = this.cloneFilter(initialFilter);
@@ -482,6 +485,7 @@ export class HomeComponent implements OnDestroy {
       clearTimeout(this.ratingBarBlinkTimeout);
       this.ratingBarBlinkTimeout = null;
     }
+    this.clearPendingRatingAdvanceTimer();
     if (this.candidateImageIndicatorRevealTimer) {
       clearTimeout(this.candidateImageIndicatorRevealTimer);
       this.candidateImageIndicatorRevealTimer = null;
@@ -582,10 +586,18 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get filterBadgeCount(): number {
+    const overrideTotal = this.appCtx.getUserFilterCountOverride(this.activeUser.id);
     if (this.gameInitialCardsLoadPending) {
-      return 0;
+      if (overrideTotal === null) {
+        return 0;
+      }
+      return Math.max(0, overrideTotal - this.cardIndex);
     }
-    return Math.max(0, this.totalRoundsForCurrentMode() - this.cardIndex);
+    const fallback = Math.max(0, this.totalRoundsForCurrentMode() - this.cardIndex);
+    if (overrideTotal === null) {
+      return fallback;
+    }
+    return Math.max(0, overrideTotal - this.cardIndex);
   }
 
   protected get hasRemainingCandidatesForCurrentMode(): boolean {
@@ -751,14 +763,6 @@ export class HomeComponent implements OnDestroy {
     );
   }
 
-  protected get filterDraftMatchCount(): number {
-    const normalized = this.normalizeFilter(this.filterDraft);
-    return this.users
-      .filter(user => user.id !== this.activeUserId)
-      .filter(user => this.matchesUserWithFilter(user, normalized))
-      .length;
-  }
-
   protected get hasOpenFilterSelector(): boolean {
     return this.filterSelector !== null;
   }
@@ -820,6 +824,9 @@ export class HomeComponent implements OnDestroy {
 
   protected setRating(value: number): void {
     this.stopPairModeSplitDrag();
+    if (this.ratingAdvanceTimer) {
+      return;
+    }
     const currentCandidate = this.isPairMode
       ? (this.pairModeWomanCandidate ?? this.pairModeManCandidate)
       : this.activeCandidate;
@@ -827,21 +834,38 @@ export class HomeComponent implements OnDestroy {
       this.maybeStartGameStackPaginationLoad();
       return;
     }
-    this.triggerRatingBarBlink();
-    const hasUpcomingRound = this.cardIndex + 1 < this.totalRoundsForCurrentMode();
-    if (hasUpcomingRound) {
-      if (this.isPairMode) {
-        this.startPairModeCardLeaveAnimation(value);
-      } else {
-        this.startGameCardLeaveAnimation(currentCandidate, value);
+    if (this.isPairMode) {
+      const woman = this.pairModeWomanCandidate;
+      const man = this.pairModeManCandidate;
+      if (woman) {
+        this.usersService.recordUserGameCardRating(this.activeUserId, woman.id, value, 'pair');
       }
+      if (man) {
+        this.usersService.recordUserGameCardRating(this.activeUserId, man.id, value, 'pair');
+      }
+    } else {
+      this.usersService.recordUserGameCardRating(this.activeUserId, currentCandidate.id, value, 'single');
     }
     this.selectedRating = value;
-    this.cardIndex += 1;
-    this.maybeStartGameStackPaginationLoad();
-    this.preloadGameImageWindow();
-    this.resetCandidateImageState();
-    this.beginCandidateImageLoadingForCurrentSelection(true);
+    this.triggerRatingBarBlink();
+    this.ratingAdvanceTimer = setTimeout(() => {
+      this.ratingAdvanceTimer = null;
+      const hasUpcomingRound = this.cardIndex + 1 < this.totalRoundsForCurrentMode();
+      if (hasUpcomingRound) {
+        if (this.isPairMode) {
+          this.startPairModeCardLeaveAnimation(value);
+        } else {
+          this.startGameCardLeaveAnimation(currentCandidate, value);
+        }
+      }
+      this.cardIndex += 1;
+      this.selectedRating = 0;
+      this.maybeStartGameStackPaginationLoad();
+      this.preloadGameImageWindow();
+      this.resetCandidateImageState();
+      this.beginCandidateImageLoadingForCurrentSelection(true);
+      this.cdr.markForCheck();
+    }, HomeComponent.GAME_RATING_CONFIRMATION_MS);
   }
 
   protected togglePairMode(): void {
@@ -1941,7 +1965,16 @@ export class HomeComponent implements OnDestroy {
   }
 
   private resetServiceCardState(): void {
+    this.clearPendingRatingAdvanceTimer();
     this.usersService.resetUserGameCardsStack(this.activeUserId);
+  }
+
+  private clearPendingRatingAdvanceTimer(): void {
+    if (this.ratingAdvanceTimer) {
+      clearTimeout(this.ratingAdvanceTimer);
+      this.ratingAdvanceTimer = null;
+    }
+    this.selectedRating = 0;
   }
 
   private applyFilterPreferencesFromAppContext(): void {
@@ -2002,6 +2035,9 @@ export class HomeComponent implements OnDestroy {
   }
 
   private getActiveUserId(): string {
+    if (this.users.length === 0) {
+      return '';
+    }
     const stored = localStorage.getItem('demo-active-user');
     if (!stored) {
       return this.users[0].id;
