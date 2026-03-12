@@ -3030,6 +3030,15 @@
   box-shadow: 0 0 0 2px #fff;
 }
 
+.menu-shortcut-badge-empty {
+  width: 10px;
+  min-width: 10px;
+  height: 10px;
+  padding: 0;
+  font-size: 0;
+  line-height: 0;
+}
+
 .impressions-shortcuts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3038,6 +3047,7 @@
 }
 
 .impression-shortcut-btn {
+  position: relative;
   border: 1px solid rgba(86, 74, 127, 0.26);
   border-radius: 12px;
   background: linear-gradient(180deg, #f6f4ff 0%, #efeafd 100%);
@@ -4060,6 +4070,22 @@
   width: fit-content;
   max-width: calc(100% - 2px);
   z-index: 1;
+}
+
+.popup-impressions-badge-updated {
+  animation: popup-impressions-badge-blink 0.44s ease;
+}
+
+@keyframes popup-impressions-badge-blink {
+  0% {
+    filter: brightness(1) saturate(1);
+  }
+  45% {
+    filter: brightness(1.08) saturate(1.06);
+  }
+  100% {
+    filter: brightness(1) saturate(1);
+  }
 }
 
 .popup-impressions-badge-segment {
@@ -16907,6 +16933,33 @@ textarea {
   background: linear-gradient(180deg, #f4f5fb 0%, #eceef8 100%);
   color: #243a67;
   white-space: nowrap;
+}
+
+.impressions-chip-list-updated .social-proof-chip {
+  animation: popup-impressions-chip-pulse 0.38s ease;
+}
+
+.impressions-chip-list-updated .social-proof-chip:nth-child(2n) {
+  animation-delay: 0.04s;
+}
+
+.impressions-chip-list-updated .social-proof-chip:nth-child(3n) {
+  animation-delay: 0.08s;
+}
+
+@keyframes popup-impressions-chip-pulse {
+  0% {
+    transform: translateY(0) scale(1);
+    filter: brightness(1);
+  }
+  45% {
+    transform: translateY(-1px) scale(1.02);
+    filter: brightness(1.08);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    filter: brightness(1);
+  }
 }
 
 .social-proof-chip.chip-personality {

@@ -8,6 +8,7 @@ import { HttpUsersService } from '../../http';
 import type {
   DemoUserListItemDto,
   UserDto,
+  UserRealtimeLongPollResponseDto,
   UserProfileImageUploadResult,
   UserService
 } from '../interfaces/user.interface';
@@ -123,6 +124,30 @@ export class UsersService {
     return this.userService.saveUserProfile(user);
   }
 
+  async pollUserRealtimeSnapshot(
+    userId: string,
+    cursor: string | null = null,
+    requestTimeoutMs?: number
+  ): Promise<UserRealtimeLongPollResponseDto | null> {
+    const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    try {
+      const snapshot = await this.withRequestTimeout(
+        this.userService.queryUserRealtimeLongPoll(normalizedUserId, cursor),
+        normalizedTimeoutMs
+      );
+      if (!snapshot) {
+        return null;
+      }
+      return this.normalizeRealtimeSnapshot(snapshot, normalizedUserId, cursor);
+    } catch {
+      return null;
+    }
+  }
+
   async uploadUserProfileImage(
     userId: string,
     file: File,
@@ -165,5 +190,39 @@ export class UsersService {
         }
       );
     });
+  }
+
+  private normalizeRealtimeSnapshot(
+    snapshot: UserRealtimeLongPollResponseDto,
+    fallbackUserId: string,
+    fallbackCursor: string | null
+  ): UserRealtimeLongPollResponseDto {
+    const normalizeCounter = (value: unknown): number | undefined => {
+      if (!Number.isFinite(value)) {
+        return undefined;
+      }
+      return Math.max(0, Math.trunc(Number(value)));
+    };
+    const counters = snapshot.counters ?? {};
+    return {
+      userId: (snapshot.userId ?? fallbackUserId).trim() || fallbackUserId,
+      counters: {
+        game: normalizeCounter(counters.game),
+        chat: normalizeCounter(counters.chat),
+        invitations: normalizeCounter(counters.invitations),
+        events: normalizeCounter(counters.events),
+        hosting: normalizeCounter(counters.hosting),
+        tickets: normalizeCounter(counters.tickets),
+        impressionsHostChanged: counters.impressionsHostChanged === true,
+        impressionsMemberChanged: counters.impressionsMemberChanged === true
+      },
+      impressions: snapshot.impressions,
+      cursor: typeof snapshot.cursor === 'string'
+        ? snapshot.cursor.trim()
+        : fallbackCursor,
+      serverTsIso: typeof snapshot.serverTsIso === 'string'
+        ? snapshot.serverTsIso
+        : new Date().toISOString()
+    };
   }
 }

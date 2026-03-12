@@ -20,6 +20,8 @@ import { AppContext, type ActivityCounterKey } from './shared/core/app.context';
 import { UsersService } from './shared/core/users.service';
 import type {
   DemoUserListItemDto,
+  UserRealtimeLongPollResponseDto,
+  UserImpressionsSectionDto,
   UserDto
 } from './shared/core/user.interface';
 import {
@@ -145,6 +147,9 @@ export class App {
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT = 50;
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MIN_PERCENT = 0;
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT = 100;
+  private static readonly USER_REALTIME_LONG_POLL_INTERVAL_MS = 30000;
+  private static readonly USER_REALTIME_LONG_POLL_IMPRESSIONS_INTERVAL_MS = 30000;
+  private static readonly IMPRESSIONS_VISUAL_PULSE_DURATION_MS = 460;
 
   public readonly alertService = inject(AlertService);
   protected readonly activitiesContext = inject(ActivitiesDbContextService);
@@ -578,6 +583,20 @@ export class App {
   private chatHeaderLoadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
   private chatHeaderLoadingStartedAtMs = 0;
   private chatInitialLoadTimer: ReturnType<typeof setTimeout> | null = null;
+  private userRealtimeLongPollTimer: ReturnType<typeof setInterval> | null = null;
+  private userRealtimeLongPollInFlight = false;
+  private userRealtimeLongPollActiveIntervalMs = App.USER_REALTIME_LONG_POLL_INTERVAL_MS;
+  private readonly userRealtimeLongPollCursorByUserId: Record<string, string | null> = {};
+  private readonly userRealtimeBaseCountersByUserId: Record<string, Partial<Record<ActivityCounterKey, number>>> = {};
+  private readonly userImpressionsChangeFlagsByUserId: Record<string, { host: boolean; member: boolean }> = {};
+  private readonly userImpressionsVisualPulseByUserId: Record<
+    string,
+    { hostTop: boolean; memberTop: boolean; hostChips: boolean; memberChips: boolean }
+  > = {};
+  private readonly userImpressionsVisualPulseTimersByUserId: Record<
+    string,
+    Partial<Record<'hostTop' | 'memberTop' | 'hostChips' | 'memberChips', ReturnType<typeof setTimeout>>>
+  > = {};
   private ticketScannerTimer: ReturnType<typeof setTimeout> | null = null;
   private ticketScannerMediaStream: MediaStream | null = null;
   private ticketScannerDetectionFrame: number | null = null;
@@ -596,6 +615,18 @@ export class App {
     this.initializeEntryFlow();
     this.appCtx.setActiveUserId(this.activeUserId);
     this.router.navigate(['/game']);
+    if (!this.showEntryShell) {
+      const bootstrapUserId = this.activeUserId;
+      void this.hydrateUserAfterLogin(bootstrapUserId).finally(() => {
+        if (this.activeUserId !== bootstrapUserId || this.showEntryShell) {
+          this.cdr.markForCheck();
+          return;
+        }
+        this.syncProfileFormFromActiveUser();
+        this.activateUserRealtimeLongPoll(bootstrapUserId);
+        this.cdr.markForCheck();
+      });
+    }
 
     effect(() => {
       const request = this.activitiesContext.activitiesNavigationRequest();
@@ -756,6 +787,38 @@ export class App {
       this.assetSuppliesBadge +
       this.assetTicketsBadge
     );
+  }
+
+  protected get hostImpressionsBadge(): number {
+    return this.impressionSectionCounter(this.activeUserImpressionsSection('host')?.unreadCount);
+  }
+
+  protected get memberImpressionsBadge(): number {
+    return this.impressionSectionCounter(this.activeUserImpressionsSection('member')?.unreadCount);
+  }
+
+  protected get hostImpressionsChangedBadgeVisible(): boolean {
+    return this.hostImpressionsBadge === 0 && this.currentUserImpressionsChangeFlags().host;
+  }
+
+  protected get memberImpressionsChangedBadgeVisible(): boolean {
+    return this.memberImpressionsBadge === 0 && this.currentUserImpressionsChangeFlags().member;
+  }
+
+  protected get hostImpressionsTopMetricsPulse(): boolean {
+    return this.currentUserImpressionsVisualPulseFlags().hostTop;
+  }
+
+  protected get memberImpressionsTopMetricsPulse(): boolean {
+    return this.currentUserImpressionsVisualPulseFlags().memberTop;
+  }
+
+  protected get hostImpressionsChipsPulse(): boolean {
+    return this.currentUserImpressionsVisualPulseFlags().hostChips;
+  }
+
+  protected get memberImpressionsChipsPulse(): boolean {
+    return this.currentUserImpressionsVisualPulseFlags().memberChips;
   }
 
   protected get gameBadge(): number {
@@ -5172,6 +5235,9 @@ export class App {
 
   protected closePopup(): void {
     this.stopActivitiesRatesPairSplitDrag();
+    const wasImpressionsPopupOpen = this.activePopup === 'impressionsHost'
+      || this.stackedPopup === 'impressionsHost'
+      || this.superStackedPopup === 'impressionsHost';
     if (this.activePopup === 'imageEditor' && this.popupReturnTarget) {
       this.activePopup = this.popupReturnTarget;
       this.popupReturnTarget = null;
@@ -5269,6 +5335,11 @@ export class App {
     this.eventExploreHeaderProgress = 0;
     this.eventExploreStickyValue = '';
     this.chatHeaderProgress = 0;
+    if (wasImpressionsPopupOpen) {
+      this.clearCurrentUserImpressionsChangeFlags();
+      this.markCurrentUserImpressionsAsSeen();
+    }
+    this.syncUserRealtimeLongPollSchedule(false);
   }
 
   protected closePopupFromBackdrop(event: MouseEvent): void {
@@ -5277,6 +5348,8 @@ export class App {
   }
 
   protected closeStackedPopup(): void {
+    const wasImpressionsPopupOpen = this.stackedPopup === 'impressionsHost'
+      || this.superStackedPopup === 'impressionsHost';
     if (this.stackedPopup === 'chat') {
       this.cancelChatInitialLoad();
       this.chatHeaderProgress = 0;
@@ -5330,6 +5403,9 @@ export class App {
     }
     if (this.superStackedPopup === 'impressionsHost') {
       this.superStackedPopup = null;
+      this.clearCurrentUserImpressionsChangeFlags();
+      this.markCurrentUserImpressionsAsSeen();
+      this.syncUserRealtimeLongPollSchedule(false);
       return;
     }
     if (this.stackedPopup === 'subEventMembers' || this.stackedPopup === 'subEventAssets') {
@@ -5425,12 +5501,19 @@ export class App {
     }
     this.stackedPopup = null;
     this.showProfileStatusHeaderPicker = false;
+    if (wasImpressionsPopupOpen) {
+      this.clearCurrentUserImpressionsChangeFlags();
+      this.markCurrentUserImpressionsAsSeen();
+    }
+    this.syncUserRealtimeLongPollSchedule(false);
     if (this.activePopup === 'chat') {
       this.scrollChatToBottom();
     }
   }
 
   protected confirmLogout(): void {
+    this.stopUserRealtimeLongPoll();
+    this.clearUserImpressionsVisualPulseState(this.activeUserId);
     this.activePopup = null;
     this.stackedPopup = null;
     this.popupReturnTarget = null;
@@ -5459,6 +5542,11 @@ export class App {
     this.appCtx.clearUserCounterOverrides(userId);
     this.appCtx.clearUserFilterCountOverride(userId);
     this.appCtx.clearUserFilterPreferences(userId);
+    this.appCtx.clearUserImpressions(userId);
+    delete this.userRealtimeLongPollCursorByUserId[userId];
+    delete this.userRealtimeBaseCountersByUserId[userId];
+    delete this.userImpressionsChangeFlagsByUserId[userId];
+    this.clearUserImpressionsVisualPulseState(userId);
     this.syncProfileFormFromActiveUser();
     this.activeMenuSection = 'chat';
     this.completeEntryFlow();
@@ -5471,6 +5559,7 @@ export class App {
         return;
       }
       this.syncProfileFormFromActiveUser();
+      this.activateUserRealtimeLongPoll(userId);
       this.cdr.markForCheck();
     });
   }
@@ -5497,6 +5586,16 @@ export class App {
     if (this.authMode === 'firebase') {
       if (this.firebaseAuthProfile) {
         this.completeEntryFlow();
+        const userId = this.activeUserId;
+        void this.hydrateUserAfterLogin(userId).finally(() => {
+          if (this.activeUserId !== userId || this.showEntryShell) {
+            this.cdr.markForCheck();
+            return;
+          }
+          this.syncProfileFormFromActiveUser();
+          this.activateUserRealtimeLongPoll(userId);
+          this.cdr.markForCheck();
+        });
         return;
       }
       this.showFirebaseAuthPopup = true;
@@ -5557,12 +5656,19 @@ export class App {
     this.appCtx.clearUserCounterOverrides(this.activeUserId);
     this.appCtx.clearUserFilterCountOverride(this.activeUserId);
     this.appCtx.clearUserFilterPreferences(this.activeUserId);
+    this.appCtx.clearUserImpressions(this.activeUserId);
+    delete this.userRealtimeLongPollCursorByUserId[this.activeUserId];
+    delete this.userRealtimeBaseCountersByUserId[this.activeUserId];
+    delete this.userImpressionsChangeFlagsByUserId[this.activeUserId];
+    this.clearUserImpressionsVisualPulseState(this.activeUserId);
     this.syncProfileFormFromActiveUser();
     this.activeMenuSection = 'chat';
     this.completeEntryFlow();
     void this.hydrateUserAfterLogin(this.activeUserId).finally(() => {
       this.firebaseAuthIsBusy = false;
+      const userId = this.activeUserId;
       this.syncProfileFormFromActiveUser();
+      this.activateUserRealtimeLongPoll(userId);
       this.cdr.markForCheck();
     });
   }
@@ -5616,6 +5722,7 @@ export class App {
 
     this.syncProfileBasicsIntoDetailRows(current);
     this.syncLoadedUserImageSlots(current);
+    this.syncLoadedUserImpressions(user.id, user.impressions);
   }
 
   private syncLoadedUserImageSlots(user: DemoUser): void {
@@ -5629,6 +5736,127 @@ export class App {
       slots[index] = image;
     });
     this.profileImageSlotsByUser[user.id] = slots;
+  }
+
+  private syncLoadedUserImpressions(
+    userId: string,
+    impressions: UserDto['impressions'] | undefined
+  ): void {
+    if (!impressions) {
+      this.appCtx.clearUserImpressions(userId);
+      return;
+    }
+    this.appCtx.setUserImpressions(userId, impressions);
+  }
+
+  private clearUserImpressionsChangeFlag(userId: string, section: 'host' | 'member'): void {
+    const current = this.userImpressionsChangeFlagsByUserId[userId];
+    if (!current) {
+      return;
+    }
+    const next = {
+      host: section === 'host' ? false : current.host,
+      member: section === 'member' ? false : current.member
+    };
+    if (!next.host && !next.member) {
+      delete this.userImpressionsChangeFlagsByUserId[userId];
+      return;
+    }
+    this.userImpressionsChangeFlagsByUserId[userId] = next;
+  }
+
+  private clearCurrentUserImpressionsChangeFlags(): void {
+    const userId = this.activeUser.id;
+    this.clearUserImpressionsChangeFlag(userId, 'host');
+    this.clearUserImpressionsChangeFlag(userId, 'member');
+    this.clearUserImpressionsVisualPulseState(userId);
+  }
+
+  private clearUserImpressionsVisualPulseState(userId: string): void {
+    const timers = this.userImpressionsVisualPulseTimersByUserId[userId];
+    if (timers) {
+      const activeTimers = Object.values(timers);
+      for (const timer of activeTimers) {
+        if (timer) {
+          clearTimeout(timer);
+        }
+      }
+      delete this.userImpressionsVisualPulseTimersByUserId[userId];
+    }
+    delete this.userImpressionsVisualPulseByUserId[userId];
+  }
+
+  private triggerUserImpressionsVisualPulse(
+    userId: string,
+    key: 'hostTop' | 'memberTop' | 'hostChips' | 'memberChips'
+  ): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const current = this.userImpressionsVisualPulseByUserId[normalizedUserId] ?? {
+      hostTop: false,
+      memberTop: false,
+      hostChips: false,
+      memberChips: false
+    };
+    this.userImpressionsVisualPulseByUserId[normalizedUserId] = {
+      ...current,
+      [key]: true
+    };
+    const timers = this.userImpressionsVisualPulseTimersByUserId[normalizedUserId] ?? {};
+    if (timers[key]) {
+      clearTimeout(timers[key]);
+    }
+    timers[key] = setTimeout(() => {
+      const active = this.userImpressionsVisualPulseByUserId[normalizedUserId];
+      if (!active) {
+        return;
+      }
+      const next = {
+        ...active,
+        [key]: false
+      };
+      if (!next.hostTop && !next.memberTop && !next.hostChips && !next.memberChips) {
+        delete this.userImpressionsVisualPulseByUserId[normalizedUserId];
+      } else {
+        this.userImpressionsVisualPulseByUserId[normalizedUserId] = next;
+      }
+      const userTimers = this.userImpressionsVisualPulseTimersByUserId[normalizedUserId];
+      if (userTimers) {
+        delete userTimers[key];
+        if (Object.keys(userTimers).length === 0) {
+          delete this.userImpressionsVisualPulseTimersByUserId[normalizedUserId];
+        } else {
+          this.userImpressionsVisualPulseTimersByUserId[normalizedUserId] = userTimers;
+        }
+      }
+      this.cdr.markForCheck();
+    }, App.IMPRESSIONS_VISUAL_PULSE_DURATION_MS);
+    this.userImpressionsVisualPulseTimersByUserId[normalizedUserId] = timers;
+  }
+
+  private markCurrentUserImpressionsAsSeen(): void {
+    const userId = this.activeUser.id;
+    const current = this.appCtx.getUserImpressions(userId);
+    if (!current) {
+      return;
+    }
+    this.appCtx.setUserImpressions(userId, {
+      ...current,
+      host: current.host
+        ? {
+          ...current.host,
+          unreadCount: 0
+        }
+        : current.host,
+      member: current.member
+        ? {
+          ...current.member,
+          unreadCount: 0
+        }
+        : current.member
+    });
   }
 
   protected get isFirebaseAuthMode(): boolean {
@@ -7411,6 +7639,98 @@ export class App {
     return this.physiqueOptions.filter(option => option !== this.profileForm.physique);
   }
 
+  private activeUserImpressionsSection(kind: 'host' | 'member'): UserImpressionsSectionDto | null {
+    const impressions = this.appCtx.getUserImpressions(this.activeUser.id);
+    if (!impressions) {
+      return null;
+    }
+    const section = impressions[kind];
+    return section ?? null;
+  }
+
+  private currentUserImpressionsChangeFlags(): { host: boolean; member: boolean } {
+    return this.userImpressionsChangeFlagsByUserId[this.activeUser.id] ?? { host: false, member: false };
+  }
+
+  private currentUserImpressionsVisualPulseFlags(): {
+    hostTop: boolean;
+    memberTop: boolean;
+    hostChips: boolean;
+    memberChips: boolean;
+  } {
+    return this.userImpressionsVisualPulseByUserId[this.activeUser.id] ?? {
+      hostTop: false,
+      memberTop: false,
+      hostChips: false,
+      memberChips: false
+    };
+  }
+
+  private impressionSectionCounter(value: number | undefined): number {
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+    return Math.max(0, Math.trunc(Number(value)));
+  }
+
+  private impressionSectionMetric(value: number | undefined): number | null {
+    if (!Number.isFinite(value)) {
+      return null;
+    }
+    return Math.max(0, Math.trunc(Number(value)));
+  }
+
+  private impressionSectionRating(value: number | undefined): number | null {
+    if (!Number.isFinite(value)) {
+      return null;
+    }
+    return AppUtils.clampNumber(Number(value), 0, 5);
+  }
+
+  private impressionSectionBadgeList(items: readonly string[] | undefined): string[] | null {
+    if (!Array.isArray(items)) {
+      return null;
+    }
+    const normalized = items
+      .map(item => item.trim())
+      .filter(item => item.length > 0);
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  private sortImpressionsBadgeItems(items: readonly string[]): string[] {
+    const parsed = items.map(item => this.parseImpressionsBadgeItem(item));
+    parsed.sort((left, right) => {
+      if (left.percent !== null && right.percent !== null && left.percent !== right.percent) {
+        return right.percent - left.percent;
+      }
+      if (left.percent !== null && right.percent === null) {
+        return -1;
+      }
+      if (left.percent === null && right.percent !== null) {
+        return 1;
+      }
+      return left.label.localeCompare(right.label);
+    });
+    return parsed.map(entry => entry.original);
+  }
+
+  private parseImpressionsBadgeItem(item: string): { original: string; label: string; percent: number | null } {
+    const original = item.trim();
+    const percentMatch = original.match(/^(.*?)(\d{1,3})%$/);
+    if (!percentMatch) {
+      return {
+        original,
+        label: original.toLowerCase(),
+        percent: null
+      };
+    }
+    return {
+      original,
+      label: percentMatch[1].trim().toLowerCase(),
+      percent: Math.max(0, Math.min(100, Number.parseInt(percentMatch[2], 10) || 0))
+    };
+  }
+
   protected get hostSocialProofBaseMetrics(): Array<{ label: string; value: string }> {
     return [
       { label: 'Average crown rating', value: `${(AppDemoGenerators.seededMetric(this.activeUser, 1, 38, 50) / 10).toFixed(1)} / 5.0` },
@@ -7421,6 +7741,10 @@ export class App {
   }
 
   protected get hostAverageRating(): string {
+    const loaded = this.impressionSectionRating(this.activeUserImpressionsSection('host')?.averageRating);
+    if (loaded !== null) {
+      return loaded.toFixed(1);
+    }
     const baseline = 4.4;
     const scores = this.submittedEventFeedbackAnswersByKind('event')
       .map(answer => this.feedbackScoreFromPrimary(answer.kind, answer.primaryValue))
@@ -7433,6 +7757,10 @@ export class App {
   }
 
   protected get hostTotalEvents(): number {
+    const loaded = this.impressionSectionMetric(this.activeUserImpressionsSection('host')?.totalEvents);
+    if (loaded !== null) {
+      return loaded;
+    }
     return AppDemoGenerators.seededMetric(this.activeUser, 9, 12, 80);
   }
 
@@ -7453,16 +7781,28 @@ export class App {
   }
 
   protected get hostAttendanceNoShowSummary(): string {
+    const loaded = this.impressionSectionMetric(this.activeUserImpressionsSection('host')?.noShowCount);
+    if (loaded !== null) {
+      return `${loaded}`;
+    }
     return `${this.hostAttendanceNoShow}`;
   }
 
   protected get hostRepeatSummary(): string {
+    const loaded = this.impressionSectionMetric(this.activeUserImpressionsSection('host')?.repeatCount);
+    if (loaded !== null) {
+      return `${loaded}`;
+    }
     const total = AppDemoGenerators.seededMetric(this.activeUser, 19, 60, 220);
     const repeat = Math.floor(total * (AppDemoGenerators.seededMetric(this.activeUser, 4, 36, 84) / 100));
     return `${repeat}`;
   }
 
   protected get hostPeopleMet(): number {
+    const loaded = this.impressionSectionMetric(this.activeUserImpressionsSection('host')?.peopleMet);
+    if (loaded !== null) {
+      return loaded;
+    }
     return AppDemoGenerators.seededMetric(this.activeUser, 32, 90, 520) + this.submittedEventFeedbackAnswersByKind('event').length;
   }
 
@@ -7478,27 +7818,39 @@ export class App {
   }
 
   protected get hostVibeBadgeItems(): string[] {
+    const loaded = this.impressionSectionBadgeList(this.activeUserImpressionsSection('host')?.vibeBadges);
+    if (loaded) {
+      return this.sortImpressionsBadgeItems(loaded);
+    }
     const feedbackBadges = this.feedbackBadgeItemsForSection('event', 'vibe');
     if (feedbackBadges.length > 0) {
-      return feedbackBadges;
+      return this.sortImpressionsBadgeItems(feedbackBadges);
     }
-    return AppUtils.withContextIconItems(this.hostVibeSummary, this.vibeIcons);
+    return this.sortImpressionsBadgeItems(AppUtils.withContextIconItems(this.hostVibeSummary, this.vibeIcons));
   }
 
   protected get hostPersonalityBadgeItems(): string[] {
+    const loaded = this.impressionSectionBadgeList(this.activeUserImpressionsSection('host')?.personalityBadges);
+    if (loaded) {
+      return this.sortImpressionsBadgeItems(loaded);
+    }
     const feedbackBadges = this.feedbackBadgeItemsForSection('event', 'personality');
     if (feedbackBadges.length > 0) {
-      return feedbackBadges;
+      return this.sortImpressionsBadgeItems(feedbackBadges);
     }
-    return ['🧠 Communication 60%', '🧩 Coordination 40%'];
+    return this.sortImpressionsBadgeItems(['🧠 Communication 60%', '🧩 Coordination 40%']);
   }
 
   protected get hostCategoryBadgeItems(): string[] {
+    const loaded = this.impressionSectionBadgeList(this.activeUserImpressionsSection('host')?.categoryBadges);
+    if (loaded) {
+      return this.sortImpressionsBadgeItems(loaded);
+    }
     const feedbackBadges = this.feedbackBadgeItemsForSection('event', 'category');
     if (feedbackBadges.length > 0) {
-      return feedbackBadges;
+      return this.sortImpressionsBadgeItems(feedbackBadges);
     }
-    return AppUtils.withContextIconItems(this.hostCategorySummary, this.categoryIcons);
+    return this.sortImpressionsBadgeItems(AppUtils.withContextIconItems(this.hostCategorySummary, this.categoryIcons));
   }
 
   protected get memberTraitBreakdown(): Array<{ label: string; value: string }> {
@@ -7511,16 +7863,24 @@ export class App {
   }
 
   protected get memberPersonalityBadgeItems(): string[] {
+    const loaded = this.impressionSectionBadgeList(this.activeUserImpressionsSection('member')?.personalityBadges);
+    if (loaded) {
+      return this.sortImpressionsBadgeItems(loaded);
+    }
     const feedbackBadges = this.feedbackBadgeItemsForSection('attendee', 'personality');
     if (feedbackBadges.length > 0) {
-      return feedbackBadges;
+      return this.sortImpressionsBadgeItems(feedbackBadges);
     }
-    return this.memberTraitBreakdown
+    return this.sortImpressionsBadgeItems(this.memberTraitBreakdown
       .map(item => `${this.memberTraitIcons[item.label] ?? ''} ${item.label} ${item.value}`.trim())
-      .filter(Boolean);
+      .filter(Boolean));
   }
 
   protected get memberTotalEvents(): number {
+    const loaded = this.impressionSectionMetric(this.activeUserImpressionsSection('member')?.totalEvents);
+    if (loaded !== null) {
+      return loaded;
+    }
     return this.hostTotalEvents;
   }
 
@@ -7531,6 +7891,10 @@ export class App {
   }
 
   protected get memberNoShowCount(): number {
+    const loaded = this.impressionSectionMetric(this.activeUserImpressionsSection('member')?.noShowCount);
+    if (loaded !== null) {
+      return loaded;
+    }
     const [attendedText, totalText] = this.memberAttendanceSummary.split('/').map(item => item.trim());
     const attended = Number.parseInt(attendedText, 10) || 0;
     const total = Number.parseInt(totalText, 10) || 0;
@@ -7538,10 +7902,18 @@ export class App {
   }
 
   protected get memberPeopleMet(): number {
+    const loaded = this.impressionSectionMetric(this.activeUserImpressionsSection('member')?.peopleMet);
+    if (loaded !== null) {
+      return loaded;
+    }
     return AppDemoGenerators.seededMetric(this.activeUser, 24, 80, 460) + this.submittedEventFeedbackAnswersByKind('attendee').length;
   }
 
   protected get memberReturneesSummary(): string {
+    const loaded = this.impressionSectionMetric(this.activeUserImpressionsSection('member')?.repeatCount);
+    if (loaded !== null) {
+      return `${loaded}`;
+    }
     const total = this.memberPeopleMet;
     const repeat = Math.floor(total * (AppDemoGenerators.seededMetric(this.activeUser, 33, 18, 72) / 100));
     return `${repeat}`;
@@ -7558,19 +7930,27 @@ export class App {
   }
 
   protected get memberVibeBadgeItems(): string[] {
+    const loaded = this.impressionSectionBadgeList(this.activeUserImpressionsSection('member')?.vibeBadges);
+    if (loaded) {
+      return this.sortImpressionsBadgeItems(loaded);
+    }
     const feedbackBadges = this.feedbackBadgeItemsForSection('attendee', 'vibe');
     if (feedbackBadges.length > 0) {
-      return feedbackBadges;
+      return this.sortImpressionsBadgeItems(feedbackBadges);
     }
-    return AppUtils.withContextIconItems(this.memberVibeSummary, this.vibeIcons);
+    return this.sortImpressionsBadgeItems(AppUtils.withContextIconItems(this.memberVibeSummary, this.vibeIcons));
   }
 
   protected get memberCategoryBadgeItems(): string[] {
+    const loaded = this.impressionSectionBadgeList(this.activeUserImpressionsSection('member')?.categoryBadges);
+    if (loaded) {
+      return this.sortImpressionsBadgeItems(loaded);
+    }
     const feedbackBadges = this.feedbackBadgeItemsForSection('attendee', 'category');
     if (feedbackBadges.length > 0) {
-      return feedbackBadges;
+      return this.sortImpressionsBadgeItems(feedbackBadges);
     }
-    return AppUtils.withContextIconItems(this.memberCategorySummary, this.categoryIcons);
+    return this.sortImpressionsBadgeItems(AppUtils.withContextIconItems(this.memberCategorySummary, this.categoryIcons));
   }
 
   protected get memberCategoryPlacementClass(): string {
@@ -7867,17 +8247,21 @@ export class App {
   protected openHostImpressions(): void {
     if (this.activePopup === 'activities' || this.stackedPopup !== null) {
       this.stackedPopup = 'impressionsHost';
+      this.syncUserRealtimeLongPollSchedule(true);
       return;
     }
     this.activePopup = 'impressionsHost';
+    this.syncUserRealtimeLongPollSchedule(true);
   }
 
   protected openMemberImpressions(): void {
     if (this.activePopup === 'activities' || this.stackedPopup !== null) {
       this.stackedPopup = 'impressionsHost';
+      this.syncUserRealtimeLongPollSchedule(true);
       return;
     }
     this.activePopup = 'impressionsHost';
+    this.syncUserRealtimeLongPollSchedule(true);
   }
 
   protected getInvitationActionSummary(invitation: InvitationMenuItem): string {
@@ -9890,10 +10274,12 @@ export class App {
     event.stopPropagation();
     if (this.stackedPopup === 'eventExplore') {
       this.superStackedPopup = 'impressionsHost';
+      this.syncUserRealtimeLongPollSchedule(true);
       return;
     }
     if (this.activePopup === 'eventExplore') {
       this.stackedPopup = 'impressionsHost';
+      this.syncUserRealtimeLongPollSchedule(true);
       return;
     }
     this.openHostImpressions();
@@ -9902,6 +10288,9 @@ export class App {
   protected closeSuperStackedImpressions(): void {
     if (this.superStackedPopup === 'impressionsHost') {
       this.superStackedPopup = null;
+      this.clearCurrentUserImpressionsChangeFlags();
+      this.markCurrentUserImpressionsAsSeen();
+      this.syncUserRealtimeLongPollSchedule(false);
     }
   }
 
@@ -14081,6 +14470,321 @@ export class App {
     this.popupReturnTarget = null;
     this.clearActivityRateEditorState();
     this.router.navigate(['/game']);
+  }
+
+  private activateUserRealtimeLongPoll(userId: string): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || this.showEntryShell || this.activeUserId !== normalizedUserId) {
+      return;
+    }
+    this.captureUserRealtimeBaseCounters(normalizedUserId);
+    this.startUserRealtimeLongPoll();
+    void this.runUserRealtimeLongPollTick();
+  }
+
+  private startUserRealtimeLongPoll(): void {
+    const intervalMs = this.resolveUserRealtimeLongPollIntervalMs();
+    if (this.userRealtimeLongPollTimer && this.userRealtimeLongPollActiveIntervalMs === intervalMs) {
+      return;
+    }
+    if (this.userRealtimeLongPollTimer) {
+      clearInterval(this.userRealtimeLongPollTimer);
+      this.userRealtimeLongPollTimer = null;
+    }
+    this.userRealtimeLongPollActiveIntervalMs = intervalMs;
+    this.userRealtimeLongPollTimer = setInterval(() => {
+      void this.runUserRealtimeLongPollTick();
+    }, intervalMs);
+  }
+
+  private stopUserRealtimeLongPoll(): void {
+    if (this.userRealtimeLongPollTimer) {
+      clearInterval(this.userRealtimeLongPollTimer);
+      this.userRealtimeLongPollTimer = null;
+    }
+    this.userRealtimeLongPollInFlight = false;
+    this.userRealtimeLongPollActiveIntervalMs = App.USER_REALTIME_LONG_POLL_INTERVAL_MS;
+  }
+
+  private syncUserRealtimeLongPollSchedule(forceImmediateTick = false): void {
+    if (this.showEntryShell) {
+      return;
+    }
+    this.startUserRealtimeLongPoll();
+    if (forceImmediateTick) {
+      void this.runUserRealtimeLongPollTick();
+    }
+  }
+
+  private resolveUserRealtimeLongPollIntervalMs(): number {
+    return this.isAnyImpressionsPopupOpen()
+      ? App.USER_REALTIME_LONG_POLL_IMPRESSIONS_INTERVAL_MS
+      : App.USER_REALTIME_LONG_POLL_INTERVAL_MS;
+  }
+
+  private isAnyImpressionsPopupOpen(): boolean {
+    return this.activePopup === 'impressionsHost'
+      || this.stackedPopup === 'impressionsHost'
+      || this.superStackedPopup === 'impressionsHost';
+  }
+
+  private captureUserRealtimeBaseCounters(userId: string): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || normalizedUserId !== this.activeUser.id) {
+      return;
+    }
+    this.userRealtimeBaseCountersByUserId[normalizedUserId] = {
+      game: this.normalizeRealtimeCounterValue(this.gameBadge),
+      chat: this.normalizeRealtimeCounterValue(this.chatBadge),
+      invitations: this.normalizeRealtimeCounterValue(this.invitationsBadge),
+      events: this.normalizeRealtimeCounterValue(this.eventsBadge),
+      hosting: this.normalizeRealtimeCounterValue(this.hostingBadge),
+      tickets: this.normalizeRealtimeCounterValue(this.assetTicketsBadge)
+    };
+  }
+
+  private async runUserRealtimeLongPollTick(): Promise<void> {
+    if (this.showEntryShell || this.userRealtimeLongPollInFlight) {
+      return;
+    }
+    const userId = this.activeUserId.trim();
+    if (!userId) {
+      return;
+    }
+    this.userRealtimeLongPollInFlight = true;
+    try {
+      const cursor = this.userRealtimeLongPollCursorByUserId[userId] ?? null;
+      const snapshot = await this.usersService.pollUserRealtimeSnapshot(userId, cursor);
+      if (!snapshot || this.activeUserId !== userId) {
+        return;
+      }
+      this.applyPolledUserRealtimeSnapshot(userId, snapshot);
+      this.cdr.markForCheck();
+    } finally {
+      this.userRealtimeLongPollInFlight = false;
+    }
+  }
+
+  private applyPolledUserRealtimeSnapshot(
+    userId: string,
+    snapshot: UserRealtimeLongPollResponseDto
+  ): void {
+    const previousImpressions = this.appCtx.getUserImpressions(userId);
+    const hostTopMetricsChanged = this.hasImpressionsTopMetricsChanged(previousImpressions?.host, snapshot.impressions?.host);
+    const memberTopMetricsChanged = this.hasImpressionsTopMetricsChanged(previousImpressions?.member, snapshot.impressions?.member);
+    const hostChipsChanged = this.hasImpressionsChipListsChanged(previousImpressions?.host, snapshot.impressions?.host);
+    const memberChipsChanged = this.hasImpressionsChipListsChanged(previousImpressions?.member, snapshot.impressions?.member);
+    const rawCounterPatch = this.normalizePolledCounterPatch(snapshot.counters);
+    const counterPatch = this.usersService.demoModeEnabled
+      ? this.resolveDemoPolledCounterPatch(userId, rawCounterPatch)
+      : rawCounterPatch;
+    this.appCtx.patchUserCounterOverrides(userId, counterPatch);
+    const currentUser = this.users.find(candidate => candidate.id === userId);
+    if (currentUser) {
+      currentUser.activities = {
+        ...currentUser.activities,
+        ...(counterPatch.game !== undefined ? { game: counterPatch.game } : {}),
+        ...(counterPatch.chat !== undefined ? { chat: counterPatch.chat } : {}),
+        ...(counterPatch.invitations !== undefined ? { invitations: counterPatch.invitations } : {}),
+        ...(counterPatch.events !== undefined ? { events: counterPatch.events } : {}),
+        ...(counterPatch.hosting !== undefined ? { hosting: counterPatch.hosting } : {})
+      };
+    }
+    this.syncLoadedUserImpressions(userId, snapshot.impressions);
+    this.applyImpressionsChangeFlags(userId, previousImpressions, snapshot);
+    if (hostTopMetricsChanged) {
+      this.triggerUserImpressionsVisualPulse(userId, 'hostTop');
+    }
+    if (memberTopMetricsChanged) {
+      this.triggerUserImpressionsVisualPulse(userId, 'memberTop');
+    }
+    if (hostChipsChanged) {
+      this.triggerUserImpressionsVisualPulse(userId, 'hostChips');
+    }
+    if (memberChipsChanged) {
+      this.triggerUserImpressionsVisualPulse(userId, 'memberChips');
+    }
+    if (typeof snapshot.cursor === 'string' && snapshot.cursor.trim().length > 0) {
+      this.userRealtimeLongPollCursorByUserId[userId] = snapshot.cursor.trim();
+    }
+  }
+
+  private resolveDemoPolledCounterPatch(
+    userId: string,
+    pendingPatch: Partial<Record<ActivityCounterKey, number>>
+  ): Partial<Record<ActivityCounterKey, number>> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return pendingPatch;
+    }
+    const base = this.resolveUserRealtimeBaseCounters(normalizedUserId);
+    const next: Partial<Record<ActivityCounterKey, number>> = {};
+    const keys: ActivityCounterKey[] = ['game', 'chat', 'invitations', 'events', 'hosting', 'tickets'];
+    for (const key of keys) {
+      if (pendingPatch[key] === undefined) {
+        continue;
+      }
+      next[key] = this.normalizeRealtimeCounterValue(base[key] + (pendingPatch[key] ?? 0));
+    }
+    return next;
+  }
+
+  private resolveUserRealtimeBaseCounters(userId: string): Record<ActivityCounterKey, number> {
+    const normalizedUserId = userId.trim();
+    if (normalizedUserId === this.activeUser.id && !this.userRealtimeBaseCountersByUserId[normalizedUserId]) {
+      this.captureUserRealtimeBaseCounters(normalizedUserId);
+    }
+    const existing = this.userRealtimeBaseCountersByUserId[normalizedUserId];
+    if (existing) {
+      return {
+        game: this.normalizeRealtimeCounterValue(existing.game),
+        chat: this.normalizeRealtimeCounterValue(existing.chat),
+        invitations: this.normalizeRealtimeCounterValue(existing.invitations),
+        events: this.normalizeRealtimeCounterValue(existing.events),
+        hosting: this.normalizeRealtimeCounterValue(existing.hosting),
+        tickets: this.normalizeRealtimeCounterValue(existing.tickets)
+      };
+    }
+    const user = this.users.find(candidate => candidate.id === normalizedUserId);
+    const resolved: Record<ActivityCounterKey, number> = {
+      game: this.normalizeRealtimeCounterValue(user?.activities.game),
+      chat: this.normalizeRealtimeCounterValue(user?.activities.chat),
+      invitations: this.normalizeRealtimeCounterValue(user?.activities.invitations),
+      events: this.normalizeRealtimeCounterValue(user?.activities.events),
+      hosting: this.normalizeRealtimeCounterValue(user?.activities.hosting),
+      tickets: this.normalizeRealtimeCounterValue(this.resolveUserRealtimeTicketBase(normalizedUserId))
+    };
+    this.userRealtimeBaseCountersByUserId[normalizedUserId] = resolved;
+    return resolved;
+  }
+
+  private resolveUserRealtimeTicketBase(userId: string): number {
+    if (userId === this.activeUser.id) {
+      return this.ticketRows.length;
+    }
+    return 0;
+  }
+
+  private normalizeRealtimeCounterValue(value: unknown): number {
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+    return Math.max(0, Math.trunc(Number(value)));
+  }
+
+  private normalizePolledCounterPatch(
+    counters: UserRealtimeLongPollResponseDto['counters'] | undefined
+  ): Partial<Record<ActivityCounterKey, number>> {
+    const normalize = (value: unknown): number | undefined => {
+      if (!Number.isFinite(value)) {
+        return undefined;
+      }
+      return Math.max(0, Math.trunc(Number(value)));
+    };
+    const patch: Partial<Record<ActivityCounterKey, number>> = {};
+    const game = normalize(counters?.game);
+    const chat = normalize(counters?.chat);
+    const invitations = normalize(counters?.invitations);
+    const events = normalize(counters?.events);
+    const hosting = normalize(counters?.hosting);
+    const tickets = normalize(counters?.tickets);
+    if (game !== undefined) {
+      patch.game = game;
+    }
+    if (chat !== undefined) {
+      patch.chat = chat;
+    }
+    if (invitations !== undefined) {
+      patch.invitations = invitations;
+    }
+    if (events !== undefined) {
+      patch.events = events;
+    }
+    if (hosting !== undefined) {
+      patch.hosting = hosting;
+    }
+    if (tickets !== undefined) {
+      patch.tickets = tickets;
+    }
+    return patch;
+  }
+
+  private applyImpressionsChangeFlags(
+    userId: string,
+    previousImpressions: UserDto['impressions'] | null,
+    snapshot: UserRealtimeLongPollResponseDto
+  ): void {
+    const current = this.userImpressionsChangeFlagsByUserId[userId] ?? { host: false, member: false };
+    const hostChangedByCounter = snapshot.counters.impressionsHostChanged === true;
+    const memberChangedByCounter = snapshot.counters.impressionsMemberChanged === true;
+    const hostChangedByDiff = this.hasImpressionsSectionChanged(previousImpressions?.host, snapshot.impressions?.host);
+    const memberChangedByDiff = this.hasImpressionsSectionChanged(previousImpressions?.member, snapshot.impressions?.member);
+    this.userImpressionsChangeFlagsByUserId[userId] = {
+      host: current.host || hostChangedByCounter || hostChangedByDiff,
+      member: current.member || memberChangedByCounter || memberChangedByDiff
+    };
+  }
+
+  private hasImpressionsSectionChanged(
+    previous: UserImpressionsSectionDto | undefined,
+    next: UserImpressionsSectionDto | undefined
+  ): boolean {
+    if (!next) {
+      return false;
+    }
+    if (!previous) {
+      return true;
+    }
+    return (
+      this.impressionSectionCounter(previous.unreadCount) !== this.impressionSectionCounter(next.unreadCount)
+      || (this.impressionSectionRating(previous.averageRating) ?? -1) !== (this.impressionSectionRating(next.averageRating) ?? -1)
+      || (this.impressionSectionMetric(previous.peopleMet) ?? -1) !== (this.impressionSectionMetric(next.peopleMet) ?? -1)
+      || (this.impressionSectionMetric(previous.totalEvents) ?? -1) !== (this.impressionSectionMetric(next.totalEvents) ?? -1)
+      || (this.impressionSectionMetric(previous.repeatCount) ?? -1) !== (this.impressionSectionMetric(next.repeatCount) ?? -1)
+      || (this.impressionSectionMetric(previous.noShowCount) ?? -1) !== (this.impressionSectionMetric(next.noShowCount) ?? -1)
+      || JSON.stringify(previous.vibeBadges ?? []) !== JSON.stringify(next.vibeBadges ?? [])
+      || JSON.stringify(previous.personalityBadges ?? []) !== JSON.stringify(next.personalityBadges ?? [])
+      || JSON.stringify(previous.categoryBadges ?? []) !== JSON.stringify(next.categoryBadges ?? [])
+    );
+  }
+
+  private hasImpressionsTopMetricsChanged(
+    previous: UserImpressionsSectionDto | undefined,
+    next: UserImpressionsSectionDto | undefined
+  ): boolean {
+    if (!next) {
+      return false;
+    }
+    if (!previous) {
+      return true;
+    }
+    return (
+      (this.impressionSectionRating(previous.averageRating) ?? -1) !== (this.impressionSectionRating(next.averageRating) ?? -1)
+      || (this.impressionSectionMetric(previous.peopleMet) ?? -1) !== (this.impressionSectionMetric(next.peopleMet) ?? -1)
+      || (this.impressionSectionMetric(previous.totalEvents) ?? -1) !== (this.impressionSectionMetric(next.totalEvents) ?? -1)
+      || (this.impressionSectionMetric(previous.repeatCount) ?? -1) !== (this.impressionSectionMetric(next.repeatCount) ?? -1)
+      || (this.impressionSectionMetric(previous.noShowCount) ?? -1) !== (this.impressionSectionMetric(next.noShowCount) ?? -1)
+    );
+  }
+
+  private hasImpressionsChipListsChanged(
+    previous: UserImpressionsSectionDto | undefined,
+    next: UserImpressionsSectionDto | undefined
+  ): boolean {
+    if (!next) {
+      return false;
+    }
+    if (!previous) {
+      return true;
+    }
+    return (
+      JSON.stringify(this.sortImpressionsBadgeItems(previous.vibeBadges ?? []))
+      !== JSON.stringify(this.sortImpressionsBadgeItems(next.vibeBadges ?? []))
+      || JSON.stringify(this.sortImpressionsBadgeItems(previous.personalityBadges ?? []))
+      !== JSON.stringify(this.sortImpressionsBadgeItems(next.personalityBadges ?? []))
+      || JSON.stringify(this.sortImpressionsBadgeItems(previous.categoryBadges ?? []))
+      !== JSON.stringify(this.sortImpressionsBadgeItems(next.categoryBadges ?? []))
+    );
   }
 
   private detailPrivacyFabKey(groupIndex: number, rowIndex: number): string {

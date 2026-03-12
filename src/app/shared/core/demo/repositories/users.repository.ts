@@ -242,12 +242,13 @@ export class DemoUsersRepository {
   }
 
   private cloneUser(user: UserDto): UserDto {
+    const { impressions: _ignoredImpressions, ...rest } = user;
     return {
-      ...user,
-      languages: [...user.languages],
-      images: [...(user.images ?? [])],
+      ...rest,
+      languages: [...(rest.languages ?? [])],
+      images: [...(rest.images ?? [])],
       activities: {
-        ...user.activities
+        ...rest.activities
       }
     };
   }

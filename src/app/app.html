@@ -395,6 +395,10 @@
             aria-label="Open host impressions"
             [title]="activeHostTier"
           >
+            <span
+              class="card-badge menu-shortcut-badge menu-shortcut-badge-empty"
+              *ngIf="hostImpressionsBadge > 0 || hostImpressionsChangedBadgeVisible"
+            ></span>
             <mat-icon [class]="getHostTierColorClass(activeHostTier)">{{ getHostTierIcon(activeHostTier) }}</mat-icon>
             <span class="impression-shortcut-label">
               <span class="impression-shortcut-main">{{ activeHostTier.replace(' Host', '') }}</span>
@@ -410,6 +414,10 @@
             aria-label="Open member impressions"
             [title]="memberImpressionTitle"
           >
+            <span
+              class="card-badge menu-shortcut-badge menu-shortcut-badge-empty"
+              *ngIf="memberImpressionsBadge > 0 || memberImpressionsChangedBadgeVisible"
+            ></span>
             <mat-icon [class]="getTraitColorClass(activeMemberTrait)">{{ getTraitIcon(activeMemberTrait) }}</mat-icon>
             <span class="impression-shortcut-label">
               <span class="impression-shortcut-main">{{ memberImpressionTitle.replace(' Attendee', '') }}</span>
@@ -782,7 +790,7 @@
                 <span class="social-proof-identity-sub">Host</span>
               </span>
             </div>
-            <div class="popup-impressions-badge popup-impressions-badge-host">
+            <div class="popup-impressions-badge popup-impressions-badge-host" [class.popup-impressions-badge-updated]="hostImpressionsTopMetricsPulse">
               <span class="popup-impressions-badge-segment popup-impressions-rate-rate">
                 <span class="popup-impressions-badge-label">Rate</span>
                 <span class="popup-impressions-badge-value">{{ hostAverageRating }}</span>
@@ -802,7 +810,7 @@
                 <span class="section-tag">Vibe</span>
                 <span class="section-line"></span>
               </div>
-              <div class="social-proof-chip-list">
+              <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="hostImpressionsChipsPulse">
                 <span class="social-proof-chip chip-vibe" *ngFor="let item of hostVibeBadgeItems">{{ item }}</span>
               </div>
             </div>
@@ -812,7 +820,7 @@
                 <span class="section-tag">Personality</span>
                 <span class="section-line"></span>
               </div>
-              <div class="social-proof-chip-list">
+              <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="hostImpressionsChipsPulse">
                 <span class="social-proof-chip chip-personality" *ngFor="let item of hostPersonalityBadgeItems">{{ item }}</span>
               </div>
             </div>
@@ -822,7 +830,7 @@
                 <span class="section-tag">Category</span>
                 <span class="section-line"></span>
               </div>
-              <div class="social-proof-chip-list">
+              <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="hostImpressionsChipsPulse">
                 <span class="social-proof-chip chip-category" *ngFor="let item of hostCategoryBadgeItems">{{ item }}</span>
               </div>
             </div>
@@ -836,7 +844,7 @@
                 <span class="social-proof-identity-sub">Attendee</span>
               </span>
             </div>
-            <div class="popup-impressions-badge popup-impressions-badge-member">
+            <div class="popup-impressions-badge popup-impressions-badge-member" [class.popup-impressions-badge-updated]="memberImpressionsTopMetricsPulse">
               <span class="popup-impressions-badge-segment popup-impressions-rate-people">
                 <span class="popup-impressions-badge-label">People / Events</span>
                 <span class="popup-impressions-badge-value">{{ memberPeopleMet + ' / ' + memberTotalEvents }}</span>
@@ -852,7 +860,7 @@
                 <span class="section-tag">Personality</span>
                 <span class="section-line"></span>
               </div>
-              <div class="social-proof-chip-list">
+              <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="memberImpressionsChipsPulse">
                 <span class="social-proof-chip chip-personality" *ngFor="let item of memberPersonalityBadgeItems">{{ item }}</span>
               </div>
             </div>
@@ -862,7 +870,7 @@
                 <span class="section-tag">Vibe</span>
                 <span class="section-line"></span>
               </div>
-              <div class="social-proof-chip-list">
+              <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="memberImpressionsChipsPulse">
                 <span class="social-proof-chip chip-vibe" *ngFor="let item of memberVibeBadgeItems">{{ item }}</span>
               </div>
             </div>
@@ -872,7 +880,7 @@
                 <span class="section-tag">Category</span>
                 <span class="section-line"></span>
               </div>
-              <div class="social-proof-chip-list">
+              <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="memberImpressionsChipsPulse">
                 <span class="social-proof-chip chip-category" *ngFor="let item of memberCategoryBadgeItems">{{ item }}</span>
               </div>
             </div>
@@ -2496,7 +2504,7 @@
               <span class="social-proof-identity-sub">Host</span>
             </span>
           </div>
-          <div class="popup-impressions-badge popup-impressions-badge-host">
+          <div class="popup-impressions-badge popup-impressions-badge-host" [class.popup-impressions-badge-updated]="hostImpressionsTopMetricsPulse">
             <span class="popup-impressions-badge-segment popup-impressions-rate-rate">
               <span class="popup-impressions-badge-label">Rate</span>
               <span class="popup-impressions-badge-value">{{ hostAverageRating }}</span>
@@ -2516,7 +2524,7 @@
               <span class="section-tag">Vibe</span>
               <span class="section-line"></span>
             </div>
-            <div class="social-proof-chip-list">
+            <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="hostImpressionsChipsPulse">
               <span class="social-proof-chip chip-vibe" *ngFor="let item of hostVibeBadgeItems">{{ item }}</span>
             </div>
           </div>
@@ -2526,7 +2534,7 @@
               <span class="section-tag">Personality</span>
               <span class="section-line"></span>
             </div>
-            <div class="social-proof-chip-list">
+            <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="hostImpressionsChipsPulse">
               <span class="social-proof-chip chip-personality" *ngFor="let item of hostPersonalityBadgeItems">{{ item }}</span>
             </div>
           </div>
@@ -2536,7 +2544,7 @@
               <span class="section-tag">Category</span>
               <span class="section-line"></span>
             </div>
-            <div class="social-proof-chip-list">
+            <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="hostImpressionsChipsPulse">
               <span class="social-proof-chip chip-category" *ngFor="let item of hostCategoryBadgeItems">{{ item }}</span>
             </div>
           </div>
@@ -2550,7 +2558,7 @@
               <span class="social-proof-identity-sub">Attendee</span>
             </span>
           </div>
-          <div class="popup-impressions-badge popup-impressions-badge-member">
+          <div class="popup-impressions-badge popup-impressions-badge-member" [class.popup-impressions-badge-updated]="memberImpressionsTopMetricsPulse">
             <span class="popup-impressions-badge-segment popup-impressions-rate-people">
               <span class="popup-impressions-badge-label">People / Events</span>
               <span class="popup-impressions-badge-value">{{ memberPeopleMet + ' / ' + memberTotalEvents }}</span>
@@ -2566,7 +2574,7 @@
               <span class="section-tag">Personality</span>
               <span class="section-line"></span>
             </div>
-            <div class="social-proof-chip-list">
+            <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="memberImpressionsChipsPulse">
               <span class="social-proof-chip chip-personality" *ngFor="let item of memberPersonalityBadgeItems">{{ item }}</span>
             </div>
           </div>
@@ -2576,7 +2584,7 @@
               <span class="section-tag">Vibe</span>
               <span class="section-line"></span>
             </div>
-            <div class="social-proof-chip-list">
+            <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="memberImpressionsChipsPulse">
               <span class="social-proof-chip chip-vibe" *ngFor="let item of memberVibeBadgeItems">{{ item }}</span>
             </div>
           </div>
@@ -2586,7 +2594,7 @@
               <span class="section-tag">Category</span>
               <span class="section-line"></span>
             </div>
-            <div class="social-proof-chip-list">
+            <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="memberImpressionsChipsPulse">
               <span class="social-proof-chip chip-category" *ngFor="let item of memberCategoryBadgeItems">{{ item }}</span>
             </div>
           </div>
@@ -3959,7 +3967,7 @@
               <span class="social-proof-identity-sub">Host</span>
             </span>
           </div>
-          <div class="popup-impressions-badge popup-impressions-badge-host">
+          <div class="popup-impressions-badge popup-impressions-badge-host" [class.popup-impressions-badge-updated]="hostImpressionsTopMetricsPulse">
             <span class="popup-impressions-badge-segment popup-impressions-rate-rate">
               <span class="popup-impressions-badge-label">Rate</span>
               <span class="popup-impressions-badge-value">{{ hostAverageRating }}</span>
@@ -3979,7 +3987,7 @@
               <span class="section-tag">Vibe</span>
               <span class="section-line"></span>
             </div>
-            <div class="social-proof-chip-list">
+            <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="hostImpressionsChipsPulse">
               <span class="social-proof-chip chip-vibe" *ngFor="let item of hostVibeBadgeItems">{{ item }}</span>
             </div>
           </div>
@@ -3989,7 +3997,7 @@
               <span class="section-tag">Personality</span>
               <span class="section-line"></span>
             </div>
-            <div class="social-proof-chip-list">
+            <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="hostImpressionsChipsPulse">
               <span class="social-proof-chip chip-personality" *ngFor="let item of hostPersonalityBadgeItems">{{ item }}</span>
             </div>
           </div>
@@ -3999,7 +4007,7 @@
               <span class="section-tag">Category</span>
               <span class="section-line"></span>
             </div>
-            <div class="social-proof-chip-list">
+            <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="hostImpressionsChipsPulse">
               <span class="social-proof-chip chip-category" *ngFor="let item of hostCategoryBadgeItems">{{ item }}</span>
             </div>
           </div>
@@ -4013,7 +4021,7 @@
               <span class="social-proof-identity-sub">Attendee</span>
             </span>
           </div>
-          <div class="popup-impressions-badge popup-impressions-badge-member">
+          <div class="popup-impressions-badge popup-impressions-badge-member" [class.popup-impressions-badge-updated]="memberImpressionsTopMetricsPulse">
             <span class="popup-impressions-badge-segment popup-impressions-rate-people">
               <span class="popup-impressions-badge-label">People / Events</span>
               <span class="popup-impressions-badge-value">{{ memberPeopleMet + ' / ' + memberTotalEvents }}</span>
@@ -4029,7 +4037,7 @@
               <span class="section-tag">Personality</span>
               <span class="section-line"></span>
             </div>
-            <div class="social-proof-chip-list">
+            <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="memberImpressionsChipsPulse">
               <span class="social-proof-chip chip-personality" *ngFor="let item of memberPersonalityBadgeItems">{{ item }}</span>
             </div>
           </div>
@@ -4039,7 +4047,7 @@
               <span class="section-tag">Vibe</span>
               <span class="section-line"></span>
             </div>
-            <div class="social-proof-chip-list">
+            <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="memberImpressionsChipsPulse">
               <span class="social-proof-chip chip-vibe" *ngFor="let item of memberVibeBadgeItems">{{ item }}</span>
             </div>
           </div>
@@ -4049,7 +4057,7 @@
               <span class="section-tag">Category</span>
               <span class="section-line"></span>
             </div>
-            <div class="social-proof-chip-list">
+            <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="memberImpressionsChipsPulse">
               <span class="social-proof-chip chip-category" *ngFor="let item of memberCategoryBadgeItems">{{ item }}</span>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 import type { UserGameFilterPreferencesDto } from './game.interface';
+import type { UserImpressionsDto, UserImpressionsSectionDto } from './user.interface';
 
 export type LoadStatus = 'idle' | 'loading' | 'success' | 'error' | 'timeout';
 export type ActivityCounterKey = 'game' | 'chat' | 'invitations' | 'events' | 'hosting' | 'tickets';
@@ -42,12 +43,14 @@ export class AppContext {
   private readonly _counterOverridesByUserId = signal<Record<string, Partial<ActivityCounters>>>({});
   private readonly _filterCountByUserId = signal<Record<string, number>>({});
   private readonly _filterPreferencesByUserId = signal<Record<string, UserGameFilterPreferencesDto>>({});
+  private readonly _impressionsByUserId = signal<Record<string, UserImpressionsDto>>({});
   private readonly _activeUserId = signal<string>('');
 
   readonly loadingState = this._loadingState.asReadonly();
   readonly counterOverridesByUserId = this._counterOverridesByUserId.asReadonly();
   readonly filterCountByUserId = this._filterCountByUserId.asReadonly();
   readonly filterPreferencesByUserId = this._filterPreferencesByUserId.asReadonly();
+  readonly impressionsByUserId = this._impressionsByUserId.asReadonly();
   readonly activeUserId = this._activeUserId.asReadonly();
 
   selectLoadingState(contextKey: string) {
@@ -284,6 +287,43 @@ export class AppContext {
     });
   }
 
+  getUserImpressions(userId: string): UserImpressionsDto | null {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    const impressions = this._impressionsByUserId()[normalizedUserId];
+    if (!impressions) {
+      return null;
+    }
+    return this.cloneImpressions(impressions);
+  }
+
+  setUserImpressions(userId: string, impressions: UserImpressionsDto): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    this._impressionsByUserId.update(state => ({
+      ...state,
+      [normalizedUserId]: this.cloneImpressions(impressions)
+    }));
+  }
+
+  clearUserImpressions(userId: string): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    this._impressionsByUserId.update(state => {
+      if (!Object.prototype.hasOwnProperty.call(state, normalizedUserId)) {
+        return state;
+      }
+      const { [normalizedUserId]: _removed, ...rest } = state;
+      return rest;
+    });
+  }
+
   private normalizeCounterValue(value: number): number {
     if (!Number.isFinite(value)) {
       return 0;
@@ -408,5 +448,26 @@ export class AppContext {
     }
 
     return normalized;
+  }
+
+  private cloneImpressions(impressions: UserImpressionsDto): UserImpressionsDto {
+    return {
+      host: this.cloneImpressionsSection(impressions.host),
+      member: this.cloneImpressionsSection(impressions.member)
+    };
+  }
+
+  private cloneImpressionsSection(
+    section: UserImpressionsSectionDto | undefined
+  ): UserImpressionsSectionDto | undefined {
+    if (!section) {
+      return undefined;
+    }
+    return {
+      ...section,
+      vibeBadges: [...(section.vibeBadges ?? [])],
+      personalityBadges: [...(section.personalityBadges ?? [])],
+      categoryBadges: [...(section.categoryBadges ?? [])]
+    };
   }
 }
