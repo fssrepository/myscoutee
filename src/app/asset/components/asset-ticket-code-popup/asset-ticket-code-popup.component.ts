@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
 
-import type * as AppTypes from '../../shared/app-types';
+import type * as AppTypes from '../../../shared/app-types';
 
 @Component({
   selector: 'app-asset-ticket-code-popup',

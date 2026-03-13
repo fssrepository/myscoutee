@@ -1,4 +1,4 @@
-@use './asset-interactions.shared' as asset-interactions;
+@use '../_asset-interactions.shared' as asset-interactions;
 
 @include asset-interactions.host-motion-vars(contents);
 @include asset-interactions.interactive-feedback('.popup-header-add-btn, .experience-form-close-btn, .profile-status-select-wrap, .experience-action-btn, .asset-source-refresh-btn, .asset-image-dropzone');

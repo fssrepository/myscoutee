@@ -91,7 +91,7 @@ export class AppShellComponent {
     if (this.assetPopupComponentRef()) {
       return;
     }
-    const module = await import('./asset/components/asset-popup.component');
+    const module = await import('./asset/components/asset-popup/asset-popup.component');
     this.assetPopupComponentRef.set(module.AssetPopupComponent);
   }
 }

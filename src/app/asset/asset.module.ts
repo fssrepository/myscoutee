@@ -1,6 +1,6 @@
 import { NgModule } from '@angular/core';
 
-import { AssetPopupComponent } from './components/asset-popup.component';
+import { AssetPopupComponent } from './components/asset-popup/asset-popup.component';
 
 @NgModule({
   imports: [AssetPopupComponent],

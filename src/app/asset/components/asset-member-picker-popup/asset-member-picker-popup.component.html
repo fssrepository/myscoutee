@@ -1,9 +1,9 @@
 <section class="app-popup app-popup-stacked app-popup-super-stacked asset-member-picker-popup-shell" *ngIf="host.isActivityInviteFriendsPopup()">
-  <div class="app-popup-backdrop" (click)="host.closeActivityInviteFriends(false)"></div>
+  <div class="app-popup-backdrop" (click)="host.closeActivityInviteFriends()"></div>
   <div class="app-popup-panel popup-panel-friends-picker popup-panel-friends-picker-members" (click)="$event.stopPropagation()">
     <div class="popup-header popup-header-friends-picker">
       <div class="popup-title">
-        <h2>Invite Friends</h2>
+        <h2>Invite members</h2>
       </div>
       <div class="popup-header-inline-controls">
         <div class="friends-picker-sort">
@@ -32,7 +32,7 @@
         >
           <mat-icon>done</mat-icon>
         </button>
-        <button mat-icon-button class="popup-close" (click)="host.closeActivityInviteFriends(false)" aria-label="Close">
+        <button mat-icon-button class="popup-close" (click)="host.closeActivityInviteFriends()" aria-label="Close">
           <mat-icon>close</mat-icon>
         </button>
       </div>
@@ -64,7 +64,7 @@
           </button>
           <div class="friends-picker-card-meta">
             <h4>{{ candidate.name }}</h4>
-            <p>{{ host.activityInviteMetLabel(candidate) }}</p>
+            <p>{{ host.activityInviteMetLabel(candidate) }} · {{ candidate.metAtIso | date:'MMM d, y' }}</p>
           </div>
         </article>
       </div>

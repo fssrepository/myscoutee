@@ -5,15 +5,15 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 
-import { AssetPopupService } from '../asset-popup.service';
-import { LazyBgImageDirective } from '../../shared/lazy-bg-image.directive';
-import type * as AppTypes from '../../shared/app-types';
-import { AssetDeleteConfirmComponent } from './asset-delete-confirm.component';
-import { AssetFormPopupComponent } from './asset-form-popup.component';
-import { AssetBasketPopupComponent } from './asset-basket-popup.component';
-import { AssetMemberPickerPopupComponent } from './asset-member-picker-popup.component';
-import { AssetTicketCodePopupComponent } from './asset-ticket-code-popup.component';
-import { AssetTicketScannerPopupComponent } from './asset-ticket-scanner-popup.component';
+import { AssetPopupService } from '../../asset-popup.service';
+import { LazyBgImageDirective } from '../../../shared/lazy-bg-image.directive';
+import type * as AppTypes from '../../../shared/app-types';
+import { AssetDeleteConfirmComponent } from '../asset-delete-confirm/asset-delete-confirm.component';
+import { AssetFormPopupComponent } from '../asset-form-popup/asset-form-popup.component';
+import { AssetBasketPopupComponent } from '../asset-basket-popup/asset-basket-popup.component';
+import { AssetMemberPickerPopupComponent } from '../asset-member-picker-popup/asset-member-picker-popup.component';
+import { AssetTicketCodePopupComponent } from '../asset-ticket-code-popup/asset-ticket-code-popup.component';
+import { AssetTicketScannerPopupComponent } from '../asset-ticket-scanner-popup/asset-ticket-scanner-popup.component';
 
 @Component({
   selector: 'app-asset-popup',

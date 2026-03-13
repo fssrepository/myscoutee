@@ -1,4 +1,4 @@
-@use './asset-interactions.shared' as asset-interactions;
+@use '../_asset-interactions.shared' as asset-interactions;
 
 @include asset-interactions.host-motion-vars(contents);
 @include asset-interactions.interactive-feedback('.link-btn');

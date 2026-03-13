@@ -1,5 +1,5 @@
 <section class="app-popup app-popup-stacked app-popup-super-stacked app-popup-super-stacked-over-subevents asset-basket-popup-shell" *ngIf="host.isSubEventAssetAssignPopup()">
-  <div class="app-popup-backdrop" (click)="host.closeSubEventAssetAssignPopup(false)"></div>
+  <div class="app-popup-backdrop" (click)="host.closeSubEventAssetAssignPopup()"></div>
   <div class="app-popup-panel popup-panel-friends-picker popup-panel-friends-picker-members popup-panel-subevent-asset-assign" (click)="$event.stopPropagation()">
     <div class="popup-header popup-header-friends-picker">
       <div class="popup-title popup-title-members">
@@ -19,7 +19,7 @@
         >
           <mat-icon>done</mat-icon>
         </button>
-        <button mat-icon-button class="popup-close" (click)="host.closeSubEventAssetAssignPopup(false)" aria-label="Close">
+        <button mat-icon-button class="popup-close" (click)="host.closeSubEventAssetAssignPopup()" aria-label="Close">
           <mat-icon>close</mat-icon>
         </button>
       </div>

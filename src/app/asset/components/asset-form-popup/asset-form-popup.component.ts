@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 
-import type * as AppTypes from '../../shared/app-types';
+import type * as AppTypes from '../../../shared/app-types';
 
 @Component({
   selector: 'app-asset-form-popup',
