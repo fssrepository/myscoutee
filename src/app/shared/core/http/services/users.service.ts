@@ -44,7 +44,7 @@ export class HttpUsersService implements UserService {
     }
   }
 
-  async queryUserById(_userId: string): Promise<UserByIdQueryResponse> {
+  async queryUserById(_userId?: string): Promise<UserByIdQueryResponse> {
     try {
       type HttpUserByIdResponse = UserDto & {
         filterCount?: number;

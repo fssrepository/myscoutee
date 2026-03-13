@@ -70,11 +70,11 @@ export class UsersService {
     }
   }
 
-  async loadUserById(userId: string, requestTimeoutMs?: number): Promise<UserDto | null> {
+  async loadUserById(userId?: string, requestTimeoutMs?: number): Promise<UserDto | null> {
     const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
 
-    if (!normalizedUserId) {
+    if (this.demoModeEnabled && !normalizedUserId) {
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Missing user id.');
       return null;
     }
@@ -83,7 +83,7 @@ export class UsersService {
 
     try {
       const response = await this.withRequestTimeout(
-        this.userService.queryUserById(normalizedUserId),
+        this.userService.queryUserById(normalizedUserId || undefined),
         normalizedTimeoutMs
       );
 
@@ -92,10 +92,13 @@ export class UsersService {
         return null;
       }
 
-      if (response.filterPreferences) {
-        this.appCtx.setUserFilterPreferences(normalizedUserId, response.filterPreferences);
-      } else {
-        this.appCtx.clearUserFilterPreferences(normalizedUserId);
+      const resolvedUserId = normalizedUserId || response.user.id.trim();
+      if (resolvedUserId) {
+        if (response.filterPreferences) {
+          this.appCtx.setUserFilterPreferences(resolvedUserId, response.filterPreferences);
+        } else {
+          this.appCtx.clearUserFilterPreferences(resolvedUserId);
+        }
       }
 
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');

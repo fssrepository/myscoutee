@@ -1,4 +1,4 @@
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter } from '@angular/router';
 
@@ -7,6 +7,7 @@ import { environment } from '../environments/environment';
 import { ACTIVITIES_DATA_SOURCE } from './shared/activities-data-source';
 import { DemoActivitiesDataSourceService } from './shared/demo-activities-data-source.service';
 import { HttpActivitiesDataSourceService } from './shared/http-activities-data-source.service';
+import { firebaseAuthInterceptor } from './shared/core/http/firebase-auth.interceptor';
 
 const activitiesDataSourceMode = (environment as { activitiesDataSource?: 'demo' | 'http' }).activitiesDataSource ?? 'demo';
 
@@ -14,7 +15,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(),
+    provideHttpClient(withInterceptors([firebaseAuthInterceptor])),
     DemoActivitiesDataSourceService,
     HttpActivitiesDataSourceService,
     {

@@ -21,6 +21,7 @@ import { EntryModule } from './entry/entry.module';
 import { EventEditorService } from './shared/event-editor.service';
 import { AppContext, type ActivityCounterKey } from './shared/core/app.context';
 import { UsersService } from './shared/core/users.service';
+import { FirebaseAuthService } from './shared/core/base/services/firebase-auth.service';
 import type {
   UserRealtimeLongPollResponseDto,
   UserImpressionsSectionDto,
@@ -142,7 +143,6 @@ const APP_DATE_FORMATS = {
 })
 export class App {
   private static readonly DEMO_ACTIVE_USER_KEY = 'demo-active-user';
-  private static readonly FIREBASE_AUTH_PROFILE_KEY = 'firebase-auth-profile';
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT = 50;
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MIN_PERCENT = 0;
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT = 100;
@@ -155,6 +155,7 @@ export class App {
   private readonly assetPopupService = inject(AssetPopupService);
   protected readonly eventEditorService = inject(EventEditorService);
   protected readonly usersService = inject(UsersService);
+  private readonly firebaseAuthService = inject(FirebaseAuthService);
   private readonly appCtx = inject(AppContext);
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -681,12 +682,12 @@ export class App {
     if (!this.showEntryShell) {
       const bootstrapUserId = this.activeUserId;
       void this.hydrateUserAfterLogin(bootstrapUserId).finally(() => {
-        if (this.activeUserId !== bootstrapUserId || this.showEntryShell) {
+        if (this.showEntryShell || (this.authMode !== 'firebase' && this.activeUserId !== bootstrapUserId)) {
           this.cdr.markForCheck();
           return;
         }
         this.syncProfileFormFromActiveUser();
-        this.activateUserRealtimeLongPoll(bootstrapUserId);
+        this.activateUserRealtimeLongPoll(this.activeUserId);
         this.cdr.markForCheck();
       });
     }
@@ -5515,9 +5516,9 @@ export class App {
     this.firebaseAuthIsBusy = false;
     this.syncAssetPopupVisibility();
     if (this.authMode === 'firebase') {
-      localStorage.removeItem(App.FIREBASE_AUTH_PROFILE_KEY);
       this.firebaseAuthProfile = null;
       this.showEntryShell = true;
+      void this.firebaseAuthService.signOut();
       return;
     }
     localStorage.removeItem(App.DEMO_ACTIVE_USER_KEY);
@@ -5557,54 +5558,71 @@ export class App {
       return;
     }
     this.firebaseAuthIsBusy = true;
-    const user = this.activeUser;
-    const profile: AppTypes.FirebaseAuthProfile = {
-      id: `oauth-${Date.now()}`,
-      name: user.name,
-      email: `${user.id}@myscoutee.local`,
-      initials: user.initials
-    };
-    localStorage.setItem(App.FIREBASE_AUTH_PROFILE_KEY, JSON.stringify(profile));
-    localStorage.setItem(App.DEMO_ACTIVE_USER_KEY, this.activeUserId);
-    this.firebaseAuthProfile = profile;
-    this.appCtx.setActiveUserId(this.activeUserId);
-    this.appCtx.clearUserCounterOverrides(this.activeUserId);
-    this.appCtx.clearUserFilterCountOverride(this.activeUserId);
-    this.appCtx.clearUserFilterPreferences(this.activeUserId);
-    this.appCtx.clearUserImpressions(this.activeUserId);
-    delete this.userRealtimeLongPollCursorByUserId[this.activeUserId];
-    delete this.userRealtimeBaseCountersByUserId[this.activeUserId];
-    delete this.userImpressionsChangeFlagsByUserId[this.activeUserId];
-    this.clearUserImpressionsVisualPulseState(this.activeUserId);
-    this.syncProfileFormFromActiveUser();
-    this.activeMenuSection = 'chat';
-    this.completeEntryFlow();
-    void this.hydrateUserAfterLogin(this.activeUserId).finally(() => {
-      this.firebaseAuthIsBusy = false;
+    void (async () => {
+      const profile = await this.firebaseAuthService.signInWithGoogle();
+      if (!profile) {
+        this.alertService.open('Firebase login failed');
+        return;
+      }
+      this.firebaseAuthProfile = profile;
+      this.appCtx.setActiveUserId(this.activeUserId);
+      this.appCtx.clearUserCounterOverrides(this.activeUserId);
+      this.appCtx.clearUserFilterCountOverride(this.activeUserId);
+      this.appCtx.clearUserFilterPreferences(this.activeUserId);
+      this.appCtx.clearUserImpressions(this.activeUserId);
+      delete this.userRealtimeLongPollCursorByUserId[this.activeUserId];
+      delete this.userRealtimeBaseCountersByUserId[this.activeUserId];
+      delete this.userImpressionsChangeFlagsByUserId[this.activeUserId];
+      this.clearUserImpressionsVisualPulseState(this.activeUserId);
+      this.syncProfileFormFromActiveUser();
+      this.activeMenuSection = 'chat';
+      this.completeEntryFlow();
+      await this.hydrateUserAfterLogin();
       const userId = this.activeUserId;
       this.syncProfileFormFromActiveUser();
       this.activateUserRealtimeLongPoll(userId);
+    })().finally(() => {
+      this.firebaseAuthIsBusy = false;
       this.cdr.markForCheck();
     });
   }
 
   protected continueWithExistingFirebaseSession(): void {
-    const userId = this.activeUserId;
-    this.completeEntryFlow();
-    void this.hydrateUserAfterLogin(userId).finally(() => {
-      if (this.activeUserId !== userId || this.showEntryShell) {
-        this.cdr.markForCheck();
+    if (this.firebaseAuthIsBusy) {
+      return;
+    }
+    this.firebaseAuthIsBusy = true;
+    void (async () => {
+      const profile = await this.firebaseAuthService.restoreSessionProfile();
+      if (!profile) {
+        this.firebaseAuthProfile = null;
+        this.showEntryShell = true;
+        return;
+      }
+      this.firebaseAuthProfile = profile;
+      this.completeEntryFlow();
+      await this.hydrateUserAfterLogin();
+      if (this.showEntryShell) {
         return;
       }
       this.syncProfileFormFromActiveUser();
-      this.activateUserRealtimeLongPoll(userId);
+      this.activateUserRealtimeLongPoll(this.activeUserId);
+    })().finally(() => {
+      this.firebaseAuthIsBusy = false;
       this.cdr.markForCheck();
     });
   }
 
-  private async hydrateUserAfterLogin(userId: string): Promise<void> {
-    const loadedUser = await this.usersService.loadUserById(userId);
+  private async hydrateUserAfterLogin(userId?: string): Promise<void> {
+    const loadedUser = await this.usersService.loadUserById(this.authMode === 'firebase' ? undefined : userId);
     if (loadedUser) {
+      if (
+        this.authMode === 'firebase' &&
+        this.users.some(candidate => candidate.id === loadedUser.id)
+      ) {
+        this.activeUserId = loadedUser.id;
+        this.appCtx.setActiveUserId(loadedUser.id);
+      }
       this.applyLoadedUserDetails(loadedUser);
     }
   }
@@ -14112,30 +14130,9 @@ export class App {
       this.showEntryShell = true;
       return;
     }
-    this.firebaseAuthProfile = this.loadFirebaseAuthProfile();
+    this.firebaseAuthProfile = this.firebaseAuthService.loadStoredProfile();
     const hasFirebaseSession = this.firebaseAuthProfile !== null;
     this.showEntryShell = !hasFirebaseSession;
-  }
-
-  private loadFirebaseAuthProfile(): AppTypes.FirebaseAuthProfile | null {
-    const raw = localStorage.getItem(App.FIREBASE_AUTH_PROFILE_KEY);
-    if (!raw) {
-      return null;
-    }
-    try {
-      const parsed = JSON.parse(raw) as Partial<AppTypes.FirebaseAuthProfile>;
-      if (!parsed.id || !parsed.name || !parsed.email || !parsed.initials) {
-        return null;
-      }
-      return {
-        id: parsed.id,
-        name: parsed.name,
-        email: parsed.email,
-        initials: parsed.initials
-      };
-    } catch {
-      return null;
-    }
   }
 
   private completeEntryFlow(): void {

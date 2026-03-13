@@ -92,7 +92,7 @@ export interface UserProfileImageUploadResult {
 
 export interface UserService {
   queryAvailableDemoUsers(): Promise<UsersListQueryResponse>;
-  queryUserById(userId: string): Promise<UserByIdQueryResponse>;
+  queryUserById(userId?: string): Promise<UserByIdQueryResponse>;
   queryUserRealtimeLongPoll(userId: string, cursor?: string | null): Promise<UserRealtimeLongPollResponseDto | null>;
   saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void>;
   saveUserProfile(user: UserDto): Promise<UserDto | null>;

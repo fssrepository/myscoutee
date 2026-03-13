@@ -41,14 +41,20 @@ export class DemoUsersService implements UserService {
     };
   }
 
-  async queryUserById(userId: string): Promise<UserByIdQueryResponse> {
+  async queryUserById(userId?: string): Promise<UserByIdQueryResponse> {
     const additionalDelayMs = resolveAdditionalDelayMsForRoute(DemoUsersService.USER_BY_ID_ROUTE);
     if (additionalDelayMs > 0) {
       await new Promise<void>(resolve => {
         setTimeout(() => resolve(), additionalDelayMs);
       });
     }
-    const normalizedUserId = userId.trim();
+    const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
+    if (!normalizedUserId) {
+      return {
+        user: null,
+        filterPreferences: null
+      };
+    }
     const loadedUser = this.usersRepository.queryUserById(normalizedUserId);
     const user = loadedUser ? this.withResolvedImpressions(loadedUser) : null;
     const allUsers = this.usersRepository.queryGameStackUsers(normalizedUserId);

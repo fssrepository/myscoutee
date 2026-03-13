@@ -28,7 +28,15 @@
             "prerender": false,
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
-            "assets": ["src/assets", "src/404.html"],
+            "assets": [
+              "src/assets",
+              "src/404.html",
+              {
+                "glob": "**/*",
+                "input": "keys",
+                "output": "keys"
+              }
+            ],
             "styles": [
               "src/_styles/styles.scss"
             ]
