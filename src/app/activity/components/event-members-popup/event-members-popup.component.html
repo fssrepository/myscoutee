@@ -1,0 +1,150 @@
+<div class="app-popup app-popup-stacked activity-members-popup-shell">
+  <div class="app-popup-backdrop" (click)="handleClose()"></div>
+  <div class="app-popup-panel popup-panel-members" (click)="$event.stopPropagation()">
+    <div class="popup-header popup-header-members-invite-mobile-layout popup-header-activity-members-pending-layout">
+      <div class="popup-title popup-title-members">
+        <div class="popup-chat-title-block">
+          <h2>{{ title }}</h2>
+          <p>{{ subtitle }}</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger activity-members-header-invite-trigger"
+        *ngIf="canShowInviteButton"
+        (click)="handleInvite($event)"
+        aria-label="Invite friends"
+      >
+        <span class="event-editor-members-invite">
+          <mat-icon>person_add</mat-icon>
+          <span>Invite</span>
+        </span>
+      </button>
+      <button
+        type="button"
+        class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select subevent-members-pending-toggle activity-members-header-pending-toggle"
+        [class.is-active]="pendingOnly"
+        (click)="handleTogglePendingOnly($event)"
+        [attr.aria-label]="pendingOnly ? 'Show all members' : 'Show pending members only'"
+      >
+        <span class="status-option-content activities-hosting-draft-content">
+          <mat-icon class="activities-toggle-icon">pending_actions</mat-icon>
+          <span class="activities-hosting-draft-label">Pending only</span>
+        </span>
+        <span class="rate-filter-count-badge rate-filter-trigger-badge activity-members-header-pending-badge" *ngIf="pendingCount > 0">
+          {{ pendingCount }}
+        </span>
+      </button>
+      <span class="header-members-count members-header-summary-badge">{{ summaryLabel }}</span>
+      <button mat-icon-button class="popup-close" (click)="handleClose($event)" aria-label="Close">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="popup-body popup-body-members">
+      <div class="activity-members-popup-wrap">
+        <div class="subevent-members-scroll-area activity-members-scroll-area">
+          <div class="subevent-members-grid activity-members-grid">
+            <article
+              class="friends-picker-card subevent-member-image-card activity-member-image-card"
+              [ngClass]="[presenter.toneClass(member), presenter.isActionMenuOpen(member) ? 'menu-open' : '']"
+              *ngFor="let member of members; trackBy: trackByMember"
+              [style.backgroundImage]="'url(' + member.avatarUrl + ')'"
+            >
+              <span class="member-card-status-chip" [ngClass]="presenter.statusClass(member)" [attr.title]="presenter.statusLabel(member)">
+                <mat-icon>{{ presenter.statusIcon(member) }}</mat-icon>
+              </span>
+              <div class="subevent-member-menu-anchor" *ngIf="presenter.canShowActionMenu(member)">
+                <button
+                  type="button"
+                  class="friends-picker-card-add-btn subevent-member-menu-trigger experience-action-menu-trigger"
+                  [class.active]="presenter.isActionMenuOpen(member)"
+                  (click)="handleToggleMemberActionMenu(member, $event)"
+                  aria-label="Open member actions"
+                >
+                  <mat-icon>{{ presenter.isActionMenuOpen(member) ? 'close' : 'more_vert' }}</mat-icon>
+                </button>
+                <div
+                  class="item-action-menu subevent-member-action-menu"
+                  [class.is-open]="presenter.isActionMenuOpen(member)"
+                  [class.item-action-menu-mobile]="isMobileView"
+                  [class.item-action-menu-desktop]="!isMobileView"
+                  [class.is-open-up]="presenter.isActionMenuOpenUp(member)"
+                  (click)="$event.stopPropagation()"
+                >
+                  <div class="item-action-menu-title">{{ member.name }}</div>
+                  <button
+                    type="button"
+                    class="item-action-menu-btn item-action-menu-btn-publish"
+                    *ngIf="presenter.canApprove(member)"
+                    (click)="handleApproveMember(member, $event)"
+                  >
+                    <mat-icon>check_circle</mat-icon>
+                    <span>Approve</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="item-action-menu-btn item-action-menu-btn-destructive"
+                    *ngIf="presenter.canDelete(member)"
+                    (click)="handleRemoveMember(member, $event)"
+                  >
+                    <mat-icon>delete</mat-icon>
+                    <span>{{ presenter.deleteLabel(member) }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="item-action-menu-btn"
+                    *ngIf="presenter.canEditRole(member)"
+                    (click)="handleToggleRolePicker(member, $event)"
+                  >
+                    <mat-icon>{{ presenter.roleIcon(member) }}</mat-icon>
+                    <span>{{ presenter.roleMenuLabel(member) }}</span>
+                    <mat-icon class="subevent-member-menu-chevron">{{ presenter.isRolePickerOpen(member) ? 'keyboard_arrow_up' : 'keyboard_arrow_down' }}</mat-icon>
+                  </button>
+                  <div class="subevent-member-role-options" *ngIf="presenter.isRolePickerOpen(member)">
+                    <button
+                      type="button"
+                      class="item-action-menu-btn subevent-member-role-option"
+                      [class.is-active]="member.role === 'Admin'"
+                      (click)="handleSetMemberRole(member, 'Admin', $event)"
+                    >
+                      <mat-icon>admin_panel_settings</mat-icon>
+                      <span>Admin</span>
+                      <mat-icon *ngIf="member.role === 'Admin'">check</mat-icon>
+                    </button>
+                    <button
+                      type="button"
+                      class="item-action-menu-btn subevent-member-role-option"
+                      [class.is-active]="member.role === 'Member'"
+                      (click)="handleSetMemberRole(member, 'Member', $event)"
+                    >
+                      <mat-icon>person</mat-icon>
+                      <span>Member</span>
+                      <mat-icon *ngIf="member.role === 'Member'">check</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="friends-picker-card-meta subevent-member-card-meta activity-member-card-meta">
+                <h4>{{ member.name }}, {{ presenter.age(member) }}</h4>
+                <p>{{ presenter.roleLabel(member) }} · {{ member.city }}</p>
+                <p class="subevent-member-card-status" *ngIf="member.status === 'pending'">{{ presenter.pendingStatusLabel(member) }}</p>
+              </div>
+            </article>
+          </div>
+        </div>
+        <section class="experience-delete-confirm" *ngIf="pendingDelete">
+          <div class="experience-delete-confirm-backdrop" (click)="handleCancelDelete()"></div>
+          <div class="experience-delete-confirm-panel">
+            <h4>{{ pendingDeleteTitle }}</h4>
+            <p>{{ pendingDeleteLabel }}</p>
+            <div class="popup-actions">
+              <button type="button" class="link-btn neutral-btn" (click)="handleCancelDelete($event)">Cancel</button>
+              <button type="button" class="link-btn experience-delete-btn" (click)="handleConfirmDelete($event)">Remove</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>

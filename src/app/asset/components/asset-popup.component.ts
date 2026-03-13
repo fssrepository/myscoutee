@@ -10,6 +10,8 @@ import { LazyBgImageDirective } from '../../shared/lazy-bg-image.directive';
 import type * as AppTypes from '../../shared/app-types';
 import { AssetDeleteConfirmComponent } from './asset-delete-confirm.component';
 import { AssetFormPopupComponent } from './asset-form-popup.component';
+import { AssetBasketPopupComponent } from './asset-basket-popup.component';
+import { AssetMemberPickerPopupComponent } from './asset-member-picker-popup.component';
 import { AssetTicketCodePopupComponent } from './asset-ticket-code-popup.component';
 import { AssetTicketScannerPopupComponent } from './asset-ticket-scanner-popup.component';
 
@@ -25,6 +27,8 @@ import { AssetTicketScannerPopupComponent } from './asset-ticket-scanner-popup.c
     LazyBgImageDirective,
     AssetDeleteConfirmComponent,
     AssetFormPopupComponent,
+    AssetBasketPopupComponent,
+    AssetMemberPickerPopupComponent,
     AssetTicketCodePopupComponent,
     AssetTicketScannerPopupComponent
   ],
@@ -35,20 +39,19 @@ import { AssetTicketScannerPopupComponent } from './asset-ticket-scanner-popup.c
 export class AssetPopupComponent implements OnDestroy {
   protected readonly assetPopup = inject(AssetPopupService);
   protected readonly assetFilterOpen = signal(false);
+  protected readonly retryTicketScanner = (event?: Event): void => this.assetPopup.retryTicketScanner(event);
 
   @ViewChild('ticketScroll')
   protected set ticketScrollRef(ref: ElementRef<HTMLDivElement> | undefined) {
-    this.assetPopup.host()?.setTicketScrollElement(ref?.nativeElement ?? null);
+    this.assetPopup.setTicketScrollElement(ref?.nativeElement ?? null);
   }
 
-  protected trackByActivityGroup = (index: number, group: AppTypes.ActivityGroup): string =>
-    this.assetPopup.host()?.trackByActivityGroup(index, group) ?? `${index}:${group.label}`;
+  protected trackByActivityGroup = (_index: number, group: AppTypes.ActivityGroup): string => group.label;
 
-  protected trackByActivityRow = (index: number, row: AppTypes.ActivityListRow): string =>
-    this.assetPopup.host()?.trackByActivityRow(index, row) ?? `${row.type}:${row.id}`;
+  protected trackByActivityRow = (_index: number, row: AppTypes.ActivityListRow): string => `${row.type}:${row.id}`;
 
   protected onTicketScannerVideoElementChange(element: HTMLVideoElement | null): void {
-    this.assetPopup.host()?.setTicketScannerVideoElement(element);
+    this.assetPopup.setTicketScannerVideoElement(element);
   }
 
   protected onAssetFilterMenuOpenChange(isOpen: boolean): void {
@@ -56,8 +59,7 @@ export class AssetPopupComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    const host = this.assetPopup.host();
-    host?.setTicketScrollElement(null);
-    host?.setTicketScannerVideoElement(null);
+    this.assetPopup.setTicketScrollElement(null);
+    this.assetPopup.setTicketScannerVideoElement(null);
   }
 }

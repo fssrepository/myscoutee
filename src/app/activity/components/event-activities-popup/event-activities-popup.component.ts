@@ -41,6 +41,7 @@ import { EventEditorService } from '../../../shared/event-editor.service';
 import type { ActivitiesEventSyncPayload, ActivitiesPageRequest, EventChatContext, EventChatResourceContext } from '../../../shared/activities-models';
 import type * as AppTypes from '../../../shared/app-types';
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
+import { EventMembersPopupComponent, type EventMembersPopupPresenter } from '../event-members-popup/event-members-popup.component';
 
 // ---------------------------------------------------------------------------
 
@@ -53,7 +54,8 @@ import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.co
     MatIconModule,
     MatSelectModule,
     LazyBgImageDirective,
-    EventChatPopupComponent
+    EventChatPopupComponent,
+    EventMembersPopupComponent
   ],
   templateUrl: './event-activities-popup.component.html',
   styleUrl: './event-activities-popup.component.scss',
@@ -171,7 +173,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   // ── Inline action menu ────────────────────────────────────────────────────
   protected inlineItemActionMenu: {
-    scope: 'activity';
+    scope: 'activity' | 'activityMember';
     id: string;
     title: string;
     openUp: boolean;
@@ -227,6 +229,33 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected pendingActivityDeleteRow: AppTypes.ActivityListRow | null  = null;
   protected pendingActivityPublishRow: AppTypes.ActivityListRow | null = null;
   protected pendingActivityAction: 'delete' | 'exit'                   = 'delete';
+  protected stackedActivitiesPopup: 'activityMembers' | null = null;
+  protected activityMembersReadOnly = false;
+  protected activityMembersPendingOnly = false;
+  protected pendingActivityMemberDelete: AppTypes.ActivityMemberEntry | null = null;
+  protected selectedActivityMembers: AppTypes.ActivityMemberEntry[] = [];
+  protected selectedActivityMembersTitle = '';
+  protected selectedActivityMembersRow: AppTypes.ActivityListRow | null = null;
+  protected selectedActivityMembersRowId: string | null = null;
+  protected readonly activityMembersPopupPresenter: EventMembersPopupPresenter = {
+    toneClass: entry => this.memberCardToneClass(entry),
+    statusClass: entry => this.memberCardStatusClass(entry),
+    statusLabel: entry => this.memberCardStatusLabel(entry),
+    statusIcon: entry => this.memberCardStatusIcon(entry),
+    age: entry => this.activityMemberAge(entry),
+    roleLabel: entry => this.activityMemberRoleLabel(entry),
+    pendingStatusLabel: entry => this.activityMemberStatusLabel(entry),
+    canShowActionMenu: entry => this.canShowActivityMemberActionMenu(entry),
+    isActionMenuOpen: entry => this.isActivityMemberActionMenuOpen(entry),
+    isActionMenuOpenUp: entry => this.isActivityMemberActionMenuOpenUp(entry),
+    canApprove: entry => this.canApproveActivityMember(entry),
+    canDelete: entry => this.canDeleteActivityMember(entry),
+    deleteLabel: entry => this.activityMemberMenuDeleteLabel(entry),
+    canEditRole: () => false,
+    roleIcon: () => 'manage_accounts',
+    roleMenuLabel: () => 'Change role',
+    isRolePickerOpen: () => false
+  };
 
   // ── Calendar ──────────────────────────────────────────────────────────────
   protected readonly calendarWeekdayLabels = APP_STATIC_DATA.calendarWeekdayLabels;
@@ -327,6 +356,17 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.applyActivitiesEventSync(sync);
       this.activitiesContext.clearActivitiesEventSync();
       this.cdr.markForCheck();
+    });
+
+    effect(() => {
+      const request = this.activitiesContext.activitiesNavigationRequest();
+      if (!request) {
+        return;
+      }
+      if (request.type === 'members' || request.type === 'eventEditorMembers') {
+        this.openActivityMembersLocal(request.row);
+        this.activitiesContext.clearActivitiesNavigationRequest();
+      }
     });
   }
 
@@ -1291,6 +1331,10 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return [...entries].sort((a, b) => AppUtils.toSortableDate(b.actionAtIso) - AppUtils.toSortableDate(a.actionAtIso));
   }
 
+  private sortActivityMembersByActionTimeAsc(entries: AppTypes.ActivityMemberEntry[]): AppTypes.ActivityMemberEntry[] {
+    return [...entries].sort((a, b) => AppUtils.toSortableDate(a.actionAtIso) - AppUtils.toSortableDate(b.actionAtIso));
+  }
+
   protected activityLeadingIcon(row: AppTypes.ActivityListRow): string {
     if (row.type === 'hosting' || row.type === 'events') {
       return this.eventVisibilityIcon(this.activityVisibility(row));
@@ -1528,7 +1572,268 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   protected openActivityMembers(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
-    this.activitiesContext.requestActivitiesNavigation({ type: 'members', row });
+    this.openActivityMembersLocal(row);
+  }
+
+  private openActivityMembersLocal(row: AppTypes.ActivityListRow): void {
+    this.pendingActivityMemberDelete = null;
+    this.activityMembersPendingOnly = false;
+    this.activityMembersReadOnly = row.isAdmin !== true;
+    this.selectedActivityMembersRow = row;
+    this.selectedActivityMembersRowId = `${row.type}:${row.id}`;
+    this.selectedActivityMembersTitle = row.title;
+    this.selectedActivityMembers = this.sortActivityMembersByActionTimeAsc(this.getActivityMembersByRow(row));
+    this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
+    this.inlineItemActionMenu = null;
+    this.stackedActivitiesPopup = 'activityMembers';
+  }
+
+  protected closeActivityMembersPopup(): void {
+    this.pendingActivityMemberDelete = null;
+    this.activityMembersPendingOnly = false;
+    this.activityMembersReadOnly = false;
+    this.selectedActivityMembers = [];
+    this.selectedActivityMembersTitle = '';
+    this.selectedActivityMembersRow = null;
+    this.selectedActivityMembersRowId = null;
+    this.inlineItemActionMenu = null;
+    this.stackedActivitiesPopup = null;
+  }
+
+  protected get activityMembersOrdered(): AppTypes.ActivityMemberEntry[] {
+    const ordered = this.sortActivityMembersByActionTimeAsc(this.selectedActivityMembers);
+    if (!this.activityMembersPendingOnly) {
+      return ordered;
+    }
+    return ordered.filter(member => member.status === 'pending');
+  }
+
+  protected activityMembersPendingCount(): number {
+    return this.selectedActivityMembers.filter(member => member.status === 'pending').length;
+  }
+
+  protected activityMembersHeaderSummary(): string {
+    const pendingCount = this.activityMembersPendingCount();
+    const acceptedCount = this.selectedActivityMembers.length - pendingCount;
+    if (pendingCount <= 0) {
+      return `${acceptedCount} members`;
+    }
+    return `${acceptedCount} members · ${pendingCount} pending`;
+  }
+
+  protected canShowActivityMembersInviteButton(): boolean {
+    return !this.activityMembersReadOnly;
+  }
+
+  protected handleActivityMembersTogglePendingOnly(): void {
+    this.activityMembersPendingOnly = !this.activityMembersPendingOnly;
+  }
+
+  protected handleActivityMemberActionMenuToggle(payload: { entry: AppTypes.ActivityMemberEntry; event: Event }): void {
+    this.toggleActivityMemberActionMenu(payload.entry, payload.event);
+  }
+
+  protected handleActivityMemberApprove(entry: AppTypes.ActivityMemberEntry): void {
+    this.approveActivityMember(entry);
+  }
+
+  protected handleActivityMemberRemove(entry: AppTypes.ActivityMemberEntry): void {
+    this.removeActivityMember(entry);
+  }
+
+  protected cancelRemoveActivityMember(): void {
+    this.pendingActivityMemberDelete = null;
+  }
+
+  protected confirmRemoveActivityMember(): void {
+    if (!this.pendingActivityMemberDelete || !this.selectedActivityMembersRowId) {
+      this.pendingActivityMemberDelete = null;
+      return;
+    }
+    const targetId = this.pendingActivityMemberDelete.id;
+    this.selectedActivityMembers = this.selectedActivityMembers.filter(item => item.id !== targetId);
+    this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
+    this.pendingActivityMemberDelete = null;
+  }
+
+  protected pendingActivityMemberDeleteTitle(): string {
+    return 'Remove member';
+  }
+
+  protected pendingActivityMemberDeleteLabel(): string {
+    if (!this.pendingActivityMemberDelete) {
+      return '';
+    }
+    return `Remove ${this.pendingActivityMemberDelete.name} from this event?`;
+  }
+
+  protected handleActivityMembersInvite(): void {
+    // Basket-mode picker wiring moves here later; keep button inert-free for now.
+  }
+
+  protected canShowActivityMemberActionMenu(entry: AppTypes.ActivityMemberEntry): boolean {
+    if (this.activityMembersReadOnly) {
+      return false;
+    }
+    return this.canApproveActivityMember(entry) || this.canDeleteActivityMember(entry);
+  }
+
+  protected toggleActivityMemberActionMenu(entry: AppTypes.ActivityMemberEntry, event: Event): void {
+    event.stopPropagation();
+    if (!this.canShowActivityMemberActionMenu(entry)) {
+      return;
+    }
+    if (this.inlineItemActionMenu?.scope === 'activityMember' && this.inlineItemActionMenu.id === entry.userId) {
+      this.inlineItemActionMenu = null;
+      return;
+    }
+    this.inlineItemActionMenu = {
+      scope: 'activityMember',
+      id: entry.userId,
+      title: entry.name,
+      openUp: this.shouldOpenInlineItemMenuUp(event)
+    };
+  }
+
+  protected isActivityMemberActionMenuOpen(entry: AppTypes.ActivityMemberEntry): boolean {
+    return this.inlineItemActionMenu?.scope === 'activityMember' && this.inlineItemActionMenu.id === entry.userId;
+  }
+
+  protected isActivityMemberActionMenuOpenUp(entry: AppTypes.ActivityMemberEntry): boolean {
+    return this.inlineItemActionMenu?.scope === 'activityMember'
+      && this.inlineItemActionMenu.id === entry.userId
+      && this.inlineItemActionMenu.openUp;
+  }
+
+  protected canApproveActivityMember(entry: AppTypes.ActivityMemberEntry): boolean {
+    if (this.selectedActivityMembersRow?.isAdmin !== true) {
+      return false;
+    }
+    return entry.status === 'pending' && (entry.pendingSource === 'member' || entry.requestKind === 'join');
+  }
+
+  protected canDeleteActivityMember(entry: AppTypes.ActivityMemberEntry): boolean {
+    if (this.selectedActivityMembersRow?.isAdmin === true) {
+      return true;
+    }
+    return entry.status === 'pending'
+      && entry.requestKind === 'invite'
+      && entry.invitedByActiveUser === true;
+  }
+
+  protected activityMemberMenuDeleteLabel(entry: AppTypes.ActivityMemberEntry): string {
+    if (entry.status === 'accepted') {
+      return 'Remove member';
+    }
+    if (entry.requestKind === 'join') {
+      return 'Reject request';
+    }
+    return 'Delete invitation';
+  }
+
+  protected activityMemberAge(entry: AppTypes.ActivityMemberEntry): number {
+    return this.users.find(user => user.id === entry.userId)?.age ?? 0;
+  }
+
+  protected activityMemberRoleLabel(entry: AppTypes.ActivityMemberEntry): string {
+    return entry.role === 'Admin' ? 'Admin' : 'Member';
+  }
+
+  protected activityMemberStatusLabel(entry: AppTypes.ActivityMemberEntry): string {
+    if (entry.status === 'accepted') {
+      return 'Approved';
+    }
+    if (entry.requestKind === 'join') {
+      return 'Waiting For Join Approval';
+    }
+    if (entry.pendingSource === 'admin') {
+      return 'Invitation Pending';
+    }
+    return 'Waiting For Admin Approval';
+  }
+
+  protected memberCardStatusIcon(entry: AppTypes.ActivityMemberEntry): string {
+    if (entry.status === 'accepted') {
+      return entry.role === 'Admin' ? 'admin_panel_settings' : 'person';
+    }
+    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
+      return 'pending_actions';
+    }
+    return 'outgoing_mail';
+  }
+
+  protected memberCardStatusClass(entry: AppTypes.ActivityMemberEntry): string {
+    if (entry.status === 'accepted') {
+      return entry.role === 'Admin' ? 'member-status-admin' : 'member-status-member';
+    }
+    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
+      return 'member-status-awaiting-approval';
+    }
+    return 'member-status-invite-pending';
+  }
+
+  protected memberCardToneClass(entry: AppTypes.ActivityMemberEntry): string {
+    if (entry.status === 'accepted') {
+      return entry.role === 'Admin' ? 'member-card-tone-admin' : 'member-card-tone-accepted';
+    }
+    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
+      return 'member-card-tone-awaiting-approval';
+    }
+    return 'member-card-tone-invite-pending';
+  }
+
+  protected memberCardStatusLabel(entry: AppTypes.ActivityMemberEntry): string {
+    if (entry.status === 'accepted') {
+      return entry.role === 'Admin' ? 'Admin' : 'Member';
+    }
+    return this.activityMemberStatusLabel(entry);
+  }
+
+  protected approveActivityMember(entry: AppTypes.ActivityMemberEntry, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.selectedActivityMembersRowId || !this.canApproveActivityMember(entry)) {
+      return;
+    }
+    const nowIso = AppUtils.toIsoDateTime(new Date());
+    this.selectedActivityMembers = this.sortActivityMembersByActionTimeAsc(this.selectedActivityMembers.map(item =>
+      item.id === entry.id
+        ? {
+            ...item,
+            status: 'accepted',
+            pendingSource: null,
+            requestKind: null,
+            actionAtIso: nowIso
+          }
+        : item
+    ));
+    this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
+    this.inlineItemActionMenu = null;
+  }
+
+  protected removeActivityMember(entry: AppTypes.ActivityMemberEntry, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.selectedActivityMembersRowId || !this.canDeleteActivityMember(entry)) {
+      return;
+    }
+    this.pendingActivityMemberDelete = entry;
+    this.inlineItemActionMenu = null;
+  }
+
+  private shouldOpenInlineItemMenuUp(event: Event): boolean {
+    if (this.isMobileView || typeof window === 'undefined') {
+      return false;
+    }
+    const trigger = event.currentTarget as HTMLElement | null;
+    const actionWrap = (trigger?.closest('.experience-item-actions') as HTMLElement | null) ?? trigger;
+    if (!actionWrap) {
+      return false;
+    }
+    const rect = actionWrap.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const estimatedMenuHeight = 248;
+    const spaceBelow = viewportHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
   }
 
   // =========================================================================

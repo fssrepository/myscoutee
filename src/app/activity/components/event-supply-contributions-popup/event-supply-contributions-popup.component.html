@@ -1,0 +1,114 @@
+<section class="app-popup app-popup-stacked app-popup-stacked-over-subevents event-supply-contributions-popup-shell">
+  <div class="app-popup-backdrop" (click)="host.close()"></div>
+  <div class="app-popup-panel popup-panel-asset-members" (click)="$event.stopPropagation()">
+    <div class="popup-header popup-header-members-invite-mobile-layout">
+      <div class="popup-title popup-title-members">
+        <div class="popup-chat-title-block">
+          <h2>{{ host.title() }}</h2>
+          <p>{{ host.subtitle() }}</p>
+        </div>
+      </div>
+      <span class="header-members-count members-header-summary-badge subevent-supply-header-summary">{{ host.summary() }}</span>
+      <button
+        type="button"
+        class="popup-header-add-btn subevent-supply-contribution-add-btn"
+        (click)="host.openBringDialog($event)"
+        aria-label="Add supply quantity row"
+      >
+        <mat-icon>add</mat-icon>
+      </button>
+      <button mat-icon-button class="popup-close" (click)="host.close()" aria-label="Close">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="popup-body popup-body-members">
+      <div class="assets-member-popup subevent-supply-contributions-popup">
+        <div class="subevent-supply-contribution-list" *ngIf="host.rows().length > 0; else subeventSupplyContributionEmpty">
+          <article class="subevent-supply-contribution-row" *ngFor="let row of host.rows()">
+            <span class="chat-members-popup-avatar" [class]="'user-color-' + row.gender">{{ row.initials }}</span>
+            <div class="subevent-supply-contribution-meta">
+              <p class="subevent-supply-contribution-name">{{ row.name }}, {{ row.age }} · {{ row.city }}</p>
+              <p class="subevent-supply-contribution-date">{{ host.addedLabel(row.addedAtIso) }}</p>
+            </div>
+            <div class="subevent-supply-contribution-actions">
+              <button
+                type="button"
+                class="experience-action-btn experience-action-delete subevent-supply-contribution-delete"
+                [class.is-disabled]="!host.canDelete(row)"
+                [disabled]="!host.canDelete(row)"
+                (click)="host.requestDelete(row, $event)"
+                [attr.aria-label]="host.canDelete(row) ? 'Delete my quantity row' : 'Only your own quantity rows can be deleted'"
+              >
+                <mat-icon>delete</mat-icon>
+              </button>
+              <span class="subevent-supply-contribution-quantity">{{ host.quantityLabel(row.quantity) }}</span>
+            </div>
+          </article>
+        </div>
+        <ng-template #subeventSupplyContributionEmpty>
+          <div class="editor-list-card">
+            <h4>No quantity added yet</h4>
+            <p>Use the + button in the header to add your quantity row.</p>
+          </div>
+        </ng-template>
+
+        <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-supply-bring-overlay" *ngIf="host.bringDialog() as dialog">
+          <div class="experience-form-overlay-backdrop" (click)="host.cancelBringDialog()"></div>
+          <div class="experience-form-popup subevent-form-popup subevent-group-popup">
+            <div class="experience-form-header subevent-group-header">
+              <div class="subevent-group-header-main">
+                <h3>Bring Items</h3>
+                <p class="subevent-group-stage-subtitle">{{ dialog.title }}</p>
+              </div>
+              <div class="experience-form-header-controls">
+                <button
+                  type="button"
+                  class="popup-header-add-btn subevent-leaderboard-save-btn"
+                  [class.form-save-invalid]="!host.canSubmitBringDialog()"
+                  [disabled]="!host.canSubmitBringDialog()"
+                  (click)="host.confirmBringDialog($event)"
+                  aria-label="Save supply quantity"
+                >
+                  <mat-icon>done</mat-icon>
+                </button>
+                <button type="button" class="experience-form-close-btn" (click)="host.cancelBringDialog()" aria-label="Close bring items">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            </div>
+            <section class="experience-form-panel subevent-form-panel subevent-group-form-panel">
+              <div class="experience-form-grid subevent-group-form-grid">
+                <label class="experience-title-field">
+                  <span>Items</span>
+                  <input
+                    type="number"
+                    [min]="dialog.min"
+                    [max]="dialog.max"
+                    step="1"
+                    [ngModel]="dialog.quantity"
+                    (ngModelChange)="host.onBringQuantityChange($event)"
+                    placeholder="0"
+                  />
+                </label>
+                <p class="subevent-supply-bring-range">Range: {{ dialog.min }} - {{ dialog.max }}</p>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="experience-delete-confirm" *ngIf="host.pendingDelete()">
+          <div class="experience-delete-confirm-backdrop" (click)="host.cancelDelete()"></div>
+          <div class="experience-delete-confirm-panel">
+            <h4>Delete quantity row</h4>
+            <p>{{ host.pendingDeleteLabel() }}</p>
+            <div class="popup-actions">
+              <button type="button" class="link-btn neutral-btn" (click)="host.cancelDelete()">Cancel</button>
+              <button type="button" class="link-btn experience-delete-btn" (click)="host.confirmDelete()">Delete</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</section>

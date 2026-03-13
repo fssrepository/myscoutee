@@ -1,0 +1,330 @@
+<section class="app-popup app-popup-stacked app-popup-stacked-over-subevents event-resource-popup-shell">
+  <div class="app-popup-backdrop" (click)="host.close()"></div>
+  <div class="app-popup-panel popup-panel-asset-members" (click)="$event.stopPropagation()">
+    <div class="popup-header popup-header-members-invite-mobile-layout">
+      <div class="popup-title popup-title-members">
+        <div class="popup-chat-title-block">
+          <h2>{{ host.title() }}</h2>
+          <p>{{ host.subtitle() }}</p>
+        </div>
+      </div>
+      <span class="header-members-count members-header-summary-badge">{{ host.summary() }}</span>
+      <button mat-icon-button class="popup-close" (click)="host.close()" aria-label="Close">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="popup-body popup-body-members">
+      <div class="experience-popup assets-popup subevent-assets-popup">
+        <div class="experience-toolbar assets-toolbar">
+          <ng-container *ngIf="!host.isMobilePopupSheetViewport(); else mobileSubEventResourceFilterButton">
+            <div class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select" [ngClass]="host.resourceTypeClass(host.resourceFilter())">
+              <mat-select
+                #subEventResourceFilterSelect="matSelect"
+                [ngModel]="host.resourceFilter()"
+                (ngModelChange)="host.selectResourceFilter($event)"
+                (openedChange)="host.onResourceFilterOpened($event, subEventResourceFilterSelect)"
+                disableOptionCentering
+                panelClass="assets-filter-options-panel subevent-resource-options-panel"
+              >
+                <mat-select-trigger>
+                  <span class="status-option-content">
+                    <mat-icon [class]="host.resourceTypeClass(host.resourceFilter())">{{ host.resourceTypeIcon(host.resourceFilter()) }}</mat-icon>
+                    <span>{{ host.resourceFilter().toLowerCase() }}</span>
+                  </span>
+                </mat-select-trigger>
+                <mat-option
+                  *ngFor="let option of host.resourceFilterOptions()"
+                  [value]="option"
+                  class="status-option"
+                  [ngClass]="host.resourceTypeClass(option)"
+                >
+                  <span class="status-option-content">
+                    <mat-icon [class]="host.resourceTypeClass(option)">{{ host.resourceTypeIcon(option) }}</mat-icon>
+                    <span>{{ option.toLowerCase() }}</span>
+                    <span class="rate-filter-count-badge" *ngIf="host.resourceFilterCount(option) > 0">{{ host.resourceFilterCount(option) }}</span>
+                  </span>
+                </mat-option>
+              </mat-select>
+              <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="host.resourceFilterCount(host.resourceFilter()) > 0">
+                {{ host.resourceFilterCount(host.resourceFilter()) }}
+              </span>
+            </div>
+          </ng-container>
+          <ng-template #mobileSubEventResourceFilterButton>
+            <button
+              type="button"
+              class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select"
+              [ngClass]="host.resourceTypeClass(host.resourceFilter())"
+              (click)="host.openMobileResourceFilterSelector($event)"
+              aria-label="Open asset filter"
+            >
+              <span class="status-option-content">
+                <mat-icon [class]="host.resourceTypeClass(host.resourceFilter())">{{ host.resourceTypeIcon(host.resourceFilter()) }}</mat-icon>
+                <span>{{ host.resourceFilter().toLowerCase() }}</span>
+              </span>
+              <mat-icon>expand_more</mat-icon>
+              <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="host.resourceFilterCount(host.resourceFilter()) > 0">
+                {{ host.resourceFilterCount(host.resourceFilter()) }}
+              </span>
+            </button>
+          </ng-template>
+
+          <div class="subevent-assets-toolbar-actions">
+            <button
+              type="button"
+              class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger subevent-assets-assign-trigger"
+              (click)="host.openAssignPopup($event)"
+              aria-label="Assign sub-event asset"
+            >
+              <span class="event-editor-members-invite">
+                <mat-icon>assignment_ind</mat-icon>
+                <span>Assign</span>
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div class="experience-card-list assets-card-list subevent-assets-scroll-list">
+          <article
+            class="experience-item-card asset-item-card"
+            [ngClass]="host.resourceTypeClass(card.type)"
+            *ngFor="let card of host.cards(); trackBy: host.trackByCard"
+          >
+            <div class="asset-card-image" [appLazyBgImage]="card.imageUrl">
+              <button
+                type="button"
+                class="asset-source-icon asset-source-icon-route-map"
+                [class.asset-source-icon-multiroute]="card.type === 'Car'"
+                *ngIf="host.canOpenMap(card)"
+                (click)="host.openMap(card, $event)"
+                [attr.aria-label]="card.type === 'Car' ? 'Open car route map' : 'Open accommodation location map'"
+              >
+                <mat-icon>location_on</mat-icon>
+              </button>
+              <button
+                type="button"
+                class="asset-occupancy-badge"
+                *ngIf="host.canOpenBadgeDetails(card)"
+                (click)="host.openBadgeDetails(card, $event)"
+                [attr.aria-label]="host.canOpenAssetMembers(card) ? 'Open member requests' : 'Open supply contributions'"
+              >
+                <span>{{ host.occupancyLabel(card) }}</span>
+                <span class="card-badge asset-request-badge" *ngIf="host.canOpenAssetMembers(card) && card.pending > 0">{{ card.pending }}</span>
+              </button>
+              <span class="asset-occupancy-badge asset-occupancy-badge-static" *ngIf="!host.canOpenBadgeDetails(card)" aria-hidden="true">
+                <span>{{ host.occupancyLabel(card) }}</span>
+              </span>
+            </div>
+            <div class="experience-item-head">
+              <span class="experience-item-icon">
+                <mat-icon>{{ host.resourceTypeIcon(card.type) }}</mat-icon>
+              </span>
+              <div class="experience-item-meta">
+                <h4>{{ card.title }}</h4>
+                <p>{{ card.type }} · {{ card.subtitle }} · {{ card.city }}</p>
+              </div>
+              <div class="experience-item-actions">
+                <button
+                  type="button"
+                  class="experience-action-btn experience-action-menu-trigger"
+                  [class.is-open]="host.isItemActionMenuOpen(card)"
+                  (click)="host.toggleItemActionMenu(card, $event)"
+                  [attr.aria-label]="host.isItemActionMenuOpen(card) ? 'Close asset actions' : 'Open asset actions'"
+                >
+                  <mat-icon>{{ host.isItemActionMenuOpen(card) ? 'close' : 'more_vert' }}</mat-icon>
+                </button>
+                <div
+                  class="item-action-menu"
+                  [class.is-open]="host.isItemActionMenuOpen(card)"
+                  [class.item-action-menu-mobile]="host.isMobileView()"
+                  [class.item-action-menu-desktop]="!host.isMobileView()"
+                  [class.is-open-up]="host.isItemActionMenuOpenUp(card)"
+                  (click)="$event.stopPropagation()"
+                >
+                  <div class="item-action-menu-title">{{ card.title }}</div>
+                  <button type="button" class="item-action-menu-btn item-action-menu-btn-publish" *ngIf="host.canJoin(card)" (click)="host.join(card, $event)">
+                    <mat-icon>login</mat-icon>
+                    <span>Join</span>
+                  </button>
+                  <button type="button" class="item-action-menu-btn" *ngIf="host.canEditCapacity(card)" (click)="host.openCapacityEditor(card, $event)">
+                    <mat-icon>edit</mat-icon>
+                    <span>Edit Capacity</span>
+                  </button>
+                  <button type="button" class="item-action-menu-btn" *ngIf="host.canEditRoute(card)" (click)="host.openRouteEditor(card, $event)">
+                    <mat-icon>route</mat-icon>
+                    <span>{{ host.routeMenuLabel(card) }}</span>
+                  </button>
+                  <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="host.delete(card, $event)">
+                    <mat-icon>delete</mat-icon>
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <p class="experience-item-description">{{ card.details }}</p>
+          </article>
+        </div>
+
+        <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-capacity-overlay" *ngIf="host.capacityEditor() as editor">
+          <div class="experience-form-overlay-backdrop" (click)="host.closeCapacityEditor($event)"></div>
+          <div class="experience-form-popup subevent-form-popup subevent-group-popup">
+            <div class="experience-form-header subevent-group-header">
+              <div class="subevent-group-header-main">
+                <h3>Edit Capacity</h3>
+                <p class="subevent-group-stage-subtitle">{{ editor.title }}</p>
+              </div>
+              <div class="experience-form-header-controls">
+                <button
+                  type="button"
+                  class="popup-header-add-btn subevent-leaderboard-save-btn"
+                  [class.form-save-invalid]="!host.canSubmitCapacityEditor()"
+                  [disabled]="!host.canSubmitCapacityEditor()"
+                  (click)="host.saveCapacityEditor($event)"
+                  aria-label="Save capacity"
+                >
+                  <mat-icon>done</mat-icon>
+                </button>
+                <button type="button" class="experience-form-close-btn" (click)="host.closeCapacityEditor($event)" aria-label="Close capacity editor">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            </div>
+            <section class="experience-form-panel subevent-form-panel subevent-group-form-panel">
+              <div class="experience-form-grid subevent-group-form-grid">
+                <label class="subevent-capacity-range-field">
+                  <span>Capacity</span>
+                  <div class="subevent-capacity-range">
+                    <input
+                      type="number"
+                      min="0"
+                      [max]="editor.capacityMax"
+                      step="1"
+                      [ngModel]="editor.capacityMin"
+                      (ngModelChange)="host.onCapacityMinChange($event)"
+                      placeholder="Min"
+                    />
+                    <span class="subevent-capacity-separator">-</span>
+                    <input
+                      type="number"
+                      [min]="editor.capacityMin"
+                      [max]="editor.capacityLimit"
+                      step="1"
+                      [ngModel]="editor.capacityMax"
+                      (ngModelChange)="host.onCapacityMaxChange($event)"
+                      placeholder="Max"
+                    />
+                  </div>
+                </label>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-capacity-overlay" *ngIf="host.routeEditor() as editor">
+          <div class="experience-form-overlay-backdrop" (click)="host.closeRouteEditor($event)"></div>
+          <div class="experience-form-popup subevent-form-popup subevent-group-popup">
+            <div class="experience-form-header subevent-group-header">
+              <div class="subevent-group-header-main">
+                <h3>Edit Route</h3>
+                <p class="subevent-group-stage-subtitle">{{ editor.title }}</p>
+              </div>
+              <div class="experience-form-header-controls">
+                <button
+                  type="button"
+                  class="popup-header-add-btn subevent-leaderboard-save-btn"
+                  [class.form-save-invalid]="!host.canSubmitRouteEditor()"
+                  [disabled]="!host.canSubmitRouteEditor()"
+                  (click)="host.saveRouteEditor($event)"
+                  aria-label="Save route"
+                >
+                  <mat-icon>done</mat-icon>
+                </button>
+                <button type="button" class="experience-form-close-btn" (click)="host.closeRouteEditor($event)" aria-label="Close route editor">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            </div>
+            <section class="experience-form-panel subevent-form-panel subevent-group-form-panel">
+              <div class="experience-form-grid subevent-group-form-grid">
+                <div class="experience-title-field">
+                  <div class="asset-route-toolbar">
+                    <span>Route Stops</span>
+                    <div class="asset-route-toolbar-actions">
+                      <button
+                        type="button"
+                        class="experience-action-btn asset-route-map-btn asset-route-main-map-btn"
+                        [class.form-save-invalid]="!host.canSubmitRouteEditor()"
+                        [disabled]="!host.canSubmitRouteEditor()"
+                        (click)="host.openRouteMap($event)"
+                        aria-label="Open multistep route on map"
+                      >
+                        <mat-icon>location_on</mat-icon>
+                      </button>
+                      <button
+                        type="button"
+                        class="experience-action-btn asset-route-add-btn"
+                        (click)="host.addRouteStop()"
+                        aria-label="Add route stop"
+                      >
+                        <mat-icon>add</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="asset-route-toolbar-separator"></div>
+                  <div
+                    class="asset-route-list"
+                    cdkDropList
+                    [cdkDropListData]="editor.routes"
+                    (cdkDropListDropped)="host.dropRouteStop($event)"
+                    [cdkDropListDisabled]="!host.routeEditorSupportsMultiRoute()"
+                  >
+                    <div
+                      class="asset-route-row"
+                      *ngFor="let stop of editor.routes; let stopIndex = index"
+                      cdkDrag
+                      [cdkDragDisabled]="!host.routeEditorSupportsMultiRoute()"
+                    >
+                      <button
+                        type="button"
+                        class="experience-action-btn asset-route-drag-btn"
+                        cdkDragHandle
+                        *ngIf="host.routeEditorSupportsMultiRoute()"
+                        aria-label="Drag route stop"
+                      >
+                        <mat-icon>drag_indicator</mat-icon>
+                      </button>
+                      <input
+                        type="text"
+                        [ngModel]="stop"
+                        (ngModelChange)="host.updateRouteStop(stopIndex, $event)"
+                        [placeholder]="'Route stop ' + (stopIndex + 1)"
+                      />
+                      <button
+                        type="button"
+                        class="experience-action-btn asset-route-map-btn"
+                        (click)="host.openRouteStopMap(stopIndex, $event)"
+                        aria-label="Open stop on map"
+                      >
+                        <mat-icon>location_on</mat-icon>
+                      </button>
+                      <button
+                        type="button"
+                        class="experience-action-btn experience-action-delete asset-route-delete-btn"
+                        *ngIf="editor.routes.length > 1"
+                        (click)="host.removeRouteStop(stopIndex)"
+                        aria-label="Delete route stop"
+                      >
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</section>

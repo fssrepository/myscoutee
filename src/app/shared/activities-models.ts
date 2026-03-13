@@ -16,6 +16,7 @@ export type ActivitiesNavigationRequest =
       assetCardsByType?: SubEventAssetCardsByType;
     }
   | { type: 'members'; row: AppTypes.ActivityListRow }
+  | { type: 'eventEditorMembers'; row: AppTypes.ActivityListRow }
   | { type: 'eventEditorCreate'; target: AppTypes.EventEditorTarget }
   | { type: 'eventEditor'; row: AppTypes.ActivityListRow; readOnly: boolean };
 

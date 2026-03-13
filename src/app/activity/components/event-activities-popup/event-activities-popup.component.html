@@ -1189,4 +1189,27 @@
     </div><!-- /popup-body -->
   </div><!-- /app-popup-panel -->
   <app-event-chat-popup></app-event-chat-popup>
+  <app-event-members-popup
+    *ngIf="stackedActivitiesPopup === 'activityMembers'"
+    [title]="'Members'"
+    [subtitle]="selectedActivityMembersTitle || 'Event'"
+    [summaryLabel]="activityMembersHeaderSummary()"
+    [pendingOnly]="activityMembersPendingOnly"
+    [pendingCount]="activityMembersPendingCount()"
+    [canShowInviteButton]="canShowActivityMembersInviteButton()"
+    [isMobileView]="isMobileView"
+    [members]="activityMembersOrdered"
+    [pendingDelete]="pendingActivityMemberDelete"
+    [pendingDeleteTitle]="pendingActivityMemberDeleteTitle()"
+    [pendingDeleteLabel]="pendingActivityMemberDeleteLabel()"
+    [presenter]="activityMembersPopupPresenter"
+    (close)="closeActivityMembersPopup()"
+    (invite)="handleActivityMembersInvite()"
+    (togglePendingOnly)="handleActivityMembersTogglePendingOnly()"
+    (toggleMemberActionMenu)="handleActivityMemberActionMenuToggle($event)"
+    (approveMember)="handleActivityMemberApprove($event)"
+    (removeMember)="handleActivityMemberRemove($event)"
+    (cancelDelete)="cancelRemoveActivityMember()"
+    (confirmDelete)="confirmRemoveActivityMember()"
+  ></app-event-members-popup>
 </div><!-- /app-popup -->

@@ -212,8 +212,16 @@ export class EventChatPopupComponent implements OnDestroy {
         stateClass: accepted >= capacityMin && accepted <= capacityMax
           ? 'subevent-capacity-in-range'
           : 'subevent-capacity-out-of-range'
-      };
+        };
     });
+  }
+
+  protected selectedChatMembersResource(): EventChatResourceContext | null {
+    return this.selectedChatResources().find(resource => resource.type === 'Members') ?? null;
+  }
+
+  protected selectedChatAssetResources(): EventChatResourceContext[] {
+    return this.selectedChatResources().filter(resource => resource.type !== 'Members');
   }
 
   protected isMobileView(): boolean {

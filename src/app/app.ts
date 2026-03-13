@@ -16,7 +16,7 @@ import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-
 import { AlertService } from './shared/alert.service';
 import { ActivitiesDbContextService } from './shared/activities-db-context.service';
 import type { AssetPopupHost } from './asset/asset-popup.host';
-import { AssetPopupService } from './asset/asset-popup.service';
+import { AssetPopupService, type AssetTicketBridge } from './asset/asset-popup.service';
 import { EntryModule } from './entry/entry.module';
 import { EventEditorService } from './shared/event-editor.service';
 import { AppContext, type ActivityCounterKey } from './shared/core/app.context';
@@ -160,23 +160,24 @@ export class App {
   private readonly cdr = inject(ChangeDetectorRef);
 
   protected readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
+  protected readonly assetTicketBridge: AssetTicketBridge = {
+    ticketRowsSource: () => this.ticketRows,
+    createTicketScanPayload: (row) => this.createTicketScanPayload(row),
+    ticketPayloadAvatarUrl: (payload) => this.ticketPayloadAvatarUrl(payload),
+    ticketPayloadInitials: (payload) => this.ticketPayloadInitials(payload)
+  };
   protected readonly assetPopupHost: AssetPopupHost = {
     isMobileView: () => this.isMobileView,
     isAssetPopup: () => this.isAssetPopup,
+    isSubEventAssetAssignPopup: () => this.superStackedPopup === 'subEventAssetAssign',
+    isActivityInviteFriendsPopup: () => this.superStackedPopup === 'activityInviteFriends',
     isTicketAssetPopup: () => this.isTicketAssetPopup(),
-    stackedPopup: () => this.stackedPopup,
     getPopupTitle: () => this.getPopupTitle(),
-    ticketHeaderSummary: () => this.ticketHeaderSummary(),
     assetFilter: () => this.assetFilter,
     assetFilterOptions: () => this.assetFilterOptions,
     assetTypeOptions: () => this.assetTypeOptions,
     assetFilterPanelWidth: () => this.assetFilterPanelWidth(),
-    groupedTicketRows: () => this.groupedTicketRows,
-    ticketStickyHeader: () => this.ticketStickyHeader,
     filteredAssetCards: () => this.filteredAssetCards,
-    showTicketOrderPicker: () => this.showTicketOrderPicker,
-    ticketDateOrderLabel: () => this.ticketDateOrderLabel(),
-    ticketDateOrderIcon: () => this.ticketDateOrderIcon(),
     showAssetForm: () => this.showAssetForm,
     assetFormTitle: () => this.assetFormTitle,
     assetForm: () => this.assetForm,
@@ -184,25 +185,8 @@ export class App {
     assetFormRouteStops: () => this.assetFormRouteStops,
     pendingAssetDeleteCardId: () => this.pendingAssetDeleteCardId,
     pendingAssetDeleteLabel: () => this.pendingAssetDeleteLabel(),
-    selectedTicketRow: () => this.selectedTicketRow,
-    ticketCodeAvatarUrl: () => this.ticketCodeAvatarUrl(),
-    ticketCodeInitials: () => this.ticketCodeInitials(),
-    ticketCodePersonLine: () => this.ticketCodePersonLine(),
-    ticketCodeRoleEventLine: () => this.ticketCodeRoleEventLine(),
-    ticketCodeDateLine: () => this.ticketCodeDateLine(),
-    ticketQrImageUrl: () => this.ticketQrImageUrl(),
-    ticketScannerState: () => this.ticketScannerState,
-    ticketScannerResult: () => this.ticketScannerResult,
-    ticketScannerResultAvatarUrl: () => this.ticketScannerResultAvatarUrl(),
-    ticketScannerResultInitials: () => this.ticketScannerResultInitials(),
-    ticketScannerPersonLine: () => this.ticketScannerPersonLine(),
-    ticketScannerRoleEventLine: () => this.ticketScannerRoleEventLine(),
-    ticketScannerDateLine: () => this.ticketScannerDateLine(),
     assetTypeIcon: (type) => this.assetTypeIcon(type),
     assetTypeClass: (type) => this.assetTypeClass(type),
-    shouldShowTicketGroupMarker: (groupIndex) => this.shouldShowTicketGroupMarker(groupIndex),
-    trackByActivityGroup: (index, group) => this.trackByActivityGroup(index, group),
-    trackByActivityRow: (index, row) => this.trackByActivityRow(index, row),
     activityImageUrl: (row) => this.activityImageUrl(row),
     activitySourceLink: (row) => this.activitySourceLink(row),
     activitySourceAvatarClass: (row) => this.activitySourceAvatarClass(row),
@@ -216,9 +200,6 @@ export class App {
     eventVisibilityClass: (option) => this.eventVisibilityClass(option),
     isEventEditorReadOnly: () => this.isEventEditorReadOnly(),
     closeAssetPopup: () => this.closePopup(),
-    closeTicketStackedPopup: () => this.closeStackedPopup(),
-    toggleTicketOrderPicker: (event) => this.toggleTicketOrderPicker(event),
-    selectTicketDateOrder: (order, event) => this.selectTicketDateOrder(order, event),
     selectAssetFilter: (filter) => this.selectAssetFilter(filter),
     openMobileAssetFilterSelector: (event) => {
       if (event) {
@@ -226,9 +207,6 @@ export class App {
       }
     },
     openAssetForm: (card) => this.openAssetForm(card),
-    openTicketScannerPopup: (event) => this.openTicketScannerPopup(event),
-    onTicketScroll: (event) => this.onTicketScroll(event),
-    openTicketCodePopup: (row, event) => this.openTicketCodePopup(row, event),
     openAssetMap: (card, event) => this.openAssetMap(card, event),
     toggleAssetItemActionMenu: (card, event) => this.toggleAssetItemActionMenu(card, event),
     runAssetItemEditAction: (card, event) => this.runAssetItemEditAction(card, event),
@@ -241,13 +219,27 @@ export class App {
     onAssetImageFileSelected: (file) => this.applyAssetImageFile(file),
     cancelAssetDelete: () => this.cancelAssetDelete(),
     confirmAssetDelete: () => this.confirmAssetDelete(),
-    retryTicketScanner: (event) => this.retryTicketScanner(event),
-    setTicketScrollElement: (element) => {
-      this.ticketScrollElement = element;
-    },
-    setTicketScannerVideoElement: (element) => {
-      this.ticketScannerVideoElement = element;
-    }
+    subEventAssetAssignHeaderTitle: () => this.subEventAssetAssignHeaderTitle(),
+    subEventAssetAssignHeaderSubtitle: () => this.subEventAssetAssignHeaderSubtitle(),
+    canConfirmSubEventAssetAssignSelection: () => this.canConfirmSubEventAssetAssignSelection(),
+    closeSubEventAssetAssignPopup: (apply) => this.closeSubEventAssetAssignPopup(apply),
+    confirmSubEventAssetAssignSelection: (event) => this.confirmSubEventAssetAssignSelection(event),
+    subEventAssetAssignCandidates: () => this.subEventAssetAssignCandidates,
+    selectedSubEventAssetAssignChips: () => this.selectedSubEventAssetAssignChips,
+    toggleSubEventAssetAssignCard: (cardId, event) => this.toggleSubEventAssetAssignCard(cardId, event),
+    isSubEventAssetAssignCardSelected: (cardId) => this.isSubEventAssetAssignCardSelected(cardId),
+    activityInviteSort: () => this.activityInviteSort,
+    showActivityInviteSortPicker: () => this.showActivityInviteSortPicker,
+    toggleActivityInviteSortPicker: (event) => this.toggleActivityInviteSortPicker(event),
+    selectActivityInviteSort: (sort) => this.selectActivityInviteSort(sort),
+    canConfirmActivityInviteSelection: () => this.canConfirmActivityInviteSelection(),
+    confirmActivityInviteSelection: (event) => this.confirmActivityInviteSelection(event),
+    closeActivityInviteFriends: (applyInvitations) => this.closeActivityInviteFriends(applyInvitations),
+    selectedActivityInviteChips: () => this.selectedActivityInviteChips,
+    activityInviteCandidates: () => this.activityInviteCandidates,
+    toggleActivityInviteFriend: (userId, event) => this.toggleActivityInviteFriend(userId, event),
+    isActivityInviteFriendSelected: (userId) => this.isActivityInviteFriendSelected(userId),
+    activityInviteMetLabel: (entry) => this.activityInviteMetLabel(entry)
   };
   protected readonly profileTopTraits = PROFILE_PERSONALITY_TOP3;
   protected readonly profilePriorityTags = PROFILE_PRIORITY_TAGS;
@@ -319,13 +311,6 @@ export class App {
     routes: [...(card.routes ?? [])],
     requests: [...card.requests]
   }));
-  protected ticketStickyValue = '';
-  protected ticketDateOrder: 'upcoming' | 'past' = 'upcoming';
-  protected showTicketOrderPicker = false;
-  protected selectedTicketRow: AppTypes.ActivityListRow | null = null;
-  protected selectedTicketCodeValue = '';
-  protected ticketScannerState: 'idle' | 'reading' | 'success' = 'idle';
-  protected ticketScannerResult: AppTypes.TicketScanPayload | null = null;
   protected showAssetForm = false;
   protected showAssetVisibilityPicker = false;
   protected editingAssetId: string | null = null;
@@ -678,18 +663,11 @@ export class App {
     string,
     Partial<Record<'hostTop' | 'memberTop' | 'hostChips' | 'memberChips', ReturnType<typeof setTimeout>>>
   > = {};
-  private ticketScannerTimer: ReturnType<typeof setTimeout> | null = null;
-  private ticketScannerMediaStream: MediaStream | null = null;
-  private ticketScannerDetectionFrame: number | null = null;
-  private ticketScannerDetectBusy = false;
-  private ticketScrollElement: HTMLDivElement | null = null;
-  private ticketScannerVideoElement: HTMLVideoElement | null = null;
-  private ticketListScrollable = true;
-
   constructor(
     private readonly router: Router
   ) {
     this.assetPopupService.registerHost(this.assetPopupHost);
+    this.assetPopupService.registerTicketBridge(this.assetTicketBridge);
     this.syncAssetPopupVisibility();
     this.normalizeAssetMediaLinks();
     this.initializeProfileImageSlots();
@@ -716,6 +694,9 @@ export class App {
     effect(() => {
       const request = this.activitiesContext.activitiesNavigationRequest();
       if (!request) {
+        return;
+      }
+      if (request.type === 'members' || request.type === 'eventEditorMembers') {
         return;
       }
       this.activitiesContext.clearActivitiesNavigationRequest();
@@ -749,17 +730,10 @@ export class App {
         this.openEventEditorFromActivitiesRequest(request.row, request.readOnly);
         return;
       }
-      if (request.type === 'members') {
-        this.openActivityMembers(request.row);
-      }
     });
     
     // Listen for events from EventEditorPopupComponent
     if (typeof window !== 'undefined') {
-      window.addEventListener('app:openMembers', (event) => {
-        this.syncModuleEventEditorDraftFromEvent(event);
-        this.openEventEditorMembers();
-      });
       window.addEventListener('app:openTopics', (event) => {
         this.syncModuleEventEditorDraftFromEvent(event);
         this.openEventTopicsSelector();
@@ -1788,16 +1762,9 @@ export class App {
   protected openAssetTicketsPopup(): void {
     this.assetFilter = 'Ticket';
     this.closeAssetForm();
-    this.seedTicketStickyHeader();
     this.activePopup = 'assetsTickets';
-    this.showTicketOrderPicker = false;
-    this.selectedTicketRow = null;
-    this.selectedTicketCodeValue = '';
-    this.ticketScannerState = 'idle';
-    this.ticketScannerResult = null;
-    this.cancelTicketScannerTimer();
+    this.assetPopupService.prepareTicketPopupOpen();
     this.syncAssetPopupVisibility();
-    setTimeout(() => this.syncTicketScrollOnOpen(), 0);
   }
 
   protected openChatItem(item: ChatMenuItem, closeMenu = true, stacked = false): void {
@@ -2673,8 +2640,8 @@ export class App {
     this.selectedSubEventAssignAssetIds = [];
     this.subEventAssetCapacityEditor = null;
     this.subEventAssetRouteEditor = null;
-    this.subEventResourceFilter = this.normalizeSubEventResourceFilter(type === 'Members' ? 'Members' : type, type);
-    this.stackedPopup = 'subEventAssets';
+    this.subEventResourceFilter = this.normalizeSubEventResourceFilter(type === 'Members' ? null : type, type);
+    this.stackedPopup = type === 'Members' ? 'subEventMembers' : 'subEventAssets';
   }
 
   private popupMembersContextForSubEvent(
@@ -2790,22 +2757,15 @@ export class App {
     this.alertService.open(message);
   }
 
-  protected readonly subEventResourceFilterOptions: AppTypes.SubEventResourceFilter[] = ['Members', 'Car', 'Accommodation', 'Supplies'];
+  protected readonly subEventResourceFilterOptions: readonly AppTypes.AssetType[] = ['Car', 'Accommodation', 'Supplies'];
 
   protected selectSubEventResourceFilter(filter: AppTypes.SubEventResourceFilter): void {
-    const previous = this.subEventResourceFilter;
     this.subEventResourceFilter = this.normalizeSubEventResourceFilter(filter);
     this.suppressSelectOverlayBackdropPointerEvents();
     this.subEventAssetMembersContext = null;
-    if (this.subEventResourceFilter !== 'Members') {
-      this.inlineItemActionMenu = null;
-    }
+    this.inlineItemActionMenu = null;
     this.subEventMemberRolePickerUserId = null;
-    if (this.subEventResourceFilter !== 'Members') {
-      this.subEventMembersPendingOnly = false;
-    } else if (previous !== 'Members') {
-      this.subEventMembersPendingOnly = true;
-    }
+    this.subEventMembersPendingOnly = false;
   }
 
   protected onSubEventResourceFilterOpened(isOpen: boolean, select: MatSelect): void {
@@ -2881,15 +2841,7 @@ export class App {
     if (!this.selectedSubEventBadgeContext) {
       return false;
     }
-    return this.stackedPopup === 'subEventMembers'
-      || (this.stackedPopup === 'subEventAssets' && this.subEventResourceFilter === 'Members');
-  }
-
-  protected isSubEventAssetResourcePopup(): boolean {
-    if (!this.selectedSubEventBadgeContext) {
-      return false;
-    }
-    return this.stackedPopup === 'subEventAssets' && this.subEventResourceFilter !== 'Members';
+    return this.stackedPopup === 'subEventMembers';
   }
 
   protected subEventMembersHeaderTitle(): string {
@@ -2949,7 +2901,7 @@ export class App {
 
   protected subEventAssetsHeaderSummary(): string {
     const context = this.selectedSubEventBadgeContext;
-    if (!context || this.subEventResourceFilter === 'Members') {
+    if (!context) {
       return '0 members';
     }
     const resourceType = this.subEventResourceFilter as AppTypes.AssetType;
@@ -2974,21 +2926,6 @@ export class App {
     return this.resolveSubEventMembersContext() !== null;
   }
 
-  protected canShowStackedMembersInviteButton(): boolean {
-    if (this.isSubEventMembersPopup()) {
-      return this.canShowSubEventMembersInviteButton();
-    }
-    return this.stackedPopup === 'activityMembers' && this.canShowActivityMembersInviteButton();
-  }
-
-  protected openStackedMembersInviteFriends(event?: Event): void {
-    if (this.isSubEventMembersPopup()) {
-      this.openSubEventMembersInviteFriends(event);
-      return;
-    }
-    this.openActivityInviteFriends(event);
-  }
-
   protected subEventMembersPendingCount(): number {
     if (this.isGroupScopedSubEventResourceContext()) {
       return Math.max(0, Math.trunc(Number(this.selectedSubEventBadgeContext?.subEvent.membersPending) || 0));
@@ -2998,7 +2935,7 @@ export class App {
 
   protected toggleSubEventMembersPendingOnly(event?: Event): void {
     event?.stopPropagation();
-    if (this.subEventResourceFilter !== 'Members') {
+    if (this.stackedPopup !== 'subEventMembers') {
       return;
     }
     this.subEventMembersPendingOnly = !this.subEventMembersPendingOnly;
@@ -3022,7 +2959,7 @@ export class App {
 
   protected openSubEventAssetAssignPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.selectedSubEventBadgeContext || this.subEventResourceFilter === 'Members') {
+    if (!this.selectedSubEventBadgeContext || this.stackedPopup !== 'subEventAssets') {
       return;
     }
     const contextType = this.subEventResourceFilter as AppTypes.AssetType;
@@ -3224,10 +3161,6 @@ export class App {
 
   protected canOpenSubEventResourceBadgeDetails(card: AppTypes.SubEventResourceCard): boolean {
     return !!card.sourceAssetId && (card.type === 'Car' || card.type === 'Accommodation' || card.type === 'Supplies');
-  }
-
-  protected isSubEventSupplyContributionsPopup(): boolean {
-    return this.stackedPopup === 'subEventSupplyContributions' && this.selectedSubEventSupplyContributionContext !== null;
   }
 
   protected subEventSupplyContributionsHeaderTitle(): string {
@@ -3906,8 +3839,8 @@ export class App {
     this.subEventMemberRolePickerUserId = null;
   }
 
-  protected removeSubEventMember(member: AppTypes.ActivityMemberEntry, event: Event): void {
-    event.stopPropagation();
+  protected removeSubEventMember(member: AppTypes.ActivityMemberEntry, event?: Event): void {
+    event?.stopPropagation();
     this.updateSubEventMembersEntries(entries => entries.filter(entry => entry.userId !== member.userId));
     this.detachUserFromSelectedSubEventChat(member.userId);
     this.emitActivitiesEventSyncForSelectedMembersRow();
@@ -4272,7 +4205,7 @@ export class App {
     if (parsedCurrent) {
       return parsedCurrent;
     }
-    return 'Members';
+    return 'Car';
   }
 
   private parseSubEventResourceFilter(value: unknown): AppTypes.SubEventResourceFilter | null {
@@ -5341,14 +5274,7 @@ export class App {
     this.pendingAssetDeleteCardId = null;
     this.pendingAssetMemberAction = null;
     this.selectedAssetCardId = null;
-    this.selectedTicketRow = null;
-    this.selectedTicketCodeValue = '';
-    this.ticketStickyValue = '';
-    this.showTicketOrderPicker = false;
-    this.ticketScannerState = 'idle';
-    this.ticketScannerResult = null;
-    this.cancelTicketScannerTimer();
-    this.stopTicketScannerCamera();
+    this.assetPopupService.resetTicketState();
     this.selectedSubEventBadgeContext = null;
     this.subEventBadgePopupOrigin = null;
     this.subEventMembersPendingOnly = false;
@@ -5439,28 +5365,6 @@ export class App {
     if (this.stackedPopup === 'chat') {
       this.cancelChatInitialLoad();
       this.chatHeaderProgress = 0;
-    }
-    if (this.stackedPopup === 'ticketScanner') {
-      this.cancelTicketScannerTimer();
-      this.stopTicketScannerCamera();
-      this.ticketScannerState = 'idle';
-      this.ticketScannerResult = null;
-      this.selectedTicketCodeValue = '';
-      this.selectedTicketRow = null;
-      this.stackedPopup = null;
-      this.syncAssetPopupVisibility();
-      return;
-    }
-    if (this.stackedPopup === 'ticketCode') {
-      this.cancelTicketScannerTimer();
-      this.stopTicketScannerCamera();
-      this.ticketScannerState = 'idle';
-      this.ticketScannerResult = null;
-      this.selectedTicketCodeValue = '';
-      this.selectedTicketRow = null;
-      this.stackedPopup = null;
-      this.syncAssetPopupVisibility();
-      return;
     }
     if (this.stackedPopup === 'eventFeedback' || this.stackedPopup === 'eventFeedbackNote') {
       this.eventFeedbackCards = [];
@@ -7244,7 +7148,7 @@ export class App {
     event.stopPropagation();
     const selected = this.normalizeSubEventResourceFilter(this.subEventResourceFilter);
     this.mobileProfileSelectorSheet = {
-      title: 'Resources',
+      title: 'Assets',
       selected,
       options: this.subEventResourceFilterOptions.map(option => ({
         value: option,
@@ -9337,192 +9241,11 @@ export class App {
         isAdmin: true,
         source: item
       }));
-    const ordered = [...eventRows, ...hostingRows].sort((a, b) => AppUtils.toSortableDate(a.dateIso) - AppUtils.toSortableDate(b.dateIso));
-    if (this.ticketDateOrder === 'upcoming') {
-      return ordered.reverse();
-    }
-    return ordered;
-  }
-
-  protected get groupedTicketRows(): AppTypes.ActivityGroup[] {
-    const grouped: AppTypes.ActivityGroup[] = [];
-    for (const row of this.ticketRows) {
-      const label = this.ticketGroupLabel(row.dateIso);
-      const lastGroup = grouped[grouped.length - 1];
-      if (!lastGroup || lastGroup.label !== label) {
-        grouped.push({ label, rows: [row] });
-        continue;
-      }
-      lastGroup.rows.push(row);
-    }
-    return grouped;
-  }
-
-  protected get ticketStickyHeader(): string {
-    if (this.ticketStickyValue) {
-      return this.ticketStickyValue;
-    }
-    return this.groupedTicketRows[0]?.label ?? 'No tickets';
-  }
-
-  protected ticketHeaderSummary(): string {
-    const count = this.ticketRows.length;
-    return count === 1 ? '1 ticketed event' : `${count} ticketed events`;
-  }
-
-  protected ticketDateOrderLabel(): string {
-    return this.ticketDateOrder === 'upcoming' ? 'Upcoming' : 'Past';
-  }
-
-  protected ticketDateOrderIcon(): string {
-    return this.ticketDateOrder === 'upcoming' ? 'schedule' : 'history';
-  }
-
-  protected toggleTicketOrderPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.showTicketOrderPicker = !this.showTicketOrderPicker;
-  }
-
-  protected selectTicketDateOrder(order: 'upcoming' | 'past', event?: Event): void {
-    event?.stopPropagation();
-    if (this.ticketDateOrder === order) {
-      this.showTicketOrderPicker = false;
-      return;
-    }
-    this.ticketDateOrder = order;
-    this.showTicketOrderPicker = false;
-    this.seedTicketStickyHeader();
-    setTimeout(() => this.syncTicketScrollOnOpen(), 0);
+    return [...eventRows, ...hostingRows].sort((a, b) => AppUtils.toSortableDate(a.dateIso) - AppUtils.toSortableDate(b.dateIso));
   }
 
   protected ticketCardMetaLine(row: AppTypes.ActivityListRow): string {
     return `${row.type === 'hosting' ? 'Hosting' : 'Event'} · ${this.activityDateLabel(row)} · ${row.distanceKm} km`;
-  }
-
-  protected openTicketCodePopup(row: AppTypes.ActivityListRow, event?: Event): void {
-    event?.stopPropagation();
-    this.selectedTicketRow = row;
-    this.selectedTicketCodeValue = this.encodeTicketPayload(this.createTicketScanPayload(row));
-    this.ticketScannerResult = null;
-    this.ticketScannerState = 'idle';
-    this.cancelTicketScannerTimer();
-    this.stopTicketScannerCamera();
-    this.stackedPopup = 'ticketCode';
-    this.syncAssetPopupVisibility();
-  }
-
-  protected ticketCodeAvatarUrl(): string {
-    const payload = this.selectedTicketPayload();
-    return this.ticketPayloadAvatarUrl(payload);
-  }
-
-  protected ticketCodeInitials(): string {
-    const payload = this.selectedTicketPayload();
-    if (!payload) {
-      return '';
-    }
-    return this.ticketPayloadInitials(payload);
-  }
-
-  protected ticketCodePersonLine(): string {
-    const payload = this.selectedTicketPayload();
-    if (!payload) {
-      return '';
-    }
-    return `${payload.holderName}, ${payload.holderAge} · ${payload.holderCity}`;
-  }
-
-  protected ticketCodeRoleEventLine(): string {
-    const payload = this.selectedTicketPayload();
-    if (!payload) {
-      return '';
-    }
-    return `${payload.holderRole} · ${payload.eventTitle}`;
-  }
-
-  protected ticketCodeDateLine(): string {
-    const payload = this.selectedTicketPayload();
-    if (!payload) {
-      return '';
-    }
-    return payload.eventTimeframe || payload.eventDateLabel;
-  }
-
-  protected ticketQrImageUrl(): string {
-    if (!this.selectedTicketCodeValue) {
-      return '';
-    }
-    const payload = encodeURIComponent(this.selectedTicketCodeValue);
-    return `https://api.qrserver.com/v1/create-qr-code/?size=1024x1024&format=png&ecc=Q&margin=0&data=${payload}`;
-  }
-
-  protected openTicketScannerPopup(event?: Event): void {
-    event?.stopPropagation();
-    if (!this.selectedTicketRow || !this.selectedTicketCodeValue) {
-      const fallbackRow = this.ticketRows[0] ?? null;
-      if (fallbackRow) {
-        this.selectedTicketRow = fallbackRow;
-        this.selectedTicketCodeValue = this.encodeTicketPayload(this.createTicketScanPayload(fallbackRow));
-      } else {
-        this.selectedTicketRow = null;
-        this.selectedTicketCodeValue = '';
-      }
-    }
-    this.ticketScannerState = 'reading';
-    this.ticketScannerResult = null;
-    this.stackedPopup = 'ticketScanner';
-    this.syncAssetPopupVisibility();
-    this.startTicketScannerReading();
-  }
-
-  protected retryTicketScanner(event?: Event): void {
-    event?.stopPropagation();
-    this.ticketScannerState = 'reading';
-    this.ticketScannerResult = null;
-    this.syncAssetPopupVisibility();
-    this.startTicketScannerReading();
-  }
-
-  protected ticketScannerPersonLine(): string {
-    const payload = this.ticketScannerResult;
-    if (!payload) {
-      return '';
-    }
-    return `${payload.holderName}, ${payload.holderAge} · ${payload.holderCity}`;
-  }
-
-  protected ticketScannerRoleEventLine(): string {
-    const payload = this.ticketScannerResult;
-    if (!payload) {
-      return '';
-    }
-    return `${payload.holderRole} · ${payload.eventTitle}`;
-  }
-
-  protected ticketScannerDateLine(): string {
-    const payload = this.ticketScannerResult;
-    if (!payload) {
-      return '';
-    }
-    return payload.eventTimeframe || payload.eventDateLabel;
-  }
-
-  protected ticketScannerResultAvatarUrl(): string {
-    return this.ticketPayloadAvatarUrl(this.ticketScannerResult);
-  }
-
-  protected ticketScannerResultInitials(): string {
-    if (!this.ticketScannerResult) {
-      return '';
-    }
-    return this.ticketPayloadInitials(this.ticketScannerResult);
-  }
-
-  protected shouldShowTicketGroupMarker(groupIndex: number): boolean {
-    if (groupIndex > 0) {
-      return true;
-    }
-    return this.isTicketListScrollableNow();
   }
 
   protected readonly calendarWeekdayLabels = APP_STATIC_DATA.calendarWeekdayLabels;
@@ -12339,6 +12062,58 @@ export class App {
     this.closeStackedPopup();
   }
 
+  protected closeActivityMembersPopup(): void {
+    this.closeStackedPopup();
+  }
+
+  protected handleActivityMembersInvite(): void {
+    this.openActivityInviteFriends();
+  }
+
+  protected handleActivityMembersTogglePendingOnly(): void {
+    this.toggleActivityMembersPendingOnly();
+  }
+
+  protected handleActivityMemberActionMenuToggle(payload: { entry: AppTypes.ActivityMemberEntry; event: Event }): void {
+    this.toggleActivityMemberActionMenu(payload.entry, payload.event);
+  }
+
+  protected handleActivityMemberApprove(entry: AppTypes.ActivityMemberEntry): void {
+    this.approveActivityMember(entry);
+  }
+
+  protected handleActivityMemberRemove(entry: AppTypes.ActivityMemberEntry): void {
+    this.removeActivityMember(entry);
+  }
+
+  protected closeSubEventMembersPopup(): void {
+    this.closeStackedPopup();
+  }
+
+  protected handleSubEventMembersInvite(): void {
+    this.openSubEventMembersInviteFriends();
+  }
+
+  protected handleSubEventMembersTogglePendingOnly(): void {
+    this.toggleSubEventMembersPendingOnly();
+  }
+
+  protected handleSubEventMemberActionMenuToggle(payload: { entry: AppTypes.ActivityMemberEntry; event: Event }): void {
+    this.toggleSubEventMemberActionMenu(payload.entry, payload.event);
+  }
+
+  protected handleSubEventMemberRemove(entry: AppTypes.ActivityMemberEntry): void {
+    this.removeSubEventMember(entry);
+  }
+
+  protected handleSubEventMemberRolePickerToggle(payload: { entry: AppTypes.ActivityMemberEntry; event: Event }): void {
+    this.toggleSubEventMemberRolePicker(payload.entry, payload.event);
+  }
+
+  protected handleSubEventMemberRoleSelection(payload: { entry: AppTypes.ActivityMemberEntry; role: AppTypes.ActivityMemberRole; event: Event }): void {
+    this.setSubEventMemberRole(payload.entry, payload.role, payload.event);
+  }
+
   protected openActivityInviteFriends(event?: Event): void {
     event?.stopPropagation();
     if (!this.selectedActivityMembersRowId || !this.selectedActivityMembersRow) {
@@ -13438,9 +13213,6 @@ export class App {
 
   protected selectAssetFilter(filter: AppTypes.AssetFilterType): void {
     this.assetFilter = filter;
-    if (filter !== 'Ticket') {
-      this.showTicketOrderPicker = false;
-    }
     if (filter === 'Car') {
       this.activePopup = 'assetsCar';
       this.syncAssetPopupVisibility();
@@ -13453,10 +13225,8 @@ export class App {
     }
     if (filter === 'Ticket') {
       this.activePopup = 'assetsTickets';
-      this.seedTicketStickyHeader();
-      this.showTicketOrderPicker = false;
+      this.assetPopupService.prepareTicketPopupOpen();
       this.syncAssetPopupVisibility();
-      setTimeout(() => this.syncTicketScrollOnOpen(), 0);
       return;
     }
     this.activePopup = 'assetsSupplies';
@@ -13474,7 +13244,6 @@ export class App {
     this.pendingAssetMemberAction = null;
     this.pendingSubEventAssetCreateAssignment = null;
     this.inlineItemActionMenu = null;
-    this.showTicketOrderPicker = false;
     this.showAssetForm = true;
     this.showAssetVisibilityPicker = false;
     const forcePrivateVisibility = this.isAssetPopup;
@@ -14253,9 +14022,6 @@ export class App {
     }
     if (this.showActivitiesSecondaryPicker && !target.closest('.activities-secondary-picker') && !target.closest('.popup-view-fab')) {
       this.showActivitiesSecondaryPicker = false;
-    }
-    if (this.showTicketOrderPicker && !target.closest('.ticket-order-picker')) {
-      this.showTicketOrderPicker = false;
     }
     if (this.showActivityInviteSortPicker && !target.closest('.friends-picker-sort') && !target.closest('.popup-view-fab')) {
       this.showActivityInviteSortPicker = false;
@@ -15803,11 +15569,6 @@ export class App {
     }, 120);
   }
 
-  protected onTicketScroll(event: Event): void {
-    const target = event.target as HTMLElement;
-    this.updateTicketStickyHeader(target.scrollTop || 0);
-  }
-
   protected navigateActivitiesCalendarTo(pageIndex: number, event?: Event): void {
     event?.stopPropagation();
     if (!this.isCalendarLayoutView()) {
@@ -16817,60 +16578,6 @@ export class App {
     }, 0);
   }
 
-  private syncTicketScrollOnOpen(): void {
-    const scrollElement = this.ticketScrollElement;
-    if (!scrollElement) {
-      this.seedTicketStickyHeader();
-      return;
-    }
-    scrollElement.scrollTop = 0;
-    this.isTicketListScrollableNow();
-    this.updateTicketStickyHeader(0);
-  }
-
-  private seedTicketStickyHeader(): void {
-    this.ticketStickyValue = this.groupedTicketRows[0]?.label ?? 'No tickets';
-  }
-
-  private updateTicketStickyHeader(scrollTop: number): void {
-    const groups = this.groupedTicketRows;
-    if (groups.length === 0) {
-      this.ticketStickyValue = 'No tickets';
-      return;
-    }
-    const scrollElement = this.ticketScrollElement;
-    if (!scrollElement) {
-      this.ticketStickyValue = groups[0].label;
-      return;
-    }
-    const stickyHeader = scrollElement.querySelector<HTMLElement>('.activities-sticky-header');
-    const stickyHeaderHeight = stickyHeader?.offsetHeight ?? 0;
-    const targetTop = scrollTop + stickyHeaderHeight + 1;
-    const rows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.ticket-row-item'));
-    this.isTicketListScrollableNow();
-    if (rows.length === 0) {
-      this.ticketStickyValue = groups[0].label;
-      return;
-    }
-    if (scrollTop <= 1) {
-      this.ticketStickyValue = rows[0].dataset['groupLabel'] ?? groups[0].label;
-      return;
-    }
-    const alignmentTolerancePx = 2;
-    const activeRow =
-      rows.find(row => row.offsetTop >= targetTop - alignmentTolerancePx) ??
-      rows[rows.length - 1];
-    this.ticketStickyValue = activeRow.dataset['groupLabel'] ?? groups[0].label;
-  }
-
-  private ticketGroupLabel(dateIso: string): string {
-    const parsed = new Date(dateIso);
-    if (Number.isNaN(parsed.getTime())) {
-      return 'Date unavailable';
-    }
-    return parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  }
-
   private createTicketScanPayload(row: AppTypes.ActivityListRow): AppTypes.TicketScanPayload {
     const issuedAtIso = AppUtils.toIsoDateTime(new Date());
     const code = `TKT-${row.id}-${AppDemoGenerators.hashText(`${this.activeUser.id}:${row.id}:${issuedAtIso}`)}`;
@@ -16887,93 +16594,6 @@ export class App {
       eventTimeframe: row.detail,
       eventDateLabel: this.activityDateLabel(row),
       issuedAtIso
-    };
-  }
-
-  private encodeTicketPayload(payload: AppTypes.TicketScanPayload): string {
-    try {
-      const json = JSON.stringify(payload);
-      if (typeof TextEncoder === 'undefined' || typeof btoa === 'undefined') {
-        return json;
-      }
-      const bytes = new TextEncoder().encode(json);
-      let binary = '';
-      bytes.forEach(value => {
-        binary += String.fromCharCode(value);
-      });
-      return btoa(binary);
-    } catch {
-      return JSON.stringify(payload);
-    }
-  }
-
-  private decodeTicketPayload(encoded: string): AppTypes.TicketScanPayload | null {
-    try {
-      if (typeof TextDecoder === 'undefined' || typeof atob === 'undefined') {
-        return null;
-      }
-      const binary = atob(encoded);
-      const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
-      const json = new TextDecoder().decode(bytes);
-      const parsed = JSON.parse(json) as Partial<AppTypes.TicketScanPayload>;
-      if (
-        typeof parsed.code !== 'string'
-        || typeof parsed.holderUserId !== 'string'
-        || typeof parsed.holderName !== 'string'
-        || typeof parsed.eventId !== 'string'
-        || typeof parsed.eventTitle !== 'string'
-        || typeof parsed.eventSubtitle !== 'string'
-        || typeof parsed.eventTimeframe !== 'string'
-        || typeof parsed.issuedAtIso !== 'string'
-      ) {
-        return null;
-      }
-      return {
-        code: parsed.code,
-        holderUserId: parsed.holderUserId,
-        holderName: parsed.holderName,
-        holderAge: typeof parsed.holderAge === 'number' ? parsed.holderAge : this.activeUser.age,
-        holderCity: typeof parsed.holderCity === 'string' ? parsed.holderCity : this.activeUser.city,
-        holderRole: parsed.holderRole === 'Admin' || parsed.holderRole === 'Manager' ? parsed.holderRole : 'Member',
-        eventId: parsed.eventId,
-        eventTitle: parsed.eventTitle,
-        eventSubtitle: parsed.eventSubtitle,
-        eventTimeframe: parsed.eventTimeframe,
-        eventDateLabel: typeof parsed.eventDateLabel === 'string' ? parsed.eventDateLabel : parsed.eventTimeframe,
-        issuedAtIso: parsed.issuedAtIso
-      };
-    } catch {
-      return null;
-    }
-  }
-
-  private startTicketScannerReading(): void {
-    this.cancelTicketScannerTimer();
-    this.stopTicketScannerCamera();
-    void this.startTicketScannerSession();
-  }
-
-  private selectedTicketPayload(): AppTypes.TicketScanPayload | null {
-    const decoded = this.decodeTicketPayload(this.selectedTicketCodeValue);
-    if (decoded) {
-      return decoded;
-    }
-    if (!this.selectedTicketRow) {
-      return null;
-    }
-    return {
-      code: this.selectedTicketCodeValue,
-      holderUserId: this.activeUser.id,
-      holderName: this.activeUser.name,
-      holderAge: this.activeUser.age,
-      holderCity: this.activeUser.city,
-      holderRole: this.selectedTicketRow.isAdmin ? 'Admin' : 'Member',
-      eventId: this.selectedTicketRow.id,
-      eventTitle: this.selectedTicketRow.title,
-      eventSubtitle: this.selectedTicketRow.subtitle,
-      eventTimeframe: this.selectedTicketRow.detail,
-      eventDateLabel: this.activityDateLabel(this.selectedTicketRow),
-      issuedAtIso: AppUtils.toIsoDateTime(new Date())
     };
   }
 
@@ -17002,210 +16622,12 @@ export class App {
     return this.users.find(user => user.id === payload.holderUserId) ?? null;
   }
 
-  private isTicketListScrollableNow(): boolean {
-    const scrollElement = this.ticketScrollElement;
-    if (!scrollElement) {
-      return this.ticketListScrollable;
-    }
-    const scrollable = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight) > 1;
-    this.ticketListScrollable = scrollable;
-    return scrollable;
-  }
-
   private syncAssetPopupVisibility(): void {
     this.assetPopupService.syncVisibility(
       this.isAssetPopup,
-      this.stackedPopup === 'ticketCode' || this.stackedPopup === 'ticketScanner'
+      false,
+      this.superStackedPopup === 'subEventAssetAssign' || this.superStackedPopup === 'activityInviteFriends'
     );
-  }
-
-  private cancelTicketScannerTimer(): void {
-    if (!this.ticketScannerTimer) {
-      return;
-    }
-    clearTimeout(this.ticketScannerTimer);
-    this.ticketScannerTimer = null;
-  }
-
-  private async startTicketScannerSession(): Promise<void> {
-    if (this.stackedPopup !== 'ticketScanner') {
-      return;
-    }
-    const videoElement = await this.waitForTicketScannerVideo();
-    if (!videoElement) {
-      this.startTicketScannerFallbackTimer();
-      return;
-    }
-    const stream = await this.startTicketScannerMediaStream();
-    if (!stream) {
-      this.startTicketScannerFallbackTimer();
-      return;
-    }
-    this.ticketScannerMediaStream = stream;
-    videoElement.srcObject = stream;
-    videoElement.muted = true;
-    videoElement.setAttribute('playsinline', 'true');
-    try {
-      await videoElement.play();
-    } catch {
-      this.startTicketScannerFallbackTimer();
-      return;
-    }
-    const detector = this.createBrowserBarcodeDetector();
-    if (!detector) {
-      if (this.selectedTicketCodeValue) {
-        this.startTicketScannerFallbackTimer();
-      }
-      return;
-    }
-    this.startTicketScannerDetectionLoop(detector, videoElement);
-  }
-
-  private startTicketScannerFallbackTimer(): void {
-    this.cancelTicketScannerTimer();
-    this.ticketScannerTimer = setTimeout(() => {
-      this.ticketScannerTimer = null;
-      const decoded = this.decodeTicketPayload(this.selectedTicketCodeValue);
-      if (decoded) {
-        this.applyTicketScannerSuccess(decoded);
-        return;
-      }
-      if (this.selectedTicketRow) {
-        this.applyTicketScannerSuccess(this.createTicketScanPayload(this.selectedTicketRow));
-        return;
-      }
-      this.ticketScannerResult = null;
-      this.ticketScannerState = 'idle';
-      this.stopTicketScannerCamera();
-      this.cdr.markForCheck();
-    }, 1200);
-  }
-
-  private startTicketScannerDetectionLoop(detector: AppTypes.BrowserBarcodeDetector, videoElement: HTMLVideoElement): void {
-    this.cancelTicketScannerDetectionLoop();
-    this.ticketScannerDetectBusy = false;
-    const tick = (): void => {
-      if (this.stackedPopup !== 'ticketScanner' || this.ticketScannerState !== 'reading') {
-        this.cancelTicketScannerDetectionLoop();
-        return;
-      }
-      if (!this.ticketScannerDetectBusy && videoElement.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA) {
-        this.ticketScannerDetectBusy = true;
-        void detector.detect(videoElement)
-          .then(results => {
-            const payload = this.ticketScannerPayloadFromResults(results);
-            if (payload) {
-              this.applyTicketScannerSuccess(payload);
-            }
-          })
-          .catch(() => {
-            // Ignore intermittent detector read errors and keep scanning.
-          })
-          .finally(() => {
-            this.ticketScannerDetectBusy = false;
-          });
-      }
-      this.ticketScannerDetectionFrame = requestAnimationFrame(tick);
-    };
-    this.ticketScannerDetectionFrame = requestAnimationFrame(tick);
-  }
-
-  private ticketScannerPayloadFromResults(results: AppTypes.BrowserBarcodeDetectorResult[]): AppTypes.TicketScanPayload | null {
-    for (const result of results) {
-      const raw = `${result.rawValue ?? ''}`.trim();
-      if (!raw) {
-        continue;
-      }
-      const decoded = this.decodeTicketPayload(raw);
-      if (decoded) {
-        return decoded;
-      }
-    }
-    return null;
-  }
-
-  private applyTicketScannerSuccess(payload: AppTypes.TicketScanPayload): void {
-    this.cancelTicketScannerTimer();
-    this.ticketScannerResult = payload;
-    this.ticketScannerState = 'success';
-    this.stopTicketScannerCamera();
-    this.cdr.markForCheck();
-  }
-
-  private cancelTicketScannerDetectionLoop(): void {
-    if (this.ticketScannerDetectionFrame !== null) {
-      cancelAnimationFrame(this.ticketScannerDetectionFrame);
-      this.ticketScannerDetectionFrame = null;
-    }
-  }
-
-  private stopTicketScannerCamera(): void {
-    this.cancelTicketScannerDetectionLoop();
-    const videoElement = this.ticketScannerVideoElement;
-    if (videoElement) {
-      try {
-        videoElement.pause();
-      } catch {
-        // no-op
-      }
-      videoElement.srcObject = null;
-    }
-    if (this.ticketScannerMediaStream) {
-      this.ticketScannerMediaStream.getTracks().forEach(track => track.stop());
-      this.ticketScannerMediaStream = null;
-    }
-    this.ticketScannerDetectBusy = false;
-  }
-
-  private async waitForTicketScannerVideo(): Promise<HTMLVideoElement | null> {
-    for (let attempt = 0; attempt < 8; attempt += 1) {
-      const videoElement = this.ticketScannerVideoElement;
-      if (videoElement) {
-        return videoElement;
-      }
-      await new Promise<void>(resolve => {
-        requestAnimationFrame(() => resolve());
-      });
-    }
-    return null;
-  }
-
-  private async startTicketScannerMediaStream(): Promise<MediaStream | null> {
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-      return null;
-    }
-    try {
-      return await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      });
-    } catch {
-      try {
-        return await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      } catch {
-        return null;
-      }
-    }
-  }
-
-  private createBrowserBarcodeDetector(): AppTypes.BrowserBarcodeDetector | null {
-    const maybeCtor = (globalThis as { BarcodeDetector?: AppTypes.BrowserBarcodeDetectorConstructor }).BarcodeDetector;
-    if (typeof maybeCtor !== 'function') {
-      return null;
-    }
-    try {
-      return new maybeCtor({ formats: ['qr_code'] });
-    } catch {
-      try {
-        return new maybeCtor();
-      } catch {
-        return null;
-      }
-    }
   }
 
 }

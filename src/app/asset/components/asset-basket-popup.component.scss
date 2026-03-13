@@ -1,0 +1,79 @@
+:host {
+  display: contents;
+}
+
+.asset-basket-popup-shell .popup-panel-friends-picker.popup-panel-friends-picker-members.popup-panel-subevent-asset-assign {
+  width: min(1060px, calc(100vw - 1.2rem));
+  height: calc(100vh - 1.2rem);
+}
+
+.asset-basket-popup-shell .popup-header-inline-controls {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.46rem;
+}
+
+.asset-basket-popup-shell .popup-body.popup-body-subevent-asset-assign {
+  display: grid;
+  gap: 0.48rem;
+  align-content: start;
+  grid-auto-rows: max-content;
+}
+
+.asset-basket-popup-shell .friends-picker-card-add-btn {
+  position: absolute;
+  top: 0.48rem;
+  right: 0.48rem;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  background: rgba(243, 249, 255, 0.92);
+  color: #275b98;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.asset-basket-popup-shell .friends-picker-card-add-btn .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.asset-basket-popup-shell .friends-picker-card-add-btn.active {
+  background: #2d7d47;
+  border-color: #20613a;
+  color: #fff;
+}
+
+.asset-basket-popup-shell .subevent-asset-assign-chip {
+  gap: 0.35rem;
+}
+
+.asset-basket-popup-shell .subevent-asset-assign-chip .mat-icon:first-child {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.asset-basket-popup-shell .subevent-asset-assign-list {
+  align-content: start;
+}
+
+.asset-basket-popup-shell .subevent-asset-assign-card {
+  max-width: none;
+}
+
+.asset-basket-popup-shell .subevent-asset-assign-select-btn {
+  top: 0.42rem;
+  right: 0.42rem;
+}

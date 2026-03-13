@@ -1,0 +1,394 @@
+:host {
+  display: contents;
+}
+
+.activity-members-popup-shell .popup-panel-members {
+  height: min(86vh, 900px);
+}
+
+.activity-members-popup-shell .popup-body {
+  padding: 0.4rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.72rem;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.activity-members-popup-shell .popup-body.popup-body-members {
+  height: 100%;
+}
+
+.activity-members-popup-shell .activity-members-popup-wrap {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+}
+
+.activity-members-popup-shell .subevent-members-scroll-area {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.activity-members-popup-shell .subevent-members-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 0.58rem;
+  align-content: start;
+}
+
+.activity-members-popup-shell .activity-members-header-invite-trigger {
+  min-height: 34px;
+  padding-right: 8px;
+}
+
+.activity-members-popup-shell .activity-members-header-pending-toggle {
+  min-height: 34px;
+  margin-left: 0;
+}
+
+.activity-members-popup-shell .activity-members-header-pending-toggle .activity-members-header-pending-badge {
+  top: -8px;
+  right: -8px;
+}
+
+.activity-members-popup-shell .friends-picker-card {
+  position: relative;
+  width: min(100%, 320px);
+  min-height: 250px;
+  border-radius: 13px;
+  border: 1px solid rgba(30, 51, 81, 0.24);
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+
+.activity-members-popup-shell .friends-picker-card-add-btn {
+  position: absolute;
+  top: 0.48rem;
+  right: 0.48rem;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  background: rgba(243, 249, 255, 0.92);
+  color: #275b98;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.activity-members-popup-shell .friends-picker-card-add-btn .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.activity-members-popup-shell .friends-picker-card-add-btn.active {
+  background: #2d7d47;
+  border-color: #20613a;
+  color: #fff;
+}
+
+.activity-members-popup-shell .friends-picker-card-meta {
+  position: absolute;
+  left: 0.52rem;
+  right: 0.52rem;
+  bottom: 0.46rem;
+  z-index: 2;
+}
+
+.activity-members-popup-shell .friends-picker-card-meta h4 {
+  margin: 0;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+
+.activity-members-popup-shell .friends-picker-card-meta p {
+  margin: 0.1rem 0 0;
+  color: rgba(245, 249, 255, 0.96);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.58);
+}
+
+.activity-members-popup-shell .activity-members-grid {
+  align-content: start;
+}
+
+.activity-members-popup-shell .subevent-member-image-card {
+  min-height: 240px;
+  overflow: visible;
+  z-index: 0;
+  isolation: isolate;
+}
+
+.activity-members-popup-shell .activity-member-image-card {
+  min-height: 220px;
+}
+
+.activity-members-popup-shell .subevent-member-image-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(8, 16, 28, 0.14) 0%, rgba(8, 15, 28, 0.82) 100%);
+}
+
+.activity-members-popup-shell .subevent-member-image-card.member-card-tone-awaiting-approval::before,
+.activity-members-popup-shell .subevent-member-image-card.member-card-tone-invite-pending::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.activity-members-popup-shell .subevent-member-image-card.member-card-tone-awaiting-approval::before {
+  background: linear-gradient(160deg, rgba(206, 54, 88, 0.22) 0%, rgba(92, 20, 40, 0.36) 100%);
+}
+
+.activity-members-popup-shell .subevent-member-image-card.member-card-tone-invite-pending::before {
+  background: linear-gradient(160deg, rgba(180, 108, 36, 0.2) 0%, rgba(96, 51, 18, 0.3) 100%);
+}
+
+.activity-members-popup-shell .subevent-member-image-card.menu-open {
+  z-index: 18;
+}
+
+.activity-members-popup-shell .member-card-status-chip {
+  position: absolute;
+  top: 0.48rem;
+  left: 0.48rem;
+  z-index: 4;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  box-shadow: 0 3px 10px rgba(10, 20, 34, 0.28);
+}
+
+.activity-members-popup-shell .member-card-status-chip .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.activity-members-popup-shell .subevent-member-menu-anchor {
+  position: absolute;
+  top: 0.48rem;
+  right: 0.48rem;
+  z-index: 5;
+}
+
+.activity-members-popup-shell .subevent-member-action-menu {
+  z-index: 180;
+}
+
+.activity-members-popup-shell .subevent-member-menu-trigger {
+  position: relative;
+  top: auto;
+  right: auto;
+  color: #214d85;
+}
+
+.activity-members-popup-shell .subevent-member-menu-trigger.active {
+  background: #1f3f63;
+  border-color: rgba(255, 255, 255, 0.92);
+  color: #fff;
+}
+
+.activity-members-popup-shell .subevent-member-menu-trigger .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.activity-members-popup-shell .subevent-member-card-meta h4 {
+  color: #fff;
+}
+
+.activity-members-popup-shell .subevent-member-card-meta p {
+  color: rgba(245, 249, 255, 0.96);
+}
+
+.activity-members-popup-shell .subevent-member-card-status {
+  color: rgba(245, 249, 255, 0.92) !important;
+  font-size: 0.72rem !important;
+}
+
+.activity-members-popup-shell .subevent-member-menu-chevron {
+  margin-left: auto;
+}
+
+.activity-members-popup-shell .subevent-member-role-options {
+  margin-top: 0.08rem;
+  padding-top: 0.18rem;
+  border-top: 1px solid rgba(37, 64, 101, 0.14);
+  display: grid;
+  gap: 0.14rem;
+}
+
+.activity-members-popup-shell .subevent-member-role-option.is-active {
+  background: rgba(230, 239, 252, 0.76);
+  color: #1f3659;
+}
+
+.activity-members-popup-shell .subevent-member-role-option .mat-icon:last-child {
+  margin-left: auto;
+}
+
+.activity-members-popup-shell .member-card-tone-admin {
+  border-color: rgba(57, 108, 177, 0.56);
+}
+
+.activity-members-popup-shell .member-card-tone-manager {
+  border-color: rgba(131, 102, 42, 0.58);
+}
+
+.activity-members-popup-shell .member-card-tone-member,
+.activity-members-popup-shell .member-card-tone-accepted {
+  border-color: rgba(57, 140, 94, 0.5);
+}
+
+.activity-members-popup-shell .member-card-tone-invite-pending {
+  border-color: rgba(177, 124, 48, 0.72);
+}
+
+@media (min-width: 761px) {
+  .activity-members-popup-shell .popup-header.popup-header-activity-members-pending-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-rows: auto auto;
+    column-gap: 0.34rem;
+    row-gap: 0.18rem;
+    align-items: center;
+  }
+
+  .activity-members-popup-shell .popup-header.popup-header-activity-members-pending-layout .popup-title {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
+    min-width: 0;
+    margin-right: 0;
+  }
+
+  .activity-members-popup-shell .popup-header.popup-header-activity-members-pending-layout .activity-members-header-invite-trigger {
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
+    margin-left: 0;
+  }
+
+  .activity-members-popup-shell .popup-header.popup-header-activity-members-pending-layout .activity-members-header-pending-toggle {
+    grid-column: 3 / 4;
+    grid-row: 1 / 2;
+    margin-left: 0;
+  }
+
+  .activity-members-popup-shell .popup-header.popup-header-activity-members-pending-layout .popup-close {
+    grid-column: 4 / 5;
+    grid-row: 1 / 2;
+    margin-left: 0;
+  }
+
+  .activity-members-popup-shell .popup-header.popup-header-activity-members-pending-layout .members-header-summary-badge {
+    grid-column: 2 / 4;
+    grid-row: 2 / 3;
+    justify-self: center;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .activity-members-popup-shell .subevent-members-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .activity-members-popup-shell .subevent-member-image-card {
+    min-height: 190px;
+  }
+
+  .activity-members-popup-shell .popup-header.popup-header-members-invite-mobile-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-rows: auto auto;
+    column-gap: 0.32rem;
+    row-gap: 0.24rem;
+    align-items: center;
+  }
+
+  .activity-members-popup-shell .popup-header.popup-header-members-invite-mobile-layout .popup-title {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
+    min-width: 0;
+    margin-right: 0;
+  }
+
+  .activity-members-popup-shell .popup-header.popup-header-members-invite-mobile-layout .activity-members-header-invite-trigger {
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
+    margin-left: 0;
+  }
+
+  .activity-members-popup-shell .popup-header.popup-header-members-invite-mobile-layout .popup-close {
+    grid-column: 3 / 4;
+    grid-row: 1 / 2;
+    margin-left: 0;
+  }
+
+  .activity-members-popup-shell .popup-header.popup-header-members-invite-mobile-layout .members-header-summary-badge {
+    grid-column: 1 / 4;
+    grid-row: 2 / 3;
+    justify-self: auto;
+    margin-left: 0;
+  }
+
+  .activity-members-popup-shell .popup-header.popup-header-members-invite-mobile-layout .popup-chat-title-block p {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .activity-members-popup-shell .popup-header.popup-header-activity-members-pending-layout {
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+  }
+
+  .activity-members-popup-shell .popup-header.popup-header-activity-members-pending-layout .activity-members-header-pending-toggle {
+    grid-column: 3 / 4;
+    grid-row: 1 / 2;
+    margin-left: 0;
+  }
+
+  .activity-members-popup-shell .popup-header.popup-header-activity-members-pending-layout .popup-close {
+    grid-column: 4 / 5;
+    grid-row: 1 / 2;
+  }
+
+  .activity-members-popup-shell .popup-header.popup-header-activity-members-pending-layout .members-header-summary-badge {
+    grid-column: 1 / 5;
+    grid-row: 2 / 3;
+  }
+
+  .activity-members-popup-shell .popup-body.popup-body-members {
+    height: calc(100vh - 58px);
+    height: calc(100dvh - 58px);
+    padding: 0.45rem;
+  }
+}

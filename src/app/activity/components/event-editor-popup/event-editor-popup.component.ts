@@ -11,9 +11,11 @@ import { MatTimepickerModule } from '@angular/material/timepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatOptionModule } from '@angular/material/core';
 import { Subscription } from 'rxjs';
+import { ActivitiesDbContextService } from '../../../shared/activities-db-context.service';
 import { EventEditorService } from '../../../shared/event-editor.service';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
+import type * as AppTypes from '../../../shared/app-types';
 import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
 
 type EventVisibility = 'Public' | 'Friends only' | 'Invitation only';
@@ -90,6 +92,7 @@ interface EventEditorSavePayload {
 })
 export class EventEditorPopupComponent implements OnInit, OnDestroy {
   protected readonly eventEditorService = inject(EventEditorService);
+  private readonly activitiesContext = inject(ActivitiesDbContextService);
   private readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
 
   @ViewChild('eventImageInput') eventImageInput!: ElementRef<HTMLInputElement>;
@@ -126,14 +129,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.resetForm();
     });
 
-    effect(() => {
-      const request = this.eventEditorService.subEventResourcePopupRequest();
-      if (!request || typeof window === 'undefined') {
-        return;
-      }
-      window.dispatchEvent(new CustomEvent('app:openSubEventResourcePopupFromEventEditor', { detail: request }));
-      this.eventEditorService.clearSubEventResourcePopupRequest();
-    });
   }
 
   ngOnInit(): void {
@@ -213,9 +208,27 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   requestOpenMembers(): void {
     this.showEventVisibilityPicker = false;
-    window.dispatchEvent(new CustomEvent<EventEditorSavePayload>('app:openMembers', {
-      detail: this.buildEventEditorPayload()
-    }));
+    const source = this.eventEditorService.sourceEvent();
+    const row: AppTypes.ActivityListRow = {
+      id: source?.id ?? 'draft-event',
+      type: this.isHostingLikeSource(source) ? 'hosting' : 'events',
+      title: this.eventForm.title.trim() || 'New Event',
+      subtitle: this.eventForm.description.trim() || 'Draft event',
+      detail: this.eventForm.startAt || 'Draft',
+      dateIso: this.eventForm.startAt || new Date().toISOString(),
+      distanceKm: 0,
+      unread: 0,
+      metricScore: 0,
+      isAdmin: !this.eventEditorService.readOnly(),
+      source: source ?? {
+        id: 'draft-event',
+        avatar: '',
+        title: this.eventForm.title.trim() || 'New Event',
+        shortDescription: this.eventForm.description.trim() || 'Draft event',
+        timeframe: this.eventForm.startAt || 'Draft'
+      }
+    };
+    this.activitiesContext.requestActivitiesNavigation({ type: 'eventEditorMembers', row });
   }
 
   requestOpenSubEvents(): void {
@@ -1077,5 +1090,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   private subEventName(subEvent: EventEditorSubEventItem): string {
     return `${subEvent.name ?? subEvent.title ?? 'Untitled'}`;
+  }
+
+  private isHostingLikeSource(source: any): boolean {
+    if (!source || typeof source !== 'object') {
+      return false;
+    }
+    return !('isAdmin' in source) || source.isAdmin !== true;
   }
 }

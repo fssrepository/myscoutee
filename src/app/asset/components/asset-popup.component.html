@@ -5,24 +5,24 @@
       <div class="popup-header">
         <div class="popup-title">
           <h2>{{ host.getPopupTitle() }}</h2>
-          <p class="popup-subtitle-activities" *ngIf="host.isTicketAssetPopup()">{{ host.ticketHeaderSummary() }}</p>
+          <p class="popup-subtitle-activities" *ngIf="host.isTicketAssetPopup()">{{ assetPopup.ticketHeaderSummary() }}</p>
         </div>
         <div class="ticket-order-picker" *ngIf="host.isTicketAssetPopup()">
           <button
             type="button"
             class="popup-view-fab ticket-order-trigger"
-            (click)="host.toggleTicketOrderPicker($event)"
+            (click)="assetPopup.toggleTicketOrderPicker($event)"
             aria-label="Open ticket date ordering"
           >
-            <mat-icon>{{ host.ticketDateOrderIcon() }}</mat-icon>
-            <span>{{ host.ticketDateOrderLabel() }}</span>
+            <mat-icon>{{ assetPopup.ticketDateOrderIcon() }}</mat-icon>
+            <span>{{ assetPopup.ticketDateOrderLabel() }}</span>
           </button>
-          <div class="activities-view-picker-panel event-explore-order-panel" *ngIf="host.showTicketOrderPicker()">
-            <button type="button" class="activities-view-option" (click)="host.selectTicketDateOrder('upcoming', $event)">
+          <div class="activities-view-picker-panel event-explore-order-panel" *ngIf="assetPopup.showTicketOrderPicker()">
+            <button type="button" class="activities-view-option" (click)="assetPopup.selectTicketDateOrder('upcoming', $event)">
               <mat-icon>schedule</mat-icon>
               <span>Upcoming</span>
             </button>
-            <button type="button" class="activities-view-option" (click)="host.selectTicketDateOrder('past', $event)">
+            <button type="button" class="activities-view-option" (click)="assetPopup.selectTicketDateOrder('past', $event)">
               <mat-icon>history</mat-icon>
               <span>Past</span>
             </button>
@@ -92,7 +92,7 @@
               type="button"
               class="popup-header-add-btn assets-add-btn ticket-toolbar-scanner-btn"
               *ngIf="host.isTicketAssetPopup()"
-              (click)="host.openTicketScannerPopup($event)"
+              (click)="assetPopup.openTicketScannerPopup($event)"
               aria-label="Scan ticket"
             >
               <mat-icon>qr_code_scanner</mat-icon>
@@ -104,14 +104,14 @@
             class="experience-card-list assets-card-list activities-scroll-list activities-scroll-list-event-snap tickets-scroll-list"
             *ngIf="host.isTicketAssetPopup(); else defaultAssetCardList"
             #ticketScroll
-            (scroll)="host.onTicketScroll($event)"
+            (scroll)="assetPopup.onTicketScroll($event)"
           >
-            <div class="activities-sticky-header">{{ host.ticketStickyHeader() }}</div>
+            <div class="activities-sticky-header">{{ assetPopup.ticketStickyHeader() }}</div>
 
-            <ng-container *ngFor="let group of host.groupedTicketRows(); let groupIndex = index; trackBy: trackByActivityGroup">
+            <ng-container *ngFor="let group of assetPopup.groupedTicketRows(); let groupIndex = index; trackBy: trackByActivityGroup">
               <div
                 class="activities-group-marker"
-                *ngIf="host.shouldShowTicketGroupMarker(groupIndex)"
+                *ngIf="assetPopup.shouldShowTicketGroupMarker(groupIndex)"
                 [attr.data-group-label]="group.label"
               >
                 {{ group.label }}
@@ -137,7 +137,7 @@
                   <button
                     type="button"
                     class="asset-occupancy-badge ticket-qr-badge"
-                    (click)="host.openTicketCodePopup(row, $event)"
+                    (click)="assetPopup.openTicketCodePopup(row, $event)"
                     aria-label="Open ticket QR code"
                   >
                     <mat-icon>qr_code_2</mat-icon>
@@ -156,7 +156,7 @@
               </article>
             </ng-container>
 
-            <div class="editor-list-card" *ngIf="host.groupedTicketRows().length === 0">
+            <div class="editor-list-card" *ngIf="assetPopup.groupedTicketRows().length === 0">
               <h4>No ticketed events</h4>
               <p>Enable Ticketing On in an event to generate a ticket here.</p>
             </div>
@@ -253,47 +253,50 @@
     </div>
   </section>
 
-  <section class="app-popup app-popup-stacked" *ngIf="host.stackedPopup() === 'ticketCode' || host.stackedPopup() === 'ticketScanner'">
-    <div class="app-popup-backdrop" (click)="host.closeTicketStackedPopup()"></div>
+  <section class="app-popup app-popup-stacked" *ngIf="assetPopup.ticketOverlayMode() === 'ticketCode' || assetPopup.ticketOverlayMode() === 'ticketScanner'">
+    <div class="app-popup-backdrop" (click)="assetPopup.closeTicketOverlay()"></div>
     <div
       class="app-popup-panel"
-      [class.popup-panel-ticket-fullscreen]="(host.stackedPopup() === 'ticketCode' || host.stackedPopup() === 'ticketScanner') && host.isMobileView()"
+      [class.popup-panel-ticket-fullscreen]="(assetPopup.ticketOverlayMode() === 'ticketCode' || assetPopup.ticketOverlayMode() === 'ticketScanner') && host.isMobileView()"
       (click)="$event.stopPropagation()"
     >
       <div class="popup-header">
         <div class="popup-title">
-          <h2>{{ host.stackedPopup() === 'ticketCode' ? 'Ticket' : 'Scan Ticket' }}</h2>
+          <h2>{{ assetPopup.ticketOverlayMode() === 'ticketCode' ? 'Ticket' : 'Scan Ticket' }}</h2>
         </div>
-        <button mat-icon-button class="popup-close" (click)="host.closeTicketStackedPopup()" aria-label="Close">
+        <button mat-icon-button class="popup-close" (click)="assetPopup.closeTicketOverlay()" aria-label="Close">
           <mat-icon>close</mat-icon>
         </button>
       </div>
 
       <div class="popup-body">
         <app-asset-ticket-code-popup
-          *ngIf="host.stackedPopup() === 'ticketCode'"
-          [selectedTicketRow]="host.selectedTicketRow()"
-          [avatarUrl]="host.ticketCodeAvatarUrl()"
-          [initials]="host.ticketCodeInitials()"
-          [personLine]="host.ticketCodePersonLine()"
-          [roleEventLine]="host.ticketCodeRoleEventLine()"
-          [dateLine]="host.ticketCodeDateLine()"
-          [qrImageUrl]="host.ticketQrImageUrl()"
+          *ngIf="assetPopup.ticketOverlayMode() === 'ticketCode'"
+          [selectedTicketRow]="assetPopup.selectedTicketRow()"
+          [avatarUrl]="assetPopup.ticketCodeAvatarUrl()"
+          [initials]="assetPopup.ticketCodeInitials()"
+          [personLine]="assetPopup.ticketCodePersonLine()"
+          [roleEventLine]="assetPopup.ticketCodeRoleEventLine()"
+          [dateLine]="assetPopup.ticketCodeDateLine()"
+          [qrImageUrl]="assetPopup.ticketQrImageUrl()"
         ></app-asset-ticket-code-popup>
 
         <app-asset-ticket-scanner-popup
-          *ngIf="host.stackedPopup() === 'ticketScanner'"
-          [state]="host.ticketScannerState()"
-          [result]="host.ticketScannerResult()"
-          [avatarUrl]="host.ticketScannerResultAvatarUrl()"
-          [initials]="host.ticketScannerResultInitials()"
-          [personLine]="host.ticketScannerPersonLine()"
-          [roleEventLine]="host.ticketScannerRoleEventLine()"
-          [dateLine]="host.ticketScannerDateLine()"
-          [retry]="host.retryTicketScanner"
+          *ngIf="assetPopup.ticketOverlayMode() === 'ticketScanner'"
+          [state]="assetPopup.ticketScannerState()"
+          [result]="assetPopup.ticketScannerResult()"
+          [avatarUrl]="assetPopup.ticketScannerResultAvatarUrl()"
+          [initials]="assetPopup.ticketScannerResultInitials()"
+          [personLine]="assetPopup.ticketScannerPersonLine()"
+          [roleEventLine]="assetPopup.ticketScannerRoleEventLine()"
+          [dateLine]="assetPopup.ticketScannerDateLine()"
+          [retry]="retryTicketScanner"
           (videoElementChange)="onTicketScannerVideoElementChange($event)"
         ></app-asset-ticket-scanner-popup>
       </div>
     </div>
   </section>
+
+  <app-asset-basket-popup [host]="host"></app-asset-basket-popup>
+  <app-asset-member-picker-popup [host]="host"></app-asset-member-picker-popup>
 </div>

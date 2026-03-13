@@ -46,11 +46,17 @@ export class AppShellComponent {
     // Activities popup lazy loading
     effect(() => {
       const isActivitiesOpen = this.activitiesContext.activitiesOpen();
-      if (isActivitiesOpen && !this.activitiesPopupComponentRef()) {
+      const navigationRequest = this.activitiesContext.activitiesNavigationRequest();
+      const hasInternalActivitiesRequest = navigationRequest?.type === 'members'
+        || navigationRequest?.type === 'chatResource'
+        || navigationRequest?.type === 'eventEditorMembers';
+      const hasEventEditorResourceRequest = this.eventEditorService.subEventResourcePopupRequest() !== null;
+      const shouldLoadActivitiesPopup = isActivitiesOpen || hasInternalActivitiesRequest || hasEventEditorResourceRequest;
+      if (shouldLoadActivitiesPopup && !this.activitiesPopupComponentRef()) {
         void this.ensureActivitiesPopupLoaded();
       }
       // Warm-load editor chunk while activities is open to avoid first-click flash.
-      if (isActivitiesOpen && !this.eventEditorPopupComponentRef()) {
+      if (shouldLoadActivitiesPopup && !this.eventEditorPopupComponentRef()) {
         //requestIdleCallback(() => {
           void this.ensureEventEditorPopupLoaded();
         //});
