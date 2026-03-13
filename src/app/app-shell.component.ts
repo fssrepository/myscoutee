@@ -1,6 +1,7 @@
 import { Component, Type, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { App } from './app';
+import { AssetPopupService } from './asset/asset-popup.service';
 import { ActivitiesDbContextService } from './shared/activities-db-context.service';
 import { EventEditorService } from './shared/event-editor.service';
 
@@ -13,6 +14,9 @@ import { EventEditorService } from './shared/event-editor.service';
     <ng-container *ngIf="activitiesPopupComponent() as activitiesComponent">
       <ng-container *ngComponentOutlet="activitiesComponent"></ng-container>
     </ng-container>
+    <ng-container *ngIf="assetPopupComponent() as assetComponent">
+      <ng-container *ngComponentOutlet="assetComponent"></ng-container>
+    </ng-container>
     <ng-container *ngIf="eventEditorPopupComponent() as popupComponent">
       <ng-container *ngComponentOutlet="popupComponent"></ng-container>
     </ng-container>
@@ -20,12 +24,15 @@ import { EventEditorService } from './shared/event-editor.service';
 })
 export class AppShellComponent {
   private readonly activitiesContext = inject(ActivitiesDbContextService);
+  private readonly assetPopupService = inject(AssetPopupService);
   private readonly eventEditorService = inject(EventEditorService);
   private readonly eventEditorPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly activitiesPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly assetPopupComponentRef = signal<Type<unknown> | null>(null);
   
   protected readonly eventEditorPopupComponent = this.eventEditorPopupComponentRef.asReadonly();
   protected readonly activitiesPopupComponent = this.activitiesPopupComponentRef.asReadonly();
+  protected readonly assetPopupComponent = this.assetPopupComponentRef.asReadonly();
 
   constructor() {
     // Event editor popup lazy loading
@@ -50,6 +57,12 @@ export class AppShellComponent {
       }
     });
 
+    effect(() => {
+      const isAssetPopupVisible = this.assetPopupService.visible();
+      if (isAssetPopupVisible && !this.assetPopupComponentRef()) {
+        void this.ensureAssetPopupLoaded();
+      }
+    });
   }
 
   private async ensureEventEditorPopupLoaded(): Promise<void> {
@@ -66,5 +79,13 @@ export class AppShellComponent {
     }
     const module = await import('./activity/components/event-activities-popup/event-activities-popup.component');
     this.activitiesPopupComponentRef.set(module.EventActivitiesPopupComponent);
+  }
+
+  private async ensureAssetPopupLoaded(): Promise<void> {
+    if (this.assetPopupComponentRef()) {
+      return;
+    }
+    const module = await import('./asset/components/asset-popup.component');
+    this.assetPopupComponentRef.set(module.AssetPopupComponent);
   }
 }

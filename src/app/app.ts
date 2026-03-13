@@ -15,6 +15,8 @@ import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { AlertService } from './shared/alert.service';
 import { ActivitiesDbContextService } from './shared/activities-db-context.service';
+import type { AssetPopupHost } from './asset/asset-popup.host';
+import { AssetPopupService } from './asset/asset-popup.service';
 import { EntryModule } from './entry/entry.module';
 import { EventEditorService } from './shared/event-editor.service';
 import { AppContext, type ActivityCounterKey } from './shared/core/app.context';
@@ -150,6 +152,7 @@ export class App {
 
   public readonly alertService = inject(AlertService);
   protected readonly activitiesContext = inject(ActivitiesDbContextService);
+  private readonly assetPopupService = inject(AssetPopupService);
   protected readonly eventEditorService = inject(EventEditorService);
   protected readonly usersService = inject(UsersService);
   private readonly appCtx = inject(AppContext);
@@ -157,6 +160,95 @@ export class App {
   private readonly cdr = inject(ChangeDetectorRef);
 
   protected readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
+  protected readonly assetPopupHost: AssetPopupHost = {
+    isMobileView: () => this.isMobileView,
+    isAssetPopup: () => this.isAssetPopup,
+    isTicketAssetPopup: () => this.isTicketAssetPopup(),
+    stackedPopup: () => this.stackedPopup,
+    getPopupTitle: () => this.getPopupTitle(),
+    ticketHeaderSummary: () => this.ticketHeaderSummary(),
+    assetFilter: () => this.assetFilter,
+    assetFilterOptions: () => this.assetFilterOptions,
+    assetTypeOptions: () => this.assetTypeOptions,
+    assetFilterPanelWidth: () => this.assetFilterPanelWidth(),
+    groupedTicketRows: () => this.groupedTicketRows,
+    ticketStickyHeader: () => this.ticketStickyHeader,
+    filteredAssetCards: () => this.filteredAssetCards,
+    showTicketOrderPicker: () => this.showTicketOrderPicker,
+    ticketDateOrderLabel: () => this.ticketDateOrderLabel(),
+    ticketDateOrderIcon: () => this.ticketDateOrderIcon(),
+    showAssetForm: () => this.showAssetForm,
+    assetFormTitle: () => this.assetFormTitle,
+    assetForm: () => this.assetForm,
+    assetFormVisibility: () => this.assetFormVisibility,
+    assetFormRouteStops: () => this.assetFormRouteStops,
+    pendingAssetDeleteCardId: () => this.pendingAssetDeleteCardId,
+    pendingAssetDeleteLabel: () => this.pendingAssetDeleteLabel(),
+    selectedTicketRow: () => this.selectedTicketRow,
+    ticketCodeAvatarUrl: () => this.ticketCodeAvatarUrl(),
+    ticketCodeInitials: () => this.ticketCodeInitials(),
+    ticketCodePersonLine: () => this.ticketCodePersonLine(),
+    ticketCodeRoleEventLine: () => this.ticketCodeRoleEventLine(),
+    ticketCodeDateLine: () => this.ticketCodeDateLine(),
+    ticketQrImageUrl: () => this.ticketQrImageUrl(),
+    ticketScannerState: () => this.ticketScannerState,
+    ticketScannerResult: () => this.ticketScannerResult,
+    ticketScannerResultAvatarUrl: () => this.ticketScannerResultAvatarUrl(),
+    ticketScannerResultInitials: () => this.ticketScannerResultInitials(),
+    ticketScannerPersonLine: () => this.ticketScannerPersonLine(),
+    ticketScannerRoleEventLine: () => this.ticketScannerRoleEventLine(),
+    ticketScannerDateLine: () => this.ticketScannerDateLine(),
+    assetTypeIcon: (type) => this.assetTypeIcon(type),
+    assetTypeClass: (type) => this.assetTypeClass(type),
+    shouldShowTicketGroupMarker: (groupIndex) => this.shouldShowTicketGroupMarker(groupIndex),
+    trackByActivityGroup: (index, group) => this.trackByActivityGroup(index, group),
+    trackByActivityRow: (index, row) => this.trackByActivityRow(index, row),
+    activityImageUrl: (row) => this.activityImageUrl(row),
+    activitySourceLink: (row) => this.activitySourceLink(row),
+    activitySourceAvatarClass: (row) => this.activitySourceAvatarClass(row),
+    activitySourceAvatarLabel: (row) => this.activitySourceAvatarLabel(row),
+    activityLeadingIconCircleClass: (row) => this.activityLeadingIconCircleClass(row),
+    activityLeadingIcon: (row) => this.activityLeadingIcon(row),
+    ticketCardMetaLine: (row) => this.ticketCardMetaLine(row),
+    canOpenAssetMap: (card) => this.canOpenAssetMap(card),
+    isAssetItemActionMenuOpen: (card) => this.isAssetItemActionMenuOpen(card),
+    isAssetItemActionMenuOpenUp: (card) => this.isAssetItemActionMenuOpenUp(card),
+    eventVisibilityClass: (option) => this.eventVisibilityClass(option),
+    isEventEditorReadOnly: () => this.isEventEditorReadOnly(),
+    closeAssetPopup: () => this.closePopup(),
+    closeTicketStackedPopup: () => this.closeStackedPopup(),
+    toggleTicketOrderPicker: (event) => this.toggleTicketOrderPicker(event),
+    selectTicketDateOrder: (order, event) => this.selectTicketDateOrder(order, event),
+    selectAssetFilter: (filter) => this.selectAssetFilter(filter),
+    openMobileAssetFilterSelector: (event) => {
+      if (event) {
+        this.openMobileAssetFilterSelector(event);
+      }
+    },
+    openAssetForm: (card) => this.openAssetForm(card),
+    openTicketScannerPopup: (event) => this.openTicketScannerPopup(event),
+    onTicketScroll: (event) => this.onTicketScroll(event),
+    openTicketCodePopup: (row, event) => this.openTicketCodePopup(row, event),
+    openAssetMap: (card, event) => this.openAssetMap(card, event),
+    toggleAssetItemActionMenu: (card, event) => this.toggleAssetItemActionMenu(card, event),
+    runAssetItemEditAction: (card, event) => this.runAssetItemEditAction(card, event),
+    runAssetItemDeleteAction: (card, event) => this.runAssetItemDeleteAction(card, event),
+    closeAssetForm: () => this.closeAssetForm(),
+    saveAssetCard: () => this.saveAssetCard(),
+    setAssetFormRouteStop: (index, value) => this.onAssetFormRouteStopChange(index, value),
+    openAssetFormRouteStopMap: (index, event) => this.openAssetFormRouteStopMap(index, event),
+    refreshAssetFromSourceLink: () => this.refreshAssetFromSourceLink(),
+    onAssetImageFileSelected: (file) => this.applyAssetImageFile(file),
+    cancelAssetDelete: () => this.cancelAssetDelete(),
+    confirmAssetDelete: () => this.confirmAssetDelete(),
+    retryTicketScanner: (event) => this.retryTicketScanner(event),
+    setTicketScrollElement: (element) => {
+      this.ticketScrollElement = element;
+    },
+    setTicketScannerVideoElement: (element) => {
+      this.ticketScannerVideoElement = element;
+    }
+  };
   protected readonly profileTopTraits = PROFILE_PERSONALITY_TOP3;
   protected readonly profilePriorityTags = PROFILE_PRIORITY_TAGS;
   protected readonly profilePillars = PROFILE_PILLARS;
@@ -440,8 +532,6 @@ export class App {
   @ViewChild('activitiesScroll') private activitiesScrollRef?: ElementRef<HTMLDivElement>;
   @ViewChild('activitiesCalendarScroll') private activitiesCalendarScrollRef?: ElementRef<HTMLDivElement>;
   @ViewChild('eventExploreScroll') private eventExploreScrollRef?: ElementRef<HTMLDivElement>;
-  @ViewChild('ticketScroll') private ticketScrollRef?: ElementRef<HTMLDivElement>;
-  @ViewChild('ticketScannerVideo') private ticketScannerVideoRef?: ElementRef<HTMLVideoElement>;
   @ViewChild('subEventStagesScroll') private subEventStagesScrollRef?: ElementRef<HTMLDivElement>;
 
   protected eventSupplyTypes: string[] = ['Cars', 'Members', 'Accessories', 'Accommodation'];
@@ -592,11 +682,15 @@ export class App {
   private ticketScannerMediaStream: MediaStream | null = null;
   private ticketScannerDetectionFrame: number | null = null;
   private ticketScannerDetectBusy = false;
+  private ticketScrollElement: HTMLDivElement | null = null;
+  private ticketScannerVideoElement: HTMLVideoElement | null = null;
   private ticketListScrollable = true;
 
   constructor(
     private readonly router: Router
   ) {
+    this.assetPopupService.registerHost(this.assetPopupHost);
+    this.syncAssetPopupVisibility();
     this.normalizeAssetMediaLinks();
     this.initializeProfileImageSlots();
     this.ensurePaginationTestEvents(30);
@@ -1674,18 +1768,21 @@ export class App {
     this.assetFilter = 'Car';
     this.closeAssetForm();
     this.activePopup = 'assetsCar';
+    this.syncAssetPopupVisibility();
   }
 
   protected openAssetAccommodationPopup(): void {
     this.assetFilter = 'Accommodation';
     this.closeAssetForm();
     this.activePopup = 'assetsAccommodation';
+    this.syncAssetPopupVisibility();
   }
 
   protected openAssetSuppliesPopup(): void {
     this.assetFilter = 'Supplies';
     this.closeAssetForm();
     this.activePopup = 'assetsSupplies';
+    this.syncAssetPopupVisibility();
   }
 
   protected openAssetTicketsPopup(): void {
@@ -1699,6 +1796,7 @@ export class App {
     this.ticketScannerState = 'idle';
     this.ticketScannerResult = null;
     this.cancelTicketScannerTimer();
+    this.syncAssetPopupVisibility();
     setTimeout(() => this.syncTicketScrollOnOpen(), 0);
   }
 
@@ -5327,6 +5425,7 @@ export class App {
       this.markCurrentUserImpressionsAsSeen();
     }
     this.syncUserRealtimeLongPollSchedule(false);
+    this.syncAssetPopupVisibility();
   }
 
   protected closePopupFromBackdrop(event: MouseEvent): void {
@@ -5349,6 +5448,7 @@ export class App {
       this.selectedTicketCodeValue = '';
       this.selectedTicketRow = null;
       this.stackedPopup = null;
+      this.syncAssetPopupVisibility();
       return;
     }
     if (this.stackedPopup === 'ticketCode') {
@@ -5359,6 +5459,7 @@ export class App {
       this.selectedTicketCodeValue = '';
       this.selectedTicketRow = null;
       this.stackedPopup = null;
+      this.syncAssetPopupVisibility();
       return;
     }
     if (this.stackedPopup === 'eventFeedback' || this.stackedPopup === 'eventFeedbackNote') {
@@ -5496,6 +5597,7 @@ export class App {
     if (this.activePopup === 'chat') {
       this.scrollChatToBottom();
     }
+    this.syncAssetPopupVisibility();
   }
 
   protected confirmLogout(): void {
@@ -5507,6 +5609,7 @@ export class App {
     this.showUserMenu = false;
     this.showUserSettingsMenu = false;
     this.firebaseAuthIsBusy = false;
+    this.syncAssetPopupVisibility();
     if (this.authMode === 'firebase') {
       localStorage.removeItem(App.FIREBASE_AUTH_PROFILE_KEY);
       this.firebaseAuthProfile = null;
@@ -9305,6 +9408,7 @@ export class App {
     this.cancelTicketScannerTimer();
     this.stopTicketScannerCamera();
     this.stackedPopup = 'ticketCode';
+    this.syncAssetPopupVisibility();
   }
 
   protected ticketCodeAvatarUrl(): string {
@@ -9367,6 +9471,7 @@ export class App {
     this.ticketScannerState = 'reading';
     this.ticketScannerResult = null;
     this.stackedPopup = 'ticketScanner';
+    this.syncAssetPopupVisibility();
     this.startTicketScannerReading();
   }
 
@@ -9374,6 +9479,7 @@ export class App {
     event?.stopPropagation();
     this.ticketScannerState = 'reading';
     this.ticketScannerResult = null;
+    this.syncAssetPopupVisibility();
     this.startTicketScannerReading();
   }
 
@@ -13337,20 +13443,24 @@ export class App {
     }
     if (filter === 'Car') {
       this.activePopup = 'assetsCar';
+      this.syncAssetPopupVisibility();
       return;
     }
     if (filter === 'Accommodation') {
       this.activePopup = 'assetsAccommodation';
+      this.syncAssetPopupVisibility();
       return;
     }
     if (filter === 'Ticket') {
       this.activePopup = 'assetsTickets';
       this.seedTicketStickyHeader();
       this.showTicketOrderPicker = false;
+      this.syncAssetPopupVisibility();
       setTimeout(() => this.syncTicketScrollOnOpen(), 0);
       return;
     }
     this.activePopup = 'assetsSupplies';
+    this.syncAssetPopupVisibility();
   }
 
   protected openAssetMembers(card: AppTypes.AssetCard, event?: Event): void {
@@ -13363,6 +13473,8 @@ export class App {
   protected openAssetForm(card?: AppTypes.AssetCard): void {
     this.pendingAssetMemberAction = null;
     this.pendingSubEventAssetCreateAssignment = null;
+    this.inlineItemActionMenu = null;
+    this.showTicketOrderPicker = false;
     this.showAssetForm = true;
     this.showAssetVisibilityPicker = false;
     const forcePrivateVisibility = this.isAssetPopup;
@@ -13719,9 +13831,13 @@ export class App {
     if (!file) {
       return;
     }
+    this.applyAssetImageFile(file);
+    target.value = '';
+  }
+
+  private applyAssetImageFile(file: File): void {
     this.revokeObjectUrl(this.assetForm.imageUrl);
     this.assetForm.imageUrl = URL.createObjectURL(file);
-    target.value = '';
   }
 
   protected refreshAssetFromSourceLink(): void {
@@ -16702,7 +16818,7 @@ export class App {
   }
 
   private syncTicketScrollOnOpen(): void {
-    const scrollElement = this.ticketScrollRef?.nativeElement;
+    const scrollElement = this.ticketScrollElement;
     if (!scrollElement) {
       this.seedTicketStickyHeader();
       return;
@@ -16722,7 +16838,7 @@ export class App {
       this.ticketStickyValue = 'No tickets';
       return;
     }
-    const scrollElement = this.ticketScrollRef?.nativeElement;
+    const scrollElement = this.ticketScrollElement;
     if (!scrollElement) {
       this.ticketStickyValue = groups[0].label;
       return;
@@ -16887,13 +17003,20 @@ export class App {
   }
 
   private isTicketListScrollableNow(): boolean {
-    const scrollElement = this.ticketScrollRef?.nativeElement;
+    const scrollElement = this.ticketScrollElement;
     if (!scrollElement) {
       return this.ticketListScrollable;
     }
     const scrollable = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight) > 1;
     this.ticketListScrollable = scrollable;
     return scrollable;
+  }
+
+  private syncAssetPopupVisibility(): void {
+    this.assetPopupService.syncVisibility(
+      this.isAssetPopup,
+      this.stackedPopup === 'ticketCode' || this.stackedPopup === 'ticketScanner'
+    );
   }
 
   private cancelTicketScannerTimer(): void {
@@ -17018,7 +17141,7 @@ export class App {
 
   private stopTicketScannerCamera(): void {
     this.cancelTicketScannerDetectionLoop();
-    const videoElement = this.ticketScannerVideoRef?.nativeElement;
+    const videoElement = this.ticketScannerVideoElement;
     if (videoElement) {
       try {
         videoElement.pause();
@@ -17036,7 +17159,7 @@ export class App {
 
   private async waitForTicketScannerVideo(): Promise<HTMLVideoElement | null> {
     for (let attempt = 0; attempt < 8; attempt += 1) {
-      const videoElement = this.ticketScannerVideoRef?.nativeElement;
+      const videoElement = this.ticketScannerVideoElement;
       if (videoElement) {
         return videoElement;
       }
