@@ -104,6 +104,7 @@ export class EntryShellComponent {
     if (this.demoSelectorLoading) {
       return;
     }
+    this.showUserSelector = false;
     this.demoSelectorLoading = true;
     this.demoUserSelected.emit(userId);
   }
