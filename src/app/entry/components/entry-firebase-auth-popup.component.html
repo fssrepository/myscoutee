@@ -1,0 +1,16 @@
+<section class="firebase-auth-overlay" *ngIf="open">
+  <div class="firebase-auth-backdrop" (click)="requestClose()"></div>
+  <div class="firebase-auth-panel" [class.mobile-fullscreen]="isMobileView" (click)="$event.stopPropagation()">
+    <div class="firebase-auth-header">
+      <h2>Login</h2>
+      <button type="button" class="popup-close" (click)="requestClose()" aria-label="Close login popup">
+        <span class="popup-close-glyph" aria-hidden="true">×</span>
+      </button>
+    </div>
+    <p>Continue with Firebase auth. On mobile this opens as a full-screen flow.</p>
+    <button type="button" class="firebase-auth-main-btn" [disabled]="busy" (click)="requestContinue()">
+      <mat-icon>login</mat-icon>
+      <span>{{ busy ? 'Connecting...' : 'Login / Register' }}</span>
+    </button>
+  </div>
+</section>

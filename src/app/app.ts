@@ -15,11 +15,11 @@ import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { AlertService } from './shared/alert.service';
 import { ActivitiesDbContextService } from './shared/activities-db-context.service';
+import { EntryModule } from './entry/entry.module';
 import { EventEditorService } from './shared/event-editor.service';
 import { AppContext, type ActivityCounterKey } from './shared/core/app.context';
 import { UsersService } from './shared/core/users.service';
 import type {
-  DemoUserListItemDto,
   UserRealtimeLongPollResponseDto,
   UserImpressionsSectionDto,
   UserDto
@@ -128,6 +128,7 @@ const APP_DATE_FORMATS = {
     MatTimepickerModule,
     FormsModule,
     DragDropModule,
+    EntryModule,
     LazyBgImageDirective
   ],
   providers: [
@@ -140,10 +141,6 @@ const APP_DATE_FORMATS = {
 export class App {
   private static readonly DEMO_ACTIVE_USER_KEY = 'demo-active-user';
   private static readonly FIREBASE_AUTH_PROFILE_KEY = 'firebase-auth-profile';
-  private static readonly ENTRY_CONSENT_KEY = 'entry-gdpr-consent';
-  private static readonly ENTRY_CONSENT_AUDIT_KEY = 'entry-gdpr-consent-audit';
-  private static readonly ENTRY_CONSENT_VERSION = '2026-02-26-v1';
-  private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT = 50;
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MIN_PERCENT = 0;
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT = 100;
@@ -183,12 +180,6 @@ export class App {
   protected readonly gdprContent = GDPR_CONTENT;
   protected readonly authMode: AppTypes.AuthMode = this.resolveAuthMode();
   protected showEntryShell = true;
-  protected showEntryConsentPopup = false;
-  protected entryConsentViewOnly = false;
-  protected showUserSelector = false;
-  protected demoSelectorUsers: DemoUserListItemDto[] = [];
-  protected demoSelectorLoading = false;
-  protected showFirebaseAuthPopup = false;
   protected firebaseAuthIsBusy = false;
   protected firebaseAuthProfile: AppTypes.FirebaseAuthProfile | null = null;
   protected activePopup: AppTypes.PopupType = null;
@@ -5515,8 +5506,7 @@ export class App {
     this.popupReturnTarget = null;
     this.showUserMenu = false;
     this.showUserSettingsMenu = false;
-    this.showUserSelector = false;
-    this.showFirebaseAuthPopup = false;
+    this.firebaseAuthIsBusy = false;
     if (this.authMode === 'firebase') {
       localStorage.removeItem(App.FIREBASE_AUTH_PROFILE_KEY);
       this.firebaseAuthProfile = null;
@@ -5528,10 +5518,6 @@ export class App {
   }
 
   protected selectLoginUser(userId: string): void {
-    if (this.demoSelectorLoading) {
-      return;
-    }
-    this.demoSelectorLoading = true;
     this.activeUserId = userId;
     this.appCtx.setActiveUserId(userId);
     localStorage.setItem(App.DEMO_ACTIVE_USER_KEY, userId);
@@ -5546,7 +5532,6 @@ export class App {
     this.syncProfileFormFromActiveUser();
     this.activeMenuSection = 'chat';
     this.completeEntryFlow();
-    this.demoSelectorLoading = false;
     this.cdr.markForCheck();
 
     void this.hydrateUserAfterLogin(userId).finally(() => {
@@ -5558,79 +5543,6 @@ export class App {
       this.activateUserRealtimeLongPoll(userId);
       this.cdr.markForCheck();
     });
-  }
-
-  protected openUserSelector(): void {
-    if (this.authMode === 'firebase') {
-      this.showFirebaseAuthPopup = true;
-      this.closeUserMenu();
-      return;
-    }
-    this.openDemoUserSelectorPopup();
-    this.closeUserMenu();
-  }
-
-  protected openEntryAuth(): void {
-    if (!this.showEntryShell) {
-      return;
-    }
-    if (!this.hasEntryConsent) {
-      this.entryConsentViewOnly = false;
-      this.showEntryConsentPopup = true;
-      return;
-    }
-    if (this.authMode === 'firebase') {
-      if (this.firebaseAuthProfile) {
-        this.completeEntryFlow();
-        const userId = this.activeUserId;
-        void this.hydrateUserAfterLogin(userId).finally(() => {
-          if (this.activeUserId !== userId || this.showEntryShell) {
-            this.cdr.markForCheck();
-            return;
-          }
-          this.syncProfileFormFromActiveUser();
-          this.activateUserRealtimeLongPoll(userId);
-          this.cdr.markForCheck();
-        });
-        return;
-      }
-      this.showFirebaseAuthPopup = true;
-      return;
-    }
-    this.openDemoUserSelectorPopup();
-  }
-
-  protected closeFirebaseAuthPopup(): void {
-    this.showFirebaseAuthPopup = false;
-    this.firebaseAuthIsBusy = false;
-  }
-
-  protected closeDemoUserSelectorPopup(): void {
-    this.showUserSelector = false;
-    this.demoSelectorLoading = false;
-  }
-
-  private openDemoUserSelectorPopup(): void {
-    this.showUserSelector = true;
-    this.demoSelectorUsers = [];
-    this.demoSelectorLoading = true;
-    void this.usersService.loadAvailableDemoUsers().then(users => {
-      this.demoSelectorUsers = users;
-      this.demoSelectorLoading = false;
-      this.cdr.markForCheck();
-    }).catch(() => {
-      this.demoSelectorLoading = false;
-      this.cdr.markForCheck();
-    });
-  }
-
-  protected scrollEntryTo(sectionId: string, event?: Event): void {
-    event?.preventDefault();
-    const target = document.getElementById(sectionId);
-    if (!target) {
-      return;
-    }
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   protected continueWithFirebaseAuth(): void {
@@ -5663,6 +5575,20 @@ export class App {
     void this.hydrateUserAfterLogin(this.activeUserId).finally(() => {
       this.firebaseAuthIsBusy = false;
       const userId = this.activeUserId;
+      this.syncProfileFormFromActiveUser();
+      this.activateUserRealtimeLongPoll(userId);
+      this.cdr.markForCheck();
+    });
+  }
+
+  protected continueWithExistingFirebaseSession(): void {
+    const userId = this.activeUserId;
+    this.completeEntryFlow();
+    void this.hydrateUserAfterLogin(userId).finally(() => {
+      if (this.activeUserId !== userId || this.showEntryShell) {
+        this.cdr.markForCheck();
+        return;
+      }
       this.syncProfileFormFromActiveUser();
       this.activateUserRealtimeLongPoll(userId);
       this.cdr.markForCheck();
@@ -5853,66 +5779,6 @@ export class App {
         }
         : current.member
     });
-  }
-
-  protected get isFirebaseAuthMode(): boolean {
-    return this.authMode === 'firebase';
-  }
-
-  protected get entryAuthButtonShowsAvatar(): boolean {
-    return this.isFirebaseAuthMode && !!this.firebaseAuthProfile;
-  }
-
-  protected get entryAuthButtonIcon(): string {
-    if (this.authMode === 'selector') {
-      return 'group';
-    }
-    return 'login';
-  }
-
-  protected get entryAuthButtonLabel(): string {
-    if (this.entryAuthButtonShowsAvatar) {
-      return this.firebaseAuthProfile?.name ?? 'Continue';
-    }
-    return 'Login';
-  }
-
-  protected get hasEntryConsent(): boolean {
-    return this.loadEntryConsentState() !== null;
-  }
-
-  protected openEntryConsentPopup(viewOnly = false): void {
-    this.entryConsentViewOnly = viewOnly;
-    this.showEntryConsentPopup = true;
-  }
-
-  protected closeEntryConsentPopup(): void {
-    if (!this.entryConsentViewOnly && !this.hasEntryConsent) {
-      return;
-    }
-    this.showEntryConsentPopup = false;
-    this.entryConsentViewOnly = false;
-  }
-
-  protected acceptEntryConsent(): void {
-    const nowIso = new Date().toISOString();
-    const consent: AppTypes.EntryConsentState = {
-      version: App.ENTRY_CONSENT_VERSION,
-      accepted: true,
-      acceptedAtIso: nowIso
-    };
-    localStorage.setItem(App.ENTRY_CONSENT_KEY, JSON.stringify(consent));
-    this.appendEntryConsentAudit('accepted', nowIso);
-    this.showEntryConsentPopup = false;
-    this.entryConsentViewOnly = false;
-  }
-
-  protected rejectEntryConsent(): void {
-    const nowIso = new Date().toISOString();
-    localStorage.removeItem(App.ENTRY_CONSENT_KEY);
-    this.appendEntryConsentAudit('rejected', nowIso);
-    this.showEntryConsentPopup = false;
-    this.entryConsentViewOnly = false;
   }
 
   protected getPopupTitle(): string {
@@ -14114,14 +13980,6 @@ export class App {
       return;
     }
     keyboardEvent.stopPropagation();
-    if (this.showUserSelector) {
-      this.closeDemoUserSelectorPopup();
-      return;
-    }
-    if (this.showFirebaseAuthPopup) {
-      this.closeFirebaseAuthPopup();
-      return;
-    }
     if (this.superStackedPopup === 'subEventAssetAssign') {
       this.closeSubEventAssetAssignPopup(false);
       return;
@@ -14366,74 +14224,15 @@ export class App {
   }
 
   private initializeEntryFlow(): void {
-    const hasConsent = this.loadEntryConsentState() !== null;
-    this.entryConsentViewOnly = false;
-    this.showEntryConsentPopup = !hasConsent;
     if (this.authMode === 'selector') {
       localStorage.removeItem(App.DEMO_ACTIVE_USER_KEY);
       this.firebaseAuthProfile = null;
       this.showEntryShell = true;
-      this.showUserSelector = false;
-      this.showFirebaseAuthPopup = false;
       return;
     }
     this.firebaseAuthProfile = this.loadFirebaseAuthProfile();
     const hasFirebaseSession = this.firebaseAuthProfile !== null;
     this.showEntryShell = !hasFirebaseSession;
-    this.showUserSelector = false;
-    this.showFirebaseAuthPopup = false;
-  }
-
-  private loadEntryConsentState(): AppTypes.EntryConsentState | null {
-    const raw = localStorage.getItem(App.ENTRY_CONSENT_KEY);
-    if (!raw) {
-      return null;
-    }
-    try {
-      const parsed = JSON.parse(raw) as Partial<AppTypes.EntryConsentState>;
-      if (
-        parsed.version !== App.ENTRY_CONSENT_VERSION ||
-        parsed.accepted !== true ||
-        typeof parsed.acceptedAtIso !== 'string' ||
-        parsed.acceptedAtIso.length === 0
-      ) {
-        return null;
-      }
-      return {
-        version: parsed.version,
-        accepted: true,
-        acceptedAtIso: parsed.acceptedAtIso
-      };
-    } catch {
-      return null;
-    }
-  }
-
-  private appendEntryConsentAudit(action: AppTypes.EntryConsentAuditRecord['action'], tsIso: string): void {
-    const record: AppTypes.EntryConsentAuditRecord = {
-      tsIso,
-      action,
-      version: App.ENTRY_CONSENT_VERSION,
-      source: 'entry',
-      userAgent: navigator.userAgent
-    };
-    const existing = this.loadEntryConsentAudit();
-    existing.unshift(record);
-    const trimmed = existing.slice(0, App.ENTRY_CONSENT_AUDIT_MAX);
-    localStorage.setItem(App.ENTRY_CONSENT_AUDIT_KEY, JSON.stringify(trimmed));
-  }
-
-  private loadEntryConsentAudit(): AppTypes.EntryConsentAuditRecord[] {
-    const raw = localStorage.getItem(App.ENTRY_CONSENT_AUDIT_KEY);
-    if (!raw) {
-      return [];
-    }
-    try {
-      const parsed = JSON.parse(raw) as AppTypes.EntryConsentAuditRecord[];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
   }
 
   private loadFirebaseAuthProfile(): AppTypes.FirebaseAuthProfile | null {
@@ -14459,8 +14258,6 @@ export class App {
 
   private completeEntryFlow(): void {
     this.showEntryShell = false;
-    this.showUserSelector = false;
-    this.showFirebaseAuthPopup = false;
     this.activePopup = null;
     this.stackedPopup = null;
     this.popupReturnTarget = null;

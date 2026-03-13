@@ -1,0 +1,100 @@
+<section class="entry-consent-overlay" *ngIf="open" aria-label="GDPR consent">
+  <div class="entry-consent-backdrop" (click)="viewOnly && requestClose()"></div>
+  <article class="entry-consent-panel">
+    <header class="entry-consent-head">
+      <div class="entry-consent-head-row">
+        <h2>Privacy first</h2>
+        <button
+          type="button"
+          class="popup-close"
+          *ngIf="viewOnly"
+          (click)="requestClose()"
+          aria-label="Close privacy popup"
+        >
+          <span class="popup-close-glyph" aria-hidden="true">×</span>
+        </button>
+      </div>
+      <p *ngIf="!viewOnly">Before continuing, please review and accept how your data is used in MyScoutee.</p>
+      <p *ngIf="viewOnly">Full GDPR details for transparency.</p>
+    </header>
+
+    <div class="entry-consent-content">
+      <section class="entry-consent-card">
+        <h3>{{ gdprContent.title }}</h3>
+        <p>{{ gdprContent.subtitle }}</p>
+        <p><strong>Last updated:</strong> {{ gdprContent.updatedAt | date:'mediumDate' }}</p>
+      </section>
+
+      <section class="entry-consent-card">
+        <h3>Contact details</h3>
+        <ul>
+          <li *ngFor="let contact of gdprContent.contacts"><strong>{{ contact.label }}:</strong> {{ contact.value }}</li>
+        </ul>
+      </section>
+
+      <section class="entry-consent-card">
+        <h3>Legal basis</h3>
+        <ul>
+          <li *ngFor="let item of gdprContent.legalBases">{{ item }}</li>
+        </ul>
+      </section>
+
+      <section class="entry-consent-card">
+        <h3>Your rights</h3>
+        <div class="entry-consent-grid">
+          <section class="entry-consent-mini-card" *ngFor="let right of gdprContent.rights">
+            <h4>{{ right.title }}</h4>
+            <ul>
+              <li *ngFor="let item of right.items">{{ item }}</li>
+            </ul>
+          </section>
+        </div>
+      </section>
+
+      <section class="entry-consent-card">
+        <h3>Data categories</h3>
+        <div class="entry-consent-grid">
+          <section class="entry-consent-mini-card" *ngFor="let section of gdprContent.dataCategories">
+            <h4>{{ section.category }}</h4>
+            <ul>
+              <li *ngFor="let item of section.items">{{ item }}</li>
+            </ul>
+          </section>
+        </div>
+      </section>
+
+      <section class="entry-consent-card">
+        <h3>Purposes</h3>
+        <ul>
+          <li *ngFor="let item of gdprContent.purposes">{{ item }}</li>
+        </ul>
+      </section>
+
+      <section class="entry-consent-card">
+        <h3>Retention</h3>
+        <ul>
+          <li *ngFor="let item of gdprContent.retention">{{ item }}</li>
+        </ul>
+      </section>
+
+      <section class="entry-consent-card">
+        <h3>Sharing</h3>
+        <ul>
+          <li *ngFor="let item of gdprContent.sharing">{{ item }}</li>
+        </ul>
+      </section>
+
+      <section class="entry-consent-card">
+        <h3>Security</h3>
+        <ul>
+          <li *ngFor="let item of gdprContent.security">{{ item }}</li>
+        </ul>
+      </section>
+    </div>
+
+    <footer class="entry-consent-actions" *ngIf="!viewOnly">
+      <button type="button" class="entry-consent-btn entry-consent-btn-muted" (click)="requestReject()">Not now</button>
+      <button type="button" class="entry-consent-btn entry-consent-btn-primary" (click)="requestAccept()">Accept and continue</button>
+    </footer>
+  </article>
+</section>

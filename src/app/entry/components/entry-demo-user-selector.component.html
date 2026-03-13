@@ -1,0 +1,33 @@
+<section class="demo-login-overlay" *ngIf="open">
+  <div class="demo-login-backdrop" (click)="requestClose()"></div>
+  <div class="demo-login-panel" (click)="$event.stopPropagation()">
+    <div class="demo-login-header">
+      <div>
+        <h2>Select demo user</h2>
+        <p>Login disabled mode. Choose one of the 50 users to open perspective-based data.</p>
+      </div>
+      <button mat-icon-button type="button" class="popup-close" (click)="requestClose()" aria-label="Close demo user popup">
+        <span class="popup-close-glyph" aria-hidden="true">×</span>
+      </button>
+    </div>
+    <ng-container *ngIf="loading; else demoUserSelectorReady">
+      <div class="demo-user-grid demo-user-grid-loading">
+        <p class="demo-user-loading-copy">Loading demo users...</p>
+      </div>
+    </ng-container>
+    <ng-template #demoUserSelectorReady>
+      <div class="demo-user-grid" *ngIf="users.length > 0; else demoUserSelectorEmpty">
+        <button type="button" class="demo-user-item" *ngFor="let user of users" (click)="requestUserSelect(user.id)">
+          <span class="user-avatar" [class]="'user-color-' + user.gender">{{ user.initials }}</span>
+          <span class="demo-user-name">{{ user.name }}</span>
+          <span class="demo-user-meta">{{ user.gender }} · {{ user.city }}</span>
+        </button>
+      </div>
+    </ng-template>
+    <ng-template #demoUserSelectorEmpty>
+      <div class="demo-user-grid demo-user-grid-loading">
+        <p class="demo-user-loading-copy">No demo users available.</p>
+      </div>
+    </ng-template>
+  </div>
+</section>

@@ -1,0 +1,175 @@
+<section class="entry-shell">
+  <div class="entry-shell-panel">
+    <header class="entry-shell-header">
+      <a class="entry-brand" aria-label="MyScoutee landing top">
+        <img class="entry-brand-mark" src="assets/logo/heart.png" alt="MyScoutee logo" />
+        <span class="entry-brand-text">yScoutee</span>
+      </a>
+      <nav class="entry-nav" aria-label="Landing sections">
+        <a href="#why" (click)="scrollEntryTo('why', $event)">Why</a>
+        <a href="#how" (click)="scrollEntryTo('how', $event)">How it works</a>
+      </nav>
+      <button type="button" class="entry-auth-btn" [class.entry-auth-btn-avatar]="entryAuthButtonShowsAvatar" (click)="requestAuth()">
+        <ng-container *ngIf="entryAuthButtonShowsAvatar; else loginButtonContent">
+          <span class="entry-auth-avatar">{{ firebaseAuthProfile?.initials }}</span>
+        </ng-container>
+        <ng-template #loginButtonContent>
+          <mat-icon>{{ entryAuthButtonIcon }}</mat-icon>
+          <span>{{ entryAuthButtonLabel }}</span>
+        </ng-template>
+      </button>
+    </header>
+
+    <section class="entry-hero" id="top">
+      <div class="entry-hero-main">
+        <div class="entry-hero-content" id="why">
+          <p class="entry-eyebrow">Your preferences come first</p>
+          <h1>Stop Swiping.</h1>
+          <h1>Start Connecting.</h1>
+          <div class="entry-hero-lead">
+            <p class="hero-line-even">Dating became swiping in the 2010s.</p>
+            <p class="hero-line-even">Myscoutee makes meeting people social again.</p>
+          </div>
+          <div class="entry-hero-cta">
+            <button type="button" class="entry-cta entry-cta-primary" (click)="requestAuth()">
+              <mat-icon>rocket_launch</mat-icon>
+              <span>{{ isFirebaseAuthMode ? 'Continue' : 'Start exploring' }}</span>
+            </button>
+            <a class="entry-cta entry-cta-ghost" href="#how" (click)="scrollEntryTo('how', $event)">
+              <mat-icon>timeline</mat-icon>
+              <span>See how it works</span>
+            </a>
+          </div>
+        </div>
+
+        <aside class="entry-hero-stats" aria-label="Why this works">
+          <article class="entry-stat-card">
+            <header class="entry-stat-head">
+              <span class="entry-stat-icon"><mat-icon>tune</mat-icon></span>
+              <div>
+                <span class="entry-stat-value">1-10 score, not just yes/no</span>
+                <span class="entry-stat-label">Show real interest level from low to high with clearer signals.</span>
+              </div>
+            </header>
+            <span class="entry-stat-tags"><span>Best for social & dating</span></span>
+            <div class="entry-stat-meter" role="img" aria-label="Priority range from low intent to high intent">
+              <span class="entry-stat-meter-fill meter-priority"></span>
+            </div>
+          </article>
+          <article class="entry-stat-card">
+            <header class="entry-stat-head">
+              <span class="entry-stat-icon"><mat-icon>groups</mat-icon></span>
+              <div>
+                <span class="entry-stat-value">Group-first chat</span>
+                <span class="entry-stat-label">A small group where interest matches both ways.</span>
+              </div>
+            </header>
+            <span class="entry-stat-tags"><span>Best for communities</span></span>
+          </article>
+          <article class="entry-stat-card">
+            <header class="entry-stat-head">
+              <span class="entry-stat-icon"><mat-icon>hub</mat-icon></span>
+              <div>
+                <span class="entry-stat-value">Live updates</span>
+                <span class="entry-stat-label">Change priorities anytime, with less pressure.</span>
+              </div>
+            </header>
+            <span class="entry-stat-tags"><span>Best for jobs & ideas</span></span>
+          </article>
+        </aside>
+      </div>
+    </section>
+
+    <section class="entry-section" id="how">
+      <header class="entry-section-head">
+        <h2>How it works</h2>
+      </header>
+      <div class="entry-steps-grid">
+        <article class="entry-step-card entry-step-card-visual entry-step-card-visual-1">
+          <div class="entry-step-headline">
+            <span class="entry-step-index">01</span>
+            <h3>Set priorities and feedback</h3>
+          </div>
+          <p>Rate people 1–10 for <strong>better matches</strong>.</p>
+          <div class="entry-step-visual" aria-hidden="true"></div>
+        </article>
+        <article class="entry-step-card entry-step-card-visual entry-step-card-visual-2">
+          <div class="entry-step-headline">
+            <span class="entry-step-index">02</span>
+            <h3>Start in a matched group chat</h3>
+          </div>
+          <p>Join a group chat with your <strong>top matches</strong>.</p>
+          <div class="entry-step-visual" aria-hidden="true"></div>
+        </article>
+        <article class="entry-step-card entry-step-card-visual entry-step-card-visual-3">
+          <div class="entry-step-headline">
+            <span class="entry-step-index">03</span>
+            <h3>Meet through events</h3>
+          </div>
+          <p>Join an event or create your own and <strong>go offline</strong>.</p>
+          <div class="entry-step-visual" aria-hidden="true"></div>
+        </article>
+        <article class="entry-step-card entry-step-card-visual entry-step-card-visual-4">
+          <div class="entry-step-headline">
+            <span class="entry-step-index">04</span>
+            <h3>Host your own events</h3>
+          </div>
+          <p>Create events for everyone, friends, or <strong>invite-only</strong>.</p>
+          <div class="entry-step-visual" aria-hidden="true"></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="entry-final-cta">
+      <h2>Stop guessing. Start prioritizing.</h2>
+      <button type="button" class="entry-cta entry-cta-primary" (click)="requestAuth()">
+        <mat-icon>login</mat-icon>
+        <span>{{ isFirebaseAuthMode ? 'Continue to app' : 'Open demo' }}</span>
+      </button>
+    </section>
+
+    <footer class="entry-footer" aria-label="Site footer">
+      <div class="entry-footer-topline"></div>
+      <div class="entry-footer-grid">
+        <section class="entry-footer-brand">
+          <div class="entry-footer-title">
+            <img class="entry-footer-mark" src="assets/logo/heart.png" alt="MyScoutee logo" />
+            <span>yScoutee</span>
+          </div>
+          <p>Where fast matches turn into real connections.</p>
+        </section>
+
+        <section class="entry-footer-links">
+          <h3>Explore</h3>
+          <a href="#why" (click)="scrollEntryTo('why', $event)">Why</a>
+          <a href="#how" (click)="scrollEntryTo('how', $event)">How it works</a>
+          <a href="#" (click)="requestConsent($event)">Data privacy</a>
+        </section>
+
+        <section class="entry-footer-contact">
+          <h3>Let&apos;s connect</h3>
+          <div class="entry-footer-socials">
+            <a href="https://www.instagram.com/myscoutee1" target="_blank" rel="noopener noreferrer" aria-label="MyScoutee on Instagram">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm10 2H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3Zm-5 3.5A5.5 5.5 0 1 1 6.5 13 5.5 5.5 0 0 1 12 7.5Zm0 2A3.5 3.5 0 1 0 15.5 13 3.5 3.5 0 0 0 12 9.5ZM18.2 6.3a1.2 1.2 0 1 1-1.2 1.2 1.2 1.2 0 0 1 1.2-1.2Z"/>
+              </svg>
+            </a>
+            <a href="https://www.youtube.com/@myscoutee" target="_blank" rel="noopener noreferrer" aria-label="MyScoutee on YouTube">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.8 31.8 0 0 0 0 12a31.8 31.8 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.8 31.8 0 0 0 24 12a31.8 31.8 0 0 0-.5-5.8ZM9.7 15.5V8.5l6.1 3.5-6.1 3.5Z"/>
+              </svg>
+            </a>
+            <a href="https://www.facebook.com/myscoutee" target="_blank" rel="noopener noreferrer" aria-label="MyScoutee on Facebook">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M13.5 22v-8h2.8l.4-3h-3.2V9.1c0-.9.3-1.5 1.6-1.5h1.7V4.9c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.8V11H8.5v3h2.3v8h2.7Z"/>
+              </svg>
+            </a>
+          </div>
+        </section>
+      </div>
+      <div class="entry-footer-bottom">
+        <span>© 2026 MyScoutee</span>
+      </div>
+    </footer>
+  </div>
+</section>
