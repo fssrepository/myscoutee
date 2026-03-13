@@ -9,7 +9,7 @@
         <a href="#why" (click)="scrollEntryTo('why', $event)">Why</a>
         <a href="#how" (click)="scrollEntryTo('how', $event)">How it works</a>
       </nav>
-      <button type="button" class="entry-auth-btn" [class.entry-auth-btn-avatar]="entryAuthButtonShowsAvatar" (click)="requestAuth()">
+      <button type="button" class="entry-auth-btn" [class.entry-auth-btn-avatar]="entryAuthButtonShowsAvatar" (click)="requestHeaderAuth()">
         <ng-container *ngIf="entryAuthButtonShowsAvatar; else loginButtonContent">
           <span class="entry-auth-avatar">{{ firebaseAuthProfile?.initials }}</span>
         </ng-container>
@@ -31,9 +31,9 @@
             <p class="hero-line-even">Myscoutee makes meeting people social again.</p>
           </div>
           <div class="entry-hero-cta">
-            <button type="button" class="entry-cta entry-cta-primary" (click)="requestAuth()">
+            <button type="button" class="entry-cta entry-cta-primary" (click)="requestDemo()">
               <mat-icon>rocket_launch</mat-icon>
-              <span>{{ isFirebaseAuthMode ? 'Continue' : 'Start exploring' }}</span>
+              <span>Start exploring</span>
             </button>
             <a class="entry-cta entry-cta-ghost" href="#how" (click)="scrollEntryTo('how', $event)">
               <mat-icon>timeline</mat-icon>
@@ -122,9 +122,9 @@
 
     <section class="entry-final-cta">
       <h2>Stop guessing. Start prioritizing.</h2>
-      <button type="button" class="entry-cta entry-cta-primary" (click)="requestAuth()">
+      <button type="button" class="entry-cta entry-cta-primary" (click)="requestDemo()">
         <mat-icon>login</mat-icon>
-        <span>{{ isFirebaseAuthMode ? 'Continue to app' : 'Open demo' }}</span>
+        <span>Open demo</span>
       </button>
     </section>
 

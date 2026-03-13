@@ -18,7 +18,8 @@ export class EntryLandingComponent {
   @Input({ required: true }) authMode: AppTypes.AuthMode = 'selector';
   @Input() firebaseAuthProfile: AppTypes.FirebaseAuthProfile | null = null;
 
-  @Output() readonly authRequested = new EventEmitter<void>();
+  @Output() readonly demoRequested = new EventEmitter<void>();
+  @Output() readonly firebaseAuthRequested = new EventEmitter<void>();
   @Output() readonly consentRequested = new EventEmitter<void>();
 
   protected get isFirebaseAuthMode(): boolean {
@@ -43,8 +44,16 @@ export class EntryLandingComponent {
     return 'Login';
   }
 
-  protected requestAuth(): void {
-    this.authRequested.emit();
+  protected requestDemo(): void {
+    this.demoRequested.emit();
+  }
+
+  protected requestHeaderAuth(): void {
+    if (this.isFirebaseAuthMode) {
+      this.firebaseAuthRequested.emit();
+      return;
+    }
+    this.demoRequested.emit();
   }
 
   protected requestConsent(event?: Event): void {

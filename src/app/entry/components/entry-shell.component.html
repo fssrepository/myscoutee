@@ -1,7 +1,8 @@
 <app-entry-landing
   [authMode]="authMode"
   [firebaseAuthProfile]="firebaseAuthProfile"
-  (authRequested)="openEntryAuth()"
+  (demoRequested)="openEntryDemo()"
+  (firebaseAuthRequested)="openEntryFirebaseAuth()"
   (consentRequested)="openEntryConsentPopup(true)"
 ></app-entry-landing>
 

@@ -14,6 +14,7 @@ import { DemoGameService } from '../../demo';
 import { HttpGameService } from '../../http';
 import { UsersRatingsRepository } from '../repositories/users-ratings.repository';
 import type { UserDto } from '../interfaces/user.interface';
+import { SessionService } from './session.service';
 
 export const USER_GAME_CARDS_LOAD_CONTEXT_KEY = 'user-game-cards';
 
@@ -40,13 +41,16 @@ export class GameService {
   private readonly demoGameService = inject(DemoGameService);
   private readonly httpGameService = inject(HttpGameService);
   private readonly usersRatingsRepository = inject(UsersRatingsRepository);
+  private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
   private readonly userGameCardsStackStateByUserId: Record<string, UserGameCardsStackState> = {};
   private userRatesOutboxSyncInFlight = false;
   private userRatesOutboxSyncTimer: ReturnType<typeof setInterval> | null = null;
   private userRatesOutboxSyncKickTimer: ReturnType<typeof setTimeout> | null = null;
 
-  readonly demoModeEnabled = !environment.loginEnabled;
+  private get demoModeEnabled(): boolean {
+    return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
+  }
 
   constructor() {
     this.startUserRatesOutboxSyncLoop();

@@ -1,7 +1,6 @@
 import { computed, Injectable, inject } from '@angular/core';
 
 import { AppDemoGenerators } from '../../../app-demo-generators';
-import { environment } from '../../../../../environments/environment';
 import type {
   UserGameFilterPreferencesDto,
   UserRateOutboxRecord,
@@ -33,10 +32,6 @@ export class DemoUsersRepository {
   readonly demoUsers = computed(() => this.queryAvailableDemoUsers());
 
   constructor() {
-    if (environment.loginEnabled) {
-      this.prepareHttpModeStorage();
-      return;
-    }
     this.init();
   }
 
@@ -213,24 +208,6 @@ export class DemoUsersRepository {
     return users
       .filter(user => user.id !== normalizedRaterId)
       .filter(user => !ratedUserIds.has(user.id));
-  }
-
-  private prepareHttpModeStorage(): void {
-    this.memoryDb.write(state => ({
-      ...state,
-      [USERS_TABLE_NAME]: {
-        byId: {},
-        ids: []
-      },
-      [USER_RATES_TABLE_NAME]: {
-        byId: {},
-        ids: []
-      },
-      [USER_FILTER_PREFERENCES_TABLE_NAME]: {
-        byId: {},
-        ids: []
-      }
-    }));
   }
 
   private queryUsersFromTable(tableName: typeof USERS_TABLE_NAME): UserDto[] {

@@ -69,21 +69,26 @@ export class EntryShellComponent {
     return this.loadEntryConsentState() !== null;
   }
 
-  protected openEntryAuth(): void {
-    if (!this.hasEntryConsent) {
-      this.entryConsentViewOnly = false;
-      this.showEntryConsentPopup = true;
-      return;
-    }
-    if (this.authMode === 'firebase') {
-      if (this.firebaseAuthProfile) {
-        this.firebaseSessionContinueRequested.emit();
-        return;
-      }
-      this.showFirebaseAuthPopup = true;
+  protected openEntryDemo(): void {
+    if (!this.ensureEntryConsent()) {
       return;
     }
     this.openDemoUserSelectorPopup();
+  }
+
+  protected openEntryFirebaseAuth(): void {
+    if (!this.ensureEntryConsent()) {
+      return;
+    }
+    if (this.authMode !== 'firebase') {
+      this.openDemoUserSelectorPopup();
+      return;
+    }
+    if (this.firebaseAuthProfile) {
+      this.firebaseSessionContinueRequested.emit();
+      return;
+    }
+    this.showFirebaseAuthPopup = true;
   }
 
   protected closeFirebaseAuthPopup(): void {
@@ -150,6 +155,15 @@ export class EntryShellComponent {
     this.showEntryConsentPopup = !hasConsent;
     this.showUserSelector = false;
     this.showFirebaseAuthPopup = false;
+  }
+
+  private ensureEntryConsent(): boolean {
+    if (this.hasEntryConsent) {
+      return true;
+    }
+    this.entryConsentViewOnly = false;
+    this.showEntryConsentPopup = true;
+    return false;
   }
 
   private openDemoUserSelectorPopup(): void {

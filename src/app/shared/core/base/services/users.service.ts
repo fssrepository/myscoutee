@@ -13,6 +13,7 @@ import type {
   UserService
 } from '../interfaces/user.interface';
 import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface';
+import { SessionService } from './session.service';
 
 export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
 
@@ -33,27 +34,25 @@ export class UsersService {
   private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 3000;
   private readonly demoUsersService = inject(DemoUsersService);
   private readonly httpUsersService = inject(HttpUsersService);
+  private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
 
-  readonly demoModeEnabled = !environment.loginEnabled;
+  get demoModeEnabled(): boolean {
+    return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
+  }
 
   private get userService(): UserService {
     return this.demoModeEnabled ? this.demoUsersService : this.httpUsersService;
   }
 
   async loadAvailableDemoUsers(requestTimeoutMs?: number): Promise<DemoUserListItemDto[]> {
-    if (!this.demoModeEnabled) {
-      this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'success');
-      return [];
-    }
-
     const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
 
     this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'loading');
 
     try {
       const response = await this.withRequestTimeout(
-        this.userService.queryAvailableDemoUsers(),
+        this.demoUsersService.queryAvailableDemoUsers(),
         normalizedTimeoutMs
       );
 

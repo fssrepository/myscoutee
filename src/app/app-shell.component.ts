@@ -1,6 +1,6 @@
 import { Component, Type, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { App } from './app';
+import { RouterOutlet } from '@angular/router';
 import { AssetPopupService } from './asset/asset-popup.service';
 import { ActivitiesDbContextService } from './shared/activities-db-context.service';
 import { EventEditorService } from './shared/event-editor.service';
@@ -8,9 +8,9 @@ import { EventEditorService } from './shared/event-editor.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, App],
+  imports: [CommonModule, RouterOutlet],
   template: `
-    <app-core></app-core>
+    <router-outlet></router-outlet>
     <ng-container *ngIf="activitiesPopupComponent() as activitiesComponent">
       <ng-container *ngComponentOutlet="activitiesComponent"></ng-container>
     </ng-container>

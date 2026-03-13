@@ -17,11 +17,10 @@ import { AlertService } from './shared/alert.service';
 import { ActivitiesDbContextService } from './shared/activities-db-context.service';
 import type { AssetPopupHost } from './asset/asset-popup.host';
 import { AssetPopupService, type AssetTicketBridge } from './asset/asset-popup.service';
-import { EntryModule } from './entry/entry.module';
 import { EventEditorService } from './shared/event-editor.service';
 import { AppContext, type ActivityCounterKey } from './shared/core/app.context';
 import { UsersService } from './shared/core/users.service';
-import { FirebaseAuthService } from './shared/core/base/services/firebase-auth.service';
+import { SessionService } from './shared/core/base/services/session.service';
 import type {
   UserRealtimeLongPollResponseDto,
   UserImpressionsSectionDto,
@@ -49,7 +48,6 @@ import {
   ProfileGroup
 } from './shared/demo-data';
 import { GDPR_CONTENT } from './shared/gdpr-data';
-import { environment } from '../environments/environment';
 import { LazyBgImageDirective } from './shared/lazy-bg-image.directive';
 import { AppDemoGenerators } from './shared/app-demo-generators';
 import { AppUtils } from './shared/app-utils';
@@ -131,7 +129,6 @@ const APP_DATE_FORMATS = {
     MatTimepickerModule,
     FormsModule,
     DragDropModule,
-    EntryModule,
     LazyBgImageDirective
   ],
   providers: [
@@ -155,7 +152,7 @@ export class App {
   private readonly assetPopupService = inject(AssetPopupService);
   protected readonly eventEditorService = inject(EventEditorService);
   protected readonly usersService = inject(UsersService);
-  private readonly firebaseAuthService = inject(FirebaseAuthService);
+  private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -263,10 +260,6 @@ export class App {
   protected showUserMenu = false;
   protected showUserSettingsMenu = false;
   protected readonly gdprContent = GDPR_CONTENT;
-  protected readonly authMode: AppTypes.AuthMode = this.resolveAuthMode();
-  protected showEntryShell = true;
-  protected firebaseAuthIsBusy = false;
-  protected firebaseAuthProfile: AppTypes.FirebaseAuthProfile | null = null;
   protected activePopup: AppTypes.PopupType = null;
   protected stackedPopup: AppTypes.PopupType = null;
   protected eventEditorMode: AppTypes.EventEditorMode = 'edit';
@@ -676,21 +669,18 @@ export class App {
     this.initializeEventEditorContextData();
     this.initializeProfileDetailForms();
     this.syncProfileFormFromActiveUser();
-    this.initializeEntryFlow();
     this.appCtx.setActiveUserId(this.activeUserId);
-    this.router.navigate(['/game']);
-    if (!this.showEntryShell) {
-      const bootstrapUserId = this.activeUserId;
-      void this.hydrateUserAfterLogin(bootstrapUserId).finally(() => {
-        if (this.showEntryShell || (this.authMode !== 'firebase' && this.activeUserId !== bootstrapUserId)) {
-          this.cdr.markForCheck();
-          return;
-        }
-        this.syncProfileFormFromActiveUser();
-        this.activateUserRealtimeLongPoll(this.activeUserId);
+    const bootstrapUserId = this.activeUserId;
+    void this.hydrateUserAfterLogin(bootstrapUserId).finally(() => {
+      const isDemoSession = this.sessionService.currentSession()?.kind === 'demo';
+      if (isDemoSession && this.activeUserId !== bootstrapUserId) {
         this.cdr.markForCheck();
-      });
-    }
+        return;
+      }
+      this.syncProfileFormFromActiveUser();
+      this.activateUserRealtimeLongPoll(this.activeUserId);
+      this.cdr.markForCheck();
+    });
 
     effect(() => {
       const request = this.activitiesContext.activitiesNavigationRequest();
@@ -5513,111 +5503,19 @@ export class App {
     this.popupReturnTarget = null;
     this.showUserMenu = false;
     this.showUserSettingsMenu = false;
-    this.firebaseAuthIsBusy = false;
     this.syncAssetPopupVisibility();
-    if (this.authMode === 'firebase') {
-      this.firebaseAuthProfile = null;
-      this.showEntryShell = true;
-      void this.firebaseAuthService.signOut();
-      return;
-    }
-    localStorage.removeItem(App.DEMO_ACTIVE_USER_KEY);
-    this.showEntryShell = true;
-  }
-
-  protected selectLoginUser(userId: string): void {
-    this.activeUserId = userId;
-    this.appCtx.setActiveUserId(userId);
-    localStorage.setItem(App.DEMO_ACTIVE_USER_KEY, userId);
-    this.appCtx.clearUserCounterOverrides(userId);
-    this.appCtx.clearUserFilterCountOverride(userId);
-    this.appCtx.clearUserFilterPreferences(userId);
-    this.appCtx.clearUserImpressions(userId);
-    delete this.userRealtimeLongPollCursorByUserId[userId];
-    delete this.userRealtimeBaseCountersByUserId[userId];
-    delete this.userImpressionsChangeFlagsByUserId[userId];
-    this.clearUserImpressionsVisualPulseState(userId);
-    this.syncProfileFormFromActiveUser();
-    this.activeMenuSection = 'chat';
-    this.completeEntryFlow();
-    this.cdr.markForCheck();
-
-    void this.hydrateUserAfterLogin(userId).finally(() => {
-      if (this.activeUserId !== userId) {
-        this.cdr.markForCheck();
-        return;
-      }
-      this.syncProfileFormFromActiveUser();
-      this.activateUserRealtimeLongPoll(userId);
-      this.cdr.markForCheck();
-    });
-  }
-
-  protected continueWithFirebaseAuth(): void {
-    if (this.firebaseAuthIsBusy) {
-      return;
-    }
-    this.firebaseAuthIsBusy = true;
-    void (async () => {
-      const profile = await this.firebaseAuthService.signInWithGoogle();
-      if (!profile) {
-        this.alertService.open('Firebase login failed');
-        return;
-      }
-      this.firebaseAuthProfile = profile;
-      this.appCtx.setActiveUserId(this.activeUserId);
-      this.appCtx.clearUserCounterOverrides(this.activeUserId);
-      this.appCtx.clearUserFilterCountOverride(this.activeUserId);
-      this.appCtx.clearUserFilterPreferences(this.activeUserId);
-      this.appCtx.clearUserImpressions(this.activeUserId);
-      delete this.userRealtimeLongPollCursorByUserId[this.activeUserId];
-      delete this.userRealtimeBaseCountersByUserId[this.activeUserId];
-      delete this.userImpressionsChangeFlagsByUserId[this.activeUserId];
-      this.clearUserImpressionsVisualPulseState(this.activeUserId);
-      this.syncProfileFormFromActiveUser();
-      this.activeMenuSection = 'chat';
-      this.completeEntryFlow();
-      await this.hydrateUserAfterLogin();
-      const userId = this.activeUserId;
-      this.syncProfileFormFromActiveUser();
-      this.activateUserRealtimeLongPoll(userId);
-    })().finally(() => {
-      this.firebaseAuthIsBusy = false;
-      this.cdr.markForCheck();
-    });
-  }
-
-  protected continueWithExistingFirebaseSession(): void {
-    if (this.firebaseAuthIsBusy) {
-      return;
-    }
-    this.firebaseAuthIsBusy = true;
-    void (async () => {
-      const profile = await this.firebaseAuthService.restoreSessionProfile();
-      if (!profile) {
-        this.firebaseAuthProfile = null;
-        this.showEntryShell = true;
-        return;
-      }
-      this.firebaseAuthProfile = profile;
-      this.completeEntryFlow();
-      await this.hydrateUserAfterLogin();
-      if (this.showEntryShell) {
-        return;
-      }
-      this.syncProfileFormFromActiveUser();
-      this.activateUserRealtimeLongPoll(this.activeUserId);
-    })().finally(() => {
-      this.firebaseAuthIsBusy = false;
+    void this.sessionService.logout().finally(() => {
+      void this.router.navigate(['/entry']);
       this.cdr.markForCheck();
     });
   }
 
   private async hydrateUserAfterLogin(userId?: string): Promise<void> {
-    const loadedUser = await this.usersService.loadUserById(this.authMode === 'firebase' ? undefined : userId);
+    const isFirebaseSession = this.sessionService.currentSession()?.kind === 'firebase';
+    const loadedUser = await this.usersService.loadUserById(isFirebaseSession ? undefined : userId);
     if (loadedUser) {
       if (
-        this.authMode === 'firebase' &&
+        isFirebaseSession &&
         this.users.some(candidate => candidate.id === loadedUser.id)
       ) {
         this.activeUserId = loadedUser.id;
@@ -14112,6 +14010,13 @@ export class App {
   }
 
   private getInitialUserId(): string {
+    const currentSession = this.sessionService.currentSession();
+    if (
+      currentSession?.kind === 'demo' &&
+      this.users.some(user => user.id === currentSession.userId)
+    ) {
+      return currentSession.userId;
+    }
     const stored = localStorage.getItem(App.DEMO_ACTIVE_USER_KEY);
     if (stored && this.users.some(user => user.id === stored)) {
       return stored;
@@ -14119,34 +14024,9 @@ export class App {
     return this.users[0].id;
   }
 
-  private resolveAuthMode(): AppTypes.AuthMode {
-    return environment.loginEnabled ? 'firebase' : 'selector';
-  }
-
-  private initializeEntryFlow(): void {
-    if (this.authMode === 'selector') {
-      localStorage.removeItem(App.DEMO_ACTIVE_USER_KEY);
-      this.firebaseAuthProfile = null;
-      this.showEntryShell = true;
-      return;
-    }
-    this.firebaseAuthProfile = this.firebaseAuthService.loadStoredProfile();
-    const hasFirebaseSession = this.firebaseAuthProfile !== null;
-    this.showEntryShell = !hasFirebaseSession;
-  }
-
-  private completeEntryFlow(): void {
-    this.showEntryShell = false;
-    this.activePopup = null;
-    this.stackedPopup = null;
-    this.popupReturnTarget = null;
-    this.clearActivityRateEditorState();
-    this.router.navigate(['/game']);
-  }
-
   private activateUserRealtimeLongPoll(userId: string): void {
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId || this.showEntryShell || this.activeUserId !== normalizedUserId) {
+    if (!normalizedUserId || this.activeUserId !== normalizedUserId) {
       return;
     }
     this.captureUserRealtimeBaseCounters(normalizedUserId);
@@ -14179,9 +14059,6 @@ export class App {
   }
 
   private syncUserRealtimeLongPollSchedule(forceImmediateTick = false): void {
-    if (this.showEntryShell) {
-      return;
-    }
     this.startUserRealtimeLongPoll();
     if (forceImmediateTick) {
       void this.runUserRealtimeLongPollTick();
@@ -14217,7 +14094,7 @@ export class App {
   }
 
   private async runUserRealtimeLongPollTick(): Promise<void> {
-    if (this.showEntryShell || this.userRealtimeLongPollInFlight) {
+    if (this.userRealtimeLongPollInFlight) {
       return;
     }
     const userId = this.activeUserId.trim();
