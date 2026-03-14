@@ -396,7 +396,7 @@ export class AppDemoGenerators {
     let total = 0;
 
     for (let index = 0; index < needed; index += 1) {
-      const sequence = index + 1;
+      const sequence = normalizedExistingCount + index + 1;
       if ((sequence % 4) === 0) {
         continue;
       }
