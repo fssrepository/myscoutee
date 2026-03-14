@@ -5,13 +5,16 @@ import { DemoUsersRepository } from '../repositories/users.repository';
 import { resolveAdditionalDelayMsForRoute } from '../config';
 import type {
   UserByIdQueryResponse,
+  UserFeedbackSubmitRequestDto,
   UserDto,
   UserImpressionsDto,
   UserImpressionsSectionDto,
+  UserReportUserSubmitRequestDto,
   UserRealtimeLongPollResponseDto,
   UserRealtimeCountersDto,
   UserProfileImageUploadResult,
   UserService,
+  UserSubmitActionResponseDto,
   UsersListQueryResponse
 } from '../../base/interfaces/user.interface';
 import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.interface';
@@ -22,6 +25,8 @@ import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.in
 export class DemoUsersService implements UserService {
   private static readonly DEMO_USERS_ROUTE = '/auth/demo-users';
   private static readonly USER_BY_ID_ROUTE = '/auth/me';
+  private static readonly USER_FEEDBACK_ROUTE = '/auth/me/feedback';
+  private static readonly USER_REPORT_USER_ROUTE = '/auth/me/report-user';
   private static readonly USER_REALTIME_LONG_POLL_ROUTE = '/auth/me/realtime/long-poll';
   private static readonly USER_REALTIME_LONG_POLL_SIMULATION_STEP_MS = 30000;
   private static readonly MAX_PROFILE_IMAGE_SLOTS = 8;
@@ -148,6 +153,29 @@ export class DemoUsersService implements UserService {
     return this.usersRepository.upsertUser(user);
   }
 
+  async submitUserFeedback(
+    _request: UserFeedbackSubmitRequestDto,
+    signal?: AbortSignal
+  ): Promise<UserSubmitActionResponseDto> {
+    await this.waitForRouteDelay(DemoUsersService.USER_FEEDBACK_ROUTE, signal);
+    return {
+      submitted: true,
+      message: 'Feedback sent successfully. Thank you for helping improve MyScoutee.'
+    };
+  }
+
+  async submitReportUser(
+    request: UserReportUserSubmitRequestDto,
+    signal?: AbortSignal
+  ): Promise<UserSubmitActionResponseDto> {
+    await this.waitForRouteDelay(DemoUsersService.USER_REPORT_USER_ROUTE, signal);
+    const normalizedTarget = request.handle.trim();
+    return {
+      submitted: true,
+      message: `Report submitted successfully for ${normalizedTarget || 'the selected user'}. Our moderation team will review it.`
+    };
+  }
+
   async uploadUserProfileImage(
     userId: string,
     file: File,
@@ -223,6 +251,42 @@ export class DemoUsersService implements UserService {
       sexualOrientations: [],
       religions: []
     };
+  }
+
+  private async waitForRouteDelay(route: string, signal?: AbortSignal): Promise<void> {
+    const additionalDelayMs = resolveAdditionalDelayMsForRoute(route);
+    if (additionalDelayMs <= 0) {
+      return;
+    }
+    await this.waitForDelay(additionalDelayMs, signal);
+  }
+
+  private waitForDelay(delayMs: number, signal?: AbortSignal): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(this.createAbortError());
+        return;
+      }
+      const timer = setTimeout(() => {
+        cleanup();
+        resolve();
+      }, delayMs);
+      const onAbort = () => {
+        cleanup();
+        reject(this.createAbortError());
+      };
+      const cleanup = () => {
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', onAbort);
+      };
+      signal?.addEventListener('abort', onAbort, { once: true });
+    });
+  }
+
+  private createAbortError(): Error {
+    const error = new Error('Request aborted.');
+    error.name = 'AbortError';
+    return error;
   }
 
   private parseHeightCm(value: string): number | null {

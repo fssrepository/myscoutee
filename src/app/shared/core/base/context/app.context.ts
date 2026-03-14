@@ -92,6 +92,10 @@ export class AppContext {
     }));
   }
 
+  resetLoadingState(contextKey: string): void {
+    this.setLoadingState(contextKey, { ...DEFAULT_LOAD_STATE });
+  }
+
   setStatus(contextKey: string, status: LoadStatus, message?: string): LoadState {
     const current = this.getLoadingState(contextKey);
     const next: LoadState = {

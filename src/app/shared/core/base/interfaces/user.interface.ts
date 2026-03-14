@@ -85,6 +85,23 @@ export interface UserByIdQueryResponse {
   filterPreferences?: UserGameFilterPreferencesDto | null;
 }
 
+export interface UserFeedbackSubmitRequestDto {
+  category: string;
+  subject: string;
+  details: string;
+}
+
+export interface UserReportUserSubmitRequestDto {
+  handle: string;
+  reason: string;
+  details: string;
+}
+
+export interface UserSubmitActionResponseDto {
+  submitted: boolean;
+  message?: string | null;
+}
+
 export interface UserProfileImageUploadResult {
   uploaded: boolean;
   imageUrl: string | null;
@@ -96,5 +113,7 @@ export interface UserService {
   queryUserRealtimeLongPoll(userId: string, cursor?: string | null): Promise<UserRealtimeLongPollResponseDto | null>;
   saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void>;
   saveUserProfile(user: UserDto): Promise<UserDto | null>;
+  submitUserFeedback(request: UserFeedbackSubmitRequestDto, signal?: AbortSignal): Promise<UserSubmitActionResponseDto>;
+  submitReportUser(request: UserReportUserSubmitRequestDto, signal?: AbortSignal): Promise<UserSubmitActionResponseDto>;
   uploadUserProfileImage(userId: string, file: File, slotIndex: number): Promise<UserProfileImageUploadResult>;
 }

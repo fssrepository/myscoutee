@@ -8,13 +8,22 @@
 
 .link-btn {
   border: 1px solid var(--line-strong);
-  border-radius: 999px;
+  border-radius: 14px;
   background: #fff;
   color: #1f3350;
   font: inherit;
   font-size: 0.83rem;
-  padding: 0.38rem 0.76rem;
+  padding: 0.46rem 0.82rem;
   cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease, background 0.16s ease;
+}
+
+.link-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.link-btn:not(:disabled):active {
+  transform: translateY(0);
 }
 
 .neutral-btn {
@@ -117,6 +126,17 @@
   resize: vertical;
 }
 
+.support-submit-error {
+  border: 1px solid rgba(186, 56, 68, 0.22);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 242, 243, 0.96) 0%, rgba(255, 233, 236, 0.96) 100%);
+  color: #9b2c37;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.3;
+  padding: 0.48rem 0.56rem;
+}
+
 .support-submit-success {
   border: 1px solid rgba(41, 131, 84, 0.35);
   border-radius: 10px;
@@ -131,15 +151,89 @@
 .support-actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 0.45rem;
   flex-wrap: wrap;
 }
 
-.support-actions .primary-btn:disabled {
+.support-submit-btn-shell {
+  position: relative;
+  display: inline-flex;
+  border-radius: 16px;
+  padding: 2px;
+}
+
+.support-submit-btn {
+  position: relative;
+  z-index: 1;
+  min-height: 40px;
+  border-color: transparent;
+}
+
+.support-submit-btn-ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.support-submit-btn-ring-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 8px 20px rgba(13, 24, 44, 0.14));
+}
+
+.support-submit-btn-ring-track,
+.support-submit-btn-ring-progress {
+  fill: none;
+  stroke-width: 4;
+}
+
+.support-submit-btn-ring-track {
+  stroke: rgba(46, 114, 184, 0.12);
+}
+
+.support-submit-btn-ring-progress {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.support-submit-btn-ring-progress.is-loading {
+  stroke: url(#navigator-feedback-submit-gradient);
+  animation: support-submit-ring-progress 3s linear forwards;
+}
+
+.support-submit-btn-ring-progress.is-error {
+  stroke: url(#navigator-feedback-submit-gradient-error);
+}
+
+.support-submit-btn-ring-progress.is-success {
+  stroke: url(#navigator-feedback-submit-gradient-success);
+}
+
+.support-submit-btn-shell.is-loading .support-submit-btn,
+.support-submit-btn-shell.is-error .support-submit-btn,
+.support-submit-btn-shell.is-success .support-submit-btn {
+  box-shadow: none;
+}
+
+.support-actions .primary-btn:disabled,
+.support-submit-btn-shell.is-loading .support-submit-btn {
   background: linear-gradient(180deg, #d9e2f2 0%, #c9d4e8 100%);
   border-color: rgba(74, 103, 145, 0.32);
   color: rgba(29, 51, 83, 0.72);
   cursor: not-allowed;
   box-shadow: none;
   opacity: 1;
+  transform: none;
+}
+
+@keyframes support-submit-ring-progress {
+  from {
+    stroke-dashoffset: 100;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
 }

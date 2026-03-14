@@ -7,9 +7,12 @@ import { DemoUsersService } from '../../demo';
 import { HttpUsersService } from '../../http';
 import type {
   DemoUserListItemDto,
+  UserFeedbackSubmitRequestDto,
   UserDto,
+  UserReportUserSubmitRequestDto,
   UserRealtimeLongPollResponseDto,
   UserProfileImageUploadResult,
+  UserSubmitActionResponseDto,
   UserService
 } from '../interfaces/user.interface';
 import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface';
@@ -19,6 +22,8 @@ export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
 
 export const USERS_LOAD_CONTEXT_KEY = 'users-selector';
 export const USER_BY_ID_LOAD_CONTEXT_KEY = 'user-by-id';
+export const USER_FEEDBACK_SUBMIT_CONTEXT_KEY = 'user-feedback-submit';
+export const USER_REPORT_USER_SUBMIT_CONTEXT_KEY = 'user-report-user-submit';
 
 class RequestTimeoutError extends Error {
   constructor() {
@@ -27,11 +32,19 @@ class RequestTimeoutError extends Error {
   }
 }
 
+class RequestAbortedError extends Error {
+  constructor() {
+    super('Users request aborted.');
+    this.name = 'AbortError';
+  }
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class UsersService {
   private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 3000;
+  private static readonly DEFAULT_SUBMIT_MIN_DELAY_MS = 1500;
   private readonly demoUsersService = inject(DemoUsersService);
   private readonly httpUsersService = inject(HttpUsersService);
   private readonly sessionService = inject(SessionService);
@@ -127,6 +140,36 @@ export class UsersService {
     return this.userService.saveUserProfile(user);
   }
 
+  async submitUserFeedback(
+    request: UserFeedbackSubmitRequestDto,
+    requestTimeoutMs?: number,
+    signal?: AbortSignal
+  ): Promise<UserSubmitActionResponseDto> {
+    return this.submitUserAction(
+      USER_FEEDBACK_SUBMIT_CONTEXT_KEY,
+      requestSignal => this.userService.submitUserFeedback(request, requestSignal),
+      requestTimeoutMs,
+      'Feedback request timeout.',
+      'Unable to send feedback.',
+      signal
+    );
+  }
+
+  async submitReportUser(
+    request: UserReportUserSubmitRequestDto,
+    requestTimeoutMs?: number,
+    signal?: AbortSignal
+  ): Promise<UserSubmitActionResponseDto> {
+    return this.submitUserAction(
+      USER_REPORT_USER_SUBMIT_CONTEXT_KEY,
+      requestSignal => this.userService.submitReportUser(request, requestSignal),
+      requestTimeoutMs,
+      'Report request timeout.',
+      'Unable to submit report.',
+      signal
+    );
+  }
+
   async pollUserRealtimeSnapshot(
     userId: string,
     cursor: string | null = null,
@@ -170,6 +213,82 @@ export class UsersService {
     this.appCtx.setStatus(contextKey, status, message);
   }
 
+  private async submitUserAction(
+    contextKey: string,
+    requestFactory: (signal: AbortSignal) => Promise<UserSubmitActionResponseDto>,
+    requestTimeoutMs: number | undefined,
+    timeoutMessage: string,
+    fallbackErrorMessage: string,
+    signal?: AbortSignal
+  ): Promise<UserSubmitActionResponseDto> {
+    if (signal?.aborted) {
+      this.appCtx.resetLoadingState(contextKey);
+      return {
+        submitted: false,
+        message: null
+      };
+    }
+
+    const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
+    const startedAtMs = Date.now();
+    const requestAbortController = new AbortController();
+    this.setLoadStatus(contextKey, 'loading');
+
+    try {
+      const response = await this.withRequestTimeout(
+        requestFactory(requestAbortController.signal),
+        normalizedTimeoutMs,
+        signal,
+        requestAbortController
+      );
+
+      await this.ensureMinimumRequestDuration(
+        startedAtMs,
+        UsersService.DEFAULT_SUBMIT_MIN_DELAY_MS,
+        requestAbortController.signal
+      );
+
+      if (!response.submitted) {
+        this.setLoadStatus(contextKey, 'error', response.message ?? fallbackErrorMessage);
+        return {
+          submitted: false,
+          message: response.message ?? fallbackErrorMessage
+        };
+      }
+
+      this.setLoadStatus(contextKey, 'success');
+      return response;
+    } catch (error) {
+      if (this.isAbortError(error)) {
+        this.appCtx.resetLoadingState(contextKey);
+        return {
+          submitted: false,
+          message: null
+        };
+      }
+
+      await this.ensureMinimumRequestDuration(
+        startedAtMs,
+        UsersService.DEFAULT_SUBMIT_MIN_DELAY_MS,
+        requestAbortController.signal
+      );
+
+      if (error instanceof RequestTimeoutError) {
+        this.setLoadStatus(contextKey, 'timeout', timeoutMessage);
+        return {
+          submitted: false,
+          message: timeoutMessage
+        };
+      }
+
+      this.setLoadStatus(contextKey, 'error', fallbackErrorMessage);
+      return {
+        submitted: false,
+        message: fallbackErrorMessage
+      };
+    }
+  }
+
   private resolveRequestTimeoutMs(value?: number): number {
     if (!Number.isFinite(value)) {
       return UsersService.DEFAULT_REQUEST_TIMEOUT_MS;
@@ -177,22 +296,80 @@ export class UsersService {
     return Math.max(1, Math.trunc(Number(value)));
   }
 
-  private withRequestTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  private withRequestTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    signal?: AbortSignal,
+    abortController?: AbortController
+  ): Promise<T> {
     return new Promise<T>((resolve, reject) => {
+      if (signal?.aborted) {
+        abortController?.abort();
+        reject(new RequestAbortedError());
+        return;
+      }
+
       const timer = setTimeout(() => {
+        abortController?.abort();
+        cleanup();
         reject(new RequestTimeoutError());
       }, timeoutMs);
+      const onAbort = () => {
+        abortController?.abort();
+        cleanup();
+        reject(new RequestAbortedError());
+      };
+      const cleanup = () => {
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', onAbort);
+      };
+      signal?.addEventListener('abort', onAbort, { once: true });
       void promise.then(
         result => {
-          clearTimeout(timer);
+          cleanup();
           resolve(result);
         },
         error => {
-          clearTimeout(timer);
+          cleanup();
           reject(error);
         }
       );
     });
+  }
+
+  private async ensureMinimumRequestDuration(
+    startedAtMs: number,
+    minimumDurationMs: number,
+    signal?: AbortSignal
+  ): Promise<void> {
+    const elapsedMs = Date.now() - startedAtMs;
+    const remainingMs = minimumDurationMs - elapsedMs;
+    if (remainingMs <= 0) {
+      return;
+    }
+    await new Promise<void>((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(new RequestAbortedError());
+        return;
+      }
+      const timer = setTimeout(() => {
+        cleanup();
+        resolve();
+      }, remainingMs);
+      const onAbort = () => {
+        cleanup();
+        reject(new RequestAbortedError());
+      };
+      const cleanup = () => {
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', onAbort);
+      };
+      signal?.addEventListener('abort', onAbort, { once: true });
+    });
+  }
+
+  private isAbortError(error: unknown): boolean {
+    return error instanceof RequestAbortedError || (error instanceof Error && error.name === 'AbortError');
   }
 
   private normalizeRealtimeSnapshot(

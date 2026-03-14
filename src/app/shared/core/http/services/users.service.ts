@@ -4,13 +4,16 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type {
   DemoUserListItemDto,
+  UserFeedbackSubmitRequestDto,
   UserByIdQueryResponse,
   UserImpressionsDto,
   UserRealtimeCountersDto,
   UserRealtimeLongPollResponseDto,
   UserImpressionsSectionDto,
   UserProfileImageUploadResult,
+  UserReportUserSubmitRequestDto,
   UserService,
+  UserSubmitActionResponseDto,
   UsersListQueryResponse,
   UserDto
 } from '../../base/interfaces/user.interface';
@@ -21,6 +24,8 @@ import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.in
 })
 export class HttpUsersService implements UserService {
   private static readonly PROFILE_IMAGE_UPLOAD_ROUTE = '/auth/me/profile-image';
+  private static readonly USER_FEEDBACK_ROUTE = '/auth/me/feedback';
+  private static readonly USER_REPORT_USER_ROUTE = '/auth/me/report-user';
   private static readonly USER_REALTIME_LONG_POLL_ROUTE = '/auth/me/realtime/long-poll';
   private static readonly MAX_PROFILE_IMAGE_SLOTS = 8;
   private readonly http = inject(HttpClient);
@@ -136,6 +141,62 @@ export class HttpUsersService implements UserService {
       return this.cloneUser(response);
     } catch {
       return this.cloneUser(user);
+    }
+  }
+
+  async submitUserFeedback(
+    request: UserFeedbackSubmitRequestDto,
+    signal?: AbortSignal
+  ): Promise<UserSubmitActionResponseDto> {
+    try {
+      const response = await this.postAbortable<UserSubmitActionResponseDto>(
+        `${this.apiBaseUrl}${HttpUsersService.USER_FEEDBACK_ROUTE}`,
+        request,
+        signal
+      );
+      if (!response) {
+        return { submitted: true, message: null };
+      }
+      return {
+        submitted: response.submitted !== false,
+        message: typeof response.message === 'string' ? response.message : null
+      };
+    } catch (error) {
+      if (this.isAbortError(error)) {
+        throw error;
+      }
+      return {
+        submitted: false,
+        message: 'Unable to send feedback.'
+      };
+    }
+  }
+
+  async submitReportUser(
+    request: UserReportUserSubmitRequestDto,
+    signal?: AbortSignal
+  ): Promise<UserSubmitActionResponseDto> {
+    try {
+      const response = await this.postAbortable<UserSubmitActionResponseDto>(
+        `${this.apiBaseUrl}${HttpUsersService.USER_REPORT_USER_ROUTE}`,
+        request,
+        signal
+      );
+      if (!response) {
+        return { submitted: true, message: null };
+      }
+      return {
+        submitted: response.submitted !== false,
+        message: typeof response.message === 'string' ? response.message : null
+      };
+    } catch (error) {
+      if (this.isAbortError(error)) {
+        throw error;
+      }
+      return {
+        submitted: false,
+        message: 'Unable to submit report.'
+      };
     }
   }
 
@@ -292,6 +353,53 @@ export class HttpUsersService implements UserService {
     normalized.impressionsHostChanged = counters.impressionsHostChanged === true;
     normalized.impressionsMemberChanged = counters.impressionsMemberChanged === true;
     return normalized;
+  }
+
+  private postAbortable<T>(url: string, body: unknown, signal?: AbortSignal): Promise<T | null> {
+    return new Promise<T | null>((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(this.createAbortError());
+        return;
+      }
+      let emitted = false;
+      const subscription = this.http.post<T | null>(url, body).subscribe({
+        next: response => {
+          emitted = true;
+          cleanup();
+          resolve(response ?? null);
+        },
+        error: error => {
+          cleanup();
+          reject(error);
+        },
+        complete: () => {
+          if (emitted) {
+            return;
+          }
+          cleanup();
+          resolve(null);
+        }
+      });
+      const onAbort = () => {
+        cleanup();
+        subscription.unsubscribe();
+        reject(this.createAbortError());
+      };
+      const cleanup = () => {
+        signal?.removeEventListener('abort', onAbort);
+      };
+      signal?.addEventListener('abort', onAbort, { once: true });
+    });
+  }
+
+  private createAbortError(): Error {
+    const error = new Error('Request aborted.');
+    error.name = 'AbortError';
+    return error;
+  }
+
+  private isAbortError(error: unknown): boolean {
+    return error instanceof Error && error.name === 'AbortError';
   }
 
   private toDemoUserListItem(user: UserDto): DemoUserListItemDto {
