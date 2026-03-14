@@ -79,12 +79,6 @@ export class NavigatorService {
       void this.hydrateUserAfterLogin(activeUserId || undefined);
     });
 
-    effect(() => {
-      if (!this.profileEditorOpenRef()) {
-        return;
-      }
-      this.closeMenu();
-    });
   }
 
   registerBindings(bindings: NavigatorBindings): void {
@@ -140,7 +134,6 @@ export class NavigatorService {
   }
 
   openProfileEditor(): void {
-    this.closeMenu();
     this.profileEditorOpenRef.set(true);
   }
 
