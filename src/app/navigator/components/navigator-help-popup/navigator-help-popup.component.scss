@@ -1,5 +1,6 @@
 :host {
   display: block;
+  font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
   --text-main: #22324a;
   --text-muted: rgba(23, 41, 66, 0.72);
 }
@@ -30,8 +31,17 @@
 }
 
 .support-help-hero {
-  background: linear-gradient(180deg, #edf4ff 0%, #f7fbff 100%);
-  border-color: rgba(50, 97, 173, 0.25);
+  background: linear-gradient(180deg, #fbf4e8 0%, #fffaf0 100%);
+  border-color: rgba(157, 118, 41, 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.support-help-hero h4 {
+  color: #7c5618;
+}
+
+.support-help-hero p {
+  color: rgba(108, 74, 19, 0.84);
 }
 
 .support-help-tabs {
@@ -115,4 +125,90 @@
   gap: 0.2rem;
   color: rgba(25, 48, 77, 0.86);
   font-size: 0.78rem;
+}
+
+.support-help-accordion {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .support-help-tabs-desktop,
+  .support-help-detail-desktop {
+    display: none;
+  }
+
+  .support-help-accordion {
+    display: grid;
+    gap: 0.44rem;
+  }
+
+  .support-help-accordion-item {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .support-help-accordion-btn {
+    width: 100%;
+    border: 0;
+    background: linear-gradient(180deg, #f9fbff 0%, #f1f6ff 100%);
+    color: #1f3d63;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.7rem 0.76rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .support-help-accordion-item.is-open .support-help-accordion-btn {
+    background: linear-gradient(180deg, #e8f3ff 0%, #dbeaff 100%);
+  }
+
+  .support-help-accordion-caret {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    line-height: 18px;
+    color: #2c629e;
+    transition: transform 0.16s ease;
+  }
+
+  .support-help-accordion-item.is-open .support-help-accordion-caret {
+    transform: rotate(180deg);
+  }
+
+  .support-help-accordion-panel-wrap {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition:
+      grid-template-rows 0.22s cubic-bezier(0.22, 0.61, 0.36, 1),
+      opacity 0.18s ease;
+  }
+
+  .support-help-accordion-panel-wrap.is-open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+
+  .support-help-accordion-panel {
+    min-height: 0;
+    overflow: hidden;
+    padding: 0 0.76rem;
+    border-top: 0 solid rgba(47, 86, 139, 0.14);
+    background: #fff;
+    transition:
+      padding 0.22s cubic-bezier(0.22, 0.61, 0.36, 1),
+      border-top-width 0.18s ease;
+  }
+
+  .support-help-accordion-panel-wrap.is-open .support-help-accordion-panel {
+    padding: 0.72rem 0.76rem 0.82rem;
+    border-top-width: 1px;
+  }
+
+  .support-help-accordion-panel p:first-child {
+    margin-top: 0;
+  }
 }

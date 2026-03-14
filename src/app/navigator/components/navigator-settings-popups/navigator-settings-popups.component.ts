@@ -6,6 +6,7 @@ import { NavigatorService, type NavigatorSettingsPopup } from '../../navigator.s
 import { NavigatorFeedbackPopupComponent } from '../navigator-feedback-popup/navigator-feedback-popup.component';
 import { NavigatorHelpPopupComponent } from '../navigator-help-popup/navigator-help-popup.component';
 import { NavigatorPrivacyPopupComponent } from '../navigator-privacy-popup/navigator-privacy-popup.component';
+import { NavigatorReportUserPopupComponent } from '../navigator-report-user-popup/navigator-report-user-popup.component';
 
 @Component({
   selector: 'app-navigator-settings-popups',
@@ -16,7 +17,8 @@ import { NavigatorPrivacyPopupComponent } from '../navigator-privacy-popup/navig
     MatIconModule,
     NavigatorHelpPopupComponent,
     NavigatorFeedbackPopupComponent,
-    NavigatorPrivacyPopupComponent
+    NavigatorPrivacyPopupComponent,
+    NavigatorReportUserPopupComponent
   ],
   templateUrl: './navigator-settings-popups.component.html',
   styleUrl: './navigator-settings-popups.component.scss'
@@ -43,6 +45,8 @@ export class NavigatorSettingsPopupsComponent {
         return 'Send Feedback';
       case 'privacy':
         return 'Privacy';
+      case 'report-user':
+        return 'Report User';
       default:
         return '';
     }

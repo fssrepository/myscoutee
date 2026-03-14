@@ -6,7 +6,7 @@ export interface NavigatorMenuUiState {
   settingsOpen: boolean;
 }
 
-export type NavigatorSettingsPopup = 'help' | 'feedback' | 'privacy';
+export type NavigatorSettingsPopup = 'help' | 'feedback' | 'privacy' | 'report-user';
 
 export interface NavigatorBindings {
   syncHydratedUser?(user: UserDto): void;
@@ -28,7 +28,6 @@ export interface NavigatorBindings {
   openAssetSuppliesPopup(): void;
   openAssetTicketsPopup(): void;
   openEventFeedbackPopup(event?: Event): void;
-  openReportUserFromFeedback(event?: Event): void;
   openDeleteAccountConfirm(): void;
   openLogoutConfirm(): void;
 }

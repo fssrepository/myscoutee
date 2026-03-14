@@ -1,0 +1,58 @@
+<div class="support-popup">
+  <article class="editor-list-card support-card" *ngIf="!reportUserSubmitted; else reportUserSubmittedState">
+    <h4>Report User</h4>
+    <p>Share what happened. Reports are reviewed by moderation, and we use them to improve trust and safety.</p>
+    <form class="support-form" (ngSubmit)="submitReportUser()">
+      <label>
+        <span>User handle or email</span>
+        <input
+          type="text"
+          name="reportHandle"
+          [(ngModel)]="reportUserForm.handle"
+          placeholder="@username or email"
+          [class.support-form-field-invalid]="!reportUserHandleValid"
+          required
+        />
+        <small class="support-form-help-text" [class.support-form-help-text-error]="!reportUserHandleValid">
+          Required. Minimum {{ reportUserHandleMinLength }} characters ({{ reportUserHandleLength }}/{{ reportUserHandleMinLength }}).
+        </small>
+      </label>
+      <label>
+        <span>Reason</span>
+        <select name="reportReason" [(ngModel)]="reportUserForm.reason">
+          <option *ngFor="let item of reportUserReasons" [value]="item">{{ item }}</option>
+        </select>
+      </label>
+      <label>
+        <span>Details</span>
+        <textarea
+          rows="4"
+          name="reportDetails"
+          [(ngModel)]="reportUserForm.details"
+          placeholder="Add short details (what happened, when, and where)."
+          [class.support-form-field-invalid]="!reportUserDetailsValid"
+          required
+        ></textarea>
+        <small class="support-form-help-text" [class.support-form-help-text-error]="!reportUserDetailsValid">
+          Required. Minimum {{ reportUserDetailsMinLength }} characters ({{ reportUserDetailsLength }}/{{ reportUserDetailsMinLength }}).
+        </small>
+      </label>
+      <div class="support-actions">
+        <button type="button" class="link-btn neutral-btn" (click)="closePopup()">Cancel</button>
+        <button
+          type="submit"
+          class="link-btn primary-btn"
+          [disabled]="!canSubmitReportUser()"
+        >
+          Submit report
+        </button>
+      </div>
+    </form>
+  </article>
+</div>
+
+<ng-template #reportUserSubmittedState>
+  <article class="editor-list-card support-card">
+    <div class="support-submit-success">{{ reportUserSubmitMessage }}</div>
+  </article>
+</ng-template>

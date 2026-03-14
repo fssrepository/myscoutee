@@ -200,7 +200,8 @@ export class NavigatorMenuComponent {
   }
 
   protected openReportUserFromFeedback(event?: Event): void {
-    this.bindings?.openReportUserFromFeedback(event);
+    event?.stopPropagation();
+    this.navigatorService.openSettingsPopup('report-user');
   }
 
   private resolveUserImageUrl(user: UserDto | null): string | null {

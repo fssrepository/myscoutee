@@ -15,6 +15,7 @@ export class NavigatorFeedbackPopupComponent {
   private readonly navigatorService = inject(NavigatorService);
 
   protected readonly feedbackCategories = APP_STATIC_DATA.feedbackCategories;
+  protected readonly feedbackDetailsMinLength = 8;
   protected feedbackForm = this.createInitialForm();
   protected feedbackSubmitMessage = '';
   protected feedbackSubmitted = false;
@@ -23,10 +24,18 @@ export class NavigatorFeedbackPopupComponent {
     this.navigatorService.closeSettingsPopup();
   }
 
+  protected get feedbackDetailsLength(): number {
+    return this.feedbackForm.details.trim().length;
+  }
+
+  protected get feedbackDetailsRemaining(): number {
+    return Math.max(0, this.feedbackDetailsMinLength - this.feedbackDetailsLength);
+  }
+
   protected submitFeedback(): void {
     const subject = this.feedbackForm.subject.trim();
     const details = this.feedbackForm.details.trim();
-    if (!subject || details.length < 8) {
+    if (!subject || details.length < this.feedbackDetailsMinLength) {
       return;
     }
     this.feedbackSubmitMessage = `Feedback sent successfully in "${this.feedbackForm.category}". Thank you for helping improve MyScoutee.`;

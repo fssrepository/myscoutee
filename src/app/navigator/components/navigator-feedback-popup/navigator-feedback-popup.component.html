@@ -21,13 +21,16 @@
           [(ngModel)]="feedbackForm.details"
           placeholder="Describe your feedback. Include steps if this is a bug."
         ></textarea>
+        <small class="support-form-help-text" [class.support-form-help-text-error]="feedbackDetailsRemaining > 0">
+          Minimum {{ feedbackDetailsMinLength }} characters ({{ feedbackDetailsRemaining }} left).
+        </small>
       </label>
       <div class="support-actions">
         <button type="button" class="link-btn neutral-btn" (click)="closePopup()">Cancel</button>
         <button
           type="submit"
           class="link-btn primary-btn"
-          [disabled]="!feedbackForm.subject.trim() || feedbackForm.details.trim().length < 8"
+          [disabled]="!feedbackForm.subject.trim() || feedbackDetailsRemaining > 0"
         >
           Send feedback
         </button>

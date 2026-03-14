@@ -2,6 +2,21 @@
 
 @include ui.popup-shell();
 
+:host {
+  --navigator-popup-font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
+}
+
+.app-popup {
+  font-family: var(--navigator-popup-font-family);
+}
+
+.app-popup button,
+.app-popup input,
+.app-popup textarea,
+.app-popup select {
+  font-family: inherit;
+}
+
 .navigator-settings-popup-panel {
   width: min(940px, calc(100vw - 1.2rem));
 }

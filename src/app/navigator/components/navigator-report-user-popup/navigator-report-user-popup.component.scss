@@ -101,6 +101,11 @@
   box-shadow: 0 0 0 3px rgba(55, 116, 212, 0.14);
 }
 
+.support-form .support-form-field-invalid {
+  border-color: rgba(186, 56, 68, 0.72);
+  background: linear-gradient(180deg, #fff5f6 0%, #ffedef 100%);
+}
+
 .support-form-help-text {
   font-size: 0.69rem;
   font-weight: 700;

@@ -38,10 +38,6 @@ export type PopupType =
   | 'valuesSelector'
   | 'interestSelector'
   | 'experienceSelector'
-  | 'helpCenter'
-  | 'reportUser'
-  | 'sendFeedback'
-  | 'gdpr'
   | 'deleteAccountConfirm'
   | 'logoutConfirm'
   | null;

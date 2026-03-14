@@ -14,10 +14,16 @@ import type { HelpCenterSection } from '../../../shared/app-types';
 export class NavigatorHelpPopupComponent {
   protected readonly sections: HelpCenterSection[] = APP_STATIC_DATA.helpCenterSections;
   protected activeSectionId = this.sections[0]?.id ?? 'events';
+  protected openAccordionSectionId: string | null = this.sections[0]?.id ?? null;
 
   protected selectSection(sectionId: string, event?: Event): void {
     event?.stopPropagation();
     this.activeSectionId = sectionId;
+  }
+
+  protected toggleAccordionSection(sectionId: string, event?: Event): void {
+    event?.stopPropagation();
+    this.openAccordionSectionId = this.openAccordionSectionId === sectionId ? null : sectionId;
   }
 
   protected get activeSection(): HelpCenterSection | null {

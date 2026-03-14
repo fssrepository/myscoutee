@@ -275,7 +275,6 @@ export class App {
     openAssetSuppliesPopup: () => this.openAssetSuppliesPopup(),
     openAssetTicketsPopup: () => this.openAssetTicketsPopup(),
     openEventFeedbackPopup: (event) => this.openEventFeedbackPopup(event),
-    openReportUserFromFeedback: (event) => this.openReportUserFromFeedback(event),
     openDeleteAccountConfirm: () => this.openDeleteAccountConfirm(),
     openLogoutConfirm: () => this.openLogoutConfirm()
   };
@@ -533,15 +532,6 @@ export class App {
   private readonly subEventSupplyContributionEntriesByAssignmentKey: Record<string, AppTypes.SubEventSupplyContributionEntry[]> = {};
   private stackedEventEditorOrigin: 'chat' | null = null;
 
-  protected reportUserForm = {
-    handle: '',
-    reason: 'Harassment',
-    details: ''
-  };
-  protected reportUserSubmitMessage = '';
-  protected reportUserSubmitted = false;
-  protected readonly reportUserHandleMinLength = 3;
-  protected readonly reportUserDetailsMinLength = 12;
   protected eventFeedbackCards: AppTypes.EventFeedbackCard[] = [];
   protected eventFeedbackIndex = 0;
   protected eventFeedbackListFilter: AppTypes.EventFeedbackListFilter = 'pending';
@@ -567,7 +557,6 @@ export class App {
   private readonly removedEventFeedbackEventsByUser: Record<string, Record<string, true>> = {};
   private readonly organizerEventFeedbackNotesByUser: Record<string, Record<string, string>> = {};
   private readonly eventFeedbackUnlockDelayMs = 2 * 60 * 60 * 1000;
-  protected readonly reportUserReasons = APP_STATIC_DATA.reportUserReasons;
   protected readonly eventFeedbackEventOverallOptions: AppTypes.EventFeedbackOption[] = APP_STATIC_DATA.eventFeedbackEventOverallOptions;
   protected readonly eventFeedbackHostImproveOptions: AppTypes.EventFeedbackOption[] = APP_STATIC_DATA.eventFeedbackHostImproveOptions;
   protected readonly eventFeedbackAttendeeCollabOptions: AppTypes.EventFeedbackOption[] = APP_STATIC_DATA.eventFeedbackAttendeeCollabOptions;
@@ -1022,11 +1011,6 @@ export class App {
     this.eventFeedbackTouchStartX = null;
     this.eventFeedbackTouchStartY = null;
     this.activePopup = 'eventFeedback';
-  }
-
-  protected openReportUserFromFeedback(event?: Event): void {
-    event?.stopPropagation();
-    this.openReportUserPopup();
   }
 
   protected toggleEventFeedbackFilterPicker(event?: Event): void {
@@ -1509,46 +1493,6 @@ export class App {
 
   private eventTitleById(eventId: string): string {
     return this.eventItems.find(item => item.id === eventId)?.title ?? 'this event';
-  }
-
-  protected openReportUserPopup(): void {
-    this.reportUserForm = {
-      handle: '',
-      reason: this.reportUserReasons[0] ?? 'Harassment',
-      details: ''
-    };
-    this.reportUserSubmitMessage = '';
-    this.reportUserSubmitted = false;
-    this.activePopup = 'reportUser';
-  }
-
-  protected get reportUserHandleLength(): number {
-    return this.reportUserForm.handle.trim().length;
-  }
-
-  protected get reportUserDetailsLength(): number {
-    return this.reportUserForm.details.trim().length;
-  }
-
-  protected get reportUserHandleValid(): boolean {
-    return this.reportUserHandleLength >= this.reportUserHandleMinLength;
-  }
-
-  protected get reportUserDetailsValid(): boolean {
-    return this.reportUserDetailsLength >= this.reportUserDetailsMinLength;
-  }
-
-  protected canSubmitReportUser(): boolean {
-    return this.reportUserHandleValid && this.reportUserDetailsValid;
-  }
-
-  protected submitReportUser(): void {
-    const target = this.reportUserForm.handle.trim();
-    if (!this.canSubmitReportUser()) {
-      return;
-    }
-    this.reportUserSubmitMessage = `Report submitted successfully for ${target}. Our moderation team will review it.`;
-    this.reportUserSubmitted = true;
   }
 
   protected openDeleteAccountConfirm(): void {
@@ -5487,8 +5431,6 @@ export class App {
         return 'Event Feedback';
       case 'eventFeedbackNote':
         return 'Organizer Feedback';
-      case 'reportUser':
-        return 'Report User';
       case 'logoutConfirm':
         return 'Kilépés';
       default:
