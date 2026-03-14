@@ -728,6 +728,9 @@
 .languages-field .language-select-btn {
   width: 100%;
   max-width: none;
+  min-height: 36px;
+  height: 36px;
+  box-sizing: border-box;
   justify-content: space-between;
 }
 
@@ -893,6 +896,8 @@
   width: var(--profile-details-main-width);
   max-width: 100%;
   min-height: 36px;
+  height: 36px;
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
@@ -1477,151 +1482,6 @@
   text-align: center;
 }
 
-.mobile-profile-selector-sheet-wrap {
-  position: fixed;
-  inset: 0;
-  z-index: 2800;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-}
-
-.mobile-profile-selector-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(8, 16, 30, 0.5);
-}
-
-.mobile-profile-selector-sheet {
-  position: relative;
-  width: fit-content;
-  min-width: 230px;
-  max-width: min(92vw, 420px);
-  max-height: min(78vh, 620px);
-  border-radius: 16px;
-  border: 1px solid #d6deea;
-  background: #fff;
-  box-shadow: 0 16px 32px rgba(15, 29, 52, 0.24);
-  padding: 0.4rem 0.6rem 0.58rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.mobile-profile-selector-sheet.mobile-profile-selector-sheet-language {
-  width: min(94vw, 620px);
-  min-width: 340px;
-  max-width: min(94vw, 620px);
-  height: min(78vh, 620px);
-  max-height: min(78vh, 620px);
-}
-
-.mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-selector-title,
-.mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-language-entry {
-  flex: 0 0 auto;
-  width: 100%;
-}
-
-.mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-language-chips {
-  width: 100%;
-  align-content: flex-start;
-}
-
-.mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-selector-options {
-  flex: 1 1 auto;
-  overflow-x: hidden;
-  overflow-y: auto;
-  margin-top: 0.18rem;
-  justify-items: stretch;
-  align-content: start;
-  grid-auto-rows: max-content;
-}
-
-.mobile-profile-selector-sheet.mobile-profile-selector-sheet-language .mobile-profile-selector-option {
-  width: 100%;
-  min-width: 0;
-  min-height: 46px;
-}
-
-.mobile-profile-selector-handle {
-  width: 42px;
-  height: 4px;
-  border-radius: 999px;
-  background: rgba(44, 67, 100, 0.24);
-  margin: 0.08rem auto 0.52rem;
-}
-
-.mobile-profile-selector-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.28rem;
-  padding: 0 0.14rem;
-  color: #1c3354;
-  font-size: 0.94rem;
-  font-weight: 800;
-  position: relative;
-}
-
-.mobile-profile-selector-close-btn {
-  margin-left: auto;
-  width: 34px;
-  height: 34px;
-  border: 0;
-  border-radius: 50%;
-  background: rgba(235, 242, 255, 0.9);
-  color: rgba(39, 87, 148, 0.94);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  cursor: pointer;
-}
-
-.mobile-profile-selector-close-btn .mat-icon {
-  width: 18px;
-  height: 18px;
-  font-size: 18px;
-  line-height: 18px;
-}
-
-.mobile-profile-selector-options {
-  margin-top: 0.42rem;
-  display: grid;
-  gap: 0.32rem;
-  justify-items: center;
-  max-height: min(64vh, 520px);
-  overflow: auto;
-  overscroll-behavior: contain;
-}
-
-.mobile-profile-selector-option {
-  width: max-content;
-  min-width: 220px;
-  max-width: 100%;
-  border: 1px solid rgba(58, 81, 114, 0.24);
-  border-radius: 12px;
-  background: #f7f9fd;
-  color: #1f3f67;
-  min-height: 42px;
-  padding: 0.46rem 0.62rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.mobile-profile-selector-option-main {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.36rem;
-  min-width: 0;
-  text-align: left;
-}
-
-.mobile-profile-selector-option.active {
-  box-shadow: inset 0 0 0 1px rgba(24, 46, 76, 0.24);
-  filter: brightness(0.95);
-}
-
 .mobile-profile-language-entry {
   margin-top: 0.42rem;
   display: grid;
@@ -1683,6 +1543,7 @@
   justify-content: center;
   cursor: pointer;
   padding: 0;
+  transition: background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, color 0.16s ease;
 }
 
 .mobile-profile-language-submit-btn .mat-icon {
@@ -1697,13 +1558,13 @@
   }
 
   .mobile-profile-language-submit-btn:hover {
-    transform: translateY(-50%);
-    filter: none;
+    transform: translateY(-50%) !important;
+    filter: none !important;
   }
 
   .mobile-profile-language-submit-btn:active {
-    transform: translateY(-50%);
-    filter: none;
+    transform: translateY(-50%) !important;
+    filter: none !important;
   }
 
   .avatar-edit-btn:hover {
@@ -1721,8 +1582,8 @@
   }
 
   .mobile-profile-language-submit-btn:active {
-    transform: translateY(-50%);
-    filter: none;
+    transform: translateY(-50%) !important;
+    filter: none !important;
   }
 }
 
@@ -1772,7 +1633,100 @@
     gap: 0.5rem;
   }
 
-  .mobile-profile-selector-sheet-wrap {
-    padding: 0.8rem;
+  .image-editor-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .profile-form-grid.profile-details-form-grid.basics-moved-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 0.52rem;
+    row-gap: 0.62rem;
+    justify-content: stretch;
+  }
+
+  .basics-moved-grid .name-field,
+  .basics-moved-grid .city-field,
+  .basics-moved-grid .languages-field {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    justify-self: stretch !important;
+    width: 100%;
+  }
+
+  .basics-moved-grid .birthday-field {
+    grid-column: 1 / 2;
+    grid-row: auto;
+    justify-self: stretch !important;
+    width: 100%;
+  }
+
+  .basics-moved-grid .horoscope-field {
+    grid-column: 2 / 3;
+    grid-row: auto;
+    justify-self: stretch !important;
+    width: 100%;
+    margin-inline-start: 0 !important;
+  }
+
+  .basics-moved-grid .height-field {
+    grid-column: 1 / 2;
+    grid-row: auto;
+    justify-self: stretch !important;
+    width: 100%;
+  }
+
+  .basics-moved-grid .physique-field {
+    grid-column: 2 / 3;
+    grid-row: auto;
+    justify-self: stretch !important;
+    width: 100%;
+    margin-inline-start: 0 !important;
+  }
+
+  .basics-moved-grid .date-input-wrap {
+    width: 100%;
+  }
+
+  .basics-moved-grid .name-field input,
+  .basics-moved-grid .city-field input,
+  .basics-moved-grid .height-field input {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .basics-moved-grid .birthday-field .date-input-wrap input {
+    flex: 1 1 auto;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .basics-moved-grid .physique-field .profile-status-select-wrap,
+  .basics-moved-grid .horoscope-field .readonly-select,
+  .basics-moved-grid .languages-field .language-select-btn {
+    width: 100%;
+    max-width: none;
+    min-width: 0 !important;
+    box-sizing: border-box;
+  }
+
+  .basics-moved-grid .horoscope-field .readonly-select {
+    min-height: 36px;
+    margin-top: 0;
+    justify-self: stretch;
+    padding-left: 0.34rem;
+    padding-right: 0.34rem;
+  }
+
+  .basics-moved-grid .physique-field .profile-status-select-wrap {
+    min-height: 36px;
+    margin-top: 0;
+  }
+
+  .basics-moved-grid .date-picker-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
   }
 }

@@ -196,6 +196,8 @@
     width: 100%;
     margin: 0;
     justify-content: stretch;
+    align-content: start;
+    align-items: start;
     column-gap: 1rem;
     row-gap: 0.9rem;
   }
@@ -207,6 +209,36 @@
     gap: 0;
     font-weight: 600;
     color: rgba(26, 44, 69, 0.88);
+  }
+
+  .popup-surface-form-grid input,
+  .experience-form-grid input {
+    min-height: 40px;
+    padding: 0.56rem 0.72rem;
+    font-size: 0.88rem;
+    line-height: 1.25;
+    box-sizing: border-box;
+  }
+
+  .popup-surface-form-grid textarea,
+  .experience-form-grid textarea {
+    min-height: 96px;
+    padding: 0.56rem 0.72rem;
+    font-size: 0.88rem;
+    line-height: 1.25;
+    box-sizing: border-box;
+  }
+
+  .popup-surface-form-grid .profile-status-select-wrap.selector-like,
+  .experience-form-grid .profile-status-select-wrap.selector-like {
+    min-height: 40px;
+    height: 40px;
+    box-sizing: border-box;
+  }
+
+  .popup-surface-form-grid .mat-mdc-select-trigger,
+  .experience-form-grid .mat-mdc-select-trigger {
+    min-height: 32px;
   }
 
   .popup-surface-description-field,
@@ -682,12 +714,19 @@
     min-height: 40px;
   }
 
+  .experience-type-field,
   .experience-title-field,
   .experience-city-field {
     width: 100%;
+    justify-self: stretch;
   }
 
   .experience-org-field {
+    width: 100%;
+    justify-self: stretch;
+  }
+
+  .experience-type-select {
     width: 100%;
   }
 
@@ -724,6 +763,9 @@
     min-width: 0;
     width: 100%;
     padding: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    line-height: 1.25;
   }
 
   .experience-date-range-field .mat-datepicker-toggle {
@@ -765,10 +807,32 @@
     width: 100% !important;
     text-overflow: clip;
     white-space: nowrap;
+    line-height: 1.25;
   }
 
   .experience-date-range-field .mat-mdc-form-field-flex {
     min-width: 0;
+    border-bottom: 0 !important;
+    box-shadow: none !important;
+    align-items: center !important;
+  }
+
+  .experience-date-range-field .mat-mdc-form-field-infix {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    min-height: 34px !important;
+    height: 34px;
+    display: flex;
+    align-items: center;
+  }
+
+  .experience-date-range-field .mdc-line-ripple,
+  .experience-date-range-field .mat-mdc-form-field-line-ripple,
+  .experience-date-range-field .mdc-line-ripple--deactivating,
+  .experience-date-range-field .mdc-line-ripple--active {
+    display: none !important;
+    opacity: 0 !important;
+    transform: scaleX(0) !important;
   }
 
   :host ::ng-deep .mat-mdc-option.status-option.experience-filter-all {
@@ -934,6 +998,61 @@
   .mobile-profile-selector-option.detail-tone-8 {
     background: linear-gradient(180deg, #f6f3ea 0%, #eee9dc 100%);
     border-color: rgba(128, 109, 66, 0.32);
+  }
+
+  .mobile-profile-selector-option.status-public {
+    background: linear-gradient(180deg, #e6f6ef 0%, #d9f0e6 100%);
+    border-color: rgba(47, 143, 102, 0.34);
+  }
+
+  .mobile-profile-selector-option.status-friends {
+    background: linear-gradient(180deg, #e8f1fd 0%, #dfeaf9 100%);
+    border-color: rgba(27, 87, 161, 0.34);
+  }
+
+  .mobile-profile-selector-option.status-host {
+    background: linear-gradient(180deg, #f6efe2 0%, #eee4d2 100%);
+    border-color: rgba(135, 88, 15, 0.36);
+  }
+
+  .mobile-profile-selector-option.status-inactive {
+    background: linear-gradient(180deg, #f2f3f5 0%, #e8ebef 100%);
+    border-color: rgba(91, 101, 115, 0.32);
+  }
+
+  .mobile-profile-selector-option.physique-slim {
+    background: #eaf4ff;
+    border-color: rgba(63, 122, 179, 0.34);
+  }
+
+  .mobile-profile-selector-option.physique-lean {
+    background: #edf8f4;
+    border-color: rgba(75, 127, 113, 0.34);
+  }
+
+  .mobile-profile-selector-option.physique-athletic {
+    background: #e8f5ec;
+    border-color: rgba(47, 126, 77, 0.34);
+  }
+
+  .mobile-profile-selector-option.physique-fit {
+    background: #f1f2ff;
+    border-color: rgba(70, 95, 187, 0.34);
+  }
+
+  .mobile-profile-selector-option.physique-curvy {
+    background: #fff2f8;
+    border-color: rgba(161, 72, 117, 0.34);
+  }
+
+  .mobile-profile-selector-option.physique-muscular {
+    background: #fbf4ea;
+    border-color: rgba(125, 79, 36, 0.34);
+  }
+
+  .mobile-profile-selector-option.physique-average {
+    background: #eff4f9;
+    border-color: rgba(77, 102, 127, 0.34);
   }
 
   .popup-panel-profile-selector .values-selector-popup.profile-selector-popup {
@@ -1350,6 +1469,42 @@
   }
 
   @media (max-width: 760px) {
+    .experience-form-grid {
+      grid-template-columns: 1fr;
+      max-width: none;
+      justify-content: stretch;
+      row-gap: 0.72rem;
+    }
+
+    .experience-date-range-label {
+      grid-column: 1 / -1;
+    }
+
+    .experience-date-range-field .mat-date-range-input-container {
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    }
+
+    .profile-details-privacy-fab .privacy-fab-actions {
+      position: fixed;
+      left: 0.5rem;
+      right: 0.5rem;
+      bottom: max(0.5rem, env(safe-area-inset-bottom));
+      top: auto;
+      transform: translateY(12px) scale(0.98);
+      transform-origin: bottom center;
+      justify-content: center;
+      gap: 0.46rem;
+      padding: 0.46rem 0.56rem;
+      border: 1px solid rgba(42, 68, 102, 0.2);
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 -12px 24px rgba(18, 31, 51, 0.22);
+    }
+
+    .profile-details-privacy-fab.open .privacy-fab-actions {
+      transform: translateY(0) scale(1);
+    }
+
     :host ::ng-deep .cdk-overlay-pane:has(.mat-mdc-select-panel.profile-bottom-sheet-panel) {
       position: fixed !important;
       left: 0 !important;
