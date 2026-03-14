@@ -10,7 +10,14 @@ import {
   type UserDto,
   type UserImpressionsSectionDto
 } from '../../../shared/core';
-import { NavigatorBindings, NavigatorService } from '../../navigator.service';
+import {
+  resolveHostTierColorClass,
+  resolveHostTierIcon,
+  resolveMemberImpressionTitle,
+  resolveTraitColorClass,
+  resolveTraitIcon
+} from '../../navigator-presenters';
+import { NavigatorService } from '../../navigator.service';
 
 interface NavigatorImpressionsPulseFlags {
   hostTop: boolean;
@@ -81,7 +88,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     return {
       user,
       pulseFlags: this.pulseFlagsRef(),
-      memberImpressionTitle: this.resolveMemberImpressionTitle(user.traitLabel ?? ''),
+      memberImpressionTitle: resolveMemberImpressionTitle(user.traitLabel ?? ''),
       hostAverageRating: this.resolveHostAverageRating(user),
       hostTotalEvents: this.resolveHostTotalEvents(user),
       hostPeopleMet: this.resolveHostPeopleMet(user),
@@ -99,10 +106,6 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
       memberCategoryBadgeItems: this.resolveMemberCategoryBadgeItems(user)
     };
   });
-
-  protected get bindings(): NavigatorBindings | null {
-    return this.navigatorService.bindings();
-  }
 
   constructor() {
     effect(() => {
@@ -174,28 +177,20 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     this.clearPulseTimers();
   }
 
-  protected getHostTierToneClass(tier: string): string {
-    return this.bindings?.getHostTierToneClass(tier) ?? '';
-  }
-
   protected getHostTierColorClass(tier: string): string {
-    return this.bindings?.getHostTierColorClass(tier) ?? '';
+    return resolveHostTierColorClass(tier);
   }
 
   protected getHostTierIcon(tier: string): string {
-    return this.bindings?.getHostTierIcon(tier) ?? 'workspace_premium';
-  }
-
-  protected getTraitToneClass(trait: string): string {
-    return this.bindings?.getTraitToneClass(trait) ?? '';
+    return resolveHostTierIcon(tier);
   }
 
   protected getTraitColorClass(trait: string): string {
-    return this.bindings?.getTraitColorClass(trait) ?? '';
+    return resolveTraitColorClass(trait);
   }
 
   protected getTraitIcon(trait: string): string {
-    return this.bindings?.getTraitIcon(trait) ?? 'psychiatry';
+    return resolveTraitIcon(trait);
   }
 
   private activeUserImpressionsSection(user: UserDto, kind: 'host' | 'member'): UserImpressionsSectionDto | null {
@@ -490,29 +485,6 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
       `Outdoors ${AppDemoGenerators.seededMetric(user, 29, 40, 95)}%, Games ${AppDemoGenerators.seededMetric(user, 30, 35, 95)}%, Culture ${AppDemoGenerators.seededMetric(user, 31, 25, 90)}%`,
       this.categoryIcons
     ));
-  }
-
-  private resolveMemberImpressionTitle(traitLabel: string): string {
-    const normalized = traitLabel.trim().toLowerCase();
-    if (normalized.includes('empat') || normalized.includes('empath')) {
-      return 'Empathetic Attendee';
-    }
-    if (normalized.includes('advent')) {
-      return 'Adventurous Attendee';
-    }
-    if (normalized.includes('reliab')) {
-      return 'Reliable Attendee';
-    }
-    if (normalized.includes('social')) {
-      return 'Social Attendee';
-    }
-    if (normalized.includes('playful')) {
-      return 'Playful Attendee';
-    }
-    if (normalized.includes('ambit')) {
-      return 'Ambitious Attendee';
-    }
-    return 'Deep Thinker Attendee';
   }
 
   private hasImpressionsTopMetricsChanged(

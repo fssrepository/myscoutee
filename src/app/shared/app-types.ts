@@ -10,8 +10,6 @@ export type PopupType =
   | 'tickets'
   | 'chat'
   | 'chatMembers'
-  | 'impressionsHost'
-  | 'impressionsMember'
   | 'assetsCar'
   | 'assetsAccommodation'
   | 'assetsSupplies'

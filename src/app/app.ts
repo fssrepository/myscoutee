@@ -23,8 +23,7 @@ import {
   SessionService,
   UsersService,
   type ActivityCounterKey,
-  type UserDto,
-  type UserImpressionsSectionDto
+  type UserDto
 } from './shared/core';
 import {
   APP_DEMO_DATA,
@@ -139,7 +138,6 @@ export class App {
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT = 50;
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MIN_PERCENT = 0;
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT = 100;
-  private static readonly IMPRESSIONS_VISUAL_PULSE_DURATION_MS = 460;
 
   public readonly alertService = inject(AlertService);
   protected readonly activitiesContext = inject(ActivitiesDbContextService);
@@ -150,7 +148,7 @@ export class App {
   private readonly appCtx = inject(AppContext);
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly navigatorService = inject(NavigatorService);
+  protected readonly navigatorService = inject(NavigatorService);
 
   protected readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
   protected readonly assetTicketBridge: AssetTicketBridge = {
@@ -243,12 +241,6 @@ export class App {
       this.activeUserId = user.id;
       this.cdr.markForCheck();
     },
-    getHostTierToneClass: (tier) => this.getHostTierToneClass(tier),
-    getHostTierColorClass: (tier) => this.getHostTierColorClass(tier),
-    getHostTierIcon: (tier) => this.getHostTierIcon(tier),
-    getTraitToneClass: (trait) => this.getTraitToneClass(trait),
-    getTraitColorClass: (trait) => this.getTraitColorClass(trait),
-    getTraitIcon: (trait) => this.getTraitIcon(trait),
     openRatesShortcut: () => this.openRatesShortcut(),
     openChatShortcut: () => this.openChatShortcut(),
     openInvitationShortcut: () => this.openInvitationShortcut(),
@@ -264,9 +256,6 @@ export class App {
   };
   protected readonly vibeCategories = APP_STATIC_DATA.vibeCategories;
   protected readonly hostedEventTypes = APP_STATIC_DATA.hostedEventTypes;
-  protected readonly vibeIcons: Record<string, string> = APP_STATIC_DATA.vibeIcons;
-  protected readonly categoryIcons: Record<string, string> = APP_STATIC_DATA.categoryIcons;
-  protected readonly memberTraitIcons: Record<string, string> = APP_STATIC_DATA.memberTraitIcons;
   protected readonly eventEditor = EVENT_EDITOR_SAMPLE;
   protected readonly profileDetailValueOptions: Record<string, string[]> = APP_STATIC_DATA.profileDetailValueOptions;
   protected readonly beliefsValuesOptionGroups: AppTypes.ValuesOptionGroup[] = APP_STATIC_DATA.beliefsValuesOptionGroups;
@@ -341,7 +330,7 @@ export class App {
   protected activityInviteSort: AppTypes.ActivityInviteSort = 'recent';
   protected showActivityInviteSortPicker = false;
   protected selectedActivityInviteUserIds: string[] = [];
-  protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | 'eventExploreTopicFilter' | 'impressionsHost' | 'subEventAssetAssign' | null = null;
+  protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | 'eventExploreTopicFilter' | 'subEventAssetAssign' | null = null;
   private readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
   private activityMembersPopupOrigin: 'active-event-editor' | 'stacked-event-editor' | 'event-explore' | 'subevent-asset' | null = null;
   private subEventAssetMembersContext: AppTypes.SubEventAssetMembersContext | null = null;
@@ -581,15 +570,6 @@ export class App {
   private chatHeaderLoadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
   private chatHeaderLoadingStartedAtMs = 0;
   private chatInitialLoadTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly userImpressionsChangeFlagsByUserId: Record<string, { host: boolean; member: boolean }> = {};
-  private readonly userImpressionsVisualPulseByUserId: Record<
-    string,
-    { hostTop: boolean; memberTop: boolean; hostChips: boolean; memberChips: boolean }
-  > = {};
-  private readonly userImpressionsVisualPulseTimersByUserId: Record<
-    string,
-    Partial<Record<'hostTop' | 'memberTop' | 'hostChips' | 'memberChips', ReturnType<typeof setTimeout>>>
-  > = {};
   constructor(
     private readonly router: Router
   ) {
@@ -749,44 +729,6 @@ export class App {
 
   protected get activeUser() {
     return this.users.find(user => user.id === this.activeUserId) ?? this.users[0];
-  }
-
-  protected get userBadgeCount(): number {
-    return (
-      this.hostImpressionsBadge +
-      this.memberImpressionsBadge +
-      this.gameBadge +
-      this.chatBadge +
-      this.invitationsBadge +
-      this.eventsBadge +
-      this.hostingBadge +
-      this.eventFeedbackBadge +
-      this.assetTicketsBadge
-    );
-  }
-
-  protected get hostImpressionsBadge(): number {
-    return this.currentUserImpressionsChangeFlags().host ? 1 : 0;
-  }
-
-  protected get memberImpressionsBadge(): number {
-    return this.currentUserImpressionsChangeFlags().member ? 1 : 0;
-  }
-
-  protected get hostImpressionsTopMetricsPulse(): boolean {
-    return this.currentUserImpressionsVisualPulseFlags().hostTop;
-  }
-
-  protected get memberImpressionsTopMetricsPulse(): boolean {
-    return this.currentUserImpressionsVisualPulseFlags().memberTop;
-  }
-
-  protected get hostImpressionsChipsPulse(): boolean {
-    return this.currentUserImpressionsVisualPulseFlags().hostChips;
-  }
-
-  protected get memberImpressionsChipsPulse(): boolean {
-    return this.currentUserImpressionsVisualPulseFlags().memberChips;
   }
 
   protected get gameBadge(): number {
@@ -5012,9 +4954,6 @@ export class App {
 
   protected closePopup(): void {
     this.stopActivitiesRatesPairSplitDrag();
-    const wasImpressionsPopupOpen = this.activePopup === 'impressionsHost'
-      || this.stackedPopup === 'impressionsHost'
-      || this.superStackedPopup === 'impressionsHost';
     this.activePopup = null;
     this.stackedPopup = null;
     this.closeAssetForm();
@@ -5092,10 +5031,6 @@ export class App {
     this.eventExploreHeaderProgress = 0;
     this.eventExploreStickyValue = '';
     this.chatHeaderProgress = 0;
-    if (wasImpressionsPopupOpen) {
-      this.clearCurrentUserImpressionsChangeFlags();
-      this.markCurrentUserImpressionsAsSeen();
-    }
     this.syncAssetPopupVisibility();
   }
 
@@ -5105,8 +5040,6 @@ export class App {
   }
 
   protected closeStackedPopup(): void {
-    const wasImpressionsPopupOpen = this.stackedPopup === 'impressionsHost'
-      || this.superStackedPopup === 'impressionsHost';
     if (this.stackedPopup === 'chat') {
       this.cancelChatInitialLoad();
       this.chatHeaderProgress = 0;
@@ -5136,12 +5069,6 @@ export class App {
     this.eventExploreHeaderProgress = 0;
     if (this.superStackedPopup === 'subEventAssetAssign') {
       this.closeSubEventAssetAssignPopup(false);
-      return;
-    }
-    if (this.superStackedPopup === 'impressionsHost') {
-      this.superStackedPopup = null;
-      this.clearCurrentUserImpressionsChangeFlags();
-      this.markCurrentUserImpressionsAsSeen();
       return;
     }
     if (this.stackedPopup === 'subEventMembers' || this.stackedPopup === 'subEventAssets') {
@@ -5222,10 +5149,6 @@ export class App {
       this.superStackedPopup = null;
     }
     this.stackedPopup = null;
-    if (wasImpressionsPopupOpen) {
-      this.clearCurrentUserImpressionsChangeFlags();
-      this.markCurrentUserImpressionsAsSeen();
-    }
     if (this.activePopup === 'chat') {
       this.scrollChatToBottom();
     }
@@ -5233,7 +5156,6 @@ export class App {
   }
 
   protected confirmLogout(): void {
-    this.clearUserImpressionsVisualPulseState(this.activeUserId);
     this.activePopup = null;
     this.stackedPopup = null;
     this.navigatorService.closeMenu();
@@ -5245,119 +5167,6 @@ export class App {
     });
   }
 
-  private clearUserImpressionsChangeFlag(userId: string, section: 'host' | 'member'): void {
-    const current = this.userImpressionsChangeFlagsByUserId[userId];
-    if (!current) {
-      this.appCtx.clearUserImpressionChangeFlags(userId);
-      return;
-    }
-    const next = {
-      host: section === 'host' ? false : current.host,
-      member: section === 'member' ? false : current.member
-    };
-    if (!next.host && !next.member) {
-      delete this.userImpressionsChangeFlagsByUserId[userId];
-      this.appCtx.clearUserImpressionChangeFlags(userId);
-      return;
-    }
-    this.userImpressionsChangeFlagsByUserId[userId] = next;
-    this.appCtx.setUserImpressionChangeFlags(userId, next);
-  }
-
-  private clearCurrentUserImpressionsChangeFlags(): void {
-    const userId = this.activeUser.id;
-    this.clearUserImpressionsChangeFlag(userId, 'host');
-    this.clearUserImpressionsChangeFlag(userId, 'member');
-    this.clearUserImpressionsVisualPulseState(userId);
-  }
-
-  private clearUserImpressionsVisualPulseState(userId: string): void {
-    const timers = this.userImpressionsVisualPulseTimersByUserId[userId];
-    if (timers) {
-      const activeTimers = Object.values(timers);
-      for (const timer of activeTimers) {
-        if (timer) {
-          clearTimeout(timer);
-        }
-      }
-      delete this.userImpressionsVisualPulseTimersByUserId[userId];
-    }
-    delete this.userImpressionsVisualPulseByUserId[userId];
-  }
-
-  private triggerUserImpressionsVisualPulse(
-    userId: string,
-    key: 'hostTop' | 'memberTop' | 'hostChips' | 'memberChips'
-  ): void {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return;
-    }
-    const current = this.userImpressionsVisualPulseByUserId[normalizedUserId] ?? {
-      hostTop: false,
-      memberTop: false,
-      hostChips: false,
-      memberChips: false
-    };
-    this.userImpressionsVisualPulseByUserId[normalizedUserId] = {
-      ...current,
-      [key]: true
-    };
-    const timers = this.userImpressionsVisualPulseTimersByUserId[normalizedUserId] ?? {};
-    if (timers[key]) {
-      clearTimeout(timers[key]);
-    }
-    timers[key] = setTimeout(() => {
-      const active = this.userImpressionsVisualPulseByUserId[normalizedUserId];
-      if (!active) {
-        return;
-      }
-      const next = {
-        ...active,
-        [key]: false
-      };
-      if (!next.hostTop && !next.memberTop && !next.hostChips && !next.memberChips) {
-        delete this.userImpressionsVisualPulseByUserId[normalizedUserId];
-      } else {
-        this.userImpressionsVisualPulseByUserId[normalizedUserId] = next;
-      }
-      const userTimers = this.userImpressionsVisualPulseTimersByUserId[normalizedUserId];
-      if (userTimers) {
-        delete userTimers[key];
-        if (Object.keys(userTimers).length === 0) {
-          delete this.userImpressionsVisualPulseTimersByUserId[normalizedUserId];
-        } else {
-          this.userImpressionsVisualPulseTimersByUserId[normalizedUserId] = userTimers;
-        }
-      }
-      this.cdr.markForCheck();
-    }, App.IMPRESSIONS_VISUAL_PULSE_DURATION_MS);
-    this.userImpressionsVisualPulseTimersByUserId[normalizedUserId] = timers;
-  }
-
-  private markCurrentUserImpressionsAsSeen(): void {
-    const userId = this.activeUser.id;
-    const current = this.appCtx.getUserImpressions(userId);
-    if (!current) {
-      return;
-    }
-    this.appCtx.setUserImpressions(userId, {
-      ...current,
-      host: current.host
-        ? {
-          ...current.host,
-          unreadCount: 0
-        }
-        : current.host,
-      member: current.member
-        ? {
-          ...current.member,
-          unreadCount: 0
-        }
-        : current.member
-    });
-  }
-
   protected getPopupTitle(): string {
     switch (this.activePopup) {
       case 'activities':
@@ -5366,10 +5175,6 @@ export class App {
         return this.selectedChat?.title ?? 'Chat';
       case 'activityMembers':
         return 'Members';
-      case 'impressionsHost':
-        return this.activeHostTier;
-      case 'impressionsMember':
-        return this.memberImpressionTitle;
       case 'assetsCar':
         return 'Assets · Car';
       case 'assetsAccommodation':
@@ -5417,8 +5222,6 @@ export class App {
     switch (this.stackedPopup) {
       case 'chat':
         return this.selectedChat?.title ?? 'Chat';
-      case 'impressionsHost':
-        return 'Impressions';
       case 'invitationActions':
         return this.selectedInvitation?.description ?? 'Invitation';
       case 'menuEvent':
@@ -5805,388 +5608,6 @@ export class App {
     this.mobileProfileSelectorSheet = null;
   }
 
-  private activeUserImpressionsSection(kind: 'host' | 'member'): UserImpressionsSectionDto | null {
-    const impressions = this.appCtx.getUserImpressions(this.activeUser.id);
-    if (!impressions) {
-      return null;
-    }
-    const section = impressions[kind];
-    return section ?? null;
-  }
-
-  private currentUserImpressionsChangeFlags(): { host: boolean; member: boolean } {
-    return this.userImpressionsChangeFlagsByUserId[this.activeUser.id] ?? { host: false, member: false };
-  }
-
-  private currentUserImpressionsVisualPulseFlags(): {
-    hostTop: boolean;
-    memberTop: boolean;
-    hostChips: boolean;
-    memberChips: boolean;
-  } {
-    return this.userImpressionsVisualPulseByUserId[this.activeUser.id] ?? {
-      hostTop: false,
-      memberTop: false,
-      hostChips: false,
-      memberChips: false
-    };
-  }
-
-  private impressionSectionCounter(value: number | undefined): number {
-    if (!Number.isFinite(value)) {
-      return 0;
-    }
-    return Math.max(0, Math.trunc(Number(value)));
-  }
-
-  private impressionSectionMetric(value: number | undefined): number | null {
-    if (!Number.isFinite(value)) {
-      return null;
-    }
-    return Math.max(0, Math.trunc(Number(value)));
-  }
-
-  private impressionSectionRating(value: number | undefined): number | null {
-    if (!Number.isFinite(value)) {
-      return null;
-    }
-    return AppUtils.clampNumber(Number(value), 0, 5);
-  }
-
-  private impressionSectionBadgeList(items: readonly string[] | undefined): string[] | null {
-    if (!Array.isArray(items)) {
-      return null;
-    }
-    const normalized = items
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
-    return normalized.length > 0 ? normalized : null;
-  }
-
-  private sortImpressionsBadgeItems(items: readonly string[]): string[] {
-    const parsed = items.map(item => this.parseImpressionsBadgeItem(item));
-    parsed.sort((left, right) => {
-      if (left.percent !== null && right.percent !== null && left.percent !== right.percent) {
-        return right.percent - left.percent;
-      }
-      if (left.percent !== null && right.percent === null) {
-        return -1;
-      }
-      if (left.percent === null && right.percent !== null) {
-        return 1;
-      }
-      return left.label.localeCompare(right.label);
-    });
-    return parsed.map(entry => entry.original);
-  }
-
-  private parseImpressionsBadgeItem(item: string): { original: string; label: string; percent: number | null } {
-    const original = item.trim();
-    const percentMatch = original.match(/^(.*?)(\d{1,3})%$/);
-    if (!percentMatch) {
-      return {
-        original,
-        label: original.toLowerCase(),
-        percent: null
-      };
-    }
-    return {
-      original,
-      label: percentMatch[1].trim().toLowerCase(),
-      percent: Math.max(0, Math.min(100, Number.parseInt(percentMatch[2], 10) || 0))
-    };
-  }
-
-  protected get hostSocialProofBaseMetrics(): Array<{ label: string; value: string }> {
-    return [
-      { label: 'Average crown rating', value: `${(AppDemoGenerators.seededMetric(this.activeUser, 1, 38, 50) / 10).toFixed(1)} / 5.0` },
-      { label: 'Attendance rate', value: `${AppDemoGenerators.seededMetric(this.activeUser, 2, 74, 99)}%` },
-      { label: 'No-show ratio', value: `${AppDemoGenerators.seededMetric(this.activeUser, 3, 1, 16)}%` },
-      { label: 'Repeat attendees', value: `${AppDemoGenerators.seededMetric(this.activeUser, 4, 36, 92)}%` }
-    ];
-  }
-
-  protected get hostAverageRating(): string {
-    const loaded = this.impressionSectionRating(this.activeUserImpressionsSection('host')?.averageRating);
-    if (loaded !== null) {
-      return loaded.toFixed(1);
-    }
-    const baseline = 4.4;
-    const scores = this.submittedEventFeedbackAnswersByKind('event')
-      .map(answer => this.feedbackScoreFromPrimary(answer.kind, answer.primaryValue))
-      .filter(score => Number.isFinite(score));
-    if (scores.length === 0) {
-      return baseline.toFixed(1);
-    }
-    const weighted = ((baseline * 8) + scores.reduce((sum, score) => sum + score, 0)) / (8 + scores.length);
-    return weighted.toFixed(1);
-  }
-
-  protected get hostTotalEvents(): number {
-    const loaded = this.impressionSectionMetric(this.activeUserImpressionsSection('host')?.totalEvents);
-    if (loaded !== null) {
-      return loaded;
-    }
-    return AppDemoGenerators.seededMetric(this.activeUser, 9, 12, 80);
-  }
-
-  protected get hostAttendanceTotal(): number {
-    return this.hostTotalEvents * AppDemoGenerators.seededMetric(this.activeUser, 18, 8, 14);
-  }
-
-  protected get hostAttendanceAttended(): number {
-    return Math.floor(this.hostAttendanceTotal * (AppDemoGenerators.seededMetric(this.activeUser, 2, 74, 96) / 100));
-  }
-
-  protected get hostAttendanceNoShow(): number {
-    return this.hostAttendanceTotal - this.hostAttendanceAttended;
-  }
-
-  protected get hostAttendanceSummary(): string {
-    return `${this.hostAttendanceAttended} / ${this.hostAttendanceTotal}`;
-  }
-
-  protected get hostAttendanceNoShowSummary(): string {
-    const loaded = this.impressionSectionMetric(this.activeUserImpressionsSection('host')?.noShowCount);
-    if (loaded !== null) {
-      return `${loaded}`;
-    }
-    return `${this.hostAttendanceNoShow}`;
-  }
-
-  protected get hostRepeatSummary(): string {
-    const loaded = this.impressionSectionMetric(this.activeUserImpressionsSection('host')?.repeatCount);
-    if (loaded !== null) {
-      return `${loaded}`;
-    }
-    const total = AppDemoGenerators.seededMetric(this.activeUser, 19, 60, 220);
-    const repeat = Math.floor(total * (AppDemoGenerators.seededMetric(this.activeUser, 4, 36, 84) / 100));
-    return `${repeat}`;
-  }
-
-  protected get hostPeopleMet(): number {
-    const loaded = this.impressionSectionMetric(this.activeUserImpressionsSection('host')?.peopleMet);
-    if (loaded !== null) {
-      return loaded;
-    }
-    return AppDemoGenerators.seededMetric(this.activeUser, 32, 90, 520) + this.submittedEventFeedbackAnswersByKind('event').length;
-  }
-
-  protected get hostVibeSummary(): string {
-    const vibe = this.vibeCategories[AppDemoGenerators.seededMetric(this.activeUser, 5, 0, this.vibeCategories.length - 1)];
-    return `${vibe} ${AppDemoGenerators.seededMetric(this.activeUser, 20, 18, 86)}%`;
-  }
-
-  protected get hostCategorySummary(): string {
-    const sports = AppDemoGenerators.seededMetric(this.activeUser, 21, 8, 48);
-    const roadTrip = AppDemoGenerators.seededMetric(this.activeUser, 22, 6, 36);
-    return `Sports ${sports}%, Road Trip ${roadTrip}%`;
-  }
-
-  protected get hostVibeBadgeItems(): string[] {
-    const loaded = this.impressionSectionBadgeList(this.activeUserImpressionsSection('host')?.vibeBadges);
-    if (loaded) {
-      return this.sortImpressionsBadgeItems(loaded);
-    }
-    const feedbackBadges = this.feedbackBadgeItemsForSection('event', 'vibe');
-    if (feedbackBadges.length > 0) {
-      return this.sortImpressionsBadgeItems(feedbackBadges);
-    }
-    return this.sortImpressionsBadgeItems(AppUtils.withContextIconItems(this.hostVibeSummary, this.vibeIcons));
-  }
-
-  protected get hostPersonalityBadgeItems(): string[] {
-    const loaded = this.impressionSectionBadgeList(this.activeUserImpressionsSection('host')?.personalityBadges);
-    if (loaded) {
-      return this.sortImpressionsBadgeItems(loaded);
-    }
-    const feedbackBadges = this.feedbackBadgeItemsForSection('event', 'personality');
-    if (feedbackBadges.length > 0) {
-      return this.sortImpressionsBadgeItems(feedbackBadges);
-    }
-    return this.sortImpressionsBadgeItems(['🧠 Communication 60%', '🧩 Coordination 40%']);
-  }
-
-  protected get hostCategoryBadgeItems(): string[] {
-    const loaded = this.impressionSectionBadgeList(this.activeUserImpressionsSection('host')?.categoryBadges);
-    if (loaded) {
-      return this.sortImpressionsBadgeItems(loaded);
-    }
-    const feedbackBadges = this.feedbackBadgeItemsForSection('event', 'category');
-    if (feedbackBadges.length > 0) {
-      return this.sortImpressionsBadgeItems(feedbackBadges);
-    }
-    return this.sortImpressionsBadgeItems(AppUtils.withContextIconItems(this.hostCategorySummary, this.categoryIcons));
-  }
-
-  protected get memberTraitBreakdown(): Array<{ label: string; value: string }> {
-    // from plans/feature_list.txt sample
-    return [
-      { label: 'Adventurer', value: '60%' },
-      { label: 'Deep Thinker', value: '30%' },
-      { label: 'Empath', value: '10%' }
-    ];
-  }
-
-  protected get memberPersonalityBadgeItems(): string[] {
-    const loaded = this.impressionSectionBadgeList(this.activeUserImpressionsSection('member')?.personalityBadges);
-    if (loaded) {
-      return this.sortImpressionsBadgeItems(loaded);
-    }
-    const feedbackBadges = this.feedbackBadgeItemsForSection('attendee', 'personality');
-    if (feedbackBadges.length > 0) {
-      return this.sortImpressionsBadgeItems(feedbackBadges);
-    }
-    return this.sortImpressionsBadgeItems(this.memberTraitBreakdown
-      .map(item => `${this.memberTraitIcons[item.label] ?? ''} ${item.label} ${item.value}`.trim())
-      .filter(Boolean));
-  }
-
-  protected get memberTotalEvents(): number {
-    const loaded = this.impressionSectionMetric(this.activeUserImpressionsSection('member')?.totalEvents);
-    if (loaded !== null) {
-      return loaded;
-    }
-    return this.hostTotalEvents;
-  }
-
-  protected get memberAttendanceSummary(): string {
-    const total = 100;
-    const attended = AppDemoGenerators.seededMetric(this.activeUser, 23, 4, 96);
-    return `${attended} / ${total}`;
-  }
-
-  protected get memberNoShowCount(): number {
-    const loaded = this.impressionSectionMetric(this.activeUserImpressionsSection('member')?.noShowCount);
-    if (loaded !== null) {
-      return loaded;
-    }
-    const [attendedText, totalText] = this.memberAttendanceSummary.split('/').map(item => item.trim());
-    const attended = Number.parseInt(attendedText, 10) || 0;
-    const total = Number.parseInt(totalText, 10) || 0;
-    return Math.max(0, total - attended);
-  }
-
-  protected get memberPeopleMet(): number {
-    const loaded = this.impressionSectionMetric(this.activeUserImpressionsSection('member')?.peopleMet);
-    if (loaded !== null) {
-      return loaded;
-    }
-    return AppDemoGenerators.seededMetric(this.activeUser, 24, 80, 460) + this.submittedEventFeedbackAnswersByKind('attendee').length;
-  }
-
-  protected get memberReturneesSummary(): string {
-    const loaded = this.impressionSectionMetric(this.activeUserImpressionsSection('member')?.repeatCount);
-    if (loaded !== null) {
-      return `${loaded}`;
-    }
-    const total = this.memberPeopleMet;
-    const repeat = Math.floor(total * (AppDemoGenerators.seededMetric(this.activeUser, 33, 18, 72) / 100));
-    return `${repeat}`;
-  }
-
-  protected get memberVibeSummary(): string {
-    const first = this.vibeCategories[AppDemoGenerators.seededMetric(this.activeUser, 25, 0, this.vibeCategories.length - 1)];
-    const second = this.vibeCategories[AppDemoGenerators.seededMetric(this.activeUser, 26, 0, this.vibeCategories.length - 1)];
-    return `${first} ${AppDemoGenerators.seededMetric(this.activeUser, 27, 18, 74)}%, ${second} ${AppDemoGenerators.seededMetric(this.activeUser, 28, 12, 62)}%`;
-  }
-
-  protected get memberCategorySummary(): string {
-    return `Outdoors ${AppDemoGenerators.seededMetric(this.activeUser, 29, 40, 95)}%, Games ${AppDemoGenerators.seededMetric(this.activeUser, 30, 35, 95)}%, Culture ${AppDemoGenerators.seededMetric(this.activeUser, 31, 25, 90)}%`;
-  }
-
-  protected get memberVibeBadgeItems(): string[] {
-    const loaded = this.impressionSectionBadgeList(this.activeUserImpressionsSection('member')?.vibeBadges);
-    if (loaded) {
-      return this.sortImpressionsBadgeItems(loaded);
-    }
-    const feedbackBadges = this.feedbackBadgeItemsForSection('attendee', 'vibe');
-    if (feedbackBadges.length > 0) {
-      return this.sortImpressionsBadgeItems(feedbackBadges);
-    }
-    return this.sortImpressionsBadgeItems(AppUtils.withContextIconItems(this.memberVibeSummary, this.vibeIcons));
-  }
-
-  protected get memberCategoryBadgeItems(): string[] {
-    const loaded = this.impressionSectionBadgeList(this.activeUserImpressionsSection('member')?.categoryBadges);
-    if (loaded) {
-      return this.sortImpressionsBadgeItems(loaded);
-    }
-    const feedbackBadges = this.feedbackBadgeItemsForSection('attendee', 'category');
-    if (feedbackBadges.length > 0) {
-      return this.sortImpressionsBadgeItems(feedbackBadges);
-    }
-    return this.sortImpressionsBadgeItems(AppUtils.withContextIconItems(this.memberCategorySummary, this.categoryIcons));
-  }
-
-  protected get memberCategoryPlacementClass(): string {
-    const personalityLen = AppUtils.badgeItemsLength(this.memberPersonalityBadgeItems);
-    const vibeLen = AppUtils.badgeItemsLength(this.memberVibeBadgeItems);
-    return personalityLen <= vibeLen ? 'badge-below-left' : 'badge-below-right';
-  }
-
-  private submittedEventFeedbackAnswersByKind(kind: 'event' | 'attendee'): AppTypes.SubmittedEventFeedbackAnswer[] {
-    return Object.values(this.submittedEventFeedbackAnswersByUser[this.activeUser.id] ?? {})
-      .filter(answer => answer.kind === kind);
-  }
-
-  private feedbackScoreFromPrimary(kind: 'event' | 'attendee', value: string): number {
-    if (kind === 'event') {
-      switch (value) {
-        case 'excellent':
-          return 5;
-        case 'good':
-          return 4;
-        case 'mixed':
-          return 3;
-        case 'needs-work':
-          return 2;
-        default:
-          return 3.5;
-      }
-    }
-    switch (value) {
-      case 'great':
-        return 5;
-      case 'reliable':
-        return 4.5;
-      case 'neutral':
-        return 3;
-      case 'rough':
-        return 2;
-      default:
-        return 3.5;
-    }
-  }
-
-  private feedbackBadgeItemsForSection(
-    kind: 'event' | 'attendee',
-    section: 'personality' | 'vibe' | 'category'
-  ): string[] {
-    const answers = this.submittedEventFeedbackAnswersByKind(kind);
-    if (answers.length === 0) {
-      return [];
-    }
-    const counts = new Map<string, number>();
-    for (const answer of answers) {
-      for (const tag of answer.tags) {
-        if (this.feedbackSectionFromTag(kind, tag) !== section) {
-          continue;
-        }
-        const label = this.feedbackBadgeLabel(tag);
-        counts.set(label, (counts.get(label) ?? 0) + 1);
-      }
-    }
-    if (counts.size === 0) {
-      return [];
-    }
-    const total = [...counts.values()].reduce((sum, value) => sum + value, 0);
-    return [...counts.entries()]
-      .sort((first, second) => second[1] - first[1])
-      .slice(0, 3)
-      .map(([label, count]) => `${this.feedbackSectionIcon(section)} ${label} ${Math.round((count / total) * 100)}%`);
-  }
-
   private feedbackSectionFromTag(
     kind: 'event' | 'attendee',
     tag: string
@@ -6208,214 +5629,6 @@ export class App {
       return 'category';
     }
     return 'vibe';
-  }
-
-  private feedbackBadgeLabel(tag: string): string {
-    return tag
-      .replace(/^Host\s+/i, '')
-      .replace(/^Attendee\s+/i, '')
-      .trim();
-  }
-
-  private feedbackSectionIcon(section: 'personality' | 'vibe' | 'category'): string {
-    if (section === 'personality') {
-      return '🧠';
-    }
-    if (section === 'category') {
-      return '🧭';
-    }
-    return '💬';
-  }
-
-  protected get activeHostTier(): string {
-    return this.activeUser.hostTier;
-  }
-
-  protected get activeMemberTrait(): string {
-    return this.activeUser.traitLabel;
-  }
-
-  protected get memberImpressionTitle(): string {
-    const normalized = AppUtils.normalizeText(this.activeMemberTrait);
-    if (normalized.includes('empat') || normalized.includes('empath')) {
-      return 'Empathetic Attendee';
-    }
-    if (normalized.includes('advent')) {
-      return 'Adventurous Attendee';
-    }
-    if (normalized.includes('kreat') || normalized.includes('creative')) {
-      return 'Creative Attendee';
-    }
-    if (normalized.includes('think')) {
-      return 'Thoughtful Attendee';
-    }
-    if (normalized.includes('social')) {
-      return 'Social Attendee';
-    }
-    if (normalized.includes('playful')) {
-      return 'Playful Attendee';
-    }
-    if (normalized.includes('ambitious') || normalized.includes('goal')) {
-      return 'Ambitious Attendee';
-    }
-    if (normalized.includes('megbizh') || normalized.includes('reliable')) {
-      return 'Reliable Attendee';
-    }
-    return `${this.activeMemberTrait} Attendee`;
-  }
-
-  protected get hostTierBadgeIcon(): string {
-    const tier = AppUtils.normalizeText(this.activeHostTier);
-    if (tier.includes('platinum')) return '👑';
-    if (tier.includes('gold')) return '🥇';
-    if (tier.includes('silver')) return '🥈';
-    return '🥉';
-  }
-
-  protected getHostTierIcon(hostTier: string): string {
-    const normalized = AppUtils.normalizeText(hostTier);
-    if (normalized.includes('platinum')) {
-      return 'diamond';
-    }
-    if (normalized.includes('gold')) {
-      return 'emoji_events';
-    }
-    if (normalized.includes('silver')) {
-      return 'workspace_premium';
-    }
-    if (normalized.includes('bronze')) {
-      return 'military_tech';
-    }
-    return 'workspace_premium';
-  }
-
-  protected getHostTierColorClass(hostTier: string): string {
-    const normalized = AppUtils.normalizeText(hostTier);
-    if (normalized.includes('platinum')) {
-      return 'icon-tier-platinum';
-    }
-    if (normalized.includes('gold')) {
-      return 'icon-tier-gold';
-    }
-    if (normalized.includes('silver')) {
-      return 'icon-tier-silver';
-    }
-    if (normalized.includes('bronze')) {
-      return 'icon-tier-bronze';
-    }
-    return 'icon-tier-default';
-  }
-
-  protected getHostTierToneClass(hostTier: string): string {
-    const normalized = AppUtils.normalizeText(hostTier);
-    if (normalized.includes('platinum')) {
-      return 'impression-shortcut-tone-platinum';
-    }
-    if (normalized.includes('gold')) {
-      return 'impression-shortcut-tone-gold';
-    }
-    if (normalized.includes('silver')) {
-      return 'impression-shortcut-tone-silver';
-    }
-    if (normalized.includes('bronze')) {
-      return 'impression-shortcut-tone-bronze';
-    }
-    return 'impression-shortcut-tone-platinum';
-  }
-
-  protected getTraitIcon(traitLabel: string): string {
-    const normalized = AppUtils.normalizeText(traitLabel);
-    if (normalized.includes('kreat') || normalized.includes('creative')) {
-      return 'palette';
-    }
-    if (normalized.includes('empat')) {
-      return 'favorite';
-    }
-    if (normalized.includes('megbizh') || normalized.includes('reliable')) {
-      return 'verified';
-    }
-    if (normalized.includes('advent')) {
-      return 'hiking';
-    }
-    if (normalized.includes('think')) {
-      return 'psychology';
-    }
-    if (normalized.includes('social')) {
-      return 'groups';
-    }
-    if (normalized.includes('playful')) {
-      return 'sports_esports';
-    }
-    if (normalized.includes('ambitious') || normalized.includes('goal')) {
-      return 'trending_up';
-    }
-    return 'auto_awesome';
-  }
-
-  protected getTraitColorClass(traitLabel: string): string {
-    const normalized = AppUtils.normalizeText(traitLabel);
-    if (normalized.includes('kreat') || normalized.includes('creative')) {
-      return 'icon-trait-creative';
-    }
-    if (normalized.includes('empat')) {
-      return 'icon-trait-empath';
-    }
-    if (normalized.includes('megbizh') || normalized.includes('reliable')) {
-      return 'icon-trait-reliable';
-    }
-    if (normalized.includes('advent')) {
-      return 'icon-trait-adventurer';
-    }
-    if (normalized.includes('think')) {
-      return 'icon-trait-thinker';
-    }
-    if (normalized.includes('social')) {
-      return 'icon-trait-social';
-    }
-    if (normalized.includes('playful')) {
-      return 'icon-trait-playful';
-    }
-    if (normalized.includes('ambitious') || normalized.includes('goal')) {
-      return 'icon-trait-ambitious';
-    }
-    return 'icon-trait-default';
-  }
-
-  protected getTraitToneClass(traitLabel: string): string {
-    const normalized = AppUtils.normalizeText(traitLabel);
-    if (normalized.includes('kreat') || normalized.includes('creative')) {
-      return 'impression-shortcut-tone-creative';
-    }
-    if (normalized.includes('empat')) {
-      return 'impression-shortcut-tone-empath';
-    }
-    if (normalized.includes('megbizh') || normalized.includes('reliable')) {
-      return 'impression-shortcut-tone-reliable';
-    }
-    if (normalized.includes('advent')) {
-      return 'impression-shortcut-tone-adventurer';
-    }
-    if (normalized.includes('think')) {
-      return 'impression-shortcut-tone-thinker';
-    }
-    if (normalized.includes('social')) {
-      return 'impression-shortcut-tone-social';
-    }
-    if (normalized.includes('playful')) {
-      return 'impression-shortcut-tone-playful';
-    }
-    if (normalized.includes('ambitious') || normalized.includes('goal')) {
-      return 'impression-shortcut-tone-ambitious';
-    }
-    return 'impression-shortcut-tone-thinker';
-  }
-
-  protected openHostImpressions(): void {
-    this.navigatorService.openImpressionsPopup();
-  }
-
-  protected openMemberImpressions(): void {
-    this.navigatorService.openImpressionsPopup();
   }
 
   protected getInvitationActionSummary(invitation: InvitationMenuItem): string {
@@ -8244,19 +7457,6 @@ export class App {
       return;
     }
     this.openActivityMembers(row, event, 'explore');
-  }
-
-  protected openEventExploreHostImpressions(event: Event): void {
-    event.stopPropagation();
-    this.navigatorService.openImpressionsPopup();
-  }
-
-  protected closeSuperStackedImpressions(): void {
-    if (this.superStackedPopup === 'impressionsHost') {
-      this.superStackedPopup = null;
-      this.clearCurrentUserImpressionsChangeFlags();
-      this.markCurrentUserImpressionsAsSeen();
-    }
   }
 
   protected eventExploreTopics(card: AppTypes.EventExploreCard): string[] {
@@ -12001,10 +11201,6 @@ export class App {
     }
     if (this.superStackedPopup === 'eventExploreTopicFilter') {
       this.closeEventExploreTopicFilterPopup();
-      return;
-    }
-    if (this.superStackedPopup === 'impressionsHost') {
-      this.closeSuperStackedImpressions();
       return;
     }
     if (this.eventEditorService.isOpen()) {

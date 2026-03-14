@@ -7,6 +7,15 @@ import {
   type UserDto,
   type UserImpressionChangeFlags
 } from '../../../shared/core';
+import {
+  resolveHostTierColorClass,
+  resolveHostTierIcon,
+  resolveHostTierToneClass,
+  resolveMemberImpressionTitle,
+  resolveTraitColorClass,
+  resolveTraitIcon,
+  resolveTraitToneClass
+} from '../../navigator-presenters';
 import { NavigatorBindings, NavigatorService } from '../../navigator.service';
 import { NavigatorSettingsMenuComponent } from '../navigator-settings-menu/navigator-settings-menu.component';
 
@@ -52,7 +61,7 @@ export class NavigatorMenuComponent {
       activities: mergedActivities,
       featuredImagePreview: this.resolveUserImageUrl(activeUser),
       impressionChangeFlags,
-      memberImpressionTitle: this.resolveMemberImpressionTitle(activeUser.traitLabel ?? ''),
+      memberImpressionTitle: resolveMemberImpressionTitle(activeUser.traitLabel ?? ''),
       totalBadgeCount: (
         (impressionChangeFlags.host ? 1 : 0) +
         (impressionChangeFlags.member ? 1 : 0) +
@@ -124,27 +133,27 @@ export class NavigatorMenuComponent {
   }
 
   protected getHostTierToneClass(tier: string): string {
-    return this.bindings?.getHostTierToneClass(tier) ?? '';
+    return resolveHostTierToneClass(tier);
   }
 
   protected getHostTierColorClass(tier: string): string {
-    return this.bindings?.getHostTierColorClass(tier) ?? '';
+    return resolveHostTierColorClass(tier);
   }
 
   protected getHostTierIcon(tier: string): string {
-    return this.bindings?.getHostTierIcon(tier) ?? 'workspace_premium';
+    return resolveHostTierIcon(tier);
   }
 
   protected getTraitToneClass(trait: string): string {
-    return this.bindings?.getTraitToneClass(trait) ?? '';
+    return resolveTraitToneClass(trait);
   }
 
   protected getTraitColorClass(trait: string): string {
-    return this.bindings?.getTraitColorClass(trait) ?? '';
+    return resolveTraitColorClass(trait);
   }
 
   protected getTraitIcon(trait: string): string {
-    return this.bindings?.getTraitIcon(trait) ?? 'psychiatry';
+    return resolveTraitIcon(trait);
   }
 
   protected openProfileEditor(): void {
@@ -210,34 +219,5 @@ export class NavigatorMenuComponent {
 
   private resolveCompletionPercent(user: UserDto | null): number {
     return Number.isFinite(user?.completion) ? Math.max(0, Math.trunc(Number(user?.completion))) : 0;
-  }
-
-  private resolveMemberImpressionTitle(traitLabel: string): string {
-    const normalized = traitLabel.trim().toLowerCase();
-    if (normalized.includes('empat') || normalized.includes('empath')) {
-      return 'Empathetic Attendee';
-    }
-    if (normalized.includes('advent')) {
-      return 'Adventurous Attendee';
-    }
-    if (normalized.includes('kreat') || normalized.includes('creative')) {
-      return 'Creative Attendee';
-    }
-    if (normalized.includes('think')) {
-      return 'Thoughtful Attendee';
-    }
-    if (normalized.includes('social')) {
-      return 'Social Attendee';
-    }
-    if (normalized.includes('playful')) {
-      return 'Playful Attendee';
-    }
-    if (normalized.includes('ambitious') || normalized.includes('goal')) {
-      return 'Ambitious Attendee';
-    }
-    if (normalized.includes('megbizh') || normalized.includes('reliable')) {
-      return 'Reliable Attendee';
-    }
-    return traitLabel ? `${traitLabel} Attendee` : 'Attendee';
   }
 }

@@ -18,12 +18,6 @@ export type NavigatorSettingsPopup = 'help' | 'feedback' | 'privacy' | 'report-u
 
 export interface NavigatorBindings {
   syncHydratedUser?(user: UserDto): void;
-  getHostTierToneClass(tier: string): string;
-  getHostTierColorClass(tier: string): string;
-  getHostTierIcon(tier: string): string;
-  getTraitToneClass(trait: string): string;
-  getTraitColorClass(trait: string): string;
-  getTraitIcon(trait: string): string;
   openRatesShortcut(): void;
   openChatShortcut(): void;
   openInvitationShortcut(): void;
@@ -212,7 +206,6 @@ export class NavigatorService {
 
     this.appCtx.setUserProfile(user);
     this.appCtx.setActiveUserId(normalizedUserId);
-    this.appCtx.clearUserCounterOverrides(normalizedUserId);
 
     if (user.impressions) {
       this.appCtx.setUserImpressions(normalizedUserId, user.impressions);

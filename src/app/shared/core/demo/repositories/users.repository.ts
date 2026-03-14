@@ -1,6 +1,12 @@
 import { computed, Injectable, inject } from '@angular/core';
 
 import { AppDemoGenerators } from '../../../app-demo-generators';
+import {
+  DEMO_CHAT_BY_USER,
+  DEMO_EVENTS_BY_USER,
+  DEMO_HOSTING_BY_USER,
+  DEMO_INVITATIONS_BY_USER
+} from '../../../demo-data';
 import type {
   UserGameFilterPreferencesDto,
   UserRateOutboxRecord,
@@ -40,13 +46,13 @@ export class DemoUsersRepository {
     const usersTable = state[USERS_TABLE_NAME];
     if (usersTable.ids.length > 0) {
       if (usersTable.ids.length !== DemoUsersRepository.DEFAULT_DEMO_USERS_COUNT) {
-        const reseededUsersTable = this.buildRecordCollection(users.map(user => this.cloneUser(user)));
+        const reseededUsersTable = this.buildRecordCollection(users.map(user => this.applySeededActivityCounts(this.cloneUser(user))));
         this.memoryDb.write(currentState => this.reseedUsersAndPruneRelations(currentState, reseededUsersTable));
       }
       return this.queryUsersFromTable(USERS_TABLE_NAME);
     }
 
-    const seededUsersTable = this.buildRecordCollection(users.map(user => this.cloneUser(user)));
+    const seededUsersTable = this.buildRecordCollection(users.map(user => this.applySeededActivityCounts(this.cloneUser(user))));
 
     this.memoryDb.write(currentState => ({
       ...currentState,
@@ -233,6 +239,32 @@ export class DemoUsersRepository {
       images: [...(rest.images ?? [])],
       activities: {
         ...rest.activities
+      }
+    };
+  }
+
+  private applySeededActivityCounts(user: UserDto): UserDto {
+    const chatItems = DEMO_CHAT_BY_USER[user.id];
+    const invitationItems = DEMO_INVITATIONS_BY_USER[user.id];
+    const eventItems = DEMO_EVENTS_BY_USER[user.id];
+    const hostingItems = DEMO_HOSTING_BY_USER[user.id];
+
+    return {
+      ...user,
+      activities: {
+        ...user.activities,
+        chat: chatItems
+          ? AppDemoGenerators.resolveSectionBadge(chatItems.map(item => item.unread), chatItems.length)
+          : user.activities.chat,
+        invitations: invitationItems
+          ? AppDemoGenerators.resolveSectionBadge(invitationItems.map(item => item.unread), invitationItems.length)
+          : user.activities.invitations,
+        events: eventItems
+          ? AppDemoGenerators.resolveSectionBadge(eventItems.map(item => item.activity), eventItems.length)
+          : user.activities.events,
+        hosting: hostingItems
+          ? AppDemoGenerators.resolveSectionBadge(hostingItems.map(item => item.activity), hostingItems.length)
+          : user.activities.hosting
       }
     };
   }

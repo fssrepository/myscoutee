@@ -1,6 +1,7 @@
 import {
   DEMO_ACTIVITY_MEMBER_DEFAULTS,
   DEMO_ACTIVITY_MEMBER_MET_PLACES,
+  buildDemoPortraitStack,
   DEMO_USERS,
   type DemoUser,
   type EventMenuItem,
@@ -68,7 +69,7 @@ export class AppDemoGenerators {
         city: cities[index % cities.length],
         initials,
         gender,
-        images: [`https://randomuser.me/api/portraits/${portraitFolder}/${portraitIndex}.jpg`]
+        images: buildDemoPortraitStack(gender, portraitIndex)
       });
     }
     return expanded;

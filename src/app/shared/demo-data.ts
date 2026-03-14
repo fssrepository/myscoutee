@@ -92,6 +92,26 @@ export interface ProfileGroup {
   rows: ProfileRow[];
 }
 
+export function buildDemoPortraitStack(
+  gender: DemoUser['gender'],
+  seedIndex: number,
+  count = 3
+): string[] {
+  const normalizedCount = Math.max(1, Math.min(8, Math.trunc(count)));
+  const folder = gender === 'woman' ? 'women' : 'men';
+  const normalizedSeed = ((Math.trunc(seedIndex) % 100) + 100) % 100;
+  const indexes: number[] = [];
+
+  for (let offset = 0; offset < 8 && indexes.length < normalizedCount; offset += 1) {
+    const candidate = (normalizedSeed + offset * 17) % 100;
+    if (!indexes.includes(candidate)) {
+      indexes.push(candidate);
+    }
+  }
+
+  return indexes.map(index => `https://randomuser.me/api/portraits/${folder}/${index}.jpg`);
+}
+
 export const DEMO_USERS: DemoUser[] = [
   {
     id: 'u1',
@@ -111,7 +131,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 72,
     headline: 'Planning cozy chaos with structure.',
     about: 'I host events where social energy stays high, but logistics stay clean and predictable.',
-    images: ['https://randomuser.me/api/portraits/women/74.jpg'],
+    images: buildDemoPortraitStack('woman', 74),
     profileStatus: 'public',
     activities: { game: 9, chat: 8, invitations: 4, events: 6, hosting: 3 }
   },
@@ -133,7 +153,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 64,
     headline: 'Reliable planning, zero drama.',
     about: 'I like compact events with clear timelines and simple role assignment.',
-    images: ['https://randomuser.me/api/portraits/men/75.jpg'],
+    images: buildDemoPortraitStack('man', 75),
     profileStatus: 'friends only',
     activities: { game: 4, chat: 3, invitations: 1, events: 2, hosting: 1 }
   },
@@ -155,7 +175,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 58,
     headline: 'Art nights and adventure mornings.',
     about: 'I enjoy cultural events and activity-heavy weekends with small groups.',
-    images: ['https://randomuser.me/api/portraits/women/76.jpg'],
+    images: buildDemoPortraitStack('woman', 76),
     profileStatus: 'friends only',
     activities: { game: 6, chat: 7, invitations: 3, events: 4, hosting: 2 }
   },
@@ -177,7 +197,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 76,
     headline: 'Sunset rides and coffee circles.',
     about: 'I host social-first events where people who do not know each other can connect fast.',
-    images: ['https://randomuser.me/api/portraits/women/77.jpg'],
+    images: buildDemoPortraitStack('woman', 77),
     profileStatus: 'public',
     activities: { game: 7, chat: 5, invitations: 3, events: 5, hosting: 2 }
   },
@@ -199,7 +219,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 68,
     headline: 'Thoughtful plans, minimal noise.',
     about: 'I prefer meaningful conversations and smaller events with quality curation.',
-    images: ['https://randomuser.me/api/portraits/women/78.jpg'],
+    images: buildDemoPortraitStack('woman', 78),
     profileStatus: 'host only',
     activities: { game: 5, chat: 6, invitations: 4, events: 4, hosting: 1 }
   },
@@ -221,7 +241,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 55,
     headline: 'Travel light, host well.',
     about: 'I organize active and travel-style events with flexible participant roles.',
-    images: ['https://randomuser.me/api/portraits/women/79.jpg'],
+    images: buildDemoPortraitStack('woman', 79),
     profileStatus: 'public',
     activities: { game: 3, chat: 4, invitations: 2, events: 3, hosting: 1 }
   },
@@ -243,7 +263,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 70,
     headline: 'Fast pace, good vibes.',
     about: 'I host sports and game-heavy events with structured follow-ups.',
-    images: ['https://randomuser.me/api/portraits/men/80.jpg'],
+    images: buildDemoPortraitStack('man', 80),
     profileStatus: 'public',
     activities: { game: 8, chat: 9, invitations: 3, events: 5, hosting: 2 }
   },
@@ -265,7 +285,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 61,
     headline: 'Metrics first, then movement.',
     about: 'I optimize event outcomes and participant quality through filtered invites.',
-    images: ['https://randomuser.me/api/portraits/men/81.jpg'],
+    images: buildDemoPortraitStack('man', 81),
     profileStatus: 'friends only',
     activities: { game: 4, chat: 4, invitations: 2, events: 3, hosting: 2 }
   },
@@ -287,7 +307,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 53,
     headline: 'Design-led hangouts only.',
     about: 'I design event atmospheres first and build flow around people and space.',
-    images: ['https://randomuser.me/api/portraits/men/82.jpg'],
+    images: buildDemoPortraitStack('man', 82),
     profileStatus: 'host only',
     activities: { game: 2, chat: 5, invitations: 2, events: 2, hosting: 1 }
   },
@@ -309,7 +329,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 74,
     headline: 'Always on time, always clear.',
     about: 'I keep the calendar strict and communication transparent for all members.',
-    images: ['https://randomuser.me/api/portraits/men/10.jpg'],
+    images: buildDemoPortraitStack('man', 10),
     profileStatus: 'public',
     activities: { game: 6, chat: 4, invitations: 2, events: 6, hosting: 3 }
   },
@@ -331,7 +351,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 60,
     headline: 'Calm planning for complex events.',
     about: 'I run long-format events with multiple sub-events and role-based access.',
-    images: ['https://randomuser.me/api/portraits/men/11.jpg'],
+    images: buildDemoPortraitStack('man', 11),
     profileStatus: 'friends only',
     activities: { game: 5, chat: 3, invitations: 2, events: 4, hosting: 2 }
   },
@@ -353,7 +373,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 66,
     headline: 'Curated nights, meaningful circles.',
     about: 'I host quality-first social events with strong moderation and feedback loops.',
-    images: ['https://randomuser.me/api/portraits/men/12.jpg'],
+    images: buildDemoPortraitStack('man', 12),
     profileStatus: 'public',
     activities: { game: 4, chat: 5, invitations: 3, events: 3, hosting: 1 }
   }
