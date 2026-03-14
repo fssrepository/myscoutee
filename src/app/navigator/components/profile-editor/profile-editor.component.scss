@@ -1368,49 +1368,6 @@
   min-height: 0;
 }
 
-.image-stack-indicators {
-  position: absolute;
-  top: -0.1rem;
-  left: 0.25rem;
-  right: 0.25rem;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-  gap: 4px;
-}
-
-.image-stack-line {
-  height: 3px;
-  border-radius: 999px;
-  border: 0;
-  background: rgba(49, 78, 117, 0.24);
-  box-shadow: none;
-  padding: 0;
-  cursor: pointer;
-}
-
-.image-stack-line.active {
-  background: rgba(43, 97, 170, 0.78);
-}
-
-.image-stack-hit-area {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  right: 10px;
-  bottom: 10px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-  gap: 4px;
-  z-index: 2;
-}
-
-.image-stack-hit-segment {
-  border: 0;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-}
-
 .image-editor-hint {
   font-size: 0.78rem;
   color: rgba(18, 31, 51, 0.72);

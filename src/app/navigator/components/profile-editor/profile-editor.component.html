@@ -443,26 +443,7 @@
       </div>
 
       <div *ngIf="panel === 'image'" class="image-editor-wrap">
-        <div class="image-stack-indicators" *ngIf="imageStackSlots.length > 0">
-          <button
-            type="button"
-            class="image-stack-line"
-            *ngFor="let slotIndex of imageStackSlots"
-            [class.active]="slotIndex === selectedImageIndex"
-            (click)="selectImageFromStack(slotIndex)"
-            aria-label="Select image"
-          ></button>
-        </div>
         <div class="image-editor-main" [style.backgroundImage]="selectedImagePreview ? 'url(' + selectedImagePreview + ')' : 'none'">
-          <div class="image-stack-hit-area" *ngIf="imageStackSlots.length > 0">
-            <button
-              type="button"
-              class="image-stack-hit-segment"
-              *ngFor="let slotIndex of imageStackSlots"
-              (click)="selectImageFromStack(slotIndex)"
-              aria-label="Select image"
-            ></button>
-          </div>
           <span *ngIf="!selectedImagePreview">Select a slot to upload image</span>
         </div>
         <p class="image-editor-hint">Click a thumbnail to upload or replace image.</p>
