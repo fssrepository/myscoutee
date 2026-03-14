@@ -60,6 +60,8 @@ export class NavigatorService {
   private userRealtimeLongPollInFlight = false;
   private userRealtimeLongPollActiveIntervalMs = NavigatorService.USER_REALTIME_LONG_POLL_INTERVAL_MS;
   private readonly userRealtimeLongPollCursorByUserId: Record<string, string> = {};
+  private readonly userSeenImpressionsCursorByUserId: Record<string, string> = {};
+  private readonly userIgnoreNextImpressionsSnapshotByUserId: Record<string, boolean> = {};
   private readonly userRealtimeBaseCountersByUserId: Record<string, Record<ActivityCounterKey, number>> = {};
 
   readonly bindings = this.bindingsRef.asReadonly();
@@ -188,10 +190,17 @@ export class NavigatorService {
 
   openImpressionsPopup(): void {
     this.impressionsPopupOpenRef.set(true);
-    void this.runUserRealtimeLongPollTick();
   }
 
   closeImpressionsPopup(): void {
+    const userId = this.appCtx.activeUserId().trim();
+    const cursor = userId ? (this.userRealtimeLongPollCursorByUserId[userId] ?? '') : '';
+    if (userId && cursor) {
+      this.userSeenImpressionsCursorByUserId[userId] = cursor;
+    }
+    if (userId && this.userRealtimeLongPollInFlight) {
+      this.userIgnoreNextImpressionsSnapshotByUserId[userId] = true;
+    }
     this.impressionsPopupOpenRef.set(false);
   }
 
@@ -203,13 +212,7 @@ export class NavigatorService {
 
     this.appCtx.setUserProfile(user);
     this.appCtx.setActiveUserId(normalizedUserId);
-    this.appCtx.patchUserCounterOverrides(normalizedUserId, {
-      game: user.activities?.game,
-      chat: user.activities?.chat,
-      invitations: user.activities?.invitations,
-      events: user.activities?.events,
-      hosting: user.activities?.hosting
-    });
+    this.appCtx.clearUserCounterOverrides(normalizedUserId);
 
     if (user.impressions) {
       this.appCtx.setUserImpressions(normalizedUserId, user.impressions);
@@ -225,12 +228,6 @@ export class NavigatorService {
     }
     this.captureUserRealtimeBaseCounters(normalizedUserId);
     this.startUserRealtimeLongPoll();
-    queueMicrotask(() => {
-      if (this.appCtx.activeUserId().trim() !== normalizedUserId) {
-        return;
-      }
-      void this.runUserRealtimeLongPollTick();
-    });
   }
 
   private startUserRealtimeLongPoll(): void {
@@ -307,14 +304,21 @@ export class NavigatorService {
     snapshot: UserRealtimeLongPollResponseDto
   ): void {
     const previousImpressions = this.appCtx.getUserImpressions(userId);
+    const nextCursor = typeof snapshot.cursor === 'string' ? snapshot.cursor.trim() : '';
+    const shouldIgnoreNextImpressionsSnapshot = this.userIgnoreNextImpressionsSnapshotByUserId[userId] === true;
+    const isSeenCursor = nextCursor.length > 0 && this.userSeenImpressionsCursorByUserId[userId] === nextCursor;
+    const shouldSuppressImpressionBadges = shouldIgnoreNextImpressionsSnapshot || isSeenCursor;
     const rawCounterPatch = this.normalizePolledCounterPatch(snapshot.counters);
     const counterPatch = this.usersService.demoModeEnabled
       ? this.resolveDemoPolledCounterPatch(userId, rawCounterPatch)
       : rawCounterPatch;
+    const nextImpressions = snapshot.impressions
+      ? (shouldSuppressImpressionBadges ? this.normalizeSeenImpressions(snapshot.impressions) : snapshot.impressions)
+      : undefined;
 
     this.appCtx.patchUserCounterOverrides(userId, counterPatch);
-    if (snapshot.impressions) {
-      this.appCtx.setUserImpressions(userId, snapshot.impressions);
+    if (nextImpressions) {
+      this.appCtx.setUserImpressions(userId, nextImpressions);
     } else {
       this.appCtx.clearUserImpressions(userId);
     }
@@ -331,19 +335,46 @@ export class NavigatorService {
           ...(counterPatch.events !== undefined ? { events: counterPatch.events } : {}),
           ...(counterPatch.hosting !== undefined ? { hosting: counterPatch.hosting } : {})
         },
-        impressions: snapshot.impressions
+        impressions: nextImpressions
           ? {
-              host: snapshot.impressions.host ? { ...snapshot.impressions.host } : undefined,
-              member: snapshot.impressions.member ? { ...snapshot.impressions.member } : undefined
+              host: nextImpressions.host ? { ...nextImpressions.host } : undefined,
+              member: nextImpressions.member ? { ...nextImpressions.member } : undefined
             }
           : undefined
       });
     }
 
-    this.applyImpressionsChangeFlags(userId, previousImpressions, snapshot);
-    if (typeof snapshot.cursor === 'string' && snapshot.cursor.trim().length > 0) {
-      this.userRealtimeLongPollCursorByUserId[userId] = snapshot.cursor.trim();
+    if (shouldSuppressImpressionBadges) {
+      this.appCtx.clearUserImpressionChangeFlags(userId);
+    } else {
+      this.applyImpressionsChangeFlags(userId, previousImpressions, snapshot);
     }
+    if (nextCursor.length > 0) {
+      this.userRealtimeLongPollCursorByUserId[userId] = nextCursor;
+      if (shouldIgnoreNextImpressionsSnapshot) {
+        this.userSeenImpressionsCursorByUserId[userId] = nextCursor;
+      }
+    }
+    delete this.userIgnoreNextImpressionsSnapshotByUserId[userId];
+  }
+
+  private normalizeSeenImpressions(
+    impressions: NonNullable<UserRealtimeLongPollResponseDto['impressions']>
+  ): NonNullable<UserRealtimeLongPollResponseDto['impressions']> {
+    return {
+      host: impressions.host
+        ? {
+            ...impressions.host,
+            unreadCount: 0
+          }
+        : undefined,
+      member: impressions.member
+        ? {
+            ...impressions.member,
+            unreadCount: 0
+          }
+        : undefined
+    };
   }
 
   private resolveDemoPolledCounterPatch(

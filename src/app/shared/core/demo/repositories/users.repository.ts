@@ -146,6 +146,7 @@ export class DemoUsersRepository {
 
   upsertUser(user: UserDto): UserDto {
     const normalizedUser = this.cloneUser(user);
+    normalizedUser.images = this.normalizeImages(normalizedUser.images);
     this.memoryDb.write(state => {
       const usersTable = state[USERS_TABLE_NAME];
       const exists = Object.prototype.hasOwnProperty.call(usersTable.byId, normalizedUser.id);
@@ -216,6 +217,12 @@ export class DemoUsersRepository {
       .map(id => users.byId[id])
       .filter((user): user is UserDto => Boolean(user))
       .map(user => this.cloneUser(user));
+  }
+
+  private normalizeImages(images: readonly string[] | undefined): string[] {
+    return (images ?? [])
+      .map(image => image?.trim() ?? '')
+      .filter(image => image.length > 0);
   }
 
   private cloneUser(user: UserDto): UserDto {
