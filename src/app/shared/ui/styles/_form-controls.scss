@@ -1,6 +1,8 @@
 @mixin form-controls() {
   .app-popup,
-  .mobile-profile-selector-sheet-wrap {
+  .mobile-profile-selector-sheet-wrap,
+  .popup-surface,
+  .experience-form-popup {
     font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
   }
 
@@ -11,6 +13,20 @@
   .app-popup .mat-mdc-select,
   .app-popup .mat-mdc-select-value-text,
   .app-popup .mat-mdc-option,
+  .popup-surface button,
+  .popup-surface input,
+  .popup-surface textarea,
+  .popup-surface select,
+  .popup-surface .mat-mdc-select,
+  .popup-surface .mat-mdc-select-value-text,
+  .popup-surface .mat-mdc-option,
+  .experience-form-popup button,
+  .experience-form-popup input,
+  .experience-form-popup textarea,
+  .experience-form-popup select,
+  .experience-form-popup .mat-mdc-select,
+  .experience-form-popup .mat-mdc-select-value-text,
+  .experience-form-popup .mat-mdc-option,
   .mobile-profile-selector-sheet-wrap button,
   .mobile-profile-selector-sheet-wrap input,
   .mobile-profile-selector-sheet-wrap .mat-mdc-option {
@@ -135,6 +151,12 @@
   .app-popup textarea,
   .app-popup input,
   .app-popup select,
+  .popup-surface textarea,
+  .popup-surface input,
+  .popup-surface select,
+  .experience-form-popup textarea,
+  .experience-form-popup input,
+  .experience-form-popup select,
   .mobile-profile-selector-sheet-wrap input {
     width: 100%;
     border: 1px solid rgba(15, 27, 47, 0.16);
@@ -145,8 +167,57 @@
     background: #fff;
   }
 
-  .app-popup textarea {
+  .app-popup textarea,
+  .popup-surface textarea,
+  .experience-form-popup textarea {
     resize: vertical;
+  }
+
+  .app-popup textarea:focus,
+  .app-popup input:focus,
+  .app-popup select:focus,
+  .popup-surface textarea:focus,
+  .popup-surface input:focus,
+  .popup-surface select:focus,
+  .experience-form-popup textarea:focus,
+  .experience-form-popup input:focus,
+  .experience-form-popup select:focus,
+  .mobile-profile-selector-sheet-wrap input:focus {
+    outline: 0;
+    border-color: rgba(52, 103, 182, 0.72);
+    box-shadow: 0 0 0 3px rgba(55, 116, 212, 0.14);
+  }
+
+  .popup-surface-form-grid,
+  .experience-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    justify-content: stretch;
+    column-gap: 1rem;
+    row-gap: 0.9rem;
+  }
+
+  .popup-surface-form-grid label,
+  .experience-form-grid label {
+    display: grid;
+    grid-template-rows: min-content;
+    gap: 0;
+    font-weight: 600;
+    color: rgba(26, 44, 69, 0.88);
+  }
+
+  .popup-surface-description-field,
+  .experience-description-field {
+    grid-column: 1 / -1;
+  }
+
+  .popup-surface-actions,
+  .experience-form-actions {
+    justify-content: center;
+    padding-top: 0.2rem;
   }
 
   .popup-actions {
@@ -257,6 +328,11 @@
     font-size: 16px;
     line-height: 16px;
     color: rgba(44, 67, 100, 0.72);
+  }
+
+  .profile-details-values-btn {
+    height: 36px;
+    box-sizing: border-box;
   }
 
   .profile-details-values-btn .status-option-content.profile-details-selected-badges {
@@ -491,6 +567,220 @@
   .physique-select-wrap.physique-curvy .status-option-content .mat-icon { color: #a14875; }
   .physique-select-wrap.physique-muscular .status-option-content .mat-icon { color: #7d4f24; }
   .physique-select-wrap.physique-average .status-option-content .mat-icon { color: #4d667f; }
+
+  .language-select-btn {
+    width: fit-content;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 36px;
+    justify-content: flex-start;
+    border-radius: 999px;
+    border-color: #c8d3e2;
+    background: #f8f9fb;
+    box-shadow: 0 2px 6px rgba(38, 60, 92, 0.08);
+    color: rgba(30, 56, 90, 0.92);
+    gap: 0.35rem;
+    padding: 0 0.52rem 0 0.8rem;
+  }
+
+  .language-select-btn.active {
+    background-color: rgba(33, 115, 214, 0.12);
+  }
+
+  .language-select-btn .label {
+    order: 1;
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: inherit;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  .language-select-btn .count {
+    order: 2;
+    flex: 0 0 auto;
+    margin-left: 0.16rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #2f5f93;
+  }
+
+  .language-select-btn .arrow {
+    order: 3;
+    width: 19px;
+    height: 19px;
+    font-size: 19px;
+    line-height: 19px;
+    margin-left: 0.2rem;
+    flex: 0 0 19px;
+    color: rgba(43, 69, 102, 0.82);
+  }
+
+  .language-select-btn .arrow.open {
+    transform: rotate(90deg);
+  }
+
+  .experience-filter-all {
+    color: #694ea6;
+  }
+
+  .experience-filter-workspace {
+    color: #a1485a;
+  }
+
+  .experience-filter-school {
+    color: #2d5ea8;
+  }
+
+  .experience-filter-online {
+    color: #2d7d47;
+  }
+
+  .experience-filter-project {
+    color: #6550a0;
+  }
+
+  .experience-filter-select.experience-filter-all,
+  .experience-type-select.experience-filter-project {
+    background: linear-gradient(180deg, #efe8ff 0%, #e8defc 100%);
+    border-color: rgba(103, 76, 164, 0.32);
+  }
+
+  .experience-filter-select.experience-filter-workspace,
+  .experience-type-select.experience-filter-workspace {
+    background: linear-gradient(180deg, #fff1f3 0%, #ffe6ea 100%);
+    border-color: rgba(169, 72, 90, 0.32);
+  }
+
+  .experience-filter-select.experience-filter-school,
+  .experience-type-select.experience-filter-school {
+    background: linear-gradient(180deg, #eaf4ff 0%, #e1ecfb 100%);
+    border-color: rgba(45, 94, 168, 0.32);
+  }
+
+  .experience-type-select.experience-filter-online {
+    background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
+    border-color: rgba(44, 126, 72, 0.32);
+  }
+
+  .experience-type-select.experience-filter-project {
+    background: linear-gradient(180deg, #f4f0ff 0%, #e9e3fb 100%);
+  }
+
+  .experience-type-select {
+    min-width: 0;
+    max-width: 100%;
+    min-height: 40px;
+  }
+
+  .experience-title-field,
+  .experience-city-field {
+    width: 100%;
+  }
+
+  .experience-date-range-field {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    background: transparent;
+  }
+
+  .experience-date-range-label {
+    grid-column: 1 / 2;
+    width: 100%;
+    justify-self: stretch;
+  }
+
+  .experience-date-range-field .mat-mdc-text-field-wrapper {
+    min-height: 42px;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid rgba(136, 156, 186, 0.5);
+    box-shadow: none;
+  }
+
+  .experience-date-range-field .mat-mdc-form-field-subscript-wrapper {
+    margin-top: 0.24rem;
+  }
+
+  .experience-date-range-field input {
+    border: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    min-width: 0;
+    width: 100%;
+    padding: 0 !important;
+  }
+
+  .experience-date-range-field .mat-datepicker-toggle {
+    margin-right: 0.2rem;
+  }
+
+  .experience-date-range-field .mat-mdc-form-field-hint-wrapper,
+  .experience-date-range-field .mat-mdc-form-field-hint {
+    color: rgba(30, 49, 74, 0.65);
+    font-size: 0.72rem;
+  }
+
+  .experience-date-range-field .mat-date-range-input-container {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(96px, 1fr) auto minmax(96px, 1fr);
+    align-items: center;
+    column-gap: 0.34rem;
+    min-width: 0;
+  }
+
+  .experience-date-range-field .mat-date-range-input-separator {
+    margin: 0 0.28rem;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .experience-date-range-field .mat-date-range-input-start-wrapper,
+  .experience-date-range-field .mat-date-range-input-end-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+    min-width: 0;
+  }
+
+  .experience-date-range-field .mat-date-range-input-inner {
+    font-size: 0.96rem;
+    min-width: 0 !important;
+    width: 100% !important;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+
+  .experience-date-range-field .mat-mdc-form-field-flex {
+    min-width: 0;
+  }
+
+  :host ::ng-deep .mat-mdc-option.status-option.experience-filter-all {
+    background: linear-gradient(0deg, #ffffff, #efe8ff);
+  }
+
+  :host ::ng-deep .mat-mdc-option.status-option.experience-filter-workspace {
+    background: linear-gradient(0deg, #ffffff, #fff1f3);
+  }
+
+  :host ::ng-deep .mat-mdc-option.status-option.experience-filter-school {
+    background: linear-gradient(0deg, #ffffff, #eaf4ff);
+  }
+
+  :host ::ng-deep .mat-mdc-option.status-option.experience-filter-online {
+    background: linear-gradient(0deg, #ffffff, #edf8ee);
+  }
+
+  :host ::ng-deep .mat-mdc-option.status-option.experience-filter-project {
+    background: linear-gradient(0deg, #ffffff, #f4f0ff);
+  }
 
   .mobile-profile-language-chip.language-tone-1,
   .mobile-profile-selector-option.language-tone-1,
