@@ -1,0 +1,43 @@
+<div class="support-popup">
+  <article class="editor-list-card support-card" *ngIf="!feedbackSubmitted; else sendFeedbackSubmittedState">
+    <h4>Send Feedback</h4>
+    <p>Tell us what works well or what should be improved. Product feedback is triaged by category.</p>
+    <form class="support-form" (ngSubmit)="submitFeedback()">
+      <label>
+        <span>Category</span>
+        <select name="feedbackCategory" [(ngModel)]="feedbackForm.category">
+          <option *ngFor="let item of feedbackCategories" [value]="item">{{ item }}</option>
+        </select>
+      </label>
+      <label>
+        <span>Subject</span>
+        <input type="text" name="feedbackSubject" [(ngModel)]="feedbackForm.subject" placeholder="Short summary" />
+      </label>
+      <label>
+        <span>Details</span>
+        <textarea
+          rows="4"
+          name="feedbackDetails"
+          [(ngModel)]="feedbackForm.details"
+          placeholder="Describe your feedback. Include steps if this is a bug."
+        ></textarea>
+      </label>
+      <div class="support-actions">
+        <button type="button" class="link-btn neutral-btn" (click)="closePopup()">Cancel</button>
+        <button
+          type="submit"
+          class="link-btn primary-btn"
+          [disabled]="!feedbackForm.subject.trim() || feedbackForm.details.trim().length < 8"
+        >
+          Send feedback
+        </button>
+      </div>
+    </form>
+  </article>
+</div>
+
+<ng-template #sendFeedbackSubmittedState>
+  <article class="editor-list-card support-card">
+    <div class="support-submit-success">{{ feedbackSubmitMessage }}</div>
+  </article>
+</ng-template>

@@ -1,0 +1,7 @@
+@use '../../../shared/ui/styles' as ui;
+
+@include ui.popup-shell();
+
+.navigator-settings-popup-panel {
+  width: min(940px, calc(100vw - 1.2rem));
+}

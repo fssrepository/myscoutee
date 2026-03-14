@@ -27,38 +27,7 @@
       <mat-icon>close</mat-icon>
     </button>
 
-    <div class="user-settings-menu" *ngIf="ui.settingsOpen" (click)="$event.stopPropagation()">
-      <button type="button" class="user-settings-item" (click)="onSettingsAction('help', $event)">
-        <mat-icon>help_outline</mat-icon>
-        <span>Help</span>
-      </button>
-      <button type="button" class="user-settings-item" (click)="onSettingsAction('send-feedback', $event)">
-        <mat-icon>feedback</mat-icon>
-        <span>Send Feedback</span>
-      </button>
-      <a
-        class="user-settings-item"
-        href="https://github.com/fssrepository/myscoutee/issues"
-        target="_blank"
-        rel="noopener noreferrer"
-        (click)="onCloseSettingsMenu()"
-      >
-        <mat-icon>bug_report</mat-icon>
-        <span>Report Bugs</span>
-      </a>
-      <button type="button" class="user-settings-item" (click)="onSettingsAction('gdpr', $event)">
-        <mat-icon>policy</mat-icon>
-        <span>Privacy</span>
-      </button>
-      <button type="button" class="user-settings-item danger" (click)="onSettingsAction('delete-account', $event)">
-        <mat-icon>delete_forever</mat-icon>
-        <span>Delete account</span>
-      </button>
-      <button type="button" class="user-settings-item" (click)="onSettingsAction('logout', $event)">
-        <mat-icon>logout</mat-icon>
-        <span>Logout</span>
-      </button>
-    </div>
+    <app-navigator-settings-menu *ngIf="ui.settingsOpen"></app-navigator-settings-menu>
 
     <div class="user-header-main">
       <div class="avatar-stack">

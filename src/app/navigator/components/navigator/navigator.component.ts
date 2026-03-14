@@ -6,11 +6,12 @@ import { EventEditorService } from '../../../shared/event-editor.service';
 import { AvatarBtnComponent } from '../avatar-btn/avatar-btn.component';
 import { NavigatorMenuComponent } from '../navigator-menu/navigator-menu.component';
 import { ProfileEditorComponent } from '../profile-editor/profile-editor.component';
+import { NavigatorSettingsPopupsComponent } from '../navigator-settings-popups/navigator-settings-popups.component';
 
 @Component({
   selector: 'app-navigator',
   standalone: true,
-  imports: [CommonModule, AvatarBtnComponent, NavigatorMenuComponent, ProfileEditorComponent],
+  imports: [CommonModule, AvatarBtnComponent, NavigatorMenuComponent, NavigatorSettingsPopupsComponent, ProfileEditorComponent],
   templateUrl: './navigator.component.html',
   styleUrl: './navigator.component.scss'
 })

@@ -6,6 +6,8 @@ export interface NavigatorMenuUiState {
   settingsOpen: boolean;
 }
 
+export type NavigatorSettingsPopup = 'help' | 'feedback' | 'privacy';
+
 export interface NavigatorBindings {
   syncHydratedUser?(user: UserDto): void;
   getHostTierToneClass(tier: string): string;
@@ -27,9 +29,6 @@ export interface NavigatorBindings {
   openAssetTicketsPopup(): void;
   openEventFeedbackPopup(event?: Event): void;
   openReportUserFromFeedback(event?: Event): void;
-  openHelpPopup(): void;
-  openSendFeedbackPopup(): void;
-  openGdprPopup(): void;
   openDeleteAccountConfirm(): void;
   openLogoutConfirm(): void;
 }
@@ -45,11 +44,13 @@ export class NavigatorService {
   private readonly hydrationRequestKeyRef = signal('');
   private readonly menuOpenRef = signal(false);
   private readonly settingsMenuOpenRef = signal(false);
+  private readonly settingsPopupRef = signal<NavigatorSettingsPopup | null>(null);
   private readonly profileEditorOpenRef = signal(false);
   private hydrationRequestVersion = 0;
 
   readonly bindings = this.bindingsRef.asReadonly();
   readonly profileEditorOpen = this.profileEditorOpenRef.asReadonly();
+  readonly settingsPopup = this.settingsPopupRef.asReadonly();
   readonly menuUiState = computed<NavigatorMenuUiState>(() => ({
     open: this.menuOpenRef(),
     settingsOpen: this.settingsMenuOpenRef()
@@ -89,6 +90,7 @@ export class NavigatorService {
     }
     this.bindingsRef.set(null);
     this.closeMenu();
+    this.closeSettingsPopup();
     this.closeProfileEditor();
   }
 
@@ -145,6 +147,15 @@ export class NavigatorService {
 
   toggleSettingsMenu(): void {
     this.settingsMenuOpenRef.update(open => !open);
+  }
+
+  openSettingsPopup(popup: NavigatorSettingsPopup): void {
+    this.settingsPopupRef.set(popup);
+    this.closeSettingsMenu();
+  }
+
+  closeSettingsPopup(): void {
+    this.settingsPopupRef.set(null);
   }
 
   private syncHydratedUserIntoAppContext(user: UserDto): void {

@@ -1,0 +1,41 @@
+<div class="user-settings-menu" (click)="closeMenu($event)">
+  <app-navigator-settings-item
+    icon="help_outline"
+    label="Help"
+    (activate)="openPopup('help', $event)"
+  ></app-navigator-settings-item>
+
+  <app-navigator-settings-item
+    icon="feedback"
+    label="Send Feedback"
+    (activate)="openPopup('feedback', $event)"
+  ></app-navigator-settings-item>
+
+  <app-navigator-settings-item
+    icon="bug_report"
+    label="Report Bugs"
+    href="https://github.com/fssrepository/myscoutee/issues"
+    target="_blank"
+    rel="noopener noreferrer"
+    (activate)="closeMenu($event)"
+  ></app-navigator-settings-item>
+
+  <app-navigator-settings-item
+    icon="policy"
+    label="Privacy"
+    (activate)="openPopup('privacy', $event)"
+  ></app-navigator-settings-item>
+
+  <app-navigator-settings-item
+    icon="delete_forever"
+    label="Delete account"
+    [danger]="true"
+    (activate)="openDeleteAccountConfirm($event)"
+  ></app-navigator-settings-item>
+
+  <app-navigator-settings-item
+    icon="logout"
+    label="Logout"
+    (activate)="openLogoutConfirm($event)"
+  ></app-navigator-settings-item>
+</div>

@@ -8,6 +8,7 @@ import {
   type UserImpressionChangeFlags
 } from '../../../shared/core';
 import { NavigatorBindings, NavigatorService } from '../../navigator.service';
+import { NavigatorSettingsMenuComponent } from '../navigator-settings-menu/navigator-settings-menu.component';
 
 interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
   activities: ActivityCounters;
@@ -20,7 +21,7 @@ interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
 @Component({
   selector: 'app-navigator-menu',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [CommonModule, MatIconModule, NavigatorSettingsMenuComponent],
   templateUrl: './navigator-menu.component.html',
   styleUrl: './navigator-menu.component.scss'
 })
@@ -97,30 +98,6 @@ export class NavigatorMenuComponent {
 
   protected onCloseSettingsMenu(): void {
     this.navigatorService.closeSettingsMenu();
-  }
-
-  protected onSettingsAction(action: 'help' | 'send-feedback' | 'gdpr' | 'delete-account' | 'logout', event?: Event): void {
-    event?.stopPropagation();
-    this.navigatorService.closeSettingsMenu();
-    switch (action) {
-      case 'help':
-        this.bindings?.openHelpPopup();
-        return;
-      case 'send-feedback':
-        this.bindings?.openSendFeedbackPopup();
-        return;
-      case 'gdpr':
-        this.bindings?.openGdprPopup();
-        return;
-      case 'delete-account':
-        this.bindings?.openDeleteAccountConfirm();
-        return;
-      case 'logout':
-        this.bindings?.openLogoutConfirm();
-        return;
-      default:
-        return;
-    }
   }
 
   protected profileStatusClass(status: string): string {

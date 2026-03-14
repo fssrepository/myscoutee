@@ -1,0 +1,69 @@
+:host {
+  display: contents;
+  --interactive-motion-duration: 0.16s;
+  --interactive-motion-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --interactive-hover-lift: -1px;
+  --interactive-hover-scale: 1.01;
+  --interactive-hover-brightness: 1.02;
+  --interactive-press-scale: 0.98;
+  --interactive-press-brightness: 0.96;
+}
+
+.user-settings-item {
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(24, 42, 66, 0.92);
+  text-decoration: none;
+  min-height: 36px;
+  padding: 0.46rem 0.54rem;
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--interactive-motion-duration) var(--interactive-motion-ease),
+    filter var(--interactive-motion-duration) var(--interactive-motion-ease),
+    background-color var(--interactive-motion-duration) var(--interactive-motion-ease),
+    color var(--interactive-motion-duration) var(--interactive-motion-ease);
+  transform-origin: center;
+}
+
+.user-settings-item .mat-icon {
+  width: 17px;
+  height: 17px;
+  font-size: 17px;
+  line-height: 17px;
+  color: #416c9f;
+}
+
+.user-settings-item:focus-visible {
+  outline: 2px solid rgba(66, 110, 182, 0.44);
+  outline-offset: 2px;
+}
+
+.user-settings-item.danger {
+  color: #aa2e2e;
+}
+
+.user-settings-item.danger .mat-icon {
+  color: #cf4747;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .user-settings-item:hover {
+    background: rgba(212, 226, 247, 0.45);
+    transform: translateY(var(--interactive-hover-lift)) scale(var(--interactive-hover-scale));
+    filter: brightness(var(--interactive-hover-brightness));
+  }
+
+  .user-settings-item:active {
+    transform: scale(var(--interactive-press-scale));
+    filter: brightness(var(--interactive-press-brightness));
+  }
+}

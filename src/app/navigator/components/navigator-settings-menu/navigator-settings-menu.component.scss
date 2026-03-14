@@ -1,0 +1,19 @@
+:host {
+  display: block;
+}
+
+.user-settings-menu {
+  position: absolute;
+  top: 2.74rem;
+  right: 0.58rem;
+  z-index: 6;
+  width: 196px;
+  border-radius: 14px;
+  border: 1px solid rgba(36, 67, 107, 0.2);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(244, 249, 255, 0.99) 100%);
+  box-shadow: 0 10px 26px rgba(16, 32, 58, 0.2);
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.16rem;
+}

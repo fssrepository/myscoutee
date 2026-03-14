@@ -44,7 +44,6 @@ import {
   RateMenuItem,
   ProfileGroup
 } from './shared/demo-data';
-import { GDPR_CONTENT } from './shared/gdpr-data';
 import { LazyBgImageDirective } from './shared/lazy-bg-image.directive';
 import { NavigatorBindings, NavigatorService } from './navigator';
 import { AppDemoGenerators } from './shared/app-demo-generators';
@@ -277,9 +276,6 @@ export class App {
     openAssetTicketsPopup: () => this.openAssetTicketsPopup(),
     openEventFeedbackPopup: (event) => this.openEventFeedbackPopup(event),
     openReportUserFromFeedback: (event) => this.openReportUserFromFeedback(event),
-    openHelpPopup: () => this.openHelpPopup(),
-    openSendFeedbackPopup: () => this.openSendFeedbackPopup(),
-    openGdprPopup: () => this.openGdprPopup(),
     openDeleteAccountConfirm: () => this.openDeleteAccountConfirm(),
     openLogoutConfirm: () => this.openLogoutConfirm()
   };
@@ -293,7 +289,6 @@ export class App {
   protected readonly beliefsValuesOptionGroups: AppTypes.ValuesOptionGroup[] = APP_STATIC_DATA.beliefsValuesOptionGroups;
   protected readonly interestOptionGroups: AppTypes.InterestOptionGroup[] = APP_STATIC_DATA.interestOptionGroups;
 
-  protected readonly gdprContent = GDPR_CONTENT;
   protected activePopup: AppTypes.PopupType = null;
   protected stackedPopup: AppTypes.PopupType = null;
   protected eventEditorMode: AppTypes.EventEditorMode = 'edit';
@@ -547,13 +542,6 @@ export class App {
   protected reportUserSubmitted = false;
   protected readonly reportUserHandleMinLength = 3;
   protected readonly reportUserDetailsMinLength = 12;
-  protected feedbackForm = {
-    category: 'General',
-    subject: '',
-    details: ''
-  };
-  protected feedbackSubmitMessage = '';
-  protected feedbackSubmitted = false;
   protected eventFeedbackCards: AppTypes.EventFeedbackCard[] = [];
   protected eventFeedbackIndex = 0;
   protected eventFeedbackListFilter: AppTypes.EventFeedbackListFilter = 'pending';
@@ -580,14 +568,11 @@ export class App {
   private readonly organizerEventFeedbackNotesByUser: Record<string, Record<string, string>> = {};
   private readonly eventFeedbackUnlockDelayMs = 2 * 60 * 60 * 1000;
   protected readonly reportUserReasons = APP_STATIC_DATA.reportUserReasons;
-  protected readonly feedbackCategories = APP_STATIC_DATA.feedbackCategories;
   protected readonly eventFeedbackEventOverallOptions: AppTypes.EventFeedbackOption[] = APP_STATIC_DATA.eventFeedbackEventOverallOptions;
   protected readonly eventFeedbackHostImproveOptions: AppTypes.EventFeedbackOption[] = APP_STATIC_DATA.eventFeedbackHostImproveOptions;
   protected readonly eventFeedbackAttendeeCollabOptions: AppTypes.EventFeedbackOption[] = APP_STATIC_DATA.eventFeedbackAttendeeCollabOptions;
   protected readonly eventFeedbackAttendeeRejoinOptions: AppTypes.EventFeedbackOption[] = APP_STATIC_DATA.eventFeedbackAttendeeRejoinOptions;
   protected readonly eventFeedbackListFilters: Array<{ key: AppTypes.EventFeedbackListFilter; label: string; icon: string }> = APP_STATIC_DATA.eventFeedbackListFilters;
-  protected readonly helpCenterSections: AppTypes.HelpCenterSection[] = APP_STATIC_DATA.helpCenterSections;
-  protected helpCenterActiveSectionId = this.helpCenterSections[0]?.id ?? 'events';
   private readonly profileDetailsFormByUser: Record<string, AppTypes.ProfileDetailFormGroup[]> = {};
   private activitiesHeaderLoadingCounter = 0;
   private activitiesHeaderLoadingInterval: ReturnType<typeof setInterval> | null = null;
@@ -921,24 +906,6 @@ export class App {
 
   protected closeUserMenu(): void {
     this.navigatorService.closeMenu();
-  }
-
-  protected openGdprPopup(): void {
-    this.activePopup = 'gdpr';
-  }
-
-  protected openHelpPopup(): void {
-    this.helpCenterActiveSectionId = this.helpCenterSections[0]?.id ?? this.helpCenterActiveSectionId;
-    this.activePopup = 'helpCenter';
-  }
-
-  protected selectHelpCenterSection(sectionId: string, event?: Event): void {
-    event?.stopPropagation();
-    this.helpCenterActiveSectionId = sectionId;
-  }
-
-  protected get activeHelpCenterSection(): AppTypes.HelpCenterSection | null {
-    return this.helpCenterSections.find(section => section.id === this.helpCenterActiveSectionId) ?? this.helpCenterSections[0] ?? null;
   }
 
   protected get eventFeedbackPendingCount(): number {
@@ -1555,17 +1522,6 @@ export class App {
     this.activePopup = 'reportUser';
   }
 
-  protected openSendFeedbackPopup(): void {
-    this.feedbackForm = {
-      category: this.feedbackCategories[0] ?? 'General',
-      subject: '',
-      details: ''
-    };
-    this.feedbackSubmitMessage = '';
-    this.feedbackSubmitted = false;
-    this.activePopup = 'sendFeedback';
-  }
-
   protected get reportUserHandleLength(): number {
     return this.reportUserForm.handle.trim().length;
   }
@@ -1593,16 +1549,6 @@ export class App {
     }
     this.reportUserSubmitMessage = `Report submitted successfully for ${target}. Our moderation team will review it.`;
     this.reportUserSubmitted = true;
-  }
-
-  protected submitFeedback(): void {
-    const subject = this.feedbackForm.subject.trim();
-    const details = this.feedbackForm.details.trim();
-    if (!subject || details.length < 8) {
-      return;
-    }
-    this.feedbackSubmitMessage = `Feedback sent successfully in "${this.feedbackForm.category}". Thank you for helping improve MyScoutee.`;
-    this.feedbackSubmitted = true;
   }
 
   protected openDeleteAccountConfirm(): void {
@@ -5537,20 +5483,14 @@ export class App {
         return 'Events';
       case 'hosting':
         return 'Hosting';
-      case 'helpCenter':
-        return 'Help';
       case 'eventFeedback':
         return 'Event Feedback';
       case 'eventFeedbackNote':
         return 'Organizer Feedback';
       case 'reportUser':
         return 'Report User';
-      case 'sendFeedback':
-        return 'Send Feedback';
       case 'logoutConfirm':
         return 'Kilépés';
-      case 'gdpr':
-        return 'Privacy';
       default:
         return '';
     }

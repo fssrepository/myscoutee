@@ -1,0 +1,118 @@
+:host {
+  display: block;
+  --line-strong: rgba(23, 33, 54, 0.2);
+  --text-main: #22324a;
+  --text-muted: rgba(23, 41, 66, 0.72);
+}
+
+.link-btn {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: #fff;
+  color: #1f3350;
+  font: inherit;
+  font-size: 0.83rem;
+  padding: 0.38rem 0.76rem;
+  cursor: pointer;
+}
+
+.neutral-btn {
+  background: #f2f4fa;
+  border-color: rgba(23, 33, 54, 0.12);
+}
+
+.primary-btn {
+  background: #4776b7;
+  border-color: #4776b7;
+  color: #fff;
+}
+
+.editor-list-card {
+  border: 1px solid rgba(13, 25, 44, 0.12);
+  border-radius: 11px;
+  padding: 0.56rem;
+  background: #fbfdff;
+}
+
+.editor-list-card h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-main);
+}
+
+.editor-list-card p {
+  margin-top: 0.26rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.support-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.support-card {
+  background: #fff;
+}
+
+.support-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.48rem;
+  margin-top: 0.54rem;
+  min-width: 0;
+}
+
+.support-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  min-width: 0;
+}
+
+.support-form label > span {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(29, 47, 72, 0.9);
+}
+
+.support-form input,
+.support-form select,
+.support-form textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.support-form textarea {
+  min-height: 96px;
+}
+
+.support-submit-success {
+  border: 1px solid rgba(41, 131, 84, 0.35);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(220, 249, 231, 0.95) 0%, rgba(208, 245, 223, 0.95) 100%);
+  color: #1f6f48;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.35;
+  padding: 0.52rem 0.58rem;
+}
+
+.support-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.support-actions .primary-btn:disabled {
+  background: linear-gradient(180deg, #d9e2f2 0%, #c9d4e8 100%);
+  border-color: rgba(74, 103, 145, 0.32);
+  color: rgba(29, 51, 83, 0.72);
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 1;
+}
