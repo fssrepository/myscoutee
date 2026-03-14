@@ -17,7 +17,7 @@ import {
   USER_RATES_OUTBOX_TABLE_NAME,
   USER_RATES_TABLE_NAME
 } from '../models/users.model';
-import { AppMemoryDb } from '../../app.db';
+import { AppMemoryDb } from '../../base/db';
 import { DemoUsersRatingsRepository } from './users-ratings.repository';
 
 @Injectable({

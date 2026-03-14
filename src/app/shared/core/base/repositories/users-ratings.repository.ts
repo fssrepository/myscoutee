@@ -4,7 +4,7 @@ import type { UserRateOutboxRecord, UserRateRecord } from '../interfaces/game.in
 import {
   USER_RATES_OUTBOX_TABLE_NAME
 } from '../../demo/models/users.model';
-import { AppMemoryDb } from '../../app.db';
+import { AppMemoryDb } from '../db';
 
 @Injectable({
   providedIn: 'root'

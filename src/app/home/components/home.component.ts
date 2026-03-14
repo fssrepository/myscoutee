@@ -4,9 +4,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
 import { MatSliderModule } from '@angular/material/slider';
 import { DemoUser, PROFILE_DETAILS } from '../../shared/demo-data';
-import { AppContext } from '../../shared/core/app.context';
-import { USER_BY_ID_LOAD_CONTEXT_KEY, UsersService } from '../../shared/core/users.service';
-import { GameService, USER_GAME_CARDS_LOAD_CONTEXT_KEY } from '../../shared/core/game.service';
+import {
+  AppContext,
+  GameService,
+  USER_BY_ID_LOAD_CONTEXT_KEY,
+  USER_GAME_CARDS_LOAD_CONTEXT_KEY,
+  UsersService
+} from '../../shared/core';
 
 type LocalPopup = 'history' | 'filter' | null;
 type FilterSelectorKind =

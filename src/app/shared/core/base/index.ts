@@ -1,3 +1,4 @@
+export { AppMemoryDb } from './db';
 export type { UserGameCardsStackSnapshot } from './interfaces/game.interface';
 export {
   USER_BY_ID_LOAD_CONTEXT_KEY,

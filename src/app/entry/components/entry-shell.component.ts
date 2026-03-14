@@ -1,7 +1,6 @@
 import { Component, EventEmitter, HostListener, Input, Output, inject } from '@angular/core';
 
-import { UsersService } from '../../shared/core/users.service';
-import type { DemoUserListItemDto } from '../../shared/core/user.interface';
+import { UsersService, type DemoUserListItemDto } from '../../shared/core';
 import type * as AppTypes from '../../shared/app-types';
 import { EntryConsentPopupComponent } from './entry-consent-popup.component';
 import { EntryDemoUserSelectorComponent } from './entry-demo-user-selector.component';

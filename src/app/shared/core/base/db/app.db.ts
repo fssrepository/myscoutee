@@ -6,7 +6,7 @@ import {
   USER_RATES_TABLE_NAME,
   USER_RATES_OUTBOX_TABLE_NAME,
   type DemoUsersMemorySchema
-} from './demo/models/users.model';
+} from '../../demo/models/users.model';
 
 @Injectable({
   providedIn: 'root'

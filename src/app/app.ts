@@ -18,14 +18,15 @@ import { ActivitiesDbContextService } from './shared/activities-db-context.servi
 import type { AssetPopupHost } from './asset/asset-popup.host';
 import { AssetPopupService, type AssetTicketBridge } from './asset/asset-popup.service';
 import { EventEditorService } from './shared/event-editor.service';
-import { AppContext, type ActivityCounterKey } from './shared/core/app.context';
-import { UsersService } from './shared/core/users.service';
-import { SessionService } from './shared/core/base/services/session.service';
-import type {
-  UserRealtimeLongPollResponseDto,
-  UserImpressionsSectionDto,
-  UserDto
-} from './shared/core/user.interface';
+import {
+  AppContext,
+  SessionService,
+  UsersService,
+  type ActivityCounterKey,
+  type UserDto,
+  type UserImpressionsSectionDto,
+  type UserRealtimeLongPollResponseDto
+} from './shared/core';
 import {
   APP_DEMO_DATA,
   DEMO_CHAT_BY_USER,

@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { restrictedAreaGuard } from './shared/core/restricted-area.guard';
+import { restrictedAreaGuard } from './shared/core';
 
 export const routes: Routes = [
   {
