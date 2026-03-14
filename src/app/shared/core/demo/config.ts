@@ -17,7 +17,7 @@ const ROUTE_CONFIG: DemoUsersRouteConfig = {
     },
     {
       routePrefix: '/auth/me',
-      demoDelayMs: 0
+      demoDelayMs: 1500
     },
     {
       routePrefix: '/game-cards/query',

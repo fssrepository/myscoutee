@@ -513,7 +513,14 @@ export class HomeComponent implements OnDestroy {
     return this.users.find(user => user.id === this.activeUserId) ?? this.users[0];
   }
 
+  protected get canOpenHistory(): boolean {
+    return this.appCtx.getLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY).status === 'success';
+  }
+
   protected get historyBadgeCount(): number {
+    if (!this.canOpenHistory) {
+      return 0;
+    }
     return this.appCtx.resolveUserCounter(this.activeUser.id, 'game', this.activeUser.activities.game);
   }
 
@@ -887,6 +894,9 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected openHistory(): void {
+    if (!this.canOpenHistory) {
+      return;
+    }
     if (typeof globalThis.dispatchEvent === 'function') {
       globalThis.dispatchEvent(new CustomEvent('myscoutee-open-rates'));
     }

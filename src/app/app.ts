@@ -55,6 +55,7 @@ import { AppUtils } from './shared/app-utils';
 import { AppCalendarHelpers } from './shared/app-calendar-helpers';
 import { APP_STATIC_DATA } from './shared/app-static-data';
 import type * as AppTypes from './shared/app-types';
+import { UserMenuShellService } from './shared/user-menu-shell.service';
 
 @Injectable()
 class YearMonthDayDateAdapter extends NativeDateAdapter {
@@ -157,6 +158,7 @@ export class App {
   private readonly appCtx = inject(AppContext);
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly userMenuShellService = inject(UserMenuShellService);
 
   protected readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
   protected readonly assetTicketBridge: AssetTicketBridge = {
@@ -684,6 +686,19 @@ export class App {
     });
 
     effect(() => {
+      const shouldOpenUserMenu = this.userMenuShellService.menuOpen();
+      if (this.showUserMenu === shouldOpenUserMenu) {
+        return;
+      }
+      this.showUserMenu = shouldOpenUserMenu;
+      if (!shouldOpenUserMenu) {
+        this.showUserSettingsMenu = false;
+        this.suppressUserMenuOutsideCloseUntilMs = 0;
+      }
+      this.cdr.markForCheck();
+    });
+
+    effect(() => {
       const request = this.activitiesContext.activitiesNavigationRequest();
       if (!request) {
         return;
@@ -737,6 +752,20 @@ export class App {
       window.addEventListener('app:saveEventEditor', (event) => this.handleModuleEventEditorSave(event));
       window.addEventListener('app:openSubEventResourcePopupFromEventEditor', (event) => this.handleModuleSubEventResourcePopup(event));
     }
+  }
+
+  ngDoCheck(): void {
+    this.userMenuShellService.setAvatarState({
+      initials: this.activeUser.initials,
+      gender: this.activeUser.gender,
+      imageUrl: this.featuredImagePreview,
+      badgeCount: this.userBadgeCount
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.userMenuShellService.setMenuOpen(false);
+    this.userMenuShellService.resetAvatarState();
   }
 
   private ensurePaginationTestEvents(minEventsPerUser: number): void {
@@ -948,16 +977,14 @@ export class App {
   }
 
   protected onUserSelect(): void {
-    this.showUserMenu = !this.showUserMenu;
-    if (!this.showUserMenu) {
-      this.showUserSettingsMenu = false;
-    }
+    this.userMenuShellService.toggleMenu();
   }
 
   protected closeUserMenu(): void {
     this.showUserMenu = false;
     this.showUserSettingsMenu = false;
     this.suppressUserMenuOutsideCloseUntilMs = 0;
+    this.userMenuShellService.setMenuOpen(false);
   }
 
   protected toggleUserSettingsMenu(event: MouseEvent): void {
@@ -5502,6 +5529,7 @@ export class App {
     this.activePopup = null;
     this.stackedPopup = null;
     this.popupReturnTarget = null;
+    this.userMenuShellService.setMenuOpen(false);
     this.showUserMenu = false;
     this.showUserSettingsMenu = false;
     this.syncAssetPopupVisibility();
@@ -13911,8 +13939,7 @@ export class App {
       !target.closest('.user-menu-panel') &&
       !target.closest('.user-selector-btn-global')
     ) {
-      this.showUserMenu = false;
-      this.showUserSettingsMenu = false;
+      this.closeUserMenu();
     }
     if (this.showUserSettingsMenu && !target.closest('.user-settings-menu') && !target.closest('.user-menu-settings-btn')) {
       this.showUserSettingsMenu = false;

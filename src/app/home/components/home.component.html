@@ -20,9 +20,16 @@
         <mat-icon>filter_alt</mat-icon>
         <span class="filter-state-badge" [class.active]="isFilterActive">{{ filterBadgeCount }}</span>
       </button>
-      <button type="button" class="game-action-filter game-action-history has-badge" (click)="openHistory()" aria-label="Open game history">
+      <button
+        type="button"
+        class="game-action-filter game-action-history has-badge"
+        [class.is-disabled]="!canOpenHistory"
+        [disabled]="!canOpenHistory"
+        (click)="openHistory()"
+        aria-label="Open game history"
+      >
         <mat-icon>history</mat-icon>
-        <span class="history-badge">{{ historyBadgeCount }}</span>
+        <span class="history-badge" *ngIf="historyBadgeCount > 0">{{ historyBadgeCount }}</span>
       </button>
     </div>
   </header>

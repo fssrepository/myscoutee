@@ -1,16 +1,5 @@
 <main class="main">
   <div class="content content-single">
-    <button mat-icon-button class="user-selector-btn-global" [class.is-hidden]="showUserMenu" (click)="onUserSelect()" aria-label="Open user menu">
-      <span
-        class="user-initial"
-        [ngClass]="['user-color-' + activeUser.gender, featuredImagePreview ? 'has-photo' : '']"
-        [style.backgroundImage]="featuredImagePreview ? 'url(' + featuredImagePreview + ')' : null"
-      >
-        <ng-container *ngIf="!featuredImagePreview">{{ activeUser.initials }}</ng-container>
-      </span>
-      <span class="badge-dot" *ngIf="userBadgeCount > 0">{{ userBadgeCount }}</span>
-    </button>
-
     <div class="user-menu-backdrop" [class.open]="showUserMenu" (click)="closeUserMenu()" *ngIf="showUserMenu"></div>
 
     <aside class="user-menu-panel" [class.open]="showUserMenu">
