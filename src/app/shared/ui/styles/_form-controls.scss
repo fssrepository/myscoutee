@@ -1,0 +1,1078 @@
+@mixin form-controls() {
+  .app-popup,
+  .mobile-profile-selector-sheet-wrap {
+    font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
+  }
+
+  .app-popup button,
+  .app-popup input,
+  .app-popup textarea,
+  .app-popup select,
+  .app-popup .mat-mdc-select,
+  .app-popup .mat-mdc-select-value-text,
+  .app-popup .mat-mdc-option,
+  .mobile-profile-selector-sheet-wrap button,
+  .mobile-profile-selector-sheet-wrap input,
+  .mobile-profile-selector-sheet-wrap .mat-mdc-option {
+    font-family: inherit;
+  }
+
+  .popup-view-fab {
+    height: 34px;
+    border: 1px solid rgba(39, 62, 94, 0.22);
+    border-radius: 999px;
+    background: #f3f7ff;
+    color: #2c4c74;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0 0.62rem;
+    cursor: pointer;
+  }
+
+  .popup-view-fab .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+
+  .popup-view-fab span {
+    font-size: 0.74rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .event-visibility-picker {
+    position: relative;
+    z-index: 22;
+    margin-left: auto;
+    flex: 0 0 auto;
+  }
+
+  .event-visibility-trigger {
+    flex-wrap: nowrap;
+  }
+
+  .activities-view-picker-panel {
+    position: absolute;
+    top: calc(100% + 0.32rem);
+    right: 0;
+    border: 1px solid rgba(39, 62, 94, 0.22);
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 10px 24px rgba(17, 29, 48, 0.22);
+    padding: 0.24rem;
+    min-width: 128px;
+    z-index: 40;
+    display: grid;
+    gap: 0.16rem;
+  }
+
+  .activities-view-option {
+    border: 0;
+    background: #fff;
+    border-radius: 8px;
+    min-height: 32px;
+    padding: 0.34rem 0.44rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.34rem;
+    color: #1e3658;
+    cursor: pointer;
+  }
+
+  .activities-view-option .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+
+  .activities-view-option span {
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .profile-status-header-picker .event-visibility-trigger.status-public,
+  .profile-status-header-picker .activities-view-option.status-public {
+    background: linear-gradient(0deg, #ffffff, #e6f6ef);
+  }
+
+  .profile-status-header-picker .event-visibility-trigger.status-friends,
+  .profile-status-header-picker .activities-view-option.status-friends {
+    background: linear-gradient(0deg, #ffffff, #e8f1fd);
+  }
+
+  .profile-status-header-picker .event-visibility-trigger.status-host,
+  .profile-status-header-picker .activities-view-option.status-host {
+    background: linear-gradient(0deg, #ffffff, #f6efe2);
+  }
+
+  .profile-status-header-picker .event-visibility-trigger.status-inactive,
+  .profile-status-header-picker .activities-view-option.status-inactive {
+    background: linear-gradient(0deg, #ffffff, #f2f3f5);
+  }
+
+  .profile-status-header-picker .event-visibility-trigger .mat-icon.status-public,
+  .profile-status-header-picker .activities-view-option.status-public .mat-icon {
+    color: #2f8f66;
+  }
+
+  .profile-status-header-picker .event-visibility-trigger .mat-icon.status-friends,
+  .profile-status-header-picker .activities-view-option.status-friends .mat-icon {
+    color: #1b57a1;
+  }
+
+  .profile-status-header-picker .event-visibility-trigger .mat-icon.status-host,
+  .profile-status-header-picker .activities-view-option.status-host .mat-icon {
+    color: #87580f;
+  }
+
+  .profile-status-header-picker .event-visibility-trigger .mat-icon.status-inactive,
+  .profile-status-header-picker .activities-view-option.status-inactive .mat-icon {
+    color: #5b6573;
+  }
+
+  .app-popup textarea,
+  .app-popup input,
+  .app-popup select,
+  .mobile-profile-selector-sheet-wrap input {
+    width: 100%;
+    border: 1px solid rgba(15, 27, 47, 0.16);
+    border-radius: 10px;
+    padding: 0.48rem 0.56rem;
+    font: inherit;
+    color: var(--text-main);
+    background: #fff;
+  }
+
+  .app-popup textarea {
+    resize: vertical;
+  }
+
+  .popup-actions {
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+  }
+
+  .link-btn {
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: #fff;
+    color: #1f3350;
+    font: inherit;
+    font-size: 0.83rem;
+    padding: 0.38rem 0.76rem;
+    cursor: pointer;
+  }
+
+  .neutral-btn {
+    background: #f2f4fa;
+    border-color: rgba(23, 33, 54, 0.12);
+  }
+
+  .primary-btn {
+    background: #4776b7;
+    border-color: #4776b7;
+    color: #fff;
+  }
+
+  .profile-status-select-wrap .mat-icon,
+  .date-picker-btn .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    line-height: 16px;
+    color: #566b86;
+  }
+
+  .profile-status-select-wrap .mat-mdc-select {
+    min-width: 80px;
+    width: 100%;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: lowercase;
+  }
+
+  .profile-status-select-wrap .mat-mdc-select-trigger {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .profile-status-select-wrap .mat-mdc-select-arrow-wrapper {
+    margin-left: auto;
+  }
+
+  .status-public {
+    color: #2f8f66;
+  }
+
+  .status-friends {
+    color: #1b57a1;
+  }
+
+  .status-host {
+    color: #87580f;
+  }
+
+  .status-inactive {
+    color: #5b6573;
+  }
+
+  .status-option-content .status-public {
+    color: #2f8f66;
+  }
+
+  .status-option-content .status-friends {
+    color: #1b57a1;
+  }
+
+  .status-option-content .status-host {
+    color: #87580f;
+  }
+
+  .status-option-content .status-inactive {
+    color: #5b6573;
+  }
+
+  .profile-status-select-wrap.status-public .status-option-content .mat-icon {
+    color: #2f8f66;
+  }
+
+  .profile-status-select-wrap.status-friends .status-option-content .mat-icon {
+    color: #1b57a1;
+  }
+
+  .profile-status-select-wrap.status-host .status-option-content .mat-icon {
+    color: #87580f;
+  }
+
+  .profile-status-select-wrap.status-inactive .status-option-content .mat-icon {
+    color: #5b6573;
+  }
+
+  .profile-details-values-btn .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    line-height: 16px;
+    color: rgba(44, 67, 100, 0.72);
+  }
+
+  .profile-details-values-btn .status-option-content.profile-details-selected-badges {
+    display: inline-grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 0.26rem;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .profile-details-values-btn.profile-details-values-tone-values .profile-details-inline-chip {
+    max-width: calc(100% - 2.6rem);
+  }
+
+  .profile-details-values-btn.profile-details-values-tone-interest .profile-details-inline-chip {
+    max-width: calc((100% - 3.2rem) / 2);
+  }
+
+  .profile-details-values-btn.profile-details-values-tone-values .profile-details-inline-overflow {
+    color: #1e6b5a;
+  }
+
+  .profile-details-values-btn.profile-details-values-tone-interest .profile-details-inline-overflow {
+    color: #2e5a90;
+  }
+
+  .values-header-chips {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.28rem;
+    flex: 0 0 100%;
+    margin-left: 0;
+    margin-top: 0.34rem;
+    max-width: 100%;
+    overflow: visible;
+    white-space: normal;
+    padding-bottom: 0;
+  }
+
+  .popup-title-values {
+    margin-right: 0.38rem;
+  }
+
+  .values-selected-chip {
+    border: 1px solid rgba(76, 99, 136, 0.3);
+    background: linear-gradient(180deg, #f7f9ff 0%, #eef3ff 100%);
+    color: #24416a;
+    border-radius: 999px;
+    min-height: 26px;
+    padding: 0.18rem 0.46rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.26rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+
+  .values-selected-chip .mat-icon {
+    width: 12px;
+    height: 12px;
+    font-size: 12px;
+    line-height: 12px;
+  }
+
+  .values-selected-chip.section-family {
+    background: linear-gradient(180deg, #fff1ea 0%, #ffe6dd 100%);
+    border-color: rgba(160, 90, 51, 0.32);
+    color: #8b4d2b;
+  }
+
+  .values-selected-chip.section-ambition {
+    background: linear-gradient(180deg, #fff7e8 0%, #ffefd7 100%);
+    border-color: rgba(160, 106, 20, 0.32);
+    color: #9a6614;
+  }
+
+  .values-selected-chip.section-lifestyle {
+    background: linear-gradient(180deg, #eaf8f5 0%, #e0f2ee 100%);
+    border-color: rgba(45, 125, 120, 0.32);
+    color: #2a6e6a;
+  }
+
+  .values-selected-chip.section-beliefs {
+    background: linear-gradient(180deg, #f0ecff 0%, #e8e1fa 100%);
+    border-color: rgba(95, 78, 160, 0.32);
+    color: #564793;
+  }
+
+  .values-selected-chip.section-social {
+    background: linear-gradient(180deg, #ecf4ff 0%, #e1ecfb 100%);
+    border-color: rgba(45, 94, 168, 0.32);
+    color: #2d5ea8;
+  }
+
+  .values-selected-chip.section-arts {
+    background: linear-gradient(180deg, #f2edfb 0%, #e9e2f9 100%);
+    border-color: rgba(103, 76, 164, 0.32);
+    color: #654ca1;
+  }
+
+  .values-selected-chip.section-food {
+    background: linear-gradient(180deg, #fff4e8 0%, #fee9d6 100%);
+    border-color: rgba(170, 97, 28, 0.32);
+    color: #9d611c;
+  }
+
+  .values-selected-chip.section-active {
+    background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
+    border-color: rgba(44, 126, 72, 0.32);
+    color: #2d7d47;
+  }
+
+  .values-selected-chip.section-mind {
+    background: linear-gradient(180deg, #eaf8f6 0%, #def1ee 100%);
+    border-color: rgba(37, 124, 118, 0.32);
+    color: #2d7d78;
+  }
+
+  .values-selected-chip.section-identity {
+    background: linear-gradient(180deg, #f4f0ff 0%, #e9e3fb 100%);
+    border-color: rgba(88, 78, 159, 0.32);
+    color: #5a4ea0;
+  }
+
+  .readonly-select {
+    width: fit-content;
+    min-width: 0;
+    max-width: 130px;
+    justify-content: center;
+    margin-top: 2px;
+    padding-left: 0.44rem;
+    padding-right: 0.44rem;
+  }
+
+  .readonly-field {
+    min-height: 34px;
+    border: 1px solid rgba(15, 27, 47, 0.16);
+    border-radius: 10px;
+    padding: 0.4rem 0.56rem;
+    background: #f7fafe;
+    color: #23476f;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.26rem;
+    font-weight: 700;
+  }
+
+  .readonly-field .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    line-height: 16px;
+  }
+
+  .zodiac-symbol {
+    font-size: 1.1rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .zodiac-label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    min-width: 0;
+    text-align: center;
+  }
+
+  .zodiac-aries { background: #fdf1f1; color: #9f2f2f; }
+  .zodiac-taurus { background: #f7f3eb; color: #6e4b2b; }
+  .zodiac-gemini { background: #fdf8e9; color: #7d5a12; }
+  .zodiac-cancer { background: #eef4ff; color: #2d5b8e; }
+  .zodiac-leo { background: #fff3e8; color: #8f4b0d; }
+  .zodiac-virgo { background: #edf8ef; color: #2b6b3d; }
+  .zodiac-libra { background: #f2eefc; color: #60439d; }
+  .zodiac-scorpio { background: #f9edf2; color: #7b3150; }
+  .zodiac-sagittarius { background: #eef1ff; color: #2f4a9a; }
+  .zodiac-capricorn { background: #eff2f5; color: #364653; }
+  .zodiac-aquarius { background: #ebf7fb; color: #1d5f7a; }
+  .zodiac-pisces { background: #eef2ff; color: #294b8f; }
+
+  .physique-slim { color: #3f7ab3; }
+  .physique-lean { color: #3f8f5f; }
+  .physique-athletic { color: #2f7e4d; }
+  .physique-fit { color: #465fbb; }
+  .physique-curvy { color: #a14875; }
+  .physique-muscular { color: #7d4f24; }
+  .physique-average { color: #4d667f; }
+
+  .physique-select-wrap.physique-slim {
+    background: linear-gradient(180deg, #eaf3fb 0%, #dfebf8 100%);
+    border-color: rgba(63, 122, 179, 0.34);
+  }
+
+  .physique-select-wrap.physique-lean {
+    background: linear-gradient(180deg, #eaf6ee 0%, #def0e5 100%);
+    border-color: rgba(63, 143, 95, 0.34);
+  }
+
+  .physique-select-wrap.physique-athletic {
+    background: linear-gradient(180deg, #e8f5ec 0%, #dff0e6 100%);
+    border-color: rgba(47, 126, 77, 0.34);
+  }
+
+  .physique-select-wrap.physique-fit {
+    background: linear-gradient(180deg, #ebf0ff 0%, #e1e8fc 100%);
+    border-color: rgba(70, 95, 187, 0.34);
+  }
+
+  .physique-select-wrap.physique-curvy {
+    background: linear-gradient(180deg, #f7edf3 0%, #f0e3ec 100%);
+    border-color: rgba(161, 72, 117, 0.36);
+  }
+
+  .physique-select-wrap.physique-muscular {
+    background: linear-gradient(180deg, #f6efe9 0%, #ede3d8 100%);
+    border-color: rgba(125, 79, 36, 0.36);
+  }
+
+  .physique-select-wrap.physique-average {
+    background: linear-gradient(180deg, #eef2f6 0%, #e5ebf1 100%);
+    border-color: rgba(77, 102, 127, 0.34);
+  }
+
+  .physique-select-wrap.physique-slim .status-option-content .mat-icon { color: #3f7ab3; }
+  .physique-select-wrap.physique-lean .status-option-content .mat-icon { color: #3f8f5f; }
+  .physique-select-wrap.physique-athletic .status-option-content .mat-icon { color: #2f7e4d; }
+  .physique-select-wrap.physique-fit .status-option-content .mat-icon { color: #465fbb; }
+  .physique-select-wrap.physique-curvy .status-option-content .mat-icon { color: #a14875; }
+  .physique-select-wrap.physique-muscular .status-option-content .mat-icon { color: #7d4f24; }
+  .physique-select-wrap.physique-average .status-option-content .mat-icon { color: #4d667f; }
+
+  .mobile-profile-language-chip.language-tone-1,
+  .mobile-profile-selector-option.language-tone-1,
+  :host ::ng-deep .mat-mdc-option.language-tone-1 {
+    background: #eaf4ff;
+    border-color: rgba(63, 122, 179, 0.34);
+    color: #2f6090;
+  }
+
+  .mobile-profile-language-chip.language-tone-2,
+  .mobile-profile-selector-option.language-tone-2,
+  :host ::ng-deep .mat-mdc-option.language-tone-2 {
+    background: #edf8f4;
+    border-color: rgba(75, 127, 113, 0.34);
+    color: #2f695b;
+  }
+
+  .mobile-profile-language-chip.language-tone-3,
+  .mobile-profile-selector-option.language-tone-3,
+  :host ::ng-deep .mat-mdc-option.language-tone-3 {
+    background: #f1f2ff;
+    border-color: rgba(70, 95, 187, 0.34);
+    color: #394f9c;
+  }
+
+  .mobile-profile-language-chip.language-tone-4,
+  .mobile-profile-selector-option.language-tone-4,
+  :host ::ng-deep .mat-mdc-option.language-tone-4 {
+    background: #fff2f8;
+    border-color: rgba(161, 72, 117, 0.34);
+    color: #8d3f66;
+  }
+
+  .mobile-profile-language-chip.language-tone-5,
+  .mobile-profile-selector-option.language-tone-5,
+  :host ::ng-deep .mat-mdc-option.language-tone-5 {
+    background: #fbf4ea;
+    border-color: rgba(125, 79, 36, 0.34);
+    color: #704822;
+  }
+
+  .mobile-profile-language-chip.language-tone-6,
+  .mobile-profile-selector-option.language-tone-6,
+  :host ::ng-deep .mat-mdc-option.language-tone-6 {
+    background: #eff4f9;
+    border-color: rgba(77, 102, 127, 0.34);
+    color: #415872;
+  }
+
+  .mobile-profile-language-chip.language-tone-7,
+  .mobile-profile-selector-option.language-tone-7,
+  :host ::ng-deep .mat-mdc-option.language-tone-7 {
+    background: #f7f5ea;
+    border-color: rgba(128, 109, 66, 0.34);
+    color: #746237;
+  }
+
+  .mobile-profile-language-chip.language-tone-8,
+  .mobile-profile-selector-option.language-tone-8,
+  :host ::ng-deep .mat-mdc-option.language-tone-8 {
+    background: #edf5ff;
+    border-color: rgba(45, 122, 160, 0.34);
+    color: #2f6782;
+  }
+
+  :host ::ng-deep .mat-mdc-option.status-option.detail-tone-1 {
+    background: linear-gradient(0deg, #ffffff, #eaf2ff);
+  }
+
+  :host ::ng-deep .mat-mdc-option.status-option.detail-tone-2 {
+    background: linear-gradient(0deg, #ffffff, #ebf7ef);
+  }
+
+  :host ::ng-deep .mat-mdc-option.status-option.detail-tone-3 {
+    background: linear-gradient(0deg, #ffffff, #fff1e3);
+  }
+
+  :host ::ng-deep .mat-mdc-option.status-option.detail-tone-4 {
+    background: linear-gradient(0deg, #ffffff, #efecfc);
+  }
+
+  :host ::ng-deep .mat-mdc-option.status-option.detail-tone-5 {
+    background: linear-gradient(0deg, #ffffff, #f3f8e9);
+  }
+
+  :host ::ng-deep .mat-mdc-option.status-option.detail-tone-6 {
+    background: linear-gradient(0deg, #ffffff, #fceef3);
+  }
+
+  :host ::ng-deep .mat-mdc-option.status-option.detail-tone-7 {
+    background: linear-gradient(0deg, #ffffff, #edf7ff);
+  }
+
+  :host ::ng-deep .mat-mdc-option.status-option.detail-tone-8 {
+    background: linear-gradient(0deg, #ffffff, #f6f2e9);
+  }
+
+  :host ::ng-deep .mat-mdc-option.status-option.detail-tone-1 .status-option-content { color: #2d63a9; }
+  :host ::ng-deep .mat-mdc-option.status-option.detail-tone-2 .status-option-content { color: #2a7a49; }
+  :host ::ng-deep .mat-mdc-option.status-option.detail-tone-3 .status-option-content { color: #9b6018; }
+  :host ::ng-deep .mat-mdc-option.status-option.detail-tone-4 .status-option-content { color: #6153a2; }
+  :host ::ng-deep .mat-mdc-option.status-option.detail-tone-5 .status-option-content { color: #61812a; }
+  :host ::ng-deep .mat-mdc-option.status-option.detail-tone-6 .status-option-content { color: #9f446d; }
+  :host ::ng-deep .mat-mdc-option.status-option.detail-tone-7 .status-option-content { color: #2e7898; }
+  :host ::ng-deep .mat-mdc-option.status-option.detail-tone-8 .status-option-content { color: #806c3f; }
+
+  .mobile-profile-selector-option.detail-tone-1 {
+    background: linear-gradient(180deg, #eef5ff 0%, #e3eefc 100%);
+    border-color: rgba(46, 102, 181, 0.32);
+  }
+
+  .mobile-profile-selector-option.detail-tone-2 {
+    background: linear-gradient(180deg, #eef9f3 0%, #e3f4ea 100%);
+    border-color: rgba(40, 125, 72, 0.32);
+  }
+
+  .mobile-profile-selector-option.detail-tone-3 {
+    background: linear-gradient(180deg, #fff4ea 0%, #ffecdd 100%);
+    border-color: rgba(165, 94, 24, 0.32);
+  }
+
+  .mobile-profile-selector-option.detail-tone-4 {
+    background: linear-gradient(180deg, #f2f1ff 0%, #e8e5fb 100%);
+    border-color: rgba(97, 82, 164, 0.32);
+  }
+
+  .mobile-profile-selector-option.detail-tone-5 {
+    background: linear-gradient(180deg, #f6f9ef 0%, #edf3e1 100%);
+    border-color: rgba(95, 128, 36, 0.32);
+  }
+
+  .mobile-profile-selector-option.detail-tone-6 {
+    background: linear-gradient(180deg, #fff1f4 0%, #f9e6ed 100%);
+    border-color: rgba(160, 70, 111, 0.32);
+  }
+
+  .mobile-profile-selector-option.detail-tone-7 {
+    background: linear-gradient(180deg, #edf8ff 0%, #e2f0fb 100%);
+    border-color: rgba(45, 122, 160, 0.32);
+  }
+
+  .mobile-profile-selector-option.detail-tone-8 {
+    background: linear-gradient(180deg, #f6f3ea 0%, #eee9dc 100%);
+    border-color: rgba(128, 109, 66, 0.32);
+  }
+
+  .popup-panel-profile-selector .values-selector-popup.profile-selector-popup {
+    gap: 0.56rem;
+  }
+
+  .popup-panel-profile-selector .profile-filter-selector-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.44rem;
+    padding-bottom: 0.22rem;
+    border-bottom: 1px solid rgba(74, 102, 139, 0.22);
+  }
+
+  .popup-panel-profile-selector .profile-filter-selector-head-label {
+    color: #203c64;
+    font-size: 0.82rem;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+
+  .popup-panel-profile-selector .profile-filter-selector-clear {
+    border: 1px solid rgba(41, 73, 110, 0.24);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.82);
+    color: #284970;
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0.3rem 0.52rem;
+    cursor: pointer;
+  }
+
+  .popup-panel-profile-selector .profile-filter-selector-clear.is-hidden {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .popup-panel-profile-selector .profile-filter-selector-selected {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.34rem;
+  }
+
+  .popup-panel-profile-selector .profile-filter-selector-chip {
+    border: 1px solid rgba(35, 68, 107, 0.24);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.92);
+    color: #234368;
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0.26rem 0.48rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.16rem;
+    cursor: pointer;
+  }
+
+  .popup-panel-profile-selector .profile-filter-selector-chip .mat-icon {
+    width: 13px;
+    height: 13px;
+    font-size: 13px;
+    line-height: 13px;
+  }
+
+  .popup-panel-profile-selector .profile-filter-selector-empty {
+    margin: 0;
+    font-size: 0.74rem;
+    color: rgba(31, 54, 86, 0.62);
+    font-style: italic;
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group {
+    display: grid;
+    gap: 0.34rem;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    padding: 0.4rem 0.42rem;
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-head {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.34rem;
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-tag {
+    border-radius: 999px;
+    border: 1px solid rgba(52, 86, 128, 0.28);
+    background: rgba(255, 255, 255, 0.74);
+    color: #2f527d;
+    font-size: 0.67rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    padding: 0.2rem 0.52rem;
+    text-transform: uppercase;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.24rem;
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-tag-icon {
+    width: 12px;
+    height: 12px;
+    font-size: 12px;
+    line-height: 12px;
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-line {
+    display: block;
+    width: 100%;
+    height: 1px;
+    background: rgba(84, 111, 147, 0.34);
+  }
+
+  .popup-panel-profile-selector .profile-selector-chip-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.36rem;
+  }
+
+  .popup-panel-profile-selector .profile-selector-chip {
+    border: 1px solid rgba(41, 70, 106, 0.22);
+    border-radius: 999px;
+    background: #f4f8ff;
+    color: #234066;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.3rem 0.58rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.26rem;
+    cursor: pointer;
+    transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease, box-shadow 0.14s ease;
+  }
+
+  .popup-panel-profile-selector .profile-selector-chip.active {
+    border-color: rgba(27, 85, 158, 0.5);
+    background: linear-gradient(180deg, #dcebff 0%, #cfe3ff 100%);
+    color: #123e70;
+    box-shadow: inset 0 0 0 1px rgba(30, 73, 127, 0.24), 0 1px 2px rgba(24, 53, 86, 0.16);
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group.section-family {
+    background: linear-gradient(180deg, rgba(255, 232, 219, 0.52) 0%, rgba(255, 232, 219, 0.3) 100%);
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group.section-ambition {
+    background: linear-gradient(180deg, rgba(255, 242, 216, 0.52) 0%, rgba(255, 242, 216, 0.3) 100%);
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group.section-lifestyle {
+    background: linear-gradient(180deg, rgba(221, 241, 239, 0.56) 0%, rgba(221, 241, 239, 0.32) 100%);
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group.section-beliefs {
+    background: linear-gradient(180deg, rgba(230, 226, 250, 0.56) 0%, rgba(230, 226, 250, 0.32) 100%);
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group.section-social {
+    background: linear-gradient(180deg, rgba(223, 236, 255, 0.5) 0%, rgba(223, 236, 255, 0.28) 100%);
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group.section-arts {
+    background: linear-gradient(180deg, rgba(235, 227, 255, 0.5) 0%, rgba(235, 227, 255, 0.28) 100%);
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group.section-food {
+    background: linear-gradient(180deg, rgba(255, 236, 221, 0.52) 0%, rgba(255, 236, 221, 0.3) 100%);
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group.section-active {
+    background: linear-gradient(180deg, rgba(222, 243, 231, 0.56) 0%, rgba(222, 243, 231, 0.32) 100%);
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group.section-mind {
+    background: linear-gradient(180deg, rgba(219, 242, 238, 0.56) 0%, rgba(219, 242, 238, 0.32) 100%);
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group.section-identity {
+    background: linear-gradient(180deg, rgba(230, 226, 250, 0.56) 0%, rgba(230, 226, 250, 0.32) 100%);
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-tag.section-family {
+    border-color: rgba(156, 94, 51, 0.34);
+    color: #9c5e33;
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-tag.section-ambition {
+    border-color: rgba(160, 106, 20, 0.34);
+    color: #9b6717;
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-tag.section-lifestyle {
+    border-color: rgba(47, 123, 119, 0.34);
+    color: #2f7b77;
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-tag.section-beliefs {
+    border-color: rgba(95, 78, 160, 0.34);
+    color: #5f4ea0;
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-tag.section-social {
+    border-color: rgba(47, 106, 175, 0.36);
+    color: #2f6aaf;
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-tag.section-arts {
+    border-color: rgba(106, 87, 168, 0.36);
+    color: #6a57a8;
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-tag.section-food {
+    border-color: rgba(170, 97, 28, 0.34);
+    color: #a55e18;
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-tag.section-active {
+    border-color: rgba(49, 124, 82, 0.36);
+    color: #317c52;
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-tag.section-mind {
+    border-color: rgba(37, 124, 118, 0.34);
+    color: #2b7c76;
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-tag.section-identity {
+    border-color: rgba(98, 84, 163, 0.34);
+    color: #6254a3;
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-line.section-family {
+    background: rgba(156, 94, 51, 0.3);
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-line.section-ambition {
+    background: rgba(160, 106, 20, 0.32);
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-line.section-lifestyle {
+    background: rgba(47, 123, 119, 0.3);
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-line.section-beliefs {
+    background: rgba(95, 78, 160, 0.3);
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-line.section-social {
+    background: rgba(47, 106, 175, 0.34);
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-line.section-arts {
+    background: rgba(106, 87, 168, 0.34);
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-line.section-food {
+    background: rgba(170, 97, 28, 0.32);
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-line.section-active {
+    background: rgba(49, 124, 82, 0.34);
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-line.section-mind {
+    background: rgba(37, 124, 118, 0.34);
+  }
+
+  .popup-panel-profile-selector .profile-selector-option-group-line.section-identity {
+    background: rgba(98, 84, 163, 0.3);
+  }
+
+  :host ::ng-deep .mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled):not(.status-option) {
+    background: #f0f5fc;
+  }
+
+  :host ::ng-deep .mat-mdc-option.status-option.mdc-list-item--selected:not(.mdc-list-item--disabled) {
+    filter: brightness(0.95);
+    box-shadow: inset 0 0 0 1px rgba(24, 46, 76, 0.2);
+  }
+
+  :host ::ng-deep .mat-mdc-option.status-option {
+    background: #fff;
+  }
+
+  :host ::ng-deep .mat-mdc-option.status-option:not(:last-child) {
+    border-bottom: 1px solid #e6edf7;
+  }
+
+  :host ::ng-deep .selector-options-panel .mat-mdc-option.hide-selected-option,
+  :host ::ng-deep .status-options-panel .mat-mdc-option.hide-selected-option {
+    min-height: 0 !important;
+    height: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    border: 0 !important;
+    margin: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    overflow: hidden !important;
+  }
+
+  :host ::ng-deep .selector-options-panel .mat-mdc-option {
+    background: #fff;
+  }
+
+  :host ::ng-deep .mat-mdc-select-panel.selector-options-panel,
+  :host ::ng-deep .mat-mdc-select-panel.status-options-panel {
+    margin-top: 8px !important;
+    margin-bottom: 8px !important;
+  }
+
+  :host ::ng-deep .mat-mdc-select-panel.selector-options-panel.mat-mdc-select-panel-above,
+  :host ::ng-deep .mat-mdc-select-panel.status-options-panel.mat-mdc-select-panel-above,
+  :host ::ng-deep .cdk-overlay-pane .mat-mdc-select-panel.selector-options-panel.mat-mdc-select-panel-above,
+  :host ::ng-deep .cdk-overlay-pane .mat-mdc-select-panel.status-options-panel.mat-mdc-select-panel-above {
+    margin-top: 0 !important;
+    margin-bottom: 18px !important;
+    transform: translateY(-10px) !important;
+  }
+
+  :host ::ng-deep .selector-options-panel .mat-mdc-option.status-option.status-public,
+  :host ::ng-deep .status-options-panel .mat-mdc-option.status-option.status-public {
+    --mdc-list-list-item-container-color: #def3e9;
+    --mat-mdc-option-selected-container-color: #def3e9;
+    background: linear-gradient(0deg, #ffffff, #def3e9) !important;
+  }
+
+  :host ::ng-deep .selector-options-panel .mat-mdc-option.status-option.status-friends,
+  :host ::ng-deep .status-options-panel .mat-mdc-option.status-option.status-friends {
+    --mdc-list-list-item-container-color: #e3eefb;
+    --mat-mdc-option-selected-container-color: #e3eefb;
+    background: linear-gradient(0deg, #ffffff, #e3eefb) !important;
+  }
+
+  :host ::ng-deep .selector-options-panel .mat-mdc-option.status-option.status-host,
+  :host ::ng-deep .status-options-panel .mat-mdc-option.status-option.status-host {
+    --mdc-list-list-item-container-color: #f3ead8;
+    --mat-mdc-option-selected-container-color: #f3ead8;
+    background: linear-gradient(0deg, #ffffff, #f3ead8) !important;
+  }
+
+  :host ::ng-deep .selector-options-panel .mat-mdc-option.status-option.status-inactive,
+  :host ::ng-deep .status-options-panel .mat-mdc-option.status-option.status-inactive {
+    --mdc-list-list-item-container-color: #eceff3;
+    --mat-mdc-option-selected-container-color: #eceff3;
+    background: linear-gradient(0deg, #ffffff, #eceff3) !important;
+  }
+
+  :host ::ng-deep .selector-options-panel .mat-mdc-option.status-option.status-public .status-option-content,
+  :host ::ng-deep .selector-options-panel .mat-mdc-option.status-option.status-public .status-option-content .mat-icon,
+  :host ::ng-deep .status-options-panel .mat-mdc-option.status-option.status-public .status-option-content,
+  :host ::ng-deep .status-options-panel .mat-mdc-option.status-option.status-public .status-option-content .mat-icon {
+    color: #2f8f66 !important;
+  }
+
+  :host ::ng-deep .selector-options-panel .mat-mdc-option.status-option.status-friends .status-option-content,
+  :host ::ng-deep .selector-options-panel .mat-mdc-option.status-option.status-friends .status-option-content .mat-icon,
+  :host ::ng-deep .status-options-panel .mat-mdc-option.status-option.status-friends .status-option-content,
+  :host ::ng-deep .status-options-panel .mat-mdc-option.status-option.status-friends .status-option-content .mat-icon {
+    color: #1b57a1 !important;
+  }
+
+  :host ::ng-deep .selector-options-panel .mat-mdc-option.status-option.status-host .status-option-content,
+  :host ::ng-deep .selector-options-panel .mat-mdc-option.status-option.status-host .status-option-content .mat-icon,
+  :host ::ng-deep .status-options-panel .mat-mdc-option.status-option.status-host .status-option-content,
+  :host ::ng-deep .status-options-panel .mat-mdc-option.status-option.status-host .status-option-content .mat-icon {
+    color: #87580f !important;
+  }
+
+  :host ::ng-deep .selector-options-panel .mat-mdc-option.status-option.status-inactive .status-option-content,
+  :host ::ng-deep .selector-options-panel .mat-mdc-option.status-option.status-inactive .status-option-content .mat-icon,
+  :host ::ng-deep .status-options-panel .mat-mdc-option.status-option.status-inactive .status-option-content,
+  :host ::ng-deep .status-options-panel .mat-mdc-option.status-option.status-inactive .status-option-content .mat-icon {
+    color: #5b6573 !important;
+  }
+
+  :host ::ng-deep .mat-mdc-option.status-option.physique-slim { background: #eaf4ff; }
+  :host ::ng-deep .mat-mdc-option.status-option.physique-lean { background: #edf8f4; }
+  :host ::ng-deep .mat-mdc-option.status-option.physique-athletic { background: #e8f5ec; }
+  :host ::ng-deep .mat-mdc-option.status-option.physique-fit { background: #f1f2ff; }
+  :host ::ng-deep .mat-mdc-option.status-option.physique-curvy { background: #fff2f8; }
+  :host ::ng-deep .mat-mdc-option.status-option.physique-muscular { background: #fbf4ea; }
+  :host ::ng-deep .mat-mdc-option.status-option.physique-average { background: #eff4f9; }
+
+  :host ::ng-deep .mat-mdc-option.status-option.physique-slim .status-option-content { color: #3f7ab3; }
+  :host ::ng-deep .mat-mdc-option.status-option.physique-lean .status-option-content { color: #3f8f5f; }
+  :host ::ng-deep .mat-mdc-option.status-option.physique-athletic .status-option-content { color: #2f7e4d; }
+  :host ::ng-deep .mat-mdc-option.status-option.physique-fit .status-option-content { color: #465fbb; }
+  :host ::ng-deep .mat-mdc-option.status-option.physique-curvy .status-option-content { color: #a14875; }
+  :host ::ng-deep .mat-mdc-option.status-option.physique-muscular .status-option-content { color: #7d4f24; }
+  :host ::ng-deep .mat-mdc-option.status-option.physique-average .status-option-content { color: #4d667f; }
+
+  :host ::ng-deep .mat-mdc-select-panel.physique-options-panel {
+    width: auto !important;
+    max-width: 220px !important;
+    min-width: 0 !important;
+  }
+
+  :host ::ng-deep .physique-options-panel .mat-mdc-option {
+    padding-right: 8px;
+  }
+
+  :host ::ng-deep .physique-options-panel .mat-mdc-option .mat-pseudo-checkbox {
+    margin-left: 4px;
+  }
+
+  @media (max-width: 760px) {
+    :host ::ng-deep .cdk-overlay-pane:has(.mat-mdc-select-panel.profile-bottom-sheet-panel) {
+      position: fixed !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      top: auto !important;
+      width: 100vw !important;
+      max-width: 100vw !important;
+      transform: none !important;
+    }
+
+    :host ::ng-deep .mat-mdc-select-panel.profile-bottom-sheet-panel {
+      width: 100vw !important;
+      max-width: 100vw !important;
+      max-height: min(54vh, 420px) !important;
+      margin: 0 !important;
+      border-radius: 16px 16px 0 0 !important;
+      border: 1px solid #d6deea;
+      border-bottom: 0;
+      box-shadow: 0 -14px 28px rgba(15, 29, 52, 0.24);
+      padding-top: 0.38rem;
+      padding-bottom: max(0.55rem, env(safe-area-inset-bottom));
+    }
+  }
+}

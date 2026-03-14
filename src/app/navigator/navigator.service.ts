@@ -16,7 +16,6 @@ export interface NavigatorBindings {
   getTraitToneClass(trait: string): string;
   getTraitColorClass(trait: string): string;
   getTraitIcon(trait: string): string;
-  openProfileEditor(): void;
   openHostImpressions(): void;
   openMemberImpressions(): void;
   openRatesShortcut(): void;
@@ -48,9 +47,11 @@ export class NavigatorService {
   private readonly hydrationRequestKeyRef = signal('');
   private readonly menuOpenRef = signal(false);
   private readonly settingsMenuOpenRef = signal(false);
+  private readonly profileEditorOpenRef = signal(false);
   private hydrationRequestVersion = 0;
 
   readonly bindings = this.bindingsRef.asReadonly();
+  readonly profileEditorOpen = this.profileEditorOpenRef.asReadonly();
   readonly menuUiState = computed<NavigatorMenuUiState>(() => ({
     open: this.menuOpenRef(),
     settingsOpen: this.settingsMenuOpenRef()
@@ -89,6 +90,7 @@ export class NavigatorService {
     }
     this.bindingsRef.set(null);
     this.closeMenu();
+    this.closeProfileEditor();
   }
 
   async hydrateUserAfterLogin(userId?: string): Promise<UserDto | null> {
@@ -128,6 +130,15 @@ export class NavigatorService {
       return;
     }
     this.openMenu();
+  }
+
+  openProfileEditor(): void {
+    this.closeMenu();
+    this.profileEditorOpenRef.set(true);
+  }
+
+  closeProfileEditor(): void {
+    this.profileEditorOpenRef.set(false);
   }
 
   closeSettingsMenu(): void {

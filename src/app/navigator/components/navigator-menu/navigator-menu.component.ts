@@ -156,7 +156,7 @@ export class NavigatorMenuComponent {
   }
 
   protected openProfileEditor(): void {
-    this.bindings?.openProfileEditor();
+    this.navigatorService.openProfileEditor();
   }
 
   protected openHostImpressions(): void {
