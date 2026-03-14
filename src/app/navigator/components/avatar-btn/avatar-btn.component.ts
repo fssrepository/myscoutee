@@ -18,16 +18,16 @@ interface NavigatorAvatarState {
 }
 
 @Component({
-  selector: 'app-navigator-avatar',
+  selector: 'app-avatar-btn',
   standalone: true,
   imports: [CommonModule, MatButtonModule, MatIconModule],
-  templateUrl: './navigator-menubar.component.html',
-  styleUrl: './navigator-menubar.component.scss'
+  templateUrl: './avatar-btn.component.html',
+  styleUrl: './avatar-btn.component.scss'
 })
-export class NavigatorAvatarComponent implements OnDestroy {
+export class AvatarBtnComponent implements OnDestroy {
   private static readonly USER_MENU_LOAD_DURATION_MS = 3000;
   private static readonly USER_MENU_RING_RADIUS = 26;
-  private static readonly USER_MENU_RING_CIRCUMFERENCE = 2 * Math.PI * NavigatorAvatarComponent.USER_MENU_RING_RADIUS;
+  private static readonly USER_MENU_RING_CIRCUMFERENCE = 2 * Math.PI * AvatarBtnComponent.USER_MENU_RING_RADIUS;
 
   private readonly router = inject(Router);
   private readonly appCtx = inject(AppContext);
@@ -38,7 +38,7 @@ export class NavigatorAvatarComponent implements OnDestroy {
   private readonly routerEventsSubscription: Subscription;
   private userMenuLoadOverdueTimer: ReturnType<typeof setTimeout> | null = null;
 
-  protected readonly ringCircumference = NavigatorAvatarComponent.USER_MENU_RING_CIRCUMFERENCE;
+  protected readonly ringCircumference = AvatarBtnComponent.USER_MENU_RING_CIRCUMFERENCE;
   protected readonly bindings = this.navigatorService.bindings;
   protected readonly activeUser = this.appCtx.activeUserProfile;
   protected readonly avatarState = computed<NavigatorAvatarState>(() => {
@@ -168,7 +168,7 @@ export class NavigatorAvatarComponent implements OnDestroy {
     this.userMenuLoadOverdueTimer = setTimeout(() => {
       this.userMenuLoadOverdueTimer = null;
       this.userMenuLoadOverdueRef.set(true);
-    }, NavigatorAvatarComponent.USER_MENU_LOAD_DURATION_MS);
+    }, AvatarBtnComponent.USER_MENU_LOAD_DURATION_MS);
   }
 
   private clearUserMenuLoadState(): void {

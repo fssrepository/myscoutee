@@ -3,13 +3,13 @@ import { Component, Type, effect, inject, signal } from '@angular/core';
 import { AssetPopupService } from '../../../asset/asset-popup.service';
 import { ActivitiesDbContextService } from '../../../shared/activities-db-context.service';
 import { EventEditorService } from '../../../shared/event-editor.service';
-import { NavigatorAvatarComponent } from '../navigator-menubar/navigator-menubar.component';
+import { AvatarBtnComponent } from '../avatar-btn/avatar-btn.component';
 import { NavigatorMenuComponent } from '../navigator-menu/navigator-menu.component';
 
 @Component({
   selector: 'app-navigator',
   standalone: true,
-  imports: [CommonModule, NavigatorAvatarComponent, NavigatorMenuComponent],
+  imports: [CommonModule, AvatarBtnComponent, NavigatorMenuComponent],
   templateUrl: './navigator.component.html',
   styleUrl: './navigator.component.scss'
 })
