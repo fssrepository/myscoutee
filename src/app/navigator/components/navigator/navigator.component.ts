@@ -4,6 +4,7 @@ import { AssetPopupService } from '../../../asset/asset-popup.service';
 import { ActivitiesDbContextService } from '../../../shared/activities-db-context.service';
 import { EventEditorService } from '../../../shared/event-editor.service';
 import { AvatarBtnComponent } from '../avatar-btn/avatar-btn.component';
+import { NavigatorImpressionsPopupComponent } from '../navigator-impressions-popup/navigator-impressions-popup.component';
 import { NavigatorMenuComponent } from '../navigator-menu/navigator-menu.component';
 import { ProfileEditorComponent } from '../profile-editor/profile-editor.component';
 import { NavigatorSettingsPopupsComponent } from '../navigator-settings-popups/navigator-settings-popups.component';
@@ -11,7 +12,14 @@ import { NavigatorSettingsPopupsComponent } from '../navigator-settings-popups/n
 @Component({
   selector: 'app-navigator',
   standalone: true,
-  imports: [CommonModule, AvatarBtnComponent, NavigatorMenuComponent, NavigatorSettingsPopupsComponent, ProfileEditorComponent],
+  imports: [
+    CommonModule,
+    AvatarBtnComponent,
+    NavigatorMenuComponent,
+    NavigatorSettingsPopupsComponent,
+    NavigatorImpressionsPopupComponent,
+    ProfileEditorComponent
+  ],
   templateUrl: './navigator.component.html',
   styleUrl: './navigator.component.scss'
 })

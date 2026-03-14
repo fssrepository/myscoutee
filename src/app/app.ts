@@ -254,7 +254,6 @@ export class App {
         tickets: this.assetTicketsBadge,
         feedback: this.eventFeedbackBadge
       });
-      this.activateUserRealtimeLongPoll(this.activeUserId);
       this.cdr.markForCheck();
     },
     getHostTierToneClass: (tier) => this.getHostTierToneClass(tier),
@@ -263,8 +262,6 @@ export class App {
     getTraitToneClass: (trait) => this.getTraitToneClass(trait),
     getTraitColorClass: (trait) => this.getTraitColorClass(trait),
     getTraitIcon: (trait) => this.getTraitIcon(trait),
-    openHostImpressions: () => this.openHostImpressions(),
-    openMemberImpressions: () => this.openMemberImpressions(),
     openRatesShortcut: () => this.openRatesShortcut(),
     openChatShortcut: () => this.openChatShortcut(),
     openInvitationShortcut: () => this.openInvitationShortcut(),
@@ -6436,23 +6433,11 @@ export class App {
   }
 
   protected openHostImpressions(): void {
-    if (this.activePopup === 'activities' || this.stackedPopup !== null) {
-      this.stackedPopup = 'impressionsHost';
-      this.syncUserRealtimeLongPollSchedule(true);
-      return;
-    }
-    this.activePopup = 'impressionsHost';
-    this.syncUserRealtimeLongPollSchedule(true);
+    this.navigatorService.openImpressionsPopup();
   }
 
   protected openMemberImpressions(): void {
-    if (this.activePopup === 'activities' || this.stackedPopup !== null) {
-      this.stackedPopup = 'impressionsHost';
-      this.syncUserRealtimeLongPollSchedule(true);
-      return;
-    }
-    this.activePopup = 'impressionsHost';
-    this.syncUserRealtimeLongPollSchedule(true);
+    this.navigatorService.openImpressionsPopup();
   }
 
   protected getInvitationActionSummary(invitation: InvitationMenuItem): string {
@@ -8285,17 +8270,7 @@ export class App {
 
   protected openEventExploreHostImpressions(event: Event): void {
     event.stopPropagation();
-    if (this.stackedPopup === 'eventExplore') {
-      this.superStackedPopup = 'impressionsHost';
-      this.syncUserRealtimeLongPollSchedule(true);
-      return;
-    }
-    if (this.activePopup === 'eventExplore') {
-      this.stackedPopup = 'impressionsHost';
-      this.syncUserRealtimeLongPollSchedule(true);
-      return;
-    }
-    this.openHostImpressions();
+    this.navigatorService.openImpressionsPopup();
   }
 
   protected closeSuperStackedImpressions(): void {
@@ -12242,28 +12217,12 @@ export class App {
   }
 
   private activateUserRealtimeLongPoll(userId: string): void {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId || this.activeUserId !== normalizedUserId) {
-      return;
-    }
-    this.captureUserRealtimeBaseCounters(normalizedUserId);
-    this.startUserRealtimeLongPoll();
-    void this.runUserRealtimeLongPollTick();
+    void userId;
+    this.stopUserRealtimeLongPoll();
   }
 
   private startUserRealtimeLongPoll(): void {
-    const intervalMs = this.resolveUserRealtimeLongPollIntervalMs();
-    if (this.userRealtimeLongPollTimer && this.userRealtimeLongPollActiveIntervalMs === intervalMs) {
-      return;
-    }
-    if (this.userRealtimeLongPollTimer) {
-      clearInterval(this.userRealtimeLongPollTimer);
-      this.userRealtimeLongPollTimer = null;
-    }
-    this.userRealtimeLongPollActiveIntervalMs = intervalMs;
-    this.userRealtimeLongPollTimer = setInterval(() => {
-      void this.runUserRealtimeLongPollTick();
-    }, intervalMs);
+    this.stopUserRealtimeLongPoll();
   }
 
   private stopUserRealtimeLongPoll(): void {
@@ -12276,10 +12235,8 @@ export class App {
   }
 
   private syncUserRealtimeLongPollSchedule(forceImmediateTick = false): void {
-    this.startUserRealtimeLongPoll();
-    if (forceImmediateTick) {
-      void this.runUserRealtimeLongPollTick();
-    }
+    void forceImmediateTick;
+    this.stopUserRealtimeLongPoll();
   }
 
   private resolveUserRealtimeLongPollIntervalMs(): number {

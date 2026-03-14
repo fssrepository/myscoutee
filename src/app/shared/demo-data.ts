@@ -111,6 +111,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 72,
     headline: 'Planning cozy chaos with structure.',
     about: 'I host events where social energy stays high, but logistics stay clean and predictable.',
+    images: ['https://randomuser.me/api/portraits/women/74.jpg'],
     profileStatus: 'public',
     activities: { game: 9, chat: 8, invitations: 4, events: 6, hosting: 3 }
   },
@@ -132,6 +133,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 64,
     headline: 'Reliable planning, zero drama.',
     about: 'I like compact events with clear timelines and simple role assignment.',
+    images: ['https://randomuser.me/api/portraits/men/75.jpg'],
     profileStatus: 'friends only',
     activities: { game: 4, chat: 3, invitations: 1, events: 2, hosting: 1 }
   },
@@ -153,6 +155,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 58,
     headline: 'Art nights and adventure mornings.',
     about: 'I enjoy cultural events and activity-heavy weekends with small groups.',
+    images: ['https://randomuser.me/api/portraits/women/76.jpg'],
     profileStatus: 'friends only',
     activities: { game: 6, chat: 7, invitations: 3, events: 4, hosting: 2 }
   },
@@ -174,6 +177,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 76,
     headline: 'Sunset rides and coffee circles.',
     about: 'I host social-first events where people who do not know each other can connect fast.',
+    images: ['https://randomuser.me/api/portraits/women/77.jpg'],
     profileStatus: 'public',
     activities: { game: 7, chat: 5, invitations: 3, events: 5, hosting: 2 }
   },
@@ -195,6 +199,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 68,
     headline: 'Thoughtful plans, minimal noise.',
     about: 'I prefer meaningful conversations and smaller events with quality curation.',
+    images: ['https://randomuser.me/api/portraits/women/78.jpg'],
     profileStatus: 'host only',
     activities: { game: 5, chat: 6, invitations: 4, events: 4, hosting: 1 }
   },
@@ -216,6 +221,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 55,
     headline: 'Travel light, host well.',
     about: 'I organize active and travel-style events with flexible participant roles.',
+    images: ['https://randomuser.me/api/portraits/women/79.jpg'],
     profileStatus: 'public',
     activities: { game: 3, chat: 4, invitations: 2, events: 3, hosting: 1 }
   },
@@ -237,6 +243,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 70,
     headline: 'Fast pace, good vibes.',
     about: 'I host sports and game-heavy events with structured follow-ups.',
+    images: ['https://randomuser.me/api/portraits/men/80.jpg'],
     profileStatus: 'public',
     activities: { game: 8, chat: 9, invitations: 3, events: 5, hosting: 2 }
   },
@@ -258,6 +265,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 61,
     headline: 'Metrics first, then movement.',
     about: 'I optimize event outcomes and participant quality through filtered invites.',
+    images: ['https://randomuser.me/api/portraits/men/81.jpg'],
     profileStatus: 'friends only',
     activities: { game: 4, chat: 4, invitations: 2, events: 3, hosting: 2 }
   },
@@ -279,6 +287,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 53,
     headline: 'Design-led hangouts only.',
     about: 'I design event atmospheres first and build flow around people and space.',
+    images: ['https://randomuser.me/api/portraits/men/82.jpg'],
     profileStatus: 'host only',
     activities: { game: 2, chat: 5, invitations: 2, events: 2, hosting: 1 }
   },
@@ -300,6 +309,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 74,
     headline: 'Always on time, always clear.',
     about: 'I keep the calendar strict and communication transparent for all members.',
+    images: ['https://randomuser.me/api/portraits/men/10.jpg'],
     profileStatus: 'public',
     activities: { game: 6, chat: 4, invitations: 2, events: 6, hosting: 3 }
   },
@@ -321,6 +331,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 60,
     headline: 'Calm planning for complex events.',
     about: 'I run long-format events with multiple sub-events and role-based access.',
+    images: ['https://randomuser.me/api/portraits/men/11.jpg'],
     profileStatus: 'friends only',
     activities: { game: 5, chat: 3, invitations: 2, events: 4, hosting: 2 }
   },
@@ -342,6 +353,7 @@ export const DEMO_USERS: DemoUser[] = [
     completion: 66,
     headline: 'Curated nights, meaningful circles.',
     about: 'I host quality-first social events with strong moderation and feedback loops.',
+    images: ['https://randomuser.me/api/portraits/men/12.jpg'],
     profileStatus: 'public',
     activities: { game: 4, chat: 5, invitations: 3, events: 3, hosting: 1 }
   }

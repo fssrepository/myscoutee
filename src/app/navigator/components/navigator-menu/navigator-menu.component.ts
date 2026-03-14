@@ -152,11 +152,11 @@ export class NavigatorMenuComponent {
   }
 
   protected openHostImpressions(): void {
-    this.bindings?.openHostImpressions();
+    this.navigatorService.openImpressionsPopup();
   }
 
   protected openMemberImpressions(): void {
-    this.bindings?.openMemberImpressions();
+    this.navigatorService.openImpressionsPopup();
   }
 
   protected openRatesShortcut(): void {
