@@ -41,6 +41,7 @@ export class EntryShellComponent {
   protected showUserSelector = false;
   protected demoSelectorUsers: DemoUserListItemDto[] = [];
   protected demoSelectorLoading = false;
+  protected demoSelectorSubmitting = false;
   protected showFirebaseAuthPopup = false;
 
   constructor() {
@@ -55,6 +56,9 @@ export class EntryShellComponent {
     }
     if (this.showUserSelector) {
       keyboardEvent.stopPropagation();
+      if (this.demoSelectorSubmitting) {
+        return;
+      }
       this.closeDemoUserSelectorPopup();
       return;
     }
@@ -95,16 +99,19 @@ export class EntryShellComponent {
   }
 
   protected closeDemoUserSelectorPopup(): void {
-    this.showUserSelector = false;
-    this.demoSelectorLoading = false;
-  }
-
-  protected onSelectDemoUser(userId: string): void {
-    if (this.demoSelectorLoading) {
+    if (this.demoSelectorSubmitting) {
       return;
     }
     this.showUserSelector = false;
-    this.demoSelectorLoading = true;
+    this.demoSelectorLoading = false;
+    this.demoSelectorSubmitting = false;
+  }
+
+  protected onSelectDemoUser(userId: string): void {
+    if (this.demoSelectorLoading || this.demoSelectorSubmitting) {
+      return;
+    }
+    this.demoSelectorSubmitting = true;
     this.demoUserSelected.emit(userId);
   }
 
@@ -154,6 +161,8 @@ export class EntryShellComponent {
     this.entryConsentViewOnly = false;
     this.showEntryConsentPopup = !hasConsent;
     this.showUserSelector = false;
+    this.demoSelectorLoading = false;
+    this.demoSelectorSubmitting = false;
     this.showFirebaseAuthPopup = false;
   }
 
@@ -170,6 +179,7 @@ export class EntryShellComponent {
     this.showUserSelector = true;
     this.demoSelectorUsers = [];
     this.demoSelectorLoading = true;
+    this.demoSelectorSubmitting = false;
     void this.usersService.loadAvailableDemoUsers().then(users => {
       this.demoSelectorUsers = users;
       this.demoSelectorLoading = false;

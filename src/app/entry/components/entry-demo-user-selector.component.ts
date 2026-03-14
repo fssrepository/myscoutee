@@ -17,16 +17,23 @@ import type { DemoUserListItemDto } from '../../shared/core';
 export class EntryDemoUserSelectorComponent {
   @Input() open = false;
   @Input() loading = false;
+  @Input() submitting = false;
   @Input() users: DemoUserListItemDto[] = [];
 
   @Output() readonly closeRequested = new EventEmitter<void>();
   @Output() readonly userSelected = new EventEmitter<string>();
 
   protected requestClose(): void {
+    if (this.submitting) {
+      return;
+    }
     this.closeRequested.emit();
   }
 
   protected requestUserSelect(userId: string): void {
+    if (this.loading || this.submitting) {
+      return;
+    }
     this.userSelected.emit(userId);
   }
 }

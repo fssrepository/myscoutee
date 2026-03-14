@@ -17,6 +17,7 @@
 <app-entry-demo-user-selector
   [open]="showUserSelector"
   [loading]="demoSelectorLoading"
+  [submitting]="demoSelectorSubmitting"
   [users]="demoSelectorUsers"
   (closeRequested)="closeDemoUserSelectorPopup()"
   (userSelected)="onSelectDemoUser($event)"

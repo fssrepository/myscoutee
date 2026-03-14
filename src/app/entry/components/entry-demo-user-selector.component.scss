@@ -32,6 +32,11 @@
   grid-template-rows: auto minmax(0, 1fr);
 }
 
+.demo-user-stage {
+  position: relative;
+  min-height: 0;
+}
+
 .demo-login-header {
   display: flex;
   align-items: flex-start;
@@ -85,6 +90,12 @@
   outline-offset: 1px;
 }
 
+.popup-close:disabled {
+  opacity: 0.56;
+  cursor: default;
+  transform: none;
+}
+
 .popup-close-glyph {
   display: block;
   line-height: 1;
@@ -101,6 +112,10 @@
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
+}
+
+.demo-user-grid-submitting {
+  pointer-events: none;
 }
 
 .demo-user-grid-loading {
@@ -131,6 +146,20 @@
 .demo-user-item:hover {
   transform: translateY(-1px);
   box-shadow: 0 10px 18px rgba(13, 27, 57, 0.08);
+}
+
+.demo-user-item:disabled {
+  cursor: default;
+}
+
+.demo-user-submit-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(2px);
 }
 
 .user-avatar {
