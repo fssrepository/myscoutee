@@ -5,8 +5,8 @@ export {
   type ActivityCounters,
   type LoadState,
   type LoadStatus
-} from './app.context';
-export { restrictedAreaGuard } from './restricted-area.guard';
+} from './base/context';
+export { restrictedAreaGuard } from './base/guards';
 export {
   GameService,
   USER_GAME_CARDS_LOAD_CONTEXT_KEY

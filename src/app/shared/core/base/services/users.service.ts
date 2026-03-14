@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import { type LoadStatus } from '../../app.context';
-import { AppContext } from '../../app.context';
+import { type LoadStatus } from '../context';
+import { AppContext } from '../context';
 import { DemoUsersService } from '../../demo';
 import { HttpUsersService } from '../../http';
 import type {

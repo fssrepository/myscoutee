@@ -1,7 +1,7 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 
-import { SessionService } from './base/services/session.service';
+import { SessionService } from '../services/session.service';
 
 export const restrictedAreaGuard: CanActivateFn = async (_route, state) => {
   const sessionService = inject(SessionService);

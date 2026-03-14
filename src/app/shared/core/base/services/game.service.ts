@@ -1,14 +1,14 @@
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import { type LoadStatus } from '../../app.context';
-import { AppContext } from '../../app.context';
+import { type LoadStatus } from '../context';
+import { AppContext } from '../context';
 import type {
   UserGameCardsDto,
   UserGameCardsQueryRequest,
   UserGameCardsStackSnapshot,
   UserGameDataService,
-  UserRateOutboxRecord,
+  UserRateOutboxRecord
 } from '../interfaces/game.interface';
 import { DemoGameService } from '../../demo';
 import { HttpGameService } from '../../http';

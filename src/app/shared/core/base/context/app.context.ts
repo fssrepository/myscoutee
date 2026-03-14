@@ -1,6 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
-import type { UserGameFilterPreferencesDto } from './base/interfaces/game.interface';
-import type { UserImpressionsDto, UserImpressionsSectionDto } from './base/interfaces/user.interface';
+import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface';
+import type { UserImpressionsDto, UserImpressionsSectionDto } from '../interfaces/user.interface';
 
 export type LoadStatus = 'idle' | 'loading' | 'success' | 'error' | 'timeout';
 export type ActivityCounterKey = 'game' | 'chat' | 'invitations' | 'events' | 'hosting' | 'tickets' | 'feedback';
