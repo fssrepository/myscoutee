@@ -1,8 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { SessionService } from '../../shared/core';
-import { EntryShellComponent } from './entry-shell.component';
+import { SessionService } from '../../../shared/core';
+import { EntryShellComponent } from '../entry-shell/entry-shell.component';
 
 @Component({
   selector: 'app-entry-page',

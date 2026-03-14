@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 
-import { GDPR_CONTENT } from '../../shared/gdpr-data';
+import { GDPR_CONTENT } from '../../../shared/gdpr-data';
 
 @Component({
   selector: 'app-entry-consent-popup',

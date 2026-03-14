@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { restrictedAreaGuard } from './shared/core';
 
-const loadEntryPage = () => import('./entry/components/entry-page.component').then(m => m.EntryPageComponent);
+const loadEntryPage = () => import('./entry/components/entry-page/entry-page.component').then(m => m.EntryPageComponent);
 
 export const routes: Routes = [
   {
@@ -21,7 +21,7 @@ export const routes: Routes = [
       { path: 'home', redirectTo: 'game', pathMatch: 'full' },
       {
         path: 'game',
-        loadComponent: () => import('./home/components/home.component').then(m => m.HomeComponent),
+        loadComponent: () => import('./home/components/home/home.component').then(m => m.HomeComponent),
         data: { section: 'game' }
       }
     ]

@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 
-import type { DemoUserListItemDto } from '../../shared/core';
+import type { DemoUserListItemDto } from '../../../shared/core';
 
 @Component({
   selector: 'app-entry-demo-user-selector',

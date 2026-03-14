@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import type * as AppTypes from '../../shared/app-types';
+import type * as AppTypes from '../../../shared/app-types';
 
 @Component({
   selector: 'app-entry-landing',

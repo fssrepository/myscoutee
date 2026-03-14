@@ -1,11 +1,11 @@
 import { Component, EventEmitter, HostListener, Input, Output, inject } from '@angular/core';
 
-import { UsersService, type DemoUserListItemDto } from '../../shared/core';
-import type * as AppTypes from '../../shared/app-types';
-import { EntryConsentPopupComponent } from './entry-consent-popup.component';
-import { EntryDemoUserSelectorComponent } from './entry-demo-user-selector.component';
-import { EntryFirebaseAuthPopupComponent } from './entry-firebase-auth-popup.component';
-import { EntryLandingComponent } from './entry-landing.component';
+import { UsersService, type DemoUserListItemDto } from '../../../shared/core';
+import type * as AppTypes from '../../../shared/app-types';
+import { EntryConsentPopupComponent } from '../entry-consent-popup/entry-consent-popup.component';
+import { EntryDemoUserSelectorComponent } from '../entry-demo-user-selector/entry-demo-user-selector.component';
+import { EntryFirebaseAuthPopupComponent } from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';
+import { EntryLandingComponent } from '../entry-landing/entry-landing.component';
 
 @Component({
   selector: 'app-entry-shell',

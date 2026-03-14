@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
 import { MatSliderModule } from '@angular/material/slider';
-import { DemoUser, PROFILE_DETAILS } from '../../shared/demo-data';
+import { DemoUser, PROFILE_DETAILS } from '../../../shared/demo-data';
 import {
   AppContext,
   GameService,
@@ -11,7 +11,7 @@ import {
   USER_GAME_CARDS_LOAD_CONTEXT_KEY,
   UsersService,
   type UserDto
-} from '../../shared/core';
+} from '../../../shared/core';
 
 type LocalPopup = 'history' | 'filter' | null;
 type FilterSelectorKind =

@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { EntryShellComponent } from './components/entry-shell.component';
+import { EntryShellComponent } from './components/entry-shell/entry-shell.component';
 
 @NgModule({
   imports: [
