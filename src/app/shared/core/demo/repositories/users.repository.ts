@@ -31,6 +31,7 @@ import { DemoUsersRatingsRepository } from './users-ratings.repository';
 })
 export class DemoUsersRepository {
   private static readonly DEFAULT_DEMO_USERS_COUNT = 50;
+  private static readonly MIN_DEMO_EVENT_ITEMS_PER_USER = 30;
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly usersRatingsRepository = inject(DemoUsersRatingsRepository);
 
@@ -260,7 +261,13 @@ export class DemoUsersRepository {
           ? AppDemoGenerators.resolveSectionBadge(invitationItems.map(item => item.unread), invitationItems.length)
           : user.activities.invitations,
         events: eventItems
-          ? AppDemoGenerators.resolveSectionBadge(eventItems.map(item => item.activity), eventItems.length)
+          ? (
+            AppDemoGenerators.resolveSectionBadge(eventItems.map(item => item.activity), eventItems.length) +
+            AppDemoGenerators.syntheticEventActivityTotal(
+              eventItems.length,
+              DemoUsersRepository.MIN_DEMO_EVENT_ITEMS_PER_USER
+            )
+          )
           : user.activities.events,
         hosting: hostingItems
           ? AppDemoGenerators.resolveSectionBadge(hostingItems.map(item => item.activity), hostingItems.length)

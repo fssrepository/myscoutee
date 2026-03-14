@@ -371,6 +371,17 @@ export class AppDemoGenerators {
     return itemCount;
   }
 
+  static syntheticEventActivityTotal(existingCount: number, minEventsPerUser: number): number {
+    const normalizedExistingCount = Math.max(0, Math.trunc(existingCount));
+    const normalizedMinimum = Math.max(0, Math.trunc(minEventsPerUser));
+    const needed = Math.max(0, normalizedMinimum - normalizedExistingCount);
+    let total = 0;
+    for (let index = 0; index < needed; index += 1) {
+      total += (index % 5) + 1;
+    }
+    return total;
+  }
+
   static seededMetric(
     user: Pick<DemoUser, 'id' | 'name' | 'city'>,
     offset: number,
