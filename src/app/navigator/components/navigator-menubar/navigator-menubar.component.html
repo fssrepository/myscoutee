@@ -1,57 +1,59 @@
-<div class="navigator-trigger-rail" *ngIf="visible()">
-  <div class="navigator-trigger-rail-inner">
-    <button
-      mat-icon-button
-      type="button"
-      class="user-selector-btn-global"
-      [class.is-loading]="isLoading()"
-      [class.is-error]="hasLoadError()"
-      [class.is-open]="isOpen()"
-      [disabled]="!canToggle()"
-      [attr.aria-label]="ariaLabel()"
-      [attr.aria-busy]="isLoading()"
-      [title]="title()"
-      (click)="onToggleMenu()"
-    >
-      <span class="user-selector-load-ring" *ngIf="showLoadRing()" aria-hidden="true">
-        <svg viewBox="0 0 58 58" class="user-selector-load-ring-svg">
-          <defs>
-            <linearGradient id="navigator-load-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
-              <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
-            </linearGradient>
-            <linearGradient id="navigator-load-gradient-overdue" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
-              <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
-            </linearGradient>
-          </defs>
-          <circle class="user-selector-load-ring-track" cx="29" cy="29" r="26"></circle>
-          <circle
-            class="user-selector-load-ring-progress"
-            [class.is-loading]="isLoading() && !hasLoadError()"
-            [class.is-overdue]="hasLoadError()"
-            cx="29"
-            cy="29"
-            r="26"
-            [attr.stroke-dasharray]="ringCircumference"
-            [attr.stroke-dashoffset]="hasLoadError() ? 0 : ringCircumference"
-          ></circle>
-        </svg>
-      </span>
-      <span
-        class="user-initial"
-        [ngClass]="avatarClassList()"
-        [style.backgroundImage]="avatarBackgroundImage()"
+<ng-container *ngIf="avatarState() as avatar">
+  <div class="navigator-trigger-rail" *ngIf="visible()">
+    <div class="navigator-trigger-rail-inner">
+      <button
+        mat-icon-button
+        type="button"
+        class="user-selector-btn-global"
+        [class.is-loading]="isLoading()"
+        [class.is-error]="hasLoadError()"
+        [class.is-open]="isOpen()"
+        [disabled]="!canToggle()"
+        [attr.aria-label]="ariaLabel()"
+        [attr.aria-busy]="isLoading()"
+        [title]="title()"
+        (click)="onToggleMenu()"
       >
-        <mat-icon *ngIf="isLoading()">schedule</mat-icon>
-        <mat-icon *ngIf="!isLoading() && hasLoadError()">person_off</mat-icon>
-        <ng-container *ngIf="canToggle() && !imageUrl()">
-          {{ activeUser().initials }}
-        </ng-container>
-      </span>
-      <span class="badge-dot" *ngIf="canToggle() && badgeCount() > 0">
-        {{ badgeCount() }}
-      </span>
-    </button>
+        <span class="user-selector-load-ring" *ngIf="showLoadRing()" aria-hidden="true">
+          <svg viewBox="0 0 58 58" class="user-selector-load-ring-svg">
+            <defs>
+              <linearGradient id="navigator-load-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+              </linearGradient>
+              <linearGradient id="navigator-load-gradient-overdue" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+                <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+              </linearGradient>
+            </defs>
+            <circle class="user-selector-load-ring-track" cx="29" cy="29" r="26"></circle>
+            <circle
+              class="user-selector-load-ring-progress"
+              [class.is-loading]="isLoading() && !hasLoadError()"
+              [class.is-overdue]="hasLoadError()"
+              cx="29"
+              cy="29"
+              r="26"
+              [attr.stroke-dasharray]="ringCircumference"
+              [attr.stroke-dashoffset]="hasLoadError() ? 0 : ringCircumference"
+            ></circle>
+          </svg>
+        </span>
+        <span
+          class="user-initial"
+          [ngClass]="avatarClassList()"
+          [style.backgroundImage]="avatarBackgroundImage()"
+        >
+          <mat-icon *ngIf="isLoading()">schedule</mat-icon>
+          <mat-icon *ngIf="!isLoading() && hasLoadError()">person_off</mat-icon>
+          <ng-container *ngIf="canToggle() && !avatar.imageUrl">
+            {{ activeUser()?.initials ?? '' }}
+          </ng-container>
+        </span>
+        <span class="badge-dot" *ngIf="canToggle() && badgeCount() > 0">
+          {{ badgeCount() }}
+        </span>
+      </button>
+    </div>
   </div>
-</div>
+</ng-container>

@@ -1,7 +1,21 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, HostListener, computed, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { NavigatorActiveUser, NavigatorBindings, NavigatorService } from '../../navigator.service';
+import {
+  AppContext,
+  type ActivityCounters,
+  type UserDto,
+  type UserImpressionChangeFlags
+} from '../../../shared/core';
+import { NavigatorBindings, NavigatorService } from '../../navigator.service';
+
+interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
+  activities: ActivityCounters;
+  featuredImagePreview: string | null;
+  impressionChangeFlags: UserImpressionChangeFlags;
+  memberImpressionTitle: string;
+  totalBadgeCount: number;
+}
 
 @Component({
   selector: 'app-navigator-menu',
@@ -11,79 +25,47 @@ import { NavigatorActiveUser, NavigatorBindings, NavigatorService } from '../../
   styleUrl: './navigator-menu.component.scss'
 })
 export class NavigatorMenuComponent {
+  private readonly appCtx = inject(AppContext);
   private readonly navigatorService = inject(NavigatorService);
-
-  protected get open(): boolean {
-    return this.navigatorService.isMenuOpen();
-  }
-
-  protected get settingsOpen(): boolean {
-    return this.navigatorService.isSettingsMenuOpen();
-  }
-
-  protected get activeUser(): NavigatorActiveUser {
-    return this.navigatorService.activeUser();
-  }
-
-  protected get featuredImagePreview(): string | null {
-    return this.navigatorService.featuredImagePreview();
-  }
-
-  protected get userBadgeCount(): number {
-    return this.navigatorService.userBadgeCount();
-  }
-
-  protected get profileCompletionPercent(): number {
-    return this.navigatorService.profileCompletionPercent();
-  }
-
-  protected get activeHostTier(): string {
-    return this.navigatorService.activeHostTier();
-  }
-
-  protected get hostImpressionsBadge(): number {
-    return this.navigatorService.hostImpressionsBadge();
-  }
-
-  protected get activeMemberTrait(): string {
-    return this.navigatorService.activeMemberTrait();
-  }
-
-  protected get memberImpressionsBadge(): number {
-    return this.navigatorService.memberImpressionsBadge();
-  }
-
-  protected get memberImpressionTitle(): string {
-    return this.navigatorService.memberImpressionTitle();
-  }
-
-  protected get gameBadge(): number {
-    return this.navigatorService.gameBadge();
-  }
-
-  protected get chatBadge(): number {
-    return this.navigatorService.chatBadge();
-  }
-
-  protected get invitationsBadge(): number {
-    return this.navigatorService.invitationsBadge();
-  }
-
-  protected get eventsBadge(): number {
-    return this.navigatorService.eventsBadge();
-  }
-
-  protected get hostingBadge(): number {
-    return this.navigatorService.hostingBadge();
-  }
-
-  protected get assetTicketsBadge(): number {
-    return this.navigatorService.assetTicketsBadge();
-  }
-
-  protected get eventFeedbackBadge(): number {
-    return this.navigatorService.eventFeedbackBadge();
-  }
+  protected readonly activeUser = this.appCtx.activeUserProfile;
+  protected readonly menuUser = computed<NavigatorMenuUser | null>(() => {
+    const activeUser = this.appCtx.activeUserProfile();
+    if (!activeUser) {
+      return null;
+    }
+    const activityOverrides = this.appCtx.getUserCounterOverrides(activeUser.id);
+    const mergedActivities: ActivityCounters = {
+      game: activityOverrides.game ?? activeUser.activities?.game ?? 0,
+      chat: activityOverrides.chat ?? activeUser.activities?.chat ?? 0,
+      invitations: activityOverrides.invitations ?? activeUser.activities?.invitations ?? 0,
+      events: activityOverrides.events ?? activeUser.activities?.events ?? 0,
+      hosting: activityOverrides.hosting ?? activeUser.activities?.hosting ?? 0,
+      tickets: activityOverrides.tickets ?? 0,
+      feedback: activityOverrides.feedback ?? 0
+    };
+    const impressionChangeFlags = this.appCtx.getUserImpressionChangeFlags(activeUser.id);
+    return {
+      ...activeUser,
+      completion: this.resolveCompletionPercent(activeUser),
+      impressions: this.appCtx.getUserImpressions(activeUser.id) ?? activeUser.impressions,
+      activities: mergedActivities,
+      featuredImagePreview: this.resolveUserImageUrl(activeUser),
+      impressionChangeFlags,
+      memberImpressionTitle: this.resolveMemberImpressionTitle(activeUser.traitLabel ?? ''),
+      totalBadgeCount: (
+        (impressionChangeFlags.host ? 1 : 0) +
+        (impressionChangeFlags.member ? 1 : 0) +
+        mergedActivities.game +
+        mergedActivities.chat +
+        mergedActivities.invitations +
+        mergedActivities.events +
+        mergedActivities.hosting +
+        mergedActivities.tickets +
+        mergedActivities.feedback
+      )
+    };
+  });
+  protected readonly menuUiState = this.navigatorService.menuUiState;
 
   protected get bindings(): NavigatorBindings | null {
     return this.navigatorService.bindings();
@@ -91,7 +73,7 @@ export class NavigatorMenuComponent {
 
   @HostListener('document:click', ['$event'])
   protected onDocumentClick(event: MouseEvent): void {
-    if (!this.navigatorService.isSettingsMenuOpen()) {
+    if (!this.menuUiState().settingsOpen) {
       return;
     }
     const target = event.target;
@@ -227,5 +209,42 @@ export class NavigatorMenuComponent {
 
   protected openReportUserFromFeedback(event?: Event): void {
     this.bindings?.openReportUserFromFeedback(event);
+  }
+
+  private resolveUserImageUrl(user: UserDto | null): string | null {
+    return user?.images?.find(image => image.trim().length > 0) ?? null;
+  }
+
+  private resolveCompletionPercent(user: UserDto | null): number {
+    return Number.isFinite(user?.completion) ? Math.max(0, Math.trunc(Number(user?.completion))) : 0;
+  }
+
+  private resolveMemberImpressionTitle(traitLabel: string): string {
+    const normalized = traitLabel.trim().toLowerCase();
+    if (normalized.includes('empat') || normalized.includes('empath')) {
+      return 'Empathetic Attendee';
+    }
+    if (normalized.includes('advent')) {
+      return 'Adventurous Attendee';
+    }
+    if (normalized.includes('kreat') || normalized.includes('creative')) {
+      return 'Creative Attendee';
+    }
+    if (normalized.includes('think')) {
+      return 'Thoughtful Attendee';
+    }
+    if (normalized.includes('social')) {
+      return 'Social Attendee';
+    }
+    if (normalized.includes('playful')) {
+      return 'Playful Attendee';
+    }
+    if (normalized.includes('ambitious') || normalized.includes('goal')) {
+      return 'Ambitious Attendee';
+    }
+    if (normalized.includes('megbizh') || normalized.includes('reliable')) {
+      return 'Reliable Attendee';
+    }
+    return traitLabel ? `${traitLabel} Attendee` : 'Attendee';
   }
 }

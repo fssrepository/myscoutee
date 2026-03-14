@@ -4,8 +4,18 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { NavigationEnd, Router } from '@angular/router';
 import type { Subscription } from 'rxjs';
-import { AppContext, USER_BY_ID_LOAD_CONTEXT_KEY, type UserDto } from '../../../shared/core';
-import { NavigatorActiveUser, NavigatorService } from '../../navigator.service';
+import {
+  AppContext,
+  USER_BY_ID_LOAD_CONTEXT_KEY,
+  type ActivityCounterKey,
+  type UserDto
+} from '../../../shared/core';
+import { NavigatorService } from '../../navigator.service';
+
+interface NavigatorAvatarState {
+  badgeCount: number;
+  imageUrl: string | null;
+}
 
 @Component({
   selector: 'app-navigator-avatar',
@@ -18,14 +28,6 @@ export class NavigatorAvatarComponent implements OnDestroy {
   private static readonly USER_MENU_LOAD_DURATION_MS = 3000;
   private static readonly USER_MENU_RING_RADIUS = 26;
   private static readonly USER_MENU_RING_CIRCUMFERENCE = 2 * Math.PI * NavigatorAvatarComponent.USER_MENU_RING_RADIUS;
-  private static readonly FALLBACK_ACTIVE_USER: NavigatorActiveUser = {
-    initials: '',
-    gender: 'woman',
-    name: '',
-    age: 0,
-    city: '',
-    profileStatus: 'public'
-  };
 
   private readonly router = inject(Router);
   private readonly appCtx = inject(AppContext);
@@ -38,12 +40,18 @@ export class NavigatorAvatarComponent implements OnDestroy {
 
   protected readonly ringCircumference = NavigatorAvatarComponent.USER_MENU_RING_CIRCUMFERENCE;
   protected readonly bindings = this.navigatorService.bindings;
-  protected readonly hydratedUser = this.navigatorService.hydratedUser;
-  protected readonly isOpen = this.navigatorService.menuOpen;
+  protected readonly activeUser = this.appCtx.activeUserProfile;
+  protected readonly avatarState = computed<NavigatorAvatarState>(() => {
+    const user = this.activeUser();
+    return {
+      badgeCount: user ? this.resolveUserBadgeCount(user) : 0,
+      imageUrl: this.resolveUserImageUrl(user)
+    };
+  });
+  protected readonly menuUiState = this.navigatorService.menuUiState;
   protected readonly visible = computed(() => this.isInternalRoute(this.currentUrlRef()));
   protected readonly hasBindings = computed(() => this.bindings() !== null);
-  protected readonly activeUser = computed(() => this.resolveActiveUser());
-  protected readonly imageUrl = computed(() => this.resolveImageUrl());
+  protected readonly isOpen = computed(() => this.menuUiState().open);
   protected readonly canToggle = computed(() =>
     this.visible() && this.hasBindings() && this.activeUserLoadState().status === 'success'
   );
@@ -66,7 +74,7 @@ export class NavigatorAvatarComponent implements OnDestroy {
   });
   protected readonly showLoadRing = computed(() => this.visible() && !this.canToggle());
   protected readonly badgeCount = computed(() =>
-    this.canToggle() ? (this.bindings()?.userBadgeCount() ?? 0) : 0
+    this.canToggle() ? this.avatarState().badgeCount : 0
   );
   protected readonly ariaLabel = computed(() => {
     if (this.canToggle()) {
@@ -129,10 +137,11 @@ export class NavigatorAvatarComponent implements OnDestroy {
 
   protected avatarClassList(): Record<string, boolean> {
     const activeUser = this.activeUser();
+    const avatarState = this.avatarState();
     const canToggle = this.canToggle();
-    const imageUrl = this.imageUrl();
+    const imageUrl = avatarState.imageUrl;
     return {
-      [`user-color-${activeUser.gender}`]: canToggle,
+      [`user-color-${activeUser?.gender === 'man' ? 'man' : 'woman'}`]: canToggle,
       'has-photo': canToggle && !!imageUrl,
       'is-placeholder': !canToggle
     };
@@ -142,41 +151,13 @@ export class NavigatorAvatarComponent implements OnDestroy {
     if (!this.canToggle()) {
       return null;
     }
-    const trimmedImageUrl = this.imageUrl()?.trim() ?? '';
+    const trimmedImageUrl = this.avatarState().imageUrl?.trim() ?? '';
     return trimmedImageUrl ? `url(${trimmedImageUrl})` : null;
   }
 
   ngOnDestroy(): void {
     this.routerEventsSubscription.unsubscribe();
     this.clearUserMenuLoadState();
-  }
-
-  private resolveActiveUser(): NavigatorActiveUser {
-    const hydratedUser = this.hydratedUser();
-    if (hydratedUser) {
-      return this.toNavigatorActiveUser(hydratedUser);
-    }
-    return this.bindings()?.activeUser() ?? NavigatorAvatarComponent.FALLBACK_ACTIVE_USER;
-  }
-
-  private resolveImageUrl(): string | null {
-    const hydratedUser = this.hydratedUser();
-    const hydratedImage = hydratedUser?.images?.find(image => image.trim().length > 0) ?? null;
-    if (hydratedImage) {
-      return hydratedImage;
-    }
-    return this.bindings()?.featuredImagePreview() ?? null;
-  }
-
-  private toNavigatorActiveUser(user: UserDto): NavigatorActiveUser {
-    return {
-      initials: (user.initials ?? '').trim(),
-      gender: user.gender === 'man' ? 'man' : 'woman',
-      name: (user.name ?? '').trim(),
-      age: Number.isFinite(user.age) ? Math.max(0, Math.trunc(Number(user.age))) : 0,
-      city: (user.city ?? '').trim(),
-      profileStatus: user.profileStatus ?? 'public'
-    };
   }
 
   private beginUserMenuLoadWindow(): void {
@@ -218,5 +199,35 @@ export class NavigatorAvatarComponent implements OnDestroy {
       return '/';
     }
     return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  }
+
+  private resolveUserBadgeCount(user: UserDto): number {
+    const impressionFlags = this.appCtx.getUserImpressionChangeFlags(user.id);
+    return (
+      (impressionFlags.host ? 1 : 0) +
+      (impressionFlags.member ? 1 : 0) +
+      this.resolveActivityBadge(user, 'game') +
+      this.resolveActivityBadge(user, 'chat') +
+      this.resolveActivityBadge(user, 'invitations') +
+      this.resolveActivityBadge(user, 'events') +
+      this.resolveActivityBadge(user, 'hosting') +
+      this.resolveActivityBadge(user, 'tickets') +
+      this.resolveActivityBadge(user, 'feedback')
+    );
+  }
+
+  private resolveActivityBadge(user: UserDto, key: ActivityCounterKey): number {
+    const override = this.appCtx.getUserCounterOverride(user.id, key);
+    if (override !== null) {
+      return override;
+    }
+    if (key === 'tickets' || key === 'feedback') {
+      return 0;
+    }
+    return user.activities?.[key] ?? 0;
+  }
+
+  private resolveUserImageUrl(user: UserDto | null): string | null {
+    return user?.images?.find(image => image.trim().length > 0) ?? null;
   }
 }

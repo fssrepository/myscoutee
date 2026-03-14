@@ -92,6 +92,7 @@ export class UsersService {
       }
 
       const resolvedUserId = normalizedUserId || response.user.id.trim();
+      this.appCtx.setUserProfile(response.user);
       if (resolvedUserId) {
         if (response.filterPreferences) {
           this.appCtx.setUserFilterPreferences(resolvedUserId, response.filterPreferences);

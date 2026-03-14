@@ -1,6 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface';
-import type { UserImpressionsDto, UserImpressionsSectionDto } from '../interfaces/user.interface';
+import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../interfaces/user.interface';
 
 export type LoadStatus = 'idle' | 'loading' | 'success' | 'error' | 'timeout';
 export type ActivityCounterKey = 'game' | 'chat' | 'invitations' | 'events' | 'hosting' | 'tickets' | 'feedback';
@@ -21,10 +21,20 @@ export interface LoadState {
   loadedAtIso: string | null;
 }
 
+export interface UserImpressionChangeFlags {
+  host: boolean;
+  member: boolean;
+}
+
 export const DEFAULT_LOAD_STATE: LoadState = {
   status: 'idle',
   error: null,
   loadedAtIso: null
+};
+
+export const DEFAULT_USER_IMPRESSION_CHANGE_FLAGS: UserImpressionChangeFlags = {
+  host: false,
+  member: false
 };
 
 const ACTIVITY_COUNTER_KEYS: ActivityCounterKey[] = [
@@ -42,18 +52,30 @@ const ACTIVITY_COUNTER_KEYS: ActivityCounterKey[] = [
 })
 export class AppContext {
   private readonly _loadingState = signal<Record<string, LoadState>>({});
+  private readonly _userProfilesByUserId = signal<Record<string, UserDto>>({});
   private readonly _counterOverridesByUserId = signal<Record<string, Partial<ActivityCounters>>>({});
   private readonly _filterCountByUserId = signal<Record<string, number>>({});
   private readonly _filterPreferencesByUserId = signal<Record<string, UserGameFilterPreferencesDto>>({});
   private readonly _impressionsByUserId = signal<Record<string, UserImpressionsDto>>({});
+  private readonly _impressionChangeFlagsByUserId = signal<Record<string, UserImpressionChangeFlags>>({});
   private readonly _activeUserId = signal<string>('');
 
   readonly loadingState = this._loadingState.asReadonly();
+  readonly userProfilesByUserId = this._userProfilesByUserId.asReadonly();
   readonly counterOverridesByUserId = this._counterOverridesByUserId.asReadonly();
   readonly filterCountByUserId = this._filterCountByUserId.asReadonly();
   readonly filterPreferencesByUserId = this._filterPreferencesByUserId.asReadonly();
   readonly impressionsByUserId = this._impressionsByUserId.asReadonly();
+  readonly impressionChangeFlagsByUserId = this._impressionChangeFlagsByUserId.asReadonly();
   readonly activeUserId = this._activeUserId.asReadonly();
+  readonly activeUserProfile = computed(() => {
+    const normalizedUserId = this._activeUserId().trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    const user = this._userProfilesByUserId()[normalizedUserId];
+    return user ? this.cloneUserProfile(user) : null;
+  });
 
   selectLoadingState(contextKey: string) {
     return computed(() => this._loadingState()[contextKey] ?? DEFAULT_LOAD_STATE);
@@ -88,6 +110,43 @@ export class AppContext {
   setActiveUserId(userId: string): void {
     const normalizedUserId = userId.trim();
     this._activeUserId.set(normalizedUserId);
+  }
+
+  getUserProfile(userId: string): UserDto | null {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    const user = this._userProfilesByUserId()[normalizedUserId];
+    return user ? this.cloneUserProfile(user) : null;
+  }
+
+  setUserProfile(user: UserDto): void {
+    const normalizedUserId = user.id.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    this._userProfilesByUserId.update(state => ({
+      ...state,
+      [normalizedUserId]: this.cloneUserProfile({
+        ...user,
+        id: normalizedUserId
+      })
+    }));
+  }
+
+  clearUserProfile(userId: string): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    this._userProfilesByUserId.update(state => {
+      if (!Object.prototype.hasOwnProperty.call(state, normalizedUserId)) {
+        return state;
+      }
+      const { [normalizedUserId]: _removed, ...rest } = state;
+      return rest;
+    });
   }
 
   getUserCounterOverride(userId: string, key: ActivityCounterKey): number | null {
@@ -326,6 +385,50 @@ export class AppContext {
     });
   }
 
+  getUserImpressionChangeFlags(userId: string): UserImpressionChangeFlags {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return { ...DEFAULT_USER_IMPRESSION_CHANGE_FLAGS };
+    }
+    const flags = this._impressionChangeFlagsByUserId()[normalizedUserId];
+    if (!flags) {
+      return { ...DEFAULT_USER_IMPRESSION_CHANGE_FLAGS };
+    }
+    return {
+      host: flags.host === true,
+      member: flags.member === true
+    };
+  }
+
+  setUserImpressionChangeFlags(userId: string, flags: UserImpressionChangeFlags): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const normalizedFlags: UserImpressionChangeFlags = {
+      host: flags.host === true,
+      member: flags.member === true
+    };
+    this._impressionChangeFlagsByUserId.update(state => ({
+      ...state,
+      [normalizedUserId]: normalizedFlags
+    }));
+  }
+
+  clearUserImpressionChangeFlags(userId: string): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    this._impressionChangeFlagsByUserId.update(state => {
+      if (!Object.prototype.hasOwnProperty.call(state, normalizedUserId)) {
+        return state;
+      }
+      const { [normalizedUserId]: _removed, ...rest } = state;
+      return rest;
+    });
+  }
+
   private normalizeCounterValue(value: number): number {
     if (!Number.isFinite(value)) {
       return 0;
@@ -470,6 +573,22 @@ export class AppContext {
       vibeBadges: [...(section.vibeBadges ?? [])],
       personalityBadges: [...(section.personalityBadges ?? [])],
       categoryBadges: [...(section.categoryBadges ?? [])]
+    };
+  }
+
+  private cloneUserProfile(user: UserDto): UserDto {
+    return {
+      ...user,
+      languages: [...(user.languages ?? [])],
+      images: [...(user.images ?? [])],
+      activities: {
+        game: user.activities?.game ?? 0,
+        chat: user.activities?.chat ?? 0,
+        invitations: user.activities?.invitations ?? 0,
+        events: user.activities?.events ?? 0,
+        hosting: user.activities?.hosting ?? 0
+      },
+      impressions: user.impressions ? this.cloneImpressions(user.impressions) : undefined
     };
   }
 }

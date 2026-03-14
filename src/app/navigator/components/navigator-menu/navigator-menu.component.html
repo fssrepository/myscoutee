@@ -1,16 +1,18 @@
-<div class="user-menu-backdrop" [class.open]="open" (click)="onCloseMenu()" *ngIf="open"></div>
+<ng-container *ngIf="menuUser() as user">
+<ng-container *ngIf="menuUiState() as ui">
+<div class="user-menu-backdrop" [class.open]="ui.open" (click)="onCloseMenu()" *ngIf="ui.open"></div>
 
-<aside class="user-menu-panel" [class.open]="open">
+<aside class="user-menu-panel" [class.open]="ui.open">
   <div
     class="user-menu-header"
-    [ngClass]="profileStatusClass(activeUser.profileStatus)"
+    [ngClass]="profileStatusClass(user.profileStatus)"
   >
     <button
       type="button"
       class="user-menu-settings-btn"
-      [class.is-open]="settingsOpen"
+      [class.is-open]="ui.settingsOpen"
       aria-label="Open settings menu"
-      [attr.aria-expanded]="settingsOpen"
+      [attr.aria-expanded]="ui.settingsOpen"
       (click)="onToggleSettingsMenu($event)"
     >
       <mat-icon>settings</mat-icon>
@@ -25,7 +27,7 @@
       <mat-icon>close</mat-icon>
     </button>
 
-    <div class="user-settings-menu" *ngIf="settingsOpen" (click)="$event.stopPropagation()">
+    <div class="user-settings-menu" *ngIf="ui.settingsOpen" (click)="$event.stopPropagation()">
       <button type="button" class="user-settings-item" (click)="onSettingsAction('help', $event)">
         <mat-icon>help_outline</mat-icon>
         <span>Help</span>
@@ -62,22 +64,22 @@
       <div class="avatar-stack">
         <span
           class="user-avatar user-avatar-large"
-          [ngClass]="['user-color-' + activeUser.gender, featuredImagePreview ? 'has-photo' : '']"
-          [style.backgroundImage]="featuredImagePreview ? 'url(' + featuredImagePreview + ')' : null"
+          [ngClass]="['user-color-' + user.gender, user.featuredImagePreview ? 'has-photo' : '']"
+          [style.backgroundImage]="user.featuredImagePreview ? 'url(' + user.featuredImagePreview + ')' : null"
         >
-          <ng-container *ngIf="!featuredImagePreview">{{ activeUser.initials }}</ng-container>
+          <ng-container *ngIf="!user.featuredImagePreview">{{ user.initials }}</ng-container>
         </span>
-        <span class="avatar-activity-badge" *ngIf="userBadgeCount > 0">{{ userBadgeCount }}</span>
-        <span class="avatar-bottom-pill avatar-bottom-pill-header" [ngStyle]="completionBadgeStyle(profileCompletionPercent)">
-          <span>{{ profileCompletionPercent }}%</span>
+        <span class="avatar-activity-badge" *ngIf="user.totalBadgeCount > 0">{{ user.totalBadgeCount }}</span>
+        <span class="avatar-bottom-pill avatar-bottom-pill-header" [ngStyle]="completionBadgeStyle(user.completion)">
+          <span>{{ user.completion }}%</span>
         </span>
       </div>
 
       <div class="user-meta user-meta-compact">
-        <span class="user-name">{{ activeUser.name }}, {{ activeUser.age }}</span>
+        <span class="user-name">{{ user.name }}, {{ user.age }}</span>
         <span class="user-city-line">
           <mat-icon>location_on</mat-icon>
-          <span>{{ activeUser.city }}</span>
+          <span>{{ user.city }}</span>
         </span>
       </div>
     </div>
@@ -98,38 +100,38 @@
     <div class="impressions-shortcuts">
       <button
         class="impression-shortcut-btn impression-shortcut-host-btn"
-        [ngClass]="getHostTierToneClass(activeHostTier)"
+        [ngClass]="getHostTierToneClass(user.hostTier)"
         type="button"
         (click)="openHostImpressions()"
         aria-label="Open host impressions"
-        [title]="activeHostTier"
+        [title]="user.hostTier"
       >
         <span
           class="card-badge menu-shortcut-badge menu-shortcut-badge-empty"
-          *ngIf="hostImpressionsBadge > 0"
+          *ngIf="user.impressionChangeFlags.host"
         ></span>
-        <mat-icon [class]="getHostTierColorClass(activeHostTier)">{{ getHostTierIcon(activeHostTier) }}</mat-icon>
+        <mat-icon [class]="getHostTierColorClass(user.hostTier)">{{ getHostTierIcon(user.hostTier) }}</mat-icon>
         <span class="impression-shortcut-label">
-          <span class="impression-shortcut-main">{{ activeHostTier.replace(' Host', '') }}</span>
+          <span class="impression-shortcut-main">{{ user.hostTier.replace(' Host', '') }}</span>
           <span class="impression-shortcut-sub">Host</span>
         </span>
       </button>
 
       <button
         class="impression-shortcut-btn impression-shortcut-member-btn"
-        [ngClass]="getTraitToneClass(activeMemberTrait)"
+        [ngClass]="getTraitToneClass(user.traitLabel)"
         type="button"
         (click)="openMemberImpressions()"
         aria-label="Open member impressions"
-        [title]="memberImpressionTitle"
+        [title]="user.memberImpressionTitle"
       >
         <span
           class="card-badge menu-shortcut-badge menu-shortcut-badge-empty"
-          *ngIf="memberImpressionsBadge > 0"
+          *ngIf="user.impressionChangeFlags.member"
         ></span>
-        <mat-icon [class]="getTraitColorClass(activeMemberTrait)">{{ getTraitIcon(activeMemberTrait) }}</mat-icon>
+        <mat-icon [class]="getTraitColorClass(user.traitLabel)">{{ getTraitIcon(user.traitLabel) }}</mat-icon>
         <span class="impression-shortcut-label">
-          <span class="impression-shortcut-main">{{ memberImpressionTitle.replace(' Attendee', '') }}</span>
+          <span class="impression-shortcut-main">{{ user.memberImpressionTitle.replace(' Attendee', '') }}</span>
           <span class="impression-shortcut-sub">Attendee</span>
         </span>
       </button>
@@ -147,31 +149,31 @@
       <button class="menu-shortcut-btn menu-shortcut-rates" type="button" (click)="openRatesShortcut()" aria-label="Open rates" title="Rates">
         <mat-icon>star</mat-icon>
         <span class="menu-shortcut-label">Rates</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="gameBadge > 0">{{ gameBadge }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.game > 0">{{ user.activities.game }}</span>
       </button>
 
       <button class="menu-shortcut-btn menu-shortcut-chat" type="button" (click)="openChatShortcut()" aria-label="Open chat" title="Chats">
         <mat-icon>chat</mat-icon>
         <span class="menu-shortcut-label">Chats</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="chatBadge > 0">{{ chatBadge }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.chat > 0">{{ user.activities.chat }}</span>
       </button>
 
       <button class="menu-shortcut-btn menu-shortcut-invitations" type="button" (click)="openInvitationShortcut()" aria-label="Open invitations" title="Invitations">
         <mat-icon>mail</mat-icon>
         <span class="menu-shortcut-label">Invitations</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="invitationsBadge > 0">{{ invitationsBadge }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.invitations > 0">{{ user.activities.invitations }}</span>
       </button>
 
       <button class="menu-shortcut-btn menu-shortcut-events" type="button" (click)="openEventShortcut()" aria-label="Open events" title="Events">
         <mat-icon>event</mat-icon>
         <span class="menu-shortcut-label">Events</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="eventsBadge > 0">{{ eventsBadge }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.events > 0">{{ user.activities.events }}</span>
       </button>
 
       <button class="menu-shortcut-btn menu-shortcut-hosting" type="button" (click)="openHostingShortcut()" aria-label="Open hosting" title="Hosting">
         <mat-icon>stadium</mat-icon>
         <span class="menu-shortcut-label">Hosting</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="hostingBadge > 0">{{ hostingBadge }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.hosting > 0">{{ user.activities.hosting }}</span>
       </button>
     </div>
 
@@ -199,7 +201,7 @@
       <button class="asset-shortcut-btn asset-shortcut-ticket" type="button" (click)="openAssetTicketsPopup()" aria-label="Ticket">
         <mat-icon>qr_code_2</mat-icon>
         <span class="asset-shortcut-label">Ticket</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="assetTicketsBadge > 0">{{ assetTicketsBadge }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.tickets > 0">{{ user.activities.tickets }}</span>
       </button>
     </div>
 
@@ -215,7 +217,7 @@
       <button class="feedback-shortcut-btn feedback-shortcut-event" type="button" (click)="openEventFeedbackPopup($event)" aria-label="Open event feedback" title="Event Feedback">
         <mat-icon>rate_review</mat-icon>
         <span class="feedback-shortcut-label">Event Feedback</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="eventFeedbackBadge > 0">{{ eventFeedbackBadge }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.feedback > 0">{{ user.activities.feedback }}</span>
       </button>
       <button class="feedback-shortcut-btn feedback-shortcut-report" type="button" (click)="openReportUserFromFeedback($event)" aria-label="Open report user" title="Report User">
         <mat-icon>flag</mat-icon>
@@ -224,3 +226,5 @@
     </div>
   </div>
 </aside>
+</ng-container>
+</ng-container>

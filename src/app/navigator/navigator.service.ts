@@ -1,33 +1,13 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { AppContext, SessionService, UsersService, type UserDto } from '../shared/core';
 
-export interface NavigatorActiveUser {
-  initials: string;
-  gender: 'woman' | 'man';
-  name: string;
-  age: number;
-  city: string;
-  profileStatus: string;
+export interface NavigatorMenuUiState {
+  open: boolean;
+  settingsOpen: boolean;
 }
 
 export interface NavigatorBindings {
-  activeUser(): NavigatorActiveUser;
-  featuredImagePreview(): string | null;
-  userBadgeCount(): number;
   syncHydratedUser?(user: UserDto): void;
-  profileCompletionPercent(): number;
-  activeHostTier(): string;
-  hostImpressionsBadge(): number;
-  activeMemberTrait(): string;
-  memberImpressionsBadge(): number;
-  memberImpressionTitle(): string;
-  gameBadge(): number;
-  chatBadge(): number;
-  invitationsBadge(): number;
-  eventsBadge(): number;
-  hostingBadge(): number;
-  assetTicketsBadge(): number;
-  eventFeedbackBadge(): number;
   profileStatusClass(status: string): string;
   completionBadgeStyle(percent: number): Record<string, string> | null;
   getHostTierToneClass(tier: string): string;
@@ -57,15 +37,6 @@ export interface NavigatorBindings {
   openLogoutConfirm(): void;
 }
 
-const DEFAULT_NAVIGATOR_ACTIVE_USER: NavigatorActiveUser = {
-  initials: '',
-  gender: 'woman',
-  name: '',
-  age: 0,
-  city: '',
-  profileStatus: 'public'
-};
-
 @Injectable({
   providedIn: 'root'
 })
@@ -74,45 +45,16 @@ export class NavigatorService {
   private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
   private readonly bindingsRef = signal<NavigatorBindings | null>(null);
-  private readonly hydratedUserRef = signal<UserDto | null>(null);
   private readonly hydrationRequestKeyRef = signal('');
   private readonly menuOpenRef = signal(false);
   private readonly settingsMenuOpenRef = signal(false);
   private hydrationRequestVersion = 0;
 
   readonly bindings = this.bindingsRef.asReadonly();
-  readonly hydratedUser = this.hydratedUserRef.asReadonly();
-  readonly menuOpen = this.menuOpenRef.asReadonly();
-  readonly settingsMenuOpen = this.settingsMenuOpenRef.asReadonly();
-  readonly activeUser = computed(() => {
-    const hydratedUser = this.hydratedUserRef();
-    if (hydratedUser) {
-      return this.toNavigatorActiveUser(hydratedUser);
-    }
-    return this.bindingsRef()?.activeUser() ?? DEFAULT_NAVIGATOR_ACTIVE_USER;
-  });
-  readonly featuredImagePreview = computed(() => {
-    const hydratedUser = this.hydratedUserRef();
-    const hydratedImage = hydratedUser?.images?.find(image => image.trim().length > 0) ?? null;
-    if (hydratedImage) {
-      return hydratedImage;
-    }
-    return this.bindingsRef()?.featuredImagePreview() ?? null;
-  });
-  readonly userBadgeCount = computed(() => this.bindingsRef()?.userBadgeCount() ?? 0);
-  readonly profileCompletionPercent = computed(() => this.bindingsRef()?.profileCompletionPercent() ?? 0);
-  readonly activeHostTier = computed(() => this.bindingsRef()?.activeHostTier() ?? '');
-  readonly hostImpressionsBadge = computed(() => this.bindingsRef()?.hostImpressionsBadge() ?? 0);
-  readonly activeMemberTrait = computed(() => this.bindingsRef()?.activeMemberTrait() ?? '');
-  readonly memberImpressionsBadge = computed(() => this.bindingsRef()?.memberImpressionsBadge() ?? 0);
-  readonly memberImpressionTitle = computed(() => this.bindingsRef()?.memberImpressionTitle() ?? '');
-  readonly gameBadge = computed(() => this.bindingsRef()?.gameBadge() ?? 0);
-  readonly chatBadge = computed(() => this.bindingsRef()?.chatBadge() ?? 0);
-  readonly invitationsBadge = computed(() => this.bindingsRef()?.invitationsBadge() ?? 0);
-  readonly eventsBadge = computed(() => this.bindingsRef()?.eventsBadge() ?? 0);
-  readonly hostingBadge = computed(() => this.bindingsRef()?.hostingBadge() ?? 0);
-  readonly assetTicketsBadge = computed(() => this.bindingsRef()?.assetTicketsBadge() ?? 0);
-  readonly eventFeedbackBadge = computed(() => this.bindingsRef()?.eventFeedbackBadge() ?? 0);
+  readonly menuUiState = computed<NavigatorMenuUiState>(() => ({
+    open: this.menuOpenRef(),
+    settingsOpen: this.settingsMenuOpenRef()
+  }));
 
   constructor() {
     effect(() => {
@@ -120,7 +62,7 @@ export class NavigatorService {
       const activeUserId = this.appCtx.activeUserId().trim();
 
       if (!session) {
-        this.clearHydratedUser();
+        this.clearHydrationState();
         return;
       }
 
@@ -157,25 +99,18 @@ export class NavigatorService {
       return null;
     }
 
-    const normalizedUser = this.cloneUser(loadedUser);
-    this.hydratedUserRef.set(normalizedUser);
-    this.syncHydratedUserIntoAppContext(normalizedUser);
-    this.bindingsRef()?.syncHydratedUser?.(normalizedUser);
-    return normalizedUser;
+    this.syncHydratedUserIntoAppContext(loadedUser);
+    this.bindingsRef()?.syncHydratedUser?.(loadedUser);
+    return loadedUser;
+  }
+
+  clearHydrationState(): void {
+    this.hydrationRequestVersion += 1;
+    this.hydrationRequestKeyRef.set('');
   }
 
   clearHydratedUser(): void {
-    this.hydrationRequestVersion += 1;
-    this.hydrationRequestKeyRef.set('');
-    this.hydratedUserRef.set(null);
-  }
-
-  isMenuOpen(): boolean {
-    return this.menuOpenRef();
-  }
-
-  isSettingsMenuOpen(): boolean {
-    return this.settingsMenuOpenRef();
+    this.clearHydrationState();
   }
 
   openMenu(): void {
@@ -209,6 +144,7 @@ export class NavigatorService {
       return;
     }
 
+    this.appCtx.setUserProfile(user);
     this.appCtx.setActiveUserId(normalizedUserId);
     this.appCtx.patchUserCounterOverrides(normalizedUserId, {
       game: user.activities?.game,
@@ -223,37 +159,5 @@ export class NavigatorService {
       return;
     }
     this.appCtx.clearUserImpressions(normalizedUserId);
-  }
-
-  private cloneUser(user: UserDto): UserDto {
-    return {
-      ...user,
-      languages: [...(user.languages ?? [])],
-      images: [...(user.images ?? [])],
-      activities: {
-        game: user.activities?.game ?? 0,
-        chat: user.activities?.chat ?? 0,
-        invitations: user.activities?.invitations ?? 0,
-        events: user.activities?.events ?? 0,
-        hosting: user.activities?.hosting ?? 0
-      },
-      impressions: user.impressions
-        ? {
-            host: user.impressions.host ? { ...user.impressions.host } : undefined,
-            member: user.impressions.member ? { ...user.impressions.member } : undefined
-          }
-        : undefined
-    };
-  }
-
-  private toNavigatorActiveUser(user: UserDto): NavigatorActiveUser {
-    return {
-      initials: (user.initials ?? '').trim(),
-      gender: user.gender === 'man' ? 'man' : 'woman',
-      name: (user.name ?? '').trim(),
-      age: Number.isFinite(user.age) ? Math.max(0, Math.trunc(Number(user.age))) : 0,
-      city: (user.city ?? '').trim(),
-      profileStatus: user.profileStatus ?? 'public'
-    };
   }
 }

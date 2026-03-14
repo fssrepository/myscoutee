@@ -243,31 +243,26 @@ export class App {
     activityInviteMetLabel: (entry) => this.activityInviteMetLabel(entry)
   };
   private readonly navigatorBindings: NavigatorBindings = {
-    activeUser: () => this.activeUser,
-    featuredImagePreview: () => this.featuredImagePreview,
-    userBadgeCount: () => this.userBadgeCount,
     syncHydratedUser: (user) => {
       if (!this.users.some(candidate => candidate.id === user.id)) {
         return;
       }
+      this.syncHydratedUserIntoLocalState(user);
       this.activeUserId = user.id;
       this.syncProfileFormFromActiveUser();
+      this.appCtx.setUserProfile(this.activeUser);
+      this.appCtx.patchUserCounterOverrides(this.activeUserId, {
+        game: this.gameBadge,
+        chat: this.chatBadge,
+        invitations: this.invitationsBadge,
+        events: this.eventsBadge,
+        hosting: this.hostingBadge,
+        tickets: this.assetTicketsBadge,
+        feedback: this.eventFeedbackBadge
+      });
       this.activateUserRealtimeLongPoll(this.activeUserId);
       this.cdr.markForCheck();
     },
-    profileCompletionPercent: () => this.profileCompletionPercent,
-    activeHostTier: () => this.activeHostTier,
-    hostImpressionsBadge: () => this.hostImpressionsBadge,
-    activeMemberTrait: () => this.activeMemberTrait,
-    memberImpressionsBadge: () => this.memberImpressionsBadge,
-    memberImpressionTitle: () => this.memberImpressionTitle,
-    gameBadge: () => this.gameBadge,
-    chatBadge: () => this.chatBadge,
-    invitationsBadge: () => this.invitationsBadge,
-    eventsBadge: () => this.eventsBadge,
-    hostingBadge: () => this.hostingBadge,
-    assetTicketsBadge: () => this.assetTicketsBadge,
-    eventFeedbackBadge: () => this.eventFeedbackBadge,
     profileStatusClass: (status) => this.profileStatusClass(status as AppTypes.ProfileStatus),
     completionBadgeStyle: (percent) => this.completionBadgeStyle(percent),
     getHostTierToneClass: (tier) => this.getHostTierToneClass(tier),
@@ -5513,6 +5508,7 @@ export class App {
   private clearUserImpressionsChangeFlag(userId: string, section: 'host' | 'member'): void {
     const current = this.userImpressionsChangeFlagsByUserId[userId];
     if (!current) {
+      this.appCtx.clearUserImpressionChangeFlags(userId);
       return;
     }
     const next = {
@@ -5521,9 +5517,11 @@ export class App {
     };
     if (!next.host && !next.member) {
       delete this.userImpressionsChangeFlagsByUserId[userId];
+      this.appCtx.clearUserImpressionChangeFlags(userId);
       return;
     }
     this.userImpressionsChangeFlagsByUserId[userId] = next;
+    this.appCtx.setUserImpressionChangeFlags(userId, next);
   }
 
   private clearCurrentUserImpressionsChangeFlags(): void {
@@ -13536,6 +13534,7 @@ export class App {
     this.syncProfileBasicsIntoDetailRows(user);
     user.completion = this.calculateProfileCompletionPercent();
     this.profileDetailsFormByUser[user.id] = this.profileDetailsForm;
+    this.appCtx.setUserProfile(user);
     void this.usersService.saveUserProfile(user);
     if (showAlert) {
       this.alertService.open('Profile saved');
@@ -14044,6 +14043,17 @@ export class App {
     } else {
       this.appCtx.clearUserImpressions(userId);
     }
+    if (currentUser) {
+      this.appCtx.setUserProfile({
+        ...currentUser,
+        impressions: snapshot.impressions
+          ? {
+              host: snapshot.impressions.host ? { ...snapshot.impressions.host } : undefined,
+              member: snapshot.impressions.member ? { ...snapshot.impressions.member } : undefined
+            }
+          : undefined
+      });
+    }
     this.applyImpressionsChangeFlags(userId, previousImpressions, snapshot);
     if (hostTopMetricsChanged) {
       this.triggerUserImpressionsVisualPulse(userId, 'hostTop');
@@ -14185,10 +14195,12 @@ export class App {
     const memberChangedByCounter = snapshot.counters.impressionsMemberChanged === true;
     const hostChangedByDiff = this.hasImpressionsSectionChanged(previousImpressions?.host, snapshot.impressions?.host);
     const memberChangedByDiff = this.hasImpressionsSectionChanged(previousImpressions?.member, snapshot.impressions?.member);
-    this.userImpressionsChangeFlagsByUserId[userId] = {
+    const next = {
       host: current.host || hostChangedByCounter || hostChangedByDiff,
       member: current.member || memberChangedByCounter || memberChangedByDiff
     };
+    this.userImpressionsChangeFlagsByUserId[userId] = next;
+    this.appCtx.setUserImpressionChangeFlags(userId, next);
   }
 
   private hasImpressionsSectionChanged(
@@ -14320,10 +14332,12 @@ export class App {
 
   private syncActiveUserImageSlotsState(preserveExisting = false): void {
     const previousImages = [...(this.activeUser.images ?? [])];
-    this.profileImageSlotsByUser[this.activeUser.id] = [...this.imageSlots];
+    const activeUserId = this.activeUser.id;
+    this.profileImageSlotsByUser[activeUserId] = [...this.imageSlots];
     const nextImages = this.collectPersistedProfileImages();
     if (!preserveExisting) {
       this.activeUser.images = nextImages;
+      this.appCtx.setUserProfile(this.activeUser);
       return;
     }
     const merged: string[] = [];
@@ -14345,6 +14359,50 @@ export class App {
       pushed.add(normalized);
     }
     this.activeUser.images = merged;
+    this.appCtx.setUserProfile(this.activeUser);
+  }
+
+  private syncHydratedUserIntoLocalState(user: UserDto): void {
+    const localUser = this.users.find(candidate => candidate.id === user.id);
+    if (!localUser) {
+      return;
+    }
+
+    localUser.name = user.name;
+    localUser.age = user.age;
+    localUser.birthday = user.birthday;
+    localUser.city = user.city;
+    localUser.height = user.height;
+    localUser.physique = user.physique;
+    localUser.languages = [...(user.languages ?? [])];
+    localUser.horoscope = user.horoscope;
+    localUser.initials = user.initials;
+    localUser.gender = user.gender;
+    localUser.statusText = user.statusText;
+    localUser.hostTier = user.hostTier;
+    localUser.traitLabel = user.traitLabel;
+    localUser.completion = user.completion;
+    localUser.headline = user.headline;
+    localUser.about = user.about;
+    localUser.profileStatus = user.profileStatus;
+    localUser.activities = {
+      game: user.activities?.game ?? localUser.activities.game,
+      chat: user.activities?.chat ?? localUser.activities.chat,
+      invitations: user.activities?.invitations ?? localUser.activities.invitations,
+      events: user.activities?.events ?? localUser.activities.events,
+      hosting: user.activities?.hosting ?? localUser.activities.hosting
+    };
+
+    const explicitImages = (user.images ?? [])
+      .map(image => image?.trim() ?? '')
+      .filter(image => image.length > 0)
+      .slice(0, 8);
+    localUser.images = [...explicitImages];
+    const slots = this.createEmptyImageSlots();
+    explicitImages.forEach((url, index) => {
+      slots[index] = url;
+    });
+    this.profileImageSlotsByUser[user.id] = slots;
   }
 
   private syncProfileFormFromActiveUser(): void {
