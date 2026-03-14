@@ -1,29 +1,6 @@
 <app-navigator-avatar></app-navigator-avatar>
 
-<app-navigator-menu
-  [open]="showUserMenu"
-  [settingsOpen]="showUserSettingsMenu"
-  [activeUser]="activeUser"
-  [featuredImagePreview]="featuredImagePreview"
-  [userBadgeCount]="userBadgeCount"
-  [profileCompletionPercent]="profileCompletionPercent"
-  [activeHostTier]="activeHostTier"
-  [hostImpressionsBadge]="hostImpressionsBadge"
-  [activeMemberTrait]="activeMemberTrait"
-  [memberImpressionsBadge]="memberImpressionsBadge"
-  [memberImpressionTitle]="memberImpressionTitle"
-  [gameBadge]="gameBadge"
-  [chatBadge]="chatBadge"
-  [invitationsBadge]="invitationsBadge"
-  [eventsBadge]="eventsBadge"
-  [hostingBadge]="hostingBadge"
-  [assetTicketsBadge]="assetTicketsBadge"
-  [eventFeedbackBadge]="eventFeedbackBadge"
-  [bindings]="bindings()"
-  (closeMenu)="closeUserMenu()"
-  (toggleSettingsMenu)="toggleUserSettingsMenu()"
-  (closeSettingsMenu)="closeUserSettingsMenu()"
-></app-navigator-menu>
+<app-navigator-menu></app-navigator-menu>
 
 <ng-container *ngIf="activitiesPopupComponent() as activitiesComponent">
   <ng-container *ngComponentOutlet="activitiesComponent"></ng-container>

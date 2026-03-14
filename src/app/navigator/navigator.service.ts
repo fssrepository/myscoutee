@@ -1,4 +1,4 @@
-import { Injectable, effect, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { AppContext, SessionService, UsersService, type UserDto } from '../shared/core';
 
 export interface NavigatorActiveUser {
@@ -57,6 +57,15 @@ export interface NavigatorBindings {
   openLogoutConfirm(): void;
 }
 
+const DEFAULT_NAVIGATOR_ACTIVE_USER: NavigatorActiveUser = {
+  initials: '',
+  gender: 'woman',
+  name: '',
+  age: 0,
+  city: '',
+  profileStatus: 'public'
+};
+
 @Injectable({
   providedIn: 'root'
 })
@@ -75,6 +84,35 @@ export class NavigatorService {
   readonly hydratedUser = this.hydratedUserRef.asReadonly();
   readonly menuOpen = this.menuOpenRef.asReadonly();
   readonly settingsMenuOpen = this.settingsMenuOpenRef.asReadonly();
+  readonly activeUser = computed(() => {
+    const hydratedUser = this.hydratedUserRef();
+    if (hydratedUser) {
+      return this.toNavigatorActiveUser(hydratedUser);
+    }
+    return this.bindingsRef()?.activeUser() ?? DEFAULT_NAVIGATOR_ACTIVE_USER;
+  });
+  readonly featuredImagePreview = computed(() => {
+    const hydratedUser = this.hydratedUserRef();
+    const hydratedImage = hydratedUser?.images?.find(image => image.trim().length > 0) ?? null;
+    if (hydratedImage) {
+      return hydratedImage;
+    }
+    return this.bindingsRef()?.featuredImagePreview() ?? null;
+  });
+  readonly userBadgeCount = computed(() => this.bindingsRef()?.userBadgeCount() ?? 0);
+  readonly profileCompletionPercent = computed(() => this.bindingsRef()?.profileCompletionPercent() ?? 0);
+  readonly activeHostTier = computed(() => this.bindingsRef()?.activeHostTier() ?? '');
+  readonly hostImpressionsBadge = computed(() => this.bindingsRef()?.hostImpressionsBadge() ?? 0);
+  readonly activeMemberTrait = computed(() => this.bindingsRef()?.activeMemberTrait() ?? '');
+  readonly memberImpressionsBadge = computed(() => this.bindingsRef()?.memberImpressionsBadge() ?? 0);
+  readonly memberImpressionTitle = computed(() => this.bindingsRef()?.memberImpressionTitle() ?? '');
+  readonly gameBadge = computed(() => this.bindingsRef()?.gameBadge() ?? 0);
+  readonly chatBadge = computed(() => this.bindingsRef()?.chatBadge() ?? 0);
+  readonly invitationsBadge = computed(() => this.bindingsRef()?.invitationsBadge() ?? 0);
+  readonly eventsBadge = computed(() => this.bindingsRef()?.eventsBadge() ?? 0);
+  readonly hostingBadge = computed(() => this.bindingsRef()?.hostingBadge() ?? 0);
+  readonly assetTicketsBadge = computed(() => this.bindingsRef()?.assetTicketsBadge() ?? 0);
+  readonly eventFeedbackBadge = computed(() => this.bindingsRef()?.eventFeedbackBadge() ?? 0);
 
   constructor() {
     effect(() => {
@@ -205,6 +243,17 @@ export class NavigatorService {
             member: user.impressions.member ? { ...user.impressions.member } : undefined
           }
         : undefined
+    };
+  }
+
+  private toNavigatorActiveUser(user: UserDto): NavigatorActiveUser {
+    return {
+      initials: (user.initials ?? '').trim(),
+      gender: user.gender === 'man' ? 'man' : 'woman',
+      name: (user.name ?? '').trim(),
+      age: Number.isFinite(user.age) ? Math.max(0, Math.trunc(Number(user.age))) : 0,
+      city: (user.city ?? '').trim(),
+      profileStatus: user.profileStatus ?? 'public'
     };
   }
 }

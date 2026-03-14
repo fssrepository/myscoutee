@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, HostListener, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { NavigatorActiveUser, NavigatorBindings } from '../../navigator.service';
+import { NavigatorActiveUser, NavigatorBindings, NavigatorService } from '../../navigator.service';
 
 @Component({
   selector: 'app-navigator-menu',
@@ -11,53 +11,115 @@ import { NavigatorActiveUser, NavigatorBindings } from '../../navigator.service'
   styleUrl: './navigator-menu.component.scss'
 })
 export class NavigatorMenuComponent {
-  @Input() open = false;
-  @Input() settingsOpen = false;
-  @Input() activeUser: NavigatorActiveUser = {
-    initials: '',
-    gender: 'woman',
-    name: '',
-    age: 0,
-    city: '',
-    profileStatus: 'public'
-  };
-  @Input() featuredImagePreview: string | null = null;
-  @Input() userBadgeCount = 0;
-  @Input() profileCompletionPercent = 0;
-  @Input() activeHostTier = '';
-  @Input() hostImpressionsBadge = 0;
-  @Input() activeMemberTrait = '';
-  @Input() memberImpressionsBadge = 0;
-  @Input() memberImpressionTitle = '';
-  @Input() gameBadge = 0;
-  @Input() chatBadge = 0;
-  @Input() invitationsBadge = 0;
-  @Input() eventsBadge = 0;
-  @Input() hostingBadge = 0;
-  @Input() assetTicketsBadge = 0;
-  @Input() eventFeedbackBadge = 0;
-  @Input() bindings: NavigatorBindings | null = null;
+  private readonly navigatorService = inject(NavigatorService);
 
-  @Output() readonly closeMenu = new EventEmitter<void>();
-  @Output() readonly toggleSettingsMenu = new EventEmitter<void>();
-  @Output() readonly closeSettingsMenu = new EventEmitter<void>();
+  protected get open(): boolean {
+    return this.navigatorService.isMenuOpen();
+  }
+
+  protected get settingsOpen(): boolean {
+    return this.navigatorService.isSettingsMenuOpen();
+  }
+
+  protected get activeUser(): NavigatorActiveUser {
+    return this.navigatorService.activeUser();
+  }
+
+  protected get featuredImagePreview(): string | null {
+    return this.navigatorService.featuredImagePreview();
+  }
+
+  protected get userBadgeCount(): number {
+    return this.navigatorService.userBadgeCount();
+  }
+
+  protected get profileCompletionPercent(): number {
+    return this.navigatorService.profileCompletionPercent();
+  }
+
+  protected get activeHostTier(): string {
+    return this.navigatorService.activeHostTier();
+  }
+
+  protected get hostImpressionsBadge(): number {
+    return this.navigatorService.hostImpressionsBadge();
+  }
+
+  protected get activeMemberTrait(): string {
+    return this.navigatorService.activeMemberTrait();
+  }
+
+  protected get memberImpressionsBadge(): number {
+    return this.navigatorService.memberImpressionsBadge();
+  }
+
+  protected get memberImpressionTitle(): string {
+    return this.navigatorService.memberImpressionTitle();
+  }
+
+  protected get gameBadge(): number {
+    return this.navigatorService.gameBadge();
+  }
+
+  protected get chatBadge(): number {
+    return this.navigatorService.chatBadge();
+  }
+
+  protected get invitationsBadge(): number {
+    return this.navigatorService.invitationsBadge();
+  }
+
+  protected get eventsBadge(): number {
+    return this.navigatorService.eventsBadge();
+  }
+
+  protected get hostingBadge(): number {
+    return this.navigatorService.hostingBadge();
+  }
+
+  protected get assetTicketsBadge(): number {
+    return this.navigatorService.assetTicketsBadge();
+  }
+
+  protected get eventFeedbackBadge(): number {
+    return this.navigatorService.eventFeedbackBadge();
+  }
+
+  protected get bindings(): NavigatorBindings | null {
+    return this.navigatorService.bindings();
+  }
+
+  @HostListener('document:click', ['$event'])
+  protected onDocumentClick(event: MouseEvent): void {
+    if (!this.navigatorService.isSettingsMenuOpen()) {
+      return;
+    }
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    if (target.closest('.user-settings-menu') || target.closest('.user-menu-settings-btn')) {
+      return;
+    }
+    this.onCloseSettingsMenu();
+  }
 
   protected onCloseMenu(): void {
-    this.closeMenu.emit();
+    this.navigatorService.closeMenu();
   }
 
   protected onToggleSettingsMenu(event: MouseEvent): void {
     event.stopPropagation();
-    this.toggleSettingsMenu.emit();
+    this.navigatorService.toggleSettingsMenu();
   }
 
   protected onCloseSettingsMenu(): void {
-    this.closeSettingsMenu.emit();
+    this.navigatorService.closeSettingsMenu();
   }
 
   protected onSettingsAction(action: 'help' | 'send-feedback' | 'gdpr' | 'delete-account' | 'logout', event?: Event): void {
     event?.stopPropagation();
-    this.closeSettingsMenu.emit();
+    this.navigatorService.closeSettingsMenu();
     switch (action) {
       case 'help':
         this.bindings?.openHelpPopup();
