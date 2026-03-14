@@ -50,12 +50,12 @@ import {
 } from './shared/demo-data';
 import { GDPR_CONTENT } from './shared/gdpr-data';
 import { LazyBgImageDirective } from './shared/lazy-bg-image.directive';
+import { NavigatorBindings, NavigatorService } from './navigator';
 import { AppDemoGenerators } from './shared/app-demo-generators';
 import { AppUtils } from './shared/app-utils';
 import { AppCalendarHelpers } from './shared/app-calendar-helpers';
 import { APP_STATIC_DATA } from './shared/app-static-data';
 import type * as AppTypes from './shared/app-types';
-import { UserMenuShellService } from './shared/user-menu-shell.service';
 
 @Injectable()
 class YearMonthDayDateAdapter extends NativeDateAdapter {
@@ -158,7 +158,7 @@ export class App {
   private readonly appCtx = inject(AppContext);
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly userMenuShellService = inject(UserMenuShellService);
+  private readonly navigatorService = inject(NavigatorService);
 
   protected readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
   protected readonly assetTicketBridge: AssetTicketBridge = {
@@ -242,6 +242,51 @@ export class App {
     isActivityInviteFriendSelected: (userId) => this.isActivityInviteFriendSelected(userId),
     activityInviteMetLabel: (entry) => this.activityInviteMetLabel(entry)
   };
+  private readonly navigatorBindings: NavigatorBindings = {
+    activeUser: () => this.activeUser,
+    featuredImagePreview: () => this.featuredImagePreview,
+    userBadgeCount: () => this.userBadgeCount,
+    profileCompletionPercent: () => this.profileCompletionPercent,
+    activeHostTier: () => this.activeHostTier,
+    hostImpressionsBadge: () => this.hostImpressionsBadge,
+    activeMemberTrait: () => this.activeMemberTrait,
+    memberImpressionsBadge: () => this.memberImpressionsBadge,
+    memberImpressionTitle: () => this.memberImpressionTitle,
+    gameBadge: () => this.gameBadge,
+    chatBadge: () => this.chatBadge,
+    invitationsBadge: () => this.invitationsBadge,
+    eventsBadge: () => this.eventsBadge,
+    hostingBadge: () => this.hostingBadge,
+    assetTicketsBadge: () => this.assetTicketsBadge,
+    eventFeedbackBadge: () => this.eventFeedbackBadge,
+    profileStatusClass: (status) => this.profileStatusClass(status as AppTypes.ProfileStatus),
+    completionBadgeStyle: (percent) => this.completionBadgeStyle(percent),
+    getHostTierToneClass: (tier) => this.getHostTierToneClass(tier),
+    getHostTierColorClass: (tier) => this.getHostTierColorClass(tier),
+    getHostTierIcon: (tier) => this.getHostTierIcon(tier),
+    getTraitToneClass: (trait) => this.getTraitToneClass(trait),
+    getTraitColorClass: (trait) => this.getTraitColorClass(trait),
+    getTraitIcon: (trait) => this.getTraitIcon(trait),
+    openProfileEditor: () => this.openProfileEditor(),
+    openHostImpressions: () => this.openHostImpressions(),
+    openMemberImpressions: () => this.openMemberImpressions(),
+    openRatesShortcut: () => this.openRatesShortcut(),
+    openChatShortcut: () => this.openChatShortcut(),
+    openInvitationShortcut: () => this.openInvitationShortcut(),
+    openEventShortcut: () => this.openEventShortcut(),
+    openHostingShortcut: () => this.openHostingShortcut(),
+    openAssetCarPopup: () => this.openAssetCarPopup(),
+    openAssetAccommodationPopup: () => this.openAssetAccommodationPopup(),
+    openAssetSuppliesPopup: () => this.openAssetSuppliesPopup(),
+    openAssetTicketsPopup: () => this.openAssetTicketsPopup(),
+    openEventFeedbackPopup: (event) => this.openEventFeedbackPopup(event),
+    openReportUserFromFeedback: (event) => this.openReportUserFromFeedback(event),
+    openHelpPopup: () => this.openHelpPopup(),
+    openSendFeedbackPopup: () => this.openSendFeedbackPopup(),
+    openGdprPopup: () => this.openGdprPopup(),
+    openDeleteAccountConfirm: () => this.openDeleteAccountConfirm(),
+    openLogoutConfirm: () => this.openLogoutConfirm()
+  };
   protected readonly profileTopTraits = PROFILE_PERSONALITY_TOP3;
   protected readonly profilePriorityTags = PROFILE_PRIORITY_TAGS;
   protected readonly profilePillars = PROFILE_PILLARS;
@@ -260,8 +305,6 @@ export class App {
   protected readonly beliefsValuesOptionGroups: AppTypes.ValuesOptionGroup[] = APP_STATIC_DATA.beliefsValuesOptionGroups;
   protected readonly interestOptionGroups: AppTypes.InterestOptionGroup[] = APP_STATIC_DATA.interestOptionGroups;
 
-  protected showUserMenu = false;
-  protected showUserSettingsMenu = false;
   protected readonly gdprContent = GDPR_CONTENT;
   protected activePopup: AppTypes.PopupType = null;
   protected stackedPopup: AppTypes.PopupType = null;
@@ -591,7 +634,6 @@ export class App {
   private eventFeedbackTouchStartX: number | null = null;
   private eventFeedbackTouchStartY: number | null = null;
   private eventFeedbackSlideAnimationTimer: ReturnType<typeof setTimeout> | null = null;
-  private suppressUserMenuOutsideCloseUntilMs = 0;
   private readonly submittedEventFeedbackByUser: Record<string, Record<string, true>> = {};
   private readonly submittedEventFeedbackAnswersByUser: Record<string, Record<string, AppTypes.SubmittedEventFeedbackAnswer>> = {};
   private readonly submittedEventFeedbackEventsByUser: Record<string, Record<string, string>> = {};
@@ -665,6 +707,7 @@ export class App {
   ) {
     this.assetPopupService.registerHost(this.assetPopupHost);
     this.assetPopupService.registerTicketBridge(this.assetTicketBridge);
+    this.navigatorService.registerBindings(this.navigatorBindings);
     this.syncAssetPopupVisibility();
     this.normalizeAssetMediaLinks();
     this.initializeProfileImageSlots();
@@ -682,19 +725,6 @@ export class App {
       }
       this.syncProfileFormFromActiveUser();
       this.activateUserRealtimeLongPoll(this.activeUserId);
-      this.cdr.markForCheck();
-    });
-
-    effect(() => {
-      const shouldOpenUserMenu = this.userMenuShellService.menuOpen();
-      if (this.showUserMenu === shouldOpenUserMenu) {
-        return;
-      }
-      this.showUserMenu = shouldOpenUserMenu;
-      if (!shouldOpenUserMenu) {
-        this.showUserSettingsMenu = false;
-        this.suppressUserMenuOutsideCloseUntilMs = 0;
-      }
       this.cdr.markForCheck();
     });
 
@@ -754,18 +784,8 @@ export class App {
     }
   }
 
-  ngDoCheck(): void {
-    this.userMenuShellService.setAvatarState({
-      initials: this.activeUser.initials,
-      gender: this.activeUser.gender,
-      imageUrl: this.featuredImagePreview,
-      badgeCount: this.userBadgeCount
-    });
-  }
-
   ngOnDestroy(): void {
-    this.userMenuShellService.setMenuOpen(false);
-    this.userMenuShellService.resetAvatarState();
+    this.navigatorService.clearBindings(this.navigatorBindings);
   }
 
   private ensurePaginationTestEvents(minEventsPerUser: number): void {
@@ -976,52 +996,8 @@ export class App {
     return this.generatedRateItemsForUser(this.activeUser.id);
   }
 
-  protected onUserSelect(): void {
-    this.userMenuShellService.toggleMenu();
-  }
-
   protected closeUserMenu(): void {
-    this.showUserMenu = false;
-    this.showUserSettingsMenu = false;
-    this.suppressUserMenuOutsideCloseUntilMs = 0;
-    this.userMenuShellService.setMenuOpen(false);
-  }
-
-  protected toggleUserSettingsMenu(event: MouseEvent): void {
-    event.stopPropagation();
-    this.showUserSettingsMenu = !this.showUserSettingsMenu;
-  }
-
-  protected closeUserSettingsMenu(): void {
-    this.showUserSettingsMenu = false;
-  }
-
-  protected onUserSettingsAction(action: 'help' | 'send-feedback' | 'gdpr' | 'delete-account' | 'logout', event?: Event): void {
-    event?.stopPropagation();
-    switch (action) {
-      case 'help':
-        this.closeUserSettingsMenu();
-        this.openHelpPopup();
-        return;
-      case 'send-feedback':
-        this.closeUserSettingsMenu();
-        this.openSendFeedbackPopup();
-        return;
-      case 'gdpr':
-        this.closeUserSettingsMenu();
-        this.openGdprPopup();
-        return;
-      case 'delete-account':
-        this.closeUserSettingsMenu();
-        this.openDeleteAccountConfirm();
-        return;
-      case 'logout':
-        this.closeUserSettingsMenu();
-        this.openLogoutConfirm();
-        return;
-      default:
-        return;
-    }
+    this.navigatorService.closeMenu();
   }
 
   protected openGdprPopup(): void {
@@ -5255,7 +5231,7 @@ export class App {
     this.syncProfileFormFromActiveUser();
     this.popupReturnTarget = null;
     this.showProfileStatusHeaderPicker = false;
-    this.showUserSettingsMenu = false;
+    this.navigatorService.closeSettingsMenu();
     this.activePopup = 'profileEditor';
   }
 
@@ -5279,9 +5255,6 @@ export class App {
       this.activePopup = this.popupReturnTarget;
       this.popupReturnTarget = null;
       return;
-    }
-    if (this.showUserMenu && (this.activePopup === 'eventFeedback' || this.activePopup === 'reportUser')) {
-      this.suppressUserMenuOutsideCloseUntilMs = Date.now() + 180;
     }
     if (this.activePopup === 'profileEditor') {
       this.commitProfileForm(false);
@@ -5529,9 +5502,7 @@ export class App {
     this.activePopup = null;
     this.stackedPopup = null;
     this.popupReturnTarget = null;
-    this.userMenuShellService.setMenuOpen(false);
-    this.showUserMenu = false;
-    this.showUserSettingsMenu = false;
+    this.navigatorService.closeMenu();
     this.syncAssetPopupVisibility();
     void this.sessionService.logout().finally(() => {
       void this.router.navigate(['/entry']);
@@ -13927,22 +13898,6 @@ export class App {
       this.inlineItemActionMenu = null;
       this.subEventMemberRolePickerUserId = null;
       this.subEventAssetMenuIgnoreCloseUntilMs = 0;
-    }
-    const keepUserMenuOpenForFeedbackFlow =
-      this.showUserMenu &&
-      (this.activePopup === 'eventFeedback' || this.activePopup === 'reportUser');
-    if (this.showUserMenu && Date.now() < this.suppressUserMenuOutsideCloseUntilMs) {
-      this.suppressUserMenuOutsideCloseUntilMs = 0;
-    } else if (
-      this.showUserMenu &&
-      !keepUserMenuOpenForFeedbackFlow &&
-      !target.closest('.user-menu-panel') &&
-      !target.closest('.user-selector-btn-global')
-    ) {
-      this.closeUserMenu();
-    }
-    if (this.showUserSettingsMenu && !target.closest('.user-settings-menu') && !target.closest('.user-menu-settings-btn')) {
-      this.showUserSettingsMenu = false;
     }
     if (
       this.showLanguagePanel &&

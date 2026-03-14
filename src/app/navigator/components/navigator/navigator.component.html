@@ -1,0 +1,51 @@
+<app-navigator-menubar
+  [visible]="showUserMenuButton()"
+  [isLoading]="isUserMenuLoading()"
+  [hasLoadError]="hasUserMenuLoadError()"
+  [isOpen]="userMenuOpen()"
+  [canToggle]="canToggleUserMenu()"
+  [ariaLabel]="userMenuAriaLabel()"
+  [title]="userMenuTitle()"
+  [showLoadRing]="showUserMenuLoadRing()"
+  [ringCircumference]="userMenuRingCircumference"
+  [gender]="activeUser.gender"
+  [initials]="activeUser.initials"
+  [imageUrl]="featuredImagePreview"
+  [badgeCount]="canToggleUserMenu() ? userBadgeCount : 0"
+  (toggleMenu)="toggleUserMenu()"
+></app-navigator-menubar>
+
+<app-navigator-menu
+  [open]="showUserMenu"
+  [settingsOpen]="showUserSettingsMenu"
+  [activeUser]="activeUser"
+  [featuredImagePreview]="featuredImagePreview"
+  [userBadgeCount]="userBadgeCount"
+  [profileCompletionPercent]="profileCompletionPercent"
+  [activeHostTier]="activeHostTier"
+  [hostImpressionsBadge]="hostImpressionsBadge"
+  [activeMemberTrait]="activeMemberTrait"
+  [memberImpressionsBadge]="memberImpressionsBadge"
+  [memberImpressionTitle]="memberImpressionTitle"
+  [gameBadge]="gameBadge"
+  [chatBadge]="chatBadge"
+  [invitationsBadge]="invitationsBadge"
+  [eventsBadge]="eventsBadge"
+  [hostingBadge]="hostingBadge"
+  [assetTicketsBadge]="assetTicketsBadge"
+  [eventFeedbackBadge]="eventFeedbackBadge"
+  [bindings]="bindings()"
+  (closeMenu)="closeUserMenu()"
+  (toggleSettingsMenu)="toggleUserSettingsMenu()"
+  (closeSettingsMenu)="closeUserSettingsMenu()"
+></app-navigator-menu>
+
+<ng-container *ngIf="activitiesPopupComponent() as activitiesComponent">
+  <ng-container *ngComponentOutlet="activitiesComponent"></ng-container>
+</ng-container>
+<ng-container *ngIf="assetPopupComponent() as assetComponent">
+  <ng-container *ngComponentOutlet="assetComponent"></ng-container>
+</ng-container>
+<ng-container *ngIf="eventEditorPopupComponent() as popupComponent">
+  <ng-container *ngComponentOutlet="popupComponent"></ng-container>
+</ng-container>
