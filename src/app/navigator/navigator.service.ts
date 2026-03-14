@@ -8,8 +8,6 @@ export interface NavigatorMenuUiState {
 
 export interface NavigatorBindings {
   syncHydratedUser?(user: UserDto): void;
-  profileStatusClass(status: string): string;
-  completionBadgeStyle(percent: number): Record<string, string> | null;
   getHostTierToneClass(tier: string): string;
   getHostTierColorClass(tier: string): string;
   getHostTierIcon(tier: string): string;

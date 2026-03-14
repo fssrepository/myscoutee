@@ -124,11 +124,26 @@ export class NavigatorMenuComponent {
   }
 
   protected profileStatusClass(status: string): string {
-    return this.bindings?.profileStatusClass(status) ?? '';
+    switch (status) {
+      case 'public':
+        return 'status-public';
+      case 'friends only':
+        return 'status-friends';
+      case 'host only':
+        return 'status-host';
+      default:
+        return 'status-inactive';
+    }
   }
 
   protected completionBadgeStyle(percent: number): Record<string, string> | null {
-    return this.bindings?.completionBadgeStyle(percent) ?? null;
+    const clamped = Math.max(0, Math.min(100, Number.isFinite(percent) ? percent : 0));
+    const hue = Math.round((clamped / 100) * 120);
+    return {
+      background: `hsl(${hue}, 82%, 84%)`,
+      borderColor: `hsl(${hue}, 70%, 58%)`,
+      color: `hsl(${hue}, 74%, 24%)`
+    };
   }
 
   protected getHostTierToneClass(tier: string): string {

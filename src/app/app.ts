@@ -258,8 +258,6 @@ export class App {
       this.activateUserRealtimeLongPoll(this.activeUserId);
       this.cdr.markForCheck();
     },
-    profileStatusClass: (status) => this.profileStatusClass(status as AppTypes.ProfileStatus),
-    completionBadgeStyle: (percent) => this.completionBadgeStyle(percent),
     getHostTierToneClass: (tier) => this.getHostTierToneClass(tier),
     getHostTierColorClass: (tier) => this.getHostTierColorClass(tier),
     getHostTierIcon: (tier) => this.getHostTierIcon(tier),
@@ -5747,29 +5745,6 @@ export class App {
 
   private interestAllOptions(): string[] {
     return this.interestOptionGroups.flatMap(group => group.options);
-  }
-
-  protected profileStatusClass(value: AppTypes.ProfileStatus = this.activeUser.profileStatus): string {
-    switch (value) {
-      case 'public':
-        return 'status-public';
-      case 'friends only':
-        return 'status-friends';
-      case 'host only':
-        return 'status-host';
-      default:
-        return 'status-inactive';
-    }
-  }
-
-  protected completionBadgeStyle(value: number): Record<string, string> {
-    const clamped = Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
-    const hue = Math.round((clamped / 100) * 120);
-    return {
-      background: `hsl(${hue}, 82%, 84%)`,
-      borderColor: `hsl(${hue}, 70%, 58%)`,
-      color: `hsl(${hue}, 74%, 24%)`
-    };
   }
 
   protected get isMobileView(): boolean {
