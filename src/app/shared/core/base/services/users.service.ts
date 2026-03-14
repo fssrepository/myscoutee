@@ -107,6 +107,10 @@ export class UsersService {
       const resolvedUserId = normalizedUserId || response.user.id.trim();
       this.appCtx.setUserProfile(response.user);
       if (resolvedUserId) {
+        this.appCtx.clearUserCounterOverrides(resolvedUserId);
+        if (response.counterOverrides) {
+          this.appCtx.patchUserCounterOverrides(resolvedUserId, response.counterOverrides);
+        }
         if (response.filterPreferences) {
           this.appCtx.setUserFilterPreferences(resolvedUserId, response.filterPreferences);
         } else {

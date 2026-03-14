@@ -7,6 +7,7 @@ import type {
   UserFeedbackSubmitRequestDto,
   UserByIdQueryResponse,
   UserImpressionsDto,
+  UserMenuCountersDto,
   UserRealtimeCountersDto,
   UserRealtimeLongPollResponseDto,
   UserImpressionsSectionDto,
@@ -54,6 +55,7 @@ export class HttpUsersService implements UserService {
       type HttpUserByIdResponse = UserDto & {
         filterCount?: number;
         filterPreferences?: UserGameFilterPreferencesDto | null;
+        counterOverrides?: UserMenuCountersDto | null;
       };
       const me = await this.http
         .get<HttpUserByIdResponse | null>(`${this.apiBaseUrl}/auth/me`)
@@ -61,10 +63,12 @@ export class HttpUsersService implements UserService {
       if (!me) {
         return { user: null };
       }
+      const user = this.cloneUser(me);
       return {
-        user: this.cloneUser(me),
+        user,
         filterCount: Number.isFinite(me.filterCount) ? Math.max(0, Math.trunc(Number(me.filterCount))) : undefined,
-        filterPreferences: me.filterPreferences ?? null
+        filterPreferences: me.filterPreferences ?? null,
+        counterOverrides: this.buildInitialMenuCounterOverrides(user, me.counterOverrides)
       };
     } catch {
       return { user: null };
@@ -286,6 +290,34 @@ export class HttpUsersService implements UserService {
       host: this.cloneImpressionsSection(impressions.host),
       member: this.cloneImpressionsSection(impressions.member)
     };
+  }
+
+  private buildInitialMenuCounterOverrides(
+    user: UserDto,
+    overrides?: UserMenuCountersDto | null
+  ): UserMenuCountersDto {
+    return {
+      game: this.normalizeInitialCounterValue(overrides?.game, user.activities?.game),
+      chat: this.normalizeInitialCounterValue(overrides?.chat, user.activities?.chat),
+      invitations: this.normalizeInitialCounterValue(overrides?.invitations, user.activities?.invitations),
+      events: this.normalizeInitialCounterValue(overrides?.events, user.activities?.events),
+      hosting: this.normalizeInitialCounterValue(overrides?.hosting, user.activities?.hosting),
+      tickets: this.normalizeInitialCounterValue(
+        overrides?.tickets,
+        Math.max(0, Math.trunc((user.activities.events + user.activities.hosting) / 2))
+      ),
+      feedback: this.normalizeInitialCounterValue(overrides?.feedback, 0)
+    };
+  }
+
+  private normalizeInitialCounterValue(primaryValue: unknown, fallbackValue: unknown): number {
+    if (Number.isFinite(primaryValue)) {
+      return Math.max(0, Math.trunc(Number(primaryValue)));
+    }
+    if (Number.isFinite(fallbackValue)) {
+      return Math.max(0, Math.trunc(Number(fallbackValue)));
+    }
+    return 0;
   }
 
   private async buildFallbackLongPollSnapshot(

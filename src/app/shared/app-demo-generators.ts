@@ -382,6 +382,33 @@ export class AppDemoGenerators {
     return total;
   }
 
+  static syntheticPendingEventFeedbackCount(
+    existingCount: number,
+    minEventsPerUser: number,
+    nowMs: number,
+    unlockDelayMs: number
+  ): number {
+    const normalizedExistingCount = Math.max(0, Math.trunc(existingCount));
+    const normalizedMinimum = Math.max(0, Math.trunc(minEventsPerUser));
+    const normalizedNowMs = Number.isFinite(nowMs) ? Math.trunc(nowMs) : Date.now();
+    const normalizedUnlockDelayMs = Math.max(0, Math.trunc(unlockDelayMs));
+    const needed = Math.max(0, normalizedMinimum - normalizedExistingCount);
+    let total = 0;
+
+    for (let index = 0; index < needed; index += 1) {
+      const sequence = index + 1;
+      if ((sequence % 4) === 0) {
+        continue;
+      }
+      const startMs = new Date(2026, 2, 1 + (index * 2), 10 + (index % 6), (index % 2) * 30, 0, 0).getTime();
+      if (normalizedNowMs >= startMs + normalizedUnlockDelayMs) {
+        total += 1;
+      }
+    }
+
+    return total;
+  }
+
   static seededMetric(
     user: Pick<DemoUser, 'id' | 'name' | 'city'>,
     offset: number,

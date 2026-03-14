@@ -17,7 +17,7 @@ export interface UserImpressionsDto {
   member?: UserImpressionsSectionDto;
 }
 
-export interface UserRealtimeCountersDto {
+export interface UserMenuCountersDto {
   game?: number;
   chat?: number;
   invitations?: number;
@@ -25,6 +25,9 @@ export interface UserRealtimeCountersDto {
   hosting?: number;
   tickets?: number;
   feedback?: number;
+}
+
+export interface UserRealtimeCountersDto extends UserMenuCountersDto {
   impressionsHostChanged?: boolean;
   impressionsMemberChanged?: boolean;
 }
@@ -83,6 +86,7 @@ export interface UserByIdQueryResponse {
   user: UserDto | null;
   filterCount?: number;
   filterPreferences?: UserGameFilterPreferencesDto | null;
+  counterOverrides?: UserMenuCountersDto | null;
 }
 
 export interface UserFeedbackSubmitRequestDto {

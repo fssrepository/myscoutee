@@ -3,12 +3,19 @@ import { Injectable, inject } from '@angular/core';
 import { AppDemoGenerators } from '../../../app-demo-generators';
 import { DemoUsersRepository } from '../repositories/users.repository';
 import { resolveAdditionalDelayMsForRoute } from '../config';
+import {
+  DEMO_EVENT_DATES_BY_ID,
+  DEMO_EVENTS_BY_USER,
+  DEMO_EVENT_TICKETING_BY_ID,
+  DEMO_HOSTING_BY_USER
+} from '../../../demo-data';
 import type {
   UserByIdQueryResponse,
   UserFeedbackSubmitRequestDto,
   UserDto,
   UserImpressionsDto,
   UserImpressionsSectionDto,
+  UserMenuCountersDto,
   UserReportUserSubmitRequestDto,
   UserRealtimeLongPollResponseDto,
   UserRealtimeCountersDto,
@@ -29,6 +36,8 @@ export class DemoUsersService implements UserService {
   private static readonly USER_REPORT_USER_ROUTE = '/auth/me/report-user';
   private static readonly USER_REALTIME_LONG_POLL_ROUTE = '/auth/me/realtime/long-poll';
   private static readonly USER_REALTIME_LONG_POLL_SIMULATION_STEP_MS = 30000;
+  private static readonly INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS = 2 * 60 * 60 * 1000;
+  private static readonly INITIAL_MIN_DEMO_EVENT_ITEMS_PER_USER = 30;
   private static readonly MAX_PROFILE_IMAGE_SLOTS = 8;
   private readonly usersRepository = inject(DemoUsersRepository);
   private readonly realtimeCursorByUserId: Record<string, number> = {};
@@ -68,6 +77,7 @@ export class DemoUsersService implements UserService {
     return {
       user,
       filterCount,
+      counterOverrides: user ? this.buildInitialMenuCounterOverrides(user) : null,
       filterPreferences: user
         ? (persistedFilterPreferences ?? this.buildDefaultFilterPreferences(user))
         : null
@@ -253,6 +263,47 @@ export class DemoUsersService implements UserService {
     };
   }
 
+  private buildInitialMenuCounterOverrides(user: UserDto): UserMenuCountersDto {
+    return {
+      game: this.normalizeCounterValue(user.activities?.game),
+      chat: this.normalizeCounterValue(user.activities?.chat),
+      invitations: this.normalizeCounterValue(user.activities?.invitations),
+      events: this.normalizeCounterValue(user.activities?.events),
+      hosting: this.normalizeCounterValue(user.activities?.hosting),
+      tickets: this.buildInitialTicketCount(user.id),
+      feedback: this.buildInitialEventFeedbackCount(user.id)
+    };
+  }
+
+  private buildInitialTicketCount(userId: string): number {
+    const eventItems = DEMO_EVENTS_BY_USER[userId] ?? [];
+    const hostingItems = DEMO_HOSTING_BY_USER[userId] ?? [];
+    return (
+      eventItems.filter(item => DEMO_EVENT_TICKETING_BY_ID[item.id] === true).length +
+      hostingItems.filter(item => DEMO_EVENT_TICKETING_BY_ID[item.id] === true).length
+    );
+  }
+
+  private buildInitialEventFeedbackCount(userId: string): number {
+    const eventItems = DEMO_EVENTS_BY_USER[userId] ?? [];
+    const nowMs = Date.now();
+    const basePendingCount = eventItems.filter(item => {
+      if (item.isAdmin) {
+        return false;
+      }
+      const startMs = new Date(DEMO_EVENT_DATES_BY_ID[item.id] ?? '').getTime();
+      return Number.isFinite(startMs)
+        && nowMs >= startMs + DemoUsersService.INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS;
+    }).length;
+
+    return basePendingCount + AppDemoGenerators.syntheticPendingEventFeedbackCount(
+      eventItems.length,
+      DemoUsersService.INITIAL_MIN_DEMO_EVENT_ITEMS_PER_USER,
+      nowMs,
+      DemoUsersService.INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS
+    );
+  }
+
   private async waitForRouteDelay(route: string, signal?: AbortSignal): Promise<void> {
     const additionalDelayMs = resolveAdditionalDelayMsForRoute(route);
     if (additionalDelayMs <= 0) {
@@ -295,6 +346,13 @@ export class DemoUsersService implements UserService {
       return null;
     }
     return Math.max(40, Math.min(250, parsed));
+  }
+
+  private normalizeCounterValue(value: unknown): number {
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+    return Math.max(0, Math.trunc(Number(value)));
   }
 
   private withResolvedImpressions(user: UserDto): UserDto {
