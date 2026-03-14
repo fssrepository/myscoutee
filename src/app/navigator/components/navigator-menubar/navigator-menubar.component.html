@@ -1,19 +1,19 @@
-<div class="navigator-trigger-rail" *ngIf="visible">
+<div class="navigator-trigger-rail" *ngIf="visible()">
   <div class="navigator-trigger-rail-inner">
     <button
       mat-icon-button
       type="button"
       class="user-selector-btn-global"
-      [class.is-loading]="isLoading"
-      [class.is-error]="hasLoadError"
-      [class.is-open]="isOpen"
-      [disabled]="!canToggle"
-      [attr.aria-label]="ariaLabel"
-      [attr.aria-busy]="isLoading"
-      [title]="title"
+      [class.is-loading]="isLoading()"
+      [class.is-error]="hasLoadError()"
+      [class.is-open]="isOpen()"
+      [disabled]="!canToggle()"
+      [attr.aria-label]="ariaLabel()"
+      [attr.aria-busy]="isLoading()"
+      [title]="title()"
       (click)="onToggleMenu()"
     >
-      <span class="user-selector-load-ring" *ngIf="showLoadRing" aria-hidden="true">
+      <span class="user-selector-load-ring" *ngIf="showLoadRing()" aria-hidden="true">
         <svg viewBox="0 0 58 58" class="user-selector-load-ring-svg">
           <defs>
             <linearGradient id="navigator-load-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -28,13 +28,13 @@
           <circle class="user-selector-load-ring-track" cx="29" cy="29" r="26"></circle>
           <circle
             class="user-selector-load-ring-progress"
-            [class.is-loading]="isLoading && !hasLoadError"
-            [class.is-overdue]="hasLoadError"
+            [class.is-loading]="isLoading() && !hasLoadError()"
+            [class.is-overdue]="hasLoadError()"
             cx="29"
             cy="29"
             r="26"
             [attr.stroke-dasharray]="ringCircumference"
-            [attr.stroke-dashoffset]="hasLoadError ? 0 : ringCircumference"
+            [attr.stroke-dashoffset]="hasLoadError() ? 0 : ringCircumference"
           ></circle>
         </svg>
       </span>
@@ -43,14 +43,14 @@
         [ngClass]="avatarClassList()"
         [style.backgroundImage]="avatarBackgroundImage()"
       >
-        <mat-icon *ngIf="isLoading">schedule</mat-icon>
-        <mat-icon *ngIf="!isLoading && hasLoadError">person_off</mat-icon>
-        <ng-container *ngIf="canToggle && !imageUrl">
-          {{ initials }}
+        <mat-icon *ngIf="isLoading()">schedule</mat-icon>
+        <mat-icon *ngIf="!isLoading() && hasLoadError()">person_off</mat-icon>
+        <ng-container *ngIf="canToggle() && !imageUrl()">
+          {{ activeUser().initials }}
         </ng-container>
       </span>
-      <span class="badge-dot" *ngIf="canToggle && badgeCount > 0">
-        {{ badgeCount }}
+      <span class="badge-dot" *ngIf="canToggle() && badgeCount() > 0">
+        {{ badgeCount() }}
       </span>
     </button>
   </div>

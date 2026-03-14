@@ -246,6 +246,15 @@ export class App {
     activeUser: () => this.activeUser,
     featuredImagePreview: () => this.featuredImagePreview,
     userBadgeCount: () => this.userBadgeCount,
+    syncHydratedUser: (user) => {
+      if (!this.users.some(candidate => candidate.id === user.id)) {
+        return;
+      }
+      this.activeUserId = user.id;
+      this.syncProfileFormFromActiveUser();
+      this.activateUserRealtimeLongPoll(this.activeUserId);
+      this.cdr.markForCheck();
+    },
     profileCompletionPercent: () => this.profileCompletionPercent,
     activeHostTier: () => this.activeHostTier,
     hostImpressionsBadge: () => this.hostImpressionsBadge,
@@ -716,17 +725,6 @@ export class App {
     this.initializeProfileDetailForms();
     this.syncProfileFormFromActiveUser();
     this.appCtx.setActiveUserId(this.activeUserId);
-    const bootstrapUserId = this.activeUserId;
-    void this.hydrateUserAfterLogin(bootstrapUserId).finally(() => {
-      const isDemoSession = this.sessionService.currentSession()?.kind === 'demo';
-      if (isDemoSession && this.activeUserId !== bootstrapUserId) {
-        this.cdr.markForCheck();
-        return;
-      }
-      this.syncProfileFormFromActiveUser();
-      this.activateUserRealtimeLongPoll(this.activeUserId);
-      this.cdr.markForCheck();
-    });
 
     effect(() => {
       const request = this.activitiesContext.activitiesNavigationRequest();
@@ -786,6 +784,7 @@ export class App {
 
   ngOnDestroy(): void {
     this.navigatorService.clearBindings(this.navigatorBindings);
+    this.navigatorService.clearHydratedUser();
   }
 
   private ensurePaginationTestEvents(minEventsPerUser: number): void {
@@ -5503,95 +5502,12 @@ export class App {
     this.stackedPopup = null;
     this.popupReturnTarget = null;
     this.navigatorService.closeMenu();
+    this.navigatorService.clearHydratedUser();
     this.syncAssetPopupVisibility();
     void this.sessionService.logout().finally(() => {
       void this.router.navigate(['/entry']);
       this.cdr.markForCheck();
     });
-  }
-
-  private async hydrateUserAfterLogin(userId?: string): Promise<void> {
-    const isFirebaseSession = this.sessionService.currentSession()?.kind === 'firebase';
-    const loadedUser = await this.usersService.loadUserById(isFirebaseSession ? undefined : userId);
-    if (loadedUser) {
-      if (
-        isFirebaseSession &&
-        this.users.some(candidate => candidate.id === loadedUser.id)
-      ) {
-        this.activeUserId = loadedUser.id;
-        this.appCtx.setActiveUserId(loadedUser.id);
-      }
-      this.applyLoadedUserDetails(loadedUser);
-    }
-  }
-
-  private applyLoadedUserDetails(user: UserDto): void {
-    const current = this.users.find(candidate => candidate.id === user.id);
-    if (!current) {
-      return;
-    }
-
-    current.name = (user.name ?? '').trim() || current.name;
-    current.birthday = (user.birthday ?? '').trim() || current.birthday;
-    if (Number.isFinite(user.age)) {
-      current.age = Math.max(18, Math.min(120, Math.trunc(Number(user.age))));
-    }
-    current.city = (user.city ?? '').trim() || current.city;
-    current.height = (user.height ?? '').trim() || current.height;
-    current.physique = (user.physique ?? '').trim() || current.physique;
-    current.languages = Array.isArray(user.languages) && user.languages.length > 0
-      ? [...user.languages]
-      : [...current.languages];
-    current.horoscope = (user.horoscope ?? '').trim() || current.horoscope;
-    current.initials = (user.initials ?? '').trim() || current.initials;
-    current.gender = user.gender === 'man' ? 'man' : 'woman';
-    if (Number.isFinite(user.completion)) {
-      current.completion = Math.max(0, Math.min(100, Math.trunc(Number(user.completion))));
-    }
-    current.statusText = (user.statusText ?? '').trim() || current.statusText;
-    current.hostTier = (user.hostTier ?? '').trim() || current.hostTier;
-    current.traitLabel = (user.traitLabel ?? '').trim() || current.traitLabel;
-    current.headline = (user.headline ?? '').trim() || current.headline;
-    current.about = (user.about ?? '').trim() || current.about;
-    current.profileStatus = user.profileStatus ?? current.profileStatus;
-    if (Array.isArray(user.images)) {
-      current.images = [...user.images];
-    }
-    current.activities = {
-      game: Math.max(0, Math.trunc(Number(user.activities?.game) || current.activities.game)),
-      chat: Math.max(0, Math.trunc(Number(user.activities?.chat) || current.activities.chat)),
-      invitations: Math.max(0, Math.trunc(Number(user.activities?.invitations) || current.activities.invitations)),
-      events: Math.max(0, Math.trunc(Number(user.activities?.events) || current.activities.events)),
-      hosting: Math.max(0, Math.trunc(Number(user.activities?.hosting) || current.activities.hosting))
-    };
-
-    this.syncProfileBasicsIntoDetailRows(current);
-    this.syncLoadedUserImageSlots(current);
-    this.syncLoadedUserImpressions(user.id, user.impressions);
-  }
-
-  private syncLoadedUserImageSlots(user: DemoUser): void {
-    const loadedImages = (user.images ?? []).filter(image => image.trim().length > 0).slice(0, 8);
-    if (loadedImages.length === 0) {
-      return;
-    }
-
-    const slots = this.createEmptyImageSlots();
-    loadedImages.forEach((image, index) => {
-      slots[index] = image;
-    });
-    this.profileImageSlotsByUser[user.id] = slots;
-  }
-
-  private syncLoadedUserImpressions(
-    userId: string,
-    impressions: UserDto['impressions'] | undefined
-  ): void {
-    if (!impressions) {
-      this.appCtx.clearUserImpressions(userId);
-      return;
-    }
-    this.appCtx.setUserImpressions(userId, impressions);
   }
 
   private clearUserImpressionsChangeFlag(userId: string, section: 'host' | 'member'): void {
@@ -14123,7 +14039,11 @@ export class App {
         ...(counterPatch.hosting !== undefined ? { hosting: counterPatch.hosting } : {})
       };
     }
-    this.syncLoadedUserImpressions(userId, snapshot.impressions);
+    if (snapshot.impressions) {
+      this.appCtx.setUserImpressions(userId, snapshot.impressions);
+    } else {
+      this.appCtx.clearUserImpressions(userId);
+    }
     this.applyImpressionsChangeFlags(userId, previousImpressions, snapshot);
     if (hostTopMetricsChanged) {
       this.triggerUserImpressionsVisualPulse(userId, 'hostTop');

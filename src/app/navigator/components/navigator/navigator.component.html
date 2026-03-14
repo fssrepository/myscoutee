@@ -1,19 +1,4 @@
-<app-navigator-menubar
-  [visible]="showUserMenuButton()"
-  [isLoading]="isUserMenuLoading()"
-  [hasLoadError]="hasUserMenuLoadError()"
-  [isOpen]="userMenuOpen()"
-  [canToggle]="canToggleUserMenu()"
-  [ariaLabel]="userMenuAriaLabel()"
-  [title]="userMenuTitle()"
-  [showLoadRing]="showUserMenuLoadRing()"
-  [ringCircumference]="userMenuRingCircumference"
-  [gender]="activeUser.gender"
-  [initials]="activeUser.initials"
-  [imageUrl]="featuredImagePreview"
-  [badgeCount]="canToggleUserMenu() ? userBadgeCount : 0"
-  (toggleMenu)="toggleUserMenu()"
-></app-navigator-menubar>
+<app-navigator-avatar></app-navigator-avatar>
 
 <app-navigator-menu
   [open]="showUserMenu"

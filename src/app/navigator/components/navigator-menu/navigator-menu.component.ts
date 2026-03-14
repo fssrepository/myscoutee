@@ -19,7 +19,7 @@ export class NavigatorMenuComponent {
     name: '',
     age: 0,
     city: '',
-    profileStatus: 'Public'
+    profileStatus: 'public'
   };
   @Input() featuredImagePreview: string | null = null;
   @Input() userBadgeCount = 0;
