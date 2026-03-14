@@ -40,9 +40,13 @@
     height: calc(100vh - 1.2rem);
   }
 
-  .app-popup-panel.popup-panel-profile-editor,
+  .app-popup-panel.popup-panel-profile-editor {
+    width: min(980px, calc(100vw - 1.2rem));
+    height: calc(100vh - 1.2rem);
+  }
+
   .app-popup-panel.popup-panel-profile-selector {
-    width: min(1240px, calc(100vw - 1.2rem));
+    width: min(980px, calc(100vw - 1.2rem));
     height: calc(100vh - 1.2rem);
   }
 

@@ -653,6 +653,16 @@
                 <h3>{{ editingExperienceId ? 'Edit Experience' : 'Add Experience' }}</h3>
               </div>
               <div class="experience-form-header-controls popup-surface-header-controls">
+                <button
+                  type="button"
+                  class="popup-header-add-btn subevent-leaderboard-save-btn"
+                  [class.form-save-invalid]="!canSaveExperienceEntry"
+                  [disabled]="!canSaveExperienceEntry"
+                  (click)="saveExperienceEntry()"
+                  aria-label="Save experience"
+                >
+                  <mat-icon>done</mat-icon>
+                </button>
                 <button type="button" class="experience-form-close-btn popup-surface-close-btn" (click)="closeExperienceForm()" aria-label="Close add experience">
                   <mat-icon>close</mat-icon>
                 </button>
@@ -725,10 +735,6 @@
                   <textarea rows="4" [(ngModel)]="experienceForm.description"></textarea>
                 </label>
               </div>
-              <div class="popup-actions experience-form-actions popup-surface-actions">
-                <button type="button" class="link-btn neutral-btn" (click)="closeExperienceForm()">Cancel</button>
-                <button type="button" class="link-btn primary-btn" (click)="saveExperienceEntry()">Save</button>
-              </div>
             </section>
           </div>
         </section>
@@ -757,7 +763,7 @@
       <button
         *ngIf="mobileProfileSelectorSheet.context.kind === 'language'"
         type="button"
-        class="mobile-profile-selector-close-btn"
+        class="mobile-profile-selector-close-btn popup-surface-close-btn"
         (click)="closeMobileProfileSelectorSheet(); $event.stopPropagation()"
         aria-label="Close language popup"
       >

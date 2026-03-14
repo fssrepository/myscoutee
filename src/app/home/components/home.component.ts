@@ -9,7 +9,8 @@ import {
   GameService,
   USER_BY_ID_LOAD_CONTEXT_KEY,
   USER_GAME_CARDS_LOAD_CONTEXT_KEY,
-  UsersService
+  UsersService,
+  type UserDto
 } from '../../shared/core';
 
 type LocalPopup = 'history' | 'filter' | null;
@@ -510,7 +511,15 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get activeUser(): DemoUser {
-    return this.users.find(user => user.id === this.activeUserId) ?? this.users[0];
+    const localUser = this.users.find(user => user.id === this.activeUserId) ?? this.users[0];
+    if (!localUser) {
+      return this.users[0];
+    }
+    const contextUser = this.appCtx.getUserProfile(localUser.id);
+    if (!contextUser) {
+      return localUser;
+    }
+    return this.mergeActiveUserFromContext(localUser, contextUser);
   }
 
   protected get canOpenHistory(): boolean {
@@ -3154,6 +3163,37 @@ export class HomeComponent implements OnDestroy {
 
   private isGameImagePreloaded(url: string | null): boolean {
     return !!url && this.preloadedGameImageUrls.has(url);
+  }
+
+  private mergeActiveUserFromContext(localUser: DemoUser, contextUser: UserDto): DemoUser {
+    return {
+      ...localUser,
+      name: contextUser.name,
+      age: contextUser.age,
+      birthday: contextUser.birthday,
+      city: contextUser.city,
+      height: contextUser.height,
+      physique: contextUser.physique,
+      languages: [...(contextUser.languages ?? localUser.languages)],
+      horoscope: contextUser.horoscope,
+      initials: contextUser.initials,
+      gender: contextUser.gender,
+      statusText: contextUser.statusText,
+      hostTier: contextUser.hostTier,
+      traitLabel: contextUser.traitLabel,
+      completion: contextUser.completion,
+      headline: contextUser.headline,
+      about: contextUser.about,
+      images: [...(contextUser.images ?? localUser.images ?? [])],
+      profileStatus: contextUser.profileStatus,
+      activities: {
+        game: contextUser.activities?.game ?? localUser.activities.game,
+        chat: contextUser.activities?.chat ?? localUser.activities.chat,
+        invitations: contextUser.activities?.invitations ?? localUser.activities.invitations,
+        events: contextUser.activities?.events ?? localUser.activities.events,
+        hosting: contextUser.activities?.hosting ?? localUser.activities.hosting
+      }
+    };
   }
 
   private nowMs(): number {

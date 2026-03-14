@@ -267,6 +267,10 @@ export class ProfileEditorComponent {
     return `${count} items`;
   }
 
+  protected get canSaveExperienceEntry(): boolean {
+    return Boolean(this.experienceForm.title.trim() && this.experienceForm.org.trim() && this.experienceRangeStart);
+  }
+
   protected popupTitle(): string {
     switch (this.panel) {
       case 'image':

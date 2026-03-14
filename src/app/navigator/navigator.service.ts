@@ -78,6 +78,13 @@ export class NavigatorService {
       this.hydrationRequestKeyRef.set(requestKey);
       void this.hydrateUserAfterLogin(activeUserId || undefined);
     });
+
+    effect(() => {
+      if (!this.profileEditorOpenRef()) {
+        return;
+      }
+      this.closeMenu();
+    });
   }
 
   registerBindings(bindings: NavigatorBindings): void {

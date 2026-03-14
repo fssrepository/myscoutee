@@ -331,8 +331,11 @@
   }
 
   .profile-details-values-btn {
+    min-height: 36px;
     height: 36px;
     box-sizing: border-box;
+    padding-top: 0;
+    padding-bottom: 0;
   }
 
   .profile-details-values-btn .status-option-content.profile-details-selected-badges {
@@ -504,18 +507,18 @@
     text-align: center;
   }
 
-  .zodiac-aries { background: #fdf1f1; color: #9f2f2f; }
-  .zodiac-taurus { background: #f7f3eb; color: #6e4b2b; }
-  .zodiac-gemini { background: #fdf8e9; color: #7d5a12; }
-  .zodiac-cancer { background: #eef4ff; color: #2d5b8e; }
-  .zodiac-leo { background: #fff3e8; color: #8f4b0d; }
-  .zodiac-virgo { background: #edf8ef; color: #2b6b3d; }
-  .zodiac-libra { background: #f2eefc; color: #60439d; }
-  .zodiac-scorpio { background: #f9edf2; color: #7b3150; }
-  .zodiac-sagittarius { background: #eef1ff; color: #2f4a9a; }
-  .zodiac-capricorn { background: #eff2f5; color: #364653; }
-  .zodiac-aquarius { background: #ebf7fb; color: #1d5f7a; }
-  .zodiac-pisces { background: #eef2ff; color: #294b8f; }
+  .readonly-select.zodiac-aries { background: #fdf1f1; color: #9f2f2f; }
+  .readonly-select.zodiac-taurus { background: #f7f3eb; color: #6e4b2b; }
+  .readonly-select.zodiac-gemini { background: #fdf8e9; color: #7d5a12; }
+  .readonly-select.zodiac-cancer { background: #eef4ff; color: #2d5b8e; }
+  .readonly-select.zodiac-leo { background: #fff3e8; color: #8f4b0d; }
+  .readonly-select.zodiac-virgo { background: #edf8ef; color: #2b6b3d; }
+  .readonly-select.zodiac-libra { background: #f2eefc; color: #60439d; }
+  .readonly-select.zodiac-scorpio { background: #f9edf2; color: #7b3150; }
+  .readonly-select.zodiac-sagittarius { background: #eef1ff; color: #2f4a9a; }
+  .readonly-select.zodiac-capricorn { background: #eff2f5; color: #364653; }
+  .readonly-select.zodiac-aquarius { background: #ebf7fb; color: #1d5f7a; }
+  .readonly-select.zodiac-pisces { background: #eef2ff; color: #294b8f; }
 
   .physique-slim { color: #3f7ab3; }
   .physique-lean { color: #3f8f5f; }
@@ -573,6 +576,7 @@
     min-width: 0;
     max-width: 100%;
     min-height: 36px;
+    height: 36px;
     justify-content: flex-start;
     border-radius: 999px;
     border-color: #c8d3e2;
@@ -581,10 +585,11 @@
     color: rgba(30, 56, 90, 0.92);
     gap: 0.35rem;
     padding: 0 0.52rem 0 0.8rem;
+    box-sizing: border-box;
   }
 
   .language-select-btn.active {
-    background-color: rgba(33, 115, 214, 0.12);
+    background: #f8f9fb;
   }
 
   .language-select-btn .label {
@@ -679,6 +684,10 @@
 
   .experience-title-field,
   .experience-city-field {
+    width: 100%;
+  }
+
+  .experience-org-field {
     width: 100%;
   }
 
