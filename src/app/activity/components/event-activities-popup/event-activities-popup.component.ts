@@ -230,6 +230,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       if (this.shouldApplyEventActivityGroupMarkerRules() && !scrollable) {
         return false;
       }
+      if (!scrollable) {
+        return false;
+      }
       return true;
     }
   };

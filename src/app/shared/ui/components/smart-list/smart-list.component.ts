@@ -512,6 +512,9 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       this.endLoadingAnimation();
       this.syncGroups();
       this.refreshSurfaceSoon();
+      if (isInitial) {
+        this.scheduleInitialListSnap();
+      }
       this.emitState();
       this.cdr.markForCheck();
     }
@@ -723,7 +726,9 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     const stickyHeader = scrollElement.querySelector<HTMLElement>('.smart-list__sticky');
     const stickyHeaderHeight = stickyHeader?.offsetHeight ?? 0;
     const targetTop = scrollTop + stickyHeaderHeight + 1;
-    const rows = Array.from(scrollElement.querySelectorAll<HTMLElement>('[data-group-label]'));
+    const rows = Array.from(
+      scrollElement.querySelectorAll<HTMLElement>('[data-group-label]:not(.smart-list__group-marker)')
+    );
     if (rows.length === 0) {
       this.stickyLabel = this.groups[0]?.label ?? this.resolveEmptyStickyLabel();
       return;
@@ -794,6 +799,76 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       return;
     }
     setTimeout(refresh, 0);
+  }
+
+  private scheduleInitialListSnap(): void {
+    const run = () => {
+      const scrollElement = this.scrollHostRef?.nativeElement;
+      if (!scrollElement || this.currentViewMode !== 'list') {
+        return;
+      }
+      if (!scrollElement.classList.contains('activities-scroll-list-event-snap')) {
+        return;
+      }
+      if (scrollElement.scrollTop > 1) {
+        return;
+      }
+      const firstSnapTarget = scrollElement.querySelector<HTMLElement>(
+        '.activities-row-item, .asset-item-card, .activities-card'
+      );
+      if (!firstSnapTarget) {
+        return;
+      }
+      const maxVerticalScroll = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight);
+      if (maxVerticalScroll <= 1) {
+        return;
+      }
+      const finalTop = this.listSnapTargetTop(scrollElement, firstSnapTarget);
+      const overshootTop = Math.min(maxVerticalScroll, finalTop + 28);
+      if (overshootTop <= finalTop + 1) {
+        return;
+      }
+
+      const previousScrollBehavior = scrollElement.style.scrollBehavior;
+      scrollElement.style.scrollBehavior = 'auto';
+      scrollElement.scrollTop = overshootTop;
+
+      const settle = () => {
+        const currentScrollElement = this.scrollHostRef?.nativeElement;
+        if (!currentScrollElement || currentScrollElement !== scrollElement) {
+          return;
+        }
+        scrollElement.style.scrollBehavior = previousScrollBehavior;
+        scrollElement.scrollTo({ top: finalTop, behavior: 'smooth' });
+      };
+
+      if (typeof globalThis.requestAnimationFrame === 'function') {
+        globalThis.requestAnimationFrame(() => settle());
+        return;
+      }
+      setTimeout(settle, 0);
+    };
+
+    if (!this.afterViewInit) {
+      return;
+    }
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(run));
+      return;
+    }
+    setTimeout(run, 0);
+  }
+
+  private listSnapTargetTop(scrollElement: HTMLDivElement, target: HTMLElement): number {
+    const computed = globalThis.getComputedStyle?.(scrollElement);
+    const rawScrollPaddingTop = computed?.scrollPaddingTop
+      || computed?.getPropertyValue('scroll-padding-top')
+      || '';
+    const parsedScrollPaddingTop = Number.parseFloat(rawScrollPaddingTop);
+    const scrollPaddingTop = Number.isFinite(parsedScrollPaddingTop)
+      ? parsedScrollPaddingTop
+      : scrollElement.querySelector<HTMLElement>('.smart-list__sticky')?.offsetHeight ?? 0;
+    return Math.max(0, target.offsetTop - scrollPaddingTop);
   }
 
   private resetScrollSoon(): void {
