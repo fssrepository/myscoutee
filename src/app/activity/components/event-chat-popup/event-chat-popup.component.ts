@@ -61,6 +61,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private readonly chatHistoryPageSize = 10;
   private readonly chatInitialLoadMessageCount = 15;
+  private readonly chatHistoryPreloadOffsetPx = 48;
   private readonly chatLoadOlderDelayMs = 1500;
   private readonly headerLoadingWindowMs = 3000;
   private readonly headerLoadingTickMs = 16;
@@ -70,7 +71,7 @@ export class EventChatPopupComponent implements OnDestroy {
     pageSize: this.chatHistoryPageSize,
     initialPageCount: 1,
     initialPageSize: this.chatInitialLoadMessageCount,
-    preloadOffsetPx: 48,
+    preloadOffsetPx: this.chatHistoryPreloadOffsetPx,
     loadingDelayMs: 0,
     showStickyHeader: false,
     showFirstGroupMarker: true,
