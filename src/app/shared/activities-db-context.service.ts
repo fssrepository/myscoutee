@@ -121,6 +121,7 @@ export class ActivitiesDbContextService {
 
   setActivitiesView(view: 'day' | 'week' | 'month' | 'distance'): void {
     this._activitiesView.set(view);
+    this._activitiesShowViewPicker.set(false);
     if (view !== 'distance') {
       this._activitiesStickyValue.set('');
     }

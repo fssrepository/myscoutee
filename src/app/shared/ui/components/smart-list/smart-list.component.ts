@@ -118,6 +118,9 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
   private awaitScrollReset = false;
   private calendarMonthFocusDate: Date | null = null;
   private calendarWeekFocusDate: Date | null = null;
+  private readonly calendarPageItems = new Map<string, T[]>();
+  private readonly calendarPageTotals = new Map<string, number>();
+  private calendarPendingPageKey: string | null = null;
 
   ngAfterViewInit(): void {
     this.afterViewInit = true;
@@ -129,6 +132,29 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     const previousViewKey = this.currentViewKey;
     this.currentViewKey = nextViewKey;
     this.currentViewMode = this.resolveViewMode(nextViewKey);
+
+    const calendarDataInputsChanged = Boolean(
+      changes['config']
+      || changes['loadPage']
+      || changes['loaders']
+      || changes['sort']
+      || changes['direction']
+      || changes['filters']
+      || changes['groupBy']
+    );
+
+    if (calendarDataInputsChanged) {
+      this.clearCalendarPageCache();
+    }
+
+    if (changes['view'] && previousViewKey !== this.currentViewKey) {
+      const today = AppUtils.dateOnly(new Date());
+      if (this.currentViewKey === 'month') {
+        this.calendarMonthFocusDate = AppUtils.startOfMonth(today);
+      } else if (this.currentViewKey === 'week') {
+        this.calendarWeekFocusDate = AppUtils.startOfWeekMonday(today);
+      }
+    }
 
     if (previousViewKey && previousViewKey !== this.currentViewKey && this.currentViewKey) {
       this.viewChange.emit(this.currentViewKey);
@@ -195,6 +221,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     const target = event.target as HTMLDivElement;
     this.updateCalendarSurface(target);
     this.emitState();
+    this.maybeLoadCurrentCalendarPage(target);
   }
 
   protected readonly trackByGroup = (_index: number, group: SmartListGroup<T>): string => group.label;
@@ -252,7 +279,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
   }
 
   protected hasCalendarItems(): boolean {
-    return this.items.length > 0 && this.currentCalendarPages().length > 0;
+    return this.currentCalendarPages().length > 0;
   }
 
   protected calendarWeekdayLabels(): ReadonlyArray<string> {
@@ -379,13 +406,18 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     this.stickyLabel = this.resolveEmptyStickyLabel();
     this.progress = 0;
     this.scrollable = false;
-    this.emitState();
-    this.resetScrollSoon();
+    this.calendarPendingPageKey = null;
 
     if (this.currentViewMode === 'list') {
+      this.emitState();
+      this.resetScrollSoon();
       void this.loadNextPage(true);
       return;
     }
+    this.syncCalendarPages();
+    this.seedCalendarProgress();
+    this.emitState();
+    this.resetScrollSoon();
     void this.loadCalendarWindow();
   }
 
@@ -447,43 +479,16 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       this.cdr.markForCheck();
       return;
     }
-
-    const query = this.currentQuery(0);
-    const sequence = ++this.loadSequence;
-    this.loading = true;
-    this.startLoadingAnimation();
-    this.emitState();
-
-    try {
-      const [result] = await Promise.all([
-        firstValueFrom(loader(query)),
-        this.wait(this.config.loadingDelayMs ?? 0)
-      ]);
-
-      if (sequence !== this.loadSequence) {
-        return;
-      }
-
-      this.applyCalendarResult(result);
-    } catch {
-      if (sequence !== this.loadSequence) {
-        return;
-      }
-      this.items = [];
-      this.calendarMonthPages = [];
-      this.calendarWeekPages = [];
+    const anchor = this.currentCalendarQueryAnchor();
+    if (!anchor) {
+      this.loading = false;
       this.initialLoading = false;
       this.hasMore = false;
-    } finally {
-      if (sequence !== this.loadSequence) {
-        return;
-      }
-      this.loading = false;
-      this.endLoadingAnimation();
-      this.refreshSurfaceSoon();
       this.emitState();
       this.cdr.markForCheck();
+      return;
     }
+    await this.loadCalendarPage(anchor, true);
   }
 
   private applyListPageResult(result: PageResult<T> | null | undefined, isInitial: boolean): void {
@@ -504,10 +509,13 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     this.initialLoading = false;
   }
 
-  private applyCalendarResult(result: PageResult<T> | null | undefined): void {
+  private applyCalendarResult(anchor: Date, result: PageResult<T> | null | undefined): void {
     const nextItems = Array.isArray(result?.items) ? result.items : [];
-    this.items = [...nextItems];
+    const pageKey = this.calendarPageKey(anchor);
+    this.calendarPageItems.set(pageKey, [...nextItems]);
     const total = Number.isFinite(result?.total) ? Math.max(0, Math.trunc(Number(result?.total))) : nextItems.length;
+    this.calendarPageTotals.set(pageKey, Math.max(nextItems.length, total));
+    this.items = [...nextItems];
     this.total = Math.max(nextItems.length, total);
     this.pageIndex = 0;
     this.hasMore = false;
@@ -574,6 +582,8 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     if (!this.isCalendarMode() || !this.calendarConfig()) {
       this.calendarMonthPages = [];
       this.calendarWeekPages = [];
+      this.items = [];
+      this.total = 0;
       this.stickyLabel = this.resolveEmptyStickyLabel();
       return;
     }
@@ -582,25 +592,71 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     if (!window) {
       this.calendarMonthPages = [];
       this.calendarWeekPages = [];
+      this.items = [];
+      this.total = 0;
       this.stickyLabel = this.resolveEmptyStickyLabel();
       return;
     }
 
-    const resolveDateRange = (item: T) => this.calendarConfig()?.resolveDateRange(item, this.currentQuery()) ?? null;
-    const itemsByDate = this.buildItemsByDate(this.items, resolveDateRange);
+    const activeAnchor = this.currentVisibleCalendarAnchor() ?? window.focus;
 
     if (this.isMonthMode()) {
-      this.calendarMonthPages = window.anchors.map(anchor =>
-        this.buildMonthPage(anchor, itemsByDate, this.items, resolveDateRange)
-      );
+      this.calendarMonthPages = window.anchors.map(anchor => {
+        const pageItems = this.calendarItemsForAnchor(anchor);
+        const pageQuery = this.calendarQueryForAnchor(anchor);
+        const resolveDateRange = (item: T) => this.calendarConfig()?.resolveDateRange(item, pageQuery) ?? null;
+        const itemsByDate = this.buildItemsByDate(pageItems, resolveDateRange);
+        return this.buildMonthPage(anchor, itemsByDate, pageItems, resolveDateRange);
+      });
       this.calendarWeekPages = [];
-      this.stickyLabel = this.calendarMonthPages[this.initialCalendarPageIndex()]?.label ?? this.resolveEmptyStickyLabel();
+      this.items = [...this.calendarItemsForAnchor(activeAnchor)];
+      this.total = this.calendarPageTotals.get(this.calendarPageKey(activeAnchor)) ?? this.items.length;
+      this.stickyLabel = this.calendarMonthPages[this.currentCalendarPageIndex(undefined, this.calendarMonthPages.length)]?.label
+        ?? this.calendarMonthPages.find(page => page.key === this.monthKey(activeAnchor))?.label
+        ?? this.calendarMonthPages[this.initialCalendarPageIndex()]?.label
+        ?? this.resolveEmptyStickyLabel();
       return;
     }
 
-    this.calendarWeekPages = window.anchors.map(anchor => this.buildWeekPage(anchor, itemsByDate));
+    this.calendarWeekPages = window.anchors.map(anchor => {
+      const pageItems = this.calendarItemsForAnchor(anchor);
+      const pageQuery = this.calendarQueryForAnchor(anchor);
+      const resolveDateRange = (item: T) => this.calendarConfig()?.resolveDateRange(item, pageQuery) ?? null;
+      const itemsByDate = this.buildItemsByDate(pageItems, resolveDateRange);
+      return this.buildWeekPage(anchor, itemsByDate);
+    });
     this.calendarMonthPages = [];
-    this.stickyLabel = this.calendarWeekPages[this.initialCalendarPageIndex()]?.label ?? this.resolveEmptyStickyLabel();
+    this.items = [...this.calendarItemsForAnchor(activeAnchor)];
+    this.total = this.calendarPageTotals.get(this.calendarPageKey(activeAnchor)) ?? this.items.length;
+    this.stickyLabel = this.calendarWeekPages[this.currentCalendarPageIndex(undefined, this.calendarWeekPages.length)]?.label
+      ?? this.calendarWeekPages.find(page => page.key === this.dateKey(AppUtils.startOfWeekMonday(activeAnchor)))?.label
+      ?? this.calendarWeekPages[this.initialCalendarPageIndex()]?.label
+      ?? this.resolveEmptyStickyLabel();
+  }
+
+  private seedCalendarProgress(): void {
+    if (!this.isCalendarMode()) {
+      this.progress = 0;
+      this.scrollable = false;
+      return;
+    }
+    const pages = this.currentCalendarPages();
+    if (pages.length === 0) {
+      this.progress = 0;
+      this.scrollable = false;
+      return;
+    }
+    const pageIndex = this.initialCalendarPageIndex();
+    this.scrollable = pages.length > 1;
+    this.progress = pages.length > 1
+      ? this.clamp(pageIndex / Math.max(1, pages.length - 1))
+      : 0;
+  }
+
+  private clearCalendarPageCache(): void {
+    this.calendarPageItems.clear();
+    this.calendarPageTotals.clear();
+    this.calendarPendingPageKey = null;
   }
 
   private updateStickyLabel(scrollTop: number): void {
@@ -655,11 +711,14 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       return;
     }
 
-    const maxHorizontalScroll = Math.max(0, target.scrollWidth - target.clientWidth);
-    this.scrollable = maxHorizontalScroll > 1;
-    this.progress = maxHorizontalScroll > 1
-      ? this.clamp(target.scrollLeft / maxHorizontalScroll)
-      : 0;
+    const pageWidth = target.clientWidth || 0;
+    this.scrollable = pages.length > 1;
+    if (pageWidth > 0 && pages.length > 1) {
+      const rawPageIndex = target.scrollLeft / pageWidth;
+      this.progress = this.clamp(rawPageIndex / Math.max(1, pages.length - 1));
+    } else {
+      this.progress = 0;
+    }
 
     const pageIndex = this.currentCalendarPageIndex(target, pages.length);
     this.stickyLabel = pages[pageIndex]?.label ?? pages[0]?.label ?? this.resolveEmptyStickyLabel();
@@ -830,6 +889,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
   }
 
   private buildStateChange(): SmartListStateChange<T> {
+    const loadingVisible = this.isVisibleCalendarPageLoading();
     return {
       items: this.items,
       groups: this.groups,
@@ -837,14 +897,31 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       total: this.total,
       currentView: this.currentViewKey,
       hasMore: this.hasMore,
-      loading: this.loading || this.loadingProgress > 0,
+      loading: loadingVisible,
       initialLoading: this.initialLoading,
       progress: this.progress,
-      loadingProgress: this.loadingProgress,
-      loadingOverdue: this.loadingOverdue,
+      loadingProgress: loadingVisible ? this.loadingProgress : 0,
+      loadingOverdue: loadingVisible ? this.loadingOverdue : false,
       scrollable: this.scrollable,
       stickyLabel: this.stickyLabel || this.resolveEmptyStickyLabel()
     };
+  }
+
+  private isVisibleCalendarPageLoading(): boolean {
+    if (!this.isCalendarMode()) {
+      return this.loading || this.loadingProgress > 0;
+    }
+    if (this.initialLoading) {
+      return this.loading || this.loadingProgress > 0;
+    }
+    if (!this.calendarPendingPageKey) {
+      return false;
+    }
+    const visibleAnchor = this.currentVisibleCalendarAnchor() ?? this.currentCalendarQueryAnchor();
+    if (!visibleAnchor) {
+      return false;
+    }
+    return this.calendarPageKey(visibleAnchor) === this.calendarPendingPageKey && (this.loading || this.loadingProgress > 0);
   }
 
   private currentQuery(page = this.pageIndex): ListQuery {
@@ -865,17 +942,11 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       view: this.currentViewKey ?? undefined
     };
 
-    const calendarWindow = this.currentCalendarWindow();
-    if (!calendarWindow) {
+    if (!this.isCalendarMode()) {
       return query;
     }
-
-    return {
-      ...query,
-      anchorDate: this.dateKey(calendarWindow.focus),
-      rangeStart: this.dateKey(calendarWindow.start),
-      rangeEnd: this.dateKey(calendarWindow.end)
-    };
+    const anchor = this.currentVisibleCalendarAnchor() ?? this.currentCalendarQueryAnchor();
+    return anchor ? this.calendarQueryForAnchor(anchor) : query;
   }
 
   private resolveLoadPage(): SmartListLoadPage<T> | null {
@@ -996,6 +1067,154 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     return AppUtils.startOfWeekMonday(base);
   }
 
+  private currentCalendarQueryAnchor(): Date | null {
+    if (this.isMonthMode()) {
+      return this.monthFocusDate();
+    }
+    if (this.isWeekMode()) {
+      return this.weekFocusDate();
+    }
+    return null;
+  }
+
+  private calendarQueryForAnchor(anchor: Date): ListQuery {
+    const activeView = this.activeViewConfig();
+    const nextFilters = {
+      ...(this.config.defaultFilters ?? {}),
+      ...(this.filters ?? {})
+    };
+    const normalizedAnchor = this.isMonthMode()
+      ? AppUtils.startOfMonth(anchor)
+      : AppUtils.startOfWeekMonday(anchor);
+    const range = this.calendarRangeForAnchor(normalizedAnchor);
+    return {
+      page: 0,
+      pageSize: Math.max(1, Math.trunc(activeView?.pageSize ?? this.config.pageSize ?? 10)),
+      sort: this.sort ?? this.config.defaultSort,
+      direction: this.direction ?? this.config.defaultDirection,
+      filters: Object.keys(nextFilters).length > 0 ? nextFilters : undefined,
+      view: this.currentViewKey ?? undefined,
+      anchorDate: this.dateKey(normalizedAnchor),
+      rangeStart: this.dateKey(range.start),
+      rangeEnd: this.dateKey(range.end)
+    };
+  }
+
+  private calendarRangeForAnchor(anchor: Date): { start: Date; end: Date } {
+    if (this.isMonthMode()) {
+      const monthStart = AppUtils.startOfMonth(anchor);
+      return {
+        start: AppUtils.startOfWeekMonday(monthStart),
+        end: AppUtils.endOfWeekSunday(AppUtils.endOfMonth(monthStart))
+      };
+    }
+    const weekStart = AppUtils.startOfWeekMonday(anchor);
+    return {
+      start: weekStart,
+      end: AppUtils.endOfWeekSunday(weekStart)
+    };
+  }
+
+  private calendarPageKey(anchor: Date): string {
+    return this.isMonthMode()
+      ? this.monthKey(AppUtils.startOfMonth(anchor))
+      : this.dateKey(AppUtils.startOfWeekMonday(anchor));
+  }
+
+  private calendarItemsForAnchor(anchor: Date): T[] {
+    return this.calendarPageItems.get(this.calendarPageKey(anchor)) ?? [];
+  }
+
+  private maybeLoadCurrentCalendarPage(scrollElement: HTMLDivElement | null = this.scrollHostRef?.nativeElement ?? null): void {
+    if (!this.isCalendarMode() || !scrollElement) {
+      return;
+    }
+    if (this.calendarPendingPageKey) {
+      return;
+    }
+    const pages = this.currentCalendarPages();
+    if (pages.length === 0) {
+      return;
+    }
+    const page = pages[this.currentCalendarPageIndex(scrollElement, pages.length)];
+    if (!page) {
+      return;
+    }
+    if (this.calendarPageItems.has(page.key) || this.calendarPendingPageKey === page.key) {
+      return;
+    }
+    void this.loadCalendarPage(page.anchor);
+  }
+
+  private async loadCalendarPage(anchor: Date, isInitial = false): Promise<void> {
+    const loader = this.resolveLoadPage();
+    if (!loader || !this.isCalendarMode()) {
+      this.loading = false;
+      this.initialLoading = false;
+      this.hasMore = false;
+      this.emitState();
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const pageKey = this.calendarPageKey(anchor);
+    if (this.calendarPageItems.has(pageKey)) {
+      if (isInitial) {
+        this.initialLoading = false;
+        this.items = [...(this.calendarPageItems.get(pageKey) ?? [])];
+        this.total = this.calendarPageTotals.get(pageKey) ?? this.items.length;
+        this.emitState();
+        this.cdr.markForCheck();
+      }
+      return;
+    }
+    if (this.calendarPendingPageKey) {
+      return;
+    }
+
+    const query = this.calendarQueryForAnchor(anchor);
+    const sequence = ++this.loadSequence;
+    this.calendarPendingPageKey = pageKey;
+    this.loading = true;
+    this.startLoadingAnimation();
+    this.emitState();
+
+    try {
+      const [result] = await Promise.all([
+        firstValueFrom(loader(query)),
+        this.wait(this.config.loadingDelayMs ?? 0)
+      ]);
+
+      if (sequence !== this.loadSequence) {
+        return;
+      }
+
+      this.applyCalendarResult(anchor, result);
+    } catch {
+      if (sequence !== this.loadSequence) {
+        return;
+      }
+      this.calendarPageItems.set(pageKey, []);
+      this.calendarPageTotals.set(pageKey, 0);
+      this.items = [];
+      this.total = 0;
+      this.initialLoading = false;
+      this.hasMore = false;
+      this.syncCalendarPages();
+    } finally {
+      if (sequence !== this.loadSequence) {
+        return;
+      }
+      this.calendarPendingPageKey = null;
+      this.loading = false;
+      this.endLoadingAnimation();
+      this.refreshSurfaceSoon();
+      this.emitState();
+      this.cdr.markForCheck();
+      this.maybeLoadCurrentCalendarPage();
+    }
+  }
+
   private shiftCalendarFocus(delta: number): void {
     const reference = this.currentVisibleCalendarAnchor();
     if (this.isMonthMode()) {
@@ -1058,6 +1277,10 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       return;
     }
     this.stickyLabel = pages[targetIndex]?.label ?? this.resolveEmptyStickyLabel();
+    this.scrollable = pages.length > 1;
+    this.progress = pages.length > 1
+      ? this.clamp(targetIndex / Math.max(1, pages.length - 1))
+      : 0;
     scrollElement.scrollTo({
       left: targetIndex * pageWidth,
       behavior

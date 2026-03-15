@@ -1099,6 +1099,8 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     }
     this.activitiesContext.setActivitiesView(view as 'day' | 'week' | 'month' | 'distance');
     this.lastRateIndicatorPulseRowId = null;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
     this.showActivitiesPrimaryPicker = false;
     this.showActivitiesChatContextPicker = false;
     this.showActivitiesRatePicker = false;
