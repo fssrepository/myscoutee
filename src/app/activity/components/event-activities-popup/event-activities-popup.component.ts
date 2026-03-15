@@ -1522,7 +1522,12 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (this.isActivityItemActionMenuOpen(row)) {
       this.inlineItemActionMenu = null;
     } else {
-      this.inlineItemActionMenu = { scope: 'activity', id: row.id, title: row.title, openUp: false };
+      this.inlineItemActionMenu = {
+        scope: 'activity',
+        id: row.id,
+        title: row.title,
+        openUp: this.shouldOpenInlineItemMenuUp(event)
+      };
     }
   }
 

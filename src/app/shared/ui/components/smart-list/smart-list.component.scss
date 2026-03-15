@@ -22,6 +22,14 @@
   box-sizing: border-box;
 }
 
+:host ::ng-deep .smart-list.activities-scroll-list .activities-row-item,
+:host ::ng-deep .smart-list.activities-scroll-list .asset-item-card,
+:host ::ng-deep .smart-list.activities-scroll-list .activities-card {
+  scroll-snap-align: start;
+  scroll-margin-top: 0;
+  scroll-snap-stop: normal;
+}
+
 @media (min-width: 1024px) {
   .smart-list.activities-scroll-list {
     display: grid;

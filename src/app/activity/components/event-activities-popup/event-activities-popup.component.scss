@@ -2718,7 +2718,7 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   background: #fff;
   box-shadow: 0 16px 34px rgba(14, 30, 52, 0.22);
   padding: 0.36rem;
-  display: grid;
+  display: none;
   gap: 0.18rem;
   opacity: 0;
   visibility: hidden;
@@ -2735,6 +2735,7 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   cursor: default;
 }
 .item-action-menu.is-open {
+  display: grid;
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
