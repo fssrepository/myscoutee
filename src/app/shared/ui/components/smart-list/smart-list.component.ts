@@ -95,6 +95,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected items: T[] = [];
   protected groups: SmartListGroup<T>[] = [];
+  protected prependRestoreSpacerAnchorKey: string | null = null;
+  protected prependRestoreSpacerId: string | null = null;
+  protected prependRestoreSpacerHeight = 0;
   protected calendarMonthPages: SmartListCalendarMonthPage<T>[] = [];
   protected calendarWeekPages: SmartListCalendarWeekPage<T>[] = [];
   protected stickyLabel = '';
@@ -252,6 +255,13 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected shouldShowStickyHeader(): boolean {
     return this.config.showStickyHeader !== false;
+  }
+
+  protected shouldRenderPrependRestoreSpacer(item: T, index: number): boolean {
+    if (!this.prependRestoreSpacerAnchorKey || this.prependRestoreSpacerHeight <= 0) {
+      return false;
+    }
+    return this.itemAnchorKey(item, index) === this.prependRestoreSpacerAnchorKey;
   }
 
   protected onListScroll(event: Event): void {
@@ -818,11 +828,23 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     let restoreAnchorId: string | null = null;
     let restoreAnchorCreatedId = false;
     if (anchorElement) {
-      restoreAnchorId = anchorElement.id;
-      if (!restoreAnchorId) {
-        restoreAnchorId = `smart-list-restore-anchor-${++this.restoreAnchorSequence}`;
-        anchorElement.id = restoreAnchorId;
-        restoreAnchorCreatedId = true;
+      const anchorKey = anchorElement.dataset['smartListAnchor'] ?? null;
+      const topInset = this.listTopInset(scrollElement);
+      this.clearPrependRestoreSpacerState();
+      if (anchorKey && topInset > 0) {
+        this.prependRestoreSpacerAnchorKey = anchorKey;
+        this.prependRestoreSpacerId = `smart-list-restore-spacer-${++this.restoreAnchorSequence}`;
+        this.prependRestoreSpacerHeight = topInset;
+        this.cdr.detectChanges();
+        scrollElement.scrollTop += topInset;
+        restoreAnchorId = this.prependRestoreSpacerId;
+      } else {
+        restoreAnchorId = anchorElement.id;
+        if (!restoreAnchorId) {
+          restoreAnchorId = `smart-list-restore-anchor-${++this.restoreAnchorSequence}`;
+          anchorElement.id = restoreAnchorId;
+          restoreAnchorCreatedId = true;
+        }
       }
     }
     return {
@@ -890,15 +912,14 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (restoreContext.restoreAnchorId) {
       const restoredAnchor = document.getElementById(restoreContext.restoreAnchorId);
       if (restoredAnchor instanceof HTMLElement && scrollElement.contains(restoredAnchor)) {
-        this.clearPrependRestoreSpacers(scrollElement);
-        const topInset = this.listTopInset(scrollElement);
-        if (topInset > 0) {
-          const restoreSpacer = scrollElement.ownerDocument.createElement('div');
-          restoreSpacer.className = 'smart-list__prepend-restore-spacer';
-          restoreSpacer.style.height = `${topInset}px`;
-          restoredAnchor.insertAdjacentElement('beforebegin', restoreSpacer);
-          restoreSpacer.scrollIntoView({ block: 'start', inline: 'nearest' });
-          this.animatePrependRestoreSpacer(restoreSpacer);
+        if (restoredAnchor.classList.contains('smart-list__prepend-restore-spacer')) {
+          const revealPx = restoredAnchor.offsetHeight;
+          restoredAnchor.scrollIntoView({ block: 'start', inline: 'nearest' });
+          if (revealPx > 0) {
+            this.animatePrependRestoreSpacer(restoredAnchor, scrollElement, revealPx);
+          } else {
+            this.clearPrependRestoreSpacerState(restoredAnchor.id);
+          }
         } else {
           restoredAnchor.scrollIntoView({ block: 'start', inline: 'nearest' });
         }
@@ -918,35 +939,56 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.updateScrollProgress(scrollElement);
   }
 
-  private clearPrependRestoreSpacers(scrollElement: HTMLElement): void {
-    Array.from(scrollElement.querySelectorAll<HTMLElement>('.smart-list__prepend-restore-spacer'))
-      .forEach(spacer => spacer.remove());
+  private clearPrependRestoreSpacerState(expectedSpacerId: string | null = null): void {
+    if (expectedSpacerId && this.prependRestoreSpacerId !== expectedSpacerId) {
+      return;
+    }
+    this.prependRestoreSpacerAnchorKey = null;
+    this.prependRestoreSpacerId = null;
+    this.prependRestoreSpacerHeight = 0;
   }
 
-  private animatePrependRestoreSpacer(spacer: HTMLElement): void {
+  private animatePrependRestoreSpacer(spacer: HTMLElement, scrollElement: HTMLElement, revealPx: number): void {
     const remove = () => {
-      if (spacer.isConnected) {
-        spacer.remove();
-      }
+      this.clearPrependRestoreSpacerState(spacer.id);
+      this.cdr.markForCheck();
     };
 
-    const collapse = () => {
+    const collapse = (startedAt: number, startScrollTop: number) => {
       if (!spacer.isConnected) {
         return;
       }
-      spacer.style.height = '0px';
-      if (typeof globalThis.setTimeout === 'function') {
-        globalThis.setTimeout(remove, 220);
-      } else {
+      const durationMs = 180;
+      const elapsedMs = Math.max(0, performance.now() - startedAt);
+      const progress = Math.min(1, elapsedMs / durationMs);
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+      spacer.style.height = `${Math.max(0, revealPx * (1 - easedProgress))}px`;
+      scrollElement.scrollTop = Math.max(0, startScrollTop - (revealPx * easedProgress));
+      if (progress >= 1) {
         remove();
+        return;
       }
+      globalThis.requestAnimationFrame(() => collapse(startedAt, startScrollTop));
     };
 
     if (typeof globalThis.requestAnimationFrame === 'function') {
-      globalThis.requestAnimationFrame(collapse);
+      const startScrollTop = scrollElement.scrollTop;
+      const startedAt = performance.now();
+      globalThis.requestAnimationFrame(() => collapse(startedAt, startScrollTop));
       return;
     }
-    collapse();
+    spacer.style.height = '0px';
+    scrollElement.scrollTop = Math.max(0, scrollElement.scrollTop - revealPx);
+    remove();
+  }
+
+  private itemAnchorKey(item: T, index: number): string | null {
+    const trackBy = this.config.trackBy;
+    if (!trackBy) {
+      return null;
+    }
+    const key = trackBy(index, item);
+    return key === null || key === undefined ? null : String(key);
   }
 
   private scheduleNativePrependReveal(): void {
