@@ -18,25 +18,34 @@
     scroll-padding-top: calc(2.6rem - 3px);
   }
 
+  .smart-list--calendar.smart-list--month {
+    padding-bottom: 0;
+    overflow-y: hidden;
+  }
+
   .smart-list__calendar-page--month {
+    grid-template-rows: auto auto;
     min-height: auto;
-    padding-bottom: 0.18rem;
+    height: auto;
+    padding-bottom: 0.08rem;
+    overflow: hidden;
   }
 
   .smart-list__month-grid {
     height: auto;
     align-content: start;
     grid-template-rows: none;
-    row-gap: 0.28rem;
-    grid-auto-rows: minmax(3.72rem, auto);
+    row-gap: 0.38rem;
+    grid-auto-rows: minmax(3.35rem, auto);
   }
 
   .smart-list__month-week {
     min-height: 0;
+    gap: 0.2rem;
   }
 
   .smart-list__month-cell {
-    min-height: 3.72rem;
+    min-height: 3.35rem;
     padding: 0.16rem;
   }
 

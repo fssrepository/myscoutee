@@ -813,7 +813,6 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       return;
     }
 
-    const pageWidth = target.clientWidth || 0;
     this.scrollable = pages.length > 1;
     if (this.calendarPendingVisualKey && this.calendarFrozenProgress !== null) {
       this.progress = this.calendarFrozenProgress;
@@ -1001,7 +1000,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       if (this.isCalendarMode()) {
         const initialIndex = this.initialCalendarPageIndex();
         this.calendarInitialPageIndexOverride = null;
-        const pageWidth = scrollElement.clientWidth || 0;
+        const pageWidth = this.calendarViewportWidth(scrollElement);
         if (pageWidth > 0) {
           this.suppressCalendarEdgeSettle = true;
           const previousScrollBehavior = scrollElement.style.scrollBehavior;
@@ -1539,7 +1538,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
         this.suppressCalendarEdgeSettle = false;
         return;
       }
-      const pageWidth = nextElement.clientWidth || 0;
+      const pageWidth = this.calendarViewportWidth(nextElement);
       if (pageWidth <= 0) {
         this.suppressCalendarEdgeSettle = false;
         return;
@@ -1592,7 +1591,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       return;
     }
     const targetIndex = Math.max(0, Math.min(pages.length - 1, pageIndex));
-    const pageWidth = scrollElement.clientWidth || 0;
+    const pageWidth = this.calendarViewportWidth(scrollElement);
     if (pageWidth <= 0) {
       return;
     }
@@ -1738,7 +1737,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     if (pages.length === 0) {
       return 0;
     }
-    const pageWidth = scrollElement.clientWidth || 0;
+    const pageWidth = this.calendarViewportWidth(scrollElement);
     const pageIndex = this.currentCalendarPageIndex(scrollElement, pages.length);
     if (pageWidth <= 0 || pages.length === 1) {
       return this.calendarProgressForAnchor(pages[pageIndex]?.anchor ?? null);
@@ -1776,7 +1775,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
   }
 
   private normalizeCalendarScrollPageAlignment(calendarElement: HTMLDivElement): void {
-    const pageWidth = calendarElement.clientWidth || 0;
+    const pageWidth = this.calendarViewportWidth(calendarElement);
     if (pageWidth <= 0) {
       return;
     }
@@ -1802,7 +1801,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       return;
     }
     const desiredIndex = this.desiredCalendarPageIndex(pages.length);
-    if (currentIndex !== desiredIndex) {
+    if (currentIndex !== desiredIndex && (currentIndex === 0 || currentIndex === pages.length - 1)) {
       this.recenterCalendarWindow(activePage.anchor, desiredIndex);
       return;
     }
@@ -1844,7 +1843,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
         this.cdr.markForCheck();
         return;
       }
-      const pageWidth = nextElement.clientWidth || 0;
+      const pageWidth = this.calendarViewportWidth(nextElement);
       if (pageWidth <= 0) {
         this.suppressCalendarEdgeSettle = false;
         this.maybeLoadCurrentCalendarPage(nextElement);
@@ -1912,8 +1911,16 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     if (!scrollElement || totalPages <= 1) {
       return 0;
     }
-    const pageWidth = scrollElement.clientWidth || 1;
+    const pageWidth = this.calendarViewportWidth(scrollElement) || 1;
     return Math.max(0, Math.min(totalPages - 1, Math.round(scrollElement.scrollLeft / pageWidth)));
+  }
+
+  private calendarViewportWidth(scrollElement: HTMLDivElement): number {
+    const rectWidth = scrollElement.getBoundingClientRect().width;
+    if (Number.isFinite(rectWidth) && rectWidth > 0) {
+      return rectWidth;
+    }
+    return scrollElement.clientWidth || 0;
   }
 
   private buildItemsByDate(
