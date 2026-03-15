@@ -538,6 +538,41 @@
     radial-gradient(120% 88% at 10% 0%, rgba(220, 234, 255, 0.72) 0%, rgba(220, 234, 255, 0) 56%),
     linear-gradient(180deg, #f9fbff 0%, #eef4ff 58%, #eaf1ff 100%);
 }
+.activities-rates-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.activities-rates-list-shell {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.activities-rates-list-shell > app-smart-list {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.activities-rates-list-shell.is-occluded {
+  opacity: 0;
+  pointer-events: none;
+}
+.activities-rates-fullscreen-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  pointer-events: none;
+}
 
 // ─── Activities Popup: Sticky Header ─────────────────────────────────────
 .activities-sticky-header {
@@ -1747,6 +1782,7 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   display: grid;
   grid-template-rows: minmax(0, 1fr);
   gap: 0;
+  pointer-events: none;
 }
 .activities-rates-fullscreen-deck {
   position: relative;
@@ -1756,6 +1792,7 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   min-height: 0;
   height: 100%;
   overflow: hidden;
+  pointer-events: none;
 }
 .activities-rates-fullscreen-card {
   position: absolute;
@@ -1764,6 +1801,7 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   touch-action: pan-y;
   height: 100%;
   transform-origin: center center;
+  pointer-events: none;
 }
 .activities-rates-fullscreen-card-active {
   z-index: 2;
@@ -1788,6 +1826,10 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   box-shadow: 0 8px 18px rgba(17, 36, 62, 0.22);
   transition: transform 130ms ease, box-shadow 130ms ease, background-color 130ms ease, color 130ms ease;
   z-index: 38;
+  pointer-events: auto;
+}
+.activities-rates-fullscreen .image-stack-line,
+.activities-rates-fullscreen .image-stack-hit-segment {
   pointer-events: auto;
 }
 .activities-rates-fullscreen-nav-btn-prev {

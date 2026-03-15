@@ -10,6 +10,7 @@ import {
   NgZone,
   OnDestroy,
   Output,
+  TemplateRef,
   ViewChild
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -48,6 +49,7 @@ import {
   type PageResult,
   type SmartListConfig,
   type SmartListItemSelectEvent,
+  type SmartListItemTemplateContext,
   type SmartListLoaders,
   type SmartListStateChange
 } from '../../../shared/ui';
@@ -164,6 +166,12 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   @ViewChild('activitiesSmartList')
   private activitiesSmartList?: SmartListComponent<AppTypes.ActivityListRow>;
+
+  @ViewChild('activitiesRateSingleSmartListItemTemplate', { static: true, read: TemplateRef })
+  private activitiesRateSingleSmartListItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow>>;
+
+  @ViewChild('activitiesRatePairSmartListItemTemplate', { static: true, read: TemplateRef })
+  private activitiesRatePairSmartListItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow>>;
 
   @ViewChild('activitiesCalendarScroll')
   private activitiesCalendarScrollRef?: ElementRef<HTMLDivElement>;
@@ -315,8 +323,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected activitiesRatesPairSplitPercent       = EventActivitiesPopupComponent.ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT;
   private readonly activitiesRatesFullscreenLeaveTimeoutMs = 440;
   private activitiesRatesFullscreenAdvanceTimer: ReturnType<typeof setTimeout> | null = null;
-  private activitiesRatesFullscreenLoadStateKey              = '';
-  private activitiesRatesFullscreenLastTriggeredLoadedCount  = 0;
   private activitiesRatesPairSplitPointerId: number | null   = null;
   private activitiesRatesPairSplitBounds: { left: number; width: number } | null = null;
   private activitiesRatesPairSplitDragStartClientX: number | null = null;
@@ -2240,8 +2246,8 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   // Rate editor dock
   // =========================================================================
 
-  protected openActivityRateEditor(row: AppTypes.ActivityListRow, event: Event): void {
-    event.stopPropagation();
+  protected openActivityRateEditor(row: AppTypes.ActivityListRow, event?: Event): void {
+    event?.stopPropagation();
     if (row.type !== 'rates') {
       return;
     }
@@ -2329,6 +2335,12 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return row ? this.activityOwnRatingValue(row) : 0;
   }
 
+  protected get activitiesRateSmartListItemTemplate(): TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow>> | null {
+    return this.activitiesRateFilter.startsWith('pair')
+      ? (this.activitiesRatePairSmartListItemTemplateRef ?? null)
+      : (this.activitiesRateSingleSmartListItemTemplateRef ?? null);
+  }
+
   protected isSelectedActivityRateReadOnly(): boolean {
     const row = this.isRatesFullscreenModeActive()
       ? this.currentActivitiesRatesFullscreenRow()
@@ -2367,21 +2379,20 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.triggerActivityRateBlinks(row.id);
       return;
     }
-    const allRows = this.activitiesRatesFullscreenAllRows();
-    if (allRows.length === 0) {
+    const rows = this.activitiesRatesFullscreenRows();
+    if (rows.length === 0) {
       this.triggerActivityRateBlinks(row.id);
       return;
     }
-    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, allRows.length - 1));
-    const hasUpcomingRound = currentIndex + 1 < allRows.length;
-    const nextIndex = Math.min(allRows.length, currentIndex + 1);
+    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, rows.length - 1));
+    const hasUpcomingRound = currentIndex + 1 < rows.length;
+    const nextIndex = Math.min(rows.length, currentIndex + 1);
     this.triggerActivityRateBlinks(row.id, () => {
       if (hasUpcomingRound) {
         this.startActivitiesRatesFullscreenLeaveAnimation(row);
       }
       this.activitiesRatesFullscreenCardIndex = nextIndex;
       this.updateActivitiesHeaderProgress();
-      this.maybeStartActivitiesRatesFullscreenPaginationLoad();
     });
   }
 
@@ -2982,12 +2993,12 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (!this.isActivitiesRatesFullscreenReadOnlyNavigation()) {
       return false;
     }
-    const allRows = this.activitiesRatesFullscreenAllRows();
-    if (allRows.length === 0) {
+    const rows = this.activitiesRatesFullscreenRows();
+    if (rows.length === 0) {
       return false;
     }
-    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, allRows.length - 1));
-    return currentIndex < allRows.length - 1;
+    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, rows.length - 1));
+    return currentIndex < rows.length - 1;
   }
 
   protected navigateActivitiesRatesFullscreenPrev(event?: Event): void {
@@ -2999,11 +3010,11 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (!row) {
       return;
     }
-    const allRows = this.activitiesRatesFullscreenAllRows();
-    if (allRows.length === 0) {
+    const rows = this.activitiesRatesFullscreenRows();
+    if (rows.length === 0) {
       return;
     }
-    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, allRows.length - 1));
+    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, rows.length - 1));
     const previousIndex = Math.max(0, currentIndex - 1);
     if (previousIndex === currentIndex) {
       return;
@@ -3022,19 +3033,18 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (!row) {
       return;
     }
-    const allRows = this.activitiesRatesFullscreenAllRows();
-    if (allRows.length === 0) {
+    const rows = this.activitiesRatesFullscreenRows();
+    if (rows.length === 0) {
       return;
     }
-    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, allRows.length - 1));
-    const nextIndex = Math.min(allRows.length - 1, currentIndex + 1);
+    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, rows.length - 1));
+    const nextIndex = Math.min(rows.length - 1, currentIndex + 1);
     if (nextIndex === currentIndex) {
       return;
     }
     this.startActivitiesRatesFullscreenLeaveAnimation(row);
     this.activitiesRatesFullscreenCardIndex = nextIndex;
     this.updateActivitiesHeaderProgress();
-    this.maybeStartActivitiesRatesFullscreenPaginationLoad();
   }
 
   private activitiesRatesFullscreenRows(): AppTypes.ActivityListRow[] {
@@ -3049,15 +3059,15 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (!this.isRatesFullscreenModeActive()) {
       return null;
     }
-    const allRows = this.activitiesRatesFullscreenAllRows();
-    if (allRows.length === 0) {
+    const rows = this.activitiesRatesFullscreenRows();
+    if (rows.length === 0) {
       return null;
     }
     const currentIndex = this.activitiesRatesFullscreenCardIndex;
-    if (currentIndex < 0 || currentIndex >= allRows.length) {
+    if (currentIndex < 0 || currentIndex >= rows.length) {
       return null;
     }
-    return allRows[currentIndex] ?? null;
+    return rows[currentIndex] ?? null;
   }
 
   protected activitiesRatesFullscreenNext(event: Event): void {
@@ -3069,7 +3079,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (!row) {
       return;
     }
-    const rows = this.activitiesRatesFullscreenAllRows();
+    const rows = this.activitiesRatesFullscreenRows();
     const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, rows.length - 1));
     const nextIndex = Math.min(rows.length - 1, currentIndex + 1);
     if (nextIndex === currentIndex) {
@@ -3078,7 +3088,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.startActivitiesRatesFullscreenLeaveAnimation(row);
     this.activitiesRatesFullscreenCardIndex = nextIndex;
     this.updateActivitiesHeaderProgress();
-    this.maybeStartActivitiesRatesFullscreenPaginationLoad();
   }
 
   protected activitiesRatesFullscreenPrev(event: Event): void {
@@ -3090,7 +3099,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (!row) {
       return;
     }
-    const rows = this.activitiesRatesFullscreenAllRows();
+    const rows = this.activitiesRatesFullscreenRows();
     const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, rows.length - 1));
     const previousIndex = Math.max(0, currentIndex - 1);
     if (previousIndex === currentIndex) {
@@ -3112,13 +3121,13 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activitiesRatesFullscreenEmptyTitle(): string {
-    if (this.activitiesRatesFullscreenAllRows().length > 0) { return 'No cards available'; }
+    if (this.activitiesRatesFullscreenRows().length > 0) { return 'No cards available'; }
     if (this.activitiesHeaderProgressLoading) { return 'Loading more cards'; }
     return 'No items';
   }
 
   protected activitiesRatesFullscreenEmptyDescription(): string {
-    if (this.activitiesRatesFullscreenAllRows().length > 0) { return 'Wait for more cards to load or adjust the rate filter.'; }
+    if (this.activitiesRatesFullscreenRows().length > 0) { return 'Wait for more cards to load or adjust the rate filter.'; }
     if (this.activitiesHeaderProgressLoading) { return 'Preloading the next stack in the background.'; }
     return this.activitiesEmptyLabel;
   }
@@ -3132,9 +3141,10 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.disableActivitiesRatesFullscreenMode();
       return;
     }
+    const nextIndex = this.activitiesRatesFullscreenEntryIndex();
     this.stopActivitiesRatesPairSplitDrag();
     this.activitiesRatesFullscreenMode = true;
-    this.activitiesRatesFullscreenCardIndex = 0;
+    this.activitiesRatesFullscreenCardIndex = nextIndex;
     this.activitiesRatesFullscreenAnimating = false;
     this.activitiesRatesFullscreenLeavingRow = null;
     this.cancelActivitiesRatesFullscreenAdvance();
@@ -3142,7 +3152,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.activityRateEditorClosing = false;
     this.syncActivitiesRatesFullscreenSelection();
     this.activitiesContext.setActivitiesRatesFullscreenMode(true);
-    this.maybeStartActivitiesRatesFullscreenPaginationLoad();
+    this.runAfterActivitiesRender(() => this.syncActivitiesRatesListPositionToSelection());
     this.refreshActivitiesHeaderProgressSoon();
   }
 
@@ -3150,22 +3160,27 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (!this.activitiesRatesFullscreenMode) {
       return;
     }
+    const selectedRateId = this.selectedActivityRateId;
     this.stopActivitiesRatesPairSplitDrag();
     this.activitiesRatesFullscreenMode = false;
     this.activitiesRatesFullscreenAnimating = false;
     this.activitiesRatesFullscreenLeavingRow = null;
-    this.activitiesRatesFullscreenCardIndex = 0;
     this.cancelActivitiesRatesFullscreenAdvance();
     this.clearActivityRateBarBlink();
     this.activityRateEditorClosing = false;
-    this.selectedActivityRateId = null;
     this.lastActivityRateEditorLiftDelta = 0;
-    this.activityRateEditorOpenScrollTop = null;
     this.lastRateIndicatorPulseRowId = null;
     this.activitiesContext.setActivitiesRatesFullscreenMode(false);
-    this.activitiesContext.setActivitiesSelectedRateId(null);
+    this.activitiesContext.setActivitiesSelectedRateId(this.selectedActivityRateId);
     this.updateActivitiesHeaderProgress();
     this.refreshActivitiesHeaderProgressSoon();
+    if (!selectedRateId) {
+      return;
+    }
+    this.runAfterActivitiesRender(() => {
+      this.syncActivitiesRatesListPositionToRow(selectedRateId);
+      this.smoothRevealSelectedRateRowWhenNeeded(selectedRateId);
+    });
   }
 
   private cancelActivitiesRatesFullscreenAdvance(): void {
@@ -3179,8 +3194,8 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (!this.activitiesRatesFullscreenMode) {
       return;
     }
-    const allRows = this.activitiesRatesFullscreenAllRows();
-    if (allRows.length === 0) {
+    const rows = this.activitiesRatesFullscreenRows();
+    if (rows.length === 0) {
       this.selectedActivityRateId = null;
       this.activitiesContext.setActivitiesSelectedRateId(null);
       this.activitiesRatesFullscreenCardIndex = 0;
@@ -3190,19 +3205,13 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (this.activitiesRatesFullscreenCardIndex < 0) {
       this.activitiesRatesFullscreenCardIndex = 0;
     }
-    const maxAllowedIndex = allRows.length;
+    const maxAllowedIndex = rows.length - 1;
     if (this.activitiesRatesFullscreenCardIndex > maxAllowedIndex) {
       this.activitiesRatesFullscreenCardIndex = maxAllowedIndex;
     }
-    if (this.activitiesRatesFullscreenCardIndex >= allRows.length) {
-      this.selectedActivityRateId = null;
-      this.activitiesContext.setActivitiesSelectedRateId(null);
-      this.updateActivitiesHeaderProgress();
-      return;
-    }
-    this.selectedActivityRateId = allRows[this.activitiesRatesFullscreenCardIndex]?.id ?? null;
+    this.selectedActivityRateId = rows[this.activitiesRatesFullscreenCardIndex]?.id ?? null;
     this.activitiesContext.setActivitiesSelectedRateId(this.selectedActivityRateId);
-    this.pulseRateIndicatorForRow(allRows[this.activitiesRatesFullscreenCardIndex] ?? null);
+    this.pulseRateIndicatorForRow(rows[this.activitiesRatesFullscreenCardIndex] ?? null);
     this.updateActivitiesHeaderProgress();
   }
 
@@ -3220,33 +3229,87 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.activitiesRatesFullscreenAnimating = false;
     this.activitiesRatesFullscreenLeavingRow = null;
     this.syncActivitiesRatesFullscreenSelection();
+    this.syncActivitiesRatesListPositionToSelection();
   }
 
-  private maybeStartActivitiesRatesFullscreenPaginationLoad(force = false): void {
-    if (!this.isRatesFullscreenModeActive() || this.isCalendarLayoutView()) {
+  private activitiesRatesFullscreenEntryIndex(): number {
+    const rows = this.activitiesRatesFullscreenRows();
+    if (rows.length === 0) {
+      return 0;
+    }
+    const preferredRowId = this.selectedActivityRateId ?? this.firstVisibleActivitiesRateRowId();
+    if (!preferredRowId) {
+      return 0;
+    }
+    const matchedIndex = rows.findIndex(row => row.id === preferredRowId);
+    return matchedIndex >= 0 ? matchedIndex : 0;
+  }
+
+  private firstVisibleActivitiesRateRowId(): string | null {
+    const scrollElement = this.activitiesListScrollElement();
+    if (!scrollElement) {
+      return null;
+    }
+    const stickyHeaderHeight = scrollElement.querySelector<HTMLElement>('.activities-sticky-header')?.offsetHeight ?? 0;
+    const viewportTop = scrollElement.scrollTop + stickyHeaderHeight + 1;
+    const rows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.activities-rate-profile-card.activities-row-item'));
+    const activeRow = rows.find(row => row.offsetTop + row.offsetHeight > viewportTop - 1) ?? rows[0];
+    return activeRow?.dataset['activityRateRowId'] ?? null;
+  }
+
+  private syncActivitiesRatesListPositionToSelection(): void {
+    if (!this.selectedActivityRateId) {
       return;
     }
-    const stateKey = this.activitiesPaginationStateKey();
-    if (stateKey !== this.activitiesRatesFullscreenLoadStateKey) {
-      this.activitiesRatesFullscreenLoadStateKey = stateKey;
-      this.activitiesRatesFullscreenLastTriggeredLoadedCount = 0;
-    }
-    if (this.activitiesIsPaginating || this.activitiesHeaderProgressLoading) {
+    this.syncActivitiesRatesListPositionToRow(this.selectedActivityRateId);
+  }
+
+  private syncActivitiesRatesListPositionToRow(rowId: string): void {
+    const scrollElement = this.activitiesListScrollElement();
+    if (!scrollElement) {
       return;
     }
-    const allRows = this.activitiesRatesFullscreenAllRows();
-    this.ensureActivitiesPaginationState(allRows.length);
-    const loadedCount = this.activitiesVisibleCount;
-    const remainingCards = loadedCount - this.activitiesRatesFullscreenCardIndex;
-    if (!force && remainingCards > 2) {
+    const targetRow = scrollElement.querySelector<HTMLElement>(`[data-activity-rate-row-id="${rowId}"]`);
+    if (!targetRow) {
       return;
     }
-    if (loadedCount <= this.activitiesRatesFullscreenLastTriggeredLoadedCount) {
+    const stickyHeaderHeight = scrollElement.querySelector<HTMLElement>('.activities-sticky-header')?.offsetHeight ?? 0;
+    const targetTop = Math.max(0, targetRow.offsetTop - stickyHeaderHeight - (this.isMobileView ? 4 : 6));
+    if (Math.abs(scrollElement.scrollTop - targetTop) <= 1) {
       return;
     }
-    const allowEmptyResponse = loadedCount >= allRows.length;
-    this.activitiesRatesFullscreenLastTriggeredLoadedCount = loadedCount;
-    this.startActivitiesPaginationLoad(allowEmptyResponse);
+    const previousSnapType = scrollElement.style.scrollSnapType;
+    scrollElement.style.scrollSnapType = 'none';
+    scrollElement.scrollTop = targetTop;
+    const releaseSnap = () => {
+      scrollElement.style.scrollSnapType = previousSnapType;
+      this.updateActivitiesStickyHeader(scrollElement.scrollTop);
+      this.refreshActivitiesHeaderProgressSoon();
+    };
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => releaseSnap());
+      return;
+    }
+    setTimeout(releaseSnap, 0);
+  }
+
+  private maybeSnapActivitiesRatesListPastFirstGroup(): void {
+    if (this.activitiesPrimaryFilter !== 'rates' || this.isCalendarLayoutView() || this.isRatesFullscreenModeActive()) {
+      return;
+    }
+    const scrollElement = this.activitiesListScrollElement();
+    if (!scrollElement || scrollElement.scrollTop > 1) {
+      return;
+    }
+    const firstRow = scrollElement.querySelector<HTMLElement>('.activities-rate-profile-card.activities-row-item');
+    if (!firstRow) {
+      return;
+    }
+    const stickyHeaderHeight = scrollElement.querySelector<HTMLElement>('.activities-sticky-header')?.offsetHeight ?? 0;
+    if (firstRow.offsetTop <= stickyHeaderHeight + 2) {
+      return;
+    }
+    this.syncActivitiesRatesListPositionToRow(firstRow.dataset['activityRateRowId'] ?? '');
   }
 
   private updateActivitiesRatesPairSplitFromClientX(clientX: number): void {
@@ -3900,7 +3963,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   private resetActivitiesScroll(loadCalendarBadgesForCurrentPage = false): void {
     this.cancelActivitiesPaginationLoad();
     this.clearActivitiesHeaderLoadingAnimation();
-    if (this.activitiesPrimaryFilter !== 'rates') {
+    if (this.activitiesPrimaryFilter !== 'rates' || !this.isCalendarLayoutView()) {
       this.activitiesInitialLoadPending = true;
       this.updateActivitiesHeaderProgress();
       this.refreshActivitiesHeaderProgressSoon();
@@ -5864,7 +5927,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   private updateActivitiesHeaderProgress(): void {
     if (this.isRatesFullscreenModeActive()) {
       this.activitiesListScrollable = false;
-      const loadedCount = this.activitiesRatesFullscreenAllRows().length;
+      const loadedCount = this.activitiesRatesFullscreenRows().length;
       if (loadedCount <= 0) {
         this.activitiesHeaderProgress = 0;
         return;
@@ -6099,6 +6162,11 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.serverPageIndex = Math.ceil(change.items.length / Math.max(1, change.query.pageSize));
     }
     if (this.isRatesFullscreenModeActive()) {
+      this.activitiesHeaderProgressLoading = change.loading;
+      this.activitiesHeaderLoadingProgress = change.loadingProgress;
+      this.activitiesHeaderLoadingOverdue = change.loadingOverdue;
+      this.updateActivitiesHeaderProgress();
+      this.flushActivitiesHeaderProgress();
       this.cdr.markForCheck();
       return;
     }
@@ -6110,6 +6178,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.activitiesStickyValue = change.stickyLabel;
     this.activitiesContext.setActivitiesStickyValue(change.stickyLabel);
     this.flushActivitiesHeaderProgress();
+    if (!change.loading && !change.initialLoading) {
+      this.runAfterActivitiesRender(() => this.maybeSnapActivitiesRatesListPastFirstGroup());
+    }
     this.cdr.markForCheck();
   }
 

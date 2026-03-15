@@ -512,9 +512,10 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       this.endLoadingAnimation();
       this.syncGroups();
       this.refreshSurfaceSoon();
-      if (isInitial) {
+      if (isInitial || (this.scrollHostRef?.nativeElement?.scrollTop ?? 0) <= 1) {
         this.scheduleInitialListSnap();
       }
+      this.scheduleListAutoFillCheck();
       this.emitState();
       this.cdr.markForCheck();
     }
@@ -582,10 +583,15 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     }
     const remainingPx = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
     if (this.awaitScrollReset) {
-      if (remainingPx > 360) {
+      const maxVerticalScroll = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight);
+      if (maxVerticalScroll <= 1 || scrollElement.scrollTop > 1) {
         this.awaitScrollReset = false;
+      } else if (remainingPx > 360) {
+        this.awaitScrollReset = false;
+        return;
+      } else {
+        return;
       }
-      return;
     }
     if (remainingPx > Math.max(240, this.config.preloadOffsetPx ?? 520)) {
       return;
@@ -807,7 +813,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       if (!scrollElement || this.currentViewMode !== 'list') {
         return;
       }
-      if (!scrollElement.classList.contains('activities-scroll-list-event-snap')) {
+      if (!this.shouldBootstrapInitialListSnap(scrollElement)) {
         return;
       }
       if (scrollElement.scrollTop > 1) {
@@ -857,6 +863,35 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       return;
     }
     setTimeout(run, 0);
+  }
+
+  private scheduleListAutoFillCheck(): void {
+    const run = () => {
+      const scrollElement = this.scrollHostRef?.nativeElement;
+      if (!scrollElement || this.currentViewMode !== 'list' || this.loading || !this.hasMore) {
+        return;
+      }
+      this.maybeLoadMore(scrollElement);
+    };
+    if (!this.afterViewInit) {
+      return;
+    }
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(run));
+      return;
+    }
+    setTimeout(run, 0);
+  }
+
+  private shouldBootstrapInitialListSnap(scrollElement: HTMLDivElement): boolean {
+    if (scrollElement.classList.contains('activities-scroll-list-event-snap')) {
+      return true;
+    }
+    if (scrollElement.classList.contains('activities-scroll-list-rates')
+      && !scrollElement.classList.contains('activities-scroll-list-with-rate-editor')) {
+      return true;
+    }
+    return false;
   }
 
   private listSnapTargetTop(scrollElement: HTMLDivElement, target: HTMLElement): number {
