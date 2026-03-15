@@ -4,13 +4,16 @@ export type ListDirection = 'asc' | 'desc';
 export type SmartListViewMode = 'list' | 'month' | 'week';
 export type SmartListClassValue = string | string[] | Set<string> | Record<string, boolean> | null;
 export type SmartListCalendarVariant = 'default' | 'rate-counts';
+export type SmartListFilters = object;
+export type SmartListConfigValue<TValue, TFilters extends SmartListFilters = SmartListFilters>
+  = TValue | ((query: ListQuery<TFilters>) => TValue);
 
-export interface ListQuery {
+export interface ListQuery<TFilters extends SmartListFilters = SmartListFilters> {
   page: number;
   pageSize: number;
   sort?: string;
   direction?: ListDirection;
-  filters?: Record<string, unknown>;
+  filters?: TFilters;
   groupBy?: string;
   view?: string;
   anchorDate?: string;
@@ -23,18 +26,20 @@ export interface PageResult<T> {
   total: number;
 }
 
-export type SmartListLoadPage<T> = (query: ListQuery) => Observable<PageResult<T>>;
-export type SmartListLoaders<T> = Partial<Record<string, SmartListLoadPage<T>>>;
+export type SmartListLoadPage<T, TFilters extends SmartListFilters = SmartListFilters>
+  = (query: ListQuery<TFilters>) => Observable<PageResult<T>>;
+export type SmartListLoaders<T, TFilters extends SmartListFilters = SmartListFilters>
+  = Partial<Record<string, SmartListLoadPage<T, TFilters>>>;
 
 export interface SmartListGroup<T> {
   label: string;
   items: T[];
 }
 
-export interface SmartListStateChange<T> {
+export interface SmartListStateChange<T, TFilters extends SmartListFilters = SmartListFilters> {
   items: ReadonlyArray<T>;
   groups: ReadonlyArray<SmartListGroup<T>>;
-  query: ListQuery;
+  query: ListQuery<TFilters>;
   total: number;
   currentView: string | null;
   hasMore: boolean;
@@ -47,11 +52,11 @@ export interface SmartListStateChange<T> {
   stickyLabel: string;
 }
 
-export interface SmartListItemTemplateContext<T> {
+export interface SmartListItemTemplateContext<T, TFilters extends SmartListFilters = SmartListFilters> {
   $implicit: T;
   index: number;
   groupLabel: string;
-  query: ListQuery;
+  query: ListQuery<TFilters>;
 }
 
 export interface SmartListCalendarDateRange {
@@ -103,42 +108,42 @@ export interface SmartListCalendarTimedBadge<T> {
   heightPct: number;
 }
 
-export interface SmartListCalendarConfig<T> {
+export interface SmartListCalendarConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
   weekdayLabels?: ReadonlyArray<string>;
   weekStartHour?: number;
   weekEndHour?: number;
   anchorRadius?: number;
-  resolveDateRange: (item: T, query: ListQuery) => SmartListCalendarDateRange | null;
-  badgeLabel?: (item: T, query: ListQuery) => string;
-  badgeToneClass?: (item: T, query: ListQuery) => SmartListClassValue;
+  resolveDateRange: (item: T, query: ListQuery<TFilters>) => SmartListCalendarDateRange | null;
+  badgeLabel?: (item: T, query: ListQuery<TFilters>) => string;
+  badgeToneClass?: (item: T, query: ListQuery<TFilters>) => SmartListClassValue;
 }
 
-export interface SmartListViewConfig<T> {
+export interface SmartListViewConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
   key: string;
   label: string;
   icon?: string;
   mode?: SmartListViewMode;
   groupBy?: string;
   pageSize?: number;
-  loadPage?: SmartListLoadPage<T>;
+  loadPage?: SmartListLoadPage<T, TFilters>;
 }
 
-export interface SmartListGroupMarkerContext<T> {
+export interface SmartListGroupMarkerContext<T, TFilters extends SmartListFilters = SmartListFilters> {
   group: SmartListGroup<T>;
   groupIndex: number;
-  query: ListQuery;
+  query: ListQuery<TFilters>;
   scrollable: boolean;
   totalGroups: number;
 }
 
-export interface SmartListItemSelectEvent<T> {
+export interface SmartListItemSelectEvent<T, TFilters extends SmartListFilters = SmartListFilters> {
   item: T;
-  query: ListQuery;
+  query: ListQuery<TFilters>;
   currentView: string | null;
   currentViewMode: SmartListViewMode;
 }
 
-export interface SmartListConfig<T> {
+export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
   pageSize?: number;
   preloadOffsetPx?: number;
   loadingDelayMs?: number;
@@ -146,15 +151,20 @@ export interface SmartListConfig<T> {
   defaultView?: string;
   defaultSort?: string;
   defaultDirection?: ListDirection;
-  defaultFilters?: Record<string, unknown>;
+  defaultFilters?: TFilters;
   defaultGroupBy?: string;
   trackBy?: (index: number, item: T) => unknown;
-  groupBy?: ((item: T, query: ListQuery) => string) | null;
-  emptyLabel?: string | ((query: ListQuery) => string);
-  emptyDescription?: string | ((query: ListQuery) => string);
-  emptyStickyLabel?: string | ((query: ListQuery) => string);
+  groupBy?: ((item: T, query: ListQuery<TFilters>) => string) | null;
+  emptyLabel?: string | ((query: ListQuery<TFilters>) => string);
+  emptyDescription?: string | ((query: ListQuery<TFilters>) => string);
+  emptyStickyLabel?: string | ((query: ListQuery<TFilters>) => string);
   showFirstGroupMarker?: boolean;
-  showGroupMarker?: (context: SmartListGroupMarkerContext<T>) => boolean;
-  views?: ReadonlyArray<SmartListViewConfig<T>>;
-  calendar?: SmartListCalendarConfig<T>;
+  showGroupMarker?: (context: SmartListGroupMarkerContext<T, TFilters>) => boolean;
+  views?: ReadonlyArray<SmartListViewConfig<T, TFilters>>;
+  calendar?: SmartListCalendarConfig<T, TFilters>;
+  containerClass?: SmartListConfigValue<SmartListClassValue, TFilters>;
+  stickyHeaderClass?: SmartListConfigValue<SmartListClassValue, TFilters>;
+  groupMarkerClass?: SmartListConfigValue<SmartListClassValue, TFilters>;
+  footerSpacerHeight?: SmartListConfigValue<string | null, TFilters>;
+  calendarVariant?: SmartListConfigValue<SmartListCalendarVariant, TFilters>;
 }

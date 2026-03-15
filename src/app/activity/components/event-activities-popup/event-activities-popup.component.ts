@@ -59,12 +59,12 @@ import { EventMembersPopupComponent, type EventMembersPopupPresenter } from '../
 // ---------------------------------------------------------------------------
 
 interface ActivitiesSmartListFilters {
-  primaryFilter?: unknown;
-  eventScopeFilter?: unknown;
-  secondaryFilter?: unknown;
-  chatContextFilter?: unknown;
-  hostingPublicationFilter?: unknown;
-  rateFilter?: unknown;
+  primaryFilter?: AppTypes.ActivitiesPrimaryFilter;
+  eventScopeFilter?: AppTypes.ActivitiesEventScope;
+  secondaryFilter?: AppTypes.ActivitiesSecondaryFilter;
+  chatContextFilter?: AppTypes.ActivitiesChatContextFilter;
+  hostingPublicationFilter?: AppTypes.HostingPublicationFilter;
+  rateFilter?: AppTypes.RateFilterKey;
 }
 
 interface ActivitiesEventScopeOption {
@@ -165,13 +165,13 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   private activitiesScrollRef?: ElementRef<HTMLDivElement>;
 
   @ViewChild('activitiesSmartList')
-  private activitiesSmartList?: SmartListComponent<AppTypes.ActivityListRow>;
+  private activitiesSmartList?: SmartListComponent<AppTypes.ActivityListRow, ActivitiesSmartListFilters>;
 
   @ViewChild('activitiesRateSingleSmartListItemTemplate', { static: true, read: TemplateRef })
-  private activitiesRateSingleSmartListItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow>>;
+  private activitiesRateSingleSmartListItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>>;
 
   @ViewChild('activitiesRatePairSmartListItemTemplate', { static: true, read: TemplateRef })
-  private activitiesRatePairSmartListItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow>>;
+  private activitiesRatePairSmartListItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>>;
 
   @ViewChild('activitiesCalendarScroll')
   private activitiesCalendarScrollRef?: ElementRef<HTMLDivElement>;
@@ -225,11 +225,16 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected showActivitiesChatContextPicker = false;
   protected showActivitiesRatePicker      = false;
   protected showActivitiesQuickActionsMenu = false;
-  protected activitiesSmartListFilters: Record<string, unknown> = {};
-  protected readonly activitiesSmartListConfig: SmartListConfig<AppTypes.ActivityListRow> = {
+  protected activitiesSmartListQuery: Partial<ListQuery<ActivitiesSmartListFilters>> = {};
+  protected readonly activitiesSmartListConfig: SmartListConfig<AppTypes.ActivityListRow, ActivitiesSmartListFilters> = {
     pageSize: 10,
     loadingDelayMs: 1000,
     defaultView: 'day',
+    containerClass: () => this.activitiesSmartListClassMap(),
+    stickyHeaderClass: 'activities-sticky-header',
+    groupMarkerClass: 'activities-group-marker',
+    footerSpacerHeight: () => this.activitiesPrimaryFilter === 'rates' ? this.activityRateEditorSpacerHeight() : null,
+    calendarVariant: () => this.activitiesPrimaryFilter === 'rates' ? 'rate-counts' : 'default',
     views: [
       { key: 'day', label: 'Day', mode: 'list', pageSize: 10 },
       { key: 'distance', label: 'Distance', mode: 'list', pageSize: 10 },
@@ -269,7 +274,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return true;
     }
   };
-  protected readonly activitiesSmartListLoaders: SmartListLoaders<AppTypes.ActivityListRow> = {
+  protected readonly activitiesSmartListLoaders: SmartListLoaders<AppTypes.ActivityListRow, ActivitiesSmartListFilters> = {
     day: query => from(this.resolveActivitiesSmartListPage(query)),
     distance: query => from(this.resolveActivitiesSmartListPage(query)),
     week: query => from(this.resolveActivitiesSmartListCalendarPage(query)),
@@ -444,7 +449,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.activitiesStickyValue         = svc.activitiesStickyValue();
       this.activitiesRatesFullscreenMode = svc.activitiesRatesFullscreenMode();
       this.selectedActivityRateId        = svc.activitiesSelectedRateId();
-      this.syncActivitiesSmartListInputs();
+      this.syncActivitiesSmartListQuery();
       this.cdr.markForCheck();
     });
 
@@ -1238,8 +1243,17 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   protected selectActivitiesRateFilter(filter: AppTypes.RateFilterKey): void {
+    const currentFilter = this.activitiesContext.activitiesRateFilter() as AppTypes.RateFilterKey;
+    if (currentFilter === filter) {
+      this.showActivitiesPrimaryPicker = false;
+      this.showActivitiesEventScopePicker = false;
+      this.showActivitiesChatContextPicker = false;
+      this.showActivitiesSecondaryPicker = false;
+      this.showActivitiesRatePicker = false;
+      this.showActivitiesQuickActionsMenu = false;
+      return;
+    }
     this.stopActivitiesRatesPairSplitDrag();
-    this.activitiesRateFilter = filter;
     this.commitPendingRateDirectionOverrides(filter);
     this.activitiesContext.setActivitiesRateFilter(filter);
     this.lastRateIndicatorPulseRowId = null;
@@ -2359,7 +2373,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return row ? this.activityOwnRatingValue(row) : 0;
   }
 
-  protected get activitiesRateSmartListItemTemplate(): TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow>> | null {
+  protected get activitiesRateSmartListItemTemplate(): TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>> | null {
     return this.activitiesRateFilter.startsWith('pair')
       ? (this.activitiesRatePairSmartListItemTemplateRef ?? null)
       : (this.activitiesRateSingleSmartListItemTemplateRef ?? null);
@@ -4305,6 +4319,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.serverPageStateKey = currentStateKey;
     const request: ActivitiesPageRequest = {
       primaryFilter: this.activitiesPrimaryFilter,
+      eventScopeFilter: this.activitiesEventScope,
       secondaryFilter: this.activitiesSecondaryFilter,
       chatContextFilter: this.activitiesChatContextFilter,
       hostingPublicationFilter: this.hostingPublicationFilter,
@@ -6211,7 +6226,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     });
   }
 
-  private syncActivitiesSmartListInputs(): void {
+  private syncActivitiesSmartListQuery(): void {
     const nextFilters: Record<string, unknown> = {
       primaryFilter: this.activitiesPrimaryFilter,
       eventScopeFilter: this.activitiesEventScope,
@@ -6220,7 +6235,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       hostingPublicationFilter: this.hostingPublicationFilter,
       rateFilter: this.activitiesRateFilter
     };
-    const currentFilters = this.activitiesSmartListFilters;
+    const currentFilters = this.activitiesSmartListQuery.filters ?? {};
     if (
       currentFilters['primaryFilter'] === nextFilters['primaryFilter']
       && currentFilters['eventScopeFilter'] === nextFilters['eventScopeFilter']
@@ -6231,10 +6246,12 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     ) {
       return;
     }
-    this.activitiesSmartListFilters = nextFilters;
+    this.activitiesSmartListQuery = {
+      filters: nextFilters as ActivitiesSmartListFilters
+    };
   }
 
-  private async resolveActivitiesSmartListPage(query: ListQuery): Promise<PageResult<AppTypes.ActivityListRow>> {
+  private async resolveActivitiesSmartListPage(query: ListQuery<ActivitiesSmartListFilters>): Promise<PageResult<AppTypes.ActivityListRow>> {
     const request = this.buildActivitiesSmartListRequest(query);
 
     if (this.shouldUseServerSidePagination()) {
@@ -6261,7 +6278,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     };
   }
 
-  private async resolveActivitiesSmartListCalendarPage(query: ListQuery): Promise<PageResult<AppTypes.ActivityListRow>> {
+  private async resolveActivitiesSmartListCalendarPage(query: ListQuery<ActivitiesSmartListFilters>): Promise<PageResult<AppTypes.ActivityListRow>> {
     const request = this.buildActivitiesSmartListRequest(query);
 
     if (this.shouldUseServerSidePagination()) {
@@ -6292,11 +6309,11 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     };
   }
 
-  protected onActivitiesSmartListItemSelect(event: SmartListItemSelectEvent<AppTypes.ActivityListRow>): void {
+  protected onActivitiesSmartListItemSelect(event: SmartListItemSelectEvent<AppTypes.ActivityListRow, ActivitiesSmartListFilters>): void {
     this.onActivityRowClick(event.item);
   }
 
-  protected onActivitiesSmartListStateChange(change: SmartListStateChange<AppTypes.ActivityListRow>): void {
+  protected onActivitiesSmartListStateChange(change: SmartListStateChange<AppTypes.ActivityListRow, ActivitiesSmartListFilters>): void {
     this.activitiesVisibleCount = change.items.length;
     this.activitiesInitialLoadPending = change.initialLoading;
     if (this.shouldUseServerSidePagination()) {
@@ -6327,8 +6344,8 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  private buildActivitiesSmartListRequest(query: ListQuery): ActivitiesPageRequest {
-    const filters = query.filters as ActivitiesSmartListFilters | undefined;
+  private buildActivitiesSmartListRequest(query: ListQuery<ActivitiesSmartListFilters>): ActivitiesPageRequest {
+    const filters = query.filters;
     return {
       primaryFilter: this.normalizeActivitiesPrimaryFilter(filters?.primaryFilter),
       eventScopeFilter: this.normalizeActivitiesEventScopeFilter(filters?.eventScopeFilter),
@@ -6345,7 +6362,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     };
   }
 
-  private activitiesSmartListQueryRange(query: ListQuery): { start: Date; end: Date } | null {
+  private activitiesSmartListQueryRange(query: ListQuery<ActivitiesSmartListFilters>): { start: Date; end: Date } | null {
     const start = this.parseSmartListDate(query.rangeStart);
     const end = this.parseSmartListDate(query.rangeEnd);
     if (!start || !end) {

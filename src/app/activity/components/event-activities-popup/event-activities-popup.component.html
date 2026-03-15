@@ -449,24 +449,27 @@
 
 
   <!-- ───── List / Calendar layout ───── -->
-  <ng-container *ngIf="activitiesPrimaryFilter !== 'rates'; else activitiesRatesContent">
+  <div class="activities-rates-stage" [class.is-fullscreen]="activitiesPrimaryFilter === 'rates' && isRatesFullscreenModeActive()">
+    <div class="activities-rates-list-shell" [class.is-occluded]="activitiesPrimaryFilter === 'rates' && isRatesFullscreenModeActive()">
     <app-smart-list
       #activitiesSmartList
       [config]="activitiesSmartListConfig"
       [loaders]="activitiesSmartListLoaders"
-      [itemTemplate]="activitiesSmartListItemTemplate"
+      [itemTemplate]="activitiesPrimaryFilter === 'rates' ? activitiesRateSmartListItemTemplate : activitiesSmartListItemTemplate"
       [view]="activitiesView"
-      [filters]="activitiesSmartListFilters"
-      [containerClass]="activitiesSmartListClassMap()"
-      stickyHeaderClass="activities-sticky-header"
-      groupMarkerClass="activities-group-marker"
+      [query]="activitiesSmartListQuery"
       (itemSelect)="onActivitiesSmartListItemSelect($event)"
       (stateChange)="onActivitiesSmartListStateChange($event)"
       (wheel)="closeActivityRateEditorFromUserScroll()"
       (touchmove)="closeActivityRateEditorFromUserScroll()"
     ></app-smart-list>
+    </div>
+    <div class="activities-rates-fullscreen-layer" *ngIf="activitiesPrimaryFilter === 'rates' && !isCalendarLayoutView() && isRatesFullscreenModeActive()">
+      <ng-container *ngTemplateOutlet="activitiesRatesFullscreenLayout"></ng-container>
+    </div>
+  </div>
 
-    <ng-template #activitiesSmartListItemTemplate let-row let-groupLabel="groupLabel">
+  <ng-template #activitiesSmartListItemTemplate let-row let-groupLabel="groupLabel">
         <!-- Event-style card -->
         <article
           class="experience-item-card asset-item-card activities-row-item"
@@ -614,34 +617,6 @@
             </span>
           </button>
         </ng-template>
-    </ng-template>
-  </ng-container>
-
-  <ng-template #activitiesRatesContent>
-    <div class="activities-rates-stage" [class.is-fullscreen]="isRatesFullscreenModeActive()">
-      <div class="activities-rates-list-shell" [class.is-occluded]="isRatesFullscreenModeActive()">
-        <app-smart-list
-          #activitiesSmartList
-          [config]="activitiesSmartListConfig"
-          [loaders]="activitiesSmartListLoaders"
-          [itemTemplate]="activitiesRateFilter.startsWith('pair') ? activitiesRatePairSmartListItemTemplate : activitiesRateSingleSmartListItemTemplate"
-          [view]="activitiesView"
-          [filters]="activitiesSmartListFilters"
-          [footerSpacerHeight]="activityRateEditorSpacerHeight()"
-          [calendarVariant]="'rate-counts'"
-          [containerClass]="activitiesSmartListClassMap()"
-          stickyHeaderClass="activities-sticky-header"
-          groupMarkerClass="activities-group-marker"
-          (itemSelect)="onActivitiesSmartListItemSelect($event)"
-          (stateChange)="onActivitiesSmartListStateChange($event)"
-          (wheel)="closeActivityRateEditorFromUserScroll()"
-          (touchmove)="closeActivityRateEditorFromUserScroll()"
-        ></app-smart-list>
-      </div>
-      <div class="activities-rates-fullscreen-layer" *ngIf="!isCalendarLayoutView() && isRatesFullscreenModeActive()">
-        <ng-container *ngTemplateOutlet="activitiesRatesFullscreenLayout"></ng-container>
-      </div>
-    </div>
   </ng-template>
 
   <ng-template #activitiesRateSingleSmartListItemTemplate let-row let-groupLabel="groupLabel">

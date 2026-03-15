@@ -25,6 +25,7 @@ import type {
   ListDirection,
   ListQuery,
   PageResult,
+  SmartListFilters,
   SmartListCalendarConfig,
   SmartListCalendarDateRange,
   SmartListCalendarDay,
@@ -65,31 +66,27 @@ type SmartListCalendarWindow = {
   styleUrl: './smart-list.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestroy {
+export class SmartListComponent<T, TFilters extends SmartListFilters = SmartListFilters> implements AfterViewInit, OnChanges, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
 
   @ViewChild('scrollHost')
   private scrollHostRef?: ElementRef<HTMLDivElement>;
 
-  @Input() config: SmartListConfig<T> = {};
-  @Input() loadPage: SmartListLoadPage<T> | null = null;
-  @Input() loaders: SmartListLoaders<T> | null = null;
-  @Input() itemTemplate: TemplateRef<SmartListItemTemplateContext<T>> | null = null;
+  @Input() config: SmartListConfig<T, TFilters> = {};
+  @Input() loadPage: SmartListLoadPage<T, TFilters> | null = null;
+  @Input() loaders: SmartListLoaders<T, TFilters> | null = null;
+  @Input() itemTemplate: TemplateRef<SmartListItemTemplateContext<T, TFilters>> | null = null;
+  @Input() query: Partial<ListQuery<TFilters>> | null = null;
   @Input() view: string | null = null;
   @Input() sort: string | null = null;
   @Input() direction: ListDirection | null = null;
-  @Input() filters: Record<string, unknown> | null = null;
+  @Input() filters: TFilters | null = null;
   @Input() groupBy: string | null = null;
-  @Input() containerClass: SmartListClassValue = null;
-  @Input() stickyHeaderClass: SmartListClassValue = null;
-  @Input() groupMarkerClass: SmartListClassValue = null;
-  @Input() footerSpacerHeight: string | null = null;
-  @Input() calendarVariant: SmartListCalendarVariant = 'default';
 
-  @Output() readonly stateChange = new EventEmitter<SmartListStateChange<T>>();
+  @Output() readonly stateChange = new EventEmitter<SmartListStateChange<T, TFilters>>();
   @Output() readonly viewChange = new EventEmitter<string>();
-  @Output() readonly itemSelect = new EventEmitter<SmartListItemSelectEvent<T>>();
+  @Output() readonly itemSelect = new EventEmitter<SmartListItemSelectEvent<T, TFilters>>();
 
   protected items: T[] = [];
   protected groups: SmartListGroup<T>[] = [];
@@ -149,6 +146,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       changes['config']
       || changes['loadPage']
       || changes['loaders']
+      || changes['query']
       || changes['sort']
       || changes['direction']
       || changes['filters']
@@ -184,6 +182,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       changes['config']
       || changes['loadPage']
       || changes['loaders']
+      || changes['query']
       || changes['view']
       || changes['sort']
       || changes['direction']
@@ -228,6 +227,22 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
 
   protected isWeekMode(): boolean {
     return this.currentViewMode === 'week';
+  }
+
+  protected resolvedContainerClass(): SmartListClassValue {
+    return this.resolveConfigValue(this.config.containerClass, null);
+  }
+
+  protected resolvedStickyHeaderClass(): SmartListClassValue {
+    return this.resolveConfigValue(this.config.stickyHeaderClass, null);
+  }
+
+  protected resolvedGroupMarkerClass(): SmartListClassValue {
+    return this.resolveConfigValue(this.config.groupMarkerClass, null);
+  }
+
+  protected resolvedFooterSpacerHeight(): string | null {
+    return this.resolveConfigValue(this.config.footerSpacerHeight, null);
   }
 
   protected onListScroll(event: Event): void {
@@ -300,7 +315,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     return this.config.showFirstGroupMarker !== false;
   }
 
-  protected itemContext(item: T, index: number, groupLabel: string): SmartListItemTemplateContext<T> {
+  protected itemContext(item: T, index: number, groupLabel: string): SmartListItemTemplateContext<T, TFilters> {
     return {
       $implicit: item,
       index,
@@ -317,7 +332,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     return this.resolveText(this.config.emptyDescription, '');
   }
 
-  protected resolvedItemTemplate(): TemplateRef<SmartListItemTemplateContext<T>> | null {
+  protected resolvedItemTemplate(): TemplateRef<SmartListItemTemplateContext<T, TFilters>> | null {
     return this.itemTemplate;
   }
 
@@ -377,7 +392,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
   }
 
   protected isRateCountCalendarVariant(): boolean {
-    return this.calendarVariant === 'rate-counts';
+    return this.resolveConfigValue(this.config.calendarVariant, 'default') === 'rate-counts';
   }
 
   protected monthRateCount(day: SmartListCalendarDay<T>): number {
@@ -1148,7 +1163,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     this.stateChange.emit(this.buildStateChange());
   }
 
-  private buildStateChange(): SmartListStateChange<T> {
+  private buildStateChange(): SmartListStateChange<T, TFilters> {
     const loadingVisible = this.isVisibleCalendarPageLoading();
     return {
       items: this.items,
@@ -1187,22 +1202,24 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     return this.calendarPageKey(visibleAnchor) === this.calendarPendingPageKey && (this.loading || this.loadingProgress > 0);
   }
 
-  private currentQuery(page = this.pageIndex): ListQuery {
+  private currentQuery(page = this.pageIndex): ListQuery<TFilters> {
     const activeView = this.activeViewConfig();
+    const baseQuery = this.query ?? {};
     const nextFilters = {
-      ...(this.config.defaultFilters ?? {}),
-      ...(this.filters ?? {})
-    };
-    const query: ListQuery = {
+      ...((this.config.defaultFilters ?? {}) as TFilters),
+      ...(((baseQuery.filters ?? {}) as TFilters)),
+      ...((this.filters ?? {}) as TFilters)
+    } as TFilters;
+    const query: ListQuery<TFilters> = {
       page: this.currentViewMode === 'list' ? page : 0,
       pageSize: Math.max(1, Math.trunc(activeView?.pageSize ?? this.config.pageSize ?? 10)),
-      sort: this.sort ?? this.config.defaultSort,
-      direction: this.direction ?? this.config.defaultDirection,
-      filters: Object.keys(nextFilters).length > 0 ? nextFilters : undefined,
+      sort: this.sort ?? baseQuery.sort ?? this.config.defaultSort,
+      direction: this.direction ?? baseQuery.direction ?? this.config.defaultDirection,
+      filters: Object.keys(nextFilters as object).length > 0 ? nextFilters : undefined,
       groupBy: this.currentViewMode === 'list'
-        ? this.groupBy ?? activeView?.groupBy ?? this.config.defaultGroupBy
+        ? this.groupBy ?? baseQuery.groupBy ?? activeView?.groupBy ?? this.config.defaultGroupBy
         : undefined,
-      view: this.currentViewKey ?? undefined
+      view: this.currentViewKey ?? baseQuery.view ?? undefined
     };
 
     if (!this.isCalendarMode()) {
@@ -1212,7 +1229,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     return anchor ? this.calendarQueryForAnchor(anchor) : query;
   }
 
-  private resolveLoadPage(): SmartListLoadPage<T> | null {
+  private resolveLoadPage(): SmartListLoadPage<T, TFilters> | null {
     const viewKey = this.currentViewKey ?? '';
     return this.activeViewConfig()?.loadPage
       ?? this.loaders?.[viewKey]
@@ -1223,6 +1240,10 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     const explicit = this.view?.trim();
     if (explicit) {
       return explicit;
+    }
+    const queryView = this.query?.view?.trim();
+    if (queryView) {
+      return queryView;
     }
     const configDefault = this.config.defaultView?.trim();
     if (configDefault) {
@@ -1242,7 +1263,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     return 'list';
   }
 
-  private activeViewConfig(viewKey: string | null = this.currentViewKey): SmartListViewConfig<T> | null {
+  private activeViewConfig(viewKey: string | null = this.currentViewKey): SmartListViewConfig<T, TFilters> | null {
     if (!viewKey) {
       return null;
     }
@@ -1253,7 +1274,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     return this.resolveText(this.config.emptyStickyLabel, 'No items');
   }
 
-  private resolveText(value: string | ((query: ListQuery) => string) | undefined, fallback: string): string {
+  private resolveText(value: string | ((query: ListQuery<TFilters>) => string) | undefined, fallback: string): string {
     if (typeof value === 'function') {
       const resolved = value(this.currentQuery());
       return typeof resolved === 'string' && resolved.trim() ? resolved : fallback;
@@ -1262,6 +1283,13 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       return value;
     }
     return fallback;
+  }
+
+  private resolveConfigValue<TValue>(value: TValue | ((query: ListQuery<TFilters>) => TValue) | undefined, fallback: TValue): TValue {
+    if (typeof value === 'function') {
+      return (value as (query: ListQuery<TFilters>) => TValue)(this.currentQuery());
+    }
+    return value ?? fallback;
   }
 
   private wait(delayMs: number): Promise<void> {
@@ -1273,7 +1301,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     });
   }
 
-  private calendarConfig(): SmartListCalendarConfig<T> | null {
+  private calendarConfig(): SmartListCalendarConfig<T, TFilters> | null {
     return this.config.calendar ?? null;
   }
 
@@ -1346,12 +1374,14 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     return null;
   }
 
-  private calendarQueryForAnchor(anchor: Date): ListQuery {
+  private calendarQueryForAnchor(anchor: Date): ListQuery<TFilters> {
     const activeView = this.activeViewConfig();
+    const baseQuery = this.query ?? {};
     const nextFilters = {
-      ...(this.config.defaultFilters ?? {}),
-      ...(this.filters ?? {})
-    };
+      ...((this.config.defaultFilters ?? {}) as TFilters),
+      ...(((baseQuery.filters ?? {}) as TFilters)),
+      ...((this.filters ?? {}) as TFilters)
+    } as TFilters;
     const normalizedAnchor = this.isMonthMode()
       ? AppUtils.startOfMonth(anchor)
       : AppUtils.startOfWeekMonday(anchor);
@@ -1359,10 +1389,10 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     return {
       page: 0,
       pageSize: Math.max(1, Math.trunc(activeView?.pageSize ?? this.config.pageSize ?? 10)),
-      sort: this.sort ?? this.config.defaultSort,
-      direction: this.direction ?? this.config.defaultDirection,
-      filters: Object.keys(nextFilters).length > 0 ? nextFilters : undefined,
-      view: this.currentViewKey ?? undefined,
+      sort: this.sort ?? baseQuery.sort ?? this.config.defaultSort,
+      direction: this.direction ?? baseQuery.direction ?? this.config.defaultDirection,
+      filters: Object.keys(nextFilters as object).length > 0 ? nextFilters : undefined,
+      view: this.currentViewKey ?? baseQuery.view ?? undefined,
       anchorDate: this.dateKey(normalizedAnchor),
       rangeStart: this.dateKey(range.start),
       rangeEnd: this.dateKey(range.end)

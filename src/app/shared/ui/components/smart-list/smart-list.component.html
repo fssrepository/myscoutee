@@ -1,6 +1,6 @@
 <ng-container *ngIf="isCalendarMode(); else listMode">
   <div class="smart-list__calendar-shell">
-    <div class="smart-list__sticky smart-list__sticky--calendar" [ngClass]="stickyHeaderClass">
+    <div class="smart-list__sticky smart-list__sticky--calendar" [ngClass]="resolvedStickyHeaderClass()">
       <span class="smart-list__sticky-label">{{ stickyLabel || emptyLabel() }}</span>
       <span class="smart-list__sticky-calendar-nav">
         <button
@@ -153,10 +153,10 @@
   <div
     #scrollHost
     class="smart-list"
-    [ngClass]="containerClass"
+    [ngClass]="resolvedContainerClass()"
     (scroll)="onListScroll($event)"
   >
-    <div class="smart-list__sticky" [ngClass]="stickyHeaderClass">{{ stickyLabel }}</div>
+    <div class="smart-list__sticky" [ngClass]="resolvedStickyHeaderClass()">{{ stickyLabel }}</div>
 
     <ng-container *ngIf="groups.length > 0; else emptyState">
       <ng-container *ngIf="resolvedItemTemplate() as templateRef">
@@ -164,7 +164,7 @@
           <div
             *ngIf="shouldShowGroupMarker(group, groupIndex) && group.label"
             class="smart-list__group-marker"
-            [ngClass]="groupMarkerClass"
+            [ngClass]="resolvedGroupMarkerClass()"
             [attr.data-group-label]="group.label"
           >
             {{ group.label }}
@@ -183,9 +183,9 @@
     </ng-container>
 
     <div
-      *ngIf="footerSpacerHeight !== null"
+      *ngIf="resolvedFooterSpacerHeight() !== null"
       class="smart-list__footer-spacer"
-      [style.height]="footerSpacerHeight"
+      [style.height]="resolvedFooterSpacerHeight()"
       aria-hidden="true"
     ></div>
   </div>
