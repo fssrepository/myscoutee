@@ -77,6 +77,7 @@ export class EventChatPopupComponent implements OnDestroy {
     loadTriggerEdge: 'start',
     mergeStrategy: 'prepend',
     initialScrollAnchor: 'end',
+    prependRestoreMode: 'manual',
     containerClass: 'chat-thread-list',
     groupMarkerClass: 'chat-thread-group-marker',
     emptyLabel: 'No messages yet',

@@ -45,6 +45,7 @@ import type {
   SmartListLoadPage,
   SmartListLoaders,
   SmartListMergeStrategy,
+  SmartListPrependRestoreMode,
   SmartListStateChange,
   SmartListViewConfig,
   SmartListViewMode
@@ -71,6 +72,7 @@ type SmartListCalendarWindow = {
 })
 export class SmartListComponent<T, TFilters extends SmartListFilters = SmartListFilters> implements AfterViewInit, OnChanges, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
+  private restoreAnchorSequence = 0;
   private readonly ngZone = inject(NgZone);
 
   @ViewChild('scrollHost')
@@ -563,12 +565,22 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return;
     }
 
-    const restoreContext = this.captureListRestoreContext(isInitial);
     const query = this.loadQuery(this.pageIndex, isInitial);
     const sequence = ++this.loadSequence;
     this.loading = true;
     this.startLoadingAnimation();
     this.emitState();
+
+    const shouldUseManualPrependRestore = !isInitial
+      && this.listMergeStrategy() === 'prepend'
+      && this.prependRestoreMode() === 'manual';
+    const shouldUseNativePrependReveal = !isInitial
+      && this.listMergeStrategy() === 'prepend'
+      && this.prependRestoreMode() === 'native';
+    const restoreContext = shouldUseManualPrependRestore
+      ? this.captureListRestoreContext(isInitial)
+      : null;
+    let handledManualPrepend = false;
 
     try {
       const [result] = await Promise.all([
@@ -581,6 +593,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       }
 
       this.applyListPageResult(result, isInitial);
+      if (sequence !== this.loadSequence) {
+        return;
+      }
+      if (restoreContext && shouldUseManualPrependRestore) {
+        handledManualPrepend = true;
+      }
     } catch {
       if (sequence !== this.loadSequence) {
         return;
@@ -595,11 +613,14 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.awaitScrollReset = true;
       this.endLoadingAnimation();
       this.syncGroups();
-      if (restoreContext) {
+      if (handledManualPrepend && restoreContext) {
         this.cdr.detectChanges();
-        this.applyPrependRestore(restoreContext);
+        this.scheduleManualPrependRestore(restoreContext);
+      } else if (shouldUseNativePrependReveal) {
+        this.cdr.detectChanges();
+        this.scheduleNativePrependReveal();
       } else {
-        this.schedulePostListLoadAdjustments(restoreContext, applyInitialAnchor);
+        this.schedulePostListLoadAdjustments(null, applyInitialAnchor);
       }
       if (applyInitialAnchor && (isInitial || (this.scrollHostRef?.nativeElement?.scrollTop ?? 0) <= 1)) {
         this.scheduleInitialListSnap();
@@ -607,6 +628,31 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.emitState();
       this.cdr.markForCheck();
     }
+  }
+
+  private scheduleManualPrependRestore(
+    restoreContext: {
+      scrollHeight: number;
+      scrollTop: number;
+      restoreAnchorId: string | null;
+      restoreAnchorCreatedId: boolean;
+    }
+  ): void {
+    const run = () => {
+      this.applyPrependRestore(restoreContext);
+      this.emitState();
+      this.cdr.markForCheck();
+    };
+
+    if (!this.afterViewInit) {
+      run();
+      return;
+    }
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(run));
+      return;
+    }
+    setTimeout(run, 0);
   }
 
   private async loadCalendarWindow(): Promise<void> {
@@ -718,9 +764,41 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.config.initialScrollAnchor ?? (this.listLoadTriggerEdge() === 'start' ? 'end' : 'start');
   }
 
+  private prependRestoreMode(): SmartListPrependRestoreMode {
+    return this.config.prependRestoreMode ?? 'manual';
+  }
+
+  private prependRevealPx(): number {
+    return Math.max(0, Number(this.config.prependRevealPx) || 0);
+  }
+
+  private listTopInset(scrollElement: HTMLElement): number {
+    const threadRect = scrollElement.getBoundingClientRect();
+    const stickyHeaderHeight = this.shouldShowStickyHeader()
+      ? scrollElement.querySelector<HTMLElement>('.smart-list__sticky')?.offsetHeight ?? 0
+      : 0;
+    const stickyGroupMarker = Array.from(
+      scrollElement.querySelectorAll<HTMLElement>('.smart-list__group-marker')
+    ).find(marker => {
+      const rect = marker.getBoundingClientRect();
+      return rect.top <= threadRect.top + 1 && rect.bottom > threadRect.top + 1;
+    }) ?? null;
+    if (!stickyGroupMarker) {
+      return stickyHeaderHeight;
+    }
+    const styles = getComputedStyle(stickyGroupMarker);
+    const markerMarginBottom = Number.parseFloat(styles.marginBottom || '0') || 0;
+    return stickyHeaderHeight + stickyGroupMarker.getBoundingClientRect().height + markerMarginBottom;
+  }
+
   private captureListRestoreContext(
     isInitial: boolean
-  ): { scrollHeight: number; scrollTop: number; anchorKey: string | null; anchorOffsetTop: number } | null {
+  ): {
+    scrollHeight: number;
+    scrollTop: number;
+    restoreAnchorId: string | null;
+    restoreAnchorCreatedId: boolean;
+  } | null {
     if (isInitial || this.listMergeStrategy() !== 'prepend') {
       return null;
     }
@@ -729,19 +807,36 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return null;
     }
     const threadRect = scrollElement.getBoundingClientRect();
-    const anchorElement = Array.from(
+    const anchors = Array.from(
       scrollElement.querySelectorAll<HTMLElement>('[data-smart-list-anchor]')
-    ).find(element => element.getBoundingClientRect().bottom > threadRect.top + 8) ?? null;
+    );
+    const anchorElement = anchors.find(element => element.getBoundingClientRect().bottom > threadRect.top + 1)
+      ?? null;
+    let restoreAnchorId: string | null = null;
+    let restoreAnchorCreatedId = false;
+    if (anchorElement) {
+      restoreAnchorId = anchorElement.id;
+      if (!restoreAnchorId) {
+        restoreAnchorId = `smart-list-restore-anchor-${++this.restoreAnchorSequence}`;
+        anchorElement.id = restoreAnchorId;
+        restoreAnchorCreatedId = true;
+      }
+    }
     return {
       scrollHeight: scrollElement.scrollHeight,
       scrollTop: scrollElement.scrollTop,
-      anchorKey: anchorElement?.dataset['smartListAnchor'] ?? null,
-      anchorOffsetTop: anchorElement ? anchorElement.getBoundingClientRect().top - threadRect.top : 0
+      restoreAnchorId,
+      restoreAnchorCreatedId
     };
   }
 
   private schedulePostListLoadAdjustments(
-    restoreContext: { scrollHeight: number; scrollTop: number; anchorKey: string | null; anchorOffsetTop: number } | null,
+    restoreContext: {
+      scrollHeight: number;
+      scrollTop: number;
+      restoreAnchorId: string | null;
+      restoreAnchorCreatedId: boolean;
+    } | null,
     applyInitialAnchor: boolean
   ): void {
     const run = () => {
@@ -776,29 +871,30 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   private applyPrependRestore(
-    restoreContext: { scrollHeight: number; scrollTop: number; anchorKey: string | null; anchorOffsetTop: number }
+    restoreContext: {
+      scrollHeight: number;
+      scrollTop: number;
+      restoreAnchorId: string | null;
+      restoreAnchorCreatedId: boolean;
+    }
   ): void {
     const scrollElement = this.scrollHostRef?.nativeElement;
     if (!scrollElement || this.currentViewMode !== 'list') {
       return;
     }
 
-    let restored = false;
-    if (restoreContext.anchorKey) {
-      const threadRect = scrollElement.getBoundingClientRect();
-      const restoredAnchor = Array.from(
-        scrollElement.querySelectorAll<HTMLElement>('[data-smart-list-anchor]')
-      ).find(element => element.dataset['smartListAnchor'] === restoreContext.anchorKey) ?? null;
-      if (restoredAnchor) {
-        const restoredOffsetTop = restoredAnchor.getBoundingClientRect().top - threadRect.top;
-        scrollElement.scrollTop += restoredOffsetTop - restoreContext.anchorOffsetTop;
-        restored = true;
+    let nextScrollTop = Math.max(0, restoreContext.scrollTop + Math.max(0, scrollElement.scrollHeight - restoreContext.scrollHeight));
+    if (restoreContext.restoreAnchorId) {
+      const restoredAnchor = document.getElementById(restoreContext.restoreAnchorId);
+      if (restoredAnchor instanceof HTMLElement && scrollElement.contains(restoredAnchor)) {
+        restoredAnchor.scrollIntoView({ block: 'start', inline: 'nearest' });
+        nextScrollTop = Math.max(0, scrollElement.scrollTop - this.listTopInset(scrollElement));
+        if (restoreContext.restoreAnchorCreatedId && restoredAnchor.id === restoreContext.restoreAnchorId) {
+          restoredAnchor.removeAttribute('id');
+        }
       }
     }
-    if (!restored) {
-      const heightDelta = Math.max(0, scrollElement.scrollHeight - restoreContext.scrollHeight);
-      scrollElement.scrollTop = Math.max(0, restoreContext.scrollTop + heightDelta);
-    }
+    scrollElement.scrollTop = nextScrollTop;
 
     if (this.shouldShowStickyHeader()) {
       this.updateStickyLabel(scrollElement.scrollTop);
@@ -806,6 +902,37 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.stickyLabel = this.resolveEmptyStickyLabel();
     }
     this.updateScrollProgress(scrollElement);
+  }
+
+  private scheduleNativePrependReveal(): void {
+    const revealPx = this.prependRevealPx();
+    const run = () => {
+      const scrollElement = this.scrollHostRef?.nativeElement;
+      if (!scrollElement || this.currentViewMode !== 'list') {
+        return;
+      }
+      if (revealPx > 0) {
+        scrollElement.scrollTop = Math.max(0, scrollElement.scrollTop - revealPx);
+      }
+      if (this.shouldShowStickyHeader()) {
+        this.updateStickyLabel(scrollElement.scrollTop);
+      } else {
+        this.stickyLabel = this.resolveEmptyStickyLabel();
+      }
+      this.updateScrollProgress(scrollElement);
+      this.emitState();
+      this.cdr.markForCheck();
+    };
+
+    if (!this.afterViewInit) {
+      run();
+      return;
+    }
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(run));
+      return;
+    }
+    setTimeout(run, 0);
   }
 
   private scheduleFinalInitialListAnchor(): void {

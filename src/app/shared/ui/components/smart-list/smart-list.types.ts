@@ -8,6 +8,7 @@ export type SmartListFilters = object;
 export type SmartListLoadTriggerEdge = 'end' | 'start';
 export type SmartListMergeStrategy = 'append' | 'prepend';
 export type SmartListInitialScrollAnchor = 'start' | 'end';
+export type SmartListPrependRestoreMode = 'manual' | 'native';
 export type SmartListConfigValue<TValue, TFilters extends SmartListFilters = SmartListFilters>
   = TValue | ((query: ListQuery<TFilters>) => TValue);
 
@@ -169,6 +170,8 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   loadTriggerEdge?: SmartListLoadTriggerEdge;
   mergeStrategy?: SmartListMergeStrategy;
   initialScrollAnchor?: SmartListInitialScrollAnchor;
+  prependRestoreMode?: SmartListPrependRestoreMode;
+  prependRevealPx?: number;
   views?: ReadonlyArray<SmartListViewConfig<T, TFilters>>;
   calendar?: SmartListCalendarConfig<T, TFilters>;
   containerClass?: SmartListConfigValue<SmartListClassValue, TFilters>;
