@@ -343,12 +343,15 @@
   background: #f6f8fc;
 }
 
-.smart-list__month-cell--today,
 .smart-list__month-day-num {
   justify-self: end;
   color: #244267;
   font-size: 0.7rem;
   font-weight: 800;
+}
+
+.smart-list__month-cell--today {
+  box-shadow: inset 0 0 0 1px rgba(57, 108, 182, 0.42);
 }
 
 .smart-list__month-rate-count {
