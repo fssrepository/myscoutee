@@ -13,13 +13,23 @@
 }
 
 @media (max-width: 900px) {
-  .smart-list.activities-scroll-list.activities-scroll-list-event-snap {
+  .smart-list.activities-scroll-list.activities-scroll-list-event-snap,
+  .smart-list.activities-scroll-list.activities-scroll-list-rates {
     scroll-padding-top: calc(2.6rem - 3px);
   }
 }
 
 .smart-list.activities-scroll-list.activities-scroll-list-event-snap {
   scroll-snap-type: y mandatory;
+}
+
+.smart-list.activities-scroll-list.activities-scroll-list-rates {
+  scroll-snap-type: y mandatory;
+}
+
+.smart-list.activities-scroll-list.activities-scroll-list-rates.activities-scroll-list-with-rate-editor {
+  padding-bottom: calc(5.2rem + env(safe-area-inset-bottom));
+  scroll-snap-type: none;
 }
 
 .smart-list.activities-scroll-list .smart-list__sticky,

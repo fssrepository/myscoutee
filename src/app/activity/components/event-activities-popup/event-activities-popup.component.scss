@@ -3632,6 +3632,10 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
     z-index: 2805;
   }
 
+  .activities-mobile-rate-filter-panel {
+    max-height: min(calc(100dvh - 4.6rem), 560px);
+  }
+
   .activities-mobile-filter-panel::before,
   .activities-mobile-rate-filter-panel::before {
     content: '';
