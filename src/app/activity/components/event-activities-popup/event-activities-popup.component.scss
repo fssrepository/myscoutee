@@ -452,6 +452,22 @@
   background: linear-gradient(180deg, #fff4f6 0%, #ffe9ee 100%);
   border-color: rgba(177, 73, 92, 0.32);
 }
+.activities-mobile-filter-panel .activities-view-option.activities-quick-action-option-explore {
+  background: linear-gradient(180deg, #fff7f0 0%, #ffefdf 100%);
+  border-color: rgba(208, 125, 51, 0.32);
+  color: #b96b25;
+}
+.activities-mobile-filter-panel .activities-view-option.activities-quick-action-option-explore .mat-icon {
+  color: #c7782e;
+}
+.activities-mobile-filter-panel .activities-view-option.activities-quick-action-option-create {
+  background: linear-gradient(180deg, #f1fbfa 0%, #e6f5f2 100%);
+  border-color: rgba(47, 142, 157, 0.32);
+  color: #2e8795;
+}
+.activities-mobile-filter-panel .activities-view-option.activities-quick-action-option-create .mat-icon {
+  color: #318d98;
+}
 .activities-mobile-filter-panel .activities-view-option.chat-context-filter-all {
   background: linear-gradient(180deg, #f4f6fb 0%, #edf2f8 100%);
   border-color: rgba(84, 110, 145, 0.28);
