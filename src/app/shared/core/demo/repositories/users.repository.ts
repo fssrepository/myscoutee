@@ -1,7 +1,6 @@
 import { computed, Injectable, inject } from '@angular/core';
 
 import { AppDemoGenerators } from '../../../app-demo-generators';
-import { DEMO_CHAT_BY_USER } from '../../../demo-data';
 import type {
   UserGameFilterPreferencesDto,
   UserRateOutboxRecord,
@@ -16,7 +15,11 @@ import {
 } from '../models/users.model';
 import { AppMemoryDb } from '../../base/db';
 import { DemoUsersRepositoryBuilder } from '../builders';
+import { CHATS_TABLE_NAME } from '../models/chats.model';
+import { EVENTS_TABLE_NAME } from '../models/events.model';
 import type { DemoMemorySchema } from '../models/memory.model';
+import { RATES_TABLE_NAME } from '../models/rates.model';
+import { DemoChatsRepository } from './chats.repository';
 import { DemoEventsRepository } from './events.repository';
 import { DemoUsersRatingsRepository } from './users-ratings.repository';
 
@@ -26,6 +29,7 @@ import { DemoUsersRatingsRepository } from './users-ratings.repository';
 export class DemoUsersRepository {
   private static readonly DEFAULT_DEMO_USERS_COUNT = 50;
   private static readonly MIN_DEMO_EVENT_ITEMS_PER_USER = 30;
+  private readonly chatsRepository = inject(DemoChatsRepository);
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly eventsRepository = inject(DemoEventsRepository);
   private readonly usersRatingsRepository = inject(DemoUsersRatingsRepository);
@@ -104,6 +108,33 @@ export class DemoUsersRepository {
     }
     return {
       ...state,
+      [CHATS_TABLE_NAME]: {
+        byId: Object.fromEntries(
+          state[CHATS_TABLE_NAME].ids
+            .filter(id => validUserIds.has(state[CHATS_TABLE_NAME].byId[id]?.ownerUserId ?? ''))
+            .map(id => [id, { ...state[CHATS_TABLE_NAME].byId[id], memberIds: [...state[CHATS_TABLE_NAME].byId[id].memberIds] }])
+        ) as DemoMemorySchema[typeof CHATS_TABLE_NAME]['byId'],
+        ids: state[CHATS_TABLE_NAME].ids
+          .filter(id => validUserIds.has(state[CHATS_TABLE_NAME].byId[id]?.ownerUserId ?? ''))
+      },
+      [EVENTS_TABLE_NAME]: {
+        byId: Object.fromEntries(
+          state[EVENTS_TABLE_NAME].ids
+            .filter(id => validUserIds.has(state[EVENTS_TABLE_NAME].byId[id]?.userId ?? ''))
+            .map(id => [id, { ...state[EVENTS_TABLE_NAME].byId[id] }])
+        ) as DemoMemorySchema[typeof EVENTS_TABLE_NAME]['byId'],
+        ids: state[EVENTS_TABLE_NAME].ids
+          .filter(id => validUserIds.has(state[EVENTS_TABLE_NAME].byId[id]?.userId ?? ''))
+      },
+      [RATES_TABLE_NAME]: {
+        byId: Object.fromEntries(
+          state[RATES_TABLE_NAME].ids
+            .filter(id => validUserIds.has(state[RATES_TABLE_NAME].byId[id]?.ownerUserId ?? ''))
+            .map(id => [id, { ...state[RATES_TABLE_NAME].byId[id] }])
+        ) as DemoMemorySchema[typeof RATES_TABLE_NAME]['byId'],
+        ids: state[RATES_TABLE_NAME].ids
+          .filter(id => validUserIds.has(state[RATES_TABLE_NAME].byId[id]?.ownerUserId ?? ''))
+      },
       [USERS_TABLE_NAME]: usersTable,
       [USER_RATES_TABLE_NAME]: {
         byId: nextRatesById,
@@ -223,7 +254,7 @@ export class DemoUsersRepository {
 
   private applySeededActivityCounts(user: UserDto): UserDto {
     return DemoUsersRepositoryBuilder.applySeededActivityCounts(user, {
-      chatItems: DEMO_CHAT_BY_USER[user.id],
+      chatItems: this.chatsRepository.queryChatItemsByUser(user.id),
       invitationItems: this.eventsRepository.queryInvitationItemsByUser(user.id),
       eventItems: this.eventsRepository.queryEventItemsByUser(user.id),
       hostingItems: this.eventsRepository.queryHostingItemsByUser(user.id),

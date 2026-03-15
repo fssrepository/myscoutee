@@ -11,7 +11,7 @@ import {
 import { AppMemoryDb } from '../../base/db';
 import { DemoEventsRepositoryBuilder } from '../builders';
 import {
-  DEMO_EVENTS_TABLE_NAME,
+  EVENTS_TABLE_NAME,
   type DemoEventRecord,
   type DemoEventScopeFilter,
   type DemoRepositoryEventItemType
@@ -30,7 +30,7 @@ export class DemoEventsRepository {
 
   init(): void {
     const state = this.memoryDb.read();
-    if (state[DEMO_EVENTS_TABLE_NAME].ids.length > 0) {
+    if (state[EVENTS_TABLE_NAME].ids.length > 0) {
       return;
     }
 
@@ -43,7 +43,7 @@ export class DemoEventsRepository {
 
     this.memoryDb.write(currentState => ({
       ...currentState,
-      [DEMO_EVENTS_TABLE_NAME]: records
+      [EVENTS_TABLE_NAME]: records
     }));
   }
 
@@ -162,14 +162,14 @@ export class DemoEventsRepository {
       return;
     }
     this.memoryDb.write(state => {
-      const table = state[DEMO_EVENTS_TABLE_NAME];
+      const table = state[EVENTS_TABLE_NAME];
       const current = table.byId[recordKey];
       if (!current) {
         return state;
       }
       return {
         ...state,
-        [DEMO_EVENTS_TABLE_NAME]: {
+        [EVENTS_TABLE_NAME]: {
           byId: {
             ...table.byId,
             [recordKey]: {
@@ -192,7 +192,7 @@ export class DemoEventsRepository {
     if (!recordKey) {
       return null;
     }
-    const record = this.memoryDb.read()[DEMO_EVENTS_TABLE_NAME].byId[recordKey];
+    const record = this.memoryDb.read()[EVENTS_TABLE_NAME].byId[recordKey];
     return record ? DemoEventsRepositoryBuilder.cloneRecord(record) : null;
   }
 
@@ -206,7 +206,7 @@ export class DemoEventsRepository {
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
-    const table = this.memoryDb.read()[DEMO_EVENTS_TABLE_NAME];
+    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
     const directKey = DemoEventsRepositoryBuilder.buildRecordKey(normalizedUserId, type, normalizedSourceId);
     if (table.byId[directKey]) {
       return directKey;
@@ -225,7 +225,7 @@ export class DemoEventsRepository {
     if (!normalizedUserId) {
       return [];
     }
-    const table = this.memoryDb.read()[DEMO_EVENTS_TABLE_NAME];
+    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
     return table.ids
       .map(id => table.byId[id])
       .filter((record): record is DemoEventRecord => Boolean(record))

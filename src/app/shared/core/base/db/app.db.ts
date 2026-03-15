@@ -1,7 +1,9 @@
 import { Injectable, signal } from '@angular/core';
 
-import { DEMO_EVENTS_TABLE_NAME } from '../../demo/models/events.model';
+import { CHATS_TABLE_NAME } from '../../demo/models/chats.model';
+import { EVENTS_TABLE_NAME } from '../../demo/models/events.model';
 import type { DemoMemorySchema } from '../../demo/models/memory.model';
+import { RATES_TABLE_NAME } from '../../demo/models/rates.model';
 import {
   USER_FILTER_PREFERENCES_TABLE_NAME,
   USERS_TABLE_NAME,
@@ -57,7 +59,15 @@ export class AppMemoryDb {
         byId: {},
         ids: []
       },
-      [DEMO_EVENTS_TABLE_NAME]: {
+      [CHATS_TABLE_NAME]: {
+        byId: {},
+        ids: []
+      },
+      [EVENTS_TABLE_NAME]: {
+        byId: {},
+        ids: []
+      },
+      [RATES_TABLE_NAME]: {
         byId: {},
         ids: []
       }
@@ -147,13 +157,18 @@ export class AppMemoryDb {
     const rates = await this.readIndexedDbEntry(db, USER_RATES_TABLE_NAME);
     const outbox = await this.readIndexedDbEntry(db, USER_RATES_OUTBOX_TABLE_NAME);
     const filterPreferences = await this.readIndexedDbEntry(db, USER_FILTER_PREFERENCES_TABLE_NAME);
-    const events = await this.readIndexedDbEntry(db, DEMO_EVENTS_TABLE_NAME);
+    const chats = await this.readIndexedDbEntry(db, CHATS_TABLE_NAME);
+    const events = await this.readIndexedDbEntry(db, EVENTS_TABLE_NAME)
+      ?? await this.readIndexedDbEntry(db, 'demoEvents');
+    const activityRates = await this.readIndexedDbEntry(db, RATES_TABLE_NAME);
 
     const hasSegmentedState = users !== null
       || rates !== null
       || outbox !== null
       || filterPreferences !== null
-      || events !== null;
+      || chats !== null
+      || events !== null
+      || activityRates !== null;
     if (!hasSegmentedState) {
       const legacy = await this.readIndexedDbEntry(db, AppMemoryDb.LEGACY_INDEXED_DB_STATE_KEY);
       if (legacy !== null) {
@@ -175,8 +190,14 @@ export class AppMemoryDb {
     if (filterPreferences !== null) {
       partialState[USER_FILTER_PREFERENCES_TABLE_NAME] = filterPreferences as DemoMemorySchema[typeof USER_FILTER_PREFERENCES_TABLE_NAME];
     }
+    if (chats !== null) {
+      partialState[CHATS_TABLE_NAME] = chats as DemoMemorySchema[typeof CHATS_TABLE_NAME];
+    }
     if (events !== null) {
-      partialState[DEMO_EVENTS_TABLE_NAME] = events as DemoMemorySchema[typeof DEMO_EVENTS_TABLE_NAME];
+      partialState[EVENTS_TABLE_NAME] = events as DemoMemorySchema[typeof EVENTS_TABLE_NAME];
+    }
+    if (activityRates !== null) {
+      partialState[RATES_TABLE_NAME] = activityRates as DemoMemorySchema[typeof RATES_TABLE_NAME];
     }
     return this.normalizeState(partialState, this.createEmptyState());
   }
@@ -193,7 +214,10 @@ export class AppMemoryDb {
       store.put(state[USER_RATES_TABLE_NAME], USER_RATES_TABLE_NAME);
       store.put(state[USER_RATES_OUTBOX_TABLE_NAME], USER_RATES_OUTBOX_TABLE_NAME);
       store.put(state[USER_FILTER_PREFERENCES_TABLE_NAME], USER_FILTER_PREFERENCES_TABLE_NAME);
-      store.put(state[DEMO_EVENTS_TABLE_NAME], DEMO_EVENTS_TABLE_NAME);
+      store.put(state[CHATS_TABLE_NAME], CHATS_TABLE_NAME);
+      store.put(state[EVENTS_TABLE_NAME], EVENTS_TABLE_NAME);
+      store.put(state[RATES_TABLE_NAME], RATES_TABLE_NAME);
+      store.delete('demoEvents');
       store.delete(AppMemoryDb.LEGACY_INDEXED_DB_STATE_KEY);
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
@@ -248,7 +272,13 @@ export class AppMemoryDb {
     const ratesSource = source[USER_RATES_TABLE_NAME] as Partial<DemoMemorySchema[typeof USER_RATES_TABLE_NAME]> | undefined;
     const outboxSource = source[USER_RATES_OUTBOX_TABLE_NAME] as Partial<DemoMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]> | undefined;
     const filterPreferencesSource = source[USER_FILTER_PREFERENCES_TABLE_NAME] as Partial<DemoMemorySchema[typeof USER_FILTER_PREFERENCES_TABLE_NAME]> | undefined;
-    const eventsSource = source[DEMO_EVENTS_TABLE_NAME] as Partial<DemoMemorySchema[typeof DEMO_EVENTS_TABLE_NAME]> | undefined;
+    const legacySource = source as Record<string, unknown>;
+    const chatsSource = source[CHATS_TABLE_NAME] as Partial<DemoMemorySchema[typeof CHATS_TABLE_NAME]> | undefined;
+    const eventsSource = (
+      source[EVENTS_TABLE_NAME]
+      ?? legacySource['demoEvents']
+    ) as Partial<DemoMemorySchema[typeof EVENTS_TABLE_NAME]> | undefined;
+    const activityRatesSource = source[RATES_TABLE_NAME] as Partial<DemoMemorySchema[typeof RATES_TABLE_NAME]> | undefined;
     return {
       [USERS_TABLE_NAME]: {
         byId: usersSource?.byId && typeof usersSource.byId === 'object'
@@ -282,13 +312,29 @@ export class AppMemoryDb {
           ? filterPreferencesSource.ids.map(id => String(id))
           : [...fallback[USER_FILTER_PREFERENCES_TABLE_NAME].ids]
       },
-      [DEMO_EVENTS_TABLE_NAME]: {
+      [CHATS_TABLE_NAME]: {
+        byId: chatsSource?.byId && typeof chatsSource.byId === 'object'
+          ? { ...chatsSource.byId }
+          : { ...fallback[CHATS_TABLE_NAME].byId },
+        ids: Array.isArray(chatsSource?.ids)
+          ? chatsSource.ids.map(id => String(id))
+          : [...fallback[CHATS_TABLE_NAME].ids]
+      },
+      [EVENTS_TABLE_NAME]: {
         byId: eventsSource?.byId && typeof eventsSource.byId === 'object'
           ? { ...eventsSource.byId }
-          : { ...fallback[DEMO_EVENTS_TABLE_NAME].byId },
+          : { ...fallback[EVENTS_TABLE_NAME].byId },
         ids: Array.isArray(eventsSource?.ids)
           ? eventsSource.ids.map(id => String(id))
-          : [...fallback[DEMO_EVENTS_TABLE_NAME].ids]
+          : [...fallback[EVENTS_TABLE_NAME].ids]
+      },
+      [RATES_TABLE_NAME]: {
+        byId: activityRatesSource?.byId && typeof activityRatesSource.byId === 'object'
+          ? { ...activityRatesSource.byId }
+          : { ...fallback[RATES_TABLE_NAME].byId },
+        ids: Array.isArray(activityRatesSource?.ids)
+          ? activityRatesSource.ids.map(id => String(id))
+          : [...fallback[RATES_TABLE_NAME].ids]
       }
     };
   }

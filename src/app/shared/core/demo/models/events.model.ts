@@ -1,4 +1,4 @@
-export const DEMO_EVENTS_TABLE_NAME = 'demoEvents' as const;
+export const EVENTS_TABLE_NAME = 'events' as const;
 
 export type DemoEventScopeFilter =
   | 'all'
@@ -34,4 +34,4 @@ export interface DemoEventRecordCollection {
   ids: string[];
 }
 
-export type DemoEventsMemorySchema = Record<typeof DEMO_EVENTS_TABLE_NAME, DemoEventRecordCollection>;
+export type DemoEventsMemorySchema = Record<typeof EVENTS_TABLE_NAME, DemoEventRecordCollection>;

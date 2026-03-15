@@ -1,0 +1,79 @@
+import { Injectable, inject } from '@angular/core';
+
+import { resolveAdditionalDelayMsForRoute } from '../config';
+import { DemoEventsRepository } from '../repositories/events.repository';
+import type {
+  DemoEventRecord,
+  DemoEventScopeFilter,
+  DemoRepositoryEventItemType
+} from '../models/events.model';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class DemoEventsService {
+  private static readonly EVENTS_ROUTE = '/activities/events';
+  private readonly eventsRepository = inject(DemoEventsRepository);
+
+  async queryItemsByUser(userId: string): Promise<DemoEventRecord[]> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
+    return this.eventsRepository.queryItemsByUser(userId);
+  }
+
+  async queryInvitationItemsByUser(userId: string): Promise<DemoEventRecord[]> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
+    return this.eventsRepository.queryInvitationItemsByUser(userId);
+  }
+
+  async queryEventItemsByUser(userId: string): Promise<DemoEventRecord[]> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
+    return this.eventsRepository.queryEventItemsByUser(userId);
+  }
+
+  async queryHostingItemsByUser(userId: string): Promise<DemoEventRecord[]> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
+    return this.eventsRepository.queryHostingItemsByUser(userId);
+  }
+
+  async queryTrashedItemsByUser(userId: string): Promise<DemoEventRecord[]> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
+    return this.eventsRepository.queryTrashedItemsByUser(userId);
+  }
+
+  async queryEventItemsByFilter(
+    userId: string,
+    filter: DemoEventScopeFilter,
+    hostingPublicationFilter: 'all' | 'drafts' = 'all'
+  ): Promise<DemoEventRecord[]> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
+    return this.eventsRepository.queryEventItemsByFilter(userId, filter, hostingPublicationFilter);
+  }
+
+  async trashItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
+    this.eventsRepository.trashItem(userId, type, sourceId);
+  }
+
+  async restoreItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
+    this.eventsRepository.restoreItem(userId, type, sourceId);
+  }
+
+  countTicketItemsByUser(userId: string): number {
+    return this.eventsRepository.countTicketItemsByUser(userId);
+  }
+
+  countPendingEventFeedbackByUser(userId: string, feedbackUnlockDelayMs: number): number {
+    return this.eventsRepository.countPendingEventFeedbackByUser(userId, feedbackUnlockDelayMs);
+  }
+
+  private async waitForRouteDelay(route: string): Promise<void> {
+    const additionalDelayMs = resolveAdditionalDelayMsForRoute(route);
+    if (additionalDelayMs <= 0) {
+      return;
+    }
+    await new Promise<void>(resolve => {
+      setTimeout(() => resolve(), additionalDelayMs);
+    });
+  }
+}
