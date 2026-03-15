@@ -4,7 +4,6 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
-  ContentChild,
   ElementRef,
   EventEmitter,
   Input,
@@ -72,9 +71,6 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
 
   @ViewChild('scrollHost')
   private scrollHostRef?: ElementRef<HTMLDivElement>;
-
-  @ContentChild('smartListItemTemplate', { read: TemplateRef })
-  private projectedItemTemplate?: TemplateRef<SmartListItemTemplateContext<T>>;
 
   @Input() config: SmartListConfig<T> = {};
   @Input() loadPage: SmartListLoadPage<T> | null = null;
@@ -322,7 +318,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
   }
 
   protected resolvedItemTemplate(): TemplateRef<SmartListItemTemplateContext<T>> | null {
-    return this.itemTemplate ?? this.projectedItemTemplate ?? null;
+    return this.itemTemplate;
   }
 
   protected hasCalendarItems(): boolean {

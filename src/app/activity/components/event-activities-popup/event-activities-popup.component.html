@@ -454,6 +454,7 @@
       #activitiesSmartList
       [config]="activitiesSmartListConfig"
       [loaders]="activitiesSmartListLoaders"
+      [itemTemplate]="activitiesSmartListItemTemplate"
       [view]="activitiesView"
       [filters]="activitiesSmartListFilters"
       [containerClass]="activitiesSmartListClassMap()"
@@ -463,8 +464,9 @@
       (stateChange)="onActivitiesSmartListStateChange($event)"
       (wheel)="closeActivityRateEditorFromUserScroll()"
       (touchmove)="closeActivityRateEditorFromUserScroll()"
-    >
-      <ng-template #smartListItemTemplate let-row let-groupLabel="groupLabel">
+    ></app-smart-list>
+
+    <ng-template #activitiesSmartListItemTemplate let-row let-groupLabel="groupLabel">
         <!-- Event-style card -->
         <article
           class="experience-item-card asset-item-card activities-row-item"
@@ -612,8 +614,7 @@
             </span>
           </button>
         </ng-template>
-      </ng-template>
-    </app-smart-list>
+    </ng-template>
   </ng-container>
 
   <ng-template #activitiesRatesContent>
