@@ -627,6 +627,7 @@
             [itemTemplate]="activitiesRateFilter.startsWith('pair') ? activitiesRatePairSmartListItemTemplate : activitiesRateSingleSmartListItemTemplate"
             [view]="activitiesView"
             [filters]="activitiesSmartListFilters"
+            [footerSpacerHeight]="activityRateEditorSpacerHeight()"
             [containerClass]="activitiesSmartListClassMap()"
             stickyHeaderClass="activities-sticky-header"
             groupMarkerClass="activities-group-marker"
@@ -1247,9 +1248,10 @@
   <!-- ───── Rate editor dock ───── -->
   <div
     class="activities-rate-editor-dock"
+    [class.is-open]="isActivityRateEditorOpen() && !isRatesFullscreenModeActive()"
     [class.is-closing]="isActivityRateEditorClosing() && !isRatesFullscreenModeActive()"
     [class.is-permanent]="isRatesFullscreenModeActive()"
-    *ngIf="isActivityRateEditorDockVisible() && !isCalendarLayoutView()"
+    *ngIf="shouldRenderActivityRateEditorDock()"
   >
     <app-rating-star-bar
       [scale]="activityRatingScale"

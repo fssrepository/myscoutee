@@ -2270,7 +2270,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.activityRateEditorClosing = false;
     this.pulseRateIndicatorForRow(row);
     this.cancelActivityRateEditorLiftAnimation();
-    this.runAfterActivitiesRender(() => {
+    this.runAfterActivitiesNextPaint(() => {
       if (!this.isActivityRateEditorOpen() || this.selectedActivityRateId !== row.id) {
         return;
       }
@@ -2295,6 +2295,19 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return this.activitiesPrimaryFilter === 'rates' && (!!this.selectedActivityRateId || this.activityRateEditorClosing);
   }
 
+  protected shouldRenderActivityRateEditorDock(): boolean {
+    if (this.isCalendarLayoutView() || this.activitiesPrimaryFilter !== 'rates') {
+      return false;
+    }
+    if (!this.isRatesFullscreenModeActive()) {
+      return true;
+    }
+    if (this.isActivitiesRatesFullscreenReadOnlyNavigation()) {
+      return false;
+    }
+    return this.currentActivitiesRatesFullscreenRow() !== null;
+  }
+
   protected isActivityRateEditorOpen(): boolean {
     if (this.isRatesFullscreenModeActive()) {
       return true;
@@ -2304,6 +2317,15 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   protected isActivityRateEditorClosing(): boolean {
     return this.activityRateEditorClosing;
+  }
+
+  protected activityRateEditorSpacerHeight(): string | null {
+    if (this.activitiesPrimaryFilter !== 'rates' || this.isCalendarLayoutView() || this.isRatesFullscreenModeActive()) {
+      return null;
+    }
+    return this.isActivityRateEditorDockVisible()
+      ? 'calc(5.2rem + env(safe-area-inset-bottom))'
+      : '0px';
   }
 
   protected isSelectedActivityRateRow(row: AppTypes.ActivityListRow): boolean {
@@ -2482,6 +2504,14 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     setTimeout(task, 0);
   }
 
+  private runAfterActivitiesNextPaint(task: () => void): void {
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(task);
+      return;
+    }
+    setTimeout(task, 0);
+  }
+
   private smoothRevealSelectedRateRowWhenNeeded(rowId: string, attempt = 0): void {
     if (!this.isActivityRateEditorOpen()) {
       return;
@@ -2545,11 +2575,10 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return;
     }
     const startTime = globalThis.performance.now();
-    const easeOutCubic = (progress: number): number => 1 - Math.pow(1 - progress, 3);
     const step = (now: number) => {
       const elapsed = now - startTime;
       const progress = Math.min(1, elapsed / this.activityRateEditorSlideDurationMs);
-      scrollElement.scrollTop = startTop + (delta * easeOutCubic(progress));
+      scrollElement.scrollTop = startTop + (delta * this.activityRateEditorLiftEasedProgress(progress));
       if (progress < 1) {
         this.activityRateEditorLiftAnimationFrame = globalThis.requestAnimationFrame(step);
         return;
@@ -2558,7 +2587,58 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       scrollElement.scrollTop = targetTop;
       onComplete?.();
     };
-    this.activityRateEditorLiftAnimationFrame = globalThis.requestAnimationFrame(step);
+    step(startTime);
+  }
+
+  private activityRateEditorLiftEasedProgress(progress: number): number {
+    return this.sampleCubicBezierYForX(AppUtils.clampNumber(progress, 0, 1), 0.22, 1, 0.36, 1);
+  }
+
+  private sampleCubicBezierYForX(x: number, x1: number, y1: number, x2: number, y2: number): number {
+    if (x <= 0) {
+      return 0;
+    }
+    if (x >= 1) {
+      return 1;
+    }
+
+    const cx = 3 * x1;
+    const bx = 3 * (x2 - x1) - cx;
+    const ax = 1 - cx - bx;
+    const cy = 3 * y1;
+    const by = 3 * (y2 - y1) - cy;
+    const ay = 1 - cy - by;
+
+    const sampleCurveX = (t: number) => ((ax * t + bx) * t + cx) * t;
+    const sampleCurveY = (t: number) => ((ay * t + by) * t + cy) * t;
+    const sampleCurveDerivativeX = (t: number) => (3 * ax * t + 2 * bx) * t + cx;
+
+    let t = x;
+    for (let index = 0; index < 4; index += 1) {
+      const currentX = sampleCurveX(t) - x;
+      const derivative = sampleCurveDerivativeX(t);
+      if (Math.abs(currentX) < 0.0001 || Math.abs(derivative) < 0.0001) {
+        break;
+      }
+      t -= currentX / derivative;
+    }
+
+    let lowerBound = 0;
+    let upperBound = 1;
+    while (upperBound - lowerBound > 0.0001) {
+      const currentX = sampleCurveX(t);
+      if (Math.abs(currentX - x) < 0.0001) {
+        break;
+      }
+      if (currentX > x) {
+        upperBound = t;
+      } else {
+        lowerBound = t;
+      }
+      t = (lowerBound + upperBound) / 2;
+    }
+
+    return sampleCurveY(AppUtils.clampNumber(t, 0, 1));
   }
 
   // =========================================================================

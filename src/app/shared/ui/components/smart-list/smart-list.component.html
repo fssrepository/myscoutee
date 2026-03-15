@@ -146,6 +146,13 @@
         </ng-container>
       </ng-container>
     </ng-container>
+
+    <div
+      *ngIf="footerSpacerHeight !== null"
+      class="smart-list__footer-spacer"
+      [style.height]="footerSpacerHeight"
+      aria-hidden="true"
+    ></div>
   </div>
 </ng-template>
 

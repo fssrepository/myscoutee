@@ -86,6 +86,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
   @Input() containerClass: SmartListClassValue = null;
   @Input() stickyHeaderClass: SmartListClassValue = null;
   @Input() groupMarkerClass: SmartListClassValue = null;
+  @Input() footerSpacerHeight: string | null = null;
 
   @Output() readonly stateChange = new EventEmitter<SmartListStateChange<T>>();
   @Output() readonly viewChange = new EventEmitter<string>();
