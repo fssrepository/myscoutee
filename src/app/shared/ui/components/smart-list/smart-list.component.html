@@ -35,6 +35,7 @@
             class="smart-list__calendar-page smart-list__calendar-page--month"
             *ngFor="let page of calendarMonthPages; trackBy: trackByCalendarPageKey"
             [style.--month-week-count]="page.weeks.length"
+            [class.smart-list__calendar-page--month-six-weeks]="page.weeks.length === 6"
             [class.smart-list__calendar-page--month-rates]="isRateCountCalendarVariant()"
           >
             <div class="smart-list__calendar-weekdays">
