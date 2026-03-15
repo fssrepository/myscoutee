@@ -4347,6 +4347,24 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       const lane = filterLanes[laneIndex];
       generated.push(this.buildGeneratedRateItemForLane(userId, user.id, lane.mode, lane.direction, laneIndex, userIndex));
     });
+    const extraSingleGivenCount = 20;
+    for (let extraIndex = 0; extraIndex < extraSingleGivenCount; extraIndex += 1) {
+      const targetUser = otherUsers[extraIndex % otherUsers.length];
+      if (!targetUser) {
+        break;
+      }
+      generated.push(
+        this.buildGeneratedRateItemForLane(
+          userId,
+          targetUser.id,
+          'individual',
+          'given',
+          0,
+          otherUsers.length + extraIndex,
+          extraIndex + 1
+        )
+      );
+    }
     this.generatedRateItemsByUser[userId] = generated;
     return generated;
   }
@@ -4357,10 +4375,13 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     mode: 'individual' | 'pair',
     direction: RateMenuItem['direction'],
     laneIndex: number,
-    userIndex: number
+    userIndex: number,
+    variantIndex = 0
   ): RateMenuItem {
-    const seed = AppDemoGenerators.hashText(`rate-grid:${activeUserId}:${targetUserId}:${mode}:${direction}`);
-    const happenedAt = AppUtils.toIsoDateTime(AppUtils.addDays(new Date('2026-03-01T20:00:00'), -((laneIndex * 17) + userIndex + 1)));
+    const seed = AppDemoGenerators.hashText(`rate-grid:${activeUserId}:${targetUserId}:${mode}:${direction}:${variantIndex}`);
+    const happenedAt = AppUtils.toIsoDateTime(
+      AppUtils.addDays(new Date('2026-03-01T20:00:00'), -((laneIndex * 17) + userIndex + 1 + (variantIndex * 2)))
+    );
     let scoreGiven = 0;
     let scoreReceived = 0;
     if (direction === 'given') {
@@ -4376,14 +4397,17 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       scoreGiven = 4 + (seed % 7);
       scoreReceived = 0;
     }
+    const variantSuffix = variantIndex > 0 ? `-v${variantIndex}` : '';
     return {
-      id: `rate-${activeUserId}-${mode}-${direction}-${targetUserId}`,
+      id: `rate-${activeUserId}-${mode}-${direction}-${targetUserId}${variantSuffix}`,
       userId: targetUserId,
       mode,
       direction,
       scoreGiven,
       scoreReceived,
-      eventName: `${mode === 'pair' ? 'Pair' : 'Single'} ${direction}`,
+      eventName: variantIndex > 0
+        ? `${mode === 'pair' ? 'Pair' : 'Single'} ${direction} ${variantIndex + 1}`
+        : `${mode === 'pair' ? 'Pair' : 'Single'} ${direction}`,
       happenedAt,
       distanceKm: 2 + ((seed + laneIndex + userIndex) % 33)
     };

@@ -515,7 +515,6 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       if (isInitial || (this.scrollHostRef?.nativeElement?.scrollTop ?? 0) <= 1) {
         this.scheduleInitialListSnap();
       }
-      this.scheduleListAutoFillCheck();
       this.emitState();
       this.cdr.markForCheck();
     }
@@ -583,15 +582,10 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     }
     const remainingPx = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
     if (this.awaitScrollReset) {
-      const maxVerticalScroll = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight);
-      if (maxVerticalScroll <= 1 || scrollElement.scrollTop > 1) {
+      if (remainingPx > 360) {
         this.awaitScrollReset = false;
-      } else if (remainingPx > 360) {
-        this.awaitScrollReset = false;
-        return;
-      } else {
-        return;
       }
+      return;
     }
     if (remainingPx > Math.max(240, this.config.preloadOffsetPx ?? 520)) {
       return;
@@ -855,24 +849,6 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       setTimeout(settle, 0);
     };
 
-    if (!this.afterViewInit) {
-      return;
-    }
-    if (typeof globalThis.requestAnimationFrame === 'function') {
-      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(run));
-      return;
-    }
-    setTimeout(run, 0);
-  }
-
-  private scheduleListAutoFillCheck(): void {
-    const run = () => {
-      const scrollElement = this.scrollHostRef?.nativeElement;
-      if (!scrollElement || this.currentViewMode !== 'list' || this.loading || !this.hasMore) {
-        return;
-      }
-      this.maybeLoadMore(scrollElement);
-    };
     if (!this.afterViewInit) {
       return;
     }
