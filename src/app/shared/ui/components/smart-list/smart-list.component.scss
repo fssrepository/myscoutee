@@ -173,6 +173,16 @@
   padding: 0.22rem 0.58rem;
 }
 
+.smart-list__prepend-restore-spacer {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  pointer-events: none;
+  visibility: hidden;
+  overflow: hidden;
+  transition: height 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .smart-list.activities-scroll-list .smart-list__sticky,
 .smart-list.activities-scroll-list .smart-list__group-marker,
 .smart-list.activities-scroll-list .smart-list__footer-spacer {

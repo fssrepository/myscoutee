@@ -807,10 +807,13 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return null;
     }
     const threadRect = scrollElement.getBoundingClientRect();
+    const visibleTop = threadRect.top + this.listTopInset(scrollElement);
     const anchors = Array.from(
       scrollElement.querySelectorAll<HTMLElement>('[data-smart-list-anchor]')
     );
     const anchorElement = anchors.find(element => element.getBoundingClientRect().bottom > threadRect.top + 1)
+      ?? anchors.find(element => element.getBoundingClientRect().top >= visibleTop - 1)
+      ?? anchors.find(element => element.getBoundingClientRect().bottom > visibleTop + 1)
       ?? null;
     let restoreAnchorId: string | null = null;
     let restoreAnchorCreatedId = false;
@@ -887,8 +890,19 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (restoreContext.restoreAnchorId) {
       const restoredAnchor = document.getElementById(restoreContext.restoreAnchorId);
       if (restoredAnchor instanceof HTMLElement && scrollElement.contains(restoredAnchor)) {
-        restoredAnchor.scrollIntoView({ block: 'start', inline: 'nearest' });
-        nextScrollTop = Math.max(0, scrollElement.scrollTop - this.listTopInset(scrollElement));
+        this.clearPrependRestoreSpacers(scrollElement);
+        const topInset = this.listTopInset(scrollElement);
+        if (topInset > 0) {
+          const restoreSpacer = scrollElement.ownerDocument.createElement('div');
+          restoreSpacer.className = 'smart-list__prepend-restore-spacer';
+          restoreSpacer.style.height = `${topInset}px`;
+          restoredAnchor.insertAdjacentElement('beforebegin', restoreSpacer);
+          restoreSpacer.scrollIntoView({ block: 'start', inline: 'nearest' });
+          this.animatePrependRestoreSpacer(restoreSpacer);
+        } else {
+          restoredAnchor.scrollIntoView({ block: 'start', inline: 'nearest' });
+        }
+        nextScrollTop = scrollElement.scrollTop;
         if (restoreContext.restoreAnchorCreatedId && restoredAnchor.id === restoreContext.restoreAnchorId) {
           restoredAnchor.removeAttribute('id');
         }
@@ -902,6 +916,37 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.stickyLabel = this.resolveEmptyStickyLabel();
     }
     this.updateScrollProgress(scrollElement);
+  }
+
+  private clearPrependRestoreSpacers(scrollElement: HTMLElement): void {
+    Array.from(scrollElement.querySelectorAll<HTMLElement>('.smart-list__prepend-restore-spacer'))
+      .forEach(spacer => spacer.remove());
+  }
+
+  private animatePrependRestoreSpacer(spacer: HTMLElement): void {
+    const remove = () => {
+      if (spacer.isConnected) {
+        spacer.remove();
+      }
+    };
+
+    const collapse = () => {
+      if (!spacer.isConnected) {
+        return;
+      }
+      spacer.style.height = '0px';
+      if (typeof globalThis.setTimeout === 'function') {
+        globalThis.setTimeout(remove, 220);
+      } else {
+        remove();
+      }
+    };
+
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(collapse);
+      return;
+    }
+    collapse();
   }
 
   private scheduleNativePrependReveal(): void {
