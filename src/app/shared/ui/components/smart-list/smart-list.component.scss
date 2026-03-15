@@ -12,6 +12,12 @@
   transition: padding-bottom 180ms ease;
 }
 
+@media (max-width: 900px) {
+  .smart-list.activities-scroll-list.activities-scroll-list-event-snap {
+    scroll-padding-top: calc(2.6rem - 3px);
+  }
+}
+
 .smart-list.activities-scroll-list.activities-scroll-list-event-snap {
   scroll-snap-type: y mandatory;
 }
@@ -37,6 +43,7 @@
     align-content: start;
     column-gap: 0.34rem;
     row-gap: 0.6rem;
+    padding-bottom: 0.52rem;
   }
 
   .smart-list.activities-scroll-list .smart-list__sticky,
