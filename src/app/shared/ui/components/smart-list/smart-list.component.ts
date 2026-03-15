@@ -564,7 +564,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
 
     const restoreContext = this.captureListRestoreContext(isInitial);
-    const query = this.currentQuery(this.pageIndex);
+    const query = this.loadQuery(this.pageIndex, isInitial);
     const sequence = ++this.loadSequence;
     this.loading = true;
     this.startLoadingAnimation();
@@ -595,7 +595,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.awaitScrollReset = true;
       this.endLoadingAnimation();
       this.syncGroups();
-      this.schedulePostListLoadAdjustments(restoreContext, applyInitialAnchor);
+      if (restoreContext) {
+        this.cdr.detectChanges();
+        this.applyPrependRestore(restoreContext);
+      } else {
+        this.schedulePostListLoadAdjustments(restoreContext, applyInitialAnchor);
+      }
       if (applyInitialAnchor && (isInitial || (this.scrollHostRef?.nativeElement?.scrollTop ?? 0) <= 1)) {
         this.scheduleInitialListSnap();
       }
@@ -713,7 +718,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.config.initialScrollAnchor ?? (this.listLoadTriggerEdge() === 'start' ? 'end' : 'start');
   }
 
-  private captureListRestoreContext(isInitial: boolean): { scrollHeight: number; scrollTop: number } | null {
+  private captureListRestoreContext(
+    isInitial: boolean
+  ): { scrollHeight: number; scrollTop: number; anchorKey: string | null; anchorOffsetTop: number } | null {
     if (isInitial || this.listMergeStrategy() !== 'prepend') {
       return null;
     }
@@ -721,14 +728,20 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (!scrollElement) {
       return null;
     }
+    const threadRect = scrollElement.getBoundingClientRect();
+    const anchorElement = Array.from(
+      scrollElement.querySelectorAll<HTMLElement>('[data-smart-list-anchor]')
+    ).find(element => element.getBoundingClientRect().bottom > threadRect.top + 8) ?? null;
     return {
       scrollHeight: scrollElement.scrollHeight,
-      scrollTop: scrollElement.scrollTop
+      scrollTop: scrollElement.scrollTop,
+      anchorKey: anchorElement?.dataset['smartListAnchor'] ?? null,
+      anchorOffsetTop: anchorElement ? anchorElement.getBoundingClientRect().top - threadRect.top : 0
     };
   }
 
   private schedulePostListLoadAdjustments(
-    restoreContext: { scrollHeight: number; scrollTop: number } | null,
+    restoreContext: { scrollHeight: number; scrollTop: number; anchorKey: string | null; anchorOffsetTop: number } | null,
     applyInitialAnchor: boolean
   ): void {
     const run = () => {
@@ -737,8 +750,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
         return;
       }
       if (restoreContext) {
-        const heightDelta = Math.max(0, scrollElement.scrollHeight - restoreContext.scrollHeight);
-        scrollElement.scrollTop = Math.max(0, restoreContext.scrollTop + heightDelta);
+        this.applyPrependRestore(restoreContext);
       } else if (applyInitialAnchor && this.initialListScrollAnchor() === 'end') {
         scrollElement.scrollTop = scrollElement.scrollHeight;
       }
@@ -761,6 +773,39 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return;
     }
     setTimeout(run, 0);
+  }
+
+  private applyPrependRestore(
+    restoreContext: { scrollHeight: number; scrollTop: number; anchorKey: string | null; anchorOffsetTop: number }
+  ): void {
+    const scrollElement = this.scrollHostRef?.nativeElement;
+    if (!scrollElement || this.currentViewMode !== 'list') {
+      return;
+    }
+
+    let restored = false;
+    if (restoreContext.anchorKey) {
+      const threadRect = scrollElement.getBoundingClientRect();
+      const restoredAnchor = Array.from(
+        scrollElement.querySelectorAll<HTMLElement>('[data-smart-list-anchor]')
+      ).find(element => element.dataset['smartListAnchor'] === restoreContext.anchorKey) ?? null;
+      if (restoredAnchor) {
+        const restoredOffsetTop = restoredAnchor.getBoundingClientRect().top - threadRect.top;
+        scrollElement.scrollTop += restoredOffsetTop - restoreContext.anchorOffsetTop;
+        restored = true;
+      }
+    }
+    if (!restored) {
+      const heightDelta = Math.max(0, scrollElement.scrollHeight - restoreContext.scrollHeight);
+      scrollElement.scrollTop = Math.max(0, restoreContext.scrollTop + heightDelta);
+    }
+
+    if (this.shouldShowStickyHeader()) {
+      this.updateStickyLabel(scrollElement.scrollTop);
+    } else {
+      this.stickyLabel = this.resolveEmptyStickyLabel();
+    }
+    this.updateScrollProgress(scrollElement);
   }
 
   private scheduleFinalInitialListAnchor(): void {
@@ -1388,6 +1433,21 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
     const anchor = this.currentVisibleCalendarAnchor() ?? this.currentCalendarQueryAnchor();
     return anchor ? this.calendarQueryForAnchor(anchor) : query;
+  }
+
+  private loadQuery(page = this.pageIndex, isInitial = false): ListQuery<TFilters> {
+    const query = this.currentQuery(page);
+    if (!isInitial) {
+      return query;
+    }
+    const initialPageSize = this.config.initialPageSize;
+    if (!Number.isFinite(initialPageSize)) {
+      return query;
+    }
+    return {
+      ...query,
+      pageSize: Math.max(1, Math.trunc(Number(initialPageSize)))
+    };
   }
 
   private resolveLoadPage(): SmartListLoadPage<T, TFilters> | null {

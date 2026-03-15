@@ -149,7 +149,8 @@
   display: block;
   gap: 0;
   padding-right: 0.12rem;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
+  overflow-anchor: none;
 }
 
 .smart-list__group-marker.chat-thread-group-marker {

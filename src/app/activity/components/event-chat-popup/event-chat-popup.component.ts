@@ -12,7 +12,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { of } from 'rxjs';
+import { delay, of } from 'rxjs';
 
 import type * as AppTypes from '../../../shared/app-types';
 import { AppUtils } from '../../../shared/app-utils';
@@ -60,7 +60,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected chatHeaderLoadingOverdue = false;
 
   private readonly chatHistoryPageSize = 10;
-  private readonly chatInitialVisiblePageCount = 2;
+  private readonly chatInitialLoadMessageCount = 15;
   private readonly chatLoadOlderDelayMs = 1500;
   private readonly headerLoadingWindowMs = 3000;
   private readonly headerLoadingTickMs = 16;
@@ -68,9 +68,10 @@ export class EventChatPopupComponent implements OnDestroy {
   protected chatThreadQuery: Partial<ListQuery<ChatThreadFilters>> = {};
   protected readonly chatThreadSmartListConfig: SmartListConfig<AppTypes.ChatPopupMessage, ChatThreadFilters> = {
     pageSize: this.chatHistoryPageSize,
-    initialPageCount: this.chatInitialVisiblePageCount,
+    initialPageCount: 1,
+    initialPageSize: this.chatInitialLoadMessageCount,
     preloadOffsetPx: 48,
-    loadingDelayMs: this.chatLoadOlderDelayMs,
+    loadingDelayMs: 0,
     showStickyHeader: false,
     showFirstGroupMarker: true,
     loadTriggerEdge: 'start',
@@ -86,7 +87,7 @@ export class EventChatPopupComponent implements OnDestroy {
   };
   protected readonly chatThreadLoadPage: SmartListLoadPage<AppTypes.ChatPopupMessage, ChatThreadFilters> = (
     query: ListQuery<ChatThreadFilters>
-  ) => of(this.chatThreadPageResult(query));
+  ) => of(this.chatThreadPageResult(query)).pipe(delay(query.page > 0 ? this.chatLoadOlderDelayMs : 0));
 
   private loadSequence = 0;
   private loadedSessionKey: string | null = null;
@@ -374,8 +375,17 @@ export class EventChatPopupComponent implements OnDestroy {
     const total = this.allMessages.length;
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || this.chatHistoryPageSize));
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
-    const end = Math.max(0, total - (page * pageSize));
-    const start = Math.max(0, end - pageSize);
+    let start = 0;
+    let end = total;
+
+    if (page === 0) {
+      start = Math.max(0, total - pageSize);
+    } else {
+      const initialBlockSize = Math.max(this.chatHistoryPageSize, this.chatInitialLoadMessageCount);
+      end = Math.max(0, total - initialBlockSize - ((page - 1) * this.chatHistoryPageSize));
+      start = Math.max(0, end - this.chatHistoryPageSize);
+    }
+
     return {
       items: this.allMessages.slice(start, end),
       total
