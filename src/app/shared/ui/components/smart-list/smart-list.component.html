@@ -90,6 +90,13 @@
               >
                 <span>{{ calendarWeekdayLabels()[dayIndex] }}</span>
                 <strong>{{ day.dayNumber }}</strong>
+                <div
+                  class="smart-list__week-rate-count"
+                  *ngIf="isRateCountCalendarVariant() && weekRateDayCount(day) as dayCount"
+                  [ngClass]="rateHeatClassByCount(dayCount)"
+                >
+                  {{ rateCountLabel(dayCount) }}
+                </div>
               </div>
               <div class="smart-list__week-hours-col">
                 <div class="smart-list__week-hour-label" *ngFor="let hour of calendarWeekHours()">

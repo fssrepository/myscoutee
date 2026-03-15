@@ -4498,9 +4498,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     variantIndex = 0
   ): RateMenuItem {
     const seed = AppDemoGenerators.hashText(`rate-grid:${activeUserId}:${targetUserId}:${mode}:${direction}:${variantIndex}`);
-    const happenedAt = AppUtils.toIsoDateTime(
-      AppUtils.addDays(new Date('2026-03-01T20:00:00'), -((laneIndex * 17) + userIndex + 1 + (variantIndex * 2)))
-    );
+    const happenedAtDate = new Date('2026-03-01T20:00:00');
+    happenedAtDate.setDate(happenedAtDate.getDate() - ((laneIndex * 17) + userIndex + 1 + (variantIndex * 2)));
+    const happenedAt = AppUtils.toIsoDateTime(happenedAtDate);
     let scoreGiven = 0;
     let scoreReceived = 0;
     if (direction === 'given') {

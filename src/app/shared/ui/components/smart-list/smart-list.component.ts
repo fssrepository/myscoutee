@@ -136,6 +136,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
   private calendarPendingPageAnchor: Date | null = null;
   private calendarPendingVisualKey: string | null = null;
   private calendarFrozenProgress: number | null = null;
+  private weekRateViewportPageKey: string | null = null;
 
   ngAfterViewInit(): void {
     this.afterViewInit = true;
@@ -400,17 +401,12 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     slotStart.setHours(hour, 0, 0, 0);
     const slotEnd = new Date(slotStart);
     slotEnd.setHours(hour + 1, 0, 0, 0);
-    let count = 0;
-    for (const item of day.items) {
-      const range = calendar.resolveDateRange(item, this.currentQuery());
-      if (!range) {
-        continue;
-      }
-      if (range.start.getTime() < slotEnd.getTime() && range.end.getTime() > slotStart.getTime()) {
-        count += 1;
-      }
-    }
-    return count;
+    return this.countOverlappingCalendarItems(
+      day.items,
+      slotStart,
+      slotEnd,
+      item => calendar.resolveDateRange(item, this.currentQuery())
+    );
   }
 
   protected rateHeatClassByCount(count: number): string {
@@ -502,6 +498,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     this.calendarPendingPageKey = null;
     this.calendarPendingVisualKey = null;
     this.calendarFrozenProgress = null;
+    this.weekRateViewportPageKey = null;
 
     if (this.currentViewMode === 'list') {
       this.calendarInitialPageIndexOverride = null;
@@ -832,6 +829,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     const refresh = () => {
       if (this.isCalendarMode()) {
         this.updateCalendarSurface();
+        this.focusVisibleWeekRateHourSoon();
       } else {
         this.updateStickyLabel(this.scrollHostRef?.nativeElement?.scrollTop ?? 0);
         this.updateScrollProgress();
@@ -848,6 +846,68 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       return;
     }
     setTimeout(refresh, 0);
+  }
+
+  private focusVisibleWeekRateHourSoon(): void {
+    if (!this.isWeekMode() || !this.isRateCountCalendarVariant()) {
+      this.weekRateViewportPageKey = null;
+      return;
+    }
+
+    const scrollElement = this.scrollHostRef?.nativeElement;
+    const pages = this.currentCalendarPages();
+    if (!scrollElement || pages.length === 0) {
+      return;
+    }
+
+    const pageIndex = this.currentCalendarPageIndex(scrollElement, pages.length);
+    const visiblePageKey = pages[pageIndex]?.key ?? null;
+    if (!visiblePageKey || this.weekRateViewportPageKey === visiblePageKey) {
+      return;
+    }
+
+    const run = () => {
+      const currentScrollElement = this.scrollHostRef?.nativeElement;
+      if (!currentScrollElement || !this.isWeekMode() || !this.isRateCountCalendarVariant()) {
+        return;
+      }
+      const pageElements = Array.from(
+        currentScrollElement.querySelectorAll<HTMLElement>('.smart-list__calendar-page--week')
+      );
+      const currentPages = this.currentCalendarPages();
+      const currentPageIndex = this.currentCalendarPageIndex(currentScrollElement, currentPages.length);
+      const currentVisiblePageKey = currentPages[currentPageIndex]?.key ?? null;
+      if (!currentVisiblePageKey || currentVisiblePageKey !== visiblePageKey) {
+        return;
+      }
+      const pageElement = pageElements[currentPageIndex];
+      if (!pageElement) {
+        return;
+      }
+      const firstBadge = pageElement.querySelector<HTMLElement>('.smart-list__week-rate-badge');
+      this.weekRateViewportPageKey = currentVisiblePageKey;
+      if (!firstBadge) {
+        return;
+      }
+      const slot = firstBadge.closest<HTMLElement>('.smart-list__week-rate-slot');
+      if (!slot) {
+        return;
+      }
+      const targetTop = Math.max(0, slot.offsetTop - 10);
+      if (Math.abs(currentScrollElement.scrollTop - targetTop) <= 1) {
+        return;
+      }
+      currentScrollElement.scrollTop = targetTop;
+      this.updateCalendarSurface(currentScrollElement);
+      this.emitState();
+      this.cdr.markForCheck();
+    };
+
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(run));
+      return;
+    }
+    setTimeout(run, 0);
   }
 
   private scheduleInitialListSnap(): void {
@@ -1877,6 +1937,25 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       }
     }
     return byDate;
+  }
+
+  private countOverlappingCalendarItems(
+    items: readonly T[],
+    start: Date,
+    end: Date,
+    resolveDateRange: (item: T) => SmartListCalendarDateRange | null
+  ): number {
+    let count = 0;
+    for (const item of items) {
+      const range = resolveDateRange(item);
+      if (!range) {
+        continue;
+      }
+      if (range.start.getTime() < end.getTime() && range.end.getTime() > start.getTime()) {
+        count += 1;
+      }
+    }
+    return count;
   }
 
   private buildMonthPage(
