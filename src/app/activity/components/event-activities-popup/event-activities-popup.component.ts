@@ -3570,13 +3570,10 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   private resetActivitiesScroll(loadCalendarBadgesForCurrentPage = false): void {
     this.cancelActivitiesPaginationLoad();
     this.clearActivitiesHeaderLoadingAnimation();
-    if (this.activitiesPrimaryFilter !== 'rates' && this.activitiesSmartList) {
+    if (this.activitiesPrimaryFilter !== 'rates') {
       this.activitiesInitialLoadPending = true;
-      this.activitiesSmartList.reload();
-      setTimeout(() => {
-        this.updateActivitiesHeaderProgress();
-        this.refreshActivitiesHeaderProgressSoon();
-      }, 0);
+      this.updateActivitiesHeaderProgress();
+      this.refreshActivitiesHeaderProgressSoon();
       return;
     }
 
@@ -5273,6 +5270,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
     this.applyActivitiesEventMemberSnapshot(sync);
     this.refreshSectionBadges();
+    if (this.activitiesPrimaryFilter !== 'rates') {
+      this.activitiesSmartList?.reload();
+    }
   }
 
   private applyActivitiesEventMemberSnapshot(sync: ActivitiesEventSyncPayload): void {
@@ -5672,13 +5672,24 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   private syncActivitiesSmartListInputs(): void {
-    this.activitiesSmartListFilters = {
+    const nextFilters: Record<string, unknown> = {
       primaryFilter: this.activitiesPrimaryFilter,
       secondaryFilter: this.activitiesSecondaryFilter,
       chatContextFilter: this.activitiesChatContextFilter,
       hostingPublicationFilter: this.hostingPublicationFilter,
       rateFilter: this.activitiesRateFilter
     };
+    const currentFilters = this.activitiesSmartListFilters;
+    if (
+      currentFilters['primaryFilter'] === nextFilters['primaryFilter']
+      && currentFilters['secondaryFilter'] === nextFilters['secondaryFilter']
+      && currentFilters['chatContextFilter'] === nextFilters['chatContextFilter']
+      && currentFilters['hostingPublicationFilter'] === nextFilters['hostingPublicationFilter']
+      && currentFilters['rateFilter'] === nextFilters['rateFilter']
+    ) {
+      return;
+    }
+    this.activitiesSmartListFilters = nextFilters;
   }
 
   private async resolveActivitiesSmartListPage(query: ListQuery): Promise<PageResult<AppTypes.ActivityListRow>> {

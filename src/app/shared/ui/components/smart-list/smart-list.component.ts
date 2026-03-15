@@ -4,9 +4,9 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  ContentChild,
   ElementRef,
   EventEmitter,
-  HostBinding,
   Input,
   NgZone,
   OnChanges,
@@ -71,6 +71,9 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
   @ViewChild('scrollHost')
   private scrollHostRef?: ElementRef<HTMLDivElement>;
 
+  @ContentChild('smartListItemTemplate', { read: TemplateRef })
+  private projectedItemTemplate?: TemplateRef<SmartListItemTemplateContext<T>>;
+
   @Input() config: SmartListConfig<T> = {};
   @Input() loadPage: SmartListLoadPage<T> | null = null;
   @Input() loaders: SmartListLoaders<T> | null = null;
@@ -87,11 +90,6 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
   @Output() readonly stateChange = new EventEmitter<SmartListStateChange<T>>();
   @Output() readonly viewChange = new EventEmitter<string>();
   @Output() readonly itemSelect = new EventEmitter<SmartListItemSelectEvent<T>>();
-
-  @HostBinding('class')
-  protected get hostClassName(): string {
-    return this.classNames(this.containerClass);
-  }
 
   protected items: T[] = [];
   protected groups: SmartListGroup<T>[] = [];
@@ -199,33 +197,22 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     this.emitState();
   }
 
-  protected trackByGroup(_index: number, group: SmartListGroup<T>): string {
-    return group.label;
-  }
+  protected readonly trackByGroup = (_index: number, group: SmartListGroup<T>): string => group.label;
 
-  protected trackByItem(index: number, item: T): unknown {
-    return this.config.trackBy ? this.config.trackBy(index, item) : index;
-  }
+  protected readonly trackByItem = (index: number, item: T): unknown =>
+    this.config.trackBy ? this.config.trackBy(index, item) : index;
 
-  protected trackByCalendarPageKey(_index: number, page: SmartListCalendarPage<T>): string {
-    return page.key;
-  }
+  protected readonly trackByCalendarPageKey = (_index: number, page: SmartListCalendarPage<T>): string => page.key;
 
-  protected trackByCalendarMonthWeekKey(_index: number, week: SmartListCalendarMonthWeek<T>): string {
-    return this.dateKey(week.start);
-  }
+  protected readonly trackByCalendarMonthWeekKey = (_index: number, week: SmartListCalendarMonthWeek<T>): string =>
+    this.dateKey(week.start);
 
-  protected trackByCalendarDayKey(_index: number, day: SmartListCalendarDay<T>): string {
-    return day.key;
-  }
+  protected readonly trackByCalendarDayKey = (_index: number, day: SmartListCalendarDay<T>): string => day.key;
 
-  protected trackByCalendarSpanKey(_index: number, span: SmartListCalendarMonthSpan<T>): string {
-    return span.key;
-  }
+  protected readonly trackByCalendarSpanKey = (_index: number, span: SmartListCalendarMonthSpan<T>): string => span.key;
 
-  protected trackByCalendarTimedBadge(index: number, badge: SmartListCalendarTimedBadge<T>): unknown {
-    return this.config.trackBy ? this.config.trackBy(index, badge.item) : index;
-  }
+  protected readonly trackByCalendarTimedBadge = (index: number, badge: SmartListCalendarTimedBadge<T>): unknown =>
+    this.config.trackBy ? this.config.trackBy(index, badge.item) : index;
 
   protected shouldShowGroupMarker(group: SmartListGroup<T>, groupIndex: number): boolean {
     if (this.config.showGroupMarker) {
@@ -260,8 +247,8 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     return this.resolveText(this.config.emptyDescription, '');
   }
 
-  protected hasItemTemplate(): boolean {
-    return Boolean(this.itemTemplate);
+  protected resolvedItemTemplate(): TemplateRef<SmartListItemTemplateContext<T>> | null {
+    return this.itemTemplate ?? this.projectedItemTemplate ?? null;
   }
 
   protected hasCalendarItems(): boolean {
@@ -374,6 +361,8 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
   }
 
   private resetAndReload(): void {
+    this.clearLoadingAnimation();
+    this.loading = false;
     this.loadSequence += 1;
     this.items = [];
     this.groups = [];
@@ -436,7 +425,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
         return;
       }
       this.loading = false;
-      this.awaitScrollReset = !isInitial;
+      this.awaitScrollReset = true;
       this.endLoadingAnimation();
       this.syncGroups();
       this.refreshSurfaceSoon();
@@ -530,7 +519,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     }
     const remainingPx = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
     if (this.awaitScrollReset) {
-      if (remainingPx > Math.max(240, this.config.preloadOffsetPx ?? 520)) {
+      if (remainingPx > 360) {
         this.awaitScrollReset = false;
       }
       return;
@@ -744,6 +733,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     this.loadingInterval = this.ngZone.runOutsideAngular(() =>
       setInterval(() => {
         this.updateLoadingWindow();
+        this.emitState();
         this.flushSoon();
       }, 16)
     );
@@ -763,6 +753,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     }
     this.loadingProgress = 1;
     this.loadingOverdue = false;
+    this.emitState();
     this.flushSoon();
     if (this.loadingCompleteTimer) {
       clearTimeout(this.loadingCompleteTimer);
@@ -777,6 +768,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
           this.loadingOverdue = false;
           this.loadingStartedAtMs = 0;
           this.loadingCompleteTimer = null;
+          this.emitState();
           this.flushSoon();
           this.cdr.markForCheck();
         });
@@ -842,7 +834,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       total: this.total,
       currentView: this.currentViewKey,
       hasMore: this.hasMore,
-      loading: this.loading,
+      loading: this.loading || this.loadingProgress > 0,
       initialLoading: this.initialLoading,
       progress: this.progress,
       loadingProgress: this.loadingProgress,
@@ -1243,24 +1235,5 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
 
   private clamp(value: number): number {
     return Math.min(1, Math.max(0, value));
-  }
-
-  private classNames(value: SmartListClassValue): string {
-    if (!value) {
-      return '';
-    }
-    if (typeof value === 'string') {
-      return value;
-    }
-    if (Array.isArray(value)) {
-      return value.filter(Boolean).join(' ');
-    }
-    if (value instanceof Set) {
-      return Array.from(value.values()).filter(Boolean).join(' ');
-    }
-    return Object.entries(value)
-      .filter(([, enabled]) => Boolean(enabled))
-      .map(([name]) => name)
-      .join(' ');
   }
 }
