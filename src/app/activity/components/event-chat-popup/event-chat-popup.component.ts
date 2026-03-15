@@ -16,7 +16,7 @@ import { delay, of } from 'rxjs';
 
 import type * as AppTypes from '../../../shared/app-types';
 import { AppUtils } from '../../../shared/app-utils';
-import { ActivitiesDbContextService } from '../../../shared/activities-db-context.service';
+import { ActivitiesDbContextService } from '../../services/activities-db-context.service';
 import { EventEditorService } from '../../../shared/event-editor.service';
 import type { EventChatResourceContext } from '../../../shared/activities-models';
 import type { EventMenuItem } from '../../../shared/demo-data';

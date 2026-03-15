@@ -39,7 +39,7 @@ import {
 import { AppCalendarHelpers } from '../../../shared/app-calendar-helpers';
 import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import { AppUtils } from '../../../shared/app-utils';
-import { ActivitiesDbContextService } from '../../../shared/activities-db-context.service';
+import { ActivitiesDbContextService } from '../../services/activities-db-context.service';
 import { EventEditorService } from '../../../shared/event-editor.service';
 import type { ActivitiesEventSyncPayload, ActivitiesPageRequest, EventChatContext, EventChatResourceContext } from '../../../shared/activities-models';
 import type * as AppTypes from '../../../shared/app-types';

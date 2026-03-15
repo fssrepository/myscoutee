@@ -11,7 +11,7 @@ import { MatTimepickerModule } from '@angular/material/timepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatOptionModule } from '@angular/material/core';
 import { Subscription } from 'rxjs';
-import { ActivitiesDbContextService } from '../../../shared/activities-db-context.service';
+import { ActivitiesDbContextService } from '../../services/activities-db-context.service';
 import { EventEditorService } from '../../../shared/event-editor.service';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';

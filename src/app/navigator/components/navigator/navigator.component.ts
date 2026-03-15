@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, Type, effect, inject, signal } from '@angular/core';
 import { AssetPopupService } from '../../../asset/asset-popup.service';
-import { ActivitiesDbContextService } from '../../../shared/activities-db-context.service';
+import { ActivitiesDbContextService } from '../../../activity/services/activities-db-context.service';
 import { EventEditorService } from '../../../shared/event-editor.service';
 import { AvatarBtnComponent } from '../avatar-btn/avatar-btn.component';
 import { NavigatorImpressionsPopupComponent } from '../navigator-impressions-popup/navigator-impressions-popup.component';

@@ -14,7 +14,7 @@ import { MatTimepickerModule } from '@angular/material/timepicker';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { AlertService } from './shared/alert.service';
-import { ActivitiesDbContextService } from './shared/activities-db-context.service';
+import { ActivitiesDbContextService } from './activity/services/activities-db-context.service';
 import type { AssetPopupHost } from './asset/asset-popup.host';
 import { AssetPopupService, type AssetTicketBridge } from './asset/asset-popup.service';
 import { EventEditorService } from './shared/event-editor.service';
@@ -242,11 +242,6 @@ export class App {
       this.activeUserId = user.id;
       this.cdr.markForCheck();
     },
-    openRatesShortcut: () => this.openRatesShortcut(),
-    openChatShortcut: () => this.openChatShortcut(),
-    openInvitationShortcut: () => this.openInvitationShortcut(),
-    openEventShortcut: () => this.openEventShortcut(),
-    openHostingShortcut: () => this.openHostingShortcut(),
     openAssetCarPopup: () => this.openAssetCarPopup(),
     openAssetAccommodationPopup: () => this.openAssetAccommodationPopup(),
     openAssetSuppliesPopup: () => this.openAssetSuppliesPopup(),
@@ -1431,45 +1426,6 @@ export class App {
     this.activeMenuSection = 'game';
     this.router.navigate(['/game']);
     this.closeUserMenu();
-  }
-
-  protected openRatesShortcut(): void {
-    this.openActivitiesPopup('rates', false);
-  }
-
-  @HostListener('window:myscoutee-open-rates')
-  protected onGameHistoryOpenRates(): void {
-    this.openRatesShortcut();
-  }
-
-  protected openChatShortcut(): void {
-    this.openActivitiesPopup('chats', false);
-  }
-
-  protected openInvitationShortcut(): void {
-    this.openActivitiesPopup('events', false, 'invitations');
-  }
-
-  protected openEventShortcut(): void {
-    this.openActivitiesPopup('events', false, 'active-events');
-  }
-
-  protected openHostingShortcut(): void {
-    this.openActivitiesPopup('events', false, 'my-events');
-  }
-
-  protected openActivitiesPopup(
-    primaryFilter: AppTypes.ActivitiesPrimaryFilter,
-    closeMenu = true,
-    eventScope?: AppTypes.ActivitiesEventScope
-  ): void {
-    if (this.activePopup || this.stackedPopup || this.superStackedPopup) {
-      this.closePopup();
-    }
-    this.activitiesContext.openActivities(primaryFilter, eventScope);
-    if (closeMenu) {
-      this.closeUserMenu();
-    }
   }
 
   protected openAssetCarPopup(): void {

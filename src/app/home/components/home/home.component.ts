@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
 import { MatSliderModule } from '@angular/material/slider';
+import { ActivitiesDbContextService } from '../../../activity/services/activities-db-context.service';
 import { RatingStarBarComponent } from '../../../shared/ui';
 import { DemoUser, PROFILE_DETAILS } from '../../../shared/demo-data';
 import {
@@ -429,6 +430,7 @@ export class HomeComponent implements OnDestroy {
   private lastHandledActiveUserId = '';
   constructor(
     private readonly cdr: ChangeDetectorRef,
+    private readonly activitiesContext: ActivitiesDbContextService,
     private readonly appCtx: AppContext,
     private readonly gameService: GameService,
     private readonly usersService: UsersService
@@ -907,9 +909,7 @@ export class HomeComponent implements OnDestroy {
     if (!this.canOpenHistory) {
       return;
     }
-    if (typeof globalThis.dispatchEvent === 'function') {
-      globalThis.dispatchEvent(new CustomEvent('myscoutee-open-rates'));
-    }
+    this.activitiesContext.openActivities('rates');
   }
 
   protected closeLocalPopup(): void {

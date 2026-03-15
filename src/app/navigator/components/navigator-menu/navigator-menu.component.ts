@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, computed, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { ActivitiesDbContextService } from '../../../activity/services/activities-db-context.service';
 import {
   AppContext,
   type ActivityCounters,
@@ -36,6 +37,7 @@ interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
 })
 export class NavigatorMenuComponent {
   private readonly appCtx = inject(AppContext);
+  private readonly activitiesContext = inject(ActivitiesDbContextService);
   private readonly navigatorService = inject(NavigatorService);
   protected readonly activeUser = this.appCtx.activeUserProfile;
   protected readonly menuUser = computed<NavigatorMenuUser | null>(() => {
@@ -169,23 +171,23 @@ export class NavigatorMenuComponent {
   }
 
   protected openRatesShortcut(): void {
-    this.bindings?.openRatesShortcut();
+    this.openActivitiesShortcut('rates');
   }
 
   protected openChatShortcut(): void {
-    this.bindings?.openChatShortcut();
+    this.openActivitiesShortcut('chats');
   }
 
   protected openInvitationShortcut(): void {
-    this.bindings?.openInvitationShortcut();
+    this.openActivitiesShortcut('events', 'invitations');
   }
 
   protected openEventShortcut(): void {
-    this.bindings?.openEventShortcut();
+    this.openActivitiesShortcut('events', 'active-events');
   }
 
   protected openHostingShortcut(): void {
-    this.bindings?.openHostingShortcut();
+    this.openActivitiesShortcut('events', 'my-events');
   }
 
   protected openAssetCarPopup(): void {
@@ -215,6 +217,14 @@ export class NavigatorMenuComponent {
 
   private resolveUserImageUrl(user: UserDto | null): string | null {
     return user?.images?.find(image => image.trim().length > 0) ?? null;
+  }
+
+  private openActivitiesShortcut(
+    primaryFilter: 'rates' | 'chats' | 'events',
+    eventScope?: 'active-events' | 'invitations' | 'my-events'
+  ): void {
+    this.activitiesContext.openActivities(primaryFilter, eventScope);
+    this.navigatorService.closeMenu();
   }
 
   private resolveCompletionPercent(user: UserDto | null): number {
