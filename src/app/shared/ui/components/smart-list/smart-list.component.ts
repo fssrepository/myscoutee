@@ -130,6 +130,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
   private readonly calendarPageTotals = new Map<string, number>();
   private calendarPendingPageKey: string | null = null;
   private calendarPendingPageAnchor: Date | null = null;
+  private calendarPendingVisualKey: string | null = null;
 
   ngAfterViewInit(): void {
     this.afterViewInit = true;
@@ -449,6 +450,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     this.progress = 0;
     this.scrollable = false;
     this.calendarPendingPageKey = null;
+    this.calendarPendingVisualKey = null;
 
     if (this.currentViewMode === 'list') {
       this.calendarInitialPageIndexOverride = null;
@@ -457,6 +459,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       void this.loadNextPage(true);
       return;
     }
+    this.clearCalendarProgressAnchors();
     this.syncCalendarPages();
     this.seedCalendarProgress();
     this.emitState();
@@ -642,6 +645,8 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       return;
     }
 
+    this.rememberCalendarWindowAnchors(window.anchors);
+
     const activeAnchor = this.currentVisibleCalendarAnchor() ?? window.focus;
 
     if (this.isMonthMode()) {
@@ -701,6 +706,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     this.calendarWeekPageAnchors.clear();
     this.calendarPendingPageKey = null;
     this.calendarPendingPageAnchor = null;
+    this.calendarPendingVisualKey = null;
   }
 
   private updateStickyLabel(scrollTop: number): void {
@@ -959,7 +965,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       loading: loadingVisible,
       initialLoading: this.initialLoading,
       progress: this.progress,
-      loadingProgress: loadingVisible ? this.loadingProgress : 0,
+      loadingProgress: loadingVisible ? Math.max(this.loadingProgress, this.calendarPendingVisualKey ? 0.02 : 0) : 0,
       loadingOverdue: loadingVisible ? this.loadingOverdue : false,
       scrollable: this.scrollable,
       stickyLabel: this.stickyLabel || this.resolveEmptyStickyLabel()
@@ -969,6 +975,9 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
   private isVisibleCalendarPageLoading(): boolean {
     if (!this.isCalendarMode()) {
       return this.loading || this.loadingProgress > 0;
+    }
+    if (this.calendarPendingVisualKey) {
+      return true;
     }
     if (this.initialLoading) {
       return this.loading || this.loadingProgress > 0;
@@ -1241,6 +1250,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     const sequence = ++this.loadSequence;
     this.calendarPendingPageKey = pageKey;
     this.calendarPendingPageAnchor = this.normalizeCalendarAnchor(anchor);
+    this.calendarPendingVisualKey = pageKey;
     this.loading = true;
     this.startLoadingAnimation();
     this.emitState();
@@ -1274,6 +1284,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       }
       this.calendarPendingPageKey = null;
       this.calendarPendingPageAnchor = null;
+      this.calendarPendingVisualKey = null;
       this.loading = false;
       this.endLoadingAnimation();
       this.refreshSurfaceSoon();
@@ -1439,17 +1450,16 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       : AppUtils.startOfWeekMonday(anchor);
   }
 
-  private adjacentCalendarAnchor(anchor: Date, delta: number): Date {
-    const normalizedAnchor = this.normalizeCalendarAnchor(anchor);
-    return this.isMonthMode()
-      ? AppUtils.addMonths(normalizedAnchor, delta)
-      : AppUtils.addDays(normalizedAnchor, delta * 7);
-  }
-
   private currentCalendarPageAnchorStore(): Map<string, Date> {
     return this.isMonthMode()
       ? this.calendarMonthPageAnchors
       : this.calendarWeekPageAnchors;
+  }
+
+  private clearCalendarProgressAnchors(): void {
+    this.calendarMonthPageAnchors.clear();
+    this.calendarWeekPageAnchors.clear();
+    this.calendarPendingPageAnchor = null;
   }
 
   private rememberCalendarPageAnchor(anchor: Date): void {
@@ -1457,18 +1467,27 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     this.currentCalendarPageAnchorStore().set(this.calendarPageKey(normalizedAnchor), normalizedAnchor);
   }
 
+  private rememberCalendarWindowAnchors(anchors: ReadonlyArray<Date>): void {
+    const store = this.currentCalendarPageAnchorStore();
+    for (const anchor of anchors) {
+      const normalizedAnchor = this.normalizeCalendarAnchor(anchor);
+      store.set(this.calendarPageKey(normalizedAnchor), normalizedAnchor);
+    }
+  }
+
   private calendarProgressAnchors(extraAnchors: ReadonlyArray<Date> = []): Date[] {
     const anchorsByKey = new Map<string, Date>();
-    const centerAnchor = this.currentCalendarQueryAnchor() ?? this.calendarPendingPageAnchor ?? this.currentVisibleCalendarAnchor();
-    if (centerAnchor) {
-      const normalizedCenter = this.normalizeCalendarAnchor(centerAnchor);
-      anchorsByKey.set(this.calendarPageKey(this.adjacentCalendarAnchor(normalizedCenter, -1)), this.adjacentCalendarAnchor(normalizedCenter, -1));
-      anchorsByKey.set(this.calendarPageKey(normalizedCenter), normalizedCenter);
-      anchorsByKey.set(this.calendarPageKey(this.adjacentCalendarAnchor(normalizedCenter, 1)), this.adjacentCalendarAnchor(normalizedCenter, 1));
+    for (const [key, value] of this.currentCalendarPageAnchorStore().entries()) {
+      anchorsByKey.set(key, new Date(value));
     }
     if (this.calendarPendingPageAnchor) {
       const pendingAnchor = this.normalizeCalendarAnchor(this.calendarPendingPageAnchor);
       anchorsByKey.set(this.calendarPageKey(pendingAnchor), pendingAnchor);
+    }
+    const currentAnchor = this.currentVisibleCalendarAnchor() ?? this.currentCalendarQueryAnchor();
+    if (currentAnchor) {
+      const normalizedCurrent = this.normalizeCalendarAnchor(currentAnchor);
+      anchorsByKey.set(this.calendarPageKey(normalizedCurrent), normalizedCurrent);
     }
     for (const anchor of extraAnchors) {
       const normalizedAnchor = this.normalizeCalendarAnchor(anchor);
@@ -1587,6 +1606,8 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
   }
 
   private recenterCalendarWindow(anchor: Date, targetIndex: number): void {
+    const targetPageKey = this.calendarPageKey(anchor);
+    this.calendarPendingVisualKey = this.calendarPageItems.has(targetPageKey) ? null : targetPageKey;
     if (this.isMonthMode()) {
       const normalizedAnchor = AppUtils.startOfMonth(anchor);
       this.calendarMonthFocusDate = normalizedAnchor;
@@ -1609,12 +1630,16 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       if (!nextElement) {
         this.suppressCalendarEdgeSettle = false;
         this.maybeLoadCurrentCalendarPage();
+        this.emitState();
+        this.cdr.markForCheck();
         return;
       }
       const pageWidth = nextElement.clientWidth || 0;
       if (pageWidth <= 0) {
         this.suppressCalendarEdgeSettle = false;
         this.maybeLoadCurrentCalendarPage(nextElement);
+        this.emitState();
+        this.cdr.markForCheck();
         return;
       }
       const previousScrollBehavior = nextElement.style.scrollBehavior;
