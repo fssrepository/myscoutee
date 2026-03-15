@@ -24,10 +24,18 @@
   }
 
   .smart-list__calendar-page--month {
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
     min-height: auto;
     height: auto;
     padding-bottom: 0.08rem;
     overflow: hidden;
+    background: #fff;
+    contain: paint;
+    box-shadow:
+      -1px 0 0 #fff,
+      1px 0 0 #fff;
   }
 
   .smart-list__calendar-page--month-rates {
@@ -40,6 +48,8 @@
     gap: 0.44rem;
     height: auto;
     min-height: 0;
+    width: 100%;
+    min-width: 0;
   }
 
   .smart-list__month-week {
@@ -47,6 +57,9 @@
     height: 5.6rem;
     min-height: 5.6rem;
     gap: 0.8rem;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   .smart-list__month-week .smart-list__month-cell {
@@ -68,6 +81,8 @@
     gap: 0.44rem;
     height: auto;
     min-height: 0;
+    width: 100%;
+    min-width: 0;
   }
 
   .smart-list__month-week--rates {
@@ -75,6 +90,9 @@
     height: 5.6rem;
     min-height: 5.6rem;
     gap: 0.8rem;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   .smart-list__month-week--rates .smart-list__month-cell {
@@ -213,7 +231,6 @@
   overflow-x: auto;
   overflow-y: hidden;
   align-items: flex-start;
-  gap: 0;
   scroll-snap-type: x mandatory;
   scroll-behavior: smooth;
   scrollbar-width: none;

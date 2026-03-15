@@ -1000,14 +1000,14 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       if (this.isCalendarMode()) {
         const initialIndex = this.initialCalendarPageIndex();
         this.calendarInitialPageIndexOverride = null;
-        const pageWidth = this.calendarViewportWidth(scrollElement);
-        if (pageWidth > 0) {
+        const targetLeft = this.calendarPageOffsetLeft(scrollElement, initialIndex);
+        if (targetLeft >= 0) {
           this.suppressCalendarEdgeSettle = true;
           const previousScrollBehavior = scrollElement.style.scrollBehavior;
           const previousSnapType = scrollElement.style.scrollSnapType;
           scrollElement.style.scrollBehavior = 'auto';
           scrollElement.style.scrollSnapType = 'none';
-          scrollElement.scrollLeft = Math.max(0, initialIndex * pageWidth);
+          scrollElement.scrollLeft = targetLeft;
           scrollElement.style.scrollBehavior = previousScrollBehavior;
           const release = () => {
             scrollElement.style.scrollSnapType = previousSnapType;
@@ -1538,8 +1538,8 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
         this.suppressCalendarEdgeSettle = false;
         return;
       }
-      const pageWidth = this.calendarViewportWidth(nextElement);
-      if (pageWidth <= 0) {
+      const holdLeft = this.calendarPageOffsetLeft(nextElement, holdIndex);
+      if (holdLeft < 0) {
         this.suppressCalendarEdgeSettle = false;
         return;
       }
@@ -1547,7 +1547,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       const previousSnapType = nextElement.style.scrollSnapType;
       nextElement.style.scrollBehavior = 'auto';
       nextElement.style.scrollSnapType = 'none';
-      nextElement.scrollLeft = pageWidth * holdIndex;
+      nextElement.scrollLeft = holdLeft;
       nextElement.style.scrollBehavior = previousScrollBehavior;
       const slide = () => {
         nextElement.style.scrollSnapType = previousSnapType;
@@ -1591,12 +1591,12 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       return;
     }
     const targetIndex = Math.max(0, Math.min(pages.length - 1, pageIndex));
-    const pageWidth = this.calendarViewportWidth(scrollElement);
-    if (pageWidth <= 0) {
+    const targetLeft = this.calendarPageOffsetLeft(scrollElement, targetIndex);
+    if (targetLeft < 0) {
       return;
     }
     scrollElement.scrollTo({
-      left: targetIndex * pageWidth,
+      left: targetLeft,
       behavior
     });
     this.emitState();
@@ -1775,12 +1775,15 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
   }
 
   private normalizeCalendarScrollPageAlignment(calendarElement: HTMLDivElement): void {
-    const pageWidth = this.calendarViewportWidth(calendarElement);
-    if (pageWidth <= 0) {
+    const pages = this.currentCalendarPages();
+    if (pages.length === 0) {
       return;
     }
-    const nearestPageIndex = Math.max(0, Math.round(calendarElement.scrollLeft / pageWidth));
-    const nearestPageLeft = nearestPageIndex * pageWidth;
+    const nearestPageIndex = this.currentCalendarPageIndex(calendarElement, pages.length);
+    const nearestPageLeft = this.calendarPageOffsetLeft(calendarElement, nearestPageIndex);
+    if (nearestPageLeft < 0) {
+      return;
+    }
     if (Math.abs(calendarElement.scrollLeft - nearestPageLeft) > 0.75) {
       return;
     }
@@ -1843,8 +1846,8 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
         this.cdr.markForCheck();
         return;
       }
-      const pageWidth = this.calendarViewportWidth(nextElement);
-      if (pageWidth <= 0) {
+      const targetLeft = this.calendarPageOffsetLeft(nextElement, targetIndex);
+      if (targetLeft < 0) {
         this.suppressCalendarEdgeSettle = false;
         this.maybeLoadCurrentCalendarPage(nextElement);
         this.emitState();
@@ -1855,7 +1858,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       const previousSnapType = nextElement.style.scrollSnapType;
       nextElement.style.scrollBehavior = 'auto';
       nextElement.style.scrollSnapType = 'none';
-      nextElement.scrollLeft = pageWidth * targetIndex;
+      nextElement.scrollLeft = targetLeft;
       nextElement.style.scrollBehavior = previousScrollBehavior;
       const release = () => {
         nextElement.style.scrollSnapType = previousSnapType;
@@ -1911,8 +1914,38 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     if (!scrollElement || totalPages <= 1) {
       return 0;
     }
-    const pageWidth = this.calendarViewportWidth(scrollElement) || 1;
-    return Math.max(0, Math.min(totalPages - 1, Math.round(scrollElement.scrollLeft / pageWidth)));
+    const pageElements = Array.from(
+      scrollElement.querySelectorAll<HTMLElement>('.smart-list__calendar-page')
+    ).slice(0, totalPages);
+    if (pageElements.length === 0) {
+      const pageWidth = this.calendarViewportWidth(scrollElement) || 1;
+      return Math.max(0, Math.min(totalPages - 1, Math.round(scrollElement.scrollLeft / pageWidth)));
+    }
+    let nearestIndex = 0;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    for (let index = 0; index < pageElements.length; index += 1) {
+      const distance = Math.abs(scrollElement.scrollLeft - pageElements[index].offsetLeft);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    }
+    return Math.max(0, Math.min(totalPages - 1, nearestIndex));
+  }
+
+  private calendarPageOffsetLeft(scrollElement: HTMLDivElement, pageIndex: number): number {
+    const pageElements = Array.from(
+      scrollElement.querySelectorAll<HTMLElement>('.smart-list__calendar-page')
+    );
+    const pageElement = pageElements[pageIndex];
+    if (pageElement) {
+      return pageElement.offsetLeft;
+    }
+    const pageWidth = this.calendarViewportWidth(scrollElement);
+    if (pageWidth <= 0) {
+      return -1;
+    }
+    return pageWidth * pageIndex;
   }
 
   private calendarViewportWidth(scrollElement: HTMLDivElement): number {
