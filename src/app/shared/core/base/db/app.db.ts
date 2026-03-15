@@ -3,7 +3,6 @@ import { Injectable, signal } from '@angular/core';
 import { CHATS_TABLE_NAME } from '../../demo/models/chats.model';
 import { EVENTS_TABLE_NAME } from '../../demo/models/events.model';
 import type { DemoMemorySchema } from '../../demo/models/memory.model';
-import { RATES_TABLE_NAME } from '../../demo/models/rates.model';
 import {
   USER_FILTER_PREFERENCES_TABLE_NAME,
   USERS_TABLE_NAME,
@@ -64,10 +63,6 @@ export class AppMemoryDb {
         ids: []
       },
       [EVENTS_TABLE_NAME]: {
-        byId: {},
-        ids: []
-      },
-      [RATES_TABLE_NAME]: {
         byId: {},
         ids: []
       }
@@ -160,15 +155,13 @@ export class AppMemoryDb {
     const chats = await this.readIndexedDbEntry(db, CHATS_TABLE_NAME);
     const events = await this.readIndexedDbEntry(db, EVENTS_TABLE_NAME)
       ?? await this.readIndexedDbEntry(db, 'demoEvents');
-    const activityRates = await this.readIndexedDbEntry(db, RATES_TABLE_NAME);
 
     const hasSegmentedState = users !== null
       || rates !== null
       || outbox !== null
       || filterPreferences !== null
       || chats !== null
-      || events !== null
-      || activityRates !== null;
+      || events !== null;
     if (!hasSegmentedState) {
       const legacy = await this.readIndexedDbEntry(db, AppMemoryDb.LEGACY_INDEXED_DB_STATE_KEY);
       if (legacy !== null) {
@@ -196,9 +189,6 @@ export class AppMemoryDb {
     if (events !== null) {
       partialState[EVENTS_TABLE_NAME] = events as DemoMemorySchema[typeof EVENTS_TABLE_NAME];
     }
-    if (activityRates !== null) {
-      partialState[RATES_TABLE_NAME] = activityRates as DemoMemorySchema[typeof RATES_TABLE_NAME];
-    }
     return this.normalizeState(partialState, this.createEmptyState());
   }
 
@@ -216,8 +206,8 @@ export class AppMemoryDb {
       store.put(state[USER_FILTER_PREFERENCES_TABLE_NAME], USER_FILTER_PREFERENCES_TABLE_NAME);
       store.put(state[CHATS_TABLE_NAME], CHATS_TABLE_NAME);
       store.put(state[EVENTS_TABLE_NAME], EVENTS_TABLE_NAME);
-      store.put(state[RATES_TABLE_NAME], RATES_TABLE_NAME);
       store.delete('demoEvents');
+      store.delete('rates');
       store.delete(AppMemoryDb.LEGACY_INDEXED_DB_STATE_KEY);
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
@@ -278,7 +268,6 @@ export class AppMemoryDb {
       source[EVENTS_TABLE_NAME]
       ?? legacySource['demoEvents']
     ) as Partial<DemoMemorySchema[typeof EVENTS_TABLE_NAME]> | undefined;
-    const activityRatesSource = source[RATES_TABLE_NAME] as Partial<DemoMemorySchema[typeof RATES_TABLE_NAME]> | undefined;
     return {
       [USERS_TABLE_NAME]: {
         byId: usersSource?.byId && typeof usersSource.byId === 'object'
@@ -327,14 +316,6 @@ export class AppMemoryDb {
         ids: Array.isArray(eventsSource?.ids)
           ? eventsSource.ids.map(id => String(id))
           : [...fallback[EVENTS_TABLE_NAME].ids]
-      },
-      [RATES_TABLE_NAME]: {
-        byId: activityRatesSource?.byId && typeof activityRatesSource.byId === 'object'
-          ? { ...activityRatesSource.byId }
-          : { ...fallback[RATES_TABLE_NAME].byId },
-        ids: Array.isArray(activityRatesSource?.ids)
-          ? activityRatesSource.ids.map(id => String(id))
-          : [...fallback[RATES_TABLE_NAME].ids]
       }
     };
   }

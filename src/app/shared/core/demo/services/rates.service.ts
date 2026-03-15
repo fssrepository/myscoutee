@@ -1,19 +1,19 @@
 import { Injectable, inject } from '@angular/core';
 
+import type { RateMenuItem } from '../../../demo-data';
 import { resolveAdditionalDelayMsForRoute } from '../config';
-import { DemoRatesRepository } from '../repositories/rates.repository';
-import type { DemoRateRecord } from '../models/rates.model';
+import { DemoUsersRatingsRepository } from '../repositories/users-ratings.repository';
 
 @Injectable({
   providedIn: 'root'
 })
 export class DemoRatesService {
   private static readonly RATES_ROUTE = '/activities/rates';
-  private readonly ratesRepository = inject(DemoRatesRepository);
+  private readonly usersRatingsRepository = inject(DemoUsersRatingsRepository);
 
-  async queryRateItemsByUser(userId: string): Promise<DemoRateRecord[]> {
+  async queryRateItemsByUser(userId: string): Promise<RateMenuItem[]> {
     await this.waitForRouteDelay(DemoRatesService.RATES_ROUTE);
-    return this.ratesRepository.queryRateItemsByUser(userId);
+    return this.usersRatingsRepository.queryActivityRateItemsByUserId(userId);
   }
 
   private async waitForRouteDelay(route: string): Promise<void> {

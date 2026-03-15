@@ -1,10 +1,8 @@
 export { CHATS_TABLE_NAME, type DemoChatRecord, type DemoChatsMemorySchema } from './models/chats.model';
 export { EVENTS_TABLE_NAME, type DemoEventRecord, type DemoEventsMemorySchema } from './models/events.model';
-export { RATES_TABLE_NAME, type DemoRateRecord, type DemoRatesMemorySchema } from './models/rates.model';
 export { USERS_TABLE_NAME, type DemoUsersMemorySchema } from './models/users.model';
 export { DemoChatsRepository } from './repositories/chats.repository';
 export { DemoEventsRepository } from './repositories/events.repository';
-export { DemoRatesRepository } from './repositories/rates.repository';
 export { DemoUsersRatingsRepository } from './repositories/users-ratings.repository';
 export { DemoUsersRepository as DemoUsersRepository } from './repositories/users.repository';
 export { DemoChatsService } from './services/chats.service';

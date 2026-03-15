@@ -25,6 +25,7 @@ import {
   type ActivityCounterKey,
   type UserDto
 } from './shared/core';
+import { DemoUserRatesBuilder } from './shared/core/demo/builders';
 import {
   APP_DEMO_DATA,
   DEMO_CHAT_BY_USER,
@@ -12139,63 +12140,9 @@ export class App {
     if (this.generatedRateItemsByUser[userId]) {
       return this.generatedRateItemsByUser[userId];
     }
-    const otherUsers = this.users
-      .filter(user => user.id !== userId)
-      .sort((a, b) => a.id.localeCompare(b.id));
-    const filterLanes: Array<{ mode: 'individual' | 'pair'; direction: RateMenuItem['direction'] }> = [
-      { mode: 'individual', direction: 'given' },
-      { mode: 'individual', direction: 'received' },
-      { mode: 'individual', direction: 'mutual' },
-      { mode: 'individual', direction: 'met' },
-      { mode: 'pair', direction: 'given' },
-      { mode: 'pair', direction: 'received' }
-    ];
-    const generated: RateMenuItem[] = [];
-    otherUsers.forEach((user, userIndex) => {
-      const laneIndex = userIndex % filterLanes.length;
-      const lane = filterLanes[laneIndex];
-      generated.push(this.buildGeneratedRateItemForLane(userId, user.id, lane.mode, lane.direction, laneIndex, userIndex));
-    });
+    const generated = DemoUserRatesBuilder.buildGeneratedRateItemsForUser(this.users, userId);
     this.generatedRateItemsByUser[userId] = generated;
     return generated;
-  }
-
-  private buildGeneratedRateItemForLane(
-    activeUserId: string,
-    targetUserId: string,
-    mode: 'individual' | 'pair',
-    direction: RateMenuItem['direction'],
-    laneIndex: number,
-    userIndex: number
-  ): RateMenuItem {
-    const seed = AppDemoGenerators.hashText(`rate-grid:${activeUserId}:${targetUserId}:${mode}:${direction}`);
-    const happenedAt = AppUtils.toIsoDateTime(AppUtils.addDays(new Date('2026-03-01T20:00:00'), -((laneIndex * 17) + userIndex + 1)));
-    let scoreGiven = 0;
-    let scoreReceived = 0;
-    if (direction === 'given') {
-      scoreGiven = 4 + (seed % 7);
-      scoreReceived = seed % 2 === 0 ? 4 + ((seed + 2) % 7) : 0;
-    } else if (direction === 'received') {
-      scoreGiven = 0;
-      scoreReceived = 4 + ((seed + 3) % 7);
-    } else if (direction === 'mutual') {
-      scoreGiven = 4 + (seed % 7);
-      scoreReceived = 4 + ((seed + 5) % 7);
-    } else if (direction === 'met') {
-      scoreGiven = 4 + (seed % 7);
-      scoreReceived = 0;
-    }
-    return {
-      id: `rate-${activeUserId}-${mode}-${direction}-${targetUserId}`,
-      userId: targetUserId,
-      mode,
-      direction,
-      scoreGiven,
-      scoreReceived,
-      eventName: `${mode === 'pair' ? 'Pair' : 'Single'} ${direction}`,
-      happenedAt,
-      distanceKm: 2 + ((seed + laneIndex + userIndex) % 33)
-    };
   }
 
   private matchesRateFilter(item: RateMenuItem, filter: AppTypes.RateFilterKey): boolean {

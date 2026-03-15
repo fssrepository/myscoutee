@@ -18,7 +18,6 @@ import { DemoUsersRepositoryBuilder } from '../builders';
 import { CHATS_TABLE_NAME } from '../models/chats.model';
 import { EVENTS_TABLE_NAME } from '../models/events.model';
 import type { DemoMemorySchema } from '../models/memory.model';
-import { RATES_TABLE_NAME } from '../models/rates.model';
 import { DemoChatsRepository } from './chats.repository';
 import { DemoEventsRepository } from './events.repository';
 import { DemoUsersRatingsRepository } from './users-ratings.repository';
@@ -125,15 +124,6 @@ export class DemoUsersRepository {
         ) as DemoMemorySchema[typeof EVENTS_TABLE_NAME]['byId'],
         ids: state[EVENTS_TABLE_NAME].ids
           .filter(id => validUserIds.has(state[EVENTS_TABLE_NAME].byId[id]?.userId ?? ''))
-      },
-      [RATES_TABLE_NAME]: {
-        byId: Object.fromEntries(
-          state[RATES_TABLE_NAME].ids
-            .filter(id => validUserIds.has(state[RATES_TABLE_NAME].byId[id]?.ownerUserId ?? ''))
-            .map(id => [id, { ...state[RATES_TABLE_NAME].byId[id] }])
-        ) as DemoMemorySchema[typeof RATES_TABLE_NAME]['byId'],
-        ids: state[RATES_TABLE_NAME].ids
-          .filter(id => validUserIds.has(state[RATES_TABLE_NAME].byId[id]?.ownerUserId ?? ''))
       },
       [USERS_TABLE_NAME]: usersTable,
       [USER_RATES_TABLE_NAME]: {

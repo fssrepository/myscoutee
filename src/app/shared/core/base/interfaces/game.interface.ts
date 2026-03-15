@@ -53,9 +53,17 @@ export interface UserRateRecord {
   toUserId: string;
   rate: number;
   mode: 'single' | 'pair';
-  source: 'game-card';
+  source: 'game-card' | 'activity-rate';
   createdAtIso: string;
   updatedAtIso: string;
+  ownerUserId?: string;
+  displayId?: string;
+  displayDirection?: 'given' | 'received' | 'mutual' | 'met';
+  scoreGiven?: number;
+  scoreReceived?: number;
+  eventName?: string;
+  happenedAtIso?: string;
+  distanceKm?: number;
 }
 
 export interface UserRateOutboxRecord {
