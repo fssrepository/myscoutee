@@ -59,6 +59,24 @@
   gap: 0.4rem;
 }
 
+.smart-list__sticky--calendar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+}
+
+.smart-list__sticky-label {
+  min-width: 0;
+}
+
+.smart-list__sticky-calendar-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  flex: 0 0 auto;
+}
+
 .smart-list--calendar {
   display: flex;
   flex-direction: row;

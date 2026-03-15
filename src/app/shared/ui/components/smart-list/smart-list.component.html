@@ -1,7 +1,8 @@
 <ng-container *ngIf="isCalendarMode(); else listMode">
   <div class="smart-list__calendar-shell">
-    <div class="smart-list__calendar-toolbar">
-      <span class="smart-list__calendar-nav">
+    <div class="smart-list__sticky smart-list__sticky--calendar" [ngClass]="stickyHeaderClass">
+      <span class="smart-list__sticky-label">{{ stickyLabel || emptyLabel() }}</span>
+      <span class="smart-list__sticky-calendar-nav">
         <button
           type="button"
           class="smart-list__calendar-nav-btn"
@@ -9,14 +10,6 @@
           aria-label="Previous period"
         >
           <mat-icon>chevron_left</mat-icon>
-        </button>
-        <button
-          type="button"
-          class="smart-list__calendar-nav-btn smart-list__calendar-nav-btn--today"
-          (click)="calendarToday($event)"
-          aria-label="Go to today"
-        >
-          Today
         </button>
         <button
           type="button"

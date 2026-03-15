@@ -341,12 +341,15 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
 
   protected calendarPrev(event?: Event): void {
     event?.stopPropagation();
-    this.shiftCalendarFocus(-1);
+    this.navigateCalendarBy(-1);
   }
 
   protected calendarToday(event?: Event): void {
     event?.stopPropagation();
     const today = AppUtils.dateOnly(new Date());
+    if (this.scrollCalendarToAnchor(today)) {
+      return;
+    }
     if (this.isMonthMode()) {
       this.calendarMonthFocusDate = AppUtils.startOfMonth(today);
     } else if (this.isWeekMode()) {
@@ -357,7 +360,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
 
   protected calendarNext(event?: Event): void {
     event?.stopPropagation();
-    this.shiftCalendarFocus(1);
+    this.navigateCalendarBy(1);
   }
 
   private resetAndReload(): void {
@@ -1003,6 +1006,64 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       this.calendarWeekFocusDate = AppUtils.addDays(base, delta * 7);
     }
     this.resetAndReload();
+  }
+
+  private navigateCalendarBy(delta: number): void {
+    if (!this.isCalendarMode()) {
+      return;
+    }
+    const scrollElement = this.scrollHostRef?.nativeElement;
+    const pages = this.currentCalendarPages();
+    if (!scrollElement || pages.length === 0) {
+      this.shiftCalendarFocus(delta);
+      return;
+    }
+    const currentIndex = this.currentCalendarPageIndex(scrollElement, pages.length);
+    const targetIndex = currentIndex + delta;
+    if (targetIndex >= 0 && targetIndex < pages.length) {
+      this.scrollCalendarToPage(targetIndex, 'smooth');
+      return;
+    }
+    this.shiftCalendarFocus(delta);
+  }
+
+  private scrollCalendarToAnchor(anchor: Date): boolean {
+    const pages = this.currentCalendarPages();
+    if (pages.length === 0) {
+      return false;
+    }
+    const normalizedAnchor = this.isMonthMode()
+      ? AppUtils.startOfMonth(anchor)
+      : AppUtils.startOfWeekMonday(anchor);
+    const targetKey = this.isMonthMode()
+      ? this.monthKey(normalizedAnchor)
+      : this.dateKey(normalizedAnchor);
+    const pageIndex = pages.findIndex(page => page.key === targetKey);
+    if (pageIndex < 0) {
+      return false;
+    }
+    this.scrollCalendarToPage(pageIndex, 'smooth');
+    return true;
+  }
+
+  private scrollCalendarToPage(pageIndex: number, behavior: ScrollBehavior): void {
+    const scrollElement = this.scrollHostRef?.nativeElement;
+    const pages = this.currentCalendarPages();
+    if (!scrollElement || pages.length === 0) {
+      return;
+    }
+    const targetIndex = Math.max(0, Math.min(pages.length - 1, pageIndex));
+    const pageWidth = scrollElement.clientWidth || 0;
+    if (pageWidth <= 0) {
+      return;
+    }
+    this.stickyLabel = pages[targetIndex]?.label ?? this.resolveEmptyStickyLabel();
+    scrollElement.scrollTo({
+      left: targetIndex * pageWidth,
+      behavior
+    });
+    this.emitState();
+    this.cdr.markForCheck();
   }
 
   private currentVisibleCalendarAnchor(): Date | null {
