@@ -16,6 +16,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
+import { from } from 'rxjs';
 
 import { LazyBgImageDirective } from '../../../shared/lazy-bg-image.directive';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
@@ -40,10 +41,27 @@ import { ActivitiesDbContextService } from '../../../shared/activities-db-contex
 import { EventEditorService } from '../../../shared/event-editor.service';
 import type { ActivitiesEventSyncPayload, ActivitiesPageRequest, EventChatContext, EventChatResourceContext } from '../../../shared/activities-models';
 import type * as AppTypes from '../../../shared/app-types';
+import {
+  SmartListComponent,
+  type ListQuery,
+  type PageResult,
+  type SmartListConfig,
+  type SmartListItemSelectEvent,
+  type SmartListLoaders,
+  type SmartListStateChange
+} from '../../../shared/ui';
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
 import { EventMembersPopupComponent, type EventMembersPopupPresenter } from '../event-members-popup/event-members-popup.component';
 
 // ---------------------------------------------------------------------------
+
+interface ActivitiesSmartListFilters {
+  primaryFilter?: unknown;
+  secondaryFilter?: unknown;
+  chatContextFilter?: unknown;
+  hostingPublicationFilter?: unknown;
+  rateFilter?: unknown;
+}
 
 @Component({
   selector: 'app-event-activities-popup',
@@ -54,6 +72,7 @@ import { EventMembersPopupComponent, type EventMembersPopupPresenter } from '../
     MatIconModule,
     MatSelectModule,
     LazyBgImageDirective,
+    SmartListComponent,
     EventChatPopupComponent,
     EventMembersPopupComponent
   ],
@@ -132,6 +151,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   @ViewChild('activitiesScroll')
   private activitiesScrollRef?: ElementRef<HTMLDivElement>;
 
+  @ViewChild('activitiesSmartList')
+  private activitiesSmartList?: SmartListComponent<AppTypes.ActivityListRow>;
+
   @ViewChild('activitiesCalendarScroll')
   private activitiesCalendarScrollRef?: ElementRef<HTMLDivElement>;
 
@@ -170,6 +192,53 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected showActivitiesPrimaryPicker = false;
   protected showActivitiesChatContextPicker = false;
   protected showActivitiesRatePicker      = false;
+  protected activitiesSmartListFilters: Record<string, unknown> = {};
+  protected readonly activitiesSmartListConfig: SmartListConfig<AppTypes.ActivityListRow> = {
+    pageSize: 10,
+    loadingDelayMs: 1000,
+    defaultView: 'day',
+    views: [
+      { key: 'day', label: 'Day', mode: 'list', pageSize: 10 },
+      { key: 'distance', label: 'Distance', mode: 'list', pageSize: 10 },
+      { key: 'week', label: 'Week', mode: 'week', pageSize: 240 },
+      { key: 'month', label: 'Month', mode: 'month', pageSize: 240 }
+    ],
+    trackBy: (_index, row) => row.id,
+    groupBy: row => AppUtils.activityGroupLabel(
+      row,
+      this.activitiesView,
+      APP_DEMO_DATA.activityGroupLabels
+    ),
+    calendar: {
+      weekdayLabels: APP_STATIC_DATA.calendarWeekdayLabels,
+      weekStartHour: 0,
+      weekEndHour: 23,
+      anchorRadius: 2,
+      resolveDateRange: row => AppCalendarHelpers.activityDateRange(row, this.activityDateTimeRangeById),
+      badgeLabel: row => row.title,
+      badgeToneClass: row => this.calendarBadgeToneClass(row)
+    },
+    emptyLabel: () => this.activitiesEmptyLabel,
+    emptyStickyLabel: () => (this.activitiesView === 'distance' ? '5 km' : 'No items'),
+    showGroupMarker: ({ groupIndex, scrollable }) => {
+      if (groupIndex > 0) {
+        return true;
+      }
+      if (this.activitiesPrimaryFilter === 'chats') {
+        return false;
+      }
+      if (this.shouldApplyEventActivityGroupMarkerRules() && !scrollable) {
+        return false;
+      }
+      return true;
+    }
+  };
+  protected readonly activitiesSmartListLoaders: SmartListLoaders<AppTypes.ActivityListRow> = {
+    day: query => from(this.resolveActivitiesSmartListPage(query)),
+    distance: query => from(this.resolveActivitiesSmartListPage(query)),
+    week: query => from(this.resolveActivitiesSmartListCalendarPage(query)),
+    month: query => from(this.resolveActivitiesSmartListCalendarPage(query))
+  };
 
   // ── Inline action menu ────────────────────────────────────────────────────
   protected inlineItemActionMenu: {
@@ -338,6 +407,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.activitiesStickyValue         = svc.activitiesStickyValue();
       this.activitiesRatesFullscreenMode = svc.activitiesRatesFullscreenMode();
       this.selectedActivityRateId        = svc.activitiesSelectedRateId();
+      this.syncActivitiesSmartListInputs();
       this.cdr.markForCheck();
     });
 
@@ -1132,6 +1202,20 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return imageUrl;
   }
 
+  protected activitiesSmartListClassMap(): Record<string, boolean> {
+    return {
+      'experience-card-list': true,
+      'assets-card-list': true,
+      'activities-scroll-list': true,
+      'activities-scroll-list-rates': this.activitiesPrimaryFilter === 'rates',
+      'activities-scroll-list-event-snap': this.activitiesPrimaryFilter === 'events'
+        || this.activitiesPrimaryFilter === 'hosting'
+        || this.activitiesPrimaryFilter === 'invitations',
+      'activities-scroll-list-with-rate-editor': this.isActivityRateEditorDockVisible(),
+      'activities-scroll-list-chat': this.activitiesPrimaryFilter === 'chats'
+    };
+  }
+
   protected shouldShowActivityGroupMarker(groupIndex: number): boolean {
     if (groupIndex > 0) {
       return true;
@@ -1152,7 +1236,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   private isActivitiesListScrollableNow(): boolean {
-    const listElement = this.activitiesScrollRef?.nativeElement;
+    const listElement = this.activitiesListScrollElement();
     if (!listElement) {
       return this.activitiesListScrollable;
     }
@@ -1854,7 +1938,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.clearActivityRateEditorState();
       return;
     }
-    const scrollElement = this.activitiesScrollRef?.nativeElement;
+    const scrollElement = this.activitiesListScrollElement();
     if (!wasOpen) {
       this.activityRateEditorOpenScrollTop = scrollElement ? scrollElement.scrollTop : null;
     }
@@ -1981,7 +2065,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (this.activityRateEditorClosing) {
       return;
     }
-    const scrollElement = this.activitiesScrollRef?.nativeElement;
+    const scrollElement = this.activitiesListScrollElement();
     const restoreTop = this.activityRateEditorOpenScrollTop;
     const hasRestoreTop = Number.isFinite(restoreTop as number);
     const shouldReverseLift =
@@ -2052,7 +2136,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (!this.isActivityRateEditorOpen()) {
       return;
     }
-    const scrollElement = this.activitiesScrollRef?.nativeElement;
+    const scrollElement = this.activitiesListScrollElement();
     if (!scrollElement) {
       return;
     }
@@ -3484,9 +3568,19 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   private resetActivitiesScroll(loadCalendarBadgesForCurrentPage = false): void {
-    this.seedActivitiesStickyHeader();
     this.cancelActivitiesPaginationLoad();
     this.clearActivitiesHeaderLoadingAnimation();
+    if (this.activitiesPrimaryFilter !== 'rates' && this.activitiesSmartList) {
+      this.activitiesInitialLoadPending = true;
+      this.activitiesSmartList.reload();
+      setTimeout(() => {
+        this.updateActivitiesHeaderProgress();
+        this.refreshActivitiesHeaderProgressSoon();
+      }, 0);
+      return;
+    }
+
+    this.seedActivitiesStickyHeader();
     if (this.isCalendarLayoutView()) {
       this.activitiesInitialLoadPending = false;
       this.clearActivitiesCalendarBadgeDelay();
@@ -3504,7 +3598,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.startActivitiesPaginationLoad(true);
     }
     setTimeout(() => {
-      const scrollElement = this.activitiesScrollRef?.nativeElement;
+      const scrollElement = this.activitiesListScrollElement();
       const calendarElement = this.activitiesCalendarScrollRef?.nativeElement;
       if (this.isCalendarLayoutView()) {
         if (calendarElement) {
@@ -3594,7 +3688,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.setStickyValue(this.activitiesView === 'distance' ? '5 km' : 'No items');
       return;
     }
-    const scrollElement = this.activitiesScrollRef?.nativeElement;
+    const scrollElement = this.activitiesListScrollElement();
     if (!scrollElement) {
       this.setStickyValue(groups[0].label);
       return;
@@ -5445,6 +5539,33 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return;
     }
 
+    if (this.activitiesPrimaryFilter !== 'rates' && this.activitiesSmartList) {
+      const smartListElement = this.activitiesListScrollElement();
+      if (!smartListElement) {
+        this.activitiesListScrollable = false;
+        this.activitiesHeaderProgress = 0;
+        return;
+      }
+      if (this.isCalendarLayoutView()) {
+        const maxHorizontalScroll = Math.max(0, smartListElement.scrollWidth - smartListElement.clientWidth);
+        this.activitiesListScrollable = maxHorizontalScroll > 1;
+        if (maxHorizontalScroll <= 1) {
+          this.activitiesHeaderProgress = 0;
+          return;
+        }
+        this.activitiesHeaderProgress = AppUtils.clampNumber(smartListElement.scrollLeft / maxHorizontalScroll, 0, 1);
+        return;
+      }
+      const maxVerticalScroll = Math.max(0, smartListElement.scrollHeight - smartListElement.clientHeight);
+      this.activitiesListScrollable = maxVerticalScroll > 1;
+      if (maxVerticalScroll <= 1) {
+        this.activitiesHeaderProgress = 0;
+        return;
+      }
+      this.activitiesHeaderProgress = AppUtils.clampNumber(smartListElement.scrollTop / maxVerticalScroll, 0, 1);
+      return;
+    }
+
     if (this.isCalendarLayoutView()) {
       this.activitiesListScrollable = true;
       const calendarElement = this.activitiesCalendarScrollRef?.nativeElement;
@@ -5461,7 +5582,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return;
     }
 
-    const listElement = this.activitiesScrollRef?.nativeElement;
+    const listElement = this.activitiesListScrollElement();
     if (!listElement) {
       this.activitiesListScrollable = false;
       this.activitiesHeaderProgress = 0;
@@ -5504,8 +5625,11 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   private refreshActivitiesStickyHeaderSoon(): void {
+    if (this.activitiesPrimaryFilter !== 'rates' && this.activitiesSmartList) {
+      return;
+    }
     const refresh = () => {
-      this.updateActivitiesStickyHeader(this.activitiesScrollRef?.nativeElement?.scrollTop ?? 0);
+      this.updateActivitiesStickyHeader(this.activitiesListScrollElement()?.scrollTop ?? 0);
       this.cdr.markForCheck();
     };
     if (typeof globalThis.requestAnimationFrame === 'function') {
@@ -5545,5 +5669,253 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       }
       setTimeout(flush, 0);
     });
+  }
+
+  private syncActivitiesSmartListInputs(): void {
+    this.activitiesSmartListFilters = {
+      primaryFilter: this.activitiesPrimaryFilter,
+      secondaryFilter: this.activitiesSecondaryFilter,
+      chatContextFilter: this.activitiesChatContextFilter,
+      hostingPublicationFilter: this.hostingPublicationFilter,
+      rateFilter: this.activitiesRateFilter
+    };
+  }
+
+  private async resolveActivitiesSmartListPage(query: ListQuery): Promise<PageResult<AppTypes.ActivityListRow>> {
+    const request = this.buildActivitiesSmartListRequest(query);
+
+    if (this.shouldUseServerSidePagination()) {
+      const result = await this.activitiesContext.loadActivitiesPage(request);
+      return {
+        items: result?.rows ?? [],
+        total: Number.isFinite(result?.total) ? Math.max(0, Math.trunc(Number(result?.total))) : 0
+      };
+    }
+
+    const rows = this.buildActivitiesSmartListRows(
+      request.primaryFilter,
+      request.secondaryFilter,
+      request.chatContextFilter,
+      request.hostingPublicationFilter,
+      request.rateFilter,
+      request.view
+    );
+    const startIndex = request.page * request.pageSize;
+    return {
+      items: rows.slice(startIndex, startIndex + request.pageSize),
+      total: rows.length
+    };
+  }
+
+  private async resolveActivitiesSmartListCalendarPage(query: ListQuery): Promise<PageResult<AppTypes.ActivityListRow>> {
+    const request = this.buildActivitiesSmartListRequest(query);
+
+    if (this.shouldUseServerSidePagination()) {
+      const result = await this.activitiesContext.loadActivitiesPage(request);
+      return {
+        items: result?.rows ?? [],
+        total: Number.isFinite(result?.total) ? Math.max(0, Math.trunc(Number(result?.total))) : 0
+      };
+    }
+
+    const rows = this.buildActivitiesSmartListRows(
+      request.primaryFilter,
+      request.secondaryFilter,
+      request.chatContextFilter,
+      request.hostingPublicationFilter,
+      request.rateFilter,
+      request.view
+    );
+    const range = this.activitiesSmartListQueryRange(query);
+    const filteredRows = range
+      ? rows.filter(row => this.doesActivityRowOverlapRange(row, range.start, range.end))
+      : rows;
+
+    return {
+      items: filteredRows,
+      total: filteredRows.length
+    };
+  }
+
+  protected onActivitiesSmartListItemSelect(event: SmartListItemSelectEvent<AppTypes.ActivityListRow>): void {
+    this.onActivityRowClick(event.item);
+  }
+
+  protected onActivitiesSmartListStateChange(change: SmartListStateChange<AppTypes.ActivityListRow>): void {
+    this.activitiesVisibleCount = change.items.length;
+    this.activitiesInitialLoadPending = change.initialLoading;
+    if (this.shouldUseServerSidePagination()) {
+      this.serverPageRows = [...change.items];
+      this.serverPageTotalRows = change.total;
+      this.serverPageIndex = Math.ceil(change.items.length / Math.max(1, change.query.pageSize));
+    }
+    if (this.isRatesFullscreenModeActive()) {
+      this.cdr.markForCheck();
+      return;
+    }
+    this.activitiesListScrollable = change.scrollable;
+    this.activitiesHeaderProgress = change.progress;
+    this.activitiesHeaderProgressLoading = change.loading;
+    this.activitiesHeaderLoadingProgress = change.loadingProgress;
+    this.activitiesHeaderLoadingOverdue = change.loadingOverdue;
+    this.activitiesStickyValue = change.stickyLabel;
+    this.activitiesContext.setActivitiesStickyValue(change.stickyLabel);
+    this.flushActivitiesHeaderProgress();
+    this.cdr.markForCheck();
+  }
+
+  private buildActivitiesSmartListRequest(query: ListQuery): ActivitiesPageRequest {
+    const filters = query.filters as ActivitiesSmartListFilters | undefined;
+    return {
+      primaryFilter: this.normalizeActivitiesPrimaryFilter(filters?.primaryFilter),
+      secondaryFilter: this.normalizeActivitiesSecondaryFilter(filters?.secondaryFilter),
+      chatContextFilter: this.normalizeActivitiesChatContextFilter(filters?.chatContextFilter),
+      hostingPublicationFilter: this.normalizeHostingPublicationFilter(filters?.hostingPublicationFilter),
+      rateFilter: this.normalizeRateFilter(filters?.rateFilter),
+      view: this.normalizeActivitiesView(query.view),
+      page: Math.max(0, Math.trunc(query.page)),
+      pageSize: Math.max(1, Math.trunc(query.pageSize)),
+      anchorDate: query.anchorDate,
+      rangeStart: query.rangeStart,
+      rangeEnd: query.rangeEnd
+    };
+  }
+
+  private activitiesSmartListQueryRange(query: ListQuery): { start: Date; end: Date } | null {
+    const start = this.parseSmartListDate(query.rangeStart);
+    const end = this.parseSmartListDate(query.rangeEnd);
+    if (!start || !end) {
+      return null;
+    }
+    return {
+      start,
+      end: AppUtils.dateOnly(end)
+    };
+  }
+
+  private parseSmartListDate(value: string | undefined): Date | null {
+    if (!value) {
+      return null;
+    }
+    const trimmed = value.trim();
+    const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) {
+      const year = Number.parseInt(match[1], 10);
+      const month = Number.parseInt(match[2], 10) - 1;
+      const day = Number.parseInt(match[3], 10);
+      return new Date(year, month, day);
+    }
+    const parsed = new Date(trimmed);
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+    return AppUtils.dateOnly(parsed);
+  }
+
+  private doesActivityRowOverlapRange(row: AppTypes.ActivityListRow, start: Date, end: Date): boolean {
+    const range = AppCalendarHelpers.activityDateRange(row, this.activityDateTimeRangeById);
+    if (!range) {
+      return false;
+    }
+    return AppCalendarHelpers.dateRangeOverlaps(
+      AppUtils.dateOnly(range.start),
+      AppUtils.dateOnly(range.end),
+      start,
+      end
+    );
+  }
+
+  private buildActivitiesSmartListRows(
+    primaryFilter: AppTypes.ActivitiesPrimaryFilter,
+    secondaryFilter: AppTypes.ActivitiesSecondaryFilter,
+    chatContextFilter: AppTypes.ActivitiesChatContextFilter,
+    hostingPublicationFilter: AppTypes.HostingPublicationFilter,
+    rateFilter: AppTypes.RateFilterKey,
+    view: AppTypes.ActivitiesView
+  ): AppTypes.ActivityListRow[] {
+    let rows: AppTypes.ActivityListRow[] = [];
+    if (primaryFilter === 'chats') {
+      rows = this.chatItemsForActivities()
+        .filter(item => chatContextFilter === 'all' ? true : this.activityChatContextFilterKey(item) === chatContextFilter)
+        .map(item => this.chatToActivityRow(item));
+    } else if (primaryFilter === 'invitations') {
+      rows = this.invitationItems.map(item => this.invitationToActivityRow(item));
+    } else if (primaryFilter === 'events') {
+      rows = this.eventItems.map(item => this.eventToActivityRow(item, secondaryFilter));
+    } else if (primaryFilter === 'hosting') {
+      rows = this.eventItems
+        .filter(item => item.isAdmin)
+        .filter(item => hostingPublicationFilter === 'drafts' ? !this.isHostingPublished(item.id) : true)
+        .map(item => this.hostingEventToActivityRow(item));
+    } else {
+      rows = this.rateItems
+        .filter(item => item.userId !== this.activeUser.id && this.matchesRateFilter(item, rateFilter))
+        .map(item => this.rateToActivityRow(item));
+    }
+    const sorted = this.sortActivitiesRowsForState(rows, primaryFilter, secondaryFilter);
+    if (view === 'distance') {
+      return [...sorted].sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0));
+    }
+    return sorted;
+  }
+
+  private sortActivitiesRowsForState(
+    rows: AppTypes.ActivityListRow[],
+    primaryFilter: AppTypes.ActivitiesPrimaryFilter,
+    secondaryFilter: AppTypes.ActivitiesSecondaryFilter
+  ): AppTypes.ActivityListRow[] {
+    const sorted = [...rows];
+    if (secondaryFilter === 'recent') {
+      if (primaryFilter === 'events' || primaryFilter === 'hosting') {
+        return sorted.sort((a, b) => AppUtils.toSortableDate(a.dateIso) - AppUtils.toSortableDate(b.dateIso));
+      }
+      return sorted.sort((a, b) => AppUtils.toSortableDate(b.dateIso) - AppUtils.toSortableDate(a.dateIso));
+    }
+    if (secondaryFilter === 'past') {
+      return sorted.sort((a, b) => AppUtils.toSortableDate(b.dateIso) - AppUtils.toSortableDate(a.dateIso));
+    }
+    if (primaryFilter === 'rates') {
+      return sorted.sort((a, b) => b.metricScore - a.metricScore || AppUtils.toSortableDate(b.dateIso) - AppUtils.toSortableDate(a.dateIso));
+    }
+    if (primaryFilter === 'events' || primaryFilter === 'hosting') {
+      return sorted.sort((a, b) => b.metricScore - a.metricScore || AppUtils.toSortableDate(a.dateIso) - AppUtils.toSortableDate(b.dateIso));
+    }
+    return sorted.sort((a, b) => b.metricScore - a.metricScore || AppUtils.toSortableDate(b.dateIso) - AppUtils.toSortableDate(a.dateIso));
+  }
+
+  private normalizeActivitiesPrimaryFilter(value: unknown): AppTypes.ActivitiesPrimaryFilter {
+    return value === 'events' || value === 'hosting' || value === 'invitations' || value === 'rates'
+      ? value
+      : 'chats';
+  }
+
+  private normalizeActivitiesSecondaryFilter(value: unknown): AppTypes.ActivitiesSecondaryFilter {
+    return value === 'relevant' || value === 'past' ? value : 'recent';
+  }
+
+  private normalizeActivitiesChatContextFilter(value: unknown): AppTypes.ActivitiesChatContextFilter {
+    return value === 'event' || value === 'subEvent' || value === 'group' ? value : 'all';
+  }
+
+  private normalizeHostingPublicationFilter(value: unknown): AppTypes.HostingPublicationFilter {
+    return value === 'drafts' ? 'drafts' : 'all';
+  }
+
+  private normalizeRateFilter(value: unknown): AppTypes.RateFilterKey {
+    return value === 'individual-received'
+      || value === 'individual-mutual'
+      || value === 'individual-met'
+      || value === 'pair-given'
+      || value === 'pair-received'
+      ? value
+      : 'individual-given';
+  }
+
+  private normalizeActivitiesView(value: unknown): AppTypes.ActivitiesView {
+    return value === 'week' || value === 'month' || value === 'distance' ? value : 'day';
+  }
+
+  private activitiesListScrollElement(): HTMLDivElement | null {
+    return this.activitiesSmartList?.scrollElement() ?? this.activitiesScrollRef?.nativeElement ?? null;
   }
 }

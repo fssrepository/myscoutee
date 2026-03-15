@@ -85,6 +85,9 @@ export interface ActivitiesPageRequest {
   view: AppTypes.ActivitiesView;
   page: number;
   pageSize: number;
+  anchorDate?: string;
+  rangeStart?: string;
+  rangeEnd?: string;
 }
 
 export interface ActivitiesPageResult {
