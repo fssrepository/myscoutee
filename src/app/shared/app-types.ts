@@ -171,7 +171,7 @@ export type ChatChannelType = 'general' | 'mainEvent' | 'optionalSubEvent' | 'gr
 export type ActivitiesChatContextFilter = 'all' | 'event' | 'subEvent' | 'group';
 
 export type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
-export type ActivitiesEventScope = 'all' | 'active-events' | 'invitations' | 'my-events' | 'trash';
+export type ActivitiesEventScope = 'all' | 'active-events' | 'invitations' | 'my-events' | 'drafts' | 'trash';
 export type ActivitiesSecondaryFilter = 'recent' | 'relevant' | 'past';
 export type HostingPublicationFilter = 'all' | 'drafts';
 export type ActivitiesView = 'month' | 'week' | 'day' | 'distance';

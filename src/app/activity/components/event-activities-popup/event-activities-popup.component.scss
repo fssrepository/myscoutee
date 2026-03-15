@@ -189,6 +189,23 @@
   width: auto;
   min-width: 0;
 }
+.activities-filter-no-badge {
+  min-width: 0;
+}
+.activities-filter-no-badge .status-option-content {
+  width: auto !important;
+  flex: 0 1 auto;
+}
+.activities-filter-no-badge.profile-status-select-wrap .mat-mdc-select {
+  width: auto;
+  min-width: 0;
+}
+.activities-filter-no-badge.profile-status-select-wrap .mat-mdc-select-trigger {
+  width: auto !important;
+}
+.activities-filter-no-badge.profile-status-select-wrap .mat-mdc-select-arrow-wrapper {
+  margin-left: 0.28rem;
+}
 .activities-rate-filter-select .status-option-content {
   gap: 0.34rem;
 }
@@ -209,9 +226,9 @@
 .activities-event-scope-filter-select {
   position: relative;
   overflow: visible;
-  min-width: 194px;
-  width: 194px;
-  max-width: 194px;
+  min-width: 208px;
+  width: 208px;
+  max-width: 208px;
 }
 .activities-chat-context-filter-select {
   position: relative;
@@ -353,7 +370,8 @@
   background: #f7f9fd;
   min-height: 42px;
   padding: 0.46rem 0.62rem;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 0.36rem;
 }
 .activities-mobile-rate-filter-panel .activities-mobile-rate-filter-group {
   width: fit-content;
@@ -425,6 +443,10 @@
 .activities-mobile-filter-panel .activities-view-option.activity-filter-hosting {
   background: linear-gradient(180deg, #f1fbfa 0%, #e6f5f2 100%);
   border-color: rgba(47, 142, 157, 0.32);
+}
+.activities-mobile-filter-panel .activities-view-option.activity-filter-drafts {
+  background: linear-gradient(180deg, #f6f8fc 0%, #ebeff7 100%);
+  border-color: rgba(91, 102, 127, 0.32);
 }
 .activities-mobile-filter-panel .activities-view-option.activity-filter-trash {
   background: linear-gradient(180deg, #fff4f6 0%, #ffe9ee 100%);
@@ -2196,6 +2218,9 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
 .activity-filter-hosting {
   color: #2f8e9d;
 }
+.activity-filter-drafts {
+  color: #5b667f;
+}
 .activity-filter-trash {
   color: #b44c60;
 }
@@ -2379,6 +2404,19 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   border-color: rgba(201, 83, 83, 0.42);
   background: linear-gradient(180deg, #fff8f8 0%, #fff1f1 100%);
 }
+.activities-row-item.activities-row-item-draft {
+  border-color: rgba(96, 108, 136, 0.34);
+  background: linear-gradient(180deg, #fafbff 0%, #f0f3fb 100%);
+  box-shadow: 0 8px 18px rgba(74, 88, 118, 0.08);
+}
+.activities-row-item.activities-row-item-draft .experience-item-meta h4,
+.activities-row-item.activities-row-item-draft .activities-event-meta-row {
+  color: #52617d;
+}
+.activities-row-item.activities-row-item-draft .experience-item-icon {
+  background: linear-gradient(180deg, #eef2fa 0%, #e2e8f4 100%);
+  border-color: rgba(94, 107, 135, 0.26);
+}
 .activities-row-item .asset-occupancy-badge.asset-occupancy-badge-full {
   background: linear-gradient(180deg, #b84f4f 0%, #963636 100%);
   box-shadow: 0 7px 16px rgba(72, 24, 24, 0.36), inset 0 0 0 1px rgba(111, 38, 38, 0.6);
@@ -2556,9 +2594,9 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   height: 36px;
 }
 .experience-filter-select.activities-event-scope-filter-select {
-  min-width: 194px;
-  width: 194px;
-  max-width: 194px;
+  min-width: 208px;
+  width: 208px;
+  max-width: 208px;
 }
 .experience-filter-select.activity-filter-chat {
   background: linear-gradient(180deg, #f2f7ff 0%, #e8f2ff 100%);
@@ -2576,9 +2614,18 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   background: linear-gradient(180deg, #f1fbfa 0%, #e6f5f2 100%);
   border-color: rgba(47, 142, 157, 0.32);
 }
+.experience-filter-select.activity-filter-drafts {
+  background: linear-gradient(180deg, #f6f8fc 0%, #ebeff7 100%);
+  border-color: rgba(91, 102, 127, 0.32);
+}
 .experience-filter-select.activity-filter-trash {
   background: linear-gradient(180deg, #fff4f6 0%, #ffe9ee 100%);
   border-color: rgba(177, 73, 92, 0.32);
+}
+.experience-filter-select.activities-filter-no-badge {
+  min-width: 0;
+  width: fit-content;
+  max-width: 100%;
 }
 .experience-filter-select.activity-filter-rates {
   background: linear-gradient(180deg, #fff7df 0%, #ffefc8 100%);
@@ -3298,6 +3345,9 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
 }
 :host ::ng-deep .mat-mdc-option.status-option.activity-filter-hosting {
   background: linear-gradient(0deg, #ffffff, #edf9f4);
+}
+:host ::ng-deep .mat-mdc-option.status-option.activity-filter-drafts {
+  background: linear-gradient(0deg, #ffffff, #eef2f9);
 }
 :host ::ng-deep .mat-mdc-option.status-option.activity-filter-trash {
   background: linear-gradient(0deg, #ffffff, #fff0f3);

@@ -62,11 +62,12 @@ export class ActivitiesDbContextService {
     eventScope?: AppTypes.ActivitiesEventScope
   ): void {
     const normalizedPrimaryFilter = this.normalizeActivitiesPrimaryFilter(primaryFilter);
+    const resolvedScope = this.resolveActivitiesEventScope(primaryFilter, eventScope);
     this._activitiesOpen.set(true);
     this._activitiesPrimaryFilter.set(normalizedPrimaryFilter);
-    this._activitiesEventScope.set(this.resolveActivitiesEventScope(primaryFilter, eventScope));
+    this._activitiesEventScope.set(resolvedScope);
     this._activitiesSecondaryFilter.set('recent');
-    this._activitiesHostingPublicationFilter.set('all');
+    this._activitiesHostingPublicationFilter.set(resolvedScope === 'drafts' ? 'drafts' : 'all');
     this._activitiesShowViewPicker.set(false);
     this._activitiesShowSecondaryPicker.set(false);
     this._activitiesView.set('day');
@@ -115,7 +116,7 @@ export class ActivitiesDbContextService {
 
   setActivitiesEventScope(scope: AppTypes.ActivitiesEventScope): void {
     this._activitiesEventScope.set(scope);
-    this._activitiesHostingPublicationFilter.set('all');
+    this._activitiesHostingPublicationFilter.set(scope === 'drafts' ? 'drafts' : 'all');
   }
 
   setActivitiesSecondaryFilter(filter: AppTypes.ActivitiesSecondaryFilter): void {

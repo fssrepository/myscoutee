@@ -184,6 +184,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     { key: 'active-events', label: 'Active Events', icon: 'event' },
     { key: 'invitations', label: 'Invitations', icon: 'mail' },
     { key: 'my-events', label: 'My Events', icon: 'stadium' },
+    { key: 'drafts', label: 'Drafts', icon: 'drafts' },
     { key: 'trash', label: 'Trash', icon: 'delete' }
   ];
   protected readonly activitiesSecondaryFilters: Array<{ key: AppTypes.ActivitiesSecondaryFilter; label: string; icon: string }>
@@ -839,8 +840,8 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     const myEventRows = this.eventItems
       .filter(item => item.isAdmin === true)
       .filter(item => !this.isActivityIdentityTrashed('hosting', item.id))
-      .filter(item => hostingPublicationFilter === 'drafts' ? !this.isHostingPublished(item.id) : true)
       .map(item => this.hostingEventToActivityRow(item));
+    const draftRows = myEventRows.filter(row => !this.isHostingPublished(row.id));
     const trashRows = this.trashedActivityRows();
 
     if (scope === 'all') {
@@ -850,7 +851,13 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return invitationRows;
     }
     if (scope === 'my-events') {
+      if (hostingPublicationFilter === 'drafts') {
+        return draftRows;
+      }
       return myEventRows;
+    }
+    if (scope === 'drafts') {
+      return draftRows;
     }
     if (scope === 'trash') {
       return trashRows;
@@ -932,7 +939,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activitiesEventScopePanelWidth(): string {
-    return '240px';
+    return '260px';
   }
 
   protected activitiesEventScopeLabel(): string {
@@ -947,6 +954,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (scope === 'trash') {
       return 'activity-filter-trash';
     }
+    if (scope === 'drafts') {
+      return 'activity-filter-drafts';
+    }
     if (scope === 'invitations') {
       return 'activity-filter-invitations';
     }
@@ -959,6 +969,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected activitiesEventScopeCount(scope: AppTypes.ActivitiesEventScope = this.activitiesEventScope): number {
     if (scope === 'all') {
       return this.eventsBadge + this.invitationsBadge + this.hostingBadge;
+    }
+    if (scope === 'drafts') {
+      return this.hostingDraftCount();
     }
     if (scope === 'trash') {
       return this.trashedActivityCount();
@@ -1104,7 +1117,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   protected isHostingPublicationFilterVisible(): boolean {
-    return this.isEventActivitiesPrimaryFilter() && this.activitiesEventScope === 'my-events';
+    return false;
   }
 
   protected hostingDraftCount(): number {
@@ -1395,7 +1408,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (this.activitiesPrimaryFilter === 'rates') {
       return 'No rate interactions for this filter yet.';
     }
-    if (this.isHostingPublicationFilterVisible() && this.hostingPublicationFilter === 'drafts') {
+    if (this.activitiesEventScope === 'drafts') {
       return 'No drafts in My Events yet.';
     }
     if (this.isEventActivitiesPrimaryFilter()) {
@@ -1582,6 +1595,10 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     const acceptedMembersCount = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted').length;
     const capacityTotal = this.activityCapacityTotal(row, acceptedMembersCount);
     return capacityTotal > 0 && acceptedMembersCount >= capacityTotal;
+  }
+
+  protected isActivityDraft(row: AppTypes.ActivityListRow): boolean {
+    return row.type === 'hosting' && !this.isHostingPublished(row.id);
   }
 
   private activityCapacityTotal(row: AppTypes.ActivityListRow, fallbackBase = 0): number {
@@ -6218,6 +6235,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return value === 'all'
       || value === 'invitations'
       || value === 'my-events'
+      || value === 'drafts'
       || value === 'trash'
       ? value
       : 'active-events';

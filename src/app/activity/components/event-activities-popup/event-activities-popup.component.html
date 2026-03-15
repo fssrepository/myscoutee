@@ -79,6 +79,7 @@
       <div
         class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-primary-filter-select"
         [ngClass]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)"
+        [class.activities-filter-no-badge]="activitiesPrimaryFilterCount(activitiesPrimaryFilter) === 0"
       >
         <mat-select
           [(ngModel)]="activitiesPrimaryFilter"
@@ -110,6 +111,7 @@
           type="button"
           class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-primary-filter-select"
           [ngClass]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)"
+          [class.activities-filter-no-badge]="activitiesPrimaryFilterCount(activitiesPrimaryFilter) === 0"
           (click)="openMobileActivitiesPrimaryFilterSelector($event)"
         >
           <span class="status-option-content">
@@ -141,6 +143,7 @@
         <div
           class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-event-scope-filter-select"
           [ngClass]="activitiesEventScopeClass()"
+          [class.activities-filter-no-badge]="activitiesEventScopeCount() === 0"
         >
           <mat-select
             [(ngModel)]="activitiesEventScope"
@@ -181,6 +184,7 @@
             type="button"
             class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-event-scope-filter-select"
             [ngClass]="activitiesEventScopeClass()"
+            [class.activities-filter-no-badge]="activitiesEventScopeCount() === 0"
             (click)="openMobileActivitiesEventScopeSelector($event)"
             [attr.aria-label]="'Open event scope filter: ' + activitiesEventScopeLabel()"
           >
@@ -218,6 +222,7 @@
         <div
           class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-chat-context-filter-select"
           [ngClass]="activitiesChatContextFilterClass(activitiesChatContextFilter)"
+          [class.activities-filter-no-badge]="activitiesChatContextFilterCount(activitiesChatContextFilter) === 0"
         >
           <mat-select
             [(ngModel)]="activitiesChatContextFilter"
@@ -258,6 +263,7 @@
             type="button"
             class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-chat-context-filter-select"
             [ngClass]="activitiesChatContextFilterClass(activitiesChatContextFilter)"
+            [class.activities-filter-no-badge]="activitiesChatContextFilterCount(activitiesChatContextFilter) === 0"
             (click)="openMobileActivitiesChatContextFilterSelector($event)"
           >
             <span class="status-option-content">
@@ -288,28 +294,13 @@
       </ng-template>
     </ng-container>
 
-    <!-- My Events: drafts-only toggle -->
-    <button
-      *ngIf="isHostingPublicationFilterVisible()"
-      type="button"
-      class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-hosting-draft-toggle"
-      [class.is-active]="hostingPublicationFilter === 'drafts'"
-      (click)="selectHostingPublicationFilter(hostingPublicationFilter === 'drafts' ? 'all' : 'drafts')"
-      [attr.aria-label]="hostingPublicationFilter === 'drafts' ? 'Show all My Events' : 'Show drafts only'"
-    >
-      <span class="status-option-content activities-hosting-draft-content">
-        <mat-icon class="activities-toggle-icon">drafts</mat-icon>
-        <span class="activities-hosting-draft-label">Drafts only</span>
-      </span>
-      <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="hostingDraftCount() > 0">{{ hostingDraftCount() }}</span>
-    </button>
-
     <!-- Rate filter (rates tab only) -->
     <ng-container *ngIf="isRateFilterVisible()">
       <ng-container *ngIf="!isMobileView; else mobileActivitiesRateFilterButton">
         <div
           class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-rate-filter-select"
           [ngClass]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]"
+          [class.activities-filter-no-badge]="totalRateFilterCount() === 0"
         >
           <mat-select
             [(ngModel)]="activitiesRateFilter"
@@ -353,6 +344,7 @@
             type="button"
             class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-rate-filter-select"
             [ngClass]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]"
+            [class.activities-filter-no-badge]="totalRateFilterCount() === 0"
             (click)="openMobileActivitiesRateFilterSelector($event)"
           >
             <span class="status-option-content">
@@ -477,6 +469,7 @@
         <article
           class="experience-item-card asset-item-card activities-row-item"
           [class.activities-row-item-full]="isActivityFull(row)"
+          [class.activities-row-item-draft]="isActivityDraft(row)"
           [attr.data-group-label]="groupLabel"
           *ngIf="isEventStyleActivity(row); else chatActivityRow"
         >
