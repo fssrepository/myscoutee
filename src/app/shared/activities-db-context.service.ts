@@ -20,6 +20,7 @@ export class ActivitiesDbContextService {
 
   private _activitiesOpen = signal(false);
   private _activitiesPrimaryFilter = signal<AppTypes.ActivitiesPrimaryFilter>('chats');
+  private _activitiesEventScope = signal<AppTypes.ActivitiesEventScope>('active-events');
   private _activitiesSecondaryFilter = signal<AppTypes.ActivitiesSecondaryFilter>('recent');
   private _activitiesChatContextFilter = signal<AppTypes.ActivitiesChatContextFilter>('all');
   private _activitiesHostingPublicationFilter = signal<AppTypes.HostingPublicationFilter>('all');
@@ -36,6 +37,7 @@ export class ActivitiesDbContextService {
 
   readonly activitiesOpen = this._activitiesOpen.asReadonly();
   readonly activitiesPrimaryFilter = this._activitiesPrimaryFilter.asReadonly();
+  readonly activitiesEventScope = this._activitiesEventScope.asReadonly();
   readonly activitiesSecondaryFilter = this._activitiesSecondaryFilter.asReadonly();
   readonly activitiesChatContextFilter = this._activitiesChatContextFilter.asReadonly();
   readonly activitiesHostingPublicationFilter = this._activitiesHostingPublicationFilter.asReadonly();
@@ -55,9 +57,14 @@ export class ActivitiesDbContextService {
 
   readonly dataMode = this.dataSource.mode;
 
-  openActivities(primaryFilter: AppTypes.ActivitiesPrimaryFilter = 'chats'): void {
+  openActivities(
+    primaryFilter: AppTypes.ActivitiesPrimaryFilter = 'chats',
+    eventScope?: AppTypes.ActivitiesEventScope
+  ): void {
+    const normalizedPrimaryFilter = this.normalizeActivitiesPrimaryFilter(primaryFilter);
     this._activitiesOpen.set(true);
-    this._activitiesPrimaryFilter.set(primaryFilter);
+    this._activitiesPrimaryFilter.set(normalizedPrimaryFilter);
+    this._activitiesEventScope.set(this.resolveActivitiesEventScope(primaryFilter, eventScope));
     this._activitiesSecondaryFilter.set('recent');
     this._activitiesHostingPublicationFilter.set('all');
     this._activitiesShowViewPicker.set(false);
@@ -66,7 +73,7 @@ export class ActivitiesDbContextService {
     this._activitiesStickyValue.set('');
     this._activitiesRatesFullscreenMode.set(false);
     this._activitiesSelectedRateId.set(null);
-    if (primaryFilter === 'rates') {
+    if (normalizedPrimaryFilter === 'rates') {
       this._activitiesRateFilter.set('individual-given');
       this._activitiesView.set('distance');
     }
@@ -82,24 +89,33 @@ export class ActivitiesDbContextService {
   }
 
   setActivitiesPrimaryFilter(filter: AppTypes.ActivitiesPrimaryFilter): void {
-    this._activitiesPrimaryFilter.set(filter);
+    const normalizedFilter = this.normalizeActivitiesPrimaryFilter(filter);
+    this._activitiesPrimaryFilter.set(normalizedFilter);
     this._activitiesHostingPublicationFilter.set('all');
     this._activitiesShowViewPicker.set(false);
     this._activitiesShowSecondaryPicker.set(false);
     this._activitiesChatContextFilter.set('all');
-    if (filter !== 'rates') {
+    if (normalizedFilter === 'events') {
+      this._activitiesEventScope.set('active-events');
+    }
+    if (normalizedFilter !== 'rates') {
       this._activitiesRatesFullscreenMode.set(false);
     }
-    if (filter === 'rates') {
+    if (normalizedFilter === 'rates') {
       this._activitiesRateFilter.set('individual-given');
       this._activitiesView.set('distance');
       this._activitiesSelectedRateId.set(null);
-    } else if (filter === 'chats') {
+    } else if (normalizedFilter === 'chats') {
       this._activitiesView.set('day');
       this._activitiesSelectedRateId.set(null);
     } else {
       this._activitiesSelectedRateId.set(null);
     }
+  }
+
+  setActivitiesEventScope(scope: AppTypes.ActivitiesEventScope): void {
+    this._activitiesEventScope.set(scope);
+    this._activitiesHostingPublicationFilter.set('all');
   }
 
   setActivitiesSecondaryFilter(filter: AppTypes.ActivitiesSecondaryFilter): void {
@@ -212,5 +228,28 @@ export class ActivitiesDbContextService {
 
   async loadActivitiesPage(request: ActivitiesPageRequest): Promise<ActivitiesPageResult | null> {
     return this.dataSource.loadActivitiesPage(request);
+  }
+
+  private normalizeActivitiesPrimaryFilter(filter: AppTypes.ActivitiesPrimaryFilter): AppTypes.ActivitiesPrimaryFilter {
+    if (filter === 'hosting' || filter === 'invitations') {
+      return 'events';
+    }
+    return filter;
+  }
+
+  private resolveActivitiesEventScope(
+    primaryFilter: AppTypes.ActivitiesPrimaryFilter,
+    explicitScope?: AppTypes.ActivitiesEventScope
+  ): AppTypes.ActivitiesEventScope {
+    if (explicitScope) {
+      return explicitScope;
+    }
+    if (primaryFilter === 'invitations') {
+      return 'invitations';
+    }
+    if (primaryFilter === 'hosting') {
+      return 'my-events';
+    }
+    return 'active-events';
   }
 }

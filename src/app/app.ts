@@ -1446,22 +1446,26 @@ export class App {
   }
 
   protected openInvitationShortcut(): void {
-    this.openActivitiesPopup('invitations', false);
+    this.openActivitiesPopup('events', false, 'invitations');
   }
 
   protected openEventShortcut(): void {
-    this.openActivitiesPopup('events', false);
+    this.openActivitiesPopup('events', false, 'active-events');
   }
 
   protected openHostingShortcut(): void {
-    this.openActivitiesPopup('hosting', false);
+    this.openActivitiesPopup('events', false, 'my-events');
   }
 
-  protected openActivitiesPopup(primaryFilter: AppTypes.ActivitiesPrimaryFilter, closeMenu = true): void {
+  protected openActivitiesPopup(
+    primaryFilter: AppTypes.ActivitiesPrimaryFilter,
+    closeMenu = true,
+    eventScope?: AppTypes.ActivitiesEventScope
+  ): void {
     if (this.activePopup || this.stackedPopup || this.superStackedPopup) {
       this.closePopup();
     }
-    this.activitiesContext.openActivities(primaryFilter);
+    this.activitiesContext.openActivities(primaryFilter, eventScope);
     if (closeMenu) {
       this.closeUserMenu();
     }

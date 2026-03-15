@@ -139,9 +139,9 @@
         <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.events > 0">{{ user.activities.events }}</span>
       </button>
 
-      <button class="menu-shortcut-btn menu-shortcut-hosting" type="button" (click)="openHostingShortcut()" aria-label="Open hosting" title="Hosting">
+      <button class="menu-shortcut-btn menu-shortcut-hosting" type="button" (click)="openHostingShortcut()" aria-label="Open my events" title="My Events">
         <mat-icon>stadium</mat-icon>
-        <span class="menu-shortcut-label">Hosting</span>
+        <span class="menu-shortcut-label">My Events</span>
         <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.hosting > 0">{{ user.activities.hosting }}</span>
       </button>
     </div>
@@ -149,7 +149,7 @@
     <div class="social-proof-section-head section-arts section-assets activities-header impressions-menu-header">
       <span class="section-tag">
         <mat-icon>inventory_2</mat-icon>
-        <span>Own Assets</span>
+        <span>My Assets</span>
       </span>
       <span class="section-line"></span>
     </div>

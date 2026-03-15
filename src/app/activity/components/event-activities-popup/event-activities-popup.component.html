@@ -135,6 +135,83 @@
       </div>
     </ng-template>
 
+    <!-- Event scope filter (events tab only) -->
+    <ng-container *ngIf="isEventActivitiesPrimaryFilter()">
+      <ng-container *ngIf="!isMobileView; else mobileActivitiesEventScopeFilterButton">
+        <div
+          class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-event-scope-filter-select"
+          [ngClass]="activitiesEventScopeClass()"
+        >
+          <mat-select
+            [(ngModel)]="activitiesEventScope"
+            (ngModelChange)="selectActivitiesEventScope($event)"
+            [panelWidth]="activitiesEventScopePanelWidth()"
+            disableOptionCentering
+            panelClass="selector-options-panel profile-bottom-sheet-panel activities-event-scope-options-panel"
+          >
+            <mat-select-trigger>
+              <span class="status-option-content">
+                <mat-icon [class]="activitiesEventScopeClass()">{{ activitiesEventScopeIcon() }}</mat-icon>
+                <span>{{ activitiesEventScopeLabel() }}</span>
+              </span>
+            </mat-select-trigger>
+            <mat-option
+              *ngFor="let option of activitiesEventScopeFilters"
+              [value]="option.key"
+              class="status-option"
+              [ngClass]="activitiesEventScopeClass(option.key)"
+            >
+              <span class="status-option-content">
+                <mat-icon [class]="activitiesEventScopeClass(option.key)">{{ option.icon }}</mat-icon>
+                <span>{{ option.label }}</span>
+                <span class="rate-filter-count-badge" *ngIf="activitiesEventScopeCount(option.key) > 0">
+                  {{ activitiesEventScopeCount(option.key) }}
+                </span>
+              </span>
+            </mat-option>
+          </mat-select>
+          <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesEventScopeCount() > 0">
+            {{ activitiesEventScopeCount() }}
+          </span>
+        </div>
+      </ng-container>
+      <ng-template #mobileActivitiesEventScopeFilterButton>
+        <div class="activities-mobile-event-scope-filter-picker">
+          <button
+            type="button"
+            class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-event-scope-filter-select"
+            [ngClass]="activitiesEventScopeClass()"
+            (click)="openMobileActivitiesEventScopeSelector($event)"
+            [attr.aria-label]="'Open event scope filter: ' + activitiesEventScopeLabel()"
+          >
+            <span class="status-option-content">
+              <mat-icon [class]="activitiesEventScopeClass()">{{ activitiesEventScopeIcon() }}</mat-icon>
+              <span>{{ activitiesEventScopeLabel() }}</span>
+            </span>
+            <mat-icon>expand_more</mat-icon>
+            <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesEventScopeCount() > 0">
+              {{ activitiesEventScopeCount() }}
+            </span>
+          </button>
+          <div class="activities-view-picker-panel activities-mobile-filter-panel" *ngIf="showActivitiesEventScopePicker">
+            <button
+              type="button"
+              class="activities-view-option"
+              *ngFor="let option of activitiesEventScopeFilters"
+              [ngClass]="[activitiesEventScopeClass(option.key), option.key === activitiesEventScope ? 'active' : '']"
+              (click)="selectActivitiesEventScope(option.key)"
+            >
+              <mat-icon [class]="activitiesEventScopeClass(option.key)">{{ option.icon }}</mat-icon>
+              <span>{{ option.label }}</span>
+              <span class="rate-filter-count-badge" *ngIf="activitiesEventScopeCount(option.key) > 0">
+                {{ activitiesEventScopeCount(option.key) }}
+              </span>
+            </button>
+          </div>
+        </div>
+      </ng-template>
+    </ng-container>
+
     <!-- Chat context filter (chats tab only) -->
     <ng-container *ngIf="activitiesPrimaryFilter === 'chats'">
       <ng-container *ngIf="!isMobileView; else mobileActivitiesChatContextFilterButton">
@@ -211,14 +288,14 @@
       </ng-template>
     </ng-container>
 
-    <!-- Hosting: drafts-only toggle -->
+    <!-- My Events: drafts-only toggle -->
     <button
       *ngIf="isHostingPublicationFilterVisible()"
       type="button"
       class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select activities-hosting-draft-toggle"
       [class.is-active]="hostingPublicationFilter === 'drafts'"
       (click)="selectHostingPublicationFilter(hostingPublicationFilter === 'drafts' ? 'all' : 'drafts')"
-      [attr.aria-label]="hostingPublicationFilter === 'drafts' ? 'Show all hosting' : 'Show drafts only'"
+      [attr.aria-label]="hostingPublicationFilter === 'drafts' ? 'Show all My Events' : 'Show drafts only'"
     >
       <span class="status-option-content activities-hosting-draft-content">
         <mat-icon class="activities-toggle-icon">drafts</mat-icon>
@@ -322,8 +399,8 @@
       </ng-template>
     </ng-container>
 
-    <!-- Action stack: fullscreen toggle / explore / create -->
-    <div class="activities-action-stack" *ngIf="shouldShowActivitiesExploreAction() || shouldShowActivitiesCreateAction() || shouldShowRatesFullscreenToggle()">
+    <!-- Action stack: fullscreen toggle / quick actions -->
+    <div class="activities-action-stack" *ngIf="shouldShowActivitiesQuickActions() || shouldShowRatesFullscreenToggle()">
       <button
         type="button"
         class="popup-header-add-btn activities-rates-fullscreen-toggle is-enter"
@@ -342,24 +419,39 @@
       >
         <mat-icon>fullscreen_exit</mat-icon>
       </button>
-      <button
-        type="button"
-        class="popup-header-add-btn activities-explore-btn"
-        *ngIf="shouldShowActivitiesExploreAction()"
-        (click)="requestOpenEventExplore()"
-        aria-label="Explore events"
-      >
-        <mat-icon>explore</mat-icon>
-      </button>
-      <button
-        type="button"
-        class="popup-header-add-btn activities-add-btn"
-        *ngIf="shouldShowActivitiesCreateAction()"
-        (click)="requestOpenEventEditor()"
-        aria-label="Create event"
-      >
-        <mat-icon>add</mat-icon>
-      </button>
+      <div class="activities-quick-actions" *ngIf="shouldShowActivitiesQuickActions()">
+        <button
+          type="button"
+          class="popup-header-add-btn activities-add-btn"
+          [class.is-open]="showActivitiesQuickActionsMenu"
+          (click)="toggleActivitiesQuickActionsMenu($event)"
+          aria-label="Open event actions"
+        >
+          <mat-icon>add</mat-icon>
+        </button>
+        <div
+          class="activities-view-picker-panel"
+          [class.activities-mobile-filter-panel]="isMobileView"
+          *ngIf="showActivitiesQuickActionsMenu"
+        >
+          <button
+            type="button"
+            class="activities-view-option activities-quick-action-option activities-quick-action-option-explore"
+            (click)="requestOpenEventExplore()"
+          >
+            <mat-icon>explore</mat-icon>
+            <span>Explore Events</span>
+          </button>
+          <button
+            type="button"
+            class="activities-view-option activities-quick-action-option activities-quick-action-option-create"
+            (click)="requestOpenEventEditor()"
+          >
+            <mat-icon>add_circle</mat-icon>
+            <span>Create Event</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div><!-- /toolbar -->
 
@@ -438,47 +530,66 @@
                 (click)="$event.stopPropagation()"
               >
                 <div class="item-action-menu-title">{{ row.title }}</div>
-                <button
-                  type="button"
-                  class="item-action-menu-btn item-action-menu-btn-publish"
-                  *ngIf="shouldShowActivityPublishAction(row)"
-                  (click)="runActivityItemPublishAction(row, $event)"
-                >
-                  <mat-icon>campaign</mat-icon>
-                  <span>Publish</span>
-                </button>
-                <button type="button" class="item-action-menu-btn" (click)="runActivityItemPrimaryAction(row, $event)">
-                  <mat-icon>{{ activityPrimaryActionIcon(row) }}</mat-icon>
-                  <span>{{ activityPrimaryActionLabel(row) }}</span>
-                </button>
-                <button
-                  type="button"
-                  class="item-action-menu-btn"
-                  *ngIf="shouldShowActivityViewAction(row)"
-                  (click)="runActivityItemViewAction(row, $event)"
-                >
-                  <mat-icon>visibility</mat-icon>
-                  <span>View Event</span>
-                </button>
-                <button
-                  type="button"
-                  class="item-action-menu-btn item-action-menu-btn-publish"
-                  *ngIf="row.type === 'invitations'"
-                  (click)="runActivityItemApproveAction(row, $event)"
-                >
-                  <mat-icon>done</mat-icon>
-                  <span>Accept</span>
-                </button>
-                <button
-                  type="button"
-                  class="item-action-menu-btn"
-                  [class.item-action-menu-btn-destructive]="!isExitActivityRow(row)"
-                  [class.item-action-menu-btn-warning]="isExitActivityRow(row)"
-                  (click)="runActivityItemSecondaryAction(row, $event)"
-                >
-                  <mat-icon>{{ activitySecondaryActionIcon(row) }}</mat-icon>
-                  <span>{{ activitySecondaryActionLabel(row) }}</span>
-                </button>
+                <ng-container *ngIf="!isActivityRowTrashed(row); else trashedActivityMenu">
+                  <button
+                    type="button"
+                    class="item-action-menu-btn item-action-menu-btn-publish"
+                    *ngIf="shouldShowActivityPublishAction(row)"
+                    (click)="runActivityItemPublishAction(row, $event)"
+                  >
+                    <mat-icon>campaign</mat-icon>
+                    <span>Publish</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="item-action-menu-btn"
+                    *ngIf="shouldShowActivityPrimaryAction(row)"
+                    (click)="runActivityItemPrimaryAction(row, $event)"
+                  >
+                    <mat-icon>{{ activityPrimaryActionIcon(row) }}</mat-icon>
+                    <span>{{ activityPrimaryActionLabel(row) }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="item-action-menu-btn"
+                    *ngIf="shouldShowActivityViewAction(row)"
+                    (click)="runActivityItemViewAction(row, $event)"
+                  >
+                    <mat-icon>visibility</mat-icon>
+                    <span>View Event</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="item-action-menu-btn item-action-menu-btn-publish"
+                    *ngIf="shouldShowActivityApproveAction(row)"
+                    (click)="runActivityItemApproveAction(row, $event)"
+                  >
+                    <mat-icon>done</mat-icon>
+                    <span>Accept</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="item-action-menu-btn"
+                    *ngIf="shouldShowActivitySecondaryAction(row)"
+                    [class.item-action-menu-btn-destructive]="!isExitActivityRow(row)"
+                    [class.item-action-menu-btn-warning]="isExitActivityRow(row)"
+                    (click)="runActivityItemSecondaryAction(row, $event)"
+                  >
+                    <mat-icon>{{ activitySecondaryActionIcon(row) }}</mat-icon>
+                    <span>{{ activitySecondaryActionLabel(row) }}</span>
+                  </button>
+                </ng-container>
+                <ng-template #trashedActivityMenu>
+                  <button
+                    type="button"
+                    class="item-action-menu-btn"
+                    *ngIf="shouldShowActivityRestoreAction(row)"
+                    (click)="runActivityItemRestoreAction(row, $event)"
+                  >
+                    <mat-icon>restore_from_trash</mat-icon>
+                    <span>Restore</span>
+                  </button>
+                </ng-template>
               </div>
             </div>
           </div>

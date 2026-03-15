@@ -206,6 +206,13 @@
   position: relative;
   overflow: visible;
 }
+.activities-event-scope-filter-select {
+  position: relative;
+  overflow: visible;
+  min-width: 194px;
+  width: 194px;
+  max-width: 194px;
+}
 .activities-chat-context-filter-select {
   position: relative;
   overflow: visible;
@@ -264,8 +271,12 @@
   gap: 0.16rem;
 }
 .activities-mobile-primary-filter-picker,
+.activities-mobile-event-scope-filter-picker,
 .activities-mobile-chat-context-filter-picker,
 .activities-mobile-rate-filter-picker {
+  position: relative;
+}
+.activities-event-scope-filter-picker {
   position: relative;
 }
 .activities-mobile-filter-panel,
@@ -414,6 +425,10 @@
 .activities-mobile-filter-panel .activities-view-option.activity-filter-hosting {
   background: linear-gradient(180deg, #f1fbfa 0%, #e6f5f2 100%);
   border-color: rgba(47, 142, 157, 0.32);
+}
+.activities-mobile-filter-panel .activities-view-option.activity-filter-trash {
+  background: linear-gradient(180deg, #fff4f6 0%, #ffe9ee 100%);
+  border-color: rgba(177, 73, 92, 0.32);
 }
 .activities-mobile-filter-panel .activities-view-option.chat-context-filter-all {
   background: linear-gradient(180deg, #f4f6fb 0%, #edf2f8 100%);
@@ -2181,6 +2196,9 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
 .activity-filter-hosting {
   color: #2f8e9d;
 }
+.activity-filter-trash {
+  color: #b44c60;
+}
 .activity-filter-rates {
   color: #c8921e;
 }
@@ -2243,8 +2261,43 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   align-items: center;
   gap: 0.34rem;
 }
+.activities-quick-actions {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.activities-quick-actions .activities-view-picker-panel {
+  right: 0;
+  min-width: 178px;
+}
+.activities-quick-action-option {
+  justify-content: flex-start;
+  width: 100%;
+}
+.activities-quick-action-option-explore {
+  background: linear-gradient(180deg, #fff7f0 0%, #ffefdf 100%);
+  border: 1px solid rgba(208, 125, 51, 0.32);
+  color: #b96b25;
+}
+.activities-quick-action-option-explore .mat-icon {
+  color: #c7782e;
+}
+.activities-quick-action-option-create {
+  background: linear-gradient(180deg, #f1fbfa 0%, #e6f5f2 100%);
+  border: 1px solid rgba(47, 142, 157, 0.32);
+  color: #2e8795;
+}
+.activities-quick-action-option-create .mat-icon {
+  color: #318d98;
+}
 .activities-add-btn {
   margin-left: 0;
+}
+.activities-add-btn.is-open .mat-icon {
+  transform: rotate(45deg);
+}
+.activities-add-btn .mat-icon {
+  transition: transform 0.16s ease;
 }
 .activities-explore-btn {
   margin-left: 0;
@@ -2502,6 +2555,11 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   max-width: 174px;
   height: 36px;
 }
+.experience-filter-select.activities-event-scope-filter-select {
+  min-width: 194px;
+  width: 194px;
+  max-width: 194px;
+}
 .experience-filter-select.activity-filter-chat {
   background: linear-gradient(180deg, #f2f7ff 0%, #e8f2ff 100%);
   border-color: rgba(63, 116, 178, 0.32);
@@ -2517,6 +2575,10 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
 .experience-filter-select.activity-filter-hosting {
   background: linear-gradient(180deg, #f1fbfa 0%, #e6f5f2 100%);
   border-color: rgba(47, 142, 157, 0.32);
+}
+.experience-filter-select.activity-filter-trash {
+  background: linear-gradient(180deg, #fff4f6 0%, #ffe9ee 100%);
+  border-color: rgba(177, 73, 92, 0.32);
 }
 .experience-filter-select.activity-filter-rates {
   background: linear-gradient(180deg, #fff7df 0%, #ffefc8 100%);
@@ -3209,6 +3271,7 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
 }
 :host ::ng-deep .activities-rate-options-panel .mat-mdc-option.status-option .status-option-content,
 :host ::ng-deep .activities-primary-options-panel .mat-mdc-option.status-option .status-option-content,
+:host ::ng-deep .activities-event-scope-options-panel .mat-mdc-option.status-option .status-option-content,
 :host ::ng-deep .activities-chat-context-options-panel .mat-mdc-option.status-option .status-option-content {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -3219,6 +3282,7 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
 }
 :host ::ng-deep .activities-rate-options-panel .mat-mdc-option.status-option .rate-filter-count-badge,
 :host ::ng-deep .activities-primary-options-panel .mat-mdc-option.status-option .rate-filter-count-badge,
+:host ::ng-deep .activities-event-scope-options-panel .mat-mdc-option.status-option .rate-filter-count-badge,
 :host ::ng-deep .activities-chat-context-options-panel .mat-mdc-option.status-option .rate-filter-count-badge {
   margin-left: 0;
   justify-self: end;
@@ -3234,6 +3298,9 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
 }
 :host ::ng-deep .mat-mdc-option.status-option.activity-filter-hosting {
   background: linear-gradient(0deg, #ffffff, #edf9f4);
+}
+:host ::ng-deep .mat-mdc-option.status-option.activity-filter-trash {
+  background: linear-gradient(0deg, #ffffff, #fff0f3);
 }
 :host ::ng-deep .mat-mdc-option.status-option.activity-filter-rates {
   background: linear-gradient(0deg, #ffffff, #fff6df);

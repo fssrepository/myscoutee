@@ -78,6 +78,7 @@ export interface EventChatSession {
 
 export interface ActivitiesPageRequest {
   primaryFilter: AppTypes.ActivitiesPrimaryFilter;
+  eventScopeFilter?: AppTypes.ActivitiesEventScope;
   secondaryFilter: AppTypes.ActivitiesSecondaryFilter;
   chatContextFilter: AppTypes.ActivitiesChatContextFilter;
   hostingPublicationFilter: AppTypes.HostingPublicationFilter;
