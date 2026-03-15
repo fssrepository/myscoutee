@@ -660,8 +660,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       this.calendarWeekPages = [];
       this.items = [...this.calendarItemsForAnchor(activeAnchor)];
       this.total = this.calendarPageTotals.get(this.calendarPageKey(activeAnchor)) ?? this.items.length;
-      this.stickyLabel = this.calendarMonthPages[this.currentCalendarPageIndex(undefined, this.calendarMonthPages.length)]?.label
-        ?? this.calendarMonthPages.find(page => page.key === this.monthKey(activeAnchor))?.label
+      this.stickyLabel = this.calendarMonthPages.find(page => page.key === this.monthKey(activeAnchor))?.label
         ?? this.calendarMonthPages[this.initialCalendarPageIndex()]?.label
         ?? this.resolveEmptyStickyLabel();
       return;
@@ -677,8 +676,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     this.calendarMonthPages = [];
     this.items = [...this.calendarItemsForAnchor(activeAnchor)];
     this.total = this.calendarPageTotals.get(this.calendarPageKey(activeAnchor)) ?? this.items.length;
-    this.stickyLabel = this.calendarWeekPages[this.currentCalendarPageIndex(undefined, this.calendarWeekPages.length)]?.label
-      ?? this.calendarWeekPages.find(page => page.key === this.dateKey(AppUtils.startOfWeekMonday(activeAnchor)))?.label
+    this.stickyLabel = this.calendarWeekPages.find(page => page.key === this.dateKey(AppUtils.startOfWeekMonday(activeAnchor)))?.label
       ?? this.calendarWeekPages[this.initialCalendarPageIndex()]?.label
       ?? this.resolveEmptyStickyLabel();
   }
