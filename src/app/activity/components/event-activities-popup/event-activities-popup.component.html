@@ -1255,23 +1255,15 @@
     [class.is-permanent]="isRatesFullscreenModeActive()"
     *ngIf="isActivityRateEditorDockVisible() && !isCalendarLayoutView()"
   >
-    <div class="activities-rate-editor-head" *ngIf="!isRatesFullscreenModeActive()">
-      <span>Rate · {{ selectedActivityRateModeLabel() }} · {{ selectedActivityRateTitle() }}</span>
-    </div>
-    <div class="activities-rate-editor-stars" [class.is-blink]="isActivityRateBarBlinking" [class.is-readonly]="isSelectedActivityRateReadOnly()">
-      <button
-        type="button"
-        class="activities-rate-star-btn"
-        *ngFor="let score of activityRatingScale"
-        [class.filled]="isSelectedActivityRateScore(score)"
-        [class.is-disabled]="isSelectedActivityRateReadOnly()"
-        [disabled]="isSelectedActivityRateReadOnly()"
-        (click)="setSelectedActivityOwnRating(score)"
-        [attr.aria-label]="'Set rating ' + score"
-      >
-        ★
-      </button>
-    </div>
+    <app-rating-star-bar
+      [scale]="activityRatingScale"
+      [value]="selectedActivityRateValue()"
+      [readonly]="isSelectedActivityRateReadOnly()"
+      [blink]="isActivityRateBarBlinking"
+      [label]="selectedActivityRateBarLabel()"
+      [presentation]="isRatesFullscreenModeActive() ? 'fullscreen' : 'list'"
+      (scoreSelect)="setSelectedActivityOwnRating($event)"
+    ></app-rating-star-bar>
   </div>
 
   <!-- ───── Delete confirm ───── -->

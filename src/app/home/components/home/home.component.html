@@ -326,18 +326,13 @@
 
     </div>
     <div class="game-rating-dock" *ngIf="hasCandidatesForCurrentMode">
-      <div class="rating-stars" [class.is-blink]="isRatingBarBlinking">
-        <button
-          type="button"
-          class="star-btn"
-          *ngFor="let score of ratingScale"
-          [class.filled]="score <= selectedRating"
-          (click)="setRating(score)"
-          aria-label="Rate {{ score }}"
-        >
-          ★
-        </button>
-      </div>
+      <app-rating-star-bar
+        [scale]="ratingScale"
+        [value]="selectedRating"
+        [blink]="isRatingBarBlinking"
+        presentation="fullscreen"
+        (scoreSelect)="setRating($event)"
+      ></app-rating-star-bar>
     </div>
   </section>
 </div>

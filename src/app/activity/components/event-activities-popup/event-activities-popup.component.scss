@@ -1675,6 +1675,7 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   margin-top: 0;
   animation: activities-rate-dock-in 180ms ease;
   transform-origin: bottom center;
+  overflow: hidden;
 }
 .activities-rate-editor-dock.is-closing {
   animation: activities-rate-dock-out 180ms ease forwards;

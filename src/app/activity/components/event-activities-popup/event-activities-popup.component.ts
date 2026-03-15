@@ -42,6 +42,7 @@ import { EventEditorService } from '../../../shared/event-editor.service';
 import type { ActivitiesEventSyncPayload, ActivitiesPageRequest, EventChatContext, EventChatResourceContext } from '../../../shared/activities-models';
 import type * as AppTypes from '../../../shared/app-types';
 import {
+  RatingStarBarComponent,
   SmartListComponent,
   type ListQuery,
   type PageResult,
@@ -81,6 +82,7 @@ type PendingActivityAction = 'delete' | 'exit' | 'reject';
     MatIconModule,
     MatSelectModule,
     LazyBgImageDirective,
+    RatingStarBarComponent,
     SmartListComponent,
     EventChatPopupComponent,
     EventMembersPopupComponent
@@ -2311,6 +2313,20 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   protected selectedActivityRateTitle(): string {
     return this.selectedActivityRateRow()?.title ?? 'Rate';
+  }
+
+  protected selectedActivityRateBarLabel(): string | null {
+    if (this.isRatesFullscreenModeActive()) {
+      return null;
+    }
+    return `Rate · ${this.selectedActivityRateModeLabel()} · ${this.selectedActivityRateTitle()}`;
+  }
+
+  protected selectedActivityRateValue(): number {
+    const row = this.isRatesFullscreenModeActive()
+      ? this.currentActivitiesRatesFullscreenRow()
+      : this.selectedActivityRateRow();
+    return row ? this.activityOwnRatingValue(row) : 0;
   }
 
   protected isSelectedActivityRateReadOnly(): boolean {

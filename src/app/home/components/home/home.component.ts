@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
 import { MatSliderModule } from '@angular/material/slider';
+import { RatingStarBarComponent } from '../../../shared/ui';
 import { DemoUser, PROFILE_DETAILS } from '../../../shared/demo-data';
 import {
   AppContext,
@@ -105,7 +106,7 @@ const PUBLIC_PROFILE_DETAIL_LABELS = new Set(
   selector: 'app-home',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, MatIconModule, FormsModule, MatSliderModule],
+  imports: [CommonModule, MatIconModule, FormsModule, MatSliderModule, RatingStarBarComponent],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss']
 })
