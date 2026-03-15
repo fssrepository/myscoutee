@@ -295,6 +295,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected isActivityRateBarBlinking              = false;
   private activityRateEditorClosing                = false;
   private activityRateEditorCloseTimer: ReturnType<typeof setTimeout> | null = null;
+  private activityRateEditorLiftAnimationFrame: number | null = null;
   private readonly activityRateEditorSlideDurationMs = 180;
   private activityRateEditorOpenScrollTop: number | null = null;
   private lastActivityRateEditorLiftDelta = 0;
@@ -2268,11 +2269,12 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.activitiesContext.setActivitiesSelectedRateId(row.id);
     this.activityRateEditorClosing = false;
     this.pulseRateIndicatorForRow(row);
+    this.cancelActivityRateEditorLiftAnimation();
     this.runAfterActivitiesRender(() => {
-      setTimeout(() => this.smoothRevealSelectedRateRowWhenNeeded(row.id), 40);
-      if (!wasOpen) {
-        setTimeout(() => this.smoothRevealSelectedRateRowWhenNeeded(row.id), this.activityRateEditorSlideDurationMs + 40);
+      if (!this.isActivityRateEditorOpen() || this.selectedActivityRateId !== row.id) {
+        return;
       }
+      this.smoothRevealSelectedRateRowWhenNeeded(row.id);
     });
   }
 
@@ -2420,6 +2422,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     const reverseDelta = this.lastActivityRateEditorLiftDelta;
     this.activityRateEditorClosing = true;
     this.cancelActivityRateEditorCloseTransition();
+    this.cancelActivityRateEditorLiftAnimation();
     this.activityRateEditorCloseTimer = setTimeout(() => {
       this.activityRateEditorCloseTimer = null;
       this.activityRateEditorClosing = false;
@@ -2437,10 +2440,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
         ? Math.max(0, restoreTop as number)
         : Math.max(0, scrollElement.scrollTop - reverseDelta);
       scrollElement.style.scrollSnapType = 'none';
-      scrollElement.scrollTo({ top: targetTop, behavior: 'smooth' });
-      setTimeout(() => {
+      this.animateActivityRateEditorScrollTo(scrollElement, targetTop, () => {
         scrollElement.style.scrollSnapType = previousInlineSnapType;
-      }, 220);
+      });
     });
   }
 
@@ -2449,6 +2451,13 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       clearTimeout(this.activityRateEditorCloseTimer);
       this.activityRateEditorCloseTimer = null;
     }
+  }
+
+  private cancelActivityRateEditorLiftAnimation(): void {
+    if (this.activityRateEditorLiftAnimationFrame !== null && typeof globalThis.cancelAnimationFrame === 'function') {
+      globalThis.cancelAnimationFrame(this.activityRateEditorLiftAnimationFrame);
+    }
+    this.activityRateEditorLiftAnimationFrame = null;
   }
 
   private maybeDismissActivityRateEditor(target: Element): void {
@@ -2493,9 +2502,8 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     const rowBottom = (sameRowCards.length > 0 ? sameRowCards : [targetRow]).reduce((maxBottom, card) => {
       return Math.max(maxBottom, card.getBoundingClientRect().bottom);
     }, targetRow.getBoundingClientRect().bottom);
-    const dockRect = dock?.getBoundingClientRect();
-    const fallbackDockTop = scrollRect.bottom - Math.max(72, dock?.offsetHeight ?? 72);
-    const dockTop = dockRect ? Math.min(dockRect.top, scrollRect.bottom) : fallbackDockTop;
+    const dockHeight = Math.max(72, dock?.offsetHeight ?? 72);
+    const dockTop = scrollRect.bottom - dockHeight;
     const breathingRoom = this.isMobileView ? 6 : 8;
     const revealBottom = dockTop - breathingRoom;
     if (rowBottom <= revealBottom) {
@@ -2505,7 +2513,8 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return;
     }
     const delta = rowBottom - revealBottom;
-    const targetTop = Math.min(scrollElement.scrollTop + delta, Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight));
+    const startTop = scrollElement.scrollTop;
+    const targetTop = startTop + delta;
     if (targetTop <= scrollElement.scrollTop + 0.5) {
       this.lastActivityRateEditorLiftDelta = 0;
       if (attempt < 1) {
@@ -2513,13 +2522,43 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       }
       return;
     }
-    this.lastActivityRateEditorLiftDelta = targetTop - scrollElement.scrollTop;
     const previousSnapType = scrollElement.style.scrollSnapType;
     scrollElement.style.scrollSnapType = 'none';
-    scrollElement.scrollTo({ top: targetTop, behavior: 'smooth' });
-    setTimeout(() => {
+    this.animateActivityRateEditorScrollTo(scrollElement, targetTop, () => {
+      this.lastActivityRateEditorLiftDelta = Math.max(0, scrollElement.scrollTop - startTop);
       scrollElement.style.scrollSnapType = previousSnapType;
-    }, 220);
+    });
+  }
+
+  private animateActivityRateEditorScrollTo(scrollElement: HTMLElement, targetTop: number, onComplete?: () => void): void {
+    const startTop = scrollElement.scrollTop;
+    const delta = targetTop - startTop;
+    if (Math.abs(delta) <= 0.5) {
+      scrollElement.scrollTop = targetTop;
+      onComplete?.();
+      return;
+    }
+    this.cancelActivityRateEditorLiftAnimation();
+    if (typeof globalThis.requestAnimationFrame !== 'function' || typeof globalThis.performance === 'undefined') {
+      scrollElement.scrollTop = targetTop;
+      onComplete?.();
+      return;
+    }
+    const startTime = globalThis.performance.now();
+    const easeOutCubic = (progress: number): number => 1 - Math.pow(1 - progress, 3);
+    const step = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / this.activityRateEditorSlideDurationMs);
+      scrollElement.scrollTop = startTop + (delta * easeOutCubic(progress));
+      if (progress < 1) {
+        this.activityRateEditorLiftAnimationFrame = globalThis.requestAnimationFrame(step);
+        return;
+      }
+      this.activityRateEditorLiftAnimationFrame = null;
+      scrollElement.scrollTop = targetTop;
+      onComplete?.();
+    };
+    this.activityRateEditorLiftAnimationFrame = globalThis.requestAnimationFrame(step);
   }
 
   // =========================================================================
