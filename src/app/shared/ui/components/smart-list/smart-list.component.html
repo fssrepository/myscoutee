@@ -35,12 +35,17 @@
             class="smart-list__calendar-page smart-list__calendar-page--month"
             *ngFor="let page of calendarMonthPages; trackBy: trackByCalendarPageKey"
             [style.--month-week-count]="page.weeks.length"
+            [class.smart-list__calendar-page--month-rates]="isRateCountCalendarVariant()"
           >
             <div class="smart-list__calendar-weekdays">
               <span *ngFor="let dayLabel of calendarWeekdayLabels()">{{ dayLabel }}</span>
             </div>
-            <div class="smart-list__month-grid">
-              <div class="smart-list__month-week" *ngFor="let week of page.weeks; trackBy: trackByCalendarMonthWeekKey">
+            <div class="smart-list__month-grid" [class.smart-list__month-grid--rates]="isRateCountCalendarVariant()">
+              <div
+                class="smart-list__month-week"
+                *ngFor="let week of page.weeks; trackBy: trackByCalendarMonthWeekKey"
+                [class.smart-list__month-week--rates]="isRateCountCalendarVariant()"
+              >
                 <div
                   class="smart-list__month-cell"
                   *ngFor="let day of week.days; trackBy: trackByCalendarDayKey"
