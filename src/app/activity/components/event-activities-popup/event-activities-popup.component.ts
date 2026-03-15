@@ -167,11 +167,20 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   @ViewChild('activitiesSmartList')
   private activitiesSmartList?: SmartListComponent<AppTypes.ActivityListRow, ActivitiesSmartListFilters>;
 
-  @ViewChild('activitiesRateSingleSmartListItemTemplate', { static: true, read: TemplateRef })
   private activitiesRateSingleSmartListItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>>;
-
-  @ViewChild('activitiesRatePairSmartListItemTemplate', { static: true, read: TemplateRef })
   private activitiesRatePairSmartListItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>>;
+
+  @ViewChild('activitiesRateSingleSmartListItemTemplate', { read: TemplateRef })
+  private set activitiesRateSingleSmartListItemTemplate(value: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>> | undefined) {
+    this.activitiesRateSingleSmartListItemTemplateRef = value;
+    this.cdr.markForCheck();
+  }
+
+  @ViewChild('activitiesRatePairSmartListItemTemplate', { read: TemplateRef })
+  private set activitiesRatePairSmartListItemTemplate(value: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>> | undefined) {
+    this.activitiesRatePairSmartListItemTemplateRef = value;
+    this.cdr.markForCheck();
+  }
 
   @ViewChild('activitiesCalendarScroll')
   private activitiesCalendarScrollRef?: ElementRef<HTMLDivElement>;
