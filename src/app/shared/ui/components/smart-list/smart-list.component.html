@@ -46,10 +46,18 @@
                   *ngFor="let day of week.days; trackBy: trackByCalendarDayKey"
                   [class.smart-list__month-cell--outside]="!day.inCurrentMonth"
                   [class.smart-list__month-cell--today]="day.isToday"
+                  [class.smart-list__month-cell--rates]="isRateCountCalendarVariant()"
                 >
                   <div class="smart-list__month-day-num">{{ day.dayNumber }}</div>
+                  <div
+                    class="smart-list__month-rate-count"
+                    *ngIf="isRateCountCalendarVariant() && monthRateCount(day) as rateCount"
+                    [ngClass]="rateHeatClassByCount(rateCount)"
+                  >
+                    {{ rateCountLabel(rateCount) }}
+                  </div>
                 </div>
-                <div class="smart-list__month-week-spans" *ngIf="week.spans.length > 0">
+                <div class="smart-list__month-week-spans" *ngIf="!isRateCountCalendarVariant() && week.spans.length > 0">
                   <button
                     type="button"
                     class="smart-list__calendar-badge smart-list__month-span-badge"
@@ -92,19 +100,33 @@
                 class="smart-list__week-day-col"
                 *ngFor="let day of page.days; trackBy: trackByCalendarDayKey"
                 [class.smart-list__week-day-col--today]="day.isToday"
+                [class.smart-list__week-day-col--rates]="isRateCountCalendarVariant()"
               >
-                <div class="smart-list__week-hour-slot" *ngFor="let hour of calendarWeekHours()"></div>
-                <button
-                  type="button"
-                  class="smart-list__calendar-badge smart-list__week-timed-badge"
-                  [ngClass]="calendarBadgeToneClass(badge.item)"
-                  *ngFor="let badge of weekDayTimedBadges(day); trackBy: trackByCalendarTimedBadge"
-                  [style.top.%]="badge.topPct"
-                  [style.height.%]="badge.heightPct"
-                  (click)="onCalendarItemClick(badge.item, $event)"
-                >
-                  <span>{{ calendarBadgeLabel(badge.item) }}</span>
-                </button>
+                <ng-container *ngIf="isRateCountCalendarVariant(); else timedBadges">
+                  <div class="smart-list__week-hour-slot smart-list__week-rate-slot" *ngFor="let hour of calendarWeekHours()">
+                    <div
+                      class="smart-list__week-rate-badge"
+                      *ngIf="weekRateHourCount(day, hour) as hourCount"
+                      [ngClass]="rateHeatClassByCount(hourCount)"
+                    >
+                      {{ rateCountLabel(hourCount) }}
+                    </div>
+                  </div>
+                </ng-container>
+                <ng-template #timedBadges>
+                  <div class="smart-list__week-hour-slot" *ngFor="let hour of calendarWeekHours()"></div>
+                  <button
+                    type="button"
+                    class="smart-list__calendar-badge smart-list__week-timed-badge"
+                    [ngClass]="calendarBadgeToneClass(badge.item)"
+                    *ngFor="let badge of weekDayTimedBadges(day); trackBy: trackByCalendarTimedBadge"
+                    [style.top.%]="badge.topPct"
+                    [style.height.%]="badge.heightPct"
+                    (click)="onCalendarItemClick(badge.item, $event)"
+                  >
+                    <span>{{ calendarBadgeLabel(badge.item) }}</span>
+                  </button>
+                </ng-template>
               </div>
             </div>
           </section>

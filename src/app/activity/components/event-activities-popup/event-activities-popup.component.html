@@ -617,31 +617,30 @@
   </ng-container>
 
   <ng-template #activitiesRatesContent>
-    <ng-container *ngIf="!isCalendarLayoutView(); else activitiesCalendarLayout">
-      <div class="activities-rates-stage" [class.is-fullscreen]="isRatesFullscreenModeActive()">
-        <div class="activities-rates-list-shell" [class.is-occluded]="isRatesFullscreenModeActive()">
-          <app-smart-list
-            #activitiesSmartList
-            [config]="activitiesSmartListConfig"
-            [loaders]="activitiesSmartListLoaders"
-            [itemTemplate]="activitiesRateFilter.startsWith('pair') ? activitiesRatePairSmartListItemTemplate : activitiesRateSingleSmartListItemTemplate"
-            [view]="activitiesView"
-            [filters]="activitiesSmartListFilters"
-            [footerSpacerHeight]="activityRateEditorSpacerHeight()"
-            [containerClass]="activitiesSmartListClassMap()"
-            stickyHeaderClass="activities-sticky-header"
-            groupMarkerClass="activities-group-marker"
-            (itemSelect)="onActivitiesSmartListItemSelect($event)"
-            (stateChange)="onActivitiesSmartListStateChange($event)"
-            (wheel)="closeActivityRateEditorFromUserScroll()"
-            (touchmove)="closeActivityRateEditorFromUserScroll()"
-          ></app-smart-list>
-        </div>
-        <div class="activities-rates-fullscreen-layer" *ngIf="isRatesFullscreenModeActive()">
-          <ng-container *ngTemplateOutlet="activitiesRatesFullscreenLayout"></ng-container>
-        </div>
+    <div class="activities-rates-stage" [class.is-fullscreen]="isRatesFullscreenModeActive()">
+      <div class="activities-rates-list-shell" [class.is-occluded]="isRatesFullscreenModeActive()">
+        <app-smart-list
+          #activitiesSmartList
+          [config]="activitiesSmartListConfig"
+          [loaders]="activitiesSmartListLoaders"
+          [itemTemplate]="activitiesRateFilter.startsWith('pair') ? activitiesRatePairSmartListItemTemplate : activitiesRateSingleSmartListItemTemplate"
+          [view]="activitiesView"
+          [filters]="activitiesSmartListFilters"
+          [footerSpacerHeight]="activityRateEditorSpacerHeight()"
+          [calendarVariant]="'rate-counts'"
+          [containerClass]="activitiesSmartListClassMap()"
+          stickyHeaderClass="activities-sticky-header"
+          groupMarkerClass="activities-group-marker"
+          (itemSelect)="onActivitiesSmartListItemSelect($event)"
+          (stateChange)="onActivitiesSmartListStateChange($event)"
+          (wheel)="closeActivityRateEditorFromUserScroll()"
+          (touchmove)="closeActivityRateEditorFromUserScroll()"
+        ></app-smart-list>
       </div>
-    </ng-container>
+      <div class="activities-rates-fullscreen-layer" *ngIf="!isCalendarLayoutView() && isRatesFullscreenModeActive()">
+        <ng-container *ngTemplateOutlet="activitiesRatesFullscreenLayout"></ng-container>
+      </div>
+    </div>
   </ng-template>
 
   <ng-template #activitiesRateSingleSmartListItemTemplate let-row let-groupLabel="groupLabel">
@@ -1095,156 +1094,6 @@
       </div>
     </ng-template>
   </ng-template><!-- /activitiesRatesFullscreenLayout -->
-
-
-  <!-- ───── Calendar layout ───── -->
-  <ng-template #activitiesCalendarLayout>
-    <div class="activities-calendar-toolbar">
-      <span class="activities-calendar-nav">
-        <button
-          type="button"
-          class="activities-calendar-nav-btn"
-          (click)="calendarPrev($event)"
-          aria-label="Previous period"
-        >
-          <mat-icon>chevron_left</mat-icon>
-        </button>
-        <button
-          type="button"
-          class="activities-calendar-nav-btn activities-calendar-nav-today-btn"
-          (click)="calendarToday($event)"
-          aria-label="Go to today"
-        >
-          Today
-        </button>
-        <button
-          type="button"
-          class="activities-calendar-nav-btn"
-          (click)="calendarNext($event)"
-          aria-label="Next period"
-        >
-          <mat-icon>chevron_right</mat-icon>
-        </button>
-      </span>
-    </div>
-
-    <div
-      class="activities-calendar-scroll"
-      [class.activities-calendar-scroll-month]="activitiesView === 'month'"
-      [class.activities-calendar-scroll-week]="activitiesView === 'week'"
-      #activitiesCalendarScroll
-      (scroll)="onActivitiesCalendarScroll($event)"
-    >
-      <!-- Month pages -->
-      <ng-container *ngIf="activitiesView === 'month'; else activitiesWeekPages">
-        <section
-          class="activities-calendar-page activities-calendar-page-month"
-          *ngFor="let page of calendarMonthPages"
-          [style.--month-week-count]="page.weeks.length"
-        >
-          <div class="activities-calendar-weekdays">
-            <span *ngFor="let dayLabel of calendarWeekdayLabels">{{ dayLabel }}</span>
-          </div>
-          <div class="activities-month-grid">
-            <div class="activities-month-week" *ngFor="let week of page.weeks">
-              <div
-                class="activities-month-cell"
-                *ngFor="let day of week.days"
-                [class.outside]="!day.inCurrentMonth"
-                [class.today]="day.isToday"
-                [class.activities-month-cell-rates]="activitiesPrimaryFilter === 'rates'"
-              >
-                <div class="activities-month-day-num">{{ day.dayNumber }}</div>
-                <div
-                  class="activities-month-rate-count"
-                  *ngIf="areCalendarBadgesReady(page.key) && activitiesPrimaryFilter === 'rates' && monthRateCount(day) as rateCount"
-                  [ngClass]="monthRateHeatClass(day)"
-                >
-                  {{ rateCountLabel(rateCount) }}
-                </div>
-              </div>
-              <div class="activities-month-week-spans" *ngIf="areCalendarBadgesReady(page.key) && activitiesPrimaryFilter !== 'rates' && week.spans.length > 0">
-                <button
-                  type="button"
-                  class="activities-calendar-badge activities-month-span-badge"
-                  [ngClass]="calendarBadgeToneClass(span.row)"
-                  *ngFor="let span of week.spans"
-                  [style.left.%]="(span.startCol * 100) / 7"
-                  [style.width.%]="((span.endCol - span.startCol + 1) * 100) / 7"
-                  [style.top.px]="18 + (span.lane * 20)"
-                  (click)="onActivityRowClick(span.row, $event)"
-                >
-                  <span>{{ span.row.title }}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-      </ng-container>
-
-      <!-- Week pages -->
-      <ng-template #activitiesWeekPages>
-        <section
-          class="activities-calendar-page activities-calendar-page-week"
-          *ngFor="let page of calendarWeekPages"
-        >
-          <div class="activities-week-board">
-            <div class="activities-week-board-corner"></div>
-            <div class="activities-week-board-day-head" *ngFor="let day of page.days; let dayIndex = index" [class.today]="day.isToday">
-              <span>{{ calendarWeekdayLabels[dayIndex] }}</span>
-              <strong>{{ day.dayNumber }}</strong>
-              <div
-                class="activities-week-rate-count"
-                *ngIf="areCalendarBadgesReady(page.key) && activitiesPrimaryFilter === 'rates' && weekRateDayCount(day) as rateCount"
-                [ngClass]="weekRateDayHeatClass(day)"
-              >
-                {{ rateCountLabel(rateCount) }}
-              </div>
-            </div>
-            <div class="activities-week-hours-col">
-              <div class="activities-week-hour-label" *ngFor="let hour of calendarWeekHours">
-                {{ weekHourLabel(hour) }}
-              </div>
-            </div>
-            <div class="activities-week-day-col" *ngFor="let day of page.days" [class.today]="day.isToday" [class.activities-week-day-col-rates]="activitiesPrimaryFilter === 'rates'">
-              <ng-container *ngIf="activitiesPrimaryFilter === 'rates'; else weekEventBadges">
-                <div class="activities-week-hour-slot activities-week-rate-slot" *ngFor="let hour of calendarWeekHours">
-                  <div
-                    class="activities-week-rate-badge"
-                    *ngIf="areCalendarBadgesReady(page.key) && weekRateHourCount(day, hour) as hourCount"
-                    [ngClass]="rateHeatClassByCount(hourCount)"
-                  >
-                    {{ rateCountLabel(hourCount) }}
-                  </div>
-                </div>
-              </ng-container>
-              <ng-template #weekEventBadges>
-                <div class="activities-week-hour-slot" *ngFor="let hour of calendarWeekHours"></div>
-                <button
-                  type="button"
-                  class="activities-calendar-badge activities-week-timed-badge"
-                  [ngClass]="calendarBadgeToneClass(badge.row)"
-                  *ngFor="let badge of (areCalendarBadgesReady(page.key) ? weekDayTimedBadges(day) : [])"
-                  [style.top.%]="badge.topPct"
-                  [style.height.%]="badge.heightPct"
-                  (click)="onActivityRowClick(badge.row, $event)"
-                >
-                  <span>{{ badge.row.title }}</span>
-                </button>
-              </ng-template>
-            </div>
-          </div>
-        </section>
-      </ng-template>
-
-      <div class="editor-list-card" *ngIf="!activitiesInitialLoadPending && filteredActivityRows.length === 0">
-        <h4>No items</h4>
-        <p>{{ activitiesEmptyLabel }}</p>
-      </div>
-    </div><!-- /calendar-scroll -->
-  </ng-template><!-- /activitiesCalendarLayout -->
-
-
   <!-- ───── Rate editor dock ───── -->
   <div
     class="activities-rate-editor-dock"

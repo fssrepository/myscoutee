@@ -3,6 +3,7 @@ import { Observable } from 'rxjs';
 export type ListDirection = 'asc' | 'desc';
 export type SmartListViewMode = 'list' | 'month' | 'week';
 export type SmartListClassValue = string | string[] | Set<string> | Record<string, boolean> | null;
+export type SmartListCalendarVariant = 'default' | 'rate-counts';
 
 export interface ListQuery {
   page: number;

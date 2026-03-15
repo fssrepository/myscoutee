@@ -20,6 +20,7 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 import { firstValueFrom } from 'rxjs';
 
+import { AppCalendarHelpers } from '../../../app-calendar-helpers';
 import { AppUtils } from '../../../app-utils';
 import type {
   ListDirection,
@@ -32,6 +33,7 @@ import type {
   SmartListCalendarMonthSpan,
   SmartListCalendarMonthWeek,
   SmartListCalendarTimedBadge,
+  SmartListCalendarVariant,
   SmartListCalendarWeekPage,
   SmartListClassValue,
   SmartListConfig,
@@ -87,6 +89,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
   @Input() stickyHeaderClass: SmartListClassValue = null;
   @Input() groupMarkerClass: SmartListClassValue = null;
   @Input() footerSpacerHeight: string | null = null;
+  @Input() calendarVariant: SmartListCalendarVariant = 'default';
 
   @Output() readonly stateChange = new EventEmitter<SmartListStateChange<T>>();
   @Output() readonly viewChange = new EventEmitter<string>();
@@ -374,6 +377,51 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     }
 
     return badges;
+  }
+
+  protected isRateCountCalendarVariant(): boolean {
+    return this.calendarVariant === 'rate-counts';
+  }
+
+  protected monthRateCount(day: SmartListCalendarDay<T>): number {
+    return day.items.length;
+  }
+
+  protected weekRateDayCount(day: SmartListCalendarDay<T>): number {
+    return day.items.length;
+  }
+
+  protected weekRateHourCount(day: SmartListCalendarDay<T>, hour: number): number {
+    const calendar = this.calendarConfig();
+    if (!calendar) {
+      return 0;
+    }
+    const slotStart = new Date(day.date);
+    slotStart.setHours(hour, 0, 0, 0);
+    const slotEnd = new Date(slotStart);
+    slotEnd.setHours(hour + 1, 0, 0, 0);
+    let count = 0;
+    for (const item of day.items) {
+      const range = calendar.resolveDateRange(item, this.currentQuery());
+      if (!range) {
+        continue;
+      }
+      if (range.start.getTime() < slotEnd.getTime() && range.end.getTime() > slotStart.getTime()) {
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  protected rateHeatClassByCount(count: number): string {
+    return AppCalendarHelpers.rateHeatClass(count);
+  }
+
+  protected rateCountLabel(value: number): string {
+    if (!Number.isFinite(value) || value <= 0) {
+      return '0';
+    }
+    return value > 99 ? '99+' : `${value}`;
   }
 
   protected calendarBadgeLabel(item: T): string {
