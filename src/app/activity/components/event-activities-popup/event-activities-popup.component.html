@@ -455,9 +455,7 @@
       #activitiesSmartList
       [config]="activitiesSmartListConfig"
       [loaders]="activitiesSmartListLoaders"
-      [itemTemplate]="activitiesPrimaryFilter === 'rates'
-        ? activitiesRateSmartListItemTemplate
-        : (activitiesPrimaryFilter === 'chats' ? activitiesChatSmartListItemTemplate : activitiesEventSmartListItemTemplate)"
+      [itemTemplate]="activitiesActiveSmartListItemTemplate"
       [view]="activitiesView"
       [query]="activitiesSmartListQuery"
       (itemSelect)="onActivitiesSmartListItemSelect($event)"

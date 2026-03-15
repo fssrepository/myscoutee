@@ -145,6 +145,33 @@
   transition: none;
 }
 
+.smart-list.chat-thread-list {
+  display: block;
+  gap: 0;
+  padding-right: 0.12rem;
+  scroll-behavior: smooth;
+}
+
+.smart-list__group-marker.chat-thread-group-marker {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  margin: 0.08rem auto 0.3rem;
+  border: 1px solid rgba(43, 74, 116, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: rgba(36, 64, 99, 0.88);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  padding: 0.22rem 0.58rem;
+}
+
 .smart-list.activities-scroll-list .smart-list__sticky,
 .smart-list.activities-scroll-list .smart-list__group-marker,
 .smart-list.activities-scroll-list .smart-list__footer-spacer {
@@ -186,6 +213,12 @@
 
   .smart-list.activities-scroll-list.activities-scroll-list-chat {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .smart-list.chat-thread-list {
+    padding-right: 0.08rem;
   }
 }
 

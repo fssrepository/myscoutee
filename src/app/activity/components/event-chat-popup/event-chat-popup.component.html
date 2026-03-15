@@ -129,35 +129,13 @@
             <h4>Loading chat...</h4>
           </div>
           <ng-container *ngIf="!chatInitialLoadPending">
-            <div class="chat-thread" #chatThread (scroll)="onChatThreadScroll($event)">
-              <ng-container *ngFor="let dayGroup of groupedMessages; trackBy: trackByDayGroup">
-                <div class="chat-day-sticky">
-                  <span class="chat-day-pill">{{ dayGroup.label }}</span>
-                </div>
-                <article
-                  class="chat-message"
-                  *ngFor="let message of dayGroup.messages; trackBy: trackByMessage"
-                  [class.mine]="message.mine"
-                  [attr.data-chat-message-id]="message.id"
-                >
-                  <div class="chat-bubble">
-                    <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">
-                      {{ message.senderAvatar.initials }}
-                    </span>
-                    <div class="chat-message-content">
-                      <div class="chat-meta-row">
-                        <span class="chat-sender-name">{{ message.sender }}</span>
-                        <span class="chat-time-chip">{{ message.time }}</span>
-                      </div>
-                      <p class="chat-line">{{ message.text }}</p>
-                    </div>
-                    <div class="chat-readers" *ngIf="message.readBy.length > 0">
-                      <span class="chat-reader" *ngFor="let reader of message.readBy" [class]="'user-color-' + reader.gender">{{ reader.initials }}</span>
-                    </div>
-                  </div>
-                </article>
-              </ng-container>
-            </div>
+            <app-smart-list
+              [config]="chatThreadSmartListConfig"
+              [loadPage]="chatThreadLoadPage"
+              [itemTemplate]="chatThreadMessageTemplate"
+              [query]="chatThreadQuery"
+              (stateChange)="onChatThreadSmartListStateChange($event)"
+            ></app-smart-list>
 
             <div class="chat-compose-box">
               <textarea rows="3" placeholder="Write message" [(ngModel)]="draftMessage"></textarea>
@@ -171,3 +149,28 @@
     </div>
   </div>
 </div>
+
+<ng-template #chatThreadMessageTemplate let-message let-groupLabel="groupLabel">
+  <article
+    class="chat-message"
+    [class.mine]="message.mine"
+    [attr.data-group-label]="groupLabel"
+    [attr.data-chat-message-id]="message.id"
+  >
+    <div class="chat-bubble">
+      <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">
+        {{ message.senderAvatar.initials }}
+      </span>
+      <div class="chat-message-content">
+        <div class="chat-meta-row">
+          <span class="chat-sender-name">{{ message.sender }}</span>
+          <span class="chat-time-chip">{{ message.time }}</span>
+        </div>
+        <p class="chat-line">{{ message.text }}</p>
+      </div>
+      <div class="chat-readers" *ngIf="message.readBy.length > 0">
+        <span class="chat-reader" *ngFor="let reader of message.readBy" [class]="'user-color-' + reader.gender">{{ reader.initials }}</span>
+      </div>
+    </div>
+  </article>
+</ng-template>

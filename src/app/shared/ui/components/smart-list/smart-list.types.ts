@@ -5,6 +5,9 @@ export type SmartListViewMode = 'list' | 'month' | 'week';
 export type SmartListClassValue = string | string[] | Set<string> | Record<string, boolean> | null;
 export type SmartListCalendarVariant = 'default' | 'rate-counts';
 export type SmartListFilters = object;
+export type SmartListLoadTriggerEdge = 'end' | 'start';
+export type SmartListMergeStrategy = 'append' | 'prepend';
+export type SmartListInitialScrollAnchor = 'start' | 'end';
 export type SmartListConfigValue<TValue, TFilters extends SmartListFilters = SmartListFilters>
   = TValue | ((query: ListQuery<TFilters>) => TValue);
 
@@ -145,6 +148,7 @@ export interface SmartListItemSelectEvent<T, TFilters extends SmartListFilters =
 
 export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
   pageSize?: number;
+  initialPageCount?: number;
   preloadOffsetPx?: number;
   loadingDelayMs?: number;
   loadingWindowMs?: number;
@@ -158,8 +162,12 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   emptyLabel?: string | ((query: ListQuery<TFilters>) => string);
   emptyDescription?: string | ((query: ListQuery<TFilters>) => string);
   emptyStickyLabel?: string | ((query: ListQuery<TFilters>) => string);
+  showStickyHeader?: boolean;
   showFirstGroupMarker?: boolean;
   showGroupMarker?: (context: SmartListGroupMarkerContext<T, TFilters>) => boolean;
+  loadTriggerEdge?: SmartListLoadTriggerEdge;
+  mergeStrategy?: SmartListMergeStrategy;
+  initialScrollAnchor?: SmartListInitialScrollAnchor;
   views?: ReadonlyArray<SmartListViewConfig<T, TFilters>>;
   calendar?: SmartListCalendarConfig<T, TFilters>;
   containerClass?: SmartListConfigValue<SmartListClassValue, TFilters>;

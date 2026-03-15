@@ -156,7 +156,7 @@
     [ngClass]="resolvedContainerClass()"
     (scroll)="onListScroll($event)"
   >
-    <div class="smart-list__sticky" [ngClass]="resolvedStickyHeaderClass()">{{ stickyLabel }}</div>
+    <div *ngIf="shouldShowStickyHeader()" class="smart-list__sticky" [ngClass]="resolvedStickyHeaderClass()">{{ stickyLabel }}</div>
 
     <ng-container *ngIf="groups.length > 0; else emptyState">
       <ng-container *ngIf="resolvedItemTemplate() as templateRef">

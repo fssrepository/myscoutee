@@ -167,8 +167,22 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   @ViewChild('activitiesSmartList')
   private activitiesSmartList?: SmartListComponent<AppTypes.ActivityListRow, ActivitiesSmartListFilters>;
 
+  private activitiesEventSmartListItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>>;
+  private activitiesChatSmartListItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>>;
   private activitiesRateSingleSmartListItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>>;
   private activitiesRatePairSmartListItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>>;
+
+  @ViewChild('activitiesEventSmartListItemTemplate', { read: TemplateRef })
+  private set activitiesEventSmartListItemTemplate(value: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>> | undefined) {
+    this.activitiesEventSmartListItemTemplateRef = value;
+    this.cdr.markForCheck();
+  }
+
+  @ViewChild('activitiesChatSmartListItemTemplate', { read: TemplateRef })
+  private set activitiesChatSmartListItemTemplate(value: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>> | undefined) {
+    this.activitiesChatSmartListItemTemplateRef = value;
+    this.cdr.markForCheck();
+  }
 
   @ViewChild('activitiesRateSingleSmartListItemTemplate', { read: TemplateRef })
   private set activitiesRateSingleSmartListItemTemplate(value: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>> | undefined) {
@@ -2386,6 +2400,16 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return this.activitiesRateFilter.startsWith('pair')
       ? (this.activitiesRatePairSmartListItemTemplateRef ?? null)
       : (this.activitiesRateSingleSmartListItemTemplateRef ?? null);
+  }
+
+  protected get activitiesActiveSmartListItemTemplate(): TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>> | null {
+    if (this.activitiesPrimaryFilter === 'rates') {
+      return this.activitiesRateSmartListItemTemplate;
+    }
+    if (this.activitiesPrimaryFilter === 'chats') {
+      return this.activitiesChatSmartListItemTemplateRef ?? null;
+    }
+    return this.activitiesEventSmartListItemTemplateRef ?? null;
   }
 
   protected isSelectedActivityRateReadOnly(): boolean {

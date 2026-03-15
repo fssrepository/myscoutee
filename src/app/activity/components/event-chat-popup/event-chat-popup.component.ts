@@ -2,10 +2,8 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
-  ElementRef,
   NgZone,
   OnDestroy,
-  ViewChild,
   computed,
   effect,
   inject
@@ -14,6 +12,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { of } from 'rxjs';
 
 import type * as AppTypes from '../../../shared/app-types';
 import { AppUtils } from '../../../shared/app-utils';
@@ -21,11 +20,24 @@ import { ActivitiesDbContextService } from '../../../shared/activities-db-contex
 import { EventEditorService } from '../../../shared/event-editor.service';
 import type { EventChatResourceContext } from '../../../shared/activities-models';
 import type { EventMenuItem } from '../../../shared/demo-data';
+import {
+  SmartListComponent,
+  type ListQuery,
+  type PageResult,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  type SmartListStateChange
+} from '../../../shared/ui';
+
+interface ChatThreadFilters {
+  revision?: number;
+  sessionKey?: string;
+}
 
 @Component({
   selector: 'app-event-chat-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule, SmartListComponent],
   templateUrl: './event-chat-popup.component.html',
   styleUrl: './event-chat-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -36,24 +48,8 @@ export class EventChatPopupComponent implements OnDestroy {
   protected readonly activitiesContext = inject(ActivitiesDbContextService);
   private readonly eventEditorService = inject(EventEditorService);
 
-  @ViewChild('chatThread')
-  private chatThreadRef?: ElementRef<HTMLDivElement>;
-
   protected readonly session = computed(() => this.activitiesContext.eventChatSession());
-  protected get chatPopupMessages(): AppTypes.ChatPopupMessage[] {
-    if (this.allMessages.length === 0) {
-      return [];
-    }
-    const start = Math.max(0, this.allMessages.length - this.chatVisibleMessageCount);
-    return this.allMessages.slice(start);
-  }
-
-  protected get groupedMessages(): AppTypes.ChatPopupDayGroup[] {
-    return this.toDayGroups(this.chatPopupMessages);
-  }
-
   protected chatInitialLoadPending = false;
-  protected chatHistoryLoadingOlder = false;
   protected allMessages: AppTypes.ChatPopupMessage[] = [];
   protected draftMessage = '';
   protected showContextMenu = false;
@@ -65,14 +61,35 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private readonly chatHistoryPageSize = 10;
   private readonly chatInitialVisiblePageCount = 2;
-  protected chatVisibleMessageCount = this.chatHistoryPageSize;
-  private readonly chatLoadOlderDelayMs = 1000;
+  private readonly chatLoadOlderDelayMs = 1500;
   private readonly headerLoadingWindowMs = 3000;
   private readonly headerLoadingTickMs = 16;
+  private chatThreadRevision = 0;
+  protected chatThreadQuery: Partial<ListQuery<ChatThreadFilters>> = {};
+  protected readonly chatThreadSmartListConfig: SmartListConfig<AppTypes.ChatPopupMessage, ChatThreadFilters> = {
+    pageSize: this.chatHistoryPageSize,
+    initialPageCount: this.chatInitialVisiblePageCount,
+    preloadOffsetPx: 48,
+    loadingDelayMs: this.chatLoadOlderDelayMs,
+    showStickyHeader: false,
+    showFirstGroupMarker: true,
+    loadTriggerEdge: 'start',
+    mergeStrategy: 'prepend',
+    initialScrollAnchor: 'end',
+    containerClass: 'chat-thread-list',
+    groupMarkerClass: 'chat-thread-group-marker',
+    emptyLabel: 'No messages yet',
+    emptyDescription: 'Start the conversation.',
+    emptyStickyLabel: '',
+    trackBy: (_index, message) => message.id,
+    groupBy: message => this.chatDayLabel(new Date(message.sentAtIso))
+  };
+  protected readonly chatThreadLoadPage: SmartListLoadPage<AppTypes.ChatPopupMessage, ChatThreadFilters> = (
+    query: ListQuery<ChatThreadFilters>
+  ) => of(this.chatThreadPageResult(query));
 
   private loadSequence = 0;
   private loadedSessionKey: string | null = null;
-  private chatHistoryLoadOlderTimer: ReturnType<typeof setTimeout> | null = null;
   private chatInitialLoadTimer: ReturnType<typeof setTimeout> | null = null;
   private chatHeaderLoadingCounter = 0;
   private chatHeaderLoadingInterval: ReturnType<typeof setInterval> | null = null;
@@ -94,12 +111,13 @@ export class EventChatPopupComponent implements OnDestroy {
       this.showContextMenu = false;
       this.contextMenuOpenUp = false;
       this.allMessages = [];
-      this.chatVisibleMessageCount = this.chatHistoryPageSize;
+      this.chatThreadRevision = 0;
+      this.syncChatThreadQuery();
       this.chatHeaderProgress = 0;
-      this.cancelChatHistoryLoadOlder();
       this.cancelChatInitialLoadTimer();
       if (!session) {
         this.loadedSessionKey = null;
+        this.chatThreadQuery = {};
         this.chatInitialLoadPending = false;
         this.clearChatHeaderLoadingAnimation();
         this.cdr.markForCheck();
@@ -133,7 +151,6 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.cancelChatHistoryLoadOlder();
     this.cancelChatInitialLoadTimer();
     this.clearChatHeaderLoadingAnimation();
   }
@@ -141,19 +158,11 @@ export class EventChatPopupComponent implements OnDestroy {
   protected close(): void {
     this.showContextMenu = false;
     this.contextMenuOpenUp = false;
-    this.cancelChatHistoryLoadOlder();
     this.cancelChatInitialLoadTimer();
     this.clearChatHeaderLoadingAnimation();
     this.loadedSessionKey = null;
+    this.chatThreadQuery = {};
     this.activitiesContext.closeEventChat();
-  }
-
-  protected trackByDayGroup(_index: number, group: AppTypes.ChatPopupDayGroup): string {
-    return group.key;
-  }
-
-  protected trackByMessage(_index: number, message: AppTypes.ChatPopupMessage): string {
-    return message.id;
   }
 
   protected selectedChatHasSubEventMenu(): boolean {
@@ -316,61 +325,19 @@ export class EventChatPopupComponent implements OnDestroy {
     this.contextMenuOpenUp = false;
   }
 
-  protected hasMoreChatMessages(): boolean {
-    return this.chatVisibleMessageCount < this.allMessages.length;
-  }
-
-  protected onChatThreadScroll(event: Event): void {
-    const thread = event.target as HTMLElement | null;
-    if (thread) {
-      this.updateChatHeaderProgress(thread);
-    }
-    if (this.chatHistoryLoadingOlder || !this.hasMoreChatMessages()) {
+  protected onChatThreadSmartListStateChange(
+    state: SmartListStateChange<AppTypes.ChatPopupMessage, ChatThreadFilters>
+  ): void {
+    if (this.chatInitialLoadPending) {
       return;
     }
-    if (!thread) {
-      return;
-    }
-    if (thread.scrollTop > 48) {
-      return;
-    }
-    const beforeHeight = thread.scrollHeight;
-    const beforeTop = thread.scrollTop;
-    const threadRect = thread.getBoundingClientRect();
-    const anchorMessage =
-      Array.from(thread.querySelectorAll<HTMLElement>('.chat-message[data-chat-message-id]'))
-        .find(message => message.getBoundingClientRect().bottom > threadRect.top + 8) ?? null;
-    const anchorMessageId = anchorMessage?.dataset['chatMessageId'] ?? null;
-    const anchorOffsetTop = anchorMessage ? anchorMessage.getBoundingClientRect().top - threadRect.top : 0;
-    this.chatHistoryLoadingOlder = true;
-    this.beginChatHeaderProgressLoading();
-    this.chatHistoryLoadOlderTimer = setTimeout(() => {
-      this.chatHistoryLoadOlderTimer = null;
-      this.chatVisibleMessageCount = Math.min(this.chatVisibleMessageCount + this.chatHistoryPageSize, this.allMessages.length);
-      this.cdr.detectChanges();
-      this.runAfterThreadRender(() => {
-        if (anchorMessageId) {
-          const restoredAnchor = thread.querySelector<HTMLElement>(`.chat-message[data-chat-message-id="${anchorMessageId}"]`);
-          if (restoredAnchor) {
-            const restoredThreadRect = thread.getBoundingClientRect();
-            const restoredOffsetTop = restoredAnchor.getBoundingClientRect().top - restoredThreadRect.top;
-            thread.scrollTop += restoredOffsetTop - anchorOffsetTop;
-          } else {
-            const afterHeight = thread.scrollHeight;
-            thread.scrollTop = beforeTop + (afterHeight - beforeHeight);
-          }
-        } else {
-          const afterHeight = thread.scrollHeight;
-          thread.scrollTop = beforeTop + (afterHeight - beforeHeight);
-        }
-        this.triggerChatHistoryArrivalBump(thread).finally(() => {
-          this.updateChatHeaderProgress(thread);
-          this.chatHistoryLoadingOlder = false;
-          this.endChatHeaderProgressLoading();
-          this.cdr.markForCheck();
-        });
-      });
-    }, this.chatLoadOlderDelayMs);
+    this.chatHeaderProgress = state.scrollable
+      ? state.progress
+      : (state.items.length > 0 ? 1 : 0);
+    this.chatHeaderProgressLoading = state.loading;
+    this.chatHeaderLoadingProgress = state.loadingProgress;
+    this.chatHeaderLoadingOverdue = state.loadingOverdue;
+    this.cdr.markForCheck();
   }
 
   protected sendMessage(): void {
@@ -397,32 +364,35 @@ export class EventChatPopupComponent implements OnDestroy {
         readBy: []
       }
     ];
-    this.chatVisibleMessageCount = Math.max(this.chatVisibleMessageCount, this.chatHistoryPageSize);
-    this.chatVisibleMessageCount = Math.min(this.chatVisibleMessageCount, this.allMessages.length);
+    this.chatThreadRevision += 1;
+    this.syncChatThreadQuery();
     this.draftMessage = '';
     this.cdr.markForCheck();
-    this.runAfterThreadRender(() => this.scrollThreadToBottom());
   }
 
-  private toDayGroups(messages: readonly AppTypes.ChatPopupMessage[]): AppTypes.ChatPopupDayGroup[] {
-    const groups: AppTypes.ChatPopupDayGroup[] = [];
-    for (const message of messages) {
-      const sentAt = new Date(message.sentAtIso);
-      const dayKey = Number.isNaN(sentAt.getTime())
-        ? 'unknown'
-        : `${sentAt.getFullYear()}-${AppUtils.pad2(sentAt.getMonth() + 1)}-${AppUtils.pad2(sentAt.getDate())}`;
-      const group = groups[groups.length - 1];
-      if (!group || group.key !== dayKey) {
-        groups.push({
-          key: dayKey,
-          label: this.chatDayLabel(sentAt),
-          messages: [message]
-        });
-        continue;
-      }
-      group.messages.push(message);
+  private chatThreadPageResult(query: ListQuery<ChatThreadFilters>): PageResult<AppTypes.ChatPopupMessage> {
+    const total = this.allMessages.length;
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || this.chatHistoryPageSize));
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const end = Math.max(0, total - (page * pageSize));
+    const start = Math.max(0, end - pageSize);
+    return {
+      items: this.allMessages.slice(start, end),
+      total
+    };
+  }
+
+  private syncChatThreadQuery(): void {
+    if (!this.loadedSessionKey) {
+      this.chatThreadQuery = {};
+      return;
     }
-    return groups;
+    this.chatThreadQuery = {
+      filters: {
+        revision: this.chatThreadRevision,
+        sessionKey: this.loadedSessionKey
+      }
+    };
   }
 
   private chatDayLabel(value: Date): string {
@@ -468,11 +438,6 @@ export class EventChatPopupComponent implements OnDestroy {
       metricScore: source.activity,
       source
     };
-  }
-
-  private initialChatVisibleMessageCount(totalMessages: number): number {
-    const chunkSize = this.chatHistoryPageSize * this.chatInitialVisiblePageCount;
-    return Math.min(totalMessages, Math.max(this.chatHistoryPageSize, chunkSize));
   }
 
   private chatCountValue(value: unknown): number {
@@ -537,77 +502,6 @@ export class EventChatPopupComponent implements OnDestroy {
     return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
   }
 
-  private runAfterThreadRender(task: () => void): void {
-    if (typeof globalThis.requestAnimationFrame === 'function') {
-      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(task));
-      return;
-    }
-    setTimeout(task, 0);
-  }
-
-  private triggerChatHistoryArrivalBump(thread: HTMLElement): Promise<void> {
-    const firstMessage = this.firstVisibleChatMessage(thread) ?? thread.querySelector<HTMLElement>('.chat-message');
-    const startTop = thread.scrollTop;
-    const messageHeight = firstMessage?.offsetHeight ?? 68;
-    const bumpDistance = Math.max(24, Math.round(messageHeight * 0.72));
-    const bumpTop = Math.max(0, startTop - bumpDistance);
-    if (bumpTop >= startTop - 0.5) {
-      return Promise.resolve();
-    }
-    if (typeof thread.animate !== 'function' || typeof globalThis.requestAnimationFrame !== 'function') {
-      thread.scrollTo({ top: bumpTop, behavior: 'smooth' });
-      return Promise.resolve();
-    }
-    return new Promise(resolve => {
-      const durationMs = 240;
-      const animation = thread.animate(
-        [
-          { transform: 'translateZ(0)' },
-          { transform: 'translateZ(0)' }
-        ],
-        {
-          duration: durationMs,
-          easing: 'linear',
-          fill: 'none'
-        }
-      );
-      let done = false;
-      const finish = () => {
-        if (done) {
-          return;
-        }
-        done = true;
-        thread.scrollTop = bumpTop;
-        resolve();
-      };
-      const tick = () => {
-        if (done) {
-          return;
-        }
-        const currentTime = typeof animation.currentTime === 'number' ? animation.currentTime : 0;
-        const progress = AppUtils.clampNumber(currentTime / durationMs, 0, 1);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        thread.scrollTop = startTop + (bumpTop - startTop) * eased;
-        if (progress >= 1 || animation.playState === 'finished' || animation.playState === 'idle') {
-          finish();
-          return;
-        }
-        globalThis.requestAnimationFrame(tick);
-      };
-      animation.oncancel = finish;
-      animation.onfinish = finish;
-      globalThis.requestAnimationFrame(tick);
-    });
-  }
-
-  private firstVisibleChatMessage(thread: HTMLElement): HTMLElement | null {
-    const threadRect = thread.getBoundingClientRect();
-    return (
-      Array.from(thread.querySelectorAll<HTMLElement>('.chat-message[data-chat-message-id]'))
-        .find(message => message.getBoundingClientRect().bottom > threadRect.top + 8) ?? null
-    );
-  }
-
   private beginChatHeaderProgressLoading(): void {
     this.chatHeaderLoadingCounter += 1;
     if (this.chatHeaderLoadingCounter > 1) {
@@ -670,24 +564,12 @@ export class EventChatPopupComponent implements OnDestroy {
           this.chatHeaderLoadingCompleteTimer = null;
           if (this.chatInitialLoadPending) {
             this.chatInitialLoadPending = false;
-            this.scrollThreadToBottomAfterLoad();
+            this.chatHeaderProgress = this.allMessages.length > 0 ? 1 : 0;
           }
           this.cdr.markForCheck();
         });
       }, 100)
     );
-  }
-
-  private scrollThreadToBottomAfterLoad(): void {
-    if (this.chatHeaderProgressLoading || !this.session()) {
-      return;
-    }
-    const run = () => this.scrollThreadToBottom();
-    if (typeof globalThis.requestAnimationFrame === 'function') {
-      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(run));
-      return;
-    }
-    setTimeout(run, 0);
   }
 
   private updateChatHeaderLoadingWindow(): void {
@@ -717,24 +599,6 @@ export class EventChatPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  private updateChatHeaderProgress(chatThread: HTMLElement): void {
-    const maxVerticalScroll = Math.max(0, chatThread.scrollHeight - chatThread.clientHeight);
-    if (maxVerticalScroll <= 0) {
-      this.chatHeaderProgress = 1;
-      return;
-    }
-    this.chatHeaderProgress = AppUtils.clampNumber(chatThread.scrollTop / maxVerticalScroll, 0, 1);
-  }
-
-  private cancelChatHistoryLoadOlder(): void {
-    if (!this.chatHistoryLoadOlderTimer) {
-      return;
-    }
-    clearTimeout(this.chatHistoryLoadOlderTimer);
-    this.chatHistoryLoadOlderTimer = null;
-    this.chatHistoryLoadingOlder = false;
-  }
-
   private finishInitialChatLoad(
     sequence: number,
     messages: AppTypes.ChatPopupMessage[],
@@ -748,7 +612,7 @@ export class EventChatPopupComponent implements OnDestroy {
         return;
       }
       this.allMessages = [...messages];
-      this.chatVisibleMessageCount = this.initialChatVisibleMessageCount(this.allMessages.length);
+      this.syncChatThreadQuery();
       this.endChatHeaderProgressLoading();
       this.cdr.markForCheck();
     };
@@ -767,17 +631,5 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     clearTimeout(this.chatInitialLoadTimer);
     this.chatInitialLoadTimer = null;
-  }
-
-  private scrollThreadToBottom(): void {
-    setTimeout(() => {
-      const thread = this.chatThreadRef?.nativeElement;
-      if (!thread) {
-        return;
-      }
-      thread.scrollTop = thread.scrollHeight;
-      this.updateChatHeaderProgress(thread);
-      this.cdr.markForCheck();
-    }, 0);
   }
 }
