@@ -131,6 +131,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
   private calendarPendingPageKey: string | null = null;
   private calendarPendingPageAnchor: Date | null = null;
   private calendarPendingVisualKey: string | null = null;
+  private calendarFrozenProgress: number | null = null;
 
   ngAfterViewInit(): void {
     this.afterViewInit = true;
@@ -451,6 +452,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     this.scrollable = false;
     this.calendarPendingPageKey = null;
     this.calendarPendingVisualKey = null;
+    this.calendarFrozenProgress = null;
 
     if (this.currentViewMode === 'list') {
       this.calendarInitialPageIndexOverride = null;
@@ -705,6 +707,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     this.calendarPendingPageKey = null;
     this.calendarPendingPageAnchor = null;
     this.calendarPendingVisualKey = null;
+    this.calendarFrozenProgress = null;
   }
 
   private updateStickyLabel(scrollTop: number): void {
@@ -761,7 +764,11 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
 
     const pageWidth = target.clientWidth || 0;
     this.scrollable = pages.length > 1;
-    this.progress = this.calendarProgressForSurface(target, pages);
+    if (this.calendarPendingVisualKey && this.calendarFrozenProgress !== null) {
+      this.progress = this.calendarFrozenProgress;
+    } else {
+      this.progress = this.calendarProgressForSurface(target, pages);
+    }
 
     const pageIndex = this.currentCalendarPageIndex(target, pages.length);
     this.stickyLabel = pages[pageIndex]?.label ?? pages[0]?.label ?? this.resolveEmptyStickyLabel();
@@ -1248,6 +1255,9 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
     const sequence = ++this.loadSequence;
     this.calendarPendingPageKey = pageKey;
     this.calendarPendingPageAnchor = this.normalizeCalendarAnchor(anchor);
+    if (this.calendarPendingVisualKey !== pageKey) {
+      this.calendarFrozenProgress = this.progress;
+    }
     this.calendarPendingVisualKey = pageKey;
     this.loading = true;
     this.startLoadingAnimation();
@@ -1283,6 +1293,7 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
       this.calendarPendingPageKey = null;
       this.calendarPendingPageAnchor = null;
       this.calendarPendingVisualKey = null;
+      this.calendarFrozenProgress = null;
       this.loading = false;
       this.endLoadingAnimation();
       this.refreshSurfaceSoon();
@@ -1605,7 +1616,13 @@ export class SmartListComponent<T> implements AfterViewInit, OnChanges, OnDestro
 
   private recenterCalendarWindow(anchor: Date, targetIndex: number): void {
     const targetPageKey = this.calendarPageKey(anchor);
-    this.calendarPendingVisualKey = this.calendarPageItems.has(targetPageKey) ? null : targetPageKey;
+    if (this.calendarPageItems.has(targetPageKey)) {
+      this.calendarPendingVisualKey = null;
+      this.calendarFrozenProgress = null;
+    } else {
+      this.calendarFrozenProgress = this.progress;
+      this.calendarPendingVisualKey = targetPageKey;
+    }
     if (this.isMonthMode()) {
       const normalizedAnchor = AppUtils.startOfMonth(anchor);
       this.calendarMonthFocusDate = normalizedAnchor;
