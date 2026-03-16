@@ -128,11 +128,16 @@ export class DemoEventsRepositoryBuilder {
     const map = new Map<string, string>();
     for (const [userId, items] of Object.entries(options.hostingByUser)) {
       for (const item of items) {
-        map.set(item.id, userId);
+        map.set(item.id, item.creatorUserId?.trim() || userId);
       }
     }
     for (const [userId, items] of Object.entries(options.eventsByUser)) {
       for (const item of items) {
+        const explicitCreatorUserId = item.creatorUserId?.trim() || '';
+        if (explicitCreatorUserId) {
+          map.set(item.id, explicitCreatorUserId);
+          continue;
+        }
         if (item.isAdmin && !map.has(item.id)) {
           map.set(item.id, userId);
         }

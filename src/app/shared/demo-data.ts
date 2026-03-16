@@ -58,6 +58,7 @@ export interface EventMenuItem {
   timeframe: string;
   activity: number;
   isAdmin: boolean;
+  creatorUserId?: string;
 }
 
 export interface HostingMenuItem {
@@ -67,6 +68,7 @@ export interface HostingMenuItem {
   shortDescription: string;
   timeframe: string;
   activity: number;
+  creatorUserId?: string;
 }
 
 export interface RateMenuItem {
@@ -462,7 +464,8 @@ export const DEMO_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       shortDescription: 'Creative city walk with checkpoints and mini challenges.',
       timeframe: 'Mar 8 · 10:00 AM - 7:00 PM',
       activity: 1,
-      isAdmin: false
+      isAdmin: false,
+      creatorUserId: 'u10'
     },
     {
       id: 'e3',
@@ -471,7 +474,8 @@ export const DEMO_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       shortDescription: 'Three-spot tasting route with ranking and vibe voting.',
       timeframe: 'Mar 12 · 7:30 PM - 11:30 PM',
       activity: 3,
-      isAdmin: false
+      isAdmin: false,
+      creatorUserId: 'u3'
     },
     {
       id: 'e6',
@@ -480,7 +484,8 @@ export const DEMO_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       shortDescription: 'Casual teams, rotation rounds, and post-game snacks.',
       timeframe: 'Mar 14 · 5:00 PM - 8:30 PM',
       activity: 2,
-      isAdmin: false
+      isAdmin: false,
+      creatorUserId: 'u4'
     },
     {
       id: 'e7',
@@ -498,7 +503,8 @@ export const DEMO_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       shortDescription: 'Guided walk with paired mini-conversations.',
       timeframe: 'Feb 27 · 11:15 AM - 1:00 PM',
       activity: 2,
-      isAdmin: false
+      isAdmin: false,
+      creatorUserId: 'u12'
     },
     {
       id: 'e9',
@@ -507,7 +513,8 @@ export const DEMO_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       shortDescription: 'Table rotations every 20 minutes for fresh intros.',
       timeframe: 'Feb 27 · 1:30 PM - 3:30 PM',
       activity: 3,
-      isAdmin: false
+      isAdmin: false,
+      creatorUserId: 'u2'
     },
     {
       id: 'e10',
@@ -534,7 +541,8 @@ export const DEMO_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       shortDescription: 'Multi-stage mentorship/event arc with check-ins and shared tasks.',
       timeframe: 'Apr 26 - Jun 2',
       activity: 4,
-      isAdmin: false
+      isAdmin: false,
+      creatorUserId: 'u6'
     }
   ],
   u2: [
@@ -556,7 +564,8 @@ export const DEMO_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
       shortDescription: 'Hands-on session and portfolio exchange for creators.',
       timeframe: 'Mar 3 · 6:00 PM - 10:00 PM',
       activity: 2,
-      isAdmin: false
+      isAdmin: false,
+      creatorUserId: 'u11'
     }
   ]
 };

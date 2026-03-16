@@ -19,8 +19,7 @@ import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import type * as AppTypes from '../../../shared/app-types';
 import { AppUtils } from '../../../shared/app-utils';
 import { LazyBgImageDirective } from '../../../shared/lazy-bg-image.directive';
-import { AppContext, EventsService } from '../../../shared/core';
-import type { DemoUser } from '../../../shared/demo-data';
+import { AppContext, EventsService, GameService, type UserDto } from '../../../shared/core';
 import {
   SmartListComponent,
   type ListQuery,
@@ -65,18 +64,16 @@ export class EventExplorePopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly activitiesContext = inject(ActivitiesDbContextService);
   private readonly eventsService = inject(EventsService);
+  private readonly gameService = inject(GameService);
   protected readonly navigatorService = inject(NavigatorService);
   protected readonly alertService = inject(AlertService);
   private readonly appCtx = inject(AppContext);
 
-  protected readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
-  private readonly userByIdMap = new Map(this.users.map(user => [user.id, user]));
+  protected readonly eventExploreOrderOptions = APP_DEMO_DATA.eventExploreOrderOptions;
+  protected readonly topicFilterGroups = APP_STATIC_DATA.interestOptionGroups;
 
-  protected readonly eventExploreOrderOptions = [...APP_DEMO_DATA.eventExploreOrderOptions];
-  protected readonly topicFilterGroups = APP_STATIC_DATA.interestOptionGroups.map(group => ({
-    ...group,
-    options: [...group.options]
-  }));
+  private users: UserDto[] = [];
+  private userByIdMap = new Map<string, UserDto>();
 
   protected isOpen = false;
   protected showOrderPicker = false;
@@ -157,6 +154,8 @@ export class EventExplorePopupComponent {
   };
 
   constructor() {
+    this.refreshUsersDirectory();
+
     effect(() => {
       const request = this.activitiesContext.activitiesNavigationRequest();
       if (!request || request.type !== 'eventExplore') {
@@ -521,6 +520,7 @@ export class EventExplorePopupComponent {
 
   private openEventExplore(): void {
     this.isOpen = true;
+    this.refreshUsersDirectory();
     this.showOrderPicker = false;
     this.showTopicPicker = false;
     this.inlineItemActionMenu = null;
@@ -781,7 +781,7 @@ export class EventExplorePopupComponent {
     return result.slice(0, normalizedCount);
   }
 
-  private resolveUser(userId: string, record: DemoEventRecord): DemoUser {
+  private resolveUser(userId: string, record: DemoEventRecord): UserDto {
     return this.userByIdMap.get(userId)
       ?? this.userByIdMap.get(record.creatorUserId)
       ?? this.users[0]
@@ -853,6 +853,19 @@ export class EventExplorePopupComponent {
 
   private clearExploreCache(): void {
     this.exploreCache.clear();
+  }
+
+  private refreshUsersDirectory(): void {
+    const users = this.gameService.getGameCardsUsersSnapshot();
+    const activeProfile = this.appCtx.activeUserProfile();
+    const nextUsers = [...users];
+
+    if (activeProfile && !nextUsers.some(user => user.id === activeProfile.id)) {
+      nextUsers.push(activeProfile);
+    }
+
+    this.users = nextUsers;
+    this.userByIdMap = new Map(nextUsers.map(user => [user.id, user]));
   }
 
   private reloadEventExploreSmartList(): void {

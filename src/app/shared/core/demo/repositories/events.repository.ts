@@ -14,6 +14,7 @@ import { DemoEventsRepositoryBuilder } from '../builders';
 import {
   EVENTS_TABLE_NAME,
   type DemoEventRecord,
+  type DemoEventRecordCollection,
   type DemoEventScopeFilter,
   type DemoRepositoryEventItemType
 } from '../models/events.model';
@@ -32,20 +33,25 @@ export class DemoEventsRepository {
 
   init(): void {
     const state = this.memoryDb.read();
-    if (state[EVENTS_TABLE_NAME].ids.length > 0) {
+    const seededRecords = this.buildSeededRecords();
+    const currentTable = state[EVENTS_TABLE_NAME];
+
+    if (currentTable.ids.length === 0) {
+      this.memoryDb.write(currentState => ({
+        ...currentState,
+        [EVENTS_TABLE_NAME]: seededRecords
+      }));
       return;
     }
 
-    const records = DemoEventsRepositoryBuilder.buildRecordCollection({
-      invitationsByUser: DEMO_INVITATIONS_BY_USER,
-      eventsByUser: DEMO_EVENTS_BY_USER,
-      hostingByUser: DEMO_HOSTING_BY_USER,
-      publishedById: APP_DEMO_DATA.hostingPublishedById
-    });
+    const migration = this.mergeSeededRecords(currentTable, seededRecords);
+    if (!migration.changed) {
+      return;
+    }
 
     this.memoryDb.write(currentState => ({
       ...currentState,
-      [EVENTS_TABLE_NAME]: records
+      [EVENTS_TABLE_NAME]: migration.table
     }));
   }
 
@@ -342,9 +348,6 @@ export class DemoEventsRepository {
     if (record.creatorUserId === activeUserId) {
       return false;
     }
-    if (!(record.type === 'hosting' || record.isAdmin === true)) {
-      return false;
-    }
     if (record.visibility === 'Invitation only') {
       return false;
     }
@@ -466,5 +469,122 @@ export class DemoEventsRepository {
       .map(topic => `${topic ?? ''}`.trim().replace(/^#+/, ''))
       .filter(topic => topic.length > 0)
       .slice(0, 5)));
+  }
+
+  private buildSeededRecords(): DemoEventRecordCollection {
+    return DemoEventsRepositoryBuilder.buildRecordCollection({
+      invitationsByUser: DEMO_INVITATIONS_BY_USER,
+      eventsByUser: DEMO_EVENTS_BY_USER,
+      hostingByUser: DEMO_HOSTING_BY_USER,
+      publishedById: APP_DEMO_DATA.hostingPublishedById
+    });
+  }
+
+  private mergeSeededRecords(
+    current: DemoEventRecordCollection,
+    seeded: DemoEventRecordCollection
+  ): { table: DemoEventRecordCollection; changed: boolean } {
+    const nextById: Record<string, DemoEventRecord> = { ...current.byId };
+    const nextIds = [...current.ids];
+    let changed = false;
+
+    for (const recordKey of seeded.ids) {
+      const seededRecord = seeded.byId[recordKey];
+      if (!seededRecord) {
+        continue;
+      }
+      const currentRecord = current.byId[recordKey];
+      if (!currentRecord) {
+        nextById[recordKey] = DemoEventsRepositoryBuilder.cloneRecord(seededRecord);
+        nextIds.push(recordKey);
+        changed = true;
+        continue;
+      }
+      const mergedRecord = this.mergeSeededRecord(currentRecord, seededRecord);
+      if (JSON.stringify(currentRecord) !== JSON.stringify(mergedRecord)) {
+        nextById[recordKey] = mergedRecord;
+        changed = true;
+      }
+    }
+
+    return {
+      table: {
+        byId: nextById,
+        ids: nextIds
+      },
+      changed
+    };
+  }
+
+  private mergeSeededRecord(current: DemoEventRecord, seeded: DemoEventRecord): DemoEventRecord {
+    const creatorUserId = this.resolveSeededCreatorUserId(current, seeded);
+    const creatorChanged = creatorUserId !== current.creatorUserId;
+    const acceptedMemberUserIds = this.normalizeUserIds(current.acceptedMemberUserIds);
+    const pendingMemberUserIds = this.normalizeUserIds(current.pendingMemberUserIds);
+    const topics = this.normalizeTopics(current.topics ?? []);
+
+    return {
+      ...current,
+      creatorUserId,
+      creatorName: creatorChanged || !current.creatorName?.trim() ? seeded.creatorName : current.creatorName,
+      creatorInitials: creatorChanged || !current.creatorInitials?.trim() ? seeded.creatorInitials : current.creatorInitials,
+      creatorGender: current.creatorGender === 'woman' || current.creatorGender === 'man'
+        ? current.creatorGender
+        : seeded.creatorGender,
+      creatorCity: current.creatorCity?.trim() || seeded.creatorCity,
+      visibility: this.normalizeVisibility(current.visibility, seeded.visibility),
+      blindMode: this.normalizeBlindMode(current.blindMode, seeded.blindMode),
+      startAtIso: current.startAtIso?.trim() || seeded.startAtIso,
+      endAtIso: current.endAtIso?.trim() || seeded.endAtIso,
+      distanceKm: Number.isFinite(current.distanceKm) ? current.distanceKm : seeded.distanceKm,
+      imageUrl: current.imageUrl?.trim() || seeded.imageUrl,
+      sourceLink: current.sourceLink?.trim() || seeded.sourceLink,
+      location: current.location?.trim() || seeded.location,
+      capacityMin: this.normalizeCount(current.capacityMin) ?? seeded.capacityMin,
+      capacityMax: this.normalizeCount(current.capacityMax) ?? seeded.capacityMax,
+      capacityTotal: this.normalizeCount(current.capacityTotal) ?? seeded.capacityTotal,
+      acceptedMembers: this.normalizeCount(current.acceptedMembers) ?? seeded.acceptedMembers,
+      pendingMembers: this.normalizeCount(current.pendingMembers) ?? seeded.pendingMembers,
+      acceptedMemberUserIds: acceptedMemberUserIds.length > 0
+        ? acceptedMemberUserIds
+        : [...seeded.acceptedMemberUserIds],
+      pendingMemberUserIds: pendingMemberUserIds.length > 0
+        ? pendingMemberUserIds
+        : [...seeded.pendingMemberUserIds],
+      topics: topics.length > 0 ? topics : [...seeded.topics],
+      rating: Number.isFinite(current.rating) ? Number(current.rating) : seeded.rating,
+      relevance: Number.isFinite(current.relevance) ? Number(current.relevance) : seeded.relevance
+    };
+  }
+
+  private resolveSeededCreatorUserId(current: DemoEventRecord, seeded: DemoEventRecord): string {
+    const currentCreatorUserId = current.creatorUserId?.trim() ?? '';
+    if (!currentCreatorUserId) {
+      return seeded.creatorUserId;
+    }
+    if (!current.isAdmin && current.type !== 'hosting' && currentCreatorUserId === current.userId && seeded.creatorUserId !== current.userId) {
+      return seeded.creatorUserId;
+    }
+    return currentCreatorUserId;
+  }
+
+  private normalizeVisibility(
+    value: DemoEventRecord['visibility'] | undefined,
+    fallback: DemoEventRecord['visibility']
+  ): DemoEventRecord['visibility'] {
+    if (value === 'Public' || value === 'Friends only' || value === 'Invitation only') {
+      return value;
+    }
+    return fallback;
+  }
+
+  private normalizeBlindMode(
+    value: DemoEventRecord['blindMode'] | undefined,
+    fallback: DemoEventRecord['blindMode']
+  ): DemoEventRecord['blindMode'] {
+    if (value === 'Open Event' || value === 'Blind Event') {
+      return value;
+    }
+    return fallback;
   }
 }
