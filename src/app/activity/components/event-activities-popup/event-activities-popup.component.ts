@@ -21,7 +21,7 @@ import { from } from 'rxjs';
 
 import { LazyBgImageDirective } from '../../../shared/lazy-bg-image.directive';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { DemoUserRatesBuilder } from '../../../shared/core/demo/builders';
+import { DemoRatesService } from '../../../shared/core/demo';
 import {
   APP_DEMO_DATA,
   DEMO_CHAT_BY_USER,
@@ -104,6 +104,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   private readonly ngZone = inject(NgZone);
   protected readonly activitiesContext = inject(ActivitiesDbContextService);
   private readonly eventEditorService = inject(EventEditorService);
+  private readonly ratesService = inject(DemoRatesService);
 
   // ── Self-contained data state (no host inputs) ───────────────────────────
   protected isMobileView = false;
@@ -115,9 +116,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected hostingItems: HostingMenuItem[] = [...(DEMO_HOSTING_BY_USER[this.activeUser.id] ?? [])];
   protected invitationItems: InvitationMenuItem[] = [...(DEMO_INVITATIONS_BY_USER[this.activeUser.id] ?? [])];
   protected assetCards: AppTypes.AssetCard[] = AppDemoGenerators.buildSampleAssetCards(this.users);
-  protected get rateItems(): RateMenuItem[] {
-    return this.generatedRateItemsForUser(this.activeUser.id);
-  }
+  protected rateItems: RateMenuItem[] = [];
 
   protected chatBadge = this.activeUser.activities.chat;
   protected eventsBadge = this.activeUser.activities.events;
@@ -149,8 +148,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   private readonly subEventAssignedAssetIdsByKey: Record<string, string[]> = {};
   private readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
   private readonly forcedAcceptedMembersByRowKey: Record<string, number> = { 'events:e8': 20 };
-  private readonly generatedRateItemsByUser: Record<string, RateMenuItem[]> = {};
-
   // ── Outputs kept for direct-template usage; not used via ngComponentOutlet ─
   /** User clicked on a chat row. */
   @Output() openChatItem = new EventEmitter<ChatMenuItem>();
@@ -593,6 +590,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   /** Called once each time the service opens the popup. */
   private onActivitiesOpened(): void {
+    this.refreshRateItems();
     this.resetActivitiesStateForOpen();
     this.clearActivityRateEditorState();
     this.resetActivitiesScroll();
@@ -681,6 +679,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (this.invitationItems.length === 0) {
       this.invitationItems = [...(DEMO_INVITATIONS_BY_USER[userId] ?? [])];
     }
+    this.refreshRateItems();
 
     this.ensurePaginationTestEvents(30);
     this.initializeEventEditorContextData();
@@ -2811,11 +2810,19 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return null;
     }
     const item = row.source as RateMenuItem;
-    const primary = this.users.find(user => user.id === item.userId) ?? null;
-    if (primary && primary.gender === gender) {
-      return primary;
+    const pairUsers = [
+      this.users.find(user => user.id === item.userId) ?? null,
+      item.secondaryUserId ? (this.users.find(user => user.id === item.secondaryUserId) ?? null) : null
+    ].filter((user): user is DemoUser => Boolean(user));
+    const directMatch = pairUsers.find(user => user.gender === gender) ?? null;
+    if (directMatch) {
+      return directMatch;
     }
-    const candidates = this.users.filter(user => user.gender === gender && user.id !== primary?.id);
+    const primary = pairUsers[0] ?? null;
+    const candidates = this.users.filter(user =>
+      user.gender === gender
+      && !pairUsers.some(pairUser => pairUser.id === user.id)
+    );
     if (candidates.length > 0) {
       const seed = AppDemoGenerators.hashText(`pair-rate-slot:${row.id}:${gender}`);
       return candidates[seed % candidates.length] ?? null;
@@ -4494,15 +4501,8 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return this.publishedHostingIds.has(id);
   }
 
-  private generatedRateItemsForUser(userId: string): RateMenuItem[] {
-    if (this.generatedRateItemsByUser[userId]) {
-      return this.generatedRateItemsByUser[userId];
-    }
-    const generated = DemoUserRatesBuilder.buildGeneratedRateItemsForUser(this.users, userId, {
-      extraSingleGivenCount: 20
-    });
-    this.generatedRateItemsByUser[userId] = generated;
-    return generated;
+  private refreshRateItems(): void {
+    this.rateItems = this.ratesService.peekRateItemsByUser(this.activeUser.id);
   }
 
   private chatChannelType(item: ChatMenuItem): AppTypes.ChatChannelType {
@@ -5667,7 +5667,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   private pairReceivedAverageScore(item: RateMenuItem): number {
     const matching = this.rateItems.filter(candidate =>
       candidate.mode === 'pair' &&
-      candidate.userId === item.userId &&
+      this.samePairUsers(candidate, item) &&
       this.displayedRateDirection(candidate) === 'received' &&
       Number.isFinite(candidate.scoreReceived) &&
       candidate.scoreReceived > 0
@@ -5677,6 +5677,12 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     }
     const total = matching.reduce((sum, candidate) => sum + candidate.scoreReceived, 0);
     return this.normalizeRateScore(total / matching.length);
+  }
+
+  private samePairUsers(left: RateMenuItem, right: RateMenuItem): boolean {
+    const leftIds = [left.userId, left.secondaryUserId ?? ''].filter(id => id.trim().length > 0).sort();
+    const rightIds = [right.userId, right.secondaryUserId ?? ''].filter(id => id.trim().length > 0).sort();
+    return leftIds.length === rightIds.length && leftIds.every((id, index) => id === rightIds[index]);
   }
 
   private openActivityRowInEventModule(row: AppTypes.ActivityListRow, readOnly: boolean): void {

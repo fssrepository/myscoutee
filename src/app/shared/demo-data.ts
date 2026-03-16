@@ -72,6 +72,7 @@ export interface HostingMenuItem {
 export interface RateMenuItem {
   id: string;
   userId: string;
+  secondaryUserId?: string;
   mode: 'individual' | 'pair';
   direction: 'given' | 'received' | 'mutual' | 'met';
   scoreGiven: number;

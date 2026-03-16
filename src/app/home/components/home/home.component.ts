@@ -909,7 +909,11 @@ export class HomeComponent implements OnDestroy {
     if (!this.canOpenHistory) {
       return;
     }
-    this.activitiesContext.openActivities('rates');
+    this.activitiesContext.openActivities(
+      'rates',
+      undefined,
+      this.isPairMode ? 'pair-given' : 'individual-given'
+    );
   }
 
   protected closeLocalPopup(): void {

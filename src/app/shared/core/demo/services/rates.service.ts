@@ -11,9 +11,13 @@ export class DemoRatesService {
   private static readonly RATES_ROUTE = '/activities/rates';
   private readonly usersRatingsRepository = inject(DemoUsersRatingsRepository);
 
+  peekRateItemsByUser(userId: string): RateMenuItem[] {
+    return this.usersRatingsRepository.queryRateItemsByUserId(userId);
+  }
+
   async queryRateItemsByUser(userId: string): Promise<RateMenuItem[]> {
     await this.waitForRouteDelay(DemoRatesService.RATES_ROUTE);
-    return this.usersRatingsRepository.queryActivityRateItemsByUserId(userId);
+    return this.usersRatingsRepository.queryRateItemsByUserId(userId);
   }
 
   private async waitForRouteDelay(route: string): Promise<void> {

@@ -35,7 +35,7 @@ const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
   secondaryFilter: 'recent',
   chatContextFilter: 'all',
   hostingPublicationFilter: 'all',
-  rateFilter: 'pair-received',
+  rateFilter: 'individual-given',
   view: 'day',
   showViewPicker: false,
   showSecondaryPicker: false,
@@ -80,10 +80,12 @@ export class ActivitiesDbContextService {
 
   openActivities(
     primaryFilter: AppTypes.ActivitiesPrimaryFilter = 'chats',
-    eventScope?: AppTypes.ActivitiesEventScope
+    eventScope?: AppTypes.ActivitiesEventScope,
+    initialRateFilter?: AppTypes.RateFilterKey
   ): void {
     const normalizedPrimaryFilter = this.normalizeActivitiesPrimaryFilter(primaryFilter);
     const resolvedScope = this.resolveActivitiesEventScope(primaryFilter, eventScope);
+    const resolvedRateFilter = initialRateFilter ?? 'individual-given';
     this._uiState.update(state => ({
       ...state,
       open: true,
@@ -97,7 +99,7 @@ export class ActivitiesDbContextService {
       stickyValue: '',
       ratesFullscreenMode: false,
       selectedRateId: null,
-      ...(normalizedPrimaryFilter === 'rates' ? { rateFilter: 'individual-given' as const } : {})
+      ...(normalizedPrimaryFilter === 'rates' ? { rateFilter: resolvedRateFilter } : {})
     }));
   }
 

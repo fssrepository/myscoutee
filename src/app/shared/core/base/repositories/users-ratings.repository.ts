@@ -172,6 +172,46 @@ export class UsersRatingsRepository {
     });
   }
 
+  enqueueGameCardPairRatingOutbox(
+    raterUserId: string,
+    firstRatedUserId: string,
+    secondRatedUserId: string,
+    rating: number
+  ): void {
+    const nextRecord = this.buildNormalizedPairRateRecord(raterUserId, firstRatedUserId, secondRatedUserId, rating);
+    if (!nextRecord) {
+      return;
+    }
+    this.memoryDb.write(state => {
+      const outboxTable = state[USER_RATES_OUTBOX_TABLE_NAME];
+      const outboxId = `upsert:${nextRecord.id}`;
+      const previousOutbox = outboxTable.byId[outboxId];
+      const nextOutboxRecord: UserRateOutboxRecord = {
+        id: outboxId,
+        rateId: nextRecord.id,
+        action: 'upsert',
+        payload: nextRecord,
+        status: 'pending',
+        retryCount: previousOutbox?.retryCount ?? 0,
+        queuedAtIso: previousOutbox?.queuedAtIso ?? nextRecord.updatedAtIso,
+        updatedAtIso: nextRecord.updatedAtIso,
+        lastTriedAtIso: previousOutbox?.lastTriedAtIso ?? null,
+        syncedAtIso: null,
+        lastError: null
+      };
+      return {
+        ...state,
+        [USER_RATES_OUTBOX_TABLE_NAME]: {
+          byId: {
+            ...outboxTable.byId,
+            [outboxId]: nextOutboxRecord
+          },
+          ids: previousOutbox ? outboxTable.ids : [...outboxTable.ids, outboxId]
+        }
+      };
+    });
+  }
+
   protected buildNormalizedRateRecord(
     raterUserId: string,
     ratedUserId: string,
@@ -197,6 +237,44 @@ export class UsersRatingsRepository {
       source: 'game-card',
       createdAtIso: nowIso,
       updatedAtIso: nowIso
+    };
+  }
+
+  protected buildNormalizedPairRateRecord(
+    raterUserId: string,
+    firstRatedUserId: string,
+    secondRatedUserId: string,
+    rating: number
+  ): UserRateRecord | null {
+    const normalizedOwnerUserId = raterUserId.trim();
+    const normalizedFirstUserId = firstRatedUserId.trim();
+    const normalizedSecondUserId = secondRatedUserId.trim();
+    if (
+      !normalizedOwnerUserId
+      || !normalizedFirstUserId
+      || !normalizedSecondUserId
+      || normalizedFirstUserId === normalizedSecondUserId
+      || normalizedFirstUserId === normalizedOwnerUserId
+      || normalizedSecondUserId === normalizedOwnerUserId
+    ) {
+      return null;
+    }
+    const normalizedRating = Math.max(1, Math.min(10, Math.trunc(Number(rating) || 0)));
+    if (!Number.isFinite(normalizedRating) || normalizedRating <= 0) {
+      return null;
+    }
+    const [fromUserId, toUserId] = [normalizedFirstUserId, normalizedSecondUserId].sort((left, right) => left.localeCompare(right));
+    const nowIso = new Date().toISOString();
+    return {
+      id: `game-card-pair:${normalizedOwnerUserId}:${fromUserId}:${toUserId}`,
+      fromUserId,
+      toUserId,
+      rate: normalizedRating,
+      mode: 'pair',
+      source: 'game-card',
+      createdAtIso: nowIso,
+      updatedAtIso: nowIso,
+      ownerUserId: normalizedOwnerUserId
     };
   }
 }

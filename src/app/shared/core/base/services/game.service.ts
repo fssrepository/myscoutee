@@ -85,13 +85,12 @@ export class GameService {
     if (!normalizedFirstId || !normalizedSecondId) {
       return;
     }
-    if (normalizedFirstId === normalizedSecondId) {
-      this.gameDataService.recordGameCardRating(raterUserId, normalizedFirstId, rating, 'pair');
-      this.scheduleUserRatesOutboxFlushFromNow();
-      return;
-    }
-    this.gameDataService.recordGameCardRating(raterUserId, normalizedFirstId, rating, 'pair');
-    this.gameDataService.recordGameCardRating(raterUserId, normalizedSecondId, rating, 'pair');
+    this.usersRatingsRepository.enqueueGameCardPairRatingOutbox(
+      raterUserId,
+      normalizedFirstId,
+      normalizedSecondId,
+      rating
+    );
     this.scheduleUserRatesOutboxFlushFromNow();
   }
 

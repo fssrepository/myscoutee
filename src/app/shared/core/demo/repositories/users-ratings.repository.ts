@@ -1,11 +1,15 @@
 import { Injectable } from '@angular/core';
 
 import { AppDemoGenerators } from '../../../app-demo-generators';
+import { AppUtils } from '../../../app-utils';
 import { DemoUserRatesBuilder } from '../builders';
 import type { RateMenuItem } from '../../../demo-data';
 import type { UserRateRecord } from '../../base/interfaces/game.interface';
 import { UsersRatingsRepository } from '../../base/repositories/users-ratings.repository';
-import { USER_RATES_TABLE_NAME } from '../models/users.model';
+import {
+  USER_RATES_OUTBOX_TABLE_NAME,
+  USER_RATES_TABLE_NAME
+} from '../models/users.model';
 
 @Injectable({
   providedIn: 'root'
@@ -61,8 +65,15 @@ export class DemoUsersRatingsRepository extends UsersRatingsRepository {
       .map(id => ratesTable.byId[id])
       .filter((record): record is UserRateRecord => Boolean(record))
       .filter(record => record.source === 'game-card')
-      .filter(record => record.fromUserId === normalizedRaterId)
-      .map(record => record.toUserId.trim())
+      .flatMap(record => {
+        if (record.mode === 'pair' && record.ownerUserId?.trim() === normalizedRaterId) {
+          return [record.fromUserId.trim(), record.toUserId.trim()];
+        }
+        if (record.fromUserId === normalizedRaterId) {
+          return [record.toUserId.trim()];
+        }
+        return [];
+      })
       .filter(id => id.length > 0);
   }
 
@@ -81,6 +92,43 @@ export class DemoUsersRatingsRepository extends UsersRatingsRepository {
       .filter((item): item is RateMenuItem => Boolean(item));
   }
 
+  queryRateItemsByUserId(userId: string): RateMenuItem[] {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    const ratesTable = this.memoryDb.read()[USER_RATES_TABLE_NAME];
+    const outboxTable = this.memoryDb.read()[USER_RATES_OUTBOX_TABLE_NAME];
+    const recordsById = new Map<string, UserRateRecord>();
+    for (const id of ratesTable.ids) {
+      const record = ratesTable.byId[id];
+      if (record) {
+        recordsById.set(record.id, record);
+      }
+    }
+    for (const id of outboxTable.ids) {
+      const record = outboxTable.byId[id];
+      if (!record?.payload) {
+        continue;
+      }
+      recordsById.set(record.payload.id, record.payload);
+    }
+    return [...recordsById.values()]
+      .filter((record): record is UserRateRecord => Boolean(record))
+      .flatMap(record => {
+        if (record.source === 'activity-rate') {
+          if (record.ownerUserId !== normalizedUserId) {
+            return [];
+          }
+          const item = DemoUserRatesBuilder.toRateMenuItem(record);
+          return item ? [item] : [];
+        }
+        const item = DemoUserRatesBuilder.toGameCardRateMenuItem(record, normalizedUserId);
+        return item ? [item] : [];
+      })
+      .sort((left, right) => AppUtils.toSortableDate(right.happenedAt) - AppUtils.toSortableDate(left.happenedAt));
+  }
+
   queryUserRatesByUserId(userId: string): UserRateRecord[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -90,7 +138,11 @@ export class DemoUsersRatingsRepository extends UsersRatingsRepository {
     return ratesTable.ids
       .map(id => ratesTable.byId[id])
       .filter((record): record is UserRateRecord => Boolean(record))
-      .filter(record => record.fromUserId === normalizedUserId || record.toUserId === normalizedUserId)
+      .filter(record =>
+        record.fromUserId === normalizedUserId
+        || record.toUserId === normalizedUserId
+        || record.ownerUserId === normalizedUserId
+      )
       .map(record => ({ ...record }));
   }
 
@@ -129,12 +181,19 @@ export class DemoUsersRatingsRepository extends UsersRatingsRepository {
   }
 
   private normalizeIncomingRateRecord(record: UserRateRecord): UserRateRecord | null {
-    const normalized = this.buildNormalizedRateRecord(
-      record.fromUserId,
-      record.toUserId,
-      record.rate,
-      record.mode
-    );
+    const normalized = record.mode === 'pair' && record.ownerUserId
+      ? this.buildNormalizedPairRateRecord(
+          record.ownerUserId,
+          record.fromUserId,
+          record.toUserId,
+          record.rate
+        )
+      : this.buildNormalizedRateRecord(
+          record.fromUserId,
+          record.toUserId,
+          record.rate,
+          record.mode
+        );
     if (!normalized) {
       return null;
     }
@@ -146,6 +205,7 @@ export class DemoUsersRatingsRepository extends UsersRatingsRepository {
       : normalized.updatedAtIso;
     return {
       ...normalized,
+      ownerUserId: record.mode === 'pair' ? record.ownerUserId?.trim() || normalized.ownerUserId : normalized.ownerUserId,
       createdAtIso,
       updatedAtIso
     };

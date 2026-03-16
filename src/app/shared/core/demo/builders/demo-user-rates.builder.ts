@@ -3,7 +3,10 @@ import { AppUtils } from '../../../app-utils';
 import type { RateMenuItem } from '../../../demo-data';
 import type { UserRateRecord } from '../../base/interfaces/game.interface';
 
-type RateUserRef = { id: string };
+type RateUserRef = {
+  id: string;
+  gender?: 'woman' | 'man';
+};
 
 interface GeneratedRateItemsOptions {
   extraSingleGivenCount?: number;
@@ -32,7 +35,24 @@ export class DemoUserRatesBuilder {
     otherUsers.forEach((user, userIndex) => {
       const laneIndex = userIndex % filterLanes.length;
       const lane = filterLanes[laneIndex];
-      generated.push(this.buildGeneratedRateItemForLane(activeUserId, user.id, lane.mode, lane.direction, laneIndex, userIndex));
+      let secondaryUserId: string | undefined;
+      if (lane.mode === 'pair') {
+        secondaryUserId = lane.direction === 'received'
+          ? activeUserId
+          : this.selectPairSecondaryUserId(otherUsers, user.id, userIndex, laneIndex);
+      }
+      generated.push(
+        this.buildGeneratedRateItemForLane(
+          activeUserId,
+          user.id,
+          lane.mode,
+          lane.direction,
+          laneIndex,
+          userIndex,
+          0,
+          secondaryUserId
+        )
+      );
     });
 
     const extraSingleGivenCount = Math.max(
@@ -72,6 +92,7 @@ export class DemoUserRatesBuilder {
   static toActivityRateRecord(ownerUserId: string, item: RateMenuItem): UserRateRecord {
     const normalizedOwnerUserId = ownerUserId.trim();
     const normalizedCounterpartyUserId = item.userId.trim();
+    const normalizedSecondaryUserId = item.secondaryUserId?.trim() ?? '';
     const scoreGiven = this.normalizeRateScore(item.scoreGiven);
     const scoreReceived = this.normalizeRateScore(item.scoreReceived);
 
@@ -79,12 +100,18 @@ export class DemoUserRatesBuilder {
     let toUserId = normalizedCounterpartyUserId;
     let rate = scoreGiven;
 
-    if (item.direction === 'received') {
+    if (item.mode === 'pair' && normalizedSecondaryUserId && normalizedSecondaryUserId !== normalizedCounterpartyUserId) {
       fromUserId = normalizedCounterpartyUserId;
-      toUserId = normalizedOwnerUserId;
-      rate = scoreReceived;
-    } else if (item.direction === 'met') {
-      rate = 0;
+      toUserId = normalizedSecondaryUserId;
+      rate = item.direction === 'received' ? scoreReceived : scoreGiven;
+    } else {
+      if (item.direction === 'received') {
+        fromUserId = normalizedCounterpartyUserId;
+        toUserId = normalizedOwnerUserId;
+        rate = scoreReceived;
+      } else if (item.direction === 'met') {
+        rate = 0;
+      }
     }
 
     const happenedAtIso = item.happenedAt?.trim() || new Date().toISOString();
@@ -117,19 +144,139 @@ export class DemoUserRatesBuilder {
     if (!direction || !ownerUserId) {
       return null;
     }
+    if (record.mode === 'pair') {
+      const firstUserId = record.fromUserId.trim();
+      const secondUserId = record.toUserId.trim();
+      if (!firstUserId || !secondUserId || firstUserId === secondUserId) {
+        return null;
+      }
+      if (direction === 'received') {
+        if (firstUserId === ownerUserId) {
+          return {
+            id: record.displayId?.trim() || record.id,
+            userId: secondUserId,
+            secondaryUserId: firstUserId,
+            mode: 'pair',
+            direction,
+            scoreGiven: this.normalizeRateScore(record.scoreGiven),
+            scoreReceived: this.normalizeRateScore(record.scoreReceived),
+            eventName: record.eventName?.trim() || 'Rate',
+            happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
+            distanceKm: Number.isFinite(record.distanceKm) ? Number(record.distanceKm) : 0
+          };
+        }
+        if (secondUserId === ownerUserId) {
+          return {
+            id: record.displayId?.trim() || record.id,
+            userId: firstUserId,
+            secondaryUserId: secondUserId,
+            mode: 'pair',
+            direction,
+            scoreGiven: this.normalizeRateScore(record.scoreGiven),
+            scoreReceived: this.normalizeRateScore(record.scoreReceived),
+            eventName: record.eventName?.trim() || 'Rate',
+            happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
+            distanceKm: Number.isFinite(record.distanceKm) ? Number(record.distanceKm) : 0
+          };
+        }
+      } else if (firstUserId === ownerUserId || secondUserId === ownerUserId) {
+        return null;
+      }
+      return {
+        id: record.displayId?.trim() || record.id,
+        userId: firstUserId,
+        secondaryUserId: secondUserId,
+        mode: 'pair',
+        direction,
+        scoreGiven: this.normalizeRateScore(record.scoreGiven),
+        scoreReceived: this.normalizeRateScore(record.scoreReceived),
+        eventName: record.eventName?.trim() || 'Rate',
+        happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
+        distanceKm: Number.isFinite(record.distanceKm) ? Number(record.distanceKm) : 0
+      };
+    }
     const counterpartyUserId = record.fromUserId === ownerUserId
       ? record.toUserId
       : record.fromUserId;
-    const mode: RateMenuItem['mode'] = record.mode === 'pair' ? 'pair' : 'individual';
     return {
       id: record.displayId?.trim() || record.id,
       userId: counterpartyUserId,
-      mode,
+      mode: 'individual',
       direction,
       scoreGiven: this.normalizeRateScore(record.scoreGiven),
       scoreReceived: this.normalizeRateScore(record.scoreReceived),
       eventName: record.eventName?.trim() || 'Rate',
       happenedAt: record.happenedAtIso?.trim() || record.updatedAtIso,
+      distanceKm: Number.isFinite(record.distanceKm) ? Number(record.distanceKm) : 0
+    };
+  }
+
+  static toGameCardRateMenuItem(record: UserRateRecord, ownerUserId: string): RateMenuItem | null {
+    if (record.source !== 'game-card') {
+      return null;
+    }
+    const normalizedOwnerUserId = ownerUserId.trim();
+    if (!normalizedOwnerUserId) {
+      return null;
+    }
+    if (record.mode === 'pair') {
+      const firstUserId = record.fromUserId.trim();
+      const secondUserId = record.toUserId.trim();
+      if (!firstUserId || !secondUserId || firstUserId === secondUserId) {
+        return null;
+      }
+      const recordOwnerUserId = record.ownerUserId?.trim() ?? '';
+      const normalizedScore = this.normalizeRateScore(record.rate);
+      if (recordOwnerUserId === normalizedOwnerUserId) {
+        return {
+          id: record.id,
+          userId: firstUserId,
+          secondaryUserId: secondUserId,
+          mode: 'pair',
+          direction: 'given',
+          scoreGiven: normalizedScore,
+          scoreReceived: 0,
+          eventName: 'Pair rate',
+          happenedAt: record.updatedAtIso,
+          distanceKm: Number.isFinite(record.distanceKm) ? Number(record.distanceKm) : 0
+        };
+      }
+      if (firstUserId === normalizedOwnerUserId || secondUserId === normalizedOwnerUserId) {
+        const otherUserId = firstUserId === normalizedOwnerUserId ? secondUserId : firstUserId;
+        return {
+          id: record.id,
+          userId: otherUserId,
+          secondaryUserId: normalizedOwnerUserId,
+          mode: 'pair',
+          direction: 'received',
+          scoreGiven: 0,
+          scoreReceived: normalizedScore,
+          eventName: 'Pair rate',
+          happenedAt: record.updatedAtIso,
+          distanceKm: Number.isFinite(record.distanceKm) ? Number(record.distanceKm) : 0
+        };
+      }
+      return null;
+    }
+    const isGiven = record.fromUserId === normalizedOwnerUserId;
+    const isReceived = record.toUserId === normalizedOwnerUserId;
+    if (!isGiven && !isReceived) {
+      return null;
+    }
+    const counterpartyUserId = isGiven ? record.toUserId : record.fromUserId;
+    if (!counterpartyUserId.trim()) {
+      return null;
+    }
+    const normalizedScore = this.normalizeRateScore(record.rate);
+    return {
+      id: record.id,
+      userId: counterpartyUserId,
+      mode: 'individual',
+      direction: isGiven ? 'given' : 'received',
+      scoreGiven: isGiven ? normalizedScore : 0,
+      scoreReceived: isReceived ? normalizedScore : 0,
+      eventName: 'Single rate',
+      happenedAt: record.updatedAtIso,
       distanceKm: Number.isFinite(record.distanceKm) ? Number(record.distanceKm) : 0
     };
   }
@@ -141,9 +288,12 @@ export class DemoUserRatesBuilder {
     direction: RateMenuItem['direction'],
     laneIndex: number,
     userIndex: number,
-    variantIndex = 0
+    variantIndex = 0,
+    secondaryUserId?: string
   ): RateMenuItem {
-    const seed = AppDemoGenerators.hashText(`rate-grid:${activeUserId}:${targetUserId}:${mode}:${direction}:${variantIndex}`);
+    const seed = AppDemoGenerators.hashText(
+      `rate-grid:${activeUserId}:${targetUserId}:${secondaryUserId ?? ''}:${mode}:${direction}:${variantIndex}`
+    );
     const happenedAtDate = new Date('2026-03-01T20:00:00');
     happenedAtDate.setDate(happenedAtDate.getDate() - ((laneIndex * 17) + userIndex + 1 + (variantIndex * 2)));
     const happenedAt = AppUtils.toIsoDateTime(happenedAtDate);
@@ -164,8 +314,9 @@ export class DemoUserRatesBuilder {
     }
     const variantSuffix = variantIndex > 0 ? `-v${variantIndex}` : '';
     return {
-      id: `rate-${activeUserId}-${mode}-${direction}-${targetUserId}${variantSuffix}`,
+      id: `rate-${activeUserId}-${mode}-${direction}-${targetUserId}${secondaryUserId ? `-${secondaryUserId}` : ''}${variantSuffix}`,
       userId: targetUserId,
+      ...(secondaryUserId ? { secondaryUserId } : {}),
       mode,
       direction,
       scoreGiven,
@@ -176,6 +327,30 @@ export class DemoUserRatesBuilder {
       happenedAt,
       distanceKm: 2 + ((seed + laneIndex + userIndex) % 33)
     };
+  }
+
+  private static selectPairSecondaryUserId<TUser extends RateUserRef>(
+    users: readonly TUser[],
+    primaryUserId: string,
+    userIndex: number,
+    laneIndex: number
+  ): string | undefined {
+    const primaryUser = users.find(user => user.id === primaryUserId) ?? null;
+    const preferredCandidates = users.filter(user =>
+      user.id !== primaryUserId
+      && (!!primaryUser?.gender ? user.gender === this.oppositeGender(primaryUser.gender) : true)
+    );
+    const fallbackCandidates = users.filter(user => user.id !== primaryUserId);
+    const pool = preferredCandidates.length > 0 ? preferredCandidates : fallbackCandidates;
+    if (pool.length === 0) {
+      return undefined;
+    }
+    const index = (userIndex + laneIndex + 1) % pool.length;
+    return pool[index]?.id;
+  }
+
+  private static oppositeGender(gender: 'woman' | 'man'): 'woman' | 'man' {
+    return gender === 'woman' ? 'man' : 'woman';
   }
 
   private static normalizeRateScore(value: unknown): number {
