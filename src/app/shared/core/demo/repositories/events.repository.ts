@@ -50,22 +50,27 @@ export class DemoEventsRepository {
   }
 
   queryItemsByUser(userId: string): DemoEventRecord[] {
+    this.init();
     return this.queryUserRecords(userId);
   }
 
   queryInvitationItemsByUser(userId: string): DemoEventRecord[] {
+    this.init();
     return this.queryUserRecords(userId).filter(record => record.isInvitation);
   }
 
   queryEventItemsByUser(userId: string): DemoEventRecord[] {
+    this.init();
     return this.queryUserRecords(userId).filter(record => record.type === 'events');
   }
 
   queryHostingItemsByUser(userId: string): DemoEventRecord[] {
+    this.init();
     return this.queryUserRecords(userId).filter(record => record.type === 'hosting');
   }
 
   queryTrashedItemsByUser(userId: string): DemoEventRecord[] {
+    this.init();
     return this.queryUserRecords(userId).filter(record => record.isTrashed);
   }
 
@@ -74,6 +79,7 @@ export class DemoEventsRepository {
     filter: DemoEventScopeFilter,
     hostingPublicationFilter: 'all' | 'drafts' = 'all'
   ): DemoEventRecord[] {
+    this.init();
     const userItems = this.queryUserRecords(userId);
     const activeEventItems = userItems
       .filter(record => record.type === 'events')
@@ -107,6 +113,7 @@ export class DemoEventsRepository {
   }
 
   queryExploreItems(userId: string): DemoEventRecord[] {
+    this.init();
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -129,6 +136,7 @@ export class DemoEventsRepository {
   }
 
   syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): void {
+    this.init();
     const normalizedId = payload.id.trim();
     const creatorUserId = payload.creatorUserId?.trim() ?? '';
     if (!normalizedId || !creatorUserId) {
@@ -191,6 +199,7 @@ export class DemoEventsRepository {
   }
 
   trashItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): void {
+    this.init();
     this.updateItemState(userId, type, sourceId, {
       isTrashed: true,
       trashedAtIso: new Date().toISOString()
@@ -198,6 +207,7 @@ export class DemoEventsRepository {
   }
 
   restoreItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): void {
+    this.init();
     this.updateItemState(userId, type, sourceId, {
       isTrashed: false,
       trashedAtIso: null
@@ -205,11 +215,13 @@ export class DemoEventsRepository {
   }
 
   isItemTrashed(userId: string, type: DemoRepositoryEventItemType, sourceId: string): boolean {
+    this.init();
     const record = this.findItem(userId, type, sourceId);
     return record?.isTrashed === true;
   }
 
   countTicketItemsByUser(userId: string): number {
+    this.init();
     const eventItems = this.queryEventItemsByUser(userId);
     const hostingItems = this.queryHostingItemsByUser(userId);
     return (
@@ -219,6 +231,7 @@ export class DemoEventsRepository {
   }
 
   countPendingEventFeedbackByUser(userId: string, feedbackUnlockDelayMs: number): number {
+    this.init();
     const eventItems = this.queryEventItemsByUser(userId);
     const nowMs = Date.now();
     const basePendingCount = eventItems.filter(item => {

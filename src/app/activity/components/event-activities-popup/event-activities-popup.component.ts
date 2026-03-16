@@ -1427,7 +1427,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   protected requestOpenEventExplore(): void {
     this.showActivitiesQuickActionsMenu = false;
-    this.closeActivitiesPopup();
     this.activitiesContext.requestActivitiesNavigation({ type: 'eventExplore' });
   }
 
