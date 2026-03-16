@@ -4,12 +4,10 @@ import {
   Component,
   effect,
   ElementRef,
-  EventEmitter,
   HostListener,
   inject,
   NgZone,
   OnDestroy,
-  Output,
   TemplateRef,
   ViewChild
 } from '@angular/core';
@@ -148,16 +146,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   private readonly subEventAssignedAssetIdsByKey: Record<string, string[]> = {};
   private readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
   private readonly forcedAcceptedMembersByRowKey: Record<string, number> = { 'events:e8': 20 };
-  // ── Outputs kept for direct-template usage; not used via ngComponentOutlet ─
-  /** User clicked on a chat row. */
-  @Output() openChatItem = new EventEmitter<ChatMenuItem>();
-
-  /** User clicked on an event/hosting/invitation row. */
-  @Output() openActivityRow = new EventEmitter<AppTypes.ActivityListRow>();
-
-  /** User opened members of a row. */
-  @Output() openActivityMembersEvent = new EventEmitter<{ row: AppTypes.ActivityListRow; event?: Event }>();
-
   // ── ViewChild refs ────────────────────────────────────────────────────────
   @ViewChild('activitiesScroll')
   private activitiesScrollRef?: ElementRef<HTMLDivElement>;

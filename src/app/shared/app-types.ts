@@ -17,8 +17,6 @@ export type PopupType =
   | 'invitations'
   | 'events'
   | 'hosting'
-  | 'menuEvent'
-  | 'hostingEvent'
   | 'invitationActions'
   | 'eventEditor'
   | 'eventExplore'

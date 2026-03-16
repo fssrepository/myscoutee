@@ -129,31 +129,6 @@
         </div>
       </div>
 
-      <div *ngIf="activePopup === 'menuEvent' && selectedEvent">
-        <div class="editor-list-card">
-          <h4>{{ selectedEvent.title }}</h4>
-          <p>{{ selectedEvent.shortDescription }}</p>
-          <p>{{ selectedEvent.timeframe }}</p>
-        </div>
-        <div class="popup-actions">
-          <button type="button" class="link-btn" (click)="openEventEditor()" *ngIf="selectedEvent.isAdmin">Edit Event</button>
-          <button type="button" class="link-btn" *ngIf="!selectedEvent.isAdmin" (click)="openSelectedEventInReadOnlyEditor(false, $event)">View Event</button>
-          <button type="button" class="link-btn">Open Event Chat</button>
-        </div>
-      </div>
-
-      <div *ngIf="activePopup === 'hostingEvent' && selectedHostingEvent">
-        <div class="editor-list-card">
-          <h4>{{ selectedHostingEvent.title }}</h4>
-          <p>{{ selectedHostingEvent.shortDescription }}</p>
-          <p>{{ selectedHostingEvent.timeframe }}</p>
-        </div>
-        <div class="popup-actions">
-          <button type="button" class="link-btn">Accept Join Requests</button>
-          <button type="button" class="link-btn" (click)="openEventEditor()">Edit Event</button>
-        </div>
-      </div>
-
       <div *ngIf="activePopup === 'eventExplore'">
         <ng-container [ngTemplateOutlet]="eventExploreContentTemplate" [ngTemplateOutletContext]="{ stacked: false }"></ng-container>
       </div>
@@ -555,31 +530,6 @@
         <div class="popup-actions">
           <button type="button" class="link-btn" (click)="deleteSelectedInvitation($event)">Delete</button>
           <button type="button" class="link-btn" (click)="openInvitationRelatedEventEditor(true, $event)">Open Related Event</button>
-        </div>
-      </div>
-
-      <div *ngIf="stackedPopup === 'menuEvent' && selectedEvent">
-        <div class="editor-list-card">
-          <h4>{{ selectedEvent.title }}</h4>
-          <p>{{ selectedEvent.shortDescription }}</p>
-          <p>{{ selectedEvent.timeframe }}</p>
-        </div>
-        <div class="popup-actions">
-          <button type="button" class="link-btn" (click)="openEventEditor(true)" *ngIf="selectedEvent.isAdmin">Edit Event</button>
-          <button type="button" class="link-btn" *ngIf="!selectedEvent.isAdmin" (click)="openSelectedEventInReadOnlyEditor(true, $event)">View Event</button>
-          <button type="button" class="link-btn">Open Event Chat</button>
-        </div>
-      </div>
-
-      <div *ngIf="stackedPopup === 'hostingEvent' && selectedHostingEvent">
-        <div class="editor-list-card">
-          <h4>{{ selectedHostingEvent.title }}</h4>
-          <p>{{ selectedHostingEvent.shortDescription }}</p>
-          <p>{{ selectedHostingEvent.timeframe }}</p>
-        </div>
-        <div class="popup-actions">
-          <button type="button" class="link-btn">Accept Join Requests</button>
-          <button type="button" class="link-btn" (click)="openEventEditor(true)">Edit Event</button>
         </div>
       </div>
 

@@ -411,7 +411,6 @@ export class App {
   protected selectedSubEventSupplyContributionContext: { subEventId: string; assetId: string; title: string } | null = null;
   protected pendingSubEventSupplyContributionDelete: { subEventId: string; assetId: string; entryId: string; label: string } | null = null;
   private readonly subEventSupplyContributionEntriesByAssignmentKey: Record<string, AppTypes.SubEventSupplyContributionEntry[]> = {};
-  private stackedEventEditorOrigin: 'chat' | null = null;
 
   protected eventFeedbackCards: AppTypes.EventFeedbackCard[] = [];
   protected eventFeedbackIndex = 0;
@@ -1350,58 +1349,12 @@ export class App {
     this.syncAssetPopupVisibility();
   }
 
-  protected openChatItem(item: ChatMenuItem, closeMenu = true, stacked = false): void {
-    this.activeMenuSection = 'chat';
-    this.selectedChat = item;
-    this.ensureSelectedChatHistory();
-    this.chatVisibleMessageCount = this.initialChatVisibleMessageCount(this.selectedChatHistory.length);
-    this.chatDraftMessage = '';
-    this.chatHistoryLoadingOlder = false;
-    if (stacked || this.stackedPopup !== null) {
-      this.stackedPopup = 'chat';
-      this.startChatInitialLoad();
-      return;
-    }
-    this.stackedPopup = null;
-    this.activePopup = 'chat';
-    this.startChatInitialLoad();
-    if (closeMenu) {
-      this.closeUserMenu();
-    }
-  }
-
   protected openInvitationItem(item: InvitationMenuItem, closeMenu = true, stacked = false): void {
     this.activeMenuSection = 'invitations';
     this.selectedInvitation = item;
     const related = this.resolveRelatedEventFromInvitation(item);
     const source = related ?? this.buildInvitationPreviewEventSource(item);
     this.openEventEditor(stacked, 'edit', source, true, item.id);
-    if (closeMenu) {
-      this.closeUserMenu();
-    }
-  }
-
-  protected openEventItem(item: EventMenuItem, closeMenu = true, stacked = false): void {
-    this.activeMenuSection = 'events';
-    this.selectedEvent = item;
-    if (stacked || this.stackedPopup !== null) {
-      this.stackedPopup = 'menuEvent';
-      return;
-    }
-    this.activePopup = 'menuEvent';
-    if (closeMenu) {
-      this.closeUserMenu();
-    }
-  }
-
-  protected openHostingItem(item: HostingMenuItem, closeMenu = true, stacked = false): void {
-    this.activeMenuSection = 'hosting';
-    this.selectedHostingEvent = item;
-    if (stacked || this.stackedPopup !== null) {
-      this.stackedPopup = 'hostingEvent';
-      return;
-    }
-    this.activePopup = 'hostingEvent';
     if (closeMenu) {
       this.closeUserMenu();
     }
@@ -1436,10 +1389,6 @@ export class App {
     this.eventEditorReadOnly = mode === 'edit' && readOnly;
     this.eventEditorInvitationId = invitationId;
     this.prepareEventEditorForm(mode, source, targetOverride);
-    const previousStackedPopup = this.stackedPopup;
-    this.stackedEventEditorOrigin = (stacked || this.stackedPopup !== null || this.activePopup === 'chat')
-      ? (previousStackedPopup === 'chat' ? 'chat' : null)
-      : null;
     const resolvedSource = source ?? this.resolveEventEditorSource();
     if (mode === 'create') {
       this.eventEditorService.openCreate();
@@ -1455,14 +1404,6 @@ export class App {
       return;
     }
     this.eventEditorService.openEdit(moduleSource);
-  }
-
-  protected openSelectedEventInReadOnlyEditor(stacked = false, event?: Event): void {
-    event?.stopPropagation();
-    if (!this.selectedEvent) {
-      return;
-    }
-    this.openEventEditor(stacked, 'edit', this.selectedEvent, true);
   }
 
   protected openInvitationRelatedEventEditor(stacked = false, event?: Event): void {
@@ -4233,12 +4174,6 @@ export class App {
     if (this.eventEditorSource) {
       return this.eventEditorSource;
     }
-    if (this.activePopup === 'hostingEvent' || this.stackedPopup === 'hostingEvent') {
-      return this.selectedHostingEvent;
-    }
-    if (this.activePopup === 'menuEvent' || this.stackedPopup === 'menuEvent') {
-      return this.selectedEvent;
-    }
     return this.selectedEvent ?? this.selectedHostingEvent;
   }
 
@@ -4856,7 +4791,6 @@ export class App {
     this.selectedActivityInviteUserIds = [];
     this.showActivityInviteSortPicker = false;
     this.superStackedPopup = null;
-    this.stackedEventEditorOrigin = null;
     this.cancelChatInitialLoad();
     this.cancelEventExplorePaginationLoad();
     this.clearEventExploreHeaderLoadingAnimation();
@@ -5019,10 +4953,6 @@ export class App {
         return 'Tickets';
       case 'invitationActions':
         return this.selectedInvitation?.description ?? 'Invitation';
-      case 'menuEvent':
-        return this.selectedEvent?.title ?? 'Event';
-      case 'hostingEvent':
-        return this.selectedHostingEvent?.title ?? 'Hosting Event';
       case 'eventExplore':
         return 'Event Explore';
       case 'imageUpload':
@@ -5056,10 +4986,6 @@ export class App {
         return this.selectedChat?.title ?? 'Chat';
       case 'invitationActions':
         return this.selectedInvitation?.description ?? 'Invitation';
-      case 'menuEvent':
-        return this.selectedEvent?.title ?? 'Event';
-      case 'hostingEvent':
-        return this.selectedHostingEvent?.title ?? 'Hosting Event';
       case 'eventExplore':
         return 'Event Explore';
       case 'eventFeedback':
@@ -6683,9 +6609,13 @@ export class App {
       return;
     }
     if (card.sourceType === 'hosting') {
-      this.openHostingItem(source as HostingMenuItem, false, stacked);
+      this.activeMenuSection = 'hosting';
+      this.selectedHostingEvent = source as HostingMenuItem;
+      this.openEventEditor(stacked, 'edit', source as HostingMenuItem, false);
     } else {
-      this.openEventItem(source as EventMenuItem, false, stacked);
+      this.activeMenuSection = 'events';
+      this.selectedEvent = source as EventMenuItem;
+      this.openEventEditor(stacked, 'edit', source as EventMenuItem, (source as EventMenuItem).isAdmin !== true);
     }
     this.inlineItemActionMenu = null;
   }
