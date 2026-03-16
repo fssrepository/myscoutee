@@ -8,6 +8,7 @@ export {
   USERS_LOAD_CONTEXT_KEY,
   UsersService
 } from './services/users.service';
+export { EventsService } from './services/events.service';
 export { GameService } from './services/game.service';
 export { UsersRatingsRepository } from './repositories/users-ratings.repository';
 export * from './interfaces';

@@ -14,6 +14,7 @@ import { MatTimepickerModule } from '@angular/material/timepicker';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { AlertService } from './shared/alert.service';
+import type { ActivitiesEventSyncPayload } from './shared/activities-models';
 import { ActivitiesDbContextService } from './activity/services/activities-db-context.service';
 import type { AssetPopupHost } from './asset/asset-popup.host';
 import { AssetPopupService, type AssetTicketBridge } from './asset/asset-popup.service';
@@ -366,6 +367,7 @@ export class App {
   protected readonly eventBlindModeOptions: AppTypes.EventBlindMode[] = APP_STATIC_DATA.eventBlindModeOptions;
   private readonly eventSubEventsById: Record<string, AppTypes.SubEventFormItem[]> = {};
   private readonly eventLocationById: Record<string, string> = {};
+  private readonly eventTopicsById: Record<string, string[]> = {};
   private readonly acceptedOptionalSubEventMembersByKey: Record<string, string[]> = {};
   private readonly acceptedTournamentGroupMembersByKey: Record<string, string[]> = {};
   private readonly userCreatedEventIds = new Set<string>();
@@ -480,7 +482,7 @@ export class App {
       if (!request) {
         return;
       }
-      if (request.type === 'members' || request.type === 'eventEditorMembers') {
+      if (request.type === 'members' || request.type === 'eventEditorMembers' || request.type === 'eventExplore') {
         return;
       }
       this.activitiesContext.clearActivitiesNavigationRequest();
@@ -502,10 +504,6 @@ export class App {
         return;
       }
       this.subEventResourceFallbackCardsByType = null;
-      if (request.type === 'eventExplore') {
-        this.openEventExplore(false, request.stacked ?? false);
-        return;
-      }
       if (request.type === 'eventEditorCreate') {
         this.openEventEditor(true, 'create', undefined, false, null, request.target);
         return;
@@ -1748,8 +1746,33 @@ export class App {
       return;
     }
     const resolvedMembers = membersSnapshot ?? this.resolveActivitiesEventSyncMembersSnapshot(eventId, target);
-
-    this.activitiesContext.emitActivitiesEventSync({
+    const rowType: 'events' | 'hosting' = target === 'hosting' ? 'hosting' : 'events';
+    const row: AppTypes.ActivityListRow = {
+      id: source.id,
+      type: rowType,
+      title: source.title,
+      subtitle: source.shortDescription,
+      detail: source.timeframe,
+      dateIso: this.eventDatesById[source.id] ?? this.hostingDatesById[source.id] ?? this.defaultEventStartIso(),
+      distanceKm: this.eventDistanceById[source.id] ?? this.hostingDistanceById[source.id] ?? 0,
+      unread: Math.max(0, Math.trunc(Number(source.activity) || 0)),
+      metricScore: Math.max(0, Math.trunc(Number(source.activity) || 0)),
+      isAdmin: rowType === 'hosting' ? true : ((eventItem as EventMenuItem | null)?.isAdmin === true),
+      source
+    };
+    const members = this.getActivityMembersByRow(row);
+    const acceptedMemberUserIds = Array.from(new Set(members
+      .filter(member => member.status === 'accepted')
+      .map(member => member.userId)));
+    const pendingMemberUserIds = Array.from(new Set(members
+      .filter(member => member.status === 'pending')
+      .map(member => member.userId)));
+    const capacity = this.eventCapacityById[eventId] ?? { min: null, max: null };
+    const dateRange = this.activityDateTimeRangeById[eventId];
+    const topics = this.eventTopicsById[eventId];
+    const location = this.activityEventLocationLabel(row).trim();
+    const sourceLink = (this.activitySourceLinkById[eventId] ?? '').trim();
+    const payload: Omit<ActivitiesEventSyncPayload, 'syncKey'> = {
       id: eventId,
       target,
       title: source.title,
@@ -1762,8 +1785,33 @@ export class App {
       imageUrl: this.activityImageById[eventId] ?? '',
       acceptedMembers: resolvedMembers?.acceptedMembers,
       pendingMembers: resolvedMembers?.pendingMembers,
-      capacityTotal: resolvedMembers?.capacityTotal
-    });
+      capacityTotal: resolvedMembers?.capacityTotal,
+      capacityMin: capacity.min,
+      capacityMax: capacity.max,
+      visibility: this.eventVisibilityById[eventId] ?? (target === 'hosting' ? 'Invitation only' : 'Public'),
+      blindMode: this.eventBlindModeById[eventId] ?? 'Open Event',
+      published: this.hostingPublishedById[eventId] ?? true,
+      creatorUserId: this.activeUser.id,
+      creatorName: this.activeUser.name,
+      creatorInitials: this.activeUser.initials,
+      creatorGender: this.activeUser.gender,
+      creatorCity: this.activeUser.city,
+      acceptedMemberUserIds,
+      pendingMemberUserIds
+    };
+    if (dateRange?.endIso) {
+      payload.endAt = dateRange.endIso;
+    }
+    if (location) {
+      payload.location = location;
+    }
+    if (sourceLink) {
+      payload.sourceLink = sourceLink;
+    }
+    if (topics) {
+      payload.topics = [...topics];
+    }
+    this.activitiesContext.emitActivitiesEventSync(payload);
   }
 
   private resolveActivitiesEventSyncMembersSnapshot(
@@ -4197,6 +4245,7 @@ export class App {
     const loadedSubEvents = this.sortSubEventsByStartAsc(this.cloneSubEvents(this.eventSubEventsById[source.id] ?? []));
     const fallbackLocation = this.normalizeLocationValue(this.firstSubEventByOrder(loadedSubEvents)?.location);
     const location = this.normalizeLocationValue(this.eventLocationById[source.id]) || fallbackLocation;
+    const topics = this.eventTopicsById[source.id] ?? this.eventEditor.mainEvent.topics;
     const subEvents = this.withFirstSubEventLocation(loadedSubEvents, location);
     return {
       title: source.title,
@@ -4212,7 +4261,7 @@ export class App {
       blindMode: this.eventBlindModeById[source.id] ?? 'Open Event',
       autoInviter: this.eventAutoInviterById[source.id] ?? false,
       ticketing: this.eventTicketingById[source.id] ?? false,
-      topics: [...this.eventEditor.mainEvent.topics].slice(0, 5),
+      topics: this.normalizeEventTopics(topics),
       subEvents
     };
   }
@@ -4231,6 +4280,7 @@ export class App {
     this.eventFrequencyById[this.editingEventId] = this.eventForm.frequency;
     this.eventCapacityById[this.editingEventId] = this.normalizedEventCapacityRange();
     this.eventLocationById[this.editingEventId] = this.normalizeLocationValue(this.eventForm.location);
+    this.eventTopicsById[this.editingEventId] = this.normalizeEventTopics(this.eventForm.topics);
     this.eventSubEventsById[this.editingEventId] = this.cloneSubEvents(this.eventForm.subEvents);
     this.eventDatesById[this.editingEventId] = this.eventForm.startAt;
     this.activityDateTimeRangeById[this.editingEventId] = {
@@ -4294,6 +4344,7 @@ export class App {
       this.eventFrequencyById[id] = this.eventForm.frequency;
       this.eventCapacityById[id] = this.normalizedEventCapacityRange();
       this.eventLocationById[id] = this.normalizeLocationValue(this.eventForm.location);
+      this.eventTopicsById[id] = this.normalizeEventTopics(this.eventForm.topics);
       this.eventSubEventsById[id] = this.cloneSubEvents(this.eventForm.subEvents);
       this.activityCapacityById[id] = `0 / ${initialCapacityTotal}`;
       this.activityImageById[id] = this.eventForm.imageUrl || AppDemoGenerators.defaultAssetImage('Supplies', `event-${id}`);
@@ -4334,6 +4385,7 @@ export class App {
     this.eventFrequencyById[id] = this.eventForm.frequency;
     this.eventCapacityById[id] = this.normalizedEventCapacityRange();
     this.eventLocationById[id] = this.normalizeLocationValue(this.eventForm.location);
+    this.eventTopicsById[id] = this.normalizeEventTopics(this.eventForm.topics);
     this.eventSubEventsById[id] = this.cloneSubEvents(this.eventForm.subEvents);
     this.activityCapacityById[id] = `0 / ${initialCapacityTotal}`;
     this.activityImageById[id] = this.eventForm.imageUrl || AppDemoGenerators.defaultAssetImage('Supplies', `event-${id}`);
@@ -8503,9 +8555,7 @@ export class App {
     }
     if (popupEvent.detail.type === 'eventEditor') {
       this.openEventEditor(false, 'create');
-      return;
     }
-    this.openEventExplore();
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -8905,6 +8955,13 @@ export class App {
 
   private isUserCreatedEventLikeId(id: string): boolean {
     return this.userCreatedEventIds.has(id) || /^[eh]\d{11,}$/.test(id);
+  }
+
+  private normalizeEventTopics(topics: readonly string[]): string[] {
+    return Array.from(new Set(topics
+      .map(topic => `${topic ?? ''}`.trim().replace(/^#+/, ''))
+      .filter(topic => topic.length > 0)
+      .slice(0, 5)));
   }
 
   private syncMirroredEventMembersCache(

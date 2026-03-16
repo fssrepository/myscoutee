@@ -53,6 +53,7 @@ import {
   type SmartListStateChange
 } from '../../../shared/ui';
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
+import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
 import { EventMembersPopupComponent, type EventMembersPopupPresenter } from '../event-members-popup/event-members-popup.component';
 
 // ---------------------------------------------------------------------------
@@ -86,6 +87,7 @@ type PendingActivityAction = 'delete' | 'exit' | 'reject';
     RatingStarBarComponent,
     SmartListComponent,
     EventChatPopupComponent,
+    EventExplorePopupComponent,
     EventMembersPopupComponent
   ],
   templateUrl: './event-activities-popup.component.html',

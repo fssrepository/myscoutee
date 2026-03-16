@@ -1,3 +1,5 @@
+import type * as AppTypes from '../../../app-types';
+
 export const EVENTS_TABLE_NAME = 'events' as const;
 
 export type DemoEventScopeFilter =
@@ -27,6 +29,29 @@ export interface DemoEventRecord {
   isTrashed: boolean;
   published: boolean;
   trashedAtIso: string | null;
+  creatorUserId: string;
+  creatorName: string;
+  creatorInitials: string;
+  creatorGender: 'woman' | 'man';
+  creatorCity: string;
+  visibility: AppTypes.EventVisibility;
+  blindMode: AppTypes.EventBlindMode;
+  startAtIso: string;
+  endAtIso: string;
+  distanceKm: number;
+  imageUrl: string;
+  sourceLink: string;
+  location: string;
+  capacityMin: number | null;
+  capacityMax: number | null;
+  capacityTotal: number;
+  acceptedMembers: number;
+  pendingMembers: number;
+  acceptedMemberUserIds: string[];
+  pendingMemberUserIds: string[];
+  topics: string[];
+  rating: number;
+  relevance: number;
 }
 
 export interface DemoEventRecordCollection {

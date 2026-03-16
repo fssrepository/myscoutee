@@ -1,0 +1,249 @@
+<section class="app-popup event-explore-popup-shell" *ngIf="isOpen">
+  <div class="app-popup-backdrop" (click)="closeEventExplore()"></div>
+  <div class="app-popup-panel popup-panel-event-explore" (click)="$event.stopPropagation()">
+    <div class="popup-header popup-header-with-activities-progress">
+      <div class="popup-title">
+        <h2>{{ eventExploreHeaderTitle() }}</h2>
+        <p class="popup-subtitle-activities">{{ eventExploreHeaderSubtitle() }}</p>
+      </div>
+
+      <div class="event-explore-order-picker">
+        <button
+          type="button"
+          class="popup-view-fab event-explore-order-trigger"
+          [ngClass]="eventExploreOrderClass()"
+          (click)="toggleEventExploreOrderPicker($event)"
+          aria-label="Open event explore order"
+        >
+          <mat-icon [class]="eventExploreOrderClass()">{{ eventExploreOrderIcon() }}</mat-icon>
+          <span>{{ eventExploreOrderLabel() }}</span>
+        </button>
+        <div class="activities-view-picker-panel event-explore-order-panel" *ngIf="showOrderPicker">
+          <button
+            type="button"
+            class="activities-view-option"
+            [ngClass]="eventExploreOrderClass(option.key)"
+            *ngFor="let option of eventExploreOrderOptions"
+            (click)="selectEventExploreOrder(option.key, $event)"
+          >
+            <mat-icon [class]="eventExploreOrderClass(option.key)">{{ option.icon }}</mat-icon>
+            <span>{{ option.label }}</span>
+          </button>
+        </div>
+      </div>
+
+      <button type="button" class="popup-close" (click)="closeEventExplore()" aria-label="Close">
+        <mat-icon>close</mat-icon>
+      </button>
+
+      <div
+        class="activities-header-progress"
+        [class.is-loading]="eventExploreHeaderProgressLoading"
+        [class.is-loading-overdue]="eventExploreHeaderLoadingOverdue"
+        aria-hidden="true"
+      >
+        <span class="activities-header-progress-fill" [style.transform]="'scaleX(' + eventExploreHeaderProgress + ')'"></span>
+        <span class="activities-header-progress-loading" [style.transform]="'scaleX(' + eventExploreHeaderLoadingProgress + ')'"></span>
+      </div>
+    </div>
+
+    <div class="popup-body popup-body-event-explore">
+      <div class="event-explore-popup">
+        <div class="event-explore-filter-bar">
+          <button
+            type="button"
+            class="popup-view-fab event-explore-filter-btn event-explore-filter-friends"
+            [class.is-active]="eventExploreFilterFriendsOnly"
+            (click)="toggleEventExploreFriendsOnly($event)"
+          >
+            <mat-icon>groups</mat-icon>
+            <span>Friends going</span>
+          </button>
+
+          <button
+            type="button"
+            class="popup-view-fab event-explore-filter-btn event-explore-filter-rooms"
+            [class.is-active]="eventExploreFilterHasRooms"
+            (click)="toggleEventExploreHasRooms($event)"
+          >
+            <mat-icon>hotel</mat-icon>
+            <span>Open spots</span>
+          </button>
+
+          <div class="event-explore-topic-filter">
+            <button
+              type="button"
+              class="popup-view-fab event-explore-filter-btn event-explore-filter-topic"
+              [class.is-active]="!!eventExploreFilterTopic"
+              (click)="toggleEventExploreTopicPicker($event)"
+            >
+              <mat-icon>sell</mat-icon>
+              <span>{{ eventExploreTopicFilterLabel() }}</span>
+              <mat-icon class="event-explore-topic-filter-arrow">{{ showTopicPicker ? 'expand_less' : 'chevron_right' }}</mat-icon>
+            </button>
+
+            <div class="event-explore-topic-filter-panel" *ngIf="showTopicPicker">
+              <button
+                type="button"
+                class="event-topic-chip event-topic-chip-clear"
+                *ngIf="eventExploreFilterTopic"
+                (click)="selectEventExploreTopicFilter(eventExploreFilterTopic, $event)"
+              >
+                Clear topic
+              </button>
+              <div class="event-explore-topic-filter-group" *ngFor="let group of topicFilterGroups">
+                <div class="event-explore-topic-filter-group-title">
+                  <mat-icon>{{ group.icon }}</mat-icon>
+                  <span>{{ group.title }}</span>
+                </div>
+                <div class="event-explore-topic-filter-group-options">
+                  <button
+                    type="button"
+                    class="event-topic-chip"
+                    [ngClass]="group.toneClass"
+                    [class.is-active]="normalizeTopic(option) === normalizeTopic(eventExploreFilterTopic)"
+                    *ngFor="let option of group.options"
+                    (click)="selectEventExploreTopicFilter(option, $event)"
+                  >
+                    #{{ eventExploreTopicLabel(option) }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <app-smart-list
+          #eventExploreSmartList
+          [config]="eventExploreSmartListConfig"
+          [loadPage]="eventExploreLoadPage"
+          [itemTemplate]="eventExploreItemTemplateRef ?? null"
+          [query]="eventExploreSmartListQuery"
+          (stateChange)="onEventExploreSmartListStateChange($event)"
+        ></app-smart-list>
+
+        <ng-template #eventExploreItemTemplate let-record let-groupLabel="groupLabel">
+          <article
+            class="experience-item-card asset-item-card event-explore-card"
+            [class.event-explore-card-full]="eventExploreIsFull(record)"
+            [attr.data-event-explore-group-label]="groupLabel"
+            (click)="openEventExploreRecord(record, $event)"
+          >
+            <div class="asset-card-image" [appLazyBgImage]="record.imageUrl">
+              <button
+                type="button"
+                class="asset-source-icon event-explore-creator-chip"
+                [ngClass]="eventExploreCreatorToneClass(record)"
+                (click)="openHostImpressions($event)"
+                aria-label="Open host impressions"
+              >
+                <span class="event-explore-creator-avatar" [ngClass]="eventExploreCreatorAvatarToneClass(record)">{{ eventExploreCreatorInitials(record) }}</span>
+                <span class="event-explore-creator-rating">
+                  <span>{{ record.rating | number:'1.1-1' }}</span>
+                  <mat-icon>star</mat-icon>
+                </span>
+              </button>
+
+              <button
+                *ngIf="isEventExploreOpenEvent(record); else eventExploreMembersBadgeLocked"
+                type="button"
+                class="asset-occupancy-badge event-explore-member-badge"
+                [class.event-explore-member-badge-full]="eventExploreIsFull(record)"
+                (click)="openEventExploreMembers(record, $event)"
+                aria-label="Open event members"
+              >
+                <span class="event-explore-member-badge-content">
+                  <span class="event-explore-member-visibility-icon" [ngClass]="eventExploreMembersVisibilityClass(record)">
+                    <mat-icon [class]="eventExploreMembersVisibilityClass(record)">{{ eventExploreMembersVisibilityIcon(record) }}</mat-icon>
+                  </span>
+                  <span>{{ eventExploreMembersLabel(record) }}</span>
+                </span>
+              </button>
+
+              <ng-template #eventExploreMembersBadgeLocked>
+                <button
+                  type="button"
+                  disabled
+                  class="asset-occupancy-badge event-explore-member-badge event-explore-member-badge-inactive"
+                  [class.event-explore-member-badge-full]="eventExploreIsFull(record)"
+                  aria-label="Members hidden for this event"
+                >
+                  <span class="event-explore-member-badge-content">
+                    <span class="event-explore-member-visibility-icon" [ngClass]="eventExploreMembersVisibilityClass(record)">
+                      <mat-icon [class]="eventExploreMembersVisibilityClass(record)">{{ eventExploreMembersVisibilityIcon(record) }}</mat-icon>
+                    </span>
+                    <span>{{ eventExploreMembersLabel(record) }}</span>
+                  </span>
+                </button>
+              </ng-template>
+            </div>
+
+            <div class="experience-item-head">
+              <span class="experience-item-icon" [ngClass]="eventExploreVisibilityCircleClass(record)">
+                <mat-icon>{{ eventExploreVisibility(record) === 'Invitation only' ? 'mail_lock' : (eventExploreVisibility(record) === 'Friends only' ? 'groups' : 'public') }}</mat-icon>
+              </span>
+              <div class="experience-item-meta">
+                <h4>{{ record.title }}</h4>
+                <p>{{ eventExploreTypeLabel(record) }} · {{ eventExploreVisibility(record) }} · {{ eventExploreDistanceLabel(record) }}</p>
+              </div>
+              <div class="experience-item-actions">
+                <button
+                  type="button"
+                  class="experience-action-btn experience-action-menu-trigger"
+                  [class.is-open]="isEventExploreItemActionMenuOpen(record)"
+                  (click)="toggleEventExploreItemActionMenu(record, $event)"
+                  [attr.aria-label]="isEventExploreItemActionMenuOpen(record) ? 'Close explore actions' : 'Open explore actions'"
+                >
+                  <mat-icon>{{ isEventExploreItemActionMenuOpen(record) ? 'close' : 'more_vert' }}</mat-icon>
+                </button>
+                <div
+                  class="item-action-menu"
+                  [class.is-open]="isEventExploreItemActionMenuOpen(record)"
+                  [class.item-action-menu-mobile]="true"
+                  [class.item-action-menu-desktop]="true"
+                  [class.is-open-up]="isEventExploreItemActionMenuOpenUp(record)"
+                  (click)="$event.stopPropagation()"
+                >
+                  <div class="item-action-menu-title">{{ record.title }}</div>
+                  <button type="button" class="item-action-menu-btn" (click)="runEventExploreViewAction(record, $event)">
+                    <mat-icon>visibility</mat-icon>
+                    <span>View event</span>
+                  </button>
+                  <button type="button" class="item-action-menu-btn item-action-menu-btn-publish" (click)="runEventExploreJoinAction(record, $event)">
+                    <mat-icon>person_add</mat-icon>
+                    <span>Request join</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <p class="experience-item-description">{{ record.subtitle }}</p>
+            <p class="event-explore-timeframe">{{ record.timeframe }}</p>
+
+            <div class="event-explore-topic-row" *ngIf="record.topics.length > 0">
+              <span class="event-topic-chip" *ngFor="let topic of record.topics">#{{ eventExploreTopicLabel(topic) }}</span>
+            </div>
+          </article>
+        </ng-template>
+      </div>
+    </div>
+  </div>
+
+  <app-event-members-popup
+    *ngIf="selectedMembersRecord"
+    [title]="'Members'"
+    [subtitle]="selectedMembersTitle || 'Event'"
+    [summaryLabel]="activityMembersHeaderSummary()"
+    [pendingOnly]="selectedMembersPendingOnly"
+    [pendingCount]="activityMembersPendingCount()"
+    [canShowInviteButton]="false"
+    [isMobileView]="true"
+    [members]="activityMembersOrdered"
+    [pendingDelete]="null"
+    [pendingDeleteTitle]="'Remove member'"
+    [pendingDeleteLabel]="''"
+    [presenter]="membersPopupPresenter"
+    (close)="closeMembersPopup()"
+    (togglePendingOnly)="handleMembersTogglePendingOnly()"
+  ></app-event-members-popup>
+</section>

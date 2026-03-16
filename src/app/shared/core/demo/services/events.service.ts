@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
+import type { ActivitiesEventSyncPayload } from '../../../activities-models';
 import { resolveAdditionalDelayMsForRoute } from '../config';
 import { DemoEventsRepository } from '../repositories/events.repository';
 import type {
@@ -13,6 +14,7 @@ import type {
 })
 export class DemoEventsService {
   private static readonly EVENTS_ROUTE = '/activities/events';
+  private static readonly EVENTS_EXPLORE_ROUTE = '/activities/events/explore';
   private readonly eventsRepository = inject(DemoEventsRepository);
 
   async queryItemsByUser(userId: string): Promise<DemoEventRecord[]> {
@@ -47,6 +49,15 @@ export class DemoEventsService {
   ): Promise<DemoEventRecord[]> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
     return this.eventsRepository.queryEventItemsByFilter(userId, filter, hostingPublicationFilter);
+  }
+
+  async queryExploreItems(userId: string): Promise<DemoEventRecord[]> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_EXPLORE_ROUTE);
+    return this.eventsRepository.queryExploreItems(userId);
+  }
+
+  async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
+    this.eventsRepository.syncEventSnapshot(payload);
   }
 
   async trashItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {

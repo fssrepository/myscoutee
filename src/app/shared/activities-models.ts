@@ -62,11 +62,27 @@ export interface ActivitiesEventSyncPayload {
   activity: number;
   isAdmin: boolean;
   startAt: string;
+  endAt?: string;
   distanceKm: number;
   imageUrl: string;
   acceptedMembers?: number;
   pendingMembers?: number;
   capacityTotal?: number;
+  capacityMin?: number | null;
+  capacityMax?: number | null;
+  visibility?: AppTypes.EventVisibility;
+  blindMode?: AppTypes.EventBlindMode;
+  published?: boolean;
+  creatorUserId?: string;
+  creatorName?: string;
+  creatorInitials?: string;
+  creatorGender?: 'woman' | 'man';
+  creatorCity?: string;
+  location?: string;
+  sourceLink?: string;
+  acceptedMemberUserIds?: string[];
+  pendingMemberUserIds?: string[];
+  topics?: string[];
   syncKey: string;
 }
 

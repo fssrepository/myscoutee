@@ -22,6 +22,14 @@ const ROUTE_CONFIG: DemoUsersRouteConfig = {
     {
       routePrefix: '/game-cards/query',
       demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/activities/chats',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/activities/events',
+      demoDelayMs: 1500
     }
   ]
 };

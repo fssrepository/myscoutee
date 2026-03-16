@@ -1,9 +1,15 @@
-import type { EventMenuItem, HostingMenuItem, InvitationMenuItem } from '../../../demo-data';
+import { APP_STATIC_DATA } from '../../../app-static-data';
+import { AppDemoGenerators } from '../../../app-demo-generators';
+import type * as AppTypes from '../../../app-types';
+import { AppUtils } from '../../../app-utils';
+import { APP_DEMO_DATA, type DemoUser, type EventMenuItem, type HostingMenuItem, type InvitationMenuItem } from '../../../demo-data';
 import type {
   DemoEventRecord,
   DemoEventRecordCollection,
   DemoRepositoryEventItemType
 } from '../models/events.model';
+
+const DEMO_EVENT_MEMBER_USERS = AppDemoGenerators.buildExpandedDemoUsers(50);
 
 export class DemoEventsRepositoryBuilder {
   static buildRecordCollection(options: {
@@ -14,11 +20,12 @@ export class DemoEventsRepositoryBuilder {
   }): DemoEventRecordCollection {
     const byId: Record<string, DemoEventRecord> = {};
     const ids: string[] = [];
+    const creatorUserIdByEventId = this.buildCreatorUserIdByEventId(options);
 
     for (const [userId, items] of Object.entries(options.invitationsByUser)) {
       for (const item of items) {
         const recordKey = this.buildRecordKey(userId, 'invitations', item.id);
-        byId[recordKey] = {
+        byId[recordKey] = this.buildRecord({
           id: item.id,
           userId,
           type: 'invitations',
@@ -34,8 +41,9 @@ export class DemoEventsRepositoryBuilder {
           isHosting: false,
           isTrashed: false,
           published: true,
-          trashedAtIso: null
-        };
+          trashedAtIso: null,
+          creatorUserId: creatorUserIdByEventId.get(item.id) ?? userId
+        });
         ids.push(recordKey);
       }
     }
@@ -43,7 +51,7 @@ export class DemoEventsRepositoryBuilder {
     for (const [userId, items] of Object.entries(options.eventsByUser)) {
       for (const item of items) {
         const recordKey = this.buildRecordKey(userId, 'events', item.id);
-        byId[recordKey] = {
+        byId[recordKey] = this.buildRecord({
           id: item.id,
           userId,
           type: 'events',
@@ -59,8 +67,9 @@ export class DemoEventsRepositoryBuilder {
           isHosting: false,
           isTrashed: false,
           published: options.publishedById?.[item.id] !== false,
-          trashedAtIso: null
-        };
+          trashedAtIso: null,
+          creatorUserId: creatorUserIdByEventId.get(item.id) ?? userId
+        });
         ids.push(recordKey);
       }
     }
@@ -68,7 +77,7 @@ export class DemoEventsRepositoryBuilder {
     for (const [userId, items] of Object.entries(options.hostingByUser)) {
       for (const item of items) {
         const recordKey = this.buildRecordKey(userId, 'hosting', item.id);
-        byId[recordKey] = {
+        byId[recordKey] = this.buildRecord({
           id: item.id,
           userId,
           type: 'hosting',
@@ -84,8 +93,9 @@ export class DemoEventsRepositoryBuilder {
           isHosting: true,
           isTrashed: false,
           published: options.publishedById?.[item.id] !== false,
-          trashedAtIso: null
-        };
+          trashedAtIso: null,
+          creatorUserId: creatorUserIdByEventId.get(item.id) ?? userId
+        });
         ids.push(recordKey);
       }
     }
@@ -94,7 +104,12 @@ export class DemoEventsRepositoryBuilder {
   }
 
   static cloneRecord(record: DemoEventRecord): DemoEventRecord {
-    return { ...record };
+    return {
+      ...record,
+      acceptedMemberUserIds: [...record.acceptedMemberUserIds],
+      pendingMemberUserIds: [...record.pendingMemberUserIds],
+      topics: [...record.topics]
+    };
   }
 
   static buildRecordKey(
@@ -103,5 +118,277 @@ export class DemoEventsRepositoryBuilder {
     sourceId: string
   ): string {
     return `${userId}:${type}:${sourceId}`;
+  }
+
+  private static buildCreatorUserIdByEventId(options: {
+    invitationsByUser: Record<string, readonly InvitationMenuItem[]>;
+    eventsByUser: Record<string, readonly EventMenuItem[]>;
+    hostingByUser: Record<string, readonly HostingMenuItem[]>;
+  }): Map<string, string> {
+    const map = new Map<string, string>();
+    for (const [userId, items] of Object.entries(options.hostingByUser)) {
+      for (const item of items) {
+        map.set(item.id, userId);
+      }
+    }
+    for (const [userId, items] of Object.entries(options.eventsByUser)) {
+      for (const item of items) {
+        if (item.isAdmin && !map.has(item.id)) {
+          map.set(item.id, userId);
+        }
+      }
+    }
+    return map;
+  }
+
+  private static buildRecord(record: Pick<
+    DemoEventRecord,
+    | 'id'
+    | 'userId'
+    | 'type'
+    | 'avatar'
+    | 'title'
+    | 'subtitle'
+    | 'timeframe'
+    | 'inviter'
+    | 'unread'
+    | 'activity'
+    | 'isAdmin'
+    | 'isInvitation'
+    | 'isHosting'
+    | 'isTrashed'
+    | 'published'
+    | 'trashedAtIso'
+    | 'creatorUserId'
+  >): DemoEventRecord {
+    return {
+      ...record,
+      ...this.buildRecordDecorations(record)
+    };
+  }
+
+  private static buildRecordDecorations(record: Pick<
+    DemoEventRecord,
+    | 'id'
+    | 'title'
+    | 'subtitle'
+    | 'type'
+    | 'userId'
+    | 'activity'
+    | 'isAdmin'
+    | 'isInvitation'
+    | 'published'
+    | 'creatorUserId'
+  >): Omit<
+    DemoEventRecord,
+    | 'id'
+    | 'userId'
+    | 'type'
+    | 'avatar'
+    | 'title'
+    | 'subtitle'
+    | 'timeframe'
+    | 'inviter'
+    | 'unread'
+    | 'activity'
+    | 'isAdmin'
+    | 'isInvitation'
+    | 'isHosting'
+    | 'isTrashed'
+    | 'published'
+    | 'trashedAtIso'
+  > {
+    const creator = this.resolveCreatorUser(record.creatorUserId, record.title);
+    const startAtIso = this.resolveStartAtIso(record.id, record.type);
+    const endAtIso = this.resolveEndAtIso(record.id, startAtIso);
+    const distanceKm = this.resolveDistanceKm(record.id, record.type);
+    const visibility = APP_DEMO_DATA.eventVisibilityById[record.id]
+      ?? (record.type === 'hosting' ? 'Invitation only' : 'Public');
+    const blindMode = APP_DEMO_DATA.eventBlindModeById[record.id] ?? 'Open Event';
+    const capacityRange = AppDemoGenerators.seededEventCapacityRange(record.id, APP_DEMO_DATA.activityCapacityById);
+    const members = this.buildSeededMemberIds(record, startAtIso, distanceKm, creator);
+    const acceptedMembers = members.acceptedMemberUserIds.length;
+    const pendingMembers = members.pendingMemberUserIds.length;
+    const capacityTotal = Math.max(
+      acceptedMembers,
+      this.normalizeCount(capacityRange.max) ?? acceptedMembers
+    );
+    return {
+      creatorUserId: creator.id,
+      creatorName: creator.name,
+      creatorInitials: creator.initials,
+      creatorGender: creator.gender,
+      creatorCity: creator.city,
+      visibility,
+      blindMode,
+      startAtIso,
+      endAtIso,
+      distanceKm,
+      imageUrl: APP_DEMO_DATA.activityImageById[record.id] ?? `https://picsum.photos/seed/event-explore-${record.id}/1200/700`,
+      sourceLink: APP_DEMO_DATA.activitySourceLinkById[record.id] ?? '',
+      location: '',
+      capacityMin: this.normalizeCount(capacityRange.min),
+      capacityMax: this.normalizeCount(capacityRange.max),
+      capacityTotal,
+      acceptedMembers,
+      pendingMembers,
+      acceptedMemberUserIds: members.acceptedMemberUserIds,
+      pendingMemberUserIds: members.pendingMemberUserIds,
+      topics: this.buildSeededTopics(record.id, record.title, record.subtitle),
+      rating: this.buildSeededRating(record.id, record.title, record.type),
+      relevance: this.buildSeededRelevance(record.id, record.title, record.type)
+    };
+  }
+
+  private static resolveCreatorUser(userId: string, fallbackTitle: string): DemoUser {
+    return DEMO_EVENT_MEMBER_USERS.find(user => user.id === userId)
+      ?? DEMO_EVENT_MEMBER_USERS[0]
+      ?? {
+        id: userId,
+        name: fallbackTitle || 'Unknown Host',
+        age: 30,
+        birthday: '1996-01-01',
+        city: 'Austin',
+        height: '175 cm',
+        physique: 'Athletic',
+        languages: ['English'],
+        horoscope: 'Aries',
+        initials: AppUtils.initialsFromText(fallbackTitle || 'Unknown Host'),
+        gender: 'man',
+        statusText: 'Recently Active',
+        hostTier: 'Host',
+        traitLabel: 'Reliable',
+        completion: 60,
+        headline: '',
+        about: '',
+        profileStatus: 'public',
+        activities: { game: 0, chat: 0, invitations: 0, events: 0, hosting: 0 }
+      };
+  }
+
+  private static resolveStartAtIso(id: string, type: DemoRepositoryEventItemType): string {
+    if (type === 'hosting') {
+      return APP_DEMO_DATA.hostingDatesById[id]
+        ?? APP_DEMO_DATA.eventDatesById[id]
+        ?? this.defaultStartIso(id);
+    }
+    if (type === 'invitations') {
+      return APP_DEMO_DATA.invitationDatesById[id] ?? this.defaultStartIso(id);
+    }
+    return APP_DEMO_DATA.eventDatesById[id]
+      ?? APP_DEMO_DATA.hostingDatesById[id]
+      ?? this.defaultStartIso(id);
+  }
+
+  private static resolveEndAtIso(id: string, startAtIso: string): string {
+    const explicit = APP_DEMO_DATA.activityDateTimeRangeById[id]?.endIso;
+    if (explicit?.trim()) {
+      return explicit;
+    }
+    const startAt = new Date(startAtIso);
+    if (Number.isNaN(startAt.getTime())) {
+      return new Date().toISOString();
+    }
+    return new Date(startAt.getTime() + (2 * 60 * 60 * 1000)).toISOString();
+  }
+
+  private static resolveDistanceKm(id: string, type: DemoRepositoryEventItemType): number {
+    if (type === 'hosting') {
+      return APP_DEMO_DATA.hostingDistanceById[id] ?? APP_DEMO_DATA.eventDistanceById[id] ?? 0;
+    }
+    if (type === 'invitations') {
+      return APP_DEMO_DATA.invitationDistanceById[id] ?? 0;
+    }
+    return APP_DEMO_DATA.eventDistanceById[id] ?? APP_DEMO_DATA.hostingDistanceById[id] ?? 0;
+  }
+
+  private static buildSeededMemberIds(
+    record: Pick<DemoEventRecord, 'id' | 'type' | 'title' | 'subtitle' | 'activity' | 'isAdmin'>,
+    startAtIso: string,
+    distanceKm: number,
+    creator: DemoUser
+  ): { acceptedMemberUserIds: string[]; pendingMemberUserIds: string[] } {
+    if (record.type === 'invitations') {
+      return {
+        acceptedMemberUserIds: [],
+        pendingMemberUserIds: []
+      };
+    }
+    const row: AppTypes.ActivityListRow = {
+      id: record.id,
+      type: record.type === 'hosting' ? 'hosting' : 'events',
+      title: record.title,
+      subtitle: record.subtitle,
+      detail: startAtIso,
+      dateIso: startAtIso,
+      distanceKm,
+      unread: record.activity,
+      metricScore: record.activity,
+      isAdmin: record.type === 'hosting' ? true : record.isAdmin,
+      source: {
+        id: record.id,
+        avatar: creator.initials,
+        title: record.title,
+        shortDescription: record.subtitle,
+        timeframe: startAtIso,
+        activity: record.activity,
+        isAdmin: record.type === 'hosting' ? true : record.isAdmin
+      } as AppTypes.ActivityListRow['source']
+    };
+    const rowKey = `${row.type}:${row.id}`;
+    const members = AppDemoGenerators.generateActivityMembersForRow(
+      row,
+      rowKey,
+      DEMO_EVENT_MEMBER_USERS,
+      creator,
+      APP_DEMO_DATA.activityMemberMetPlaces
+    );
+    return {
+      acceptedMemberUserIds: members
+        .filter(member => member.status === 'accepted')
+        .map(member => member.userId),
+      pendingMemberUserIds: members
+        .filter(member => member.status === 'pending')
+        .map(member => member.userId)
+    };
+  }
+
+  private static buildSeededTopics(id: string, title: string, subtitle: string): string[] {
+    const pool = Array.from(new Set(APP_STATIC_DATA.interestOptionGroups.flatMap(group => group.options)));
+    if (pool.length === 0) {
+      return [];
+    }
+    const seed = AppDemoGenerators.hashText(`${id}:${title}:${subtitle}`);
+    const count = 2 + (seed % 2);
+    const topics: string[] = [];
+    for (let index = 0; index < pool.length && topics.length < count; index += 1) {
+      const candidate = pool[(seed + (index * 3)) % pool.length];
+      if (!topics.includes(candidate)) {
+        topics.push(candidate);
+      }
+    }
+    return topics;
+  }
+
+  private static buildSeededRating(id: string, title: string, type: DemoRepositoryEventItemType): number {
+    const seed = AppDemoGenerators.hashText(`${type}:${id}:${title}`);
+    return 6 + ((seed % 35) / 10);
+  }
+
+  private static buildSeededRelevance(id: string, title: string, type: DemoRepositoryEventItemType): number {
+    const seed = AppDemoGenerators.hashText(`${type}:${id}:${title}`);
+    return 50 + (seed % 51);
+  }
+
+  private static defaultStartIso(id: string): string {
+    const day = 10 + (AppDemoGenerators.hashText(id) % 12);
+    return new Date(Date.UTC(2026, 1, day, 12, 0, 0)).toISOString();
+  }
+
+  private static normalizeCount(value: number | null | undefined): number | null {
+    if (!Number.isFinite(value)) {
+      return null;
+    }
+    return Math.max(0, Math.trunc(Number(value)));
   }
 }
