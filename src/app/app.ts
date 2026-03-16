@@ -4319,9 +4319,7 @@ export class App {
   ): void {
     const source = this.resolveEventEditorSource(explicitSource);
     this.showEventEditorRequiredValidation = false;
-    const target = targetOverride ?? (source && this.isHostingSource(source)
-      ? 'hosting'
-      : (this.activePopup === 'activities' && this.activitiesPrimaryFilter === 'hosting' ? 'hosting' : 'events'));
+    const target = targetOverride ?? (source && this.isHostingSource(source) ? 'hosting' : 'events');
     this.eventEditorTarget = target;
     if (mode === 'edit' && source) {
       this.eventEditorSource = source;
@@ -4977,16 +4975,9 @@ export class App {
     this.showActivityInviteSortPicker = false;
     this.superStackedPopup = null;
     this.stackedEventEditorOrigin = null;
-    this.clearActivityRateEditorState();
     this.cancelChatInitialLoad();
-    this.cancelActivitiesPaginationLoad();
-    this.clearActivitiesHeaderLoadingAnimation();
     this.cancelEventExplorePaginationLoad();
     this.clearEventExploreHeaderLoadingAnimation();
-    this.clearActivitiesCalendarBadgeDelay();
-    this.activitiesPaginationKey = '';
-    this.activitiesVisibleCount = this.activitiesPageSize;
-    this.activitiesHeaderProgress = 0;
     this.eventExplorePaginationKey = '';
     this.eventExploreVisibleCount = this.activitiesPageSize;
     this.eventExploreHeaderProgress = 0;
@@ -5130,8 +5121,6 @@ export class App {
 
   protected getPopupTitle(): string {
     switch (this.activePopup) {
-      case 'activities':
-        return 'Activities';
       case 'chat':
         return this.selectedChat?.title ?? 'Chat';
       case 'activityMembers':
@@ -5420,76 +5409,6 @@ export class App {
     };
   }
 
-  protected openMobileActivitiesPrimaryFilterSelector(event: Event): void {
-    if (!this.isMobileView) {
-      return;
-    }
-    event.stopPropagation();
-    this.mobileProfileSelectorSheet = {
-      title: 'Activities',
-      selected: this.activitiesPrimaryFilter,
-      options: this.activitiesPrimaryFilters.map(option => ({
-        value: option.key,
-        label: option.label,
-        icon: option.icon,
-        toneClass: this.activitiesPrimaryFilterClass(option.key),
-        badge: this.activitiesPrimaryFilterCount(option.key)
-      })),
-      context: { kind: 'activitiesPrimaryFilter' }
-    };
-  }
-
-  protected openMobileActivitiesChatContextFilterSelector(event: Event): void {
-    if (!this.isMobileView || this.activitiesPrimaryFilter !== 'chats') {
-      return;
-    }
-    event.stopPropagation();
-    this.mobileProfileSelectorSheet = {
-      title: 'Chat Channels',
-      selected: this.activitiesChatContextFilter,
-      options: this.activitiesChatContextFilters.map(option => ({
-        value: option.key,
-        label: option.label,
-        icon: option.icon,
-        toneClass: this.activitiesChatContextFilterClass(option.key),
-        badge: this.activitiesChatContextFilterCount(option.key)
-      })),
-      context: { kind: 'activitiesChatContextFilter' }
-    };
-  }
-
-  protected openMobileActivitiesRateFilterSelector(event: Event): void {
-    if (!this.isMobileView) {
-      return;
-    }
-    event.stopPropagation();
-    this.mobileProfileSelectorSheet = {
-      title: 'Rate Type',
-      selected: this.activitiesRateFilter,
-      options: this.rateFilterEntries
-        .map(option => {
-          if (option.kind === 'group') {
-            const isPair = option.label === 'Pair';
-            return {
-              value: `group-${option.label.toLowerCase().replace(/\s+/g, '-')}`,
-              label: option.label,
-              icon: isPair ? 'groups_2' : 'person',
-              toneClass: `rate-filter-group-option-mobile ${isPair ? 'rate-filter-group-pair is-group-separator-mobile' : 'rate-filter-group-single'}`,
-              disabled: true
-            };
-          }
-          return {
-            value: option.key,
-            label: option.label,
-            icon: this.activitiesRateFilterIcon(option.key),
-            toneClass: this.rateFilterOptionClass(option.key),
-            badge: this.rateFilterCount(option.key)
-          };
-        }),
-      context: { kind: 'activitiesRateFilter' }
-    };
-  }
-
   protected openMobileEventFrequencySelector(event: Event): void {
     if (!this.isMobileView) {
       return;
@@ -5535,27 +5454,6 @@ export class App {
     if (sheet.context.kind === 'subEventResourceFilter') {
       const filter = this.normalizeSubEventResourceFilter(value);
       this.selectSubEventResourceFilter(filter);
-      this.mobileProfileSelectorSheet = null;
-      return;
-    }
-    if (sheet.context.kind === 'activitiesPrimaryFilter') {
-      if (this.activitiesPrimaryFilters.some(option => option.key === value)) {
-        this.selectActivitiesPrimaryFilter(value as AppTypes.ActivitiesPrimaryFilter);
-      }
-      this.mobileProfileSelectorSheet = null;
-      return;
-    }
-    if (sheet.context.kind === 'activitiesChatContextFilter') {
-      if (this.activitiesChatContextFilters.some(option => option.key === value)) {
-        this.selectActivitiesChatContextFilter(value as AppTypes.ActivitiesChatContextFilter);
-      }
-      this.mobileProfileSelectorSheet = null;
-      return;
-    }
-    if (sheet.context.kind === 'activitiesRateFilter') {
-      if (this.rateFilters.some(option => option.key === value)) {
-        this.selectActivitiesRateFilter(value as AppTypes.RateFilterKey);
-      }
       this.mobileProfileSelectorSheet = null;
       return;
     }
@@ -6531,10 +6429,6 @@ export class App {
       return 'group';
     }
     return null;
-  }
-
-  protected get isActivitiesPopup(): boolean {
-    return this.activePopup === 'activities';
   }
 
   protected get filteredActivityRows(): AppTypes.ActivityListRow[] {

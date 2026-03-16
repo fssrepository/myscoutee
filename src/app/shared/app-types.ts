@@ -527,9 +527,6 @@ export interface MobileProfileSelectorSheet {
     | { kind: 'experienceType' }
     | { kind: 'assetFilter' }
     | { kind: 'subEventResourceFilter' }
-    | { kind: 'activitiesPrimaryFilter' }
-    | { kind: 'activitiesChatContextFilter' }
-    | { kind: 'activitiesRateFilter' }
     | { kind: 'eventFrequency' };
 }
 
