@@ -1,10 +1,10 @@
 <section class="app-popup event-explore-popup-shell" *ngIf="isOpen">
   <div class="app-popup-backdrop" (click)="closeEventExplore()"></div>
-  <div class="app-popup-panel popup-panel-event-explore" (click)="$event.stopPropagation()">
-    <div class="popup-header popup-header-with-activities-progress">
+  <div class="app-popup-panel popup-panel-event-explore popup-panel-wide popup-panel-full-height" (click)="$event.stopPropagation()">
+    <div class="popup-header popup-header-with-progress">
       <div class="popup-title">
         <h2>{{ eventExploreHeaderTitle() }}</h2>
-        <p class="popup-subtitle-activities" *ngIf="eventExploreHeaderSubtitle() as subtitle">{{ subtitle }}</p>
+        <p class="popup-subtitle" *ngIf="eventExploreHeaderSubtitle() as subtitle">{{ subtitle }}</p>
       </div>
 
       <div class="event-explore-order-picker">
@@ -37,13 +37,13 @@
       </button>
 
       <div
-        class="activities-header-progress"
+        class="popup-header-progress"
         [class.is-loading]="eventExploreHeaderProgressLoading"
         [class.is-loading-overdue]="eventExploreHeaderLoadingOverdue"
         aria-hidden="true"
       >
-        <span class="activities-header-progress-fill" [style.transform]="'scaleX(' + eventExploreHeaderProgress + ')'"></span>
-        <span class="activities-header-progress-loading" [style.transform]="'scaleX(' + eventExploreHeaderLoadingProgress + ')'"></span>
+        <span class="popup-header-progress-fill" [style.transform]="'scaleX(' + eventExploreHeaderProgress + ')'"></span>
+        <span class="popup-header-progress-loading" [style.transform]="'scaleX(' + eventExploreHeaderLoadingProgress + ')'"></span>
       </div>
     </div>
 

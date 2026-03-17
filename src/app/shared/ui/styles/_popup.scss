@@ -36,6 +36,15 @@
     flex-direction: column;
   }
 
+  .app-popup-panel.popup-panel-wide {
+    width: min(1080px, calc(100vw - 1.2rem));
+  }
+
+  .app-popup-panel.popup-panel-full-height {
+    height: calc(100vh - 1.2rem);
+    max-height: calc(100vh - 1.2rem);
+  }
+
   .app-popup-panel.popup-panel-image-editor {
     height: calc(100vh - 1.2rem);
   }
@@ -76,6 +85,23 @@
     font-weight: 700;
   }
 
+  .popup-subtitle,
+  .popup-subtitle-activities {
+    margin: 0.14rem 0 0;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: rgba(21, 39, 62, 0.72);
+  }
+
+  .popup-subtitle-secondary,
+  .popup-subtitle-activities-secondary {
+    margin-top: 0.04rem;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    color: rgba(21, 39, 62, 0.58);
+  }
+
   .popup-body {
     padding: 0.4rem;
     overflow-y: auto;
@@ -94,6 +120,78 @@
 
   .popup-close {
     flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: rgba(38, 67, 105, 0.92);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .popup-close .mat-icon {
+    width: 21px;
+    height: 21px;
+    font-size: 21px;
+    line-height: 21px;
+  }
+
+  .popup-header-with-progress,
+  .popup-header-with-activities-progress {
+    border-bottom-color: rgba(46, 114, 184, 0.2);
+  }
+
+  .popup-header-progress,
+  .activities-header-progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: rgba(46, 114, 184, 0.12);
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .popup-header-progress-fill,
+  .activities-header-progress-fill {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(67, 96, 205, 0.98) 0%, rgba(52, 88, 206, 0.98) 100%);
+    transform-origin: left center;
+    transform: scaleX(0);
+    transition: opacity 100ms ease-out;
+  }
+
+  .popup-header-progress-loading,
+  .activities-header-progress-loading {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(270deg, rgba(235, 147, 33, 0.98) 0%, rgba(247, 190, 52, 0.98) 100%);
+    opacity: 0;
+    transform-origin: right center;
+    transform: scaleX(0);
+    transition: transform 140ms linear, opacity 90ms ease-out;
+  }
+
+  .popup-header-progress.is-loading .popup-header-progress-fill,
+  .activities-header-progress.is-loading .activities-header-progress-fill {
+    opacity: 0;
+  }
+
+  .popup-header-progress.is-loading .popup-header-progress-loading,
+  .activities-header-progress.is-loading .activities-header-progress-loading {
+    opacity: 1;
+  }
+
+  .popup-header-progress.is-loading.is-loading-overdue .popup-header-progress-loading,
+  .activities-header-progress.is-loading.is-loading-overdue .activities-header-progress-loading {
+    transform: scaleX(1) !important;
+    background: linear-gradient(270deg, rgba(213, 54, 68, 0.98) 0%, rgba(196, 29, 42, 0.98) 100%);
   }
 
   .popup-surface-overlay,

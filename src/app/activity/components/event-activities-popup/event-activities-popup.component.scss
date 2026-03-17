@@ -4,6 +4,11 @@
 // in a global stylesheet because Angular Material CDK renders panels outside the
 // component shadow / encapsulation boundary.
 
+@use '../../../shared/ui/styles' as ui;
+
+@include ui.popup-shell();
+@include ui.form-controls();
+
 :host {
   --interactive-motion-duration: 0.16s;
   --interactive-motion-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -12,155 +17,10 @@
   --interactive-hover-brightness: 1.02;
   --interactive-press-scale: 0.98;
   --interactive-press-brightness: 0.96;
-  font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
-}
-
-.app-popup {
-  position: fixed;
-  inset: 0;
-  z-index: 2300;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 1rem;
-}
-
-.app-popup-backdrop {
-  position: absolute;
-  inset: 0;
-  background: #e9edf5;
-}
-
-.app-popup-panel {
-  position: relative;
-  z-index: 1;
-  width: min(1060px, calc(100vw - 1.2rem));
-  max-height: calc(100vh - 1.2rem);
-  border-radius: 14px;
-  background: #fff;
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.26);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.app-popup-panel.popup-panel-activities {
-  height: calc(100vh - 1.2rem);
-}
-
-.popup-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.58rem 0.4rem;
-  border-bottom: 1px solid rgba(46, 114, 184, 0.2);
-  position: relative;
-}
-
-.popup-header > .popup-title {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.popup-title h2 {
-  margin: 0;
-  font-size: 1.05rem;
-  color: var(--text-main);
-  font-weight: 700;
-}
-
-.popup-subtitle-activities {
-  margin: 0.14rem 0 0;
-  font-size: 0.74rem;
-  font-weight: 700;
-  color: rgba(21, 39, 62, 0.72);
-}
-
-.popup-subtitle-activities-secondary {
-  margin-top: 0.04rem;
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  color: rgba(21, 39, 62, 0.58);
-}
-
-.popup-close {
-  width: 34px;
-  height: 34px;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: rgba(38, 67, 105, 0.92);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.popup-close .mat-icon {
-  width: 21px;
-  height: 21px;
-  font-size: 21px;
-  line-height: 21px;
-}
-
-.popup-body {
-  padding: 0.4rem;
-  overflow-y: auto;
-  overflow-x: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 0.72rem;
-  flex: 1 1 auto;
-  min-height: 0;
 }
 
 .popup-body.popup-body-activities {
   overflow: hidden;
-}
-
-
-// ─── Header Progress ──────────────────────────────────────────────────────
-.popup-header-with-activities-progress {
-  border-bottom-color: rgba(46, 114, 184, 0.2);
-}
-.activities-header-progress {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 2px;
-  background: rgba(46, 114, 184, 0.12);
-  overflow: hidden;
-  pointer-events: none;
-}
-.activities-header-progress-fill {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, rgba(67, 96, 205, 0.98) 0%, rgba(52, 88, 206, 0.98) 100%);
-  transform-origin: left center;
-  transform: scaleX(0);
-  transition: opacity 100ms ease-out;
-}
-.activities-header-progress-loading {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(270deg, rgba(235, 147, 33, 0.98) 0%, rgba(247, 190, 52, 0.98) 100%);
-  opacity: 0;
-  transform-origin: right center;
-  transform: scaleX(0);
-  transition: transform 140ms linear, opacity 90ms ease-out;
-}
-.activities-header-progress.is-loading .activities-header-progress-fill {
-  opacity: 0;
-}
-.activities-header-progress.is-loading .activities-header-progress-loading {
-  opacity: 1;
-}
-.activities-header-progress.is-loading.is-loading-overdue .activities-header-progress-loading {
-  transform: scaleX(1) !important;
-  background: linear-gradient(270deg, rgba(213, 54, 68, 0.98) 0%, rgba(196, 29, 42, 0.98) 100%);
 }
 
 // ─── Toolbar: View Picker / Compact Selects ──────────────────────────────
@@ -234,28 +94,6 @@
   position: relative;
   overflow: visible;
 }
-.popup-view-fab {
-  height: 34px;
-  border: 1px solid rgba(39, 62, 94, 0.22);
-  border-radius: 999px;
-  background: #f3f7ff;
-  color: #2c4c74;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0 0.62rem;
-  cursor: pointer;
-}
-.popup-view-fab .mat-icon {
-  width: 16px;
-  height: 16px;
-  font-size: 16px;
-}
-.popup-view-fab span {
-  font-size: 0.74rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
 .popup-body.popup-body-activities .popup-view-fab span,
 .popup-body.popup-body-activities .profile-status-select-wrap.activities-compact-select .mat-mdc-select,
 .popup-body.popup-body-activities .profile-status-select-wrap.activities-compact-select .status-option-content span:last-child,
@@ -273,20 +111,6 @@
 }
 
 // ─── Toolbar: View Picker Panel / View Option ────────────────────────────
-.activities-view-picker-panel {
-  position: absolute;
-  top: calc(100% + 0.32rem);
-  right: 0;
-  border: 1px solid rgba(39, 62, 94, 0.22);
-  border-radius: 10px;
-  background: #fff;
-  box-shadow: 0 10px 24px rgba(17, 29, 48, 0.22);
-  padding: 0.24rem;
-  min-width: 128px;
-  z-index: 40;
-  display: grid;
-  gap: 0.16rem;
-}
 .activities-mobile-primary-filter-picker,
 .activities-mobile-event-scope-filter-picker,
 .activities-mobile-chat-context-filter-picker,
@@ -1968,37 +1792,6 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-.popup-header-add-btn {
-  width: 30px;
-  height: 30px;
-  border: 1px solid rgba(30, 88, 152, 0.46);
-  border-radius: 50%;
-  background: linear-gradient(180deg, #e2f0ff 0%, #c5dbf8 100%);
-  color: #15457c;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
-  box-shadow: 0 2px 8px rgba(31, 79, 132, 0.18);
-}
-.popup-header-add-btn .mat-icon {
-  width: 16px;
-  height: 16px;
-  font-size: 16px;
-  line-height: 16px;
-}
-.popup-header-add-btn:hover {
-  background: linear-gradient(180deg, #d4e8ff 0%, #b5d1f3 100%);
-  border-color: rgba(27, 74, 130, 0.6);
-  color: #103966;
-  box-shadow: 0 4px 10px rgba(28, 69, 114, 0.24);
-  transform: translateY(-1px);
-}
-.popup-header-add-btn:active {
-  transform: scale(0.92);
-  box-shadow: 0 1px 4px rgba(36, 74, 121, 0.2);
 }
 
 .selector-like {
