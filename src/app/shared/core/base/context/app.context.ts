@@ -41,6 +41,14 @@ export interface ActivityInvitePopupState {
   title?: string;
 }
 
+interface NavigatorMenuRequest {
+  updatedMs: number;
+  type: 'activities' | 'asset';
+  primaryFilter?: 'rates' | 'chats' | 'events';
+  eventScope?: 'active-events' | 'invitations' | 'my-events';
+  assetFilter?: 'Car' | 'Accommodation' | 'Supplies' | 'Ticket';
+}
+
 export const DEFAULT_LOAD_STATE: LoadState = {
   status: 'idle',
   error: null,
@@ -82,6 +90,7 @@ export class AppContext {
   private readonly _impressionChangeFlagsByUserId = signal<Record<string, UserImpressionChangeFlags>>({});
   private readonly _activityMembersSync = signal<ActivityMembersSyncState | null>(null);
   private readonly _activityInvitePopup = signal<ActivityInvitePopupState | null>(null);
+  private readonly _navigatorMenuRequest = signal<NavigatorMenuRequest | null>(null);
   private readonly _activeUserId = signal<string>('');
   private readonly _connectivityState = signal<ConnectivityState>(detectInitialConnectivityState());
 
@@ -94,6 +103,7 @@ export class AppContext {
   readonly impressionChangeFlagsByUserId = this._impressionChangeFlagsByUserId.asReadonly();
   readonly activityMembersSync = this._activityMembersSync.asReadonly();
   readonly activityInvitePopup = this._activityInvitePopup.asReadonly();
+  readonly navigatorMenuRequest = this._navigatorMenuRequest.asReadonly();
   readonly activeUserId = this._activeUserId.asReadonly();
   readonly connectivityState = this._connectivityState.asReadonly();
   readonly isOnline = computed(() => this._connectivityState() === 'online');
@@ -502,6 +512,30 @@ export class AppContext {
 
   closeActivityInvitePopup(): void {
     this._activityInvitePopup.set(null);
+  }
+
+  openNavigatorActivitiesRequest(
+    primaryFilter: 'rates' | 'chats' | 'events',
+    eventScope?: 'active-events' | 'invitations' | 'my-events'
+  ): void {
+    this._navigatorMenuRequest.set({
+      updatedMs: Date.now(),
+      type: 'activities',
+      primaryFilter,
+      eventScope
+    });
+  }
+
+  openNavigatorAssetRequest(assetFilter: 'Car' | 'Accommodation' | 'Supplies' | 'Ticket'): void {
+    this._navigatorMenuRequest.set({
+      updatedMs: Date.now(),
+      type: 'asset',
+      assetFilter
+    });
+  }
+
+  clearNavigatorMenuRequest(): void {
+    this._navigatorMenuRequest.set(null);
   }
 
   private normalizeCounterValue(value: number): number {

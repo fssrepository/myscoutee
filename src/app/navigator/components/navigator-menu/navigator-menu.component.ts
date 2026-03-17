@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, computed, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { ActivitiesDbContextService } from '../../../activity/services/activities-db-context.service';
 import {
   AppContext,
   type ActivityCounters,
@@ -37,7 +36,6 @@ interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
 })
 export class NavigatorMenuComponent {
   private readonly appCtx = inject(AppContext);
-  private readonly activitiesContext = inject(ActivitiesDbContextService);
   private readonly navigatorService = inject(NavigatorService);
   protected readonly activeUser = this.appCtx.activeUserProfile;
   protected readonly menuUser = computed<NavigatorMenuUser | null>(() => {
@@ -223,7 +221,7 @@ export class NavigatorMenuComponent {
     primaryFilter: 'rates' | 'chats' | 'events',
     eventScope?: 'active-events' | 'invitations' | 'my-events'
   ): void {
-    this.activitiesContext.openActivities(primaryFilter, eventScope);
+    this.appCtx.openNavigatorActivitiesRequest(primaryFilter, eventScope);
   }
 
   private resolveCompletionPercent(user: UserDto | null): number {

@@ -3,11 +3,13 @@ import { Component, Type, effect, inject, signal } from '@angular/core';
 import { AssetPopupService } from '../../../asset/asset-popup.service';
 import { ActivitiesDbContextService } from '../../../activity/services/activities-db-context.service';
 import { EventEditorService } from '../../../shared/event-editor.service';
+import { AppContext } from '../../../shared/core';
 import { AvatarBtnComponent } from '../avatar-btn/avatar-btn.component';
 import { NavigatorImpressionsPopupComponent } from '../navigator-impressions-popup/navigator-impressions-popup.component';
 import { NavigatorMenuComponent } from '../navigator-menu/navigator-menu.component';
 import { ProfileEditorComponent } from '../profile-editor/profile-editor.component';
 import { NavigatorSettingsPopupsComponent } from '../navigator-settings-popups/navigator-settings-popups.component';
+import { NavigatorService } from '../../navigator.service';
 import { EventMembersPopupComponent } from '../../../activity/components/event-members-popup/event-members-popup.component';
 
 @Component({
@@ -26,9 +28,12 @@ import { EventMembersPopupComponent } from '../../../activity/components/event-m
   styleUrl: './navigator.component.scss'
 })
 export class NavigatorComponent {
+  private readonly appCtx = inject(AppContext);
   private readonly activitiesContext = inject(ActivitiesDbContextService);
   private readonly assetPopupService = inject(AssetPopupService);
   private readonly eventEditorService = inject(EventEditorService);
+  private readonly navigatorService = inject(NavigatorService);
+  private lastHandledNavigatorMenuRequestMs = 0;
   private readonly eventEditorPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly activitiesPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly assetPopupComponentRef = signal<Type<unknown> | null>(null);
@@ -61,6 +66,35 @@ export class NavigatorComponent {
       if (isAssetPopupVisible && !this.assetPopupComponentRef()) {
         void this.ensureAssetPopupLoaded();
       }
+    });
+
+    effect(() => {
+      const request = this.appCtx.navigatorMenuRequest();
+      if (!request || request.updatedMs <= this.lastHandledNavigatorMenuRequestMs) {
+        return;
+      }
+      this.lastHandledNavigatorMenuRequestMs = request.updatedMs;
+      if (request.type === 'activities' && request.primaryFilter) {
+        this.activitiesContext.openActivities(request.primaryFilter, request.eventScope);
+        this.appCtx.clearNavigatorMenuRequest();
+        return;
+      }
+      const bindings = this.navigatorService.bindings();
+      if (!bindings || request.type !== 'asset' || !request.assetFilter) {
+        this.appCtx.clearNavigatorMenuRequest();
+        return;
+      }
+      void this.ensureAssetPopupLoaded();
+      if (request.assetFilter === 'Car') {
+        bindings.openAssetCarPopup();
+      } else if (request.assetFilter === 'Accommodation') {
+        bindings.openAssetAccommodationPopup();
+      } else if (request.assetFilter === 'Supplies') {
+        bindings.openAssetSuppliesPopup();
+      } else {
+        bindings.openAssetTicketsPopup();
+      }
+      this.appCtx.clearNavigatorMenuRequest();
     });
   }
 
