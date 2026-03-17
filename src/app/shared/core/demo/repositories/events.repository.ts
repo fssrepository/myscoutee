@@ -352,9 +352,6 @@ export class DemoEventsRepository {
     if (record.visibility === 'Invitation only') {
       return false;
     }
-    if (record.visibility === 'Friends only') {
-      return AppDemoGenerators.isFriendOfActiveUser(record.creatorUserId, activeUserId);
-    }
     return true;
   }
 
@@ -518,7 +515,9 @@ export class DemoEventsRepository {
         const id = `ex-${userId}-${seq}`;
         const start = new Date(2026, 2, 1 + (index * 2), 10 + (index % 6), (index % 2) * 30, 0, 0);
         const end = new Date(start.getTime() + ((2 + (index % 3)) * 60 * 60 * 1000));
-        const visibility = (index % 2) === 0 ? 'Friends only' : 'Public';
+        const visibility = seq === 12
+          ? 'Friends only'
+          : ((index % 2) === 0 ? 'Friends only' : 'Public');
         const blindMode = (index % 5) === 0 ? 'Blind Event' : 'Open Event';
         const seed = AppDemoGenerators.hashText(`${userId}:${id}:${seq}`);
 
