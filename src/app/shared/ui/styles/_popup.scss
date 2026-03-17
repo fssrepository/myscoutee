@@ -125,7 +125,7 @@
     border: 0;
     border-radius: 50%;
     background: transparent;
-    color: rgba(38, 67, 105, 0.92);
+    color: rgba(42, 57, 77, 0.88);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -138,6 +138,15 @@
     height: 21px;
     font-size: 21px;
     line-height: 21px;
+  }
+
+  .popup-close:not(:disabled):not([aria-disabled='true']):hover {
+    background: rgba(110, 124, 145, 0.18);
+    color: rgba(28, 40, 57, 0.94);
+  }
+
+  .popup-close:not(:disabled):not([aria-disabled='true']):active {
+    background: rgba(96, 111, 134, 0.24);
   }
 
   .popup-header-with-progress,
@@ -337,8 +346,8 @@
     height: 34px;
     border: 0;
     border-radius: 50%;
-    background: rgba(235, 242, 255, 0.9);
-    color: rgba(39, 87, 148, 0.94);
+    background: transparent;
+    color: rgba(42, 57, 77, 0.88);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -353,6 +362,17 @@
     font-size: 18px;
     line-height: 18px;
     pointer-events: none;
+  }
+
+  .popup-surface-close-btn:not(:disabled):not([aria-disabled='true']):hover,
+  .experience-form-close-btn:not(:disabled):not([aria-disabled='true']):hover {
+    background: rgba(110, 124, 145, 0.18);
+    color: rgba(28, 40, 57, 0.94);
+  }
+
+  .popup-surface-close-btn:not(:disabled):not([aria-disabled='true']):active,
+  .experience-form-close-btn:not(:disabled):not([aria-disabled='true']):active {
+    background: rgba(96, 111, 134, 0.24);
   }
 
   .popup-surface-body,
@@ -465,8 +485,8 @@
     height: 34px;
     border: 0;
     border-radius: 50%;
-    background: rgba(235, 242, 255, 0.9);
-    color: rgba(39, 87, 148, 0.94);
+    background: transparent;
+    color: rgba(42, 57, 77, 0.88);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -479,6 +499,15 @@
     height: 18px;
     font-size: 18px;
     line-height: 18px;
+  }
+
+  .mobile-profile-selector-close-btn:not(:disabled):not([aria-disabled='true']):hover {
+    background: rgba(110, 124, 145, 0.18);
+    color: rgba(28, 40, 57, 0.94);
+  }
+
+  .mobile-profile-selector-close-btn:not(:disabled):not([aria-disabled='true']):active {
+    background: rgba(96, 111, 134, 0.24);
   }
 
   .mobile-profile-selector-options {

@@ -1,4 +1,9 @@
 @mixin interactive-motion() {
+  $interactive-targets:
+    "button, a[href], [role='button'], .link-btn, .popup-view-fab, .popup-header-add-btn, .activities-view-option, .profile-status-select-wrap, .profile-details-values-btn, .profile-details-privacy-btn, .profile-privacy-menu-option, .popup-close, .date-picker-btn, .avatar-edit-btn, .experience-form-close-btn, .image-editor-grid button, .image-stack-line, .image-stack-hit-segment, .mobile-profile-selector-close-btn, .mobile-profile-selector-option, .popup-panel-profile-selector .profile-filter-selector-clear, .popup-panel-profile-selector .profile-filter-selector-chip, .popup-panel-profile-selector .profile-selector-chip, .item-action-menu-btn, .experience-action-btn, .header-icon-btn, .chat-header-members, .activities-row-item-clickable, .activities-card-btn, .asset-source-icon, .event-editor-members-trigger, .motion-card, [data-motion='card']";
+  $interactive-selector: ":where(#{$interactive-targets}):not(.motion-static):not([data-motion='none'])";
+  $interactive-card-selector: ":where(.motion-card, [data-motion='card']):not(.motion-static):not([data-motion='none'])";
+
   :host {
     --interactive-motion-duration: 160ms;
     --interactive-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -9,31 +14,7 @@
     --interactive-press-brightness: 0.97;
   }
 
-  :where(
-    button,
-    a[href],
-    [role='button'],
-    .link-btn,
-    .popup-view-fab,
-    .popup-header-add-btn,
-    .activities-view-option,
-    .profile-status-select-wrap,
-    .profile-details-values-btn,
-    .profile-details-privacy-btn,
-    .profile-privacy-menu-option,
-    .popup-close,
-    .date-picker-btn,
-    .avatar-edit-btn,
-    .experience-form-close-btn,
-    .image-editor-grid button,
-    .image-stack-line,
-    .image-stack-hit-segment,
-    .mobile-profile-selector-close-btn,
-    .mobile-profile-selector-option,
-    .popup-panel-profile-selector .profile-filter-selector-clear,
-    .popup-panel-profile-selector .profile-filter-selector-chip,
-    .popup-panel-profile-selector .profile-selector-chip
-  ) {
+  #{$interactive-selector} {
     -webkit-tap-highlight-color: transparent;
     transition:
       transform var(--interactive-motion-duration) var(--interactive-motion-ease),
@@ -45,92 +26,47 @@
     transform-origin: center;
   }
 
-  :where(
-    button,
-    a[href],
-    [role='button'],
-    .link-btn,
-    .popup-view-fab,
-    .popup-header-add-btn,
-    .activities-view-option,
-    .profile-status-select-wrap,
-    .profile-details-values-btn,
-    .profile-details-privacy-btn,
-    .profile-privacy-menu-option,
-    .popup-close,
-    .date-picker-btn,
-    .avatar-edit-btn,
-    .experience-form-close-btn,
-    .image-editor-grid button,
-    .image-stack-line,
-    .image-stack-hit-segment,
-    .mobile-profile-selector-close-btn,
-    .mobile-profile-selector-option,
-    .popup-panel-profile-selector .profile-filter-selector-clear,
-    .popup-panel-profile-selector .profile-filter-selector-chip,
-    .popup-panel-profile-selector .profile-selector-chip
-  ):focus-visible {
+  #{$interactive-selector}:focus-visible {
     outline: 2px solid rgba(66, 110, 182, 0.44);
     outline-offset: 2px;
   }
 
   @media (hover: hover) and (pointer: fine) {
-    :where(
-      button,
-      a[href],
-      [role='button'],
-      .link-btn,
-      .popup-view-fab,
-      .popup-header-add-btn,
-      .activities-view-option,
-      .profile-status-select-wrap,
-      .profile-details-values-btn,
-      .profile-details-privacy-btn,
-      .profile-privacy-menu-option,
-      .popup-close,
-      .date-picker-btn,
-      .avatar-edit-btn,
-      .experience-form-close-btn,
-      .image-editor-grid button,
-      .image-stack-line,
-      .image-stack-hit-segment,
-      .mobile-profile-selector-close-btn,
-      .mobile-profile-selector-option,
-      .popup-panel-profile-selector .profile-filter-selector-clear,
-      .popup-panel-profile-selector .profile-filter-selector-chip,
-      .popup-panel-profile-selector .profile-selector-chip
-    ):not(:disabled):not([aria-disabled='true']):hover {
+    #{$interactive-selector}:not(:disabled):not([aria-disabled='true']):hover {
       transform: translateY(var(--interactive-hover-lift)) scale(var(--interactive-hover-scale));
       filter: brightness(var(--interactive-hover-brightness));
     }
 
-    :where(
-      button,
-      a[href],
-      [role='button'],
-      .link-btn,
-      .popup-view-fab,
-      .popup-header-add-btn,
-      .activities-view-option,
-      .profile-status-select-wrap,
-      .profile-details-values-btn,
-      .profile-details-privacy-btn,
-      .profile-privacy-menu-option,
-      .popup-close,
-      .date-picker-btn,
-      .avatar-edit-btn,
-      .experience-form-close-btn,
-      .image-editor-grid button,
-      .image-stack-line,
-      .image-stack-hit-segment,
-      .mobile-profile-selector-close-btn,
-      .mobile-profile-selector-option,
-      .popup-panel-profile-selector .profile-filter-selector-clear,
-      .popup-panel-profile-selector .profile-filter-selector-chip,
-      .popup-panel-profile-selector .profile-selector-chip
-    ):not(:disabled):not([aria-disabled='true']):active {
+    #{$interactive-selector}:not(:disabled):not([aria-disabled='true']):active {
       transform: scale(var(--interactive-press-scale));
       filter: brightness(var(--interactive-press-brightness));
+    }
+
+    #{$interactive-card-selector}:hover {
+      box-shadow: 0 3px 10px rgba(16, 29, 48, 0.14);
+    }
+  }
+
+  @keyframes shared-mobile-touch-feedback {
+    0% {
+      transform: scale(1);
+      filter: brightness(1);
+    }
+
+    45% {
+      transform: scale(var(--interactive-press-scale));
+      filter: brightness(var(--interactive-press-brightness));
+    }
+
+    100% {
+      transform: scale(1);
+      filter: brightness(1);
+    }
+  }
+
+  @media (hover: none), (pointer: coarse) {
+    #{$interactive-selector}:not(:disabled):not([aria-disabled='true']):active {
+      animation: shared-mobile-touch-feedback 0.2s ease;
     }
   }
 }
