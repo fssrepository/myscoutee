@@ -30,6 +30,7 @@ import {
   RatingStarBarComponent,
   type RatingStarBarConfig
 } from '../rating-star-bar';
+import { SmartListPaginationHelper } from './smart-list-pagination.helper';
 import type {
   ListDirection,
   ListQuery,
@@ -49,6 +50,7 @@ import type {
   SmartListConfig,
   SmartListGroup,
   SmartListInitialScrollAnchor,
+  SmartListItemRenderState,
   SmartListItemSelectEvent,
   SmartListItemTemplateContext,
   SmartListLoadTriggerEdge,
@@ -97,8 +99,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   @Input() loadPage: SmartListLoadPage<T, TFilters> | null = null;
   @Input() loaders: SmartListLoaders<T, TFilters> | null = null;
   @Input() itemTemplate: TemplateRef<SmartListItemTemplateContext<T, TFilters>> | null = null;
+  @Input() fullscreenItemTemplate: TemplateRef<SmartListItemTemplateContext<T, TFilters>> | null = null;
   @Input() query: Partial<ListQuery<TFilters>> | null = null;
   @Input() view: string | null = null;
+  @Input() presentation: SmartListPresentation | null = null;
   @Input() sort: string | null = null;
   @Input() direction: ListDirection | null = null;
   @Input() filters: TFilters | null = null;
@@ -129,6 +133,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private loadingOverdue = false;
   private currentViewKey: string | null = null;
   private currentViewMode: SmartListViewMode = 'list';
+  private previousPresentation: SmartListPresentation = 'list';
   private afterViewInit = false;
   private loadSequence = 0;
   private loadingCounter = 0;
@@ -154,6 +159,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private calendarPendingVisualKey: string | null = null;
   private calendarFrozenProgress: number | null = null;
   private weekRateViewportPageKey: string | null = null;
+  private readonly paginationHelper = new SmartListPaginationHelper<T>(() => {
+    this.emitState();
+    this.cdr.markForCheck();
+  });
 
   ngAfterViewInit(): void {
     this.afterViewInit = true;
@@ -161,10 +170,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    const previousPresentation = this.previousPresentation;
     const nextViewKey = this.resolveViewKey();
     const previousViewKey = this.currentViewKey;
     this.currentViewKey = nextViewKey;
     this.currentViewMode = this.resolveViewMode(nextViewKey);
+    this.previousPresentation = this.resolvedPresentation();
 
     const calendarDataInputsChanged = Boolean(
       changes['config']
@@ -215,12 +226,21 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     ) {
       this.resetAndReload();
     }
+
+    if (previousPresentation !== this.previousPresentation && this.previousPresentation === 'fullscreen') {
+      this.syncCursorIndexToVisibleListItem();
+    }
+
+    if (!this.shouldUseHostedFullscreenPagination()) {
+      this.paginationHelper.reset();
+    }
   }
 
   ngOnDestroy(): void {
     this.loadSequence += 1;
     this.clearCalendarSettleTimers();
     this.clearLoadingAnimation();
+    this.paginationHelper.destroy();
   }
 
   public reload(): void {
@@ -284,7 +304,21 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected resolvedPaginationRatingBarConfig(): RatingStarBarConfig | null {
-    return this.config.pagination?.ratingBarConfig?.(this.cursorItem(), this.currentQuery()) ?? null;
+    const baseConfig = this.config.pagination?.ratingBarConfig?.(this.cursorItem(), this.currentQuery()) ?? null;
+    if (!baseConfig) {
+      return null;
+    }
+    if (!this.shouldUseHostedFullscreenPagination()) {
+      return baseConfig;
+    }
+    return {
+      ...baseConfig,
+      presentation: 'fullscreen',
+      dock: {
+        enabled: true,
+        state: 'permanent'
+      }
+    };
   }
 
   protected shouldRenderPaginationRatingBar(): boolean {
@@ -298,15 +332,27 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected onPaginationPrev(event: Event): void {
     event.stopPropagation();
+    if (this.shouldUseHostedFullscreenPagination()) {
+      void this.advanceHostedFullscreenPagination(-1);
+      return;
+    }
     void this.moveCursor(-1);
   }
 
   protected onPaginationNext(event: Event): void {
     event.stopPropagation();
+    if (this.shouldUseHostedFullscreenPagination()) {
+      void this.advanceHostedFullscreenPagination(1);
+      return;
+    }
     void this.moveCursor(1);
   }
 
   protected onPaginationRatingSelect(score: number): void {
+    if (this.shouldUseHostedFullscreenPagination()) {
+      void this.handleHostedFullscreenRatingSelect(score);
+      return;
+    }
     void this.config.pagination?.onRatingSelect?.(this.cursorItem(), score, this.currentQuery());
   }
 
@@ -328,6 +374,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   public isLoadingActive(): boolean {
     return this.loading || this.loadingProgress > 0;
+  }
+
+  public isFullscreenPaginationAnimating(): boolean {
+    return this.paginationHelper.animating;
   }
 
   public beginHostedLoading(): void {
@@ -412,7 +462,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected resolvedPresentation(): SmartListPresentation {
-    return this.resolveConfigValue(this.config.presentation, 'list');
+    return this.presentation ?? this.resolveConfigValue(this.config.presentation, 'list');
   }
 
   protected resolvedListLayout(): 'stack' | 'card-grid' | 'thread' {
@@ -523,8 +573,75 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       $implicit: item,
       index,
       groupLabel,
-      query: this.currentQuery()
+      query: this.currentQuery(),
+      presentation: 'list',
+      renderState: 'list'
     };
+  }
+
+  protected itemDomIndex(item: T): number {
+    const index = this.items.indexOf(item);
+    return index >= 0 ? index : 0;
+  }
+
+  protected resolvedFullscreenItemTemplate(): TemplateRef<SmartListItemTemplateContext<T, TFilters>> | null {
+    return this.fullscreenItemTemplate ?? this.itemTemplate;
+  }
+
+  protected shouldRenderHostedFullscreenOverlay(): boolean {
+    return this.shouldUseHostedFullscreenPagination() && this.resolvedFullscreenItemTemplate() !== null;
+  }
+
+  protected hostedFullscreenCurrentItem(): T | null {
+    return this.cursorItem();
+  }
+
+  protected hostedFullscreenLeavingItem(): T | null {
+    return this.paginationHelper.leavingItem;
+  }
+
+  protected hostedFullscreenItemContext(
+    item: T,
+    renderState: SmartListItemRenderState
+  ): SmartListItemTemplateContext<T, TFilters> {
+    return {
+      $implicit: item,
+      index: this.buildCursorState().index,
+      groupLabel: '',
+      query: this.currentQuery(),
+      presentation: 'fullscreen',
+      renderState
+    };
+  }
+
+  protected hostedFullscreenEmptyLabel(): string {
+    if (this.isLoadingActive()) {
+      return 'Loading more items';
+    }
+    if (this.items.length > 0 || this.total > 0) {
+      return 'No cards available';
+    }
+    return this.emptyLabel();
+  }
+
+  protected hostedFullscreenEmptyDescription(): string {
+    if (this.isLoadingActive()) {
+      return 'Preloading the next stack in the background.';
+    }
+    if (this.items.length > 0 || this.total > 0) {
+      return 'Wait for more cards to load or adjust the current filter.';
+    }
+    return this.emptyDescription();
+  }
+
+  protected onHostedFullscreenLeaveAnimationEnd(event: AnimationEvent): void {
+    if (event.animationName !== 'smart-list-fullscreen-page-curl') {
+      return;
+    }
+    if (event.currentTarget !== event.target) {
+      return;
+    }
+    this.paginationHelper.finishTransition();
   }
 
   protected emptyLabel(): string {
@@ -692,6 +809,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   private resetAndReload(): void {
+    this.paginationHelper.reset();
     this.clearCalendarSettleTimers();
     this.suppressCalendarEdgeSettle = false;
     this.clearLoadingAnimation();
@@ -1167,7 +1285,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     remove();
   }
 
-  private itemAnchorKey(item: T, index: number): string | null {
+  protected itemAnchorKey(item: T, index: number): string | null {
     const trackBy = this.config.trackBy;
     if (!trackBy) {
       return null;
@@ -1790,6 +1908,78 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.resolvedPresentation() === 'fullscreen' && this.resolvedPaginationMode() !== 'scroll'
       ? 'cursor'
       : 'surface';
+  }
+
+  private shouldUseHostedFullscreenPagination(): boolean {
+    return this.currentViewMode === 'list'
+      && this.resolvedPresentation() === 'fullscreen'
+      && this.resolvedPaginationMode() !== 'scroll';
+  }
+
+  private syncCursorIndexToVisibleListItem(): void {
+    if (!this.shouldUseHostedFullscreenPagination()) {
+      return;
+    }
+    const scrollElement = this.scrollHostRef?.nativeElement;
+    if (!scrollElement || this.items.length === 0) {
+      return;
+    }
+    const visibleIndex = this.firstVisibleListItemIndex(scrollElement);
+    if (visibleIndex === null || visibleIndex === this.buildCursorState().index) {
+      return;
+    }
+    void this.setCursorIndex(visibleIndex);
+  }
+
+  private firstVisibleListItemIndex(scrollElement: HTMLDivElement): number | null {
+    const threadRect = scrollElement.getBoundingClientRect();
+    const visibleTop = threadRect.top + this.listTopInset(scrollElement);
+    const itemElements = Array.from(scrollElement.querySelectorAll<HTMLElement>('[data-smart-list-index]'));
+    const anchorElement =
+      itemElements.find(element => element.getBoundingClientRect().bottom > visibleTop + 1)
+      ?? itemElements.find(element => element.getBoundingClientRect().top >= visibleTop - 1)
+      ?? itemElements[0]
+      ?? null;
+    if (!anchorElement) {
+      return null;
+    }
+    const rawIndex = Number.parseInt(anchorElement.dataset['smartListIndex'] ?? '', 10);
+    return Number.isFinite(rawIndex) ? Math.max(0, rawIndex) : null;
+  }
+
+  private async handleHostedFullscreenRatingSelect(score: number): Promise<void> {
+    await this.config.pagination?.onRatingSelect?.(this.cursorItem(), score, this.currentQuery());
+    if (!this.shouldUseHostedFullscreenPagination() || !this.canMoveCursor(1)) {
+      return;
+    }
+    if (this.paginationHelper.animating) {
+      return;
+    }
+    await this.wait(120);
+    if (!this.shouldUseHostedFullscreenPagination() || this.paginationHelper.animating) {
+      return;
+    }
+    await this.advanceHostedFullscreenPagination(1);
+  }
+
+  private async advanceHostedFullscreenPagination(delta: number): Promise<boolean> {
+    if (!this.shouldUseHostedFullscreenPagination() || this.paginationHelper.animating) {
+      return false;
+    }
+    if (!this.canMoveCursor(delta)) {
+      return false;
+    }
+    const currentItem = this.cursorItem();
+    if (!currentItem) {
+      return this.moveCursor(delta);
+    }
+    this.paginationHelper.beginTransition(currentItem);
+    const moved = await this.moveCursor(delta);
+    if (!moved) {
+      this.paginationHelper.finishTransition();
+      return false;
+    }
+    return true;
   }
 
   private buildCursorState(): SmartListCursorState<T> {

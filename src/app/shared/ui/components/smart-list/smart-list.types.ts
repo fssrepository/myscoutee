@@ -13,6 +13,7 @@ export type SmartListCalendarVariant = 'default' | 'rate-counts';
 export type SmartListListLayout = 'stack' | 'card-grid' | 'thread';
 export type SmartListSnapMode = 'none' | 'proximity' | 'mandatory';
 export type SmartListPaginationMode = 'scroll' | 'arrows' | 'rating-stars';
+export type SmartListItemRenderState = 'list' | 'active' | 'leaving';
 export type SmartListFilters = object;
 export type SmartListLoadTriggerEdge = 'end' | 'start';
 export type SmartListMergeStrategy = 'append' | 'prepend';
@@ -84,6 +85,8 @@ export interface SmartListItemTemplateContext<T, TFilters extends SmartListFilte
   index: number;
   groupLabel: string;
   query: ListQuery<TFilters>;
+  presentation: SmartListPresentation;
+  renderState: SmartListItemRenderState;
 }
 
 export interface SmartListCalendarDateRange {

@@ -54,7 +54,6 @@ import {
   type PageResult,
   type RatingStarBarConfig,
   type SmartListConfig,
-  type SmartListCursorState,
   type SmartListItemSelectEvent,
   type SmartListItemTemplateContext,
   type SmartListLoaders,
@@ -201,12 +200,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   @ViewChild('activitiesCalendarScroll')
   private activitiesCalendarScrollRef?: ElementRef<HTMLDivElement>;
 
-  @ViewChild('activitiesRatesPairFullscreenStack')
-  private activitiesRatesPairFullscreenStackRef?: ElementRef<HTMLDivElement>;
-
-  @ViewChild('activitiesRatesPairFullscreenGrid')
-  private activitiesRatesPairFullscreenGridRef?: ElementRef<HTMLDivElement>;
-
   // ── Static data ───────────────────────────────────────────────────────────
   protected readonly activityRatingScale   = APP_STATIC_DATA.activityRatingScale;
   protected readonly activitiesPrimaryFilters: Array<{ key: AppTypes.ActivitiesPrimaryFilter; label: string; icon: string }> = [
@@ -279,7 +272,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       onRatingSelect: (_item, score) => this.setSelectedActivityOwnRating(score)
     },
     calendarVariant: () => this.activitiesPrimaryFilter === 'rates' ? 'rate-counts' : 'default',
-    presentation: () => this.activitiesSmartListPresentation(),
     views: [
       { key: 'day', label: 'Day', mode: 'list', pageSize: 10 },
       { key: 'distance', label: 'Distance', mode: 'list', pageSize: 10 },
@@ -342,7 +334,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   // ── Rate editor dock ──────────────────────────────────────────────────────
   protected selectedActivityRateId: string | null  = null;
-  protected isActivityRateBarBlinking              = false;
   private activityRateEditorClosing                = false;
   private activityRateEditorCloseTimer: ReturnType<typeof setTimeout> | null = null;
   private activityRateEditorLiftAnimationFrame: number | null = null;
@@ -354,7 +345,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   private readonly activityRateDraftById: Record<string, number>                                  = {};
   private readonly activityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
   private readonly pendingActivityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
-  private activityRateBarBlinkTimeout: ReturnType<typeof setTimeout> | null = null;
 
   // ── Rate card images ──────────────────────────────────────────────────────
   private readonly activityRateCardActiveImageIndexById: Record<string, number>                        = {};
@@ -367,13 +357,8 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   // ── Fullscreen rates ──────────────────────────────────────────────────────
   protected activitiesRatesFullscreenMode         = false;
-  protected activitiesRatesFullscreenCardIndex    = 0;
-  protected activitiesRatesFullscreenAnimating    = false;
-  protected activitiesRatesFullscreenLeavingRow: AppTypes.ActivityListRow | null = null;
   protected isActivitiesRatesPairSplitDragging    = false;
   protected activitiesRatesPairSplitPercent       = EventActivitiesPopupComponent.ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT;
-  private readonly activitiesRatesFullscreenLeaveTimeoutMs = 440;
-  private activitiesRatesFullscreenAdvanceTimer: ReturnType<typeof setTimeout> | null = null;
   private activitiesRatesPairSplitPointerId: number | null   = null;
   private activitiesRatesPairSplitBounds: { left: number; width: number } | null = null;
   private activitiesRatesPairSplitDragStartClientX: number | null = null;
@@ -649,9 +634,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.cancelActivitiesRatesFullscreenAdvance();
     this.clearActivityRateEditorState();
-    this.clearActivityRateBarBlink();
     if (this.activitiesLoadMoreTimer) {
       clearTimeout(this.activitiesLoadMoreTimer);
     }
@@ -1304,11 +1287,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.lastRateIndicatorPulseRowId = null;
     this.selectedActivityRateId = null;
     this.activitiesContext.setActivitiesSelectedRateId(null);
-    if (this.activitiesRatesFullscreenMode) {
-      this.activitiesRatesFullscreenLeavingRow = null;
-      this.activitiesRatesFullscreenCardIndex  = 0;
-      this.syncActivitiesRatesFullscreenSelection();
-    }
     this.showActivitiesPrimaryPicker = false;
     this.showActivitiesEventScopePicker = false;
     this.showActivitiesChatContextPicker = false;
@@ -2561,17 +2539,13 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       scale: this.activityRatingScale,
       readonly: this.isSelectedActivityRateReadOnly(),
       label: this.selectedActivityRateBarLabel(),
-      presentation: this.isRatesFullscreenModeActive() ? 'fullscreen' : 'list',
-      animation: this.isActivityRateBarBlinking ? 'blink' : 'default',
       dock: {
-        enabled: true,
-        state: this.isRatesFullscreenModeActive()
-          ? 'permanent'
-          : this.isActivityRateEditorClosing()
-            ? 'closing'
-            : this.isActivityRateEditorOpen()
-              ? 'open'
-              : 'hidden'
+        enabled: !this.isRatesFullscreenModeActive(),
+        state: this.isActivityRateEditorClosing()
+          ? 'closing'
+          : this.isActivityRateEditorOpen()
+            ? 'open'
+            : 'hidden'
       }
     };
   }
@@ -2630,13 +2604,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.triggerActivityRateBlinks(row.id);
       return;
     }
-    if (!this.canMoveActivitiesRatesFullscreenCursor(1)) {
-      this.triggerActivityRateBlinks(row.id);
-      return;
-    }
-    this.triggerActivityRateBlinks(row.id, () => {
-      this.advanceActivitiesRatesFullscreenCursor(1, row);
-    });
+    this.triggerActivityRateBlinks(row.id);
   }
 
   private clearActivityRateEditorState(preserveScrollPosition = false): void {
@@ -3198,17 +3166,11 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (existingTimer) {
       clearTimeout(existingTimer);
     }
-    if (this.activityRateBarBlinkTimeout) {
-      clearTimeout(this.activityRateBarBlinkTimeout);
-      this.activityRateBarBlinkTimeout = null;
-    }
     delete this.activityRateBlinkUntilByRowId[rowId];
-    this.isActivityRateBarBlinking = false;
     this.cdr.markForCheck();
 
     const startBlink = () => {
       this.activityRateBlinkUntilByRowId[rowId] = Date.now() + durationMs;
-      this.isActivityRateBarBlinking = true;
       onStart?.();
       this.cdr.markForCheck();
       this.activityRateBlinkTimeoutByRowId[rowId] = setTimeout(() => {
@@ -3222,11 +3184,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
         delete this.activityRateBlinkTimeoutByRowId[rowId];
         this.cdr.markForCheck();
       }, durationMs + 32);
-      this.activityRateBarBlinkTimeout = setTimeout(() => {
-        this.isActivityRateBarBlinking = false;
-        this.activityRateBarBlinkTimeout = null;
-        this.cdr.markForCheck();
-      }, durationMs);
     };
 
     if (typeof globalThis.requestAnimationFrame === 'function') {
@@ -3234,15 +3191,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return;
     }
     setTimeout(() => startBlink(), 0);
-  }
-
-  private clearActivityRateBarBlink(): void {
-    if (this.activityRateBarBlinkTimeout) {
-      clearTimeout(this.activityRateBarBlinkTimeout);
-      this.activityRateBarBlinkTimeout = null;
-    }
-    this.isActivityRateBarBlinking = false;
-    this.cdr.markForCheck();
   }
 
   // =========================================================================
@@ -3273,7 +3221,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   protected onActivitiesRatesPairSplitHandlePointerDown(event: PointerEvent, splitContainerElement: HTMLElement): void {
-    if (!this.isActivitiesRatesPairMobileSplitEnabled() || this.activitiesRatesFullscreenAnimating || !splitContainerElement) {
+    if (!this.isActivitiesRatesPairMobileSplitEnabled() || this.activitiesSmartList?.isFullscreenPaginationAnimating() || !splitContainerElement) {
       return;
     }
     const bounds = splitContainerElement.getBoundingClientRect();
@@ -3297,7 +3245,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   protected onActivitiesRatesPairSplitHandleTouchStart(event: TouchEvent, splitContainerElement: HTMLElement): void {
-    if (!this.isActivitiesRatesPairMobileSplitEnabled() || this.activitiesRatesFullscreenAnimating || !splitContainerElement) {
+    if (!this.isActivitiesRatesPairMobileSplitEnabled() || this.activitiesSmartList?.isFullscreenPaginationAnimating() || !splitContainerElement) {
       return;
     }
     const touch = event.touches?.[0] ?? event.changedTouches?.[0];
@@ -3328,56 +3276,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return this.isRatesFullscreenModeActive() && this.activitiesRateFilter === 'pair-received';
   }
 
-  protected canNavigateActivitiesRatesFullscreenPrev(): boolean {
-    if (!this.isActivitiesRatesFullscreenReadOnlyNavigation()) {
-      return false;
-    }
-    return this.canMoveActivitiesRatesFullscreenCursor(-1);
-  }
-
-  protected canNavigateActivitiesRatesFullscreenNext(): boolean {
-    if (!this.isActivitiesRatesFullscreenReadOnlyNavigation()) {
-      return false;
-    }
-    return this.canMoveActivitiesRatesFullscreenCursor(1);
-  }
-
-  protected navigateActivitiesRatesFullscreenPrev(event?: Event): void {
-    event?.stopPropagation();
-    if (!this.isActivitiesRatesFullscreenReadOnlyNavigation() || this.activitiesRatesFullscreenAnimating) {
-      return;
-    }
-    const row = this.currentActivitiesRatesFullscreenRow();
-    if (!row) {
-      return;
-    }
-    this.advanceActivitiesRatesFullscreenCursor(-1, row);
-  }
-
-  protected navigateActivitiesRatesFullscreenNext(event?: Event): void {
-    event?.stopPropagation();
-    if (!this.isActivitiesRatesFullscreenReadOnlyNavigation() || this.activitiesRatesFullscreenAnimating) {
-      return;
-    }
-    const row = this.currentActivitiesRatesFullscreenRow();
-    if (!row) {
-      return;
-    }
-    this.advanceActivitiesRatesFullscreenCursor(1, row);
-  }
-
-  private activitiesRatesFullscreenRows(): AppTypes.ActivityListRow[] {
-    const smartListRows = this.activitiesSmartList?.itemsSnapshot();
-    if (smartListRows) {
-      return smartListRows.filter(row => row.type === 'rates');
-    }
-    return this.filteredActivityRows.filter(row => row.type === 'rates');
-  }
-
-  protected activitiesRatesFullscreenAllRows(): AppTypes.ActivityListRow[] {
-    return this.buildFilteredActivityRowsBase().filter(row => row.type === 'rates');
-  }
-
   protected currentActivitiesRatesFullscreenRow(): AppTypes.ActivityListRow | null {
     if (!this.isRatesFullscreenModeActive()) {
       return null;
@@ -3386,61 +3284,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (smartListRow?.type === 'rates') {
       return smartListRow;
     }
-    const rows = this.activitiesRatesFullscreenRows();
-    if (rows.length === 0) {
-      return null;
-    }
-    const currentIndex = this.activitiesRatesFullscreenCursorIndex();
-    if (currentIndex < 0 || currentIndex >= rows.length) {
-      return null;
-    }
-    return rows[currentIndex] ?? null;
-  }
-
-  protected activitiesRatesFullscreenNext(event: Event): void {
-    event.stopPropagation();
-    if (this.activitiesRatesFullscreenAnimating) {
-      return;
-    }
-    const row = this.currentActivitiesRatesFullscreenRow();
-    if (!row) {
-      return;
-    }
-    this.advanceActivitiesRatesFullscreenCursor(1, row);
-  }
-
-  protected activitiesRatesFullscreenPrev(event: Event): void {
-    event.stopPropagation();
-    if (this.activitiesRatesFullscreenAnimating) {
-      return;
-    }
-    const row = this.currentActivitiesRatesFullscreenRow();
-    if (!row) {
-      return;
-    }
-    this.advanceActivitiesRatesFullscreenCursor(-1, row);
-  }
-
-  protected onActivitiesRatesFullscreenLeaveAnimationEnd(event: AnimationEvent): void {
-    if (event.animationName !== 'activities-rates-page-curl') {
-      return;
-    }
-    if (event.currentTarget !== event.target) {
-      return;
-    }
-    this.finishActivitiesRatesFullscreenAdvance();
-  }
-
-  protected activitiesRatesFullscreenEmptyTitle(): string {
-    if (this.activitiesRatesFullscreenRows().length > 0) { return 'No cards available'; }
-    if (this.isActivitiesRatesFullscreenLoadingActive()) { return 'Loading more cards'; }
-    return 'No items';
-  }
-
-  protected activitiesRatesFullscreenEmptyDescription(): string {
-    if (this.activitiesRatesFullscreenRows().length > 0) { return 'Wait for more cards to load or adjust the rate filter.'; }
-    if (this.isActivitiesRatesFullscreenLoadingActive()) { return 'Preloading the next stack in the background.'; }
-    return this.activitiesEmptyLabel;
+    return null;
   }
 
   protected toggleActivitiesRatesFullscreenMode(event: Event): void {
@@ -3452,21 +3296,15 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.disableActivitiesRatesFullscreenMode();
       return;
     }
-    const nextIndex = this.activitiesRatesFullscreenEntryIndex();
     this.stopActivitiesRatesPairSplitDrag();
     this.activitiesRatesFullscreenMode = true;
-    this.activitiesRatesFullscreenCardIndex = nextIndex;
-    this.activitiesRatesFullscreenAnimating = false;
-    this.activitiesRatesFullscreenLeavingRow = null;
-    this.cancelActivitiesRatesFullscreenAdvance();
     this.cancelActivityRateEditorCloseTransition();
     this.activityRateEditorClosing = false;
-    void this.setActivitiesRatesFullscreenCursorIndex(nextIndex).then(() => {
+    this.activitiesContext.setActivitiesRatesFullscreenMode(true);
+    this.runAfterActivitiesRender(() => {
       this.syncActivitiesRatesFullscreenSelection();
       this.cdr.markForCheck();
     });
-    this.activitiesContext.setActivitiesRatesFullscreenMode(true);
-    this.runAfterActivitiesRender(() => this.syncActivitiesRatesListPositionToSelection());
     this.cdr.markForCheck();
   }
 
@@ -3477,10 +3315,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     const selectedRateId = this.selectedActivityRateId;
     this.stopActivitiesRatesPairSplitDrag();
     this.activitiesRatesFullscreenMode = false;
-    this.activitiesRatesFullscreenAnimating = false;
-    this.activitiesRatesFullscreenLeavingRow = null;
-    this.cancelActivitiesRatesFullscreenAdvance();
-    this.clearActivityRateBarBlink();
     this.activityRateEditorClosing = false;
     this.lastActivityRateEditorLiftDelta = 0;
     this.lastRateIndicatorPulseRowId = null;
@@ -3496,147 +3330,19 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     });
   }
 
-  private cancelActivitiesRatesFullscreenAdvance(): void {
-    if (this.activitiesRatesFullscreenAdvanceTimer) {
-      clearTimeout(this.activitiesRatesFullscreenAdvanceTimer);
-      this.activitiesRatesFullscreenAdvanceTimer = null;
-    }
-  }
-
   private syncActivitiesRatesFullscreenSelection(): void {
     if (!this.activitiesRatesFullscreenMode) {
       return;
     }
-    const rows = this.activitiesRatesFullscreenRows();
-    if (rows.length === 0) {
-      this.selectedActivityRateId = null;
-      this.activitiesContext.setActivitiesSelectedRateId(null);
-      this.activitiesRatesFullscreenCardIndex = 0;
-      return;
-    }
     const currentRow = this.currentActivitiesRatesFullscreenRow();
     if (!currentRow) {
-      this.activitiesRatesFullscreenCardIndex = this.activitiesRatesFullscreenCursorIndex();
+      this.selectedActivityRateId = null;
+      this.activitiesContext.setActivitiesSelectedRateId(null);
       return;
     }
-    this.activitiesRatesFullscreenCardIndex = this.activitiesRatesFullscreenCursorIndex();
     this.selectedActivityRateId = currentRow.id;
     this.activitiesContext.setActivitiesSelectedRateId(this.selectedActivityRateId);
     this.pulseRateIndicatorForRow(currentRow);
-  }
-
-  private startActivitiesRatesFullscreenLeaveAnimation(row: AppTypes.ActivityListRow): void {
-    this.activitiesRatesFullscreenLeavingRow = row;
-    this.activitiesRatesFullscreenAnimating = true;
-    this.cancelActivitiesRatesFullscreenAdvance();
-    this.activitiesRatesFullscreenAdvanceTimer = setTimeout(() => {
-      this.activitiesRatesFullscreenAdvanceTimer = null;
-      this.finishActivitiesRatesFullscreenAdvance();
-    }, this.activitiesRatesFullscreenLeaveTimeoutMs);
-  }
-
-  private finishActivitiesRatesFullscreenAdvance(): void {
-    this.activitiesRatesFullscreenAnimating = false;
-    this.activitiesRatesFullscreenLeavingRow = null;
-    this.syncActivitiesRatesFullscreenSelection();
-    this.syncActivitiesRatesListPositionToSelection();
-  }
-
-  private activitiesRatesFullscreenEntryIndex(): number {
-    const rows = this.activitiesRatesFullscreenRows();
-    if (rows.length === 0) {
-      return 0;
-    }
-    const preferredRowId = this.selectedActivityRateId ?? this.firstVisibleActivitiesRateRowId();
-    if (!preferredRowId) {
-      return 0;
-    }
-    const matchedIndex = rows.findIndex(row => row.id === preferredRowId);
-    return matchedIndex >= 0 ? matchedIndex : 0;
-  }
-
-  private activitiesRatesFullscreenCursorState(): SmartListCursorState<AppTypes.ActivityListRow> | null {
-    return this.activitiesSmartList?.cursorState() ?? null;
-  }
-
-  private activitiesRatesFullscreenCursorIndex(): number {
-    return this.activitiesRatesFullscreenCursorState()?.index ?? this.activitiesRatesFullscreenCardIndex;
-  }
-
-  private canMoveActivitiesRatesFullscreenCursor(delta: number): boolean {
-    if (this.activitiesSmartList) {
-      return this.activitiesSmartList.canMoveCursor(delta);
-    }
-    const rows = this.activitiesRatesFullscreenRows();
-    if (rows.length === 0) {
-      return false;
-    }
-    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, rows.length - 1));
-    const nextIndex = currentIndex + Math.trunc(delta);
-    return nextIndex >= 0 && nextIndex < rows.length;
-  }
-
-  private async setActivitiesRatesFullscreenCursorIndex(index: number): Promise<boolean> {
-    if (this.activitiesSmartList) {
-      return this.activitiesSmartList.setCursorIndex(index);
-    }
-    const rows = this.activitiesRatesFullscreenRows();
-    if (rows.length === 0) {
-      this.activitiesRatesFullscreenCardIndex = 0;
-      return false;
-    }
-    const nextIndex = Math.max(0, Math.min(Math.trunc(index), rows.length - 1));
-    const changed = nextIndex !== this.activitiesRatesFullscreenCardIndex;
-    this.activitiesRatesFullscreenCardIndex = nextIndex;
-    return changed;
-  }
-
-  private async moveActivitiesRatesFullscreenCursor(delta: number): Promise<boolean> {
-    if (this.activitiesSmartList) {
-      return this.activitiesSmartList.moveCursor(delta);
-    }
-    return this.setActivitiesRatesFullscreenCursorIndex(this.activitiesRatesFullscreenCardIndex + Math.trunc(delta));
-  }
-
-  private advanceActivitiesRatesFullscreenCursor(delta: number, row: AppTypes.ActivityListRow): void {
-    if (!this.canMoveActivitiesRatesFullscreenCursor(delta)) {
-      return;
-    }
-    this.startActivitiesRatesFullscreenLeaveAnimation(row);
-    void this.moveActivitiesRatesFullscreenCursor(delta).then(moved => {
-      if (!moved) {
-        this.finishActivitiesRatesFullscreenAdvance();
-        return;
-      }
-      this.syncActivitiesRatesFullscreenSelection();
-      this.cdr.markForCheck();
-    });
-  }
-
-  private isActivitiesRatesFullscreenLoadingActive(): boolean {
-    if (this.activitiesSmartList) {
-      return this.activitiesSmartList.isLoadingActive();
-    }
-    return false;
-  }
-
-  private firstVisibleActivitiesRateRowId(): string | null {
-    const scrollElement = this.activitiesListScrollElement();
-    if (!scrollElement) {
-      return null;
-    }
-    const stickyHeaderHeight = scrollElement.querySelector<HTMLElement>('.smart-list__sticky')?.offsetHeight ?? 0;
-    const viewportTop = scrollElement.scrollTop + stickyHeaderHeight + 1;
-    const rows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.activities-rate-profile-card.activities-row-item'));
-    const activeRow = rows.find(row => row.offsetTop + row.offsetHeight > viewportTop - 1) ?? rows[0];
-    return activeRow?.dataset['activityRateRowId'] ?? null;
-  }
-
-  private syncActivitiesRatesListPositionToSelection(): void {
-    if (!this.selectedActivityRateId) {
-      return;
-    }
-    this.syncActivitiesRatesListPositionToRow(this.selectedActivityRateId);
   }
 
   private syncActivitiesRatesListPositionToRow(rowId: string): void {

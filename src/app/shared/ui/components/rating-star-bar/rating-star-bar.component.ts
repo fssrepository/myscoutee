@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, HostBinding, Input, Output } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, HostBinding, Input, OnDestroy, Output, inject } from '@angular/core';
 
 export type RatingStarBarPresentation = 'list' | 'fullscreen';
 export type RatingStarBarAnimation = 'default' | 'blink' | 'none';
@@ -27,7 +27,11 @@ export interface RatingStarBarConfig {
   styleUrl: './rating-star-bar.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class RatingStarBarComponent {
+export class RatingStarBarComponent implements OnDestroy {
+  private readonly cdr = inject(ChangeDetectorRef);
+  private blinkTimer: ReturnType<typeof setTimeout> | null = null;
+  private transientBlink = false;
+
   @HostBinding('class.rating-star-bar-host')
   protected readonly hostClass = true;
 
@@ -78,6 +82,9 @@ export class RatingStarBarComponent {
   }
 
   protected get resolvedAnimation(): RatingStarBarAnimation {
+    if (this.transientBlink) {
+      return 'blink';
+    }
     return this.config?.animation ?? 'default';
   }
 
@@ -94,10 +101,45 @@ export class RatingStarBarComponent {
     if (this.resolvedReadonly) {
       return;
     }
+    this.triggerTransientBlink();
     this.scoreSelect.emit(score);
   }
 
   protected isFilled(score: number): boolean {
     return score <= this.value;
+  }
+
+  ngOnDestroy(): void {
+    if (!this.blinkTimer) {
+      return;
+    }
+    clearTimeout(this.blinkTimer);
+    this.blinkTimer = null;
+  }
+
+  private triggerTransientBlink(): void {
+    if (this.config?.animation === 'none') {
+      return;
+    }
+    if (this.blinkTimer) {
+      clearTimeout(this.blinkTimer);
+      this.blinkTimer = null;
+    }
+    this.transientBlink = false;
+    this.cdr.markForCheck();
+    const startBlink = () => {
+      this.transientBlink = true;
+      this.cdr.markForCheck();
+      this.blinkTimer = setTimeout(() => {
+        this.blinkTimer = null;
+        this.transientBlink = false;
+        this.cdr.markForCheck();
+      }, 420);
+    };
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => startBlink());
+      return;
+    }
+    setTimeout(() => startBlink(), 0);
   }
 }
