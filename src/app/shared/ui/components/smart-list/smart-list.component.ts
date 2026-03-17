@@ -246,12 +246,13 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     mode: 'surface' | 'cursor' = 'surface'
   ): HeaderProgressBarConfig {
     const cursor = this.buildCursorState();
+    const loadingActive = this.isLoadingActive();
     const position = mode === 'cursor'
       ? cursor.progress
       : this.progress;
     return {
-      position: this.loading ? this.loadingProgress : position,
-      state: this.loading
+      position: loadingActive ? this.loadingProgress : position,
+      state: loadingActive
         ? (this.loadingOverdue ? 'loading-overdue' : 'loading')
         : 'scrolling',
       ...overrides
@@ -323,6 +324,27 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   public cursorItem(): T | null {
     return this.buildCursorState().item;
+  }
+
+  public isLoadingActive(): boolean {
+    return this.loading || this.loadingProgress > 0;
+  }
+
+  public beginHostedLoading(): void {
+    this.startLoadingAnimation();
+    this.emitState();
+    this.cdr.markForCheck();
+  }
+
+  public endHostedLoading(): void {
+    this.endLoadingAnimation();
+    this.cdr.markForCheck();
+  }
+
+  public clearHostedLoading(): void {
+    this.clearLoadingAnimation();
+    this.emitState();
+    this.cdr.markForCheck();
   }
 
   public canMoveCursor(delta: number): boolean {

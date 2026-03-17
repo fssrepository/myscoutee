@@ -458,19 +458,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   private serverPageStateKey = '';
   private readonly activitiesPaginationLoadDelayMs = 1000;
 
-  // ── Header progress ───────────────────────────────────────────────────────
-  protected activitiesHeaderProgress         = 0;
-  protected activitiesHeaderProgressLoading  = false;
-  protected activitiesHeaderLoadingProgress  = 0;
-  protected activitiesHeaderLoadingOverdue   = false;
-  private activitiesHeaderLoadingCounter     = 0;
-  private activitiesHeaderLoadingInterval: ReturnType<typeof setInterval> | null = null;
-  private activitiesHeaderLoadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly activitiesHeaderLoadingWindowMs = 3000;
-  private readonly activitiesHeaderLoadingTickMs   = 16;
-  private activitiesHeaderLoadingStartedAtMs       = 0;
-  private activitiesHeaderFlushScheduled           = false;
-
   // =========================================================================
   // Lifecycle
   // =========================================================================
@@ -668,12 +655,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (this.activitiesLoadMoreTimer) {
       clearTimeout(this.activitiesLoadMoreTimer);
     }
-    if (this.activitiesHeaderLoadingInterval) {
-      clearInterval(this.activitiesHeaderLoadingInterval);
-    }
-    if (this.activitiesHeaderLoadingCompleteTimer) {
-      clearTimeout(this.activitiesHeaderLoadingCompleteTimer);
-    }
+    this.activitiesSmartList?.clearHostedLoading();
     if (this.activitiesCalendarBadgesTimer) {
       clearTimeout(this.activitiesCalendarBadgesTimer);
     }
@@ -2161,7 +2143,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   private reloadActivitiesSmartListData(): void {
     this.activitiesSmartList?.reload();
     this.refreshActivitiesStickyHeaderSoon();
-    this.refreshActivitiesHeaderProgressSoon();
+    this.cdr.markForCheck();
   }
 
   // =========================================================================
@@ -3485,7 +3467,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     });
     this.activitiesContext.setActivitiesRatesFullscreenMode(true);
     this.runAfterActivitiesRender(() => this.syncActivitiesRatesListPositionToSelection());
-    this.refreshActivitiesHeaderProgressSoon();
+    this.cdr.markForCheck();
   }
 
   private disableActivitiesRatesFullscreenMode(): void {
@@ -3504,8 +3486,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.lastRateIndicatorPulseRowId = null;
     this.activitiesContext.setActivitiesRatesFullscreenMode(false);
     this.activitiesContext.setActivitiesSelectedRateId(this.selectedActivityRateId);
-    this.updateActivitiesHeaderProgress();
-    this.refreshActivitiesHeaderProgressSoon();
+    this.cdr.markForCheck();
     if (!selectedRateId) {
       return;
     }
@@ -3531,20 +3512,17 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.selectedActivityRateId = null;
       this.activitiesContext.setActivitiesSelectedRateId(null);
       this.activitiesRatesFullscreenCardIndex = 0;
-      this.updateActivitiesHeaderProgress();
       return;
     }
     const currentRow = this.currentActivitiesRatesFullscreenRow();
     if (!currentRow) {
       this.activitiesRatesFullscreenCardIndex = this.activitiesRatesFullscreenCursorIndex();
-      this.updateActivitiesHeaderProgress();
       return;
     }
     this.activitiesRatesFullscreenCardIndex = this.activitiesRatesFullscreenCursorIndex();
     this.selectedActivityRateId = currentRow.id;
     this.activitiesContext.setActivitiesSelectedRateId(this.selectedActivityRateId);
     this.pulseRateIndicatorForRow(currentRow);
-    this.updateActivitiesHeaderProgress();
   }
 
   private startActivitiesRatesFullscreenLeaveAnimation(row: AppTypes.ActivityListRow): void {
@@ -3637,10 +3615,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   private isActivitiesRatesFullscreenLoadingActive(): boolean {
     if (this.activitiesSmartList) {
-      const state = this.activitiesSmartList.headerProgressBarConfig({}, 'cursor').state;
-      return state === 'loading' || state === 'loading-overdue';
+      return this.activitiesSmartList.isLoadingActive();
     }
-    return this.activitiesHeaderProgressLoading;
+    return false;
   }
 
   private firstVisibleActivitiesRateRowId(): string | null {
@@ -3682,7 +3659,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     const releaseSnap = () => {
       scrollElement.style.scrollSnapType = previousSnapType;
       this.updateActivitiesStickyHeader(scrollElement.scrollTop);
-      this.refreshActivitiesHeaderProgressSoon();
+      this.cdr.markForCheck();
     };
     if (typeof globalThis.requestAnimationFrame === 'function') {
       globalThis.requestAnimationFrame(() => releaseSnap());
@@ -3929,7 +3906,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected onActivitiesCalendarScroll(event: Event): void {
     const target = event.target as HTMLElement;
     this.updateActivitiesStickyHeader(target.scrollTop || 0);
-    this.updateActivitiesHeaderProgress();
     if (!this.isCalendarLayoutView()) {
       return;
     }
@@ -3990,7 +3966,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     }
     const targetIndex = Math.max(0, Math.min(pages.length - 1, currentIndex + step));
     if (targetIndex === currentIndex) {
-      this.beginActivitiesHeaderProgressLoading();
+      this.activitiesSmartList?.beginHostedLoading();
       this.shiftCalendarPages(step);
       const edgeHoldIndex = step < 0 ? 1 : pages.length - 2;
       this.calendarInitialPageIndexOverride = edgeHoldIndex;
@@ -3998,12 +3974,12 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       const scrollAfterShift = () => {
         const nextElement = this.activitiesCalendarScrollRef?.nativeElement;
         if (!nextElement) {
-          this.endActivitiesHeaderProgressLoading();
+          this.activitiesSmartList?.endHostedLoading();
           return;
         }
         const nextWidth = nextElement.clientWidth || 0;
         if (nextWidth <= 0) {
-          this.endActivitiesHeaderProgressLoading();
+          this.activitiesSmartList?.endHostedLoading();
           return;
         }
         const previousScrollBehavior = nextElement.style.scrollBehavior;
@@ -4014,7 +3990,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
           left: nextWidth * (edgeHoldIndex + step),
           behavior: 'smooth'
         });
-        this.endActivitiesHeaderProgressLoading();
+        this.activitiesSmartList?.endHostedLoading();
       };
       setTimeout(scrollAfterShift, 100);
       return;
@@ -4125,7 +4101,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return;
     }
     this.suppressCalendarEdgeSettle = true;
-    this.beginActivitiesHeaderProgressLoading();
+    this.activitiesSmartList?.beginHostedLoading();
     const edgePage = atLeftEdge ? pages[0] : pages[pages.length - 1];
     if (this.activitiesView === 'month') {
       this.calendarMonthFocusDate =
@@ -4141,13 +4117,13 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       const nextElement = this.activitiesCalendarScrollRef?.nativeElement;
       if (!nextElement) {
         this.suppressCalendarEdgeSettle = false;
-        this.endActivitiesHeaderProgressLoading();
+        this.activitiesSmartList?.endHostedLoading();
         return;
       }
       const nextWidth = nextElement.clientWidth || 0;
       if (nextWidth <= 0) {
         this.suppressCalendarEdgeSettle = false;
-        this.endActivitiesHeaderProgressLoading();
+        this.activitiesSmartList?.endHostedLoading();
         return;
       }
       const previousScrollBehavior = nextElement.style.scrollBehavior;
@@ -4161,8 +4137,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
         nextElement.style.scrollSnapType = previousSnapType;
         this.suppressCalendarEdgeSettle = false;
         this.updateActivitiesStickyHeader(0);
-        this.updateActivitiesHeaderProgress();
-        this.endActivitiesHeaderProgressLoading();
+        this.activitiesSmartList?.endHostedLoading();
       };
       if (typeof globalThis.requestAnimationFrame === 'function') {
         globalThis.requestAnimationFrame(() => release());
@@ -4254,7 +4229,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
         this.activitiesCalendarBadgesTimer = null;
       }
       if (this.activitiesCalendarBadgesLoadingActive) {
-        this.endActivitiesHeaderProgressLoading();
+        this.activitiesSmartList?.endHostedLoading();
         this.activitiesCalendarBadgesLoadingActive = false;
       }
       this.activitiesCalendarBadgesLoadingDelayKey = '';
@@ -4268,17 +4243,17 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.activitiesCalendarBadgesTimer = null;
     }
     if (this.activitiesCalendarBadgesLoadingActive) {
-      this.endActivitiesHeaderProgressLoading();
+      this.activitiesSmartList?.endHostedLoading();
       this.activitiesCalendarBadgesLoadingActive = false;
     }
     this.activitiesCalendarBadgesLoadingDelayKey = delayKey;
-    this.beginActivitiesHeaderProgressLoading();
+    this.activitiesSmartList?.beginHostedLoading();
     this.activitiesCalendarBadgesLoadingActive = true;
     this.activitiesCalendarBadgesTimer = setTimeout(() => {
       this.activitiesCalendarBadgesTimer = null;
       this.activitiesCalendarBadgesReadyDelayKeys.add(delayKey);
       if (this.activitiesCalendarBadgesLoadingActive) {
-        this.endActivitiesHeaderProgressLoading();
+        this.activitiesSmartList?.endHostedLoading();
         this.activitiesCalendarBadgesLoadingActive = false;
       }
       this.activitiesCalendarBadgesLoadingDelayKey = '';
@@ -4292,7 +4267,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.activitiesCalendarBadgesTimer = null;
     }
     if (this.activitiesCalendarBadgesLoadingActive) {
-      this.endActivitiesHeaderProgressLoading();
+      this.activitiesSmartList?.endHostedLoading();
       this.activitiesCalendarBadgesLoadingActive = false;
     }
     this.activitiesCalendarBadgesLoadingDelayKey = '';
@@ -4335,17 +4310,15 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected onActivitiesScroll(event: Event): void {
     const target = event.target as HTMLElement;
     this.updateActivitiesStickyHeader(target.scrollTop || 0);
-    this.updateActivitiesHeaderProgress();
     this.maybeLoadMoreActivities(target);
   }
 
   private resetActivitiesScroll(loadCalendarBadgesForCurrentPage = false): void {
     this.cancelActivitiesPaginationLoad();
-    this.clearActivitiesHeaderLoadingAnimation();
+    this.activitiesSmartList?.clearHostedLoading();
     if (this.activitiesPrimaryFilter !== 'rates' || !this.isCalendarLayoutView()) {
       this.activitiesInitialLoadPending = true;
-      this.updateActivitiesHeaderProgress();
-      this.refreshActivitiesHeaderProgressSoon();
+      this.cdr.markForCheck();
       return;
     }
 
@@ -4402,7 +4375,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
         scrollElement.scrollTop = 0;
       }
       const syncSticky = () => this.updateActivitiesStickyHeader(scrollElement?.scrollTop ?? 0);
-      this.updateActivitiesHeaderProgress();
       if (this.isCalendarLayoutView() && loadCalendarBadgesForCurrentPage) {
         this.syncActivitiesCalendarBadgeDelay();
       }
@@ -4532,7 +4504,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       }
     }
     this.activitiesIsPaginating = true;
-    this.beginActivitiesHeaderProgressLoading();
+    this.activitiesSmartList?.beginHostedLoading();
     this.activitiesLoadMoreTimer = setTimeout(() => {
       this.activitiesLoadMoreTimer = null;
       const previousVisibleCount = this.activitiesVisibleCount;
@@ -4544,10 +4516,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.activitiesInitialLoadPending = false;
       this.activitiesIsPaginating = false;
       this.activitiesPaginationAwaitScrollReset = true;
-      this.endActivitiesHeaderProgressLoading();
+      this.activitiesSmartList?.endHostedLoading();
       this.refreshActivitiesStickyHeaderSoon();
-      this.updateActivitiesHeaderProgress();
-      this.refreshActivitiesHeaderProgressSoon();
+      this.cdr.markForCheck();
     }, this.activitiesPaginationLoadDelayMs);
   }
 
@@ -4559,7 +4530,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return;
     }
     this.activitiesIsPaginating = true;
-    this.beginActivitiesHeaderProgressLoading();
+    this.activitiesSmartList?.beginHostedLoading();
 
     const currentStateKey = this.activitiesPaginationStateKey();
     this.serverPageStateKey = currentStateKey;
@@ -4599,10 +4570,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       .finally(() => {
         this.activitiesIsPaginating = false;
         this.activitiesPaginationAwaitScrollReset = true;
-        this.endActivitiesHeaderProgressLoading();
+        this.activitiesSmartList?.endHostedLoading();
         this.refreshActivitiesStickyHeaderSoon();
-        this.updateActivitiesHeaderProgress();
-        this.refreshActivitiesHeaderProgressSoon();
+        this.cdr.markForCheck();
         this.cdr.markForCheck();
       });
   }
@@ -4634,7 +4604,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       : Math.min(this.activitiesPageSize, totalRows);
     this.activitiesPaginationAwaitScrollReset = false;
     this.cancelActivitiesPaginationLoad();
-    this.updateActivitiesHeaderProgress();
+    this.cdr.markForCheck();
   }
 
   private activitiesPaginationStateKey(): string {
@@ -4655,7 +4625,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     }
     if (this.activitiesIsPaginating) {
       this.activitiesIsPaginating = false;
-      this.endActivitiesHeaderProgressLoading();
+      this.activitiesSmartList?.endHostedLoading();
     }
     if (this.shouldUseServerSidePagination()) {
       this.serverPageStateKey = '';
@@ -6165,174 +6135,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return this.users.find(u => u.id === userId);
   }
 
-  // ── Header progress loading ────────────────────────────────────────────────
-
-  private beginActivitiesHeaderProgressLoading(): void {
-    this.activitiesHeaderLoadingCounter += 1;
-    if (this.activitiesHeaderLoadingCounter > 1) {
-      return;
-    }
-    this.activitiesHeaderProgressLoading = true;
-    this.activitiesHeaderLoadingOverdue = false;
-    this.activitiesHeaderLoadingProgress = 0.02;
-    this.activitiesHeaderLoadingStartedAtMs = performance.now();
-    this.flushActivitiesHeaderProgress();
-    if (this.activitiesHeaderLoadingCompleteTimer) {
-      clearTimeout(this.activitiesHeaderLoadingCompleteTimer);
-      this.activitiesHeaderLoadingCompleteTimer = null;
-    }
-    if (this.activitiesHeaderLoadingInterval) {
-      clearInterval(this.activitiesHeaderLoadingInterval);
-      this.activitiesHeaderLoadingInterval = null;
-    }
-    this.updateActivitiesHeaderLoadingWindow();
-    this.activitiesHeaderLoadingInterval = this.ngZone.runOutsideAngular(() =>
-      setInterval(() => {
-        this.updateActivitiesHeaderLoadingWindow();
-        this.flushActivitiesHeaderProgress();
-      }, this.activitiesHeaderLoadingTickMs)
-    );
-  }
-
-  private endActivitiesHeaderProgressLoading(): void {
-    if (this.activitiesHeaderLoadingCounter === 0) {
-      return;
-    }
-    this.activitiesHeaderLoadingCounter = Math.max(0, this.activitiesHeaderLoadingCounter - 1);
-    if (this.activitiesHeaderLoadingCounter !== 0) {
-      return;
-    }
-    this.completeActivitiesHeaderLoading();
-  }
-
-  private completeActivitiesHeaderLoading(): void {
-    if (this.activitiesHeaderLoadingInterval) {
-      clearInterval(this.activitiesHeaderLoadingInterval);
-      this.activitiesHeaderLoadingInterval = null;
-    }
-    // Success path: snap the loading bar to full width immediately.
-    this.activitiesHeaderLoadingProgress = 1;
-    this.activitiesHeaderLoadingOverdue = false;
-    this.flushActivitiesHeaderProgress();
-    if (this.activitiesHeaderLoadingCompleteTimer) {
-      clearTimeout(this.activitiesHeaderLoadingCompleteTimer);
-    }
-    this.activitiesHeaderLoadingCompleteTimer = this.ngZone.runOutsideAngular(() =>
-      setTimeout(() => {
-        this.ngZone.run(() => {
-          if (this.activitiesHeaderLoadingCounter !== 0) {
-            return;
-          }
-          this.activitiesHeaderProgressLoading = false;
-          this.activitiesHeaderLoadingProgress = 0;
-          this.activitiesHeaderLoadingOverdue = false;
-          this.activitiesHeaderLoadingStartedAtMs = 0;
-          this.activitiesHeaderLoadingCompleteTimer = null;
-          this.updateActivitiesHeaderProgress();
-          this.refreshActivitiesHeaderProgressSoon();
-          this.flushActivitiesHeaderProgress();
-        });
-      }, 100)
-    );
-  }
-
-  private updateActivitiesHeaderProgress(): void {
-    if (this.isRatesFullscreenModeActive()) {
-      this.activitiesListScrollable = false;
-      const loadedCount = this.activitiesRatesFullscreenRows().length;
-      if (loadedCount <= 0) {
-        this.activitiesHeaderProgress = 0;
-        return;
-      }
-      this.activitiesHeaderProgress = AppUtils.clampNumber((this.activitiesRatesFullscreenCardIndex + 1) / loadedCount, 0, 1);
-      return;
-    }
-
-    if (this.activitiesPrimaryFilter !== 'rates' && this.activitiesSmartList) {
-      const smartListElement = this.activitiesListScrollElement();
-      if (!smartListElement) {
-        this.activitiesListScrollable = false;
-        this.activitiesHeaderProgress = 0;
-        return;
-      }
-      if (this.isCalendarLayoutView()) {
-        const maxHorizontalScroll = Math.max(0, smartListElement.scrollWidth - smartListElement.clientWidth);
-        this.activitiesListScrollable = maxHorizontalScroll > 1;
-        if (maxHorizontalScroll <= 1) {
-          this.activitiesHeaderProgress = 0;
-          return;
-        }
-        this.activitiesHeaderProgress = AppUtils.clampNumber(smartListElement.scrollLeft / maxHorizontalScroll, 0, 1);
-        return;
-      }
-      const maxVerticalScroll = Math.max(0, smartListElement.scrollHeight - smartListElement.clientHeight);
-      this.activitiesListScrollable = maxVerticalScroll > 1;
-      if (maxVerticalScroll <= 1) {
-        this.activitiesHeaderProgress = 0;
-        return;
-      }
-      this.activitiesHeaderProgress = AppUtils.clampNumber(smartListElement.scrollTop / maxVerticalScroll, 0, 1);
-      return;
-    }
-
-    if (this.isCalendarLayoutView()) {
-      this.activitiesListScrollable = true;
-      const calendarElement = this.activitiesCalendarScrollRef?.nativeElement;
-      if (!calendarElement) {
-        this.activitiesHeaderProgress = 0;
-        return;
-      }
-      const maxHorizontalScroll = Math.max(0, calendarElement.scrollWidth - calendarElement.clientWidth);
-      if (maxHorizontalScroll <= 1) {
-        this.activitiesHeaderProgress = 0;
-        return;
-      }
-      this.activitiesHeaderProgress = AppUtils.clampNumber(calendarElement.scrollLeft / maxHorizontalScroll, 0, 1);
-      return;
-    }
-
-    const listElement = this.activitiesListScrollElement();
-    if (!listElement) {
-      this.activitiesListScrollable = false;
-      this.activitiesHeaderProgress = 0;
-      return;
-    }
-    const maxVerticalScroll = Math.max(0, listElement.scrollHeight - listElement.clientHeight);
-    this.activitiesListScrollable = maxVerticalScroll > 1;
-    if (maxVerticalScroll <= 1) {
-      this.activitiesHeaderProgress = 0;
-      return;
-    }
-    this.activitiesHeaderProgress = AppUtils.clampNumber(listElement.scrollTop / maxVerticalScroll, 0, 1);
-  }
-
-  private updateActivitiesHeaderLoadingWindow(): void {
-    if (!this.activitiesHeaderProgressLoading) {
-      return;
-    }
-    const elapsed = Math.max(0, performance.now() - this.activitiesHeaderLoadingStartedAtMs);
-    const nextProgress = AppUtils.clampNumber(elapsed / this.activitiesHeaderLoadingWindowMs, 0, 1);
-    this.activitiesHeaderLoadingProgress = Math.max(this.activitiesHeaderLoadingProgress, nextProgress);
-    this.activitiesHeaderLoadingOverdue = elapsed >= this.activitiesHeaderLoadingWindowMs && this.activitiesHeaderLoadingCounter > 0;
-  }
-
-  private clearActivitiesHeaderLoadingAnimation(): void {
-    if (this.activitiesHeaderLoadingInterval) {
-      clearInterval(this.activitiesHeaderLoadingInterval);
-      this.activitiesHeaderLoadingInterval = null;
-    }
-    if (this.activitiesHeaderLoadingCompleteTimer) {
-      clearTimeout(this.activitiesHeaderLoadingCompleteTimer);
-      this.activitiesHeaderLoadingCompleteTimer = null;
-    }
-    this.activitiesHeaderLoadingCounter = 0;
-    this.activitiesHeaderLoadingProgress = 0;
-    this.activitiesHeaderProgressLoading = false;
-    this.activitiesHeaderLoadingOverdue = false;
-    this.activitiesHeaderLoadingStartedAtMs = 0;
-    this.flushActivitiesHeaderProgress();
-  }
-
   private refreshActivitiesStickyHeaderSoon(): void {
     if (this.activitiesPrimaryFilter !== 'rates' && this.activitiesSmartList) {
       return;
@@ -6346,38 +6148,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return;
     }
     setTimeout(refresh, 0);
-  }
-
-  private refreshActivitiesHeaderProgressSoon(): void {
-    const refresh = () => {
-      this.updateActivitiesHeaderProgress();
-      this.flushActivitiesHeaderProgress();
-    };
-    if (typeof globalThis.requestAnimationFrame === 'function') {
-      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(refresh));
-      return;
-    }
-    setTimeout(refresh, 0);
-  }
-
-  private flushActivitiesHeaderProgress(): void {
-    if (this.activitiesHeaderFlushScheduled) {
-      return;
-    }
-    this.activitiesHeaderFlushScheduled = true;
-    this.ngZone.runOutsideAngular(() => {
-      const flush = () => {
-        this.ngZone.run(() => {
-          this.activitiesHeaderFlushScheduled = false;
-          this.cdr.markForCheck();
-        });
-      };
-      if (typeof globalThis.requestAnimationFrame === 'function') {
-        globalThis.requestAnimationFrame(() => flush());
-        return;
-      }
-      setTimeout(flush, 0);
-    });
   }
 
   private syncActivitiesSmartListQuery(): void {
@@ -6481,7 +6251,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (this.isRatesFullscreenModeActive()) {
       this.syncActivitiesRatesFullscreenSelection();
     }
-    this.flushActivitiesHeaderProgress();
     this.cdr.markForCheck();
   }
 
