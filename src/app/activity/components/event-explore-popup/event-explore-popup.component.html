@@ -97,6 +97,7 @@
           <article
             class="experience-item-card asset-item-card event-explore-card"
             [class.event-explore-card-full]="eventExploreIsFull(record)"
+            [attr.data-group-label]="groupLabel"
             [attr.data-event-explore-group-label]="groupLabel"
           >
             <div class="asset-card-image" [appLazyBgImage]="record.imageUrl">
