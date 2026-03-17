@@ -1,14 +1,33 @@
+@use '../../../shared/ui/styles' as ui;
+
+@include ui.popup-shell();
+@include ui.form-controls();
+
 :host {
+  --activity-members-shell-z-index: 3800;
   display: contents;
 }
 
+.app-popup.activity-members-popup-shell {
+  z-index: var(--activity-members-shell-z-index);
+  align-items: flex-start;
+  padding: 1rem;
+}
+
+.activity-members-popup-shell .app-popup-backdrop {
+  background: rgba(8, 16, 30, 0.44);
+  backdrop-filter: blur(2px);
+}
+
 .activity-members-popup-shell .popup-panel-members {
-  height: min(86vh, 900px);
+  width: min(1080px, calc(100vw - 1.2rem));
+  height: calc(100vh - 1.2rem);
+  max-height: calc(100vh - 1.2rem);
 }
 
 .activity-members-popup-shell .popup-body {
   padding: 0.4rem;
-  overflow-y: auto;
+  overflow: hidden;
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
@@ -25,12 +44,18 @@
   position: relative;
   height: 100%;
   min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
 }
 
 .activity-members-popup-shell .subevent-members-scroll-area {
+  height: 100%;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  padding-right: 0.06rem;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .activity-members-popup-shell .subevent-members-grid {
@@ -45,9 +70,94 @@
   padding-right: 8px;
 }
 
+.activity-members-popup-shell .header-members-count {
+  margin-left: auto;
+  min-width: fit-content;
+  height: 22px;
+  border-radius: 999px;
+  padding: 0 9px;
+  background: #dbe2eb;
+  color: rgba(24, 39, 61, 0.82);
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
 .activity-members-popup-shell .activity-members-header-pending-toggle {
+  appearance: none;
+  position: relative;
+  overflow: visible;
   min-height: 34px;
   margin-left: 0;
+  min-width: 122px;
+  padding: 0.16rem 0.62rem 0.16rem 0.78rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff4f5 0%, #ffe8eb 100%);
+  border-color: rgba(183, 88, 104, 0.42);
+  color: #9b3345;
+  box-shadow: 0 2px 6px rgba(38, 60, 92, 0.08);
+}
+
+.activity-members-popup-shell .activity-members-header-pending-toggle .status-option-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-width: 0;
+  width: auto;
+}
+
+.activity-members-popup-shell .activity-members-header-pending-toggle .activities-toggle-icon {
+  color: #ab3a4f;
+  opacity: 1;
+}
+
+.activity-members-popup-shell .activity-members-header-pending-toggle .activities-hosting-draft-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.activity-members-popup-shell .activity-members-header-pending-toggle.is-active {
+  background: linear-gradient(180deg, #f7dde1 0%, #f2c8ce 100%);
+  border-color: rgba(167, 45, 66, 0.56);
+  color: #8b1f32;
+  box-shadow: 0 4px 12px rgba(186, 65, 86, 0.24);
+}
+
+.activity-members-popup-shell .activity-members-header-pending-toggle.is-active .activities-toggle-icon {
+  color: #7f1a2f;
+  font-variation-settings: 'FILL' 1;
+}
+
+.activity-members-popup-shell .rate-filter-count-badge {
+  margin-left: auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid #fff;
+  background: #d84d4d;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 2px 8px rgba(120, 24, 24, 0.22);
+}
+
+.activity-members-popup-shell .rate-filter-trigger-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  margin-left: 0;
+  z-index: 2;
 }
 
 .activity-members-popup-shell .activity-members-header-pending-toggle .activity-members-header-pending-badge {
@@ -163,6 +273,10 @@
   background: linear-gradient(160deg, rgba(180, 108, 36, 0.2) 0%, rgba(96, 51, 18, 0.3) 100%);
 }
 
+.activity-members-popup-shell .subevent-member-image-card.member-card-tone-awaiting-approval::before {
+  background: linear-gradient(160deg, rgba(206, 54, 88, 0.22) 0%, rgba(92, 20, 40, 0.36) 100%);
+}
+
 .activity-members-popup-shell .subevent-member-image-card.menu-open {
   z-index: 18;
 }
@@ -272,6 +386,35 @@
   border-color: rgba(177, 124, 48, 0.72);
 }
 
+.activity-members-popup-shell .member-card-tone-awaiting-approval {
+  border-color: rgba(184, 72, 92, 0.78);
+}
+
+.activity-members-popup-shell .member-status-admin {
+  background: linear-gradient(180deg, #e8f0ff 0%, #d9e7ff 100%);
+  color: #2b5d9d;
+}
+
+.activity-members-popup-shell .member-status-manager {
+  background: linear-gradient(180deg, #fff8e8 0%, #fbeecf 100%);
+  color: #956215;
+}
+
+.activity-members-popup-shell .member-status-member {
+  background: linear-gradient(180deg, #ecfaef 0%, #dcf2e2 100%);
+  color: #2a7644;
+}
+
+.activity-members-popup-shell .member-status-invite-pending {
+  background: linear-gradient(180deg, #fff6e8 0%, #ffe8c9 100%);
+  color: #9c6121;
+}
+
+.activity-members-popup-shell .member-status-awaiting-approval {
+  background: linear-gradient(180deg, #fff0f3 0%, #ffdce3 100%);
+  color: #a93046;
+}
+
 @media (min-width: 761px) {
   .activity-members-popup-shell .popup-header.popup-header-activity-members-pending-layout {
     display: grid;
@@ -316,6 +459,11 @@
 }
 
 @media (max-width: 760px) {
+  .app-popup.activity-members-popup-shell {
+    padding: 0;
+    align-items: stretch;
+  }
+
   .activity-members-popup-shell .subevent-members-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

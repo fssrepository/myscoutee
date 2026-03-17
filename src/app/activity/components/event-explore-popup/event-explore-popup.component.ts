@@ -345,9 +345,6 @@ export class EventExplorePopupComponent {
   }
 
   protected eventExploreHeaderSubtitle(): string {
-    if (this.isDateLikeEventExploreLabel(this.eventExploreStickyLabel)) {
-      return this.eventExploreStickyLabel;
-    }
     if (this.eventExploreHeaderDateLabel) {
       return this.eventExploreHeaderDateLabel;
     }
@@ -1017,12 +1014,21 @@ export class EventExplorePopupComponent {
     if (entry.status === 'accepted') {
       return 'Approved';
     }
-    return 'Invitation Pending';
+    if (entry.requestKind === 'join') {
+      return 'Waiting For Join Approval';
+    }
+    if (entry.pendingSource === 'admin') {
+      return 'Invitation Pending';
+    }
+    return 'Waiting For Admin Approval';
   }
 
   private memberCardStatusIcon(entry: AppTypes.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return entry.role === 'Admin' ? 'admin_panel_settings' : 'person';
+    }
+    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
+      return 'pending_actions';
     }
     return 'outgoing_mail';
   }
@@ -1031,12 +1037,18 @@ export class EventExplorePopupComponent {
     if (entry.status === 'accepted') {
       return entry.role === 'Admin' ? 'member-status-admin' : 'member-status-member';
     }
+    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
+      return 'member-status-awaiting-approval';
+    }
     return 'member-status-invite-pending';
   }
 
   private memberCardToneClass(entry: AppTypes.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return entry.role === 'Admin' ? 'member-card-tone-admin' : 'member-card-tone-accepted';
+    }
+    if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
+      return 'member-card-tone-awaiting-approval';
     }
     return 'member-card-tone-invite-pending';
   }
