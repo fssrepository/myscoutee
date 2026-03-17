@@ -1,6 +1,7 @@
 import { Injectable, NgZone, computed, inject, signal } from '@angular/core';
 
 import type * as AppTypes from '../shared/app-types';
+import { AppContext } from '../shared/core';
 import type { AssetPopupHost } from './asset-popup.host';
 
 export interface AssetTicketBridge {
@@ -10,21 +11,16 @@ export interface AssetTicketBridge {
   ticketPayloadInitials(payload: AppTypes.TicketScanPayload): string;
 }
 
-export interface ActivityInviteRequest {
-  ownerId: string;
-  title?: string;
-}
-
 @Injectable({ providedIn: 'root' })
 export class AssetPopupService {
   private readonly ngZone = inject(NgZone);
+  private readonly appCtx = inject(AppContext);
 
   private readonly hostRef = signal<AssetPopupHost | null>(null);
   private readonly ticketBridgeRef = signal<AssetTicketBridge | null>(null);
   private readonly primaryVisibleRef = signal(false);
   private readonly stackedVisibleRef = signal(false);
   private readonly basketVisibleRef = signal(false);
-  private readonly activityInviteRequestRef = signal<ActivityInviteRequest | null>(null);
 
   private readonly ticketOverlayModeRef = signal<'ticketCode' | 'ticketScanner' | null>(null);
   private readonly ticketStickyValueRef = signal('');
@@ -40,9 +36,9 @@ export class AssetPopupService {
     this.primaryVisibleRef()
     || this.stackedVisibleRef()
     || this.basketVisibleRef()
+    || this.appCtx.activityInvitePopup() !== null
     || this.ticketOverlayModeRef() !== null
   );
-  readonly activityInviteRequest = this.activityInviteRequestRef.asReadonly();
 
   private ticketScannerTimer: ReturnType<typeof setTimeout> | null = null;
   private ticketScannerMediaStream: MediaStream | null = null;
@@ -66,12 +62,12 @@ export class AssetPopupService {
     this.basketVisibleRef.set(isBasketOpen);
   }
 
-  requestActivityInvite(request: ActivityInviteRequest): void {
-    this.activityInviteRequestRef.set(request);
+  openActivityInvite(request: { ownerId: string; title?: string }): void {
+    this.appCtx.openActivityInvitePopup(request);
   }
 
-  clearActivityInviteRequest(): void {
-    this.activityInviteRequestRef.set(null);
+  closeActivityInvite(): void {
+    this.appCtx.closeActivityInvitePopup();
   }
 
   prepareTicketPopupOpen(): void {

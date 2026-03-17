@@ -35,6 +35,12 @@ export interface ActivityMembersSyncState {
   capacityTotal: number;
 }
 
+export interface ActivityInvitePopupState {
+  updatedMs: number;
+  ownerId: string;
+  title?: string;
+}
+
 export const DEFAULT_LOAD_STATE: LoadState = {
   status: 'idle',
   error: null,
@@ -75,6 +81,7 @@ export class AppContext {
   private readonly _impressionsByUserId = signal<Record<string, UserImpressionsDto>>({});
   private readonly _impressionChangeFlagsByUserId = signal<Record<string, UserImpressionChangeFlags>>({});
   private readonly _activityMembersSync = signal<ActivityMembersSyncState | null>(null);
+  private readonly _activityInvitePopup = signal<ActivityInvitePopupState | null>(null);
   private readonly _activeUserId = signal<string>('');
   private readonly _connectivityState = signal<ConnectivityState>(detectInitialConnectivityState());
 
@@ -86,6 +93,7 @@ export class AppContext {
   readonly impressionsByUserId = this._impressionsByUserId.asReadonly();
   readonly impressionChangeFlagsByUserId = this._impressionChangeFlagsByUserId.asReadonly();
   readonly activityMembersSync = this._activityMembersSync.asReadonly();
+  readonly activityInvitePopup = this._activityInvitePopup.asReadonly();
   readonly activeUserId = this._activeUserId.asReadonly();
   readonly connectivityState = this._connectivityState.asReadonly();
   readonly isOnline = computed(() => this._connectivityState() === 'online');
@@ -478,6 +486,22 @@ export class AppContext {
         this.normalizeCounterValue(payload.capacityTotal)
       )
     });
+  }
+
+  openActivityInvitePopup(payload: { ownerId: string; title?: string }): void {
+    const normalizedOwnerId = payload.ownerId.trim();
+    if (!normalizedOwnerId) {
+      return;
+    }
+    this._activityInvitePopup.set({
+      updatedMs: Date.now(),
+      ownerId: normalizedOwnerId,
+      title: payload.title?.trim() || undefined
+    });
+  }
+
+  closeActivityInvitePopup(): void {
+    this._activityInvitePopup.set(null);
   }
 
   private normalizeCounterValue(value: number): number {

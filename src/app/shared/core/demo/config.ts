@@ -30,6 +30,14 @@ const ROUTE_CONFIG: DemoUsersRouteConfig = {
     {
       routePrefix: '/activities/events',
       demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/activities/events/invite-candidates',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/assets',
+      demoDelayMs: 1500
     }
   ]
 };

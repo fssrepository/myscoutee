@@ -13,7 +13,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
-import { AssetPopupService } from '../../../asset/asset-popup.service';
 import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import type * as AppTypes from '../../../shared/app-types';
 import { AppUtils } from '../../../shared/app-utils';
@@ -65,7 +64,6 @@ export class EventMembersPopupComponent {
   private readonly activitiesContext = inject(ActivitiesDbContextService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly eventsService = inject(EventsService);
-  private readonly assetPopupService = inject(AssetPopupService);
   private readonly appCtx = inject(AppContext);
 
   private readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
@@ -262,7 +260,7 @@ export class EventMembersPopupComponent {
     if (!this.canShowInviteButton || !this.ownerId) {
       return;
     }
-    this.assetPopupService.requestActivityInvite({
+    this.appCtx.openActivityInvitePopup({
       ownerId: this.ownerId,
       title: this.subtitle
     });

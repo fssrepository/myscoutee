@@ -1,5 +1,6 @@
 export {
   AppContext,
+  type ActivityInvitePopupState,
   DEFAULT_LOAD_STATE,
   DEFAULT_USER_IMPRESSION_CHANGE_FLAGS,
   type ActivityCounterKey,
@@ -17,6 +18,8 @@ export {
 } from './base/services/game.service';
 export { EventsService } from './base/services/events.service';
 export { ActivityMembersService } from './base/services/activity-members.service';
+export { AssetsService } from './base/services/assets.service';
+export { ActivityInviteCandidatesService } from './base/services/activity-invite-candidates.service';
 export {
   USER_FEEDBACK_SUBMIT_CONTEXT_KEY,
   USER_REPORT_USER_SUBMIT_CONTEXT_KEY,

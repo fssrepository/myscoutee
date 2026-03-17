@@ -518,15 +518,6 @@ export class App {
       }
     });
 
-    effect(() => {
-      const request = this.assetPopupService.activityInviteRequest();
-      if (!request) {
-        return;
-      }
-      this.assetPopupService.clearActivityInviteRequest();
-      this.openActivityInviteFriendsFromMembersPopup(request.ownerId, request.title);
-    });
-    
     // Listen for events from EventEditorPopupComponent
     if (typeof window !== 'undefined') {
       window.addEventListener('app:openTopics', (event) => {
@@ -9933,7 +9924,7 @@ export class App {
     this.assetPopupService.syncVisibility(
       this.isAssetPopup,
       false,
-      this.superStackedPopup === 'subEventAssetAssign' || this.superStackedPopup === 'activityInviteFriends'
+      this.superStackedPopup === 'subEventAssetAssign'
     );
   }
 

@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
+import { ASSETS_TABLE_NAME } from '../../demo/models/assets.model';
 import { ACTIVITY_MEMBERS_TABLE_NAME } from '../../demo/models/activity-members.model';
 import { CHATS_TABLE_NAME } from '../../demo/models/chats.model';
 import { EVENTS_TABLE_NAME } from '../../demo/models/events.model';
@@ -43,6 +44,11 @@ export class AppMemoryDb {
 
   private createEmptyState(): DemoMemorySchema {
     return {
+      [ASSETS_TABLE_NAME]: {
+        byId: {},
+        ids: [],
+        idsByOwnerUserId: {}
+      },
       [ACTIVITY_MEMBERS_TABLE_NAME]: {
         byId: {},
         ids: [],
@@ -155,6 +161,7 @@ export class AppMemoryDb {
 
   private async readStateFromIndexedDb(db: IDBDatabase): Promise<DemoMemorySchema | null> {
     const users = await this.readIndexedDbEntry(db, USERS_TABLE_NAME);
+    const assets = await this.readIndexedDbEntry(db, ASSETS_TABLE_NAME);
     const activityMembers = await this.readIndexedDbEntry(db, ACTIVITY_MEMBERS_TABLE_NAME);
     const rates = await this.readIndexedDbEntry(db, USER_RATES_TABLE_NAME);
     const outbox = await this.readIndexedDbEntry(db, USER_RATES_OUTBOX_TABLE_NAME);
@@ -165,6 +172,7 @@ export class AppMemoryDb {
 
     const hasSegmentedState = users !== null
       || activityMembers !== null
+      || assets !== null
       || rates !== null
       || outbox !== null
       || filterPreferences !== null
@@ -181,6 +189,9 @@ export class AppMemoryDb {
     const partialState: Partial<DemoMemorySchema> = {};
     if (users !== null) {
       partialState[USERS_TABLE_NAME] = users as DemoMemorySchema[typeof USERS_TABLE_NAME];
+    }
+    if (assets !== null) {
+      partialState[ASSETS_TABLE_NAME] = assets as DemoMemorySchema[typeof ASSETS_TABLE_NAME];
     }
     if (activityMembers !== null) {
       partialState[ACTIVITY_MEMBERS_TABLE_NAME] = activityMembers as DemoMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME];
@@ -212,6 +223,7 @@ export class AppMemoryDb {
       const tx = db.transaction(AppMemoryDb.INDEXED_DB_STORE, 'readwrite');
       const store = tx.objectStore(AppMemoryDb.INDEXED_DB_STORE);
       store.put(state[USERS_TABLE_NAME], USERS_TABLE_NAME);
+      store.put(state[ASSETS_TABLE_NAME], ASSETS_TABLE_NAME);
       store.put(state[ACTIVITY_MEMBERS_TABLE_NAME], ACTIVITY_MEMBERS_TABLE_NAME);
       store.put(state[USER_RATES_TABLE_NAME], USER_RATES_TABLE_NAME);
       store.put(state[USER_RATES_OUTBOX_TABLE_NAME], USER_RATES_OUTBOX_TABLE_NAME);
@@ -271,6 +283,7 @@ export class AppMemoryDb {
   private normalizeState(value: unknown, fallback = this.createEmptyState()): DemoMemorySchema {
     const source = (value && typeof value === 'object') ? value as Partial<DemoMemorySchema> : {};
     const usersSource = source[USERS_TABLE_NAME] as Partial<DemoMemorySchema[typeof USERS_TABLE_NAME]> | undefined;
+    const assetsSource = source[ASSETS_TABLE_NAME] as Partial<DemoMemorySchema[typeof ASSETS_TABLE_NAME]> | undefined;
     const activityMembersSource = source[ACTIVITY_MEMBERS_TABLE_NAME] as Partial<DemoMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME]> | undefined;
     const ratesSource = source[USER_RATES_TABLE_NAME] as Partial<DemoMemorySchema[typeof USER_RATES_TABLE_NAME]> | undefined;
     const outboxSource = source[USER_RATES_OUTBOX_TABLE_NAME] as Partial<DemoMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]> | undefined;
@@ -282,6 +295,11 @@ export class AppMemoryDb {
       ?? legacySource['demoEvents']
     ) as Partial<DemoMemorySchema[typeof EVENTS_TABLE_NAME]> | undefined;
     return {
+      [ASSETS_TABLE_NAME]: {
+        byId: this.normalizeAssetsById(assetsSource?.byId, fallback[ASSETS_TABLE_NAME].byId),
+        ids: this.normalizeIdList(assetsSource?.ids, fallback[ASSETS_TABLE_NAME].ids),
+        idsByOwnerUserId: this.normalizeAssetsIdsByOwnerUserId(assetsSource)
+      },
       [ACTIVITY_MEMBERS_TABLE_NAME]: {
         byId: this.normalizeActivityMembersById(activityMembersSource?.byId, fallback[ACTIVITY_MEMBERS_TABLE_NAME].byId),
         ids: this.normalizeIdList(activityMembersSource?.ids, fallback[ACTIVITY_MEMBERS_TABLE_NAME].ids),
@@ -351,6 +369,15 @@ export class AppMemoryDb {
       : { ...fallback };
   }
 
+  private normalizeAssetsById(
+    value: unknown,
+    fallback: DemoMemorySchema[typeof ASSETS_TABLE_NAME]['byId']
+  ): DemoMemorySchema[typeof ASSETS_TABLE_NAME]['byId'] {
+    return value && typeof value === 'object'
+      ? { ...(value as DemoMemorySchema[typeof ASSETS_TABLE_NAME]['byId']) }
+      : { ...fallback };
+  }
+
   private normalizeIdList(value: unknown, fallback: readonly string[]): string[] {
     return Array.isArray(value)
       ? value.map(id => String(id))
@@ -387,6 +414,41 @@ export class AppMemoryDb {
         bucket.push(id);
       }
       next[ownerKey] = bucket;
+    }
+
+    return next;
+  }
+
+  private normalizeAssetsIdsByOwnerUserId(
+    source: Partial<DemoMemorySchema[typeof ASSETS_TABLE_NAME]> | undefined
+  ): Record<string, string[]> {
+    const normalizedById = this.normalizeAssetsById(source?.byId, {});
+    const normalizedIds = this.normalizeIdList(source?.ids, []);
+    const next: Record<string, string[]> = {};
+
+    const rawIndex = source?.idsByOwnerUserId;
+    if (rawIndex && typeof rawIndex === 'object') {
+      for (const [ownerUserId, ids] of Object.entries(rawIndex)) {
+        if (!Array.isArray(ids) || !ownerUserId.trim()) {
+          continue;
+        }
+        next[ownerUserId] = ids
+          .map(id => String(id))
+          .filter(id => Boolean(normalizedById[id]));
+      }
+    }
+
+    for (const id of normalizedIds) {
+      const record = normalizedById[id];
+      const ownerUserId = typeof record?.ownerUserId === 'string' ? record.ownerUserId.trim() : '';
+      if (!ownerUserId) {
+        continue;
+      }
+      const bucket = next[ownerUserId] ?? [];
+      if (!bucket.includes(id)) {
+        bucket.push(id);
+      }
+      next[ownerUserId] = bucket;
     }
 
     return next;

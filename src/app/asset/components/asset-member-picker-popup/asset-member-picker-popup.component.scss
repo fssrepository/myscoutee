@@ -10,6 +10,10 @@
 
 .asset-member-picker-popup-shell .popup-body.popup-body-friends-picker {
   height: 100%;
+  display: grid;
+  gap: 0.58rem;
+  align-content: start;
+  grid-auto-rows: max-content;
 }
 
 .asset-member-picker-popup-shell .popup-header-inline-controls {
@@ -23,17 +27,13 @@
   position: relative;
 }
 
-.asset-member-picker-popup-shell .friends-picker-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 0.58rem;
-  justify-items: start;
-  align-content: start;
+.asset-member-picker-popup-shell .asset-member-picker-smart-list {
+  min-height: 0;
+  height: 100%;
 }
 
 .asset-member-picker-popup-shell .friends-picker-card {
   position: relative;
-  width: min(100%, 320px);
   min-height: 250px;
   border-radius: 13px;
   border: 1px solid rgba(30, 51, 81, 0.24);
@@ -137,10 +137,6 @@
 }
 
 @media (max-width: 760px) {
-  .asset-member-picker-popup-shell .friends-picker-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .asset-member-picker-popup-shell .friends-picker-card {
     min-height: 190px;
   }

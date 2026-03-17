@@ -1,5 +1,5 @@
-<section class="app-popup app-popup-stacked app-popup-super-stacked asset-member-picker-popup-shell" *ngIf="host.isActivityInviteFriendsPopup()">
-  <div class="app-popup-backdrop" (click)="host.closeActivityInviteFriends()"></div>
+<section class="app-popup app-popup-stacked app-popup-super-stacked asset-member-picker-popup-shell" *ngIf="isOpen">
+  <div class="app-popup-backdrop" (click)="closeInvitePopup()"></div>
   <div
     class="app-popup-panel popup-panel-friends-picker popup-panel-friends-picker-members popup-panel-wide popup-panel-full-height"
     (click)="$event.stopPropagation()"
@@ -10,16 +10,16 @@
       </div>
       <div class="popup-header-inline-controls">
         <div class="friends-picker-sort">
-          <button type="button" class="popup-view-fab" (click)="host.toggleActivityInviteSortPicker($event)" aria-label="Open invite sort">
-            <mat-icon>{{ host.activityInviteSort() === 'recent' ? 'schedule' : 'auto_awesome' }}</mat-icon>
-            <span>{{ host.activityInviteSort() === 'recent' ? 'Recent' : 'Relevant' }}</span>
+          <button type="button" class="popup-view-fab" (click)="toggleInviteSortPicker($event)" aria-label="Open invite sort">
+            <mat-icon>{{ inviteSort === 'recent' ? 'schedule' : 'auto_awesome' }}</mat-icon>
+            <span>{{ inviteSort === 'recent' ? 'Recent' : 'Relevant' }}</span>
           </button>
-          <div class="activities-view-picker-panel" *ngIf="host.showActivityInviteSortPicker()">
-            <button type="button" class="activities-view-option" (click)="host.selectActivityInviteSort('recent')">
+          <div class="activities-view-picker-panel" *ngIf="showInviteSortPicker">
+            <button type="button" class="activities-view-option" (click)="selectInviteSort('recent', $event)">
               <mat-icon>schedule</mat-icon>
               <span>Recent</span>
             </button>
-            <button type="button" class="activities-view-option" (click)="host.selectActivityInviteSort('relevant')">
+            <button type="button" class="activities-view-option" (click)="selectInviteSort('relevant', $event)">
               <mat-icon>auto_awesome</mat-icon>
               <span>Relevant</span>
             </button>
@@ -28,49 +28,60 @@
         <button
           type="button"
           class="popup-header-add-btn subevent-leaderboard-save-btn"
-          [class.form-save-invalid]="!host.canConfirmActivityInviteSelection()"
-          [disabled]="!host.canConfirmActivityInviteSelection()"
-          (click)="host.confirmActivityInviteSelection($event)"
+          [class.form-save-invalid]="!canConfirmSelection()"
+          [disabled]="!canConfirmSelection()"
+          (click)="confirmSelection($event)"
           aria-label="Invite selected members"
         >
           <mat-icon>done</mat-icon>
         </button>
-        <button mat-icon-button class="popup-close" (click)="host.closeActivityInviteFriends()" aria-label="Close">
+        <button mat-icon-button class="popup-close" (click)="closeInvitePopup($event)" aria-label="Close">
           <mat-icon>close</mat-icon>
         </button>
       </div>
     </div>
 
     <div class="popup-body popup-body-friends-picker">
-      <div class="friends-picker-chip-row" *ngIf="host.selectedActivityInviteChips().length > 0">
+      <div class="friends-picker-chip-row" *ngIf="selectedInviteChips().length > 0">
         <button
           type="button"
           class="values-selected-chip friends-picker-chip"
-          *ngFor="let chip of host.selectedActivityInviteChips()"
-          (click)="host.toggleActivityInviteFriend(chip.userId, $event)"
+          *ngFor="let chip of selectedInviteChips()"
+          (click)="toggleInviteCandidate(chip.userId, $event)"
         >
           <span class="friends-picker-chip-avatar" [class]="'user-color-' + chip.gender">{{ chip.initials }}</span>
           <span>{{ chip.name }}</span>
           <mat-icon class="friends-picker-chip-remove">close</mat-icon>
         </button>
       </div>
-      <div class="friends-picker-grid">
-        <article class="friends-picker-card" *ngFor="let candidate of host.activityInviteCandidates()" [style.backgroundImage]="'url(' + candidate.avatarUrl + ')'">
+
+      <app-smart-list
+        #inviteSmartList
+        class="asset-member-picker-smart-list"
+        [config]="inviteSmartListConfig"
+        [loaders]="inviteSmartListLoaders"
+        [itemTemplate]="inviteItemTemplateRef ?? null"
+        [query]="inviteSmartListQuery"
+        (stateChange)="onInviteSmartListStateChange($event)"
+      ></app-smart-list>
+
+      <ng-template #inviteItemTemplate let-candidate>
+        <article class="experience-item-card friends-picker-card asset-invite-candidate-card" [style.backgroundImage]="'url(' + candidate.avatarUrl + ')'">
           <button
             type="button"
             class="friends-picker-card-add-btn"
-            [class.active]="host.isActivityInviteFriendSelected(candidate.userId)"
-            (click)="host.toggleActivityInviteFriend(candidate.userId, $event)"
+            [class.active]="isInviteCandidateSelected(candidate.userId)"
+            (click)="toggleInviteCandidate(candidate.userId, $event)"
             aria-label="Select friend"
           >
-            <mat-icon>{{ host.isActivityInviteFriendSelected(candidate.userId) ? 'check' : 'add' }}</mat-icon>
+            <mat-icon>{{ isInviteCandidateSelected(candidate.userId) ? 'check' : 'add' }}</mat-icon>
           </button>
           <div class="friends-picker-card-meta">
             <h4>{{ candidate.name }}</h4>
-            <p>{{ host.activityInviteMetLabel(candidate) }} · {{ candidate.metAtIso | date:'MMM d, y' }}</p>
+            <p>{{ inviteMetLabel(candidate) }}</p>
           </div>
         </article>
-      </div>
+      </ng-template>
     </div>
   </div>
 </section>

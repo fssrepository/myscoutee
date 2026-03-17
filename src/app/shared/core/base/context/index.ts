@@ -1,5 +1,6 @@
 export {
   AppContext,
+  type ActivityInvitePopupState,
   DEFAULT_LOAD_STATE,
   DEFAULT_USER_IMPRESSION_CHANGE_FLAGS,
   type ActivityCounterKey,

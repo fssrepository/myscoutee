@@ -224,7 +224,6 @@ export class NavigatorMenuComponent {
     eventScope?: 'active-events' | 'invitations' | 'my-events'
   ): void {
     this.activitiesContext.openActivities(primaryFilter, eventScope);
-    this.navigatorService.closeMenu();
   }
 
   private resolveCompletionPercent(user: UserDto | null): number {
