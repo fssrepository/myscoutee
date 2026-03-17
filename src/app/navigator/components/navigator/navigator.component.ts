@@ -8,6 +8,7 @@ import { NavigatorImpressionsPopupComponent } from '../navigator-impressions-pop
 import { NavigatorMenuComponent } from '../navigator-menu/navigator-menu.component';
 import { ProfileEditorComponent } from '../profile-editor/profile-editor.component';
 import { NavigatorSettingsPopupsComponent } from '../navigator-settings-popups/navigator-settings-popups.component';
+import { EventMembersPopupComponent } from '../../../activity/components/event-members-popup/event-members-popup.component';
 
 @Component({
   selector: 'app-navigator',
@@ -18,7 +19,8 @@ import { NavigatorSettingsPopupsComponent } from '../navigator-settings-popups/n
     NavigatorMenuComponent,
     NavigatorSettingsPopupsComponent,
     NavigatorImpressionsPopupComponent,
-    ProfileEditorComponent
+    ProfileEditorComponent,
+    EventMembersPopupComponent
   ],
   templateUrl: './navigator.component.html',
   styleUrl: './navigator.component.scss'
@@ -46,9 +48,7 @@ export class NavigatorComponent {
     effect(() => {
       const isActivitiesOpen = this.activitiesContext.activitiesOpen();
       const navigationRequest = this.activitiesContext.activitiesNavigationRequest();
-      const hasInternalActivitiesRequest = navigationRequest?.type === 'members'
-        || navigationRequest?.type === 'chatResource'
-        || navigationRequest?.type === 'eventEditorMembers';
+      const hasInternalActivitiesRequest = navigationRequest?.type === 'chatResource';
       const hasEventEditorResourceRequest = this.eventEditorService.subEventResourcePopupRequest() !== null;
       const shouldLoadActivitiesPopup = isActivitiesOpen || hasInternalActivitiesRequest || hasEventEditorResourceRequest;
       if (shouldLoadActivitiesPopup && !this.activitiesPopupComponentRef()) {

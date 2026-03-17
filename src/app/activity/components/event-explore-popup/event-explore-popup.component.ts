@@ -359,6 +359,7 @@ export class EventExplorePopupComponent {
   }
 
   protected openEventExploreMembers(record: DemoEventRecord, event: Event): void {
+    event.preventDefault();
     event.stopPropagation();
     if (!this.isEventExploreOpenEvent(record)) {
       return;

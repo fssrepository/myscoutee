@@ -62,7 +62,6 @@ import {
 } from '../../../shared/ui';
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
 import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
-import { EventMembersPopupComponent } from '../event-members-popup/event-members-popup.component';
 import { ActivityMembersService, AppContext, type ActivityMembersSyncState, EventsService } from '../../../shared/core';
 
 // ---------------------------------------------------------------------------
@@ -95,8 +94,7 @@ type PendingActivityAction = 'delete' | 'exit' | 'reject';
     LazyBgImageDirective,
     SmartListComponent,
     EventChatPopupComponent,
-    EventExplorePopupComponent,
-    EventMembersPopupComponent
+    EventExplorePopupComponent
   ],
   templateUrl: './event-activities-popup.component.html',
   styleUrl: './event-activities-popup.component.scss',

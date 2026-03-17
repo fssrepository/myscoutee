@@ -44,9 +44,7 @@ export class ActivityMembersService {
   }
 
   async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<AppTypes.ActivityMemberEntry[]> {
-    const members = await this.activityMembersService.queryMembersByOwner(owner);
-    this.emitActivityMembersSyncForOwner(owner);
-    return members;
+    return this.activityMembersService.queryMembersByOwner(owner);
   }
 
   async queryMembersByOwnerId(ownerId: string): Promise<AppTypes.ActivityMemberEntry[]> {
@@ -61,11 +59,7 @@ export class ActivityMembersService {
   }
 
   peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummary | null {
-    const summary = this.activityMembersService.peekSummaryByOwner(owner);
-    if (summary) {
-      this.emitActivityMembersSync(summary.ownerId, summary.acceptedMembers, summary.pendingMembers, summary.capacityTotal);
-    }
-    return summary;
+    return this.activityMembersService.peekSummaryByOwner(owner);
   }
 
   peekSummaryByOwnerId(ownerId: string): ActivityMembersSummary | null {
@@ -77,11 +71,7 @@ export class ActivityMembersService {
   }
 
   async querySummariesByOwners(owners: readonly ActivityMemberOwnerRef[]): Promise<ActivityMembersSummary[]> {
-    const summaries = await this.activityMembersService.querySummariesByOwners(owners);
-    for (const summary of summaries) {
-      this.emitActivityMembersSync(summary.ownerId, summary.acceptedMembers, summary.pendingMembers, summary.capacityTotal);
-    }
-    return summaries;
+    return this.activityMembersService.querySummariesByOwners(owners);
   }
 
   async querySummaryByOwnerId(ownerId: string): Promise<ActivityMembersSummary | null> {
@@ -95,7 +85,6 @@ export class ActivityMembersService {
     }
     const owner = this.peekOwnerRefById(normalizedOwnerId) ?? this.ownerRef('event', normalizedOwnerId);
     await this.activityMembersService.queryMembersByOwner(owner);
-    this.emitActivityMembersSyncForOwner(owner);
     return this.activityMembersService.peekSummaryByOwner(owner);
   }
 
