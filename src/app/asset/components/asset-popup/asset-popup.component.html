@@ -1,13 +1,13 @@
 <div class="asset-popup" *ngIf="assetPopup.host() as host">
-  <section class="app-popup" *ngIf="host.isAssetPopup()">
-    <div class="app-popup-backdrop" (click)="host.closeAssetPopup()"></div>
+  <section class="app-popup" *ngIf="ownedAssets.isPopupOpen()">
+    <div class="app-popup-backdrop" (click)="ownedAssets.closePopup()"></div>
     <div class="app-popup-panel popup-panel-assets" (click)="$event.stopPropagation()">
       <div class="popup-header">
         <div class="popup-title">
-          <h2>{{ host.getPopupTitle() }}</h2>
-          <p class="popup-subtitle-activities" *ngIf="host.isTicketAssetPopup()">{{ assetPopup.ticketHeaderSummary() }}</p>
+          <h2>{{ ownedAssets.popupTitle() }}</h2>
+          <p class="popup-subtitle-activities" *ngIf="ownedAssets.isTicketPopup()">{{ assetPopup.ticketHeaderSummary() }}</p>
         </div>
-        <div class="ticket-order-picker" *ngIf="host.isTicketAssetPopup()">
+        <div class="ticket-order-picker" *ngIf="ownedAssets.isTicketPopup()">
           <button
             type="button"
             class="popup-view-fab ticket-order-trigger"
@@ -28,62 +28,46 @@
             </button>
           </div>
         </div>
-        <button mat-icon-button class="popup-close" (click)="host.closeAssetPopup()" aria-label="Close">
+        <button mat-icon-button class="popup-close" (click)="ownedAssets.closePopup()" aria-label="Close">
           <mat-icon>close</mat-icon>
         </button>
       </div>
 
-      <div class="popup-body" [class.popup-body-assets-tickets]="host.isTicketAssetPopup()">
-        <div class="experience-popup assets-popup" [class.assets-popup-tickets]="host.isTicketAssetPopup()">
+      <div class="popup-body" [class.popup-body-assets-tickets]="ownedAssets.isTicketPopup()">
+        <div class="experience-popup assets-popup" [class.assets-popup-tickets]="ownedAssets.isTicketPopup()">
           <div class="experience-toolbar assets-toolbar">
-            <ng-container *ngIf="!host.isMobileView(); else mobileAssetFilterButton">
-              <div
-                class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select"
-                [ngClass]="host.assetTypeClass(host.assetFilter())"
-                [class.asset-filter-open]="assetFilterOpen()"
+            <div
+              class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select"
+              [ngClass]="ownedAssets.assetTypeClass(ownedAssets.assetFilter)"
+              [class.asset-filter-open]="assetFilterOpen()"
+            >
+              <mat-select
+                [ngModel]="ownedAssets.assetFilter"
+                (ngModelChange)="ownedAssets.selectAssetFilter($event)"
+                (openedChange)="onAssetFilterMenuOpenChange($event)"
+                [panelWidth]="ownedAssets.assetFilterPanelWidth()"
+                disableOptionCentering
+                panelClass="selector-options-panel profile-bottom-sheet-panel assets-filter-options-panel"
               >
-                <mat-select
-                  [ngModel]="host.assetFilter()"
-                  (ngModelChange)="host.selectAssetFilter($event)"
-                  (openedChange)="onAssetFilterMenuOpenChange($event)"
-                  [panelWidth]="host.assetFilterPanelWidth()"
-                  disableOptionCentering
-                  panelClass="selector-options-panel profile-bottom-sheet-panel assets-filter-options-panel"
-                >
-                  <mat-select-trigger>
-                    <span class="status-option-content">
-                      <mat-icon [class]="host.assetTypeClass(host.assetFilter())">{{ host.assetTypeIcon(host.assetFilter()) }}</mat-icon>
-                      <span>{{ host.assetFilter() }}</span>
-                    </span>
-                  </mat-select-trigger>
-                  <mat-option *ngFor="let option of host.assetFilterOptions()" [value]="option" class="status-option" [ngClass]="host.assetTypeClass(option)">
-                    <span class="status-option-content">
-                      <mat-icon [class]="host.assetTypeClass(option)">{{ host.assetTypeIcon(option) }}</mat-icon>
-                      <span>{{ option }}</span>
-                    </span>
-                  </mat-option>
-                </mat-select>
-              </div>
-            </ng-container>
-            <ng-template #mobileAssetFilterButton>
-              <button
-                type="button"
-                class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select"
-                [ngClass]="host.assetTypeClass(host.assetFilter())"
-                (click)="host.openMobileAssetFilterSelector($event)"
-              >
-                <span class="status-option-content">
-                  <mat-icon [class]="host.assetTypeClass(host.assetFilter())">{{ host.assetTypeIcon(host.assetFilter()) }}</mat-icon>
-                  <span>{{ host.assetFilter() }}</span>
-                </span>
-                <mat-icon>expand_more</mat-icon>
-              </button>
-            </ng-template>
+                <mat-select-trigger>
+                  <span class="status-option-content">
+                    <mat-icon [class]="ownedAssets.assetTypeClass(ownedAssets.assetFilter)">{{ ownedAssets.assetTypeIcon(ownedAssets.assetFilter) }}</mat-icon>
+                    <span>{{ ownedAssets.assetFilter }}</span>
+                  </span>
+                </mat-select-trigger>
+                <mat-option *ngFor="let option of ownedAssets.assetFilterOptions" [value]="option" class="status-option" [ngClass]="ownedAssets.assetTypeClass(option)">
+                  <span class="status-option-content">
+                    <mat-icon [class]="ownedAssets.assetTypeClass(option)">{{ ownedAssets.assetTypeIcon(option) }}</mat-icon>
+                    <span>{{ option }}</span>
+                  </span>
+                </mat-option>
+              </mat-select>
+            </div>
             <button
               type="button"
               class="popup-header-add-btn assets-add-btn"
-              *ngIf="!host.isTicketAssetPopup()"
-              (click)="host.openAssetForm()"
+              *ngIf="!ownedAssets.isTicketPopup()"
+              (click)="ownedAssets.openAssetForm()"
               aria-label="Add asset"
             >
               <mat-icon>add</mat-icon>
@@ -91,7 +75,7 @@
             <button
               type="button"
               class="popup-header-add-btn assets-add-btn ticket-toolbar-scanner-btn"
-              *ngIf="host.isTicketAssetPopup()"
+              *ngIf="ownedAssets.isTicketPopup()"
               (click)="assetPopup.openTicketScannerPopup($event)"
               aria-label="Scan ticket"
             >
@@ -102,7 +86,7 @@
 
           <div
             class="experience-card-list assets-card-list activities-scroll-list activities-scroll-list-event-snap tickets-scroll-list"
-            *ngIf="host.isTicketAssetPopup(); else defaultAssetCardList"
+            *ngIf="ownedAssets.isTicketPopup(); else defaultAssetCardList"
             #ticketScroll
             (scroll)="assetPopup.onTicketScroll($event)"
           >
@@ -164,14 +148,14 @@
 
           <ng-template #defaultAssetCardList>
             <div class="experience-card-list assets-card-list">
-              <article class="experience-item-card asset-item-card" [ngClass]="host.assetTypeClass(card.type)" *ngFor="let card of host.filteredAssetCards()">
+              <article class="experience-item-card asset-item-card" [ngClass]="ownedAssets.assetTypeClass(card.type)" *ngFor="let card of ownedAssets.filteredAssetCards()">
                 <div class="asset-card-image" [appLazyBgImage]="card.imageUrl">
                   <button
                     type="button"
                     class="asset-source-icon asset-source-icon-route-map"
                     [class.asset-source-icon-multiroute]="card.type === 'Car'"
-                    *ngIf="host.canOpenAssetMap(card)"
-                    (click)="host.openAssetMap(card, $event)"
+                    *ngIf="ownedAssets.canOpenAssetMap(card)"
+                    (click)="ownedAssets.openAssetMap(card, $event)"
                     [attr.aria-label]="card.type === 'Car' ? 'Open car route map' : 'Open accommodation location map'"
                   >
                     <mat-icon>location_on</mat-icon>
@@ -182,7 +166,7 @@
                 </div>
                 <div class="experience-item-head">
                   <span class="experience-item-icon">
-                    <mat-icon>{{ host.assetTypeIcon(card.type) }}</mat-icon>
+                    <mat-icon>{{ ownedAssets.assetTypeIcon(card.type) }}</mat-icon>
                   </span>
                   <div class="experience-item-meta">
                     <h4>{{ card.title }}</h4>
@@ -192,26 +176,26 @@
                     <button
                       type="button"
                       class="experience-action-btn experience-action-menu-trigger"
-                      [class.is-open]="host.isAssetItemActionMenuOpen(card)"
-                      (click)="host.toggleAssetItemActionMenu(card, $event)"
-                      [attr.aria-label]="host.isAssetItemActionMenuOpen(card) ? 'Close asset actions' : 'Open asset actions'"
+                      [class.is-open]="ownedAssets.isAssetItemActionMenuOpen(card)"
+                      (click)="ownedAssets.toggleAssetItemActionMenu(card, $event)"
+                      [attr.aria-label]="ownedAssets.isAssetItemActionMenuOpen(card) ? 'Close asset actions' : 'Open asset actions'"
                     >
-                      <mat-icon>{{ host.isAssetItemActionMenuOpen(card) ? 'close' : 'more_vert' }}</mat-icon>
+                      <mat-icon>{{ ownedAssets.isAssetItemActionMenuOpen(card) ? 'close' : 'more_vert' }}</mat-icon>
                     </button>
                     <div
                       class="item-action-menu"
-                      [class.is-open]="host.isAssetItemActionMenuOpen(card)"
-                      [class.item-action-menu-mobile]="host.isMobileView()"
-                      [class.item-action-menu-desktop]="!host.isMobileView()"
-                      [class.is-open-up]="host.isAssetItemActionMenuOpenUp(card)"
+                      [class.is-open]="ownedAssets.isAssetItemActionMenuOpen(card)"
+                      [class.item-action-menu-mobile]="ownedAssets.isMobileView()"
+                      [class.item-action-menu-desktop]="!ownedAssets.isMobileView()"
+                      [class.is-open-up]="ownedAssets.isAssetItemActionMenuOpenUp(card)"
                       (click)="$event.stopPropagation()"
                     >
                       <div class="item-action-menu-title">{{ card.title }}</div>
-                      <button type="button" class="item-action-menu-btn" (click)="host.runAssetItemEditAction(card, $event)">
+                      <button type="button" class="item-action-menu-btn" (click)="ownedAssets.runAssetItemEditAction(card, $event)">
                         <mat-icon>edit</mat-icon>
                         <span>Edit</span>
                       </button>
-                      <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="host.runAssetItemDeleteAction(card, $event)">
+                      <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="ownedAssets.runAssetItemDeleteAction(card, $event)">
                         <mat-icon>delete</mat-icon>
                         <span>Delete</span>
                       </button>
@@ -224,29 +208,29 @@
           </ng-template>
 
           <app-asset-form-popup
-            [visible]="host.showAssetForm()"
-            [title]="host.assetFormTitle()"
-            [assetForm]="host.assetForm()"
-            [assetFormVisibility]="host.assetFormVisibility()"
-            [assetTypeOptions]="host.assetTypeOptions()"
-            [assetFormRouteStops]="host.assetFormRouteStops()"
-            [isEventEditorReadOnly]="host.isEventEditorReadOnly()"
-            [assetTypeClass]="host.assetTypeClass"
-            [assetTypeIcon]="host.assetTypeIcon"
-            [eventVisibilityClass]="host.eventVisibilityClass"
-            [close]="host.closeAssetForm"
-            [save]="host.saveAssetCard"
-            [setAssetFormRouteStop]="host.setAssetFormRouteStop"
-            [openAssetFormRouteStopMap]="host.openAssetFormRouteStopMap"
-            [refreshAssetFromSourceLink]="host.refreshAssetFromSourceLink"
-            [onAssetImageFileSelected]="host.onAssetImageFileSelected"
+            [visible]="ownedAssets.showAssetForm"
+            [title]="ownedAssets.assetFormTitle()"
+            [assetForm]="ownedAssets.assetForm"
+            [assetFormVisibility]="ownedAssets.assetFormVisibility"
+            [assetTypeOptions]="ownedAssets.assetTypeOptions"
+            [assetFormRouteStops]="ownedAssets.assetFormRouteStops()"
+            [isEventEditorReadOnly]="false"
+            [assetTypeClass]="ownedAssets.assetTypeClass"
+            [assetTypeIcon]="ownedAssets.assetTypeIcon"
+            [eventVisibilityClass]="ownedAssets.eventVisibilityClass"
+            [close]="closeOwnedAssetForm"
+            [save]="saveOwnedAssetCard"
+            [setAssetFormRouteStop]="setOwnedAssetFormRouteStop"
+            [openAssetFormRouteStopMap]="openOwnedAssetFormRouteStopMap"
+            [refreshAssetFromSourceLink]="refreshOwnedAssetFromSourceLink"
+            [onAssetImageFileSelected]="onOwnedAssetImageFileSelected"
           ></app-asset-form-popup>
 
           <app-asset-delete-confirm
-            [visible]="!!host.pendingAssetDeleteCardId()"
-            [label]="host.pendingAssetDeleteLabel()"
-            [cancel]="host.cancelAssetDelete"
-            [confirm]="host.confirmAssetDelete"
+            [visible]="!!ownedAssets.pendingAssetDeleteCardId"
+            [label]="ownedAssets.pendingAssetDeleteLabel()"
+            [cancel]="cancelOwnedAssetDelete"
+            [confirm]="confirmOwnedAssetDelete"
           ></app-asset-delete-confirm>
         </div>
       </div>
@@ -257,7 +241,7 @@
     <div class="app-popup-backdrop" (click)="assetPopup.closeTicketOverlay()"></div>
     <div
       class="app-popup-panel"
-      [class.popup-panel-ticket-fullscreen]="(assetPopup.ticketOverlayMode() === 'ticketCode' || assetPopup.ticketOverlayMode() === 'ticketScanner') && host.isMobileView()"
+      [class.popup-panel-ticket-fullscreen]="(assetPopup.ticketOverlayMode() === 'ticketCode' || assetPopup.ticketOverlayMode() === 'ticketScanner') && ownedAssets.isMobileView()"
       (click)="$event.stopPropagation()"
     >
       <div class="popup-header">

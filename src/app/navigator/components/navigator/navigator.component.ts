@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, Type, effect, inject, signal } from '@angular/core';
 import { AssetPopupService } from '../../../asset/asset-popup.service';
+import { OwnedAssetsPopupService } from '../../../asset/owned-assets-popup.service';
 import { ActivitiesDbContextService } from '../../../activity/services/activities-db-context.service';
 import { EventEditorService } from '../../../shared/event-editor.service';
 import { AppContext } from '../../../shared/core';
@@ -31,6 +32,7 @@ export class NavigatorComponent {
   private readonly appCtx = inject(AppContext);
   private readonly activitiesContext = inject(ActivitiesDbContextService);
   private readonly assetPopupService = inject(AssetPopupService);
+  private readonly ownedAssets = inject(OwnedAssetsPopupService);
   private readonly eventEditorService = inject(EventEditorService);
   private readonly navigatorService = inject(NavigatorService);
   private lastHandledNavigatorMenuRequestMs = 0;
@@ -79,21 +81,12 @@ export class NavigatorComponent {
         this.appCtx.clearNavigatorMenuRequest();
         return;
       }
-      const bindings = this.navigatorService.bindings();
-      if (!bindings || request.type !== 'asset' || !request.assetFilter) {
+      if (request.type !== 'asset' || !request.assetFilter) {
         this.appCtx.clearNavigatorMenuRequest();
         return;
       }
       void this.ensureAssetPopupLoaded();
-      if (request.assetFilter === 'Car') {
-        bindings.openAssetCarPopup();
-      } else if (request.assetFilter === 'Accommodation') {
-        bindings.openAssetAccommodationPopup();
-      } else if (request.assetFilter === 'Supplies') {
-        bindings.openAssetSuppliesPopup();
-      } else {
-        bindings.openAssetTicketsPopup();
-      }
+      this.ownedAssets.openPopup(request.assetFilter);
       this.appCtx.clearNavigatorMenuRequest();
     });
   }

@@ -18,6 +18,7 @@ import type { ActivitiesEventSyncPayload } from './shared/activities-models';
 import { ActivitiesDbContextService } from './activity/services/activities-db-context.service';
 import type { AssetPopupHost } from './asset/asset-popup.host';
 import { AssetPopupService, type AssetTicketBridge } from './asset/asset-popup.service';
+import { OwnedAssetsPopupService } from './asset/owned-assets-popup.service';
 import { EventEditorService } from './shared/event-editor.service';
 import {
   ActivityMembersService,
@@ -149,6 +150,7 @@ export class App {
   protected readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
+  protected readonly ownedAssets = inject(OwnedAssetsPopupService);
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly navigatorService = inject(NavigatorService);
@@ -162,23 +164,7 @@ export class App {
   };
   protected readonly assetPopupHost: AssetPopupHost = {
     isMobileView: () => this.isMobileView,
-    isAssetPopup: () => this.isAssetPopup,
     isSubEventAssetAssignPopup: () => this.superStackedPopup === 'subEventAssetAssign',
-    isActivityInviteFriendsPopup: () => this.superStackedPopup === 'activityInviteFriends',
-    isTicketAssetPopup: () => this.isTicketAssetPopup(),
-    getPopupTitle: () => this.getPopupTitle(),
-    assetFilter: () => this.assetFilter,
-    assetFilterOptions: () => this.assetFilterOptions,
-    assetTypeOptions: () => this.assetTypeOptions,
-    assetFilterPanelWidth: () => this.assetFilterPanelWidth(),
-    filteredAssetCards: () => this.filteredAssetCards,
-    showAssetForm: () => this.showAssetForm,
-    assetFormTitle: () => this.assetFormTitle,
-    assetForm: () => this.assetForm,
-    assetFormVisibility: () => this.assetFormVisibility,
-    assetFormRouteStops: () => this.assetFormRouteStops,
-    pendingAssetDeleteCardId: () => this.pendingAssetDeleteCardId,
-    pendingAssetDeleteLabel: () => this.pendingAssetDeleteLabel(),
     assetTypeIcon: (type) => this.assetTypeIcon(type),
     assetTypeClass: (type) => this.assetTypeClass(type),
     activityImageUrl: (row) => this.activityImageUrl(row),
@@ -188,31 +174,6 @@ export class App {
     activityLeadingIconCircleClass: (row) => this.activityLeadingIconCircleClass(row),
     activityLeadingIcon: (row) => this.activityLeadingIcon(row),
     ticketCardMetaLine: (row) => this.ticketCardMetaLine(row),
-    canOpenAssetMap: (card) => this.canOpenAssetMap(card),
-    isAssetItemActionMenuOpen: (card) => this.isAssetItemActionMenuOpen(card),
-    isAssetItemActionMenuOpenUp: (card) => this.isAssetItemActionMenuOpenUp(card),
-    eventVisibilityClass: (option) => this.eventVisibilityClass(option),
-    isEventEditorReadOnly: () => this.isEventEditorReadOnly(),
-    closeAssetPopup: () => this.closePopup(),
-    selectAssetFilter: (filter) => this.selectAssetFilter(filter),
-    openMobileAssetFilterSelector: (event) => {
-      if (event) {
-        this.openMobileAssetFilterSelector(event);
-      }
-    },
-    openAssetForm: (card) => this.openAssetForm(card),
-    openAssetMap: (card, event) => this.openAssetMap(card, event),
-    toggleAssetItemActionMenu: (card, event) => this.toggleAssetItemActionMenu(card, event),
-    runAssetItemEditAction: (card, event) => this.runAssetItemEditAction(card, event),
-    runAssetItemDeleteAction: (card, event) => this.runAssetItemDeleteAction(card, event),
-    closeAssetForm: () => this.closeAssetForm(),
-    saveAssetCard: () => this.saveAssetCard(),
-    setAssetFormRouteStop: (index, value) => this.onAssetFormRouteStopChange(index, value),
-    openAssetFormRouteStopMap: (index, event) => this.openAssetFormRouteStopMap(index, event),
-    refreshAssetFromSourceLink: () => this.refreshAssetFromSourceLink(),
-    onAssetImageFileSelected: (file) => this.applyAssetImageFile(file),
-    cancelAssetDelete: () => this.cancelAssetDelete(),
-    confirmAssetDelete: () => this.confirmAssetDelete(),
     subEventAssetAssignHeaderTitle: () => this.subEventAssetAssignHeaderTitle(),
     subEventAssetAssignHeaderSubtitle: () => this.subEventAssetAssignHeaderSubtitle(),
     canConfirmSubEventAssetAssignSelection: () => this.canConfirmSubEventAssetAssignSelection(),
@@ -221,19 +182,7 @@ export class App {
     subEventAssetAssignCandidates: () => this.subEventAssetAssignCandidates,
     selectedSubEventAssetAssignChips: () => this.selectedSubEventAssetAssignChips,
     toggleSubEventAssetAssignCard: (cardId, event) => this.toggleSubEventAssetAssignCard(cardId, event),
-    isSubEventAssetAssignCardSelected: (cardId) => this.isSubEventAssetAssignCardSelected(cardId),
-    activityInviteSort: () => this.activityInviteSort,
-    showActivityInviteSortPicker: () => this.showActivityInviteSortPicker,
-    toggleActivityInviteSortPicker: (event) => this.toggleActivityInviteSortPicker(event),
-    selectActivityInviteSort: (sort) => this.selectActivityInviteSort(sort),
-    canConfirmActivityInviteSelection: () => this.canConfirmActivityInviteSelection(),
-    confirmActivityInviteSelection: (event) => this.confirmActivityInviteSelection(event),
-    closeActivityInviteFriends: (applyInvitations) => this.closeActivityInviteFriends(applyInvitations),
-    selectedActivityInviteChips: () => this.selectedActivityInviteChips,
-    activityInviteCandidates: () => this.activityInviteCandidates,
-    toggleActivityInviteFriend: (userId, event) => this.toggleActivityInviteFriend(userId, event),
-    isActivityInviteFriendSelected: (userId) => this.isActivityInviteFriendSelected(userId),
-    activityInviteMetLabel: (entry) => this.activityInviteMetLabel(entry)
+    isSubEventAssetAssignCardSelected: (cardId) => this.isSubEventAssetAssignCardSelected(cardId)
   };
   private readonly navigatorBindings: NavigatorBindings = {
     syncHydratedUser: (user) => {
@@ -244,10 +193,6 @@ export class App {
       this.activeUserId = user.id;
       this.cdr.markForCheck();
     },
-    openAssetCarPopup: () => this.openAssetCarPopup(),
-    openAssetAccommodationPopup: () => this.openAssetAccommodationPopup(),
-    openAssetSuppliesPopup: () => this.openAssetSuppliesPopup(),
-    openAssetTicketsPopup: () => this.openAssetTicketsPopup(),
     openEventFeedbackPopup: (event) => this.openEventFeedbackPopup(event),
     openDeleteAccountConfirm: () => this.openDeleteAccountConfirm(),
     openLogoutConfirm: () => this.openLogoutConfirm()
@@ -267,32 +212,9 @@ export class App {
   protected interestSelectorSelected: string[] = [];
   protected readonly assetTypeOptions: AppTypes.AssetType[] = APP_STATIC_DATA.assetTypeOptions;
   protected readonly assetFilterOptions: AppTypes.AssetFilterType[] = APP_STATIC_DATA.assetFilterOptions;
-  protected assetFilter: AppTypes.AssetFilterType = 'Car';
   private readonly seedAssetCards: AppTypes.AssetCard[] = AppDemoGenerators.buildSampleAssetCards(this.users);
-  protected assetCards: AppTypes.AssetCard[] = this.seedAssetCards.map(card => ({
-    ...card,
-    routes: [...(card.routes ?? [])],
-    requests: [...card.requests]
-  }));
-  protected showAssetForm = false;
-  protected showAssetVisibilityPicker = false;
-  protected editingAssetId: string | null = null;
   protected selectedAssetCardId: string | null = null;
-  protected pendingAssetDeleteCardId: string | null = null;
   protected pendingAssetMemberAction: { cardId: string; memberId: string; action: AppTypes.AssetRequestAction } | null = null;
-  protected assetForm: Omit<AppTypes.AssetCard, 'id' | 'requests'> = {
-    type: 'Car',
-    title: '',
-    subtitle: '',
-    city: '',
-    capacityTotal: 4,
-    details: '',
-    imageUrl: '',
-    sourceLink: '',
-    routes: []
-  };
-  protected assetFormVisibility: AppTypes.EventVisibility = 'Public';
-  private readonly assetVisibilityById: Record<string, AppTypes.EventVisibility> = {};
   protected activeUserId = this.getInitialUserId();
 
   protected activeMenuSection: AppTypes.MenuSection = 'chat';
@@ -470,11 +392,25 @@ export class App {
   constructor(
     private readonly router: Router
   ) {
+    this.ownedAssets.registerRuntimeHooks({
+      onAssetsChanged: () => {
+        this.syncAllSubEventAssetBadgeCounts();
+      },
+      onAssetCreated: (card) => this.handleOwnedAssetCreated(card),
+      onAssetDeleted: (cardId) => this.handleOwnedAssetDeleted(cardId),
+      onAssetFormClosed: () => {
+        this.pendingSubEventAssetCreateAssignment = null;
+      }
+    });
+    this.ownedAssets.initialize(this.seedAssetCards.map(card => ({
+      ...card,
+      routes: [...(card.routes ?? [])],
+      requests: [...card.requests]
+    })));
     this.assetPopupService.registerHost(this.assetPopupHost);
     this.assetPopupService.registerTicketBridge(this.assetTicketBridge);
     this.navigatorService.registerBindings(this.navigatorBindings);
     this.syncAssetPopupVisibility();
-    this.normalizeAssetMediaLinks();
     this.ensurePaginationTestEvents(30);
     this.initializeEventEditorContextData();
     this.initializeProfileDetailForms();
@@ -684,19 +620,19 @@ export class App {
   }
 
   protected get assetCarsBadge(): number {
-    return this.assetCards
+    return this.ownedAssets.assetCards
       .filter(card => card.type === 'Car')
       .reduce((sum, card) => sum + this.assetPendingCount(card), 0);
   }
 
   protected get assetAccommodationBadge(): number {
-    return this.assetCards
+    return this.ownedAssets.assetCards
       .filter(card => card.type === 'Accommodation')
       .reduce((sum, card) => sum + this.assetPendingCount(card), 0);
   }
 
   protected get assetSuppliesBadge(): number {
-    return this.assetCards
+    return this.ownedAssets.assetCards
       .filter(card => card.type === 'Supplies')
       .reduce((sum, card) => sum + this.assetPendingCount(card), 0);
   }
@@ -1337,35 +1273,6 @@ export class App {
     this.activeMenuSection = 'game';
     this.router.navigate(['/game']);
     this.closeUserMenu();
-  }
-
-  protected openAssetCarPopup(): void {
-    this.assetFilter = 'Car';
-    this.closeAssetForm();
-    this.activePopup = 'assetsCar';
-    this.syncAssetPopupVisibility();
-  }
-
-  protected openAssetAccommodationPopup(): void {
-    this.assetFilter = 'Accommodation';
-    this.closeAssetForm();
-    this.activePopup = 'assetsAccommodation';
-    this.syncAssetPopupVisibility();
-  }
-
-  protected openAssetSuppliesPopup(): void {
-    this.assetFilter = 'Supplies';
-    this.closeAssetForm();
-    this.activePopup = 'assetsSupplies';
-    this.syncAssetPopupVisibility();
-  }
-
-  protected openAssetTicketsPopup(): void {
-    this.assetFilter = 'Ticket';
-    this.closeAssetForm();
-    this.activePopup = 'assetsTickets';
-    this.assetPopupService.prepareTicketPopupOpen();
-    this.syncAssetPopupVisibility();
   }
 
   protected openInvitationItem(item: InvitationMenuItem, closeMenu = true, stacked = false): void {
@@ -2584,7 +2491,7 @@ export class App {
       return [];
     }
     const assignedIds = new Set(this.resolveSubEventAssignedAssetIds(context.subEventId, context.type));
-    return this.assetCards
+    return this.ownedAssets.assetCards
       .filter(card => card.type === context.type)
       .sort((a, b) => {
         const aAssigned = assignedIds.has(a.id) ? 1 : 0;
@@ -2640,9 +2547,10 @@ export class App {
     }
     const subEventId = this.selectedSubEventBadgeContext?.subEvent.id ?? null;
     const resourceType = this.subEventResourceFilter as AppTypes.AssetType;
-    this.openAssetForm();
-    this.assetForm.type = resourceType;
-    this.assetForm.routes = this.normalizeAssetRoutes(resourceType, this.assetForm.routes, '');
+    this.ownedAssets.openPopup(resourceType === 'Supplies' ? 'Supplies' : resourceType);
+    this.ownedAssets.openAssetForm();
+    this.ownedAssets.assetForm.type = resourceType;
+    this.ownedAssets.assetForm.routes = this.normalizeAssetRoutes(resourceType, this.ownedAssets.assetForm.routes, '');
     this.pendingSubEventAssetCreateAssignment = subEventId
       ? { subEventId, type: resourceType }
       : null;
@@ -2684,7 +2592,7 @@ export class App {
     }
     const subEvent = this.selectedSubEventBadgeContext.subEvent;
     const type = card.type;
-    const sourceCard = this.assetCards.find(item => item.id === card.sourceAssetId && item.type === type);
+    const sourceCard = this.ownedAssets.assetCards.find(item => item.id === card.sourceAssetId && item.type === type);
     if (!sourceCard) {
       return;
     }
@@ -2820,7 +2728,7 @@ export class App {
     }
     const subEventId = this.selectedSubEventBadgeContext.subEvent.id;
     const settings = this.getSubEventAssignedAssetSettings(subEventId, type);
-    const source = this.assetCards.find(item => item.id === card.sourceAssetId && item.type === type);
+    const source = this.ownedAssets.assetCards.find(item => item.id === card.sourceAssetId && item.type === type);
     const routes = this.normalizeAssetRoutes(type, settings[card.sourceAssetId]?.routes ?? source?.routes, '');
     this.subEventAssetRouteEditor = {
       subEventId,
@@ -2913,7 +2821,7 @@ export class App {
     }
     const key = this.subEventAssetAssignmentKey(editor.subEventId, editor.type);
     const settings = { ...this.getSubEventAssignedAssetSettings(editor.subEventId, editor.type) };
-    const source = this.assetCards.find(item => item.id === editor.assetId && item.type === editor.type);
+    const source = this.ownedAssets.assetCards.find(item => item.id === editor.assetId && item.type === editor.type);
     const current = settings[editor.assetId] ?? {
       capacityMin: 0,
       capacityMax: Math.max(0, source?.capacityTotal ?? 0),
@@ -2944,7 +2852,7 @@ export class App {
       this.ensureMainEventMemberPendingApproval(this.activeUser.id, AppUtils.toIsoDateTime(new Date()));
     }
     const requestId = this.activeUser.id;
-    this.assetCards = this.assetCards.map(asset => {
+    this.ownedAssets.assetCards = this.ownedAssets.assetCards.map(asset => {
       if (asset.id !== card.sourceAssetId) {
         return asset;
       }
@@ -3000,7 +2908,7 @@ export class App {
       return;
     }
     const type = card.type as AppTypes.AssetType;
-    const source = this.assetCards.find(item => item.id === card.sourceAssetId && item.type === type);
+    const source = this.ownedAssets.assetCards.find(item => item.id === card.sourceAssetId && item.type === type);
     if (!source) {
       return;
     }
@@ -3113,7 +3021,10 @@ export class App {
     if (!card.sourceAssetId) {
       return;
     }
-    this.requestAssetDelete(card.sourceAssetId);
+    if (card.type === 'Car' || card.type === 'Accommodation' || card.type === 'Supplies') {
+      this.ownedAssets.openPopup(card.type);
+    }
+    this.ownedAssets.pendingAssetDeleteCardId = card.sourceAssetId;
     this.inlineItemActionMenu = null;
   }
 
@@ -3141,7 +3052,7 @@ export class App {
     if (!context) {
       return;
     }
-    const source = this.assetCards.find(card => card.id === context.assetId && card.type === 'Supplies');
+    const source = this.ownedAssets.assetCards.find(card => card.id === context.assetId && card.type === 'Supplies');
     const settings = this.getSubEventAssignedAssetSettings(context.subEventId, 'Supplies');
     const fallbackCapacity = source?.capacityTotal ?? 1;
     const max = Math.max(1, settings[context.assetId]?.capacityMax ?? fallbackCapacity);
@@ -3637,7 +3548,7 @@ export class App {
   private subEventAssignedAssetCards(subEventId: string, type: AppTypes.AssetType): AppTypes.AssetCard[] {
     const assignedIds = this.resolveSubEventAssignedAssetIds(subEventId, type);
     return assignedIds
-      .map(id => this.assetCards.find(card => card.id === id && card.type === type) ?? null)
+      .map(id => this.ownedAssets.assetCards.find(card => card.id === id && card.type === type) ?? null)
       .filter((card): card is AppTypes.AssetCard => card !== null);
   }
 
@@ -3647,7 +3558,7 @@ export class App {
     const existing = this.subEventAssignedAssetSettingsByKey[key] ?? {};
     const next: Record<string, AppTypes.SubEventAssignedAssetSettings> = {};
     for (const assetId of assignedIds) {
-      const source = this.assetCards.find(card => card.id === assetId && card.type === type);
+      const source = this.ownedAssets.assetCards.find(card => card.id === assetId && card.type === type);
       if (!source) {
         continue;
       }
@@ -3705,7 +3616,7 @@ export class App {
         continue;
       }
       const allowedIds = new Set([
-        ...this.assetCards.filter(card => card.type === type).map(card => card.id),
+        ...this.ownedAssets.assetCards.filter(card => card.type === type).map(card => card.id),
         ...(this.subEventResourceFallbackCardsByType?.[type] ?? []).map(card => card.id)
       ]);
       const normalized = raw.filter((id, index, arr): id is string =>
@@ -3754,7 +3665,7 @@ export class App {
 
   private resolveSubEventAssignedAssetIds(subEventId: string, type: AppTypes.AssetType): string[] {
     const key = this.subEventAssetAssignmentKey(subEventId, type);
-    const eligibleIds = this.assetCards.filter(card => card.type === type).map(card => card.id);
+    const eligibleIds = this.ownedAssets.assetCards.filter(card => card.type === type).map(card => card.id);
     const eligible = new Set(eligibleIds);
     const stored = this.subEventAssignedAssetIdsByKey[key];
     if (!stored) {
@@ -3817,7 +3728,7 @@ export class App {
       return;
     }
     const allowedIds = new Set(
-      this.assetCards
+      this.ownedAssets.assetCards
         .filter(card => card.type === context.type)
         .map(card => card.id)
     );
@@ -3828,7 +3739,7 @@ export class App {
     const previousSettings = this.subEventAssignedAssetSettingsByKey[key] ?? {};
     const nextSettings: Record<string, AppTypes.SubEventAssignedAssetSettings> = {};
     for (const assetId of nextIds) {
-      const source = this.assetCards.find(card => card.id === assetId && card.type === context.type);
+      const source = this.ownedAssets.assetCards.find(card => card.id === assetId && card.type === context.type);
       if (!source) {
         continue;
       }
@@ -3927,13 +3838,13 @@ export class App {
 
   private eventChatResourceCardsByTypeForSubEvent(): Partial<Record<AppTypes.AssetType, AppTypes.AssetCard[]>> {
     return {
-      Car: this.assetCards
+      Car: this.ownedAssets.assetCards
         .filter(card => card.type === 'Car')
         .map(card => ({ ...card, requests: [...card.requests] })),
-      Accommodation: this.assetCards
+      Accommodation: this.ownedAssets.assetCards
         .filter(card => card.type === 'Accommodation')
         .map(card => ({ ...card, requests: [...card.requests] })),
-      Supplies: this.assetCards
+      Supplies: this.ownedAssets.assetCards
         .filter(card => card.type === 'Supplies')
         .map(card => ({ ...card, requests: [...card.requests] }))
     };
@@ -4018,13 +3929,13 @@ export class App {
     const settings = this.getSubEventAssignedAssetSettings(subEvent.id, resourceType);
     this.syncSubEventAssetBadgeCounts(subEvent, resourceType, assignedIds);
     let baseCards = assignedIds
-      .map(id => this.assetCards.find(card => card.id === id && card.type === resourceType) ?? null)
+      .map(id => this.ownedAssets.assetCards.find(card => card.id === id && card.type === resourceType) ?? null)
       .filter((card): card is AppTypes.AssetCard => card !== null);
     if (baseCards.length === 0) {
       const fallbackCards = this.subEventResourceCardsForChat(resourceType) ?? this.subEventResourceFallbackCardsByType?.[resourceType] ?? [];
       baseCards = fallbackCards.length > 0
         ? fallbackCards.map(card => ({ ...card, requests: [...card.requests] }))
-        : this.assetCards.filter(card => card.type === resourceType);
+        : this.ownedAssets.assetCards.filter(card => card.type === resourceType);
     }
     if (baseCards.length === 0) {
       baseCards = this.seedAssetCards
@@ -4124,17 +4035,6 @@ export class App {
     if (normalizedMax !== null && normalizedMin !== null && normalizedMax < normalizedMin) {
       this.eventForm.capacityMax = normalizedMin;
     }
-  }
-
-  protected toggleAssetVisibilityPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.showAssetVisibilityPicker = !this.showAssetVisibilityPicker;
-  }
-
-  protected selectAssetVisibility(option: AppTypes.EventVisibility, event?: Event): void {
-    event?.stopPropagation();
-    this.assetFormVisibility = option;
-    this.showAssetVisibilityPicker = false;
   }
 
   protected eventFrequencyAscii(option: string): string {
@@ -4810,11 +4710,9 @@ export class App {
   protected closePopup(): void {
     this.activePopup = null;
     this.stackedPopup = null;
-    this.closeAssetForm();
-    this.pendingAssetDeleteCardId = null;
+    this.ownedAssets.closePopup();
     this.pendingAssetMemberAction = null;
     this.selectedAssetCardId = null;
-    this.assetPopupService.resetTicketState();
     this.selectedSubEventBadgeContext = null;
     this.subEventBadgePopupOrigin = null;
     this.subEventMembersPendingOnly = false;
@@ -4828,7 +4726,6 @@ export class App {
     this.subEventSupplyBringDialog = null;
     this.selectedSubEventSupplyContributionContext = null;
     this.pendingSubEventSupplyContributionDelete = null;
-    this.showAssetVisibilityPicker = false;
     this.showEventFeedbackFilterPicker = false;
     this.eventFeedbackCards = [];
     this.eventFeedbackIndex = 0;
@@ -5014,14 +4911,6 @@ export class App {
         return this.selectedChat?.title ?? 'Chat';
       case 'activityMembers':
         return 'Members';
-      case 'assetsCar':
-        return 'Assets · Car';
-      case 'assetsAccommodation':
-        return 'Assets · Accommodation';
-      case 'assetsSupplies':
-        return 'Assets · Supplies';
-      case 'assetsTickets':
-        return 'Assets · Ticket';
       case 'tickets':
         return 'Tickets';
       case 'invitationActions':
@@ -5258,7 +5147,7 @@ export class App {
     event.stopPropagation();
     this.mobileProfileSelectorSheet = {
       title: 'Asset Type',
-      selected: this.assetFilter,
+      selected: this.ownedAssets.assetFilter,
       options: this.assetFilterOptions.map(option => ({
         value: option,
         label: option,
@@ -5327,7 +5216,7 @@ export class App {
     }
     if (sheet.context.kind === 'assetFilter') {
       if (this.assetFilterOptions.includes(value as AppTypes.AssetFilterType)) {
-        this.selectAssetFilter(value as AppTypes.AssetFilterType);
+        this.ownedAssets.selectAssetFilter(value as AppTypes.AssetFilterType);
       }
       this.mobileProfileSelectorSheet = null;
       return;
@@ -7504,7 +7393,7 @@ export class App {
   }
 
   private promotePendingAssetRequestsAfterMainEventApproval(userId: string): void {
-    this.assetCards = this.assetCards.map(card => {
+    this.ownedAssets.assetCards = this.ownedAssets.assetCards.map(card => {
       if (card.type !== 'Car' && card.type !== 'Accommodation') {
         return card;
       }
@@ -7530,7 +7419,7 @@ export class App {
   }
 
   private removeMainEventMemberFromAssetRequests(userId: string): void {
-    this.assetCards = this.assetCards.map(card => {
+    this.ownedAssets.assetCards = this.ownedAssets.assetCards.map(card => {
       if (card.type !== 'Car' && card.type !== 'Accommodation') {
         return card;
       }
@@ -8015,38 +7904,14 @@ export class App {
   }
 
   protected get isAssetPopup(): boolean {
-    return this.activePopup === 'assetsCar'
-      || this.activePopup === 'assetsAccommodation'
-      || this.activePopup === 'assetsSupplies'
-      || this.activePopup === 'assetsTickets';
-  }
-
-  protected isTicketAssetPopup(): boolean {
-    return this.isAssetPopup && this.assetFilter === 'Ticket';
-  }
-
-  protected get activeAssetType(): AppTypes.AssetType {
-    if (this.activePopup === 'assetsAccommodation') {
-      return 'Accommodation';
-    }
-    if (this.activePopup === 'assetsSupplies') {
-      return 'Supplies';
-    }
-    return 'Car';
-  }
-
-  protected get filteredAssetCards(): AppTypes.AssetCard[] {
-    if (this.assetFilter === 'Ticket') {
-      return [];
-    }
-    return this.assetCards.filter(card => card.type === this.assetFilter);
+    return this.ownedAssets.isPopupOpen();
   }
 
   protected get selectedAssetCard(): AppTypes.AssetCard | null {
     if (!this.selectedAssetCardId) {
       return null;
     }
-    return this.assetCards.find(card => card.id === this.selectedAssetCardId) ?? null;
+    return this.ownedAssets.assetCards.find(card => card.id === this.selectedAssetCardId) ?? null;
   }
 
   protected assetTypeIcon(type: AppTypes.AssetFilterType): string {
@@ -8107,46 +7972,8 @@ export class App {
     return `${this.assetOccupiedCount(card)} / ${card.capacityTotal}`;
   }
 
-  protected canOpenAssetMap(card: AppTypes.AssetCard): boolean {
-    if (card.type !== 'Accommodation') {
-      return false;
-    }
-    return this.normalizeAssetRoutes(card.type, card.routes, card.city).some(stop => stop.trim().length > 0);
-  }
-
-  protected openAssetMap(card: AppTypes.AssetCard, event?: Event): void {
-    event?.stopPropagation();
-    if (!this.canOpenAssetMap(card)) {
-      return;
-    }
-    const routes = this.normalizeAssetRoutes(card.type, card.routes, card.city);
-    this.openGoogleMapsSearch(routes[0] ?? card.city);
-  }
-
   protected assetMemberStatusClass(member: AppTypes.AssetMemberRequest): string {
     return member.status === 'pending' ? 'asset-member-pending' : 'asset-member-accepted';
-  }
-
-  protected selectAssetFilter(filter: AppTypes.AssetFilterType): void {
-    this.assetFilter = filter;
-    if (filter === 'Car') {
-      this.activePopup = 'assetsCar';
-      this.syncAssetPopupVisibility();
-      return;
-    }
-    if (filter === 'Accommodation') {
-      this.activePopup = 'assetsAccommodation';
-      this.syncAssetPopupVisibility();
-      return;
-    }
-    if (filter === 'Ticket') {
-      this.activePopup = 'assetsTickets';
-      this.assetPopupService.prepareTicketPopupOpen();
-      this.syncAssetPopupVisibility();
-      return;
-    }
-    this.activePopup = 'assetsSupplies';
-    this.syncAssetPopupVisibility();
   }
 
   protected openAssetMembers(card: AppTypes.AssetCard, event?: Event): void {
@@ -8156,271 +7983,37 @@ export class App {
     this.stackedPopup = 'assetMembers';
   }
 
-  protected openAssetForm(card?: AppTypes.AssetCard): void {
-    this.pendingAssetMemberAction = null;
-    this.pendingSubEventAssetCreateAssignment = null;
-    this.inlineItemActionMenu = null;
-    this.showAssetForm = true;
-    this.showAssetVisibilityPicker = false;
-    const forcePrivateVisibility = this.isAssetPopup;
-    if (card) {
-      const imageUrl = this.normalizeAssetImageLink(card.type, card.imageUrl, card.id || card.title);
-      const sourceLink = this.normalizeAssetSourceLink(card.sourceLink, imageUrl);
-      this.editingAssetId = card.id;
-      this.assetFormVisibility = forcePrivateVisibility
-        ? 'Invitation only'
-        : (this.assetVisibilityById[card.id] ?? 'Public');
-      this.assetForm = {
-        type: card.type,
-        title: card.title,
-        subtitle: card.subtitle,
-        city: card.city,
-        capacityTotal: card.capacityTotal,
-        details: card.details,
-        imageUrl,
-        sourceLink,
-        routes: this.normalizeAssetRoutes(card.type, card.routes, '')
-      };
-      return;
-    }
-    this.editingAssetId = null;
-    this.assetFormVisibility = forcePrivateVisibility ? 'Invitation only' : 'Public';
-    this.assetForm = {
-      type: this.activeAssetType,
-      title: '',
-      subtitle: '',
-      city: '',
-      capacityTotal: this.activeAssetType === 'Supplies' ? 6 : 4,
-      details: '',
-      imageUrl: '',
-      sourceLink: '',
-      routes: this.normalizeAssetRoutes(this.activeAssetType, [], '')
-    };
-  }
-
-  protected closeAssetForm(): void {
-    this.showAssetForm = false;
-    this.showAssetVisibilityPicker = false;
-    this.editingAssetId = null;
-    this.pendingSubEventAssetCreateAssignment = null;
-  }
-
-  protected get assetFormTitle(): string {
-    return `${this.editingAssetId ? 'Edit' : 'Add'} ${this.assetForm.type}`;
-  }
-
-  protected assetFilterPanelWidth(): string {
-    return '248px';
-  }
-
-  protected assetFormSupportsRouteStops(): boolean {
-    return this.assetForm.type === 'Accommodation';
-  }
-
-  protected assetFormSupportsMultiRoute(): boolean {
-    return false;
-  }
-
-  protected get assetFormRouteStops(): string[] {
-    return this.normalizeAssetRoutes(this.assetForm.type, this.assetForm.routes, '');
-  }
-
-  protected onAssetFormRouteStopChange(index: number, value: string): void {
-    const routes = [...this.assetFormRouteStops];
-    if (index < 0 || index >= routes.length) {
-      return;
-    }
-    routes[index] = value;
-    this.assetForm.routes = this.normalizeAssetRoutes(this.assetForm.type, routes, '');
-  }
-
-  protected addAssetFormRouteStop(): void {
-    if (!this.assetFormSupportsMultiRoute()) {
-      return;
-    }
-    const routes = [...this.assetFormRouteStops, ''];
-    this.assetForm.routes = this.normalizeAssetRoutes(this.assetForm.type, routes, '');
-  }
-
-  protected removeAssetFormRouteStop(index: number): void {
-    if (!this.assetFormSupportsMultiRoute()) {
-      return;
-    }
-    const routes = this.assetFormRouteStops;
-    if (routes.length <= 1 || index < 0 || index >= routes.length) {
-      return;
-    }
-    routes.splice(index, 1);
-    this.assetForm.routes = this.normalizeAssetRoutes(this.assetForm.type, routes, '');
-  }
-
-  protected dropAssetFormRouteStop(event: CdkDragDrop<string[]>): void {
-    if (!this.assetFormSupportsMultiRoute()) {
-      return;
-    }
-    const routes = [...this.assetFormRouteStops];
-    if (event.previousIndex === event.currentIndex) {
-      return;
-    }
-    moveItemInArray(routes, event.previousIndex, event.currentIndex);
-    this.assetForm.routes = this.normalizeAssetRoutes(this.assetForm.type, routes, '');
-  }
-
-  protected openAssetFormRouteStopMap(index: number, event?: Event): void {
-    event?.stopPropagation();
-    const value = this.assetFormRouteStops[index] ?? '';
-    this.openGoogleMapsSearch(value);
-  }
-
-  protected canOpenAssetFormRouteMap(): boolean {
-    return this.assetFormSupportsRouteStops() && this.assetFormRouteStops.some(stop => stop.trim().length > 0);
-  }
-
-  protected openAssetFormRouteMap(event?: Event): void {
-    event?.stopPropagation();
-    if (!this.assetFormSupportsRouteStops()) {
-      return;
-    }
-    if (this.assetForm.type === 'Accommodation') {
-      this.openGoogleMapsSearch(this.assetFormRouteStops[0] ?? '');
-      return;
-    }
-    this.openGoogleMapsDirections(this.assetFormRouteStops);
-  }
-
-  protected saveAssetCard(): void {
-    const title = this.assetForm.title.trim();
-    const city = this.assetForm.city.trim();
-    const routes = this.normalizeAssetRoutes(this.assetForm.type, this.assetForm.routes, '');
-    const accommodationLocation = routes.find(stop => stop.trim().length > 0)?.trim() || '';
-    const resolvedCity = this.assetForm.type === 'Accommodation'
-      ? accommodationLocation
-      : city;
-    if (!title) {
-      return;
-    }
-    if (this.assetForm.type === 'Accommodation' && !accommodationLocation) {
-      return;
-    }
-    const imageUrl = this.normalizeAssetImageLink(this.assetForm.type, this.assetForm.imageUrl, title || this.assetForm.subtitle || city);
-    const sourceLink = this.normalizeAssetSourceLink(this.assetForm.sourceLink, imageUrl);
+  private handleOwnedAssetCreated(card: AppTypes.AssetCard): void {
     const createAssignment = this.pendingSubEventAssetCreateAssignment;
-    const payload: Omit<AppTypes.AssetCard, 'id' | 'requests'> = {
-      type: this.assetForm.type,
-      title,
-      subtitle: this.assetForm.subtitle.trim() || AppDemoGenerators.defaultAssetSubtitle(this.assetForm.type),
-      city: resolvedCity,
-      capacityTotal: Math.max(1, Number(this.assetForm.capacityTotal) || (this.assetForm.type === 'Supplies' ? 6 : 4)),
-      details: this.assetForm.details.trim() || AppDemoGenerators.defaultAssetDetails(this.assetForm.type),
-      imageUrl,
-      sourceLink,
-      routes
-    };
-    const resolvedVisibility: AppTypes.EventVisibility = this.isAssetPopup ? 'Invitation only' : this.assetFormVisibility;
-    if (this.editingAssetId) {
-      this.assetVisibilityById[this.editingAssetId] = resolvedVisibility;
-      this.assetCards = this.assetCards.map(card =>
-        card.id === this.editingAssetId
-          ? {
-              ...card,
-              ...payload
-            }
-          : card
-      );
-    } else {
-      const id = `asset-${Date.now()}`;
-      this.assetVisibilityById[id] = resolvedVisibility;
-      this.assetCards = [
-        {
-          id,
-          ...payload,
-          requests: []
-        },
-        ...this.assetCards
-      ];
-      if (createAssignment && createAssignment.type === payload.type) {
-        const key = this.subEventAssetAssignmentKey(createAssignment.subEventId, createAssignment.type);
-        const assignedIds = this.resolveSubEventAssignedAssetIds(createAssignment.subEventId, createAssignment.type);
-        const nextAssignedIds = assignedIds.includes(id) ? assignedIds : [...assignedIds, id];
-        this.subEventAssignedAssetIdsByKey[key] = [...nextAssignedIds];
-        const settings = this.getSubEventAssignedAssetSettings(createAssignment.subEventId, createAssignment.type);
-        const capacityMax = Math.max(0, payload.capacityTotal);
-        settings[id] = {
-          capacityMin: 0,
-          capacityMax,
-          addedByUserId: this.activeUser.id,
-          routes: this.normalizeAssetRoutes(createAssignment.type, payload.routes, '')
-        };
-        this.subEventAssignedAssetSettingsByKey[key] = { ...settings };
-        const targetSubEvent = this.resolveSubEventForResourceSync(createAssignment.subEventId);
-        if (targetSubEvent) {
-          this.syncSubEventAssetBadgeCounts(targetSubEvent, createAssignment.type);
-        } else {
-          this.refreshEventChatSessionResourceContext(createAssignment.subEventId);
-        }
+    if (createAssignment && createAssignment.type === card.type) {
+      const key = this.subEventAssetAssignmentKey(createAssignment.subEventId, createAssignment.type);
+      const assignedIds = this.resolveSubEventAssignedAssetIds(createAssignment.subEventId, createAssignment.type);
+      const nextAssignedIds = assignedIds.includes(card.id) ? assignedIds : [...assignedIds, card.id];
+      this.subEventAssignedAssetIdsByKey[key] = [...nextAssignedIds];
+      const settings = this.getSubEventAssignedAssetSettings(createAssignment.subEventId, createAssignment.type);
+      const capacityMax = Math.max(0, card.capacityTotal);
+      settings[card.id] = {
+        capacityMin: 0,
+        capacityMax,
+        addedByUserId: this.activeUser.id,
+        routes: this.normalizeAssetRoutes(createAssignment.type, card.routes, '')
+      };
+      this.subEventAssignedAssetSettingsByKey[key] = { ...settings };
+      const targetSubEvent = this.resolveSubEventForResourceSync(createAssignment.subEventId);
+      if (targetSubEvent) {
+        this.syncSubEventAssetBadgeCounts(targetSubEvent, createAssignment.type);
+      } else {
+        this.refreshEventChatSessionResourceContext(createAssignment.subEventId);
       }
     }
-    this.closeAssetForm();
-    this.syncAllSubEventAssetBadgeCounts();
   }
 
-  protected requestAssetDelete(cardId: string): void {
-    this.pendingAssetDeleteCardId = cardId;
-  }
-
-  protected toggleAssetItemActionMenu(card: AppTypes.AssetCard, event: Event): void {
-    event.stopPropagation();
-    if (this.inlineItemActionMenu?.scope === 'asset' && this.inlineItemActionMenu.id === card.id) {
-      this.inlineItemActionMenu = null;
-      return;
-    }
-    this.inlineItemActionMenu = { scope: 'asset', id: card.id, title: card.title, openUp: this.shouldOpenInlineItemMenuUp(event) };
-  }
-
-  protected isAssetItemActionMenuOpen(card: AppTypes.AssetCard): boolean {
-    return this.inlineItemActionMenu?.scope === 'asset' && this.inlineItemActionMenu.id === card.id;
-  }
-
-  protected isAssetItemActionMenuOpenUp(card: AppTypes.AssetCard): boolean {
-    return this.inlineItemActionMenu?.scope === 'asset'
-      && this.inlineItemActionMenu.id === card.id
-      && this.inlineItemActionMenu.openUp;
-  }
-
-  protected runAssetItemEditAction(card: AppTypes.AssetCard, event: Event): void {
-    event.stopPropagation();
-    this.openAssetForm(card);
-    this.inlineItemActionMenu = null;
-  }
-
-  protected runAssetItemDeleteAction(card: AppTypes.AssetCard, event: Event): void {
-    event.stopPropagation();
-    this.requestAssetDelete(card.id);
-    this.inlineItemActionMenu = null;
-  }
-
-  protected cancelAssetDelete(): void {
-    this.pendingAssetDeleteCardId = null;
-  }
-
-  protected pendingAssetDeleteLabel(): string {
-    if (!this.pendingAssetDeleteCardId) {
-      return '';
-    }
-    const card = this.assetCards.find(item => item.id === this.pendingAssetDeleteCardId);
-    return card ? `Delete ${card.title}?` : 'Delete this item?';
-  }
-
-  protected confirmAssetDelete(): void {
-    if (!this.pendingAssetDeleteCardId) {
-      return;
-    }
-    this.deleteAssetCard(this.pendingAssetDeleteCardId);
-    this.pendingAssetDeleteCardId = null;
+  private handleOwnedAssetDeleted(cardId: string): void {
+    this.deleteAssetCard(cardId);
   }
 
   private deleteAssetCard(cardId: string): void {
-    this.assetCards = this.assetCards.filter(card => card.id !== cardId);
+    this.ownedAssets.assetCards = this.ownedAssets.assetCards.filter(card => card.id !== cardId);
     for (const key of Object.keys(this.subEventSupplyContributionEntriesByAssignmentKey)) {
       if (key.endsWith(`:${cardId}`)) {
         delete this.subEventSupplyContributionEntriesByAssignmentKey[key];
@@ -8459,7 +8052,7 @@ export class App {
     if (!pending) {
       return;
     }
-    this.assetCards = this.assetCards.map(card => {
+    this.ownedAssets.assetCards = this.ownedAssets.assetCards.map(card => {
       if (card.id !== pending.cardId) {
         return card;
       }
@@ -8498,7 +8091,7 @@ export class App {
     if (!pending) {
       return '';
     }
-    const card = this.assetCards.find(item => item.id === pending.cardId);
+    const card = this.ownedAssets.assetCards.find(item => item.id === pending.cardId);
     const member = card?.requests.find(item => item.id === pending.memberId);
     if (!member) {
       return '';
@@ -8525,12 +8118,12 @@ export class App {
   }
 
   private applyAssetImageFile(file: File): void {
-    this.revokeObjectUrl(this.assetForm.imageUrl);
-    this.assetForm.imageUrl = URL.createObjectURL(file);
+    this.revokeObjectUrl(this.ownedAssets.assetForm.imageUrl);
+    this.ownedAssets.assetForm.imageUrl = URL.createObjectURL(file);
   }
 
   protected refreshAssetFromSourceLink(): void {
-    const raw = this.assetForm.sourceLink.trim();
+    const raw = this.ownedAssets.assetForm.sourceLink.trim();
     if (!raw) {
       return;
     }
@@ -8540,7 +8133,7 @@ export class App {
     } catch {
       try {
         parsed = new URL(`https://${raw}`);
-        this.assetForm.sourceLink = parsed.toString();
+        this.ownedAssets.assetForm.sourceLink = parsed.toString();
       } catch {
         return;
       }
@@ -8548,18 +8141,18 @@ export class App {
     if (!parsed || this.isGoogleMapsLikeLink(parsed.toString())) {
       return;
     }
-    const seed = `${this.assetForm.type.toLowerCase()}-${parsed.hostname.replace(/\./g, '-')}${parsed.pathname.replace(/[^\w-]/g, '-')}`;
-    if (!this.assetForm.imageUrl.trim()) {
-      this.assetForm.imageUrl = AppDemoGenerators.defaultAssetImage(this.assetForm.type, seed);
+    const seed = `${this.ownedAssets.assetForm.type.toLowerCase()}-${parsed.hostname.replace(/\./g, '-')}${parsed.pathname.replace(/[^\w-]/g, '-')}`;
+    if (!this.ownedAssets.assetForm.imageUrl.trim()) {
+      this.ownedAssets.assetForm.imageUrl = AppDemoGenerators.defaultAssetImage(this.ownedAssets.assetForm.type, seed);
     }
-    if (!this.assetForm.title.trim()) {
-      this.assetForm.title = `${this.assetForm.type} · ${parsed.hostname.replace(/^www\./, '')}`;
+    if (!this.ownedAssets.assetForm.title.trim()) {
+      this.ownedAssets.assetForm.title = `${this.ownedAssets.assetForm.type} · ${parsed.hostname.replace(/^www\./, '')}`;
     }
-    if (!this.assetForm.subtitle.trim()) {
-      this.assetForm.subtitle = parsed.pathname && parsed.pathname !== '/' ? parsed.pathname.slice(1).replace(/[-_/]+/g, ' ') : 'Imported preview';
+    if (!this.ownedAssets.assetForm.subtitle.trim()) {
+      this.ownedAssets.assetForm.subtitle = parsed.pathname && parsed.pathname !== '/' ? parsed.pathname.slice(1).replace(/[-_/]+/g, ' ') : 'Imported preview';
     }
-    if (!this.assetForm.details.trim()) {
-      this.assetForm.details = `Preview imported from ${parsed.hostname}. You can adjust the details before saving.`;
+    if (!this.ownedAssets.assetForm.details.trim()) {
+      this.ownedAssets.assetForm.details = `Preview imported from ${parsed.hostname}. You can adjust the details before saving.`;
     }
   }
 
@@ -8682,9 +8275,6 @@ export class App {
     }
     if (this.showActivityInviteSortPicker && !target.closest('.friends-picker-sort') && !target.closest('.popup-view-fab')) {
       this.showActivityInviteSortPicker = false;
-    }
-    if (this.showAssetVisibilityPicker && !target.closest('.asset-visibility-picker') && !target.closest('.popup-view-fab')) {
-      this.showAssetVisibilityPicker = false;
     }
     if (this.showEventExploreOrderPicker && !target.closest('.event-explore-order-picker') && !target.closest('.popup-view-fab')) {
       this.showEventExploreOrderPicker = false;
@@ -8838,7 +8428,7 @@ export class App {
   }
 
   private normalizeAssetMediaLinks(): void {
-    this.assetCards = this.assetCards.map(card => {
+    this.ownedAssets.assetCards = this.ownedAssets.assetCards.map(card => {
       const imageUrl = this.normalizeAssetImageLink(card.type, card.imageUrl, card.id || card.title);
       const sourceLink = this.normalizeAssetSourceLink(card.sourceLink, imageUrl);
       return {
@@ -9231,7 +8821,7 @@ export class App {
       return;
     }
     const now = Date.now();
-    this.assetCards = this.assetCards.map(card => {
+    this.ownedAssets.assetCards = this.ownedAssets.assetCards.map(card => {
       if (card.id !== context.assetId || card.type !== context.type) {
         return card;
       }
@@ -9921,11 +9511,7 @@ export class App {
   }
 
   private syncAssetPopupVisibility(): void {
-    this.assetPopupService.syncVisibility(
-      this.isAssetPopup,
-      false,
-      this.superStackedPopup === 'subEventAssetAssign'
-    );
+    this.assetPopupService.setBasketVisible(this.superStackedPopup === 'subEventAssetAssign');
   }
 
 }

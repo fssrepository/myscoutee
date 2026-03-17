@@ -56,6 +56,18 @@ export class AssetPopupService {
     this.ticketBridgeRef.set(bridge);
   }
 
+  setPrimaryVisible(isOpen: boolean): void {
+    this.primaryVisibleRef.set(isOpen);
+  }
+
+  setStackedVisible(isOpen: boolean): void {
+    this.stackedVisibleRef.set(isOpen);
+  }
+
+  setBasketVisible(isOpen: boolean): void {
+    this.basketVisibleRef.set(isOpen);
+  }
+
   syncVisibility(isPrimaryOpen: boolean, isStackedOpen: boolean, isBasketOpen = false): void {
     this.primaryVisibleRef.set(isPrimaryOpen);
     this.stackedVisibleRef.set(isStackedOpen);

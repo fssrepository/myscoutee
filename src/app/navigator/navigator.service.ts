@@ -18,10 +18,6 @@ export type NavigatorSettingsPopup = 'help' | 'feedback' | 'privacy' | 'report-u
 
 export interface NavigatorBindings {
   syncHydratedUser?(user: UserDto): void;
-  openAssetCarPopup(): void;
-  openAssetAccommodationPopup(): void;
-  openAssetSuppliesPopup(): void;
-  openAssetTicketsPopup(): void;
   openEventFeedbackPopup(event?: Event): void;
   openDeleteAccountConfirm(): void;
   openLogoutConfirm(): void;

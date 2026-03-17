@@ -189,19 +189,19 @@ export class NavigatorMenuComponent {
   }
 
   protected openAssetCarPopup(): void {
-    this.bindings?.openAssetCarPopup();
+    this.appCtx.openNavigatorAssetRequest('Car');
   }
 
   protected openAssetAccommodationPopup(): void {
-    this.bindings?.openAssetAccommodationPopup();
+    this.appCtx.openNavigatorAssetRequest('Accommodation');
   }
 
   protected openAssetSuppliesPopup(): void {
-    this.bindings?.openAssetSuppliesPopup();
+    this.appCtx.openNavigatorAssetRequest('Supplies');
   }
 
   protected openAssetTicketsPopup(): void {
-    this.bindings?.openAssetTicketsPopup();
+    this.appCtx.openNavigatorAssetRequest('Ticket');
   }
 
   protected openEventFeedbackPopup(event?: Event): void {
