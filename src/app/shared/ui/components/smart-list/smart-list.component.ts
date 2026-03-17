@@ -21,11 +21,20 @@ import { firstValueFrom } from 'rxjs';
 
 import { AppCalendarHelpers } from '../../../app-calendar-helpers';
 import { AppUtils } from '../../../app-utils';
-import type { HeaderProgressBarConfig } from '../header-progress-bar';
+import {
+  HeaderProgressBarComponent,
+  type HeaderProgressBarConfig,
+  type HeaderProgressBarPlacement
+} from '../header-progress-bar';
+import {
+  RatingStarBarComponent,
+  type RatingStarBarConfig
+} from '../rating-star-bar';
 import type {
   ListDirection,
   ListQuery,
   PageResult,
+  SmartListCursorState,
   SmartListFilters,
   SmartListCalendarConfig,
   SmartListCalendarDateRange,
@@ -46,6 +55,7 @@ import type {
   SmartListLoadPage,
   SmartListLoaders,
   SmartListMergeStrategy,
+  SmartListPaginationMode,
   SmartListPresentation,
   SmartListPrependRestoreMode,
   SmartListStateChange,
@@ -66,7 +76,9 @@ type SmartListCalendarWindow = {
   standalone: true,
   imports: [
     CommonModule,
-    MatIconModule
+    MatIconModule,
+    HeaderProgressBarComponent,
+    RatingStarBarComponent
   ],
   templateUrl: './smart-list.component.html',
   styleUrl: './smart-list.component.scss',
@@ -74,6 +86,7 @@ type SmartListCalendarWindow = {
 })
 export class SmartListComponent<T, TFilters extends SmartListFilters = SmartListFilters> implements AfterViewInit, OnChanges, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly hostRef = inject(ElementRef<HTMLElement>);
   private restoreAnchorSequence = 0;
   private readonly ngZone = inject(NgZone);
 
@@ -109,6 +122,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private total = 0;
   private hasMore = true;
   private pageIndex = 0;
+  private cursorIndex = 0;
   private scrollable = false;
   private progress = 0;
   private loadingProgress = 0;
@@ -227,14 +241,124 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.reload();
   }
 
-  public headerProgressBarConfig(overrides: Partial<HeaderProgressBarConfig> = {}): HeaderProgressBarConfig {
+  public headerProgressBarConfig(
+    overrides: Partial<HeaderProgressBarConfig> = {},
+    mode: 'surface' | 'cursor' = 'surface'
+  ): HeaderProgressBarConfig {
+    const cursor = this.buildCursorState();
+    const position = mode === 'cursor'
+      ? cursor.progress
+      : this.progress;
     return {
-      position: this.loading ? this.loadingProgress : this.progress,
+      position: this.loading ? this.loadingProgress : position,
       state: this.loading
         ? (this.loadingOverdue ? 'loading-overdue' : 'loading')
         : 'scrolling',
       ...overrides
     };
+  }
+
+  protected shouldRenderHostedHeaderProgressBar(): boolean {
+    return this.resolveConfigValue(this.config.headerProgress?.enabled, false);
+  }
+
+  protected hostedHeaderProgressBarConfig(): HeaderProgressBarConfig {
+    const placement = this.resolveConfigValue<HeaderProgressBarPlacement>(this.config.headerProgress?.placement, 'inline');
+    return this.headerProgressBarConfig({
+      tone: this.resolveConfigValue(this.config.headerProgress?.tone, 'default'),
+      placement
+    }, this.resolvedHeaderProgressMode());
+  }
+
+  protected resolvedPaginationMode(): SmartListPaginationMode {
+    const value = this.config.pagination?.mode;
+    if (typeof value === 'function') {
+      return value(this.cursorItem(), this.currentQuery());
+    }
+    return value ?? 'scroll';
+  }
+
+  protected shouldRenderPaginationArrows(): boolean {
+    return this.resolvedPaginationMode() === 'arrows';
+  }
+
+  protected resolvedPaginationRatingBarConfig(): RatingStarBarConfig | null {
+    return this.config.pagination?.ratingBarConfig?.(this.cursorItem(), this.currentQuery()) ?? null;
+  }
+
+  protected shouldRenderPaginationRatingBar(): boolean {
+    return this.resolvedPaginationMode() === 'rating-stars' && this.resolvedPaginationRatingBarConfig() !== null;
+  }
+
+  protected resolvedPaginationRatingBarValue(): number {
+    const value = this.config.pagination?.ratingBarValue?.(this.cursorItem(), this.currentQuery()) ?? 0;
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  protected onPaginationPrev(event: Event): void {
+    event.stopPropagation();
+    void this.moveCursor(-1);
+  }
+
+  protected onPaginationNext(event: Event): void {
+    event.stopPropagation();
+    void this.moveCursor(1);
+  }
+
+  protected onPaginationRatingSelect(score: number): void {
+    void this.config.pagination?.onRatingSelect?.(this.cursorItem(), score, this.currentQuery());
+  }
+
+  public itemsSnapshot(): ReadonlyArray<T> {
+    return this.items;
+  }
+
+  public paginationHostElement(): HTMLElement | null {
+    return this.hostRef.nativeElement.querySelector('.rating-star-bar-host') as HTMLElement | null;
+  }
+
+  public cursorState(): SmartListCursorState<T> {
+    return this.buildCursorState();
+  }
+
+  public cursorItem(): T | null {
+    return this.buildCursorState().item;
+  }
+
+  public canMoveCursor(delta: number): boolean {
+    const cursor = this.buildCursorState();
+    if (!Number.isFinite(delta) || delta === 0) {
+      return false;
+    }
+    const targetIndex = cursor.index + Math.trunc(delta);
+    if (targetIndex < 0) {
+      return false;
+    }
+    return targetIndex < cursor.total;
+  }
+
+  public async moveCursor(delta: number): Promise<boolean> {
+    if (!Number.isFinite(delta) || delta === 0) {
+      return false;
+    }
+    return this.setCursorIndex(this.buildCursorState().index + Math.trunc(delta));
+  }
+
+  public async setCursorIndex(index: number): Promise<boolean> {
+    const normalizedIndex = Math.max(0, Math.trunc(index));
+    this.cursorIndex = normalizedIndex;
+    this.syncCursorBounds();
+    this.emitState();
+    this.cdr.markForCheck();
+
+    while (this.currentViewMode === 'list' && this.items.length <= normalizedIndex && this.hasMore && !this.loading) {
+      await this.loadNextPage();
+    }
+
+    this.syncCursorBounds();
+    this.emitState();
+    this.cdr.markForCheck();
+    return this.buildCursorState().index === normalizedIndex;
   }
 
   protected isCalendarMode(): boolean {
@@ -557,6 +681,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.calendarWeekPages = [];
     this.total = 0;
     this.pageIndex = 0;
+    this.cursorIndex = 0;
     this.hasMore = this.currentViewMode === 'list';
     this.initialLoading = true;
     this.awaitScrollReset = false;
@@ -741,6 +866,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.hasMore = false;
     }
     this.initialLoading = false;
+    this.syncCursorBounds();
   }
 
   private applyCalendarResult(anchor: Date, result: PageResult<T> | null | undefined): void {
@@ -756,6 +882,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.hasMore = false;
     this.initialLoading = false;
     this.groups = [];
+    this.syncCursorBounds();
     this.syncCalendarPages();
   }
 
@@ -1614,6 +1741,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   private buildStateChange(): SmartListStateChange<T, TFilters> {
     const loadingVisible = this.isVisibleCalendarPageLoading();
+    const cursor = this.buildCursorState();
     return {
       items: this.items,
       groups: this.groups,
@@ -1627,8 +1755,51 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       loadingProgress: loadingVisible ? Math.max(this.loadingProgress, this.calendarPendingVisualKey ? 0.02 : 0) : 0,
       loadingOverdue: loadingVisible ? this.loadingOverdue : false,
       scrollable: this.scrollable,
-      stickyLabel: this.stickyLabel || this.resolveEmptyStickyLabel()
+      stickyLabel: this.stickyLabel || this.resolveEmptyStickyLabel(),
+      cursorIndex: cursor.index,
+      cursorTotal: cursor.total,
+      cursorProgress: cursor.progress,
+      cursorCanPrev: cursor.canPrev,
+      cursorCanNext: cursor.canNext
     };
+  }
+
+  private resolvedHeaderProgressMode(): 'surface' | 'cursor' {
+    return this.resolvedPresentation() === 'fullscreen' && this.resolvedPaginationMode() !== 'scroll'
+      ? 'cursor'
+      : 'surface';
+  }
+
+  private buildCursorState(): SmartListCursorState<T> {
+    const total = Math.max(0, Math.max(this.total, this.items.length));
+    if (total === 0) {
+      return {
+        index: 0,
+        total: 0,
+        progress: 0,
+        canPrev: false,
+        canNext: false,
+        item: null
+      };
+    }
+    const index = Math.max(0, Math.min(this.cursorIndex, total - 1));
+    return {
+      index,
+      total,
+      progress: this.clamp((Math.min(index + 1, total)) / total),
+      canPrev: index > 0,
+      canNext: index + 1 < total,
+      item: index < this.items.length ? (this.items[index] ?? null) : null
+    };
+  }
+
+  private syncCursorBounds(): void {
+    const total = Math.max(0, Math.max(this.total, this.items.length));
+    if (total === 0) {
+      this.cursorIndex = 0;
+      return;
+    }
+    this.cursorIndex = Math.max(0, Math.min(this.cursorIndex, total - 1));
   }
 
   private isVisibleCalendarPageLoading(): boolean {

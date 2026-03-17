@@ -49,14 +49,12 @@ import type {
 } from '../../../shared/activities-models';
 import type * as AppTypes from '../../../shared/app-types';
 import {
-  HeaderProgressBarComponent,
-  RatingStarBarComponent,
   SmartListComponent,
-  type HeaderProgressBarConfig,
   type ListQuery,
   type PageResult,
   type RatingStarBarConfig,
   type SmartListConfig,
+  type SmartListCursorState,
   type SmartListItemSelectEvent,
   type SmartListItemTemplateContext,
   type SmartListLoaders,
@@ -96,8 +94,6 @@ type PendingActivityAction = 'delete' | 'exit' | 'reject';
     MatIconModule,
     MatSelectModule,
     LazyBgImageDirective,
-    HeaderProgressBarComponent,
-    RatingStarBarComponent,
     SmartListComponent,
     EventChatPopupComponent,
     EventExplorePopupComponent,
@@ -211,9 +207,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   @ViewChild('activitiesRatesPairFullscreenGrid')
   private activitiesRatesPairFullscreenGridRef?: ElementRef<HTMLDivElement>;
 
-  @ViewChild('activitiesRateBarHost', { read: ElementRef })
-  private activitiesRateBarHostRef?: ElementRef<HTMLElement>;
-
   // ── Static data ───────────────────────────────────────────────────────────
   protected readonly activityRatingScale   = APP_STATIC_DATA.activityRatingScale;
   protected readonly activitiesPrimaryFilters: Array<{ key: AppTypes.ActivitiesPrimaryFilter; label: string; icon: string }> = [
@@ -268,6 +261,23 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     snapMode: () => this.activitiesPrimaryFilter === 'chats' ? 'none' : 'mandatory',
     scrollPaddingTop: '2.6rem',
     footerSpacerHeight: () => this.activitiesPrimaryFilter === 'rates' ? this.activityRateEditorSpacerHeight() : null,
+    headerProgress: {
+      enabled: true
+    },
+    pagination: {
+      mode: () => {
+        if (this.activitiesPrimaryFilter !== 'rates') {
+          return 'scroll';
+        }
+        if (this.isRatesFullscreenModeActive()) {
+          return this.isActivitiesRatesFullscreenReadOnlyNavigation() ? 'arrows' : 'rating-stars';
+        }
+        return this.shouldRenderActivityRateEditorDock() ? 'rating-stars' : 'scroll';
+      },
+      ratingBarConfig: () => this.activityRateBarConfig(),
+      ratingBarValue: () => this.selectedActivityRateValue(),
+      onRatingSelect: (_item, score) => this.setSelectedActivityOwnRating(score)
+    },
     calendarVariant: () => this.activitiesPrimaryFilter === 'rates' ? 'rate-counts' : 'default',
     presentation: () => this.activitiesSmartListPresentation(),
     views: [
@@ -2584,21 +2594,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     };
   }
 
-  protected activitiesHeaderProgressBarConfig(): HeaderProgressBarConfig {
-    if (!this.isRatesFullscreenModeActive() && this.activitiesSmartList) {
-      return this.activitiesSmartList.headerProgressBarConfig({
-        placement: 'edge'
-      });
-    }
-    return {
-      position: this.activitiesHeaderProgressLoading ? this.activitiesHeaderLoadingProgress : this.activitiesHeaderProgress,
-      state: this.activitiesHeaderProgressLoading
-        ? (this.activitiesHeaderLoadingOverdue ? 'loading-overdue' : 'loading')
-        : 'scrolling',
-      placement: 'edge'
-    };
-  }
-
   protected get activitiesRateSmartListItemTemplate(): TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>> | null {
     return this.activitiesRateFilter.startsWith('pair')
       ? (this.activitiesRatePairSmartListItemTemplateRef ?? null)
@@ -2653,20 +2648,12 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.triggerActivityRateBlinks(row.id);
       return;
     }
-    const rows = this.activitiesRatesFullscreenRows();
-    if (rows.length === 0) {
+    if (!this.canMoveActivitiesRatesFullscreenCursor(1)) {
       this.triggerActivityRateBlinks(row.id);
       return;
     }
-    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, rows.length - 1));
-    const hasUpcomingRound = currentIndex + 1 < rows.length;
-    const nextIndex = Math.min(rows.length, currentIndex + 1);
     this.triggerActivityRateBlinks(row.id, () => {
-      if (hasUpcomingRound) {
-        this.startActivitiesRatesFullscreenLeaveAnimation(row);
-      }
-      this.activitiesRatesFullscreenCardIndex = nextIndex;
-      this.updateActivitiesHeaderProgress();
+      this.advanceActivitiesRatesFullscreenCursor(1, row);
     });
   }
 
@@ -2777,7 +2764,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     const rateRows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.activities-rate-profile-card.activities-row-item'));
     const rowTop = targetRow.offsetTop;
     const sameRowCards = rateRows.filter(card => Math.abs(card.offsetTop - rowTop) <= 1);
-    const dock = this.activitiesRateBarHostRef?.nativeElement ?? null;
+    const dock = this.activitiesSmartList?.paginationHostElement() ?? null;
     const scrollRect = scrollElement.getBoundingClientRect();
     const rowBottom = (sameRowCards.length > 0 ? sameRowCards : [targetRow]).reduce((maxBottom, card) => {
       return Math.max(maxBottom, card.getBoundingClientRect().bottom);
@@ -3363,19 +3350,14 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (!this.isActivitiesRatesFullscreenReadOnlyNavigation()) {
       return false;
     }
-    return this.activitiesRatesFullscreenCardIndex > 0;
+    return this.canMoveActivitiesRatesFullscreenCursor(-1);
   }
 
   protected canNavigateActivitiesRatesFullscreenNext(): boolean {
     if (!this.isActivitiesRatesFullscreenReadOnlyNavigation()) {
       return false;
     }
-    const rows = this.activitiesRatesFullscreenRows();
-    if (rows.length === 0) {
-      return false;
-    }
-    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, rows.length - 1));
-    return currentIndex < rows.length - 1;
+    return this.canMoveActivitiesRatesFullscreenCursor(1);
   }
 
   protected navigateActivitiesRatesFullscreenPrev(event?: Event): void {
@@ -3387,18 +3369,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (!row) {
       return;
     }
-    const rows = this.activitiesRatesFullscreenRows();
-    if (rows.length === 0) {
-      return;
-    }
-    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, rows.length - 1));
-    const previousIndex = Math.max(0, currentIndex - 1);
-    if (previousIndex === currentIndex) {
-      return;
-    }
-    this.startActivitiesRatesFullscreenLeaveAnimation(row);
-    this.activitiesRatesFullscreenCardIndex = previousIndex;
-    this.updateActivitiesHeaderProgress();
+    this.advanceActivitiesRatesFullscreenCursor(-1, row);
   }
 
   protected navigateActivitiesRatesFullscreenNext(event?: Event): void {
@@ -3410,21 +3381,14 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (!row) {
       return;
     }
-    const rows = this.activitiesRatesFullscreenRows();
-    if (rows.length === 0) {
-      return;
-    }
-    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, rows.length - 1));
-    const nextIndex = Math.min(rows.length - 1, currentIndex + 1);
-    if (nextIndex === currentIndex) {
-      return;
-    }
-    this.startActivitiesRatesFullscreenLeaveAnimation(row);
-    this.activitiesRatesFullscreenCardIndex = nextIndex;
-    this.updateActivitiesHeaderProgress();
+    this.advanceActivitiesRatesFullscreenCursor(1, row);
   }
 
   private activitiesRatesFullscreenRows(): AppTypes.ActivityListRow[] {
+    const smartListRows = this.activitiesSmartList?.itemsSnapshot();
+    if (smartListRows) {
+      return smartListRows.filter(row => row.type === 'rates');
+    }
     return this.filteredActivityRows.filter(row => row.type === 'rates');
   }
 
@@ -3436,11 +3400,15 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (!this.isRatesFullscreenModeActive()) {
       return null;
     }
+    const smartListRow = this.activitiesSmartList?.cursorItem();
+    if (smartListRow?.type === 'rates') {
+      return smartListRow;
+    }
     const rows = this.activitiesRatesFullscreenRows();
     if (rows.length === 0) {
       return null;
     }
-    const currentIndex = this.activitiesRatesFullscreenCardIndex;
+    const currentIndex = this.activitiesRatesFullscreenCursorIndex();
     if (currentIndex < 0 || currentIndex >= rows.length) {
       return null;
     }
@@ -3456,15 +3424,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (!row) {
       return;
     }
-    const rows = this.activitiesRatesFullscreenRows();
-    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, rows.length - 1));
-    const nextIndex = Math.min(rows.length - 1, currentIndex + 1);
-    if (nextIndex === currentIndex) {
-      return;
-    }
-    this.startActivitiesRatesFullscreenLeaveAnimation(row);
-    this.activitiesRatesFullscreenCardIndex = nextIndex;
-    this.updateActivitiesHeaderProgress();
+    this.advanceActivitiesRatesFullscreenCursor(1, row);
   }
 
   protected activitiesRatesFullscreenPrev(event: Event): void {
@@ -3476,15 +3436,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (!row) {
       return;
     }
-    const rows = this.activitiesRatesFullscreenRows();
-    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, rows.length - 1));
-    const previousIndex = Math.max(0, currentIndex - 1);
-    if (previousIndex === currentIndex) {
-      return;
-    }
-    this.startActivitiesRatesFullscreenLeaveAnimation(row);
-    this.activitiesRatesFullscreenCardIndex = previousIndex;
-    this.updateActivitiesHeaderProgress();
+    this.advanceActivitiesRatesFullscreenCursor(-1, row);
   }
 
   protected onActivitiesRatesFullscreenLeaveAnimationEnd(event: AnimationEvent): void {
@@ -3499,13 +3451,13 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   protected activitiesRatesFullscreenEmptyTitle(): string {
     if (this.activitiesRatesFullscreenRows().length > 0) { return 'No cards available'; }
-    if (this.activitiesHeaderProgressLoading) { return 'Loading more cards'; }
+    if (this.isActivitiesRatesFullscreenLoadingActive()) { return 'Loading more cards'; }
     return 'No items';
   }
 
   protected activitiesRatesFullscreenEmptyDescription(): string {
     if (this.activitiesRatesFullscreenRows().length > 0) { return 'Wait for more cards to load or adjust the rate filter.'; }
-    if (this.activitiesHeaderProgressLoading) { return 'Preloading the next stack in the background.'; }
+    if (this.isActivitiesRatesFullscreenLoadingActive()) { return 'Preloading the next stack in the background.'; }
     return this.activitiesEmptyLabel;
   }
 
@@ -3527,7 +3479,10 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.cancelActivitiesRatesFullscreenAdvance();
     this.cancelActivityRateEditorCloseTransition();
     this.activityRateEditorClosing = false;
-    this.syncActivitiesRatesFullscreenSelection();
+    void this.setActivitiesRatesFullscreenCursorIndex(nextIndex).then(() => {
+      this.syncActivitiesRatesFullscreenSelection();
+      this.cdr.markForCheck();
+    });
     this.activitiesContext.setActivitiesRatesFullscreenMode(true);
     this.runAfterActivitiesRender(() => this.syncActivitiesRatesListPositionToSelection());
     this.refreshActivitiesHeaderProgressSoon();
@@ -3579,16 +3534,16 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.updateActivitiesHeaderProgress();
       return;
     }
-    if (this.activitiesRatesFullscreenCardIndex < 0) {
-      this.activitiesRatesFullscreenCardIndex = 0;
+    const currentRow = this.currentActivitiesRatesFullscreenRow();
+    if (!currentRow) {
+      this.activitiesRatesFullscreenCardIndex = this.activitiesRatesFullscreenCursorIndex();
+      this.updateActivitiesHeaderProgress();
+      return;
     }
-    const maxAllowedIndex = rows.length - 1;
-    if (this.activitiesRatesFullscreenCardIndex > maxAllowedIndex) {
-      this.activitiesRatesFullscreenCardIndex = maxAllowedIndex;
-    }
-    this.selectedActivityRateId = rows[this.activitiesRatesFullscreenCardIndex]?.id ?? null;
+    this.activitiesRatesFullscreenCardIndex = this.activitiesRatesFullscreenCursorIndex();
+    this.selectedActivityRateId = currentRow.id;
     this.activitiesContext.setActivitiesSelectedRateId(this.selectedActivityRateId);
-    this.pulseRateIndicatorForRow(rows[this.activitiesRatesFullscreenCardIndex] ?? null);
+    this.pulseRateIndicatorForRow(currentRow);
     this.updateActivitiesHeaderProgress();
   }
 
@@ -3620,6 +3575,72 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     }
     const matchedIndex = rows.findIndex(row => row.id === preferredRowId);
     return matchedIndex >= 0 ? matchedIndex : 0;
+  }
+
+  private activitiesRatesFullscreenCursorState(): SmartListCursorState<AppTypes.ActivityListRow> | null {
+    return this.activitiesSmartList?.cursorState() ?? null;
+  }
+
+  private activitiesRatesFullscreenCursorIndex(): number {
+    return this.activitiesRatesFullscreenCursorState()?.index ?? this.activitiesRatesFullscreenCardIndex;
+  }
+
+  private canMoveActivitiesRatesFullscreenCursor(delta: number): boolean {
+    if (this.activitiesSmartList) {
+      return this.activitiesSmartList.canMoveCursor(delta);
+    }
+    const rows = this.activitiesRatesFullscreenRows();
+    if (rows.length === 0) {
+      return false;
+    }
+    const currentIndex = AppUtils.clampNumber(this.activitiesRatesFullscreenCardIndex, 0, Math.max(0, rows.length - 1));
+    const nextIndex = currentIndex + Math.trunc(delta);
+    return nextIndex >= 0 && nextIndex < rows.length;
+  }
+
+  private async setActivitiesRatesFullscreenCursorIndex(index: number): Promise<boolean> {
+    if (this.activitiesSmartList) {
+      return this.activitiesSmartList.setCursorIndex(index);
+    }
+    const rows = this.activitiesRatesFullscreenRows();
+    if (rows.length === 0) {
+      this.activitiesRatesFullscreenCardIndex = 0;
+      return false;
+    }
+    const nextIndex = Math.max(0, Math.min(Math.trunc(index), rows.length - 1));
+    const changed = nextIndex !== this.activitiesRatesFullscreenCardIndex;
+    this.activitiesRatesFullscreenCardIndex = nextIndex;
+    return changed;
+  }
+
+  private async moveActivitiesRatesFullscreenCursor(delta: number): Promise<boolean> {
+    if (this.activitiesSmartList) {
+      return this.activitiesSmartList.moveCursor(delta);
+    }
+    return this.setActivitiesRatesFullscreenCursorIndex(this.activitiesRatesFullscreenCardIndex + Math.trunc(delta));
+  }
+
+  private advanceActivitiesRatesFullscreenCursor(delta: number, row: AppTypes.ActivityListRow): void {
+    if (!this.canMoveActivitiesRatesFullscreenCursor(delta)) {
+      return;
+    }
+    this.startActivitiesRatesFullscreenLeaveAnimation(row);
+    void this.moveActivitiesRatesFullscreenCursor(delta).then(moved => {
+      if (!moved) {
+        this.finishActivitiesRatesFullscreenAdvance();
+        return;
+      }
+      this.syncActivitiesRatesFullscreenSelection();
+      this.cdr.markForCheck();
+    });
+  }
+
+  private isActivitiesRatesFullscreenLoadingActive(): boolean {
+    if (this.activitiesSmartList) {
+      const state = this.activitiesSmartList.headerProgressBarConfig({}, 'cursor').state;
+      return state === 'loading' || state === 'loading-overdue';
+    }
+    return this.activitiesHeaderProgressLoading;
   }
 
   private firstVisibleActivitiesRateRowId(): string | null {
@@ -6144,31 +6165,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return this.users.find(u => u.id === userId);
   }
 
-  // ── Calendar navigation shortcuts (template aliases) ──────────────────────
-
-  protected calendarPrev(event?: Event): void {
-    this.navigateActivitiesCalendarBackward(event);
-  }
-
-  protected calendarToday(event?: Event): void {
-    event?.stopPropagation();
-    if (this.activitiesView === 'month') {
-      this.calendarMonthFocusDate = AppUtils.dateOnly(new Date());
-    } else {
-      this.calendarWeekFocusDate = AppUtils.dateOnly(new Date());
-    }
-    this.calendarMonthAnchorPages = null;
-    this.calendarWeekAnchorPages  = null;
-    this.calendarMonthAnchorsHydrated = false;
-    this.calendarWeekAnchorsHydrated  = false;
-    this.resetActivitiesScroll(true);
-    this.cdr.markForCheck();
-  }
-
-  protected calendarNext(event?: Event): void {
-    this.navigateActivitiesCalendarForward(event);
-  }
-
   // ── Header progress loading ────────────────────────────────────────────────
 
   private beginActivitiesHeaderProgressLoading(): void {
@@ -6479,22 +6475,12 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.serverPageTotalRows = change.total;
       this.serverPageIndex = Math.ceil(change.items.length / Math.max(1, change.query.pageSize));
     }
-    if (this.isRatesFullscreenModeActive()) {
-      this.activitiesHeaderProgressLoading = change.loading;
-      this.activitiesHeaderLoadingProgress = change.loadingProgress;
-      this.activitiesHeaderLoadingOverdue = change.loadingOverdue;
-      this.updateActivitiesHeaderProgress();
-      this.flushActivitiesHeaderProgress();
-      this.cdr.markForCheck();
-      return;
-    }
     this.activitiesListScrollable = change.scrollable;
-    this.activitiesHeaderProgress = change.progress;
-    this.activitiesHeaderProgressLoading = change.loading;
-    this.activitiesHeaderLoadingProgress = change.loadingProgress;
-    this.activitiesHeaderLoadingOverdue = change.loadingOverdue;
     this.activitiesStickyValue = change.stickyLabel;
     this.activitiesContext.setActivitiesStickyValue(change.stickyLabel);
+    if (this.isRatesFullscreenModeActive()) {
+      this.syncActivitiesRatesFullscreenSelection();
+    }
     this.flushActivitiesHeaderProgress();
     this.cdr.markForCheck();
   }

@@ -1,4 +1,9 @@
 import { Observable } from 'rxjs';
+import type {
+  HeaderProgressBarPlacement,
+  HeaderProgressBarTone
+} from '../header-progress-bar';
+import type { RatingStarBarConfig } from '../rating-star-bar';
 
 export type ListDirection = 'asc' | 'desc';
 export type SmartListViewMode = 'list' | 'month' | 'week';
@@ -7,6 +12,7 @@ export type SmartListClassValue = string | string[] | Set<string> | Record<strin
 export type SmartListCalendarVariant = 'default' | 'rate-counts';
 export type SmartListListLayout = 'stack' | 'card-grid' | 'thread';
 export type SmartListSnapMode = 'none' | 'proximity' | 'mandatory';
+export type SmartListPaginationMode = 'scroll' | 'arrows' | 'rating-stars';
 export type SmartListFilters = object;
 export type SmartListLoadTriggerEdge = 'end' | 'start';
 export type SmartListMergeStrategy = 'append' | 'prepend';
@@ -57,6 +63,20 @@ export interface SmartListStateChange<T, TFilters extends SmartListFilters = Sma
   loadingOverdue: boolean;
   scrollable: boolean;
   stickyLabel: string;
+  cursorIndex: number;
+  cursorTotal: number;
+  cursorProgress: number;
+  cursorCanPrev: boolean;
+  cursorCanNext: boolean;
+}
+
+export interface SmartListCursorState<T> {
+  index: number;
+  total: number;
+  progress: number;
+  canPrev: boolean;
+  canNext: boolean;
+  item: T | null;
 }
 
 export interface SmartListItemTemplateContext<T, TFilters extends SmartListFilters = SmartListFilters> {
@@ -187,4 +207,15 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   desktopColumns?: SmartListConfigValue<number | null, TFilters>;
   snapMode?: SmartListConfigValue<SmartListSnapMode, TFilters>;
   scrollPaddingTop?: SmartListConfigValue<string | null, TFilters>;
+  headerProgress?: {
+    enabled?: SmartListConfigValue<boolean, TFilters>;
+    tone?: SmartListConfigValue<HeaderProgressBarTone, TFilters>;
+    placement?: SmartListConfigValue<HeaderProgressBarPlacement, TFilters>;
+  };
+  pagination?: {
+    mode?: SmartListPaginationMode | ((item: T | null, query: ListQuery<TFilters>) => SmartListPaginationMode);
+    ratingBarConfig?: (item: T | null, query: ListQuery<TFilters>) => RatingStarBarConfig | null;
+    ratingBarValue?: (item: T | null, query: ListQuery<TFilters>) => number;
+    onRatingSelect?: (item: T | null, score: number, query: ListQuery<TFilters>) => void | Promise<void>;
+  };
 }

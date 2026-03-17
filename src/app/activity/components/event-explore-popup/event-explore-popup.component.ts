@@ -22,9 +22,7 @@ import { AppUtils } from '../../../shared/app-utils';
 import { LazyBgImageDirective } from '../../../shared/lazy-bg-image.directive';
 import { ActivityMembersService, AppContext, type ActivityMembersSyncState, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
 import {
-  HeaderProgressBarComponent,
   SmartListComponent,
-  type HeaderProgressBarConfig,
   type ListQuery,
   type PageResult,
   type SmartListConfig,
@@ -56,7 +54,6 @@ type InlineExploreActionMenu = {
     CommonModule,
     MatIconModule,
     LazyBgImageDirective,
-    HeaderProgressBarComponent,
     SmartListComponent,
     EventMembersPopupComponent
   ],
@@ -123,27 +120,15 @@ export class EventExplorePopupComponent {
   protected readonly eventExploreLoadPage = (query: ListQuery<EventExploreFilters>) =>
     from(this.loadEventExplorePage(query));
 
-  protected eventExploreHeaderProgressBarConfig(): HeaderProgressBarConfig {
-    if (this.eventExploreSmartList) {
-      return this.eventExploreSmartList.headerProgressBarConfig({
-        placement: 'edge'
-      });
-    }
-    return {
-      position: this.eventExploreHeaderProgressLoading ? this.eventExploreHeaderLoadingProgress : this.eventExploreHeaderProgress,
-      state: this.eventExploreHeaderProgressLoading
-        ? (this.eventExploreHeaderLoadingOverdue ? 'loading-overdue' : 'loading')
-        : 'scrolling',
-      placement: 'edge'
-    };
-  }
-
   protected readonly eventExploreSmartListConfig: SmartListConfig<DemoEventRecord, EventExploreFilters> = {
     pageSize: 10,
     loadingDelayMs: 0,
     defaultView: 'list',
     emptyLabel: 'No visible events right now.',
     emptyDescription: 'Try another filter or check back later.',
+    headerProgress: {
+      enabled: true
+    },
     presentation: 'list',
     listLayout: 'card-grid',
     desktopColumns: 3,

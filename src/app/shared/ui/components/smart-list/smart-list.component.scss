@@ -3,6 +3,15 @@
   flex: 1;
   min-width: 0;
   min-height: 0;
+  position: relative;
+}
+
+.smart-list__surface {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
 }
 
 .smart-list--list.smart-list--card-grid {
@@ -187,6 +196,52 @@
   pointer-events: none;
   scroll-snap-align: none;
   scroll-snap-stop: normal;
+}
+
+.smart-list__header-progress-shell {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 34;
+  pointer-events: none;
+}
+
+.smart-list__pagination-arrows {
+  position: absolute;
+  inset: 0;
+  z-index: 34;
+  pointer-events: none;
+}
+
+.smart-list__pagination-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 1px solid rgba(43, 73, 116, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #27456f;
+  box-shadow: 0 8px 22px rgba(13, 24, 40, 0.16);
+  pointer-events: auto;
+}
+
+.smart-list__pagination-arrow:disabled {
+  opacity: 0.42;
+  box-shadow: none;
+}
+
+.smart-list__pagination-arrow--prev {
+  left: 0.6rem;
+}
+
+.smart-list__pagination-arrow--next {
+  right: 0.6rem;
 }
 
 :host ::ng-deep .smart-list--list.smart-list--card-grid .activities-row-item,

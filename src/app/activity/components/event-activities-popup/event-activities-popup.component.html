@@ -58,7 +58,6 @@
       <button type="button" class="popup-close" (click)="closeActivitiesPopup()" aria-label="Close">
         <mat-icon>close</mat-icon>
       </button>
-      <app-header-progress-bar [config]="activitiesHeaderProgressBarConfig()"></app-header-progress-bar>
     </div>
     <div class="popup-body popup-body-activities">
       <div class="activities-popup" [class.activities-popup-rates-fullscreen]="activitiesSmartListPresentation() === 'fullscreen'" (click)="onActivitiesPopupSurfaceClick($event)">
@@ -1068,15 +1067,6 @@
       </div>
     </ng-template>
   </ng-template><!-- /activitiesRatesFullscreenLayout -->
-  <!-- ───── Rate editor dock ───── -->
-  <app-rating-star-bar
-    #activitiesRateBarHost
-    *ngIf="shouldRenderActivityRateEditorDock()"
-    [config]="activityRateBarConfig()"
-    [value]="selectedActivityRateValue()"
-    (scoreSelect)="setSelectedActivityOwnRating($event)"
-  ></app-rating-star-bar>
-
   <!-- ───── Delete confirm ───── -->
   <section class="experience-delete-confirm" *ngIf="pendingActivityDeleteRow">
     <div class="experience-delete-confirm-backdrop" (click)="cancelActivityDelete()"></div>
