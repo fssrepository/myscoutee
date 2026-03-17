@@ -363,7 +363,17 @@ export class EventExplorePopupComponent {
   }
 
   protected eventExploreHeaderSubtitle(): string {
-    return this.eventExploreHeaderDateLabel;
+    const parts = [this.eventExploreOrderLabel()];
+    if (this.eventExploreFilterFriendsOnly) {
+      parts.push('Friends going');
+    }
+    if (this.eventExploreFilterHasRooms) {
+      parts.push('Open spots');
+    }
+    if (this.eventExploreFilterTopic) {
+      parts.push(`#${this.eventExploreTopicLabel(this.eventExploreFilterTopic)}`);
+    }
+    return parts.join(' · ');
   }
 
   protected openEventExploreMembers(record: DemoEventRecord, event: Event): void {
