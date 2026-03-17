@@ -327,10 +327,8 @@
     </div>
     <div class="game-rating-dock" *ngIf="hasCandidatesForCurrentMode">
       <app-rating-star-bar
-        [scale]="ratingScale"
+        [config]="gameRatingBarConfig"
         [value]="selectedRating"
-        [blink]="isRatingBarBlinking"
-        presentation="fullscreen"
         (scoreSelect)="setRating($event)"
       ></app-rating-star-bar>
     </div>

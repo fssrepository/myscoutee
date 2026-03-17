@@ -53,6 +53,7 @@ import {
   SmartListComponent,
   type ListQuery,
   type PageResult,
+  type RatingStarBarConfig,
   type SmartListConfig,
   type SmartListItemSelectEvent,
   type SmartListItemTemplateContext,
@@ -206,6 +207,9 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   @ViewChild('activitiesRatesPairFullscreenGrid')
   private activitiesRatesPairFullscreenGridRef?: ElementRef<HTMLDivElement>;
+
+  @ViewChild('activitiesRateBarHost', { read: ElementRef })
+  private activitiesRateBarHostRef?: ElementRef<HTMLElement>;
 
   // ── Static data ───────────────────────────────────────────────────────────
   protected readonly activityRatingScale   = APP_STATIC_DATA.activityRatingScale;
@@ -2557,6 +2561,26 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return row ? this.activityOwnRatingValue(row) : 0;
   }
 
+  protected activityRateBarConfig(): RatingStarBarConfig {
+    return {
+      scale: this.activityRatingScale,
+      readonly: this.isSelectedActivityRateReadOnly(),
+      label: this.selectedActivityRateBarLabel(),
+      presentation: this.isRatesFullscreenModeActive() ? 'fullscreen' : 'list',
+      animation: this.isActivityRateBarBlinking ? 'blink' : 'default',
+      dock: {
+        enabled: true,
+        state: this.isRatesFullscreenModeActive()
+          ? 'permanent'
+          : this.isActivityRateEditorClosing()
+            ? 'closing'
+            : this.isActivityRateEditorOpen()
+              ? 'open'
+              : 'hidden'
+      }
+    };
+  }
+
   protected get activitiesRateSmartListItemTemplate(): TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityListRow, ActivitiesSmartListFilters>> | null {
     return this.activitiesRateFilter.startsWith('pair')
       ? (this.activitiesRatePairSmartListItemTemplateRef ?? null)
@@ -2695,7 +2719,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return;
     }
     if (
-      target.closest('.activities-rate-editor-dock')
+      target.closest('[data-rating-star-bar-dock]')
       || target.closest('.activities-rate-score-badge')
       || target.closest('.activities-rate-profile-card.is-rate-editor-selected')
     ) {
@@ -2735,7 +2759,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     const rateRows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.activities-rate-profile-card.activities-row-item'));
     const rowTop = targetRow.offsetTop;
     const sameRowCards = rateRows.filter(card => Math.abs(card.offsetTop - rowTop) <= 1);
-    const dock = globalThis.document?.querySelector<HTMLElement>('.activities-rate-editor-dock');
+    const dock = this.activitiesRateBarHostRef?.nativeElement ?? null;
     const scrollRect = scrollElement.getBoundingClientRect();
     const rowBottom = (sameRowCards.length > 0 ? sameRowCards : [targetRow]).reduce((maxBottom, card) => {
       return Math.max(maxBottom, card.getBoundingClientRect().bottom);

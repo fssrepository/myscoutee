@@ -1077,23 +1077,13 @@
     </ng-template>
   </ng-template><!-- /activitiesRatesFullscreenLayout -->
   <!-- ───── Rate editor dock ───── -->
-  <div
-    class="activities-rate-editor-dock"
-    [class.is-open]="isActivityRateEditorOpen() && !isRatesFullscreenModeActive()"
-    [class.is-closing]="isActivityRateEditorClosing() && !isRatesFullscreenModeActive()"
-    [class.is-permanent]="isRatesFullscreenModeActive()"
+  <app-rating-star-bar
+    #activitiesRateBarHost
     *ngIf="shouldRenderActivityRateEditorDock()"
-  >
-    <app-rating-star-bar
-      [scale]="activityRatingScale"
-      [value]="selectedActivityRateValue()"
-      [readonly]="isSelectedActivityRateReadOnly()"
-      [blink]="isActivityRateBarBlinking"
-      [label]="selectedActivityRateBarLabel()"
-      [presentation]="isRatesFullscreenModeActive() ? 'fullscreen' : 'list'"
-      (scoreSelect)="setSelectedActivityOwnRating($event)"
-    ></app-rating-star-bar>
-  </div>
+    [config]="activityRateBarConfig()"
+    [value]="selectedActivityRateValue()"
+    (scoreSelect)="setSelectedActivityOwnRating($event)"
+  ></app-rating-star-bar>
 
   <!-- ───── Delete confirm ───── -->
   <section class="experience-delete-confirm" *ngIf="pendingActivityDeleteRow">

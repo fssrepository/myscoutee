@@ -770,44 +770,6 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   transform: none;
 }
 
-// ─── Rate Editor Dock ────────────────────────────────────────────────────
-.activities-rate-editor-dock {
-  --activities-rate-dock-hidden-offset: calc(100% + 0.8rem + env(safe-area-inset-bottom));
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 26;
-  border: 1px solid rgba(22, 40, 64, 0.2);
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 -8px 22px rgba(13, 24, 40, 0.14);
-  padding: 0.52rem 0.62rem 0.62rem;
-  margin-top: 0;
-  transform-origin: bottom center;
-  overflow: hidden;
-  will-change: transform, opacity;
-  opacity: 0;
-  transform: translateY(var(--activities-rate-dock-hidden-offset));
-  pointer-events: none;
-  transition:
-    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-.activities-rate-editor-dock.is-open,
-.activities-rate-editor-dock.is-permanent {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
-}
-.activities-rate-editor-dock.is-closing {
-  pointer-events: none;
-}
-.activities-rate-editor-dock.is-permanent {
-  padding-top: 0.4rem;
-  padding-bottom: 0.52rem;
-}
-
 // ─── Fullscreen Toggle Button ────────────────────────────────────────────
 .activities-rates-fullscreen-toggle {
   border-color: rgba(48, 85, 138, 0.34);

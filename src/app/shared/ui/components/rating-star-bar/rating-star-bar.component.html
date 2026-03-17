@@ -1,22 +1,22 @@
 <div
   class="rating-star-bar"
-  [class.rating-star-bar--list]="presentation === 'list'"
-  [class.rating-star-bar--fullscreen]="presentation === 'fullscreen'"
-  [class.rating-star-bar--blink]="blink"
-  [class.rating-star-bar--readonly]="readonly"
+  [class.rating-star-bar--list]="resolvedPresentation === 'list'"
+  [class.rating-star-bar--fullscreen]="resolvedPresentation === 'fullscreen'"
+  [class.rating-star-bar--blink]="resolvedAnimation === 'blink'"
+  [class.rating-star-bar--readonly]="resolvedReadonly"
 >
-  <div class="rating-star-bar__head" *ngIf="label">
-    <span class="rating-star-bar__label">{{ label }}</span>
+  <div class="rating-star-bar__head" *ngIf="resolvedLabel">
+    <span class="rating-star-bar__label">{{ resolvedLabel }}</span>
   </div>
 
   <div class="rating-star-bar__stars">
     <button
       type="button"
       class="rating-star-bar__star"
-      *ngFor="let score of scale"
+      *ngFor="let score of resolvedScale"
       [class.is-filled]="isFilled(score)"
-      [class.is-disabled]="readonly"
-      [disabled]="readonly"
+      [class.is-disabled]="resolvedReadonly"
+      [disabled]="resolvedReadonly"
       (click)="selectScore(score, $event)"
       [attr.aria-label]="'Set rating ' + score"
     >

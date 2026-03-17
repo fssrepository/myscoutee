@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
 import { MatSliderModule } from '@angular/material/slider';
 import { ActivitiesDbContextService } from '../../../activity/services/activities-db-context.service';
-import { RatingStarBarComponent } from '../../../shared/ui';
+import { RatingStarBarComponent, type RatingStarBarConfig } from '../../../shared/ui';
 import { DemoUser, PROFILE_DETAILS } from '../../../shared/demo-data';
 import {
   AppContext,
@@ -760,6 +760,14 @@ export class HomeComponent implements OnDestroy {
 
   protected get ratingScale(): number[] {
     return Array.from({ length: 10 }, (_, index) => index + 1);
+  }
+
+  protected get gameRatingBarConfig(): RatingStarBarConfig {
+    return {
+      scale: this.ratingScale,
+      presentation: 'fullscreen',
+      animation: this.isRatingBarBlinking ? 'blink' : 'default'
+    };
   }
 
   protected get isFilterActive(): boolean {
