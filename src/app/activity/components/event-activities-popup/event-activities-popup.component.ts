@@ -249,7 +249,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     loadingDelayMs: 1000,
     defaultView: 'day',
     containerClass: () => this.activitiesSmartListClassMap(),
-    listLayout: () => this.activitiesPrimaryFilter === 'chats' ? 'thread' : 'card-grid',
+    listLayout: 'card-grid',
     desktopColumns: () => this.activitiesPrimaryFilter === 'chats' ? 1 : 3,
     snapMode: () => this.activitiesPrimaryFilter === 'chats' ? 'none' : 'mandatory',
     scrollPaddingTop: '2.6rem',

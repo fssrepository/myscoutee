@@ -303,6 +303,10 @@
   min-width: 0;
 }
 
+.smart-list--list.smart-list--card-grid .smart-list__item-shell {
+  width: 100%;
+}
+
 .smart-list--list.smart-list--card-grid .smart-list__sticky,
 .smart-list--list.smart-list--card-grid .smart-list__group-marker,
 .smart-list--list.smart-list--card-grid .smart-list__footer-spacer {
@@ -384,6 +388,8 @@
 :host ::ng-deep .smart-list--list.smart-list--card-grid .activities-card,
 :host ::ng-deep .smart-list--list.smart-list--card-grid .event-explore-card,
 :host ::ng-deep .smart-list--list.smart-list--card-grid .experience-item-card {
+  width: 100%;
+  max-width: 100%;
   scroll-snap-align: start;
   scroll-margin-top: 0;
   scroll-snap-stop: normal;
