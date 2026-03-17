@@ -16,6 +16,7 @@ export interface DemoActivityMemberRecord extends AppTypes.ActivityMemberEntry {
 export interface DemoActivityMembersRecordCollection {
   byId: Record<string, DemoActivityMemberRecord>;
   ids: string[];
+  idsByOwnerKey: Record<string, string[]>;
 }
 
 export type DemoActivityMembersMemorySchema = Record<typeof ACTIVITY_MEMBERS_TABLE_NAME, DemoActivityMembersRecordCollection>;

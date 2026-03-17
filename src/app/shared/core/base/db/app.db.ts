@@ -45,7 +45,8 @@ export class AppMemoryDb {
     return {
       [ACTIVITY_MEMBERS_TABLE_NAME]: {
         byId: {},
-        ids: []
+        ids: [],
+        idsByOwnerKey: {}
       },
       [USERS_TABLE_NAME]: {
         byId: {},
@@ -282,12 +283,9 @@ export class AppMemoryDb {
     ) as Partial<DemoMemorySchema[typeof EVENTS_TABLE_NAME]> | undefined;
     return {
       [ACTIVITY_MEMBERS_TABLE_NAME]: {
-        byId: activityMembersSource?.byId && typeof activityMembersSource.byId === 'object'
-          ? { ...activityMembersSource.byId }
-          : { ...fallback[ACTIVITY_MEMBERS_TABLE_NAME].byId },
-        ids: Array.isArray(activityMembersSource?.ids)
-          ? activityMembersSource.ids.map(id => String(id))
-          : [...fallback[ACTIVITY_MEMBERS_TABLE_NAME].ids]
+        byId: this.normalizeActivityMembersById(activityMembersSource?.byId, fallback[ACTIVITY_MEMBERS_TABLE_NAME].byId),
+        ids: this.normalizeIdList(activityMembersSource?.ids, fallback[ACTIVITY_MEMBERS_TABLE_NAME].ids),
+        idsByOwnerKey: this.normalizeActivityMembersIdsByOwnerKey(activityMembersSource)
       },
       [USERS_TABLE_NAME]: {
         byId: usersSource?.byId && typeof usersSource.byId === 'object'
@@ -342,5 +340,55 @@ export class AppMemoryDb {
 
   private canUseStorage(): boolean {
     return typeof localStorage !== 'undefined';
+  }
+
+  private normalizeActivityMembersById(
+    value: unknown,
+    fallback: DemoMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME]['byId']
+  ): DemoMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME]['byId'] {
+    return value && typeof value === 'object'
+      ? { ...(value as DemoMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME]['byId']) }
+      : { ...fallback };
+  }
+
+  private normalizeIdList(value: unknown, fallback: readonly string[]): string[] {
+    return Array.isArray(value)
+      ? value.map(id => String(id))
+      : [...fallback];
+  }
+
+  private normalizeActivityMembersIdsByOwnerKey(
+    source: Partial<DemoMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME]> | undefined
+  ): Record<string, string[]> {
+    const normalizedById = this.normalizeActivityMembersById(source?.byId, {});
+    const normalizedIds = this.normalizeIdList(source?.ids, []);
+    const next: Record<string, string[]> = {};
+
+    const rawIndex = source?.idsByOwnerKey;
+    if (rawIndex && typeof rawIndex === 'object') {
+      for (const [ownerKey, ids] of Object.entries(rawIndex)) {
+        if (!Array.isArray(ids) || !ownerKey.trim()) {
+          continue;
+        }
+        next[ownerKey] = ids
+          .map(id => String(id))
+          .filter(id => Boolean(normalizedById[id]));
+      }
+    }
+
+    for (const id of normalizedIds) {
+      const record = normalizedById[id];
+      const ownerKey = typeof record?.ownerKey === 'string' ? record.ownerKey.trim() : '';
+      if (!ownerKey) {
+        continue;
+      }
+      const bucket = next[ownerKey] ?? [];
+      if (!bucket.includes(id)) {
+        bucket.push(id);
+      }
+      next[ownerKey] = bucket;
+    }
+
+    return next;
   }
 }

@@ -54,10 +54,7 @@ export class ActivityMembersService {
     if (!normalizedOwnerId) {
       return [];
     }
-    const summary = await this.querySummaryByOwnerId(normalizedOwnerId);
-    const owner = summary
-      ? this.ownerRef(summary.ownerType, summary.ownerId)
-      : (this.peekOwnerRefById(normalizedOwnerId) ?? this.ownerRef('event', normalizedOwnerId));
+    const owner = this.peekOwnerRefById(normalizedOwnerId) ?? this.ownerRef('event', normalizedOwnerId);
     const members = await this.activityMembersService.queryMembersByOwner(owner);
     this.emitActivityMembersSyncForOwner(owner);
     return members;
@@ -92,10 +89,14 @@ export class ActivityMembersService {
     if (!normalizedOwnerId) {
       return null;
     }
-    const summaries = await this.querySummariesByOwners(
-      ActivityMembersService.OWNER_TYPES.map(ownerType => this.ownerRef(ownerType, normalizedOwnerId))
-    );
-    return summaries[0] ?? this.peekSummaryByOwnerId(normalizedOwnerId);
+    const cachedSummary = this.peekSummaryByOwnerId(normalizedOwnerId);
+    if (cachedSummary) {
+      return cachedSummary;
+    }
+    const owner = this.peekOwnerRefById(normalizedOwnerId) ?? this.ownerRef('event', normalizedOwnerId);
+    await this.activityMembersService.queryMembersByOwner(owner);
+    this.emitActivityMembersSyncForOwner(owner);
+    return this.activityMembersService.peekSummaryByOwner(owner);
   }
 
   async replaceMembersByOwner(
@@ -116,10 +117,7 @@ export class ActivityMembersService {
     if (!normalizedOwnerId) {
       return;
     }
-    const summary = this.peekSummaryByOwnerId(normalizedOwnerId) ?? await this.querySummaryByOwnerId(normalizedOwnerId);
-    const owner = summary
-      ? this.ownerRef(summary.ownerType, summary.ownerId)
-      : (this.peekOwnerRefById(normalizedOwnerId) ?? this.ownerRef('event', normalizedOwnerId));
+    const owner = this.peekOwnerRefById(normalizedOwnerId) ?? this.ownerRef('event', normalizedOwnerId);
     await this.replaceMembersByOwner(owner, members, capacityTotal);
   }
 

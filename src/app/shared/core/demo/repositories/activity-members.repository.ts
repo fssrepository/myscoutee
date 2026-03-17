@@ -14,7 +14,8 @@ import type { DemoEventRecord } from '../models/events.model';
 import { EVENTS_TABLE_NAME } from '../models/events.model';
 import {
   ACTIVITY_MEMBERS_TABLE_NAME,
-  type DemoActivityMemberRecord
+  type DemoActivityMemberRecord,
+  type DemoActivityMembersRecordCollection
 } from '../models/activity-members.model';
 import { DemoEventsRepository } from './events.repository';
 
@@ -25,6 +26,7 @@ const DEMO_ACTIVITY_MEMBER_USERS = AppDemoGenerators.buildExpandedDemoUsers(50);
 })
 export class DemoActivityMembersRepository extends HttpActivityMembersRepository {
   private readonly demoEventsRepository = inject(DemoEventsRepository);
+  private lastInitToken = '';
 
   constructor() {
     super();
@@ -33,10 +35,17 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
 
   init(): void {
     this.demoEventsRepository.init();
+    const eventsTable = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    const currentTable = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    const initToken = `${eventsTable.ids.length}:${currentTable.ids.length}:${Object.keys(currentTable.idsByOwnerKey).length}`;
+    if (this.lastInitToken === initToken) {
+      return;
+    }
+
     const seededRecords = this.buildSeededEventOwnerRecords();
-    const currentTable = this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME];
     const nextById = { ...currentTable.byId };
     const nextIds = [...currentTable.ids];
+    const nextIdsByOwnerKey = this.cloneOwnerKeyIndex(currentTable.idsByOwnerKey);
     const existingOwnerKeys = new Set(
       currentTable.ids
         .map(id => currentTable.byId[id]?.ownerKey ?? '')
@@ -50,6 +59,9 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       }
       nextById[record.id] = { ...record };
       nextIds.push(record.id);
+      const ownerBucket = nextIdsByOwnerKey[record.ownerKey] ?? [];
+      ownerBucket.push(record.id);
+      nextIdsByOwnerKey[record.ownerKey] = ownerBucket;
       changed = true;
     }
 
@@ -58,12 +70,15 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
         ...state,
         [ACTIVITY_MEMBERS_TABLE_NAME]: {
           byId: nextById,
-          ids: nextIds
+          ids: nextIds,
+          idsByOwnerKey: nextIdsByOwnerKey
         }
       }));
     }
 
     this.syncEventSummariesFromMembers();
+    const finalTable = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    this.lastInitToken = `${eventsTable.ids.length}:${finalTable.ids.length}:${Object.keys(finalTable.idsByOwnerKey).length}`;
   }
 
   override peekMembersByOwner(owner: ActivityMemberOwnerRef): AppTypes.ActivityMemberEntry[] {
@@ -151,11 +166,10 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       return [];
     }
     const ownerKey = this.ownerKey(normalizedOwner);
-    const table = this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME];
-    return table.ids
+    const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    return (table.idsByOwnerKey[ownerKey] ?? [])
       .map(id => table.byId[id])
       .filter((record): record is DemoActivityMemberRecord => Boolean(record))
-      .filter(record => record.ownerKey === ownerKey)
       .map(record => this.toMemberEntry(record))
       .sort((left, right) => AppUtils.toSortableDate(left.actionAtIso) - AppUtils.toSortableDate(right.actionAtIso));
   }
@@ -195,9 +209,10 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     );
 
     this.memoryDb.write(state => {
-      const table = state[ACTIVITY_MEMBERS_TABLE_NAME];
+      const table = this.normalizeCollection(state[ACTIVITY_MEMBERS_TABLE_NAME]);
       const nextById = { ...table.byId };
       const nextIds: string[] = [];
+      const nextIdsByOwnerKey = this.cloneOwnerKeyIndex(table.idsByOwnerKey);
       const existingOwnerRecordsById: Record<string, DemoActivityMemberRecord> = {};
 
       for (const id of table.ids) {
@@ -210,17 +225,23 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
         nextIds.push(id);
       }
 
+      delete nextIdsByOwnerKey[ownerKey];
+
       for (const member of normalizedMembers) {
         const record = this.toRecord(normalizedOwner, member, existingOwnerRecordsById[member.id]);
         nextById[record.id] = record;
         nextIds.push(record.id);
+        const ownerBucket = nextIdsByOwnerKey[ownerKey] ?? [];
+        ownerBucket.push(record.id);
+        nextIdsByOwnerKey[ownerKey] = ownerBucket;
       }
 
       return {
         ...state,
         [ACTIVITY_MEMBERS_TABLE_NAME]: {
           byId: nextById,
-          ids: nextIds
+          ids: nextIds,
+          idsByOwnerKey: nextIdsByOwnerKey
         }
       };
     });
@@ -233,14 +254,11 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   }
 
   private syncEventSummariesFromMembers(): void {
-    const table = this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME];
-    const eventIds = Array.from(new Set(
-      table.ids
-        .map(id => table.byId[id])
-        .filter((record): record is DemoActivityMemberRecord => Boolean(record))
-        .filter(record => record.ownerType === 'event')
-        .map(record => record.ownerId)
-    ));
+    const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    const eventIds = Object.keys(table.idsByOwnerKey)
+      .filter(ownerKey => ownerKey.startsWith('event:'))
+      .map(ownerKey => ownerKey.slice('event:'.length))
+      .filter(eventId => eventId.length > 0);
 
     for (const eventId of eventIds) {
       const summary = this.readSummaryByOwner({
@@ -318,6 +336,44 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       records.push(...this.buildSeededRecordsForEvent(eventRecord));
     }
     return records;
+  }
+
+  private normalizeCollection(
+    table: DemoActivityMembersRecordCollection
+  ): DemoActivityMembersRecordCollection {
+    const nextById = { ...(table.byId ?? {}) };
+    const nextIds = Array.isArray(table.ids) ? table.ids.map(id => String(id)) : [];
+    const nextIdsByOwnerKey = this.cloneOwnerKeyIndex(table.idsByOwnerKey);
+
+    for (const id of nextIds) {
+      const record = nextById[id];
+      const ownerKey = typeof record?.ownerKey === 'string' ? record.ownerKey.trim() : '';
+      if (!ownerKey) {
+        continue;
+      }
+      const ownerBucket = nextIdsByOwnerKey[ownerKey] ?? [];
+      if (!ownerBucket.includes(id)) {
+        ownerBucket.push(id);
+      }
+      nextIdsByOwnerKey[ownerKey] = ownerBucket;
+    }
+
+    return {
+      byId: nextById,
+      ids: nextIds,
+      idsByOwnerKey: nextIdsByOwnerKey
+    };
+  }
+
+  private cloneOwnerKeyIndex(index: Record<string, string[] | readonly string[] | undefined> | undefined): Record<string, string[]> {
+    const next: Record<string, string[]> = {};
+    for (const [ownerKey, ids] of Object.entries(index ?? {})) {
+      if (!ownerKey.trim() || !Array.isArray(ids)) {
+        continue;
+      }
+      next[ownerKey] = ids.map(id => String(id));
+    }
+    return next;
   }
 
   private shouldPreferRecord(next: DemoEventRecord, current: DemoEventRecord): boolean {

@@ -66,6 +66,7 @@ export class EventMembersPopupComponent {
   private readonly userByIdMap = new Map(this.users.map(user => [user.id, user]));
   private readonly membersCacheByOwnerId = new Map<string, AppTypes.ActivityMemberEntry[]>();
   private lastAppliedActivityMembersUpdatedMs = 0;
+  private openMembersHydrationTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected isOpen = false;
   protected isMobileView = false;
@@ -215,6 +216,10 @@ export class EventMembersPopupComponent {
 
   protected closeMembersPopup(event?: Event): void {
     event?.stopPropagation();
+    if (this.openMembersHydrationTimer) {
+      clearTimeout(this.openMembersHydrationTimer);
+      this.openMembersHydrationTimer = null;
+    }
     this.isOpen = false;
     this.ownerId = '';
     this.ownerRecord = null;
@@ -423,28 +428,38 @@ export class EventMembersPopupComponent {
     this.selectedMembersVisible = [];
     this.canManageMembers = options?.canManage === true;
     this.canShowInviteButton = this.canManageMembers;
-
-    const cachedSummary = this.activityMembersService.peekSummaryByOwnerId(normalizedOwnerId);
-    if (cachedSummary) {
-      this.applySummary(cachedSummary.acceptedMembers, cachedSummary.pendingMembers, cachedSummary.capacityTotal);
-    } else {
-      this.applySummary(0, 0, 0);
-    }
-
-    const cachedMembers = this.sortMembersByActionTimeDesc(
-      this.activityMembersService.peekMembersByOwnerId(normalizedOwnerId)
-    );
-    if (cachedMembers.length > 0) {
-      this.membersCacheByOwnerId.set(normalizedOwnerId, cachedMembers);
-      if (!cachedSummary) {
-        this.applySummaryFromMembers(cachedMembers);
-      }
-    }
-
+    this.applySummary(0, 0, 0);
     this.syncMembersSmartListQuery();
-    void this.resolveOwnerPresentation(normalizedOwnerId, options);
     this.cdr.markForCheck();
-    queueMicrotask(() => this.membersSmartList?.reload());
+
+    if (this.openMembersHydrationTimer) {
+      clearTimeout(this.openMembersHydrationTimer);
+    }
+    this.openMembersHydrationTimer = setTimeout(() => {
+      this.openMembersHydrationTimer = null;
+      if (!this.isOpen || this.ownerId !== normalizedOwnerId) {
+        return;
+      }
+
+      const cachedSummary = this.activityMembersService.peekSummaryByOwnerId(normalizedOwnerId);
+      if (cachedSummary) {
+        this.applySummary(cachedSummary.acceptedMembers, cachedSummary.pendingMembers, cachedSummary.capacityTotal);
+      }
+
+      const cachedMembers = this.sortMembersByActionTimeDesc(
+        this.activityMembersService.peekMembersByOwnerId(normalizedOwnerId)
+      );
+      if (cachedMembers.length > 0) {
+        this.membersCacheByOwnerId.set(normalizedOwnerId, cachedMembers);
+        if (!cachedSummary) {
+          this.applySummaryFromMembers(cachedMembers);
+        }
+      }
+
+      void this.resolveOwnerPresentation(normalizedOwnerId, options);
+      this.membersSmartList?.reload();
+      this.cdr.markForCheck();
+    }, 0);
   }
 
   private syncMembersSmartListQuery(): void {
