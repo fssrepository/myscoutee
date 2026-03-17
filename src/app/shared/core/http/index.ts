@@ -1,3 +1,4 @@
+export { HttpUsersRatingsRepository } from './repositories/users-ratings.repository';
 export { HttpChatsService } from './services/chats.service';
 export { HttpEventsService } from './services/events.service';
 export { HttpGameService } from './services/game.service';

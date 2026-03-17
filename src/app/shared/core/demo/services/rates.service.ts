@@ -12,7 +12,7 @@ export class DemoRatesService {
   private readonly usersRatingsRepository = inject(DemoUsersRatingsRepository);
 
   peekRateItemsByUser(userId: string): RateMenuItem[] {
-    return this.usersRatingsRepository.queryRateItemsByUserId(userId);
+    return this.usersRatingsRepository.peekRateItemsByUserId(userId);
   }
 
   async queryRateItemsByUser(userId: string): Promise<RateMenuItem[]> {

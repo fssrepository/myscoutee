@@ -4,8 +4,8 @@ import { AppDemoGenerators } from '../../../app-demo-generators';
 import { AppUtils } from '../../../app-utils';
 import { DemoUserRatesBuilder } from '../builders';
 import type { RateMenuItem } from '../../../demo-data';
-import type { UserRateRecord } from '../../base/interfaces/game.interface';
-import { UsersRatingsRepository } from '../../base/repositories/users-ratings.repository';
+import type { UserRateRecord, UserRatesSyncResult } from '../../base/interfaces/game.interface';
+import { HttpUsersRatingsRepository } from '../../http/repositories/users-ratings.repository';
 import {
   USER_RATES_OUTBOX_TABLE_NAME,
   USER_RATES_TABLE_NAME
@@ -14,7 +14,7 @@ import {
 @Injectable({
   providedIn: 'root'
 })
-export class DemoUsersRatingsRepository extends UsersRatingsRepository {
+export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   private static readonly DEFAULT_DEMO_USERS_COUNT = 50;
 
   constructor() {
@@ -92,7 +92,15 @@ export class DemoUsersRatingsRepository extends UsersRatingsRepository {
       .filter((item): item is RateMenuItem => Boolean(item));
   }
 
-  queryRateItemsByUserId(userId: string): RateMenuItem[] {
+  override peekRateItemsByUserId(userId: string): RateMenuItem[] {
+    return this.buildRateItemsByUserId(userId);
+  }
+
+  override async queryRateItemsByUserId(userId: string): Promise<RateMenuItem[]> {
+    return this.buildRateItemsByUserId(userId);
+  }
+
+  private buildRateItemsByUserId(userId: string): RateMenuItem[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -178,6 +186,26 @@ export class DemoUsersRatingsRepository extends UsersRatingsRepository {
       };
     });
     return normalizedRecords.map(record => record.id);
+  }
+
+  protected override async syncUserRatesBatch(rates: UserRateRecord[]): Promise<UserRatesSyncResult> {
+    if (rates.length === 0) {
+      return {
+        syncedRateIds: [],
+        failedRateIds: [],
+        error: null
+      };
+    }
+    const syncedRateIds = this.upsertGameCardRatings(rates);
+    const syncedIds = new Set(syncedRateIds);
+    const failedRateIds = rates
+      .map(rate => rate.id.trim())
+      .filter(rateId => rateId.length > 0 && !syncedIds.has(rateId));
+    return {
+      syncedRateIds,
+      failedRateIds,
+      error: failedRateIds.length > 0 ? 'Invalid demo rate payload' : null
+    };
   }
 
   private normalizeIncomingRateRecord(record: UserRateRecord): UserRateRecord | null {

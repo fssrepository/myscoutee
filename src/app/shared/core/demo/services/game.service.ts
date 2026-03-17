@@ -7,9 +7,7 @@ import type {
   UserGameCardsQueryRequest,
   UserGameCardsQueryResponse,
   UserGameDataService,
-  UserGameFilterPreferencesDto,
-  UserRateRecord,
-  UserRatesSyncResult
+  UserGameFilterPreferencesDto
 } from '../../base/interfaces/game.interface';
 import type { UserDto } from '../../base/interfaces/user.interface';
 
@@ -32,26 +30,6 @@ export class DemoGameService implements UserGameDataService {
     mode: 'single' | 'pair' = 'single'
   ): void {
     this.usersRatingsRepository.enqueueGameCardRatingOutbox(raterUserId, ratedUserId, rating, mode);
-  }
-
-  async syncUserRatesBatch(rates: UserRateRecord[]): Promise<UserRatesSyncResult> {
-    if (rates.length === 0) {
-      return {
-        syncedRateIds: [],
-        failedRateIds: [],
-        error: null
-      };
-    }
-    const syncedRateIds = this.usersRatingsRepository.upsertGameCardRatings(rates);
-    const syncedIds = new Set(syncedRateIds);
-    const failedRateIds = rates
-      .map(rate => rate.id.trim())
-      .filter(rateId => rateId.length > 0 && !syncedIds.has(rateId));
-    return {
-      syncedRateIds,
-      failedRateIds,
-      error: failedRateIds.length > 0 ? 'Invalid demo rate payload' : null
-    };
   }
 
   async queryUserGameCardsByFilter(request: UserGameCardsQueryRequest): Promise<UserGameCardsQueryResponse> {

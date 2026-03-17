@@ -1,16 +1,25 @@
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-import type { UserRateOutboxRecord, UserRateRecord } from '../interfaces/game.interface';
+import { environment } from '../../../../../environments/environment';
+import type { RateMenuItem } from '../../../demo-data';
+import type { UserRateOutboxRecord, UserRateRecord, UserRatesSyncResult } from '../../base/interfaces/game.interface';
 import {
   USER_RATES_OUTBOX_TABLE_NAME
 } from '../../demo/models/users.model';
-import { AppMemoryDb } from '../db';
+import { AppMemoryDb } from '../../base/db';
 
 @Injectable({
   providedIn: 'root'
 })
-export class UsersRatingsRepository {
+export class HttpUsersRatingsRepository {
+  private static readonly USER_RATES_SYNC_ROUTE = '/user-rates/sync';
+  private static readonly USER_RATES_ROUTE = '/activities/rates';
+
   protected readonly memoryDb = inject(AppMemoryDb);
+  private readonly http = inject(HttpClient);
+  private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
+  private readonly cachedRatesByUserId: Record<string, RateMenuItem[]> = {};
 
   queryPendingUserRatesOutbox(limit = 50): UserRateOutboxRecord[] {
     const maxItems = Math.max(1, Math.trunc(Number(limit) || 50));
@@ -25,6 +34,44 @@ export class UsersRatingsRepository {
         ...record,
         payload: { ...record.payload }
       }));
+  }
+
+  async flushPendingUserRatesOutboxBatch(limit = 50): Promise<void> {
+    const batch = this.queryPendingUserRatesOutbox(limit);
+    if (batch.length === 0) {
+      return;
+    }
+    const syncResult = await this.syncUserRatesBatch(
+      batch.map(item => ({ ...item.payload }))
+    );
+    this.applyUserRatesSyncResult(batch, syncResult.syncedRateIds, syncResult.failedRateIds, syncResult.error);
+  }
+
+  peekRateItemsByUserId(userId: string): RateMenuItem[] {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    return this.cloneRateItems(this.cachedRatesByUserId[normalizedUserId] ?? []);
+  }
+
+  async queryRateItemsByUserId(userId: string): Promise<RateMenuItem[]> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    try {
+      const response = await this.http
+        .get<RateMenuItem[] | null>(`${this.apiBaseUrl}${HttpUsersRatingsRepository.USER_RATES_ROUTE}`, {
+          params: new HttpParams().set('userId', normalizedUserId)
+        })
+        .toPromise();
+      const items = this.cloneRateItems(Array.isArray(response) ? response : []);
+      this.cachedRatesByUserId[normalizedUserId] = items;
+      return this.cloneRateItems(items);
+    } catch {
+      return this.peekRateItemsByUserId(normalizedUserId);
+    }
   }
 
   markUserRatesOutboxSynced(outboxIds: string[]): void {
@@ -212,6 +259,52 @@ export class UsersRatingsRepository {
     });
   }
 
+  protected async syncUserRatesBatch(rates: UserRateRecord[]): Promise<UserRatesSyncResult> {
+    if (rates.length === 0) {
+      return {
+        syncedRateIds: [],
+        failedRateIds: [],
+        error: null
+      };
+    }
+    try {
+      const response = await this.http
+        .post<{ syncedRateIds?: string[]; failedRateIds?: string[] } | null>(
+          `${this.apiBaseUrl}${HttpUsersRatingsRepository.USER_RATES_SYNC_ROUTE}`,
+          { rates }
+        )
+        .toPromise();
+      if (!response) {
+        return {
+          syncedRateIds: [],
+          failedRateIds: rates.map(rate => rate.id),
+          error: 'Empty sync response'
+        };
+      }
+      const syncedRateIds = Array.isArray(response.syncedRateIds)
+        ? response.syncedRateIds
+          .map(id => String(id).trim())
+          .filter(id => id.length > 0)
+        : [];
+      const failedRateIds = Array.isArray(response.failedRateIds)
+        ? response.failedRateIds
+          .map(id => String(id).trim())
+          .filter(id => id.length > 0)
+        : [];
+      return {
+        syncedRateIds,
+        failedRateIds,
+        error: null
+      };
+    } catch {
+      return {
+        syncedRateIds: [],
+        failedRateIds: rates.map(rate => rate.id),
+        error: 'User rates sync request failed'
+      };
+    }
+  }
+
   protected buildNormalizedRateRecord(
     raterUserId: string,
     ratedUserId: string,
@@ -276,5 +369,41 @@ export class UsersRatingsRepository {
       updatedAtIso: nowIso,
       ownerUserId: normalizedOwnerUserId
     };
+  }
+
+  private applyUserRatesSyncResult(
+    batch: UserRateOutboxRecord[],
+    syncedRateIds: string[],
+    failedRateIds: string[],
+    error: string | null
+  ): void {
+    const outboxIdByRateId = new Map<string, string>();
+    for (const item of batch) {
+      outboxIdByRateId.set(item.rateId, item.id);
+    }
+    const syncedOutboxIds = syncedRateIds
+      .map(rateId => outboxIdByRateId.get(rateId) ?? null)
+      .filter((id): id is string => Boolean(id));
+    const failedOutboxIds = failedRateIds
+      .map(rateId => outboxIdByRateId.get(rateId) ?? null)
+      .filter((id): id is string => Boolean(id));
+
+    const touched = new Set([...syncedOutboxIds, ...failedOutboxIds]);
+    const unresolvedOutboxIds = batch
+      .map(item => item.id)
+      .filter(id => !touched.has(id));
+
+    if (syncedOutboxIds.length > 0) {
+      this.markUserRatesOutboxSynced(syncedOutboxIds);
+    }
+
+    const allFailedOutboxIds = [...failedOutboxIds, ...unresolvedOutboxIds];
+    if (allFailedOutboxIds.length > 0) {
+      this.markUserRatesOutboxFailed(allFailedOutboxIds, error ?? undefined);
+    }
+  }
+
+  private cloneRateItems(items: readonly RateMenuItem[]): RateMenuItem[] {
+    return items.map(item => ({ ...item }));
   }
 }

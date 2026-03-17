@@ -7,12 +7,12 @@ import type {
   UserGameCardsDto,
   UserGameCardsQueryRequest,
   UserGameCardsStackSnapshot,
-  UserGameDataService,
-  UserRateOutboxRecord
+  UserGameDataService
 } from '../interfaces/game.interface';
 import { DemoGameService } from '../../demo';
+import { DemoUsersRatingsRepository } from '../../demo/repositories/users-ratings.repository';
 import { HttpGameService } from '../../http';
-import { UsersRatingsRepository } from '../repositories/users-ratings.repository';
+import { HttpUsersRatingsRepository } from '../../http/repositories/users-ratings.repository';
 import type { UserDto } from '../interfaces/user.interface';
 import { SessionService } from './session.service';
 
@@ -39,8 +39,9 @@ export class GameService {
   private static readonly USER_RATES_OUTBOX_SYNC_INTERVAL_MS = 30000;
   private static readonly USER_RATES_OUTBOX_SYNC_BATCH_SIZE = 50;
   private readonly demoGameService = inject(DemoGameService);
+  private readonly demoUsersRatingsRepository = inject(DemoUsersRatingsRepository);
   private readonly httpGameService = inject(HttpGameService);
-  private readonly usersRatingsRepository = inject(UsersRatingsRepository);
+  private readonly httpUsersRatingsRepository = inject(HttpUsersRatingsRepository);
   private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
   private readonly userGameCardsStackStateByUserId: Record<string, UserGameCardsStackState> = {};
@@ -58,6 +59,10 @@ export class GameService {
 
   private get gameDataService(): UserGameDataService {
     return this.demoModeEnabled ? this.demoGameService : this.httpGameService;
+  }
+
+  private get usersRatingsRepository(): HttpUsersRatingsRepository {
+    return this.demoModeEnabled ? this.demoUsersRatingsRepository : this.httpUsersRatingsRepository;
   }
 
   getGameCardsUsersSnapshot(): UserDto[] {
@@ -320,59 +325,13 @@ export class GameService {
     if (this.userRatesOutboxSyncInFlight) {
       return;
     }
-    const batch = this.usersRatingsRepository.queryPendingUserRatesOutbox(
-      GameService.USER_RATES_OUTBOX_SYNC_BATCH_SIZE
-    );
-    if (batch.length === 0) {
-      return;
-    }
     this.userRatesOutboxSyncInFlight = true;
     try {
-      if (this.demoModeEnabled) {
-        const syncResult = await this.demoGameService.syncUserRatesBatch(
-          batch.map(item => item.payload)
-        );
-        this.applyUserRatesSyncResult(batch, syncResult.syncedRateIds, syncResult.failedRateIds, syncResult.error);
-        return;
-      }
-      const syncResult = await this.httpGameService.syncUserRatesBatch(
-        batch.map(item => item.payload)
+      await this.usersRatingsRepository.flushPendingUserRatesOutboxBatch(
+        GameService.USER_RATES_OUTBOX_SYNC_BATCH_SIZE
       );
-      this.applyUserRatesSyncResult(batch, syncResult.syncedRateIds, syncResult.failedRateIds, syncResult.error);
     } finally {
       this.userRatesOutboxSyncInFlight = false;
-    }
-  }
-
-  private applyUserRatesSyncResult(
-    batch: UserRateOutboxRecord[],
-    syncedRateIds: string[],
-    failedRateIds: string[],
-    error: string | null
-  ): void {
-    const outboxIdByRateId = new Map<string, string>();
-    for (const item of batch) {
-      outboxIdByRateId.set(item.rateId, item.id);
-    }
-    const syncedOutboxIds = syncedRateIds
-      .map(rateId => outboxIdByRateId.get(rateId) ?? null)
-      .filter((id): id is string => Boolean(id));
-    const failedOutboxIds = failedRateIds
-      .map(rateId => outboxIdByRateId.get(rateId) ?? null)
-      .filter((id): id is string => Boolean(id));
-
-    const touched = new Set([...syncedOutboxIds, ...failedOutboxIds]);
-    const unresolvedOutboxIds = batch
-      .map(item => item.id)
-      .filter(id => !touched.has(id));
-
-    if (syncedOutboxIds.length > 0) {
-      this.usersRatingsRepository.markUserRatesOutboxSynced(syncedOutboxIds);
-    }
-
-    const allFailedOutboxIds = [...failedOutboxIds, ...unresolvedOutboxIds];
-    if (allFailedOutboxIds.length > 0) {
-      this.usersRatingsRepository.markUserRatesOutboxFailed(allFailedOutboxIds, error ?? undefined);
     }
   }
 
