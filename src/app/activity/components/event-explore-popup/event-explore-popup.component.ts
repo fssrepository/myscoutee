@@ -97,6 +97,7 @@ export class EventExplorePopupComponent {
   private activeUserId = 'u1';
   private inlineItemActionMenu: InlineExploreActionMenu | null = null;
   private readonly exploreCache = new Map<string, DemoEventRecord[]>();
+  private eventEditorPrewarmStarted = false;
 
   protected eventExploreSmartListQuery: Partial<ListQuery<EventExploreFilters>> = {};
 
@@ -226,9 +227,6 @@ export class EventExplorePopupComponent {
     if (this.showOrderPicker && !target.closest('.event-explore-order-picker')) {
       this.showOrderPicker = false;
     }
-    if (this.showTopicPicker && !target.closest('.event-explore-topic-filter')) {
-      this.showTopicPicker = false;
-    }
     if (this.inlineItemActionMenu && !target.closest('.experience-item-actions')) {
       this.inlineItemActionMenu = null;
     }
@@ -291,6 +289,13 @@ export class EventExplorePopupComponent {
     event.stopPropagation();
     this.showOrderPicker = false;
     this.showTopicPicker = !this.showTopicPicker;
+    this.cdr.markForCheck();
+  }
+
+  protected closeEventExploreTopicPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.showTopicPicker = false;
+    this.cdr.markForCheck();
   }
 
   protected selectEventExploreTopicFilter(topic: string, event?: Event): void {
@@ -419,7 +424,7 @@ export class EventExplorePopupComponent {
       readOnly: true
     });
     this.inlineItemActionMenu = null;
-    this.closeEventExplore();
+    this.cdr.markForCheck();
   }
 
   protected runEventExploreJoinAction(record: DemoEventRecord, event: Event): void {
@@ -441,7 +446,8 @@ export class EventExplorePopupComponent {
       row: this.eventExploreRow(record),
       readOnly: true
     });
-    this.closeEventExplore();
+    this.inlineItemActionMenu = null;
+    this.cdr.markForCheck();
   }
 
   protected eventExploreCreatorInitials(record: DemoEventRecord): string {
@@ -472,6 +478,16 @@ export class EventExplorePopupComponent {
 
   protected eventExploreVisibility(record: DemoEventRecord): AppTypes.EventVisibility {
     return record.visibility;
+  }
+
+  protected eventVisibilityIcon(visibility: AppTypes.EventVisibility): string {
+    if (visibility === 'Friends only') {
+      return 'groups';
+    }
+    if (visibility === 'Invitation only') {
+      return 'mail_lock';
+    }
+    return 'public';
   }
 
   protected eventExploreVisibilityCircleClass(record: DemoEventRecord): string {
@@ -509,6 +525,23 @@ export class EventExplorePopupComponent {
     return topic.replace(/^#+\s*/, '');
   }
 
+  protected interestOptionToneClass(topic: string): string {
+    const normalizedTopic = this.normalizeTopic(topic);
+    if (!normalizedTopic) {
+      return '';
+    }
+    for (const group of this.topicFilterGroups) {
+      if (group.options.some(option => this.normalizeTopic(option) === normalizedTopic)) {
+        return group.toneClass;
+      }
+    }
+    return '';
+  }
+
+  protected eventExploreViewLabel(record: DemoEventRecord): string {
+    return record.type === 'hosting' ? 'View hosted event' : 'View event';
+  }
+
   protected eventExploreDistanceLabel(record: DemoEventRecord): string {
     const rounded = Math.round(record.distanceKm * 10) / 10;
     return Number.isInteger(rounded) ? `${rounded} km` : `${rounded.toFixed(1)} km`;
@@ -520,6 +553,7 @@ export class EventExplorePopupComponent {
 
   private openEventExplore(): void {
     this.isOpen = true;
+    this.prewarmEventEditorPopup();
     this.refreshUsersDirectory();
     this.showOrderPicker = false;
     this.showTopicPicker = false;
@@ -643,6 +677,28 @@ export class EventExplorePopupComponent {
   }
 
   private eventExploreRow(record: DemoEventRecord): AppTypes.ActivityListRow {
+    const sourceBase = {
+      id: record.id,
+      avatar: record.creatorInitials,
+      title: record.title,
+      shortDescription: record.subtitle,
+      timeframe: record.timeframe,
+      activity: record.activity,
+      startAt: record.startAtIso,
+      endAt: record.endAtIso,
+      distanceKm: record.distanceKm,
+      imageUrl: record.imageUrl,
+      visibility: record.visibility,
+      blindMode: record.blindMode,
+      location: record.location,
+      capacityMin: record.capacityMin,
+      capacityMax: record.capacityMax,
+      topics: [...record.topics],
+      sourceLink: record.sourceLink,
+      creatorUserId: record.creatorUserId,
+      creatorName: record.creatorName,
+      creatorInitials: record.creatorInitials
+    };
     if (record.type === 'hosting') {
       return {
         id: record.id,
@@ -656,12 +712,8 @@ export class EventExplorePopupComponent {
         metricScore: record.relevance,
         isAdmin: false,
         source: {
-          id: record.id,
-          avatar: record.creatorInitials,
-          title: record.title,
-          shortDescription: record.subtitle,
-          timeframe: record.timeframe,
-          activity: record.activity
+          ...sourceBase,
+          published: record.published
         }
       };
     }
@@ -677,12 +729,7 @@ export class EventExplorePopupComponent {
       metricScore: record.relevance,
       isAdmin: false,
       source: {
-        id: record.id,
-        avatar: record.creatorInitials,
-        title: record.title,
-        shortDescription: record.subtitle,
-        timeframe: record.timeframe,
-        activity: record.activity,
+        ...sourceBase,
         isAdmin: false
       }
     };
@@ -866,6 +913,14 @@ export class EventExplorePopupComponent {
 
     this.users = nextUsers;
     this.userByIdMap = new Map(nextUsers.map(user => [user.id, user]));
+  }
+
+  private prewarmEventEditorPopup(): void {
+    if (this.eventEditorPrewarmStarted) {
+      return;
+    }
+    this.eventEditorPrewarmStarted = true;
+    void import('../event-editor-popup/event-editor-popup.component');
   }
 
   private reloadEventExploreSmartList(): void {

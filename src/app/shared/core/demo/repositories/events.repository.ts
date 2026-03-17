@@ -7,7 +7,8 @@ import {
   DEMO_EVENT_DATES_BY_ID,
   DEMO_EVENTS_BY_USER,
   DEMO_HOSTING_BY_USER,
-  DEMO_INVITATIONS_BY_USER
+  DEMO_INVITATIONS_BY_USER,
+  type EventMenuItem
 } from '../../../demo-data';
 import { AppMemoryDb } from '../../base/db';
 import { DemoEventsRepositoryBuilder } from '../builders';
@@ -472,12 +473,71 @@ export class DemoEventsRepository {
   }
 
   private buildSeededRecords(): DemoEventRecordCollection {
+    const eventsByUser = this.buildEventsByUserWithSyntheticSeed();
     return DemoEventsRepositoryBuilder.buildRecordCollection({
       invitationsByUser: DEMO_INVITATIONS_BY_USER,
-      eventsByUser: DEMO_EVENTS_BY_USER,
+      eventsByUser,
       hostingByUser: DEMO_HOSTING_BY_USER,
       publishedById: APP_DEMO_DATA.hostingPublishedById
     });
+  }
+
+  private buildEventsByUserWithSyntheticSeed(): Record<string, readonly EventMenuItem[]> {
+    const users = AppDemoGenerators.buildExpandedDemoUsers(50);
+    const userById = new Map(users.map(user => [user.id, user]));
+    const seeded: Record<string, readonly EventMenuItem[]> = {};
+
+    for (const [userId, items] of Object.entries(DEMO_EVENTS_BY_USER)) {
+      const baseItems = items.map(item => ({
+        ...item,
+        topics: item.topics ? [...item.topics] : item.topics
+      }));
+      if (baseItems.length >= DemoEventsRepository.MIN_DEMO_EVENT_ITEMS_PER_USER) {
+        seeded[userId] = baseItems;
+        continue;
+      }
+
+      const user = userById.get(userId);
+      const synthetic: EventMenuItem[] = [];
+      const needed = DemoEventsRepository.MIN_DEMO_EVENT_ITEMS_PER_USER - baseItems.length;
+
+      for (let index = 0; index < needed; index += 1) {
+        const seq = baseItems.length + index + 1;
+        const id = `ex-${userId}-${seq}`;
+        const start = new Date(2026, 2, 1 + (index * 2), 10 + (index % 6), (index % 2) * 30, 0, 0);
+        const end = new Date(start.getTime() + ((2 + (index % 3)) * 60 * 60 * 1000));
+        const visibility = (index % 6) === 0 ? 'Friends only' : 'Public';
+        const blindMode = (index % 5) === 0 ? 'Blind Event' : 'Open Event';
+        const seed = AppDemoGenerators.hashText(`${userId}:${id}:${seq}`);
+
+        synthetic.push({
+          id,
+          avatar: user?.initials ?? AppUtils.initialsFromText(user?.name ?? 'Synthetic Event'),
+          title: `Pagination Test Event ${seq}`,
+          shortDescription: `Synthetic feed item ${seq} to validate activities infinite loading.`,
+          timeframe: `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`,
+          activity: (index % 5) + 1,
+          isAdmin: (seq % 4) === 0,
+          creatorUserId: userId,
+          startAt: start.toISOString().slice(0, 19),
+          endAt: end.toISOString().slice(0, 19),
+          distanceKm: 3 + (index % 42),
+          visibility,
+          blindMode,
+          imageUrl: `https://picsum.photos/seed/event-${id}/1200/700`,
+          sourceLink: `https://example.com/events/${id}`,
+          location: user?.city ? `${user.city} · Community Hub` : 'Community Hub',
+          capacityMin: 6 + (index % 10),
+          capacityMax: 12 + (index % 18),
+          rating: 6 + ((seed % 35) / 10),
+          relevance: 50 + (seed % 51)
+        });
+      }
+
+      seeded[userId] = [...baseItems, ...synthetic];
+    }
+
+    return seeded;
   }
 
   private mergeSeededRecords(

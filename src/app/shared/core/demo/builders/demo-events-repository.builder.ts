@@ -11,6 +11,24 @@ import type {
 
 const DEMO_EVENT_MEMBER_USERS = AppDemoGenerators.buildExpandedDemoUsers(50);
 
+interface DemoEventSeedOverrides {
+  startAt?: string;
+  endAt?: string;
+  distanceKm?: number;
+  visibility?: DemoEventRecord['visibility'];
+  blindMode?: DemoEventRecord['blindMode'];
+  imageUrl?: string;
+  sourceLink?: string;
+  location?: string;
+  capacityMin?: number | null;
+  capacityMax?: number | null;
+  acceptedMemberUserIds?: string[];
+  pendingMemberUserIds?: string[];
+  topics?: string[];
+  rating?: number;
+  relevance?: number;
+}
+
 export class DemoEventsRepositoryBuilder {
   static buildRecordCollection(options: {
     invitationsByUser: Record<string, readonly InvitationMenuItem[]>;
@@ -66,9 +84,10 @@ export class DemoEventsRepositoryBuilder {
           isInvitation: false,
           isHosting: false,
           isTrashed: false,
-          published: options.publishedById?.[item.id] !== false,
+          published: item.published ?? (options.publishedById?.[item.id] !== false),
           trashedAtIso: null,
-          creatorUserId: creatorUserIdByEventId.get(item.id) ?? userId
+          creatorUserId: creatorUserIdByEventId.get(item.id) ?? userId,
+          seed: this.extractSeedOverrides(item)
         });
         ids.push(recordKey);
       }
@@ -92,9 +111,10 @@ export class DemoEventsRepositoryBuilder {
           isInvitation: false,
           isHosting: true,
           isTrashed: false,
-          published: options.publishedById?.[item.id] !== false,
+          published: item.published ?? (options.publishedById?.[item.id] !== false),
           trashedAtIso: null,
-          creatorUserId: creatorUserIdByEventId.get(item.id) ?? userId
+          creatorUserId: creatorUserIdByEventId.get(item.id) ?? userId,
+          seed: this.extractSeedOverrides(item)
         });
         ids.push(recordKey);
       }
@@ -165,7 +185,9 @@ export class DemoEventsRepositoryBuilder {
     | 'published'
     | 'trashedAtIso'
     | 'creatorUserId'
-  >): DemoEventRecord {
+  > & {
+    seed?: DemoEventSeedOverrides;
+  }): DemoEventRecord {
     return {
       ...record,
       ...this.buildRecordDecorations(record)
@@ -184,7 +206,9 @@ export class DemoEventsRepositoryBuilder {
     | 'isInvitation'
     | 'published'
     | 'creatorUserId'
-  >): Omit<
+  > & {
+    seed?: DemoEventSeedOverrides;
+  }): Omit<
     DemoEventRecord,
     | 'id'
     | 'userId'
@@ -204,19 +228,34 @@ export class DemoEventsRepositoryBuilder {
     | 'trashedAtIso'
   > {
     const creator = this.resolveCreatorUser(record.creatorUserId, record.title);
-    const startAtIso = this.resolveStartAtIso(record.id, record.type);
-    const endAtIso = this.resolveEndAtIso(record.id, startAtIso);
-    const distanceKm = this.resolveDistanceKm(record.id, record.type);
-    const visibility = APP_DEMO_DATA.eventVisibilityById[record.id]
+    const startAtIso = record.seed?.startAt?.trim() || this.resolveStartAtIso(record.id, record.type);
+    const endAtIso = record.seed?.endAt?.trim() || this.resolveEndAtIso(record.id, startAtIso);
+    const distanceKm = Number.isFinite(record.seed?.distanceKm)
+      ? Math.max(0, Number(record.seed?.distanceKm))
+      : this.resolveDistanceKm(record.id, record.type);
+    const visibility = record.seed?.visibility
+      ?? APP_DEMO_DATA.eventVisibilityById[record.id]
       ?? (record.type === 'hosting' ? 'Invitation only' : 'Public');
-    const blindMode = APP_DEMO_DATA.eventBlindModeById[record.id] ?? 'Open Event';
+    const blindMode = record.seed?.blindMode ?? APP_DEMO_DATA.eventBlindModeById[record.id] ?? 'Open Event';
     const capacityRange = AppDemoGenerators.seededEventCapacityRange(record.id, APP_DEMO_DATA.activityCapacityById);
-    const members = this.buildSeededMemberIds(record, startAtIso, distanceKm, creator);
+    const seededMembers = this.buildSeededMemberIds(record, startAtIso, distanceKm, creator);
+    const acceptedMemberUserIds = this.normalizeUserIds(record.seed?.acceptedMemberUserIds);
+    const pendingMemberUserIds = this.normalizeUserIds(record.seed?.pendingMemberUserIds);
+    const members = {
+      acceptedMemberUserIds: acceptedMemberUserIds.length > 0
+        ? acceptedMemberUserIds
+        : seededMembers.acceptedMemberUserIds,
+      pendingMemberUserIds: pendingMemberUserIds.length > 0
+        ? pendingMemberUserIds
+        : seededMembers.pendingMemberUserIds
+    };
     const acceptedMembers = members.acceptedMemberUserIds.length;
     const pendingMembers = members.pendingMemberUserIds.length;
+    const capacityMin = this.normalizeCount(record.seed?.capacityMin) ?? this.normalizeCount(capacityRange.min);
+    const capacityMax = this.normalizeCount(record.seed?.capacityMax) ?? this.normalizeCount(capacityRange.max);
     const capacityTotal = Math.max(
       acceptedMembers,
-      this.normalizeCount(capacityRange.max) ?? acceptedMembers
+      capacityMax ?? acceptedMembers
     );
     return {
       creatorUserId: creator.id,
@@ -229,19 +268,27 @@ export class DemoEventsRepositoryBuilder {
       startAtIso,
       endAtIso,
       distanceKm,
-      imageUrl: APP_DEMO_DATA.activityImageById[record.id] ?? `https://picsum.photos/seed/event-explore-${record.id}/1200/700`,
-      sourceLink: APP_DEMO_DATA.activitySourceLinkById[record.id] ?? '',
-      location: '',
-      capacityMin: this.normalizeCount(capacityRange.min),
-      capacityMax: this.normalizeCount(capacityRange.max),
+      imageUrl: record.seed?.imageUrl?.trim()
+        || APP_DEMO_DATA.activityImageById[record.id]
+        || `https://picsum.photos/seed/event-explore-${record.id}/1200/700`,
+      sourceLink: record.seed?.sourceLink?.trim() || (APP_DEMO_DATA.activitySourceLinkById[record.id] ?? ''),
+      location: record.seed?.location?.trim() || '',
+      capacityMin,
+      capacityMax,
       capacityTotal,
       acceptedMembers,
       pendingMembers,
       acceptedMemberUserIds: members.acceptedMemberUserIds,
       pendingMemberUserIds: members.pendingMemberUserIds,
-      topics: this.buildSeededTopics(record.id, record.title, record.subtitle),
-      rating: this.buildSeededRating(record.id, record.title, record.type),
-      relevance: this.buildSeededRelevance(record.id, record.title, record.type)
+      topics: this.normalizeTopics(record.seed?.topics).length > 0
+        ? this.normalizeTopics(record.seed?.topics)
+        : this.buildSeededTopics(record.id, record.title, record.subtitle),
+      rating: Number.isFinite(record.seed?.rating)
+        ? Number(record.seed?.rating)
+        : this.buildSeededRating(record.id, record.title, record.type),
+      relevance: Number.isFinite(record.seed?.relevance)
+        ? Number(record.seed?.relevance)
+        : this.buildSeededRelevance(record.id, record.title, record.type)
     };
   }
 
@@ -388,6 +435,46 @@ export class DemoEventsRepositoryBuilder {
   private static defaultStartIso(id: string): string {
     const day = 10 + (AppDemoGenerators.hashText(id) % 12);
     return new Date(Date.UTC(2026, 1, day, 12, 0, 0)).toISOString();
+  }
+
+  private static extractSeedOverrides(item: EventMenuItem | HostingMenuItem): DemoEventSeedOverrides | undefined {
+    const overrides: DemoEventSeedOverrides = {
+      startAt: item.startAt,
+      endAt: item.endAt,
+      distanceKm: item.distanceKm,
+      visibility: item.visibility,
+      blindMode: item.blindMode,
+      imageUrl: item.imageUrl,
+      sourceLink: item.sourceLink,
+      location: item.location,
+      capacityMin: item.capacityMin,
+      capacityMax: item.capacityMax,
+      topics: item.topics,
+      rating: item.rating,
+      relevance: item.relevance
+    };
+    if (Object.values(overrides).every(value => value === undefined)) {
+      return undefined;
+    }
+    return overrides;
+  }
+
+  private static normalizeTopics(topics: readonly string[] | undefined): string[] {
+    if (!Array.isArray(topics)) {
+      return [];
+    }
+    return Array.from(new Set(topics
+      .map(topic => `${topic ?? ''}`.trim())
+      .filter(topic => topic.length > 0)));
+  }
+
+  private static normalizeUserIds(userIds: readonly string[] | undefined): string[] {
+    if (!Array.isArray(userIds)) {
+      return [];
+    }
+    return Array.from(new Set(userIds
+      .map(userId => `${userId ?? ''}`.trim())
+      .filter(userId => userId.length > 0)));
   }
 
   private static normalizeCount(value: number | null | undefined): number | null {

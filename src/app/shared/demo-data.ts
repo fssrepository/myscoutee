@@ -59,6 +59,20 @@ export interface EventMenuItem {
   activity: number;
   isAdmin: boolean;
   creatorUserId?: string;
+  startAt?: string;
+  endAt?: string;
+  distanceKm?: number;
+  visibility?: 'Public' | 'Friends only' | 'Invitation only';
+  blindMode?: 'Open Event' | 'Blind Event';
+  imageUrl?: string;
+  sourceLink?: string;
+  location?: string;
+  capacityMin?: number | null;
+  capacityMax?: number | null;
+  topics?: string[];
+  rating?: number;
+  relevance?: number;
+  published?: boolean;
 }
 
 export interface HostingMenuItem {
@@ -69,6 +83,20 @@ export interface HostingMenuItem {
   timeframe: string;
   activity: number;
   creatorUserId?: string;
+  startAt?: string;
+  endAt?: string;
+  distanceKm?: number;
+  visibility?: 'Public' | 'Friends only' | 'Invitation only';
+  blindMode?: 'Open Event' | 'Blind Event';
+  imageUrl?: string;
+  sourceLink?: string;
+  location?: string;
+  capacityMin?: number | null;
+  capacityMax?: number | null;
+  topics?: string[];
+  rating?: number;
+  relevance?: number;
+  published?: boolean;
 }
 
 export interface RateMenuItem {
