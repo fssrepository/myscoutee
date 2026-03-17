@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 
 import { AssetPopupService } from '../../asset-popup.service';
+import type { AssetPopupHost } from '../../asset-popup.host';
 import { OwnedAssetsPopupService } from '../../owned-assets-popup.service';
 import { LazyBgImageDirective } from '../../../shared/lazy-bg-image.directive';
 import type * as AppTypes from '../../../shared/app-types';
@@ -62,6 +63,34 @@ export class AssetPopupComponent implements OnDestroy {
 
   protected trackByActivityRow = (_index: number, row: AppTypes.ActivityListRow): string => `${row.type}:${row.id}`;
 
+  protected ticketRowImageUrl(row: AppTypes.ActivityListRow): string {
+    return this.currentHost()?.activityImageUrl(row) ?? '';
+  }
+
+  protected ticketRowSourceLink(row: AppTypes.ActivityListRow): string {
+    return this.currentHost()?.activitySourceLink(row) ?? '';
+  }
+
+  protected ticketRowSourceAvatarClass(row: AppTypes.ActivityListRow): string {
+    return this.currentHost()?.activitySourceAvatarClass(row) ?? '';
+  }
+
+  protected ticketRowSourceAvatarLabel(row: AppTypes.ActivityListRow): string {
+    return this.currentHost()?.activitySourceAvatarLabel(row) ?? this.fallbackTicketRowAvatarLabel(row);
+  }
+
+  protected ticketRowLeadingIconCircleClass(row: AppTypes.ActivityListRow): string {
+    return this.currentHost()?.activityLeadingIconCircleClass(row) ?? '';
+  }
+
+  protected ticketRowLeadingIcon(row: AppTypes.ActivityListRow): string {
+    return this.currentHost()?.activityLeadingIcon(row) ?? 'confirmation_number';
+  }
+
+  protected ticketCardMetaLine(row: AppTypes.ActivityListRow): string {
+    return this.currentHost()?.ticketCardMetaLine(row) ?? row.detail ?? '';
+  }
+
   protected onTicketScannerVideoElementChange(element: HTMLVideoElement | null): void {
     this.assetPopup.setTicketScannerVideoElement(element);
   }
@@ -104,5 +133,20 @@ export class AssetPopupComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.assetPopup.setTicketScrollElement(null);
     this.assetPopup.setTicketScannerVideoElement(null);
+  }
+
+  private currentHost(): AssetPopupHost | null {
+    return this.assetPopup.host();
+  }
+
+  private fallbackTicketRowAvatarLabel(row: AppTypes.ActivityListRow): string {
+    const words = row.title.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+      return 'T';
+    }
+    if (words.length === 1) {
+      return words[0].slice(0, 2).toUpperCase();
+    }
+    return `${words[0][0] ?? ''}${words[1][0] ?? ''}`.toUpperCase();
   }
 }

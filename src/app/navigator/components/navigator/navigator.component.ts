@@ -85,7 +85,6 @@ export class NavigatorComponent {
         this.appCtx.clearNavigatorMenuRequest();
         return;
       }
-      void this.ensureAssetPopupLoaded();
       this.ownedAssets.openPopup(request.assetFilter);
       this.appCtx.clearNavigatorMenuRequest();
     });

@@ -1,4 +1,4 @@
-<div class="asset-popup" *ngIf="assetPopup.host() as host">
+<div class="asset-popup">
   <section class="app-popup" *ngIf="ownedAssets.isPopupOpen()">
     <div class="app-popup-backdrop" (click)="ownedAssets.closePopup()"></div>
     <div class="app-popup-panel popup-panel-assets" (click)="$event.stopPropagation()">
@@ -106,17 +106,17 @@
                 [attr.data-group-label]="group.label"
                 *ngFor="let row of group.rows; trackBy: trackByActivityRow"
               >
-                <div class="asset-card-image" [appLazyBgImage]="host.activityImageUrl(row)">
+                <div class="asset-card-image" [appLazyBgImage]="ticketRowImageUrl(row)">
                   <a
                     class="asset-source-icon activities-source-avatar"
-                    [href]="host.activitySourceLink(row)"
-                    target="_blank"
-                    rel="noopener"
+                    [attr.href]="ticketRowSourceLink(row) || null"
+                    [attr.target]="ticketRowSourceLink(row) ? '_blank' : null"
+                    [attr.rel]="ticketRowSourceLink(row) ? 'noopener' : null"
                     (click)="$event.stopPropagation()"
-                    aria-label="Open source link"
-                    [ngClass]="host.activitySourceAvatarClass(row)"
+                    [attr.aria-label]="ticketRowSourceLink(row) ? 'Open source link' : null"
+                    [ngClass]="ticketRowSourceAvatarClass(row)"
                   >
-                    <span>{{ host.activitySourceAvatarLabel(row) }}</span>
+                    <span>{{ ticketRowSourceAvatarLabel(row) }}</span>
                   </a>
                   <button
                     type="button"
@@ -128,12 +128,12 @@
                   </button>
                 </div>
                 <div class="experience-item-head">
-                  <span class="experience-item-icon" [ngClass]="host.activityLeadingIconCircleClass(row)">
-                    <mat-icon>{{ host.activityLeadingIcon(row) }}</mat-icon>
+                  <span class="experience-item-icon" [ngClass]="ticketRowLeadingIconCircleClass(row)">
+                    <mat-icon>{{ ticketRowLeadingIcon(row) }}</mat-icon>
                   </span>
                   <div class="experience-item-meta">
                     <h4>{{ row.title }}</h4>
-                    <p>{{ host.ticketCardMetaLine(row) }}</p>
+                    <p>{{ ticketCardMetaLine(row) }}</p>
                   </div>
                 </div>
                 <p class="experience-item-description">{{ row.subtitle }}</p>
@@ -281,6 +281,6 @@
     </div>
   </section>
 
-  <app-asset-basket-popup [host]="host"></app-asset-basket-popup>
+  <app-asset-basket-popup *ngIf="assetPopup.host() as host" [host]="host"></app-asset-basket-popup>
   <app-asset-member-picker-popup></app-asset-member-picker-popup>
 </div>
