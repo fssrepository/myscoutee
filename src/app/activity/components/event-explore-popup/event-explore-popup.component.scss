@@ -633,6 +633,39 @@
   gap: 0.68rem;
 }
 
+:host ::ng-deep .smart-list.event-explore-list {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding-right: 0;
+  scroll-padding-top: 2.6rem;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  display: flex;
+  flex-direction: column;
+  gap: 0.34rem;
+}
+
+:host ::ng-deep .smart-list.event-explore-list .smart-list__sticky,
+:host ::ng-deep .smart-list.event-explore-list .smart-list__group-marker,
+:host ::ng-deep .smart-list.event-explore-list .smart-list__footer-spacer {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+:host ::ng-deep .smart-list.event-explore-list .event-explore-card {
+  scroll-snap-align: start;
+  scroll-margin-top: 0;
+  scroll-snap-stop: normal;
+}
+
+:host ::ng-deep .smart-list.event-explore-list .event-explore-group-marker {
+  scroll-snap-align: none;
+}
+
 .event-explore-list {
   height: 100%;
   min-height: 0;
@@ -1075,6 +1108,10 @@
 @media (max-width: 760px) {
   .event-explore-order-trigger {
     padding: 0 0.5rem;
+  }
+
+  :host ::ng-deep .smart-list.event-explore-list {
+    scroll-padding-top: calc(2.6rem - 3px);
   }
 
   .event-explore-order-trigger span {

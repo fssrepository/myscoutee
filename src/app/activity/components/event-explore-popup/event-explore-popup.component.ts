@@ -88,6 +88,7 @@ export class EventExplorePopupComponent {
   protected eventExploreHeaderProgressLoading = false;
   protected eventExploreHeaderLoadingProgress = 0;
   protected eventExploreHeaderLoadingOverdue = false;
+  protected eventExploreStickyLabel = 'No items';
   protected eventExploreHeaderDateLabel = '';
 
   protected selectedMembers: AppTypes.ActivityMemberEntry[] = [];
@@ -130,8 +131,12 @@ export class EventExplorePopupComponent {
     stickyHeaderClass: 'event-explore-sticky-header',
     groupMarkerClass: 'event-explore-group-marker',
     trackBy: (_index, record) => `${record.type}:${record.id}`,
-    showFirstGroupMarker: false,
-    showGroupMarker: context => context.groupIndex > 0,
+    showGroupMarker: ({ groupIndex, scrollable }) => {
+      if (groupIndex > 0) {
+        return true;
+      }
+      return scrollable;
+    },
     groupBy: (record, query) => this.eventExploreGroupLabel(record, query.filters?.order ?? this.eventExploreOrder)
   };
 
@@ -239,6 +244,7 @@ export class EventExplorePopupComponent {
     this.eventExploreHeaderProgressLoading = state.loading;
     this.eventExploreHeaderLoadingProgress = state.loadingProgress;
     this.eventExploreHeaderLoadingOverdue = state.loadingOverdue;
+    this.eventExploreStickyLabel = state.stickyLabel || 'No items';
     this.cdr.markForCheck();
   }
 
@@ -937,6 +943,7 @@ export class EventExplorePopupComponent {
     this.eventExploreHeaderProgressLoading = false;
     this.eventExploreHeaderLoadingProgress = 0;
     this.eventExploreHeaderLoadingOverdue = false;
+    this.eventExploreStickyLabel = 'No items';
     this.eventExploreHeaderDateLabel = '';
   }
 
