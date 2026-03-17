@@ -299,7 +299,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       if (this.activitiesPrimaryFilter === 'chats') {
         return false;
       }
-      if (this.shouldApplyEventActivityGroupMarkerRules() && !scrollable) {
+      if (this.isEventActivitiesPrimaryFilter() && !scrollable) {
         return false;
       }
       if (!scrollable) {
@@ -327,6 +327,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected activitiesListScrollable  = true;
   protected activitiesStickyValue     = '';
   protected activitiesInitialLoadPending = false;
+  private visibleActivityRows: AppTypes.ActivityListRow[] = [];
   protected readonly activitiesPageSize  = 10;
 
   // ── Rate editor dock ──────────────────────────────────────────────────────
@@ -393,18 +394,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     roleMenuLabel: () => 'Change role',
     isRolePickerOpen: () => false
   };
-
-  // ── Pagination ────────────────────────────────────────────────────────────
-  private activitiesVisibleCount    = this.activitiesPageSize;
-  private activitiesPaginationKey   = '';
-  private activitiesLoadMoreTimer: ReturnType<typeof setTimeout> | null = null;
-  private activitiesIsPaginating    = false;
-  private activitiesPaginationAwaitScrollReset = false;
-  private serverPageRows: AppTypes.ActivityListRow[] = [];
-  private serverPageTotalRows = 0;
-  private serverPageIndex = 0;
-  private serverPageStateKey = '';
-  private readonly activitiesPaginationLoadDelayMs = 1000;
 
   // =========================================================================
   // Lifecycle
@@ -571,6 +560,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.pendingActivityDeleteRow = null;
     this.pendingActivityPublishRow = null;
     this.pendingActivityAction = 'delete';
+    this.visibleActivityRows = [];
     this.activitiesStickyValue = '';
     this.lastRateIndicatorPulseRowId = null;
     this.showActivitiesPrimaryPicker = false;
@@ -582,9 +572,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.clearActivityRateEditorState();
-    if (this.activitiesLoadMoreTimer) {
-      clearTimeout(this.activitiesLoadMoreTimer);
-    }
     this.activitiesSmartList?.clearHostedLoading();
   }
 
@@ -758,47 +745,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   protected get filteredActivityRows(): AppTypes.ActivityListRow[] {
-    const rows = this.buildFilteredActivityRowsBase();
-    return rows.slice(0, this.activitiesVisibleCount);
-  }
-
-  private buildFilteredActivityRowsBase(): AppTypes.ActivityListRow[] {
-    if (this.shouldUseServerSidePagination()) {
-      return [...this.serverPageRows];
-    }
-    let rows: AppTypes.ActivityListRow[] = [];
-    if (this.activitiesPrimaryFilter === 'chats') {
-      rows = this.chatItemsForActivities()
-        .filter(item => this.matchesActivitiesChatContextFilter(item))
-        .map(item => this.chatToActivityRow(item));
-    } else if (this.activitiesPrimaryFilter === 'events') {
-      rows = this.buildEventScopeRows(
-        this.activitiesEventScope,
-        this.activitiesSecondaryFilter,
-        this.hostingPublicationFilter
-      );
-    } else if (this.activitiesPrimaryFilter === 'invitations') {
-      rows = this.buildEventScopeRows(
-        'invitations',
-        this.activitiesSecondaryFilter,
-        this.hostingPublicationFilter
-      );
-    } else if (this.activitiesPrimaryFilter === 'hosting') {
-      rows = this.buildEventScopeRows(
-        'my-events',
-        this.activitiesSecondaryFilter,
-        this.hostingPublicationFilter
-      );
-    } else {
-      rows = this.rateItems
-        .filter(item => item.userId !== this.activeUser.id && this.matchesRateFilter(item, this.activitiesRateFilter))
-        .map(item => this.rateToActivityRow(item));
-    }
-    const sorted = this.sortActivitiesRows(rows);
-    if (this.activitiesView === 'distance') {
-      return [...sorted].sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0));
-    }
-    return sorted;
+    return [...this.visibleActivityRows];
   }
 
   private buildEventScopeRows(
@@ -839,42 +786,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return trashRows;
     }
     return activeEventRows;
-  }
-
-  private sortActivitiesRows(rows: AppTypes.ActivityListRow[]): AppTypes.ActivityListRow[] {
-    const sorted = [...rows];
-    const useEventSortDirection = this.shouldUseEventSortDirection(this.activitiesPrimaryFilter, this.activitiesEventScope);
-    if (this.activitiesSecondaryFilter === 'recent') {
-      if (useEventSortDirection) {
-        return sorted.sort((a, b) => AppUtils.toSortableDate(a.dateIso) - AppUtils.toSortableDate(b.dateIso));
-      }
-      return sorted.sort((a, b) => AppUtils.toSortableDate(b.dateIso) - AppUtils.toSortableDate(a.dateIso));
-    }
-    if (this.activitiesSecondaryFilter === 'past') {
-      return sorted.sort((a, b) => AppUtils.toSortableDate(b.dateIso) - AppUtils.toSortableDate(a.dateIso));
-    }
-    if (this.activitiesPrimaryFilter === 'rates') {
-      return sorted.sort((a, b) => b.metricScore - a.metricScore || AppUtils.toSortableDate(b.dateIso) - AppUtils.toSortableDate(a.dateIso));
-    }
-    if (useEventSortDirection) {
-      return sorted.sort((a, b) => b.metricScore - a.metricScore || AppUtils.toSortableDate(a.dateIso) - AppUtils.toSortableDate(b.dateIso));
-    }
-    return sorted.sort((a, b) => b.metricScore - a.metricScore || AppUtils.toSortableDate(b.dateIso) - AppUtils.toSortableDate(a.dateIso));
-  }
-
-  protected get groupedActivityRows(): AppTypes.ActivityGroup[] {
-    const rows = this.filteredActivityRows;
-    const grouped: AppTypes.ActivityGroup[] = [];
-    for (const row of rows) {
-      const label = AppUtils.activityGroupLabel(row, this.activitiesView, APP_DEMO_DATA.activityGroupLabels);
-      const lastGroup = grouped[grouped.length - 1];
-      if (!lastGroup || lastGroup.label !== label) {
-        grouped.push({ label, rows: [row] });
-        continue;
-      }
-      lastGroup.rows.push(row);
-    }
-    return grouped;
   }
 
   // =========================================================================
@@ -1274,7 +1185,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.showActivitiesChatContextPicker = false;
     this.showActivitiesRatePicker = false;
     this.showActivitiesQuickActionsMenu = false;
-    this.resetActivitiesScroll(view === 'month' || view === 'week');
+    this.resetActivitiesScroll();
     this.cdr.markForCheck();
   }
 
@@ -1382,11 +1293,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   // Row rendering helpers
   // =========================================================================
 
-  protected get activitiesStickyHeader(): string {
-    if (this.activitiesStickyValue) { return this.activitiesStickyValue; }
-    return this.activitiesView === 'distance' ? '5 km' : 'No items';
-  }
-
   protected get activitiesEmptyLabel(): string {
     if (this.activitiesPrimaryFilter === 'rates') {
       return 'No rate interactions for this filter yet.';
@@ -1423,31 +1329,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       'experience-card-list': true,
       'assets-card-list': true
     };
-  }
-
-  protected shouldShowActivityGroupMarker(groupIndex: number): boolean {
-    if (groupIndex > 0) {
-      return true;
-    }
-    if (this.activitiesPrimaryFilter === 'chats') {
-      return false;
-    }
-    if (this.shouldApplyEventActivityGroupMarkerRules() && !this.isActivitiesListScrollableNow()) {
-      return false;
-    }
-    return true;
-  }
-
-  private shouldApplyEventActivityGroupMarkerRules(): boolean {
-    return this.isEventActivitiesPrimaryFilter();
-  }
-
-  private isActivitiesListScrollableNow(): boolean {
-    const listElement = this.activitiesListScrollElement();
-    if (!listElement) {
-      return this.activitiesListScrollable;
-    }
-    return Math.max(0, listElement.scrollHeight - listElement.clientHeight) > 1;
   }
 
   protected isEventStyleActivity(row: AppTypes.ActivityListRow): boolean {
@@ -2058,7 +1939,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   private reloadActivitiesSmartListData(): void {
     this.activitiesSmartList?.reload();
-    this.refreshActivitiesStickyHeaderSoon();
     this.cdr.markForCheck();
   }
 
@@ -3315,7 +3195,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     scrollElement.scrollTop = targetTop;
     const releaseSnap = () => {
       scrollElement.style.scrollSnapType = previousSnapType;
-      this.updateActivitiesStickyHeader(scrollElement.scrollTop);
       this.cdr.markForCheck();
     };
     if (typeof globalThis.requestAnimationFrame === 'function') {
@@ -3388,249 +3267,19 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     const toneIndex = (AppDemoGenerators.hashText(row.id) % paletteSize) + 1;
     return `calendar-badge-tone-${toneIndex}`;
   }
+
   // =========================================================================
-  // Scroll helpers
+  // SmartList state reset
   // =========================================================================
 
-  private resetActivitiesScroll(_loadCalendarBadgesForCurrentPage = false): void {
-    this.cancelActivitiesPaginationLoad();
+  private resetActivitiesScroll(): void {
     this.activitiesSmartList?.clearHostedLoading();
-    this.activitiesPaginationKey = this.activitiesPaginationStateKey();
-    this.activitiesVisibleCount = 0;
-    this.activitiesPaginationAwaitScrollReset = false;
-    if (this.shouldUseServerSidePagination()) {
-      this.serverPageRows = [];
-      this.serverPageTotalRows = 0;
-      this.serverPageIndex = 0;
-      this.serverPageStateKey = this.activitiesPaginationKey;
-    }
+    this.visibleActivityRows = [];
+    this.activitiesStickyValue = '';
+    this.activitiesContext.setActivitiesStickyValue('');
+    this.activitiesListScrollable = true;
     this.activitiesInitialLoadPending = true;
     this.cdr.markForCheck();
-  }
-
-  private setStickyValue(value: string): void {
-    this.activitiesStickyValue = value;
-    this.activitiesContext.setActivitiesStickyValue(value);
-  }
-
-  private seedActivitiesStickyHeader(): void {
-    const firstGroup = this.groupedActivityRows[0];
-    if (firstGroup) {
-      this.setStickyValue(firstGroup.label);
-      return;
-    }
-    this.setStickyValue(this.activitiesView === 'distance' ? '5 km' : 'No items');
-  }
-
-  private updateActivitiesStickyHeader(scrollTop: number): void {
-    const groups = this.groupedActivityRows;
-    if (groups.length === 0) {
-      this.setStickyValue(this.activitiesView === 'distance' ? '5 km' : 'No items');
-      return;
-    }
-    const scrollElement = this.activitiesListScrollElement();
-    if (!scrollElement) {
-      this.setStickyValue(groups[0].label);
-      return;
-    }
-    const stickyHeader = scrollElement.querySelector<HTMLElement>('.smart-list__sticky');
-    const stickyHeaderHeight = stickyHeader?.offsetHeight ?? 0;
-    const targetTop = scrollTop + stickyHeaderHeight + 1;
-    const rows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.activities-row-item'));
-    if (rows.length === 0) {
-      this.setStickyValue(groups[0].label);
-      return;
-    }
-    if (scrollTop <= 1) {
-      this.setStickyValue(rows[0].dataset['groupLabel'] ?? groups[0].label);
-      return;
-    }
-    const alignmentTolerancePx = 2;
-    const activeRow =
-      rows.find(row => row.offsetTop >= targetTop - alignmentTolerancePx) ??
-      rows[rows.length - 1];
-    this.setStickyValue(activeRow.dataset['groupLabel'] ?? groups[0].label);
-  }
-
-  // =========================================================================
-  // Pagination
-  // =========================================================================
-
-  private maybeLoadMoreActivities(scrollElement: HTMLElement): void {
-    if (this.isCalendarLayoutView() || this.activitiesIsPaginating) {
-      return;
-    }
-    const rows = this.buildFilteredActivityRowsBase();
-    if (!this.shouldUseServerSidePagination()) {
-      this.ensureActivitiesPaginationState(rows.length);
-    }
-    const totalRows = this.shouldUseServerSidePagination()
-      ? (this.serverPageTotalRows > 0 ? this.serverPageTotalRows : rows.length)
-      : rows.length;
-    if (this.activitiesVisibleCount >= totalRows) {
-      return;
-    }
-    const remainingPx = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
-    if (this.activitiesPaginationAwaitScrollReset) {
-      if (remainingPx > 360) {
-        this.activitiesPaginationAwaitScrollReset = false;
-      }
-      return;
-    }
-    if (!this.shouldStartActivitiesPreload(scrollElement) && remainingPx > 520) {
-      return;
-    }
-    this.startActivitiesPaginationLoad();
-  }
-
-  private startActivitiesPaginationLoad(allowEmptyResponse = false): void {
-    if (this.shouldUseServerSidePagination()) {
-      this.startServerActivitiesPaginationLoad(allowEmptyResponse);
-      return;
-    }
-    this.startLocalActivitiesPaginationLoad(allowEmptyResponse);
-  }
-
-  private startLocalActivitiesPaginationLoad(allowEmptyResponse = false): void {
-    if (this.activitiesIsPaginating) {
-      return;
-    }
-    if (!allowEmptyResponse) {
-      const rows = this.buildFilteredActivityRowsBase();
-      this.ensureActivitiesPaginationState(rows.length);
-      if (this.activitiesVisibleCount >= rows.length) {
-        return;
-      }
-    }
-    this.activitiesIsPaginating = true;
-    this.activitiesSmartList?.beginHostedLoading();
-    this.activitiesLoadMoreTimer = setTimeout(() => {
-      this.activitiesLoadMoreTimer = null;
-      const previousVisibleCount = this.activitiesVisibleCount;
-      const latestRows = this.buildFilteredActivityRowsBase();
-      this.ensureActivitiesPaginationState(latestRows.length);
-      if (latestRows.length > previousVisibleCount) {
-        this.activitiesVisibleCount = Math.min(previousVisibleCount + this.activitiesPageSize, latestRows.length);
-      }
-      this.activitiesInitialLoadPending = false;
-      this.activitiesIsPaginating = false;
-      this.activitiesPaginationAwaitScrollReset = true;
-      this.activitiesSmartList?.endHostedLoading();
-      this.refreshActivitiesStickyHeaderSoon();
-      this.cdr.markForCheck();
-    }, this.activitiesPaginationLoadDelayMs);
-  }
-
-  private startServerActivitiesPaginationLoad(allowEmptyResponse = false): void {
-    if (this.activitiesIsPaginating) {
-      return;
-    }
-    if (!allowEmptyResponse && this.serverPageTotalRows > 0 && this.serverPageRows.length >= this.serverPageTotalRows) {
-      return;
-    }
-    this.activitiesIsPaginating = true;
-    this.activitiesSmartList?.beginHostedLoading();
-
-    const currentStateKey = this.activitiesPaginationStateKey();
-    this.serverPageStateKey = currentStateKey;
-    const request: ActivitiesPageRequest = {
-      primaryFilter: this.activitiesPrimaryFilter,
-      eventScopeFilter: this.activitiesEventScope,
-      secondaryFilter: this.activitiesSecondaryFilter,
-      chatContextFilter: this.activitiesChatContextFilter,
-      hostingPublicationFilter: this.hostingPublicationFilter,
-      rateFilter: this.activitiesRateFilter,
-      view: this.activitiesView,
-      page: this.serverPageIndex,
-      pageSize: this.activitiesPageSize
-    };
-
-    void this.activitiesContext.loadActivitiesPage(request)
-      .then(page => {
-        if (this.serverPageStateKey !== currentStateKey) {
-          return;
-        }
-        const nextRows = page?.rows ?? [];
-        this.serverPageRows = this.serverPageIndex === 0
-          ? [...nextRows]
-          : [...this.serverPageRows, ...nextRows];
-        this.serverPageTotalRows = page
-          ? Math.max(this.serverPageRows.length, Math.max(0, Math.trunc(page.total)))
-          : this.serverPageRows.length;
-        if (nextRows.length > 0) {
-          this.serverPageIndex += 1;
-        }
-        this.activitiesVisibleCount = this.serverPageRows.length;
-        this.activitiesInitialLoadPending = false;
-      })
-      .catch(() => {
-        this.activitiesInitialLoadPending = false;
-      })
-      .finally(() => {
-        this.activitiesIsPaginating = false;
-        this.activitiesPaginationAwaitScrollReset = true;
-        this.activitiesSmartList?.endHostedLoading();
-        this.refreshActivitiesStickyHeaderSoon();
-        this.cdr.markForCheck();
-        this.cdr.markForCheck();
-      });
-  }
-
-  private shouldStartActivitiesPreload(scrollElement: HTMLElement): boolean {
-    const rows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.activities-row-item'));
-    if (rows.length === 0) {
-      return false;
-    }
-    if (rows.length <= 3) {
-      return true;
-    }
-    const thirdFromLast = rows[rows.length - 3];
-    const viewportBottom = scrollElement.scrollTop + scrollElement.clientHeight;
-    return viewportBottom >= thirdFromLast.offsetTop;
-  }
-
-  private ensureActivitiesPaginationState(totalRows: number): void {
-    if (this.shouldUseServerSidePagination()) {
-      return;
-    }
-    const nextKey = this.activitiesPaginationStateKey();
-    if (nextKey === this.activitiesPaginationKey) {
-      return;
-    }
-    this.activitiesPaginationKey = nextKey;
-    this.activitiesVisibleCount = this.activitiesInitialLoadPending
-      ? 0
-      : Math.min(this.activitiesPageSize, totalRows);
-    this.activitiesPaginationAwaitScrollReset = false;
-    this.cancelActivitiesPaginationLoad();
-    this.cdr.markForCheck();
-  }
-
-  private activitiesPaginationStateKey(): string {
-    return [
-      this.activeUser.id,
-      this.activitiesPrimaryFilter,
-      this.activitiesSecondaryFilter,
-      this.hostingPublicationFilter,
-      this.activitiesRateFilter,
-      this.activitiesView
-    ].join('|');
-  }
-
-  private cancelActivitiesPaginationLoad(): void {
-    if (this.activitiesLoadMoreTimer) {
-      clearTimeout(this.activitiesLoadMoreTimer);
-      this.activitiesLoadMoreTimer = null;
-    }
-    if (this.activitiesIsPaginating) {
-      this.activitiesIsPaginating = false;
-      this.activitiesSmartList?.endHostedLoading();
-    }
-    if (this.shouldUseServerSidePagination()) {
-      this.serverPageStateKey = '';
-    }
-    this.activitiesPaginationAwaitScrollReset = false;
-    this.activitiesInitialLoadPending = false;
   }
 
   // =========================================================================
@@ -5134,21 +4783,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return this.users.find(u => u.id === userId);
   }
 
-  private refreshActivitiesStickyHeaderSoon(): void {
-    if (this.activitiesPrimaryFilter !== 'rates' && this.activitiesSmartList) {
-      return;
-    }
-    const refresh = () => {
-      this.updateActivitiesStickyHeader(this.activitiesListScrollElement()?.scrollTop ?? 0);
-      this.cdr.markForCheck();
-    };
-    if (typeof globalThis.requestAnimationFrame === 'function') {
-      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(refresh));
-      return;
-    }
-    setTimeout(refresh, 0);
-  }
-
   private syncActivitiesSmartListQuery(): void {
     const nextFilters: Record<string, unknown> = {
       primaryFilter: this.activitiesPrimaryFilter,
@@ -5237,13 +4871,8 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   protected onActivitiesSmartListStateChange(change: SmartListStateChange<AppTypes.ActivityListRow, ActivitiesSmartListFilters>): void {
-    this.activitiesVisibleCount = change.items.length;
+    this.visibleActivityRows = [...change.items];
     this.activitiesInitialLoadPending = change.initialLoading;
-    if (this.shouldUseServerSidePagination()) {
-      this.serverPageRows = [...change.items];
-      this.serverPageTotalRows = change.total;
-      this.serverPageIndex = Math.ceil(change.items.length / Math.max(1, change.query.pageSize));
-    }
     this.activitiesListScrollable = change.scrollable;
     this.activitiesStickyValue = change.stickyLabel;
     this.activitiesContext.setActivitiesStickyValue(change.stickyLabel);
