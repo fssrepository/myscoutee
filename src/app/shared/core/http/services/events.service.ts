@@ -82,6 +82,10 @@ export class HttpEventsService {
     }
   }
 
+  peekExploreItems(_userId: string): DemoEventRecord[] {
+    return [];
+  }
+
   async trashItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
     await this.postVoid('/activities/events/trash', { userId: userId.trim(), type, sourceId: sourceId.trim() });
   }

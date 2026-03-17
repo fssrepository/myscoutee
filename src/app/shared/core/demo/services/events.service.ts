@@ -56,6 +56,10 @@ export class DemoEventsService {
     return this.eventsRepository.queryExploreItems(userId);
   }
 
+  peekExploreItems(userId: string): DemoEventRecord[] {
+    return this.eventsRepository.queryExploreItems(userId);
+  }
+
   async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
     this.eventsRepository.syncEventSnapshot(payload);
   }

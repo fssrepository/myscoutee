@@ -4,7 +4,7 @@
     <div class="popup-header popup-header-with-activities-progress">
       <div class="popup-title">
         <h2>{{ eventExploreHeaderTitle() }}</h2>
-        <p class="popup-subtitle-activities">{{ eventExploreHeaderSubtitle() }}</p>
+        <p class="popup-subtitle-activities" *ngIf="eventExploreHeaderSubtitle() as subtitle">{{ subtitle }}</p>
       </div>
 
       <div class="event-explore-order-picker">

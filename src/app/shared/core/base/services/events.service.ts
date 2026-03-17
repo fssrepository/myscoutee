@@ -59,6 +59,10 @@ export class EventsService {
     return this.eventsService.queryExploreItems(userId);
   }
 
+  peekExploreItems(userId: string): DemoEventRecord[] {
+    return this.eventsService.peekExploreItems(userId);
+  }
+
   trashItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
     return this.eventsService.trashItem(userId, type, sourceId);
   }

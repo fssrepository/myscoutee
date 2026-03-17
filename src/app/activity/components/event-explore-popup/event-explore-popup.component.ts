@@ -88,7 +88,6 @@ export class EventExplorePopupComponent {
   protected eventExploreHeaderProgressLoading = false;
   protected eventExploreHeaderLoadingProgress = 0;
   protected eventExploreHeaderLoadingOverdue = false;
-  protected eventExploreStickyLabel = 'No items';
   protected eventExploreHeaderDateLabel = '';
 
   protected selectedMembers: AppTypes.ActivityMemberEntry[] = [];
@@ -240,7 +239,6 @@ export class EventExplorePopupComponent {
     this.eventExploreHeaderProgressLoading = state.loading;
     this.eventExploreHeaderLoadingProgress = state.loadingProgress;
     this.eventExploreHeaderLoadingOverdue = state.loadingOverdue;
-    this.eventExploreStickyLabel = state.stickyLabel || 'No items';
     this.cdr.markForCheck();
   }
 
@@ -345,10 +343,7 @@ export class EventExplorePopupComponent {
   }
 
   protected eventExploreHeaderSubtitle(): string {
-    if (this.eventExploreHeaderDateLabel) {
-      return this.eventExploreHeaderDateLabel;
-    }
-    return 'Public and friend-visible events near you.';
+    return this.eventExploreHeaderDateLabel;
   }
 
   protected openEventExploreMembers(record: DemoEventRecord, event: Event): void {
@@ -932,6 +927,7 @@ export class EventExplorePopupComponent {
 
   private reloadEventExploreSmartList(): void {
     this.resetHeaderState();
+    this.primeEventExploreHeaderDateLabel();
     this.eventExploreSmartList?.reload();
     this.cdr.markForCheck();
   }
@@ -941,7 +937,6 @@ export class EventExplorePopupComponent {
     this.eventExploreHeaderProgressLoading = false;
     this.eventExploreHeaderLoadingProgress = 0;
     this.eventExploreHeaderLoadingOverdue = false;
-    this.eventExploreStickyLabel = 'No items';
     this.eventExploreHeaderDateLabel = '';
   }
 
@@ -961,6 +956,26 @@ export class EventExplorePopupComponent {
   private syncEventExploreHeaderDateLabel(records: readonly DemoEventRecord[]): void {
     this.eventExploreHeaderDateLabel = this.resolveEventExploreHeaderDateLabel(records);
     this.cdr.markForCheck();
+  }
+
+  private primeEventExploreHeaderDateLabel(): void {
+    const filters = this.currentEventExploreFilters();
+    const peeked = this.eventsService.peekExploreItems(filters.userId);
+    if (peeked.length === 0) {
+      return;
+    }
+    const filtered = this.sortExploreRecords(this.applyExploreFilters(peeked, filters), filters.order);
+    this.eventExploreHeaderDateLabel = this.resolveEventExploreHeaderDateLabel(filtered);
+  }
+
+  private currentEventExploreFilters(): EventExploreFilters {
+    return {
+      userId: this.activeUserId,
+      order: this.eventExploreOrder,
+      friendsOnly: this.eventExploreFilterFriendsOnly,
+      openSpotsOnly: this.eventExploreFilterHasRooms,
+      topic: this.normalizeTopic(this.eventExploreFilterTopic)
+    };
   }
 
   private resolveEventExploreHeaderDateLabel(records: readonly DemoEventRecord[]): string {
