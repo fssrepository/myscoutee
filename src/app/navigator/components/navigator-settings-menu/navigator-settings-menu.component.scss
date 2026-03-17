@@ -17,3 +17,62 @@
   flex-direction: column;
   gap: 0.16rem;
 }
+
+.user-settings-item {
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(24, 42, 66, 0.92);
+  text-decoration: none;
+  min-height: 36px;
+  padding: 0.46rem 0.54rem;
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 0.16s cubic-bezier(0.22, 0.61, 0.36, 1),
+    filter 0.16s cubic-bezier(0.22, 0.61, 0.36, 1),
+    background-color 0.16s cubic-bezier(0.22, 0.61, 0.36, 1),
+    color 0.16s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transform-origin: center;
+}
+
+.user-settings-item .mat-icon {
+  width: 17px;
+  height: 17px;
+  font-size: 17px;
+  line-height: 17px;
+  color: #416c9f;
+}
+
+.user-settings-item:focus-visible {
+  outline: 2px solid rgba(66, 110, 182, 0.44);
+  outline-offset: 2px;
+}
+
+.user-settings-item.danger {
+  color: #aa2e2e;
+}
+
+.user-settings-item.danger .mat-icon {
+  color: #cf4747;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .user-settings-item:hover {
+    background: rgba(212, 226, 247, 0.45);
+    transform: translateY(-1px) scale(1.01);
+    filter: brightness(1.02);
+  }
+
+  .user-settings-item:active {
+    transform: scale(0.98);
+    filter: brightness(0.96);
+  }
+}

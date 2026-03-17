@@ -1,12 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
 import { NavigatorBindings, NavigatorService, type NavigatorSettingsPopup } from '../../navigator.service';
-import { NavigatorSettingsItemComponent } from '../navigator-settings-item/navigator-settings-item.component';
 
 @Component({
   selector: 'app-navigator-settings-menu',
   standalone: true,
-  imports: [CommonModule, NavigatorSettingsItemComponent],
+  imports: [CommonModule, MatIconModule],
   templateUrl: './navigator-settings-menu.component.html',
   styleUrl: './navigator-settings-menu.component.scss'
 })

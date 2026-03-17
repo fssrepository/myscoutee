@@ -1,41 +1,37 @@
 <div class="user-settings-menu" (click)="closeMenu($event)">
-  <app-navigator-settings-item
-    icon="help_outline"
-    label="Help"
-    (activate)="openPopup('help', $event)"
-  ></app-navigator-settings-item>
+  <button type="button" class="user-settings-item" (click)="openPopup('help', $event)">
+    <mat-icon>help_outline</mat-icon>
+    <span>Help</span>
+  </button>
 
-  <app-navigator-settings-item
-    icon="feedback"
-    label="Send Feedback"
-    (activate)="openPopup('feedback', $event)"
-  ></app-navigator-settings-item>
+  <button type="button" class="user-settings-item" (click)="openPopup('feedback', $event)">
+    <mat-icon>feedback</mat-icon>
+    <span>Send Feedback</span>
+  </button>
 
-  <app-navigator-settings-item
-    icon="bug_report"
-    label="Report Bugs"
+  <a
+    class="user-settings-item"
     href="https://github.com/fssrepository/myscoutee/issues"
     target="_blank"
     rel="noopener noreferrer"
-    (activate)="closeMenu($event)"
-  ></app-navigator-settings-item>
+    (click)="closeMenu($event)"
+  >
+    <mat-icon>bug_report</mat-icon>
+    <span>Report Bugs</span>
+  </a>
 
-  <app-navigator-settings-item
-    icon="policy"
-    label="Privacy"
-    (activate)="openPopup('privacy', $event)"
-  ></app-navigator-settings-item>
+  <button type="button" class="user-settings-item" (click)="openPopup('privacy', $event)">
+    <mat-icon>policy</mat-icon>
+    <span>Privacy</span>
+  </button>
 
-  <app-navigator-settings-item
-    icon="delete_forever"
-    label="Delete account"
-    [danger]="true"
-    (activate)="openDeleteAccountConfirm($event)"
-  ></app-navigator-settings-item>
+  <button type="button" class="user-settings-item danger" (click)="openDeleteAccountConfirm($event)">
+    <mat-icon>delete_forever</mat-icon>
+    <span>Delete account</span>
+  </button>
 
-  <app-navigator-settings-item
-    icon="logout"
-    label="Logout"
-    (activate)="openLogoutConfirm($event)"
-  ></app-navigator-settings-item>
+  <button type="button" class="user-settings-item" (click)="openLogoutConfirm($event)">
+    <mat-icon>logout</mat-icon>
+    <span>Logout</span>
+  </button>
 </div>
