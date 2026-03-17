@@ -9,6 +9,7 @@
 @include ui.popup-shell();
 @include ui.interactive-motion();
 @include ui.form-controls();
+@include ui.smart-list-shell();
 
 .popup-body.popup-body-activities {
   overflow: hidden;
@@ -191,7 +192,7 @@
   border-color: rgba(37, 127, 95, 0.32);
   color: #236d51;
 }
-// ─── Activities Popup: Main Container ────────────────────────────────────
+// ─── Popup Surface ───────────────────────────────────────────────────────
 .activities-popup {
   position: relative;
   display: flex;
@@ -204,41 +205,6 @@
   background:
     radial-gradient(120% 88% at 10% 0%, rgba(220, 234, 255, 0.72) 0%, rgba(220, 234, 255, 0) 56%),
     linear-gradient(180deg, #f9fbff 0%, #eef4ff 58%, #eaf1ff 100%);
-}
-.activities-rates-stage {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-}
-.activities-rates-list-shell {
-  position: relative;
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-}
-.activities-rates-list-shell > app-smart-list {
-  display: flex;
-  flex: 1 1 auto;
-  min-height: 0;
-}
-.activities-rates-list-shell.is-occluded {
-  opacity: 0;
-  pointer-events: none;
-}
-.activities-rates-fullscreen-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  pointer-events: none;
 }
 
 // ─── Activities Cards (Event / Chat / Rate) ──────────────────────────────

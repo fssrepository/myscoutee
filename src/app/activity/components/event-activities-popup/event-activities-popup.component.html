@@ -69,7 +69,7 @@
       </div>
     </div>
     <div class="popup-body popup-body-activities">
-      <div class="activities-popup" [class.activities-popup-rates-fullscreen]="isRatesFullscreenModeActive()" (click)="onActivitiesPopupSurfaceClick($event)">
+      <div class="activities-popup" [class.activities-popup-rates-fullscreen]="activitiesSmartListPresentation() === 'fullscreen'" (click)="onActivitiesPopupSurfaceClick($event)">
 
   <!-- ───── Toolbar ───── -->
   <div class="experience-toolbar assets-toolbar popup-filter-bar">
@@ -458,8 +458,8 @@
 
 
   <!-- ───── List / Calendar layout ───── -->
-  <div class="activities-rates-stage" [class.is-fullscreen]="activitiesPrimaryFilter === 'rates' && isRatesFullscreenModeActive()">
-    <div class="activities-rates-list-shell" [class.is-occluded]="activitiesPrimaryFilter === 'rates' && isRatesFullscreenModeActive()">
+  <div class="smart-list-stage">
+    <div class="smart-list-stage__list-shell" [class.is-occluded]="activitiesSmartListPresentation() === 'fullscreen'">
     <app-smart-list
       #activitiesSmartList
       [config]="activitiesSmartListConfig"
@@ -473,7 +473,7 @@
       (touchmove)="closeActivityRateEditorFromUserScroll()"
     ></app-smart-list>
     </div>
-    <div class="activities-rates-fullscreen-layer" *ngIf="activitiesPrimaryFilter === 'rates' && !isCalendarLayoutView() && isRatesFullscreenModeActive()">
+    <div class="smart-list-stage__overlay" *ngIf="activitiesSmartListPresentation() === 'fullscreen'">
       <ng-container *ngTemplateOutlet="activitiesRatesFullscreenLayout"></ng-container>
     </div>
   </div>

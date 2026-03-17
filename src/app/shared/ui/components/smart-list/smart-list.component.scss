@@ -245,12 +245,20 @@
   overflow-x: hidden;
 }
 
+.smart-list--presentation-fullscreen {
+  height: 100%;
+}
+
 .smart-list__calendar-shell {
   display: flex;
   flex: 1;
   min-height: 0;
   flex-direction: column;
   gap: 0.4rem;
+}
+
+.smart-list__calendar-shell--presentation-fullscreen {
+  height: 100%;
 }
 
 .smart-list__sticky--calendar {

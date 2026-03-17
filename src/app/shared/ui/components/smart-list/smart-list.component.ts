@@ -45,6 +45,7 @@ import type {
   SmartListLoadPage,
   SmartListLoaders,
   SmartListMergeStrategy,
+  SmartListPresentation,
   SmartListPrependRestoreMode,
   SmartListStateChange,
   SmartListViewConfig,
@@ -251,6 +252,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected resolvedFooterSpacerHeight(): string | null {
     return this.resolveConfigValue(this.config.footerSpacerHeight, null);
+  }
+
+  protected resolvedPresentation(): SmartListPresentation {
+    return this.resolveConfigValue(this.config.presentation, 'list');
   }
 
   protected resolvedListLayout(): 'stack' | 'card-grid' | 'thread' {

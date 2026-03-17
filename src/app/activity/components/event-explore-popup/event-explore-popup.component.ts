@@ -126,6 +126,7 @@ export class EventExplorePopupComponent {
     defaultView: 'list',
     emptyLabel: 'No visible events right now.',
     emptyDescription: 'Try another filter or check back later.',
+    presentation: 'list',
     listLayout: 'card-grid',
     desktopColumns: 3,
     snapMode: 'mandatory',

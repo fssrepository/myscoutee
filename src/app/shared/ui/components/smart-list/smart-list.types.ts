@@ -2,6 +2,7 @@ import { Observable } from 'rxjs';
 
 export type ListDirection = 'asc' | 'desc';
 export type SmartListViewMode = 'list' | 'month' | 'week';
+export type SmartListPresentation = 'list' | 'fullscreen';
 export type SmartListClassValue = string | string[] | Set<string> | Record<string, boolean> | null;
 export type SmartListCalendarVariant = 'default' | 'rate-counts';
 export type SmartListListLayout = 'stack' | 'card-grid' | 'thread';
@@ -181,6 +182,7 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   groupMarkerClass?: SmartListConfigValue<SmartListClassValue, TFilters>;
   footerSpacerHeight?: SmartListConfigValue<string | null, TFilters>;
   calendarVariant?: SmartListConfigValue<SmartListCalendarVariant, TFilters>;
+  presentation?: SmartListConfigValue<SmartListPresentation, TFilters>;
   listLayout?: SmartListConfigValue<SmartListListLayout, TFilters>;
   desktopColumns?: SmartListConfigValue<number | null, TFilters>;
   snapMode?: SmartListConfigValue<SmartListSnapMode, TFilters>;

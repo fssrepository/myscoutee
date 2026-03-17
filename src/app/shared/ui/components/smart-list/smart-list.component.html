@@ -1,5 +1,9 @@
 <ng-container *ngIf="isCalendarMode(); else listMode">
-  <div class="smart-list__calendar-shell">
+  <div
+    class="smart-list__calendar-shell"
+    [class.smart-list__calendar-shell--presentation-list]="resolvedPresentation() === 'list'"
+    [class.smart-list__calendar-shell--presentation-fullscreen]="resolvedPresentation() === 'fullscreen'"
+  >
     <div class="smart-list__sticky smart-list__sticky--calendar" [ngClass]="resolvedStickyHeaderClass()">
       <span class="smart-list__sticky-label">{{ stickyLabel || emptyLabel() }}</span>
       <span class="smart-list__sticky-calendar-nav">
@@ -27,6 +31,8 @@
       class="smart-list smart-list--calendar"
       [class.smart-list--month]="isMonthMode()"
       [class.smart-list--week]="isWeekMode()"
+      [class.smart-list--presentation-list]="resolvedPresentation() === 'list'"
+      [class.smart-list--presentation-fullscreen]="resolvedPresentation() === 'fullscreen'"
       (scroll)="onCalendarScroll($event)"
     >
       <ng-container *ngIf="hasCalendarItems(); else emptyState">
@@ -158,6 +164,8 @@
     [class.smart-list--stack]="resolvedListLayout() === 'stack'"
     [class.smart-list--card-grid]="resolvedListLayout() === 'card-grid'"
     [class.smart-list--thread]="resolvedListLayout() === 'thread'"
+    [class.smart-list--presentation-list]="resolvedPresentation() === 'list'"
+    [class.smart-list--presentation-fullscreen]="resolvedPresentation() === 'fullscreen'"
     [class.smart-list--snap-none]="resolvedSnapMode() === 'none'"
     [class.smart-list--snap-proximity]="resolvedSnapMode() === 'proximity'"
     [class.smart-list--snap-mandatory]="resolvedSnapMode() === 'mandatory'"

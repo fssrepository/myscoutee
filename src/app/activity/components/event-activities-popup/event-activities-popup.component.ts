@@ -57,6 +57,7 @@ import {
   type SmartListItemSelectEvent,
   type SmartListItemTemplateContext,
   type SmartListLoaders,
+  type SmartListPresentation,
   type SmartListStateChange
 } from '../../../shared/ui';
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
@@ -261,6 +262,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     scrollPaddingTop: '2.6rem',
     footerSpacerHeight: () => this.activitiesPrimaryFilter === 'rates' ? this.activityRateEditorSpacerHeight() : null,
     calendarVariant: () => this.activitiesPrimaryFilter === 'rates' ? 'rate-counts' : 'default',
+    presentation: () => this.activitiesSmartListPresentation(),
     views: [
       { key: 'day', label: 'Day', mode: 'list', pageSize: 10 },
       { key: 'distance', label: 'Distance', mode: 'list', pageSize: 10 },
@@ -1191,6 +1193,10 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   protected isRatesFullscreenModeActive(): boolean {
     return this.shouldShowRatesFullscreenToggle() && this.activitiesRatesFullscreenMode;
+  }
+
+  protected activitiesSmartListPresentation(): SmartListPresentation {
+    return this.isRatesFullscreenModeActive() ? 'fullscreen' : 'list';
   }
 
   protected isCalendarLayoutView(): boolean {
