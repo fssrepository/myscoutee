@@ -73,45 +73,6 @@
     flex-wrap: nowrap;
   }
 
-  .activities-view-picker-panel {
-    position: absolute;
-    top: calc(100% + 0.32rem);
-    right: 0;
-    border: 1px solid rgba(39, 62, 94, 0.22);
-    border-radius: 10px;
-    background: #fff;
-    box-shadow: 0 10px 24px rgba(17, 29, 48, 0.22);
-    padding: 0.24rem;
-    min-width: 128px;
-    z-index: 40;
-    display: grid;
-    gap: 0.16rem;
-  }
-
-  .activities-view-option {
-    border: 0;
-    background: #fff;
-    border-radius: 8px;
-    min-height: 32px;
-    padding: 0.34rem 0.44rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.34rem;
-    color: #1e3658;
-    cursor: pointer;
-  }
-
-  .activities-view-option .mat-icon {
-    width: 16px;
-    height: 16px;
-    font-size: 16px;
-  }
-
-  .activities-view-option span {
-    font-size: 0.78rem;
-    font-weight: 700;
-  }
-
   .profile-status-header-picker .event-visibility-trigger.status-public,
   .profile-status-header-picker .activities-view-option.status-public {
     background: linear-gradient(0deg, #ffffff, #e6f6ef);
