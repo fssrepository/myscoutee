@@ -10,6 +10,11 @@ export interface AssetTicketBridge {
   ticketPayloadInitials(payload: AppTypes.TicketScanPayload): string;
 }
 
+export interface ActivityInviteRequest {
+  ownerId: string;
+  title?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AssetPopupService {
   private readonly ngZone = inject(NgZone);
@@ -19,6 +24,7 @@ export class AssetPopupService {
   private readonly primaryVisibleRef = signal(false);
   private readonly stackedVisibleRef = signal(false);
   private readonly basketVisibleRef = signal(false);
+  private readonly activityInviteRequestRef = signal<ActivityInviteRequest | null>(null);
 
   private readonly ticketOverlayModeRef = signal<'ticketCode' | 'ticketScanner' | null>(null);
   private readonly ticketStickyValueRef = signal('');
@@ -36,6 +42,7 @@ export class AssetPopupService {
     || this.basketVisibleRef()
     || this.ticketOverlayModeRef() !== null
   );
+  readonly activityInviteRequest = this.activityInviteRequestRef.asReadonly();
 
   private ticketScannerTimer: ReturnType<typeof setTimeout> | null = null;
   private ticketScannerMediaStream: MediaStream | null = null;
@@ -57,6 +64,14 @@ export class AssetPopupService {
     this.primaryVisibleRef.set(isPrimaryOpen);
     this.stackedVisibleRef.set(isStackedOpen);
     this.basketVisibleRef.set(isBasketOpen);
+  }
+
+  requestActivityInvite(request: ActivityInviteRequest): void {
+    this.activityInviteRequestRef.set(request);
+  }
+
+  clearActivityInviteRequest(): void {
+    this.activityInviteRequestRef.set(null);
   }
 
   prepareTicketPopupOpen(): void {

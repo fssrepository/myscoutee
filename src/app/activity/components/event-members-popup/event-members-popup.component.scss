@@ -53,7 +53,35 @@
 
 .activity-members-popup-shell .activity-members-header-invite-trigger {
   min-height: 34px;
+  border: 1px solid rgba(64, 103, 150, 0.34);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(237, 246, 255, 0.98) 0%, rgba(219, 234, 252, 0.95) 100%);
   padding-right: 8px;
+}
+
+.activity-members-popup-shell .activity-members-header-invite-trigger:hover {
+  border-color: rgba(57, 105, 162, 0.5);
+  background: linear-gradient(180deg, rgba(242, 250, 255, 0.99) 0%, rgba(229, 241, 255, 0.97) 100%);
+}
+
+.activity-members-popup-shell .activity-members-header-invite-trigger .event-editor-members-invite {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 0 2px;
+  color: rgba(29, 63, 102, 0.95);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.activity-members-popup-shell .activity-members-header-invite-trigger .event-editor-members-invite .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+  color: #2e689f;
 }
 
 .activity-members-popup-shell .header-members-count {
@@ -294,11 +322,89 @@
   position: absolute;
   top: 0.48rem;
   right: 0.48rem;
-  z-index: 5;
+  z-index: 24;
 }
 
 .activity-members-popup-shell .subevent-member-action-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
   z-index: 180;
+  min-width: 206px;
+  max-width: min(280px, 70vw);
+  border: 1px solid rgba(42, 67, 101, 0.24);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 16px 34px rgba(14, 30, 52, 0.22);
+  padding: 0.36rem;
+  display: none;
+  gap: 0.18rem;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.activity-members-popup-shell .subevent-member-action-menu.is-open {
+  display: grid;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.activity-members-popup-shell .subevent-member-action-menu.item-action-menu-desktop.is-open {
+  animation: item-action-menu-slide-down 0.16s ease-out;
+}
+
+.activity-members-popup-shell .subevent-member-action-menu.item-action-menu-desktop.is-open-up {
+  top: auto;
+  bottom: calc(100% + 6px);
+  animation: item-action-menu-slide-up 0.16s ease-out;
+}
+
+.activity-members-popup-shell .subevent-member-action-menu .item-action-menu-title {
+  margin: 0 0 0.1rem;
+  padding: 0.34rem 0.46rem 0.42rem;
+  border-bottom: 1px solid rgba(37, 64, 101, 0.14);
+  color: #203a5f;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.22;
+  word-break: break-word;
+}
+
+.activity-members-popup-shell .subevent-member-action-menu .item-action-menu-btn {
+  width: 100%;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #1f3659;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.42rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.activity-members-popup-shell .subevent-member-action-menu .item-action-menu-btn:hover {
+  background: rgba(231, 239, 250, 0.78);
+}
+
+.activity-members-popup-shell .subevent-member-action-menu .item-action-menu-btn .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.activity-members-popup-shell .subevent-member-action-menu .item-action-menu-btn-publish {
+  color: #975316;
+}
+
+.activity-members-popup-shell .subevent-member-action-menu .item-action-menu-btn-destructive {
+  color: #a1303f;
 }
 
 .activity-members-popup-shell .subevent-member-menu-trigger {
@@ -399,6 +505,74 @@
 .activity-members-popup-shell .member-status-awaiting-approval {
   background: linear-gradient(180deg, #fff0f3 0%, #ffdce3 100%);
   color: #a93046;
+}
+
+.activity-members-popup-shell .experience-delete-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 4200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.8rem;
+}
+
+.activity-members-popup-shell .experience-delete-confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 16, 30, 0.46);
+}
+
+.activity-members-popup-shell .experience-delete-confirm-panel {
+  position: relative;
+  z-index: 1;
+  width: min(420px, 100%);
+  border: 1px solid rgba(42, 67, 101, 0.28);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.72rem;
+  display: grid;
+  gap: 0.4rem;
+  text-align: center;
+  justify-items: center;
+}
+
+.activity-members-popup-shell .experience-delete-confirm-panel h4 {
+  margin: 0;
+  font-size: 0.94rem;
+  color: #1f3252;
+}
+
+.activity-members-popup-shell .experience-delete-confirm-panel p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgba(23, 41, 66, 0.72);
+}
+
+.activity-members-popup-shell .experience-delete-confirm-panel .popup-actions {
+  justify-content: center;
+}
+
+@keyframes item-action-menu-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes item-action-menu-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @media (min-width: 761px) {

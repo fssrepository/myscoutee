@@ -13,7 +13,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
-import { AlertService } from '../../../shared/alert.service';
+import { AssetPopupService } from '../../../asset/asset-popup.service';
 import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import type * as AppTypes from '../../../shared/app-types';
 import { AppUtils } from '../../../shared/app-utils';
@@ -41,6 +41,12 @@ type InlineMemberActionMenu = {
   openUp: boolean;
 };
 
+type MembersSummaryState = {
+  acceptedCount: number;
+  pendingCount: number;
+  capacityTotal: number;
+};
+
 @Component({
   selector: 'app-event-members-popup',
   standalone: true,
@@ -59,8 +65,8 @@ export class EventMembersPopupComponent {
   private readonly activitiesContext = inject(ActivitiesDbContextService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly eventsService = inject(EventsService);
+  private readonly assetPopupService = inject(AssetPopupService);
   private readonly appCtx = inject(AppContext);
-  private readonly alertService = inject(AlertService);
 
   private readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
   private readonly userByIdMap = new Map(this.users.map(user => [user.id, user]));
@@ -74,6 +80,7 @@ export class EventMembersPopupComponent {
   protected title = 'Members';
   protected subtitle = 'Event';
   protected summaryLabel = '0 members';
+  protected isSummaryVisible = false;
   protected pendingOnly = false;
   protected pendingCount = 0;
   protected acceptedCount = 0;
@@ -85,6 +92,12 @@ export class EventMembersPopupComponent {
   private canManageMembers = false;
   private inlineItemActionMenu: InlineMemberActionMenu | null = null;
   private selectedMembersVisible: ReadonlyArray<AppTypes.ActivityMemberEntry> = [];
+  private membersListReady = false;
+  private pendingSummaryState: MembersSummaryState = {
+    acceptedCount: 0,
+    pendingCount: 0,
+    capacityTotal: 0
+  };
 
   protected membersSmartListQuery: Partial<ListQuery<MembersSmartListFilters>> = {};
 
@@ -201,6 +214,10 @@ export class EventMembersPopupComponent {
     change: SmartListStateChange<AppTypes.ActivityMemberEntry, MembersSmartListFilters>
   ): void {
     this.selectedMembersVisible = [...change.items];
+    if (!change.initialLoading) {
+      this.membersListReady = true;
+      this.flushPendingSummary();
+    }
     this.cdr.markForCheck();
   }
 
@@ -222,6 +239,9 @@ export class EventMembersPopupComponent {
       clearTimeout(this.openMembersHydrationTimer);
       this.openMembersHydrationTimer = null;
     }
+    if (this.ownerId) {
+      this.membersCacheByOwnerId.delete(this.ownerId);
+    }
     this.isOpen = false;
     this.ownerId = '';
     this.ownerRecord = null;
@@ -231,10 +251,7 @@ export class EventMembersPopupComponent {
     this.canManageMembers = false;
     this.canShowInviteButton = false;
     this.subtitle = 'Event';
-    this.summaryLabel = '0 members';
-    this.pendingCount = 0;
-    this.acceptedCount = 0;
-    this.capacityTotal = 0;
+    this.resetSummaryState();
     this.selectedMembersVisible = [];
     this.membersSmartListQuery = {};
     this.cdr.markForCheck();
@@ -242,10 +259,13 @@ export class EventMembersPopupComponent {
 
   protected handleInvite(event: Event): void {
     event.stopPropagation();
-    if (!this.canShowInviteButton) {
+    if (!this.canShowInviteButton || !this.ownerId) {
       return;
     }
-    this.alertService.open('Invite flow will be wired into the members popup next.');
+    this.assetPopupService.requestActivityInvite({
+      ownerId: this.ownerId,
+      title: this.subtitle
+    });
   }
 
   protected canShowActionMenu(entry: AppTypes.ActivityMemberEntry): boolean {
@@ -428,9 +448,10 @@ export class EventMembersPopupComponent {
     this.pendingDelete = null;
     this.inlineItemActionMenu = null;
     this.selectedMembersVisible = [];
+    this.membersCacheByOwnerId.delete(normalizedOwnerId);
+    this.resetSummaryState();
     this.canManageMembers = options?.canManage === true;
     this.canShowInviteButton = this.canManageMembers;
-    this.applySummary(0, 0, 0);
     this.syncMembersSmartListQuery();
     this.cdr.markForCheck();
 
@@ -441,21 +462,6 @@ export class EventMembersPopupComponent {
       this.openMembersHydrationTimer = null;
       if (!this.isOpen || this.ownerId !== normalizedOwnerId) {
         return;
-      }
-
-      const cachedSummary = this.activityMembersService.peekSummaryByOwnerId(normalizedOwnerId);
-      if (cachedSummary) {
-        this.applySummary(cachedSummary.acceptedMembers, cachedSummary.pendingMembers, cachedSummary.capacityTotal);
-      }
-
-      const cachedMembers = this.sortMembersByActionTimeDesc(
-        this.activityMembersService.peekMembersByOwnerId(normalizedOwnerId)
-      );
-      if (cachedMembers.length > 0) {
-        this.membersCacheByOwnerId.set(normalizedOwnerId, cachedMembers);
-        if (!cachedSummary) {
-          this.applySummaryFromMembers(cachedMembers);
-        }
       }
 
       void this.resolveOwnerPresentation(normalizedOwnerId, options);
@@ -600,12 +606,14 @@ export class EventMembersPopupComponent {
   }
 
   private applySummary(acceptedCount: number, pendingCount: number, capacityTotal: number): void {
-    this.acceptedCount = Math.max(0, Math.trunc(Number(acceptedCount) || 0));
-    this.pendingCount = Math.max(0, Math.trunc(Number(pendingCount) || 0));
-    this.capacityTotal = Math.max(this.acceptedCount, Math.trunc(Number(capacityTotal) || 0));
-    this.summaryLabel = this.pendingCount > 0
-      ? `${this.acceptedCount} members · ${this.pendingCount} pending`
-      : `${this.acceptedCount} members`;
+    const nextAcceptedCount = Math.max(0, Math.trunc(Number(acceptedCount) || 0));
+    const nextPendingCount = Math.max(0, Math.trunc(Number(pendingCount) || 0));
+    this.pendingSummaryState = {
+      acceptedCount: nextAcceptedCount,
+      pendingCount: nextPendingCount,
+      capacityTotal: Math.max(nextAcceptedCount, Math.trunc(Number(capacityTotal) || 0))
+    };
+    this.flushPendingSummary();
   }
 
   private applyActivityMembersSync(sync: ActivityMembersSyncState): void {
@@ -655,5 +663,32 @@ export class EventMembersPopupComponent {
 
   private activeUserId(): string {
     return this.appCtx.activeUserId().trim() || 'u1';
+  }
+
+  private resetSummaryState(): void {
+    this.membersListReady = false;
+    this.isSummaryVisible = false;
+    this.summaryLabel = '0 members';
+    this.pendingCount = 0;
+    this.acceptedCount = 0;
+    this.capacityTotal = 0;
+    this.pendingSummaryState = {
+      acceptedCount: 0,
+      pendingCount: 0,
+      capacityTotal: 0
+    };
+  }
+
+  private flushPendingSummary(): void {
+    if (!this.membersListReady) {
+      return;
+    }
+    this.acceptedCount = this.pendingSummaryState.acceptedCount;
+    this.pendingCount = this.pendingSummaryState.pendingCount;
+    this.capacityTotal = this.pendingSummaryState.capacityTotal;
+    this.summaryLabel = this.pendingCount > 0
+      ? `${this.acceptedCount} members · ${this.pendingCount} pending`
+      : `${this.acceptedCount} members`;
+    this.isSummaryVisible = true;
   }
 }

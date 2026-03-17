@@ -20,6 +20,7 @@ import type { AssetPopupHost } from './asset/asset-popup.host';
 import { AssetPopupService, type AssetTicketBridge } from './asset/asset-popup.service';
 import { EventEditorService } from './shared/event-editor.service';
 import {
+  ActivityMembersService,
   AppContext,
   type ConnectivityState,
   SessionService,
@@ -144,6 +145,7 @@ export class App {
   protected readonly activitiesContext = inject(ActivitiesDbContextService);
   private readonly assetPopupService = inject(AssetPopupService);
   protected readonly eventEditorService = inject(EventEditorService);
+  private readonly activityMembersService = inject(ActivityMembersService);
   protected readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
@@ -514,6 +516,15 @@ export class App {
         this.openEventEditorFromActivitiesRequest(request.row, request.readOnly);
         return;
       }
+    });
+
+    effect(() => {
+      const request = this.assetPopupService.activityInviteRequest();
+      if (!request) {
+        return;
+      }
+      this.assetPopupService.clearActivityInviteRequest();
+      this.openActivityInviteFriendsFromMembersPopup(request.ownerId, request.title);
     });
     
     // Listen for events from EventEditorPopupComponent
@@ -7075,6 +7086,51 @@ export class App {
     this.selectedActivityInviteUserIds = [];
     this.showActivityInviteSortPicker = false;
     this.superStackedPopup = 'activityInviteFriends';
+  }
+
+  private openActivityInviteFriendsFromMembersPopup(ownerId: string, fallbackTitle?: string): void {
+    const normalizedOwnerId = ownerId.trim();
+    if (!normalizedOwnerId) {
+      return;
+    }
+
+    const eventSource = this.eventItems.find(item => item.id === normalizedOwnerId) ?? null;
+    const hostingSource = !eventSource
+      ? (this.hostingItems.find(item => item.id === normalizedOwnerId) ?? null)
+      : null;
+    const source = eventSource ?? hostingSource;
+    if (!source) {
+      return;
+    }
+
+    const isHosting = source === hostingSource;
+    const row: AppTypes.ActivityListRow = {
+      id: source.id,
+      type: isHosting ? 'hosting' : 'events',
+      title: source.title,
+      subtitle: source.shortDescription,
+      detail: source.timeframe,
+      dateIso: this.eventDatesById[source.id] ?? this.defaultEventStartIso(),
+      distanceKm: this.eventDistanceById[source.id] ?? 0,
+      unread: source.activity,
+      metricScore: source.activity,
+      isAdmin: isHosting ? true : ('isAdmin' in source ? source.isAdmin === true : false),
+      source
+    };
+
+    const ownerMembers = this.activityMembersService.peekMembersByOwnerId(normalizedOwnerId);
+    this.selectedActivityMembersRow = row;
+    this.selectedActivityMembersRowId = `${row.type}:${row.id}`;
+    this.selectedActivityMembers = this.sortActivityMembersByActionTimeAsc(
+      ownerMembers.length > 0 ? ownerMembers : this.getActivityMembersByRow(row)
+    );
+    this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
+    this.selectedActivityMembersTitle = fallbackTitle?.trim() || row.title;
+    this.activityInviteSort = 'recent';
+    this.selectedActivityInviteUserIds = [];
+    this.showActivityInviteSortPicker = false;
+    this.superStackedPopup = 'activityInviteFriends';
+    this.syncAssetPopupVisibility();
   }
 
   protected closeActivityInviteFriends(applyInvitations = false): void {

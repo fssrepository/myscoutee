@@ -38,7 +38,7 @@
         </span>
       </button>
 
-      <span class="header-members-count members-header-summary-badge">{{ summaryLabel }}</span>
+      <span class="header-members-count members-header-summary-badge" *ngIf="isSummaryVisible">{{ summaryLabel }}</span>
 
       <button mat-icon-button class="popup-close" (click)="closeMembersPopup($event)" aria-label="Close">
         <mat-icon>close</mat-icon>
@@ -121,7 +121,7 @@
 
         <section class="experience-delete-confirm" *ngIf="pendingDelete">
           <div class="experience-delete-confirm-backdrop" (click)="cancelDelete()"></div>
-          <div class="experience-delete-confirm-panel">
+          <div class="experience-delete-confirm-panel" (click)="$event.stopPropagation()">
             <h4>{{ pendingDeleteTitle() }}</h4>
             <p>{{ pendingDeleteLabel() }}</p>
             <div class="popup-actions">
