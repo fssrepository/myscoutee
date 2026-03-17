@@ -62,7 +62,7 @@ import {
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
 import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
 import { EventMembersPopupComponent, type EventMembersPopupPresenter } from '../event-members-popup/event-members-popup.component';
-import { ActivityMembersService, EventsService } from '../../../shared/core';
+import { ActivityMembersService, AppContext, type ActivityMembersSyncState, EventsService } from '../../../shared/core';
 
 // ---------------------------------------------------------------------------
 
@@ -115,6 +115,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   private readonly ratesService = inject(DemoRatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly eventsService = inject(EventsService);
+  private readonly appCtx = inject(AppContext);
 
   // ── Self-contained data state (no host inputs) ───────────────────────────
   protected isMobileView = false;
@@ -159,6 +160,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   private readonly subEventAssignedAssetIdsByKey: Record<string, string[]> = {};
   private readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
   private readonly forcedAcceptedMembersByRowKey: Record<string, number> = { 'events:e8': 20 };
+  private lastAppliedActivityMembersUpdatedMs = 0;
   // ── ViewChild refs ────────────────────────────────────────────────────────
   @ViewChild('activitiesScroll')
   private activitiesScrollRef?: ElementRef<HTMLDivElement>;
@@ -491,6 +493,16 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       }
       this.applyActivitiesEventSync(sync);
       this.activitiesContext.clearActivitiesEventSync();
+      this.cdr.markForCheck();
+    });
+
+    effect(() => {
+      const sync = this.appCtx.activityMembersSync();
+      if (!sync || sync.updatedMs <= this.lastAppliedActivityMembersUpdatedMs) {
+        return;
+      }
+      this.lastAppliedActivityMembersUpdatedMs = sync.updatedMs;
+      this.applyActivityMembersSyncState(sync);
       this.cdr.markForCheck();
     });
 
@@ -1762,6 +1774,17 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   private applyActivityMembersSummary(row: AppTypes.ActivityListRow, summary: ActivityMembersSummary): void {
     this.activityCapacityById[row.id] = `${summary.acceptedMembers} / ${summary.capacityTotal}`;
     this.activityPendingMembersById[row.id] = summary.pendingMembers;
+  }
+
+  private applyActivityMembersSyncState(sync: ActivityMembersSyncState): void {
+    const acceptedMembers = Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0));
+    const pendingMembers = Math.max(0, Math.trunc(Number(sync.pendingMembers) || 0));
+    const capacityTotal = Math.max(
+      acceptedMembers,
+      Math.trunc(Number(sync.capacityTotal) || 0)
+    );
+    this.activityCapacityById[sync.id] = `${acceptedMembers} / ${capacityTotal}`;
+    this.activityPendingMembersById[sync.id] = pendingMembers;
   }
 
   private async loadActivityMembersForRow(

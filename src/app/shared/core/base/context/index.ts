@@ -4,6 +4,7 @@ export {
   DEFAULT_USER_IMPRESSION_CHANGE_FLAGS,
   type ActivityCounterKey,
   type ActivityCounters,
+  type ActivityMembersSyncState,
   type LoadState,
   type LoadStatus,
   type UserImpressionChangeFlags

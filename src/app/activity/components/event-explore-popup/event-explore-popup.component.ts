@@ -20,7 +20,7 @@ import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import type * as AppTypes from '../../../shared/app-types';
 import { AppUtils } from '../../../shared/app-utils';
 import { LazyBgImageDirective } from '../../../shared/lazy-bg-image.directive';
-import { ActivityMembersService, AppContext, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
+import { ActivityMembersService, AppContext, type ActivityMembersSyncState, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
 import {
   SmartListComponent,
   type ListQuery,
@@ -102,6 +102,7 @@ export class EventExplorePopupComponent {
   private inlineItemActionMenu: InlineExploreActionMenu | null = null;
   private readonly exploreCache = new Map<string, DemoEventRecord[]>();
   private eventEditorPrewarmStarted = false;
+  private lastAppliedActivityMembersUpdatedMs = 0;
 
   protected eventExploreSmartListQuery: Partial<ListQuery<EventExploreFilters>> = {};
 
@@ -188,6 +189,15 @@ export class EventExplorePopupComponent {
         this.reloadEventExploreSmartList();
       }
       this.cdr.markForCheck();
+    });
+
+    effect(() => {
+      const sync = this.appCtx.activityMembersSync();
+      if (!sync || sync.updatedMs <= this.lastAppliedActivityMembersUpdatedMs) {
+        return;
+      }
+      this.lastAppliedActivityMembersUpdatedMs = sync.updatedMs;
+      this.applyActivityMembersSyncState(sync);
     });
   }
 
@@ -617,6 +627,46 @@ export class EventExplorePopupComponent {
     this.syncEventExploreHeaderDateLabel(filtered);
     this.exploreCache.set(cacheKey, filtered.map(record => this.cloneRecord(record)));
     return filtered.map(record => this.cloneRecord(record));
+  }
+
+  private applyActivityMembersSyncState(sync: ActivityMembersSyncState): void {
+    let changed = false;
+    for (const [cacheKey, records] of this.exploreCache.entries()) {
+      const nextRecords = records.map(record => {
+        if (record.id !== sync.id) {
+          return record;
+        }
+        changed = true;
+        return {
+          ...record,
+          acceptedMembers: Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0)),
+          pendingMembers: Math.max(0, Math.trunc(Number(sync.pendingMembers) || 0)),
+          capacityTotal: Math.max(
+            Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0)),
+            Math.trunc(Number(sync.capacityTotal) || 0)
+          )
+        };
+      });
+      this.exploreCache.set(cacheKey, nextRecords);
+    }
+    if (this.selectedMembersRecord?.id === sync.id) {
+      this.selectedMembersRecord = {
+        ...this.selectedMembersRecord,
+        acceptedMembers: Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0)),
+        pendingMembers: Math.max(0, Math.trunc(Number(sync.pendingMembers) || 0)),
+        capacityTotal: Math.max(
+          Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0)),
+          Math.trunc(Number(sync.capacityTotal) || 0)
+        )
+      };
+      changed = true;
+    }
+    if (changed && this.isOpen) {
+      this.reloadEventExploreSmartList();
+    }
+    if (changed) {
+      this.cdr.markForCheck();
+    }
   }
 
   private applyExploreFilters(records: readonly DemoEventRecord[], filters: EventExploreFilters): DemoEventRecord[] {

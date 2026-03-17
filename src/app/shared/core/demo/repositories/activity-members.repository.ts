@@ -198,10 +198,12 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       const table = state[ACTIVITY_MEMBERS_TABLE_NAME];
       const nextById = { ...table.byId };
       const nextIds: string[] = [];
+      const existingOwnerRecordsById: Record<string, DemoActivityMemberRecord> = {};
 
       for (const id of table.ids) {
         const current = table.byId[id];
         if (current?.ownerKey === ownerKey) {
+          existingOwnerRecordsById[id] = current;
           delete nextById[id];
           continue;
         }
@@ -209,7 +211,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       }
 
       for (const member of normalizedMembers) {
-        const record = this.toRecord(normalizedOwner, member);
+        const record = this.toRecord(normalizedOwner, member, existingOwnerRecordsById[member.id]);
         nextById[record.id] = record;
         nextIds.push(record.id);
       }
@@ -671,13 +673,23 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     };
   }
 
-  private toRecord(owner: ActivityMemberOwnerRef, member: AppTypes.ActivityMemberEntry): DemoActivityMemberRecord {
+  private toRecord(
+    owner: ActivityMemberOwnerRef,
+    member: AppTypes.ActivityMemberEntry,
+    existingRecord?: DemoActivityMemberRecord | null
+  ): DemoActivityMemberRecord {
     const normalizedOwner = this.normalizeOwnerRef(owner)!;
+    const nowMs = Date.now();
+    const nowIso = new Date(nowMs).toISOString();
     return {
       ...member,
       ownerType: normalizedOwner.ownerType,
       ownerId: normalizedOwner.ownerId,
-      ownerKey: this.ownerKey(normalizedOwner)
+      ownerKey: this.ownerKey(normalizedOwner),
+      createdMs: Number.isFinite(Number(existingRecord?.createdMs)) ? Number(existingRecord?.createdMs) : nowMs,
+      updatedMs: nowMs,
+      createdAtIso: existingRecord?.createdAtIso?.trim() || nowIso,
+      updatedAtIso: nowIso
     };
   }
 

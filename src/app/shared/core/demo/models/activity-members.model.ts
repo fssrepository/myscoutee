@@ -7,6 +7,10 @@ export interface DemoActivityMemberRecord extends AppTypes.ActivityMemberEntry {
   ownerType: ActivityMemberOwnerType;
   ownerId: string;
   ownerKey: string;
+  createdMs: number;
+  updatedMs: number;
+  createdAtIso: string;
+  updatedAtIso: string;
 }
 
 export interface DemoActivityMembersRecordCollection {

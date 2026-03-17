@@ -7,6 +7,7 @@ import type {
   ActivitiesEventSyncPayload
 } from '../../../activities-models';
 import type * as AppTypes from '../../../app-types';
+import { AppContext } from '../context';
 import { DemoActivityMembersService } from '../../demo/services/activity-members.service';
 import { HttpActivityMembersService } from '../../http/services/activity-members.service';
 import { SessionService } from './session.service';
@@ -18,6 +19,7 @@ export class ActivityMembersService {
   private readonly demoActivityMembersService = inject(DemoActivityMembersService);
   private readonly httpActivityMembersService = inject(HttpActivityMembersService);
   private readonly sessionService = inject(SessionService);
+  private readonly appCtx = inject(AppContext);
 
   private get demoModeEnabled(): boolean {
     return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
@@ -32,15 +34,25 @@ export class ActivityMembersService {
   }
 
   async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<AppTypes.ActivityMemberEntry[]> {
-    return this.activityMembersService.queryMembersByOwner(owner);
+    const members = await this.activityMembersService.queryMembersByOwner(owner);
+    this.emitActivityMembersSyncForOwner(owner);
+    return members;
   }
 
   peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummary | null {
-    return this.activityMembersService.peekSummaryByOwner(owner);
+    const summary = this.activityMembersService.peekSummaryByOwner(owner);
+    if (summary) {
+      this.emitActivityMembersSync(summary.ownerId, summary.acceptedMembers, summary.pendingMembers, summary.capacityTotal);
+    }
+    return summary;
   }
 
   async querySummariesByOwners(owners: readonly ActivityMemberOwnerRef[]): Promise<ActivityMembersSummary[]> {
-    return this.activityMembersService.querySummariesByOwners(owners);
+    const summaries = await this.activityMembersService.querySummariesByOwners(owners);
+    for (const summary of summaries) {
+      this.emitActivityMembersSync(summary.ownerId, summary.acceptedMembers, summary.pendingMembers, summary.capacityTotal);
+    }
+    return summaries;
   }
 
   async replaceMembersByOwner(
@@ -49,9 +61,40 @@ export class ActivityMembersService {
     capacityTotal?: number | null
   ): Promise<void> {
     await this.activityMembersService.replaceMembersByOwner(owner, members, capacityTotal);
+    this.emitActivityMembersSyncForOwner(owner);
   }
 
   async syncEventMembersFromEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
     await this.activityMembersService.syncEventMembersFromEventSnapshot(payload);
+    this.appCtx.emitActivityMembersSync({
+      id: payload.id,
+      acceptedMembers: Number.isFinite(Number(payload.acceptedMembers)) ? Number(payload.acceptedMembers) : 0,
+      pendingMembers: Number.isFinite(Number(payload.pendingMembers)) ? Number(payload.pendingMembers) : 0,
+      capacityTotal: Number.isFinite(Number(payload.capacityTotal))
+        ? Number(payload.capacityTotal)
+        : (Number.isFinite(Number(payload.acceptedMembers)) ? Number(payload.acceptedMembers) : 0)
+    });
+  }
+
+  private emitActivityMembersSyncForOwner(owner: ActivityMemberOwnerRef): void {
+    const summary = this.activityMembersService.peekSummaryByOwner(owner);
+    if (!summary) {
+      return;
+    }
+    this.emitActivityMembersSync(summary.ownerId, summary.acceptedMembers, summary.pendingMembers, summary.capacityTotal);
+  }
+
+  private emitActivityMembersSync(
+    id: string,
+    acceptedMembers: number,
+    pendingMembers: number,
+    capacityTotal: number
+  ): void {
+    this.appCtx.emitActivityMembersSync({
+      id,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal
+    });
   }
 }

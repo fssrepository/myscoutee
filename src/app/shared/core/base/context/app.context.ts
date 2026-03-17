@@ -26,6 +26,14 @@ export interface UserImpressionChangeFlags {
   member: boolean;
 }
 
+export interface ActivityMembersSyncState {
+  updatedMs: number;
+  id: string;
+  acceptedMembers: number;
+  pendingMembers: number;
+  capacityTotal: number;
+}
+
 export const DEFAULT_LOAD_STATE: LoadState = {
   status: 'idle',
   error: null,
@@ -58,6 +66,7 @@ export class AppContext {
   private readonly _filterPreferencesByUserId = signal<Record<string, UserGameFilterPreferencesDto>>({});
   private readonly _impressionsByUserId = signal<Record<string, UserImpressionsDto>>({});
   private readonly _impressionChangeFlagsByUserId = signal<Record<string, UserImpressionChangeFlags>>({});
+  private readonly _activityMembersSync = signal<ActivityMembersSyncState | null>(null);
   private readonly _activeUserId = signal<string>('');
 
   readonly loadingState = this._loadingState.asReadonly();
@@ -67,6 +76,7 @@ export class AppContext {
   readonly filterPreferencesByUserId = this._filterPreferencesByUserId.asReadonly();
   readonly impressionsByUserId = this._impressionsByUserId.asReadonly();
   readonly impressionChangeFlagsByUserId = this._impressionChangeFlagsByUserId.asReadonly();
+  readonly activityMembersSync = this._activityMembersSync.asReadonly();
   readonly activeUserId = this._activeUserId.asReadonly();
   readonly activeUserProfile = computed(() => {
     const normalizedUserId = this._activeUserId().trim();
@@ -433,6 +443,24 @@ export class AppContext {
     });
   }
 
+  emitActivityMembersSync(payload: Omit<ActivityMembersSyncState, 'updatedMs'>): void {
+    const normalizedId = payload.id.trim();
+    if (!normalizedId) {
+      return;
+    }
+    const updatedMs = Date.now();
+    this._activityMembersSync.set({
+      updatedMs,
+      id: normalizedId,
+      acceptedMembers: this.normalizeCounterValue(payload.acceptedMembers),
+      pendingMembers: this.normalizeCounterValue(payload.pendingMembers),
+      capacityTotal: Math.max(
+        this.normalizeCounterValue(payload.acceptedMembers),
+        this.normalizeCounterValue(payload.capacityTotal)
+      )
+    });
+  }
+
   private normalizeCounterValue(value: number): number {
     if (!Number.isFinite(value)) {
       return 0;
@@ -558,6 +586,7 @@ export class AppContext {
 
     return normalized;
   }
+
 
   private cloneImpressions(impressions: UserImpressionsDto): UserImpressionsDto {
     return {
