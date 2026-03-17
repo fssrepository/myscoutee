@@ -30,6 +30,12 @@ import {
   RatingStarBarComponent,
   type RatingStarBarConfig
 } from '../rating-star-bar';
+import {
+  buildSmartListCalendarItemsByDate,
+  buildSmartListCalendarMonthPage,
+  buildSmartListCalendarWeekPage,
+  countSmartListCalendarOverlaps
+} from './smart-list-calendar-builder.helper';
 import { SmartListPaginationHelper } from './smart-list-pagination.helper';
 import type {
   ListDirection,
@@ -732,7 +738,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     slotStart.setHours(hour, 0, 0, 0);
     const slotEnd = new Date(slotStart);
     slotEnd.setHours(hour + 1, 0, 0, 0);
-    return this.countOverlappingCalendarItems(
+    return countSmartListCalendarOverlaps(
       day.items,
       slotStart,
       slotEnd,
@@ -1454,8 +1460,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
         const pageItems = this.calendarItemsForAnchor(anchor);
         const pageQuery = this.calendarQueryForAnchor(anchor);
         const resolveDateRange = (item: T) => this.calendarConfig()?.resolveDateRange(item, pageQuery) ?? null;
-        const itemsByDate = this.buildItemsByDate(pageItems, resolveDateRange);
-        return this.buildMonthPage(anchor, itemsByDate, pageItems, resolveDateRange);
+        const itemsByDate = buildSmartListCalendarItemsByDate(pageItems, resolveDateRange, value => this.dateKey(value));
+        return buildSmartListCalendarMonthPage(anchor, itemsByDate, pageItems, resolveDateRange, {
+          trackByKey: item => String(this.trackByItem(0, item)),
+          dateKey: value => this.dateKey(value),
+          monthKey: value => this.monthKey(value)
+        });
       });
       this.calendarWeekPages = [];
       this.items = [...this.calendarItemsForAnchor(activeAnchor)];
@@ -1470,8 +1480,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       const pageItems = this.calendarItemsForAnchor(anchor);
       const pageQuery = this.calendarQueryForAnchor(anchor);
       const resolveDateRange = (item: T) => this.calendarConfig()?.resolveDateRange(item, pageQuery) ?? null;
-      const itemsByDate = this.buildItemsByDate(pageItems, resolveDateRange);
-      return this.buildWeekPage(anchor, itemsByDate);
+      const itemsByDate = buildSmartListCalendarItemsByDate(pageItems, resolveDateRange, value => this.dateKey(value));
+      return buildSmartListCalendarWeekPage(anchor, itemsByDate, value => this.dateKey(value));
     });
     this.calendarMonthPages = [];
     this.items = [...this.calendarItemsForAnchor(activeAnchor)];
@@ -2856,184 +2866,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return scrollElement.clientWidth || 0;
   }
 
-  private buildItemsByDate(
-    items: T[],
-    resolveDateRange: (item: T) => SmartListCalendarDateRange | null
-  ): Map<string, T[]> {
-    const byDate = new Map<string, T[]>();
-    for (const item of items) {
-      const range = resolveDateRange(item);
-      if (!range) {
-        continue;
-      }
-      let cursor = AppUtils.dateOnly(range.start);
-      const endDate = AppUtils.dateOnly(range.end);
-      while (cursor.getTime() <= endDate.getTime()) {
-        const key = this.dateKey(cursor);
-        const current = byDate.get(key) ?? [];
-        current.push(item);
-        byDate.set(key, current);
-        cursor = AppUtils.addDays(cursor, 1);
-      }
-    }
-    return byDate;
-  }
-
-  private countOverlappingCalendarItems(
-    items: readonly T[],
-    start: Date,
-    end: Date,
-    resolveDateRange: (item: T) => SmartListCalendarDateRange | null
-  ): number {
-    let count = 0;
-    for (const item of items) {
-      const range = resolveDateRange(item);
-      if (!range) {
-        continue;
-      }
-      if (range.start.getTime() < end.getTime() && range.end.getTime() > start.getTime()) {
-        count += 1;
-      }
-    }
-    return count;
-  }
-
-  private buildMonthPage(
-    anchor: Date,
-    itemsByDate: Map<string, T[]>,
-    items: T[],
-    resolveDateRange: (item: T) => SmartListCalendarDateRange | null
-  ): SmartListCalendarMonthPage<T> {
-    const firstDay = AppUtils.startOfMonth(anchor);
-    const firstWeekStart = AppUtils.startOfWeekMonday(firstDay);
-    const monthEnd = AppUtils.endOfMonth(anchor);
-    const lastWeekEnd = AppUtils.endOfWeekSunday(monthEnd);
-    const weeks: SmartListCalendarMonthWeek<T>[] = [];
-    let cursor = AppUtils.dateOnly(firstWeekStart);
-
-    while (cursor.getTime() <= lastWeekEnd.getTime()) {
-      const weekStart = AppUtils.dateOnly(cursor);
-      const weekEnd = AppUtils.addDays(weekStart, 6);
-      const days: SmartListCalendarDay<T>[] = [];
-      for (let day = 0; day < 7; day += 1) {
-        const date = AppUtils.addDays(cursor, day);
-        days.push(this.buildCalendarDay(date, itemsByDate, firstDay.getMonth()));
-      }
-      weeks.push({
-        start: weekStart,
-        end: weekEnd,
-        days,
-        spans: this.buildMonthWeekSpans(weekStart, weekEnd, items, resolveDateRange)
-      });
-      cursor = AppUtils.addDays(cursor, 7);
-    }
-
-    return {
-      key: this.monthKey(anchor),
-      label: anchor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-      anchor: AppUtils.startOfMonth(anchor),
-      weeks
-    };
-  }
-
-  private buildWeekPage(
-    anchor: Date,
-    itemsByDate: Map<string, T[]>
-  ): SmartListCalendarWeekPage<T> {
-    const start = AppUtils.startOfWeekMonday(anchor);
-    const days: SmartListCalendarDay<T>[] = [];
-    for (let day = 0; day < 7; day += 1) {
-      const date = AppUtils.addDays(start, day);
-      days.push(this.buildCalendarDay(date, itemsByDate, date.getMonth()));
-    }
-    const end = AppUtils.addDays(start, 6);
-    return {
-      key: this.dateKey(start),
-      label: this.weekRangeLabel(start, end),
-      anchor: start,
-      days
-    };
-  }
-
-  private buildMonthWeekSpans(
-    weekStart: Date,
-    weekEnd: Date,
-    items: T[],
-    resolveDateRange: (item: T) => SmartListCalendarDateRange | null
-  ): SmartListCalendarMonthSpan<T>[] {
-    const spansBase: Array<{ item: T; startCol: number; endCol: number }> = [];
-    for (const item of items) {
-      const range = resolveDateRange(item);
-      if (!range) {
-        continue;
-      }
-      const startDate = AppUtils.dateOnly(range.start);
-      const endDate = AppUtils.dateOnly(range.end);
-      if (!this.dateRangeOverlaps(startDate, endDate, weekStart, weekEnd)) {
-        continue;
-      }
-      const visibleStart = startDate.getTime() < weekStart.getTime() ? weekStart : startDate;
-      const visibleEnd = endDate.getTime() > weekEnd.getTime() ? weekEnd : endDate;
-      spansBase.push({
-        item,
-        startCol: Math.max(0, this.dayDiff(weekStart, visibleStart)),
-        endCol: Math.min(6, this.dayDiff(weekStart, visibleEnd))
-      });
-    }
-
-    spansBase.sort((first, second) => first.startCol - second.startCol || second.endCol - first.endCol);
-    const lanes: Array<Array<{ startCol: number; endCol: number }>> = [];
-    const spans: SmartListCalendarMonthSpan<T>[] = [];
-
-    for (const span of spansBase) {
-      let laneIndex = 0;
-      while (laneIndex < lanes.length) {
-        const conflict = lanes[laneIndex].some(item => !(span.endCol < item.startCol || span.startCol > item.endCol));
-        if (!conflict) {
-          break;
-        }
-        laneIndex += 1;
-      }
-      if (!lanes[laneIndex]) {
-        lanes[laneIndex] = [];
-      }
-      lanes[laneIndex].push({ startCol: span.startCol, endCol: span.endCol });
-      spans.push({
-        key: `${this.trackByItem(0, span.item)}-${this.dateKey(weekStart)}-${span.startCol}-${span.endCol}-${laneIndex}`,
-        item: span.item,
-        startCol: span.startCol,
-        endCol: span.endCol,
-        lane: laneIndex
-      });
-    }
-
-    return spans;
-  }
-
-  private buildCalendarDay(
-    date: Date,
-    itemsByDate: Map<string, T[]>,
-    currentMonthIndex: number
-  ): SmartListCalendarDay<T> {
-    const safeDate = AppUtils.dateOnly(date);
-    const key = this.dateKey(safeDate);
-    const todayKey = this.dateKey(AppUtils.dateOnly(new Date()));
-    return {
-      key,
-      date: safeDate,
-      dayNumber: safeDate.getDate(),
-      inCurrentMonth: safeDate.getMonth() === currentMonthIndex,
-      isToday: key === todayKey,
-      items: itemsByDate.get(key) ?? []
-    };
-  }
-
-  private weekRangeLabel(start: Date, end: Date): string {
-    const startLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const endLabel = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    return `${startLabel} - ${endLabel}`;
-  }
-
   private dateKey(value: Date): string {
     const copy = AppUtils.dateOnly(value);
     const year = copy.getFullYear();
@@ -3047,15 +2879,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const year = copy.getFullYear();
     const month = `${copy.getMonth() + 1}`.padStart(2, '0');
     return `${year}-${month}`;
-  }
-
-  private dayDiff(from: Date, to: Date): number {
-    const ms = AppUtils.dateOnly(to).getTime() - AppUtils.dateOnly(from).getTime();
-    return Math.floor(ms / 86400000);
-  }
-
-  private dateRangeOverlaps(startA: Date, endA: Date, startB: Date, endB: Date): boolean {
-    return startA.getTime() <= endB.getTime() && endA.getTime() >= startB.getTime();
   }
 
   private clamp(value: number): number {
