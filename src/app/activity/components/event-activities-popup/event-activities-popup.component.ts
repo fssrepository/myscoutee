@@ -3297,9 +3297,8 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return;
     }
     this.stopActivitiesRatesPairSplitDrag();
+    this.resetActivityRateEditorStateForFullscreenEntry();
     this.activitiesRatesFullscreenMode = true;
-    this.cancelActivityRateEditorCloseTransition();
-    this.activityRateEditorClosing = false;
     this.activitiesContext.setActivitiesRatesFullscreenMode(true);
     this.runAfterActivitiesRender(() => {
       this.syncActivitiesRatesFullscreenSelection();
@@ -3343,6 +3342,20 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.selectedActivityRateId = currentRow.id;
     this.activitiesContext.setActivitiesSelectedRateId(this.selectedActivityRateId);
     this.pulseRateIndicatorForRow(currentRow);
+  }
+
+  private resetActivityRateEditorStateForFullscreenEntry(): void {
+    this.cancelActivityRateEditorCloseTransition();
+    this.cancelActivityRateEditorLiftAnimation();
+    this.activityRateEditorClosing = false;
+    this.activityRateEditorOpenScrollTop = null;
+    this.lastActivityRateEditorLiftDelta = 0;
+    this.lastRateIndicatorPulseRowId = null;
+    if (!this.selectedActivityRateId) {
+      return;
+    }
+    this.selectedActivityRateId = null;
+    this.activitiesContext.setActivitiesSelectedRateId(null);
   }
 
   private syncActivitiesRatesListPositionToRow(rowId: string): void {

@@ -7,11 +7,21 @@
 }
 
 .smart-list__surface {
+  --smart-list-fullscreen-top-offset: 0px;
+  --smart-list-fullscreen-bottom-offset: 0px;
   position: relative;
   display: flex;
   flex: 1;
   min-width: 0;
   min-height: 0;
+}
+
+.smart-list__surface--fullscreen {
+  --smart-list-fullscreen-top-offset: 0.42rem;
+}
+
+.smart-list__surface--fullscreen-with-rating-bar {
+  --smart-list-fullscreen-bottom-offset: calc(3.4rem + env(safe-area-inset-bottom));
 }
 
 .smart-list__stage {
@@ -21,6 +31,7 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  top: 5px;
 }
 
 .smart-list__stage-list-shell {
@@ -54,13 +65,13 @@
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
-  padding: 0 0 3.4rem;
+  padding: var(--smart-list-fullscreen-top-offset) 0 3.4rem;
   pointer-events: none;
 }
 
 .smart-list__fullscreen-card {
   position: absolute;
-  inset: 0;
+  inset: 0 0 var(--smart-list-fullscreen-bottom-offset) 0;
   margin: 0;
   pointer-events: none;
 }

@@ -1,4 +1,8 @@
-<div class="smart-list__surface">
+<div
+  class="smart-list__surface"
+  [class.smart-list__surface--fullscreen]="resolvedPresentation() === 'fullscreen'"
+  [class.smart-list__surface--fullscreen-with-rating-bar]="resolvedPresentation() === 'fullscreen' && shouldRenderPaginationRatingBar()"
+>
   <div class="smart-list__stage">
     <div class="smart-list__stage-list-shell" [class.is-occluded]="shouldRenderHostedFullscreenOverlay()">
       <ng-container *ngIf="isCalendarMode(); else listMode">
@@ -225,7 +229,11 @@
       </ng-template>
     </div>
 
-    <div class="smart-list__stage-overlay" *ngIf="shouldRenderHostedFullscreenOverlay()">
+    <div
+      class="smart-list__stage-overlay"
+      [class.smart-list__stage-overlay--with-rating-bar]="shouldRenderPaginationRatingBar()"
+      *ngIf="shouldRenderHostedFullscreenOverlay()"
+    >
       <div class="smart-list__fullscreen-surface" *ngIf="resolvedFullscreenItemTemplate() as fullscreenTemplateRef">
         <div
           class="smart-list__fullscreen-card smart-list__fullscreen-card--leaving"
