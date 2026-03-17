@@ -242,21 +242,4 @@
     </div>
   </section>
 
-  <app-event-members-popup
-    *ngIf="selectedMembersRecord"
-    [title]="'Members'"
-    [subtitle]="selectedMembersTitle || 'Event'"
-    [summaryLabel]="activityMembersHeaderSummary()"
-    [pendingOnly]="selectedMembersPendingOnly"
-    [pendingCount]="activityMembersPendingCount()"
-    [canShowInviteButton]="false"
-    [isMobileView]="true"
-    [members]="activityMembersOrdered"
-    [pendingDelete]="null"
-    [pendingDeleteTitle]="'Remove member'"
-    [pendingDeleteLabel]="''"
-    [presenter]="membersPopupPresenter"
-    (close)="closeMembersPopup()"
-    (togglePendingOnly)="handleMembersTogglePendingOnly()"
-  ></app-event-members-popup>
 </section>

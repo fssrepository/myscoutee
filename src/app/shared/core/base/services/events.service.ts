@@ -67,6 +67,34 @@ export class EventsService {
     return this.eventsService.peekExploreItems(userId);
   }
 
+  peekKnownItemById(userId: string, itemId: string): DemoEventRecord | null {
+    const normalizedItemId = itemId.trim();
+    if (!normalizedItemId) {
+      return null;
+    }
+    const known = [
+      ...this.eventsService.peekItemsByUser(userId),
+      ...this.eventsService.peekExploreItems(userId)
+    ];
+    return known.find(record => record.id === normalizedItemId) ?? null;
+  }
+
+  async queryKnownItemById(userId: string, itemId: string): Promise<DemoEventRecord | null> {
+    const normalizedItemId = itemId.trim();
+    if (!normalizedItemId) {
+      return null;
+    }
+    const cached = this.peekKnownItemById(userId, normalizedItemId);
+    if (cached) {
+      return cached;
+    }
+    const [owned, explore] = await Promise.all([
+      this.eventsService.queryItemsByUser(userId),
+      this.eventsService.queryExploreItems(userId)
+    ]);
+    return [...owned, ...explore].find(record => record.id === normalizedItemId) ?? null;
+  }
+
   trashItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
     return this.eventsService.trashItem(userId, type, sourceId);
   }

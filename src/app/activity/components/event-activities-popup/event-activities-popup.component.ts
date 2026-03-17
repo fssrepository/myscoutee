@@ -62,7 +62,7 @@ import {
 } from '../../../shared/ui';
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
 import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
-import { EventMembersPopupComponent, type EventMembersPopupPresenter } from '../event-members-popup/event-members-popup.component';
+import { EventMembersPopupComponent } from '../event-members-popup/event-members-popup.component';
 import { ActivityMembersService, AppContext, type ActivityMembersSyncState, EventsService } from '../../../shared/core';
 
 // ---------------------------------------------------------------------------
@@ -375,25 +375,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected selectedActivityMembersRow: AppTypes.ActivityListRow | null = null;
   protected selectedActivityMembersRowId: string | null = null;
   private readonly trashedActivityRowsByKey: Record<string, AppTypes.ActivityListRow> = {};
-  protected readonly activityMembersPopupPresenter: EventMembersPopupPresenter = {
-    toneClass: entry => this.memberCardToneClass(entry),
-    statusClass: entry => this.memberCardStatusClass(entry),
-    statusLabel: entry => this.memberCardStatusLabel(entry),
-    statusIcon: entry => this.memberCardStatusIcon(entry),
-    age: entry => this.activityMemberAge(entry),
-    roleLabel: entry => this.activityMemberRoleLabel(entry),
-    pendingStatusLabel: entry => this.activityMemberStatusLabel(entry),
-    canShowActionMenu: entry => this.canShowActivityMemberActionMenu(entry),
-    isActionMenuOpen: entry => this.isActivityMemberActionMenuOpen(entry),
-    isActionMenuOpenUp: entry => this.isActivityMemberActionMenuOpenUp(entry),
-    canApprove: entry => this.canApproveActivityMember(entry),
-    canDelete: entry => this.canDeleteActivityMember(entry),
-    deleteLabel: entry => this.activityMemberMenuDeleteLabel(entry),
-    canEditRole: () => false,
-    roleIcon: () => 'manage_accounts',
-    roleMenuLabel: () => 'Change role',
-    isRolePickerOpen: () => false
-  };
 
   // =========================================================================
   // Lifecycle
@@ -449,16 +430,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.cdr.markForCheck();
     });
 
-    effect(() => {
-      const request = this.activitiesContext.activitiesNavigationRequest();
-      if (!request) {
-        return;
-      }
-      if (request.type === 'members' || request.type === 'eventEditorMembers') {
-        this.openActivityMembersLocal(request.row);
-        this.activitiesContext.clearActivitiesNavigationRequest();
-      }
-    });
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -1963,117 +1934,13 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   protected openActivityMembers(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
-    this.openActivityMembersLocal(row);
-  }
-
-  private openActivityMembersLocal(row: AppTypes.ActivityListRow): void {
-    this.pendingActivityMemberDelete = null;
-    this.activityMembersPendingOnly = false;
-    this.activityMembersReadOnly = row.isAdmin !== true;
-    this.selectedActivityMembersRow = row;
-    this.selectedActivityMembersRowId = `${row.type}:${row.id}`;
-    this.selectedActivityMembersTitle = row.title;
-    const owner = this.activityMembersOwnerForRow(row);
-    const initialMembers = owner
-      ? this.activityMembersService.peekMembersByOwner(owner)
-      : this.getActivityMembersByRow(row);
-    this.selectedActivityMembers = this.sortActivityMembersByActionTimeAsc(initialMembers);
-    this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
-    this.inlineItemActionMenu = null;
-    this.stackedActivitiesPopup = 'activityMembers';
-    if (owner) {
-      void this.loadActivityMembersForRow(owner, row, this.selectedActivityMembersRowId);
-    }
-  }
-
-  protected closeActivityMembersPopup(): void {
-    this.pendingActivityMemberDelete = null;
-    this.activityMembersPendingOnly = false;
-    this.activityMembersReadOnly = false;
-    this.selectedActivityMembers = [];
-    this.selectedActivityMembersTitle = '';
-    this.selectedActivityMembersRow = null;
-    this.selectedActivityMembersRowId = null;
-    this.inlineItemActionMenu = null;
-    this.stackedActivitiesPopup = null;
-  }
-
-  protected get activityMembersOrdered(): AppTypes.ActivityMemberEntry[] {
-    const ordered = this.sortActivityMembersByActionTimeAsc(this.selectedActivityMembers);
-    if (!this.activityMembersPendingOnly) {
-      return ordered;
-    }
-    return ordered.filter(member => member.status === 'pending');
-  }
-
-  protected activityMembersPendingCount(): number {
-    return this.selectedActivityMembers.filter(member => member.status === 'pending').length;
-  }
-
-  protected activityMembersHeaderSummary(): string {
-    const pendingCount = this.activityMembersPendingCount();
-    const acceptedCount = this.selectedActivityMembers.length - pendingCount;
-    if (pendingCount <= 0) {
-      return `${acceptedCount} members`;
-    }
-    return `${acceptedCount} members · ${pendingCount} pending`;
-  }
-
-  protected canShowActivityMembersInviteButton(): boolean {
-    return !this.activityMembersReadOnly;
-  }
-
-  protected handleActivityMembersTogglePendingOnly(): void {
-    this.activityMembersPendingOnly = !this.activityMembersPendingOnly;
-  }
-
-  protected handleActivityMemberActionMenuToggle(payload: { entry: AppTypes.ActivityMemberEntry; event: Event }): void {
-    this.toggleActivityMemberActionMenu(payload.entry, payload.event);
-  }
-
-  protected handleActivityMemberApprove(entry: AppTypes.ActivityMemberEntry): void {
-    this.approveActivityMember(entry);
-  }
-
-  protected handleActivityMemberRemove(entry: AppTypes.ActivityMemberEntry): void {
-    this.removeActivityMember(entry);
-  }
-
-  protected cancelRemoveActivityMember(): void {
-    this.pendingActivityMemberDelete = null;
-  }
-
-  protected confirmRemoveActivityMember(): void {
-    if (!this.pendingActivityMemberDelete || !this.selectedActivityMembersRowId) {
-      this.pendingActivityMemberDelete = null;
-      return;
-    }
-    const targetId = this.pendingActivityMemberDelete.id;
-    this.selectedActivityMembers = this.selectedActivityMembers.filter(item => item.id !== targetId);
-    this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
-    this.persistSelectedActivityMembers();
-    this.pendingActivityMemberDelete = null;
-  }
-
-  protected pendingActivityMemberDeleteTitle(): string {
-    return 'Remove member';
-  }
-
-  protected pendingActivityMemberDeleteLabel(): string {
-    if (!this.pendingActivityMemberDelete) {
-      return '';
-    }
-    return `Remove ${this.pendingActivityMemberDelete.name} from this event?`;
-  }
-
-  protected handleActivityMembersInvite(): void {
-    // Basket-mode picker wiring moves here later; keep button inert-free for now.
+    this.activitiesContext.requestActivitiesNavigation({
+      type: 'members',
+      ownerId: row.id
+    });
   }
 
   protected canShowActivityMemberActionMenu(entry: AppTypes.ActivityMemberEntry): boolean {
-    if (this.activityMembersReadOnly) {
-      return false;
-    }
     return this.canApproveActivityMember(entry) || this.canDeleteActivityMember(entry);
   }
 

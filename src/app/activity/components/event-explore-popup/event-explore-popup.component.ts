@@ -31,7 +31,6 @@ import {
 } from '../../../shared/ui';
 import { NavigatorService } from '../../../navigator';
 import { ActivitiesDbContextService } from '../../services/activities-db-context.service';
-import { EventMembersPopupComponent, type EventMembersPopupPresenter } from '../event-members-popup/event-members-popup.component';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 
 interface EventExploreFilters {
@@ -54,8 +53,7 @@ type InlineExploreActionMenu = {
     CommonModule,
     MatIconModule,
     LazyBgImageDirective,
-    SmartListComponent,
-    EventMembersPopupComponent
+    SmartListComponent
   ],
   templateUrl: './event-explore-popup.component.html',
   styleUrl: './event-explore-popup.component.scss',
@@ -147,26 +145,6 @@ export class EventExplorePopupComponent {
       return scrollable;
     },
     groupBy: (record, query) => this.eventExploreGroupLabel(record, query.filters?.order ?? this.eventExploreOrder)
-  };
-
-  protected readonly membersPopupPresenter: EventMembersPopupPresenter = {
-    toneClass: entry => this.memberCardToneClass(entry),
-    statusClass: entry => this.memberCardStatusClass(entry),
-    statusLabel: entry => this.memberCardStatusLabel(entry),
-    statusIcon: entry => this.memberCardStatusIcon(entry),
-    age: entry => this.activityMemberAge(entry),
-    roleLabel: entry => this.activityMemberRoleLabel(entry),
-    pendingStatusLabel: entry => this.activityMemberStatusLabel(entry),
-    canShowActionMenu: () => false,
-    isActionMenuOpen: () => false,
-    isActionMenuOpenUp: () => false,
-    canApprove: () => false,
-    canDelete: () => false,
-    deleteLabel: entry => this.activityMemberDeleteLabel(entry),
-    canEditRole: () => false,
-    roleIcon: entry => (entry.role === 'Admin' ? 'admin_panel_settings' : 'person'),
-    roleMenuLabel: entry => this.activityMemberRoleLabel(entry),
-    isRolePickerOpen: () => false
   };
 
   constructor() {
@@ -385,20 +363,12 @@ export class EventExplorePopupComponent {
     if (!this.isEventExploreOpenEvent(record)) {
       return;
     }
-    this.selectedMembersRecord = record;
-    this.selectedMembersTitle = record.title;
-    this.selectedMembersPendingOnly = false;
-    const owner = this.eventMembersOwner(record);
-    const cachedMembers = owner
-      ? this.activityMembersService.peekMembersByOwner(owner)
-      : [];
-    this.selectedMembers = this.sortMembersByActionTimeDesc(cachedMembers);
     this.inlineItemActionMenu = null;
+    this.activitiesContext.requestActivitiesNavigation({
+      type: 'members',
+      ownerId: record.id
+    });
     this.cdr.markForCheck();
-    if (!owner) {
-      return;
-    }
-    void this.loadEventExploreMembers(owner, record);
   }
 
   protected closeMembersPopup(): void {
