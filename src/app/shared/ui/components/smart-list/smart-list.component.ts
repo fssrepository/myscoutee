@@ -1032,18 +1032,22 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
     const triggerEdge = this.listLoadTriggerEdge();
     const threshold = Math.max(0, this.config.preloadOffsetPx ?? (triggerEdge === 'start' ? 48 : 520));
+    const remainingPx = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
+    const maxVerticalScroll = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight);
     if (this.awaitScrollReset) {
       if (triggerEdge === 'start') {
         if (scrollElement.scrollTop > Math.max(120, threshold * 2)) {
           this.awaitScrollReset = false;
         }
       } else {
-        const remainingPx = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
-        if (remainingPx > Math.max(360, threshold)) {
+        const resetThreshold = Math.max(360, threshold);
+        if (remainingPx > resetThreshold || maxVerticalScroll <= resetThreshold) {
           this.awaitScrollReset = false;
         }
       }
-      return;
+      if (this.awaitScrollReset) {
+        return;
+      }
     }
 
     if (triggerEdge === 'start') {
@@ -1054,11 +1058,34 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return;
     }
 
-    const remainingPx = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
-    if (remainingPx > Math.max(240, threshold)) {
+    if (!this.shouldStartAppendPreload(scrollElement, remainingPx, threshold)) {
       return;
     }
     void this.loadNextPage();
+  }
+
+  private shouldStartAppendPreload(
+    scrollElement: HTMLDivElement,
+    remainingPx: number,
+    threshold: number
+  ): boolean {
+    if (remainingPx <= Math.max(240, threshold)) {
+      return true;
+    }
+
+    const itemElements = Array.from(
+      scrollElement.querySelectorAll<HTMLElement>('[data-smart-list-index]')
+    );
+    if (itemElements.length === 0) {
+      return false;
+    }
+    if (itemElements.length <= 3) {
+      return true;
+    }
+
+    const preloadAnchor = itemElements[Math.max(0, itemElements.length - 3)];
+    const viewportBottom = scrollElement.scrollTop + scrollElement.clientHeight;
+    return viewportBottom >= preloadAnchor.offsetTop;
   }
 
   private initialPageCount(): number {
