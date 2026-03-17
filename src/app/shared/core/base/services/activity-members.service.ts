@@ -53,9 +53,7 @@ export class ActivityMembersService {
       return [];
     }
     const owner = this.peekOwnerRefById(normalizedOwnerId) ?? this.ownerRef('event', normalizedOwnerId);
-    const members = await this.activityMembersService.queryMembersByOwner(owner);
-    this.emitActivityMembersSyncForOwner(owner);
-    return members;
+    return this.activityMembersService.queryMembersByOwner(owner);
   }
 
   peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummary | null {

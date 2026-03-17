@@ -67,7 +67,6 @@ export class EventMembersPopupComponent {
   private readonly membersCacheByOwnerId = new Map<string, AppTypes.ActivityMemberEntry[]>();
   private lastAppliedActivityMembersUpdatedMs = 0;
   private openMembersHydrationTimer: ReturnType<typeof setTimeout> | null = null;
-  private pendingSmartListReload = false;
 
   protected isOpen = false;
   protected isMobileView = false;
@@ -89,23 +88,8 @@ export class EventMembersPopupComponent {
 
   protected membersSmartListQuery: Partial<ListQuery<MembersSmartListFilters>> = {};
 
-  private membersSmartList?: SmartListComponent<AppTypes.ActivityMemberEntry, MembersSmartListFilters>;
-
   @ViewChild('membersSmartList')
-  private set membersSmartListRef(
-    value: SmartListComponent<AppTypes.ActivityMemberEntry, MembersSmartListFilters> | undefined
-  ) {
-    this.membersSmartList = value;
-    if (!value || !this.pendingSmartListReload || !this.isOpen || !this.ownerId) {
-      return;
-    }
-    this.pendingSmartListReload = false;
-    setTimeout(() => {
-      if (this.membersSmartList === value && this.isOpen && !!this.ownerId) {
-        value.reload();
-      }
-    }, 0);
-  }
+  private membersSmartList?: SmartListComponent<AppTypes.ActivityMemberEntry, MembersSmartListFilters>;
 
   protected membersItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityMemberEntry, MembersSmartListFilters>>;
 
@@ -229,7 +213,6 @@ export class EventMembersPopupComponent {
     this.inlineItemActionMenu = null;
     this.pendingDelete = null;
     this.syncMembersSmartListQuery();
-    this.membersSmartList?.reload();
     this.cdr.markForCheck();
   }
 
@@ -244,7 +227,6 @@ export class EventMembersPopupComponent {
     this.ownerRecord = null;
     this.inlineItemActionMenu = null;
     this.pendingDelete = null;
-    this.pendingSmartListReload = false;
     this.pendingOnly = false;
     this.canManageMembers = false;
     this.canShowInviteButton = false;
@@ -450,7 +432,6 @@ export class EventMembersPopupComponent {
     this.canShowInviteButton = this.canManageMembers;
     this.applySummary(0, 0, 0);
     this.syncMembersSmartListQuery();
-    this.pendingSmartListReload = true;
     this.cdr.markForCheck();
 
     if (this.openMembersHydrationTimer) {
@@ -478,10 +459,6 @@ export class EventMembersPopupComponent {
       }
 
       void this.resolveOwnerPresentation(normalizedOwnerId, options);
-      if (this.membersSmartList) {
-        this.pendingSmartListReload = false;
-        this.membersSmartList.reload();
-      }
       this.cdr.markForCheck();
     }, 0);
   }
