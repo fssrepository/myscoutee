@@ -26,6 +26,10 @@ export class HttpEventsService {
     return this.getRecords('/activities/events', userId);
   }
 
+  peekItemsByUser(_userId: string): DemoEventRecord[] {
+    return [];
+  }
+
   async queryInvitationItemsByUser(userId: string): Promise<DemoEventRecord[]> {
     return this.getRecords('/activities/events/invitations', userId);
   }

@@ -1,10 +1,13 @@
+export { ACTIVITY_MEMBERS_TABLE_NAME, type DemoActivityMemberRecord, type DemoActivityMembersMemorySchema } from './models/activity-members.model';
 export { CHATS_TABLE_NAME, type DemoChatRecord, type DemoChatsMemorySchema } from './models/chats.model';
 export { EVENTS_TABLE_NAME, type DemoEventRecord, type DemoEventsMemorySchema } from './models/events.model';
 export { USERS_TABLE_NAME, type DemoUsersMemorySchema } from './models/users.model';
+export { DemoActivityMembersRepository } from './repositories/activity-members.repository';
 export { DemoChatsRepository } from './repositories/chats.repository';
 export { DemoEventsRepository } from './repositories/events.repository';
 export { DemoUsersRatingsRepository } from './repositories/users-ratings.repository';
 export { DemoUsersRepository as DemoUsersRepository } from './repositories/users.repository';
+export { DemoActivityMembersService } from './services/activity-members.service';
 export { DemoChatsService } from './services/chats.service';
 export { DemoEventsService } from './services/events.service';
 export { DemoGameService } from './services/game.service';

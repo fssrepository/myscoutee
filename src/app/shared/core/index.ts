@@ -14,6 +14,7 @@ export {
   USER_GAME_CARDS_LOAD_CONTEXT_KEY
 } from './base/services/game.service';
 export { EventsService } from './base/services/events.service';
+export { ActivityMembersService } from './base/services/activity-members.service';
 export {
   USER_FEEDBACK_SUBMIT_CONTEXT_KEY,
   USER_REPORT_USER_SUBMIT_CONTEXT_KEY,

@@ -2,7 +2,7 @@ import { computed, Injectable, inject, signal } from '@angular/core';
 
 import type * as AppTypes from '../../shared/app-types';
 import { ACTIVITIES_DATA_SOURCE } from '../../shared/activities-data-source';
-import { EventsService } from '../../shared/core';
+import { ActivityMembersService, EventsService } from '../../shared/core';
 import type {
   ActivitiesEventSyncPayload,
   ActivitiesNavigationRequest,
@@ -51,6 +51,7 @@ const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
 export class ActivitiesDbContextService {
   private readonly dataSource = inject(ACTIVITIES_DATA_SOURCE);
   private readonly eventsService = inject(EventsService);
+  private readonly activityMembersService = inject(ActivityMembersService);
 
   private readonly _uiState = signal<ActivitiesUiState>(DEFAULT_ACTIVITIES_UI_STATE);
   private _activitiesNavigationRequest = signal<ActivitiesNavigationRequest | null>(null);
@@ -215,6 +216,9 @@ export class ActivitiesDbContextService {
     };
     this._activitiesEventSync.set(event);
     void this.eventsService.syncEventSnapshot(payload).catch(() => {
+      // Demo persistence is best-effort; UI state stays optimistic.
+    });
+    void this.activityMembersService.syncEventMembersFromEventSnapshot(payload).catch(() => {
       // Demo persistence is best-effort; UI state stays optimistic.
     });
     void this.dataSource.syncEvent(payload).catch(() => {

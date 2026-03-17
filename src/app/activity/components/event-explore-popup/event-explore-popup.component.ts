@@ -13,13 +13,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
 import { AlertService } from '../../../shared/alert.service';
+import type { ActivityMemberOwnerRef } from '../../../shared/activities-models';
 import { APP_DEMO_DATA } from '../../../shared/demo-data';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import type * as AppTypes from '../../../shared/app-types';
 import { AppUtils } from '../../../shared/app-utils';
 import { LazyBgImageDirective } from '../../../shared/lazy-bg-image.directive';
-import { AppContext, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
+import { ActivityMembersService, AppContext, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
 import {
   SmartListComponent,
   type ListQuery,
@@ -63,6 +64,7 @@ type InlineExploreActionMenu = {
 export class EventExplorePopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly activitiesContext = inject(ActivitiesDbContextService);
+  private readonly activityMembersService = inject(ActivityMembersService);
   private readonly eventsService = inject(EventsService);
   private readonly gameService = inject(GameService);
   private readonly usersService = inject(UsersService);
@@ -360,9 +362,17 @@ export class EventExplorePopupComponent {
     this.selectedMembersRecord = record;
     this.selectedMembersTitle = record.title;
     this.selectedMembersPendingOnly = false;
-    this.selectedMembers = this.sortMembersByActionTimeDesc(this.buildMemberEntries(record));
+    const owner = this.eventMembersOwner(record);
+    const cachedMembers = owner
+      ? this.activityMembersService.peekMembersByOwner(owner)
+      : [];
+    this.selectedMembers = this.sortMembersByActionTimeDesc(cachedMembers);
     this.inlineItemActionMenu = null;
     this.cdr.markForCheck();
+    if (!owner) {
+      return;
+    }
+    void this.loadEventExploreMembers(owner, record);
   }
 
   protected closeMembersPopup(): void {
@@ -741,6 +751,22 @@ export class EventExplorePopupComponent {
         isAdmin: false
       }
     };
+  }
+
+  private eventMembersOwner(record: DemoEventRecord): ActivityMemberOwnerRef {
+    return {
+      ownerType: 'event',
+      ownerId: record.id
+    };
+  }
+
+  private async loadEventExploreMembers(owner: ActivityMemberOwnerRef, record: DemoEventRecord): Promise<void> {
+    const members = await this.activityMembersService.queryMembersByOwner(owner);
+    if (!this.selectedMembersRecord || this.selectedMembersRecord.id !== record.id) {
+      return;
+    }
+    this.selectedMembers = this.sortMembersByActionTimeDesc(members);
+    this.cdr.markForCheck();
   }
 
   private buildMemberEntries(record: DemoEventRecord): AppTypes.ActivityMemberEntry[] {

@@ -31,6 +31,10 @@ export class EventsService {
     return this.eventsService.queryItemsByUser(userId);
   }
 
+  peekItemsByUser(userId: string): DemoEventRecord[] {
+    return this.eventsService.peekItemsByUser(userId);
+  }
+
   queryInvitationItemsByUser(userId: string): Promise<DemoEventRecord[]> {
     return this.eventsService.queryInvitationItemsByUser(userId);
   }

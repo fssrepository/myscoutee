@@ -3,6 +3,22 @@ import type { ChatMenuItem } from './demo-data';
 
 export type SubEventAssetAssignmentIds = Partial<Record<AppTypes.AssetType, string[]>>;
 export type SubEventAssetCardsByType = Partial<Record<AppTypes.AssetType, AppTypes.AssetCard[]>>;
+export type ActivityMemberOwnerType = 'event' | 'subEvent' | 'group';
+
+export interface ActivityMemberOwnerRef {
+  ownerType: ActivityMemberOwnerType;
+  ownerId: string;
+}
+
+export interface ActivityMembersSummary {
+  ownerType: ActivityMemberOwnerType;
+  ownerId: string;
+  acceptedMembers: number;
+  pendingMembers: number;
+  capacityTotal: number;
+  acceptedMemberUserIds: string[];
+  pendingMemberUserIds: string[];
+}
 
 export type ActivitiesNavigationRequest =
   | { type: 'eventExplore'; stacked?: boolean }

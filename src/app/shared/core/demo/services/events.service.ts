@@ -22,6 +22,10 @@ export class DemoEventsService {
     return this.eventsRepository.queryItemsByUser(userId);
   }
 
+  peekItemsByUser(userId: string): DemoEventRecord[] {
+    return this.eventsRepository.queryItemsByUser(userId);
+  }
+
   async queryInvitationItemsByUser(userId: string): Promise<DemoEventRecord[]> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
     return this.eventsRepository.queryInvitationItemsByUser(userId);

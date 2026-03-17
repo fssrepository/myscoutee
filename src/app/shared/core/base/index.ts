@@ -10,4 +10,5 @@ export {
 } from './services/users.service';
 export { EventsService } from './services/events.service';
 export { GameService } from './services/game.service';
+export { ActivityMembersService } from './services/activity-members.service';
 export * from './interfaces';

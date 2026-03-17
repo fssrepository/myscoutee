@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
+import { ACTIVITY_MEMBERS_TABLE_NAME } from '../../demo/models/activity-members.model';
 import { CHATS_TABLE_NAME } from '../../demo/models/chats.model';
 import { EVENTS_TABLE_NAME } from '../../demo/models/events.model';
 import type { DemoMemorySchema } from '../../demo/models/memory.model';
@@ -42,6 +43,10 @@ export class AppMemoryDb {
 
   private createEmptyState(): DemoMemorySchema {
     return {
+      [ACTIVITY_MEMBERS_TABLE_NAME]: {
+        byId: {},
+        ids: []
+      },
       [USERS_TABLE_NAME]: {
         byId: {},
         ids: []
@@ -149,6 +154,7 @@ export class AppMemoryDb {
 
   private async readStateFromIndexedDb(db: IDBDatabase): Promise<DemoMemorySchema | null> {
     const users = await this.readIndexedDbEntry(db, USERS_TABLE_NAME);
+    const activityMembers = await this.readIndexedDbEntry(db, ACTIVITY_MEMBERS_TABLE_NAME);
     const rates = await this.readIndexedDbEntry(db, USER_RATES_TABLE_NAME);
     const outbox = await this.readIndexedDbEntry(db, USER_RATES_OUTBOX_TABLE_NAME);
     const filterPreferences = await this.readIndexedDbEntry(db, USER_FILTER_PREFERENCES_TABLE_NAME);
@@ -157,6 +163,7 @@ export class AppMemoryDb {
       ?? await this.readIndexedDbEntry(db, 'demoEvents');
 
     const hasSegmentedState = users !== null
+      || activityMembers !== null
       || rates !== null
       || outbox !== null
       || filterPreferences !== null
@@ -173,6 +180,9 @@ export class AppMemoryDb {
     const partialState: Partial<DemoMemorySchema> = {};
     if (users !== null) {
       partialState[USERS_TABLE_NAME] = users as DemoMemorySchema[typeof USERS_TABLE_NAME];
+    }
+    if (activityMembers !== null) {
+      partialState[ACTIVITY_MEMBERS_TABLE_NAME] = activityMembers as DemoMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME];
     }
     if (rates !== null) {
       partialState[USER_RATES_TABLE_NAME] = rates as DemoMemorySchema[typeof USER_RATES_TABLE_NAME];
@@ -201,6 +211,7 @@ export class AppMemoryDb {
       const tx = db.transaction(AppMemoryDb.INDEXED_DB_STORE, 'readwrite');
       const store = tx.objectStore(AppMemoryDb.INDEXED_DB_STORE);
       store.put(state[USERS_TABLE_NAME], USERS_TABLE_NAME);
+      store.put(state[ACTIVITY_MEMBERS_TABLE_NAME], ACTIVITY_MEMBERS_TABLE_NAME);
       store.put(state[USER_RATES_TABLE_NAME], USER_RATES_TABLE_NAME);
       store.put(state[USER_RATES_OUTBOX_TABLE_NAME], USER_RATES_OUTBOX_TABLE_NAME);
       store.put(state[USER_FILTER_PREFERENCES_TABLE_NAME], USER_FILTER_PREFERENCES_TABLE_NAME);
@@ -259,6 +270,7 @@ export class AppMemoryDb {
   private normalizeState(value: unknown, fallback = this.createEmptyState()): DemoMemorySchema {
     const source = (value && typeof value === 'object') ? value as Partial<DemoMemorySchema> : {};
     const usersSource = source[USERS_TABLE_NAME] as Partial<DemoMemorySchema[typeof USERS_TABLE_NAME]> | undefined;
+    const activityMembersSource = source[ACTIVITY_MEMBERS_TABLE_NAME] as Partial<DemoMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME]> | undefined;
     const ratesSource = source[USER_RATES_TABLE_NAME] as Partial<DemoMemorySchema[typeof USER_RATES_TABLE_NAME]> | undefined;
     const outboxSource = source[USER_RATES_OUTBOX_TABLE_NAME] as Partial<DemoMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]> | undefined;
     const filterPreferencesSource = source[USER_FILTER_PREFERENCES_TABLE_NAME] as Partial<DemoMemorySchema[typeof USER_FILTER_PREFERENCES_TABLE_NAME]> | undefined;
@@ -269,6 +281,14 @@ export class AppMemoryDb {
       ?? legacySource['demoEvents']
     ) as Partial<DemoMemorySchema[typeof EVENTS_TABLE_NAME]> | undefined;
     return {
+      [ACTIVITY_MEMBERS_TABLE_NAME]: {
+        byId: activityMembersSource?.byId && typeof activityMembersSource.byId === 'object'
+          ? { ...activityMembersSource.byId }
+          : { ...fallback[ACTIVITY_MEMBERS_TABLE_NAME].byId },
+        ids: Array.isArray(activityMembersSource?.ids)
+          ? activityMembersSource.ids.map(id => String(id))
+          : [...fallback[ACTIVITY_MEMBERS_TABLE_NAME].ids]
+      },
       [USERS_TABLE_NAME]: {
         byId: usersSource?.byId && typeof usersSource.byId === 'object'
           ? { ...usersSource.byId }
