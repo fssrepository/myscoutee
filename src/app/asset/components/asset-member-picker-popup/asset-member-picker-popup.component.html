@@ -1,6 +1,9 @@
 <section class="app-popup app-popup-stacked app-popup-super-stacked asset-member-picker-popup-shell" *ngIf="host.isActivityInviteFriendsPopup()">
   <div class="app-popup-backdrop" (click)="host.closeActivityInviteFriends()"></div>
-  <div class="app-popup-panel popup-panel-friends-picker popup-panel-friends-picker-members" (click)="$event.stopPropagation()">
+  <div
+    class="app-popup-panel popup-panel-friends-picker popup-panel-friends-picker-members popup-panel-wide popup-panel-full-height"
+    (click)="$event.stopPropagation()"
+  >
     <div class="popup-header popup-header-friends-picker">
       <div class="popup-title">
         <h2>Invite members</h2>

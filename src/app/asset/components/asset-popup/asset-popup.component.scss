@@ -1,6 +1,9 @@
 :host {
   display: contents;
   font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
+  --asset-popup-z-index: 4000;
+  --asset-popup-stacked-z-index: 4100;
+  --asset-popup-super-stacked-z-index: 4200;
   --asset-interactive-motion-duration: 0.16s;
   --asset-interactive-motion-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
   --asset-interactive-hover-lift: -1.5px;
@@ -139,7 +142,7 @@
 .asset-popup .app-popup {
   position: fixed;
   inset: 0;
-  z-index: 2300;
+  z-index: var(--asset-popup-z-index);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -151,7 +154,11 @@
 }
 
 .asset-popup .app-popup-stacked {
-  z-index: 2400;
+  z-index: var(--asset-popup-stacked-z-index);
+}
+
+.asset-popup .app-popup-stacked.app-popup-super-stacked {
+  z-index: var(--asset-popup-super-stacked-z-index);
 }
 
 .asset-popup .app-popup-stacked .app-popup-backdrop {
@@ -167,7 +174,7 @@
 .asset-popup .app-popup-panel {
   position: relative;
   z-index: 1;
-  width: min(1060px, calc(100vw - 1.2rem));
+  width: min(1080px, calc(100vw - 1.2rem));
   max-height: calc(100vh - 1.2rem);
   border-radius: 14px;
   background: #fff;

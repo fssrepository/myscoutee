@@ -3,8 +3,9 @@
 }
 
 .asset-basket-popup-shell .popup-panel-friends-picker.popup-panel-friends-picker-members.popup-panel-subevent-asset-assign {
-  width: min(1060px, calc(100vw - 1.2rem));
+  width: min(1080px, calc(100vw - 1.2rem));
   height: calc(100vh - 1.2rem);
+  max-height: calc(100vh - 1.2rem);
 }
 
 .asset-basket-popup-shell .popup-header-inline-controls {
