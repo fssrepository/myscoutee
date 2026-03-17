@@ -134,7 +134,6 @@ export class EventExplorePopupComponent {
       'assets-card-list': true
     },
     stickyHeaderClass: 'event-explore-sticky-header',
-    groupMarkerClass: 'event-explore-group-marker',
     trackBy: (_index, record) => `${record.type}:${record.id}`,
     showGroupMarker: ({ groupIndex, scrollable }) => {
       if (groupIndex > 0) {

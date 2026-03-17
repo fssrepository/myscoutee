@@ -257,8 +257,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     desktopColumns: () => this.activitiesPrimaryFilter === 'chats' ? 1 : 3,
     snapMode: () => this.activitiesPrimaryFilter === 'chats' ? 'none' : 'mandatory',
     scrollPaddingTop: '2.6rem',
-    stickyHeaderClass: 'activities-sticky-header',
-    groupMarkerClass: 'activities-group-marker',
     footerSpacerHeight: () => this.activitiesPrimaryFilter === 'rates' ? this.activityRateEditorSpacerHeight() : null,
     calendarVariant: () => this.activitiesPrimaryFilter === 'rates' ? 'rate-counts' : 'default',
     views: [
@@ -3558,7 +3556,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (!scrollElement) {
       return null;
     }
-    const stickyHeaderHeight = scrollElement.querySelector<HTMLElement>('.activities-sticky-header')?.offsetHeight ?? 0;
+    const stickyHeaderHeight = scrollElement.querySelector<HTMLElement>('.smart-list__sticky')?.offsetHeight ?? 0;
     const viewportTop = scrollElement.scrollTop + stickyHeaderHeight + 1;
     const rows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.activities-rate-profile-card.activities-row-item'));
     const activeRow = rows.find(row => row.offsetTop + row.offsetHeight > viewportTop - 1) ?? rows[0];
@@ -3581,7 +3579,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     if (!targetRow) {
       return;
     }
-    const stickyHeaderHeight = scrollElement.querySelector<HTMLElement>('.activities-sticky-header')?.offsetHeight ?? 0;
+    const stickyHeaderHeight = scrollElement.querySelector<HTMLElement>('.smart-list__sticky')?.offsetHeight ?? 0;
     const targetTop = Math.max(0, targetRow.offsetTop - stickyHeaderHeight - (this.isMobileView ? 4 : 6));
     if (Math.abs(scrollElement.scrollTop - targetTop) <= 1) {
       return;
@@ -3599,25 +3597,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return;
     }
     setTimeout(releaseSnap, 0);
-  }
-
-  private maybeSnapActivitiesRatesListPastFirstGroup(): void {
-    if (this.activitiesPrimaryFilter !== 'rates' || this.isCalendarLayoutView() || this.isRatesFullscreenModeActive()) {
-      return;
-    }
-    const scrollElement = this.activitiesListScrollElement();
-    if (!scrollElement || scrollElement.scrollTop > 1) {
-      return;
-    }
-    const firstRow = scrollElement.querySelector<HTMLElement>('.activities-rate-profile-card.activities-row-item');
-    if (!firstRow) {
-      return;
-    }
-    const stickyHeaderHeight = scrollElement.querySelector<HTMLElement>('.activities-sticky-header')?.offsetHeight ?? 0;
-    if (firstRow.offsetTop <= stickyHeaderHeight + 2) {
-      return;
-    }
-    this.syncActivitiesRatesListPositionToRow(firstRow.dataset['activityRateRowId'] ?? '');
   }
 
   private updateActivitiesRatesPairSplitFromClientX(clientX: number): void {
@@ -4391,7 +4370,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.setStickyValue(groups[0].label);
       return;
     }
-    const stickyHeader = scrollElement.querySelector<HTMLElement>('.activities-sticky-header');
+    const stickyHeader = scrollElement.querySelector<HTMLElement>('.smart-list__sticky');
     const stickyHeaderHeight = stickyHeader?.offsetHeight ?? 0;
     const targetTop = scrollTop + stickyHeaderHeight + 1;
     const rows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.activities-row-item'));
@@ -6446,9 +6425,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.activitiesStickyValue = change.stickyLabel;
     this.activitiesContext.setActivitiesStickyValue(change.stickyLabel);
     this.flushActivitiesHeaderProgress();
-    if (!change.loading && !change.initialLoading) {
-      this.runAfterActivitiesRender(() => this.maybeSnapActivitiesRatesListPastFirstGroup());
-    }
     this.cdr.markForCheck();
   }
 

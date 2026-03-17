@@ -110,7 +110,7 @@
 
             <ng-container *ngFor="let group of assetPopup.groupedTicketRows(); let groupIndex = index; trackBy: trackByActivityGroup">
               <div
-                class="activities-group-marker"
+                class="smart-list__group-marker"
                 *ngIf="assetPopup.shouldShowTicketGroupMarker(groupIndex)"
                 [attr.data-group-label]="group.label"
               >

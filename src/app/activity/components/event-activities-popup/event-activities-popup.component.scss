@@ -514,16 +514,6 @@
   border-color: rgba(37, 127, 95, 0.32);
   color: #236d51;
 }
-.activities-sticky-header.activities-sticky-header-calendar.subevent-stage-period-head {
-  margin-bottom: 0;
-  padding: 0.28rem 0.5rem;
-  font-size: 0.74rem;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: 0.34rem;
-}
-
 // ─── Activities Popup: Main Container ────────────────────────────────────
 .activities-popup {
   position: relative;
@@ -572,45 +562,6 @@
   flex-direction: column;
   min-height: 0;
   pointer-events: none;
-}
-
-// ─── Activities Popup: Sticky Header ─────────────────────────────────────
-.activities-sticky-header {
-  position: sticky;
-  top: 0;
-  z-index: 25;
-  border: 1px solid rgba(33, 51, 78, 0.14);
-  border-radius: 9px;
-  background: linear-gradient(180deg,#f9fbff 0%,#f3f8ff 100%);
-  color: #203b5d;
-  font-size: 0.76rem;
-  font-weight: 800;
-  padding: 0.35rem 0.55rem;
-  margin-bottom: 0.06rem;
-}
-.activities-sticky-header-calendar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.45rem;
-}
-.activities-sticky-calendar-nav {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.22rem;
-  flex: 0 0 auto;
-}
-
-.activities-group-marker {
-  scroll-snap-align: none;
-  border: 1px solid rgba(39, 60, 92, 0.16);
-  border-radius: 9px;
-  background: linear-gradient(180deg, #f9fbff 0%, #f3f8ff 100%);
-  color: rgba(31, 58, 92, 0.78);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  padding: 0.24rem 0.52rem;
 }
 
 // ─── Activities Cards (Event / Chat / Rate) ──────────────────────────────
