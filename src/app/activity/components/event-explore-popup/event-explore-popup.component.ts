@@ -125,10 +125,13 @@ export class EventExplorePopupComponent {
     defaultView: 'list',
     emptyLabel: 'No visible events right now.',
     emptyDescription: 'Try another filter or check back later.',
+    listLayout: 'card-grid',
+    desktopColumns: 3,
+    snapMode: 'mandatory',
+    scrollPaddingTop: '2.6rem',
     containerClass: {
       'experience-card-list': true,
-      'assets-card-list': true,
-      'event-explore-list': true
+      'assets-card-list': true
     },
     stickyHeaderClass: 'event-explore-sticky-header',
     groupMarkerClass: 'event-explore-group-marker',

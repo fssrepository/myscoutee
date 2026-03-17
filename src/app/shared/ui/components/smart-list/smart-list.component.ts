@@ -253,6 +253,26 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.resolveConfigValue(this.config.footerSpacerHeight, null);
   }
 
+  protected resolvedListLayout(): 'stack' | 'card-grid' | 'thread' {
+    return this.resolveConfigValue(this.config.listLayout, 'stack');
+  }
+
+  protected resolvedDesktopColumns(): string | null {
+    const value = this.resolveConfigValue(this.config.desktopColumns, null);
+    if (!Number.isFinite(Number(value))) {
+      return null;
+    }
+    return `${Math.max(1, Math.trunc(Number(value)))}`;
+  }
+
+  protected resolvedSnapMode(): 'none' | 'proximity' | 'mandatory' {
+    return this.resolveConfigValue(this.config.snapMode, 'none');
+  }
+
+  protected resolvedScrollPaddingTop(): string | null {
+    return this.resolveConfigValue(this.config.scrollPaddingTop, null);
+  }
+
   protected shouldShowStickyHeader(): boolean {
     return this.config.showStickyHeader !== false;
   }
@@ -1394,15 +1414,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     setTimeout(run, 0);
   }
 
-  private shouldBootstrapInitialListSnap(scrollElement: HTMLDivElement): boolean {
-    if (scrollElement.classList.contains('activities-scroll-list-event-snap')) {
-      return true;
-    }
-    if (scrollElement.classList.contains('activities-scroll-list-rates')
-      && !scrollElement.classList.contains('activities-scroll-list-with-rate-editor')) {
-      return true;
-    }
-    return false;
+  private shouldBootstrapInitialListSnap(_scrollElement: HTMLDivElement): boolean {
+    return this.resolvedListLayout() === 'card-grid' && this.resolvedSnapMode() !== 'none';
   }
 
   private listSnapTargetTop(scrollElement: HTMLDivElement, target: HTMLElement): number {

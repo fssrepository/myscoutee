@@ -5,19 +5,33 @@
   min-height: 0;
 }
 
-.smart-list.activities-scroll-list {
-  scroll-snap-type: y proximity;
-  scroll-padding-top: 2.6rem;
+.smart-list--list.smart-list--card-grid {
+  scroll-padding-top: var(--smart-list-scroll-padding-top, 2.6rem);
   scroll-behavior: smooth;
   transition: padding-bottom 180ms ease;
 }
 
-@media (max-width: 900px) {
-  .smart-list.activities-scroll-list.activities-scroll-list-event-snap,
-  .smart-list.activities-scroll-list.activities-scroll-list-rates {
-    scroll-padding-top: calc(2.6rem - 3px);
-  }
+.smart-list--list.smart-list--thread {
+  display: block;
+  gap: 0;
+  padding-right: 0.12rem;
+  scroll-behavior: auto;
+  overflow-anchor: none;
+}
 
+.smart-list--list.smart-list--card-grid.smart-list--snap-proximity {
+  scroll-snap-type: y proximity;
+}
+
+.smart-list--list.smart-list--card-grid.smart-list--snap-mandatory {
+  scroll-snap-type: y mandatory;
+}
+
+.smart-list--list.smart-list--card-grid.smart-list--snap-none {
+  scroll-snap-type: none;
+}
+
+@media (max-width: 900px) {
   .smart-list--calendar.smart-list--month {
     padding-bottom: 0;
     overflow-y: hidden;
@@ -131,28 +145,6 @@
   }
 }
 
-.smart-list.activities-scroll-list.activities-scroll-list-event-snap {
-  scroll-snap-type: y mandatory;
-}
-
-.smart-list.activities-scroll-list.activities-scroll-list-rates {
-  scroll-snap-type: y mandatory;
-  transition: none;
-}
-
-.smart-list.activities-scroll-list.activities-scroll-list-rates.activities-scroll-list-with-rate-editor {
-  scroll-snap-type: none;
-  transition: none;
-}
-
-.smart-list.chat-thread-list {
-  display: block;
-  gap: 0;
-  padding-right: 0.12rem;
-  scroll-behavior: auto;
-  overflow-anchor: none;
-}
-
 .smart-list__group-marker.chat-thread-group-marker {
   position: sticky;
   top: 0;
@@ -182,9 +174,9 @@
   overflow: hidden;
 }
 
-.smart-list.activities-scroll-list .smart-list__sticky,
-.smart-list.activities-scroll-list .smart-list__group-marker,
-.smart-list.activities-scroll-list .smart-list__footer-spacer {
+.smart-list--list.smart-list--card-grid .smart-list__sticky,
+.smart-list--list.smart-list--card-grid .smart-list__group-marker,
+.smart-list--list.smart-list--card-grid .smart-list__footer-spacer {
   width: 100%;
   box-sizing: border-box;
 }
@@ -197,39 +189,50 @@
   scroll-snap-stop: normal;
 }
 
-:host ::ng-deep .smart-list.activities-scroll-list .activities-row-item,
-:host ::ng-deep .smart-list.activities-scroll-list .asset-item-card,
-:host ::ng-deep .smart-list.activities-scroll-list .activities-card {
+:host ::ng-deep .smart-list--list.smart-list--card-grid .activities-row-item,
+:host ::ng-deep .smart-list--list.smart-list--card-grid .asset-item-card,
+:host ::ng-deep .smart-list--list.smart-list--card-grid .activities-card,
+:host ::ng-deep .smart-list--list.smart-list--card-grid .event-explore-card,
+:host ::ng-deep .smart-list--list.smart-list--card-grid .experience-item-card {
   scroll-snap-align: start;
   scroll-margin-top: 0;
   scroll-snap-stop: normal;
 }
 
 @media (min-width: 1024px) {
-  .smart-list.activities-scroll-list {
+  .smart-list--list.smart-list--card-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--smart-list-desktop-columns, 3), minmax(0, 1fr));
     align-content: start;
     column-gap: 0.34rem;
     row-gap: 0.6rem;
     padding-bottom: 0.52rem;
   }
 
-  .smart-list.activities-scroll-list .smart-list__sticky,
-  .smart-list.activities-scroll-list .smart-list__group-marker,
-  .smart-list.activities-scroll-list .smart-list__footer-spacer {
+  .smart-list--list.smart-list--card-grid .smart-list__sticky,
+  .smart-list--list.smart-list--card-grid .smart-list__group-marker,
+  .smart-list--list.smart-list--card-grid .smart-list__footer-spacer {
     grid-column: 1 / -1;
-  }
-
-  .smart-list.activities-scroll-list.activities-scroll-list-chat {
-    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 900px) {
-  .smart-list.chat-thread-list {
+  .smart-list--list.smart-list--thread {
     padding-right: 0.08rem;
   }
+
+  .smart-list--list.smart-list--card-grid.smart-list--snap-proximity,
+  .smart-list--list.smart-list--card-grid.smart-list--snap-mandatory {
+    scroll-padding-top: calc(var(--smart-list-scroll-padding-top, 2.6rem) - 3px);
+  }
+}
+
+.smart-list--list.experience-card-list {
+  padding-bottom: 0.35rem;
+}
+
+.smart-list--list.assets-card-list {
+  gap: 0.68rem;
 }
 
 .smart-list {

@@ -253,6 +253,10 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     loadingDelayMs: 1000,
     defaultView: 'day',
     containerClass: () => this.activitiesSmartListClassMap(),
+    listLayout: () => this.activitiesPrimaryFilter === 'chats' ? 'thread' : 'card-grid',
+    desktopColumns: () => this.activitiesPrimaryFilter === 'chats' ? 1 : 3,
+    snapMode: () => this.activitiesPrimaryFilter === 'chats' ? 'none' : 'mandatory',
+    scrollPaddingTop: '2.6rem',
     stickyHeaderClass: 'activities-sticky-header',
     groupMarkerClass: 'activities-group-marker',
     footerSpacerHeight: () => this.activitiesPrimaryFilter === 'rates' ? this.activityRateEditorSpacerHeight() : null,
@@ -1486,12 +1490,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected activitiesSmartListClassMap(): Record<string, boolean> {
     return {
       'experience-card-list': true,
-      'assets-card-list': true,
-      'activities-scroll-list': true,
-      'activities-scroll-list-rates': this.activitiesPrimaryFilter === 'rates',
-      'activities-scroll-list-event-snap': this.isEventActivitiesPrimaryFilter(),
-      'activities-scroll-list-with-rate-editor': this.isActivityRateEditorDockVisible(),
-      'activities-scroll-list-chat': this.activitiesPrimaryFilter === 'chats'
+      'assets-card-list': true
     };
   }
 

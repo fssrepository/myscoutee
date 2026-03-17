@@ -154,6 +154,15 @@
     #scrollHost
     class="smart-list"
     [ngClass]="resolvedContainerClass()"
+    [class.smart-list--list]="true"
+    [class.smart-list--stack]="resolvedListLayout() === 'stack'"
+    [class.smart-list--card-grid]="resolvedListLayout() === 'card-grid'"
+    [class.smart-list--thread]="resolvedListLayout() === 'thread'"
+    [class.smart-list--snap-none]="resolvedSnapMode() === 'none'"
+    [class.smart-list--snap-proximity]="resolvedSnapMode() === 'proximity'"
+    [class.smart-list--snap-mandatory]="resolvedSnapMode() === 'mandatory'"
+    [style.--smart-list-desktop-columns]="resolvedDesktopColumns()"
+    [style.--smart-list-scroll-padding-top]="resolvedScrollPaddingTop()"
     (scroll)="onListScroll($event)"
   >
     <div *ngIf="shouldShowStickyHeader()" class="smart-list__sticky" [ngClass]="resolvedStickyHeaderClass()">{{ stickyLabel }}</div>
