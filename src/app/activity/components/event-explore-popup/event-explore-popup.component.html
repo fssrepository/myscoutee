@@ -36,15 +36,7 @@
         <mat-icon>close</mat-icon>
       </button>
 
-      <div
-        class="popup-header-progress"
-        [class.is-loading]="eventExploreHeaderProgressLoading"
-        [class.is-loading-overdue]="eventExploreHeaderLoadingOverdue"
-        aria-hidden="true"
-      >
-        <span class="popup-header-progress-fill" [style.transform]="'scaleX(' + eventExploreHeaderProgress + ')'"></span>
-        <span class="popup-header-progress-loading" [style.transform]="'scaleX(' + eventExploreHeaderLoadingProgress + ')'"></span>
-      </div>
+      <app-header-progress-bar [config]="eventExploreHeaderProgressBarConfig()"></app-header-progress-bar>
     </div>
 
     <div class="popup-body popup-body-event-explore">

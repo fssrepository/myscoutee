@@ -111,15 +111,7 @@
         <mat-icon>close</mat-icon>
       </button>
 
-      <div
-        class="activities-header-progress chat-header-progress"
-        [class.is-loading]="chatHeaderProgressLoading"
-        [class.is-loading-overdue]="chatHeaderLoadingOverdue"
-        aria-hidden="true"
-      >
-        <span class="activities-header-progress-fill" [style.transform]="'scaleX(' + chatHeaderProgress + ')'"></span>
-        <span class="activities-header-progress-loading" [style.transform]="'scaleX(' + chatHeaderLoadingProgress + ')'"></span>
-      </div>
+      <app-header-progress-bar [config]="chatHeaderProgressBarConfig()"></app-header-progress-bar>
     </div>
 
     <div class="popup-body popup-body-chat">
@@ -130,6 +122,7 @@
           </div>
           <ng-container *ngIf="!chatInitialLoadPending">
             <app-smart-list
+              #chatThreadSmartList
               [config]="chatThreadSmartListConfig"
               [loadPage]="chatThreadLoadPage"
               [itemTemplate]="chatThreadMessageTemplate"

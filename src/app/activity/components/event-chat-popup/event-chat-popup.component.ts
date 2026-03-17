@@ -4,6 +4,7 @@ import {
   Component,
   NgZone,
   OnDestroy,
+  ViewChild,
   computed,
   effect,
   inject
@@ -21,7 +22,9 @@ import { EventEditorService } from '../../../shared/event-editor.service';
 import type { EventChatResourceContext } from '../../../shared/activities-models';
 import type { EventMenuItem } from '../../../shared/demo-data';
 import {
+  HeaderProgressBarComponent,
   SmartListComponent,
+  type HeaderProgressBarConfig,
   type ListQuery,
   type PageResult,
   type SmartListConfig,
@@ -37,7 +40,7 @@ interface ChatThreadFilters {
 @Component({
   selector: 'app-event-chat-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule, SmartListComponent],
+  imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule, HeaderProgressBarComponent, SmartListComponent],
   templateUrl: './event-chat-popup.component.html',
   styleUrl: './event-chat-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -90,6 +93,9 @@ export class EventChatPopupComponent implements OnDestroy {
   protected readonly chatThreadLoadPage: SmartListLoadPage<AppTypes.ChatPopupMessage, ChatThreadFilters> = (
     query: ListQuery<ChatThreadFilters>
   ) => of(this.chatThreadPageResult(query)).pipe(delay(query.page > 0 ? this.chatLoadOlderDelayMs : 0));
+
+  @ViewChild('chatThreadSmartList')
+  private chatThreadSmartList?: SmartListComponent<AppTypes.ChatPopupMessage, ChatThreadFilters>;
 
   private loadSequence = 0;
   private loadedSessionKey: string | null = null;
@@ -156,6 +162,23 @@ export class EventChatPopupComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.cancelChatInitialLoadTimer();
     this.clearChatHeaderLoadingAnimation();
+  }
+
+  protected chatHeaderProgressBarConfig(): HeaderProgressBarConfig {
+    if (this.chatThreadSmartList) {
+      return this.chatThreadSmartList.headerProgressBarConfig({
+        tone: 'chat',
+        placement: 'edge'
+      });
+    }
+    return {
+      position: this.chatHeaderProgressLoading ? this.chatHeaderLoadingProgress : this.chatHeaderProgress,
+      state: this.chatHeaderProgressLoading
+        ? (this.chatHeaderLoadingOverdue ? 'loading-overdue' : 'loading')
+        : 'scrolling',
+      tone: 'chat',
+      placement: 'edge'
+    };
   }
 
   protected close(): void {

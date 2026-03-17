@@ -4,6 +4,7 @@ import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../
 
 export type LoadStatus = 'idle' | 'loading' | 'success' | 'error' | 'timeout';
 export type ActivityCounterKey = 'game' | 'chat' | 'invitations' | 'events' | 'hosting' | 'tickets' | 'feedback';
+export type ConnectivityState = 'online' | 'offline';
 
 export interface ActivityCounters {
   game: number;
@@ -55,6 +56,13 @@ const ACTIVITY_COUNTER_KEYS: ActivityCounterKey[] = [
   'feedback'
 ];
 
+function detectInitialConnectivityState(): ConnectivityState {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return 'offline';
+  }
+  return 'online';
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -68,6 +76,7 @@ export class AppContext {
   private readonly _impressionChangeFlagsByUserId = signal<Record<string, UserImpressionChangeFlags>>({});
   private readonly _activityMembersSync = signal<ActivityMembersSyncState | null>(null);
   private readonly _activeUserId = signal<string>('');
+  private readonly _connectivityState = signal<ConnectivityState>(detectInitialConnectivityState());
 
   readonly loadingState = this._loadingState.asReadonly();
   readonly userProfilesByUserId = this._userProfilesByUserId.asReadonly();
@@ -78,6 +87,8 @@ export class AppContext {
   readonly impressionChangeFlagsByUserId = this._impressionChangeFlagsByUserId.asReadonly();
   readonly activityMembersSync = this._activityMembersSync.asReadonly();
   readonly activeUserId = this._activeUserId.asReadonly();
+  readonly connectivityState = this._connectivityState.asReadonly();
+  readonly isOnline = computed(() => this._connectivityState() === 'online');
   readonly activeUserProfile = computed(() => {
     const normalizedUserId = this._activeUserId().trim();
     if (!normalizedUserId) {
@@ -124,6 +135,14 @@ export class AppContext {
   setActiveUserId(userId: string): void {
     const normalizedUserId = userId.trim();
     this._activeUserId.set(normalizedUserId);
+  }
+
+  setConnectivityState(state: ConnectivityState): void {
+    this._connectivityState.set(state);
+  }
+
+  setOnlineState(isOnline: boolean): void {
+    this._connectivityState.set(isOnline ? 'online' : 'offline');
   }
 
   getUserProfile(userId: string): UserDto | null {

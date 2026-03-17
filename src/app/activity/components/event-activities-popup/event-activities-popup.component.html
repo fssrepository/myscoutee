@@ -58,15 +58,7 @@
       <button type="button" class="popup-close" (click)="closeActivitiesPopup()" aria-label="Close">
         <mat-icon>close</mat-icon>
       </button>
-      <div
-        class="popup-header-progress"
-        [class.is-loading]="activitiesHeaderProgressLoading"
-        [class.is-loading-overdue]="activitiesHeaderLoadingOverdue"
-        aria-hidden="true"
-      >
-        <span class="popup-header-progress-fill" [style.transform]="'scaleX(' + activitiesHeaderProgress + ')'"></span>
-        <span class="popup-header-progress-loading" [style.transform]="'scaleX(' + activitiesHeaderLoadingProgress + ')'"></span>
-      </div>
+      <app-header-progress-bar [config]="activitiesHeaderProgressBarConfig()"></app-header-progress-bar>
     </div>
     <div class="popup-body popup-body-activities">
       <div class="activities-popup" [class.activities-popup-rates-fullscreen]="activitiesSmartListPresentation() === 'fullscreen'" (click)="onActivitiesPopupSurfaceClick($event)">

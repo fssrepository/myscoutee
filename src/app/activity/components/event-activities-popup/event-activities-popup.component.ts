@@ -49,8 +49,10 @@ import type {
 } from '../../../shared/activities-models';
 import type * as AppTypes from '../../../shared/app-types';
 import {
+  HeaderProgressBarComponent,
   RatingStarBarComponent,
   SmartListComponent,
+  type HeaderProgressBarConfig,
   type ListQuery,
   type PageResult,
   type RatingStarBarConfig,
@@ -94,6 +96,7 @@ type PendingActivityAction = 'delete' | 'exit' | 'reject';
     MatIconModule,
     MatSelectModule,
     LazyBgImageDirective,
+    HeaderProgressBarComponent,
     RatingStarBarComponent,
     SmartListComponent,
     EventChatPopupComponent,
@@ -2578,6 +2581,21 @@ export class EventActivitiesPopupComponent implements OnDestroy {
               ? 'open'
               : 'hidden'
       }
+    };
+  }
+
+  protected activitiesHeaderProgressBarConfig(): HeaderProgressBarConfig {
+    if (!this.isRatesFullscreenModeActive() && this.activitiesSmartList) {
+      return this.activitiesSmartList.headerProgressBarConfig({
+        placement: 'edge'
+      });
+    }
+    return {
+      position: this.activitiesHeaderProgressLoading ? this.activitiesHeaderLoadingProgress : this.activitiesHeaderProgress,
+      state: this.activitiesHeaderProgressLoading
+        ? (this.activitiesHeaderLoadingOverdue ? 'loading-overdue' : 'loading')
+        : 'scrolling',
+      placement: 'edge'
     };
   }
 

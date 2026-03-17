@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
 import { MatSliderModule } from '@angular/material/slider';
 import { ActivitiesDbContextService } from '../../../activity/services/activities-db-context.service';
-import { RatingStarBarComponent, type RatingStarBarConfig } from '../../../shared/ui';
+import { HeaderProgressBarComponent, RatingStarBarComponent, type HeaderProgressBarConfig, type RatingStarBarConfig } from '../../../shared/ui';
 import { DemoUser, PROFILE_DETAILS } from '../../../shared/demo-data';
 import {
   AppContext,
@@ -107,7 +107,7 @@ const PUBLIC_PROFILE_DETAIL_LABELS = new Set(
   selector: 'app-home',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, MatIconModule, FormsModule, MatSliderModule, RatingStarBarComponent],
+  imports: [CommonModule, MatIconModule, FormsModule, MatSliderModule, HeaderProgressBarComponent, RatingStarBarComponent],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss']
 })
@@ -767,6 +767,16 @@ export class HomeComponent implements OnDestroy {
       scale: this.ratingScale,
       presentation: 'fullscreen',
       animation: this.isRatingBarBlinking ? 'blink' : 'default'
+    };
+  }
+
+  protected get gameStackHeaderProgressBarConfig(): HeaderProgressBarConfig {
+    return {
+      position: this.gameStackHeaderProgressLoading ? this.gameStackHeaderLoadingProgress : this.gameStackHeaderProgress,
+      state: this.gameStackHeaderProgressLoading
+        ? (this.gameStackHeaderLoadingOverdue ? 'loading-overdue' : 'loading')
+        : 'scrolling',
+      placement: 'inline'
     };
   }
 

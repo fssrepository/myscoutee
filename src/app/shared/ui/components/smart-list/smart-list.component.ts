@@ -21,6 +21,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { AppCalendarHelpers } from '../../../app-calendar-helpers';
 import { AppUtils } from '../../../app-utils';
+import type { HeaderProgressBarConfig } from '../header-progress-bar';
 import type {
   ListDirection,
   ListQuery,
@@ -224,6 +225,16 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.currentViewMode = this.resolveViewMode(viewKey);
     this.viewChange.emit(viewKey);
     this.reload();
+  }
+
+  public headerProgressBarConfig(overrides: Partial<HeaderProgressBarConfig> = {}): HeaderProgressBarConfig {
+    return {
+      position: this.loading ? this.loadingProgress : this.progress,
+      state: this.loading
+        ? (this.loadingOverdue ? 'loading-overdue' : 'loading')
+        : 'scrolling',
+      ...overrides
+    };
   }
 
   protected isCalendarMode(): boolean {

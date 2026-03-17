@@ -36,14 +36,7 @@
 
   <section class="game-layout-single">
     <div class="game-stack-progress-row" *ngIf="showGameStackHeaderProgress">
-      <div
-        class="activities-header-progress game-stack-header-progress"
-        [class.is-loading]="gameStackHeaderProgressLoading"
-        [class.is-loading-overdue]="gameStackHeaderLoadingOverdue"
-      >
-        <span class="activities-header-progress-fill" [style.transform]="'scaleX(' + gameStackHeaderProgress + ')'"></span>
-        <span class="activities-header-progress-loading" [style.transform]="'scaleX(' + gameStackHeaderLoadingProgress + ')'"></span>
-      </div>
+      <app-header-progress-bar [config]="gameStackHeaderProgressBarConfig"></app-header-progress-bar>
     </div>
     <div class="game-card-deck">
       <article class="card-stack game-card-main game-card-main-active">

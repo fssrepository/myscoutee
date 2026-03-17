@@ -21,6 +21,7 @@ import { AssetPopupService, type AssetTicketBridge } from './asset/asset-popup.s
 import { EventEditorService } from './shared/event-editor.service';
 import {
   AppContext,
+  type ConnectivityState,
   SessionService,
   UsersService,
   type ActivityCounterKey,
@@ -476,6 +477,7 @@ export class App {
     this.initializeEventEditorContextData();
     this.initializeProfileDetailForms();
     this.appCtx.setActiveUserId(this.activeUserId);
+    this.appCtx.setConnectivityState(this.browserConnectivityState());
 
     effect(() => {
       const request = this.activitiesContext.activitiesNavigationRequest();
@@ -532,6 +534,23 @@ export class App {
   ngOnDestroy(): void {
     this.navigatorService.clearBindings(this.navigatorBindings);
     this.navigatorService.clearHydratedUser();
+  }
+
+  @HostListener('window:online')
+  protected onWindowOnline(): void {
+    this.appCtx.setConnectivityState('online');
+  }
+
+  @HostListener('window:offline')
+  protected onWindowOffline(): void {
+    this.appCtx.setConnectivityState('offline');
+  }
+
+  private browserConnectivityState(): ConnectivityState {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      return 'offline';
+    }
+    return 'online';
   }
 
   private ensurePaginationTestEvents(minEventsPerUser: number): void {

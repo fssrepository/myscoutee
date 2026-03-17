@@ -5,6 +5,7 @@ export {
   type ActivityCounterKey,
   type ActivityCounters,
   type ActivityMembersSyncState,
+  type ConnectivityState,
   type LoadState,
   type LoadStatus,
   type UserImpressionChangeFlags
