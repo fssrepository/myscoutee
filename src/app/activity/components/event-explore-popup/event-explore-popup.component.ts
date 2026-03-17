@@ -89,6 +89,7 @@ export class EventExplorePopupComponent {
   protected eventExploreHeaderLoadingProgress = 0;
   protected eventExploreHeaderLoadingOverdue = false;
   protected eventExploreStickyLabel = 'No items';
+  protected eventExploreHeaderDateLabel = '';
 
   protected selectedMembers: AppTypes.ActivityMemberEntry[] = [];
   protected selectedMembersTitle = '';
@@ -344,10 +345,13 @@ export class EventExplorePopupComponent {
   }
 
   protected eventExploreHeaderSubtitle(): string {
-    if (!this.eventExploreStickyLabel || this.eventExploreStickyLabel === 'No items') {
-      return 'Public and friend-visible events near you.';
+    if (this.isDateLikeEventExploreLabel(this.eventExploreStickyLabel)) {
+      return this.eventExploreStickyLabel;
     }
-    return this.eventExploreStickyLabel;
+    if (this.eventExploreHeaderDateLabel) {
+      return this.eventExploreHeaderDateLabel;
+    }
+    return 'Public and friend-visible events near you.';
   }
 
   protected openEventExploreMembers(record: DemoEventRecord, event: Event): void {
@@ -594,10 +598,13 @@ export class EventExplorePopupComponent {
     const cacheKey = this.eventExploreCacheKey(filters);
     const cached = this.exploreCache.get(cacheKey);
     if (cached) {
-      return cached.map(record => this.cloneRecord(record));
+      const cachedRecords = cached.map(record => this.cloneRecord(record));
+      this.syncEventExploreHeaderDateLabel(cachedRecords);
+      return cachedRecords;
     }
     const loaded = await this.eventsService.queryExploreItems(filters.userId);
     const filtered = this.sortExploreRecords(this.applyExploreFilters(loaded, filters), filters.order);
+    this.syncEventExploreHeaderDateLabel(filtered);
     this.exploreCache.set(cacheKey, filtered.map(record => this.cloneRecord(record)));
     return filtered.map(record => this.cloneRecord(record));
   }
@@ -938,6 +945,7 @@ export class EventExplorePopupComponent {
     this.eventExploreHeaderLoadingProgress = 0;
     this.eventExploreHeaderLoadingOverdue = false;
     this.eventExploreStickyLabel = 'No items';
+    this.eventExploreHeaderDateLabel = '';
   }
 
   private cloneRecord(record: DemoEventRecord): DemoEventRecord {
@@ -951,6 +959,32 @@ export class EventExplorePopupComponent {
 
   protected normalizeTopic(topic: string | null | undefined): string {
     return AppUtils.normalizeText(topic ?? '');
+  }
+
+  private syncEventExploreHeaderDateLabel(records: readonly DemoEventRecord[]): void {
+    this.eventExploreHeaderDateLabel = this.resolveEventExploreHeaderDateLabel(records);
+    this.cdr.markForCheck();
+  }
+
+  private resolveEventExploreHeaderDateLabel(records: readonly DemoEventRecord[]): string {
+    const firstDatedRecord = records.find(record => this.isDateLikeEventExploreLabel(this.eventExploreDateLabel(record)));
+    return firstDatedRecord ? this.eventExploreDateLabel(firstDatedRecord) : '';
+  }
+
+  private eventExploreDateLabel(record: DemoEventRecord): string {
+    const parsed = new Date(record.startAtIso);
+    if (Number.isNaN(parsed.getTime())) {
+      return '';
+    }
+    return parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
+  private isDateLikeEventExploreLabel(label: string | null | undefined): boolean {
+    const normalizedLabel = `${label ?? ''}`.trim();
+    if (!normalizedLabel) {
+      return false;
+    }
+    return /^[A-Za-z]{3},\s[A-Za-z]{3}\s\d{1,2}$/.test(normalizedLabel);
   }
 
   private eventVisibilityClass(visibility: AppTypes.EventVisibility): string {

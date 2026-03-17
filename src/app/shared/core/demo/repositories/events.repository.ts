@@ -487,8 +487,13 @@ export class DemoEventsRepository {
     const userById = new Map(users.map(user => [user.id, user]));
     const seeded: Record<string, readonly EventMenuItem[]> = {};
     const featuredFriendsOnlyByUser = this.buildFeaturedFriendsOnlyEvents(userById);
+    const userIds = Array.from(new Set([
+      ...Object.keys(DEMO_EVENTS_BY_USER),
+      ...Object.keys(featuredFriendsOnlyByUser)
+    ]));
 
-    for (const [userId, items] of Object.entries(DEMO_EVENTS_BY_USER)) {
+    for (const userId of userIds) {
+      const items = DEMO_EVENTS_BY_USER[userId] ?? [];
       const baseItems = [
         ...(featuredFriendsOnlyByUser[userId] ?? []),
         ...items.map(item => ({
@@ -594,8 +599,8 @@ export class DemoEventsRepository {
           'fx-u2-1',
           'Friends Circle Supper',
           'Small-table meetup for close connections and plus-ones.',
-          '2026-03-18T19:00:00',
-          '2026-03-18T22:00:00',
+          '2026-03-17T18:30:00',
+          '2026-03-17T21:30:00',
           ['#StreetFood', '#GoingOut']
         )
       ],
@@ -605,8 +610,8 @@ export class DemoEventsRepository {
           'fx-u3-1',
           'Studio Friends Jam',
           'Invite-only creative session with music and critique rounds.',
-          '2026-03-19T18:30:00',
-          '2026-03-19T21:30:00',
+          '2026-03-17T19:30:00',
+          '2026-03-17T22:00:00',
           ['#Music', '#Creativity']
         )
       ],
@@ -616,8 +621,8 @@ export class DemoEventsRepository {
           'fx-u4-1',
           'Friends Wellness Walk',
           'Relaxed sunset walk for friends of friends from recent events.',
-          '2026-03-20T17:30:00',
-          '2026-03-20T19:30:00',
+          '2026-03-17T20:00:00',
+          '2026-03-17T22:00:00',
           ['#Meditation', '#Spirituality']
         )
       ]
