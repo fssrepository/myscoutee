@@ -1195,31 +1195,15 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const stickyHeader = scrollElement.querySelector<HTMLElement>('.smart-list__sticky');
     const stickyHeaderHeight = stickyHeader?.offsetHeight ?? 0;
     const targetTop = scrollTop + stickyHeaderHeight + 1;
-    const groupMarkers = Array.from(
-      scrollElement.querySelectorAll<HTMLElement>('.smart-list__group-marker[data-group-label]')
-    );
     const rows = Array.from(
       scrollElement.querySelectorAll<HTMLElement>('[data-group-label]:not(.smart-list__group-marker)')
     );
-    if (groupMarkers.length === 0 && rows.length === 0) {
+    if (rows.length === 0) {
       this.stickyLabel = this.groups[0]?.label ?? this.resolveEmptyStickyLabel();
       return;
     }
     if (scrollTop <= 1) {
-      this.stickyLabel = rows[0]?.dataset['groupLabel']
-        ?? groupMarkers[0]?.dataset['groupLabel']
-        ?? this.groups[0].label;
-      return;
-    }
-    const activeMarker = [...groupMarkers]
-      .reverse()
-      .find(marker => marker.offsetTop <= targetTop + 1);
-    if (activeMarker?.dataset['groupLabel']) {
-      this.stickyLabel = activeMarker.dataset['groupLabel'];
-      return;
-    }
-    if (rows.length === 0) {
-      this.stickyLabel = this.groups[0]?.label ?? this.resolveEmptyStickyLabel();
+      this.stickyLabel = rows[0]?.dataset['groupLabel'] ?? this.groups[0].label;
       return;
     }
     const activeRow =
