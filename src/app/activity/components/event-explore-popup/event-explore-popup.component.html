@@ -104,7 +104,7 @@
                 type="button"
                 class="asset-source-icon event-explore-creator-chip"
                 [ngClass]="eventExploreCreatorToneClass(record)"
-                (click)="openHostImpressions($event)"
+                (click)="openHostImpressions(record, $event)"
                 aria-label="Open host impressions"
               >
                 <span class="event-explore-creator-avatar" [ngClass]="eventExploreCreatorAvatarToneClass(record)">{{ eventExploreCreatorInitials(record) }}</span>

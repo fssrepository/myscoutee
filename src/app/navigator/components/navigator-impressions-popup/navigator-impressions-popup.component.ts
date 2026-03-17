@@ -81,7 +81,10 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
 
   protected readonly popupOpen = this.navigatorService.impressionsPopupOpen;
   protected readonly viewModel = computed<NavigatorImpressionsViewModel | null>(() => {
-    const user = this.appCtx.activeUserProfile();
+    const selectedUserId = this.navigatorService.impressionsPopupUserId().trim() || this.appCtx.activeUserId().trim();
+    const user = selectedUserId
+      ? (this.appCtx.getUserProfile(selectedUserId) ?? (selectedUserId === this.appCtx.activeUserId().trim() ? this.appCtx.activeUserProfile() : null))
+      : null;
     if (!user) {
       return null;
     }
@@ -110,8 +113,11 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   constructor() {
     effect(() => {
       const isOpen = this.popupOpen();
-      const user = this.appCtx.activeUserProfile();
-      const userId = user?.id.trim() ?? '';
+      const selectedUserId = this.navigatorService.impressionsPopupUserId().trim() || this.appCtx.activeUserId().trim();
+      const user = selectedUserId
+        ? (this.appCtx.getUserProfile(selectedUserId) ?? (selectedUserId === this.appCtx.activeUserId().trim() ? this.appCtx.activeUserProfile() : null))
+        : null;
+      const userId = user?.id.trim() ?? selectedUserId;
       const currentImpressions = userId
         ? (this.appCtx.getUserImpressions(userId) ?? user?.impressions ?? null)
         : null;

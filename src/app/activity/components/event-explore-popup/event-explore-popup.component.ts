@@ -19,7 +19,7 @@ import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import type * as AppTypes from '../../../shared/app-types';
 import { AppUtils } from '../../../shared/app-utils';
 import { LazyBgImageDirective } from '../../../shared/lazy-bg-image.directive';
-import { AppContext, EventsService, GameService, type UserDto } from '../../../shared/core';
+import { AppContext, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
 import {
   SmartListComponent,
   type ListQuery,
@@ -65,6 +65,7 @@ export class EventExplorePopupComponent {
   protected readonly activitiesContext = inject(ActivitiesDbContextService);
   private readonly eventsService = inject(EventsService);
   private readonly gameService = inject(GameService);
+  private readonly usersService = inject(UsersService);
   protected readonly navigatorService = inject(NavigatorService);
   protected readonly alertService = inject(AlertService);
   private readonly appCtx = inject(AppContext);
@@ -434,9 +435,11 @@ export class EventExplorePopupComponent {
     this.cdr.markForCheck();
   }
 
-  protected openHostImpressions(event: Event): void {
+  protected openHostImpressions(record: DemoEventRecord, event: Event): void {
     event.stopPropagation();
-    this.navigatorService.openImpressionsPopup();
+    this.appCtx.setUserProfile(this.resolveUser(record.creatorUserId, record));
+    void this.usersService.loadUserById(record.creatorUserId);
+    this.navigatorService.openImpressionsPopup(record.creatorUserId);
   }
 
   protected openEventExploreRecord(record: DemoEventRecord, event?: Event): void {

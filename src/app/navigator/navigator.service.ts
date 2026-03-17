@@ -44,6 +44,7 @@ export class NavigatorService {
   private readonly settingsPopupRef = signal<NavigatorSettingsPopup | null>(null);
   private readonly profileEditorOpenRef = signal(false);
   private readonly impressionsPopupOpenRef = signal(false);
+  private readonly impressionsPopupUserIdRef = signal('');
   private hydrationRequestVersion = 0;
   private userRealtimeLongPollTimer: ReturnType<typeof setInterval> | null = null;
   private userRealtimeLongPollInFlight = false;
@@ -57,6 +58,7 @@ export class NavigatorService {
   readonly profileEditorOpen = this.profileEditorOpenRef.asReadonly();
   readonly settingsPopup = this.settingsPopupRef.asReadonly();
   readonly impressionsPopupOpen = this.impressionsPopupOpenRef.asReadonly();
+  readonly impressionsPopupUserId = this.impressionsPopupUserIdRef.asReadonly();
   readonly menuUiState = computed<NavigatorMenuUiState>(() => ({
     open: this.menuOpenRef(),
     settingsOpen: this.settingsMenuOpenRef()
@@ -177,12 +179,17 @@ export class NavigatorService {
     this.settingsPopupRef.set(null);
   }
 
-  openImpressionsPopup(): void {
+  openImpressionsPopup(userId?: string): void {
+    const normalizedUserId = `${userId ?? ''}`.trim() || this.appCtx.activeUserId().trim();
+    this.impressionsPopupUserIdRef.set(normalizedUserId);
+    if (normalizedUserId) {
+      void this.usersService.loadUserById(normalizedUserId);
+    }
     this.impressionsPopupOpenRef.set(true);
   }
 
   closeImpressionsPopup(): void {
-    const userId = this.appCtx.activeUserId().trim();
+    const userId = this.impressionsPopupUserIdRef().trim() || this.appCtx.activeUserId().trim();
     const cursor = userId ? (this.userRealtimeLongPollCursorByUserId[userId] ?? '') : '';
     if (userId && cursor) {
       this.userSeenImpressionsCursorByUserId[userId] = cursor;
@@ -191,6 +198,7 @@ export class NavigatorService {
       this.userIgnoreNextImpressionsSnapshotByUserId[userId] = true;
     }
     this.impressionsPopupOpenRef.set(false);
+    this.impressionsPopupUserIdRef.set('');
   }
 
   private syncHydratedUserIntoAppContext(user: UserDto): void {

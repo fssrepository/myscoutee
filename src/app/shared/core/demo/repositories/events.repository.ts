@@ -486,9 +486,16 @@ export class DemoEventsRepository {
     const users = AppDemoGenerators.buildExpandedDemoUsers(50);
     const userById = new Map(users.map(user => [user.id, user]));
     const seeded: Record<string, readonly EventMenuItem[]> = {};
+    const featuredFriendsOnlyByUser = this.buildFeaturedFriendsOnlyEvents(userById);
 
     for (const [userId, items] of Object.entries(DEMO_EVENTS_BY_USER)) {
-      const baseItems = items.map(item => ({
+      const baseItems = [
+        ...(featuredFriendsOnlyByUser[userId] ?? []),
+        ...items.map(item => ({
+          ...item,
+          topics: item.topics ? [...item.topics] : item.topics
+        }))
+      ].map(item => ({
         ...item,
         topics: item.topics ? [...item.topics] : item.topics
       }));
@@ -506,7 +513,7 @@ export class DemoEventsRepository {
         const id = `ex-${userId}-${seq}`;
         const start = new Date(2026, 2, 1 + (index * 2), 10 + (index % 6), (index % 2) * 30, 0, 0);
         const end = new Date(start.getTime() + ((2 + (index % 3)) * 60 * 60 * 1000));
-        const visibility = (index % 6) === 0 ? 'Friends only' : 'Public';
+        const visibility = (index % 2) === 0 ? 'Friends only' : 'Public';
         const blindMode = (index % 5) === 0 ? 'Blind Event' : 'Open Event';
         const seed = AppDemoGenerators.hashText(`${userId}:${id}:${seq}`);
 
@@ -538,6 +545,83 @@ export class DemoEventsRepository {
     }
 
     return seeded;
+  }
+
+  private buildFeaturedFriendsOnlyEvents(
+    userById: Map<string, { initials: string; city: string }>
+  ): Record<string, EventMenuItem[]> {
+    const buildItem = (
+      userId: string,
+      id: string,
+      title: string,
+      shortDescription: string,
+      startAt: string,
+      endAt: string,
+      topics: string[]
+    ): EventMenuItem => {
+      const user = userById.get(userId);
+      const start = new Date(startAt);
+      const end = new Date(endAt);
+      return {
+        id,
+        avatar: user?.initials ?? AppUtils.initialsFromText(title),
+        title,
+        shortDescription,
+        timeframe: `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`,
+        activity: 2,
+        isAdmin: false,
+        creatorUserId: userId,
+        startAt,
+        endAt,
+        distanceKm: 4,
+        visibility: 'Friends only',
+        blindMode: 'Open Event',
+        imageUrl: `https://picsum.photos/seed/${id}/1200/700`,
+        sourceLink: `https://example.com/events/${id}`,
+        location: user?.city ? `${user.city} · Friends Circle` : 'Friends Circle',
+        capacityMin: 6,
+        capacityMax: 14,
+        topics,
+        rating: 8.4,
+        relevance: 96
+      };
+    };
+
+    return {
+      u2: [
+        buildItem(
+          'u2',
+          'fx-u2-1',
+          'Friends Circle Supper',
+          'Small-table meetup for close connections and plus-ones.',
+          '2026-03-18T19:00:00',
+          '2026-03-18T22:00:00',
+          ['#StreetFood', '#GoingOut']
+        )
+      ],
+      u3: [
+        buildItem(
+          'u3',
+          'fx-u3-1',
+          'Studio Friends Jam',
+          'Invite-only creative session with music and critique rounds.',
+          '2026-03-19T18:30:00',
+          '2026-03-19T21:30:00',
+          ['#Music', '#Creativity']
+        )
+      ],
+      u4: [
+        buildItem(
+          'u4',
+          'fx-u4-1',
+          'Friends Wellness Walk',
+          'Relaxed sunset walk for friends of friends from recent events.',
+          '2026-03-20T17:30:00',
+          '2026-03-20T19:30:00',
+          ['#Meditation', '#Spirituality']
+        )
+      ]
+    };
   }
 
   private mergeSeededRecords(
@@ -579,6 +663,8 @@ export class DemoEventsRepository {
   private mergeSeededRecord(current: DemoEventRecord, seeded: DemoEventRecord): DemoEventRecord {
     const creatorUserId = this.resolveSeededCreatorUserId(current, seeded);
     const creatorChanged = creatorUserId !== current.creatorUserId;
+    const shouldPreferSeededVisibility = current.id.startsWith('ex-');
+    const shouldPreferSeededTopics = current.id.startsWith('ex-');
     const acceptedMemberUserIds = this.normalizeUserIds(current.acceptedMemberUserIds);
     const pendingMemberUserIds = this.normalizeUserIds(current.pendingMemberUserIds);
     const topics = this.normalizeTopics(current.topics ?? []);
@@ -592,7 +678,9 @@ export class DemoEventsRepository {
         ? current.creatorGender
         : seeded.creatorGender,
       creatorCity: current.creatorCity?.trim() || seeded.creatorCity,
-      visibility: this.normalizeVisibility(current.visibility, seeded.visibility),
+      visibility: shouldPreferSeededVisibility
+        ? seeded.visibility
+        : this.normalizeVisibility(current.visibility, seeded.visibility),
       blindMode: this.normalizeBlindMode(current.blindMode, seeded.blindMode),
       startAtIso: current.startAtIso?.trim() || seeded.startAtIso,
       endAtIso: current.endAtIso?.trim() || seeded.endAtIso,
@@ -611,7 +699,9 @@ export class DemoEventsRepository {
       pendingMemberUserIds: pendingMemberUserIds.length > 0
         ? pendingMemberUserIds
         : [...seeded.pendingMemberUserIds],
-      topics: topics.length > 0 ? topics : [...seeded.topics],
+      topics: shouldPreferSeededTopics
+        ? [...seeded.topics]
+        : (topics.length > 0 ? topics : [...seeded.topics]),
       rating: Number.isFinite(current.rating) ? Number(current.rating) : seeded.rating,
       relevance: Number.isFinite(current.relevance) ? Number(current.relevance) : seeded.relevance
     };
