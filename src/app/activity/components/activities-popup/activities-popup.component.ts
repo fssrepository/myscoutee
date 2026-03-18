@@ -1788,8 +1788,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected onActivityEventInfoCardMenuAction(row: AppTypes.ActivityListRow, action: InfoCardMenuActionEvent): void {
-    console.log(row);
-    console.log(action);
     switch (action.action.id as ActivityInfoCardActionId) {
       case 'publish':
         this.runActivityItemPublishAction(row);
