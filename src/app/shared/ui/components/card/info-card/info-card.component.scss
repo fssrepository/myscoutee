@@ -194,7 +194,6 @@
 button.ui-info-card__overlay-action {
   appearance: none;
   -webkit-appearance: none;
-  font: inherit;
   cursor: pointer;
 }
 
@@ -205,7 +204,7 @@ button.ui-info-card__overlay-action {
 
 .ui-info-card__overlay-action--end {
   top: 0.44rem;
-  right: 0.5rem;
+  right: 0.2rem;
 }
 
 .ui-info-card__overlay-action--avatar {
@@ -231,12 +230,12 @@ button.ui-info-card__overlay-action {
 
 .ui-info-card__overlay-action--badge {
   min-width: 0;
-  height: 19px;
+  height: 25px;
   border-radius: 999px;
   padding: 0 0.32rem;
   background: rgba(26, 45, 71, 0.82);
   color: #fff;
-  font-size: 0.56rem;
+  font-size: 0.7rem;
   line-height: 1;
   letter-spacing: 0.01em;
   font-weight: 800;
@@ -334,8 +333,8 @@ button.ui-info-card__overlay-action {
 
 .ui-info-card__pending-badge {
   position: absolute;
-  top: -8px;
-  right: -8px;
+  top: -15px;
+  right: -10px;
   min-width: 18px;
   height: 18px;
   padding: 0 0.18rem;
