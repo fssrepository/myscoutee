@@ -1,10 +1,10 @@
-<ng-container *ngIf="presentation === 'fullscreen'; else listCard">
+<ng-container *ngIf="resolvedPresentation() === 'fullscreen'; else listCard">
   <div class="activities-rates-fullscreen">
     <article
       class="activities-rate-profile-card activities-row-item activities-rates-fullscreen-card"
-      [class.activities-rates-fullscreen-card-active]="state === 'active'"
-      [class.activities-rates-fullscreen-card-leaving]="state === 'leaving'"
-      [attr.data-activity-rate-row-id]="rowId"
+      [class.activities-rates-fullscreen-card-active]="resolvedState() === 'active'"
+      [class.activities-rates-fullscreen-card-leaving]="resolvedState() === 'leaving'"
+      [attr.data-activity-rate-row-id]="card?.rowId"
     >
       <ng-container *ngTemplateOutlet="cardBody"></ng-container>
     </article>
@@ -14,8 +14,8 @@
 <ng-template #listCard>
   <article
     class="activities-rate-profile-card activities-row-item"
-    [attr.data-activity-rate-row-id]="rowId"
-    [attr.data-group-label]="groupLabel"
+    [attr.data-activity-rate-row-id]="card?.rowId"
+    [attr.data-group-label]="card?.groupLabel"
   >
     <ng-container *ngTemplateOutlet="cardBody"></ng-container>
   </article>
@@ -24,15 +24,15 @@
 <ng-template #cardBody>
   <div
     class="activities-rate-profile-stack"
-    [ngClass]="stackClasses"
+    [ngClass]="resolvedStackClasses()"
     [class.is-pane-loading]="loading"
   >
-    <div class="image-stack-indicators activities-rate-profile-indicators" *ngIf="slides.length > 1">
-      <ng-container *ngIf="interactive; else readonlyIndicators">
+    <div class="image-stack-indicators activities-rate-profile-indicators" *ngIf="resolvedSlides().length > 1">
+      <ng-container *ngIf="isInteractive(); else readonlyIndicators">
         <button
           type="button"
           class="image-stack-line"
-          *ngFor="let slide of slides; let imageIndex = index; trackBy: trackBySlide"
+          *ngFor="let slide of resolvedSlides(); let imageIndex = index; trackBy: trackBySlide"
           [class.active]="imageIndex === clampedActiveIndex()"
           (click)="onSlideSelect(imageIndex, $event)"
           aria-label="Select profile image"
@@ -41,7 +41,7 @@
       <ng-template #readonlyIndicators>
         <span
           class="image-stack-line"
-          *ngFor="let slide of slides; let imageIndex = index; trackBy: trackBySlide"
+          *ngFor="let slide of resolvedSlides(); let imageIndex = index; trackBy: trackBySlide"
           [class.active]="imageIndex === clampedActiveIndex()"
         ></span>
       </ng-template>
@@ -57,17 +57,17 @@
       </div>
     </div>
 
-    <div class="image-stack-hit-area activities-rate-profile-hit-area" *ngIf="interactive && slides.length > 1">
+    <div class="image-stack-hit-area activities-rate-profile-hit-area" *ngIf="isInteractive() && resolvedSlides().length > 1">
       <button
         type="button"
         class="image-stack-hit-segment"
-        *ngFor="let slide of slides; let imageIndex = index; trackBy: trackBySlide"
+        *ngFor="let slide of resolvedSlides(); let imageIndex = index; trackBy: trackBySlide"
         (click)="onSlideSelect(imageIndex, $event)"
         aria-label="Select profile image"
       ></button>
     </div>
 
-    <ng-container *ngIf="badge as cardBadge">
+    <ng-container *ngIf="card?.badge as cardBadge">
       <button
         *ngIf="isBadgeInteractive(); else readonlyBadge"
         type="button"

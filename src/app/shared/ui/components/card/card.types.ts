@@ -27,3 +27,31 @@ export interface PairCardSlot {
   slides: readonly CardImageSlide[];
   collapsed?: boolean;
 }
+
+export interface SingleCardData {
+  rowId: string;
+  groupLabel?: string | null;
+  slides: readonly CardImageSlide[];
+  stackClasses?: readonly string[];
+  badge?: CardBadgeConfig | null;
+  presentation?: CardPresentation;
+  state?: CardRenderState;
+  initialActiveIndex?: number;
+}
+
+export interface PairCardSplitConfig {
+  enabled?: boolean;
+  initialPercent?: number;
+}
+
+export interface PairCardData {
+  rowId: string;
+  groupLabel?: string | null;
+  slots: readonly PairCardSlot[];
+  stackClasses?: readonly string[];
+  badge?: CardBadgeConfig | null;
+  presentation?: CardPresentation;
+  state?: CardRenderState;
+  initialActiveIndexByKey?: Readonly<Record<string, number>>;
+  split?: PairCardSplitConfig | null;
+}

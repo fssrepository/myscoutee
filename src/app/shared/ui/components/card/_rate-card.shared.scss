@@ -1,6 +1,11 @@
 :host {
   display: block;
   width: 100%;
+  min-height: 0;
+}
+
+:host([data-card-presentation='fullscreen']) {
+  height: 100%;
 }
 
 .activities-rate-profile-card {

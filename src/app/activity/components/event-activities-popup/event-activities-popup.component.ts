@@ -56,8 +56,10 @@ import {
   type CardImageSlide,
   type ListQuery,
   type PageResult,
+  type PairCardData,
   type PairCardSlot,
   type RatingStarBarConfig,
+  type SingleCardData,
   type SmartListConfig,
   type SmartListItemSelectEvent,
   type SmartListItemTemplateContext,
@@ -349,23 +351,10 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   private readonly activityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
   private readonly pendingActivityRateDirectionOverrideById: Partial<Record<string, RateMenuItem['direction']>> = {};
 
-  // ── Rate card images ──────────────────────────────────────────────────────
-  private readonly activityRateCardActiveImageIndexById: Record<string, number>                        = {};
-  private readonly activityRateCardImageLoadingById: Record<string, boolean>                           = {};
-  private readonly activityRateCardLoadingTimerById: Record<string, ReturnType<typeof setTimeout>>     = {};
-  private readonly activityPairRateCardActiveImageIndexByKey: Record<string, number>                   = {};
-  private readonly activityPairRateCardImageLoadingByKey: Record<string, boolean>                      = {};
-  private readonly activityPairRateCardLoadingTimerByKey: Record<string, ReturnType<typeof setTimeout>> = {};
   private lastRateIndicatorPulseRowId: string | null = null;
 
   // ── Fullscreen rates ──────────────────────────────────────────────────────
   protected activitiesRatesFullscreenMode         = false;
-  protected isActivitiesRatesPairSplitDragging    = false;
-  protected activitiesRatesPairSplitPercent       = EventActivitiesPopupComponent.ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT;
-  private activitiesRatesPairSplitPointerId: number | null   = null;
-  private activitiesRatesPairSplitBounds: { left: number; width: number } | null = null;
-  private activitiesRatesPairSplitDragStartClientX: number | null = null;
-  private activitiesRatesPairSplitDragStartPercent: number | null = null;
 
   // ── Delete / publish confirms ─────────────────────────────────────────────
   protected pendingActivityDeleteRow: AppTypes.ActivityListRow | null  = null;
@@ -456,70 +445,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   @HostListener('window:resize')
   protected onViewportResize(): void {
     this.syncMobileViewFromViewport();
-  }
-
-  @HostListener('window:pointermove', ['$event'])
-  protected onWindowPointerMoveForActivitiesRates(event: PointerEvent): void {
-    if (!this.isActivitiesRatesPairSplitDragging || this.activitiesRatesPairSplitPointerId !== event.pointerId) {
-      return;
-    }
-    if (event.cancelable) {
-      event.preventDefault();
-    }
-    this.updateActivitiesRatesPairSplitFromDragDelta(event.clientX);
-  }
-
-  @HostListener('window:pointerup', ['$event'])
-  protected onWindowPointerUpForActivitiesRates(event: PointerEvent): void {
-    if (this.activitiesRatesPairSplitPointerId !== event.pointerId) {
-      return;
-    }
-    this.stopActivitiesRatesPairSplitDrag();
-  }
-
-  @HostListener('window:pointercancel', ['$event'])
-  protected onWindowPointerCancelForActivitiesRates(event: PointerEvent): void {
-    if (this.activitiesRatesPairSplitPointerId !== event.pointerId) {
-      return;
-    }
-    this.stopActivitiesRatesPairSplitDrag();
-  }
-
-  @HostListener('window:touchmove', ['$event'])
-  protected onWindowTouchMoveForActivitiesRates(event: TouchEvent): void {
-    if (!this.isActivitiesRatesPairSplitDragging || this.activitiesRatesPairSplitPointerId !== -1) {
-      return;
-    }
-    const touch = event.touches?.[0] ?? event.changedTouches?.[0];
-    if (!touch) {
-      return;
-    }
-    if (event.cancelable) {
-      event.preventDefault();
-    }
-    this.updateActivitiesRatesPairSplitFromDragDelta(touch.clientX);
-  }
-
-  @HostListener('window:touchend', ['$event'])
-  protected onWindowTouchEndForActivitiesRates(event: TouchEvent): void {
-    if (this.activitiesRatesPairSplitPointerId !== -1) {
-      return;
-    }
-    if (!event.changedTouches?.length) {
-      return;
-    }
-    this.stopActivitiesRatesPairSplitDrag();
-  }
-
-  @HostListener('window:touchcancel', ['$event'])
-  protected onWindowTouchCancelForActivitiesRates(event: TouchEvent): void {
-    if (this.activitiesRatesPairSplitPointerId !== -1) {
-      return;
-    }
-    if (!event.changedTouches?.length) {
-      return;
-    }
-    this.stopActivitiesRatesPairSplitDrag();
   }
 
   /** Called once each time the service opens the popup. */
@@ -1106,7 +1031,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.showActivitiesQuickActionsMenu = false;
       return;
     }
-    this.stopActivitiesRatesPairSplitDrag();
     this.commitPendingRateDirectionOverrides(filter);
     this.activitiesContext.setActivitiesRateFilter(filter);
     this.lastRateIndicatorPulseRowId = null;
@@ -2133,7 +2057,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     this.selectedActivityRateId = row.id;
     this.activitiesContext.setActivitiesSelectedRateId(row.id);
     this.activityRateEditorClosing = false;
-    this.pulseRateIndicatorForRow(row);
     this.cancelActivityRateEditorLiftAnimation();
     this.runAfterActivitiesNextPaint(() => {
       if (!this.isActivityRateEditorOpen() || this.selectedActivityRateId !== row.id) {
@@ -2536,23 +2459,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return generated.slice(0, Math.max(1, Math.min(4, desiredCount)));
   }
 
-  protected activityRateCardActiveImageIndex(row: AppTypes.ActivityListRow): number {
-    const images = this.activityRateCardImageUrls(row);
-    if (images.length === 0) {
-      return 0;
-    }
-    const current = this.activityRateCardActiveImageIndexById[row.id] ?? 0;
-    return AppUtils.clampNumber(current, 0, images.length - 1);
-  }
-
-  protected activityRateCardActiveImageUrl(row: AppTypes.ActivityListRow): string {
-    const images = this.activityRateCardImageUrls(row);
-    if (images.length === 0) {
-      return '';
-    }
-    return images[this.activityRateCardActiveImageIndex(row)] ?? images[0] ?? '';
-  }
-
   protected activityRateCardHasLine(row: AppTypes.ActivityListRow, cardIndex: number): boolean {
     const card = this.activityRateCardLines(row, cardIndex);
     return card.primary.length > 0 && card.secondary.length > 0;
@@ -2588,32 +2494,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return cards[cardIndex] ?? { primary: '', secondary: '' };
   }
 
-  protected isActivityRateCardImageLoading(row: AppTypes.ActivityListRow): boolean {
-    return this.activityRateCardImageLoadingById[row.id] ?? false;
-  }
-
-  protected selectActivityRateCardImage(row: AppTypes.ActivityListRow, index: number, event: Event): void {
-    event.stopPropagation();
-    const images = this.activityRateCardImageUrls(row);
-    if (images.length === 0) {
-      return;
-    }
-    const nextIndex = AppUtils.clampNumber(index, 0, images.length - 1);
-    this.activityRateCardActiveImageIndexById[row.id] = nextIndex;
-    if (this.activityRateCardLoadingTimerById[row.id]) {
-      clearTimeout(this.activityRateCardLoadingTimerById[row.id]);
-      delete this.activityRateCardLoadingTimerById[row.id];
-    }
-    this.activityRateCardImageLoadingById[row.id] = true;
-    const rowId = row.id;
-    this.activityRateCardLoadingTimerById[row.id] = setTimeout(() => {
-      this.activityRateCardImageLoadingById[rowId] = false;
-      delete this.activityRateCardLoadingTimerById[rowId];
-      this.cdr.markForCheck();
-    }, 500);
-    this.cdr.markForCheck();
-  }
-
   protected activityRateCardContentClasses(row: AppTypes.ActivityListRow): string[] {
     const item = row.source as RateMenuItem;
     const directionClass = this.displayedRateDirection(item);
@@ -2636,45 +2516,61 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       key: slot,
       label: slot === 'woman' ? 'Woman' : 'Man',
       tone: slot,
-      slides: this.activityPairCardSlides(row, slot),
-      collapsed: fullscreen
-        ? (slot === 'woman' ? this.isActivitiesRatesPairWomanCollapsed : this.isActivitiesRatesPairManCollapsed)
-        : false
+      slides: this.activityPairCardSlides(row, slot)
     }));
   }
 
-  protected activityPairCardActiveIndexes(row: AppTypes.ActivityListRow): Record<string, number> {
-    return {
-      woman: this.activityPairRateSlotActiveImageIndex(row, 'woman'),
-      man: this.activityPairRateSlotActiveImageIndex(row, 'man')
-    };
-  }
-
-  protected activityPairCardLoadingMap(row: AppTypes.ActivityListRow): Record<string, boolean> {
-    return {
-      woman: this.isActivityPairRateSlotImageLoading(row, 'woman'),
-      man: this.isActivityPairRateSlotImageLoading(row, 'man')
-    };
-  }
-
-  protected onActivitySingleCardSlideSelect(row: AppTypes.ActivityListRow, selection: { index: number; event: Event }): void {
-    this.selectActivityRateCardImage(row, selection.index, selection.event);
-  }
-
-  protected onActivityPairCardSlideSelect(
+  protected activitySingleCard(
     row: AppTypes.ActivityListRow,
-    selection: { slotKey: string; index: number; event: Event }
-  ): void {
-    const slot = selection.slotKey === 'woman' ? 'woman' : 'man';
-    this.selectActivityPairRateSlotImage(row, slot, selection.index, selection.event);
+    options?: {
+      groupLabel?: string | null;
+      presentation?: SingleCardData['presentation'];
+      state?: SingleCardData['state'];
+    }
+  ): SingleCardData {
+    const presentation = options?.presentation ?? 'list';
+    const state = options?.state ?? 'default';
+    return {
+      rowId: row.id,
+      groupLabel: options?.groupLabel ?? null,
+      slides: this.activitySingleCardSlides(row),
+      stackClasses: this.activityRateCardContentClasses(row),
+      badge: this.activityRateBadgeConfig(row, {
+        layout: 'floating',
+        interactive: presentation !== 'fullscreen',
+        forceActive: presentation === 'fullscreen'
+      }),
+      presentation,
+      state
+    };
   }
 
-  protected onActivityPairCardSplitHandlePointerDown(selection: { event: PointerEvent; container: HTMLElement }): void {
-    this.onActivitiesRatesPairSplitHandlePointerDown(selection.event, selection.container);
-  }
-
-  protected onActivityPairCardSplitHandleTouchStart(selection: { event: TouchEvent; container: HTMLElement }): void {
-    this.onActivitiesRatesPairSplitHandleTouchStart(selection.event, selection.container);
+  protected activityPairCard(
+    row: AppTypes.ActivityListRow,
+    options?: {
+      groupLabel?: string | null;
+      presentation?: PairCardData['presentation'];
+      state?: PairCardData['state'];
+    }
+  ): PairCardData {
+    const presentation = options?.presentation ?? 'list';
+    const state = options?.state ?? 'default';
+    return {
+      rowId: row.id,
+      groupLabel: options?.groupLabel ?? null,
+      slots: this.activityPairCardSlots(row, presentation === 'fullscreen'),
+      stackClasses: this.activityRateCardContentClasses(row),
+      badge: this.activityRateBadgeConfig(row, {
+        layout: presentation === 'fullscreen' ? 'pair-overlap' : 'between',
+        interactive: presentation !== 'fullscreen',
+        forceActive: presentation === 'fullscreen'
+      }),
+      presentation,
+      state,
+      split: presentation === 'fullscreen'
+        ? { enabled: !this.activitiesSmartList?.isFullscreenPaginationAnimating() }
+        : null
+    };
   }
 
   // ── Pair rate card helpers ─────────────────────────────────────────────────
@@ -2728,24 +2624,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     );
   }
 
-  protected activityPairRateSlotActiveImageIndex(row: AppTypes.ActivityListRow, slot: 'man' | 'woman'): number {
-    const images = this.activityPairRateSlotImageUrls(row, slot);
-    if (images.length === 0) {
-      return 0;
-    }
-    const key = this.activityPairRateSlotImageKey(row.id, slot);
-    const current = this.activityPairRateCardActiveImageIndexByKey[key] ?? 0;
-    return AppUtils.clampNumber(current, 0, images.length - 1);
-  }
-
-  protected activityPairRateSlotActiveImageUrl(row: AppTypes.ActivityListRow, slot: 'man' | 'woman'): string {
-    const images = this.activityPairRateSlotImageUrls(row, slot);
-    if (images.length === 0) {
-      return '';
-    }
-    return images[this.activityPairRateSlotActiveImageIndex(row, slot)] ?? images[0] ?? '';
-  }
-
   protected activityPairRateSlotInitials(row: AppTypes.ActivityListRow, slot: 'man' | 'woman'): string {
     const user = this.activityPairRateSlotUser(row, slot);
     if (!user) {
@@ -2768,76 +2646,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return 'No pair card yet';
     }
     return `${user.city} · ${row.distanceKm} km`;
-  }
-
-  protected isActivityPairRateSlotImageLoading(row: AppTypes.ActivityListRow, slot: 'man' | 'woman'): boolean {
-    const key = this.activityPairRateSlotImageKey(row.id, slot);
-    return this.activityPairRateCardImageLoadingByKey[key] ?? false;
-  }
-
-  protected selectActivityPairRateSlotImage(row: AppTypes.ActivityListRow, slot: 'man' | 'woman', index: number, event: Event): void {
-    event.stopPropagation();
-    const images = this.activityPairRateSlotImageUrls(row, slot);
-    if (images.length === 0) {
-      return;
-    }
-    const key = this.activityPairRateSlotImageKey(row.id, slot);
-    const nextIndex = AppUtils.clampNumber(index, 0, images.length - 1);
-    this.activityPairRateCardActiveImageIndexByKey[key] = nextIndex;
-    if (this.activityPairRateCardLoadingTimerByKey[key]) {
-      clearTimeout(this.activityPairRateCardLoadingTimerByKey[key]);
-      delete this.activityPairRateCardLoadingTimerByKey[key];
-    }
-    this.activityPairRateCardImageLoadingByKey[key] = true;
-    this.activityPairRateCardLoadingTimerByKey[key] = setTimeout(() => {
-      this.activityPairRateCardImageLoadingByKey[key] = false;
-      delete this.activityPairRateCardLoadingTimerByKey[key];
-      this.cdr.markForCheck();
-    }, 500);
-    this.cdr.markForCheck();
-  }
-
-  private pulseRateIndicatorForRow(row: AppTypes.ActivityListRow | null): void {
-    if (!row || row.type !== 'rates') {
-      return;
-    }
-    if (this.lastRateIndicatorPulseRowId === row.id) {
-      return;
-    }
-    this.lastRateIndicatorPulseRowId = row.id;
-    if (this.isPairRateRow(row)) {
-      (['woman', 'man'] as const).forEach(slot => {
-        const key = this.activityPairRateSlotImageKey(row.id, slot);
-        if (this.activityPairRateCardLoadingTimerByKey[key]) {
-          clearTimeout(this.activityPairRateCardLoadingTimerByKey[key]);
-          delete this.activityPairRateCardLoadingTimerByKey[key];
-        }
-        this.activityPairRateCardImageLoadingByKey[key] = true;
-        this.activityPairRateCardLoadingTimerByKey[key] = setTimeout(() => {
-          this.activityPairRateCardImageLoadingByKey[key] = false;
-          delete this.activityPairRateCardLoadingTimerByKey[key];
-          this.cdr.markForCheck();
-        }, 500);
-      });
-      this.cdr.markForCheck();
-      return;
-    }
-    const rowId = row.id;
-    if (this.activityRateCardLoadingTimerById[rowId]) {
-      clearTimeout(this.activityRateCardLoadingTimerById[rowId]);
-      delete this.activityRateCardLoadingTimerById[rowId];
-    }
-    this.activityRateCardImageLoadingById[rowId] = true;
-    this.activityRateCardLoadingTimerById[rowId] = setTimeout(() => {
-      this.activityRateCardImageLoadingById[rowId] = false;
-      delete this.activityRateCardLoadingTimerById[rowId];
-      this.cdr.markForCheck();
-    }, 500);
-    this.cdr.markForCheck();
-  }
-
-  private activityPairRateSlotImageKey(rowId: string, gender: DemoUser['gender']): string {
-    return `${rowId}:${gender}`;
   }
 
   private activityPairCardSlides(row: AppTypes.ActivityListRow, slot: 'man' | 'woman'): CardImageSlide[] {
@@ -2974,81 +2782,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   }
 
   // =========================================================================
-  // Pair split drag (fullscreen only)
-  // =========================================================================
-
-  protected get activitiesRatesPairSplitCssValue(): string {
-    if (!this.isActivitiesRatesPairCompactViewport()) {
-      return `${EventActivitiesPopupComponent.ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT}%`;
-    }
-    return `${this.activitiesRatesPairSplitPercent}%`;
-  }
-
-  protected get isActivitiesRatesPairWomanCollapsed(): boolean {
-    return this.isActivitiesRatesPairMobileSplitEnabled() && this.activitiesRatesPairSplitPercent <= 0.1;
-  }
-
-  protected get isActivitiesRatesPairManCollapsed(): boolean {
-    return this.isActivitiesRatesPairMobileSplitEnabled() && this.activitiesRatesPairSplitPercent >= 99.9;
-  }
-
-  protected isActivitiesRatesPairMobileSplitEnabled(): boolean {
-    if (!this.isRatesFullscreenModeActive() || !this.isActivitiesRatesPairCompactViewport()) {
-      return false;
-    }
-    const row = this.currentActivitiesRatesFullscreenRow();
-    return !!row && this.isPairRateRow(row);
-  }
-
-  protected onActivitiesRatesPairSplitHandlePointerDown(event: PointerEvent, splitContainerElement: HTMLElement): void {
-    if (!this.isActivitiesRatesPairMobileSplitEnabled() || this.activitiesSmartList?.isFullscreenPaginationAnimating() || !splitContainerElement) {
-      return;
-    }
-    const bounds = splitContainerElement.getBoundingClientRect();
-    if (bounds.width <= 0) {
-      return;
-    }
-    this.activitiesRatesPairSplitBounds = { left: bounds.left, width: bounds.width };
-    this.activitiesRatesPairSplitPointerId = event.pointerId;
-    this.activitiesRatesPairSplitDragStartClientX = event.clientX;
-    this.activitiesRatesPairSplitDragStartPercent = this.activitiesRatesPairSplitPercent;
-    this.isActivitiesRatesPairSplitDragging = true;
-    if (event.cancelable) {
-      event.preventDefault();
-    }
-    event.stopPropagation();
-    const target = event.currentTarget as HTMLElement | null;
-    if (target?.setPointerCapture) {
-      target.setPointerCapture(event.pointerId);
-    }
-    this.cdr.markForCheck();
-  }
-
-  protected onActivitiesRatesPairSplitHandleTouchStart(event: TouchEvent, splitContainerElement: HTMLElement): void {
-    if (!this.isActivitiesRatesPairMobileSplitEnabled() || this.activitiesSmartList?.isFullscreenPaginationAnimating() || !splitContainerElement) {
-      return;
-    }
-    const touch = event.touches?.[0] ?? event.changedTouches?.[0];
-    if (!touch) {
-      return;
-    }
-    const bounds = splitContainerElement.getBoundingClientRect();
-    if (bounds.width <= 0) {
-      return;
-    }
-    this.activitiesRatesPairSplitBounds = { left: bounds.left, width: bounds.width };
-    this.activitiesRatesPairSplitPointerId = -1;
-    this.activitiesRatesPairSplitDragStartClientX = touch.clientX;
-    this.activitiesRatesPairSplitDragStartPercent = this.activitiesRatesPairSplitPercent;
-    this.isActivitiesRatesPairSplitDragging = true;
-    if (event.cancelable) {
-      event.preventDefault();
-    }
-    event.stopPropagation();
-    this.cdr.markForCheck();
-  }
-
-  // =========================================================================
   // Fullscreen rates navigation
   // =========================================================================
 
@@ -3076,7 +2809,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       this.disableActivitiesRatesFullscreenMode();
       return;
     }
-    this.stopActivitiesRatesPairSplitDrag();
     this.resetActivityRateEditorStateForFullscreenEntry();
     this.activitiesRatesFullscreenMode = true;
     this.activitiesContext.setActivitiesRatesFullscreenMode(true);
@@ -3092,7 +2824,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return;
     }
     const selectedRateId = this.selectedActivityRateId;
-    this.stopActivitiesRatesPairSplitDrag();
     this.activitiesRatesFullscreenMode = false;
     this.activityRateEditorClosing = false;
     this.lastActivityRateEditorLiftDelta = 0;
@@ -3121,7 +2852,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     }
     this.selectedActivityRateId = currentRow.id;
     this.activitiesContext.setActivitiesSelectedRateId(this.selectedActivityRateId);
-    this.pulseRateIndicatorForRow(currentRow);
   }
 
   private resetActivityRateEditorStateForFullscreenEntry(): void {
@@ -3164,60 +2894,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       return;
     }
     setTimeout(releaseSnap, 0);
-  }
-
-  private updateActivitiesRatesPairSplitFromClientX(clientX: number): void {
-    if (!this.activitiesRatesPairSplitBounds || this.activitiesRatesPairSplitBounds.width <= 0) {
-      return;
-    }
-    const relative = ((clientX - this.activitiesRatesPairSplitBounds.left) / this.activitiesRatesPairSplitBounds.width) * 100;
-    this.activitiesRatesPairSplitPercent = AppUtils.clampNumber(
-      relative,
-      EventActivitiesPopupComponent.ACTIVITIES_RATES_PAIR_SPLIT_MIN_PERCENT,
-      EventActivitiesPopupComponent.ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT
-    );
-    this.cdr.markForCheck();
-  }
-
-  private updateActivitiesRatesPairSplitFromDragDelta(clientX: number): void {
-    if (!this.activitiesRatesPairSplitBounds || this.activitiesRatesPairSplitBounds.width <= 0) {
-      return;
-    }
-    if (
-      this.activitiesRatesPairSplitDragStartClientX === null
-      || this.activitiesRatesPairSplitDragStartPercent === null
-    ) {
-      this.updateActivitiesRatesPairSplitFromClientX(clientX);
-      return;
-    }
-    const deltaPercent =
-      ((clientX - this.activitiesRatesPairSplitDragStartClientX) / this.activitiesRatesPairSplitBounds.width) * 100;
-    this.activitiesRatesPairSplitPercent = AppUtils.clampNumber(
-      this.activitiesRatesPairSplitDragStartPercent + deltaPercent,
-      EventActivitiesPopupComponent.ACTIVITIES_RATES_PAIR_SPLIT_MIN_PERCENT,
-      EventActivitiesPopupComponent.ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT
-    );
-    this.cdr.markForCheck();
-  }
-
-  private isActivitiesRatesPairCompactViewport(): boolean {
-    return typeof globalThis.innerWidth === 'number' && globalThis.innerWidth <= 760;
-  }
-
-  private stopActivitiesRatesPairSplitDrag(): void {
-    if (
-      !this.isActivitiesRatesPairSplitDragging
-      && this.activitiesRatesPairSplitPointerId === null
-      && this.activitiesRatesPairSplitBounds === null
-    ) {
-      return;
-    }
-    this.isActivitiesRatesPairSplitDragging = false;
-    this.activitiesRatesPairSplitPointerId = null;
-    this.activitiesRatesPairSplitBounds = null;
-    this.activitiesRatesPairSplitDragStartClientX = null;
-    this.activitiesRatesPairSplitDragStartPercent = null;
-    this.cdr.markForCheck();
   }
 
   // =========================================================================

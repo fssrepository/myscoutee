@@ -451,35 +451,12 @@
     <ng-container *ngIf="row">
       <app-pair-card
         *ngIf="isPairRateRow(row); else fullscreenSingleRateCard"
-        presentation="fullscreen"
-        [state]="renderState"
-        [rowId]="row.id"
-        [slots]="activityPairCardSlots(row, true)"
-        [stackClasses]="activityRateCardContentClasses(row)"
-        [activeIndexByKey]="activityPairCardActiveIndexes(row)"
-        [loadingByKey]="renderState === 'active' ? activityPairCardLoadingMap(row) : null"
-        [interactive]="renderState === 'active'"
-        [badge]="activityRateBadgeConfig(row, { layout: 'pair-overlap', interactive: false, forceActive: true })"
-        [splitCssValue]="activitiesRatesPairSplitCssValue"
-        [isResizing]="renderState === 'active' && isActivitiesRatesPairSplitDragging"
-        [showSplitHandle]="renderState === 'active' && isActivitiesRatesPairMobileSplitEnabled()"
-        (slotSelect)="onActivityPairCardSlideSelect(row, $event)"
-        (splitHandlePointerDown)="onActivityPairCardSplitHandlePointerDown($event)"
-        (splitHandleTouchStart)="onActivityPairCardSplitHandleTouchStart($event)"
+        [card]="activityPairCard(row, { presentation: 'fullscreen', state: renderState })"
       ></app-pair-card>
 
       <ng-template #fullscreenSingleRateCard>
         <app-single-card
-          presentation="fullscreen"
-          [state]="renderState"
-          [rowId]="row.id"
-          [slides]="activitySingleCardSlides(row)"
-          [stackClasses]="activityRateCardContentClasses(row)"
-          [activeIndex]="activityRateCardActiveImageIndex(row)"
-          [loading]="renderState === 'active' && isActivityRateCardImageLoading(row)"
-          [interactive]="renderState === 'active'"
-          [badge]="activityRateBadgeConfig(row, { layout: 'floating', interactive: false, forceActive: true })"
-          (slideSelect)="onActivitySingleCardSlideSelect(row, $event)"
+          [card]="activitySingleCard(row, { presentation: 'fullscreen', state: renderState })"
         ></app-single-card>
       </ng-template>
     </ng-container>
@@ -651,29 +628,15 @@
 
   <ng-template #activitiesRateSingleSmartListItemTemplate let-row let-groupLabel="groupLabel">
     <app-single-card
-      [rowId]="row.id"
-      [groupLabel]="groupLabel"
-      [slides]="activitySingleCardSlides(row)"
-      [stackClasses]="activityRateCardContentClasses(row)"
-      [activeIndex]="activityRateCardActiveImageIndex(row)"
-      [loading]="isActivityRateCardImageLoading(row)"
-      [badge]="activityRateBadgeConfig(row, { layout: 'floating' })"
-      (slideSelect)="onActivitySingleCardSlideSelect(row, $event)"
-      (badgeClick)="openActivityRateEditor(row, $event)"
+      [card]="activitySingleCard(row, { groupLabel: groupLabel })"
+      (badgeClick)="openActivityRateEditor(row)"
     ></app-single-card>
   </ng-template>
 
   <ng-template #activitiesRatePairSmartListItemTemplate let-row let-groupLabel="groupLabel">
     <app-pair-card
-      [rowId]="row.id"
-      [groupLabel]="groupLabel"
-      [slots]="activityPairCardSlots(row)"
-      [stackClasses]="activityRateCardContentClasses(row)"
-      [activeIndexByKey]="activityPairCardActiveIndexes(row)"
-      [loadingByKey]="activityPairCardLoadingMap(row)"
-      [badge]="activityRateBadgeConfig(row, { layout: 'between' })"
-      (slotSelect)="onActivityPairCardSlideSelect(row, $event)"
-      (badgeClick)="openActivityRateEditor(row, $event)"
+      [card]="activityPairCard(row, { groupLabel: groupLabel })"
+      (badgeClick)="openActivityRateEditor(row)"
     ></app-pair-card>
   </ng-template>
   <!-- ───── Delete confirm ───── -->
