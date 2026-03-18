@@ -250,7 +250,17 @@ export class EntryShellComponent {
   }
 
   private waitForPopupPaint(): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, 0));
+    return new Promise(resolve => {
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            setTimeout(resolve, 80);
+          });
+        });
+        return;
+      }
+      setTimeout(resolve, 80);
+    });
   }
 
   private waitForLoaderCompletionBeat(): Promise<void> {
