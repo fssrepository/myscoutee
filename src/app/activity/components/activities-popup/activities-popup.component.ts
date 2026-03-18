@@ -1181,11 +1181,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     readOnly = false,
     stacked = true
   ): void {
-    this.activitiesContext.requestActivitiesNavigation({
-      type: 'eventEditor',
-      row,
-      readOnly
-    });
+    void stacked;
+    this.openActivityRowInEventModule(row, readOnly);
   }
 
   protected requestOpenEventExplore(): void {
@@ -4250,14 +4247,43 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private openActivityRowInEventModule(row: AppTypes.ActivityListRow, readOnly: boolean): void {
-    if (row.type !== 'events' && row.type !== 'hosting' && row.type !== 'invitations') {
+    const source = this.resolveActivityEventEditorSource(row);
+    if (!source) {
       return;
     }
-    this.activitiesContext.requestActivitiesNavigation({
-      type: 'eventEditor',
-      row,
-      readOnly: row.type === 'invitations' ? true : readOnly
-    });
+    const effectiveReadOnly = row.type === 'invitations'
+      ? true
+      : readOnly || (row.type === 'events' && row.isAdmin !== true);
+    if (effectiveReadOnly) {
+      this.eventEditorService.openView(source);
+      return;
+    }
+    this.eventEditorService.openEdit(source);
+  }
+
+  private resolveActivityEventEditorSource(row: AppTypes.ActivityListRow): EventMenuItem | HostingMenuItem | null {
+    if (row.type === 'invitations') {
+      const invitationSource = row.source as InvitationMenuItem;
+      const invitation = this.invitationItems.find(item => item.id === invitationSource.id) ?? invitationSource;
+      return this.resolveRelatedEventFromInvitation(invitation) ?? this.buildInvitationPreviewEventSource(invitation);
+    }
+    if (row.type !== 'events' && row.type !== 'hosting') {
+      return null;
+    }
+    const rowSource = row.source as EventMenuItem | HostingMenuItem;
+    const rowSourceId = typeof rowSource?.id === 'string' ? rowSource.id.trim() : '';
+    let source = rowSourceId
+      ? (this.eventItems.find(item => item.id === rowSourceId)
+        ?? this.hostingItems.find(item => item.id === rowSourceId)
+        ?? null)
+      : null;
+    if (!source && typeof rowSource?.title === 'string' && rowSource.title.trim()) {
+      const titleKey = AppUtils.normalizeText(rowSource.title);
+      source = this.eventItems.find(item => AppUtils.normalizeText(item.title) === titleKey)
+        ?? this.hostingItems.find(item => AppUtils.normalizeText(item.title) === titleKey)
+        ?? null;
+    }
+    return source ?? rowSource;
   }
 
   private resolveRelatedEventFromInvitation(invitation: InvitationMenuItem): EventMenuItem | HostingMenuItem | null {
