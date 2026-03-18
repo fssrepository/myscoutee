@@ -1,8 +1,10 @@
 import { CommonModule } from '@angular/common';
 import {
+  AfterViewInit,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  ElementRef,
   EventEmitter,
   HostBinding,
   Input,
@@ -10,6 +12,7 @@ import {
   OnDestroy,
   Output,
   SimpleChanges,
+  ViewChild,
   inject
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
@@ -25,14 +28,17 @@ import type { CardImageSlide, SingleCardData } from '../card.types';
   styleUrl: './single-card.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class SingleCardComponent implements OnChanges, OnDestroy {
+export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   private static readonly IMAGE_PULSE_DURATION_MS = 500;
+  private static readonly FULLSCREEN_ASPECT_RATIO = 3 / 4;
   private static readonly activeIndexByRowId: Record<string, number> = {};
 
   private readonly cdr = inject(ChangeDetectorRef);
   private loadingTimer: ReturnType<typeof setTimeout> | null = null;
+  private fullscreenResizeObserver: ResizeObserver | null = null;
   private previousRowId = '';
   private previousBadgeActive = false;
+  private fullscreenShellElementRef?: ElementRef<HTMLElement>;
 
   @Input() card: SingleCardData | null = null;
 
@@ -40,6 +46,15 @@ export class SingleCardComponent implements OnChanges, OnDestroy {
 
   protected activeIndex = 0;
   protected loading = false;
+  protected fullscreenCardWidth: string | null = null;
+  protected fullscreenCardHeight: string | null = null;
+
+  @ViewChild('fullscreenShell', { read: ElementRef })
+  protected set fullscreenShellRef(value: ElementRef<HTMLElement> | undefined) {
+    this.fullscreenShellElementRef = value;
+    this.bindFullscreenObserver();
+    this.scheduleFullscreenLayoutSync();
+  }
 
   @HostBinding('attr.data-card-presentation')
   protected get hostPresentationAttr(): string {
@@ -49,6 +64,11 @@ export class SingleCardComponent implements OnChanges, OnDestroy {
   @HostBinding('style.height')
   protected get hostHeight(): string | null {
     return this.resolvedPresentation() === 'fullscreen' ? '100%' : null;
+  }
+
+  ngAfterViewInit(): void {
+    this.bindFullscreenObserver();
+    this.scheduleFullscreenLayoutSync();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -69,14 +89,15 @@ export class SingleCardComponent implements OnChanges, OnDestroy {
 
     this.previousRowId = rowId;
     this.previousBadgeActive = badgeActive;
+    this.scheduleFullscreenLayoutSync();
   }
 
   ngOnDestroy(): void {
-    if (!this.loadingTimer) {
-      return;
+    if (this.loadingTimer) {
+      clearTimeout(this.loadingTimer);
+      this.loadingTimer = null;
     }
-    clearTimeout(this.loadingTimer);
-    this.loadingTimer = null;
+    this.disconnectFullscreenObserver();
   }
 
   protected trackBySlide(index: number, slide: CardImageSlide): string {
@@ -194,5 +215,70 @@ export class SingleCardComponent implements OnChanges, OnDestroy {
       this.loadingTimer = null;
       this.cdr.markForCheck();
     }, SingleCardComponent.IMAGE_PULSE_DURATION_MS);
+  }
+
+  private bindFullscreenObserver(): void {
+    if (typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    const shell = this.fullscreenShellElementRef?.nativeElement;
+    if (!shell) {
+      this.disconnectFullscreenObserver();
+      return;
+    }
+    if (!this.fullscreenResizeObserver) {
+      this.fullscreenResizeObserver = new ResizeObserver(() => this.updateFullscreenCardSize());
+    }
+    this.fullscreenResizeObserver.disconnect();
+    this.fullscreenResizeObserver.observe(shell);
+  }
+
+  private disconnectFullscreenObserver(): void {
+    if (!this.fullscreenResizeObserver) {
+      return;
+    }
+    this.fullscreenResizeObserver.disconnect();
+    this.fullscreenResizeObserver = null;
+  }
+
+  private scheduleFullscreenLayoutSync(): void {
+    if (this.resolvedPresentation() !== 'fullscreen') {
+      this.setFullscreenCardSize(null, null);
+      return;
+    }
+    const sync = () => this.updateFullscreenCardSize();
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => sync());
+      return;
+    }
+    setTimeout(sync, 0);
+  }
+
+  private updateFullscreenCardSize(): void {
+    if (this.resolvedPresentation() !== 'fullscreen') {
+      this.setFullscreenCardSize(null, null);
+      return;
+    }
+    const shell = this.fullscreenShellElementRef?.nativeElement;
+    if (!shell) {
+      return;
+    }
+    const availableWidth = shell.clientWidth;
+    const availableHeight = shell.clientHeight;
+    if (availableWidth <= 0 || availableHeight <= 0) {
+      return;
+    }
+    const nextWidth = Math.min(availableWidth, availableHeight * SingleCardComponent.FULLSCREEN_ASPECT_RATIO);
+    const nextHeight = nextWidth / SingleCardComponent.FULLSCREEN_ASPECT_RATIO;
+    this.setFullscreenCardSize(`${nextWidth}px`, `${nextHeight}px`);
+  }
+
+  private setFullscreenCardSize(width: string | null, height: string | null): void {
+    if (this.fullscreenCardWidth === width && this.fullscreenCardHeight === height) {
+      return;
+    }
+    this.fullscreenCardWidth = width;
+    this.fullscreenCardHeight = height;
+    this.cdr.markForCheck();
   }
 }

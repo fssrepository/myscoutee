@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import {
+  AfterViewInit,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
@@ -28,8 +29,9 @@ import type { CardImageSlide, PairCardData, PairCardSlot } from '../card.types';
   styleUrl: './pair-card.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class PairCardComponent implements OnChanges, OnDestroy {
+export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   private static readonly IMAGE_PULSE_DURATION_MS = 500;
+  private static readonly FULLSCREEN_ASPECT_RATIO = 5 / 4;
   private static readonly SPLIT_DEFAULT_PERCENT = 50;
   private static readonly SPLIT_MIN_PERCENT = 0;
   private static readonly SPLIT_MAX_PERCENT = 100;
@@ -41,12 +43,14 @@ export class PairCardComponent implements OnChanges, OnDestroy {
 
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly loadingTimersByKey: Record<string, ReturnType<typeof setTimeout>> = {};
+  private fullscreenResizeObserver: ResizeObserver | null = null;
   private previousRowId = '';
   private previousBadgeActive = false;
   private splitPointerId: number | null = null;
   private splitBounds: { left: number; width: number } | null = null;
   private splitDragStartClientX: number | null = null;
   private splitDragStartPercent: number | null = null;
+  private fullscreenShellElementRef?: ElementRef<HTMLElement>;
 
   @Input() card: PairCardData | null = null;
 
@@ -56,6 +60,15 @@ export class PairCardComponent implements OnChanges, OnDestroy {
   protected readonly loadingByKey: Record<string, boolean> = {};
   protected splitPercent = PairCardComponent.SPLIT_DEFAULT_PERCENT;
   protected isResizing = false;
+  protected fullscreenCardWidth: string | null = null;
+  protected fullscreenCardHeight: string | null = null;
+
+  @ViewChild('fullscreenShell', { read: ElementRef })
+  protected set fullscreenShellRef(value: ElementRef<HTMLElement> | undefined) {
+    this.fullscreenShellElementRef = value;
+    this.bindFullscreenObserver();
+    this.scheduleFullscreenLayoutSync();
+  }
 
   @HostBinding('attr.data-card-presentation')
   protected get hostPresentationAttr(): string {
@@ -65,6 +78,11 @@ export class PairCardComponent implements OnChanges, OnDestroy {
   @HostBinding('style.height')
   protected get hostHeight(): string | null {
     return this.resolvedPresentation() === 'fullscreen' ? '100%' : null;
+  }
+
+  ngAfterViewInit(): void {
+    this.bindFullscreenObserver();
+    this.scheduleFullscreenLayoutSync();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -85,10 +103,12 @@ export class PairCardComponent implements OnChanges, OnDestroy {
 
     this.previousRowId = rowId;
     this.previousBadgeActive = badgeActive;
+    this.scheduleFullscreenLayoutSync();
   }
 
   ngOnDestroy(): void {
     Object.values(this.loadingTimersByKey).forEach(timer => clearTimeout(timer));
+    this.disconnectFullscreenObserver();
     this.stopSplitDrag();
   }
 
@@ -392,6 +412,71 @@ export class PairCardComponent implements OnChanges, OnDestroy {
     this.splitBounds = null;
     this.splitDragStartClientX = null;
     this.splitDragStartPercent = null;
+    this.cdr.markForCheck();
+  }
+
+  private bindFullscreenObserver(): void {
+    if (typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    const shell = this.fullscreenShellElementRef?.nativeElement;
+    if (!shell) {
+      this.disconnectFullscreenObserver();
+      return;
+    }
+    if (!this.fullscreenResizeObserver) {
+      this.fullscreenResizeObserver = new ResizeObserver(() => this.updateFullscreenCardSize());
+    }
+    this.fullscreenResizeObserver.disconnect();
+    this.fullscreenResizeObserver.observe(shell);
+  }
+
+  private disconnectFullscreenObserver(): void {
+    if (!this.fullscreenResizeObserver) {
+      return;
+    }
+    this.fullscreenResizeObserver.disconnect();
+    this.fullscreenResizeObserver = null;
+  }
+
+  private scheduleFullscreenLayoutSync(): void {
+    if (this.resolvedPresentation() !== 'fullscreen') {
+      this.setFullscreenCardSize(null, null);
+      return;
+    }
+    const sync = () => this.updateFullscreenCardSize();
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => sync());
+      return;
+    }
+    setTimeout(sync, 0);
+  }
+
+  private updateFullscreenCardSize(): void {
+    if (this.resolvedPresentation() !== 'fullscreen') {
+      this.setFullscreenCardSize(null, null);
+      return;
+    }
+    const shell = this.fullscreenShellElementRef?.nativeElement;
+    if (!shell) {
+      return;
+    }
+    const availableWidth = shell.clientWidth;
+    const availableHeight = shell.clientHeight;
+    if (availableWidth <= 0 || availableHeight <= 0) {
+      return;
+    }
+    const nextWidth = Math.min(availableWidth, availableHeight * PairCardComponent.FULLSCREEN_ASPECT_RATIO);
+    const nextHeight = nextWidth / PairCardComponent.FULLSCREEN_ASPECT_RATIO;
+    this.setFullscreenCardSize(`${nextWidth}px`, `${nextHeight}px`);
+  }
+
+  private setFullscreenCardSize(width: string | null, height: string | null): void {
+    if (this.fullscreenCardWidth === width && this.fullscreenCardHeight === height) {
+      return;
+    }
+    this.fullscreenCardWidth = width;
+    this.fullscreenCardHeight = height;
     this.cdr.markForCheck();
   }
 }

@@ -1,10 +1,12 @@
 <ng-container *ngIf="resolvedPresentation() === 'fullscreen'; else listCard">
-  <div class="activities-rates-fullscreen">
+  <div #fullscreenShell class="activities-rates-fullscreen">
     <article
       class="activities-rate-profile-card activities-row-item activities-rates-fullscreen-card"
       [class.activities-rates-fullscreen-card-active]="resolvedState() === 'active'"
       [class.activities-rates-fullscreen-card-leaving]="resolvedState() === 'leaving'"
       [attr.data-activity-rate-row-id]="card?.rowId"
+      [style.width]="fullscreenCardWidth"
+      [style.height]="fullscreenCardHeight"
     >
       <ng-container *ngTemplateOutlet="cardBody"></ng-container>
     </article>
