@@ -1,4 +1,4 @@
-import { Component, EventEmitter, HostListener, Injector, Input, Output, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Input, NgZone, Output, inject } from '@angular/core';
 
 import { UsersService, type DemoUserListItemDto } from '../../../shared/core';
 import type * as AppTypes from '../../../shared/app-types';
@@ -26,6 +26,8 @@ export class EntryShellComponent {
   private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
 
   private readonly injector = inject(Injector);
+  private readonly changeDetectorRef = inject(ChangeDetectorRef);
+  private readonly ngZone = inject(NgZone);
   private usersServiceRef: UsersService | null = null;
 
   @Input({ required: true }) authMode: AppTypes.AuthMode = 'selector';
@@ -213,21 +215,33 @@ export class EntryShellComponent {
         if (!this.isCurrentDemoSelectorRequest(requestToken)) {
           return;
         }
-        this.demoSelectorLoadingProgress = state.percent;
-        this.demoSelectorLoadingLabel = state.label;
+        this.commitDemoSelectorState(() => {
+          this.demoSelectorLoadingProgress = state.percent;
+          this.demoSelectorLoadingLabel = state.label;
+        });
       });
       if (!this.isCurrentDemoSelectorRequest(requestToken)) {
         return;
       }
-      this.demoSelectorUsers = users;
-      this.demoSelectorLoadingProgress = 100;
-      this.demoSelectorLoadingLabel = 'Demo data ready';
-      this.demoSelectorLoading = false;
+      this.commitDemoSelectorState(() => {
+        this.demoSelectorUsers = users;
+        this.demoSelectorLoadingProgress = 100;
+        this.demoSelectorLoadingLabel = 'Demo data ready';
+      });
+      await this.waitForLoaderCompletionBeat();
+      if (!this.isCurrentDemoSelectorRequest(requestToken)) {
+        return;
+      }
+      this.commitDemoSelectorState(() => {
+        this.demoSelectorLoading = false;
+      });
     } catch {
       if (!this.isCurrentDemoSelectorRequest(requestToken)) {
         return;
       }
-      this.demoSelectorLoading = false;
+      this.commitDemoSelectorState(() => {
+        this.demoSelectorLoading = false;
+      });
     }
   }
 
@@ -236,14 +250,17 @@ export class EntryShellComponent {
   }
 
   private waitForPopupPaint(): Promise<void> {
-    return new Promise(resolve => {
-      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-        window.requestAnimationFrame(() => {
-          window.requestAnimationFrame(() => resolve());
-        });
-        return;
-      }
-      setTimeout(resolve, 0);
+    return new Promise(resolve => setTimeout(resolve, 0));
+  }
+
+  private waitForLoaderCompletionBeat(): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, 240));
+  }
+
+  private commitDemoSelectorState(update: () => void): void {
+    this.ngZone.run(() => {
+      update();
+      this.changeDetectorRef.detectChanges();
     });
   }
 

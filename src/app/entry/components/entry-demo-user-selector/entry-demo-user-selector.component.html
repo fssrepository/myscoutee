@@ -33,7 +33,11 @@
                 [attr.aria-valuenow]="loadingProgress"
               >
                 <span class="demo-user-progress-track" aria-hidden="true"></span>
-                <span class="demo-user-progress-fill" [style.width.%]="loadingProgress" aria-hidden="true"></span>
+                <span
+                  class="demo-user-progress-fill"
+                  [style.transform]="'scaleX(' + (loadingProgress / 100) + ')'"
+                  aria-hidden="true"
+                ></span>
               </div>
               <p class="demo-user-progress-value">{{ loadingProgress }}%</p>
             </div>

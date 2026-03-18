@@ -132,14 +132,6 @@ export class DemoBootstrapService {
   }
 
   private waitForUiYield(): Promise<void> {
-    return new Promise(resolve => {
-      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-        window.requestAnimationFrame(() => {
-          window.requestAnimationFrame(() => resolve());
-        });
-        return;
-      }
-      setTimeout(resolve, 0);
-    });
+    return new Promise(resolve => setTimeout(resolve, 0));
   }
 }

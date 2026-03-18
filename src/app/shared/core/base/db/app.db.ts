@@ -62,6 +62,8 @@ export class AppMemoryDb {
   private static readonly USER_RATES_ACTIVITY_RELEVANCE_INDEX = 'activityRatesByRelevance';
   private static readonly LEGACY_INDEXED_DB_STATE_KEY = 'current';
   private readonly _tables = signal<DemoMemorySchema>(this.loadInitialState());
+  private pendingPersistState: DemoMemorySchema | null = null;
+  private persistTimerId: ReturnType<typeof setTimeout> | null = null;
 
   readonly tables = this._tables.asReadonly();
 
@@ -76,8 +78,7 @@ export class AppMemoryDb {
   write(updater: (current: DemoMemorySchema) => DemoMemorySchema): void {
     const next = this.normalizeState(updater(this._tables()));
     this._tables.set(next);
-    this.persist(next);
-    void this.persistToIndexedDb(next);
+    this.schedulePersist(next);
   }
 
   async queryActivityRateRecords(query: ActivityRateRecordQuery): Promise<ActivityRateRecordQueryResult> {
@@ -181,6 +182,23 @@ export class AppMemoryDb {
     } catch {
       // Ignore quota/private-mode write failures in demo mode.
     }
+  }
+
+  private schedulePersist(state: DemoMemorySchema): void {
+    this.pendingPersistState = state;
+    if (this.persistTimerId !== null) {
+      clearTimeout(this.persistTimerId);
+    }
+    this.persistTimerId = setTimeout(() => {
+      this.persistTimerId = null;
+      const pendingState = this.pendingPersistState;
+      this.pendingPersistState = null;
+      if (!pendingState) {
+        return;
+      }
+      this.persist(pendingState);
+      void this.persistToIndexedDb(pendingState);
+    }, 32);
   }
 
   private async hydrateFromIndexedDb(): Promise<void> {
