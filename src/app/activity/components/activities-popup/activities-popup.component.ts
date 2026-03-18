@@ -48,19 +48,21 @@ import type {
 } from '../../../shared/activities-models';
 import type * as AppTypes from '../../../shared/app-types';
 import {
+  buildPairRateCardData,
+  buildSingleRateCardData,
   InfoCardComponent,
   PairCardComponent,
   SmartListComponent,
   SingleCardComponent,
   type CardBadgeConfig,
-  type CardImageSlide,
   type InfoCardData,
   type InfoCardMenuAction,
   type InfoCardMenuActionEvent,
   type ListQuery,
   type PageResult,
   type PairCardData,
-  type PairCardSlot,
+  type RateCardDataInput,
+  type RateCardPerson,
   type RatingStarBarConfig,
   type SingleCardData,
   type SmartListConfig,
@@ -341,7 +343,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private visibleActivityRows: AppTypes.ActivityListRow[] = [];
   protected readonly activitiesPageSize  = 10;
 
-  // ── Rate editor dock ──────────────────────────────────────────────────────
+  // ── Rates state ───────────────────────────────────────────────────────────
   protected selectedActivityRateId: string | null  = null;
   private activityRateEditorClosing                = false;
   private activityRateEditorCloseTimer: ReturnType<typeof setTimeout> | null = null;
@@ -357,7 +359,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private lastRateIndicatorPulseRowId: string | null = null;
 
-  // ── Fullscreen rates ──────────────────────────────────────────────────────
+  // ── Rates fullscreen state ────────────────────────────────────────────────
   protected activitiesRatesFullscreenMode         = false;
 
   // ── Delete / publish confirms ─────────────────────────────────────────────
@@ -2132,9 +2134,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
   }
 
-  // =========================================================================
-  // Rate editor dock
-  // =========================================================================
+  // ── Rates editor state ────────────────────────────────────────────────────
 
   protected openActivityRateEditor(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
@@ -2541,85 +2541,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return sampleCurveY(AppUtils.clampNumber(t, 0, 1));
   }
 
-  // =========================================================================
-  // Rate card – image stack helpers
-  // =========================================================================
-
-  protected activityRateCardImageUrls(row: AppTypes.ActivityListRow): string[] {
-    if (row.type !== 'rates') {
-      return [];
-    }
-    const item = row.source as RateMenuItem;
-    const user = this.activityRateUser(row);
-    const generated = Array.from({ length: 6 }, (_, index) =>
-      this.rateCardSeedImageUrl(row.id, user?.id ?? 'rate-fallback', user?.gender ?? this.activeUser.gender, index)
-    );
-    const seededCount = 1 + (AppDemoGenerators.hashText(`rate-photo-count:${user?.id ?? row.id}`) % 4);
-    const desiredCount = item.direction === 'met' ? Math.min(2, seededCount) : seededCount;
-    return generated.slice(0, Math.max(1, Math.min(4, desiredCount)));
-  }
-
-  protected activityRateCardHasLine(row: AppTypes.ActivityListRow, cardIndex: number): boolean {
-    const card = this.activityRateCardLines(row, cardIndex);
-    return card.primary.length > 0 && card.secondary.length > 0;
-  }
-
-  protected activityRateCardPrimaryLine(row: AppTypes.ActivityListRow, cardIndex: number): string {
-    return this.activityRateCardLines(row, cardIndex).primary;
-  }
-
-  protected activityRateCardSecondaryLine(row: AppTypes.ActivityListRow, cardIndex: number): string {
-    return this.activityRateCardLines(row, cardIndex).secondary;
-  }
-
-  private activityRateCardLines(row: AppTypes.ActivityListRow, cardIndex: number): { primary: string; secondary: string } {
-    const user = this.activityRateUser(row);
-    if (!user) {
-      return cardIndex === 0
-        ? { primary: row.title, secondary: `${row.distanceKm} km` }
-        : { primary: '', secondary: '' };
-    }
-    const item = row.source as RateMenuItem;
-    const modeLabel = item.mode === 'pair' ? 'Pair' : 'Single';
-    const direction = this.displayedRateDirection(item);
-    const directionLabel = `${direction.charAt(0).toUpperCase()}${direction.slice(1)}`;
-    const happenedOn = this.toRateCardDateLabel(item.happenedAt);
-    const cards: Array<{ primary: string; secondary: string }> = [
-      { primary: `${user.name}, ${user.age}`, secondary: `${user.city} · ${row.distanceKm} km` },
-      { primary: `${modeLabel} · ${directionLabel}`, secondary: `${item.eventName} · ${happenedOn}` }
-    ];
-    if (cardIndex < 0 || cardIndex >= cards.length) {
-      return { primary: '', secondary: '' };
-    }
-    return cards[cardIndex] ?? { primary: '', secondary: '' };
-  }
-
-  protected activityRateCardContentClasses(row: AppTypes.ActivityListRow): string[] {
-    const item = row.source as RateMenuItem;
-    const directionClass = this.displayedRateDirection(item);
-    return [
-      item.mode === 'pair' ? 'activities-rate-profile-stack-pair' : 'activities-rate-profile-stack-single',
-      `activities-rate-profile-stack-${directionClass}`
-    ];
-  }
-
-  protected activitySingleCardSlides(row: AppTypes.ActivityListRow): CardImageSlide[] {
-    return this.activityRateCardImageUrls(row).map((imageUrl, index) => ({
-      imageUrl,
-      primaryLine: this.activityRateCardPrimaryLine(row, index),
-      secondaryLine: this.activityRateCardSecondaryLine(row, index)
-    }));
-  }
-
-  protected activityPairCardSlots(row: AppTypes.ActivityListRow, fullscreen = false): PairCardSlot[] {
-    return (['woman', 'man'] as const).map(slot => ({
-      key: slot,
-      label: slot === 'woman' ? 'Woman' : 'Man',
-      tone: slot,
-      slides: this.activityPairCardSlides(row, slot)
-    }));
-  }
-
   protected activitySingleCard(
     row: AppTypes.ActivityListRow,
     options?: {
@@ -2629,20 +2550,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
   ): SingleCardData {
     const presentation = options?.presentation ?? 'list';
-    const state = options?.state ?? 'default';
-    return {
-      rowId: row.id,
-      groupLabel: options?.groupLabel ?? null,
-      slides: this.activitySingleCardSlides(row),
-      stackClasses: this.activityRateCardContentClasses(row),
+    return buildSingleRateCardData({
+      ...this.rateCardDataInput(row, options),
       badge: this.activityRateBadgeConfig(row, {
         layout: 'floating',
         interactive: presentation !== 'fullscreen',
         forceActive: presentation === 'fullscreen'
-      }),
-      presentation,
-      state
-    };
+      })
+    });
   }
 
   protected activityPairCard(
@@ -2654,26 +2569,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
   ): PairCardData {
     const presentation = options?.presentation ?? 'list';
-    const state = options?.state ?? 'default';
-    return {
-      rowId: row.id,
-      groupLabel: options?.groupLabel ?? null,
-      slots: this.activityPairCardSlots(row, presentation === 'fullscreen'),
-      stackClasses: this.activityRateCardContentClasses(row),
+    return buildPairRateCardData({
+      ...this.rateCardDataInput(row, options),
       badge: this.activityRateBadgeConfig(row, {
         layout: presentation === 'fullscreen' ? 'pair-overlap' : 'between',
         interactive: presentation !== 'fullscreen',
         forceActive: presentation === 'fullscreen'
-      }),
-      presentation,
-      state,
-      split: presentation === 'fullscreen'
-        ? { enabled: !this.activitiesSmartList?.isFullscreenPaginationAnimating() }
-        : null
-    };
+      })
+    });
   }
-
-  // ── Pair rate card helpers ─────────────────────────────────────────────────
 
   protected isPairRateRow(row: AppTypes.ActivityListRow): boolean {
     const rate = row.source as RateMenuItem;
@@ -2685,83 +2589,73 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return rate.mode === 'pair' && this.displayedRateDirection(rate) === 'received';
   }
 
-  protected activityPairRateSlotUser(row: AppTypes.ActivityListRow, gender: DemoUser['gender']): DemoUser | null {
+  private rateCardDataInput(
+    row: AppTypes.ActivityListRow,
+    options?: {
+      groupLabel?: string | null;
+      presentation?: SingleCardData['presentation'] | PairCardData['presentation'];
+      state?: SingleCardData['state'] | PairCardData['state'];
+    }
+  ): RateCardDataInput {
+    const item = row.source as RateMenuItem;
+    const presentation = options?.presentation ?? 'list';
+
+    return {
+      rowId: row.id,
+      groupLabel: options?.groupLabel ?? null,
+      title: row.title,
+      distanceKm: row.distanceKm,
+      mode: item.mode,
+      direction: this.displayedRateDirection(item),
+      eventName: item.eventName,
+      happenedOnLabel: this.toRateCardDateLabel(item.happenedAt),
+      primaryUser: this.toRateCardPerson(this.activityRateUser(row)),
+      pairUsers: this.rateCardPairUsers(row),
+      availableUsers: this.users
+        .map(user => this.toRateCardPerson(user))
+        .filter((user): user is RateCardPerson => Boolean(user)),
+      fallbackGender: this.activeUser.gender,
+      stackClasses: this.rateCardStackClasses(row),
+      presentation,
+      state: options?.state ?? 'default',
+      fullscreenSplitEnabled: presentation === 'fullscreen'
+        ? !this.activitiesSmartList?.isFullscreenPaginationAnimating()
+        : false
+    };
+  }
+
+  private rateCardStackClasses(row: AppTypes.ActivityListRow): string[] {
+    const item = row.source as RateMenuItem;
+    const directionClass = this.displayedRateDirection(item);
+    return [
+      item.mode === 'pair' ? 'activities-rate-profile-stack-pair' : 'activities-rate-profile-stack-single',
+      `activities-rate-profile-stack-${directionClass}`
+    ];
+  }
+
+  private rateCardPairUsers(row: AppTypes.ActivityListRow): RateCardPerson[] {
     if (row.type !== 'rates') {
-      return null;
+      return [];
     }
     const item = row.source as RateMenuItem;
-    const pairUsers = [
-      this.users.find(user => user.id === item.userId) ?? null,
-      item.secondaryUserId ? (this.users.find(user => user.id === item.secondaryUserId) ?? null) : null
-    ].filter((user): user is DemoUser => Boolean(user));
-    const directMatch = pairUsers.find(user => user.gender === gender) ?? null;
-    if (directMatch) {
-      return directMatch;
-    }
-    const primary = pairUsers[0] ?? null;
-    const candidates = this.users.filter(user =>
-      user.gender === gender
-      && !pairUsers.some(pairUser => pairUser.id === user.id)
-    );
-    if (candidates.length > 0) {
-      const seed = AppDemoGenerators.hashText(`pair-rate-slot:${row.id}:${gender}`);
-      return candidates[seed % candidates.length] ?? null;
-    }
-    if (primary && primary.gender !== gender) {
-      return primary;
-    }
-    return null;
+    return [item.userId, item.secondaryUserId]
+      .filter((userId): userId is string => typeof userId === 'string' && userId.length > 0)
+      .map(userId => this.users.find(user => user.id === userId) ?? null)
+      .map(user => this.toRateCardPerson(user))
+      .filter((user): user is RateCardPerson => Boolean(user));
   }
 
-  protected activityPairRateSlotImageUrls(row: AppTypes.ActivityListRow, gender: DemoUser['gender']): string[] {
-    const user = this.activityPairRateSlotUser(row, gender);
+  private toRateCardPerson(user: DemoUser | null): RateCardPerson | null {
     if (!user) {
-      return [''];
+      return null;
     }
-    const seededCount = 2 + (AppDemoGenerators.hashText(`pair-rate-photo-count:${row.id}:${gender}:${user.id}`) % 2);
-    return Array.from({ length: seededCount }, (_, index) =>
-      this.rateCardSeedImageUrl(`${row.id}-${gender}`, user.id, user.gender, index)
-    );
-  }
-
-  protected activityPairRateSlotInitials(row: AppTypes.ActivityListRow, slot: 'man' | 'woman'): string {
-    const user = this.activityPairRateSlotUser(row, slot);
-    if (!user) {
-      return '∅';
-    }
-    return AppUtils.initialsFromText(user.name);
-  }
-
-  protected activityPairRateSlotPrimaryLine(row: AppTypes.ActivityListRow, slot: 'man' | 'woman'): string {
-    const user = this.activityPairRateSlotUser(row, slot);
-    if (!user) {
-      return `${slot === 'woman' ? 'Woman' : 'Man'} · waiting`;
-    }
-    return `${user.name}, ${user.age}`;
-  }
-
-  protected activityPairRateSlotSecondaryLine(row: AppTypes.ActivityListRow, slot: 'man' | 'woman'): string {
-    const user = this.activityPairRateSlotUser(row, slot);
-    if (!user) {
-      return 'No pair card yet';
-    }
-    return `${user.city} · ${row.distanceKm} km`;
-  }
-
-  private activityPairCardSlides(row: AppTypes.ActivityListRow, slot: 'man' | 'woman'): CardImageSlide[] {
-    return this.activityPairRateSlotImageUrls(row, slot).map(imageUrl => ({
-      imageUrl,
-      primaryLine: this.activityPairRateSlotPrimaryLine(row, slot),
-      secondaryLine: this.activityPairRateSlotSecondaryLine(row, slot),
-      placeholderLabel: this.activityPairRateSlotInitials(row, slot)
-    }));
-  }
-
-  private rateCardSeedImageUrl(rowId: string, userId: string, gender: DemoUser['gender'], index: number): string {
-    const hash = AppDemoGenerators.hashText(`rate-card-${userId}-${rowId}-${index + 1}`);
-    const genderFolder = gender === 'woman' ? 'women' : 'men';
-    const portraitIndex = hash % 100;
-    return `https://randomuser.me/api/portraits/${genderFolder}/${portraitIndex}.jpg`;
+    return {
+      id: user.id,
+      name: user.name,
+      age: user.age,
+      city: user.city,
+      gender: user.gender
+    };
   }
 
   private toRateCardDateLabel(isoValue: string): string {
@@ -2881,9 +2775,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     setTimeout(() => startBlink(), 0);
   }
 
-  // =========================================================================
-  // Fullscreen rates navigation
-  // =========================================================================
+  // ── Rates fullscreen state ────────────────────────────────────────────────
 
   protected isActivitiesRatesFullscreenReadOnlyNavigation(): boolean {
     return this.isRatesFullscreenModeActive() && this.activitiesRateFilter === 'pair-received';
