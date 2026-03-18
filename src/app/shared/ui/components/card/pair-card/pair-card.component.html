@@ -93,8 +93,8 @@
         class="activities-rates-pair-fullscreen-resize-handle"
         *ngIf="isSplitEnabled()"
         aria-label="Resize pair cards"
-        (pointerdown)="onSplitHandlePointerDown($event)"
-        (touchstart)="onSplitHandleTouchStart($event)"
+        (pointerdown)="onSplitHandlePointerDown($event, splitContainer)"
+        (touchstart)="onSplitHandleTouchStart($event, splitContainer)"
         (click)="consumeClick($event)"
       >
         <span class="activities-rates-pair-fullscreen-resize-handle-grip" aria-hidden="true"></span>

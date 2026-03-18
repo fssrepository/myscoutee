@@ -635,24 +635,26 @@ span.activities-rate-score-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    pointer-events: auto;
     left: var(--activities-pair-split);
     top: var(--activities-pair-pad);
     bottom: var(--activities-pair-pad);
-    width: 20px;
+    width: 36px;
     transform: translateX(-50%);
     border: 0;
     padding: 0;
     margin: 0;
     background: transparent;
-    z-index: 26;
+    z-index: 40;
     touch-action: none;
     cursor: ew-resize;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .activities-rates-pair-fullscreen-resize-handle::before {
     content: '';
     position: absolute;
-    inset: 0;
+    inset: -12px -8px;
   }
 
   .activities-rates-pair-fullscreen-resize-handle-grip {

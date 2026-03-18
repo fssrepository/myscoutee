@@ -7,7 +7,6 @@ import {
   ElementRef,
   EventEmitter,
   HostBinding,
-  HostListener,
   Input,
   OnChanges,
   OnDestroy,
@@ -39,9 +38,6 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   private static readonly activeIndexByRowSlotKey: Record<string, number> = {};
   private static lastCompactSplitPercent = PairCardComponent.SPLIT_DEFAULT_PERCENT;
 
-  @ViewChild('splitContainer', { read: ElementRef })
-  private splitContainerRef?: ElementRef<HTMLElement>;
-
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly loadingTimersByKey: Record<string, ReturnType<typeof setTimeout>> = {};
   private fullscreenResizeObserver: ResizeObserver | null = null;
@@ -51,7 +47,54 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   private splitBounds: { left: number; width: number } | null = null;
   private splitDragStartClientX: number | null = null;
   private splitDragStartPercent: number | null = null;
+  private dragListenersBound = false;
   private fullscreenShellElementRef?: ElementRef<HTMLElement>;
+  private readonly onWindowPointerMove = (event: PointerEvent): void => {
+    if (!this.isResizing || this.splitPointerId !== event.pointerId) {
+      return;
+    }
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+    this.updateSplitFromDragDelta(event.clientX);
+  };
+  private readonly onWindowPointerUp = (event: PointerEvent): void => {
+    if (this.splitPointerId !== event.pointerId) {
+      return;
+    }
+    this.stopSplitDrag();
+  };
+  private readonly onWindowPointerCancel = (event: PointerEvent): void => {
+    if (this.splitPointerId !== event.pointerId) {
+      return;
+    }
+    this.stopSplitDrag();
+  };
+  private readonly onWindowTouchMove = (event: TouchEvent): void => {
+    if (!this.isResizing || this.splitPointerId !== -1) {
+      return;
+    }
+    const touch = event.touches?.[0] ?? event.changedTouches?.[0];
+    if (!touch) {
+      return;
+    }
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+    this.updateSplitFromDragDelta(touch.clientX);
+  };
+  private readonly onWindowTouchEnd = (event: TouchEvent): void => {
+    if (this.splitPointerId !== -1 || !event.changedTouches?.length) {
+      return;
+    }
+    this.stopSplitDrag();
+  };
+  private readonly onWindowTouchCancel = (event: TouchEvent): void => {
+    if (this.splitPointerId !== -1 || !event.changedTouches?.length) {
+      return;
+    }
+    this.stopSplitDrag();
+  };
 
   @Input() card: PairCardData | null = null;
 
@@ -110,64 +153,6 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   ngOnDestroy(): void {
     Object.values(this.loadingTimersByKey).forEach(timer => clearTimeout(timer));
     this.disconnectFullscreenObserver();
-    this.stopSplitDrag();
-  }
-
-  @HostListener('window:pointermove', ['$event'])
-  protected onWindowPointerMove(event: PointerEvent): void {
-    if (!this.isResizing || this.splitPointerId !== event.pointerId) {
-      return;
-    }
-    if (event.cancelable) {
-      event.preventDefault();
-    }
-    this.updateSplitFromDragDelta(event.clientX);
-  }
-
-  @HostListener('window:pointerup', ['$event'])
-  protected onWindowPointerUp(event: PointerEvent): void {
-    if (this.splitPointerId !== event.pointerId) {
-      return;
-    }
-    this.stopSplitDrag();
-  }
-
-  @HostListener('window:pointercancel', ['$event'])
-  protected onWindowPointerCancel(event: PointerEvent): void {
-    if (this.splitPointerId !== event.pointerId) {
-      return;
-    }
-    this.stopSplitDrag();
-  }
-
-  @HostListener('window:touchmove', ['$event'])
-  protected onWindowTouchMove(event: TouchEvent): void {
-    if (!this.isResizing || this.splitPointerId !== -1) {
-      return;
-    }
-    const touch = event.touches?.[0] ?? event.changedTouches?.[0];
-    if (!touch) {
-      return;
-    }
-    if (event.cancelable) {
-      event.preventDefault();
-    }
-    this.updateSplitFromDragDelta(touch.clientX);
-  }
-
-  @HostListener('window:touchend', ['$event'])
-  protected onWindowTouchEnd(event: TouchEvent): void {
-    if (this.splitPointerId !== -1 || !event.changedTouches?.length) {
-      return;
-    }
-    this.stopSplitDrag();
-  }
-
-  @HostListener('window:touchcancel', ['$event'])
-  protected onWindowTouchCancel(event: TouchEvent): void {
-    if (this.splitPointerId !== -1 || !event.changedTouches?.length) {
-      return;
-    }
     this.stopSplitDrag();
   }
 
@@ -289,11 +274,11 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
     event.stopPropagation();
   }
 
-  protected onSplitHandlePointerDown(event: PointerEvent): void {
-    if (!this.isSplitEnabled() || !this.splitContainerRef?.nativeElement) {
+  protected onSplitHandlePointerDown(event: PointerEvent, splitContainerElement: HTMLElement): void {
+    if (!this.isSplitEnabled() || !splitContainerElement) {
       return;
     }
-    const bounds = this.splitContainerRef.nativeElement.getBoundingClientRect();
+    const bounds = splitContainerElement.getBoundingClientRect();
     if (bounds.width <= 0) {
       return;
     }
@@ -302,6 +287,7 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.splitDragStartClientX = event.clientX;
     this.splitDragStartPercent = this.splitPercent;
     this.isResizing = true;
+    this.bindDragListeners();
     if (event.cancelable) {
       event.preventDefault();
     }
@@ -313,15 +299,15 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  protected onSplitHandleTouchStart(event: TouchEvent): void {
-    if (!this.isSplitEnabled() || !this.splitContainerRef?.nativeElement) {
+  protected onSplitHandleTouchStart(event: TouchEvent, splitContainerElement: HTMLElement): void {
+    if (!this.isSplitEnabled() || !splitContainerElement) {
       return;
     }
     const touch = event.touches?.[0] ?? event.changedTouches?.[0];
     if (!touch) {
       return;
     }
-    const bounds = this.splitContainerRef.nativeElement.getBoundingClientRect();
+    const bounds = splitContainerElement.getBoundingClientRect();
     if (bounds.width <= 0) {
       return;
     }
@@ -330,6 +316,7 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.splitDragStartClientX = touch.clientX;
     this.splitDragStartPercent = this.splitPercent;
     this.isResizing = true;
+    this.bindDragListeners();
     if (event.cancelable) {
       event.preventDefault();
     }
@@ -404,16 +391,43 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
       Math.min(startPercent + deltaPercent, PairCardComponent.SPLIT_MAX_PERCENT)
     );
     PairCardComponent.lastCompactSplitPercent = this.splitPercent;
-    this.cdr.markForCheck();
+    this.cdr.detectChanges();
   }
 
   private stopSplitDrag(): void {
+    this.unbindDragListeners();
     this.isResizing = false;
     this.splitPointerId = null;
     this.splitBounds = null;
     this.splitDragStartClientX = null;
     this.splitDragStartPercent = null;
-    this.cdr.markForCheck();
+    this.cdr.detectChanges();
+  }
+
+  private bindDragListeners(): void {
+    if (this.dragListenersBound || typeof globalThis.addEventListener !== 'function') {
+      return;
+    }
+    globalThis.addEventListener('pointermove', this.onWindowPointerMove);
+    globalThis.addEventListener('pointerup', this.onWindowPointerUp);
+    globalThis.addEventListener('pointercancel', this.onWindowPointerCancel);
+    globalThis.addEventListener('touchmove', this.onWindowTouchMove, { passive: false });
+    globalThis.addEventListener('touchend', this.onWindowTouchEnd);
+    globalThis.addEventListener('touchcancel', this.onWindowTouchCancel);
+    this.dragListenersBound = true;
+  }
+
+  private unbindDragListeners(): void {
+    if (!this.dragListenersBound || typeof globalThis.removeEventListener !== 'function') {
+      return;
+    }
+    globalThis.removeEventListener('pointermove', this.onWindowPointerMove);
+    globalThis.removeEventListener('pointerup', this.onWindowPointerUp);
+    globalThis.removeEventListener('pointercancel', this.onWindowPointerCancel);
+    globalThis.removeEventListener('touchmove', this.onWindowTouchMove);
+    globalThis.removeEventListener('touchend', this.onWindowTouchEnd);
+    globalThis.removeEventListener('touchcancel', this.onWindowTouchCancel);
+    this.dragListenersBound = false;
   }
 
   private bindFullscreenObserver(): void {
