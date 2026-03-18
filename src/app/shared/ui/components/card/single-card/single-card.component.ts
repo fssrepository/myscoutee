@@ -246,15 +246,15 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
       this.badgeBlinkTimer = null;
     }
     this.transientBadgeBlink = false;
-    this.cdr.markForCheck();
+    this.cdr.detectChanges();
 
     const startBlink = () => {
       this.transientBadgeBlink = true;
-      this.cdr.markForCheck();
+      this.cdr.detectChanges();
       this.badgeBlinkTimer = setTimeout(() => {
         this.badgeBlinkTimer = null;
         this.transientBadgeBlink = false;
-        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       }, SingleCardComponent.BADGE_BLINK_DURATION_MS);
     };
 

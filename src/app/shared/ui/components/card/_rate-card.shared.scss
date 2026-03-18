@@ -415,6 +415,16 @@ button.activities-rate-score-badge-between:not(.is-disabled):active {
   animation: game-rating-stars-blink 0.42s ease-in-out 1;
 }
 
+@keyframes game-rating-stars-blink {
+  0%, 100% {
+    filter: brightness(1);
+  }
+
+  50% {
+    filter: brightness(1.12) saturate(1.1);
+  }
+}
+
 .activities-rate-score-badge.is-disabled {
   border-color: rgba(111, 123, 140, 0.52);
   background: linear-gradient(180deg, #f4f6f9 0%, #e8edf3 100%);
