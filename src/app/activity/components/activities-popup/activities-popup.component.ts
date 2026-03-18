@@ -257,6 +257,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected activitiesSmartListQuery: Partial<ListQuery<ActivitiesSmartListFilters>> = {};
   protected readonly activitiesSmartListConfig: SmartListConfig<AppTypes.ActivityListRow, ActivitiesSmartListFilters> = {
     pageSize: 10,
+    initialPageSize: 20,
     loadingDelayMs: 1000,
     defaultView: 'day',
     containerClass: () => this.activitiesSmartListClassMap(),
