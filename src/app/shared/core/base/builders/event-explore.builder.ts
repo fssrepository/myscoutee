@@ -5,194 +5,216 @@ import type { InfoCardData, InfoCardMenuAction } from '../../../ui';
 import type { DemoEventRecord } from '../../demo/models/events.model';
 import { toActivityEventRow } from '../converters/activities-event.converter';
 
-export function buildEventExploreInfoCard(
-  record: DemoEventRecord,
-  options: {
-    groupLabel?: string | null;
-    resolveTopicToneClass?: (topic: string) => string;
-  } = {}
-): InfoCardData {
-  const openEvent = isEventExploreOpenEvent(record);
-  const full = isEventExploreFull(record);
-  const visibility = record.visibility;
+type TopicToneGroup = {
+  toneClass: string;
+  options: readonly string[];
+};
 
-  return {
-    rowId: record.id,
-    groupLabel: options.groupLabel ?? null,
-    title: record.title,
-    imageUrl: record.imageUrl,
-    metaRows: [
-      `${eventExploreTypeLabel(record)} · ${visibility} · ${eventExploreDistanceLabel(record)}`
-    ],
-    description: record.subtitle,
-    detailRows: [record.timeframe],
-    detailStyle: 'mono',
-    footerChips: record.topics.map(topic => ({
-      label: `#${eventExploreTopicLabel(topic)}`,
-      toneClass: options.resolveTopicToneClass?.(topic) ?? ''
-    })),
-    surfaceTone: full ? 'full' : 'default',
-    leadingIcon: {
-      icon: eventVisibilityIcon(visibility),
-      tone: eventExploreVisibilityTone(record)
-    },
-    mediaStart: {
-      variant: 'badge',
-      layout: 'avatar-metric',
-      tone: eventExploreCreatorOverlayTone(record),
-      interactive: true,
-      ariaLabel: 'Open host impressions',
-      leadingAccessory: {
-        label: eventExploreCreatorInitials(record),
-        tone: eventExploreCreatorAvatarOverlayTone(record)
+export class EventExploreBuilder {
+  static buildInfoCard(
+    record: DemoEventRecord,
+    options: {
+      groupLabel?: string | null;
+      topicToneGroups?: readonly TopicToneGroup[];
+    } = {}
+  ): InfoCardData {
+    const openEvent = this.isOpenEvent(record);
+    const full = this.isFull(record);
+    const visibility = record.visibility;
+
+    return {
+      rowId: record.id,
+      groupLabel: options.groupLabel ?? null,
+      title: record.title,
+      imageUrl: record.imageUrl,
+      metaRows: [
+        `${this.typeLabel(record)} · ${visibility} · ${this.distanceLabel(record)}`
+      ],
+      description: record.subtitle,
+      detailRows: [record.timeframe],
+      detailStyle: 'mono',
+      footerChips: record.topics.map(topic => ({
+        label: `#${this.topicLabel(topic)}`,
+        toneClass: this.resolveTopicToneClass(topic, options.topicToneGroups)
+      })),
+      surfaceTone: full ? 'full' : 'default',
+      leadingIcon: {
+        icon: this.visibilityIcon(visibility),
+        tone: this.visibilityTone(record)
       },
-      detailLabel: record.rating.toFixed(1),
-      detailIcon: 'star'
-    },
-    mediaEnd: {
-      variant: 'badge',
-      layout: 'badge-with-leading-accessory',
-      tone: openEvent ? (full ? 'full' : 'default') : 'inactive',
-      interactive: openEvent,
-      disabled: !openEvent,
-      ariaLabel: openEvent ? 'Open event members' : 'Members hidden for this event',
-      label: eventExploreMembersLabel(record),
-      leadingAccessory: {
-        icon: eventBlindModeIcon(record.blindMode),
-        tone: record.blindMode === 'Open Event' ? 'positive' : 'negative'
-      }
-    },
-    menuActions: eventExploreInfoCardMenuActions(record),
-    clickable: false
-  };
-}
-
-export function buildEventExploreGroupLabel(
-  record: DemoEventRecord,
-  view: AppTypes.EventExploreView
-): string {
-  if (view === 'distance') {
-    const bucket = Math.max(5, Math.ceil(record.distanceKm / 5) * 5);
-    return `${bucket} km`;
+      mediaStart: {
+        variant: 'badge',
+        layout: 'avatar-metric',
+        tone: this.creatorOverlayTone(record),
+        interactive: true,
+        ariaLabel: 'Open host impressions',
+        leadingAccessory: {
+          label: this.creatorInitials(record),
+          tone: this.creatorAvatarOverlayTone(record)
+        },
+        detailLabel: record.rating.toFixed(1),
+        detailIcon: 'star'
+      },
+      mediaEnd: {
+        variant: 'badge',
+        layout: 'badge-with-leading-accessory',
+        tone: openEvent ? (full ? 'full' : 'default') : 'inactive',
+        interactive: openEvent,
+        disabled: !openEvent,
+        ariaLabel: openEvent ? 'Open event members' : 'Members hidden for this event',
+        label: this.membersLabel(record),
+        leadingAccessory: {
+          icon: this.blindModeIcon(record.blindMode),
+          tone: record.blindMode === 'Open Event' ? 'positive' : 'negative'
+        }
+      },
+      menuActions: this.infoCardMenuActions(record),
+      clickable: false
+    };
   }
-  const parsed = new Date(record.startAtIso);
-  if (Number.isNaN(parsed.getTime())) {
-    return 'Date unavailable';
-  }
-  return parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-}
 
-export function buildEventExploreActivityRow(record: DemoEventRecord): AppTypes.ActivityListRow {
-  const row = toActivityEventRow(record);
-  return row.type === 'hosting'
-    ? {
-        ...row,
-        isAdmin: false
-      }
-    : {
-        ...row,
-        isAdmin: false
-      };
-}
-
-function eventExploreInfoCardMenuActions(record: DemoEventRecord): readonly InfoCardMenuAction[] {
-  return [
-    {
-      id: 'view',
-      label: record.type === 'hosting' ? 'View hosted event' : 'View event',
-      icon: eventVisibilityIcon(record.visibility)
-    },
-    {
-      id: 'join',
-      label: 'Request join',
-      icon: 'person_add',
-      tone: 'accent'
+  static buildGroupLabel(
+    record: DemoEventRecord,
+    view: AppTypes.EventExploreView
+  ): string {
+    if (view === 'distance') {
+      const bucket = Math.max(5, Math.ceil(record.distanceKm / 5) * 5);
+      return `${bucket} km`;
     }
-  ];
-}
-
-function eventExploreCreatorOverlayTone(record: DemoEventRecord): 'cool' | 'cool-mid' | 'neutral' | 'warm-mid' | 'warm' {
-  const rating = AppUtils.clampNumber(record.rating, 0, 10);
-  if (rating <= 3.0) {
-    return 'cool';
+    const parsed = new Date(record.startAtIso);
+    if (Number.isNaN(parsed.getTime())) {
+      return 'Date unavailable';
+    }
+    return parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   }
-  if (rating <= 5.5) {
-    return 'cool-mid';
+
+  static buildActivityRow(record: DemoEventRecord): AppTypes.ActivityListRow {
+    const row = toActivityEventRow(record);
+    return {
+      ...row,
+      isAdmin: false
+    };
   }
-  if (rating <= 7.2) {
-    return 'neutral';
+
+  private static infoCardMenuActions(record: DemoEventRecord): readonly InfoCardMenuAction[] {
+    return [
+      {
+        id: 'view',
+        label: record.type === 'hosting' ? 'View hosted event' : 'View event',
+        icon: this.visibilityIcon(record.visibility)
+      },
+      {
+        id: 'join',
+        label: 'Request join',
+        icon: 'person_add',
+        tone: 'accent'
+      }
+    ];
   }
-  if (rating <= 8.6) {
-    return 'warm-mid';
+
+  private static creatorOverlayTone(record: DemoEventRecord): 'cool' | 'cool-mid' | 'neutral' | 'warm-mid' | 'warm' {
+    const rating = AppUtils.clampNumber(record.rating, 0, 10);
+    if (rating <= 3.0) {
+      return 'cool';
+    }
+    if (rating <= 5.5) {
+      return 'cool-mid';
+    }
+    if (rating <= 7.2) {
+      return 'neutral';
+    }
+    if (rating <= 8.6) {
+      return 'warm-mid';
+    }
+    return 'warm';
   }
-  return 'warm';
-}
 
-function eventExploreCreatorAvatarOverlayTone(
-  record: DemoEventRecord
-): 'tone-1' | 'tone-2' | 'tone-3' | 'tone-4' | 'tone-5' | 'tone-6' | 'tone-7' | 'tone-8' {
-  const toneIndex = (AppDemoGenerators.hashText(`${record.type}:${record.id}:${eventExploreCreatorInitials(record)}`) % 8) + 1;
-  return `tone-${toneIndex}` as 'tone-1' | 'tone-2' | 'tone-3' | 'tone-4' | 'tone-5' | 'tone-6' | 'tone-7' | 'tone-8';
-}
-
-function eventExploreVisibilityTone(record: DemoEventRecord): 'public' | 'friends' | 'invitation' {
-  if (record.visibility === 'Friends only') {
-    return 'friends';
+  private static creatorAvatarOverlayTone(
+    record: DemoEventRecord
+  ): 'tone-1' | 'tone-2' | 'tone-3' | 'tone-4' | 'tone-5' | 'tone-6' | 'tone-7' | 'tone-8' {
+    const toneIndex = (AppDemoGenerators.hashText(`${record.type}:${record.id}:${this.creatorInitials(record)}`) % 8) + 1;
+    return `tone-${toneIndex}` as 'tone-1' | 'tone-2' | 'tone-3' | 'tone-4' | 'tone-5' | 'tone-6' | 'tone-7' | 'tone-8';
   }
-  if (record.visibility === 'Invitation only') {
-    return 'invitation';
+
+  private static visibilityTone(record: DemoEventRecord): 'public' | 'friends' | 'invitation' {
+    if (record.visibility === 'Friends only') {
+      return 'friends';
+    }
+    if (record.visibility === 'Invitation only') {
+      return 'invitation';
+    }
+    return 'public';
   }
-  return 'public';
-}
 
-function eventExploreDistanceLabel(record: DemoEventRecord): string {
-  const rounded = Math.round(record.distanceKm * 10) / 10;
-  return Number.isInteger(rounded) ? `${rounded} km` : `${rounded.toFixed(1)} km`;
-}
-
-function eventExploreTypeLabel(record: DemoEventRecord): string {
-  return record.type === 'hosting' ? 'Hosting' : 'Event';
-}
-
-function eventExploreCreatorInitials(record: DemoEventRecord): string {
-  return record.creatorInitials || AppUtils.initialsFromText(record.creatorName || record.title);
-}
-
-function eventExploreMembersLabel(record: DemoEventRecord): string {
-  if (record.capacityTotal <= 0) {
-    return '0 / 0';
+  private static distanceLabel(record: DemoEventRecord): string {
+    const rounded = Math.round(record.distanceKm * 10) / 10;
+    return Number.isInteger(rounded) ? `${rounded} km` : `${rounded.toFixed(1)} km`;
   }
-  return `${record.acceptedMembers} / ${record.capacityTotal}`;
-}
 
-function isEventExploreFull(record: DemoEventRecord): boolean {
-  return record.capacityTotal > 0 && record.acceptedMembers >= record.capacityTotal;
-}
-
-function isEventExploreOpenEvent(record: DemoEventRecord): boolean {
-  return record.blindMode === 'Open Event';
-}
-
-function eventExploreTopicLabel(topic: string): string {
-  return topic.replace(/^#+\s*/, '');
-}
-
-function eventVisibilityIcon(visibility: AppTypes.EventVisibility): string {
-  if (visibility === 'Friends only') {
-    return 'groups';
+  private static typeLabel(record: DemoEventRecord): string {
+    return record.type === 'hosting' ? 'Hosting' : 'Event';
   }
-  if (visibility === 'Invitation only') {
-    return 'mail_lock';
-  }
-  return 'public';
-}
 
-function eventBlindModeIcon(mode: AppTypes.EventBlindMode): string {
-  if (mode === 'Open Event') {
-    return 'groups';
+  private static creatorInitials(record: DemoEventRecord): string {
+    return record.creatorInitials || AppUtils.initialsFromText(record.creatorName || record.title);
   }
-  if (mode === 'Blind Event') {
-    return 'visibility_off';
+
+  private static membersLabel(record: DemoEventRecord): string {
+    if (record.capacityTotal <= 0) {
+      return '0 / 0';
+    }
+    return `${record.acceptedMembers} / ${record.capacityTotal}`;
   }
-  return 'shield';
+
+  private static isFull(record: DemoEventRecord): boolean {
+    return record.capacityTotal > 0 && record.acceptedMembers >= record.capacityTotal;
+  }
+
+  private static isOpenEvent(record: DemoEventRecord): boolean {
+    return record.blindMode === 'Open Event';
+  }
+
+  private static topicLabel(topic: string): string {
+    return topic.replace(/^#+\s*/, '');
+  }
+
+  private static normalizeTopic(topic: string): string {
+    return AppUtils.normalizeText(`${topic}`.replace(/^#+\s*/, '').trim());
+  }
+
+  private static resolveTopicToneClass(topic: string, groups: readonly TopicToneGroup[] | undefined): string {
+    if (!groups?.length) {
+      return '';
+    }
+    const normalizedTopic = this.normalizeTopic(topic);
+    if (!normalizedTopic) {
+      return '';
+    }
+    for (const group of groups) {
+      if (group.options.some(option => this.normalizeTopic(option) === normalizedTopic)) {
+        return group.toneClass;
+      }
+    }
+    return '';
+  }
+
+  private static visibilityIcon(visibility: AppTypes.EventVisibility): string {
+    if (visibility === 'Friends only') {
+      return 'groups';
+    }
+    if (visibility === 'Invitation only') {
+      return 'mail_lock';
+    }
+    return 'public';
+  }
+
+  private static blindModeIcon(mode: AppTypes.EventBlindMode): string {
+    if (mode === 'Open Event') {
+      return 'groups';
+    }
+    if (mode === 'Blind Event') {
+      return 'visibility_off';
+    }
+    return 'shield';
+  }
 }

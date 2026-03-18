@@ -23,9 +23,7 @@ import {
   ActivityMembersService,
   ActivitiesService,
   AppContext,
-  buildEventExploreActivityRow,
-  buildEventExploreGroupLabel,
-  buildEventExploreInfoCard,
+  EventExploreBuilder,
   type ActivityMembersSyncState,
   GameService,
   UsersService,
@@ -34,7 +32,6 @@ import {
 import {
   InfoCardComponent,
   SmartListComponent,
-  type InfoCardData,
   type InfoCardMenuActionEvent,
   type ListQuery,
   type SmartListConfig,
@@ -119,13 +116,7 @@ export class EventExplorePopupComponent {
 
   protected readonly eventExploreLoadPage = (query: ListQuery<EventExploreFeedFilters>) =>
     from(this.activitiesService.loadExplore(query));
-  protected readonly eventExploreInfoCardBuilder = (
-    record: DemoEventRecord,
-    options: { groupLabel?: string | null } = {}
-  ): InfoCardData => buildEventExploreInfoCard(record, {
-    ...options,
-    resolveTopicToneClass: topic => this.interestOptionToneClass(topic)
-  });
+  protected readonly EventExploreBuilder = EventExploreBuilder;
 
   protected readonly eventExploreSmartListConfig: SmartListConfig<DemoEventRecord, EventExploreFeedFilters> = {
     pageSize: 10,
@@ -153,7 +144,7 @@ export class EventExplorePopupComponent {
       }
       return scrollable;
     },
-    groupBy: (record, query) => buildEventExploreGroupLabel(record, query.filters?.view ?? this.eventExploreView)
+    groupBy: (record, query) => EventExploreBuilder.buildGroupLabel(record, query.filters?.view ?? this.eventExploreView)
   };
 
   constructor() {
@@ -447,7 +438,7 @@ export class EventExplorePopupComponent {
     this.stopDomEvent(event);
     this.activitiesContext.requestActivitiesNavigation({
       type: 'eventEditor',
-      row: buildEventExploreActivityRow(record),
+      row: EventExploreBuilder.buildActivityRow(record),
       readOnly: true
     });
     this.cdr.markForCheck();
@@ -568,7 +559,7 @@ export class EventExplorePopupComponent {
   }
 
   private buildMemberEntries(record: DemoEventRecord): AppTypes.ActivityMemberEntry[] {
-    const row = buildEventExploreActivityRow(record);
+    const row = EventExploreBuilder.buildActivityRow(record);
     const rowKey = `${row.type}:${row.id}`;
     const acceptedUserIds = this.ensureMemberUserIds(
       record.acceptedMemberUserIds,
