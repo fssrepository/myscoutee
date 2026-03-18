@@ -31,6 +31,7 @@ import type { CardImageSlide, PairCardData, PairCardSlot } from '../card.types';
 })
 export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   private static readonly IMAGE_PULSE_DURATION_MS = 500;
+  private static readonly MOBILE_FULLSCREEN_ASPECT_RATIO = 3 / 4;
   private static readonly FULLSCREEN_ASPECT_RATIO = 5 / 4;
   private static readonly SPLIT_DEFAULT_PERCENT = 50;
   private static readonly SPLIT_MIN_PERCENT = 0;
@@ -466,8 +467,11 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
     if (availableWidth <= 0 || availableHeight <= 0) {
       return;
     }
-    const nextWidth = Math.min(availableWidth, availableHeight * PairCardComponent.FULLSCREEN_ASPECT_RATIO);
-    const nextHeight = nextWidth / PairCardComponent.FULLSCREEN_ASPECT_RATIO;
+    const aspectRatio = this.isCompactViewport()
+      ? PairCardComponent.MOBILE_FULLSCREEN_ASPECT_RATIO
+      : PairCardComponent.FULLSCREEN_ASPECT_RATIO;
+    const nextWidth = Math.min(availableWidth, availableHeight * aspectRatio);
+    const nextHeight = nextWidth / aspectRatio;
     this.setFullscreenCardSize(`${nextWidth}px`, `${nextHeight}px`);
   }
 
