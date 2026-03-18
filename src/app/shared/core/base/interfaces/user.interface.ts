@@ -1,4 +1,5 @@
 import type { UserGameFilterPreferencesDto } from './game.interface';
+import type { LocationCoordinates } from './location.interface';
 
 export interface UserImpressionsSectionDto {
   unreadCount?: number;
@@ -66,6 +67,7 @@ export interface UserDto {
   completion: number;
   headline: string;
   about: string;
+  locationCoordinates?: LocationCoordinates;
   images?: string[];
   impressions?: UserImpressionsDto;
   profileStatus: 'public' | 'friends only' | 'host only' | 'inactive';

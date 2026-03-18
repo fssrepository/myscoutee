@@ -1724,6 +1724,12 @@ export class App {
       creatorInitials: this.activeUser.initials,
       creatorGender: this.activeUser.gender,
       creatorCity: this.activeUser.city,
+      locationCoordinates: this.activeUser.locationCoordinates
+        ? {
+          latitude: this.activeUser.locationCoordinates.latitude,
+          longitude: this.activeUser.locationCoordinates.longitude
+        }
+        : undefined,
       acceptedMemberUserIds,
       pendingMemberUserIds
     };

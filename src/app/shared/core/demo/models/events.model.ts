@@ -1,4 +1,5 @@
 import type * as AppTypes from '../../../app-types';
+import type { LocationCoordinates } from '../../base/interfaces';
 
 export const EVENTS_TABLE_NAME = 'events' as const;
 
@@ -42,6 +43,7 @@ export interface DemoEventRecord {
   imageUrl: string;
   sourceLink: string;
   location: string;
+  locationCoordinates: LocationCoordinates | null;
   capacityMin: number | null;
   capacityMax: number | null;
   capacityTotal: number;

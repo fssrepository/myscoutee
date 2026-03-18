@@ -7,6 +7,7 @@ import {
   type EventMenuItem,
   type HostingMenuItem
 } from './demo-data';
+import type { LocationCoordinates } from './core/base/interfaces';
 import type {
   ActivityDateTimeRange,
   ActivityListRow,
@@ -29,6 +30,19 @@ import type {
 import { AppUtils } from './app-utils';
 
 export class AppDemoGenerators {
+  private static readonly CITY_LOCATION_COORDINATES_BY_NAME: Record<string, LocationCoordinates> = {
+    Austin: { latitude: 30.2672, longitude: -97.7431 },
+    Seattle: { latitude: 47.6062, longitude: -122.3321 },
+    Chicago: { latitude: 41.8781, longitude: -87.6298 },
+    Denver: { latitude: 39.7392, longitude: -104.9903 },
+    Miami: { latitude: 25.7617, longitude: -80.1918 },
+    Boston: { latitude: 42.3601, longitude: -71.0589 },
+    Phoenix: { latitude: 33.4484, longitude: -112.0740 },
+    Nashville: { latitude: 36.1627, longitude: -86.7816 },
+    'San Diego': { latitude: 32.7157, longitude: -117.1611 },
+    Portland: { latitude: 45.5152, longitude: -122.6784 }
+  };
+
   static hashText(value: string): number {
     let hash = 0;
     for (let index = 0; index < value.length; index += 1) {
@@ -38,10 +52,11 @@ export class AppDemoGenerators {
   }
 
   static buildExpandedDemoUsers(totalCount: number, baseUsers: DemoUser[] = DEMO_USERS): DemoUser[] {
+    const normalizedBaseUsers = baseUsers.map(user => this.withResolvedLocationCoordinates(user));
     if (baseUsers.length >= totalCount) {
-      return baseUsers.slice(0, totalCount);
+      return normalizedBaseUsers.slice(0, totalCount);
     }
-    const expanded: DemoUser[] = [...baseUsers];
+    const expanded: DemoUser[] = [...normalizedBaseUsers];
     const firstNamesWomen = ['Emma', 'Sophia', 'Olivia', 'Mia', 'Lina', 'Nora', 'Chloe', 'Ivy', 'Ava', 'Zoe'];
     const firstNamesMen = ['Liam', 'Noah', 'Ethan', 'Mason', 'Lucas', 'Owen', 'Elijah', 'Leo', 'Ryan', 'Alex'];
     const lastNames = ['Parker', 'Reed', 'Stone', 'Lane', 'Baker', 'Hale', 'Rivera', 'Turner', 'Brooks', 'Grant'];
@@ -49,7 +64,7 @@ export class AppDemoGenerators {
 
     for (let index = baseUsers.length; index < totalCount; index += 1) {
       const id = `u${index + 1}`;
-      const template = baseUsers[index % baseUsers.length];
+      const template = normalizedBaseUsers[index % normalizedBaseUsers.length];
       const gender = index % 2 === 0 ? 'woman' : 'man';
       const firstNamePool = gender === 'woman' ? firstNamesWomen : firstNamesMen;
       const firstName = firstNamePool[index % firstNamePool.length];
@@ -60,7 +75,7 @@ export class AppDemoGenerators {
       const birthday = new Date(1990 + (index % 11), index % 12, 1 + (index % 27));
       const portraitFolder = gender === 'woman' ? 'women' : 'men';
       const portraitIndex = (index * 7) % 100;
-      expanded.push({
+      expanded.push(this.withResolvedLocationCoordinates({
         ...template,
         id,
         name,
@@ -70,9 +85,45 @@ export class AppDemoGenerators {
         initials,
         gender,
         images: buildDemoPortraitStack(gender, portraitIndex)
-      });
+      }));
     }
     return expanded;
+  }
+
+  static resolveDemoLocationCoordinates(city: string, seedKey: string): LocationCoordinates {
+    const base = this.CITY_LOCATION_COORDINATES_BY_NAME[city] ?? this.CITY_LOCATION_COORDINATES_BY_NAME['Austin'];
+    const normalizedSeedKey = seedKey.trim() || city.trim() || 'demo-user';
+    const seed = this.hashText(normalizedSeedKey);
+    const latitudeOffset = (((seed % 29) - 14) * 0.0012);
+    const longitudeOffset = (((Math.floor(seed / 29) % 29) - 14) * 0.0012);
+    return {
+      latitude: this.roundCoordinate(base.latitude + latitudeOffset),
+      longitude: this.roundCoordinate(base.longitude + longitudeOffset)
+    };
+  }
+
+  private static withResolvedLocationCoordinates(user: DemoUser): DemoUser {
+    return {
+      ...user,
+      locationCoordinates: this.cloneLocationCoordinates(user.locationCoordinates)
+        ?? this.resolveDemoLocationCoordinates(user.city, user.id)
+    };
+  }
+
+  private static cloneLocationCoordinates(
+    value: LocationCoordinates | undefined | null
+  ): LocationCoordinates | null {
+    if (!value || !Number.isFinite(value.latitude) || !Number.isFinite(value.longitude)) {
+      return null;
+    }
+    return {
+      latitude: this.roundCoordinate(value.latitude),
+      longitude: this.roundCoordinate(value.longitude)
+    };
+  }
+
+  private static roundCoordinate(value: number): number {
+    return Math.round(value * 1_000_000) / 1_000_000;
   }
 
   static defaultAssetImage(type: AssetType, seed = type.toLowerCase()): string {

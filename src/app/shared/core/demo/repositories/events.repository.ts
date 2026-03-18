@@ -421,6 +421,8 @@ export class DemoEventsRepository {
       imageUrl: payload.imageUrl?.trim() || existing?.imageUrl || `https://picsum.photos/seed/event-explore-${payload.id}/1200/700`,
       sourceLink: payload.sourceLink?.trim() || existing?.sourceLink || '',
       location: payload.location?.trim() || existing?.location || '',
+      locationCoordinates: this.normalizeLocationCoordinates(payload.locationCoordinates)
+        ?? this.normalizeLocationCoordinates(existing?.locationCoordinates),
       capacityMin: this.normalizeCount(payload.capacityMin) ?? existing?.capacityMin ?? 0,
       capacityMax: this.normalizeCount(payload.capacityMax) ?? existing?.capacityMax ?? context.capacityTotal,
       capacityTotal: context.capacityTotal,
@@ -692,6 +694,8 @@ export class DemoEventsRepository {
       imageUrl: current.imageUrl?.trim() || seeded.imageUrl,
       sourceLink: current.sourceLink?.trim() || seeded.sourceLink,
       location: current.location?.trim() || seeded.location,
+      locationCoordinates: this.normalizeLocationCoordinates(current.locationCoordinates)
+        ?? this.normalizeLocationCoordinates(seeded.locationCoordinates),
       capacityMin: this.normalizeCount(current.capacityMin) ?? seeded.capacityMin,
       capacityMax: this.normalizeCount(current.capacityMax) ?? seeded.capacityMax,
       capacityTotal: this.normalizeCount(current.capacityTotal) ?? seeded.capacityTotal,
@@ -740,5 +744,20 @@ export class DemoEventsRepository {
       return value;
     }
     return fallback;
+  }
+
+  private normalizeLocationCoordinates(value: unknown): DemoEventRecord['locationCoordinates'] {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+    const latitude = Number((value as { latitude?: unknown }).latitude);
+    const longitude = Number((value as { longitude?: unknown }).longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return null;
+    }
+    return {
+      latitude,
+      longitude
+    };
   }
 }

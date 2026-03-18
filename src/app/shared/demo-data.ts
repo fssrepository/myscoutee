@@ -1,3 +1,5 @@
+import type { LocationCoordinates } from './core/base/interfaces';
+
 export interface DemoUser {
   id: string;
   name: string;
@@ -16,6 +18,7 @@ export interface DemoUser {
   completion: number;
   headline: string;
   about: string;
+  locationCoordinates?: LocationCoordinates;
   images?: string[];
   profileStatus: 'public' | 'friends only' | 'host only' | 'inactive';
   activities: {
@@ -67,6 +70,7 @@ export interface EventMenuItem {
   imageUrl?: string;
   sourceLink?: string;
   location?: string;
+  locationCoordinates?: LocationCoordinates;
   capacityMin?: number | null;
   capacityMax?: number | null;
   topics?: string[];
@@ -91,6 +95,7 @@ export interface HostingMenuItem {
   imageUrl?: string;
   sourceLink?: string;
   location?: string;
+  locationCoordinates?: LocationCoordinates;
   capacityMin?: number | null;
   capacityMax?: number | null;
   topics?: string[];

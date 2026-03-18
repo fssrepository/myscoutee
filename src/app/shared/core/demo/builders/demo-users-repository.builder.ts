@@ -26,6 +26,12 @@ export class DemoUsersRepositoryBuilder {
     const { impressions: _ignoredImpressions, ...rest } = user;
     return {
       ...rest,
+      locationCoordinates: rest.locationCoordinates
+        ? {
+          latitude: rest.locationCoordinates.latitude,
+          longitude: rest.locationCoordinates.longitude
+        }
+        : undefined,
       languages: [...(rest.languages ?? [])],
       images: [...(rest.images ?? [])],
       activities: {

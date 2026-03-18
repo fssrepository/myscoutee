@@ -3,6 +3,7 @@ import { AppDemoGenerators } from '../../../app-demo-generators';
 import type * as AppTypes from '../../../app-types';
 import { AppUtils } from '../../../app-utils';
 import { APP_DEMO_DATA, type DemoUser, type EventMenuItem, type HostingMenuItem, type InvitationMenuItem } from '../../../demo-data';
+import type { LocationCoordinates } from '../../base/interfaces';
 import type {
   DemoEventRecord,
   DemoEventRecordCollection,
@@ -20,6 +21,7 @@ interface DemoEventSeedOverrides {
   imageUrl?: string;
   sourceLink?: string;
   location?: string;
+  locationCoordinates?: LocationCoordinates;
   capacityMin?: number | null;
   capacityMax?: number | null;
   acceptedMemberUserIds?: string[];
@@ -126,6 +128,7 @@ export class DemoEventsRepositoryBuilder {
   static cloneRecord(record: DemoEventRecord): DemoEventRecord {
     return {
       ...record,
+      locationCoordinates: this.cloneLocationCoordinates(record.locationCoordinates),
       acceptedMemberUserIds: [...record.acceptedMemberUserIds],
       pendingMemberUserIds: [...record.pendingMemberUserIds],
       topics: [...record.topics]
@@ -273,6 +276,9 @@ export class DemoEventsRepositoryBuilder {
         || `https://picsum.photos/seed/event-explore-${record.id}/1200/700`,
       sourceLink: record.seed?.sourceLink?.trim() || (APP_DEMO_DATA.activitySourceLinkById[record.id] ?? ''),
       location: record.seed?.location?.trim() || '',
+      locationCoordinates: this.cloneLocationCoordinates(record.seed?.locationCoordinates)
+        ?? this.cloneLocationCoordinates(creator.locationCoordinates)
+        ?? this.resolveLocationCoordinatesFromCreator(creator),
       capacityMin,
       capacityMax,
       capacityTotal,
@@ -447,6 +453,7 @@ export class DemoEventsRepositoryBuilder {
       imageUrl: item.imageUrl,
       sourceLink: item.sourceLink,
       location: item.location,
+      locationCoordinates: this.cloneLocationCoordinates(item.locationCoordinates) ?? undefined,
       capacityMin: item.capacityMin,
       capacityMax: item.capacityMax,
       topics: item.topics,
@@ -482,5 +489,21 @@ export class DemoEventsRepositoryBuilder {
       return null;
     }
     return Math.max(0, Math.trunc(Number(value)));
+  }
+
+  private static resolveLocationCoordinatesFromCreator(creator: DemoUser): LocationCoordinates {
+    return AppDemoGenerators.resolveDemoLocationCoordinates(creator.city, creator.id);
+  }
+
+  private static cloneLocationCoordinates(
+    value: LocationCoordinates | null | undefined
+  ): LocationCoordinates | null {
+    if (!value || !Number.isFinite(value.latitude) || !Number.isFinite(value.longitude)) {
+      return null;
+    }
+    return {
+      latitude: value.latitude,
+      longitude: value.longitude
+    };
   }
 }

@@ -1,4 +1,5 @@
 import type * as AppTypes from './app-types';
+import type { LocationCoordinates } from './core/base/interfaces/location.interface';
 import type { ChatMenuItem } from './demo-data';
 
 export type SubEventAssetAssignmentIds = Partial<Record<AppTypes.AssetType, string[]>>;
@@ -104,6 +105,7 @@ export interface ActivitiesEventSyncPayload {
   creatorGender?: 'woman' | 'man';
   creatorCity?: string;
   location?: string;
+  locationCoordinates?: LocationCoordinates;
   sourceLink?: string;
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
