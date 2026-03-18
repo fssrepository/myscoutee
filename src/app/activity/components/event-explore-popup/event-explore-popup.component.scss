@@ -29,10 +29,17 @@
   gap: 0.46rem;
 }
 
-.event-explore-order-picker {
+.event-explore-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.event-explore-order-picker,
+.event-explore-view-picker {
   position: relative;
   z-index: 20;
-  margin-left: auto;
 }
 
 .event-explore-order-trigger.event-explore-order-upcoming {
@@ -58,6 +65,16 @@
 .event-explore-order-trigger.event-explore-order-top-rated {
   background: rgba(255, 243, 223, 0.98);
   color: #c27c07;
+}
+
+.event-explore-view-trigger.event-explore-view-day {
+  background: rgba(235, 245, 255, 0.97);
+  color: #38649d;
+}
+
+.event-explore-view-trigger.event-explore-view-distance {
+  background: rgba(228, 244, 236, 0.98);
+  color: #2e7b57;
 }
 
 .event-explore-filter-bar {

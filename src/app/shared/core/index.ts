@@ -23,6 +23,7 @@ export { AssetsService } from './base/services/assets.service';
 export { ActivityInviteCandidatesService } from './base/services/activity-invite-candidates.service';
 export { ChatsService } from './base/services/chats.service';
 export { RatesService } from './base/services/rates.service';
+export { EventExploreService } from './base/services/event-explore.service';
 export {
   USER_FEEDBACK_SUBMIT_CONTEXT_KEY,
   USER_REPORT_USER_SUBMIT_CONTEXT_KEY,

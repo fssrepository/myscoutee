@@ -12,6 +12,7 @@ export type DemoEventScopeFilter =
   | 'trash';
 
 export type DemoRepositoryEventItemType = 'events' | 'hosting' | 'invitations';
+export type DemoEventActivitiesSort = 'date' | 'distance' | 'relevance';
 
 export interface DemoEventRecord {
   id: string;
@@ -54,6 +55,23 @@ export interface DemoEventRecord {
   topics: string[];
   rating: number;
   relevance: number;
+}
+
+export interface DemoEventActivitiesQuery {
+  userId: string;
+  filter: DemoEventScopeFilter;
+  hostingPublicationFilter?: 'all' | 'drafts';
+  secondaryFilter: AppTypes.ActivitiesSecondaryFilter;
+  sort: DemoEventActivitiesSort;
+  view: AppTypes.ActivitiesView;
+  limit: number;
+  cursor?: string | null;
+}
+
+export interface DemoEventActivitiesQueryResult {
+  records: DemoEventRecord[];
+  total: number;
+  nextCursor: string | null;
 }
 
 export interface DemoEventRecordCollection {

@@ -173,6 +173,7 @@ export type ActivitiesEventScope = 'all' | 'active-events' | 'invitations' | 'my
 export type ActivitiesSecondaryFilter = 'recent' | 'relevant' | 'past';
 export type HostingPublicationFilter = 'all' | 'drafts';
 export type ActivitiesView = 'month' | 'week' | 'day' | 'distance';
+export type EventExploreView = 'day' | 'distance';
 export type EventExploreOrder = 'upcoming' | 'past-events' | 'nearby' | 'most-relevant' | 'top-rated';
 export type RateFilterKey =
   | 'individual-given'

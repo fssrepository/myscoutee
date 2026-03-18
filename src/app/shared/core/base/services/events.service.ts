@@ -5,6 +5,8 @@ import type { ActivitiesEventSyncPayload } from '../../../activities-models';
 import { DemoEventsService } from '../../demo';
 import { HttpEventsService } from '../../http';
 import type {
+  DemoEventActivitiesQuery,
+  DemoEventActivitiesQueryResult,
   DemoEventRecord,
   DemoEventScopeFilter,
   DemoRepositoryEventItemType
@@ -57,6 +59,22 @@ export class EventsService {
     hostingPublicationFilter: 'all' | 'drafts' = 'all'
   ): Promise<DemoEventRecord[]> {
     return this.eventsService.queryEventItemsByFilter(userId, filter, hostingPublicationFilter);
+  }
+
+  async queryActivitiesEventPage(query: DemoEventActivitiesQuery): Promise<DemoEventActivitiesQueryResult> {
+    if (this.demoModeEnabled) {
+      return this.demoEventsService.queryActivitiesEventPage(query);
+    }
+    const records = await this.httpEventsService.queryEventItemsByFilter(
+      query.userId,
+      query.filter,
+      query.hostingPublicationFilter ?? 'all'
+    );
+    return {
+      records,
+      total: records.length,
+      nextCursor: null
+    };
   }
 
   queryExploreItems(userId: string): Promise<DemoEventRecord[]> {

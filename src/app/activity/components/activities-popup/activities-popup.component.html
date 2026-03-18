@@ -24,7 +24,7 @@
             <button
               type="button"
               class="popup-filter-option activities-view-option"
-              *ngFor="let option of activitiesSecondaryFilters"
+              *ngFor="let option of availableActivitiesSecondaryFilters()"
               (click)="selectActivitiesSecondaryFilter(option.key)"
             >
               <mat-icon>{{ option.icon }}</mat-icon>

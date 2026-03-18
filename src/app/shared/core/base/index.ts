@@ -18,4 +18,5 @@ export { AssetsService } from './services/assets.service';
 export { ActivityInviteCandidatesService } from './services/activity-invite-candidates.service';
 export { ChatsService } from './services/chats.service';
 export { RatesService } from './services/rates.service';
+export { EventExploreService } from './services/event-explore.service';
 export * from './interfaces';

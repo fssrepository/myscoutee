@@ -4,6 +4,8 @@ import type { ActivitiesEventSyncPayload } from '../../../activities-models';
 import { resolveAdditionalDelayMsForRoute } from '../config';
 import { DemoEventsRepository } from '../repositories/events.repository';
 import type {
+  DemoEventActivitiesQuery,
+  DemoEventActivitiesQueryResult,
   DemoEventRecord,
   DemoEventScopeFilter,
   DemoRepositoryEventItemType
@@ -53,6 +55,11 @@ export class DemoEventsService {
   ): Promise<DemoEventRecord[]> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
     return this.eventsRepository.queryEventItemsByFilter(userId, filter, hostingPublicationFilter);
+  }
+
+  async queryActivitiesEventPage(query: DemoEventActivitiesQuery): Promise<DemoEventActivitiesQueryResult> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
+    return this.eventsRepository.queryActivitiesEventPage(query);
   }
 
   async queryExploreItems(userId: string): Promise<DemoEventRecord[]> {

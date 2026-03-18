@@ -14,12 +14,23 @@ import { AppMemoryDb } from '../../base/db';
 import { DemoEventsRepositoryBuilder } from '../builders';
 import {
   EVENTS_TABLE_NAME,
+  type DemoEventActivitiesQuery,
+  type DemoEventActivitiesQueryResult,
   type DemoEventRecord,
   type DemoEventRecordCollection,
   type DemoEventScopeFilter,
   type DemoRepositoryEventItemType
 } from '../models/events.model';
 import type { ActivitiesEventSyncPayload } from '../../../activities-models';
+import { USERS_TABLE_NAME } from '../models/users.model';
+import type { LocationCoordinates } from '../../base/interfaces';
+
+interface DemoEventActivitiesCursor {
+  id: string;
+  distanceMeters: number;
+  relevance: number;
+  startAtMs: number;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -117,6 +128,53 @@ export class DemoEventsRepository {
       return userItems.filter(record => record.isTrashed);
     }
     return activeEventItems;
+  }
+
+  queryActivitiesEventPage(query: DemoEventActivitiesQuery): DemoEventActivitiesQueryResult {
+    this.init();
+    const normalizedUserId = query.userId.trim();
+    if (!normalizedUserId) {
+      return {
+        records: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+
+    const filteredRecords = this.queryEventItemsByFilter(
+      normalizedUserId,
+      query.filter,
+      query.hostingPublicationFilter ?? 'all'
+    );
+    const viewerCoordinates = this.queryUserLocationCoordinates(normalizedUserId);
+    const normalizedRecords = filteredRecords
+      .map(record => this.withResolvedDistance(record, viewerCoordinates))
+      .sort((left, right) => this.compareActivitiesRecords(left, right, query));
+    const total = normalizedRecords.length;
+
+    if (query.view === 'week' || query.view === 'month') {
+      return {
+        records: normalizedRecords,
+        total,
+        nextCursor: null
+      };
+    }
+
+    const cursor = this.parseActivitiesCursor(query.cursor);
+    const remaining = cursor
+      ? normalizedRecords.filter(record => this.compareRecordToCursor(record, cursor, query) > 0)
+      : normalizedRecords;
+    const limit = Math.max(1, Math.trunc(query.limit));
+    const records = remaining.slice(0, limit);
+    const nextCursor = remaining.length > limit && records.length > 0
+      ? this.serializeActivitiesCursor(this.buildActivitiesCursor(records[records.length - 1]))
+      : null;
+
+    return {
+      records,
+      total,
+      nextCursor
+    };
   }
 
   queryExploreItems(userId: string): DemoEventRecord[] {
@@ -337,6 +395,164 @@ export class DemoEventsRepository {
       .filter((record): record is DemoEventRecord => Boolean(record))
       .filter(record => record.userId === normalizedUserId)
       .map(record => DemoEventsRepositoryBuilder.cloneRecord(record));
+  }
+
+  private queryUserLocationCoordinates(userId: string): LocationCoordinates | null {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[normalizedUserId];
+    return this.normalizeLocationCoordinates(user?.locationCoordinates);
+  }
+
+  private withResolvedDistance(
+    record: DemoEventRecord,
+    viewerCoordinates: LocationCoordinates | null
+  ): DemoEventRecord {
+    const eventCoordinates = this.normalizeLocationCoordinates(record.locationCoordinates);
+    if (!viewerCoordinates || !eventCoordinates) {
+      return DemoEventsRepositoryBuilder.cloneRecord(record);
+    }
+    const distanceMeters = this.haversineDistanceMeters(viewerCoordinates, eventCoordinates);
+    return {
+      ...DemoEventsRepositoryBuilder.cloneRecord(record),
+      distanceKm: Math.round((distanceMeters / 1000) * 10) / 10
+    };
+  }
+
+  private compareActivitiesRecords(
+    left: DemoEventRecord,
+    right: DemoEventRecord,
+    query: DemoEventActivitiesQuery
+  ): number {
+    if (query.view === 'distance' || query.sort === 'distance') {
+      if (query.secondaryFilter === 'relevant') {
+        return this.distanceOrderValue(left) - this.distanceOrderValue(right)
+          || this.relevanceOrderValue(left) - this.relevanceOrderValue(right)
+          || this.timestampOrderValue(right) - this.timestampOrderValue(left)
+          || this.compareRecordIdentity(left, right);
+      }
+      return this.distanceOrderValue(left) - this.distanceOrderValue(right)
+        || this.timestampOrderValue(right) - this.timestampOrderValue(left)
+        || this.compareRecordIdentity(left, right);
+    }
+
+    if (query.secondaryFilter === 'relevant') {
+      return this.dayOrderValue(left) - this.dayOrderValue(right)
+        || this.relevanceOrderValue(left) - this.relevanceOrderValue(right)
+        || this.timestampOrderValue(right) - this.timestampOrderValue(left)
+        || this.compareRecordIdentity(left, right);
+    }
+
+    if (query.secondaryFilter === 'past') {
+      return this.dayOrderValue(right) - this.dayOrderValue(left)
+        || this.timestampOrderValue(right) - this.timestampOrderValue(left)
+        || this.compareRecordIdentity(left, right);
+    }
+
+    return this.dayOrderValue(left) - this.dayOrderValue(right)
+      || this.timestampOrderValue(left) - this.timestampOrderValue(right)
+      || this.compareRecordIdentity(left, right);
+  }
+
+  private compareRecordToCursor(
+    record: DemoEventRecord,
+    cursor: DemoEventActivitiesCursor,
+    query: DemoEventActivitiesQuery
+  ): number {
+    const cursorRecord: DemoEventRecord = {
+      ...DemoEventsRepositoryBuilder.cloneRecord(record),
+      id: cursor.id,
+      distanceKm: cursor.distanceMeters / 1000,
+      relevance: cursor.relevance,
+      startAtIso: new Date(cursor.startAtMs).toISOString()
+    };
+    return this.compareActivitiesRecords(record, cursorRecord, query);
+  }
+
+  private buildActivitiesCursor(record: DemoEventRecord): DemoEventActivitiesCursor {
+    return {
+      id: record.id,
+      distanceMeters: this.distanceOrderValue(record),
+      relevance: this.relevanceOrderValue(record),
+      startAtMs: this.timestampOrderValue(record)
+    };
+  }
+
+  private serializeActivitiesCursor(cursor: DemoEventActivitiesCursor): string {
+    return JSON.stringify(cursor);
+  }
+
+  private parseActivitiesCursor(value: string | null | undefined): DemoEventActivitiesCursor | null {
+    const normalized = value?.trim() ?? '';
+    if (!normalized) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(normalized) as Partial<DemoEventActivitiesCursor>;
+      if (
+        typeof parsed.id !== 'string'
+        || !Number.isFinite(parsed.distanceMeters)
+        || !Number.isFinite(parsed.relevance)
+        || !Number.isFinite(parsed.startAtMs)
+      ) {
+        return null;
+      }
+      return {
+        id: parsed.id,
+        distanceMeters: Math.max(0, Math.trunc(Number(parsed.distanceMeters))),
+        relevance: Math.max(0, Number(parsed.relevance)),
+        startAtMs: Math.trunc(Number(parsed.startAtMs))
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private distanceOrderValue(record: DemoEventRecord): number {
+    return Math.max(0, Math.round((Number(record.distanceKm) || 0) * 1000));
+  }
+
+  private relevanceOrderValue(record: DemoEventRecord): number {
+    return Math.max(0, Number(record.relevance) || 0);
+  }
+
+  private timestampOrderValue(record: DemoEventRecord): number {
+    return AppUtils.toSortableDate(record.startAtIso);
+  }
+
+  private dayOrderValue(record: DemoEventRecord): number {
+    const timestamp = this.timestampOrderValue(record);
+    if (!Number.isFinite(timestamp)) {
+      return 0;
+    }
+    return AppUtils.dateOnly(new Date(timestamp)).getTime();
+  }
+
+  private compareRecordIdentity(left: DemoEventRecord, right: DemoEventRecord): number {
+    return left.id.localeCompare(right.id);
+  }
+
+  private haversineDistanceMeters(
+    from: LocationCoordinates,
+    to: LocationCoordinates
+  ): number {
+    const earthRadiusMeters = 6_371_000;
+    const latitudeDelta = this.toRadians(to.latitude - from.latitude);
+    const longitudeDelta = this.toRadians(to.longitude - from.longitude);
+    const fromLatitude = this.toRadians(from.latitude);
+    const toLatitude = this.toRadians(to.latitude);
+    const sinLatitude = Math.sin(latitudeDelta / 2);
+    const sinLongitude = Math.sin(longitudeDelta / 2);
+    const a = (sinLatitude * sinLatitude)
+      + (Math.cos(fromLatitude) * Math.cos(toLatitude) * sinLongitude * sinLongitude);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Math.round(earthRadiusMeters * c);
+  }
+
+  private toRadians(value: number): number {
+    return value * (Math.PI / 180);
   }
 
   private shouldIncludeExploreRecord(record: DemoEventRecord, activeUserId: string): boolean {

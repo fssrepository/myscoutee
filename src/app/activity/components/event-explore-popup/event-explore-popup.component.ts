@@ -13,13 +13,21 @@ import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
 import { AlertService } from '../../../shared/alert.service';
-import type { ActivityMemberOwnerRef } from '../../../shared/activities-models';
+import type { ActivityMemberOwnerRef, EventExploreFeedFilters } from '../../../shared/activities-models';
 import { APP_DEMO_DATA } from '../../../shared/demo-data';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import type * as AppTypes from '../../../shared/app-types';
 import { AppUtils } from '../../../shared/app-utils';
-import { ActivityMembersService, AppContext, type ActivityMembersSyncState, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
+import {
+  ActivityMembersService,
+  AppContext,
+  EventExploreService,
+  type ActivityMembersSyncState,
+  GameService,
+  UsersService,
+  type UserDto
+} from '../../../shared/core';
 import {
   InfoCardComponent,
   SmartListComponent,
@@ -27,7 +35,6 @@ import {
   type InfoCardMenuAction,
   type InfoCardMenuActionEvent,
   type ListQuery,
-  type PageResult,
   type SmartListConfig,
   type SmartListItemTemplateContext,
   type SmartListStateChange
@@ -35,14 +42,6 @@ import {
 import { NavigatorService } from '../../../navigator';
 import { ActivitiesDbContextService } from '../../services/activities-db-context.service';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
-
-interface EventExploreFilters {
-  userId: string;
-  order: AppTypes.EventExploreOrder;
-  friendsOnly: boolean;
-  openSpotsOnly: boolean;
-  topic: string;
-}
 
 @Component({
   selector: 'app-event-explore-popup',
@@ -61,7 +60,7 @@ export class EventExplorePopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly activitiesContext = inject(ActivitiesDbContextService);
   private readonly activityMembersService = inject(ActivityMembersService);
-  private readonly eventsService = inject(EventsService);
+  private readonly eventExploreService = inject(EventExploreService);
   private readonly gameService = inject(GameService);
   private readonly usersService = inject(UsersService);
   protected readonly navigatorService = inject(NavigatorService);
@@ -69,6 +68,10 @@ export class EventExplorePopupComponent {
   private readonly appCtx = inject(AppContext);
 
   protected readonly eventExploreOrderOptions = APP_DEMO_DATA.eventExploreOrderOptions;
+  protected readonly eventExploreViewOptions = APP_DEMO_DATA.activitiesViewOptions.filter(
+    (option): option is { key: AppTypes.EventExploreView; label: string; icon: string } =>
+      option.key === 'day' || option.key === 'distance'
+  );
   protected readonly topicFilterGroups = APP_STATIC_DATA.interestOptionGroups;
 
   private users: UserDto[] = [];
@@ -76,8 +79,10 @@ export class EventExplorePopupComponent {
 
   protected isOpen = false;
   protected showOrderPicker = false;
+  protected showViewPicker = false;
   protected showTopicPicker = false;
   protected eventExploreOrder: AppTypes.EventExploreOrder = 'upcoming';
+  protected eventExploreView: AppTypes.EventExploreView = 'day';
   protected eventExploreFilterFriendsOnly = false;
   protected eventExploreFilterHasRooms = false;
   protected eventExploreFilterTopic = '';
@@ -95,27 +100,26 @@ export class EventExplorePopupComponent {
   protected selectedMembersRecord: DemoEventRecord | null = null;
 
   private activeUserId = 'u1';
-  private readonly exploreCache = new Map<string, DemoEventRecord[]>();
   private eventEditorPrewarmStarted = false;
   private lastAppliedActivityMembersUpdatedMs = 0;
 
-  protected eventExploreSmartListQuery: Partial<ListQuery<EventExploreFilters>> = {};
+  protected eventExploreSmartListQuery: Partial<ListQuery<EventExploreFeedFilters>> = {};
 
   @ViewChild('eventExploreSmartList')
-  private eventExploreSmartList?: SmartListComponent<DemoEventRecord, EventExploreFilters>;
+  private eventExploreSmartList?: SmartListComponent<DemoEventRecord, EventExploreFeedFilters>;
 
-  protected eventExploreItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<DemoEventRecord, EventExploreFilters>>;
+  protected eventExploreItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<DemoEventRecord, EventExploreFeedFilters>>;
 
   @ViewChild('eventExploreItemTemplate', { read: TemplateRef })
-  private set eventExploreItemTemplate(value: TemplateRef<SmartListItemTemplateContext<DemoEventRecord, EventExploreFilters>> | undefined) {
+  private set eventExploreItemTemplate(value: TemplateRef<SmartListItemTemplateContext<DemoEventRecord, EventExploreFeedFilters>> | undefined) {
     this.eventExploreItemTemplateRef = value;
     this.cdr.markForCheck();
   }
 
-  protected readonly eventExploreLoadPage = (query: ListQuery<EventExploreFilters>) =>
-    from(this.loadEventExplorePage(query));
+  protected readonly eventExploreLoadPage = (query: ListQuery<EventExploreFeedFilters>) =>
+    from(this.eventExploreService.loadPage(query));
 
-  protected readonly eventExploreSmartListConfig: SmartListConfig<DemoEventRecord, EventExploreFilters> = {
+  protected readonly eventExploreSmartListConfig: SmartListConfig<DemoEventRecord, EventExploreFeedFilters> = {
     pageSize: 10,
     loadingDelayMs: 0,
     defaultView: 'list',
@@ -141,7 +145,7 @@ export class EventExplorePopupComponent {
       }
       return scrollable;
     },
-    groupBy: (record, query) => this.eventExploreGroupLabel(record, query.filters?.order ?? this.eventExploreOrder)
+    groupBy: (record, query) => this.eventExploreGroupLabel(record, query.filters?.view ?? this.eventExploreView)
   };
 
   constructor() {
@@ -162,7 +166,6 @@ export class EventExplorePopupComponent {
         return;
       }
       this.activeUserId = nextActiveUserId;
-      this.clearExploreCache();
       this.syncEventExploreQuery();
       if (this.isOpen) {
         this.reloadEventExploreSmartList();
@@ -206,6 +209,11 @@ export class EventExplorePopupComponent {
       this.cdr.markForCheck();
       return;
     }
+    if (this.showViewPicker) {
+      this.showViewPicker = false;
+      this.cdr.markForCheck();
+      return;
+    }
     if (this.showOrderPicker) {
       this.showOrderPicker = false;
       this.cdr.markForCheck();
@@ -226,10 +234,13 @@ export class EventExplorePopupComponent {
     if (this.showOrderPicker && !target.closest('.event-explore-order-picker')) {
       this.showOrderPicker = false;
     }
+    if (this.showViewPicker && !target.closest('.event-explore-view-picker')) {
+      this.showViewPicker = false;
+    }
     this.cdr.markForCheck();
   }
 
-  protected onEventExploreSmartListStateChange(state: SmartListStateChange<DemoEventRecord, EventExploreFilters>): void {
+  protected onEventExploreSmartListStateChange(state: SmartListStateChange<DemoEventRecord, EventExploreFeedFilters>): void {
     this.eventExploreHeaderProgress = state.progress;
     this.eventExploreHeaderProgressLoading = state.loading;
     this.eventExploreHeaderLoadingProgress = state.loadingProgress;
@@ -241,6 +252,7 @@ export class EventExplorePopupComponent {
   protected closeEventExplore(): void {
     this.isOpen = false;
     this.showOrderPicker = false;
+    this.showViewPicker = false;
     this.showTopicPicker = false;
     this.closeMembersPopup();
     this.resetHeaderState();
@@ -250,6 +262,7 @@ export class EventExplorePopupComponent {
   protected toggleEventExploreOrderPicker(event: Event): void {
     event.stopPropagation();
     this.showTopicPicker = false;
+    this.showViewPicker = false;
     this.showOrderPicker = !this.showOrderPicker;
   }
 
@@ -262,6 +275,26 @@ export class EventExplorePopupComponent {
     }
     this.eventExploreOrder = order;
     this.showOrderPicker = false;
+    this.syncEventExploreQuery();
+    this.reloadEventExploreSmartList();
+  }
+
+  protected toggleEventExploreViewPicker(event: Event): void {
+    event.stopPropagation();
+    this.showTopicPicker = false;
+    this.showOrderPicker = false;
+    this.showViewPicker = !this.showViewPicker;
+  }
+
+  protected selectEventExploreView(view: AppTypes.EventExploreView, event?: Event): void {
+    event?.stopPropagation();
+    if (this.eventExploreView === view) {
+      this.showViewPicker = false;
+      this.cdr.markForCheck();
+      return;
+    }
+    this.eventExploreView = view;
+    this.showViewPicker = false;
     this.syncEventExploreQuery();
     this.reloadEventExploreSmartList();
   }
@@ -283,6 +316,7 @@ export class EventExplorePopupComponent {
   protected toggleEventExploreTopicPicker(event: Event): void {
     event.stopPropagation();
     this.showOrderPicker = false;
+    this.showViewPicker = false;
     this.showTopicPicker = !this.showTopicPicker;
     this.cdr.markForCheck();
   }
@@ -333,12 +367,26 @@ export class EventExplorePopupComponent {
     return 'event-explore-order-most-relevant';
   }
 
+  protected eventExploreCurrentViewLabel(view: AppTypes.EventExploreView = this.eventExploreView): string {
+    return this.eventExploreViewOptions.find(option => option.key === view)?.label ?? 'Day';
+  }
+
+  protected eventExploreCurrentViewIcon(view: AppTypes.EventExploreView = this.eventExploreView): string {
+    return this.eventExploreViewOptions.find(option => option.key === view)?.icon ?? 'today';
+  }
+
+  protected eventExploreCurrentViewClass(view: AppTypes.EventExploreView = this.eventExploreView): string {
+    return view === 'distance'
+      ? 'event-explore-view-distance'
+      : 'event-explore-view-day';
+  }
+
   protected eventExploreHeaderTitle(): string {
     return 'Event Explore';
   }
 
   protected eventExploreHeaderSubtitle(): string {
-    const parts = [this.eventExploreOrderLabel()];
+    const parts = [this.eventExploreOrderLabel(), this.eventExploreCurrentViewLabel()];
     if (this.eventExploreFilterFriendsOnly) {
       parts.push('Friends going');
     }
@@ -488,7 +536,7 @@ export class EventExplorePopupComponent {
     return '';
   }
 
-  protected eventExploreViewLabel(record: DemoEventRecord): string {
+  protected eventExploreCardViewActionLabel(record: DemoEventRecord): string {
     return record.type === 'hosting' ? 'View hosted event' : 'View event';
   }
 
@@ -563,7 +611,7 @@ export class EventExplorePopupComponent {
     return [
       {
         id: 'view',
-        label: this.eventExploreViewLabel(record),
+        label: this.eventExploreCardViewActionLabel(record),
         icon: this.eventVisibilityIcon(this.eventExploreVisibility(record))
       },
       {
@@ -629,9 +677,9 @@ export class EventExplorePopupComponent {
     this.prewarmEventEditorPopup();
     this.refreshUsersDirectory();
     this.showOrderPicker = false;
+    this.showViewPicker = false;
     this.showTopicPicker = false;
     this.closeMembersPopup();
-    this.clearExploreCache();
     this.syncEventExploreQuery();
     this.reloadEventExploreSmartList();
   }
@@ -641,6 +689,7 @@ export class EventExplorePopupComponent {
       filters: {
         userId: this.activeUserId,
         order: this.eventExploreOrder,
+        view: this.eventExploreView,
         friendsOnly: this.eventExploreFilterFriendsOnly,
         openSpotsOnly: this.eventExploreFilterHasRooms,
         topic: this.normalizeTopic(this.eventExploreFilterTopic)
@@ -648,52 +697,8 @@ export class EventExplorePopupComponent {
     };
   }
 
-  private async loadEventExplorePage(query: ListQuery<EventExploreFilters>): Promise<PageResult<DemoEventRecord>> {
-    const filters = this.resolveFilters(query);
-    const items = await this.loadRecordsForFilters(filters);
-    const pageSize = Math.max(1, Number(query.pageSize) || 10);
-    const start = Math.max(0, Number(query.page) || 0) * pageSize;
-    return {
-      items: items.slice(start, start + pageSize),
-      total: items.length
-    };
-  }
-
-  private async loadRecordsForFilters(filters: EventExploreFilters): Promise<DemoEventRecord[]> {
-    const cacheKey = this.eventExploreCacheKey(filters);
-    const cached = this.exploreCache.get(cacheKey);
-    if (cached) {
-      const cachedRecords = cached.map(record => this.cloneRecord(record));
-      this.syncEventExploreHeaderDateLabel(cachedRecords);
-      return cachedRecords;
-    }
-    const loaded = await this.eventsService.queryExploreItems(filters.userId);
-    const filtered = this.sortExploreRecords(this.applyExploreFilters(loaded, filters), filters.order);
-    this.syncEventExploreHeaderDateLabel(filtered);
-    this.exploreCache.set(cacheKey, filtered.map(record => this.cloneRecord(record)));
-    return filtered.map(record => this.cloneRecord(record));
-  }
-
   private applyActivityMembersSyncState(sync: ActivityMembersSyncState): void {
     let changed = false;
-    for (const [cacheKey, records] of this.exploreCache.entries()) {
-      const nextRecords = records.map(record => {
-        if (record.id !== sync.id) {
-          return record;
-        }
-        changed = true;
-        return {
-          ...record,
-          acceptedMembers: Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0)),
-          pendingMembers: Math.max(0, Math.trunc(Number(sync.pendingMembers) || 0)),
-          capacityTotal: Math.max(
-            Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0)),
-            Math.trunc(Number(sync.capacityTotal) || 0)
-          )
-        };
-      });
-      this.exploreCache.set(cacheKey, nextRecords);
-    }
     if (this.selectedMembersRecord?.id === sync.id) {
       this.selectedMembersRecord = {
         ...this.selectedMembersRecord,
@@ -706,89 +711,28 @@ export class EventExplorePopupComponent {
       };
       changed = true;
     }
-    if (changed && this.isOpen) {
+    if (this.isOpen) {
       this.reloadEventExploreSmartList();
+      changed = true;
     }
     if (changed) {
       this.cdr.markForCheck();
     }
   }
 
-  private applyExploreFilters(records: readonly DemoEventRecord[], filters: EventExploreFilters): DemoEventRecord[] {
-    const selectedTopic = this.normalizeTopic(filters.topic);
-    return records
-      .filter(record => !filters.friendsOnly || this.eventExploreHasFriendGoing(record, filters.userId))
-      .filter(record => !filters.openSpotsOnly || this.eventExploreHasRooms(record))
-      .filter(record => !selectedTopic || record.topics.some(topic => this.normalizeTopic(topic) === selectedTopic))
-      .map(record => this.cloneRecord(record));
-  }
-
-  private sortExploreRecords(
-    records: readonly DemoEventRecord[],
-    order: AppTypes.EventExploreOrder
-  ): DemoEventRecord[] {
-    const nowMs = Date.now();
-    const startAtMs = (record: DemoEventRecord) => {
-      const parsed = new Date(record.startAtIso).getTime();
-      return Number.isFinite(parsed) ? parsed : nowMs;
-    };
-    const sorted = [...records];
-    if (order === 'upcoming') {
-      return sorted.sort((left, right) => {
-        const leftMs = startAtMs(left);
-        const rightMs = startAtMs(right);
-        const leftPast = leftMs < nowMs;
-        const rightPast = rightMs < nowMs;
-        if (leftPast !== rightPast) {
-          return Number(leftPast) - Number(rightPast);
-        }
-        return leftMs - rightMs;
-      });
-    }
-    if (order === 'past-events') {
-      return sorted.sort((left, right) => {
-        const leftMs = startAtMs(left);
-        const rightMs = startAtMs(right);
-        const leftPast = leftMs < nowMs;
-        const rightPast = rightMs < nowMs;
-        if (leftPast !== rightPast) {
-          return Number(rightPast) - Number(leftPast);
-        }
-        return rightMs - leftMs;
-      });
-    }
-    if (order === 'nearby') {
-      return sorted.sort((left, right) => left.distanceKm - right.distanceKm || right.relevance - left.relevance);
-    }
-    if (order === 'top-rated') {
-      return sorted.sort((left, right) => right.rating - left.rating || right.relevance - left.relevance);
-    }
-    return sorted.sort((left, right) => right.relevance - left.relevance || startAtMs(left) - startAtMs(right));
-  }
-
   private eventExploreGroupLabel(
     record: DemoEventRecord,
-    order: AppTypes.EventExploreOrder
+    view: AppTypes.EventExploreView
   ): string {
-    if (order === 'nearby') {
+    if (view === 'distance') {
       const bucket = Math.max(5, Math.ceil(record.distanceKm / 5) * 5);
       return `${bucket} km`;
-    }
-    if (order === 'top-rated') {
-      const bucket = Math.max(1, Math.min(10, Math.round(AppUtils.clampNumber(record.rating, 0, 10))));
-      return `${bucket} / 10`;
     }
     const parsed = new Date(record.startAtIso);
     if (Number.isNaN(parsed.getTime())) {
       return 'Date unavailable';
     }
     return parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  }
-
-  private eventExploreHasFriendGoing(record: DemoEventRecord, activeUserId: string): boolean {
-    return record.acceptedMemberUserIds.some(userId =>
-      userId !== activeUserId && AppDemoGenerators.isFriendOfActiveUser(userId, activeUserId)
-    );
   }
 
   private eventExploreRow(record: DemoEventRecord): AppTypes.ActivityListRow {
@@ -997,28 +941,15 @@ export class EventExplorePopupComponent {
     event?.stopPropagation?.();
   }
 
-  private resolveFilters(query: ListQuery<EventExploreFilters>): EventExploreFilters {
+  private resolveFilters(query: ListQuery<EventExploreFeedFilters>): EventExploreFeedFilters {
     return {
       userId: query.filters?.userId?.trim() || this.activeUserId,
       order: query.filters?.order ?? this.eventExploreOrder,
+      view: query.filters?.view ?? this.eventExploreView,
       friendsOnly: query.filters?.friendsOnly ?? this.eventExploreFilterFriendsOnly,
       openSpotsOnly: query.filters?.openSpotsOnly ?? this.eventExploreFilterHasRooms,
       topic: query.filters?.topic ?? this.normalizeTopic(this.eventExploreFilterTopic)
     };
-  }
-
-  private eventExploreCacheKey(filters: EventExploreFilters): string {
-    return [
-      filters.userId,
-      filters.order,
-      filters.friendsOnly ? 'friends' : 'all',
-      filters.openSpotsOnly ? 'rooms' : 'all',
-      filters.topic
-    ].join('|');
-  }
-
-  private clearExploreCache(): void {
-    this.exploreCache.clear();
   }
 
   private refreshUsersDirectory(): void {
@@ -1058,38 +989,24 @@ export class EventExplorePopupComponent {
     this.eventExploreHeaderDateLabel = '';
   }
 
-  private cloneRecord(record: DemoEventRecord): DemoEventRecord {
-    return {
-      ...record,
-      acceptedMemberUserIds: [...record.acceptedMemberUserIds],
-      pendingMemberUserIds: [...record.pendingMemberUserIds],
-      topics: [...record.topics]
-    };
-  }
-
   protected normalizeTopic(topic: string | null | undefined): string {
-    return AppUtils.normalizeText(topic ?? '');
-  }
-
-  private syncEventExploreHeaderDateLabel(records: readonly DemoEventRecord[]): void {
-    this.eventExploreHeaderDateLabel = this.resolveEventExploreHeaderDateLabel(records);
-    this.cdr.markForCheck();
+    return AppUtils.normalizeText(`${topic ?? ''}`.replace(/^#+\s*/, '').trim());
   }
 
   private primeEventExploreHeaderDateLabel(): void {
     const filters = this.currentEventExploreFilters();
-    const peeked = this.eventsService.peekExploreItems(filters.userId);
+    const peeked = this.eventExploreService.peekPage(filters);
     if (peeked.length === 0) {
       return;
     }
-    const filtered = this.sortExploreRecords(this.applyExploreFilters(peeked, filters), filters.order);
-    this.eventExploreHeaderDateLabel = this.resolveEventExploreHeaderDateLabel(filtered);
+    this.eventExploreHeaderDateLabel = this.resolveEventExploreHeaderDateLabel(peeked);
   }
 
-  private currentEventExploreFilters(): EventExploreFilters {
+  private currentEventExploreFilters(): EventExploreFeedFilters {
     return {
       userId: this.activeUserId,
       order: this.eventExploreOrder,
+      view: this.eventExploreView,
       friendsOnly: this.eventExploreFilterFriendsOnly,
       openSpotsOnly: this.eventExploreFilterHasRooms,
       topic: this.normalizeTopic(this.eventExploreFilterTopic)

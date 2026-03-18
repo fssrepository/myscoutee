@@ -15,6 +15,15 @@ export interface ActivitiesFeedFilters {
   rateFilter?: AppTypes.RateFilterKey;
 }
 
+export interface EventExploreFeedFilters {
+  userId: string;
+  order: AppTypes.EventExploreOrder;
+  view: AppTypes.EventExploreView;
+  friendsOnly: boolean;
+  openSpotsOnly: boolean;
+  topic: string;
+}
+
 export interface ActivityMemberOwnerRef {
   ownerType: ActivityMemberOwnerType;
   ownerId: string;

@@ -7,28 +7,55 @@
         <p class="popup-subtitle" *ngIf="eventExploreHeaderSubtitle() as subtitle">{{ subtitle }}</p>
       </div>
 
-      <div class="event-explore-order-picker">
-        <button
-          type="button"
-          class="popup-view-fab event-explore-order-trigger"
-          [ngClass]="eventExploreOrderClass()"
-          (click)="toggleEventExploreOrderPicker($event)"
-          aria-label="Open event explore order"
-        >
-          <mat-icon [class]="eventExploreOrderClass()">{{ eventExploreOrderIcon() }}</mat-icon>
-          <span>{{ eventExploreOrderLabel() }}</span>
-        </button>
-        <div class="activities-view-picker-panel event-explore-order-panel" *ngIf="showOrderPicker">
+      <div class="event-explore-header-controls">
+        <div class="event-explore-order-picker">
           <button
             type="button"
-            class="activities-view-option"
-            [ngClass]="eventExploreOrderClass(option.key)"
-            *ngFor="let option of eventExploreOrderOptions"
-            (click)="selectEventExploreOrder(option.key, $event)"
+            class="popup-view-fab event-explore-order-trigger"
+            [ngClass]="eventExploreOrderClass()"
+            (click)="toggleEventExploreOrderPicker($event)"
+            aria-label="Open event explore order"
           >
-            <mat-icon [class]="eventExploreOrderClass(option.key)">{{ option.icon }}</mat-icon>
-            <span>{{ option.label }}</span>
+            <mat-icon [class]="eventExploreOrderClass()">{{ eventExploreOrderIcon() }}</mat-icon>
+            <span>{{ eventExploreOrderLabel() }}</span>
           </button>
+          <div class="activities-view-picker-panel event-explore-order-panel" *ngIf="showOrderPicker">
+            <button
+              type="button"
+              class="activities-view-option"
+              [ngClass]="eventExploreOrderClass(option.key)"
+              *ngFor="let option of eventExploreOrderOptions"
+              (click)="selectEventExploreOrder(option.key, $event)"
+            >
+              <mat-icon [class]="eventExploreOrderClass(option.key)">{{ option.icon }}</mat-icon>
+              <span>{{ option.label }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="event-explore-view-picker">
+          <button
+            type="button"
+            class="popup-view-fab event-explore-view-trigger"
+            [ngClass]="eventExploreCurrentViewClass()"
+            (click)="toggleEventExploreViewPicker($event)"
+            aria-label="Open event explore view"
+          >
+            <mat-icon [class]="eventExploreCurrentViewClass()">{{ eventExploreCurrentViewIcon() }}</mat-icon>
+            <span>{{ eventExploreCurrentViewLabel() }}</span>
+          </button>
+          <div class="activities-view-picker-panel event-explore-order-panel" *ngIf="showViewPicker">
+            <button
+              type="button"
+              class="activities-view-option"
+              [ngClass]="eventExploreCurrentViewClass(option.key)"
+              *ngFor="let option of eventExploreViewOptions"
+              (click)="selectEventExploreView(option.key, $event)"
+            >
+              <mat-icon [class]="eventExploreCurrentViewClass(option.key)">{{ option.icon }}</mat-icon>
+              <span>{{ option.label }}</span>
+            </button>
+          </div>
         </div>
       </div>
 

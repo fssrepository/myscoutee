@@ -400,6 +400,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.cdr.markForCheck();
     });
 
+    effect(() => {
+      if (this.isEventActivitiesPrimaryFilter() && this.activitiesSecondaryFilter === 'relevant') {
+        this.activitiesContext.setActivitiesSecondaryFilter('recent');
+      }
+    });
+
     // React to open events: reset scroll state whenever the popup is opened.
     effect(() => {
       if (this.activitiesContext.activitiesOpen()) {
@@ -840,7 +846,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activitiesSecondaryFilterLabel(): string {
-    return this.activitiesSecondaryFilterOptionLabel(this.activitiesSecondaryFilter);
+    return this.activitiesSecondaryFilterOptionLabel(this.effectiveActivitiesSecondaryFilter());
   }
 
   protected activitiesSecondaryFilterOptionLabel(filter: AppTypes.ActivitiesSecondaryFilter): string {
@@ -851,7 +857,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activitiesSecondaryFilterIcon(): string {
-    return this.activitiesSecondaryFilters.find(o => o.key === this.activitiesSecondaryFilter)?.icon ?? 'schedule';
+    return this.activitiesSecondaryFilters.find(o => o.key === this.effectiveActivitiesSecondaryFilter())?.icon ?? 'schedule';
   }
 
   protected activitiesRateFilterLabel(): string {
@@ -934,6 +940,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.activitiesView === 'month' || this.activitiesView === 'week';
   }
 
+  protected availableActivitiesSecondaryFilters(): ReadonlyArray<{ key: AppTypes.ActivitiesSecondaryFilter; label: string; icon: string }> {
+    return this.isEventActivitiesPrimaryFilter()
+      ? this.activitiesSecondaryFilters.filter(option => option.key !== 'relevant')
+      : this.activitiesSecondaryFilters;
+  }
+
   // ── Selection actions ─────────────────────────────────────────────────────
 
   protected selectActivitiesPrimaryFilter(filter: AppTypes.ActivitiesPrimaryFilter): void {
@@ -944,6 +956,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.disableActivitiesRatesFullscreenMode();
     }
     this.activitiesContext.setActivitiesPrimaryFilter(filter);
+    if (filter === 'events' && this.activitiesSecondaryFilter === 'relevant') {
+      this.activitiesContext.setActivitiesSecondaryFilter('recent');
+    }
     this.lastRateIndicatorPulseRowId = null;
     this.showActivitiesPrimaryPicker = false;
     this.showActivitiesEventScopePicker = false;
@@ -1005,10 +1020,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected selectActivitiesSecondaryFilter(filter: AppTypes.ActivitiesSecondaryFilter): void {
+    const normalizedFilter = this.isEventActivitiesPrimaryFilter() && filter === 'relevant'
+      ? 'recent'
+      : filter;
     if (this.activitiesPrimaryFilter === 'rates') {
       this.commitPendingRateDirectionOverrides();
     }
-    this.activitiesContext.setActivitiesSecondaryFilter(filter);
+    this.activitiesContext.setActivitiesSecondaryFilter(normalizedFilter);
     this.lastRateIndicatorPulseRowId = null;
     this.showActivitiesPrimaryPicker = false;
     this.showActivitiesEventScopePicker = false;
@@ -1017,6 +1035,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.showActivitiesQuickActionsMenu = false;
     this.resetActivitiesScroll();
     this.cdr.markForCheck();
+  }
+
+  private effectiveActivitiesSecondaryFilter(): AppTypes.ActivitiesSecondaryFilter {
+    return this.isEventActivitiesPrimaryFilter() && this.activitiesSecondaryFilter === 'relevant'
+      ? 'recent'
+      : this.activitiesSecondaryFilter;
   }
 
   protected selectActivitiesRateFilter(filter: AppTypes.RateFilterKey): void {
