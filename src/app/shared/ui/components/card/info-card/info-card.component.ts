@@ -140,13 +140,13 @@ export class InfoCardComponent {
       return;
     }
     event.stopPropagation();
-    this.closeMenu();
     this.menuAction.emit({
       rowId: this.card.rowId,
       actionId: action.id,
       action,
       card: this.card
     });
+    this.closeMenu();
   }
 
   protected isOverlayInteractive(action: InfoCardOverlayAction | null | undefined): boolean {

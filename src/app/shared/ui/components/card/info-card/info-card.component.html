@@ -170,14 +170,6 @@
         <mat-icon>{{ menuOpen ? 'close' : 'more_vert' }}</mat-icon>
       </button>
 
-      <button
-        type="button"
-        class="ui-info-card__menu-backdrop"
-        *ngIf="menuOpen"
-        (click)="closeMenu($event)"
-        aria-label="Close card actions"
-      ></button>
-
       <div
         class="ui-info-card__menu item-action-menu"
         *ngIf="menuOpen"
