@@ -67,6 +67,7 @@ export interface UserDto {
   completion: number;
   headline: string;
   about: string;
+  affinity?: number;
   locationCoordinates?: LocationCoordinates;
   images?: string[];
   impressions?: UserImpressionsDto;

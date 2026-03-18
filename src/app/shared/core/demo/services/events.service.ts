@@ -6,6 +6,8 @@ import { DemoEventsRepository } from '../repositories/events.repository';
 import type {
   DemoEventActivitiesQuery,
   DemoEventActivitiesQueryResult,
+  DemoEventExploreQuery,
+  DemoEventExploreQueryResult,
   DemoEventRecord,
   DemoEventScopeFilter,
   DemoRepositoryEventItemType
@@ -69,6 +71,15 @@ export class DemoEventsService {
 
   peekExploreItems(userId: string): DemoEventRecord[] {
     return this.eventsRepository.queryExploreItems(userId);
+  }
+
+  async queryEventExplorePage(query: DemoEventExploreQuery): Promise<DemoEventExploreQueryResult> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_EXPLORE_ROUTE);
+    return this.eventsRepository.queryEventExplorePage(query);
+  }
+
+  peekEventExplorePage(query: DemoEventExploreQuery): DemoEventExploreQueryResult {
+    return this.eventsRepository.queryEventExplorePage(query);
   }
 
   async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {

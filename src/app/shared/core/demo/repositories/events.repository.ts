@@ -16,6 +16,8 @@ import {
   EVENTS_TABLE_NAME,
   type DemoEventActivitiesQuery,
   type DemoEventActivitiesQueryResult,
+  type DemoEventExploreQuery,
+  type DemoEventExploreQueryResult,
   type DemoEventRecord,
   type DemoEventRecordCollection,
   type DemoEventScopeFilter,
@@ -30,6 +32,13 @@ interface DemoEventActivitiesCursor {
   distanceMeters: number;
   relevance: number;
   startAtMs: number;
+}
+
+type DemoEventExploreSortTuple = readonly [number, number, number, number];
+
+interface DemoEventExploreCursor {
+  id: string;
+  tuple: DemoEventExploreSortTuple;
 }
 
 @Injectable({
@@ -198,6 +207,44 @@ export class DemoEventsRepository {
     }
 
     return [...byEventId.values()].map(record => DemoEventsRepositoryBuilder.cloneRecord(record));
+  }
+
+  queryEventExplorePage(query: DemoEventExploreQuery): DemoEventExploreQueryResult {
+    this.init();
+    const normalizedUserId = query.userId.trim();
+    if (!normalizedUserId) {
+      return {
+        records: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+
+    const selectedTopic = this.normalizeExploreTopic(query.topic);
+    const viewerCoordinates = this.queryUserLocationCoordinates(normalizedUserId);
+    const viewerAffinity = this.queryUserAffinity(normalizedUserId);
+    const normalizedRecords = this.queryExploreItems(normalizedUserId)
+      .map(record => this.withResolvedDistance(record, viewerCoordinates))
+      .filter(record => !query.friendsOnly || this.exploreHasFriendGoing(record, normalizedUserId))
+      .filter(record => !query.openSpotsOnly || this.exploreHasOpenSpots(record))
+      .filter(record => !selectedTopic || record.topics.some(topic => this.normalizeExploreTopic(topic) === selectedTopic))
+      .sort((left, right) => this.compareExploreRecords(left, right, query, viewerAffinity));
+    const total = normalizedRecords.length;
+    const cursor = this.parseEventExploreCursor(query.cursor);
+    const remaining = cursor
+      ? normalizedRecords.filter(record => this.compareEventExploreRecordToCursor(record, cursor, query, viewerAffinity) > 0)
+      : normalizedRecords;
+    const limit = Math.max(1, Math.trunc(Number(query.limit) || 10));
+    const records = remaining.slice(0, limit);
+    const nextCursor = remaining.length > limit && records.length > 0
+      ? this.serializeEventExploreCursor(this.buildEventExploreCursor(records[records.length - 1], query, viewerAffinity))
+      : null;
+
+    return {
+      records,
+      total,
+      nextCursor
+    };
   }
 
   syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): void {
@@ -406,6 +453,15 @@ export class DemoEventsRepository {
     return this.normalizeLocationCoordinates(user?.locationCoordinates);
   }
 
+  private queryUserAffinity(userId: string): number {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return 0;
+    }
+    const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[normalizedUserId];
+    return Math.max(0, Math.trunc(Number(user?.affinity) || 0));
+  }
+
   private withResolvedDistance(
     record: DemoEventRecord,
     viewerCoordinates: LocationCoordinates | null
@@ -534,6 +590,154 @@ export class DemoEventsRepository {
     return left.id.localeCompare(right.id);
   }
 
+  private compareExploreRecords(
+    left: DemoEventRecord,
+    right: DemoEventRecord,
+    query: DemoEventExploreQuery,
+    viewerAffinity: number
+  ): number {
+    return this.compareExploreSortTuple(
+      this.buildEventExploreSortTuple(left, query, viewerAffinity),
+      this.buildEventExploreSortTuple(right, query, viewerAffinity)
+    ) || this.compareRecordIdentity(left, right);
+  }
+
+  private compareEventExploreRecordToCursor(
+    record: DemoEventRecord,
+    cursor: DemoEventExploreCursor,
+    query: DemoEventExploreQuery,
+    viewerAffinity: number
+  ): number {
+    return this.compareExploreSortTuple(
+      this.buildEventExploreSortTuple(record, query, viewerAffinity),
+      cursor.tuple
+    ) || record.id.localeCompare(cursor.id);
+  }
+
+  private buildEventExploreCursor(
+    record: DemoEventRecord,
+    query: DemoEventExploreQuery,
+    viewerAffinity: number
+  ): DemoEventExploreCursor {
+    return {
+      id: record.id,
+      tuple: this.buildEventExploreSortTuple(record, query, viewerAffinity)
+    };
+  }
+
+  private serializeEventExploreCursor(cursor: DemoEventExploreCursor): string {
+    return JSON.stringify({
+      id: cursor.id,
+      tuple: [...cursor.tuple]
+    });
+  }
+
+  private parseEventExploreCursor(value: string | null | undefined): DemoEventExploreCursor | null {
+    const normalized = value?.trim() ?? '';
+    if (!normalized) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(normalized) as { id?: unknown; tuple?: unknown };
+      if (typeof parsed.id !== 'string' || !Array.isArray(parsed.tuple) || parsed.tuple.length !== 4) {
+        return null;
+      }
+      const tuple = parsed.tuple.map(item => Number(item));
+      if (tuple.some(item => !Number.isFinite(item))) {
+        return null;
+      }
+      return {
+        id: parsed.id,
+        tuple: [
+          tuple[0] ?? 0,
+          tuple[1] ?? 0,
+          tuple[2] ?? 0,
+          tuple[3] ?? 0
+        ]
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private buildEventExploreSortTuple(
+    record: DemoEventRecord,
+    query: DemoEventExploreQuery,
+    viewerAffinity: number
+  ): DemoEventExploreSortTuple {
+    const startAtMs = this.timestampOrderValue(record);
+    const dayKey = this.dayOrderValue(record);
+    const distanceMeters = this.distanceOrderValue(record);
+    const ratingValue = -Math.round(AppUtils.clampNumber(Number(record.rating) || 0, 0, 10) * 100);
+    const affinityDistance = Math.abs(this.affinityOrderValue(record) - viewerAffinity);
+    const isPast = startAtMs < Date.now() ? 1 : 0;
+    const pastPriority = isPast === 1 ? 0 : 1;
+
+    if (query.view === 'distance') {
+      if (query.order === 'past-events') {
+        return [distanceMeters, pastPriority, -startAtMs, affinityDistance];
+      }
+      if (query.order === 'nearby') {
+        return [distanceMeters, isPast, startAtMs, affinityDistance];
+      }
+      if (query.order === 'top-rated') {
+        return [distanceMeters, isPast, ratingValue, startAtMs];
+      }
+      if (query.order === 'most-relevant') {
+        return [distanceMeters, isPast, affinityDistance, startAtMs];
+      }
+      return [distanceMeters, isPast, startAtMs, affinityDistance];
+    }
+
+    if (query.order === 'past-events') {
+      return [pastPriority, -dayKey, -startAtMs, distanceMeters];
+    }
+    if (query.order === 'nearby') {
+      return [isPast, dayKey, distanceMeters, startAtMs];
+    }
+    if (query.order === 'top-rated') {
+      return [isPast, dayKey, ratingValue, startAtMs];
+    }
+    if (query.order === 'most-relevant') {
+      return [isPast, dayKey, affinityDistance, startAtMs];
+    }
+    return [isPast, dayKey, startAtMs, distanceMeters];
+  }
+
+  private compareExploreSortTuple(
+    left: DemoEventExploreSortTuple,
+    right: DemoEventExploreSortTuple
+  ): number {
+    for (let index = 0; index < left.length; index += 1) {
+      const delta = left[index] - right[index];
+      if (delta !== 0) {
+        return delta;
+      }
+    }
+    return 0;
+  }
+
+  private affinityOrderValue(record: DemoEventRecord): number {
+    return Math.max(0, Math.trunc(Number(record.affinity) || 0));
+  }
+
+  private exploreHasFriendGoing(record: DemoEventRecord, activeUserId: string): boolean {
+    return [
+      record.creatorUserId,
+      ...record.acceptedMemberUserIds
+    ].some(userId =>
+      userId !== activeUserId && AppDemoGenerators.isFriendOfActiveUser(userId, activeUserId)
+    );
+  }
+
+  private exploreHasOpenSpots(record: DemoEventRecord): boolean {
+    return record.capacityTotal > record.acceptedMembers;
+  }
+
+  private normalizeExploreTopic(value: string | null | undefined): string {
+    return AppUtils.normalizeText(`${value ?? ''}`.replace(/^#+\s*/, '').trim());
+  }
+
   private haversineDistanceMeters(
     from: LocationCoordinates,
     to: LocationCoordinates
@@ -566,6 +770,9 @@ export class DemoEventsRepository {
       return false;
     }
     if (record.visibility === 'Invitation only') {
+      return false;
+    }
+    if (record.visibility === 'Friends only' && !AppDemoGenerators.isFriendOfActiveUser(record.creatorUserId, activeUserId)) {
       return false;
     }
     return true;
@@ -607,6 +814,23 @@ export class DemoEventsRepository {
     const topics = this.normalizeTopics(payload.topics ?? existing?.topics ?? []);
     const rating = existing?.rating ?? (6 + ((AppDemoGenerators.hashText(`${context.type}:${payload.id}:${payload.title}`) % 35) / 10));
     const relevance = existing?.relevance ?? (50 + (AppDemoGenerators.hashText(`${context.type}:${payload.id}:${payload.title}`) % 51));
+    const usersTable = this.memoryDb.read()[USERS_TABLE_NAME];
+    const creator = usersTable.byId[context.userId] ?? null;
+    const acceptedUsers = context.acceptedMemberUserIds
+      .map(userId => usersTable.byId[userId] ?? null);
+    const affinity = AppDemoGenerators.resolveEventAffinity({
+      id: payload.id,
+      title: payload.title,
+      subtitle: payload.shortDescription,
+      topics,
+      visibility,
+      blindMode,
+      creator,
+      acceptedUsers,
+      rating,
+      acceptedMembers: context.acceptedMembers,
+      capacityTotal: context.capacityTotal
+    });
     return {
       id: payload.id,
       userId: context.userId,
@@ -648,7 +872,8 @@ export class DemoEventsRepository {
       pendingMemberUserIds: [...context.pendingMemberUserIds],
       topics,
       rating,
-      relevance
+      relevance,
+      affinity
     };
   }
 
@@ -927,7 +1152,10 @@ export class DemoEventsRepository {
         ? [...seeded.topics]
         : (topics.length > 0 ? topics : [...seeded.topics]),
       rating: Number.isFinite(current.rating) ? Number(current.rating) : seeded.rating,
-      relevance: Number.isFinite(current.relevance) ? Number(current.relevance) : seeded.relevance
+      relevance: Number.isFinite(current.relevance) ? Number(current.relevance) : seeded.relevance,
+      affinity: Number.isFinite(current.affinity)
+        ? Math.max(0, Math.trunc(Number(current.affinity)))
+        : seeded.affinity
     };
   }
 

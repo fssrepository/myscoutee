@@ -51,6 +51,103 @@ export class AppDemoGenerators {
     return Math.abs(hash);
   }
 
+  static resolveUserAffinity(
+    user: Pick<
+      DemoUser,
+      | 'id'
+      | 'name'
+      | 'age'
+      | 'city'
+      | 'height'
+      | 'physique'
+      | 'languages'
+      | 'horoscope'
+      | 'gender'
+      | 'hostTier'
+      | 'traitLabel'
+      | 'completion'
+    >
+  ): number {
+    const tokens = this.uniqueAffinityTokens([
+      user.name,
+      user.city,
+      user.physique,
+      ...(user.languages ?? []),
+      user.horoscope,
+      user.gender,
+      user.hostTier,
+      user.traitLabel
+    ]);
+    const heightCm = this.parseHeightCm(user.height) ?? 170;
+    return (
+      this.resolveAffinityTokenScore(tokens, `user:${user.id}`) * 97
+      + Math.max(18, Math.trunc(Number(user.age) || 30)) * 17
+      + heightCm * 11
+      + Math.max(0, Math.trunc(Number(user.completion) || 0)) * 13
+    );
+  }
+
+  static resolveEventAffinity(options: {
+    id: string;
+    title: string;
+    subtitle?: string | null;
+    topics: readonly string[];
+    visibility: string;
+    blindMode: string;
+    creator?: Partial<DemoUser> | null;
+    acceptedUsers?: ReadonlyArray<Partial<DemoUser> | null | undefined>;
+    rating?: number | null;
+    acceptedMembers?: number | null;
+    capacityTotal?: number | null;
+  }): number {
+    const participantUsers = [
+      options.creator ?? null,
+      ...(options.acceptedUsers ?? [])
+    ].filter((user): user is Partial<DemoUser> => Boolean(user));
+    const participantAffinities = participantUsers
+      .filter(user => typeof user.id === 'string' && user.id.trim().length > 0)
+      .map(user => this.resolveUserAffinity({
+        id: `${user.id}`,
+        name: `${user.name ?? 'Unknown User'}`,
+        age: Math.max(18, Math.trunc(Number(user.age) || 30)),
+        city: `${user.city ?? ''}`,
+        height: `${user.height ?? '170 cm'}`,
+        physique: `${user.physique ?? ''}`,
+        languages: [...(user.languages ?? [])],
+        horoscope: `${user.horoscope ?? ''}`,
+        gender: user.gender === 'woman' ? 'woman' : 'man',
+        hostTier: `${user.hostTier ?? ''}`,
+        traitLabel: `${user.traitLabel ?? ''}`,
+        completion: Math.max(0, Math.trunc(Number(user.completion) || 0))
+      }));
+    const averageParticipantAffinity = participantAffinities.length > 0
+      ? Math.round(participantAffinities.reduce((total, value) => total + value, 0) / participantAffinities.length)
+      : 0;
+    const tokens = this.uniqueAffinityTokens([
+      options.title,
+      options.subtitle ?? '',
+      ...options.topics,
+      options.visibility,
+      options.blindMode,
+      ...participantUsers.flatMap(user => [
+        `${user.city ?? ''}`,
+        `${user.physique ?? ''}`,
+        ...((user.languages ?? []) as string[]),
+        `${user.horoscope ?? ''}`,
+        `${user.gender ?? ''}`,
+        `${user.hostTier ?? ''}`,
+        `${user.traitLabel ?? ''}`
+      ])
+    ]);
+    return (
+      this.resolveAffinityTokenScore(tokens, `event:${options.id}`) * 89
+      + averageParticipantAffinity
+      + Math.round(AppUtils.clampNumber(Number(options.rating) || 0, 0, 10) * 100) * 29
+      + Math.max(0, Math.trunc(Number(options.acceptedMembers) || 0)) * 19
+      + Math.max(0, Math.trunc(Number(options.capacityTotal) || 0)) * 7
+    );
+  }
+
   static buildExpandedDemoUsers(totalCount: number, baseUsers: DemoUser[] = DEMO_USERS): DemoUser[] {
     const normalizedBaseUsers = baseUsers.map(user => this.withResolvedLocationCoordinates(user));
     if (baseUsers.length >= totalCount) {
@@ -103,10 +200,16 @@ export class AppDemoGenerators {
   }
 
   private static withResolvedLocationCoordinates(user: DemoUser): DemoUser {
-    return {
+    const nextUser = {
       ...user,
       locationCoordinates: this.cloneLocationCoordinates(user.locationCoordinates)
         ?? this.resolveDemoLocationCoordinates(user.city, user.id)
+    };
+    return {
+      ...nextUser,
+      affinity: Number.isFinite(nextUser.affinity)
+        ? Number(nextUser.affinity)
+        : this.resolveUserAffinity(nextUser)
     };
   }
 
@@ -120,6 +223,29 @@ export class AppDemoGenerators {
       latitude: this.roundCoordinate(value.latitude),
       longitude: this.roundCoordinate(value.longitude)
     };
+  }
+
+  private static uniqueAffinityTokens(values: readonly string[]): string[] {
+    const seen = new Set<string>();
+    for (const value of values) {
+      const normalized = AppUtils.normalizeText(`${value ?? ''}`.replace(/^#+\s*/, '').trim());
+      if (normalized) {
+        seen.add(normalized);
+      }
+    }
+    return [...seen];
+  }
+
+  private static resolveAffinityTokenScore(tokens: readonly string[], seedPrefix: string): number {
+    return tokens.reduce((total, token) => total + ((this.hashText(`${seedPrefix}:${token}`) % 997) + 1), 0);
+  }
+
+  private static parseHeightCm(value: string): number | null {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+    return Math.max(40, Math.min(250, parsed));
   }
 
   private static roundCoordinate(value: number): number {

@@ -29,6 +29,7 @@ interface DemoEventSeedOverrides {
   topics?: string[];
   rating?: number;
   relevance?: number;
+  affinity?: number;
 }
 
 export class DemoEventsRepositoryBuilder {
@@ -260,6 +261,15 @@ export class DemoEventsRepositoryBuilder {
       acceptedMembers,
       capacityMax ?? acceptedMembers
     );
+    const topics = this.normalizeTopics(record.seed?.topics).length > 0
+      ? this.normalizeTopics(record.seed?.topics)
+      : this.buildSeededTopics(record.id, record.title, record.subtitle);
+    const rating = Number.isFinite(record.seed?.rating)
+      ? Number(record.seed?.rating)
+      : this.buildSeededRating(record.id, record.title, record.type);
+    const acceptedUsers = members.acceptedMemberUserIds
+      .map(userId => DEMO_EVENT_MEMBER_USERS.find(user => user.id === userId) ?? null)
+      .filter((user): user is DemoUser => Boolean(user));
     return {
       creatorUserId: creator.id,
       creatorName: creator.name,
@@ -286,15 +296,26 @@ export class DemoEventsRepositoryBuilder {
       pendingMembers,
       acceptedMemberUserIds: members.acceptedMemberUserIds,
       pendingMemberUserIds: members.pendingMemberUserIds,
-      topics: this.normalizeTopics(record.seed?.topics).length > 0
-        ? this.normalizeTopics(record.seed?.topics)
-        : this.buildSeededTopics(record.id, record.title, record.subtitle),
-      rating: Number.isFinite(record.seed?.rating)
-        ? Number(record.seed?.rating)
-        : this.buildSeededRating(record.id, record.title, record.type),
+      topics,
+      rating,
       relevance: Number.isFinite(record.seed?.relevance)
         ? Number(record.seed?.relevance)
-        : this.buildSeededRelevance(record.id, record.title, record.type)
+        : this.buildSeededRelevance(record.id, record.title, record.type),
+      affinity: Number.isFinite(record.seed?.affinity)
+        ? Math.max(0, Math.trunc(Number(record.seed?.affinity)))
+        : AppDemoGenerators.resolveEventAffinity({
+          id: record.id,
+          title: record.title,
+          subtitle: record.subtitle,
+          topics,
+          visibility,
+          blindMode,
+          creator,
+          acceptedUsers,
+          rating,
+          acceptedMembers,
+          capacityTotal
+        })
     };
   }
 
@@ -458,7 +479,8 @@ export class DemoEventsRepositoryBuilder {
       capacityMax: item.capacityMax,
       topics: item.topics,
       rating: item.rating,
-      relevance: item.relevance
+      relevance: item.relevance,
+      affinity: item.affinity
     };
     if (Object.values(overrides).every(value => value === undefined)) {
       return undefined;

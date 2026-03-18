@@ -18,6 +18,7 @@ export interface DemoUser {
   completion: number;
   headline: string;
   about: string;
+  affinity?: number;
   locationCoordinates?: LocationCoordinates;
   images?: string[];
   profileStatus: 'public' | 'friends only' | 'host only' | 'inactive';
@@ -76,6 +77,7 @@ export interface EventMenuItem {
   topics?: string[];
   rating?: number;
   relevance?: number;
+  affinity?: number;
   published?: boolean;
 }
 
@@ -101,6 +103,7 @@ export interface HostingMenuItem {
   topics?: string[];
   rating?: number;
   relevance?: number;
+  affinity?: number;
   published?: boolean;
 }
 

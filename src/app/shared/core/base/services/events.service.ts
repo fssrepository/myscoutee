@@ -7,6 +7,8 @@ import { HttpEventsService } from '../../http';
 import type {
   DemoEventActivitiesQuery,
   DemoEventActivitiesQueryResult,
+  DemoEventExploreQuery,
+  DemoEventExploreQueryResult,
   DemoEventRecord,
   DemoEventScopeFilter,
   DemoRepositoryEventItemType
@@ -83,6 +85,20 @@ export class EventsService {
 
   peekExploreItems(userId: string): DemoEventRecord[] {
     return this.eventsService.peekExploreItems(userId);
+  }
+
+  async queryEventExplorePage(query: DemoEventExploreQuery): Promise<DemoEventExploreQueryResult> {
+    if (this.demoModeEnabled) {
+      return this.demoEventsService.queryEventExplorePage(query);
+    }
+    return this.httpEventsService.queryEventExplorePage(query);
+  }
+
+  peekEventExplorePage(query: DemoEventExploreQuery): DemoEventExploreQueryResult {
+    if (this.demoModeEnabled) {
+      return this.demoEventsService.peekEventExplorePage(query);
+    }
+    return this.httpEventsService.peekEventExplorePage(query);
   }
 
   peekKnownItemById(userId: string, itemId: string): DemoEventRecord | null {

@@ -55,6 +55,24 @@ export interface DemoEventRecord {
   topics: string[];
   rating: number;
   relevance: number;
+  affinity: number;
+}
+
+export interface DemoEventExploreQuery {
+  userId: string;
+  order: AppTypes.EventExploreOrder;
+  view: AppTypes.EventExploreView;
+  friendsOnly: boolean;
+  openSpotsOnly: boolean;
+  topic: string;
+  limit: number;
+  cursor?: string | null;
+}
+
+export interface DemoEventExploreQueryResult {
+  records: DemoEventRecord[];
+  total: number;
+  nextCursor: string | null;
 }
 
 export interface DemoEventActivitiesQuery {

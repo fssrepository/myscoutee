@@ -165,6 +165,20 @@ export class DemoUsersRepository {
   upsertUser(user: UserDto): UserDto {
     const normalizedUser = DemoUsersRepositoryBuilder.cloneUser(user);
     normalizedUser.images = this.normalizeImages(normalizedUser.images);
+    normalizedUser.affinity = AppDemoGenerators.resolveUserAffinity({
+      id: normalizedUser.id,
+      name: normalizedUser.name,
+      age: normalizedUser.age,
+      city: normalizedUser.city,
+      height: normalizedUser.height,
+      physique: normalizedUser.physique,
+      languages: normalizedUser.languages,
+      horoscope: normalizedUser.horoscope,
+      gender: normalizedUser.gender,
+      hostTier: normalizedUser.hostTier,
+      traitLabel: normalizedUser.traitLabel,
+      completion: normalizedUser.completion
+    });
     this.memoryDb.write(state => {
       const usersTable = state[USERS_TABLE_NAME];
       const exists = Object.prototype.hasOwnProperty.call(usersTable.byId, normalizedUser.id);

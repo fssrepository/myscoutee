@@ -4,6 +4,8 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type { ActivitiesEventSyncPayload } from '../../../activities-models';
 import type {
+  DemoEventExploreQuery,
+  DemoEventExploreQueryResult,
   DemoEventRecord,
   DemoEventScopeFilter,
   DemoRepositoryEventItemType
@@ -88,6 +90,56 @@ export class HttpEventsService {
 
   peekExploreItems(_userId: string): DemoEventRecord[] {
     return [];
+  }
+
+  async queryEventExplorePage(query: DemoEventExploreQuery): Promise<DemoEventExploreQueryResult> {
+    const normalizedUserId = query.userId.trim();
+    if (!normalizedUserId) {
+      return {
+        records: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+    try {
+      const response = await this.http
+        .post<DemoEventRecord[] | DemoEventExploreQueryResult | null>(
+          `${this.apiBaseUrl}/activities/events/explore`,
+          {
+            ...query,
+            userId: normalizedUserId
+          }
+        )
+        .toPromise();
+      if (Array.isArray(response)) {
+        const records = this.cloneRecords(response);
+        return {
+          records,
+          total: records.length,
+          nextCursor: null
+        };
+      }
+      const records = this.cloneRecords(response?.records);
+      return {
+        records,
+        total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : records.length,
+        nextCursor: typeof response?.nextCursor === 'string' ? response.nextCursor : null
+      };
+    } catch {
+      return {
+        records: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+  }
+
+  peekEventExplorePage(_query: DemoEventExploreQuery): DemoEventExploreQueryResult {
+    return {
+      records: [],
+      total: 0,
+      nextCursor: null
+    };
   }
 
   async trashItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
