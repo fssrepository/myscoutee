@@ -394,7 +394,8 @@ export class EventExplorePopupComponent {
     }
     this.activitiesContext.requestActivitiesNavigation({
       type: 'members',
-      ownerId: record.id
+      ownerId: record.id,
+      ownerType: 'event'
     });
     this.cdr.markForCheck();
   }

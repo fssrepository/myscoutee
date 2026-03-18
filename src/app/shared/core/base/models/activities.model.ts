@@ -50,7 +50,7 @@ export type ActivitiesNavigationRequest =
       assetAssignmentIds?: SubEventAssetAssignmentIds;
       assetCardsByType?: SubEventAssetCardsByType;
     }
-  | { type: 'members'; ownerId: string }
+  | { type: 'members'; ownerId: string; ownerType?: ActivityMemberOwnerType }
   | { type: 'eventEditorMembers'; row: AppTypes.ActivityListRow }
   | { type: 'eventEditorCreate'; target: AppTypes.EventEditorTarget }
   | { type: 'eventEditor'; row: AppTypes.ActivityListRow; readOnly: boolean };

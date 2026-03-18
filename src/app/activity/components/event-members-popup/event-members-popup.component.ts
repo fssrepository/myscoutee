@@ -16,6 +16,7 @@ import { from } from 'rxjs';
 import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import type * as AppTypes from '../../../shared/app-types';
 import { AppUtils } from '../../../shared/app-utils';
+import type { ActivityMemberOwnerRef, ActivityMemberOwnerType } from '../../../shared/activities-models';
 import type { ActivityMembersSyncState } from '../../../shared/core';
 import { ActivityMembersService, AppContext, EventsService } from '../../../shared/core';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
@@ -87,6 +88,7 @@ export class EventMembersPopupComponent {
   protected pendingDelete: AppTypes.ActivityMemberEntry | null = null;
 
   private ownerRecord: DemoEventRecord | null = null;
+  private ownerRef: ActivityMemberOwnerRef | null = null;
   private canManageMembers = false;
   private inlineItemActionMenu: InlineMemberActionMenu | null = null;
   private selectedMembersVisible: ReadonlyArray<AppTypes.ActivityMemberEntry> = [];
@@ -148,12 +150,15 @@ export class EventMembersPopupComponent {
       }
       this.activitiesContext.clearActivitiesNavigationRequest();
       if (request.type === 'members') {
-        this.openMembersPopup(request.ownerId);
+        this.openMembersPopup(request.ownerId, {
+          ownerType: request.ownerType ?? 'event'
+        });
         return;
       }
       this.openMembersPopup(request.row.id, {
         subtitle: request.row.title,
-        canManage: request.row.isAdmin === true
+        canManage: request.row.isAdmin === true,
+        ownerType: 'event'
       });
     });
 
@@ -242,6 +247,7 @@ export class EventMembersPopupComponent {
     }
     this.isOpen = false;
     this.ownerId = '';
+    this.ownerRef = null;
     this.ownerRecord = null;
     this.inlineItemActionMenu = null;
     this.pendingDelete = null;
@@ -431,6 +437,7 @@ export class EventMembersPopupComponent {
     options?: {
       subtitle?: string;
       canManage?: boolean;
+      ownerType?: ActivityMemberOwnerType;
     }
   ): void {
     const normalizedOwnerId = ownerId.trim();
@@ -439,6 +446,10 @@ export class EventMembersPopupComponent {
     }
     this.isOpen = true;
     this.ownerId = normalizedOwnerId;
+    this.ownerRef = {
+      ownerType: options?.ownerType ?? 'event',
+      ownerId: normalizedOwnerId
+    };
     this.ownerRecord = null;
     this.title = 'Members';
     this.subtitle = options?.subtitle?.trim() || 'Event';
@@ -450,7 +461,7 @@ export class EventMembersPopupComponent {
     this.resetSummaryState();
     this.canManageMembers = options?.canManage === true;
     this.canShowInviteButton = this.canManageMembers;
-    this.syncMembersSmartListQuery();
+    this.membersSmartListQuery = {};
     this.cdr.markForCheck();
 
     if (this.openMembersHydrationTimer) {
@@ -462,6 +473,7 @@ export class EventMembersPopupComponent {
         return;
       }
 
+      this.syncMembersSmartListQuery();
       void this.resolveOwnerPresentation(normalizedOwnerId, options);
       this.cdr.markForCheck();
     }, 0);
@@ -527,11 +539,18 @@ export class EventMembersPopupComponent {
 
     let members = this.membersCacheByOwnerId.get(ownerId);
     if (!members) {
-      const loadedMembers = await this.activityMembersService.queryMembersByOwnerId(ownerId);
+      const owner = this.ownerRef && this.ownerRef.ownerId === ownerId
+        ? this.ownerRef
+        : null;
+      const loadedMembers = owner
+        ? await this.activityMembersService.queryMembersByOwner(owner)
+        : await this.activityMembersService.queryMembersByOwnerId(ownerId);
       members = this.sortMembersByActionTimeDesc(loadedMembers);
       this.membersCacheByOwnerId.set(ownerId, members);
       if (this.isOpen && this.ownerId === ownerId) {
-        const summary = this.activityMembersService.peekSummaryByOwnerId(ownerId);
+        const summary = owner
+          ? this.activityMembersService.peekSummaryByOwner(owner)
+          : this.activityMembersService.peekSummaryByOwnerId(ownerId);
         if (summary) {
           this.applySummary(summary.acceptedMembers, summary.pendingMembers, summary.capacityTotal);
         } else {

@@ -2050,7 +2050,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     event?.stopPropagation();
     this.activitiesContext.requestActivitiesNavigation({
       type: 'members',
-      ownerId: row.id
+      ownerId: row.id,
+      ownerType: 'event'
     });
   }
 
