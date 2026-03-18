@@ -247,7 +247,6 @@ button.ui-info-card__overlay-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 100%;
 }
 
 .ui-info-card__overlay-action--toggle {
@@ -337,7 +336,7 @@ button.ui-info-card__overlay-action {
   right: -10px;
   min-width: 18px;
   height: 18px;
-  padding: 0 0.18rem;
+  padding: 0;
   border-radius: 999px;
   border: 1px solid #fff;
   background: #d84d4d;
