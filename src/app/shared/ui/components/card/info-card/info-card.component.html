@@ -1,0 +1,13 @@
+<article class="ui-info-card" [class.ui-info-card--compact]="compact">
+  <div class="ui-info-card__media" *ngIf="imageUrl" [appLazyBgImage]="imageUrl"></div>
+  <div class="ui-info-card__content">
+    <span class="ui-info-card__icon" *ngIf="icon">
+      <mat-icon>{{ icon }}</mat-icon>
+    </span>
+    <div class="ui-info-card__meta">
+      <p class="ui-info-card__title">{{ title }}</p>
+      <p class="ui-info-card__row" *ngFor="let row of metaRows">{{ row }}</p>
+    </div>
+  </div>
+  <p class="ui-info-card__description" *ngIf="description">{{ description }}</p>
+</article>

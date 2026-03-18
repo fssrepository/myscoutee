@@ -49,9 +49,14 @@ import type {
 } from '../../../shared/activities-models';
 import type * as AppTypes from '../../../shared/app-types';
 import {
+  PairCardComponent,
   SmartListComponent,
+  SingleCardComponent,
+  type CardBadgeConfig,
+  type CardImageSlide,
   type ListQuery,
   type PageResult,
+  type PairCardSlot,
   type RatingStarBarConfig,
   type SmartListConfig,
   type SmartListItemSelectEvent,
@@ -93,6 +98,8 @@ type PendingActivityAction = 'delete' | 'exit' | 'reject';
     MatSelectModule,
     LazyBgImageDirective,
     SmartListComponent,
+    SingleCardComponent,
+    PairCardComponent,
     EventChatPopupComponent,
     EventExplorePopupComponent
   ],
@@ -2616,6 +2623,60 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     ];
   }
 
+  protected activitySingleCardSlides(row: AppTypes.ActivityListRow): CardImageSlide[] {
+    return this.activityRateCardImageUrls(row).map((imageUrl, index) => ({
+      imageUrl,
+      primaryLine: this.activityRateCardPrimaryLine(row, index),
+      secondaryLine: this.activityRateCardSecondaryLine(row, index)
+    }));
+  }
+
+  protected activityPairCardSlots(row: AppTypes.ActivityListRow, fullscreen = false): PairCardSlot[] {
+    return (['woman', 'man'] as const).map(slot => ({
+      key: slot,
+      label: slot === 'woman' ? 'Woman' : 'Man',
+      tone: slot,
+      slides: this.activityPairCardSlides(row, slot),
+      collapsed: fullscreen
+        ? (slot === 'woman' ? this.isActivitiesRatesPairWomanCollapsed : this.isActivitiesRatesPairManCollapsed)
+        : false
+    }));
+  }
+
+  protected activityPairCardActiveIndexes(row: AppTypes.ActivityListRow): Record<string, number> {
+    return {
+      woman: this.activityPairRateSlotActiveImageIndex(row, 'woman'),
+      man: this.activityPairRateSlotActiveImageIndex(row, 'man')
+    };
+  }
+
+  protected activityPairCardLoadingMap(row: AppTypes.ActivityListRow): Record<string, boolean> {
+    return {
+      woman: this.isActivityPairRateSlotImageLoading(row, 'woman'),
+      man: this.isActivityPairRateSlotImageLoading(row, 'man')
+    };
+  }
+
+  protected onActivitySingleCardSlideSelect(row: AppTypes.ActivityListRow, selection: { index: number; event: Event }): void {
+    this.selectActivityRateCardImage(row, selection.index, selection.event);
+  }
+
+  protected onActivityPairCardSlideSelect(
+    row: AppTypes.ActivityListRow,
+    selection: { slotKey: string; index: number; event: Event }
+  ): void {
+    const slot = selection.slotKey === 'woman' ? 'woman' : 'man';
+    this.selectActivityPairRateSlotImage(row, slot, selection.index, selection.event);
+  }
+
+  protected onActivityPairCardSplitHandlePointerDown(selection: { event: PointerEvent; container: HTMLElement }): void {
+    this.onActivitiesRatesPairSplitHandlePointerDown(selection.event, selection.container);
+  }
+
+  protected onActivityPairCardSplitHandleTouchStart(selection: { event: TouchEvent; container: HTMLElement }): void {
+    this.onActivitiesRatesPairSplitHandleTouchStart(selection.event, selection.container);
+  }
+
   // ── Pair rate card helpers ─────────────────────────────────────────────────
 
   protected isPairRateRow(row: AppTypes.ActivityListRow): boolean {
@@ -2779,6 +2840,15 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return `${rowId}:${gender}`;
   }
 
+  private activityPairCardSlides(row: AppTypes.ActivityListRow, slot: 'man' | 'woman'): CardImageSlide[] {
+    return this.activityPairRateSlotImageUrls(row, slot).map(imageUrl => ({
+      imageUrl,
+      primaryLine: this.activityPairRateSlotPrimaryLine(row, slot),
+      secondaryLine: this.activityPairRateSlotSecondaryLine(row, slot),
+      placeholderLabel: this.activityPairRateSlotInitials(row, slot)
+    }));
+  }
+
   private rateCardSeedImageUrl(rowId: string, userId: string, gender: DemoUser['gender'], index: number): string {
     const hash = AppDemoGenerators.hashText(`rate-card-${userId}-${rowId}-${index + 1}`);
     const genderFolder = gender === 'woman' ? 'women' : 'men';
@@ -2799,6 +2869,33 @@ export class EventActivitiesPopupComponent implements OnDestroy {
   protected activityRateBadgeLabel(row: AppTypes.ActivityListRow): string {
     const ownLabel = this.activityOwnRatingLabel(row);
     return ownLabel ? ownLabel : 'Rate';
+  }
+
+  protected activityRateBadgeAriaLabel(row: AppTypes.ActivityListRow): string {
+    if (this.isPairReceivedRateRow(row)) {
+      return 'Received pair rating';
+    }
+    return this.isActivityRatePending(row) ? 'Add your rating' : 'Edit your rating';
+  }
+
+  protected activityRateBadgeConfig(
+    row: AppTypes.ActivityListRow,
+    options?: {
+      layout?: CardBadgeConfig['layout'];
+      interactive?: boolean;
+      forceActive?: boolean;
+    }
+  ): CardBadgeConfig {
+    return {
+      label: this.activityRateBadgeLabel(row),
+      ariaLabel: this.activityRateBadgeAriaLabel(row),
+      active: options?.forceActive ? true : this.isSelectedActivityRateRow(row),
+      pending: this.isActivityRatePending(row),
+      disabled: this.isPairReceivedRateRow(row),
+      blink: this.isActivityRateBlinking(row),
+      interactive: options?.interactive ?? true,
+      layout: options?.layout ?? 'floating'
+    };
   }
 
   protected activityOwnRatingValue(row: AppTypes.ActivityListRow): number {

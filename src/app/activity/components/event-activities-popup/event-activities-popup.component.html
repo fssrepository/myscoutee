@@ -448,187 +448,41 @@
   </div><!-- /toolbar -->
 
   <ng-template #activitiesRateFullscreenSmartListItemTemplate let-row let-renderState="renderState">
-    <div class="activities-rates-fullscreen" *ngIf="row">
-      <article
-        class="activities-rate-profile-card activities-row-item activities-rates-fullscreen-card"
-        [class.activities-rates-fullscreen-card-active]="renderState === 'active'"
-        [class.activities-rates-fullscreen-card-leaving]="renderState === 'leaving'"
-        [attr.data-activity-rate-row-id]="row.id"
-      >
-        <ng-container *ngIf="isPairRateRow(row); else fullscreenSingleRateCard">
-          <div
-            class="activities-rate-profile-stack activities-rate-profile-stack-pair-fullscreen"
-            [ngClass]="activityRateCardContentClasses(row)"
-            [style.--activities-pair-split]="activitiesRatesPairSplitCssValue"
-            [class.is-resizing]="renderState === 'active' && isActivitiesRatesPairSplitDragging"
-          >
-            <div class="activities-rate-pair-inline-grid activities-rate-pair-fullscreen-grid" #activitiesRatesPairFullscreenGrid>
-              <div
-                class="activities-rate-pair-inline-card activities-rate-pair-inline-card-woman"
-                [class.is-pane-loading]="renderState === 'active' && isActivityPairRateSlotImageLoading(row, 'woman')"
-                [class.is-collapsed]="isActivitiesRatesPairWomanCollapsed"
-                *ngIf="activityPairRateSlotImageUrls(row, 'woman') as fullscreenWomanImageUrls"
-              >
-                <div class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators" *ngIf="fullscreenWomanImageUrls.length > 1">
-                  <ng-container *ngIf="renderState === 'active'; else readonlyWomanIndicators">
-                    <button
-                      type="button"
-                      class="image-stack-line"
-                      *ngFor="let imageUrl of fullscreenWomanImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-                      [class.active]="imageIndex === activityPairRateSlotActiveImageIndex(row, 'woman')"
-                      (click)="selectActivityPairRateSlotImage(row, 'woman', imageIndex, $event)"
-                      aria-label="Select woman profile image"
-                    ></button>
-                  </ng-container>
-                  <ng-template #readonlyWomanIndicators>
-                    <span
-                      class="image-stack-line"
-                      *ngFor="let imageUrl of fullscreenWomanImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-                      [class.active]="imageIndex === activityPairRateSlotActiveImageIndex(row, 'woman')"
-                    ></span>
-                  </ng-template>
-                </div>
-                <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="activityPairRateSlotActiveImageUrl(row, 'woman')">
-                  <span class="activities-rate-pair-inline-label">Woman</span>
-                  <div class="activities-rate-pair-inline-overlay">
-                    <p class="activities-rate-profile-line activities-rate-profile-line-primary">{{ activityPairRateSlotPrimaryLine(row, 'woman') }}</p>
-                    <p class="activities-rate-profile-line activities-rate-profile-line-secondary">{{ activityPairRateSlotSecondaryLine(row, 'woman') }}</p>
-                  </div>
-                </div>
-                <div class="image-stack-hit-area activities-rate-profile-hit-area activities-rate-pair-inline-hit-area" *ngIf="renderState === 'active' && fullscreenWomanImageUrls.length > 1">
-                  <button
-                    type="button"
-                    class="image-stack-hit-segment"
-                    *ngFor="let imageUrl of fullscreenWomanImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-                    (click)="selectActivityPairRateSlotImage(row, 'woman', imageIndex, $event)"
-                    aria-label="Select woman profile image"
-                  ></button>
-                </div>
-                <span class="card-image-placeholder" *ngIf="!activityPairRateSlotActiveImageUrl(row, 'woman')">{{ activityPairRateSlotInitials(row, 'woman') }}</span>
-              </div>
+    <ng-container *ngIf="row">
+      <app-pair-card
+        *ngIf="isPairRateRow(row); else fullscreenSingleRateCard"
+        presentation="fullscreen"
+        [state]="renderState"
+        [rowId]="row.id"
+        [slots]="activityPairCardSlots(row, true)"
+        [stackClasses]="activityRateCardContentClasses(row)"
+        [activeIndexByKey]="activityPairCardActiveIndexes(row)"
+        [loadingByKey]="renderState === 'active' ? activityPairCardLoadingMap(row) : null"
+        [interactive]="renderState === 'active'"
+        [badge]="activityRateBadgeConfig(row, { layout: 'pair-overlap', interactive: false, forceActive: true })"
+        [splitCssValue]="activitiesRatesPairSplitCssValue"
+        [isResizing]="renderState === 'active' && isActivitiesRatesPairSplitDragging"
+        [showSplitHandle]="renderState === 'active' && isActivitiesRatesPairMobileSplitEnabled()"
+        (slotSelect)="onActivityPairCardSlideSelect(row, $event)"
+        (splitHandlePointerDown)="onActivityPairCardSplitHandlePointerDown($event)"
+        (splitHandleTouchStart)="onActivityPairCardSplitHandleTouchStart($event)"
+      ></app-pair-card>
 
-              <button
-                type="button"
-                class="activities-rates-pair-fullscreen-resize-handle"
-                *ngIf="renderState === 'active' && isActivitiesRatesPairMobileSplitEnabled()"
-                aria-label="Resize pair cards"
-                (pointerdown)="onActivitiesRatesPairSplitHandlePointerDown($event, activitiesRatesPairFullscreenGrid)"
-                (touchstart)="onActivitiesRatesPairSplitHandleTouchStart($event, activitiesRatesPairFullscreenGrid)"
-                (click)="$event.preventDefault(); $event.stopPropagation()"
-              >
-                <span class="activities-rates-pair-fullscreen-resize-handle-grip" aria-hidden="true"></span>
-              </button>
-
-              <div
-                class="activities-rate-pair-inline-card activities-rate-pair-inline-card-man"
-                [class.is-pane-loading]="renderState === 'active' && isActivityPairRateSlotImageLoading(row, 'man')"
-                [class.is-collapsed]="isActivitiesRatesPairManCollapsed"
-                *ngIf="activityPairRateSlotImageUrls(row, 'man') as fullscreenManImageUrls"
-              >
-                <div class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators" *ngIf="fullscreenManImageUrls.length > 1">
-                  <ng-container *ngIf="renderState === 'active'; else readonlyManIndicators">
-                    <button
-                      type="button"
-                      class="image-stack-line"
-                      *ngFor="let imageUrl of fullscreenManImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-                      [class.active]="imageIndex === activityPairRateSlotActiveImageIndex(row, 'man')"
-                      (click)="selectActivityPairRateSlotImage(row, 'man', imageIndex, $event)"
-                      aria-label="Select man profile image"
-                    ></button>
-                  </ng-container>
-                  <ng-template #readonlyManIndicators>
-                    <span
-                      class="image-stack-line"
-                      *ngFor="let imageUrl of fullscreenManImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-                      [class.active]="imageIndex === activityPairRateSlotActiveImageIndex(row, 'man')"
-                    ></span>
-                  </ng-template>
-                </div>
-                <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="activityPairRateSlotActiveImageUrl(row, 'man')">
-                  <span class="activities-rate-pair-inline-label">Man</span>
-                  <div class="activities-rate-pair-inline-overlay">
-                    <p class="activities-rate-profile-line activities-rate-profile-line-primary">{{ activityPairRateSlotPrimaryLine(row, 'man') }}</p>
-                    <p class="activities-rate-profile-line activities-rate-profile-line-secondary">{{ activityPairRateSlotSecondaryLine(row, 'man') }}</p>
-                  </div>
-                </div>
-                <div class="image-stack-hit-area activities-rate-profile-hit-area activities-rate-pair-inline-hit-area" *ngIf="renderState === 'active' && fullscreenManImageUrls.length > 1">
-                  <button
-                    type="button"
-                    class="image-stack-hit-segment"
-                    *ngFor="let imageUrl of fullscreenManImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-                    (click)="selectActivityPairRateSlotImage(row, 'man', imageIndex, $event)"
-                    aria-label="Select man profile image"
-                  ></button>
-                </div>
-                <span class="card-image-placeholder" *ngIf="!activityPairRateSlotActiveImageUrl(row, 'man')">{{ activityPairRateSlotInitials(row, 'man') }}</span>
-              </div>
-            </div>
-
-            <span
-              class="activities-rate-score-badge activities-rate-score-badge-floating activities-rate-score-badge-floating-pair-overlap activities-rate-score-badge-between is-active"
-              [class.is-pending]="isActivityRatePending(row)"
-              [class.is-disabled]="isPairReceivedRateRow(row)"
-              [class.is-blink]="isActivityRateBlinking(row)"
-            >
-              <mat-icon>star</mat-icon>
-              <span>{{ activityRateBadgeLabel(row) }}</span>
-            </span>
-          </div>
-        </ng-container>
-        <ng-template #fullscreenSingleRateCard>
-          <div
-            class="activities-rate-profile-stack"
-            [ngClass]="activityRateCardContentClasses(row)"
-            [class.is-pane-loading]="renderState === 'active' && isActivityRateCardImageLoading(row)"
-            *ngIf="activityRateCardImageUrls(row) as fullscreenImageUrls"
-          >
-            <div class="image-stack-indicators activities-rate-profile-indicators" *ngIf="fullscreenImageUrls.length > 1">
-              <ng-container *ngIf="renderState === 'active'; else readonlyFullscreenIndicators">
-                <button
-                  type="button"
-                  class="image-stack-line"
-                  *ngFor="let imageUrl of fullscreenImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-                  [class.active]="imageIndex === activityRateCardActiveImageIndex(row)"
-                  (click)="selectActivityRateCardImage(row, imageIndex, $event)"
-                  aria-label="Select profile image"
-                ></button>
-              </ng-container>
-              <ng-template #readonlyFullscreenIndicators>
-                <span
-                  class="image-stack-line"
-                  *ngFor="let imageUrl of fullscreenImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-                  [class.active]="imageIndex === activityRateCardActiveImageIndex(row)"
-                ></span>
-              </ng-template>
-            </div>
-            <div class="activities-rate-profile-layer activities-rate-profile-layer-active" [appLazyBgImage]="activityRateCardActiveImageUrl(row)">
-              <div class="activities-rate-profile-overlay" *ngIf="activityRateCardHasLine(row, activityRateCardActiveImageIndex(row))">
-                <p class="activities-rate-profile-line activities-rate-profile-line-primary">{{ activityRateCardPrimaryLine(row, activityRateCardActiveImageIndex(row)) }}</p>
-                <p class="activities-rate-profile-line activities-rate-profile-line-secondary">{{ activityRateCardSecondaryLine(row, activityRateCardActiveImageIndex(row)) }}</p>
-              </div>
-            </div>
-            <div class="image-stack-hit-area activities-rate-profile-hit-area" *ngIf="renderState === 'active' && fullscreenImageUrls.length > 1">
-              <button
-                type="button"
-                class="image-stack-hit-segment"
-                *ngFor="let imageUrl of fullscreenImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-                (click)="selectActivityRateCardImage(row, imageIndex, $event)"
-                aria-label="Select profile image"
-              ></button>
-            </div>
-            <span
-              class="activities-rate-score-badge activities-rate-score-badge-floating is-active"
-              [class.is-pending]="isActivityRatePending(row)"
-              [class.is-disabled]="isPairReceivedRateRow(row)"
-              [class.is-blink]="isActivityRateBlinking(row)"
-            >
-              <mat-icon>star</mat-icon>
-              <span>{{ activityRateBadgeLabel(row) }}</span>
-            </span>
-          </div>
-        </ng-template>
-      </article>
-    </div>
+      <ng-template #fullscreenSingleRateCard>
+        <app-single-card
+          presentation="fullscreen"
+          [state]="renderState"
+          [rowId]="row.id"
+          [slides]="activitySingleCardSlides(row)"
+          [stackClasses]="activityRateCardContentClasses(row)"
+          [activeIndex]="activityRateCardActiveImageIndex(row)"
+          [loading]="renderState === 'active' && isActivityRateCardImageLoading(row)"
+          [interactive]="renderState === 'active'"
+          [badge]="activityRateBadgeConfig(row, { layout: 'floating', interactive: false, forceActive: true })"
+          (slideSelect)="onActivitySingleCardSlideSelect(row, $event)"
+        ></app-single-card>
+      </ng-template>
+    </ng-container>
   </ng-template>
 
 
@@ -796,176 +650,31 @@
   </ng-template>
 
   <ng-template #activitiesRateSingleSmartListItemTemplate let-row let-groupLabel="groupLabel">
-    <article
-      class="activities-rate-profile-card activities-row-item"
-      [attr.data-activity-rate-row-id]="row.id"
-      [attr.data-group-label]="groupLabel"
-    >
-      <div
-        class="activities-rate-profile-stack"
-        [ngClass]="activityRateCardContentClasses(row)"
-        [class.is-pane-loading]="isActivityRateCardImageLoading(row)"
-        *ngIf="activityRateCardImageUrls(row) as imageUrls"
-      >
-        <div class="image-stack-indicators activities-rate-profile-indicators" *ngIf="imageUrls.length > 1">
-          <button
-            type="button"
-            class="image-stack-line"
-            *ngFor="let imageUrl of imageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-            [class.active]="imageIndex === activityRateCardActiveImageIndex(row)"
-            (click)="selectActivityRateCardImage(row, imageIndex, $event)"
-            aria-label="Select profile image"
-          ></button>
-        </div>
-        <div
-          class="activities-rate-profile-layer activities-rate-profile-layer-active"
-          [appLazyBgImage]="activityRateCardActiveImageUrl(row)"
-        >
-          <div class="activities-rate-profile-overlay" *ngIf="activityRateCardHasLine(row, activityRateCardActiveImageIndex(row))">
-            <p class="activities-rate-profile-line activities-rate-profile-line-primary">
-              {{ activityRateCardPrimaryLine(row, activityRateCardActiveImageIndex(row)) }}
-            </p>
-            <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
-              {{ activityRateCardSecondaryLine(row, activityRateCardActiveImageIndex(row)) }}
-            </p>
-          </div>
-        </div>
-        <div class="image-stack-hit-area activities-rate-profile-hit-area" *ngIf="imageUrls.length > 1">
-          <button
-            type="button"
-            class="image-stack-hit-segment"
-            *ngFor="let imageUrl of imageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-            (click)="selectActivityRateCardImage(row, imageIndex, $event)"
-            aria-label="Select profile image"
-          ></button>
-        </div>
-        <button
-          type="button"
-          class="activities-rate-score-badge activities-rate-score-badge-floating"
-          [class.is-active]="isSelectedActivityRateRow(row)"
-          [class.is-pending]="isActivityRatePending(row)"
-          [class.is-disabled]="isPairReceivedRateRow(row)"
-          [class.is-blink]="isActivityRateBlinking(row)"
-          [disabled]="isPairReceivedRateRow(row)"
-          (click)="isPairReceivedRateRow(row) ? $event.stopPropagation() : openActivityRateEditor(row, $event)"
-          [attr.aria-label]="isPairReceivedRateRow(row) ? 'Received pair rating' : (isActivityRatePending(row) ? 'Add your rating' : 'Edit your rating')"
-        >
-          <mat-icon>star</mat-icon>
-          <span>{{ activityRateBadgeLabel(row) }}</span>
-        </button>
-      </div>
-    </article>
+    <app-single-card
+      [rowId]="row.id"
+      [groupLabel]="groupLabel"
+      [slides]="activitySingleCardSlides(row)"
+      [stackClasses]="activityRateCardContentClasses(row)"
+      [activeIndex]="activityRateCardActiveImageIndex(row)"
+      [loading]="isActivityRateCardImageLoading(row)"
+      [badge]="activityRateBadgeConfig(row, { layout: 'floating' })"
+      (slideSelect)="onActivitySingleCardSlideSelect(row, $event)"
+      (badgeClick)="openActivityRateEditor(row, $event)"
+    ></app-single-card>
   </ng-template>
 
   <ng-template #activitiesRatePairSmartListItemTemplate let-row let-groupLabel="groupLabel">
-    <article
-      class="activities-rate-profile-card activities-row-item"
-      [attr.data-activity-rate-row-id]="row.id"
-      [attr.data-group-label]="groupLabel"
-    >
-      <div
-        class="activities-rate-profile-stack activities-rate-profile-stack-pair-inline"
-        [ngClass]="activityRateCardContentClasses(row)"
-        *ngIf="activityPairRateSlotImageUrls(row, 'woman') as womanImageUrls"
-      >
-        <div class="activities-rate-pair-inline-grid">
-          <div
-            class="activities-rate-pair-inline-card activities-rate-pair-inline-card-woman"
-            [class.is-pane-loading]="isActivityPairRateSlotImageLoading(row, 'woman')"
-            *ngIf="activityPairRateSlotImageUrls(row, 'woman') as womanUrls"
-          >
-            <div class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators" *ngIf="womanUrls.length > 1">
-              <button
-                type="button"
-                class="image-stack-line"
-                *ngFor="let imageUrl of womanUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-                [class.active]="imageIndex === activityPairRateSlotActiveImageIndex(row, 'woman')"
-                (click)="selectActivityPairRateSlotImage(row, 'woman', imageIndex, $event)"
-                aria-label="Select woman profile image"
-              ></button>
-            </div>
-            <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="activityPairRateSlotActiveImageUrl(row, 'woman')">
-              <span class="activities-rate-pair-inline-label">Woman</span>
-              <div class="activities-rate-pair-inline-overlay">
-                <p class="activities-rate-profile-line activities-rate-profile-line-primary">
-                  {{ activityPairRateSlotPrimaryLine(row, 'woman') }}
-                </p>
-                <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
-                  {{ activityPairRateSlotSecondaryLine(row, 'woman') }}
-                </p>
-              </div>
-            </div>
-            <div class="image-stack-hit-area activities-rate-profile-hit-area activities-rate-pair-inline-hit-area" *ngIf="womanUrls.length > 1">
-              <button
-                type="button"
-                class="image-stack-hit-segment"
-                *ngFor="let imageUrl of womanUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-                (click)="selectActivityPairRateSlotImage(row, 'woman', imageIndex, $event)"
-                aria-label="Select woman profile image"
-              ></button>
-            </div>
-            <span class="card-image-placeholder" *ngIf="!activityPairRateSlotActiveImageUrl(row, 'woman')">
-              {{ activityPairRateSlotInitials(row, 'woman') }}
-            </span>
-          </div>
-
-          <div
-            class="activities-rate-pair-inline-card activities-rate-pair-inline-card-man"
-            [class.is-pane-loading]="isActivityPairRateSlotImageLoading(row, 'man')"
-            *ngIf="activityPairRateSlotImageUrls(row, 'man') as manImageUrls"
-          >
-            <div class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators" *ngIf="manImageUrls.length > 1">
-              <button
-                type="button"
-                class="image-stack-line"
-                *ngFor="let imageUrl of manImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-                [class.active]="imageIndex === activityPairRateSlotActiveImageIndex(row, 'man')"
-                (click)="selectActivityPairRateSlotImage(row, 'man', imageIndex, $event)"
-                aria-label="Select man profile image"
-              ></button>
-            </div>
-            <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="activityPairRateSlotActiveImageUrl(row, 'man')">
-              <span class="activities-rate-pair-inline-label">Man</span>
-              <div class="activities-rate-pair-inline-overlay">
-                <p class="activities-rate-profile-line activities-rate-profile-line-primary">
-                  {{ activityPairRateSlotPrimaryLine(row, 'man') }}
-                </p>
-                <p class="activities-rate-profile-line activities-rate-profile-line-secondary">
-                  {{ activityPairRateSlotSecondaryLine(row, 'man') }}
-                </p>
-              </div>
-            </div>
-            <div class="image-stack-hit-area activities-rate-profile-hit-area activities-rate-pair-inline-hit-area" *ngIf="manImageUrls.length > 1">
-              <button
-                type="button"
-                class="image-stack-hit-segment"
-                *ngFor="let imageUrl of manImageUrls; let imageIndex = index; trackBy: trackByRateCardImage"
-                (click)="selectActivityPairRateSlotImage(row, 'man', imageIndex, $event)"
-                aria-label="Select man profile image"
-              ></button>
-            </div>
-            <span class="card-image-placeholder" *ngIf="!activityPairRateSlotActiveImageUrl(row, 'man')">
-              {{ activityPairRateSlotInitials(row, 'man') }}
-            </span>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          class="activities-rate-score-badge activities-rate-score-badge-between"
-          [class.is-active]="isSelectedActivityRateRow(row)"
-          [class.is-pending]="isActivityRatePending(row)"
-          [class.is-disabled]="isPairReceivedRateRow(row)"
-          [class.is-blink]="isActivityRateBlinking(row)"
-          [disabled]="isPairReceivedRateRow(row)"
-          (click)="isPairReceivedRateRow(row) ? $event.stopPropagation() : openActivityRateEditor(row, $event)"
-          [attr.aria-label]="isPairReceivedRateRow(row) ? 'Received pair rating' : (isActivityRatePending(row) ? 'Add your rating' : 'Edit your rating')"
-        >
-          <mat-icon>star</mat-icon>
-          <span>{{ activityRateBadgeLabel(row) }}</span>
-        </button>
-      </div>
-    </article>
+    <app-pair-card
+      [rowId]="row.id"
+      [groupLabel]="groupLabel"
+      [slots]="activityPairCardSlots(row)"
+      [stackClasses]="activityRateCardContentClasses(row)"
+      [activeIndexByKey]="activityPairCardActiveIndexes(row)"
+      [loadingByKey]="activityPairCardLoadingMap(row)"
+      [badge]="activityRateBadgeConfig(row, { layout: 'between' })"
+      (slotSelect)="onActivityPairCardSlideSelect(row, $event)"
+      (badgeClick)="openActivityRateEditor(row, $event)"
+    ></app-pair-card>
   </ng-template>
   <!-- ───── Delete confirm ───── -->
   <section class="experience-delete-confirm" *ngIf="pendingActivityDeleteRow">

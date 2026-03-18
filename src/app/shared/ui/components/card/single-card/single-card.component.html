@@ -1,0 +1,107 @@
+<ng-container *ngIf="presentation === 'fullscreen'; else listCard">
+  <div class="activities-rates-fullscreen">
+    <article
+      class="activities-rate-profile-card activities-row-item activities-rates-fullscreen-card"
+      [class.activities-rates-fullscreen-card-active]="state === 'active'"
+      [class.activities-rates-fullscreen-card-leaving]="state === 'leaving'"
+      [attr.data-activity-rate-row-id]="rowId"
+    >
+      <ng-container *ngTemplateOutlet="cardBody"></ng-container>
+    </article>
+  </div>
+</ng-container>
+
+<ng-template #listCard>
+  <article
+    class="activities-rate-profile-card activities-row-item"
+    [attr.data-activity-rate-row-id]="rowId"
+    [attr.data-group-label]="groupLabel"
+  >
+    <ng-container *ngTemplateOutlet="cardBody"></ng-container>
+  </article>
+</ng-template>
+
+<ng-template #cardBody>
+  <div
+    class="activities-rate-profile-stack"
+    [ngClass]="stackClasses"
+    [class.is-pane-loading]="loading"
+  >
+    <div class="image-stack-indicators activities-rate-profile-indicators" *ngIf="slides.length > 1">
+      <ng-container *ngIf="interactive; else readonlyIndicators">
+        <button
+          type="button"
+          class="image-stack-line"
+          *ngFor="let slide of slides; let imageIndex = index; trackBy: trackBySlide"
+          [class.active]="imageIndex === clampedActiveIndex()"
+          (click)="onSlideSelect(imageIndex, $event)"
+          aria-label="Select profile image"
+        ></button>
+      </ng-container>
+      <ng-template #readonlyIndicators>
+        <span
+          class="image-stack-line"
+          *ngFor="let slide of slides; let imageIndex = index; trackBy: trackBySlide"
+          [class.active]="imageIndex === clampedActiveIndex()"
+        ></span>
+      </ng-template>
+    </div>
+
+    <div
+      class="activities-rate-profile-layer activities-rate-profile-layer-active"
+      [appLazyBgImage]="currentSlide()?.imageUrl ?? ''"
+    >
+      <div class="activities-rate-profile-overlay" *ngIf="hasOverlay(currentSlide())">
+        <p class="activities-rate-profile-line activities-rate-profile-line-primary">{{ currentSlide()?.primaryLine }}</p>
+        <p class="activities-rate-profile-line activities-rate-profile-line-secondary">{{ currentSlide()?.secondaryLine }}</p>
+      </div>
+    </div>
+
+    <div class="image-stack-hit-area activities-rate-profile-hit-area" *ngIf="interactive && slides.length > 1">
+      <button
+        type="button"
+        class="image-stack-hit-segment"
+        *ngFor="let slide of slides; let imageIndex = index; trackBy: trackBySlide"
+        (click)="onSlideSelect(imageIndex, $event)"
+        aria-label="Select profile image"
+      ></button>
+    </div>
+
+    <ng-container *ngIf="badge as cardBadge">
+      <button
+        *ngIf="isBadgeInteractive(); else readonlyBadge"
+        type="button"
+        class="activities-rate-score-badge"
+        [class.activities-rate-score-badge-floating]="usesFloatingBadge()"
+        [class.activities-rate-score-badge-between]="usesBetweenBadge()"
+        [class.activities-rate-score-badge-floating-pair-overlap]="usesPairOverlapBadge()"
+        [class.is-active]="cardBadge.active"
+        [class.is-pending]="cardBadge.pending"
+        [class.is-disabled]="cardBadge.disabled"
+        [class.is-blink]="cardBadge.blink"
+        [disabled]="cardBadge.disabled"
+        [attr.aria-label]="cardBadge.ariaLabel"
+        (click)="onBadgeClick($event)"
+      >
+        <mat-icon>star</mat-icon>
+        <span>{{ cardBadge.label }}</span>
+      </button>
+      <ng-template #readonlyBadge>
+        <span
+          class="activities-rate-score-badge"
+          [class.activities-rate-score-badge-floating]="usesFloatingBadge()"
+          [class.activities-rate-score-badge-between]="usesBetweenBadge()"
+          [class.activities-rate-score-badge-floating-pair-overlap]="usesPairOverlapBadge()"
+          [class.is-active]="cardBadge.active"
+          [class.is-pending]="cardBadge.pending"
+          [class.is-disabled]="cardBadge.disabled"
+          [class.is-blink]="cardBadge.blink"
+          [attr.aria-label]="cardBadge.ariaLabel"
+        >
+          <mat-icon>star</mat-icon>
+          <span>{{ cardBadge.label }}</span>
+        </span>
+      </ng-template>
+    </ng-container>
+  </div>
+</ng-template>
