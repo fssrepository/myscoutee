@@ -184,6 +184,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
   gap: 0.24rem;
   text-decoration: none;
   border: 1px solid rgba(17, 33, 56, 0.2);
@@ -243,7 +244,6 @@ button.ui-info-card__overlay-action {
   background: rgba(26, 45, 71, 0.82);
   color: #fff;
   font-size: 0.7rem;
-  line-height: 1;
   letter-spacing: 0.01em;
   font-weight: 800;
   box-shadow: 0 5px 10px rgba(8, 18, 34, 0.24);
