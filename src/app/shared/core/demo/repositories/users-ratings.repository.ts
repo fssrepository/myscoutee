@@ -20,16 +20,16 @@ import {
 })
 export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   private static readonly DEFAULT_DEMO_USERS_COUNT = 50;
-
-  constructor() {
-    super();
-    this.init();
-  }
+  private initialized = false;
 
   init(): void {
+    if (this.initialized) {
+      return;
+    }
     const table = this.memoryDb.read()[USER_RATES_TABLE_NAME];
     const hasActivityRateSeed = table.ids.some(id => table.byId[id]?.source === 'activity-rate');
     if (hasActivityRateSeed) {
+      this.initialized = true;
       return;
     }
     const users = AppDemoGenerators.buildExpandedDemoUsers(DemoUsersRatingsRepository.DEFAULT_DEMO_USERS_COUNT);
@@ -58,9 +58,11 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
         }
       };
     });
+    this.initialized = true;
   }
 
   queryRatedGameCardUserIds(raterUserId: string): string[] {
+    this.init();
     const normalizedRaterId = raterUserId.trim();
     if (!normalizedRaterId) {
       return [];
@@ -83,6 +85,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   }
 
   queryActivityRateItemsByUserId(userId: string): RateMenuItem[] {
+    this.init();
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -98,14 +101,17 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   }
 
   override peekRateItemsByUserId(userId: string): RateMenuItem[] {
+    this.init();
     return this.buildRateItemsByUserId(userId);
   }
 
   override async queryRateItemsByUserId(userId: string): Promise<RateMenuItem[]> {
+    this.init();
     return this.buildRateItemsByUserId(userId);
   }
 
   async queryActivityRateItemsPage(query: ActivityRateRecordQuery): Promise<{ items: RateMenuItem[]; total: number; nextCursor?: string | null }> {
+    this.init();
     const result = await this.memoryDb.queryActivityRateRecords(query);
     const items = result.records
       .map(record => DemoUserRatesBuilder.toRateMenuItem(record))
@@ -157,6 +163,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   }
 
   queryUserRatesByUserId(userId: string): UserRateRecord[] {
+    this.init();
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -175,6 +182,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   }
 
   upsertGameCardRatings(records: readonly UserRateRecord[]): string[] {
+    this.init();
     const normalizedRecords = records
       .map(record => this.normalizeIncomingRateRecord(record))
       .filter((record): record is UserRateRecord => Boolean(record));

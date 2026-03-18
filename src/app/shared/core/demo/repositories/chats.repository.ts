@@ -10,14 +10,15 @@ import { CHATS_TABLE_NAME, type DemoChatRecord } from '../models/chats.model';
 })
 export class DemoChatsRepository {
   private readonly memoryDb = inject(AppMemoryDb);
-
-  constructor() {
-    this.init();
-  }
+  private initialized = false;
 
   init(): void {
+    if (this.initialized) {
+      return;
+    }
     const state = this.memoryDb.read();
     if (state[CHATS_TABLE_NAME].ids.length > 0) {
+      this.initialized = true;
       return;
     }
     const records = DemoChatsRepositoryBuilder.buildRecordCollection(DEMO_CHAT_BY_USER);
@@ -25,9 +26,11 @@ export class DemoChatsRepository {
       ...currentState,
       [CHATS_TABLE_NAME]: records
     }));
+    this.initialized = true;
   }
 
   queryChatItemsByUser(userId: string): DemoChatRecord[] {
+    this.init();
     return this.queryUserRecords(userId);
   }
 

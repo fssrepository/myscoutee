@@ -17,6 +17,8 @@ import type { DemoUserListItemDto } from '../../../shared/core';
 export class EntryDemoUserSelectorComponent {
   @Input() open = false;
   @Input() loading = false;
+  @Input() loadingProgress = 0;
+  @Input() loadingLabel = 'Preparing demo data';
   @Input() submitting = false;
   @Input() users: DemoUserListItemDto[] = [];
 

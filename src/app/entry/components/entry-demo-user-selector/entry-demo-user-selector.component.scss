@@ -35,6 +35,7 @@
 .demo-user-stage {
   position: relative;
   min-height: 0;
+  height: clamp(22rem, 62vh, 31rem);
 }
 
 .demo-login-header {
@@ -105,6 +106,8 @@
 }
 
 .demo-user-grid {
+  box-sizing: border-box;
+  height: 100%;
   padding: 0.92rem 1rem 1rem;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -121,14 +124,88 @@
 .demo-user-grid-loading {
   grid-template-columns: minmax(0, 1fr);
   place-items: center;
-  min-height: 180px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .demo-user-loading-copy {
   margin: 0;
   color: var(--entry-text-muted, rgba(34, 50, 74, 0.72));
-  font-size: 0.86rem;
+  font-size: 0.88rem;
   font-weight: 600;
+  text-align: center;
+}
+
+.demo-user-loading-shell {
+  width: min(100%, 32rem);
+  display: grid;
+  place-items: center;
+  padding: 1.2rem;
+}
+
+.demo-user-loading-copy-group {
+  width: 100%;
+  display: grid;
+  gap: 0.75rem;
+  justify-items: center;
+}
+
+.demo-user-loading-eyebrow {
+  margin: 0;
+  color: rgba(44, 87, 150, 0.78);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.demo-user-progress {
+  position: relative;
+  width: min(100%, 23rem);
+  height: 0.9rem;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 1px solid rgba(58, 91, 144, 0.18);
+  background: rgba(227, 237, 249, 0.78);
+  box-shadow: inset 0 1px 2px rgba(31, 52, 86, 0.08);
+}
+
+.demo-user-progress-track,
+.demo-user-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+}
+
+.demo-user-progress-track {
+  width: 100%;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0)),
+    repeating-linear-gradient(
+      -55deg,
+      rgba(97, 126, 178, 0.12) 0,
+      rgba(97, 126, 178, 0.12) 12px,
+      rgba(97, 126, 178, 0.04) 12px,
+      rgba(97, 126, 178, 0.04) 24px
+    );
+  animation: demo-user-progress-track-shift 1.4s linear infinite;
+}
+
+.demo-user-progress-fill {
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #57ba7c 0%, #3f8fe1 52%, #7d6be8 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 0 14px rgba(73, 132, 213, 0.18);
+  transition: width 0.28s ease;
+}
+
+.demo-user-progress-value {
+  margin: 0;
+  color: rgba(27, 50, 84, 0.82);
+  font-size: 0.8rem;
+  font-weight: 800;
 }
 
 .demo-user-item {
@@ -216,8 +293,22 @@
     border-radius: 0;
   }
 
+  .demo-user-stage {
+    height: 100%;
+  }
+
   .demo-user-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+}
+
+@keyframes demo-user-progress-track-shift {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(24px);
   }
 }

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, HostListener, Input, Output, inject } from '@angular/core';
+import { Component, EventEmitter, HostListener, Injector, Input, Output, inject } from '@angular/core';
 
 import { UsersService, type DemoUserListItemDto } from '../../../shared/core';
 import type * as AppTypes from '../../../shared/app-types';
@@ -25,7 +25,8 @@ export class EntryShellComponent {
   private static readonly ENTRY_CONSENT_VERSION = '2026-02-26-v1';
   private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
 
-  private readonly usersService = inject(UsersService);
+  private readonly injector = inject(Injector);
+  private usersServiceRef: UsersService | null = null;
 
   @Input({ required: true }) authMode: AppTypes.AuthMode = 'selector';
   @Input() firebaseAuthProfile: AppTypes.FirebaseAuthProfile | null = null;
@@ -41,8 +42,11 @@ export class EntryShellComponent {
   protected showUserSelector = false;
   protected demoSelectorUsers: DemoUserListItemDto[] = [];
   protected demoSelectorLoading = false;
+  protected demoSelectorLoadingProgress = 0;
+  protected demoSelectorLoadingLabel = 'Preparing demo data';
   protected demoSelectorSubmitting = false;
   protected showFirebaseAuthPopup = false;
+  private demoSelectorRequestToken = 0;
 
   constructor() {
     this.initializeEntryFlow();
@@ -102,8 +106,11 @@ export class EntryShellComponent {
     if (this.demoSelectorSubmitting) {
       return;
     }
+    this.demoSelectorRequestToken += 1;
     this.showUserSelector = false;
     this.demoSelectorLoading = false;
+    this.demoSelectorLoadingProgress = 0;
+    this.demoSelectorLoadingLabel = 'Preparing demo data';
     this.demoSelectorSubmitting = false;
   }
 
@@ -162,8 +169,17 @@ export class EntryShellComponent {
     this.showEntryConsentPopup = !hasConsent;
     this.showUserSelector = false;
     this.demoSelectorLoading = false;
+    this.demoSelectorLoadingProgress = 0;
+    this.demoSelectorLoadingLabel = 'Preparing demo data';
     this.demoSelectorSubmitting = false;
     this.showFirebaseAuthPopup = false;
+  }
+
+  private get usersService(): UsersService {
+    if (!this.usersServiceRef) {
+      this.usersServiceRef = this.injector.get(UsersService);
+    }
+    return this.usersServiceRef;
   }
 
   private ensureEntryConsent(): boolean {
@@ -176,15 +192,58 @@ export class EntryShellComponent {
   }
 
   private openDemoUserSelectorPopup(): void {
+    const requestToken = ++this.demoSelectorRequestToken;
     this.showUserSelector = true;
     this.demoSelectorUsers = [];
     this.demoSelectorLoading = true;
+    this.demoSelectorLoadingProgress = 0;
+    this.demoSelectorLoadingLabel = 'Preparing demo data';
     this.demoSelectorSubmitting = false;
-    void this.usersService.loadAvailableDemoUsers().then(users => {
+    void this.loadDemoSelectorUsers(requestToken);
+  }
+
+  private async loadDemoSelectorUsers(requestToken: number): Promise<void> {
+    await this.waitForPopupPaint();
+    if (!this.isCurrentDemoSelectorRequest(requestToken)) {
+      return;
+    }
+
+    try {
+      const users = await this.usersService.loadAvailableDemoUsers(undefined, state => {
+        if (!this.isCurrentDemoSelectorRequest(requestToken)) {
+          return;
+        }
+        this.demoSelectorLoadingProgress = state.percent;
+        this.demoSelectorLoadingLabel = state.label;
+      });
+      if (!this.isCurrentDemoSelectorRequest(requestToken)) {
+        return;
+      }
       this.demoSelectorUsers = users;
+      this.demoSelectorLoadingProgress = 100;
+      this.demoSelectorLoadingLabel = 'Demo data ready';
       this.demoSelectorLoading = false;
-    }).catch(() => {
+    } catch {
+      if (!this.isCurrentDemoSelectorRequest(requestToken)) {
+        return;
+      }
       this.demoSelectorLoading = false;
+    }
+  }
+
+  private isCurrentDemoSelectorRequest(requestToken: number): boolean {
+    return this.showUserSelector && this.demoSelectorRequestToken === requestToken;
+  }
+
+  private waitForPopupPaint(): Promise<void> {
+    return new Promise(resolve => {
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => resolve());
+        });
+        return;
+      }
+      setTimeout(resolve, 0);
     });
   }
 

@@ -20,7 +20,24 @@
     <div class="demo-user-stage">
       <ng-container *ngIf="loading; else demoUserSelectorReady">
         <div class="demo-user-grid demo-user-grid-loading">
-          <p class="demo-user-loading-copy">Loading demo users...</p>
+          <div class="demo-user-loading-shell">
+            <div class="demo-user-loading-copy-group">
+              <p class="demo-user-loading-eyebrow">Preparing demo selector</p>
+              <p class="demo-user-loading-copy">{{ loadingLabel }}</p>
+              <div
+                class="demo-user-progress"
+                role="progressbar"
+                aria-label="Demo data loading progress"
+                [attr.aria-valuemin]="0"
+                [attr.aria-valuemax]="100"
+                [attr.aria-valuenow]="loadingProgress"
+              >
+                <span class="demo-user-progress-track" aria-hidden="true"></span>
+                <span class="demo-user-progress-fill" [style.width.%]="loadingProgress" aria-hidden="true"></span>
+              </div>
+              <p class="demo-user-progress-value">{{ loadingProgress }}%</p>
+            </div>
+          </div>
         </div>
       </ng-container>
       <ng-template #demoUserSelectorReady>

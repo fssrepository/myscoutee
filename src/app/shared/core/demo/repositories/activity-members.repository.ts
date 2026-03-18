@@ -19,18 +19,16 @@ import {
 } from '../models/activity-members.model';
 import { DemoEventsRepository } from './events.repository';
 
-const DEMO_ACTIVITY_MEMBER_USERS = AppDemoGenerators.buildExpandedDemoUsers(50);
-
 @Injectable({
   providedIn: 'root'
 })
 export class DemoActivityMembersRepository extends HttpActivityMembersRepository {
   private readonly demoEventsRepository = inject(DemoEventsRepository);
   private lastInitToken = '';
+  private demoActivityMemberUsersCache: DemoUser[] | null = null;
 
   constructor() {
     super();
-    this.init();
   }
 
   init(): void {
@@ -172,6 +170,13 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       .filter((record): record is DemoActivityMemberRecord => Boolean(record))
       .map(record => this.toMemberEntry(record))
       .sort((left, right) => AppUtils.toSortableDate(left.actionAtIso) - AppUtils.toSortableDate(right.actionAtIso));
+  }
+
+  private get demoActivityMemberUsers(): DemoUser[] {
+    if (!this.demoActivityMemberUsersCache) {
+      this.demoActivityMemberUsersCache = AppDemoGenerators.buildExpandedDemoUsers(50);
+    }
+    return this.demoActivityMemberUsersCache;
   }
 
   private readSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummary | null {
@@ -452,7 +457,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
         context.row,
         context.rowKey,
         Math.max(acceptedTarget, 1),
-        DEMO_ACTIVITY_MEMBER_USERS,
+        this.demoActivityMemberUsers,
         context.creator,
         APP_DEMO_DATA.activityMemberDefaults.forcedMetWhere
       );
@@ -497,7 +502,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     }
 
     if (pendingEntries.length < pendingTarget) {
-      const fallbackCandidates = DEMO_ACTIVITY_MEMBER_USERS.filter(user => !usedUserIds.has(user.id));
+      const fallbackCandidates = this.demoActivityMemberUsers.filter(user => !usedUserIds.has(user.id));
       for (const user of fallbackCandidates) {
         if (pendingEntries.length >= pendingTarget) {
           break;
@@ -538,7 +543,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     const generated = AppDemoGenerators.generateActivityMembersForRow(
       row,
       rowKey,
-      DEMO_ACTIVITY_MEMBER_USERS,
+      this.demoActivityMemberUsers,
       creator,
       APP_DEMO_DATA.activityMemberMetPlaces
     );
@@ -713,14 +718,15 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     fallbackGender: DemoUser['gender'] = 'man'
   ): DemoUser {
     const normalizedUserId = userId.trim();
-    const byId = DEMO_ACTIVITY_MEMBER_USERS.find(user => user.id === normalizedUserId);
+    const byId = this.demoActivityMemberUsers.find(user => user.id === normalizedUserId);
     if (byId) {
       return byId;
     }
     const templateSeed = AppDemoGenerators.hashText(`${normalizedUserId}:${fallbackName}`);
-    const template = DEMO_ACTIVITY_MEMBER_USERS[templateSeed % DEMO_ACTIVITY_MEMBER_USERS.length];
+    const demoUsers = this.demoActivityMemberUsers;
+    const template = demoUsers[templateSeed % demoUsers.length];
     return {
-      ...(template ?? DEMO_ACTIVITY_MEMBER_USERS[0]),
+      ...(template ?? demoUsers[0]),
       id: normalizedUserId || template?.id || 'unknown-user',
       name: fallbackName || template?.name || 'Unknown User',
       initials: fallbackInitials || template?.initials || 'UN',

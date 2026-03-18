@@ -47,12 +47,12 @@ interface DemoEventExploreCursor {
 export class DemoEventsRepository {
   private static readonly MIN_DEMO_EVENT_ITEMS_PER_USER = 30;
   private readonly memoryDb = inject(AppMemoryDb);
-
-  constructor() {
-    this.init();
-  }
+  private initialized = false;
 
   init(): void {
+    if (this.initialized) {
+      return;
+    }
     const state = this.memoryDb.read();
     const seededRecords = this.buildSeededRecords();
     const currentTable = state[EVENTS_TABLE_NAME];
@@ -62,11 +62,13 @@ export class DemoEventsRepository {
         ...currentState,
         [EVENTS_TABLE_NAME]: seededRecords
       }));
+      this.initialized = true;
       return;
     }
 
     const migration = this.mergeSeededRecords(currentTable, seededRecords);
     if (!migration.changed) {
+      this.initialized = true;
       return;
     }
 
@@ -74,6 +76,7 @@ export class DemoEventsRepository {
       ...currentState,
       [EVENTS_TABLE_NAME]: migration.table
     }));
+    this.initialized = true;
   }
 
   queryItemsByUser(userId: string): DemoEventRecord[] {

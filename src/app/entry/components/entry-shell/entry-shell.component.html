@@ -17,6 +17,8 @@
 <app-entry-demo-user-selector
   [open]="showUserSelector"
   [loading]="demoSelectorLoading"
+  [loadingProgress]="demoSelectorLoadingProgress"
+  [loadingLabel]="demoSelectorLoadingLabel"
   [submitting]="demoSelectorSubmitting"
   [users]="demoSelectorUsers"
   (closeRequested)="closeDemoUserSelectorPopup()"

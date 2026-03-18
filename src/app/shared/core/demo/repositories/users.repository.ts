@@ -35,32 +35,36 @@ export class DemoUsersRepository {
 
   readonly usersTable = computed(() => this.memoryDb.read()[USERS_TABLE_NAME]);
   readonly demoUsers = computed(() => this.queryAvailableDemoUsers());
+  private initialized = false;
 
-  constructor() {
-    this.init();
-  }
-
-  init(users: readonly UserDto[] = AppDemoGenerators.buildExpandedDemoUsers(DemoUsersRepository.DEFAULT_DEMO_USERS_COUNT)): UserDto[] {
+  init(users?: readonly UserDto[]): UserDto[] {
+    if (this.initialized) {
+      return this.queryUsersFromTable(USERS_TABLE_NAME);
+    }
     const state = this.memoryDb.read();
     const usersTable = state[USERS_TABLE_NAME];
     if (usersTable.ids.length > 0) {
       if (usersTable.ids.length !== DemoUsersRepository.DEFAULT_DEMO_USERS_COUNT) {
+        const sourceUsers = users ?? AppDemoGenerators.buildExpandedDemoUsers(DemoUsersRepository.DEFAULT_DEMO_USERS_COUNT);
         const reseededUsersTable = DemoUsersRepositoryBuilder.buildRecordCollection(
-          users.map(user => this.applySeededActivityCounts(DemoUsersRepositoryBuilder.cloneUser(user)))
+          sourceUsers.map(user => this.applySeededActivityCounts(DemoUsersRepositoryBuilder.cloneUser(user)))
         );
         this.memoryDb.write(currentState => this.reseedUsersAndPruneRelations(currentState, reseededUsersTable));
       }
+      this.initialized = true;
       return this.queryUsersFromTable(USERS_TABLE_NAME);
     }
 
+    const sourceUsers = users ?? AppDemoGenerators.buildExpandedDemoUsers(DemoUsersRepository.DEFAULT_DEMO_USERS_COUNT);
     const seededUsersTable = DemoUsersRepositoryBuilder.buildRecordCollection(
-      users.map(user => this.applySeededActivityCounts(DemoUsersRepositoryBuilder.cloneUser(user)))
+      sourceUsers.map(user => this.applySeededActivityCounts(DemoUsersRepositoryBuilder.cloneUser(user)))
     );
 
     this.memoryDb.write(currentState => ({
       ...currentState,
       [USERS_TABLE_NAME]: seededUsersTable
     }));
+    this.initialized = true;
 
     return this.queryUsersFromTable(USERS_TABLE_NAME);
   }
@@ -147,6 +151,7 @@ export class DemoUsersRepository {
   }
 
   queryAvailableDemoUsers(): DemoUserListItemDto[] {
+    this.init();
     const users = this.memoryDb.read()[USERS_TABLE_NAME];
     return users.ids
       .map(id => users.byId[id])
@@ -155,6 +160,7 @@ export class DemoUsersRepository {
   }
 
   queryUserById(userId: string): UserDto | null {
+    this.init();
     const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[userId];
     if (!user) {
       return null;
@@ -163,6 +169,7 @@ export class DemoUsersRepository {
   }
 
   upsertUser(user: UserDto): UserDto {
+    this.init();
     const normalizedUser = DemoUsersRepositoryBuilder.cloneUser(user);
     normalizedUser.images = this.normalizeImages(normalizedUser.images);
     normalizedUser.affinity = AppDemoGenerators.resolveUserAffinity({
@@ -197,6 +204,7 @@ export class DemoUsersRepository {
   }
 
   queryUserFilterPreferences(userId: string): UserGameFilterPreferencesDto | null {
+    this.init();
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return null;
@@ -210,6 +218,7 @@ export class DemoUsersRepository {
   }
 
   upsertUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): void {
+    this.init();
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return;
@@ -232,6 +241,7 @@ export class DemoUsersRepository {
   }
 
   queryGameStackUsers(raterUserId?: string): UserDto[] {
+    this.init();
     const users = this.queryUsersFromTable(USERS_TABLE_NAME);
     const normalizedRaterId = raterUserId?.trim() ?? '';
     if (!normalizedRaterId) {

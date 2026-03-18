@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import { type LoadStatus } from '../context';
 import { AppContext } from '../context';
-import { DemoUsersService } from '../../demo';
+import { DemoBootstrapService, type DemoBootstrapProgressState, DemoUsersService } from '../../demo';
 import { HttpUsersService } from '../../http';
 import type {
   DemoUserListItemDto,
@@ -46,6 +46,7 @@ export class UsersService {
   private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 3000;
   private static readonly DEFAULT_SUBMIT_MIN_DELAY_MS = 1500;
   private readonly demoUsersService = inject(DemoUsersService);
+  private readonly demoBootstrapService = inject(DemoBootstrapService);
   private readonly httpUsersService = inject(HttpUsersService);
   private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
@@ -58,12 +59,16 @@ export class UsersService {
     return this.demoModeEnabled ? this.demoUsersService : this.httpUsersService;
   }
 
-  async loadAvailableDemoUsers(requestTimeoutMs?: number): Promise<DemoUserListItemDto[]> {
+  async loadAvailableDemoUsers(
+    requestTimeoutMs?: number,
+    onProgress?: (state: DemoBootstrapProgressState) => void
+  ): Promise<DemoUserListItemDto[]> {
     const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
 
     this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'loading');
 
     try {
+      await this.demoBootstrapService.ensureReady(onProgress);
       const response = await this.withRequestTimeout(
         this.demoUsersService.queryAvailableDemoUsers(),
         normalizedTimeoutMs

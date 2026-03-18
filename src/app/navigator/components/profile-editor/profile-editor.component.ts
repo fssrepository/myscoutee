@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, ElementRef, HostListener, ViewChild, effect, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, Injectable, ViewChild, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { DateAdapter, MAT_DATE_FORMATS, MatNativeDateModule, NativeDateAdapter } from '@angular/material/core';
@@ -31,6 +31,7 @@ interface ProfileFormState {
   about: string;
 }
 
+@Injectable()
 class NavigatorProfileDateAdapter extends NativeDateAdapter {
   override parse(value: unknown): Date | null {
     if (typeof value === 'string') {
