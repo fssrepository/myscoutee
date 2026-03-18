@@ -138,9 +138,6 @@ export class EventsService {
   }
 
   async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
-    if (!this.demoModeEnabled) {
-      return;
-    }
-    await this.demoEventsService.syncEventSnapshot(payload);
+    await this.eventsService.syncEventSnapshot(payload);
   }
 }

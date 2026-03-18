@@ -21,8 +21,8 @@ import type * as AppTypes from '../../../shared/app-types';
 import { AppUtils } from '../../../shared/app-utils';
 import {
   ActivityMembersService,
+  ActivitiesService,
   AppContext,
-  EventExploreService,
   type ActivityMembersSyncState,
   GameService,
   UsersService,
@@ -60,7 +60,7 @@ export class EventExplorePopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly activitiesContext = inject(ActivitiesDbContextService);
   private readonly activityMembersService = inject(ActivityMembersService);
-  private readonly eventExploreService = inject(EventExploreService);
+  private readonly activitiesService = inject(ActivitiesService);
   private readonly gameService = inject(GameService);
   private readonly usersService = inject(UsersService);
   protected readonly navigatorService = inject(NavigatorService);
@@ -116,7 +116,7 @@ export class EventExplorePopupComponent {
   }
 
   protected readonly eventExploreLoadPage = (query: ListQuery<EventExploreFeedFilters>) =>
-    from(this.eventExploreService.loadPage(query));
+    from(this.activitiesService.loadExplore(query));
 
   protected readonly eventExploreSmartListConfig: SmartListConfig<DemoEventRecord, EventExploreFeedFilters> = {
     pageSize: 10,

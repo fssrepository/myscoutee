@@ -1,57 +1,51 @@
 import { Injectable, inject } from '@angular/core';
 
-import { ACTIVITIES_DATA_SOURCE } from '../../../activities-data-source';
 import { AppCalendarHelpers } from '../../../app-calendar-helpers';
 import { AppDemoGenerators } from '../../../app-demo-generators';
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../app-types';
 import type {
   ActivitiesFeedFilters,
-  ActivitiesPageRequest
+  ActivitiesPageRequest,
+  EventExploreFeedFilters
 } from '../../../activities-models';
-import { DEMO_USERS } from '../../../demo-data';
+import { DEMO_USERS, type ChatMenuItem } from '../../../demo-data';
 import type { ListQuery, PageResult } from '../../../ui';
 import {
-  buildActivityChatRows,
   buildActivityEventRows,
-  buildActivityRateRows,
-  activityChatContextFilterKey
+  buildActivityRateRows
 } from '../converters';
-import { DemoRatesService } from '../../demo';
+import { AppContext } from '../context';
+import type { DemoEventRecord } from '../../demo/models/events.model';
 import { ChatsService } from './chats.service';
 import { EventsService } from './events.service';
+import { RatesService } from './rates.service';
 import { SessionService } from './session.service';
 
 @Injectable({
   providedIn: 'root'
 })
-export class ActivitiesFeedService {
-  private readonly dataSource = inject(ACTIVITIES_DATA_SOURCE);
+export class ActivitiesService {
   private readonly sessionService = inject(SessionService);
   private readonly eventsService = inject(EventsService);
   private readonly chatsService = inject(ChatsService);
-  private readonly demoRatesService = inject(DemoRatesService);
+  private readonly ratesService = inject(RatesService);
+  private readonly appCtx = inject(AppContext);
   private readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
 
-  async loadActivities(query: ListQuery<ActivitiesFeedFilters>): Promise<PageResult<AppTypes.ActivityListRow>> {
+  async loadActivities(
+    query: ListQuery<ActivitiesFeedFilters>,
+    options: { chatItems?: readonly ChatMenuItem[] } = {}
+  ): Promise<PageResult<AppTypes.ActivityListRow>> {
     const request = this.toActivitiesPageRequest(query);
-    if (this.dataSource.mode === 'http') {
-      const result = await this.dataSource.loadActivitiesPage(request);
-      return {
-        items: result?.rows ?? [],
-        total: Number.isFinite(result?.total) ? Math.max(0, Math.trunc(Number(result?.total))) : 0,
-        nextCursor: result?.nextCursor ?? null
-      };
-    }
-
     if (request.primaryFilter === 'rates') {
-      return this.loadDemoRates(request);
+      return this.loadRates(request);
     }
     if (request.primaryFilter === 'events') {
-      return this.loadDemoEvents(request);
+      return this.loadEvents(request);
     }
 
-    return this.loadDemoChats(request);
+    return this.loadChats(request, options);
   }
 
   toActivitiesPageRequest(query: ListQuery<ActivitiesFeedFilters>): ActivitiesPageRequest {
@@ -80,9 +74,23 @@ export class ActivitiesFeedService {
     };
   }
 
-  private async loadDemoRates(request: ActivitiesPageRequest): Promise<PageResult<AppTypes.ActivityListRow>> {
+  async loadExplore(query: ListQuery<EventExploreFeedFilters>): Promise<PageResult<DemoEventRecord>> {
+    const filters = this.resolveExploreFilters(query.filters);
+    const result = await this.eventsService.queryEventExplorePage({
+      ...filters,
+      limit: this.resolveExplorePageSize(query.pageSize),
+      cursor: query.cursor ?? null
+    });
+    return {
+      items: result.records.map(record => this.cloneExploreRecord(record)),
+      total: result.total,
+      nextCursor: result.nextCursor
+    };
+  }
+
+  private async loadRates(request: ActivitiesPageRequest): Promise<PageResult<AppTypes.ActivityListRow>> {
     const activeUserId = this.resolveActiveUserId();
-    const page = await this.demoRatesService.queryActivitiesRatePage(activeUserId, request);
+    const page = await this.ratesService.queryActivitiesRatePage(activeUserId, request);
     return {
       items: buildActivityRateRows(page.items, {
         activeUserId,
@@ -97,7 +105,7 @@ export class ActivitiesFeedService {
     };
   }
 
-  private async loadDemoEvents(request: ActivitiesPageRequest): Promise<PageResult<AppTypes.ActivityListRow>> {
+  private async loadEvents(request: ActivitiesPageRequest): Promise<PageResult<AppTypes.ActivityListRow>> {
     const activeUserId = this.resolveActiveUserId();
     const page = await this.eventsService.queryActivitiesEventPage({
       userId: activeUserId,
@@ -120,136 +128,14 @@ export class ActivitiesFeedService {
     };
   }
 
-  private async loadDemoChats(request: ActivitiesPageRequest): Promise<PageResult<AppTypes.ActivityListRow>> {
-    const activeUserId = this.resolveActiveUserId();
-    const items = await this.chatsService.queryChatItemsByUser(activeUserId);
-    const filteredItems = items.filter(item =>
-      request.chatContextFilter === 'all'
-        ? true
-        : activityChatContextFilterKey(item) === request.chatContextFilter
-    );
-    const rows = buildActivityChatRows(filteredItems, {
-      users: this.users,
-      activeUserId
+  private async loadChats(
+    request: ActivitiesPageRequest,
+    options: { chatItems?: readonly ChatMenuItem[] }
+  ): Promise<PageResult<AppTypes.ActivityListRow>> {
+    return this.chatsService.queryActivitiesChatPage(this.resolveActiveUserId(), request, {
+      chatItems: options.chatItems,
+      users: this.users
     });
-    const sorted = this.sortDemoChatRows(rows, request);
-    return this.paginateActivitiesRows(sorted, request);
-  }
-
-  private paginateActivitiesRows(
-    rows: readonly AppTypes.ActivityListRow[],
-    request: ActivitiesPageRequest
-  ): PageResult<AppTypes.ActivityListRow> {
-    if (this.isCalendarActivitiesView(request.view)) {
-      const range = this.activitiesQueryRange(request);
-      const filteredRows = range
-        ? rows.filter(row => this.doesActivityRowOverlapRange(row, range.start, range.end))
-        : [...rows];
-      return {
-        items: filteredRows,
-        total: filteredRows.length
-      };
-    }
-
-    const startIndex = request.page * request.pageSize;
-    return {
-      items: rows.slice(startIndex, startIndex + request.pageSize),
-      total: rows.length
-    };
-  }
-
-  private sortDemoChatRows(
-    rows: readonly AppTypes.ActivityListRow[],
-    request: ActivitiesPageRequest
-  ): AppTypes.ActivityListRow[] {
-    const sorted = [...rows];
-    if (request.view === 'distance') {
-      return sorted.sort((left, right) => this.activityRowDistanceOrderValue(left) - this.activityRowDistanceOrderValue(right));
-    }
-    if (request.secondaryFilter === 'past') {
-      return sorted.sort((left, right) => AppUtils.toSortableDate(right.dateIso) - AppUtils.toSortableDate(left.dateIso));
-    }
-    if (request.secondaryFilter === 'relevant') {
-      return sorted.sort((left, right) =>
-        right.metricScore - left.metricScore
-        || AppUtils.toSortableDate(right.dateIso) - AppUtils.toSortableDate(left.dateIso)
-      );
-    }
-    return sorted.sort((left, right) => AppUtils.toSortableDate(right.dateIso) - AppUtils.toSortableDate(left.dateIso));
-  }
-
-  private activityRowDistanceOrderValue(row: AppTypes.ActivityListRow): number {
-    if (Number.isFinite(row.distanceMetersExact)) {
-      return Math.max(0, Math.trunc(Number(row.distanceMetersExact)));
-    }
-    return Math.max(0, Math.round((Number(row.distanceKm) || 0) * 1000));
-  }
-
-  private activitiesQueryRange(request: ActivitiesPageRequest): { start: Date; end: Date } | null {
-    const start = this.parseSmartListDate(request.rangeStart);
-    const end = this.parseSmartListDate(request.rangeEnd);
-    if (!start || !end) {
-      return null;
-    }
-    return {
-      start,
-      end: AppUtils.dateOnly(end)
-    };
-  }
-
-  private doesActivityRowOverlapRange(row: AppTypes.ActivityListRow, start: Date, end: Date): boolean {
-    const range = this.resolveActivityRowRange(row);
-    if (!range) {
-      return false;
-    }
-    return AppCalendarHelpers.dateRangeOverlaps(
-      AppUtils.dateOnly(range.start),
-      AppUtils.dateOnly(range.end),
-      start,
-      end
-    );
-  }
-
-  private resolveActivityRowRange(row: AppTypes.ActivityListRow): { start: Date; end: Date } | null {
-    if (row.type === 'rates') {
-      const point = new Date(row.dateIso);
-      if (Number.isNaN(point.getTime())) {
-        return null;
-      }
-      return { start: point, end: new Date(point.getTime() + 60 * 1000) };
-    }
-    const source = row.source as { startAt?: string; endAt?: string };
-    const start = new Date(source.startAt ?? row.dateIso);
-    const end = new Date(source.endAt ?? new Date(start.getTime() + (2 * 60 * 60 * 1000)).toISOString());
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-      return null;
-    }
-    return end.getTime() > start.getTime()
-      ? { start, end }
-      : { start, end: new Date(start.getTime() + (2 * 60 * 60 * 1000)) };
-  }
-
-  private isCalendarActivitiesView(view: AppTypes.ActivitiesView): boolean {
-    return view === 'week' || view === 'month';
-  }
-
-  private parseSmartListDate(value: string | undefined): Date | null {
-    if (!value) {
-      return null;
-    }
-    const trimmed = value.trim();
-    const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (match) {
-      const year = Number.parseInt(match[1], 10);
-      const month = Number.parseInt(match[2], 10) - 1;
-      const day = Number.parseInt(match[3], 10);
-      return new Date(year, month, day);
-    }
-    const parsed = new Date(trimmed);
-    if (Number.isNaN(parsed.getTime())) {
-      return null;
-    }
-    return AppUtils.dateOnly(parsed);
   }
 
   private resolveActiveUserId(): string {
@@ -373,5 +259,140 @@ export class ActivitiesFeedService {
 
   private normalizeEventActivitiesSort(value: string | undefined): 'date' | 'distance' | 'relevance' {
     return value === 'distance' || value === 'relevance' ? value : 'date';
+  }
+
+  private resolveExploreFilters(
+    input: Partial<EventExploreFeedFilters> | null | undefined
+  ): EventExploreFeedFilters {
+    return {
+      userId: input?.userId?.trim() || this.appCtx.getActiveUserId().trim() || 'u1',
+      order: this.normalizeEventExploreOrder(input?.order),
+      view: this.normalizeEventExploreView(input?.view),
+      friendsOnly: input?.friendsOnly === true,
+      openSpotsOnly: input?.openSpotsOnly === true,
+      topic: this.normalizeEventExploreTopic(input?.topic ?? '')
+    };
+  }
+
+  private normalizeEventExploreOrder(value: unknown): AppTypes.EventExploreOrder {
+    return value === 'past-events'
+      || value === 'nearby'
+      || value === 'most-relevant'
+      || value === 'top-rated'
+      ? value
+      : 'upcoming';
+  }
+
+  private normalizeEventExploreView(value: unknown): AppTypes.EventExploreView {
+    return value === 'distance' ? 'distance' : 'day';
+  }
+
+  private normalizeEventExploreTopic(value: string | null | undefined): string {
+    return AppUtils.normalizeText(`${value ?? ''}`.replace(/^#+\s*/, '').trim());
+  }
+
+  private resolveExplorePageSize(value: number): number {
+    if (!Number.isFinite(value)) {
+      return 10;
+    }
+    return Math.max(1, Math.trunc(Number(value)));
+  }
+
+  private cloneExploreRecord(record: DemoEventRecord): DemoEventRecord {
+    return {
+      ...record,
+      acceptedMemberUserIds: [...record.acceptedMemberUserIds],
+      pendingMemberUserIds: [...record.pendingMemberUserIds],
+      topics: [...record.topics]
+    };
+  }
+
+  private paginateActivitiesRows(
+    rows: readonly AppTypes.ActivityListRow[],
+    request: ActivitiesPageRequest
+  ): PageResult<AppTypes.ActivityListRow> {
+    if (this.isCalendarActivitiesView(request.view)) {
+      const range = this.activitiesQueryRange(request);
+      const filteredRows = range
+        ? rows.filter(row => this.doesActivityRowOverlapRange(row, range.start, range.end))
+        : [...rows];
+      return {
+        items: filteredRows,
+        total: filteredRows.length
+      };
+    }
+
+    const startIndex = request.page * request.pageSize;
+    return {
+      items: rows.slice(startIndex, startIndex + request.pageSize),
+      total: rows.length
+    };
+  }
+
+  private activitiesQueryRange(request: ActivitiesPageRequest): { start: Date; end: Date } | null {
+    const start = this.parseSmartListDate(request.rangeStart);
+    const end = this.parseSmartListDate(request.rangeEnd);
+    if (!start || !end) {
+      return null;
+    }
+    return {
+      start,
+      end: AppUtils.dateOnly(end)
+    };
+  }
+
+  private doesActivityRowOverlapRange(row: AppTypes.ActivityListRow, start: Date, end: Date): boolean {
+    const range = this.resolveActivityRowRange(row);
+    if (!range) {
+      return false;
+    }
+    return AppCalendarHelpers.dateRangeOverlaps(
+      AppUtils.dateOnly(range.start),
+      AppUtils.dateOnly(range.end),
+      start,
+      end
+    );
+  }
+
+  private resolveActivityRowRange(row: AppTypes.ActivityListRow): { start: Date; end: Date } | null {
+    if (row.type === 'rates') {
+      const point = new Date(row.dateIso);
+      if (Number.isNaN(point.getTime())) {
+        return null;
+      }
+      return { start: point, end: new Date(point.getTime() + 60 * 1000) };
+    }
+    const source = row.source as { startAt?: string; endAt?: string };
+    const start = new Date(source.startAt ?? row.dateIso);
+    const end = new Date(source.endAt ?? new Date(start.getTime() + (2 * 60 * 60 * 1000)).toISOString());
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return null;
+    }
+    return end.getTime() > start.getTime()
+      ? { start, end }
+      : { start, end: new Date(start.getTime() + (2 * 60 * 60 * 1000)) };
+  }
+
+  private isCalendarActivitiesView(view: AppTypes.ActivitiesView): boolean {
+    return view === 'week' || view === 'month';
+  }
+
+  private parseSmartListDate(value: string | undefined): Date | null {
+    if (!value) {
+      return null;
+    }
+    const trimmed = value.trim();
+    const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) {
+      const year = Number.parseInt(match[1], 10);
+      const month = Number.parseInt(match[2], 10) - 1;
+      const day = Number.parseInt(match[3], 10);
+      return new Date(year, month, day);
+    }
+    const parsed = new Date(trimmed);
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+    return AppUtils.dateOnly(parsed);
   }
 }

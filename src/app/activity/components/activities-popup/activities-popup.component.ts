@@ -58,7 +58,6 @@ import {
   type InfoCardMenuAction,
   type InfoCardMenuActionEvent,
   type ListQuery,
-  type PageResult,
   type PairCardData,
   type RateCardDataInput,
   type RateCardPerson,
@@ -74,7 +73,7 @@ import {
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
 import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
 import {
-  ActivitiesFeedService,
+  ActivitiesService,
   ActivityMembersService,
   AppContext,
   buildActivityRateRows,
@@ -124,7 +123,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
   protected readonly activitiesContext = inject(ActivitiesDbContextService);
-  private readonly activitiesFeedService = inject(ActivitiesFeedService);
+  private readonly activitiesService = inject(ActivitiesService);
   private readonly eventEditorService = inject(EventEditorService);
   private readonly ratesService = inject(RatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
@@ -324,7 +323,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
   };
   protected readonly activitiesSmartListLoadPage: SmartListLoadPage<AppTypes.ActivityListRow, ActivitiesSmartListFilters>
-    = query => from(this.loadActivitiesFeedPage(query));
+    = query => from(this.activitiesService.loadActivities(query, {
+      chatItems: this.chatItemsForActivities()
+    }));
 
   // ── Inline action menu ────────────────────────────────────────────────────
   protected inlineItemActionMenu: {
@@ -4094,23 +4095,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   // ── Row converters ─────────────────────────────────────────────────────────
 
-  private chatToActivityRow(item: ChatMenuItem): AppTypes.ActivityListRow {
-    const sender = this.getChatLastSender(item);
-    const unread = this.contextualChatUnreadCount(item);
-    return {
-      id: item.id,
-      type: 'chats',
-      title: sender.name,
-      subtitle: item.title,
-      detail: this.chatContextDetailLine(item),
-      dateIso: this.chatDatesById[item.id] ?? '2026-02-21T09:00:00',
-      distanceKm: this.chatDistanceById[item.id] ?? 5,
-      unread,
-      metricScore: unread * 10 + this.getChatMemberCount(item),
-      source: item
-    };
-  }
-
   private eventToActivityRow(item: EventMenuItem, _secondary: AppTypes.ActivitiesSecondaryFilter): AppTypes.ActivityListRow {
     return {
       id: item.id,
@@ -4540,64 +4524,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.syncActivitiesRatesFullscreenSelection();
     }
     this.cdr.markForCheck();
-  }
-
-  private async loadActivitiesFeedPage(
-    query: ListQuery<ActivitiesSmartListFilters>
-  ): Promise<PageResult<AppTypes.ActivityListRow>> {
-    const primaryFilter = (query.filters?.primaryFilter ?? 'chats') as AppTypes.ActivitiesPrimaryFilter;
-    if (primaryFilter !== 'chats') {
-      return this.activitiesFeedService.loadActivities(query);
-    }
-
-    const secondaryFilter = query.filters?.secondaryFilter === 'relevant' || query.filters?.secondaryFilter === 'past'
-      ? query.filters.secondaryFilter
-      : 'recent';
-    const chatContextFilter = query.filters?.chatContextFilter === 'event'
-      || query.filters?.chatContextFilter === 'subEvent'
-      || query.filters?.chatContextFilter === 'group'
-      ? query.filters.chatContextFilter
-      : 'all';
-    const view = query.view === 'distance' ? 'distance' : 'day';
-
-    const rows = this.chatItemsForActivities()
-      .filter(item => chatContextFilter === 'all' ? true : this.activityChatContextFilterKey(item) === chatContextFilter)
-      .map(item => this.chatToActivityRow(item));
-    const sorted = this.sortChatRowsForSmartList(rows, secondaryFilter, view);
-    const startIndex = Math.max(0, Math.trunc(query.page)) * Math.max(1, Math.trunc(query.pageSize));
-    return {
-      items: sorted.slice(startIndex, startIndex + Math.max(1, Math.trunc(query.pageSize))),
-      total: sorted.length
-    };
-  }
-
-  private sortChatRowsForSmartList(
-    rows: readonly AppTypes.ActivityListRow[],
-    secondaryFilter: AppTypes.ActivitiesSecondaryFilter,
-    view: AppTypes.ActivitiesView
-  ): AppTypes.ActivityListRow[] {
-    const sorted = [...rows];
-    if (view === 'distance') {
-      return sorted.sort((left, right) => {
-        const leftMeters = Number.isFinite(left.distanceMetersExact)
-          ? Math.max(0, Math.trunc(Number(left.distanceMetersExact)))
-          : Math.max(0, Math.round((Number(left.distanceKm) || 0) * 1000));
-        const rightMeters = Number.isFinite(right.distanceMetersExact)
-          ? Math.max(0, Math.trunc(Number(right.distanceMetersExact)))
-          : Math.max(0, Math.round((Number(right.distanceKm) || 0) * 1000));
-        return leftMeters - rightMeters;
-      });
-    }
-    if (secondaryFilter === 'past') {
-      return sorted.sort((left, right) => AppUtils.toSortableDate(right.dateIso) - AppUtils.toSortableDate(left.dateIso));
-    }
-    if (secondaryFilter === 'relevant') {
-      return sorted.sort((left, right) =>
-        right.metricScore - left.metricScore
-        || AppUtils.toSortableDate(right.dateIso) - AppUtils.toSortableDate(left.dateIso)
-      );
-    }
-    return sorted.sort((left, right) => AppUtils.toSortableDate(right.dateIso) - AppUtils.toSortableDate(left.dateIso));
   }
 
   private activityRowIdentity(row: AppTypes.ActivityListRow): string {

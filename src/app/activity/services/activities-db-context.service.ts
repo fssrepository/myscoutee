@@ -1,8 +1,8 @@
 import { computed, Injectable, inject, signal } from '@angular/core';
 
+import { environment } from '../../../environments/environment';
 import type * as AppTypes from '../../shared/app-types';
-import { ACTIVITIES_DATA_SOURCE } from '../../shared/activities-data-source';
-import { ActivityMembersService, EventsService } from '../../shared/core';
+import { ActivityMembersService, ChatsService, EventsService, SessionService } from '../../shared/core';
 import type {
   ActivitiesEventSyncPayload,
   ActivitiesNavigationRequest,
@@ -47,8 +47,9 @@ const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
   providedIn: 'root'
 })
 export class ActivitiesDbContextService {
-  private readonly dataSource = inject(ACTIVITIES_DATA_SOURCE);
+  private readonly sessionService = inject(SessionService);
   private readonly eventsService = inject(EventsService);
+  private readonly chatsService = inject(ChatsService);
   private readonly activityMembersService = inject(ActivityMembersService);
 
   private readonly _uiState = signal<ActivitiesUiState>(DEFAULT_ACTIVITIES_UI_STATE);
@@ -77,7 +78,9 @@ export class ActivitiesDbContextService {
   readonly activitiesOpenBoolean = computed(() => this._uiState().open);
   readonly eventChatOpen = computed(() => this._eventChatSession() !== null);
 
-  readonly dataMode = this.dataSource.mode;
+  readonly dataMode = this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled
+    ? 'demo'
+    : 'http';
 
   openActivities(
     primaryFilter: AppTypes.ActivitiesPrimaryFilter = 'chats',
@@ -219,9 +222,6 @@ export class ActivitiesDbContextService {
     void this.activityMembersService.syncEventMembersFromEventSnapshot(payload).catch(() => {
       // Demo persistence is best-effort; UI state stays optimistic.
     });
-    void this.dataSource.syncEvent(payload).catch(() => {
-      // UI remains in optimistic state; failures are surfaced by higher-level UX.
-    });
   }
 
   clearActivitiesEventSync(): void {
@@ -260,7 +260,7 @@ export class ActivitiesDbContextService {
   }
 
   async loadEventChatMessages(chat: ChatMenuItem): Promise<AppTypes.ChatPopupMessage[]> {
-    return this.dataSource.loadChatMessages(chat);
+    return this.chatsService.loadChatMessages(chat);
   }
 
   private patchUiState(patch: Partial<ActivitiesUiState>): void {
