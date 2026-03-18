@@ -30,14 +30,17 @@ import type { CardImageSlide, SingleCardData } from '../card.types';
 })
 export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   private static readonly IMAGE_PULSE_DURATION_MS = 500;
+  private static readonly BADGE_BLINK_DURATION_MS = 420;
   private static readonly FULLSCREEN_ASPECT_RATIO = 3 / 4;
   private static readonly activeIndexByRowId: Record<string, number> = {};
 
   private readonly cdr = inject(ChangeDetectorRef);
   private loadingTimer: ReturnType<typeof setTimeout> | null = null;
+  private badgeBlinkTimer: ReturnType<typeof setTimeout> | null = null;
   private fullscreenResizeObserver: ResizeObserver | null = null;
   private previousRowId = '';
   private previousBadgeActive = false;
+  private previousBadgeLabel = '';
   private fullscreenShellElementRef?: ElementRef<HTMLElement>;
 
   @Input() card: SingleCardData | null = null;
@@ -46,6 +49,7 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
 
   protected activeIndex = 0;
   protected loading = false;
+  protected transientBadgeBlink = false;
   protected fullscreenCardWidth: string | null = null;
   protected fullscreenCardHeight: string | null = null;
 
@@ -78,6 +82,7 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
 
     const rowId = this.card?.rowId ?? '';
     const badgeActive = !!this.card?.badge?.active;
+    const badgeLabel = this.card?.badge?.label ?? '';
 
     if (rowId !== this.previousRowId) {
       this.syncStateFromCard();
@@ -87,8 +92,13 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
       this.startLoadingPulse();
     }
 
+    if (rowId === this.previousRowId && badgeLabel !== this.previousBadgeLabel) {
+      this.startTransientBadgeBlink();
+    }
+
     this.previousRowId = rowId;
     this.previousBadgeActive = badgeActive;
+    this.previousBadgeLabel = badgeLabel;
     this.scheduleFullscreenLayoutSync();
   }
 
@@ -96,6 +106,10 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
     if (this.loadingTimer) {
       clearTimeout(this.loadingTimer);
       this.loadingTimer = null;
+    }
+    if (this.badgeBlinkTimer) {
+      clearTimeout(this.badgeBlinkTimer);
+      this.badgeBlinkTimer = null;
     }
     this.disconnectFullscreenObserver();
   }
@@ -162,6 +176,10 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
     return (this.card?.badge?.layout ?? 'floating') === 'pair-overlap';
   }
 
+  protected isBadgeBlinking(): boolean {
+    return !!this.card?.badge?.blink || this.transientBadgeBlink;
+  }
+
   protected onSlideSelect(index: number, event: Event): void {
     event.stopPropagation();
     if (!this.isInteractive()) {
@@ -187,11 +205,16 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
       clearTimeout(this.loadingTimer);
       this.loadingTimer = null;
     }
+    if (this.badgeBlinkTimer) {
+      clearTimeout(this.badgeBlinkTimer);
+      this.badgeBlinkTimer = null;
+    }
     const rowId = this.card?.rowId ?? '';
     const storedIndex = rowId ? SingleCardComponent.activeIndexByRowId[rowId] : undefined;
     const initialIndex = storedIndex ?? this.card?.initialActiveIndex ?? 0;
     this.activeIndex = this.clampIndex(initialIndex);
     this.loading = false;
+    this.transientBadgeBlink = false;
     this.cdr.markForCheck();
   }
 
@@ -215,6 +238,31 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
       this.loadingTimer = null;
       this.cdr.markForCheck();
     }, SingleCardComponent.IMAGE_PULSE_DURATION_MS);
+  }
+
+  private startTransientBadgeBlink(): void {
+    if (this.badgeBlinkTimer) {
+      clearTimeout(this.badgeBlinkTimer);
+      this.badgeBlinkTimer = null;
+    }
+    this.transientBadgeBlink = false;
+    this.cdr.markForCheck();
+
+    const startBlink = () => {
+      this.transientBadgeBlink = true;
+      this.cdr.markForCheck();
+      this.badgeBlinkTimer = setTimeout(() => {
+        this.badgeBlinkTimer = null;
+        this.transientBadgeBlink = false;
+        this.cdr.markForCheck();
+      }, SingleCardComponent.BADGE_BLINK_DURATION_MS);
+    };
+
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => startBlink());
+      return;
+    }
+    setTimeout(() => startBlink(), 0);
   }
 
   private bindFullscreenObserver(): void {

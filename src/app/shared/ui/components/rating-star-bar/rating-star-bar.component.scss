@@ -122,13 +122,18 @@
 }
 
 @media (max-width: 760px) {
+  :host(.rating-star-bar-host--dockable) {
+    padding: 0.42rem 0.44rem calc(0.44rem + env(safe-area-inset-bottom));
+  }
+
   .rating-star-bar--fullscreen .rating-star-bar__stars {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0.24rem;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    gap: 0.14rem;
   }
 
   .rating-star-bar--fullscreen .rating-star-bar__star {
-    min-height: 29px;
-    font-size: 0.94rem;
+    min-height: 24px;
+    font-size: 0.74rem;
+    padding: 0;
   }
 }

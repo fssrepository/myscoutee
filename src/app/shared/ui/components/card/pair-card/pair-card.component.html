@@ -112,7 +112,7 @@
         [class.is-active]="cardBadge.active"
         [class.is-pending]="cardBadge.pending"
         [class.is-disabled]="cardBadge.disabled"
-        [class.is-blink]="cardBadge.blink"
+        [class.is-blink]="isBadgeBlinking()"
         [disabled]="cardBadge.disabled"
         [attr.aria-label]="cardBadge.ariaLabel"
         (click)="onBadgeClick($event)"
@@ -129,7 +129,7 @@
           [class.is-active]="cardBadge.active"
           [class.is-pending]="cardBadge.pending"
           [class.is-disabled]="cardBadge.disabled"
-          [class.is-blink]="cardBadge.blink"
+          [class.is-blink]="isBadgeBlinking()"
           [attr.aria-label]="cardBadge.ariaLabel"
         >
           <mat-icon>star</mat-icon>

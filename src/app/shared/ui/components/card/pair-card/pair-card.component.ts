@@ -30,6 +30,7 @@ import type { CardImageSlide, PairCardData, PairCardSlot } from '../card.types';
 })
 export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   private static readonly IMAGE_PULSE_DURATION_MS = 500;
+  private static readonly BADGE_BLINK_DURATION_MS = 420;
   private static readonly MOBILE_FULLSCREEN_ASPECT_RATIO = 3 / 4;
   private static readonly FULLSCREEN_ASPECT_RATIO = 5 / 4;
   private static readonly SPLIT_DEFAULT_PERCENT = 50;
@@ -40,9 +41,11 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly loadingTimersByKey: Record<string, ReturnType<typeof setTimeout>> = {};
+  private badgeBlinkTimer: ReturnType<typeof setTimeout> | null = null;
   private fullscreenResizeObserver: ResizeObserver | null = null;
   private previousRowId = '';
   private previousBadgeActive = false;
+  private previousBadgeLabel = '';
   private splitPointerId: number | null = null;
   private splitBounds: { left: number; width: number } | null = null;
   private splitDragStartClientX: number | null = null;
@@ -104,6 +107,7 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   protected readonly loadingByKey: Record<string, boolean> = {};
   protected splitPercent = PairCardComponent.SPLIT_DEFAULT_PERCENT;
   protected isResizing = false;
+  protected transientBadgeBlink = false;
   protected fullscreenCardWidth: string | null = null;
   protected fullscreenCardHeight: string | null = null;
 
@@ -136,6 +140,7 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     const rowId = this.card?.rowId ?? '';
     const badgeActive = !!this.card?.badge?.active;
+    const badgeLabel = this.card?.badge?.label ?? '';
 
     if (rowId !== this.previousRowId) {
       this.syncStateFromCard();
@@ -145,13 +150,22 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.pulseAllSlots();
     }
 
+    if (rowId === this.previousRowId && badgeLabel !== this.previousBadgeLabel) {
+      this.startTransientBadgeBlink();
+    }
+
     this.previousRowId = rowId;
     this.previousBadgeActive = badgeActive;
+    this.previousBadgeLabel = badgeLabel;
     this.scheduleFullscreenLayoutSync();
   }
 
   ngOnDestroy(): void {
     Object.values(this.loadingTimersByKey).forEach(timer => clearTimeout(timer));
+    if (this.badgeBlinkTimer) {
+      clearTimeout(this.badgeBlinkTimer);
+      this.badgeBlinkTimer = null;
+    }
     this.disconnectFullscreenObserver();
     this.stopSplitDrag();
   }
@@ -219,6 +233,10 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   protected usesPairOverlapBadge(): boolean {
     return (this.card?.badge?.layout ?? 'between') === 'pair-overlap';
+  }
+
+  protected isBadgeBlinking(): boolean {
+    return !!this.card?.badge?.blink || this.transientBadgeBlink;
   }
 
   protected resolvedSplitCssValue(): string {
@@ -330,6 +348,10 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
     Object.keys(this.loadingTimersByKey).forEach(key => delete this.loadingTimersByKey[key]);
     Object.keys(this.activeIndexByKey).forEach(key => delete this.activeIndexByKey[key]);
     Object.keys(this.loadingByKey).forEach(key => delete this.loadingByKey[key]);
+    if (this.badgeBlinkTimer) {
+      clearTimeout(this.badgeBlinkTimer);
+      this.badgeBlinkTimer = null;
+    }
 
     this.resolvedSlots().forEach(slot => {
       const storedIndex = rowId ? PairCardComponent.activeIndexByRowSlotKey[this.rowSlotKey(rowId, slot.key)] : undefined;
@@ -339,6 +361,7 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     this.splitPercent = this.card?.split?.initialPercent ?? PairCardComponent.lastCompactSplitPercent;
     this.isResizing = false;
+    this.transientBadgeBlink = false;
     this.stopSplitDrag();
     this.cdr.markForCheck();
   }
@@ -359,6 +382,31 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
       delete this.loadingTimersByKey[slotKey];
       this.cdr.markForCheck();
     }, PairCardComponent.IMAGE_PULSE_DURATION_MS);
+  }
+
+  private startTransientBadgeBlink(): void {
+    if (this.badgeBlinkTimer) {
+      clearTimeout(this.badgeBlinkTimer);
+      this.badgeBlinkTimer = null;
+    }
+    this.transientBadgeBlink = false;
+    this.cdr.markForCheck();
+
+    const startBlink = () => {
+      this.transientBadgeBlink = true;
+      this.cdr.markForCheck();
+      this.badgeBlinkTimer = setTimeout(() => {
+        this.badgeBlinkTimer = null;
+        this.transientBadgeBlink = false;
+        this.cdr.markForCheck();
+      }, PairCardComponent.BADGE_BLINK_DURATION_MS);
+    };
+
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => startBlink());
+      return;
+    }
+    setTimeout(() => startBlink(), 0);
   }
 
   private clampIndex(index: number, slideCount: number): number {
