@@ -34,6 +34,7 @@ export {
   SessionService,
   type AppSession
 } from './base/services/session.service';
+export * from './base/builders';
 export * from './base/converters';
 export * from './base/formatters';
 export * from './base/interfaces';

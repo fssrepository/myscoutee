@@ -10,6 +10,106 @@ export function buildActivityEventRows(records: readonly DemoEventRecord[]): App
   return records.map(record => toActivityEventRow(record));
 }
 
+export function toActivityEventRowFromMenuItem(
+  item: EventMenuItem,
+  options: {
+    dateIso?: string;
+    distanceKm?: number;
+  } = {}
+): AppTypes.ActivityListRow {
+  return {
+    id: item.id,
+    type: 'events',
+    title: item.title,
+    subtitle: item.shortDescription,
+    detail: item.timeframe,
+    dateIso: options.dateIso ?? '2026-03-01T09:00:00',
+    distanceKm: options.distanceKm ?? 10,
+    distanceMetersExact: resolveDistanceMetersExact(options.distanceKm ?? 10),
+    unread: item.activity,
+    metricScore: (item.isAdmin ? 20 : 0) + item.activity,
+    isAdmin: item.isAdmin,
+    source: item
+  };
+}
+
+export function toActivityHostingRowFromMenuItem(
+  item: HostingMenuItem,
+  options: {
+    dateIso?: string;
+    distanceKm?: number;
+  } = {}
+): AppTypes.ActivityListRow {
+  return {
+    id: item.id,
+    type: 'hosting',
+    title: item.title,
+    subtitle: item.shortDescription,
+    detail: item.timeframe,
+    dateIso: options.dateIso ?? '2026-03-01T09:00:00',
+    distanceKm: options.distanceKm ?? 10,
+    distanceMetersExact: resolveDistanceMetersExact(options.distanceKm ?? 10),
+    unread: item.activity,
+    metricScore: 20 + item.activity,
+    isAdmin: true,
+    source: item
+  };
+}
+
+export function toActivityInvitationRowFromMenuItem(
+  item: InvitationMenuItem,
+  options: {
+    dateIso?: string;
+    distanceKm?: number;
+  } = {}
+): AppTypes.ActivityListRow {
+  return {
+    id: item.id,
+    type: 'invitations',
+    title: item.description,
+    subtitle: item.inviter,
+    detail: item.when,
+    dateIso: options.dateIso ?? '2026-02-21T09:00:00',
+    distanceKm: options.distanceKm ?? 5,
+    distanceMetersExact: resolveDistanceMetersExact(options.distanceKm ?? 5),
+    unread: item.unread,
+    metricScore: item.unread * 10,
+    source: item
+  };
+}
+
+export function toActivitySourceRowFromMenuItem(
+  source: EventMenuItem | HostingMenuItem,
+  options: {
+    isHosting: boolean;
+    dateIso?: string;
+    distanceKm?: number;
+    metricScore?: number;
+  }
+): AppTypes.ActivityListRow {
+  const metricScore = typeof options.metricScore === 'number' && Number.isFinite(options.metricScore)
+    ? options.metricScore
+    : null;
+  if (options.isHosting) {
+    const row = toActivityHostingRowFromMenuItem(source as HostingMenuItem, {
+      dateIso: options.dateIso,
+      distanceKm: options.distanceKm
+    });
+    return {
+      ...row,
+      metricScore: metricScore ?? row.metricScore
+    };
+  }
+  const row = toActivityEventRowFromMenuItem(source as EventMenuItem, {
+    dateIso: options.dateIso,
+    distanceKm: options.distanceKm
+  });
+  return {
+    ...row,
+    metricScore: metricScore ?? row.metricScore
+  };
+}
+
 export function toActivityEventRow(record: DemoEventRecord): AppTypes.ActivityListRow {
   const rowType = resolveActivityEventRowType(record);
   return {
@@ -30,6 +130,10 @@ export function toActivityEventRow(record: DemoEventRecord): AppTypes.ActivityLi
         ? toHostingMenuItem(record)
         : toEventMenuItem(record)
   };
+}
+
+function resolveDistanceMetersExact(distanceKm: number): number {
+  return Math.max(0, Math.round((Number(distanceKm) || 0) * 1000));
 }
 
 function resolveActivityEventRowType(record: DemoEventRecord): AppTypes.ActivityListRow['type'] {

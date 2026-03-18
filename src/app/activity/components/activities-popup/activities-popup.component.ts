@@ -73,10 +73,15 @@ import {
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
 import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
 import {
+  buildInvitationPreviewEventSource,
   ActivitiesService,
   ActivityMembersService,
   AppContext,
   buildActivityRateRows,
+  toActivityEventRowFromMenuItem,
+  toActivityHostingRowFromMenuItem,
+  toActivityInvitationRowFromMenuItem,
+  toActivitySourceRowFromMenuItem,
   EventsService,
   RatesService,
   type ActivityMembersSyncState
@@ -664,14 +669,23 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const activeEventRows = this.eventItems
       .filter(item => item.isAdmin !== true)
       .filter(item => !this.isActivityIdentityTrashed('events', item.id))
-      .map(item => this.eventToActivityRow(item, secondaryFilter));
+      .map(item => toActivityEventRowFromMenuItem(item, {
+        dateIso: this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
+        distanceKm: this.eventDistanceById[item.id] ?? 10
+      }));
     const invitationRows = this.invitationItems
       .filter(item => !this.isActivityIdentityTrashed('invitations', item.id))
-      .map(item => this.invitationToActivityRow(item));
+      .map(item => toActivityInvitationRowFromMenuItem(item, {
+        dateIso: this.invitationDatesById[item.id] ?? '2026-02-21T09:00:00',
+        distanceKm: this.invitationDistanceById[item.id] ?? 5
+      }));
     const myEventRows = this.eventItems
       .filter(item => item.isAdmin === true)
       .filter(item => !this.isActivityIdentityTrashed('hosting', item.id))
-      .map(item => this.hostingEventToActivityRow(item));
+      .map(item => toActivityHostingRowFromMenuItem(item, {
+        dateIso: this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
+        distanceKm: this.eventDistanceById[item.id] ?? 10
+      }));
     const draftRows = myEventRows.filter(row => !this.isHostingPublished(row.id));
     const trashRows = this.trashedActivityRows();
 
@@ -3369,24 +3383,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private buildChatSourceActivityRow(source: EventMenuItem | HostingMenuItem): AppTypes.ActivityListRow {
-    const isHosting = this.isHostingSource(source);
-    return {
-      id: source.id,
-      type: isHosting ? 'hosting' : 'events',
-      title: source.title,
-      subtitle: source.shortDescription,
-      detail: source.timeframe,
+    return toActivitySourceRowFromMenuItem(source, {
+      isHosting: this.hostingItems.some(item => item.id === source.id),
       dateIso: this.eventDatesById[source.id] ?? this.hostingDatesById[source.id] ?? this.defaultEventStartIso(),
       distanceKm: this.eventDistanceById[source.id] ?? this.hostingDistanceById[source.id] ?? 0,
-      unread: source.activity,
-      metricScore: source.activity,
-      isAdmin: isHosting ? true : (source as EventMenuItem).isAdmin === true,
-      source
-    };
-  }
-
-  private isHostingSource(source: EventMenuItem | HostingMenuItem): source is HostingMenuItem {
-    return this.hostingItems.some(item => item.id === source.id);
+      metricScore: source.activity
+    });
   }
 
   private uniqueUserIds(ids: string[]): string[] {
@@ -4093,55 +4095,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return Math.min(10, Math.max(1, Math.round(value)));
   }
 
-  // ── Row converters ─────────────────────────────────────────────────────────
-
-  private eventToActivityRow(item: EventMenuItem, _secondary: AppTypes.ActivitiesSecondaryFilter): AppTypes.ActivityListRow {
-    return {
-      id: item.id,
-      type: 'events',
-      title: item.title,
-      subtitle: item.shortDescription,
-      detail: item.timeframe,
-      dateIso: this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
-      distanceKm: this.eventDistanceById[item.id] ?? 10,
-      unread: item.activity,
-      metricScore: (item.isAdmin ? 20 : 0) + item.activity,
-      isAdmin: item.isAdmin,
-      source: item
-    };
-  }
-
-  private hostingEventToActivityRow(item: EventMenuItem): AppTypes.ActivityListRow {
-    return {
-      id: item.id,
-      type: 'hosting',
-      title: item.title,
-      subtitle: item.shortDescription,
-      detail: item.timeframe,
-      dateIso: this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
-      distanceKm: this.eventDistanceById[item.id] ?? 10,
-      unread: item.activity,
-      metricScore: 20 + item.activity,
-      isAdmin: true,
-      source: item
-    };
-  }
-
-  private invitationToActivityRow(item: InvitationMenuItem): AppTypes.ActivityListRow {
-    return {
-      id: item.id,
-      type: 'invitations',
-      title: item.description,
-      subtitle: item.inviter,
-      detail: item.when,
-      dateIso: this.invitationDatesById[item.id] ?? '2026-02-21T09:00:00',
-      distanceKm: this.invitationDistanceById[item.id] ?? 5,
-      unread: item.unread,
-      metricScore: item.unread * 10,
-      source: item
-    };
-  }
-
   private rateOwnScore(item: RateMenuItem): number {
     if (Number.isFinite(item.scoreGiven) && item.scoreGiven > 0) {
       return this.normalizeRateScore(item.scoreGiven);
@@ -4200,7 +4153,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (row.type === 'invitations') {
       const invitationSource = row.source as InvitationMenuItem;
       const invitation = this.invitationItems.find(item => item.id === invitationSource.id) ?? invitationSource;
-      return this.resolveRelatedEventFromInvitation(invitation) ?? this.buildInvitationPreviewEventSource(invitation);
+      return this.resolveRelatedEventFromInvitation(invitation) ?? buildInvitationPreviewEventSource(invitation);
     }
     if (row.type !== 'events' && row.type !== 'hosting') {
       return null;
@@ -4232,18 +4185,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return relatedHosting;
     }
     return null;
-  }
-
-  private buildInvitationPreviewEventSource(invitation: InvitationMenuItem): EventMenuItem {
-    return {
-      id: `inv-preview-${invitation.id}`,
-      avatar: AppUtils.initialsFromText(invitation.inviter),
-      title: invitation.description,
-      shortDescription: `Invited by ${invitation.inviter}`,
-      timeframe: invitation.when,
-      activity: Math.max(0, invitation.unread),
-      isAdmin: false
-    };
   }
 
   private applyActivitiesEventSync(sync: ActivitiesEventSyncPayload): void {

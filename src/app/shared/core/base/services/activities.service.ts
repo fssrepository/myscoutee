@@ -13,7 +13,8 @@ import { DEMO_USERS, type ChatMenuItem } from '../../../demo-data';
 import type { ListQuery, PageResult } from '../../../ui';
 import {
   buildActivityEventRows,
-  buildActivityRateRows
+  buildActivityRateRows,
+  toActivitiesPageRequest
 } from '../converters';
 import { AppContext } from '../context';
 import type { DemoEventRecord } from '../../demo/models/events.model';
@@ -37,7 +38,7 @@ export class ActivitiesService {
     query: ListQuery<ActivitiesFeedFilters>,
     options: { chatItems?: readonly ChatMenuItem[] } = {}
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
-    const request = this.toActivitiesPageRequest(query);
+    const request = toActivitiesPageRequest(query);
     if (request.primaryFilter === 'rates') {
       return this.loadRates(request);
     }
@@ -46,32 +47,6 @@ export class ActivitiesService {
     }
 
     return this.loadChats(request, options);
-  }
-
-  toActivitiesPageRequest(query: ListQuery<ActivitiesFeedFilters>): ActivitiesPageRequest {
-    const filters = query.filters;
-    const primaryFilter = this.normalizeActivitiesPrimaryFilter((filters?.primaryFilter ?? 'chats') as AppTypes.ActivitiesPrimaryFilter);
-    const secondaryFilter = this.normalizeActivitiesSecondaryFilter(filters?.secondaryFilter, primaryFilter);
-    const view = this.normalizeActivitiesView(query.view);
-
-    return {
-      primaryFilter,
-      eventScopeFilter: this.normalizeActivitiesEventScopeFilter(filters?.eventScopeFilter),
-      secondaryFilter,
-      chatContextFilter: this.normalizeActivitiesChatContextFilter(filters?.chatContextFilter),
-      hostingPublicationFilter: this.normalizeHostingPublicationFilter(filters?.hostingPublicationFilter),
-      rateFilter: this.normalizeRateFilter(filters?.rateFilter),
-      view,
-      page: Math.max(0, Math.trunc(query.page)),
-      pageSize: Math.max(1, Math.trunc(query.pageSize)),
-      cursor: query.cursor ?? null,
-      sort: this.resolveActivitiesPageSort(primaryFilter, secondaryFilter, view),
-      direction: this.resolveActivitiesPageSortDirection(primaryFilter, secondaryFilter, view),
-      groupBy: query.groupBy,
-      anchorDate: query.anchorDate,
-      rangeStart: query.rangeStart,
-      rangeEnd: query.rangeEnd
-    };
   }
 
   async loadExplore(query: ListQuery<EventExploreFeedFilters>): Promise<PageResult<DemoEventRecord>> {
@@ -147,114 +122,6 @@ export class ActivitiesService {
       return session.profile.id.trim();
     }
     return DEMO_USERS[0]?.id ?? 'u1';
-  }
-
-  private normalizeActivitiesPrimaryFilter(filter: AppTypes.ActivitiesPrimaryFilter): AppTypes.ActivitiesPrimaryFilter {
-    if (filter === 'hosting' || filter === 'invitations') {
-      return 'events';
-    }
-    return filter;
-  }
-
-  private normalizeActivitiesEventScopeFilter(value: unknown): AppTypes.ActivitiesEventScope {
-    return value === 'all'
-      || value === 'invitations'
-      || value === 'my-events'
-      || value === 'drafts'
-      || value === 'trash'
-      ? value
-      : 'active-events';
-  }
-
-  private normalizeActivitiesSecondaryFilter(
-    value: unknown,
-    primaryFilter?: AppTypes.ActivitiesPrimaryFilter
-  ): AppTypes.ActivitiesSecondaryFilter {
-    const normalized = value === 'relevant' || value === 'past' ? value : 'recent';
-    return primaryFilter === 'events' && normalized === 'relevant'
-      ? 'recent'
-      : normalized;
-  }
-
-  private normalizeActivitiesChatContextFilter(value: unknown): AppTypes.ActivitiesChatContextFilter {
-    return value === 'event' || value === 'subEvent' || value === 'group' ? value : 'all';
-  }
-
-  private normalizeHostingPublicationFilter(value: unknown): AppTypes.HostingPublicationFilter {
-    return value === 'drafts' ? 'drafts' : 'all';
-  }
-
-  private normalizeRateFilter(value: unknown): AppTypes.RateFilterKey {
-    return value === 'individual-received'
-      || value === 'individual-mutual'
-      || value === 'individual-met'
-      || value === 'pair-given'
-      || value === 'pair-received'
-      ? value
-      : 'individual-given';
-  }
-
-  private normalizeActivitiesView(value: unknown): AppTypes.ActivitiesView {
-    return value === 'week' || value === 'month' || value === 'distance' ? value : 'day';
-  }
-
-  private resolveActivitiesPageSort(
-    primaryFilter: AppTypes.ActivitiesPrimaryFilter,
-    secondaryFilter: AppTypes.ActivitiesSecondaryFilter,
-    view: AppTypes.ActivitiesView
-  ): string {
-    if (primaryFilter === 'rates') {
-      if (view === 'distance') {
-        return 'distance';
-      }
-      if (secondaryFilter === 'relevant') {
-        return 'relevance';
-      }
-      return 'happenedAt';
-    }
-
-    if (primaryFilter === 'events') {
-      if (view === 'distance') {
-        return 'distance';
-      }
-      if (secondaryFilter === 'relevant') {
-        return 'relevance';
-      }
-      return 'date';
-    }
-
-    return view === 'distance' ? 'distance' : 'date';
-  }
-
-  private resolveActivitiesPageSortDirection(
-    primaryFilter: AppTypes.ActivitiesPrimaryFilter,
-    secondaryFilter: AppTypes.ActivitiesSecondaryFilter,
-    view: AppTypes.ActivitiesView
-  ): 'asc' | 'desc' {
-    if (primaryFilter === 'rates') {
-      if (view === 'distance') {
-        return 'asc';
-      }
-      if (secondaryFilter === 'relevant') {
-        return 'desc';
-      }
-      return 'desc';
-    }
-
-    if (primaryFilter === 'events') {
-      if (view === 'distance') {
-        return 'asc';
-      }
-      if (secondaryFilter === 'past') {
-        return 'desc';
-      }
-      if (secondaryFilter === 'relevant') {
-        return 'asc';
-      }
-      return 'asc';
-    }
-
-    return view === 'distance' ? 'asc' : 'desc';
   }
 
   private normalizeEventActivitiesSort(value: string | undefined): 'date' | 'distance' | 'relevance' {

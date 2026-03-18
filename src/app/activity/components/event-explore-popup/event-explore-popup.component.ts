@@ -23,6 +23,9 @@ import {
   ActivityMembersService,
   ActivitiesService,
   AppContext,
+  buildEventExploreActivityRow,
+  buildEventExploreGroupLabel,
+  buildEventExploreInfoCard,
   type ActivityMembersSyncState,
   GameService,
   UsersService,
@@ -32,7 +35,6 @@ import {
   InfoCardComponent,
   SmartListComponent,
   type InfoCardData,
-  type InfoCardMenuAction,
   type InfoCardMenuActionEvent,
   type ListQuery,
   type SmartListConfig,
@@ -117,6 +119,13 @@ export class EventExplorePopupComponent {
 
   protected readonly eventExploreLoadPage = (query: ListQuery<EventExploreFeedFilters>) =>
     from(this.activitiesService.loadExplore(query));
+  protected readonly eventExploreInfoCardBuilder = (
+    record: DemoEventRecord,
+    options: { groupLabel?: string | null } = {}
+  ): InfoCardData => buildEventExploreInfoCard(record, {
+    ...options,
+    resolveTopicToneClass: topic => this.interestOptionToneClass(topic)
+  });
 
   protected readonly eventExploreSmartListConfig: SmartListConfig<DemoEventRecord, EventExploreFeedFilters> = {
     pageSize: 10,
@@ -144,7 +153,7 @@ export class EventExplorePopupComponent {
       }
       return scrollable;
     },
-    groupBy: (record, query) => this.eventExploreGroupLabel(record, query.filters?.view ?? this.eventExploreView)
+    groupBy: (record, query) => buildEventExploreGroupLabel(record, query.filters?.view ?? this.eventExploreView)
   };
 
   constructor() {
@@ -438,7 +447,7 @@ export class EventExplorePopupComponent {
     this.stopDomEvent(event);
     this.activitiesContext.requestActivitiesNavigation({
       type: 'eventEditor',
-      row: this.eventExploreRow(record),
+      row: buildEventExploreActivityRow(record),
       readOnly: true
     });
     this.cdr.markForCheck();
@@ -463,43 +472,6 @@ export class EventExplorePopupComponent {
     this.navigatorService.openImpressionsPopup(record.creatorUserId);
   }
 
-  protected eventExploreCreatorInitials(record: DemoEventRecord): string {
-    return record.creatorInitials || AppUtils.initialsFromText(record.creatorName || record.title);
-  }
-
-  protected eventExploreVisibility(record: DemoEventRecord): AppTypes.EventVisibility {
-    return record.visibility;
-  }
-
-  protected eventVisibilityIcon(visibility: AppTypes.EventVisibility): string {
-    if (visibility === 'Friends only') {
-      return 'groups';
-    }
-    if (visibility === 'Invitation only') {
-      return 'mail_lock';
-    }
-    return 'public';
-  }
-
-  protected eventExploreHasRooms(record: DemoEventRecord): boolean {
-    return record.capacityTotal > record.acceptedMembers;
-  }
-
-  protected eventExploreIsFull(record: DemoEventRecord): boolean {
-    return record.capacityTotal > 0 && record.acceptedMembers >= record.capacityTotal;
-  }
-
-  protected eventExploreMembersVisibilityIcon(record: DemoEventRecord): string {
-    return this.eventBlindModeIcon(record.blindMode);
-  }
-
-  protected eventExploreMembersLabel(record: DemoEventRecord): string {
-    if (record.capacityTotal <= 0) {
-      return '0 / 0';
-    }
-    return `${record.acceptedMembers} / ${record.capacityTotal}`;
-  }
-
   protected isEventExploreOpenEvent(record: DemoEventRecord): boolean {
     return record.blindMode === 'Open Event';
   }
@@ -521,67 +493,6 @@ export class EventExplorePopupComponent {
     return '';
   }
 
-  protected eventExploreCardViewActionLabel(record: DemoEventRecord): string {
-    return record.type === 'hosting' ? 'View hosted event' : 'View event';
-  }
-
-  protected eventExploreInfoCard(
-    record: DemoEventRecord,
-    options: { groupLabel?: string | null } = {}
-  ): InfoCardData {
-    return {
-      rowId: record.id,
-      groupLabel: options.groupLabel ?? null,
-      title: record.title,
-      imageUrl: record.imageUrl,
-      metaRows: [
-        `${this.eventExploreTypeLabel(record)} · ${this.eventExploreVisibility(record)} · ${this.eventExploreDistanceLabel(record)}`
-      ],
-      description: record.subtitle,
-      detailRows: [record.timeframe],
-      detailStyle: 'mono',
-      footerChips: record.topics.map(topic => ({
-        label: `#${this.eventExploreTopicLabel(topic)}`,
-        toneClass: this.interestOptionToneClass(topic)
-      })),
-      surfaceTone: this.eventExploreIsFull(record) ? 'full' : 'default',
-      leadingIcon: {
-        icon: this.eventVisibilityIcon(this.eventExploreVisibility(record)),
-        tone: this.eventExploreVisibilityTone(record)
-      },
-      mediaStart: {
-        variant: 'badge',
-        layout: 'avatar-metric',
-        tone: this.eventExploreCreatorOverlayTone(record),
-        interactive: true,
-        ariaLabel: 'Open host impressions',
-        leadingAccessory: {
-          label: this.eventExploreCreatorInitials(record),
-          tone: this.eventExploreCreatorAvatarOverlayTone(record)
-        },
-        detailLabel: record.rating.toFixed(1),
-        detailIcon: 'star'
-      },
-      mediaEnd: {
-        variant: 'badge',
-        layout: 'badge-with-leading-accessory',
-        tone: this.isEventExploreOpenEvent(record)
-          ? (this.eventExploreIsFull(record) ? 'full' : 'default')
-          : 'inactive',
-        interactive: this.isEventExploreOpenEvent(record),
-        disabled: !this.isEventExploreOpenEvent(record),
-        ariaLabel: this.isEventExploreOpenEvent(record) ? 'Open event members' : 'Members hidden for this event',
-        label: this.eventExploreMembersLabel(record),
-        leadingAccessory: {
-          icon: this.eventExploreMembersVisibilityIcon(record),
-          tone: this.eventExploreMembersVisibilityTone(record)
-        }
-      },
-      menuActions: this.eventExploreInfoCardMenuActions(record),
-      clickable: false
-    };
-  }
-
   protected onEventExploreInfoCardMenuAction(record: DemoEventRecord, action: InfoCardMenuActionEvent): void {
     if (action.actionId === 'view') {
       this.runEventExploreViewAction(record);
@@ -590,71 +501,6 @@ export class EventExplorePopupComponent {
     if (action.actionId === 'join') {
       this.runEventExploreJoinAction(record);
     }
-  }
-
-  private eventExploreInfoCardMenuActions(record: DemoEventRecord): readonly InfoCardMenuAction[] {
-    return [
-      {
-        id: 'view',
-        label: this.eventExploreCardViewActionLabel(record),
-        icon: this.eventVisibilityIcon(this.eventExploreVisibility(record))
-      },
-      {
-        id: 'join',
-        label: 'Request join',
-        icon: 'person_add',
-        tone: 'accent'
-      }
-    ];
-  }
-
-  private eventExploreCreatorOverlayTone(record: DemoEventRecord): 'cool' | 'cool-mid' | 'neutral' | 'warm-mid' | 'warm' {
-    const rating = AppUtils.clampNumber(record.rating, 0, 10);
-    if (rating <= 3.0) {
-      return 'cool';
-    }
-    if (rating <= 5.5) {
-      return 'cool-mid';
-    }
-    if (rating <= 7.2) {
-      return 'neutral';
-    }
-    if (rating <= 8.6) {
-      return 'warm-mid';
-    }
-    return 'warm';
-  }
-
-  private eventExploreCreatorAvatarOverlayTone(
-    record: DemoEventRecord
-  ): 'tone-1' | 'tone-2' | 'tone-3' | 'tone-4' | 'tone-5' | 'tone-6' | 'tone-7' | 'tone-8' {
-    const toneIndex = (AppDemoGenerators.hashText(`${record.type}:${record.id}:${this.eventExploreCreatorInitials(record)}`) % 8) + 1;
-    return `tone-${toneIndex}` as 'tone-1' | 'tone-2' | 'tone-3' | 'tone-4' | 'tone-5' | 'tone-6' | 'tone-7' | 'tone-8';
-  }
-
-  private eventExploreMembersVisibilityTone(record: DemoEventRecord): 'positive' | 'negative' {
-    return record.blindMode === 'Open Event' ? 'positive' : 'negative';
-  }
-
-  private eventExploreVisibilityTone(
-    record: DemoEventRecord
-  ): 'public' | 'friends' | 'invitation' {
-    if (record.visibility === 'Friends only') {
-      return 'friends';
-    }
-    if (record.visibility === 'Invitation only') {
-      return 'invitation';
-    }
-    return 'public';
-  }
-
-  protected eventExploreDistanceLabel(record: DemoEventRecord): string {
-    const rounded = Math.round(record.distanceKm * 10) / 10;
-    return Number.isInteger(rounded) ? `${rounded} km` : `${rounded.toFixed(1)} km`;
-  }
-
-  protected eventExploreTypeLabel(record: DemoEventRecord): string {
-    return record.type === 'hosting' ? 'Hosting' : 'Event';
   }
 
   private openEventExplore(): void {
@@ -705,80 +551,6 @@ export class EventExplorePopupComponent {
     }
   }
 
-  private eventExploreGroupLabel(
-    record: DemoEventRecord,
-    view: AppTypes.EventExploreView
-  ): string {
-    if (view === 'distance') {
-      const bucket = Math.max(5, Math.ceil(record.distanceKm / 5) * 5);
-      return `${bucket} km`;
-    }
-    const parsed = new Date(record.startAtIso);
-    if (Number.isNaN(parsed.getTime())) {
-      return 'Date unavailable';
-    }
-    return parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  }
-
-  private eventExploreRow(record: DemoEventRecord): AppTypes.ActivityListRow {
-    const sourceBase = {
-      id: record.id,
-      avatar: record.creatorInitials,
-      title: record.title,
-      shortDescription: record.subtitle,
-      timeframe: record.timeframe,
-      activity: record.activity,
-      startAt: record.startAtIso,
-      endAt: record.endAtIso,
-      distanceKm: record.distanceKm,
-      imageUrl: record.imageUrl,
-      visibility: record.visibility,
-      blindMode: record.blindMode,
-      location: record.location,
-      capacityMin: record.capacityMin,
-      capacityMax: record.capacityMax,
-      topics: [...record.topics],
-      sourceLink: record.sourceLink,
-      creatorUserId: record.creatorUserId,
-      creatorName: record.creatorName,
-      creatorInitials: record.creatorInitials
-    };
-    if (record.type === 'hosting') {
-      return {
-        id: record.id,
-        type: 'hosting',
-        title: record.title,
-        subtitle: record.subtitle,
-        detail: record.timeframe,
-        dateIso: record.startAtIso,
-        distanceKm: record.distanceKm,
-        unread: 0,
-        metricScore: record.relevance,
-        isAdmin: false,
-        source: {
-          ...sourceBase,
-          published: record.published
-        }
-      };
-    }
-    return {
-      id: record.id,
-      type: 'events',
-      title: record.title,
-      subtitle: record.subtitle,
-      detail: record.timeframe,
-      dateIso: record.startAtIso,
-      distanceKm: record.distanceKm,
-      unread: 0,
-      metricScore: record.relevance,
-      isAdmin: false,
-      source: {
-        ...sourceBase,
-        isAdmin: false
-      }
-    };
-  }
-
   private eventMembersOwner(record: DemoEventRecord): ActivityMemberOwnerRef {
     return {
       ownerType: 'event',
@@ -796,7 +568,7 @@ export class EventExplorePopupComponent {
   }
 
   private buildMemberEntries(record: DemoEventRecord): AppTypes.ActivityMemberEntry[] {
-    const row = this.eventExploreRow(record);
+    const row = buildEventExploreActivityRow(record);
     const rowKey = `${row.type}:${row.id}`;
     const acceptedUserIds = this.ensureMemberUserIds(
       record.acceptedMemberUserIds,
@@ -974,24 +746,6 @@ export class EventExplorePopupComponent {
 
   protected normalizeTopic(topic: string | null | undefined): string {
     return AppUtils.normalizeText(`${topic ?? ''}`.replace(/^#+\s*/, '').trim());
-  }
-
-  private eventVisibilityClass(visibility: AppTypes.EventVisibility): string {
-    if (visibility === 'Friends only') {
-      return 'event-visibility-friends';
-    }
-    if (visibility === 'Invitation only') {
-      return 'event-visibility-invitation';
-    }
-    return 'event-visibility-public';
-  }
-
-  private eventBlindModeIcon(mode: AppTypes.EventBlindMode): string {
-    return mode === 'Blind Event' ? 'visibility_off' : 'visibility';
-  }
-
-  private eventBlindModeClass(mode: AppTypes.EventBlindMode): string {
-    return mode === 'Blind Event' ? 'blind-mode-blind' : 'blind-mode-open';
   }
 
   private activityMemberAge(entry: AppTypes.ActivityMemberEntry): number {
