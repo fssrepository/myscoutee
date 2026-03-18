@@ -84,109 +84,12 @@
         ></app-smart-list>
 
         <ng-template #eventExploreItemTemplate let-record let-groupLabel="groupLabel">
-          <article
-            class="experience-item-card asset-item-card event-explore-card"
-            [class.event-explore-card-full]="eventExploreIsFull(record)"
-            [attr.data-group-label]="groupLabel"
-            [attr.data-event-explore-group-label]="groupLabel"
-          >
-            <div class="asset-card-image" [appLazyBgImage]="record.imageUrl">
-              <button
-                type="button"
-                class="asset-source-icon event-explore-creator-chip"
-                [ngClass]="eventExploreCreatorToneClass(record)"
-                (click)="openHostImpressions(record, $event)"
-                aria-label="Open host impressions"
-              >
-                <span class="event-explore-creator-avatar" [ngClass]="eventExploreCreatorAvatarToneClass(record)">{{ eventExploreCreatorInitials(record) }}</span>
-                <span class="event-explore-creator-rating">
-                  <span>{{ record.rating | number:'1.1-1' }}</span>
-                  <mat-icon>star</mat-icon>
-                </span>
-              </button>
-
-              <button
-                *ngIf="isEventExploreOpenEvent(record); else eventExploreMembersBadgeLocked"
-                type="button"
-                class="asset-occupancy-badge event-explore-member-badge"
-                [class.event-explore-member-badge-full]="eventExploreIsFull(record)"
-                (click)="openEventExploreMembers(record, $event)"
-                aria-label="Open event members"
-              >
-                <span class="event-explore-member-badge-content">
-                  <span class="event-explore-member-visibility-icon" [ngClass]="eventExploreMembersVisibilityClass(record)">
-                    <mat-icon [class]="eventExploreMembersVisibilityClass(record)">{{ eventExploreMembersVisibilityIcon(record) }}</mat-icon>
-                  </span>
-                  <span>{{ eventExploreMembersLabel(record) }}</span>
-                </span>
-              </button>
-
-              <ng-template #eventExploreMembersBadgeLocked>
-                <button
-                  type="button"
-                  disabled
-                  class="asset-occupancy-badge event-explore-member-badge event-explore-member-badge-inactive"
-                  [class.event-explore-member-badge-full]="eventExploreIsFull(record)"
-                  aria-label="Members hidden for this event"
-                >
-                  <span class="event-explore-member-badge-content">
-                    <span class="event-explore-member-visibility-icon" [ngClass]="eventExploreMembersVisibilityClass(record)">
-                      <mat-icon [class]="eventExploreMembersVisibilityClass(record)">{{ eventExploreMembersVisibilityIcon(record) }}</mat-icon>
-                    </span>
-                    <span>{{ eventExploreMembersLabel(record) }}</span>
-                  </span>
-                </button>
-              </ng-template>
-            </div>
-
-            <div class="experience-item-head">
-              <span class="experience-item-icon" [ngClass]="eventExploreVisibilityCircleClass(record)">
-                <mat-icon>{{ eventVisibilityIcon(eventExploreVisibility(record)) }}</mat-icon>
-              </span>
-              <div class="experience-item-meta">
-                <h4>{{ record.title }}</h4>
-                <p>{{ eventExploreTypeLabel(record) }} · {{ eventExploreVisibility(record) }} · {{ eventExploreDistanceLabel(record) }}</p>
-              </div>
-              <div class="experience-item-actions">
-                <button
-                  type="button"
-                  class="experience-action-btn experience-action-menu-trigger"
-                  [class.is-open]="isEventExploreItemActionMenuOpen(record)"
-                  (click)="toggleEventExploreItemActionMenu(record, $event)"
-                  [attr.aria-label]="isEventExploreItemActionMenuOpen(record) ? 'Close explore actions' : 'Open explore actions'"
-                >
-                  <mat-icon>{{ isEventExploreItemActionMenuOpen(record) ? 'close' : 'more_vert' }}</mat-icon>
-                </button>
-                <div
-                  class="item-action-menu"
-                  [class.is-open]="isEventExploreItemActionMenuOpen(record)"
-                  [class.item-action-menu-mobile]="true"
-                  [class.item-action-menu-desktop]="true"
-                  [class.is-open-up]="isEventExploreItemActionMenuOpenUp(record)"
-                  (click)="$event.stopPropagation()"
-                >
-                  <div class="item-action-menu-title">{{ record.title }}</div>
-                  <button type="button" class="item-action-menu-btn" (click)="runEventExploreViewAction(record, $event)">
-                    <mat-icon>{{ eventVisibilityIcon(eventExploreVisibility(record)) }}</mat-icon>
-                    <span>{{ eventExploreViewLabel(record) }}</span>
-                  </button>
-                  <button type="button" class="item-action-menu-btn item-action-menu-btn-publish" (click)="runEventExploreJoinAction(record, $event)">
-                    <mat-icon>person_add</mat-icon>
-                    <span>Request join</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <p class="experience-item-description">{{ record.subtitle }}</p>
-            <p class="event-explore-timeframe">{{ record.timeframe }}</p>
-
-            <div class="event-explore-topic-row" *ngIf="record.topics.length > 0">
-              <span class="event-topic-chip values-selected-chip" [ngClass]="interestOptionToneClass(topic)" *ngFor="let topic of record.topics">
-                #{{ eventExploreTopicLabel(topic) }}
-              </span>
-            </div>
-          </article>
+          <app-info-card
+            [card]="eventExploreInfoCard(record, { groupLabel: groupLabel })"
+            (mediaStartClick)="openHostImpressions(record)"
+            (mediaEndClick)="openEventExploreMembers(record)"
+            (menuAction)="onEventExploreInfoCardMenuAction(record, $event)"
+          ></app-info-card>
         </ng-template>
       </div>
     </div>

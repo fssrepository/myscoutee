@@ -3,11 +3,17 @@ export type CardRenderState = 'default' | 'active' | 'leaving';
 export type CardBadgeLayout = 'floating' | 'between' | 'pair-overlap';
 export type InfoCardSurfaceTone = 'default' | 'draft' | 'full';
 export type InfoCardOverlayVariant = 'avatar' | 'badge' | 'toggle';
+export type InfoCardOverlayLayout = 'default' | 'avatar-metric' | 'badge-with-leading-accessory';
 export type InfoCardOverlayTone =
   | 'default'
   | 'full'
   | 'inactive'
   | 'selected'
+  | 'cool'
+  | 'cool-mid'
+  | 'neutral'
+  | 'warm-mid'
+  | 'warm'
   | 'public'
   | 'friends'
   | 'invitation'
@@ -21,7 +27,22 @@ export type InfoCardOverlayTone =
   | 'tone-6'
   | 'tone-7'
   | 'tone-8';
+export type InfoCardOverlayAccessoryTone =
+  | 'default'
+  | 'positive'
+  | 'negative'
+  | 'woman'
+  | 'man'
+  | 'tone-1'
+  | 'tone-2'
+  | 'tone-3'
+  | 'tone-4'
+  | 'tone-5'
+  | 'tone-6'
+  | 'tone-7'
+  | 'tone-8';
 export type InfoCardMenuActionTone = 'default' | 'accent' | 'warning' | 'destructive';
+export type InfoCardDetailStyle = 'default' | 'mono';
 
 export interface CardBadgeConfig {
   label: string;
@@ -82,11 +103,21 @@ export interface InfoCardLeadingIconConfig {
   tone?: Extract<InfoCardOverlayTone, 'default' | 'public' | 'friends' | 'invitation'> | null;
 }
 
+export interface InfoCardOverlayAccessory {
+  label?: string | null;
+  icon?: string | null;
+  tone?: InfoCardOverlayAccessoryTone | null;
+}
+
 export interface InfoCardOverlayAction {
   variant?: InfoCardOverlayVariant;
+  layout?: InfoCardOverlayLayout | null;
   tone?: InfoCardOverlayTone | null;
   label?: string | null;
   icon?: string | null;
+  leadingAccessory?: InfoCardOverlayAccessory | null;
+  detailLabel?: string | null;
+  detailIcon?: string | null;
   ariaLabel?: string | null;
   interactive?: boolean;
   disabled?: boolean;
@@ -103,6 +134,11 @@ export interface InfoCardMenuAction {
   tone?: InfoCardMenuActionTone;
 }
 
+export interface InfoCardFooterChip {
+  label: string;
+  toneClass?: string | null;
+}
+
 export interface InfoCardData {
   rowId: string;
   groupLabel?: string | null;
@@ -113,6 +149,8 @@ export interface InfoCardData {
   description?: string | null;
   descriptionLines?: number | null;
   detailRows?: readonly string[];
+  detailStyle?: InfoCardDetailStyle | null;
+  footerChips?: readonly InfoCardFooterChip[];
   surfaceTone?: InfoCardSurfaceTone | null;
   leadingIcon?: InfoCardLeadingIconConfig | null;
   mediaStart?: InfoCardOverlayAction | null;

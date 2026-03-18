@@ -16,9 +16,13 @@ import { LazyBgImageDirective } from '../../../../lazy-bg-image.directive';
 import type {
   InfoCardClickEvent,
   InfoCardData,
+  InfoCardFooterChip,
   InfoCardMenuAction,
   InfoCardMenuActionEvent,
+  InfoCardOverlayAccessory,
+  InfoCardOverlayLayout,
   InfoCardOverlayAction,
+  InfoCardDetailStyle,
   InfoCardOverlayTone,
   InfoCardOverlayVariant
 } from '../card.types';
@@ -157,8 +161,16 @@ export class InfoCardComponent {
     return action?.variant ?? 'badge';
   }
 
+  protected overlayLayout(action: InfoCardOverlayAction | null | undefined): InfoCardOverlayLayout {
+    return action?.layout ?? 'default';
+  }
+
   protected overlayTone(action: InfoCardOverlayAction | null | undefined): InfoCardOverlayTone {
     return action?.tone ?? 'default';
+  }
+
+  protected overlayLeadingAccessory(action: InfoCardOverlayAction | null | undefined): InfoCardOverlayAccessory | null {
+    return action?.leadingAccessory ?? null;
   }
 
   protected overlayLabel(action: InfoCardOverlayAction | null | undefined): string {
@@ -171,6 +183,10 @@ export class InfoCardComponent {
     return action.label ?? '';
   }
 
+  protected overlayDetailLabel(action: InfoCardOverlayAction | null | undefined): string {
+    return action?.detailLabel ?? '';
+  }
+
   protected overlayIcon(action: InfoCardOverlayAction | null | undefined): string | null {
     if (!action) {
       return null;
@@ -179,6 +195,10 @@ export class InfoCardComponent {
       return action.selectedIcon;
     }
     return action.icon ?? null;
+  }
+
+  protected overlayDetailIcon(action: InfoCardOverlayAction | null | undefined): string | null {
+    return action?.detailIcon ?? null;
   }
 
   protected visibleMetaRows(): readonly string[] {
@@ -195,12 +215,26 @@ export class InfoCardComponent {
     return Number.isFinite(value) && value > 0 ? value : 3;
   }
 
+  protected detailStyle(): InfoCardDetailStyle {
+    return this.card?.detailStyle ?? 'default';
+  }
+
   protected hasMenuActions(): boolean {
     return (this.card?.menuActions?.length ?? 0) > 0;
   }
 
+  protected hasFooterChips(): boolean {
+    return (this.card?.footerChips?.length ?? 0) > 0;
+  }
+
   protected trackByActionId(index: number, action: InfoCardMenuAction): string | number {
+    // Keep menu buttons stable while the menu is open; recreating them can
+    // interact badly with the document-level pointerdown closer.
     return action.id;
+  }
+
+  protected trackByFooterChip(index: number, chip: InfoCardFooterChip): string | number {
+    return `${chip.label}:${chip.toneClass ?? ''}:${index}`;
   }
 
   protected menuActionClass(action: InfoCardMenuAction): string {

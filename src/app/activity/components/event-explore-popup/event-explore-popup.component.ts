@@ -19,10 +19,13 @@ import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import type * as AppTypes from '../../../shared/app-types';
 import { AppUtils } from '../../../shared/app-utils';
-import { LazyBgImageDirective } from '../../../shared/lazy-bg-image.directive';
 import { ActivityMembersService, AppContext, type ActivityMembersSyncState, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
 import {
+  InfoCardComponent,
   SmartListComponent,
+  type InfoCardData,
+  type InfoCardMenuAction,
+  type InfoCardMenuActionEvent,
   type ListQuery,
   type PageResult,
   type SmartListConfig,
@@ -41,18 +44,13 @@ interface EventExploreFilters {
   topic: string;
 }
 
-type InlineExploreActionMenu = {
-  id: string;
-  openUp: boolean;
-};
-
 @Component({
   selector: 'app-event-explore-popup',
   standalone: true,
   imports: [
     CommonModule,
     MatIconModule,
-    LazyBgImageDirective,
+    InfoCardComponent,
     SmartListComponent
   ],
   templateUrl: './event-explore-popup.component.html',
@@ -97,7 +95,6 @@ export class EventExplorePopupComponent {
   protected selectedMembersRecord: DemoEventRecord | null = null;
 
   private activeUserId = 'u1';
-  private inlineItemActionMenu: InlineExploreActionMenu | null = null;
   private readonly exploreCache = new Map<string, DemoEventRecord[]>();
   private eventEditorPrewarmStarted = false;
   private lastAppliedActivityMembersUpdatedMs = 0;
@@ -229,9 +226,6 @@ export class EventExplorePopupComponent {
     if (this.showOrderPicker && !target.closest('.event-explore-order-picker')) {
       this.showOrderPicker = false;
     }
-    if (this.inlineItemActionMenu && !target.closest('.experience-item-actions')) {
-      this.inlineItemActionMenu = null;
-    }
     this.cdr.markForCheck();
   }
 
@@ -248,7 +242,6 @@ export class EventExplorePopupComponent {
     this.isOpen = false;
     this.showOrderPicker = false;
     this.showTopicPicker = false;
-    this.inlineItemActionMenu = null;
     this.closeMembersPopup();
     this.resetHeaderState();
     this.cdr.markForCheck();
@@ -358,13 +351,14 @@ export class EventExplorePopupComponent {
     return parts.join(' · ');
   }
 
-  protected openEventExploreMembers(record: DemoEventRecord, event: Event): void {
-    event.preventDefault();
-    event.stopPropagation();
+  protected openEventExploreMembers(
+    record: DemoEventRecord,
+    event?: { stopPropagation?: () => void; preventDefault?: () => void }
+  ): void {
+    this.stopDomEvent(event);
     if (!this.isEventExploreOpenEvent(record)) {
       return;
     }
-    this.inlineItemActionMenu = null;
     this.activitiesContext.requestActivitiesNavigation({
       type: 'members',
       ownerId: record.id
@@ -404,88 +398,40 @@ export class EventExplorePopupComponent {
     this.selectedMembersPendingOnly = !this.selectedMembersPendingOnly;
   }
 
-  protected toggleEventExploreItemActionMenu(record: DemoEventRecord, event: Event): void {
-    event.stopPropagation();
-    if (this.inlineItemActionMenu?.id === record.id) {
-      this.inlineItemActionMenu = null;
-      this.cdr.markForCheck();
-      return;
-    }
-    this.inlineItemActionMenu = {
-      id: record.id,
-      openUp: this.shouldOpenInlineItemMenuUp(event)
-    };
-    this.cdr.markForCheck();
-  }
-
-  protected isEventExploreItemActionMenuOpen(record: DemoEventRecord): boolean {
-    return this.inlineItemActionMenu?.id === record.id;
-  }
-
-  protected isEventExploreItemActionMenuOpenUp(record: DemoEventRecord): boolean {
-    return this.inlineItemActionMenu?.id === record.id && this.inlineItemActionMenu.openUp;
-  }
-
-  protected runEventExploreViewAction(record: DemoEventRecord, event: Event): void {
-    event.stopPropagation();
+  protected runEventExploreViewAction(
+    record: DemoEventRecord,
+    event?: { stopPropagation?: () => void; preventDefault?: () => void }
+  ): void {
+    this.stopDomEvent(event);
     this.activitiesContext.requestActivitiesNavigation({
       type: 'eventEditor',
       row: this.eventExploreRow(record),
       readOnly: true
     });
-    this.inlineItemActionMenu = null;
     this.cdr.markForCheck();
   }
 
-  protected runEventExploreJoinAction(record: DemoEventRecord, event: Event): void {
-    event.stopPropagation();
+  protected runEventExploreJoinAction(
+    record: DemoEventRecord,
+    event?: { stopPropagation?: () => void; preventDefault?: () => void }
+  ): void {
+    this.stopDomEvent(event);
     this.alertService.open(`Join request for ${record.title} is ready for backend wiring.`);
-    this.inlineItemActionMenu = null;
     this.cdr.markForCheck();
   }
 
-  protected openHostImpressions(record: DemoEventRecord, event: Event): void {
-    event.stopPropagation();
+  protected openHostImpressions(
+    record: DemoEventRecord,
+    event?: { stopPropagation?: () => void; preventDefault?: () => void }
+  ): void {
+    this.stopDomEvent(event);
     this.appCtx.setUserProfile(this.resolveUser(record.creatorUserId, record));
     void this.usersService.loadUserById(record.creatorUserId);
     this.navigatorService.openImpressionsPopup(record.creatorUserId);
   }
 
-  protected openEventExploreRecord(record: DemoEventRecord, event?: Event): void {
-    event?.stopPropagation();
-    this.activitiesContext.requestActivitiesNavigation({
-      type: 'eventEditor',
-      row: this.eventExploreRow(record),
-      readOnly: true
-    });
-    this.inlineItemActionMenu = null;
-    this.cdr.markForCheck();
-  }
-
   protected eventExploreCreatorInitials(record: DemoEventRecord): string {
     return record.creatorInitials || AppUtils.initialsFromText(record.creatorName || record.title);
-  }
-
-  protected eventExploreCreatorToneClass(record: DemoEventRecord): string {
-    const rating = AppUtils.clampNumber(record.rating, 0, 10);
-    if (rating <= 3.0) {
-      return 'event-explore-rating-cool';
-    }
-    if (rating <= 5.5) {
-      return 'event-explore-rating-cool-mid';
-    }
-    if (rating <= 7.2) {
-      return 'event-explore-rating-neutral';
-    }
-    if (rating <= 8.6) {
-      return 'event-explore-rating-warm-mid';
-    }
-    return 'event-explore-rating-warm';
-  }
-
-  protected eventExploreCreatorAvatarToneClass(record: DemoEventRecord): string {
-    const toneIndex = (AppDemoGenerators.hashText(`${record.type}:${record.id}:${this.eventExploreCreatorInitials(record)}`) % 8) + 1;
-    return `activities-source-tone-${toneIndex}`;
   }
 
   protected eventExploreVisibility(record: DemoEventRecord): AppTypes.EventVisibility {
@@ -502,10 +448,6 @@ export class EventExplorePopupComponent {
     return 'public';
   }
 
-  protected eventExploreVisibilityCircleClass(record: DemoEventRecord): string {
-    return `experience-item-icon-${this.eventVisibilityClass(record.visibility)}`;
-  }
-
   protected eventExploreHasRooms(record: DemoEventRecord): boolean {
     return record.capacityTotal > record.acceptedMembers;
   }
@@ -516,10 +458,6 @@ export class EventExplorePopupComponent {
 
   protected eventExploreMembersVisibilityIcon(record: DemoEventRecord): string {
     return this.eventBlindModeIcon(record.blindMode);
-  }
-
-  protected eventExploreMembersVisibilityClass(record: DemoEventRecord): string {
-    return this.eventBlindModeClass(record.blindMode);
   }
 
   protected eventExploreMembersLabel(record: DemoEventRecord): string {
@@ -554,6 +492,129 @@ export class EventExplorePopupComponent {
     return record.type === 'hosting' ? 'View hosted event' : 'View event';
   }
 
+  protected eventExploreInfoCard(
+    record: DemoEventRecord,
+    options: { groupLabel?: string | null } = {}
+  ): InfoCardData {
+    return {
+      rowId: record.id,
+      groupLabel: options.groupLabel ?? null,
+      title: record.title,
+      imageUrl: record.imageUrl,
+      metaRows: [
+        `${this.eventExploreTypeLabel(record)} · ${this.eventExploreVisibility(record)} · ${this.eventExploreDistanceLabel(record)}`
+      ],
+      description: record.subtitle,
+      detailRows: [record.timeframe],
+      detailStyle: 'mono',
+      footerChips: record.topics.map(topic => ({
+        label: `#${this.eventExploreTopicLabel(topic)}`,
+        toneClass: this.interestOptionToneClass(topic)
+      })),
+      surfaceTone: this.eventExploreIsFull(record) ? 'full' : 'default',
+      leadingIcon: {
+        icon: this.eventVisibilityIcon(this.eventExploreVisibility(record)),
+        tone: this.eventExploreVisibilityTone(record)
+      },
+      mediaStart: {
+        variant: 'badge',
+        layout: 'avatar-metric',
+        tone: this.eventExploreCreatorOverlayTone(record),
+        interactive: true,
+        ariaLabel: 'Open host impressions',
+        leadingAccessory: {
+          label: this.eventExploreCreatorInitials(record),
+          tone: this.eventExploreCreatorAvatarOverlayTone(record)
+        },
+        detailLabel: record.rating.toFixed(1),
+        detailIcon: 'star'
+      },
+      mediaEnd: {
+        variant: 'badge',
+        layout: 'badge-with-leading-accessory',
+        tone: this.isEventExploreOpenEvent(record)
+          ? (this.eventExploreIsFull(record) ? 'full' : 'default')
+          : 'inactive',
+        interactive: this.isEventExploreOpenEvent(record),
+        disabled: !this.isEventExploreOpenEvent(record),
+        ariaLabel: this.isEventExploreOpenEvent(record) ? 'Open event members' : 'Members hidden for this event',
+        label: this.eventExploreMembersLabel(record),
+        leadingAccessory: {
+          icon: this.eventExploreMembersVisibilityIcon(record),
+          tone: this.eventExploreMembersVisibilityTone(record)
+        }
+      },
+      menuActions: this.eventExploreInfoCardMenuActions(record),
+      clickable: false
+    };
+  }
+
+  protected onEventExploreInfoCardMenuAction(record: DemoEventRecord, action: InfoCardMenuActionEvent): void {
+    if (action.actionId === 'view') {
+      this.runEventExploreViewAction(record);
+      return;
+    }
+    if (action.actionId === 'join') {
+      this.runEventExploreJoinAction(record);
+    }
+  }
+
+  private eventExploreInfoCardMenuActions(record: DemoEventRecord): readonly InfoCardMenuAction[] {
+    return [
+      {
+        id: 'view',
+        label: this.eventExploreViewLabel(record),
+        icon: this.eventVisibilityIcon(this.eventExploreVisibility(record))
+      },
+      {
+        id: 'join',
+        label: 'Request join',
+        icon: 'person_add',
+        tone: 'accent'
+      }
+    ];
+  }
+
+  private eventExploreCreatorOverlayTone(record: DemoEventRecord): 'cool' | 'cool-mid' | 'neutral' | 'warm-mid' | 'warm' {
+    const rating = AppUtils.clampNumber(record.rating, 0, 10);
+    if (rating <= 3.0) {
+      return 'cool';
+    }
+    if (rating <= 5.5) {
+      return 'cool-mid';
+    }
+    if (rating <= 7.2) {
+      return 'neutral';
+    }
+    if (rating <= 8.6) {
+      return 'warm-mid';
+    }
+    return 'warm';
+  }
+
+  private eventExploreCreatorAvatarOverlayTone(
+    record: DemoEventRecord
+  ): 'tone-1' | 'tone-2' | 'tone-3' | 'tone-4' | 'tone-5' | 'tone-6' | 'tone-7' | 'tone-8' {
+    const toneIndex = (AppDemoGenerators.hashText(`${record.type}:${record.id}:${this.eventExploreCreatorInitials(record)}`) % 8) + 1;
+    return `tone-${toneIndex}` as 'tone-1' | 'tone-2' | 'tone-3' | 'tone-4' | 'tone-5' | 'tone-6' | 'tone-7' | 'tone-8';
+  }
+
+  private eventExploreMembersVisibilityTone(record: DemoEventRecord): 'positive' | 'negative' {
+    return record.blindMode === 'Open Event' ? 'positive' : 'negative';
+  }
+
+  private eventExploreVisibilityTone(
+    record: DemoEventRecord
+  ): 'public' | 'friends' | 'invitation' {
+    if (record.visibility === 'Friends only') {
+      return 'friends';
+    }
+    if (record.visibility === 'Invitation only') {
+      return 'invitation';
+    }
+    return 'public';
+  }
+
   protected eventExploreDistanceLabel(record: DemoEventRecord): string {
     const rounded = Math.round(record.distanceKm * 10) / 10;
     return Number.isInteger(rounded) ? `${rounded} km` : `${rounded.toFixed(1)} km`;
@@ -569,7 +630,6 @@ export class EventExplorePopupComponent {
     this.refreshUsersDirectory();
     this.showOrderPicker = false;
     this.showTopicPicker = false;
-    this.inlineItemActionMenu = null;
     this.closeMembersPopup();
     this.clearExploreCache();
     this.syncEventExploreQuery();
@@ -932,21 +992,9 @@ export class EventExplorePopupComponent {
     );
   }
 
-  private shouldOpenInlineItemMenuUp(event: Event): boolean {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-    const trigger = event.currentTarget as HTMLElement | null;
-    const actionWrap = (trigger?.closest('.experience-item-actions') as HTMLElement | null) ?? trigger;
-    if (!actionWrap) {
-      return false;
-    }
-    const rect = actionWrap.getBoundingClientRect();
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-    const estimatedMenuHeight = 248;
-    const spaceBelow = viewportHeight - rect.bottom;
-    const spaceAbove = rect.top;
-    return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
+  private stopDomEvent(event?: { stopPropagation?: () => void; preventDefault?: () => void } | null): void {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
   }
 
   private resolveFilters(query: ListQuery<EventExploreFilters>): EventExploreFilters {
