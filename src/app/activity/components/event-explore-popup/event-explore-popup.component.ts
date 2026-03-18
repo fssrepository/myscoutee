@@ -92,7 +92,6 @@ export class EventExplorePopupComponent {
   protected eventExploreHeaderLoadingProgress = 0;
   protected eventExploreHeaderLoadingOverdue = false;
   protected eventExploreStickyLabel = 'No items';
-  protected eventExploreHeaderDateLabel = '';
 
   protected selectedMembers: AppTypes.ActivityMemberEntry[] = [];
   protected selectedMembersTitle = '';
@@ -383,20 +382,6 @@ export class EventExplorePopupComponent {
 
   protected eventExploreHeaderTitle(): string {
     return 'Event Explore';
-  }
-
-  protected eventExploreHeaderSubtitle(): string {
-    const parts = [this.eventExploreOrderLabel(), this.eventExploreCurrentViewLabel()];
-    if (this.eventExploreFilterFriendsOnly) {
-      parts.push('Friends going');
-    }
-    if (this.eventExploreFilterHasRooms) {
-      parts.push('Open spots');
-    }
-    if (this.eventExploreFilterTopic) {
-      parts.push(`#${this.eventExploreTopicLabel(this.eventExploreFilterTopic)}`);
-    }
-    return parts.join(' · ');
   }
 
   protected openEventExploreMembers(
@@ -975,7 +960,6 @@ export class EventExplorePopupComponent {
 
   private reloadEventExploreSmartList(): void {
     this.resetHeaderState();
-    this.primeEventExploreHeaderDateLabel();
     this.eventExploreSmartList?.reload();
     this.cdr.markForCheck();
   }
@@ -986,52 +970,10 @@ export class EventExplorePopupComponent {
     this.eventExploreHeaderLoadingProgress = 0;
     this.eventExploreHeaderLoadingOverdue = false;
     this.eventExploreStickyLabel = 'No items';
-    this.eventExploreHeaderDateLabel = '';
   }
 
   protected normalizeTopic(topic: string | null | undefined): string {
     return AppUtils.normalizeText(`${topic ?? ''}`.replace(/^#+\s*/, '').trim());
-  }
-
-  private primeEventExploreHeaderDateLabel(): void {
-    const filters = this.currentEventExploreFilters();
-    const peeked = this.eventExploreService.peekPage(filters);
-    if (peeked.length === 0) {
-      return;
-    }
-    this.eventExploreHeaderDateLabel = this.resolveEventExploreHeaderDateLabel(peeked);
-  }
-
-  private currentEventExploreFilters(): EventExploreFeedFilters {
-    return {
-      userId: this.activeUserId,
-      order: this.eventExploreOrder,
-      view: this.eventExploreView,
-      friendsOnly: this.eventExploreFilterFriendsOnly,
-      openSpotsOnly: this.eventExploreFilterHasRooms,
-      topic: this.normalizeTopic(this.eventExploreFilterTopic)
-    };
-  }
-
-  private resolveEventExploreHeaderDateLabel(records: readonly DemoEventRecord[]): string {
-    const firstDatedRecord = records.find(record => this.isDateLikeEventExploreLabel(this.eventExploreDateLabel(record)));
-    return firstDatedRecord ? this.eventExploreDateLabel(firstDatedRecord) : '';
-  }
-
-  private eventExploreDateLabel(record: DemoEventRecord): string {
-    const parsed = new Date(record.startAtIso);
-    if (Number.isNaN(parsed.getTime())) {
-      return '';
-    }
-    return parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  }
-
-  private isDateLikeEventExploreLabel(label: string | null | undefined): boolean {
-    const normalizedLabel = `${label ?? ''}`.trim();
-    if (!normalizedLabel) {
-      return false;
-    }
-    return /^[A-Za-z]{3},\s[A-Za-z]{3}\s\d{1,2}$/.test(normalizedLabel);
   }
 
   private eventVisibilityClass(visibility: AppTypes.EventVisibility): string {
