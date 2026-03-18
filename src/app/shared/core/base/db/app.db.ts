@@ -27,13 +27,20 @@ interface IndexedUserRateRecord extends UserRateRecord {
   relevanceScore: number;
 }
 
+interface ActivityRateCursorPayload {
+  id: string;
+  happenedAtMs: number;
+  distanceMeters: number;
+  relevanceScore: number;
+}
+
 interface NormalizedActivityRateRecordQuery {
   ownerUserId: string;
   mode: 'single' | 'pair';
   displayDirection: 'given' | 'received' | 'mutual' | 'met';
   sort: 'happenedAt' | 'distance' | 'relevance';
   sortDirection: 'asc' | 'desc';
-  offset: number;
+  cursor: ActivityRateCursorPayload | null;
   limit: number;
   rangeStartMs: number | null;
   rangeEndMs: number | null;
@@ -47,7 +54,7 @@ export class AppMemoryDb {
   private static readonly LEGACY_STORAGE_KEYS = ['myscoutee.demo.db.v1'];
   private static readonly INDEXED_DB_NAME = 'myscoutee-memory-db';
   private static readonly LEGACY_INDEXED_DB_NAMES = ['myscoutee-demo-db'];
-  private static readonly INDEXED_DB_VERSION = 3;
+  private static readonly INDEXED_DB_VERSION = 4;
   private static readonly INDEXED_DB_STORE = 'tables';
   private static readonly USER_RATES_RECORDS_STORE = 'userRateRecords';
   private static readonly USER_RATES_ACTIVITY_DATE_INDEX = 'activityRatesByDate';
@@ -366,21 +373,21 @@ export class AppMemoryDb {
     if (!store.indexNames.contains(AppMemoryDb.USER_RATES_ACTIVITY_DATE_INDEX)) {
       store.createIndex(
         AppMemoryDb.USER_RATES_ACTIVITY_DATE_INDEX,
-        ['ownerUserIdNormalized', 'sourceNormalized', 'modeNormalized', 'displayDirectionNormalized', 'happenedAtMs']
+        ['ownerUserIdNormalized', 'sourceNormalized', 'modeNormalized', 'displayDirectionNormalized', 'happenedAtMs', 'id']
       );
     }
 
     if (!store.indexNames.contains(AppMemoryDb.USER_RATES_ACTIVITY_DISTANCE_INDEX)) {
       store.createIndex(
         AppMemoryDb.USER_RATES_ACTIVITY_DISTANCE_INDEX,
-        ['ownerUserIdNormalized', 'sourceNormalized', 'modeNormalized', 'displayDirectionNormalized', 'distanceMetersNormalized', 'happenedAtMs']
+        ['ownerUserIdNormalized', 'sourceNormalized', 'modeNormalized', 'displayDirectionNormalized', 'distanceMetersNormalized', 'id']
       );
     }
 
     if (!store.indexNames.contains(AppMemoryDb.USER_RATES_ACTIVITY_RELEVANCE_INDEX)) {
       store.createIndex(
         AppMemoryDb.USER_RATES_ACTIVITY_RELEVANCE_INDEX,
-        ['ownerUserIdNormalized', 'sourceNormalized', 'modeNormalized', 'displayDirectionNormalized', 'relevanceScore', 'happenedAtMs']
+        ['ownerUserIdNormalized', 'sourceNormalized', 'modeNormalized', 'displayDirectionNormalized', 'relevanceScore', 'id']
       );
     }
   }
@@ -393,36 +400,59 @@ export class AppMemoryDb {
       const tx = db.transaction(AppMemoryDb.USER_RATES_RECORDS_STORE, 'readonly');
       const store = tx.objectStore(AppMemoryDb.USER_RATES_RECORDS_STORE);
       const index = store.index(this.activityRateIndexName(query.sort));
-      const request = index.openCursor(
-        this.activityRateIndexRange(query),
-        this.activityRateCursorDirection(query)
-      );
+      const countRequest = index.count(this.activityRateIndexRange(query));
+      const request = index.openCursor(this.activityRatePageRange(query), this.activityRateCursorDirection(query));
       const records: UserRateRecord[] = [];
       let total = 0;
+      let nextCursor: string | null = null;
+      let countReady = false;
+      let cursorComplete = false;
+
+      const finish = () => {
+        if (!countReady || !cursorComplete) {
+          return;
+        }
+        resolve({
+          records,
+          total,
+          nextCursor
+        });
+      };
 
       request.onsuccess = () => {
         const cursor = request.result;
         if (!cursor) {
-          resolve({
-            records,
-            total
-          });
+          cursorComplete = true;
+          finish();
           return;
         }
 
         const indexedRecord = cursor.value as IndexedUserRateRecord | undefined;
         const record = indexedRecord ? this.toUserRateRecord(indexedRecord) : null;
         if (record && this.matchesActivityRateRange(record, query.rangeStartMs, query.rangeEndMs)) {
-          if (total >= query.offset && records.length < query.limit) {
+          if (records.length < query.limit) {
             records.push(record);
+            cursor.continue();
+            return;
           }
-          total += 1;
+          nextCursor = this.serializeActivityRateCursor(records[records.length - 1]);
+          cursorComplete = true;
+          finish();
+          return;
         }
-
         cursor.continue();
       };
 
+      countRequest.onsuccess = () => {
+        total = Number.isFinite(countRequest.result) ? Math.max(0, Math.trunc(Number(countRequest.result))) : 0;
+        countReady = true;
+        finish();
+      };
+
       request.onerror = () => {
+        resolve(this.queryActivityRateRecordsFromMemory(query));
+      };
+      countRequest.onerror = () => {
         resolve(this.queryActivityRateRecordsFromMemory(query));
       };
       tx.onerror = () => {
@@ -445,10 +475,19 @@ export class AppMemoryDb {
       .filter(record => (record.displayDirection ?? '') === query.displayDirection)
       .filter(record => this.matchesActivityRateRange(record, query.rangeStartMs, query.rangeEndMs))
       .sort((left, right) => this.compareActivityRates(left, right, query));
+    const startIndex = query.cursor
+      ? Math.max(0, filtered.findIndex(record => record.id === query.cursor?.id) + 1)
+      : 0;
+    const pageRecords = filtered
+      .slice(startIndex, startIndex + query.limit)
+      .map(record => ({ ...record }));
 
     return {
-      records: filtered.slice(query.offset, query.offset + query.limit).map(record => ({ ...record })),
-      total: filtered.length
+      records: pageRecords,
+      total: filtered.length,
+      nextCursor: filtered.length > startIndex + pageRecords.length && pageRecords.length > 0
+        ? this.serializeActivityRateCursor(pageRecords[pageRecords.length - 1])
+        : null
     };
   }
 
@@ -471,13 +510,13 @@ export class AppMemoryDb {
     }
 
     const limit = Math.max(1, Math.trunc(Number(query.limit) || 50));
-    const offset = Math.max(0, Math.trunc(Number(query.offset) || 0));
     const sort = query.sort;
     const sortDirection = query.sortDirection === 'asc' || query.sortDirection === 'desc'
       ? query.sortDirection
       : (sort === 'distance' ? 'asc' : 'desc');
     const rangeStartMs = this.parseSortableTimestamp(query.rangeStartIso);
     const rangeEndMs = this.parseSortableTimestamp(query.rangeEndIso);
+    const cursor = this.parseActivityRateCursor(query.cursor);
 
     if (
       rangeStartMs !== null
@@ -493,7 +532,7 @@ export class AppMemoryDb {
       displayDirection: query.displayDirection,
       sort,
       sortDirection,
-      offset,
+      cursor,
       limit,
       rangeStartMs,
       rangeEndMs
@@ -542,15 +581,15 @@ export class AppMemoryDb {
   private activityRateIndexRange(query: NormalizedActivityRateRecordQuery): IDBKeyRange {
     if (query.sort === 'distance') {
       return IDBKeyRange.bound(
-        [query.ownerUserId, 'activity-rate', query.mode, query.displayDirection, 0, 0],
-        [query.ownerUserId, 'activity-rate', query.mode, query.displayDirection, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER]
+        [query.ownerUserId, 'activity-rate', query.mode, query.displayDirection, 0, ''],
+        [query.ownerUserId, 'activity-rate', query.mode, query.displayDirection, Number.MAX_SAFE_INTEGER, '\uffff']
       );
     }
 
     if (query.sort === 'relevance') {
       return IDBKeyRange.bound(
-        [query.ownerUserId, 'activity-rate', query.mode, query.displayDirection, 0, 0],
-        [query.ownerUserId, 'activity-rate', query.mode, query.displayDirection, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER]
+        [query.ownerUserId, 'activity-rate', query.mode, query.displayDirection, 0, ''],
+        [query.ownerUserId, 'activity-rate', query.mode, query.displayDirection, Number.MAX_SAFE_INTEGER, '\uffff']
       );
     }
 
@@ -560,16 +599,90 @@ export class AppMemoryDb {
         'activity-rate',
         query.mode,
         query.displayDirection,
-        query.rangeStartMs ?? 0
+        query.rangeStartMs ?? 0,
+        ''
       ],
       [
         query.ownerUserId,
         'activity-rate',
         query.mode,
         query.displayDirection,
-        query.rangeEndMs ?? Number.MAX_SAFE_INTEGER
+        query.rangeEndMs ?? Number.MAX_SAFE_INTEGER,
+        '\uffff'
       ]
     );
+  }
+
+  private activityRatePageRange(query: NormalizedActivityRateRecordQuery): IDBKeyRange {
+    const fullRange = this.activityRateIndexRange(query);
+    const cursorKey = this.activityRateCursorKey(query);
+    if (!cursorKey) {
+      return fullRange;
+    }
+
+    const [lower, upper] = this.activityRateRangeBounds(query);
+    if (query.sortDirection === 'asc') {
+      return IDBKeyRange.bound(cursorKey, upper, true, false);
+    }
+    return IDBKeyRange.bound(lower, cursorKey, false, true);
+  }
+
+  private activityRateRangeBounds(query: NormalizedActivityRateRecordQuery): [IDBValidKey, IDBValidKey] {
+    if (query.sort === 'distance') {
+      return [
+        [query.ownerUserId, 'activity-rate', query.mode, query.displayDirection, 0, ''],
+        [query.ownerUserId, 'activity-rate', query.mode, query.displayDirection, Number.MAX_SAFE_INTEGER, '\uffff']
+      ];
+    }
+
+    if (query.sort === 'relevance') {
+      return [
+        [query.ownerUserId, 'activity-rate', query.mode, query.displayDirection, 0, ''],
+        [query.ownerUserId, 'activity-rate', query.mode, query.displayDirection, Number.MAX_SAFE_INTEGER, '\uffff']
+      ];
+    }
+
+    return [
+      [query.ownerUserId, 'activity-rate', query.mode, query.displayDirection, query.rangeStartMs ?? 0, ''],
+      [query.ownerUserId, 'activity-rate', query.mode, query.displayDirection, query.rangeEndMs ?? Number.MAX_SAFE_INTEGER, '\uffff']
+    ];
+  }
+
+  private activityRateCursorKey(query: NormalizedActivityRateRecordQuery): IDBValidKey | null {
+    if (!query.cursor) {
+      return null;
+    }
+
+    if (query.sort === 'distance') {
+      return [
+        query.ownerUserId,
+        'activity-rate',
+        query.mode,
+        query.displayDirection,
+        query.cursor.distanceMeters,
+        query.cursor.id
+      ];
+    }
+
+    if (query.sort === 'relevance') {
+      return [
+        query.ownerUserId,
+        'activity-rate',
+        query.mode,
+        query.displayDirection,
+        query.cursor.relevanceScore,
+        query.cursor.id
+      ];
+    }
+
+    return [
+      query.ownerUserId,
+      'activity-rate',
+      query.mode,
+      query.displayDirection,
+      query.cursor.happenedAtMs,
+      query.cursor.id
+    ];
   }
 
   private activityRateCursorDirection(query: NormalizedActivityRateRecordQuery): IDBCursorDirection {
@@ -604,7 +717,7 @@ export class AppMemoryDb {
       if (distanceDelta !== 0) {
         return distanceDelta;
       }
-      return this.userRateSortValue(right) - this.userRateSortValue(left);
+      return left.id.localeCompare(right.id);
     }
 
     if (query.sort === 'relevance') {
@@ -612,12 +725,18 @@ export class AppMemoryDb {
       if (relevanceDelta !== 0) {
         return relevanceDelta;
       }
-      return this.userRateSortValue(right) - this.userRateSortValue(left);
+      return right.id.localeCompare(left.id);
     }
 
-    return query.sortDirection === 'asc'
+    const happenedAtDelta = query.sortDirection === 'asc'
       ? this.userRateSortValue(left) - this.userRateSortValue(right)
       : this.userRateSortValue(right) - this.userRateSortValue(left);
+    if (happenedAtDelta !== 0) {
+      return happenedAtDelta;
+    }
+    return query.sortDirection === 'asc'
+      ? left.id.localeCompare(right.id)
+      : right.id.localeCompare(left.id);
   }
 
   private parseSortableTimestamp(value: string | undefined): number | null {
@@ -626,6 +745,36 @@ export class AppMemoryDb {
     }
     const parsed = Date.parse(value);
     return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private parseActivityRateCursor(value: string | null | undefined): ActivityRateCursorPayload | null {
+    if (!value) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(value) as Partial<ActivityRateCursorPayload>;
+      const id = typeof parsed.id === 'string' ? parsed.id.trim() : '';
+      if (!id) {
+        return null;
+      }
+      return {
+        id,
+        happenedAtMs: Number.isFinite(parsed.happenedAtMs) ? Math.max(0, Math.trunc(Number(parsed.happenedAtMs))) : 0,
+        distanceMeters: Number.isFinite(parsed.distanceMeters) ? Math.max(0, Math.trunc(Number(parsed.distanceMeters))) : 0,
+        relevanceScore: Number.isFinite(parsed.relevanceScore) ? Math.max(0, Math.trunc(Number(parsed.relevanceScore))) : 0
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private serializeActivityRateCursor(record: UserRateRecord): string {
+    return JSON.stringify({
+      id: record.id,
+      happenedAtMs: this.userRateSortValue(record),
+      distanceMeters: this.userRateDistanceValue(record),
+      relevanceScore: this.userRateRelevanceScore(record)
+    } satisfies ActivityRateCursorPayload);
   }
 
   private normalizeState(value: unknown, fallback = this.createEmptyState()): DemoMemorySchema {

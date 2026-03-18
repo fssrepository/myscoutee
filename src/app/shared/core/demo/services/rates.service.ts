@@ -25,7 +25,7 @@ export class DemoRatesService {
   async queryActivitiesRatePage(
     userId: string,
     request: ActivitiesPageRequest
-  ): Promise<{ items: RateMenuItem[]; total: number }> {
+  ): Promise<{ items: RateMenuItem[]; total: number; nextCursor?: string | null }> {
     await this.waitForRouteDelay(DemoRatesService.RATES_ROUTE);
     return this.usersRatingsRepository.queryActivityRateItemsPage(
       this.toActivityRateRecordQuery(userId, request)
@@ -60,7 +60,7 @@ export class DemoRatesService {
       displayDirection,
       sort: normalizedSort,
       sortDirection,
-      offset: Math.max(0, Math.trunc(request.page) * Math.max(1, Math.trunc(request.pageSize))),
+      cursor: request.cursor,
       limit: Math.max(1, Math.trunc(request.pageSize)),
       rangeStartIso: request.rangeStart,
       rangeEndIso: request.rangeEnd

@@ -127,6 +127,7 @@ export interface ActivitiesPageRequest {
   view: AppTypes.ActivitiesView;
   page: number;
   pageSize: number;
+  cursor?: string | null;
   sort?: string;
   direction?: 'asc' | 'desc';
   groupBy?: string;
@@ -138,4 +139,5 @@ export interface ActivitiesPageRequest {
 export interface ActivitiesPageResult {
   rows: AppTypes.ActivityListRow[];
   total: number;
+  nextCursor?: string | null;
 }

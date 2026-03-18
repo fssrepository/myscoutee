@@ -105,7 +105,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     return this.buildRateItemsByUserId(userId);
   }
 
-  async queryActivityRateItemsPage(query: ActivityRateRecordQuery): Promise<{ items: RateMenuItem[]; total: number }> {
+  async queryActivityRateItemsPage(query: ActivityRateRecordQuery): Promise<{ items: RateMenuItem[]; total: number; nextCursor?: string | null }> {
     const result = await this.memoryDb.queryActivityRateRecords(query);
     const items = result.records
       .map(record => DemoUserRatesBuilder.toRateMenuItem(record))
@@ -113,7 +113,8 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
 
     return {
       items,
-      total: result.total
+      total: result.total,
+      nextCursor: result.nextCursor ?? null
     };
   }
 

@@ -40,8 +40,8 @@ import { EventEditorService } from '../../../shared/event-editor.service';
 import type {
   ActivityMemberOwnerRef,
   ActivityMembersSummary,
+  ActivitiesFeedFilters,
   ActivitiesEventSyncPayload,
-  ActivitiesPageRequest,
   EventChatContext,
   EventChatResourceContext
 } from '../../../shared/activities-models';
@@ -65,15 +65,16 @@ import {
   type RatingStarBarConfig,
   type SingleCardData,
   type SmartListConfig,
+  type SmartListLoadPage,
   type SmartListItemSelectEvent,
   type SmartListItemTemplateContext,
-  type SmartListLoaders,
   type SmartListPresentation,
   type SmartListStateChange
 } from '../../../shared/ui';
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
 import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
 import {
+  ActivitiesFeedService,
   ActivityMembersService,
   AppContext,
   buildActivityRateRows,
@@ -84,14 +85,7 @@ import {
 
 // ---------------------------------------------------------------------------
 
-interface ActivitiesSmartListFilters {
-  primaryFilter?: AppTypes.ActivitiesPrimaryFilter;
-  eventScopeFilter?: AppTypes.ActivitiesEventScope;
-  secondaryFilter?: AppTypes.ActivitiesSecondaryFilter;
-  chatContextFilter?: AppTypes.ActivitiesChatContextFilter;
-  hostingPublicationFilter?: AppTypes.HostingPublicationFilter;
-  rateFilter?: AppTypes.RateFilterKey;
-}
+type ActivitiesSmartListFilters = ActivitiesFeedFilters;
 
 interface ActivitiesEventScopeOption {
   key: AppTypes.ActivitiesEventScope;
@@ -130,6 +124,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
   protected readonly activitiesContext = inject(ActivitiesDbContextService);
+  private readonly activitiesFeedService = inject(ActivitiesFeedService);
   private readonly eventEditorService = inject(EventEditorService);
   private readonly ratesService = inject(RatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
@@ -327,12 +322,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return true;
     }
   };
-  protected readonly activitiesSmartListLoaders: SmartListLoaders<AppTypes.ActivityListRow, ActivitiesSmartListFilters> = {
-    day: query => from(this.resolveActivitiesSmartListPage(query)),
-    distance: query => from(this.resolveActivitiesSmartListPage(query)),
-    week: query => from(this.resolveActivitiesSmartListCalendarPage(query)),
-    month: query => from(this.resolveActivitiesSmartListCalendarPage(query))
-  };
+  protected readonly activitiesSmartListLoadPage: SmartListLoadPage<AppTypes.ActivityListRow, ActivitiesSmartListFilters>
+    = query => from(this.loadActivitiesFeedPage(query));
 
   // ── Inline action menu ────────────────────────────────────────────────────
   protected inlineItemActionMenu: {
@@ -1302,6 +1293,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
   // ── Event-style rows ───────────────────────────────────────────────────────
 
   protected activityImageUrl(row: AppTypes.ActivityListRow): string {
+    const sourceImageUrl = (row.source as { imageUrl?: string }).imageUrl;
+    if (typeof sourceImageUrl === 'string' && sourceImageUrl.trim().length > 0) {
+      return sourceImageUrl;
+    }
     return this.activityImageById[row.id] ?? `https://picsum.photos/seed/event-${row.id}/1200/700`;
   }
 
@@ -1399,6 +1394,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return parts[1];
       }
     }
+    const sourceCapacityMax = Number((row.source as { capacityMax?: unknown }).capacityMax);
+    if (Number.isFinite(sourceCapacityMax) && sourceCapacityMax >= 0) {
+      return Math.max(fallbackBase, Math.trunc(sourceCapacityMax));
+    }
+    const sourceCapacityTotal = Number((row.source as { capacityTotal?: unknown }).capacityTotal);
+    if (Number.isFinite(sourceCapacityTotal) && sourceCapacityTotal >= 0) {
+      return Math.max(fallbackBase, Math.trunc(sourceCapacityTotal));
+    }
     return Math.max(fallbackBase, 4);
   }
 
@@ -1450,6 +1453,35 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     const source = this.activityCapacityById[row.id];
     const pendingMembers = Math.max(0, Math.trunc(Number(this.activityPendingMembersById[row.id]) || 0));
+    const sourceRecord = row.source as {
+      acceptedMembers?: unknown;
+      pendingMembers?: unknown;
+      capacityTotal?: unknown;
+      capacityMax?: unknown;
+    };
+    const acceptedFromSource = Number(sourceRecord.acceptedMembers);
+    const pendingFromSource = Number(sourceRecord.pendingMembers);
+    const capacityFromSource = Number(sourceRecord.capacityTotal);
+    const capacityMaxFromSource = Number(sourceRecord.capacityMax);
+    if (
+      Number.isFinite(acceptedFromSource)
+      && (Number.isFinite(capacityFromSource) || Number.isFinite(capacityMaxFromSource))
+    ) {
+      return {
+        ownerType: 'event',
+        ownerId: row.id,
+        acceptedMembers: Math.max(0, Math.trunc(acceptedFromSource)),
+        pendingMembers: Number.isFinite(pendingFromSource) ? Math.max(0, Math.trunc(pendingFromSource)) : pendingMembers,
+        capacityTotal: Math.max(
+          Math.max(0, Math.trunc(acceptedFromSource)),
+          Number.isFinite(capacityFromSource)
+            ? Math.max(0, Math.trunc(capacityFromSource))
+            : Math.max(0, Math.trunc(capacityMaxFromSource))
+        ),
+        acceptedMemberUserIds: [],
+        pendingMemberUserIds: []
+      };
+    }
     if (!source) {
       return null;
     }
@@ -1919,6 +1951,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected isActivityRowTrashed(row: AppTypes.ActivityListRow): boolean {
+    if (Boolean((row.source as { isTrashed?: boolean }).isTrashed)) {
+      return true;
+    }
     return this.isActivityIdentityTrashed(row.type, row.id);
   }
 
@@ -1932,11 +1967,17 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private trashActivityRow(row: AppTypes.ActivityListRow): void {
     this.trashedActivityRowsByKey[this.activityRowIdentity(row)] = { ...row };
+    if (row.type === 'events' || row.type === 'hosting' || row.type === 'invitations') {
+      void this.eventsService.trashItem(this.activeUser.id, row.type, row.id);
+    }
     this.refreshSectionBadges();
   }
 
   private restoreActivityRow(row: AppTypes.ActivityListRow): void {
     delete this.trashedActivityRowsByKey[this.activityRowIdentity(row)];
+    if (row.type === 'events' || row.type === 'hosting' || row.type === 'invitations') {
+      void this.eventsService.restoreItem(this.activeUser.id, row.type, row.id);
+    }
     this.refreshSectionBadges();
     this.reloadActivitiesSmartListData();
   }
@@ -4460,68 +4501,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     };
   }
 
-  private async resolveActivitiesSmartListPage(query: ListQuery<ActivitiesSmartListFilters>): Promise<PageResult<AppTypes.ActivityListRow>> {
-    const request = this.buildActivitiesSmartListRequest(query);
-
-    const dataSourceResult = await this.activitiesContext.loadActivitiesPage(request);
-    if (dataSourceResult || request.primaryFilter === 'rates') {
-      return {
-        items: dataSourceResult?.rows ?? [],
-        total: dataSourceResult && Number.isFinite(dataSourceResult.total)
-          ? Math.max(0, Math.trunc(Number(dataSourceResult.total)))
-          : 0
-      };
-    }
-
-    const rows = this.buildActivitiesSmartListRows(
-      request.primaryFilter,
-      request.eventScopeFilter ?? 'active-events',
-      request.secondaryFilter,
-      request.chatContextFilter,
-      request.hostingPublicationFilter,
-      request.rateFilter,
-      request.view
-    );
-    const startIndex = request.page * request.pageSize;
-    return {
-      items: rows.slice(startIndex, startIndex + request.pageSize),
-      total: rows.length
-    };
-  }
-
-  private async resolveActivitiesSmartListCalendarPage(query: ListQuery<ActivitiesSmartListFilters>): Promise<PageResult<AppTypes.ActivityListRow>> {
-    const request = this.buildActivitiesSmartListRequest(query);
-
-    const dataSourceResult = await this.activitiesContext.loadActivitiesPage(request);
-    if (dataSourceResult || request.primaryFilter === 'rates') {
-      return {
-        items: dataSourceResult?.rows ?? [],
-        total: dataSourceResult && Number.isFinite(dataSourceResult.total)
-          ? Math.max(0, Math.trunc(Number(dataSourceResult.total)))
-          : 0
-      };
-    }
-
-    const rows = this.buildActivitiesSmartListRows(
-      request.primaryFilter,
-      request.eventScopeFilter ?? 'active-events',
-      request.secondaryFilter,
-      request.chatContextFilter,
-      request.hostingPublicationFilter,
-      request.rateFilter,
-      request.view
-    );
-    const range = this.activitiesSmartListQueryRange(query);
-    const filteredRows = range
-      ? rows.filter(row => this.doesActivityRowOverlapRange(row, range.start, range.end))
-      : rows;
-
-    return {
-      items: filteredRows,
-      total: filteredRows.length
-    };
-  }
-
   protected onActivitiesSmartListItemSelect(event: SmartListItemSelectEvent<AppTypes.ActivityListRow, ActivitiesSmartListFilters>): void {
     this.onActivityRowClick(event.item);
   }
@@ -4538,230 +4517,62 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  private buildActivitiesSmartListRequest(query: ListQuery<ActivitiesSmartListFilters>): ActivitiesPageRequest {
-    const filters = query.filters;
-    const primaryFilter = this.normalizeActivitiesPrimaryFilter(filters?.primaryFilter);
-    const secondaryFilter = this.normalizeActivitiesSecondaryFilter(filters?.secondaryFilter);
-    const view = this.normalizeActivitiesView(query.view);
+  private async loadActivitiesFeedPage(
+    query: ListQuery<ActivitiesSmartListFilters>
+  ): Promise<PageResult<AppTypes.ActivityListRow>> {
+    const primaryFilter = (query.filters?.primaryFilter ?? 'chats') as AppTypes.ActivitiesPrimaryFilter;
+    if (primaryFilter !== 'chats') {
+      return this.activitiesFeedService.loadActivities(query);
+    }
+
+    const secondaryFilter = query.filters?.secondaryFilter === 'relevant' || query.filters?.secondaryFilter === 'past'
+      ? query.filters.secondaryFilter
+      : 'recent';
+    const chatContextFilter = query.filters?.chatContextFilter === 'event'
+      || query.filters?.chatContextFilter === 'subEvent'
+      || query.filters?.chatContextFilter === 'group'
+      ? query.filters.chatContextFilter
+      : 'all';
+    const view = query.view === 'distance' ? 'distance' : 'day';
+
+    const rows = this.chatItemsForActivities()
+      .filter(item => chatContextFilter === 'all' ? true : this.activityChatContextFilterKey(item) === chatContextFilter)
+      .map(item => this.chatToActivityRow(item));
+    const sorted = this.sortChatRowsForSmartList(rows, secondaryFilter, view);
+    const startIndex = Math.max(0, Math.trunc(query.page)) * Math.max(1, Math.trunc(query.pageSize));
     return {
-      primaryFilter,
-      eventScopeFilter: this.normalizeActivitiesEventScopeFilter(filters?.eventScopeFilter),
-      secondaryFilter,
-      chatContextFilter: this.normalizeActivitiesChatContextFilter(filters?.chatContextFilter),
-      hostingPublicationFilter: this.normalizeHostingPublicationFilter(filters?.hostingPublicationFilter),
-      rateFilter: this.normalizeRateFilter(filters?.rateFilter),
-      view,
-      page: Math.max(0, Math.trunc(query.page)),
-      pageSize: Math.max(1, Math.trunc(query.pageSize)),
-      sort: this.resolveActivitiesPageSort(primaryFilter, secondaryFilter, view),
-      direction: this.resolveActivitiesPageSortDirection(primaryFilter, secondaryFilter, view),
-      anchorDate: query.anchorDate,
-      rangeStart: query.rangeStart,
-      rangeEnd: query.rangeEnd
+      items: sorted.slice(startIndex, startIndex + Math.max(1, Math.trunc(query.pageSize))),
+      total: sorted.length
     };
   }
 
-  private activitiesSmartListQueryRange(query: ListQuery<ActivitiesSmartListFilters>): { start: Date; end: Date } | null {
-    const start = this.parseSmartListDate(query.rangeStart);
-    const end = this.parseSmartListDate(query.rangeEnd);
-    if (!start || !end) {
-      return null;
-    }
-    return {
-      start,
-      end: AppUtils.dateOnly(end)
-    };
-  }
-
-  private parseSmartListDate(value: string | undefined): Date | null {
-    if (!value) {
-      return null;
-    }
-    const trimmed = value.trim();
-    const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (match) {
-      const year = Number.parseInt(match[1], 10);
-      const month = Number.parseInt(match[2], 10) - 1;
-      const day = Number.parseInt(match[3], 10);
-      return new Date(year, month, day);
-    }
-    const parsed = new Date(trimmed);
-    if (Number.isNaN(parsed.getTime())) {
-      return null;
-    }
-    return AppUtils.dateOnly(parsed);
-  }
-
-  private doesActivityRowOverlapRange(row: AppTypes.ActivityListRow, start: Date, end: Date): boolean {
-    const range = AppCalendarHelpers.activityDateRange(row, this.activityDateTimeRangeById);
-    if (!range) {
-      return false;
-    }
-    return AppCalendarHelpers.dateRangeOverlaps(
-      AppUtils.dateOnly(range.start),
-      AppUtils.dateOnly(range.end),
-      start,
-      end
-    );
-  }
-
-  private buildActivitiesSmartListRows(
-    primaryFilter: AppTypes.ActivitiesPrimaryFilter,
-    eventScopeFilter: AppTypes.ActivitiesEventScope,
+  private sortChatRowsForSmartList(
+    rows: readonly AppTypes.ActivityListRow[],
     secondaryFilter: AppTypes.ActivitiesSecondaryFilter,
-    chatContextFilter: AppTypes.ActivitiesChatContextFilter,
-    hostingPublicationFilter: AppTypes.HostingPublicationFilter,
-    rateFilter: AppTypes.RateFilterKey,
     view: AppTypes.ActivitiesView
-  ): AppTypes.ActivityListRow[] {
-    let rows: AppTypes.ActivityListRow[] = [];
-    if (primaryFilter === 'chats') {
-      rows = this.chatItemsForActivities()
-        .filter(item => chatContextFilter === 'all' ? true : this.activityChatContextFilterKey(item) === chatContextFilter)
-        .map(item => this.chatToActivityRow(item));
-    } else if (primaryFilter === 'invitations') {
-      rows = this.buildEventScopeRows('invitations', secondaryFilter, hostingPublicationFilter);
-    } else if (primaryFilter === 'events') {
-      rows = this.buildEventScopeRows(eventScopeFilter, secondaryFilter, hostingPublicationFilter);
-    } else if (primaryFilter === 'hosting') {
-      rows = this.buildEventScopeRows('my-events', secondaryFilter, hostingPublicationFilter);
-    } else {
-      rows = buildActivityRateRows(this.rateItems, {
-        activeUserId: this.activeUser.id,
-        users: this.users,
-        filter: rateFilter,
-        secondaryFilter,
-        view,
-        directionOverrides: this.activityRateDirectionOverrideById
-      });
-    }
-    if (primaryFilter === 'rates') {
-      return rows;
-    }
-    const sorted = this.sortActivitiesRowsForState(rows, primaryFilter, eventScopeFilter, secondaryFilter);
-    if (view === 'distance') {
-      return [...sorted].sort((a, b) => this.activityRowDistanceOrderValue(a) - this.activityRowDistanceOrderValue(b));
-    }
-    return sorted;
-  }
-
-  private sortActivitiesRowsForState(
-    rows: AppTypes.ActivityListRow[],
-    primaryFilter: AppTypes.ActivitiesPrimaryFilter,
-    eventScopeFilter: AppTypes.ActivitiesEventScope,
-    secondaryFilter: AppTypes.ActivitiesSecondaryFilter
   ): AppTypes.ActivityListRow[] {
     const sorted = [...rows];
-    const useEventSortDirection = this.shouldUseEventSortDirection(primaryFilter, eventScopeFilter);
-    if (secondaryFilter === 'recent') {
-      if (useEventSortDirection) {
-        return sorted.sort((a, b) => AppUtils.toSortableDate(a.dateIso) - AppUtils.toSortableDate(b.dateIso));
-      }
-      return sorted.sort((a, b) => AppUtils.toSortableDate(b.dateIso) - AppUtils.toSortableDate(a.dateIso));
+    if (view === 'distance') {
+      return sorted.sort((left, right) => {
+        const leftMeters = Number.isFinite(left.distanceMetersExact)
+          ? Math.max(0, Math.trunc(Number(left.distanceMetersExact)))
+          : Math.max(0, Math.round((Number(left.distanceKm) || 0) * 1000));
+        const rightMeters = Number.isFinite(right.distanceMetersExact)
+          ? Math.max(0, Math.trunc(Number(right.distanceMetersExact)))
+          : Math.max(0, Math.round((Number(right.distanceKm) || 0) * 1000));
+        return leftMeters - rightMeters;
+      });
     }
     if (secondaryFilter === 'past') {
-      return sorted.sort((a, b) => AppUtils.toSortableDate(b.dateIso) - AppUtils.toSortableDate(a.dateIso));
+      return sorted.sort((left, right) => AppUtils.toSortableDate(right.dateIso) - AppUtils.toSortableDate(left.dateIso));
     }
-    if (primaryFilter === 'rates') {
-      return sorted.sort((a, b) => b.metricScore - a.metricScore || AppUtils.toSortableDate(b.dateIso) - AppUtils.toSortableDate(a.dateIso));
+    if (secondaryFilter === 'relevant') {
+      return sorted.sort((left, right) =>
+        right.metricScore - left.metricScore
+        || AppUtils.toSortableDate(right.dateIso) - AppUtils.toSortableDate(left.dateIso)
+      );
     }
-    if (useEventSortDirection) {
-      return sorted.sort((a, b) => b.metricScore - a.metricScore || AppUtils.toSortableDate(a.dateIso) - AppUtils.toSortableDate(b.dateIso));
-    }
-    return sorted.sort((a, b) => b.metricScore - a.metricScore || AppUtils.toSortableDate(b.dateIso) - AppUtils.toSortableDate(a.dateIso));
-  }
-
-  private shouldUseEventSortDirection(
-    primaryFilter: AppTypes.ActivitiesPrimaryFilter,
-    eventScopeFilter: AppTypes.ActivitiesEventScope
-  ): boolean {
-    return (primaryFilter === 'events' && eventScopeFilter !== 'invitations')
-      || primaryFilter === 'hosting';
-  }
-
-  private normalizeActivitiesPrimaryFilter(value: unknown): AppTypes.ActivitiesPrimaryFilter {
-    return value === 'events' || value === 'hosting' || value === 'invitations' || value === 'rates'
-      ? value
-      : 'chats';
-  }
-
-  private normalizeActivitiesEventScopeFilter(value: unknown): AppTypes.ActivitiesEventScope {
-    return value === 'all'
-      || value === 'invitations'
-      || value === 'my-events'
-      || value === 'drafts'
-      || value === 'trash'
-      ? value
-      : 'active-events';
-  }
-
-  private normalizeActivitiesSecondaryFilter(value: unknown): AppTypes.ActivitiesSecondaryFilter {
-    return value === 'relevant' || value === 'past' ? value : 'recent';
-  }
-
-  private normalizeActivitiesChatContextFilter(value: unknown): AppTypes.ActivitiesChatContextFilter {
-    return value === 'event' || value === 'subEvent' || value === 'group' ? value : 'all';
-  }
-
-  private normalizeHostingPublicationFilter(value: unknown): AppTypes.HostingPublicationFilter {
-    return value === 'drafts' ? 'drafts' : 'all';
-  }
-
-  private normalizeRateFilter(value: unknown): AppTypes.RateFilterKey {
-    return value === 'individual-received'
-      || value === 'individual-mutual'
-      || value === 'individual-met'
-      || value === 'pair-given'
-      || value === 'pair-received'
-      ? value
-      : 'individual-given';
-  }
-
-  private resolveActivitiesPageSort(
-    primaryFilter: AppTypes.ActivitiesPrimaryFilter,
-    secondaryFilter: AppTypes.ActivitiesSecondaryFilter,
-    view: AppTypes.ActivitiesView
-  ): string {
-    if (primaryFilter === 'rates') {
-      if (view === 'distance') {
-        return 'distance';
-      }
-      if (secondaryFilter === 'relevant') {
-        return 'relevance';
-      }
-      return 'happenedAt';
-    }
-
-    return view === 'distance' ? 'distance' : 'date';
-  }
-
-  private resolveActivitiesPageSortDirection(
-    primaryFilter: AppTypes.ActivitiesPrimaryFilter,
-    secondaryFilter: AppTypes.ActivitiesSecondaryFilter,
-    view: AppTypes.ActivitiesView
-  ): 'asc' | 'desc' {
-    if (primaryFilter === 'rates') {
-      if (view === 'distance') {
-        return 'asc';
-      }
-      if (secondaryFilter === 'relevant') {
-        return 'desc';
-      }
-      return 'desc';
-    }
-
-    return view === 'distance' ? 'asc' : 'desc';
-  }
-
-  private activityRowDistanceOrderValue(row: AppTypes.ActivityListRow): number {
-    if (Number.isFinite(row.distanceMetersExact)) {
-      return Math.max(0, Math.trunc(Number(row.distanceMetersExact)));
-    }
-    return Math.max(0, Math.round((Number(row.distanceKm) || 0) * 1000));
-  }
-
-  private normalizeActivitiesView(value: unknown): AppTypes.ActivitiesView {
-    return value === 'week' || value === 'month' || value === 'distance' ? value : 'day';
+    return sorted.sort((left, right) => AppUtils.toSortableDate(right.dateIso) - AppUtils.toSortableDate(left.dateIso));
   }
 
   private activityRowIdentity(row: AppTypes.ActivityListRow): string {

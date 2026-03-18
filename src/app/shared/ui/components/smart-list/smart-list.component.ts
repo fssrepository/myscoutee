@@ -132,6 +132,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private total = 0;
   private hasMore = true;
   private pageIndex = 0;
+  private nextPageCursor: string | null = null;
   private cursorIndex = 0;
   private scrollable = false;
   private progress = 0;
@@ -827,6 +828,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.calendarWeekPages = [];
     this.total = 0;
     this.pageIndex = 0;
+    this.nextPageCursor = null;
     this.cursorIndex = 0;
     this.hasMore = this.currentViewMode === 'list';
     this.initialLoading = true;
@@ -996,6 +998,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   private applyListPageResult(result: PageResult<T> | null | undefined, isInitial: boolean): void {
     const nextItems = Array.isArray(result?.items) ? result.items : [];
+    const hasExplicitNextCursor = Boolean(result && Object.prototype.hasOwnProperty.call(result, 'nextCursor'));
     if (isInitial) {
       this.items = [...nextItems];
     } else if (this.listMergeStrategy() === 'prepend') {
@@ -1005,7 +1008,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
     const total = Number.isFinite(result?.total) ? Math.max(0, Math.trunc(Number(result?.total))) : this.items.length;
     this.total = Math.max(this.items.length, total);
-    this.hasMore = nextItems.length > 0 && this.items.length < this.total;
+    this.nextPageCursor = hasExplicitNextCursor
+      ? (typeof result?.nextCursor === 'string' && result.nextCursor.trim().length > 0 ? result.nextCursor : null)
+      : null;
+    this.hasMore = hasExplicitNextCursor
+      ? this.nextPageCursor !== null
+      : (nextItems.length > 0 && this.items.length < this.total);
     if (nextItems.length > 0) {
       this.pageIndex += 1;
     } else {
@@ -2082,6 +2090,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const query: ListQuery<TFilters> = {
       page: this.currentViewMode === 'list' ? page : 0,
       pageSize: Math.max(1, Math.trunc(activeView?.pageSize ?? this.config.pageSize ?? 10)),
+      cursor: this.currentViewMode === 'list' ? this.nextPageCursor : undefined,
       sort: this.sort ?? baseQuery.sort ?? this.config.defaultSort,
       direction: this.direction ?? baseQuery.direction ?? this.config.defaultDirection,
       filters: Object.keys(nextFilters as object).length > 0 ? nextFilters : undefined,

@@ -121,7 +121,8 @@ export class DemoActivitiesDataSourceService implements ActivitiesDataSource {
 
     return {
       rows,
-      total: page.total
+      total: page.total,
+      nextCursor: page.nextCursor ?? null
     };
   }
 

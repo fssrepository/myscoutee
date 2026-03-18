@@ -6,8 +6,6 @@ import { ActivityMembersService, EventsService } from '../../shared/core';
 import type {
   ActivitiesEventSyncPayload,
   ActivitiesNavigationRequest,
-  ActivitiesPageRequest,
-  ActivitiesPageResult,
   EventChatContext,
   EventChatSession
 } from '../../shared/activities-models';
@@ -265,10 +263,6 @@ export class ActivitiesDbContextService {
     return this.dataSource.loadChatMessages(chat);
   }
 
-  async loadActivitiesPage(request: ActivitiesPageRequest): Promise<ActivitiesPageResult | null> {
-    return this.dataSource.loadActivitiesPage(request);
-  }
-
   private patchUiState(patch: Partial<ActivitiesUiState>): void {
     this._uiState.update(state => ({
       ...state,
@@ -298,4 +292,5 @@ export class ActivitiesDbContextService {
     }
     return 'active-events';
   }
+
 }

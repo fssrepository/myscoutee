@@ -26,6 +26,7 @@ interface HttpChatMessageDto {
 interface HttpActivitiesPageDto {
   rows: AppTypes.ActivityListRow[];
   total: number;
+  nextCursor?: string | null;
 }
 
 @Injectable({
@@ -80,7 +81,8 @@ export class HttpActivitiesDataSourceService implements ActivitiesDataSource {
     }
     return {
       rows: response.rows ?? [],
-      total: Number.isFinite(response.total) ? Math.max(0, Math.trunc(response.total)) : 0
+      total: Number.isFinite(response.total) ? Math.max(0, Math.trunc(response.total)) : 0,
+      nextCursor: response.nextCursor ?? null
     };
   }
 }

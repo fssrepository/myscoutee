@@ -12,6 +12,7 @@ export {
   type UserImpressionChangeFlags
 } from './base/context';
 export { restrictedAreaGuard } from './base/guards';
+export { ActivitiesFeedService } from './base/services/activities-feed.service';
 export {
   GameService,
   USER_GAME_CARDS_LOAD_CONTEXT_KEY
@@ -20,6 +21,7 @@ export { EventsService } from './base/services/events.service';
 export { ActivityMembersService } from './base/services/activity-members.service';
 export { AssetsService } from './base/services/assets.service';
 export { ActivityInviteCandidatesService } from './base/services/activity-invite-candidates.service';
+export { ChatsService } from './base/services/chats.service';
 export { RatesService } from './base/services/rates.service';
 export {
   USER_FEEDBACK_SUBMIT_CONTEXT_KEY,

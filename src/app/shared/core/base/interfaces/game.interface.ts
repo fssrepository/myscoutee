@@ -75,6 +75,7 @@ export interface ActivityRateRecordQuery {
   displayDirection: 'given' | 'received' | 'mutual' | 'met';
   sort: ActivityRateRecordSort;
   sortDirection?: 'asc' | 'desc';
+  cursor?: string | null;
   offset?: number;
   limit?: number;
   rangeStartIso?: string;
@@ -84,6 +85,7 @@ export interface ActivityRateRecordQuery {
 export interface ActivityRateRecordQueryResult {
   records: UserRateRecord[];
   total: number;
+  nextCursor?: string | null;
 }
 
 export interface UserRateOutboxRecord {
