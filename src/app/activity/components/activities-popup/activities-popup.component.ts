@@ -17,7 +17,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { from } from 'rxjs';
 
-import { LazyBgImageDirective } from '../../../shared/lazy-bg-image.directive';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { DemoRatesService } from '../../../shared/core/demo';
 import {
@@ -49,11 +48,15 @@ import type {
 } from '../../../shared/activities-models';
 import type * as AppTypes from '../../../shared/app-types';
 import {
+  InfoCardComponent,
   PairCardComponent,
   SmartListComponent,
   SingleCardComponent,
   type CardBadgeConfig,
   type CardImageSlide,
+  type InfoCardData,
+  type InfoCardMenuAction,
+  type InfoCardMenuActionEvent,
   type ListQuery,
   type PageResult,
   type PairCardData,
@@ -89,27 +92,28 @@ interface ActivitiesEventScopeOption {
 }
 
 type PendingActivityAction = 'delete' | 'exit' | 'reject';
+type ActivityInfoCardActionId = 'publish' | 'primary' | 'view' | 'approve' | 'secondary' | 'restore';
 
 @Component({
-  selector: 'app-event-activities-popup',
+  selector: 'app-activities-popup',
   standalone: true,
   imports: [
     CommonModule,
     FormsModule,
     MatIconModule,
     MatSelectModule,
-    LazyBgImageDirective,
     SmartListComponent,
+    InfoCardComponent,
     SingleCardComponent,
     PairCardComponent,
     EventChatPopupComponent,
     EventExplorePopupComponent
   ],
-  templateUrl: './event-activities-popup.component.html',
-  styleUrl: './event-activities-popup.component.scss',
+  templateUrl: './activities-popup.component.html',
+  styleUrl: './activities-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class EventActivitiesPopupComponent implements OnDestroy {
+export class ActivitiesPopupComponent implements OnDestroy {
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT = 50;
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MIN_PERCENT = 0;
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT = 100;
@@ -324,7 +328,7 @@ export class EventActivitiesPopupComponent implements OnDestroy {
 
   // ── Inline action menu ────────────────────────────────────────────────────
   protected inlineItemActionMenu: {
-    scope: 'activity' | 'activityMember';
+    scope: 'activityMember';
     id: string;
     title: string;
     openUp: boolean;
@@ -1304,16 +1308,30 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return row.type === 'events' || row.type === 'invitations';
   }
 
-  protected activitySourceLink(row: AppTypes.ActivityListRow): string {
-    return this.activitySourceLinkById[row.id] ?? `https://example.com/events/${row.id}`;
-  }
-
   protected activitySourceAvatarClass(row: AppTypes.ActivityListRow): string {
     const toneSeed = row.type === 'invitations'
       ? `${row.id}-${(row.source as InvitationMenuItem).inviter}`
       : `${row.id}-${row.title}`;
     const toneIndex = (AppDemoGenerators.hashText(toneSeed) % 8) + 1;
     return `activities-source-tone-${toneIndex}`;
+  }
+
+  private activitySourceAvatarTone(row: AppTypes.ActivityListRow): NonNullable<InfoCardData['mediaStart']>['tone'] {
+    const toneClass = this.activitySourceAvatarClass(row);
+    const tone = toneClass.replace('activities-source-', '');
+    switch (tone) {
+      case 'tone-1':
+      case 'tone-2':
+      case 'tone-3':
+      case 'tone-4':
+      case 'tone-5':
+      case 'tone-6':
+      case 'tone-7':
+      case 'tone-8':
+        return tone;
+      default:
+        return 'default';
+    }
   }
 
   protected activitySourceAvatarLabel(row: AppTypes.ActivityListRow): string {
@@ -1553,13 +1571,6 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return this.activityTypeIcon(row);
   }
 
-  protected activityLeadingIconCircleClass(row: AppTypes.ActivityListRow): string {
-    if (row.type !== 'hosting' && row.type !== 'events') {
-      return '';
-    }
-    return `experience-item-icon-${this.eventVisibilityClass(this.activityVisibility(row))}`;
-  }
-
   private activityVisibility(row: AppTypes.ActivityListRow): AppTypes.EventVisibility {
     return this.eventVisibilityById[row.id] ?? (row.type === 'hosting' ? 'Invitation only' : 'Public');
   }
@@ -1602,6 +1613,20 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     }
   }
 
+  private activityLeadingIconTone(row: AppTypes.ActivityListRow): NonNullable<InfoCardData['leadingIcon']>['tone'] {
+    if (row.type !== 'hosting' && row.type !== 'events') {
+      return 'default';
+    }
+    const visibility = this.activityVisibility(row);
+    if (visibility === 'Public') {
+      return 'public';
+    }
+    if (visibility === 'Friends only') {
+      return 'friends';
+    }
+    return 'invitation';
+  }
+
   protected activityDateRangeMetaLine(row: AppTypes.ActivityListRow): string {
     return `${this.activityTypeLabel(row)} · ${this.activityDateLabel(row)} · ${row.distanceKm} km`;
   }
@@ -1630,32 +1655,87 @@ export class EventActivitiesPopupComponent implements OnDestroy {
       + parsed.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   }
 
+  protected activityEventInfoCard(
+    row: AppTypes.ActivityListRow,
+    options: { groupLabel?: string | null } = {}
+  ): InfoCardData {
+    const locationMetaLine = this.activityLocationMetaLine(row);
+    return {
+      rowId: this.activityRowIdentity(row),
+      groupLabel: options.groupLabel ?? null,
+      title: row.title,
+      imageUrl: this.activityImageUrl(row),
+      metaRows: [
+        this.activityDateRangeMetaLine(row),
+        ...(locationMetaLine ? [locationMetaLine] : [])
+      ],
+      description: row.subtitle,
+      surfaceTone: this.isActivityDraft(row) ? 'draft' : this.isActivityFull(row) ? 'full' : 'default',
+      leadingIcon: {
+        icon: this.activityLeadingIcon(row),
+        tone: this.activityLeadingIconTone(row)
+      },
+      mediaStart: this.showActivitySourceIcon(row)
+        ? {
+            variant: 'avatar',
+            tone: this.activitySourceAvatarTone(row),
+            label: this.activitySourceAvatarLabel(row),
+            interactive: false
+          }
+        : null,
+      mediaEnd: {
+        variant: 'badge',
+        tone: this.isActivityFull(row) ? 'full' : 'default',
+        label: this.activityCapacityLabel(row),
+        ariaLabel: 'Open members',
+        interactive: true,
+        pendingCount: this.activityPendingMemberCount(row)
+      },
+      menuActions: this.activityEventInfoCardMenuActions(row),
+      clickable: false
+    };
+  }
+
+  private activityEventInfoCardMenuActions(row: AppTypes.ActivityListRow): readonly InfoCardMenuAction[] {
+    if (!this.canManageActivityRow(row)) {
+      return [];
+    }
+    if (this.isActivityRowTrashed(row)) {
+      return this.shouldShowActivityRestoreAction(row)
+        ? [{ id: 'restore', label: 'Restore', icon: 'restore_from_trash' }]
+        : [];
+    }
+
+    const actions: InfoCardMenuAction[] = [];
+    if (this.shouldShowActivityPublishAction(row)) {
+      actions.push({ id: 'publish', label: 'Publish', icon: 'campaign', tone: 'accent' });
+    }
+    if (this.shouldShowActivityPrimaryAction(row)) {
+      actions.push({
+        id: 'primary',
+        label: this.activityPrimaryActionLabel(row),
+        icon: this.activityPrimaryActionIcon(row)
+      });
+    }
+    if (this.shouldShowActivityViewAction(row)) {
+      actions.push({ id: 'view', label: 'View Event', icon: 'visibility' });
+    }
+    if (this.shouldShowActivityApproveAction(row)) {
+      actions.push({ id: 'approve', label: 'Accept', icon: 'done', tone: 'accent' });
+    }
+    if (this.shouldShowActivitySecondaryAction(row)) {
+      actions.push({
+        id: 'secondary',
+        label: this.activitySecondaryActionLabel(row),
+        icon: this.activitySecondaryActionIcon(row),
+        tone: this.isExitActivityRow(row) ? 'warning' : 'destructive'
+      });
+    }
+    return actions;
+  }
+
   protected canManageActivityRow(row: AppTypes.ActivityListRow): boolean {
     return row.type !== 'chats' && row.type !== 'rates';
-  }
-
-  protected isActivityItemActionMenuOpen(row: AppTypes.ActivityListRow): boolean {
-    return this.inlineItemActionMenu?.scope === 'activity' && this.inlineItemActionMenu.id === this.activityRowIdentity(row);
-  }
-
-  protected isActivityItemActionMenuOpenUp(row: AppTypes.ActivityListRow): boolean {
-    return this.inlineItemActionMenu?.scope === 'activity'
-      && this.inlineItemActionMenu.id === this.activityRowIdentity(row)
-      && this.inlineItemActionMenu.openUp;
-  }
-
-  protected toggleActivityItemActionMenu(row: AppTypes.ActivityListRow, event: Event): void {
-    event.stopPropagation();
-    if (this.isActivityItemActionMenuOpen(row)) {
-      this.inlineItemActionMenu = null;
-    } else {
-      this.inlineItemActionMenu = {
-        scope: 'activity',
-        id: this.activityRowIdentity(row),
-        title: row.title,
-        openUp: this.shouldOpenInlineItemMenuUp(event)
-      };
-    }
   }
 
   protected shouldShowActivityPublishAction(row: AppTypes.ActivityListRow): boolean {
@@ -1710,14 +1790,37 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     return 'Reject Invitation';
   }
 
-  protected runActivityItemPrimaryAction(row: AppTypes.ActivityListRow, event: Event): void {
-    event.stopPropagation();
+  protected onActivityEventInfoCardMenuAction(row: AppTypes.ActivityListRow, action: InfoCardMenuActionEvent): void {
+    switch (action.action.id as ActivityInfoCardActionId) {
+      case 'publish':
+        this.runActivityItemPublishAction(row);
+        break;
+      case 'primary':
+        this.runActivityItemPrimaryAction(row);
+        break;
+      case 'view':
+        this.runActivityItemViewAction(row);
+        break;
+      case 'approve':
+        this.runActivityItemApproveAction(row);
+        break;
+      case 'secondary':
+        this.runActivityItemSecondaryAction(row);
+        break;
+      case 'restore':
+        this.runActivityItemRestoreAction(row);
+        break;
+    }
+  }
+
+  protected runActivityItemPrimaryAction(row: AppTypes.ActivityListRow, event?: Event): void {
+    event?.stopPropagation();
     this.inlineItemActionMenu = null;
     this.openActivityRowInEventModule(row, false);
   }
 
-  protected runActivityItemViewAction(row: AppTypes.ActivityListRow, event: Event): void {
-    event.stopPropagation();
+  protected runActivityItemViewAction(row: AppTypes.ActivityListRow, event?: Event): void {
+    event?.stopPropagation();
     this.inlineItemActionMenu = null;
     this.activitiesContext.requestActivitiesNavigation({
       type: 'eventEditor',
@@ -1726,28 +1829,28 @@ export class EventActivitiesPopupComponent implements OnDestroy {
     });
   }
 
-  protected runActivityItemApproveAction(row: AppTypes.ActivityListRow, event: Event): void {
-    event.stopPropagation();
+  protected runActivityItemApproveAction(row: AppTypes.ActivityListRow, event?: Event): void {
+    event?.stopPropagation();
     this.inlineItemActionMenu = null;
     this.openActivityRowInEventModule(row, true);
   }
 
-  protected runActivityItemRestoreAction(row: AppTypes.ActivityListRow, event: Event): void {
-    event.stopPropagation();
+  protected runActivityItemRestoreAction(row: AppTypes.ActivityListRow, event?: Event): void {
+    event?.stopPropagation();
     this.inlineItemActionMenu = null;
     this.restoreActivityRow(row);
     this.cdr.markForCheck();
   }
 
-  protected runActivityItemSecondaryAction(row: AppTypes.ActivityListRow, event: Event): void {
-    event.stopPropagation();
+  protected runActivityItemSecondaryAction(row: AppTypes.ActivityListRow, event?: Event): void {
+    event?.stopPropagation();
     this.inlineItemActionMenu = null;
     this.pendingActivityAction    = this.resolvePendingActivityAction(row);
     this.pendingActivityDeleteRow = row;
   }
 
-  protected runActivityItemPublishAction(row: AppTypes.ActivityListRow, event: Event): void {
-    event.stopPropagation();
+  protected runActivityItemPublishAction(row: AppTypes.ActivityListRow, event?: Event): void {
+    event?.stopPropagation();
     this.inlineItemActionMenu  = null;
     this.pendingActivityPublishRow = row;
   }

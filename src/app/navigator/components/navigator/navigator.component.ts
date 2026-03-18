@@ -102,8 +102,8 @@ export class NavigatorComponent {
     if (this.activitiesPopupComponentRef()) {
       return;
     }
-    const module = await import('../../../activity/components/event-activities-popup/event-activities-popup.component');
-    this.activitiesPopupComponentRef.set(module.EventActivitiesPopupComponent);
+    const module = await import('../../../activity/components/activities-popup/activities-popup.component');
+    this.activitiesPopupComponentRef.set(module.ActivitiesPopupComponent);
   }
 
   private async ensureAssetPopupLoaded(): Promise<void> {

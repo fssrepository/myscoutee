@@ -1,13 +1,220 @@
-<article class="ui-info-card" [class.ui-info-card--compact]="compact">
-  <div class="ui-info-card__media" *ngIf="imageUrl" [appLazyBgImage]="imageUrl"></div>
-  <div class="ui-info-card__content">
-    <span class="ui-info-card__icon" *ngIf="icon">
-      <mat-icon>{{ icon }}</mat-icon>
+<article
+  class="experience-item-card asset-item-card"
+  [ngClass]="rootClassList()"
+  [attr.data-group-label]="card?.groupLabel"
+  [attr.data-info-card-row-id]="card?.rowId"
+  (click)="onCardActivated($event)"
+>
+  <div class="ui-info-card__media" *ngIf="card?.imageUrl as imageUrl" [appLazyBgImage]="imageUrl">
+    <ng-container *ngIf="card?.mediaStart as mediaStart">
+      <button
+        *ngIf="isOverlayInteractive(mediaStart); else mediaStartStatic"
+        type="button"
+        class="ui-info-card__overlay-action ui-info-card__overlay-action--start"
+        [class.ui-info-card__overlay-action--avatar]="overlayVariant(mediaStart) === 'avatar'"
+        [class.ui-info-card__overlay-action--badge]="overlayVariant(mediaStart) === 'badge'"
+        [class.ui-info-card__overlay-action--toggle]="overlayVariant(mediaStart) === 'toggle'"
+        [class.ui-info-card__overlay-action--tone-default]="overlayTone(mediaStart) === 'default'"
+        [class.ui-info-card__overlay-action--tone-public]="overlayTone(mediaStart) === 'public'"
+        [class.ui-info-card__overlay-action--tone-friends]="overlayTone(mediaStart) === 'friends'"
+        [class.ui-info-card__overlay-action--tone-invitation]="overlayTone(mediaStart) === 'invitation'"
+        [class.ui-info-card__overlay-action--tone-full]="overlayTone(mediaStart) === 'full'"
+        [class.ui-info-card__overlay-action--tone-inactive]="overlayTone(mediaStart) === 'inactive'"
+        [class.ui-info-card__overlay-action--tone-selected]="overlayTone(mediaStart) === 'selected'"
+        [class.ui-info-card__overlay-action--tone-woman]="overlayTone(mediaStart) === 'woman'"
+        [class.ui-info-card__overlay-action--tone-man]="overlayTone(mediaStart) === 'man'"
+        [class.ui-info-card__overlay-action--tone-1]="overlayTone(mediaStart) === 'tone-1'"
+        [class.ui-info-card__overlay-action--tone-2]="overlayTone(mediaStart) === 'tone-2'"
+        [class.ui-info-card__overlay-action--tone-3]="overlayTone(mediaStart) === 'tone-3'"
+        [class.ui-info-card__overlay-action--tone-4]="overlayTone(mediaStart) === 'tone-4'"
+        [class.ui-info-card__overlay-action--tone-5]="overlayTone(mediaStart) === 'tone-5'"
+        [class.ui-info-card__overlay-action--tone-6]="overlayTone(mediaStart) === 'tone-6'"
+        [class.ui-info-card__overlay-action--tone-7]="overlayTone(mediaStart) === 'tone-7'"
+        [class.ui-info-card__overlay-action--tone-8]="overlayTone(mediaStart) === 'tone-8'"
+        [attr.aria-label]="mediaStart.ariaLabel || overlayLabel(mediaStart)"
+        [disabled]="mediaStart.disabled"
+        (click)="onMediaStartActivated($event)"
+      >
+        <mat-icon *ngIf="overlayIcon(mediaStart) as mediaStartIcon">{{ mediaStartIcon }}</mat-icon>
+        <span *ngIf="overlayLabel(mediaStart)">{{ overlayLabel(mediaStart) }}</span>
+      </button>
+
+      <ng-template #mediaStartStatic>
+        <span
+          class="ui-info-card__overlay-action ui-info-card__overlay-action--start"
+          [class.ui-info-card__overlay-action--avatar]="overlayVariant(mediaStart) === 'avatar'"
+          [class.ui-info-card__overlay-action--badge]="overlayVariant(mediaStart) === 'badge'"
+          [class.ui-info-card__overlay-action--toggle]="overlayVariant(mediaStart) === 'toggle'"
+          [class.ui-info-card__overlay-action--tone-default]="overlayTone(mediaStart) === 'default'"
+          [class.ui-info-card__overlay-action--tone-public]="overlayTone(mediaStart) === 'public'"
+          [class.ui-info-card__overlay-action--tone-friends]="overlayTone(mediaStart) === 'friends'"
+          [class.ui-info-card__overlay-action--tone-invitation]="overlayTone(mediaStart) === 'invitation'"
+          [class.ui-info-card__overlay-action--tone-full]="overlayTone(mediaStart) === 'full'"
+          [class.ui-info-card__overlay-action--tone-inactive]="overlayTone(mediaStart) === 'inactive'"
+          [class.ui-info-card__overlay-action--tone-selected]="overlayTone(mediaStart) === 'selected'"
+          [class.ui-info-card__overlay-action--tone-woman]="overlayTone(mediaStart) === 'woman'"
+          [class.ui-info-card__overlay-action--tone-man]="overlayTone(mediaStart) === 'man'"
+          [class.ui-info-card__overlay-action--tone-1]="overlayTone(mediaStart) === 'tone-1'"
+          [class.ui-info-card__overlay-action--tone-2]="overlayTone(mediaStart) === 'tone-2'"
+          [class.ui-info-card__overlay-action--tone-3]="overlayTone(mediaStart) === 'tone-3'"
+          [class.ui-info-card__overlay-action--tone-4]="overlayTone(mediaStart) === 'tone-4'"
+          [class.ui-info-card__overlay-action--tone-5]="overlayTone(mediaStart) === 'tone-5'"
+          [class.ui-info-card__overlay-action--tone-6]="overlayTone(mediaStart) === 'tone-6'"
+          [class.ui-info-card__overlay-action--tone-7]="overlayTone(mediaStart) === 'tone-7'"
+          [class.ui-info-card__overlay-action--tone-8]="overlayTone(mediaStart) === 'tone-8'"
+          [attr.aria-hidden]="true"
+        >
+          <mat-icon *ngIf="overlayIcon(mediaStart) as mediaStartIcon">{{ mediaStartIcon }}</mat-icon>
+          <span *ngIf="overlayLabel(mediaStart)">{{ overlayLabel(mediaStart) }}</span>
+        </span>
+      </ng-template>
+    </ng-container>
+
+    <ng-container *ngIf="card?.mediaEnd as mediaEnd">
+      <button
+        *ngIf="isOverlayInteractive(mediaEnd); else mediaEndStatic"
+        type="button"
+        class="ui-info-card__overlay-action ui-info-card__overlay-action--end asset-occupancy-badge"
+        [class.ui-info-card__overlay-action--avatar]="overlayVariant(mediaEnd) === 'avatar'"
+        [class.ui-info-card__overlay-action--badge]="overlayVariant(mediaEnd) === 'badge'"
+        [class.ui-info-card__overlay-action--toggle]="overlayVariant(mediaEnd) === 'toggle'"
+        [class.asset-occupancy-badge-full]="overlayTone(mediaEnd) === 'full'"
+        [class.ui-info-card__overlay-action--tone-default]="overlayTone(mediaEnd) === 'default'"
+        [class.ui-info-card__overlay-action--tone-public]="overlayTone(mediaEnd) === 'public'"
+        [class.ui-info-card__overlay-action--tone-friends]="overlayTone(mediaEnd) === 'friends'"
+        [class.ui-info-card__overlay-action--tone-invitation]="overlayTone(mediaEnd) === 'invitation'"
+        [class.ui-info-card__overlay-action--tone-full]="overlayTone(mediaEnd) === 'full'"
+        [class.ui-info-card__overlay-action--tone-inactive]="overlayTone(mediaEnd) === 'inactive'"
+        [class.ui-info-card__overlay-action--tone-selected]="overlayTone(mediaEnd) === 'selected'"
+        [class.ui-info-card__overlay-action--tone-woman]="overlayTone(mediaEnd) === 'woman'"
+        [class.ui-info-card__overlay-action--tone-man]="overlayTone(mediaEnd) === 'man'"
+        [class.ui-info-card__overlay-action--tone-1]="overlayTone(mediaEnd) === 'tone-1'"
+        [class.ui-info-card__overlay-action--tone-2]="overlayTone(mediaEnd) === 'tone-2'"
+        [class.ui-info-card__overlay-action--tone-3]="overlayTone(mediaEnd) === 'tone-3'"
+        [class.ui-info-card__overlay-action--tone-4]="overlayTone(mediaEnd) === 'tone-4'"
+        [class.ui-info-card__overlay-action--tone-5]="overlayTone(mediaEnd) === 'tone-5'"
+        [class.ui-info-card__overlay-action--tone-6]="overlayTone(mediaEnd) === 'tone-6'"
+        [class.ui-info-card__overlay-action--tone-7]="overlayTone(mediaEnd) === 'tone-7'"
+        [class.ui-info-card__overlay-action--tone-8]="overlayTone(mediaEnd) === 'tone-8'"
+        [attr.aria-label]="mediaEnd.ariaLabel || overlayLabel(mediaEnd)"
+        [disabled]="mediaEnd.disabled"
+        (click)="onMediaEndActivated($event)"
+      >
+        <mat-icon *ngIf="overlayIcon(mediaEnd) as mediaEndIcon">{{ mediaEndIcon }}</mat-icon>
+        <span *ngIf="overlayLabel(mediaEnd)">{{ overlayLabel(mediaEnd) }}</span>
+        <span class="ui-info-card__pending-badge card-badge asset-request-badge" *ngIf="(mediaEnd.pendingCount ?? 0) > 0">{{ mediaEnd.pendingCount }}</span>
+      </button>
+
+      <ng-template #mediaEndStatic>
+        <span
+          class="ui-info-card__overlay-action ui-info-card__overlay-action--end asset-occupancy-badge asset-occupancy-badge-static"
+          [class.ui-info-card__overlay-action--avatar]="overlayVariant(mediaEnd) === 'avatar'"
+          [class.ui-info-card__overlay-action--badge]="overlayVariant(mediaEnd) === 'badge'"
+          [class.ui-info-card__overlay-action--toggle]="overlayVariant(mediaEnd) === 'toggle'"
+          [class.asset-occupancy-badge-full]="overlayTone(mediaEnd) === 'full'"
+          [class.ui-info-card__overlay-action--tone-default]="overlayTone(mediaEnd) === 'default'"
+          [class.ui-info-card__overlay-action--tone-public]="overlayTone(mediaEnd) === 'public'"
+          [class.ui-info-card__overlay-action--tone-friends]="overlayTone(mediaEnd) === 'friends'"
+          [class.ui-info-card__overlay-action--tone-invitation]="overlayTone(mediaEnd) === 'invitation'"
+          [class.ui-info-card__overlay-action--tone-full]="overlayTone(mediaEnd) === 'full'"
+          [class.ui-info-card__overlay-action--tone-inactive]="overlayTone(mediaEnd) === 'inactive'"
+          [class.ui-info-card__overlay-action--tone-selected]="overlayTone(mediaEnd) === 'selected'"
+          [class.ui-info-card__overlay-action--tone-woman]="overlayTone(mediaEnd) === 'woman'"
+          [class.ui-info-card__overlay-action--tone-man]="overlayTone(mediaEnd) === 'man'"
+          [class.ui-info-card__overlay-action--tone-1]="overlayTone(mediaEnd) === 'tone-1'"
+          [class.ui-info-card__overlay-action--tone-2]="overlayTone(mediaEnd) === 'tone-2'"
+          [class.ui-info-card__overlay-action--tone-3]="overlayTone(mediaEnd) === 'tone-3'"
+          [class.ui-info-card__overlay-action--tone-4]="overlayTone(mediaEnd) === 'tone-4'"
+          [class.ui-info-card__overlay-action--tone-5]="overlayTone(mediaEnd) === 'tone-5'"
+          [class.ui-info-card__overlay-action--tone-6]="overlayTone(mediaEnd) === 'tone-6'"
+          [class.ui-info-card__overlay-action--tone-7]="overlayTone(mediaEnd) === 'tone-7'"
+          [class.ui-info-card__overlay-action--tone-8]="overlayTone(mediaEnd) === 'tone-8'"
+          [attr.aria-hidden]="true"
+        >
+          <mat-icon *ngIf="overlayIcon(mediaEnd) as mediaEndIcon">{{ mediaEndIcon }}</mat-icon>
+          <span *ngIf="overlayLabel(mediaEnd)">{{ overlayLabel(mediaEnd) }}</span>
+          <span class="ui-info-card__pending-badge card-badge asset-request-badge" *ngIf="(mediaEnd.pendingCount ?? 0) > 0">{{ mediaEnd.pendingCount }}</span>
+        </span>
+      </ng-template>
+    </ng-container>
+  </div>
+
+  <div
+    class="ui-info-card__head"
+    [class.ui-info-card__head--with-actions]="hasMenuActions()"
+    [class.ui-info-card__head--without-leading]="!card?.leadingIcon"
+  >
+    <span
+      class="ui-info-card__leading"
+      *ngIf="card?.leadingIcon as leadingIcon"
+      [class.ui-info-card__leading--public]="leadingIcon.tone === 'public'"
+      [class.ui-info-card__leading--friends]="leadingIcon.tone === 'friends'"
+      [class.ui-info-card__leading--invitation]="leadingIcon.tone === 'invitation'"
+    >
+      <mat-icon>{{ leadingIcon.icon }}</mat-icon>
     </span>
+
     <div class="ui-info-card__meta">
-      <p class="ui-info-card__title">{{ title }}</p>
-      <p class="ui-info-card__row" *ngFor="let row of metaRows">{{ row }}</p>
+      <h4 class="ui-info-card__title">{{ card?.title }}</h4>
+      <p class="ui-info-card__meta-row" *ngFor="let row of visibleMetaRows()">{{ row }}</p>
+    </div>
+
+    <div class="ui-info-card__actions" *ngIf="hasMenuActions()">
+      <button
+        type="button"
+        class="ui-info-card__menu-trigger experience-action-btn experience-action-menu-trigger"
+        [class.is-open]="menuOpen"
+        [attr.aria-label]="menuOpen ? 'Close card actions' : 'Open card actions'"
+        (click)="toggleMenu($event)"
+      >
+        <mat-icon>{{ menuOpen ? 'close' : 'more_vert' }}</mat-icon>
+      </button>
+
+      <button
+        type="button"
+        class="ui-info-card__menu-backdrop"
+        *ngIf="menuOpen"
+        (click)="closeMenu($event)"
+        aria-label="Close card actions"
+      ></button>
+
+      <div
+        class="ui-info-card__menu item-action-menu"
+        *ngIf="menuOpen"
+        [class.is-open]="menuOpen"
+        [class.ui-info-card__menu--mobile]="isMobileView"
+        [class.ui-info-card__menu--desktop]="!isMobileView"
+        [class.item-action-menu-mobile]="isMobileView"
+        [class.item-action-menu-desktop]="!isMobileView"
+        [class.ui-info-card__menu--open-up]="menuOpenUp"
+        [class.is-open-up]="menuOpenUp"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="ui-info-card__menu-title item-action-menu-title">{{ card?.title }}</div>
+        <button
+          type="button"
+          class="ui-info-card__menu-action item-action-menu-btn"
+          *ngFor="let action of card?.menuActions"
+          [ngClass]="menuActionClass(action)"
+          [class.item-action-menu-btn-publish]="action.tone === 'accent'"
+          [class.item-action-menu-btn-warning]="action.tone === 'warning'"
+          [class.item-action-menu-btn-destructive]="action.tone === 'destructive'"
+          (click)="onMenuActionSelected(action, $event)"
+        >
+          <mat-icon>{{ action.icon }}</mat-icon>
+          <span>{{ action.label }}</span>
+        </button>
+      </div>
     </div>
   </div>
-  <p class="ui-info-card__description" *ngIf="description">{{ description }}</p>
+
+  <p
+    class="ui-info-card__description"
+    *ngIf="card?.description"
+    [style.--ui-info-card-description-lines]="descriptionLines()"
+  >
+    {{ card?.description }}
+  </p>
+
+  <p class="ui-info-card__detail-row" *ngFor="let row of card?.detailRows ?? []">{{ row }}</p>
 </article>
