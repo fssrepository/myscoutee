@@ -186,7 +186,7 @@
         <button
           type="button"
           class="ui-info-card__menu-action item-action-menu-btn"
-          *ngFor="let action of card?.menuActions"
+          *ngFor="let action of card?.menuActions; trackBy: trackByActionId"
           [ngClass]="menuActionClass(action)"
           [class.item-action-menu-btn-publish]="action.tone === 'accent'"
           [class.item-action-menu-btn-warning]="action.tone === 'warning'"

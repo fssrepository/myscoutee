@@ -199,6 +199,10 @@ export class InfoCardComponent {
     return (this.card?.menuActions?.length ?? 0) > 0;
   }
 
+  protected trackByActionId(index: number, action: InfoCardMenuAction): string | number {
+    return action.id;
+  }
+
   protected menuActionClass(action: InfoCardMenuAction): string {
     return `ui-info-card__menu-action--${action.tone ?? 'default'}`;
   }
