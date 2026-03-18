@@ -186,6 +186,35 @@ export type RateFilterEntry =
   | { kind: 'group'; label: string }
   | { kind: 'item'; key: RateFilterKey; label: string };
 
+export interface ActivityRateDisplayUser {
+  id: string;
+  name: string;
+  age: number;
+  city: string;
+  gender: 'woman' | 'man';
+}
+
+export interface ActivityRateDisplaySlide {
+  imageUrl: string;
+  primaryLine?: string;
+  secondaryLine?: string;
+  placeholderLabel?: string;
+}
+
+export interface ActivityRateDisplaySlot {
+  key: 'woman' | 'man';
+  label: string;
+  tone?: 'woman' | 'man';
+  slides: ActivityRateDisplaySlide[];
+}
+
+export interface ActivityRateDisplay {
+  primaryUser: ActivityRateDisplayUser | null;
+  imageUrls: string[];
+  happenedOnLabel: string;
+  pairSlots: ActivityRateDisplaySlot[];
+}
+
 export interface ActivityListRow {
   id: string;
   type: ActivitiesPrimaryFilter;
@@ -194,9 +223,11 @@ export interface ActivityListRow {
   detail: string;
   dateIso: string;
   distanceKm: number;
+  distanceMetersExact?: number;
   unread: number;
   metricScore: number;
   isAdmin?: boolean;
+  rateDisplay?: ActivityRateDisplay | null;
   source: ChatMenuItem | InvitationMenuItem | EventMenuItem | HostingMenuItem | RateMenuItem;
 }
 

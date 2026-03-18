@@ -25,6 +25,7 @@ export type SmartListConfigValue<TValue, TFilters extends SmartListFilters = Sma
 export interface ListQuery<TFilters extends SmartListFilters = SmartListFilters> {
   page: number;
   pageSize: number;
+  cursor?: string | null;
   sort?: string;
   direction?: ListDirection;
   filters?: TFilters;
@@ -38,6 +39,7 @@ export interface ListQuery<TFilters extends SmartListFilters = SmartListFilters>
 export interface PageResult<T> {
   items: T[];
   total: number;
+  nextCursor?: string | null;
 }
 
 export type SmartListLoadPage<T, TFilters extends SmartListFilters = SmartListFilters>

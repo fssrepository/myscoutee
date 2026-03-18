@@ -1,5 +1,10 @@
 import { Injectable, signal } from '@angular/core';
 
+import type {
+  ActivityRateRecordQuery,
+  ActivityRateRecordQueryResult,
+  UserRateRecord
+} from '../interfaces/game.interface';
 import { ASSETS_TABLE_NAME } from '../../demo/models/assets.model';
 import { ACTIVITY_MEMBERS_TABLE_NAME } from '../../demo/models/activity-members.model';
 import { CHATS_TABLE_NAME } from '../../demo/models/chats.model';
@@ -12,6 +17,28 @@ import {
   USER_RATES_OUTBOX_TABLE_NAME
 } from '../../demo/models/users.model';
 
+interface IndexedUserRateRecord extends UserRateRecord {
+  ownerUserIdNormalized: string;
+  sourceNormalized: UserRateRecord['source'];
+  modeNormalized: UserRateRecord['mode'];
+  displayDirectionNormalized: NonNullable<UserRateRecord['displayDirection']> | '';
+  happenedAtMs: number;
+  distanceMetersNormalized: number;
+  relevanceScore: number;
+}
+
+interface NormalizedActivityRateRecordQuery {
+  ownerUserId: string;
+  mode: 'single' | 'pair';
+  displayDirection: 'given' | 'received' | 'mutual' | 'met';
+  sort: 'happenedAt' | 'distance' | 'relevance';
+  sortDirection: 'asc' | 'desc';
+  offset: number;
+  limit: number;
+  rangeStartMs: number | null;
+  rangeEndMs: number | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -20,8 +47,12 @@ export class AppMemoryDb {
   private static readonly LEGACY_STORAGE_KEYS = ['myscoutee.demo.db.v1'];
   private static readonly INDEXED_DB_NAME = 'myscoutee-memory-db';
   private static readonly LEGACY_INDEXED_DB_NAMES = ['myscoutee-demo-db'];
-  private static readonly INDEXED_DB_VERSION = 1;
+  private static readonly INDEXED_DB_VERSION = 3;
   private static readonly INDEXED_DB_STORE = 'tables';
+  private static readonly USER_RATES_RECORDS_STORE = 'userRateRecords';
+  private static readonly USER_RATES_ACTIVITY_DATE_INDEX = 'activityRatesByDate';
+  private static readonly USER_RATES_ACTIVITY_DISTANCE_INDEX = 'activityRatesByDistance';
+  private static readonly USER_RATES_ACTIVITY_RELEVANCE_INDEX = 'activityRatesByRelevance';
   private static readonly LEGACY_INDEXED_DB_STATE_KEY = 'current';
   private readonly _tables = signal<DemoMemorySchema>(this.loadInitialState());
 
@@ -42,6 +73,31 @@ export class AppMemoryDb {
     void this.persistToIndexedDb(next);
   }
 
+  async queryActivityRateRecords(query: ActivityRateRecordQuery): Promise<ActivityRateRecordQueryResult> {
+    const normalizedQuery = this.normalizeActivityRateRecordQuery(query);
+    if (!normalizedQuery) {
+      return {
+        records: [],
+        total: 0
+      };
+    }
+
+    const db = await this.openIndexedDb(AppMemoryDb.INDEXED_DB_NAME, true);
+    if (!db || !db.objectStoreNames.contains(AppMemoryDb.USER_RATES_RECORDS_STORE)) {
+      return this.queryActivityRateRecordsFromMemory(normalizedQuery);
+    }
+
+    try {
+      const result = await this.queryActivityRateRecordsFromIndexedDb(db, normalizedQuery);
+      if (result.total > 0 || !this.hasActivityRateRecordsInMemory(normalizedQuery)) {
+        return result;
+      }
+      return this.queryActivityRateRecordsFromMemory(normalizedQuery);
+    } catch {
+      return this.queryActivityRateRecordsFromMemory(normalizedQuery);
+    }
+  }
+
   private createEmptyState(): DemoMemorySchema {
     return {
       [ASSETS_TABLE_NAME]: {
@@ -60,7 +116,8 @@ export class AppMemoryDb {
       },
       [USER_RATES_TABLE_NAME]: {
         byId: {},
-        ids: []
+        ids: [],
+        idsByRelevantUserId: {}
       },
       [USER_RATES_OUTBOX_TABLE_NAME]: {
         byId: {},
@@ -122,6 +179,7 @@ export class AppMemoryDb {
   private async hydrateFromIndexedDb(): Promise<void> {
     const snapshot = await this.readFromIndexedDb();
     if (!snapshot) {
+      void this.persistToIndexedDb(this._tables());
       return;
     }
     const normalized = this.normalizeState(snapshot);
@@ -220,19 +278,34 @@ export class AppMemoryDb {
       return;
     }
     await new Promise<void>(resolve => {
-      const tx = db.transaction(AppMemoryDb.INDEXED_DB_STORE, 'readwrite');
-      const store = tx.objectStore(AppMemoryDb.INDEXED_DB_STORE);
-      store.put(state[USERS_TABLE_NAME], USERS_TABLE_NAME);
-      store.put(state[ASSETS_TABLE_NAME], ASSETS_TABLE_NAME);
-      store.put(state[ACTIVITY_MEMBERS_TABLE_NAME], ACTIVITY_MEMBERS_TABLE_NAME);
-      store.put(state[USER_RATES_TABLE_NAME], USER_RATES_TABLE_NAME);
-      store.put(state[USER_RATES_OUTBOX_TABLE_NAME], USER_RATES_OUTBOX_TABLE_NAME);
-      store.put(state[USER_FILTER_PREFERENCES_TABLE_NAME], USER_FILTER_PREFERENCES_TABLE_NAME);
-      store.put(state[CHATS_TABLE_NAME], CHATS_TABLE_NAME);
-      store.put(state[EVENTS_TABLE_NAME], EVENTS_TABLE_NAME);
-      store.delete('demoEvents');
-      store.delete('rates');
-      store.delete(AppMemoryDb.LEGACY_INDEXED_DB_STATE_KEY);
+      const tx = db.transaction(
+        [AppMemoryDb.INDEXED_DB_STORE, AppMemoryDb.USER_RATES_RECORDS_STORE],
+        'readwrite'
+      );
+      const tablesStore = tx.objectStore(AppMemoryDb.INDEXED_DB_STORE);
+      tablesStore.put(state[USERS_TABLE_NAME], USERS_TABLE_NAME);
+      tablesStore.put(state[ASSETS_TABLE_NAME], ASSETS_TABLE_NAME);
+      tablesStore.put(state[ACTIVITY_MEMBERS_TABLE_NAME], ACTIVITY_MEMBERS_TABLE_NAME);
+      tablesStore.put(state[USER_RATES_TABLE_NAME], USER_RATES_TABLE_NAME);
+      tablesStore.put(state[USER_RATES_OUTBOX_TABLE_NAME], USER_RATES_OUTBOX_TABLE_NAME);
+      tablesStore.put(state[USER_FILTER_PREFERENCES_TABLE_NAME], USER_FILTER_PREFERENCES_TABLE_NAME);
+      tablesStore.put(state[CHATS_TABLE_NAME], CHATS_TABLE_NAME);
+      tablesStore.put(state[EVENTS_TABLE_NAME], EVENTS_TABLE_NAME);
+      tablesStore.delete('demoEvents');
+      tablesStore.delete('rates');
+      tablesStore.delete(AppMemoryDb.LEGACY_INDEXED_DB_STATE_KEY);
+
+      const userRatesStore = tx.objectStore(AppMemoryDb.USER_RATES_RECORDS_STORE);
+      userRatesStore.clear();
+      const ratesTable = state[USER_RATES_TABLE_NAME];
+      for (const id of ratesTable.ids) {
+        const record = ratesTable.byId[id];
+        if (!record) {
+          continue;
+        }
+        userRatesStore.put(this.toIndexedUserRateRecord(record));
+      }
+
       tx.oncomplete = () => resolve();
       tx.onerror = () => resolve();
       tx.onabort = () => resolve();
@@ -266,6 +339,7 @@ export class AppMemoryDb {
         if (!db.objectStoreNames.contains(AppMemoryDb.INDEXED_DB_STORE)) {
           db.createObjectStore(AppMemoryDb.INDEXED_DB_STORE);
         }
+        this.ensureUserRatesRecordsStore(db, request.transaction);
       };
       request.onsuccess = () => {
         if (rejectedMissingDb) {
@@ -278,6 +352,280 @@ export class AppMemoryDb {
       request.onerror = () => resolve(null);
       request.onblocked = () => resolve(null);
     });
+  }
+
+  private ensureUserRatesRecordsStore(db: IDBDatabase, upgradeTransaction: IDBTransaction | null): void {
+    const store = db.objectStoreNames.contains(AppMemoryDb.USER_RATES_RECORDS_STORE)
+      ? upgradeTransaction?.objectStore(AppMemoryDb.USER_RATES_RECORDS_STORE)
+      : db.createObjectStore(AppMemoryDb.USER_RATES_RECORDS_STORE, { keyPath: 'id' });
+
+    if (!store) {
+      return;
+    }
+
+    if (!store.indexNames.contains(AppMemoryDb.USER_RATES_ACTIVITY_DATE_INDEX)) {
+      store.createIndex(
+        AppMemoryDb.USER_RATES_ACTIVITY_DATE_INDEX,
+        ['ownerUserIdNormalized', 'sourceNormalized', 'modeNormalized', 'displayDirectionNormalized', 'happenedAtMs']
+      );
+    }
+
+    if (!store.indexNames.contains(AppMemoryDb.USER_RATES_ACTIVITY_DISTANCE_INDEX)) {
+      store.createIndex(
+        AppMemoryDb.USER_RATES_ACTIVITY_DISTANCE_INDEX,
+        ['ownerUserIdNormalized', 'sourceNormalized', 'modeNormalized', 'displayDirectionNormalized', 'distanceMetersNormalized', 'happenedAtMs']
+      );
+    }
+
+    if (!store.indexNames.contains(AppMemoryDb.USER_RATES_ACTIVITY_RELEVANCE_INDEX)) {
+      store.createIndex(
+        AppMemoryDb.USER_RATES_ACTIVITY_RELEVANCE_INDEX,
+        ['ownerUserIdNormalized', 'sourceNormalized', 'modeNormalized', 'displayDirectionNormalized', 'relevanceScore', 'happenedAtMs']
+      );
+    }
+  }
+
+  private queryActivityRateRecordsFromIndexedDb(
+    db: IDBDatabase,
+    query: NormalizedActivityRateRecordQuery
+  ): Promise<ActivityRateRecordQueryResult> {
+    return new Promise<ActivityRateRecordQueryResult>(resolve => {
+      const tx = db.transaction(AppMemoryDb.USER_RATES_RECORDS_STORE, 'readonly');
+      const store = tx.objectStore(AppMemoryDb.USER_RATES_RECORDS_STORE);
+      const index = store.index(this.activityRateIndexName(query.sort));
+      const request = index.openCursor(
+        this.activityRateIndexRange(query),
+        this.activityRateCursorDirection(query)
+      );
+      const records: UserRateRecord[] = [];
+      let total = 0;
+
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) {
+          resolve({
+            records,
+            total
+          });
+          return;
+        }
+
+        const indexedRecord = cursor.value as IndexedUserRateRecord | undefined;
+        const record = indexedRecord ? this.toUserRateRecord(indexedRecord) : null;
+        if (record && this.matchesActivityRateRange(record, query.rangeStartMs, query.rangeEndMs)) {
+          if (total >= query.offset && records.length < query.limit) {
+            records.push(record);
+          }
+          total += 1;
+        }
+
+        cursor.continue();
+      };
+
+      request.onerror = () => {
+        resolve(this.queryActivityRateRecordsFromMemory(query));
+      };
+      tx.onerror = () => {
+        resolve(this.queryActivityRateRecordsFromMemory(query));
+      };
+      tx.onabort = () => {
+        resolve(this.queryActivityRateRecordsFromMemory(query));
+      };
+    });
+  }
+
+  private queryActivityRateRecordsFromMemory(query: NormalizedActivityRateRecordQuery): ActivityRateRecordQueryResult {
+    const ratesTable = this._tables()[USER_RATES_TABLE_NAME];
+    const filtered = ratesTable.ids
+      .map(id => ratesTable.byId[id])
+      .filter((record): record is UserRateRecord => Boolean(record))
+      .filter(record => record.source === 'activity-rate')
+      .filter(record => (record.ownerUserId?.trim() ?? '') === query.ownerUserId)
+      .filter(record => record.mode === query.mode)
+      .filter(record => (record.displayDirection ?? '') === query.displayDirection)
+      .filter(record => this.matchesActivityRateRange(record, query.rangeStartMs, query.rangeEndMs))
+      .sort((left, right) => this.compareActivityRates(left, right, query));
+
+    return {
+      records: filtered.slice(query.offset, query.offset + query.limit).map(record => ({ ...record })),
+      total: filtered.length
+    };
+  }
+
+  private hasActivityRateRecordsInMemory(query: NormalizedActivityRateRecordQuery): boolean {
+    const ratesTable = this._tables()[USER_RATES_TABLE_NAME];
+    return ratesTable.ids.some(id => {
+      const record = ratesTable.byId[id];
+      return Boolean(record)
+        && record.source === 'activity-rate'
+        && (record.ownerUserId?.trim() ?? '') === query.ownerUserId
+        && record.mode === query.mode
+        && (record.displayDirection ?? '') === query.displayDirection;
+    });
+  }
+
+  private normalizeActivityRateRecordQuery(query: ActivityRateRecordQuery): NormalizedActivityRateRecordQuery | null {
+    const ownerUserId = query.ownerUserId.trim();
+    if (!ownerUserId) {
+      return null;
+    }
+
+    const limit = Math.max(1, Math.trunc(Number(query.limit) || 50));
+    const offset = Math.max(0, Math.trunc(Number(query.offset) || 0));
+    const sort = query.sort;
+    const sortDirection = query.sortDirection === 'asc' || query.sortDirection === 'desc'
+      ? query.sortDirection
+      : (sort === 'distance' ? 'asc' : 'desc');
+    const rangeStartMs = this.parseSortableTimestamp(query.rangeStartIso);
+    const rangeEndMs = this.parseSortableTimestamp(query.rangeEndIso);
+
+    if (
+      rangeStartMs !== null
+      && rangeEndMs !== null
+      && rangeStartMs > rangeEndMs
+    ) {
+      return null;
+    }
+
+    return {
+      ownerUserId,
+      mode: query.mode,
+      displayDirection: query.displayDirection,
+      sort,
+      sortDirection,
+      offset,
+      limit,
+      rangeStartMs,
+      rangeEndMs
+    };
+  }
+
+  private toIndexedUserRateRecord(record: UserRateRecord): IndexedUserRateRecord {
+    return {
+      ...record,
+      ownerUserIdNormalized: record.ownerUserId?.trim() ?? '',
+      sourceNormalized: record.source,
+      modeNormalized: record.mode,
+      displayDirectionNormalized: record.displayDirection ?? '',
+      happenedAtMs: this.userRateSortValue(record),
+      distanceMetersNormalized: this.userRateDistanceValue(record),
+      relevanceScore: this.userRateRelevanceScore(record)
+    };
+  }
+
+  private toUserRateRecord(record: IndexedUserRateRecord): UserRateRecord {
+    const {
+      ownerUserIdNormalized: _ownerUserIdNormalized,
+      sourceNormalized: _sourceNormalized,
+      modeNormalized: _modeNormalized,
+      displayDirectionNormalized: _displayDirectionNormalized,
+      happenedAtMs: _happenedAtMs,
+      distanceMetersNormalized: _distanceMetersNormalized,
+      relevanceScore: _relevanceScore,
+      ...baseRecord
+    } = record;
+    return {
+      ...baseRecord
+    };
+  }
+
+  private activityRateIndexName(sort: NormalizedActivityRateRecordQuery['sort']): string {
+    if (sort === 'distance') {
+      return AppMemoryDb.USER_RATES_ACTIVITY_DISTANCE_INDEX;
+    }
+    if (sort === 'relevance') {
+      return AppMemoryDb.USER_RATES_ACTIVITY_RELEVANCE_INDEX;
+    }
+    return AppMemoryDb.USER_RATES_ACTIVITY_DATE_INDEX;
+  }
+
+  private activityRateIndexRange(query: NormalizedActivityRateRecordQuery): IDBKeyRange {
+    if (query.sort === 'distance') {
+      return IDBKeyRange.bound(
+        [query.ownerUserId, 'activity-rate', query.mode, query.displayDirection, 0, 0],
+        [query.ownerUserId, 'activity-rate', query.mode, query.displayDirection, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER]
+      );
+    }
+
+    if (query.sort === 'relevance') {
+      return IDBKeyRange.bound(
+        [query.ownerUserId, 'activity-rate', query.mode, query.displayDirection, 0, 0],
+        [query.ownerUserId, 'activity-rate', query.mode, query.displayDirection, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER]
+      );
+    }
+
+    return IDBKeyRange.bound(
+      [
+        query.ownerUserId,
+        'activity-rate',
+        query.mode,
+        query.displayDirection,
+        query.rangeStartMs ?? 0
+      ],
+      [
+        query.ownerUserId,
+        'activity-rate',
+        query.mode,
+        query.displayDirection,
+        query.rangeEndMs ?? Number.MAX_SAFE_INTEGER
+      ]
+    );
+  }
+
+  private activityRateCursorDirection(query: NormalizedActivityRateRecordQuery): IDBCursorDirection {
+    return query.sortDirection === 'asc' ? 'next' : 'prev';
+  }
+
+  private matchesActivityRateRange(
+    record: UserRateRecord,
+    rangeStartMs: number | null,
+    rangeEndMs: number | null
+  ): boolean {
+    if (rangeStartMs === null && rangeEndMs === null) {
+      return true;
+    }
+    const happenedAtMs = this.userRateSortValue(record);
+    if (rangeStartMs !== null && happenedAtMs < rangeStartMs) {
+      return false;
+    }
+    if (rangeEndMs !== null && happenedAtMs > rangeEndMs) {
+      return false;
+    }
+    return true;
+  }
+
+  private compareActivityRates(
+    left: UserRateRecord,
+    right: UserRateRecord,
+    query: NormalizedActivityRateRecordQuery
+  ): number {
+    if (query.sort === 'distance') {
+      const distanceDelta = this.userRateDistanceValue(left) - this.userRateDistanceValue(right);
+      if (distanceDelta !== 0) {
+        return distanceDelta;
+      }
+      return this.userRateSortValue(right) - this.userRateSortValue(left);
+    }
+
+    if (query.sort === 'relevance') {
+      const relevanceDelta = this.userRateRelevanceScore(right) - this.userRateRelevanceScore(left);
+      if (relevanceDelta !== 0) {
+        return relevanceDelta;
+      }
+      return this.userRateSortValue(right) - this.userRateSortValue(left);
+    }
+
+    return query.sortDirection === 'asc'
+      ? this.userRateSortValue(left) - this.userRateSortValue(right)
+      : this.userRateSortValue(right) - this.userRateSortValue(left);
+  }
+
+  private parseSortableTimestamp(value: string | undefined): number | null {
+    if (!value) {
+      return null;
+    }
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : null;
   }
 
   private normalizeState(value: unknown, fallback = this.createEmptyState()): DemoMemorySchema {
@@ -319,7 +667,8 @@ export class AppMemoryDb {
           : { ...fallback[USER_RATES_TABLE_NAME].byId },
         ids: Array.isArray(ratesSource?.ids)
           ? ratesSource.ids.map(id => String(id))
-          : [...fallback[USER_RATES_TABLE_NAME].ids]
+          : [...fallback[USER_RATES_TABLE_NAME].ids],
+        idsByRelevantUserId: this.normalizeUserRatesIdsByRelevantUserId(ratesSource)
       },
       [USER_RATES_OUTBOX_TABLE_NAME]: {
         byId: outboxSource?.byId && typeof outboxSource.byId === 'object'
@@ -452,5 +801,87 @@ export class AppMemoryDb {
     }
 
     return next;
+  }
+
+  private normalizeUserRatesIdsByRelevantUserId(
+    source: Partial<DemoMemorySchema[typeof USER_RATES_TABLE_NAME]> | undefined
+  ): Record<string, string[]> {
+    const normalizedById = source?.byId && typeof source.byId === 'object'
+      ? { ...source.byId }
+      : {};
+    const normalizedIds = this.normalizeIdList(source?.ids, []);
+    const next: Record<string, string[]> = {};
+
+    const rawIndex = source?.idsByRelevantUserId;
+    if (rawIndex && typeof rawIndex === 'object') {
+      for (const [userId, ids] of Object.entries(rawIndex)) {
+        if (!Array.isArray(ids) || !userId.trim()) {
+          continue;
+        }
+        next[userId] = ids
+          .map(id => String(id))
+          .filter(id => Boolean(normalizedById[id]));
+      }
+    }
+
+    for (const id of normalizedIds) {
+      const record = normalizedById[id];
+      if (!record) {
+        continue;
+      }
+      const relevantUserIds = new Set(
+        [record.ownerUserId, record.fromUserId, record.toUserId]
+          .map(value => typeof value === 'string' ? value.trim() : '')
+          .filter(Boolean)
+      );
+
+      for (const userId of relevantUserIds) {
+        const bucket = next[userId] ?? [];
+        if (!bucket.includes(id)) {
+          bucket.push(id);
+        }
+        next[userId] = bucket;
+      }
+    }
+
+    for (const ids of Object.values(next)) {
+      ids.sort((leftId, rightId) => {
+        const left = normalizedById[leftId];
+        const right = normalizedById[rightId];
+        return this.userRateSortValue(right) - this.userRateSortValue(left);
+      });
+    }
+
+    return next;
+  }
+
+  private userRateSortValue(record: { happenedAtIso?: string; updatedAtIso?: string; createdAtIso?: string } | null | undefined): number {
+    const value = record?.happenedAtIso ?? record?.updatedAtIso ?? record?.createdAtIso ?? '';
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private userRateDistanceValue(record: { distanceKm?: number; distanceMetersExact?: number } | null | undefined): number {
+    if (Number.isFinite(record?.distanceMetersExact)) {
+      return Math.max(0, Math.trunc(Number(record?.distanceMetersExact)));
+    }
+    return Number.isFinite(record?.distanceKm)
+      ? Math.max(0, Math.round(Number(record?.distanceKm) * 1000))
+      : 0;
+  }
+
+  private userRateRelevanceScore(record: UserRateRecord | null | undefined): number {
+    const scoreGiven = Number.isFinite(record?.scoreGiven)
+      ? Math.max(0, Math.round(Number(record?.scoreGiven)))
+      : (Number.isFinite(record?.rate) ? Math.max(0, Math.round(Number(record?.rate))) : 0);
+    const scoreReceived = Number.isFinite(record?.scoreReceived)
+      ? Math.max(0, Math.round(Number(record?.scoreReceived)))
+      : 0;
+
+    if (record?.displayDirection === 'mutual') {
+      return scoreGiven + scoreReceived;
+    }
+
+    return scoreGiven > 0 ? scoreGiven : 5;
   }
 }

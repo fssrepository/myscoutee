@@ -110,6 +110,7 @@ export interface RateMenuItem {
   eventName: string;
   happenedAt: string;
   distanceKm: number;
+  distanceMetersExact?: number;
 }
 
 export interface ProfileRow {

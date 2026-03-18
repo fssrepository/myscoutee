@@ -5,6 +5,15 @@ export type SubEventAssetAssignmentIds = Partial<Record<AppTypes.AssetType, stri
 export type SubEventAssetCardsByType = Partial<Record<AppTypes.AssetType, AppTypes.AssetCard[]>>;
 export type ActivityMemberOwnerType = 'event' | 'subEvent' | 'group';
 
+export interface ActivitiesFeedFilters {
+  primaryFilter?: AppTypes.ActivitiesPrimaryFilter;
+  eventScopeFilter?: AppTypes.ActivitiesEventScope;
+  secondaryFilter?: AppTypes.ActivitiesSecondaryFilter;
+  chatContextFilter?: AppTypes.ActivitiesChatContextFilter;
+  hostingPublicationFilter?: AppTypes.HostingPublicationFilter;
+  rateFilter?: AppTypes.RateFilterKey;
+}
+
 export interface ActivityMemberOwnerRef {
   ownerType: ActivityMemberOwnerType;
   ownerId: string;
@@ -118,6 +127,9 @@ export interface ActivitiesPageRequest {
   view: AppTypes.ActivitiesView;
   page: number;
   pageSize: number;
+  sort?: string;
+  direction?: 'asc' | 'desc';
+  groupBy?: string;
   anchorDate?: string;
   rangeStart?: string;
   rangeEnd?: string;

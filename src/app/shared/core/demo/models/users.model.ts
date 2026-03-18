@@ -18,6 +18,7 @@ export interface DemoUsersRecordCollection {
 export interface UserRatesRecordCollection {
   byId: Record<string, UserRateRecord>;
   ids: string[];
+  idsByRelevantUserId: Record<string, string[]>;
 }
 
 export interface UserRatesOutboxRecordCollection {

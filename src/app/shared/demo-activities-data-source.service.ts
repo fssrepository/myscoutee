@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from './app-types';
 import { AppDemoGenerators } from './app-demo-generators';
@@ -6,6 +6,8 @@ import { AppUtils } from './app-utils';
 import type { ActivitiesEventSyncPayload, ActivitiesPageRequest, ActivitiesPageResult } from './activities-models';
 import type { ActivitiesDataSource } from './activities-data-source';
 import { DEMO_USERS, type ChatMenuItem, type DemoUser } from './demo-data';
+import { buildActivityRateRows, SessionService } from './core';
+import { DemoRatesService } from './core/demo';
 
 @Injectable({
   providedIn: 'root'
@@ -13,6 +15,8 @@ import { DEMO_USERS, type ChatMenuItem, type DemoUser } from './demo-data';
 export class DemoActivitiesDataSourceService implements ActivitiesDataSource {
   readonly mode = 'demo' as const;
 
+  private readonly ratesService = inject(DemoRatesService);
+  private readonly sessionService = inject(SessionService);
   private readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
 
   async syncEvent(_payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
@@ -99,9 +103,26 @@ export class DemoActivitiesDataSourceService implements ActivitiesDataSource {
     return timeline.sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
   }
 
-  async loadActivitiesPage(_request: ActivitiesPageRequest): Promise<ActivitiesPageResult | null> {
-    // Demo mode keeps pagination local in the popup component.
-    return null;
+  async loadActivitiesPage(request: ActivitiesPageRequest): Promise<ActivitiesPageResult | null> {
+    if (request.primaryFilter !== 'rates') {
+      return null;
+    }
+
+    const activeUserId = this.resolveActiveUserId();
+    const page = await this.ratesService.queryActivitiesRatePage(activeUserId, request);
+    const rows = buildActivityRateRows(page.items, {
+      activeUserId,
+      users: this.users,
+      filter: request.rateFilter,
+      secondaryFilter: request.secondaryFilter,
+      view: request.view,
+      preserveOrder: true
+    });
+
+    return {
+      rows,
+      total: page.total
+    };
   }
 
   private resolveChatMembers(chat: ChatMenuItem, fallback: DemoUser): DemoUser[] {
@@ -132,5 +153,16 @@ export class DemoActivitiesDataSourceService implements ActivitiesDataSource {
     const eventDay = 10 + (AppDemoGenerators.hashText(eventId) % 12);
     const anchor = new Date(Date.UTC(2026, 1, eventDay, 12, 0, 0));
     return AppUtils.toIsoDateTime(anchor);
+  }
+
+  private resolveActiveUserId(): string {
+    const session = this.sessionService.currentSession();
+    if (session?.kind === 'demo' && session.userId.trim().length > 0) {
+      return session.userId.trim();
+    }
+    if (session?.kind === 'firebase' && session.profile.id.trim().length > 0) {
+      return session.profile.id.trim();
+    }
+    return DEMO_USERS[0]?.id ?? 'u1';
   }
 }

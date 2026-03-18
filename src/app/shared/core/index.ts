@@ -20,6 +20,7 @@ export { EventsService } from './base/services/events.service';
 export { ActivityMembersService } from './base/services/activity-members.service';
 export { AssetsService } from './base/services/assets.service';
 export { ActivityInviteCandidatesService } from './base/services/activity-invite-candidates.service';
+export { RatesService } from './base/services/rates.service';
 export {
   USER_FEEDBACK_SUBMIT_CONTEXT_KEY,
   USER_REPORT_USER_SUBMIT_CONTEXT_KEY,
@@ -31,4 +32,6 @@ export {
   SessionService,
   type AppSession
 } from './base/services/session.service';
+export * from './base/converters';
+export * from './base/formatters';
 export * from './base/interfaces';

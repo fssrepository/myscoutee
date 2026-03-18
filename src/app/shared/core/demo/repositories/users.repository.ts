@@ -127,6 +127,7 @@ export class DemoUsersRepository {
       },
       [USERS_TABLE_NAME]: usersTable,
       [USER_RATES_TABLE_NAME]: {
+        ...state[USER_RATES_TABLE_NAME],
         byId: nextRatesById,
         ids: nextRateIds
       },

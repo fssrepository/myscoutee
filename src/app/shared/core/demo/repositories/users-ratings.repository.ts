@@ -4,7 +4,11 @@ import { AppDemoGenerators } from '../../../app-demo-generators';
 import { AppUtils } from '../../../app-utils';
 import { DemoUserRatesBuilder } from '../builders';
 import type { RateMenuItem } from '../../../demo-data';
-import type { UserRateRecord, UserRatesSyncResult } from '../../base/interfaces/game.interface';
+import type {
+  ActivityRateRecordQuery,
+  UserRateRecord,
+  UserRatesSyncResult
+} from '../../base/interfaces/game.interface';
 import { HttpUsersRatingsRepository } from '../../http/repositories/users-ratings.repository';
 import {
   USER_RATES_OUTBOX_TABLE_NAME,
@@ -48,6 +52,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       return {
         ...state,
         [USER_RATES_TABLE_NAME]: {
+          ...current,
           byId,
           ids
         }
@@ -100,6 +105,18 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     return this.buildRateItemsByUserId(userId);
   }
 
+  async queryActivityRateItemsPage(query: ActivityRateRecordQuery): Promise<{ items: RateMenuItem[]; total: number }> {
+    const result = await this.memoryDb.queryActivityRateRecords(query);
+    const items = result.records
+      .map(record => DemoUserRatesBuilder.toRateMenuItem(record))
+      .filter((item): item is RateMenuItem => Boolean(item));
+
+    return {
+      items,
+      total: result.total
+    };
+  }
+
   private buildRateItemsByUserId(userId: string): RateMenuItem[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -108,7 +125,8 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     const ratesTable = this.memoryDb.read()[USER_RATES_TABLE_NAME];
     const outboxTable = this.memoryDb.read()[USER_RATES_OUTBOX_TABLE_NAME];
     const recordsById = new Map<string, UserRateRecord>();
-    for (const id of ratesTable.ids) {
+    const indexedIds = ratesTable.idsByRelevantUserId[normalizedUserId] ?? [];
+    for (const id of indexedIds) {
       const record = ratesTable.byId[id];
       if (record) {
         recordsById.set(record.id, record);
@@ -143,7 +161,8 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       return [];
     }
     const ratesTable = this.memoryDb.read()[USER_RATES_TABLE_NAME];
-    return ratesTable.ids
+    const indexedIds = ratesTable.idsByRelevantUserId[normalizedUserId] ?? [];
+    return indexedIds
       .map(id => ratesTable.byId[id])
       .filter((record): record is UserRateRecord => Boolean(record))
       .filter(record =>
@@ -180,6 +199,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       return {
         ...state,
         [USER_RATES_TABLE_NAME]: {
+          ...table,
           byId,
           ids
         }

@@ -32,6 +32,8 @@ export interface RateCardDataInput {
   pairUsers?: readonly RateCardPerson[];
   availableUsers?: readonly RateCardPerson[];
   fallbackGender: RateCardGender;
+  singleImageUrls?: readonly string[];
+  pairSlots?: readonly PairCardSlot[];
   stackClasses?: readonly string[];
   badge?: CardBadgeConfig | null;
   presentation?: CardPresentation;
@@ -69,7 +71,7 @@ export function buildPairRateCardData(input: RateCardDataInput): PairCardData {
 
 function buildSingleRateSlides(input: RateCardDataInput): SingleCardData['slides'] {
   const user = input.primaryUser;
-  const seededImages = buildSeededPortraitUrls({
+  const seededImages = input.singleImageUrls ?? buildSeededPortraitUrls({
     rowId: input.rowId,
     seedUserId: user?.id ?? 'rate-fallback',
     gender: user?.gender ?? input.fallbackGender,
@@ -99,6 +101,9 @@ function buildSingleRateSlides(input: RateCardDataInput): SingleCardData['slides
 }
 
 function buildPairRateSlots(input: RateCardDataInput): readonly PairCardSlot[] {
+  if (input.pairSlots && input.pairSlots.length > 0) {
+    return input.pairSlots;
+  }
   return (['woman', 'man'] as const).map(slot => {
     const user = resolvePairSlotUser(input, slot);
     const slides = user

@@ -64,6 +64,26 @@ export interface UserRateRecord {
   eventName?: string;
   happenedAtIso?: string;
   distanceKm?: number;
+  distanceMetersExact?: number;
+}
+
+export type ActivityRateRecordSort = 'happenedAt' | 'distance' | 'relevance';
+
+export interface ActivityRateRecordQuery {
+  ownerUserId: string;
+  mode: 'single' | 'pair';
+  displayDirection: 'given' | 'received' | 'mutual' | 'met';
+  sort: ActivityRateRecordSort;
+  sortDirection?: 'asc' | 'desc';
+  offset?: number;
+  limit?: number;
+  rangeStartIso?: string;
+  rangeEndIso?: string;
+}
+
+export interface ActivityRateRecordQueryResult {
+  records: UserRateRecord[];
+  total: number;
 }
 
 export interface UserRateOutboxRecord {

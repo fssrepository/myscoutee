@@ -1,4 +1,6 @@
 export * from './context';
+export * from './converters';
+export * from './formatters';
 export * from './guards';
 export { AppMemoryDb } from './db';
 export type { UserGameCardsStackSnapshot } from './interfaces/game.interface';
@@ -13,4 +15,5 @@ export { GameService } from './services/game.service';
 export { ActivityMembersService } from './services/activity-members.service';
 export { AssetsService } from './services/assets.service';
 export { ActivityInviteCandidatesService } from './services/activity-invite-candidates.service';
+export { RatesService } from './services/rates.service';
 export * from './interfaces';
