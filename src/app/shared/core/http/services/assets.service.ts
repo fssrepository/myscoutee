@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../app-types';
+import type * as AppTypes from '../../../core/base/models';
 import { HttpAssetsRepository } from '../repositories/assets.repository';
 
 @Injectable({

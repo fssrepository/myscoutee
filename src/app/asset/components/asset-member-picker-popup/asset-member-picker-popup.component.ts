@@ -13,7 +13,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
-import type * as AppTypes from '../../../shared/app-types';
+import type * as AppTypes from '../../../shared/core/base/models';
 import {
   SmartListComponent,
   type ListQuery,

@@ -17,7 +17,7 @@ import {
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { LazyBgImageDirective } from '../../../../lazy-bg-image.directive';
+import { LazyBgImageDirective } from '../../../directives/lazy-bg-image.directive';
 import type { CardImageSlide, PairCardData, PairCardSlot } from '../card.types';
 
 @Component({

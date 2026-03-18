@@ -26,7 +26,7 @@ import type {
   SubEventFormItem,
   SubEventGroupItem,
   SubEventsDisplayMode
-} from './app-types';
+} from './core/base/models';
 import { AppUtils } from './app-utils';
 
 export class AppDemoGenerators {

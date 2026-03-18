@@ -1,6 +1,6 @@
 import { AppDemoGenerators } from '../../../app-demo-generators';
 import { AppUtils } from '../../../app-utils';
-import type * as AppTypes from '../../../app-types';
+import type * as AppTypes from '../../../core/base/models';
 import type { InfoCardData, InfoCardMenuAction } from '../../../ui';
 import type { DemoEventRecord } from '../../demo/models/events.model';
 import { toActivityEventRow } from '../converters/activities-event.converter';

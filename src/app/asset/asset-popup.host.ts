@@ -1,4 +1,4 @@
-import type * as AppTypes from '../shared/app-types';
+import type * as AppTypes from '../shared/core/base/models';
 
 export interface AssetPopupHost {
   isMobileView(): boolean;

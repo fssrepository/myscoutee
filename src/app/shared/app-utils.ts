@@ -1,4 +1,4 @@
-import type { ActivitiesView, ActivityListRow, AssetMemberRequest } from './app-types';
+import type { ActivitiesView, ActivityListRow, AssetMemberRequest } from './core/base/models';
 import type { DemoUser } from './demo-data';
 
 export class AppUtils {

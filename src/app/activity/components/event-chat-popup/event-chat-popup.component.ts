@@ -15,11 +15,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { delay, of } from 'rxjs';
 
-import type * as AppTypes from '../../../shared/app-types';
+import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import { ActivitiesDbContextService } from '../../services/activities-db-context.service';
 import { EventEditorService } from '../../../shared/event-editor.service';
-import type { EventChatResourceContext } from '../../../shared/activities-models';
+import type { EventChatResourceContext } from '../../../shared/core/base/models';
 import type { EventMenuItem } from '../../../shared/demo-data';
 import {
   SmartListComponent,

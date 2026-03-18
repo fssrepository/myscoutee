@@ -13,7 +13,7 @@ import {
 } from 'firebase/auth';
 
 import { environment } from '../../../../../environments/environment';
-import type * as AppTypes from '../../../app-types';
+import type * as AppTypes from '../../../core/base/models';
 
 type FirebaseConfigFile = Pick<
   FirebaseOptions,

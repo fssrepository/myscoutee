@@ -13,11 +13,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
 import { AlertService } from '../../../shared/alert.service';
-import type { ActivityMemberOwnerRef, EventExploreFeedFilters } from '../../../shared/activities-models';
+import type { ActivityMemberOwnerRef, EventExploreFeedFilters } from '../../../shared/core/base/models';
 import { APP_DEMO_DATA } from '../../../shared/demo-data';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppDemoGenerators } from '../../../shared/app-demo-generators';
-import type * as AppTypes from '../../../shared/app-types';
+import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import {
   ActivityMembersService,

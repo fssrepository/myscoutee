@@ -23,7 +23,7 @@ import {
   type DemoEventScopeFilter,
   type DemoRepositoryEventItemType
 } from '../models/events.model';
-import type { ActivitiesEventSyncPayload } from '../../../activities-models';
+import type { ActivitiesEventSyncPayload } from '../../../core/base/models';
 import { USERS_TABLE_NAME } from '../models/users.model';
 import type { LocationCoordinates } from '../../base/interfaces';
 

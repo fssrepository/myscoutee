@@ -6,8 +6,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule, MatSelect } from '@angular/material/select';
 
-import { LazyBgImageDirective } from '../../../shared/lazy-bg-image.directive';
-import type * as AppTypes from '../../../shared/app-types';
+import { LazyBgImageDirective } from '../../../shared/ui';
+import type * as AppTypes from '../../../shared/core/base/models';
 
 interface CapacityEditorState {
   title: string;

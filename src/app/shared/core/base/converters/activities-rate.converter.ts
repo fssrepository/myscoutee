@@ -1,6 +1,6 @@
 import { AppDemoGenerators } from '../../../app-demo-generators';
 import { AppUtils } from '../../../app-utils';
-import type * as AppTypes from '../../../app-types';
+import type * as AppTypes from '../../../core/base/models';
 import type { DemoUser, RateMenuItem } from '../../../demo-data';
 import { formatActivityMonthDayLabel } from '../formatters';
 

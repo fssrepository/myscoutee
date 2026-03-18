@@ -3,12 +3,12 @@ import { Injectable, inject } from '@angular/core';
 import { AppCalendarHelpers } from '../../../app-calendar-helpers';
 import { AppDemoGenerators } from '../../../app-demo-generators';
 import { AppUtils } from '../../../app-utils';
-import type * as AppTypes from '../../../app-types';
+import type * as AppTypes from '../../../core/base/models';
 import type {
   ActivitiesFeedFilters,
   ActivitiesPageRequest,
   EventExploreFeedFilters
-} from '../../../activities-models';
+} from '../../../core/base/models';
 import { DEMO_USERS, type ChatMenuItem } from '../../../demo-data';
 import type { ListQuery, PageResult } from '../../../ui';
 import {

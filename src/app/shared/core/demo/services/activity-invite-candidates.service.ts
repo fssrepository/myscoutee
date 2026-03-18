@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../app-types';
+import type * as AppTypes from '../../../core/base/models';
 import type { ActivityInviteCandidatesQuery } from '../../base/interfaces/activity-invite.interface';
 import { resolveAdditionalDelayMsForRoute } from '../config';
 import { DemoActivityInviteCandidatesRepository } from '../repositories/activity-invite-candidates.repository';

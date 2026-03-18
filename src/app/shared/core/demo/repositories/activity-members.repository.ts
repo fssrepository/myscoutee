@@ -4,9 +4,9 @@ import type {
   ActivityMemberOwnerRef,
   ActivityMembersSummary,
   ActivitiesEventSyncPayload
-} from '../../../activities-models';
+} from '../../../core/base/models';
 import { AppDemoGenerators } from '../../../app-demo-generators';
-import type * as AppTypes from '../../../app-types';
+import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import { APP_DEMO_DATA, type DemoUser } from '../../../demo-data';
 import { HttpActivityMembersRepository } from '../../http/repositories/activity-members.repository';

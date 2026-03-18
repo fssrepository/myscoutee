@@ -1,6 +1,6 @@
 import { Injectable, NgZone, computed, inject, signal } from '@angular/core';
 
-import type * as AppTypes from '../shared/app-types';
+import type * as AppTypes from '../shared/core/base/models';
 import { AppContext } from '../shared/core';
 import type { AssetPopupHost } from './asset-popup.host';
 

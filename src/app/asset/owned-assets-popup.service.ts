@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { AppDemoGenerators } from '../shared/app-demo-generators';
 import { APP_STATIC_DATA } from '../shared/app-static-data';
-import type * as AppTypes from '../shared/app-types';
+import type * as AppTypes from '../shared/core/base/models';
 import { AssetPopupService } from './asset-popup.service';
 
 export interface OwnedAssetsRuntimeHooks {

@@ -1,4 +1,4 @@
-import type { SubEventFormItem } from './app-types';
+import type { SubEventFormItem } from './core/base/models';
 import { AppUtils } from './app-utils';
 
 export class AppSubEventHelpers {

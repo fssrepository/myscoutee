@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../app-types';
+import type * as AppTypes from '../../../core/base/models';
 import { AppDemoGenerators } from '../../../app-demo-generators';
 import { AppUtils } from '../../../app-utils';
 import { DEMO_USERS, type ChatMenuItem, type DemoUser } from '../../../demo-data';

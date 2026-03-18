@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type * as AppTypes from '../../../app-types';
+import type * as AppTypes from '../../../core/base/models';
 import type { ActivityInviteOwnerContext } from '../interfaces/activity-invite.interface';
 import { DemoActivityInviteCandidatesService } from '../../demo/services/activity-invite-candidates.service';
 import { HttpActivityInviteCandidatesService } from '../../http/services/activity-invite-candidates.service';

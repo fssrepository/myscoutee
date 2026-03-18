@@ -13,7 +13,7 @@ import type {
   SubEventsDisplayMode,
   TournamentLeaderboardType,
   ValuesOptionGroup
-} from './app-types';
+} from './core/base/models';
 
 const VIBE_CATEGORIES = ['Energetic', 'Social', 'Deep', 'Relaxed', 'Creative', 'Exclusive', 'Focused'];
 const HOSTED_EVENT_TYPES = ['Road Trip', 'Game Night', 'Brunch', 'Hiking', 'Coffee Meetup', 'Sports'];

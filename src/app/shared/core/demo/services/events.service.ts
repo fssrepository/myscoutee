@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ActivitiesEventSyncPayload } from '../../../activities-models';
+import type { ActivitiesEventSyncPayload } from '../../../core/base/models';
 import { resolveAdditionalDelayMsForRoute } from '../config';
 import { DemoEventsRepository } from '../repositories/events.repository';
 import type {

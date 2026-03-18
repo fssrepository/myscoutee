@@ -44,8 +44,8 @@ import type {
   ActivitiesEventSyncPayload,
   EventChatContext,
   EventChatResourceContext
-} from '../../../shared/activities-models';
-import type * as AppTypes from '../../../shared/app-types';
+} from '../../../shared/core/base/models';
+import type * as AppTypes from '../../../shared/core/base/models';
 import {
   buildPairRateCardData,
   buildSingleRateCardData,
@@ -73,7 +73,8 @@ import {
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
 import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
 import {
-  buildInvitationPreviewEventSource,
+  ActivityEventBuilder,
+  ActivityMembersBuilder,
   ActivitiesService,
   ActivityMembersService,
   AppContext,
@@ -1392,7 +1393,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activityCapacityLabel(row: AppTypes.ActivityListRow): string {
-    const summary = this.activityMembersSummaryForRow(row);
+    const summary = ActivityMembersBuilder.activityMembersSummaryForRow(row, {
+      capacityByRowId: this.activityCapacityById,
+      pendingMembersByRowId: this.activityPendingMembersById
+    });
     if (summary) {
       return `${summary.acceptedMembers} / ${summary.capacityTotal}`;
     }
@@ -1402,7 +1406,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activityPendingMemberCount(row: AppTypes.ActivityListRow): number {
-    const summary = this.activityMembersSummaryForRow(row);
+    const summary = ActivityMembersBuilder.activityMembersSummaryForRow(row, {
+      capacityByRowId: this.activityCapacityById,
+      pendingMembersByRowId: this.activityPendingMembersById
+    });
     if (summary) {
       return summary.pendingMembers;
     }
@@ -1413,7 +1420,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (row.type !== 'events') {
       return false;
     }
-    const summary = this.activityMembersSummaryForRow(row);
+    const summary = ActivityMembersBuilder.activityMembersSummaryForRow(row, {
+      capacityByRowId: this.activityCapacityById,
+      pendingMembersByRowId: this.activityPendingMembersById
+    });
     if (summary) {
       return summary.capacityTotal > 0 && summary.acceptedMembers >= summary.capacityTotal;
     }
@@ -1449,7 +1459,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const rowKey = `${row.type}:${row.id}`;
     const cached = this.activityMembersByRowId[rowKey];
     if (cached) {
-      return this.sortActivityMembersByActionTimeDesc([...cached]);
+      return ActivityMembersBuilder.sortActivityMembersByActionTimeDesc(cached);
     }
     const forcedAcceptedCount = this.forcedAcceptedMembersByRowKey[rowKey];
     if (Number.isFinite(forcedAcceptedCount) && forcedAcceptedCount > 0) {
@@ -1461,7 +1471,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         this.activeUser,
         APP_DEMO_DATA.activityMemberDefaults.forcedMetWhere
       );
-      const orderedForced = this.sortActivityMembersByActionTimeDesc(forced);
+      const orderedForced = ActivityMembersBuilder.sortActivityMembersByActionTimeDesc(forced);
       this.activityMembersByRowId[rowKey] = [...orderedForced];
       return orderedForced;
     }
@@ -1472,96 +1482,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.activeUser,
       APP_DEMO_DATA.activityMemberMetPlaces
     );
-    const ordered = this.sortActivityMembersByActionTimeDesc(generated);
+    const ordered = ActivityMembersBuilder.sortActivityMembersByActionTimeDesc(generated);
     this.activityMembersByRowId[rowKey] = [...ordered];
     return ordered;
-  }
-
-  private activityMembersOwnerForRow(row: AppTypes.ActivityListRow): ActivityMemberOwnerRef | null {
-    if (row.type !== 'events' && row.type !== 'hosting') {
-      return null;
-    }
-    return {
-      ownerType: 'event',
-      ownerId: row.id
-    };
-  }
-
-  private activityMembersSummaryForRow(row: AppTypes.ActivityListRow): ActivityMembersSummary | null {
-    if (row.type !== 'events' && row.type !== 'hosting') {
-      return null;
-    }
-    const source = this.activityCapacityById[row.id];
-    const pendingMembers = Math.max(0, Math.trunc(Number(this.activityPendingMembersById[row.id]) || 0));
-    const sourceRecord = row.source as {
-      acceptedMembers?: unknown;
-      pendingMembers?: unknown;
-      capacityTotal?: unknown;
-      capacityMax?: unknown;
-    };
-    const acceptedFromSource = Number(sourceRecord.acceptedMembers);
-    const pendingFromSource = Number(sourceRecord.pendingMembers);
-    const capacityFromSource = Number(sourceRecord.capacityTotal);
-    const capacityMaxFromSource = Number(sourceRecord.capacityMax);
-    if (
-      Number.isFinite(acceptedFromSource)
-      && (Number.isFinite(capacityFromSource) || Number.isFinite(capacityMaxFromSource))
-    ) {
-      return {
-        ownerType: 'event',
-        ownerId: row.id,
-        acceptedMembers: Math.max(0, Math.trunc(acceptedFromSource)),
-        pendingMembers: Number.isFinite(pendingFromSource) ? Math.max(0, Math.trunc(pendingFromSource)) : pendingMembers,
-        capacityTotal: Math.max(
-          Math.max(0, Math.trunc(acceptedFromSource)),
-          Number.isFinite(capacityFromSource)
-            ? Math.max(0, Math.trunc(capacityFromSource))
-            : Math.max(0, Math.trunc(capacityMaxFromSource))
-        ),
-        acceptedMemberUserIds: [],
-        pendingMemberUserIds: []
-      };
-    }
-    if (!source) {
-      return null;
-    }
-    const parts = source.split('/').map(part => Number.parseInt(part.trim(), 10));
-    const acceptedMembers = parts.length >= 1 && Number.isFinite(parts[0]) ? Math.max(0, parts[0]) : null;
-    const capacityTotal = parts.length >= 2 && Number.isFinite(parts[1]) ? Math.max(0, parts[1]) : null;
-    if (acceptedMembers === null || capacityTotal === null) {
-      return null;
-    }
-    return {
-      ownerType: 'event',
-      ownerId: row.id,
-      acceptedMembers,
-      pendingMembers,
-      capacityTotal,
-      acceptedMemberUserIds: [],
-      pendingMemberUserIds: []
-    };
-  }
-
-  private buildActivityMembersSummary(
-    owner: ActivityMemberOwnerRef,
-    members: readonly AppTypes.ActivityMemberEntry[],
-    capacityTotal: number
-  ): ActivityMembersSummary {
-    const acceptedMemberUserIds = members
-      .filter(member => member.status === 'accepted')
-      .map(member => member.userId);
-    const pendingMemberUserIds = members
-      .filter(member => member.status === 'pending')
-      .map(member => member.userId);
-    return {
-      ownerType: owner.ownerType,
-      ownerId: owner.ownerId,
-      acceptedMembers: acceptedMemberUserIds.length,
-      pendingMembers: pendingMemberUserIds.length,
-      capacityTotal: Math.max(acceptedMemberUserIds.length, capacityTotal),
-      acceptedMemberUserIds,
-      pendingMemberUserIds
-    };
   }
 
   private applyActivityMembersSummary(row: AppTypes.ActivityListRow, summary: ActivityMembersSummary): void {
@@ -1589,9 +1512,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (this.selectedActivityMembersRowId !== rowSelectionId || this.selectedActivityMembersRow?.id !== row.id) {
       return;
     }
-    this.selectedActivityMembers = this.sortActivityMembersByActionTimeAsc(members);
+    this.selectedActivityMembers = ActivityMembersBuilder.sortActivityMembersByActionTimeAsc(members);
     this.activityMembersByRowId[rowSelectionId] = [...this.selectedActivityMembers];
-    const summary = this.buildActivityMembersSummary(
+    const summary = ActivityMembersBuilder.buildActivityMembersSummary(
       owner,
       members,
       this.activityCapacityTotal(row, members.filter(member => member.status === 'accepted').length)
@@ -1604,12 +1527,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!this.selectedActivityMembersRow || !this.selectedActivityMembersRowId) {
       return;
     }
-    const owner = this.activityMembersOwnerForRow(this.selectedActivityMembersRow);
+    const owner = ActivityMembersBuilder.activityMembersOwnerForRow(this.selectedActivityMembersRow);
     if (!owner) {
       return;
     }
     const acceptedMembers = this.selectedActivityMembers.filter(member => member.status === 'accepted').length;
-    const summary = this.buildActivityMembersSummary(
+    const summary = ActivityMembersBuilder.buildActivityMembersSummary(
       owner,
       this.selectedActivityMembers,
       this.activityCapacityTotal(this.selectedActivityMembersRow, acceptedMembers)
@@ -1627,14 +1550,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.activityCapacityById[record.id] = `${record.acceptedMembers} / ${record.capacityTotal}`;
       this.activityPendingMembersById[record.id] = record.pendingMembers;
     }
-  }
-
-  private sortActivityMembersByActionTimeDesc(entries: AppTypes.ActivityMemberEntry[]): AppTypes.ActivityMemberEntry[] {
-    return [...entries].sort((a, b) => AppUtils.toSortableDate(b.actionAtIso) - AppUtils.toSortableDate(a.actionAtIso));
-  }
-
-  private sortActivityMembersByActionTimeAsc(entries: AppTypes.ActivityMemberEntry[]): AppTypes.ActivityMemberEntry[] {
-    return [...entries].sort((a, b) => AppUtils.toSortableDate(a.actionAtIso) - AppUtils.toSortableDate(b.actionAtIso));
   }
 
   protected activityLeadingIcon(row: AppTypes.ActivityListRow): string {
@@ -2176,7 +2091,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return;
     }
     const nowIso = AppUtils.toIsoDateTime(new Date());
-    this.selectedActivityMembers = this.sortActivityMembersByActionTimeAsc(this.selectedActivityMembers.map(item =>
+    this.selectedActivityMembers = ActivityMembersBuilder.sortActivityMembersByActionTimeAsc(this.selectedActivityMembers.map(item =>
       item.id === entry.id
         ? {
             ...item,
@@ -4136,7 +4051,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private openActivityRowInEventModule(row: AppTypes.ActivityListRow, readOnly: boolean): void {
-    const source = this.resolveActivityEventEditorSource(row);
+    const source = ActivityEventBuilder.resolveEditorSource(row, {
+      eventItems: this.eventItems,
+      hostingItems: this.hostingItems,
+      invitationItems: this.invitationItems
+    });
     if (!source) {
       return;
     }
@@ -4148,44 +4067,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return;
     }
     this.eventEditorService.openEdit(source);
-  }
-
-  private resolveActivityEventEditorSource(row: AppTypes.ActivityListRow): EventMenuItem | HostingMenuItem | null {
-    if (row.type === 'invitations') {
-      const invitationSource = row.source as InvitationMenuItem;
-      const invitation = this.invitationItems.find(item => item.id === invitationSource.id) ?? invitationSource;
-      return this.resolveRelatedEventFromInvitation(invitation) ?? buildInvitationPreviewEventSource(invitation);
-    }
-    if (row.type !== 'events' && row.type !== 'hosting') {
-      return null;
-    }
-    const rowSource = row.source as EventMenuItem | HostingMenuItem;
-    const rowSourceId = typeof rowSource?.id === 'string' ? rowSource.id.trim() : '';
-    let source = rowSourceId
-      ? (this.eventItems.find(item => item.id === rowSourceId)
-        ?? this.hostingItems.find(item => item.id === rowSourceId)
-        ?? null)
-      : null;
-    if (!source && typeof rowSource?.title === 'string' && rowSource.title.trim()) {
-      const titleKey = AppUtils.normalizeText(rowSource.title);
-      source = this.eventItems.find(item => AppUtils.normalizeText(item.title) === titleKey)
-        ?? this.hostingItems.find(item => AppUtils.normalizeText(item.title) === titleKey)
-        ?? null;
-    }
-    return source ?? rowSource;
-  }
-
-  private resolveRelatedEventFromInvitation(invitation: InvitationMenuItem): EventMenuItem | HostingMenuItem | null {
-    const invitationTitle = AppUtils.normalizeText(invitation.description);
-    const relatedEvent = this.eventItems.find(item => AppUtils.normalizeText(item.title) === invitationTitle);
-    if (relatedEvent) {
-      return relatedEvent;
-    }
-    const relatedHosting = this.hostingItems.find(item => AppUtils.normalizeText(item.title) === invitationTitle);
-    if (relatedHosting) {
-      return relatedHosting;
-    }
-    return null;
   }
 
   private applyActivitiesEventSync(sync: ActivitiesEventSyncPayload): void {
@@ -4343,9 +4224,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
       source: hostingSource
     };
 
-    const eventMembers = this.buildSyncedActivityMembersForRow(eventRow, acceptedMembers, pendingMembers);
-    const hostingMembers = this.buildSyncedActivityMembersForRow(hostingRow, acceptedMembers, pendingMembers);
-    const summary = this.buildActivityMembersSummary(
+    const eventMembers = ActivityMembersBuilder.buildSyncedActivityMembersForRow(eventRow, acceptedMembers, pendingMembers, {
+      activeUser: this.activeUser,
+      users: this.users
+    });
+    const hostingMembers = ActivityMembersBuilder.buildSyncedActivityMembersForRow(hostingRow, acceptedMembers, pendingMembers, {
+      activeUser: this.activeUser,
+      users: this.users
+    });
+    const summary = ActivityMembersBuilder.buildActivityMembersSummary(
       { ownerType: 'event', ownerId: sync.id },
       eventMembers,
       capacityTotal
@@ -4358,67 +4245,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activityMembersByRowId[hostingRowKey] = hostingMembers;
     this.forcedAcceptedMembersByRowKey[eventRowKey] = acceptedMembers;
     this.forcedAcceptedMembersByRowKey[hostingRowKey] = acceptedMembers;
-  }
-
-  private buildSyncedActivityMembersForRow(
-    row: AppTypes.ActivityListRow,
-    acceptedMembers: number,
-    pendingMembers: number
-  ): AppTypes.ActivityMemberEntry[] {
-    if (acceptedMembers <= 0 && pendingMembers <= 0) {
-      return [];
-    }
-    const rowKey = `${row.type}:${row.id}`;
-    const seed = AppDemoGenerators.hashText(`${rowKey}:${acceptedMembers}:${pendingMembers}`);
-    const candidates = [this.activeUser, ...this.users.filter(user => user.id !== this.activeUser.id)];
-    const used = new Set<string>();
-    const pickUser = (offset: number): DemoUser => {
-      if (candidates.length === 0) {
-        return this.activeUser;
-      }
-      for (let index = 0; index < candidates.length; index += 1) {
-        const candidate = candidates[(seed + offset + index) % candidates.length];
-        if (!used.has(candidate.id) || used.size >= candidates.length) {
-          used.add(candidate.id);
-          return candidate;
-        }
-      }
-      return this.activeUser;
-    };
-
-    const entries: AppTypes.ActivityMemberEntry[] = [];
-    for (let index = 0; index < acceptedMembers; index += 1) {
-      const user = pickUser(index);
-      entries.push(AppDemoGenerators.toActivityMemberEntry(
-        user,
-        row,
-        rowKey,
-        this.activeUser.id,
-        { status: 'accepted', pendingSource: null, invitedByActiveUser: false },
-        APP_DEMO_DATA.activityMemberMetPlaces
-      ));
-    }
-    for (let index = 0; index < pendingMembers; index += 1) {
-      const user = pickUser(acceptedMembers + index);
-      const isJoinRequest = ((seed + index) % 3) === 0;
-      const pendingSource: AppTypes.ActivityPendingSource = isJoinRequest
-        ? 'member'
-        : (row.isAdmin ? 'admin' : 'member');
-      const entry = AppDemoGenerators.toActivityMemberEntry(
-        user,
-        row,
-        rowKey,
-        this.activeUser.id,
-        { status: 'pending', pendingSource, invitedByActiveUser: !isJoinRequest },
-        APP_DEMO_DATA.activityMemberMetPlaces
-      );
-      entries.push({
-        ...entry,
-        requestKind: isJoinRequest ? 'join' : 'invite',
-        statusText: isJoinRequest ? 'Waiting for admin approval.' : 'Invitation pending.'
-      });
-    }
-    return this.sortActivityMembersByActionTimeDesc(entries);
   }
 
   // ── User lookup ────────────────────────────────────────────────────────────

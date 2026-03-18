@@ -5,7 +5,7 @@ import type {
   CalendarMonthPage,
   CalendarMonthSpan,
   CalendarWeekPage
-} from './app-types';
+} from './core/base/models';
 import { AppUtils } from './app-utils';
 
 type ActivityDateRange = { start: Date; end: Date };

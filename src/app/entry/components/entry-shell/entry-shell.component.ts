@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Input, NgZone, Output, inject } from '@angular/core';
 
 import { UsersService, type DemoUserListItemDto } from '../../../shared/core';
-import type * as AppTypes from '../../../shared/app-types';
+import type * as AppTypes from '../../../shared/core/base/models';
 import { EntryConsentPopupComponent } from '../entry-consent-popup/entry-consent-popup.component';
 import { EntryDemoUserSelectorComponent } from '../entry-demo-user-selector/entry-demo-user-selector.component';
 import { EntryFirebaseAuthPopupComponent } from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';

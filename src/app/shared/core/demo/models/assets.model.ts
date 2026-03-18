@@ -1,4 +1,4 @@
-import type * as AppTypes from '../../../app-types';
+import type * as AppTypes from '../../../core/base/models';
 
 export const ASSETS_TABLE_NAME = 'assets' as const;
 

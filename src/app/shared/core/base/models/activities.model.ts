@@ -1,24 +1,28 @@
-import type * as AppTypes from '../../../app-types';
 import type { LocationCoordinates } from '../interfaces/location.interface';
 import type { ChatMenuItem } from '../../../demo-data';
+import type { AssetCard, AssetType } from './asset.model';
+import type { ActivityMemberEntry } from './activity-member.model';
+import type { ActivitiesChatContextFilter, ChatChannelType } from './chat.model';
+import type { ActivitiesEventScope, ActivitiesPrimaryFilter, ActivitiesSecondaryFilter, ActivitiesView, ActivityListRow, HostingPublicationFilter, RateFilterKey } from './activities-ui.model';
+import type { EventBlindMode, EventEditorTarget, EventVisibility, SubEventFormItem } from './event.model';
 
-export type SubEventAssetAssignmentIds = Partial<Record<AppTypes.AssetType, string[]>>;
-export type SubEventAssetCardsByType = Partial<Record<AppTypes.AssetType, AppTypes.AssetCard[]>>;
+export type SubEventAssetAssignmentIds = Partial<Record<AssetType, string[]>>;
+export type SubEventAssetCardsByType = Partial<Record<AssetType, AssetCard[]>>;
 export type ActivityMemberOwnerType = 'event' | 'subEvent' | 'group';
 
 export interface ActivitiesFeedFilters {
-  primaryFilter?: AppTypes.ActivitiesPrimaryFilter;
-  eventScopeFilter?: AppTypes.ActivitiesEventScope;
-  secondaryFilter?: AppTypes.ActivitiesSecondaryFilter;
-  chatContextFilter?: AppTypes.ActivitiesChatContextFilter;
-  hostingPublicationFilter?: AppTypes.HostingPublicationFilter;
-  rateFilter?: AppTypes.RateFilterKey;
+  primaryFilter?: ActivitiesPrimaryFilter;
+  eventScopeFilter?: ActivitiesEventScope;
+  secondaryFilter?: ActivitiesSecondaryFilter;
+  chatContextFilter?: ActivitiesChatContextFilter;
+  hostingPublicationFilter?: HostingPublicationFilter;
+  rateFilter?: RateFilterKey;
 }
 
 export interface EventExploreFeedFilters {
   userId: string;
-  order: AppTypes.EventExploreOrder;
-  view: AppTypes.EventExploreView;
+  order: import('./activities-ui.model').EventExploreOrder;
+  view: import('./activities-ui.model').EventExploreView;
   friendsOnly: boolean;
   openSpotsOnly: boolean;
   topic: string;
@@ -45,15 +49,15 @@ export type ActivitiesNavigationRequest =
       type: 'chatResource';
       item: ChatMenuItem;
       resourceType: 'Members' | 'Car' | 'Accommodation' | 'Supplies';
-      subEvent: AppTypes.SubEventFormItem;
+      subEvent: SubEventFormItem;
       group?: { id: string; groupLabel: string } | null;
       assetAssignmentIds?: SubEventAssetAssignmentIds;
       assetCardsByType?: SubEventAssetCardsByType;
     }
   | { type: 'members'; ownerId: string; ownerType?: ActivityMemberOwnerType }
-  | { type: 'eventEditorMembers'; row: AppTypes.ActivityListRow }
-  | { type: 'eventEditorCreate'; target: AppTypes.EventEditorTarget }
-  | { type: 'eventEditor'; row: AppTypes.ActivityListRow; readOnly: boolean };
+  | { type: 'eventEditorMembers'; row: ActivityListRow }
+  | { type: 'eventEditorCreate'; target: EventEditorTarget }
+  | { type: 'eventEditor'; row: ActivityListRow; readOnly: boolean };
 
 export type EventChatContextTone =
   | 'popup-chat-context-btn-tone-main-event'
@@ -72,16 +76,16 @@ export interface EventChatResourceContext {
 }
 
 export interface EventChatContext {
-  channelType: AppTypes.ChatChannelType;
+  channelType: ChatChannelType;
   hasSubEventMenu: boolean;
   actionIcon: string;
   actionLabel: string;
   actionToneClass: EventChatContextTone;
   actionBadgeCount: number;
   menuTitle: string;
-  eventRow: AppTypes.ActivityListRow | null;
-  subEventRow: AppTypes.ActivityListRow | null;
-  subEvent: AppTypes.SubEventFormItem | null;
+  eventRow: ActivityListRow | null;
+  subEventRow: ActivityListRow | null;
+  subEvent: SubEventFormItem | null;
   group: { id: string; label: string } | null;
   assetAssignmentIds: SubEventAssetAssignmentIds;
   assetCardsByType: SubEventAssetCardsByType;
@@ -90,7 +94,7 @@ export interface EventChatContext {
 
 export interface ActivitiesEventSyncPayload {
   id: string;
-  target: AppTypes.EventEditorTarget;
+  target: EventEditorTarget;
   title: string;
   shortDescription: string;
   timeframe: string;
@@ -105,8 +109,8 @@ export interface ActivitiesEventSyncPayload {
   capacityTotal?: number;
   capacityMin?: number | null;
   capacityMax?: number | null;
-  visibility?: AppTypes.EventVisibility;
-  blindMode?: AppTypes.EventBlindMode;
+  visibility?: EventVisibility;
+  blindMode?: EventBlindMode;
   published?: boolean;
   creatorUserId?: string;
   creatorName?: string;
@@ -129,13 +133,13 @@ export interface EventChatSession {
 }
 
 export interface ActivitiesPageRequest {
-  primaryFilter: AppTypes.ActivitiesPrimaryFilter;
-  eventScopeFilter?: AppTypes.ActivitiesEventScope;
-  secondaryFilter: AppTypes.ActivitiesSecondaryFilter;
-  chatContextFilter: AppTypes.ActivitiesChatContextFilter;
-  hostingPublicationFilter: AppTypes.HostingPublicationFilter;
-  rateFilter: AppTypes.RateFilterKey;
-  view: AppTypes.ActivitiesView;
+  primaryFilter: ActivitiesPrimaryFilter;
+  eventScopeFilter?: ActivitiesEventScope;
+  secondaryFilter: ActivitiesSecondaryFilter;
+  chatContextFilter: ActivitiesChatContextFilter;
+  hostingPublicationFilter: HostingPublicationFilter;
+  rateFilter: RateFilterKey;
+  view: ActivitiesView;
   page: number;
   pageSize: number;
   cursor?: string | null;
@@ -148,7 +152,7 @@ export interface ActivitiesPageRequest {
 }
 
 export interface ActivitiesPageResult {
-  rows: AppTypes.ActivityListRow[];
+  rows: ActivityListRow[];
   total: number;
   nextCursor?: string | null;
 }

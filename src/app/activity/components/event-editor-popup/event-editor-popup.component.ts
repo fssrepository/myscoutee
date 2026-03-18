@@ -15,7 +15,7 @@ import { ActivitiesDbContextService } from '../../services/activities-db-context
 import { EventEditorService } from '../../../shared/event-editor.service';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
-import type * as AppTypes from '../../../shared/app-types';
+import type * as AppTypes from '../../../shared/core/base/models';
 import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
 
 type EventVisibility = 'Public' | 'Friends only' | 'Invitation only';

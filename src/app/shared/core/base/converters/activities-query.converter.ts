@@ -1,4 +1,4 @@
-import type * as AppTypes from '../../../app-types';
+import type * as AppTypes from '../../../core/base/models';
 import type { ActivitiesFeedFilters, ActivitiesPageRequest } from '../models';
 import type { ListQuery } from '../../../ui';
 

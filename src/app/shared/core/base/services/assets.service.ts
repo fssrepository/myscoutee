@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type * as AppTypes from '../../../app-types';
+import type * as AppTypes from '../../../core/base/models';
 import { DemoAssetsService } from '../../demo/services/assets.service';
 import { HttpAssetsService } from '../../http/services/assets.service';
 import { SessionService } from './session.service';

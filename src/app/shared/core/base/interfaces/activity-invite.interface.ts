@@ -1,4 +1,4 @@
-import type { ActivityInviteSort, ActivityMemberEntry } from '../../../app-types';
+import type { ActivityInviteSort, ActivityMemberEntry } from '../../../core/base/models';
 
 export interface ActivityInviteOwnerContext {
   ownerId: string;

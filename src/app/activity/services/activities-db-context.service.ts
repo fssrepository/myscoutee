@@ -1,14 +1,14 @@
 import { computed, Injectable, inject, signal } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
-import type * as AppTypes from '../../shared/app-types';
+import type * as AppTypes from '../../shared/core/base/models';
 import { ActivityMembersService, ChatsService, EventsService, SessionService } from '../../shared/core';
 import type {
   ActivitiesEventSyncPayload,
   ActivitiesNavigationRequest,
   EventChatContext,
   EventChatSession
-} from '../../shared/activities-models';
+} from '../../shared/core/base/models';
 import type { ChatMenuItem } from '../../shared/demo-data';
 
 interface ActivitiesUiState {

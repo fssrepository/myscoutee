@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import type { HelpCenterSection } from '../../../shared/app-types';
+import type { HelpCenterSection } from '../../../shared/core/base/models';
 
 @Component({
   selector: 'app-navigator-help-popup',

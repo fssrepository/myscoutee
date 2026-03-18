@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { LazyBgImageDirective } from '../../../../lazy-bg-image.directive';
+import { LazyBgImageDirective } from '../../../directives/lazy-bg-image.directive';
 
 @Component({
   selector: 'app-image-card',

@@ -11,7 +11,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { AlertService } from '../../../shared/alert.service';
 import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import type * as AppTypes from '../../../shared/app-types';
+import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import { PROFILE_DETAILS, type ProfileGroup } from '../../../shared/demo-data';
 import { AppContext, UsersService, type UserDto } from '../../../shared/core';

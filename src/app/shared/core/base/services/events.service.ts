@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type { ActivitiesEventSyncPayload } from '../../../activities-models';
+import type { ActivitiesEventSyncPayload } from '../../../core/base/models';
 import { DemoEventsService } from '../../demo';
 import { HttpEventsService } from '../../http';
 import type {

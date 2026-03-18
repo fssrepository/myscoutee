@@ -1,5 +1,5 @@
-import type { ActivityMemberOwnerType } from '../../../activities-models';
-import type * as AppTypes from '../../../app-types';
+import type { ActivityMemberOwnerType } from '../../../core/base/models';
+import type * as AppTypes from '../../../core/base/models';
 
 export const ACTIVITY_MEMBERS_TABLE_NAME = 'activityMembers' as const;
 

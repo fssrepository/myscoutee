@@ -14,7 +14,7 @@ import { MatTimepickerModule } from '@angular/material/timepicker';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { AlertService } from './shared/alert.service';
-import type { ActivitiesEventSyncPayload } from './shared/activities-models';
+import type { ActivitiesEventSyncPayload } from './shared/core/base/models';
 import { ActivitiesDbContextService } from './activity/services/activities-db-context.service';
 import type { AssetPopupHost } from './asset/asset-popup.host';
 import { AssetPopupService, type AssetTicketBridge } from './asset/asset-popup.service';
@@ -45,13 +45,13 @@ import {
   InvitationMenuItem,
   ProfileGroup
 } from './shared/demo-data';
-import { LazyBgImageDirective } from './shared/lazy-bg-image.directive';
+import { LazyBgImageDirective } from './shared/ui';
 import { NavigatorBindings, NavigatorService } from './navigator';
 import { AppDemoGenerators } from './shared/app-demo-generators';
 import { AppUtils } from './shared/app-utils';
 import { AppCalendarHelpers } from './shared/app-calendar-helpers';
 import { APP_STATIC_DATA } from './shared/app-static-data';
-import type * as AppTypes from './shared/app-types';
+import type * as AppTypes from './shared/core/base/models';
 
 @Injectable()
 class YearMonthDayDateAdapter extends NativeDateAdapter {

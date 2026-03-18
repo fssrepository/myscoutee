@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import { AppUtils } from '../../../app-utils';
-import type { ActivitiesPageRequest } from '../../../activities-models';
+import type { ActivitiesPageRequest } from '../../../core/base/models';
 import type { RateMenuItem } from '../../../demo-data';
 import { DemoRatesService } from '../../demo';
 import { HttpRatesService } from '../../http';

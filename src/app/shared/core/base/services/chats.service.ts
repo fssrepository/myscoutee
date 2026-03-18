@@ -1,10 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type * as AppTypes from '../../../app-types';
+import type * as AppTypes from '../../../core/base/models';
 import { AppDemoGenerators } from '../../../app-demo-generators';
 import { AppUtils } from '../../../app-utils';
-import type { ActivitiesPageRequest } from '../../../activities-models';
+import type { ActivitiesPageRequest } from '../../../core/base/models';
 import type { ChatMenuItem, DemoUser } from '../../../demo-data';
 import type { PageResult } from '../../../ui';
 import { activityChatContextFilterKey, buildActivityChatRows } from '../converters';

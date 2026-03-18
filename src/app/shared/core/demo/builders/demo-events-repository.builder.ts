@@ -1,6 +1,6 @@
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { AppDemoGenerators } from '../../../app-demo-generators';
-import type * as AppTypes from '../../../app-types';
+import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import { APP_DEMO_DATA, type DemoUser, type EventMenuItem, type HostingMenuItem, type InvitationMenuItem } from '../../../demo-data';
 import type { LocationCoordinates } from '../../base/interfaces';

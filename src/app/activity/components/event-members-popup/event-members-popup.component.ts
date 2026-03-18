@@ -14,9 +14,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
 import { AppDemoGenerators } from '../../../shared/app-demo-generators';
-import type * as AppTypes from '../../../shared/app-types';
+import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
-import type { ActivityMemberOwnerRef, ActivityMemberOwnerType } from '../../../shared/activities-models';
+import type { ActivityMemberOwnerRef, ActivityMemberOwnerType } from '../../../shared/core/base/models';
 import type { ActivityMembersSyncState } from '../../../shared/core';
 import { ActivityMembersService, AppContext, EventsService } from '../../../shared/core';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';

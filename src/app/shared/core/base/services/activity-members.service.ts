@@ -6,8 +6,8 @@ import type {
   ActivityMemberOwnerRef,
   ActivityMembersSummary,
   ActivitiesEventSyncPayload
-} from '../../../activities-models';
-import type * as AppTypes from '../../../app-types';
+} from '../../../core/base/models';
+import type * as AppTypes from '../../../core/base/models';
 import { AppContext } from '../context';
 import { DemoActivityMembersService } from '../../demo/services/activity-members.service';
 import { HttpActivityMembersService } from '../../http/services/activity-members.service';

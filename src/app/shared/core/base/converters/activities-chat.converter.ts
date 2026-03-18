@@ -1,5 +1,5 @@
 import { AppUtils } from '../../../app-utils';
-import type * as AppTypes from '../../../app-types';
+import type * as AppTypes from '../../../core/base/models';
 import { APP_DEMO_DATA, type ChatMenuItem, type DemoUser } from '../../../demo-data';
 import type { DemoChatRecord } from '../../demo/models/chats.model';
 

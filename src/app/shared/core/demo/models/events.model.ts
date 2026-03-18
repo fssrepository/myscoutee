@@ -1,4 +1,4 @@
-import type * as AppTypes from '../../../app-types';
+import type * as AppTypes from '../../../core/base/models';
 import type { LocationCoordinates } from '../../base/interfaces';
 
 export const EVENTS_TABLE_NAME = 'events' as const;
