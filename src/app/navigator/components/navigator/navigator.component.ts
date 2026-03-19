@@ -12,7 +12,6 @@ import { NavigatorImpressionsPopupComponent } from '../navigator-impressions-pop
 import { NavigatorMenuComponent } from '../navigator-menu/navigator-menu.component';
 import { ProfileEditorComponent } from '../profile-editor/profile-editor.component';
 import { NavigatorSettingsPopupsComponent } from '../navigator-settings-popups/navigator-settings-popups.component';
-import { NavigatorService } from '../../navigator.service';
 import { EventMembersPopupComponent } from '../../../activity/components/event-members-popup/event-members-popup.component';
 import { EventResourcePopupComponent } from '../../../activity/components/event-resource-popup/event-resource-popup.component';
 import { EventSupplyContributionsPopupComponent } from '../../../activity/components/event-supply-contributions-popup/event-supply-contributions-popup.component';
@@ -43,7 +42,6 @@ export class NavigatorComponent {
   private readonly ownedAssets = inject(OwnedAssetsPopupService);
   private readonly eventFeedbackPopupService = inject(EventFeedbackPopupService);
   private readonly eventEditorService = inject(EventEditorService);
-  private readonly navigatorService = inject(NavigatorService);
   protected readonly subEventResources = inject(SubEventResourcePopupService);
   private lastHandledActivitiesRequestMs = 0;
   private lastHandledAssetRequestMs = 0;

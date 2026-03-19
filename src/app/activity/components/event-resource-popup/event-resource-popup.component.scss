@@ -1,5 +1,10 @@
 :host {
+  --event-resource-shell-z-index: 2600;
   display: contents;
+}
+
+.app-popup.event-resource-popup-shell {
+  z-index: var(--event-resource-shell-z-index);
 }
 
 .event-resource-popup-shell .app-popup-panel.popup-panel-asset-members {

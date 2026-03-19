@@ -199,8 +199,13 @@ export class NavigatorService {
 
   openImpressionsPopup(userId?: string): void {
     const normalizedUserId = `${userId ?? ''}`.trim() || this.appCtx.activeUserId().trim();
+    const activeUserId = this.appCtx.activeUserId().trim();
+    const cachedUser = normalizedUserId
+      ? (this.appCtx.getUserProfile(normalizedUserId)
+        ?? (normalizedUserId === activeUserId ? this.appCtx.activeUserProfile() : null))
+      : null;
     this.impressionsPopupUserIdRef.set(normalizedUserId);
-    if (normalizedUserId) {
+    if (normalizedUserId && !cachedUser) {
       void this.usersService.loadUserById(normalizedUserId);
     }
     this.impressionsPopupOpenRef.set(true);
