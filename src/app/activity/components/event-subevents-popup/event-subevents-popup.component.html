@@ -115,7 +115,11 @@
           >
             <div class="subevents-stage-track" [style.transform]="'translateX(-' + (stagePageIndex * 100) + '%)'">
               <section class="subevents-stage-page" *ngFor="let page of stagePages; trackBy: trackByStagePageIndex">
-                <div class="subevents-stage-grid" [class.subevents-stage-grid-mobile]="isMobileViewport">
+                <div
+                  class="subevents-stage-grid"
+                  [class.subevents-stage-grid-mobile]="isMobileViewport"
+                  [style.gridTemplateColumns]="stageGridTemplateColumns(page)"
+                >
                   <article
                     class="subevents-stage-card"
                     *ngFor="let stage of page; trackBy: trackByStageKey"
@@ -278,8 +282,6 @@
                       </article>
                     </div>
                   </article>
-
-                  <article class="subevents-stage-card subevents-stage-placeholder" *ngFor="let placeholder of stagePlaceholdersForPage(page); trackBy: trackByIndex" aria-hidden="true"></article>
                 </div>
               </section>
             </div>
@@ -287,10 +289,16 @@
         </ng-container>
 
         <ng-template #subeventsCasualMode>
-          <section class="subevents-casual-grid">
+          <app-smart-list
+            [config]="casualSmartListConfig"
+            [loadPage]="casualSmartListLoadPage"
+            [itemTemplate]="casualSubEventTemplate"
+            [query]="casualSmartListQuery"
+          ></app-smart-list>
+
+          <ng-template #casualSubEventTemplate let-subEvent let-index="index">
             <article
               class="subevents-casual-card"
-              *ngFor="let subEvent of sortedSubEvents; let index = index; trackBy: trackByIndex"
               [attr.data-tone]="casualCardToneClass(subEvent)"
             >
               <header class="subevents-casual-head">
@@ -396,7 +404,7 @@
               <p class="subevents-casual-location">{{ subEvent.location || 'Location pending' }}</p>
               <p class="subevents-casual-description">{{ subEvent.description || 'No description' }}</p>
             </article>
-          </section>
+          </ng-template>
         </ng-template>
       </ng-container>
 

@@ -32,6 +32,7 @@ import {
 import {
   InfoCardComponent,
   SmartListComponent,
+  TopicPickerPopupComponent,
   type InfoCardMenuActionEvent,
   type ListQuery,
   type SmartListConfig,
@@ -49,7 +50,8 @@ import type { DemoEventRecord } from '../../../shared/core/demo/models/events.mo
     CommonModule,
     MatIconModule,
     InfoCardComponent,
-    SmartListComponent
+    SmartListComponent,
+    TopicPickerPopupComponent
   ],
   templateUrl: './event-explore-popup.component.html',
   styleUrl: './event-explore-popup.component.scss',
@@ -335,11 +337,25 @@ export class EventExplorePopupComponent {
     this.reloadEventExploreSmartList();
   }
 
+  protected updateEventExploreTopicSelection(selected: readonly string[]): void {
+    const nextTopic = selected[0] ?? '';
+    if (this.normalizeTopic(nextTopic) === this.normalizeTopic(this.eventExploreFilterTopic)) {
+      return;
+    }
+    this.eventExploreFilterTopic = nextTopic;
+    this.syncEventExploreQuery();
+    this.reloadEventExploreSmartList();
+  }
+
   protected eventExploreTopicFilterLabel(): string {
     if (!this.eventExploreFilterTopic) {
       return 'Topic';
     }
     return `#${this.eventExploreTopicLabel(this.eventExploreFilterTopic)}`;
+  }
+
+  protected eventExploreTopicLabel(topic: string): string {
+    return topic.replace(/^#+\s*/, '');
   }
 
   protected eventExploreOrderLabel(order: AppTypes.EventExploreOrder = this.eventExploreOrder): string {
@@ -466,23 +482,6 @@ export class EventExplorePopupComponent {
 
   protected isEventExploreOpenEvent(record: DemoEventRecord): boolean {
     return record.blindMode === 'Open Event';
-  }
-
-  protected eventExploreTopicLabel(topic: string): string {
-    return topic.replace(/^#+\s*/, '');
-  }
-
-  protected interestOptionToneClass(topic: string): string {
-    const normalizedTopic = this.normalizeTopic(topic);
-    if (!normalizedTopic) {
-      return '';
-    }
-    for (const group of this.topicFilterGroups) {
-      if (group.options.some(option => this.normalizeTopic(option) === normalizedTopic)) {
-        return group.toneClass;
-      }
-    }
-    return '';
   }
 
   protected onEventExploreInfoCardMenuAction(record: DemoEventRecord, action: InfoCardMenuActionEvent): void {

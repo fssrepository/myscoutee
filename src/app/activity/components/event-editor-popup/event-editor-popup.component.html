@@ -355,10 +355,22 @@
     [open]="showSubEventsPopup"
     [readOnly]="eventEditorService.readOnly()"
     [parentTitle]="eventForm.title"
+    [ownerId]="editingEventId"
     [subEvents]="eventForm.subEvents"
     [displayMode]="subEventsDisplayMode"
     (close)="closeSubEventsPopup()"
     (subEventsChange)="handleSubEventsChange($event)"
     (displayModeChange)="updateSubEventsDisplayMode($event)"
   ></app-event-subevents-popup>
+
+  <app-topic-picker-popup
+    [open]="showTopicPicker"
+    [title]="'Topics'"
+    [groups]="interestOptionGroups"
+    [selected]="eventForm.topics"
+    [multiple]="true"
+    [maxSelections]="5"
+    (selectedChange)="updateTopicSelection($event)"
+    (close)="closeTopicPicker()"
+  ></app-topic-picker-popup>
 </div>

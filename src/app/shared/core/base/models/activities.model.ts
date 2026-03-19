@@ -109,6 +109,8 @@ export interface ActivitiesEventSyncPayload {
   capacityTotal?: number;
   capacityMin?: number | null;
   capacityMax?: number | null;
+  autoInviter?: boolean;
+  frequency?: string;
   ticketing?: boolean;
   visibility?: EventVisibility;
   blindMode?: EventBlindMode;
@@ -124,6 +126,8 @@ export interface ActivitiesEventSyncPayload {
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
   topics?: string[];
+  subEvents?: SubEventFormItem[];
+  subEventsDisplayMode?: import('./event.model').SubEventsDisplayMode;
   syncKey: string;
 }
 

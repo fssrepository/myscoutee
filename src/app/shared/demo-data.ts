@@ -1,4 +1,5 @@
 import type { LocationCoordinates } from './core/base/interfaces';
+import type { SubEventFormItem, SubEventsDisplayMode } from './core/base/models';
 
 export interface DemoUser {
   id: string;
@@ -74,7 +75,11 @@ export interface EventMenuItem {
   locationCoordinates?: LocationCoordinates;
   capacityMin?: number | null;
   capacityMax?: number | null;
+  autoInviter?: boolean;
+  frequency?: string;
   topics?: string[];
+  subEvents?: SubEventFormItem[];
+  subEventsDisplayMode?: SubEventsDisplayMode;
   rating?: number;
   relevance?: number;
   affinity?: number;
@@ -101,7 +106,11 @@ export interface HostingMenuItem {
   locationCoordinates?: LocationCoordinates;
   capacityMin?: number | null;
   capacityMax?: number | null;
+  autoInviter?: boolean;
+  frequency?: string;
   topics?: string[];
+  subEvents?: SubEventFormItem[];
+  subEventsDisplayMode?: SubEventsDisplayMode;
   rating?: number;
   relevance?: number;
   affinity?: number;

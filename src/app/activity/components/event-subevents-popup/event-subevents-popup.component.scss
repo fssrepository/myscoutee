@@ -543,10 +543,6 @@
   box-sizing: border-box;
 }
 
-.subevents-stage-placeholder {
-  opacity: 0.24;
-}
-
 .subevents-stage-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
@@ -1003,9 +999,12 @@
 
 .subevents-casual-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.subevents-casual-grid-smart-list {
+  display: grid;
   gap: 0.52rem;
-  align-items: start;
 }
 
 .subevents-casual-card {

@@ -268,12 +268,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected openSelectedChatSubEvent(event?: Event): void {
     event?.stopPropagation();
     this.openSelectedChatEvent();
-    setTimeout(() => {
-      if (typeof window === 'undefined') {
-        return;
-      }
-      window.dispatchEvent(new CustomEvent('app:openSubEvents'));
-    }, 60);
+    this.eventEditorService.requestOpenSubEventsPopup();
   }
 
   protected openSelectedChatGroup(event?: Event): void {

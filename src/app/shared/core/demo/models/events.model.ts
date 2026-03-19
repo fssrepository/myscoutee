@@ -48,12 +48,16 @@ export interface DemoEventRecord {
   capacityMin: number | null;
   capacityMax: number | null;
   capacityTotal: number;
+  autoInviter?: boolean;
+  frequency?: string;
   ticketing: boolean;
   acceptedMembers: number;
   pendingMembers: number;
   acceptedMemberUserIds: string[];
   pendingMemberUserIds: string[];
   topics: string[];
+  subEvents?: AppTypes.SubEventFormItem[];
+  subEventsDisplayMode?: AppTypes.SubEventsDisplayMode;
   rating: number;
   relevance: number;
   affinity: number;

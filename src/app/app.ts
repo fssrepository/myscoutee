@@ -179,7 +179,6 @@ export class App {
   protected eventEditorMode: AppTypes.EventEditorMode = 'edit';
   protected eventEditorReadOnly = false;
   protected mobileProfileSelectorSheet: AppTypes.MobileProfileSelectorSheet | null = null;
-  protected interestSelectorSelected: string[] = [];
   protected readonly assetTypeOptions: AppTypes.AssetType[] = APP_STATIC_DATA.assetTypeOptions;
   protected readonly assetFilterOptions: AppTypes.AssetFilterType[] = APP_STATIC_DATA.assetFilterOptions;
   private readonly seedAssetCards: AppTypes.AssetCard[] = AppDemoGenerators.buildSampleAssetCards(this.users);
@@ -200,7 +199,7 @@ export class App {
   protected activityInviteSort: AppTypes.ActivityInviteSort = 'recent';
   protected showActivityInviteSortPicker = false;
   protected selectedActivityInviteUserIds: string[] = [];
-  protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | 'subEventAssetAssign' | null = null;
+  protected superStackedPopup: 'activityInviteFriends' | 'subEventAssetAssign' | null = null;
   private readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
   private activityMembersPopupOrigin: 'active-event-editor' | 'stacked-event-editor' | 'subevent-asset' | null = null;
   private subEventAssetMembersContext: AppTypes.SubEventAssetMembersContext | null = null;
@@ -258,7 +257,6 @@ export class App {
 
   protected eventSupplyTypes: string[] = ['Cars', 'Members', 'Accessories', 'Accommodation'];
   protected newSupplyType = '';
-  protected selectedSupplyContext: AppTypes.SupplyContext | null = null;
   protected selectedSubEventBadgeContext: AppTypes.SubEventBadgeContext | null = null;
   protected subEventResourceFilter: AppTypes.SubEventResourceFilter = 'Members';
   protected subEventMembersPendingOnly = false;
@@ -303,39 +301,6 @@ export class App {
     this.initializeEventEditorContextData();
     this.initializeProfileDetailForms();
     this.appCtx.setConnectivityState(this.browserConnectivityState());
-
-    effect(() => {
-      const request = this.activitiesContext.activitiesNavigationRequest();
-      if (!request) {
-        return;
-      }
-      if (request.type === 'members' || request.type === 'eventEditorMembers' || request.type === 'eventExplore') {
-        return;
-      }
-      this.activitiesContext.clearActivitiesNavigationRequest();
-      this.subEventResourceFallbackCardsByType = null;
-      if (request.type === 'eventEditorCreate') {
-        this.openEventEditor(true, 'create', undefined, false, null, request.target);
-        return;
-      }
-      if (request.type === 'eventEditor') {
-        this.openEventEditorFromActivitiesRequest(request.row, request.readOnly);
-        return;
-      }
-    });
-
-    // Listen for events from EventEditorPopupComponent
-    if (typeof window !== 'undefined') {
-      window.addEventListener('app:openTopics', (event) => {
-        this.syncModuleEventEditorDraftFromEvent(event);
-        this.openEventTopicsSelector();
-      });
-      window.addEventListener('app:openLocationMap', (event) => {
-        this.syncModuleEventEditorDraftFromEvent(event);
-        this.openEventLocationMap();
-      });
-      window.addEventListener('app:saveEventEditor', (event) => this.handleModuleEventEditorSave(event));
-    }
   }
 
   ngOnDestroy(): void {
@@ -554,39 +519,10 @@ export class App {
     this.selectedInvitation = item;
     const related = this.resolveRelatedEventFromInvitation(item);
     const source = related ?? this.buildInvitationPreviewEventSource(item);
-    this.openEventEditor(stacked, 'edit', source, true, item.id);
+    this.requestOpenEventEditorFromSource(source, true);
     if (closeMenu) {
       this.closeUserMenu();
     }
-  }
-
-  protected openEventEditor(
-    stacked = false,
-    mode: AppTypes.EventEditorMode = 'edit',
-    source?: EventMenuItem | HostingMenuItem,
-    readOnly = false,
-    invitationId: string | null = null,
-    targetOverride?: AppTypes.EventEditorTarget
-  ): void {
-    this.eventEditorMode = mode;
-    this.eventEditorReadOnly = mode === 'edit' && readOnly;
-    this.eventEditorInvitationId = invitationId;
-    this.prepareEventEditorForm(mode, source, targetOverride);
-    const resolvedSource = source ?? this.resolveEventEditorSource();
-    if (mode === 'create') {
-      this.eventEditorService.openCreate();
-      return;
-    }
-    if (!resolvedSource) {
-      this.eventEditorService.openCreate();
-      return;
-    }
-    const moduleSource = this.buildEventEditorModuleSource(resolvedSource);
-    if (this.eventEditorReadOnly) {
-      this.eventEditorService.openView(moduleSource);
-      return;
-    }
-    this.eventEditorService.openEdit(moduleSource);
   }
 
   protected openInvitationRelatedEventEditor(stacked = false, event?: Event): void {
@@ -595,134 +531,28 @@ export class App {
     if (!related) {
       return;
     }
-    this.openEventEditor(stacked, 'edit', related, true, this.selectedInvitation?.id ?? null);
-  }
 
-  private openEventEditorFromActivitiesRequest(row: AppTypes.ActivityListRow, readOnly: boolean): void {
-    if (row.type === 'invitations') {
-      const invitationSource = row.source as InvitationMenuItem;
-      const invitation = this.invitationItems.find(item => item.id === invitationSource.id) ?? invitationSource;
-      const related = this.resolveRelatedEventFromInvitation(invitation);
-      const source = related ?? this.buildInvitationPreviewEventSource(invitation);
-      this.openEventEditor(true, 'edit', source, true, invitation.id);
+    this.requestOpenEventEditorFromSource(related, true);
+    if (stacked) {
+      this.closeStackedPopup();
       return;
     }
-    if (row.type !== 'events' && row.type !== 'hosting') {
-      return;
-    }
-    const rowSource = row.source as EventMenuItem | HostingMenuItem;
-    const rowSourceId = typeof rowSource?.id === 'string' ? rowSource.id.trim() : '';
-    let source = rowSourceId
-      ? (this.eventItems.find(item => item.id === rowSourceId)
-        ?? this.hostingItems.find(item => item.id === rowSourceId)
-        ?? null)
-      : null;
-    if (!source && typeof rowSource?.title === 'string' && rowSource.title.trim()) {
-      const titleKey = AppUtils.normalizeText(rowSource.title);
-      source = this.eventItems.find(item => AppUtils.normalizeText(item.title) === titleKey)
-        ?? this.hostingItems.find(item => AppUtils.normalizeText(item.title) === titleKey)
-        ?? null;
-    }
-    source = source ?? rowSource;
-    const effectiveReadOnly = readOnly || (row.type === 'events' && row.isAdmin !== true);
-    this.openEventEditor(true, 'edit', source, effectiveReadOnly);
+    this.closePopup();
   }
 
-  protected isEventEditorReadOnly(): boolean {
-    return this.eventEditorReadOnly;
-  }
-
-  private reopenEventEditorPopupFromState(force = false): void {
-    if (!force && this.eventEditorService.isOpen()) {
-      return;
-    }
-    const source = this.resolveEventEditorSource();
-    if (this.eventEditorMode === 'create' || !source) {
-      this.eventEditorService.open('create', this.buildEventEditorCreateDraftSource());
-      return;
-    }
-    const moduleSource = this.buildEventEditorModuleSource(source);
-    if (this.eventEditorReadOnly) {
-      this.eventEditorService.openView(moduleSource);
-      return;
-    }
-    this.eventEditorService.openEdit(moduleSource);
-  }
-
-  private buildEventEditorModuleSource(source: EventMenuItem | HostingMenuItem): Record<string, unknown> {
-    const row = this.buildEventEditorActivityRow(source);
-    const pendingMembersCount = this.activityPendingMemberCount(row);
-    return {
-      ...source,
-      title: this.eventForm.title.trim() || source.title,
-      description: this.eventForm.description.trim() || source.shortDescription,
-      imageUrl: this.eventForm.imageUrl
-        || this.activityImageById[source.id]
-        || AppDemoGenerators.defaultAssetImage('Supplies', `event-${source.id}`),
-      visibility: this.eventForm.visibility,
-      frequency: this.eventForm.frequency,
-      location: this.eventForm.location,
-      capacityMin: this.eventForm.capacityMin,
-      capacityMax: this.eventForm.capacityMax,
-      blindMode: this.eventForm.blindMode,
-      autoInviter: this.eventForm.autoInviter,
-      ticketing: this.eventForm.ticketing,
-      topics: [...this.eventForm.topics],
-      subEvents: this.buildModuleEventEditorSubEvents(this.eventForm.subEvents),
-      subEventsDisplayMode: this.subEventsDisplayMode,
-      startAt: this.eventForm.startAt,
-      endAt: this.eventForm.endAt,
-      pendingMembersCount
-    };
-  }
-
-  private buildEventEditorCreateDraftSource(): Record<string, unknown> {
-    const draftSource: EventMenuItem | HostingMenuItem = this.eventEditorTarget === 'hosting'
-      ? {
-        id: this.eventEditorDraftMembersId ?? 'draft-hosting',
-        avatar: this.activeUser.initials,
-        title: '',
-        shortDescription: '',
-        timeframe: '',
-        activity: 0
-      }
-      : {
-        id: this.eventEditorDraftMembersId ?? 'draft-events',
-        avatar: this.activeUser.initials,
-        title: '',
-        shortDescription: '',
-        timeframe: '',
-        activity: 0,
-        isAdmin: true
-      };
-    return this.buildEventEditorModuleSource(draftSource);
-  }
-
-  private buildModuleEventEditorSubEvents(items: readonly AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] {
-    return this.cloneSubEvents([...items]).map(item => {
-      const cars = this.subEventAssetCapacityMetrics(item, 'Car');
-      const accommodation = this.subEventAssetCapacityMetrics(item, 'Accommodation');
-      const supplies = this.subEventAssetCapacityMetrics(item, 'Supplies');
-      return {
-        ...item,
-        carsAccepted: cars.joined,
-        carsPending: cars.pending,
-        carsCapacityMin: cars.capacityMin,
-        carsCapacityMax: cars.capacityMax,
-        accommodationAccepted: accommodation.joined,
-        accommodationPending: accommodation.pending,
-        accommodationCapacityMin: accommodation.capacityMin,
-        accommodationCapacityMax: accommodation.capacityMax,
-        suppliesAccepted: supplies.joined,
-        suppliesPending: supplies.pending,
-        suppliesCapacityMin: supplies.capacityMin,
-        suppliesCapacityMax: supplies.capacityMax
-      };
+  private requestOpenEventEditorFromSource(
+    source: EventMenuItem | HostingMenuItem,
+    readOnly: boolean
+  ): void {
+    this.activitiesContext.requestActivitiesNavigation({
+      type: 'eventEditor',
+      row: this.buildActivitiesNavigationRow(source),
+      readOnly
     });
   }
 
-  private buildEventEditorActivityRow(source: EventMenuItem | HostingMenuItem): AppTypes.ActivityListRow {
-    const isHosting = this.eventEditorTarget === 'hosting' || this.isHostingSource(source);
+  private buildActivitiesNavigationRow(source: EventMenuItem | HostingMenuItem): AppTypes.ActivityListRow {
+    const isHosting = this.isHostingSource(source);
     return {
       id: source.id,
       type: isHosting ? 'hosting' : 'events',
@@ -736,185 +566,6 @@ export class App {
       isAdmin: isHosting ? true : (source as EventMenuItem).isAdmin === true,
       source
     };
-  }
-
-  private handleModuleEventEditorSave(event: Event): void {
-    const payload = this.moduleEventEditorPayloadFromEvent(event) ?? {};
-    this.applyModuleEventEditorPayload(payload);
-    this.persistModuleEventEditorPayload();
-  }
-
-  private syncModuleEventEditorDraftFromEvent(event: Event): void {
-    const payload = this.moduleEventEditorPayloadFromEvent(event);
-    if (!payload) {
-      return;
-    }
-    this.applyModuleEventEditorPayload(payload);
-  }
-
-  private moduleEventEditorPayloadFromEvent(event: Event): Record<string, unknown> | null {
-    const customEvent = event as CustomEvent<Record<string, unknown>>;
-    if (!customEvent.detail || typeof customEvent.detail !== 'object') {
-      return null;
-    }
-    return customEvent.detail;
-  }
-
-  private handleModuleSubEventResourcePopup(event: Event): void {
-    const customEvent = event as CustomEvent<Record<string, unknown>>;
-    const payload = (customEvent.detail && typeof customEvent.detail === 'object')
-      ? customEvent.detail
-      : {};
-
-    const typeRaw = `${payload['type'] ?? ''}`.trim();
-    const type = (typeRaw === 'Members' || typeRaw === 'Car' || typeRaw === 'Accommodation' || typeRaw === 'Supplies')
-      ? typeRaw as 'Members' | 'Car' | 'Accommodation' | 'Supplies'
-      : null;
-    if (!type) {
-      return;
-    }
-
-    const subEvent = (payload['subEvent'] && typeof payload['subEvent'] === 'object')
-      ? payload['subEvent'] as AppTypes.SubEventFormItem
-      : null;
-    if (!subEvent) {
-      return;
-    }
-
-    const groupRaw = (payload['group'] && typeof payload['group'] === 'object')
-      ? payload['group'] as { id?: unknown; groupLabel?: unknown; pending?: unknown; capacityMin?: unknown; capacityMax?: unknown }
-      : null;
-    const group = groupRaw
-      ? {
-        id: typeof groupRaw.id === 'string' ? groupRaw.id : undefined,
-        groupLabel: typeof groupRaw.groupLabel === 'string' ? groupRaw.groupLabel : undefined,
-        pending: Number.isFinite(Number(groupRaw.pending)) ? Math.max(0, Math.trunc(Number(groupRaw.pending))) : undefined,
-        capacityMin: Number.isFinite(Number(groupRaw.capacityMin)) ? Math.max(0, Math.trunc(Number(groupRaw.capacityMin))) : undefined,
-        capacityMax: Number.isFinite(Number(groupRaw.capacityMax)) ? Math.max(0, Math.trunc(Number(groupRaw.capacityMax))) : undefined
-      }
-      : undefined;
-    const popupSubEvent = group
-      ? {
-        ...subEvent,
-        membersPending: type === 'Members' ? group.pending ?? subEvent.membersPending : subEvent.membersPending,
-        capacityMin: group.capacityMin ?? subEvent.capacityMin,
-        capacityMax: group.capacityMax ?? subEvent.capacityMax,
-        carsPending: type === 'Car' ? group.pending ?? subEvent.carsPending : subEvent.carsPending,
-        carsCapacityMin: type === 'Car' ? group.capacityMin ?? subEvent.carsCapacityMin : subEvent.carsCapacityMin,
-        carsCapacityMax: type === 'Car' ? group.capacityMax ?? subEvent.carsCapacityMax : subEvent.carsCapacityMax,
-        accommodationPending: type === 'Accommodation' ? group.pending ?? subEvent.accommodationPending : subEvent.accommodationPending,
-        accommodationCapacityMin: type === 'Accommodation' ? group.capacityMin ?? subEvent.accommodationCapacityMin : subEvent.accommodationCapacityMin,
-        accommodationCapacityMax: type === 'Accommodation' ? group.capacityMax ?? subEvent.accommodationCapacityMax : subEvent.accommodationCapacityMax,
-        suppliesPending: type === 'Supplies' ? group.pending ?? subEvent.suppliesPending : subEvent.suppliesPending,
-        suppliesCapacityMin: type === 'Supplies' ? group.capacityMin ?? subEvent.suppliesCapacityMin : subEvent.suppliesCapacityMin,
-        suppliesCapacityMax: type === 'Supplies' ? group.capacityMax ?? subEvent.suppliesCapacityMax : subEvent.suppliesCapacityMax
-      }
-      : subEvent;
-    this.openSubEventBadgePopup(type, popupSubEvent, undefined, group);
-  }
-
-  private applyModuleEventEditorPayload(payload: Record<string, unknown>): void {
-    if (typeof payload['title'] === 'string') {
-      this.eventForm.title = payload['title'];
-    }
-    if (typeof payload['description'] === 'string') {
-      this.eventForm.description = payload['description'];
-    }
-    if (typeof payload['imageUrl'] === 'string') {
-      this.eventForm.imageUrl = payload['imageUrl'];
-    }
-    if (typeof payload['location'] === 'string') {
-      this.eventForm.location = this.normalizeLocationValue(payload['location']);
-    }
-    if (typeof payload['frequency'] === 'string' && payload['frequency'].trim()) {
-      this.eventForm.frequency = payload['frequency'].trim();
-    }
-
-    const visibility = payload['visibility'];
-    if (typeof visibility === 'string' && this.eventVisibilityOptions.includes(visibility as AppTypes.EventVisibility)) {
-      this.eventForm.visibility = visibility as AppTypes.EventVisibility;
-    }
-
-    const blindMode = payload['blindMode'];
-    if (blindMode === 'Blind Event' || blindMode === 'Open Event') {
-      this.eventForm.blindMode = blindMode;
-    }
-
-    if ('autoInviter' in payload) {
-      this.eventForm.autoInviter = payload['autoInviter'] === true || payload['autoInviter'] === 'true';
-    }
-    if ('ticketing' in payload) {
-      this.eventForm.ticketing = payload['ticketing'] === true || payload['ticketing'] === 'true';
-    }
-
-    if ('capacityMin' in payload) {
-      this.eventForm.capacityMin = this.toEventCapacityInputValue(payload['capacityMin'] as number | string);
-    }
-    if ('capacityMax' in payload) {
-      this.eventForm.capacityMax = this.toEventCapacityInputValue(payload['capacityMax'] as number | string);
-    }
-    const normalizedMin = this.normalizedEventCapacityValue(this.eventForm.capacityMin);
-    const normalizedMax = this.normalizedEventCapacityValue(this.eventForm.capacityMax);
-    if (normalizedMin !== null && normalizedMax !== null && normalizedMax < normalizedMin) {
-      this.eventForm.capacityMax = normalizedMin;
-    }
-
-    const topics = payload['topics'];
-    if (Array.isArray(topics)) {
-      this.eventForm.topics = topics
-        .map(item => `${item ?? ''}`.trim().replace(/^#+/, ''))
-        .filter(item => item.length > 0)
-        .slice(0, 5);
-    }
-
-    const subEvents = payload['subEvents'];
-    if (Array.isArray(subEvents)) {
-      this.eventForm.subEvents = this.cloneSubEvents(subEvents as AppTypes.SubEventFormItem[]);
-    }
-
-    const subEventsDisplayMode = payload['subEventsDisplayMode'];
-    if (subEventsDisplayMode === 'Tournament' || subEventsDisplayMode === 'Casual') {
-      this.subEventsDisplayMode = subEventsDisplayMode;
-    }
-
-    if (typeof payload['startAt'] === 'string' && payload['startAt'].trim()) {
-      this.eventForm.startAt = payload['startAt'].trim();
-    }
-    if (typeof payload['endAt'] === 'string' && payload['endAt'].trim()) {
-      this.eventForm.endAt = payload['endAt'].trim();
-    }
-
-    this.syncEventDateTimeControlsFromForm();
-  }
-
-  private persistModuleEventEditorPayload(): void {
-    if (this.eventEditorReadOnly) {
-      return;
-    }
-
-    this.syncEventFormFromDateTimeControls();
-    const normalizedCapacity = this.normalizedEventCapacityRange();
-    this.eventForm.capacityMin = normalizedCapacity.min;
-    this.eventForm.capacityMax = normalizedCapacity.max;
-    this.syncFirstSubEventLocationFromMainEvent();
-
-    const title = this.eventForm.title.trim();
-    const description = this.eventForm.description.trim();
-    if (!title || !description || !this.eventForm.startAt || !this.eventForm.endAt) {
-      this.showEventEditorRequiredValidation = true;
-      return;
-    }
-
-    this.showEventEditorRequiredValidation = false;
-    this.normalizeEventDateRange();
-    const savedEventId = this.editingEventId
-      ? this.updateExistingEventFromForm()
-      : this.insertCreatedEventFromForm();
-    if (savedEventId) {
-      this.emitActivitiesEventSync(savedEventId, this.eventEditorTarget);
-    }
-
-    this.eventEditorService.close();
   }
 
   private emitActivitiesEventSync(
@@ -1068,95 +719,6 @@ export class App {
     );
   }
 
-  protected openEventTopicsSelector(event?: Event): void {
-    event?.stopPropagation();
-    if (this.eventEditorReadOnly) {
-      return;
-    }
-    this.interestSelectorSelected = this.resolveInterestSelectorValues(this.eventForm.topics);
-    this.superStackedPopup = 'eventTopicsSelector';
-  }
-
-  protected openEventSubEventsPopup(event?: Event): void {
-    event?.stopPropagation();
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('app:openSubEvents'));
-    }
-  }
-
-  protected closeEventSubEventsPopup(): void {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('app:closeSubEvents'));
-    }
-  }
-
-  protected closeEventTopicsSelector(apply = true): void {
-    if (apply) {
-      this.eventForm.topics = this.interestSelectorSelected
-        .map(item => `${item ?? ''}`.trim().replace(/^#+/, ''))
-        .filter(item => item.length > 0)
-        .slice(0, 5);
-    } else {
-      this.interestSelectorSelected = this.resolveInterestSelectorValues(this.eventForm.topics);
-    }
-    this.superStackedPopup = null;
-    this.reopenEventEditorPopupFromState(true);
-  }
-
-  protected eventTopicToneClass(option: string): string {
-    const normalizedOption = this.normalizeTopicToken(option);
-    if (!normalizedOption) {
-      return '';
-    }
-    for (const group of this.interestOptionGroups) {
-      if (group.options.some(groupOption => this.normalizeTopicToken(groupOption) === normalizedOption)) {
-        return group.toneClass;
-      }
-    }
-    return '';
-  }
-
-  protected eventTopicLabel(option: string): string {
-    return `#${option.replace(/^#+/, '')}`;
-  }
-
-  protected eventTopicsPanelClass(): string {
-    return 'section-identity';
-  }
-
-  protected eventTopicsPanelIcon(): string {
-    return 'sell';
-  }
-
-  private normalizeTopicToken(value: unknown): string {
-    return `${value ?? ''}`.trim().replace(/^#+/, '').toLowerCase();
-  }
-
-  private resolveInterestSelectorValues(values: readonly string[]): string[] {
-    const byNormalizedToken = new Map<string, string>();
-    for (const option of this.interestAllOptions()) {
-      const normalized = this.normalizeTopicToken(option);
-      if (normalized) {
-        byNormalizedToken.set(normalized, option);
-      }
-    }
-    const resolved: string[] = [];
-    const seen = new Set<string>();
-    for (const value of values) {
-      const normalized = this.normalizeTopicToken(value);
-      const canonical = byNormalizedToken.get(normalized);
-      if (!canonical || seen.has(canonical)) {
-        continue;
-      }
-      seen.add(canonical);
-      resolved.push(canonical);
-      if (resolved.length >= 5) {
-        break;
-      }
-    }
-    return resolved;
-  }
-
   protected get eventFrequencyOptions(): string[] {
     return this.contextualFrequencyOptions(this.eventForm.startAt, this.eventForm.endAt);
   }
@@ -1189,76 +751,6 @@ export class App {
       default:
         return 'event-frequency-one-time';
     }
-  }
-
-  protected eventVisibilityIcon(option: AppTypes.EventVisibility): string {
-    switch (option) {
-      case 'Public':
-        return 'public';
-      case 'Friends only':
-        return 'groups';
-      default:
-        return 'mail_lock';
-    }
-  }
-
-  protected eventVisibilityClass(option: AppTypes.EventVisibility): string {
-    switch (option) {
-      case 'Public':
-        return 'event-visibility-public';
-      case 'Friends only':
-        return 'event-visibility-friends';
-      default:
-        return 'event-visibility-invitation';
-    }
-  }
-
-  protected eventBlindModeIcon(option: AppTypes.EventBlindMode): string {
-    return option === 'Blind Event' ? 'visibility_off' : 'visibility';
-  }
-
-  protected eventBlindModeClass(option: AppTypes.EventBlindMode): string {
-    return option === 'Blind Event' ? 'blind-mode-blind' : 'blind-mode-open';
-  }
-
-  protected eventBlindModeDescription(option: AppTypes.EventBlindMode): string {
-    return option === 'Blind Event'
-      ? 'Attendees won’t see each other before the event.'
-      : 'Attendees can preview each other before the event.';
-  }
-
-  protected toggleEventBlindMode(event?: Event): void {
-    event?.stopPropagation();
-    if (this.eventEditorReadOnly) {
-      return;
-    }
-    this.eventForm.blindMode = this.eventForm.blindMode === 'Blind Event' ? 'Open Event' : 'Blind Event';
-  }
-
-  protected toggleEventAutoInviter(event?: Event): void {
-    event?.stopPropagation();
-    if (this.eventEditorReadOnly) {
-      return;
-    }
-    this.eventForm.autoInviter = !this.eventForm.autoInviter;
-  }
-
-  protected eventAutoInviterClass(enabled: boolean): string {
-    return enabled ? 'auto-inviter-on' : 'auto-inviter-off';
-  }
-
-  protected eventAutoInviterIcon(enabled: boolean): string {
-    return enabled ? 'group_add' : 'person_off';
-  }
-
-  protected eventAutoInviterLabel(enabled: boolean): string {
-    return enabled ? 'Auto Inviter On' : 'Auto Inviter Off';
-  }
-
-  protected eventAutoInviterDescription(enabled: boolean): string {
-    return enabled
-      ? 'Invites people by matching mutual preferences.'
-      : 'Manual invites only.';
   }
 
   protected subEventCardRange(item: AppTypes.SubEventFormItem): string {
@@ -4008,10 +3500,7 @@ export class App {
       this.selectedActivityMembersRowId = null;
       this.selectedActivityMembersRow = null;
       this.selectedActivityInviteUserIds = [];
-      if (this.subEventBadgePopupOrigin === 'stacked-event-editor') {
-        this.stackedPopup = null;
-        this.reopenEventEditorPopupFromState();
-      } else if (this.subEventBadgePopupOrigin === 'chat') {
+      if (this.subEventBadgePopupOrigin === 'chat') {
         this.stackedPopup = null;
       } else {
         this.stackedPopup = null;
@@ -4050,14 +3539,10 @@ export class App {
         this.activityMembersPopupOrigin = null;
         this.subEventAssetMembersContext = null;
         this.stackedPopup = null;
-        this.reopenEventEditorPopupFromState();
         return;
       }
       this.activityMembersPopupOrigin = null;
       this.subEventAssetMembersContext = null;
-    }
-    if (this.superStackedPopup === 'eventTopicsSelector') {
-      this.superStackedPopup = null;
     }
     this.stackedPopup = null;
     this.syncAssetPopupVisibility();
@@ -4085,8 +3570,6 @@ export class App {
         return this.selectedInvitation?.description ?? 'Invitation';
       case 'imageUpload':
         return 'Upload Image';
-      case 'supplyDetail':
-        return `${this.selectedSupplyContext?.type ?? 'Supply'} · ${this.selectedSupplyContext?.subEventTitle ?? ''}`.trim();
       case 'subEventMembers':
         return `Members · ${this.subEventDisplayName(this.selectedSubEventBadgeContext?.subEvent)}`.trim();
       case 'subEventAssets':
@@ -4112,8 +3595,6 @@ export class App {
         return 'Ticket';
       case 'ticketScanner':
         return 'Scan Ticket';
-      case 'supplyDetail':
-        return `${this.selectedSupplyContext?.type ?? 'Supply'} · ${this.selectedSupplyContext?.subEventTitle ?? ''}`.trim();
       case 'subEventMembers':
         return `Members · ${this.subEventDisplayName(this.selectedSubEventBadgeContext?.subEvent)}`.trim();
       case 'subEventAssets':
@@ -4125,53 +3606,6 @@ export class App {
     }
   }
 
-  protected toggleInterestOption(option: string): void {
-    const allowed = this.interestAllOptions();
-    if (!allowed.includes(option)) {
-      return;
-    }
-    const exists = this.interestSelectorSelected.includes(option);
-    if (!exists && this.interestSelectorSelected.length >= 5) {
-      return;
-    }
-    this.interestSelectorSelected = exists
-      ? this.interestSelectorSelected.filter(item => item !== option)
-      : [...this.interestSelectorSelected, option];
-    if (this.superStackedPopup === 'eventTopicsSelector') {
-      this.eventForm.topics = [...this.interestSelectorSelected];
-    }
-  }
-
-  protected removeInterestOption(option: string): void {
-    this.interestSelectorSelected = this.interestSelectorSelected.filter(item => item !== option);
-    if (this.superStackedPopup === 'eventTopicsSelector') {
-      this.eventForm.topics = [...this.interestSelectorSelected];
-    }
-  }
-
-  protected clearInterestSelector(): void {
-    this.interestSelectorSelected = [];
-    if (this.superStackedPopup === 'eventTopicsSelector') {
-      this.eventForm.topics = [];
-    }
-  }
-
-  protected isInterestOptionSelected(option: string): boolean {
-    return this.interestSelectorSelected.includes(option);
-  }
-
-  protected interestOptionToneClass(option: string): string {
-    const normalizedOption = this.normalizeTopicToken(option);
-    if (!normalizedOption) {
-      return '';
-    }
-    for (const group of this.interestOptionGroups) {
-      if (group.options.some(groupOption => this.normalizeTopicToken(groupOption) === normalizedOption)) {
-        return group.toneClass;
-      }
-    }
-    return '';
-  }
   private initializeProfileDetailForms(): void {
     for (const user of this.users) {
       this.profileDetailsFormByUser[user.id] = this.createProfileDetailsFormForUser(user);
@@ -5658,65 +5092,6 @@ export class App {
     this.newSupplyType = '';
   }
 
-  protected openSupplyDetail(subEventId: string, subEventTitle: string, type: string): void {
-    this.selectedSupplyContext = { subEventId, subEventTitle, type };
-    if (this.stackedPopup !== null) {
-      this.stackedPopup = 'supplyDetail';
-      return;
-    }
-    this.activePopup = 'supplyDetail';
-  }
-
-  protected getSupplyStat(subEvent: AppTypes.SubEventCard, type: string): string {
-    const normalized = type.toLowerCase();
-    if (normalized.includes('car')) {
-      return subEvent.requirements.cars;
-    }
-    if (normalized.includes('accommodation')) {
-      return subEvent.requirements.accommodation;
-    }
-    if (normalized.includes('accessor')) {
-      return subEvent.requirements.accessories;
-    }
-    if (normalized.includes('member')) {
-      return `${this.eventEditor.members.length} / ${this.eventEditor.mainEvent.capacity}`;
-    }
-    return '0 / 0';
-  }
-
-  protected isSupplyStatIncomplete(subEvent: AppTypes.SubEventCard, type: string): boolean {
-    const values = this.getSupplyStat(subEvent, type).split('/');
-    if (values.length !== 2) {
-      return false;
-    }
-    const current = Number.parseInt(values[0].trim(), 10);
-    const max = Number.parseInt(values[1].trim(), 10);
-    if (!Number.isFinite(current) || !Number.isFinite(max)) {
-      return false;
-    }
-    return current < max;
-  }
-
-  protected get selectedSupplyItems(): Array<{ label: string; detail: string }> {
-    if (!this.selectedSupplyContext) {
-      return [];
-    }
-    const type = this.selectedSupplyContext.type.toLowerCase();
-    if (type.includes('car')) {
-      return this.eventEditor.cars.map(car => ({ label: car.owner, detail: `${car.route} · seats ${car.seats}` }));
-    }
-    if (type.includes('accommodation')) {
-      return this.eventEditor.accommodations.map(room => ({ label: room.name, detail: `${room.rooms} · ${room.people}` }));
-    }
-    if (type.includes('accessor')) {
-      return this.eventEditor.accessories.map(accessory => ({ label: accessory.item, detail: `required ${accessory.required} · offered ${accessory.offered}` }));
-    }
-    if (type.includes('member')) {
-      return this.eventEditor.members.map(member => ({ label: member.name, detail: member.role }));
-    }
-    return [{ label: 'Custom supply slot', detail: 'Add items and assign to this sub-event.' }];
-  }
-
   protected get assetCarItems(): Array<{ label: string; detail: string }> {
     return this.eventEditor.cars.map(car => ({ label: car.owner, detail: `${car.route} · seats ${car.seats}` }));
   }
@@ -6004,17 +5379,6 @@ export class App {
     return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
   }
 
-  @HostListener('window:openFeaturePopup', ['$event'])
-  onGlobalPopupRequest(event: Event): void {
-    const popupEvent = event as CustomEvent<{ type: 'eventEditor' }>;
-    if (!popupEvent.detail?.type) {
-      return;
-    }
-    if (popupEvent.detail.type === 'eventEditor') {
-      this.openEventEditor(false, 'create');
-    }
-  }
-
   @HostListener('window:keydown.escape', ['$event'])
   onGlobalEscape(event: Event): void {
     const keyboardEvent = event as KeyboardEvent;
@@ -6028,15 +5392,6 @@ export class App {
     }
     if (this.superStackedPopup === 'activityInviteFriends') {
       this.closeActivityInviteFriends(false);
-      return;
-    }
-    if (this.superStackedPopup === 'eventTopicsSelector') {
-      this.closeEventTopicsSelector(true);
-      return;
-    }
-    if (this.eventEditorService.isOpen()) {
-      keyboardEvent.preventDefault();
-      this.eventEditorService.close();
       return;
     }
     if (this.stackedPopup) {

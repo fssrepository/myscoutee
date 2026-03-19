@@ -16,6 +16,9 @@ import { EventEditorService } from '../../../shared/event-editor.service';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import type * as AppTypes from '../../../shared/core/base/models';
+import { ActivityMembersService, AppContext, EventsService } from '../../../shared/core';
+import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
+import { TopicPickerPopupComponent } from '../../../shared/ui';
 import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
 
 type EventVisibility = 'Public' | 'Friends only' | 'Invitation only';
@@ -85,6 +88,7 @@ interface EventEditorSavePayload {
     MatTimepickerModule,
     MatNativeDateModule,
     MatOptionModule,
+    TopicPickerPopupComponent,
     EventSubeventsPopupComponent
   ],
   templateUrl: './event-editor-popup.component.html',
@@ -93,24 +97,35 @@ interface EventEditorSavePayload {
 export class EventEditorPopupComponent implements OnInit, OnDestroy {
   protected readonly eventEditorService = inject(EventEditorService);
   private readonly activitiesContext = inject(ActivitiesDbContextService);
-  private readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
+  private readonly activityMembersService = inject(ActivityMembersService);
+  private readonly eventsService = inject(EventsService);
+  private readonly appCtx = inject(AppContext);
+  protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
 
   @ViewChild('eventImageInput') eventImageInput!: ElementRef<HTMLInputElement>;
 
   private openSubscription?: Subscription;
   private closeSubscription?: Subscription;
-  private readonly openSubEventsFromAppHandler = () => {
-    if (!this.eventEditorService.isOpen()) {
-      return;
-    }
-    this.showEventVisibilityPicker = false;
-    this.showSubEventsPopup = true;
-  };
-  private readonly closeSubEventsFromAppHandler = () => {
-    this.showSubEventsPopup = false;
-  };
+  private editorTarget: AppTypes.EventEditorTarget = 'events';
+  private lastHandledOpenSubEventsRequest = 0;
+  protected editingEventId: string | null = null;
+  private draftEventId: string | null = null;
+  private currentRecord: DemoEventRecord | null = null;
 
   constructor() {
+    effect(() => {
+      const request = this.activitiesContext.activitiesNavigationRequest();
+      if (!request || (request.type !== 'eventEditorCreate' && request.type !== 'eventEditor')) {
+        return;
+      }
+      this.activitiesContext.clearActivitiesNavigationRequest();
+      if (request.type === 'eventEditorCreate') {
+        this.openCreateRequest(request.target);
+        return;
+      }
+      void this.openEditRequest(request.row, request.readOnly);
+    });
+
     effect(() => {
       const sourceEvent: any = this.eventEditorService.sourceEvent();
       const isOpen = this.eventEditorService.isOpen();
@@ -118,6 +133,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       if (!isOpen) {
         this.showEventVisibilityPicker = false;
         this.showSubEventsPopup = false;
+        this.showTopicPicker = false;
         return;
       }
 
@@ -126,7 +142,19 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         return;
       }
 
-      this.resetForm();
+      this.resetForm(this.editorTarget);
+    });
+
+    effect(() => {
+      const isOpen = this.eventEditorService.isOpen();
+      const openSubEventsRequestNonce = this.eventEditorService.openSubEventsRequestNonce();
+      if (!isOpen || openSubEventsRequestNonce <= this.lastHandledOpenSubEventsRequest) {
+        return;
+      }
+      this.lastHandledOpenSubEventsRequest = openSubEventsRequestNonce;
+      this.showEventVisibilityPicker = false;
+      this.showTopicPicker = false;
+      this.showSubEventsPopup = true;
     });
 
   }
@@ -135,26 +163,20 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.openSubscription = this.eventEditorService.onOpen$.subscribe(() => {
       this.showEventVisibilityPicker = false;
       this.showSubEventsPopup = false;
+      this.showTopicPicker = false;
     });
 
     this.closeSubscription = this.eventEditorService.onClose$.subscribe(() => {
       this.showEventVisibilityPicker = false;
       this.showSubEventsPopup = false;
+      this.showTopicPicker = false;
+      this.resetEditorContext();
     });
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('app:openSubEvents', this.openSubEventsFromAppHandler);
-      window.addEventListener('app:closeSubEvents', this.closeSubEventsFromAppHandler);
-    }
   }
 
   ngOnDestroy(): void {
     this.openSubscription?.unsubscribe();
     this.closeSubscription?.unsubscribe();
-    if (typeof window !== 'undefined') {
-      window.removeEventListener('app:openSubEvents', this.openSubEventsFromAppHandler);
-      window.removeEventListener('app:closeSubEvents', this.closeSubEventsFromAppHandler);
-    }
   }
 
   eventForm = {
@@ -183,6 +205,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   subEventsDisplayMode: SubEventsDisplayMode = 'Casual';
   showEventVisibilityPicker = false;
   showSubEventsPopup = false;
+  showTopicPicker = false;
 
   readonly visibilityOptions: EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
   readonly eventFrequencyOptions = ['One-time', 'Daily', 'Weekly', 'Bi-weekly', 'Monthly'];
@@ -190,6 +213,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   close(): void {
     this.showEventVisibilityPicker = false;
     this.showSubEventsPopup = false;
+    this.showTopicPicker = false;
     this.eventEditorService.close();
   }
 
@@ -208,10 +232,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   requestOpenMembers(): void {
     this.showEventVisibilityPicker = false;
+    this.showTopicPicker = false;
     const source = this.eventEditorService.sourceEvent();
     const row: AppTypes.ActivityListRow = {
-      id: source?.id ?? 'draft-event',
-      type: this.isHostingLikeSource(source) ? 'hosting' : 'events',
+      id: source?.id ?? this.draftEventId ?? 'draft-event',
+      type: this.editorTarget === 'hosting' ? 'hosting' : 'events',
       title: this.eventForm.title.trim() || 'New Event',
       subtitle: this.eventForm.description.trim() || 'Draft event',
       detail: this.eventForm.startAt || 'Draft',
@@ -219,9 +244,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       distanceKm: 0,
       unread: 0,
       metricScore: 0,
-      isAdmin: !this.eventEditorService.readOnly(),
+      isAdmin: true,
       source: source ?? {
-        id: 'draft-event',
+        id: this.draftEventId ?? 'draft-event',
         avatar: '',
         title: this.eventForm.title.trim() || 'New Event',
         shortDescription: this.eventForm.description.trim() || 'Draft event',
@@ -233,6 +258,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   requestOpenSubEvents(): void {
     this.showEventVisibilityPicker = false;
+    this.showTopicPicker = false;
     this.showSubEventsPopup = true;
   }
 
@@ -258,16 +284,29 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   requestOpenTopics(): void {
     this.showEventVisibilityPicker = false;
-    window.dispatchEvent(new CustomEvent<EventEditorSavePayload>('app:openTopics', {
-      detail: this.buildEventEditorPayload()
-    }));
+    this.showSubEventsPopup = false;
+    this.showTopicPicker = true;
   }
 
   requestOpenLocationMap(): void {
     this.showEventVisibilityPicker = false;
-    window.dispatchEvent(new CustomEvent<EventEditorSavePayload>('app:openLocationMap', {
-      detail: this.buildEventEditorPayload()
-    }));
+    const routeStops = this.eventLocationRouteStops();
+    if (routeStops.length <= 1) {
+      this.openGoogleMapsSearch(routeStops[0] ?? this.eventForm.location);
+      return;
+    }
+    this.openGoogleMapsDirections(routeStops);
+  }
+
+  closeTopicPicker(): void {
+    this.showTopicPicker = false;
+  }
+
+  updateTopicSelection(selected: readonly string[]): void {
+    this.eventForm.topics = selected
+      .map(item => `${item ?? ''}`.trim().replace(/^#+/, ''))
+      .filter(item => item.length > 0)
+      .slice(0, 5);
   }
 
   eventEditorHeaderPendingMemberCount(): number {
@@ -313,11 +352,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!this.canSubmitEventEditorForm()) {
       return;
     }
-
-    this.normalizeEventDateRange();
-    window.dispatchEvent(new CustomEvent<EventEditorSavePayload>('app:saveEventEditor', {
-      detail: this.buildEventEditorPayload()
-    }));
+    void this.persistEventEditorForm();
   }
 
   private buildEventEditorPayload(): EventEditorSavePayload {
@@ -651,6 +686,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   onEventLocationChange(value: string): void {
     this.eventForm.location = this.normalizeLocation(value);
+    this.syncFirstSubEventLocationFromMainEvent();
   }
 
   onEventStartDateChange(value: Date | null): void {
@@ -681,9 +717,352 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.syncDateTimeControlsFromForm();
   }
 
+  @HostListener('window:keydown.escape', ['$event'])
+  protected onEscapePressed(event: Event): void {
+    const keyboardEvent = event as KeyboardEvent;
+    if (!this.eventEditorService.isOpen() || keyboardEvent.defaultPrevented) {
+      return;
+    }
+    keyboardEvent.preventDefault();
+    keyboardEvent.stopPropagation();
+    if (this.showTopicPicker) {
+      this.showTopicPicker = false;
+      return;
+    }
+    if (this.showSubEventsPopup) {
+      this.showSubEventsPopup = false;
+      return;
+    }
+    if (this.showEventVisibilityPicker) {
+      this.showEventVisibilityPicker = false;
+      return;
+    }
+    this.close();
+  }
+
   @HostListener('document:click')
   onDocumentClick(): void {
     this.showEventVisibilityPicker = false;
+  }
+
+  private openCreateRequest(target: AppTypes.EventEditorTarget): void {
+    this.resetEditorContext();
+    this.editorTarget = target;
+    this.draftEventId = `draft-${target}-${Date.now()}`;
+    this.resetForm(target);
+    this.eventEditorService.openCreate();
+  }
+
+  private async openEditRequest(row: AppTypes.ActivityListRow, readOnly: boolean): Promise<void> {
+    this.resetEditorContext();
+    const activeUserId = this.activeUserId();
+    const cachedRecord = activeUserId ? this.eventsService.peekKnownItemById(activeUserId, row.id) : null;
+    const target = cachedRecord?.type === 'hosting' || row.type === 'hosting' ? 'hosting' : 'events';
+    const fallbackSource = this.buildFallbackSource(row, readOnly, target);
+
+    this.editorTarget = target;
+    this.editingEventId = row.id;
+    if (cachedRecord) {
+      this.currentRecord = cachedRecord;
+      this.openRecord(cachedRecord, readOnly, target);
+    } else {
+      this.eventEditorService.open(readOnly ? 'edit' : 'edit', fallbackSource, readOnly);
+    }
+
+    if (!activeUserId) {
+      return;
+    }
+    const record = await this.eventsService.queryKnownItemById(activeUserId, row.id);
+    if (!record) {
+      return;
+    }
+    this.currentRecord = record;
+    this.editorTarget = record.type === 'hosting' ? 'hosting' : target;
+    this.editingEventId = record.id;
+    this.openRecord(record, readOnly, this.editorTarget);
+  }
+
+  private openRecord(record: DemoEventRecord, readOnly: boolean, target: AppTypes.EventEditorTarget): void {
+    const source = this.buildSourceEventFromRecord(record, target);
+    if (readOnly) {
+      this.eventEditorService.openView(source);
+      return;
+    }
+    this.eventEditorService.openEdit(source);
+  }
+
+  private buildSourceEventFromRecord(
+    record: DemoEventRecord,
+    target: AppTypes.EventEditorTarget
+  ): Record<string, unknown> {
+    return {
+      id: record.id,
+      avatar: record.creatorInitials,
+      title: record.title,
+      description: record.subtitle,
+      shortDescription: record.subtitle,
+      timeframe: record.timeframe,
+      activity: record.activity,
+      isAdmin: target === 'hosting' ? true : record.isAdmin,
+      imageUrl: record.imageUrl,
+      visibility: record.visibility,
+      frequency: record.frequency ?? 'One-time',
+      location: record.location,
+      capacityMin: record.capacityMin,
+      capacityMax: record.capacityMax,
+      blindMode: record.blindMode,
+      autoInviter: record.autoInviter ?? false,
+      ticketing: record.ticketing,
+      topics: [...record.topics],
+      subEvents: this.normalizeSubEvents(record.subEvents ?? []),
+      subEventsDisplayMode: record.subEventsDisplayMode,
+      startAt: record.startAtIso,
+      endAt: record.endAtIso,
+      published: record.published,
+      pendingMembersCount: record.pendingMembers,
+      distanceKm: record.distanceKm,
+      sourceLink: record.sourceLink,
+      locationCoordinates: record.locationCoordinates
+    };
+  }
+
+  private buildFallbackSource(
+    row: AppTypes.ActivityListRow,
+    readOnly: boolean,
+    target: AppTypes.EventEditorTarget
+  ): Record<string, unknown> {
+    const rowSource = row.source as unknown as Partial<Record<string, unknown>> | null;
+    const title = this.normalizeTextValue(rowSource?.['title']) || row.title;
+    const description = this.normalizeTextValue(rowSource?.['shortDescription'] ?? rowSource?.['description']) || row.subtitle;
+    return {
+      id: row.id,
+      avatar: this.normalizeTextValue(rowSource?.['avatar']),
+      title,
+      description,
+      shortDescription: description,
+      timeframe: this.normalizeTextValue(rowSource?.['timeframe']) || row.detail,
+      activity: Math.max(0, Math.trunc(Number(row.unread) || 0)),
+      isAdmin: row.isAdmin === true,
+      imageUrl: this.normalizeTextValue(rowSource?.['imageUrl']),
+      visibility: target === 'hosting' ? 'Invitation only' : 'Public',
+      frequency: 'One-time',
+      location: this.normalizeTextValue(rowSource?.['location']),
+      capacityMin: this.toCapacityInputValue(rowSource?.['capacityMin']),
+      capacityMax: this.toCapacityInputValue(rowSource?.['capacityMax']),
+      blindMode: 'Open Event',
+      autoInviter: false,
+      ticketing: Boolean(rowSource?.['ticketing']),
+      topics: Array.isArray(rowSource?.['topics']) ? rowSource?.['topics'] : [],
+      subEvents: [],
+      subEventsDisplayMode: 'Casual',
+      startAt: this.normalizeTextValue(rowSource?.['startAt']) || row.dateIso,
+      endAt: this.normalizeTextValue(rowSource?.['endAt']) || row.dateIso,
+      published: true,
+      pendingMembersCount: row.unread,
+      distanceKm: row.distanceKm,
+      sourceLink: this.normalizeTextValue(rowSource?.['sourceLink']),
+      readOnly
+    };
+  }
+
+  private async persistEventEditorForm(): Promise<void> {
+    if (this.eventEditorService.readOnly()) {
+      return;
+    }
+
+    this.syncEventFormFromDateTimeControls();
+    this.normalizeEventDateRange();
+    this.syncFirstSubEventLocationFromMainEvent();
+    const normalizedCapacity = this.normalizedEventCapacityRange();
+    this.eventForm.capacityMin = normalizedCapacity.min;
+    this.eventForm.capacityMax = normalizedCapacity.max;
+    if (!this.canSubmitEventEditorForm()) {
+      return;
+    }
+
+    const activeUserId = this.activeUserId();
+    const eventId = this.editingEventId ?? this.buildCreatedEventId();
+    const existingRecord = this.currentRecord
+      ?? (activeUserId ? this.eventsService.peekKnownItemById(activeUserId, eventId) : null);
+    const summary = this.editingEventId
+      ? await this.activityMembersService.querySummaryByOwnerId(this.editingEventId)
+      : null;
+    const acceptedMembers = summary?.acceptedMembers
+      ?? existingRecord?.acceptedMembers
+      ?? 0;
+    const pendingMembers = summary?.pendingMembers
+      ?? existingRecord?.pendingMembers
+      ?? 0;
+    const capacityTotal = summary?.capacityTotal
+      ?? existingRecord?.capacityTotal
+      ?? Math.max(0, normalizedCapacity.max ?? normalizedCapacity.min ?? 0);
+    const payload = this.buildActivitiesEventSyncPayload(
+      eventId,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      existingRecord,
+      summary?.acceptedMemberUserIds ?? existingRecord?.acceptedMemberUserIds ?? [],
+      summary?.pendingMemberUserIds ?? existingRecord?.pendingMemberUserIds ?? []
+    );
+
+    this.activitiesContext.emitActivitiesEventSync(payload);
+    this.eventEditorService.close();
+  }
+
+  private buildActivitiesEventSyncPayload(
+    eventId: string,
+    acceptedMembers: number,
+    pendingMembers: number,
+    capacityTotal: number,
+    existingRecord: DemoEventRecord | null,
+    acceptedMemberUserIds: readonly string[],
+    pendingMemberUserIds: readonly string[]
+  ): Omit<AppTypes.ActivitiesEventSyncPayload, 'syncKey'> {
+    const activeUserId = this.activeUserId();
+    const activeUserProfile = activeUserId ? this.appCtx.getUserProfile(activeUserId) : null;
+    const timeframe = this.buildEventTimeframeLabel(this.eventForm.startAt, this.eventForm.endAt, this.eventForm.frequency);
+    const createdByCurrentUser = Boolean(activeUserId);
+
+    return {
+      id: eventId,
+      target: this.editorTarget,
+      title: this.eventForm.title.trim(),
+      shortDescription: this.eventForm.description.trim(),
+      timeframe,
+      activity: existingRecord?.activity ?? 0,
+      isAdmin: true,
+      startAt: this.eventForm.startAt,
+      endAt: this.eventForm.endAt,
+      distanceKm: existingRecord?.distanceKm ?? 0,
+      imageUrl: this.eventForm.imageUrl || existingRecord?.imageUrl || '',
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal: Math.max(acceptedMembers, capacityTotal),
+      capacityMin: this.eventForm.capacityMin,
+      capacityMax: this.eventForm.capacityMax,
+      autoInviter: this.eventForm.autoInviter,
+      frequency: this.eventForm.frequency,
+      ticketing: this.eventForm.ticketing,
+      visibility: this.eventForm.visibility,
+      blindMode: this.eventForm.blindMode,
+      published: this.editorTarget === 'hosting'
+        ? (existingRecord?.published ?? false)
+        : true,
+      creatorUserId: createdByCurrentUser ? activeUserId : existingRecord?.creatorUserId,
+      creatorName: activeUserProfile?.name ?? existingRecord?.creatorName,
+      creatorInitials: activeUserProfile?.initials ?? existingRecord?.creatorInitials,
+      creatorGender: activeUserProfile?.gender ?? existingRecord?.creatorGender,
+      creatorCity: activeUserProfile?.city ?? existingRecord?.creatorCity,
+      location: this.eventForm.location.trim(),
+      locationCoordinates: existingRecord?.locationCoordinates ?? undefined,
+      sourceLink: existingRecord?.sourceLink ?? '',
+      acceptedMemberUserIds: Array.from(new Set(acceptedMemberUserIds.filter(id => id.trim().length > 0))),
+      pendingMemberUserIds: Array.from(new Set(pendingMemberUserIds.filter(id => id.trim().length > 0))),
+      topics: [...this.eventForm.topics],
+      subEvents: this.buildPersistedSubEvents(),
+      subEventsDisplayMode: this.subEventsDisplayMode
+    };
+  }
+
+  private buildPersistedSubEvents(): AppTypes.SubEventFormItem[] {
+    return this.eventForm.subEvents.map((item, index) => {
+      const rawItem = item as EventEditorSubEventItem & Record<string, unknown>;
+      const capacityMin = Math.max(0, Math.trunc(Number(item.capacityMin) || 0));
+      const capacityMax = Math.max(capacityMin, Math.trunc(Number(item.capacityMax) || capacityMin));
+
+      return {
+        id: item.id?.trim() || `subevent-${index + 1}`,
+        name: `${item.name ?? item.title ?? `Sub Event ${index + 1}`}`.trim(),
+        description: `${item.description ?? ''}`.trim(),
+        startAt: `${item.startAt ?? ''}`.trim(),
+        endAt: `${item.endAt ?? ''}`.trim(),
+        location: this.normalizeLocation(item.location),
+        optional: Boolean(item.optional),
+        capacityMin,
+        capacityMax,
+        tournamentGroupCount: Number.isFinite(Number(rawItem['tournamentGroupCount']))
+          ? Math.max(0, Math.trunc(Number(rawItem['tournamentGroupCount'])))
+          : undefined,
+        tournamentGroupCapacityMin: Number.isFinite(Number(rawItem['tournamentGroupCapacityMin']))
+          ? Math.max(0, Math.trunc(Number(rawItem['tournamentGroupCapacityMin'])))
+          : undefined,
+        tournamentGroupCapacityMax: Number.isFinite(Number(rawItem['tournamentGroupCapacityMax']))
+          ? Math.max(0, Math.trunc(Number(rawItem['tournamentGroupCapacityMax'])))
+          : undefined,
+        tournamentLeaderboardType: rawItem['tournamentLeaderboardType'] === 'Fifa' ? 'Fifa' : 'Score',
+        tournamentAdvancePerGroup: Number.isFinite(Number(rawItem['tournamentAdvancePerGroup']))
+          ? Math.max(0, Math.trunc(Number(rawItem['tournamentAdvancePerGroup'])))
+          : undefined,
+        groups: (item.groups ?? []).map((group, groupIndex) => {
+          const groupCapacityMin = Number.isFinite(Number(group.capacityMin))
+            ? Math.max(0, Math.trunc(Number(group.capacityMin)))
+            : undefined;
+          const groupCapacityMax = Number.isFinite(Number(group.capacityMax))
+            ? Math.max(groupCapacityMin ?? 0, Math.trunc(Number(group.capacityMax)))
+            : groupCapacityMin;
+          return {
+            id: group.id?.trim() || `group-${index + 1}-${groupIndex + 1}`,
+            name: `${group.name ?? `Group ${String.fromCharCode(65 + (groupIndex % 26))}`}`.trim(),
+            source: group.source === 'manual' ? 'manual' : 'generated',
+            capacityMin: groupCapacityMin,
+            capacityMax: groupCapacityMax
+          };
+        }),
+        membersAccepted: Math.max(0, Math.trunc(Number(item.membersAccepted) || 0)),
+        membersPending: Math.max(0, Math.trunc(Number(item.membersPending) || 0)),
+        carsPending: Math.max(0, Math.trunc(Number(item.carsPending) || 0)),
+        accommodationPending: Math.max(0, Math.trunc(Number(item.accommodationPending) || 0)),
+        suppliesPending: Math.max(0, Math.trunc(Number(item.suppliesPending) || 0)),
+        carsAccepted: Number.isFinite(Number(rawItem['carsAccepted']))
+          ? Math.max(0, Math.trunc(Number(rawItem['carsAccepted'])))
+          : undefined,
+        accommodationAccepted: Number.isFinite(Number(rawItem['accommodationAccepted']))
+          ? Math.max(0, Math.trunc(Number(rawItem['accommodationAccepted'])))
+          : undefined,
+        suppliesAccepted: Number.isFinite(Number(rawItem['suppliesAccepted']))
+          ? Math.max(0, Math.trunc(Number(rawItem['suppliesAccepted'])))
+          : undefined,
+        carsCapacityMin: Number.isFinite(Number(rawItem['carsCapacityMin']))
+          ? Math.max(0, Math.trunc(Number(rawItem['carsCapacityMin'])))
+          : undefined,
+        carsCapacityMax: Number.isFinite(Number(rawItem['carsCapacityMax']))
+          ? Math.max(0, Math.trunc(Number(rawItem['carsCapacityMax'])))
+          : undefined,
+        accommodationCapacityMin: Number.isFinite(Number(rawItem['accommodationCapacityMin']))
+          ? Math.max(0, Math.trunc(Number(rawItem['accommodationCapacityMin'])))
+          : undefined,
+        accommodationCapacityMax: Number.isFinite(Number(rawItem['accommodationCapacityMax']))
+          ? Math.max(0, Math.trunc(Number(rawItem['accommodationCapacityMax'])))
+          : undefined,
+        suppliesCapacityMin: Number.isFinite(Number(rawItem['suppliesCapacityMin']))
+          ? Math.max(0, Math.trunc(Number(rawItem['suppliesCapacityMin'])))
+          : undefined,
+        suppliesCapacityMax: Number.isFinite(Number(rawItem['suppliesCapacityMax']))
+          ? Math.max(0, Math.trunc(Number(rawItem['suppliesCapacityMax'])))
+          : undefined
+      };
+    });
+  }
+
+  private resetEditorContext(): void {
+    this.editorTarget = 'events';
+    this.editingEventId = null;
+    this.draftEventId = null;
+    this.currentRecord = null;
+  }
+
+  private activeUserId(): string {
+    return this.appCtx.activeUserId().trim() || this.appCtx.getActiveUserId().trim();
+  }
+
+  private buildCreatedEventId(): string {
+    const stamp = Date.now();
+    return this.editorTarget === 'hosting' ? `h${stamp}` : `e${stamp}`;
+  }
+
+  private normalizeTextValue(value: unknown): string {
+    return typeof value === 'string' ? value.trim() : '';
   }
 
   private populateFormFromSourceEvent(sourceEvent: any): void {
@@ -723,7 +1102,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.syncDateTimeControlsFromForm();
   }
 
-  private resetForm(): void {
+  private resetForm(target: AppTypes.EventEditorTarget = this.editorTarget): void {
     const start = new Date();
     const end = new Date(start.getTime() + (60 * 60 * 1000));
 
@@ -731,7 +1110,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       title: '',
       description: '',
       imageUrl: '',
-      visibility: 'Public',
+      visibility: target === 'hosting' ? 'Invitation only' : 'Public',
       frequency: 'One-time',
       location: '',
       capacityMin: 0,
@@ -836,12 +1215,57 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private cloneSubEvents(items: readonly EventEditorSubEventItem[]): EventEditorSubEventItem[] {
-    return items.map(item => ({ ...item }));
+    return items.map(item => ({
+      ...item,
+      groups: (item.groups ?? []).map(group => ({ ...group }))
+    }));
   }
 
   private firstSubEventByOrder(items: readonly EventEditorSubEventItem[] = this.eventForm.subEvents): EventEditorSubEventItem | null {
     const ordered = this.sortSubEventRefsByStartAsc(items);
     return ordered[0] ?? null;
+  }
+
+  private withFirstSubEventLocation(items: readonly EventEditorSubEventItem[], location: string): EventEditorSubEventItem[] {
+    if (items.length === 0) {
+      return [];
+    }
+    const first = this.firstSubEventByOrder(items);
+    if (!first?.id) {
+      return this.cloneSubEvents(items);
+    }
+    const normalizedLocation = this.normalizeLocation(location);
+    return items.map(item => item.id === first.id
+      ? { ...item, location: normalizedLocation, groups: (item.groups ?? []).map(group => ({ ...group })) }
+      : { ...item, groups: (item.groups ?? []).map(group => ({ ...group })) });
+  }
+
+  private syncFirstSubEventLocationFromMainEvent(): void {
+    if (this.eventForm.subEvents.length === 0) {
+      return;
+    }
+    this.eventForm.subEvents = this.withFirstSubEventLocation(this.eventForm.subEvents, this.eventForm.location);
+  }
+
+  private eventLocationRouteStops(): string[] {
+    const mainLocation = this.normalizeLocation(this.eventForm.location).trim();
+    const subEventStops = this.sortSubEventRefsByStartAsc(this.eventForm.subEvents)
+      .map(item => this.normalizeLocation(item.location).trim())
+      .filter(stop => stop.length > 0);
+    const ordered = [mainLocation, ...subEventStops].filter(stop => stop.length > 0);
+    return Array.from(new Set(ordered));
+  }
+
+  private normalizedEventCapacityRange(): AppTypes.EventCapacityRange {
+    const min = this.normalizedCapacityValueWithFloor(this.eventForm.capacityMin, 0);
+    const maxCandidate = this.normalizedCapacityValueWithFloor(this.eventForm.capacityMax, 0);
+    const max = min !== null && maxCandidate !== null
+      ? Math.max(min, maxCandidate)
+      : (maxCandidate ?? min);
+    return {
+      min,
+      max
+    };
   }
 
   private normalizedCapacityValueWithFloor(value: unknown, floor: number): number | null {
@@ -1086,6 +1510,57 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
     const ratio = AppUtils.clampNumber((stageNumber - 1) / (totalStages - 1), 0, 1);
     return Math.round(210 - (210 * ratio));
+  }
+
+  private buildEventTimeframeLabel(startAt: string, endAt: string, frequency: string): string {
+    const start = this.parseDateValue(startAt);
+    const end = this.parseDateValue(endAt);
+    if (!start || !end) {
+      return startAt || endAt || '';
+    }
+
+    const dateLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const normalizedFrequency = this.normalizeFrequency(frequency);
+
+    if (normalizedFrequency === 'One-time') {
+      return `${dateLabel} · ${startTime} - ${endTime}`;
+    }
+
+    return `${normalizedFrequency} · ${dateLabel} · ${startTime} - ${endTime}`;
+  }
+
+  private openGoogleMapsSearch(value: string): void {
+    const trimmed = value.trim();
+    if (!trimmed || typeof window === 'undefined') {
+      return;
+    }
+    window.open(
+      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trimmed)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+  }
+
+  private openGoogleMapsDirections(stops: readonly string[]): void {
+    const normalizedStops = stops.map(stop => stop.trim()).filter(stop => stop.length > 0);
+    if (normalizedStops.length === 0 || typeof window === 'undefined') {
+      return;
+    }
+    if (normalizedStops.length === 1) {
+      this.openGoogleMapsSearch(normalizedStops[0]);
+      return;
+    }
+
+    const [origin, ...rest] = normalizedStops;
+    const destination = rest[rest.length - 1] ?? origin;
+    const waypoints = rest.slice(0, -1);
+    let url = `https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`;
+    if (waypoints.length > 0) {
+      url += `&waypoints=${encodeURIComponent(waypoints.join('|'))}`;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 
   private subEventName(subEvent: EventEditorSubEventItem): string {

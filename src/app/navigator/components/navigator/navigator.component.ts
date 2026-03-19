@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Type, ViewEncapsulation, effect, inject, signal } from '@angular/core';
+import { Component, HostListener, Type, ViewEncapsulation, effect, inject, signal } from '@angular/core';
 import { AssetPopupService } from '../../../asset/asset-popup.service';
 import { OwnedAssetsPopupService } from '../../../asset/owned-assets-popup.service';
 import { ActivitiesDbContextService } from '../../../activity/services/activities-db-context.service';
@@ -62,6 +62,14 @@ export class NavigatorComponent {
       if (isOpen && !this.eventEditorPopupComponentRef()) {
         void this.ensureEventEditorPopupLoaded();
       }
+    });
+
+    effect(() => {
+      const request = this.activitiesContext.activitiesNavigationRequest();
+      if (!request || (request.type !== 'eventEditorCreate' && request.type !== 'eventEditor')) {
+        return;
+      }
+      void this.ensureEventEditorPopupLoaded();
     });
 
     effect(() => {
@@ -140,5 +148,18 @@ export class NavigatorComponent {
     }
     const module = await import('../../../activity/components/event-feedback-popup/event-feedback-popup.component');
     this.eventFeedbackPopupComponentRef.set(module.EventFeedbackPopupComponent);
+  }
+
+  @HostListener('window:openFeaturePopup', ['$event'])
+  protected onGlobalPopupRequest(event: Event): void {
+    const popupEvent = event as CustomEvent<{ type?: 'eventEditor' | 'eventExplore' }>;
+    if (popupEvent.detail?.type !== 'eventEditor') {
+      return;
+    }
+    this.activitiesContext.requestActivitiesNavigation({
+      type: 'eventEditorCreate',
+      target: 'events'
+    });
+    void this.ensureEventEditorPopupLoaded();
   }
 }

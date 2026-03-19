@@ -23,6 +23,7 @@ import {
   type DemoEventScopeFilter,
   type DemoRepositoryEventItemType
 } from '../models/events.model';
+import type * as AppTypes from '../../../core/base/models';
 import type { ActivitiesEventSyncPayload } from '../../../core/base/models';
 import { USERS_TABLE_NAME } from '../models/users.model';
 import type { LocationCoordinates } from '../../base/interfaces';
@@ -814,6 +815,7 @@ export class DemoEventsRepository {
     const visibility = payload.visibility ?? existing?.visibility ?? (context.isHosting ? 'Invitation only' : 'Public');
     const blindMode = payload.blindMode ?? existing?.blindMode ?? 'Open Event';
     const topics = this.normalizeTopics(payload.topics ?? existing?.topics ?? []);
+    const subEvents = this.cloneSubEvents(payload.subEvents ?? existing?.subEvents);
     const ticketing = payload.ticketing ?? existing?.ticketing ?? false;
     const rating = existing?.rating ?? (6 + ((AppDemoGenerators.hashText(`${context.type}:${payload.id}:${payload.title}`) % 35) / 10));
     const relevance = existing?.relevance ?? (50 + (AppDemoGenerators.hashText(`${context.type}:${payload.id}:${payload.title}`) % 51));
@@ -869,12 +871,20 @@ export class DemoEventsRepository {
       capacityMin: this.normalizeCount(payload.capacityMin) ?? existing?.capacityMin ?? 0,
       capacityMax: this.normalizeCount(payload.capacityMax) ?? existing?.capacityMax ?? context.capacityTotal,
       capacityTotal: context.capacityTotal,
+      autoInviter: typeof payload.autoInviter === 'boolean'
+        ? payload.autoInviter
+        : (typeof existing?.autoInviter === 'boolean' ? existing.autoInviter : false),
+      frequency: payload.frequency?.trim() || existing?.frequency || 'One-time',
       ticketing,
       acceptedMembers: context.acceptedMembers,
       pendingMembers: context.pendingMembers,
       acceptedMemberUserIds: [...context.acceptedMemberUserIds],
       pendingMemberUserIds: [...context.pendingMemberUserIds],
       topics,
+      subEvents,
+      subEventsDisplayMode: payload.subEventsDisplayMode
+        ?? existing?.subEventsDisplayMode
+        ?? (subEvents ? AppDemoGenerators.inferredSubEventsDisplayMode(subEvents) : 'Casual'),
       rating,
       relevance,
       affinity
@@ -914,6 +924,19 @@ export class DemoEventsRepository {
       .map(topic => `${topic ?? ''}`.trim().replace(/^#+/, ''))
       .filter(topic => topic.length > 0)
       .slice(0, 5)));
+  }
+
+  private cloneSubEvents(items: readonly AppTypes.SubEventFormItem[] | undefined): AppTypes.SubEventFormItem[] | undefined {
+    if (!Array.isArray(items)) {
+      return undefined;
+    }
+    return items.map(item => ({
+      ...item,
+      location: typeof item.location === 'string' ? item.location : '',
+      groups: Array.isArray(item.groups)
+        ? item.groups.map((group: AppTypes.SubEventGroupItem) => ({ ...group }))
+        : []
+    }));
   }
 
   private buildSeededRecords(): DemoEventRecordCollection {
@@ -1144,6 +1167,8 @@ export class DemoEventsRepository {
       capacityMin: this.normalizeCount(current.capacityMin) ?? seeded.capacityMin,
       capacityMax: this.normalizeCount(current.capacityMax) ?? seeded.capacityMax,
       capacityTotal: this.normalizeCount(current.capacityTotal) ?? seeded.capacityTotal,
+      autoInviter: typeof current.autoInviter === 'boolean' ? current.autoInviter : seeded.autoInviter,
+      frequency: current.frequency?.trim() || seeded.frequency,
       ticketing: typeof current.ticketing === 'boolean' ? current.ticketing : seeded.ticketing,
       acceptedMembers: this.normalizeCount(current.acceptedMembers) ?? seeded.acceptedMembers,
       pendingMembers: this.normalizeCount(current.pendingMembers) ?? seeded.pendingMembers,
@@ -1156,6 +1181,12 @@ export class DemoEventsRepository {
       topics: shouldPreferSeededTopics
         ? [...seeded.topics]
         : (topics.length > 0 ? topics : [...seeded.topics]),
+      subEvents: this.cloneSubEvents(current.subEvents) ?? this.cloneSubEvents(seeded.subEvents),
+      subEventsDisplayMode: current.subEventsDisplayMode
+        ?? seeded.subEventsDisplayMode
+        ?? (this.cloneSubEvents(current.subEvents)?.length
+          ? AppDemoGenerators.inferredSubEventsDisplayMode(this.cloneSubEvents(current.subEvents)!)
+          : 'Casual'),
       rating: Number.isFinite(current.rating) ? Number(current.rating) : seeded.rating,
       relevance: Number.isFinite(current.relevance) ? Number(current.relevance) : seeded.relevance,
       affinity: Number.isFinite(current.affinity)

@@ -16,6 +16,8 @@ interface DemoEventSeedOverrides {
   startAt?: string;
   endAt?: string;
   distanceKm?: number;
+  autoInviter?: boolean;
+  frequency?: string;
   ticketing?: boolean;
   visibility?: DemoEventRecord['visibility'];
   blindMode?: DemoEventRecord['blindMode'];
@@ -28,6 +30,8 @@ interface DemoEventSeedOverrides {
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
   topics?: string[];
+  subEvents?: AppTypes.SubEventFormItem[];
+  subEventsDisplayMode?: AppTypes.SubEventsDisplayMode;
   rating?: number;
   relevance?: number;
   affinity?: number;
@@ -133,7 +137,8 @@ export class DemoEventsRepositoryBuilder {
       locationCoordinates: this.cloneLocationCoordinates(record.locationCoordinates),
       acceptedMemberUserIds: [...record.acceptedMemberUserIds],
       pendingMemberUserIds: [...record.pendingMemberUserIds],
-      topics: [...record.topics]
+      topics: [...record.topics],
+      subEvents: this.cloneSubEvents(record.subEvents)
     };
   }
 
@@ -265,6 +270,8 @@ export class DemoEventsRepositoryBuilder {
     const topics = this.normalizeTopics(record.seed?.topics).length > 0
       ? this.normalizeTopics(record.seed?.topics)
       : this.buildSeededTopics(record.id, record.title, record.subtitle);
+    const subEvents = this.cloneSubEvents(record.seed?.subEvents)
+      ?? this.buildSeededSubEvents(record, startAtIso, creator.id);
     const rating = Number.isFinite(record.seed?.rating)
       ? Number(record.seed?.rating)
       : this.buildSeededRating(record.id, record.title, record.type);
@@ -293,12 +300,17 @@ export class DemoEventsRepositoryBuilder {
       capacityMin,
       capacityMax,
       capacityTotal,
+      autoInviter: record.seed?.autoInviter ?? false,
+      frequency: record.seed?.frequency?.trim()
+        || this.parseFrequencyFromTimeframe((record as { timeframe?: string }).timeframe ?? startAtIso),
       ticketing: record.seed?.ticketing ?? APP_DEMO_DATA.eventTicketingById[record.id] === true,
       acceptedMembers,
       pendingMembers,
       acceptedMemberUserIds: members.acceptedMemberUserIds,
       pendingMemberUserIds: members.pendingMemberUserIds,
       topics,
+      subEvents,
+      subEventsDisplayMode: record.seed?.subEventsDisplayMode ?? AppDemoGenerators.inferredSubEventsDisplayMode(subEvents),
       rating,
       relevance: Number.isFinite(record.seed?.relevance)
         ? Number(record.seed?.relevance)
@@ -451,6 +463,35 @@ export class DemoEventsRepositoryBuilder {
     return topics;
   }
 
+  private static buildSeededSubEvents(
+    record: Pick<DemoEventRecord, 'id' | 'title' | 'subtitle' | 'activity' | 'type' | 'isAdmin'> & { timeframe?: string },
+    startAtIso: string,
+    activeUserId: string
+  ): AppTypes.SubEventFormItem[] {
+    const source = {
+      id: record.id,
+      avatar: AppUtils.initialsFromText(record.title),
+      title: record.title,
+      shortDescription: record.subtitle,
+      timeframe: record.timeframe ?? startAtIso,
+      activity: record.activity,
+      ...(record.type === 'events' ? { isAdmin: record.isAdmin } : {})
+    } as EventMenuItem | HostingMenuItem;
+
+    return AppDemoGenerators.buildSeededSubEventsForEvent(source, {
+      isHosting: record.type === 'hosting',
+      activityDateTimeRangeById: APP_DEMO_DATA.activityDateTimeRangeById,
+      hostingDatesById: APP_DEMO_DATA.hostingDatesById,
+      eventDatesById: APP_DEMO_DATA.eventDatesById,
+      eventCapacityById: {
+        [record.id]: AppDemoGenerators.seededEventCapacityRange(record.id, APP_DEMO_DATA.activityCapacityById)
+      },
+      activityCapacityById: APP_DEMO_DATA.activityCapacityById,
+      defaultStartIso: startAtIso,
+      activeUserId
+    });
+  }
+
   private static buildSeededRating(id: string, title: string, type: DemoRepositoryEventItemType): number {
     const seed = AppDemoGenerators.hashText(`${type}:${id}:${title}`);
     return 6 + ((seed % 35) / 10);
@@ -471,6 +512,8 @@ export class DemoEventsRepositoryBuilder {
       startAt: item.startAt,
       endAt: item.endAt,
       distanceKm: item.distanceKm,
+      autoInviter: item.autoInviter,
+      frequency: item.frequency,
       ticketing: item.ticketing,
       visibility: item.visibility,
       blindMode: item.blindMode,
@@ -481,6 +524,8 @@ export class DemoEventsRepositoryBuilder {
       capacityMin: item.capacityMin,
       capacityMax: item.capacityMax,
       topics: item.topics,
+      subEvents: this.cloneSubEvents(item.subEvents),
+      subEventsDisplayMode: item.subEventsDisplayMode,
       rating: item.rating,
       relevance: item.relevance,
       affinity: item.affinity
@@ -509,11 +554,41 @@ export class DemoEventsRepositoryBuilder {
       .filter(userId => userId.length > 0)));
   }
 
+  private static cloneSubEvents(items: readonly AppTypes.SubEventFormItem[] | undefined): AppTypes.SubEventFormItem[] | undefined {
+    if (!Array.isArray(items)) {
+      return undefined;
+    }
+    return items.map(item => ({
+      ...item,
+      location: typeof item.location === 'string' ? item.location : '',
+      groups: Array.isArray(item.groups)
+        ? item.groups.map((group: AppTypes.SubEventGroupItem) => ({ ...group }))
+        : []
+    }));
+  }
+
   private static normalizeCount(value: number | null | undefined): number | null {
     if (!Number.isFinite(value)) {
       return null;
     }
     return Math.max(0, Math.trunc(Number(value)));
+  }
+
+  private static parseFrequencyFromTimeframe(timeframe: string): string {
+    const normalized = timeframe.toLowerCase();
+    if (normalized.includes('2nd') || normalized.includes('bi-weekly') || normalized.includes('biweekly')) {
+      return 'Bi-weekly';
+    }
+    if (normalized.includes('every')) {
+      return 'Weekly';
+    }
+    if (normalized.includes('monthly')) {
+      return 'Monthly';
+    }
+    if (normalized.includes('daily')) {
+      return 'Daily';
+    }
+    return 'One-time';
   }
 
   private static resolveLocationCoordinatesFromCreator(creator: DemoUser): LocationCoordinates {

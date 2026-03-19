@@ -50,23 +50,6 @@
         </div>
       </div>
 
-      <div *ngIf="activePopup === 'supplyDetail' && selectedSupplyContext">
-        <div class="editor-list-card">
-          <h4>{{ selectedSupplyContext.type }} · {{ selectedSupplyContext.subEventTitle }}</h4>
-          <p>Dynamic supply list for this event card.</p>
-        </div>
-        <div class="editor-list-card" *ngFor="let item of selectedSupplyItems">
-          <h4>{{ item.label }}</h4>
-          <p>{{ item.detail }}</p>
-        </div>
-        <div class="popup-actions">
-          <button type="button" class="link-btn" (click)="alertService.open('Supply item flow is ready for backend wiring.')">+ Add supply offer</button>
-          <button type="button" class="link-btn" (click)="openEventEditor()">Back to Event Editor</button>
-        </div>
-      </div>
-
-
-
     </div>
   </div>
 </section>
@@ -154,74 +137,6 @@
         </div>
       </div>
 
-      <div *ngIf="stackedPopup === 'supplyDetail' && selectedSupplyContext">
-        <div class="editor-list-card">
-          <h4>{{ selectedSupplyContext.type }} · {{ selectedSupplyContext.subEventTitle }}</h4>
-          <p>Dynamic supply list for this event card.</p>
-        </div>
-        <div class="editor-list-card" *ngFor="let item of selectedSupplyItems">
-          <h4>{{ item.label }}</h4>
-          <p>{{ item.detail }}</p>
-        </div>
-        <div class="popup-actions">
-          <button type="button" class="link-btn" (click)="alertService.open('Supply item flow is ready for backend wiring.')">+ Add supply offer</button>
-          <button type="button" class="link-btn" (click)="openEventEditor()">Back to Event Editor</button>
-        </div>
-      </div>
-
-
-    </div>
-  </div>
-</section>
-
-<section class="app-popup app-popup-stacked app-popup-super-stacked" *ngIf="superStackedPopup === 'eventTopicsSelector'">
-  <div class="app-popup-backdrop" (click)="closeEventTopicsSelector(true)"></div>
-  <div class="app-popup-panel popup-panel-friends-picker" (click)="$event.stopPropagation()">
-    <div class="popup-header popup-header-friends-picker event-topics-header">
-      <button
-        mat-icon-button
-        class="popup-back-btn"
-        (click)="closeEventTopicsSelector(true)"
-        aria-label="Back"
-      >
-        <mat-icon>arrow_back</mat-icon>
-      </button>
-      <div class="popup-title">
-        <h2>Topics</h2>
-      </div>
-    </div>
-    <div class="popup-body popup-body-friends-picker">
-      <div class="friends-picker-chip-row" *ngIf="interestSelectorSelected.length > 0">
-        <button
-          type="button"
-          class="values-selected-chip friends-picker-chip"
-          [class]="eventTopicToneClass(topic)"
-          *ngFor="let topic of interestSelectorSelected"
-          (click)="removeInterestOption(topic)"
-        >
-          <span>{{ topic }}</span>
-          <mat-icon class="friends-picker-chip-remove">close</mat-icon>
-        </button>
-      </div>
-      <div class="values-selector-popup">
-        <div class="values-selector-group" *ngFor="let group of interestOptionGroups">
-          <div class="social-proof-section-head" [class]="group.toneClass">
-            <span class="section-tag">{{ group.icon }} {{ group.shortTitle }}</span>
-            <span class="section-line"></span>
-          </div>
-          <div class="social-proof-chip-list">
-            <button
-              type="button"
-              class="social-proof-chip values-option-chip"
-              [class.active]="isInterestOptionSelected(option)"
-              *ngFor="let option of group.options"
-              (click)="toggleInterestOption(option)"
-            >
-              {{ option }}
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </section>

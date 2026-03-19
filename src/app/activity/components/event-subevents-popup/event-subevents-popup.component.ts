@@ -3,11 +3,21 @@ import { Component, EventEmitter, HostListener, Input, OnChanges, Output, Simple
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { of } from 'rxjs';
 import { EventSubeventGroupFormPopupComponent } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
 import { EventSubeventLeaderboardGroup, EventSubeventLeaderboardPopupComponent } from '../event-subevent-leaderboard-popup/event-subevent-leaderboard-popup.component';
 import { EventSubeventStageFormPopupComponent } from '../event-subevent-stage-form-popup/event-subevent-stage-form-popup.component';
 import { AppUtils } from '../../../shared/app-utils';
+import type * as AppTypes from '../../../shared/core/base/models';
+import { AppContext, EventsService } from '../../../shared/core';
+import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { EventEditorService, EventEditorSubEventResourceType } from '../../../shared/event-editor.service';
+import {
+  SmartListComponent,
+  type ListQuery,
+  type PageResult,
+  type SmartListConfig
+} from '../../../shared/ui';
 
 type SubEventsDisplayMode = 'Casual' | 'Tournament';
 type StageMenuAction = 'add-group' | 'leaderboard' | 'edit-stage' | 'delete-stage';
@@ -125,6 +135,7 @@ interface DeleteTargetState {
     FormsModule,
     MatButtonModule,
     MatIconModule,
+    SmartListComponent,
     EventSubeventStageFormPopupComponent,
     EventSubeventGroupFormPopupComponent,
     EventSubeventLeaderboardPopupComponent
@@ -134,10 +145,13 @@ interface DeleteTargetState {
 })
 export class EventSubeventsPopupComponent implements OnChanges {
   private readonly eventEditorService = inject(EventEditorService);
+  private readonly eventsService = inject(EventsService);
+  private readonly appCtx = inject(AppContext);
 
   @Input() open = false;
   @Input() readOnly = false;
   @Input() parentTitle = '';
+  @Input() ownerId: string | null = null;
   @Input() subEvents: readonly EventSubeventsItem[] = [];
   @Input() displayMode: SubEventsDisplayMode = 'Casual';
 
@@ -178,23 +192,51 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private stageSwipeStartX: number | null = null;
   private stageSwipeDeltaX = 0;
   private workingSubEvents: EventSubeventsItem[] = [];
+  private ownerHydrationSequence = 0;
+  private localMutationVersion = 0;
+  private casualListRevision = 0;
+
+  protected casualSmartListQuery: Partial<ListQuery<{ revision: number }>> = {
+    filters: { revision: 0 }
+  };
+
+  protected readonly casualSmartListConfig: SmartListConfig<EventSubeventsItem, { revision: number }> = {
+    pageSize: 18,
+    loadingDelayMs: 0,
+    defaultView: 'list',
+    showStickyHeader: false,
+    showGroupMarker: () => false,
+    emptyLabel: 'No sub events yet.',
+    emptyDescription: 'Use + to add the first sub event.',
+    listLayout: 'card-grid',
+    desktopColumns: () => this.isMobileViewport ? 1 : 3,
+    snapMode: 'none',
+    containerClass: () => ({
+      'subevents-casual-grid': true,
+      'subevents-casual-grid-smart-list': true
+    }),
+    trackBy: (_index, item) => item.id ?? item.name ?? item.title ?? _index
+  };
+
+  protected readonly casualSmartListLoadPage = (query: ListQuery<{ revision: number }>) => of(this.loadCasualSubEventsPage(query));
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['subEvents']) {
-      this.workingSubEvents = this.cloneSubEvents(this.subEvents).map(item => ({
-        ...item,
-        id: item.id ?? this.nextId('subevent')
-      }));
-      this.clampStagePageIndex();
+      this.applyWorkingSubEvents(this.subEvents);
     }
 
     if (changes['open']) {
       if (this.open) {
         this.resetTransientUi();
         this.alignPageToCurrentStage();
+        void this.hydrateOwnerRecord();
       } else {
         this.resetTransientUi();
       }
+    }
+
+    if (changes['ownerId'] && this.open) {
+      void this.hydrateOwnerRecord();
     }
 
     if (changes['displayMode'] && !changes['displayMode'].firstChange) {
@@ -303,6 +345,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (this.displayMode === mode) {
       return;
     }
+    this.localMutationVersion += 1;
     this.displayModeChange.emit(mode);
     this.stagePageIndex = 0;
   }
@@ -350,16 +393,11 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   protected get stagePages(): EventSubeventsStageCard[][] {
     const cards = this.stageCards;
-    const pageSize = this.columnsPerPage();
     if (cards.length === 0) {
       return [];
     }
-
-    const pages: EventSubeventsStageCard[][] = [];
-    for (let index = 0; index < cards.length; index += pageSize) {
-      pages.push(cards.slice(index, index + pageSize));
-    }
-    return pages;
+    const viewportColumns = this.columnsPerPage();
+    return this.stagePageStartIndexes().map(startIndex => cards.slice(startIndex, startIndex + viewportColumns));
   }
 
   protected get visibleStageCards(): EventSubeventsStageCard[] {
@@ -1332,7 +1370,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected trackByStagePageIndex(index: number): number {
-    return index;
+    return this.stagePageStartIndexes()[index] ?? index;
   }
 
   protected trackByIndex(index: number): number {
@@ -1355,9 +1393,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return this.stageCards.find(stage => stage.key === key) ?? null;
   }
 
-  protected stagePlaceholdersForPage(page: readonly EventSubeventsStageCard[]): number[] {
-    const missing = Math.max(0, this.columnsPerPage() - page.length);
-    return Array.from({ length: missing }, (_, index) => index);
+  protected stageGridTemplateColumns(page: readonly EventSubeventsStageCard[]): string {
+    const columnCount = this.isMobileViewport ? 1 : Math.max(1, Math.min(this.columnsPerPage(), page.length));
+    return `repeat(${columnCount}, minmax(0, 1fr))`;
   }
 
   private get sortedEntries(): Array<{ item: EventSubeventsItem; sourceIndex: number; startMs: number; stageId: string }> {
@@ -1845,16 +1883,135 @@ export class EventSubeventsPopupComponent implements OnChanges {
       }
     }
 
-    this.stagePageIndex = AppUtils.clampNumber(
-      Math.floor(currentIndex / this.columnsPerPage()),
-      0,
-      Math.max(0, this.stagePages.length - 1)
-    );
+    const pageStarts = this.stagePageStartIndexes();
+    let nextPageIndex = 0;
+    for (let index = 0; index < pageStarts.length; index += 1) {
+      const startIndex = pageStarts[index];
+      const endIndex = startIndex + this.columnsPerPage() - 1;
+      if (startIndex <= currentIndex && currentIndex <= endIndex) {
+        nextPageIndex = index;
+        break;
+      }
+      if (currentIndex < startIndex) {
+        nextPageIndex = Math.max(0, index - 1);
+        break;
+      }
+      nextPageIndex = index;
+    }
+
+    this.stagePageIndex = AppUtils.clampNumber(nextPageIndex, 0, Math.max(0, pageStarts.length - 1));
   }
 
   private emitWorkingSubEvents(): void {
+    this.localMutationVersion += 1;
     this.subEventsChange.emit(this.cloneSubEvents(this.workingSubEvents));
+    this.bumpCasualSmartListRevision();
     this.clampStagePageIndex();
+  }
+
+  private applyWorkingSubEvents(source: readonly EventSubeventsItem[]): void {
+    this.workingSubEvents = this.cloneSubEvents(source).map(item => ({
+      ...item,
+      id: item.id ?? this.nextId('subevent')
+    }));
+    this.bumpCasualSmartListRevision();
+    this.clampStagePageIndex();
+  }
+
+  private stagePageStartIndexes(): number[] {
+    const cards = this.stageCards;
+    if (cards.length === 0) {
+      return [];
+    }
+
+    const viewportColumns = this.columnsPerPage();
+    const maxStartIndex = Math.max(0, cards.length - viewportColumns);
+    const starts: number[] = [];
+
+    for (let startIndex = 0; startIndex <= maxStartIndex; startIndex += viewportColumns) {
+      starts.push(startIndex);
+    }
+
+    if (starts.length === 0 || starts[starts.length - 1] !== maxStartIndex) {
+      starts.push(maxStartIndex);
+    }
+
+    return Array.from(new Set(starts));
+  }
+
+  private async hydrateOwnerRecord(): Promise<void> {
+    const ownerId = `${this.ownerId ?? ''}`.trim();
+    if (!this.open || !ownerId) {
+      return;
+    }
+
+    const activeUserId = this.activeUserId();
+    if (!activeUserId) {
+      return;
+    }
+
+    const sequence = ++this.ownerHydrationSequence;
+    const mutationVersion = this.localMutationVersion;
+    const cached = this.eventsService.peekKnownItemById(activeUserId, ownerId);
+    this.applyHydratedOwnerRecord(cached, ownerId, sequence, mutationVersion);
+
+    const record = await this.eventsService.queryKnownItemById(activeUserId, ownerId);
+    this.applyHydratedOwnerRecord(record, ownerId, sequence, mutationVersion);
+  }
+
+  private applyHydratedOwnerRecord(
+    record: DemoEventRecord | null,
+    ownerId: string,
+    sequence: number,
+    mutationVersion: number
+  ): void {
+    if (!record || sequence !== this.ownerHydrationSequence || !this.open || `${this.ownerId ?? ''}`.trim() !== ownerId) {
+      return;
+    }
+    if (this.localMutationVersion !== mutationVersion) {
+      return;
+    }
+
+    const nextSubEvents = this.cloneSubEvents(record.subEvents ?? []).map(item => ({
+      ...item,
+      id: item.id ?? this.nextId('subevent')
+    }));
+    this.workingSubEvents = nextSubEvents;
+    this.bumpCasualSmartListRevision();
+    this.clampStagePageIndex();
+    this.alignPageToCurrentStage();
+
+    const nextDisplayMode = record.subEventsDisplayMode === 'Tournament' ? 'Tournament' : 'Casual';
+    if (nextDisplayMode !== this.displayMode) {
+      this.displayModeChange.emit(nextDisplayMode);
+    }
+    this.subEventsChange.emit(this.cloneSubEvents(this.workingSubEvents));
+  }
+
+  private activeUserId(): string {
+    return this.appCtx.activeUserId().trim() || this.appCtx.getActiveUserId().trim();
+  }
+
+  private bumpCasualSmartListRevision(): void {
+    this.casualListRevision += 1;
+    this.casualSmartListQuery = {
+      filters: {
+        revision: this.casualListRevision
+      }
+    };
+  }
+
+  private loadCasualSubEventsPage(query: ListQuery<{ revision: number }>): PageResult<EventSubeventsItem> {
+    const source = [...this.sortedSubEvents];
+    const pageSize = Math.max(1, Math.trunc(query.pageSize) || 18);
+    const pageIndex = Math.max(1, Math.trunc(query.page) || 1);
+    const startIndex = (pageIndex - 1) * pageSize;
+    const items = source.slice(startIndex, startIndex + pageSize);
+    return {
+      items,
+      total: source.length,
+      nextCursor: startIndex + pageSize < source.length ? `${pageIndex + 1}` : null
+    };
   }
 
   private resolveNextSubEventStartAt(): Date {
