@@ -187,7 +187,6 @@
   <ng-template #ticketItemTemplate let-row let-groupLabel="groupLabel">
     <app-info-card
       [card]="ticketInfoCard(row, { groupLabel: groupLabel })"
-      (mediaStartClick)="openTicketSource(row)"
       (mediaEndClick)="assetPopup.openTicketCodePopup(row)"
     ></app-info-card>
   </ng-template>

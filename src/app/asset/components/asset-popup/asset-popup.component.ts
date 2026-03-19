@@ -122,14 +122,6 @@ export class AssetPopupComponent implements OnDestroy {
     this.assetPopup.updateTicketListState(change);
   }
 
-  protected openTicketSource(row: AppTypes.ActivityListRow): void {
-    const sourceLink = this.assetFacade.ticketSourceLink(row);
-    if (!sourceLink || typeof window === 'undefined') {
-      return;
-    }
-    window.open(sourceLink, '_blank', 'noopener');
-  }
-
   protected onAssetFilterMenuOpenChange(isOpen: boolean): void {
     this.assetFilterOpen.set(isOpen);
   }

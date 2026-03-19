@@ -55,7 +55,6 @@ export class AssetFacadeService {
     row: AppTypes.ActivityListRow,
     options: { groupLabel?: string | null } = {}
   ): InfoCardData {
-    const sourceLink = this.ticketSourceLink(row);
     return {
       rowId: `${row.type}:${row.id}`,
       groupLabel: options.groupLabel ?? null,
@@ -71,8 +70,8 @@ export class AssetFacadeService {
         variant: 'avatar',
         tone: this.ticketSourceAvatarTone(row),
         label: this.ticketSourceAvatarLabel(row),
-        interactive: sourceLink.length > 0,
-        ariaLabel: sourceLink.length > 0 ? 'Open source link' : null
+        interactive: false,
+        ariaLabel: null
       },
       mediaEnd: {
         variant: 'badge',
@@ -95,11 +94,6 @@ export class AssetFacadeService {
       month: 'short',
       day: 'numeric'
     });
-  }
-
-  ticketSourceLink(row: AppTypes.ActivityListRow): string {
-    const source = row.source as { sourceLink?: string } | null;
-    return `${source?.sourceLink ?? ''}`.trim();
   }
 
   createTicketScanPayload(row: AppTypes.ActivityListRow): AppTypes.TicketScanPayload {
