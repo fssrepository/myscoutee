@@ -15,7 +15,7 @@ import { AppCalendarDateAdapter, AppCalendarDateFormats } from './shared/app-cal
     { provide: MAT_DATE_FORMATS, useValue: AppCalendarDateFormats.dateTime }
   ],
   templateUrl: './app.html',
-  styleUrl: '../_styles/app.scss'
+  styleUrl: './app.scss'
 })
 export class App implements OnDestroy {
   protected readonly navigatorService = inject(NavigatorService);
