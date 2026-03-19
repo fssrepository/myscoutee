@@ -11,6 +11,15 @@
 @include ui.form-controls();
 @include ui.smart-list-shell();
 
+:host {
+  --activities-shell-z-index: 2300;
+  display: contents;
+}
+
+.app-popup {
+  z-index: var(--activities-shell-z-index);
+}
+
 .popup-body.popup-body-activities {
   overflow: hidden;
 }

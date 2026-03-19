@@ -11,8 +11,9 @@ app-navigator-menu {
   z-index: 1500;
 }
 
-// Ensure all popups are above the menu
-// (Using a shared stacking context strategy)
+// Let each popup shell manage its own z-index.
+// If these wrapper elements create sibling stacking contexts here,
+// child popups cannot reliably stack above their parent popups.
 app-activities-popup,
 app-event-feedback-popup,
 app-asset-popup,
@@ -20,7 +21,5 @@ app-navigator-settings-popups,
 app-navigator-impressions-popup,
 app-profile-editor,
 app-event-members-popup {
-  display: block;
-  position: relative;
-  z-index: 2300;
+  display: contents;
 }

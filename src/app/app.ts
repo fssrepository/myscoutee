@@ -218,15 +218,8 @@ export class App {
   protected activeUserId = this.getInitialUserId();
 
   protected activeMenuSection: AppTypes.MenuSection = 'chat';
-  protected inlineItemActionMenu: { scope: 'activity' | 'activityMember' | 'asset' | 'explore' | 'subEvent' | 'subEventStage' | 'subEventMember' | 'subEventAsset' | 'chatContext'; id: string; title: string; openUp: boolean } | null = null;
+  protected inlineItemActionMenu: { scope: 'activity' | 'activityMember' | 'asset' | 'subEvent' | 'subEventStage' | 'subEventMember' | 'subEventAsset' | 'chatContext'; id: string; title: string; openUp: boolean } | null = null;
   private subEventAssetMenuIgnoreCloseUntilMs = 0;
-  protected showEventExploreOrderPicker = false;
-  protected eventExploreOrder: AppTypes.EventExploreOrder = 'upcoming';
-  protected eventExploreFilterFriendsOnly = false;
-  protected eventExploreFilterHasRooms = false;
-  protected eventExploreFilterTopic = '';
-  protected eventExploreStickyValue = '';
-  protected readonly activitiesPageSize = 10;
   protected pendingActivityMemberDelete: AppTypes.ActivityMemberEntry | null = null;
   protected selectedActivityMembers: AppTypes.ActivityMemberEntry[] = [];
   protected selectedActivityMembersTitle = '';
@@ -237,11 +230,10 @@ export class App {
   protected activityInviteSort: AppTypes.ActivityInviteSort = 'recent';
   protected showActivityInviteSortPicker = false;
   protected selectedActivityInviteUserIds: string[] = [];
-  protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | 'eventExploreTopicFilter' | 'subEventAssetAssign' | null = null;
+  protected superStackedPopup: 'activityInviteFriends' | 'eventTopicsSelector' | 'subEventAssetAssign' | null = null;
   private readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
-  private activityMembersPopupOrigin: 'active-event-editor' | 'stacked-event-editor' | 'event-explore' | 'subevent-asset' | null = null;
+  private activityMembersPopupOrigin: 'active-event-editor' | 'stacked-event-editor' | 'subevent-asset' | null = null;
   private subEventAssetMembersContext: AppTypes.SubEventAssetMembersContext | null = null;
-  protected readonly eventExploreOrderOptions: Array<{ key: AppTypes.EventExploreOrder; label: string; icon: string }> = [...APP_DEMO_DATA.eventExploreOrderOptions];
   public readonly eventDatesById: Record<string, string> = { ...APP_DEMO_DATA.eventDatesById };
   protected readonly hostingDatesById: Record<string, string> = { ...APP_DEMO_DATA.hostingDatesById };
   protected readonly eventVisibilityById: Record<string, AppTypes.EventVisibility> = { ...APP_DEMO_DATA.eventVisibilityById };
@@ -301,16 +293,11 @@ export class App {
   protected eventStartTimeValue: Date | null = null;
   protected eventEndTimeValue: Date | null = null;
   protected subEventsDisplayMode: AppTypes.SubEventsDisplayMode = 'Casual';
-  protected eventExploreHeaderProgress = 0;
-  protected eventExploreHeaderProgressLoading = false;
-  protected eventExploreHeaderLoadingProgress = 0;
-  protected eventExploreHeaderLoadingOverdue = false;
   protected chatHeaderProgress = 0;
   protected chatHeaderProgressLoading = false;
   protected chatHeaderLoadingProgress = 0;
   protected chatHeaderLoadingOverdue = false;
   @ViewChild('assetImageInput') private assetImageInput?: ElementRef<HTMLInputElement>;
-  @ViewChild('eventExploreScroll') private eventExploreScrollRef?: ElementRef<HTMLDivElement>;
   @ViewChild('subEventStagesScroll') private subEventStagesScrollRef?: ElementRef<HTMLDivElement>;
 
   protected eventSupplyTypes: string[] = ['Cars', 'Members', 'Accessories', 'Accommodation'];
@@ -345,16 +332,6 @@ export class App {
   private readonly activitiesHeaderLoadingTickMs = 16;
   private activitiesHeaderFlushScheduled = false;
   private readonly activitiesPaginationLoadDelayMs = 1000;
-  protected eventExploreInitialLoadPending = false;
-  private eventExploreVisibleCount = this.activitiesPageSize;
-  private eventExplorePaginationKey = '';
-  private eventExploreLoadMoreTimer: ReturnType<typeof setTimeout> | null = null;
-  private eventExploreIsPaginating = false;
-  private eventExplorePaginationAwaitScrollReset = false;
-  private eventExploreHeaderLoadingCounter = 0;
-  private eventExploreHeaderLoadingInterval: ReturnType<typeof setInterval> | null = null;
-  private eventExploreHeaderLoadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
-  private eventExploreHeaderLoadingStartedAtMs = 0;
   private chatHeaderLoadingCounter = 0;
   private chatHeaderLoadingInterval: ReturnType<typeof setInterval> | null = null;
   private chatHeaderLoadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
@@ -669,23 +646,6 @@ export class App {
     const related = this.resolveRelatedEventFromInvitation(item);
     const source = related ?? this.buildInvitationPreviewEventSource(item);
     this.openEventEditor(stacked, 'edit', source, true, item.id);
-    if (closeMenu) {
-      this.closeUserMenu();
-    }
-  }
-
-  protected openEventExplore(closeMenu = true, stacked = false): void {
-    this.activeMenuSection = 'events';
-    this.showEventExploreOrderPicker = false;
-    this.eventExploreStickyValue = '';
-    this.eventExploreHeaderProgress = 0;
-    if (stacked || this.stackedPopup !== null) {
-      this.stackedPopup = 'eventExplore';
-      this.resetEventExploreScroll();
-      return;
-    }
-    this.activePopup = 'eventExplore';
-    this.resetEventExploreScroll();
     if (closeMenu) {
       this.closeUserMenu();
     }
@@ -4137,12 +4097,6 @@ export class App {
     this.showActivityInviteSortPicker = false;
     this.superStackedPopup = null;
     this.cancelChatInitialLoad();
-    this.cancelEventExplorePaginationLoad();
-    this.clearEventExploreHeaderLoadingAnimation();
-    this.eventExplorePaginationKey = '';
-    this.eventExploreVisibleCount = this.activitiesPageSize;
-    this.eventExploreHeaderProgress = 0;
-    this.eventExploreStickyValue = '';
     this.chatHeaderProgress = 0;
     this.syncAssetPopupVisibility();
   }
@@ -4159,10 +4113,6 @@ export class App {
     }
     this.inlineItemActionMenu = null;
     this.subEventMemberRolePickerUserId = null;
-    this.showEventExploreOrderPicker = false;
-    this.cancelEventExplorePaginationLoad();
-    this.clearEventExploreHeaderLoadingAnimation();
-    this.eventExploreHeaderProgress = 0;
     if (this.superStackedPopup === 'subEventAssetAssign') {
       this.closeSubEventAssetAssignPopup(false);
       return;
@@ -4225,12 +4175,6 @@ export class App {
         this.stackedPopup = 'subEventAssets';
         return;
       }
-      if (this.activityMembersPopupOrigin === 'event-explore') {
-        this.activityMembersPopupOrigin = null;
-        this.subEventAssetMembersContext = null;
-        this.stackedPopup = 'eventExplore';
-        return;
-      }
       if (this.activityMembersPopupOrigin === 'stacked-event-editor') {
         this.activityMembersPopupOrigin = null;
         this.subEventAssetMembersContext = null;
@@ -4273,8 +4217,6 @@ export class App {
         return 'Tickets';
       case 'invitationActions':
         return this.selectedInvitation?.description ?? 'Invitation';
-      case 'eventExplore':
-        return 'Event Explore';
       case 'imageUpload':
         return 'Upload Image';
       case 'supplyDetail':
@@ -4302,8 +4244,6 @@ export class App {
         return this.selectedChat?.title ?? 'Chat';
       case 'invitationActions':
         return this.selectedInvitation?.description ?? 'Invitation';
-      case 'eventExplore':
-        return 'Event Explore';
       case 'ticketCode':
         return 'Ticket';
       case 'ticketScanner':
@@ -5542,402 +5482,6 @@ export class App {
     return `${row.type === 'hosting' ? 'Hosting' : 'Event'} · ${this.activityDateLabel(row)} · ${row.distanceKm} km`;
   }
 
-  protected toggleEventExploreOrderPicker(event: Event): void {
-    event.stopPropagation();
-    this.showEventExploreOrderPicker = !this.showEventExploreOrderPicker;
-  }
-
-  protected selectEventExploreOrder(order: AppTypes.EventExploreOrder, event?: Event): void {
-    event?.stopPropagation();
-    this.eventExploreOrder = order;
-    this.showEventExploreOrderPicker = false;
-    this.eventExploreStickyValue = '';
-    this.resetEventExploreScroll();
-  }
-
-  protected toggleEventExploreFriendsOnly(event?: Event): void {
-    event?.stopPropagation();
-    this.eventExploreFilterFriendsOnly = !this.eventExploreFilterFriendsOnly;
-    this.eventExploreStickyValue = '';
-    this.resetEventExploreScroll();
-  }
-
-  protected toggleEventExploreHasRooms(event?: Event): void {
-    event?.stopPropagation();
-    this.eventExploreFilterHasRooms = !this.eventExploreFilterHasRooms;
-    this.eventExploreStickyValue = '';
-    this.resetEventExploreScroll();
-  }
-
-  protected openEventExploreTopicFilterPopup(event: Event): void {
-    event.stopPropagation();
-    this.superStackedPopup = 'eventExploreTopicFilter';
-  }
-
-  protected closeEventExploreTopicFilterPopup(): void {
-    if (this.superStackedPopup === 'eventExploreTopicFilter') {
-      this.superStackedPopup = null;
-    }
-  }
-
-  protected selectEventExploreTopicFilter(topic: string, event?: Event): void {
-    event?.stopPropagation();
-    const nextTopic = AppUtils.normalizeText(topic) === AppUtils.normalizeText(this.eventExploreFilterTopic) ? '' : topic;
-    this.eventExploreFilterTopic = nextTopic;
-    this.eventExploreStickyValue = '';
-    this.resetEventExploreScroll();
-  }
-
-  protected eventExploreTopicFilterLabel(): string {
-    if (!this.eventExploreFilterTopic) {
-      return 'Topic';
-    }
-    return `#${this.eventExploreTopicLabel(this.eventExploreFilterTopic)}`;
-  }
-
-  protected get eventExploreTopicFilterGroups(): Array<{ title: string; shortTitle: string; icon: string; toneClass: string; options: string[] }> {
-    return this.interestOptionGroups.map(group => ({
-      title: group.title,
-      shortTitle: group.shortTitle,
-      icon: group.icon,
-      toneClass: group.toneClass,
-      options: [...group.options]
-    }));
-  }
-
-  protected eventExploreOrderLabel(order: AppTypes.EventExploreOrder = this.eventExploreOrder): string {
-    return this.eventExploreOrderOptions.find(option => option.key === order)?.label ?? 'Upcoming';
-  }
-
-  protected eventExploreOrderIcon(order: AppTypes.EventExploreOrder = this.eventExploreOrder): string {
-    return this.eventExploreOrderOptions.find(option => option.key === order)?.icon ?? 'event_upcoming';
-  }
-
-  protected eventExploreOrderClass(order: AppTypes.EventExploreOrder = this.eventExploreOrder): string {
-    if (order === 'upcoming') {
-      return 'event-explore-order-upcoming';
-    }
-    if (order === 'past-events') {
-      return 'event-explore-order-past-events';
-    }
-    if (order === 'nearby') {
-      return 'event-explore-order-nearby';
-    }
-    if (order === 'top-rated') {
-      return 'event-explore-order-top-rated';
-    }
-    return 'event-explore-order-most-relevant';
-  }
-
-  protected get eventExploreStickyHeader(): string {
-    if (this.eventExploreStickyValue) {
-      return this.eventExploreStickyValue;
-    }
-    return this.eventExploreGroupedCards[0]?.label ?? 'No items';
-  }
-
-  protected onEventExploreScroll(event: Event): void {
-    const scrollElement = event.target as HTMLElement;
-    this.updateEventExploreStickyFromScroll(scrollElement);
-    this.updateEventExploreHeaderProgress();
-    this.maybeLoadMoreEventExplore(scrollElement);
-  }
-
-  private updateEventExploreStickyFromScroll(scrollElement: HTMLElement): void {
-    const groups = this.eventExploreGroupedCards;
-    if (groups.length === 0) {
-      this.eventExploreStickyValue = 'No items';
-      return;
-    }
-    const stickyHeader = scrollElement.querySelector<HTMLElement>('.event-explore-sticky-header');
-    const stickyHeaderHeight = stickyHeader?.offsetHeight ?? 0;
-    const targetTop = (scrollElement.scrollTop || 0) + stickyHeaderHeight + 1;
-    const rows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.event-explore-card[data-event-explore-group-label]'));
-    if (rows.length === 0) {
-      this.eventExploreStickyValue = groups[0].label;
-      return;
-    }
-    const scrollTop = scrollElement.scrollTop || 0;
-    if (scrollTop <= 1) {
-      this.eventExploreStickyValue = rows[0].dataset['eventExploreGroupLabel'] ?? groups[0].label;
-      return;
-    }
-    const alignmentTolerancePx = 2;
-    const activeRow =
-      rows.find(row => row.offsetTop >= targetTop - alignmentTolerancePx) ??
-      rows[rows.length - 1];
-    this.eventExploreStickyValue = activeRow.dataset['eventExploreGroupLabel'] ?? groups[0].label;
-  }
-
-  protected get eventExploreCards(): AppTypes.EventExploreCard[] {
-    const cards = this.buildEventExploreCardsBase();
-    this.ensureEventExplorePaginationState(cards.length);
-    if (this.eventExploreInitialLoadPending) {
-      return [];
-    }
-    return cards.slice(0, Math.min(this.eventExploreVisibleCount, cards.length));
-  }
-
-  private buildEventExploreCardsBase(): AppTypes.EventExploreCard[] {
-    const now = Date.now();
-    const eventExploreContext = {
-      eventDatesById: this.eventDatesById,
-      hostingDatesById: this.hostingDatesById,
-      eventDistanceById: this.eventDistanceById,
-      hostingDistanceById: this.hostingDistanceById,
-      activityImageById: this.activityImageById,
-      defaultStartIso: this.defaultEventStartIso()
-    };
-    const events: AppTypes.EventExploreCard[] = this.eventItems.map(item =>
-      AppDemoGenerators.toEventExploreCard(item, 'event', now, eventExploreContext)
-    );
-    const hosting: AppTypes.EventExploreCard[] = this.hostingItems.map(item =>
-      AppDemoGenerators.toEventExploreCard(item, 'hosting', now, eventExploreContext)
-    );
-    const selectedTopic = AppUtils.normalizeText(this.eventExploreTopicLabel(this.eventExploreFilterTopic));
-    const cards = [...events, ...hosting]
-      .filter(card => this.eventExploreVisibilityRaw(card) !== 'Invitation only')
-      .filter(card => !this.eventExploreFilterFriendsOnly || this.eventExploreFriendsGoingMatch(card))
-      .filter(card => !this.eventExploreFilterHasRooms || this.eventExploreHasRooms(card))
-      .filter(card => !selectedTopic || this.eventExploreTopics(card).some(topic => AppUtils.normalizeText(this.eventExploreTopicLabel(topic)) === selectedTopic));
-
-    if (this.eventExploreOrder === 'upcoming') {
-      return [...cards].sort((a, b) => {
-        if (a.isPast !== b.isPast) {
-          return Number(a.isPast) - Number(b.isPast);
-        }
-        return a.startSort - b.startSort;
-      });
-    }
-    if (this.eventExploreOrder === 'past-events') {
-      return [...cards].sort((a, b) => {
-        if (a.isPast !== b.isPast) {
-          return Number(b.isPast) - Number(a.isPast);
-        }
-        return b.startSort - a.startSort;
-      });
-    }
-    if (this.eventExploreOrder === 'nearby') {
-      return [...cards].sort((a, b) => a.distanceKm - b.distanceKm || b.relevance - a.relevance);
-    }
-    if (this.eventExploreOrder === 'top-rated') {
-      return [...cards].sort((a, b) => b.rating - a.rating || b.relevance - a.relevance);
-    }
-    return [...cards].sort((a, b) => b.relevance - a.relevance || a.startSort - b.startSort);
-  }
-
-  protected get eventExploreGroupedCards(): AppTypes.EventExploreGroup[] {
-    const cards = this.eventExploreCards;
-    const grouped: AppTypes.EventExploreGroup[] = [];
-    for (const card of cards) {
-      const label = this.eventExploreGroupLabel(card);
-      const lastGroup = grouped[grouped.length - 1];
-      if (!lastGroup || lastGroup.label !== label) {
-        grouped.push({ label, cards: [card] });
-        continue;
-      }
-      lastGroup.cards.push(card);
-    }
-    return grouped;
-  }
-
-  protected eventExploreCreatorInitials(card: AppTypes.EventExploreCard): string {
-    const source = this.resolveEventExploreSource(card);
-    if (!source?.avatar) {
-      return AppUtils.initialsFromText(card.title);
-    }
-    return AppUtils.initialsFromText(source.avatar);
-  }
-
-  protected eventExploreCreatorToneClass(card: AppTypes.EventExploreCard): string {
-    const rating = AppUtils.clampNumber(card.rating, 0, 10);
-    if (rating <= 3.0) {
-      return 'event-explore-rating-cool';
-    }
-    if (rating <= 5.5) {
-      return 'event-explore-rating-cool-mid';
-    }
-    if (rating <= 7.2) {
-      return 'event-explore-rating-neutral';
-    }
-    if (rating <= 8.6) {
-      return 'event-explore-rating-warm-mid';
-    }
-    return 'event-explore-rating-warm';
-  }
-
-  protected eventExploreCreatorAvatarToneClass(card: AppTypes.EventExploreCard): string {
-    const toneIndex = (AppDemoGenerators.hashText(`${card.sourceType}:${card.id}:${this.eventExploreCreatorInitials(card)}`) % 8) + 1;
-    return `activities-source-tone-${toneIndex}`;
-  }
-
-  protected eventExploreVisibility(card: AppTypes.EventExploreCard): AppTypes.EventVisibility {
-    return this.eventExploreVisibilityRaw(card);
-  }
-
-  protected eventExploreVisibilityCircleClass(card: AppTypes.EventExploreCard): string {
-    return `experience-item-icon-${this.eventVisibilityClass(this.eventExploreVisibility(card))}`;
-  }
-
-  protected eventExploreHasRooms(card: AppTypes.EventExploreCard): boolean {
-    const metrics = this.eventExploreCapacityMetrics(card);
-    return metrics.total > metrics.current;
-  }
-
-  protected eventExploreIsFull(card: AppTypes.EventExploreCard): boolean {
-    const metrics = this.eventExploreCapacityMetrics(card);
-    return metrics.total > 0 && metrics.current >= metrics.total;
-  }
-
-  protected eventExploreHasFriendGoing(card: AppTypes.EventExploreCard): boolean {
-    const row = this.eventExploreRow(card);
-    if (!row) {
-      return false;
-    }
-    return this.getActivityMembersByRow(row).some(member =>
-      member.status === 'accepted'
-      && member.userId !== this.activeUser.id
-      && AppDemoGenerators.isFriendOfActiveUser(member.userId, this.activeUser.id)
-    );
-  }
-
-  protected eventExploreFriendsGoingMatch(card: AppTypes.EventExploreCard): boolean {
-    return this.eventExploreVisibilityRaw(card) !== 'Invitation only' && this.eventExploreHasFriendGoing(card);
-  }
-
-  protected isEventExploreOpenEvent(card: AppTypes.EventExploreCard): boolean {
-    return this.eventExploreBlindMode(card) === 'Open Event';
-  }
-
-  protected eventExploreBlindMode(card: AppTypes.EventExploreCard): AppTypes.EventBlindMode {
-    return this.eventBlindModeById[card.id] ?? 'Open Event';
-  }
-
-  protected eventExploreMembersVisibilityIcon(card: AppTypes.EventExploreCard): string {
-    return this.eventBlindModeIcon(this.eventExploreBlindMode(card));
-  }
-
-  protected eventExploreMembersVisibilityClass(card: AppTypes.EventExploreCard): string {
-    return this.eventBlindModeClass(this.eventExploreBlindMode(card));
-  }
-
-  protected eventExploreMembersLabel(card: AppTypes.EventExploreCard): string {
-    const metrics = this.eventExploreCapacityMetrics(card);
-    if (metrics.total <= 0) {
-      return '0 / 0';
-    }
-    return `${metrics.current} / ${metrics.total}`;
-  }
-
-  protected eventExploreOpenSpots(card: AppTypes.EventExploreCard): number {
-    const metrics = this.eventExploreCapacityMetrics(card);
-    return Math.max(0, metrics.total - metrics.current);
-  }
-
-  private eventExploreCapacityMetrics(card: AppTypes.EventExploreCard): { current: number; total: number } {
-    const row = this.eventExploreRow(card);
-    if (!row) {
-      return { current: 0, total: 0 };
-    }
-    const current = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted').length;
-    const total = this.activityCapacityTotal(row, current);
-    return { current, total };
-  }
-
-  private eventExploreGroupLabel(card: AppTypes.EventExploreCard): string {
-    if (this.eventExploreOrder === 'nearby') {
-      const bucket = Math.max(5, Math.ceil(card.distanceKm / 5) * 5);
-      return `${bucket} km`;
-    }
-    if (this.eventExploreOrder === 'top-rated') {
-      const bucket = Math.max(1, Math.min(10, Math.round(AppUtils.clampNumber(card.rating, 0, 10))));
-      return `${bucket} / 10`;
-    }
-    const parsed = new Date(card.startSort);
-    if (Number.isNaN(parsed.getTime())) {
-      return 'Date unavailable';
-    }
-    return parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  }
-
-  protected openEventExploreMembers(card: AppTypes.EventExploreCard, event: Event): void {
-    event.stopPropagation();
-    const row = this.eventExploreRow(card);
-    if (!row) {
-      return;
-    }
-    this.openActivityMembers(row, event, 'explore');
-  }
-
-  protected eventExploreTopics(card: AppTypes.EventExploreCard): string[] {
-    const source = this.resolveEventExploreSource(card);
-    if (!source) {
-      return [];
-    }
-    const pool = Array.from(new Set(this.interestOptionGroups.flatMap(group => group.options)));
-    if (pool.length === 0) {
-      return [];
-    }
-    const seed = AppDemoGenerators.hashText(`${card.sourceType}:${card.id}:${source.title}`);
-    const count = 2 + (seed % 2);
-    const result: string[] = [];
-    for (let index = 0; index < pool.length && result.length < count; index += 1) {
-      const candidate = pool[(seed + (index * 3)) % pool.length];
-      if (!result.includes(candidate)) {
-        result.push(candidate);
-      }
-    }
-    return result;
-  }
-
-  protected eventExploreTopicLabel(topic: string): string {
-    return topic.replace(/^#+\s*/, '');
-  }
-
-  protected toggleEventExploreItemActionMenu(card: AppTypes.EventExploreCard, event: Event): void {
-    event.stopPropagation();
-    if (this.inlineItemActionMenu?.scope === 'explore' && this.inlineItemActionMenu.id === card.id) {
-      this.inlineItemActionMenu = null;
-      return;
-    }
-    this.inlineItemActionMenu = { scope: 'explore', id: card.id, title: card.title, openUp: this.shouldOpenInlineItemMenuUp(event) };
-  }
-
-  protected isEventExploreItemActionMenuOpen(card: AppTypes.EventExploreCard): boolean {
-    return this.inlineItemActionMenu?.scope === 'explore' && this.inlineItemActionMenu.id === card.id;
-  }
-
-  protected isEventExploreItemActionMenuOpenUp(card: AppTypes.EventExploreCard): boolean {
-    return this.inlineItemActionMenu?.scope === 'explore'
-      && this.inlineItemActionMenu.id === card.id
-      && this.inlineItemActionMenu.openUp;
-  }
-
-  protected runEventExploreViewAction(card: AppTypes.EventExploreCard, stacked: boolean, event: Event): void {
-    event.stopPropagation();
-    const source = this.resolveEventExploreSource(card);
-    if (!source) {
-      this.inlineItemActionMenu = null;
-      return;
-    }
-    if (card.sourceType === 'hosting') {
-      this.activeMenuSection = 'hosting';
-      this.selectedHostingEvent = source as HostingMenuItem;
-      this.openEventEditor(stacked, 'edit', source as HostingMenuItem, false);
-    } else {
-      this.activeMenuSection = 'events';
-      this.selectedEvent = source as EventMenuItem;
-      this.openEventEditor(stacked, 'edit', source as EventMenuItem, (source as EventMenuItem).isAdmin !== true);
-    }
-    this.inlineItemActionMenu = null;
-  }
-
-  protected runEventExploreJoinAction(card: AppTypes.EventExploreCard, event: Event): void {
-    event.stopPropagation();
-    this.alertService.open(`Join request for ${card.title} is ready for backend wiring.`);
-    this.inlineItemActionMenu = null;
-  }
-
   private acceptInvitationFromRow(invitationId: string): void {
     if (this.isInvitationAcceptedId(invitationId)) {
       return;
@@ -6211,16 +5755,11 @@ export class App {
     this.subEventMemberRolePickerUserId = null;
   }
 
-  protected openActivityMembers(row: AppTypes.ActivityListRow, event?: Event, source: 'default' | 'explore' = 'default'): void {
+  protected openActivityMembers(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
-    const previousStackedPopup = this.stackedPopup;
     this.subEventAssetMembersContext = null;
-    this.activityMembersReadOnly = source === 'explore';
-    if (source === 'explore' && previousStackedPopup === 'eventExplore') {
-      this.activityMembersPopupOrigin = 'event-explore';
-    } else if (source !== 'explore') {
-      this.activityMembersPopupOrigin = null;
-    }
+    this.activityMembersReadOnly = false;
+    this.activityMembersPopupOrigin = null;
     this.pendingActivityMemberDelete = null;
     this.activityMembersPendingOnly = false;
     this.selectedActivityMembersRowId = `${row.type}:${row.id}`;
@@ -7529,36 +7068,9 @@ export class App {
     return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
   }
 
-  private resolveEventExploreSource(card: AppTypes.EventExploreCard): EventMenuItem | HostingMenuItem | null {
-    if (card.sourceType === 'hosting') {
-      return this.hostingItems.find(item => item.id === card.id) ?? null;
-    }
-    return this.eventItems.find(item => item.id === card.id) ?? null;
-  }
-
-  private eventExploreRow(card: AppTypes.EventExploreCard): AppTypes.ActivityListRow | null {
-    const source = this.resolveEventExploreSource(card);
-    if (!source) {
-      return null;
-    }
-    return {
-      id: card.id,
-      type: card.sourceType === 'hosting' ? 'hosting' : 'events',
-      title: card.title,
-      subtitle: card.subtitle,
-      detail: card.timeframe,
-      dateIso: this.eventDatesById[card.id] ?? this.hostingDatesById[card.id] ?? this.defaultEventStartIso(),
-      distanceKm: card.distanceKm,
-      unread: 0,
-      metricScore: card.relevance,
-      isAdmin: false,
-      source
-    };
-  }
-
   @HostListener('window:openFeaturePopup', ['$event'])
   onGlobalPopupRequest(event: Event): void {
-    const popupEvent = event as CustomEvent<{ type: 'eventEditor' | 'eventExplore' }>;
+    const popupEvent = event as CustomEvent<{ type: 'eventEditor' }>;
     if (!popupEvent.detail?.type) {
       return;
     }
@@ -7584,10 +7096,6 @@ export class App {
     }
     if (this.superStackedPopup === 'eventTopicsSelector') {
       this.closeEventTopicsSelector(true);
-      return;
-    }
-    if (this.superStackedPopup === 'eventExploreTopicFilter') {
-      this.closeEventExploreTopicFilterPopup();
       return;
     }
     if (this.eventEditorService.isOpen()) {
@@ -7625,9 +7133,6 @@ export class App {
     }
     if (this.showActivityInviteSortPicker && !target.closest('.friends-picker-sort') && !target.closest('.popup-view-fab')) {
       this.showActivityInviteSortPicker = false;
-    }
-    if (this.showEventExploreOrderPicker && !target.closest('.event-explore-order-picker') && !target.closest('.popup-view-fab')) {
-      this.showEventExploreOrderPicker = false;
     }
   }
 
@@ -7979,10 +7484,6 @@ export class App {
     }
     const mirrorType = row.type === 'events' ? 'hosting' : 'events';
     this.activityMembersByRowId[`${mirrorType}:${row.id}`] = [...entries];
-  }
-
-  private eventExploreVisibilityRaw(card: AppTypes.EventExploreCard): AppTypes.EventVisibility {
-    return this.eventVisibilityById[card.id] ?? 'Public';
   }
 
   private eventEditorMembersRow(): AppTypes.ActivityListRow | null {
@@ -8443,220 +7944,6 @@ export class App {
     };
   }
 
-  private updateEventExploreHeaderProgress(): void {
-    if (this.activePopup !== 'eventExplore' && this.stackedPopup !== 'eventExplore') {
-      this.eventExploreHeaderProgress = 0;
-      return;
-    }
-    const listElement = this.eventExploreScrollRef?.nativeElement;
-    if (!listElement) {
-      this.eventExploreHeaderProgress = 0;
-      return;
-    }
-    const maxVerticalScroll = Math.max(0, listElement.scrollHeight - listElement.clientHeight);
-    if (maxVerticalScroll <= 1) {
-      this.eventExploreHeaderProgress = 0;
-      return;
-    }
-    this.eventExploreHeaderProgress = AppUtils.clampNumber(listElement.scrollTop / maxVerticalScroll, 0, 1);
-  }
-
-  private maybeLoadMoreEventExplore(scrollElement: HTMLElement): void {
-    if ((this.activePopup !== 'eventExplore' && this.stackedPopup !== 'eventExplore') || this.eventExploreIsPaginating) {
-      return;
-    }
-    const cards = this.buildEventExploreCardsBase();
-    this.ensureEventExplorePaginationState(cards.length);
-    if (this.eventExploreVisibleCount >= cards.length) {
-      return;
-    }
-    const remainingPx = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
-    if (this.eventExplorePaginationAwaitScrollReset) {
-      if (remainingPx > 360) {
-        this.eventExplorePaginationAwaitScrollReset = false;
-      }
-      return;
-    }
-    if (!this.shouldStartEventExplorePreload(scrollElement) && remainingPx > 520) {
-      return;
-    }
-    this.startEventExplorePaginationLoad();
-  }
-
-  private shouldStartEventExplorePreload(scrollElement: HTMLElement): boolean {
-    const rows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.event-explore-card'));
-    if (rows.length === 0) {
-      return false;
-    }
-    if (rows.length <= 3) {
-      return true;
-    }
-    const thirdFromLast = rows[rows.length - 3];
-    const viewportBottom = scrollElement.scrollTop + scrollElement.clientHeight;
-    return viewportBottom >= thirdFromLast.offsetTop;
-  }
-
-  private ensureEventExplorePaginationState(totalCards: number): void {
-    const nextKey = this.eventExplorePaginationStateKey();
-    if (nextKey === this.eventExplorePaginationKey) {
-      return;
-    }
-    this.eventExplorePaginationKey = nextKey;
-    this.eventExploreVisibleCount = this.eventExploreInitialLoadPending
-      ? 0
-      : Math.min(this.activitiesPageSize, totalCards);
-    this.eventExplorePaginationAwaitScrollReset = false;
-    this.cancelEventExplorePaginationLoad();
-    this.updateEventExploreHeaderProgress();
-  }
-
-  private eventExplorePaginationStateKey(): string {
-    return [
-      this.activeUserId,
-      this.eventExploreOrder,
-      this.eventExploreFilterFriendsOnly ? 'friends' : 'all',
-      this.eventExploreFilterHasRooms ? 'rooms' : 'all',
-      AppUtils.normalizeText(this.eventExploreFilterTopic)
-    ].join('|');
-  }
-
-  private startEventExplorePaginationLoad(allowEmptyResponse = false): void {
-    if (this.eventExploreIsPaginating) {
-      return;
-    }
-    if (!allowEmptyResponse) {
-      const cards = this.buildEventExploreCardsBase();
-      this.ensureEventExplorePaginationState(cards.length);
-      if (this.eventExploreVisibleCount >= cards.length) {
-        return;
-      }
-    }
-    this.eventExploreIsPaginating = true;
-    this.beginEventExploreHeaderProgressLoading();
-    this.eventExploreLoadMoreTimer = setTimeout(() => {
-      this.eventExploreLoadMoreTimer = null;
-      const previousVisibleCount = this.eventExploreVisibleCount;
-      const latestCards = this.buildEventExploreCardsBase();
-      this.ensureEventExplorePaginationState(latestCards.length);
-      if (latestCards.length > previousVisibleCount) {
-        this.eventExploreVisibleCount = Math.min(previousVisibleCount + this.activitiesPageSize, latestCards.length);
-      }
-      this.eventExploreInitialLoadPending = false;
-      this.eventExploreIsPaginating = false;
-      this.eventExplorePaginationAwaitScrollReset = true;
-      this.endEventExploreHeaderProgressLoading();
-      this.updateEventExploreHeaderProgress();
-    }, this.activitiesPaginationLoadDelayMs);
-  }
-
-  private cancelEventExplorePaginationLoad(): void {
-    if (this.eventExploreLoadMoreTimer) {
-      clearTimeout(this.eventExploreLoadMoreTimer);
-      this.eventExploreLoadMoreTimer = null;
-    }
-    if (this.eventExploreIsPaginating) {
-      this.eventExploreIsPaginating = false;
-      this.endEventExploreHeaderProgressLoading();
-    }
-    this.eventExplorePaginationAwaitScrollReset = false;
-    this.eventExploreInitialLoadPending = false;
-  }
-
-  private beginEventExploreHeaderProgressLoading(): void {
-    this.eventExploreHeaderLoadingCounter += 1;
-    if (this.eventExploreHeaderLoadingCounter > 1) {
-      return;
-    }
-    this.eventExploreHeaderProgressLoading = true;
-    this.eventExploreHeaderLoadingOverdue = false;
-    this.eventExploreHeaderLoadingProgress = 0.02;
-    this.eventExploreHeaderLoadingStartedAtMs = performance.now();
-    this.flushActivitiesHeaderProgress();
-    if (this.eventExploreHeaderLoadingCompleteTimer) {
-      clearTimeout(this.eventExploreHeaderLoadingCompleteTimer);
-      this.eventExploreHeaderLoadingCompleteTimer = null;
-    }
-    if (this.eventExploreHeaderLoadingInterval) {
-      clearInterval(this.eventExploreHeaderLoadingInterval);
-      this.eventExploreHeaderLoadingInterval = null;
-    }
-    this.updateEventExploreHeaderLoadingWindow();
-    this.eventExploreHeaderLoadingInterval = this.ngZone.runOutsideAngular(() =>
-      setInterval(() => {
-        this.updateEventExploreHeaderLoadingWindow();
-        this.flushActivitiesHeaderProgress();
-      }, this.activitiesHeaderLoadingTickMs)
-    );
-  }
-
-  private endEventExploreHeaderProgressLoading(): void {
-    if (this.eventExploreHeaderLoadingCounter === 0) {
-      return;
-    }
-    this.eventExploreHeaderLoadingCounter = Math.max(0, this.eventExploreHeaderLoadingCounter - 1);
-    if (this.eventExploreHeaderLoadingCounter !== 0) {
-      return;
-    }
-    this.completeEventExploreHeaderLoading();
-  }
-
-  private completeEventExploreHeaderLoading(): void {
-    if (this.eventExploreHeaderLoadingInterval) {
-      clearInterval(this.eventExploreHeaderLoadingInterval);
-      this.eventExploreHeaderLoadingInterval = null;
-    }
-    this.eventExploreHeaderLoadingProgress = 1;
-    this.eventExploreHeaderLoadingOverdue = false;
-    this.flushActivitiesHeaderProgress();
-    if (this.eventExploreHeaderLoadingCompleteTimer) {
-      clearTimeout(this.eventExploreHeaderLoadingCompleteTimer);
-    }
-    this.eventExploreHeaderLoadingCompleteTimer = this.ngZone.runOutsideAngular(() =>
-      setTimeout(() => {
-        this.ngZone.run(() => {
-          if (this.eventExploreHeaderLoadingCounter !== 0) {
-            return;
-          }
-          this.eventExploreHeaderProgressLoading = false;
-          this.eventExploreHeaderLoadingProgress = 0;
-          this.eventExploreHeaderLoadingOverdue = false;
-          this.eventExploreHeaderLoadingStartedAtMs = 0;
-          this.eventExploreHeaderLoadingCompleteTimer = null;
-          this.updateEventExploreHeaderProgress();
-          this.flushActivitiesHeaderProgress();
-        });
-      }, 100)
-    );
-  }
-
-  private updateEventExploreHeaderLoadingWindow(): void {
-    if (!this.eventExploreHeaderProgressLoading) {
-      return;
-    }
-    const elapsed = Math.max(0, performance.now() - this.eventExploreHeaderLoadingStartedAtMs);
-    const nextProgress = AppUtils.clampNumber(elapsed / this.activitiesHeaderLoadingWindowMs, 0, 1);
-    this.eventExploreHeaderLoadingProgress = Math.max(this.eventExploreHeaderLoadingProgress, nextProgress);
-    this.eventExploreHeaderLoadingOverdue =
-      elapsed >= this.activitiesHeaderLoadingWindowMs && this.eventExploreHeaderLoadingCounter > 0;
-  }
-
-  private clearEventExploreHeaderLoadingAnimation(): void {
-    if (this.eventExploreHeaderLoadingInterval) {
-      clearInterval(this.eventExploreHeaderLoadingInterval);
-      this.eventExploreHeaderLoadingInterval = null;
-    }
-    if (this.eventExploreHeaderLoadingCompleteTimer) {
-      clearTimeout(this.eventExploreHeaderLoadingCompleteTimer);
-      this.eventExploreHeaderLoadingCompleteTimer = null;
-    }
-    this.eventExploreHeaderLoadingCounter = 0;
-    this.eventExploreHeaderLoadingProgress = 0;
-    this.eventExploreHeaderProgressLoading = false;
-    this.eventExploreHeaderLoadingOverdue = false;
-    this.eventExploreHeaderLoadingStartedAtMs = 0;
-    this.flushActivitiesHeaderProgress();
-  }
-
   private beginChatHeaderProgressLoading(): void {
     this.chatHeaderLoadingCounter += 1;
     if (this.chatHeaderLoadingCounter > 1) {
@@ -8768,27 +8055,6 @@ export class App {
     this.chatHeaderLoadingOverdue = false;
     this.chatHeaderLoadingStartedAtMs = 0;
     this.flushActivitiesHeaderProgress();
-  }
-
-  private resetEventExploreScroll(): void {
-    this.cancelEventExplorePaginationLoad();
-    this.clearEventExploreHeaderLoadingAnimation();
-    this.eventExplorePaginationKey = this.eventExplorePaginationStateKey();
-    this.eventExploreVisibleCount = 0;
-    this.eventExplorePaginationAwaitScrollReset = false;
-    this.eventExploreInitialLoadPending = true;
-    this.startEventExplorePaginationLoad(true);
-    setTimeout(() => {
-      const scrollElement = this.eventExploreScrollRef?.nativeElement;
-      if (!scrollElement) {
-        this.eventExploreStickyValue = this.eventExploreGroupedCards[0]?.label ?? 'No items';
-        this.updateEventExploreHeaderProgress();
-        return;
-      }
-      scrollElement.scrollTop = 0;
-      this.updateEventExploreStickyFromScroll(scrollElement);
-      this.updateEventExploreHeaderProgress();
-    }, 0);
   }
 
   private flushActivitiesHeaderProgress(): void {
