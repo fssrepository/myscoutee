@@ -1,9 +1,9 @@
-<main class="main">
-  <div class="content content-single">
-    <section class="content-area content-area-full">
+<main class="main" [class.main-public]="!showNavigator">
+  <div class="content" [class.content-single]="showNavigator" [class.content-public]="!showNavigator">
+    <section class="content-area" [class.content-area-full]="showNavigator" [class.content-area-public]="!showNavigator">
       <router-outlet></router-outlet>
     </section>
   </div>
 </main>
 
-<app-navigator></app-navigator>
+<app-navigator *ngIf="showNavigator"></app-navigator>

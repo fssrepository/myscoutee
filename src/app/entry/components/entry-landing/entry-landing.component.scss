@@ -6,10 +6,6 @@
 .entry-shell {
   min-height: 100vh;
   padding: 1rem;
-  background:
-    radial-gradient(circle at 20% -10%, rgba(133, 76, 255, 0.22), transparent 36%),
-    radial-gradient(circle at 95% 0%, rgba(255, 126, 54, 0.22), transparent 34%),
-    #f1f3f8;
 }
 
 .entry-shell-panel {
@@ -726,13 +722,6 @@
   color: #d74192;
   background: rgba(255, 234, 246, 0.9);
   border-color: rgba(239, 88, 168, 0.32);
-}
-
-.entry-shell {
-  background:
-    radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.14), transparent 36%),
-    radial-gradient(circle at 100% 0%, rgba(236, 72, 153, 0.1), transparent 30%),
-    #f4f7fd;
 }
 
 .entry-shell-panel {

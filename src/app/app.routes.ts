@@ -16,7 +16,6 @@ export const routes: Routes = [
   {
     path: '',
     canActivate: [restrictedAreaGuard],
-    loadComponent: () => import('./app').then(m => m.App),
     children: [
       { path: 'home', redirectTo: 'game', pathMatch: 'full' },
       {
