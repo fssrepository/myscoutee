@@ -5,6 +5,11 @@
 <app-navigator-impressions-popup></app-navigator-impressions-popup>
 <app-profile-editor></app-profile-editor>
 <app-event-members-popup></app-event-members-popup>
+<app-event-resource-popup *ngIf="subEventResources.resourceHost() as host" [host]="host"></app-event-resource-popup>
+<app-event-supply-contributions-popup
+  *ngIf="subEventResources.supplyContributionsHost() as host"
+  [host]="host"
+></app-event-supply-contributions-popup>
 
 <ng-container *ngIf="activitiesPopupComponent() as activitiesComponent">
   <ng-container *ngComponentOutlet="activitiesComponent"></ng-container>
@@ -19,4 +24,3 @@
 <ng-container *ngIf="assetPopupComponent() as assetComponent">
   <ng-container *ngComponentOutlet="assetComponent"></ng-container>
 </ng-container>
-

@@ -17,8 +17,6 @@ import { AlertService } from './shared/alert.service';
 import type { ActivitiesEventSyncPayload } from './shared/core/base/models';
 import { ActivitiesDbContextService } from './activity/services/activities-db-context.service';
 import { AssetFacadeService } from './asset/asset-facade.service';
-import type { AssetPopupHost } from './asset/asset-popup.host';
-import { AssetPopupService } from './asset/asset-popup.service';
 import { OwnedAssetsPopupService } from './asset/owned-assets-popup.service';
 import { EventEditorService } from './shared/event-editor.service';
 import {
@@ -145,7 +143,6 @@ export class App {
 
   public readonly alertService = inject(AlertService);
   protected readonly activitiesContext = inject(ActivitiesDbContextService);
-  private readonly assetPopupService = inject(AssetPopupService);
   protected readonly eventEditorService = inject(EventEditorService);
   private readonly activityMembersService = inject(ActivityMembersService);
   protected readonly usersService = inject(UsersService);
@@ -158,21 +155,6 @@ export class App {
   protected readonly navigatorService = inject(NavigatorService);
 
   public readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
-  protected readonly assetPopupHost: AssetPopupHost = {
-    isMobileView: () => this.isMobileView,
-    isSubEventAssetAssignPopup: () => this.superStackedPopup === 'subEventAssetAssign',
-    assetTypeIcon: (type) => this.assetTypeIcon(type),
-    assetTypeClass: (type) => this.assetTypeClass(type),
-    subEventAssetAssignHeaderTitle: () => this.subEventAssetAssignHeaderTitle(),
-    subEventAssetAssignHeaderSubtitle: () => this.subEventAssetAssignHeaderSubtitle(),
-    canConfirmSubEventAssetAssignSelection: () => this.canConfirmSubEventAssetAssignSelection(),
-    closeSubEventAssetAssignPopup: (apply) => this.closeSubEventAssetAssignPopup(apply),
-    confirmSubEventAssetAssignSelection: (event) => this.confirmSubEventAssetAssignSelection(event),
-    subEventAssetAssignCandidates: () => this.subEventAssetAssignCandidates,
-    selectedSubEventAssetAssignChips: () => this.selectedSubEventAssetAssignChips,
-    toggleSubEventAssetAssignCard: (cardId, event) => this.toggleSubEventAssetAssignCard(cardId, event),
-    isSubEventAssetAssignCardSelected: (cardId) => this.isSubEventAssetAssignCardSelected(cardId)
-  };
   private readonly navigatorBindings: NavigatorBindings = {
     syncHydratedUser: (user) => {
       if (!this.users.some(candidate => candidate.id === user.id)) {
@@ -315,7 +297,6 @@ export class App {
         this.pendingSubEventAssetCreateAssignment = null;
       }
     });
-    this.assetPopupService.registerHost(this.assetPopupHost);
     this.navigatorService.registerBindings(this.navigatorBindings);
     this.syncAssetPopupVisibility();
     this.ensurePaginationTestEvents(30);
@@ -332,23 +313,6 @@ export class App {
         return;
       }
       this.activitiesContext.clearActivitiesNavigationRequest();
-      if (request.type === 'chatResource') {
-        this.seedSubEventResourceFallbackCardsFromNavigationRequest(request.assetCardsByType);
-        this.seedSubEventAssetAssignmentsFromNavigationRequest(request.subEvent.id, request.assetAssignmentIds);
-        this.eventEditorService.isOpen();
-        setTimeout(() => {
-          this.openSubEventBadgePopup(
-            request.resourceType,
-            request.subEvent,
-            undefined,
-            request.group
-              ? { id: request.group.id, groupLabel: request.group.groupLabel }
-              : undefined,
-            'chat'
-          );
-        }, 0);
-        return;
-      }
       this.subEventResourceFallbackCardsByType = null;
       if (request.type === 'eventEditorCreate') {
         this.openEventEditor(true, 'create', undefined, false, null, request.target);
@@ -371,7 +335,6 @@ export class App {
         this.openEventLocationMap();
       });
       window.addEventListener('app:saveEventEditor', (event) => this.handleModuleEventEditorSave(event));
-      window.addEventListener('app:openSubEventResourcePopupFromEventEditor', (event) => this.handleModuleSubEventResourcePopup(event));
     }
   }
 
@@ -5769,10 +5732,6 @@ export class App {
     }));
   }
 
-  protected get isAssetPopup(): boolean {
-    return this.ownedAssets.isPopupOpen();
-  }
-
   protected get selectedAssetCard(): AppTypes.AssetCard | null {
     if (!this.selectedAssetCardId) {
       return null;
@@ -6701,7 +6660,7 @@ export class App {
   }
 
   private syncAssetPopupVisibility(): void {
-    this.assetPopupService.setBasketVisible(this.superStackedPopup === 'subEventAssetAssign');
+    // Basket visibility is now owned by the extracted sub-event resource popup service.
   }
 
 }

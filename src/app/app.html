@@ -6,7 +6,7 @@
   </div>
 </main>
 
-<section class="app-popup" *ngIf="activePopup && !isAssetPopup && activePopup !== 'logoutConfirm' && activePopup !== 'deleteAccountConfirm'">
+<section class="app-popup" *ngIf="activePopup && activePopup !== 'logoutConfirm' && activePopup !== 'deleteAccountConfirm'">
   <div class="app-popup-backdrop" (click)="closePopupFromBackdrop($event)"></div>
   <div
     class="app-popup-panel"

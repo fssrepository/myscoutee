@@ -37,7 +37,7 @@ export class OwnedAssetsPopupService {
   private activeOwnerUserId = '';
   private readonly assetVisibilityById: Record<string, AppTypes.EventVisibility> = {};
   private itemActionMenu: { id: string; title: string; openUp: boolean } | null = null;
-  private runtimeHooks: OwnedAssetsRuntimeHooks | null = null;
+  private readonly runtimeHooks: OwnedAssetsRuntimeHooks[] = [];
   private pendingPersistSnapshot: AppTypes.AssetCard[] | null = null;
   private pendingPersistOwnerUserId = '';
   private persistTimerId: ReturnType<typeof setTimeout> | null = null;
@@ -59,7 +59,10 @@ export class OwnedAssetsPopupService {
   }
 
   registerRuntimeHooks(hooks: OwnedAssetsRuntimeHooks | null): void {
-    this.runtimeHooks = hooks;
+    if (!hooks) {
+      return;
+    }
+    this.runtimeHooks.push(hooks);
   }
 
   initialize(cards: AppTypes.AssetCard[]): void {
@@ -234,7 +237,9 @@ export class OwnedAssetsPopupService {
   closeAssetForm(): void {
     this.showAssetForm = false;
     this.editingAssetId = null;
-    this.runtimeHooks?.onAssetFormClosed?.();
+    for (const hooks of this.runtimeHooks) {
+      hooks.onAssetFormClosed?.();
+    }
   }
 
   setAssetFormRouteStop(index: number, value: string): void {
@@ -334,7 +339,9 @@ export class OwnedAssetsPopupService {
           ? nextCard
           : card
       ), { persist: false });
-      this.runtimeHooks?.onAssetsChanged?.();
+      for (const hooks of this.runtimeHooks) {
+        hooks.onAssetsChanged?.();
+      }
       this.closeAssetForm();
       if (ownerUserId) {
         const savedCard = await this.assetsService.saveOwnedAsset(ownerUserId, nextCard);
@@ -352,8 +359,10 @@ export class OwnedAssetsPopupService {
       requests: []
     };
     this.applyAssetCards([nextCard, ...this.assetCardsRef], { persist: false });
-    this.runtimeHooks?.onAssetCreated?.(nextCard);
-    this.runtimeHooks?.onAssetsChanged?.();
+    for (const hooks of this.runtimeHooks) {
+      hooks.onAssetCreated?.(nextCard);
+      hooks.onAssetsChanged?.();
+    }
     this.closeAssetForm();
     if (ownerUserId) {
       const savedCard = await this.assetsService.saveOwnedAsset(ownerUserId, nextCard);
@@ -428,8 +437,10 @@ export class OwnedAssetsPopupService {
     const ownerUserId = this.resolveOwnerUserId();
     this.applyAssetCards(this.assetCardsRef.filter(card => card.id !== cardId), { persist: false });
     this.pendingAssetDeleteCardId = null;
-    this.runtimeHooks?.onAssetDeleted?.(cardId);
-    this.runtimeHooks?.onAssetsChanged?.();
+    for (const hooks of this.runtimeHooks) {
+      hooks.onAssetDeleted?.(cardId);
+      hooks.onAssetsChanged?.();
+    }
     if (ownerUserId) {
       await this.assetsService.deleteOwnedAsset(ownerUserId, cardId);
     }

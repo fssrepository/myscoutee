@@ -13,6 +13,9 @@ import { ProfileEditorComponent } from '../profile-editor/profile-editor.compone
 import { NavigatorSettingsPopupsComponent } from '../navigator-settings-popups/navigator-settings-popups.component';
 import { NavigatorService } from '../../navigator.service';
 import { EventMembersPopupComponent } from '../../../activity/components/event-members-popup/event-members-popup.component';
+import { EventResourcePopupComponent } from '../../../activity/components/event-resource-popup/event-resource-popup.component';
+import { EventSupplyContributionsPopupComponent } from '../../../activity/components/event-supply-contributions-popup/event-supply-contributions-popup.component';
+import { SubEventResourcePopupService } from '../../../activity/services/sub-event-resource-popup.service';
 
 @Component({
   selector: 'app-navigator',
@@ -24,7 +27,9 @@ import { EventMembersPopupComponent } from '../../../activity/components/event-m
     NavigatorSettingsPopupsComponent,
     NavigatorImpressionsPopupComponent,
     ProfileEditorComponent,
-    EventMembersPopupComponent
+    EventMembersPopupComponent,
+    EventResourcePopupComponent,
+    EventSupplyContributionsPopupComponent
   ],
   templateUrl: './navigator.component.html',
   styleUrl: './navigator.component.scss'
@@ -37,6 +42,7 @@ export class NavigatorComponent {
   private readonly eventFeedbackPopupService = inject(EventFeedbackPopupService);
   private readonly eventEditorService = inject(EventEditorService);
   private readonly navigatorService = inject(NavigatorService);
+  protected readonly subEventResources = inject(SubEventResourcePopupService);
   private lastHandledActivitiesRequestMs = 0;
   private lastHandledAssetRequestMs = 0;
   private lastHandledEventFeedbackRequestMs = 0;
@@ -60,11 +66,7 @@ export class NavigatorComponent {
 
     effect(() => {
       const isActivitiesOpen = this.activitiesContext.activitiesOpen();
-      const navigationRequest = this.activitiesContext.activitiesNavigationRequest();
-      const hasInternalActivitiesRequest = navigationRequest?.type === 'chatResource';
-      const hasEventEditorResourceRequest = this.eventEditorService.subEventResourcePopupRequest() !== null;
-      const shouldLoadActivitiesPopup = isActivitiesOpen || hasInternalActivitiesRequest || hasEventEditorResourceRequest;
-      if (shouldLoadActivitiesPopup && !this.activitiesPopupComponentRef()) {
+      if (isActivitiesOpen && !this.activitiesPopupComponentRef()) {
         void this.ensureActivitiesPopupLoaded();
       }
     });

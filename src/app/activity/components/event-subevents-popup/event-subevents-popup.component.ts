@@ -631,6 +631,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
     this.eventEditorService.requestSubEventResourcePopup({
       type,
+      parentTitle: this.parentTitle,
       subEvent: {
         ...item,
         id: item.id ?? this.nextId('subevent')
