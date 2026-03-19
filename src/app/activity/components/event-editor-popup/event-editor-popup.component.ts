@@ -15,63 +15,13 @@ import { ActivitiesDbContextService } from '../../services/activities-db-context
 import { EventEditorService } from '../../../shared/event-editor.service';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
+import { EventEditorBuilder } from '../../../shared/core/base/builders';
+import { EventEditorConverter } from '../../../shared/core/base/converters';
 import type * as AppTypes from '../../../shared/core/base/models';
-import { ActivityMembersService, AppContext, EventsService } from '../../../shared/core';
+import { AppContext, EventEditorDataService } from '../../../shared/core';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { TopicPickerPopupComponent } from '../../../shared/ui';
 import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
-
-type EventVisibility = 'Public' | 'Friends only' | 'Invitation only';
-type EventBlindMode = 'Open Event' | 'Blind Event';
-type SubEventsDisplayMode = 'Casual' | 'Tournament';
-
-interface EventEditorSubEventItem {
-  description?: string;
-  id?: string;
-  name?: string;
-  title?: string;
-  location?: string;
-  optional?: boolean;
-  startAt?: string;
-  endAt?: string;
-  capacityMin?: number;
-  capacityMax?: number;
-  groups?: EventEditorSubEventGroupItem[];
-  membersPending?: number;
-  membersAccepted?: number;
-  carsPending?: number;
-  accommodationPending?: number;
-  suppliesPending?: number;
-  [key: string]: unknown;
-}
-
-interface EventEditorSubEventGroupItem {
-  id?: string;
-  name?: string;
-  source?: string;
-  membersPending?: number;
-  capacityMin?: number;
-  capacityMax?: number;
-}
-
-interface EventEditorSavePayload {
-  title: string;
-  description: string;
-  imageUrl: string;
-  visibility: EventVisibility;
-  frequency: string;
-  location: string;
-  capacityMin: number | null;
-  capacityMax: number | null;
-  blindMode: EventBlindMode;
-  autoInviter: boolean;
-  ticketing: boolean;
-  topics: string[];
-  subEvents: EventEditorSubEventItem[];
-  subEventsDisplayMode: SubEventsDisplayMode;
-  startAt: string;
-  endAt: string;
-}
 
 @Component({
   selector: 'app-event-editor-popup',
@@ -97,8 +47,7 @@ interface EventEditorSavePayload {
 export class EventEditorPopupComponent implements OnInit, OnDestroy {
   protected readonly eventEditorService = inject(EventEditorService);
   private readonly activitiesContext = inject(ActivitiesDbContextService);
-  private readonly activityMembersService = inject(ActivityMembersService);
-  private readonly eventsService = inject(EventsService);
+  private readonly eventEditorDataService = inject(EventEditorDataService);
   private readonly appCtx = inject(AppContext);
   protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
 
@@ -179,20 +128,20 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.closeSubscription?.unsubscribe();
   }
 
-  eventForm = {
+  eventForm: AppTypes.EventEditorDraftForm = {
     title: '',
     description: '',
     imageUrl: '',
-    visibility: 'Public' as EventVisibility,
+    visibility: 'Public',
     frequency: 'One-time',
     location: '',
     capacityMin: 0 as number | null,
     capacityMax: 0 as number | null,
-    blindMode: 'Open Event' as EventBlindMode,
+    blindMode: 'Open Event',
     autoInviter: false,
     ticketing: false,
     topics: [] as string[],
-    subEvents: [] as EventEditorSubEventItem[],
+    subEvents: [] as AppTypes.EventEditorSubEventItem[],
     startAt: '',
     endAt: ''
   };
@@ -202,12 +151,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   eventEndDateValue: Date | null = null;
   eventEndTimeValue: Date | null = null;
 
-  subEventsDisplayMode: SubEventsDisplayMode = 'Casual';
+  subEventsDisplayMode: AppTypes.SubEventsDisplayMode = 'Casual';
   showEventVisibilityPicker = false;
   showSubEventsPopup = false;
   showTopicPicker = false;
 
-  readonly visibilityOptions: EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
+  readonly visibilityOptions: AppTypes.EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
   readonly eventFrequencyOptions = ['One-time', 'Daily', 'Weekly', 'Bi-weekly', 'Monthly'];
 
   close(): void {
@@ -267,16 +216,16 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   handleSubEventsChange(subEvents: readonly EventSubeventsItem[]): void {
-    const mapped: EventEditorSubEventItem[] = subEvents.map(item => ({
+    const mapped: AppTypes.EventEditorSubEventItem[] = subEvents.map(item => ({
       ...item,
       groups: (item.groups ?? []).map(group => ({ ...group }))
     }));
-    this.eventForm.subEvents = this.cloneSubEvents(mapped);
+    this.eventForm.subEvents = EventEditorBuilder.cloneEventEditorSubEvents(mapped);
     this.syncMainEventBoundsFromSubEvents();
     this.syncDateTimeControlsFromForm();
   }
 
-  updateSubEventsDisplayMode(mode: SubEventsDisplayMode): void {
+  updateSubEventsDisplayMode(mode: AppTypes.SubEventsDisplayMode): void {
     this.subEventsDisplayMode = mode;
     this.syncMainEventBoundsFromSubEvents();
     this.syncDateTimeControlsFromForm();
@@ -303,10 +252,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   updateTopicSelection(selected: readonly string[]): void {
-    this.eventForm.topics = selected
-      .map(item => `${item ?? ''}`.trim().replace(/^#+/, ''))
-      .filter(item => item.length > 0)
-      .slice(0, 5);
+    this.eventForm.topics = EventEditorConverter.normalizeEventEditorTopics(selected);
   }
 
   eventEditorHeaderPendingMemberCount(): number {
@@ -355,27 +301,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     void this.persistEventEditorForm();
   }
 
-  private buildEventEditorPayload(): EventEditorSavePayload {
-    return {
-      title: this.eventForm.title.trim(),
-      description: this.eventForm.description.trim(),
-      imageUrl: this.eventForm.imageUrl,
-      visibility: this.eventForm.visibility,
-      frequency: this.eventForm.frequency,
-      location: this.eventForm.location,
-      capacityMin: this.eventForm.capacityMin ?? 0,
-      capacityMax: this.eventForm.capacityMax ?? 0,
-      blindMode: this.eventForm.blindMode,
-      autoInviter: this.eventForm.autoInviter,
-      ticketing: this.eventForm.ticketing,
-      topics: [...this.eventForm.topics],
-      subEvents: this.cloneSubEvents(this.eventForm.subEvents),
-      subEventsDisplayMode: this.subEventsDisplayMode,
-      startAt: this.eventForm.startAt,
-      endAt: this.eventForm.endAt
-    };
-  }
-
   toggleEventVisibilityPicker(event?: Event): void {
     event?.stopPropagation();
     if (this.eventEditorService.readOnly()) {
@@ -384,17 +309,17 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.showEventVisibilityPicker = !this.showEventVisibilityPicker;
   }
 
-  selectVisibility(option: EventVisibility, event?: Event): void {
+  selectVisibility(option: AppTypes.EventVisibility, event?: Event): void {
     event?.stopPropagation();
     if (this.eventEditorService.readOnly()) {
       return;
     }
-    this.eventForm.visibility = this.normalizeVisibility(option);
+    this.eventForm.visibility = EventEditorConverter.normalizeEventEditorVisibility(option);
     this.showEventVisibilityPicker = false;
   }
 
   getVisibilityIcon(visibility: string): string {
-    switch (this.normalizeVisibility(visibility)) {
+    switch (EventEditorConverter.normalizeEventEditorVisibility(visibility)) {
       case 'Friends only':
         return 'groups';
       case 'Invitation only':
@@ -405,7 +330,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   eventVisibilityClass(visibility: string): string {
-    switch (this.normalizeVisibility(visibility)) {
+    switch (EventEditorConverter.normalizeEventEditorVisibility(visibility)) {
       case 'Friends only':
         return 'event-visibility-friends';
       case 'Invitation only':
@@ -416,15 +341,15 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   eventBlindModeClass(mode: string): string {
-    return this.normalizeBlindMode(mode) === 'Blind Event' ? 'blind-mode-blind' : 'blind-mode-open';
+    return EventEditorConverter.normalizeEventEditorBlindMode(mode) === 'Blind Event' ? 'blind-mode-blind' : 'blind-mode-open';
   }
 
   eventBlindModeIcon(mode: string): string {
-    return this.normalizeBlindMode(mode) === 'Blind Event' ? 'visibility_off' : 'visibility';
+    return EventEditorConverter.normalizeEventEditorBlindMode(mode) === 'Blind Event' ? 'visibility_off' : 'visibility';
   }
 
   eventBlindModeDescription(mode: string): string {
-    return this.normalizeBlindMode(mode) === 'Blind Event'
+    return EventEditorConverter.normalizeEventEditorBlindMode(mode) === 'Blind Event'
       ? 'Attendees won\'t see each other before the event.'
       : 'Attendees can preview each other before the event.';
   }
@@ -474,7 +399,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   eventFrequencyClass(frequency: string): string {
-    switch (this.normalizeFrequency(frequency)) {
+    switch (EventEditorConverter.normalizeEventEditorFrequency(frequency)) {
       case 'Daily':
         return 'event-frequency-daily';
       case 'Weekly':
@@ -489,7 +414,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   eventFrequencyIcon(frequency: string): string {
-    switch (this.normalizeFrequency(frequency)) {
+    switch (EventEditorConverter.normalizeEventEditorFrequency(frequency)) {
       case 'Daily':
         return 'today';
       case 'Weekly':
@@ -516,12 +441,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return this.subEventPanelChipTitle(current.item, current.index);
   }
 
-  subEventLocationLabel(subEvent: EventEditorSubEventItem | null | undefined): string {
-    const location = this.normalizeLocation(subEvent?.location).trim();
+  subEventLocationLabel(subEvent: AppTypes.EventEditorSubEventItem | null | undefined): string {
+    const location = EventEditorConverter.normalizeEventEditorLocation(subEvent?.location).trim();
     return location || 'Location pending';
   }
 
-  subEventPanelChipTitle(subEvent: EventEditorSubEventItem, index: number): string {
+  subEventPanelChipTitle(subEvent: AppTypes.EventEditorSubEventItem, index: number): string {
     const baseName = (this.subEventName(subEvent) || 'Untitled').trim() || 'Untitled';
     if (this.subEventsDisplayMode !== 'Tournament') {
       return baseName;
@@ -529,9 +454,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return `Stage ${index + 1} - ${baseName}`;
   }
 
-  subEventCardRange(subEvent: EventEditorSubEventItem): string {
-    const start = this.parseDateValue(subEvent.startAt);
-    const end = this.parseDateValue(subEvent.endAt);
+  subEventCardRange(subEvent: AppTypes.EventEditorSubEventItem): string {
+    const start = EventEditorConverter.parseEventEditorDateValue(subEvent.startAt);
+    const end = EventEditorConverter.parseEventEditorDateValue(subEvent.endAt);
     if (!start || !end) {
       return 'Date pending';
     }
@@ -540,8 +465,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return `${startLabel} - ${endLabel}`;
   }
 
-  subEventPanelChipIsCurrent(subEvent: EventEditorSubEventItem): boolean {
-    const source = this.sortSubEventRefsByStartAsc(this.eventForm.subEvents);
+  subEventPanelChipIsCurrent(subEvent: AppTypes.EventEditorSubEventItem): boolean {
+    const source = EventEditorBuilder.sortEventEditorSubEventRefsByStartAsc(this.eventForm.subEvents);
     if (source.length === 0) {
       return false;
     }
@@ -602,12 +527,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   interestOptionToneClass(topic: string): string {
-    const normalizedTopic = this.normalizeTopicToken(topic);
+    const normalizedTopic = EventEditorConverter.normalizeEventEditorTopicToken(topic);
     if (!normalizedTopic) {
       return '';
     }
     for (const group of this.interestOptionGroups) {
-      if (group.options.some(option => this.normalizeTopicToken(option) === normalizedTopic)) {
+      if (group.options.some(option => EventEditorConverter.normalizeEventEditorTopicToken(option) === normalizedTopic)) {
         return group.toneClass;
       }
     }
@@ -634,7 +559,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   onEventCapacityMinChange(value: number | string): void {
-    const parsed = this.toCapacityInputValue(value);
+    const parsed = EventEditorConverter.toEventEditorCapacityInputValue(value);
     this.eventForm.capacityMin = parsed;
     if (
       this.eventForm.capacityMin !== null
@@ -646,7 +571,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   onEventCapacityMaxChange(value: number | string): void {
-    const parsed = this.toCapacityInputValue(value);
+    const parsed = EventEditorConverter.toEventEditorCapacityInputValue(value);
     this.eventForm.capacityMax = parsed;
   }
 
@@ -685,7 +610,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   onEventLocationChange(value: string): void {
-    this.eventForm.location = this.normalizeLocation(value);
+    this.eventForm.location = EventEditorConverter.normalizeEventEditorLocation(value);
     this.syncFirstSubEventLocationFromMainEvent();
   }
 
@@ -756,9 +681,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private async openEditRequest(row: AppTypes.ActivityListRow, readOnly: boolean): Promise<void> {
     this.resetEditorContext();
     const activeUserId = this.activeUserId();
-    const cachedRecord = activeUserId ? this.eventsService.peekKnownItemById(activeUserId, row.id) : null;
+    const cachedRecord = activeUserId ? this.eventEditorDataService.peekKnownItemById(activeUserId, row.id) : null;
     const target = cachedRecord?.type === 'hosting' || row.type === 'hosting' ? 'hosting' : 'events';
-    const fallbackSource = this.buildFallbackSource(row, readOnly, target);
+    const fallbackSource = EventEditorConverter.toEventEditorFallbackSource(row, readOnly, target);
 
     this.editorTarget = target;
     this.editingEventId = row.id;
@@ -772,7 +697,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!activeUserId) {
       return;
     }
-    const record = await this.eventsService.queryKnownItemById(activeUserId, row.id);
+    const record = await this.eventEditorDataService.queryKnownItemById(activeUserId, row.id);
     if (!record) {
       return;
     }
@@ -783,86 +708,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private openRecord(record: DemoEventRecord, readOnly: boolean, target: AppTypes.EventEditorTarget): void {
-    const source = this.buildSourceEventFromRecord(record, target);
+    const source = EventEditorConverter.toEventEditorSourceFromRecord(record, target);
     if (readOnly) {
       this.eventEditorService.openView(source);
       return;
     }
     this.eventEditorService.openEdit(source);
-  }
-
-  private buildSourceEventFromRecord(
-    record: DemoEventRecord,
-    target: AppTypes.EventEditorTarget
-  ): Record<string, unknown> {
-    return {
-      id: record.id,
-      avatar: record.creatorInitials,
-      title: record.title,
-      description: record.subtitle,
-      shortDescription: record.subtitle,
-      timeframe: record.timeframe,
-      activity: record.activity,
-      isAdmin: target === 'hosting' ? true : record.isAdmin,
-      imageUrl: record.imageUrl,
-      visibility: record.visibility,
-      frequency: record.frequency ?? 'One-time',
-      location: record.location,
-      capacityMin: record.capacityMin,
-      capacityMax: record.capacityMax,
-      blindMode: record.blindMode,
-      autoInviter: record.autoInviter ?? false,
-      ticketing: record.ticketing,
-      topics: [...record.topics],
-      subEvents: this.normalizeSubEvents(record.subEvents ?? []),
-      subEventsDisplayMode: record.subEventsDisplayMode,
-      startAt: record.startAtIso,
-      endAt: record.endAtIso,
-      published: record.published,
-      pendingMembersCount: record.pendingMembers,
-      distanceKm: record.distanceKm,
-      sourceLink: record.sourceLink,
-      locationCoordinates: record.locationCoordinates
-    };
-  }
-
-  private buildFallbackSource(
-    row: AppTypes.ActivityListRow,
-    readOnly: boolean,
-    target: AppTypes.EventEditorTarget
-  ): Record<string, unknown> {
-    const rowSource = row.source as unknown as Partial<Record<string, unknown>> | null;
-    const title = this.normalizeTextValue(rowSource?.['title']) || row.title;
-    const description = this.normalizeTextValue(rowSource?.['shortDescription'] ?? rowSource?.['description']) || row.subtitle;
-    return {
-      id: row.id,
-      avatar: this.normalizeTextValue(rowSource?.['avatar']),
-      title,
-      description,
-      shortDescription: description,
-      timeframe: this.normalizeTextValue(rowSource?.['timeframe']) || row.detail,
-      activity: Math.max(0, Math.trunc(Number(row.unread) || 0)),
-      isAdmin: row.isAdmin === true,
-      imageUrl: this.normalizeTextValue(rowSource?.['imageUrl']),
-      visibility: target === 'hosting' ? 'Invitation only' : 'Public',
-      frequency: 'One-time',
-      location: this.normalizeTextValue(rowSource?.['location']),
-      capacityMin: this.toCapacityInputValue(rowSource?.['capacityMin']),
-      capacityMax: this.toCapacityInputValue(rowSource?.['capacityMax']),
-      blindMode: 'Open Event',
-      autoInviter: false,
-      ticketing: Boolean(rowSource?.['ticketing']),
-      topics: Array.isArray(rowSource?.['topics']) ? rowSource?.['topics'] : [],
-      subEvents: [],
-      subEventsDisplayMode: 'Casual',
-      startAt: this.normalizeTextValue(rowSource?.['startAt']) || row.dateIso,
-      endAt: this.normalizeTextValue(rowSource?.['endAt']) || row.dateIso,
-      published: true,
-      pendingMembersCount: row.unread,
-      distanceKm: row.distanceKm,
-      sourceLink: this.normalizeTextValue(rowSource?.['sourceLink']),
-      readOnly
-    };
   }
 
   private async persistEventEditorForm(): Promise<void> {
@@ -873,7 +724,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.syncEventFormFromDateTimeControls();
     this.normalizeEventDateRange();
     this.syncFirstSubEventLocationFromMainEvent();
-    const normalizedCapacity = this.normalizedEventCapacityRange();
+    const normalizedCapacity = EventEditorBuilder.normalizedEventEditorCapacityRange(this.eventForm);
     this.eventForm.capacityMin = normalizedCapacity.min;
     this.eventForm.capacityMax = normalizedCapacity.max;
     if (!this.canSubmitEventEditorForm()) {
@@ -881,11 +732,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
 
     const activeUserId = this.activeUserId();
-    const eventId = this.editingEventId ?? this.buildCreatedEventId();
+    const eventId = this.editingEventId ?? EventEditorBuilder.buildCreatedEventEditorId(this.editorTarget);
     const existingRecord = this.currentRecord
-      ?? (activeUserId ? this.eventsService.peekKnownItemById(activeUserId, eventId) : null);
+      ?? (activeUserId ? this.eventEditorDataService.peekKnownItemById(activeUserId, eventId) : null);
     const summary = this.editingEventId
-      ? await this.activityMembersService.querySummaryByOwnerId(this.editingEventId)
+      ? await this.eventEditorDataService.querySummaryByOwnerId(this.editingEventId)
       : null;
     const acceptedMembers = summary?.acceptedMembers
       ?? existingRecord?.acceptedMembers
@@ -896,153 +747,23 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const capacityTotal = summary?.capacityTotal
       ?? existingRecord?.capacityTotal
       ?? Math.max(0, normalizedCapacity.max ?? normalizedCapacity.min ?? 0);
-    const payload = this.buildActivitiesEventSyncPayload(
+    const payload = EventEditorBuilder.buildEventEditorSyncPayload({
       eventId,
+      target: this.editorTarget,
+      form: this.eventForm,
+      subEventsDisplayMode: this.subEventsDisplayMode,
       acceptedMembers,
       pendingMembers,
       capacityTotal,
       existingRecord,
-      summary?.acceptedMemberUserIds ?? existingRecord?.acceptedMemberUserIds ?? [],
-      summary?.pendingMemberUserIds ?? existingRecord?.pendingMemberUserIds ?? []
-    );
+      activeUserId: activeUserId || null,
+      activeUserProfile: activeUserId ? this.appCtx.getUserProfile(activeUserId) : null,
+      acceptedMemberUserIds: summary?.acceptedMemberUserIds ?? existingRecord?.acceptedMemberUserIds ?? [],
+      pendingMemberUserIds: summary?.pendingMemberUserIds ?? existingRecord?.pendingMemberUserIds ?? []
+    });
 
     this.activitiesContext.emitActivitiesEventSync(payload);
     this.eventEditorService.close();
-  }
-
-  private buildActivitiesEventSyncPayload(
-    eventId: string,
-    acceptedMembers: number,
-    pendingMembers: number,
-    capacityTotal: number,
-    existingRecord: DemoEventRecord | null,
-    acceptedMemberUserIds: readonly string[],
-    pendingMemberUserIds: readonly string[]
-  ): Omit<AppTypes.ActivitiesEventSyncPayload, 'syncKey'> {
-    const activeUserId = this.activeUserId();
-    const activeUserProfile = activeUserId ? this.appCtx.getUserProfile(activeUserId) : null;
-    const timeframe = this.buildEventTimeframeLabel(this.eventForm.startAt, this.eventForm.endAt, this.eventForm.frequency);
-    const createdByCurrentUser = Boolean(activeUserId);
-
-    return {
-      id: eventId,
-      target: this.editorTarget,
-      title: this.eventForm.title.trim(),
-      shortDescription: this.eventForm.description.trim(),
-      timeframe,
-      activity: existingRecord?.activity ?? 0,
-      isAdmin: true,
-      startAt: this.eventForm.startAt,
-      endAt: this.eventForm.endAt,
-      distanceKm: existingRecord?.distanceKm ?? 0,
-      imageUrl: this.eventForm.imageUrl || existingRecord?.imageUrl || '',
-      acceptedMembers,
-      pendingMembers,
-      capacityTotal: Math.max(acceptedMembers, capacityTotal),
-      capacityMin: this.eventForm.capacityMin,
-      capacityMax: this.eventForm.capacityMax,
-      autoInviter: this.eventForm.autoInviter,
-      frequency: this.eventForm.frequency,
-      ticketing: this.eventForm.ticketing,
-      visibility: this.eventForm.visibility,
-      blindMode: this.eventForm.blindMode,
-      published: this.editorTarget === 'hosting'
-        ? (existingRecord?.published ?? false)
-        : true,
-      creatorUserId: createdByCurrentUser ? activeUserId : existingRecord?.creatorUserId,
-      creatorName: activeUserProfile?.name ?? existingRecord?.creatorName,
-      creatorInitials: activeUserProfile?.initials ?? existingRecord?.creatorInitials,
-      creatorGender: activeUserProfile?.gender ?? existingRecord?.creatorGender,
-      creatorCity: activeUserProfile?.city ?? existingRecord?.creatorCity,
-      location: this.eventForm.location.trim(),
-      locationCoordinates: existingRecord?.locationCoordinates ?? undefined,
-      sourceLink: existingRecord?.sourceLink ?? '',
-      acceptedMemberUserIds: Array.from(new Set(acceptedMemberUserIds.filter(id => id.trim().length > 0))),
-      pendingMemberUserIds: Array.from(new Set(pendingMemberUserIds.filter(id => id.trim().length > 0))),
-      topics: [...this.eventForm.topics],
-      subEvents: this.buildPersistedSubEvents(),
-      subEventsDisplayMode: this.subEventsDisplayMode
-    };
-  }
-
-  private buildPersistedSubEvents(): AppTypes.SubEventFormItem[] {
-    return this.eventForm.subEvents.map((item, index) => {
-      const rawItem = item as EventEditorSubEventItem & Record<string, unknown>;
-      const capacityMin = Math.max(0, Math.trunc(Number(item.capacityMin) || 0));
-      const capacityMax = Math.max(capacityMin, Math.trunc(Number(item.capacityMax) || capacityMin));
-
-      return {
-        id: item.id?.trim() || `subevent-${index + 1}`,
-        name: `${item.name ?? item.title ?? `Sub Event ${index + 1}`}`.trim(),
-        description: `${item.description ?? ''}`.trim(),
-        startAt: `${item.startAt ?? ''}`.trim(),
-        endAt: `${item.endAt ?? ''}`.trim(),
-        location: this.normalizeLocation(item.location),
-        optional: Boolean(item.optional),
-        capacityMin,
-        capacityMax,
-        tournamentGroupCount: Number.isFinite(Number(rawItem['tournamentGroupCount']))
-          ? Math.max(0, Math.trunc(Number(rawItem['tournamentGroupCount'])))
-          : undefined,
-        tournamentGroupCapacityMin: Number.isFinite(Number(rawItem['tournamentGroupCapacityMin']))
-          ? Math.max(0, Math.trunc(Number(rawItem['tournamentGroupCapacityMin'])))
-          : undefined,
-        tournamentGroupCapacityMax: Number.isFinite(Number(rawItem['tournamentGroupCapacityMax']))
-          ? Math.max(0, Math.trunc(Number(rawItem['tournamentGroupCapacityMax'])))
-          : undefined,
-        tournamentLeaderboardType: rawItem['tournamentLeaderboardType'] === 'Fifa' ? 'Fifa' : 'Score',
-        tournamentAdvancePerGroup: Number.isFinite(Number(rawItem['tournamentAdvancePerGroup']))
-          ? Math.max(0, Math.trunc(Number(rawItem['tournamentAdvancePerGroup'])))
-          : undefined,
-        groups: (item.groups ?? []).map((group, groupIndex) => {
-          const groupCapacityMin = Number.isFinite(Number(group.capacityMin))
-            ? Math.max(0, Math.trunc(Number(group.capacityMin)))
-            : undefined;
-          const groupCapacityMax = Number.isFinite(Number(group.capacityMax))
-            ? Math.max(groupCapacityMin ?? 0, Math.trunc(Number(group.capacityMax)))
-            : groupCapacityMin;
-          return {
-            id: group.id?.trim() || `group-${index + 1}-${groupIndex + 1}`,
-            name: `${group.name ?? `Group ${String.fromCharCode(65 + (groupIndex % 26))}`}`.trim(),
-            source: group.source === 'manual' ? 'manual' : 'generated',
-            capacityMin: groupCapacityMin,
-            capacityMax: groupCapacityMax
-          };
-        }),
-        membersAccepted: Math.max(0, Math.trunc(Number(item.membersAccepted) || 0)),
-        membersPending: Math.max(0, Math.trunc(Number(item.membersPending) || 0)),
-        carsPending: Math.max(0, Math.trunc(Number(item.carsPending) || 0)),
-        accommodationPending: Math.max(0, Math.trunc(Number(item.accommodationPending) || 0)),
-        suppliesPending: Math.max(0, Math.trunc(Number(item.suppliesPending) || 0)),
-        carsAccepted: Number.isFinite(Number(rawItem['carsAccepted']))
-          ? Math.max(0, Math.trunc(Number(rawItem['carsAccepted'])))
-          : undefined,
-        accommodationAccepted: Number.isFinite(Number(rawItem['accommodationAccepted']))
-          ? Math.max(0, Math.trunc(Number(rawItem['accommodationAccepted'])))
-          : undefined,
-        suppliesAccepted: Number.isFinite(Number(rawItem['suppliesAccepted']))
-          ? Math.max(0, Math.trunc(Number(rawItem['suppliesAccepted'])))
-          : undefined,
-        carsCapacityMin: Number.isFinite(Number(rawItem['carsCapacityMin']))
-          ? Math.max(0, Math.trunc(Number(rawItem['carsCapacityMin'])))
-          : undefined,
-        carsCapacityMax: Number.isFinite(Number(rawItem['carsCapacityMax']))
-          ? Math.max(0, Math.trunc(Number(rawItem['carsCapacityMax'])))
-          : undefined,
-        accommodationCapacityMin: Number.isFinite(Number(rawItem['accommodationCapacityMin']))
-          ? Math.max(0, Math.trunc(Number(rawItem['accommodationCapacityMin'])))
-          : undefined,
-        accommodationCapacityMax: Number.isFinite(Number(rawItem['accommodationCapacityMax']))
-          ? Math.max(0, Math.trunc(Number(rawItem['accommodationCapacityMax'])))
-          : undefined,
-        suppliesCapacityMin: Number.isFinite(Number(rawItem['suppliesCapacityMin']))
-          ? Math.max(0, Math.trunc(Number(rawItem['suppliesCapacityMin'])))
-          : undefined,
-        suppliesCapacityMax: Number.isFinite(Number(rawItem['suppliesCapacityMax']))
-          ? Math.max(0, Math.trunc(Number(rawItem['suppliesCapacityMax'])))
-          : undefined
-      };
-    });
   }
 
   private resetEditorContext(): void {
@@ -1056,48 +777,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return this.appCtx.activeUserId().trim() || this.appCtx.getActiveUserId().trim();
   }
 
-  private buildCreatedEventId(): string {
-    const stamp = Date.now();
-    return this.editorTarget === 'hosting' ? `h${stamp}` : `e${stamp}`;
-  }
-
-  private normalizeTextValue(value: unknown): string {
-    return typeof value === 'string' ? value.trim() : '';
-  }
-
-  private populateFormFromSourceEvent(sourceEvent: any): void {
-    const source = sourceEvent as any;
-    const startAtDate = this.parseDateValue(source.startAt ?? source.startDate);
-    const endAtDate = this.parseDateValue(source.endAt ?? source.endDate);
-    const resolvedStart = startAtDate ?? new Date();
-    const resolvedEnd = endAtDate ?? new Date(resolvedStart.getTime() + (60 * 60 * 1000));
-    const sourceCapacity = (typeof source.capacity === 'object' && source.capacity !== null)
-      ? source.capacity as { min?: unknown; max?: unknown }
-      : null;
-
+  private populateFormFromSourceEvent(sourceEvent: Record<string, unknown>): void {
+    const state = EventEditorConverter.toEventEditorFormState(sourceEvent);
     this.eventForm = {
-      title: `${source.title ?? ''}`.trim(),
-      description: `${source.description ?? source.shortDescription ?? ''}`.trim(),
-      imageUrl: this.resolveSourceImage(sourceEvent),
-      visibility: this.normalizeVisibility(source.visibility),
-      frequency: this.normalizeFrequency(source.frequency),
-      location: this.normalizeLocation(source.location),
-      capacityMin: this.toCapacityInputValue(source.capacityMin ?? sourceCapacity?.min) ?? 0,
-      capacityMax: this.toCapacityInputValue(source.capacityMax ?? sourceCapacity?.max) ?? 0,
-      blindMode: this.normalizeBlindMode(source.blindMode ?? source.matchingMode),
-      autoInviter: this.normalizeAutoInviter(source.autoInviter ?? source.inviteMode),
-      ticketing: this.normalizeTicketing(source.ticketing ?? source.ticketType),
-      topics: this.normalizeTopics(source.topics ?? source.tags),
-      subEvents: this.normalizeSubEvents(source.subEvents ?? source.subevents ?? source.sub_events),
-      startAt: AppUtils.toIsoDateTimeLocal(resolvedStart),
-      endAt: AppUtils.toIsoDateTimeLocal(resolvedEnd)
+      ...state.form,
+      subEvents: EventEditorBuilder.cloneEventEditorSubEvents(state.form.subEvents)
     };
-
-    this.subEventsDisplayMode = this.normalizeSubEventsDisplayMode(
-      source.subEventsDisplayMode,
-      this.eventForm.subEvents
-    );
-
+    this.subEventsDisplayMode = state.subEventsDisplayMode;
     this.normalizeEventDateRange();
     this.syncDateTimeControlsFromForm();
   }
@@ -1172,8 +858,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     let maxCapacity: number | null = null;
 
     for (const item of this.eventForm.subEvents) {
-      let startMs = this.parseDateValue(item.startAt)?.getTime() ?? Number.NaN;
-      let endMs = this.parseDateValue(item.endAt)?.getTime() ?? Number.NaN;
+      let startMs = EventEditorConverter.parseEventEditorDateValue(item.startAt)?.getTime() ?? Number.NaN;
+      let endMs = EventEditorConverter.parseEventEditorDateValue(item.endAt)?.getTime() ?? Number.NaN;
       if (!Number.isNaN(startMs) && !Number.isNaN(endMs)) {
         if (endMs <= startMs) {
           endMs = startMs + (60 * 60 * 1000);
@@ -1182,8 +868,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         maxEndMs = maxEndMs === null ? endMs : Math.max(maxEndMs, endMs);
       }
 
-      const normalizedMin = this.normalizedCapacityValueWithFloor(item.capacityMin, 0);
-      const normalizedMax = this.normalizedCapacityValueWithFloor(item.capacityMax, 0);
+      const normalizedMin = EventEditorBuilder.normalizedEventEditorCapacityValueWithFloor(item.capacityMin, 0);
+      const normalizedMax = EventEditorBuilder.normalizedEventEditorCapacityValueWithFloor(item.capacityMax, 0);
       if (normalizedMin !== null) {
         minCapacity = minCapacity === null
           ? normalizedMin
@@ -1208,240 +894,33 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.eventForm.capacityMax = Math.max(maxCapacity, this.eventForm.capacityMin ?? maxCapacity);
     }
 
-    const first = this.firstSubEventByOrder();
+    const first = EventEditorBuilder.firstEventEditorSubEventByOrder(this.eventForm.subEvents);
     if (first) {
-      this.eventForm.location = this.normalizeLocation(first.location);
+      this.eventForm.location = EventEditorConverter.normalizeEventEditorLocation(first.location);
     }
-  }
-
-  private cloneSubEvents(items: readonly EventEditorSubEventItem[]): EventEditorSubEventItem[] {
-    return items.map(item => ({
-      ...item,
-      groups: (item.groups ?? []).map(group => ({ ...group }))
-    }));
-  }
-
-  private firstSubEventByOrder(items: readonly EventEditorSubEventItem[] = this.eventForm.subEvents): EventEditorSubEventItem | null {
-    const ordered = this.sortSubEventRefsByStartAsc(items);
-    return ordered[0] ?? null;
-  }
-
-  private withFirstSubEventLocation(items: readonly EventEditorSubEventItem[], location: string): EventEditorSubEventItem[] {
-    if (items.length === 0) {
-      return [];
-    }
-    const first = this.firstSubEventByOrder(items);
-    if (!first?.id) {
-      return this.cloneSubEvents(items);
-    }
-    const normalizedLocation = this.normalizeLocation(location);
-    return items.map(item => item.id === first.id
-      ? { ...item, location: normalizedLocation, groups: (item.groups ?? []).map(group => ({ ...group })) }
-      : { ...item, groups: (item.groups ?? []).map(group => ({ ...group })) });
   }
 
   private syncFirstSubEventLocationFromMainEvent(): void {
     if (this.eventForm.subEvents.length === 0) {
       return;
     }
-    this.eventForm.subEvents = this.withFirstSubEventLocation(this.eventForm.subEvents, this.eventForm.location);
+    this.eventForm.subEvents = EventEditorBuilder.withFirstEventEditorSubEventLocation(
+      this.eventForm.subEvents,
+      this.eventForm.location
+    );
   }
 
   private eventLocationRouteStops(): string[] {
-    const mainLocation = this.normalizeLocation(this.eventForm.location).trim();
-    const subEventStops = this.sortSubEventRefsByStartAsc(this.eventForm.subEvents)
-      .map(item => this.normalizeLocation(item.location).trim())
+    const mainLocation = EventEditorConverter.normalizeEventEditorLocation(this.eventForm.location).trim();
+    const subEventStops = EventEditorBuilder.sortEventEditorSubEventRefsByStartAsc(this.eventForm.subEvents)
+      .map(item => EventEditorConverter.normalizeEventEditorLocation(item.location).trim())
       .filter(stop => stop.length > 0);
     const ordered = [mainLocation, ...subEventStops].filter(stop => stop.length > 0);
     return Array.from(new Set(ordered));
   }
 
-  private normalizedEventCapacityRange(): AppTypes.EventCapacityRange {
-    const min = this.normalizedCapacityValueWithFloor(this.eventForm.capacityMin, 0);
-    const maxCandidate = this.normalizedCapacityValueWithFloor(this.eventForm.capacityMax, 0);
-    const max = min !== null && maxCandidate !== null
-      ? Math.max(min, maxCandidate)
-      : (maxCandidate ?? min);
-    return {
-      min,
-      max
-    };
-  }
-
-  private normalizedCapacityValueWithFloor(value: unknown, floor: number): number | null {
-    if (value === null || value === undefined) {
-      return null;
-    }
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) {
-      return null;
-    }
-    return Math.max(floor, Math.trunc(parsed));
-  }
-
-  private normalizeVisibility(value: unknown): EventVisibility {
-    const normalized = `${value ?? ''}`.trim().toLowerCase();
-    if (normalized === 'private' || normalized.includes('friend')) {
-      return 'Friends only';
-    }
-    if (normalized.includes('invitation')) {
-      return 'Invitation only';
-    }
-    return 'Public';
-  }
-
-  private normalizeFrequency(value: unknown): string {
-    const normalized = `${value ?? ''}`.trim().toLowerCase();
-    if (normalized === 'daily') {
-      return 'Daily';
-    }
-    if (normalized === 'weekly') {
-      return 'Weekly';
-    }
-    if (normalized.includes('bi-week') || normalized.includes('bi week')) {
-      return 'Bi-weekly';
-    }
-    if (normalized === 'monthly') {
-      return 'Monthly';
-    }
-    return 'One-time';
-  }
-
-  private normalizeBlindMode(value: unknown): EventBlindMode {
-    const normalized = `${value ?? ''}`.trim().toLowerCase();
-    return normalized.includes('blind') ? 'Blind Event' : 'Open Event';
-  }
-
-  private normalizeAutoInviter(value: unknown): boolean {
-    if (typeof value === 'boolean') {
-      return value;
-    }
-    const normalized = `${value ?? ''}`.trim().toLowerCase();
-    if (!normalized) {
-      return false;
-    }
-    if (normalized.includes('off') || normalized.includes('close') || normalized.includes('manual')) {
-      return false;
-    }
-    return normalized.includes('on') || normalized.includes('open') || normalized.includes('auto');
-  }
-
-  private normalizeTicketing(value: unknown): boolean {
-    if (typeof value === 'boolean') {
-      return value;
-    }
-    const normalized = `${value ?? ''}`.trim().toLowerCase();
-    if (!normalized || normalized.includes('none') || normalized.includes('off') || normalized.includes('free')) {
-      return false;
-    }
-    return normalized.includes('on') || normalized.includes('required') || normalized.includes('ticket');
-  }
-
-  private normalizeTopics(value: unknown): string[] {
-    if (!Array.isArray(value)) {
-      return [];
-    }
-    return value
-      .map(item => `${item ?? ''}`.trim().replace(/^#+/, ''))
-      .filter(item => item.length > 0)
-      .slice(0, 5);
-  }
-
-  private normalizeSubEvents(value: unknown): EventEditorSubEventItem[] {
-    if (!Array.isArray(value)) {
-      return [];
-    }
-
-    return value.map((entry, index) => {
-      const item = (typeof entry === 'object' && entry !== null) ? entry as any : {};
-      const resolvedName = `${item.name ?? item.title ?? `Sub event ${index + 1}`}`.trim() || `Sub event ${index + 1}`;
-      const startAtDate = this.parseDateValue(item.startAt ?? item.startDate);
-      const endAtDate = this.parseDateValue(item.endAt ?? item.endDate);
-      return {
-        ...item,
-        name: resolvedName,
-        title: `${item.title ?? resolvedName}`.trim() || resolvedName,
-        location: this.normalizeLocation(item.location),
-        optional: Boolean(item.optional),
-        startAt: startAtDate ? AppUtils.toIsoDateTimeLocal(startAtDate) : '',
-        endAt: endAtDate ? AppUtils.toIsoDateTimeLocal(endAtDate) : ''
-      };
-    });
-  }
-
-  private normalizeSubEventsDisplayMode(value: unknown, subEvents: readonly EventEditorSubEventItem[] = []): SubEventsDisplayMode {
-    const normalized = `${value ?? ''}`.trim().toLowerCase();
-    if (normalized === 'tournament') {
-      return 'Tournament';
-    }
-    const hasTournamentGroup = subEvents.some(item => Array.isArray(item.groups) && item.groups.length > 0);
-    return hasTournamentGroup ? 'Tournament' : 'Casual';
-  }
-
-  private normalizeLocation(value: unknown): string {
-    return `${value ?? ''}`.trim();
-  }
-
-  private resolveSourceImage(sourceEvent: Record<string, unknown>): string {
-    const source = sourceEvent as any;
-    const directImage = source.imageUrl
-      ?? source.image
-      ?? source.coverImage
-      ?? source.photoUrl
-      ?? source.bannerImage
-      ?? source.banner;
-
-    if (typeof directImage === 'string' && directImage.trim()) {
-      return directImage.trim();
-    }
-
-    const images = source.images;
-    if (Array.isArray(images) && images.length > 0) {
-      const first = images[0];
-      if (typeof first === 'string' && first.trim()) {
-        return first.trim();
-      }
-    }
-
-    return '';
-  }
-
-  private parseDateValue(value: unknown): Date | null {
-    if (value instanceof Date) {
-      return Number.isNaN(value.getTime()) ? null : new Date(value);
-    }
-
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      const fromNumber = new Date(value);
-      return Number.isNaN(fromNumber.getTime()) ? null : fromNumber;
-    }
-
-    const raw = `${value ?? ''}`.trim();
-    if (!raw) {
-      return null;
-    }
-
-    const parsed = new Date(raw.replace(/\//g, '-'));
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-
-  private toCapacityInputValue(value: unknown): number | null {
-    if (value === null || value === undefined || value === '') {
-      return null;
-    }
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) {
-      return null;
-    }
-    return Math.max(0, Math.trunc(parsed));
-  }
-
-  private normalizeTopicToken(value: unknown): string {
-    return `${value ?? ''}`.trim().replace(/^#+/, '').toLowerCase();
-  }
-
-  private currentSubEventPanelState(): { item: EventEditorSubEventItem; index: number } | null {
-    const source = this.sortSubEventRefsByStartAsc(this.eventForm.subEvents);
+  private currentSubEventPanelState(): { item: AppTypes.EventEditorSubEventItem; index: number } | null {
+    const source = EventEditorBuilder.sortEventEditorSubEventRefsByStartAsc(this.eventForm.subEvents);
     if (source.length === 0) {
       return null;
     }
@@ -1458,25 +937,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     };
   }
 
-  private sortSubEventRefsByStartAsc(items: readonly EventEditorSubEventItem[]): EventEditorSubEventItem[] {
-    return [...items]
-      .map((item, index) => ({
-        item,
-        index,
-        startMs: new Date(item.startAt ?? '').getTime()
-      }))
-      .sort((a, b) => {
-        const aTime = Number.isNaN(a.startMs) ? Number.POSITIVE_INFINITY : a.startMs;
-        const bTime = Number.isNaN(b.startMs) ? Number.POSITIVE_INFINITY : b.startMs;
-        if (aTime !== bTime) {
-          return aTime - bTime;
-        }
-        return a.index - b.index;
-      })
-      .map(entry => entry.item);
-  }
-
-  private resolveCurrentSubEventIndex(items: EventEditorSubEventItem[]): number {
+  private resolveCurrentSubEventIndex(items: AppTypes.EventEditorSubEventItem[]): number {
     if (items.length === 0) {
       return 0;
     }
@@ -1512,25 +973,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return Math.round(210 - (210 * ratio));
   }
 
-  private buildEventTimeframeLabel(startAt: string, endAt: string, frequency: string): string {
-    const start = this.parseDateValue(startAt);
-    const end = this.parseDateValue(endAt);
-    if (!start || !end) {
-      return startAt || endAt || '';
-    }
-
-    const dateLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    const normalizedFrequency = this.normalizeFrequency(frequency);
-
-    if (normalizedFrequency === 'One-time') {
-      return `${dateLabel} · ${startTime} - ${endTime}`;
-    }
-
-    return `${normalizedFrequency} · ${dateLabel} · ${startTime} - ${endTime}`;
-  }
-
   private openGoogleMapsSearch(value: string): void {
     const trimmed = value.trim();
     if (!trimmed || typeof window === 'undefined') {
@@ -1563,14 +1005,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
-  private subEventName(subEvent: EventEditorSubEventItem): string {
+  private subEventName(subEvent: AppTypes.EventEditorSubEventItem): string {
     return `${subEvent.name ?? subEvent.title ?? 'Untitled'}`;
-  }
-
-  private isHostingLikeSource(source: any): boolean {
-    if (!source || typeof source !== 'object') {
-      return false;
-    }
-    return !('isAdmin' in source) || source.isAdmin !== true;
   }
 }

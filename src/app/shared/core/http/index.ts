@@ -8,6 +8,7 @@ export { HttpAssetTicketsService } from './services/asset-tickets.service';
 export { HttpActivityInviteCandidatesService } from './services/activity-invite-candidates.service';
 export { HttpActivityMembersService } from './services/activity-members.service';
 export { HttpChatsService } from './services/chats.service';
+export { HttpEventEditorDataService } from './services/event-editor-data.service';
 export { HttpEventsService } from './services/events.service';
 export { HttpGameService } from './services/game.service';
 export { HttpRatesService } from './services/rates.service';

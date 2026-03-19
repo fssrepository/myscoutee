@@ -18,6 +18,7 @@ export {
   USER_GAME_CARDS_LOAD_CONTEXT_KEY
 } from './base/services/game.service';
 export { EventsService } from './base/services/events.service';
+export { EventEditorDataService } from './base/services/event-editor-data.service';
 export { ActivityMembersService } from './base/services/activity-members.service';
 export { AssetsService } from './base/services/assets.service';
 export { AssetTicketsService } from './base/services/asset-tickets.service';

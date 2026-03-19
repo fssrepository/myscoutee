@@ -17,6 +17,7 @@ export { DemoActivityInviteCandidatesService } from './services/activity-invite-
 export { DemoActivityMembersService } from './services/activity-members.service';
 export { DemoChatsService } from './services/chats.service';
 export { DemoBootstrapService, type DemoBootstrapProgressState } from './services/demo-bootstrap.service';
+export { DemoEventEditorDataService } from './services/event-editor-data.service';
 export { DemoEventsService } from './services/events.service';
 export { DemoGameService } from './services/game.service';
 export { DemoRatesService } from './services/rates.service';

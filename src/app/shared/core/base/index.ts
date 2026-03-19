@@ -13,6 +13,7 @@ export {
   UsersService
 } from './services/users.service';
 export { EventsService } from './services/events.service';
+export { EventEditorDataService } from './services/event-editor-data.service';
 export { GameService } from './services/game.service';
 export { ActivityMembersService } from './services/activity-members.service';
 export { ActivitiesService } from './services/activities.service';
