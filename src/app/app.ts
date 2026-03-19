@@ -31,7 +31,6 @@ import {
 } from './shared/core';
 import {
   APP_DEMO_DATA,
-  DEMO_CHAT_BY_USER,
   DEMO_EVENTS_BY_USER,
   DEMO_HOSTING_BY_USER,
   DEMO_INVITATIONS_BY_USER,
@@ -256,20 +255,10 @@ export class App {
   protected readonly activitySourceLinkById: Record<string, string> = { ...APP_DEMO_DATA.activitySourceLinkById };
   protected readonly activityCapacityById: Record<string, string> = { ...APP_DEMO_DATA.activityCapacityById };
   protected readonly invitationItemsByUser: Record<string, InvitationMenuItem[]> = AppUtils.cloneMapItems(DEMO_INVITATIONS_BY_USER);
-  protected readonly chatItemsByUser: Record<string, ChatMenuItem[]> = AppUtils.cloneMapItems(DEMO_CHAT_BY_USER);
   protected readonly eventItemsByUser: Record<string, EventMenuItem[]> = AppUtils.cloneMapItems(DEMO_EVENTS_BY_USER);
   protected readonly hostingItemsByUser: Record<string, HostingMenuItem[]> = AppUtils.cloneMapItems(DEMO_HOSTING_BY_USER);
   private readonly acceptedInvitationIdsByUser: Record<string, string[]> = {};
 
-  protected selectedChat: ChatMenuItem | null = null;
-  protected readonly chatHistoryPageSize = 10;
-  private readonly chatInitialVisiblePageCount = 2;
-  protected chatVisibleMessageCount = this.chatHistoryPageSize;
-  protected chatInitialLoadPending = false;
-  protected chatDraftMessage = '';
-  private readonly chatHistoryById: Record<string, AppTypes.ChatPopupMessage[]> = {};
-  private chatHistoryLoadingOlder = false;
-  private chatHistoryLoadOlderTimer: ReturnType<typeof setTimeout> | null = null;
   protected selectedInvitation: InvitationMenuItem | null = null;
   protected selectedEvent: EventMenuItem | null = null;
   protected selectedHostingEvent: HostingMenuItem | null = null;
@@ -293,10 +282,6 @@ export class App {
   protected eventStartTimeValue: Date | null = null;
   protected eventEndTimeValue: Date | null = null;
   protected subEventsDisplayMode: AppTypes.SubEventsDisplayMode = 'Casual';
-  protected chatHeaderProgress = 0;
-  protected chatHeaderProgressLoading = false;
-  protected chatHeaderLoadingProgress = 0;
-  protected chatHeaderLoadingOverdue = false;
   @ViewChild('assetImageInput') private assetImageInput?: ElementRef<HTMLInputElement>;
   @ViewChild('subEventStagesScroll') private subEventStagesScrollRef?: ElementRef<HTMLDivElement>;
 
@@ -328,15 +313,6 @@ export class App {
 
 
   private readonly profileDetailsFormByUser: Record<string, AppTypes.ProfileDetailFormGroup[]> = {};
-  private readonly activitiesHeaderLoadingWindowMs = 3000;
-  private readonly activitiesHeaderLoadingTickMs = 16;
-  private activitiesHeaderFlushScheduled = false;
-  private readonly activitiesPaginationLoadDelayMs = 1000;
-  private chatHeaderLoadingCounter = 0;
-  private chatHeaderLoadingInterval: ReturnType<typeof setInterval> | null = null;
-  private chatHeaderLoadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
-  private chatHeaderLoadingStartedAtMs = 0;
-  private chatInitialLoadTimer: ReturnType<typeof setTimeout> | null = null;
   constructor(
     private readonly router: Router
   ) {
@@ -530,14 +506,6 @@ export class App {
     return this.resolveActivityCounter('game', this.activeUser.activities.game);
   }
 
-  protected get chatBadge(): number {
-    const fallback = AppDemoGenerators.resolveSectionBadge(
-      this.chatItems.map(item => item.unread),
-      this.chatItems.length
-    );
-    return this.resolveActivityCounter('chat', fallback);
-  }
-
   protected get invitationsBadge(): number {
     const fallback = AppDemoGenerators.resolveSectionBadge(
       this.invitationItems.map(item => item.unread),
@@ -587,10 +555,6 @@ export class App {
 
   protected get assetTicketsBadge(): number {
     return this.resolveActivityCounter('tickets', this.ticketRows.length);
-  }
-
-  protected get chatItems(): ChatMenuItem[] {
-    return this.chatItemsByUser[this.activeUser.id] ?? this.chatItemsByUser['u1'] ?? [];
   }
 
   protected get invitationItems(): InvitationMenuItem[] {
@@ -1452,8 +1416,6 @@ export class App {
       this.subEventBadgePopupOrigin = originOverride;
     } else if (this.eventEditorService.isOpen()) {
       this.subEventBadgePopupOrigin = 'stacked-event-editor';
-    } else if (this.stackedPopup === 'chat') {
-      this.subEventBadgePopupOrigin = 'chat';
     } else {
       this.subEventBadgePopupOrigin = 'active-event-editor';
     }
@@ -1508,11 +1470,7 @@ export class App {
       };
     }
 
-    const chatSessionItem = this.activitiesContext.eventChatSession()?.item ?? null;
-    if (!chatSessionItem && this.stackedPopup !== 'chat' && this.activePopup !== 'chat') {
-      return null;
-    }
-    const chat = chatSessionItem ?? this.selectedChat;
+    const chat = this.activitiesContext.eventChatSession()?.item ?? null;
     if (!chat) {
       return null;
     }
@@ -4096,8 +4054,6 @@ export class App {
     this.selectedActivityInviteUserIds = [];
     this.showActivityInviteSortPicker = false;
     this.superStackedPopup = null;
-    this.cancelChatInitialLoad();
-    this.chatHeaderProgress = 0;
     this.syncAssetPopupVisibility();
   }
 
@@ -4107,10 +4063,6 @@ export class App {
   }
 
   protected closeStackedPopup(): void {
-    if (this.stackedPopup === 'chat') {
-      this.cancelChatInitialLoad();
-      this.chatHeaderProgress = 0;
-    }
     this.inlineItemActionMenu = null;
     this.subEventMemberRolePickerUserId = null;
     if (this.superStackedPopup === 'subEventAssetAssign') {
@@ -4189,9 +4141,6 @@ export class App {
       this.superStackedPopup = null;
     }
     this.stackedPopup = null;
-    if (this.activePopup === 'chat') {
-      this.scrollChatToBottom();
-    }
     this.syncAssetPopupVisibility();
   }
 
@@ -4209,8 +4158,6 @@ export class App {
 
   protected getPopupTitle(): string {
     switch (this.activePopup) {
-      case 'chat':
-        return this.selectedChat?.title ?? 'Chat';
       case 'activityMembers':
         return 'Members';
       case 'tickets':
@@ -4240,8 +4187,6 @@ export class App {
 
   protected getStackedPopupTitle(): string {
     switch (this.stackedPopup) {
-      case 'chat':
-        return this.selectedChat?.title ?? 'Chat';
       case 'invitationActions':
         return this.selectedInvitation?.description ?? 'Invitation';
       case 'ticketCode':
@@ -4567,431 +4512,11 @@ export class App {
     return 'You have a pending role/action update for this event';
   }
 
-  protected getChatStarter(item: ChatMenuItem): DemoUser {
-    const members = this.getChatMembersById(item.id);
-    return members[1] ?? members[0] ?? this.activeUser;
-  }
-
-  protected getChatLastSender(item: ChatMenuItem): DemoUser {
-    return this.users.find(user => user.id === item.lastSenderId) ?? this.getChatMembersById(item.id)[0] ?? this.activeUser;
-  }
-
-  protected getChatVisibleMembers(item: ChatMenuItem, limit = 3): DemoUser[] {
-    return this.getChatMembersById(item.id).slice(0, limit);
-  }
-
-  protected getChatHiddenMemberCount(item: ChatMenuItem, limit = 3): number {
-    const total = this.getChatMembersById(item.id).length;
-    return total > limit ? total - limit : 0;
-  }
-
-  protected getChatMemberCount(item: ChatMenuItem): number {
-    return this.getChatMembersById(item.id).length;
-  }
-
-  protected activityChatRowToneClass(row: AppTypes.ActivityListRow): string {
-    if (row.type !== 'chats') {
-      return '';
-    }
-    const chat = row.source as ChatMenuItem;
-    const channelType = this.chatChannelType(chat);
-    if (channelType === 'mainEvent') {
-      return 'activities-card-chat-main-event';
-    }
-    if (channelType === 'optionalSubEvent') {
-      return 'activities-card-chat-optional-sub-event';
-    }
-    if (channelType === 'groupSubEvent') {
-      return 'activities-card-chat-group-sub-event';
-    }
-    return '';
-  }
-
-  protected selectedChatHeaderActionIcon(): string {
-    if (!this.selectedChat) {
-      return 'event';
-    }
-    const channelType = this.chatChannelType(this.selectedChat);
-    if (channelType === 'groupSubEvent') {
-      return 'groups';
-    }
-    if (channelType === 'optionalSubEvent') {
-      return 'event_available';
-    }
-    return 'event';
-  }
-
-  protected selectedChatHasSubEventMenu(): boolean {
-    if (!this.selectedChat) {
-      return false;
-    }
-    const channelType = this.chatChannelType(this.selectedChat);
-    return channelType === 'optionalSubEvent' || channelType === 'groupSubEvent';
-  }
-
-  protected selectedChatHeaderActionLabel(): string {
-    if (!this.selectedChat) {
-      return 'View Event';
-    }
-    const channelType = this.chatChannelType(this.selectedChat);
-    if (channelType === 'groupSubEvent') {
-      return 'View Group';
-    }
-    if (channelType === 'optionalSubEvent') {
-      return 'View Sub Event';
-    }
-    return 'View Event';
-  }
-
-  protected selectedChatHeaderActionToneClass(): string {
-    if (!this.selectedChat) {
-      return 'popup-chat-context-btn-tone-main-event';
-    }
-    const channelType = this.chatChannelType(this.selectedChat);
-    if (channelType === 'optionalSubEvent') {
-      return 'popup-chat-context-btn-tone-optional';
-    }
-    if (channelType === 'groupSubEvent') {
-      return 'popup-chat-context-btn-tone-group';
-    }
-    return 'popup-chat-context-btn-tone-main-event';
-  }
-
-  protected selectedChatHeaderActionBadgeCount(): number {
-    const chat = this.selectedChat;
-    if (!chat) {
-      return 0;
-    }
-    return this.contextualChatUnreadCount(chat);
-  }
-
-  protected selectedChatContextMenuTitle(): string {
-    const subEvent = this.selectedChatSubEvent();
-    if (!subEvent) {
-      return this.selectedChat?.title ?? 'Chat';
-    }
-    const group = this.selectedChatGroup(subEvent);
-    if (group) {
-      return `${this.subEventDisplayName(subEvent) || subEvent.name} · ${group.name}`;
-    }
-    return this.subEventDisplayName(subEvent) || subEvent.name || (this.selectedChat?.title ?? 'Sub Event');
-  }
-
-  protected selectedChatShowsMembersResource(): boolean {
-    if (!this.selectedChatHasSubEventMenu()) {
-      return false;
-    }
-    const subEvent = this.selectedChatSubEvent();
-    if (!subEvent) {
-      return false;
-    }
-    return subEvent.optional || this.chatChannelType(this.selectedChat!) === 'groupSubEvent';
-  }
-
-  protected selectedChatResourceSummary(type: 'Members' | 'Car' | 'Accommodation' | 'Supplies'): string {
-    const subEvent = this.selectedChatSubEvent();
-    if (!subEvent) {
-      return '';
-    }
-    if (type === 'Members') {
-      return this.subEventCapacityLabel(subEvent);
-    }
-    return this.subEventAssetCapacityLabel(subEvent, type);
-  }
-
-  protected selectedChatResourcePending(type: 'Members' | 'Car' | 'Accommodation' | 'Supplies'): number {
-    const subEvent = this.selectedChatSubEvent();
-    if (!subEvent) {
-      return 0;
-    }
-    if (type === 'Members') {
-      return this.subEventMembersBadgePendingCount(subEvent);
-    }
-    return this.subEventAssetBadgePendingCount(subEvent, type);
-  }
-
-  protected toggleSelectedChatContextMenu(event: Event): void {
-    event.stopPropagation();
-    if (!this.selectedChat || !this.selectedChatHasSubEventMenu()) {
-      return;
-    }
-    const menuId = this.selectedChatContextMenuId();
-    if (this.inlineItemActionMenu?.scope === 'chatContext' && this.inlineItemActionMenu.id === menuId) {
-      this.inlineItemActionMenu = null;
-      return;
-    }
-    this.inlineItemActionMenu = {
-      scope: 'chatContext',
-      id: menuId,
-      title: this.selectedChat.title,
-      openUp: this.shouldOpenInlineItemMenuUp(event)
-    };
-  }
-
-  protected isSelectedChatContextMenuOpen(): boolean {
-    return this.inlineItemActionMenu?.scope === 'chatContext'
-      && this.inlineItemActionMenu.id === this.selectedChatContextMenuId();
-  }
-
-  protected isSelectedChatContextMenuOpenUp(): boolean {
-    return this.inlineItemActionMenu?.scope === 'chatContext'
-      && this.inlineItemActionMenu.id === this.selectedChatContextMenuId()
-      && this.inlineItemActionMenu.openUp;
-  }
-
-  protected openSelectedChatHeaderAction(event?: Event): void {
-    event?.stopPropagation();
-    if (this.selectedChatHasSubEventMenu()) {
-      if (event) {
-        this.toggleSelectedChatContextMenu(event);
-      }
-      return;
-    }
-    this.openSelectedChatEvent(event);
-  }
-
-  protected openSelectedChatSubEvent(event?: Event): void {
-    event?.stopPropagation();
-    const source = this.selectedChat ? this.resolveChatEventSource(this.selectedChat) : null;
-    if (!source) {
-      return;
-    }
-    this.inlineItemActionMenu = null;
-    this.openEventEditor(true, 'edit', source, true);
-    setTimeout(() => this.openEventSubEventsPopup(), 0);
-  }
-
-  protected openSelectedChatEvent(event?: Event): void {
-    event?.stopPropagation();
-    const source = this.selectedChat ? this.resolveChatEventSource(this.selectedChat) : null;
-    if (!source) {
-      return;
-    }
-    this.inlineItemActionMenu = null;
-    this.openEventEditor(true, 'edit', source, true);
-  }
-
-  protected openSelectedChatSubEventResource(
-    type: 'Members' | 'Car' | 'Accommodation' | 'Supplies',
-    event?: Event
-  ): void {
-    event?.stopPropagation();
-    const subEvent = this.selectedChatSubEvent();
-    if (!subEvent) {
-      return;
-    }
-    const group = this.selectedChat
-      && this.chatChannelType(this.selectedChat) === 'groupSubEvent'
-      ? this.selectedChatTournamentGroup(subEvent)
-      : null;
-    this.inlineItemActionMenu = null;
-    if (!this.selectedChat) {
-      return;
-    }
-    this.activitiesContext.requestActivitiesNavigation({
-      type: 'chatResource',
-      item: this.selectedChat,
-      resourceType: type,
-      subEvent,
-      group: group
-        ? {
-          id: group.id,
-          groupLabel: group.groupLabel
-        }
-        : null,
-      assetAssignmentIds: this.eventChatResourceAssignmentIdsForSubEvent(subEvent.id),
-      assetCardsByType: this.eventChatResourceCardsByTypeForSubEvent()
-    });
-  }
-
-  private selectedChatSubEventResourceTotal(subEvent: AppTypes.SubEventFormItem): number {
-    const chat = this.selectedChat;
-    if (!chat) {
-      return 0;
-    }
-    const isGroupChannel = this.chatChannelType(chat) === 'groupSubEvent';
-    return this.contextualSubEventPendingTotal(subEvent, subEvent.optional || isGroupChannel);
-  }
-
-  protected selectedChatSubEvent(): AppTypes.SubEventFormItem | null {
-    if (!this.selectedChat) {
-      return null;
-    }
-    return this.chatSubEventForItem(this.selectedChat);
-  }
-
-  private selectedChatTournamentGroup(subEvent: AppTypes.SubEventFormItem): AppTypes.SubEventTournamentGroup | null {
-    if (!this.selectedChat?.groupId) {
-      return null;
-    }
-    const groups = this.subEventGroupsForStage(subEvent);
-    const groupIndex = groups.findIndex(group => group.id === this.selectedChat!.groupId);
-    if (groupIndex < 0) {
-      return null;
-    }
-    const group = groups[groupIndex];
-    return {
-      key: `${subEvent.id}:g:${group.id}`,
-      id: group.id,
-      groupNumber: groupIndex + 1,
-      groupLabel: group.name,
-      source: this.normalizedSubEventGroupSource(group),
-      subEvent
-    };
-  }
-
-  private selectedChatGroup(subEvent: AppTypes.SubEventFormItem): AppTypes.SubEventGroupItem | null {
-    if (!this.selectedChat || !this.selectedChat.groupId) {
-      return null;
-    }
-    return this.subEventGroupsForStage(subEvent).find(group => group.id === this.selectedChat!.groupId) ?? null;
-  }
-
-  private selectedChatContextMenuId(): string {
-    return this.selectedChat ? `chat-context:${this.selectedChat.id}` : 'chat-context:none';
-  }
-
   private chatChannelType(item: ChatMenuItem): AppTypes.ChatChannelType {
     if (item.channelType === 'mainEvent' || item.channelType === 'optionalSubEvent' || item.channelType === 'groupSubEvent') {
       return item.channelType;
     }
     return 'general';
-  }
-
-  private buildContextualChatChannels(): ChatMenuItem[] {
-    const source = this.resolveChatFocusEventSource();
-    if (!source) {
-      return [];
-    }
-    const eventId = source.id;
-    const eventTitle = source.title.trim() || 'Event';
-    const subEvents = this.chatEventSubEvents(eventId);
-    const channels: ChatMenuItem[] = [
-      this.buildMainEventContextChat(eventId, eventTitle)
-    ];
-    if (subEvents.length === 0) {
-      return channels;
-    }
-
-    for (const [index, subEvent] of subEvents.entries()) {
-      const stageLabel = this.chatStageLabel(index);
-      if (subEvent.optional) {
-        if (!this.isActiveUserAttachedToOptionalSubEvent(eventId, subEvent.id)) {
-          continue;
-        }
-        channels.push(this.buildOptionalSubEventContextChat(eventId, eventTitle, subEvent, stageLabel));
-        continue;
-      }
-      const groups = this.subEventGroupsForStage(subEvent);
-      if (groups.length === 0) {
-        continue;
-      }
-      const activeGroup = this.activeUserTournamentGroup(eventId, subEvent, groups);
-      if (!activeGroup) {
-        continue;
-      }
-      channels.push(this.buildGroupSubEventContextChat(eventId, eventTitle, subEvent, activeGroup, stageLabel, groups));
-    }
-
-    return channels;
-  }
-
-  private buildMainEventContextChat(eventId: string, eventTitle: string): ChatMenuItem {
-    const memberIds = this.mainEventContextMemberIds(eventId);
-    return this.buildContextChatItem({
-      id: `c-context-main-${eventId}`,
-      title: `${eventTitle} · Main Event`,
-      lastMessage: `Main event channel for ${eventTitle}.`,
-      eventId,
-      subEventId: '',
-      groupId: '',
-      channelType: 'mainEvent',
-      memberIds
-    });
-  }
-
-  private buildOptionalSubEventContextChat(
-    eventId: string,
-    eventTitle: string,
-    subEvent: AppTypes.SubEventFormItem,
-    stageLabel: string
-  ): ChatMenuItem {
-    const acceptedMemberIds = this.optionalSubEventAcceptedMemberIds(eventId, subEvent.id);
-    const target = this.contextualSubEventMemberTargets(subEvent);
-    const memberIds = this.contextualChatMemberIds(
-      `chat-optional:${eventId}:${subEvent.id}`,
-      acceptedMemberIds,
-      target.accepted
-    );
-    return this.buildContextChatItem({
-      id: `c-context-optional-${eventId}-${subEvent.id}`,
-      title: `${subEvent.name || 'Optional Sub Event'} · Optional`,
-      lastMessage: `${stageLabel} optional channel in ${eventTitle}.`,
-      eventId,
-      subEventId: subEvent.id,
-      groupId: '',
-      channelType: 'optionalSubEvent',
-      memberIds
-    });
-  }
-
-  private buildGroupSubEventContextChat(
-    eventId: string,
-    eventTitle: string,
-    subEvent: AppTypes.SubEventFormItem,
-    group: AppTypes.SubEventGroupItem,
-    stageLabel: string,
-    groups: AppTypes.SubEventGroupItem[]
-  ): ChatMenuItem {
-    const acceptedMemberIds = this.tournamentGroupAcceptedMemberIds(eventId, subEvent.id, group.id, groups);
-    const target = this.contextualSubEventMemberTargets(subEvent, group, groups);
-    const memberIds = this.contextualChatMemberIds(
-      `chat-group:${eventId}:${subEvent.id}:${group.id}`,
-      acceptedMemberIds,
-      target.accepted
-    );
-    return this.buildContextChatItem({
-      id: `c-context-group-${eventId}-${subEvent.id}-${group.id}`,
-      title: `${group.name} · Group Channel`,
-      lastMessage: `${stageLabel} group channel in ${eventTitle}.`,
-      eventId,
-      subEventId: subEvent.id,
-      groupId: group.id,
-      channelType: 'groupSubEvent',
-      memberIds
-    });
-  }
-
-  private buildContextChatItem(input: {
-    id: string;
-    title: string;
-    lastMessage: string;
-    eventId: string;
-    subEventId: string;
-    groupId: string;
-    channelType: AppTypes.ChatChannelType;
-    memberIds: string[];
-  }): ChatMenuItem {
-    const memberIds = this.uniqueUserIds([this.activeUser.id, ...input.memberIds]);
-    const senderCandidates = memberIds.filter(id => id !== this.activeUser.id);
-    const lastSenderId = senderCandidates[AppDemoGenerators.hashText(`chat-sender:${input.id}`) % Math.max(1, senderCandidates.length)]
-      ?? memberIds[0]
-      ?? this.activeUser.id;
-    const item: ChatMenuItem = {
-      id: input.id,
-      avatar: AppUtils.initialsFromText(input.title),
-      title: input.title,
-      lastMessage: input.lastMessage,
-      lastSenderId,
-      memberIds,
-      unread: 0,
-      channelType: input.channelType,
-      eventId: input.eventId,
-      subEventId: input.subEventId || undefined,
-      groupId: input.groupId || undefined
-    };
-    item.unread = this.contextualChatUnreadCount(item);
-    return item;
   }
 
   private contextualChatUnreadCount(item: ChatMenuItem): number {
@@ -5002,9 +4527,6 @@ export class App {
         return 0;
       }
       return this.contextualSubEventPendingTotal(subEvent, subEvent.optional || channelType === 'groupSubEvent');
-    }
-    if (channelType === 'mainEvent') {
-      return this.mainEventContextPendingCount(item);
     }
     return Math.max(0, Math.trunc(Number(item.unread) || 0));
   }
@@ -5067,52 +4589,6 @@ export class App {
       + this.subEventAssetBadgePendingCount(subEvent, 'Supplies');
   }
 
-  private mainEventContextMemberIds(eventId: string): string[] {
-    const source = this.eventItems.find(item => item.id === eventId)
-      ?? this.hostingItems.find(item => item.id === eventId)
-      ?? null;
-    if (!source) {
-      return AppDemoGenerators.seededEventMemberIds(eventId, 8, this.users, this.activeUser.id);
-    }
-    const row = this.buildChatSourceActivityRow(source);
-    const members = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted');
-    const memberIds = this.uniqueUserIds(members.map(member => member.userId));
-    if (memberIds.length > 0) {
-      return memberIds;
-    }
-    return AppDemoGenerators.seededEventMemberIds(eventId, 8, this.users, this.activeUser.id);
-  }
-
-  private mainEventContextPendingCount(item: ChatMenuItem): number {
-    const source = this.resolveChatEventSource(item);
-    if (!source) {
-      return 0;
-    }
-    const row = this.buildChatSourceActivityRow(source);
-    const eventPending = this.getActivityMembersByRow(row).filter(member => member.status === 'pending').length;
-    const eventId = this.normalizeLocationValue(item.eventId).trim() || source.id;
-    const subEventsPending = this.chatEventSubEvents(eventId)
-      .reduce((sum, subEvent) => sum + this.contextualSubEventPendingTotal(subEvent, true), 0);
-    return eventPending + subEventsPending;
-  }
-
-  private buildChatSourceActivityRow(source: EventMenuItem | HostingMenuItem): AppTypes.ActivityListRow {
-    const isHosting = this.isHostingSource(source);
-    return {
-      id: source.id,
-      type: isHosting ? 'hosting' : 'events',
-      title: source.title,
-      subtitle: source.shortDescription,
-      detail: source.timeframe,
-      dateIso: this.eventDatesById[source.id] ?? this.hostingDatesById[source.id] ?? this.defaultEventStartIso(),
-      distanceKm: this.eventDistanceById[source.id] ?? this.hostingDistanceById[source.id] ?? 0,
-      unread: source.activity,
-      metricScore: source.activity,
-      isAdmin: isHosting ? true : (source as EventMenuItem).isAdmin === true,
-      source
-    };
-  }
-
   private uniqueUserIds(ids: string[]): string[] {
     const unique: string[] = [];
     for (const id of ids) {
@@ -5126,65 +4602,6 @@ export class App {
 
   private chatStageLabel(index: number): string {
     return `Stage ${index + 1}`;
-  }
-
-  private chatEventDateIso(eventId: string): string {
-    return this.eventDatesById[eventId]
-      ?? this.hostingDatesById[eventId]
-      ?? this.defaultEventStartIso();
-  }
-
-  private chatSubEventDateIso(eventId: string, subEventId: string): string {
-    const subEvent = this.chatEventSubEvents(eventId).find(item => item.id === subEventId) ?? null;
-    return subEvent?.startAt || this.chatEventDateIso(eventId);
-  }
-
-  private resolveChatFocusEventSource(): EventMenuItem | HostingMenuItem | null {
-    if (this.eventEditorService.isOpen()) {
-      const editorSource = this.resolveEventEditorSource();
-      if (editorSource) {
-        return editorSource;
-      }
-    }
-    if (this.selectedEvent) {
-      return this.selectedEvent;
-    }
-    if (this.selectedHostingEvent) {
-      return this.selectedHostingEvent;
-    }
-    const managed = this.eventItems.find(item => item.isAdmin);
-    if (managed) {
-      return managed;
-    }
-    return this.eventItems[0] ?? this.hostingItems[0] ?? null;
-  }
-
-  private resolveChatEventSource(item: ChatMenuItem): EventMenuItem | HostingMenuItem | null {
-    const eventId = this.normalizeLocationValue(item.eventId).trim();
-    if (!eventId) {
-      return this.resolveChatFocusEventSource();
-    }
-    const fromEvents = this.eventItems.find(event => event.id === eventId);
-    if (fromEvents) {
-      return fromEvents;
-    }
-    const fromHosting = this.hostingItems.find(event => event.id === eventId);
-    if (fromHosting) {
-      return fromHosting;
-    }
-    const editorSource = this.resolveEventEditorSource();
-    if (editorSource?.id === eventId) {
-      return editorSource;
-    }
-    return {
-      id: eventId,
-      avatar: AppUtils.initialsFromText(item.title || 'Event'),
-      title: item.title || 'Event',
-      shortDescription: item.lastMessage || 'Event chat channel',
-      timeframe: '',
-      activity: item.unread,
-      isAdmin: false
-    };
   }
 
   private chatEventSubEvents(eventId: string): AppTypes.SubEventFormItem[] {
@@ -5419,7 +4836,7 @@ export class App {
         return eventId;
       }
     }
-    return this.normalizeLocationValue(this.selectedChat?.eventId).trim() || null;
+    return this.normalizeLocationValue(this.activitiesContext.eventChatSession()?.item.eventId).trim() || null;
   }
 
   private chatContextDetailLine(item: ChatMenuItem): string {
@@ -6504,207 +5921,8 @@ export class App {
     };
   }
 
-  protected get chatPopupMessages(): AppTypes.ChatPopupMessage[] {
-    const history = this.selectedChatHistory;
-    if (history.length === 0) {
-      return [];
-    }
-    const start = Math.max(0, history.length - this.chatVisibleMessageCount);
-    return history.slice(start);
-  }
-
-  protected get chatPopupDayGroups(): AppTypes.ChatPopupDayGroup[] {
-    const groups: AppTypes.ChatPopupDayGroup[] = [];
-    for (const message of this.chatPopupMessages) {
-      const parsed = new Date(message.sentAtIso);
-      const day = Number.isNaN(parsed.getTime()) ? AppUtils.dateOnly(new Date()) : AppUtils.dateOnly(parsed);
-      const key = AppCalendarHelpers.dateKey(day);
-      const last = groups[groups.length - 1];
-      if (!last || last.key !== key) {
-        groups.push({
-          key,
-          label: this.chatDayLabel(day),
-          messages: [message]
-        });
-        continue;
-      }
-      last.messages.push(message);
-    }
-    return groups;
-  }
-
-  protected trackByChatDayGroup(_: number, group: AppTypes.ChatPopupDayGroup): string {
-    return group.key;
-  }
-
-  protected trackByChatMessage(_: number, message: AppTypes.ChatPopupMessage): string {
-    return message.id;
-  }
-
   protected trackBySubEventResourceCard(_: number, card: AppTypes.SubEventResourceCard): string {
     return card.id;
-  }
-
-  protected hasMoreChatMessages(): boolean {
-    return this.chatVisibleMessageCount < this.selectedChatHistory.length;
-  }
-
-  protected onChatThreadScroll(event: Event): void {
-    const thread = event.target as HTMLElement | null;
-    if (thread) {
-      this.updateChatHeaderProgress(thread);
-    }
-    if (this.chatHistoryLoadingOlder || !this.hasMoreChatMessages()) {
-      return;
-    }
-    if (!thread) {
-      return;
-    }
-    if (thread.scrollTop > 48) {
-      return;
-    }
-    const beforeHeight = thread.scrollHeight;
-    const beforeTop = thread.scrollTop;
-    const threadRect = thread.getBoundingClientRect();
-    const anchorMessage =
-      Array.from(thread.querySelectorAll<HTMLElement>('.chat-message[data-chat-message-id]'))
-        .find(message => message.getBoundingClientRect().bottom > threadRect.top + 8) ?? null;
-    const anchorMessageId = anchorMessage?.dataset['chatMessageId'] ?? null;
-    const anchorOffsetTop = anchorMessage ? anchorMessage.getBoundingClientRect().top - threadRect.top : 0;
-    this.chatHistoryLoadingOlder = true;
-    this.beginChatHeaderProgressLoading();
-    this.chatHistoryLoadOlderTimer = setTimeout(() => {
-      this.chatHistoryLoadOlderTimer = null;
-      this.chatVisibleMessageCount = Math.min(this.chatVisibleMessageCount + this.chatHistoryPageSize, this.selectedChatHistory.length);
-      this.cdr.detectChanges();
-      this.runAfterChatThreadRender(() => {
-        if (anchorMessageId) {
-          const restoredAnchor = thread.querySelector<HTMLElement>(`.chat-message[data-chat-message-id="${anchorMessageId}"]`);
-          if (restoredAnchor) {
-            const restoredThreadRect = thread.getBoundingClientRect();
-            const restoredOffsetTop = restoredAnchor.getBoundingClientRect().top - restoredThreadRect.top;
-            thread.scrollTop += restoredOffsetTop - anchorOffsetTop;
-          } else {
-            const afterHeight = thread.scrollHeight;
-            thread.scrollTop = beforeTop + (afterHeight - beforeHeight);
-          }
-        } else {
-          const afterHeight = thread.scrollHeight;
-          thread.scrollTop = beforeTop + (afterHeight - beforeHeight);
-        }
-        this.triggerChatHistoryArrivalBump(thread).finally(() => {
-          this.updateChatHeaderProgress(thread);
-          this.chatHistoryLoadingOlder = false;
-          this.endChatHeaderProgressLoading();
-        });
-      });
-    }, this.activitiesPaginationLoadDelayMs);
-  }
-
-  private runAfterChatThreadRender(task: () => void): void {
-    if (typeof globalThis.requestAnimationFrame === 'function') {
-      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(task));
-      return;
-    }
-    setTimeout(task, 0);
-  }
-
-  private triggerChatHistoryArrivalBump(thread: HTMLElement): Promise<void> {
-    if (this.activePopup !== 'chat' && this.stackedPopup !== 'chat') {
-      return Promise.resolve();
-    }
-    const firstMessage = this.firstVisibleChatMessage(thread) ?? thread.querySelector<HTMLElement>('.chat-message');
-    const startTop = thread.scrollTop;
-    const messageHeight = firstMessage?.offsetHeight ?? 68;
-    const bumpDistance = Math.max(24, Math.round(messageHeight * 0.72));
-    const bumpTop = Math.max(0, startTop - bumpDistance);
-    if (bumpTop >= startTop - 0.5) {
-      return Promise.resolve();
-    }
-    if (typeof thread.animate !== 'function' || typeof globalThis.requestAnimationFrame !== 'function') {
-      thread.scrollTo({ top: bumpTop, behavior: 'smooth' });
-      return Promise.resolve();
-    }
-    return new Promise(resolve => {
-      const durationMs = 240;
-      const animation = thread.animate(
-        [
-          { transform: 'translateZ(0)' },
-          { transform: 'translateZ(0)' }
-        ],
-        {
-          duration: durationMs,
-          easing: 'linear',
-          fill: 'none'
-        }
-      );
-      let done = false;
-      const finish = () => {
-        if (done) {
-          return;
-        }
-        done = true;
-        thread.scrollTop = bumpTop;
-        resolve();
-      };
-      const tick = () => {
-        if (done) {
-          return;
-        }
-        const currentTime = typeof animation.currentTime === 'number' ? animation.currentTime : 0;
-        const progress = AppUtils.clampNumber(currentTime / durationMs, 0, 1);
-        // Smooth ease-out reveals the first half-row without an abrupt snap.
-        const eased = 1 - Math.pow(1 - progress, 3);
-        thread.scrollTop = startTop + (bumpTop - startTop) * eased;
-        if (progress >= 1 || animation.playState === 'finished' || animation.playState === 'idle') {
-          finish();
-          return;
-        }
-        globalThis.requestAnimationFrame(tick);
-      };
-      animation.oncancel = finish;
-      animation.onfinish = finish;
-      globalThis.requestAnimationFrame(tick);
-    });
-  }
-
-  private firstVisibleChatMessage(thread: HTMLElement): HTMLElement | null {
-    const threadRect = thread.getBoundingClientRect();
-    return (
-      Array.from(thread.querySelectorAll<HTMLElement>('.chat-message[data-chat-message-id]'))
-        .find(message => message.getBoundingClientRect().bottom > threadRect.top + 8) ?? null
-    );
-  }
-
-  protected sendChatMessage(): void {
-    if (!this.selectedChat) {
-      return;
-    }
-    const text = this.chatDraftMessage.trim();
-    if (!text) {
-      return;
-    }
-    this.ensureSelectedChatHistory();
-    const history = this.chatHistoryById[this.selectedChat.id];
-    if (!history) {
-      return;
-    }
-    const now = new Date();
-    const time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
-    history.push({
-      id: `${this.selectedChat.id}-${this.activeUser.id}-${now.getTime()}`,
-      sender: this.activeUser.name,
-      senderAvatar: this.toChatReader(this.activeUser),
-      text,
-      time,
-      sentAtIso: AppUtils.toIsoDateTime(now),
-      mine: true,
-      readBy: []
-    });
-    this.chatDraftMessage = '';
-    this.chatVisibleMessageCount = Math.max(this.chatVisibleMessageCount, this.chatHistoryPageSize);
-    this.chatVisibleMessageCount = Math.min(this.chatVisibleMessageCount, history.length);
-    this.scrollChatToBottom();
   }
 
   protected addSupplyType(): void {
@@ -6720,7 +5938,7 @@ export class App {
 
   protected openSupplyDetail(subEventId: string, subEventTitle: string, type: string): void {
     this.selectedSupplyContext = { subEventId, subEventTitle, type };
-    if (this.stackedPopup !== null || this.activePopup === 'chat') {
+    if (this.stackedPopup !== null) {
       this.stackedPopup = 'supplyDetail';
       return;
     }
@@ -7377,7 +6595,9 @@ export class App {
   }
 
   private getChatMembersById(chatId: string): DemoUser[] {
-    const chatItem = this.getChatItemById(chatId);
+    const chatItem = this.activitiesContext.eventChatSession()?.item?.id === chatId
+      ? this.activitiesContext.eventChatSession()?.item ?? null
+      : null;
     const explicitMembers = (chatItem?.memberIds ?? [])
       .map(memberId => this.users.find(user => user.id === memberId))
       .filter((user): user is DemoUser => Boolean(user));
@@ -7719,362 +6939,6 @@ export class App {
 
   private sortActivityMembersByActionTimeAsc(entries: AppTypes.ActivityMemberEntry[]): AppTypes.ActivityMemberEntry[] {
     return [...entries].sort((a, b) => AppUtils.toSortableDate(b.actionAtIso) - AppUtils.toSortableDate(a.actionAtIso));
-  }
-
-  private getChatItemById(chatId: string): ChatMenuItem | undefined {
-    if (this.selectedChat?.id === chatId) {
-      return this.selectedChat;
-    }
-    const contextual = this.buildContextualChatChannels().find(item => item.id === chatId);
-    if (contextual) {
-      return contextual;
-    }
-    for (const entries of Object.values(this.chatItemsByUser)) {
-      const match = entries.find(item => item.id === chatId);
-      if (match) {
-        return match;
-      }
-    }
-    return undefined;
-  }
-
-  private ensurePublishedEventChatChannel(eventId: string, eventTitle: string, eventDescription: string, startAtIso: string): void {
-    const chatId = `c-event-${eventId}`;
-    if (this.chatItems.some(item => item.id === chatId)) {
-      return;
-    }
-    const title = eventTitle.trim() || 'Event';
-    const description = eventDescription.trim() || 'Event channel';
-    const firstMessage = `${title} / ${description}`;
-    const startAtDate = AppUtils.isoLocalDateTimeToDate(startAtIso) ?? new Date();
-    const sentAtIso = AppUtils.toIsoDateTime(startAtDate);
-    const nextChat: ChatMenuItem = {
-      id: chatId,
-      avatar: this.activeUser.initials,
-      title,
-      lastMessage: firstMessage,
-      lastSenderId: this.activeUser.id,
-      memberIds: [this.activeUser.id],
-      unread: 0
-    };
-    this.chatItemsByUser[this.activeUser.id] = [nextChat, ...this.chatItems];
-    this.chatDatesById[chatId] = sentAtIso;
-    this.chatHistoryById[chatId] = [{
-      id: `${chatId}-seed-1`,
-      sender: this.activeUser.name,
-      senderAvatar: this.toChatReader(this.activeUser),
-      text: firstMessage,
-      time: startAtDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }),
-      sentAtIso,
-      mine: true,
-      readBy: [this.toChatReader(this.activeUser)]
-    }];
-  }
-
-  private startChatInitialLoad(): void {
-    this.cancelChatInitialLoad();
-    this.chatInitialLoadPending = true;
-    this.chatHeaderProgress = 0;
-    this.beginChatHeaderProgressLoading();
-    this.chatInitialLoadTimer = setTimeout(() => {
-      this.chatInitialLoadTimer = null;
-      this.endChatHeaderProgressLoading();
-    }, this.activitiesPaginationLoadDelayMs);
-  }
-
-  private initialChatVisibleMessageCount(totalMessages: number): number {
-    const chunkSize = this.chatHistoryPageSize * this.chatInitialVisiblePageCount;
-    return Math.min(totalMessages, Math.max(this.chatHistoryPageSize, chunkSize));
-  }
-
-  private chatDayLabel(value: Date): string {
-    const day = AppUtils.dateOnly(value);
-    const today = AppUtils.dateOnly(new Date());
-    if (AppCalendarHelpers.dateKey(day) === AppCalendarHelpers.dateKey(today)) {
-      return 'Today';
-    }
-    const yesterday = AppUtils.addDays(today, -1);
-    if (AppCalendarHelpers.dateKey(day) === AppCalendarHelpers.dateKey(yesterday)) {
-      return 'Yesterday';
-    }
-    return day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  }
-
-  private cancelChatInitialLoad(): void {
-    if (this.chatInitialLoadTimer) {
-      clearTimeout(this.chatInitialLoadTimer);
-      this.chatInitialLoadTimer = null;
-    }
-    if (this.chatHistoryLoadOlderTimer) {
-      clearTimeout(this.chatHistoryLoadOlderTimer);
-      this.chatHistoryLoadOlderTimer = null;
-    }
-    this.chatHistoryLoadingOlder = false;
-    this.chatInitialLoadPending = false;
-    this.clearChatHeaderLoadingAnimation();
-  }
-
-  private scrollChatToBottom(): void {
-    setTimeout(() => {
-      const chatThread = globalThis.document?.querySelector('.chat-thread');
-      if (chatThread instanceof HTMLElement) {
-        chatThread.scrollTop = chatThread.scrollHeight;
-        this.updateChatHeaderProgress(chatThread);
-      }
-    }, 0);
-  }
-
-  private updateChatHeaderProgress(chatThread: HTMLElement): void {
-    const maxVerticalScroll = Math.max(0, chatThread.scrollHeight - chatThread.clientHeight);
-    if (maxVerticalScroll <= 0) {
-      this.chatHeaderProgress = 1;
-      return;
-    }
-    this.chatHeaderProgress = AppUtils.clampNumber(chatThread.scrollTop / maxVerticalScroll, 0, 1);
-  }
-
-  private get selectedChatHistory(): AppTypes.ChatPopupMessage[] {
-    if (!this.selectedChat) {
-      return [];
-    }
-    this.ensureSelectedChatHistory();
-    return this.chatHistoryById[this.selectedChat.id] ?? [];
-  }
-
-  private ensureSelectedChatHistory(): void {
-    if (!this.selectedChat) {
-      return;
-    }
-    if (this.chatHistoryById[this.selectedChat.id]) {
-      return;
-    }
-    this.chatHistoryById[this.selectedChat.id] = this.buildChatHistory(this.selectedChat);
-  }
-
-  private buildChatHistory(chat: ChatMenuItem): AppTypes.ChatPopupMessage[] {
-    const members = this.getChatMembersById(chat.id);
-    const lastSender = members[0] ?? this.getChatLastSender(chat);
-    const starter = members[1] ?? members[0] ?? this.activeUser;
-    const memberB = members[2] ?? starter;
-    const memberC = members[3] ?? memberB;
-    const me = this.activeUser;
-    const anchor = new Date(this.chatDatesById[chat.id] ?? AppUtils.toIsoDateTime(new Date()));
-    const chatAnchor = Number.isNaN(anchor.getTime()) ? new Date() : anchor;
-    const at = (minutesBefore: number): Date => new Date(chatAnchor.getTime() - (minutesBefore * 60 * 1000));
-
-    const byId = (id: string) => this.users.find(user => user.id === id);
-    const toMessage = (id: string, text: string, sentAt: Date, readByIds: string[], forceMine = false, suffix = ''): AppTypes.ChatPopupMessage => {
-      const senderUser = byId(id) ?? starter;
-      const time = sentAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
-      return {
-        id: `${chat.id}-${id}-${sentAt.getTime()}-${suffix || AppDemoGenerators.hashText(text)}`,
-        sender: senderUser.name,
-        senderAvatar: this.toChatReader(senderUser),
-        text,
-        time,
-        sentAtIso: AppUtils.toIsoDateTime(sentAt),
-        mine: forceMine || senderUser.id === me.id,
-        readBy: readByIds
-          .map(readerId => byId(readerId))
-          .filter((reader): reader is DemoUser => Boolean(reader))
-          .map(reader => this.toChatReader(reader))
-      };
-    };
-
-    const seed = AppDemoGenerators.hashText(`${chat.id}:${chat.title}`);
-    const olderPool = [
-      'Shared updated ETA for everyone.',
-      'Pinned the checklist in this room.',
-      'Confirmed who can bring supplies.',
-      'Noted backup plan if weather changes.',
-      'Added the new member to transport.',
-      'Assigned table and seat groups.',
-      'Synced on arrival windows.',
-      'Collected final confirmations.'
-    ];
-    const olderMessages: AppTypes.ChatPopupMessage[] = [];
-    const olderCount = 36;
-    const olderBaseStart = new Date(chatAnchor.getTime() - ((olderCount + 12) * 40 * 60 * 1000));
-    for (let index = olderCount - 1; index >= 0; index -= 1) {
-      const senderCycle = index % 3;
-      const senderId = senderCycle === 0 ? starter.id : (senderCycle === 1 ? me.id : memberB.id);
-      const baseText = olderPool[(seed + index) % olderPool.length];
-      const text = baseText;
-      const sequenceFromOldest = (olderCount - 1) - index;
-      const sentAt = new Date(olderBaseStart.getTime() + (sequenceFromOldest * 40 * 60 * 1000));
-      const readByIds = senderId === me.id ? [starter.id, memberB.id] : [me.id, memberC.id];
-      olderMessages.push(toMessage(senderId, text, sentAt, readByIds, senderId === me.id, `older-${index}`));
-    }
-
-    let recentMessages: AppTypes.ChatPopupMessage[];
-    if (chat.id === 'c1') {
-      recentMessages = [
-        toMessage(starter.id, 'I opened this room to lock transport before 8 PM.', at(13), [memberB.id]),
-        toMessage(me.id, 'I can handle pickup list and final seat assignments.', at(8), [starter.id, memberB.id], true),
-        toMessage(memberB.id, 'I can do airport run if someone covers downtown.', at(5), [starter.id, me.id]),
-        toMessage(lastSender.id, chat.lastMessage, at(0), [starter.id, me.id, memberB.id])
-      ];
-    } else if (chat.id === 'c2') {
-      recentMessages = [
-        toMessage(starter.id, 'Room is open, we need one more player for the second pair.', at(8), [memberB.id]),
-        toMessage(me.id, 'I can join at 19:00 if court #3 stays available.', at(3), [starter.id], true),
-        toMessage(lastSender.id, chat.lastMessage, at(0), [starter.id, me.id])
-      ];
-    } else if (chat.id === 'c3') {
-      recentMessages = [
-        toMessage(starter.id, 'Host queue reviewed, two pending invites expired.', at(6), [memberB.id]),
-        toMessage(me.id, 'I can re-send only to people with verified attendance.', at(3), [starter.id], true),
-        toMessage(lastSender.id, chat.lastMessage, at(0), [starter.id, me.id])
-      ];
-    } else {
-      recentMessages = [
-        toMessage(starter.id, 'Opened this room to coordinate tasks quickly.', at(7), [memberB.id]),
-        toMessage(me.id, 'I can cover the checklist and send updates.', at(3), [starter.id], true),
-        toMessage(lastSender.id, chat.lastMessage, at(0), [starter.id, me.id, memberC.id])
-      ];
-    }
-    return [...olderMessages, ...recentMessages];
-  }
-
-  private toChatReader(user: DemoUser): AppTypes.ChatReadAvatar {
-    return {
-      id: user.id,
-      initials: user.initials,
-      gender: user.gender
-    };
-  }
-
-  private beginChatHeaderProgressLoading(): void {
-    this.chatHeaderLoadingCounter += 1;
-    if (this.chatHeaderLoadingCounter > 1) {
-      return;
-    }
-    this.chatHeaderProgressLoading = true;
-    this.chatHeaderLoadingOverdue = false;
-    this.chatHeaderLoadingProgress = 0.02;
-    this.chatHeaderLoadingStartedAtMs = performance.now();
-    this.flushActivitiesHeaderProgress();
-    if (this.chatHeaderLoadingCompleteTimer) {
-      clearTimeout(this.chatHeaderLoadingCompleteTimer);
-      this.chatHeaderLoadingCompleteTimer = null;
-    }
-    if (this.chatHeaderLoadingInterval) {
-      clearInterval(this.chatHeaderLoadingInterval);
-      this.chatHeaderLoadingInterval = null;
-    }
-    this.updateChatHeaderLoadingWindow();
-    this.chatHeaderLoadingInterval = this.ngZone.runOutsideAngular(() =>
-      setInterval(() => {
-        this.updateChatHeaderLoadingWindow();
-        this.flushActivitiesHeaderProgress();
-      }, this.activitiesHeaderLoadingTickMs)
-    );
-  }
-
-  private endChatHeaderProgressLoading(): void {
-    if (this.chatHeaderLoadingCounter === 0) {
-      return;
-    }
-    this.chatHeaderLoadingCounter = Math.max(0, this.chatHeaderLoadingCounter - 1);
-    if (this.chatHeaderLoadingCounter !== 0) {
-      return;
-    }
-    this.completeChatHeaderLoading();
-  }
-
-  private completeChatHeaderLoading(): void {
-    if (this.chatHeaderLoadingInterval) {
-      clearInterval(this.chatHeaderLoadingInterval);
-      this.chatHeaderLoadingInterval = null;
-    }
-    this.chatHeaderLoadingProgress = 1;
-    this.chatHeaderLoadingOverdue = false;
-    this.flushActivitiesHeaderProgress();
-    if (this.chatHeaderLoadingCompleteTimer) {
-      clearTimeout(this.chatHeaderLoadingCompleteTimer);
-    }
-    this.chatHeaderLoadingCompleteTimer = this.ngZone.runOutsideAngular(() =>
-      setTimeout(() => {
-        this.ngZone.run(() => {
-          if (this.chatHeaderLoadingCounter !== 0) {
-            return;
-          }
-          this.chatHeaderProgressLoading = false;
-          this.chatHeaderLoadingProgress = 0;
-          this.chatHeaderLoadingOverdue = false;
-          this.chatHeaderLoadingStartedAtMs = 0;
-          this.chatHeaderLoadingCompleteTimer = null;
-          this.flushActivitiesHeaderProgress();
-          if (this.chatInitialLoadPending) {
-            this.chatInitialLoadPending = false;
-            this.scrollChatToBottomAfterLoad();
-          }
-        });
-      }, 100)
-    );
-  }
-
-  private scrollChatToBottomAfterLoad(): void {
-    if (this.chatHeaderProgressLoading || !this.selectedChat) {
-      return;
-    }
-    const isChatOpen = (this.activePopup === 'chat' || this.stackedPopup === 'chat');
-    if (!isChatOpen) {
-      return;
-    }
-    const run = () => this.scrollChatToBottom();
-    if (typeof globalThis.requestAnimationFrame === 'function') {
-      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(run));
-      return;
-    }
-    setTimeout(run, 0);
-  }
-
-  private updateChatHeaderLoadingWindow(): void {
-    if (!this.chatHeaderProgressLoading) {
-      return;
-    }
-    const elapsed = Math.max(0, performance.now() - this.chatHeaderLoadingStartedAtMs);
-    const nextProgress = AppUtils.clampNumber(elapsed / this.activitiesHeaderLoadingWindowMs, 0, 1);
-    this.chatHeaderLoadingProgress = Math.max(this.chatHeaderLoadingProgress, nextProgress);
-    this.chatHeaderLoadingOverdue = elapsed >= this.activitiesHeaderLoadingWindowMs && this.chatHeaderLoadingCounter > 0;
-  }
-
-  private clearChatHeaderLoadingAnimation(): void {
-    if (this.chatHeaderLoadingInterval) {
-      clearInterval(this.chatHeaderLoadingInterval);
-      this.chatHeaderLoadingInterval = null;
-    }
-    if (this.chatHeaderLoadingCompleteTimer) {
-      clearTimeout(this.chatHeaderLoadingCompleteTimer);
-      this.chatHeaderLoadingCompleteTimer = null;
-    }
-    this.chatHeaderLoadingCounter = 0;
-    this.chatHeaderLoadingProgress = 0;
-    this.chatHeaderProgressLoading = false;
-    this.chatHeaderLoadingOverdue = false;
-    this.chatHeaderLoadingStartedAtMs = 0;
-    this.flushActivitiesHeaderProgress();
-  }
-
-  private flushActivitiesHeaderProgress(): void {
-    if (this.activitiesHeaderFlushScheduled) {
-      return;
-    }
-    this.activitiesHeaderFlushScheduled = true;
-    this.ngZone.runOutsideAngular(() => {
-      const flush = () => {
-        this.ngZone.run(() => {
-          this.activitiesHeaderFlushScheduled = false;
-          this.cdr.markForCheck();
-        });
-      };
-      if (typeof globalThis.requestAnimationFrame === 'function') {
-        globalThis.requestAnimationFrame(() => flush());
-        return;
-      }
-      setTimeout(flush, 0);
-    });
   }
 
   private createTicketScanPayload(row: AppTypes.ActivityListRow): AppTypes.TicketScanPayload {
