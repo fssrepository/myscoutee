@@ -16,6 +16,7 @@ export { EventsService } from './services/events.service';
 export { EventEditorDataService } from './services/event-editor-data.service';
 export { GameService } from './services/game.service';
 export { ActivityMembersService } from './services/activity-members.service';
+export { ActivityResourcesService } from './services/activity-resources.service';
 export { ActivitiesService } from './services/activities.service';
 export { AssetsService } from './services/assets.service';
 export { ActivityInviteCandidatesService } from './services/activity-invite-candidates.service';

@@ -1,6 +1,7 @@
 export * from './entry.model';
 export * from './popup.model';
 export * from './activity-member.model';
+export * from './activity-resource.model';
 export * from './chat.model';
 export * from './profile.model';
 export * from './event.model';

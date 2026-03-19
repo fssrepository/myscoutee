@@ -265,6 +265,19 @@ export class EventChatPopupComponent implements OnDestroy {
     });
   }
 
+  protected openSelectedChatPrimaryContext(event?: Event): void {
+    const channelType = this.session()?.context?.channelType;
+    if (channelType === 'groupSubEvent') {
+      this.openSelectedChatGroup(event);
+      return;
+    }
+    if (channelType === 'optionalSubEvent') {
+      this.openSelectedChatSubEvent(event);
+      return;
+    }
+    this.openSelectedChatEvent(event);
+  }
+
   protected openSelectedChatSubEvent(event?: Event): void {
     event?.stopPropagation();
     this.openSelectedChatEvent();
@@ -289,6 +302,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.showContextMenu = false;
     this.activitiesContext.requestActivitiesNavigation({
       type: 'chatResource',
+      ownerId: context.eventRow?.id ?? session.item.eventId,
       item: session.item,
       resourceType: type,
       subEvent: context.subEvent,

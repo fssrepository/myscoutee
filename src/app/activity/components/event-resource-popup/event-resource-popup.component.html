@@ -85,86 +85,22 @@
           </div>
         </div>
 
-        <div class="experience-card-list assets-card-list subevent-assets-scroll-list">
-          <article
-            class="experience-item-card asset-item-card"
-            [ngClass]="host.resourceTypeClass(card.type)"
-            *ngFor="let card of host.cards(); trackBy: host.trackByCard"
-          >
-            <div class="asset-card-image" [appLazyBgImage]="card.imageUrl">
-              <button
-                type="button"
-                class="asset-source-icon asset-source-icon-route-map"
-                [class.asset-source-icon-multiroute]="card.type === 'Car'"
-                *ngIf="host.canOpenMap(card)"
-                (click)="host.openMap(card, $event)"
-                [attr.aria-label]="card.type === 'Car' ? 'Open car route map' : 'Open accommodation location map'"
-              >
-                <mat-icon>location_on</mat-icon>
-              </button>
-              <button
-                type="button"
-                class="asset-occupancy-badge"
-                *ngIf="host.canOpenBadgeDetails(card)"
-                (click)="host.openBadgeDetails(card, $event)"
-                [attr.aria-label]="host.canOpenAssetMembers(card) ? 'Open member requests' : 'Open supply contributions'"
-              >
-                <span>{{ host.occupancyLabel(card) }}</span>
-                <span class="card-badge asset-request-badge" *ngIf="host.canOpenAssetMembers(card) && card.pending > 0">{{ card.pending }}</span>
-              </button>
-              <span class="asset-occupancy-badge asset-occupancy-badge-static" *ngIf="!host.canOpenBadgeDetails(card)" aria-hidden="true">
-                <span>{{ host.occupancyLabel(card) }}</span>
-              </span>
-            </div>
-            <div class="experience-item-head">
-              <span class="experience-item-icon">
-                <mat-icon>{{ host.resourceTypeIcon(card.type) }}</mat-icon>
-              </span>
-              <div class="experience-item-meta">
-                <h4>{{ card.title }}</h4>
-                <p>{{ card.type }} · {{ card.subtitle }} · {{ card.city }}</p>
-              </div>
-              <div class="experience-item-actions">
-                <button
-                  type="button"
-                  class="experience-action-btn experience-action-menu-trigger"
-                  [class.is-open]="host.isItemActionMenuOpen(card)"
-                  (click)="host.toggleItemActionMenu(card, $event)"
-                  [attr.aria-label]="host.isItemActionMenuOpen(card) ? 'Close asset actions' : 'Open asset actions'"
-                >
-                  <mat-icon>{{ host.isItemActionMenuOpen(card) ? 'close' : 'more_vert' }}</mat-icon>
-                </button>
-                <div
-                  class="item-action-menu"
-                  [class.is-open]="host.isItemActionMenuOpen(card)"
-                  [class.item-action-menu-mobile]="host.isMobileView()"
-                  [class.item-action-menu-desktop]="!host.isMobileView()"
-                  [class.is-open-up]="host.isItemActionMenuOpenUp(card)"
-                  (click)="$event.stopPropagation()"
-                >
-                  <div class="item-action-menu-title">{{ card.title }}</div>
-                  <button type="button" class="item-action-menu-btn item-action-menu-btn-publish" *ngIf="host.canJoin(card)" (click)="host.join(card, $event)">
-                    <mat-icon>login</mat-icon>
-                    <span>Join</span>
-                  </button>
-                  <button type="button" class="item-action-menu-btn" *ngIf="host.canEditCapacity(card)" (click)="host.openCapacityEditor(card, $event)">
-                    <mat-icon>edit</mat-icon>
-                    <span>Edit Capacity</span>
-                  </button>
-                  <button type="button" class="item-action-menu-btn" *ngIf="host.canEditRoute(card)" (click)="host.openRouteEditor(card, $event)">
-                    <mat-icon>route</mat-icon>
-                    <span>{{ host.routeMenuLabel(card) }}</span>
-                  </button>
-                  <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="host.delete(card, $event)">
-                    <mat-icon>delete</mat-icon>
-                    <span>Delete</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-            <p class="experience-item-description">{{ card.details }}</p>
-          </article>
-        </div>
+        <app-smart-list
+          class="subevent-assets-scroll-list"
+          [config]="resourceSmartListConfig"
+          [loadPage]="resourceSmartListLoadPage"
+          [itemTemplate]="resourceItemTemplateRef ?? null"
+          [query]="resourceSmartListQuery"
+        ></app-smart-list>
+
+        <ng-template #resourceItemTemplate let-card>
+          <app-info-card
+            [card]="resourceInfoCard(card)"
+            (mediaStartClick)="openResourceCardMap(card)"
+            (mediaEndClick)="openResourceCardBadgeDetails(card)"
+            (menuAction)="onResourceCardMenuAction(card, $event)"
+          ></app-info-card>
+        </ng-template>
 
         <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-capacity-overlay" *ngIf="host.capacityEditor() as editor">
           <div class="experience-form-overlay-backdrop" (click)="host.closeCapacityEditor($event)"></div>

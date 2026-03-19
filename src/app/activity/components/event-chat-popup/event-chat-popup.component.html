@@ -20,7 +20,7 @@
         class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
         [ngClass]="selectedChatHeaderActionToneClass()"
         *ngIf="!selectedChatHasSubEventMenu()"
-        (click)="openSelectedChatEvent($event)"
+        (click)="openSelectedChatPrimaryContext($event)"
       >
         <span class="event-editor-members-invite">
           <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
@@ -65,9 +65,9 @@
           (click)="$event.stopPropagation()"
         >
           <div class="item-action-menu-title">{{ selectedChatContextMenuTitle() }}</div>
-          <button type="button" class="item-action-menu-btn" (click)="openSelectedChatEvent($event)">
-            <mat-icon>visibility</mat-icon>
-            <span>View Event</span>
+          <button type="button" class="item-action-menu-btn" (click)="openSelectedChatPrimaryContext($event)">
+            <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
+            <span>{{ selectedChatHeaderActionLabel() }}</span>
           </button>
           <div class="item-action-menu-divider"></div>
           <button

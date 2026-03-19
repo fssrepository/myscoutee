@@ -47,6 +47,7 @@ export type ActivitiesNavigationRequest =
   | { type: 'eventExplore'; stacked?: boolean }
   | {
       type: 'chatResource';
+      ownerId?: string;
       item: ChatMenuItem;
       resourceType: 'Members' | 'Car' | 'Accommodation' | 'Supplies';
       subEvent: SubEventFormItem;

@@ -37,6 +37,7 @@ import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import { AppUtils } from '../../../shared/app-utils';
 import { ActivitiesDbContextService } from '../../services/activities-db-context.service';
 import { EventEditorService } from '../../../shared/event-editor.service';
+import { OwnedAssetsPopupService } from '../../../asset/owned-assets-popup.service';
 import type {
   ActivityMemberOwnerRef,
   ActivityMembersSummary,
@@ -75,8 +76,10 @@ import { EventExplorePopupComponent } from '../event-explore-popup/event-explore
 import {
   ActivityEventBuilder,
   ActivityMembersBuilder,
+  ActivityResourceBuilder,
   ActivitiesService,
   ActivityMembersService,
+  ActivityResourcesService,
   AppContext,
   buildActivityRateRows,
   toActivityEventRowFromMenuItem,
@@ -133,8 +136,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly eventEditorService = inject(EventEditorService);
   private readonly ratesService = inject(RatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
+  private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly eventsService = inject(EventsService);
   private readonly appCtx = inject(AppContext);
+  private readonly ownedAssets = inject(OwnedAssetsPopupService);
 
   // ── Self-contained data state (no host inputs) ───────────────────────────
   protected isMobileView = false;
@@ -145,7 +150,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected eventItems: EventMenuItem[] = [...(DEMO_EVENTS_BY_USER[this.activeUser.id] ?? [])];
   protected hostingItems: HostingMenuItem[] = [...(DEMO_HOSTING_BY_USER[this.activeUser.id] ?? [])];
   protected invitationItems: InvitationMenuItem[] = [...(DEMO_INVITATIONS_BY_USER[this.activeUser.id] ?? [])];
-  protected assetCards: AppTypes.AssetCard[] = AppDemoGenerators.buildSampleAssetCards(this.users);
   protected rateItems: RateMenuItem[] = [];
 
   protected chatBadge = this.activeUser.activities.chat;
@@ -176,10 +180,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly eventSubEventsById: Record<string, AppTypes.SubEventFormItem[]> = {};
   private readonly acceptedOptionalSubEventMembersByKey: Record<string, string[]> = {};
   private readonly acceptedTournamentGroupMembersByKey: Record<string, string[]> = {};
-  private readonly subEventAssignedAssetIdsByKey: Record<string, string[]> = {};
   private readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
   private readonly forcedAcceptedMembersByRowKey: Record<string, number> = { 'events:e8': 20 };
   private lastAppliedActivityMembersUpdatedMs = 0;
+
+  protected get assetCards(): AppTypes.AssetCard[] {
+    return this.ownedAssets.assetCards;
+  }
   // ── ViewChild refs ────────────────────────────────────────────────────────
   @ViewChild('activitiesScroll')
   private activitiesScrollRef?: ElementRef<HTMLDivElement>;
@@ -438,6 +445,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
       }
       this.lastAppliedActivityMembersUpdatedMs = sync.updatedMs;
       this.applyActivityMembersSyncState(sync);
+      this.cdr.markForCheck();
+    });
+
+    effect(() => {
+      this.ownedAssets.assetListRevision();
       this.cdr.markForCheck();
     });
 
@@ -3145,11 +3157,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private contextualChatUnreadCount(item: ChatMenuItem): number {
     const channelType = this.chatChannelType(item);
     if (channelType === 'optionalSubEvent' || channelType === 'groupSubEvent') {
+      const ownerId = this.normalizeLocationValue(item.eventId).trim();
       const subEvent = this.chatSubEventForItem(item);
-      if (!subEvent) {
+      if (!subEvent || !ownerId) {
         return 0;
       }
-      return this.contextualSubEventPendingTotal(subEvent, subEvent.optional || channelType === 'groupSubEvent');
+      return this.contextualSubEventPendingTotal(ownerId, subEvent, subEvent.optional || channelType === 'groupSubEvent');
     }
     if (channelType === 'mainEvent') {
       return this.mainEventContextPendingCount(item);
@@ -3207,10 +3220,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return Math.max(0, Math.trunc(Number(value) || 0));
   }
 
-  private contextualSubEventPendingTotal(subEvent: AppTypes.SubEventFormItem, includeMembers = true): number {
-    this.syncSubEventAssetBadgeCounts(subEvent, 'Car');
-    this.syncSubEventAssetBadgeCounts(subEvent, 'Accommodation');
-    this.syncSubEventAssetBadgeCounts(subEvent, 'Supplies');
+  private contextualSubEventPendingTotal(
+    ownerId: string,
+    subEvent: AppTypes.SubEventFormItem,
+    includeMembers = true
+  ): number {
+    this.syncSubEventAssetBadgeCounts(ownerId, subEvent, 'Car');
+    this.syncSubEventAssetBadgeCounts(ownerId, subEvent, 'Accommodation');
+    this.syncSubEventAssetBadgeCounts(ownerId, subEvent, 'Supplies');
     const members = includeMembers ? this.chatCountValue(subEvent.membersPending) : 0;
     return members
       + this.chatCountValue(subEvent.carsPending)
@@ -3218,45 +3235,48 @@ export class ActivitiesPopupComponent implements OnDestroy {
       + this.chatCountValue(subEvent.suppliesPending);
   }
 
-  private subEventAssetAssignmentKey(subEventId: string, type: AppTypes.AssetType): string {
-    return `${subEventId}:${type}`;
+  private subEventResourceState(
+    ownerId: string,
+    subEventId: string
+  ): AppTypes.ActivitySubEventResourceState | null {
+    return this.activityResourcesService.peekSubEventResourceState(ownerId, subEventId, this.currentAssetOwnerUserId());
   }
 
-  private resolveSubEventAssignedAssetIds(subEventId: string, type: AppTypes.AssetType): string[] {
-    const key = this.subEventAssetAssignmentKey(subEventId, type);
-    const eligibleIds = this.assetCards.filter(card => card.type === type).map(card => card.id);
-    const eligible = new Set(eligibleIds);
-    const stored = this.subEventAssignedAssetIdsByKey[key];
-    if (!stored) {
-      this.subEventAssignedAssetIdsByKey[key] = [...eligibleIds];
-      return [...eligibleIds];
-    }
-    const normalized = stored.filter(id => eligible.has(id));
-    if (normalized.length !== stored.length) {
-      this.subEventAssignedAssetIdsByKey[key] = [...normalized];
-    }
-    return normalized;
+  private resolveSubEventAssignedAssetIds(
+    ownerId: string,
+    subEventId: string,
+    type: AppTypes.AssetType
+  ): string[] {
+    return ActivityResourceBuilder.resolveAssignedAssetIds(
+      this.subEventResourceState(ownerId, subEventId),
+      type,
+      this.assetCards
+    );
   }
 
-  private assetPendingCount(card: AppTypes.AssetCard): number {
-    return card.requests.filter(request => request.status === 'pending').length;
-  }
-
-  private syncSubEventAssetBadgeCounts(subEvent: AppTypes.SubEventFormItem, type: AppTypes.AssetType): void {
-    const assignedIds = this.resolveSubEventAssignedAssetIds(subEvent.id, type);
-    const pending = assignedIds.reduce((sum, id) => {
-      const card = this.assetCards.find(candidate => candidate.id === id && candidate.type === type);
-      return sum + (card ? this.assetPendingCount(card) : 0);
-    }, 0);
+  private syncSubEventAssetBadgeCounts(ownerId: string, subEvent: AppTypes.SubEventFormItem, type: AppTypes.AssetType): void {
+    const state = this.subEventResourceState(ownerId, subEvent.id);
+    const accepted = ActivityResourceBuilder.resourceAcceptedCount(subEvent, type, state, this.assetCards);
+    const pending = ActivityResourceBuilder.resourcePendingCount(subEvent, type, state, this.assetCards);
+    const bounds = ActivityResourceBuilder.resourceCapacityBounds(subEvent, type, state, this.assetCards, accepted, pending);
     if (type === 'Car') {
+      subEvent.carsAccepted = accepted;
       subEvent.carsPending = pending;
+      subEvent.carsCapacityMin = bounds.capacityMin;
+      subEvent.carsCapacityMax = bounds.capacityMax;
       return;
     }
     if (type === 'Accommodation') {
+      subEvent.accommodationAccepted = accepted;
       subEvent.accommodationPending = pending;
+      subEvent.accommodationCapacityMin = bounds.capacityMin;
+      subEvent.accommodationCapacityMax = bounds.capacityMax;
       return;
     }
+    subEvent.suppliesAccepted = accepted;
     subEvent.suppliesPending = pending;
+    subEvent.suppliesCapacityMin = bounds.capacityMin;
+    subEvent.suppliesCapacityMax = bounds.capacityMax;
   }
 
   private mainEventContextMemberIds(eventId: string): string[] {
@@ -3284,7 +3304,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const eventPending = this.activityPendingMemberCount(row);
     const eventId = this.normalizeLocationValue(item.eventId).trim() || source.id;
     const subEventsPending = this.chatEventSubEvents(eventId)
-      .reduce((sum, subEvent) => sum + this.contextualSubEventPendingTotal(subEvent, true), 0);
+      .reduce((sum, subEvent) => sum + this.contextualSubEventPendingTotal(eventId, subEvent, true), 0);
     return eventPending + subEventsPending;
   }
 
@@ -3583,6 +3603,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return typeof iso === 'string' && iso.trim().length > 0 ? iso : '2026-03-01T09:00:00';
   }
 
+  private currentAssetOwnerUserId(): string {
+    return this.appCtx.activeUserId().trim() || this.activeUser.id;
+  }
+
   private getChatItemById(chatId: string): ChatMenuItem | undefined {
     const contextual = this.buildContextualChatChannels().find(item => item.id === chatId);
     if (contextual) {
@@ -3677,6 +3701,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const group = this.eventChatGroup(chat, subEvent);
     const source = this.resolveChatEventSource(chat);
     const eventRow = source ? this.buildChatSourceActivityRow(source) : null;
+    const ownerId = eventRow?.id ?? this.normalizeLocationValue(chat.eventId).trim();
     const hasSubEventMenu = channelType === 'optionalSubEvent' || channelType === 'groupSubEvent';
     return {
       channelType,
@@ -3690,9 +3715,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
       subEventRow: eventRow,
       subEvent,
       group,
-      assetAssignmentIds: subEvent ? this.eventChatResourceAssignmentIds(subEvent) : {},
+      assetAssignmentIds: subEvent ? this.eventChatResourceAssignmentIds(ownerId, subEvent) : {},
       assetCardsByType: this.eventChatResourceCardsByType(),
-      resources: this.eventChatResources(channelType, subEvent)
+      resources: this.eventChatResources(channelType, ownerId, subEvent)
     };
   }
 
@@ -3760,6 +3785,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private eventChatResources(
     channelType: AppTypes.ChatChannelType,
+    ownerId: string,
     subEvent: AppTypes.SubEventFormItem | null
   ): EventChatResourceContext[] {
     if (!subEvent) {
@@ -3782,9 +3808,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
         icon: 'directions_car',
         title: 'Car',
         typeClass: 'event-subevent-badge-car',
-        summary: this.subEventAssetCapacityLabelForChat(subEvent, 'Car'),
-        pending: this.subEventAssetPendingCountForChat(subEvent, 'Car'),
-        stateClass: this.subEventAssetCapacityStateClassForChat(subEvent, 'Car'),
+        summary: this.subEventAssetCapacityLabelForChat(ownerId, subEvent, 'Car'),
+        pending: this.subEventAssetPendingCountForChat(ownerId, subEvent, 'Car'),
+        stateClass: this.subEventAssetCapacityStateClassForChat(ownerId, subEvent, 'Car'),
         visible: true
       },
       {
@@ -3792,9 +3818,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
         icon: 'hotel',
         title: 'Accommodation',
         typeClass: 'event-subevent-badge-accommodation',
-        summary: this.subEventAssetCapacityLabelForChat(subEvent, 'Accommodation'),
-        pending: this.subEventAssetPendingCountForChat(subEvent, 'Accommodation'),
-        stateClass: this.subEventAssetCapacityStateClassForChat(subEvent, 'Accommodation'),
+        summary: this.subEventAssetCapacityLabelForChat(ownerId, subEvent, 'Accommodation'),
+        pending: this.subEventAssetPendingCountForChat(ownerId, subEvent, 'Accommodation'),
+        stateClass: this.subEventAssetCapacityStateClassForChat(ownerId, subEvent, 'Accommodation'),
         visible: true
       },
       {
@@ -3802,19 +3828,22 @@ export class ActivitiesPopupComponent implements OnDestroy {
         icon: 'inventory_2',
         title: 'Supplies',
         typeClass: 'event-subevent-badge-supplies',
-        summary: this.subEventAssetCapacityLabelForChat(subEvent, 'Supplies'),
-        pending: this.subEventAssetPendingCountForChat(subEvent, 'Supplies'),
-        stateClass: this.subEventAssetCapacityStateClassForChat(subEvent, 'Supplies'),
+        summary: this.subEventAssetCapacityLabelForChat(ownerId, subEvent, 'Supplies'),
+        pending: this.subEventAssetPendingCountForChat(ownerId, subEvent, 'Supplies'),
+        stateClass: this.subEventAssetCapacityStateClassForChat(ownerId, subEvent, 'Supplies'),
         visible: true
       }
     ];
   }
 
-  private eventChatResourceAssignmentIds(subEvent: AppTypes.SubEventFormItem): Record<AppTypes.AssetType, string[]> {
+  private eventChatResourceAssignmentIds(
+    ownerId: string,
+    subEvent: AppTypes.SubEventFormItem
+  ): Record<AppTypes.AssetType, string[]> {
     return {
-      Car: [...this.resolveSubEventAssignedAssetIds(subEvent.id, 'Car')],
-      Accommodation: [...this.resolveSubEventAssignedAssetIds(subEvent.id, 'Accommodation')],
-      Supplies: [...this.resolveSubEventAssignedAssetIds(subEvent.id, 'Supplies')]
+      Car: [...this.resolveSubEventAssignedAssetIds(ownerId, subEvent.id, 'Car')],
+      Accommodation: [...this.resolveSubEventAssignedAssetIds(ownerId, subEvent.id, 'Accommodation')],
+      Supplies: [...this.resolveSubEventAssignedAssetIds(ownerId, subEvent.id, 'Supplies')]
     };
   }
 
@@ -3836,20 +3865,32 @@ export class ActivitiesPopupComponent implements OnDestroy {
       : 'subevent-capacity-out-of-range';
   }
 
-  private subEventAssetCapacityLabelForChat(item: AppTypes.SubEventFormItem, type: AppTypes.AssetType): string {
-    const metrics = this.subEventAssetCapacityMetricsForChat(item, type);
+  private subEventAssetCapacityLabelForChat(
+    ownerId: string,
+    item: AppTypes.SubEventFormItem,
+    type: AppTypes.AssetType
+  ): string {
+    const metrics = this.subEventAssetCapacityMetricsForChat(ownerId, item, type);
     return `${metrics.joined} / ${metrics.capacityMin} - ${metrics.capacityMax}`;
   }
 
-  private subEventAssetCapacityStateClassForChat(item: AppTypes.SubEventFormItem, type: AppTypes.AssetType): string {
-    const metrics = this.subEventAssetCapacityMetricsForChat(item, type);
+  private subEventAssetCapacityStateClassForChat(
+    ownerId: string,
+    item: AppTypes.SubEventFormItem,
+    type: AppTypes.AssetType
+  ): string {
+    const metrics = this.subEventAssetCapacityMetricsForChat(ownerId, item, type);
     return metrics.joined >= metrics.capacityMin && metrics.joined <= metrics.capacityMax
       ? 'subevent-capacity-in-range'
       : 'subevent-capacity-out-of-range';
   }
 
-  private subEventAssetPendingCountForChat(item: AppTypes.SubEventFormItem, type: AppTypes.AssetType): number {
-    this.syncSubEventAssetBadgeCounts(item, type);
+  private subEventAssetPendingCountForChat(
+    ownerId: string,
+    item: AppTypes.SubEventFormItem,
+    type: AppTypes.AssetType
+  ): number {
+    this.syncSubEventAssetBadgeCounts(ownerId, item, type);
     if (type === 'Car') {
       return Math.max(0, Math.trunc(Number(item.carsPending) || 0));
     }
@@ -3860,12 +3901,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private subEventAssetCapacityMetricsForChat(
+    ownerId: string,
     subEvent: AppTypes.SubEventFormItem,
     type: AppTypes.AssetType
   ): { joined: number; capacityMin: number; capacityMax: number } {
-    const pending = this.subEventAssetPendingCountForChat(subEvent, type);
-    const accepted = this.subEventAssetAcceptedCountForChat(subEvent, type);
-    const bounds = this.subEventAssetCapacityBoundsForChat(subEvent, type, accepted, pending);
+    const pending = this.subEventAssetPendingCountForChat(ownerId, subEvent, type);
+    const accepted = this.subEventAssetAcceptedCountForChat(ownerId, subEvent, type);
+    const bounds = this.subEventAssetCapacityBoundsForChat(ownerId, subEvent, type, accepted, pending);
     return {
       joined: accepted,
       capacityMin: bounds.capacityMin,
@@ -3873,59 +3915,34 @@ export class ActivitiesPopupComponent implements OnDestroy {
     };
   }
 
-  private subEventAssetAcceptedCountForChat(subEvent: AppTypes.SubEventFormItem, type: AppTypes.AssetType): number {
-    if (type === 'Car') {
-      return Math.max(0, Math.trunc(Number(subEvent.carsAccepted) || 0));
-    }
-    if (type === 'Accommodation') {
-      return Math.max(0, Math.trunc(Number(subEvent.accommodationAccepted) || 0));
-    }
-    if (type === 'Supplies') {
-      return Math.max(0, Math.trunc(Number(subEvent.suppliesAccepted) || 0));
-    }
-    return 0;
+  private subEventAssetAcceptedCountForChat(
+    ownerId: string,
+    subEvent: AppTypes.SubEventFormItem,
+    type: AppTypes.AssetType
+  ): number {
+    return ActivityResourceBuilder.resourceAcceptedCount(
+      subEvent,
+      type,
+      this.subEventResourceState(ownerId, subEvent.id),
+      this.assetCards
+    );
   }
 
   private subEventAssetCapacityBoundsForChat(
+    ownerId: string,
     subEvent: AppTypes.SubEventFormItem,
     type: AppTypes.AssetType,
     accepted: number,
     pending: number
   ): { capacityMin: number; capacityMax: number } {
-    const assignedIds = this.resolveSubEventAssignedAssetIds(subEvent.id, type);
-    const assignedCards = assignedIds
-      .map(id => this.assetCards.find(card => card.id === id && card.type === type) ?? null)
-      .filter((card): card is AppTypes.AssetCard => card !== null);
-    if (assignedCards.length > 0) {
-      const capacityMin = 0;
-      const capacityMax = assignedCards.reduce((sum, card) => sum + Math.max(0, Math.trunc(Number(card.capacityTotal) || 0)), 0);
-      if (type === 'Car') {
-        subEvent.carsCapacityMin = capacityMin;
-        subEvent.carsCapacityMax = capacityMax;
-      } else if (type === 'Accommodation') {
-        subEvent.accommodationCapacityMin = capacityMin;
-        subEvent.accommodationCapacityMax = capacityMax;
-      } else {
-        subEvent.suppliesCapacityMin = capacityMin;
-        subEvent.suppliesCapacityMax = capacityMax;
-      }
-      return { capacityMin, capacityMax };
-    }
-
-    const observed = Math.max(accepted, accepted + pending);
-    if (type === 'Car') {
-      const min = Math.max(0, Math.trunc(Number(subEvent.carsCapacityMin) || 0));
-      const max = Math.max(min, Math.trunc(Number(subEvent.carsCapacityMax) || observed));
-      return { capacityMin: min, capacityMax: max };
-    }
-    if (type === 'Accommodation') {
-      const min = Math.max(0, Math.trunc(Number(subEvent.accommodationCapacityMin) || 0));
-      const max = Math.max(min, Math.trunc(Number(subEvent.accommodationCapacityMax) || observed));
-      return { capacityMin: min, capacityMax: max };
-    }
-    const min = Math.max(0, Math.trunc(Number(subEvent.suppliesCapacityMin) || 0));
-    const max = Math.max(min, Math.trunc(Number(subEvent.suppliesCapacityMax) || observed));
-    return { capacityMin: min, capacityMax: max };
+    return ActivityResourceBuilder.resourceCapacityBounds(
+      subEvent,
+      type,
+      this.subEventResourceState(ownerId, subEvent.id),
+      this.assetCards,
+      accepted,
+      pending
+    );
   }
 
   private matchesActivitiesChatContextFilter(item: ChatMenuItem): boolean {

@@ -8,8 +8,9 @@ import { EventSubeventGroupFormPopupComponent } from '../event-subevent-group-fo
 import { EventSubeventLeaderboardGroup, EventSubeventLeaderboardPopupComponent } from '../event-subevent-leaderboard-popup/event-subevent-leaderboard-popup.component';
 import { EventSubeventStageFormPopupComponent } from '../event-subevent-stage-form-popup/event-subevent-stage-form-popup.component';
 import { AppUtils } from '../../../shared/app-utils';
+import { OwnedAssetsPopupService } from '../../../asset/owned-assets-popup.service';
 import type * as AppTypes from '../../../shared/core/base/models';
-import { AppContext, EventsService } from '../../../shared/core';
+import { ActivityResourceBuilder, ActivityResourcesService, AppContext, EventsService } from '../../../shared/core';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { EventEditorService, EventEditorSubEventResourceType } from '../../../shared/event-editor.service';
 import {
@@ -146,7 +147,9 @@ interface DeleteTargetState {
 export class EventSubeventsPopupComponent implements OnChanges {
   private readonly eventEditorService = inject(EventEditorService);
   private readonly eventsService = inject(EventsService);
+  private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly appCtx = inject(AppContext);
+  private readonly ownedAssets = inject(OwnedAssetsPopupService);
 
   @Input() open = false;
   @Input() readOnly = false;
@@ -632,13 +635,22 @@ export class EventSubeventsPopupComponent implements OnChanges {
       }
       return this.toPendingCount(item.membersPending);
     }
-    if (type === 'Car') {
-      return this.toPendingCount(item.carsPending);
+    const subEvent = this.toSubEventResourceItem(item);
+    if (!subEvent) {
+      if (type === 'Car') {
+        return this.toPendingCount(item.carsPending);
+      }
+      if (type === 'Accommodation') {
+        return this.toPendingCount(item.accommodationPending);
+      }
+      return this.toPendingCount(item.suppliesPending);
     }
-    if (type === 'Accommodation') {
-      return this.toPendingCount(item.accommodationPending);
-    }
-    return this.toPendingCount(item.suppliesPending);
+    return ActivityResourceBuilder.resourcePendingCount(
+      subEvent,
+      type,
+      this.activityResourcesService.peekSubEventResourceState(this.ownerId ?? '', subEvent.id, this.activeUserId()),
+      this.ownedAssets.assetCards
+    );
   }
 
   protected openSubEventResourcePopup(
@@ -669,6 +681,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
     this.eventEditorService.requestSubEventResourcePopup({
       type,
+      ownerId: this.ownerId,
       parentTitle: this.parentTitle,
       subEvent: {
         ...item,
@@ -1708,13 +1721,22 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   private resourceJoinedCount(item: EventSubeventsItem, type: Exclude<EventEditorSubEventResourceType, 'Members'>): number {
-    if (type === 'Car') {
-      return this.toPendingCount(item.carsAccepted);
+    const subEvent = this.toSubEventResourceItem(item);
+    if (!subEvent) {
+      if (type === 'Car') {
+        return this.toPendingCount(item.carsAccepted);
+      }
+      if (type === 'Accommodation') {
+        return this.toPendingCount(item.accommodationAccepted);
+      }
+      return this.toPendingCount(item.suppliesAccepted);
     }
-    if (type === 'Accommodation') {
-      return this.toPendingCount(item.accommodationAccepted);
-    }
-    return this.toPendingCount(item.suppliesAccepted);
+    return ActivityResourceBuilder.resourceAcceptedCount(
+      subEvent,
+      type,
+      this.activityResourcesService.peekSubEventResourceState(this.ownerId ?? '', subEvent.id, this.activeUserId()),
+      this.ownedAssets.assetCards
+    );
   }
 
   private resourceAssetCapacityRange(
@@ -1723,6 +1745,24 @@ export class EventSubeventsPopupComponent implements OnChanges {
     row?: EventSubeventsStageRow | null
   ): { min: number; max: number } {
     const fallback = this.resourceCapacityRange(item, row);
+    const subEvent = this.toSubEventResourceItem(item);
+    if (subEvent) {
+      const state = this.activityResourcesService.peekSubEventResourceState(this.ownerId ?? '', subEvent.id, this.activeUserId());
+      const accepted = ActivityResourceBuilder.resourceAcceptedCount(subEvent, type, state, this.ownedAssets.assetCards);
+      const pending = ActivityResourceBuilder.resourcePendingCount(subEvent, type, state, this.ownedAssets.assetCards);
+      const bounds = ActivityResourceBuilder.resourceCapacityBounds(
+        subEvent,
+        type,
+        state,
+        this.ownedAssets.assetCards,
+        accepted,
+        pending
+      );
+      return {
+        min: bounds.capacityMin,
+        max: bounds.capacityMax
+      };
+    }
     if (type === 'Car') {
       return this.normalizeAssetCapacityRange(item.carsCapacityMin, item.carsCapacityMax, fallback);
     }
@@ -1730,6 +1770,45 @@ export class EventSubeventsPopupComponent implements OnChanges {
       return this.normalizeAssetCapacityRange(item.accommodationCapacityMin, item.accommodationCapacityMax, fallback);
     }
     return this.normalizeAssetCapacityRange(item.suppliesCapacityMin, item.suppliesCapacityMax, fallback);
+  }
+
+  private toSubEventResourceItem(item: EventSubeventsItem): AppTypes.SubEventFormItem | null {
+    const subEventId = `${item.id ?? ''}`.trim();
+    if (!subEventId) {
+      return null;
+    }
+    return {
+      id: subEventId,
+      name: item.name ?? item.title ?? '',
+      description: item.description ?? '',
+      startAt: item.startAt ?? '',
+      endAt: item.endAt ?? '',
+      location: item.location ?? '',
+      groups: this.cloneGroups(item.groups).map(group => ({
+        id: group.id ?? '',
+        name: group.name ?? '',
+        capacityMin: this.toPendingCount(group.capacityMin),
+        capacityMax: this.toPendingCount(group.capacityMax),
+        source: group.source === 'generated' ? 'generated' : 'manual'
+      })),
+      optional: item.optional === true,
+      capacityMin: this.toPendingCount(item.capacityMin),
+      capacityMax: Math.max(this.toPendingCount(item.capacityMin), this.toPendingCount(item.capacityMax)),
+      membersAccepted: this.toPendingCount(item.membersAccepted),
+      membersPending: this.toPendingCount(item.membersPending),
+      carsPending: this.toPendingCount(item.carsPending),
+      accommodationPending: this.toPendingCount(item.accommodationPending),
+      suppliesPending: this.toPendingCount(item.suppliesPending),
+      carsAccepted: this.toPendingCount(item.carsAccepted),
+      accommodationAccepted: this.toPendingCount(item.accommodationAccepted),
+      suppliesAccepted: this.toPendingCount(item.suppliesAccepted),
+      carsCapacityMin: this.toPendingCount(item.carsCapacityMin),
+      carsCapacityMax: this.toPendingCount(item.carsCapacityMax),
+      accommodationCapacityMin: this.toPendingCount(item.accommodationCapacityMin),
+      accommodationCapacityMax: this.toPendingCount(item.accommodationCapacityMax),
+      suppliesCapacityMin: this.toPendingCount(item.suppliesCapacityMin),
+      suppliesCapacityMax: this.toPendingCount(item.suppliesCapacityMax)
+    };
   }
 
   private normalizeAssetCapacityRange(

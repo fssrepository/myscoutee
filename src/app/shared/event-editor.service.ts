@@ -13,6 +13,7 @@ export type EventEditorSubEventResourceType = 'Members' | 'Car' | 'Accommodation
 export interface EventEditorSubEventResourcePopupRequest {
   type: EventEditorSubEventResourceType;
   subEvent: any;
+  ownerId?: string | null;
   parentTitle?: string;
   group?: {
     id?: string | null;

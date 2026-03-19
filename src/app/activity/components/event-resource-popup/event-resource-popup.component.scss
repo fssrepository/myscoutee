@@ -26,8 +26,11 @@
 
 .event-resource-popup-shell .subevent-assets-scroll-list {
   min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+}
+
+.event-resource-popup-shell .subevent-resource-card-list {
+  min-height: 0;
+  padding-bottom: 0.3rem;
 }
 
 .event-resource-popup-shell .subevent-assets-popup .assets-toolbar {
@@ -66,10 +69,6 @@
   width: 100%;
   background: rgba(38, 65, 99, 0.16);
   margin: 0.36rem 0 0.5rem;
-}
-
-.event-resource-popup-shell .subevent-assets-scroll-list .item-action-menu {
-  z-index: 180;
 }
 
 :host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel {

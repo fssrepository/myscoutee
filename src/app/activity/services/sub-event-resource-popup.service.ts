@@ -8,7 +8,7 @@ import { OwnedAssetsPopupService } from '../../asset/owned-assets-popup.service'
 import { AppDemoGenerators } from '../../shared/app-demo-generators';
 import { AppUtils } from '../../shared/app-utils';
 import type * as AppTypes from '../../shared/core/base/models';
-import { AppContext } from '../../shared/core';
+import { ActivityResourceBuilder, ActivityResourcesService, AppContext } from '../../shared/core';
 import type { DemoUser } from '../../shared/demo-data';
 import { ActivitiesDbContextService } from './activities-db-context.service';
 import { EventEditorService } from '../../shared/event-editor.service';
@@ -21,6 +21,7 @@ import type {
 
 interface ResourcePopupContext {
   origin: 'chat' | 'eventEditor';
+  ownerId: string;
   parentTitle: string;
   subEvent: AppTypes.SubEventFormItem;
   groupId?: string;
@@ -69,6 +70,7 @@ export class SubEventResourcePopupService {
   private readonly eventEditorService = inject(EventEditorService);
   private readonly assetPopupService = inject(AssetPopupService);
   private readonly ownedAssets = inject(OwnedAssetsPopupService);
+  private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly appCtx = inject(AppContext);
 
   private readonly users: DemoUser[] = AppDemoGenerators.buildExpandedDemoUsers(50);
@@ -232,6 +234,7 @@ export class SubEventResourcePopupService {
 
     const context = this.buildPopupContext(
       'chat',
+      request.ownerId?.trim() || request.item.eventId?.trim() || '',
       request.item.title,
       request.resourceType,
       request.subEvent,
@@ -254,6 +257,7 @@ export class SubEventResourcePopupService {
 
     const context = this.buildPopupContext(
       'eventEditor',
+      request.ownerId?.trim() || '',
       request.parentTitle?.trim() || 'Event',
       request.type,
       request.subEvent,
@@ -264,6 +268,7 @@ export class SubEventResourcePopupService {
 
   private buildPopupContext(
     origin: 'chat' | 'eventEditor',
+    ownerId: string,
     parentTitle: string,
     type: AppTypes.AssetType,
     rawSubEvent: AppTypes.SubEventFormItem,
@@ -277,6 +282,7 @@ export class SubEventResourcePopupService {
 
     return {
       origin,
+      ownerId: ownerId.trim(),
       parentTitle: parentTitle.trim() || 'Event',
       subEvent: scopedSubEvent,
       groupId: group?.id?.trim() || undefined,
@@ -295,7 +301,86 @@ export class SubEventResourcePopupService {
     this.bringDialogRef.set(null);
     this.pendingSupplyDeleteRef.set(null);
     this.closeAssignPopup(false);
+    this.hydratePopupResourceState(context);
     this.syncPopupSubEventMetrics();
+  }
+
+  private hydratePopupResourceState(context: ResourcePopupContext): void {
+    const ownerId = context.ownerId.trim();
+    const subEventId = context.subEvent.id.trim();
+    const assetOwnerUserId = this.activeUser().id;
+    if (!ownerId || !subEventId || !assetOwnerUserId) {
+      return;
+    }
+    const applyState = (state: AppTypes.ActivitySubEventResourceState | null): void => {
+      const activeContext = this.popupContextRef();
+      if (!state || !activeContext || activeContext.ownerId !== ownerId || activeContext.subEvent.id !== subEventId) {
+        return;
+      }
+      this.applyPersistedPopupState(state);
+      this.syncPopupSubEventMetrics();
+    };
+    applyState(this.activityResourcesService.peekSubEventResourceState(ownerId, subEventId, assetOwnerUserId));
+    void this.activityResourcesService
+      .querySubEventResourceState(ownerId, subEventId, assetOwnerUserId)
+      .then(state => applyState(state));
+  }
+
+  private applyPersistedPopupState(state: AppTypes.ActivitySubEventResourceState): void {
+    const normalizedState = ActivityResourceBuilder.normalizeState(state, state);
+    if (!normalizedState) {
+      return;
+    }
+    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+      this.assignedAssetIdsByKey[this.subEventAssetAssignmentKey(normalizedState.subEventId, type)] = [
+        ...(normalizedState.assetAssignmentIds[type] ?? [])
+      ];
+      this.assignedAssetSettingsByKey[this.subEventAssetAssignmentKey(normalizedState.subEventId, type)] = {
+        ...(normalizedState.assetSettingsByType[type] ?? {})
+      };
+    }
+    for (const key of Object.keys(this.supplyContributionEntriesByAssignmentKey)) {
+      if (key.startsWith(`${normalizedState.subEventId}:`)) {
+        delete this.supplyContributionEntriesByAssignmentKey[key];
+      }
+    }
+    for (const [assetId, entries] of Object.entries(normalizedState.supplyContributionEntriesByAssetId)) {
+      this.supplyContributionEntriesByAssignmentKey[this.subEventSupplyAssignmentKey(normalizedState.subEventId, assetId)] = entries
+        .map(entry => ({ ...entry }));
+    }
+  }
+
+  private persistPopupResourceState(context: ResourcePopupContext | null = this.popupContextRef()): void {
+    if (!context) {
+      return;
+    }
+    const ownerId = context.ownerId.trim();
+    const subEventId = context.subEvent.id.trim();
+    const assetOwnerUserId = this.activeUser().id;
+    if (!ownerId || !subEventId || !assetOwnerUserId) {
+      return;
+    }
+    void this.activityResourcesService.replaceSubEventResourceState({
+      ownerId,
+      subEventId,
+      assetOwnerUserId,
+      assetAssignmentIds: {
+        Car: [...this.resolveSubEventAssignedAssetIds(subEventId, 'Car')],
+        Accommodation: [...this.resolveSubEventAssignedAssetIds(subEventId, 'Accommodation')],
+        Supplies: [...this.resolveSubEventAssignedAssetIds(subEventId, 'Supplies')]
+      },
+      assetSettingsByType: {
+        Car: { ...this.getSubEventAssignedAssetSettings(subEventId, 'Car') },
+        Accommodation: { ...this.getSubEventAssignedAssetSettings(subEventId, 'Accommodation') },
+        Supplies: { ...this.getSubEventAssignedAssetSettings(subEventId, 'Supplies') }
+      },
+      supplyContributionEntriesByAssetId: Object.fromEntries(
+        this.resolveSubEventAssignedAssetIds(subEventId, 'Supplies').map(assetId => [
+          assetId,
+          this.subEventSupplyContributionEntries(subEventId, assetId).map(entry => ({ ...entry }))
+        ])
+      )
+    });
   }
 
   private closeResourcePopup(): void {
@@ -1150,6 +1235,10 @@ export class SubEventResourcePopupService {
     nextSubEvent.suppliesCapacityMin = supplies.capacityMin;
     nextSubEvent.suppliesCapacityMax = supplies.capacityMax;
     this.popupContextRef.set({
+      ...context,
+      subEvent: nextSubEvent
+    });
+    this.persistPopupResourceState({
       ...context,
       subEvent: nextSubEvent
     });
