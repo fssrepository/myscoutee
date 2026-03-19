@@ -18,7 +18,6 @@ export type NavigatorSettingsPopup = 'help' | 'feedback' | 'privacy' | 'report-u
 
 export interface NavigatorBindings {
   syncHydratedUser?(user: UserDto): void;
-  openEventFeedbackPopup(event?: Event): void;
   openDeleteAccountConfirm(): void;
   openLogoutConfirm(): void;
 }

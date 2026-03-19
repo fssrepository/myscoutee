@@ -52,7 +52,7 @@
         </span>
       </div>
     </div>
-    <button type="button" class="header-open-cue" aria-label="Open profile editor" (click)="openProfileEditor()">
+    <button type="button" class="header-open-cue" aria-label="Open profile editor" (click)="openProfileEditor($event)">
       <mat-icon>edit</mat-icon>
     </button>
   </div>
@@ -71,7 +71,7 @@
         class="impression-shortcut-btn impression-shortcut-host-btn"
         [ngClass]="getHostTierToneClass(user.hostTier)"
         type="button"
-        (click)="openHostImpressions()"
+        (click)="openHostImpressions($event)"
         aria-label="Open host impressions"
         [title]="user.hostTier"
       >
@@ -90,7 +90,7 @@
         class="impression-shortcut-btn impression-shortcut-member-btn"
         [ngClass]="getTraitToneClass(user.traitLabel)"
         type="button"
-        (click)="openMemberImpressions()"
+        (click)="openMemberImpressions($event)"
         aria-label="Open member impressions"
         [title]="user.memberImpressionTitle"
       >
@@ -115,31 +115,31 @@
     </div>
 
     <div class="menu-shortcuts">
-      <button class="menu-shortcut-btn menu-shortcut-rates" type="button" (click)="openRatesShortcut()" aria-label="Open rates" title="Rates">
+      <button class="menu-shortcut-btn menu-shortcut-rates" type="button" (click)="$event.stopPropagation(); openRatesShortcut()" aria-label="Open rates" title="Rates">
         <mat-icon>star</mat-icon>
         <span class="menu-shortcut-label">Rates</span>
         <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.game > 0">{{ user.activities.game }}</span>
       </button>
 
-      <button class="menu-shortcut-btn menu-shortcut-chat" type="button" (click)="openChatShortcut()" aria-label="Open chat" title="Chats">
+      <button class="menu-shortcut-btn menu-shortcut-chat" type="button" (click)="$event.stopPropagation(); openChatShortcut()" aria-label="Open chat" title="Chats">
         <mat-icon>chat</mat-icon>
         <span class="menu-shortcut-label">Chats</span>
         <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.chat > 0">{{ user.activities.chat }}</span>
       </button>
 
-      <button class="menu-shortcut-btn menu-shortcut-invitations" type="button" (click)="openInvitationShortcut()" aria-label="Open invitations" title="Invitations">
+      <button class="menu-shortcut-btn menu-shortcut-invitations" type="button" (click)="$event.stopPropagation(); openInvitationShortcut()" aria-label="Open invitations" title="Invitations">
         <mat-icon>mail</mat-icon>
         <span class="menu-shortcut-label">Invitations</span>
         <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.invitations > 0">{{ user.activities.invitations }}</span>
       </button>
 
-      <button class="menu-shortcut-btn menu-shortcut-events" type="button" (click)="openEventShortcut()" aria-label="Open events" title="Events">
+      <button class="menu-shortcut-btn menu-shortcut-events" type="button" (click)="$event.stopPropagation(); openEventShortcut()" aria-label="Open events" title="Events">
         <mat-icon>event</mat-icon>
         <span class="menu-shortcut-label">Events</span>
         <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.events > 0">{{ user.activities.events }}</span>
       </button>
 
-      <button class="menu-shortcut-btn menu-shortcut-hosting" type="button" (click)="openHostingShortcut()" aria-label="Open my events" title="My Events">
+      <button class="menu-shortcut-btn menu-shortcut-hosting" type="button" (click)="$event.stopPropagation(); openHostingShortcut()" aria-label="Open my events" title="My Events">
         <mat-icon>stadium</mat-icon>
         <span class="menu-shortcut-label">My Events</span>
         <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.hosting > 0">{{ user.activities.hosting }}</span>
@@ -155,19 +155,19 @@
     </div>
 
     <div class="assets-shortcuts">
-      <button class="asset-shortcut-btn asset-shortcut-car" type="button" (click)="openAssetCarPopup()" aria-label="Car">
+      <button class="asset-shortcut-btn asset-shortcut-car" type="button" (click)="openAssetCarPopup($event)" aria-label="Car">
         <mat-icon>directions_car</mat-icon>
         <span class="asset-shortcut-label">Car</span>
       </button>
-      <button class="asset-shortcut-btn asset-shortcut-accommodation" type="button" (click)="openAssetAccommodationPopup()" aria-label="Accommodation">
+      <button class="asset-shortcut-btn asset-shortcut-accommodation" type="button" (click)="openAssetAccommodationPopup($event)" aria-label="Accommodation">
         <mat-icon>apartment</mat-icon>
         <span class="asset-shortcut-label">Accommodation</span>
       </button>
-      <button class="asset-shortcut-btn asset-shortcut-supplies" type="button" (click)="openAssetSuppliesPopup()" aria-label="Supplies">
+      <button class="asset-shortcut-btn asset-shortcut-supplies" type="button" (click)="openAssetSuppliesPopup($event)" aria-label="Supplies">
         <mat-icon>inventory_2</mat-icon>
         <span class="asset-shortcut-label">Supplies</span>
       </button>
-      <button class="asset-shortcut-btn asset-shortcut-ticket" type="button" (click)="openAssetTicketsPopup()" aria-label="Ticket">
+      <button class="asset-shortcut-btn asset-shortcut-ticket" type="button" (click)="openAssetTicketsPopup($event)" aria-label="Ticket">
         <mat-icon>qr_code_2</mat-icon>
         <span class="asset-shortcut-label">Ticket</span>
         <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.tickets > 0">{{ user.activities.tickets }}</span>

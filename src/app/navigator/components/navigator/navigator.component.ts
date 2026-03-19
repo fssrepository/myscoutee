@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, Type, effect, inject, signal } from '@angular/core';
+import { Component, Type, ViewEncapsulation, effect, inject, signal } from '@angular/core';
 import { AssetPopupService } from '../../../asset/asset-popup.service';
 import { OwnedAssetsPopupService } from '../../../asset/owned-assets-popup.service';
 import { ActivitiesDbContextService } from '../../../activity/services/activities-db-context.service';
+import { EventFeedbackPopupService } from '../../../activity/event-feedback-popup.service';
 import { EventEditorService } from '../../../shared/event-editor.service';
 import { AppContext } from '../../../shared/core';
 import { AvatarBtnComponent } from '../avatar-btn/avatar-btn.component';
@@ -33,16 +34,21 @@ export class NavigatorComponent {
   private readonly activitiesContext = inject(ActivitiesDbContextService);
   private readonly assetPopupService = inject(AssetPopupService);
   private readonly ownedAssets = inject(OwnedAssetsPopupService);
+  private readonly eventFeedbackPopupService = inject(EventFeedbackPopupService);
   private readonly eventEditorService = inject(EventEditorService);
   private readonly navigatorService = inject(NavigatorService);
-  private lastHandledNavigatorMenuRequestMs = 0;
+  private lastHandledActivitiesRequestMs = 0;
+  private lastHandledAssetRequestMs = 0;
+  private lastHandledEventFeedbackRequestMs = 0;
   private readonly eventEditorPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly activitiesPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly assetPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly eventFeedbackPopupComponentRef = signal<Type<unknown> | null>(null);
 
   protected readonly eventEditorPopupComponent = this.eventEditorPopupComponentRef.asReadonly();
   protected readonly activitiesPopupComponent = this.activitiesPopupComponentRef.asReadonly();
   protected readonly assetPopupComponent = this.assetPopupComponentRef.asReadonly();
+  protected readonly eventFeedbackPopupComponent = this.eventFeedbackPopupComponentRef.asReadonly();
 
   constructor() {
     effect(() => {
@@ -71,23 +77,35 @@ export class NavigatorComponent {
     });
 
     effect(() => {
-      const request = this.appCtx.navigatorMenuRequest();
-      if (!request || request.updatedMs <= this.lastHandledNavigatorMenuRequestMs) {
+      const request = this.appCtx.navigatorActivitiesRequest();
+      if (!request || request.updatedMs <= this.lastHandledActivitiesRequestMs) {
         return;
       }
-      this.lastHandledNavigatorMenuRequestMs = request.updatedMs;
-      if (request.type === 'activities' && request.primaryFilter) {
-        this.activitiesContext.openActivities(request.primaryFilter, request.eventScope);
-        this.appCtx.clearNavigatorMenuRequest();
+      this.lastHandledActivitiesRequestMs = request.updatedMs;
+      this.activitiesContext.openActivities(request.primaryFilter, request.eventScope);
+      this.appCtx.clearNavigatorActivitiesRequest();
+    }, { allowSignalWrites: true });
+
+    effect(() => {
+      const request = this.appCtx.navigatorAssetRequest();
+      if (!request || request.updatedMs <= this.lastHandledAssetRequestMs) {
         return;
       }
-      if (request.type !== 'asset' || !request.assetFilter) {
-        this.appCtx.clearNavigatorMenuRequest();
-        return;
-      }
+      this.lastHandledAssetRequestMs = request.updatedMs;
       this.ownedAssets.openPopup(request.assetFilter);
-      this.appCtx.clearNavigatorMenuRequest();
-    });
+      this.appCtx.clearNavigatorAssetRequest();
+    }, { allowSignalWrites: true });
+
+    effect(() => {
+      const request = this.appCtx.navigatorEventFeedbackRequest();
+      if (!request || request.updatedMs <= this.lastHandledEventFeedbackRequestMs) {
+        return;
+      }
+      this.lastHandledEventFeedbackRequestMs = request.updatedMs;
+      this.eventFeedbackPopupService.openPopup();
+      this.appCtx.clearNavigatorEventFeedbackRequest();
+      void this.ensureEventFeedbackPopupLoaded();
+    }, { allowSignalWrites: true });
   }
 
   private async ensureEventEditorPopupLoaded(): Promise<void> {
@@ -112,5 +130,13 @@ export class NavigatorComponent {
     }
     const module = await import('../../../asset/components/asset-popup/asset-popup.component');
     this.assetPopupComponentRef.set(module.AssetPopupComponent);
+  }
+
+  private async ensureEventFeedbackPopupLoaded(): Promise<void> {
+    if (this.eventFeedbackPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../activity/components/event-feedback-popup/event-feedback-popup.component');
+    this.eventFeedbackPopupComponentRef.set(module.EventFeedbackPopupComponent);
   }
 }

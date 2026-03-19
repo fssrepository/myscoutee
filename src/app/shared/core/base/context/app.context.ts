@@ -41,12 +41,19 @@ export interface ActivityInvitePopupState {
   title?: string;
 }
 
-interface NavigatorMenuRequest {
+export interface NavigatorActivitiesRequest {
   updatedMs: number;
-  type: 'activities' | 'asset';
-  primaryFilter?: 'rates' | 'chats' | 'events';
+  primaryFilter: 'rates' | 'chats' | 'events';
   eventScope?: 'active-events' | 'invitations' | 'my-events';
-  assetFilter?: 'Car' | 'Accommodation' | 'Supplies' | 'Ticket';
+}
+
+export interface NavigatorAssetRequest {
+  updatedMs: number;
+  assetFilter: 'Car' | 'Accommodation' | 'Supplies' | 'Ticket';
+}
+
+export interface NavigatorEventFeedbackRequest {
+  updatedMs: number;
 }
 
 export const DEFAULT_LOAD_STATE: LoadState = {
@@ -90,7 +97,9 @@ export class AppContext {
   private readonly _impressionChangeFlagsByUserId = signal<Record<string, UserImpressionChangeFlags>>({});
   private readonly _activityMembersSync = signal<ActivityMembersSyncState | null>(null);
   private readonly _activityInvitePopup = signal<ActivityInvitePopupState | null>(null);
-  private readonly _navigatorMenuRequest = signal<NavigatorMenuRequest | null>(null);
+  private readonly _navigatorActivitiesRequest = signal<NavigatorActivitiesRequest | null>(null);
+  private readonly _navigatorAssetRequest = signal<NavigatorAssetRequest | null>(null);
+  private readonly _navigatorEventFeedbackRequest = signal<NavigatorEventFeedbackRequest | null>(null);
   private readonly _activeUserId = signal<string>('');
   private readonly _connectivityState = signal<ConnectivityState>(detectInitialConnectivityState());
 
@@ -103,7 +112,9 @@ export class AppContext {
   readonly impressionChangeFlagsByUserId = this._impressionChangeFlagsByUserId.asReadonly();
   readonly activityMembersSync = this._activityMembersSync.asReadonly();
   readonly activityInvitePopup = this._activityInvitePopup.asReadonly();
-  readonly navigatorMenuRequest = this._navigatorMenuRequest.asReadonly();
+  readonly navigatorActivitiesRequest = this._navigatorActivitiesRequest.asReadonly();
+  readonly navigatorAssetRequest = this._navigatorAssetRequest.asReadonly();
+  readonly navigatorEventFeedbackRequest = this._navigatorEventFeedbackRequest.asReadonly();
   readonly activeUserId = this._activeUserId.asReadonly();
   readonly connectivityState = this._connectivityState.asReadonly();
   readonly isOnline = computed(() => this._connectivityState() === 'online');
@@ -518,24 +529,36 @@ export class AppContext {
     primaryFilter: 'rates' | 'chats' | 'events',
     eventScope?: 'active-events' | 'invitations' | 'my-events'
   ): void {
-    this._navigatorMenuRequest.set({
+    this._navigatorActivitiesRequest.set({
       updatedMs: Date.now(),
-      type: 'activities',
       primaryFilter,
       eventScope
     });
   }
 
   openNavigatorAssetRequest(assetFilter: 'Car' | 'Accommodation' | 'Supplies' | 'Ticket'): void {
-    this._navigatorMenuRequest.set({
+    this._navigatorAssetRequest.set({
       updatedMs: Date.now(),
-      type: 'asset',
       assetFilter
     });
   }
 
-  clearNavigatorMenuRequest(): void {
-    this._navigatorMenuRequest.set(null);
+  openNavigatorEventFeedbackRequest(): void {
+    this._navigatorEventFeedbackRequest.set({
+      updatedMs: Date.now()
+    });
+  }
+
+  clearNavigatorActivitiesRequest(): void {
+    this._navigatorActivitiesRequest.set(null);
+  }
+
+  clearNavigatorAssetRequest(): void {
+    this._navigatorAssetRequest.set(null);
+  }
+
+  clearNavigatorEventFeedbackRequest(): void {
+    this._navigatorEventFeedbackRequest.set(null);
   }
 
   private normalizeCounterValue(value: number): number {

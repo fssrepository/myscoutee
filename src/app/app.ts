@@ -46,12 +46,13 @@ import {
   ProfileGroup
 } from './shared/demo-data';
 import { LazyBgImageDirective } from './shared/ui';
-import { NavigatorBindings, NavigatorService } from './navigator';
+import { NavigatorBindings, NavigatorService, NavigatorComponent } from './navigator';
 import { AppDemoGenerators } from './shared/app-demo-generators';
 import { AppUtils } from './shared/app-utils';
 import { AppCalendarHelpers } from './shared/app-calendar-helpers';
 import { APP_STATIC_DATA } from './shared/app-static-data';
 import type * as AppTypes from './shared/core/base/models';
+import { OnInit, OnDestroy } from '@angular/core';
 
 @Injectable()
 class YearMonthDayDateAdapter extends NativeDateAdapter {
@@ -127,7 +128,7 @@ const APP_DATE_FORMATS = {
     MatTimepickerModule,
     FormsModule,
     DragDropModule,
-    LazyBgImageDirective
+    NavigatorComponent
   ],
   providers: [
     { provide: DateAdapter, useClass: YearMonthDayDateAdapter },
@@ -155,7 +156,7 @@ export class App {
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly navigatorService = inject(NavigatorService);
 
-  protected readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
+  public readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
   protected readonly assetTicketBridge: AssetTicketBridge = {
     ticketRowsSource: () => this.ticketRows,
     createTicketScanPayload: (row) => this.createTicketScanPayload(row),
@@ -193,7 +194,6 @@ export class App {
       this.activeUserId = user.id;
       this.cdr.markForCheck();
     },
-    openEventFeedbackPopup: (event) => this.openEventFeedbackPopup(event),
     openDeleteAccountConfirm: () => this.openDeleteAccountConfirm(),
     openLogoutConfirm: () => this.openLogoutConfirm()
   };
@@ -242,7 +242,7 @@ export class App {
   private activityMembersPopupOrigin: 'active-event-editor' | 'stacked-event-editor' | 'event-explore' | 'subevent-asset' | null = null;
   private subEventAssetMembersContext: AppTypes.SubEventAssetMembersContext | null = null;
   protected readonly eventExploreOrderOptions: Array<{ key: AppTypes.EventExploreOrder; label: string; icon: string }> = [...APP_DEMO_DATA.eventExploreOrderOptions];
-  protected readonly eventDatesById: Record<string, string> = { ...APP_DEMO_DATA.eventDatesById };
+  public readonly eventDatesById: Record<string, string> = { ...APP_DEMO_DATA.eventDatesById };
   protected readonly hostingDatesById: Record<string, string> = { ...APP_DEMO_DATA.hostingDatesById };
   protected readonly eventVisibilityById: Record<string, AppTypes.EventVisibility> = { ...APP_DEMO_DATA.eventVisibilityById };
   protected readonly eventBlindModeById: Record<string, AppTypes.EventBlindMode> = { ...APP_DEMO_DATA.eventBlindModeById };
@@ -260,7 +260,7 @@ export class App {
   protected readonly eventDistanceById: Record<string, number> = { ...APP_DEMO_DATA.eventDistanceById };
   protected readonly activityDateTimeRangeById: Record<string, AppTypes.ActivityDateTimeRange> = { ...APP_DEMO_DATA.activityDateTimeRangeById };
   protected readonly hostingDistanceById: Record<string, number> = { ...APP_DEMO_DATA.hostingDistanceById };
-  protected readonly activityImageById: Record<string, string> = { ...APP_DEMO_DATA.activityImageById };
+  public readonly activityImageById: Record<string, string> = { ...APP_DEMO_DATA.activityImageById };
   protected readonly activitySourceLinkById: Record<string, string> = { ...APP_DEMO_DATA.activitySourceLinkById };
   protected readonly activityCapacityById: Record<string, string> = { ...APP_DEMO_DATA.activityCapacityById };
   protected readonly invitationItemsByUser: Record<string, InvitationMenuItem[]> = AppUtils.cloneMapItems(DEMO_INVITATIONS_BY_USER);
@@ -339,36 +339,7 @@ export class App {
   protected pendingSubEventSupplyContributionDelete: { subEventId: string; assetId: string; entryId: string; label: string } | null = null;
   private readonly subEventSupplyContributionEntriesByAssignmentKey: Record<string, AppTypes.SubEventSupplyContributionEntry[]> = {};
 
-  protected eventFeedbackCards: AppTypes.EventFeedbackCard[] = [];
-  protected eventFeedbackIndex = 0;
-  protected eventFeedbackListFilter: AppTypes.EventFeedbackListFilter = 'pending';
-  protected showEventFeedbackFilterPicker = false;
-  protected eventFeedbackListSubmitMessage = '';
-  protected eventFeedbackCardMenuEventId: string | null = null;
-  protected selectedEventFeedbackEventId: string | null = null;
-  protected eventFeedbackSubmittedState = false;
-  protected eventFeedbackSubmitMessage = '';
-  protected eventFeedbackSlideAnimClass = '';
-  protected eventFeedbackNoteForm = {
-    eventId: '',
-    text: ''
-  };
-  protected eventFeedbackNoteSubmitted = false;
-  protected eventFeedbackNoteSubmitMessage = '';
-  private eventFeedbackTouchStartX: number | null = null;
-  private eventFeedbackTouchStartY: number | null = null;
-  private eventFeedbackSlideAnimationTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly submittedEventFeedbackByUser: Record<string, Record<string, true>> = {};
-  private readonly submittedEventFeedbackAnswersByUser: Record<string, Record<string, AppTypes.SubmittedEventFeedbackAnswer>> = {};
-  private readonly submittedEventFeedbackEventsByUser: Record<string, Record<string, string>> = {};
-  private readonly removedEventFeedbackEventsByUser: Record<string, Record<string, true>> = {};
-  private readonly organizerEventFeedbackNotesByUser: Record<string, Record<string, string>> = {};
-  private readonly eventFeedbackUnlockDelayMs = 2 * 60 * 60 * 1000;
-  protected readonly eventFeedbackEventOverallOptions: AppTypes.EventFeedbackOption[] = APP_STATIC_DATA.eventFeedbackEventOverallOptions;
-  protected readonly eventFeedbackHostImproveOptions: AppTypes.EventFeedbackOption[] = APP_STATIC_DATA.eventFeedbackHostImproveOptions;
-  protected readonly eventFeedbackAttendeeCollabOptions: AppTypes.EventFeedbackOption[] = APP_STATIC_DATA.eventFeedbackAttendeeCollabOptions;
-  protected readonly eventFeedbackAttendeeRejoinOptions: AppTypes.EventFeedbackOption[] = APP_STATIC_DATA.eventFeedbackAttendeeRejoinOptions;
-  protected readonly eventFeedbackListFilters: Array<{ key: AppTypes.EventFeedbackListFilter; label: string; icon: string }> = APP_STATIC_DATA.eventFeedbackListFilters;
+
   private readonly profileDetailsFormByUser: Record<string, AppTypes.ProfileDetailFormGroup[]> = {};
   private readonly activitiesHeaderLoadingWindowMs = 3000;
   private readonly activitiesHeaderLoadingTickMs = 16;
@@ -574,7 +545,7 @@ export class App {
     }
   }
 
-  protected get activeUser() {
+  public get activeUser(): DemoUser {
     return this.users.find(user => user.id === this.activeUserId) ?? this.users[0];
   }
 
@@ -649,7 +620,7 @@ export class App {
     return this.invitationItemsByUser[this.activeUser.id] ?? this.invitationItemsByUser['u1'] ?? [];
   }
 
-  protected get eventItems(): EventMenuItem[] {
+  public get eventItems(): EventMenuItem[] {
     return this.eventItemsByUser[this.activeUser.id] ?? this.eventItemsByUser['u1'] ?? [];
   }
 
@@ -661,592 +632,9 @@ export class App {
     this.navigatorService.closeMenu();
   }
 
-  protected get eventFeedbackPendingCount(): number {
-    return this.eventFeedbackPendingItems.length;
-  }
 
-  protected get eventFeedbackBadge(): number {
-    return this.resolveActivityCounter('feedback', this.eventFeedbackPendingCount);
-  }
 
-  protected get eventFeedbackFeedbackedCount(): number {
-    return this.eventFeedbackFeedbackedItems.length;
-  }
-
-  protected get eventFeedbackRemovedCount(): number {
-    return this.eventFeedbackRemovedItems.length;
-  }
-
-  protected get eventFeedbackFilterLabel(): string {
-    return this.eventFeedbackListFilters.find(item => item.key === this.eventFeedbackListFilter)?.label ?? 'Pending';
-  }
-
-  protected eventFeedbackFilterIcon(): string {
-    return this.eventFeedbackListFilters.find(item => item.key === this.eventFeedbackListFilter)?.icon ?? 'schedule';
-  }
-
-  protected eventFeedbackFilterCount(filter: AppTypes.EventFeedbackListFilter): number {
-    switch (filter) {
-      case 'feedbacked':
-        return this.eventFeedbackFeedbackedCount;
-      case 'removed':
-        return this.eventFeedbackRemovedCount;
-      case 'pending':
-      default:
-        return this.eventFeedbackPendingCount;
-    }
-  }
-
-  protected eventFeedbackFilterOptionClass(filter: AppTypes.EventFeedbackListFilter): string {
-    switch (filter) {
-      case 'feedbacked':
-        return 'event-feedback-filter-option-feedbacked';
-      case 'removed':
-        return 'event-feedback-filter-option-removed';
-      case 'pending':
-      default:
-        return 'event-feedback-filter-option-pending';
-    }
-  }
-
-  protected eventFeedbackFilterBadgeClass(filter: AppTypes.EventFeedbackListFilter): string {
-    switch (filter) {
-      case 'feedbacked':
-        return 'event-feedback-filter-badge-feedbacked';
-      case 'removed':
-        return 'event-feedback-filter-badge-removed';
-      case 'pending':
-      default:
-        return 'event-feedback-filter-badge-pending';
-    }
-  }
-
-  protected get eventFeedbackVisibleItems(): AppTypes.EventFeedbackEventCard[] {
-    switch (this.eventFeedbackListFilter) {
-      case 'feedbacked':
-        return this.eventFeedbackFeedbackedItems;
-      case 'removed':
-        return this.eventFeedbackRemovedItems;
-      case 'pending':
-      default:
-        return this.eventFeedbackPendingItems;
-    }
-  }
-
-  protected get hasEventFeedbackCards(): boolean {
-    return this.eventFeedbackCards.length > 0;
-  }
-
-  protected get activeEventFeedbackCard(): AppTypes.EventFeedbackCard | null {
-    return this.eventFeedbackCards[this.eventFeedbackIndex] ?? null;
-  }
-
-  protected get eventFeedbackDotIndices(): number[] {
-    return this.eventFeedbackCards.map((_, index) => index);
-  }
-
-  protected get eventFeedbackOnLastSlide(): boolean {
-    return this.hasEventFeedbackCards && this.eventFeedbackIndex >= this.eventFeedbackCards.length - 1;
-  }
-
-  protected get eventFeedbackSlideCounterLabel(): string {
-    if (!this.hasEventFeedbackCards) {
-      return '0 / 0';
-    }
-    return `${this.eventFeedbackIndex + 1} / ${this.eventFeedbackCards.length}`;
-  }
-
-  protected openEventFeedbackPopup(event?: Event): void {
-    event?.stopPropagation();
-    this.eventFeedbackListFilter = 'pending';
-    this.showEventFeedbackFilterPicker = false;
-    this.eventFeedbackListSubmitMessage = '';
-    this.eventFeedbackCardMenuEventId = null;
-    this.selectedEventFeedbackEventId = null;
-    this.eventFeedbackCards = [];
-    this.eventFeedbackIndex = 0;
-    this.eventFeedbackSubmittedState = false;
-    this.eventFeedbackSubmitMessage = '';
-    if (this.eventFeedbackSlideAnimationTimer) {
-      clearTimeout(this.eventFeedbackSlideAnimationTimer);
-      this.eventFeedbackSlideAnimationTimer = null;
-    }
-    this.eventFeedbackSlideAnimClass = '';
-    this.eventFeedbackTouchStartX = null;
-    this.eventFeedbackTouchStartY = null;
-    this.activePopup = 'eventFeedback';
-  }
-
-  protected toggleEventFeedbackFilterPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.showEventFeedbackFilterPicker = !this.showEventFeedbackFilterPicker;
-  }
-
-  protected selectEventFeedbackListFilter(filter: AppTypes.EventFeedbackListFilter, event?: Event): void {
-    event?.stopPropagation();
-    this.eventFeedbackListFilter = filter;
-    this.showEventFeedbackFilterPicker = false;
-    this.eventFeedbackCardMenuEventId = null;
-  }
-
-  protected closeEventFeedbackFilterPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.showEventFeedbackFilterPicker = false;
-  }
-
-  protected trackByEventFeedbackItem(index: number, item: AppTypes.EventFeedbackEventCard): string {
-    return item.eventId;
-  }
-
-  protected isEventFeedbackCardMenuOpen(item: AppTypes.EventFeedbackEventCard): boolean {
-    return this.eventFeedbackCardMenuEventId === item.eventId;
-  }
-
-  protected toggleEventFeedbackCardMenu(item: AppTypes.EventFeedbackEventCard, event?: Event): void {
-    event?.stopPropagation();
-    this.showEventFeedbackFilterPicker = false;
-    this.eventFeedbackCardMenuEventId = this.eventFeedbackCardMenuEventId === item.eventId ? null : item.eventId;
-  }
-
-  protected closeEventFeedbackCardMenu(event?: Event): void {
-    event?.stopPropagation();
-    this.eventFeedbackCardMenuEventId = null;
-  }
-
-  protected isEventFeedbackStartAvailable(item: AppTypes.EventFeedbackEventCard): boolean {
-    return !item.isRemoved && item.pendingCards > 0;
-  }
-
-  protected eventFeedbackItemStatusLine(item: AppTypes.EventFeedbackEventCard): string {
-    if (item.isRemoved) {
-      return 'Removed without feedback.';
-    }
-    if (item.isFeedbacked) {
-      return 'Feedbacked.';
-    }
-    return `${item.pendingCards}/${item.totalCards} feedback item${item.totalCards === 1 ? '' : 's'} pending.`;
-  }
-
-  protected eventFeedbackCurrentEventTitle(): string {
-    return this.eventTitleById(this.selectedEventFeedbackEventId ?? this.eventFeedbackNoteForm.eventId);
-  }
-
-  protected hasEventFeedbackOrganizerNote(eventId: string): boolean {
-    return Boolean(this.organizerEventFeedbackNotesByUser[this.activeUser.id]?.[eventId]?.trim());
-  }
-
-  protected startEventFeedback(item: AppTypes.EventFeedbackEventCard, event?: Event): void {
-    event?.stopPropagation();
-    this.closeEventFeedbackCardMenu();
-    this.showEventFeedbackFilterPicker = false;
-    this.restoreEventFeedbackEvent(item.eventId);
-    this.selectedEventFeedbackEventId = item.eventId;
-    this.eventFeedbackCards = this.pendingEventFeedbackCardsForEvent(item.eventId).map(card => ({ ...card }));
-    this.eventFeedbackIndex = 0;
-    this.eventFeedbackSubmittedState = false;
-    this.eventFeedbackSubmitMessage = '';
-    if (this.eventFeedbackSlideAnimationTimer) {
-      clearTimeout(this.eventFeedbackSlideAnimationTimer);
-      this.eventFeedbackSlideAnimationTimer = null;
-    }
-    this.eventFeedbackSlideAnimClass = '';
-    this.eventFeedbackTouchStartX = null;
-    this.eventFeedbackTouchStartY = null;
-    if (this.eventFeedbackCards.length === 0) {
-      this.eventFeedbackListSubmitMessage = `${item.title} is already in Feedbacked.`;
-      this.eventFeedbackListFilter = 'feedbacked';
-      return;
-    }
-    this.stackedPopup = 'eventFeedback';
-  }
-
-  protected removeEventFeedbackItem(item: AppTypes.EventFeedbackEventCard, event?: Event): void {
-    event?.stopPropagation();
-    this.markEventFeedbackEventRemoved(item.eventId);
-    this.closeEventFeedbackCardMenu();
-    this.eventFeedbackListSubmitMessage = `${item.title} moved to Removed without feedback.`;
-    this.eventFeedbackListFilter = 'removed';
-  }
-
-  protected restoreRemovedEventFeedbackItem(item: AppTypes.EventFeedbackEventCard, event?: Event): void {
-    event?.stopPropagation();
-    this.restoreEventFeedbackEvent(item.eventId);
-    this.closeEventFeedbackCardMenu();
-    this.eventFeedbackListSubmitMessage = `${item.title} moved back to Pending.`;
-    this.eventFeedbackListFilter = 'pending';
-  }
-
-  protected openEventFeedbackNotePopup(item: AppTypes.EventFeedbackEventCard, event?: Event): void {
-    event?.stopPropagation();
-    this.closeEventFeedbackCardMenu();
-    this.showEventFeedbackFilterPicker = false;
-    this.selectedEventFeedbackEventId = item.eventId;
-    this.eventFeedbackNoteForm = {
-      eventId: item.eventId,
-      text: this.organizerEventFeedbackNotesByUser[this.activeUser.id]?.[item.eventId] ?? ''
-    };
-    this.eventFeedbackNoteSubmitted = false;
-    this.eventFeedbackNoteSubmitMessage = '';
-    this.stackedPopup = 'eventFeedbackNote';
-  }
-
-  protected canSubmitEventFeedbackNote(): boolean {
-    return this.eventFeedbackNoteForm.text.trim().length >= 8;
-  }
-
-  protected submitEventFeedbackNote(): void {
-    if (!this.canSubmitEventFeedbackNote()) {
-      return;
-    }
-    const eventId = this.eventFeedbackNoteForm.eventId;
-    const nextByUser = { ...(this.organizerEventFeedbackNotesByUser[this.activeUser.id] ?? {}) };
-    nextByUser[eventId] = this.eventFeedbackNoteForm.text.trim();
-    this.organizerEventFeedbackNotesByUser[this.activeUser.id] = nextByUser;
-    this.eventFeedbackNoteSubmitted = true;
-    this.eventFeedbackNoteSubmitMessage = `Organizer feedback saved for ${this.eventTitleById(eventId)}.`;
-    this.eventFeedbackListSubmitMessage = this.eventFeedbackNoteSubmitMessage;
-  }
-
-  protected selectEventFeedbackSlide(index: number, event?: Event): void {
-    event?.stopPropagation();
-    if (index < 0 || index >= this.eventFeedbackCards.length) {
-      return;
-    }
-    if (index === this.eventFeedbackIndex) {
-      return;
-    }
-    const direction = index > this.eventFeedbackIndex ? 'next' : 'prev';
-    this.eventFeedbackIndex = index;
-    this.playEventFeedbackSlideAnimation(direction);
-  }
-
-  protected previousEventFeedbackSlide(event?: Event): void {
-    event?.stopPropagation();
-    if (!this.hasEventFeedbackCards || this.eventFeedbackIndex <= 0) {
-      return;
-    }
-    this.eventFeedbackIndex -= 1;
-    this.playEventFeedbackSlideAnimation('prev');
-  }
-
-  protected nextEventFeedbackSlide(event?: Event): void {
-    event?.stopPropagation();
-    if (!this.hasEventFeedbackCards || this.eventFeedbackIndex >= this.eventFeedbackCards.length - 1) {
-      return;
-    }
-    this.eventFeedbackIndex += 1;
-    this.playEventFeedbackSlideAnimation('next');
-  }
-
-  protected selectEventFeedbackPrimary(optionValue: string, event?: Event): void {
-    event?.stopPropagation();
-    const card = this.activeEventFeedbackCard;
-    if (!card || !card.primaryOptions.some(option => option.value === optionValue)) {
-      return;
-    }
-    card.answerPrimary = optionValue;
-  }
-
-  protected selectEventFeedbackSecondary(optionValue: string, event?: Event): void {
-    event?.stopPropagation();
-    const card = this.activeEventFeedbackCard;
-    if (!card || !card.secondaryOptions.some(option => option.value === optionValue)) {
-      return;
-    }
-    card.answerSecondary = optionValue;
-  }
-
-  protected isEventFeedbackPrimarySelected(optionValue: string): boolean {
-    return this.activeEventFeedbackCard?.answerPrimary === optionValue;
-  }
-
-  protected isEventFeedbackSecondarySelected(optionValue: string): boolean {
-    return this.activeEventFeedbackCard?.answerSecondary === optionValue;
-  }
-
-  protected eventFeedbackOptionToneClass(card: AppTypes.EventFeedbackCard, option: AppTypes.EventFeedbackOption): string {
-    const section = option.impressionTag
-      ? this.feedbackSectionFromTag(card.kind, option.impressionTag)
-      : 'vibe';
-    return `event-feedback-option-tone-${section}`;
-  }
-
-  protected activeEventFeedbackImpactSummary(): string {
-    const card = this.activeEventFeedbackCard;
-    if (!card) {
-      return '';
-    }
-    const tags = this.selectedImpressionTagsForCard(card);
-    return tags.join(' + ');
-  }
-
-  protected onEventFeedbackTouchStart(event: TouchEvent): void {
-    if (!this.hasEventFeedbackCards) {
-      return;
-    }
-    const touch = event.touches?.[0];
-    if (!touch) {
-      return;
-    }
-    this.eventFeedbackTouchStartX = touch.clientX;
-    this.eventFeedbackTouchStartY = touch.clientY;
-  }
-
-  protected onEventFeedbackTouchEnd(event: TouchEvent): void {
-    if (!this.hasEventFeedbackCards || this.eventFeedbackTouchStartX === null || this.eventFeedbackTouchStartY === null) {
-      this.eventFeedbackTouchStartX = null;
-      this.eventFeedbackTouchStartY = null;
-      return;
-    }
-    const touch = event.changedTouches?.[0];
-    if (!touch) {
-      this.eventFeedbackTouchStartX = null;
-      this.eventFeedbackTouchStartY = null;
-      return;
-    }
-    const deltaX = touch.clientX - this.eventFeedbackTouchStartX;
-    const deltaY = touch.clientY - this.eventFeedbackTouchStartY;
-    this.eventFeedbackTouchStartX = null;
-    this.eventFeedbackTouchStartY = null;
-    if (Math.abs(deltaX) < 46 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.1) {
-      return;
-    }
-    if (deltaX < 0) {
-      this.nextEventFeedbackSlide();
-      return;
-    }
-    this.previousEventFeedbackSlide();
-  }
-
-  protected canSubmitActiveEventFeedback(): boolean {
-    const card = this.activeEventFeedbackCard;
-    if (!card) {
-      return false;
-    }
-    return !this.isSelfAttendeeFeedbackCard(card);
-  }
-
-  protected submitActiveEventFeedback(): void {
-    if (this.eventFeedbackSubmittedState) {
-      return;
-    }
-    const card = this.activeEventFeedbackCard;
-    if (!card || this.isSelfAttendeeFeedbackCard(card)) {
-      return;
-    }
-    this.eventFeedbackSubmittedState = true;
-    const eventId = card.eventId;
-    const eventTitle = this.eventTitleById(eventId);
-    const cardsToSubmit = [...this.eventFeedbackCards];
-    for (const feedbackCard of cardsToSubmit) {
-      const impressionSummary = this.selectedImpressionTagsForCard(feedbackCard);
-      this.markEventFeedbackSubmitted(feedbackCard.id);
-      this.recordSubmittedEventFeedbackAnswer(feedbackCard, impressionSummary);
-    }
-    this.markEventFeedbackEventSubmitted(eventId);
-    this.restoreEventFeedbackEvent(eventId);
-    this.eventFeedbackCards = [];
-    this.eventFeedbackIndex = 0;
-    this.eventFeedbackSubmitMessage = `Feedback submitted successfully for ${eventTitle}.`;
-    this.eventFeedbackListSubmitMessage = `${eventTitle} moved to Feedbacked.`;
-    this.eventFeedbackListFilter = 'feedbacked';
-    if (this.eventFeedbackSlideAnimationTimer) {
-      clearTimeout(this.eventFeedbackSlideAnimationTimer);
-      this.eventFeedbackSlideAnimationTimer = null;
-    }
-    this.eventFeedbackSlideAnimClass = '';
-    this.eventFeedbackTouchStartX = null;
-    this.eventFeedbackTouchStartY = null;
-  }
-
-  private playEventFeedbackSlideAnimation(direction: 'next' | 'prev'): void {
-    const nextClass = direction === 'next'
-      ? 'event-feedback-slide-enter-next'
-      : 'event-feedback-slide-enter-prev';
-    if (this.eventFeedbackSlideAnimationTimer) {
-      clearTimeout(this.eventFeedbackSlideAnimationTimer);
-      this.eventFeedbackSlideAnimationTimer = null;
-    }
-    this.eventFeedbackSlideAnimClass = '';
-    this.cdr.detectChanges();
-    this.eventFeedbackSlideAnimClass = nextClass;
-    this.eventFeedbackSlideAnimationTimer = setTimeout(() => {
-      this.eventFeedbackSlideAnimClass = '';
-      this.eventFeedbackSlideAnimationTimer = null;
-    }, 260);
-  }
-
-  private get pendingEventFeedbackCards(): AppTypes.EventFeedbackCard[] {
-    return this.buildEventFeedbackCards().filter(card => !this.isSelfAttendeeFeedbackCard(card) && !this.isEventFeedbackSubmitted(card.id));
-  }
-
-  private pendingEventFeedbackCardsForEvent(eventId: string): AppTypes.EventFeedbackCard[] {
-    return this.buildEventFeedbackCards().filter(card =>
-      card.eventId === eventId &&
-      !this.isSelfAttendeeFeedbackCard(card) &&
-      !this.isEventFeedbackSubmitted(card.id)
-    );
-  }
-
-  private get eventFeedbackAllItems(): AppTypes.EventFeedbackEventCard[] {
-    const countsByEvent = new Map<string, { pending: number; total: number }>();
-    for (const card of this.buildEventFeedbackCards()) {
-      if (this.isSelfAttendeeFeedbackCard(card)) {
-        continue;
-      }
-      const current = countsByEvent.get(card.eventId) ?? { pending: 0, total: 0 };
-      current.total += 1;
-      if (!this.isEventFeedbackSubmitted(card.id)) {
-        current.pending += 1;
-      }
-      countsByEvent.set(card.eventId, current);
-    }
-
-    const items: AppTypes.EventFeedbackEventCard[] = [];
-    const nowMs = Date.now();
-    for (const item of this.eventItems) {
-      if (item.isAdmin) {
-        continue;
-      }
-      const startMs = this.eventStartAtMs(item.id);
-      if (startMs === null || nowMs < startMs + this.eventFeedbackUnlockDelayMs) {
-        continue;
-      }
-      const counts = countsByEvent.get(item.id);
-      if (!counts || counts.total === 0) {
-        continue;
-      }
-      const isRemoved = this.isEventFeedbackEventRemoved(item.id);
-      const feedbackedAtMs = this.eventFeedbackEventSubmittedAtMs(item.id);
-      items.push({
-        eventId: item.id,
-        title: item.title,
-        subtitle: item.shortDescription,
-        timeframe: item.timeframe,
-        imageUrl: this.activityImageById[item.id] ?? `https://picsum.photos/seed/event-feedback-${item.id}/1200/700`,
-        startAtMs: startMs,
-        pendingCards: counts.pending,
-        totalCards: counts.total,
-        isRemoved,
-        isFeedbacked: !isRemoved && counts.pending === 0,
-        feedbackedAtMs
-      });
-    }
-    return items;
-  }
-
-  private get eventFeedbackPendingItems(): AppTypes.EventFeedbackEventCard[] {
-    return this.eventFeedbackAllItems
-      .filter(item => !item.isRemoved && item.pendingCards > 0)
-      .sort((a, b) => a.startAtMs - b.startAtMs);
-  }
-
-  private get eventFeedbackFeedbackedItems(): AppTypes.EventFeedbackEventCard[] {
-    return this.eventFeedbackAllItems
-      .filter(item => item.isFeedbacked)
-      .sort((a, b) => {
-        const first = a.feedbackedAtMs ?? a.startAtMs;
-        const second = b.feedbackedAtMs ?? b.startAtMs;
-        return second - first;
-      });
-  }
-
-  private get eventFeedbackRemovedItems(): AppTypes.EventFeedbackEventCard[] {
-    return this.eventFeedbackAllItems
-      .filter(item => item.isRemoved)
-      .sort((a, b) => b.startAtMs - a.startAtMs);
-  }
-
-  private isEventFeedbackSubmitted(cardId: string): boolean {
-    return Boolean(this.submittedEventFeedbackByUser[this.activeUser.id]?.[cardId]);
-  }
-
-  private markEventFeedbackSubmitted(cardId: string): void {
-    const current = { ...(this.submittedEventFeedbackByUser[this.activeUser.id] ?? {}) };
-    current[cardId] = true;
-    this.submittedEventFeedbackByUser[this.activeUser.id] = current;
-  }
-
-  private markEventFeedbackEventSubmitted(eventId: string): void {
-    const current = { ...(this.submittedEventFeedbackEventsByUser[this.activeUser.id] ?? {}) };
-    current[eventId] = new Date().toISOString();
-    this.submittedEventFeedbackEventsByUser[this.activeUser.id] = current;
-  }
-
-  private eventFeedbackEventSubmittedAtMs(eventId: string): number | null {
-    const iso = this.submittedEventFeedbackEventsByUser[this.activeUser.id]?.[eventId];
-    if (!iso) {
-      return null;
-    }
-    const ms = new Date(iso).getTime();
-    return Number.isNaN(ms) ? null : ms;
-  }
-
-  private isEventFeedbackEventRemoved(eventId: string): boolean {
-    return Boolean(this.removedEventFeedbackEventsByUser[this.activeUser.id]?.[eventId]);
-  }
-
-  private markEventFeedbackEventRemoved(eventId: string): void {
-    const current = { ...(this.removedEventFeedbackEventsByUser[this.activeUser.id] ?? {}) };
-    current[eventId] = true;
-    this.removedEventFeedbackEventsByUser[this.activeUser.id] = current;
-  }
-
-  private restoreEventFeedbackEvent(eventId: string): void {
-    const current = { ...(this.removedEventFeedbackEventsByUser[this.activeUser.id] ?? {}) };
-    delete current[eventId];
-    this.removedEventFeedbackEventsByUser[this.activeUser.id] = current;
-  }
-
-  private selectedImpressionTagsForCard(card: AppTypes.EventFeedbackCard): string[] {
-    const tags = new Set<string>();
-    const primary = card.primaryOptions.find(option => option.value === card.answerPrimary)?.impressionTag;
-    const secondary = card.secondaryOptions.find(option => option.value === card.answerSecondary)?.impressionTag;
-    if (primary) {
-      tags.add(primary);
-    }
-    if (secondary) {
-      tags.add(secondary);
-    }
-    return [...tags];
-  }
-
-  private buildEventFeedbackCards(): AppTypes.EventFeedbackCard[] {
-    return AppDemoGenerators.buildEventFeedbackCards({
-      eventItems: this.eventItems,
-      users: this.users,
-      activeUser: this.activeUser,
-      eventDatesById: this.eventDatesById,
-      activityImageById: this.activityImageById,
-      eventFeedbackUnlockDelayMs: this.eventFeedbackUnlockDelayMs,
-      eventOverallOptions: this.eventFeedbackEventOverallOptions,
-      hostImproveOptions: this.eventFeedbackHostImproveOptions,
-      attendeeCollabOptions: this.eventFeedbackAttendeeCollabOptions,
-      attendeeRejoinOptions: this.eventFeedbackAttendeeRejoinOptions
-    });
-  }
-
-  private recordSubmittedEventFeedbackAnswer(card: AppTypes.EventFeedbackCard, tags: string[]): void {
-    const byUser = { ...(this.submittedEventFeedbackAnswersByUser[this.activeUser.id] ?? {}) };
-    byUser[card.id] = {
-      cardId: card.id,
-      eventId: card.eventId,
-      kind: card.kind,
-      targetUserId: card.targetUserId ?? null,
-      targetRole: card.targetRole ?? 'Member',
-      primaryValue: card.answerPrimary,
-      secondaryValue: card.answerSecondary,
-      tags: [...tags],
-      submittedAtIso: AppUtils.toIsoDateTime(new Date())
-    };
-    this.submittedEventFeedbackAnswersByUser[this.activeUser.id] = byUser;
-  }
-
-  private isSelfAttendeeFeedbackCard(card: AppTypes.EventFeedbackCard): boolean {
-    return card.kind === 'attendee' && card.attendeeUserId === this.activeUser.id;
-  }
-
-  private eventStartAtMs(eventId: string): number | null {
+  public eventStartAtMs(eventId: string): number | null {
     const iso = this.eventDatesById[eventId];
     if (!iso) {
       return null;
@@ -1255,7 +643,7 @@ export class App {
     return Number.isNaN(value) ? null : value;
   }
 
-  private eventTitleById(eventId: string): string {
+  public eventTitleById(eventId: string): string {
     return this.eventItems.find(item => item.id === eventId)?.title ?? 'this event';
   }
 
@@ -1422,22 +810,22 @@ export class App {
   private buildEventEditorCreateDraftSource(): Record<string, unknown> {
     const draftSource: EventMenuItem | HostingMenuItem = this.eventEditorTarget === 'hosting'
       ? {
-          id: this.eventEditorDraftMembersId ?? 'draft-hosting',
-          avatar: this.activeUser.initials,
-          title: '',
-          shortDescription: '',
-          timeframe: '',
-          activity: 0
-        }
+        id: this.eventEditorDraftMembersId ?? 'draft-hosting',
+        avatar: this.activeUser.initials,
+        title: '',
+        shortDescription: '',
+        timeframe: '',
+        activity: 0
+      }
       : {
-          id: this.eventEditorDraftMembersId ?? 'draft-events',
-          avatar: this.activeUser.initials,
-          title: '',
-          shortDescription: '',
-          timeframe: '',
-          activity: 0,
-          isAdmin: true
-        };
+        id: this.eventEditorDraftMembersId ?? 'draft-events',
+        avatar: this.activeUser.initials,
+        title: '',
+        shortDescription: '',
+        timeframe: '',
+        activity: 0,
+        isAdmin: true
+      };
     return this.buildEventEditorModuleSource(draftSource);
   }
 
@@ -2215,29 +1603,29 @@ export class App {
       const accepted = index < target.accepted;
       const defaults = accepted
         ? AppDemoGenerators.toActivityMemberEntry(
-            user,
-            row,
-            rowKey,
-            this.activeUser.id,
-            {
-              status: 'accepted',
-              pendingSource: null,
-              invitedByActiveUser: false
-            },
-            APP_DEMO_DATA.activityMemberMetPlaces
-          )
+          user,
+          row,
+          rowKey,
+          this.activeUser.id,
+          {
+            status: 'accepted',
+            pendingSource: null,
+            invitedByActiveUser: false
+          },
+          APP_DEMO_DATA.activityMemberMetPlaces
+        )
         : AppDemoGenerators.toActivityMemberEntry(
-            user,
-            row,
-            rowKey,
-            this.activeUser.id,
-            {
-              status: 'pending',
-              pendingSource: 'member',
-              invitedByActiveUser: user.id === this.activeUser.id
-            },
-            APP_DEMO_DATA.activityMemberMetPlaces
-          );
+          user,
+          row,
+          rowKey,
+          this.activeUser.id,
+          {
+            status: 'pending',
+            pendingSource: 'member',
+            invitedByActiveUser: user.id === this.activeUser.id
+          },
+          APP_DEMO_DATA.activityMemberMetPlaces
+        );
       return {
         ...defaults,
         status: accepted ? ('accepted' as const) : ('pending' as const),
@@ -2869,13 +2257,13 @@ export class App {
           requests: asset.requests.map(request =>
             AppUtils.resolveAssetRequestUserId(request, this.users) === requestId
               ? {
-                  ...request,
-                  userId: this.activeUser.id,
-                  status: 'pending',
-                  note: requiresEventAdminApproval
-                    ? 'Waiting for event admin approval.'
-                    : 'Join request from sub-event assets.'
-                }
+                ...request,
+                userId: this.activeUser.id,
+                status: 'pending',
+                note: requiresEventAdminApproval
+                  ? 'Waiting for event admin approval.'
+                  : 'Join request from sub-event assets.'
+              }
               : request
           )
         };
@@ -4732,25 +4120,6 @@ export class App {
     this.subEventSupplyBringDialog = null;
     this.selectedSubEventSupplyContributionContext = null;
     this.pendingSubEventSupplyContributionDelete = null;
-    this.showEventFeedbackFilterPicker = false;
-    this.eventFeedbackCards = [];
-    this.eventFeedbackIndex = 0;
-    this.eventFeedbackListFilter = 'pending';
-    this.eventFeedbackListSubmitMessage = '';
-    this.eventFeedbackCardMenuEventId = null;
-    this.selectedEventFeedbackEventId = null;
-    this.eventFeedbackSubmittedState = false;
-    this.eventFeedbackSubmitMessage = '';
-    if (this.eventFeedbackSlideAnimationTimer) {
-      clearTimeout(this.eventFeedbackSlideAnimationTimer);
-      this.eventFeedbackSlideAnimationTimer = null;
-    }
-    this.eventFeedbackSlideAnimClass = '';
-    this.eventFeedbackTouchStartX = null;
-    this.eventFeedbackTouchStartY = null;
-    this.eventFeedbackNoteForm = { eventId: '', text: '' };
-    this.eventFeedbackNoteSubmitted = false;
-    this.eventFeedbackNoteSubmitMessage = '';
     this.eventEditorReadOnly = false;
     this.eventEditorSource = null;
     this.eventEditorInvitationId = null;
@@ -4787,23 +4156,6 @@ export class App {
     if (this.stackedPopup === 'chat') {
       this.cancelChatInitialLoad();
       this.chatHeaderProgress = 0;
-    }
-    if (this.stackedPopup === 'eventFeedback' || this.stackedPopup === 'eventFeedbackNote') {
-      this.eventFeedbackCards = [];
-      this.eventFeedbackIndex = 0;
-      this.eventFeedbackSubmittedState = false;
-      this.eventFeedbackSubmitMessage = '';
-      if (this.eventFeedbackSlideAnimationTimer) {
-        clearTimeout(this.eventFeedbackSlideAnimationTimer);
-        this.eventFeedbackSlideAnimationTimer = null;
-      }
-      this.eventFeedbackSlideAnimClass = '';
-      this.eventFeedbackTouchStartX = null;
-      this.eventFeedbackTouchStartY = null;
-      this.eventFeedbackNoteSubmitted = false;
-      this.eventFeedbackNoteSubmitMessage = '';
-      this.stackedPopup = null;
-      return;
     }
     this.inlineItemActionMenu = null;
     this.subEventMemberRolePickerUserId = null;
@@ -4937,10 +4289,6 @@ export class App {
         return 'Events';
       case 'hosting':
         return 'Hosting';
-      case 'eventFeedback':
-        return 'Event Feedback';
-      case 'eventFeedbackNote':
-        return 'Organizer Feedback';
       case 'logoutConfirm':
         return 'Kilépés';
       default:
@@ -4956,10 +4304,6 @@ export class App {
         return this.selectedInvitation?.description ?? 'Invitation';
       case 'eventExplore':
         return 'Event Explore';
-      case 'eventFeedback':
-        return `Event Feedback · ${this.eventFeedbackCurrentEventTitle()}`;
-      case 'eventFeedbackNote':
-        return `Organizer Feedback · ${this.eventFeedbackCurrentEventTitle()}`;
       case 'ticketCode':
         return 'Ticket';
       case 'ticketScanner':
@@ -5511,9 +4855,9 @@ export class App {
       subEvent,
       group: group
         ? {
-            id: group.id,
-            groupLabel: group.groupLabel
-          }
+          id: group.id,
+          groupLabel: group.groupLabel
+        }
         : null,
       assetAssignmentIds: this.eventChatResourceAssignmentIdsForSubEvent(subEvent.id),
       assetCardsByType: this.eventChatResourceCardsByTypeForSubEvent()
@@ -7326,12 +6670,12 @@ export class App {
     this.selectedActivityMembers = this.sortActivityMembersByActionTimeAsc(this.selectedActivityMembers.map(item =>
       item.id === entry.id
         ? {
-            ...item,
-            status: 'accepted',
-            pendingSource: null,
-            requestKind: null,
-            actionAtIso: nowIso
-          }
+          ...item,
+          status: 'accepted',
+          pendingSource: null,
+          requestKind: null,
+          actionAtIso: nowIso
+        }
         : item
     ));
     this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
@@ -8073,9 +7417,9 @@ export class App {
         requests: card.requests.map(member =>
           member.id === pending.memberId
             ? {
-                ...member,
-                status: 'accepted'
-              }
+              ...member,
+              status: 'accepted'
+            }
             : member
         )
       };
@@ -8659,22 +8003,22 @@ export class App {
     const canManageMembers = !this.eventEditorReadOnly && sourceIsAdmin;
     const draftSource: EventMenuItem | HostingMenuItem = isHosting
       ? {
-          id: draftId ?? 'draft-hosting',
-          avatar: this.activeUser.initials,
-          title: this.eventForm.title.trim() || 'New Event',
-          shortDescription: this.eventForm.description.trim() || 'Draft event',
-          timeframe: 'Draft',
-          activity: 0
-        }
+        id: draftId ?? 'draft-hosting',
+        avatar: this.activeUser.initials,
+        title: this.eventForm.title.trim() || 'New Event',
+        shortDescription: this.eventForm.description.trim() || 'Draft event',
+        timeframe: 'Draft',
+        activity: 0
+      }
       : {
-          id: draftId ?? 'draft-event',
-          avatar: this.activeUser.initials,
-          title: this.eventForm.title.trim() || 'New Event',
-          shortDescription: this.eventForm.description.trim() || 'Draft event',
-          timeframe: 'Draft',
-          activity: 0,
-          isAdmin: true
-        };
+        id: draftId ?? 'draft-event',
+        avatar: this.activeUser.initials,
+        title: this.eventForm.title.trim() || 'New Event',
+        shortDescription: this.eventForm.description.trim() || 'Draft event',
+        timeframe: 'Draft',
+        activity: 0,
+        isAdmin: true
+      };
     const resolvedSource = source ?? draftSource;
     const rowId = source?.id ?? draftSource.id;
     return {
@@ -8711,10 +8055,10 @@ export class App {
     const nowIso = AppUtils.toIsoDateTime(new Date());
     const mainEventAcceptedIds = isSubEventAssetMembers
       ? new Set(
-          this.mainEventMembersEntries()
-            .filter(member => member.status === 'accepted')
-            .map(member => member.userId)
-        )
+        this.mainEventMembersEntries()
+          .filter(member => member.status === 'accepted')
+          .map(member => member.userId)
+      )
       : new Set<string>();
     const additions = this.activityInviteCandidates
       .filter(candidate => selected.has(candidate.userId))

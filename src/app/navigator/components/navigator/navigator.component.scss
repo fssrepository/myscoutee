@@ -1,3 +1,26 @@
 :host {
-  display: contents;
+  display: block;
+  position: relative;
+  z-index: 9999;
+}
+
+// Ensure menu is at a baseline level
+app-navigator-menu {
+  display: block;
+  position: relative;
+  z-index: 1500;
+}
+
+// Ensure all popups are above the menu
+// (Using a shared stacking context strategy)
+app-activities-popup,
+app-event-feedback-popup,
+app-asset-popup,
+app-navigator-settings-popups,
+app-navigator-impressions-popup,
+app-profile-editor,
+app-event-members-popup {
+  display: block;
+  position: relative;
+  z-index: 2300;
 }

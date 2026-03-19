@@ -9,9 +9,14 @@
 <ng-container *ngIf="activitiesPopupComponent() as activitiesComponent">
   <ng-container *ngComponentOutlet="activitiesComponent"></ng-container>
 </ng-container>
-<ng-container *ngIf="assetPopupComponent() as assetComponent">
-  <ng-container *ngComponentOutlet="assetComponent"></ng-container>
-</ng-container>
 <ng-container *ngIf="eventEditorPopupComponent() as popupComponent">
   <ng-container *ngComponentOutlet="popupComponent"></ng-container>
 </ng-container>
+<ng-container *ngIf="eventFeedbackPopupComponent() as feedbackComponent">
+  <ng-container *ngComponentOutlet="feedbackComponent"></ng-container>
+</ng-container>
+
+<ng-container *ngIf="assetPopupComponent() as assetComponent">
+  <ng-container *ngComponentOutlet="assetComponent"></ng-container>
+</ng-container>
+

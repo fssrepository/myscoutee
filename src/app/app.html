@@ -10,7 +10,6 @@
   <div class="app-popup-backdrop" (click)="closePopupFromBackdrop($event)"></div>
   <div
     class="app-popup-panel"
-    [class.popup-panel-event-feedback]="activePopup === 'eventFeedback'"
     (click)="$event.stopPropagation()"
   >
     <button
@@ -33,45 +32,7 @@
       >
         <mat-icon>done</mat-icon>
       </button>
-      <div class="event-explore-order-picker event-feedback-filter-picker" *ngIf="activePopup === 'eventFeedback'">
-        <button
-          type="button"
-          class="popup-view-fab event-explore-order-trigger event-feedback-filter-trigger"
-          [ngClass]="eventFeedbackFilterOptionClass(eventFeedbackListFilter)"
-          (click)="toggleEventFeedbackFilterPicker($event)"
-          aria-label="Open event feedback filter"
-        >
-          <mat-icon>{{ eventFeedbackFilterIcon() }}</mat-icon>
-          <span>{{ eventFeedbackFilterLabel }}</span>
-          <span
-            class="rate-filter-count-badge rate-filter-trigger-badge event-feedback-filter-trigger-badge"
-            [ngClass]="eventFeedbackFilterBadgeClass(eventFeedbackListFilter)"
-            *ngIf="eventFeedbackFilterCount(eventFeedbackListFilter) > 0"
-          >
-            {{ eventFeedbackFilterCount(eventFeedbackListFilter) }}
-          </span>
-        </button>
-        <div class="activities-view-picker-panel event-explore-order-panel" *ngIf="showEventFeedbackFilterPicker">
-          <button
-            type="button"
-            class="activities-view-option event-feedback-filter-option"
-            *ngFor="let option of eventFeedbackListFilters"
-            [ngClass]="eventFeedbackFilterOptionClass(option.key)"
-            [class.is-active]="option.key === eventFeedbackListFilter"
-            (click)="selectEventFeedbackListFilter(option.key, $event)"
-          >
-            <mat-icon>{{ option.icon }}</mat-icon>
-            <span>{{ option.label }}</span>
-            <span
-              class="rate-filter-count-badge event-feedback-filter-option-count"
-              [ngClass]="eventFeedbackFilterBadgeClass(option.key)"
-              *ngIf="eventFeedbackFilterCount(option.key) > 0"
-            >
-              {{ eventFeedbackFilterCount(option.key) }}
-            </span>
-          </button>
-        </div>
-      </div>
+
       <button mat-icon-button class="popup-close" (click)="handlePrimaryPopupHeaderClose()" aria-label="Close">
         <mat-icon>close</mat-icon>
       </button>
@@ -104,105 +65,7 @@
         </div>
       </div>
 
-      <div *ngIf="activePopup === 'eventFeedback'" class="support-popup event-feedback-list-popup" (click)="closeEventFeedbackCardMenu(); closeEventFeedbackFilterPicker()">
-        <div class="support-submit-success" *ngIf="eventFeedbackListSubmitMessage">{{ eventFeedbackListSubmitMessage }}</div>
-        <div class="experience-card-list assets-card-list event-feedback-event-list" *ngIf="eventFeedbackVisibleItems.length > 0; else emptyEventFeedbackListState">
-          <article
-            class="experience-item-card asset-item-card event-feedback-event-card"
-            [class.is-feedbacked]="item.isFeedbacked"
-            [class.is-removed]="item.isRemoved"
-            *ngFor="let item of eventFeedbackVisibleItems; trackBy: trackByEventFeedbackItem"
-            (click)="closeEventFeedbackCardMenu()"
-          >
-            <div class="asset-card-image" [appLazyBgImage]="item.imageUrl">
-              <button
-                type="button"
-                class="asset-occupancy-badge event-feedback-start-badge"
-                [disabled]="!isEventFeedbackStartAvailable(item)"
-                (click)="startEventFeedback(item, $event)"
-                aria-label="Start event feedback"
-              >
-                <span>{{ item.isRemoved ? 'Removed' : (item.isFeedbacked ? 'Feedbacked' : 'Start Feedback') }}</span>
-              </button>
-            </div>
-            <div class="experience-item-head">
-              <span class="experience-item-icon event-feedback-leading-icon">
-                <mat-icon>{{ item.isFeedbacked ? 'task_alt' : (item.isRemoved ? 'delete_outline' : 'rate_review') }}</mat-icon>
-              </span>
-              <div class="experience-item-meta">
-                <h4>{{ item.title }}</h4>
-                <p>{{ item.subtitle }}</p>
-              </div>
-              <div class="experience-item-actions">
-                <button
-                  type="button"
-                  class="experience-action-btn experience-action-menu-trigger"
-                  [class.is-open]="isEventFeedbackCardMenuOpen(item)"
-                  (click)="toggleEventFeedbackCardMenu(item, $event)"
-                  [attr.aria-label]="isEventFeedbackCardMenuOpen(item) ? 'Close event feedback actions' : 'Open event feedback actions'"
-                >
-                  <mat-icon>{{ isEventFeedbackCardMenuOpen(item) ? 'close' : 'more_vert' }}</mat-icon>
-                </button>
-                <div
-                  class="item-action-menu"
-                  [class.is-open]="isEventFeedbackCardMenuOpen(item)"
-                  [class.item-action-menu-mobile]="isMobileView"
-                  [class.item-action-menu-desktop]="!isMobileView"
-                  (click)="$event.stopPropagation()"
-                >
-                  <div class="item-action-menu-title">{{ item.title }}</div>
-                  <button
-                    type="button"
-                    class="item-action-menu-btn"
-                    *ngIf="isEventFeedbackStartAvailable(item)"
-                    (click)="startEventFeedback(item, $event)"
-                  >
-                    <mat-icon>play_arrow</mat-icon>
-                    <span>Start Feedback</span>
-                  </button>
-                  <button
-                    type="button"
-                    class="item-action-menu-btn item-action-menu-btn-destructive"
-                    *ngIf="!item.isRemoved && !item.isFeedbacked"
-                    (click)="removeEventFeedbackItem(item, $event)"
-                  >
-                    <mat-icon>remove_circle</mat-icon>
-                    <span>Remove</span>
-                  </button>
-                  <button
-                    type="button"
-                    class="item-action-menu-btn"
-                    *ngIf="item.isRemoved"
-                    (click)="restoreRemovedEventFeedbackItem(item, $event)"
-                  >
-                    <mat-icon>restore</mat-icon>
-                    <span>Restore</span>
-                  </button>
-                  <button
-                    type="button"
-                    class="item-action-menu-btn"
-                    (click)="openEventFeedbackNotePopup(item, $event)"
-                  >
-                    <mat-icon>edit_note</mat-icon>
-                    <span>{{ hasEventFeedbackOrganizerNote(item.eventId) ? 'Edit Organizer Note' : 'Add Organizer Note' }}</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-            <p class="event-feedback-event-time">{{ item.timeframe }}</p>
-            <p class="event-feedback-event-meta">{{ eventFeedbackItemStatusLine(item) }}</p>
-          </article>
-        </div>
-      </div>
 
-      <ng-template #emptyEventFeedbackListState>
-        <article class="editor-list-card support-card event-feedback-empty-card">
-          <h4>Event Feedback</h4>
-          <p *ngIf="eventFeedbackListFilter === 'pending'">No pending events yet. New items appear about 2 hours after event start.</p>
-          <p *ngIf="eventFeedbackListFilter === 'feedbacked'">No feedbacked events yet.</p>
-          <p *ngIf="eventFeedbackListFilter === 'removed'">No removed events.</p>
-        </article>
-      </ng-template>
 
     </div>
   </div>
@@ -256,19 +119,12 @@
   <div class="app-popup-backdrop" (click)="closeStackedPopup()"></div>
   <div
     class="app-popup-panel"
-    [class.popup-panel-event-feedback]="stackedPopup === 'eventFeedback'"
     (click)="$event.stopPropagation()"
   >
     <div class="popup-header">
-      <div class="popup-title popup-title-feedback" *ngIf="stackedPopup === 'eventFeedback'; else defaultStackedTitleGeneric">
-        <h2>Event Feedback</h2>
-        <p class="popup-subtitle-activities popup-subtitle-feedback-event">{{ eventFeedbackCurrentEventTitle() }}</p>
+      <div class="popup-title">
+        <h2>{{ getStackedPopupTitle() }}</h2>
       </div>
-      <ng-template #defaultStackedTitleGeneric>
-        <div class="popup-title">
-          <h2>{{ getStackedPopupTitle() }}</h2>
-        </div>
-      </ng-template>
       <button
         type="button"
         class="popup-chat-event-btn popup-invitation-approve-btn"
@@ -278,14 +134,7 @@
       >
         <mat-icon>done</mat-icon>
       </button>
-      <button
-        type="button"
-        class="link-btn primary-btn event-feedback-header-submit-btn"
-        *ngIf="stackedPopup === 'eventFeedback' && !eventFeedbackSubmittedState && eventFeedbackOnLastSlide && activeEventFeedbackCard"
-        (click)="submitActiveEventFeedback()"
-      >
-        Submit feedback
-      </button>
+
       <button mat-icon-button class="popup-close" (click)="handleStackedPopupHeaderClose()" aria-label="Close">
         <mat-icon>close</mat-icon>
       </button>
@@ -293,7 +142,6 @@
 
     <div
       class="popup-body"
-      [class.popup-body-event-feedback]="stackedPopup === 'eventFeedback'"
     >
       <div *ngIf="stackedPopup === 'invitationActions' && selectedInvitation">
         <div class="editor-list-card">
@@ -321,168 +169,7 @@
         </div>
       </div>
 
-      <div *ngIf="stackedPopup === 'eventFeedback'" class="support-popup event-feedback-popup">
-        <ng-container *ngIf="!eventFeedbackSubmittedState; else eventFeedbackSentState">
-        <article class="editor-list-card support-card event-feedback-shell" *ngIf="activeEventFeedbackCard as card; else eventFeedbackSentState">
-          <span class="event-feedback-mobile-counter" *ngIf="hasEventFeedbackCards">{{ eventFeedbackSlideCounterLabel }}</span>
-          <div class="event-feedback-card-wrap">
-            <div
-              class="event-feedback-card"
-              [ngClass]="[card.toneClass, eventFeedbackSlideAnimClass]"
-              (touchstart)="onEventFeedbackTouchStart($event)"
-              (touchend)="onEventFeedbackTouchEnd($event)"
-            >
-              <div class="event-feedback-head" [class.event-feedback-head-member]="card.kind === 'attendee'">
-                <article
-                  *ngIf="card.kind === 'event'; else attendeeFeedbackIdentityCard"
-                  class="experience-item-card asset-item-card event-feedback-event-card event-feedback-carousel-identity-card event-feedback-carousel-identity-event"
-                >
-                  <div class="asset-card-image" [appLazyBgImage]="card.imageUrl"></div>
-                  <div class="experience-item-head">
-                    <span class="experience-item-icon event-feedback-leading-icon">
-                      <mat-icon>{{ card.icon }}</mat-icon>
-                    </span>
-                    <div class="experience-item-meta">
-                      <h4>{{ card.heading }}</h4>
-                      <p>{{ card.subheading }}</p>
-                      <p class="event-feedback-target-line" *ngIf="card.identityTitle">
-                        <mat-icon>{{ card.identityStatusIcon || 'admin_panel_settings' }}</mat-icon>
-                        <span>{{ card.identityTitle }}</span>
-                      </p>
-                    </div>
-                  </div>
-                </article>
-                <ng-template #attendeeFeedbackIdentityCard>
-                  <article
-                    class="friends-picker-card subevent-member-image-card activity-member-image-card event-feedback-carousel-identity-card event-feedback-carousel-identity-member"
-                    [style.backgroundImage]="'url(' + card.imageUrl + ')'"
-                  >
-                    <span class="member-card-status-chip" [ngClass]="card.identityStatusClass || 'member-status-member'">
-                      <mat-icon>{{ card.identityStatusIcon || 'person' }}</mat-icon>
-                    </span>
-                    <div class="friends-picker-card-meta subevent-member-card-meta activity-member-card-meta">
-                      <h4>{{ card.identityTitle || card.heading }}</h4>
-                      <p>{{ card.identitySubtitle || card.subheading }}</p>
-                    </div>
-                  </article>
-                </ng-template>
-              </div>
 
-              <div
-                class="event-feedback-form"
-                [class.event-feedback-form-event]="card.kind === 'event'"
-                [class.event-feedback-form-attendee]="card.kind === 'attendee'"
-              >
-                <div class="event-feedback-question event-feedback-question-primary">
-                  <h5>{{ card.questionPrimary }}</h5>
-                  <div class="event-feedback-options">
-                    <button
-                      type="button"
-                      class="event-feedback-option-btn"
-                      *ngFor="let option of card.primaryOptions"
-                      [class.is-selected]="isEventFeedbackPrimarySelected(option.value)"
-                      [ngClass]="eventFeedbackOptionToneClass(card, option)"
-                      (click)="selectEventFeedbackPrimary(option.value, $event)"
-                    >
-                      <mat-icon>{{ option.icon }}</mat-icon>
-                      <span>{{ option.label }}</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="event-feedback-question event-feedback-question-secondary">
-                  <h5>{{ card.questionSecondary }}</h5>
-                  <div class="event-feedback-options">
-                    <button
-                      type="button"
-                      class="event-feedback-option-btn"
-                      *ngFor="let option of card.secondaryOptions"
-                      [class.is-selected]="isEventFeedbackSecondarySelected(option.value)"
-                      [ngClass]="eventFeedbackOptionToneClass(card, option)"
-                      (click)="selectEventFeedbackSecondary(option.value, $event)"
-                    >
-                      <mat-icon>{{ option.icon }}</mat-icon>
-                      <span>{{ option.label }}</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              class="event-feedback-overlay-nav-btn event-feedback-overlay-nav-btn-prev"
-              [disabled]="eventFeedbackIndex <= 0"
-              (click)="previousEventFeedbackSlide($event)"
-              aria-label="Previous feedback card"
-            >
-              <mat-icon>chevron_left</mat-icon>
-            </button>
-            <button
-              type="button"
-              class="event-feedback-overlay-nav-btn event-feedback-overlay-nav-btn-next"
-              *ngIf="!eventFeedbackOnLastSlide"
-              (click)="nextEventFeedbackSlide($event)"
-              aria-label="Next feedback card"
-            >
-              <mat-icon>chevron_right</mat-icon>
-            </button>
-          </div>
-
-          <div class="event-feedback-carousel">
-            <div class="event-feedback-dots" role="tablist" aria-label="Feedback carousel slides">
-              <button
-                type="button"
-                class="event-feedback-dot"
-                [class.is-active]="eventFeedbackIndex === index"
-                *ngFor="let index of eventFeedbackDotIndices"
-                (click)="selectEventFeedbackSlide(index, $event)"
-                [attr.aria-label]="'Open feedback card ' + (index + 1)"
-              ></button>
-            </div>
-          </div>
-
-          <div class="support-submit-success" *ngIf="eventFeedbackSubmitMessage">{{ eventFeedbackSubmitMessage }}</div>
-        </article>
-        </ng-container>
-      </div>
-
-      <ng-template #eventFeedbackSentState>
-        <article class="editor-list-card support-card event-feedback-empty-card">
-          <div class="support-submit-success" *ngIf="eventFeedbackSubmitMessage">{{ eventFeedbackSubmitMessage }}</div>
-        </article>
-      </ng-template>
-
-      <div *ngIf="stackedPopup === 'eventFeedbackNote'" class="support-popup">
-        <article class="editor-list-card support-card" *ngIf="!eventFeedbackNoteSubmitted; else eventFeedbackNoteSubmittedState">
-          <h4>Organizer Feedback</h4>
-          <p>Add textual feedback for the event organizer of {{ eventFeedbackCurrentEventTitle() }}.</p>
-          <form class="support-form" (ngSubmit)="submitEventFeedbackNote()">
-            <label>
-              <span>Feedback</span>
-              <textarea
-                rows="4"
-                name="eventFeedbackNote"
-                [(ngModel)]="eventFeedbackNoteForm.text"
-                placeholder="What should be improved for this event next time?"
-              ></textarea>
-            </label>
-            <div class="popup-actions support-actions">
-              <button type="button" class="link-btn neutral-btn" (click)="closeStackedPopup()">Cancel</button>
-              <button type="submit" class="link-btn primary-btn" [disabled]="!canSubmitEventFeedbackNote()">Submit feedback</button>
-            </div>
-          </form>
-        </article>
-      </div>
-
-      <ng-template #eventFeedbackNoteSubmittedState>
-        <article class="editor-list-card support-card event-feedback-empty-card">
-          <div class="support-submit-success">{{ eventFeedbackNoteSubmitMessage }}</div>
-          <div class="popup-actions support-actions">
-            <button type="button" class="link-btn primary-btn" (click)="closeStackedPopup()">Done</button>
-          </div>
-        </article>
-      </ng-template>
     </div>
   </div>
 </section>
@@ -582,3 +269,5 @@
     </div>
   </div>
 </section>
+
+<app-navigator></app-navigator>

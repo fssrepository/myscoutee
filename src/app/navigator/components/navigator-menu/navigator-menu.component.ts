@@ -156,56 +156,69 @@ export class NavigatorMenuComponent {
     return resolveTraitIcon(trait);
   }
 
-  protected openProfileEditor(): void {
+  protected openProfileEditor(event?: Event): void {
+    event?.stopPropagation();
     this.navigatorService.openProfileEditor();
   }
 
-  protected openHostImpressions(): void {
+  protected openHostImpressions(event?: Event): void {
+    event?.stopPropagation();
     this.navigatorService.openImpressionsPopup();
   }
 
-  protected openMemberImpressions(): void {
+  protected openMemberImpressions(event?: Event): void {
+    event?.stopPropagation();
     this.navigatorService.openImpressionsPopup();
   }
 
-  protected openRatesShortcut(): void {
+  protected openRatesShortcut(event?: Event): void {
+    event?.stopPropagation();
     this.openActivitiesShortcut('rates');
   }
 
-  protected openChatShortcut(): void {
+  protected openChatShortcut(event?: Event): void {
+    event?.stopPropagation();
     this.openActivitiesShortcut('chats');
   }
 
-  protected openInvitationShortcut(): void {
+  protected openInvitationShortcut(event?: Event): void {
+    event?.stopPropagation();
     this.openActivitiesShortcut('events', 'invitations');
   }
 
-  protected openEventShortcut(): void {
+  protected openEventShortcut(event?: Event): void {
+    event?.stopPropagation();
     this.openActivitiesShortcut('events', 'active-events');
   }
 
-  protected openHostingShortcut(): void {
+  protected openHostingShortcut(event?: Event): void {
+    event?.stopPropagation();
     this.openActivitiesShortcut('events', 'my-events');
   }
 
-  protected openAssetCarPopup(): void {
+  protected openAssetCarPopup(event?: Event): void {
+    event?.stopPropagation();
     this.appCtx.openNavigatorAssetRequest('Car');
   }
 
-  protected openAssetAccommodationPopup(): void {
+  protected openAssetAccommodationPopup(event?: Event): void {
+    event?.stopPropagation();
     this.appCtx.openNavigatorAssetRequest('Accommodation');
   }
 
-  protected openAssetSuppliesPopup(): void {
+  protected openAssetSuppliesPopup(event?: Event): void {
+    event?.stopPropagation();
     this.appCtx.openNavigatorAssetRequest('Supplies');
   }
 
-  protected openAssetTicketsPopup(): void {
+  protected openAssetTicketsPopup(event?: Event): void {
+    event?.stopPropagation();
     this.appCtx.openNavigatorAssetRequest('Ticket');
   }
 
   protected openEventFeedbackPopup(event?: Event): void {
-    this.bindings?.openEventFeedbackPopup(event);
+    event?.stopPropagation();
+    this.appCtx.openNavigatorEventFeedbackRequest();
   }
 
   protected openReportUserFromFeedback(event?: Event): void {
