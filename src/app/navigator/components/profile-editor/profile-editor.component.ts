@@ -1,20 +1,21 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, ElementRef, HostListener, Injectable, ViewChild, effect, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, ViewChild, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { DateAdapter, MAT_DATE_FORMATS, MatNativeDateModule, NativeDateAdapter } from '@angular/material/core';
+import { DateAdapter, MAT_DATE_FORMATS, MatNativeDateModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { AlertService } from '../../../shared/alert.service';
+import { AppCalendarDateAdapter, AppCalendarDateFormats } from '../../../shared/app-calendar-date-adapter';
 import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import { PROFILE_DETAILS, type ProfileGroup } from '../../../shared/demo-data';
 import { AppContext, UsersService, type UserDto } from '../../../shared/core';
+import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../navigator.service';
 
 type ProfileEditorPanel = 'profile' | 'image' | 'values' | 'interest' | 'experience';
@@ -31,57 +32,6 @@ interface ProfileFormState {
   about: string;
 }
 
-@Injectable()
-class NavigatorProfileDateAdapter extends NativeDateAdapter {
-  override parse(value: unknown): Date | null {
-    if (typeof value === 'string') {
-      const normalized = value.trim();
-      if (!normalized) {
-        return null;
-      }
-      const match = normalized.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
-      if (match) {
-        const year = Number.parseInt(match[1], 10);
-        const month = Number.parseInt(match[2], 10);
-        const day = Number.parseInt(match[3], 10);
-        if (
-          Number.isFinite(year) &&
-          Number.isFinite(month) &&
-          Number.isFinite(day) &&
-          month >= 1 &&
-          month <= 12 &&
-          day >= 1 &&
-          day <= 31
-        ) {
-          return new Date(year, month - 1, day);
-        }
-      }
-    }
-    return super.parse(value);
-  }
-
-  override format(date: Date, displayFormat: Object): string {
-    if (displayFormat === 'ymdInput') {
-      const month = `${date.getMonth() + 1}`.padStart(2, '0');
-      const day = `${date.getDate()}`.padStart(2, '0');
-      return `${date.getFullYear()}/${month}/${day}`;
-    }
-    return super.format(date, displayFormat);
-  }
-}
-
-const NAVIGATOR_PROFILE_DATE_FORMATS = {
-  parse: {
-    dateInput: 'ymdInput'
-  },
-  display: {
-    dateInput: 'ymdInput',
-    monthYearLabel: 'MMM yyyy',
-    dateA11yLabel: 'LL',
-    monthYearA11yLabel: 'MMMM yyyy'
-  }
-};
-
 @Component({
   selector: 'app-profile-editor',
   standalone: true,
@@ -97,8 +47,8 @@ const NAVIGATOR_PROFILE_DATE_FORMATS = {
     MatSelectModule
   ],
   providers: [
-    { provide: DateAdapter, useClass: NavigatorProfileDateAdapter },
-    { provide: MAT_DATE_FORMATS, useValue: NAVIGATOR_PROFILE_DATE_FORMATS }
+    { provide: DateAdapter, useClass: AppCalendarDateAdapter },
+    { provide: MAT_DATE_FORMATS, useValue: AppCalendarDateFormats.dateOnly }
   ],
   templateUrl: './profile-editor.component.html',
   styleUrl: './profile-editor.component.scss'
@@ -106,7 +56,7 @@ const NAVIGATOR_PROFILE_DATE_FORMATS = {
 export class ProfileEditorComponent {
   @ViewChild('slotImageInput') private slotImageInput?: ElementRef<HTMLInputElement>;
 
-  private readonly alertService = inject(AlertService);
+  private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly appCtx = inject(AppContext);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly navigatorService = inject(NavigatorService);
@@ -1813,12 +1763,18 @@ export class ProfileEditorComponent {
     }
     const uploadResult = await this.usersService.uploadUserProfileImage(userId, file, slotIndex);
     if (!uploadResult.uploaded) {
-      this.alertService.open('Unable to upload image');
+      this.confirmationDialogService.openInfo('Unable to upload image', {
+        title: 'Upload failed',
+        confirmTone: 'neutral'
+      });
       return;
     }
     const verifiedImageUrl = await this.reloadUploadedImageUrl(userId, slotIndex, uploadResult.imageUrl);
     if (!verifiedImageUrl) {
-      this.alertService.open('Image uploaded but profile refresh failed');
+      this.confirmationDialogService.openInfo('Image uploaded but profile refresh failed', {
+        title: 'Upload incomplete',
+        confirmTone: 'neutral'
+      });
       return;
     }
     this.revokeObjectUrl(previousImage);
@@ -1890,7 +1846,10 @@ export class ProfileEditorComponent {
     this.pushProfileUserToContextAndLegacyMirror(user);
     void this.usersService.saveUserProfile(this.cloneUser(user));
     if (showAlert) {
-      this.alertService.open('Profile saved');
+      this.confirmationDialogService.openInfo('Profile saved', {
+        title: 'Profile updated',
+        confirmTone: 'neutral'
+      });
     }
   }
 
@@ -1898,7 +1857,7 @@ export class ProfileEditorComponent {
     const normalized = this.cloneUser(user);
     this.profileUser = normalized;
     this.appCtx.setUserProfile(normalized);
-    this.navigatorService.bindings()?.syncHydratedUser?.(this.cloneUser(normalized));
+    this.navigatorService.syncHydratedUser(this.cloneUser(normalized));
   }
 
   private cloneUser(user: UserDto): UserDto {

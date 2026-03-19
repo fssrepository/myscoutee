@@ -1,0 +1,27 @@
+<section class="confirmation-dialog" *ngIf="dialog() as state">
+  <div class="confirmation-dialog-backdrop" (click)="closeFromBackdrop($event)"></div>
+  <div class="confirmation-dialog-panel" (click)="$event.stopPropagation()">
+    <h3>{{ state.title }}</h3>
+    <p *ngIf="state.message">{{ state.message }}</p>
+    <div class="confirmation-dialog-actions" [class.confirmation-dialog-actions-single]="!state.cancelLabel">
+      <button
+        *ngIf="state.cancelLabel"
+        type="button"
+        class="confirmation-dialog-btn confirmation-dialog-cancel-btn"
+        (click)="cancel($event)"
+      >
+        {{ state.cancelLabel }}
+      </button>
+      <button
+        type="button"
+        class="confirmation-dialog-btn confirmation-dialog-confirm-btn"
+        [class.tone-accent]="state.confirmTone === 'accent'"
+        [class.tone-danger]="state.confirmTone === 'danger'"
+        [class.tone-neutral]="state.confirmTone === 'neutral'"
+        (click)="confirm($event)"
+      >
+        {{ state.confirmLabel }}
+      </button>
+    </div>
+  </div>
+</section>

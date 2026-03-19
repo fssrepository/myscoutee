@@ -16,7 +16,7 @@ import {
   resolveTraitIcon,
   resolveTraitToneClass
 } from '../../navigator-presenters';
-import { NavigatorBindings, NavigatorService } from '../../navigator.service';
+import { NavigatorService } from '../../navigator.service';
 import { NavigatorSettingsMenuComponent } from '../navigator-settings-menu/navigator-settings-menu.component';
 
 interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
@@ -76,10 +76,6 @@ export class NavigatorMenuComponent {
     };
   });
   protected readonly menuUiState = this.navigatorService.menuUiState;
-
-  protected get bindings(): NavigatorBindings | null {
-    return this.navigatorService.bindings();
-  }
 
   @HostListener('document:click', ['$event'])
   protected onDocumentClick(event: MouseEvent): void {

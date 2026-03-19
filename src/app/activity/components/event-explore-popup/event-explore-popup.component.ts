@@ -12,7 +12,6 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
-import { AlertService } from '../../../shared/alert.service';
 import type { ActivityMemberOwnerRef, EventExploreFeedFilters } from '../../../shared/core/base/models';
 import { APP_DEMO_DATA } from '../../../shared/demo-data';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
@@ -39,6 +38,7 @@ import {
   type SmartListItemTemplateContext,
   type SmartListStateChange
 } from '../../../shared/ui';
+import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../../navigator';
 import { ActivitiesDbContextService } from '../../services/activities-db-context.service';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
@@ -65,7 +65,7 @@ export class EventExplorePopupComponent {
   private readonly gameService = inject(GameService);
   private readonly usersService = inject(UsersService);
   protected readonly navigatorService = inject(NavigatorService);
-  protected readonly alertService = inject(AlertService);
+  private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly appCtx = inject(AppContext);
 
   protected readonly eventExploreOrderOptions = APP_DEMO_DATA.eventExploreOrderOptions;
@@ -466,8 +466,35 @@ export class EventExplorePopupComponent {
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): void {
     this.stopDomEvent(event);
-    this.alertService.open(`Join request for ${record.title} is ready for backend wiring.`);
-    this.cdr.markForCheck();
+    if (!this.isEventExploreOpenEvent(record)) {
+      return;
+    }
+    const activeUserId = this.activeUserId.trim();
+    if (!activeUserId) {
+      return;
+    }
+    if (record.creatorUserId === activeUserId) {
+      this.confirmationDialogService.openInfo(`You already host ${record.title}.`, {
+        title: 'Already hosting',
+        confirmTone: 'neutral'
+      });
+      return;
+    }
+    if (this.hasTrackedMembership(record, activeUserId)) {
+      this.confirmationDialogService.openInfo(`A membership entry already exists for ${record.title}.`, {
+        title: 'Already requested',
+        confirmTone: 'neutral'
+      });
+      return;
+    }
+    this.confirmationDialogService.open({
+      title: 'Join this event?',
+      message: record.title,
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Join',
+      confirmTone: 'accent',
+      onConfirm: () => this.submitEventExploreJoinRequest(record)
+    });
   }
 
   protected openHostImpressions(
@@ -611,6 +638,49 @@ export class EventExplorePopupComponent {
     return entries;
   }
 
+  private hasTrackedMembership(record: DemoEventRecord, userId: string): boolean {
+    if (record.acceptedMemberUserIds.includes(userId) || record.pendingMemberUserIds.includes(userId)) {
+      return true;
+    }
+    return this.activityMembersService.peekMembersByOwner(this.eventMembersOwner(record))
+      .some(member => member.userId === userId);
+  }
+
+  private async submitEventExploreJoinRequest(record: DemoEventRecord): Promise<void> {
+    const activeUserId = this.activeUserId.trim();
+    if (!activeUserId) {
+      return;
+    }
+    const owner = this.eventMembersOwner(record);
+    const loadedMembers = await this.activityMembersService.queryMembersByOwner(owner);
+    const existingMembers = loadedMembers.length > 0 ? loadedMembers : this.buildMemberEntries(record);
+    const existingEntry = existingMembers.find(member => member.userId === activeUserId);
+    if (existingEntry) {
+      const title = existingEntry.status === 'accepted' ? 'Already joined' : 'Already requested';
+      const message = existingEntry.status === 'accepted'
+        ? `You are already part of ${record.title}.`
+        : `A join request is already pending for ${record.title}.`;
+      this.confirmationDialogService.openInfo(message, {
+        title,
+        confirmTone: 'neutral'
+      });
+      return;
+    }
+    const nextMembers = this.sortMembersByActionTimeDesc([
+      ...existingMembers,
+      this.buildJoinRequestEntry(record)
+    ]);
+    await this.activityMembersService.replaceMembersByOwner(owner, nextMembers, record.capacityTotal);
+    if (this.selectedMembersRecord?.id === record.id) {
+      this.selectedMembers = nextMembers;
+    }
+    this.confirmationDialogService.openInfo(`Join request sent for ${record.title}.`, {
+      title: 'Join request sent',
+      confirmTone: 'neutral'
+    });
+    this.cdr.markForCheck();
+  }
+
   private ensureMemberUserIds(
     sourceUserIds: readonly string[],
     count: number,
@@ -676,6 +746,25 @@ export class EventExplorePopupComponent {
         profileStatus: 'public',
         activities: { game: 0, chat: 0, invitations: 0, events: 0, hosting: 0 }
       };
+  }
+
+  private buildJoinRequestEntry(record: DemoEventRecord): AppTypes.ActivityMemberEntry {
+    const user = this.resolveUser(this.activeUserId, record);
+    const row = EventExploreBuilder.buildActivityRow(record);
+    const entry = AppDemoGenerators.toActivityMemberEntry(
+      user,
+      row,
+      `${row.type}:${row.id}`,
+      record.creatorUserId,
+      { status: 'pending', pendingSource: 'member', invitedByActiveUser: false },
+      APP_DEMO_DATA.activityMemberMetPlaces
+    );
+    return {
+      ...entry,
+      role: 'Member',
+      requestKind: 'join',
+      statusText: 'Waiting for admin approval.'
+    };
   }
 
   private sortMembersByActionTimeDesc(entries: readonly AppTypes.ActivityMemberEntry[]): AppTypes.ActivityMemberEntry[] {

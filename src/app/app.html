@@ -6,48 +6,4 @@
   </div>
 </main>
 
-<section class="logout-confirm" *ngIf="activePopup === 'logoutConfirm'">
-  <div class="logout-confirm-backdrop" (click)="closePopupFromBackdrop($event)"></div>
-  <div class="logout-confirm-panel" (click)="$event.stopPropagation()">
-    <h3>Biztosan kilép?</h3>
-    <p>{{ activeUser.name }}</p>
-    <div class="logout-confirm-actions">
-      <button mat-stroked-button type="button" (click)="closePopup()">Mégsem</button>
-      <button mat-raised-button color="warn" class="logout-btn" type="button" (click)="confirmLogout()">Kilépés</button>
-    </div>
-  </div>
-</section>
-
-<section class="logout-confirm" *ngIf="activePopup === 'deleteAccountConfirm'">
-  <div class="logout-confirm-backdrop" (click)="closePopupFromBackdrop($event)"></div>
-  <div class="logout-confirm-panel" (click)="$event.stopPropagation()">
-    <h3>Delete account?</h3>
-    <p>{{ activeUser.name }}</p>
-    <div class="logout-confirm-actions">
-      <button mat-stroked-button type="button" (click)="closePopup()">Cancel</button>
-      <button type="button" class="delete-account-confirm-btn" (click)="confirmDeleteAccount()">Delete</button>
-    </div>
-  </div>
-</section>
-
-<section class="alert-popup" *ngIf="alertService.message() as message">
-  <div class="alert-popup-backdrop" (click)="alertService.close()"></div>
-  <div class="alert-popup-panel" (click)="$event.stopPropagation()">
-    <div class="popup-header">
-      <div class="popup-title">
-        <h2>Értesítés</h2>
-      </div>
-      <button mat-icon-button class="popup-close" (click)="alertService.close()" aria-label="Bezárás">
-        <mat-icon>close</mat-icon>
-      </button>
-    </div>
-    <div class="popup-body">
-      <p>{{ message }}</p>
-    </div>
-    <div class="alert-actions">
-      <button mat-stroked-button type="button" (click)="alertService.close()">Rendben</button>
-    </div>
-  </div>
-</section>
-
 <app-navigator></app-navigator>

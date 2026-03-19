@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { NavigatorBindings, NavigatorService, type NavigatorSettingsPopup } from '../../navigator.service';
+import { NavigatorService, type NavigatorSettingsPopup } from '../../navigator.service';
 
 @Component({
   selector: 'app-navigator-settings-menu',
@@ -13,8 +13,6 @@ import { NavigatorBindings, NavigatorService, type NavigatorSettingsPopup } from
 export class NavigatorSettingsMenuComponent {
   private readonly navigatorService = inject(NavigatorService);
 
-  protected readonly bindings = computed<NavigatorBindings | null>(() => this.navigatorService.bindings());
-
   protected openPopup(popup: NavigatorSettingsPopup, event: Event): void {
     event.stopPropagation();
     this.navigatorService.openSettingsPopup(popup);
@@ -23,13 +21,13 @@ export class NavigatorSettingsMenuComponent {
   protected openDeleteAccountConfirm(event: Event): void {
     event.stopPropagation();
     this.navigatorService.closeSettingsMenu();
-    this.bindings()?.openDeleteAccountConfirm();
+    this.navigatorService.openDeleteAccountConfirm();
   }
 
   protected openLogoutConfirm(event: Event): void {
     event.stopPropagation();
     this.navigatorService.closeSettingsMenu();
-    this.bindings()?.openLogoutConfirm();
+    this.navigatorService.openLogoutConfirm();
   }
 
   protected closeMenu(event: Event): void {

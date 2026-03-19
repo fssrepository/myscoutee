@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, Type, ViewEncapsulation, effect, inject, signal } from '@angular/core';
+import { Component, HostListener, Type, effect, inject, signal } from '@angular/core';
 import { AssetPopupService } from '../../../asset/asset-popup.service';
 import { OwnedAssetsPopupService } from '../../../asset/owned-assets-popup.service';
 import { ActivitiesDbContextService } from '../../../activity/services/activities-db-context.service';
 import { EventFeedbackPopupService } from '../../../activity/event-feedback-popup.service';
 import { EventEditorService } from '../../../shared/event-editor.service';
 import { AppContext } from '../../../shared/core';
+import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { AvatarBtnComponent } from '../avatar-btn/avatar-btn.component';
 import { NavigatorImpressionsPopupComponent } from '../navigator-impressions-popup/navigator-impressions-popup.component';
 import { NavigatorMenuComponent } from '../navigator-menu/navigator-menu.component';
@@ -26,6 +27,7 @@ import { SubEventResourcePopupService } from '../../../activity/services/sub-eve
     NavigatorMenuComponent,
     NavigatorSettingsPopupsComponent,
     NavigatorImpressionsPopupComponent,
+    ConfirmationDialogComponent,
     ProfileEditorComponent,
     EventMembersPopupComponent,
     EventResourcePopupComponent,
@@ -112,10 +114,19 @@ export class NavigatorComponent {
         return;
       }
       this.lastHandledEventFeedbackRequestMs = request.updatedMs;
-      this.eventFeedbackPopupService.openPopup();
       this.appCtx.clearNavigatorEventFeedbackRequest();
-      void this.ensureEventFeedbackPopupLoaded();
+      void this.openEventFeedbackPopupFromNavigatorRequest();
     }, { allowSignalWrites: true });
+  }
+
+  @HostListener('window:online')
+  protected onWindowOnline(): void {
+    this.appCtx.setOnlineState(true);
+  }
+
+  @HostListener('window:offline')
+  protected onWindowOffline(): void {
+    this.appCtx.setOnlineState(false);
   }
 
   private async ensureEventEditorPopupLoaded(): Promise<void> {
@@ -148,6 +159,11 @@ export class NavigatorComponent {
     }
     const module = await import('../../../activity/components/event-feedback-popup/event-feedback-popup.component');
     this.eventFeedbackPopupComponentRef.set(module.EventFeedbackPopupComponent);
+  }
+
+  private async openEventFeedbackPopupFromNavigatorRequest(): Promise<void> {
+    await this.ensureEventFeedbackPopupLoaded();
+    this.eventFeedbackPopupService.openPopup();
   }
 
   @HostListener('window:openFeaturePopup', ['$event'])

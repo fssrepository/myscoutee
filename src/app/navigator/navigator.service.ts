@@ -1,4 +1,5 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import {
   AppContext,
   SessionService,
@@ -8,6 +9,7 @@ import {
   type UserImpressionsSectionDto,
   type UserRealtimeLongPollResponseDto
 } from '../shared/core';
+import { ConfirmationDialogService } from '../shared/ui/services/confirmation-dialog.service';
 
 export interface NavigatorMenuUiState {
   open: boolean;
@@ -18,8 +20,6 @@ export type NavigatorSettingsPopup = 'help' | 'feedback' | 'privacy' | 'report-u
 
 export interface NavigatorBindings {
   syncHydratedUser?(user: UserDto): void;
-  openDeleteAccountConfirm(): void;
-  openLogoutConfirm(): void;
 }
 
 @Injectable({
@@ -32,6 +32,8 @@ export class NavigatorService {
   private readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
+  private readonly router = inject(Router);
+  private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly bindingsRef = signal<NavigatorBindings | null>(null);
   private readonly hydrationRequestKeyRef = signal('');
   private readonly menuOpenRef = signal(false);
@@ -135,9 +137,13 @@ export class NavigatorService {
       return null;
     }
 
-    this.syncHydratedUserIntoAppContext(loadedUser);
-    this.bindingsRef()?.syncHydratedUser?.(loadedUser);
+    this.syncHydratedUser(loadedUser);
     return loadedUser;
+  }
+
+  syncHydratedUser(user: UserDto): void {
+    this.syncHydratedUserIntoAppContext(user);
+    this.bindingsRef()?.syncHydratedUser?.(user);
   }
 
   clearHydrationState(): void {
@@ -198,6 +204,47 @@ export class NavigatorService {
       void this.usersService.loadUserById(normalizedUserId);
     }
     this.impressionsPopupOpenRef.set(true);
+  }
+
+  openDeleteAccountConfirm(): void {
+    const activeUserName = this.appCtx.activeUserProfile()?.name?.trim() || 'this account';
+    this.confirmationDialogService.open({
+      title: 'Delete account?',
+      message: activeUserName,
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Delete',
+      confirmTone: 'danger',
+      onConfirm: () => {
+        this.closeMenu();
+        this.confirmationDialogService.openInfo(
+          'Delete account flow is ready for backend wiring.',
+          {
+            title: 'Delete account',
+            confirmLabel: 'OK',
+            confirmTone: 'neutral'
+          }
+        );
+      }
+    });
+  }
+
+  openLogoutConfirm(): void {
+    const activeUserName = this.appCtx.activeUserProfile()?.name?.trim() || '';
+    this.confirmationDialogService.open({
+      title: 'Biztosan kilép?',
+      message: activeUserName,
+      cancelLabel: 'Mégsem',
+      confirmLabel: 'Kilépés',
+      confirmTone: 'accent',
+      onConfirm: async () => {
+        this.closeMenu();
+        this.closeSettingsPopup();
+        this.closeProfileEditor();
+        this.closeImpressionsPopup();
+        this.clearHydratedUser();
+        await this.sessionService.logout().finally(() => this.router.navigate(['/entry']));
+      }
+    });
   }
 
   closeImpressionsPopup(): void {

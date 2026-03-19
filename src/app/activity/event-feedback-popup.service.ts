@@ -1,22 +1,30 @@
-import { ChangeDetectorRef, Injectable, NgZone, inject, signal, computed } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 import type * as AppTypes from '../shared/core/base/models';
 import { AppUtils } from '../shared/app-utils';
 import { APP_STATIC_DATA } from '../shared/app-static-data';
 import { AppDemoGenerators } from '../shared/app-demo-generators';
-import { AppContext } from '../shared/core';
-import { EventFeedbackPopupHost } from './event-feedback-popup.host';
+import type { UserDto } from '../shared/core';
+import type { EventMenuItem } from '../shared/demo-data';
+
+export interface EventFeedbackPopupSource {
+  eventItems: EventMenuItem[];
+  users: UserDto[];
+  activeUser: UserDto;
+  eventDatesById: Record<string, string>;
+  activityImageById: Record<string, string>;
+  eventStartAtMs(eventId: string): number | null;
+  eventTitleById(eventId: string): string;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class EventFeedbackPopupService {
-  private readonly appCtx = inject(AppContext);
   private readonly eventFeedbackUnlockDelayMs = 2 * 60 * 60 * 1000;
+  private readonly sourceRef = signal<EventFeedbackPopupSource | null>(null);
 
-  private host: EventFeedbackPopupHost | null = null;
-
-  public registerHost(host: EventFeedbackPopupHost): void {
-    this.host = host;
+  public registerSource(source: EventFeedbackPopupSource | null): void {
+    this.sourceRef.set(source);
   }
 
   public readonly isPopupOpen = signal<boolean>(false);
@@ -131,11 +139,11 @@ export class EventFeedbackPopupService {
 
   public eventFeedbackCurrentEventTitle(): string {
     const eventId = this.selectedEventFeedbackEventId() ?? this.eventFeedbackNoteForm().eventId;
-    return this.host?.eventTitleById(eventId) ?? 'this event';
+    return this.sourceRef()?.eventTitleById(eventId) ?? 'this event';
   }
 
   public hasEventFeedbackOrganizerNote(eventId: string): boolean {
-    const user = this.host?.activeUser;
+    const user = this.sourceRef()?.activeUser;
     if (!user) return false;
     return Boolean(this.organizerEventFeedbackNotesByUser()[user.id]?.[eventId]?.trim());
   }
@@ -193,7 +201,7 @@ export class EventFeedbackPopupService {
     this.showEventFeedbackFilterPicker.set(false);
     this.selectedEventFeedbackEventId.set(item.eventId);
     
-    const user = this.host?.activeUser;
+    const user = this.sourceRef()?.activeUser;
     this.eventFeedbackNoteForm.set({
       eventId: item.eventId,
       text: user ? (this.organizerEventFeedbackNotesByUser()[user.id]?.[item.eventId] ?? '') : ''
@@ -213,7 +221,7 @@ export class EventFeedbackPopupService {
     if (!this.canSubmitEventFeedbackNote()) {
       return;
     }
-    const user = this.host?.activeUser;
+    const user = this.sourceRef()?.activeUser;
     if (!user) return;
     
     const noteForm = this.eventFeedbackNoteForm();
@@ -226,7 +234,7 @@ export class EventFeedbackPopupService {
     });
     
     this.eventFeedbackNoteSubmitted.set(true);
-    const msg = `Organizer feedback saved for ${this.host?.eventTitleById(eventId)}.`;
+    const msg = `Organizer feedback saved for ${this.sourceRef()?.eventTitleById(eventId)}.`;
     this.eventFeedbackNoteSubmitMessage.set(msg);
     this.eventFeedbackListSubmitMessage.set(msg);
   }
@@ -331,7 +339,7 @@ export class EventFeedbackPopupService {
     }
     this.eventFeedbackSubmittedState.set(true);
     const eventId = card.eventId;
-    const eventTitle = this.host?.eventTitleById(eventId) ?? '';
+    const eventTitle = this.sourceRef()?.eventTitleById(eventId) ?? '';
     const cardsToSubmit = [...this.eventFeedbackCards()];
     for (const feedbackCard of cardsToSubmit) {
       const impressionSummary = this.selectedImpressionTagsForCard(feedbackCard);
@@ -479,13 +487,14 @@ export class EventFeedbackPopupService {
   // --- Internal Data Helpers ---
   
   private buildEventFeedbackCardsData(): AppTypes.EventFeedbackCard[] {
-    if (!this.host) return [];
+    const source = this.sourceRef();
+    if (!source) return [];
     return AppDemoGenerators.buildEventFeedbackCards({
-      eventItems: this.host.eventItems,
-      users: this.host.users,
-      activeUser: this.host.activeUser,
-      eventDatesById: this.host.eventDatesById,
-      activityImageById: this.host.activityImageById,
+      eventItems: source.eventItems,
+      users: source.users,
+      activeUser: source.activeUser,
+      eventDatesById: source.eventDatesById,
+      activityImageById: source.activityImageById,
       eventFeedbackUnlockDelayMs: this.eventFeedbackUnlockDelayMs,
       eventOverallOptions: this.eventFeedbackEventOverallOptions,
       hostImproveOptions: this.eventFeedbackHostImproveOptions,
@@ -503,18 +512,18 @@ export class EventFeedbackPopupService {
   }
 
   private isSelfAttendeeFeedbackCard(card: AppTypes.EventFeedbackCard): boolean {
-    const user = this.host?.activeUser;
+    const user = this.sourceRef()?.activeUser;
     return card.kind === 'attendee' && card.attendeeUserId === user?.id;
   }
 
   private isEventFeedbackSubmitted(cardId: string): boolean {
-    const user = this.host?.activeUser;
+    const user = this.sourceRef()?.activeUser;
     if (!user) return false;
     return Boolean(this.submittedEventFeedbackByUser()[user.id]?.[cardId]);
   }
 
   private markEventFeedbackSubmitted(cardId: string): void {
-    const user = this.host?.activeUser;
+    const user = this.sourceRef()?.activeUser;
     if (!user) return;
     this.submittedEventFeedbackByUser.update(state => {
       const current = { ...(state[user.id] ?? {}) };
@@ -524,7 +533,7 @@ export class EventFeedbackPopupService {
   }
 
   private markEventFeedbackEventSubmitted(eventId: string): void {
-    const user = this.host?.activeUser;
+    const user = this.sourceRef()?.activeUser;
     if (!user) return;
     this.submittedEventFeedbackEventsByUser.update(state => {
       const current = { ...(state[user.id] ?? {}) };
@@ -534,7 +543,7 @@ export class EventFeedbackPopupService {
   }
 
   private eventFeedbackEventSubmittedAtMs(eventId: string): number | null {
-    const user = this.host?.activeUser;
+    const user = this.sourceRef()?.activeUser;
     if (!user) return null;
     const iso = this.submittedEventFeedbackEventsByUser()[user.id]?.[eventId];
     if (!iso) return null;
@@ -543,13 +552,13 @@ export class EventFeedbackPopupService {
   }
 
   private isEventFeedbackEventRemoved(eventId: string): boolean {
-    const user = this.host?.activeUser;
+    const user = this.sourceRef()?.activeUser;
     if (!user) return false;
     return Boolean(this.removedEventFeedbackEventsByUser()[user.id]?.[eventId]);
   }
 
   private markEventFeedbackEventRemoved(eventId: string): void {
-    const user = this.host?.activeUser;
+    const user = this.sourceRef()?.activeUser;
     if (!user) return;
     this.removedEventFeedbackEventsByUser.update(state => {
       const current = { ...(state[user.id] ?? {}) };
@@ -559,7 +568,7 @@ export class EventFeedbackPopupService {
   }
 
   private restoreEventFeedbackEvent(eventId: string): void {
-    const user = this.host?.activeUser;
+    const user = this.sourceRef()?.activeUser;
     if (!user) return;
     this.removedEventFeedbackEventsByUser.update(state => {
       const current = { ...(state[user.id] ?? {}) };
@@ -578,7 +587,7 @@ export class EventFeedbackPopupService {
   }
 
   private recordSubmittedEventFeedbackAnswer(card: AppTypes.EventFeedbackCard, tags: string[]): void {
-    const user = this.host?.activeUser;
+    const user = this.sourceRef()?.activeUser;
     if (!user) return;
     this.submittedEventFeedbackAnswersByUser.update(state => {
       const byUser = { ...(state[user.id] ?? {}) };
@@ -598,7 +607,8 @@ export class EventFeedbackPopupService {
   }
 
   public readonly eventFeedbackAllItems = computed(() => {
-    if (!this.host) return [];
+    const source = this.sourceRef();
+    if (!source) return [];
     const countsByEvent = new Map<string, { pending: number; total: number }>();
     for (const card of this.buildEventFeedbackCardsData()) {
       if (this.isSelfAttendeeFeedbackCard(card)) continue;
@@ -610,9 +620,9 @@ export class EventFeedbackPopupService {
 
     const items: AppTypes.EventFeedbackEventCard[] = [];
     const nowMs = Date.now();
-    for (const item of this.host.eventItems) {
+    for (const item of source.eventItems) {
       if (item.isAdmin) continue;
-      const startMs = this.host.eventStartAtMs(item.id);
+      const startMs = source.eventStartAtMs(item.id);
       if (startMs === null || nowMs < startMs + this.eventFeedbackUnlockDelayMs) continue;
       
       const counts = countsByEvent.get(item.id);
@@ -625,7 +635,7 @@ export class EventFeedbackPopupService {
         title: item.title,
         subtitle: item.shortDescription,
         timeframe: item.timeframe,
-        imageUrl: this.host.activityImageById[item.id] ?? `https://picsum.photos/seed/event-feedback-${item.id}/1200/700`,
+        imageUrl: source.activityImageById[item.id] ?? `https://picsum.photos/seed/event-feedback-${item.id}/1200/700`,
         startAtMs: startMs,
         pendingCards: counts.pending,
         totalCards: counts.total,
