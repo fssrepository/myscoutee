@@ -1,10 +1,12 @@
 import type { ActivityMemberRole } from './activity-member.model';
+import type { ActivityListRow } from './activities-ui.model';
 
 export type AssetType = 'Car' | 'Accommodation' | 'Supplies';
 export type AssetFilterType = AssetType | 'Ticket';
 export type SubEventResourceFilter = 'Members' | AssetType;
 export type AssetRequestAction = 'accept' | 'remove';
 export type AssetRequestStatus = 'pending' | 'accepted';
+export type AssetTicketOrder = 'upcoming' | 'past';
 
 export interface AssetMemberRequest {
   id: string;
@@ -95,3 +97,14 @@ export interface TicketScanPayload {
   issuedAtIso: string;
 }
 
+export interface AssetTicketPageQuery {
+  userId: string;
+  page: number;
+  pageSize: number;
+  order: AssetTicketOrder;
+}
+
+export interface AssetTicketPageResult {
+  items: ActivityListRow[];
+  total: number;
+}

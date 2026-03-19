@@ -2,7 +2,7 @@
   <section class="app-popup" *ngIf="ownedAssets.isPopupOpen()">
     <div class="app-popup-backdrop" (click)="ownedAssets.closePopup()"></div>
     <div class="app-popup-panel popup-panel-assets" (click)="$event.stopPropagation()">
-      <div class="popup-header">
+      <div class="popup-header" [class.popup-header-with-progress]="ownedAssets.isTicketPopup()">
         <div class="popup-title">
           <h2>{{ ownedAssets.popupTitle() }}</h2>
           <p class="popup-subtitle-activities" *ngIf="ownedAssets.isTicketPopup()">{{ assetPopup.ticketHeaderSummary() }}</p>
@@ -84,67 +84,14 @@
             </button>
           </div>
 
-          <div
-            class="experience-card-list assets-card-list activities-scroll-list activities-scroll-list-event-snap tickets-scroll-list"
+          <app-smart-list
             *ngIf="ownedAssets.isTicketPopup(); else defaultAssetCardList"
-            #ticketScroll
-            (scroll)="assetPopup.onTicketScroll($event)"
-          >
-            <div class="activities-sticky-header">{{ assetPopup.ticketStickyHeader() }}</div>
-
-            <ng-container *ngFor="let group of assetPopup.groupedTicketRows(); let groupIndex = index; trackBy: trackByActivityGroup">
-              <div
-                class="smart-list__group-marker"
-                *ngIf="assetPopup.shouldShowTicketGroupMarker(groupIndex)"
-                [attr.data-group-label]="group.label"
-              >
-                {{ group.label }}
-              </div>
-
-              <article
-                class="experience-item-card asset-item-card activities-row-item ticket-row-item"
-                [attr.data-group-label]="group.label"
-                *ngFor="let row of group.rows; trackBy: trackByActivityRow"
-              >
-                <div class="asset-card-image" [appLazyBgImage]="ticketRowImageUrl(row)">
-                  <a
-                    class="asset-source-icon activities-source-avatar"
-                    [attr.href]="ticketRowSourceLink(row) || null"
-                    [attr.target]="ticketRowSourceLink(row) ? '_blank' : null"
-                    [attr.rel]="ticketRowSourceLink(row) ? 'noopener' : null"
-                    (click)="$event.stopPropagation()"
-                    [attr.aria-label]="ticketRowSourceLink(row) ? 'Open source link' : null"
-                    [ngClass]="ticketRowSourceAvatarClass(row)"
-                  >
-                    <span>{{ ticketRowSourceAvatarLabel(row) }}</span>
-                  </a>
-                  <button
-                    type="button"
-                    class="asset-occupancy-badge ticket-qr-badge"
-                    (click)="assetPopup.openTicketCodePopup(row, $event)"
-                    aria-label="Open ticket QR code"
-                  >
-                    <mat-icon>qr_code_2</mat-icon>
-                  </button>
-                </div>
-                <div class="experience-item-head">
-                  <span class="experience-item-icon" [ngClass]="ticketRowLeadingIconCircleClass(row)">
-                    <mat-icon>{{ ticketRowLeadingIcon(row) }}</mat-icon>
-                  </span>
-                  <div class="experience-item-meta">
-                    <h4>{{ row.title }}</h4>
-                    <p>{{ ticketCardMetaLine(row) }}</p>
-                  </div>
-                </div>
-                <p class="experience-item-description">{{ row.subtitle }}</p>
-              </article>
-            </ng-container>
-
-            <div class="editor-list-card" *ngIf="assetPopup.groupedTicketRows().length === 0">
-              <h4>No ticketed events</h4>
-              <p>Enable Ticketing On in an event to generate a ticket here.</p>
-            </div>
-          </div>
+            [config]="ticketSmartListConfig"
+            [loadPage]="ticketSmartListLoadPage"
+            [itemTemplate]="ticketItemTemplate"
+            [query]="ticketSmartListQuery"
+            (stateChange)="onTicketSmartListStateChange($event)"
+          ></app-smart-list>
 
           <ng-template #defaultAssetCardList>
             <div class="experience-card-list assets-card-list">
@@ -236,6 +183,14 @@
       </div>
     </div>
   </section>
+
+  <ng-template #ticketItemTemplate let-row let-groupLabel="groupLabel">
+    <app-info-card
+      [card]="ticketInfoCard(row, { groupLabel: groupLabel })"
+      (mediaStartClick)="openTicketSource(row)"
+      (mediaEndClick)="assetPopup.openTicketCodePopup(row)"
+    ></app-info-card>
+  </ng-template>
 
   <section class="app-popup app-popup-stacked" *ngIf="assetPopup.ticketOverlayMode() === 'ticketCode' || assetPopup.ticketOverlayMode() === 'ticketScanner'">
     <div class="app-popup-backdrop" (click)="assetPopup.closeTicketOverlay()"></div>

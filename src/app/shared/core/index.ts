@@ -20,6 +20,7 @@ export {
 export { EventsService } from './base/services/events.service';
 export { ActivityMembersService } from './base/services/activity-members.service';
 export { AssetsService } from './base/services/assets.service';
+export { AssetTicketsService } from './base/services/asset-tickets.service';
 export { ActivityInviteCandidatesService } from './base/services/activity-invite-candidates.service';
 export { ChatsService } from './base/services/chats.service';
 export { RatesService } from './base/services/rates.service';

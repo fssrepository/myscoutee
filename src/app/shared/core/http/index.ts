@@ -1,8 +1,10 @@
 export { HttpAssetsRepository } from './repositories/assets.repository';
+export { HttpAssetTicketsRepository } from './repositories/asset-tickets.repository';
 export { HttpActivityInviteCandidatesRepository } from './repositories/activity-invite-candidates.repository';
 export { HttpActivityMembersRepository } from './repositories/activity-members.repository';
 export { HttpUsersRatingsRepository } from './repositories/users-ratings.repository';
 export { HttpAssetsService } from './services/assets.service';
+export { HttpAssetTicketsService } from './services/asset-tickets.service';
 export { HttpActivityInviteCandidatesService } from './services/activity-invite-candidates.service';
 export { HttpActivityMembersService } from './services/activity-members.service';
 export { HttpChatsService } from './services/chats.service';

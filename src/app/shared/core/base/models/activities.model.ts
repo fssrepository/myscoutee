@@ -109,6 +109,7 @@ export interface ActivitiesEventSyncPayload {
   capacityTotal?: number;
   capacityMin?: number | null;
   capacityMax?: number | null;
+  ticketing?: boolean;
   visibility?: EventVisibility;
   blindMode?: EventBlindMode;
   published?: boolean;

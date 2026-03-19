@@ -16,6 +16,7 @@ interface DemoEventSeedOverrides {
   startAt?: string;
   endAt?: string;
   distanceKm?: number;
+  ticketing?: boolean;
   visibility?: DemoEventRecord['visibility'];
   blindMode?: DemoEventRecord['blindMode'];
   imageUrl?: string;
@@ -292,6 +293,7 @@ export class DemoEventsRepositoryBuilder {
       capacityMin,
       capacityMax,
       capacityTotal,
+      ticketing: record.seed?.ticketing ?? APP_DEMO_DATA.eventTicketingById[record.id] === true,
       acceptedMembers,
       pendingMembers,
       acceptedMemberUserIds: members.acceptedMemberUserIds,
@@ -469,6 +471,7 @@ export class DemoEventsRepositoryBuilder {
       startAt: item.startAt,
       endAt: item.endAt,
       distanceKm: item.distanceKm,
+      ticketing: item.ticketing,
       visibility: item.visibility,
       blindMode: item.blindMode,
       imageUrl: item.imageUrl,

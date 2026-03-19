@@ -1,12 +1,13 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, HostListener, OnDestroy, ViewChild, ViewEncapsulation, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, ViewEncapsulation, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
+import { from } from 'rxjs';
 
+import { AssetFacadeService, type AssetTicketListFilters } from '../../asset-facade.service';
 import { AssetPopupService } from '../../asset-popup.service';
-import type { AssetPopupHost } from '../../asset-popup.host';
 import { OwnedAssetsPopupService } from '../../owned-assets-popup.service';
 import { LazyBgImageDirective } from '../../../shared/ui';
 import type * as AppTypes from '../../../shared/core/base/models';
@@ -16,6 +17,13 @@ import { AssetBasketPopupComponent } from '../asset-basket-popup/asset-basket-po
 import { AssetMemberPickerPopupComponent } from '../asset-member-picker-popup/asset-member-picker-popup.component';
 import { AssetTicketCodePopupComponent } from '../asset-ticket-code-popup/asset-ticket-code-popup.component';
 import { AssetTicketScannerPopupComponent } from '../asset-ticket-scanner-popup/asset-ticket-scanner-popup.component';
+import {
+  InfoCardComponent,
+  SmartListComponent,
+  type ListQuery,
+  type SmartListConfig,
+  type SmartListStateChange
+} from '../../../shared/ui';
 
 @Component({
   selector: 'app-asset-popup',
@@ -26,7 +34,9 @@ import { AssetTicketScannerPopupComponent } from '../asset-ticket-scanner-popup/
     MatButtonModule,
     MatIconModule,
     MatSelectModule,
+    InfoCardComponent,
     LazyBgImageDirective,
+    SmartListComponent,
     AssetDeleteConfirmComponent,
     AssetFormPopupComponent,
     AssetBasketPopupComponent,
@@ -39,6 +49,7 @@ import { AssetTicketScannerPopupComponent } from '../asset-ticket-scanner-popup/
   encapsulation: ViewEncapsulation.None
 })
 export class AssetPopupComponent implements OnDestroy {
+  private readonly assetFacade = inject(AssetFacadeService);
   protected readonly assetPopup = inject(AssetPopupService);
   protected readonly ownedAssets = inject(OwnedAssetsPopupService);
   protected readonly assetFilterOpen = signal(false);
@@ -53,46 +64,70 @@ export class AssetPopupComponent implements OnDestroy {
   protected readonly onOwnedAssetImageFileSelected = (file: File): void => this.ownedAssets.applyAssetImageFile(file);
   protected readonly cancelOwnedAssetDelete = (): void => this.ownedAssets.cancelAssetDelete();
   protected readonly confirmOwnedAssetDelete = (): void => this.ownedAssets.confirmAssetDelete();
+  protected ticketSmartListQuery: Partial<ListQuery<AssetTicketListFilters>> = {};
 
-  @ViewChild('ticketScroll')
-  protected set ticketScrollRef(ref: ElementRef<HTMLDivElement> | undefined) {
-    this.assetPopup.setTicketScrollElement(ref?.nativeElement ?? null);
+  protected readonly ticketSmartListLoadPage = (query: ListQuery<AssetTicketListFilters>) =>
+    from(this.assetFacade.loadTicketPage(query));
+  protected readonly ticketSmartListConfig: SmartListConfig<AppTypes.ActivityListRow, AssetTicketListFilters> = {
+    pageSize: 18,
+    loadingDelayMs: 0,
+    defaultView: 'list',
+    emptyLabel: 'No ticketed events',
+    emptyDescription: 'Enable Ticketing On in an event to generate a ticket here.',
+    emptyStickyLabel: 'No tickets',
+    headerProgress: {
+      enabled: true
+    },
+    showStickyHeader: true,
+    stickyHeaderClass: 'activities-sticky-header',
+    listLayout: 'card-grid',
+    desktopColumns: 3,
+    snapMode: 'mandatory',
+    scrollPaddingTop: '2.8rem',
+    containerClass: {
+      'experience-card-list': true,
+      'assets-card-list': true,
+      'activities-scroll-list': true,
+      'activities-scroll-list-event-snap': true,
+      'tickets-scroll-list': true
+    },
+    trackBy: (_index, row) => `${row.type}:${row.id}`,
+    showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
+    groupBy: row => this.assetFacade.ticketGroupLabel(row.dateIso)
+  };
+
+  constructor() {
+    effect(() => {
+      this.ticketSmartListQuery = {
+        filters: {
+          userId: this.assetFacade.activeUserId(),
+          order: this.assetPopup.ticketDateOrder()
+        }
+      };
+    });
   }
 
-  protected trackByActivityGroup = (_index: number, group: AppTypes.ActivityGroup): string => group.label;
-
-  protected trackByActivityRow = (_index: number, row: AppTypes.ActivityListRow): string => `${row.type}:${row.id}`;
-
-  protected ticketRowImageUrl(row: AppTypes.ActivityListRow): string {
-    return this.currentHost()?.activityImageUrl(row) ?? '';
-  }
-
-  protected ticketRowSourceLink(row: AppTypes.ActivityListRow): string {
-    return this.currentHost()?.activitySourceLink(row) ?? '';
-  }
-
-  protected ticketRowSourceAvatarClass(row: AppTypes.ActivityListRow): string {
-    return this.currentHost()?.activitySourceAvatarClass(row) ?? '';
-  }
-
-  protected ticketRowSourceAvatarLabel(row: AppTypes.ActivityListRow): string {
-    return this.currentHost()?.activitySourceAvatarLabel(row) ?? this.fallbackTicketRowAvatarLabel(row);
-  }
-
-  protected ticketRowLeadingIconCircleClass(row: AppTypes.ActivityListRow): string {
-    return this.currentHost()?.activityLeadingIconCircleClass(row) ?? '';
-  }
-
-  protected ticketRowLeadingIcon(row: AppTypes.ActivityListRow): string {
-    return this.currentHost()?.activityLeadingIcon(row) ?? 'confirmation_number';
-  }
-
-  protected ticketCardMetaLine(row: AppTypes.ActivityListRow): string {
-    return this.currentHost()?.ticketCardMetaLine(row) ?? row.detail ?? '';
+  protected ticketInfoCard(
+    row: AppTypes.ActivityListRow,
+    options: { groupLabel?: string | null } = {}
+  ) {
+    return this.assetFacade.ticketInfoCard(row, options);
   }
 
   protected onTicketScannerVideoElementChange(element: HTMLVideoElement | null): void {
     this.assetPopup.setTicketScannerVideoElement(element);
+  }
+
+  protected onTicketSmartListStateChange(change: SmartListStateChange<AppTypes.ActivityListRow, AssetTicketListFilters>): void {
+    this.assetPopup.updateTicketListState(change);
+  }
+
+  protected openTicketSource(row: AppTypes.ActivityListRow): void {
+    const sourceLink = this.assetFacade.ticketSourceLink(row);
+    if (!sourceLink || typeof window === 'undefined') {
+      return;
+    }
+    window.open(sourceLink, '_blank', 'noopener');
   }
 
   protected onAssetFilterMenuOpenChange(isOpen: boolean): void {
@@ -131,22 +166,6 @@ export class AssetPopupComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.assetPopup.setTicketScrollElement(null);
     this.assetPopup.setTicketScannerVideoElement(null);
-  }
-
-  private currentHost(): AssetPopupHost | null {
-    return this.assetPopup.host();
-  }
-
-  private fallbackTicketRowAvatarLabel(row: AppTypes.ActivityListRow): string {
-    const words = row.title.trim().split(/\s+/).filter(Boolean);
-    if (words.length === 0) {
-      return 'T';
-    }
-    if (words.length === 1) {
-      return words[0].slice(0, 2).toUpperCase();
-    }
-    return `${words[0][0] ?? ''}${words[1][0] ?? ''}`.toUpperCase();
   }
 }

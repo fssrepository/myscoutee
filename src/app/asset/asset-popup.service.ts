@@ -2,28 +2,24 @@ import { Injectable, NgZone, computed, inject, signal } from '@angular/core';
 
 import type * as AppTypes from '../shared/core/base/models';
 import { AppContext } from '../shared/core';
+import type { SmartListStateChange } from '../shared/ui';
+import { AssetFacadeService } from './asset-facade.service';
 import type { AssetPopupHost } from './asset-popup.host';
-
-export interface AssetTicketBridge {
-  ticketRowsSource(): AppTypes.ActivityListRow[];
-  createTicketScanPayload(row: AppTypes.ActivityListRow): AppTypes.TicketScanPayload;
-  ticketPayloadAvatarUrl(payload: AppTypes.TicketScanPayload | null): string;
-  ticketPayloadInitials(payload: AppTypes.TicketScanPayload): string;
-}
 
 @Injectable({ providedIn: 'root' })
 export class AssetPopupService {
   private readonly ngZone = inject(NgZone);
   private readonly appCtx = inject(AppContext);
+  private readonly assetFacade = inject(AssetFacadeService);
 
   private readonly hostRef = signal<AssetPopupHost | null>(null);
-  private readonly ticketBridgeRef = signal<AssetTicketBridge | null>(null);
   private readonly primaryVisibleRef = signal(false);
   private readonly stackedVisibleRef = signal(false);
   private readonly basketVisibleRef = signal(false);
 
   private readonly ticketOverlayModeRef = signal<'ticketCode' | 'ticketScanner' | null>(null);
-  private readonly ticketStickyValueRef = signal('');
+  private readonly ticketRowsRef = signal<AppTypes.ActivityListRow[]>([]);
+  private readonly ticketTotalCountRef = signal(0);
   private readonly ticketDateOrderRef = signal<'upcoming' | 'past'>('upcoming');
   private readonly showTicketOrderPickerRef = signal(false);
   private readonly selectedTicketRowRef = signal<AppTypes.ActivityListRow | null>(null);
@@ -44,16 +40,10 @@ export class AssetPopupService {
   private ticketScannerMediaStream: MediaStream | null = null;
   private ticketScannerDetectionFrame: number | null = null;
   private ticketScannerDetectBusy = false;
-  private ticketScrollElement: HTMLDivElement | null = null;
   private ticketScannerVideoElement: HTMLVideoElement | null = null;
-  private ticketListScrollable = true;
 
   registerHost(host: AssetPopupHost | null): void {
     this.hostRef.set(host);
-  }
-
-  registerTicketBridge(bridge: AssetTicketBridge | null): void {
-    this.ticketBridgeRef.set(bridge);
   }
 
   setPrimaryVisible(isOpen: boolean): void {
@@ -83,6 +73,8 @@ export class AssetPopupService {
   }
 
   prepareTicketPopupOpen(): void {
+    this.ticketRowsRef.set([]);
+    this.ticketTotalCountRef.set(this.assetFacade.peekTicketCount(this.assetFacade.activeUserId()));
     this.showTicketOrderPickerRef.set(false);
     this.selectedTicketRowRef.set(null);
     this.selectedTicketCodeValueRef.set('');
@@ -91,12 +83,11 @@ export class AssetPopupService {
     this.ticketOverlayModeRef.set(null);
     this.cancelTicketScannerTimer();
     this.stopTicketScannerCamera();
-    this.seedTicketStickyHeader();
-    setTimeout(() => this.syncTicketScrollOnOpen(), 0);
   }
 
   resetTicketState(): void {
-    this.ticketStickyValueRef.set('');
+    this.ticketRowsRef.set([]);
+    this.ticketTotalCountRef.set(0);
     this.showTicketOrderPickerRef.set(false);
     this.selectedTicketRowRef.set(null);
     this.selectedTicketCodeValueRef.set('');
@@ -115,34 +106,8 @@ export class AssetPopupService {
     return this.ticketOverlayModeRef();
   }
 
-  ticketRows(): AppTypes.ActivityListRow[] {
-    const bridge = this.ticketBridgeRef();
-    const order = this.ticketDateOrderRef();
-    const rows = bridge ? [...bridge.ticketRowsSource()] : [];
-    rows.sort((a, b) => this.toSortableDate(a.dateIso) - this.toSortableDate(b.dateIso));
-    return order === 'upcoming' ? rows.reverse() : rows;
-  }
-
-  groupedTicketRows(): AppTypes.ActivityGroup[] {
-    const grouped: AppTypes.ActivityGroup[] = [];
-    for (const row of this.ticketRows()) {
-      const label = this.ticketGroupLabel(row.dateIso);
-      const lastGroup = grouped[grouped.length - 1];
-      if (!lastGroup || lastGroup.label !== label) {
-        grouped.push({ label, rows: [row] });
-        continue;
-      }
-      lastGroup.rows.push(row);
-    }
-    return grouped;
-  }
-
-  ticketStickyHeader(): string {
-    return this.ticketStickyValueRef() || this.groupedTicketRows()[0]?.label || 'No tickets';
-  }
-
   ticketHeaderSummary(): string {
-    const count = this.ticketRows().length;
+    const count = this.ticketTotalCountRef();
     return count === 1 ? '1 ticketed event' : `${count} ticketed events`;
   }
 
@@ -152,6 +117,10 @@ export class AssetPopupService {
 
   closeTicketOrderPicker(): void {
     this.showTicketOrderPickerRef.set(false);
+  }
+
+  ticketDateOrder(): 'upcoming' | 'past' {
+    return this.ticketDateOrderRef();
   }
 
   ticketDateOrderLabel(): string {
@@ -175,17 +144,17 @@ export class AssetPopupService {
     }
     this.ticketDateOrderRef.set(order);
     this.showTicketOrderPickerRef.set(false);
-    this.seedTicketStickyHeader();
-    setTimeout(() => this.syncTicketScrollOnOpen(), 0);
-  }
-
-  onTicketScroll(event: Event): void {
-    const target = event.target as HTMLElement | null;
-    this.updateTicketStickyHeader(target?.scrollTop || 0);
+    this.ticketRowsRef.set([]);
+    this.ticketTotalCountRef.set(this.assetFacade.peekTicketCount(this.assetFacade.activeUserId()));
   }
 
   selectedTicketRow(): AppTypes.ActivityListRow | null {
     return this.selectedTicketRowRef();
+  }
+
+  updateTicketListState(change: SmartListStateChange<AppTypes.ActivityListRow>): void {
+    this.ticketRowsRef.set([...change.items]);
+    this.ticketTotalCountRef.set(Math.max(0, change.total));
   }
 
   openTicketCodePopup(row: AppTypes.ActivityListRow, event?: Event): void {
@@ -249,7 +218,7 @@ export class AssetPopupService {
     const selectedRow = this.selectedTicketRowRef();
     const selectedCode = this.selectedTicketCodeValueRef();
     if (!selectedRow || !selectedCode) {
-      const fallbackRow = this.ticketRows()[0] ?? null;
+      const fallbackRow = this.ticketRowsRef()[0] ?? null;
       if (fallbackRow) {
         this.selectedTicketRowRef.set(fallbackRow);
         this.selectedTicketCodeValueRef.set(this.encodeTicketPayload(this.createTicketScanPayload(fallbackRow)));
@@ -325,70 +294,8 @@ export class AssetPopupService {
     return this.ticketPayloadInitials(payload);
   }
 
-  shouldShowTicketGroupMarker(groupIndex: number): boolean {
-    return groupIndex > 0 || this.isTicketListScrollableNow();
-  }
-
-  setTicketScrollElement(element: HTMLDivElement | null): void {
-    this.ticketScrollElement = element;
-  }
-
   setTicketScannerVideoElement(element: HTMLVideoElement | null): void {
     this.ticketScannerVideoElement = element;
-  }
-
-  private syncTicketScrollOnOpen(): void {
-    const scrollElement = this.ticketScrollElement;
-    if (!scrollElement) {
-      this.seedTicketStickyHeader();
-      return;
-    }
-    scrollElement.scrollTop = 0;
-    this.isTicketListScrollableNow();
-    this.updateTicketStickyHeader(0);
-  }
-
-  private seedTicketStickyHeader(): void {
-    this.ticketStickyValueRef.set(this.groupedTicketRows()[0]?.label ?? 'No tickets');
-  }
-
-  private updateTicketStickyHeader(scrollTop: number): void {
-    const groups = this.groupedTicketRows();
-    if (groups.length === 0) {
-      this.ticketStickyValueRef.set('No tickets');
-      return;
-    }
-    const scrollElement = this.ticketScrollElement;
-    if (!scrollElement) {
-      this.ticketStickyValueRef.set(groups[0].label);
-      return;
-    }
-    const stickyHeader = scrollElement.querySelector<HTMLElement>('.activities-sticky-header');
-    const stickyHeaderHeight = stickyHeader?.offsetHeight ?? 0;
-    const targetTop = scrollTop + stickyHeaderHeight + 1;
-    const rows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.ticket-row-item'));
-    this.isTicketListScrollableNow();
-    if (rows.length === 0) {
-      this.ticketStickyValueRef.set(groups[0].label);
-      return;
-    }
-    if (scrollTop <= 1) {
-      this.ticketStickyValueRef.set(rows[0].dataset['groupLabel'] ?? groups[0].label);
-      return;
-    }
-    const alignmentTolerancePx = 2;
-    const activeRow =
-      rows.find(row => row.offsetTop >= targetTop - alignmentTolerancePx)
-      ?? rows[rows.length - 1];
-    this.ticketStickyValueRef.set(activeRow.dataset['groupLabel'] ?? groups[0].label);
-  }
-
-  private ticketGroupLabel(dateIso: string): string {
-    const parsed = new Date(dateIso);
-    if (Number.isNaN(parsed.getTime())) {
-      return 'Date unavailable';
-    }
-    return parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   }
 
   private selectedTicketPayload(): AppTypes.TicketScanPayload | null {
@@ -407,28 +314,15 @@ export class AssetPopupService {
   }
 
   private createTicketScanPayload(row: AppTypes.ActivityListRow): AppTypes.TicketScanPayload {
-    return this.ticketBridgeRef()?.createTicketScanPayload(row) ?? {
-      code: '',
-      holderUserId: '',
-      holderName: '',
-      holderAge: 0,
-      holderCity: '',
-      holderRole: row.isAdmin ? 'Admin' : 'Member',
-      eventId: row.id,
-      eventTitle: row.title,
-      eventSubtitle: row.subtitle,
-      eventTimeframe: row.detail,
-      eventDateLabel: row.detail,
-      issuedAtIso: new Date().toISOString()
-    };
+    return this.assetFacade.createTicketScanPayload(row);
   }
 
   private ticketPayloadAvatarUrl(payload: AppTypes.TicketScanPayload | null): string {
-    return this.ticketBridgeRef()?.ticketPayloadAvatarUrl(payload) ?? '';
+    return this.assetFacade.ticketPayloadAvatarUrl(payload);
   }
 
   private ticketPayloadInitials(payload: AppTypes.TicketScanPayload): string {
-    return this.ticketBridgeRef()?.ticketPayloadInitials(payload) ?? '';
+    return this.assetFacade.ticketPayloadInitials(payload);
   }
 
   private encodeTicketPayload(payload: AppTypes.TicketScanPayload): string {
@@ -684,21 +578,5 @@ export class AssetPopupService {
         return null;
       }
     }
-  }
-
-  private isTicketListScrollableNow(): boolean {
-    const scrollElement = this.ticketScrollElement;
-    if (!scrollElement) {
-      return this.ticketListScrollable;
-    }
-    const scrollable = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight) > 1;
-    this.ticketListScrollable = scrollable;
-    return scrollable;
-  }
-
-  private toSortableDate(dateIso: string): number {
-    const parsed = new Date(dateIso);
-    const time = parsed.getTime();
-    return Number.isNaN(time) ? 0 : time;
   }
 }

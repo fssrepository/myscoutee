@@ -874,57 +874,6 @@
   color: #8c4f18;
 }
 
-.asset-popup .activities-source-avatar {
-  font-size: 0.64rem;
-  font-weight: 800;
-  line-height: 1;
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 6px 14px rgba(8, 18, 34, 0.34);
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.22);
-}
-
-.asset-popup .activities-source-avatar.user-color-man,
-.asset-popup .activities-source-avatar.activities-source-tone-1 {
-  background: linear-gradient(145deg, #3572a4, #194364);
-}
-
-.asset-popup .activities-source-avatar.user-color-woman,
-.asset-popup .activities-source-avatar.activities-source-tone-2 {
-  background: linear-gradient(145deg, #d3754c, #ac4a24);
-}
-
-.asset-popup .activities-source-avatar.activities-source-tone-3 {
-  background: linear-gradient(145deg, #3c9d78, #1f6450);
-}
-
-.asset-popup .activities-source-avatar.activities-source-tone-4 {
-  background: linear-gradient(145deg, #7b63c7, #4d3a8f);
-}
-
-.asset-popup .activities-source-avatar.activities-source-tone-5 {
-  background: linear-gradient(145deg, #bf5f8f, #883b65);
-}
-
-.asset-popup .activities-source-avatar.activities-source-tone-6 {
-  background: linear-gradient(145deg, #4895ad, #285c79);
-}
-
-.asset-popup .activities-source-avatar.activities-source-tone-7 {
-  background: linear-gradient(145deg, #b47c3b, #7e5325);
-}
-
-.asset-popup .activities-source-avatar.activities-source-tone-8 {
-  background: linear-gradient(145deg, #5673bf, #324a8a);
-}
-
-.asset-popup .activities-source-avatar > span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-transform: uppercase;
-}
-
 .asset-popup .tickets-scroll-list {
   height: 100%;
   min-height: 0;
@@ -963,25 +912,6 @@
 .asset-popup .tickets-scroll-list .activities-sticky-header,
 .asset-popup .tickets-scroll-list .smart-list__group-marker {
   grid-column: 1 / -1;
-}
-
-.asset-popup .tickets-scroll-list .ticket-row-item {
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-}
-
-.asset-popup .ticket-qr-badge {
-  min-width: 40px;
-  width: 40px;
-  padding: 0;
-  border-radius: 999px;
-}
-
-.asset-popup .ticket-qr-badge .mat-icon {
-  width: 16px;
-  height: 16px;
-  font-size: 16px;
-  line-height: 16px;
 }
 
 .asset-popup .experience-form-overlay {

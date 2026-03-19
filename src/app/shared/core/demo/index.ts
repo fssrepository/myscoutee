@@ -4,6 +4,7 @@ export { CHATS_TABLE_NAME, type DemoChatRecord, type DemoChatsMemorySchema } fro
 export { EVENTS_TABLE_NAME, type DemoEventRecord, type DemoEventsMemorySchema } from './models/events.model';
 export { USERS_TABLE_NAME, type DemoUsersMemorySchema } from './models/users.model';
 export { DemoAssetsRepository } from './repositories/assets.repository';
+export { DemoAssetTicketsRepository } from './repositories/asset-tickets.repository';
 export { DemoActivityInviteCandidatesRepository } from './repositories/activity-invite-candidates.repository';
 export { DemoActivityMembersRepository } from './repositories/activity-members.repository';
 export { DemoChatsRepository } from './repositories/chats.repository';
@@ -11,6 +12,7 @@ export { DemoEventsRepository } from './repositories/events.repository';
 export { DemoUsersRatingsRepository } from './repositories/users-ratings.repository';
 export { DemoUsersRepository as DemoUsersRepository } from './repositories/users.repository';
 export { DemoAssetsService } from './services/assets.service';
+export { DemoAssetTicketsService } from './services/asset-tickets.service';
 export { DemoActivityInviteCandidatesService } from './services/activity-invite-candidates.service';
 export { DemoActivityMembersService } from './services/activity-members.service';
 export { DemoChatsService } from './services/chats.service';

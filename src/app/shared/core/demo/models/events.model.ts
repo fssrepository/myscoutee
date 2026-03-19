@@ -48,6 +48,7 @@ export interface DemoEventRecord {
   capacityMin: number | null;
   capacityMax: number | null;
   capacityTotal: number;
+  ticketing: boolean;
   acceptedMembers: number;
   pendingMembers: number;
   acceptedMemberUserIds: string[];

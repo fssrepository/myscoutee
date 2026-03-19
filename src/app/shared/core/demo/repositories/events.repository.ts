@@ -337,12 +337,11 @@ export class DemoEventsRepository {
 
   countTicketItemsByUser(userId: string): number {
     this.init();
-    const eventItems = this.queryEventItemsByUser(userId);
-    const hostingItems = this.queryHostingItemsByUser(userId);
-    return (
-      eventItems.filter(item => APP_DEMO_DATA.eventTicketingById[item.id] === true).length +
-      hostingItems.filter(item => APP_DEMO_DATA.eventTicketingById[item.id] === true).length
-    );
+    return this.queryUserRecords(userId)
+      .filter(record => !record.isInvitation)
+      .filter(record => !record.isTrashed)
+      .filter(record => record.ticketing === true)
+      .length;
   }
 
   countPendingEventFeedbackByUser(userId: string, feedbackUnlockDelayMs: number): number {
@@ -815,6 +814,7 @@ export class DemoEventsRepository {
     const visibility = payload.visibility ?? existing?.visibility ?? (context.isHosting ? 'Invitation only' : 'Public');
     const blindMode = payload.blindMode ?? existing?.blindMode ?? 'Open Event';
     const topics = this.normalizeTopics(payload.topics ?? existing?.topics ?? []);
+    const ticketing = payload.ticketing ?? existing?.ticketing ?? false;
     const rating = existing?.rating ?? (6 + ((AppDemoGenerators.hashText(`${context.type}:${payload.id}:${payload.title}`) % 35) / 10));
     const relevance = existing?.relevance ?? (50 + (AppDemoGenerators.hashText(`${context.type}:${payload.id}:${payload.title}`) % 51));
     const usersTable = this.memoryDb.read()[USERS_TABLE_NAME];
@@ -869,6 +869,7 @@ export class DemoEventsRepository {
       capacityMin: this.normalizeCount(payload.capacityMin) ?? existing?.capacityMin ?? 0,
       capacityMax: this.normalizeCount(payload.capacityMax) ?? existing?.capacityMax ?? context.capacityTotal,
       capacityTotal: context.capacityTotal,
+      ticketing,
       acceptedMembers: context.acceptedMembers,
       pendingMembers: context.pendingMembers,
       acceptedMemberUserIds: [...context.acceptedMemberUserIds],
@@ -1143,6 +1144,7 @@ export class DemoEventsRepository {
       capacityMin: this.normalizeCount(current.capacityMin) ?? seeded.capacityMin,
       capacityMax: this.normalizeCount(current.capacityMax) ?? seeded.capacityMax,
       capacityTotal: this.normalizeCount(current.capacityTotal) ?? seeded.capacityTotal,
+      ticketing: typeof current.ticketing === 'boolean' ? current.ticketing : seeded.ticketing,
       acceptedMembers: this.normalizeCount(current.acceptedMembers) ?? seeded.acceptedMembers,
       pendingMembers: this.normalizeCount(current.pendingMembers) ?? seeded.pendingMembers,
       acceptedMemberUserIds: acceptedMemberUserIds.length > 0

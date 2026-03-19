@@ -78,6 +78,7 @@ export interface EventMenuItem {
   rating?: number;
   relevance?: number;
   affinity?: number;
+  ticketing?: boolean;
   published?: boolean;
 }
 
@@ -104,6 +105,7 @@ export interface HostingMenuItem {
   rating?: number;
   relevance?: number;
   affinity?: number;
+  ticketing?: boolean;
   published?: boolean;
 }
 

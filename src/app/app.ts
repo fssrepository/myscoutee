@@ -16,8 +16,9 @@ import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-
 import { AlertService } from './shared/alert.service';
 import type { ActivitiesEventSyncPayload } from './shared/core/base/models';
 import { ActivitiesDbContextService } from './activity/services/activities-db-context.service';
+import { AssetFacadeService } from './asset/asset-facade.service';
 import type { AssetPopupHost } from './asset/asset-popup.host';
-import { AssetPopupService, type AssetTicketBridge } from './asset/asset-popup.service';
+import { AssetPopupService } from './asset/asset-popup.service';
 import { OwnedAssetsPopupService } from './asset/owned-assets-popup.service';
 import { EventEditorService } from './shared/event-editor.service';
 import {
@@ -150,30 +151,18 @@ export class App {
   protected readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
+  private readonly assetFacade = inject(AssetFacadeService);
   protected readonly ownedAssets = inject(OwnedAssetsPopupService);
   private readonly ngZone = inject(NgZone);
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly navigatorService = inject(NavigatorService);
 
   public readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
-  protected readonly assetTicketBridge: AssetTicketBridge = {
-    ticketRowsSource: () => this.ticketRows,
-    createTicketScanPayload: (row) => this.createTicketScanPayload(row),
-    ticketPayloadAvatarUrl: (payload) => this.ticketPayloadAvatarUrl(payload),
-    ticketPayloadInitials: (payload) => this.ticketPayloadInitials(payload)
-  };
   protected readonly assetPopupHost: AssetPopupHost = {
     isMobileView: () => this.isMobileView,
     isSubEventAssetAssignPopup: () => this.superStackedPopup === 'subEventAssetAssign',
     assetTypeIcon: (type) => this.assetTypeIcon(type),
     assetTypeClass: (type) => this.assetTypeClass(type),
-    activityImageUrl: (row) => this.activityImageUrl(row),
-    activitySourceLink: (row) => this.activitySourceLink(row),
-    activitySourceAvatarClass: (row) => this.activitySourceAvatarClass(row),
-    activitySourceAvatarLabel: (row) => this.activitySourceAvatarLabel(row),
-    activityLeadingIconCircleClass: (row) => this.activityLeadingIconCircleClass(row),
-    activityLeadingIcon: (row) => this.activityLeadingIcon(row),
-    ticketCardMetaLine: (row) => this.ticketCardMetaLine(row),
     subEventAssetAssignHeaderTitle: () => this.subEventAssetAssignHeaderTitle(),
     subEventAssetAssignHeaderSubtitle: () => this.subEventAssetAssignHeaderSubtitle(),
     canConfirmSubEventAssetAssignSelection: () => this.canConfirmSubEventAssetAssignSelection(),
@@ -332,7 +321,6 @@ export class App {
       requests: [...card.requests]
     })));
     this.assetPopupService.registerHost(this.assetPopupHost);
-    this.assetPopupService.registerTicketBridge(this.assetTicketBridge);
     this.navigatorService.registerBindings(this.navigatorBindings);
     this.syncAssetPopupVisibility();
     this.ensurePaginationTestEvents(30);
@@ -554,7 +542,7 @@ export class App {
   }
 
   protected get assetTicketsBadge(): number {
-    return this.resolveActivityCounter('tickets', this.ticketRows.length);
+    return this.resolveActivityCounter('tickets', this.assetFacade.peekTicketCount(this.activeUser.id));
   }
 
   protected get invitationItems(): InvitationMenuItem[] {
@@ -1028,6 +1016,7 @@ export class App {
       capacityTotal: resolvedMembers?.capacityTotal,
       capacityMin: capacity.min,
       capacityMax: capacity.max,
+      ticketing: this.eventTicketingById[eventId] ?? this.eventForm.ticketing,
       visibility: this.eventVisibilityById[eventId] ?? (target === 'hosting' ? 'Invitation only' : 'Public'),
       blindMode: this.eventBlindModeById[eventId] ?? 'Open Event',
       published: this.hostingPublishedById[eventId] ?? true,
@@ -1314,33 +1303,6 @@ export class App {
       ? 'Invites people by matching mutual preferences.'
       : 'Manual invites only.';
   }
-
-  protected toggleEventTicketing(event?: Event): void {
-    event?.stopPropagation();
-    if (this.eventEditorReadOnly) {
-      return;
-    }
-    this.eventForm.ticketing = !this.eventForm.ticketing;
-  }
-
-  protected eventTicketingClass(enabled: boolean): string {
-    return enabled ? 'event-ticketing-on' : 'event-ticketing-off';
-  }
-
-  protected eventTicketingIcon(enabled: boolean): string {
-    return enabled ? 'qr_code_scanner' : 'qr_code_2';
-  }
-
-  protected eventTicketingLabel(enabled: boolean): string {
-    return enabled ? 'Ticketing On' : 'Ticketing Off';
-  }
-
-  protected eventTicketingDescription(enabled: boolean): string {
-    return enabled
-      ? 'QR attendee check-in is enabled.'
-      : 'No QR check-in scanning.';
-  }
-
 
   protected subEventCardRange(item: AppTypes.SubEventFormItem): string {
     const start = new Date(item.startAt);
@@ -4861,44 +4823,6 @@ export class App {
     return `${stageLabel} - ${subEventLabel}`;
   }
 
-  protected get ticketRows(): AppTypes.ActivityListRow[] {
-    const eventRows = this.eventItems
-      .filter(item => this.eventTicketingById[item.id] === true)
-      .map<AppTypes.ActivityListRow>(item => ({
-        id: item.id,
-        type: 'events',
-        title: item.title,
-        subtitle: item.shortDescription,
-        detail: item.timeframe,
-        dateIso: this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
-        distanceKm: this.eventDistanceById[item.id] ?? 10,
-        unread: item.activity,
-        metricScore: item.activity,
-        isAdmin: item.isAdmin,
-        source: item
-      }));
-    const hostingRows = this.hostingItems
-      .filter(item => this.eventTicketingById[item.id] === true)
-      .map<AppTypes.ActivityListRow>(item => ({
-        id: item.id,
-        type: 'hosting',
-        title: item.title,
-        subtitle: item.shortDescription,
-        detail: item.timeframe,
-        dateIso: this.hostingDatesById[item.id] ?? this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
-        distanceKm: this.hostingDistanceById[item.id] ?? this.eventDistanceById[item.id] ?? 10,
-        unread: item.activity,
-        metricScore: item.activity,
-        isAdmin: true,
-        source: item
-      }));
-    return [...eventRows, ...hostingRows].sort((a, b) => AppUtils.toSortableDate(a.dateIso) - AppUtils.toSortableDate(b.dateIso));
-  }
-
-  protected ticketCardMetaLine(row: AppTypes.ActivityListRow): string {
-    return `${row.type === 'hosting' ? 'Hosting' : 'Event'} · ${this.activityDateLabel(row)} · ${row.distanceKm} km`;
-  }
-
   private acceptInvitationFromRow(invitationId: string): void {
     if (this.isInvitationAcceptedId(invitationId)) {
       return;
@@ -4944,93 +4868,8 @@ export class App {
       });
   }
 
-  protected activityTypeLabel(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'events') {
-      return 'Event';
-    }
-    if (row.type === 'hosting') {
-      return 'Hosting';
-    }
-    if (row.type === 'invitations') {
-      return 'Invitation';
-    }
-    if (row.type === 'rates') {
-      return 'Rate';
-    }
-    return 'Chat';
-  }
-
-  protected activityDateLabel(row: AppTypes.ActivityListRow): string {
-    const parsed = new Date(row.dateIso);
-    if (Number.isNaN(parsed.getTime())) {
-      return row.detail;
-    }
-    return parsed.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
-    });
-  }
-
-  protected activityImageUrl(row: AppTypes.ActivityListRow): string {
-    return this.activityImageById[row.id] ?? 'https://picsum.photos/seed/event-default/1200/700';
-  }
-
-  protected activitySourceLink(row: AppTypes.ActivityListRow): string {
-    return this.activitySourceLinkById[row.id] ?? 'https://example.com/events';
-  }
-
-  protected showActivitySourceIcon(row: AppTypes.ActivityListRow): boolean {
-    return row.type === 'events' || row.type === 'invitations';
-  }
-
-  protected activitySourceAvatarLabel(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'invitations') {
-      const invitation = row.source as InvitationMenuItem;
-      return AppUtils.initialsFromText(invitation.inviter);
-    }
-    if (row.type === 'events') {
-      const event = row.source as EventMenuItem;
-      const explicitOwner = AppUtils.findUserByName(this.users, event.avatar || '');
-      if (explicitOwner) {
-        return explicitOwner.initials;
-      }
-      const fallbackOwner = this.users[AppDemoGenerators.hashText(`${row.id}-${event.title}`) % this.users.length];
-      return fallbackOwner?.initials ?? AppUtils.initialsFromText(event.title);
-    }
-    if (row.type === 'hosting') {
-      const hosting = row.source as HostingMenuItem;
-      return AppUtils.initialsFromText(hosting.avatar || hosting.title);
-    }
-    return AppUtils.initialsFromText(row.title);
-  }
-
-  protected activitySourceAvatarClass(row: AppTypes.ActivityListRow): string {
-    const toneSeed = row.type === 'invitations'
-      ? `${row.id}-${(row.source as InvitationMenuItem).inviter}`
-      : `${row.id}-${row.title}`;
-    const toneIndex = (AppDemoGenerators.hashText(toneSeed) % 8) + 1;
-    return `activities-source-tone-${toneIndex}`;
-  }
-
-  protected activityCapacityLabel(row: AppTypes.ActivityListRow): string {
-    const acceptedMembersCount = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted').length;
-    const capacityTotal = this.activityCapacityTotal(row, acceptedMembersCount);
-    return `${acceptedMembersCount} / ${capacityTotal}`;
-  }
-
   protected activityPendingMemberCount(row: AppTypes.ActivityListRow): number {
     return this.getActivityMembersByRow(row).filter(member => member.status === 'pending').length;
-  }
-
-  protected isActivityFull(row: AppTypes.ActivityListRow): boolean {
-    if (row.type !== 'events') {
-      return false;
-    }
-    const acceptedMembersCount = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted').length;
-    const capacityTotal = this.activityCapacityTotal(row, acceptedMembersCount);
-    return capacityTotal > 0 && acceptedMembersCount >= capacityTotal;
   }
 
   private activityCapacityTotal(row: AppTypes.ActivityListRow, fallbackBase = 0): number {
@@ -5066,80 +4905,6 @@ export class App {
       accepted: Number.isFinite(acceptedParsed) ? Math.max(0, acceptedParsed) : null,
       total: Number.isFinite(totalParsed) ? Math.max(0, totalParsed) : null
     };
-  }
-
-  private activityVisibility(row: AppTypes.ActivityListRow): AppTypes.EventVisibility {
-    return this.eventVisibilityById[row.id] ?? (row.type === 'hosting' ? 'Invitation only' : 'Public');
-  }
-
-  protected activityTypeIcon(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'events') {
-      return 'event';
-    }
-    if (row.type === 'hosting') {
-      return 'stadium';
-    }
-    if (row.type === 'invitations') {
-      return 'mail';
-    }
-    if (row.type === 'rates') {
-      return 'star';
-    }
-    return 'chat';
-  }
-
-  protected activityLeadingIcon(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'hosting' || row.type === 'events') {
-      return this.eventVisibilityIcon(this.activityVisibility(row));
-    }
-    return this.activityTypeIcon(row);
-  }
-
-  protected activityLeadingIconCircleClass(row: AppTypes.ActivityListRow): string {
-    if (row.type !== 'hosting' && row.type !== 'events') {
-      return '';
-    }
-    return `experience-item-icon-${this.eventVisibilityClass(this.activityVisibility(row))}`;
-  }
-
-  protected activityDateRangeMetaLine(row: AppTypes.ActivityListRow): string {
-    const dateRange = AppCalendarHelpers.activityDateRange(row, this.activityDateTimeRangeById);
-    if (!dateRange) {
-      return this.activityDateLabel(row);
-    }
-    return this.formatActivityDateRange(dateRange.start, dateRange.end);
-  }
-
-  protected activityLocationMetaLine(row: AppTypes.ActivityListRow): string {
-    const location = this.activityEventLocationLabel(row);
-    if (!location) {
-      return '';
-    }
-    const distance = this.activityDistanceLabel(row.distanceKm);
-    return `${location} (${distance})`;
-  }
-
-  protected activityMetaLine(row: AppTypes.ActivityListRow): string {
-    return `${this.activityTypeLabel(row)} · ${this.activityDateLabel(row)} · ${row.distanceKm} km`;
-  }
-
-  private formatActivityDateRange(start: Date, end: Date): string {
-    const safeStart = new Date(start);
-    const safeEnd = new Date(end);
-    if (Number.isNaN(safeStart.getTime()) || Number.isNaN(safeEnd.getTime())) {
-      return '';
-    }
-    const normalizedEnd = safeEnd.getTime() > safeStart.getTime()
-      ? safeEnd
-      : new Date(safeStart.getTime() + 2 * 60 * 60 * 1000);
-    const startDateLabel = safeStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const startTimeLabel = safeStart.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    const endTimeLabel = normalizedEnd.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    if (safeStart.toDateString() === normalizedEnd.toDateString()) {
-      return `${startDateLabel}, ${startTimeLabel} - ${endTimeLabel}`;
-    }
-    const endDateLabel = normalizedEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return `${startDateLabel}, ${startTimeLabel} - ${endDateLabel}, ${endTimeLabel}`;
   }
 
   private activityEventLocationLabel(row: AppTypes.ActivityListRow): string {
@@ -6939,55 +6704,6 @@ export class App {
 
   private sortActivityMembersByActionTimeAsc(entries: AppTypes.ActivityMemberEntry[]): AppTypes.ActivityMemberEntry[] {
     return [...entries].sort((a, b) => AppUtils.toSortableDate(b.actionAtIso) - AppUtils.toSortableDate(a.actionAtIso));
-  }
-
-  private createTicketScanPayload(row: AppTypes.ActivityListRow): AppTypes.TicketScanPayload {
-    const issuedAtIso = AppUtils.toIsoDateTime(new Date());
-    const code = `TKT-${row.id}-${AppDemoGenerators.hashText(`${this.activeUser.id}:${row.id}:${issuedAtIso}`)}`;
-    return {
-      code,
-      holderUserId: this.activeUser.id,
-      holderName: this.activeUser.name,
-      holderAge: this.activeUser.age,
-      holderCity: this.activeUser.city,
-      holderRole: row.isAdmin ? 'Admin' : 'Member',
-      eventId: row.id,
-      eventTitle: row.title,
-      eventSubtitle: row.subtitle,
-      eventTimeframe: row.detail,
-      eventDateLabel: this.activityDateLabel(row),
-      issuedAtIso
-    };
-  }
-
-  private ticketPayloadAvatarUrl(payload: AppTypes.TicketScanPayload | null): string {
-    const user = this.ticketPayloadUser(payload);
-    if (!user) {
-      return '';
-    }
-    const first = (user.images ?? []).find((image): image is string => typeof image === 'string' && image.trim().length > 0);
-    return first ?? this.profilePortraitUrlForUser(user, 0, 'ticket-scan');
-  }
-
-  private profilePortraitUrlForUser(user: DemoUser, index: number, context: string): string {
-    const genderFolder = user.gender === 'woman' ? 'women' : 'men';
-    const seed = AppDemoGenerators.hashText(`portrait:${context}:${user.id}:${index}`);
-    return `https://randomuser.me/api/portraits/${genderFolder}/${seed % 100}.jpg`;
-  }
-
-  private ticketPayloadInitials(payload: AppTypes.TicketScanPayload): string {
-    const user = this.ticketPayloadUser(payload);
-    if (user) {
-      return user.initials;
-    }
-    return AppUtils.initialsFromText(payload.holderName);
-  }
-
-  private ticketPayloadUser(payload: AppTypes.TicketScanPayload | null): DemoUser | null {
-    if (!payload?.holderUserId) {
-      return null;
-    }
-    return this.users.find(user => user.id === payload.holderUserId) ?? null;
   }
 
   private syncAssetPopupVisibility(): void {
