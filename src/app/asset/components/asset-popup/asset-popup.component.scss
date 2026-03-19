@@ -3,9 +3,9 @@
 :host {
   display: contents;
   font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
-  --asset-popup-z-index: 8000;
-  --asset-popup-stacked-z-index: 8100;
-  --asset-popup-super-stacked-z-index: 8200;
+  --asset-popup-z-index: 12000;
+  --asset-popup-stacked-z-index: 12100;
+  --asset-popup-super-stacked-z-index: 12200;
 }
 
 @include ui.popup-shell();

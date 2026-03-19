@@ -8,6 +8,7 @@
         [class.is-loading]="isLoading()"
         [class.is-error]="hasLoadError()"
         [class.is-open]="isOpen()"
+        [class.is-covered]="isCoveredByPopup()"
         [disabled]="!canToggle()"
         [attr.aria-label]="ariaLabel()"
         [attr.aria-busy]="isLoading()"

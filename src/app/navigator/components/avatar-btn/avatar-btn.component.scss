@@ -36,7 +36,8 @@
   transition: transform 0.16s ease, opacity 0.16s ease, filter 0.16s ease;
 }
 
-.user-selector-btn-global.is-open {
+.user-selector-btn-global.is-open,
+.user-selector-btn-global.is-covered {
   opacity: 0;
   transform: scale(0.88);
   pointer-events: none;

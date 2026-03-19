@@ -76,6 +76,7 @@ export class NavigatorMenuComponent {
     };
   });
   protected readonly menuUiState = this.navigatorService.menuUiState;
+  protected readonly isCoveredByPopup = this.navigatorService.menuCoveredByPopup;
 
   @HostListener('document:click', ['$event'])
   protected onDocumentClick(event: MouseEvent): void {

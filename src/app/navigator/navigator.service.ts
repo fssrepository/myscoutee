@@ -10,6 +10,9 @@ import {
   type UserRealtimeLongPollResponseDto
 } from '../shared/core';
 import { ConfirmationDialogService } from '../shared/ui/services/confirmation-dialog.service';
+import { AssetPopupService } from '../asset/asset-popup.service';
+import { EventFeedbackPopupService } from '../activity/event-feedback-popup.service';
+import { ActivitiesDbContextService } from '../activity/services/activities-db-context.service';
 
 export interface NavigatorMenuUiState {
   open: boolean;
@@ -34,6 +37,9 @@ export class NavigatorService {
   private readonly appCtx = inject(AppContext);
   private readonly router = inject(Router);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly assetPopupService = inject(AssetPopupService);
+  private readonly eventFeedbackPopupService = inject(EventFeedbackPopupService);
+  private readonly activitiesContext = inject(ActivitiesDbContextService);
   private readonly bindingsRef = signal<NavigatorBindings | null>(null);
   private readonly hydrationRequestKeyRef = signal('');
   private readonly menuOpenRef = signal(false);
@@ -60,6 +66,21 @@ export class NavigatorService {
     open: this.menuOpenRef(),
     settingsOpen: this.settingsMenuOpenRef()
   }));
+  readonly menuCoveredByPopup = computed(() => {
+    if (!this.menuOpenRef()) {
+      return false;
+    }
+    return (
+      this.profileEditorOpenRef()
+      || this.impressionsPopupOpenRef()
+      || this.settingsPopupRef() !== null
+      || this.activitiesContext.activitiesOpen()
+      || this.assetPopupService.visible()
+      || this.eventFeedbackPopupService.isPopupOpen()
+      || this.eventFeedbackPopupService.isStackedPopupOpen()
+      || this.confirmationDialogService.dialog() !== null
+    );
+  });
 
   constructor() {
     effect(() => {
