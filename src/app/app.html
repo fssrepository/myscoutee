@@ -6,143 +6,8 @@
   </div>
 </main>
 
-<section class="app-popup" *ngIf="activePopup && activePopup !== 'logoutConfirm' && activePopup !== 'deleteAccountConfirm'">
-  <div class="app-popup-backdrop" (click)="closePopupFromBackdrop($event)"></div>
-  <div
-    class="app-popup-panel"
-    (click)="$event.stopPropagation()"
-  >
-    <button
-      type="button"
-      class="item-action-menu-dismiss-layer"
-      *ngIf="inlineItemActionMenu"
-      (click)="closeInlineItemActionMenu($event)"
-      aria-label="Close action menu"
-    ></button>
-    <div class="popup-header">
-      <div class="popup-title">
-        <h2>{{ getPopupTitle() }}</h2>
-      </div>
-      <button
-        type="button"
-        class="popup-chat-event-btn popup-invitation-approve-btn"
-        aria-label="Approve invitation"
-        *ngIf="activePopup === 'invitationActions' && selectedInvitation && !selectedInvitationIsAccepted()"
-        (click)="approveSelectedInvitation($event)"
-      >
-        <mat-icon>done</mat-icon>
-      </button>
-
-      <button mat-icon-button class="popup-close" (click)="handlePrimaryPopupHeaderClose()" aria-label="Close">
-        <mat-icon>close</mat-icon>
-      </button>
-    </div>
-
-    <div class="popup-body">
-      <div *ngIf="activePopup === 'invitationActions' && selectedInvitation">
-        <div class="editor-list-card">
-          <h4>{{ selectedInvitation.description }}</h4>
-          <p>{{ getInvitationActionSummary(selectedInvitation) }} · {{ selectedInvitation.when }}</p>
-        </div>
-        <div class="popup-actions">
-          <button type="button" class="link-btn" (click)="deleteSelectedInvitation($event)">Delete</button>
-          <button type="button" class="link-btn" (click)="openInvitationRelatedEventEditor(false, $event)">Open Related Event</button>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<section class="mobile-profile-selector-sheet-wrap" *ngIf="mobileProfileSelectorSheet" (click)="$event.stopPropagation()">
-  <div class="mobile-profile-selector-backdrop" (click)="$event.stopPropagation(); closeMobileProfileSelectorSheet()"></div>
-  <div
-    class="mobile-profile-selector-sheet"
-    (click)="$event.stopPropagation()"
-  >
-    <div class="mobile-profile-selector-handle" aria-hidden="true"></div>
-    <div class="mobile-profile-selector-title">
-      <mat-icon>list</mat-icon>
-      <span>{{ mobileProfileSelectorSheet.title }}</span>
-    </div>
-    <div class="mobile-profile-selector-options">
-      <button
-        type="button"
-        class="mobile-profile-selector-option"
-        *ngFor="let option of mobileProfileSelectorSheet.options"
-        [class.active]="isMobileSelectorOptionActive(option.value)"
-        [class.mobile-profile-selector-option-group]="option.disabled"
-        [ngClass]="option.toneClass"
-        [disabled]="option.disabled"
-        (click)="selectMobileProfileSelectorOption(option.value)"
-      >
-        <span class="mobile-profile-selector-option-main">
-          <mat-icon *ngIf="option.icon">{{ option.icon }}</mat-icon>
-          <span>{{ option.label }}</span>
-        </span>
-        <span class="rate-filter-count-badge" *ngIf="!option.disabled && option.badge !== undefined && option.badge > 0">{{ option.badge }}</span>
-        <mat-icon *ngIf="!option.disabled && option.badge === undefined && isMobileSelectorOptionActive(option.value)">check</mat-icon>
-      </button>
-    </div>
-  </div>
-</section>
-
-<section
-  class="app-popup app-popup-stacked"
-  *ngIf="
-    stackedPopup &&
-    stackedPopup !== 'activityMembers' &&
-    stackedPopup !== 'subEventMembers' &&
-    stackedPopup !== 'subEventAssets' &&
-    stackedPopup !== 'subEventSupplyContributions' &&
-    stackedPopup !== 'ticketCode' &&
-    stackedPopup !== 'ticketScanner'
-  "
->
-  <div class="app-popup-backdrop" (click)="closeStackedPopup()"></div>
-  <div
-    class="app-popup-panel"
-    (click)="$event.stopPropagation()"
-  >
-    <div class="popup-header">
-      <div class="popup-title">
-        <h2>{{ getStackedPopupTitle() }}</h2>
-      </div>
-      <button
-        type="button"
-        class="popup-chat-event-btn popup-invitation-approve-btn"
-        aria-label="Approve invitation"
-        *ngIf="stackedPopup === 'invitationActions' && selectedInvitation && !selectedInvitationIsAccepted()"
-        (click)="approveSelectedInvitation($event)"
-      >
-        <mat-icon>done</mat-icon>
-      </button>
-
-      <button mat-icon-button class="popup-close" (click)="handleStackedPopupHeaderClose()" aria-label="Close">
-        <mat-icon>close</mat-icon>
-      </button>
-    </div>
-
-    <div
-      class="popup-body"
-    >
-      <div *ngIf="stackedPopup === 'invitationActions' && selectedInvitation">
-        <div class="editor-list-card">
-          <h4>{{ selectedInvitation.description }}</h4>
-          <p>{{ getInvitationActionSummary(selectedInvitation) }} · {{ selectedInvitation.when }}</p>
-        </div>
-        <div class="popup-actions">
-          <button type="button" class="link-btn" (click)="deleteSelectedInvitation($event)">Delete</button>
-          <button type="button" class="link-btn" (click)="openInvitationRelatedEventEditor(true, $event)">Open Related Event</button>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
 <section class="logout-confirm" *ngIf="activePopup === 'logoutConfirm'">
-  <div class="logout-confirm-backdrop" (click)="closePopup()"></div>
+  <div class="logout-confirm-backdrop" (click)="closePopupFromBackdrop($event)"></div>
   <div class="logout-confirm-panel" (click)="$event.stopPropagation()">
     <h3>Biztosan kilép?</h3>
     <p>{{ activeUser.name }}</p>
@@ -154,7 +19,7 @@
 </section>
 
 <section class="logout-confirm" *ngIf="activePopup === 'deleteAccountConfirm'">
-  <div class="logout-confirm-backdrop" (click)="closePopup()"></div>
+  <div class="logout-confirm-backdrop" (click)="closePopupFromBackdrop($event)"></div>
   <div class="logout-confirm-panel" (click)="$event.stopPropagation()">
     <h3>Delete account?</h3>
     <p>{{ activeUser.name }}</p>
