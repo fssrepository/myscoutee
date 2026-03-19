@@ -3,13 +3,19 @@ import { Injectable, inject } from '@angular/core';
 import { AppDemoGenerators } from '../shared/app-demo-generators';
 import { AppUtils } from '../shared/app-utils';
 import type * as AppTypes from '../shared/core/base/models';
-import { AssetTicketsService, AppContext, type UserDto } from '../shared/core';
-import type { InfoCardData } from '../shared/ui';
+import { AssetsService, AssetTicketsService, AppContext, type UserDto } from '../shared/core';
+import type { InfoCardData, InfoCardMenuAction } from '../shared/ui';
 import type { ListQuery, PageResult } from '../shared/ui';
 
 export interface AssetTicketListFilters {
   userId?: string;
   order?: AppTypes.AssetTicketOrder;
+}
+
+export interface OwnedAssetListFilters {
+  userId?: string;
+  type?: AppTypes.AssetType;
+  refreshToken?: number;
 }
 
 type TicketPerson = Pick<UserDto, 'id' | 'name' | 'age' | 'city' | 'gender' | 'initials' | 'images'>;
@@ -19,6 +25,7 @@ type TicketPerson = Pick<UserDto, 'id' | 'name' | 'age' | 'city' | 'gender' | 'i
 })
 export class AssetFacadeService {
   private readonly appCtx = inject(AppContext);
+  private readonly assetsService = inject(AssetsService);
   private readonly assetTicketsService = inject(AssetTicketsService);
   private readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
   private readonly userById = new Map(this.users.map(user => [user.id, user]));
@@ -48,6 +55,26 @@ export class AssetFacadeService {
     return {
       items: page.items.map(row => this.cloneTicketRow(row)),
       total: page.total
+    };
+  }
+
+  async loadOwnedAssetPage(query: ListQuery<OwnedAssetListFilters>): Promise<PageResult<AppTypes.AssetCard>> {
+    const userId = query.filters?.userId?.trim() || this.activeUserId();
+    const type = query.filters?.type;
+    if (!userId || (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies')) {
+      return {
+        items: [],
+        total: 0
+      };
+    }
+    const cards = await this.assetsService.queryOwnedAssetsByUser(userId);
+    const filtered = cards.filter(card => card.type === type);
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
+    const start = page * pageSize;
+    return {
+      items: filtered.slice(start, start + pageSize).map(card => this.cloneOwnedAsset(card)),
+      total: filtered.length
     };
   }
 
@@ -82,6 +109,57 @@ export class AssetFacadeService {
       },
       clickable: false
     };
+  }
+
+  ownedAssetInfoCard(
+    card: AppTypes.AssetCard,
+    options: { groupLabel?: string | null } = {}
+  ): InfoCardData {
+    return {
+      rowId: `asset:${card.id}`,
+      groupLabel: options.groupLabel ?? null,
+      title: card.title,
+      imageUrl: this.ownedAssetImageUrl(card),
+      metaRows: [this.ownedAssetMetaLine(card)],
+      description: card.details,
+      leadingIcon: {
+        icon: this.ownedAssetTypeIcon(card.type)
+      },
+      mediaStart: this.ownedAssetMediaStart(card),
+      mediaEnd: {
+        variant: 'avatar',
+        tone: 'default',
+        label: this.ownedAssetCapacityLabel(card),
+        interactive: false,
+        ariaLabel: null
+      },
+      menuActions: this.ownedAssetMenuActions(card),
+      clickable: false
+    };
+  }
+
+  ownedAssetEmptyLabel(type: AppTypes.AssetType): string {
+    if (type === 'Accommodation') {
+      return 'No accommodations yet';
+    }
+    if (type === 'Supplies') {
+      return 'No supplies yet';
+    }
+    return 'No cars yet';
+  }
+
+  ownedAssetEmptyDescription(type: AppTypes.AssetType): string {
+    if (type === 'Accommodation') {
+      return 'Add a stay, room, or place so it can show up here.';
+    }
+    if (type === 'Supplies') {
+      return 'Add supplies or shared gear so the list can populate.';
+    }
+    return 'Add a car or ride so it can show up here.';
+  }
+
+  canOpenOwnedAssetMap(card: AppTypes.AssetCard): boolean {
+    return card.type === 'Accommodation' && this.ownedAssetPrimaryLocation(card).length > 0;
   }
 
   ticketGroupLabel(dateIso: string): string {
@@ -139,6 +217,14 @@ export class AssetFacadeService {
 
   private cloneTicketRow(row: AppTypes.ActivityListRow): AppTypes.ActivityListRow {
     return { ...row };
+  }
+
+  private cloneOwnedAsset(card: AppTypes.AssetCard): AppTypes.AssetCard {
+    return {
+      ...card,
+      routes: [...(card.routes ?? [])],
+      requests: card.requests.map(request => ({ ...request }))
+    };
   }
 
   private ticketImageUrl(row: AppTypes.ActivityListRow): string {
@@ -215,6 +301,80 @@ export class AssetFacadeService {
       return explicit.slice(0, 2).toUpperCase();
     }
     return AppUtils.initialsFromText(row.title);
+  }
+
+  private ownedAssetImageUrl(card: AppTypes.AssetCard): string {
+    return `${card.imageUrl ?? ''}`.trim() || AppDemoGenerators.defaultAssetImage(card.type, card.id || card.title || card.type.toLowerCase());
+  }
+
+  private ownedAssetMetaLine(card: AppTypes.AssetCard): string {
+    const subtitle = card.subtitle.trim() || AppDemoGenerators.defaultAssetSubtitle(card.type);
+    const city = card.city.trim();
+    return [this.ownedAssetTypeLabel(card.type), subtitle, city].filter(Boolean).join(' · ');
+  }
+
+  private ownedAssetTypeLabel(type: AppTypes.AssetType): string {
+    if (type === 'Accommodation') {
+      return 'Accommodation';
+    }
+    if (type === 'Supplies') {
+      return 'Supplies';
+    }
+    return 'Car';
+  }
+
+  private ownedAssetTypeIcon(type: AppTypes.AssetType): string {
+    if (type === 'Accommodation') {
+      return 'apartment';
+    }
+    if (type === 'Supplies') {
+      return 'inventory_2';
+    }
+    return 'directions_car';
+  }
+
+  private ownedAssetCapacityLabel(card: AppTypes.AssetCard): string {
+    return `${Math.max(1, Math.trunc(Number(card.capacityTotal) || 0))}`;
+  }
+
+  private ownedAssetPrimaryLocation(card: AppTypes.AssetCard): string {
+    if (card.type !== 'Accommodation') {
+      return '';
+    }
+    return (card.routes ?? [])
+      .map(route => route.trim())
+      .find(route => route.length > 0)
+      ?? card.city.trim();
+  }
+
+  private ownedAssetMediaStart(card: AppTypes.AssetCard): NonNullable<InfoCardData['mediaStart']> | null {
+    if (card.type !== 'Accommodation' || !this.canOpenOwnedAssetMap(card)) {
+      return null;
+    }
+    return {
+      variant: 'avatar',
+      tone: 'default',
+      icon: 'location_on',
+      interactive: true,
+      ariaLabel: 'Open accommodation map'
+    };
+  }
+
+  private ownedAssetMenuActions(card: AppTypes.AssetCard): readonly InfoCardMenuAction[] {
+    const label = this.ownedAssetTypeLabel(card.type).toLowerCase();
+    return [
+      {
+        id: 'edit',
+        label: `Edit ${label}`,
+        icon: 'edit'
+      },
+      {
+        id: 'delete',
+        label: `Delete ${label}`,
+        icon: 'delete',
+        tone: 'destructive'
+      }
+    ];
   }
 
   private resolveActiveTicketHolder(): TicketPerson | null {

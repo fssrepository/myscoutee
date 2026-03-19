@@ -315,18 +315,12 @@ export class App {
         this.pendingSubEventAssetCreateAssignment = null;
       }
     });
-    this.ownedAssets.initialize(this.seedAssetCards.map(card => ({
-      ...card,
-      routes: [...(card.routes ?? [])],
-      requests: [...card.requests]
-    })));
     this.assetPopupService.registerHost(this.assetPopupHost);
     this.navigatorService.registerBindings(this.navigatorBindings);
     this.syncAssetPopupVisibility();
     this.ensurePaginationTestEvents(30);
     this.initializeEventEditorContextData();
     this.initializeProfileDetailForms();
-    this.appCtx.setActiveUserId(this.activeUserId);
     this.appCtx.setConnectivityState(this.browserConnectivityState());
 
     effect(() => {

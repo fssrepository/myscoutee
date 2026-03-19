@@ -64,6 +64,29 @@ export class HttpAssetsRepository {
     return { ...normalizedAsset, requests: [...normalizedAsset.requests] };
   }
 
+  async replaceOwnedAssets(
+    userId: string,
+    assets: readonly AppTypes.AssetCard[]
+  ): Promise<AppTypes.AssetCard[]> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    const normalizedAssets = this.normalizeCards(assets);
+    this.cachedAssetsByUserId[normalizedUserId] = this.cloneCards(normalizedAssets);
+    try {
+      await this.http
+        .post(`${this.apiBaseUrl}/assets/replace`, {
+          userId: normalizedUserId,
+          assets: normalizedAssets
+        })
+        .toPromise();
+    } catch {
+      // Keep optimistic state while concrete endpoint wiring lands.
+    }
+    return this.cloneCards(normalizedAssets);
+  }
+
   async deleteOwnedAsset(userId: string, assetId: string): Promise<void> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();

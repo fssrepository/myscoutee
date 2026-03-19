@@ -6,10 +6,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { from } from 'rxjs';
 
-import { AssetFacadeService, type AssetTicketListFilters } from '../../asset-facade.service';
+import {
+  AssetFacadeService,
+  type AssetTicketListFilters,
+  type OwnedAssetListFilters
+} from '../../asset-facade.service';
 import { AssetPopupService } from '../../asset-popup.service';
 import { OwnedAssetsPopupService } from '../../owned-assets-popup.service';
-import { LazyBgImageDirective } from '../../../shared/ui';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AssetDeleteConfirmComponent } from '../asset-delete-confirm/asset-delete-confirm.component';
 import { AssetFormPopupComponent } from '../asset-form-popup/asset-form-popup.component';
@@ -20,6 +23,7 @@ import { AssetTicketScannerPopupComponent } from '../asset-ticket-scanner-popup/
 import {
   InfoCardComponent,
   SmartListComponent,
+  type InfoCardMenuActionEvent,
   type ListQuery,
   type SmartListConfig,
   type SmartListStateChange
@@ -35,7 +39,6 @@ import {
     MatIconModule,
     MatSelectModule,
     InfoCardComponent,
-    LazyBgImageDirective,
     SmartListComponent,
     AssetDeleteConfirmComponent,
     AssetFormPopupComponent,
@@ -55,7 +58,7 @@ export class AssetPopupComponent implements OnDestroy {
   protected readonly assetFilterOpen = signal(false);
   protected readonly retryTicketScanner = (event?: Event): void => this.assetPopup.retryTicketScanner(event);
   protected readonly closeOwnedAssetForm = (): void => this.ownedAssets.closeAssetForm();
-  protected readonly saveOwnedAssetCard = (): void => this.ownedAssets.saveAssetCard();
+  protected readonly saveOwnedAssetCard = (): void => { void this.ownedAssets.saveAssetCard(); };
   protected readonly setOwnedAssetFormRouteStop = (index: number, value: string): void =>
     this.ownedAssets.setAssetFormRouteStop(index, value);
   protected readonly openOwnedAssetFormRouteStopMap = (index: number, event?: Event): void =>
@@ -63,11 +66,35 @@ export class AssetPopupComponent implements OnDestroy {
   protected readonly refreshOwnedAssetFromSourceLink = (): void => this.ownedAssets.refreshAssetFromSourceLink();
   protected readonly onOwnedAssetImageFileSelected = (file: File): void => this.ownedAssets.applyAssetImageFile(file);
   protected readonly cancelOwnedAssetDelete = (): void => this.ownedAssets.cancelAssetDelete();
-  protected readonly confirmOwnedAssetDelete = (): void => this.ownedAssets.confirmAssetDelete();
+  protected readonly confirmOwnedAssetDelete = (): void => { void this.ownedAssets.confirmAssetDelete(); };
+  protected assetSmartListQuery: Partial<ListQuery<OwnedAssetListFilters>> = {};
   protected ticketSmartListQuery: Partial<ListQuery<AssetTicketListFilters>> = {};
 
+  protected readonly assetSmartListLoadPage = (query: ListQuery<OwnedAssetListFilters>) =>
+    from(this.assetFacade.loadOwnedAssetPage(query));
   protected readonly ticketSmartListLoadPage = (query: ListQuery<AssetTicketListFilters>) =>
     from(this.assetFacade.loadTicketPage(query));
+  protected readonly assetSmartListConfig: SmartListConfig<AppTypes.AssetCard, OwnedAssetListFilters> = {
+    pageSize: 18,
+    loadingDelayMs: 0,
+    defaultView: 'list',
+    emptyLabel: query => this.assetFacade.ownedAssetEmptyLabel(query.filters?.type ?? 'Car'),
+    emptyDescription: query => this.assetFacade.ownedAssetEmptyDescription(query.filters?.type ?? 'Car'),
+    headerProgress: {
+      enabled: true
+    },
+    showStickyHeader: false,
+    showGroupMarker: () => false,
+    listLayout: 'card-grid',
+    desktopColumns: 3,
+    snapMode: 'none',
+    containerClass: {
+      'experience-card-list': true,
+      'assets-card-list': true,
+      'owned-assets-scroll-list': true
+    },
+    trackBy: (_index, card) => card.id
+  };
   protected readonly ticketSmartListConfig: SmartListConfig<AppTypes.ActivityListRow, AssetTicketListFilters> = {
     pageSize: 18,
     loadingDelayMs: 0,
@@ -98,13 +125,55 @@ export class AssetPopupComponent implements OnDestroy {
 
   constructor() {
     effect(() => {
+      const activeUserId = this.assetFacade.activeUserId();
+      const assetRevision = this.ownedAssets.assetListRevision();
+      this.assetSmartListQuery = {
+        filters: {
+          userId: activeUserId,
+          type: this.ownedAssets.assetFilter === 'Ticket' ? 'Car' : this.ownedAssets.assetFilter,
+          refreshToken: assetRevision
+        }
+      };
       this.ticketSmartListQuery = {
         filters: {
-          userId: this.assetFacade.activeUserId(),
+          userId: activeUserId,
           order: this.assetPopup.ticketDateOrder()
         }
       };
     });
+  }
+
+  protected ownedAssetInfoCard(
+    card: AppTypes.AssetCard,
+    options: { groupLabel?: string | null } = {}
+  ) {
+    return this.assetFacade.ownedAssetInfoCard(card, options);
+  }
+
+  protected onOwnedAssetInfoCardMenuAction(card: AppTypes.AssetCard, event: InfoCardMenuActionEvent): void {
+    if (event.actionId === 'delete') {
+      this.ownedAssets.runAssetItemDeleteAction(card);
+      return;
+    }
+    this.ownedAssets.runAssetItemEditAction(card);
+  }
+
+  protected openOwnedAssetMap(card: AppTypes.AssetCard): void {
+    if (!this.assetFacade.canOpenOwnedAssetMap(card)) {
+      return;
+    }
+    this.ownedAssets.openAssetMap(card);
+  }
+
+  protected onAssetFilterChange(filter: AppTypes.AssetFilterType): void {
+    this.ownedAssets.selectAssetFilter(filter);
+    this.assetSmartListQuery = {
+      filters: {
+        userId: this.assetFacade.activeUserId(),
+        type: filter === 'Ticket' ? 'Car' : filter,
+        refreshToken: this.ownedAssets.assetListRevision()
+      }
+    };
   }
 
   protected ticketInfoCard(

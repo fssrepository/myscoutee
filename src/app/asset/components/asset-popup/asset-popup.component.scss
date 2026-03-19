@@ -69,12 +69,14 @@
   margin: 0;
 }
 
+.popup-body.popup-body-assets-list,
 .popup-body.popup-body-assets-tickets {
   overflow: hidden;
   display: grid;
   grid-template-rows: minmax(0, 1fr);
 }
 
+.asset-popup .popup-body.popup-body-assets-list,
 .asset-popup .popup-body.popup-body-assets-tickets {
   overflow: hidden;
   display: grid;
@@ -163,6 +165,7 @@
   position: relative;
 }
 
+.asset-popup .assets-popup.assets-popup-smart-list,
 .asset-popup .assets-popup.assets-popup-tickets {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
@@ -885,6 +888,26 @@
   row-gap: 0.6rem;
   scroll-snap-type: y mandatory;
   scroll-padding-top: 2.8rem;
+}
+
+.asset-popup .owned-assets-scroll-list {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.asset-popup .owned-assets-scroll-list .ui-info-card__overlay-action--avatar {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  font-size: 0.72rem;
+}
+
+.asset-popup .owned-assets-scroll-list .ui-info-card__overlay-action--end.ui-info-card__overlay-action--avatar.asset-occupancy-badge-static {
+  cursor: default;
+  pointer-events: none;
+  transform: none;
+  filter: none;
 }
 
 .asset-popup .activities-sticky-header,

@@ -34,6 +34,10 @@ export class AssetsService {
     return this.assetsService.saveOwnedAsset(userId, asset);
   }
 
+  async replaceOwnedAssets(userId: string, assets: readonly AppTypes.AssetCard[]): Promise<AppTypes.AssetCard[]> {
+    return this.assetsService.replaceOwnedAssets(userId, assets);
+  }
+
   async deleteOwnedAsset(userId: string, assetId: string): Promise<void> {
     await this.assetsService.deleteOwnedAsset(userId, assetId);
   }

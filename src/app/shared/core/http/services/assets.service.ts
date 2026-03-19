@@ -21,6 +21,10 @@ export class HttpAssetsService {
     return this.assetsRepository.saveOwnedAsset(userId, asset);
   }
 
+  async replaceOwnedAssets(userId: string, assets: readonly AppTypes.AssetCard[]): Promise<AppTypes.AssetCard[]> {
+    return this.assetsRepository.replaceOwnedAssets(userId, assets);
+  }
+
   async deleteOwnedAsset(userId: string, assetId: string): Promise<void> {
     await this.assetsRepository.deleteOwnedAsset(userId, assetId);
   }

@@ -68,6 +68,62 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     };
   }
 
+  override async replaceOwnedAssets(
+    userId: string,
+    assets: readonly AppTypes.AssetCard[]
+  ): Promise<AppTypes.AssetCard[]> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    this.ensureSeededOwnerAssets(normalizedUserId);
+    const normalizedAssets = this.normalizeCards(assets);
+    const currentTable = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
+    const ownerIds = [...(currentTable.idsByOwnerUserId[normalizedUserId] ?? [])];
+    const seenIds = new Set<string>();
+    const nextRecords: DemoAssetRecord[] = [];
+    let timestampMs = Date.now();
+
+    for (const asset of normalizedAssets) {
+      const existing = currentTable.byId[asset.id];
+      const nowMs = timestampMs;
+      timestampMs += 1;
+      nextRecords.push({
+        ...asset,
+        ownerUserId: normalizedUserId,
+        visibility: existing?.visibility ?? 'Invitation only',
+        createdAtIso: existing?.createdAtIso ?? new Date(nowMs).toISOString(),
+        updatedAtIso: new Date(nowMs).toISOString(),
+        createdMs: existing?.createdMs ?? nowMs,
+        updatedMs: nowMs
+      });
+      seenIds.add(asset.id);
+    }
+
+    this.memoryDb.write(state => {
+      let nextTable = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+      for (const assetId of ownerIds) {
+        if (seenIds.has(assetId)) {
+          continue;
+        }
+        nextTable = this.deleteRecordCollection(nextTable, assetId);
+      }
+      for (const record of nextRecords) {
+        nextTable = this.upsertRecordCollection(nextTable, record);
+      }
+      return {
+        ...state,
+        [ASSETS_TABLE_NAME]: nextTable
+      };
+    });
+
+    return normalizedAssets.map(asset => ({
+      ...asset,
+      routes: [...(asset.routes ?? [])],
+      requests: asset.requests.map(request => ({ ...request }))
+    }));
+  }
+
   override async deleteOwnedAsset(userId: string, assetId: string): Promise<void> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();

@@ -1,9 +1,10 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, effect, inject, signal } from '@angular/core';
 
 import { AppDemoGenerators } from '../shared/app-demo-generators';
 import { APP_STATIC_DATA } from '../shared/app-static-data';
 import type * as AppTypes from '../shared/core/base/models';
 import { AssetPopupService } from './asset-popup.service';
+import { AppContext, AssetsService } from '../shared/core';
 
 export interface OwnedAssetsRuntimeHooks {
   onAssetsChanged?(): void;
@@ -17,34 +18,70 @@ export interface OwnedAssetsRuntimeHooks {
 })
 export class OwnedAssetsPopupService {
   private readonly assetPopupService = inject(AssetPopupService);
+  private readonly assetsService = inject(AssetsService);
+  private readonly appCtx = inject(AppContext);
+  private readonly assetListRevisionRef = signal(0);
 
   readonly assetTypeOptions: AppTypes.AssetType[] = APP_STATIC_DATA.assetTypeOptions;
   readonly assetFilterOptions: AppTypes.AssetFilterType[] = APP_STATIC_DATA.assetFilterOptions;
 
   assetFilter: AppTypes.AssetFilterType = 'Car';
-  assetCards: AppTypes.AssetCard[] = [];
   showAssetForm = false;
   editingAssetId: string | null = null;
   pendingAssetDeleteCardId: string | null = null;
   assetForm: Omit<AppTypes.AssetCard, 'id' | 'requests'> = this.buildEmptyAssetForm('Car');
   assetFormVisibility: AppTypes.EventVisibility = 'Public';
 
+  private assetCardsRef: AppTypes.AssetCard[] = [];
   private activePopupFilter: AppTypes.AssetFilterType | null = null;
+  private activeOwnerUserId = '';
   private readonly assetVisibilityById: Record<string, AppTypes.EventVisibility> = {};
   private itemActionMenu: { id: string; title: string; openUp: boolean } | null = null;
   private runtimeHooks: OwnedAssetsRuntimeHooks | null = null;
+  private pendingPersistSnapshot: AppTypes.AssetCard[] | null = null;
+  private pendingPersistOwnerUserId = '';
+  private persistTimerId: ReturnType<typeof setTimeout> | null = null;
+
+  readonly assetListRevision = this.assetListRevisionRef.asReadonly();
+
+  get assetCards(): AppTypes.AssetCard[] {
+    return this.assetCardsRef;
+  }
+
+  set assetCards(cards: AppTypes.AssetCard[]) {
+    this.applyAssetCards(cards, { persist: true });
+  }
+
+  constructor() {
+    effect(() => {
+      this.initializeFromUser(this.appCtx.activeUserId().trim());
+    });
+  }
 
   registerRuntimeHooks(hooks: OwnedAssetsRuntimeHooks | null): void {
     this.runtimeHooks = hooks;
   }
 
   initialize(cards: AppTypes.AssetCard[]): void {
-    this.assetCards = cards.map(card => ({
-      ...card,
-      routes: [...(card.routes ?? [])],
-      requests: card.requests.map(request => ({ ...request }))
-    }));
-    this.normalizeAssetMediaLinks();
+    this.applyAssetCards(cards, { persist: false });
+  }
+
+  assetListRevisionValue(): number {
+    return this.assetListRevisionRef();
+  }
+
+  initializeFromUser(userId: string): void {
+    const normalizedUserId = userId.trim();
+    this.activeOwnerUserId = normalizedUserId;
+    this.pendingAssetDeleteCardId = null;
+    this.itemActionMenu = null;
+    this.cancelScheduledPersist();
+    if (!normalizedUserId) {
+      this.applyAssetCards([], { persist: false });
+      return;
+    }
+    this.applyAssetCards(this.assetsService.peekOwnedAssetsByUser(normalizedUserId), { persist: false });
+    void this.refreshOwnedAssetsFromRepository(normalizedUserId);
   }
 
   isPopupOpen(): boolean {
@@ -68,7 +105,7 @@ export class OwnedAssetsPopupService {
     if (this.assetFilter === 'Ticket') {
       return [];
     }
-    return this.assetCards.filter(card => card.type === this.assetFilter);
+    return this.assetCardsRef.filter(card => card.type === this.assetFilter);
   }
 
   assetFormTitle(): string {
@@ -83,7 +120,7 @@ export class OwnedAssetsPopupService {
     if (!this.pendingAssetDeleteCardId) {
       return '';
     }
-    const card = this.assetCards.find(item => item.id === this.pendingAssetDeleteCardId);
+    const card = this.assetCardsRef.find(item => item.id === this.pendingAssetDeleteCardId);
     return card ? `Delete ${card.title}?` : 'Delete this item?';
   }
 
@@ -254,7 +291,7 @@ export class OwnedAssetsPopupService {
     this.assetForm.imageUrl = URL.createObjectURL(file);
   }
 
-  saveAssetCard(): void {
+  async saveAssetCard(): Promise<void> {
     const title = this.assetForm.title.trim();
     const city = this.assetForm.city.trim();
     const routes = this.normalizeAssetRoutes(this.assetForm.type, this.assetForm.routes);
@@ -282,18 +319,29 @@ export class OwnedAssetsPopupService {
       routes
     };
     const resolvedVisibility: AppTypes.EventVisibility = this.isPopupOpen() ? 'Invitation only' : this.assetFormVisibility;
+    const ownerUserId = this.resolveOwnerUserId();
     if (this.editingAssetId) {
-      this.assetVisibilityById[this.editingAssetId] = resolvedVisibility;
-      this.assetCards = this.assetCards.map(card =>
+      const editingAssetId = this.editingAssetId;
+      const existing = this.assetCardsRef.find(card => card.id === editingAssetId);
+      const nextCard: AppTypes.AssetCard = {
+        id: editingAssetId,
+        ...payload,
+        requests: existing?.requests.map(request => ({ ...request })) ?? []
+      };
+      this.assetVisibilityById[editingAssetId] = resolvedVisibility;
+      this.applyAssetCards(this.assetCardsRef.map(card =>
         card.id === this.editingAssetId
-          ? {
-              ...card,
-              ...payload
-            }
+          ? nextCard
           : card
-      );
+      ), { persist: false });
       this.runtimeHooks?.onAssetsChanged?.();
       this.closeAssetForm();
+      if (ownerUserId) {
+        const savedCard = await this.assetsService.saveOwnedAsset(ownerUserId, nextCard);
+        if (this.activeOwnerUserId === ownerUserId) {
+          this.applyAssetCards(this.assetCardsRef.map(card => card.id === savedCard.id ? savedCard : card), { persist: false });
+        }
+      }
       return;
     }
     const id = `asset-${Date.now()}`;
@@ -303,10 +351,16 @@ export class OwnedAssetsPopupService {
       ...payload,
       requests: []
     };
-    this.assetCards = [nextCard, ...this.assetCards];
+    this.applyAssetCards([nextCard, ...this.assetCardsRef], { persist: false });
     this.runtimeHooks?.onAssetCreated?.(nextCard);
     this.runtimeHooks?.onAssetsChanged?.();
     this.closeAssetForm();
+    if (ownerUserId) {
+      const savedCard = await this.assetsService.saveOwnedAsset(ownerUserId, nextCard);
+      if (this.activeOwnerUserId === ownerUserId) {
+        this.applyAssetCards(this.assetCardsRef.map(card => card.id === savedCard.id ? savedCard : card), { persist: false });
+      }
+    }
   }
 
   canOpenAssetMap(card: AppTypes.AssetCard): boolean {
@@ -350,14 +404,14 @@ export class OwnedAssetsPopupService {
     return this.itemActionMenu?.id === card.id && this.itemActionMenu.openUp;
   }
 
-  runAssetItemEditAction(card: AppTypes.AssetCard, event: Event): void {
-    event.stopPropagation();
+  runAssetItemEditAction(card: AppTypes.AssetCard, event?: Event): void {
+    event?.stopPropagation();
     this.openAssetForm(card);
     this.itemActionMenu = null;
   }
 
-  runAssetItemDeleteAction(card: AppTypes.AssetCard, event: Event): void {
-    event.stopPropagation();
+  runAssetItemDeleteAction(card: AppTypes.AssetCard, event?: Event): void {
+    event?.stopPropagation();
     this.pendingAssetDeleteCardId = card.id;
     this.itemActionMenu = null;
   }
@@ -366,15 +420,19 @@ export class OwnedAssetsPopupService {
     this.pendingAssetDeleteCardId = null;
   }
 
-  confirmAssetDelete(): void {
+  async confirmAssetDelete(): Promise<void> {
     if (!this.pendingAssetDeleteCardId) {
       return;
     }
     const cardId = this.pendingAssetDeleteCardId;
-    this.assetCards = this.assetCards.filter(card => card.id !== cardId);
+    const ownerUserId = this.resolveOwnerUserId();
+    this.applyAssetCards(this.assetCardsRef.filter(card => card.id !== cardId), { persist: false });
     this.pendingAssetDeleteCardId = null;
     this.runtimeHooks?.onAssetDeleted?.(cardId);
     this.runtimeHooks?.onAssetsChanged?.();
+    if (ownerUserId) {
+      await this.assetsService.deleteOwnedAsset(ownerUserId, cardId);
+    }
   }
 
   private activeAssetType(): AppTypes.AssetType {
@@ -402,7 +460,7 @@ export class OwnedAssetsPopupService {
   }
 
   private normalizeAssetMediaLinks(): void {
-    this.assetCards = this.assetCards.map(card => {
+    this.assetCardsRef = this.assetCardsRef.map(card => {
       const imageUrl = this.normalizeAssetImageLink(card.type, card.imageUrl, card.id || card.title);
       const sourceLink = this.normalizeAssetSourceLink(card.sourceLink, imageUrl);
       return {
@@ -458,6 +516,70 @@ export class OwnedAssetsPopupService {
       return cleaned.length > 0 ? [cleaned[0]] : [''];
     }
     return cleaned.length > 0 ? cleaned : [''];
+  }
+
+  private applyAssetCards(
+    cards: readonly AppTypes.AssetCard[],
+    options: { persist?: boolean } = {}
+  ): void {
+    this.assetCardsRef = cards.map(card => ({
+      ...card,
+      routes: [...(card.routes ?? [])],
+      requests: card.requests.map(request => ({ ...request }))
+    }));
+    this.normalizeAssetMediaLinks();
+    this.assetListRevisionRef.update(value => value + 1);
+    if (options.persist) {
+      this.schedulePersist();
+    }
+  }
+
+  private async refreshOwnedAssetsFromRepository(ownerUserId: string): Promise<void> {
+    const cards = await this.assetsService.queryOwnedAssetsByUser(ownerUserId);
+    if (this.activeOwnerUserId !== ownerUserId) {
+      return;
+    }
+    this.applyAssetCards(cards, { persist: false });
+  }
+
+  private resolveOwnerUserId(): string {
+    return this.activeOwnerUserId.trim() || this.appCtx.getActiveUserId().trim();
+  }
+
+  private schedulePersist(): void {
+    const ownerUserId = this.resolveOwnerUserId();
+    if (!ownerUserId) {
+      return;
+    }
+    this.pendingPersistOwnerUserId = ownerUserId;
+    this.pendingPersistSnapshot = this.assetCardsRef.map(card => ({
+      ...card,
+      routes: [...(card.routes ?? [])],
+      requests: card.requests.map(request => ({ ...request }))
+    }));
+    if (this.persistTimerId !== null) {
+      clearTimeout(this.persistTimerId);
+    }
+    this.persistTimerId = setTimeout(() => {
+      const snapshot = this.pendingPersistSnapshot;
+      const persistOwnerUserId = this.pendingPersistOwnerUserId;
+      this.persistTimerId = null;
+      this.pendingPersistSnapshot = null;
+      this.pendingPersistOwnerUserId = '';
+      if (!snapshot || !persistOwnerUserId) {
+        return;
+      }
+      void this.assetsService.replaceOwnedAssets(persistOwnerUserId, snapshot);
+    }, 60);
+  }
+
+  private cancelScheduledPersist(): void {
+    if (this.persistTimerId !== null) {
+      clearTimeout(this.persistTimerId);
+      this.persistTimerId = null;
+    }
+    this.pendingPersistSnapshot = null;
+    this.pendingPersistOwnerUserId = '';
   }
 
   private openGoogleMapsSearch(query: string): void {

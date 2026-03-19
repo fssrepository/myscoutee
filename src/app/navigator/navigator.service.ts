@@ -62,6 +62,23 @@ export class NavigatorService {
   constructor() {
     effect(() => {
       const session = this.sessionService.session();
+      if (!session) {
+        return;
+      }
+      if (this.appCtx.activeUserId().trim()) {
+        return;
+      }
+      const bootstrapUserId = session.kind === 'firebase'
+        ? session.profile.id.trim()
+        : session.userId.trim();
+      if (!bootstrapUserId) {
+        return;
+      }
+      this.appCtx.setActiveUserId(bootstrapUserId);
+    }, { allowSignalWrites: true });
+
+    effect(() => {
+      const session = this.sessionService.session();
       const activeUserId = this.appCtx.activeUserId().trim();
 
       if (!session) {
