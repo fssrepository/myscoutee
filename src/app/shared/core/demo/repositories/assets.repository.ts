@@ -19,6 +19,43 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly usersRepository = inject(DemoUsersRepository);
 
+  init(ownerUserIds?: readonly string[]): void {
+    const normalizedOwnerIds = Array.from(new Set(
+      (ownerUserIds ?? this.querySeedUsers().map(user => user.id))
+        .map(userId => userId.trim())
+        .filter(userId => userId.length > 0)
+    ));
+    if (normalizedOwnerIds.length === 0) {
+      return;
+    }
+
+    let nextTable = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
+    let changed = false;
+
+    for (const ownerUserId of normalizedOwnerIds) {
+      if ((nextTable.idsByOwnerUserId[ownerUserId] ?? []).length > 0) {
+        continue;
+      }
+      const records = this.buildSeededOwnerRecords(ownerUserId);
+      if (records.length === 0) {
+        continue;
+      }
+      for (const record of records) {
+        nextTable = this.upsertRecordCollection(nextTable, record);
+      }
+      changed = true;
+    }
+
+    if (!changed) {
+      return;
+    }
+
+    this.memoryDb.write(state => ({
+      ...state,
+      [ASSETS_TABLE_NAME]: nextTable
+    }));
+  }
+
   override peekOwnedAssetsByUser(userId: string): AppTypes.AssetCard[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {

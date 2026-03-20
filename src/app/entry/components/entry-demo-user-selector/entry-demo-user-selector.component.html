@@ -22,7 +22,7 @@
         <div class="demo-user-grid demo-user-grid-loading">
           <div class="demo-user-loading-shell">
             <div class="demo-user-loading-copy-group">
-              <p class="demo-user-loading-eyebrow">Preparing demo selector</p>
+              <p class="demo-user-loading-eyebrow">{{ submitting ? 'Opening demo session' : 'Preparing demo selector' }}</p>
               <p class="demo-user-loading-copy">{{ loadingLabel }}</p>
               <div
                 class="demo-user-progress"
@@ -64,7 +64,7 @@
           <p class="demo-user-loading-copy">No demo users available.</p>
         </div>
       </ng-template>
-      <div class="demo-user-submit-overlay" *ngIf="submitting">
+      <div class="demo-user-submit-overlay" *ngIf="submitting && !loading">
         <p class="demo-user-loading-copy">Opening demo session...</p>
       </div>
     </div>

@@ -87,6 +87,21 @@ export class UsersService {
     }
   }
 
+  async prepareDemoUserSession(
+    userId: string,
+    onProgress?: (state: DemoBootstrapProgressState) => void
+  ): Promise<void> {
+    if (!this.demoModeEnabled) {
+      onProgress?.({
+        percent: 100,
+        label: 'Demo session ready'
+      });
+      return;
+    }
+
+    await this.demoBootstrapService.ensureUserReady(userId, onProgress);
+  }
+
   async loadUserById(userId?: string, requestTimeoutMs?: number): Promise<UserDto | null> {
     const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';

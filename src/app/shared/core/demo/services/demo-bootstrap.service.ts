@@ -1,6 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 
+import { AppMemoryDb } from '../../base/db';
 import { DemoActivityMembersRepository } from '../repositories/activity-members.repository';
+import { DemoActivityResourcesRepository } from '../repositories/activity-resources.repository';
+import { DemoAssetsRepository } from '../repositories/assets.repository';
 import { DemoChatsRepository } from '../repositories/chats.repository';
 import { DemoEventsRepository } from '../repositories/events.repository';
 import { DemoUsersRatingsRepository } from '../repositories/users-ratings.repository';
@@ -17,14 +20,18 @@ type DemoBootstrapProgressListener = (state: DemoBootstrapProgressState) => void
   providedIn: 'root'
 })
 export class DemoBootstrapService {
+  private readonly memoryDb = inject(AppMemoryDb);
   private readonly chatsRepository = inject(DemoChatsRepository);
   private readonly eventsRepository = inject(DemoEventsRepository);
   private readonly usersRatingsRepository = inject(DemoUsersRatingsRepository);
   private readonly usersRepository = inject(DemoUsersRepository);
   private readonly activityMembersRepository = inject(DemoActivityMembersRepository);
+  private readonly assetsRepository = inject(DemoAssetsRepository);
+  private readonly activityResourcesRepository = inject(DemoActivityResourcesRepository);
 
   private bootstrapPromise: Promise<void> | null = null;
   private ready = false;
+  private readonly readyUserIds = new Set<string>();
   private lastProgress: DemoBootstrapProgressState = {
     percent: 0,
     label: 'Preparing demo data'
@@ -61,6 +68,59 @@ export class DemoBootstrapService {
         this.listeners.delete(onProgress);
       }
     }
+  }
+
+  async ensureUserReady(userId: string, onProgress?: DemoBootstrapProgressListener): Promise<void> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      onProgress?.({
+        percent: 100,
+        label: 'Demo session ready'
+      });
+      return;
+    }
+
+    await this.ensureReady();
+
+    if (this.readyUserIds.has(normalizedUserId)) {
+      onProgress?.({
+        percent: 100,
+        label: 'Demo session ready'
+      });
+      return;
+    }
+
+    onProgress?.({
+      percent: 0,
+      label: 'Preparing demo session'
+    });
+    await this.waitForUiYield();
+
+    onProgress?.({
+      percent: 42,
+      label: 'Preparing owned assets'
+    });
+    this.assetsRepository.init([normalizedUserId]);
+    await this.waitForUiYield();
+
+    onProgress?.({
+      percent: 84,
+      label: 'Preparing event resources'
+    });
+    this.activityResourcesRepository.init([normalizedUserId]);
+    await this.waitForUiYield();
+
+    onProgress?.({
+      percent: 100,
+      label: 'Syncing demo IndexedDB'
+    });
+    await this.memoryDb.flushToIndexedDb();
+
+    this.readyUserIds.add(normalizedUserId);
+    onProgress?.({
+      percent: 100,
+      label: 'Demo session ready'
+    });
   }
 
   private async runBootstrap(): Promise<void> {
@@ -112,6 +172,12 @@ export class DemoBootstrapService {
     });
     this.activityMembersRepository.init();
     await this.waitForUiYield();
+
+    this.emitProgress({
+      percent: 100,
+      label: 'Syncing demo IndexedDB'
+    });
+    await this.memoryDb.flushToIndexedDb();
 
     this.ready = true;
     this.emitProgress({

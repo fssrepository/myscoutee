@@ -120,8 +120,12 @@ export class EntryShellComponent {
     if (this.demoSelectorLoading || this.demoSelectorSubmitting) {
       return;
     }
+    const requestToken = this.demoSelectorRequestToken;
     this.demoSelectorSubmitting = true;
-    this.demoUserSelected.emit(userId);
+    this.demoSelectorLoading = true;
+    this.demoSelectorLoadingProgress = 0;
+    this.demoSelectorLoadingLabel = 'Preparing demo session';
+    void this.prepareSelectedDemoUser(userId, requestToken);
   }
 
   protected onContinueWithFirebaseAuth(): void {
@@ -241,6 +245,47 @@ export class EntryShellComponent {
       }
       this.commitDemoSelectorState(() => {
         this.demoSelectorLoading = false;
+      });
+    }
+  }
+
+  private async prepareSelectedDemoUser(userId: string, requestToken: number): Promise<void> {
+    await this.waitForPopupPaint();
+    if (!this.isCurrentDemoSelectorRequest(requestToken)) {
+      return;
+    }
+
+    try {
+      await this.usersService.prepareDemoUserSession(userId, state => {
+        if (!this.isCurrentDemoSelectorRequest(requestToken)) {
+          return;
+        }
+        this.commitDemoSelectorState(() => {
+          this.demoSelectorLoadingProgress = state.percent;
+          this.demoSelectorLoadingLabel = state.label;
+        });
+      });
+      if (!this.isCurrentDemoSelectorRequest(requestToken)) {
+        return;
+      }
+      this.commitDemoSelectorState(() => {
+        this.demoSelectorLoadingProgress = 100;
+        this.demoSelectorLoadingLabel = 'Demo session ready';
+      });
+      await this.waitForLoaderCompletionBeat();
+      if (!this.isCurrentDemoSelectorRequest(requestToken)) {
+        return;
+      }
+      this.demoUserSelected.emit(userId);
+    } catch {
+      if (!this.isCurrentDemoSelectorRequest(requestToken)) {
+        return;
+      }
+      this.commitDemoSelectorState(() => {
+        this.demoSelectorLoading = false;
+        this.demoSelectorSubmitting = false;
+        this.demoSelectorLoadingProgress = 0;
+        this.demoSelectorLoadingLabel = 'Preparing demo data';
       });
     }
   }

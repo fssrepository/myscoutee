@@ -10,6 +10,9 @@ import {
   type DemoActivityResourcesRecordCollection,
   type DemoActivitySubEventResourceRecord
 } from '../models/activity-resources.model';
+import type { DemoEventRecord } from '../models/events.model';
+import { DemoEventsRepository } from './events.repository';
+import { DemoUsersRepository } from './users.repository';
 
 @Injectable({
   providedIn: 'root'
@@ -17,6 +20,48 @@ import {
 export class DemoActivityResourcesRepository extends HttpActivityResourcesRepository {
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly assetsRepository = inject(DemoAssetsRepository);
+  private readonly eventsRepository = inject(DemoEventsRepository);
+  private readonly usersRepository = inject(DemoUsersRepository);
+
+  init(ownerUserIds?: readonly string[]): void {
+    if (!ownerUserIds) {
+      this.usersRepository.init();
+    }
+
+    const normalizedUserIds = Array.from(new Set(
+      (ownerUserIds ?? this.usersRepository.queryAvailableDemoUsers().map(user => user.id))
+        .map(userId => userId.trim())
+    ))
+      .filter(userId => userId.length > 0);
+    if (normalizedUserIds.length === 0) {
+      return;
+    }
+
+    this.eventsRepository.init();
+    this.assetsRepository.init(normalizedUserIds);
+
+    let nextTable = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_RESOURCES_TABLE_NAME]);
+    let changed = false;
+
+    for (const userId of normalizedUserIds) {
+      for (const record of this.buildSeededRecordsForUser(userId)) {
+        if (nextTable.byId[record.id]) {
+          continue;
+        }
+        nextTable = this.upsertRecordCollection(nextTable, record);
+        changed = true;
+      }
+    }
+
+    if (!changed) {
+      return;
+    }
+
+    this.memoryDb.write(state => ({
+      ...state,
+      [ACTIVITY_RESOURCES_TABLE_NAME]: nextTable
+    }));
+  }
 
   override peekSubEventResourceState(
     ref: AppTypes.ActivitySubEventResourceStateRef
@@ -163,6 +208,75 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
       }
     }
     return next;
+  }
+
+  private buildSeededRecordsForUser(userId: string): DemoActivitySubEventResourceRecord[] {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+
+    const assets = this.assetsRepository.peekOwnedAssetsByUser(normalizedUserId);
+    const sourceRecords = this.collectSourceRecordsForUser(normalizedUserId);
+    const seenRecordIds = new Set<string>();
+    const nextRecords: DemoActivitySubEventResourceRecord[] = [];
+    let createdMs = Date.now();
+
+    for (const record of sourceRecords) {
+      for (const subEvent of record.subEvents ?? []) {
+        const normalizedRef = this.normalizeRef({
+          ownerId: record.id,
+          subEventId: subEvent.id,
+          assetOwnerUserId: normalizedUserId
+        });
+        if (!normalizedRef) {
+          continue;
+        }
+        const recordId = ActivityResourceBuilder.recordId(normalizedRef);
+        if (seenRecordIds.has(recordId)) {
+          continue;
+        }
+        seenRecordIds.add(recordId);
+
+        const seededState = ActivityResourceBuilder.buildSeededState(normalizedRef, assets);
+        const createdAtIso = new Date(createdMs).toISOString();
+        nextRecords.push({
+          id: recordId,
+          ownerKey: ActivityResourceBuilder.ownerKey(normalizedRef),
+          ownerId: normalizedRef.ownerId,
+          subEventId: normalizedRef.subEventId,
+          assetOwnerUserId: normalizedRef.assetOwnerUserId,
+          assetAssignmentIds: ActivityResourceBuilder.cloneAssetAssignmentIds(seededState.assetAssignmentIds),
+          assetSettingsByType: ActivityResourceBuilder.cloneAssetSettingsByType(seededState.assetSettingsByType),
+          supplyContributionEntriesByAssetId: {},
+          createdMs,
+          updatedMs: createdMs,
+          createdAtIso,
+          updatedAtIso: createdAtIso
+        });
+        createdMs += 1;
+      }
+    }
+
+    return nextRecords;
+  }
+
+  private collectSourceRecordsForUser(userId: string): DemoEventRecord[] {
+    const seenIds = new Set<string>();
+    const nextRecords: DemoEventRecord[] = [];
+
+    for (const record of [
+      ...this.eventsRepository.queryItemsByUser(userId),
+      ...this.eventsRepository.queryExploreItems(userId)
+    ]) {
+      if (!record.id || seenIds.has(record.id)) {
+        continue;
+      }
+      seenIds.add(record.id);
+      nextRecords.push(record);
+    }
+
+    return nextRecords;
   }
 
   private normalizeCollection(value: unknown): DemoActivityResourcesRecordCollection {

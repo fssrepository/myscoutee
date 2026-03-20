@@ -82,6 +82,17 @@ export class AppMemoryDb {
     this.schedulePersist(next);
   }
 
+  async flushToIndexedDb(): Promise<void> {
+    if (this.persistTimerId !== null) {
+      clearTimeout(this.persistTimerId);
+      this.persistTimerId = null;
+    }
+    const pendingState = this.pendingPersistState ?? this._tables();
+    this.pendingPersistState = null;
+    this.persist(pendingState);
+    await this.persistToIndexedDb(pendingState);
+  }
+
   async queryActivityRateRecords(query: ActivityRateRecordQuery): Promise<ActivityRateRecordQueryResult> {
     const normalizedQuery = this.normalizeActivityRateRecordQuery(query);
     if (!normalizedQuery) {
