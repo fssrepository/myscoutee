@@ -453,7 +453,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.emitState();
     this.cdr.markForCheck();
 
-    while (this.currentViewMode === 'list' && this.items.length <= normalizedIndex && this.hasMore && !this.loading) {
+    const preloadThreshold = (this.currentViewMode === 'list' && this.resolvedPresentation() === 'fullscreen') ? 1 : 0;
+    while (this.currentViewMode === 'list' && (this.items.length - (normalizedIndex + 1)) <= preloadThreshold && this.hasMore && !this.loading) {
       await this.loadNextPage();
     }
 

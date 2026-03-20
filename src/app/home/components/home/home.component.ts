@@ -105,7 +105,7 @@ export class HomeComponent implements OnDestroy {
   private static readonly PAIR_MODE_SPLIT_DEFAULT_PERCENT = 50;
   private static readonly PAIR_MODE_SPLIT_MIN_PERCENT = 0;
   private static readonly PAIR_MODE_SPLIT_MAX_PERCENT = 100;
-  private static readonly GAME_STACK_PRELOAD_THRESHOLD = 2;
+  private static readonly GAME_STACK_PRELOAD_THRESHOLD = 1;
   private static readonly GAME_STACK_PAGE_SIZE_SINGLE = 10;
   private static readonly GAME_STACK_PAGE_SIZE_PAIR = 10;
   private static readonly GAME_STACK_PHOTO_PRELOAD_TARGET = 12;
