@@ -11,7 +11,6 @@ import type { EventMenuItem } from '../../../shared/demo-data';
 import {
   InfoCardComponent,
   SmartListComponent,
-  LazyBgImageDirective,
   type InfoCardData,
   type InfoCardMenuAction,
   type InfoCardMenuActionEvent,
@@ -38,8 +37,7 @@ interface EventFeedbackListFilters {
     MatIconModule,
     MatButtonModule,
     SmartListComponent,
-    InfoCardComponent,
-    LazyBgImageDirective
+    InfoCardComponent
   ],
   templateUrl: './event-feedback-popup.component.html',
   styleUrl: './event-feedback-popup.component.scss'
@@ -245,6 +243,22 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       return;
     }
     this.feedback.openEventFeedbackNotePopup(item);
+  }
+
+  protected eventFeedbackCarouselInfoCard(card: AppTypes.EventFeedbackCard): InfoCardData {
+    const detailRows = [card.identityTitle].filter((row): row is string => !!row?.trim());
+    return {
+      rowId: card.id,
+      title: card.heading,
+      imageUrl: card.imageUrl,
+      metaRows: [card.subheading],
+      metaRowsLimit: 1,
+      detailRows,
+      leadingIcon: {
+        icon: card.icon
+      },
+      clickable: false
+    };
   }
 
   ngOnDestroy(): void {

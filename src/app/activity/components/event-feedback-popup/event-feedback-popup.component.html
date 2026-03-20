@@ -1,6 +1,6 @@
 <div class="event-feedback-popup-module">
   <!-- Parent List Popup -->
-  <section class="app-popup" *ngIf="feedback.isPopupOpen() && !feedback.isStackedPopupOpen()">
+  <section class="app-popup" *ngIf="feedback.isPopupOpen()" [class.event-feedback-parent-hidden]="feedback.isStackedPopupOpen()">
     <div class="app-popup-backdrop" (click)="feedback.closePopup()"></div>
     <div class="app-popup-panel popup-panel-event-feedback" (click)="$event.stopPropagation()">
       <div class="popup-header">
@@ -129,25 +129,15 @@
                   (touchend)="feedback.onEventFeedbackTouchEnd($event)"
                 >
                   <div class="event-feedback-head" [class.event-feedback-head-member]="card.kind === 'attendee'">
-                    <article
+                    <div
                       *ngIf="card.kind === 'event'; else attendeeFeedbackIdentityCard"
-                      class="experience-item-card asset-item-card event-feedback-event-card event-feedback-carousel-identity-card event-feedback-carousel-identity-event"
+                      class="event-feedback-info-card-shell event-feedback-carousel-info-card-shell"
                     >
-                      <div class="asset-card-image" [appLazyBgImage]="card.imageUrl"></div>
-                      <div class="experience-item-head">
-                        <span class="experience-item-icon event-feedback-leading-icon">
-                          <mat-icon>{{ card.icon }}</mat-icon>
-                        </span>
-                        <div class="experience-item-meta">
-                          <h4>{{ card.heading }}</h4>
-                          <p>{{ card.subheading }}</p>
-                          <p class="event-feedback-target-line" *ngIf="card.identityTitle">
-                            <mat-icon>{{ card.identityStatusIcon || 'admin_panel_settings' }}</mat-icon>
-                            <span>{{ card.identityTitle }}</span>
-                          </p>
-                        </div>
-                      </div>
-                    </article>
+                      <app-info-card
+                        class="event-feedback-carousel-info-card"
+                        [card]="eventFeedbackCarouselInfoCard(card)"
+                      ></app-info-card>
+                    </div>
                     <ng-template #attendeeFeedbackIdentityCard>
                       <article
                         class="friends-picker-card subevent-member-image-card activity-member-image-card event-feedback-carousel-identity-card event-feedback-carousel-identity-member"
