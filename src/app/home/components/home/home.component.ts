@@ -615,18 +615,17 @@ export class HomeComponent implements OnDestroy {
 
   protected get filterBadgeCount(): number {
     const overrideTotal = this.appCtx.getUserFilterCountOverride(this.activeUser.id);
-    const includeVisibleCardOffset = (!this.isPairMode && this.activeCandidate !== null) ? 1 : 0;
     if (this.gameInitialCardsLoadPending) {
       if (overrideTotal === null) {
         return 0;
       }
-      return Math.max(0, overrideTotal - this.cardIndex + includeVisibleCardOffset);
+      return Math.max(0, overrideTotal - this.cardIndex);
     }
-    const fallback = Math.max(0, this.totalRoundsForCurrentMode() - this.cardIndex + includeVisibleCardOffset);
+    const fallback = Math.max(0, this.totalRoundsForCurrentMode() - this.cardIndex);
     if (overrideTotal === null) {
       return fallback;
     }
-    return Math.max(0, overrideTotal - this.cardIndex + includeVisibleCardOffset);
+    return Math.max(0, overrideTotal - this.cardIndex);
   }
 
   protected get hasRemainingCandidatesForCurrentMode(): boolean {
