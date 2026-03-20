@@ -19,6 +19,8 @@ interface SupplyBringDialogState {
   min: number;
   max: number;
   quantity: number;
+  busy: boolean;
+  error: string | null;
 }
 
 interface SupplyContributionListFilters {
@@ -45,6 +47,9 @@ export interface EventSupplyContributionsPopupHost {
   canSubmitBringDialog(): boolean;
   onBringQuantityChange(value: number | string): void;
   confirmBringDialog(event?: Event): void;
+  bringConfirmRingPerimeter(): number;
+  isBringPending(): boolean;
+  bringErrorMessage(): string;
   cancelDelete(): void;
   pendingDeleteLabel(): string;
   deleteConfirmRingPerimeter(): number;

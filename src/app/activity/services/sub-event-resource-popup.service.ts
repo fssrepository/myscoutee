@@ -70,6 +70,8 @@ interface SupplyBringDialogState {
   quantity: number;
   min: number;
   max: number;
+  busy: boolean;
+  error: string | null;
 }
 
 @Injectable({
@@ -97,12 +99,15 @@ export class SubEventResourcePopupService {
   private readonly assignContextRef = signal<{ subEventId: string; type: AppTypes.AssetType } | null>(null);
   private readonly selectedAssignAssetIdsRef = signal<string[]>([]);
   private readonly deleteConfirmRingPerimeter = 100;
+  private readonly bringConfirmRingPerimeter = 100;
 
   private readonly assignedAssetIdsByKey: Record<string, string[]> = {};
   private readonly assignedAssetSettingsByKey: Record<string, Record<string, AppTypes.SubEventAssignedAssetSettings>> = {};
   private readonly supplyContributionEntriesByAssignmentKey: Record<string, AppTypes.SubEventSupplyContributionEntry[]> = {};
   private pendingSupplyDeleteAbortController: AbortController | null = null;
   private pendingSupplyDeleteRequestVersion = 0;
+  private pendingSupplyBringAbortController: AbortController | null = null;
+  private pendingSupplyBringRequestVersion = 0;
 
   readonly resourceHost = computed<EventResourcePopupHost | null>(() =>
     this.popupContextRef() && !this.assignContextRef() ? this.eventResourcePopupHost : null
@@ -181,10 +186,13 @@ export class SubEventResourcePopupService {
     quantityLabel: quantity => this.quantityLabel(quantity),
     canDelete: row => row.userId === this.activeUser().id,
     requestDelete: (row, event) => this.requestDeleteSupplyContribution(row, event),
-    cancelBringDialog: () => this.bringDialogRef.set(null),
+    cancelBringDialog: () => this.cancelBringDialog(),
     canSubmitBringDialog: () => this.canSubmitBringDialog(),
     onBringQuantityChange: value => this.onBringQuantityChange(value),
     confirmBringDialog: event => this.confirmBringDialog(event),
+    bringConfirmRingPerimeter: () => this.bringConfirmRingPerimeter,
+    isBringPending: () => this.bringDialogRef()?.busy === true,
+    bringErrorMessage: () => this.bringErrorMessage(),
     cancelDelete: () => this.cancelDeleteSupplyContribution(),
     pendingDeleteLabel: () => this.pendingDeleteLabel(),
     deleteConfirmRingPerimeter: () => this.deleteConfirmRingPerimeter,
@@ -316,6 +324,7 @@ export class SubEventResourcePopupService {
     this.capacityEditorRef.set(null);
     this.routeEditorRef.set(null);
     this.supplyPopupRef.set(null);
+    this.abortPendingSupplyBringRequest();
     this.bringDialogRef.set(null);
     this.pendingSupplyDeleteRef.set(null);
     this.closeAssignPopup(false);
@@ -413,6 +422,7 @@ export class SubEventResourcePopupService {
 
   private closeResourcePopup(): void {
     this.abortPendingSupplyDeleteRequest();
+    this.abortPendingSupplyBringRequest();
     this.popupContextRef.set(null);
     this.inlineItemActionMenuRef.set(null);
     this.capacityEditorRef.set(null);
@@ -576,12 +586,14 @@ export class SubEventResourcePopupService {
       assetId: card.sourceAssetId,
       title: card.title
     });
+    this.abortPendingSupplyBringRequest();
     this.pendingSupplyDeleteRef.set(null);
     this.bringDialogRef.set(null);
   }
 
   private closeSupplyContributionsPopup(): void {
     this.abortPendingSupplyDeleteRequest();
+    this.abortPendingSupplyBringRequest();
     this.supplyPopupRef.set(null);
     this.pendingSupplyDeleteRef.set(null);
     this.bringDialogRef.set(null);
@@ -602,18 +614,25 @@ export class SubEventResourcePopupService {
       title: context.title,
       quantity: 1,
       min: 0,
-      max
+      max,
+      busy: false,
+      error: null
     });
+  }
+
+  private cancelBringDialog(): void {
+    this.abortPendingSupplyBringRequest();
+    this.bringDialogRef.set(null);
   }
 
   private canSubmitBringDialog(): boolean {
     const dialog = this.bringDialogRef();
-    return !!dialog && dialog.quantity >= dialog.min && dialog.quantity <= dialog.max;
+    return !!dialog && !dialog.busy && dialog.quantity >= dialog.min && dialog.quantity <= dialog.max;
   }
 
   private onBringQuantityChange(value: number | string): void {
     const dialog = this.bringDialogRef();
-    if (!dialog) {
+    if (!dialog || dialog.busy) {
       return;
     }
     const parsed = Number(value);
@@ -623,29 +642,89 @@ export class SubEventResourcePopupService {
         Number.isFinite(parsed) ? Math.trunc(parsed) : dialog.quantity,
         dialog.min,
         dialog.max
-      )
+      ),
+      error: null
     });
   }
 
   private confirmBringDialog(event?: Event): void {
     event?.stopPropagation();
     const dialog = this.bringDialogRef();
-    if (!dialog || !this.canSubmitBringDialog()) {
+    if (!dialog || dialog.busy || !this.canSubmitBringDialog()) {
       return;
     }
-    const key = this.subEventSupplyAssignmentKey(dialog.subEventId, dialog.cardId);
-    const current = this.supplyContributionEntriesByAssignmentKey[key] ?? [];
-    if (dialog.quantity > 0) {
-      current.push({
-        id: `subevent-supply-row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        userId: this.activeUser().id,
-        quantity: dialog.quantity,
-        addedAtIso: AppUtils.toIsoDateTime(new Date())
-      });
+    if (dialog.quantity <= 0) {
+      this.bringDialogRef.set(null);
+      return;
     }
-    this.supplyContributionEntriesByAssignmentKey[key] = [...current];
-    this.bringDialogRef.set(null);
-    this.syncPopupSubEventMetrics();
+
+    const nextState = this.buildPopupResourceState();
+    if (!nextState) {
+      return;
+    }
+
+    const nextEntry: AppTypes.SubEventSupplyContributionEntry = {
+      id: `subevent-supply-row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      userId: this.activeUser().id,
+      quantity: dialog.quantity,
+      addedAtIso: AppUtils.toIsoDateTime(new Date())
+    };
+    const currentEntries = nextState.supplyContributionEntriesByAssetId[dialog.cardId] ?? [];
+    nextState.supplyContributionEntriesByAssetId = {
+      ...nextState.supplyContributionEntriesByAssetId,
+      [dialog.cardId]: [nextEntry, ...currentEntries]
+    };
+
+    const requestVersion = ++this.pendingSupplyBringRequestVersion;
+    const abortController = new AbortController();
+    this.pendingSupplyBringAbortController = abortController;
+    this.bringDialogRef.set({
+      ...dialog,
+      busy: true,
+      error: null
+    });
+
+    void this.activityResourcesService.replaceSubEventResourceState(nextState, abortController.signal)
+      .then(savedState => {
+        if (this.pendingSupplyBringAbortController === abortController) {
+          this.pendingSupplyBringAbortController = null;
+        }
+        if (abortController.signal.aborted || requestVersion != this.pendingSupplyBringRequestVersion) {
+          return;
+        }
+        const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
+        this.applyPersistedPopupState(resolvedState);
+        this.bringDialogRef.set(null);
+        this.syncPopupSubEventMetrics(false);
+      })
+      .catch(error => {
+        if (this.pendingSupplyBringAbortController === abortController) {
+          this.pendingSupplyBringAbortController = null;
+        }
+        if (abortController.signal.aborted || this.isAbortError(error) || requestVersion != this.pendingSupplyBringRequestVersion) {
+          return;
+        }
+        const currentDialog = this.bringDialogRef();
+        if (!currentDialog || currentDialog.cardId !== dialog.cardId || currentDialog.subEventId !== dialog.subEventId) {
+          return;
+        }
+        this.bringDialogRef.set({
+          ...currentDialog,
+          busy: false,
+          error: 'Unable to save quantity row.'
+        });
+      });
+  }
+
+  private abortPendingSupplyBringRequest(): void {
+    this.pendingSupplyBringRequestVersion += 1;
+    const controller = this.pendingSupplyBringAbortController;
+    this.pendingSupplyBringAbortController = null;
+    controller?.abort();
+  }
+
+  private bringErrorMessage(): string {
+    return this.bringDialogRef()?.error?.trim() ?? '';
   }
 
   private requestDeleteSupplyContribution(row: AppTypes.SubEventSupplyContributionRow, event?: Event): void {
