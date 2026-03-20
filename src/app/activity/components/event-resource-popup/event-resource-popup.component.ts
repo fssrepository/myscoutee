@@ -16,7 +16,8 @@ import {
   type ListQuery,
   type SmartListConfig,
   type SmartListItemTemplateContext,
-  type SmartListLoadPage
+  type SmartListLoadPage,
+  type SmartListStateChange
 } from '../../../shared/ui';
 import type * as AppTypes from '../../../shared/core/base/models';
 
@@ -25,11 +26,26 @@ interface CapacityEditorState {
   capacityMin: number;
   capacityMax: number;
   capacityLimit: number;
+  busy: boolean;
+  error: string | null;
 }
 
 interface RouteEditorState {
   title: string;
   routes: string[];
+  busy: boolean;
+  error: string | null;
+}
+
+interface PendingResourceDeleteState {
+  title: string;
+  busy: boolean;
+  error: string | null;
+}
+
+interface ResourceSmartListFilters {
+  revision?: number;
+  contextKey?: string;
 }
 
 export interface EventResourcePopupHost {
@@ -47,6 +63,7 @@ export interface EventResourcePopupHost {
   cards(): AppTypes.SubEventResourceCard[];
   capacityEditor(): CapacityEditorState | null;
   routeEditor(): RouteEditorState | null;
+  pendingDeleteCard(): PendingResourceDeleteState | null;
   close(): void;
   selectResourceFilter(filter: AppTypes.SubEventResourceFilter): void;
   onResourceFilterOpened(isOpen: boolean, select: MatSelect): void;
@@ -85,6 +102,17 @@ export interface EventResourcePopupHost {
   removeRouteStop(index: number): void;
   canSubmitRouteEditor(): boolean;
   saveRouteEditor(event?: Event): void;
+  editorSaveRingPerimeter(): number;
+  isCapacitySavePending(): boolean;
+  capacitySaveErrorMessage(): string;
+  isRouteSavePending(): boolean;
+  routeSaveErrorMessage(): string;
+  cancelDeleteCard(): void;
+  deleteCardLabel(): string;
+  deleteCardConfirmRingPerimeter(): number;
+  isDeleteCardPending(): boolean;
+  deleteCardErrorMessage(): string;
+  confirmDeleteCard(): void;
 }
 
 @Component({
@@ -105,25 +133,35 @@ export interface EventResourcePopupHost {
 })
 export class EventResourcePopupComponent implements DoCheck {
   private lastCardsSignature = '';
+  private lastContextKey = '';
+  private lastCardCount = 0;
+  private resourceListReady = false;
+  private resourceListVisibleCount = 0;
 
   @Input({ required: true }) host!: EventResourcePopupHost;
 
   protected resourceFilterOpen = false;
 
-  protected resourceSmartListQuery: Partial<ListQuery<{ revision: number }>> = {
-    filters: { revision: 0 }
+  protected resourceSmartListQuery: Partial<ListQuery<ResourceSmartListFilters>> = {
+    filters: {
+      revision: 0,
+      contextKey: ''
+    }
   };
 
-  protected resourceItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.SubEventResourceCard, { revision: number }>>;
+  @ViewChild('resourceSmartList')
+  private resourceSmartList?: SmartListComponent<AppTypes.SubEventResourceCard, ResourceSmartListFilters>;
+
+  protected resourceItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.SubEventResourceCard, ResourceSmartListFilters>>;
 
   @ViewChild('resourceItemTemplate', { read: TemplateRef })
   private set resourceItemTemplate(
-    value: TemplateRef<SmartListItemTemplateContext<AppTypes.SubEventResourceCard, { revision: number }>> | undefined
+    value: TemplateRef<SmartListItemTemplateContext<AppTypes.SubEventResourceCard, ResourceSmartListFilters>> | undefined
   ) {
     this.resourceItemTemplateRef = value;
   }
 
-  protected readonly resourceSmartListLoadPage: SmartListLoadPage<AppTypes.SubEventResourceCard, { revision: number }> = (
+  protected readonly resourceSmartListLoadPage: SmartListLoadPage<AppTypes.SubEventResourceCard, ResourceSmartListFilters> = (
     query
   ) => {
     const cards = this.host?.cards?.() ?? [];
@@ -136,7 +174,7 @@ export class EventResourcePopupComponent implements DoCheck {
     });
   };
 
-  protected readonly resourceSmartListConfig: SmartListConfig<AppTypes.SubEventResourceCard, { revision: number }> = {
+  protected readonly resourceSmartListConfig: SmartListConfig<AppTypes.SubEventResourceCard, ResourceSmartListFilters> = {
     pageSize: 18,
     loadingDelayMs: 0,
     loadingWindowMs: 900,
@@ -161,21 +199,52 @@ export class EventResourcePopupComponent implements DoCheck {
 
   ngDoCheck(): void {
     const cards = this.host?.cards?.() ?? [];
-    const signature = `${this.host?.resourceFilter?.() ?? ''}:${cards.map(card => [
+    const contextKey = `${this.host?.title?.() ?? ''}:${this.host?.subtitle?.() ?? ''}:${this.host?.resourceFilter?.() ?? ''}`;
+    const signature = `${contextKey}:${cards.map(card => [
       card.id,
       card.accepted,
       card.pending,
-      card.capacityTotal
+      card.capacityTotal,
+      ...(card.routes ?? [])
     ].join(':')).join('|')}`;
+
+    if (contextKey !== this.lastContextKey) {
+      this.lastContextKey = contextKey;
+      this.lastCardsSignature = signature;
+      this.lastCardCount = cards.length;
+      this.resourceListReady = false;
+      this.resourceListVisibleCount = 0;
+      this.resourceSmartListQuery = {
+        filters: {
+          revision: Date.now(),
+          contextKey
+        }
+      };
+      return;
+    }
+
     if (signature === this.lastCardsSignature) {
       return;
     }
+
+    const previousCardCount = this.lastCardCount;
     this.lastCardsSignature = signature;
-    this.resourceSmartListQuery = {
-      filters: {
-        revision: Date.now()
-      }
-    };
+    this.lastCardCount = cards.length;
+    this.syncVisibleResourceCards(cards, previousCardCount);
+  }
+
+  protected onResourceSmartListStateChange(
+    change: SmartListStateChange<AppTypes.SubEventResourceCard, ResourceSmartListFilters>
+  ): void {
+    this.resourceListVisibleCount = change.items.length;
+    this.resourceListReady = !change.initialLoading;
+    if (!this.resourceListReady) {
+      return;
+    }
+    const cards = this.host?.cards?.() ?? [];
+    if (change.total !== cards.length) {
+      this.syncVisibleResourceCards(cards, change.total);
+    }
   }
 
   protected resourceInfoCard(
@@ -241,6 +310,27 @@ export class EventResourcePopupComponent implements DoCheck {
       return;
     }
     this.host.delete(card, new Event('click'));
+  }
+
+  private syncVisibleResourceCards(
+    cards: AppTypes.SubEventResourceCard[],
+    previousCardCount: number
+  ): void {
+    if (!this.resourceListReady || !this.resourceSmartList) {
+      return;
+    }
+
+    const visibleCount = Math.max(this.resourceListVisibleCount, this.resourceSmartList.itemsSnapshot().length);
+    const allCardsWereVisible = visibleCount >= previousCardCount;
+    let nextVisibleCount = Math.min(cards.length, visibleCount);
+
+    if (cards.length > previousCardCount && allCardsWereVisible) {
+      nextVisibleCount = Math.min(cards.length, visibleCount + 1);
+    }
+
+    this.resourceSmartList.replaceVisibleItems(cards.slice(0, nextVisibleCount), {
+      total: cards.length
+    });
   }
 
   private resourceMediaStart(card: AppTypes.SubEventResourceCard): NonNullable<InfoCardData['mediaStart']> | null {

@@ -38,6 +38,8 @@ interface CapacityEditorState {
   capacityMin: number;
   capacityMax: number;
   capacityLimit: number;
+  busy: boolean;
+  error: string | null;
 }
 
 interface RouteEditorState {
@@ -46,6 +48,8 @@ interface RouteEditorState {
   assetId: string;
   title: string;
   routes: string[];
+  busy: boolean;
+  error: string | null;
 }
 
 interface SupplyContributionPopupState {
@@ -59,6 +63,13 @@ interface PendingSupplyDeleteState {
   assetId: string;
   entryId: string;
   label: string;
+  busy: boolean;
+  error: string | null;
+}
+
+interface PendingResourceDeleteState {
+  assetId: string;
+  title: string;
   busy: boolean;
   error: string | null;
 }
@@ -96,8 +107,11 @@ export class SubEventResourcePopupService {
   private readonly supplyPopupRef = signal<SupplyContributionPopupState | null>(null);
   private readonly bringDialogRef = signal<SupplyBringDialogState | null>(null);
   private readonly pendingSupplyDeleteRef = signal<PendingSupplyDeleteState | null>(null);
+  private readonly pendingResourceDeleteRef = signal<PendingResourceDeleteState | null>(null);
   private readonly assignContextRef = signal<{ subEventId: string; type: AppTypes.AssetType } | null>(null);
   private readonly selectedAssignAssetIdsRef = signal<string[]>([]);
+  private readonly resourceDeleteConfirmRingPerimeter = 100;
+  private readonly resourceEditorSaveRingPerimeter = 100;
   private readonly deleteConfirmRingPerimeter = 100;
   private readonly bringConfirmRingPerimeter = 100;
 
@@ -108,6 +122,10 @@ export class SubEventResourcePopupService {
   private pendingSupplyDeleteRequestVersion = 0;
   private pendingSupplyBringAbortController: AbortController | null = null;
   private pendingSupplyBringRequestVersion = 0;
+  private pendingCapacitySaveAbortController: AbortController | null = null;
+  private pendingCapacitySaveRequestVersion = 0;
+  private pendingRouteSaveAbortController: AbortController | null = null;
+  private pendingRouteSaveRequestVersion = 0;
 
   readonly resourceHost = computed<EventResourcePopupHost | null>(() =>
     this.popupContextRef() && !this.assignContextRef() ? this.eventResourcePopupHost : null
@@ -132,6 +150,7 @@ export class SubEventResourcePopupService {
     cards: () => this.resourceCards(),
     capacityEditor: () => this.capacityEditorRef(),
     routeEditor: () => this.routeEditorRef(),
+    pendingDeleteCard: () => this.pendingResourceDeleteRef(),
     close: () => this.closeResourcePopup(),
     selectResourceFilter: filter => this.selectResourceFilter(filter),
     onResourceFilterOpened: (isOpen, select) => this.onResourceFilterOpened(isOpen, select),
@@ -154,7 +173,7 @@ export class SubEventResourcePopupService {
     canEditRoute: card => this.canEditRoute(card),
     routeMenuLabel: () => 'Edit Route',
     openRouteEditor: (card, event) => this.openRouteEditor(card, event),
-    delete: (card, event) => this.delete(card, event),
+    delete: (card, event) => this.requestDeleteResourceCard(card, event),
     closeCapacityEditor: event => this.closeCapacityEditor(event),
     canSubmitCapacityEditor: () => this.canSubmitCapacityEditor(),
     onCapacityMinChange: value => this.onCapacityMinChange(value),
@@ -169,7 +188,18 @@ export class SubEventResourcePopupService {
     openRouteStopMap: (index, event) => this.openRouteStopMap(index, event),
     removeRouteStop: index => this.removeRouteStop(index),
     canSubmitRouteEditor: () => this.canSubmitRouteEditor(),
-    saveRouteEditor: event => this.saveRouteEditor(event)
+    saveRouteEditor: event => this.saveRouteEditor(event),
+    editorSaveRingPerimeter: () => this.resourceEditorSaveRingPerimeter,
+    isCapacitySavePending: () => this.capacityEditorRef()?.busy === true,
+    capacitySaveErrorMessage: () => this.capacityEditorRef()?.error?.trim() ?? '',
+    isRouteSavePending: () => this.routeEditorRef()?.busy === true,
+    routeSaveErrorMessage: () => this.routeEditorRef()?.error?.trim() ?? '',
+    cancelDeleteCard: () => this.cancelDeleteResourceCard(),
+    deleteCardLabel: () => this.resourceDeleteCardLabel(),
+    deleteCardConfirmRingPerimeter: () => this.resourceDeleteConfirmRingPerimeter,
+    isDeleteCardPending: () => this.pendingResourceDeleteRef()?.busy === true,
+    deleteCardErrorMessage: () => this.pendingResourceDeleteRef()?.error?.trim() ?? '',
+    confirmDeleteCard: () => this.confirmDeleteResourceCard()
   };
 
   private readonly eventSupplyContributionsPopupHost: EventSupplyContributionsPopupHost = {
@@ -321,8 +351,11 @@ export class SubEventResourcePopupService {
     this.popupContextRef.set(context);
     this.resourceFilterRef.set(type);
     this.inlineItemActionMenuRef.set(null);
+    this.abortPendingCapacitySaveRequest();
     this.capacityEditorRef.set(null);
+    this.abortPendingRouteSaveRequest();
     this.routeEditorRef.set(null);
+    this.pendingResourceDeleteRef.set(null);
     this.supplyPopupRef.set(null);
     this.abortPendingSupplyBringRequest();
     this.bringDialogRef.set(null);
@@ -423,10 +456,13 @@ export class SubEventResourcePopupService {
   private closeResourcePopup(): void {
     this.abortPendingSupplyDeleteRequest();
     this.abortPendingSupplyBringRequest();
+    this.abortPendingCapacitySaveRequest();
+    this.abortPendingRouteSaveRequest();
     this.popupContextRef.set(null);
     this.inlineItemActionMenuRef.set(null);
     this.capacityEditorRef.set(null);
     this.routeEditorRef.set(null);
+    this.pendingResourceDeleteRef.set(null);
     this.supplyPopupRef.set(null);
     this.bringDialogRef.set(null);
     this.pendingSupplyDeleteRef.set(null);
@@ -1018,6 +1054,7 @@ export class SubEventResourcePopupService {
     const capacityLimit = Math.max(0, source.capacityTotal);
     const capacityMax = AppUtils.clampNumber(Math.trunc(current?.capacityMax ?? capacityLimit), 0, capacityLimit);
     const capacityMin = AppUtils.clampNumber(Math.trunc(current?.capacityMin ?? 0), 0, capacityMax);
+    this.abortPendingCapacitySaveRequest();
     this.capacityEditorRef.set({
       subEventId: context.subEvent.id,
       type,
@@ -1025,20 +1062,26 @@ export class SubEventResourcePopupService {
       title: card.title,
       capacityMin,
       capacityMax,
-      capacityLimit
+      capacityLimit,
+      busy: false,
+      error: null
     });
+    this.abortPendingRouteSaveRequest();
     this.routeEditorRef.set(null);
+    this.pendingResourceDeleteRef.set(null);
     this.inlineItemActionMenuRef.set(null);
   }
 
   private closeCapacityEditor(event?: Event): void {
     event?.stopPropagation();
+    this.abortPendingCapacitySaveRequest();
     this.capacityEditorRef.set(null);
   }
 
   private canSubmitCapacityEditor(): boolean {
     const editor = this.capacityEditorRef();
     return !!editor
+      && !editor.busy
       && editor.capacityMin >= 0
       && editor.capacityMax >= editor.capacityMin
       && editor.capacityMax <= editor.capacityLimit;
@@ -1046,7 +1089,7 @@ export class SubEventResourcePopupService {
 
   private onCapacityMinChange(value: number | string): void {
     const editor = this.capacityEditorRef();
-    if (!editor) {
+    if (!editor || editor.busy) {
       return;
     }
     const parsed = Number(value);
@@ -1056,13 +1099,14 @@ export class SubEventResourcePopupService {
         Number.isFinite(parsed) ? Math.trunc(parsed) : editor.capacityMin,
         0,
         editor.capacityMax
-      )
+      ),
+      error: null
     });
   }
 
   private onCapacityMaxChange(value: number | string): void {
     const editor = this.capacityEditorRef();
-    if (!editor) {
+    if (!editor || editor.busy) {
       return;
     }
     const parsed = Number(value);
@@ -1074,18 +1118,24 @@ export class SubEventResourcePopupService {
     this.capacityEditorRef.set({
       ...editor,
       capacityMin: Math.min(editor.capacityMin, capacityMax),
-      capacityMax
+      capacityMax,
+      error: null
     });
   }
 
   private saveCapacityEditor(event?: Event): void {
     event?.stopPropagation();
     const editor = this.capacityEditorRef();
-    if (!editor || !this.canSubmitCapacityEditor()) {
+    if (!editor || editor.busy || !this.canSubmitCapacityEditor()) {
       return;
     }
-    const key = this.subEventAssetAssignmentKey(editor.subEventId, editor.type);
-    const nextSettings = { ...this.getSubEventAssignedAssetSettings(editor.subEventId, editor.type) };
+    const nextState = this.buildPopupResourceState();
+    if (!nextState) {
+      return;
+    }
+    const nextSettings = {
+      ...(nextState.assetSettingsByType[editor.type] ?? {})
+    };
     const current = nextSettings[editor.assetId] ?? {
       capacityMin: 0,
       capacityMax: editor.capacityLimit,
@@ -1097,9 +1147,57 @@ export class SubEventResourcePopupService {
       capacityMin: editor.capacityMin,
       capacityMax: editor.capacityMax
     };
-    this.assignedAssetSettingsByKey[key] = nextSettings;
-    this.capacityEditorRef.set(null);
-    this.syncPopupSubEventMetrics();
+    nextState.assetSettingsByType = {
+      ...nextState.assetSettingsByType,
+      [editor.type]: nextSettings
+    };
+
+    const requestVersion = ++this.pendingCapacitySaveRequestVersion;
+    const abortController = new AbortController();
+    this.pendingCapacitySaveAbortController = abortController;
+    this.capacityEditorRef.set({
+      ...editor,
+      busy: true,
+      error: null
+    });
+
+    void this.activityResourcesService.replaceSubEventResourceState(nextState, abortController.signal)
+      .then(savedState => {
+        if (this.pendingCapacitySaveAbortController === abortController) {
+          this.pendingCapacitySaveAbortController = null;
+        }
+        if (abortController.signal.aborted || requestVersion !== this.pendingCapacitySaveRequestVersion) {
+          return;
+        }
+        const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
+        this.applyPersistedPopupState(resolvedState);
+        this.capacityEditorRef.set(null);
+        this.syncPopupSubEventMetrics(false);
+      })
+      .catch(error => {
+        if (this.pendingCapacitySaveAbortController === abortController) {
+          this.pendingCapacitySaveAbortController = null;
+        }
+        if (abortController.signal.aborted || this.isAbortError(error) || requestVersion !== this.pendingCapacitySaveRequestVersion) {
+          return;
+        }
+        const currentEditor = this.capacityEditorRef();
+        if (!currentEditor || currentEditor.assetId !== editor.assetId || currentEditor.type !== editor.type) {
+          return;
+        }
+        this.capacityEditorRef.set({
+          ...currentEditor,
+          busy: false,
+          error: 'Unable to save capacity changes.'
+        });
+      });
+  }
+
+  private abortPendingCapacitySaveRequest(): void {
+    this.pendingCapacitySaveRequestVersion += 1;
+    const controller = this.pendingCapacitySaveAbortController;
+    this.pendingCapacitySaveAbortController = null;
+    controller?.abort();
   }
 
   private openRouteEditor(card: AppTypes.SubEventResourceCard, event: Event): void {
@@ -1110,47 +1208,55 @@ export class SubEventResourcePopupService {
     }
     const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, 'Car');
     const source = this.ownedAssets.assetCards.find(item => item.id === card.sourceAssetId && item.type === 'Car');
+    this.abortPendingRouteSaveRequest();
     this.routeEditorRef.set({
       subEventId: context.subEvent.id,
       type: 'Car',
       assetId: card.sourceAssetId,
       title: card.title,
-      routes: this.normalizeAssetRoutes('Car', settings[card.sourceAssetId]?.routes ?? source?.routes)
+      routes: this.normalizeAssetRoutes('Car', settings[card.sourceAssetId]?.routes ?? source?.routes),
+      busy: false,
+      error: null
     });
+    this.abortPendingCapacitySaveRequest();
     this.capacityEditorRef.set(null);
+    this.pendingResourceDeleteRef.set(null);
     this.inlineItemActionMenuRef.set(null);
   }
 
   private closeRouteEditor(event?: Event): void {
     event?.stopPropagation();
+    this.abortPendingRouteSaveRequest();
     this.routeEditorRef.set(null);
   }
 
   private addRouteStop(): void {
     const editor = this.routeEditorRef();
-    if (!editor) {
+    if (!editor || editor.busy) {
       return;
     }
     this.routeEditorRef.set({
       ...editor,
-      routes: [...editor.routes, '']
+      routes: [...editor.routes, ''],
+      error: null
     });
   }
 
   private removeRouteStop(index: number): void {
     const editor = this.routeEditorRef();
-    if (!editor || index < 0 || index >= editor.routes.length) {
+    if (!editor || editor.busy || index < 0 || index >= editor.routes.length) {
       return;
     }
     this.routeEditorRef.set({
       ...editor,
-      routes: editor.routes.filter((_stop, stopIndex) => stopIndex !== index)
+      routes: editor.routes.filter((_stop, stopIndex) => stopIndex !== index),
+      error: null
     });
   }
 
   private dropRouteStop(event: CdkDragDrop<string[]>): void {
     const editor = this.routeEditorRef();
-    if (!editor || event.previousIndex === event.currentIndex) {
+    if (!editor || editor.busy || event.previousIndex === event.currentIndex) {
       return;
     }
     const routes = [...editor.routes];
@@ -1158,20 +1264,22 @@ export class SubEventResourcePopupService {
     routes.splice(event.currentIndex, 0, moved);
     this.routeEditorRef.set({
       ...editor,
-      routes
+      routes,
+      error: null
     });
   }
 
   private updateRouteStop(index: number, value: string): void {
     const editor = this.routeEditorRef();
-    if (!editor || index < 0 || index >= editor.routes.length) {
+    if (!editor || editor.busy || index < 0 || index >= editor.routes.length) {
       return;
     }
     const routes = [...editor.routes];
     routes[index] = value;
     this.routeEditorRef.set({
       ...editor,
-      routes
+      routes,
+      error: null
     });
   }
 
@@ -1195,17 +1303,22 @@ export class SubEventResourcePopupService {
 
   private canSubmitRouteEditor(): boolean {
     const editor = this.routeEditorRef();
-    return !!editor && editor.routes.some(stop => stop.trim().length > 0);
+    return !!editor && !editor.busy && editor.routes.some(stop => stop.trim().length > 0);
   }
 
   private saveRouteEditor(event?: Event): void {
     event?.stopPropagation();
     const editor = this.routeEditorRef();
-    if (!editor || !this.canSubmitRouteEditor()) {
+    if (!editor || editor.busy || !this.canSubmitRouteEditor()) {
       return;
     }
-    const key = this.subEventAssetAssignmentKey(editor.subEventId, editor.type);
-    const nextSettings = { ...this.getSubEventAssignedAssetSettings(editor.subEventId, editor.type) };
+    const nextState = this.buildPopupResourceState();
+    if (!nextState) {
+      return;
+    }
+    const nextSettings = {
+      ...(nextState.assetSettingsByType[editor.type] ?? {})
+    };
     const source = this.ownedAssets.assetCards.find(item => item.id === editor.assetId && item.type === editor.type);
     const current = nextSettings[editor.assetId] ?? {
       capacityMin: 0,
@@ -1217,19 +1330,123 @@ export class SubEventResourcePopupService {
       ...current,
       routes: this.normalizeAssetRoutes(editor.type, editor.routes)
     };
-    this.assignedAssetSettingsByKey[key] = nextSettings;
-    this.routeEditorRef.set(null);
-    this.syncPopupSubEventMetrics();
+    nextState.assetSettingsByType = {
+      ...nextState.assetSettingsByType,
+      [editor.type]: nextSettings
+    };
+
+    const requestVersion = ++this.pendingRouteSaveRequestVersion;
+    const abortController = new AbortController();
+    this.pendingRouteSaveAbortController = abortController;
+    this.routeEditorRef.set({
+      ...editor,
+      busy: true,
+      error: null
+    });
+
+    void this.activityResourcesService.replaceSubEventResourceState(nextState, abortController.signal)
+      .then(savedState => {
+        if (this.pendingRouteSaveAbortController === abortController) {
+          this.pendingRouteSaveAbortController = null;
+        }
+        if (abortController.signal.aborted || requestVersion !== this.pendingRouteSaveRequestVersion) {
+          return;
+        }
+        const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
+        this.applyPersistedPopupState(resolvedState);
+        this.routeEditorRef.set(null);
+        this.syncPopupSubEventMetrics(false);
+      })
+      .catch(error => {
+        if (this.pendingRouteSaveAbortController === abortController) {
+          this.pendingRouteSaveAbortController = null;
+        }
+        if (abortController.signal.aborted || this.isAbortError(error) || requestVersion !== this.pendingRouteSaveRequestVersion) {
+          return;
+        }
+        const currentEditor = this.routeEditorRef();
+        if (!currentEditor || currentEditor.assetId !== editor.assetId || currentEditor.type !== editor.type) {
+          return;
+        }
+        this.routeEditorRef.set({
+          ...currentEditor,
+          busy: false,
+          error: 'Unable to save route changes.'
+        });
+      });
   }
 
-  private delete(card: AppTypes.SubEventResourceCard, event: Event): void {
+  private abortPendingRouteSaveRequest(): void {
+    this.pendingRouteSaveRequestVersion += 1;
+    const controller = this.pendingRouteSaveAbortController;
+    this.pendingRouteSaveAbortController = null;
+    controller?.abort();
+  }
+
+  private requestDeleteResourceCard(card: AppTypes.SubEventResourceCard, event: Event): void {
     event.stopPropagation();
     if (!card.sourceAssetId) {
       return;
     }
-    this.ownedAssets.openPopup(card.type as AppTypes.AssetType);
-    this.ownedAssets.pendingAssetDeleteCardId = card.sourceAssetId;
+    this.pendingResourceDeleteRef.set({
+      assetId: card.sourceAssetId,
+      title: card.title,
+      busy: false,
+      error: null
+    });
     this.inlineItemActionMenuRef.set(null);
+  }
+
+  private confirmDeleteResourceCard(): void {
+    const pending = this.pendingResourceDeleteRef();
+    if (!pending || pending.busy) {
+      return;
+    }
+    this.pendingResourceDeleteRef.set({
+      ...pending,
+      busy: true,
+      error: null
+    });
+    void this.ownedAssets.deleteAssetCardById(pending.assetId)
+      .then(deleted => {
+        const currentPending = this.pendingResourceDeleteRef();
+        if (!currentPending || currentPending.assetId !== pending.assetId) {
+          return;
+        }
+        if (!deleted) {
+          this.pendingResourceDeleteRef.set({
+            ...currentPending,
+            busy: false,
+            error: 'Unable to delete resource card.'
+          });
+          return;
+        }
+        this.pendingResourceDeleteRef.set(null);
+      })
+      .catch(() => {
+        const currentPending = this.pendingResourceDeleteRef();
+        if (!currentPending || currentPending.assetId !== pending.assetId) {
+          return;
+        }
+        this.pendingResourceDeleteRef.set({
+          ...currentPending,
+          busy: false,
+          error: 'Unable to delete resource card.'
+        });
+      });
+  }
+
+  private cancelDeleteResourceCard(): void {
+    const pending = this.pendingResourceDeleteRef();
+    if (pending?.busy) {
+      return;
+    }
+    this.pendingResourceDeleteRef.set(null);
+  }
+
+  private resourceDeleteCardLabel(): string {
+    const pending = this.pendingResourceDeleteRef();
+    return pending ? `Delete "${pending.title}"?` : '';
   }
 
   private openAssignPopup(event?: Event): void {

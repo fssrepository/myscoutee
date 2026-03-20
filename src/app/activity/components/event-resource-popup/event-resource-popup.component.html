@@ -91,11 +91,13 @@
         </div>
 
         <app-smart-list
+          #resourceSmartList
           class="subevent-assets-scroll-list"
           [config]="resourceSmartListConfig"
           [loadPage]="resourceSmartListLoadPage"
           [itemTemplate]="resourceItemTemplateRef ?? null"
           [query]="resourceSmartListQuery"
+          (stateChange)="onResourceSmartListStateChange($event)"
         ></app-smart-list>
 
         <ng-template #resourceItemTemplate let-card>
@@ -116,16 +118,48 @@
                 <p class="subevent-group-stage-subtitle">{{ editor.title }}</p>
               </div>
               <div class="experience-form-header-controls">
-                <button
-                  type="button"
-                  class="popup-header-add-btn subevent-leaderboard-save-btn"
-                  [class.form-save-invalid]="!host.canSubmitCapacityEditor()"
-                  [disabled]="!host.canSubmitCapacityEditor()"
-                  (click)="host.saveCapacityEditor($event)"
-                  aria-label="Save capacity"
+                <span
+                  class="subevent-resource-save-btn-shell"
+                  [class.is-loading]="host.isCapacitySavePending()"
+                  [class.is-error]="!host.isCapacitySavePending() && !!host.capacitySaveErrorMessage()"
                 >
-                  <mat-icon>done</mat-icon>
-                </button>
+                  <span class="subevent-resource-save-btn-ring" *ngIf="host.isCapacitySavePending() || host.capacitySaveErrorMessage()" aria-hidden="true">
+                    <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="subevent-resource-save-btn-ring-svg">
+                      <defs>
+                        <linearGradient id="subevent-resource-save-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                          <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                        </linearGradient>
+                        <linearGradient id="subevent-resource-save-gradient-error" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+                          <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+                        </linearGradient>
+                      </defs>
+                      <circle class="subevent-resource-save-btn-ring-track" cx="17" cy="17" r="15"></circle>
+                      <circle
+                        class="subevent-resource-save-btn-ring-progress"
+                        [class.is-loading]="host.isCapacitySavePending()"
+                        [class.is-error]="!host.isCapacitySavePending() && !!host.capacitySaveErrorMessage()"
+                        cx="17"
+                        cy="17"
+                        r="15"
+                        pathLength="100"
+                        [attr.stroke-dasharray]="host.editorSaveRingPerimeter()"
+                        [attr.stroke-dashoffset]="host.isCapacitySavePending() ? host.editorSaveRingPerimeter() : 0"
+                      ></circle>
+                    </svg>
+                  </span>
+                  <button
+                    type="button"
+                    class="popup-header-add-btn subevent-leaderboard-save-btn subevent-resource-save-btn"
+                    [class.form-save-invalid]="!host.canSubmitCapacityEditor() && !host.isCapacitySavePending()"
+                    [disabled]="!host.canSubmitCapacityEditor()"
+                    (click)="host.saveCapacityEditor($event)"
+                    aria-label="Save capacity"
+                  >
+                    <mat-icon>done</mat-icon>
+                  </button>
+                </span>
                 <button type="button" class="experience-form-close-btn" (click)="host.closeCapacityEditor($event)" aria-label="Close capacity editor">
                   <mat-icon>close</mat-icon>
                 </button>
@@ -143,6 +177,7 @@
                       step="1"
                       [ngModel]="editor.capacityMin"
                       (ngModelChange)="host.onCapacityMinChange($event)"
+                      [disabled]="host.isCapacitySavePending()"
                       placeholder="Min"
                     />
                     <span class="subevent-capacity-separator">-</span>
@@ -153,9 +188,11 @@
                       step="1"
                       [ngModel]="editor.capacityMax"
                       (ngModelChange)="host.onCapacityMaxChange($event)"
+                      [disabled]="host.isCapacitySavePending()"
                       placeholder="Max"
                     />
                   </div>
+                  <p class="subevent-resource-editor-error" *ngIf="host.capacitySaveErrorMessage()">{{ host.capacitySaveErrorMessage() }}</p>
                 </label>
               </div>
             </section>
@@ -171,16 +208,48 @@
                 <p class="subevent-group-stage-subtitle">{{ editor.title }}</p>
               </div>
               <div class="experience-form-header-controls">
-                <button
-                  type="button"
-                  class="popup-header-add-btn subevent-leaderboard-save-btn"
-                  [class.form-save-invalid]="!host.canSubmitRouteEditor()"
-                  [disabled]="!host.canSubmitRouteEditor()"
-                  (click)="host.saveRouteEditor($event)"
-                  aria-label="Save route"
+                <span
+                  class="subevent-resource-save-btn-shell"
+                  [class.is-loading]="host.isRouteSavePending()"
+                  [class.is-error]="!host.isRouteSavePending() && !!host.routeSaveErrorMessage()"
                 >
-                  <mat-icon>done</mat-icon>
-                </button>
+                  <span class="subevent-resource-save-btn-ring" *ngIf="host.isRouteSavePending() || host.routeSaveErrorMessage()" aria-hidden="true">
+                    <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="subevent-resource-save-btn-ring-svg">
+                      <defs>
+                        <linearGradient id="subevent-resource-save-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                          <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                        </linearGradient>
+                        <linearGradient id="subevent-resource-save-gradient-error" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+                          <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+                        </linearGradient>
+                      </defs>
+                      <circle class="subevent-resource-save-btn-ring-track" cx="17" cy="17" r="15"></circle>
+                      <circle
+                        class="subevent-resource-save-btn-ring-progress"
+                        [class.is-loading]="host.isRouteSavePending()"
+                        [class.is-error]="!host.isRouteSavePending() && !!host.routeSaveErrorMessage()"
+                        cx="17"
+                        cy="17"
+                        r="15"
+                        pathLength="100"
+                        [attr.stroke-dasharray]="host.editorSaveRingPerimeter()"
+                        [attr.stroke-dashoffset]="host.isRouteSavePending() ? host.editorSaveRingPerimeter() : 0"
+                      ></circle>
+                    </svg>
+                  </span>
+                  <button
+                    type="button"
+                    class="popup-header-add-btn subevent-leaderboard-save-btn subevent-resource-save-btn"
+                    [class.form-save-invalid]="!host.canSubmitRouteEditor() && !host.isRouteSavePending()"
+                    [disabled]="!host.canSubmitRouteEditor()"
+                    (click)="host.saveRouteEditor($event)"
+                    aria-label="Save route"
+                  >
+                    <mat-icon>done</mat-icon>
+                  </button>
+                </span>
                 <button type="button" class="experience-form-close-btn" (click)="host.closeRouteEditor($event)" aria-label="Close route editor">
                   <mat-icon>close</mat-icon>
                 </button>
@@ -195,8 +264,8 @@
                       <button
                         type="button"
                         class="experience-action-btn asset-route-map-btn asset-route-main-map-btn"
-                        [class.form-save-invalid]="!host.canSubmitRouteEditor()"
-                        [disabled]="!host.canSubmitRouteEditor()"
+                        [class.form-save-invalid]="!host.canSubmitRouteEditor() && !host.isRouteSavePending()"
+                        [disabled]="host.isRouteSavePending() || !host.canSubmitRouteEditor()"
                         (click)="host.openRouteMap($event)"
                         aria-label="Open multistep route on map"
                       >
@@ -205,6 +274,7 @@
                       <button
                         type="button"
                         class="experience-action-btn asset-route-add-btn"
+                        [disabled]="host.isRouteSavePending()"
                         (click)="host.addRouteStop()"
                         aria-label="Add route stop"
                       >
@@ -218,19 +288,20 @@
                     cdkDropList
                     [cdkDropListData]="editor.routes"
                     (cdkDropListDropped)="host.dropRouteStop($event)"
-                    [cdkDropListDisabled]="!host.routeEditorSupportsMultiRoute()"
+                    [cdkDropListDisabled]="!host.routeEditorSupportsMultiRoute() || host.isRouteSavePending()"
                   >
                     <div
                       class="asset-route-row"
                       *ngFor="let stop of editor.routes; let stopIndex = index"
                       cdkDrag
-                      [cdkDragDisabled]="!host.routeEditorSupportsMultiRoute()"
+                      [cdkDragDisabled]="!host.routeEditorSupportsMultiRoute() || host.isRouteSavePending()"
                     >
                       <button
                         type="button"
                         class="experience-action-btn asset-route-drag-btn"
                         cdkDragHandle
                         *ngIf="host.routeEditorSupportsMultiRoute()"
+                        [disabled]="host.isRouteSavePending()"
                         aria-label="Drag route stop"
                       >
                         <mat-icon>drag_indicator</mat-icon>
@@ -239,11 +310,13 @@
                         type="text"
                         [ngModel]="stop"
                         (ngModelChange)="host.updateRouteStop(stopIndex, $event)"
+                        [disabled]="host.isRouteSavePending()"
                         [placeholder]="'Route stop ' + (stopIndex + 1)"
                       />
                       <button
                         type="button"
                         class="experience-action-btn asset-route-map-btn"
+                        [disabled]="host.isRouteSavePending()"
                         (click)="host.openRouteStopMap(stopIndex, $event)"
                         aria-label="Open stop on map"
                       >
@@ -253,6 +326,7 @@
                         type="button"
                         class="experience-action-btn experience-action-delete asset-route-delete-btn"
                         *ngIf="editor.routes.length > 1"
+                        [disabled]="host.isRouteSavePending()"
                         (click)="host.removeRouteStop(stopIndex)"
                         aria-label="Delete route stop"
                       >
@@ -260,9 +334,63 @@
                       </button>
                     </div>
                   </div>
+                  <p class="subevent-resource-editor-error" *ngIf="host.routeSaveErrorMessage()">{{ host.routeSaveErrorMessage() }}</p>
                 </div>
               </div>
             </section>
+          </div>
+        </section>
+
+        <section class="experience-delete-confirm" *ngIf="host.pendingDeleteCard()">
+          <div class="experience-delete-confirm-backdrop" (click)="host.cancelDeleteCard()"></div>
+          <div class="experience-delete-confirm-panel" (click)="$event.stopPropagation()">
+            <h4>Delete resource card</h4>
+            <p>{{ host.deleteCardLabel() }}</p>
+            <p class="subevent-resource-delete-error" *ngIf="host.deleteCardErrorMessage()">{{ host.deleteCardErrorMessage() }}</p>
+            <div class="popup-actions">
+              <button type="button" class="link-btn neutral-btn" (click)="host.cancelDeleteCard()">Cancel</button>
+              <span
+                class="subevent-resource-delete-btn-shell"
+                [class.is-loading]="host.isDeleteCardPending()"
+                [class.is-error]="!host.isDeleteCardPending() && !!host.deleteCardErrorMessage()"
+              >
+                <span class="subevent-resource-delete-btn-ring" *ngIf="host.isDeleteCardPending() || host.deleteCardErrorMessage()" aria-hidden="true">
+                  <svg viewBox="0 0 104 48" preserveAspectRatio="none" class="subevent-resource-delete-btn-ring-svg">
+                    <defs>
+                      <linearGradient id="subevent-resource-delete-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                        <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                      </linearGradient>
+                      <linearGradient id="subevent-resource-delete-gradient-error" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+                        <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+                      </linearGradient>
+                    </defs>
+                    <path
+                      class="subevent-resource-delete-btn-ring-track"
+                      d="M52 2 H88 A14 14 0 0 1 102 16 V32 A14 14 0 0 1 88 46 H16 A14 14 0 0 1 2 32 V16 A14 14 0 0 1 16 2 H52"
+                    ></path>
+                    <path
+                      class="subevent-resource-delete-btn-ring-progress"
+                      [class.is-loading]="host.isDeleteCardPending()"
+                      [class.is-error]="!host.isDeleteCardPending() && !!host.deleteCardErrorMessage()"
+                      d="M52 2 H88 A14 14 0 0 1 102 16 V32 A14 14 0 0 1 88 46 H16 A14 14 0 0 1 2 32 V16 A14 14 0 0 1 16 2 H52"
+                      pathLength="100"
+                      [attr.stroke-dasharray]="host.deleteCardConfirmRingPerimeter()"
+                      [attr.stroke-dashoffset]="host.isDeleteCardPending() ? host.deleteCardConfirmRingPerimeter() : 0"
+                    ></path>
+                  </svg>
+                </span>
+                <button
+                  type="button"
+                  class="link-btn experience-delete-btn subevent-resource-delete-confirm-btn"
+                  [disabled]="host.isDeleteCardPending()"
+                  (click)="host.confirmDeleteCard()"
+                >
+                  {{ host.isDeleteCardPending() ? 'Deleting...' : 'Delete' }}
+                </button>
+              </span>
+            </div>
           </div>
         </section>
       </div>

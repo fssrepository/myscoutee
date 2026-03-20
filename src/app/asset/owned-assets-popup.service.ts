@@ -429,21 +429,34 @@ export class OwnedAssetsPopupService {
     this.pendingAssetDeleteCardId = null;
   }
 
+  async deleteAssetCardById(cardId: string): Promise<boolean> {
+    const normalizedCardId = cardId.trim();
+    if (!normalizedCardId) {
+      return false;
+    }
+    const cardExists = this.assetCardsRef.some(card => card.id === normalizedCardId);
+    if (!cardExists) {
+      return false;
+    }
+    const ownerUserId = this.resolveOwnerUserId();
+    if (ownerUserId) {
+      await this.assetsService.deleteOwnedAsset(ownerUserId, normalizedCardId);
+    }
+    this.applyAssetCards(this.assetCardsRef.filter(card => card.id !== normalizedCardId), { persist: false });
+    for (const hooks of this.runtimeHooks) {
+      hooks.onAssetDeleted?.(normalizedCardId);
+      hooks.onAssetsChanged?.();
+    }
+    return true;
+  }
+
   async confirmAssetDelete(): Promise<void> {
     if (!this.pendingAssetDeleteCardId) {
       return;
     }
     const cardId = this.pendingAssetDeleteCardId;
-    const ownerUserId = this.resolveOwnerUserId();
-    this.applyAssetCards(this.assetCardsRef.filter(card => card.id !== cardId), { persist: false });
     this.pendingAssetDeleteCardId = null;
-    for (const hooks of this.runtimeHooks) {
-      hooks.onAssetDeleted?.(cardId);
-      hooks.onAssetsChanged?.();
-    }
-    if (ownerUserId) {
-      await this.assetsService.deleteOwnedAsset(ownerUserId, cardId);
-    }
+    await this.deleteAssetCardById(cardId);
   }
 
   private activeAssetType(): AppTypes.AssetType {

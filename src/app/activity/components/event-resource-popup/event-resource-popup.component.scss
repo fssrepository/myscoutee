@@ -289,6 +289,98 @@
   gap: 0.44rem;
 }
 
+.event-resource-popup-shell .subevent-resource-save-btn-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  padding: 2px;
+  box-sizing: border-box;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.event-resource-popup-shell .subevent-resource-save-btn {
+  position: relative;
+  z-index: 1;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  border-radius: 50%;
+}
+
+.event-resource-popup-shell .subevent-resource-save-btn-ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.event-resource-popup-shell .subevent-resource-save-btn-ring-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 4px 12px rgba(22, 94, 51, 0.12));
+}
+
+.event-resource-popup-shell .subevent-resource-save-btn-ring-track,
+.event-resource-popup-shell .subevent-resource-save-btn-ring-progress {
+  fill: none;
+  stroke-width: 3;
+}
+
+.event-resource-popup-shell .subevent-resource-save-btn-ring-track {
+  stroke: rgba(133, 100, 42, 0.18);
+}
+
+.event-resource-popup-shell .subevent-resource-save-btn-ring-progress {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform-origin: 50% 50%;
+  transform: rotate(-90deg);
+}
+
+.event-resource-popup-shell .subevent-resource-save-btn-ring-progress.is-loading {
+  stroke: url(#subevent-resource-save-gradient);
+  animation: subevent-resource-ring-progress 3s linear forwards;
+}
+
+.event-resource-popup-shell .subevent-resource-save-btn-ring-progress.is-error {
+  stroke: url(#subevent-resource-save-gradient-error);
+}
+
+.event-resource-popup-shell .subevent-resource-save-btn-shell.is-loading .subevent-resource-save-btn,
+.event-resource-popup-shell .subevent-resource-save-btn-shell.is-error .subevent-resource-save-btn {
+  box-shadow: none;
+}
+
+.event-resource-popup-shell .subevent-resource-save-btn-shell.is-loading .subevent-resource-save-btn,
+.event-resource-popup-shell .subevent-resource-save-btn-shell.is-loading .subevent-resource-save-btn:hover,
+.event-resource-popup-shell .subevent-resource-save-btn-shell.is-loading .subevent-resource-save-btn:disabled {
+  border-color: rgba(181, 117, 23, 0.76);
+  background: linear-gradient(180deg, #ffe7bf 0%, #ffd085 100%);
+  color: #8e4f0d;
+  opacity: 1;
+  cursor: wait;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+
+.event-resource-popup-shell .subevent-resource-save-btn-shell.is-error .subevent-resource-save-btn,
+.event-resource-popup-shell .subevent-resource-save-btn-shell.is-error .subevent-resource-save-btn:hover {
+  border-color: rgba(176, 31, 46, 0.82);
+  background: linear-gradient(180deg, #f36a79 0%, #d4374a 100%);
+  color: #fff;
+  opacity: 1;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+
 .event-resource-popup-shell .experience-form-panel {
   border: 1px solid rgba(43, 71, 107, 0.2);
   border-radius: 14px;
@@ -456,6 +548,179 @@
   background: linear-gradient(180deg, #fff1f1 0%, #ffe4e4 100%);
   border-color: rgba(177, 40, 40, 0.32);
   color: #b12828;
+}
+
+.event-resource-popup-shell .subevent-resource-editor-error {
+  margin: 0;
+  color: #9b2c37;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.event-resource-popup-shell .subevent-asset-capacity-overlay .experience-action-btn:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.event-resource-popup-shell .experience-delete-confirm {
+  position: absolute;
+  inset: 0;
+  z-index: 28;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.9rem;
+}
+
+.event-resource-popup-shell .experience-delete-confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 16, 30, 0.46);
+}
+
+.event-resource-popup-shell .experience-delete-confirm-panel {
+  position: relative;
+  z-index: 1;
+  width: min(420px, 100%);
+  border: 1px solid rgba(42, 67, 101, 0.28);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.72rem;
+  display: grid;
+  gap: 0.4rem;
+  text-align: center;
+  justify-items: center;
+}
+
+.event-resource-popup-shell .experience-delete-confirm-panel h4 {
+  margin: 0;
+  font-size: 0.94rem;
+  color: #1f3252;
+}
+
+.event-resource-popup-shell .experience-delete-confirm-panel p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgba(23, 41, 66, 0.72);
+}
+
+.event-resource-popup-shell .subevent-resource-delete-error {
+  color: #9b2c37;
+  font-weight: 700;
+}
+
+.event-resource-popup-shell .experience-delete-confirm-panel .popup-actions {
+  justify-content: center;
+}
+
+.event-resource-popup-shell .subevent-resource-delete-btn-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  justify-content: center;
+  width: 104px;
+  min-width: 104px;
+  height: 44px;
+  border-radius: 999px;
+  padding: 2px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.event-resource-popup-shell .subevent-resource-delete-confirm-btn {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 40px;
+  justify-content: center;
+  white-space: nowrap;
+  border-radius: 999px;
+  border-color: transparent;
+}
+
+.event-resource-popup-shell .subevent-resource-delete-btn-ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.event-resource-popup-shell .subevent-resource-delete-btn-ring-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 8px 20px rgba(68, 18, 18, 0.16));
+}
+
+.event-resource-popup-shell .subevent-resource-delete-btn-ring-track,
+.event-resource-popup-shell .subevent-resource-delete-btn-ring-progress {
+  fill: none;
+  stroke-width: 4;
+}
+
+.event-resource-popup-shell .subevent-resource-delete-btn-ring-track {
+  stroke: rgba(133, 100, 42, 0.18);
+}
+
+.event-resource-popup-shell .subevent-resource-delete-btn-ring-progress {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.event-resource-popup-shell .subevent-resource-delete-btn-ring-progress.is-loading {
+  stroke: url(#subevent-resource-delete-gradient);
+  animation: subevent-resource-ring-progress 3s linear forwards;
+}
+
+.event-resource-popup-shell .subevent-resource-delete-btn-ring-progress.is-error {
+  stroke: url(#subevent-resource-delete-gradient-error);
+}
+
+.event-resource-popup-shell .subevent-resource-delete-btn-shell.is-loading .subevent-resource-delete-confirm-btn,
+.event-resource-popup-shell .subevent-resource-delete-btn-shell.is-error .subevent-resource-delete-confirm-btn {
+  box-shadow: none;
+}
+
+.event-resource-popup-shell .experience-delete-btn {
+  background: #d73838;
+  border-color: #b42a2a;
+  color: #fff;
+}
+
+.event-resource-popup-shell .subevent-resource-delete-btn-shell.is-loading .subevent-resource-delete-confirm-btn,
+.event-resource-popup-shell .subevent-resource-delete-confirm-btn:disabled {
+  background: linear-gradient(180deg, #ffe7bf 0%, #ffd085 100%);
+  border-color: rgba(181, 117, 23, 0.76);
+  color: #8e4f0d;
+  cursor: wait;
+  box-shadow: none;
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+.event-resource-popup-shell .subevent-resource-delete-btn-shell.is-error .subevent-resource-delete-confirm-btn,
+.event-resource-popup-shell .subevent-resource-delete-btn-shell.is-error .subevent-resource-delete-confirm-btn:hover {
+  background: linear-gradient(180deg, #f36a79 0%, #d4374a 100%);
+  border-color: rgba(176, 31, 46, 0.82);
+  color: #fff;
+  box-shadow: none;
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+@keyframes subevent-resource-ring-progress {
+  from {
+    stroke-dashoffset: 100;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 :host ::ng-deep .mat-mdc-select-panel.subevent-resource-options-panel {
