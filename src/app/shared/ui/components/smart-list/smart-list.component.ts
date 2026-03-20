@@ -2045,6 +2045,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (!this.canMoveCursor(delta)) {
       return false;
     }
+    const targetIndex = this.buildCursorState().index + Math.trunc(delta);
+    if (!await this.ensureHostedFullscreenTargetLoaded(targetIndex)) {
+      return false;
+    }
     const currentItem = this.cursorItem();
     if (!currentItem) {
       return this.moveCursor(delta);
@@ -2054,6 +2058,30 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (!moved) {
       this.paginationHelper.finishTransition();
       return false;
+    }
+    return true;
+  }
+
+  private async ensureHostedFullscreenTargetLoaded(index: number): Promise<boolean> {
+    const normalizedIndex = Math.max(0, Math.trunc(index));
+    if (!this.shouldUseHostedFullscreenPagination() || normalizedIndex < this.items.length) {
+      return true;
+    }
+    let waitTicks = 0;
+    while (this.items.length <= normalizedIndex) {
+      if (!this.hasMore && !this.loading) {
+        return false;
+      }
+      if (!this.loading) {
+        await this.loadNextPage();
+        waitTicks = 0;
+        continue;
+      }
+      await this.wait(16);
+      waitTicks += 1;
+      if (waitTicks >= 320 && this.items.length <= normalizedIndex) {
+        return false;
+      }
     }
     return true;
   }

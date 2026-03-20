@@ -1,4 +1,4 @@
-<section class="app-popup app-popup-stacked app-popup-super-stacked activity-members-popup-shell" *ngIf="isOpen && !isSuspendedForAssetInvite()">
+<section class="app-popup app-popup-stacked app-popup-super-stacked activity-members-popup-shell" *ngIf="isOpen">
   <div class="app-popup-backdrop" (click)="closeMembersPopup()"></div>
   <div class="app-popup-panel popup-panel-members popup-panel-wide popup-panel-full-height" (click)="$event.stopPropagation()">
     <div class="popup-header popup-header-members-invite-mobile-layout popup-header-activity-members-pending-layout">

@@ -2079,7 +2079,7 @@ export class HomeComponent implements OnDestroy {
       this.gameStackExhausted = true;
       return;
     }
-    const remainingCards = this.gameStackCardsLoaded - this.cardIndex;
+    const remainingCards = Math.max(0, this.gameStackCardsLoaded - (this.cardIndex + 1));
     if (remainingCards > HomeComponent.GAME_STACK_PRELOAD_THRESHOLD) {
       return;
     }
