@@ -3,12 +3,12 @@ export interface ConfigEntry {
   demoDelayMs: number;
 }
 
-interface DemoUsersRouteConfig {
+interface DemoRouteDelayConfig {
   defaultDemoDelayMs: number;
   entries: ConfigEntry[];
 }
 
-const ROUTE_CONFIG: DemoUsersRouteConfig = {
+const ROUTE_CONFIG: DemoRouteDelayConfig = {
   defaultDemoDelayMs: 300,
   entries: [
     {

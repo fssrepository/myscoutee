@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { of } from 'rxjs';
+import { from } from 'rxjs';
 
 import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import { AppContext, EventsService, GameService, type UserDto } from '../../../shared/core';
@@ -26,7 +26,7 @@ import { EventFeedbackPopupService, type EventFeedbackPopupSource } from '../../
 
 interface EventFeedbackListFilters {
   filter: AppTypes.EventFeedbackListFilter;
-  revision: string;
+  userId: string;
 }
 
 @Component({
@@ -53,11 +53,13 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   private readonly fallbackUsers = AppDemoGenerators.buildExpandedDemoUsers(50);
   private lastLoadedUserId = '';
   private loadRequestVersion = 0;
+  private eventRecordsLoadPromise: Promise<void> | null = null;
+  private eventRecordsLoadUserId = '';
 
   protected eventFeedbackSmartListQuery: Partial<ListQuery<EventFeedbackListFilters>> = {
     filters: {
       filter: 'pending',
-      revision: 'initial'
+      userId: ''
     }
   };
 
@@ -75,24 +77,13 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   protected readonly eventFeedbackSmartListLoadPage: SmartListLoadPage<
     AppTypes.EventFeedbackEventCard,
     EventFeedbackListFilters
-  > = (query) => {
-    const items = this.feedback.eventFeedbackVisibleItems();
-    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
-    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
-    const start = page * pageSize;
-    return of({
-      items: items.slice(start, start + pageSize),
-      total: items.length
-    });
-  };
+  > = (query) => from(this.loadEventFeedbackPage(query));
 
   protected readonly eventFeedbackSmartListConfig: SmartListConfig<
     AppTypes.EventFeedbackEventCard,
     EventFeedbackListFilters
   > = {
     pageSize: 12,
-    loadingDelayMs: 0,
-    loadingWindowMs: 900,
     defaultView: 'list',
     headerProgress: {
       enabled: true
@@ -117,44 +108,37 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
 
     effect(() => {
       const activeUserId = this.appCtx.activeUserId().trim();
+      if (activeUserId) {
+        return;
+      }
+      this.lastLoadedUserId = '';
+      this.eventRecordsLoadUserId = '';
+      this.eventRecordsLoadPromise = null;
+      this.eventRecordsRef.set([]);
+    }, { allowSignalWrites: true });
+
+    effect(() => {
       const isPopupOpen = this.feedback.isPopupOpen();
-
-      if (!activeUserId) {
-        this.lastLoadedUserId = '';
-        this.eventRecordsRef.set([]);
+      if (!isPopupOpen) {
         return;
       }
-
-      if (!isPopupOpen && this.lastLoadedUserId === activeUserId && this.eventRecordsRef().length > 0) {
-        return;
-      }
-
-      void this.loadEventRecords(activeUserId);
+      this.lastLoadedUserId = '';
+      this.eventRecordsLoadUserId = '';
+      this.eventRecordsLoadPromise = null;
     }, { allowSignalWrites: true });
 
     effect(() => {
       const filter = this.feedback.eventFeedbackListFilter();
-      const items = this.feedback.eventFeedbackVisibleItems();
-      const revision = items
-        .map(item => [
-          item.eventId,
-          item.pendingCards,
-          item.totalCards,
-          item.isRemoved ? '1' : '0',
-          item.isFeedbacked ? '1' : '0',
-          item.feedbackedAtMs ?? ''
-        ].join(':'))
-        .join('|');
-
+      const userId = this.appCtx.activeUserId().trim();
       const currentFilters = this.eventFeedbackSmartListQuery.filters;
-      if (currentFilters?.filter === filter && currentFilters.revision === revision) {
+      if (currentFilters?.filter === filter && currentFilters.userId === userId) {
         return;
       }
 
       this.eventFeedbackSmartListQuery = {
         filters: {
           filter,
-          revision
+          userId
         }
       };
     }, { allowSignalWrites: true });
@@ -267,14 +251,67 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     this.feedback.registerSource(null);
   }
 
+  private async loadEventFeedbackPage(
+    query: ListQuery<EventFeedbackListFilters>
+  ): Promise<{ items: AppTypes.EventFeedbackEventCard[]; total: number }> {
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
+    const start = page * pageSize;
+    const userId = query.filters?.userId?.trim() || this.appCtx.activeUserId().trim();
+
+    if (!userId) {
+      this.lastLoadedUserId = '';
+      this.eventRecordsLoadUserId = '';
+      this.eventRecordsLoadPromise = null;
+      this.eventRecordsRef.set([]);
+      return { items: [], total: 0 };
+    }
+
+    await this.loadEventRecords(userId);
+
+    const items = this.feedback.eventFeedbackVisibleItems();
+    return {
+      items: items.slice(start, start + pageSize),
+      total: items.length
+    };
+  }
+
   private async loadEventRecords(userId: string): Promise<void> {
-    const requestVersion = ++this.loadRequestVersion;
-    const records = await this.eventsService.queryEventItemsByUser(userId);
-    if (requestVersion !== this.loadRequestVersion) {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      this.lastLoadedUserId = '';
+      this.eventRecordsLoadUserId = '';
+      this.eventRecordsLoadPromise = null;
+      this.eventRecordsRef.set([]);
       return;
     }
-    this.lastLoadedUserId = userId;
-    this.eventRecordsRef.set(records);
+
+    if (this.eventRecordsLoadPromise && this.eventRecordsLoadUserId === normalizedUserId) {
+      return this.eventRecordsLoadPromise;
+    }
+
+    if (this.lastLoadedUserId === normalizedUserId && this.eventRecordsRef().length > 0) {
+      return;
+    }
+
+    const requestVersion = ++this.loadRequestVersion;
+    this.eventRecordsLoadUserId = normalizedUserId;
+    this.eventRecordsLoadPromise = (async () => {
+      const records = await this.eventsService.queryEventItemsByUser(normalizedUserId);
+      if (requestVersion !== this.loadRequestVersion) {
+        return;
+      }
+      this.lastLoadedUserId = normalizedUserId;
+      this.eventRecordsRef.set(records);
+    })();
+
+    try {
+      await this.eventRecordsLoadPromise;
+    } finally {
+      if (this.eventRecordsLoadUserId === normalizedUserId) {
+        this.eventRecordsLoadPromise = null;
+      }
+    }
   }
 
   private eventRecordById(eventId: string): DemoEventRecord | null {
