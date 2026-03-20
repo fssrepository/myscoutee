@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, ViewEncapsulation, effect, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, ViewEncapsulation, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -23,6 +23,7 @@ import { AssetTicketScannerPopupComponent } from '../asset-ticket-scanner-popup/
 import {
   InfoCardComponent,
   SmartListComponent,
+  type InfoCardData,
   type InfoCardMenuActionEvent,
   type ListQuery,
   type SmartListConfig,
@@ -67,6 +68,15 @@ export class AssetPopupComponent implements OnDestroy {
   protected readonly onOwnedAssetImageFileSelected = (file: File): void => this.ownedAssets.applyAssetImageFile(file);
   protected readonly cancelOwnedAssetDelete = (): void => this.ownedAssets.cancelAssetDelete();
   protected readonly confirmOwnedAssetDelete = (): void => { void this.ownedAssets.confirmAssetDelete(); };
+
+  protected readonly isSubEventAssetAssignPopup = computed(() => this.assetPopup.host()?.isSubEventAssetAssignPopup() === true);
+  protected readonly canConfirmSubEventAssetAssignSelection = computed(() => this.assetPopup.host()?.canConfirmSubEventAssetAssignSelection() === true);
+  protected readonly isSubEventAssetAssignCardSelected = (cardId: string) => this.assetPopup.host()?.isSubEventAssetAssignCardSelected(cardId) === true;
+
+  protected readonly closeSubEventAssetAssignPopup = () => this.assetPopup.host()?.closeSubEventAssetAssignPopup();
+  protected readonly confirmSubEventAssetAssignSelection = (event: Event) => this.assetPopup.host()?.confirmSubEventAssetAssignSelection(event);
+  protected readonly toggleSubEventAssetAssignCard = (cardId: string, event?: Event) => this.assetPopup.host()?.toggleSubEventAssetAssignCard(cardId, event);
+
   protected assetSmartListQuery: Partial<ListQuery<OwnedAssetListFilters>> = {};
   protected ticketSmartListQuery: Partial<ListQuery<AssetTicketListFilters>> = {};
 
@@ -145,8 +155,12 @@ export class AssetPopupComponent implements OnDestroy {
 
   protected ownedAssetInfoCard(
     card: AppTypes.AssetCard,
-    options: { groupLabel?: string | null } = {}
-  ) {
+    options: {
+      groupLabel?: string | null;
+      selected?: boolean;
+      selectionMode?: boolean;
+    } = {}
+  ): InfoCardData {
     return this.assetFacade.ownedAssetInfoCard(card, options);
   }
 

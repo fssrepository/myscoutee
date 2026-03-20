@@ -33,8 +33,8 @@
         </button>
       </div>
 
-      <div class="popup-body popup-body-assets-list" [class.popup-body-assets-tickets]="ownedAssets.isTicketPopup()">
-        <div class="experience-popup assets-popup assets-popup-smart-list" [class.assets-popup-tickets]="ownedAssets.isTicketPopup()">
+      <div class="popup-body popup-body-assets-list" [class.popup-body-assets-tickets]="ownedAssets.isTicketPopup()" [class.popup-body-assets-assign]="isSubEventAssetAssignPopup()">
+        <div class="experience-popup assets-popup assets-popup-smart-list" [class.assets-popup-tickets]="ownedAssets.isTicketPopup()" [class.assets-popup-assign]="isSubEventAssetAssignPopup()">
           <div class="experience-toolbar assets-toolbar">
             <div
               class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select"
@@ -66,7 +66,7 @@
             <button
               type="button"
               class="popup-header-add-btn assets-add-btn"
-              *ngIf="!ownedAssets.isTicketPopup()"
+              *ngIf="!ownedAssets.isTicketPopup() && !isSubEventAssetAssignPopup()"
               (click)="ownedAssets.openAssetForm()"
               aria-label="Add asset"
             >
@@ -141,8 +141,9 @@
 
   <ng-template #assetItemTemplate let-card let-groupLabel="groupLabel">
     <app-info-card
-      [card]="ownedAssetInfoCard(card, { groupLabel: groupLabel })"
+      [card]="ownedAssetInfoCard(card, { groupLabel: groupLabel, selectionMode: isSubEventAssetAssignPopup(), selected: isSubEventAssetAssignCardSelected(card.id) })"
       (mediaStartClick)="openOwnedAssetMap(card)"
+      (mediaEndClick)="isSubEventAssetAssignPopup() ? toggleSubEventAssetAssignCard(card.id) : null"
       (menuAction)="onOwnedAssetInfoCardMenuAction(card, $event)"
     ></app-info-card>
   </ng-template>
@@ -188,9 +189,9 @@
           (videoElementChange)="onTicketScannerVideoElementChange($event)"
         ></app-asset-ticket-scanner-popup>
       </div>
+      <app-asset-basket-popup *ngIf="assetPopup.host() as host" [host]="host"></app-asset-basket-popup>
     </div>
   </section>
 
-  <app-asset-basket-popup *ngIf="assetPopup.host() as host" [host]="host"></app-asset-basket-popup>
   <app-asset-member-picker-popup></app-asset-member-picker-popup>
 </div>

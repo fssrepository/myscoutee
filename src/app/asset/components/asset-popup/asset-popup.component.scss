@@ -10,16 +10,19 @@
 
 @include ui.popup-shell();
 
-.app-popup {
-  z-index: var(--asset-popup-z-index);
+.asset-popup > .app-popup {
+  z-index: 15000 !important;
 }
 
-.app-popup-stacked {
-  z-index: var(--asset-popup-stacked-z-index);
+.app-popup-stacked,
+app-asset-form-popup .app-popup,
+app-asset-delete-confirm .app-popup,
+app-asset-member-picker-popup .app-popup {
+  z-index: 15100 !important;
 }
 
 .app-popup-stacked.app-popup-super-stacked {
-  z-index: var(--asset-popup-super-stacked-z-index);
+  z-index: 15200 !important;
 }
 
 .app-popup-panel {
@@ -47,6 +50,7 @@
 }
 
 .asset-popup {
+  position: relative;
   font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
 }
 
@@ -118,7 +122,7 @@
   box-shadow: 0 10px 24px rgba(17, 29, 48, 0.22);
   padding: 0.24rem;
   min-width: 128px;
-  z-index: 40;
+  z-index: 15300;
   display: grid;
   gap: 0.16rem;
 }
@@ -634,7 +638,7 @@
   position: absolute;
   right: 0;
   top: calc(100% + 6px);
-  z-index: 30;
+  z-index: 15300;
   min-width: 220px;
   max-width: min(300px, 70vw);
   border: 1px solid rgba(42, 67, 101, 0.24);
@@ -852,7 +856,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  z-index: 2;
+  z-index: 15100;
   padding: 0;
   cursor: pointer;
   text-decoration: none;
@@ -914,7 +918,7 @@
 .asset-popup .smart-list__group-marker {
   position: sticky;
   top: 0;
-  z-index: 3;
+  z-index: 15150;
   margin: 0;
   padding: 0.42rem 0.54rem;
   border-radius: 10px;
@@ -940,7 +944,7 @@
 .asset-popup .experience-form-overlay {
   position: fixed;
   inset: 0;
-  z-index: 4200;
+  z-index: 15300;
   display: flex;
   align-items: center;
   justify-content: center;

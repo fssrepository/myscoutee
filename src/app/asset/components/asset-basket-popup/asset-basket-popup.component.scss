@@ -1,80 +1,109 @@
-:host {
-  display: contents;
-}
-
-.asset-basket-popup-shell .popup-panel-friends-picker.popup-panel-friends-picker-members.popup-panel-subevent-asset-assign {
-  width: min(1080px, calc(100vw - 1.2rem));
-  height: calc(100vh - 1.2rem);
-  max-height: calc(100vh - 1.2rem);
-}
-
-.asset-basket-popup-shell .popup-header-inline-controls {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.46rem;
-}
-
-.asset-basket-popup-shell .popup-body.popup-body-subevent-asset-assign {
-  display: grid;
-  gap: 0.48rem;
-  align-content: start;
-  grid-auto-rows: max-content;
-}
-
-.asset-basket-popup-shell .friends-picker-card-add-btn {
+.asset-basket-popup-mini {
   position: absolute;
-  top: 0.48rem;
-  right: 0.48rem;
-  z-index: 2;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.86);
-  background: rgba(243, 249, 255, 0.92);
-  color: #275b98;
-  display: inline-flex;
+  bottom: 0.5rem;
+  left: 0.5rem;
+  right: 0.5rem;
+  z-index: 100;
+  padding: 0;
+  pointer-events: none;
+}
+
+.asset-basket-floating-panel {
+  pointer-events: auto;
+  background: white;
+  border: 1px solid rgba(30, 50, 80, 0.15);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(15, 30, 55, 0.24);
+  max-width: 800px;
+  margin: 0 auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.basket-mini-header {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
+  padding: 0.75rem 1rem;
+  background: #f8fbff;
+  border-bottom: 1px solid rgba(30, 50, 80, 0.08);
+}
+
+.basket-mini-title h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #1a365d;
+}
+
+.basket-mini-title p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.basket-confirm-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.85rem;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.asset-basket-popup-shell .friends-picker-card-add-btn .mat-icon {
-  width: 18px;
-  height: 18px;
-  font-size: 18px;
-  line-height: 18px;
-  display: inline-flex;
+.basket-confirm-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.basket-confirm-btn:disabled {
+  background: #cbd5e1;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.basket-mini-body {
+  padding: 0.5rem 1rem;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.friends-picker-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.subevent-asset-assign-chip {
+  display: flex;
   align-items: center;
-  justify-content: center;
-}
-
-.asset-basket-popup-shell .friends-picker-card-add-btn.active {
-  background: #2d7d47;
-  border-color: #20613a;
-  color: #fff;
-}
-
-.asset-basket-popup-shell .subevent-asset-assign-chip {
   gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.asset-basket-popup-shell .subevent-asset-assign-chip .mat-icon:first-child {
-  width: 16px;
-  height: 16px;
-  font-size: 16px;
-  line-height: 16px;
+.subevent-asset-assign-chip:hover {
+  background: #e2e8f0;
 }
 
-.asset-basket-popup-shell .subevent-asset-assign-list {
-  align-content: start;
-}
-
-.asset-basket-popup-shell .subevent-asset-assign-card {
-  max-width: none;
-}
-
-.asset-basket-popup-shell .subevent-asset-assign-select-btn {
-  top: 0.42rem;
-  right: 0.42rem;
+.friends-picker-chip-remove {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  color: #94a3b8;
 }
