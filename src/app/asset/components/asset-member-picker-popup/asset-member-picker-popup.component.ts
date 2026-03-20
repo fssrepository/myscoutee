@@ -55,17 +55,21 @@ export class AssetMemberPickerPopupComponent {
   protected isOpen = false;
   protected title = 'Invite members';
   protected ownerId = '';
+  protected ownerType: AppTypes.ActivityMemberOwnerType = 'event';
   protected inviteSort: AppTypes.ActivityInviteSort = 'recent';
   protected showInviteSortPicker = false;
   protected selectedUserIds: string[] = [];
   protected inviteSmartListQuery: Partial<ListQuery<ActivityInviteFilters>> = {};
+  protected confirmErrorMessage = '';
+  protected readonly confirmRingPerimeter = 100;
+  protected isConfirmPending = false;
 
   private currentCandidates: AppTypes.ActivityMemberEntry[] = [];
   private readonly candidatesByUserId = new Map<string, AppTypes.ActivityMemberEntry>();
   private candidateQueryKey = '';
   private localCandidates: AppTypes.ActivityMemberEntry[] = [];
   private isLocalCandidateSource = false;
-  private inviteApplyHandler: ((selectedCandidates: readonly AppTypes.ActivityMemberEntry[]) => void) | null = null;
+  private inviteApplyHandler: ((selectedCandidates: readonly AppTypes.ActivityMemberEntry[]) => void | Promise<void>) | null = null;
   private closeOwnerPopupOnClose = false;
 
   @ViewChild('inviteSmartList')
@@ -110,17 +114,20 @@ export class AssetMemberPickerPopupComponent {
       }
       this.isOpen = true;
       this.ownerId = context.ownerId.trim();
+      this.ownerType = context.ownerType ?? 'event';
       this.title = context.title?.trim() || 'Invite members';
       this.inviteSort = 'recent';
       this.showInviteSortPicker = false;
       this.selectedUserIds = [];
+      this.confirmErrorMessage = '';
+      this.isConfirmPending = false;
       this.currentCandidates = [];
       this.candidatesByUserId.clear();
       this.candidateQueryKey = '';
       this.localCandidates = Array.isArray(context.initialCandidates)
         ? context.initialCandidates.map(candidate => ({ ...candidate }))
         : [];
-      this.isLocalCandidateSource = this.localCandidates.length > 0 || typeof context.onApply === 'function';
+      this.isLocalCandidateSource = this.localCandidates.length > 0;
       this.inviteApplyHandler = context.onApply ?? null;
       this.closeOwnerPopupOnClose = context.closeOwnerPopupOnClose === true;
       this.syncInviteSmartListQuery();
@@ -170,6 +177,9 @@ export class AssetMemberPickerPopupComponent {
 
   protected closeInvitePopup(event?: Event): void {
     event?.stopPropagation();
+    if (this.isConfirmPending) {
+      return;
+    }
     const shouldCloseOwnerPopup = this.closeOwnerPopupOnClose;
     this.appCtx.closeActivityInvitePopup();
     this.resetState();
@@ -180,12 +190,18 @@ export class AssetMemberPickerPopupComponent {
 
   protected toggleInviteSortPicker(event?: Event): void {
     event?.stopPropagation();
+    if (this.isConfirmPending) {
+      return;
+    }
     this.showInviteSortPicker = !this.showInviteSortPicker;
     this.cdr.markForCheck();
   }
 
   protected selectInviteSort(sort: AppTypes.ActivityInviteSort, event?: Event): void {
     event?.stopPropagation();
+    if (this.isConfirmPending) {
+      return;
+    }
     if (this.inviteSort === sort) {
       this.showInviteSortPicker = false;
       this.cdr.markForCheck();
@@ -203,7 +219,7 @@ export class AssetMemberPickerPopupComponent {
   }
 
   protected canConfirmSelection(): boolean {
-    return this.selectedUserIds.length > 0;
+    return this.selectedUserIds.length > 0 && !this.isConfirmPending;
   }
 
   protected async confirmSelection(event?: Event): Promise<void> {
@@ -215,17 +231,29 @@ export class AssetMemberPickerPopupComponent {
     if (selected.length === 0) {
       return;
     }
-    if (this.inviteApplyHandler) {
-      this.inviteApplyHandler(selected);
+    this.isConfirmPending = true;
+    this.confirmErrorMessage = '';
+    this.cdr.markForCheck();
+    try {
+      if (this.inviteApplyHandler) {
+        await Promise.resolve(this.inviteApplyHandler(selected));
+      } else {
+        await this.activityInviteCandidatesService.applyInvites(this.ownerId, selected, this.ownerType);
+      }
+      this.isConfirmPending = false;
       this.closeInvitePopup();
-      return;
+    } catch {
+      this.isConfirmPending = false;
+      this.confirmErrorMessage = 'Unable to invite selected members.';
+      this.cdr.markForCheck();
     }
-    await this.activityInviteCandidatesService.applyInvites(this.ownerId, selected);
-    this.closeInvitePopup();
   }
 
   protected toggleInviteCandidate(userId: string, event?: Event): void {
     event?.stopPropagation();
+    if (this.isConfirmPending) {
+      return;
+    }
     if (this.selectedUserIds.includes(userId)) {
       this.selectedUserIds = this.selectedUserIds.filter(id => id !== userId);
       this.cdr.markForCheck();
@@ -257,10 +285,13 @@ export class AssetMemberPickerPopupComponent {
     this.isOpen = false;
     this.title = 'Invite members';
     this.ownerId = '';
+    this.ownerType = 'event';
     this.inviteSort = 'recent';
     this.showInviteSortPicker = false;
     this.selectedUserIds = [];
     this.inviteSmartListQuery = {};
+    this.confirmErrorMessage = '';
+    this.isConfirmPending = false;
     this.currentCandidates = [];
     this.candidatesByUserId.clear();
     this.candidateQueryKey = '';
@@ -305,14 +336,15 @@ export class AssetMemberPickerPopupComponent {
       };
     }
     const inviteSort = query.filters?.sort === 'relevant' ? 'relevant' : 'recent';
-    const queryKey = `${ownerId}:${inviteSort}:${query.filters?.fallbackTitle ?? ''}:${this.isLocalCandidateSource ? 'local' : 'shared'}`;
+    const queryKey = `${ownerId}:${this.ownerType}:${inviteSort}:${query.filters?.fallbackTitle ?? ''}:${this.isLocalCandidateSource ? 'local' : 'shared'}`;
     if (queryKey !== this.candidateQueryKey) {
       this.currentCandidates = this.isLocalCandidateSource
         ? this.sortLocalCandidates(inviteSort)
         : await this.activityInviteCandidatesService.queryCandidatesByOwner(
             ownerId,
             inviteSort,
-            query.filters?.fallbackTitle
+            query.filters?.fallbackTitle,
+            this.ownerType
           );
       this.candidateQueryKey = queryKey;
       this.candidatesByUserId.clear();

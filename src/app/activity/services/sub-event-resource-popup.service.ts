@@ -8,7 +8,7 @@ import { OwnedAssetsPopupService } from '../../asset/owned-assets-popup.service'
 import { AppDemoGenerators } from '../../shared/app-demo-generators';
 import { AppUtils } from '../../shared/app-utils';
 import type * as AppTypes from '../../shared/core/base/models';
-import { ActivityResourceBuilder, ActivityResourcesService, AppContext } from '../../shared/core';
+import { ActivityMembersService, ActivityResourceBuilder, ActivityResourcesService, AppContext, SessionService } from '../../shared/core';
 import type { DemoUser } from '../../shared/demo-data';
 import { ActivitiesDbContextService } from './activities-db-context.service';
 import { EventEditorService } from '../../shared/event-editor.service';
@@ -93,8 +93,10 @@ export class SubEventResourcePopupService {
   private readonly eventEditorService = inject(EventEditorService);
   private readonly assetPopupService = inject(AssetPopupService);
   private readonly ownedAssets = inject(OwnedAssetsPopupService);
+  private readonly activityMembersService = inject(ActivityMembersService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly appCtx = inject(AppContext);
+  private readonly sessionService = inject(SessionService);
 
   private readonly users: DemoUser[] = AppDemoGenerators.buildExpandedDemoUsers(50);
   private readonly userById = new Map(this.users.map(user => [user.id, user]));
@@ -535,10 +537,17 @@ export class SubEventResourcePopupService {
     const assetType: 'Car' | 'Accommodation' = card.type;
     const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, assetType);
     const ownerUserId = settings[card.sourceAssetId]?.addedByUserId ?? null;
-    const members = this.assetMemberEntries(sourceCard, ownerUserId);
-    const acceptedMembers = members.filter(member => member.status === 'accepted').length;
-    const pendingMembers = members.filter(member => member.status === 'pending').length;
+    const fallbackMembers = this.assetMemberEntries(sourceCard, ownerUserId);
+    const acceptedMembers = fallbackMembers.filter(member => member.status === 'accepted').length;
+    const pendingMembers = fallbackMembers.filter(member => member.status === 'pending').length;
     const capacityTotal = settings[card.sourceAssetId]?.capacityMax ?? Math.max(0, sourceCard.capacityTotal);
+    const ownerRef: AppTypes.ActivityMemberOwnerRef = {
+      ownerType: 'asset',
+      ownerId: sourceCard.id
+    };
+    if (this.sessionService.currentSession()?.kind === 'demo' && !this.activityMembersService.peekSummaryByOwner(ownerRef)) {
+      await this.activityMembersService.replaceMembersByOwner(ownerRef, fallbackMembers, capacityTotal);
+    }
     this.activitiesContext.requestActivitiesNavigation({
       type: 'members',
       ownerId: sourceCard.id,
@@ -548,7 +557,6 @@ export class SubEventResourcePopupService {
       acceptedMembers,
       pendingMembers,
       capacityTotal,
-      members,
       onMembersChanged: nextMembers => this.syncAssetRequestsFromMembers(sourceCard.id, assetType, nextMembers)
     });
   }

@@ -33,15 +33,20 @@ export class ActivityInviteCandidatesService {
   async queryCandidatesByOwner(
     ownerId: string,
     sort: AppTypes.ActivityInviteSort,
-    fallbackTitle = 'Event'
+    fallbackTitle = 'Event',
+    ownerType: AppTypes.ActivityMemberOwnerType = 'event'
   ): Promise<AppTypes.ActivityMemberEntry[]> {
     const activeUserId = this.activeUserId();
     const normalizedOwnerId = ownerId.trim();
     if (!activeUserId || !normalizedOwnerId) {
       return [];
     }
-    const owner = await this.resolveOwnerContext(activeUserId, normalizedOwnerId, fallbackTitle);
-    const existingMembers = await this.activityMembersService.queryMembersByOwnerId(normalizedOwnerId);
+    const ownerRef: AppTypes.ActivityMemberOwnerRef = {
+      ownerType,
+      ownerId: normalizedOwnerId
+    };
+    const owner = await this.resolveOwnerContext(activeUserId, ownerRef, fallbackTitle);
+    const existingMembers = await this.activityMembersService.queryMembersByOwner(ownerRef);
     return this.inviteCandidatesService.queryCandidates({
       activeUserId,
       owner,
@@ -52,14 +57,19 @@ export class ActivityInviteCandidatesService {
 
   async applyInvites(
     ownerId: string,
-    selectedCandidates: readonly AppTypes.ActivityMemberEntry[]
+    selectedCandidates: readonly AppTypes.ActivityMemberEntry[],
+    ownerType: AppTypes.ActivityMemberOwnerType = 'event'
   ): Promise<void> {
     const normalizedOwnerId = ownerId.trim();
     const activeUserId = this.activeUserId();
     if (!normalizedOwnerId || !activeUserId || selectedCandidates.length === 0) {
       return;
     }
-    const currentMembers = await this.activityMembersService.queryMembersByOwnerId(normalizedOwnerId);
+    const ownerRef: AppTypes.ActivityMemberOwnerRef = {
+      ownerType,
+      ownerId: normalizedOwnerId
+    };
+    const currentMembers = await this.activityMembersService.queryMembersByOwner(ownerRef);
     const existingUserIds = new Set(currentMembers.map(member => member.userId));
     const nowIso = AppUtils.toIsoDateTime(new Date());
     const additions = selectedCandidates
@@ -75,12 +85,14 @@ export class ActivityInviteCandidatesService {
     if (additions.length === 0) {
       return;
     }
-    const summary = await this.activityMembersService.querySummaryByOwnerId(normalizedOwnerId);
-    const ownerRecord = this.eventsService.peekKnownItemById(activeUserId, normalizedOwnerId)
-      ?? await this.eventsService.queryKnownItemById(activeUserId, normalizedOwnerId);
+    const summary = this.activityMembersService.peekSummaryByOwner(ownerRef);
+    const ownerRecord = ownerType === 'event'
+      ? (this.eventsService.peekKnownItemById(activeUserId, normalizedOwnerId)
+        ?? await this.eventsService.queryKnownItemById(activeUserId, normalizedOwnerId))
+      : null;
     const nextMembers = [...currentMembers, ...additions];
-    await this.activityMembersService.replaceMembersByOwnerId(
-      normalizedOwnerId,
+    await this.activityMembersService.replaceMembersByOwner(
+      ownerRef,
       nextMembers,
       summary?.capacityTotal
         ?? ownerRecord?.capacityTotal
@@ -90,14 +102,28 @@ export class ActivityInviteCandidatesService {
 
   private async resolveOwnerContext(
     activeUserId: string,
-    ownerId: string,
+    owner: AppTypes.ActivityMemberOwnerRef,
     fallbackTitle: string
   ): Promise<ActivityInviteOwnerContext> {
-    const record = this.eventsService.peekKnownItemById(activeUserId, ownerId)
-      ?? await this.eventsService.queryKnownItemById(activeUserId, ownerId);
+    if (owner.ownerType !== 'event') {
+      return {
+        ownerId: owner.ownerId,
+        ownerType: owner.ownerType,
+        title: fallbackTitle,
+        subtitle: this.ownerTypeLabel(owner.ownerType),
+        detail: 'Members',
+        dateIso: new Date().toISOString(),
+        distanceKm: 0,
+        sourceType: 'events',
+        isAdmin: true
+      };
+    }
+    const record = this.eventsService.peekKnownItemById(activeUserId, owner.ownerId)
+      ?? await this.eventsService.queryKnownItemById(activeUserId, owner.ownerId);
     if (!record) {
       return {
-        ownerId,
+        ownerId: owner.ownerId,
+        ownerType: owner.ownerType,
         title: fallbackTitle,
         subtitle: 'Event',
         detail: 'Members',
@@ -109,6 +135,7 @@ export class ActivityInviteCandidatesService {
     }
     return {
       ownerId: record.id,
+      ownerType: 'event',
       title: record.title,
       subtitle: record.subtitle,
       detail: record.timeframe,
@@ -117,6 +144,19 @@ export class ActivityInviteCandidatesService {
       sourceType: record.type === 'hosting' ? 'hosting' : 'events',
       isAdmin: record.isAdmin
     };
+  }
+
+  private ownerTypeLabel(ownerType: AppTypes.ActivityMemberOwnerType): string {
+    if (ownerType === 'asset') {
+      return 'Asset';
+    }
+    if (ownerType === 'subEvent') {
+      return 'Sub Event';
+    }
+    if (ownerType === 'group') {
+      return 'Group';
+    }
+    return 'Event';
   }
 
   private activeUserId(): string {

@@ -67,9 +67,10 @@ export class AssetPopupService {
 
   openActivityInvite(request: {
     ownerId: string;
+    ownerType?: AppTypes.ActivityMemberOwnerType;
     title?: string;
     initialCandidates?: readonly ActivityMemberEntry[];
-    onApply?: (selectedCandidates: readonly ActivityMemberEntry[]) => void;
+    onApply?: (selectedCandidates: readonly ActivityMemberEntry[]) => void | Promise<void>;
     closeOwnerPopupOnClose?: boolean;
   }): void {
     this.appCtx.openActivityInvitePopup(request);

@@ -549,8 +549,123 @@
   color: rgba(23, 41, 66, 0.72);
 }
 
+.activity-members-popup-shell .activity-members-delete-error {
+  color: #9b2c37;
+  font-weight: 700;
+}
+
 .activity-members-popup-shell .experience-delete-confirm-panel .popup-actions {
   justify-content: center;
+}
+
+.activity-members-popup-shell .activity-members-delete-btn-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  justify-content: center;
+  width: 104px;
+  min-width: 104px;
+  height: 44px;
+  border-radius: 999px;
+  padding: 2px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.activity-members-popup-shell .activity-members-delete-confirm-btn {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 40px;
+  justify-content: center;
+  white-space: nowrap;
+  border-radius: 999px;
+  border-color: transparent;
+}
+
+.activity-members-popup-shell .activity-members-delete-btn-ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.activity-members-popup-shell .activity-members-delete-btn-ring-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 8px 20px rgba(68, 18, 18, 0.16));
+}
+
+.activity-members-popup-shell .activity-members-delete-btn-ring-track,
+.activity-members-popup-shell .activity-members-delete-btn-ring-progress {
+  fill: none;
+  stroke-width: 4;
+}
+
+.activity-members-popup-shell .activity-members-delete-btn-ring-track {
+  stroke: rgba(133, 100, 42, 0.18);
+}
+
+.activity-members-popup-shell .activity-members-delete-btn-ring-progress {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.activity-members-popup-shell .activity-members-delete-btn-ring-progress.is-loading {
+  stroke: url(#activity-members-delete-gradient);
+  animation: activity-members-delete-ring-progress 3s linear forwards;
+}
+
+.activity-members-popup-shell .activity-members-delete-btn-ring-progress.is-error {
+  stroke: url(#activity-members-delete-gradient-error);
+}
+
+.activity-members-popup-shell .activity-members-delete-btn-shell.is-loading .activity-members-delete-confirm-btn,
+.activity-members-popup-shell .activity-members-delete-btn-shell.is-error .activity-members-delete-confirm-btn {
+  box-shadow: none;
+}
+
+.activity-members-popup-shell .experience-delete-btn {
+  background: #d73838;
+  border-color: #b42a2a;
+  color: #fff;
+}
+
+.activity-members-popup-shell .activity-members-delete-btn-shell.is-loading .activity-members-delete-confirm-btn,
+.activity-members-popup-shell .activity-members-delete-confirm-btn:disabled {
+  background: linear-gradient(180deg, #ffe7bf 0%, #ffd085 100%);
+  border-color: rgba(181, 117, 23, 0.76);
+  color: #8e4f0d;
+  cursor: wait;
+  box-shadow: none;
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+.activity-members-popup-shell .activity-members-delete-btn-shell.is-error .activity-members-delete-confirm-btn,
+.activity-members-popup-shell .activity-members-delete-btn-shell.is-error .activity-members-delete-confirm-btn:hover {
+  background: linear-gradient(180deg, #f36a79 0%, #d4374a 100%);
+  border-color: rgba(176, 31, 46, 0.82);
+  color: #fff;
+  box-shadow: none;
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+@keyframes activity-members-delete-ring-progress {
+  from {
+    stroke-dashoffset: 100;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 @keyframes item-action-menu-slide-down {

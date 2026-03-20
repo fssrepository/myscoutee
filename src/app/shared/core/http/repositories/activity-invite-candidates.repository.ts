@@ -23,6 +23,7 @@ export class HttpActivityInviteCandidatesRepository implements ActivityInviteCan
           {
             activeUserId: query.activeUserId,
             ownerId: query.owner.ownerId,
+            ownerType: query.owner.ownerType,
             sort: query.sort
           }
         )

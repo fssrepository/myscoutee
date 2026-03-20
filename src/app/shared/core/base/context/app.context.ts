@@ -1,5 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 import type { ActivityMemberEntry } from '../models/activity-member.model';
+import type { ActivityMemberOwnerType } from '../models/activities.model';
 import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface';
 import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../interfaces/user.interface';
 
@@ -39,9 +40,10 @@ export interface ActivityMembersSyncState {
 export interface ActivityInvitePopupState {
   updatedMs: number;
   ownerId: string;
+  ownerType?: ActivityMemberOwnerType;
   title?: string;
   initialCandidates?: readonly ActivityMemberEntry[];
-  onApply?: (selectedCandidates: readonly ActivityMemberEntry[]) => void;
+  onApply?: (selectedCandidates: readonly ActivityMemberEntry[]) => void | Promise<void>;
   closeOwnerPopupOnClose?: boolean;
 }
 
@@ -515,9 +517,10 @@ export class AppContext {
 
   openActivityInvitePopup(payload: {
     ownerId: string;
+    ownerType?: ActivityMemberOwnerType;
     title?: string;
     initialCandidates?: readonly ActivityMemberEntry[];
-    onApply?: (selectedCandidates: readonly ActivityMemberEntry[]) => void;
+    onApply?: (selectedCandidates: readonly ActivityMemberEntry[]) => void | Promise<void>;
     closeOwnerPopupOnClose?: boolean;
   }): void {
     const normalizedOwnerId = payload.ownerId.trim();
@@ -527,6 +530,9 @@ export class AppContext {
     this._activityInvitePopup.set({
       updatedMs: Date.now(),
       ownerId: normalizedOwnerId,
+      ownerType: payload.ownerType === 'asset' || payload.ownerType === 'group' || payload.ownerType === 'subEvent'
+        ? payload.ownerType
+        : 'event',
       title: payload.title?.trim() || undefined,
       initialCandidates: Array.isArray(payload.initialCandidates)
         ? payload.initialCandidates.map(candidate => ({ ...candidate }))
