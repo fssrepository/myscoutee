@@ -311,44 +311,37 @@ export class EventFeedbackPopupService {
   }
 
   public eventFeedbackOptionToneClass(card: AppTypes.EventFeedbackCard, option: AppTypes.EventFeedbackOption): string {
-    const section = option.impressionTag
-      ? this.feedbackSectionFromTag(card.kind, option.impressionTag)
-      : 'vibe';
-    return `event-feedback-option-tone-${section}`;
+    const tone = this.feedbackToneFromOptionValue(option.value);
+    return `event-feedback-option-tone-${tone}`;
   }
-  
-  private feedbackSectionFromTag(kind: 'event' | 'attendee', option: string): string {
-    const normalized = option.trim().toLowerCase();
-    if (!normalized) {
-      return 'vibe';
+
+  private feedbackToneFromOptionValue(optionValue: string): string {
+    switch (optionValue.trim().toLowerCase()) {
+      case 'excellent':
+      case 'great':
+      case 'yes':
+        return 'sky';
+      case 'good':
+      case 'reliable':
+        return 'aqua';
+      case 'mixed':
+      case 'communication':
+      case 'neutral':
+      case 'maybe':
+        return 'violet';
+      case 'needs-work':
+      case 'resources':
+      case 'context':
+        return 'mint';
+      case 'timing':
+      case 'rough':
+        return 'amber';
+      case 'none':
+      case 'no':
+        return 'slate';
+      default:
+        return 'sky';
     }
-    if (
-      normalized.includes('quality') ||
-      normalized.includes('planning') ||
-      normalized.includes('resources') ||
-      normalized.includes('fit') ||
-      normalized.includes('risk')
-    ) {
-      return 'category';
-    }
-    if (
-      normalized.includes('consistency') ||
-      normalized.includes('communication') ||
-      normalized.includes('organization') ||
-      normalized.includes('compatibility') ||
-      normalized.includes('trust') ||
-      normalized.includes('neutral')
-    ) {
-      return 'personality';
-    }
-    if (
-      normalized.includes('vibe') ||
-      normalized.includes('reliability') ||
-      normalized.includes('teamwork')
-    ) {
-      return 'vibe';
-    }
-    return kind === 'event' ? 'personality' : 'vibe';
   }
 
   public canSubmitActiveEventFeedback(): boolean {
