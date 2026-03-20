@@ -476,7 +476,9 @@ export class HomeComponent implements OnDestroy {
     effect(() => {
       const status = userGameCardsLoadState().status;
       if (status === 'loading') {
-        this.beginGameStackHeaderProgressLoading();
+        if (this.gameStackHeaderProgressLoading === false && this.gameStackHeaderLoadingCounter === 0) {
+          this.beginGameStackHeaderProgressLoading();
+        }
         return;
       }
       if (status === 'success') {
@@ -643,6 +645,9 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get showGameStackHeaderProgress(): boolean {
+    if (this.gameInitialCardsLoadPending && this.gameStackHeaderProgressLoading === false) {
+      return false;
+    }
     return this.hasFilteredCandidates || this.gameStackHeaderProgressLoading;
   }
 
@@ -736,9 +741,17 @@ export class HomeComponent implements OnDestroy {
     const cursorChanged = change.cursorIndex !== this.cardIndex;
     this.cardIndex = change.cursorIndex;
     this.gameStackCardsLoaded = change.cursorTotal;
-    this.gameStackHeaderProgressLoading = change.loading || change.initialLoading;
-    this.gameStackHeaderLoadingProgress = change.loadingProgress;
-    this.gameStackHeaderLoadingOverdue = change.loadingOverdue;
+    const shouldTrackSmartListLoading = this.gameInitialCardsLoadPending === false;
+    const smartListLoading = shouldTrackSmartListLoading && (change.loading || change.initialLoading);
+    if (smartListLoading) {
+      this.gameStackHeaderProgressLoading = true;
+      this.gameStackHeaderLoadingProgress = change.loadingProgress;
+      this.gameStackHeaderLoadingOverdue = change.loadingOverdue;
+    } else if (this.gameStackHeaderLoadingCounter === 0) {
+      this.gameStackHeaderProgressLoading = false;
+      this.gameStackHeaderLoadingProgress = 0;
+      this.gameStackHeaderLoadingOverdue = false;
+    }
     if (cursorChanged) {
       this.clearPendingRatingAdvanceTimer();
     }
