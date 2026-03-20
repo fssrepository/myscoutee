@@ -1297,6 +1297,7 @@ export class HomeComponent implements OnDestroy {
       return;
     }
     const requestUserId = this.activeUserId;
+    const shouldReloadSmartList = this.gameInitialCardsLoadPending === false;
     try {
       await this.gameService.loadInitialUserGameCardsStackPage(
         this.activeUserId,
@@ -1307,7 +1308,10 @@ export class HomeComponent implements OnDestroy {
         return;
       }
       this.resetGameStackPaginationState(true);
-      this.homeSmartList?.reload();
+      this.gameInitialCardsLoadPending = false;
+      if (shouldReloadSmartList) {
+        this.homeSmartList?.reload();
+      }
     } finally {
       this.gameInitialCardsLoadPending = false;
       this.cdr.markForCheck();
@@ -1402,6 +1406,7 @@ export class HomeComponent implements OnDestroy {
   private async loadHomeSmartListPage(
     query: ListQuery<HomeSmartListFilters>
   ): Promise<PageResult<HomeSmartListRow>> {
+    await this.waitForInitialHomeGameStack(query);
     await this.ensureHomeSmartListRowsAvailable(query);
     const rows = this.homeSmartListRows();
     const pageSize = Number.isFinite(query.pageSize)
@@ -1415,6 +1420,21 @@ export class HomeComponent implements OnDestroy {
       total,
       nextCursor: endIndex < total ? String(endIndex) : null
     };
+  }
+
+  private async waitForInitialHomeGameStack(query: ListQuery<HomeSmartListFilters>): Promise<void> {
+    if (this.isPairMode || query.page > 0 || this.gameInitialCardsLoadPending === false) {
+      return;
+    }
+    while (this.gameInitialCardsLoadPending) {
+      await this.waitForHomeGameStackTick();
+    }
+  }
+
+  private waitForHomeGameStackTick(): Promise<void> {
+    return new Promise(resolve => {
+      setTimeout(() => resolve(), 16);
+    });
   }
 
   private async ensureHomeSmartListRowsAvailable(query: ListQuery<HomeSmartListFilters>): Promise<void> {
