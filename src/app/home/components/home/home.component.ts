@@ -471,7 +471,10 @@ export class HomeComponent implements OnDestroy {
       }
       this.awaitingUserBootstrap = false;
       this.awaitingUserByIdLoadingSeen = false;
-      void this.reloadServiceCardStack();
+      this.applyFilterPreferencesFromAppContext();
+      if (this.gameInitialCardsLoadPending) {
+        void this.reloadServiceCardStack();
+      }
     });
     effect(() => {
       const status = userGameCardsLoadState().status;
@@ -1269,20 +1272,9 @@ export class HomeComponent implements OnDestroy {
     this.resetGameStackPaginationState(false);
     this.syncHomeSmartListQuery();
     this.gameInitialCardsLoadPending = true;
+    void this.reloadServiceCardStack();
     this.awaitingUserBootstrap = true;
     this.awaitingUserByIdLoadingSeen = false;
-    const expectedUserId = this.activeUserId;
-    setTimeout(() => {
-      if (
-        !this.awaitingUserBootstrap
-        || this.awaitingUserByIdLoadingSeen
-        || this.activeUserId !== expectedUserId
-      ) {
-        return;
-      }
-      this.awaitingUserBootstrap = false;
-      void this.reloadServiceCardStack();
-    }, 0);
     this.cdr.markForCheck();
   }
 
