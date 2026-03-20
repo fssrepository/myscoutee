@@ -107,6 +107,8 @@ export class EventResourcePopupComponent implements DoCheck {
 
   @Input({ required: true }) host!: EventResourcePopupHost;
 
+  protected resourceFilterOpen = false;
+
   protected resourceSmartListQuery: Partial<ListQuery<{ revision: number }>> = {
     filters: { revision: 0 }
   };
@@ -217,6 +219,11 @@ export class EventResourcePopupComponent implements DoCheck {
       return;
     }
     this.host.openBadgeDetails(card);
+  }
+
+  protected onResourceFilterOpenedChange(isOpen: boolean, select: MatSelect): void {
+    this.resourceFilterOpen = isOpen;
+    this.host.onResourceFilterOpened(isOpen, select);
   }
 
   protected onResourceCardMenuAction(card: AppTypes.SubEventResourceCard, event: InfoCardMenuActionEvent): void {
