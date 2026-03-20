@@ -118,19 +118,17 @@
                         <stop offset="100%" stop-color="rgb(201, 45, 45)"></stop>
                       </linearGradient>
                     </defs>
-                    <rect class="subevent-supply-delete-btn-ring-track" x="2" y="2" width="100" height="44" rx="14" ry="14"></rect>
-                    <rect
+                    <path
+                      class="subevent-supply-delete-btn-ring-track"
+                      d="M52 2 H88 A14 14 0 0 1 102 16 V32 A14 14 0 0 1 88 46 H16 A14 14 0 0 1 2 32 V16 A14 14 0 0 1 16 2 H52"
+                    ></path>
+                    <path
                       class="subevent-supply-delete-btn-ring-progress is-loading"
-                      x="2"
-                      y="2"
-                      width="100"
-                      height="44"
-                      rx="14"
-                      ry="14"
+                      d="M52 2 H88 A14 14 0 0 1 102 16 V32 A14 14 0 0 1 88 46 H16 A14 14 0 0 1 2 32 V16 A14 14 0 0 1 16 2 H52"
                       pathLength="100"
                       [attr.stroke-dasharray]="host.deleteConfirmRingPerimeter()"
                       [attr.stroke-dashoffset]="host.deleteConfirmRingPerimeter()"
-                    ></rect>
+                    ></path>
                   </svg>
                 </span>
                 <button
