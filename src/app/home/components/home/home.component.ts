@@ -4,11 +4,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 import { ActivitiesDbContextService } from '../../../activity/services/activities-db-context.service';
 import {
-  HeaderProgressBarComponent,
   PairCardComponent,
   SingleCardComponent,
   SmartListComponent,
-  type HeaderProgressBarConfig,
   type ListQuery,
   type PageResult,
   type PairCardData,
@@ -94,8 +92,7 @@ const PUBLIC_PROFILE_DETAIL_LABELS = new Set(
   imports: [
     CommonModule,
     MatIconModule,
-    HeaderProgressBarComponent,
-    SmartListComponent,
+      SmartListComponent,
     SingleCardComponent,
     PairCardComponent,
     HomeGameFilterPopupComponent
@@ -421,6 +418,9 @@ export class HomeComponent implements OnDestroy {
   protected readonly homeSmartListConfig: SmartListConfig<HomeSmartListRow, HomeSmartListFilters> = {
     pageSize: HomeComponent.GAME_STACK_PAGE_SIZE_SINGLE,
     presentation: 'fullscreen',
+    headerProgress: {
+      enabled: true
+    },
     trackBy: (_index, row) => row.id,
     emptyLabel: () => this.noCandidateTitle,
     emptyDescription: () => this.noCandidateDescription,
@@ -683,7 +683,7 @@ export class HomeComponent implements OnDestroy {
     };
   }
 
-  protected get gameStackHeaderProgressBarConfig(): HeaderProgressBarConfig {
+  protected get gameStackHeaderProgressBarConfig() {
     return {
       position: this.gameStackHeaderProgressLoading ? this.gameStackHeaderLoadingProgress : this.gameStackHeaderProgress,
       state: this.gameStackHeaderProgressLoading

@@ -16,6 +16,7 @@ import { from } from 'rxjs';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import {
+  LazyBgImageDirective,
   SmartListComponent,
   type ListQuery,
   type PageResult,
@@ -24,7 +25,7 @@ import {
   type SmartListLoaders,
   type SmartListStateChange
 } from '../../../shared/ui';
-import { ActivityInviteCandidatesService, AppContext } from '../../../shared/core';
+import { ActivityInviteCandidatesService, ActivityMembersService, AppContext } from '../../../shared/core';
 import { OwnedAssetsPopupService } from '../../owned-assets-popup.service';
 
 interface ActivityInviteFilters {
@@ -40,7 +41,8 @@ interface ActivityInviteFilters {
     CommonModule,
     MatButtonModule,
     MatIconModule,
-    SmartListComponent
+    SmartListComponent,
+    LazyBgImageDirective
   ],
   templateUrl: './asset-member-picker-popup.component.html',
   styleUrls: ['./asset-member-picker-popup.component.scss'],
@@ -50,6 +52,7 @@ export class AssetMemberPickerPopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly appCtx = inject(AppContext);
   private readonly activityInviteCandidatesService = inject(ActivityInviteCandidatesService);
+  private readonly activityMembersService = inject(ActivityMembersService);
   private readonly ownedAssets = inject(OwnedAssetsPopupService);
 
   protected isOpen = false;
@@ -65,6 +68,7 @@ export class AssetMemberPickerPopupComponent {
   protected isConfirmPending = false;
 
   private currentCandidates: AppTypes.ActivityMemberEntry[] = [];
+  private persistedSelectedUserIds = new Set<string>();
   private readonly candidatesByUserId = new Map<string, AppTypes.ActivityMemberEntry>();
   private candidateQueryKey = '';
   private localCandidates: AppTypes.ActivityMemberEntry[] = [];
@@ -87,7 +91,8 @@ export class AssetMemberPickerPopupComponent {
 
   protected readonly inviteSmartListConfig: SmartListConfig<AppTypes.ActivityMemberEntry, ActivityInviteFilters> = {
     pageSize: 16,
-    loadingDelayMs: 0,
+    loadingDelayMs: 1500,
+    loadingWindowMs: 3000,
     headerProgress: {
       enabled: true
     },
@@ -119,6 +124,7 @@ export class AssetMemberPickerPopupComponent {
       this.inviteSort = 'recent';
       this.showInviteSortPicker = false;
       this.selectedUserIds = [];
+      this.persistedSelectedUserIds = new Set<string>();
       this.confirmErrorMessage = '';
       this.isConfirmPending = false;
       this.currentCandidates = [];
@@ -212,7 +218,6 @@ export class AssetMemberPickerPopupComponent {
     this.currentCandidates = [];
     this.candidatesByUserId.clear();
     this.candidateQueryKey = '';
-    this.selectedUserIds = [];
     this.syncInviteSmartListQuery();
     this.inviteSmartList?.reload();
     this.cdr.markForCheck();
@@ -251,7 +256,7 @@ export class AssetMemberPickerPopupComponent {
 
   protected toggleInviteCandidate(userId: string, event?: Event): void {
     event?.stopPropagation();
-    if (this.isConfirmPending) {
+    if (this.isConfirmPending || this.isInviteCandidatePersisted(userId)) {
       return;
     }
     if (this.selectedUserIds.includes(userId)) {
@@ -264,7 +269,20 @@ export class AssetMemberPickerPopupComponent {
   }
 
   protected isInviteCandidateSelected(userId: string): boolean {
-    return this.selectedUserIds.includes(userId);
+    return this.isInviteCandidatePersisted(userId) || this.selectedUserIds.includes(userId);
+  }
+
+  protected isInviteCandidatePersisted(userId: string): boolean {
+    return this.persistedSelectedUserIds.has(userId);
+  }
+
+  protected selectedInviteCount(): number {
+    return this.persistedSelectedUserIds.size + this.selectedUserIds.length;
+  }
+
+  protected selectedInviteCountLabel(): string {
+    const count = this.selectedInviteCount();
+    return count === 1 ? '1 selected' : `${count} selected`;
   }
 
   protected selectedInviteChips(): AppTypes.ActivityMemberEntry[] {
@@ -293,6 +311,7 @@ export class AssetMemberPickerPopupComponent {
     this.confirmErrorMessage = '';
     this.isConfirmPending = false;
     this.currentCandidates = [];
+    this.persistedSelectedUserIds = new Set<string>();
     this.candidatesByUserId.clear();
     this.candidateQueryKey = '';
     this.localCandidates = [];
@@ -338,14 +357,29 @@ export class AssetMemberPickerPopupComponent {
     const inviteSort = query.filters?.sort === 'relevant' ? 'relevant' : 'recent';
     const queryKey = `${ownerId}:${this.ownerType}:${inviteSort}:${query.filters?.fallbackTitle ?? ''}:${this.isLocalCandidateSource ? 'local' : 'shared'}`;
     if (queryKey !== this.candidateQueryKey) {
-      this.currentCandidates = this.isLocalCandidateSource
-        ? this.sortLocalCandidates(inviteSort)
-        : await this.activityInviteCandidatesService.queryCandidatesByOwner(
+      const activeUserId = this.appCtx.activeUserId().trim();
+      if (this.isLocalCandidateSource) {
+        this.persistedSelectedUserIds = new Set<string>();
+        this.currentCandidates = this.sortLocalCandidates(inviteSort);
+      } else {
+        const ownerRef: AppTypes.ActivityMemberOwnerRef = {
+          ownerType: this.ownerType,
+          ownerId
+        };
+        const [candidates, currentMembers] = await Promise.all([
+          this.activityInviteCandidatesService.queryCandidatesByOwner(
             ownerId,
             inviteSort,
             query.filters?.fallbackTitle,
             this.ownerType
-          );
+          ),
+          this.activityMembersService.queryMembersByOwner(ownerRef)
+        ]);
+        const persistedMembers = currentMembers.filter(member => member.userId !== activeUserId);
+        this.persistedSelectedUserIds = new Set(persistedMembers.map(member => member.userId));
+        this.selectedUserIds = this.selectedUserIds.filter(userId => !this.persistedSelectedUserIds.has(userId));
+        this.currentCandidates = this.mergeInviteCandidates(persistedMembers, candidates, inviteSort);
+      }
       this.candidateQueryKey = queryKey;
       this.candidatesByUserId.clear();
       for (const entry of this.currentCandidates) {
@@ -359,5 +393,30 @@ export class AssetMemberPickerPopupComponent {
       items: this.currentCandidates.slice(startIndex, startIndex + pageSize),
       total: this.currentCandidates.length
     };
+  }
+
+  private mergeInviteCandidates(
+    persistedMembers: readonly AppTypes.ActivityMemberEntry[],
+    candidates: readonly AppTypes.ActivityMemberEntry[],
+    sort: AppTypes.ActivityInviteSort
+  ): AppTypes.ActivityMemberEntry[] {
+    const mergedByUserId = new Map<string, AppTypes.ActivityMemberEntry>();
+    for (const member of persistedMembers) {
+      mergedByUserId.set(member.userId, { ...member });
+    }
+    for (const candidate of candidates) {
+      const current = mergedByUserId.get(candidate.userId);
+      mergedByUserId.set(candidate.userId, current ? { ...current, ...candidate, userId: candidate.userId } : { ...candidate });
+    }
+    return [...mergedByUserId.values()].sort((left, right) => {
+      const selectedDelta = Number(this.persistedSelectedUserIds.has(right.userId)) - Number(this.persistedSelectedUserIds.has(left.userId));
+      if (selectedDelta !== 0) {
+        return selectedDelta;
+      }
+      if (sort === 'relevant' && right.relevance !== left.relevance) {
+        return right.relevance - left.relevance;
+      }
+      return AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso);
+    });
   }
 }

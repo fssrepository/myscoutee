@@ -13,6 +13,18 @@
   z-index: var(--activity-members-shell-z-index);
 }
 
+.activity-members-popup-shell .app-popup-panel.popup-panel-members {
+  position: relative;
+  min-height: calc(100vh - 1.2rem);
+  height: calc(100vh - 1.2rem);
+  max-height: calc(100vh - 1.2rem);
+}
+
+.activity-members-popup-shell.app-popup-stacked.app-popup-stacked-over-subevents .app-popup-panel.popup-panel-members {
+  height: calc(100dvh - 1.2rem);
+  max-height: calc(100dvh - 1.2rem);
+}
+
 .activity-members-popup-shell .app-popup-backdrop {
   background: rgba(8, 16, 30, 0.44);
   backdrop-filter: blur(2px);
@@ -23,15 +35,28 @@
 }
 
 .activity-members-popup-shell .popup-body.popup-body-members {
+  display: flex;
+  flex: 1 1 auto;
   height: 100%;
+  min-height: 0;
 }
 
 .activity-members-popup-shell .activity-members-popup-wrap {
   position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
   height: 100%;
   min-height: 0;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr);
+}
+
+.activity-members-popup-shell app-smart-list.activity-members-smart-list {
+  position: relative;
+  z-index: 0;
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
 }
 
 .activity-members-popup-shell .subevent-members-scroll-area {

@@ -241,7 +241,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     if (users.length === 0) {
       return [];
     }
-    const targetCount = type === 'Supplies' ? 0 : (type === 'Car' ? 3 : 2);
+    const targetCount = type === 'Car' ? 3 : 2;
     const requests: AppTypes.AssetMemberRequest[] = [];
     for (let index = 0; index < targetCount; index += 1) {
       const user = users[(seedOffset + (index * 3)) % users.length];

@@ -26,6 +26,7 @@
             </button>
           </div>
         </div>
+        <span class="header-members-count asset-member-picker-header-count" *ngIf="selectedInviteCount() > 0">{{ selectedInviteCountLabel() }}</span>
         <span
           class="asset-member-picker-save-btn-shell"
           [class.is-loading]="isConfirmPending"
@@ -101,13 +102,15 @@
       ></app-smart-list>
 
       <ng-template #inviteItemTemplate let-candidate>
-        <article class="experience-item-card friends-picker-card asset-invite-candidate-card" [style.backgroundImage]="'url(' + candidate.avatarUrl + ')'">
+        <article class="experience-item-card friends-picker-card asset-invite-candidate-card" [appLazyBgImage]="candidate.avatarUrl">
           <button
             type="button"
             class="friends-picker-card-add-btn"
             [class.active]="isInviteCandidateSelected(candidate.userId)"
+            [class.is-persisted]="isInviteCandidatePersisted(candidate.userId)"
+            [disabled]="isConfirmPending || isInviteCandidatePersisted(candidate.userId)"
             (click)="toggleInviteCandidate(candidate.userId, $event)"
-            aria-label="Select friend"
+            [attr.aria-label]="isInviteCandidatePersisted(candidate.userId) ? 'Already invited' : 'Select friend'"
           >
             <mat-icon>{{ isInviteCandidateSelected(candidate.userId) ? 'check' : 'add' }}</mat-icon>
           </button>

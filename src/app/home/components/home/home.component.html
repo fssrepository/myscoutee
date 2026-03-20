@@ -35,9 +35,6 @@
   </header>
 
   <section class="game-layout-single">
-    <div class="game-stack-progress-row" *ngIf="showGameStackHeaderProgress">
-      <app-header-progress-bar [config]="gameStackHeaderProgressBarConfig"></app-header-progress-bar>
-    </div>
     <div class="game-card-deck">
       <ng-template #homeFullscreenItemTemplate let-row let-renderState="renderState">
         <ng-container *ngIf="row">

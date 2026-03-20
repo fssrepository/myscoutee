@@ -52,7 +52,7 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
       }
     }
 
-    if (latestMetByUserId.size < 8) {
+    if (latestMetByUserId.size < 12) {
       for (const user of allUsers) {
         if (user.id === activeUserId || existingUserIds.has(user.id)) {
           continue;
@@ -66,6 +66,25 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
             metWhere: 'Friends circle',
             relevance: 72 + (AppDemoGenerators.hashText(`${activeUserId}:friend:${user.id}`) % 20)
           });
+        }
+        if (latestMetByUserId.size >= 12) {
+          break;
+        }
+      }
+    }
+
+    if (latestMetByUserId.size < 12) {
+      for (const user of allUsers) {
+        if (user.id === activeUserId || existingUserIds.has(user.id) || latestMetByUserId.has(user.id)) {
+          continue;
+        }
+        latestMetByUserId.set(user.id, {
+          metAtIso: AppUtils.toIsoDateTime(AppUtils.addDays(new Date('2026-02-24T12:00:00'), -((AppDemoGenerators.hashText(`${activeUserId}:community:${ownerId}:${user.id}`) % 90) + 1))),
+          metWhere: 'MyScoutee community',
+          relevance: 56 + (AppDemoGenerators.hashText(`${activeUserId}:community:${user.id}`) % 18)
+        });
+        if (latestMetByUserId.size >= 12) {
+          break;
         }
       }
     }

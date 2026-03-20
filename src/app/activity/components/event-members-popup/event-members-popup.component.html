@@ -61,7 +61,7 @@
           <article
             class="friends-picker-card subevent-member-image-card activity-member-image-card"
             [ngClass]="[memberCardToneClass(member), isActionMenuOpen(member) ? 'menu-open' : '']"
-            [style.backgroundImage]="'url(' + member.avatarUrl + ')'"
+            [appLazyBgImage]="member.avatarUrl"
           >
             <span
               class="member-card-status-chip"

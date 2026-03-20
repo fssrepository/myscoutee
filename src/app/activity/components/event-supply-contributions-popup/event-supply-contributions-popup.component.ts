@@ -115,7 +115,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     SupplyContributionListFilters
   > = {
     pageSize: 12,
-    loadingDelayMs: 0,
+    loadingDelayMs: 1500,
     loadingWindowMs: 3000,
     defaultView: 'list',
     headerProgress: {

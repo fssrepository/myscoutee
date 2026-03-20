@@ -205,7 +205,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   protected readonly casualSmartListConfig: SmartListConfig<EventSubeventsItem, { revision: number }> = {
     pageSize: 18,
-    loadingDelayMs: 0,
+    loadingDelayMs: 1500,
     defaultView: 'list',
     showStickyHeader: false,
     showGroupMarker: () => false,

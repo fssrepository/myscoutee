@@ -15,10 +15,10 @@
 
 .asset-member-picker-popup-shell .popup-body.popup-body-friends-picker {
   height: 100%;
-  display: grid;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   gap: 0.58rem;
-  align-content: start;
-  grid-auto-rows: max-content;
 }
 
 .asset-member-picker-popup-shell .popup-header-inline-controls {
@@ -26,6 +26,21 @@
   display: inline-flex;
   align-items: center;
   gap: 0.46rem;
+}
+
+.asset-member-picker-popup-shell .asset-member-picker-header-count {
+  min-width: fit-content;
+  height: 22px;
+  border-radius: 999px;
+  padding: 0 9px;
+  background: #dbe2eb;
+  color: rgba(24, 39, 61, 0.82);
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .asset-member-picker-popup-shell .popup-title p {
@@ -139,6 +154,8 @@
 }
 
 .asset-member-picker-popup-shell .asset-member-picker-smart-list {
+  display: flex;
+  flex: 1 1 auto;
   min-height: 0;
   height: 100%;
 }
@@ -192,6 +209,12 @@
   border-color: rgba(255, 255, 255, 0.92);
   color: #fff;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.72), 0 6px 16px rgba(20, 84, 46, 0.3);
+}
+
+.asset-member-picker-popup-shell .friends-picker-card-add-btn.is-persisted,
+.asset-member-picker-popup-shell .friends-picker-card-add-btn.is-persisted:disabled {
+  cursor: default;
+  opacity: 1;
 }
 
 .asset-member-picker-popup-shell .friends-picker-card-add-btn.active .mat-icon {

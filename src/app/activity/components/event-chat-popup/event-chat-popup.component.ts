@@ -73,7 +73,7 @@ export class EventChatPopupComponent implements OnDestroy {
     initialPageCount: 1,
     initialPageSize: this.chatInitialLoadMessageCount,
     preloadOffsetPx: this.chatHistoryPreloadOffsetPx,
-    loadingDelayMs: 0,
+    loadingDelayMs: 1500,
     showStickyHeader: false,
     showFirstGroupMarker: true,
     loadTriggerEdge: 'start',

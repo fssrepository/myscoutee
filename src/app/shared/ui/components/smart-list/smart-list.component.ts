@@ -93,6 +93,7 @@ type SmartListCalendarWindow = {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SmartListComponent<T, TFilters extends SmartListFilters = SmartListFilters> implements AfterViewInit, OnChanges, OnDestroy {
+  private static readonly DEFAULT_LOADING_DELAY_MS = 1500;
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly hostRef = inject(ElementRef<HTMLElement>);
   private restoreAnchorSequence = 0;
@@ -287,7 +288,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected shouldRenderHostedHeaderProgressBar(): boolean {
-    return this.resolveConfigValue(this.config.headerProgress?.enabled, false);
+    if (this.config.headerProgress && this.config.headerProgress.enabled !== undefined) {
+      return this.resolveConfigValue(this.config.headerProgress.enabled, false);
+    }
+    return this.resolvedLoadingDelayMs() > 0;
   }
 
   protected hostedHeaderProgressBarConfig(): HeaderProgressBarConfig {
@@ -923,7 +927,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     try {
       const [result] = await Promise.all([
         firstValueFrom(loader(query)),
-        this.wait(this.config.loadingDelayMs ?? 0)
+        this.wait(this.resolvedLoadingDelayMs())
       ]);
 
       if (sequence !== this.loadSequence) {
@@ -1908,6 +1912,14 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.loadingStartedAtMs = 0;
   }
 
+  private resolvedLoadingDelayMs(): number {
+    const configured = Number(this.config.loadingDelayMs);
+    if (Number.isFinite(configured) && configured > 0) {
+      return Math.max(0, Math.trunc(configured));
+    }
+    return SmartListComponent.DEFAULT_LOADING_DELAY_MS;
+  }
+
   private updateLoadingWindow(): void {
     if (!this.loading) {
       return;
@@ -2398,7 +2410,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     try {
       const [result] = await Promise.all([
         firstValueFrom(loader(query)),
-        this.wait(this.config.loadingDelayMs ?? 0)
+        this.wait(this.resolvedLoadingDelayMs())
       ]);
 
       if (sequence !== this.loadSequence) {

@@ -76,7 +76,7 @@ export class AssetPopupComponent implements OnDestroy {
     from(this.assetFacade.loadTicketPage(query));
   protected readonly assetSmartListConfig: SmartListConfig<AppTypes.AssetCard, OwnedAssetListFilters> = {
     pageSize: 18,
-    loadingDelayMs: 0,
+    loadingDelayMs: 1500,
     defaultView: 'list',
     emptyLabel: query => this.assetFacade.ownedAssetEmptyLabel(query.filters?.type ?? 'Car'),
     emptyDescription: query => this.assetFacade.ownedAssetEmptyDescription(query.filters?.type ?? 'Car'),
@@ -97,7 +97,7 @@ export class AssetPopupComponent implements OnDestroy {
   };
   protected readonly ticketSmartListConfig: SmartListConfig<AppTypes.ActivityListRow, AssetTicketListFilters> = {
     pageSize: 18,
-    loadingDelayMs: 0,
+    loadingDelayMs: 1500,
     defaultView: 'list',
     emptyLabel: 'No ticketed events',
     emptyDescription: 'Enable Ticketing On in an event to generate a ticket here.',

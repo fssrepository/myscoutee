@@ -8,7 +8,7 @@ import type {
 import { AppDemoGenerators } from '../../../app-demo-generators';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
-import { APP_DEMO_DATA, type DemoUser } from '../../../demo-data';
+import { APP_DEMO_DATA, type DemoUser, type EventMenuItem, type HostingMenuItem } from '../../../demo-data';
 import { HttpActivityMembersRepository } from '../../http/repositories/activity-members.repository';
 import type { DemoEventRecord } from '../models/events.model';
 import { EVENTS_TABLE_NAME } from '../models/events.model';
@@ -17,13 +17,17 @@ import {
   type DemoActivityMemberRecord,
   type DemoActivityMembersRecordCollection
 } from '../models/activity-members.model';
+import { DemoAssetsRepository } from './assets.repository';
 import { DemoEventsRepository } from './events.repository';
+import { DemoUsersRepository } from './users.repository';
 
 @Injectable({
   providedIn: 'root'
 })
 export class DemoActivityMembersRepository extends HttpActivityMembersRepository {
+  private readonly demoAssetsRepository = inject(DemoAssetsRepository);
   private readonly demoEventsRepository = inject(DemoEventsRepository);
+  private readonly demoUsersRepository = inject(DemoUsersRepository);
   private lastInitToken = '';
   private demoActivityMemberUsersCache: DemoUser[] | null = null;
   private readonly ownerCapacityByKey = new Map<string, number>();
@@ -32,16 +36,29 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     super();
   }
 
-  init(): void {
+  init(ownerUserIds?: readonly string[]): void {
     this.demoEventsRepository.init();
+    const normalizedOwnerUserIds = Array.from(new Set(
+      (ownerUserIds ?? this.demoUsersRepository.queryAvailableDemoUsers().map(user => user.id))
+        .map(userId => userId.trim())
+        .filter(userId => userId.length > 0)
+    ));
+    if (normalizedOwnerUserIds.length > 0) {
+      this.demoAssetsRepository.init(normalizedOwnerUserIds);
+    }
+
     const eventsTable = this.memoryDb.read()[EVENTS_TABLE_NAME];
     const currentTable = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
-    const initToken = `${eventsTable.ids.length}:${currentTable.ids.length}:${Object.keys(currentTable.idsByOwnerKey).length}`;
+    const initToken = `${eventsTable.ids.length}:${currentTable.ids.length}:${Object.keys(currentTable.idsByOwnerKey).length}:${normalizedOwnerUserIds.join('|')}`;
     if (this.lastInitToken === initToken) {
       return;
     }
 
-    const seededRecords = this.buildSeededEventOwnerRecords();
+    const seededRecords = [
+      ...this.buildSeededEventOwnerRecords(),
+      ...normalizedOwnerUserIds.flatMap(userId => this.buildSeededAssetOwnerRecordsForUser(userId)),
+      ...normalizedOwnerUserIds.flatMap(userId => this.buildSeededSubEventAndGroupOwnerRecordsForUser(userId))
+    ];
     const nextById = { ...currentTable.byId };
     const nextIds = [...currentTable.ids];
     const nextIdsByOwnerKey = this.cloneOwnerKeyIndex(currentTable.idsByOwnerKey);
@@ -61,6 +78,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       const ownerBucket = nextIdsByOwnerKey[record.ownerKey] ?? [];
       ownerBucket.push(record.id);
       nextIdsByOwnerKey[record.ownerKey] = ownerBucket;
+      existingOwnerKeys.add(record.ownerKey);
       changed = true;
     }
 
@@ -77,7 +95,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
 
     this.syncEventSummariesFromMembers();
     const finalTable = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
-    this.lastInitToken = `${eventsTable.ids.length}:${finalTable.ids.length}:${Object.keys(finalTable.idsByOwnerKey).length}`;
+    this.lastInitToken = `${eventsTable.ids.length}:${finalTable.ids.length}:${Object.keys(finalTable.idsByOwnerKey).length}:${normalizedOwnerUserIds.join('|')}`;
   }
 
   override peekMembersByOwner(owner: ActivityMemberOwnerRef): AppTypes.ActivityMemberEntry[] {
@@ -164,6 +182,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     if (!normalizedOwner) {
       return [];
     }
+    this.ensureSeededOwnerMembers(normalizedOwner);
     const ownerKey = this.ownerKey(normalizedOwner);
     const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
     return (table.idsByOwnerKey[ownerKey] ?? [])
@@ -326,6 +345,78 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   }
 
   private buildSeededEventOwnerRecords(): DemoActivityMemberRecord[] {
+    const records: DemoActivityMemberRecord[] = [];
+    for (const eventRecord of this.preferredEventRecords()) {
+      records.push(...this.buildSeededRecordsForEvent(eventRecord));
+    }
+    return records;
+  }
+
+
+  private ensureSeededOwnerMembers(owner: ActivityMemberOwnerRef): void {
+    const normalizedOwner = this.normalizeOwnerRef(owner);
+    if (!normalizedOwner) {
+      return;
+    }
+    const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    const ownerKey = this.ownerKey(normalizedOwner);
+    if ((table.idsByOwnerKey[ownerKey] ?? []).length > 0) {
+      return;
+    }
+    const seeded = this.buildSeededOwnerSeed(normalizedOwner);
+    if (!seeded || seeded.members.length === 0) {
+      return;
+    }
+    const summary = this.writeOwnerMembers(normalizedOwner, seeded.members, seeded.capacityTotal, normalizedOwner.ownerType === 'event');
+    this.cacheMembers(normalizedOwner, seeded.members, summary.capacityTotal);
+  }
+
+  private buildSeededOwnerSeed(
+    owner: ActivityMemberOwnerRef
+  ): { members: AppTypes.ActivityMemberEntry[]; capacityTotal: number } | null {
+    if (owner.ownerType === 'event') {
+      const record = this.findPreferredEventRecord(owner.ownerId);
+      if (!record) {
+        return null;
+      }
+      const members = this.buildSeededRecordsForEvent(record).map(member => this.toMemberEntry(member));
+      return {
+        members,
+        capacityTotal: this.resolveEventCapacityTotal(record.id, members.filter(member => member.status === 'accepted').length)
+      };
+    }
+
+    if (owner.ownerType === 'asset') {
+      const assetOwner = this.findSeededAssetOwner(owner.ownerId);
+      if (!assetOwner) {
+        return null;
+      }
+      const members = this.buildSeededEntriesForAsset(assetOwner.ownerUserId, assetOwner.asset);
+      return {
+        members,
+        capacityTotal: Math.max(
+          members.filter(member => member.status === 'accepted').length,
+          this.normalizeMemberCount(assetOwner.asset.capacityTotal) ?? members.length
+        )
+      };
+    }
+
+    if (owner.ownerType === 'subEvent') {
+      const subEventOwner = this.findSeededSubEventOwner(owner.ownerId);
+      if (!subEventOwner) {
+        return null;
+      }
+      return this.buildSeededSubEventOwnerSeed(subEventOwner.record, subEventOwner.subEvent);
+    }
+
+    const groupOwner = this.findSeededGroupOwner(owner.ownerId);
+    if (!groupOwner) {
+      return null;
+    }
+    return this.buildSeededGroupOwnerSeed(groupOwner.record, groupOwner.subEvent, groupOwner.group);
+  }
+
+  private preferredEventRecords(): DemoEventRecord[] {
     const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
     const preferredRecordByEventId = new Map<string, DemoEventRecord>();
 
@@ -340,11 +431,355 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       }
     }
 
-    const records: DemoActivityMemberRecord[] = [];
-    for (const eventRecord of preferredRecordByEventId.values()) {
-      records.push(...this.buildSeededRecordsForEvent(eventRecord));
+    return [...preferredRecordByEventId.values()];
+  }
+
+  private findPreferredEventRecord(eventId: string): DemoEventRecord | null {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return null;
     }
-    return records;
+    return this.preferredEventRecords().find(record => record.id === normalizedEventId) ?? null;
+  }
+
+  private buildSeededAssetOwnerRecordsForUser(userId: string): DemoActivityMemberRecord[] {
+    return this.demoAssetsRepository.peekOwnedAssetsByUser(userId)
+      .flatMap(asset => {
+        const owner: ActivityMemberOwnerRef = {
+          ownerType: 'asset',
+          ownerId: asset.id
+        };
+        return this.buildSeededEntriesForAsset(userId, asset).map(member => this.toRecord(owner, member));
+      });
+  }
+
+  private buildSeededSubEventAndGroupOwnerRecordsForUser(userId: string): DemoActivityMemberRecord[] {
+    const nextRecords: DemoActivityMemberRecord[] = [];
+    const seenOwnerKeys = new Set<string>();
+
+    for (const record of this.collectSourceRecordsForUser(userId)) {
+      for (const subEvent of this.seededSubEventsForEvent(record)) {
+        const subEventOwner: ActivityMemberOwnerRef = {
+          ownerType: 'subEvent',
+          ownerId: subEvent.id
+        };
+        const subEventOwnerKey = this.ownerKey(subEventOwner);
+        if (!seenOwnerKeys.has(subEventOwnerKey)) {
+          const seededSubEvent = this.buildSeededSubEventOwnerSeed(record, subEvent);
+          for (const member of seededSubEvent.members) {
+            nextRecords.push(this.toRecord(subEventOwner, member));
+          }
+          seenOwnerKeys.add(subEventOwnerKey);
+        }
+
+        for (const group of subEvent.groups ?? []) {
+          const groupOwner: ActivityMemberOwnerRef = {
+            ownerType: 'group',
+            ownerId: group.id
+          };
+          const groupOwnerKey = this.ownerKey(groupOwner);
+          if (seenOwnerKeys.has(groupOwnerKey)) {
+            continue;
+          }
+          const seededGroup = this.buildSeededGroupOwnerSeed(record, subEvent, group);
+          for (const member of seededGroup.members) {
+            nextRecords.push(this.toRecord(groupOwner, member));
+          }
+          seenOwnerKeys.add(groupOwnerKey);
+        }
+      }
+    }
+
+    return nextRecords;
+  }
+
+  private collectSourceRecordsForUser(userId: string): DemoEventRecord[] {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    const seenIds = new Set<string>();
+    const nextRecords: DemoEventRecord[] = [];
+
+    for (const record of [
+      ...this.demoEventsRepository.queryItemsByUser(normalizedUserId),
+      ...this.demoEventsRepository.queryExploreItems(normalizedUserId)
+    ]) {
+      if (!record.id || seenIds.has(record.id)) {
+        continue;
+      }
+      seenIds.add(record.id);
+      nextRecords.push(record);
+    }
+
+    return nextRecords;
+  }
+
+  private findSeededAssetOwner(ownerId: string): { ownerUserId: string; asset: AppTypes.AssetCard } | null {
+    const normalizedOwnerId = ownerId.trim();
+    if (!normalizedOwnerId) {
+      return null;
+    }
+
+    const ownerHint = normalizedOwnerId.split(':')[0]?.trim() ?? '';
+    if (ownerHint) {
+      this.demoAssetsRepository.init([ownerHint]);
+      const ownedAsset = this.demoAssetsRepository.peekOwnedAssetsByUser(ownerHint).find(asset => asset.id === normalizedOwnerId);
+      if (ownedAsset) {
+        return {
+          ownerUserId: ownerHint,
+          asset: ownedAsset
+        };
+      }
+    }
+
+    for (const user of this.demoUsersRepository.queryAvailableDemoUsers()) {
+      this.demoAssetsRepository.init([user.id]);
+      const ownedAsset = this.demoAssetsRepository.peekOwnedAssetsByUser(user.id).find(asset => asset.id === normalizedOwnerId);
+      if (ownedAsset) {
+        return {
+          ownerUserId: user.id,
+          asset: ownedAsset
+        };
+      }
+    }
+
+    return null;
+  }
+
+  private buildSeededEntriesForAsset(ownerUserId: string, asset: AppTypes.AssetCard): AppTypes.ActivityMemberEntry[] {
+    const requests = asset.requests.length > 0
+      ? [...asset.requests]
+      : this.buildFallbackAssetRequests(ownerUserId, asset);
+    const seedBaseDate = new Date('2026-02-24T12:00:00.000Z');
+    return requests
+      .map((request, index): AppTypes.ActivityMemberEntry => {
+        const requestUserId = AppUtils.resolveAssetRequestUserId(request, this.demoActivityMemberUsers);
+        const matchedUser = this.demoActivityMemberUsers.find(user => user.id === requestUserId)
+          ?? AppUtils.findUserByName(this.demoActivityMemberUsers, request.name)
+          ?? this.resolveDemoUser(requestUserId, request.name, request.initials, asset.city, request.gender);
+        const seed = AppDemoGenerators.hashText(`asset-members:${asset.id}:${request.id}:${matchedUser.id}:${index}`);
+        const actionAtIso = AppUtils.toIsoDateTime(AppUtils.addDays(seedBaseDate, -((seed % 90) + 1)));
+        const status: AppTypes.ActivityMemberStatus = request.status === 'pending' ? 'pending' : 'accepted';
+        return {
+          id: request.id?.trim() || `${asset.id}:member:${index + 1}`,
+          userId: matchedUser.id,
+          name: request.name,
+          initials: request.initials,
+          gender: request.gender,
+          city: matchedUser.city || asset.city,
+          statusText: request.note?.trim() || (status === 'pending' ? 'Waiting for owner confirmation.' : 'Accepted for this asset.'),
+          role: matchedUser.id === ownerUserId ? 'Admin' : 'Member',
+          status,
+          pendingSource: status === 'pending' ? 'admin' : null,
+          requestKind: status === 'pending' ? 'invite' : null,
+          invitedByActiveUser: false,
+          metAtIso: actionAtIso,
+          actionAtIso,
+          metWhere: asset.title,
+          relevance: 48 + (seed % 46),
+          avatarUrl: matchedUser.images?.[0] ?? `https://i.pravatar.cc/1200?img=${(seed % 70) + 1}`
+        };
+      })
+      .sort((left, right) => AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso));
+  }
+
+  private buildFallbackAssetRequests(ownerUserId: string, asset: AppTypes.AssetCard): AppTypes.AssetMemberRequest[] {
+    const fallbackUsers = this.demoActivityMemberUsers.filter(user => user.id !== ownerUserId).slice(0, 2);
+    return fallbackUsers.map((user, index) => ({
+      id: `${asset.id}:request:${index + 1}`,
+      userId: user.id,
+      name: user.name,
+      initials: user.initials,
+      gender: user.gender,
+      status: index === 0 ? 'pending' : 'accepted',
+      note: index === 0 ? 'Waiting for owner confirmation.' : 'Accepted for this asset.'
+    }));
+  }
+
+  private findSeededSubEventOwner(ownerId: string): { record: DemoEventRecord; subEvent: AppTypes.SubEventFormItem } | null {
+    const normalizedOwnerId = ownerId.trim();
+    if (!normalizedOwnerId) {
+      return null;
+    }
+    for (const record of this.preferredEventRecords()) {
+      for (const subEvent of this.seededSubEventsForEvent(record)) {
+        if (subEvent.id === normalizedOwnerId) {
+          return { record, subEvent };
+        }
+      }
+    }
+    return null;
+  }
+
+  private findSeededGroupOwner(ownerId: string): { record: DemoEventRecord; subEvent: AppTypes.SubEventFormItem; group: AppTypes.SubEventGroupItem } | null {
+    const normalizedOwnerId = ownerId.trim();
+    if (!normalizedOwnerId) {
+      return null;
+    }
+    for (const record of this.preferredEventRecords()) {
+      for (const subEvent of this.seededSubEventsForEvent(record)) {
+        for (const group of subEvent.groups ?? []) {
+          if (group.id === normalizedOwnerId) {
+            return { record, subEvent, group };
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  private buildSeededSubEventOwnerSeed(
+    record: DemoEventRecord,
+    subEvent: AppTypes.SubEventFormItem
+  ): { members: AppTypes.ActivityMemberEntry[]; capacityTotal: number } {
+    const creator = this.resolveDemoUser(
+      record.creatorUserId,
+      record.creatorName,
+      record.creatorInitials,
+      record.creatorCity,
+      record.creatorGender
+    );
+    const row = this.buildDerivedActivityRow(
+      record,
+      subEvent.id,
+      subEvent.name,
+      record.title,
+      subEvent.description?.trim() || record.subtitle,
+      subEvent.startAt || record.startAtIso
+    );
+    const entryContext = this.buildEntryContext(row, creator);
+    const acceptedTarget = Math.max(1, this.normalizeMemberCount(subEvent.membersAccepted) ?? 0);
+    const pendingTarget = Math.max(1, this.normalizeMemberCount(subEvent.membersPending) ?? 0);
+    const owner: ActivityMemberOwnerRef = {
+      ownerType: 'subEvent',
+      ownerId: subEvent.id
+    };
+    const members = this.buildEntriesFromUserIds(owner, entryContext, undefined, undefined, acceptedTarget, pendingTarget);
+    const capacityTotal = Math.max(
+      acceptedTarget,
+      pendingTarget + acceptedTarget,
+      this.normalizeMemberCount(subEvent.capacityMax) ?? 0
+    );
+    return {
+      members,
+      capacityTotal
+    };
+  }
+
+  private buildSeededGroupOwnerSeed(
+    record: DemoEventRecord,
+    subEvent: AppTypes.SubEventFormItem,
+    group: AppTypes.SubEventGroupItem
+  ): { members: AppTypes.ActivityMemberEntry[]; capacityTotal: number } {
+    const creator = this.resolveDemoUser(
+      record.creatorUserId,
+      record.creatorName,
+      record.creatorInitials,
+      record.creatorCity,
+      record.creatorGender
+    );
+    const capacityMin = this.normalizeMemberCount(group.capacityMin) ?? 0;
+    const capacityMax = Math.max(capacityMin, this.normalizeMemberCount(group.capacityMax) ?? capacityMin);
+    const acceptedTarget = capacityMax > 0
+      ? Math.max(1, Math.min(capacityMax, Math.max(capacityMin, Math.floor(capacityMax * 0.6))))
+      : 0;
+    const pendingTarget = capacityMax > acceptedTarget
+      ? Math.max(1, Math.min(capacityMax - acceptedTarget, Math.ceil(capacityMax * 0.25)))
+      : 0;
+    const row = this.buildDerivedActivityRow(
+      record,
+      group.id,
+      group.name,
+      `${record.title} · ${subEvent.name}`,
+      'Group members',
+      subEvent.startAt || record.startAtIso
+    );
+    const entryContext = this.buildEntryContext(row, creator);
+    const owner: ActivityMemberOwnerRef = {
+      ownerType: 'group',
+      ownerId: group.id
+    };
+    const members = this.buildEntriesFromUserIds(owner, entryContext, undefined, undefined, acceptedTarget, pendingTarget);
+    return {
+      members,
+      capacityTotal: Math.max(acceptedTarget + pendingTarget, capacityMax)
+    };
+  }
+
+  private seededSubEventsForEvent(record: DemoEventRecord): AppTypes.SubEventFormItem[] {
+    if ((record.subEvents?.length ?? 0) > 0) {
+      return record.subEvents!.map(item => ({
+        ...item,
+        groups: (item.groups ?? []).map(group => ({ ...group }))
+      }));
+    }
+
+    const source = {
+      id: record.id,
+      title: record.title,
+      shortDescription: record.subtitle
+    } as EventMenuItem | HostingMenuItem;
+    const capacityMax = Math.max(
+      this.normalizeMemberCount(record.capacityMax) ?? 0,
+      this.normalizeMemberCount(record.capacityTotal) ?? 0,
+      this.normalizeMemberCount(record.acceptedMembers) ?? 0
+    );
+
+    return AppDemoGenerators.buildSeededSubEventsForEvent(source, {
+      isHosting: record.type === 'hosting',
+      activityDateTimeRangeById: {
+        [record.id]: {
+          startIso: record.startAtIso,
+          endIso: record.endAtIso
+        }
+      },
+      hostingDatesById: {
+        [record.id]: record.startAtIso
+      },
+      eventDatesById: {
+        [record.id]: record.startAtIso
+      },
+      eventCapacityById: {
+        [record.id]: {
+          min: Math.max(0, this.normalizeMemberCount(record.capacityMin) ?? 0),
+          max: Math.max(1, capacityMax)
+        }
+      },
+      activityCapacityById: {
+        [record.id]: `${Math.max(0, this.normalizeMemberCount(record.acceptedMembers) ?? 0)} / ${Math.max(1, this.normalizeMemberCount(record.capacityTotal) ?? capacityMax)}`
+      },
+      defaultStartIso: record.startAtIso,
+      activeUserId: record.creatorUserId
+    });
+  }
+
+  private buildDerivedActivityRow(
+    record: DemoEventRecord,
+    ownerId: string,
+    title: string,
+    subtitle: string,
+    detail: string,
+    dateIso: string
+  ): AppTypes.ActivityListRow {
+    const baseRow = this.buildActivityRowFromEventRecord(record);
+    const baseSource = (baseRow.source ?? {}) as unknown as Record<string, unknown>;
+    return {
+      ...baseRow,
+      id: ownerId,
+      title,
+      subtitle,
+      detail,
+      dateIso,
+      source: {
+        ...baseSource,
+        id: ownerId,
+        title,
+        shortDescription: subtitle,
+        timeframe: detail,
+        startAt: dateIso
+      } as AppTypes.ActivityListRow['source']
+    };
   }
 
   private normalizeCollection(

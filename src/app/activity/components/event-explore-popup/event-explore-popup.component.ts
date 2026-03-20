@@ -122,7 +122,7 @@ export class EventExplorePopupComponent {
 
   protected readonly eventExploreSmartListConfig: SmartListConfig<DemoEventRecord, EventExploreFeedFilters> = {
     pageSize: 10,
-    loadingDelayMs: 0,
+    loadingDelayMs: 1500,
     defaultView: 'list',
     emptyLabel: 'No visible events right now.',
     emptyDescription: 'Try another filter or check back later.',

@@ -21,6 +21,7 @@ import type { ActivityMembersSyncState } from '../../../shared/core';
 import { ActivityMembersService, AppContext, EventsService } from '../../../shared/core';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import {
+  LazyBgImageDirective,
   SmartListComponent,
   type ListQuery,
   type PageResult,
@@ -55,7 +56,8 @@ type MembersSummaryState = {
     CommonModule,
     MatButtonModule,
     MatIconModule,
-    SmartListComponent
+    SmartListComponent,
+    LazyBgImageDirective
   ],
   templateUrl: './event-members-popup.component.html',
   styleUrls: ['./event-members-popup.component.scss'],
@@ -123,7 +125,8 @@ export class EventMembersPopupComponent {
 
   protected readonly membersSmartListConfig: SmartListConfig<AppTypes.ActivityMemberEntry, MembersSmartListFilters> = {
     pageSize: 16,
-    loadingDelayMs: 0,
+    loadingDelayMs: 1500,
+    loadingWindowMs: 3000,
     defaultView: 'list',
     headerProgress: {
       enabled: true
@@ -536,11 +539,11 @@ export class EventMembersPopupComponent {
     this.resetSummaryState();
     this.canManageMembers = options?.canManage === true;
     this.canShowInviteButton = this.canManageMembers;
-    this.isLocalMembersSource = Array.isArray(options?.initialMembers);
+    this.isLocalMembersSource = false;
     this.membersChangeHandler = options?.onMembersChanged ?? null;
     this.membersSmartListQuery = {};
-    if (Array.isArray(options?.initialMembers)) {
-      this.membersCacheByOwnerId.set(normalizedOwnerId, this.sortMembersByActionTimeDesc(options.initialMembers));
+    if (Array.isArray(options?.initialMembers) && !Number.isFinite(Number(options?.acceptedMembers)) && !Number.isFinite(Number(options?.pendingMembers)) && !Number.isFinite(Number(options?.capacityTotal))) {
+      this.applySummaryFromMembers(options.initialMembers);
     }
     if (
       Number.isFinite(Number(options?.acceptedMembers))
@@ -632,30 +635,22 @@ export class EventMembersPopupComponent {
 
     let members = this.membersCacheByOwnerId.get(ownerId);
     if (!members) {
-      if (this.isLocalMembersSource && this.ownerId === ownerId) {
-        members = [];
-        this.membersCacheByOwnerId.set(ownerId, members);
-        if (this.isOpen) {
+      const owner = this.ownerRef && this.ownerRef.ownerId === ownerId
+        ? this.ownerRef
+        : null;
+      const loadedMembers = owner
+        ? await this.activityMembersService.queryMembersByOwner(owner)
+        : await this.activityMembersService.queryMembersByOwnerId(ownerId);
+      members = this.sortMembersByActionTimeDesc(loadedMembers);
+      this.membersCacheByOwnerId.set(ownerId, members);
+      if (this.isOpen && this.ownerId === ownerId) {
+        const summary = owner
+          ? this.activityMembersService.peekSummaryByOwner(owner)
+          : this.activityMembersService.peekSummaryByOwnerId(ownerId);
+        if (summary) {
+          this.applySummary(summary.acceptedMembers, summary.pendingMembers, summary.capacityTotal);
+        } else {
           this.applySummaryFromMembers(members);
-        }
-      } else {
-        const owner = this.ownerRef && this.ownerRef.ownerId === ownerId
-          ? this.ownerRef
-          : null;
-        const loadedMembers = owner
-          ? await this.activityMembersService.queryMembersByOwner(owner)
-          : await this.activityMembersService.queryMembersByOwnerId(ownerId);
-        members = this.sortMembersByActionTimeDesc(loadedMembers);
-        this.membersCacheByOwnerId.set(ownerId, members);
-        if (this.isOpen && this.ownerId === ownerId) {
-          const summary = owner
-            ? this.activityMembersService.peekSummaryByOwner(owner)
-            : this.activityMembersService.peekSummaryByOwnerId(ownerId);
-          if (summary) {
-            this.applySummary(summary.acceptedMembers, summary.pendingMembers, summary.capacityTotal);
-          } else {
-            this.applySummaryFromMembers(members);
-          }
         }
       }
     }
