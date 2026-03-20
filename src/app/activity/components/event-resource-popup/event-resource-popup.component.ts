@@ -136,6 +136,7 @@ export class EventResourcePopupComponent implements DoCheck {
   protected readonly resourceSmartListConfig: SmartListConfig<AppTypes.SubEventResourceCard, { revision: number }> = {
     pageSize: 18,
     loadingDelayMs: 0,
+    loadingWindowMs: 900,
     defaultView: 'list',
     headerProgress: {
       enabled: true
