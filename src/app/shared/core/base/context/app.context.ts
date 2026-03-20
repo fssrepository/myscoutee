@@ -1,4 +1,5 @@
 import { Injectable, computed, signal } from '@angular/core';
+import type { ActivityMemberEntry } from '../models/activity-member.model';
 import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface';
 import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../interfaces/user.interface';
 
@@ -39,6 +40,9 @@ export interface ActivityInvitePopupState {
   updatedMs: number;
   ownerId: string;
   title?: string;
+  initialCandidates?: readonly ActivityMemberEntry[];
+  onApply?: (selectedCandidates: readonly ActivityMemberEntry[]) => void;
+  closeOwnerPopupOnClose?: boolean;
 }
 
 export interface NavigatorActivitiesRequest {
@@ -509,7 +513,13 @@ export class AppContext {
     });
   }
 
-  openActivityInvitePopup(payload: { ownerId: string; title?: string }): void {
+  openActivityInvitePopup(payload: {
+    ownerId: string;
+    title?: string;
+    initialCandidates?: readonly ActivityMemberEntry[];
+    onApply?: (selectedCandidates: readonly ActivityMemberEntry[]) => void;
+    closeOwnerPopupOnClose?: boolean;
+  }): void {
     const normalizedOwnerId = payload.ownerId.trim();
     if (!normalizedOwnerId) {
       return;
@@ -517,7 +527,12 @@ export class AppContext {
     this._activityInvitePopup.set({
       updatedMs: Date.now(),
       ownerId: normalizedOwnerId,
-      title: payload.title?.trim() || undefined
+      title: payload.title?.trim() || undefined,
+      initialCandidates: Array.isArray(payload.initialCandidates)
+        ? payload.initialCandidates.map(candidate => ({ ...candidate }))
+        : undefined,
+      onApply: payload.onApply,
+      closeOwnerPopupOnClose: payload.closeOwnerPopupOnClose === true
     });
   }
 

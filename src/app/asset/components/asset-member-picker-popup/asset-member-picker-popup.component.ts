@@ -14,6 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
 import type * as AppTypes from '../../../shared/core/base/models';
+import { AppUtils } from '../../../shared/app-utils';
 import {
   SmartListComponent,
   type ListQuery,
@@ -24,6 +25,7 @@ import {
   type SmartListStateChange
 } from '../../../shared/ui';
 import { ActivityInviteCandidatesService, AppContext } from '../../../shared/core';
+import { OwnedAssetsPopupService } from '../../owned-assets-popup.service';
 
 interface ActivityInviteFilters {
   ownerId?: string;
@@ -48,6 +50,7 @@ export class AssetMemberPickerPopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly appCtx = inject(AppContext);
   private readonly activityInviteCandidatesService = inject(ActivityInviteCandidatesService);
+  private readonly ownedAssets = inject(OwnedAssetsPopupService);
 
   protected isOpen = false;
   protected title = 'Invite members';
@@ -60,6 +63,10 @@ export class AssetMemberPickerPopupComponent {
   private currentCandidates: AppTypes.ActivityMemberEntry[] = [];
   private readonly candidatesByUserId = new Map<string, AppTypes.ActivityMemberEntry>();
   private candidateQueryKey = '';
+  private localCandidates: AppTypes.ActivityMemberEntry[] = [];
+  private isLocalCandidateSource = false;
+  private inviteApplyHandler: ((selectedCandidates: readonly AppTypes.ActivityMemberEntry[]) => void) | null = null;
+  private closeOwnerPopupOnClose = false;
 
   @ViewChild('inviteSmartList')
   private inviteSmartList?: SmartListComponent<AppTypes.ActivityMemberEntry, ActivityInviteFilters>;
@@ -110,6 +117,12 @@ export class AssetMemberPickerPopupComponent {
       this.currentCandidates = [];
       this.candidatesByUserId.clear();
       this.candidateQueryKey = '';
+      this.localCandidates = Array.isArray(context.initialCandidates)
+        ? context.initialCandidates.map(candidate => ({ ...candidate }))
+        : [];
+      this.isLocalCandidateSource = this.localCandidates.length > 0 || typeof context.onApply === 'function';
+      this.inviteApplyHandler = context.onApply ?? null;
+      this.closeOwnerPopupOnClose = context.closeOwnerPopupOnClose === true;
       this.syncInviteSmartListQuery();
       this.cdr.markForCheck();
     });
@@ -157,8 +170,12 @@ export class AssetMemberPickerPopupComponent {
 
   protected closeInvitePopup(event?: Event): void {
     event?.stopPropagation();
+    const shouldCloseOwnerPopup = this.closeOwnerPopupOnClose;
     this.appCtx.closeActivityInvitePopup();
     this.resetState();
+    if (shouldCloseOwnerPopup) {
+      this.ownedAssets.closePopup();
+    }
   }
 
   protected toggleInviteSortPicker(event?: Event): void {
@@ -196,6 +213,11 @@ export class AssetMemberPickerPopupComponent {
     }
     const selected = this.selectedInviteChips();
     if (selected.length === 0) {
+      return;
+    }
+    if (this.inviteApplyHandler) {
+      this.inviteApplyHandler(selected);
+      this.closeInvitePopup();
       return;
     }
     await this.activityInviteCandidatesService.applyInvites(this.ownerId, selected);
@@ -242,6 +264,10 @@ export class AssetMemberPickerPopupComponent {
     this.currentCandidates = [];
     this.candidatesByUserId.clear();
     this.candidateQueryKey = '';
+    this.localCandidates = [];
+    this.isLocalCandidateSource = false;
+    this.inviteApplyHandler = null;
+    this.closeOwnerPopupOnClose = false;
     this.cdr.markForCheck();
   }
 
@@ -255,6 +281,19 @@ export class AssetMemberPickerPopupComponent {
     };
   }
 
+  private sortLocalCandidates(sort: AppTypes.ActivityInviteSort): AppTypes.ActivityMemberEntry[] {
+    const candidates = this.localCandidates.map(candidate => ({ ...candidate }));
+    return candidates.sort((left, right) => {
+      if (sort === 'relevant') {
+        if (right.relevance !== left.relevance) {
+          return right.relevance - left.relevance;
+        }
+        return AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso);
+      }
+      return AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso);
+    });
+  }
+
   private async loadInviteCandidatesPage(
     query: ListQuery<ActivityInviteFilters>
   ): Promise<PageResult<AppTypes.ActivityMemberEntry>> {
@@ -265,13 +304,16 @@ export class AssetMemberPickerPopupComponent {
         total: 0
       };
     }
-    const queryKey = `${ownerId}:${query.filters?.sort ?? 'recent'}:${query.filters?.fallbackTitle ?? ''}`;
+    const inviteSort = query.filters?.sort === 'relevant' ? 'relevant' : 'recent';
+    const queryKey = `${ownerId}:${inviteSort}:${query.filters?.fallbackTitle ?? ''}:${this.isLocalCandidateSource ? 'local' : 'shared'}`;
     if (queryKey !== this.candidateQueryKey) {
-      this.currentCandidates = await this.activityInviteCandidatesService.queryCandidatesByOwner(
-        ownerId,
-        query.filters?.sort === 'relevant' ? 'relevant' : 'recent',
-        query.filters?.fallbackTitle
-      );
+      this.currentCandidates = this.isLocalCandidateSource
+        ? this.sortLocalCandidates(inviteSort)
+        : await this.activityInviteCandidatesService.queryCandidatesByOwner(
+            ownerId,
+            inviteSort,
+            query.filters?.fallbackTitle
+          );
       this.candidateQueryKey = queryKey;
       this.candidatesByUserId.clear();
       for (const entry of this.currentCandidates) {

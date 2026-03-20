@@ -30,6 +30,8 @@ import {
   type SmartListStateChange
 } from '../../../shared/ui';
 import { ActivitiesDbContextService } from '../../services/activities-db-context.service';
+import { AssetPopupService } from '../../../asset/asset-popup.service';
+import { OwnedAssetsPopupService } from '../../../asset/owned-assets-popup.service';
 
 interface MembersSmartListFilters {
   ownerId?: string;
@@ -66,6 +68,8 @@ export class EventMembersPopupComponent {
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly eventsService = inject(EventsService);
   private readonly appCtx = inject(AppContext);
+  private readonly assetPopupService = inject(AssetPopupService);
+  private readonly ownedAssets = inject(OwnedAssetsPopupService);
 
   private readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
   private readonly userByIdMap = new Map(this.users.map(user => [user.id, user]));
@@ -98,6 +102,8 @@ export class EventMembersPopupComponent {
     pendingCount: 0,
     capacityTotal: 0
   };
+  private isLocalMembersSource = false;
+  private membersChangeHandler: ((members: readonly AppTypes.ActivityMemberEntry[]) => void) | null = null;
 
   protected membersSmartListQuery: Partial<ListQuery<MembersSmartListFilters>> = {};
 
@@ -156,7 +162,9 @@ export class EventMembersPopupComponent {
           canManage: request.canManage,
           acceptedMembers: request.acceptedMembers,
           pendingMembers: request.pendingMembers,
-          capacityTotal: request.capacityTotal
+          capacityTotal: request.capacityTotal,
+          initialMembers: request.members,
+          onMembersChanged: request.onMembersChanged
         });
         return;
       }
@@ -259,6 +267,8 @@ export class EventMembersPopupComponent {
     this.pendingOnly = false;
     this.canManageMembers = false;
     this.canShowInviteButton = false;
+    this.isLocalMembersSource = false;
+    this.membersChangeHandler = null;
     this.subtitle = 'Event';
     this.resetSummaryState();
     this.selectedMembersVisible = [];
@@ -271,10 +281,31 @@ export class EventMembersPopupComponent {
     if (!this.canShowInviteButton || !this.ownerId) {
       return;
     }
-    this.appCtx.openActivityInvitePopup({
+    if (this.ownerRef?.ownerType === 'asset') {
+      const asset = this.ownedAssets.assetCards.find(card => card.id === this.ownerId) ?? null;
+      if (asset) {
+        this.ownedAssets.openPopup(asset.type);
+        this.assetPopupService.openActivityInvite({
+          ownerId: this.ownerId,
+          title: `Invite to ${asset.title}`,
+          initialCandidates: this.assetInviteCandidates(asset),
+          onApply: selectedCandidates => this.applyLocalAssetInvites(asset, selectedCandidates),
+          closeOwnerPopupOnClose: true
+        });
+        return;
+      }
+    }
+    this.assetPopupService.openActivityInvite({
       ownerId: this.ownerId,
       title: this.subtitle
     });
+  }
+
+  protected isSuspendedForAssetInvite(): boolean {
+    const invitePopup = this.appCtx.activityInvitePopup();
+    return this.ownerRef?.ownerType === 'asset'
+      && !!invitePopup
+      && invitePopup.ownerId === this.ownerId;
   }
 
   protected canShowActionMenu(entry: AppTypes.ActivityMemberEntry): boolean {
@@ -446,6 +477,8 @@ export class EventMembersPopupComponent {
       acceptedMembers?: number;
       pendingMembers?: number;
       capacityTotal?: number;
+      initialMembers?: readonly AppTypes.ActivityMemberEntry[];
+      onMembersChanged?: (members: readonly AppTypes.ActivityMemberEntry[]) => void;
     }
   ): void {
     const normalizedOwnerId = ownerId.trim();
@@ -469,7 +502,12 @@ export class EventMembersPopupComponent {
     this.resetSummaryState();
     this.canManageMembers = options?.canManage === true;
     this.canShowInviteButton = this.canManageMembers;
+    this.isLocalMembersSource = Array.isArray(options?.initialMembers) || typeof options?.onMembersChanged === 'function';
+    this.membersChangeHandler = options?.onMembersChanged ?? null;
     this.membersSmartListQuery = {};
+    if (Array.isArray(options?.initialMembers)) {
+      this.membersCacheByOwnerId.set(normalizedOwnerId, this.sortMembersByActionTimeDesc(options.initialMembers));
+    }
     if (
       Number.isFinite(Number(options?.acceptedMembers))
       || Number.isFinite(Number(options?.pendingMembers))
@@ -493,7 +531,9 @@ export class EventMembersPopupComponent {
       }
 
       this.syncMembersSmartListQuery();
-      void this.resolveOwnerPresentation(normalizedOwnerId, options);
+      if (options?.ownerType !== 'asset') {
+        void this.resolveOwnerPresentation(normalizedOwnerId, options);
+      }
       this.cdr.markForCheck();
     }, 0);
   }
@@ -558,22 +598,30 @@ export class EventMembersPopupComponent {
 
     let members = this.membersCacheByOwnerId.get(ownerId);
     if (!members) {
-      const owner = this.ownerRef && this.ownerRef.ownerId === ownerId
-        ? this.ownerRef
-        : null;
-      const loadedMembers = owner
-        ? await this.activityMembersService.queryMembersByOwner(owner)
-        : await this.activityMembersService.queryMembersByOwnerId(ownerId);
-      members = this.sortMembersByActionTimeDesc(loadedMembers);
-      this.membersCacheByOwnerId.set(ownerId, members);
-      if (this.isOpen && this.ownerId === ownerId) {
-        const summary = owner
-          ? this.activityMembersService.peekSummaryByOwner(owner)
-          : this.activityMembersService.peekSummaryByOwnerId(ownerId);
-        if (summary) {
-          this.applySummary(summary.acceptedMembers, summary.pendingMembers, summary.capacityTotal);
-        } else {
+      if (this.isLocalMembersSource && this.ownerId === ownerId) {
+        members = [];
+        this.membersCacheByOwnerId.set(ownerId, members);
+        if (this.isOpen) {
           this.applySummaryFromMembers(members);
+        }
+      } else {
+        const owner = this.ownerRef && this.ownerRef.ownerId === ownerId
+          ? this.ownerRef
+          : null;
+        const loadedMembers = owner
+          ? await this.activityMembersService.queryMembersByOwner(owner)
+          : await this.activityMembersService.queryMembersByOwnerId(ownerId);
+        members = this.sortMembersByActionTimeDesc(loadedMembers);
+        this.membersCacheByOwnerId.set(ownerId, members);
+        if (this.isOpen && this.ownerId === ownerId) {
+          const summary = owner
+            ? this.activityMembersService.peekSummaryByOwner(owner)
+            : this.activityMembersService.peekSummaryByOwnerId(ownerId);
+          if (summary) {
+            this.applySummary(summary.acceptedMembers, summary.pendingMembers, summary.capacityTotal);
+          } else {
+            this.applySummaryFromMembers(members);
+          }
         }
       }
     }
@@ -600,25 +648,88 @@ export class EventMembersPopupComponent {
     this.inlineItemActionMenu = null;
     this.syncMembersSmartListQuery();
     this.membersSmartList?.reload();
-    const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
-    if (owner) {
-      void this.activityMembersService.replaceMembersByOwner(
-        owner,
-        normalizedMembers,
-        Math.max(this.acceptedCount, this.capacityTotal)
-      );
+    if (this.membersChangeHandler) {
+      this.membersChangeHandler(normalizedMembers);
     } else {
-      void this.activityMembersService.replaceMembersByOwnerId(
-        this.ownerId,
-        normalizedMembers,
-        Math.max(this.acceptedCount, this.capacityTotal)
-      );
+      const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
+      if (owner) {
+        void this.activityMembersService.replaceMembersByOwner(
+          owner,
+          normalizedMembers,
+          Math.max(this.acceptedCount, this.capacityTotal)
+        );
+      } else {
+        void this.activityMembersService.replaceMembersByOwnerId(
+          this.ownerId,
+          normalizedMembers,
+          Math.max(this.acceptedCount, this.capacityTotal)
+        );
+      }
     }
     this.cdr.markForCheck();
   }
 
   private currentOwnerMembers(): AppTypes.ActivityMemberEntry[] {
     return [...(this.membersCacheByOwnerId.get(this.ownerId) ?? [])];
+  }
+
+  private assetInviteCandidates(asset: AppTypes.AssetCard): AppTypes.ActivityMemberEntry[] {
+    const existingUserIds = new Set(this.currentOwnerMembers().map(member => member.userId));
+    const activeUserId = this.activeUserId();
+    const seedBaseDate = new Date('2026-02-24T12:00:00');
+    return this.users
+      .filter(user => user.id !== activeUserId && !existingUserIds.has(user.id))
+      .map((user, index) => {
+        const seed = AppDemoGenerators.hashText(`asset-invite:${asset.id}:${user.id}:${index}`);
+        const actionAtIso = AppUtils.toIsoDateTime(AppUtils.addDays(seedBaseDate, -((seed % 120) + 1)));
+        return {
+          id: `asset-invite-${asset.id}-${user.id}`,
+          userId: user.id,
+          name: user.name,
+          initials: user.initials,
+          gender: user.gender,
+          city: user.city,
+          statusText: '',
+          role: 'Member' as const,
+          status: 'accepted' as const,
+          pendingSource: null,
+          requestKind: null,
+          invitedByActiveUser: false,
+          metAtIso: actionAtIso,
+          actionAtIso,
+          metWhere: asset.title,
+          relevance: 40 + (seed % 61),
+          avatarUrl: user.images?.[0] ?? `https://i.pravatar.cc/1200?img=${(seed % 70) + 1}`
+        };
+      })
+      .sort((left, right) => AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso));
+  }
+
+  private applyLocalAssetInvites(
+    asset: AppTypes.AssetCard,
+    selectedCandidates: readonly AppTypes.ActivityMemberEntry[]
+  ): void {
+    const currentMembers = this.currentOwnerMembers();
+    const existingUserIds = new Set(currentMembers.map(member => member.userId));
+    const nowIso = AppUtils.toIsoDateTime(new Date());
+    const additions = selectedCandidates
+      .filter(candidate => !existingUserIds.has(candidate.userId))
+      .map(candidate => ({
+        ...candidate,
+        id: `asset-member-invite-${asset.id}-${candidate.userId}`,
+        role: 'Member' as const,
+        status: 'pending' as const,
+        pendingSource: 'admin' as const,
+        requestKind: 'invite' as const,
+        invitedByActiveUser: true,
+        statusText: 'Waiting for event admin approval.',
+        metWhere: asset.title,
+        actionAtIso: nowIso
+      }));
+    if (additions.length === 0) {
+      return;
+    }
+    this.persistMembers([...currentMembers, ...additions]);
   }
 
   protected canApproveMember(entry: AppTypes.ActivityMemberEntry): boolean {
@@ -662,6 +773,9 @@ export class EventMembersPopupComponent {
   }
 
   private applyActivityMembersSync(sync: ActivityMembersSyncState): void {
+    if (this.isLocalMembersSource) {
+      return;
+    }
     if (sync.id !== this.ownerId) {
       return;
     }

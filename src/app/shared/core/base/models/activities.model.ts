@@ -64,6 +64,8 @@ export type ActivitiesNavigationRequest =
       acceptedMembers?: number;
       pendingMembers?: number;
       capacityTotal?: number;
+      members?: readonly ActivityMemberEntry[];
+      onMembersChanged?: (members: readonly ActivityMemberEntry[]) => void;
     }
   | { type: 'eventEditorMembers'; row: ActivityListRow }
   | { type: 'eventEditorCreate'; target: EventEditorTarget }

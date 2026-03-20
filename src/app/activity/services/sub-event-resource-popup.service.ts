@@ -8,7 +8,7 @@ import { OwnedAssetsPopupService } from '../../asset/owned-assets-popup.service'
 import { AppDemoGenerators } from '../../shared/app-demo-generators';
 import { AppUtils } from '../../shared/app-utils';
 import type * as AppTypes from '../../shared/core/base/models';
-import { ActivityMembersService, ActivityResourceBuilder, ActivityResourcesService, AppContext } from '../../shared/core';
+import { ActivityResourceBuilder, ActivityResourcesService, AppContext } from '../../shared/core';
 import type { DemoUser } from '../../shared/demo-data';
 import { ActivitiesDbContextService } from './activities-db-context.service';
 import { EventEditorService } from '../../shared/event-editor.service';
@@ -71,7 +71,6 @@ export class SubEventResourcePopupService {
   private readonly assetPopupService = inject(AssetPopupService);
   private readonly ownedAssets = inject(OwnedAssetsPopupService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
-  private readonly activityMembersService = inject(ActivityMembersService);
   private readonly appCtx = inject(AppContext);
 
   private readonly users: DemoUser[] = AppDemoGenerators.buildExpandedDemoUsers(50);
@@ -93,7 +92,7 @@ export class SubEventResourcePopupService {
   private readonly supplyContributionEntriesByAssignmentKey: Record<string, AppTypes.SubEventSupplyContributionEntry[]> = {};
 
   readonly resourceHost = computed<EventResourcePopupHost | null>(() =>
-    this.popupContextRef() ? this.eventResourcePopupHost : null
+    this.popupContextRef() && !this.assignContextRef() ? this.eventResourcePopupHost : null
   );
 
   readonly supplyContributionsHost = computed<EventSupplyContributionsPopupHost | null>(() =>
@@ -216,14 +215,6 @@ export class SubEventResourcePopupService {
       }
       this.eventEditorService.clearSubEventResourcePopupRequest();
       this.openFromEventEditorRequest(request);
-    }, { allowSignalWrites: true });
-
-    effect(() => {
-      const sync = this.appCtx.activityMembersSync();
-      if (!sync) {
-        return;
-      }
-      this.handleActivityMembersSync(sync.id);
     }, { allowSignalWrites: true });
   }
 
@@ -467,17 +458,13 @@ export class SubEventResourcePopupService {
     if (!sourceCard) {
       return;
     }
-    const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, card.type);
+    const assetType: 'Car' | 'Accommodation' = card.type;
+    const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, assetType);
     const ownerUserId = settings[card.sourceAssetId]?.addedByUserId ?? null;
     const members = this.assetMemberEntries(sourceCard, ownerUserId);
     const acceptedMembers = members.filter(member => member.status === 'accepted').length;
     const pendingMembers = members.filter(member => member.status === 'pending').length;
     const capacityTotal = settings[card.sourceAssetId]?.capacityMax ?? Math.max(0, sourceCard.capacityTotal);
-    void this.activityMembersService.replaceMembersByOwner(
-      { ownerType: 'asset', ownerId: sourceCard.id },
-      members,
-      capacityTotal
-    );
     this.activitiesContext.requestActivitiesNavigation({
       type: 'members',
       ownerId: sourceCard.id,
@@ -486,7 +473,9 @@ export class SubEventResourcePopupService {
       canManage: ownerUserId === this.activeUser().id,
       acceptedMembers,
       pendingMembers,
-      capacityTotal
+      capacityTotal,
+      members,
+      onMembersChanged: nextMembers => this.syncAssetRequestsFromMembers(sourceCard.id, assetType, nextMembers)
     });
   }
 
@@ -1057,7 +1046,7 @@ export class SubEventResourcePopupService {
     this.assignContextRef.set({ subEventId: context.subEvent.id, type });
     this.selectedAssignAssetIdsRef.set([...this.resolveSubEventAssignedAssetIds(context.subEvent.id, type)]);
     this.ownedAssets.openPopup(type);
-    this.assetPopupService.setBasketVisible(true);
+    this.assetPopupService.syncVisibility(true, false, true);
   }
 
   private closeAssignPopup(apply = false): void {
@@ -1337,21 +1326,15 @@ export class SubEventResourcePopupService {
     });
   }
 
-  private handleActivityMembersSync(ownerId: string): void {
-    const normalizedOwnerId = ownerId.trim();
-    if (!normalizedOwnerId) {
-      return;
-    }
-    const asset = this.ownedAssets.assetCards.find(card =>
-      card.id === normalizedOwnerId && (card.type === 'Car' || card.type === 'Accommodation')
-    );
+  private syncAssetRequestsFromMembers(
+    assetId: string,
+    assetType: 'Car' | 'Accommodation',
+    members: readonly AppTypes.ActivityMemberEntry[]
+  ): void {
+    const asset = this.ownedAssets.assetCards.find(card => card.id === assetId && card.type === assetType);
     if (!asset) {
       return;
     }
-    const members = this.activityMembersService.peekMembersByOwner({
-      ownerType: 'asset',
-      ownerId: normalizedOwnerId
-    });
     const existingById = new Map(asset.requests.map(request => [request.id, request] as const));
     const existingByUserId = new Map(
       asset.requests.map(request => [AppUtils.resolveAssetRequestUserId(request, this.users), request] as const)

@@ -1,6 +1,7 @@
 import { Injectable, NgZone, computed, inject, signal } from '@angular/core';
 
 import type * as AppTypes from '../shared/core/base/models';
+import type { ActivityMemberEntry } from '../shared/core/base/models';
 import { AppContext } from '../shared/core';
 import type { SmartListStateChange } from '../shared/ui';
 import { AssetFacadeService } from './asset-facade.service';
@@ -64,7 +65,13 @@ export class AssetPopupService {
     this.basketVisibleRef.set(isBasketOpen);
   }
 
-  openActivityInvite(request: { ownerId: string; title?: string }): void {
+  openActivityInvite(request: {
+    ownerId: string;
+    title?: string;
+    initialCandidates?: readonly ActivityMemberEntry[];
+    onApply?: (selectedCandidates: readonly ActivityMemberEntry[]) => void;
+    closeOwnerPopupOnClose?: boolean;
+  }): void {
     this.appCtx.openActivityInvitePopup(request);
   }
 
