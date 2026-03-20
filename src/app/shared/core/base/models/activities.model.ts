@@ -8,7 +8,7 @@ import type { EventBlindMode, EventEditorTarget, EventVisibility, SubEventFormIt
 
 export type SubEventAssetAssignmentIds = Partial<Record<AssetType, string[]>>;
 export type SubEventAssetCardsByType = Partial<Record<AssetType, AssetCard[]>>;
-export type ActivityMemberOwnerType = 'event' | 'subEvent' | 'group';
+export type ActivityMemberOwnerType = 'event' | 'subEvent' | 'group' | 'asset';
 
 export interface ActivitiesFeedFilters {
   primaryFilter?: ActivitiesPrimaryFilter;
@@ -55,7 +55,16 @@ export type ActivitiesNavigationRequest =
       assetAssignmentIds?: SubEventAssetAssignmentIds;
       assetCardsByType?: SubEventAssetCardsByType;
     }
-  | { type: 'members'; ownerId: string; ownerType?: ActivityMemberOwnerType }
+  | {
+      type: 'members';
+      ownerId: string;
+      ownerType?: ActivityMemberOwnerType;
+      subtitle?: string;
+      canManage?: boolean;
+      acceptedMembers?: number;
+      pendingMembers?: number;
+      capacityTotal?: number;
+    }
   | { type: 'eventEditorMembers'; row: ActivityListRow }
   | { type: 'eventEditorCreate'; target: EventEditorTarget }
   | { type: 'eventEditor'; row: ActivityListRow; readOnly: boolean };

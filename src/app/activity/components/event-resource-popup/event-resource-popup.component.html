@@ -28,6 +28,7 @@
                 [ngModel]="host.resourceFilter()"
                 (ngModelChange)="host.selectResourceFilter($event)"
                 (openedChange)="onResourceFilterOpenedChange($event, subEventResourceFilterSelect)"
+                [panelWidth]="host.resourceFilterPanelWidth()"
                 disableOptionCentering
                 panelClass="selector-options-panel profile-bottom-sheet-panel assets-filter-options-panel subevent-resource-options-panel"
               >

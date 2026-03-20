@@ -109,7 +109,7 @@ export class HttpActivityMembersRepository {
   protected normalizeOwnerRef(owner: ActivityMemberOwnerRef | null | undefined): ActivityMemberOwnerRef | null {
     const ownerType = owner?.ownerType;
     const ownerId = owner?.ownerId?.trim() ?? '';
-    if ((ownerType !== 'event' && ownerType !== 'subEvent' && ownerType !== 'group') || !ownerId) {
+    if ((ownerType !== 'event' && ownerType !== 'subEvent' && ownerType !== 'group' && ownerType !== 'asset') || !ownerId) {
       return null;
     }
     return {

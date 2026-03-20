@@ -1,5 +1,21 @@
+@use '../../../shared/ui/styles' as ui;
+
+@include ui.popup-shell();
+@include ui.interactive-motion();
+@include ui.form-controls();
+
 :host {
+  --event-supply-contributions-shell-z-index: 3200;
   display: contents;
+}
+
+.app-popup.event-supply-contributions-popup-shell {
+  z-index: var(--event-supply-contributions-shell-z-index);
+}
+
+.event-supply-contributions-popup-shell .app-popup-backdrop {
+  background: rgba(8, 16, 30, 0.44);
+  backdrop-filter: blur(2px);
 }
 
 .event-supply-contributions-popup-shell .app-popup-panel.popup-panel-asset-members {

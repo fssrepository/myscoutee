@@ -40,6 +40,7 @@ export interface EventResourcePopupHost {
   isMobilePopupSheetViewport(): boolean;
   resourceFilter(): AppTypes.AssetType;
   resourceFilterOptions(): readonly AppTypes.AssetType[];
+  resourceFilterPanelWidth(): string;
   resourceFilterCount(type: AppTypes.AssetType): number;
   resourceTypeClass(type: AppTypes.SubEventResourceFilter): string;
   resourceTypeIcon(type: AppTypes.SubEventResourceFilter): string;
@@ -248,7 +249,7 @@ export class EventResourcePopupComponent implements DoCheck {
     }
     return {
       variant: 'avatar',
-      tone: 'cool-mid',
+      tone: 'default',
       icon: 'location_on',
       interactive: true,
       ariaLabel: card.type === 'Car' ? 'Open route map' : 'Open accommodation map'

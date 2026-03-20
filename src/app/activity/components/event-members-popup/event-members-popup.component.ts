@@ -151,7 +151,12 @@ export class EventMembersPopupComponent {
       this.activitiesContext.clearActivitiesNavigationRequest();
       if (request.type === 'members') {
         this.openMembersPopup(request.ownerId, {
-          ownerType: request.ownerType ?? 'event'
+          ownerType: request.ownerType ?? 'event',
+          subtitle: request.subtitle,
+          canManage: request.canManage,
+          acceptedMembers: request.acceptedMembers,
+          pendingMembers: request.pendingMembers,
+          capacityTotal: request.capacityTotal
         });
         return;
       }
@@ -355,7 +360,7 @@ export class EventMembersPopupComponent {
     if (!this.pendingDelete) {
       return '';
     }
-    return `Remove ${this.pendingDelete.name} from this event?`;
+    return `Remove ${this.pendingDelete.name} from this ${this.ownerRef?.ownerType === 'asset' ? 'asset' : 'event'}?`;
   }
 
   protected memberCardToneClass(entry: AppTypes.ActivityMemberEntry): string {
@@ -417,7 +422,7 @@ export class EventMembersPopupComponent {
       return 'Waiting For Join Approval';
     }
     if (entry.pendingSource === 'admin') {
-      return 'Invitation Pending';
+      return this.ownerRef?.ownerType === 'asset' ? 'Waiting For Admin Approval' : 'Invitation Pending';
     }
     return 'Waiting For Admin Approval';
   }
@@ -438,6 +443,9 @@ export class EventMembersPopupComponent {
       subtitle?: string;
       canManage?: boolean;
       ownerType?: ActivityMemberOwnerType;
+      acceptedMembers?: number;
+      pendingMembers?: number;
+      capacityTotal?: number;
     }
   ): void {
     const normalizedOwnerId = ownerId.trim();
@@ -462,6 +470,17 @@ export class EventMembersPopupComponent {
     this.canManageMembers = options?.canManage === true;
     this.canShowInviteButton = this.canManageMembers;
     this.membersSmartListQuery = {};
+    if (
+      Number.isFinite(Number(options?.acceptedMembers))
+      || Number.isFinite(Number(options?.pendingMembers))
+      || Number.isFinite(Number(options?.capacityTotal))
+    ) {
+      this.applySummary(
+        Number(options?.acceptedMembers) || 0,
+        Number(options?.pendingMembers) || 0,
+        Number(options?.capacityTotal) || 0
+      );
+    }
     this.cdr.markForCheck();
 
     if (this.openMembersHydrationTimer) {
@@ -581,11 +600,20 @@ export class EventMembersPopupComponent {
     this.inlineItemActionMenu = null;
     this.syncMembersSmartListQuery();
     this.membersSmartList?.reload();
-    void this.activityMembersService.replaceMembersByOwnerId(
-      this.ownerId,
-      normalizedMembers,
-      Math.max(this.acceptedCount, this.capacityTotal)
-    );
+    const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
+    if (owner) {
+      void this.activityMembersService.replaceMembersByOwner(
+        owner,
+        normalizedMembers,
+        Math.max(this.acceptedCount, this.capacityTotal)
+      );
+    } else {
+      void this.activityMembersService.replaceMembersByOwnerId(
+        this.ownerId,
+        normalizedMembers,
+        Math.max(this.acceptedCount, this.capacityTotal)
+      );
+    }
     this.cdr.markForCheck();
   }
 

@@ -8,7 +8,7 @@ import { OwnedAssetsPopupService } from '../../asset/owned-assets-popup.service'
 import { AppDemoGenerators } from '../../shared/app-demo-generators';
 import { AppUtils } from '../../shared/app-utils';
 import type * as AppTypes from '../../shared/core/base/models';
-import { ActivityResourceBuilder, ActivityResourcesService, AppContext } from '../../shared/core';
+import { ActivityMembersService, ActivityResourceBuilder, ActivityResourcesService, AppContext } from '../../shared/core';
 import type { DemoUser } from '../../shared/demo-data';
 import { ActivitiesDbContextService } from './activities-db-context.service';
 import { EventEditorService } from '../../shared/event-editor.service';
@@ -71,6 +71,7 @@ export class SubEventResourcePopupService {
   private readonly assetPopupService = inject(AssetPopupService);
   private readonly ownedAssets = inject(OwnedAssetsPopupService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
+  private readonly activityMembersService = inject(ActivityMembersService);
   private readonly appCtx = inject(AppContext);
 
   private readonly users: DemoUser[] = AppDemoGenerators.buildExpandedDemoUsers(50);
@@ -92,7 +93,7 @@ export class SubEventResourcePopupService {
   private readonly supplyContributionEntriesByAssignmentKey: Record<string, AppTypes.SubEventSupplyContributionEntry[]> = {};
 
   readonly resourceHost = computed<EventResourcePopupHost | null>(() =>
-    this.popupContextRef() && !this.supplyPopupRef() ? this.eventResourcePopupHost : null
+    this.popupContextRef() ? this.eventResourcePopupHost : null
   );
 
   readonly supplyContributionsHost = computed<EventSupplyContributionsPopupHost | null>(() =>
@@ -107,6 +108,7 @@ export class SubEventResourcePopupService {
     isMobilePopupSheetViewport: () => false,
     resourceFilter: () => this.resourceFilterRef(),
     resourceFilterOptions: () => ['Car', 'Accommodation', 'Supplies'],
+    resourceFilterPanelWidth: () => this.ownedAssets.assetFilterPanelWidth(),
     resourceFilterCount: type => this.resourceFilterCount(type),
     resourceTypeClass: type => this.ownedAssets.assetTypeClass(type === 'Members' ? 'Car' : type),
     resourceTypeIcon: type => type === 'Members' ? 'groups' : this.ownedAssets.assetTypeIcon(type),
@@ -121,10 +123,10 @@ export class SubEventResourcePopupService {
     trackByCard: (_index, card) => card.id,
     canOpenMap: card => this.canOpenResourceMap(card),
     openMap: (card, event) => this.openResourceMap(card, event),
-    canOpenBadgeDetails: card => card.type === 'Supplies' && !!card.sourceAssetId,
-    openBadgeDetails: (card, event) => this.openSupplyContributionsPopup(card, event),
+    canOpenBadgeDetails: card => this.canOpenResourceBadgeDetails(card),
+    openBadgeDetails: (card, event) => this.openResourceBadgeDetails(card, event),
     occupancyLabel: card => this.occupancyLabel(card),
-    canOpenAssetMembers: () => false,
+    canOpenAssetMembers: card => this.canOpenAssetMembers(card),
     isItemActionMenuOpen: card => this.inlineItemActionMenuRef()?.id === card.id,
     isItemActionMenuOpenUp: card => this.inlineItemActionMenuRef()?.id === card.id && this.inlineItemActionMenuRef()?.openUp === true,
     toggleItemActionMenu: (card, event) => this.toggleItemActionMenu(card, event),
@@ -214,6 +216,14 @@ export class SubEventResourcePopupService {
       }
       this.eventEditorService.clearSubEventResourcePopupRequest();
       this.openFromEventEditorRequest(request);
+    }, { allowSignalWrites: true });
+
+    effect(() => {
+      const sync = this.appCtx.activityMembersSync();
+      if (!sync) {
+        return;
+      }
+      this.handleActivityMembersSync(sync.id);
     }, { allowSignalWrites: true });
   }
 
@@ -426,6 +436,58 @@ export class SubEventResourcePopupService {
       return `${metrics.joined} members`;
     }
     return `${metrics.joined} members · ${metrics.pending} pending`;
+  }
+
+  private canOpenAssetMembers(card: AppTypes.SubEventResourceCard): boolean {
+    return !!card.sourceAssetId && (card.type === 'Car' || card.type === 'Accommodation');
+  }
+
+  private canOpenResourceBadgeDetails(card: AppTypes.SubEventResourceCard): boolean {
+    return !!card.sourceAssetId && (card.type === 'Car' || card.type === 'Accommodation' || card.type === 'Supplies');
+  }
+
+  private openResourceBadgeDetails(card: AppTypes.SubEventResourceCard, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.canOpenResourceBadgeDetails(card)) {
+      return;
+    }
+    if (card.type === 'Car' || card.type === 'Accommodation') {
+      void this.openAssetMembersPopup(card);
+      return;
+    }
+    this.openSupplyContributionsPopup(card, event);
+  }
+
+  private async openAssetMembersPopup(card: AppTypes.SubEventResourceCard): Promise<void> {
+    const context = this.popupContextRef();
+    if (!context || !card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
+      return;
+    }
+    const sourceCard = this.ownedAssets.assetCards.find(item => item.id === card.sourceAssetId && item.type === card.type);
+    if (!sourceCard) {
+      return;
+    }
+    const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, card.type);
+    const ownerUserId = settings[card.sourceAssetId]?.addedByUserId ?? null;
+    const members = this.assetMemberEntries(sourceCard, ownerUserId);
+    const acceptedMembers = members.filter(member => member.status === 'accepted').length;
+    const pendingMembers = members.filter(member => member.status === 'pending').length;
+    const capacityTotal = settings[card.sourceAssetId]?.capacityMax ?? Math.max(0, sourceCard.capacityTotal);
+    void this.activityMembersService.replaceMembersByOwner(
+      { ownerType: 'asset', ownerId: sourceCard.id },
+      members,
+      capacityTotal
+    );
+    this.activitiesContext.requestActivitiesNavigation({
+      type: 'members',
+      ownerId: sourceCard.id,
+      ownerType: 'asset',
+      subtitle: `${sourceCard.title} · ${this.subEventDisplayName(context.subEvent) || 'Sub Event'}`,
+      canManage: ownerUserId === this.activeUser().id,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal
+    });
   }
 
   private supplyPopupTitle(): string {
@@ -994,6 +1056,7 @@ export class SubEventResourcePopupService {
     const type = this.resourceFilterRef();
     this.assignContextRef.set({ subEventId: context.subEvent.id, type });
     this.selectedAssignAssetIdsRef.set([...this.resolveSubEventAssignedAssetIds(context.subEvent.id, type)]);
+    this.ownedAssets.openPopup(type);
     this.assetPopupService.setBasketVisible(true);
   }
 
@@ -1004,6 +1067,7 @@ export class SubEventResourcePopupService {
     this.assignContextRef.set(null);
     this.selectedAssignAssetIdsRef.set([]);
     this.assetPopupService.setBasketVisible(false);
+    this.ownedAssets.closePopup();
   }
 
   private confirmAssignPopup(event?: Event): void {
@@ -1271,6 +1335,124 @@ export class SubEventResourcePopupService {
         resources: sessionContext.resources.map(resource => ({ ...resource }))
       };
     });
+  }
+
+  private handleActivityMembersSync(ownerId: string): void {
+    const normalizedOwnerId = ownerId.trim();
+    if (!normalizedOwnerId) {
+      return;
+    }
+    const asset = this.ownedAssets.assetCards.find(card =>
+      card.id === normalizedOwnerId && (card.type === 'Car' || card.type === 'Accommodation')
+    );
+    if (!asset) {
+      return;
+    }
+    const members = this.activityMembersService.peekMembersByOwner({
+      ownerType: 'asset',
+      ownerId: normalizedOwnerId
+    });
+    const existingById = new Map(asset.requests.map(request => [request.id, request] as const));
+    const existingByUserId = new Map(
+      asset.requests.map(request => [AppUtils.resolveAssetRequestUserId(request, this.users), request] as const)
+    );
+    const existingByName = new Map(asset.requests.map(request => [request.name.toLowerCase(), request] as const));
+    const now = Date.now();
+    const nextRequests: AppTypes.AssetMemberRequest[] = members.map((entry, index) => {
+      const existing =
+        existingById.get(entry.id)
+        ?? existingByUserId.get(entry.userId)
+        ?? existingByName.get(entry.name.toLowerCase())
+        ?? null;
+      const requestId = existing?.id ?? (entry.id.trim() || `asset-member-${now}-${index}`);
+      const note = entry.status !== 'pending'
+        ? (existing?.note ?? 'Accepted for this asset.')
+        : (entry.pendingSource === 'admin'
+          ? 'Waiting for event admin approval.'
+          : 'Waiting for owner approval.');
+      return {
+        id: requestId,
+        userId: entry.userId,
+        name: entry.name,
+        initials: entry.initials,
+        gender: entry.gender,
+        status: entry.status,
+        note
+      };
+    });
+    const currentSignature = JSON.stringify(asset.requests.map(request => ({
+      id: request.id,
+      userId: request.userId ?? '',
+      name: request.name,
+      initials: request.initials,
+      gender: request.gender,
+      status: request.status,
+      note: request.note
+    })));
+    const nextSignature = JSON.stringify(nextRequests.map(request => ({
+      id: request.id,
+      userId: request.userId ?? '',
+      name: request.name,
+      initials: request.initials,
+      gender: request.gender,
+      status: request.status,
+      note: request.note
+    })));
+    if (currentSignature === nextSignature) {
+      return;
+    }
+    this.ownedAssets.assetCards = this.ownedAssets.assetCards.map(card =>
+      card.id === asset.id && card.type === asset.type
+        ? { ...card, requests: nextRequests }
+        : card
+    );
+    this.syncPopupSubEventMetrics();
+  }
+
+  private assetMemberEntries(card: AppTypes.AssetCard, ownerUserId: string | null): AppTypes.ActivityMemberEntry[] {
+    const seedBaseDate = new Date('2026-02-24T12:00:00');
+    return [...card.requests]
+      .map(request => {
+        const requestUserId = AppUtils.resolveAssetRequestUserId(request, this.users);
+        const matchedUser =
+          this.users.find(user => user.id === requestUserId)
+          ?? this.users.find(user => user.name === request.name && user.initials === request.initials)
+          ?? this.users.find(user => user.name === request.name)
+          ?? null;
+        const userId = matchedUser?.id ?? requestUserId;
+        const note = `${request.note ?? ''}`.toLowerCase();
+        const pendingRequiresAdminApproval = request.status === 'pending'
+          && !note.includes('owner approval')
+          && !note.includes('join request');
+        const pendingSource: AppTypes.ActivityPendingSource = request.status === 'pending'
+          ? (pendingRequiresAdminApproval ? 'admin' : 'member')
+          : null;
+        const requestKind: AppTypes.ActivityMemberRequestKind = request.status === 'pending'
+          ? (pendingRequiresAdminApproval ? 'invite' : 'join')
+          : null;
+        const seed = AppDemoGenerators.hashText(`asset-members:${card.id}:${request.id}:${userId}`);
+        const actionAtIso = AppUtils.toIsoDateTime(AppUtils.addDays(seedBaseDate, -((seed % 90) + 1)));
+        return {
+          id: request.id,
+          userId,
+          name: request.name,
+          initials: request.initials,
+          gender: request.gender,
+          city: matchedUser?.city ?? card.city,
+          statusText: request.note,
+          role: ownerUserId && userId === ownerUserId ? ('Manager' as const) : ('Member' as const),
+          status: request.status,
+          pendingSource,
+          requestKind,
+          invitedByActiveUser: userId === this.activeUser().id,
+          metAtIso: actionAtIso,
+          actionAtIso,
+          metWhere: card.title,
+          relevance: 40 + (seed % 61),
+          avatarUrl: matchedUser?.images?.[0] ?? `https://i.pravatar.cc/1200?img=${(seed % 70) + 1}`
+        };
+      })
+      .sort((left, right) => AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso));
   }
 
   private handleOwnedAssetDeleted(cardId: string): void {

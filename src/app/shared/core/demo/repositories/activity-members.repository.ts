@@ -26,6 +26,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   private readonly demoEventsRepository = inject(DemoEventsRepository);
   private lastInitToken = '';
   private demoActivityMemberUsersCache: DemoUser[] | null = null;
+  private readonly ownerCapacityByKey = new Map<string, number>();
 
   constructor() {
     super();
@@ -186,11 +187,13 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     }
     const members = this.readMembersByOwner(normalizedOwner);
     const acceptedMembers = members.filter(member => member.status === 'accepted').length;
+    const ownerKey = this.ownerKey(normalizedOwner);
+    const storedCapacity = this.ownerCapacityByKey.get(ownerKey);
     const capacityTotal = normalizedOwner.ownerType === 'event'
       ? this.resolveEventCapacityTotal(normalizedOwner.ownerId, acceptedMembers)
       : Math.max(
           acceptedMembers,
-          this.parseSampleCapacityLabel(normalizedOwner.ownerId).capacityTotal ?? 0
+          storedCapacity ?? this.parseSampleCapacityLabel(normalizedOwner.ownerId).capacityTotal ?? 0
         );
     return this.buildSummary(normalizedOwner, members, capacityTotal);
   }
@@ -251,6 +254,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       };
     });
 
+    this.ownerCapacityByKey.set(ownerKey, summary.capacityTotal);
     if (normalizedOwner.ownerType === 'event') {
       this.syncSingleEventSummary(normalizedOwner.ownerId, summary, syncUserIds);
     }

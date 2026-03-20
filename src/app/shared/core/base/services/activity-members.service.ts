@@ -17,7 +17,7 @@ import { SessionService } from './session.service';
   providedIn: 'root'
 })
 export class ActivityMembersService {
-  private static readonly OWNER_TYPES: readonly ActivityMemberOwnerType[] = ['event', 'subEvent', 'group'];
+  private static readonly OWNER_TYPES: readonly ActivityMemberOwnerType[] = ['event', 'subEvent', 'group', 'asset'];
   private readonly demoActivityMembersService = inject(DemoActivityMembersService);
   private readonly httpActivityMembersService = inject(HttpActivityMembersService);
   private readonly sessionService = inject(SessionService);
