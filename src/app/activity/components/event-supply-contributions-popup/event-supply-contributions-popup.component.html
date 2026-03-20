@@ -81,11 +81,8 @@
             </div>
             <section class="experience-form-panel subevent-form-panel subevent-group-form-panel">
               <div class="experience-form-grid subevent-group-form-grid">
-                <label class="experience-title-field">
-                  <span class="subevent-supply-bring-field-head">
-                    <span>Items</span>
-                    <span class="subevent-supply-bring-range">Range: {{ dialog.min }} - {{ dialog.max }}</span>
-                  </span>
+                <label class="experience-title-field subevent-supply-bring-field">
+                  <span class="subevent-supply-bring-field-label">Items</span>
                   <input
                     type="number"
                     [min]="dialog.min"
@@ -95,6 +92,7 @@
                     (ngModelChange)="host.onBringQuantityChange($event)"
                     placeholder="0"
                   />
+                  <span class="subevent-supply-bring-range">Range: {{ dialog.min }} - {{ dialog.max }}</span>
                 </label>
               </div>
             </section>
@@ -114,8 +112,8 @@
                   <svg viewBox="0 0 104 48" preserveAspectRatio="none" class="subevent-supply-delete-btn-ring-svg">
                     <defs>
                       <linearGradient id="subevent-supply-delete-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="rgb(235, 94, 94)"></stop>
-                        <stop offset="100%" stop-color="rgb(201, 45, 45)"></stop>
+                        <stop offset="0%" stop-color="rgb(255, 78, 96)"></stop>
+                        <stop offset="100%" stop-color="rgb(181, 16, 38)"></stop>
                       </linearGradient>
                     </defs>
                     <path

@@ -209,22 +209,107 @@
   margin-left: 0;
 }
 
-.event-supply-contributions-popup-shell .subevent-supply-bring-field-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-}
-
 .event-supply-contributions-popup-shell .subevent-supply-bring-overlay .experience-form-popup,
 .event-supply-contributions-popup-shell .subevent-supply-bring-overlay .subevent-group-popup {
   width: min(420px, calc(100% - 2rem));
   max-width: min(420px, calc(100vw - 2rem));
 }
 
+.event-supply-contributions-popup-shell .subevent-group-header {
+  align-items: flex-start;
+}
+
+.event-supply-contributions-popup-shell .subevent-group-header-main {
+  min-width: 0;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.event-supply-contributions-popup-shell .subevent-group-stage-subtitle {
+  margin: 0;
+  color: rgba(35, 57, 88, 0.76);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.24;
+}
+
+.event-supply-contributions-popup-shell .experience-form-header-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.44rem;
+}
+
 .event-supply-contributions-popup-shell .subevent-supply-bring-overlay .experience-form-panel {
+  border: 1px solid rgba(43, 71, 107, 0.2);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fbff 0%, #f4f8ff 100%);
+  padding: 0.74rem;
+  display: grid;
+  gap: 0.78rem;
+  margin: 0;
+  box-sizing: border-box;
   flex: 0 0 auto;
   min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.event-supply-contributions-popup-shell .subevent-supply-bring-overlay .subevent-group-form-panel {
+  background: linear-gradient(180deg, #f1f9ff 0%, #e8f3ff 100%);
+  border-color: rgba(63, 118, 188, 0.28);
+}
+
+.event-supply-contributions-popup-shell .subevent-supply-bring-overlay .experience-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  justify-content: stretch;
+  column-gap: 1rem;
+  row-gap: 0.9rem;
+}
+
+.event-supply-contributions-popup-shell .subevent-supply-bring-overlay .subevent-group-form-grid {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  align-items: start;
+}
+
+.event-supply-contributions-popup-shell .subevent-supply-bring-overlay .subevent-group-form-grid label {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.22rem;
+}
+
+.event-supply-contributions-popup-shell .subevent-supply-bring-field {
+  width: 100%;
+}
+
+.event-supply-contributions-popup-shell .subevent-supply-bring-field-label {
+  color: rgba(26, 52, 84, 0.82);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.event-supply-contributions-popup-shell .subevent-supply-bring-overlay .experience-form-panel input {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid rgba(136, 156, 186, 0.5);
+  border-radius: 10px;
+  background: #fff;
+  color: #1d3556;
+  padding: 0.3rem 0.56rem;
+  box-sizing: border-box;
+  font-size: 0.84rem;
+}
+
+.event-supply-contributions-popup-shell .subevent-supply-bring-overlay .experience-form-panel input:focus {
+  border-color: rgba(52, 103, 182, 0.72);
+  box-shadow: 0 0 0 3px rgba(55, 116, 212, 0.14);
+  outline: none;
 }
 
 .event-supply-contributions-popup-shell .subevent-supply-bring-range {
@@ -335,7 +420,7 @@
 }
 
 .event-supply-contributions-popup-shell .subevent-supply-delete-btn-ring-track {
-  stroke: rgba(190, 62, 62, 0.14);
+  stroke: rgba(193, 34, 56, 0.14);
 }
 
 .event-supply-contributions-popup-shell .subevent-supply-delete-btn-ring-progress {
