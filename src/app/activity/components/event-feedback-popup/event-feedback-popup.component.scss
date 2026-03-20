@@ -443,6 +443,7 @@ app-smart-list.event-feedback-list-surface {
 }
 
 .event-feedback-shell {
+  display: grid;
   height: 100%;
   min-height: 0;
   grid-template-rows: minmax(0, 1fr) auto auto;
@@ -455,6 +456,7 @@ app-smart-list.event-feedback-list-surface {
   background: transparent;
   padding: 0;
   display: grid;
+  flex: 1 1 auto;
   grid-template-rows: auto minmax(0, 1fr);
   gap: 0.46rem;
   min-height: 0;
@@ -504,6 +506,10 @@ app-smart-list.event-feedback-list-surface {
 
 .event-feedback-card-wrap {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
 }
 
 .event-feedback-mobile-counter {
@@ -662,6 +668,9 @@ app-info-card.event-feedback-carousel-info-card {
   border-radius: 11px;
   padding: 0.5rem;
   display: flex;
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: clamp(240px, 40vh, 420px);
   flex-direction: column;
   gap: 0.46rem;
   overflow: hidden;
@@ -760,36 +769,6 @@ app-info-card.event-feedback-carousel-info-card {
   height: 14px;
   font-size: 14px;
   line-height: 14px;
-}
-
-.event-feedback-form-event .event-feedback-option-btn {
-  border-color: rgba(58, 106, 171, 0.28);
-  background: linear-gradient(180deg, #f4f9ff 0%, #e8f2ff 100%);
-  color: #295689;
-}
-
-.event-feedback-form-event .event-feedback-option-btn.is-selected {
-  border-color: rgba(36, 89, 156, 0.5);
-  background: linear-gradient(180deg, #deecff 0%, #d0e2ff 100%);
-  color: #1f4e82;
-  box-shadow: inset 0 0 0 1px rgba(33, 85, 153, 0.18);
-}
-
-.event-feedback-form-attendee .event-feedback-question h5 {
-  color: #7a3755;
-}
-
-.event-feedback-form-attendee .event-feedback-option-btn {
-  border-color: rgba(161, 80, 112, 0.28);
-  background: linear-gradient(180deg, #fff2f7 0%, #ffe7f1 100%);
-  color: #8e3f65;
-}
-
-.event-feedback-form-attendee .event-feedback-option-btn.is-selected {
-  border-color: rgba(161, 80, 112, 0.48);
-  background: linear-gradient(180deg, #ffddea 0%, #ffd0e3 100%);
-  color: #7d2f54;
-  box-shadow: inset 0 0 0 1px rgba(161, 80, 112, 0.2);
 }
 
 .event-feedback-carousel {

@@ -318,7 +318,37 @@ export class EventFeedbackPopupService {
   }
   
   private feedbackSectionFromTag(kind: 'event' | 'attendee', option: string): string {
-    return 'vibe'; // Simplified fallback if not mapped in service
+    const normalized = option.trim().toLowerCase();
+    if (!normalized) {
+      return 'vibe';
+    }
+    if (
+      normalized.includes('quality') ||
+      normalized.includes('planning') ||
+      normalized.includes('resources') ||
+      normalized.includes('fit') ||
+      normalized.includes('risk')
+    ) {
+      return 'category';
+    }
+    if (
+      normalized.includes('consistency') ||
+      normalized.includes('communication') ||
+      normalized.includes('organization') ||
+      normalized.includes('compatibility') ||
+      normalized.includes('trust') ||
+      normalized.includes('neutral')
+    ) {
+      return 'personality';
+    }
+    if (
+      normalized.includes('vibe') ||
+      normalized.includes('reliability') ||
+      normalized.includes('teamwork')
+    ) {
+      return 'vibe';
+    }
+    return kind === 'event' ? 'personality' : 'vibe';
   }
 
   public canSubmitActiveEventFeedback(): boolean {
