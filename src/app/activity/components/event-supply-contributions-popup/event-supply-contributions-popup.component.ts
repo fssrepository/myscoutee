@@ -11,7 +11,8 @@ import {
   type PageResult,
   type SmartListConfig,
   type SmartListItemTemplateContext,
-  type SmartListLoadPage
+  type SmartListLoadPage,
+  type SmartListStateChange
 } from '../../../shared/ui';
 
 interface SupplyBringDialogState {
@@ -73,6 +74,10 @@ export interface EventSupplyContributionsPopupHost {
 })
 export class EventSupplyContributionsPopupComponent implements DoCheck {
   private lastRowsSignature = '';
+  private lastContextKey = '';
+  private lastRowCount = 0;
+  private supplyContributionListReady = false;
+  private supplyContributionListVisibleCount = 0;
 
   @Input({ required: true }) host!: EventSupplyContributionsPopupHost;
 
@@ -83,6 +88,9 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       showProgress: true
     }
   };
+
+  @ViewChild('supplyContributionSmartList')
+  private supplyContributionSmartList?: SmartListComponent<AppTypes.SubEventSupplyContributionRow, SupplyContributionListFilters>;
 
   protected supplyContributionItemTemplateRef?: TemplateRef<
     SmartListItemTemplateContext<AppTypes.SubEventSupplyContributionRow, SupplyContributionListFilters>
@@ -98,7 +106,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   protected readonly supplyContributionSmartListLoadPage: SmartListLoadPage<
     AppTypes.SubEventSupplyContributionRow,
     SupplyContributionListFilters
-  > = (query) => from(this.host.loadRowsPage(query)).pipe(
+  > = query => from(this.host.loadRowsPage(query)).pipe(
     delay(query.filters?.showProgress ? 1500 : 0)
   );
 
@@ -131,23 +139,71 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   ngDoCheck(): void {
     const rows = this.host?.rows?.() ?? [];
     const contextKey = `${this.host?.title?.() ?? ''}:${this.host?.subtitle?.() ?? ''}`;
-    const showProgress = this.lastRowsSignature === '';
     const signature = `${contextKey}:${rows.map(row => [
       row.id,
       row.userId,
       row.quantity,
       row.addedAtIso
     ].join(':')).join('|')}`;
+
+    if (contextKey !== this.lastContextKey) {
+      this.lastContextKey = contextKey;
+      this.lastRowsSignature = signature;
+      this.lastRowCount = rows.length;
+      this.supplyContributionListReady = false;
+      this.supplyContributionListVisibleCount = 0;
+      this.supplyContributionSmartListQuery = {
+        filters: {
+          revision: Date.now(),
+          contextKey,
+          showProgress: true
+        }
+      };
+      return;
+    }
+
     if (signature === this.lastRowsSignature) {
       return;
     }
+
+    const previousRowCount = this.lastRowCount;
     this.lastRowsSignature = signature;
-    this.supplyContributionSmartListQuery = {
-      filters: {
-        revision: Date.now(),
-        contextKey,
-        showProgress
-      }
-    };
+    this.lastRowCount = rows.length;
+    this.syncSupplyContributionVisibleRows(rows, previousRowCount);
+  }
+
+  protected onSupplyContributionSmartListStateChange(
+    change: SmartListStateChange<AppTypes.SubEventSupplyContributionRow, SupplyContributionListFilters>
+  ): void {
+    this.supplyContributionListVisibleCount = change.items.length;
+    this.supplyContributionListReady = !change.initialLoading;
+    if (!this.supplyContributionListReady) {
+      return;
+    }
+    const rows = this.host?.rows?.() ?? [];
+    if (change.total !== rows.length) {
+      this.syncSupplyContributionVisibleRows(rows, change.total);
+    }
+  }
+
+  private syncSupplyContributionVisibleRows(
+    rows: AppTypes.SubEventSupplyContributionRow[],
+    previousRowCount: number
+  ): void {
+    if (!this.supplyContributionListReady || !this.supplyContributionSmartList) {
+      return;
+    }
+
+    const visibleCount = Math.max(this.supplyContributionListVisibleCount, this.supplyContributionSmartList.itemsSnapshot().length);
+    const allRowsWereVisible = visibleCount >= previousRowCount;
+    let nextVisibleCount = Math.min(rows.length, visibleCount);
+
+    if (rows.length > previousRowCount && allRowsWereVisible) {
+      nextVisibleCount = Math.min(rows.length, visibleCount + 1);
+    }
+
+    this.supplyContributionSmartList.replaceVisibleItems(rows.slice(0, nextVisibleCount), {
+      total: rows.length
+    });
   }
 }

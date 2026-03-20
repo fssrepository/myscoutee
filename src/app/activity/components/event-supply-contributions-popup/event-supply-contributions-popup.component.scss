@@ -268,11 +268,11 @@
 .event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-shell {
   position: relative;
   display: inline-flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
   padding: 2px;
   box-sizing: border-box;
   overflow: hidden;
@@ -282,13 +282,11 @@
 .event-supply-contributions-popup-shell .subevent-supply-bring-save-btn {
   position: relative;
   z-index: 1;
-  width: 100%;
-  height: 100%;
-  min-width: 0;
-  min-height: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  border-radius: 50%;
 }
 
 .event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-ring {
@@ -301,22 +299,24 @@
   width: 100%;
   height: 100%;
   display: block;
-  filter: drop-shadow(0 6px 16px rgba(22, 94, 51, 0.16));
+  filter: drop-shadow(0 4px 12px rgba(22, 94, 51, 0.12));
 }
 
 .event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-ring-track,
 .event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-ring-progress {
   fill: none;
-  stroke-width: 4;
+  stroke-width: 3;
 }
 
 .event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-ring-track {
-  stroke: rgba(44, 128, 73, 0.14);
+  stroke: rgba(133, 100, 42, 0.18);
 }
 
 .event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-ring-progress {
   stroke-linecap: round;
   stroke-linejoin: round;
+  transform-origin: 50% 50%;
+  transform: rotate(-90deg);
 }
 
 .event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-ring-progress.is-loading {
@@ -324,12 +324,34 @@
   animation: subevent-supply-delete-ring-progress 3s linear forwards;
 }
 
-.event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-shell.is-loading .subevent-supply-bring-save-btn {
-  border-color: rgba(46, 121, 69, 0.46);
-  background: linear-gradient(180deg, #e6faec 0%, #c9f0d5 100%);
-  color: #1f6f39;
+.event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-ring-progress.is-error {
+  stroke: url(#subevent-supply-bring-save-gradient-error);
+}
+
+.event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-shell.is-loading .subevent-supply-bring-save-btn,
+.event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-shell.is-error .subevent-supply-bring-save-btn {
+  box-shadow: none;
+}
+
+.event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-shell.is-loading .subevent-supply-bring-save-btn,
+.event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-shell.is-loading .subevent-supply-bring-save-btn:hover,
+.event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-shell.is-loading .subevent-supply-bring-save-btn:disabled {
+  border-color: rgba(181, 117, 23, 0.76);
+  background: linear-gradient(180deg, #ffe7bf 0%, #ffd085 100%);
+  color: #8e4f0d;
   opacity: 1;
   cursor: wait;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+
+.event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-shell.is-error .subevent-supply-bring-save-btn,
+.event-supply-contributions-popup-shell .subevent-supply-bring-save-btn-shell.is-error .subevent-supply-bring-save-btn:hover {
+  border-color: rgba(176, 31, 46, 0.82);
+  background: linear-gradient(180deg, #f36a79 0%, #d4374a 100%);
+  color: #fff;
+  opacity: 1;
   box-shadow: none;
   transform: none;
   filter: none;
@@ -523,7 +545,7 @@
 }
 
 .event-supply-contributions-popup-shell .subevent-supply-delete-btn-ring-track {
-  stroke: rgba(193, 34, 56, 0.14);
+  stroke: rgba(133, 100, 42, 0.18);
 }
 
 .event-supply-contributions-popup-shell .subevent-supply-delete-btn-ring-progress {
@@ -536,7 +558,12 @@
   animation: subevent-supply-delete-ring-progress 3s linear forwards;
 }
 
-.event-supply-contributions-popup-shell .subevent-supply-delete-btn-shell.is-loading .subevent-supply-delete-confirm-btn {
+.event-supply-contributions-popup-shell .subevent-supply-delete-btn-ring-progress.is-error {
+  stroke: url(#subevent-supply-delete-gradient-error);
+}
+
+.event-supply-contributions-popup-shell .subevent-supply-delete-btn-shell.is-loading .subevent-supply-delete-confirm-btn,
+.event-supply-contributions-popup-shell .subevent-supply-delete-btn-shell.is-error .subevent-supply-delete-confirm-btn {
   box-shadow: none;
 }
 
@@ -548,10 +575,21 @@
 
 .event-supply-contributions-popup-shell .subevent-supply-delete-btn-shell.is-loading .subevent-supply-delete-confirm-btn,
 .event-supply-contributions-popup-shell .subevent-supply-delete-confirm-btn:disabled {
-  background: #d73838;
-  border-color: #b42a2a;
-  color: rgba(255, 255, 255, 0.88);
+  background: linear-gradient(180deg, #ffe7bf 0%, #ffd085 100%);
+  border-color: rgba(181, 117, 23, 0.76);
+  color: #8e4f0d;
   cursor: wait;
+  box-shadow: none;
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+.event-supply-contributions-popup-shell .subevent-supply-delete-btn-shell.is-error .subevent-supply-delete-confirm-btn,
+.event-supply-contributions-popup-shell .subevent-supply-delete-btn-shell.is-error .subevent-supply-delete-confirm-btn:hover {
+  background: linear-gradient(180deg, #f36a79 0%, #d4374a 100%);
+  border-color: rgba(176, 31, 46, 0.82);
+  color: #fff;
   box-shadow: none;
   opacity: 1;
   transform: none;

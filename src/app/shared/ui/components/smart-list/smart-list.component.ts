@@ -404,6 +404,25 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.cdr.markForCheck();
   }
 
+  public replaceVisibleItems(items: readonly T[], options: { total?: number } = {}): void {
+    if (this.currentViewMode !== 'list') {
+      return;
+    }
+    this.clearLoadingAnimation();
+    this.loading = false;
+    this.initialLoading = false;
+    this.awaitScrollReset = false;
+    this.items = [...items];
+    this.total = Number.isFinite(options.total)
+      ? Math.max(this.items.length, Math.trunc(Number(options.total)))
+      : this.items.length;
+    this.hasMore = this.items.length < this.total;
+    this.syncGroups();
+    this.syncCursorBounds();
+    this.emitState();
+    this.cdr.markForCheck();
+  }
+
   public canMoveCursor(delta: number): boolean {
     const cursor = this.buildCursorState();
     if (!Number.isFinite(delta) || delta === 0) {
