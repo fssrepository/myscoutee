@@ -436,7 +436,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (targetIndex < 0) {
       return false;
     }
-    return targetIndex < cursor.total;
+    return targetIndex <= cursor.total;
   }
 
   public async moveCursor(delta: number): Promise<boolean> {
@@ -453,9 +453,15 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.emitState();
     this.cdr.markForCheck();
 
-    const preloadThreshold = (this.currentViewMode === 'list' && this.resolvedPresentation() === 'fullscreen') ? 1 : 0;
-    while (this.currentViewMode === 'list' && (this.items.length - (normalizedIndex + 1)) <= preloadThreshold && this.hasMore && !this.loading) {
+    while (this.currentViewMode === 'list' && this.items.length <= normalizedIndex && this.hasMore && !this.loading) {
       await this.loadNextPage();
+    }
+
+    if (this.currentViewMode === 'list' && this.resolvedPresentation() === 'fullscreen' && this.hasMore && !this.loading) {
+      const remaining = this.items.length - (normalizedIndex + 1);
+      if (remaining <= 1) {
+        void this.loadNextPage();
+      }
     }
 
     this.syncCursorBounds();
@@ -2030,19 +2036,26 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return Number.isFinite(rawIndex) ? Math.max(0, rawIndex) : null;
   }
 
+  private ratingAdvanceInFlight = false;
+
   private async handleHostedFullscreenRatingSelect(score: number): Promise<void> {
     await this.config.pagination?.onRatingSelect?.(this.cursorItem(), score, this.currentQuery());
     if (!this.shouldUseHostedFullscreenPagination() || !this.canMoveCursor(1)) {
       return;
     }
-    if (this.paginationHelper.animating) {
+    if (this.paginationHelper.animating || this.ratingAdvanceInFlight) {
       return;
     }
-    await this.wait(120);
-    if (!this.shouldUseHostedFullscreenPagination() || this.paginationHelper.animating) {
-      return;
+    this.ratingAdvanceInFlight = true;
+    try {
+      await this.wait(120);
+      if (!this.shouldUseHostedFullscreenPagination() || this.paginationHelper.animating) {
+        return;
+      }
+      await this.advanceHostedFullscreenPagination(1);
+    } finally {
+      this.ratingAdvanceInFlight = false;
     }
-    await this.advanceHostedFullscreenPagination(1);
   }
 
   private async advanceHostedFullscreenPagination(delta: number): Promise<boolean> {
@@ -2071,7 +2084,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   private async ensureHostedFullscreenTargetLoaded(index: number): Promise<boolean> {
     const normalizedIndex = Math.max(0, Math.trunc(index));
-    if (!this.shouldUseHostedFullscreenPagination() || normalizedIndex < this.items.length) {
+    if (!this.shouldUseHostedFullscreenPagination() || normalizedIndex < this.items.length || normalizedIndex === this.total) {
       return true;
     }
     let waitTicks = 0;
@@ -2105,13 +2118,13 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
         item: null
       };
     }
-    const index = Math.max(0, Math.min(this.cursorIndex, total - 1));
+    const index = Math.max(0, Math.min(this.cursorIndex, total));
     return {
       index,
       total,
-      progress: this.clamp((Math.min(index + 1, total)) / total),
+      progress: this.clamp(index / total),
       canPrev: index > 0,
-      canNext: index + 1 < total,
+      canNext: index < total,
       item: index < this.items.length ? (this.items[index] ?? null) : null
     };
   }
@@ -2122,7 +2135,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.cursorIndex = 0;
       return;
     }
-    this.cursorIndex = Math.max(0, Math.min(this.cursorIndex, total - 1));
+    this.cursorIndex = Math.max(0, Math.min(this.cursorIndex, total));
   }
 
   private isVisibleCalendarPageLoading(): boolean {
