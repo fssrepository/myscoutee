@@ -67,21 +67,38 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     if (!normalizedRaterId) {
       return [];
     }
-    const ratesTable = this.memoryDb.read()[USER_RATES_TABLE_NAME];
-    return ratesTable.ids
-      .map(id => ratesTable.byId[id])
-      .filter((record): record is UserRateRecord => Boolean(record))
-      .filter(record => record.source === 'game-card')
-      .flatMap(record => {
+    const state = this.memoryDb.read();
+    const ratesTable = state[USER_RATES_TABLE_NAME];
+    const outboxTable = state[USER_RATES_OUTBOX_TABLE_NAME];
+
+    const ratedUserIds = new Set<string>();
+
+    for (const id of ratesTable.ids) {
+      const record = ratesTable.byId[id];
+      if (record && record.source === 'game-card') {
         if (record.mode === 'pair' && record.ownerUserId?.trim() === normalizedRaterId) {
-          return [record.fromUserId.trim(), record.toUserId.trim()];
+          ratedUserIds.add(record.fromUserId.trim());
+          ratedUserIds.add(record.toUserId.trim());
+        } else if (record.fromUserId === normalizedRaterId) {
+          ratedUserIds.add(record.toUserId.trim());
         }
-        if (record.fromUserId === normalizedRaterId) {
-          return [record.toUserId.trim()];
+      }
+    }
+
+    for (const id of outboxTable.ids) {
+      const outboxRecord = outboxTable.byId[id];
+      if (outboxRecord?.payload && outboxRecord.payload.source === 'game-card' && outboxRecord.status === 'pending') {
+        const payload = outboxRecord.payload;
+        if (payload.mode === 'pair' && payload.ownerUserId?.trim() === normalizedRaterId) {
+          ratedUserIds.add(payload.fromUserId.trim());
+          ratedUserIds.add(payload.toUserId.trim());
+        } else if (payload.fromUserId === normalizedRaterId) {
+          ratedUserIds.add(payload.toUserId.trim());
         }
-        return [];
-      })
-      .filter(id => id.length > 0);
+      }
+    }
+
+    return Array.from(ratedUserIds).filter(id => id.length > 0);
   }
 
   queryActivityRateItemsByUserId(userId: string): RateMenuItem[] {
