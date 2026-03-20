@@ -25,18 +25,38 @@ export class DemoActivityResourcesService {
   }
 
   async replaceSubEventResourceState(
-    state: AppTypes.ActivitySubEventResourceState
+    state: AppTypes.ActivitySubEventResourceState,
+    signal?: AbortSignal
   ): Promise<AppTypes.ActivitySubEventResourceState | null> {
+    await this.waitForRouteDelay(signal);
     return this.repository.replaceSubEventResourceState(state);
   }
 
-  private async waitForRouteDelay(): Promise<void> {
+  private async waitForRouteDelay(signal?: AbortSignal): Promise<void> {
     const additionalDelayMs = resolveAdditionalDelayMsForRoute(DemoActivityResourcesService.ROUTE);
     if (additionalDelayMs <= 0) {
       return;
     }
-    await new Promise<void>(resolve => {
-      setTimeout(() => resolve(), additionalDelayMs);
+    if (signal?.aborted) {
+      throw this.createAbortError();
+    }
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        signal?.removeEventListener('abort', onAbort);
+        resolve();
+      }, additionalDelayMs);
+      const onAbort = () => {
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', onAbort);
+        reject(this.createAbortError());
+      };
+      signal?.addEventListener('abort', onAbort, { once: true });
     });
+  }
+
+  private createAbortError(): Error {
+    const error = new Error('Activity resources request aborted.');
+    error.name = 'AbortError';
+    return error;
   }
 }

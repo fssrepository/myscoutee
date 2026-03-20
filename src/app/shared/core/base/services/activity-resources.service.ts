@@ -53,7 +53,8 @@ export class ActivityResourcesService {
   }
 
   async replaceSubEventResourceState(
-    state: AppTypes.ActivitySubEventResourceState
+    state: AppTypes.ActivitySubEventResourceState,
+    signal?: AbortSignal
   ): Promise<AppTypes.ActivitySubEventResourceState | null> {
     const normalizedState = this.normalizeRef(state.ownerId, state.subEventId, state.assetOwnerUserId);
     if (!normalizedState) {
@@ -64,7 +65,7 @@ export class ActivityResourcesService {
       ownerId: normalizedState.ownerId,
       subEventId: normalizedState.subEventId,
       assetOwnerUserId: normalizedState.assetOwnerUserId
-    });
+    }, signal);
   }
 
   private normalizeRef(

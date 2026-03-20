@@ -24,17 +24,26 @@
 
     <div class="popup-body popup-body-members">
       <div class="assets-member-popup subevent-supply-contributions-popup">
-        <div class="subevent-supply-contribution-list" *ngIf="host.rows().length > 0; else subeventSupplyContributionEmpty">
-          <article class="subevent-supply-contribution-row" *ngFor="let row of host.rows()">
+        <app-smart-list
+          class="subevent-supply-contribution-smart-list"
+          [config]="supplyContributionSmartListConfig"
+          [loadPage]="supplyContributionSmartListLoadPage"
+          [itemTemplate]="supplyContributionItemTemplateRef ?? null"
+          [query]="supplyContributionSmartListQuery"
+        ></app-smart-list>
+
+        <ng-template #supplyContributionItemTemplate let-row>
+          <article class="subevent-supply-contribution-row">
             <span class="chat-members-popup-avatar" [class]="'user-color-' + row.gender">{{ row.initials }}</span>
             <div class="subevent-supply-contribution-meta">
               <p class="subevent-supply-contribution-name">{{ row.name }}, {{ row.age }} · {{ row.city }}</p>
               <p class="subevent-supply-contribution-date">{{ host.addedLabel(row.addedAtIso) }}</p>
             </div>
+            <span class="subevent-supply-contribution-quantity">{{ host.quantityLabel(row.quantity) }}</span>
             <div class="subevent-supply-contribution-actions">
               <button
                 type="button"
-                class="experience-action-btn experience-action-delete subevent-supply-contribution-delete"
+                class="experience-action-btn experience-action-delete subevent-supply-contribution-delete motion-static"
                 [class.is-disabled]="!host.canDelete(row)"
                 [disabled]="!host.canDelete(row)"
                 (click)="host.requestDelete(row, $event)"
@@ -42,15 +51,8 @@
               >
                 <mat-icon>delete</mat-icon>
               </button>
-              <span class="subevent-supply-contribution-quantity">{{ host.quantityLabel(row.quantity) }}</span>
             </div>
           </article>
-        </div>
-        <ng-template #subeventSupplyContributionEmpty>
-          <div class="editor-list-card">
-            <h4>No quantity added yet</h4>
-            <p>Use the + button in the header to add your quantity row.</p>
-          </div>
         </ng-template>
 
         <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-supply-bring-overlay" *ngIf="host.bringDialog() as dialog">
@@ -80,7 +82,10 @@
             <section class="experience-form-panel subevent-form-panel subevent-group-form-panel">
               <div class="experience-form-grid subevent-group-form-grid">
                 <label class="experience-title-field">
-                  <span>Items</span>
+                  <span class="subevent-supply-bring-field-head">
+                    <span>Items</span>
+                    <span class="subevent-supply-bring-range">Range: {{ dialog.min }} - {{ dialog.max }}</span>
+                  </span>
                   <input
                     type="number"
                     [min]="dialog.min"
@@ -91,7 +96,6 @@
                     placeholder="0"
                   />
                 </label>
-                <p class="subevent-supply-bring-range">Range: {{ dialog.min }} - {{ dialog.max }}</p>
               </div>
             </section>
           </div>
@@ -99,12 +103,45 @@
 
         <section class="experience-delete-confirm" *ngIf="host.pendingDelete()">
           <div class="experience-delete-confirm-backdrop" (click)="host.cancelDelete()"></div>
-          <div class="experience-delete-confirm-panel">
+          <div class="experience-delete-confirm-panel" (click)="$event.stopPropagation()">
             <h4>Delete quantity row</h4>
             <p>{{ host.pendingDeleteLabel() }}</p>
+            <p class="subevent-supply-delete-error" *ngIf="host.deleteErrorMessage()">{{ host.deleteErrorMessage() }}</p>
             <div class="popup-actions">
               <button type="button" class="link-btn neutral-btn" (click)="host.cancelDelete()">Cancel</button>
-              <button type="button" class="link-btn experience-delete-btn" (click)="host.confirmDelete()">Delete</button>
+              <span class="subevent-supply-delete-btn-shell" [class.is-loading]="host.isDeletePending()">
+                <span class="subevent-supply-delete-btn-ring" *ngIf="host.isDeletePending()" aria-hidden="true">
+                  <svg viewBox="0 0 104 48" preserveAspectRatio="none" class="subevent-supply-delete-btn-ring-svg">
+                    <defs>
+                      <linearGradient id="subevent-supply-delete-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="rgb(235, 94, 94)"></stop>
+                        <stop offset="100%" stop-color="rgb(201, 45, 45)"></stop>
+                      </linearGradient>
+                    </defs>
+                    <rect class="subevent-supply-delete-btn-ring-track" x="2" y="2" width="100" height="44" rx="14" ry="14"></rect>
+                    <rect
+                      class="subevent-supply-delete-btn-ring-progress is-loading"
+                      x="2"
+                      y="2"
+                      width="100"
+                      height="44"
+                      rx="14"
+                      ry="14"
+                      pathLength="100"
+                      [attr.stroke-dasharray]="host.deleteConfirmRingPerimeter()"
+                      [attr.stroke-dashoffset]="host.deleteConfirmRingPerimeter()"
+                    ></rect>
+                  </svg>
+                </span>
+                <button
+                  type="button"
+                  class="link-btn experience-delete-btn subevent-supply-delete-confirm-btn"
+                  [disabled]="host.isDeletePending()"
+                  (click)="host.confirmDelete()"
+                >
+                  {{ host.isDeletePending() ? 'Deleting...' : 'Delete' }}
+                </button>
+              </span>
             </div>
           </div>
         </section>

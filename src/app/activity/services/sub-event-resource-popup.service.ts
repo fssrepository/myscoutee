@@ -18,6 +18,7 @@ import type {
 import type {
   EventSupplyContributionsPopupHost
 } from '../components/event-supply-contributions-popup/event-supply-contributions-popup.component';
+import type { ListQuery, PageResult } from '../../shared/ui';
 
 interface ResourcePopupContext {
   origin: 'chat' | 'eventEditor';
@@ -53,6 +54,15 @@ interface SupplyContributionPopupState {
   title: string;
 }
 
+interface PendingSupplyDeleteState {
+  subEventId: string;
+  assetId: string;
+  entryId: string;
+  label: string;
+  busy: boolean;
+  error: string | null;
+}
+
 interface SupplyBringDialogState {
   subEventId: string;
   cardId: string;
@@ -83,13 +93,16 @@ export class SubEventResourcePopupService {
   private readonly routeEditorRef = signal<RouteEditorState | null>(null);
   private readonly supplyPopupRef = signal<SupplyContributionPopupState | null>(null);
   private readonly bringDialogRef = signal<SupplyBringDialogState | null>(null);
-  private readonly pendingSupplyDeleteRef = signal<{ subEventId: string; assetId: string; entryId: string; label: string } | null>(null);
+  private readonly pendingSupplyDeleteRef = signal<PendingSupplyDeleteState | null>(null);
   private readonly assignContextRef = signal<{ subEventId: string; type: AppTypes.AssetType } | null>(null);
   private readonly selectedAssignAssetIdsRef = signal<string[]>([]);
+  private readonly deleteConfirmRingPerimeter = 100;
 
   private readonly assignedAssetIdsByKey: Record<string, string[]> = {};
   private readonly assignedAssetSettingsByKey: Record<string, Record<string, AppTypes.SubEventAssignedAssetSettings>> = {};
   private readonly supplyContributionEntriesByAssignmentKey: Record<string, AppTypes.SubEventSupplyContributionEntry[]> = {};
+  private pendingSupplyDeleteAbortController: AbortController | null = null;
+  private pendingSupplyDeleteRequestVersion = 0;
 
   readonly resourceHost = computed<EventResourcePopupHost | null>(() =>
     this.popupContextRef() && !this.assignContextRef() ? this.eventResourcePopupHost : null
@@ -159,6 +172,7 @@ export class SubEventResourcePopupService {
     subtitle: () => this.popupSubtitle(),
     summary: () => this.supplyContributionTotalLabel(),
     rows: () => this.supplyContributionRows(),
+    loadRowsPage: query => this.loadSupplyContributionRowsPage(query),
     bringDialog: () => this.bringDialogRef(),
     pendingDelete: () => this.pendingSupplyDeleteRef(),
     close: () => this.closeSupplyContributionsPopup(),
@@ -171,8 +185,11 @@ export class SubEventResourcePopupService {
     canSubmitBringDialog: () => this.canSubmitBringDialog(),
     onBringQuantityChange: value => this.onBringQuantityChange(value),
     confirmBringDialog: event => this.confirmBringDialog(event),
-    cancelDelete: () => this.pendingSupplyDeleteRef.set(null),
+    cancelDelete: () => this.cancelDeleteSupplyContribution(),
     pendingDeleteLabel: () => this.pendingDeleteLabel(),
+    deleteConfirmRingPerimeter: () => this.deleteConfirmRingPerimeter,
+    isDeletePending: () => this.pendingSupplyDeleteRef()?.busy === true,
+    deleteErrorMessage: () => this.pendingSupplyDeleteRef()?.error?.trim() ?? '',
     confirmDelete: () => this.confirmDeleteSupplyContribution()
   };
 
@@ -352,16 +369,26 @@ export class SubEventResourcePopupService {
   }
 
   private persistPopupResourceState(context: ResourcePopupContext | null = this.popupContextRef()): void {
-    if (!context) {
+    const nextState = this.buildPopupResourceState(context);
+    if (!nextState) {
       return;
+    }
+    void this.activityResourcesService.replaceSubEventResourceState(nextState);
+  }
+
+  private buildPopupResourceState(
+    context: ResourcePopupContext | null = this.popupContextRef()
+  ): AppTypes.ActivitySubEventResourceState | null {
+    if (!context) {
+      return null;
     }
     const ownerId = context.ownerId.trim();
     const subEventId = context.subEvent.id.trim();
     const assetOwnerUserId = this.activeUser().id;
     if (!ownerId || !subEventId || !assetOwnerUserId) {
-      return;
+      return null;
     }
-    void this.activityResourcesService.replaceSubEventResourceState({
+    return {
       ownerId,
       subEventId,
       assetOwnerUserId,
@@ -381,10 +408,11 @@ export class SubEventResourcePopupService {
           this.subEventSupplyContributionEntries(subEventId, assetId).map(entry => ({ ...entry }))
         ])
       )
-    });
+    };
   }
 
   private closeResourcePopup(): void {
+    this.abortPendingSupplyDeleteRequest();
     this.popupContextRef.set(null);
     this.inlineItemActionMenuRef.set(null);
     this.capacityEditorRef.set(null);
@@ -494,7 +522,32 @@ export class SubEventResourcePopupService {
     if (!context) {
       return [];
     }
-    return this.subEventSupplyContributionEntries(context.subEventId, context.assetId)
+    return this.buildSupplyContributionRows(this.subEventSupplyContributionEntries(context.subEventId, context.assetId));
+  }
+
+  private async loadSupplyContributionRowsPage(
+    query: ListQuery<{ revision?: number; contextKey?: string; showProgress?: boolean }>
+  ): Promise<PageResult<AppTypes.SubEventSupplyContributionRow>> {
+    const rows = this.supplyContributionRows();
+    if (rows.length === 0 && !this.supplyPopupRef()) {
+      return {
+        items: [],
+        total: 0
+      };
+    }
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
+    const start = page * pageSize;
+    return {
+      items: rows.slice(start, start + pageSize),
+      total: rows.length
+    };
+  }
+
+  private buildSupplyContributionRows(
+    entries: readonly AppTypes.SubEventSupplyContributionEntry[]
+  ): AppTypes.SubEventSupplyContributionRow[] {
+    return entries
       .map(entry => {
         const user = this.userById.get(entry.userId) ?? null;
         return {
@@ -528,6 +581,7 @@ export class SubEventResourcePopupService {
   }
 
   private closeSupplyContributionsPopup(): void {
+    this.abortPendingSupplyDeleteRequest();
     this.supplyPopupRef.set(null);
     this.pendingSupplyDeleteRef.set(null);
     this.bringDialogRef.set(null);
@@ -604,20 +658,83 @@ export class SubEventResourcePopupService {
       subEventId: context.subEventId,
       assetId: context.assetId,
       entryId: row.id,
-      label: `${row.name} · ${row.quantity}`
+      label: `${row.name} · ${row.quantity}`,
+      busy: false,
+      error: null
     });
   }
 
   private confirmDeleteSupplyContribution(): void {
     const pending = this.pendingSupplyDeleteRef();
-    if (!pending) {
+    if (!pending || pending.busy) {
       return;
     }
-    const key = this.subEventSupplyAssignmentKey(pending.subEventId, pending.assetId);
-    this.supplyContributionEntriesByAssignmentKey[key] = (this.supplyContributionEntriesByAssignmentKey[key] ?? [])
-      .filter(entry => entry.id !== pending.entryId);
+    const nextState = this.buildPopupResourceState();
+    if (!nextState) {
+      return;
+    }
+
+    const currentEntries = nextState.supplyContributionEntriesByAssetId[pending.assetId] ?? [];
+    nextState.supplyContributionEntriesByAssetId = {
+      ...nextState.supplyContributionEntriesByAssetId,
+      [pending.assetId]: currentEntries.filter(entry => entry.id !== pending.entryId)
+    };
+
+    const requestVersion = ++this.pendingSupplyDeleteRequestVersion;
+    const abortController = new AbortController();
+    this.pendingSupplyDeleteAbortController = abortController;
+    this.pendingSupplyDeleteRef.set({
+      ...pending,
+      busy: true,
+      error: null
+    });
+
+    void this.activityResourcesService.replaceSubEventResourceState(nextState, abortController.signal)
+      .then(savedState => {
+        if (this.pendingSupplyDeleteAbortController === abortController) {
+          this.pendingSupplyDeleteAbortController = null;
+        }
+        if (abortController.signal.aborted || requestVersion !== this.pendingSupplyDeleteRequestVersion) {
+          return;
+        }
+        const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
+        this.applyPersistedPopupState(resolvedState);
+        this.pendingSupplyDeleteRef.set(null);
+        this.syncPopupSubEventMetrics(false);
+      })
+      .catch(error => {
+        if (this.pendingSupplyDeleteAbortController === abortController) {
+          this.pendingSupplyDeleteAbortController = null;
+        }
+        if (abortController.signal.aborted || this.isAbortError(error) || requestVersion !== this.pendingSupplyDeleteRequestVersion) {
+          return;
+        }
+        const currentPending = this.pendingSupplyDeleteRef();
+        if (!currentPending || currentPending.entryId !== pending.entryId) {
+          return;
+        }
+        this.pendingSupplyDeleteRef.set({
+          ...currentPending,
+          busy: false,
+          error: 'Unable to delete quantity row.'
+        });
+      });
+  }
+
+  private cancelDeleteSupplyContribution(): void {
+    this.abortPendingSupplyDeleteRequest();
     this.pendingSupplyDeleteRef.set(null);
-    this.syncPopupSubEventMetrics();
+  }
+
+  private abortPendingSupplyDeleteRequest(): void {
+    this.pendingSupplyDeleteRequestVersion += 1;
+    const controller = this.pendingSupplyDeleteAbortController;
+    this.pendingSupplyDeleteAbortController = null;
+    controller?.abort();
+  }
+
+  private isAbortError(error: unknown): boolean {
+    return !!error && typeof error === 'object' && 'name' in error && (error as { name?: string }).name === 'AbortError';
   }
 
   private pendingDeleteLabel(): string {
@@ -1266,7 +1383,7 @@ export class SubEventResourcePopupService {
     };
   }
 
-  private syncPopupSubEventMetrics(): void {
+  private syncPopupSubEventMetrics(persist = true): void {
     const context = this.popupContextRef();
     if (!context) {
       return;
@@ -1291,10 +1408,12 @@ export class SubEventResourcePopupService {
       ...context,
       subEvent: nextSubEvent
     });
-    this.persistPopupResourceState({
-      ...context,
-      subEvent: nextSubEvent
-    });
+    if (persist) {
+      this.persistPopupResourceState({
+        ...context,
+        subEvent: nextSubEvent
+      });
+    }
     this.refreshEventChatSessionResourceContext(nextSubEvent);
   }
 

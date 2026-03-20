@@ -22,8 +22,9 @@ export class HttpActivityResourcesService {
   }
 
   async replaceSubEventResourceState(
-    state: AppTypes.ActivitySubEventResourceState
+    state: AppTypes.ActivitySubEventResourceState,
+    signal?: AbortSignal
   ): Promise<AppTypes.ActivitySubEventResourceState | null> {
-    return this.repository.replaceSubEventResourceState(state);
+    return this.repository.replaceSubEventResourceState(state, signal);
   }
 }

@@ -1,5 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import type { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import { ActivityResourceBuilder } from '../../base/builders';
@@ -52,7 +53,8 @@ export class HttpActivityResourcesRepository {
   }
 
   async replaceSubEventResourceState(
-    state: AppTypes.ActivitySubEventResourceState
+    state: AppTypes.ActivitySubEventResourceState,
+    signal?: AbortSignal
   ): Promise<AppTypes.ActivitySubEventResourceState | null> {
     const normalizedState = ActivityResourceBuilder.normalizeState(state, state);
     if (!normalizedState) {
@@ -60,18 +62,61 @@ export class HttpActivityResourcesRepository {
     }
     this.cachedStateByRecordId[ActivityResourceBuilder.recordId(normalizedState)] = normalizedState;
     try {
-      const response = await this.http
+      const response = await this.requestWithAbort(
+        this.http
         .post<AppTypes.ActivitySubEventResourceState | null>(
           `${this.apiBaseUrl}/activities/events/subevent-resources/replace`,
           normalizedState
-        )
-        .toPromise();
+        ),
+        signal
+      );
       const savedState = ActivityResourceBuilder.normalizeState(response, normalizedState) ?? normalizedState;
       this.cachedStateByRecordId[ActivityResourceBuilder.recordId(savedState)] = savedState;
       return ActivityResourceBuilder.cloneState(savedState);
     } catch {
+      if (signal?.aborted) {
+        throw this.createAbortError();
+      }
       return ActivityResourceBuilder.cloneState(normalizedState);
     }
+  }
+
+  private createAbortError(): Error {
+    const error = new Error('Activity resources request aborted.');
+    error.name = 'AbortError';
+    return error;
+  }
+
+  private requestWithAbort<T>(request$: Observable<T>, signal?: AbortSignal): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(this.createAbortError());
+        return;
+      }
+
+      const subscription = request$.subscribe({
+        next: value => {
+          cleanup();
+          resolve(value);
+        },
+        error: error => {
+          cleanup();
+          reject(error);
+        }
+      });
+
+      const onAbort = () => {
+        subscription.unsubscribe();
+        cleanup();
+        reject(this.createAbortError());
+      };
+
+      const cleanup = () => {
+        signal?.removeEventListener('abort', onAbort);
+      };
+
+      signal?.addEventListener('abort', onAbort, { once: true });
+    });
   }
 
   protected normalizeRef(
