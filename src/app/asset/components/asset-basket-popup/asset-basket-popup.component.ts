@@ -3,6 +3,7 @@ import { Component, Input } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
+import { LazyBgImageDirective } from '../../../shared/ui';
 import type { AssetPopupHost } from '../../asset-popup.host';
 
 @Component({
@@ -11,7 +12,8 @@ import type { AssetPopupHost } from '../../asset-popup.host';
   imports: [
     CommonModule,
     MatButtonModule,
-    MatIconModule
+    MatIconModule,
+    LazyBgImageDirective
   ],
   templateUrl: './asset-basket-popup.component.html',
   styleUrls: ['./asset-basket-popup.component.scss']

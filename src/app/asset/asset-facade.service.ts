@@ -113,11 +113,7 @@ export class AssetFacadeService {
 
   ownedAssetInfoCard(
     card: AppTypes.AssetCard,
-    options: {
-      groupLabel?: string | null;
-      selected?: boolean;
-      selectionMode?: boolean;
-    } = {}
+    options: { groupLabel?: string | null } = {}
   ): InfoCardData {
     return {
       rowId: `asset:${card.id}`,
@@ -130,22 +126,13 @@ export class AssetFacadeService {
         icon: this.ownedAssetTypeIcon(card.type)
       },
       mediaStart: this.ownedAssetMediaStart(card),
-      mediaEnd: options.selectionMode
-        ? {
-            variant: 'badge',
-            tone: options.selected ? 'selected' : 'default',
-            icon: options.selected ? 'check' : 'add',
-            interactive: true,
-            ariaLabel: options.selected ? 'Selected' : 'Select asset',
-            selected: options.selected
-          }
-        : {
-            variant: 'avatar',
-            tone: 'default',
-            label: this.ownedAssetCapacityLabel(card),
-            interactive: false,
-            ariaLabel: null
-          },
+      mediaEnd: {
+        variant: 'avatar',
+        tone: 'default',
+        label: this.ownedAssetCapacityLabel(card),
+        interactive: false,
+        ariaLabel: null
+      },
       menuActions: this.ownedAssetMenuActions(card),
       clickable: false
     };
