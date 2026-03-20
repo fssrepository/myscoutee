@@ -277,6 +277,20 @@
   display: flex;
 }
 
+.home-smart-list {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+:host ::ng-deep .home-smart-list .smart-list__stage {
+  top: 0;
+}
+
+:host ::ng-deep .home-smart-list .smart-list__fullscreen-surface {
+  padding-top: 0;
+}
+
 .game-card-main {
   border: 0;
   border-radius: 14px;

@@ -137,6 +137,27 @@
   background: rgba(36, 74, 127, 0.66);
 }
 
+.shared-card-status-badge {
+  position: absolute;
+  top: 0.64rem;
+  right: 0.56rem;
+  z-index: 5;
+  max-width: calc(100% - 1.24rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 225, 182, 0.56);
+  background: rgba(8, 34, 18, 0.74);
+  color: #e9ffef;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  padding: 0.17rem 0.5rem;
+  pointer-events: none;
+}
+
 .activities-rate-pair-inline-overlay,
 .activities-rate-profile-overlay {
   position: absolute;

@@ -53,6 +53,9 @@
       class="activities-rate-profile-layer activities-rate-profile-layer-active"
       [appLazyBgImage]="currentSlide()?.imageUrl ?? ''"
     >
+      <span class="shared-card-status-badge" *ngIf="card?.statusBadgeLabel as statusBadge">
+        {{ statusBadge }}
+      </span>
       <div class="activities-rate-profile-overlay" *ngIf="hasOverlay(currentSlide())">
         <p class="activities-rate-profile-line activities-rate-profile-line-primary">{{ currentSlide()?.primaryLine }}</p>
         <p class="activities-rate-profile-line activities-rate-profile-line-secondary">{{ currentSlide()?.secondaryLine }}</p>

@@ -67,6 +67,9 @@
 
         <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="currentSlide(slot)?.imageUrl ?? ''">
           <span class="activities-rate-pair-inline-label">{{ slot.label }}</span>
+          <span class="shared-card-status-badge" *ngIf="slot.statusBadgeLabel as statusBadge">
+            {{ statusBadge }}
+          </span>
           <div class="activities-rate-pair-inline-overlay">
             <p class="activities-rate-profile-line activities-rate-profile-line-primary">{{ currentSlide(slot)?.primaryLine }}</p>
             <p class="activities-rate-profile-line activities-rate-profile-line-secondary">{{ currentSlide(slot)?.secondaryLine }}</p>

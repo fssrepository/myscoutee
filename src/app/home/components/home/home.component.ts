@@ -1,10 +1,25 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, OnDestroy, effect } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, OnDestroy, ViewChild, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
 import { MatSliderModule } from '@angular/material/slider';
+import { from } from 'rxjs';
 import { ActivitiesDbContextService } from '../../../activity/services/activities-db-context.service';
-import { HeaderProgressBarComponent, RatingStarBarComponent, type HeaderProgressBarConfig, type RatingStarBarConfig } from '../../../shared/ui';
+import {
+  HeaderProgressBarComponent,
+  PairCardComponent,
+  SingleCardComponent,
+  SmartListComponent,
+  type HeaderProgressBarConfig,
+  type ListQuery,
+  type PageResult,
+  type PairCardData,
+  type RatingStarBarConfig,
+  type SingleCardData,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  type SmartListStateChange
+} from '../../../shared/ui';
 import { DemoUser, PROFILE_DETAILS } from '../../../shared/demo-data';
 import {
   AppContext,
@@ -95,6 +110,26 @@ interface PairModeRoundState {
   man: DemoUser | null;
 }
 
+interface HomeSmartListFilters {
+  activeUserId: string;
+  mode: 'single' | 'pair';
+  filterKey: string;
+}
+
+interface HomeSingleSmartListRow {
+  id: string;
+  mode: 'single';
+  candidate: DemoUser;
+}
+
+interface HomePairSmartListRow {
+  id: string;
+  mode: 'pair';
+  round: PairModeRoundState;
+}
+
+type HomeSmartListRow = HomeSingleSmartListRow | HomePairSmartListRow;
+
 const PUBLIC_PROFILE_DETAIL_LABELS = new Set(
   PROFILE_DETAILS.flatMap(group =>
     group.rows
@@ -107,7 +142,16 @@ const PUBLIC_PROFILE_DETAIL_LABELS = new Set(
   selector: 'app-home',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, MatIconModule, FormsModule, MatSliderModule, HeaderProgressBarComponent, RatingStarBarComponent],
+  imports: [
+    CommonModule,
+    MatIconModule,
+    FormsModule,
+    MatSliderModule,
+    HeaderProgressBarComponent,
+    SmartListComponent,
+    SingleCardComponent,
+    PairCardComponent
+  ],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss']
 })
@@ -428,6 +472,27 @@ export class HomeComponent implements OnDestroy {
   private awaitingUserBootstrap = false;
   private awaitingUserByIdLoadingSeen = false;
   private lastHandledActiveUserId = '';
+
+  @ViewChild('homeSmartList')
+  private homeSmartList?: SmartListComponent<HomeSmartListRow, HomeSmartListFilters>;
+
+  protected homeSmartListQuery: Partial<ListQuery<HomeSmartListFilters>> = {};
+  protected readonly homeSmartListConfig: SmartListConfig<HomeSmartListRow, HomeSmartListFilters> = {
+    pageSize: HomeComponent.GAME_STACK_PAGE_SIZE_SINGLE,
+    presentation: 'fullscreen',
+    trackBy: (_index, row) => row.id,
+    emptyLabel: () => this.noCandidateTitle,
+    emptyDescription: () => this.noCandidateDescription,
+    pagination: {
+      mode: 'rating-stars',
+      ratingBarConfig: row => row ? this.gameRatingBarConfig : null,
+      ratingBarValue: () => this.selectedRating,
+      onRatingSelect: (row, score) => this.onHomeSmartListRatingSelect(row, score)
+    }
+  };
+  protected readonly homeSmartListLoadPage: SmartListLoadPage<HomeSmartListRow, HomeSmartListFilters>
+    = query => from(this.loadHomeSmartListPage(query));
+
   constructor(
     private readonly cdr: ChangeDetectorRef,
     private readonly activitiesContext: ActivitiesDbContextService,
@@ -441,10 +506,7 @@ export class HomeComponent implements OnDestroy {
     this.gameFilter = this.cloneFilter(initialFilter);
     this.filterDraft = this.cloneFilter(initialFilter);
     this.refreshFilterLanguageSuggestionPool();
-    this.resetGameStackPaginationState();
-    this.preloadGameImageWindow();
-    this.maybeStartGameStackPaginationLoad();
-    this.beginCandidateImageLoadingForCurrentSelection(true);
+    this.syncHomeSmartListQuery();
     const activeUserIdSignal = this.appCtx.activeUserId;
     const userByIdLoadState = this.appCtx.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
     const userGameCardsLoadState = this.appCtx.selectLoadingState(USER_GAME_CARDS_LOAD_CONTEXT_KEY);
@@ -866,6 +928,58 @@ export class HomeComponent implements OnDestroy {
     return this.filterSelector === 'interests' || this.filterSelector === 'values';
   }
 
+  protected homeSingleCard(
+    row: HomeSmartListRow | null,
+    options?: {
+      presentation?: SingleCardData['presentation'];
+      state?: SingleCardData['state'];
+    }
+  ): SingleCardData {
+    const candidate = row?.mode === 'single' ? row.candidate : null;
+    return {
+      rowId: row?.id ?? 'home-single-empty',
+      slides: this.homeCandidateSlides(candidate),
+      statusBadgeLabel: this.candidateActivityBadge(candidate),
+      presentation: options?.presentation ?? 'fullscreen',
+      state: options?.state ?? 'default'
+    };
+  }
+
+  protected homePairCard(
+    row: HomeSmartListRow | null,
+    options?: {
+      presentation?: PairCardData['presentation'];
+      state?: PairCardData['state'];
+    }
+  ): PairCardData {
+    const round = row?.mode === 'pair' ? row.round : null;
+    const presentation = options?.presentation ?? 'fullscreen';
+    return {
+      rowId: row?.id ?? 'home-pair-empty',
+      slots: [
+        this.homePairCardSlot('woman', round?.woman ?? null),
+        this.homePairCardSlot('man', round?.man ?? null)
+      ],
+      presentation,
+      state: options?.state ?? 'default',
+      split: presentation === 'fullscreen'
+        ? { enabled: true }
+        : null
+    };
+  }
+
+  protected onHomeSmartListStateChange(change: SmartListStateChange<HomeSmartListRow, HomeSmartListFilters>): void {
+    const cursorChanged = change.cursorIndex !== this.cardIndex;
+    this.cardIndex = change.cursorIndex;
+    this.gameStackCardsLoaded = change.cursorTotal;
+    this.gameStackHeaderProgressLoading = change.loading || change.initialLoading;
+    this.gameStackHeaderLoadingProgress = change.loadingProgress;
+    this.gameStackHeaderLoadingOverdue = change.loadingOverdue;
+    if (cursorChanged) {
+      this.clearPendingRatingAdvanceTimer();
+    }
+  }
+
   protected setRating(value: number): void {
     this.stopPairModeSplitDrag();
     if (this.ratingAdvanceTimer) {
@@ -919,6 +1033,7 @@ export class HomeComponent implements OnDestroy {
     this.cardIndex = 0;
     this.resetCandidateImageState();
     this.resetGameStackPaginationState(false);
+    this.syncHomeSmartListQuery();
     this.gameInitialCardsLoadPending = true;
     void this.reloadServiceCardStack();
   }
@@ -955,6 +1070,7 @@ export class HomeComponent implements OnDestroy {
     this.cardIndex = 0;
     this.resetCandidateImageState();
     this.resetGameStackPaginationState(false);
+    this.syncHomeSmartListQuery();
     this.gameInitialCardsLoadPending = true;
     this.filterSelector = null;
     this.localPopup = null;
@@ -1985,6 +2101,7 @@ export class HomeComponent implements OnDestroy {
     this.cardIndex = 0;
     this.resetCandidateImageState();
     this.resetGameStackPaginationState(false);
+    this.syncHomeSmartListQuery();
     this.gameInitialCardsLoadPending = true;
     this.awaitingUserBootstrap = true;
     this.awaitingUserByIdLoadingSeen = false;
@@ -2038,8 +2155,7 @@ export class HomeComponent implements OnDestroy {
         return;
       }
       this.resetGameStackPaginationState(true);
-      this.preloadGameImageWindow();
-      this.beginCandidateImageLoadingForCurrentSelection(true);
+      this.homeSmartList?.reload();
     } finally {
       this.gameInitialCardsLoadPending = false;
       this.cdr.markForCheck();
@@ -2119,6 +2235,131 @@ export class HomeComponent implements OnDestroy {
 
   private clamp(value: number, min: number, max: number): number {
     return Math.min(max, Math.max(min, value));
+  }
+
+  private syncHomeSmartListQuery(): void {
+    this.homeSmartListQuery = {
+      filters: {
+        activeUserId: this.activeUserId,
+        mode: this.isPairMode ? 'pair' : 'single',
+        filterKey: JSON.stringify(this.gameFilter)
+      }
+    };
+  }
+
+  private async loadHomeSmartListPage(
+    query: ListQuery<HomeSmartListFilters>
+  ): Promise<PageResult<HomeSmartListRow>> {
+    await this.ensureHomeSmartListRowsAvailable(query);
+    const rows = this.homeSmartListRows();
+    const pageSize = Number.isFinite(query.pageSize)
+      ? Math.max(1, Math.trunc(Number(query.pageSize)))
+      : this.gameStackPageSizeForCurrentMode();
+    const startIndex = Math.max(0, query.page) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const total = this.totalRoundsForCurrentMode();
+    return {
+      items: rows.slice(startIndex, endIndex),
+      total,
+      nextCursor: endIndex < total ? String(endIndex) : null
+    };
+  }
+
+  private async ensureHomeSmartListRowsAvailable(query: ListQuery<HomeSmartListFilters>): Promise<void> {
+    if (this.isPairMode || !this.gameService.shouldUseUserGameCardsStack(this.activeUserId)) {
+      return;
+    }
+    const pageSize = Number.isFinite(query.pageSize)
+      ? Math.max(1, Math.trunc(Number(query.pageSize)))
+      : this.gameStackPageSizeForCurrentMode();
+    const requiredCount = (Math.max(0, query.page) + 1) * pageSize;
+    while (this.candidatePool.length < requiredCount) {
+      const snapshot = this.gameService.getUserGameCardsStackSnapshot(this.activeUserId);
+      if (snapshot.requestInFlight || snapshot.nextCursor === null) {
+        return;
+      }
+      await this.gameService.loadNextUserGameCardsStackPage(
+        this.activeUserId,
+        this.gameFilter,
+        this.gameStackPageSizeForCurrentMode()
+      );
+    }
+  }
+
+  private homeSmartListRows(): HomeSmartListRow[] {
+    if (this.isPairMode) {
+      return this.pairModeRounds().map((round, index) => ({
+        id: `pair:${round.woman?.id ?? 'none'}:${round.man?.id ?? 'none'}:${index}`,
+        mode: 'pair',
+        round
+      }));
+    }
+    return this.candidatePool.map(candidate => ({
+      id: `single:${candidate.id}`,
+      mode: 'single',
+      candidate
+    }));
+  }
+
+  private async onHomeSmartListRatingSelect(row: HomeSmartListRow | null, score: number): Promise<void> {
+    if (!row || this.ratingAdvanceTimer) {
+      return;
+    }
+    if (row.mode === 'pair') {
+      const woman = row.round.woman;
+      const man = row.round.man;
+      if (!woman || !man) {
+        return;
+      }
+      this.gameService.recordUserGameCardPairRating(this.activeUserId, woman.id, man.id, score);
+    } else {
+      this.gameService.recordUserGameCardRating(this.activeUserId, row.candidate.id, score, 'single');
+    }
+    const ratedRowId = row.id;
+    this.selectedRating = score;
+    this.triggerRatingBarBlink();
+    this.ratingAdvanceTimer = setTimeout(() => {
+      this.ratingAdvanceTimer = null;
+      if (this.homeSmartList?.cursorItem()?.id === ratedRowId) {
+        this.selectedRating = 0;
+        this.cdr.markForCheck();
+      }
+    }, HomeComponent.GAME_RATING_CONFIRMATION_MS + 24);
+  }
+
+  private homeCandidateSlides(candidate: DemoUser | null): SingleCardData['slides'] {
+    if (!candidate) {
+      return [{
+        imageUrl: '',
+        primaryLine: 'No card available',
+        secondaryLine: 'Adjust filters to load more profiles',
+        placeholderLabel: '∅'
+      }];
+    }
+    const overlays = this.gameCardOverlayCards(candidate);
+    const initials = this.initialsForCandidate(candidate);
+    return this.imageStackForCandidate(candidate).map((imageUrl, index) => {
+      const overlay = overlays[index] ?? overlays[0] ?? null;
+      return {
+        imageUrl,
+        primaryLine: overlay?.primary ?? `${candidate.name}, ${candidate.age}`,
+        secondaryLine: overlay?.secondary ?? candidate.city,
+        placeholderLabel: initials
+      };
+    });
+  }
+
+  private homePairCardSlot(
+    gender: DemoUser['gender'],
+    candidate: DemoUser | null
+  ): PairCardData['slots'][number] {
+    return {
+      key: gender,
+      label: gender === 'woman' ? 'Woman' : 'Man',
+      tone: gender,
+      slides: this.homeCandidateSlides(candidate),
+      statusBadgeLabel: this.candidateActivityBadge(candidate)
+    };
   }
 
   private resetCandidateImageState(): void {

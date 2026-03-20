@@ -67,6 +67,7 @@ export interface PairCardSlot {
   label: string;
   tone?: 'woman' | 'man' | null;
   slides: readonly CardImageSlide[];
+  statusBadgeLabel?: string | null;
   collapsed?: boolean;
 }
 
@@ -74,6 +75,7 @@ export interface SingleCardData {
   rowId: string;
   groupLabel?: string | null;
   slides: readonly CardImageSlide[];
+  statusBadgeLabel?: string | null;
   stackClasses?: readonly string[];
   badge?: CardBadgeConfig | null;
   presentation?: CardPresentation;
