@@ -634,7 +634,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get isAwaitingMoreGameCards(): boolean {
-    return this.gameStackHeaderProgressLoading;
+    return this.gameStackHeaderProgressLoading || this.gameStackPaginating;
   }
 
   protected get gameStackHeaderProgress(): number {
@@ -740,7 +740,7 @@ export class HomeComponent implements OnDestroy {
   protected onHomeSmartListStateChange(change: SmartListStateChange<HomeSmartListRow, HomeSmartListFilters>): void {
     const cursorChanged = change.cursorIndex !== this.cardIndex;
     this.cardIndex = change.cursorIndex;
-    this.gameStackCardsLoaded = change.cursorTotal;
+    this.gameStackCardsLoaded = change.items.length;
     const shouldTrackSmartListLoading = this.gameInitialCardsLoadPending === false;
     const smartListLoading = shouldTrackSmartListLoading && (change.loading || change.initialLoading);
     if (smartListLoading) {
@@ -1321,6 +1321,7 @@ export class HomeComponent implements OnDestroy {
         return;
       }
       this.resetGameStackPaginationState(true);
+      this.preloadGameImageWindow();
       this.gameInitialCardsLoadPending = false;
       if (shouldReloadSmartList) {
         this.homeSmartList?.reload();
@@ -2066,6 +2067,7 @@ export class HomeComponent implements OnDestroy {
     this.cardIndex = Math.min(this.cardIndex, this.gameStackCardsLoaded);
     this.cdr.markForCheck();
   }
+
 
   private maybeStartGameStackPaginationLoad(): void {
     const stateKey = this.gameStackPaginationStateKey();

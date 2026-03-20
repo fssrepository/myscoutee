@@ -648,6 +648,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (this.isLoadingActive()) {
       return 'Loading more items';
     }
+    if (this.config.emptyLabel !== undefined) {
+      return this.emptyLabel();
+    }
     if (this.items.length > 0 || this.total > 0) {
       return 'No cards available';
     }
@@ -657,6 +660,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   protected hostedFullscreenEmptyDescription(): string {
     if (this.isLoadingActive()) {
       return 'Preloading the next stack in the background.';
+    }
+    if (this.config.emptyDescription !== undefined) {
+      return this.emptyDescription();
     }
     if (this.items.length > 0 || this.total > 0) {
       return 'Wait for more cards to load or adjust the current filter.';
