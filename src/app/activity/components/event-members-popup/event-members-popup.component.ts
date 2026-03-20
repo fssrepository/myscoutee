@@ -284,13 +284,12 @@ export class EventMembersPopupComponent {
     if (this.ownerRef?.ownerType === 'asset') {
       const asset = this.ownedAssets.assetCards.find(card => card.id === this.ownerId) ?? null;
       if (asset) {
-        this.ownedAssets.openPopup(asset.type);
         this.assetPopupService.openActivityInvite({
           ownerId: this.ownerId,
           title: `Invite to ${asset.title}`,
           initialCandidates: this.assetInviteCandidates(asset),
           onApply: selectedCandidates => this.applyLocalAssetInvites(asset, selectedCandidates),
-          closeOwnerPopupOnClose: true
+          closeOwnerPopupOnClose: false
         });
         return;
       }
