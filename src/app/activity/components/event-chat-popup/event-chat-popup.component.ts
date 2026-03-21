@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { delay, of } from 'rxjs';
+import { delay, from, of } from 'rxjs';
 
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
@@ -91,21 +91,27 @@ export class EventChatPopupComponent implements OnDestroy {
       enabled: true,
       tone: 'chat'
     },
-    emptyLabel: 'No messages yet',
-    emptyDescription: 'Start the conversation.',
+    emptyLabel: () => this.chatInitialLoadPending ? '' : 'No messages yet',
+    emptyDescription: () => this.chatInitialLoadPending ? '' : 'Start the conversation.',
     emptyStickyLabel: '',
     trackBy: (_index, message) => message.id,
     groupBy: message => this.chatDayLabel(new Date(message.sentAtIso))
   };
   protected readonly chatThreadLoadPage: SmartListLoadPage<AppTypes.ChatPopupMessage, ChatThreadFilters> = (
     query: ListQuery<ChatThreadFilters>
-  ) => of(this.chatThreadPageResult(query)).pipe(delay(query.page > 0 ? this.chatLoadOlderDelayMs : 0));
+  ) => {
+    const sessionKey = `${query.filters?.sessionKey ?? ''}`.trim();
+    if (query.page === 0 && sessionKey && this.initialChatLoadedSessionKey !== sessionKey) {
+      return from(this.loadInitialChatThreadPage(query, sessionKey));
+    }
+    return of(this.chatThreadPageResult(query)).pipe(delay(query.page > 0 ? this.chatLoadOlderDelayMs : 0));
+  };
 
   @ViewChild('chatThreadSmartList')
   private chatThreadSmartList?: SmartListComponent<AppTypes.ChatPopupMessage, ChatThreadFilters>;
 
-  private loadSequence = 0;
   private loadedSessionKey: string | null = null;
+  private initialChatLoadedSessionKey: string | null = null;
   private chatInitialLoadTimer: ReturnType<typeof setTimeout> | null = null;
   private chatHeaderLoadingCounter = 0;
   private chatHeaderLoadingInterval: ReturnType<typeof setInterval> | null = null;
@@ -122,8 +128,7 @@ export class EventChatPopupComponent implements OnDestroy {
         return;
       }
       this.loadedSessionKey = sessionKey;
-      this.loadSequence += 1;
-      const sequence = this.loadSequence;
+      this.initialChatLoadedSessionKey = null;
       this.draftMessage = '';
       this.showContextMenu = false;
       this.contextMenuOpenUp = false;
@@ -144,27 +149,7 @@ export class EventChatPopupComponent implements OnDestroy {
       this.chatInitialLoadPending = true;
       // Warm event-editor service path while chat is active to reduce first-action flicker.
       this.eventEditorService.isOpen();
-      this.beginChatHeaderProgressLoading();
-      const loadStartedAtMs = performance.now();
       this.cdr.markForCheck();
-      void this.activitiesContext.loadEventChatMessages(session.item)
-        .then(nextMessages => {
-          if (sequence !== this.loadSequence) {
-            return;
-          }
-          this.finishInitialChatLoad(
-            sequence,
-            [...nextMessages]
-              .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso)),
-            loadStartedAtMs
-          );
-        })
-        .catch(() => {
-          if (sequence !== this.loadSequence) {
-            return;
-          }
-          this.finishInitialChatLoad(sequence, [], loadStartedAtMs);
-        });
     });
   }
 
@@ -359,6 +344,40 @@ export class EventChatPopupComponent implements OnDestroy {
     this.syncChatThreadQuery();
     this.draftMessage = '';
     this.cdr.markForCheck();
+  }
+
+  private async loadInitialChatThreadPage(
+    query: ListQuery<ChatThreadFilters>,
+    sessionKey: string
+  ): Promise<PageResult<AppTypes.ChatPopupMessage>> {
+    const session = this.session();
+    if (!session || this.loadedSessionKey !== sessionKey) {
+      return this.chatThreadPageResult(query);
+    }
+    this.chatInitialLoadPending = true;
+    this.cdr.markForCheck();
+    try {
+      const nextMessages = await this.activitiesContext.loadEventChatMessages(session.item);
+      if (this.loadedSessionKey !== sessionKey) {
+        return this.chatThreadPageResult(query);
+      }
+      this.allMessages = [...nextMessages]
+        .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+      this.initialChatLoadedSessionKey = sessionKey;
+      return this.chatThreadPageResult(query);
+    } catch {
+      if (this.loadedSessionKey !== sessionKey) {
+        return this.chatThreadPageResult(query);
+      }
+      this.allMessages = [];
+      this.initialChatLoadedSessionKey = sessionKey;
+      return this.chatThreadPageResult(query);
+    } finally {
+      if (this.loadedSessionKey === sessionKey) {
+        this.chatInitialLoadPending = false;
+        this.cdr.markForCheck();
+      }
+    }
   }
 
   private chatThreadPageResult(query: ListQuery<ChatThreadFilters>): PageResult<AppTypes.ChatPopupMessage> {
@@ -564,32 +583,6 @@ export class EventChatPopupComponent implements OnDestroy {
     this.chatHeaderLoadingOverdue = false;
     this.chatHeaderLoadingStartedAtMs = 0;
     this.cdr.markForCheck();
-  }
-
-  private finishInitialChatLoad(
-    sequence: number,
-    messages: AppTypes.ChatPopupMessage[],
-    loadStartedAtMs: number
-  ): void {
-    const elapsedMs = Math.max(0, performance.now() - loadStartedAtMs);
-    const remainingMs = Math.max(0, this.chatLoadOlderDelayMs - elapsedMs);
-    const commit = () => {
-      this.chatInitialLoadTimer = null;
-      if (sequence !== this.loadSequence) {
-        return;
-      }
-      this.allMessages = [...messages];
-      this.syncChatThreadQuery();
-      this.endChatHeaderProgressLoading();
-      this.cdr.markForCheck();
-    };
-    if (remainingMs <= 0) {
-      commit();
-      return;
-    }
-    this.chatInitialLoadTimer = setTimeout(() => {
-      this.ngZone.run(() => commit());
-    }, remainingMs);
   }
 
   private cancelChatInitialLoadTimer(): void {

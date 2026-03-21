@@ -2,6 +2,8 @@
   --text-main: #22324a;
   --line: rgba(23, 33, 54, 0.12);
   --chat-shell-z-index: 2360;
+  --chat-shell-gap: 0.35rem;
+  --chat-panel-max-width: 1120px;
   font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
 }
 
@@ -12,7 +14,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: 1rem;
+  padding: var(--chat-shell-gap);
 }
 
 .app-popup-backdrop {
@@ -24,8 +26,10 @@
 .app-popup-panel.popup-panel-event-chat {
   position: relative;
   z-index: 1;
-  width: min(1060px, calc(100vw - 1.2rem));
-  max-height: calc(100vh - 1.2rem);
+  width: min(var(--chat-panel-max-width), calc(100vw - (var(--chat-shell-gap) * 2)));
+  max-width: calc(100vw - (var(--chat-shell-gap) * 2));
+  height: calc(100vh - (var(--chat-shell-gap) * 2));
+  max-height: calc(100vh - (var(--chat-shell-gap) * 2));
   border-radius: 14px;
   background: #fff;
   box-shadow: 0 20px 46px rgba(8, 19, 35, 0.34);
@@ -507,7 +511,9 @@
 }
 
 .popup-body.popup-body-chat {
-  height: min(78vh, 820px);
+  height: auto;
+  min-height: 0;
+  flex: 1 1 auto;
 }
 
 .chat-popup-wrap {

@@ -115,26 +115,21 @@
     <div class="popup-body popup-body-chat">
       <div class="chat-popup-wrap">
         <div class="chat-popup-box">
-          <div class="editor-list-card" *ngIf="chatInitialLoadPending">
-            <h4>Loading chat...</h4>
-          </div>
-          <ng-container *ngIf="!chatInitialLoadPending">
-            <app-smart-list
-              #chatThreadSmartList
-              [config]="chatThreadSmartListConfig"
-              [loadPage]="chatThreadLoadPage"
-              [itemTemplate]="chatThreadMessageTemplate"
-              [query]="chatThreadQuery"
-              (stateChange)="onChatThreadSmartListStateChange($event)"
-            ></app-smart-list>
+          <app-smart-list
+            #chatThreadSmartList
+            [config]="chatThreadSmartListConfig"
+            [loadPage]="chatThreadLoadPage"
+            [itemTemplate]="chatThreadMessageTemplate"
+            [query]="chatThreadQuery"
+            (stateChange)="onChatThreadSmartListStateChange($event)"
+          ></app-smart-list>
 
-            <div class="chat-compose-box">
-              <textarea rows="3" placeholder="Write message" [(ngModel)]="draftMessage"></textarea>
-              <button type="button" class="chat-send-btn" aria-label="Send message" (click)="sendMessage()">
-                <mat-icon>send</mat-icon>
-              </button>
-            </div>
-          </ng-container>
+          <div class="chat-compose-box">
+            <textarea rows="3" placeholder="Write message" [(ngModel)]="draftMessage" [disabled]="chatInitialLoadPending"></textarea>
+            <button type="button" class="chat-send-btn" aria-label="Send message" (click)="sendMessage()" [disabled]="chatInitialLoadPending">
+              <mat-icon>send</mat-icon>
+            </button>
+          </div>
         </div>
       </div>
     </div>
