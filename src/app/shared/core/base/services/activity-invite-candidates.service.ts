@@ -34,7 +34,8 @@ export class ActivityInviteCandidatesService {
     ownerId: string,
     sort: AppTypes.ActivityInviteSort,
     fallbackTitle = 'Event',
-    ownerType: AppTypes.ActivityMemberOwnerType = 'event'
+    ownerType: AppTypes.ActivityMemberOwnerType = 'event',
+    existingMemberUserIds: readonly string[] = []
   ): Promise<AppTypes.ActivityMemberEntry[]> {
     const activeUserId = this.activeUserId();
     const normalizedOwnerId = ownerId.trim();
@@ -45,12 +46,14 @@ export class ActivityInviteCandidatesService {
       ownerType,
       ownerId: normalizedOwnerId
     };
-    const owner = await this.resolveOwnerContext(activeUserId, ownerRef, fallbackTitle);
-    const existingMembers = await this.activityMembersService.queryMembersByOwner(ownerRef);
+    const owner = this.resolveOwnerContext(activeUserId, ownerRef, fallbackTitle);
+    const resolvedExistingMemberUserIds = existingMemberUserIds.length > 0
+      ? [...new Set(existingMemberUserIds.map(userId => userId.trim()).filter(Boolean))]
+      : [...new Set(this.activityMembersService.peekMembersByOwner(ownerRef).map(member => member.userId.trim()).filter(Boolean))];
     return this.inviteCandidatesService.queryCandidates({
       activeUserId,
       owner,
-      existingMemberUserIds: existingMembers.map(member => member.userId),
+      existingMemberUserIds: resolvedExistingMemberUserIds,
       sort
     });
   }
@@ -100,11 +103,11 @@ export class ActivityInviteCandidatesService {
     );
   }
 
-  private async resolveOwnerContext(
+  private resolveOwnerContext(
     activeUserId: string,
     owner: AppTypes.ActivityMemberOwnerRef,
     fallbackTitle: string
-  ): Promise<ActivityInviteOwnerContext> {
+  ): ActivityInviteOwnerContext {
     if (owner.ownerType !== 'event') {
       return {
         ownerId: owner.ownerId,
@@ -118,8 +121,7 @@ export class ActivityInviteCandidatesService {
         isAdmin: true
       };
     }
-    const record = this.eventsService.peekKnownItemById(activeUserId, owner.ownerId)
-      ?? await this.eventsService.queryKnownItemById(activeUserId, owner.ownerId);
+    const record = this.eventsService.peekKnownItemById(activeUserId, owner.ownerId);
     if (!record) {
       return {
         ownerId: owner.ownerId,

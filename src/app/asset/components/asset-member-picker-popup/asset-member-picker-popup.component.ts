@@ -52,6 +52,7 @@ interface ActivityInviteFilters {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AssetMemberPickerPopupComponent {
+  private static readonly CONFIRM_PENDING_WINDOW_MS = 1500;
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
@@ -243,13 +244,15 @@ export class AssetMemberPickerPopupComponent {
     }
     this.isConfirmPending = true;
     this.confirmErrorMessage = '';
+    const pendingWindowPromise = this.wait(AssetMemberPickerPopupComponent.CONFIRM_PENDING_WINDOW_MS);
     this.cdr.markForCheck();
+    await this.waitForNextPaint();
     try {
-      if (this.inviteApplyHandler) {
-        await Promise.resolve(this.inviteApplyHandler(selected));
-      } else {
-        await this.activityInviteCandidatesService.applyInvites(this.ownerId, selected, this.ownerType);
-      }
+      const savePromise = Promise.resolve().then(() => this.applySelection(selected));
+      await Promise.all([
+        pendingWindowPromise,
+        savePromise
+      ]);
       this.isConfirmPending = false;
       this.closeInvitePopup();
     } catch {
@@ -380,15 +383,18 @@ export class AssetMemberPickerPopupComponent {
           ownerType: this.ownerType,
           ownerId
         };
-        const [candidates, currentMembers] = await Promise.all([
-          this.activityInviteCandidatesService.queryCandidatesByOwner(
-            ownerId,
-            inviteSort,
-            query.filters?.fallbackTitle,
-            this.ownerType
-          ),
-          this.activityMembersService.queryMembersByOwner(ownerRef)
-        ]);
+        const cachedMembers = this.activityMembersService.peekMembersByOwner(ownerRef);
+        const hasCachedMemberState = cachedMembers.length > 0 || !!this.activityMembersService.peekSummaryByOwner(ownerRef);
+        const currentMembers = hasCachedMemberState
+          ? cachedMembers
+          : await this.activityMembersService.queryMembersByOwner(ownerRef);
+        const candidates = await this.activityInviteCandidatesService.queryCandidatesByOwner(
+          ownerId,
+          inviteSort,
+          query.filters?.fallbackTitle,
+          this.ownerType,
+          currentMembers.map(member => member.userId)
+        );
         const persistedMembers = currentMembers.filter(member => member.userId !== activeUserId);
         this.persistedSelectedUserIds = new Set(persistedMembers.map(member => member.userId));
         this.selectedUserIds = this.selectedUserIds.filter(userId => !this.persistedSelectedUserIds.has(userId));
@@ -431,6 +437,33 @@ export class AssetMemberPickerPopupComponent {
         return right.relevance - left.relevance;
       }
       return AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso);
+    });
+  }
+
+  private async applySelection(selected: readonly AppTypes.ActivityMemberEntry[]): Promise<void> {
+    if (this.inviteApplyHandler) {
+      await Promise.resolve(this.inviteApplyHandler(selected));
+      return;
+    }
+    await this.activityInviteCandidatesService.applyInvites(this.ownerId, selected, this.ownerType);
+  }
+
+  private async wait(delayMs: number): Promise<void> {
+    if (delayMs <= 0) {
+      return;
+    }
+    await new Promise<void>(resolve => {
+      setTimeout(() => resolve(), delayMs);
+    });
+  }
+
+  private async waitForNextPaint(): Promise<void> {
+    await new Promise<void>(resolve => {
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => resolve());
+        return;
+      }
+      setTimeout(() => resolve(), 0);
     });
   }
 }

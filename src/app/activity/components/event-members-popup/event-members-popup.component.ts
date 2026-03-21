@@ -110,6 +110,7 @@ export class EventMembersPopupComponent {
   };
   private isLocalMembersSource = false;
   private membersChangeHandler: ((members: readonly AppTypes.ActivityMemberEntry[]) => void) | null = null;
+  private suppressedOwnerSyncId: string | null = null;
 
   protected membersSmartListQuery: Partial<ListQuery<MembersSmartListFilters>> = {};
 
@@ -280,6 +281,7 @@ export class EventMembersPopupComponent {
     this.canShowInviteButton = false;
     this.isLocalMembersSource = false;
     this.membersChangeHandler = null;
+    this.suppressedOwnerSyncId = null;
     this.subtitle = 'Event';
     this.resetSummaryState();
     this.selectedMembersVisible = [];
@@ -683,10 +685,25 @@ export class EventMembersPopupComponent {
       this.capacityTotal
     );
     if (!this.isLocalMembersSource) {
+      this.suppressedOwnerSyncId = this.ownerId;
       if (owner) {
-        await this.activityMembersService.replaceMembersByOwner(owner, normalizedMembers, capacityTotal);
+        try {
+          await this.activityMembersService.replaceMembersByOwner(owner, normalizedMembers, capacityTotal);
+        } catch (error) {
+          if (this.suppressedOwnerSyncId === this.ownerId) {
+            this.suppressedOwnerSyncId = null;
+          }
+          throw error;
+        }
       } else {
-        await this.activityMembersService.replaceMembersByOwnerId(this.ownerId, normalizedMembers, capacityTotal);
+        try {
+          await this.activityMembersService.replaceMembersByOwnerId(this.ownerId, normalizedMembers, capacityTotal);
+        } catch (error) {
+          if (this.suppressedOwnerSyncId === this.ownerId) {
+            this.suppressedOwnerSyncId = null;
+          }
+          throw error;
+        }
       }
     }
     this.membersCacheByOwnerId.set(this.ownerId, normalizedMembers);
@@ -774,6 +791,10 @@ export class EventMembersPopupComponent {
 
   private applyActivityMembersSync(sync: ActivityMembersSyncState): void {
     if (this.isLocalMembersSource) {
+      return;
+    }
+    if (sync.id === this.suppressedOwnerSyncId) {
+      this.suppressedOwnerSyncId = null;
       return;
     }
     if (sync.id !== this.ownerId) {
