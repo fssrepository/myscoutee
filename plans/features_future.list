@@ -4,14 +4,7 @@ event editor should show for public or friends whether it's for group  of people
 on event item, go to the chat menu - + red counter on the three dot menu??? - so if anybody joined to the slot, needs to see
 not sure about slot handling on event page - as there is only one event (maybe it's a separate screen)
 
-regarding to stage group - members menu item is separated from the resources and the other three is assets
-so we have a members page and whe have a filter bar page with only the assets (members is not there,
-very similar to the main event members screen, so that area won't be customized)
-
-and we can have a separate assets module then
-
 maybe put a contacts icon and it's going to rates met???
-
 
 must
 ----------------
@@ -27,7 +20,7 @@ ratings - filter menu switch of friends in common + separated friends + Any
 maybe on the same menubar where the drop-down box is or popup - and the menu item will be adjusted accordingly
 (label will be shown, so no separate filter button to get enough room
 
-maybe in one line explain what it is over there (ted badge message)
+maybe in one line explain what it is over there (red badge message)
 separated friends won't be a popup two textbox at the top to filter and veryical scroll after independently both woman and man in a pair panel
 someone is friends in common or separated friends icon top roght corner showns that on activities rating
 
@@ -36,9 +29,6 @@ here new menu item friends in common also
 
 single/pair/separated friends
 (you can put here the two + boxes, too choose friends rating, who does not know each other, maybe vertical swipe and filter text at the top of each boxes
-Traditional dating has been stormed by swipes in that 2010s and promised faster dating. However it created more problems than it solved. Endless swiping without matches, or overflown by matches. Myscoutee is trying to rebalance the odds without loosing the speed in a more neutral way by introducing social experience in the online dating world.
-landing site 2nd row font size increase
-par mondatos leiras stop swiping alatt, esetleg vmi sugo feleseg gomb
 
 switch button on avatar menu (simple / middle / advanced)
 1) optional sub event can take place in the same time, does not need to be cut by another optional sub event
@@ -60,17 +50,18 @@ Assets Explore includes a popup with Public and Friends-only visibility.
 The menu bar shows an asset counter and allows selecting a borrowing date range, while badges serve a separate purpose.
 
 Assets can be filtered by date to display availability and capacity.
-For events, fully booked items appear as Occupied. 
 Each asset may have a price set in the Asset Editor, though the Explore route development is still undecided.
+
+For events, fully booked items appear as Occupied. 
 
 Occupancy for selected dates must be clearly visible in both the popup and item view.
 Events also include an expense field with amount and currency.
-
-availability dates of assets (car/accomodation/suplies) to be able to lend
-
-it was a parser of cv to load schools and workspaces in the old myscoutee
 
 make a slot on/off button on event editor (multiple dates can be added - with byweekly, one time etc.),
 if it's public or friends (so when it explores it can decide the slots also)
 
 event explore - public - slots fot recommendations - when you can join or grab fully
+
+availability dates of assets (car/accomodation/suplies) to be able to lend
+
+it was a parser of cv to load schools and workspaces in the old myscoutee
