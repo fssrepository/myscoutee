@@ -141,7 +141,7 @@ export class SubEventResourcePopupService {
   private pendingAssignSaveRequestVersion = 0;
 
   readonly resourceHost = computed<EventResourcePopupHost | null>(() =>
-    this.popupContextRef() && !this.assignContextRef() ? this.eventResourcePopupHost : null
+    this.popupContextRef() ? this.eventResourcePopupHost : null
   );
 
   readonly supplyContributionsHost = computed<EventSupplyContributionsPopupHost | null>(() =>

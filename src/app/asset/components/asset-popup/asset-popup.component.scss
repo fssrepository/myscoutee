@@ -1358,6 +1358,9 @@
   background: rgba(243, 249, 255, 0.92);
   color: #275b98;
   box-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .asset-popup .assets-popup.assets-popup-basket .ui-info-card__overlay-action--end.asset-occupancy-badge.ui-info-card__overlay-action--toggle .mat-icon {
@@ -1365,6 +1368,10 @@
   height: 18px;
   font-size: 18px;
   line-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: none;
 }
 
 .asset-popup .assets-popup.assets-popup-basket .ui-info-card__overlay-action--end.asset-occupancy-badge.ui-info-card__overlay-action--toggle.ui-info-card__overlay-action--tone-selected {

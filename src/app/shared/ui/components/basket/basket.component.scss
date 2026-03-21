@@ -25,11 +25,26 @@
   font-weight: 800;
   line-height: 1;
   white-space: nowrap;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
 }
 
 .basket__chip:disabled {
   opacity: 0.74;
   cursor: default;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .basket__chip:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(28, 69, 114, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+    filter: brightness(1.015);
+  }
+
+  .basket__chip:not(:disabled):active {
+    transform: scale(0.985);
+    box-shadow: 0 2px 6px rgba(28, 69, 114, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    filter: none;
+  }
 }
 
 .basket__chip-avatar {
