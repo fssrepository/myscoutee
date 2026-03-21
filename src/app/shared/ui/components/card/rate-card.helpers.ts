@@ -166,11 +166,7 @@ function buildSeededPortraitUrls(options: {
   count: number;
 }): string[] {
   const normalizedCount = Math.max(1, Math.min(4, Math.trunc(options.count)));
-  return Array.from({ length: normalizedCount }, (_, index) => {
-    const hash = hashText(`rate-card:${options.seedUserId}:${options.rowId}:${index + 1}`);
-    const genderFolder = options.gender === 'woman' ? 'women' : 'men';
-    return `https://randomuser.me/api/portraits/${genderFolder}/${hash % 100}.jpg`;
-  });
+  return Array.from({ length: normalizedCount }, () => '');
 }
 
 function clampSingleRateImageCount(

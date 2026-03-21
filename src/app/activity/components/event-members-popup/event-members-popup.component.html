@@ -63,6 +63,9 @@
             [ngClass]="[memberCardToneClass(member), isActionMenuOpen(member) ? 'menu-open' : '']"
             [appLazyBgImage]="member.avatarUrl"
           >
+            <span class="friends-picker-card-avatar-fallback" aria-hidden="true">
+              <mat-icon>highlight_off</mat-icon>
+            </span>
             <span
               class="member-card-status-chip"
               [ngClass]="memberCardStatusClass(member)"

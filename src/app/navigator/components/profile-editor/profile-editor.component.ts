@@ -1482,26 +1482,24 @@ export class ProfileEditorComponent {
         completed += 1;
       }
     };
-    const hasText = (value: string | null | undefined, minLength = 1): boolean =>
-      (value?.trim().length ?? 0) >= minLength;
     const hasDetail = (label: string, minLength = 1): boolean => {
       const row = this.profileDetailRowByLabel(activeUserId, label);
-      return hasText(row?.value, minLength);
+      return AppUtils.hasText(row?.value, minLength);
     };
 
-    const languages = this.profileForm.languages.filter(item => hasText(item));
-    const imageCount = this.imageSlots.filter(slot => hasText(slot ?? '')).length;
+    const languages = this.profileForm.languages.filter(item => AppUtils.hasText(item));
+    const imageCount = this.imageSlots.filter(slot => AppUtils.hasText(slot ?? '')).length;
     const valuesCount = this.parseCommaValues(this.profileDetailRowByLabel(activeUserId, 'Values')?.value ?? '').length;
     const interestCount = this.parseCommaValues(this.profileDetailRowByLabel(activeUserId, 'Interest')?.value ?? '').length;
     const aboutLength = this.profileForm.about.trim().length;
 
-    add(hasText(this.profileForm.fullName));
+    add(AppUtils.hasText(this.profileForm.fullName));
     add(this.profileForm.birthday instanceof Date);
-    add(hasText(this.profileForm.city));
+    add(AppUtils.hasText(this.profileForm.city));
     add((this.profileForm.heightCm ?? 0) > 0);
-    add(hasText(this.profileForm.physique));
-    add(hasText(this.profileForm.horoscope));
-    add(hasText(this.profileForm.profileStatus));
+    add(AppUtils.hasText(this.profileForm.physique));
+    add(AppUtils.hasText(this.profileForm.horoscope));
+    add(AppUtils.hasText(this.profileForm.profileStatus));
     add(languages.length > 0);
     add(languages.length > 1);
     add(languages.length > 2);

@@ -51,6 +51,12 @@ export class AppDemoGenerators {
     return Math.abs(hash);
   }
 
+  static firstImageUrl(images: readonly string[] | undefined | null): string {
+    return (images ?? [])
+      .map(image => `${image ?? ''}`.trim())
+      .find(image => image.length > 0) ?? '';
+  }
+
   static resolveUserAffinity(
     user: Pick<
       DemoUser,
@@ -536,7 +542,7 @@ export class AppDemoGenerators {
           targetUserId: attendee.id,
           targetRole: attendeeRole,
           icon: 'groups',
-          imageUrl: attendee.images?.[0] ?? `https://i.pravatar.cc/1200?img=${(this.hashText(`feedback-attendee:${item.id}:${attendee.id}`) % 70) + 1}`,
+          imageUrl: this.firstImageUrl(attendee.images),
           toneClass: `feedback-card-tone-attendee ${this.feedbackRoleToneClass(attendeeRole)}`,
           heading: `${attendee.name} · ${item.title}`,
           subheading: `Attendee feedback · ${eventLabel}`,
@@ -772,7 +778,7 @@ export class AppDemoGenerators {
       actionAtIso: AppUtils.toIsoDateTime(metAt),
       metWhere: place,
       relevance: 40 + (seed % 61),
-      avatarUrl: `https://i.pravatar.cc/1200?img=${(seed % 70) + 1}`
+      avatarUrl: this.firstImageUrl(user.images)
     };
   }
 
@@ -810,7 +816,7 @@ export class AppDemoGenerators {
         actionAtIso: AppUtils.toIsoDateTime(when),
         metWhere: forcedMetWhere,
         relevance: 60 + ((index * 7) % 40),
-        avatarUrl: `https://i.pravatar.cc/1200?img=${(this.hashText(`${rowKey}:${userId}`) % 70) + 1}`
+        avatarUrl: this.firstImageUrl(template.images)
       });
     }
     return members;

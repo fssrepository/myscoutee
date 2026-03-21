@@ -31,6 +31,10 @@ export class AppUtils {
     return `${words[0][0] ?? ''}${words[1][0] ?? ''}`.toUpperCase();
   }
 
+  static hasText(value: string | null | undefined, minLength = 1): boolean {
+    return (value?.trim().length ?? 0) >= Math.max(0, Math.trunc(minLength));
+  }
+
   static pad2(value: number): string {
     return `${value}`.padStart(2, '0');
   }

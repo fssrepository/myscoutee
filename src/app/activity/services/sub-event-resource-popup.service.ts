@@ -1974,7 +1974,7 @@ export class SubEventResourcePopupService {
           actionAtIso,
           metWhere: card.title,
           relevance: 40 + (seed % 61),
-          avatarUrl: matchedUser?.images?.[0] ?? `https://i.pravatar.cc/1200?img=${(seed % 70) + 1}`
+          avatarUrl: AppDemoGenerators.firstImageUrl(matchedUser?.images)
         };
       })
       .sort((left, right) => AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso));

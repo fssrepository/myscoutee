@@ -86,7 +86,6 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
     if (!normalizedState) {
       return null;
     }
-    this.ensureSeededState(normalizedState);
     const nowMs = Date.now();
     const nowIso = new Date(nowMs).toISOString();
     this.memoryDb.write(currentState => {
@@ -115,43 +114,6 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
       };
     });
     return this.readState(normalizedState);
-  }
-
-  private ensureSeededState(ref: AppTypes.ActivitySubEventResourceStateRef): void {
-    const normalizedRef = this.normalizeRef(ref);
-    if (!normalizedRef) {
-      return;
-    }
-    const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_RESOURCES_TABLE_NAME]);
-    const recordId = ActivityResourceBuilder.recordId(normalizedRef);
-    if (table.byId[recordId]) {
-      return;
-    }
-    const assets = this.assetsRepository.peekOwnedAssetsByUser(normalizedRef.assetOwnerUserId);
-    const seededState = ActivityResourceBuilder.buildSeededState(normalizedRef, assets);
-    const createdMs = Date.now();
-    const createdAtIso = new Date(createdMs).toISOString();
-    const seededRecord: DemoActivitySubEventResourceRecord = {
-      id: recordId,
-      ownerKey: ActivityResourceBuilder.ownerKey(normalizedRef),
-      ownerId: normalizedRef.ownerId,
-      subEventId: normalizedRef.subEventId,
-      assetOwnerUserId: normalizedRef.assetOwnerUserId,
-      assetAssignmentIds: ActivityResourceBuilder.cloneAssetAssignmentIds(seededState.assetAssignmentIds),
-      assetSettingsByType: ActivityResourceBuilder.cloneAssetSettingsByType(seededState.assetSettingsByType),
-      supplyContributionEntriesByAssetId: {},
-      createdMs,
-      updatedMs: createdMs,
-      createdAtIso,
-      updatedAtIso: createdAtIso
-    };
-    this.memoryDb.write(currentState => ({
-      ...currentState,
-      [ACTIVITY_RESOURCES_TABLE_NAME]: this.upsertRecordCollection(
-        this.normalizeCollection(currentState[ACTIVITY_RESOURCES_TABLE_NAME]),
-        seededRecord
-      )
-    }));
   }
 
   private readState(

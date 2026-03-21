@@ -86,12 +86,9 @@ function buildSingleRateImageUrls(
   activeUserId: string
 ): string[] {
   const seedUserId = user?.id ?? activeUserId;
-  const fallbackGender = user?.gender ?? 'woman';
   const seededCount = 1 + (AppDemoGenerators.hashText(`rate-photo-count:${seedUserId || item.id}`) % 4);
   const desiredCount = item.direction === 'met' ? Math.min(2, seededCount) : seededCount;
-  return Array.from({ length: Math.max(1, Math.min(4, desiredCount)) }, (_, index) =>
-    buildSeededPortraitUrl(item.id, seedUserId || 'rate-fallback', fallbackGender, index)
-  );
+  return buildDisplayImageUrls(user?.images, Math.max(1, Math.min(4, desiredCount)));
 }
 
 function buildPairRateDisplaySlots(
@@ -122,8 +119,8 @@ function buildPairSlotSlides(
   user: DemoUser
 ): AppTypes.ActivityRateDisplaySlide[] {
   const seededCount = 2 + (AppDemoGenerators.hashText(`pair-rate-photo-count:${item.id}:${slot}:${user.id}`) % 2);
-  return Array.from({ length: seededCount }, (_, index) => ({
-    imageUrl: buildSeededPortraitUrl(`${item.id}-${slot}`, user.id, user.gender, index),
+  return buildDisplayImageUrls(user.images, seededCount).map(imageUrl => ({
+    imageUrl,
     primaryLine: `${user.name}, ${user.age}`,
     secondaryLine: `${user.city} · ${item.distanceKm ?? 0} km`,
     placeholderLabel: AppUtils.initialsFromText(user.name)
@@ -183,15 +180,15 @@ function toActivityRateDisplayUser(user: DemoUser): AppTypes.ActivityRateDisplay
   };
 }
 
-function buildSeededPortraitUrl(
-  rowId: string,
-  userId: string,
-  gender: DemoUser['gender'],
-  index: number
-): string {
-  const hash = AppDemoGenerators.hashText(`rate-card:${userId}:${rowId}:${index + 1}`);
-  const genderFolder = gender === 'woman' ? 'women' : 'men';
-  return `https://randomuser.me/api/portraits/${genderFolder}/${hash % 100}.jpg`;
+function buildDisplayImageUrls(images: readonly string[] | undefined, count: number): string[] {
+  const normalizedCount = Math.max(1, Math.min(4, Math.trunc(count)));
+  const source = (images ?? [])
+    .map(image => `${image ?? ''}`.trim())
+    .filter(image => image.length > 0);
+  if (source.length === 0) {
+    return Array.from({ length: normalizedCount }, () => '');
+  }
+  return Array.from({ length: normalizedCount }, (_, index) => source[index % source.length]);
 }
 
 function matchesRateFilter(

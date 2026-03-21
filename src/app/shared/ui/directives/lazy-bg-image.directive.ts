@@ -8,10 +8,11 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   @Input() appLazyBgImage: string | null = null;
 
   private static readonly loadedUrls = new Set<string>();
-  private static readonly loadingPromises = new Map<string, Promise<void>>();
+  private static readonly loadingPromises = new Map<string, Promise<boolean>>();
 
   private readonly loadingClass = 'lazy-bg-loading';
   private readonly loadedClass = 'lazy-bg-loaded';
+  private readonly errorClass = 'lazy-bg-error';
   private observer: IntersectionObserver | null = null;
   private hasLoaded = false;
   private isViewReady = false;
@@ -54,13 +55,11 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
     this.disconnectObserver();
     this.renderer.addClass(this.elementRef.nativeElement, this.loadingClass);
     this.renderer.removeClass(this.elementRef.nativeElement, this.loadedClass);
+    this.renderer.removeClass(this.elementRef.nativeElement, this.errorClass);
 
     const url = this.currentUrl;
     if (!url) {
-      this.renderer.removeStyle(this.elementRef.nativeElement, 'background-image');
-      this.renderer.removeClass(this.elementRef.nativeElement, this.loadingClass);
-      this.renderer.removeClass(this.elementRef.nativeElement, this.loadedClass);
-      this.appliedUrl = null;
+      this.applyLoadError();
       return;
     }
 
@@ -76,11 +75,15 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
     }
 
     if (typeof IntersectionObserver === 'undefined') {
-      this.preloadUrl(url).then(() => {
+      this.preloadUrl(url).then(loaded => {
         if (this.currentUrl !== url) {
           return;
         }
-        this.applyBackground(url);
+        if (loaded) {
+          this.applyBackground(url);
+          return;
+        }
+        this.applyLoadError();
       });
       return;
     }
@@ -90,11 +93,15 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
         if (!entries.some(entry => entry.isIntersecting)) {
           return;
         }
-        this.preloadUrl(url).then(() => {
+        this.preloadUrl(url).then(loaded => {
           if (this.currentUrl !== url) {
             return;
           }
-          this.applyBackground(url);
+          if (loaded) {
+            this.applyBackground(url);
+            return;
+          }
+          this.applyLoadError();
         });
         this.disconnectObserver();
       },
@@ -109,11 +116,21 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
     this.renderer.setStyle(this.elementRef.nativeElement, 'background-image', `url("${url}")`);
+    this.renderer.removeClass(this.elementRef.nativeElement, this.errorClass);
     this.renderer.removeClass(this.elementRef.nativeElement, this.loadingClass);
     this.renderer.addClass(this.elementRef.nativeElement, this.loadedClass);
     LazyBgImageDirective.loadedUrls.add(url);
     this.appliedUrl = url;
     this.hasLoaded = true;
+  }
+
+  private applyLoadError(): void {
+    this.renderer.removeStyle(this.elementRef.nativeElement, 'background-image');
+    this.renderer.removeClass(this.elementRef.nativeElement, this.loadingClass);
+    this.renderer.removeClass(this.elementRef.nativeElement, this.loadedClass);
+    this.renderer.addClass(this.elementRef.nativeElement, this.errorClass);
+    this.appliedUrl = null;
+    this.hasLoaded = false;
   }
 
   private disconnectObserver(): void {
@@ -126,9 +143,9 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
     return trimmed ? trimmed : null;
   }
 
-  private preloadUrl(url: string): Promise<void> {
+  private preloadUrl(url: string): Promise<boolean> {
     if (LazyBgImageDirective.loadedUrls.has(url)) {
-      return Promise.resolve();
+      return Promise.resolve(true);
     }
 
     const existingPromise = LazyBgImageDirective.loadingPromises.get(url);
@@ -136,16 +153,16 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
       return existingPromise;
     }
 
-    const loadingPromise = new Promise<void>(resolve => {
+    const loadingPromise = new Promise<boolean>(resolve => {
       const img = new Image();
       img.onload = () => {
         LazyBgImageDirective.loadedUrls.add(url);
         LazyBgImageDirective.loadingPromises.delete(url);
-        resolve();
+        resolve(true);
       };
       img.onerror = () => {
         LazyBgImageDirective.loadingPromises.delete(url);
-        resolve();
+        resolve(false);
       };
       img.src = url;
     });

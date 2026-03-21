@@ -96,27 +96,6 @@ export class DemoBootstrapService {
     });
     await this.waitForUiYield();
 
-    onProgress?.({
-      percent: 34,
-      label: 'Preparing owned assets and members'
-    });
-    this.assetsRepository.init([normalizedUserId]);
-    this.activityMembersRepository.init([normalizedUserId]);
-    await this.waitForUiYield();
-
-    onProgress?.({
-      percent: 82,
-      label: 'Preparing event resources'
-    });
-    this.activityResourcesRepository.init([normalizedUserId]);
-    await this.waitForUiYield();
-
-    onProgress?.({
-      percent: 100,
-      label: 'Syncing demo IndexedDB'
-    });
-    await this.memoryDb.flushToIndexedDb();
-
     this.readyUserIds.add(normalizedUserId);
     onProgress?.({
       percent: 100,
@@ -154,24 +133,38 @@ export class DemoBootstrapService {
     await this.waitForUiYield();
 
     this.emitProgress({
-      percent: 56,
-      label: 'Loading ratings'
-    });
-    this.usersRatingsRepository.init();
-    await this.waitForUiYield();
-
-    this.emitProgress({
-      percent: 78,
+      percent: 52,
       label: 'Preparing demo users'
     });
     this.usersRepository.init();
     await this.waitForUiYield();
 
     this.emitProgress({
-      percent: 92,
+      percent: 64,
+      label: 'Loading ratings'
+    });
+    this.usersRatingsRepository.init();
+    await this.waitForUiYield();
+
+    this.emitProgress({
+      percent: 76,
+      label: 'Preparing owned assets'
+    });
+    this.assetsRepository.init();
+    await this.waitForUiYield();
+
+    this.emitProgress({
+      percent: 86,
       label: 'Preparing activity members'
     });
     this.activityMembersRepository.init();
+    await this.waitForUiYield();
+
+    this.emitProgress({
+      percent: 94,
+      label: 'Preparing activity resources'
+    });
+    this.activityResourcesRepository.init();
     await this.waitForUiYield();
 
     this.emitProgress({

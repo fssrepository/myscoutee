@@ -74,7 +74,6 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     if (!normalizedUserId || !normalizedAsset) {
       return asset;
     }
-    this.ensureSeededOwnerAssets(normalizedUserId);
     const now = new Date();
     const nowIso = now.toISOString();
     const nowMs = now.getTime();
@@ -112,7 +111,6 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     if (!normalizedUserId) {
       return [];
     }
-    this.ensureSeededOwnerAssets(normalizedUserId);
     const normalizedAssets = this.normalizeCards(assets);
     const currentTable = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
     const ownerIds = [...(currentTable.idsByOwnerUserId[normalizedUserId] ?? [])];
@@ -166,7 +164,6 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     if (!normalizedUserId || !normalizedAssetId) {
       return;
     }
-    this.ensureSeededOwnerAssets(normalizedUserId);
     this.memoryDb.write(state => {
       const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
       const current = table.byId[normalizedAssetId];
@@ -176,27 +173,6 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       return {
         ...state,
         [ASSETS_TABLE_NAME]: this.deleteRecordCollection(table, normalizedAssetId)
-      };
-    });
-  }
-
-  private ensureSeededOwnerAssets(ownerUserId: string): void {
-    const table = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
-    if ((table.idsByOwnerUserId[ownerUserId] ?? []).length > 0) {
-      return;
-    }
-    const records = this.buildSeededOwnerRecords(ownerUserId);
-    if (records.length === 0) {
-      return;
-    }
-    this.memoryDb.write(state => {
-      let nextTable = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
-      for (const record of records) {
-        nextTable = this.upsertRecordCollection(nextTable, record);
-      }
-      return {
-        ...state,
-        [ASSETS_TABLE_NAME]: nextTable
       };
     });
   }

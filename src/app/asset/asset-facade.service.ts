@@ -248,8 +248,7 @@ export class AssetFacadeService {
     if (!user) {
       return '';
     }
-    const first = (user.images ?? []).find((image): image is string => typeof image === 'string' && image.trim().length > 0);
-    return first ?? this.profilePortraitUrlForUser(user, 0, 'ticket-scan');
+    return AppDemoGenerators.firstImageUrl(user.images);
   }
 
   ticketPayloadInitials(payload: AppTypes.TicketScanPayload): string {
@@ -454,15 +453,5 @@ export class AssetFacadeService {
       return cachedProfile;
     }
     return this.userById.get(normalizedUserId) ?? null;
-  }
-
-  private profilePortraitUrlForUser(
-    user: Pick<TicketPerson, 'gender' | 'id'>,
-    index: number,
-    context: string
-  ): string {
-    const genderFolder = user.gender === 'woman' ? 'women' : 'men';
-    const seed = AppDemoGenerators.hashText(`portrait:${context}:${user.id}:${index}`);
-    return `https://randomuser.me/api/portraits/${genderFolder}/${seed % 100}.jpg`;
   }
 }

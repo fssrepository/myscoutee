@@ -455,7 +455,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
 
     const ownerHint = normalizedOwnerId.split(':')[0]?.trim() ?? '';
     if (ownerHint) {
-      this.demoAssetsRepository.init([ownerHint]);
       const ownedAsset = this.demoAssetsRepository.peekOwnedAssetsByUser(ownerHint).find(asset => asset.id === normalizedOwnerId);
       if (ownedAsset) {
         return {
@@ -466,7 +465,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     }
 
     for (const user of this.demoUsersRepository.queryAvailableDemoUsers()) {
-      this.demoAssetsRepository.init([user.id]);
       const ownedAsset = this.demoAssetsRepository.peekOwnedAssetsByUser(user.id).find(asset => asset.id === normalizedOwnerId);
       if (ownedAsset) {
         return {
@@ -510,7 +508,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
           actionAtIso,
           metWhere: asset.title,
           relevance: 48 + (seed % 46),
-          avatarUrl: matchedUser.images?.[0] ?? `https://i.pravatar.cc/1200?img=${(seed % 70) + 1}`
+          avatarUrl: AppDemoGenerators.firstImageUrl(matchedUser.images)
         };
       })
       .sort((left, right) => AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso));

@@ -172,10 +172,45 @@
   overflow: hidden;
 }
 
+.asset-member-picker-popup-shell .friends-picker-card.lazy-bg-error {
+  background: linear-gradient(180deg, rgba(251, 243, 243, 0.98) 0%, rgba(233, 218, 220, 0.96) 100%);
+}
+
+.asset-member-picker-popup-shell .friends-picker-card-avatar-fallback {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 1px solid rgba(198, 61, 61, 0.22);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(249, 232, 232, 0.92) 100%);
+  box-shadow: 0 10px 24px rgba(74, 18, 18, 0.16);
+  color: #c63d3d;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -58%);
+  pointer-events: none;
+}
+
+.asset-member-picker-popup-shell .friends-picker-card-avatar-fallback .mat-icon {
+  width: 28px;
+  height: 28px;
+  font-size: 28px;
+  line-height: 28px;
+}
+
+.asset-member-picker-popup-shell .friends-picker-card.lazy-bg-error .friends-picker-card-avatar-fallback {
+  display: inline-flex;
+}
+
 .asset-member-picker-popup-shell .friends-picker-card::after {
   content: '';
   position: absolute;
   inset: 0;
+  z-index: 1;
   background: linear-gradient(180deg, rgba(8, 16, 28, 0.14) 0%, rgba(8, 15, 28, 0.82) 100%);
 }
 

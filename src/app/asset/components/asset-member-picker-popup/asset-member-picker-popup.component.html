@@ -97,6 +97,9 @@
 
       <ng-template #inviteItemTemplate let-candidate>
         <article class="experience-item-card friends-picker-card asset-invite-candidate-card" [appLazyBgImage]="candidate.avatarUrl">
+          <span class="friends-picker-card-avatar-fallback" aria-hidden="true">
+            <mat-icon>highlight_off</mat-icon>
+          </span>
           <button
             type="button"
             class="friends-picker-card-add-btn"
