@@ -87,6 +87,7 @@ export interface SmartListItemTemplateContext<T, TFilters extends SmartListFilte
   index: number;
   groupLabel: string;
   query: ListQuery<TFilters>;
+  selectMode: boolean;
   presentation: SmartListPresentation;
   renderState: SmartListItemRenderState;
 }
@@ -208,6 +209,7 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   footerSpacerHeight?: SmartListConfigValue<string | null, TFilters>;
   calendarVariant?: SmartListConfigValue<SmartListCalendarVariant, TFilters>;
   presentation?: SmartListConfigValue<SmartListPresentation, TFilters>;
+  selectMode?: SmartListConfigValue<boolean, TFilters>;
   listLayout?: SmartListConfigValue<SmartListListLayout, TFilters>;
   desktopColumns?: SmartListConfigValue<number | null, TFilters>;
   snapMode?: SmartListConfigValue<SmartListSnapMode, TFilters>;

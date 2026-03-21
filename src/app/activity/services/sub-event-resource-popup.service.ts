@@ -74,6 +74,13 @@ interface PendingResourceDeleteState {
   error: string | null;
 }
 
+interface PendingAssignSaveState {
+  subEventId: string;
+  type: AppTypes.AssetType;
+  busy: boolean;
+  error: string | null;
+}
+
 interface SupplyBringDialogState {
   subEventId: string;
   cardId: string;
@@ -110,12 +117,14 @@ export class SubEventResourcePopupService {
   private readonly bringDialogRef = signal<SupplyBringDialogState | null>(null);
   private readonly pendingSupplyDeleteRef = signal<PendingSupplyDeleteState | null>(null);
   private readonly pendingResourceDeleteRef = signal<PendingResourceDeleteState | null>(null);
+  private readonly pendingAssignSaveRef = signal<PendingAssignSaveState | null>(null);
   private readonly assignContextRef = signal<{ subEventId: string; type: AppTypes.AssetType } | null>(null);
   private readonly selectedAssignAssetIdsRef = signal<string[]>([]);
   private readonly resourceDeleteConfirmRingPerimeter = 100;
   private readonly resourceEditorSaveRingPerimeter = 100;
   private readonly deleteConfirmRingPerimeter = 100;
   private readonly bringConfirmRingPerimeter = 100;
+  private readonly assignConfirmRingPerimeter = 100;
 
   private readonly assignedAssetIdsByKey: Record<string, string[]> = {};
   private readonly assignedAssetSettingsByKey: Record<string, Record<string, AppTypes.SubEventAssignedAssetSettings>> = {};
@@ -128,6 +137,8 @@ export class SubEventResourcePopupService {
   private pendingCapacitySaveRequestVersion = 0;
   private pendingRouteSaveAbortController: AbortController | null = null;
   private pendingRouteSaveRequestVersion = 0;
+  private pendingAssignSaveAbortController: AbortController | null = null;
+  private pendingAssignSaveRequestVersion = 0;
 
   readonly resourceHost = computed<EventResourcePopupHost | null>(() =>
     this.popupContextRef() && !this.assignContextRef() ? this.eventResourcePopupHost : null
@@ -240,7 +251,10 @@ export class SubEventResourcePopupService {
     assetTypeClass: type => this.ownedAssets.assetTypeClass(type),
     subEventAssetAssignHeaderTitle: () => this.assignPopupTitle(),
     subEventAssetAssignHeaderSubtitle: () => this.popupSubtitle(),
-    canConfirmSubEventAssetAssignSelection: () => this.selectedAssignAssetIdsRef().length > 0,
+    canConfirmSubEventAssetAssignSelection: () => this.canConfirmAssignSelection(),
+    isSubEventAssetAssignPending: () => this.pendingAssignSaveRef()?.busy === true,
+    subEventAssetAssignErrorMessage: () => this.pendingAssignSaveRef()?.error?.trim() ?? '',
+    subEventAssetAssignRingPerimeter: () => this.assignConfirmRingPerimeter,
     closeSubEventAssetAssignPopup: apply => this.closeAssignPopup(apply),
     confirmSubEventAssetAssignSelection: event => this.confirmAssignPopup(event),
     subEventAssetAssignCandidates: () => this.assignCandidates(),
@@ -541,13 +555,6 @@ export class SubEventResourcePopupService {
     const acceptedMembers = fallbackMembers.filter(member => member.status === 'accepted').length;
     const pendingMembers = fallbackMembers.filter(member => member.status === 'pending').length;
     const capacityTotal = settings[card.sourceAssetId]?.capacityMax ?? Math.max(0, sourceCard.capacityTotal);
-    const ownerRef: AppTypes.ActivityMemberOwnerRef = {
-      ownerType: 'asset',
-      ownerId: sourceCard.id
-    };
-    if (this.sessionService.currentSession()?.kind === 'demo' && !this.activityMembersService.peekSummaryByOwner(ownerRef)) {
-      await this.activityMembersService.replaceMembersByOwner(ownerRef, fallbackMembers, capacityTotal);
-    }
     this.activitiesContext.requestActivitiesNavigation({
       type: 'members',
       ownerId: sourceCard.id,
@@ -1391,6 +1398,13 @@ export class SubEventResourcePopupService {
     controller?.abort();
   }
 
+  private abortPendingAssignSaveRequest(): void {
+    this.pendingAssignSaveRequestVersion += 1;
+    const controller = this.pendingAssignSaveAbortController;
+    this.pendingAssignSaveAbortController = null;
+    controller?.abort();
+  }
+
   private requestDeleteResourceCard(card: AppTypes.SubEventResourceCard, event: Event): void {
     event.stopPropagation();
     if (!card.sourceAssetId) {
@@ -1463,6 +1477,8 @@ export class SubEventResourcePopupService {
     if (!context) {
       return;
     }
+    this.abortPendingAssignSaveRequest();
+    this.pendingAssignSaveRef.set(null);
     const type = this.resourceFilterRef();
     this.assignContextRef.set({ subEventId: context.subEvent.id, type });
     this.selectedAssignAssetIdsRef.set([...this.resolveSubEventAssignedAssetIds(context.subEvent.id, type)]);
@@ -1472,8 +1488,11 @@ export class SubEventResourcePopupService {
 
   private closeAssignPopup(apply = false): void {
     if (apply) {
-      this.applyAssignSelection();
+      this.confirmAssignPopup();
+      return;
     }
+    this.abortPendingAssignSaveRequest();
+    this.pendingAssignSaveRef.set(null);
     this.assignContextRef.set(null);
     this.selectedAssignAssetIdsRef.set([]);
     this.assetPopupService.setBasketVisible(false);
@@ -1482,10 +1501,53 @@ export class SubEventResourcePopupService {
 
   private confirmAssignPopup(event?: Event): void {
     event?.stopPropagation();
-    if (this.selectedAssignAssetIdsRef().length === 0) {
+    const context = this.assignContextRef();
+    const nextState = this.buildNextAssignResourceState();
+    if (!context || !nextState || !this.canConfirmAssignSelection()) {
       return;
     }
-    this.closeAssignPopup(true);
+
+    const requestVersion = ++this.pendingAssignSaveRequestVersion;
+    const abortController = new AbortController();
+    this.pendingAssignSaveAbortController = abortController;
+    this.pendingAssignSaveRef.set({
+      subEventId: context.subEventId,
+      type: context.type,
+      busy: true,
+      error: null
+    });
+
+    void this.activityResourcesService.replaceSubEventResourceState(nextState, abortController.signal)
+      .then(savedState => {
+        if (this.pendingAssignSaveAbortController === abortController) {
+          this.pendingAssignSaveAbortController = null;
+        }
+        if (abortController.signal.aborted || requestVersion !== this.pendingAssignSaveRequestVersion) {
+          return;
+        }
+        const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
+        this.applyPersistedPopupState(resolvedState);
+        this.syncPopupSubEventMetrics(false);
+        this.pendingAssignSaveRef.set(null);
+        this.closeAssignPopup(false);
+      })
+      .catch(error => {
+        if (this.pendingAssignSaveAbortController === abortController) {
+          this.pendingAssignSaveAbortController = null;
+        }
+        if (abortController.signal.aborted || this.isAbortError(error) || requestVersion !== this.pendingAssignSaveRequestVersion) {
+          return;
+        }
+        const currentPending = this.pendingAssignSaveRef();
+        if (!currentPending || currentPending.subEventId !== context.subEventId || currentPending.type !== context.type) {
+          return;
+        }
+        this.pendingAssignSaveRef.set({
+          ...currentPending,
+          busy: false,
+          error: 'Unable to save asset selection.'
+        });
+      });
   }
 
   private assignPopupTitle(): string {
@@ -1521,8 +1583,28 @@ export class SubEventResourcePopupService {
     return this.assignCandidates().filter(card => selected.has(card.id));
   }
 
+  private canConfirmAssignSelection(): boolean {
+    const context = this.assignContextRef();
+    if (!context || this.pendingAssignSaveRef()?.busy === true) {
+      return false;
+    }
+    const currentIds = [...this.resolveSubEventAssignedAssetIds(context.subEventId, context.type)].sort();
+    const draft = this.buildAssignSelectionDraft(context);
+    const nextIds = [...draft.nextIds].sort();
+    if (currentIds.length !== nextIds.length) {
+      return true;
+    }
+    return currentIds.some((assetId, index) => assetId !== nextIds[index]);
+  }
+
   private toggleAssignCard(cardId: string, event?: Event): void {
     event?.stopPropagation();
+    if (this.pendingAssignSaveRef()?.busy === true) {
+      return;
+    }
+    if (this.pendingAssignSaveRef()?.error) {
+      this.pendingAssignSaveRef.set(null);
+    }
     if (this.selectedAssignAssetIdsRef().includes(cardId)) {
       this.selectedAssignAssetIdsRef.set(this.selectedAssignAssetIdsRef().filter(id => id !== cardId));
       return;
@@ -1530,11 +1612,34 @@ export class SubEventResourcePopupService {
     this.selectedAssignAssetIdsRef.set([...this.selectedAssignAssetIdsRef(), cardId]);
   }
 
-  private applyAssignSelection(): void {
+  private buildNextAssignResourceState(): AppTypes.ActivitySubEventResourceState | null {
     const context = this.assignContextRef();
-    if (!context) {
-      return;
+    const nextState = this.buildPopupResourceState();
+    if (!context || !nextState) {
+      return null;
     }
+    const draft = this.buildAssignSelectionDraft(context);
+    nextState.assetAssignmentIds = {
+      ...nextState.assetAssignmentIds,
+      [context.type]: [...draft.nextIds]
+    };
+    nextState.assetSettingsByType = {
+      ...nextState.assetSettingsByType,
+      [context.type]: draft.nextSettings
+    };
+    if (context.type === 'Supplies') {
+      nextState.supplyContributionEntriesByAssetId = Object.fromEntries(
+        Object.entries(nextState.supplyContributionEntriesByAssetId)
+          .filter(([assetId]) => draft.nextIds.includes(assetId))
+          .map(([assetId, entries]) => [assetId, entries.map(entry => ({ ...entry }))])
+      );
+    }
+    return nextState;
+  }
+
+  private buildAssignSelectionDraft(
+    context: { subEventId: string; type: AppTypes.AssetType }
+  ): { nextIds: string[]; nextSettings: Record<string, AppTypes.SubEventAssignedAssetSettings> } {
     const allowedIds = new Set(this.ownedAssets.assetCards.filter(card => card.type === context.type).map(card => card.id));
     const nextIds = this.selectedAssignAssetIdsRef().filter((id, index, arr) => allowedIds.has(id) && arr.indexOf(id) === index);
     const key = this.subEventAssetAssignmentKey(context.subEventId, context.type);
@@ -1556,14 +1661,28 @@ export class SubEventResourcePopupService {
         routes: this.normalizeAssetRoutes(context.type, previous?.routes)
       };
     }
+    return {
+      nextIds,
+      nextSettings
+    };
+  }
+
+  private applyAssignSelection(): void {
+    const context = this.assignContextRef();
+    if (!context) {
+      return;
+    }
+    const draft = this.buildAssignSelectionDraft(context);
+    const key = this.subEventAssetAssignmentKey(context.subEventId, context.type);
+    const previousSettings = this.assignedAssetSettingsByKey[key] ?? {};
     if (context.type === 'Supplies') {
-      const removedIds = Object.keys(previousSettings).filter(assetId => !nextIds.includes(assetId));
+      const removedIds = Object.keys(previousSettings).filter(assetId => !draft.nextIds.includes(assetId));
       for (const assetId of removedIds) {
         delete this.supplyContributionEntriesByAssignmentKey[this.subEventSupplyAssignmentKey(context.subEventId, assetId)];
       }
     }
-    this.assignedAssetIdsByKey[key] = [...nextIds];
-    this.assignedAssetSettingsByKey[key] = nextSettings;
+    this.assignedAssetIdsByKey[key] = [...draft.nextIds];
+    this.assignedAssetSettingsByKey[key] = draft.nextSettings;
     this.syncPopupSubEventMetrics();
   }
 

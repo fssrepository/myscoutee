@@ -22,6 +22,10 @@
   z-index: var(--asset-popup-super-stacked-z-index);
 }
 
+.app-popup.app-popup-stacked.app-popup-super-stacked.app-popup-super-stacked-over-subevents {
+  z-index: calc(var(--asset-popup-super-stacked-z-index) + 120);
+}
+
 .app-popup-panel {
   width: min(1080px, calc(100vw - 1.2rem));
 }
@@ -48,6 +52,15 @@
 
 .asset-popup {
   font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
+}
+
+.asset-popup .app-popup.app-popup-super-stacked .app-popup-backdrop {
+  background: rgba(8, 16, 30, 0.5);
+  backdrop-filter: blur(2px);
+}
+
+.asset-popup .app-popup-panel.popup-panel-assets.popup-panel-subevent-asset-assign {
+  box-shadow: 0 26px 58px rgba(7, 18, 34, 0.34);
 }
 
 .asset-popup .popup-subtitle-activities {
@@ -1287,5 +1300,145 @@
 
   .asset-popup .ticket-scanner-header-btn span {
     display: none;
+  }
+}
+
+.asset-popup .popup-panel-assets.popup-panel-subevent-asset-assign {
+  height: calc(100vh - 1.2rem);
+  max-height: calc(100vh - 1.2rem);
+}
+
+.asset-popup .popup-body.popup-body-subevent-asset-assign {
+  display: grid;
+  gap: 0.48rem;
+  align-content: start;
+  grid-auto-rows: max-content;
+}
+
+.asset-popup .assets-popup.assets-popup-basket {
+  gap: 0.58rem;
+}
+
+.asset-popup .asset-popup-basket-controls {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.46rem;
+}
+
+.asset-popup .asset-popup-basket-chip-row {
+  align-self: start;
+}
+
+.asset-popup .asset-popup-basket-chip-row .basket__chip-icon {
+  color: #31527b;
+}
+
+.asset-popup .asset-popup-basket-error {
+  margin: -0.08rem 0 0;
+  color: #a32f3d;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.asset-popup .asset-popup-basket-save-btn-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  padding: 2px;
+  box-sizing: border-box;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.asset-popup .asset-popup-basket-save-btn {
+  position: relative;
+  z-index: 1;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  border-radius: 50%;
+}
+
+.asset-popup .asset-popup-basket-save-btn-ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.asset-popup .asset-popup-basket-save-btn-ring-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 4px 12px rgba(22, 94, 51, 0.12));
+}
+
+.asset-popup .asset-popup-basket-save-btn-ring-track,
+.asset-popup .asset-popup-basket-save-btn-ring-progress {
+  fill: none;
+  stroke-width: 3;
+}
+
+.asset-popup .asset-popup-basket-save-btn-ring-track {
+  stroke: rgba(133, 100, 42, 0.18);
+}
+
+.asset-popup .asset-popup-basket-save-btn-ring-progress {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform-origin: 50% 50%;
+  transform: rotate(-90deg);
+}
+
+.asset-popup .asset-popup-basket-save-btn-ring-progress.is-loading {
+  stroke: url(#asset-popup-basket-save-gradient);
+  animation: asset-popup-basket-save-ring-progress 3s linear forwards;
+}
+
+.asset-popup .asset-popup-basket-save-btn-ring-progress.is-error {
+  stroke: url(#asset-popup-basket-save-gradient-error);
+}
+
+.asset-popup .asset-popup-basket-save-btn-shell.is-loading .asset-popup-basket-save-btn,
+.asset-popup .asset-popup-basket-save-btn-shell.is-error .asset-popup-basket-save-btn {
+  box-shadow: none;
+}
+
+.asset-popup .asset-popup-basket-save-btn-shell.is-loading .asset-popup-basket-save-btn,
+.asset-popup .asset-popup-basket-save-btn-shell.is-loading .asset-popup-basket-save-btn:hover,
+.asset-popup .asset-popup-basket-save-btn-shell.is-loading .asset-popup-basket-save-btn:disabled {
+  border-color: rgba(181, 117, 23, 0.76);
+  background: linear-gradient(180deg, #ffe7bf 0%, #ffd085 100%);
+  color: #8e4f0d;
+  opacity: 1;
+  cursor: wait;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+
+.asset-popup .asset-popup-basket-save-btn-shell.is-error .asset-popup-basket-save-btn,
+.asset-popup .asset-popup-basket-save-btn-shell.is-error .asset-popup-basket-save-btn:hover {
+  border-color: rgba(176, 31, 46, 0.82);
+  background: linear-gradient(180deg, #f36a79 0%, #d4374a 100%);
+  color: #fff;
+  opacity: 1;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+
+@keyframes asset-popup-basket-save-ring-progress {
+  from {
+    stroke-dashoffset: 100;
+  }
+
+  to {
+    stroke-dashoffset: 0;
   }
 }

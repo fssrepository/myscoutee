@@ -502,6 +502,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.presentation ?? this.resolveConfigValue(this.config.presentation, 'list');
   }
 
+  protected resolvedSelectMode(): boolean {
+    return this.resolveConfigValue(this.config.selectMode, false);
+  }
+
   protected resolvedListLayout(): 'stack' | 'card-grid' | 'thread' {
     return this.resolveConfigValue(this.config.listLayout, 'stack');
   }
@@ -611,6 +615,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       index,
       groupLabel,
       query: this.currentQuery(),
+      selectMode: this.resolvedSelectMode(),
       presentation: 'list',
       renderState: 'list'
     };
@@ -646,6 +651,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       index: this.buildCursorState().index,
       groupLabel: '',
       query: this.currentQuery(),
+      selectMode: this.resolvedSelectMode(),
       presentation: 'fullscreen',
       renderState
     };

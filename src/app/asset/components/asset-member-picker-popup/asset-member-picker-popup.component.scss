@@ -33,7 +33,9 @@
   height: 22px;
   border-radius: 999px;
   padding: 0 9px;
-  background: #dbe2eb;
+  border: 1px solid rgba(121, 144, 179, 0.24);
+  background: linear-gradient(180deg, #f5f8fc 0%, #e9eff7 100%);
+  box-shadow: 0 2px 8px rgba(26, 47, 78, 0.08);
   color: rgba(24, 39, 61, 0.82);
   font-size: 0.72rem;
   font-weight: 700;
@@ -284,4 +286,20 @@
   .asset-member-picker-popup-shell .friends-picker-card {
     min-height: 190px;
   }
+}
+
+.asset-member-picker-popup-shell .asset-member-picker-chip-row .basket__chip-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.asset-member-picker-popup-shell .asset-member-picker-chip-row .basket__chip-remove {
+  opacity: 0.72;
 }

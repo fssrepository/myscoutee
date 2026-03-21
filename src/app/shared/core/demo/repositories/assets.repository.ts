@@ -61,7 +61,6 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
     if (!normalizedUserId) {
       return [];
     }
-    this.ensureSeededOwnerAssets(normalizedUserId);
     return this.readOwnerAssets(normalizedUserId);
   }
 
@@ -242,9 +241,11 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       return [];
     }
     const targetCount = type === 'Car' ? 3 : 2;
+    const prioritizedUsers = AppDemoGenerators.friendUsersForActiveUser(users, ownerUserId, Math.max(targetCount * 3, targetCount));
+    const requestUsers = prioritizedUsers.length > 0 ? prioritizedUsers : [...users];
     const requests: AppTypes.AssetMemberRequest[] = [];
     for (let index = 0; index < targetCount; index += 1) {
-      const user = users[(seedOffset + (index * 3)) % users.length];
+      const user = requestUsers[(seedOffset + (index * 3)) % requestUsers.length];
       const status = index === 0 ? 'pending' : 'accepted';
       requests.push({
         id: `${ownerUserId}:${type}:request:${index + 1}`,

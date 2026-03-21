@@ -252,6 +252,22 @@ export class AppDemoGenerators {
     return Math.round(value * 1_000_000) / 1_000_000;
   }
 
+  private static friendAffinityScore<T extends Pick<DemoUser, 'id' | 'city' | 'gender'>>(
+    activeUser: T | null,
+    candidate: T
+  ): number {
+    const normalizedCandidateId = candidate.id.trim();
+    if (!normalizedCandidateId) {
+      return Number.NEGATIVE_INFINITY;
+    }
+    const normalizedActiveUserId = activeUser?.id?.trim() ?? '';
+    const [firstId, secondId] = [normalizedActiveUserId, normalizedCandidateId].sort();
+    const pairSeed = this.hashText(`friend-pair:${firstId}:${secondId}`);
+    const cityBonus = activeUser?.city?.trim() && activeUser.city === candidate.city ? 220 : 0;
+    const genderBonus = activeUser?.gender && activeUser.gender === candidate.gender ? 40 : 0;
+    return 10_000 - pairSeed + cityBonus + genderBonus;
+  }
+
   static defaultAssetImage(type: AssetType, seed = type.toLowerCase()): string {
     const flavor = type === 'Car'
       ? 'road'
@@ -702,8 +718,30 @@ export class AppDemoGenerators {
     if (!userId || userId === activeUserId) {
       return false;
     }
-    const seed = this.hashText(`${activeUserId}:friend:${userId}`);
-    return (seed % 100) < 45;
+    const [firstId, secondId] = [activeUserId.trim(), userId.trim()].sort();
+    const seed = this.hashText(`friend-pair:${firstId}:${secondId}`);
+    return (seed % 100) < 32;
+  }
+
+  static friendUsersForActiveUser<T extends Pick<DemoUser, 'id' | 'city' | 'gender'>>(
+    users: readonly T[],
+    activeUserId: string,
+    limit = 12
+  ): T[] {
+    const normalizedActiveUserId = activeUserId.trim();
+    if (!normalizedActiveUserId || limit <= 0) {
+      return [];
+    }
+    const activeUser = users.find(user => user.id === normalizedActiveUserId) ?? null;
+    return users
+      .filter(user => user.id.trim().length > 0 && user.id !== normalizedActiveUserId)
+      .map(user => ({
+        user,
+        score: this.friendAffinityScore(activeUser, user)
+      }))
+      .sort((left, right) => right.score - left.score || left.user.id.localeCompare(right.user.id))
+      .slice(0, Math.max(0, Math.trunc(limit)))
+      .map(entry => entry.user);
   }
 
   static toActivityMemberEntry(

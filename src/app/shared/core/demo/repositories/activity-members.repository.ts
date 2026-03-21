@@ -99,22 +99,18 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   }
 
   override peekMembersByOwner(owner: ActivityMemberOwnerRef): AppTypes.ActivityMemberEntry[] {
-    this.init();
     return this.readMembersByOwner(owner);
   }
 
   override async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<AppTypes.ActivityMemberEntry[]> {
-    this.init();
     return this.readMembersByOwner(owner);
   }
 
   override peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummary | null {
-    this.init();
     return this.readSummaryByOwner(owner);
   }
 
   override async querySummariesByOwners(owners: readonly ActivityMemberOwnerRef[]): Promise<ActivityMembersSummary[]> {
-    this.init();
     return this.normalizeOwners(owners)
       .map(owner => this.readSummaryByOwner(owner))
       .filter((summary): summary is ActivityMembersSummary => Boolean(summary));
@@ -182,7 +178,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     if (!normalizedOwner) {
       return [];
     }
-    this.ensureSeededOwnerMembers(normalizedOwner);
     const ownerKey = this.ownerKey(normalizedOwner);
     const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
     return (table.idsByOwnerKey[ownerKey] ?? [])
@@ -353,69 +348,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   }
 
 
-  private ensureSeededOwnerMembers(owner: ActivityMemberOwnerRef): void {
-    const normalizedOwner = this.normalizeOwnerRef(owner);
-    if (!normalizedOwner) {
-      return;
-    }
-    const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
-    const ownerKey = this.ownerKey(normalizedOwner);
-    if ((table.idsByOwnerKey[ownerKey] ?? []).length > 0) {
-      return;
-    }
-    const seeded = this.buildSeededOwnerSeed(normalizedOwner);
-    if (!seeded || seeded.members.length === 0) {
-      return;
-    }
-    const summary = this.writeOwnerMembers(normalizedOwner, seeded.members, seeded.capacityTotal, normalizedOwner.ownerType === 'event');
-    this.cacheMembers(normalizedOwner, seeded.members, summary.capacityTotal);
-  }
-
-  private buildSeededOwnerSeed(
-    owner: ActivityMemberOwnerRef
-  ): { members: AppTypes.ActivityMemberEntry[]; capacityTotal: number } | null {
-    if (owner.ownerType === 'event') {
-      const record = this.findPreferredEventRecord(owner.ownerId);
-      if (!record) {
-        return null;
-      }
-      const members = this.buildSeededRecordsForEvent(record).map(member => this.toMemberEntry(member));
-      return {
-        members,
-        capacityTotal: this.resolveEventCapacityTotal(record.id, members.filter(member => member.status === 'accepted').length)
-      };
-    }
-
-    if (owner.ownerType === 'asset') {
-      const assetOwner = this.findSeededAssetOwner(owner.ownerId);
-      if (!assetOwner) {
-        return null;
-      }
-      const members = this.buildSeededEntriesForAsset(assetOwner.ownerUserId, assetOwner.asset);
-      return {
-        members,
-        capacityTotal: Math.max(
-          members.filter(member => member.status === 'accepted').length,
-          this.normalizeMemberCount(assetOwner.asset.capacityTotal) ?? members.length
-        )
-      };
-    }
-
-    if (owner.ownerType === 'subEvent') {
-      const subEventOwner = this.findSeededSubEventOwner(owner.ownerId);
-      if (!subEventOwner) {
-        return null;
-      }
-      return this.buildSeededSubEventOwnerSeed(subEventOwner.record, subEventOwner.subEvent);
-    }
-
-    const groupOwner = this.findSeededGroupOwner(owner.ownerId);
-    if (!groupOwner) {
-      return null;
-    }
-    return this.buildSeededGroupOwnerSeed(groupOwner.record, groupOwner.subEvent, groupOwner.group);
-  }
-
   private preferredEventRecords(): DemoEventRecord[] {
     const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
     const preferredRecordByEventId = new Map<string, DemoEventRecord>();
@@ -585,8 +517,11 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   }
 
   private buildFallbackAssetRequests(ownerUserId: string, asset: AppTypes.AssetCard): AppTypes.AssetMemberRequest[] {
-    const fallbackUsers = this.demoActivityMemberUsers.filter(user => user.id !== ownerUserId).slice(0, 2);
-    return fallbackUsers.map((user, index) => ({
+    const fallbackUsers = AppDemoGenerators.friendUsersForActiveUser(this.demoActivityMemberUsers, ownerUserId, 4);
+    const requestUsers = fallbackUsers.length > 0
+      ? fallbackUsers
+      : this.demoActivityMemberUsers.filter(user => user.id !== ownerUserId).slice(0, 2);
+    return requestUsers.slice(0, 2).map((user, index) => ({
       id: `${asset.id}:request:${index + 1}`,
       userId: user.id,
       name: user.name,
@@ -941,8 +876,12 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     }
 
     if (pendingEntries.length < pendingTarget) {
-      const fallbackCandidates = this.demoActivityMemberUsers.filter(user => !usedUserIds.has(user.id));
-      for (const user of fallbackCandidates) {
+      const prioritizedFallbackCandidates = [
+        ...AppDemoGenerators.friendUsersForActiveUser(this.demoActivityMemberUsers, context.creator.id, Math.max(pendingTarget * 3, pendingTarget)),
+        ...this.demoActivityMemberUsers
+      ].filter((user, index, arr) => arr.findIndex(candidate => candidate.id === user.id) === index)
+        .filter(user => !usedUserIds.has(user.id));
+      for (const user of prioritizedFallbackCandidates) {
         if (pendingEntries.length >= pendingTarget) {
           break;
         }

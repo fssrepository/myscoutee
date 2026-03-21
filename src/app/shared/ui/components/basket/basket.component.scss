@@ -1,0 +1,50 @@
+:host {
+  display: contents;
+}
+
+.basket {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+}
+
+.basket__chip {
+  min-height: 30px;
+  padding: 0.22rem 0.56rem 0.22rem 0.32rem;
+  border-color: rgba(59, 95, 142, 0.3);
+  background: linear-gradient(180deg, #f7faff 0%, #edf3ff 100%);
+  box-shadow: 0 2px 8px rgba(29, 57, 96, 0.08);
+  gap: 0.35rem;
+}
+
+.basket__chip:disabled {
+  opacity: 0.74;
+  cursor: default;
+}
+
+.basket__chip-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.basket__chip-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.basket__chip-label {
+  min-width: 0;
+}
+
+.basket__chip-remove {
+  opacity: 0.72;
+}

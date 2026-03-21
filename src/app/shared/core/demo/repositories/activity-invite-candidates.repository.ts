@@ -33,6 +33,7 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
 
     const existingUserIds = new Set(query.existingMemberUserIds.map(userId => userId.trim()).filter(Boolean));
     existingUserIds.add(activeUserId);
+    const friendPool = AppDemoGenerators.friendUsersForActiveUser(allUsers as DemoUser[], activeUserId, 18);
 
     const latestMetByUserId = new Map<string, { metAtIso: string; metWhere: string; relevance: number }>();
     for (const rate of this.usersRatingsRepository.queryUserRatesByUserId(activeUserId)) {
@@ -53,20 +54,15 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
     }
 
     if (latestMetByUserId.size < 12) {
-      for (const user of allUsers) {
-        if (user.id === activeUserId || existingUserIds.has(user.id)) {
+      for (const user of friendPool) {
+        if (existingUserIds.has(user.id) || latestMetByUserId.has(user.id)) {
           continue;
         }
-        if (!AppDemoGenerators.isFriendOfActiveUser(user.id, activeUserId)) {
-          continue;
-        }
-        if (!latestMetByUserId.has(user.id)) {
-          latestMetByUserId.set(user.id, {
-            metAtIso: AppUtils.toIsoDateTime(AppUtils.addDays(new Date('2026-02-24T12:00:00'), -((AppDemoGenerators.hashText(`${ownerId}:${user.id}`) % 120) + 1))),
-            metWhere: 'Friends circle',
-            relevance: 72 + (AppDemoGenerators.hashText(`${activeUserId}:friend:${user.id}`) % 20)
-          });
-        }
+        latestMetByUserId.set(user.id, {
+          metAtIso: AppUtils.toIsoDateTime(AppUtils.addDays(new Date('2026-02-24T12:00:00'), -((AppDemoGenerators.hashText(`${ownerId}:${user.id}`) % 120) + 1))),
+          metWhere: 'Friends circle',
+          relevance: 72 + (AppDemoGenerators.hashText(`${activeUserId}:friend:${user.id}`) % 20)
+        });
         if (latestMetByUserId.size >= 12) {
           break;
         }

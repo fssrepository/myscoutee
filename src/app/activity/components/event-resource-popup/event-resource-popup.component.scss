@@ -34,7 +34,9 @@
   height: 22px;
   border-radius: 999px;
   padding: 0 9px;
-  background: #dbe2eb;
+  border: 1px solid rgba(121, 144, 179, 0.26);
+  background: linear-gradient(180deg, #f5f8fc 0%, #e9eff7 100%);
+  box-shadow: 0 2px 8px rgba(26, 47, 78, 0.08);
   color: rgba(24, 39, 61, 0.82);
   font-size: 0.72rem;
   font-weight: 700;
@@ -42,6 +44,24 @@
   align-items: center;
   justify-content: center;
   white-space: nowrap;
+}
+
+.event-resource-popup-shell .header-members-count.asset-filter-car {
+  border-color: rgba(43, 111, 179, 0.24);
+  background: linear-gradient(180deg, #eff6ff 0%, #e1edff 100%);
+  color: #295d96;
+}
+
+.event-resource-popup-shell .header-members-count.asset-filter-accommodation {
+  border-color: rgba(37, 127, 95, 0.24);
+  background: linear-gradient(180deg, #eef8f2 0%, #dff0e7 100%);
+  color: #236d51;
+}
+
+.event-resource-popup-shell .header-members-count.asset-filter-supplies {
+  border-color: rgba(151, 92, 41, 0.24);
+  background: linear-gradient(180deg, #fff5ec 0%, #fee9d8 100%);
+  color: #8a5428;
 }
 
 .event-resource-popup-shell .popup-body.popup-body-members {

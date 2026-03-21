@@ -16,8 +16,10 @@ import { from } from 'rxjs';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import {
+  BasketComponent,
   LazyBgImageDirective,
   SmartListComponent,
+  type BasketChip,
   type ListQuery,
   type PageResult,
   type SmartListConfig,
@@ -41,6 +43,7 @@ interface ActivityInviteFilters {
     CommonModule,
     MatButtonModule,
     MatIconModule,
+    BasketComponent,
     SmartListComponent,
     LazyBgImageDirective
   ],
@@ -283,6 +286,15 @@ export class AssetMemberPickerPopupComponent {
   protected selectedInviteCountLabel(): string {
     const count = this.selectedInviteCount();
     return count === 1 ? '1 selected' : `${count} selected`;
+  }
+
+  protected selectedInviteBasketChips(): BasketChip[] {
+    return this.selectedInviteChips().map(chip => ({
+      id: chip.userId,
+      label: chip.name,
+      avatarLabel: chip.initials,
+      avatarClass: `user-color-${chip.gender}`
+    }));
   }
 
   protected selectedInviteChips(): AppTypes.ActivityMemberEntry[] {

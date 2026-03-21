@@ -8,7 +8,7 @@
           <p>{{ host.subtitle() }}</p>
         </div>
       </div>
-      <span class="header-members-count members-header-summary-badge">{{ host.summary() }}</span>
+      <span class="header-members-count members-header-summary-badge" [ngClass]="host.resourceTypeClass(host.resourceFilter())">{{ host.summary() }}</span>
       <button mat-icon-button class="popup-close" (click)="host.close()" aria-label="Close">
         <mat-icon>close</mat-icon>
       </button>

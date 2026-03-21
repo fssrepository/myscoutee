@@ -70,7 +70,6 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
     if (!normalizedRef) {
       return null;
     }
-    this.ensureSeededState(normalizedRef);
     return this.readState(normalizedRef);
   }
 

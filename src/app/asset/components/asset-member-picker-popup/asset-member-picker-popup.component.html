@@ -76,18 +76,12 @@
     </div>
 
     <div class="popup-body popup-body-friends-picker">
-      <div class="friends-picker-chip-row" *ngIf="selectedInviteChips().length > 0">
-        <button
-          type="button"
-          class="values-selected-chip friends-picker-chip"
-          *ngFor="let chip of selectedInviteChips()"
-          (click)="toggleInviteCandidate(chip.userId, $event)"
-        >
-          <span class="friends-picker-chip-avatar" [class]="'user-color-' + chip.gender">{{ chip.initials }}</span>
-          <span>{{ chip.name }}</span>
-          <mat-icon class="friends-picker-chip-remove">close</mat-icon>
-        </button>
-      </div>
+      <app-basket
+        className="friends-picker-chip-row asset-member-picker-chip-row"
+        [chips]="selectedInviteBasketChips()"
+        [disabled]="isConfirmPending"
+        (chipClick)="toggleInviteCandidate($event.chip.id, $event.event)"
+      ></app-basket>
 
       <p class="asset-member-picker-confirm-error" *ngIf="confirmErrorMessage">{{ confirmErrorMessage }}</p>
 

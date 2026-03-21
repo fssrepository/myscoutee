@@ -97,21 +97,15 @@ export class DemoBootstrapService {
     await this.waitForUiYield();
 
     onProgress?.({
-      percent: 28,
-      label: 'Preparing owned assets'
+      percent: 34,
+      label: 'Preparing owned assets and members'
     });
     this.assetsRepository.init([normalizedUserId]);
-    await this.waitForUiYield();
-
-    onProgress?.({
-      percent: 58,
-      label: 'Preparing member owners'
-    });
     this.activityMembersRepository.init([normalizedUserId]);
     await this.waitForUiYield();
 
     onProgress?.({
-      percent: 84,
+      percent: 82,
       label: 'Preparing event resources'
     });
     this.activityResourcesRepository.init([normalizedUserId]);

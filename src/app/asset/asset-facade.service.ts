@@ -78,6 +78,38 @@ export class AssetFacadeService {
     };
   }
 
+  async loadSelectableOwnedAssetPage(
+    query: ListQuery<OwnedAssetListFilters>,
+    selectedAssetIds: readonly string[] = []
+  ): Promise<PageResult<AppTypes.AssetCard>> {
+    const userId = query.filters?.userId?.trim() || this.activeUserId();
+    const type = query.filters?.type;
+    if (!userId || (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies')) {
+      return {
+        items: [],
+        total: 0
+      };
+    }
+    const selectedIds = new Set(selectedAssetIds.map(assetId => assetId.trim()).filter(Boolean));
+    const cards = await this.assetsService.queryOwnedAssetsByUser(userId);
+    const filtered = cards
+      .filter(card => card.type === type)
+      .sort((left, right) => {
+        const selectedDelta = Number(selectedIds.has(right.id)) - Number(selectedIds.has(left.id));
+        if (selectedDelta !== 0) {
+          return selectedDelta;
+        }
+        return left.title.localeCompare(right.title) || left.id.localeCompare(right.id);
+      });
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
+    const start = page * pageSize;
+    return {
+      items: filtered.slice(start, start + pageSize).map(card => this.cloneOwnedAsset(card)),
+      total: filtered.length
+    };
+  }
+
   ticketInfoCard(
     row: AppTypes.ActivityListRow,
     options: { groupLabel?: string | null } = {}
@@ -113,8 +145,10 @@ export class AssetFacadeService {
 
   ownedAssetInfoCard(
     card: AppTypes.AssetCard,
-    options: { groupLabel?: string | null } = {}
+    options: { groupLabel?: string | null; selectMode?: boolean; selected?: boolean; selectDisabled?: boolean } = {}
   ): InfoCardData {
+    const selectMode = options.selectMode === true;
+    const selected = options.selected === true;
     return {
       rowId: `asset:${card.id}`,
       groupLabel: options.groupLabel ?? null,
@@ -126,14 +160,25 @@ export class AssetFacadeService {
         icon: this.ownedAssetTypeIcon(card.type)
       },
       mediaStart: this.ownedAssetMediaStart(card),
-      mediaEnd: {
-        variant: 'avatar',
-        tone: 'default',
-        label: this.ownedAssetCapacityLabel(card),
-        interactive: false,
-        ariaLabel: null
-      },
-      menuActions: this.ownedAssetMenuActions(card),
+      mediaEnd: selectMode
+        ? {
+            variant: 'toggle',
+            tone: selected ? 'selected' : 'default',
+            icon: 'add',
+            selected,
+            selectedIcon: 'check',
+            interactive: true,
+            disabled: options.selectDisabled === true,
+            ariaLabel: selected ? 'Remove asset from basket' : 'Add asset to basket'
+          }
+        : {
+            variant: 'avatar',
+            tone: 'default',
+            label: this.ownedAssetCapacityLabel(card),
+            interactive: false,
+            ariaLabel: null
+          },
+      menuActions: selectMode ? [] : this.ownedAssetMenuActions(card),
       clickable: false
     };
   }
