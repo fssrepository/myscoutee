@@ -32,7 +32,6 @@ import {
   type InvitationMenuItem,
   type DemoUser
 } from '../../../shared/demo-data';
-import { AppCalendarHelpers } from '../../../shared/app-calendar-helpers';
 import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import { AppUtils } from '../../../shared/app-utils';
 import { ActivitiesDbContextService } from '../../services/activities-db-context.service';
@@ -313,7 +312,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       weekStartHour: 0,
       weekEndHour: 23,
       anchorRadius: 2,
-      resolveDateRange: row => AppCalendarHelpers.activityDateRange(row, this.activityDateTimeRangeById),
+      resolveDateRange: row => this.activityCalendarDateRange(row),
       badgeLabel: row => row.title,
       badgeToneClass: row => this.calendarBadgeToneClass(row)
     },
@@ -1465,6 +1464,30 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return Math.max(fallbackBase, Math.trunc(sourceCapacityTotal));
     }
     return Math.max(fallbackBase, 4);
+  }
+
+
+  private activityCalendarDateRange(row: AppTypes.ActivityListRow): { start: Date; end: Date } | null {
+    if (row.type === 'rates') {
+      const point = new Date(row.dateIso);
+      if (Number.isNaN(point.getTime())) {
+        return null;
+      }
+      return { start: point, end: new Date(point.getTime() + 60 * 1000) };
+    }
+    const explicit = this.activityDateTimeRangeById[row.id];
+    if (explicit) {
+      const start = new Date(explicit.startIso);
+      const end = new Date(explicit.endIso);
+      if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && end.getTime() > start.getTime()) {
+        return { start, end };
+      }
+    }
+    const parsed = new Date(row.dateIso);
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+    return { start: parsed, end: new Date(parsed.getTime() + (2 * 60 * 60 * 1000)) };
   }
 
   private getActivityMembersByRow(row: AppTypes.ActivityListRow): AppTypes.ActivityMemberEntry[] {

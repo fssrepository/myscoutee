@@ -19,7 +19,6 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 import { firstValueFrom } from 'rxjs';
 
-import { AppCalendarHelpers } from '../../../app-calendar-helpers';
 import { AppUtils } from '../../../app-utils';
 import {
   HeaderProgressBarComponent,
@@ -72,6 +71,30 @@ import type {
 } from './smart-list.types';
 
 type SmartListCalendarPage<T> = SmartListCalendarMonthPage<T> | SmartListCalendarWeekPage<T>;
+function smartListRateHeatClass(count: number): string {
+  if (count <= 0) {
+    return 'activities-rate-heat-0';
+  }
+  const clamped = Math.min(100, count);
+  const normalized = (clamped - 1) / 99;
+  if (normalized <= 0.16) {
+    return 'activities-rate-heat-1';
+  }
+  if (normalized <= 0.32) {
+    return 'activities-rate-heat-2';
+  }
+  if (normalized <= 0.5) {
+    return 'activities-rate-heat-3';
+  }
+  if (normalized <= 0.68) {
+    return 'activities-rate-heat-4';
+  }
+  if (normalized <= 0.84) {
+    return 'activities-rate-heat-5';
+  }
+  return 'activities-rate-heat-6';
+}
+
 type SmartListCalendarWindow = {
   anchors: Date[];
   focus: Date;
@@ -790,7 +813,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected rateHeatClassByCount(count: number): string {
-    return AppCalendarHelpers.rateHeatClass(count);
+    return smartListRateHeatClass(count);
   }
 
   protected rateCountLabel(value: number): string {

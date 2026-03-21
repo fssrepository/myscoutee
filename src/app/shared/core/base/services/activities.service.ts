@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AppCalendarHelpers } from '../../../app-calendar-helpers';
 import { AppDemoGenerators } from '../../../app-demo-generators';
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
@@ -213,12 +212,17 @@ export class ActivitiesService {
     if (!range) {
       return false;
     }
-    return AppCalendarHelpers.dateRangeOverlaps(
+    return this.dateRangeOverlaps(
       AppUtils.dateOnly(range.start),
       AppUtils.dateOnly(range.end),
       start,
       end
     );
+  }
+
+
+  private dateRangeOverlaps(startA: Date, endA: Date, startB: Date, endB: Date): boolean {
+    return startA.getTime() <= endB.getTime() && endA.getTime() >= startB.getTime();
   }
 
   private resolveActivityRowRange(row: AppTypes.ActivityListRow): { start: Date; end: Date } | null {
