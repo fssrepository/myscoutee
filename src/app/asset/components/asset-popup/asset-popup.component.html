@@ -221,13 +221,17 @@
             [onAssetImageFileSelected]="onOwnedAssetImageFileSelected"
           ></app-asset-form-popup>
 
-          <app-asset-delete-confirm
+          <app-confirmation-dialog
             *ngIf="!isBasketMode()"
+            [useService]="false"
             [visible]="!!ownedAssets.pendingAssetDeleteCardId"
-            [label]="ownedAssets.pendingAssetDeleteLabel()"
-            [cancel]="cancelOwnedAssetDelete"
-            [confirm]="confirmOwnedAssetDelete"
-          ></app-asset-delete-confirm>
+            title="Delete asset"
+            [message]="ownedAssets.pendingAssetDeleteLabel()"
+            confirmLabel="Delete"
+            confirmTone="danger"
+            [cancelAction]="cancelOwnedAssetDelete"
+            [confirmAction]="confirmOwnedAssetDelete"
+          ></app-confirmation-dialog>
         </div>
       </div>
     </div>

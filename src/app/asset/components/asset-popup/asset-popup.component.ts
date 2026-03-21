@@ -11,7 +11,6 @@ import { AssetPopupStateService } from '../../asset-popup-state.service';
 import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppContext, AssetsService, AssetTicketsService } from '../../../shared/core';
-import { AssetDeleteConfirmComponent } from '../asset-delete-confirm/asset-delete-confirm.component';
 import { AssetFormPopupComponent } from '../asset-form-popup/asset-form-popup.component';
 import { AssetTicketCodePopupComponent } from '../asset-ticket-code-popup/asset-ticket-code-popup.component';
 import { AssetTicketScannerPopupComponent } from '../asset-ticket-scanner-popup/asset-ticket-scanner-popup.component';
@@ -23,7 +22,8 @@ import {
   type InfoCardMenuActionEvent,
   type ListQuery,
   type SmartListConfig,
-  type SmartListStateChange
+  type SmartListStateChange,
+  ConfirmationDialogComponent
 } from '../../../shared/ui';
 
 interface AssetTicketListFilters {
@@ -49,7 +49,7 @@ interface OwnedAssetListFilters {
     BasketComponent,
     InfoCardComponent,
     SmartListComponent,
-    AssetDeleteConfirmComponent,
+    ConfirmationDialogComponent,
     AssetFormPopupComponent,
     AssetTicketCodePopupComponent,
     AssetTicketScannerPopupComponent

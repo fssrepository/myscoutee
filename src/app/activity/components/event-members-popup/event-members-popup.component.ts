@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { environment } from '../../../../environments/environment';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -17,7 +18,7 @@ import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import type { ActivityMemberOwnerRef, ActivityMemberOwnerType } from '../../../shared/core/base/models';
 import type { ActivityMembersSyncState } from '../../../shared/core';
-import { ActivityMembersService, AppContext, AppPopupContext, EventsService } from '../../../shared/core';
+import { ActivityMembersService, AppContext, AppPopupContext, EventsService, SessionService } from '../../../shared/core';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import {
   LazyBgImageDirective,
@@ -27,7 +28,8 @@ import {
   type SmartListConfig,
   type SmartListItemTemplateContext,
   type SmartListLoaders,
-  type SmartListStateChange
+  type SmartListStateChange,
+  ConfirmationDialogComponent
 } from '../../../shared/ui';
 import { DemoUsersRepository } from '../../../shared/core/demo';
 
@@ -55,18 +57,21 @@ type MembersSummaryState = {
     MatButtonModule,
     MatIconModule,
     SmartListComponent,
-    LazyBgImageDirective
+    LazyBgImageDirective,
+    ConfirmationDialogComponent
   ],
   templateUrl: './event-members-popup.component.html',
   styleUrls: ['./event-members-popup.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventMembersPopupComponent {
+  private static readonly DELETE_PENDING_WINDOW_MS = 1500;
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly eventsService = inject(EventsService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
+  private readonly sessionService = inject(SessionService);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
 
   private get users() {
@@ -389,9 +394,11 @@ export class EventMembersPopupComponent {
     const nextMembers = previousMembers.filter(member => member.id !== pendingDelete.id);
     this.pendingDeleteBusy = true;
     this.pendingDeleteErrorMessage = '';
+    const pendingWindowPromise = this.minimumDeletePendingWindow();
     this.cdr.markForCheck();
     try {
-      await this.commitMembers(nextMembers, previousMembers);
+      const deletePromise = this.runDeleteAfterUiYield(nextMembers, previousMembers);
+      await Promise.all([pendingWindowPromise, deletePromise]);
       this.pendingDelete = null;
       this.pendingDeleteBusy = false;
       this.pendingDeleteErrorMessage = '';
@@ -412,6 +419,26 @@ export class EventMembersPopupComponent {
       return '';
     }
     return `Remove ${this.pendingDelete.name} from this ${this.ownerScopeLabel()}?`;
+  }
+
+  protected pendingDeleteConfirmLabel(): string {
+    if (!this.pendingDelete) {
+      return 'Delete';
+    }
+    if (this.pendingDelete.requestKind === 'join') {
+      return 'Reject';
+    }
+    return this.pendingDelete.status === 'accepted' ? 'Remove' : 'Delete';
+  }
+
+  protected pendingDeleteBusyLabel(): string {
+    if (!this.pendingDelete) {
+      return 'Deleting...';
+    }
+    if (this.pendingDelete.requestKind === 'join') {
+      return 'Rejecting...';
+    }
+    return this.pendingDelete.status === 'accepted' ? 'Removing...' : 'Deleting...';
   }
 
   protected memberCardToneClass(entry: AppTypes.ActivityMemberEntry): string {
@@ -491,11 +518,35 @@ export class EventMembersPopupComponent {
 
   private async applyInvites(selectedCandidates: readonly AppTypes.ActivityMemberEntry[]): Promise<void> {
     const previousMembers = this.currentOwnerMembers();
-    const existingUserIds = new Set(previousMembers.map(member => member.userId));
+    const existingPendingInvites = previousMembers.filter(member =>
+      member.status === 'pending' && member.requestKind === 'invite'
+    );
+    const preservedMembers = previousMembers.filter(member =>
+      !(member.status === 'pending' && member.requestKind === 'invite')
+    );
+    const existingPendingInviteByUserId = new Map(existingPendingInvites.map(member => [member.userId, member]));
+    const selectedUserIds = selectedCandidates.map(candidate => candidate.userId);
+    const selectionChanged = selectedUserIds.length !== existingPendingInvites.length
+      || selectedUserIds.some(userId => !existingPendingInviteByUserId.has(userId));
+    if (!selectionChanged) {
+      return;
+    }
     const nowIso = AppUtils.toIsoDateTime(new Date());
-    const additions = selectedCandidates
-      .filter(candidate => !existingUserIds.has(candidate.userId))
-      .map(candidate => ({
+    const nextPendingInvites = selectedCandidates.map(candidate => {
+      const existing = existingPendingInviteByUserId.get(candidate.userId);
+      if (existing) {
+        return {
+          ...existing,
+          ...candidate,
+          id: existing.id,
+          status: 'pending' as const,
+          pendingSource: 'admin' as const,
+          requestKind: 'invite' as const,
+          invitedByActiveUser: true,
+          actionAtIso: existing.actionAtIso || nowIso
+        };
+      }
+      return {
         ...candidate,
         status: 'pending' as const,
         pendingSource: 'admin' as const,
@@ -503,11 +554,9 @@ export class EventMembersPopupComponent {
         invitedByActiveUser: true,
         statusText: candidate.statusText?.trim() || 'Waiting for admin approval.',
         actionAtIso: nowIso
-      }));
-    if (additions.length === 0) {
-      return;
-    }
-    await this.commitMembers([...previousMembers, ...additions], previousMembers);
+      };
+    });
+    await this.commitMembers([...preservedMembers, ...nextPendingInvites], previousMembers);
   }
 
   private openMembersPopup(
@@ -864,6 +913,48 @@ export class EventMembersPopupComponent {
       return;
     }
     this.isMobileView = window.innerWidth <= 860;
+  }
+
+  private minimumDeletePendingWindow(): Promise<void> {
+    return this.demoModeEnabled
+      ? this.wait(EventMembersPopupComponent.DELETE_PENDING_WINDOW_MS)
+      : Promise.resolve();
+  }
+
+  private async runDeleteAfterUiYield(
+    nextMembers: readonly AppTypes.ActivityMemberEntry[],
+    previousMembers: readonly AppTypes.ActivityMemberEntry[]
+  ): Promise<void> {
+    await this.waitForAnimationKickoff();
+    await this.commitMembers(nextMembers, previousMembers);
+  }
+
+  private async waitForAnimationKickoff(): Promise<void> {
+    await this.waitForNextPaint();
+    await this.wait(this.demoModeEnabled ? 96 : 16);
+  }
+
+  private async wait(delayMs: number): Promise<void> {
+    if (delayMs <= 0) {
+      return;
+    }
+    await new Promise<void>(resolve => {
+      setTimeout(() => resolve(), delayMs);
+    });
+  }
+
+  private async waitForNextPaint(): Promise<void> {
+    await new Promise<void>(resolve => {
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => resolve());
+        return;
+      }
+      setTimeout(() => resolve(), 0);
+    });
+  }
+
+  private get demoModeEnabled(): boolean {
+    return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
   }
 
   private activeUserId(): string {

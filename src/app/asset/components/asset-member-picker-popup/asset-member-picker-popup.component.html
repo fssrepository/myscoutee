@@ -105,9 +105,9 @@
             class="friends-picker-card-add-btn"
             [class.active]="isInviteCandidateSelected(candidate.userId)"
             [class.is-persisted]="isInviteCandidatePersisted(candidate.userId)"
-            [disabled]="isConfirmPending || isInviteCandidatePersisted(candidate.userId)"
+            [disabled]="isConfirmPending"
             (click)="toggleInviteCandidate(candidate.userId, $event)"
-            [attr.aria-label]="isInviteCandidatePersisted(candidate.userId) ? 'Already invited' : 'Select friend'"
+            [attr.aria-label]="isInviteCandidateSelected(candidate.userId) ? 'Unselect friend' : 'Select friend'"
           >
             <mat-icon>{{ isInviteCandidateSelected(candidate.userId) ? 'check' : 'add' }}</mat-icon>
           </button>

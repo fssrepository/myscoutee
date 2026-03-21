@@ -45,6 +45,11 @@
   white-space: pre-line;
 }
 
+.confirmation-dialog-error {
+  color: #9b2c37 !important;
+  font-weight: 700;
+}
+
 .confirmation-dialog-actions {
   display: flex;
   justify-content: flex-end;
@@ -79,10 +84,70 @@
   color: rgba(34, 50, 74, 0.84);
 }
 
+.confirmation-dialog-confirm-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  justify-content: center;
+  width: 108px;
+  min-width: 108px;
+  height: 44px;
+  border-radius: 999px;
+  padding: 2px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
 .confirmation-dialog-confirm-btn {
-  color: #fff;
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 40px;
   border-color: transparent;
+  color: #fff;
   box-shadow: 0 16px 30px rgba(17, 24, 39, 0.16);
+}
+
+.confirmation-dialog-confirm-ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.confirmation-dialog-confirm-ring-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform-origin: 50% 50%;
+  will-change: transform;
+  filter: drop-shadow(0 8px 20px rgba(68, 18, 18, 0.16));
+}
+
+
+.confirmation-dialog-confirm-ring-track,
+.confirmation-dialog-confirm-ring-progress {
+  fill: none;
+  stroke-width: 4;
+}
+
+.confirmation-dialog-confirm-ring-track {
+  stroke: rgba(133, 100, 42, 0.18);
+}
+
+.confirmation-dialog-confirm-ring-progress {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.confirmation-dialog-confirm-ring-progress.is-loading {
+  stroke: url(#confirmation-dialog-gradient);
+  animation: confirmation-dialog-ring-progress 3s linear forwards;
+}
+
+.confirmation-dialog-confirm-ring-progress.is-error {
+  stroke: url(#confirmation-dialog-gradient-error);
 }
 
 .confirmation-dialog-confirm-btn.tone-accent {
@@ -96,6 +161,41 @@
 .confirmation-dialog-confirm-btn.tone-neutral {
   background: linear-gradient(135deg, #5f718d 0%, #7b8ba5 100%);
 }
+
+.confirmation-dialog-confirm-shell.is-loading .confirmation-dialog-confirm-btn,
+.confirmation-dialog-confirm-shell.is-loading .confirmation-dialog-confirm-btn:hover,
+.confirmation-dialog-confirm-shell.is-loading .confirmation-dialog-confirm-btn:disabled {
+  border-color: rgba(181, 117, 23, 0.76);
+  background: linear-gradient(180deg, #ffe7bf 0%, #ffd085 100%);
+  color: #8e4f0d;
+  opacity: 1;
+  cursor: wait;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+
+.confirmation-dialog-confirm-shell.is-error .confirmation-dialog-confirm-btn,
+.confirmation-dialog-confirm-shell.is-error .confirmation-dialog-confirm-btn:hover {
+  border-color: rgba(176, 31, 46, 0.82);
+  background: linear-gradient(180deg, #f36a79 0%, #d4374a 100%);
+  color: #fff;
+  opacity: 1;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+
+@keyframes confirmation-dialog-ring-progress {
+  from {
+    stroke-dashoffset: 100;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 
 @media (max-width: 720px) {
   .confirmation-dialog {

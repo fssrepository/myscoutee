@@ -13,6 +13,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
+import { environment } from '../../../../environments/environment';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import {
@@ -27,7 +28,7 @@ import {
   type SmartListLoaders,
   type SmartListStateChange
 } from '../../../shared/ui';
-import { ActivityInviteCandidatesService, ActivityMembersService, AppContext, AppPopupContext } from '../../../shared/core';
+import { ActivityInviteCandidatesService, ActivityMembersService, AppContext, AppPopupContext, SessionService } from '../../../shared/core';
 import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
 
 interface ActivityInviteFilters {
@@ -56,6 +57,7 @@ export class AssetMemberPickerPopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
+  private readonly sessionService = inject(SessionService);
   private readonly activityInviteCandidatesService = inject(ActivityInviteCandidatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
@@ -78,6 +80,7 @@ export class AssetMemberPickerPopupComponent {
   private candidateQueryKey = '';
   private localCandidates: AppTypes.ActivityMemberEntry[] = [];
   private isLocalCandidateSource = false;
+  private inviteSelectionHydrated = false;
   private inviteApplyHandler: ((selectedCandidates: readonly AppTypes.ActivityMemberEntry[]) => void | Promise<void>) | null = null;
   private closeOwnerPopupOnClose = false;
 
@@ -140,6 +143,7 @@ export class AssetMemberPickerPopupComponent {
         ? context.initialCandidates.map(candidate => ({ ...candidate }))
         : [];
       this.isLocalCandidateSource = this.localCandidates.length > 0;
+      this.inviteSelectionHydrated = false;
       this.inviteApplyHandler = context.onApply ?? null;
       this.closeOwnerPopupOnClose = context.closeOwnerPopupOnClose === true;
       this.syncInviteSmartListQuery();
@@ -230,7 +234,7 @@ export class AssetMemberPickerPopupComponent {
   }
 
   protected canConfirmSelection(): boolean {
-    return this.selectedUserIds.length > 0 && !this.isConfirmPending;
+    return this.hasSelectionChanges() && !this.isConfirmPending;
   }
 
   protected async confirmSelection(event?: Event): Promise<void> {
@@ -239,16 +243,12 @@ export class AssetMemberPickerPopupComponent {
       return;
     }
     const selected = this.selectedInviteChips();
-    if (selected.length === 0) {
-      return;
-    }
     this.isConfirmPending = true;
     this.confirmErrorMessage = '';
-    const pendingWindowPromise = this.wait(AssetMemberPickerPopupComponent.CONFIRM_PENDING_WINDOW_MS);
+    const pendingWindowPromise = this.minimumPendingWindow();
     this.cdr.markForCheck();
-    await this.waitForNextPaint();
     try {
-      const savePromise = Promise.resolve().then(() => this.applySelection(selected));
+      const savePromise = this.runSaveAfterUiYield(selected);
       await Promise.all([
         pendingWindowPromise,
         savePromise
@@ -264,20 +264,24 @@ export class AssetMemberPickerPopupComponent {
 
   protected toggleInviteCandidate(userId: string, event?: Event): void {
     event?.stopPropagation();
-    if (this.isConfirmPending || this.isInviteCandidatePersisted(userId)) {
+    if (this.isConfirmPending) {
       return;
     }
-    if (this.selectedUserIds.includes(userId)) {
-      this.selectedUserIds = this.selectedUserIds.filter(id => id !== userId);
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    if (this.selectedUserIds.includes(normalizedUserId)) {
+      this.selectedUserIds = this.selectedUserIds.filter(id => id !== normalizedUserId);
       this.cdr.markForCheck();
       return;
     }
-    this.selectedUserIds = [...this.selectedUserIds, userId];
+    this.selectedUserIds = [...this.selectedUserIds, normalizedUserId];
     this.cdr.markForCheck();
   }
 
   protected isInviteCandidateSelected(userId: string): boolean {
-    return this.isInviteCandidatePersisted(userId) || this.selectedUserIds.includes(userId);
+    return this.selectedUserIds.includes(userId.trim());
   }
 
   protected isInviteCandidatePersisted(userId: string): boolean {
@@ -285,7 +289,7 @@ export class AssetMemberPickerPopupComponent {
   }
 
   protected selectedInviteCount(): number {
-    return this.persistedSelectedUserIds.size + this.selectedUserIds.length;
+    return this.selectedUserIds.length;
   }
 
   protected selectedInviteCountLabel(): string {
@@ -304,7 +308,7 @@ export class AssetMemberPickerPopupComponent {
 
   protected selectedInviteChips(): AppTypes.ActivityMemberEntry[] {
     return this.selectedUserIds
-      .map(userId => this.candidatesByUserId.get(userId) ?? null)
+      .map(userId => this.candidatesByUserId.get(userId) ?? this.currentCandidates.find(entry => entry.userId === userId) ?? null)
       .filter((entry): entry is AppTypes.ActivityMemberEntry => Boolean(entry));
   }
 
@@ -333,6 +337,7 @@ export class AssetMemberPickerPopupComponent {
     this.candidateQueryKey = '';
     this.localCandidates = [];
     this.isLocalCandidateSource = false;
+    this.inviteSelectionHydrated = false;
     this.inviteApplyHandler = null;
     this.closeOwnerPopupOnClose = false;
     this.cdr.markForCheck();
@@ -395,9 +400,18 @@ export class AssetMemberPickerPopupComponent {
           this.ownerType,
           currentMembers.map(member => member.userId)
         );
-        const persistedMembers = currentMembers.filter(member => member.userId !== activeUserId);
+        const persistedMembers = currentMembers.filter(member =>
+          member.userId !== activeUserId
+          && member.status === 'pending'
+          && member.requestKind === 'invite'
+        );
         this.persistedSelectedUserIds = new Set(persistedMembers.map(member => member.userId));
-        this.selectedUserIds = this.selectedUserIds.filter(userId => !this.persistedSelectedUserIds.has(userId));
+        if (!this.inviteSelectionHydrated) {
+          this.selectedUserIds = [...this.persistedSelectedUserIds];
+          this.inviteSelectionHydrated = true;
+        } else {
+          this.selectedUserIds = this.selectedUserIds.filter(userId => this.persistedSelectedUserIds.has(userId) || userId.length > 0);
+        }
         this.currentCandidates = this.mergeInviteCandidates(persistedMembers, candidates, inviteSort);
       }
       this.candidateQueryKey = queryKey;
@@ -405,6 +419,7 @@ export class AssetMemberPickerPopupComponent {
       for (const entry of this.currentCandidates) {
         this.candidatesByUserId.set(entry.userId, { ...entry });
       }
+      this.cdr.markForCheck();
     }
 
     const pageSize = Math.max(1, Number(query.pageSize) || 16);
@@ -429,7 +444,7 @@ export class AssetMemberPickerPopupComponent {
       mergedByUserId.set(candidate.userId, current ? { ...current, ...candidate, userId: candidate.userId } : { ...candidate });
     }
     return [...mergedByUserId.values()].sort((left, right) => {
-      const selectedDelta = Number(this.persistedSelectedUserIds.has(right.userId)) - Number(this.persistedSelectedUserIds.has(left.userId));
+      const selectedDelta = Number(this.selectedUserIds.includes(right.userId)) - Number(this.selectedUserIds.includes(left.userId));
       if (selectedDelta !== 0) {
         return selectedDelta;
       }
@@ -440,12 +455,36 @@ export class AssetMemberPickerPopupComponent {
     });
   }
 
+
+  private hasSelectionChanges(): boolean {
+    if (this.selectedUserIds.length !== this.persistedSelectedUserIds.size) {
+      return true;
+    }
+    return this.selectedUserIds.some(userId => !this.persistedSelectedUserIds.has(userId));
+  }
+
   private async applySelection(selected: readonly AppTypes.ActivityMemberEntry[]): Promise<void> {
     if (this.inviteApplyHandler) {
       await Promise.resolve(this.inviteApplyHandler(selected));
       return;
     }
     await this.activityInviteCandidatesService.applyInvites(this.ownerId, selected, this.ownerType);
+  }
+
+  private minimumPendingWindow(): Promise<void> {
+    return this.demoModeEnabled
+      ? this.wait(AssetMemberPickerPopupComponent.CONFIRM_PENDING_WINDOW_MS)
+      : Promise.resolve();
+  }
+
+  private async runSaveAfterUiYield(selected: readonly AppTypes.ActivityMemberEntry[]): Promise<void> {
+    await this.waitForAnimationKickoff();
+    await this.applySelection(selected);
+  }
+
+  private async waitForAnimationKickoff(): Promise<void> {
+    await this.waitForNextPaint();
+    await this.wait(this.demoModeEnabled ? 96 : 16);
   }
 
   private async wait(delayMs: number): Promise<void> {
@@ -465,5 +504,9 @@ export class AssetMemberPickerPopupComponent {
       }
       setTimeout(() => resolve(), 0);
     });
+  }
+
+  private get demoModeEnabled(): boolean {
+    return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
   }
 }
