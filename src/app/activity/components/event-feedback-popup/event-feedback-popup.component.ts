@@ -6,7 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { from } from 'rxjs';
 
 import { AppContext, EventsService, GameService, type UserDto } from '../../../shared/core';
-import type { EventMenuItem } from '../../../shared/demo-data';
+import type { EventMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
 import {
   InfoCardComponent,
   SmartListComponent,

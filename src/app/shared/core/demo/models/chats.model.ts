@@ -1,4 +1,4 @@
-import type { ChatMenuItem } from '../../../demo-data';
+import type { ChatMenuItem } from '../../base/interfaces/activity-feed.interface';
 
 export const CHATS_TABLE_NAME = 'chats' as const;
 

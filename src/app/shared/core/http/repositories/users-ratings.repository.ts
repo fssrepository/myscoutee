@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type { RateMenuItem } from '../../../demo-data';
+import type { RateMenuItem } from '../../base/interfaces/activity-feed.interface';
 import type { UserRateOutboxRecord, UserRateRecord, UserRatesSyncResult } from '../../base/interfaces/game.interface';
 import {
   USER_RATES_OUTBOX_TABLE_NAME

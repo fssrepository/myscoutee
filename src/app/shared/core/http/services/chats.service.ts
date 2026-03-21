@@ -4,7 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
-import type { ChatMenuItem } from '../../../demo-data';
+import type { ChatMenuItem } from '../../base/interfaces/activity-feed.interface';
 import type { DemoChatRecord } from '../../demo/models/chats.model';
 
 interface HttpChatMessageDto {

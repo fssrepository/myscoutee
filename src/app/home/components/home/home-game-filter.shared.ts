@@ -1,4 +1,4 @@
-import { DemoUser } from '../../../shared/demo-data';
+import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
 
 export const GAME_FILTER_AGE_MIN = 18;
 export const GAME_FILTER_AGE_MAX = 120;

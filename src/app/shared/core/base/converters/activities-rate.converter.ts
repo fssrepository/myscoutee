@@ -1,6 +1,7 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
-import type { DemoUser, RateMenuItem } from '../../../demo-data';
+import type { RateMenuItem } from '../interfaces/activity-feed.interface';
+import type { DemoUser } from '../interfaces/user.interface';
 import { formatActivityMonthDayLabel } from '../formatters';
 
 interface BuildActivityRateRowsOptions {

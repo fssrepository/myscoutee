@@ -1,5 +1,6 @@
 import { AppUtils } from '../../../app-utils';
-import type { DemoUser, EventMenuItem } from '../../../demo-data';
+import type { EventMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { DemoUser } from '../../base/interfaces/user.interface';
 import type { EventFeedbackCard, EventFeedbackOption } from '../../base/models';
 
 export class DemoEventFeedbackBuilder {

@@ -10,7 +10,7 @@ import type * as AppTypes from '../../shared/core/base/models';
 import { ActivityMembersService, ActivityResourceBuilder, ActivityResourcesService, AppContext, SessionService, type UserDto } from '../../shared/core';
 import { ActivitiesDbContextService } from './activities-db-context.service';
 import { DemoUsersRepository } from '../../shared/core/demo';
-import { EventEditorService } from '../../shared/event-editor.service';
+import { EventEditorService } from './event-editor.service';
 import type {
   EventResourcePopupHost
 } from '../components/event-resource-popup/event-resource-popup.component';

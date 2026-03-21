@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 
-import { DEMO_CHAT_BY_USER } from '../../../demo-data';
 import { AppUtils } from '../../../app-utils';
 import { AppMemoryDb } from '../../base/db';
 import { DemoChatsRepositoryBuilder } from '../builders';
@@ -31,7 +30,7 @@ export class DemoChatsRepository {
         return;
       }
     }
-    const records = DemoChatsRepositoryBuilder.buildRecordCollection(DEMO_CHAT_BY_USER);
+    const records = DemoChatsRepositoryBuilder.buildSeedRecordCollection();
     this.memoryDb.write(currentState => ({
       ...currentState,
       [CHATS_TABLE_NAME]: records

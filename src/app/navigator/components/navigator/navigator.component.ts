@@ -4,7 +4,7 @@ import { AssetPopupService } from '../../../asset/asset-popup.service';
 import { OwnedAssetsPopupService } from '../../../asset/owned-assets-popup.service';
 import { ActivitiesDbContextService } from '../../../activity/services/activities-db-context.service';
 import { EventFeedbackPopupService } from '../../../activity/event-feedback-popup.service';
-import { EventEditorService } from '../../../shared/event-editor.service';
+import { EventEditorService } from '../../../activity/services/event-editor.service';
 import { AppContext } from '../../../shared/core';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { AvatarBtnComponent } from '../avatar-btn/avatar-btn.component';

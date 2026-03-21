@@ -18,18 +18,17 @@ import { MatSelectModule } from '@angular/material/select';
 import { from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import {
-  DEMO_USERS,
-  RateMenuItem,
-  type ChatMenuItem,
-  type EventMenuItem,
-  type HostingMenuItem,
-  type InvitationMenuItem,
-  type DemoUser
-} from '../../../shared/demo-data';
+import type {
+  ChatMenuItem,
+  EventMenuItem,
+  HostingMenuItem,
+  InvitationMenuItem,
+  RateMenuItem
+} from '../../../shared/core/base/interfaces/activity-feed.interface';
+import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
 import { AppUtils } from '../../../shared/app-utils';
 import { ActivitiesDbContextService } from '../../services/activities-db-context.service';
-import { EventEditorService } from '../../../shared/event-editor.service';
+import { EventEditorService } from '../../services/event-editor.service';
 import { OwnedAssetsPopupService } from '../../../asset/owned-assets-popup.service';
 import type {
   ActivityMemberOwnerRef,
@@ -145,7 +144,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected get users(): DemoUser[] {
     return this.demoUsersRepository.queryAllUsers() as DemoUser[];
   }
-  protected activeUser: DemoUser = this.users[0] ?? DEMO_USERS[0];
+  protected activeUser: DemoUser = (this.appCtx.activeUserProfile() as DemoUser | null)
+    ?? this.users[0]
+    ?? this.createFallbackActiveUser();
 
   protected chatItems: ChatMenuItem[] = [];
   protected eventItems: EventMenuItem[] = [];
@@ -501,9 +502,36 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activitiesSmartList?.clearHostedLoading();
   }
 
+  private createFallbackActiveUser(): DemoUser {
+    return {
+      id: this.appCtx.activeUserId().trim() || 'u1',
+      name: 'Demo User',
+      age: 0,
+      birthday: '',
+      city: '',
+      height: '',
+      physique: '',
+      languages: [],
+      horoscope: '',
+      initials: 'DU',
+      gender: 'woman',
+      statusText: '',
+      hostTier: '',
+      traitLabel: '',
+      completion: 0,
+      headline: '',
+      about: '',
+      images: [],
+      profileStatus: 'public',
+      activities: { game: 0, chat: 0, invitations: 0, events: 0, hosting: 0 }
+    };
+  }
+
   private hydrateStandaloneFallbackState(): void {
     if (!this.activeUser) {
-      this.activeUser = this.users[0] ?? DEMO_USERS[0];
+      this.activeUser = (this.appCtx.activeUserProfile() as DemoUser | null)
+        ?? this.users[0]
+        ?? this.createFallbackActiveUser();
     }
     const userId = this.activeUser.id;
 

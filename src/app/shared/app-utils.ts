@@ -1,5 +1,5 @@
 import type { ActivitiesView, ActivityListRow, AssetMemberRequest } from './core/base/models';
-import type { DemoUser } from './demo-data';
+import type { DemoUser } from './core/base/interfaces/user.interface';
 
 export class AppUtils {
   static cloneMapItems<T extends object>(input: Record<string, T[]>): Record<string, T[]> {

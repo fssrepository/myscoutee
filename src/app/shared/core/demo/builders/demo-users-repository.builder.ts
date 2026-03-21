@@ -1,5 +1,5 @@
 import { AppUtils } from '../../../app-utils';
-import type { ChatMenuItem } from '../../../demo-data';
+import type { ChatMenuItem } from '../../base/interfaces/activity-feed.interface';
 import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.interface';
 import type { DemoUserListItemDto, UserDto } from '../../base/interfaces/user.interface';
 import { DemoUserMenuCountersBuilder } from './demo-user-menu-counters.builder';

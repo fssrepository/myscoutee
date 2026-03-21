@@ -12,7 +12,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSliderModule } from '@angular/material/slider';
-import { DemoUser } from '../../../shared/demo-data';
+import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
 import {
   FilterSelectorKind,
   GameFilterForm,

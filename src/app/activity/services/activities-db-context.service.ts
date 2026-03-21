@@ -9,7 +9,7 @@ import type {
   EventChatContext,
   EventChatSession
 } from '../../shared/core/base/models';
-import type { ChatMenuItem } from '../../shared/demo-data';
+import type { ChatMenuItem } from '../../shared/core/base/interfaces/activity-feed.interface';
 
 interface ActivitiesUiState {
   open: boolean;

@@ -4,7 +4,8 @@ import { DemoEventSeedBuilder } from './demo-event-seed.builder';
 import { DemoUserSeedBuilder } from './demo-user-seed.builder';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
-import { type DemoUser, type EventMenuItem, type HostingMenuItem, type InvitationMenuItem } from '../../../demo-data';
+import type { DemoUser } from '../../base/interfaces/user.interface';
+import type { EventMenuItem, HostingMenuItem, InvitationMenuItem } from '../../base/interfaces/activity-feed.interface';
 import type { LocationCoordinates } from '../../base/interfaces';
 import type {
   DemoEventRecord,
@@ -13,6 +14,193 @@ import type {
 } from '../models/events.model';
 
 const DEMO_EVENT_MEMBER_USERS = DemoUserSeedBuilder.buildExpandedDemoUsers(50);
+const SEED_INVITATIONS_BY_USER: Record<string, InvitationMenuItem[]> = {
+  u1: [
+    { id: 'i1', avatar: 'LP', inviter: 'Lina', description: 'Jazz Rooftop Session', when: 'Sat Feb 21, 8:00 PM', unread: 1 },
+    { id: 'i2', avatar: 'NH', inviter: 'Noah', description: 'Open Padel Pairs', when: 'Sun Feb 22, 3:00 PM', unread: 1 },
+    { id: 'i3', avatar: 'SY', inviter: 'System', description: 'Chat: Last-minute Ski Carpool', when: 'Sat Feb 21, 9:15 AM', unread: 2 }
+  ],
+  u2: [{ id: 'i4', avatar: 'MS', inviter: 'Maya', description: 'Foodie Crawl Team', when: 'Sun Feb 22, 6:30 PM', unread: 1 }],
+  u3: [{ id: 'i5', avatar: 'LH', inviter: 'Luca', description: 'Urban Photo Sprint', when: 'Mon Feb 23, 6:00 PM', unread: 1 }]
+};
+
+const SEED_EVENTS_BY_USER: Record<string, EventMenuItem[]> = {
+  u1: [
+    {
+      id: 'e1',
+      avatar: 'SY',
+      title: 'Alpine Weekend 2.0',
+      shortDescription: 'Multi-day ski meetup with social dinner and pair game.',
+      timeframe: 'Feb 27 - Mar 1',
+      activity: 4,
+      isAdmin: true
+    },
+    {
+      id: 'e2',
+      avatar: 'SY',
+      title: 'Urban Photo Marathon',
+      shortDescription: 'Creative city walk with checkpoints and mini challenges.',
+      timeframe: 'Mar 8 · 10:00 AM - 7:00 PM',
+      activity: 1,
+      isAdmin: false,
+      creatorUserId: 'u10'
+    },
+    {
+      id: 'e3',
+      avatar: 'SY',
+      title: 'Night Food League',
+      shortDescription: 'Three-spot tasting route with ranking and vibe voting.',
+      timeframe: 'Mar 12 · 7:30 PM - 11:30 PM',
+      activity: 3,
+      isAdmin: false,
+      creatorUserId: 'u3'
+    },
+    {
+      id: 'e6',
+      avatar: 'SY',
+      title: 'Sunset Beach Volley',
+      shortDescription: 'Casual teams, rotation rounds, and post-game snacks.',
+      timeframe: 'Mar 14 · 5:00 PM - 8:30 PM',
+      activity: 2,
+      isAdmin: false,
+      creatorUserId: 'u4'
+    },
+    {
+      id: 'e7',
+      avatar: 'SY',
+      title: 'Coffee + Book Swap',
+      shortDescription: 'Small-circle meetup with curated intro prompts.',
+      timeframe: 'Mar 16 · 9:30 AM - 11:30 AM',
+      activity: 1,
+      isAdmin: true
+    },
+    {
+      id: 'e8',
+      avatar: 'SY',
+      title: 'Lakeside Walk Lab',
+      shortDescription: 'Guided walk with paired mini-conversations.',
+      timeframe: 'Feb 27 · 11:15 AM - 1:00 PM',
+      activity: 2,
+      isAdmin: false,
+      creatorUserId: 'u12'
+    },
+    {
+      id: 'e9',
+      avatar: 'SY',
+      title: 'Brunch Rotation',
+      shortDescription: 'Table rotations every 20 minutes for fresh intros.',
+      timeframe: 'Feb 27 · 1:30 PM - 3:30 PM',
+      activity: 3,
+      isAdmin: false,
+      creatorUserId: 'u2'
+    },
+    {
+      id: 'e10',
+      avatar: 'SY',
+      title: 'Golden Hour Meetup',
+      shortDescription: 'Sunset meetup with check-in games and soft networking.',
+      timeframe: 'Mar 14 · 6:15 PM - 8:45 PM',
+      activity: 2,
+      isAdmin: true
+    },
+    {
+      id: 'e11',
+      avatar: 'SY',
+      title: 'Cross-Month Community Relay',
+      shortDescription: 'Long-format challenge with rotating teams across multiple weekends.',
+      timeframe: 'Mar 28 - May 6',
+      activity: 5,
+      isAdmin: true
+    },
+    {
+      id: 'e12',
+      avatar: 'SY',
+      title: 'Spring Cohort Journey',
+      shortDescription: 'Multi-stage mentorship/event arc with check-ins and shared tasks.',
+      timeframe: 'Apr 26 - Jun 2',
+      activity: 4,
+      isAdmin: false,
+      creatorUserId: 'u6'
+    }
+  ],
+  u2: [
+    {
+      id: 'e4',
+      avatar: 'SY',
+      title: 'Sunrise Run + Brunch',
+      shortDescription: 'Easy pace run and social brunch with optional pair mode.',
+      timeframe: 'Feb 28 · 8:00 AM - 12:00 PM',
+      activity: 2,
+      isAdmin: true
+    }
+  ],
+  u3: [
+    {
+      id: 'e5',
+      avatar: 'SY',
+      title: 'Creative Studio Meetup',
+      shortDescription: 'Hands-on session and portfolio exchange for creators.',
+      timeframe: 'Mar 3 · 6:00 PM - 10:00 PM',
+      activity: 2,
+      isAdmin: false,
+      creatorUserId: 'u11'
+    }
+  ]
+};
+
+const SEED_HOSTING_BY_USER: Record<string, HostingMenuItem[]> = {
+  u1: [
+    {
+      id: 'h1',
+      avatar: 'FA',
+      title: 'Weekly Padel League',
+      shortDescription: 'Own recurring event with two sub-events and tournament mode.',
+      timeframe: 'Every Fri · 6:00 PM',
+      activity: 3
+    },
+    {
+      id: 'h2',
+      avatar: 'FA',
+      title: 'Spring City Festival Crew',
+      shortDescription: 'Own hosted event, pending join requests and role assignments.',
+      timeframe: 'Apr 4 · 4:00 PM - 11:00 PM',
+      activity: 2
+    }
+  ],
+  u2: [
+    {
+      id: 'h3',
+      avatar: 'KB',
+      title: 'Sunday Bike Social',
+      shortDescription: 'Own hosted route event with optional accessories list.',
+      timeframe: 'Every Sun · 9:30 AM',
+      activity: 1
+    }
+  ],
+  u3: [
+    {
+      id: 'h4',
+      avatar: 'NE',
+      title: 'Creative Nights Series',
+      shortDescription: 'Own hosted monthly event, open applications pending.',
+      timeframe: 'Monthly · First Thu',
+      activity: 1
+    }
+  ]
+};
+
+const SEED_PUBLISHED_BY_ID: Record<string, boolean> = {
+  e1: true,
+  e4: true,
+  e5: true,
+  e7: false,
+  e10: true,
+  e11: false,
+  h1: true,
+  h2: true,
+  h3: false,
+  h4: false
+};
 
 interface DemoEventSeedOverrides {
   startAt?: string;
@@ -40,6 +228,41 @@ interface DemoEventSeedOverrides {
 }
 
 export class DemoEventsRepositoryBuilder {
+
+  static buildSeedInvitationItemsByUser(): Record<string, InvitationMenuItem[]> {
+    return Object.fromEntries(
+      Object.entries(SEED_INVITATIONS_BY_USER).map(([userId, items]) => [userId, items.map(item => ({ ...item }))])
+    );
+  }
+
+  static buildSeedEventItemsByUser(): Record<string, EventMenuItem[]> {
+    return Object.fromEntries(
+      Object.entries(SEED_EVENTS_BY_USER).map(([userId, items]) => [
+        userId,
+        items.map(item => ({
+          ...item,
+          topics: item.topics ? [...item.topics] : item.topics
+        }))
+      ])
+    );
+  }
+
+  static buildSeedHostingItemsByUser(): Record<string, HostingMenuItem[]> {
+    return Object.fromEntries(
+      Object.entries(SEED_HOSTING_BY_USER).map(([userId, items]) => [
+        userId,
+        items.map(item => ({
+          ...item,
+          topics: item.topics ? [...item.topics] : item.topics
+        }))
+      ])
+    );
+  }
+
+  static buildSeedPublishedById(): Record<string, boolean> {
+    return { ...SEED_PUBLISHED_BY_ID };
+  }
+
   static buildRecordCollection(options: {
     invitationsByUser: Record<string, readonly InvitationMenuItem[]>;
     eventsByUser: Record<string, readonly EventMenuItem[]>;

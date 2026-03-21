@@ -12,7 +12,7 @@ import { OwnedAssetsPopupService } from '../../../asset/owned-assets-popup.servi
 import type * as AppTypes from '../../../shared/core/base/models';
 import { ActivityResourceBuilder, ActivityResourcesService, AppContext, EventsService } from '../../../shared/core';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
-import { EventEditorService, EventEditorSubEventResourceType } from '../../../shared/event-editor.service';
+import { EventEditorService, EventEditorSubEventResourceType } from '../../services/event-editor.service';
 import {
   SmartListComponent,
   type ListQuery,

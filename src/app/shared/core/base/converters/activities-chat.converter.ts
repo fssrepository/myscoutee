@@ -1,6 +1,7 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
-import type { ChatMenuItem, DemoUser } from '../../../demo-data';
+import type { ChatMenuItem } from '../interfaces/activity-feed.interface';
+import type { DemoUser } from '../interfaces/user.interface';
 import type { DemoChatRecord } from '../../demo/models/chats.model';
 
 interface BuildActivityChatRowsOptions {

@@ -1,5 +1,3 @@
-import { EVENT_EDITOR_SAMPLE } from '../../../demo-data';
-
 export interface EventFeedbackOption {
   value: string;
   label: string;
@@ -59,7 +57,17 @@ export interface EventFeedbackEventCard {
   feedbackedAtMs: number | null;
 }
 
-export type SubEventCard = (typeof EVENT_EDITOR_SAMPLE.subEvents)[number];
+export interface SubEventCard {
+  id: string;
+  title: string;
+  when: string;
+  phase: string;
+  requirements: {
+    cars: string;
+    accommodation: string;
+    accessories: string;
+  };
+}
 export type SubEventsDisplayMode = 'Casual' | 'Tournament';
 export type TournamentLeaderboardType = 'Score' | 'Fifa';
 export type EventEditorMode = 'edit' | 'create';

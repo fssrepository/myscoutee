@@ -71,6 +71,53 @@ const PROFILE_STATUS_OPTIONS: Array<{ value: ProfileStatus; icon: string }> = [
   { value: 'host only', icon: 'stadium' },
   { value: 'inactive', icon: 'visibility_off' }
 ];
+
+const PROFILE_DETAIL_GROUP_TEMPLATES: Array<{
+  title: string;
+  rows: Array<{ label: string; privacy: DetailPrivacy }>;
+}> = [
+  {
+    title: 'Basics',
+    rows: [
+      { label: 'Name', privacy: 'Public' },
+      { label: 'City', privacy: 'Public' },
+      { label: 'Birthday', privacy: 'Friends' },
+      { label: 'Height', privacy: 'Friends' },
+      { label: 'Physique', privacy: 'Friends' },
+      { label: 'Languages', privacy: 'Public' },
+      { label: 'Horoscope', privacy: 'Public' }
+    ]
+  },
+  {
+    title: 'Lifestyle',
+    rows: [
+      { label: 'Interest', privacy: 'Friends' },
+      { label: 'Drinking', privacy: 'Friends' },
+      { label: 'Smoking', privacy: 'Friends' },
+      { label: 'Workout', privacy: 'Public' },
+      { label: 'Pets', privacy: 'Public' }
+    ]
+  },
+  {
+    title: 'Relationships',
+    rows: [
+      { label: 'Family plans', privacy: 'Hosts' },
+      { label: 'Children', privacy: 'Private' },
+      { label: 'Love style', privacy: 'Hosts' },
+      { label: 'Communication style', privacy: 'Friends' },
+      { label: 'Sexual orientation', privacy: 'Hosts' },
+      { label: 'Gender', privacy: 'Public' }
+    ]
+  },
+  {
+    title: 'Beliefs',
+    rows: [
+      { label: 'Religion', privacy: 'Private' },
+      { label: 'Values', privacy: 'Friends' }
+    ]
+  }
+];
+
 const PROFILE_DETAIL_VALUE_OPTIONS: Record<string, string[]> = {
   Drinking: ['Never', 'Socially', 'Occasionally', 'Weekends only'],
   Smoking: ['Never', 'Socially', 'Occasionally', 'Trying to quit'],
@@ -702,6 +749,7 @@ export const APP_STATIC_DATA = {
   homeUserFacetById: HOME_USER_FACET_BY_ID,
   profileStatusOptions: PROFILE_STATUS_OPTIONS,
   profileDetailValueOptions: PROFILE_DETAIL_VALUE_OPTIONS,
+  profileDetailGroupTemplates: PROFILE_DETAIL_GROUP_TEMPLATES,
   beliefsValuesOptionGroups: BELIEFS_VALUES_OPTION_GROUPS,
   interestOptionGroups: INTEREST_OPTION_GROUPS,
   detailPrivacyOptions: DETAIL_PRIVACY_OPTIONS,

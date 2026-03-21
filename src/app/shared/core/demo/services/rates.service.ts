@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import type { ActivitiesPageRequest } from '../../../core/base/models';
-import type { RateMenuItem } from '../../../demo-data';
+import type { RateMenuItem } from '../../base/interfaces/activity-feed.interface';
 import type { ActivityRateRecordQuery } from '../../base/interfaces/game.interface';
 import { resolveAdditionalDelayMsForRoute } from '../config';
 import { DemoUsersRatingsRepository } from '../repositories/users-ratings.repository';

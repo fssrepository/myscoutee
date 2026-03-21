@@ -1,5 +1,5 @@
 import { AppUtils } from '../../../app-utils';
-import type { RateMenuItem } from '../../../demo-data';
+import type { RateMenuItem } from '../../base/interfaces/activity-feed.interface';
 import type { UserRateRecord } from '../../base/interfaces/game.interface';
 
 type RateUserRef = {

@@ -1,6 +1,6 @@
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { AppUtils } from '../../../app-utils';
-import type { DemoUser } from '../../../demo-data';
+import type { DemoUser } from '../interfaces/user.interface';
 import type {
   ActivityMemberEntry,
   ActivityMemberOwnerRef,

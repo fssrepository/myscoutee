@@ -9,7 +9,8 @@ import { ActivityMembersBuilder } from '../../base/builders/activity-members.bui
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
-import { type DemoUser, type EventMenuItem, type HostingMenuItem } from '../../../demo-data';
+import type { DemoUser } from '../../base/interfaces/user.interface';
+import type { EventMenuItem, HostingMenuItem } from '../../base/interfaces/activity-feed.interface';
 import { HttpActivityMembersRepository } from '../../http/repositories/activity-members.repository';
 import type { DemoEventRecord } from '../models/events.model';
 import { EVENTS_TABLE_NAME } from '../models/events.model';

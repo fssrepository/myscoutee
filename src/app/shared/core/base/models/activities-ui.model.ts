@@ -4,7 +4,7 @@ import type {
   HostingMenuItem,
   InvitationMenuItem,
   RateMenuItem
-} from '../../../demo-data';
+} from '../interfaces/activity-feed.interface';
 
 export type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
 export type ActivitiesEventScope = 'all' | 'active-events' | 'invitations' | 'my-events' | 'drafts' | 'trash';

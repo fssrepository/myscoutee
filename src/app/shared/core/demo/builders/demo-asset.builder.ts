@@ -1,5 +1,5 @@
 import type * as AppTypes from '../../base/models';
-import type { DemoUser } from '../../../demo-data';
+import type { DemoUser } from '../../base/interfaces/user.interface';
 
 export class DemoAssetBuilder {
   static defaultAssetImage(type: AppTypes.AssetType, seed = type.toLowerCase()): string {

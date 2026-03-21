@@ -1,6 +1,7 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../base/models';
-import type { EventMenuItem, HostingMenuItem, DemoUser } from '../../../demo-data';
+import type { EventMenuItem, HostingMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { DemoUser } from '../../base/interfaces/user.interface';
 
 export class DemoEventSeedBuilder {
   static seededTournamentGroupIdForUser<TGroup extends { id: string }>(

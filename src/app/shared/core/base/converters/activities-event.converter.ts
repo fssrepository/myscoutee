@@ -3,7 +3,7 @@ import type {
   EventMenuItem,
   HostingMenuItem,
   InvitationMenuItem
-} from '../../../demo-data';
+} from '../interfaces/activity-feed.interface';
 import type { DemoEventRecord } from '../../demo/models/events.model';
 
 export function buildActivityEventRows(records: readonly DemoEventRecord[]): AppTypes.ActivityListRow[] {

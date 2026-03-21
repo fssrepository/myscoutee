@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { ActivityMembersBuilder } from '../../base/builders/activity-members.builder';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
-import type { DemoUser } from '../../../demo-data';
+import type { DemoUser } from '../../base/interfaces/user.interface';
 import type {
   ActivityInviteCandidatesQuery,
   ActivityInviteCandidatesRepository

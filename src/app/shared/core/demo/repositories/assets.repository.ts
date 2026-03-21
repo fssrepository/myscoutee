@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { DemoAssetBuilder, DemoUserSeedBuilder } from '../builders';
 import type * as AppTypes from '../../../core/base/models';
-import type { DemoUser } from '../../../demo-data';
+import type { DemoUser } from '../../base/interfaces/user.interface';
 import { HttpAssetsRepository } from '../../http/repositories/assets.repository';
 import { AppMemoryDb } from '../../base/db';
 import { DemoUsersRepository } from './users.repository';

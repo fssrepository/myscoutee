@@ -7,7 +7,7 @@ import type {
   ActivitiesPageRequest,
   EventExploreFeedFilters
 } from '../../../core/base/models';
-import type { ChatMenuItem } from '../../../demo-data';
+import type { ChatMenuItem } from '../interfaces/activity-feed.interface';
 import type { ListQuery, PageResult } from '../../../ui';
 import {
   buildActivityEventRows,

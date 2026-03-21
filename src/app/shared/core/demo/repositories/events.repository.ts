@@ -1,13 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../app-utils';
-import {
-  DEMO_EVENTS_BY_USER,
-  DEMO_HOSTING_BY_USER,
-  DEMO_HOSTING_PUBLISHED_BY_ID,
-  DEMO_INVITATIONS_BY_USER,
-  type EventMenuItem
-} from '../../../demo-data';
+import type { EventMenuItem } from '../../../core/base/interfaces/activity-feed.interface';
 import { AppMemoryDb } from '../../base/db';
 import { DemoEventSeedBuilder, DemoEventsRepositoryBuilder, DemoUserMenuCountersBuilder, DemoUserSeedBuilder } from '../builders';
 import {
@@ -940,10 +934,10 @@ export class DemoEventsRepository {
   private buildSeededRecords(): DemoEventRecordCollection {
     const eventsByUser = this.buildEventsByUserWithSyntheticSeed();
     return DemoEventsRepositoryBuilder.buildRecordCollection({
-      invitationsByUser: DEMO_INVITATIONS_BY_USER,
+      invitationsByUser: DemoEventsRepositoryBuilder.buildSeedInvitationItemsByUser(),
       eventsByUser,
-      hostingByUser: DEMO_HOSTING_BY_USER,
-      publishedById: DEMO_HOSTING_PUBLISHED_BY_ID
+      hostingByUser: DemoEventsRepositoryBuilder.buildSeedHostingItemsByUser(),
+      publishedById: DemoEventsRepositoryBuilder.buildSeedPublishedById()
     });
   }
 
@@ -951,14 +945,15 @@ export class DemoEventsRepository {
     const users = DemoUserSeedBuilder.buildExpandedDemoUsers(50);
     const userById = new Map(users.map(user => [user.id, user]));
     const seeded: Record<string, readonly EventMenuItem[]> = {};
+    const seedEventsByUser = DemoEventsRepositoryBuilder.buildSeedEventItemsByUser();
     const featuredFriendsOnlyByUser = this.buildFeaturedFriendsOnlyEvents(userById);
     const userIds = Array.from(new Set([
-      ...Object.keys(DEMO_EVENTS_BY_USER),
+      ...Object.keys(seedEventsByUser),
       ...Object.keys(featuredFriendsOnlyByUser)
     ]));
 
     for (const userId of userIds) {
-      const items = DEMO_EVENTS_BY_USER[userId] ?? [];
+      const items = seedEventsByUser[userId] ?? [];
       const baseItems = [
         ...(featuredFriendsOnlyByUser[userId] ?? []),
         ...items.map(item => ({

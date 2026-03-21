@@ -16,7 +16,7 @@ import {
   type SmartListLoadPage,
   type SmartListStateChange
 } from '../../../shared/ui';
-import { DemoUser, PROFILE_DETAILS } from '../../../shared/demo-data';
+import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import {
   AppContext,
@@ -79,7 +79,7 @@ interface HomePairSmartListRow {
 type HomeSmartListRow = HomeSingleSmartListRow | HomePairSmartListRow;
 
 const PUBLIC_PROFILE_DETAIL_LABELS = new Set(
-  PROFILE_DETAILS.flatMap(group =>
+  APP_STATIC_DATA.profileDetailGroupTemplates.flatMap(group =>
     group.rows
       .filter(row => row.privacy === 'Public')
       .map(row => row.label.trim().toLowerCase())

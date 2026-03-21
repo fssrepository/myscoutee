@@ -1,6 +1,6 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
-import type { EventMenuItem, HostingMenuItem, InvitationMenuItem } from '../../../demo-data';
+import type { EventMenuItem, HostingMenuItem, InvitationMenuItem } from '../interfaces/activity-feed.interface';
 
 export class ActivityEventBuilder {
   static buildInvitationPreviewEventSource(invitation: InvitationMenuItem): EventMenuItem {

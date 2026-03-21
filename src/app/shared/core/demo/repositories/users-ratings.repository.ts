@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 
 import { AppUtils } from '../../../app-utils';
 import { DemoUserRatesBuilder, DemoUserSeedBuilder } from '../builders';
-import type { RateMenuItem } from '../../../demo-data';
+import type { RateMenuItem } from '../../base/interfaces/activity-feed.interface';
 import type {
   ActivityRateRecordQuery,
   UserRateRecord,

@@ -18,9 +18,9 @@ import { delay, of } from 'rxjs';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import { ActivitiesDbContextService } from '../../services/activities-db-context.service';
-import { EventEditorService } from '../../../shared/event-editor.service';
+import { EventEditorService } from '../../services/event-editor.service';
 import type { EventChatResourceContext } from '../../../shared/core/base/models';
-import type { EventMenuItem } from '../../../shared/demo-data';
+import type { EventMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
 import {
   SmartListComponent,
   type ListQuery,

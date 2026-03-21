@@ -12,7 +12,6 @@ import { AppCalendarDateAdapter, AppCalendarDateFormats } from '../../../shared/
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
-import { PROFILE_DETAILS, type ProfileGroup } from '../../../shared/demo-data';
 import { AppContext, UsersService, type UserDto } from '../../../shared/core';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../navigator.service';
@@ -1354,18 +1353,18 @@ export class ProfileEditorComponent {
   private createProfileDetailsFormForUser(user: UserDto): AppTypes.ProfileDetailFormGroup[] {
     const beliefsValuesOptions = this.beliefsValuesAllOptions();
     const interestOptions = this.interestAllOptions();
-    return PROFILE_DETAILS.map((group: ProfileGroup) => ({
+    return APP_STATIC_DATA.profileDetailGroupTemplates.map(group => ({
       title: group.title,
       rows: group.rows.map(row => ({
         label: row.label,
-        value: this.profileDetailSeedValue(user, row.label, row.value),
+        value: this.profileDetailSeedValue(user, row.label, ''),
         privacy: row.privacy,
         options:
           row.label === 'Values'
             ? beliefsValuesOptions
             : row.label === 'Interest'
               ? interestOptions
-              : this.profileDetailValueOptions[row.label] ?? [row.value]
+              : this.profileDetailValueOptions[row.label] ?? [this.profileDetailSeedValue(user, row.label, '')]
       }))
     }));
   }

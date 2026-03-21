@@ -1,5 +1,5 @@
 import type { LocationCoordinates } from '../interfaces/location.interface';
-import type { ChatMenuItem } from '../../../demo-data';
+import type { ChatMenuItem } from '../interfaces/activity-feed.interface';
 import type { AssetCard, AssetType } from './asset.model';
 import type { ActivityMemberEntry } from './activity-member.model';
 import type { ActivitiesChatContextFilter, ChatChannelType } from './chat.model';

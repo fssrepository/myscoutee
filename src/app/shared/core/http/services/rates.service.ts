@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { RateMenuItem } from '../../../demo-data';
+import type { RateMenuItem } from '../../base/interfaces/activity-feed.interface';
 import { HttpUsersRatingsRepository } from '../repositories/users-ratings.repository';
 
 @Injectable({
