@@ -8,7 +8,6 @@ import type {
   ActivityInviteCandidatesQuery,
   ActivityInviteCandidatesRepository
 } from '../../base/interfaces/activity-invite.interface';
-import { DemoUserSeedBuilder } from '../builders';
 import { DemoUsersRatingsRepository } from './users-ratings.repository';
 import { DemoUsersRepository } from './users.repository';
 
@@ -26,7 +25,7 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
       return [];
     }
 
-    const allUsers = this.usersRepository.queryGameStackUsers();
+    const allUsers = this.usersRepository.queryAllUsers();
     const activeUser = this.usersRepository.queryUserById(activeUserId);
     if (!activeUser) {
       return [];
@@ -34,7 +33,6 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
 
     const existingUserIds = new Set(query.existingMemberUserIds.map(userId => userId.trim()).filter(Boolean));
     existingUserIds.add(activeUserId);
-    const friendPool = DemoUserSeedBuilder.friendUsersForActiveUser(allUsers as DemoUser[], activeUserId, 18);
 
     const latestMetByUserId = new Map<string, { metAtIso: string; metWhere: string; relevance: number }>();
     for (const rate of this.usersRatingsRepository.queryUserRatesByUserId(activeUserId)) {
@@ -54,21 +52,6 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
       }
     }
 
-    if (latestMetByUserId.size < 12) {
-      for (const user of friendPool) {
-        if (existingUserIds.has(user.id) || latestMetByUserId.has(user.id)) {
-          continue;
-        }
-        latestMetByUserId.set(user.id, {
-          metAtIso: AppUtils.toIsoDateTime(AppUtils.addDays(new Date('2026-02-24T12:00:00'), -((AppUtils.hashText(`${ownerId}:${user.id}`) % 120) + 1))),
-          metWhere: 'Friends circle',
-          relevance: 72 + (AppUtils.hashText(`${activeUserId}:friend:${user.id}`) % 20)
-        });
-        if (latestMetByUserId.size >= 12) {
-          break;
-        }
-      }
-    }
 
     if (latestMetByUserId.size < 12) {
       for (const user of allUsers) {

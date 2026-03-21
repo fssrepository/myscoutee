@@ -15,6 +15,7 @@ import { NavigatorSettingsPopupsComponent } from '../navigator-settings-popups/n
 import { EventMembersPopupComponent } from '../../../activity/components/event-members-popup/event-members-popup.component';
 import { EventResourcePopupComponent } from '../../../activity/components/event-resource-popup/event-resource-popup.component';
 import { EventSupplyContributionsPopupComponent } from '../../../activity/components/event-supply-contributions-popup/event-supply-contributions-popup.component';
+import { AssetMemberPickerPopupComponent } from '../../../asset/components/asset-member-picker-popup/asset-member-picker-popup.component';
 import { SubEventResourcePopupService } from '../../../activity/services/sub-event-resource-popup.service';
 
 @Component({
@@ -30,7 +31,8 @@ import { SubEventResourcePopupService } from '../../../activity/services/sub-eve
     ProfileEditorComponent,
     EventMembersPopupComponent,
     EventResourcePopupComponent,
-    EventSupplyContributionsPopupComponent
+    EventSupplyContributionsPopupComponent,
+    AssetMemberPickerPopupComponent
   ],
   templateUrl: './navigator.component.html',
   styleUrl: './navigator.component.scss'

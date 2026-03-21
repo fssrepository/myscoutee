@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { AppUtils } from '../../../app-utils';
 import { DemoUserRatesBuilder, DemoUserSeedBuilder } from '../builders';
 import type { RateMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { UserDto } from '../../base/interfaces/user.interface';
 import type {
   ActivityRateRecordQuery,
   UserRateRecord,
@@ -11,7 +12,8 @@ import type {
 import { HttpUsersRatingsRepository } from '../../http/repositories/users-ratings.repository';
 import {
   USER_RATES_OUTBOX_TABLE_NAME,
-  USER_RATES_TABLE_NAME
+  USER_RATES_TABLE_NAME,
+  USERS_TABLE_NAME
 } from '../models/users.model';
 
 @Injectable({
@@ -19,20 +21,18 @@ import {
 })
 export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   private static readonly DEFAULT_DEMO_USERS_COUNT = 50;
-  private initialized = false;
+  private static readonly MIN_ACTIVITY_RATE_CONNECTIONS = 12;
 
   init(): void {
-    if (this.initialized) {
+    const users = this.querySeedUsers();
+    const ownerIdsToSeed = this.collectOwnerIdsNeedingActivityRateSeed(users);
+    if (ownerIdsToSeed.length === 0) {
       return;
     }
-    const table = this.memoryDb.read()[USER_RATES_TABLE_NAME];
-    const hasActivityRateSeed = table.ids.some(id => table.byId[id]?.source === 'activity-rate');
-    if (hasActivityRateSeed) {
-      this.initialized = true;
-      return;
-    }
-    const users = DemoUserSeedBuilder.buildExpandedDemoUsers(DemoUsersRatingsRepository.DEFAULT_DEMO_USERS_COUNT);
-    const records = DemoUserRatesBuilder.buildActivityRateSeedRecords(users, { extraSingleGivenCount: 20 });
+    const records = ownerIdsToSeed.flatMap(ownerUserId =>
+      DemoUserRatesBuilder.buildGeneratedRateItemsForUser(users, ownerUserId, { extraSingleGivenCount: 20 })
+        .map(item => DemoUserRatesBuilder.toActivityRateRecord(ownerUserId, item))
+    );
     if (records.length === 0) {
       return;
     }
@@ -57,7 +57,69 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
         }
       };
     });
-    this.initialized = true;
+  }
+
+  private querySeedUsers(): UserDto[] {
+    const usersTable = this.memoryDb.read()[USERS_TABLE_NAME];
+    if (usersTable.ids.length > 0) {
+      return usersTable.ids
+        .map(id => usersTable.byId[id])
+        .filter((user): user is UserDto => Boolean(user?.id?.trim()));
+    }
+    return DemoUserSeedBuilder.buildExpandedDemoUsers(DemoUsersRatingsRepository.DEFAULT_DEMO_USERS_COUNT);
+  }
+
+  private collectOwnerIdsNeedingActivityRateSeed(
+    users: readonly { id: string; gender?: 'woman' | 'man' }[]
+  ): string[] {
+    const counterpartIdsByOwner = new Map<string, Set<string>>();
+    for (const user of users) {
+      const ownerUserId = user.id.trim();
+      if (!ownerUserId) {
+        continue;
+      }
+      counterpartIdsByOwner.set(ownerUserId, new Set<string>());
+    }
+
+    const ratesTable = this.memoryDb.read()[USER_RATES_TABLE_NAME];
+    for (const id of ratesTable.ids) {
+      const record = ratesTable.byId[id];
+      if (!record || record.source !== 'activity-rate') {
+        continue;
+      }
+      const ownerUserId = record.ownerUserId?.trim() ?? '';
+      const bucket = counterpartIdsByOwner.get(ownerUserId);
+      if (!bucket) {
+        continue;
+      }
+      for (const counterpartUserId of this.activityRateCounterpartUserIds(record, ownerUserId)) {
+        if (counterpartUserId) {
+          bucket.add(counterpartUserId);
+        }
+      }
+    }
+
+    return [...counterpartIdsByOwner.entries()]
+      .filter(([, counterpartIds]) => counterpartIds.size < DemoUsersRatingsRepository.MIN_ACTIVITY_RATE_CONNECTIONS)
+      .map(([ownerUserId]) => ownerUserId);
+  }
+
+  private activityRateCounterpartUserIds(record: UserRateRecord, ownerUserId: string): string[] {
+    const normalizedOwnerUserId = ownerUserId.trim();
+    if (!normalizedOwnerUserId) {
+      return [];
+    }
+    if (record.mode === 'pair' && record.ownerUserId?.trim() === normalizedOwnerUserId) {
+      return [record.fromUserId.trim(), record.toUserId.trim()]
+        .filter(userId => userId.length > 0 && userId !== normalizedOwnerUserId);
+    }
+    if (record.fromUserId.trim() === normalizedOwnerUserId) {
+      return [record.toUserId.trim()].filter(Boolean);
+    }
+    if (record.toUserId.trim() === normalizedOwnerUserId) {
+      return [record.fromUserId.trim()].filter(Boolean);
+    }
+    return [];
   }
 
   queryRatedGameCardUserIds(raterUserId: string): string[] {

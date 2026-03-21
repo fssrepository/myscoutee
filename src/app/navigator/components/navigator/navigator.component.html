@@ -11,6 +11,7 @@
   *ngIf="subEventResources.supplyContributionsHost() as host"
   [host]="host"
 ></app-event-supply-contributions-popup>
+<app-asset-member-picker-popup></app-asset-member-picker-popup>
 
 <ng-container *ngIf="activitiesPopupComponent() as activitiesComponent">
   <ng-container *ngComponentOutlet="activitiesComponent"></ng-container>

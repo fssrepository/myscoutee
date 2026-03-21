@@ -13,7 +13,6 @@ import type * as AppTypes from '../../../shared/core/base/models';
 import { AppContext, AssetsService, AssetTicketsService } from '../../../shared/core';
 import { AssetDeleteConfirmComponent } from '../asset-delete-confirm/asset-delete-confirm.component';
 import { AssetFormPopupComponent } from '../asset-form-popup/asset-form-popup.component';
-import { AssetMemberPickerPopupComponent } from '../asset-member-picker-popup/asset-member-picker-popup.component';
 import { AssetTicketCodePopupComponent } from '../asset-ticket-code-popup/asset-ticket-code-popup.component';
 import { AssetTicketScannerPopupComponent } from '../asset-ticket-scanner-popup/asset-ticket-scanner-popup.component';
 import {
@@ -52,7 +51,6 @@ interface OwnedAssetListFilters {
     SmartListComponent,
     AssetDeleteConfirmComponent,
     AssetFormPopupComponent,
-    AssetMemberPickerPopupComponent,
     AssetTicketCodePopupComponent,
     AssetTicketScannerPopupComponent
   ],

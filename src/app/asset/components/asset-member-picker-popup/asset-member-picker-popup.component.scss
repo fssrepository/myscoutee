@@ -1,3 +1,9 @@
+@use '../../../shared/ui/styles' as ui;
+
+@include ui.popup-shell();
+@include ui.interactive-motion();
+@include ui.form-controls();
+
 :host {
   display: contents;
   --asset-member-picker-z-index: 12320;
