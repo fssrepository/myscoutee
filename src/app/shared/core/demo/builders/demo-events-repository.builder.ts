@@ -1,5 +1,7 @@
 import { APP_STATIC_DATA } from '../../../app-static-data';
-import { AppDemoGenerators } from '../../../app-demo-generators';
+import { ActivityMembersBuilder } from '../../base/builders/activity-members.builder';
+import { DemoEventSeedBuilder } from './demo-event-seed.builder';
+import { DemoUserSeedBuilder } from './demo-user-seed.builder';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import { type DemoUser, type EventMenuItem, type HostingMenuItem, type InvitationMenuItem } from '../../../demo-data';
@@ -10,7 +12,7 @@ import type {
   DemoRepositoryEventItemType
 } from '../models/events.model';
 
-const DEMO_EVENT_MEMBER_USERS = AppDemoGenerators.buildExpandedDemoUsers(50);
+const DEMO_EVENT_MEMBER_USERS = DemoUserSeedBuilder.buildExpandedDemoUsers(50);
 
 interface DemoEventSeedOverrides {
   startAt?: string;
@@ -307,14 +309,14 @@ export class DemoEventsRepositoryBuilder {
       pendingMemberUserIds: members.pendingMemberUserIds,
       topics,
       subEvents,
-      subEventsDisplayMode: record.seed?.subEventsDisplayMode ?? AppDemoGenerators.inferredSubEventsDisplayMode(subEvents),
+      subEventsDisplayMode: record.seed?.subEventsDisplayMode ?? DemoEventSeedBuilder.inferredSubEventsDisplayMode(subEvents),
       rating,
       relevance: Number.isFinite(record.seed?.relevance)
         ? Number(record.seed?.relevance)
         : this.buildSeededRelevance(record.id, record.title, record.type),
       affinity: Number.isFinite(record.seed?.affinity)
         ? Math.max(0, Math.trunc(Number(record.seed?.affinity)))
-        : AppDemoGenerators.resolveEventAffinity({
+        : this.resolveEventAffinity({
           id: record.id,
           title: record.title,
           subtitle: record.subtitle,
@@ -328,6 +330,65 @@ export class DemoEventsRepositoryBuilder {
           capacityTotal
         })
     };
+  }
+
+  static resolveEventAffinity(options: {
+    id: string;
+    title: string;
+    subtitle?: string | null;
+    topics: readonly string[];
+    visibility: string;
+    blindMode: string;
+    creator?: Partial<DemoUser> | null;
+    acceptedUsers?: ReadonlyArray<Partial<DemoUser> | null | undefined>;
+    rating?: number | null;
+    acceptedMembers?: number | null;
+    capacityTotal?: number | null;
+  }): number {
+    const participantUsers = [options.creator ?? null, ...(options.acceptedUsers ?? [])]
+      .filter((user): user is Partial<DemoUser> => Boolean(user));
+    const participantAffinities = participantUsers
+      .filter(user => typeof user.id === 'string' && user.id.trim().length > 0)
+      .map(user => DemoUserSeedBuilder.resolveUserAffinity({
+        id: `${user.id}`,
+        name: `${user.name ?? 'Unknown User'}`,
+        age: Math.max(18, Math.trunc(Number(user.age) || 30)),
+        city: `${user.city ?? ''}`,
+        height: `${user.height ?? '170 cm'}`,
+        physique: `${user.physique ?? ''}`,
+        languages: [...(user.languages ?? [])],
+        horoscope: `${user.horoscope ?? ''}`,
+        gender: user.gender === 'woman' ? 'woman' : 'man',
+        hostTier: `${user.hostTier ?? ''}`,
+        traitLabel: `${user.traitLabel ?? ''}`,
+        completion: Math.max(0, Math.trunc(Number(user.completion) || 0))
+      }));
+    const averageParticipantAffinity = participantAffinities.length > 0
+      ? Math.round(participantAffinities.reduce((total, value) => total + value, 0) / participantAffinities.length)
+      : 0;
+    const tokens = this.uniqueAffinityTokens([
+      options.title,
+      options.subtitle ?? '',
+      ...options.topics,
+      options.visibility,
+      options.blindMode,
+      ...participantUsers.flatMap(user => [
+        `${user.city ?? ''}`,
+        `${user.physique ?? ''}`,
+        ...((user.languages ?? []) as string[]),
+        `${user.horoscope ?? ''}`,
+        `${user.gender ?? ''}`,
+        `${user.hostTier ?? ''}`,
+        `${user.traitLabel ?? ''}`
+      ])
+    ]);
+    return (
+      this.resolveAffinityTokenScore(tokens, `event:${options.id}`) * 89
+      + averageParticipantAffinity
+      + Math.round(AppUtils.clampNumber(Number(options.rating) || 0, 0, 10) * 100) * 29
+      + Math.max(0, Math.trunc(Number(options.acceptedMembers) || 0)) * 19
+      + Math.max(0, Math.trunc(Number(options.capacityTotal) || 0)) * 7
+    );
   }
 
   private static resolveCreatorUser(userId: string, fallbackTitle: string): DemoUser {
@@ -365,7 +426,7 @@ export class DemoEventsRepositoryBuilder {
   private static resolveStartAtIso(
     record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title'>
   ): string {
-    const seed = AppDemoGenerators.hashText(`event-start:${this.recordSeedKey(record)}`);
+    const seed = AppUtils.hashText(`event-start:${this.recordSeedKey(record)}`);
     const monthIndex = record.type === 'invitations' ? 1 : 2;
     const day = 1 + (seed % 28);
     const hourBase = record.type === 'hosting' ? 17 : record.type === 'invitations' ? 15 : 9;
@@ -383,7 +444,7 @@ export class DemoEventsRepositoryBuilder {
     if (Number.isNaN(startAt.getTime())) {
       return new Date().toISOString();
     }
-    const seed = AppDemoGenerators.hashText(`event-duration:${this.recordSeedKey(record)}`);
+    const seed = AppUtils.hashText(`event-duration:${this.recordSeedKey(record)}`);
     const durationMinutes = 90 + ((seed % 5) * 30);
     return new Date(startAt.getTime() + (durationMinutes * 60 * 1000)).toISOString();
   }
@@ -391,7 +452,7 @@ export class DemoEventsRepositoryBuilder {
   private static resolveDistanceKm(
     record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title'>
   ): number {
-    const seed = AppDemoGenerators.hashText(`event-distance:${this.recordSeedKey(record)}`);
+    const seed = AppUtils.hashText(`event-distance:${this.recordSeedKey(record)}`);
     const baseDistance = record.type === 'hosting' ? 4 : record.type === 'invitations' ? 2 : 6;
     const distance = baseDistance + (seed % 24) + (((seed >> 5) % 10) / 10);
     return Math.round(distance * 10) / 10;
@@ -400,7 +461,7 @@ export class DemoEventsRepositoryBuilder {
   private static resolveVisibility(
     record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title'>
   ): DemoEventRecord['visibility'] {
-    const seed = AppDemoGenerators.hashText(`event-visibility:${this.recordSeedKey(record)}`);
+    const seed = AppUtils.hashText(`event-visibility:${this.recordSeedKey(record)}`);
     if (record.type === 'hosting') {
       return seed % 4 === 0 ? 'Friends only' : 'Invitation only';
     }
@@ -411,14 +472,14 @@ export class DemoEventsRepositoryBuilder {
   private static resolveBlindMode(
     record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title'>
   ): DemoEventRecord['blindMode'] {
-    const seed = AppDemoGenerators.hashText(`event-blind-mode:${this.recordSeedKey(record)}`);
+    const seed = AppUtils.hashText(`event-blind-mode:${this.recordSeedKey(record)}`);
     return seed % 5 === 0 ? 'Blind Event' : 'Open Event';
   }
 
   private static resolveCapacityRange(
     record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title' | 'activity'>
   ): { min: number; max: number } {
-    const seed = AppDemoGenerators.hashText(`event-capacity:${this.recordSeedKey(record)}`);
+    const seed = AppUtils.hashText(`event-capacity:${this.recordSeedKey(record)}`);
     const maxBase = record.type === 'hosting' ? 16 : record.type === 'invitations' ? 6 : 10;
     const max = maxBase + (seed % 22) + Math.max(0, Math.trunc(Number(record.activity) || 0));
     const minRatio = record.type === 'invitations'
@@ -462,7 +523,7 @@ export class DemoEventsRepositoryBuilder {
     creator: DemoUser,
     location: string
   ): LocationCoordinates {
-    return AppDemoGenerators.resolveDemoLocationCoordinates(
+    return DemoUserSeedBuilder.resolveDemoLocationCoordinates(
       creator.city || 'Austin',
       `event-location:${this.recordSeedKey(record)}:${location}`
     );
@@ -471,14 +532,14 @@ export class DemoEventsRepositoryBuilder {
   private static resolveAutoInviter(
     record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title'>
   ): boolean {
-    const seed = AppDemoGenerators.hashText(`event-auto-inviter:${this.recordSeedKey(record)}`);
+    const seed = AppUtils.hashText(`event-auto-inviter:${this.recordSeedKey(record)}`);
     return record.type !== 'invitations' && (seed % 4 === 0);
   }
 
   private static resolveTicketing(
     record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title'>
   ): boolean {
-    const seed = AppDemoGenerators.hashText(`event-ticketing:${this.recordSeedKey(record)}`);
+    const seed = AppUtils.hashText(`event-ticketing:${this.recordSeedKey(record)}`);
     if (record.type === 'invitations') {
       return false;
     }
@@ -519,7 +580,7 @@ export class DemoEventsRepositoryBuilder {
       } as AppTypes.ActivityListRow['source']
     };
     const rowKey = `${row.type}:${row.id}`;
-    const members = AppDemoGenerators.generateActivityMembersForRow(
+    const members = ActivityMembersBuilder.generateActivityMembersForRow(
       row,
       rowKey,
       DEMO_EVENT_MEMBER_USERS,
@@ -540,7 +601,7 @@ export class DemoEventsRepositoryBuilder {
     if (pool.length === 0) {
       return [];
     }
-    const seed = AppDemoGenerators.hashText(`${id}:${title}:${subtitle}`);
+    const seed = AppUtils.hashText(`${id}:${title}:${subtitle}`);
     const count = 2 + (seed % 2);
     const topics: string[] = [];
     for (let index = 0; index < pool.length && topics.length < count; index += 1) {
@@ -569,7 +630,7 @@ export class DemoEventsRepositoryBuilder {
       ...(record.type === 'events' ? { isAdmin: record.isAdmin } : {})
     } as EventMenuItem | HostingMenuItem;
 
-    return AppDemoGenerators.buildSeededSubEventsForEvent(source, {
+    return DemoEventSeedBuilder.buildSeededSubEventsForEvent(source, {
       isHosting: record.type === 'hosting',
       activityDateTimeRangeById: {
         [record.id]: {
@@ -593,12 +654,12 @@ export class DemoEventsRepositoryBuilder {
   }
 
   private static buildSeededRating(id: string, title: string, type: DemoRepositoryEventItemType): number {
-    const seed = AppDemoGenerators.hashText(`${type}:${id}:${title}`);
+    const seed = AppUtils.hashText(`${type}:${id}:${title}`);
     return 6 + ((seed % 35) / 10);
   }
 
   private static buildSeededRelevance(id: string, title: string, type: DemoRepositoryEventItemType): number {
-    const seed = AppDemoGenerators.hashText(`${type}:${id}:${title}`);
+    const seed = AppUtils.hashText(`${type}:${id}:${title}`);
     return 50 + (seed % 51);
   }
 
@@ -669,6 +730,21 @@ export class DemoEventsRepositoryBuilder {
     return Math.max(0, Math.trunc(Number(value)));
   }
 
+  private static uniqueAffinityTokens(values: readonly string[]): string[] {
+    const seen = new Set<string>();
+    for (const value of values) {
+      const normalized = AppUtils.normalizeText(`${value ?? ''}`.replace(/^#+\s*/, '').trim());
+      if (normalized) {
+        seen.add(normalized);
+      }
+    }
+    return [...seen];
+  }
+
+  private static resolveAffinityTokenScore(tokens: readonly string[], seedPrefix: string): number {
+    return tokens.reduce((total, token) => total + ((AppUtils.hashText(`${seedPrefix}:${token}`) % 997) + 1), 0);
+  }
+
   private static parseFrequencyFromTimeframe(timeframe: string): string {
     const normalized = timeframe.toLowerCase();
     if (normalized.includes('2nd') || normalized.includes('bi-weekly') || normalized.includes('biweekly')) {
@@ -687,7 +763,7 @@ export class DemoEventsRepositoryBuilder {
   }
 
   private static resolveLocationCoordinatesFromCreator(creator: DemoUser): LocationCoordinates {
-    return AppDemoGenerators.resolveDemoLocationCoordinates(creator.city, creator.id);
+    return DemoUserSeedBuilder.resolveDemoLocationCoordinates(creator.city, creator.id);
   }
 
   private static cloneLocationCoordinates(

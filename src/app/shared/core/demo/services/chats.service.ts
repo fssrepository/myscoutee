@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
-import { AppDemoGenerators } from '../../../app-demo-generators';
 import { AppUtils } from '../../../app-utils';
 import type { ChatMenuItem } from '../../../demo-data';
 import { resolveAdditionalDelayMsForRoute } from '../config';
@@ -70,7 +69,7 @@ export class DemoChatsService {
     const chatTopic = chat.title.trim() || 'Event';
     const lastLine = chat.lastMessage.trim() || `Update shared in ${chatTopic}.`;
 
-    const seed = AppDemoGenerators.hashText(`${chat.id}:${chatTopic}`);
+    const seed = AppUtils.hashText(`${chat.id}:${chatTopic}`);
     const olderPool = [
       'Shared updated ETA for everyone.',
       'Pinned the checklist in this room.',
@@ -147,7 +146,7 @@ export class DemoChatsService {
     if (!eventId) {
       return AppUtils.toIsoDateTime(new Date());
     }
-    const eventDay = 10 + (AppDemoGenerators.hashText(eventId) % 12);
+    const eventDay = 10 + (AppUtils.hashText(eventId) % 12);
     const anchor = new Date(Date.UTC(2026, 1, eventDay, 12, 0, 0));
     return AppUtils.toIsoDateTime(anchor);
   }

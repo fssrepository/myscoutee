@@ -1,4 +1,3 @@
-import { AppDemoGenerators } from '../../../app-demo-generators';
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
 import type { InfoCardData, InfoCardMenuAction } from '../../../ui';
@@ -132,7 +131,7 @@ export class EventExploreBuilder {
   private static creatorAvatarOverlayTone(
     record: DemoEventRecord
   ): 'tone-1' | 'tone-2' | 'tone-3' | 'tone-4' | 'tone-5' | 'tone-6' | 'tone-7' | 'tone-8' {
-    const toneIndex = (AppDemoGenerators.hashText(`${record.type}:${record.id}:${this.creatorInitials(record)}`) % 8) + 1;
+    const toneIndex = (AppUtils.hashText(`${record.type}:${record.id}:${this.creatorInitials(record)}`) % 8) + 1;
     return `tone-${toneIndex}` as 'tone-1' | 'tone-2' | 'tone-3' | 'tone-4' | 'tone-5' | 'tone-6' | 'tone-7' | 'tone-8';
   }
 

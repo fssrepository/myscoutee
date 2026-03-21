@@ -5,7 +5,6 @@ import type { MatSelect } from '@angular/material/select';
 import { AssetPopupService } from '../../asset/asset-popup.service';
 import type { AssetPopupHost } from '../../asset/asset-popup.host';
 import { OwnedAssetsPopupService } from '../../asset/owned-assets-popup.service';
-import { AppDemoGenerators } from '../../shared/app-demo-generators';
 import { AppUtils } from '../../shared/app-utils';
 import type * as AppTypes from '../../shared/core/base/models';
 import { ActivityMembersService, ActivityResourceBuilder, ActivityResourcesService, AppContext, SessionService, type UserDto } from '../../shared/core';
@@ -1961,7 +1960,7 @@ export class SubEventResourcePopupService {
         const requestKind: AppTypes.ActivityMemberRequestKind = request.status === 'pending'
           ? (pendingRequiresAdminApproval ? 'invite' : 'join')
           : null;
-        const seed = AppDemoGenerators.hashText(`asset-members:${card.id}:${request.id}:${userId}`);
+        const seed = AppUtils.hashText(`asset-members:${card.id}:${request.id}:${userId}`);
         const actionAtIso = AppUtils.toIsoDateTime(AppUtils.addDays(seedBaseDate, -((seed % 90) + 1)));
         return {
           id: request.id,
@@ -1980,7 +1979,7 @@ export class SubEventResourcePopupService {
           actionAtIso,
           metWhere: card.title,
           relevance: 40 + (seed % 61),
-          avatarUrl: AppDemoGenerators.firstImageUrl(matchedUser?.images)
+          avatarUrl: AppUtils.firstImageUrl(matchedUser?.images)
         };
       })
       .sort((left, right) => AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso));

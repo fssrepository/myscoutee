@@ -19,7 +19,6 @@ import { from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import {
-  APP_DEMO_DATA,
   DEMO_USERS,
   RateMenuItem,
   type ChatMenuItem,
@@ -28,7 +27,6 @@ import {
   type InvitationMenuItem,
   type DemoUser
 } from '../../../shared/demo-data';
-import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import { AppUtils } from '../../../shared/app-utils';
 import { ActivitiesDbContextService } from '../../services/activities-db-context.service';
 import { EventEditorService } from '../../../shared/event-editor.service';
@@ -87,6 +85,7 @@ import {
   type ActivityMembersSyncState
 } from '../../../shared/core';
 import { DemoUsersRepository } from '../../../shared/core/demo';
+import { DemoEventSeedBuilder, DemoUserMenuCountersBuilder } from '../../../shared/core/demo/builders';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 
 // ---------------------------------------------------------------------------
@@ -162,22 +161,17 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected publishedHostingIds: ReadonlySet<string> = new Set<string>();
 
-  protected activityDateTimeRangeById: Record<string, AppTypes.ActivityDateTimeRange> = { ...APP_DEMO_DATA.activityDateTimeRangeById };
+  protected activityDateTimeRangeById: Record<string, AppTypes.ActivityDateTimeRange> = {};
 
-  protected chatDatesById: Record<string, string> = { ...APP_DEMO_DATA.chatDatesById };
-  protected eventDatesById: Record<string, string> = { ...APP_DEMO_DATA.eventDatesById };
-  protected hostingDatesById: Record<string, string> = { ...APP_DEMO_DATA.hostingDatesById };
-  protected invitationDatesById: Record<string, string> = { ...APP_DEMO_DATA.invitationDatesById };
+  protected eventDatesById: Record<string, string> = {};
+  protected hostingDatesById: Record<string, string> = {};
 
-  protected chatDistanceById: Record<string, number> = { ...APP_DEMO_DATA.chatDistanceById };
-  protected eventDistanceById: Record<string, number> = { ...APP_DEMO_DATA.eventDistanceById };
-  protected hostingDistanceById: Record<string, number> = { ...APP_DEMO_DATA.hostingDistanceById };
-  protected invitationDistanceById: Record<string, number> = { ...APP_DEMO_DATA.invitationDistanceById };
-  protected readonly activityImageById: Record<string, string> = { ...APP_DEMO_DATA.activityImageById };
-  protected readonly activitySourceLinkById: Record<string, string> = { ...APP_DEMO_DATA.activitySourceLinkById };
-  protected readonly activityCapacityById: Record<string, string> = { ...APP_DEMO_DATA.activityCapacityById };
+  protected eventDistanceById: Record<string, number> = {};
+  protected hostingDistanceById: Record<string, number> = {};
+  protected readonly activityImageById: Record<string, string> = {};
+  protected readonly activityCapacityById: Record<string, string> = {};
   protected readonly activityPendingMembersById: Record<string, number> = {};
-  protected readonly eventVisibilityById: Record<string, AppTypes.EventVisibility> = { ...APP_DEMO_DATA.eventVisibilityById };
+  protected readonly eventVisibilityById: Record<string, AppTypes.EventVisibility> = {};
   private readonly eventCapacityById: Record<string, AppTypes.EventCapacityRange> = {};
   private readonly eventSubEventsById: Record<string, AppTypes.SubEventFormItem[]> = {};
   private readonly acceptedOptionalSubEventMembersByKey: Record<string, string[]> = {};
@@ -565,14 +559,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
         this.hostingDistanceById[record.id] = record.distanceKm;
       }
       if (record.isInvitation) {
-        this.invitationDatesById[record.id] = record.startAtIso;
-        this.invitationDistanceById[record.id] = record.distanceKm;
       }
       if (record.imageUrl?.trim()) {
         this.activityImageById[record.id] = record.imageUrl;
-      }
-      if (record.sourceLink?.trim()) {
-        this.activitySourceLinkById[record.id] = record.sourceLink;
       }
       this.activityCapacityById[record.id] = `${record.acceptedMembers} / ${record.capacityTotal}`;
       this.activityPendingMembersById[record.id] = record.pendingMembers;
@@ -638,7 +627,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
       inviter: record.inviter ?? record.creatorName,
       description: record.title,
       when: record.timeframe,
-      unread: record.unread
+      unread: record.unread,
+      startAt: record.startAtIso,
+      endAt: record.endAtIso,
+      distanceKm: record.distanceKm,
+      distanceMetersExact: Math.max(0, Math.round((Number(record.distanceKm) || 0) * 1000)),
+      imageUrl: record.imageUrl,
+      sourceLink: record.sourceLink,
+      location: record.location,
+      locationCoordinates: record.locationCoordinates ?? undefined
     };
   }
 
@@ -675,7 +672,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
         endIso: end.toISOString().slice(0, 19)
       };
       this.activityImageById[id] = `https://picsum.photos/seed/event-${id}/1200/700`;
-      this.activitySourceLinkById[id] = `https://example.com/events/${id}`;
       this.activityCapacityById[id] = `${6 + (index % 18)} / ${12 + (index % 24)}`;
     }
 
@@ -700,10 +696,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
       visited.add(id);
 
       if (!this.eventCapacityById[id]) {
-        this.eventCapacityById[id] = AppDemoGenerators.seededEventCapacityRange(id, this.activityCapacityById);
+        this.eventCapacityById[id] = DemoEventSeedBuilder.seededEventCapacityRange(id, this.activityCapacityById);
       }
       if (!this.eventSubEventsById[id] || this.eventSubEventsById[id].length === 0) {
-        this.eventSubEventsById[id] = AppDemoGenerators.buildSeededSubEventsForEvent(source.item, {
+        this.eventSubEventsById[id] = DemoEventSeedBuilder.buildSeededSubEventsForEvent(source.item, {
           isHosting: source.isHosting,
           activityDateTimeRangeById: this.activityDateTimeRangeById,
           hostingDatesById: this.hostingDatesById,
@@ -718,27 +714,27 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private refreshSectionBadges(): void {
-    this.chatBadge = AppDemoGenerators.resolveSectionBadge(
+    this.chatBadge = DemoUserMenuCountersBuilder.resolveSectionBadge(
       this.chatItems.map(item => item.unread),
       this.chatItems.length
     );
     const visibleInvitations = this.invitationItems
       .filter(item => !this.isActivityIdentityTrashed('invitations', item.id));
-    this.invitationsBadge = AppDemoGenerators.resolveSectionBadge(
+    this.invitationsBadge = DemoUserMenuCountersBuilder.resolveSectionBadge(
       visibleInvitations.map(item => item.unread),
       visibleInvitations.length
     );
     const visibleActiveEvents = this.eventItems
       .filter(item => item.isAdmin !== true)
       .filter(item => !this.isActivityIdentityTrashed('events', item.id));
-    this.eventsBadge = AppDemoGenerators.resolveSectionBadge(
+    this.eventsBadge = DemoUserMenuCountersBuilder.resolveSectionBadge(
       visibleActiveEvents.map(item => item.activity),
       visibleActiveEvents.length
     );
     const adminEvents = this.eventItems
       .filter(item => item.isAdmin)
       .filter(item => !this.isActivityIdentityTrashed('hosting', item.id));
-    this.hostingBadge = AppDemoGenerators.resolveSectionBadge(
+    this.hostingBadge = DemoUserMenuCountersBuilder.resolveSectionBadge(
       adminEvents.map(item => item.activity),
       adminEvents.length
     );
@@ -783,21 +779,21 @@ export class ActivitiesPopupComponent implements OnDestroy {
       .filter(item => item.isAdmin !== true)
       .filter(item => !this.isActivityIdentityTrashed('events', item.id))
       .map(item => toActivityEventRowFromMenuItem(item, {
-        dateIso: this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
-        distanceKm: this.eventDistanceById[item.id] ?? 10
+        dateIso: item.startAt ?? this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
+        distanceKm: item.distanceKm ?? this.eventDistanceById[item.id] ?? 10
       }));
     const invitationRows = this.invitationItems
       .filter(item => !this.isActivityIdentityTrashed('invitations', item.id))
       .map(item => toActivityInvitationRowFromMenuItem(item, {
-        dateIso: this.invitationDatesById[item.id] ?? '2026-02-21T09:00:00',
-        distanceKm: this.invitationDistanceById[item.id] ?? 5
+        dateIso: item.startAt ?? '2026-02-21T09:00:00',
+        distanceKm: item.distanceKm ?? 5
       }));
     const myEventRows = this.eventItems
       .filter(item => item.isAdmin === true)
       .filter(item => !this.isActivityIdentityTrashed('hosting', item.id))
       .map(item => toActivityHostingRowFromMenuItem(item, {
-        dateIso: this.eventDatesById[item.id] ?? '2026-03-01T09:00:00',
-        distanceKm: this.eventDistanceById[item.id] ?? 10
+        dateIso: item.startAt ?? this.hostingDatesById[item.id] ?? '2026-03-01T09:00:00',
+        distanceKm: item.distanceKm ?? this.hostingDistanceById[item.id] ?? 10
       }));
     const draftRows = myEventRows.filter(row => !this.isHostingPublished(row.id));
     const trashRows = this.trashedActivityRows();
@@ -1461,7 +1457,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const toneSeed = row.type === 'invitations'
       ? `${row.id}-${(row.source as InvitationMenuItem).inviter}`
       : `${row.id}-${row.title}`;
-    const toneIndex = (AppDemoGenerators.hashText(toneSeed) % 8) + 1;
+    const toneIndex = (AppUtils.hashText(toneSeed) % 8) + 1;
     return `activities-source-tone-${toneIndex}`;
   }
 
@@ -1494,7 +1490,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       if (explicitOwner) {
         return explicitOwner.initials;
       }
-      const fallbackOwner = this.users[AppDemoGenerators.hashText(`${row.id}-${event.title}`) % this.users.length];
+      const fallbackOwner = this.users[AppUtils.hashText(`${row.id}-${event.title}`) % this.users.length];
       return fallbackOwner?.initials ?? AppUtils.initialsFromText(event.title);
     }
     if (row.type === 'hosting') {
@@ -1599,7 +1595,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     const forcedAcceptedCount = this.forcedAcceptedMembersByRowKey[rowKey];
     if (Number.isFinite(forcedAcceptedCount) && forcedAcceptedCount > 0) {
-      const forced = AppDemoGenerators.buildForcedAcceptedMembers(
+      const forced = ActivityMembersBuilder.buildForcedAcceptedMembers(
         row,
         rowKey,
         forcedAcceptedCount,
@@ -1611,7 +1607,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.activityMembersByRowId[rowKey] = [...orderedForced];
       return orderedForced;
     }
-    const generated = AppDemoGenerators.generateActivityMembersForRow(
+    const generated = ActivityMembersBuilder.generateActivityMembersForRow(
       row,
       rowKey,
       this.users,
@@ -1696,7 +1692,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private activityVisibility(row: AppTypes.ActivityListRow): AppTypes.EventVisibility {
-    return this.eventVisibilityById[row.id] ?? (row.type === 'hosting' ? 'Invitation only' : 'Public');
+    return ((row.source as { visibility?: AppTypes.EventVisibility }).visibility)
+      ?? this.eventVisibilityById[row.id]
+      ?? (row.type === 'hosting' ? 'Invitation only' : 'Public');
   }
 
   protected activityTypeIcon(row: AppTypes.ActivityListRow): string {
@@ -3046,7 +3044,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected calendarBadgeToneClass(row: AppTypes.ActivityListRow): string {
     const paletteSize = 8;
-    const toneIndex = (AppDemoGenerators.hashText(row.id) % paletteSize) + 1;
+    const toneIndex = (AppUtils.hashText(row.id) % paletteSize) + 1;
     return `calendar-badge-tone-${toneIndex}`;
   }
 
@@ -3129,16 +3127,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     for (const contextual of this.buildContextualChatChannels()) {
       merged.set(contextual.id, contextual);
-      if (!this.chatDatesById[contextual.id]) {
-        this.chatDatesById[contextual.id] = contextual.lastMessage
-          ? (contextual.subEventId
-            ? this.chatSubEventDateIso(contextual.eventId ?? '', contextual.subEventId)
-            : this.chatEventDateIso(contextual.eventId ?? ''))
-          : this.defaultEventStartIso();
-      }
-      if (!this.chatDistanceById[contextual.id]) {
-        this.chatDistanceById[contextual.id] = 2 + (AppDemoGenerators.hashText(`chat-distance:${contextual.id}`) % 18);
-      }
     }
     return [...merged.values()];
   }
@@ -3258,7 +3246,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }): ChatMenuItem {
     const memberIds = this.uniqueUserIds([this.activeUser.id, ...input.memberIds]);
     const senderCandidates = memberIds.filter(id => id !== this.activeUser.id);
-    const lastSenderId = senderCandidates[AppDemoGenerators.hashText(`chat-sender:${input.id}`) % Math.max(1, senderCandidates.length)]
+    const lastSenderId = senderCandidates[AppUtils.hashText(`chat-sender:${input.id}`) % Math.max(1, senderCandidates.length)]
       ?? memberIds[0]
       ?? this.activeUser.id;
     const item: ChatMenuItem = {
@@ -3269,6 +3257,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
       lastSenderId,
       memberIds,
       unread: 0,
+      dateIso: input.subEventId
+        ? this.chatSubEventDateIso(input.eventId, input.subEventId)
+        : this.chatEventDateIso(input.eventId),
+      distanceKm: this.contextualChatDistanceKm(input.eventId),
+      distanceMetersExact: Math.max(0, Math.round(this.contextualChatDistanceKm(input.eventId) * 1000)),
       channelType: input.channelType,
       eventId: input.eventId,
       subEventId: input.subEventId || undefined,
@@ -3276,6 +3269,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
     };
     item.unread = this.contextualChatUnreadCount(item);
     return item;
+  }
+
+  private contextualChatDistanceKm(eventId: string): number {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return 5;
+    }
+    return this.eventDistanceById[normalizedEventId]
+      ?? this.hostingDistanceById[normalizedEventId]
+      ?? (2 + (AppUtils.hashText(`chat-distance:${normalizedEventId}`) % 18));
   }
 
   private contextualChatUnreadCount(item: ChatMenuItem): number {
@@ -3300,7 +3303,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (desiredTotal <= accepted.length) {
       return accepted;
     }
-    const seeded = AppDemoGenerators.seededEventMemberIds(
+    const seeded = DemoEventSeedBuilder.seededEventMemberIds(
       seedKey,
       Math.max(desiredTotal, 4),
       this.users,
@@ -3408,7 +3411,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       ?? this.hostingItems.find(item => item.id === eventId)
       ?? null;
     if (!source) {
-      return AppDemoGenerators.seededEventMemberIds(eventId, 8, this.users, this.activeUser.id);
+      return DemoEventSeedBuilder.seededEventMemberIds(eventId, 8, this.users, this.activeUser.id);
     }
     const row = this.buildChatSourceActivityRow(source);
     const members = this.getActivityMembersByRow(row).filter(member => member.status === 'accepted');
@@ -3416,7 +3419,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (memberIds.length > 0) {
       return memberIds;
     }
-    return AppDemoGenerators.seededEventMemberIds(eventId, 8, this.users, this.activeUser.id);
+    return DemoEventSeedBuilder.seededEventMemberIds(eventId, 8, this.users, this.activeUser.id);
   }
 
   private mainEventContextPendingCount(item: ChatMenuItem): number {
@@ -3556,7 +3559,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (existing && existing.length === targetAccepted) {
       return existing;
     }
-    const candidates = AppDemoGenerators.seededEventMemberIds(
+    const candidates = DemoEventSeedBuilder.seededEventMemberIds(
       `optional-chat-member:${eventId}:${subEventId}`,
       Math.max(targetAccepted, 4),
       this.users,
@@ -3589,12 +3592,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (existing && existing.length === targetAccepted) {
       return existing;
     }
-    const candidates = AppDemoGenerators.seededEventMemberIds(eventId, this.users.length, this.users, this.activeUser.id);
-    const seeded = candidates.filter(userId => AppDemoGenerators.seededTournamentGroupIdForUser(eventId, subEventId, groups, userId) === groupId);
+    const candidates = DemoEventSeedBuilder.seededEventMemberIds(eventId, this.users.length, this.users, this.activeUser.id);
+    const seeded = candidates.filter(userId => DemoEventSeedBuilder.seededTournamentGroupIdForUser(eventId, subEventId, groups, userId) === groupId);
     let accepted = targetAccepted > 0
       ? seeded.slice(0, targetAccepted)
       : [];
-    const activeGroupId = AppDemoGenerators.seededTournamentGroupIdForUser(eventId, subEventId, groups, this.activeUser.id);
+    const activeGroupId = DemoEventSeedBuilder.seededTournamentGroupIdForUser(eventId, subEventId, groups, this.activeUser.id);
     if (targetAccepted > 0 && activeGroupId === groupId && !accepted.includes(this.activeUser.id)) {
       const withoutActive = accepted.filter(id => id !== this.activeUser.id);
       accepted = this.uniqueUserIds([this.activeUser.id, ...withoutActive]).slice(0, targetAccepted);
@@ -3612,7 +3615,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return null;
     }
     const explicitGroupId = this.explicitTournamentGroupIdForUser(eventId, subEvent.id, groups, this.activeUser.id);
-    const activeGroupId = explicitGroupId || AppDemoGenerators.seededTournamentGroupIdForUser(eventId, subEvent.id, groups, this.activeUser.id);
+    const activeGroupId = explicitGroupId || DemoEventSeedBuilder.seededTournamentGroupIdForUser(eventId, subEvent.id, groups, this.activeUser.id);
     if (!activeGroupId) {
       return null;
     }
@@ -3766,7 +3769,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!others.length) {
       return [this.activeUser];
     }
-    const seed = AppDemoGenerators.hashText(chatId);
+    const seed = AppUtils.hashText(chatId);
     const offsets = [0, 3, 7, 11, 15, 19];
     const memberCount = 3 + (seed % 3);
     const picked: DemoUser[] = [];

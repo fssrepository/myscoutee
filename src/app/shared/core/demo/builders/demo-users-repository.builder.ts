@@ -1,7 +1,8 @@
-import { AppDemoGenerators } from '../../../app-demo-generators';
+import { AppUtils } from '../../../app-utils';
 import type { ChatMenuItem } from '../../../demo-data';
 import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.interface';
 import type { DemoUserListItemDto, UserDto } from '../../base/interfaces/user.interface';
+import { DemoUserMenuCountersBuilder } from './demo-user-menu-counters.builder';
 
 interface DemoUsersRepositoryActivitySources {
   chatItems?: readonly ChatMenuItem[];
@@ -82,28 +83,28 @@ export class DemoUsersRepositoryBuilder {
       activities: {
         ...user.activities,
         chat: sources.chatItems
-          ? AppDemoGenerators.resolveSectionBadge(sources.chatItems.map(item => item.unread), sources.chatItems.length)
+          ? DemoUserMenuCountersBuilder.resolveSectionBadge(sources.chatItems.map(item => item.unread), sources.chatItems.length)
           : user.activities.chat,
         invitations: sources.invitationItems
-          ? AppDemoGenerators.resolveSectionBadge(
+          ? DemoUserMenuCountersBuilder.resolveSectionBadge(
             sources.invitationItems.map(item => item.unread),
             sources.invitationItems.length
           )
           : user.activities.invitations,
         events: sources.eventItems
           ? (
-            AppDemoGenerators.resolveSectionBadge(
+            DemoUserMenuCountersBuilder.resolveSectionBadge(
               sources.eventItems.map(item => item.activity),
               sources.eventItems.length
             ) +
-            AppDemoGenerators.syntheticEventActivityTotal(
+            DemoUserMenuCountersBuilder.syntheticEventActivityTotal(
               sources.eventItems.length,
               sources.minDemoEventItemsPerUser
             )
           )
           : user.activities.events,
         hosting: sources.hostingItems
-          ? AppDemoGenerators.resolveSectionBadge(
+          ? DemoUserMenuCountersBuilder.resolveSectionBadge(
             sources.hostingItems.map(item => item.activity),
             sources.hostingItems.length
           )

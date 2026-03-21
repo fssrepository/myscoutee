@@ -2,7 +2,7 @@ import { Injectable, computed, signal } from '@angular/core';
 import type * as AppTypes from '../shared/core/base/models';
 import { AppUtils } from '../shared/app-utils';
 import { APP_STATIC_DATA } from '../shared/app-static-data';
-import { AppDemoGenerators } from '../shared/app-demo-generators';
+import { DemoEventFeedbackBuilder } from '../shared/core/demo/builders';
 import type { UserDto } from '../shared/core';
 import type { EventMenuItem } from '../shared/demo-data';
 
@@ -512,7 +512,7 @@ export class EventFeedbackPopupService {
   private buildEventFeedbackCardsData(): AppTypes.EventFeedbackCard[] {
     const source = this.sourceRef();
     if (!source) return [];
-    return AppDemoGenerators.buildEventFeedbackCards({
+    return DemoEventFeedbackBuilder.buildEventFeedbackCards({
       eventItems: source.eventItems,
       users: source.users,
       activeUser: source.activeUser,

@@ -1,6 +1,5 @@
 import { computed, Injectable, inject } from '@angular/core';
 
-import { AppDemoGenerators } from '../../../app-demo-generators';
 import type {
   UserGameFilterPreferencesDto,
   UserRateOutboxRecord,
@@ -14,7 +13,7 @@ import {
   USER_RATES_TABLE_NAME
 } from '../models/users.model';
 import { AppMemoryDb } from '../../base/db';
-import { DemoUsersRepositoryBuilder } from '../builders';
+import { DemoUserSeedBuilder, DemoUsersRepositoryBuilder } from '../builders';
 import { CHATS_TABLE_NAME } from '../models/chats.model';
 import { EVENTS_TABLE_NAME } from '../models/events.model';
 import type { DemoMemorySchema } from '../models/memory.model';
@@ -45,7 +44,7 @@ export class DemoUsersRepository {
     const usersTable = state[USERS_TABLE_NAME];
     if (usersTable.ids.length > 0) {
       if (usersTable.ids.length !== DemoUsersRepository.DEFAULT_DEMO_USERS_COUNT) {
-        const sourceUsers = users ?? AppDemoGenerators.buildExpandedDemoUsers(DemoUsersRepository.DEFAULT_DEMO_USERS_COUNT);
+        const sourceUsers = users ?? DemoUserSeedBuilder.buildExpandedDemoUsers(DemoUsersRepository.DEFAULT_DEMO_USERS_COUNT);
         const reseededUsersTable = DemoUsersRepositoryBuilder.buildRecordCollection(
           sourceUsers.map(user => this.applySeededActivityCounts(DemoUsersRepositoryBuilder.cloneUser(user)))
         );
@@ -55,7 +54,7 @@ export class DemoUsersRepository {
       return this.queryUsersFromTable(USERS_TABLE_NAME);
     }
 
-    const sourceUsers = users ?? AppDemoGenerators.buildExpandedDemoUsers(DemoUsersRepository.DEFAULT_DEMO_USERS_COUNT);
+    const sourceUsers = users ?? DemoUserSeedBuilder.buildExpandedDemoUsers(DemoUsersRepository.DEFAULT_DEMO_USERS_COUNT);
     const seededUsersTable = DemoUsersRepositoryBuilder.buildRecordCollection(
       sourceUsers.map(user => this.applySeededActivityCounts(DemoUsersRepositoryBuilder.cloneUser(user)))
     );
@@ -173,7 +172,7 @@ export class DemoUsersRepository {
     this.init();
     const normalizedUser = DemoUsersRepositoryBuilder.cloneUser(user);
     normalizedUser.images = this.normalizeImages(normalizedUser.images);
-    normalizedUser.affinity = AppDemoGenerators.resolveUserAffinity({
+    normalizedUser.affinity = DemoUserSeedBuilder.resolveUserAffinity({
       id: normalizedUser.id,
       name: normalizedUser.name,
       age: normalizedUser.age,

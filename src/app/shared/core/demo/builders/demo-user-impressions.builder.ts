@@ -1,4 +1,4 @@
-import { AppDemoGenerators } from '../../../app-demo-generators';
+import { AppUtils } from '../../../app-utils';
 import type {
   UserDto,
   UserImpressionsDto,
@@ -25,7 +25,7 @@ export class DemoUserImpressionsBuilder {
       stepMax: number,
       cadenceMax: number
     ): number => {
-      const stableSeed = AppDemoGenerators.hashText(`${user.id}:pending:${seedSuffix}`);
+      const stableSeed = AppUtils.hashText(`${user.id}:pending:${seedSuffix}`);
       const step = 1 + (stableSeed % Math.max(1, stepMax));
       const cadence = 1 + ((stableSeed >>> 3) % Math.max(1, cadenceMax));
       const offset = stableSeed % 2;
@@ -46,8 +46,8 @@ export class DemoUserImpressionsBuilder {
       hosting: hostingPending,
       tickets: Math.max(0, Math.trunc((eventsPending + hostingPending) / 2)),
       feedback: feedbackPending,
-      impressionsHostChanged: AppDemoGenerators.hashText(`${user.id}:${cursor}:imp-host`) % 3 === 0,
-      impressionsMemberChanged: AppDemoGenerators.hashText(`${user.id}:${cursor}:imp-member`) % 3 === 0
+      impressionsHostChanged: AppUtils.hashText(`${user.id}:${cursor}:imp-host`) % 3 === 0,
+      impressionsMemberChanged: AppUtils.hashText(`${user.id}:${cursor}:imp-member`) % 3 === 0
     };
   }
 
@@ -101,36 +101,50 @@ export class DemoUserImpressionsBuilder {
     };
   }
 
+  static seededMetric(
+    user: Pick<UserDto, 'id' | 'name' | 'city'>,
+    offset: number,
+    min: number,
+    max: number
+  ): number {
+    const source = `${user.id}-${user.name}-${user.city}-${offset}`;
+    let hash = 0;
+    for (let index = 0; index < source.length; index += 1) {
+      hash = (hash * 31 + source.charCodeAt(index)) >>> 0;
+    }
+    return min + (hash % (max - min + 1));
+  }
+
   private static buildDefaultImpressions(user: UserDto): UserImpressionsDto {
-    const hostTotalEvents = AppDemoGenerators.seededMetric(user, 9, 12, 80);
-    const hostAttendanceTotal = hostTotalEvents * AppDemoGenerators.seededMetric(user, 18, 8, 14);
-    const hostAttendanceAttended = Math.floor(hostAttendanceTotal * (AppDemoGenerators.seededMetric(user, 2, 74, 96) / 100));
+    const hostTotalEvents = this.seededMetric(user, 9, 12, 80);
+    const hostAttendanceTotal = hostTotalEvents * this.seededMetric(user, 18, 8, 14);
+    const hostAttendanceAttended = Math.floor(hostAttendanceTotal * (this.seededMetric(user, 2, 74, 96) / 100));
     const hostNoShowCount = Math.max(0, hostAttendanceTotal - hostAttendanceAttended);
-    const hostPeopleMet = AppDemoGenerators.seededMetric(user, 32, 90, 520);
+    const hostPeopleMet = this.seededMetric(user, 32, 90, 520);
     const hostRepeatCount = Math.floor(
-      AppDemoGenerators.seededMetric(user, 19, 60, 220) * (AppDemoGenerators.seededMetric(user, 4, 36, 84) / 100)
+      this.seededMetric(user, 19, 60, 220) * (this.seededMetric(user, 4, 36, 84) / 100)
     );
 
     const memberTotalEvents = hostTotalEvents;
-    const memberPeopleMet = AppDemoGenerators.seededMetric(user, 24, 80, 460);
+    const memberPeopleMet = this.seededMetric(user, 24, 80, 460);
     const memberAttendanceTotal = 100;
-    const memberAttendanceAttended = AppDemoGenerators.seededMetric(user, 23, 4, 96);
+    const memberAttendanceAttended = this.seededMetric(user, 23, 4, 96);
     const memberNoShowCount = Math.max(0, memberAttendanceTotal - memberAttendanceAttended);
-    const memberRepeatCount = Math.floor(memberPeopleMet * (AppDemoGenerators.seededMetric(user, 33, 18, 72) / 100));
+    const memberRepeatCount = Math.floor(memberPeopleMet * (this.seededMetric(user, 33, 18, 72) / 100));
 
     return {
       host: {
         unreadCount: Math.max(0, Math.trunc((user.activities.hosting + user.activities.events) / 2)),
-        averageRating: AppDemoGenerators.seededMetric(user, 1, 38, 50) / 10,
+        averageRating: this.seededMetric(user, 1, 38, 50) / 10,
         peopleMet: hostPeopleMet,
         totalEvents: hostTotalEvents,
         repeatCount: hostRepeatCount,
         noShowCount: hostNoShowCount,
-        vibeBadges: [`Music ${AppDemoGenerators.seededMetric(user, 20, 18, 86)}%`],
+        vibeBadges: [`Music ${this.seededMetric(user, 20, 18, 86)}%`],
         personalityBadges: ['Communication 60%', 'Coordination 40%'],
         categoryBadges: [
-          `Sports ${AppDemoGenerators.seededMetric(user, 21, 8, 48)}%`,
-          `Road Trip ${AppDemoGenerators.seededMetric(user, 22, 6, 36)}%`
+          `Sports ${this.seededMetric(user, 21, 8, 48)}%`,
+          `Road Trip ${this.seededMetric(user, 22, 6, 36)}%`
         ]
       },
       member: {
@@ -140,11 +154,11 @@ export class DemoUserImpressionsBuilder {
         repeatCount: memberRepeatCount,
         noShowCount: memberNoShowCount,
         vibeBadges: [
-          `Outdoors ${AppDemoGenerators.seededMetric(user, 29, 40, 95)}%`,
-          `Games ${AppDemoGenerators.seededMetric(user, 30, 35, 95)}%`
+          `Outdoors ${this.seededMetric(user, 29, 40, 95)}%`,
+          `Games ${this.seededMetric(user, 30, 35, 95)}%`
         ],
         personalityBadges: ['Adventurer 60%', 'Deep Thinker 30%', 'Empath 10%'],
-        categoryBadges: [`Culture ${AppDemoGenerators.seededMetric(user, 31, 25, 90)}%`]
+        categoryBadges: [`Culture ${this.seededMetric(user, 31, 25, 90)}%`]
       }
     };
   }
@@ -170,7 +184,7 @@ export class DemoUserImpressionsBuilder {
     if (!Number.isFinite(baseValue)) {
       return undefined;
     }
-    const seeded = AppDemoGenerators.hashText(`metric:${cursor}:${baseValue}`);
+    const seeded = AppUtils.hashText(`metric:${cursor}:${baseValue}`);
     const swing = (seeded % ((maxSwing * 2) + 1)) - maxSwing;
     return Math.max(0, Math.trunc(Number(baseValue)) + swing);
   }
@@ -184,7 +198,7 @@ export class DemoUserImpressionsBuilder {
       return undefined;
     }
     const normalized = Math.round(Number(baseValue) * 10);
-    const seeded = AppDemoGenerators.hashText(`rating:${cursor}:${normalized}`);
+    const seeded = AppUtils.hashText(`rating:${cursor}:${normalized}`);
     const swing = (seeded % ((maxSwingTenths * 2) + 1)) - maxSwingTenths;
     const nextTenths = Math.max(0, Math.min(50, normalized + swing));
     return nextTenths / 10;
@@ -220,7 +234,7 @@ export class DemoUserImpressionsBuilder {
     if (!Number.isFinite(percent)) {
       return normalized;
     }
-    const seeded = AppDemoGenerators.hashText(`badge:${cursor}:${index}:${normalized}`);
+    const seeded = AppUtils.hashText(`badge:${cursor}:${index}:${normalized}`);
     const swing = (seeded % ((maxSwingPercent * 2) + 1)) - maxSwingPercent;
     const nextPercent = Math.max(0, Math.min(100, percent + swing));
     return `${label} ${nextPercent}%`;

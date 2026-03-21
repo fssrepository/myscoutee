@@ -1,17 +1,15 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AppDemoGenerators } from '../../../app-demo-generators';
 import { AppUtils } from '../../../app-utils';
 import {
-  APP_DEMO_DATA,
-  DEMO_EVENT_DATES_BY_ID,
   DEMO_EVENTS_BY_USER,
   DEMO_HOSTING_BY_USER,
+  DEMO_HOSTING_PUBLISHED_BY_ID,
   DEMO_INVITATIONS_BY_USER,
   type EventMenuItem
 } from '../../../demo-data';
 import { AppMemoryDb } from '../../base/db';
-import { DemoEventsRepositoryBuilder } from '../builders';
+import { DemoEventSeedBuilder, DemoEventsRepositoryBuilder, DemoUserMenuCountersBuilder, DemoUserSeedBuilder } from '../builders';
 import {
   EVENTS_TABLE_NAME,
   type DemoEventActivitiesQuery,
@@ -353,11 +351,11 @@ export class DemoEventsRepository {
       if (item.isAdmin) {
         return false;
       }
-      const startMs = new Date(DEMO_EVENT_DATES_BY_ID[item.id] ?? '').getTime();
+      const startMs = new Date(item.startAtIso ?? '').getTime();
       return Number.isFinite(startMs) && nowMs >= startMs + feedbackUnlockDelayMs;
     }).length;
 
-    return basePendingCount + AppDemoGenerators.syntheticPendingEventFeedbackCount(
+    return basePendingCount + DemoUserMenuCountersBuilder.syntheticPendingEventFeedbackCount(
       eventItems.length,
       DemoEventsRepository.MIN_DEMO_EVENT_ITEMS_PER_USER,
       nowMs,
@@ -729,7 +727,7 @@ export class DemoEventsRepository {
       record.creatorUserId,
       ...record.acceptedMemberUserIds
     ].some(userId =>
-      userId !== activeUserId && AppDemoGenerators.isFriendOfActiveUser(userId, activeUserId)
+      userId !== activeUserId && DemoUserSeedBuilder.isFriendOfActiveUser(userId, activeUserId)
     );
   }
 
@@ -775,7 +773,7 @@ export class DemoEventsRepository {
     if (record.visibility === 'Invitation only') {
       return false;
     }
-    if (record.visibility === 'Friends only' && !AppDemoGenerators.isFriendOfActiveUser(record.creatorUserId, activeUserId)) {
+    if (record.visibility === 'Friends only' && !DemoUserSeedBuilder.isFriendOfActiveUser(record.creatorUserId, activeUserId)) {
       return false;
     }
     return true;
@@ -817,13 +815,13 @@ export class DemoEventsRepository {
     const topics = this.normalizeTopics(payload.topics ?? existing?.topics ?? []);
     const subEvents = this.cloneSubEvents(payload.subEvents ?? existing?.subEvents);
     const ticketing = payload.ticketing ?? existing?.ticketing ?? false;
-    const rating = existing?.rating ?? (6 + ((AppDemoGenerators.hashText(`${context.type}:${payload.id}:${payload.title}`) % 35) / 10));
-    const relevance = existing?.relevance ?? (50 + (AppDemoGenerators.hashText(`${context.type}:${payload.id}:${payload.title}`) % 51));
+    const rating = existing?.rating ?? (6 + ((AppUtils.hashText(`${context.type}:${payload.id}:${payload.title}`) % 35) / 10));
+    const relevance = existing?.relevance ?? (50 + (AppUtils.hashText(`${context.type}:${payload.id}:${payload.title}`) % 51));
     const usersTable = this.memoryDb.read()[USERS_TABLE_NAME];
     const creator = usersTable.byId[context.userId] ?? null;
     const acceptedUsers = context.acceptedMemberUserIds
       .map(userId => usersTable.byId[userId] ?? null);
-    const affinity = AppDemoGenerators.resolveEventAffinity({
+    const affinity = DemoEventsRepositoryBuilder.resolveEventAffinity({
       id: payload.id,
       title: payload.title,
       subtitle: payload.shortDescription,
@@ -884,7 +882,7 @@ export class DemoEventsRepository {
       subEvents,
       subEventsDisplayMode: payload.subEventsDisplayMode
         ?? existing?.subEventsDisplayMode
-        ?? (subEvents ? AppDemoGenerators.inferredSubEventsDisplayMode(subEvents) : 'Casual'),
+        ?? (subEvents ? DemoEventSeedBuilder.inferredSubEventsDisplayMode(subEvents) : 'Casual'),
       rating,
       relevance,
       affinity
@@ -945,12 +943,12 @@ export class DemoEventsRepository {
       invitationsByUser: DEMO_INVITATIONS_BY_USER,
       eventsByUser,
       hostingByUser: DEMO_HOSTING_BY_USER,
-      publishedById: APP_DEMO_DATA.hostingPublishedById
+      publishedById: DEMO_HOSTING_PUBLISHED_BY_ID
     });
   }
 
   private buildEventsByUserWithSyntheticSeed(): Record<string, readonly EventMenuItem[]> {
-    const users = AppDemoGenerators.buildExpandedDemoUsers(50);
+    const users = DemoUserSeedBuilder.buildExpandedDemoUsers(50);
     const userById = new Map(users.map(user => [user.id, user]));
     const seeded: Record<string, readonly EventMenuItem[]> = {};
     const featuredFriendsOnlyByUser = this.buildFeaturedFriendsOnlyEvents(userById);
@@ -989,7 +987,7 @@ export class DemoEventsRepository {
           ? 'Friends only'
           : ((index % 2) === 0 ? 'Friends only' : 'Public');
         const blindMode = (index % 5) === 0 ? 'Blind Event' : 'Open Event';
-        const seed = AppDemoGenerators.hashText(`${userId}:${id}:${seq}`);
+        const seed = AppUtils.hashText(`${userId}:${id}:${seq}`);
 
         synthetic.push({
           id,
@@ -1185,7 +1183,7 @@ export class DemoEventsRepository {
       subEventsDisplayMode: current.subEventsDisplayMode
         ?? seeded.subEventsDisplayMode
         ?? (this.cloneSubEvents(current.subEvents)?.length
-          ? AppDemoGenerators.inferredSubEventsDisplayMode(this.cloneSubEvents(current.subEvents)!)
+          ? DemoEventSeedBuilder.inferredSubEventsDisplayMode(this.cloneSubEvents(current.subEvents)!)
           : 'Casual'),
       rating: Number.isFinite(current.rating) ? Number(current.rating) : seeded.rating,
       relevance: Number.isFinite(current.relevance) ? Number(current.relevance) : seeded.relevance,

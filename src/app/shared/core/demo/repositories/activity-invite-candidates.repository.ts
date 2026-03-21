@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AppDemoGenerators } from '../../../app-demo-generators';
+import { ActivityMembersBuilder } from '../../base/builders/activity-members.builder';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import type { DemoUser } from '../../../demo-data';
@@ -8,6 +8,7 @@ import type {
   ActivityInviteCandidatesQuery,
   ActivityInviteCandidatesRepository
 } from '../../base/interfaces/activity-invite.interface';
+import { DemoUserSeedBuilder } from '../builders';
 import { DemoUsersRatingsRepository } from './users-ratings.repository';
 import { DemoUsersRepository } from './users.repository';
 
@@ -33,7 +34,7 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
 
     const existingUserIds = new Set(query.existingMemberUserIds.map(userId => userId.trim()).filter(Boolean));
     existingUserIds.add(activeUserId);
-    const friendPool = AppDemoGenerators.friendUsersForActiveUser(allUsers as DemoUser[], activeUserId, 18);
+    const friendPool = DemoUserSeedBuilder.friendUsersForActiveUser(allUsers as DemoUser[], activeUserId, 18);
 
     const latestMetByUserId = new Map<string, { metAtIso: string; metWhere: string; relevance: number }>();
     for (const rate of this.usersRatingsRepository.queryUserRatesByUserId(activeUserId)) {
@@ -59,9 +60,9 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
           continue;
         }
         latestMetByUserId.set(user.id, {
-          metAtIso: AppUtils.toIsoDateTime(AppUtils.addDays(new Date('2026-02-24T12:00:00'), -((AppDemoGenerators.hashText(`${ownerId}:${user.id}`) % 120) + 1))),
+          metAtIso: AppUtils.toIsoDateTime(AppUtils.addDays(new Date('2026-02-24T12:00:00'), -((AppUtils.hashText(`${ownerId}:${user.id}`) % 120) + 1))),
           metWhere: 'Friends circle',
-          relevance: 72 + (AppDemoGenerators.hashText(`${activeUserId}:friend:${user.id}`) % 20)
+          relevance: 72 + (AppUtils.hashText(`${activeUserId}:friend:${user.id}`) % 20)
         });
         if (latestMetByUserId.size >= 12) {
           break;
@@ -75,9 +76,9 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
           continue;
         }
         latestMetByUserId.set(user.id, {
-          metAtIso: AppUtils.toIsoDateTime(AppUtils.addDays(new Date('2026-02-24T12:00:00'), -((AppDemoGenerators.hashText(`${activeUserId}:community:${ownerId}:${user.id}`) % 90) + 1))),
+          metAtIso: AppUtils.toIsoDateTime(AppUtils.addDays(new Date('2026-02-24T12:00:00'), -((AppUtils.hashText(`${activeUserId}:community:${ownerId}:${user.id}`) % 90) + 1))),
           metWhere: 'MyScoutee community',
-          relevance: 56 + (AppDemoGenerators.hashText(`${activeUserId}:community:${user.id}`) % 18)
+          relevance: 56 + (AppUtils.hashText(`${activeUserId}:community:${user.id}`) % 18)
         });
         if (latestMetByUserId.size >= 12) {
           break;
@@ -91,7 +92,7 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
       .filter(user => !existingUserIds.has(user.id))
       .filter(user => latestMetByUserId.has(user.id))
       .map(user => {
-        const entry = AppDemoGenerators.toActivityMemberEntry(
+        const entry = ActivityMembersBuilder.toActivityMemberEntry(
           user as unknown as DemoUser,
           row,
           rowKey,

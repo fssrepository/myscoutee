@@ -14,10 +14,10 @@ import { from } from 'rxjs';
 
 import type { ActivityMemberOwnerRef, EventExploreFeedFilters } from '../../../shared/core/base/models';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import {
+  ActivityMembersBuilder,
   ActivityMembersService,
   ActivitiesService,
   AppContext,
@@ -605,7 +605,7 @@ export class EventExplorePopupComponent {
     const entries: AppTypes.ActivityMemberEntry[] = [];
     for (const userId of acceptedUserIds) {
       const user = this.resolveUser(userId, record);
-      const base = AppDemoGenerators.toActivityMemberEntry(
+      const base = ActivityMembersBuilder.toActivityMemberEntry(
         user,
         { ...row, isAdmin: true },
         rowKey,
@@ -620,7 +620,7 @@ export class EventExplorePopupComponent {
     }
     for (const userId of pendingUserIds) {
       const user = this.resolveUser(userId, record);
-      const base = AppDemoGenerators.toActivityMemberEntry(
+      const base = ActivityMembersBuilder.toActivityMemberEntry(
         user,
         { ...row, isAdmin: true },
         rowKey,
@@ -713,7 +713,7 @@ export class EventExplorePopupComponent {
     }
 
     const pool = [record.creatorUserId, ...this.users.map(user => user.id)];
-    const seed = AppDemoGenerators.hashText(`event-explore-members:${record.id}:${record.type}:${includeCreatorFirst ? 'accepted' : 'pending'}`);
+    const seed = AppUtils.hashText(`event-explore-members:${record.id}:${record.type}:${includeCreatorFirst ? 'accepted' : 'pending'}`);
     for (let index = 0; result.length < normalizedCount && index < pool.length * 3; index += 1) {
       tryAdd(pool[(seed + index) % pool.length]);
     }
@@ -750,7 +750,7 @@ export class EventExplorePopupComponent {
   private buildJoinRequestEntry(record: DemoEventRecord): AppTypes.ActivityMemberEntry {
     const user = this.resolveUser(this.activeUserId, record);
     const row = EventExploreBuilder.buildActivityRow(record);
-    const entry = AppDemoGenerators.toActivityMemberEntry(
+    const entry = ActivityMembersBuilder.toActivityMemberEntry(
       user,
       row,
       `${row.type}:${row.id}`,

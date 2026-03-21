@@ -1,4 +1,3 @@
-import { AppDemoGenerators } from '../../../app-demo-generators';
 import { AppUtils } from '../../../app-utils';
 import type { RateMenuItem } from '../../../demo-data';
 import type { UserRateRecord } from '../../base/interfaces/game.interface';
@@ -299,7 +298,7 @@ export class DemoUserRatesBuilder {
     variantIndex = 0,
     secondaryUserId?: string
   ): RateMenuItem {
-    const seed = AppDemoGenerators.hashText(
+    const seed = AppUtils.hashText(
       `rate-grid:${activeUserId}:${targetUserId}:${secondaryUserId ?? ''}:${mode}:${direction}:${variantIndex}`
     );
     const happenedAtDate = new Date('2026-03-01T20:00:00');
@@ -374,7 +373,7 @@ export class DemoUserRatesBuilder {
       return Math.max(0, Math.trunc(Number(value)));
     }
     const normalizedDistanceKm = Number.isFinite(distanceKm) ? Math.max(0, Number(distanceKm)) : 0;
-    return this.seedDistanceMetersExact(normalizedDistanceKm, AppDemoGenerators.hashText(`distance:${seedKey}`));
+    return this.seedDistanceMetersExact(normalizedDistanceKm, AppUtils.hashText(`distance:${seedKey}`));
   }
 
   private static seedDistanceMetersExact(distanceKm: number, seed: number): number {

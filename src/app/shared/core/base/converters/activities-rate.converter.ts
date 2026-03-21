@@ -1,4 +1,3 @@
-import { AppDemoGenerators } from '../../../app-demo-generators';
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
 import type { DemoUser, RateMenuItem } from '../../../demo-data';
@@ -86,7 +85,7 @@ function buildSingleRateImageUrls(
   activeUserId: string
 ): string[] {
   const seedUserId = user?.id ?? activeUserId;
-  const seededCount = 1 + (AppDemoGenerators.hashText(`rate-photo-count:${seedUserId || item.id}`) % 4);
+  const seededCount = 1 + (AppUtils.hashText(`rate-photo-count:${seedUserId || item.id}`) % 4);
   const desiredCount = item.direction === 'met' ? Math.min(2, seededCount) : seededCount;
   return buildDisplayImageUrls(user?.images, Math.max(1, Math.min(4, desiredCount)));
 }
@@ -118,7 +117,7 @@ function buildPairSlotSlides(
   slot: 'woman' | 'man',
   user: DemoUser
 ): AppTypes.ActivityRateDisplaySlide[] {
-  const seededCount = 2 + (AppDemoGenerators.hashText(`pair-rate-photo-count:${item.id}:${slot}:${user.id}`) % 2);
+  const seededCount = 2 + (AppUtils.hashText(`pair-rate-photo-count:${item.id}:${slot}:${user.id}`) % 2);
   return buildDisplayImageUrls(user.images, seededCount).map(imageUrl => ({
     imageUrl,
     primaryLine: `${user.name}, ${user.age}`,
@@ -159,7 +158,7 @@ function resolvePairSlotUser(
   );
 
   if (candidates.length > 0) {
-    const seed = AppDemoGenerators.hashText(`pair-rate-slot:${item.id}:${gender}`);
+    const seed = AppUtils.hashText(`pair-rate-slot:${item.id}:${gender}`);
     return candidates[seed % candidates.length] ?? null;
   }
 

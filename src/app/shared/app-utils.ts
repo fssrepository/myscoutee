@@ -35,6 +35,20 @@ export class AppUtils {
     return (value?.trim().length ?? 0) >= Math.max(0, Math.trunc(minLength));
   }
 
+  static hashText(value: string): number {
+    let hash = 0;
+    for (let index = 0; index < value.length; index += 1) {
+      hash = (hash * 31 + value.charCodeAt(index)) % 104729;
+    }
+    return Math.abs(hash);
+  }
+
+  static firstImageUrl(images: readonly string[] | undefined | null): string {
+    return (images ?? [])
+      .map(image => `${image ?? ''}`.trim())
+      .find(image => image.length > 0) ?? '';
+  }
+
   static pad2(value: number): string {
     return `${value}`.padStart(2, '0');
   }

@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { AppDemoGenerators } from '../../../shared/app-demo-generators';
+import { DemoUserImpressionsBuilder } from '../../../shared/core/demo/builders';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import {
@@ -352,7 +352,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return loaded.toFixed(1);
     }
-    return (AppDemoGenerators.seededMetric(user, 1, 38, 50) / 10).toFixed(1);
+    return (DemoUserImpressionsBuilder.seededMetric(user, 1, 38, 50) / 10).toFixed(1);
   }
 
   private resolveHostTotalEvents(user: UserDto): number {
@@ -360,7 +360,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return loaded;
     }
-    return AppDemoGenerators.seededMetric(user, 9, 12, 80);
+    return DemoUserImpressionsBuilder.seededMetric(user, 9, 12, 80);
   }
 
   private resolveHostAttendanceNoShowSummary(user: UserDto): string {
@@ -368,8 +368,8 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return `${loaded}`;
     }
-    const hostAttendanceTotal = this.resolveHostTotalEvents(user) * AppDemoGenerators.seededMetric(user, 18, 8, 14);
-    const hostAttendanceAttended = Math.floor(hostAttendanceTotal * (AppDemoGenerators.seededMetric(user, 2, 74, 96) / 100));
+    const hostAttendanceTotal = this.resolveHostTotalEvents(user) * DemoUserImpressionsBuilder.seededMetric(user, 18, 8, 14);
+    const hostAttendanceAttended = Math.floor(hostAttendanceTotal * (DemoUserImpressionsBuilder.seededMetric(user, 2, 74, 96) / 100));
     return `${Math.max(0, hostAttendanceTotal - hostAttendanceAttended)}`;
   }
 
@@ -378,8 +378,8 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return `${loaded}`;
     }
-    const total = AppDemoGenerators.seededMetric(user, 19, 60, 220);
-    const repeat = Math.floor(total * (AppDemoGenerators.seededMetric(user, 4, 36, 84) / 100));
+    const total = DemoUserImpressionsBuilder.seededMetric(user, 19, 60, 220);
+    const repeat = Math.floor(total * (DemoUserImpressionsBuilder.seededMetric(user, 4, 36, 84) / 100));
     return `${repeat}`;
   }
 
@@ -388,7 +388,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return loaded;
     }
-    return AppDemoGenerators.seededMetric(user, 32, 90, 520);
+    return DemoUserImpressionsBuilder.seededMetric(user, 32, 90, 520);
   }
 
   private resolveHostVibeBadgeItems(user: UserDto): string[] {
@@ -396,9 +396,9 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded) {
       return this.sortImpressionsBadgeItems(loaded);
     }
-    const vibe = this.vibeCategories[AppDemoGenerators.seededMetric(user, 5, 0, this.vibeCategories.length - 1)];
+    const vibe = this.vibeCategories[DemoUserImpressionsBuilder.seededMetric(user, 5, 0, this.vibeCategories.length - 1)];
     return this.sortImpressionsBadgeItems(AppUtils.withContextIconItems(
-      `${vibe} ${AppDemoGenerators.seededMetric(user, 20, 18, 86)}%`,
+      `${vibe} ${DemoUserImpressionsBuilder.seededMetric(user, 20, 18, 86)}%`,
       this.vibeIcons
     ));
   }
@@ -417,7 +417,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
       return this.sortImpressionsBadgeItems(loaded);
     }
     return this.sortImpressionsBadgeItems(AppUtils.withContextIconItems(
-      `Sports ${AppDemoGenerators.seededMetric(user, 21, 8, 48)}%, Road Trip ${AppDemoGenerators.seededMetric(user, 22, 6, 36)}%`,
+      `Sports ${DemoUserImpressionsBuilder.seededMetric(user, 21, 8, 48)}%, Road Trip ${DemoUserImpressionsBuilder.seededMetric(user, 22, 6, 36)}%`,
       this.categoryIcons
     ));
   }
@@ -435,7 +435,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return loaded;
     }
-    const attended = AppDemoGenerators.seededMetric(user, 23, 4, 96);
+    const attended = DemoUserImpressionsBuilder.seededMetric(user, 23, 4, 96);
     return Math.max(0, 100 - attended);
   }
 
@@ -444,7 +444,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return loaded;
     }
-    return AppDemoGenerators.seededMetric(user, 24, 80, 460);
+    return DemoUserImpressionsBuilder.seededMetric(user, 24, 80, 460);
   }
 
   private resolveMemberReturneesSummary(user: UserDto): string {
@@ -453,7 +453,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
       return `${loaded}`;
     }
     const total = this.resolveMemberPeopleMet(user);
-    const repeat = Math.floor(total * (AppDemoGenerators.seededMetric(user, 33, 18, 72) / 100));
+    const repeat = Math.floor(total * (DemoUserImpressionsBuilder.seededMetric(user, 33, 18, 72) / 100));
     return `${repeat}`;
   }
 
@@ -462,10 +462,10 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded) {
       return this.sortImpressionsBadgeItems(loaded);
     }
-    const first = this.vibeCategories[AppDemoGenerators.seededMetric(user, 25, 0, this.vibeCategories.length - 1)];
-    const second = this.vibeCategories[AppDemoGenerators.seededMetric(user, 26, 0, this.vibeCategories.length - 1)];
+    const first = this.vibeCategories[DemoUserImpressionsBuilder.seededMetric(user, 25, 0, this.vibeCategories.length - 1)];
+    const second = this.vibeCategories[DemoUserImpressionsBuilder.seededMetric(user, 26, 0, this.vibeCategories.length - 1)];
     return this.sortImpressionsBadgeItems(AppUtils.withContextIconItems(
-      `${first} ${AppDemoGenerators.seededMetric(user, 27, 18, 74)}%, ${second} ${AppDemoGenerators.seededMetric(user, 28, 12, 62)}%`,
+      `${first} ${DemoUserImpressionsBuilder.seededMetric(user, 27, 18, 74)}%, ${second} ${DemoUserImpressionsBuilder.seededMetric(user, 28, 12, 62)}%`,
       this.vibeIcons
     ));
   }
@@ -488,7 +488,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
       return this.sortImpressionsBadgeItems(loaded);
     }
     return this.sortImpressionsBadgeItems(AppUtils.withContextIconItems(
-      `Outdoors ${AppDemoGenerators.seededMetric(user, 29, 40, 95)}%, Games ${AppDemoGenerators.seededMetric(user, 30, 35, 95)}%, Culture ${AppDemoGenerators.seededMetric(user, 31, 25, 90)}%`,
+      `Outdoors ${DemoUserImpressionsBuilder.seededMetric(user, 29, 40, 95)}%, Games ${DemoUserImpressionsBuilder.seededMetric(user, 30, 35, 95)}%, Culture ${DemoUserImpressionsBuilder.seededMetric(user, 31, 25, 90)}%`,
       this.categoryIcons
     ));
   }

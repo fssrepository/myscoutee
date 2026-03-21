@@ -201,6 +201,60 @@ const INTEREST_OPTION_GROUPS: InterestOptionGroup[] = [
 const DETAIL_PRIVACY_OPTIONS: DetailPrivacy[] = ['Public', 'Friends', 'Hosts', 'Private'];
 const EXPERIENCE_FILTER_OPTIONS: Array<'All' | 'Workspace' | 'School'> = ['All', 'Workspace', 'School'];
 const EXPERIENCE_TYPE_OPTIONS: Array<ExperienceEntry['type']> = ['Workspace', 'School', 'Online Session', 'Additional Project'];
+
+const PROFILE_SAMPLE_EXPERIENCE_ENTRIES: ExperienceEntry[] = [
+  {
+    id: 'exp-1',
+    type: 'School',
+    title: 'BSc Computer Science',
+    org: 'State University',
+    city: 'Austin',
+    dateFrom: '2014-09',
+    dateTo: '2018-06',
+    description: 'Software engineering and distributed systems.'
+  },
+  {
+    id: 'exp-2',
+    type: 'Additional Project',
+    title: 'Community Event Platform',
+    org: 'Independent Project',
+    city: 'Austin',
+    dateFrom: '2018-09',
+    dateTo: '2019-05',
+    description: 'Built MVP with profile, event, and chat modules.'
+  },
+  {
+    id: 'exp-3',
+    type: 'Workspace',
+    title: 'Community Lead',
+    org: 'Studio Tide',
+    city: 'Chicago',
+    dateFrom: '2019-06',
+    dateTo: '2021-08',
+    description: 'Owned member engagement and host onboarding.'
+  },
+  {
+    id: 'exp-4',
+    type: 'Online Session',
+    title: 'Remote Product Sprint',
+    org: 'Northwind Labs',
+    city: 'Online',
+    dateFrom: '2021-10',
+    dateTo: '2022-02',
+    description: 'Cross-functional delivery for profile editor v2.'
+  },
+  {
+    id: 'exp-5',
+    type: 'Workspace',
+    title: 'Product Manager',
+    org: 'Northwind Labs',
+    city: 'Austin',
+    dateFrom: '2022-03',
+    dateTo: 'Present',
+    description: 'Leads social graph and trust product areas.'
+  }
+];
+
 const ASSET_TYPE_OPTIONS: AssetType[] = ['Car', 'Accommodation', 'Supplies'];
 const ASSET_FILTER_OPTIONS: AssetFilterType[] = ['Car', 'Accommodation', 'Supplies', 'Ticket'];
 const ACTIVITIES_PRIMARY_FILTERS: Array<{ key: ActivitiesPrimaryFilter; label: string; icon: string }> = [
@@ -653,6 +707,7 @@ export const APP_STATIC_DATA = {
   detailPrivacyOptions: DETAIL_PRIVACY_OPTIONS,
   experienceFilterOptions: EXPERIENCE_FILTER_OPTIONS,
   experienceTypeOptions: EXPERIENCE_TYPE_OPTIONS,
+  profileSampleExperienceEntries: PROFILE_SAMPLE_EXPERIENCE_ENTRIES,
   assetTypeOptions: ASSET_TYPE_OPTIONS,
   assetFilterOptions: ASSET_FILTER_OPTIONS,
   activityRatingScale: ACTIVITY_RATING_SCALE,

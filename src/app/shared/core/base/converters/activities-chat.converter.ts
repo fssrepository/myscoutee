@@ -1,6 +1,6 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
-import { APP_DEMO_DATA, type ChatMenuItem, type DemoUser } from '../../../demo-data';
+import type { ChatMenuItem, DemoUser } from '../../../demo-data';
 import type { DemoChatRecord } from '../../demo/models/chats.model';
 
 interface BuildActivityChatRowsOptions {
@@ -27,9 +27,11 @@ export function toActivityChatRow(
     title: lastSender?.name ?? item.title,
     subtitle: item.title,
     detail: item.lastMessage?.trim() || '',
-    dateIso: APP_DEMO_DATA.chatDatesById[item.id] ?? '2026-02-21T09:00:00',
-    distanceKm: APP_DEMO_DATA.chatDistanceById[item.id] ?? 5,
-    distanceMetersExact: Math.max(0, Math.round((APP_DEMO_DATA.chatDistanceById[item.id] ?? 5) * 1000)),
+    dateIso: item.dateIso ?? '2026-02-21T09:00:00',
+    distanceKm: Number.isFinite(Number(item.distanceKm)) ? Number(item.distanceKm) : 5,
+    distanceMetersExact: Number.isFinite(Number(item.distanceMetersExact))
+      ? Math.max(0, Math.trunc(Number(item.distanceMetersExact)))
+      : Math.max(0, Math.round((Number.isFinite(Number(item.distanceKm)) ? Number(item.distanceKm) : 5) * 1000)),
     unread,
     metricScore: unread * 10 + resolveChatMemberCount(item, options.users, options.activeUserId),
     source: normalizeChatRecord(item)

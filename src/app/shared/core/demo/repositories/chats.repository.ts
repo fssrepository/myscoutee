@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { DEMO_CHAT_BY_USER } from '../../../demo-data';
+import { AppUtils } from '../../../app-utils';
 import { AppMemoryDb } from '../../base/db';
 import { DemoChatsRepositoryBuilder } from '../builders';
 import { CHATS_TABLE_NAME, type DemoChatRecord } from '../models/chats.model';
@@ -18,8 +19,17 @@ export class DemoChatsRepository {
     }
     const state = this.memoryDb.read();
     if (state[CHATS_TABLE_NAME].ids.length > 0) {
-      this.initialized = true;
-      return;
+      const needsMigration = state[CHATS_TABLE_NAME].ids.some(id => {
+        const record = state[CHATS_TABLE_NAME].byId[id];
+        return !record
+          || !AppUtils.hasText(record.dateIso ?? '')
+          || !Number.isFinite(Number(record.distanceKm))
+          || !Number.isFinite(Number(record.distanceMetersExact));
+      });
+      if (!needsMigration) {
+        this.initialized = true;
+        return;
+      }
     }
     const records = DemoChatsRepositoryBuilder.buildRecordCollection(DEMO_CHAT_BY_USER);
     this.memoryDb.write(currentState => ({

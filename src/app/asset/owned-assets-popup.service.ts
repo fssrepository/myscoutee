@@ -1,6 +1,6 @@
 import { Injectable, effect, inject, signal } from '@angular/core';
 
-import { AppDemoGenerators } from '../shared/app-demo-generators';
+import { DemoAssetBuilder } from '../shared/core/demo/builders';
 import { APP_STATIC_DATA } from '../shared/app-static-data';
 import type * as AppTypes from '../shared/core/base/models';
 import { AssetPopupService } from './asset-popup.service';
@@ -278,7 +278,7 @@ export class OwnedAssetsPopupService {
     }
     const seed = `${this.assetForm.type.toLowerCase()}-${parsed.hostname.replace(/\./g, '-')}${parsed.pathname.replace(/[^\w-]/g, '-')}`;
     if (!this.assetForm.imageUrl.trim()) {
-      this.assetForm.imageUrl = AppDemoGenerators.defaultAssetImage(this.assetForm.type, seed);
+      this.assetForm.imageUrl = DemoAssetBuilder.defaultAssetImage(this.assetForm.type, seed);
     }
     if (!this.assetForm.title.trim()) {
       this.assetForm.title = `${this.assetForm.type} · ${parsed.hostname.replace(/^www\./, '')}`;
@@ -315,10 +315,10 @@ export class OwnedAssetsPopupService {
     const payload: Omit<AppTypes.AssetCard, 'id' | 'requests'> = {
       type: this.assetForm.type,
       title,
-      subtitle: this.assetForm.subtitle.trim() || AppDemoGenerators.defaultAssetSubtitle(this.assetForm.type),
+      subtitle: this.assetForm.subtitle.trim() || DemoAssetBuilder.defaultAssetSubtitle(this.assetForm.type),
       city: resolvedCity,
       capacityTotal: Math.max(1, Number(this.assetForm.capacityTotal) || (this.assetForm.type === 'Supplies' ? 6 : 4)),
-      details: this.assetForm.details.trim() || AppDemoGenerators.defaultAssetDetails(this.assetForm.type),
+      details: this.assetForm.details.trim() || DemoAssetBuilder.defaultAssetDetails(this.assetForm.type),
       imageUrl,
       sourceLink,
       routes
@@ -498,7 +498,7 @@ export class OwnedAssetsPopupService {
   private normalizeAssetImageLink(type: AppTypes.AssetType, imageUrl: string | null | undefined, seed: string): string {
     const trimmed = (imageUrl ?? '').trim();
     if (!trimmed || this.isGoogleMapsLikeLink(trimmed) || this.isLegacyGeneratedAssetImage(trimmed)) {
-      return AppDemoGenerators.defaultAssetImage(type, seed || type.toLowerCase());
+      return DemoAssetBuilder.defaultAssetImage(type, seed || type.toLowerCase());
     }
     return trimmed;
   }

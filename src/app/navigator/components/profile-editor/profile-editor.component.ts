@@ -9,7 +9,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { AppCalendarDateAdapter, AppCalendarDateFormats } from '../../../shared/app-calendar-date-adapter';
-import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
@@ -98,7 +97,7 @@ export class ProfileEditorComponent {
     workspace: 'Public',
     school: 'Public'
   };
-  protected experienceEntries: AppTypes.ExperienceEntry[] = AppDemoGenerators.buildSampleExperienceEntries();
+  protected experienceEntries: AppTypes.ExperienceEntry[] = APP_STATIC_DATA.profileSampleExperienceEntries.map(item => ({ ...item }));
   protected experienceFilter: 'All' | 'Workspace' | 'School' = 'All';
   protected showExperienceForm = false;
   protected editingExperienceId: string | null = null;
@@ -1423,7 +1422,7 @@ export class ProfileEditorComponent {
     if (options.length === 0) {
       return '';
     }
-    const seed = AppDemoGenerators.hashText(`profile-detail:${user.id}:${context}`);
+    const seed = AppUtils.hashText(`profile-detail:${user.id}:${context}`);
     return options[seed % options.length] ?? options[0];
   }
 
@@ -1431,7 +1430,7 @@ export class ProfileEditorComponent {
     if (options.length === 0 || count <= 0) {
       return [];
     }
-    const start = AppDemoGenerators.hashText(`profile-detail-list:${user.id}:${context}`) % options.length;
+    const start = AppUtils.hashText(`profile-detail-list:${user.id}:${context}`) % options.length;
     const selected: string[] = [];
     let index = start;
     while (selected.length < Math.min(count, options.length)) {

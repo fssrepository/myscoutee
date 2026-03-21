@@ -9,6 +9,9 @@ export interface ChatMenuItem {
   lastSenderId: string;
   memberIds: string[];
   unread: number;
+  dateIso?: string;
+  distanceKm?: number;
+  distanceMetersExact?: number;
   channelType?: 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent';
   eventId?: string;
   subEventId?: string;
@@ -22,6 +25,14 @@ export interface InvitationMenuItem {
   description: string;
   when: string;
   unread: number;
+  startAt?: string;
+  endAt?: string;
+  distanceKm?: number;
+  distanceMetersExact?: number;
+  imageUrl?: string;
+  sourceLink?: string;
+  location?: string;
+  locationCoordinates?: LocationCoordinates;
 }
 
 export interface EventMenuItem {

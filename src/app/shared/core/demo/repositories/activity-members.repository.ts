@@ -5,11 +5,11 @@ import type {
   ActivityMembersSummary,
   ActivitiesEventSyncPayload
 } from '../../../core/base/models';
-import { AppDemoGenerators } from '../../../app-demo-generators';
+import { ActivityMembersBuilder } from '../../base/builders/activity-members.builder';
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
-import { APP_DEMO_DATA, type DemoUser, type EventMenuItem, type HostingMenuItem } from '../../../demo-data';
+import { type DemoUser, type EventMenuItem, type HostingMenuItem } from '../../../demo-data';
 import { HttpActivityMembersRepository } from '../../http/repositories/activity-members.repository';
 import type { DemoEventRecord } from '../models/events.model';
 import { EVENTS_TABLE_NAME } from '../models/events.model';
@@ -18,6 +18,7 @@ import {
   type DemoActivityMemberRecord,
   type DemoActivityMembersRecordCollection
 } from '../models/activity-members.model';
+import { DemoEventSeedBuilder, DemoUserSeedBuilder } from '../builders';
 import { DemoAssetsRepository } from './assets.repository';
 import { DemoEventsRepository } from './events.repository';
 import { DemoUsersRepository } from './users.repository';
@@ -485,7 +486,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
         const matchedUser = this.demoActivityMemberUsers.find(user => user.id === requestUserId)
           ?? AppUtils.findUserByName(this.demoActivityMemberUsers, request.name)
           ?? this.resolveDemoUser(requestUserId, request.name, request.initials, asset.city, request.gender);
-        const seed = AppDemoGenerators.hashText(`asset-members:${asset.id}:${request.id}:${matchedUser.id}:${index}`);
+        const seed = AppUtils.hashText(`asset-members:${asset.id}:${request.id}:${matchedUser.id}:${index}`);
         const actionAtIso = AppUtils.toIsoDateTime(AppUtils.addDays(seedBaseDate, -((seed % 90) + 1)));
         const status: AppTypes.ActivityMemberStatus = request.status === 'pending' ? 'pending' : 'accepted';
         return {
@@ -505,14 +506,14 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
           actionAtIso,
           metWhere: asset.title,
           relevance: 48 + (seed % 46),
-          avatarUrl: AppDemoGenerators.firstImageUrl(matchedUser.images)
+          avatarUrl: AppUtils.firstImageUrl(matchedUser.images)
         };
       })
       .sort((left, right) => AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso));
   }
 
   private buildFallbackAssetRequests(ownerUserId: string, asset: AppTypes.AssetCard): AppTypes.AssetMemberRequest[] {
-    const fallbackUsers = AppDemoGenerators.friendUsersForActiveUser(this.demoActivityMemberUsers, ownerUserId, 4);
+    const fallbackUsers = DemoUserSeedBuilder.friendUsersForActiveUser(this.demoActivityMemberUsers, ownerUserId, 4);
     const requestUsers = fallbackUsers.length > 0
       ? fallbackUsers
       : this.demoActivityMemberUsers.filter(user => user.id !== ownerUserId).slice(0, 2);
@@ -656,7 +657,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       this.normalizeMemberCount(record.acceptedMembers) ?? 0
     );
 
-    return AppDemoGenerators.buildSeededSubEventsForEvent(source, {
+    return DemoEventSeedBuilder.buildSeededSubEventsForEvent(source, {
       isHosting: record.type === 'hosting',
       activityDateTimeRangeById: {
         [record.id]: {
@@ -822,7 +823,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     }
 
     if (acceptedEntries.length < acceptedTarget) {
-      const forcedEntries = AppDemoGenerators.buildForcedAcceptedMembers(
+      const forcedEntries = ActivityMembersBuilder.buildForcedAcceptedMembers(
         context.row,
         context.rowKey,
         Math.max(acceptedTarget, 1),
@@ -872,7 +873,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
 
     if (pendingEntries.length < pendingTarget) {
       const prioritizedFallbackCandidates = [
-        ...AppDemoGenerators.friendUsersForActiveUser(this.demoActivityMemberUsers, context.creator.id, Math.max(pendingTarget * 3, pendingTarget)),
+        ...DemoUserSeedBuilder.friendUsersForActiveUser(this.demoActivityMemberUsers, context.creator.id, Math.max(pendingTarget * 3, pendingTarget)),
         ...this.demoActivityMemberUsers
       ].filter((user, index, arr) => arr.findIndex(candidate => candidate.id === user.id) === index)
         .filter(user => !usedUserIds.has(user.id));
@@ -880,7 +881,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
         if (pendingEntries.length >= pendingTarget) {
           break;
         }
-        const base = AppDemoGenerators.toActivityMemberEntry(
+        const base = ActivityMembersBuilder.toActivityMemberEntry(
           user,
           context.row,
           context.rowKey,
@@ -913,7 +914,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     generatedPendingByUserId: Map<string, AppTypes.ActivityMemberEntry>;
   } {
     const rowKey = `${row.type}:${row.id}`;
-    const generated = AppDemoGenerators.generateActivityMembersForRow(
+    const generated = ActivityMembersBuilder.generateActivityMembersForRow(
       row,
       rowKey,
       this.demoActivityMemberUsers,
@@ -962,7 +963,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     }
 
     const user = this.resolveDemoUser(userId);
-    const base = AppDemoGenerators.toActivityMemberEntry(
+    const base = ActivityMembersBuilder.toActivityMemberEntry(
       user,
       context.row,
       context.rowKey,
@@ -1072,14 +1073,17 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   }
 
   private parseSampleCapacityLabel(eventId: string): { acceptedMembers: number | null; capacityTotal: number | null } {
-    const source = APP_DEMO_DATA.activityCapacityById[eventId];
-    if (!source) {
+    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    const record = table.ids
+      .map(id => table.byId[id])
+      .filter((value): value is DemoEventRecord => Boolean(value))
+      .find(value => value.id === eventId);
+    if (!record) {
       return { acceptedMembers: null, capacityTotal: null };
     }
-    const [acceptedPart, totalPart] = source.split('/').map(part => Number.parseInt(part.trim(), 10));
     return {
-      acceptedMembers: Number.isFinite(acceptedPart) ? Math.max(0, acceptedPart) : null,
-      capacityTotal: Number.isFinite(totalPart) ? Math.max(0, totalPart) : null
+      acceptedMembers: this.normalizeMemberCount(record.acceptedMembers),
+      capacityTotal: this.normalizeMemberCount(record.capacityTotal)
     };
   }
 
@@ -1095,7 +1099,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     if (byId) {
       return byId;
     }
-    const templateSeed = AppDemoGenerators.hashText(`${normalizedUserId}:${fallbackName}`);
+    const templateSeed = AppUtils.hashText(`${normalizedUserId}:${fallbackName}`);
     const demoUsers = this.demoActivityMemberUsers;
     const template = demoUsers[templateSeed % demoUsers.length];
     return {

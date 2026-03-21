@@ -69,9 +69,9 @@ export function toActivityInvitationRowFromMenuItem(
     title: item.description,
     subtitle: item.inviter,
     detail: item.when,
-    dateIso: options.dateIso ?? '2026-02-21T09:00:00',
-    distanceKm: options.distanceKm ?? 5,
-    distanceMetersExact: resolveDistanceMetersExact(options.distanceKm ?? 5),
+    dateIso: options.dateIso ?? item.startAt ?? '2026-02-21T09:00:00',
+    distanceKm: options.distanceKm ?? item.distanceKm ?? 5,
+    distanceMetersExact: resolveDistanceMetersExact(options.distanceKm ?? item.distanceKm ?? 5),
     unread: item.unread,
     metricScore: item.unread * 10,
     source: item
@@ -208,6 +208,14 @@ function toInvitationMenuItem(record: DemoEventRecord): InvitationMenuItem {
     inviter: record.creatorName,
     description: record.title,
     when: record.timeframe,
-    unread: Math.max(0, Math.trunc(Number(record.activity) || 0))
+    unread: Math.max(0, Math.trunc(Number(record.activity) || 0)),
+    startAt: record.startAtIso,
+    endAt: record.endAtIso,
+    distanceKm: record.distanceKm,
+    distanceMetersExact: Math.max(0, Math.round((Number(record.distanceKm) || 0) * 1000)),
+    imageUrl: record.imageUrl,
+    sourceLink: record.sourceLink,
+    location: record.location,
+    locationCoordinates: record.locationCoordinates ?? undefined
   };
 }

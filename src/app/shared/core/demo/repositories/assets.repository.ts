@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AppDemoGenerators } from '../../../app-demo-generators';
+import { DemoAssetBuilder, DemoUserSeedBuilder } from '../builders';
 import type * as AppTypes from '../../../core/base/models';
 import type { DemoUser } from '../../../demo-data';
 import { HttpAssetsRepository } from '../../http/repositories/assets.repository';
@@ -184,12 +184,12 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       return [];
     }
     const otherUsers = allUsers.filter(user => user.id !== ownerUserId);
-    const baseCards = AppDemoGenerators.buildSampleAssetCards(allUsers as DemoUser[]);
+    const baseCards = DemoAssetBuilder.buildSampleAssetCards(allUsers as DemoUser[]);
     const createdAt = new Date('2026-02-01T12:00:00.000Z');
     return baseCards.map((card, index) => {
       const createdMs = createdAt.getTime() + (index * 60_000);
       const createdAtIso = new Date(createdMs).toISOString();
-      const imageUrl = AppDemoGenerators.defaultAssetImage(card.type, `${ownerUserId}-${card.id}`);
+      const imageUrl = DemoAssetBuilder.defaultAssetImage(card.type, `${ownerUserId}-${card.id}`);
       return {
         ...card,
         id: `${ownerUserId}:${card.id}`,
@@ -217,7 +217,7 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       return [];
     }
     const targetCount = type === 'Car' ? 3 : 2;
-    const prioritizedUsers = AppDemoGenerators.friendUsersForActiveUser(users, ownerUserId, Math.max(targetCount * 3, targetCount));
+    const prioritizedUsers = DemoUserSeedBuilder.friendUsersForActiveUser(users, ownerUserId, Math.max(targetCount * 3, targetCount));
     const requestUsers = prioritizedUsers.length > 0 ? prioritizedUsers : [...users];
     const requests: AppTypes.AssetMemberRequest[] = [];
     for (let index = 0; index < targetCount; index += 1) {

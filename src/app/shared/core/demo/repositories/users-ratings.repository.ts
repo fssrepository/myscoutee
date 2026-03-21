@@ -1,8 +1,7 @@
 import { Injectable } from '@angular/core';
 
-import { AppDemoGenerators } from '../../../app-demo-generators';
 import { AppUtils } from '../../../app-utils';
-import { DemoUserRatesBuilder } from '../builders';
+import { DemoUserRatesBuilder, DemoUserSeedBuilder } from '../builders';
 import type { RateMenuItem } from '../../../demo-data';
 import type {
   ActivityRateRecordQuery,
@@ -32,7 +31,7 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       this.initialized = true;
       return;
     }
-    const users = AppDemoGenerators.buildExpandedDemoUsers(DemoUsersRatingsRepository.DEFAULT_DEMO_USERS_COUNT);
+    const users = DemoUserSeedBuilder.buildExpandedDemoUsers(DemoUsersRatingsRepository.DEFAULT_DEMO_USERS_COUNT);
     const records = DemoUserRatesBuilder.buildActivityRateSeedRecords(users, { extraSingleGivenCount: 20 });
     if (records.length === 0) {
       return;

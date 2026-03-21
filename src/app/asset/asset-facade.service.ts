@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AppDemoGenerators } from '../shared/app-demo-generators';
+import { DemoAssetBuilder } from '../shared/core/demo/builders';
 import { AppUtils } from '../shared/app-utils';
 import type * as AppTypes from '../shared/core/base/models';
 import { AssetsService, AssetTicketsService, AppContext, type UserDto } from '../shared/core';
@@ -234,7 +234,7 @@ export class AssetFacadeService {
     const userName = activeUser?.name?.trim() || 'Ticket Holder';
     const holderAge = Math.max(0, Math.trunc(Number(activeUser?.age) || 0));
     const holderCity = activeUser?.city?.trim() || '';
-    const code = `TKT-${row.id}-${AppDemoGenerators.hashText(`${userId}:${row.id}:${issuedAtIso}`)}`;
+    const code = `TKT-${row.id}-${AppUtils.hashText(`${userId}:${row.id}:${issuedAtIso}`)}`;
     return {
       code,
       holderUserId: userId,
@@ -256,7 +256,7 @@ export class AssetFacadeService {
     if (!user) {
       return '';
     }
-    return AppDemoGenerators.firstImageUrl(user.images);
+    return AppUtils.firstImageUrl(user.images);
   }
 
   ticketPayloadInitials(payload: AppTypes.TicketScanPayload): string {
@@ -342,7 +342,7 @@ export class AssetFacadeService {
   private ticketSourceAvatarTone(
     row: AppTypes.ActivityListRow
   ): NonNullable<InfoCardData['mediaStart']>['tone'] {
-    const toneIndex = (AppDemoGenerators.hashText(`${row.type}:${row.id}:${row.title}`) % 8) + 1;
+    const toneIndex = (AppUtils.hashText(`${row.type}:${row.id}:${row.title}`) % 8) + 1;
     return `tone-${toneIndex}` as NonNullable<InfoCardData['mediaStart']>['tone'];
   }
 
@@ -356,11 +356,11 @@ export class AssetFacadeService {
   }
 
   private ownedAssetImageUrl(card: AppTypes.AssetCard): string {
-    return `${card.imageUrl ?? ''}`.trim() || AppDemoGenerators.defaultAssetImage(card.type, card.id || card.title || card.type.toLowerCase());
+    return `${card.imageUrl ?? ''}`.trim() || DemoAssetBuilder.defaultAssetImage(card.type, card.id || card.title || card.type.toLowerCase());
   }
 
   private ownedAssetMetaLine(card: AppTypes.AssetCard): string {
-    const subtitle = card.subtitle.trim() || AppDemoGenerators.defaultAssetSubtitle(card.type);
+    const subtitle = card.subtitle.trim() || DemoAssetBuilder.defaultAssetSubtitle(card.type);
     const city = card.city.trim();
     return [this.ownedAssetTypeLabel(card.type), subtitle, city].filter(Boolean).join(' · ');
   }
