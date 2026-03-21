@@ -2,7 +2,7 @@ import { APP_STATIC_DATA } from '../../../app-static-data';
 import { AppDemoGenerators } from '../../../app-demo-generators';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
-import { APP_DEMO_DATA, type DemoUser, type EventMenuItem, type HostingMenuItem, type InvitationMenuItem } from '../../../demo-data';
+import { type DemoUser, type EventMenuItem, type HostingMenuItem, type InvitationMenuItem } from '../../../demo-data';
 import type { LocationCoordinates } from '../../base/interfaces';
 import type {
   DemoEventRecord,
@@ -238,16 +238,14 @@ export class DemoEventsRepositoryBuilder {
     | 'trashedAtIso'
   > {
     const creator = this.resolveCreatorUser(record.creatorUserId, record.title);
-    const startAtIso = record.seed?.startAt?.trim() || this.resolveStartAtIso(record.id, record.type);
-    const endAtIso = record.seed?.endAt?.trim() || this.resolveEndAtIso(record.id, startAtIso);
+    const startAtIso = record.seed?.startAt?.trim() || this.resolveStartAtIso(record);
+    const endAtIso = record.seed?.endAt?.trim() || this.resolveEndAtIso(record, startAtIso);
     const distanceKm = Number.isFinite(record.seed?.distanceKm)
       ? Math.max(0, Number(record.seed?.distanceKm))
-      : this.resolveDistanceKm(record.id, record.type);
-    const visibility = record.seed?.visibility
-      ?? APP_DEMO_DATA.eventVisibilityById[record.id]
-      ?? (record.type === 'hosting' ? 'Invitation only' : 'Public');
-    const blindMode = record.seed?.blindMode ?? APP_DEMO_DATA.eventBlindModeById[record.id] ?? 'Open Event';
-    const capacityRange = AppDemoGenerators.seededEventCapacityRange(record.id, APP_DEMO_DATA.activityCapacityById);
+      : this.resolveDistanceKm(record);
+    const visibility = record.seed?.visibility ?? this.resolveVisibility(record);
+    const blindMode = record.seed?.blindMode ?? this.resolveBlindMode(record);
+    const capacityRange = this.resolveCapacityRange(record);
     const seededMembers = this.buildSeededMemberIds(record, startAtIso, distanceKm, creator);
     const acceptedMemberUserIds = this.normalizeUserIds(record.seed?.acceptedMemberUserIds);
     const pendingMemberUserIds = this.normalizeUserIds(record.seed?.pendingMemberUserIds);
@@ -271,13 +269,14 @@ export class DemoEventsRepositoryBuilder {
       ? this.normalizeTopics(record.seed?.topics)
       : this.buildSeededTopics(record.id, record.title, record.subtitle);
     const subEvents = this.cloneSubEvents(record.seed?.subEvents)
-      ?? this.buildSeededSubEvents(record, startAtIso, creator.id);
+      ?? this.buildSeededSubEvents(record, startAtIso, endAtIso, creator.id, capacityRange);
     const rating = Number.isFinite(record.seed?.rating)
       ? Number(record.seed?.rating)
       : this.buildSeededRating(record.id, record.title, record.type);
     const acceptedUsers = members.acceptedMemberUserIds
       .map(userId => DEMO_EVENT_MEMBER_USERS.find(user => user.id === userId) ?? null)
       .filter((user): user is DemoUser => Boolean(user));
+    const location = record.seed?.location?.trim() || this.buildSeededLocation(record, creator);
     return {
       creatorUserId: creator.id,
       creatorName: creator.name,
@@ -289,21 +288,19 @@ export class DemoEventsRepositoryBuilder {
       startAtIso,
       endAtIso,
       distanceKm,
-      imageUrl: record.seed?.imageUrl?.trim()
-        || APP_DEMO_DATA.activityImageById[record.id]
-        || `https://picsum.photos/seed/event-explore-${record.id}/1200/700`,
-      sourceLink: record.seed?.sourceLink?.trim() || (APP_DEMO_DATA.activitySourceLinkById[record.id] ?? ''),
-      location: record.seed?.location?.trim() || '',
+      imageUrl: record.seed?.imageUrl?.trim() || this.buildRecordImageUrl(record),
+      sourceLink: record.seed?.sourceLink?.trim() || this.buildRecordSourceLink(record),
+      location,
       locationCoordinates: this.cloneLocationCoordinates(record.seed?.locationCoordinates)
         ?? this.cloneLocationCoordinates(creator.locationCoordinates)
-        ?? this.resolveLocationCoordinatesFromCreator(creator),
+        ?? this.resolveRecordLocationCoordinates(record, creator, location),
       capacityMin,
       capacityMax,
       capacityTotal,
-      autoInviter: record.seed?.autoInviter ?? false,
+      autoInviter: record.seed?.autoInviter ?? this.resolveAutoInviter(record),
       frequency: record.seed?.frequency?.trim()
         || this.parseFrequencyFromTimeframe((record as { timeframe?: string }).timeframe ?? startAtIso),
-      ticketing: record.seed?.ticketing ?? APP_DEMO_DATA.eventTicketingById[record.id] === true,
+      ticketing: record.seed?.ticketing ?? this.resolveTicketing(record),
       acceptedMembers,
       pendingMembers,
       acceptedMemberUserIds: members.acceptedMemberUserIds,
@@ -359,40 +356,133 @@ export class DemoEventsRepositoryBuilder {
       };
   }
 
-  private static resolveStartAtIso(id: string, type: DemoRepositoryEventItemType): string {
-    if (type === 'hosting') {
-      return APP_DEMO_DATA.hostingDatesById[id]
-        ?? APP_DEMO_DATA.eventDatesById[id]
-        ?? this.defaultStartIso(id);
-    }
-    if (type === 'invitations') {
-      return APP_DEMO_DATA.invitationDatesById[id] ?? this.defaultStartIso(id);
-    }
-    return APP_DEMO_DATA.eventDatesById[id]
-      ?? APP_DEMO_DATA.hostingDatesById[id]
-      ?? this.defaultStartIso(id);
+  private static recordSeedKey(
+    record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title'>
+  ): string {
+    return `${record.type}:${record.userId}:${record.id}:${record.title}`;
   }
 
-  private static resolveEndAtIso(id: string, startAtIso: string): string {
-    const explicit = APP_DEMO_DATA.activityDateTimeRangeById[id]?.endIso;
-    if (explicit?.trim()) {
-      return explicit;
-    }
+  private static resolveStartAtIso(
+    record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title'>
+  ): string {
+    const seed = AppDemoGenerators.hashText(`event-start:${this.recordSeedKey(record)}`);
+    const monthIndex = record.type === 'invitations' ? 1 : 2;
+    const day = 1 + (seed % 28);
+    const hourBase = record.type === 'hosting' ? 17 : record.type === 'invitations' ? 15 : 9;
+    const hourSpan = record.type === 'hosting' ? 5 : record.type === 'invitations' ? 6 : 10;
+    const hour = hourBase + ((seed >> 3) % hourSpan);
+    const minute = ((seed >> 7) % 4) * 15;
+    return new Date(Date.UTC(2026, monthIndex, day, hour, minute, 0)).toISOString();
+  }
+
+  private static resolveEndAtIso(
+    record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title'>,
+    startAtIso: string
+  ): string {
     const startAt = new Date(startAtIso);
     if (Number.isNaN(startAt.getTime())) {
       return new Date().toISOString();
     }
-    return new Date(startAt.getTime() + (2 * 60 * 60 * 1000)).toISOString();
+    const seed = AppDemoGenerators.hashText(`event-duration:${this.recordSeedKey(record)}`);
+    const durationMinutes = 90 + ((seed % 5) * 30);
+    return new Date(startAt.getTime() + (durationMinutes * 60 * 1000)).toISOString();
   }
 
-  private static resolveDistanceKm(id: string, type: DemoRepositoryEventItemType): number {
-    if (type === 'hosting') {
-      return APP_DEMO_DATA.hostingDistanceById[id] ?? APP_DEMO_DATA.eventDistanceById[id] ?? 0;
+  private static resolveDistanceKm(
+    record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title'>
+  ): number {
+    const seed = AppDemoGenerators.hashText(`event-distance:${this.recordSeedKey(record)}`);
+    const baseDistance = record.type === 'hosting' ? 4 : record.type === 'invitations' ? 2 : 6;
+    const distance = baseDistance + (seed % 24) + (((seed >> 5) % 10) / 10);
+    return Math.round(distance * 10) / 10;
+  }
+
+  private static resolveVisibility(
+    record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title'>
+  ): DemoEventRecord['visibility'] {
+    const seed = AppDemoGenerators.hashText(`event-visibility:${this.recordSeedKey(record)}`);
+    if (record.type === 'hosting') {
+      return seed % 4 === 0 ? 'Friends only' : 'Invitation only';
     }
-    if (type === 'invitations') {
-      return APP_DEMO_DATA.invitationDistanceById[id] ?? 0;
+    const variants: DemoEventRecord['visibility'][] = ['Public', 'Friends only', 'Invitation only'];
+    return variants[seed % variants.length] ?? 'Public';
+  }
+
+  private static resolveBlindMode(
+    record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title'>
+  ): DemoEventRecord['blindMode'] {
+    const seed = AppDemoGenerators.hashText(`event-blind-mode:${this.recordSeedKey(record)}`);
+    return seed % 5 === 0 ? 'Blind Event' : 'Open Event';
+  }
+
+  private static resolveCapacityRange(
+    record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title' | 'activity'>
+  ): { min: number; max: number } {
+    const seed = AppDemoGenerators.hashText(`event-capacity:${this.recordSeedKey(record)}`);
+    const maxBase = record.type === 'hosting' ? 16 : record.type === 'invitations' ? 6 : 10;
+    const max = maxBase + (seed % 22) + Math.max(0, Math.trunc(Number(record.activity) || 0));
+    const minRatio = record.type === 'invitations'
+      ? 0.35 + (((seed >> 4) % 2) * 0.1)
+      : 0.45 + (((seed >> 4) % 3) * 0.08);
+    const min = Math.max(0, Math.min(max, Math.floor(max * minRatio)));
+    return { min, max };
+  }
+
+  private static buildRecordImageUrl(
+    record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title'>
+  ): string {
+    const normalizedSeed = encodeURIComponent(this.recordSeedKey(record).toLowerCase().replace(/\s+/g, '-'));
+    return `https://picsum.photos/seed/demo-event-${normalizedSeed}/1200/700`;
+  }
+
+  private static buildRecordSourceLink(
+    record: Pick<DemoEventRecord, 'id' | 'type' | 'userId'>
+  ): string {
+    const typeSegment = record.type === 'hosting' ? 'hosting' : record.type === 'invitations' ? 'invitation' : 'event';
+    return `https://example.com/${typeSegment}/${encodeURIComponent(record.userId)}/${encodeURIComponent(record.id)}`;
+  }
+
+  private static buildSeededLocation(
+    record: Pick<DemoEventRecord, 'id' | 'title' | 'type'>,
+    creator: DemoUser
+  ): string {
+    const city = creator.city.trim() || 'Austin';
+    const title = record.title.trim() || 'Event';
+    if (record.type === 'hosting') {
+      return `${city} host venue`;
     }
-    return APP_DEMO_DATA.eventDistanceById[id] ?? APP_DEMO_DATA.hostingDistanceById[id] ?? 0;
+    if (record.type === 'invitations') {
+      return `${city} meetup point`;
+    }
+    return `${title} · ${city}`;
+  }
+
+  private static resolveRecordLocationCoordinates(
+    record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title'>,
+    creator: DemoUser,
+    location: string
+  ): LocationCoordinates {
+    return AppDemoGenerators.resolveDemoLocationCoordinates(
+      creator.city || 'Austin',
+      `event-location:${this.recordSeedKey(record)}:${location}`
+    );
+  }
+
+  private static resolveAutoInviter(
+    record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title'>
+  ): boolean {
+    const seed = AppDemoGenerators.hashText(`event-auto-inviter:${this.recordSeedKey(record)}`);
+    return record.type !== 'invitations' && (seed % 4 === 0);
+  }
+
+  private static resolveTicketing(
+    record: Pick<DemoEventRecord, 'id' | 'type' | 'userId' | 'title'>
+  ): boolean {
+    const seed = AppDemoGenerators.hashText(`event-ticketing:${this.recordSeedKey(record)}`);
+    if (record.type === 'invitations') {
+      return false;
+    }
+    return (seed % 3) === 0;
   }
 
   private static buildSeededMemberIds(
@@ -433,8 +523,7 @@ export class DemoEventsRepositoryBuilder {
       row,
       rowKey,
       DEMO_EVENT_MEMBER_USERS,
-      creator,
-      APP_DEMO_DATA.activityMemberMetPlaces
+      creator
     );
     return {
       acceptedMemberUserIds: members
@@ -466,7 +555,9 @@ export class DemoEventsRepositoryBuilder {
   private static buildSeededSubEvents(
     record: Pick<DemoEventRecord, 'id' | 'title' | 'subtitle' | 'activity' | 'type' | 'isAdmin'> & { timeframe?: string },
     startAtIso: string,
-    activeUserId: string
+    endAtIso: string,
+    activeUserId: string,
+    capacityRange: { min: number; max: number }
   ): AppTypes.SubEventFormItem[] {
     const source = {
       id: record.id,
@@ -480,13 +571,22 @@ export class DemoEventsRepositoryBuilder {
 
     return AppDemoGenerators.buildSeededSubEventsForEvent(source, {
       isHosting: record.type === 'hosting',
-      activityDateTimeRangeById: APP_DEMO_DATA.activityDateTimeRangeById,
-      hostingDatesById: APP_DEMO_DATA.hostingDatesById,
-      eventDatesById: APP_DEMO_DATA.eventDatesById,
-      eventCapacityById: {
-        [record.id]: AppDemoGenerators.seededEventCapacityRange(record.id, APP_DEMO_DATA.activityCapacityById)
+      activityDateTimeRangeById: {
+        [record.id]: {
+          startIso: startAtIso,
+          endIso: endAtIso
+        }
       },
-      activityCapacityById: APP_DEMO_DATA.activityCapacityById,
+      hostingDatesById: record.type === 'hosting'
+        ? { [record.id]: startAtIso }
+        : {},
+      eventDatesById: record.type === 'events'
+        ? { [record.id]: startAtIso }
+        : {},
+      eventCapacityById: {
+        [record.id]: capacityRange
+      },
+      activityCapacityById: {},
       defaultStartIso: startAtIso,
       activeUserId
     });
@@ -500,11 +600,6 @@ export class DemoEventsRepositoryBuilder {
   private static buildSeededRelevance(id: string, title: string, type: DemoRepositoryEventItemType): number {
     const seed = AppDemoGenerators.hashText(`${type}:${id}:${title}`);
     return 50 + (seed % 51);
-  }
-
-  private static defaultStartIso(id: string): string {
-    const day = 10 + (AppDemoGenerators.hashText(id) % 12);
-    return new Date(Date.UTC(2026, 1, day, 12, 0, 0)).toISOString();
   }
 
   private static extractSeedOverrides(item: EventMenuItem | HostingMenuItem): DemoEventSeedOverrides | undefined {
