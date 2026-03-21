@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { ActivityResourceBuilder } from '../../base/builders';
+import { DemoUserSeedBuilder } from '../builders';
 import { AppMemoryDb } from '../../base/db';
 import type * as AppTypes from '../../../core/base/models';
 import { DemoAssetsRepository } from './assets.repository';
@@ -10,7 +11,7 @@ import {
   type DemoActivityResourcesRecordCollection,
   type DemoActivitySubEventResourceRecord
 } from '../models/activity-resources.model';
-import type { DemoEventRecord } from '../models/events.model';
+import { EVENTS_TABLE_NAME, type DemoEventRecord, type DemoEventRecordCollection } from '../models/events.model';
 import { DemoEventsRepository } from './events.repository';
 import { DemoUsersRepository } from './users.repository';
 
@@ -22,6 +23,7 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
   private readonly assetsRepository = inject(DemoAssetsRepository);
   private readonly eventsRepository = inject(DemoEventsRepository);
   private readonly usersRepository = inject(DemoUsersRepository);
+  private lastInitToken = '';
 
   init(ownerUserIds?: readonly string[]): void {
     console.log(Date.now() + "start - activity resources");
@@ -38,26 +40,53 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
     if (normalizedUserIds.length === 0) {
       return;
     }
-    
+
     console.log(Date.now() + "events init - activity members");
     this.eventsRepository.init();
     console.log(Date.now() + "assets init - activity members");
     this.assetsRepository.init(normalizedUserIds);
 
-    let nextTable = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_RESOURCES_TABLE_NAME]);
+    const eventsTable = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    const currentTable = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_RESOURCES_TABLE_NAME]);
+    const initToken = `${eventsTable.ids.length}:${currentTable.ids.length}:${Object.keys(currentTable.idsByOwnerKey).length}:${normalizedUserIds.join('|')}`;
+    if (this.lastInitToken === initToken) {
+      return;
+    }
+
+    const existingRecordIds = new Set(currentTable.ids);
+    let nextById: Record<string, DemoActivitySubEventResourceRecord> | null = null;
+    let nextIds: string[] | null = null;
+    let nextIdsByOwnerKey: Record<string, string[]> | null = null;
     let changed = false;
 
-    for (const userId of normalizedUserIds) {
-      for (const record of this.buildSeededRecordsForUser(userId)) {
-        if (nextTable.byId[record.id]) {
+    const appendSeededRecords = (records: readonly DemoActivitySubEventResourceRecord[]): void => {
+      for (const record of records) {
+        if (existingRecordIds.has(record.id)) {
           continue;
         }
-        nextTable = this.upsertRecordCollection(nextTable, record);
-        changed = true;
+        if (!changed) {
+          nextById = { ...currentTable.byId };
+          nextIds = [...currentTable.ids];
+          nextIdsByOwnerKey = Object.fromEntries(
+            Object.entries(currentTable.idsByOwnerKey).map(([ownerKey, ids]) => [ownerKey, [...ids]])
+          );
+          changed = true;
+        }
+        nextById![record.id] = record;
+        nextIds!.push(record.id);
+        const ownerBucket = nextIdsByOwnerKey![record.ownerKey] ?? [];
+        ownerBucket.push(record.id);
+        nextIdsByOwnerKey![record.ownerKey] = ownerBucket;
+        existingRecordIds.add(record.id);
       }
+    };
+
+    for (const userId of normalizedUserIds) {
+      appendSeededRecords(this.buildSeededRecordsForUser(userId, eventsTable, existingRecordIds));
     }
 
     if (!changed) {
+      this.lastInitToken = initToken;
       return;
     }
 
@@ -65,10 +94,16 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
 
     this.memoryDb.write(state => ({
       ...state,
-      [ACTIVITY_RESOURCES_TABLE_NAME]: nextTable
+      [ACTIVITY_RESOURCES_TABLE_NAME]: {
+        byId: nextById!,
+        ids: nextIds!,
+        idsByOwnerKey: nextIdsByOwnerKey!
+      }
     }));
 
     console.log(Date.now() + "finish - activity members");
+
+    this.lastInitToken = `${eventsTable.ids.length}:${nextIds!.length}:${Object.keys(nextIdsByOwnerKey!).length}:${normalizedUserIds.join('|')}`;
   }
 
   override peekSubEventResourceState(
@@ -179,14 +214,18 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
     return next;
   }
 
-  private buildSeededRecordsForUser(userId: string): DemoActivitySubEventResourceRecord[] {
+  private buildSeededRecordsForUser(
+    userId: string,
+    eventsTable: DemoEventRecordCollection,
+    existingRecordIds: ReadonlySet<string> = new Set()
+  ): DemoActivitySubEventResourceRecord[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
     }
 
     const assets = this.assetsRepository.peekOwnedAssetsByUser(normalizedUserId);
-    const sourceRecords = this.collectSourceRecordsForUser(normalizedUserId);
+    const sourceRecords = this.collectSourceRecordsForUser(normalizedUserId, eventsTable);
     const seenRecordIds = new Set<string>();
     const nextRecords: DemoActivitySubEventResourceRecord[] = [];
     let createdMs = Date.now();
@@ -202,7 +241,7 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
           continue;
         }
         const recordId = ActivityResourceBuilder.recordId(normalizedRef);
-        if (seenRecordIds.has(recordId)) {
+        if (seenRecordIds.has(recordId) || existingRecordIds.has(recordId)) {
           continue;
         }
         seenRecordIds.add(recordId);
@@ -230,22 +269,80 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
     return nextRecords;
   }
 
-  private collectSourceRecordsForUser(userId: string): DemoEventRecord[] {
-    const seenIds = new Set<string>();
-    const nextRecords: DemoEventRecord[] = [];
-
-    for (const record of [
-      ...this.eventsRepository.queryItemsByUser(userId),
-      ...this.eventsRepository.queryExploreItems(userId)
-    ]) {
-      if (!record.id || seenIds.has(record.id)) {
-        continue;
-      }
-      seenIds.add(record.id);
-      nextRecords.push(record);
+  private collectSourceRecordsForUser(
+    userId: string,
+    table: DemoEventRecordCollection
+  ): DemoEventRecord[] {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
     }
 
-    return nextRecords;
+    const seenDirectRecordIds = new Set<string>();
+    const directRecords: DemoEventRecord[] = [];
+    const exploreRecordsByEventId = new Map<string, DemoEventRecord>();
+
+    for (const id of table.ids) {
+      const record = table.byId[id];
+      if (!record || !record.id || (record.subEvents?.length ?? 0) === 0) {
+        continue;
+      }
+      if (record.userId === normalizedUserId) {
+        if (!seenDirectRecordIds.has(record.id)) {
+          seenDirectRecordIds.add(record.id);
+          directRecords.push(record);
+        }
+        continue;
+      }
+      if (!this.shouldIncludeExploreSourceRecord(record, normalizedUserId)) {
+        continue;
+      }
+      const current = exploreRecordsByEventId.get(record.id);
+      if (!current || this.shouldPreferExploreSourceRecord(record, current)) {
+        exploreRecordsByEventId.set(record.id, record);
+      }
+    }
+
+    for (const [eventId, record] of exploreRecordsByEventId) {
+      if (seenDirectRecordIds.has(eventId)) {
+        continue;
+      }
+      directRecords.push(record);
+    }
+
+    return directRecords;
+  }
+
+  private shouldIncludeExploreSourceRecord(record: DemoEventRecord, activeUserId: string): boolean {
+    if (record.isTrashed || record.isInvitation) {
+      return false;
+    }
+    if (record.published === false) {
+      return false;
+    }
+    if (record.creatorUserId === activeUserId) {
+      return false;
+    }
+    if (record.visibility === 'Invitation only') {
+      return false;
+    }
+    if (record.visibility === 'Friends only' && !DemoUserSeedBuilder.isFriendOfActiveUser(record.creatorUserId, activeUserId)) {
+      return false;
+    }
+    return true;
+  }
+
+  private shouldPreferExploreSourceRecord(next: DemoEventRecord, current: DemoEventRecord): boolean {
+    if (next.type === 'hosting' && current.type !== 'hosting') {
+      return true;
+    }
+    if (next.type !== 'hosting' && current.type === 'hosting') {
+      return false;
+    }
+    if (next.published !== current.published) {
+      return next.published;
+    }
+    return next.activity >= current.activity;
   }
 
   private normalizeCollection(value: unknown): DemoActivityResourcesRecordCollection {
