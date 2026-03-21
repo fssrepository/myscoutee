@@ -6,11 +6,14 @@
 
 :host {
   --event-resource-shell-z-index: 2600;
+  --event-resource-shell-gap: 0.35rem;
+  --event-resource-panel-max-width: 1120px;
   display: contents;
 }
 
 .app-popup.event-resource-popup-shell {
   z-index: var(--event-resource-shell-z-index);
+  padding: var(--event-resource-shell-gap);
 }
 
 .event-resource-popup-shell .app-popup-backdrop {
@@ -20,12 +23,15 @@
 
 .event-resource-popup-shell .app-popup-panel.popup-panel-asset-members {
   position: relative;
-  height: calc(100vh - 1.2rem);
+  width: min(var(--event-resource-panel-max-width), calc(100vw - (var(--event-resource-shell-gap) * 2)));
+  max-width: calc(100vw - (var(--event-resource-shell-gap) * 2));
+  height: calc(100vh - (var(--event-resource-shell-gap) * 2));
+  max-height: calc(100vh - (var(--event-resource-shell-gap) * 2));
 }
 
 .event-resource-popup-shell.app-popup-stacked.app-popup-stacked-over-subevents .app-popup-panel.popup-panel-asset-members {
-  height: calc(100dvh - 1.2rem);
-  max-height: calc(100dvh - 1.2rem);
+  height: calc(100dvh - (var(--event-resource-shell-gap) * 2));
+  max-height: calc(100dvh - (var(--event-resource-shell-gap) * 2));
 }
 
 .event-resource-popup-shell .header-members-count {
