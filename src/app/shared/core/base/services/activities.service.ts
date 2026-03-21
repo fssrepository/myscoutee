@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AppDemoGenerators } from '../../../app-demo-generators';
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
 import type {
@@ -8,7 +7,7 @@ import type {
   ActivitiesPageRequest,
   EventExploreFeedFilters
 } from '../../../core/base/models';
-import { DEMO_USERS, type ChatMenuItem } from '../../../demo-data';
+import type { ChatMenuItem } from '../../../demo-data';
 import type { ListQuery, PageResult } from '../../../ui';
 import {
   buildActivityEventRows,
@@ -21,6 +20,7 @@ import { ChatsService } from './chats.service';
 import { EventsService } from './events.service';
 import { RatesService } from './rates.service';
 import { SessionService } from './session.service';
+import { DemoUsersRepository } from '../../demo';
 
 @Injectable({
   providedIn: 'root'
@@ -31,7 +31,7 @@ export class ActivitiesService {
   private readonly chatsService = inject(ChatsService);
   private readonly ratesService = inject(RatesService);
   private readonly appCtx = inject(AppContext);
-  private readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
+  private readonly demoUsersRepository = inject(DemoUsersRepository);
 
   async loadActivities(
     query: ListQuery<ActivitiesFeedFilters>,
@@ -68,7 +68,7 @@ export class ActivitiesService {
     return {
       items: buildActivityRateRows(page.items, {
         activeUserId,
-        users: this.users,
+        users: this.demoUsersRepository.queryAllUsers(),
         filter: request.rateFilter,
         secondaryFilter: request.secondaryFilter,
         view: request.view,
@@ -108,7 +108,7 @@ export class ActivitiesService {
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
     return this.chatsService.queryActivitiesChatPage(this.resolveActiveUserId(), request, {
       chatItems: options.chatItems,
-      users: this.users
+      users: this.demoUsersRepository.queryAllUsers()
     });
   }
 
@@ -120,7 +120,7 @@ export class ActivitiesService {
     if (session?.kind === 'firebase' && session.profile.id.trim().length > 0) {
       return session.profile.id.trim();
     }
-    return DEMO_USERS[0]?.id ?? 'u1';
+    return this.demoUsersRepository.queryAllUsers()[0]?.id ?? 'u1';
   }
 
   private normalizeEventActivitiesSort(value: string | undefined): 'date' | 'distance' | 'relevance' {

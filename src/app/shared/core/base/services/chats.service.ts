@@ -2,7 +2,6 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
-import { AppDemoGenerators } from '../../../app-demo-generators';
 import { AppUtils } from '../../../app-utils';
 import type { ActivitiesPageRequest } from '../../../core/base/models';
 import type { ChatMenuItem, DemoUser } from '../../../demo-data';
@@ -12,6 +11,7 @@ import type { DemoChatRecord } from '../../demo/models/chats.model';
 import { DemoChatsService } from '../../demo';
 import { HttpChatsService } from '../../http';
 import { SessionService } from './session.service';
+import { DemoUsersRepository } from '../../demo';
 
 @Injectable({
   providedIn: 'root'
@@ -20,6 +20,7 @@ export class ChatsService {
   private readonly demoChatsService = inject(DemoChatsService);
   private readonly httpChatsService = inject(HttpChatsService);
   private readonly sessionService = inject(SessionService);
+  private readonly demoUsersRepository = inject(DemoUsersRepository);
 
   private get demoModeEnabled(): boolean {
     return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
@@ -31,6 +32,10 @@ export class ChatsService {
 
   async queryChatItemsByUser(userId: string): Promise<DemoChatRecord[]> {
     return this.chatsService.queryChatItemsByUser(userId);
+  }
+
+  peekChatItemsByUser(userId: string): DemoChatRecord[] {
+    return this.chatsService.peekChatItemsByUser(userId);
   }
 
   async loadChatMessages(chat: ChatMenuItem): Promise<AppTypes.ChatPopupMessage[]> {
@@ -57,7 +62,7 @@ export class ChatsService {
         : activityChatContextFilterKey(item) === request.chatContextFilter
     );
     const rows = buildActivityChatRows(filteredItems, {
-      users: options.users ?? AppDemoGenerators.buildExpandedDemoUsers(50),
+      users: options.users ?? this.demoUsersRepository.queryAllUsers(),
       activeUserId: userId
     });
     const sorted = this.sortActivitiesChatRows(rows, request);

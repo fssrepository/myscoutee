@@ -20,10 +20,6 @@ import { from } from 'rxjs';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import {
   APP_DEMO_DATA,
-  DEMO_CHAT_BY_USER,
-  DEMO_EVENTS_BY_USER,
-  DEMO_HOSTING_BY_USER,
-  DEMO_INVITATIONS_BY_USER,
   DEMO_USERS,
   RateMenuItem,
   type ChatMenuItem,
@@ -85,10 +81,13 @@ import {
   toActivityHostingRowFromMenuItem,
   toActivityInvitationRowFromMenuItem,
   toActivitySourceRowFromMenuItem,
+  ChatsService,
   EventsService,
   RatesService,
   type ActivityMembersSyncState
 } from '../../../shared/core';
+import { DemoUsersRepository } from '../../../shared/core/demo';
+import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 
 // ---------------------------------------------------------------------------
 
@@ -136,19 +135,23 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly ratesService = inject(RatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
+  private readonly chatsService = inject(ChatsService);
   private readonly eventsService = inject(EventsService);
   private readonly appCtx = inject(AppContext);
   private readonly ownedAssets = inject(OwnedAssetsPopupService);
+  private readonly demoUsersRepository = inject(DemoUsersRepository);
 
   // ── Self-contained data state (no host inputs) ───────────────────────────
   protected isMobileView = false;
-  protected readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
+  protected get users(): DemoUser[] {
+    return this.demoUsersRepository.queryAllUsers() as DemoUser[];
+  }
   protected activeUser: DemoUser = this.users[0] ?? DEMO_USERS[0];
 
-  protected chatItems: ChatMenuItem[] = [...(DEMO_CHAT_BY_USER[this.activeUser.id] ?? [])];
-  protected eventItems: EventMenuItem[] = [...(DEMO_EVENTS_BY_USER[this.activeUser.id] ?? [])];
-  protected hostingItems: HostingMenuItem[] = [...(DEMO_HOSTING_BY_USER[this.activeUser.id] ?? [])];
-  protected invitationItems: InvitationMenuItem[] = [...(DEMO_INVITATIONS_BY_USER[this.activeUser.id] ?? [])];
+  protected chatItems: ChatMenuItem[] = [];
+  protected eventItems: EventMenuItem[] = [];
+  protected hostingItems: HostingMenuItem[] = [];
+  protected invitationItems: InvitationMenuItem[] = [];
   protected rateItems: RateMenuItem[] = [];
 
   protected chatBadge = this.activeUser.activities.chat;
@@ -157,7 +160,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected invitationsBadge = this.activeUser.activities.invitations;
   protected gameBadge = this.activeUser.activities.game;
 
-  protected publishedHostingIds: ReadonlySet<string> = this.defaultPublishedHostingIds();
+  protected publishedHostingIds: ReadonlySet<string> = new Set<string>();
 
   protected activityDateTimeRangeById: Record<string, AppTypes.ActivityDateTimeRange> = { ...APP_DEMO_DATA.activityDateTimeRangeById };
 
@@ -504,17 +507,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activitiesSmartList?.clearHostedLoading();
   }
 
-  private defaultPublishedHostingIds(): ReadonlySet<string> {
-    const ids = new Set<string>();
-    const published = APP_DEMO_DATA.hostingPublishedById as Record<string, boolean>;
-    for (const [id, isPublished] of Object.entries(published)) {
-      if (isPublished !== false) {
-        ids.add(id);
-      }
-    }
-    return ids;
-  }
-
   private hydrateStandaloneFallbackState(): void {
     if (!this.activeUser) {
       this.activeUser = this.users[0] ?? DEMO_USERS[0];
@@ -522,23 +514,132 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const userId = this.activeUser.id;
 
     if (this.chatItems.length === 0) {
-      this.chatItems = [...(DEMO_CHAT_BY_USER[userId] ?? [])];
+      this.chatItems = this.chatsService.peekChatItemsByUser(userId)
+        .map(item => ({ ...item, memberIds: [...(item.memberIds ?? [])] }));
     }
-    if (this.eventItems.length === 0) {
-      this.eventItems = [...(DEMO_EVENTS_BY_USER[userId] ?? [])];
-    }
-    if (this.hostingItems.length === 0) {
-      this.hostingItems = [...(DEMO_HOSTING_BY_USER[userId] ?? [])];
-    }
-    if (this.invitationItems.length === 0) {
-      this.invitationItems = [...(DEMO_INVITATIONS_BY_USER[userId] ?? [])];
+    if (this.eventItems.length === 0 || this.hostingItems.length === 0 || this.invitationItems.length === 0) {
+      this.hydrateStandaloneEventItems(userId);
     }
     this.refreshRateItems();
 
-    this.ensurePaginationTestEvents(30);
     this.initializeEventEditorContextData();
     this.refreshSectionBadges();
     this.seedEventOwnerMemberCountsFromEventsTable();
+  }
+
+  private hydrateStandaloneEventItems(userId: string): void {
+    const records = this.eventsService.peekItemsByUser(userId);
+    if (this.eventItems.length === 0) {
+      this.eventItems = records
+        .filter(record => record.type === 'events')
+        .map(record => this.toEventMenuItem(record));
+    }
+    if (this.hostingItems.length === 0) {
+      this.hostingItems = records
+        .filter(record => record.type === 'hosting')
+        .map(record => this.toHostingMenuItem(record));
+    }
+    if (this.invitationItems.length === 0) {
+      this.invitationItems = records
+        .filter(record => record.isInvitation)
+        .map(record => this.toInvitationMenuItem(record));
+    }
+    this.publishedHostingIds = new Set(
+      records
+        .filter(record => record.type === 'hosting' && record.published !== false)
+        .map(record => record.id)
+    );
+    for (const record of records) {
+      if (record.startAtIso) {
+        this.activityDateTimeRangeById[record.id] = {
+          startIso: record.startAtIso,
+          endIso: record.endAtIso
+        };
+      }
+      if (record.type === 'events') {
+        this.eventDatesById[record.id] = record.startAtIso;
+        this.eventDistanceById[record.id] = record.distanceKm;
+      }
+      if (record.type === 'hosting') {
+        this.hostingDatesById[record.id] = record.startAtIso;
+        this.hostingDistanceById[record.id] = record.distanceKm;
+      }
+      if (record.isInvitation) {
+        this.invitationDatesById[record.id] = record.startAtIso;
+        this.invitationDistanceById[record.id] = record.distanceKm;
+      }
+      if (record.imageUrl?.trim()) {
+        this.activityImageById[record.id] = record.imageUrl;
+      }
+      if (record.sourceLink?.trim()) {
+        this.activitySourceLinkById[record.id] = record.sourceLink;
+      }
+      this.activityCapacityById[record.id] = `${record.acceptedMembers} / ${record.capacityTotal}`;
+      this.activityPendingMembersById[record.id] = record.pendingMembers;
+      this.eventVisibilityById[record.id] = record.visibility;
+      this.eventCapacityById[record.id] = { min: record.capacityMin, max: record.capacityMax };
+      if (Array.isArray(record.subEvents) && record.subEvents.length > 0) {
+        this.eventSubEventsById[record.id] = record.subEvents.map(item => ({
+          ...item,
+          groups: Array.isArray(item.groups) ? item.groups.map((group: AppTypes.SubEventGroupItem) => ({ ...group })) : []
+        }));
+      }
+    }
+  }
+
+  private toEventMenuItem(record: DemoEventRecord): EventMenuItem {
+    return {
+      id: record.id,
+      avatar: record.avatar,
+      title: record.title,
+      shortDescription: record.subtitle,
+      timeframe: record.timeframe,
+      activity: record.activity,
+      isAdmin: record.isAdmin,
+      creatorUserId: record.creatorUserId,
+      startAt: record.startAtIso,
+      endAt: record.endAtIso,
+      distanceKm: record.distanceKm,
+      visibility: record.visibility,
+      blindMode: record.blindMode,
+      imageUrl: record.imageUrl,
+      sourceLink: record.sourceLink,
+      location: record.location,
+      locationCoordinates: record.locationCoordinates ?? undefined,
+      capacityMin: record.capacityMin,
+      capacityMax: record.capacityMax,
+      autoInviter: record.autoInviter,
+      frequency: record.frequency,
+      topics: [...record.topics],
+      subEvents: record.subEvents?.map((item: AppTypes.SubEventFormItem) => ({
+        ...item,
+        groups: Array.isArray(item.groups) ? item.groups.map((group: AppTypes.SubEventGroupItem) => ({ ...group })) : []
+      })),
+      subEventsDisplayMode: record.subEventsDisplayMode,
+      rating: record.rating,
+      relevance: record.relevance,
+      affinity: record.affinity,
+      ticketing: record.ticketing,
+      published: record.published
+    };
+  }
+
+  private toHostingMenuItem(record: DemoEventRecord): HostingMenuItem {
+    const item = this.toEventMenuItem(record);
+    return {
+      ...item
+    };
+  }
+
+  private toInvitationMenuItem(record: DemoEventRecord): InvitationMenuItem {
+    return {
+      id: record.id,
+      avatar: record.avatar,
+      inviter: record.inviter ?? record.creatorName,
+      description: record.title,
+      when: record.timeframe,
+      unread: record.unread
+    };
   }
 
   private ensurePaginationTestEvents(minEventsPerUser: number): void {

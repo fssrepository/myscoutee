@@ -13,7 +13,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
-import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import type { ActivityMemberOwnerRef, ActivityMemberOwnerType } from '../../../shared/core/base/models';
@@ -32,6 +31,7 @@ import {
 } from '../../../shared/ui';
 import { ActivitiesDbContextService } from '../../services/activities-db-context.service';
 import { AssetPopupService } from '../../../asset/asset-popup.service';
+import { DemoUsersRepository } from '../../../shared/core/demo';
 
 interface MembersSmartListFilters {
   ownerId?: string;
@@ -70,9 +70,15 @@ export class EventMembersPopupComponent {
   private readonly eventsService = inject(EventsService);
   private readonly appCtx = inject(AppContext);
   private readonly assetPopupService = inject(AssetPopupService);
+  private readonly demoUsersRepository = inject(DemoUsersRepository);
 
-  private readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
-  private readonly userByIdMap = new Map(this.users.map(user => [user.id, user]));
+  private get users() {
+    return this.demoUsersRepository.queryAllUsers();
+  }
+
+  private get userByIdMap() {
+    return new Map(this.users.map(user => [user.id, user]));
+  }
   private readonly membersCacheByOwnerId = new Map<string, AppTypes.ActivityMemberEntry[]>();
   private lastAppliedActivityMembersUpdatedMs = 0;
   private openMembersHydrationTimer: ReturnType<typeof setTimeout> | null = null;

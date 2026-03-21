@@ -151,12 +151,13 @@ export class DemoUsersRepository {
   }
 
   queryAvailableDemoUsers(): DemoUserListItemDto[] {
-    this.init();
-    const users = this.memoryDb.read()[USERS_TABLE_NAME];
-    return users.ids
-      .map(id => users.byId[id])
-      .filter((user): user is UserDto => Boolean(user))
+    return this.queryAllUsers()
       .map(user => DemoUsersRepositoryBuilder.toDemoUserListItem(user));
+  }
+
+  queryAllUsers(): UserDto[] {
+    this.init();
+    return this.queryUsersFromTable(USERS_TABLE_NAME);
   }
 
   queryUserById(userId: string): UserDto | null {

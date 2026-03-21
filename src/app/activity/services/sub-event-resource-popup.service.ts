@@ -8,9 +8,9 @@ import { OwnedAssetsPopupService } from '../../asset/owned-assets-popup.service'
 import { AppDemoGenerators } from '../../shared/app-demo-generators';
 import { AppUtils } from '../../shared/app-utils';
 import type * as AppTypes from '../../shared/core/base/models';
-import { ActivityMembersService, ActivityResourceBuilder, ActivityResourcesService, AppContext, SessionService } from '../../shared/core';
-import type { DemoUser } from '../../shared/demo-data';
+import { ActivityMembersService, ActivityResourceBuilder, ActivityResourcesService, AppContext, SessionService, type UserDto } from '../../shared/core';
 import { ActivitiesDbContextService } from './activities-db-context.service';
+import { DemoUsersRepository } from '../../shared/core/demo';
 import { EventEditorService } from '../../shared/event-editor.service';
 import type {
   EventResourcePopupHost
@@ -104,9 +104,15 @@ export class SubEventResourcePopupService {
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly appCtx = inject(AppContext);
   private readonly sessionService = inject(SessionService);
+  private readonly demoUsersRepository = inject(DemoUsersRepository);
 
-  private readonly users: DemoUser[] = AppDemoGenerators.buildExpandedDemoUsers(50);
-  private readonly userById = new Map(this.users.map(user => [user.id, user]));
+  private get users(): UserDto[] {
+    return this.demoUsersRepository.queryAllUsers();
+  }
+
+  private get userById(): Map<string, UserDto> {
+    return new Map(this.users.map(user => [user.id, user]));
+  }
 
   private readonly popupContextRef = signal<ResourcePopupContext | null>(null);
   private readonly resourceFilterRef = signal<AppTypes.AssetType>('Car');
@@ -289,7 +295,7 @@ export class SubEventResourcePopupService {
     }, { allowSignalWrites: true });
   }
 
-  private activeUser(): DemoUser {
+  private activeUser(): UserDto {
     const activeUserId = this.appCtx.activeUserId().trim();
     return this.users.find(user => user.id === activeUserId) ?? this.users[0];
   }

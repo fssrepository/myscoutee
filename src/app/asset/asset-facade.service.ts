@@ -4,6 +4,7 @@ import { AppDemoGenerators } from '../shared/app-demo-generators';
 import { AppUtils } from '../shared/app-utils';
 import type * as AppTypes from '../shared/core/base/models';
 import { AssetsService, AssetTicketsService, AppContext, type UserDto } from '../shared/core';
+import { DemoUsersRepository } from '../shared/core/demo';
 import type { InfoCardData, InfoCardMenuAction } from '../shared/ui';
 import type { ListQuery, PageResult } from '../shared/ui';
 
@@ -27,8 +28,15 @@ export class AssetFacadeService {
   private readonly appCtx = inject(AppContext);
   private readonly assetsService = inject(AssetsService);
   private readonly assetTicketsService = inject(AssetTicketsService);
-  private readonly users = AppDemoGenerators.buildExpandedDemoUsers(50);
-  private readonly userById = new Map(this.users.map(user => [user.id, user]));
+  private readonly demoUsersRepository = inject(DemoUsersRepository);
+
+  private get users(): UserDto[] {
+    return this.demoUsersRepository.queryAllUsers();
+  }
+
+  private get userById(): Map<string, UserDto> {
+    return new Map(this.users.map(user => [user.id, user]));
+  }
 
   activeUserId(): string {
     return this.appCtx.getActiveUserId().trim() || 'u1';

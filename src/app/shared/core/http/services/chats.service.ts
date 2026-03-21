@@ -49,6 +49,10 @@ export class HttpChatsService {
     }
   }
 
+  peekChatItemsByUser(_userId: string): DemoChatRecord[] {
+    return [];
+  }
+
   async loadChatMessages(chat: ChatMenuItem): Promise<AppTypes.ChatPopupMessage[]> {
     const response = await this.http
       .get<HttpChatMessageDto[]>(`${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/messages`)

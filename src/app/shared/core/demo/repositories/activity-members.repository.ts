@@ -29,7 +29,6 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   private readonly demoEventsRepository = inject(DemoEventsRepository);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
   private lastInitToken = '';
-  private demoActivityMemberUsersCache: DemoUser[] | null = null;
   private readonly ownerCapacityByKey = new Map<string, number>();
 
   constructor() {
@@ -188,10 +187,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   }
 
   private get demoActivityMemberUsers(): DemoUser[] {
-    if (!this.demoActivityMemberUsersCache) {
-      this.demoActivityMemberUsersCache = AppDemoGenerators.buildExpandedDemoUsers(50);
-    }
-    return this.demoActivityMemberUsersCache;
+    return this.demoUsersRepository.queryAllUsers() as DemoUser[];
   }
 
   private readSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummary | null {

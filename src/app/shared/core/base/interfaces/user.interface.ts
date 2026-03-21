@@ -81,6 +81,8 @@ export interface UserDto {
   };
 }
 
+
+export type DemoUser = UserDto;
 export interface UsersListQueryResponse {
   users: DemoUserListItemDto[];
 }

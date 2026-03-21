@@ -5,7 +5,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { from } from 'rxjs';
 
-import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import { AppContext, EventsService, GameService, type UserDto } from '../../../shared/core';
 import type { EventMenuItem } from '../../../shared/demo-data';
 import {
@@ -22,6 +21,7 @@ import {
 import type * as AppTypes from '../../../shared/core/base/models';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { EventFeedbackPopupService, type EventFeedbackPopupSource } from '../../event-feedback-popup.service';
+import { DemoUsersRepository } from '../../../shared/core/demo';
 
 interface EventFeedbackListFilters {
   filter: AppTypes.EventFeedbackListFilter;
@@ -47,8 +47,8 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   private readonly appCtx = inject(AppContext);
   private readonly eventsService = inject(EventsService);
   private readonly gameService = inject(GameService);
+  private readonly demoUsersRepository = inject(DemoUsersRepository);
   private readonly eventRecordsRef = signal<DemoEventRecord[]>([]);
-  private readonly fallbackUsers = AppDemoGenerators.buildExpandedDemoUsers(50);
   private lastLoadedUserId = '';
   private loadRequestVersion = 0;
   private eventRecordsLoadPromise: Promise<void> | null = null;
@@ -146,6 +146,10 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     return this.eventRecordsRef()
       .filter(record => !record.isTrashed && !record.isInvitation)
       .map(record => this.toEventMenuItem(record));
+  }
+
+  private get fallbackUsers(): UserDto[] {
+    return this.demoUsersRepository.queryAllUsers();
   }
 
   public get users(): UserDto[] {

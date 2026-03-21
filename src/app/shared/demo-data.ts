@@ -1,147 +1,22 @@
-import type { LocationCoordinates } from './core/base/interfaces';
-import type { SubEventFormItem, SubEventsDisplayMode } from './core/base/models';
+import type { DemoUser } from './core/base/interfaces/user.interface';
+import type {
+  ChatMenuItem,
+  EventMenuItem,
+  HostingMenuItem,
+  InvitationMenuItem,
+  RateMenuItem
+} from './core/base/interfaces/activity-feed.interface';
+import type { ProfileGroup, ProfileRow } from './core/base/interfaces/profile.interface';
 
-export interface DemoUser {
-  id: string;
-  name: string;
-  age: number;
-  birthday: string;
-  city: string;
-  height: string;
-  physique: string;
-  languages: string[];
-  horoscope: string;
-  initials: string;
-  gender: 'woman' | 'man';
-  statusText: string;
-  hostTier: string;
-  traitLabel: string;
-  completion: number;
-  headline: string;
-  about: string;
-  affinity?: number;
-  locationCoordinates?: LocationCoordinates;
-  images?: string[];
-  profileStatus: 'public' | 'friends only' | 'host only' | 'inactive';
-  activities: {
-    game: number;
-    chat: number;
-    invitations: number;
-    events: number;
-    hosting: number;
-  };
-}
-
-export interface ChatMenuItem {
-  id: string;
-  avatar: string;
-  title: string;
-  lastMessage: string;
-  lastSenderId: string;
-  memberIds: string[];
-  unread: number;
-  channelType?: 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent';
-  eventId?: string;
-  subEventId?: string;
-  groupId?: string;
-}
-
-export interface InvitationMenuItem {
-  id: string;
-  avatar: string;
-  inviter: string;
-  description: string;
-  when: string;
-  unread: number;
-}
-
-export interface EventMenuItem {
-  id: string;
-  avatar: string;
-  title: string;
-  shortDescription: string;
-  timeframe: string;
-  activity: number;
-  isAdmin: boolean;
-  creatorUserId?: string;
-  startAt?: string;
-  endAt?: string;
-  distanceKm?: number;
-  visibility?: 'Public' | 'Friends only' | 'Invitation only';
-  blindMode?: 'Open Event' | 'Blind Event';
-  imageUrl?: string;
-  sourceLink?: string;
-  location?: string;
-  locationCoordinates?: LocationCoordinates;
-  capacityMin?: number | null;
-  capacityMax?: number | null;
-  autoInviter?: boolean;
-  frequency?: string;
-  topics?: string[];
-  subEvents?: SubEventFormItem[];
-  subEventsDisplayMode?: SubEventsDisplayMode;
-  rating?: number;
-  relevance?: number;
-  affinity?: number;
-  ticketing?: boolean;
-  published?: boolean;
-}
-
-export interface HostingMenuItem {
-  id: string;
-  avatar: string;
-  title: string;
-  shortDescription: string;
-  timeframe: string;
-  activity: number;
-  creatorUserId?: string;
-  startAt?: string;
-  endAt?: string;
-  distanceKm?: number;
-  visibility?: 'Public' | 'Friends only' | 'Invitation only';
-  blindMode?: 'Open Event' | 'Blind Event';
-  imageUrl?: string;
-  sourceLink?: string;
-  location?: string;
-  locationCoordinates?: LocationCoordinates;
-  capacityMin?: number | null;
-  capacityMax?: number | null;
-  autoInviter?: boolean;
-  frequency?: string;
-  topics?: string[];
-  subEvents?: SubEventFormItem[];
-  subEventsDisplayMode?: SubEventsDisplayMode;
-  rating?: number;
-  relevance?: number;
-  affinity?: number;
-  ticketing?: boolean;
-  published?: boolean;
-}
-
-export interface RateMenuItem {
-  id: string;
-  userId: string;
-  secondaryUserId?: string;
-  mode: 'individual' | 'pair';
-  direction: 'given' | 'received' | 'mutual' | 'met';
-  scoreGiven: number;
-  scoreReceived: number;
-  eventName: string;
-  happenedAt: string;
-  distanceKm: number;
-  distanceMetersExact?: number;
-}
-
-export interface ProfileRow {
-  label: string;
-  value: string;
-  privacy: 'Public' | 'Friends' | 'Hosts' | 'Private';
-}
-
-export interface ProfileGroup {
-  title: string;
-  rows: ProfileRow[];
-}
+export type { DemoUser } from './core/base/interfaces/user.interface';
+export type {
+  ChatMenuItem,
+  EventMenuItem,
+  HostingMenuItem,
+  InvitationMenuItem,
+  RateMenuItem
+} from './core/base/interfaces/activity-feed.interface';
+export type { ProfileGroup, ProfileRow } from './core/base/interfaces/profile.interface';
 
 export function buildDemoPortraitStack(
   gender: DemoUser['gender'],
