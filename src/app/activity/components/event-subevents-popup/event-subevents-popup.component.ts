@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, effect, inject, signal } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -94,6 +94,18 @@ interface EventSubeventsStageCard {
   startMs: number;
   endMs: number;
   rows: EventSubeventsStageRow[];
+}
+
+interface EventSubeventsPreparedItem extends EventSubeventsItem {
+  resourceMetrics: EventSubeventsAssetMetricsByType;
+  casualMenuPendingCount: number;
+}
+
+interface EventSubeventsSortedEntry {
+  item: EventSubeventsPreparedItem;
+  sourceIndex: number;
+  startMs: number;
+  stageId: string;
 }
 
 interface SubEventFormModel {
@@ -204,11 +216,16 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private stageSwipeStartX: number | null = null;
   private stageSwipeDeltaX = 0;
   private workingSubEvents: EventSubeventsItem[] = [];
+  protected sortedSubEvents: EventSubeventsPreparedItem[] = [];
+  protected stageCards: EventSubeventsStageCard[] = [];
+  protected stagePages: EventSubeventsStageCard[][] = [];
+  protected visibleStageCards: EventSubeventsStageCard[] = [];
+  private sortedEntries: EventSubeventsSortedEntry[] = [];
+  private stagePageStartIndexesCache: number[] = [];
+  private stageCardByKey = new Map<string, EventSubeventsStageCard>();
   private ownerHydrationSequence = 0;
   private localMutationVersion = 0;
   private casualListRevision = 0;
-  private readonly resourceMetricsTrigger = signal(0);
-  private assetMetricsBySubEventId = new Map<string, EventSubeventsAssetMetricsByType>();
 
   protected casualSmartListQuery: Partial<ListQuery<{ revision: number }>> = {
     filters: { revision: 0 }
@@ -237,8 +254,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   constructor() {
     effect(() => {
       this.ownedAssets.assetListRevision();
-      this.resourceMetricsTrigger();
-      this.rebuildAssetMetrics();
+      this.rebuildRenderModel();
     });
   }
 
@@ -250,17 +266,16 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (changes['open']) {
       if (this.open) {
         this.resetTransientUi();
+        this.rebuildRenderModel();
         this.alignPageToCurrentStage();
-        this.requestAssetMetricsRebuild();
         void this.hydrateOwnerRecord();
       } else {
         this.resetTransientUi();
-        this.assetMetricsBySubEventId.clear();
       }
     }
 
     if (changes['ownerId'] && this.open) {
-      this.requestAssetMetricsRebuild();
+      this.rebuildRenderModel();
       void this.hydrateOwnerRecord();
     }
 
@@ -277,6 +292,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       return;
     }
     this.isMobileViewport = nextMobileViewport;
+    this.rebuildRenderModel();
     this.alignPageToCurrentStage();
   }
 
@@ -377,56 +393,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   protected currentDisplayModeIcon(mode: SubEventsDisplayMode = this.displayMode): string {
     return mode === 'Tournament' ? 'emoji_events' : 'groups';
-  }
-
-  protected get sortedSubEvents(): EventSubeventsItem[] {
-    return this.sortedEntries.map(entry => entry.item);
-  }
-
-  protected get stageCards(): EventSubeventsStageCard[] {
-    const entries = this.sortedEntries;
-    const totalStages = Math.max(entries.length, 1);
-
-    return entries.map((entry, index) => {
-      const item = entry.item;
-      const stageNumber = index + 1;
-      const title = `${item.name ?? item.title ?? `Stage ${stageNumber}`}`.trim() || `Stage ${stageNumber}`;
-      const description = `${item.description ?? ''}`.trim();
-      const location = `${item.location ?? ''}`.trim();
-      const rows = this.stageRowsForItem(item, entry.sourceIndex, entry.stageId);
-      const startMs = this.parseDateValue(item.startAt)?.getTime() ?? Number.NaN;
-      const endMs = this.parseDateValue(item.endAt)?.getTime() ?? Number.NaN;
-
-      return {
-        key: `${entry.stageId}-${entry.sourceIndex}`,
-        menuKey: entry.stageId,
-        sourceIndex: entry.sourceIndex,
-        stageNumber,
-        title: `Stage ${stageNumber}`,
-        subtitle: title,
-        description,
-        location: location || 'Location pending',
-        rangeLabel: this.subEventRangeLabel(item),
-        groupsLabel: rows.length === 1 ? '1 group' : `${rows.length} groups`,
-        accentHue: this.stageAccentHue(stageNumber, totalStages),
-        startMs,
-        endMs,
-        rows
-      };
-    });
-  }
-
-  protected get stagePages(): EventSubeventsStageCard[][] {
-    const cards = this.stageCards;
-    if (cards.length === 0) {
-      return [];
-    }
-    const viewportColumns = this.columnsPerPage();
-    return this.stagePageStartIndexes().map(startIndex => cards.slice(startIndex, startIndex + viewportColumns));
-  }
-
-  protected get visibleStageCards(): EventSubeventsStageCard[] {
-    return this.stagePages[this.stagePageIndex] ?? [];
   }
 
   protected canScrollStagePages(direction: -1 | 1): boolean {
@@ -667,7 +633,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       }
       return this.toPendingCount(item.suppliesPending);
     }
-    return this.assetMetricsForItem(subEvent, item, type).pending;
+    return this.preparedAssetMetricsForItem(item, type, subEvent).pending;
   }
 
   protected openSubEventResourcePopup(
@@ -717,21 +683,15 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected casualMenuPendingCount(item: EventSubeventsItem): number {
-    const members = item.optional ? this.toPendingCount(item.membersPending) : 0;
-    const subEvent = this.toSubEventResourceItem(item);
-    return members
-      + this.assetMetricsForItem(subEvent, item, 'Car').pending
-      + this.assetMetricsForItem(subEvent, item, 'Accommodation').pending
-      + this.assetMetricsForItem(subEvent, item, 'Supplies').pending;
+    return (item as EventSubeventsPreparedItem).casualMenuPendingCount ?? this.buildCasualMenuPendingCount(item);
   }
 
   protected groupMenuPendingCount(item: EventSubeventsItem, row: EventSubeventsStageRow): number {
     const members = this.resourcePendingCount(item, 'Members', row);
-    const subEvent = this.toSubEventResourceItem(item);
     return members
-      + this.assetMetricsForItem(subEvent, item, 'Car').pending
-      + this.assetMetricsForItem(subEvent, item, 'Accommodation').pending
-      + this.assetMetricsForItem(subEvent, item, 'Supplies').pending;
+      + this.preparedAssetMetricsForItem(item, 'Car').pending
+      + this.preparedAssetMetricsForItem(item, 'Accommodation').pending
+      + this.preparedAssetMetricsForItem(item, 'Supplies').pending;
   }
 
   protected toggleCasualActionMenu(item: EventSubeventsItem, index: number, event: Event): void {
@@ -1402,7 +1362,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected trackByStagePageIndex(index: number): number {
-    return this.stagePageStartIndexes()[index] ?? index;
+    return this.stagePageStartIndexesCache[index] ?? index;
   }
 
   protected trackByIndex(index: number): number {
@@ -1422,7 +1382,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (!key) {
       return null;
     }
-    return this.stageCards.find(stage => stage.key === key) ?? null;
+    return this.stageCardByKey.get(key) ?? null;
   }
 
   protected stageGridTemplateColumns(page: readonly EventSubeventsStageCard[]): string {
@@ -1430,8 +1390,21 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return `repeat(${columnCount}, minmax(0, 1fr))`;
   }
 
-  private get sortedEntries(): Array<{ item: EventSubeventsItem; sourceIndex: number; startMs: number; stageId: string }> {
-    return this.workingSubEvents
+  private rebuildRenderModel(): void {
+    this.sortedEntries = this.buildSortedEntries(this.workingSubEvents);
+    this.sortedSubEvents = this.sortedEntries.map(entry => entry.item);
+    this.stageCards = this.buildStageCards(this.sortedEntries);
+    this.stageCardByKey = new Map<string, EventSubeventsStageCard>(
+      this.stageCards.map<[string, EventSubeventsStageCard]>(stage => [stage.key, stage])
+    );
+    this.stagePageStartIndexesCache = this.buildStagePageStartIndexes(this.stageCards);
+    const viewportColumns = this.columnsPerPage();
+    this.stagePages = this.stagePageStartIndexesCache.map(startIndex => this.stageCards.slice(startIndex, startIndex + viewportColumns));
+    this.clampStagePageIndex();
+  }
+
+  private buildSortedEntries(source: readonly EventSubeventsItem[]): EventSubeventsSortedEntry[] {
+    return source
       .map((item, sourceIndex) => ({
         item,
         sourceIndex,
@@ -1443,7 +1416,66 @@ export class EventSubeventsPopupComponent implements OnChanges {
           return a.startMs - b.startMs;
         }
         return a.sourceIndex - b.sourceIndex;
-      });
+      })
+      .map(entry => ({
+        ...entry,
+        item: this.prepareRenderItem(entry.item)
+      }));
+  }
+
+  private buildStageCards(entries: readonly EventSubeventsSortedEntry[]): EventSubeventsStageCard[] {
+    const totalStages = Math.max(entries.length, 1);
+    return entries.map((entry, index) => {
+      const item = entry.item;
+      const stageNumber = index + 1;
+      const title = `${item.name ?? item.title ?? `Stage ${stageNumber}`}`.trim() || `Stage ${stageNumber}`;
+      const description = `${item.description ?? ''}`.trim();
+      const location = `${item.location ?? ''}`.trim();
+      const rows = this.stageRowsForItem(item, entry.sourceIndex, entry.stageId);
+      const startMs = this.parseDateValue(item.startAt)?.getTime() ?? Number.NaN;
+      const endMs = this.parseDateValue(item.endAt)?.getTime() ?? Number.NaN;
+
+      return {
+        key: `${entry.stageId}-${entry.sourceIndex}`,
+        menuKey: entry.stageId,
+        sourceIndex: entry.sourceIndex,
+        stageNumber,
+        title: `Stage ${stageNumber}`,
+        subtitle: title,
+        description,
+        location: location || 'Location pending',
+        rangeLabel: this.subEventRangeLabel(item),
+        groupsLabel: rows.length === 1 ? '1 group' : `${rows.length} groups`,
+        accentHue: this.stageAccentHue(stageNumber, totalStages),
+        startMs,
+        endMs,
+        rows
+      };
+    });
+  }
+
+  private buildStagePageStartIndexes(cards: readonly EventSubeventsStageCard[]): number[] {
+    if (cards.length === 0) {
+      return [];
+    }
+
+    const viewportColumns = this.columnsPerPage();
+    const maxStartIndex = Math.max(0, cards.length - viewportColumns);
+    const starts: number[] = [];
+
+    for (let startIndex = 0; startIndex <= maxStartIndex; startIndex += viewportColumns) {
+      starts.push(startIndex);
+    }
+
+    if (starts.length === 0 || starts[starts.length - 1] !== maxStartIndex) {
+      starts.push(maxStartIndex);
+    }
+
+    return Array.from(new Set(starts));
+  }
+
+  private syncVisibleStageCards(): void {
+    this.visibleStageCards = this.stagePages[this.stagePageIndex] ?? [];
   }
 
   private stageRowsForItem(item: EventSubeventsItem, stageSourceIndex: number, stageId: string): EventSubeventsStageRow[] {
@@ -1740,7 +1772,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   private resourceJoinedCount(item: EventSubeventsItem, type: Exclude<EventEditorSubEventResourceType, 'Members'>): number {
-    return this.assetMetricsForItem(this.toSubEventResourceItem(item), item, type).accepted;
+    return this.preparedAssetMetricsForItem(item, type).accepted;
   }
 
   private resourceAssetCapacityRange(
@@ -1748,44 +1780,52 @@ export class EventSubeventsPopupComponent implements OnChanges {
     type: Exclude<EventEditorSubEventResourceType, 'Members'>,
     _row?: EventSubeventsStageRow | null
   ): { min: number; max: number } {
-    const metrics = this.assetMetricsForItem(this.toSubEventResourceItem(item), item, type);
+    const metrics = this.preparedAssetMetricsForItem(item, type);
     return {
       min: metrics.capacityMin,
       max: metrics.capacityMax
     };
   }
 
-  private assetMetricsForItem(
-    subEvent: AppTypes.SubEventFormItem | null,
+  private preparedAssetMetricsForItem(
     item: EventSubeventsItem,
-    type: Exclude<EventEditorSubEventResourceType, 'Members'>
+    type: Exclude<EventEditorSubEventResourceType, 'Members'>,
+    fallbackSubEvent: AppTypes.SubEventFormItem | null = this.toSubEventResourceItem(item)
   ): EventSubeventsAssetMetrics {
-    const cached = item.id ? this.assetMetricsBySubEventId.get(item.id)?.[type] : null;
-    if (cached) {
-      return cached;
+    const prepared = (item as EventSubeventsPreparedItem).resourceMetrics?.[type];
+    if (prepared) {
+      return prepared;
     }
-    return this.buildAssetMetricsForType(item, subEvent, type);
+    return this.buildAssetMetricsForType(item, fallbackSubEvent, type);
   }
 
-  private rebuildAssetMetrics(): void {
-    if (!this.open) {
-      this.assetMetricsBySubEventId.clear();
-      return;
+  private prepareRenderItem(item: EventSubeventsItem): EventSubeventsPreparedItem {
+    const subEvent = this.toSubEventResourceItem(item);
+    const resourceMetrics: EventSubeventsAssetMetricsByType = {
+      Car: this.buildAssetMetricsForType(item, subEvent, 'Car'),
+      Accommodation: this.buildAssetMetricsForType(item, subEvent, 'Accommodation'),
+      Supplies: this.buildAssetMetricsForType(item, subEvent, 'Supplies')
+    };
+    return {
+      ...item,
+      resourceMetrics,
+      casualMenuPendingCount: this.buildCasualMenuPendingCount(item, resourceMetrics)
+    };
+  }
+
+  private buildCasualMenuPendingCount(
+    item: EventSubeventsItem,
+    resourceMetrics: EventSubeventsAssetMetricsByType = {
+      Car: this.preparedAssetMetricsForItem(item, 'Car'),
+      Accommodation: this.preparedAssetMetricsForItem(item, 'Accommodation'),
+      Supplies: this.preparedAssetMetricsForItem(item, 'Supplies')
     }
-    const next = new Map<string, EventSubeventsAssetMetricsByType>();
-    for (const item of this.workingSubEvents) {
-      const itemId = `${item.id ?? ''}`.trim();
-      if (!itemId) {
-        continue;
-      }
-      const subEvent = this.toSubEventResourceItem(item);
-      next.set(itemId, {
-        Car: this.buildAssetMetricsForType(item, subEvent, 'Car'),
-        Accommodation: this.buildAssetMetricsForType(item, subEvent, 'Accommodation'),
-        Supplies: this.buildAssetMetricsForType(item, subEvent, 'Supplies')
-      });
-    }
-    this.assetMetricsBySubEventId = next;
+  ): number {
+    const members = item.optional ? this.toPendingCount(item.membersPending) : 0;
+    return members
+      + resourceMetrics.Car.pending
+      + resourceMetrics.Accommodation.pending
+      + resourceMetrics.Supplies.pending;
   }
 
   private buildAssetMetricsForType(
@@ -1845,10 +1885,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
       capacityMin: bounds.min,
       capacityMax: bounds.max
     };
-  }
-
-  private requestAssetMetricsRebuild(): void {
-    this.resourceMetricsTrigger.update(value => value + 1);
   }
 
   private toSubEventResourceItem(item: EventSubeventsItem): AppTypes.SubEventFormItem | null {
@@ -1997,6 +2033,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private clampStagePageIndex(): void {
     const maxIndex = Math.max(0, this.stagePages.length - 1);
     this.stagePageIndex = AppUtils.clampNumber(this.stagePageIndex, 0, maxIndex);
+    this.syncVisibleStageCards();
   }
 
   private scrollStagePagesBy(direction: -1 | 1): void {
@@ -2008,17 +2045,20 @@ export class EventSubeventsPopupComponent implements OnChanges {
       0,
       Math.max(0, this.stagePages.length - 1)
     );
+    this.syncVisibleStageCards();
   }
 
   private alignPageToCurrentStage(): void {
     if (this.displayMode !== 'Tournament') {
       this.stagePageIndex = 0;
+      this.syncVisibleStageCards();
       return;
     }
 
     const entries = this.sortedEntries;
     if (entries.length === 0) {
       this.stagePageIndex = 0;
+      this.syncVisibleStageCards();
       return;
     }
 
@@ -2058,14 +2098,14 @@ export class EventSubeventsPopupComponent implements OnChanges {
     }
 
     this.stagePageIndex = AppUtils.clampNumber(nextPageIndex, 0, Math.max(0, pageStarts.length - 1));
+    this.syncVisibleStageCards();
   }
 
   private emitWorkingSubEvents(): void {
     this.localMutationVersion += 1;
+    this.rebuildRenderModel();
     this.subEventsChange.emit(this.cloneSubEvents(this.workingSubEvents));
     this.bumpCasualSmartListRevision();
-    this.requestAssetMetricsRebuild();
-    this.clampStagePageIndex();
   }
 
   private applyWorkingSubEvents(source: readonly EventSubeventsItem[]): void {
@@ -2073,30 +2113,12 @@ export class EventSubeventsPopupComponent implements OnChanges {
       ...item,
       id: item.id ?? this.nextId('subevent')
     }));
+    this.rebuildRenderModel();
     this.bumpCasualSmartListRevision();
-    this.requestAssetMetricsRebuild();
-    this.clampStagePageIndex();
   }
 
   private stagePageStartIndexes(): number[] {
-    const cards = this.stageCards;
-    if (cards.length === 0) {
-      return [];
-    }
-
-    const viewportColumns = this.columnsPerPage();
-    const maxStartIndex = Math.max(0, cards.length - viewportColumns);
-    const starts: number[] = [];
-
-    for (let startIndex = 0; startIndex <= maxStartIndex; startIndex += viewportColumns) {
-      starts.push(startIndex);
-    }
-
-    if (starts.length === 0 || starts[starts.length - 1] !== maxStartIndex) {
-      starts.push(maxStartIndex);
-    }
-
-    return Array.from(new Set(starts));
+    return this.stagePageStartIndexesCache;
   }
 
   private async hydrateOwnerRecord(): Promise<void> {
@@ -2137,9 +2159,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
       id: item.id ?? this.nextId('subevent')
     }));
     this.workingSubEvents = nextSubEvents;
+    this.rebuildRenderModel();
     this.bumpCasualSmartListRevision();
-    this.requestAssetMetricsRebuild();
-    this.clampStagePageIndex();
     this.alignPageToCurrentStage();
 
     const nextDisplayMode = record.subEventsDisplayMode === 'Tournament' ? 'Tournament' : 'Casual';
