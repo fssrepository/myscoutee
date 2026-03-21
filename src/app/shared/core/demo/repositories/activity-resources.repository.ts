@@ -24,8 +24,10 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
   private readonly usersRepository = inject(DemoUsersRepository);
 
   init(ownerUserIds?: readonly string[]): void {
+    console.log(Date.now() + "start - activity resources");
     if (!ownerUserIds) {
       this.usersRepository.init();
+      console.log(Date.now() + "users init - activity members");
     }
 
     const normalizedUserIds = Array.from(new Set(
@@ -36,8 +38,10 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
     if (normalizedUserIds.length === 0) {
       return;
     }
-
+    
+    console.log(Date.now() + "events init - activity members");
     this.eventsRepository.init();
+    console.log(Date.now() + "assets init - activity members");
     this.assetsRepository.init(normalizedUserIds);
 
     let nextTable = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_RESOURCES_TABLE_NAME]);
@@ -57,10 +61,14 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
       return;
     }
 
+    console.log(Date.now() + "end - activity members");
+
     this.memoryDb.write(state => ({
       ...state,
       [ACTIVITY_RESOURCES_TABLE_NAME]: nextTable
     }));
+
+    console.log(Date.now() + "finish - activity members");
   }
 
   override peekSubEventResourceState(
