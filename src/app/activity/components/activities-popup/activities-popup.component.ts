@@ -2115,7 +2115,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.inlineItemActionMenu = null;
     if (row.type === 'chats') {
       const chat = row.source as ChatMenuItem;
-      this.activitiesContext.openEventChat(chat, this.buildEventChatContext(chat));
+      this.openActivityChat(chat);
       return;
     }
     if (row.type === 'rates') {
@@ -3146,19 +3146,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private chatItemsForActivities(): ChatMenuItem[] {
-    const merged = new Map<string, ChatMenuItem>();
-    for (const item of this.chatItems) {
-      const normalized: ChatMenuItem = {
-        ...item,
-        channelType: this.chatChannelType(item)
-      };
-      normalized.unread = this.contextualChatUnreadCount(normalized);
-      merged.set(item.id, normalized);
-    }
-    for (const contextual of this.buildContextualChatChannels()) {
-      merged.set(contextual.id, contextual);
-    }
-    return [...merged.values()];
+    return this.chatItems.map(item => ({
+      ...item,
+      memberIds: [...(item.memberIds ?? [])],
+      channelType: this.chatChannelType(item),
+      unread: Math.max(0, Math.trunc(Number(item.unread) || 0))
+    }));
   }
 
   private buildContextualChatChannels(): ChatMenuItem[] {
@@ -3765,10 +3758,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private getChatItemById(chatId: string): ChatMenuItem | undefined {
-    const contextual = this.buildContextualChatChannels().find(item => item.id === chatId);
-    if (contextual) {
-      return contextual;
-    }
     return this.chatItems.find(item => item.id === chatId);
   }
 
@@ -3850,6 +3839,50 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     const subEventLabel = this.subEventDisplayName(subEvent) || subEvent.name || 'Sub Event';
     return `${stageLabel} - ${subEventLabel}`;
+  }
+
+  private openActivityChat(chat: ChatMenuItem): void {
+    const initialContext = this.buildInitialEventChatContext(chat);
+    this.activitiesContext.openEventChat(chat, initialContext);
+    const openedSession = this.activitiesContext.eventChatSession();
+    const openedAtIso = openedSession?.openedAtIso ?? '';
+    this.runAfterActivitiesRender(() => {
+      const activeSession = this.activitiesContext.eventChatSession();
+      if (!activeSession || activeSession.item.id !== chat.id || activeSession.openedAtIso !== openedAtIso) {
+        return;
+      }
+      this.activitiesContext.touchEventChatSession(() => this.buildEventChatContext(chat));
+      this.cdr.markForCheck();
+    });
+  }
+
+  private buildInitialEventChatContext(chat: ChatMenuItem): EventChatContext {
+    const channelType = this.chatChannelType(chat);
+    const hasSubEventMenu = channelType === 'optionalSubEvent' || channelType === 'groupSubEvent';
+    return {
+      channelType,
+      hasSubEventMenu,
+      actionIcon: this.eventChatActionIcon(channelType),
+      actionLabel: this.eventChatActionLabel(channelType),
+      actionToneClass: this.eventChatActionTone(channelType),
+      actionBadgeCount: Math.max(0, Math.trunc(Number(chat.unread) || 0)),
+      menuTitle: chat.title,
+      eventRow: null,
+      subEventRow: null,
+      subEvent: null,
+      group: null,
+      assetAssignmentIds: {
+        Car: [],
+        Accommodation: [],
+        Supplies: []
+      },
+      assetCardsByType: {
+        Car: [],
+        Accommodation: [],
+        Supplies: []
+      },
+      resources: []
+    };
   }
 
   private buildEventChatContext(chat: ChatMenuItem): EventChatContext {
@@ -3960,37 +3993,55 @@ export class ActivitiesPopupComponent implements OnDestroy {
         stateClass: this.subEventCapacityStateClassForChat(subEvent),
         visible: includeMembers
       },
-      {
-        type: 'Car',
-        icon: 'directions_car',
-        title: 'Car',
-        typeClass: 'event-subevent-badge-car',
-        summary: this.subEventAssetCapacityLabelForChat(ownerId, subEvent, 'Car'),
-        pending: this.subEventAssetPendingCountForChat(ownerId, subEvent, 'Car'),
-        stateClass: this.subEventAssetCapacityStateClassForChat(ownerId, subEvent, 'Car'),
-        visible: true
-      },
-      {
-        type: 'Accommodation',
-        icon: 'hotel',
-        title: 'Accommodation',
-        typeClass: 'event-subevent-badge-accommodation',
-        summary: this.subEventAssetCapacityLabelForChat(ownerId, subEvent, 'Accommodation'),
-        pending: this.subEventAssetPendingCountForChat(ownerId, subEvent, 'Accommodation'),
-        stateClass: this.subEventAssetCapacityStateClassForChat(ownerId, subEvent, 'Accommodation'),
-        visible: true
-      },
-      {
-        type: 'Supplies',
-        icon: 'inventory_2',
-        title: 'Supplies',
-        typeClass: 'event-subevent-badge-supplies',
-        summary: this.subEventAssetCapacityLabelForChat(ownerId, subEvent, 'Supplies'),
-        pending: this.subEventAssetPendingCountForChat(ownerId, subEvent, 'Supplies'),
-        stateClass: this.subEventAssetCapacityStateClassForChat(ownerId, subEvent, 'Supplies'),
-        visible: true
-      }
+      this.buildEventChatAssetResource(ownerId, subEvent, 'Car', 'directions_car', 'Car', 'event-subevent-badge-car'),
+      this.buildEventChatAssetResource(ownerId, subEvent, 'Accommodation', 'hotel', 'Accommodation', 'event-subevent-badge-accommodation'),
+      this.buildEventChatAssetResource(ownerId, subEvent, 'Supplies', 'inventory_2', 'Supplies', 'event-subevent-badge-supplies')
     ];
+  }
+
+  private buildEventChatAssetResource(
+    ownerId: string,
+    subEvent: AppTypes.SubEventFormItem,
+    type: AppTypes.AssetType,
+    icon: string,
+    title: string,
+    typeClass: string
+  ): EventChatResourceContext {
+    this.syncSubEventAssetBadgeCounts(ownerId, subEvent, type);
+    let accepted = 0;
+    let pending = 0;
+    let capacityMin = 0;
+    let capacityMax = 0;
+
+    if (type === 'Car') {
+      accepted = this.chatCountValue(subEvent.carsAccepted);
+      pending = this.chatCountValue(subEvent.carsPending);
+      capacityMin = this.chatCountValue(subEvent.carsCapacityMin);
+      capacityMax = Math.max(capacityMin, this.chatCountValue(subEvent.carsCapacityMax));
+    } else if (type === 'Accommodation') {
+      accepted = this.chatCountValue(subEvent.accommodationAccepted);
+      pending = this.chatCountValue(subEvent.accommodationPending);
+      capacityMin = this.chatCountValue(subEvent.accommodationCapacityMin);
+      capacityMax = Math.max(capacityMin, this.chatCountValue(subEvent.accommodationCapacityMax));
+    } else {
+      accepted = this.chatCountValue(subEvent.suppliesAccepted);
+      pending = this.chatCountValue(subEvent.suppliesPending);
+      capacityMin = this.chatCountValue(subEvent.suppliesCapacityMin);
+      capacityMax = Math.max(capacityMin, this.chatCountValue(subEvent.suppliesCapacityMax));
+    }
+
+    return {
+      type: type === 'Accommodation' ? 'Accommodation' : type,
+      icon,
+      title,
+      typeClass,
+      summary: `${accepted} / ${capacityMin} - ${capacityMax}`,
+      pending,
+      stateClass: accepted >= capacityMin && accepted <= capacityMax
+        ? 'subevent-capacity-in-range'
+        : 'subevent-capacity-out-of-range',
+      visible: true
+    };
   }
 
   private eventChatResourceAssignmentIds(

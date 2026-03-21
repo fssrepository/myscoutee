@@ -61,6 +61,9 @@ export class EventChatPopupComponent implements OnDestroy {
   protected chatHeaderProgressLoading = false;
   protected chatHeaderLoadingProgress = 0;
   protected chatHeaderLoadingOverdue = false;
+  protected preparedChatContext: AppTypes.EventChatContext | null = null;
+  protected preparedChatMembersResource: EventChatResourceContext | null = null;
+  protected preparedChatAssetResources: EventChatResourceContext[] = [];
 
   private readonly chatHistoryPageSize = 10;
   private readonly chatInitialLoadMessageCount = 15;
@@ -113,6 +116,7 @@ export class EventChatPopupComponent implements OnDestroy {
     effect(() => {
       const session = this.session();
       const sessionKey = session ? `${session.item.id}:${session.openedAtIso}` : null;
+      this.syncPreparedChatContext(session?.context ?? null);
       if (session && this.loadedSessionKey === sessionKey) {
         this.cdr.markForCheck();
         return;
@@ -132,6 +136,7 @@ export class EventChatPopupComponent implements OnDestroy {
         this.loadedSessionKey = null;
         this.chatThreadQuery = {};
         this.chatInitialLoadPending = false;
+        this.syncPreparedChatContext(null);
         this.clearChatHeaderLoadingAnimation();
         this.cdr.markForCheck();
         return;
@@ -179,71 +184,35 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected selectedChatHasSubEventMenu(): boolean {
-    return this.session()?.context?.hasSubEventMenu === true;
+    return this.preparedChatContext?.hasSubEventMenu === true;
   }
 
   protected selectedChatHeaderActionIcon(): string {
-    return this.session()?.context?.actionIcon ?? 'event';
+    return this.preparedChatContext?.actionIcon ?? 'event';
   }
 
   protected selectedChatHeaderActionLabel(): string {
-    return this.session()?.context?.actionLabel ?? 'View Event';
+    return this.preparedChatContext?.actionLabel ?? 'View Event';
   }
 
   protected selectedChatHeaderActionToneClass(): string {
-    return this.session()?.context?.actionToneClass ?? 'popup-chat-context-btn-tone-main-event';
+    return this.preparedChatContext?.actionToneClass ?? 'popup-chat-context-btn-tone-main-event';
   }
 
   protected selectedChatHeaderActionBadgeCount(): number {
-    return Math.max(0, Math.trunc(Number(this.session()?.context?.actionBadgeCount) || 0));
+    return Math.max(0, Math.trunc(Number(this.preparedChatContext?.actionBadgeCount) || 0));
   }
 
   protected selectedChatContextMenuTitle(): string {
-    return this.session()?.context?.menuTitle ?? this.session()?.item.title ?? 'Chat';
-  }
-
-  protected selectedChatResources(): EventChatResourceContext[] {
-    const session = this.session();
-    const resources = (session?.context?.resources ?? []).filter(resource => resource.visible);
-    const subEvent = session?.context?.subEvent;
-    if (!subEvent) {
-      return resources;
-    }
-    return resources.map(resource => {
-      if (resource.type === 'Members') {
-        const accepted = this.chatCountValue(subEvent.membersAccepted);
-        const pending = this.chatCountValue(subEvent.membersPending);
-        const capacityMin = this.chatCountValue(subEvent.capacityMin);
-        const capacityMax = Math.max(capacityMin, this.chatCountValue(subEvent.capacityMax));
-        return {
-          ...resource,
-          summary: `${accepted} / ${capacityMin} - ${capacityMax}`,
-          pending,
-          stateClass: accepted >= capacityMin && accepted <= capacityMax
-            ? 'subevent-capacity-in-range'
-            : 'subevent-capacity-out-of-range'
-        };
-      }
-      const accepted = this.chatSubEventAssetAcceptedCount(subEvent, resource.type);
-      const pending = this.chatSubEventAssetPendingCount(subEvent, resource.type);
-      const { capacityMin, capacityMax } = this.chatSubEventAssetCapacityBounds(subEvent, resource.type, accepted, pending);
-      return {
-        ...resource,
-        summary: `${accepted} / ${capacityMin} - ${capacityMax}`,
-        pending,
-        stateClass: accepted >= capacityMin && accepted <= capacityMax
-          ? 'subevent-capacity-in-range'
-          : 'subevent-capacity-out-of-range'
-        };
-    });
+    return this.preparedChatContext?.menuTitle ?? this.session()?.item.title ?? 'Chat';
   }
 
   protected selectedChatMembersResource(): EventChatResourceContext | null {
-    return this.selectedChatResources().find(resource => resource.type === 'Members') ?? null;
+    return this.preparedChatMembersResource;
   }
 
   protected selectedChatAssetResources(): EventChatResourceContext[] {
-    return this.selectedChatResources().filter(resource => resource.type !== 'Members');
+    return this.preparedChatAssetResources;
   }
 
   protected isMobileView(): boolean {
@@ -256,7 +225,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected openSelectedChatEvent(event?: Event): void {
     event?.stopPropagation();
     this.showContextMenu = false;
-    const row = this.session()?.context?.eventRow ?? this.chatEventRow();
+    const row = this.preparedChatContext?.eventRow ?? this.chatEventRow();
     if (!row) {
       return;
     }
@@ -268,7 +237,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected openSelectedChatPrimaryContext(event?: Event): void {
-    const channelType = this.session()?.context?.channelType;
+    const channelType = this.preparedChatContext?.channelType;
     if (channelType === 'groupSubEvent') {
       this.openSelectedChatGroup(event);
       return;
@@ -442,6 +411,19 @@ export class EventChatPopupComponent implements OnDestroy {
     return day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   }
 
+  private syncPreparedChatContext(context: AppTypes.EventChatContext | null): void {
+    this.preparedChatContext = context
+      ? {
+          ...context,
+          group: context.group ? { ...context.group } : null,
+          resources: context.resources.map(resource => ({ ...resource }))
+        }
+      : null;
+    const resources = this.preparedChatContext?.resources.filter(resource => resource.visible) ?? [];
+    this.preparedChatMembersResource = resources.find(resource => resource.type === 'Members') ?? null;
+    this.preparedChatAssetResources = resources.filter(resource => resource.type !== 'Members');
+  }
+
   private chatEventRow(): AppTypes.ActivityListRow | null {
     const session = this.session();
     if (!session?.item.eventId) {
@@ -469,52 +451,6 @@ export class EventChatPopupComponent implements OnDestroy {
       metricScore: source.activity,
       source
     };
-  }
-
-  private chatCountValue(value: unknown): number {
-    return Math.max(0, Math.trunc(Number(value) || 0));
-  }
-
-  private chatSubEventAssetAcceptedCount(subEvent: AppTypes.SubEventFormItem, type: AppTypes.AssetType): number {
-    if (type === 'Car') {
-      return this.chatCountValue(subEvent.carsAccepted);
-    }
-    if (type === 'Accommodation') {
-      return this.chatCountValue(subEvent.accommodationAccepted);
-    }
-    return this.chatCountValue(subEvent.suppliesAccepted);
-  }
-
-  private chatSubEventAssetPendingCount(subEvent: AppTypes.SubEventFormItem, type: AppTypes.AssetType): number {
-    if (type === 'Car') {
-      return this.chatCountValue(subEvent.carsPending);
-    }
-    if (type === 'Accommodation') {
-      return this.chatCountValue(subEvent.accommodationPending);
-    }
-    return this.chatCountValue(subEvent.suppliesPending);
-  }
-
-  private chatSubEventAssetCapacityBounds(
-    subEvent: AppTypes.SubEventFormItem,
-    type: AppTypes.AssetType,
-    accepted: number,
-    pending: number
-  ): { capacityMin: number; capacityMax: number } {
-    const observed = Math.max(accepted, accepted + pending);
-    if (type === 'Car') {
-      const capacityMin = this.chatCountValue(subEvent.carsCapacityMin);
-      const capacityMax = Math.max(capacityMin, this.chatCountValue(subEvent.carsCapacityMax) || observed);
-      return { capacityMin, capacityMax };
-    }
-    if (type === 'Accommodation') {
-      const capacityMin = this.chatCountValue(subEvent.accommodationCapacityMin);
-      const capacityMax = Math.max(capacityMin, this.chatCountValue(subEvent.accommodationCapacityMax) || observed);
-      return { capacityMin, capacityMax };
-    }
-    const capacityMin = this.chatCountValue(subEvent.suppliesCapacityMin);
-    const capacityMax = Math.max(capacityMin, this.chatCountValue(subEvent.suppliesCapacityMax) || observed);
-    return { capacityMin, capacityMax };
   }
 
   private shouldOpenContextMenuUp(event: Event): boolean {

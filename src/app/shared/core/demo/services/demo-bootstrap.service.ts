@@ -96,6 +96,24 @@ export class DemoBootstrapService {
     });
     await this.waitForUiYield();
 
+    onProgress?.({
+      percent: 45,
+      label: 'Preparing chat threads'
+    });
+    await this.waitForUiYield();
+    const contextualChatsChanged = this.chatsRepository.seedContextualRecordsForUser(
+      normalizedUserId,
+      this.eventsRepository.queryItemsByUser(normalizedUserId)
+    );
+    if (contextualChatsChanged) {
+      onProgress?.({
+        percent: 80,
+        label: 'Syncing demo IndexedDB'
+      });
+      await this.memoryDb.flushToIndexedDb();
+      await this.waitForUiYield();
+    }
+
     this.readyUserIds.add(normalizedUserId);
     onProgress?.({
       percent: 100,
