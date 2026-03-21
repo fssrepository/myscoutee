@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, ViewEncapsulation, effect, inject, signal } from '@angular/core';
+import { Component, DoCheck, HostListener, OnDestroy, ViewEncapsulation, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -52,7 +52,7 @@ import {
   styleUrl: './asset-popup.component.scss',
   encapsulation: ViewEncapsulation.None
 })
-export class AssetPopupComponent implements OnDestroy {
+export class AssetPopupComponent implements DoCheck, OnDestroy {
   private readonly assetFacade = inject(AssetFacadeService);
   protected readonly assetPopup = inject(AssetPopupService);
   protected readonly ownedAssets = inject(OwnedAssetsPopupService);
@@ -70,6 +70,10 @@ export class AssetPopupComponent implements OnDestroy {
   protected readonly confirmOwnedAssetDelete = (): void => { void this.ownedAssets.confirmAssetDelete(); };
   protected assetSmartListQuery: Partial<ListQuery<OwnedAssetListFilters>> = {};
   protected ticketSmartListQuery: Partial<ListQuery<AssetTicketListFilters>> = {};
+  private assetSmartListQueryKey = '';
+  private assetSmartListQueryRevision = 0;
+  private ticketSmartListQueryKey = '';
+  private ticketSmartListQueryRevision = 0;
 
   protected readonly assetSmartListLoadPage = (query: ListQuery<OwnedAssetListFilters>) =>
     from(this.loadOwnedAssetSmartListPage(query));
@@ -126,23 +130,11 @@ export class AssetPopupComponent implements OnDestroy {
   };
 
   constructor() {
-    effect(() => {
-      const activeUserId = this.assetFacade.activeUserId();
-      const assetRevision = this.ownedAssets.assetListRevision();
-      this.assetSmartListQuery = {
-        filters: {
-          userId: activeUserId,
-          type: this.ownedAssets.assetFilter === 'Ticket' ? 'Car' : this.ownedAssets.assetFilter,
-          refreshToken: assetRevision
-        }
-      };
-      this.ticketSmartListQuery = {
-        filters: {
-          userId: activeUserId,
-          order: this.assetPopup.ticketDateOrder()
-        }
-      };
-    });
+    this.syncSmartListQueries();
+  }
+
+  ngDoCheck(): void {
+    this.syncSmartListQueries();
   }
 
   protected isBasketMode(): boolean {
@@ -327,6 +319,52 @@ export class AssetPopupComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.assetPopup.setTicketScannerVideoElement(null);
+  }
+
+
+  private syncSmartListQueries(): void {
+    const activeUserId = this.assetFacade.activeUserId();
+    const assetType = this.currentAssetSmartListType();
+    const basketMode = this.isBasketMode();
+    const basketCardsKey = basketMode
+      ? this.ownedAssets.assetCards
+        .filter(card => card.type === assetType)
+        .map(card => card.id)
+        .join('|')
+      : '';
+    const assetKey = basketMode
+      ? `${activeUserId}:${assetType}:basket:${basketCardsKey}`
+      : `${activeUserId}:${assetType}:assets:${this.ownedAssets.assetListRevision()}`;
+    if (assetKey !== this.assetSmartListQueryKey) {
+      this.assetSmartListQueryKey = assetKey;
+      this.assetSmartListQueryRevision += 1;
+      this.assetSmartListQuery = {
+        filters: {
+          userId: activeUserId,
+          type: assetType,
+          refreshToken: this.assetSmartListQueryRevision
+        }
+      };
+    }
+
+    const ticketOrder = this.assetPopup.ticketDateOrder();
+    const ticketKey = `${activeUserId}:${ticketOrder}`;
+    if (ticketKey !== this.ticketSmartListQueryKey) {
+      this.ticketSmartListQueryKey = ticketKey;
+      this.ticketSmartListQueryRevision += 1;
+      this.ticketSmartListQuery = {
+        filters: {
+          userId: activeUserId,
+          order: ticketOrder
+        },
+        page: 0
+      };
+    }
+  }
+
+  private currentAssetSmartListType(): AppTypes.AssetType {
+    const currentFilter = this.ownedAssets.assetFilter;
+    return currentFilter === 'Accommodation' || currentFilter === 'Supplies' ? currentFilter : 'Car';
   }
 
   private async loadOwnedAssetSmartListPage(
