@@ -59,14 +59,10 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       return;
     }
 
-    console.log("start");
-
     this.memoryDb.write(state => ({
       ...state,
       [ASSETS_TABLE_NAME]: nextTable
     }));
-
-    console.log("finish");
   }
 
   override peekOwnedAssetsByUser(userId: string): AppTypes.AssetCard[] {

@@ -688,20 +688,24 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
     this.editorTarget = target;
     this.editingEventId = row.id;
+
     if (cachedRecord) {
       this.currentRecord = cachedRecord;
       this.openRecord(cachedRecord, readOnly, target);
-    } else {
-      this.eventEditorService.open(readOnly ? 'edit' : 'edit', fallbackSource, readOnly);
+      return;
     }
 
     if (!activeUserId) {
+      this.eventEditorService.open('edit', fallbackSource, readOnly);
       return;
     }
+
     const record = await this.eventEditorDataService.queryKnownItemById(activeUserId, row.id);
     if (!record) {
+      this.eventEditorService.open('edit', fallbackSource, readOnly);
       return;
     }
+
     this.currentRecord = record;
     this.editorTarget = record.type === 'hosting' ? 'hosting' : target;
     this.editingEventId = record.id;

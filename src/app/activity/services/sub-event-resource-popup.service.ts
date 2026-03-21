@@ -283,7 +283,7 @@ export class SubEventResourcePopupService {
       }
       this.popupCtx.clearActivitiesNavigationRequest();
       this.openFromChatRequest(request);
-    }, { allowSignalWrites: true });
+    });
 
     effect(() => {
       const request = this.eventEditorService.subEventResourcePopupRequest();
@@ -292,7 +292,7 @@ export class SubEventResourcePopupService {
       }
       this.eventEditorService.clearSubEventResourcePopupRequest();
       this.openFromEventEditorRequest(request);
-    }, { allowSignalWrites: true });
+    });
   }
 
   private activeUser(): UserDto {

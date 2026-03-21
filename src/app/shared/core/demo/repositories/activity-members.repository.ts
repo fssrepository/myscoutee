@@ -39,6 +39,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   }
 
   init(ownerUserIds?: readonly string[]): void {
+    console.log(Date.now() + "start - activity members");
     this.demoEventsRepository.init();
     const normalizedOwnerUserIds = Array.from(new Set(
       (ownerUserIds ?? this.demoUsersRepository.queryAvailableDemoUsers().map(user => user.id))

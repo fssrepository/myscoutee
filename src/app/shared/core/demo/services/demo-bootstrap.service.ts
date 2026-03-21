@@ -112,72 +112,34 @@ export class DemoBootstrapService {
       return;
     }
 
-    this.emitProgress({
-      percent: 0,
-      label: 'Preparing demo selector'
-    });
-    await this.waitForUiYield();
-
-    this.emitProgress({
-      percent: 16,
-      label: 'Loading chats'
-    });
-    this.chatsRepository.init();
-    await this.waitForUiYield();
-
-    this.emitProgress({
-      percent: 36,
-      label: 'Loading events'
-    });
-    this.eventsRepository.init();
-    await this.waitForUiYield();
-
-    this.emitProgress({
-      percent: 52,
-      label: 'Preparing demo users'
-    });
-    this.usersRepository.init();
-    await this.waitForUiYield();
-
-    this.emitProgress({
-      percent: 64,
-      label: 'Loading ratings'
-    });
-    this.usersRatingsRepository.init();
-    await this.waitForUiYield();
-
-    this.emitProgress({
-      percent: 76,
-      label: 'Preparing owned assets'
-    });
-    this.assetsRepository.init();
-    await this.waitForUiYield();
-
-    this.emitProgress({
-      percent: 86,
-      label: 'Preparing activity members'
-    });
-    this.activityMembersRepository.init();
-    await this.waitForUiYield();
-
-    this.emitProgress({
-      percent: 94,
-      label: 'Preparing activity resources'
-    });
-    this.activityResourcesRepository.init();
-    await this.waitForUiYield();
-
-    this.emitProgress({
-      percent: 100,
-      label: 'Syncing demo IndexedDB'
-    });
-    await this.memoryDb.flushToIndexedDb();
+    await this.runBootstrapStep(0, 'Preparing demo selector');
+    await this.runBootstrapStep(16, 'Loading chats', () => this.chatsRepository.init());
+    await this.runBootstrapStep(36, 'Loading events', () => this.eventsRepository.init());
+    await this.runBootstrapStep(52, 'Preparing demo users', () => { this.usersRepository.init(); });
+    await this.runBootstrapStep(64, 'Loading ratings', () => this.usersRatingsRepository.init());
+    await this.runBootstrapStep(76, 'Preparing owned assets', () => this.assetsRepository.init());
+    await this.runBootstrapStep(86, 'Preparing activity members', () => this.activityMembersRepository.init());
+    await this.runBootstrapStep(94, 'Preparing activity resources', () => this.activityResourcesRepository.init());
+    await this.runBootstrapStep(100, 'Syncing demo IndexedDB', () => this.memoryDb.flushToIndexedDb());
 
     this.ready = true;
     this.emitProgress({
       percent: 100,
       label: 'Demo data ready'
     });
+  }
+
+  private async runBootstrapStep(
+    percent: number,
+    label: string,
+    work?: () => void | Promise<void>
+  ): Promise<void> {
+    this.emitProgress({ percent, label });
+    await this.waitForUiYield();
+    if (work) {
+      await work();
+      await this.waitForUiYield();
+    }
   }
 
   private emitProgress(state: DemoBootstrapProgressState): void {
@@ -192,6 +154,12 @@ export class DemoBootstrapService {
   }
 
   private waitForUiYield(): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, 0));
+    return new Promise(resolve => {
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => resolve());
+        return;
+      }
+      setTimeout(resolve, 0);
+    });
   }
 }

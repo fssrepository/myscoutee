@@ -113,7 +113,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       this.eventRecordsLoadUserId = '';
       this.eventRecordsLoadPromise = null;
       this.eventRecordsRef.set([]);
-    }, { allowSignalWrites: true });
+    });
 
     effect(() => {
       const isPopupOpen = this.feedback.isPopupOpen();
@@ -123,7 +123,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       this.lastLoadedUserId = '';
       this.eventRecordsLoadUserId = '';
       this.eventRecordsLoadPromise = null;
-    }, { allowSignalWrites: true });
+    });
 
     effect(() => {
       const filter = this.feedback.eventFeedbackListFilter();
@@ -139,7 +139,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
           userId
         }
       };
-    }, { allowSignalWrites: true });
+    });
   }
 
   public get eventItems(): EventMenuItem[] {

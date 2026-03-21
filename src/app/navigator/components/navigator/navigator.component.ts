@@ -95,7 +95,7 @@ export class NavigatorComponent {
       this.lastHandledActivitiesRequestMs = request.updatedMs;
       this.activitiesContext.openActivities(request.primaryFilter, request.eventScope);
       this.popupCtx.clearNavigatorActivitiesRequest();
-    }, { allowSignalWrites: true });
+    });
 
     effect(() => {
       const request = this.popupCtx.navigatorAssetRequest();
@@ -105,7 +105,7 @@ export class NavigatorComponent {
       this.lastHandledAssetRequestMs = request.updatedMs;
       this.ownedAssets.openPopup(request.assetFilter);
       this.popupCtx.clearNavigatorAssetRequest();
-    }, { allowSignalWrites: true });
+    });
 
     effect(() => {
       const request = this.popupCtx.navigatorEventFeedbackRequest();
@@ -115,7 +115,7 @@ export class NavigatorComponent {
       this.lastHandledEventFeedbackRequestMs = request.updatedMs;
       this.popupCtx.clearNavigatorEventFeedbackRequest();
       void this.openEventFeedbackPopupFromNavigatorRequest();
-    }, { allowSignalWrites: true });
+    });
   }
 
   @HostListener('window:online')

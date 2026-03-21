@@ -98,7 +98,7 @@ export class NavigatorService {
         return;
       }
       this.appCtx.setActiveUserId(bootstrapUserId);
-    }, { allowSignalWrites: true });
+    });
 
     effect(() => {
       const session = this.sessionService.session();
