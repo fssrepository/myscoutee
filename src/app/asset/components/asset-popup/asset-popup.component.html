@@ -5,6 +5,7 @@
     [class.app-popup-stacked]="isBasketMode()"
     [class.app-popup-super-stacked]="isBasketMode()"
     [class.app-popup-super-stacked-over-subevents]="isBasketMode()"
+    [class.asset-popup-basket-shell]="isBasketMode()"
   >
     <div class="app-popup-backdrop" (click)="closeAssetPopup()"></div>
     <div
@@ -14,6 +15,7 @@
       [class.popup-panel-subevent-asset-assign]="isBasketMode()"
       [class.popup-panel-wide]="isBasketMode()"
       [class.popup-panel-full-height]="isBasketMode()"
+      [class.asset-popup-basket-panel]="isBasketMode()"
       (click)="$event.stopPropagation()"
     >
       <div
