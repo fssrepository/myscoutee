@@ -97,6 +97,7 @@ export class AssetMemberPickerPopupComponent {
     pageSize: 16,
     loadingDelayMs: 1500,
     loadingWindowMs: 3000,
+    defaultView: 'list',
     headerProgress: {
       enabled: true
     },
