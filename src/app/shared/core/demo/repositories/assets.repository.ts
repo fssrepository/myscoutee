@@ -18,6 +18,7 @@ import {
 export class DemoAssetsRepository extends HttpAssetsRepository {
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly usersRepository = inject(DemoUsersRepository);
+  private readonly initializedOwnerUserIds = new Set<string>();
 
   init(ownerUserIds?: readonly string[]): void {
     const normalizedOwnerIds = Array.from(new Set(
@@ -29,20 +30,28 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       return;
     }
 
+    const ownerIdsToInitialize = normalizedOwnerIds.filter(ownerUserId => !this.initializedOwnerUserIds.has(ownerUserId));
+    if (ownerIdsToInitialize.length === 0) {
+      return;
+    }
+
     let nextTable = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
     let changed = false;
 
-    for (const ownerUserId of normalizedOwnerIds) {
+    for (const ownerUserId of ownerIdsToInitialize) {
       if ((nextTable.idsByOwnerUserId[ownerUserId] ?? []).length > 0) {
+        this.initializedOwnerUserIds.add(ownerUserId);
         continue;
       }
       const records = this.buildSeededOwnerRecords(ownerUserId);
       if (records.length === 0) {
+        this.initializedOwnerUserIds.add(ownerUserId);
         continue;
       }
       for (const record of records) {
         nextTable = this.upsertRecordCollection(nextTable, record);
       }
+      this.initializedOwnerUserIds.add(ownerUserId);
       changed = true;
     }
 
@@ -50,10 +59,14 @@ export class DemoAssetsRepository extends HttpAssetsRepository {
       return;
     }
 
+    console.log("start");
+
     this.memoryDb.write(state => ({
       ...state,
       [ASSETS_TABLE_NAME]: nextTable
     }));
+
+    console.log("finish");
   }
 
   override peekOwnedAssetsByUser(userId: string): AppTypes.AssetCard[] {
