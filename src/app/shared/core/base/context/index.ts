@@ -1,6 +1,5 @@
 export {
   AppContext,
-  type ActivityInvitePopupState,
   DEFAULT_LOAD_STATE,
   DEFAULT_USER_IMPRESSION_CHANGE_FLAGS,
   type ActivityCounterKey,
@@ -11,3 +10,10 @@ export {
   type LoadStatus,
   type UserImpressionChangeFlags
 } from './app.context';
+export {
+  AppPopupContext,
+  type ActivityInvitePopupState,
+  type NavigatorActivitiesRequest,
+  type NavigatorAssetRequest,
+  type NavigatorEventFeedbackRequest
+} from './app-popup.context';

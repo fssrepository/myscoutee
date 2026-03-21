@@ -1,14 +1,18 @@
 export {
   AppContext,
-  type ActivityInvitePopupState,
+  AppPopupContext,
   DEFAULT_LOAD_STATE,
   DEFAULT_USER_IMPRESSION_CHANGE_FLAGS,
   type ActivityCounterKey,
   type ActivityCounters,
+  type ActivityInvitePopupState,
   type ActivityMembersSyncState,
   type ConnectivityState,
   type LoadState,
   type LoadStatus,
+  type NavigatorActivitiesRequest,
+  type NavigatorAssetRequest,
+  type NavigatorEventFeedbackRequest,
   type UserImpressionChangeFlags
 } from './base/context';
 export { restrictedAreaGuard } from './base/guards';

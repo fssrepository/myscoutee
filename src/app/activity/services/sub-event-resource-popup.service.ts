@@ -2,15 +2,15 @@ import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import type { CdkDragDrop } from '@angular/cdk/drag-drop';
 import type { MatSelect } from '@angular/material/select';
 
-import { AssetPopupService } from '../../asset/asset-popup.service';
+import { AssetPopupStateService } from '../../asset/asset-popup-state.service';
 import type { AssetPopupHost } from '../../asset/asset-popup.host';
-import { OwnedAssetsPopupService } from '../../asset/owned-assets-popup.service';
+import { OwnedAssetsPopupFacadeService } from '../../asset/owned-assets-popup-facade.service';
 import { AppUtils } from '../../shared/app-utils';
 import type * as AppTypes from '../../shared/core/base/models';
-import { ActivityMembersService, ActivityResourceBuilder, ActivityResourcesService, AppContext, SessionService, type UserDto } from '../../shared/core';
-import { ActivitiesDbContextService } from './activities-db-context.service';
+import { ActivityMembersService, ActivityResourceBuilder, ActivityResourcesService, AppContext, AppPopupContext, SessionService, type UserDto } from '../../shared/core';
+import { ActivitiesPopupStateService } from './activities-popup-state.service';
 import { DemoUsersRepository } from '../../shared/core/demo';
-import { EventEditorService } from './event-editor.service';
+import { EventEditorPopupStateService } from './event-editor-popup-state.service';
 import type {
   EventResourcePopupHost
 } from '../components/event-resource-popup/event-resource-popup.component';
@@ -95,13 +95,14 @@ interface SupplyBringDialogState {
   providedIn: 'root'
 })
 export class SubEventResourcePopupService {
-  private readonly activitiesContext = inject(ActivitiesDbContextService);
-  private readonly eventEditorService = inject(EventEditorService);
-  private readonly assetPopupService = inject(AssetPopupService);
-  private readonly ownedAssets = inject(OwnedAssetsPopupService);
+  private readonly activitiesContext = inject(ActivitiesPopupStateService);
+  private readonly eventEditorService = inject(EventEditorPopupStateService);
+  private readonly assetPopupService = inject(AssetPopupStateService);
+  private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly appCtx = inject(AppContext);
+  private readonly popupCtx = inject(AppPopupContext);
   private readonly sessionService = inject(SessionService);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
 
@@ -276,11 +277,11 @@ export class SubEventResourcePopupService {
     });
 
     effect(() => {
-      const request = this.activitiesContext.activitiesNavigationRequest();
+      const request = this.popupCtx.activitiesNavigationRequest();
       if (!request || request.type !== 'chatResource') {
         return;
       }
-      this.activitiesContext.clearActivitiesNavigationRequest();
+      this.popupCtx.clearActivitiesNavigationRequest();
       this.openFromChatRequest(request);
     }, { allowSignalWrites: true });
 
@@ -301,7 +302,7 @@ export class SubEventResourcePopupService {
 
   private openFromChatRequest(request: Extract<AppTypes.ActivitiesNavigationRequest, { type: 'chatResource' }>): void {
     if (request.resourceType === 'Members') {
-      this.activitiesContext.requestActivitiesNavigation({
+      this.popupCtx.requestActivitiesNavigation({
         type: 'members',
         ownerId: request.group?.id?.trim() || request.subEvent.id,
         ownerType: request.group?.id ? 'group' : 'subEvent'
@@ -322,9 +323,9 @@ export class SubEventResourcePopupService {
     this.openPopupContext(context, request.resourceType);
   }
 
-  private openFromEventEditorRequest(request: NonNullable<ReturnType<EventEditorService['subEventResourcePopupRequest']>>): void {
+  private openFromEventEditorRequest(request: NonNullable<ReturnType<EventEditorPopupStateService['subEventResourcePopupRequest']>>): void {
     if (request.type === 'Members') {
-      this.activitiesContext.requestActivitiesNavigation({
+      this.popupCtx.requestActivitiesNavigation({
         type: 'members',
         ownerId: request.group?.id?.trim() || `${request.subEvent.id ?? ''}`.trim(),
         ownerType: request.group?.id ? 'group' : 'subEvent'
@@ -560,7 +561,7 @@ export class SubEventResourcePopupService {
     const acceptedMembers = fallbackMembers.filter(member => member.status === 'accepted').length;
     const pendingMembers = fallbackMembers.filter(member => member.status === 'pending').length;
     const capacityTotal = settings[card.sourceAssetId]?.capacityMax ?? Math.max(0, sourceCard.capacityTotal);
-    this.activitiesContext.requestActivitiesNavigation({
+    this.popupCtx.requestActivitiesNavigation({
       type: 'members',
       ownerId: sourceCard.id,
       ownerType: 'asset',

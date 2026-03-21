@@ -17,9 +17,10 @@ import { delay, of } from 'rxjs';
 
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
-import { ActivitiesDbContextService } from '../../services/activities-db-context.service';
-import { EventEditorService } from '../../services/event-editor.service';
+import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
+import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import type { EventChatResourceContext } from '../../../shared/core/base/models';
+import { AppPopupContext } from '../../../shared/core';
 import type { EventMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
 import {
   SmartListComponent,
@@ -46,8 +47,9 @@ interface ChatThreadFilters {
 export class EventChatPopupComponent implements OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
-  protected readonly activitiesContext = inject(ActivitiesDbContextService);
-  private readonly eventEditorService = inject(EventEditorService);
+  protected readonly activitiesContext = inject(ActivitiesPopupStateService);
+  private readonly eventEditorService = inject(EventEditorPopupStateService);
+  private readonly popupCtx = inject(AppPopupContext);
 
   protected readonly session = computed(() => this.activitiesContext.eventChatSession());
   protected chatInitialLoadPending = false;
@@ -258,7 +260,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!row) {
       return;
     }
-    this.activitiesContext.requestActivitiesNavigation({
+    this.popupCtx.requestActivitiesNavigation({
       type: 'eventEditor',
       row,
       readOnly: true
@@ -300,7 +302,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     this.showContextMenu = false;
-    this.activitiesContext.requestActivitiesNavigation({
+    this.popupCtx.requestActivitiesNavigation({
       type: 'chatResource',
       ownerId: context.eventRow?.id ?? session.item.eventId,
       item: session.item,

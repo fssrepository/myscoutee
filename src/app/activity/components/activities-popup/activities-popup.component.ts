@@ -27,9 +27,9 @@ import type {
 } from '../../../shared/core/base/interfaces/activity-feed.interface';
 import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
 import { AppUtils } from '../../../shared/app-utils';
-import { ActivitiesDbContextService } from '../../services/activities-db-context.service';
-import { EventEditorService } from '../../services/event-editor.service';
-import { OwnedAssetsPopupService } from '../../../asset/owned-assets-popup.service';
+import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
+import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
+import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
 import type {
   ActivityMemberOwnerRef,
   ActivityMembersSummary,
@@ -73,6 +73,7 @@ import {
   ActivityMembersService,
   ActivityResourcesService,
   AppContext,
+  AppPopupContext,
   buildActivityRateRows,
   toActivityEventRowFromMenuItem,
   toActivityHostingRowFromMenuItem,
@@ -127,16 +128,17 @@ export class ActivitiesPopupComponent implements OnDestroy {
   // ── injected ──────────────────────────────────────────────────────────────
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
-  protected readonly activitiesContext = inject(ActivitiesDbContextService);
+  protected readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly activitiesService = inject(ActivitiesService);
-  private readonly eventEditorService = inject(EventEditorService);
+  private readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly ratesService = inject(RatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly chatsService = inject(ChatsService);
   private readonly eventsService = inject(EventsService);
   private readonly appCtx = inject(AppContext);
-  private readonly ownedAssets = inject(OwnedAssetsPopupService);
+  private readonly popupCtx = inject(AppPopupContext);
+  private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
 
   // ── Self-contained data state (no host inputs) ───────────────────────────
@@ -246,7 +248,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activitiesViewOptions: Array<{ key: AppTypes.ActivitiesView; label: string; icon: string }>
     = [...APP_STATIC_DATA.activitiesViewOptions];
 
-  // ── Filter / view state – backed by EventEditorService signals ───────────
+  // ── Filter / view state – backed by EventEditorPopupStateService signals ───────────
   // Local copies are kept in sync via an effect() so that OnPush CD fires
   // correctly without needing toSignal() everywhere in the template.
   protected activitiesPrimaryFilter: AppTypes.ActivitiesPrimaryFilter        = 'chats';
@@ -1337,12 +1339,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.showActivitiesRatePicker = !this.showActivitiesRatePicker;
   }
 
-  // ── Event editor / explore – call EventEditorService directly ────────────
+  // ── Event editor / explore – call EventEditorPopupStateService directly ────────────
 
   protected requestOpenEventEditor(): void {
     const target: AppTypes.EventEditorTarget = this.isEventActivitiesPrimaryFilter() ? 'hosting' : 'events';
     this.showActivitiesQuickActionsMenu = false;
-    this.activitiesContext.requestActivitiesNavigation({
+    this.popupCtx.requestActivitiesNavigation({
       type: 'eventEditorCreate',
       target
     });
@@ -1359,7 +1361,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected requestOpenEventExplore(): void {
     this.showActivitiesQuickActionsMenu = false;
-    this.activitiesContext.requestActivitiesNavigation({ type: 'eventExplore' });
+    this.popupCtx.requestActivitiesNavigation({ type: 'eventExplore' });
   }
 
   // =========================================================================
@@ -1972,7 +1974,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected runActivityItemViewAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
-    this.activitiesContext.requestActivitiesNavigation({
+    this.popupCtx.requestActivitiesNavigation({
       type: 'eventEditor',
       row,
       readOnly: true
@@ -2125,7 +2127,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected openActivityMembers(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
-    this.activitiesContext.requestActivitiesNavigation({
+    this.popupCtx.requestActivitiesNavigation({
       type: 'members',
       ownerId: row.id,
       ownerType: 'event'

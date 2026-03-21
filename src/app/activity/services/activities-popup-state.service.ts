@@ -5,7 +5,6 @@ import type * as AppTypes from '../../shared/core/base/models';
 import { ActivityMembersService, ChatsService, EventsService, SessionService } from '../../shared/core';
 import type {
   ActivitiesEventSyncPayload,
-  ActivitiesNavigationRequest,
   EventChatContext,
   EventChatSession
 } from '../../shared/core/base/models';
@@ -46,14 +45,13 @@ const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
 @Injectable({
   providedIn: 'root'
 })
-export class ActivitiesDbContextService {
+export class ActivitiesPopupStateService {
   private readonly sessionService = inject(SessionService);
   private readonly eventsService = inject(EventsService);
   private readonly chatsService = inject(ChatsService);
   private readonly activityMembersService = inject(ActivityMembersService);
 
   private readonly _uiState = signal<ActivitiesUiState>(DEFAULT_ACTIVITIES_UI_STATE);
-  private _activitiesNavigationRequest = signal<ActivitiesNavigationRequest | null>(null);
   private _activitiesEventSync = signal<ActivitiesEventSyncPayload | null>(null);
   private _eventChatSession = signal<EventChatSession | null>(null);
 
@@ -71,7 +69,6 @@ export class ActivitiesDbContextService {
   readonly activitiesStickyValue = computed(() => this._uiState().stickyValue);
   readonly activitiesRatesFullscreenMode = computed(() => this._uiState().ratesFullscreenMode);
   readonly activitiesSelectedRateId = computed(() => this._uiState().selectedRateId);
-  readonly activitiesNavigationRequest = this._activitiesNavigationRequest.asReadonly();
   readonly activitiesEventSync = this._activitiesEventSync.asReadonly();
   readonly eventChatSession = this._eventChatSession.asReadonly();
 
@@ -200,14 +197,6 @@ export class ActivitiesDbContextService {
 
   setActivitiesSelectedRateId(rateId: string | null): void {
     this.patchUiState({ selectedRateId: rateId });
-  }
-
-  requestActivitiesNavigation(request: ActivitiesNavigationRequest): void {
-    this._activitiesNavigationRequest.set(request);
-  }
-
-  clearActivitiesNavigationRequest(): void {
-    this._activitiesNavigationRequest.set(null);
   }
 
   emitActivitiesEventSync(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): void {

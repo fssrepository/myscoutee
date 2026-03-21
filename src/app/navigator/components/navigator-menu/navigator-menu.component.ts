@@ -3,6 +3,7 @@ import { Component, HostListener, computed, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import {
   AppContext,
+  AppPopupContext,
   type ActivityCounters,
   type UserDto,
   type UserImpressionChangeFlags
@@ -36,6 +37,7 @@ interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
 })
 export class NavigatorMenuComponent {
   private readonly appCtx = inject(AppContext);
+  private readonly popupCtx = inject(AppPopupContext);
   private readonly navigatorService = inject(NavigatorService);
   protected readonly activeUser = this.appCtx.activeUserProfile;
   protected readonly menuUser = computed<NavigatorMenuUser | null>(() => {
@@ -195,27 +197,27 @@ export class NavigatorMenuComponent {
 
   protected openAssetCarPopup(event?: Event): void {
     event?.stopPropagation();
-    this.appCtx.openNavigatorAssetRequest('Car');
+    this.popupCtx.openNavigatorAssetRequest('Car');
   }
 
   protected openAssetAccommodationPopup(event?: Event): void {
     event?.stopPropagation();
-    this.appCtx.openNavigatorAssetRequest('Accommodation');
+    this.popupCtx.openNavigatorAssetRequest('Accommodation');
   }
 
   protected openAssetSuppliesPopup(event?: Event): void {
     event?.stopPropagation();
-    this.appCtx.openNavigatorAssetRequest('Supplies');
+    this.popupCtx.openNavigatorAssetRequest('Supplies');
   }
 
   protected openAssetTicketsPopup(event?: Event): void {
     event?.stopPropagation();
-    this.appCtx.openNavigatorAssetRequest('Ticket');
+    this.popupCtx.openNavigatorAssetRequest('Ticket');
   }
 
   protected openEventFeedbackPopup(event?: Event): void {
     event?.stopPropagation();
-    this.appCtx.openNavigatorEventFeedbackRequest();
+    this.popupCtx.openNavigatorEventFeedbackRequest();
   }
 
   protected openReportUserFromFeedback(event?: Event): void {
@@ -231,7 +233,7 @@ export class NavigatorMenuComponent {
     primaryFilter: 'rates' | 'chats' | 'events',
     eventScope?: 'active-events' | 'invitations' | 'my-events'
   ): void {
-    this.appCtx.openNavigatorActivitiesRequest(primaryFilter, eventScope);
+    this.popupCtx.openNavigatorActivitiesRequest(primaryFilter, eventScope);
   }
 
   private resolveCompletionPercent(user: UserDto | null): number {

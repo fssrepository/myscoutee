@@ -17,7 +17,7 @@ import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import type { ActivityMemberOwnerRef, ActivityMemberOwnerType } from '../../../shared/core/base/models';
 import type { ActivityMembersSyncState } from '../../../shared/core';
-import { ActivityMembersService, AppContext, EventsService } from '../../../shared/core';
+import { ActivityMembersService, AppContext, AppPopupContext, EventsService } from '../../../shared/core';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import {
   LazyBgImageDirective,
@@ -29,8 +29,6 @@ import {
   type SmartListLoaders,
   type SmartListStateChange
 } from '../../../shared/ui';
-import { ActivitiesDbContextService } from '../../services/activities-db-context.service';
-import { AssetPopupService } from '../../../asset/asset-popup.service';
 import { DemoUsersRepository } from '../../../shared/core/demo';
 
 interface MembersSmartListFilters {
@@ -65,11 +63,10 @@ type MembersSummaryState = {
 })
 export class EventMembersPopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly activitiesContext = inject(ActivitiesDbContextService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly eventsService = inject(EventsService);
   private readonly appCtx = inject(AppContext);
-  private readonly assetPopupService = inject(AssetPopupService);
+  private readonly popupCtx = inject(AppPopupContext);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
 
   private get users() {
@@ -160,11 +157,11 @@ export class EventMembersPopupComponent {
     this.syncMobileViewFromViewport();
 
     effect(() => {
-      const request = this.activitiesContext.activitiesNavigationRequest();
+      const request = this.popupCtx.activitiesNavigationRequest();
       if (!request || (request.type !== 'members' && request.type !== 'eventEditorMembers')) {
         return;
       }
-      this.activitiesContext.clearActivitiesNavigationRequest();
+      this.popupCtx.clearActivitiesNavigationRequest();
       if (request.type === 'members') {
         this.openMembersPopup(request.ownerId, {
           ownerType: request.ownerType ?? 'event',
@@ -295,7 +292,7 @@ export class EventMembersPopupComponent {
     if (!this.canShowInviteButton || !this.ownerId) {
       return;
     }
-    this.assetPopupService.openActivityInvite({
+    this.popupCtx.openActivityInvitePopup({
       ownerId: this.ownerId,
       ownerType: this.ownerRef?.ownerType ?? 'event',
       title: this.subtitle,
@@ -305,7 +302,7 @@ export class EventMembersPopupComponent {
   }
 
   protected isSuspendedForAssetInvite(): boolean {
-    const invitePopup = this.appCtx.activityInvitePopup();
+    const invitePopup = this.popupCtx.activityInvitePopup();
     return !!invitePopup && invitePopup.ownerId === this.ownerId;
   }
 

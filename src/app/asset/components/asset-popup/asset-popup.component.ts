@@ -6,14 +6,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { from } from 'rxjs';
 
-import {
-  AssetFacadeService,
-  type AssetTicketListFilters,
-  type OwnedAssetListFilters
-} from '../../asset-facade.service';
-import { AssetPopupService } from '../../asset-popup.service';
-import { OwnedAssetsPopupService } from '../../owned-assets-popup.service';
+import { AssetFacadeService } from '../../asset-facade.service';
+import { AssetPopupStateService } from '../../asset-popup-state.service';
+import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
 import type * as AppTypes from '../../../shared/core/base/models';
+import { AppContext, AssetsService, AssetTicketsService } from '../../../shared/core';
 import { AssetDeleteConfirmComponent } from '../asset-delete-confirm/asset-delete-confirm.component';
 import { AssetFormPopupComponent } from '../asset-form-popup/asset-form-popup.component';
 import { AssetMemberPickerPopupComponent } from '../asset-member-picker-popup/asset-member-picker-popup.component';
@@ -29,6 +26,17 @@ import {
   type SmartListConfig,
   type SmartListStateChange
 } from '../../../shared/ui';
+
+interface AssetTicketListFilters {
+  userId?: string;
+  order?: AppTypes.AssetTicketOrder;
+}
+
+interface OwnedAssetListFilters {
+  userId?: string;
+  type?: AppTypes.AssetType;
+  refreshToken?: number;
+}
 
 @Component({
   selector: 'app-asset-popup',
@@ -54,8 +62,11 @@ import {
 })
 export class AssetPopupComponent implements DoCheck, OnDestroy {
   private readonly assetFacade = inject(AssetFacadeService);
-  protected readonly assetPopup = inject(AssetPopupService);
-  protected readonly ownedAssets = inject(OwnedAssetsPopupService);
+  private readonly appCtx = inject(AppContext);
+  private readonly assetsService = inject(AssetsService);
+  private readonly assetTicketsService = inject(AssetTicketsService);
+  protected readonly assetPopup = inject(AssetPopupStateService);
+  protected readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   protected readonly assetFilterOpen = signal(false);
   protected readonly retryTicketScanner = (event?: Event): void => this.assetPopup.retryTicketScanner(event);
   protected readonly closeOwnedAssetForm = (): void => this.ownedAssets.closeAssetForm();
@@ -78,7 +89,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   protected readonly assetSmartListLoadPage = (query: ListQuery<OwnedAssetListFilters>) =>
     from(this.loadOwnedAssetSmartListPage(query));
   protected readonly ticketSmartListLoadPage = (query: ListQuery<AssetTicketListFilters>) =>
-    from(this.assetFacade.loadTicketPage(query));
+    from(this.loadTicketSmartListPage(query));
   protected readonly assetSmartListConfig: SmartListConfig<AppTypes.AssetCard, OwnedAssetListFilters> = {
     pageSize: 18,
     loadingDelayMs: 1500,
@@ -234,7 +245,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     this.ownedAssets.selectAssetFilter(filter);
     this.assetSmartListQuery = {
       filters: {
-        userId: this.assetFacade.activeUserId(),
+        userId: this.activeUserId(),
         type: filter === 'Ticket' ? 'Car' : filter,
         refreshToken: this.ownedAssets.assetListRevision()
       }
@@ -323,7 +334,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
 
 
   private syncSmartListQueries(): void {
-    const activeUserId = this.assetFacade.activeUserId();
+    const activeUserId = this.activeUserId();
     const assetType = this.currentAssetSmartListType();
     const basketMode = this.isBasketMode();
     const basketCardsKey = basketMode
@@ -362,18 +373,77 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     }
   }
 
+  private activeUserId(): string {
+    return this.appCtx.activeUserId().trim() || 'u1';
+  }
+
   private currentAssetSmartListType(): AppTypes.AssetType {
     const currentFilter = this.ownedAssets.assetFilter;
     return currentFilter === 'Accommodation' || currentFilter === 'Supplies' ? currentFilter : 'Car';
   }
 
+  private async loadTicketSmartListPage(
+    query: ListQuery<AssetTicketListFilters>
+  ): Promise<{ items: AppTypes.ActivityListRow[]; total: number }> {
+    const userId = query.filters?.userId?.trim() || this.activeUserId();
+    if (!userId) {
+      return {
+        items: [],
+        total: 0
+      };
+    }
+    const page = await this.assetTicketsService.queryTicketPage({
+      userId,
+      page: Math.max(0, Math.trunc(Number(query.page) || 0)),
+      pageSize: Math.max(1, Math.trunc(Number(query.pageSize) || 1)),
+      order: query.filters?.order === 'past' ? 'past' : 'upcoming'
+    });
+    return {
+      items: page.items.map(row => ({ ...row })),
+      total: page.total
+    };
+  }
+
   private async loadOwnedAssetSmartListPage(
     query: ListQuery<OwnedAssetListFilters>
   ): Promise<{ items: AppTypes.AssetCard[]; total: number }> {
-    if (!this.isBasketMode()) {
-      return this.assetFacade.loadOwnedAssetPage(query);
+    const userId = query.filters?.userId?.trim() || this.activeUserId();
+    const type = query.filters?.type;
+    if (!userId || (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies')) {
+      return {
+        items: [],
+        total: 0
+      };
     }
-    const selectedAssetIds = this.assetPopup.host()?.selectedSubEventAssetAssignChips().map(card => card.id) ?? [];
-    return this.assetFacade.loadSelectableOwnedAssetPage(query, selectedAssetIds);
+    const cards = await this.assetsService.queryOwnedAssetsByUser(userId);
+    const selectedAssetIds = this.isBasketMode()
+      ? new Set((this.assetPopup.host()?.selectedSubEventAssetAssignChips() ?? []).map(card => card.id.trim()).filter(Boolean))
+      : null;
+    const filtered = cards
+      .filter(card => card.type === type)
+      .sort((left, right) => {
+        if (selectedAssetIds) {
+          const selectedDelta = Number(selectedAssetIds.has(right.id)) - Number(selectedAssetIds.has(left.id));
+          if (selectedDelta !== 0) {
+            return selectedDelta;
+          }
+        }
+        return left.title.localeCompare(right.title) || left.id.localeCompare(right.id);
+      });
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
+    const start = page * pageSize;
+    return {
+      items: filtered.slice(start, start + pageSize).map(card => this.cloneOwnedAsset(card)),
+      total: filtered.length
+    };
+  }
+
+  private cloneOwnedAsset(card: AppTypes.AssetCard): AppTypes.AssetCard {
+    return {
+      ...card,
+      routes: [...(card.routes ?? [])],
+      requests: card.requests.map(request => ({ ...request }))
+    };
   }
 }

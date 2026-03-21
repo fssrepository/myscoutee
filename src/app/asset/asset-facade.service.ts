@@ -3,21 +3,10 @@ import { Injectable, inject } from '@angular/core';
 import { DemoAssetBuilder } from '../shared/core/demo/builders';
 import { AppUtils } from '../shared/app-utils';
 import type * as AppTypes from '../shared/core/base/models';
-import { AssetsService, AssetTicketsService, AppContext, type UserDto } from '../shared/core';
+import { AppContext, type UserDto } from '../shared/core';
 import { DemoUsersRepository } from '../shared/core/demo';
 import type { InfoCardData, InfoCardMenuAction } from '../shared/ui';
-import type { ListQuery, PageResult } from '../shared/ui';
 
-export interface AssetTicketListFilters {
-  userId?: string;
-  order?: AppTypes.AssetTicketOrder;
-}
-
-export interface OwnedAssetListFilters {
-  userId?: string;
-  type?: AppTypes.AssetType;
-  refreshToken?: number;
-}
 
 type TicketPerson = Pick<UserDto, 'id' | 'name' | 'age' | 'city' | 'gender' | 'initials' | 'images'>;
 
@@ -26,8 +15,6 @@ type TicketPerson = Pick<UserDto, 'id' | 'name' | 'age' | 'city' | 'gender' | 'i
 })
 export class AssetFacadeService {
   private readonly appCtx = inject(AppContext);
-  private readonly assetsService = inject(AssetsService);
-  private readonly assetTicketsService = inject(AssetTicketsService);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
 
   private get users(): UserDto[] {
@@ -38,85 +25,6 @@ export class AssetFacadeService {
     return new Map(this.users.map(user => [user.id, user]));
   }
 
-  activeUserId(): string {
-    return this.appCtx.getActiveUserId().trim() || 'u1';
-  }
-
-  peekTicketCount(userId: string): number {
-    return this.assetTicketsService.peekTicketCountByUser(userId);
-  }
-
-  async loadTicketPage(query: ListQuery<AssetTicketListFilters>): Promise<PageResult<AppTypes.ActivityListRow>> {
-    const userId = query.filters?.userId?.trim() || this.activeUserId();
-    if (!userId) {
-      return {
-        items: [],
-        total: 0
-      };
-    }
-    const page = await this.assetTicketsService.queryTicketPage({
-      userId,
-      page: Math.max(0, Math.trunc(Number(query.page) || 0)),
-      pageSize: Math.max(1, Math.trunc(Number(query.pageSize) || 1)),
-      order: query.filters?.order === 'past' ? 'past' : 'upcoming'
-    });
-    return {
-      items: page.items.map(row => this.cloneTicketRow(row)),
-      total: page.total
-    };
-  }
-
-  async loadOwnedAssetPage(query: ListQuery<OwnedAssetListFilters>): Promise<PageResult<AppTypes.AssetCard>> {
-    const userId = query.filters?.userId?.trim() || this.activeUserId();
-    const type = query.filters?.type;
-    if (!userId || (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies')) {
-      return {
-        items: [],
-        total: 0
-      };
-    }
-    const cards = await this.assetsService.queryOwnedAssetsByUser(userId);
-    const filtered = cards.filter(card => card.type === type);
-    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
-    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
-    const start = page * pageSize;
-    return {
-      items: filtered.slice(start, start + pageSize).map(card => this.cloneOwnedAsset(card)),
-      total: filtered.length
-    };
-  }
-
-  async loadSelectableOwnedAssetPage(
-    query: ListQuery<OwnedAssetListFilters>,
-    selectedAssetIds: readonly string[] = []
-  ): Promise<PageResult<AppTypes.AssetCard>> {
-    const userId = query.filters?.userId?.trim() || this.activeUserId();
-    const type = query.filters?.type;
-    if (!userId || (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies')) {
-      return {
-        items: [],
-        total: 0
-      };
-    }
-    const selectedIds = new Set(selectedAssetIds.map(assetId => assetId.trim()).filter(Boolean));
-    const cards = await this.assetsService.queryOwnedAssetsByUser(userId);
-    const filtered = cards
-      .filter(card => card.type === type)
-      .sort((left, right) => {
-        const selectedDelta = Number(selectedIds.has(right.id)) - Number(selectedIds.has(left.id));
-        if (selectedDelta !== 0) {
-          return selectedDelta;
-        }
-        return left.title.localeCompare(right.title) || left.id.localeCompare(right.id);
-      });
-    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
-    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
-    const start = page * pageSize;
-    return {
-      items: filtered.slice(start, start + pageSize).map(card => this.cloneOwnedAsset(card)),
-      total: filtered.length
-    };
-  }
 
   ticketInfoCard(
     row: AppTypes.ActivityListRow,
@@ -230,7 +138,7 @@ export class AssetFacadeService {
   createTicketScanPayload(row: AppTypes.ActivityListRow): AppTypes.TicketScanPayload {
     const activeUser = this.resolveActiveTicketHolder();
     const issuedAtIso = AppUtils.toIsoDateTime(new Date());
-    const userId = activeUser?.id?.trim() || this.activeUserId();
+    const userId = activeUser?.id?.trim() || this.currentActiveUserId();
     const userName = activeUser?.name?.trim() || 'Ticket Holder';
     const holderAge = Math.max(0, Math.trunc(Number(activeUser?.age) || 0));
     const holderCity = activeUser?.city?.trim() || '';
@@ -265,18 +173,6 @@ export class AssetFacadeService {
       return user.initials.trim();
     }
     return AppUtils.initialsFromText(payload.holderName);
-  }
-
-  private cloneTicketRow(row: AppTypes.ActivityListRow): AppTypes.ActivityListRow {
-    return { ...row };
-  }
-
-  private cloneOwnedAsset(card: AppTypes.AssetCard): AppTypes.AssetCard {
-    return {
-      ...card,
-      routes: [...(card.routes ?? [])],
-      requests: card.requests.map(request => ({ ...request }))
-    };
   }
 
   private ticketImageUrl(row: AppTypes.ActivityListRow): string {
@@ -429,8 +325,12 @@ export class AssetFacadeService {
     ];
   }
 
+  private currentActiveUserId(): string {
+    return this.appCtx.getActiveUserId().trim() || 'u1';
+  }
+
   private resolveActiveTicketHolder(): TicketPerson | null {
-    const activeUserId = this.activeUserId();
+    const activeUserId = this.currentActiveUserId();
     const activeProfile = this.appCtx.activeUserProfile();
     if (activeProfile && activeProfile.id.trim() === activeUserId) {
       return activeProfile;

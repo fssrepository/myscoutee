@@ -1,16 +1,17 @@
 import { Injectable, NgZone, computed, inject, signal } from '@angular/core';
 
 import type * as AppTypes from '../shared/core/base/models';
-import type { ActivityMemberEntry } from '../shared/core/base/models';
-import { AppContext } from '../shared/core';
+import { AppContext, AppPopupContext, AssetTicketsService } from '../shared/core';
 import type { SmartListStateChange } from '../shared/ui';
 import { AssetFacadeService } from './asset-facade.service';
 import type { AssetPopupHost } from './asset-popup.host';
 
 @Injectable({ providedIn: 'root' })
-export class AssetPopupService {
+export class AssetPopupStateService {
   private readonly ngZone = inject(NgZone);
   private readonly appCtx = inject(AppContext);
+  private readonly popupCtx = inject(AppPopupContext);
+  private readonly assetTicketsService = inject(AssetTicketsService);
   private readonly assetFacade = inject(AssetFacadeService);
 
   private readonly hostRef = signal<AssetPopupHost | null>(null);
@@ -33,7 +34,7 @@ export class AssetPopupService {
     this.primaryVisibleRef()
     || this.stackedVisibleRef()
     || this.basketVisibleRef()
-    || this.appCtx.activityInvitePopup() !== null
+    || this.popupCtx.activityInvitePopup() !== null
     || this.ticketOverlayModeRef() !== null
   );
 
@@ -65,24 +66,10 @@ export class AssetPopupService {
     this.basketVisibleRef.set(isBasketOpen);
   }
 
-  openActivityInvite(request: {
-    ownerId: string;
-    ownerType?: AppTypes.ActivityMemberOwnerType;
-    title?: string;
-    initialCandidates?: readonly ActivityMemberEntry[];
-    onApply?: (selectedCandidates: readonly ActivityMemberEntry[]) => void | Promise<void>;
-    closeOwnerPopupOnClose?: boolean;
-  }): void {
-    this.appCtx.openActivityInvitePopup(request);
-  }
-
-  closeActivityInvite(): void {
-    this.appCtx.closeActivityInvitePopup();
-  }
 
   prepareTicketPopupOpen(): void {
     this.ticketRowsRef.set([]);
-    this.ticketTotalCountRef.set(this.assetFacade.peekTicketCount(this.assetFacade.activeUserId()));
+    this.ticketTotalCountRef.set(this.assetTicketsService.peekTicketCountByUser(this.activeUserId()));
     this.showTicketOrderPickerRef.set(false);
     this.selectedTicketRowRef.set(null);
     this.selectedTicketCodeValueRef.set('');
@@ -153,7 +140,7 @@ export class AssetPopupService {
     this.ticketDateOrderRef.set(order);
     this.showTicketOrderPickerRef.set(false);
     this.ticketRowsRef.set([]);
-    this.ticketTotalCountRef.set(this.assetFacade.peekTicketCount(this.assetFacade.activeUserId()));
+    this.ticketTotalCountRef.set(this.assetTicketsService.peekTicketCountByUser(this.activeUserId()));
   }
 
   selectedTicketRow(): AppTypes.ActivityListRow | null {
@@ -304,6 +291,10 @@ export class AssetPopupService {
 
   setTicketScannerVideoElement(element: HTMLVideoElement | null): void {
     this.ticketScannerVideoElement = element;
+  }
+
+  private activeUserId(): string {
+    return this.appCtx.activeUserId().trim() || 'u1';
   }
 
   private selectedTicketPayload(): AppTypes.TicketScanPayload | null {

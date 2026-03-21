@@ -27,7 +27,7 @@ export interface EventEditorSubEventResourcePopupRequest {
 @Injectable({
   providedIn: 'root'
 })
-export class EventEditorService {
+export class EventEditorPopupStateService {
   private _isOpen = signal(false);
   private _mode = signal<'create' | 'edit'>('create');
   private _sourceEvent = signal<any>(null);

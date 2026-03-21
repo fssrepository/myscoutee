@@ -10,9 +10,9 @@ import {
   type UserRealtimeLongPollResponseDto
 } from '../shared/core';
 import { ConfirmationDialogService } from '../shared/ui/services/confirmation-dialog.service';
-import { AssetPopupService } from '../asset/asset-popup.service';
-import { EventFeedbackPopupService } from '../activity/event-feedback-popup.service';
-import { ActivitiesDbContextService } from '../activity/services/activities-db-context.service';
+import { AssetPopupStateService } from '../asset/asset-popup-state.service';
+import { EventFeedbackPopupStateService } from '../activity/services/event-feedback-popup-state.service';
+import { ActivitiesPopupStateService } from '../activity/services/activities-popup-state.service';
 
 export interface NavigatorMenuUiState {
   open: boolean;
@@ -37,9 +37,9 @@ export class NavigatorService {
   private readonly appCtx = inject(AppContext);
   private readonly router = inject(Router);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
-  private readonly assetPopupService = inject(AssetPopupService);
-  private readonly eventFeedbackPopupService = inject(EventFeedbackPopupService);
-  private readonly activitiesContext = inject(ActivitiesDbContextService);
+  private readonly assetPopupService = inject(AssetPopupStateService);
+  private readonly eventFeedbackPopupService = inject(EventFeedbackPopupStateService);
+  private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly bindingsRef = signal<NavigatorBindings | null>(null);
   private readonly hydrationRequestKeyRef = signal('');
   private readonly menuOpenRef = signal(false);

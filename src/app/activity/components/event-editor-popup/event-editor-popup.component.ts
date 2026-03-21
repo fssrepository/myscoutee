@@ -11,14 +11,14 @@ import { MatTimepickerModule } from '@angular/material/timepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatOptionModule } from '@angular/material/core';
 import { Subscription } from 'rxjs';
-import { ActivitiesDbContextService } from '../../services/activities-db-context.service';
-import { EventEditorService } from '../../services/event-editor.service';
+import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
+import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import { EventEditorBuilder } from '../../../shared/core/base/builders';
 import { EventEditorConverter } from '../../../shared/core/base/converters';
 import type * as AppTypes from '../../../shared/core/base/models';
-import { AppContext, EventEditorDataService } from '../../../shared/core';
+import { AppContext, AppPopupContext, EventEditorDataService } from '../../../shared/core';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { TopicPickerPopupComponent } from '../../../shared/ui';
 import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
@@ -45,10 +45,11 @@ import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subev
   styleUrls: ['./event-editor-popup.component.scss']
 })
 export class EventEditorPopupComponent implements OnInit, OnDestroy {
-  protected readonly eventEditorService = inject(EventEditorService);
-  private readonly activitiesContext = inject(ActivitiesDbContextService);
+  protected readonly eventEditorService = inject(EventEditorPopupStateService);
+  private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly eventEditorDataService = inject(EventEditorDataService);
   private readonly appCtx = inject(AppContext);
+  private readonly popupCtx = inject(AppPopupContext);
   protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
 
   @ViewChild('eventImageInput') eventImageInput!: ElementRef<HTMLInputElement>;
@@ -63,11 +64,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   constructor() {
     effect(() => {
-      const request = this.activitiesContext.activitiesNavigationRequest();
+      const request = this.popupCtx.activitiesNavigationRequest();
       if (!request || (request.type !== 'eventEditorCreate' && request.type !== 'eventEditor')) {
         return;
       }
-      this.activitiesContext.clearActivitiesNavigationRequest();
+      this.popupCtx.clearActivitiesNavigationRequest();
       if (request.type === 'eventEditorCreate') {
         this.openCreateRequest(request.target);
         return;
@@ -202,7 +203,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         timeframe: this.eventForm.startAt || 'Draft'
       }
     };
-    this.activitiesContext.requestActivitiesNavigation({ type: 'eventEditorMembers', row });
+    this.popupCtx.requestActivitiesNavigation({ type: 'eventEditorMembers', row });
   }
 
   requestOpenSubEvents(): void {

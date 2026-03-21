@@ -1,6 +1,4 @@
 import { Injectable, computed, signal } from '@angular/core';
-import type { ActivityMemberEntry } from '../models/activity-member.model';
-import type { ActivityMemberOwnerType } from '../models/activities.model';
 import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface';
 import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../interfaces/user.interface';
 
@@ -35,31 +33,6 @@ export interface ActivityMembersSyncState {
   acceptedMembers: number;
   pendingMembers: number;
   capacityTotal: number;
-}
-
-export interface ActivityInvitePopupState {
-  updatedMs: number;
-  ownerId: string;
-  ownerType?: ActivityMemberOwnerType;
-  title?: string;
-  initialCandidates?: readonly ActivityMemberEntry[];
-  onApply?: (selectedCandidates: readonly ActivityMemberEntry[]) => void | Promise<void>;
-  closeOwnerPopupOnClose?: boolean;
-}
-
-export interface NavigatorActivitiesRequest {
-  updatedMs: number;
-  primaryFilter: 'rates' | 'chats' | 'events';
-  eventScope?: 'active-events' | 'invitations' | 'my-events';
-}
-
-export interface NavigatorAssetRequest {
-  updatedMs: number;
-  assetFilter: 'Car' | 'Accommodation' | 'Supplies' | 'Ticket';
-}
-
-export interface NavigatorEventFeedbackRequest {
-  updatedMs: number;
 }
 
 export const DEFAULT_LOAD_STATE: LoadState = {
@@ -102,10 +75,6 @@ export class AppContext {
   private readonly _impressionsByUserId = signal<Record<string, UserImpressionsDto>>({});
   private readonly _impressionChangeFlagsByUserId = signal<Record<string, UserImpressionChangeFlags>>({});
   private readonly _activityMembersSync = signal<ActivityMembersSyncState | null>(null);
-  private readonly _activityInvitePopup = signal<ActivityInvitePopupState | null>(null);
-  private readonly _navigatorActivitiesRequest = signal<NavigatorActivitiesRequest | null>(null);
-  private readonly _navigatorAssetRequest = signal<NavigatorAssetRequest | null>(null);
-  private readonly _navigatorEventFeedbackRequest = signal<NavigatorEventFeedbackRequest | null>(null);
   private readonly _activeUserId = signal<string>('');
   private readonly _connectivityState = signal<ConnectivityState>(detectInitialConnectivityState());
 
@@ -117,10 +86,6 @@ export class AppContext {
   readonly impressionsByUserId = this._impressionsByUserId.asReadonly();
   readonly impressionChangeFlagsByUserId = this._impressionChangeFlagsByUserId.asReadonly();
   readonly activityMembersSync = this._activityMembersSync.asReadonly();
-  readonly activityInvitePopup = this._activityInvitePopup.asReadonly();
-  readonly navigatorActivitiesRequest = this._navigatorActivitiesRequest.asReadonly();
-  readonly navigatorAssetRequest = this._navigatorAssetRequest.asReadonly();
-  readonly navigatorEventFeedbackRequest = this._navigatorEventFeedbackRequest.asReadonly();
   readonly activeUserId = this._activeUserId.asReadonly();
   readonly connectivityState = this._connectivityState.asReadonly();
   readonly isOnline = computed(() => this._connectivityState() === 'online');
@@ -515,72 +480,6 @@ export class AppContext {
     });
   }
 
-  openActivityInvitePopup(payload: {
-    ownerId: string;
-    ownerType?: ActivityMemberOwnerType;
-    title?: string;
-    initialCandidates?: readonly ActivityMemberEntry[];
-    onApply?: (selectedCandidates: readonly ActivityMemberEntry[]) => void | Promise<void>;
-    closeOwnerPopupOnClose?: boolean;
-  }): void {
-    const normalizedOwnerId = payload.ownerId.trim();
-    if (!normalizedOwnerId) {
-      return;
-    }
-    this._activityInvitePopup.set({
-      updatedMs: Date.now(),
-      ownerId: normalizedOwnerId,
-      ownerType: payload.ownerType === 'asset' || payload.ownerType === 'group' || payload.ownerType === 'subEvent'
-        ? payload.ownerType
-        : 'event',
-      title: payload.title?.trim() || undefined,
-      initialCandidates: Array.isArray(payload.initialCandidates)
-        ? payload.initialCandidates.map(candidate => ({ ...candidate }))
-        : undefined,
-      onApply: payload.onApply,
-      closeOwnerPopupOnClose: payload.closeOwnerPopupOnClose === true
-    });
-  }
-
-  closeActivityInvitePopup(): void {
-    this._activityInvitePopup.set(null);
-  }
-
-  openNavigatorActivitiesRequest(
-    primaryFilter: 'rates' | 'chats' | 'events',
-    eventScope?: 'active-events' | 'invitations' | 'my-events'
-  ): void {
-    this._navigatorActivitiesRequest.set({
-      updatedMs: Date.now(),
-      primaryFilter,
-      eventScope
-    });
-  }
-
-  openNavigatorAssetRequest(assetFilter: 'Car' | 'Accommodation' | 'Supplies' | 'Ticket'): void {
-    this._navigatorAssetRequest.set({
-      updatedMs: Date.now(),
-      assetFilter
-    });
-  }
-
-  openNavigatorEventFeedbackRequest(): void {
-    this._navigatorEventFeedbackRequest.set({
-      updatedMs: Date.now()
-    });
-  }
-
-  clearNavigatorActivitiesRequest(): void {
-    this._navigatorActivitiesRequest.set(null);
-  }
-
-  clearNavigatorAssetRequest(): void {
-    this._navigatorAssetRequest.set(null);
-  }
-
-  clearNavigatorEventFeedbackRequest(): void {
-    this._navigatorEventFeedbackRequest.set(null);
-  }
 
   private normalizeCounterValue(value: number): number {
     if (!Number.isFinite(value)) {

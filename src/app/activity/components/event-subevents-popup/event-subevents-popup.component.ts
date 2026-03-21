@@ -8,11 +8,11 @@ import { EventSubeventGroupFormPopupComponent } from '../event-subevent-group-fo
 import { EventSubeventLeaderboardGroup, EventSubeventLeaderboardPopupComponent } from '../event-subevent-leaderboard-popup/event-subevent-leaderboard-popup.component';
 import { EventSubeventStageFormPopupComponent } from '../event-subevent-stage-form-popup/event-subevent-stage-form-popup.component';
 import { AppUtils } from '../../../shared/app-utils';
-import { OwnedAssetsPopupService } from '../../../asset/owned-assets-popup.service';
+import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { ActivityResourceBuilder, ActivityResourcesService, AppContext, EventsService } from '../../../shared/core';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
-import { EventEditorService, EventEditorSubEventResourceType } from '../../services/event-editor.service';
+import { EventEditorPopupStateService, EventEditorSubEventResourceType } from '../../services/event-editor-popup-state.service';
 import {
   SmartListComponent,
   type ListQuery,
@@ -145,11 +145,11 @@ interface DeleteTargetState {
   styleUrl: './event-subevents-popup.component.scss'
 })
 export class EventSubeventsPopupComponent implements OnChanges {
-  private readonly eventEditorService = inject(EventEditorService);
+  private readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly eventsService = inject(EventsService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly appCtx = inject(AppContext);
-  private readonly ownedAssets = inject(OwnedAssetsPopupService);
+  private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
 
   @Input() open = false;
   @Input() readOnly = false;

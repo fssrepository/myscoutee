@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, On
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
-import { ActivitiesDbContextService } from '../../../activity/services/activities-db-context.service';
+import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
 import {
   PairCardComponent,
   SingleCardComponent,
@@ -206,7 +206,7 @@ export class HomeComponent implements OnDestroy {
 
   constructor(
     private readonly cdr: ChangeDetectorRef,
-    private readonly activitiesContext: ActivitiesDbContextService,
+    private readonly activitiesContext: ActivitiesPopupStateService,
     private readonly appCtx: AppContext,
     private readonly gameService: GameService,
     private readonly usersService: UsersService

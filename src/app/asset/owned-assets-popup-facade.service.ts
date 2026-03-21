@@ -3,7 +3,7 @@ import { Injectable, effect, inject, signal } from '@angular/core';
 import { DemoAssetBuilder } from '../shared/core/demo/builders';
 import { APP_STATIC_DATA } from '../shared/app-static-data';
 import type * as AppTypes from '../shared/core/base/models';
-import { AssetPopupService } from './asset-popup.service';
+import { AssetPopupStateService } from './asset-popup-state.service';
 import { AppContext, AssetsService } from '../shared/core';
 
 export interface OwnedAssetsRuntimeHooks {
@@ -16,8 +16,8 @@ export interface OwnedAssetsRuntimeHooks {
 @Injectable({
   providedIn: 'root'
 })
-export class OwnedAssetsPopupService {
-  private readonly assetPopupService = inject(AssetPopupService);
+export class OwnedAssetsPopupFacadeService {
+  private readonly assetPopupState = inject(AssetPopupStateService);
   private readonly assetsService = inject(AssetsService);
   private readonly appCtx = inject(AppContext);
   private readonly assetListRevisionRef = signal(0);
@@ -181,9 +181,9 @@ export class OwnedAssetsPopupService {
     this.activePopupFilter = filter;
     this.closeAssetForm();
     if (filter === 'Ticket') {
-      this.assetPopupService.prepareTicketPopupOpen();
+      this.assetPopupState.prepareTicketPopupOpen();
     }
-    this.assetPopupService.setPrimaryVisible(true);
+    this.assetPopupState.setPrimaryVisible(true);
   }
 
   closePopup(): void {
@@ -191,17 +191,17 @@ export class OwnedAssetsPopupService {
     this.closeAssetForm();
     this.pendingAssetDeleteCardId = null;
     this.itemActionMenu = null;
-    this.assetPopupService.resetTicketState();
-    this.assetPopupService.setPrimaryVisible(false);
+    this.assetPopupState.resetTicketState();
+    this.assetPopupState.setPrimaryVisible(false);
   }
 
   selectAssetFilter(filter: AppTypes.AssetFilterType): void {
     this.assetFilter = filter;
     this.activePopupFilter = filter;
     if (filter === 'Ticket') {
-      this.assetPopupService.prepareTicketPopupOpen();
+      this.assetPopupState.prepareTicketPopupOpen();
     }
-    this.assetPopupService.setPrimaryVisible(true);
+    this.assetPopupState.setPrimaryVisible(true);
   }
 
   openAssetForm(card?: AppTypes.AssetCard): void {

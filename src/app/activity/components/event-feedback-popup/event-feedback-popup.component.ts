@@ -20,7 +20,7 @@ import {
 } from '../../../shared/ui';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
-import { EventFeedbackPopupService, type EventFeedbackPopupSource } from '../../event-feedback-popup.service';
+import { EventFeedbackPopupStateService, type EventFeedbackPopupSource } from '../../services/event-feedback-popup-state.service';
 import { DemoUsersRepository } from '../../../shared/core/demo';
 
 interface EventFeedbackListFilters {
@@ -43,7 +43,7 @@ interface EventFeedbackListFilters {
   styleUrl: './event-feedback-popup.component.scss'
 })
 export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopupSource {
-  public readonly feedback = inject(EventFeedbackPopupService);
+  public readonly feedback = inject(EventFeedbackPopupStateService);
   private readonly appCtx = inject(AppContext);
   private readonly eventsService = inject(EventsService);
   private readonly gameService = inject(GameService);
@@ -129,7 +129,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       const filter = this.feedback.eventFeedbackListFilter();
       const userId = this.appCtx.activeUserId().trim();
       const currentFilters = this.eventFeedbackSmartListQuery.filters;
-      if (currentFilters?.filter === filter && currentFilters.userId === userId) {
+      if (currentFilters?.filter === filter && currentFilters?.userId === userId) {
         return;
       }
 

@@ -27,8 +27,8 @@ import {
   type SmartListLoaders,
   type SmartListStateChange
 } from '../../../shared/ui';
-import { ActivityInviteCandidatesService, ActivityMembersService, AppContext } from '../../../shared/core';
-import { OwnedAssetsPopupService } from '../../owned-assets-popup.service';
+import { ActivityInviteCandidatesService, ActivityMembersService, AppContext, AppPopupContext } from '../../../shared/core';
+import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
 
 interface ActivityInviteFilters {
   ownerId?: string;
@@ -54,9 +54,10 @@ interface ActivityInviteFilters {
 export class AssetMemberPickerPopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly appCtx = inject(AppContext);
+  private readonly popupCtx = inject(AppPopupContext);
   private readonly activityInviteCandidatesService = inject(ActivityInviteCandidatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
-  private readonly ownedAssets = inject(OwnedAssetsPopupService);
+  private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
 
   protected isOpen = false;
   protected title = 'Invite members';
@@ -115,7 +116,7 @@ export class AssetMemberPickerPopupComponent {
 
   constructor() {
     effect(() => {
-      const context = this.appCtx.activityInvitePopup();
+      const context = this.popupCtx.activityInvitePopup();
       if (!context?.ownerId?.trim()) {
         this.resetState();
         return;
@@ -190,7 +191,7 @@ export class AssetMemberPickerPopupComponent {
       return;
     }
     const shouldCloseOwnerPopup = this.closeOwnerPopupOnClose;
-    this.appCtx.closeActivityInvitePopup();
+    this.popupCtx.closeActivityInvitePopup();
     this.resetState();
     if (shouldCloseOwnerPopup) {
       this.ownedAssets.closePopup();

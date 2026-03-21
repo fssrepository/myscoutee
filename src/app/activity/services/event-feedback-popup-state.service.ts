@@ -1,10 +1,10 @@
 import { Injectable, computed, signal } from '@angular/core';
-import type * as AppTypes from '../shared/core/base/models';
-import { AppUtils } from '../shared/app-utils';
-import { APP_STATIC_DATA } from '../shared/app-static-data';
-import { DemoEventFeedbackBuilder } from '../shared/core/demo/builders';
-import type { UserDto } from '../shared/core';
-import type { EventMenuItem } from '../shared/core/base/interfaces/activity-feed.interface';
+import type * as AppTypes from '../../shared/core/base/models';
+import { AppUtils } from '../../shared/app-utils';
+import { APP_STATIC_DATA } from '../../shared/app-static-data';
+import { DemoEventFeedbackBuilder } from '../../shared/core/demo/builders';
+import type { UserDto } from '../../shared/core';
+import type { EventMenuItem } from '../../shared/core/base/interfaces/activity-feed.interface';
 
 export interface EventFeedbackPopupSource {
   eventItems: EventMenuItem[];
@@ -19,7 +19,7 @@ export interface EventFeedbackPopupSource {
 @Injectable({
   providedIn: 'root'
 })
-export class EventFeedbackPopupService {
+export class EventFeedbackPopupStateService {
   private readonly eventFeedbackUnlockDelayMs = 2 * 60 * 60 * 1000;
   private readonly sourceRef = signal<EventFeedbackPopupSource | null>(null);
 

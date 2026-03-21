@@ -21,6 +21,7 @@ import {
   ActivityMembersService,
   ActivitiesService,
   AppContext,
+  AppPopupContext,
   EventExploreBuilder,
   type ActivityMembersSyncState,
   GameService,
@@ -39,7 +40,6 @@ import {
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../../navigator';
-import { ActivitiesDbContextService } from '../../services/activities-db-context.service';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 
 @Component({
@@ -58,7 +58,6 @@ import type { DemoEventRecord } from '../../../shared/core/demo/models/events.mo
 })
 export class EventExplorePopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
-  protected readonly activitiesContext = inject(ActivitiesDbContextService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly activitiesService = inject(ActivitiesService);
   private readonly gameService = inject(GameService);
@@ -66,6 +65,7 @@ export class EventExplorePopupComponent {
   protected readonly navigatorService = inject(NavigatorService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly appCtx = inject(AppContext);
+  private readonly popupCtx = inject(AppPopupContext);
 
   protected readonly eventExploreOrderOptions = APP_STATIC_DATA.eventExploreOrderOptions;
   protected readonly eventExploreViewOptions = APP_STATIC_DATA.activitiesViewOptions.filter(
@@ -152,11 +152,11 @@ export class EventExplorePopupComponent {
     this.refreshUsersDirectory();
 
     effect(() => {
-      const request = this.activitiesContext.activitiesNavigationRequest();
+      const request = this.popupCtx.activitiesNavigationRequest();
       if (!request || request.type !== 'eventExplore') {
         return;
       }
-      this.activitiesContext.clearActivitiesNavigationRequest();
+      this.popupCtx.clearActivitiesNavigationRequest();
       this.openEventExplore();
     });
 
@@ -407,7 +407,7 @@ export class EventExplorePopupComponent {
     if (!this.isEventExploreOpenEvent(record)) {
       return;
     }
-    this.activitiesContext.requestActivitiesNavigation({
+    this.popupCtx.requestActivitiesNavigation({
       type: 'members',
       ownerId: record.id,
       ownerType: 'event'
@@ -452,7 +452,7 @@ export class EventExplorePopupComponent {
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): void {
     this.stopDomEvent(event);
-    this.activitiesContext.requestActivitiesNavigation({
+    this.popupCtx.requestActivitiesNavigation({
       type: 'eventEditor',
       row: EventExploreBuilder.buildActivityRow(record),
       readOnly: true

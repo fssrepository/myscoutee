@@ -1,11 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, Type, effect, inject, signal } from '@angular/core';
-import { AssetPopupService } from '../../../asset/asset-popup.service';
-import { OwnedAssetsPopupService } from '../../../asset/owned-assets-popup.service';
-import { ActivitiesDbContextService } from '../../../activity/services/activities-db-context.service';
-import { EventFeedbackPopupService } from '../../../activity/event-feedback-popup.service';
-import { EventEditorService } from '../../../activity/services/event-editor.service';
-import { AppContext } from '../../../shared/core';
+import { AssetPopupStateService } from '../../../asset/asset-popup-state.service';
+import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
+import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
+import { EventFeedbackPopupStateService } from '../../../activity/services/event-feedback-popup-state.service';
+import { EventEditorPopupStateService } from '../../../activity/services/event-editor-popup-state.service';
+import { AppContext, AppPopupContext } from '../../../shared/core';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { AvatarBtnComponent } from '../avatar-btn/avatar-btn.component';
 import { NavigatorImpressionsPopupComponent } from '../navigator-impressions-popup/navigator-impressions-popup.component';
@@ -37,11 +37,12 @@ import { SubEventResourcePopupService } from '../../../activity/services/sub-eve
 })
 export class NavigatorComponent {
   private readonly appCtx = inject(AppContext);
-  private readonly activitiesContext = inject(ActivitiesDbContextService);
-  private readonly assetPopupService = inject(AssetPopupService);
-  private readonly ownedAssets = inject(OwnedAssetsPopupService);
-  private readonly eventFeedbackPopupService = inject(EventFeedbackPopupService);
-  private readonly eventEditorService = inject(EventEditorService);
+  private readonly popupCtx = inject(AppPopupContext);
+  private readonly activitiesContext = inject(ActivitiesPopupStateService);
+  private readonly assetPopupService = inject(AssetPopupStateService);
+  private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
+  private readonly eventFeedbackPopupService = inject(EventFeedbackPopupStateService);
+  private readonly eventEditorService = inject(EventEditorPopupStateService);
   protected readonly subEventResources = inject(SubEventResourcePopupService);
   private lastHandledActivitiesRequestMs = 0;
   private lastHandledAssetRequestMs = 0;
@@ -65,7 +66,7 @@ export class NavigatorComponent {
     });
 
     effect(() => {
-      const request = this.activitiesContext.activitiesNavigationRequest();
+      const request = this.popupCtx.activitiesNavigationRequest();
       if (!request || (request.type !== 'eventEditorCreate' && request.type !== 'eventEditor')) {
         return;
       }
@@ -87,32 +88,32 @@ export class NavigatorComponent {
     });
 
     effect(() => {
-      const request = this.appCtx.navigatorActivitiesRequest();
+      const request = this.popupCtx.navigatorActivitiesRequest();
       if (!request || request.updatedMs <= this.lastHandledActivitiesRequestMs) {
         return;
       }
       this.lastHandledActivitiesRequestMs = request.updatedMs;
       this.activitiesContext.openActivities(request.primaryFilter, request.eventScope);
-      this.appCtx.clearNavigatorActivitiesRequest();
+      this.popupCtx.clearNavigatorActivitiesRequest();
     }, { allowSignalWrites: true });
 
     effect(() => {
-      const request = this.appCtx.navigatorAssetRequest();
+      const request = this.popupCtx.navigatorAssetRequest();
       if (!request || request.updatedMs <= this.lastHandledAssetRequestMs) {
         return;
       }
       this.lastHandledAssetRequestMs = request.updatedMs;
       this.ownedAssets.openPopup(request.assetFilter);
-      this.appCtx.clearNavigatorAssetRequest();
+      this.popupCtx.clearNavigatorAssetRequest();
     }, { allowSignalWrites: true });
 
     effect(() => {
-      const request = this.appCtx.navigatorEventFeedbackRequest();
+      const request = this.popupCtx.navigatorEventFeedbackRequest();
       if (!request || request.updatedMs <= this.lastHandledEventFeedbackRequestMs) {
         return;
       }
       this.lastHandledEventFeedbackRequestMs = request.updatedMs;
-      this.appCtx.clearNavigatorEventFeedbackRequest();
+      this.popupCtx.clearNavigatorEventFeedbackRequest();
       void this.openEventFeedbackPopupFromNavigatorRequest();
     }, { allowSignalWrites: true });
   }
@@ -170,7 +171,7 @@ export class NavigatorComponent {
     if (popupEvent.detail?.type !== 'eventEditor') {
       return;
     }
-    this.activitiesContext.requestActivitiesNavigation({
+    this.popupCtx.requestActivitiesNavigation({
       type: 'eventEditorCreate',
       target: 'events'
     });
