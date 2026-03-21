@@ -241,15 +241,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
     { key: 'trash', label: 'Trash', icon: 'delete' }
   ];
   protected readonly activitiesSecondaryFilters: Array<{ key: AppTypes.ActivitiesSecondaryFilter; label: string; icon: string }>
-    = [...APP_DEMO_DATA.activitiesSecondaryFilters];
+    = [...APP_STATIC_DATA.activitiesSecondaryFilters];
   protected readonly activitiesChatContextFilters: Array<{ key: AppTypes.ActivitiesChatContextFilter; label: string; icon: string }>
-    = [...APP_DEMO_DATA.activitiesChatContextFilters];
+    = [...APP_STATIC_DATA.activitiesChatContextFilters];
   protected readonly rateFilters: Array<{ key: AppTypes.RateFilterKey; label: string }>
-    = [...APP_DEMO_DATA.rateFilters];
+    = [...APP_STATIC_DATA.rateFilters];
   protected readonly rateFilterEntries: AppTypes.RateFilterEntry[]
-    = [...APP_DEMO_DATA.rateFilterEntries];
+    = [...APP_STATIC_DATA.rateFilterEntries];
   protected readonly activitiesViewOptions: Array<{ key: AppTypes.ActivitiesView; label: string; icon: string }>
-    = [...APP_DEMO_DATA.activitiesViewOptions];
+    = [...APP_STATIC_DATA.activitiesViewOptions];
 
   // ── Filter / view state – backed by EventEditorService signals ───────────
   // Local copies are kept in sync via an effect() so that OnPush CD fires
@@ -308,7 +308,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     groupBy: row => AppUtils.activityGroupLabel(
       row,
       this.activitiesView,
-      APP_DEMO_DATA.activityGroupLabels
+      APP_STATIC_DATA.activityGroupLabels
     ),
     calendar: {
       weekdayLabels: APP_STATIC_DATA.calendarWeekdayLabels,
@@ -1605,7 +1605,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         forcedAcceptedCount,
         this.users,
         this.activeUser,
-        APP_DEMO_DATA.activityMemberDefaults.forcedMetWhere
+        APP_STATIC_DATA.activityMemberDefaults.forcedMetWhere
       );
       const orderedForced = ActivityMembersBuilder.sortActivityMembersByActionTimeDesc(forced);
       this.activityMembersByRowId[rowKey] = [...orderedForced];
@@ -1616,7 +1616,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       rowKey,
       this.users,
       this.activeUser,
-      APP_DEMO_DATA.activityMemberMetPlaces
+      APP_STATIC_DATA.activityMemberMetPlaces
     );
     const ordered = ActivityMembersBuilder.sortActivityMembersByActionTimeDesc(generated);
     this.activityMembersByRowId[rowKey] = [...ordered];

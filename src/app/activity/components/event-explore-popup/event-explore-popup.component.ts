@@ -13,7 +13,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
 import type { ActivityMemberOwnerRef, EventExploreFeedFilters } from '../../../shared/core/base/models';
-import { APP_DEMO_DATA } from '../../../shared/demo-data';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppDemoGenerators } from '../../../shared/app-demo-generators';
 import type * as AppTypes from '../../../shared/core/base/models';
@@ -68,8 +67,8 @@ export class EventExplorePopupComponent {
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly appCtx = inject(AppContext);
 
-  protected readonly eventExploreOrderOptions = APP_DEMO_DATA.eventExploreOrderOptions;
-  protected readonly eventExploreViewOptions = APP_DEMO_DATA.activitiesViewOptions.filter(
+  protected readonly eventExploreOrderOptions = APP_STATIC_DATA.eventExploreOrderOptions;
+  protected readonly eventExploreViewOptions = APP_STATIC_DATA.activitiesViewOptions.filter(
     (option): option is { key: AppTypes.EventExploreView; label: string; icon: string } =>
       option.key === 'day' || option.key === 'distance'
   );
@@ -612,7 +611,7 @@ export class EventExplorePopupComponent {
         rowKey,
         record.creatorUserId,
         { status: 'accepted', pendingSource: null, invitedByActiveUser: false },
-        APP_DEMO_DATA.activityMemberMetPlaces
+        APP_STATIC_DATA.activityMemberMetPlaces
       );
       entries.push({
         ...base,
@@ -627,7 +626,7 @@ export class EventExplorePopupComponent {
         rowKey,
         record.creatorUserId,
         { status: 'pending', pendingSource: 'admin', invitedByActiveUser: false },
-        APP_DEMO_DATA.activityMemberMetPlaces
+        APP_STATIC_DATA.activityMemberMetPlaces
       );
       entries.push({
         ...base,
@@ -757,7 +756,7 @@ export class EventExplorePopupComponent {
       `${row.type}:${row.id}`,
       record.creatorUserId,
       { status: 'pending', pendingSource: 'member', invitedByActiveUser: false },
-      APP_DEMO_DATA.activityMemberMetPlaces
+      APP_STATIC_DATA.activityMemberMetPlaces
     );
     return {
       ...entry,

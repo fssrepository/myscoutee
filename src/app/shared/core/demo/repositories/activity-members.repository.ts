@@ -6,6 +6,7 @@ import type {
   ActivitiesEventSyncPayload
 } from '../../../core/base/models';
 import { AppDemoGenerators } from '../../../app-demo-generators';
+import { APP_STATIC_DATA } from '../../../app-static-data';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import { APP_DEMO_DATA, type DemoUser, type EventMenuItem, type HostingMenuItem } from '../../../demo-data';
@@ -827,7 +828,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
         Math.max(acceptedTarget, 1),
         this.demoActivityMemberUsers,
         context.creator,
-        APP_DEMO_DATA.activityMemberDefaults.forcedMetWhere
+        APP_STATIC_DATA.activityMemberDefaults.forcedMetWhere
       );
       for (const entry of forcedEntries) {
         if (acceptedEntries.length >= acceptedTarget) {
@@ -889,7 +890,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
             pendingSource: 'admin',
             invitedByActiveUser: false
           },
-          APP_DEMO_DATA.activityMemberMetPlaces
+          APP_STATIC_DATA.activityMemberMetPlaces
         );
         pendingEntries.push({
           ...base,
@@ -917,7 +918,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       rowKey,
       this.demoActivityMemberUsers,
       creator,
-      APP_DEMO_DATA.activityMemberMetPlaces
+      APP_STATIC_DATA.activityMemberMetPlaces
     );
     return {
       row,
@@ -971,7 +972,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
         pendingSource: status === 'accepted' ? null : 'admin',
         invitedByActiveUser: false
       },
-      APP_DEMO_DATA.activityMemberMetPlaces
+      APP_STATIC_DATA.activityMemberMetPlaces
     );
 
     return {

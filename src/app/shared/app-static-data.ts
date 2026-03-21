@@ -1,15 +1,23 @@
 import type {
+  ActivitiesChatContextFilter,
+  ActivitiesPrimaryFilter,
+  ActivitiesSecondaryFilter,
+  ActivitiesView,
   AssetFilterType,
   AssetType,
   DetailPrivacy,
   EventBlindMode,
   EventFeedbackListFilter,
   EventFeedbackOption,
+  EventExploreOrder,
   EventVisibility,
   ExperienceEntry,
   HelpCenterSection,
   InterestOptionGroup,
   ProfileStatus,
+  RateFilterEntry,
+  RateFilterKey,
+  SubEventResourceFilter,
   SubEventsDisplayMode,
   TournamentLeaderboardType,
   ValuesOptionGroup
@@ -195,12 +203,324 @@ const EXPERIENCE_FILTER_OPTIONS: Array<'All' | 'Workspace' | 'School'> = ['All',
 const EXPERIENCE_TYPE_OPTIONS: Array<ExperienceEntry['type']> = ['Workspace', 'School', 'Online Session', 'Additional Project'];
 const ASSET_TYPE_OPTIONS: AssetType[] = ['Car', 'Accommodation', 'Supplies'];
 const ASSET_FILTER_OPTIONS: AssetFilterType[] = ['Car', 'Accommodation', 'Supplies', 'Ticket'];
+const ACTIVITIES_PRIMARY_FILTERS: Array<{ key: ActivitiesPrimaryFilter; label: string; icon: string }> = [
+  { key: 'rates', label: 'Rates', icon: 'star' },
+  { key: 'chats', label: 'Chats', icon: 'chat' },
+  { key: 'invitations', label: 'Invitations', icon: 'mail' },
+  { key: 'events', label: 'Events', icon: 'event' },
+  { key: 'hosting', label: 'Hosting', icon: 'stadium' }
+];
+const ACTIVITIES_SECONDARY_FILTERS: Array<{ key: ActivitiesSecondaryFilter; label: string; icon: string }> = [
+  { key: 'recent', label: 'Upcoming', icon: 'schedule' },
+  { key: 'relevant', label: 'Relevant', icon: 'auto_awesome' },
+  { key: 'past', label: 'Past', icon: 'history' }
+];
+const ACTIVITIES_CHAT_CONTEXT_FILTERS: Array<{ key: ActivitiesChatContextFilter; label: string; icon: string }> = [
+  { key: 'all', label: 'All', icon: 'forum' },
+  { key: 'event', label: 'Event', icon: 'event' },
+  { key: 'subEvent', label: 'Sub event', icon: 'event_available' },
+  { key: 'group', label: 'Group', icon: 'groups' }
+];
+const RATE_FILTERS: Array<{ key: RateFilterKey; label: string }> = [
+  { key: 'individual-given', label: 'Given' },
+  { key: 'individual-received', label: 'Received' },
+  { key: 'individual-mutual', label: 'Mutual' },
+  { key: 'individual-met', label: 'Met' },
+  { key: 'pair-given', label: 'Given' },
+  { key: 'pair-received', label: 'Received' }
+];
+const RATE_FILTER_ENTRIES: RateFilterEntry[] = [
+  { kind: 'group', label: 'Single Rate' },
+  { kind: 'item', key: 'individual-given', label: 'Given' },
+  { kind: 'item', key: 'individual-received', label: 'Received' },
+  { kind: 'item', key: 'individual-mutual', label: 'Mutual' },
+  { kind: 'item', key: 'individual-met', label: 'Met' },
+  { kind: 'group', label: 'Pair Rate' },
+  { kind: 'item', key: 'pair-given', label: 'Given' },
+  { kind: 'item', key: 'pair-received', label: 'Received' }
+];
+const ACTIVITIES_VIEW_OPTIONS: Array<{ key: ActivitiesView; label: string; icon: string }> = [
+  { key: 'month', label: 'Month', icon: 'calendar_month' },
+  { key: 'week', label: 'Week', icon: 'date_range' },
+  { key: 'day', label: 'Day', icon: 'today' },
+  { key: 'distance', label: 'Distance', icon: 'social_distance' }
+];
+const EVENT_EXPLORE_ORDER_OPTIONS: Array<{ key: EventExploreOrder; label: string; icon: string }> = [
+  { key: 'upcoming', label: 'Upcoming', icon: 'event_upcoming' },
+  { key: 'past-events', label: 'Past Events', icon: 'history' },
+  { key: 'nearby', label: 'Nearby', icon: 'near_me' },
+  { key: 'most-relevant', label: 'Most Relevant', icon: 'auto_awesome' },
+  { key: 'top-rated', label: 'Top Rated', icon: 'emoji_events' }
+];
+const HOME_GAME_FILTER_INTEREST_GROUPS: Array<{ title: string; icon: string; toneClass: string; options: string[] }> = [
+    {
+      title: 'Social',
+      icon: 'celebration',
+      toneClass: 'game-filter-group-tone-social',
+      options: ['#GoingOut', '#Nightlife', '#StayingIn', '#Brunch', '#WineTasting', '#CoffeeDates', '#ContentCreation', '#InfluencerLife']
+    },
+    {
+      title: 'Arts',
+      icon: 'palette',
+      toneClass: 'game-filter-group-tone-arts',
+      options: ['#Music', '#Concerts', '#Festivals', '#Movies', '#TVShows', '#Theatre', '#Gaming', '#Anime', '#Books', '#Photography', '#Creativity']
+    },
+    {
+      title: 'Food',
+      icon: 'restaurant',
+      toneClass: 'game-filter-group-tone-food',
+      options: ['#Foodie', '#FineDining', '#StreetFood', '#Cooking', '#Cocktails', '#CraftBeer', '#Travel', '#LuxuryExperiences']
+    },
+    {
+      title: 'Active',
+      icon: 'hiking',
+      toneClass: 'game-filter-group-tone-active',
+      options: ['#Sports', '#Gym', '#Running', '#Hiking', '#Outdoors', '#ExtremeSports', '#Yoga', '#Fitness']
+    },
+    {
+      title: 'Mind',
+      icon: 'self_improvement',
+      toneClass: 'game-filter-group-tone-mind',
+      options: ['#Wellness', '#Meditation', '#SelfDevelopment', '#MentalHealth', '#Spirituality', '#Biohacking', '#HealthyLifestyle']
+    },
+    {
+      title: 'Identity',
+      icon: 'public',
+      toneClass: 'game-filter-group-tone-identity',
+      options: ['#Sustainability', '#Entrepreneurship', '#CareerDriven', '#FamilyOriented', '#Activism', '#Tech', '#Minimalism']
+    }
+  ];
+const HOME_GAME_FILTER_VALUES_GROUPS: Array<{ title: string; icon: string; toneClass: string; options: string[] }> = [
+    {
+      title: 'Family',
+      icon: 'family_restroom',
+      toneClass: 'game-filter-group-tone-family',
+      options: ['Long-term partnership', 'Marriage-oriented', 'Casual dating', 'Open / Exploring', 'Family-first', 'Wants children', 'Independent lifestyle']
+    },
+    {
+      title: 'Ambition',
+      icon: 'track_changes',
+      toneClass: 'game-filter-group-tone-ambition',
+      options: ['Career-focused', 'Entrepreneurial', 'Stability-focused', 'Balanced work-life', 'Freedom-oriented', 'Goal-driven']
+    },
+    {
+      title: 'Lifestyle',
+      icon: 'eco',
+      toneClass: 'game-filter-group-tone-lifestyle',
+      options: ['Health & wellness focused', 'Fitness-driven', 'Mindfulness-oriented', 'Social / party lifestyle', 'Calm / home-centered', 'Adventure-driven', 'Balanced lifestyle']
+    },
+    {
+      title: 'Beliefs',
+      icon: 'auto_awesome',
+      toneClass: 'game-filter-group-tone-beliefs',
+      options: ['Faith-oriented', 'Spiritual but not religious', 'Secular', 'Traditional values', 'Progressive values', 'Community-driven', 'Social impact oriented', 'Environmentally conscious', 'Politically engaged', 'Apolitical']
+    }
+  ];
+const HOME_USER_FACET_BY_ID: Record<string, {
+  interests: string[];
+  values: string[];
+  smoking: string;
+  drinking: string;
+  workout: string;
+  pets: string;
+  familyPlans: string;
+  children: string;
+  loveStyle: string;
+  communicationStyle: string;
+  sexualOrientation: string;
+  religion: string;
+}> = {
+    u1: {
+      interests: ['#Outdoors', '#Travel', '#Brunch'],
+      values: ['Family-first', 'Balanced lifestyle', 'Community-driven'],
+      smoking: 'socially',
+      drinking: 'socially',
+      workout: 'daily',
+      pets: 'all pets welcome',
+      familyPlans: 'wants children',
+      children: 'no',
+      loveStyle: 'open relationship',
+      communicationStyle: 'direct + warm',
+      sexualOrientation: 'bisexual',
+      religion: 'hindu'
+    },
+    u2: {
+      interests: ['#Sports', '#Gaming', '#Tech'],
+      values: ['Career-focused', 'Goal-driven', 'Stability-focused'],
+      smoking: 'never',
+      drinking: 'socially',
+      workout: 'few times / week',
+      pets: 'dog person',
+      familyPlans: 'wants children',
+      children: 'no',
+      loveStyle: 'long-term partnership',
+      communicationStyle: 'direct + warm',
+      sexualOrientation: 'straight',
+      religion: 'not religious'
+    },
+    u3: {
+      interests: ['#Concerts', '#Photography', '#Outdoors'],
+      values: ['Balanced lifestyle', 'Mindfulness-oriented', 'Community-driven'],
+      smoking: 'never',
+      drinking: 'occasionally',
+      workout: 'few times / week',
+      pets: 'cat person',
+      familyPlans: 'open to both',
+      children: 'no',
+      loveStyle: 'slow-burn connection',
+      communicationStyle: 'listener first',
+      sexualOrientation: 'bisexual',
+      religion: 'spiritual'
+    },
+    u4: {
+      interests: ['#Outdoors', '#Sports', '#Travel'],
+      values: ['Adventure-driven', 'Social / party lifestyle', 'Balanced lifestyle'],
+      smoking: 'occasionally',
+      drinking: 'socially',
+      workout: 'daily',
+      pets: 'all pets welcome',
+      familyPlans: 'open to both',
+      children: 'no',
+      loveStyle: 'exploring',
+      communicationStyle: 'energetic',
+      sexualOrientation: 'straight',
+      religion: 'christian'
+    },
+    u5: {
+      interests: ['#Books', '#Wellness', '#Meditation'],
+      values: ['Calm / home-centered', 'Mindfulness-oriented', 'Progressive values'],
+      smoking: 'never',
+      drinking: 'never',
+      workout: 'few times / week',
+      pets: 'pet free',
+      familyPlans: 'undecided',
+      children: 'no',
+      loveStyle: 'slow-burn connection',
+      communicationStyle: 'listener first',
+      sexualOrientation: 'lesbian',
+      religion: 'buddhist'
+    },
+    u6: {
+      interests: ['#Travel', '#Outdoors', '#GoingOut'],
+      values: ['Adventure-driven', 'Social / party lifestyle', 'Spiritual but not religious'],
+      smoking: 'socially',
+      drinking: 'socially',
+      workout: 'weekly',
+      pets: 'dog person',
+      familyPlans: 'open to both',
+      children: 'yes',
+      loveStyle: 'open relationship',
+      communicationStyle: 'direct + warm',
+      sexualOrientation: 'bisexual',
+      religion: 'spiritual'
+    },
+    u7: {
+      interests: ['#Gaming', '#Tech', '#CoffeeDates'],
+      values: ['Career-focused', 'Goal-driven', 'Secular'],
+      smoking: 'never',
+      drinking: 'occasionally',
+      workout: 'weekly',
+      pets: 'pet free',
+      familyPlans: 'not planning',
+      children: 'no',
+      loveStyle: 'long-term partnership',
+      communicationStyle: 'low-key',
+      sexualOrientation: 'straight',
+      religion: 'not religious'
+    },
+    u8: {
+      interests: ['#Music', '#Movies', '#Foodie'],
+      values: ['Balanced lifestyle', 'Community-driven', 'Family-first'],
+      smoking: 'occasionally',
+      drinking: 'socially',
+      workout: 'weekly',
+      pets: 'cat person',
+      familyPlans: 'open to both',
+      children: 'yes',
+      loveStyle: 'slow-burn connection',
+      communicationStyle: 'listener first',
+      sexualOrientation: 'bisexual',
+      religion: 'christian'
+    },
+    u9: {
+      interests: ['#Sports', '#Outdoors', '#Travel'],
+      values: ['Fitness-driven', 'Goal-driven', 'Stability-focused'],
+      smoking: 'never',
+      drinking: 'socially',
+      workout: 'daily',
+      pets: 'dog person',
+      familyPlans: 'wants children',
+      children: 'no',
+      loveStyle: 'long-term partnership',
+      communicationStyle: 'direct + warm',
+      sexualOrientation: 'straight',
+      religion: 'not religious'
+    },
+    u10: {
+      interests: ['#Tech', '#Gaming', '#Movies'],
+      values: ['Balanced work-life', 'Career-focused', 'Progressive values'],
+      smoking: 'occasionally',
+      drinking: 'occasionally',
+      workout: 'weekly',
+      pets: 'pet free',
+      familyPlans: 'undecided',
+      children: 'no',
+      loveStyle: 'exploring',
+      communicationStyle: 'low-key',
+      sexualOrientation: 'straight',
+      religion: 'not religious'
+    },
+    u11: {
+      interests: ['#Wellness', '#Yoga', '#Books'],
+      values: ['Family-first', 'Health & wellness focused', 'Faith-oriented'],
+      smoking: 'never',
+      drinking: 'never',
+      workout: 'few times / week',
+      pets: 'all pets welcome',
+      familyPlans: 'wants children',
+      children: 'yes',
+      loveStyle: 'long-term partnership',
+      communicationStyle: 'listener first',
+      sexualOrientation: 'straight',
+      religion: 'hindu'
+    },
+    u12: {
+      interests: ['#Foodie', '#GoingOut', '#CoffeeDates'],
+      values: ['Social impact oriented', 'Community-driven', 'Balanced lifestyle'],
+      smoking: 'socially',
+      drinking: 'socially',
+      workout: 'weekly',
+      pets: 'all pets welcome',
+      familyPlans: 'open to both',
+      children: 'no',
+      loveStyle: 'open relationship',
+      communicationStyle: 'energetic',
+      sexualOrientation: 'bisexual',
+      religion: 'spiritual'
+    }
+  };
 const ACTIVITY_RATING_SCALE = Array.from({ length: 10 }, (_, index) => index + 1);
 const CALENDAR_WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const EVENT_VISIBILITY_OPTIONS: EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
 const EVENT_BLIND_MODE_OPTIONS: EventBlindMode[] = ['Open Event', 'Blind Event'];
+const SUB_EVENT_RESOURCE_FILTER_OPTIONS: SubEventResourceFilter[] = ['Members', 'Car', 'Accommodation', 'Supplies'];
 const SUB_EVENTS_DISPLAY_MODE_OPTIONS: SubEventsDisplayMode[] = ['Casual', 'Tournament'];
 const TOURNAMENT_LEADERBOARD_TYPE_OPTIONS: TournamentLeaderboardType[] = ['Score', 'Fifa'];
+const ACTIVITY_GROUP_LABELS = {
+  dateUnavailable: 'Date unavailable',
+  weekPrefix: 'Week'
+};
+const ACTIVITY_MEMBER_MET_PLACES = [
+  'City Center Meetup',
+  'Board Game Night',
+  'Coffee Social',
+  'Hiking Group',
+  'Music Event',
+  'Brunch Table'
+];
+const ACTIVITY_MEMBER_DEFAULTS = {
+  forcedMetWhere: 'Event Explore'
+};
 const REPORT_USER_REASONS = [
   'Harassment',
   'Spam',
@@ -316,6 +636,16 @@ export const APP_STATIC_DATA = {
   memberTraitIcons: MEMBER_TRAIT_ICONS,
   physiqueOptions: PHYSIQUE_OPTIONS,
   languageSuggestions: LANGUAGE_SUGGESTIONS,
+  activitiesPrimaryFilters: ACTIVITIES_PRIMARY_FILTERS,
+  activitiesSecondaryFilters: ACTIVITIES_SECONDARY_FILTERS,
+  activitiesChatContextFilters: ACTIVITIES_CHAT_CONTEXT_FILTERS,
+  rateFilters: RATE_FILTERS,
+  rateFilterEntries: RATE_FILTER_ENTRIES,
+  activitiesViewOptions: ACTIVITIES_VIEW_OPTIONS,
+  eventExploreOrderOptions: EVENT_EXPLORE_ORDER_OPTIONS,
+  homeGameFilterInterestGroups: HOME_GAME_FILTER_INTEREST_GROUPS,
+  homeGameFilterValuesGroups: HOME_GAME_FILTER_VALUES_GROUPS,
+  homeUserFacetById: HOME_USER_FACET_BY_ID,
   profileStatusOptions: PROFILE_STATUS_OPTIONS,
   profileDetailValueOptions: PROFILE_DETAIL_VALUE_OPTIONS,
   beliefsValuesOptionGroups: BELIEFS_VALUES_OPTION_GROUPS,
@@ -329,8 +659,12 @@ export const APP_STATIC_DATA = {
   calendarWeekdayLabels: CALENDAR_WEEKDAY_LABELS,
   eventVisibilityOptions: EVENT_VISIBILITY_OPTIONS,
   eventBlindModeOptions: EVENT_BLIND_MODE_OPTIONS,
+  subEventResourceFilterOptions: SUB_EVENT_RESOURCE_FILTER_OPTIONS,
   subEventsDisplayModeOptions: SUB_EVENTS_DISPLAY_MODE_OPTIONS,
   tournamentLeaderboardTypeOptions: TOURNAMENT_LEADERBOARD_TYPE_OPTIONS,
+  activityGroupLabels: ACTIVITY_GROUP_LABELS,
+  activityMemberMetPlaces: ACTIVITY_MEMBER_MET_PLACES,
+  activityMemberDefaults: ACTIVITY_MEMBER_DEFAULTS,
   reportUserReasons: REPORT_USER_REASONS,
   feedbackCategories: FEEDBACK_CATEGORIES,
   eventFeedbackEventOverallOptions: EVENT_FEEDBACK_EVENT_OVERALL_OPTIONS,

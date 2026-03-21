@@ -1,6 +1,7 @@
 import { AppDemoGenerators } from '../../../app-demo-generators';
+import { APP_STATIC_DATA } from '../../../app-static-data';
 import { AppUtils } from '../../../app-utils';
-import { APP_DEMO_DATA, type DemoUser } from '../../../demo-data';
+import type { DemoUser } from '../../../demo-data';
 import type {
   ActivityMemberEntry,
   ActivityMemberOwnerRef,
@@ -164,7 +165,7 @@ export class ActivityMembersBuilder {
         rowKey,
         options.activeUser.id,
         { status: 'accepted', pendingSource: null, invitedByActiveUser: false },
-        APP_DEMO_DATA.activityMemberMetPlaces
+        APP_STATIC_DATA.activityMemberMetPlaces
       ));
     }
     for (let index = 0; index < pendingMembers; index += 1) {
@@ -179,7 +180,7 @@ export class ActivityMembersBuilder {
         rowKey,
         options.activeUser.id,
         { status: 'pending', pendingSource, invitedByActiveUser: !isJoinRequest },
-        APP_DEMO_DATA.activityMemberMetPlaces
+        APP_STATIC_DATA.activityMemberMetPlaces
       );
       entries.push({
         ...entry,

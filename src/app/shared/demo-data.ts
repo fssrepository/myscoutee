@@ -655,92 +655,6 @@ export const EVENT_EDITOR_SAMPLE = {
   ]
 };
 
-export const DEMO_ACTIVITIES_PRIMARY_FILTERS: Array<{
-  key: 'rates' | 'chats' | 'invitations' | 'events' | 'hosting';
-  label: string;
-  icon: string;
-}> = [
-  { key: 'rates', label: 'Rates', icon: 'star' },
-  { key: 'chats', label: 'Chats', icon: 'chat' },
-  { key: 'invitations', label: 'Invitations', icon: 'mail' },
-  { key: 'events', label: 'Events', icon: 'event' },
-  { key: 'hosting', label: 'Hosting', icon: 'stadium' }
-];
-
-export const DEMO_ACTIVITIES_SECONDARY_FILTERS: Array<{
-  key: 'recent' | 'relevant' | 'past';
-  label: string;
-  icon: string;
-}> = [
-  { key: 'recent', label: 'Upcoming', icon: 'schedule' },
-  { key: 'relevant', label: 'Relevant', icon: 'auto_awesome' },
-  { key: 'past', label: 'Past', icon: 'history' }
-];
-
-export const DEMO_ACTIVITIES_CHAT_CONTEXT_FILTERS: Array<{
-  key: 'all' | 'event' | 'subEvent' | 'group';
-  label: string;
-  icon: string;
-}> = [
-  { key: 'all', label: 'All', icon: 'forum' },
-  { key: 'event', label: 'Event', icon: 'event' },
-  { key: 'subEvent', label: 'Sub event', icon: 'event_available' },
-  { key: 'group', label: 'Group', icon: 'groups' }
-];
-
-export const DEMO_RATE_FILTERS: Array<{
-  key: 'individual-given' | 'individual-received' | 'individual-mutual' | 'individual-met' | 'pair-given' | 'pair-received';
-  label: string;
-}> = [
-  { key: 'individual-given', label: 'Given' },
-  { key: 'individual-received', label: 'Received' },
-  { key: 'individual-mutual', label: 'Mutual' },
-  { key: 'individual-met', label: 'Met' },
-  { key: 'pair-given', label: 'Given' },
-  { key: 'pair-received', label: 'Received' }
-];
-
-export const DEMO_RATE_FILTER_ENTRIES: Array<
-  | { kind: 'group'; label: string }
-  | {
-    kind: 'item';
-    key: 'individual-given' | 'individual-received' | 'individual-mutual' | 'individual-met' | 'pair-given' | 'pair-received';
-    label: string;
-  }
-> = [
-  { kind: 'group', label: 'Single Rate' },
-  { kind: 'item', key: 'individual-given', label: 'Given' },
-  { kind: 'item', key: 'individual-received', label: 'Received' },
-  { kind: 'item', key: 'individual-mutual', label: 'Mutual' },
-  { kind: 'item', key: 'individual-met', label: 'Met' },
-  { kind: 'group', label: 'Pair Rate' },
-  { kind: 'item', key: 'pair-given', label: 'Given' },
-  { kind: 'item', key: 'pair-received', label: 'Received' }
-];
-
-export const DEMO_ACTIVITIES_VIEW_OPTIONS: Array<{
-  key: 'month' | 'week' | 'day' | 'distance';
-  label: string;
-  icon: string;
-}> = [
-  { key: 'month', label: 'Month', icon: 'calendar_month' },
-  { key: 'week', label: 'Week', icon: 'date_range' },
-  { key: 'day', label: 'Day', icon: 'today' },
-  { key: 'distance', label: 'Distance', icon: 'social_distance' }
-];
-
-export const DEMO_EVENT_EXPLORE_ORDER_OPTIONS: Array<{
-  key: 'upcoming' | 'past-events' | 'nearby' | 'most-relevant' | 'top-rated';
-  label: string;
-  icon: string;
-}> = [
-  { key: 'upcoming', label: 'Upcoming', icon: 'event_upcoming' },
-  { key: 'past-events', label: 'Past Events', icon: 'history' },
-  { key: 'nearby', label: 'Nearby', icon: 'near_me' },
-  { key: 'most-relevant', label: 'Most Relevant', icon: 'auto_awesome' },
-  { key: 'top-rated', label: 'Top Rated', icon: 'emoji_events' }
-];
-
 export const DEMO_EVENT_DATES_BY_ID: Record<string, string> = {
   e1: '2026-02-27T09:00:00',
   e2: '2026-03-08T10:00:00',
@@ -995,39 +909,7 @@ export const DEMO_ACTIVITY_CAPACITY_BY_ID: Record<string, string> = {
   i5: '2 / 3'
 };
 
-export const DEMO_SUB_EVENT_RESOURCE_FILTER_OPTIONS: Array<'Members' | 'Car' | 'Accommodation' | 'Supplies'> = [
-  'Members',
-  'Car',
-  'Accommodation',
-  'Supplies'
-];
-
-export const DEMO_ACTIVITY_GROUP_LABELS = {
-  dateUnavailable: 'Date unavailable',
-  weekPrefix: 'Week'
-};
-
-export const DEMO_ACTIVITY_MEMBER_MET_PLACES = [
-  'City Center Meetup',
-  'Board Game Night',
-  'Coffee Social',
-  'Hiking Group',
-  'Music Event',
-  'Brunch Table'
-];
-
-export const DEMO_ACTIVITY_MEMBER_DEFAULTS = {
-  forcedMetWhere: 'Event Explore'
-};
-
 export const APP_DEMO_DATA = {
-  activitiesPrimaryFilters: DEMO_ACTIVITIES_PRIMARY_FILTERS,
-  activitiesSecondaryFilters: DEMO_ACTIVITIES_SECONDARY_FILTERS,
-  activitiesChatContextFilters: DEMO_ACTIVITIES_CHAT_CONTEXT_FILTERS,
-  rateFilters: DEMO_RATE_FILTERS,
-  rateFilterEntries: DEMO_RATE_FILTER_ENTRIES,
-  activitiesViewOptions: DEMO_ACTIVITIES_VIEW_OPTIONS,
-  eventExploreOrderOptions: DEMO_EVENT_EXPLORE_ORDER_OPTIONS,
   eventDatesById: DEMO_EVENT_DATES_BY_ID,
   hostingDatesById: DEMO_HOSTING_DATES_BY_ID,
   eventVisibilityById: DEMO_EVENT_VISIBILITY_BY_ID,
@@ -1045,8 +927,4 @@ export const APP_DEMO_DATA = {
   activityImageById: DEMO_ACTIVITY_IMAGE_BY_ID,
   activitySourceLinkById: DEMO_ACTIVITY_SOURCE_LINK_BY_ID,
   activityCapacityById: DEMO_ACTIVITY_CAPACITY_BY_ID,
-  subEventResourceFilterOptions: DEMO_SUB_EVENT_RESOURCE_FILTER_OPTIONS,
-  activityGroupLabels: DEMO_ACTIVITY_GROUP_LABELS,
-  activityMemberMetPlaces: DEMO_ACTIVITY_MEMBER_MET_PLACES,
-  activityMemberDefaults: DEMO_ACTIVITY_MEMBER_DEFAULTS
 };

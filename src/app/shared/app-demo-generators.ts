@@ -1,12 +1,5 @@
-import {
-  DEMO_ACTIVITY_MEMBER_DEFAULTS,
-  DEMO_ACTIVITY_MEMBER_MET_PLACES,
-  buildDemoPortraitStack,
-  DEMO_USERS,
-  type DemoUser,
-  type EventMenuItem,
-  type HostingMenuItem
-} from './demo-data';
+import { buildDemoPortraitStack, DEMO_USERS, type DemoUser, type EventMenuItem, type HostingMenuItem } from './demo-data';
+import { APP_STATIC_DATA } from './app-static-data';
 import type { LocationCoordinates } from './core/base/interfaces';
 import type {
   ActivityDateTimeRange,
@@ -756,11 +749,11 @@ export class AppDemoGenerators {
     rowKey: string,
     activeUserId: string,
     defaults: { status: ActivityMemberStatus; pendingSource: ActivityPendingSource; invitedByActiveUser: boolean },
-    metPlaces: string[] = DEMO_ACTIVITY_MEMBER_MET_PLACES
+    metPlaces: string[] = APP_STATIC_DATA.activityMemberMetPlaces
   ): ActivityMemberEntry {
     const seed = this.hashText(`${rowKey}:${user.id}`);
     const metAt = AppUtils.addDays(new Date('2026-02-24T12:00:00'), -((seed % 220) + 1));
-    const place = metPlaces.length > 0 ? metPlaces[seed % metPlaces.length] : DEMO_ACTIVITY_MEMBER_DEFAULTS.forcedMetWhere;
+    const place = metPlaces.length > 0 ? metPlaces[seed % metPlaces.length] : APP_STATIC_DATA.activityMemberDefaults.forcedMetWhere;
     return {
       id: `${rowKey}:${user.id}`,
       userId: user.id,
@@ -788,7 +781,7 @@ export class AppDemoGenerators {
     count: number,
     users: DemoUser[],
     activeUser: DemoUser,
-    forcedMetWhere = DEMO_ACTIVITY_MEMBER_DEFAULTS.forcedMetWhere
+    forcedMetWhere = APP_STATIC_DATA.activityMemberDefaults.forcedMetWhere
   ): ActivityMemberEntry[] {
     const templates = users.length > 0 ? users : [activeUser];
     const members: ActivityMemberEntry[] = [];
@@ -827,7 +820,7 @@ export class AppDemoGenerators {
     rowKey: string,
     users: DemoUser[],
     activeUser: DemoUser,
-    metPlaces: string[] = DEMO_ACTIVITY_MEMBER_MET_PLACES
+    metPlaces: string[] = APP_STATIC_DATA.activityMemberMetPlaces
   ): ActivityMemberEntry[] {
     const others = users.filter(user => user.id !== activeUser.id);
     if (others.length === 0) {
