@@ -1877,6 +1877,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activityLeadingIcon(row: AppTypes.ActivityListRow): string {
+    if (this.isPendingActivityRow(row)) {
+      return 'pending_actions';
+    }
     if (row.type === 'hosting' || row.type === 'events') {
       return this.eventVisibilityIcon(this.activityVisibility(row));
     }
@@ -1928,6 +1931,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private activityLeadingIconTone(row: AppTypes.ActivityListRow): NonNullable<InfoCardData['leadingIcon']>['tone'] {
+    if (this.isPendingActivityRow(row)) {
+      return 'pending';
+    }
     if (row.type !== 'hosting' && row.type !== 'events') {
       return 'default';
     }
@@ -1943,6 +1949,18 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected activityDateRangeMetaLine(row: AppTypes.ActivityListRow): string {
     return this.activityDateRangeLabel(row);
+  }
+
+  private isPendingActivityRow(row: AppTypes.ActivityListRow): boolean {
+    if (row.type !== 'events') {
+      return false;
+    }
+    const activeUserId = this.activeUser.id.trim();
+    if (!activeUserId) {
+      return false;
+    }
+    const source = row.source as { pendingMemberUserIds?: readonly string[] };
+    return Array.isArray(source.pendingMemberUserIds) && source.pendingMemberUserIds.includes(activeUserId);
   }
 
   protected activityLocationMetaLine(row: AppTypes.ActivityListRow): string {
@@ -1986,7 +2004,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
         ...(locationMetaLine ? [locationMetaLine] : [])
       ],
       description: row.subtitle,
-      surfaceTone: this.isActivityDraft(row) ? 'draft' : this.isActivityFull(row) ? 'full' : 'default',
+      surfaceTone: this.isActivityDraft(row)
+        ? 'draft'
+        : this.isPendingActivityRow(row)
+          ? 'pending'
+          : this.isActivityFull(row)
+            ? 'full'
+            : 'default',
       leadingIcon: {
         icon: this.activityLeadingIcon(row),
         tone: this.activityLeadingIconTone(row)

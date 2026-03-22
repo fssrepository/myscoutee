@@ -116,7 +116,7 @@ export class ConfirmationDialogComponent {
       void this.confirmAction?.();
       return;
     }
-    this.dialogService.confirm();
+    void this.dialogService.confirm();
   }
 
   private mapServiceState(state: ConfirmationDialogState): RenderedConfirmationDialogState {
@@ -125,13 +125,13 @@ export class ConfirmationDialogComponent {
       message: state.message,
       cancelLabel: state.cancelLabel,
       confirmLabel: state.confirmLabel,
-      busyConfirmLabel: state.confirmLabel,
+      busyConfirmLabel: state.busyConfirmLabel,
       confirmTone: state.confirmTone,
       allowBackdropClose: state.allowBackdropClose,
       allowEscapeClose: state.allowEscapeClose,
-      busy: false,
-      errorMessage: '',
-      ringPerimeter: 100
+      busy: state.busy,
+      errorMessage: state.errorMessage,
+      ringPerimeter: state.ringPerimeter
     };
   }
 }

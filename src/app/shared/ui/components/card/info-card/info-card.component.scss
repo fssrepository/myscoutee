@@ -123,6 +123,11 @@
   border-color: rgba(185, 113, 45, 0.36);
 }
 
+.ui-info-card__leading--pending {
+  background: linear-gradient(180deg, #fff8e6 0%, #ffefc8 100%);
+  border-color: rgba(207, 148, 34, 0.34);
+}
+
 .ui-info-card__leading--public .mat-icon {
   color: #2f6cae;
 }
@@ -133,6 +138,10 @@
 
 .ui-info-card__leading--invitation .mat-icon {
   color: #b9712d;
+}
+
+.ui-info-card__leading--pending .mat-icon {
+  color: #b77b19;
 }
 
 .ui-info-card__meta {

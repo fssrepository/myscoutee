@@ -505,7 +505,9 @@ export class EventExplorePopupComponent {
       message: record.title,
       cancelLabel: 'Cancel',
       confirmLabel: 'Send request',
+      busyConfirmLabel: 'Sending request...',
       confirmTone: 'accent',
+      failureMessage: 'Unable to send request.',
       onConfirm: () => this.submitEventExploreJoinRequest(record)
     });
   }
@@ -599,10 +601,11 @@ export class EventExplorePopupComponent {
     if (currentIndex >= 0) {
       const existing = currentItems[currentIndex];
       if (existing) {
-        const nextStartMs = AppUtils.toSortableDate(sync.startAt);
         const nextEndIso = sync.endAt ?? sync.startAt;
-        const acceptedMembers = Math.max(0, existing.acceptedMembers);
-        
+        const acceptedMembers = Number.isFinite(Number(sync.acceptedMembers))
+          ? Math.max(0, Math.trunc(Number(sync.acceptedMembers)))
+          : Math.max(0, existing.acceptedMembers);
+
         currentItems[currentIndex] = {
           ...existing,
           title: sync.title,
@@ -616,6 +619,16 @@ export class EventExplorePopupComponent {
           sourceLink: sync.sourceLink?.trim() || existing.sourceLink,
           location: sync.location?.trim() || existing.location,
           locationCoordinates: sync.locationCoordinates ?? existing.locationCoordinates,
+          acceptedMembers,
+          pendingMembers: Number.isFinite(Number(sync.pendingMembers))
+            ? Math.max(0, Math.trunc(Number(sync.pendingMembers)))
+            : existing.pendingMembers,
+          acceptedMemberUserIds: Array.isArray(sync.acceptedMemberUserIds)
+            ? [...sync.acceptedMemberUserIds]
+            : [...existing.acceptedMemberUserIds],
+          pendingMemberUserIds: Array.isArray(sync.pendingMemberUserIds)
+            ? [...sync.pendingMemberUserIds]
+            : [...existing.pendingMemberUserIds],
           capacityMin: sync.capacityMin ?? existing.capacityMin,
           capacityMax: sync.capacityMax ?? existing.capacityMax,
           capacityTotal: Math.max(
@@ -728,9 +741,8 @@ export class EventExplorePopupComponent {
     const existingMembers = loadedMembers.length > 0 ? loadedMembers : this.buildMemberEntries(record);
     const existingEntry = existingMembers.find(member => member.userId === activeUserId);
 
-    await Promise.all([exitPromise, delayPromise]);
-
     if (existingEntry) {
+      await Promise.all([exitPromise, delayPromise]);
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembers = this.sortMembersByActionTimeDesc(existingMembers);
       }
@@ -742,11 +754,21 @@ export class EventExplorePopupComponent {
       ...existingMembers,
       this.buildJoinRequestEntry(record)
     ]);
-    await this.activityMembersService.replaceMembersByOwner(owner, nextMembers, record.capacityTotal);
-    if (this.selectedMembersRecord?.id === record.id) {
-      this.selectedMembers = nextMembers;
+    const rollbackPayload = this.buildActivitiesEventSyncPayload(record, existingMembers);
+    const nextPayload = this.buildActivitiesEventSyncPayload(record, nextMembers);
+    this.activitiesContext.emitActivitiesEventSync(nextPayload);
+
+    try {
+      await Promise.all([exitPromise, delayPromise]);
+      await this.activityMembersService.replaceMembersByOwner(owner, nextMembers, record.capacityTotal);
+      if (this.selectedMembersRecord?.id === record.id) {
+        this.selectedMembers = nextMembers;
+      }
+      this.cdr.markForCheck();
+    } catch (error) {
+      this.activitiesContext.emitActivitiesEventSync(rollbackPayload);
+      throw error;
     }
-    this.cdr.markForCheck();
   }
 
   private applyVisibleEventExploreMembersSync(sync: ActivityMembersSyncState): boolean {
@@ -906,6 +928,61 @@ export class EventExplorePopupComponent {
       role: 'Member',
       requestKind: 'join',
       statusText: 'Waiting for admin approval.'
+    };
+  }
+
+  private buildActivitiesEventSyncPayload(
+    record: DemoEventRecord,
+    members: readonly AppTypes.ActivityMemberEntry[]
+  ): Omit<AppTypes.ActivitiesEventSyncPayload, 'syncKey'> {
+    const summary = ActivityMembersBuilder.buildActivityMembersSummary(
+      this.eventMembersOwner(record),
+      members,
+      record.capacityTotal
+    );
+    return {
+      id: record.id,
+      target: 'events',
+      title: record.title,
+      shortDescription: record.subtitle,
+      timeframe: record.timeframe,
+      activity: Math.max(0, Math.trunc(Number(record.activity) || 0)),
+      isAdmin: false,
+      startAt: record.startAtIso,
+      endAt: record.endAtIso,
+      distanceKm: record.distanceKm,
+      imageUrl: record.imageUrl,
+      acceptedMembers: summary.acceptedMembers,
+      pendingMembers: summary.pendingMembers,
+      capacityTotal: summary.capacityTotal,
+      capacityMin: record.capacityMin,
+      capacityMax: record.capacityMax,
+      autoInviter: record.autoInviter,
+      frequency: record.frequency,
+      ticketing: record.ticketing,
+      visibility: record.visibility,
+      blindMode: record.blindMode,
+      published: record.published,
+      creatorUserId: record.creatorUserId,
+      creatorName: record.creatorName,
+      creatorInitials: record.creatorInitials,
+      creatorGender: record.creatorGender,
+      creatorCity: record.creatorCity,
+      location: record.location,
+      locationCoordinates: record.locationCoordinates ?? undefined,
+      sourceLink: record.sourceLink,
+      acceptedMemberUserIds: [...summary.acceptedMemberUserIds],
+      pendingMemberUserIds: [...summary.pendingMemberUserIds],
+      topics: [...record.topics],
+      subEvents: Array.isArray(record.subEvents)
+        ? record.subEvents.map(item => ({
+            ...item,
+            groups: Array.isArray(item.groups)
+              ? item.groups.map(group => ({ ...group }))
+              : []
+          }))
+        : undefined,
+      subEventsDisplayMode: record.subEventsDisplayMode
     };
   }
 

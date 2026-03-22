@@ -102,7 +102,7 @@ export interface PairCardData {
 
 export interface InfoCardLeadingIconConfig {
   icon: string;
-  tone?: Extract<InfoCardOverlayTone, 'default' | 'public' | 'friends' | 'invitation'> | null;
+  tone?: Extract<InfoCardOverlayTone, 'default' | 'public' | 'friends' | 'invitation'> | 'pending' | null;
 }
 
 export interface InfoCardOverlayAccessory {
