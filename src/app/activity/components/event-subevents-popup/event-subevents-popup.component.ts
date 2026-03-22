@@ -187,7 +187,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
   protected showDisplayModePicker = false;
   protected stagePageIndex = 0;
   protected isMobileViewport = this.readViewportWidth() <= 920;
-  protected stagePageMotionClass = '';
 
   protected openStageMenuKey: string | null = null;
   protected openGroupMenuKey: string | null = null;
@@ -221,8 +220,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   private stageSwipeStartX: number | null = null;
   private stageSwipeDeltaX = 0;
-  private stagePageMotionClearTimer: ReturnType<typeof setTimeout> | null = null;
-  private stagePageMotionKickoffTimer: ReturnType<typeof setTimeout> | null = null;
   private workingSubEvents: EventSubeventsItem[] = [];
   protected sortedSubEvents: EventSubeventsPreparedItem[] = [];
   protected stageCards: EventSubeventsStageCard[] = [];
@@ -2123,42 +2120,25 @@ export class EventSubeventsPopupComponent implements OnChanges {
       Math.max(0, this.stagePages.length - 1)
     );
     this.syncVisibleStageCards();
-    this.triggerStagePageMotion(direction);
   }
 
-  private triggerStagePageMotion(direction: -1 | 1): void {
-    const motionClass = direction > 0
-      ? 'subevents-stage-slide-enter-next'
-      : 'subevents-stage-slide-enter-prev';
-    if (this.stagePageMotionKickoffTimer) {
-      clearTimeout(this.stagePageMotionKickoffTimer);
-      this.stagePageMotionKickoffTimer = null;
+  protected stageGridTransform(): string {
+    if (this.stageCards.length === 0 || this.displayMode !== 'Tournament') {
+      return '';
     }
-    if (this.stagePageMotionClearTimer) {
-      clearTimeout(this.stagePageMotionClearTimer);
-      this.stagePageMotionClearTimer = null;
-    }
-    this.stagePageMotionClass = '';
-    this.stagePageMotionKickoffTimer = setTimeout(() => {
-      this.stagePageMotionClass = motionClass;
-      this.stagePageMotionKickoffTimer = null;
-      this.stagePageMotionClearTimer = setTimeout(() => {
-        this.stagePageMotionClass = '';
-        this.stagePageMotionClearTimer = null;
-      }, 260);
-    }, 0);
+    const startIndex = this.stagePageStartIndexesCache[this.stagePageIndex] ?? 0;
+    const columns = this.columnsPerPage();
+    // Move by (100% / columns + gap / columns) * startIndex
+    // But easier to do in CSS with variables
+    return '';
   }
 
-  private clearStagePageMotion(): void {
-    if (this.stagePageMotionKickoffTimer) {
-      clearTimeout(this.stagePageMotionKickoffTimer);
-      this.stagePageMotionKickoffTimer = null;
-    }
-    if (this.stagePageMotionClearTimer) {
-      clearTimeout(this.stagePageMotionClearTimer);
-      this.stagePageMotionClearTimer = null;
-    }
-    this.stagePageMotionClass = '';
+  protected get stageGridStartIndex(): number {
+    return this.stagePageStartIndexesCache[this.stagePageIndex] ?? 0;
+  }
+
+  protected get stageGridColumns(): number {
+    return this.columnsPerPage();
   }
 
   private alignPageToCurrentStage(): void {
@@ -2718,7 +2698,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   private resetTransientUi(): void {
-    this.clearStagePageMotion();
     this.showDisplayModePicker = false;
     this.openStageMenuKey = null;
     this.openGroupMenuKey = null;

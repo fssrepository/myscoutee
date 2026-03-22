@@ -116,12 +116,12 @@
             <div
               class="subevents-stage-grid"
               [class.subevents-stage-grid-mobile]="isMobileViewport"
-              [ngClass]="stagePageMotionClass"
-              [style.gridTemplateColumns]="stageGridTemplateColumns(visibleStageCards)"
+              [style.--start-index]="stageGridStartIndex"
+              [style.--columns]="stageGridColumns"
             >
               <article
                 class="subevents-stage-card"
-                *ngFor="let stage of visibleStageCards; trackBy: trackByStageKey"
+                *ngFor="let stage of stageCards; trackBy: trackByStageKey"
                 [style.--stage-accent]="stageAccentColor(stage)"
               >
                     <header class="subevents-stage-head">
