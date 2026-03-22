@@ -464,48 +464,36 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected visibleStageStartLabel(): string {
-    const visible = this.visibleStageCards;
-    if (visible.length === 0) {
-      return 'Stage';
-    }
-    const first = visible[0]?.stageNumber ?? 1;
-    return `Stage ${first}`;
+    return this.visibleStageEdges()?.start.title ?? '';
   }
 
   protected visibleStageEndLabel(): string {
-    const visible = this.visibleStageCards;
-    if (visible.length === 0) {
-      return '';
-    }
-    const first = visible[0]?.stageNumber ?? 1;
-    const last = visible[visible.length - 1]?.stageNumber ?? first;
-    if (first === last) {
-      return '';
-    }
-    return `Stage ${last}`;
+    return this.visibleStageEdges()?.end.title ?? '';
   }
 
   protected visibleStageHasRange(): boolean {
-    return Boolean(this.visibleStageEndLabel());
+    const edges = this.visibleStageEdges();
+    return !!edges && edges.start.stageNumber !== edges.end.stageNumber;
   }
 
   protected visibleStageStartColor(): string {
-    const visible = this.visibleStageCards;
-    const first = visible[0]?.stageNumber ?? 1;
-    return this.stageAccentColorByNumber(first);
+    const edges = this.visibleStageEdges();
+    if (!edges) {
+      return '';
+    }
+    return this.stageAccentColorByNumber(edges.start.stageNumber);
   }
 
   protected visibleStageEndColor(): string {
-    const visible = this.visibleStageCards;
-    if (visible.length === 0) {
-      return this.stageAccentColorByNumber(1);
+    const edges = this.visibleStageEdges();
+    if (!edges) {
+      return '';
     }
-    const last = visible[visible.length - 1]?.stageNumber ?? 1;
-    return this.stageAccentColorByNumber(last);
+    return this.stageAccentColorByNumber(edges.end.stageNumber);
   }
 
   protected stagePeriodLabel(): string {
-    const visible = this.visibleStageCards;
+    const visible = this.visibleStagesForRangeLabel();
     if (visible.length === 0) {
       return '';
     }
@@ -518,7 +506,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       .filter(value => Number.isFinite(value));
 
     if (finiteStart.length === 0 || finiteEnd.length === 0) {
-      return '';
+      return 'Date pending';
     }
 
     const minStart = Math.min(...finiteStart);
@@ -527,43 +515,27 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected previousStageLabel(): string {
-    const previousPage = this.stagePages[this.stagePageIndex - 1];
-    if (!previousPage || previousPage.length === 0) {
-      return '';
-    }
-
-    const first = previousPage[0]?.stageNumber ?? 0;
-    const last = previousPage[previousPage.length - 1]?.stageNumber ?? first;
-    return first === last ? `Stage ${first}` : `Stage ${first}-${last}`;
+    return this.previousStage()?.title ?? '';
   }
 
   protected previousStageColor(): string {
-    const previousPage = this.stagePages[this.stagePageIndex - 1];
-    if (!previousPage || previousPage.length === 0) {
+    const stage = this.previousStage();
+    if (!stage) {
       return '';
     }
-    const first = previousPage[0]?.stageNumber ?? 1;
-    return this.stageAccentColorByNumber(first);
+    return this.stageAccentColorByNumber(stage.stageNumber);
   }
 
   protected nextStageLabel(): string {
-    const nextPage = this.stagePages[this.stagePageIndex + 1];
-    if (!nextPage || nextPage.length === 0) {
-      return '';
-    }
-
-    const first = nextPage[0]?.stageNumber ?? 0;
-    const last = nextPage[nextPage.length - 1]?.stageNumber ?? first;
-    return first === last ? `Stage ${first}` : `Stage ${first}-${last}`;
+    return this.nextStage()?.title ?? '';
   }
 
   protected nextStageColor(): string {
-    const nextPage = this.stagePages[this.stagePageIndex + 1];
-    if (!nextPage || nextPage.length === 0) {
+    const stage = this.nextStage();
+    if (!stage) {
       return '';
     }
-    const first = nextPage[0]?.stageNumber ?? 1;
-    return this.stageAccentColorByNumber(first);
+    return this.stageAccentColorByNumber(stage.stageNumber);
   }
 
   protected stageAccentColor(stage: EventSubeventsStageCard): string {
@@ -1386,7 +1358,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected stageGridTemplateColumns(page: readonly EventSubeventsStageCard[]): string {
-    const columnCount = this.isMobileViewport ? 1 : Math.max(1, Math.min(this.columnsPerPage(), page.length));
+    const columnCount = this.isMobileViewport ? 1 : Math.max(1, page.length);
     return `repeat(${columnCount}, minmax(0, 1fr))`;
   }
 
@@ -1398,8 +1370,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
       this.stageCards.map<[string, EventSubeventsStageCard]>(stage => [stage.key, stage])
     );
     this.stagePageStartIndexesCache = this.buildStagePageStartIndexes(this.stageCards);
-    const viewportColumns = this.columnsPerPage();
-    this.stagePages = this.stagePageStartIndexesCache.map(startIndex => this.stageCards.slice(startIndex, startIndex + viewportColumns));
+    const visibleStageCount = this.columnsPerPage();
+    this.stagePages = this.stagePageStartIndexesCache.map(startIndex => this.stageCards.slice(startIndex, startIndex + visibleStageCount));
     this.clampStagePageIndex();
   }
 
@@ -1457,6 +1429,10 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private buildStagePageStartIndexes(cards: readonly EventSubeventsStageCard[]): number[] {
     if (cards.length === 0) {
       return [];
+    }
+
+    if (!this.isMobileViewport) {
+      return this.desktopStagePageStarts(cards.length);
     }
 
     const viewportColumns = this.columnsPerPage();
@@ -2101,6 +2077,87 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.syncVisibleStageCards();
   }
 
+
+  private desktopStagePageStarts(totalStages: number): number[] {
+    const visibleColumns = 3;
+    if (totalStages <= 0) {
+      return [0];
+    }
+    if (totalStages <= visibleColumns) {
+      return [0];
+    }
+    const starts: number[] = [0];
+    const lastStart = totalStages - visibleColumns;
+    for (let start = visibleColumns; start < lastStart; start += visibleColumns) {
+      starts.push(start);
+    }
+    if (starts[starts.length - 1] !== lastStart) {
+      starts.push(lastStart);
+    }
+    return starts;
+  }
+
+  private visibleStageBounds(): { start: number; end: number } | null {
+    const total = this.stageCards.length;
+    if (total === 0) {
+      return null;
+    }
+    if (this.isMobileViewport) {
+      const pages = this.stagePages;
+      if (pages.length === 0) {
+        return null;
+      }
+      const pageIndex = AppUtils.clampNumber(this.stagePageIndex, 0, pages.length - 1);
+      const pageSize = this.columnsPerPage();
+      const start = AppUtils.clampNumber(pageIndex * pageSize, 0, Math.max(0, total - 1));
+      const pageLength = Math.max(1, pages[pageIndex]?.length ?? 0);
+      const end = AppUtils.clampNumber(start + pageLength - 1, start, total - 1);
+      return { start, end };
+    }
+    const starts = this.desktopStagePageStarts(total);
+    const startIndex = AppUtils.clampNumber(this.stagePageIndex, 0, Math.max(0, starts.length - 1));
+    const start = AppUtils.clampNumber(starts[startIndex] ?? 0, 0, Math.max(0, total - 1));
+    const end = AppUtils.clampNumber(start + 2, start, total - 1);
+    return { start, end };
+  }
+
+  private previousStage(): EventSubeventsStageCard | null {
+    const bounds = this.visibleStageBounds();
+    if (!bounds || bounds.start <= 0) {
+      return null;
+    }
+    return this.stageCards[bounds.start - 1] ?? null;
+  }
+
+  private nextStage(): EventSubeventsStageCard | null {
+    const bounds = this.visibleStageBounds();
+    if (!bounds || bounds.end >= (this.stageCards.length - 1)) {
+      return null;
+    }
+    return this.stageCards[bounds.end + 1] ?? null;
+  }
+
+  private visibleStageEdges(): { start: EventSubeventsStageCard; end: EventSubeventsStageCard } | null {
+    const bounds = this.visibleStageBounds();
+    if (!bounds) {
+      return null;
+    }
+    const start = this.stageCards[bounds.start];
+    const end = this.stageCards[bounds.end];
+    if (!start || !end) {
+      return null;
+    }
+    return { start, end };
+  }
+
+  private visibleStagesForRangeLabel(): EventSubeventsStageCard[] {
+    const bounds = this.visibleStageBounds();
+    if (!bounds) {
+      return [];
+    }
+    return this.stageCards.slice(bounds.start, bounds.end + 1);
+  }
+
   private emitWorkingSubEvents(): void {
     this.localMutationVersion += 1;
     this.rebuildRenderModel();
@@ -2124,6 +2181,11 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private async hydrateOwnerRecord(): Promise<void> {
     const ownerId = `${this.ownerId ?? ''}`.trim();
     if (!this.open || !ownerId) {
+      return;
+    }
+
+    // Keep the editor-provided subevent state as the source of truth.
+    if (this.subEvents.length > 0) {
       return;
     }
 

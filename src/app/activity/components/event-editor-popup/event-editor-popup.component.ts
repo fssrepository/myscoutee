@@ -21,6 +21,8 @@ import type * as AppTypes from '../../../shared/core/base/models';
 import { AppContext, AppPopupContext, EventEditorDataService } from '../../../shared/core';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { TopicPickerPopupComponent } from '../../../shared/ui';
+import { SessionService } from '../../../shared/core';
+import { environment } from '../../../../environments/environment';
 import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
 
 @Component({
@@ -45,11 +47,13 @@ import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subev
   styleUrls: ['./event-editor-popup.component.scss']
 })
 export class EventEditorPopupComponent implements OnInit, OnDestroy {
+  private static readonly SAVE_PENDING_WINDOW_MS = 1500;
   protected readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly eventEditorDataService = inject(EventEditorDataService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
+  private readonly sessionService = inject(SessionService);
   protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
 
   @ViewChild('eventImageInput') eventImageInput!: ElementRef<HTMLInputElement>;
@@ -156,6 +160,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   showEventVisibilityPicker = false;
   showSubEventsPopup = false;
   showTopicPicker = false;
+  isSavePending = false;
+  readonly saveRingPerimeter = 100;
 
   readonly visibilityOptions: AppTypes.EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
   readonly eventFrequencyOptions = ['One-time', 'Daily', 'Weekly', 'Bi-weekly', 'Monthly'];
@@ -164,6 +170,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.showEventVisibilityPicker = false;
     this.showSubEventsPopup = false;
     this.showTopicPicker = false;
+    this.isSavePending = false;
     this.eventEditorService.close();
   }
 
@@ -296,10 +303,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   saveEventEditorForm(): void {
-    if (!this.canSubmitEventEditorForm()) {
+    if (!this.canSubmitEventEditorForm() || this.isSavePending) {
       return;
     }
-    void this.persistEventEditorForm();
+    void this.runSaveWithPendingWindow();
   }
 
   toggleEventVisibilityPicker(event?: Event): void {
@@ -768,7 +775,58 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     });
 
     this.activitiesContext.emitActivitiesEventSync(payload);
-    this.eventEditorService.close();
+  }
+
+  private async runSaveWithPendingWindow(): Promise<void> {
+    this.isSavePending = true;
+    const pendingWindowPromise = this.minimumSavePendingWindow();
+    try {
+      const savePromise = this.runSaveAfterUiYield();
+      await Promise.all([pendingWindowPromise, savePromise]);
+      this.isSavePending = false;
+      this.eventEditorService.close();
+    } catch {
+      this.isSavePending = false;
+    }
+  }
+
+  private minimumSavePendingWindow(): Promise<void> {
+    return this.demoModeEnabled
+      ? this.wait(EventEditorPopupComponent.SAVE_PENDING_WINDOW_MS)
+      : Promise.resolve();
+  }
+
+  private async runSaveAfterUiYield(): Promise<void> {
+    await this.waitForAnimationKickoff();
+    await this.persistEventEditorForm();
+  }
+
+  private async waitForAnimationKickoff(): Promise<void> {
+    await this.waitForNextPaint();
+    await this.wait(this.demoModeEnabled ? 96 : 16);
+  }
+
+  private async wait(delayMs: number): Promise<void> {
+    if (delayMs <= 0) {
+      return;
+    }
+    await new Promise<void>(resolve => {
+      setTimeout(() => resolve(), delayMs);
+    });
+  }
+
+  private async waitForNextPaint(): Promise<void> {
+    await new Promise<void>(resolve => {
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => resolve());
+        return;
+      }
+      setTimeout(() => resolve(), 0);
+    });
+  }
+
+  private get demoModeEnabled(): boolean {
+    return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
   }
 
   private resetEditorContext(): void {

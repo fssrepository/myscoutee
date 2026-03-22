@@ -4286,7 +4286,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     const effectiveReadOnly = row.type === 'invitations'
       ? true
-      : readOnly || (row.type === 'events' && row.isAdmin !== true);
+      : readOnly;
     if (effectiveReadOnly) {
       this.eventEditorService.openView(source);
       return;

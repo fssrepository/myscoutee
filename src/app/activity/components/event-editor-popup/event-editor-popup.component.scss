@@ -257,6 +257,90 @@
   transform: none;
 }
 
+.event-editor-save-btn-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  padding: 2px;
+  box-sizing: border-box;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.event-editor-save-btn {
+  position: relative;
+  z-index: 1;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  border-radius: 50%;
+}
+
+.event-editor-save-btn-ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.event-editor-save-btn-ring-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform-origin: 50% 50%;
+  will-change: transform;
+  filter: drop-shadow(0 4px 12px rgba(22, 94, 51, 0.12));
+}
+
+.event-editor-save-btn-ring-track,
+.event-editor-save-btn-ring-progress {
+  fill: none;
+  stroke-width: 3;
+}
+
+.event-editor-save-btn-ring-track {
+  stroke: rgba(133, 100, 42, 0.18);
+}
+
+.event-editor-save-btn-ring-progress {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform-origin: 50% 50%;
+  transform: rotate(-90deg);
+}
+
+.event-editor-save-btn-ring-progress.is-loading {
+  stroke: url(#event-editor-save-gradient);
+  animation: event-editor-save-ring-progress 3s linear forwards;
+}
+
+.event-editor-save-btn-shell.is-loading .event-editor-save-btn,
+.event-editor-save-btn-shell.is-loading .event-editor-save-btn:hover,
+.event-editor-save-btn-shell.is-loading .event-editor-save-btn:disabled {
+  border-color: rgba(181, 117, 23, 0.76);
+  background: linear-gradient(180deg, #ffe7bf 0%, #ffd085 100%);
+  color: #8e4f0d;
+  opacity: 1;
+  cursor: wait;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+
+@keyframes event-editor-save-ring-progress {
+  from {
+    stroke-dashoffset: 100;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 .popup-body {
   padding: 0.4rem;
   overflow-y: auto;
