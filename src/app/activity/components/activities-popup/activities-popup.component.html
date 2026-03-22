@@ -391,7 +391,16 @@
     </ng-container>
 
     <!-- Action stack: fullscreen toggle / quick actions -->
-    <div class="activities-action-stack" *ngIf="shouldShowActivitiesQuickActions() || shouldShowRatesFullscreenToggle()">
+    <div class="activities-action-stack" *ngIf="shouldShowActivitiesQuickActions() || shouldShowStandaloneEventExploreAction() || shouldShowRatesFullscreenToggle()">
+      <button
+        type="button"
+        class="popup-header-add-btn activities-explore-btn"
+        *ngIf="shouldShowStandaloneEventExploreAction()"
+        (click)="requestOpenEventExplore()"
+        aria-label="Open event explore"
+      >
+        <mat-icon>explore</mat-icon>
+      </button>
       <button
         type="button"
         class="popup-header-add-btn activities-rates-fullscreen-toggle is-enter"
