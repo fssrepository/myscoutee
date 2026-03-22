@@ -39,6 +39,34 @@ interface DemoEventExploreCursor {
 })
 export class DemoEventsRepository {
   private static readonly MIN_DEMO_EVENT_ITEMS_PER_USER = 30;
+  private static readonly SYNTHETIC_EVENT_TITLE_PREFIXES = [
+    'Lantern',
+    'Harbor',
+    'Mosaic',
+    'Skyline',
+    'Bluebird',
+    'Cinder',
+    'Sunday',
+    'Signal',
+    'Northstar',
+    'Wildflower',
+    'Sidecar',
+    'Velvet'
+  ] as const;
+  private static readonly SYNTHETIC_EVENT_TITLE_SUFFIXES = [
+    'Social',
+    'Circuit',
+    'Session',
+    'Shuffle',
+    'Exchange',
+    'Sprint',
+    'Gathering',
+    'Meetup',
+    'Studio',
+    'Walk',
+    'Brunch',
+    'Mixer'
+  ] as const;
   private readonly memoryDb = inject(AppMemoryDb);
   private initialized = false;
 
@@ -1096,8 +1124,8 @@ export class DemoEventsRepository {
         synthetic.push({
           id,
           avatar: user?.initials ?? AppUtils.initialsFromText(user?.name ?? 'Synthetic Event'),
-          title: `Pagination Test Event ${seq}`,
-          shortDescription: `Synthetic feed item ${seq} to validate activities infinite loading.`,
+          title: this.buildSyntheticEventTitle(user, seq, seed),
+          shortDescription: this.buildSyntheticEventDescription(user, seq, seed),
           timeframe: `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`,
           activity: (index % 5) + 1,
           isAdmin: (seq % 4) === 0,
@@ -1121,6 +1149,39 @@ export class DemoEventsRepository {
     }
 
     return seeded;
+  }
+
+  private buildSyntheticEventTitle(
+    user: { city?: string; initials?: string } | undefined,
+    seq: number,
+    seed: number
+  ): string {
+    const city = user?.city?.trim() || 'Austin';
+    const prefix = DemoEventsRepository.SYNTHETIC_EVENT_TITLE_PREFIXES[
+      seed % DemoEventsRepository.SYNTHETIC_EVENT_TITLE_PREFIXES.length
+    ] ?? 'Lantern';
+    const suffix = DemoEventsRepository.SYNTHETIC_EVENT_TITLE_SUFFIXES[
+      ((seed >> 4) + seq) % DemoEventsRepository.SYNTHETIC_EVENT_TITLE_SUFFIXES.length
+    ] ?? 'Social';
+    const initials = (user?.initials?.replace(/[^A-Za-z0-9]/g, '').toUpperCase() || 'EV').slice(0, 2) || 'EV';
+    const badge = `${initials}${seq.toString().padStart(2, '0')}${(seed % 36).toString(36).toUpperCase()}`;
+    return `${city} ${prefix} ${suffix} ${badge}`;
+  }
+
+  private buildSyntheticEventDescription(
+    user: { city?: string } | undefined,
+    seq: number,
+    seed: number
+  ): string {
+    const city = user?.city?.trim() || 'Austin';
+    const variations = [
+      'Rotating intros with light structure and quick regroup rounds.',
+      'Loose small-group pacing with fresh pairings each half hour.',
+      'Casual social format built for drop-ins, loops, and new conversations.',
+      'Compact city meetup with easy check-in flow and mellow energy.'
+    ] as const;
+    const variation = variations[(seed >> 7) % variations.length] ?? variations[0];
+    return `${city} synthetic event ${seq} with ${variation.toLowerCase()}`;
   }
 
   private buildFeaturedFriendsOnlyEvents(
@@ -1239,6 +1300,7 @@ export class DemoEventsRepository {
   private mergeSeededRecord(current: DemoEventRecord, seeded: DemoEventRecord): DemoEventRecord {
     const creatorUserId = this.resolveSeededCreatorUserId(current, seeded);
     const creatorChanged = creatorUserId !== current.creatorUserId;
+    const shouldPreferSeededSyntheticIdentity = current.id.startsWith('ex-');
     const shouldPreferSeededVisibility = current.id.startsWith('ex-');
     const shouldPreferSeededTopics = current.id.startsWith('ex-');
     const acceptedMemberUserIds = this.normalizeUserIds(current.acceptedMemberUserIds);
@@ -1266,6 +1328,10 @@ export class DemoEventsRepository {
 
     return {
       ...current,
+      avatar: shouldPreferSeededSyntheticIdentity ? seeded.avatar : current.avatar,
+      title: shouldPreferSeededSyntheticIdentity ? seeded.title : current.title,
+      subtitle: shouldPreferSeededSyntheticIdentity ? seeded.subtitle : current.subtitle,
+      timeframe: shouldPreferSeededSyntheticIdentity ? seeded.timeframe : current.timeframe,
       creatorUserId,
       creatorName: creatorChanged || !current.creatorName?.trim() ? seeded.creatorName : current.creatorName,
       creatorInitials: creatorChanged || !current.creatorInitials?.trim() ? seeded.creatorInitials : current.creatorInitials,
