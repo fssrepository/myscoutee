@@ -121,6 +121,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
 
       console.log(Date.now() + "db write end - activity members");
 
+      this.refreshInvalidSeededEventOwners();
       this.syncEventSummariesFromMembers();
       const finalTable = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
       this.lastInitToken = `${eventsTable.ids.length}:${finalTable.ids.length}:${Object.keys(finalTable.idsByOwnerKey).length}:${normalizedOwnerUserIds.join('|')}`;
@@ -403,6 +404,43 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
     return records;
   }
 
+  private refreshInvalidSeededEventOwners(): void {
+    for (const eventRecord of this.preferredEventRecords()) {
+      const owner: ActivityMemberOwnerRef = {
+        ownerType: 'event',
+        ownerId: eventRecord.id
+      };
+      const currentMembers = this.readMembersByOwner(owner);
+      if (!this.shouldRefreshSeededEventOwner(eventRecord, currentMembers)) {
+        continue;
+      }
+      const nextMembers = this.buildSeededRecordsForEvent(eventRecord).map(record => this.toMemberEntry(record));
+      this.writeOwnerMembers(owner, nextMembers, eventRecord.capacityTotal, true);
+    }
+  }
+
+  private shouldRefreshSeededEventOwner(
+    record: DemoEventRecord,
+    currentMembers: readonly AppTypes.ActivityMemberEntry[]
+  ): boolean {
+    const expectedAcceptedUserIds = this.normalizeMemberUserIds(record.acceptedMemberUserIds);
+    const expectedPendingUserIds = this.normalizeMemberUserIds(record.pendingMemberUserIds);
+    const actualAcceptedUserIds = currentMembers
+      .filter(member => member.status === 'accepted')
+      .map(member => member.userId);
+    const actualPendingUserIds = currentMembers
+      .filter(member => member.status === 'pending')
+      .map(member => member.userId);
+    const expectedAcceptedMembers = this.normalizeMemberCount(record.acceptedMembers) ?? expectedAcceptedUserIds.length;
+    const expectedPendingMembers = this.normalizeMemberCount(record.pendingMembers) ?? expectedPendingUserIds.length;
+    if (actualAcceptedUserIds.length < expectedAcceptedMembers || actualPendingUserIds.length < expectedPendingMembers) {
+      return true;
+    }
+    if (expectedAcceptedUserIds.some(userId => !actualAcceptedUserIds.includes(userId))) {
+      return true;
+    }
+    return expectedPendingUserIds.some(userId => !actualPendingUserIds.includes(userId));
+  }
 
   private preferredEventRecords(): DemoEventRecord[] {
     return this.preferredEventRecordsSnapshot

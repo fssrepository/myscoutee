@@ -106,7 +106,6 @@ export class DemoEventsRepository {
     const userItems = this.queryUserRecords(userId);
     const activeEventItems = userItems
       .filter(record => record.type === 'events')
-      .filter(record => !record.isAdmin)
       .filter(record => !record.isTrashed);
     const invitationItems = userItems
       .filter(record => record.isInvitation)
@@ -118,7 +117,7 @@ export class DemoEventsRepository {
     const draftItems = myEventItems.filter(record => record.published === false);
 
     if (filter === 'all') {
-      return [...activeEventItems, ...invitationItems, ...myEventItems];
+      return [...activeEventItems, ...invitationItems];
     }
     if (filter === 'invitations') {
       return invitationItems;
@@ -457,17 +456,20 @@ export class DemoEventsRepository {
       return [];
     }
     const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    const preferredRecords = this.computePreferredEventRecords(table);
+    const preferredRecordByEventId = new Map(preferredRecords.map(record => [record.id, record]));
     const directRecords = table.ids
       .map(id => table.byId[id])
       .filter((record): record is DemoEventRecord => Boolean(record))
       .filter(record => record.userId === normalizedUserId)
+      .filter(record => this.shouldIncludeUserDirectRecord(record, normalizedUserId, preferredRecordByEventId.get(record.id)))
       .map(record => DemoEventsRepositoryBuilder.cloneRecord(record));
     const directIds = new Set(directRecords.map(record => record.id));
-    const membershipRecords = this.computePreferredEventRecords(table)
+    const membershipRecords = preferredRecords
       .filter(record => record.creatorUserId !== normalizedUserId)
       .filter(record => !record.isTrashed)
       .filter(record => !directIds.has(record.id))
-      .filter(record => record.acceptedMemberUserIds.includes(normalizedUserId) || record.pendingMemberUserIds.includes(normalizedUserId))
+      .filter(record => this.hasTrackedUserParticipation(record, normalizedUserId))
       .map(record => this.buildMembershipProjectionRecord(normalizedUserId, record));
     return [...directRecords, ...membershipRecords];
   }
@@ -481,6 +483,36 @@ export class DemoEventsRepository {
       isInvitation: false,
       isHosting: false
     };
+  }
+
+  private shouldIncludeUserDirectRecord(
+    record: DemoEventRecord,
+    userId: string,
+    preferredRecord: DemoEventRecord | undefined
+  ): boolean {
+    if (record.type !== 'events' || record.isInvitation) {
+      return true;
+    }
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return false;
+    }
+    if (record.creatorUserId === normalizedUserId || record.isAdmin === true) {
+      return true;
+    }
+    return this.hasTrackedUserParticipation(preferredRecord ?? record, normalizedUserId);
+  }
+
+  private hasTrackedUserParticipation(
+    record: Pick<DemoEventRecord, 'acceptedMemberUserIds' | 'pendingMemberUserIds'>,
+    userId: string
+  ): boolean {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return false;
+    }
+    return record.acceptedMemberUserIds.includes(normalizedUserId)
+      || record.pendingMemberUserIds.includes(normalizedUserId);
   }
 
   private computePreferredEventRecords(table: DemoEventRecordCollection): DemoEventRecord[] {
@@ -1214,6 +1246,7 @@ export class DemoEventsRepository {
     const topics = this.normalizeTopics(current.topics ?? []);
     const shouldPreferSeededDirectEventState = this.shouldPreferSeededDirectEventState(
       current,
+      seeded,
       creatorUserId,
       acceptedMemberUserIds,
       pendingMemberUserIds
@@ -1284,6 +1317,7 @@ export class DemoEventsRepository {
 
   private shouldPreferSeededDirectEventState(
     record: DemoEventRecord,
+    seeded: DemoEventRecord,
     creatorUserId: string,
     acceptedMemberUserIds: readonly string[],
     pendingMemberUserIds: readonly string[]
@@ -1295,10 +1329,29 @@ export class DemoEventsRepository {
     if (!ownerUserId) {
       return false;
     }
-    if (creatorUserId === ownerUserId) {
-      return record.isAdmin !== true;
+    if (pendingMemberUserIds.includes(ownerUserId)) {
+      return true;
     }
-    return !acceptedMemberUserIds.includes(ownerUserId) && !pendingMemberUserIds.includes(ownerUserId);
+    if (creatorUserId === ownerUserId) {
+      if (record.isAdmin !== true || !acceptedMemberUserIds.includes(ownerUserId)) {
+        return true;
+      }
+    } else if (!acceptedMemberUserIds.includes(ownerUserId)) {
+      return true;
+    }
+    const currentAcceptedMembers = this.normalizeCount(record.acceptedMembers) ?? acceptedMemberUserIds.length;
+    const currentPendingMembers = this.normalizeCount(record.pendingMembers) ?? pendingMemberUserIds.length;
+    const seededAcceptedMembers = this.normalizeCount(seeded.acceptedMembers) ?? seeded.acceptedMemberUserIds.length;
+    const seededPendingMembers = this.normalizeCount(seeded.pendingMembers) ?? seeded.pendingMemberUserIds.length;
+    const currentTotalMembers = acceptedMemberUserIds.length + pendingMemberUserIds.length;
+    const seededTotalMembers = seeded.acceptedMemberUserIds.length + seeded.pendingMemberUserIds.length;
+    if (currentAcceptedMembers > acceptedMemberUserIds.length || currentPendingMembers > pendingMemberUserIds.length) {
+      return true;
+    }
+    if (currentTotalMembers <= 1 && seededTotalMembers > currentTotalMembers) {
+      return true;
+    }
+    return (currentAcceptedMembers + currentPendingMembers) < (seededAcceptedMembers + seededPendingMembers);
   }
 
   private resolveSeededCreatorUserId(current: DemoEventRecord, seeded: DemoEventRecord): string {

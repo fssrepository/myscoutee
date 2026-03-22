@@ -716,34 +716,15 @@ export class DemoEventsRepositoryBuilder {
 
   private static normalizeDirectEventMembers(
     record: Pick<DemoEventRecord, 'type' | 'userId' | 'isAdmin' | 'isInvitation'>,
-    creatorUserId: string,
+    _creatorUserId: string,
     members: { acceptedMemberUserIds: string[]; pendingMemberUserIds: string[] }
   ): { acceptedMemberUserIds: string[]; pendingMemberUserIds: string[] } {
-    const acceptedMemberUserIds = this.normalizeUserIds(members.acceptedMemberUserIds);
-    const pendingMemberUserIds = this.normalizeUserIds(members.pendingMemberUserIds)
-      .filter(userId => !acceptedMemberUserIds.includes(userId));
-    if (record.type !== 'events' || record.isInvitation) {
-      return {
-        acceptedMemberUserIds,
-        pendingMemberUserIds
-      };
-    }
     const ownerUserId = record.userId.trim();
-    if (!ownerUserId) {
-      return {
-        acceptedMemberUserIds,
-        pendingMemberUserIds
-      };
-    }
-    if (record.isAdmin || creatorUserId === ownerUserId) {
-      return {
-        acceptedMemberUserIds: acceptedMemberUserIds.includes(ownerUserId)
-          ? acceptedMemberUserIds
-          : [ownerUserId, ...acceptedMemberUserIds],
-        pendingMemberUserIds: pendingMemberUserIds.filter(userId => userId !== ownerUserId)
-      };
-    }
-    if (acceptedMemberUserIds.includes(ownerUserId) || pendingMemberUserIds.includes(ownerUserId)) {
+    const acceptedMemberUserIds = this.normalizeUserIds(members.acceptedMemberUserIds)
+      .filter(userId => userId !== ownerUserId);
+    const pendingMemberUserIds = this.normalizeUserIds(members.pendingMemberUserIds)
+      .filter(userId => userId !== ownerUserId && !acceptedMemberUserIds.includes(userId));
+    if (record.type !== 'events' || record.isInvitation || !ownerUserId) {
       return {
         acceptedMemberUserIds,
         pendingMemberUserIds
