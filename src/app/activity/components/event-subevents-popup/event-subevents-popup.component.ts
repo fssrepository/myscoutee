@@ -221,7 +221,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   private stageSwipeStartX: number | null = null;
   private stageSwipeDeltaX = 0;
-  private stagePageMotionResetHandle: ReturnType<typeof setTimeout> | null = null;
+  private stagePageMotionClearTimer: ReturnType<typeof setTimeout> | null = null;
+  private stagePageMotionKickoffTimer: ReturnType<typeof setTimeout> | null = null;
   private workingSubEvents: EventSubeventsItem[] = [];
   protected sortedSubEvents: EventSubeventsPreparedItem[] = [];
   protected stageCards: EventSubeventsStageCard[] = [];
@@ -2127,31 +2128,35 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   private triggerStagePageMotion(direction: -1 | 1): void {
     const motionClass = direction > 0
-      ? 'subevents-stage-grid-enter-next'
-      : 'subevents-stage-grid-enter-prev';
-    if (this.stagePageMotionResetHandle) {
-      clearTimeout(this.stagePageMotionResetHandle);
-      this.stagePageMotionResetHandle = null;
+      ? 'subevents-stage-slide-enter-next'
+      : 'subevents-stage-slide-enter-prev';
+    if (this.stagePageMotionKickoffTimer) {
+      clearTimeout(this.stagePageMotionKickoffTimer);
+      this.stagePageMotionKickoffTimer = null;
+    }
+    if (this.stagePageMotionClearTimer) {
+      clearTimeout(this.stagePageMotionClearTimer);
+      this.stagePageMotionClearTimer = null;
     }
     this.stagePageMotionClass = '';
-    const applyMotion = () => {
+    this.stagePageMotionKickoffTimer = setTimeout(() => {
       this.stagePageMotionClass = motionClass;
-      this.stagePageMotionResetHandle = setTimeout(() => {
+      this.stagePageMotionKickoffTimer = null;
+      this.stagePageMotionClearTimer = setTimeout(() => {
         this.stagePageMotionClass = '';
-        this.stagePageMotionResetHandle = null;
-      }, 220);
-    };
-    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-      window.requestAnimationFrame(() => applyMotion());
-      return;
-    }
-    applyMotion();
+        this.stagePageMotionClearTimer = null;
+      }, 260);
+    }, 0);
   }
 
   private clearStagePageMotion(): void {
-    if (this.stagePageMotionResetHandle) {
-      clearTimeout(this.stagePageMotionResetHandle);
-      this.stagePageMotionResetHandle = null;
+    if (this.stagePageMotionKickoffTimer) {
+      clearTimeout(this.stagePageMotionKickoffTimer);
+      this.stagePageMotionKickoffTimer = null;
+    }
+    if (this.stagePageMotionClearTimer) {
+      clearTimeout(this.stagePageMotionClearTimer);
+      this.stagePageMotionClearTimer = null;
     }
     this.stagePageMotionClass = '';
   }
