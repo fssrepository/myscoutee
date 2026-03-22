@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { of } from 'rxjs';
 import { EventSubeventGroupFormPopupComponent } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
 import { EventSubeventLeaderboardGroup, EventSubeventLeaderboardPopupComponent } from '../event-subevent-leaderboard-popup/event-subevent-leaderboard-popup.component';
-import { EventSubeventStageFormPopupComponent } from '../event-subevent-stage-form-popup/event-subevent-stage-form-popup.component';
+import { EventSubeventStageFormPopupComponent, type EventSubeventStageFormPopupView } from '../event-subevent-stage-form-popup/event-subevent-stage-form-popup.component';
 import { AppUtils } from '../../../shared/app-utils';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
 import type * as AppTypes from '../../../shared/core/base/models';
@@ -212,6 +212,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
   protected leaderboardPopupStageTitle = '';
 
   protected pendingDeleteTarget: DeleteTargetState | null = null;
+  protected leaderboardPopupGroups: readonly EventSubeventLeaderboardGroup[] = [];
+  protected leaderboardPopupMode: TournamentLeaderboardType = 'Score';
 
   private stageSwipeStartX: number | null = null;
   private stageSwipeDeltaX = 0;
@@ -329,6 +331,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.showLeaderboardPopup = false;
     this.leaderboardPopupStageKey = null;
     this.leaderboardPopupStageTitle = '';
+    this.leaderboardPopupGroups = [];
+    this.leaderboardPopupMode = 'Score';
     this.showGroupForm = false;
     this.openStageMenuKey = null;
     this.openGroupMenuKey = null;
@@ -926,6 +930,34 @@ export class EventSubeventsPopupComponent implements OnChanges {
       : this.subEventForm.tournamentAdvancePerGroup;
   }
 
+
+  protected subEventFormPopupView(): EventSubeventStageFormPopupView {
+    return {
+      open: this.showSubEventForm,
+      parentTitle: this.parentTitle,
+      title: this.subEventFormTitle(),
+      readOnly: this.readOnly,
+      canSave: this.canSaveSubEventForm(),
+      invalidName: this.subEventFieldInvalid('name'),
+      invalidDescription: this.subEventFieldInvalid('description'),
+      showOptionalToggle: this.showSubEventOptionalToggle(),
+      showOptionalPicker: this.showSubEventOptionalPicker,
+      modeClass: this.subEventModeClass(this.subEventForm.optional),
+      modeIcon: this.subEventModeIcon(this.subEventForm.optional),
+      showInsertControls: this.showSubEventInsertControls(),
+      insertFieldLabel: this.subEventInsertFieldLabel(),
+      insertPlacement: this.subEventStageInsertPlacement,
+      insertTargetId: this.subEventStageInsertTargetId,
+      insertOptions: this.subEventStageInsertOptions,
+      showTournamentFields: this.showTournamentStageConfigFields(),
+      tournamentLeaderboardTypeOptions: this.tournamentLeaderboardTypeOptions,
+      tournamentLeaderboardTypeValue: this.tournamentLeaderboardTypeValue(),
+      tournamentLeaderboardTypeClass: this.tournamentLeaderboardTypeClass(),
+      tournamentLeaderboardTypeIcon: this.tournamentLeaderboardTypeIcon(),
+      tournamentEstimatedGroupCountLabel: this.tournamentEstimatedGroupCountLabel()
+    };
+  }
+
   protected tournamentEstimatedGroupCountLabel(): string {
     const groupMin = this.defaultTournamentGroupCapacityMin();
     const groupMax = this.defaultTournamentGroupCapacityMax(groupMin);
@@ -1174,6 +1206,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.showLeaderboardPopup = false;
     this.leaderboardPopupStageKey = null;
     this.leaderboardPopupStageTitle = '';
+    this.leaderboardPopupGroups = [];
+    this.leaderboardPopupMode = 'Score';
   }
 
   protected requestDeleteStage(stage: EventSubeventsStageCard, event: Event): void {
@@ -1297,8 +1331,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return `${this.leaderboardPopupStageTitle} Leaderboard`;
   }
 
-  protected leaderboardGroups(): EventSubeventLeaderboardGroup[] {
-    const stage = this.leaderboardStageCard();
+  private buildLeaderboardGroups(stage: EventSubeventsStageCard | null): EventSubeventLeaderboardGroup[] {
     if (!stage) {
       return [];
     }
@@ -1320,13 +1353,18 @@ export class EventSubeventsPopupComponent implements OnChanges {
     }));
   }
 
-  protected leaderboardMode(): TournamentLeaderboardType {
-    const stage = this.leaderboardStageCard();
+  private resolveLeaderboardMode(stage: EventSubeventsStageCard | null): TournamentLeaderboardType {
     if (!stage) {
       return 'Score';
     }
     const source = this.workingSubEvents[stage.sourceIndex];
     return this.normalizedTournamentLeaderboardType(source?.tournamentLeaderboardType);
+  }
+
+  private syncLeaderboardPopupState(): void {
+    const stage = this.leaderboardStageCard();
+    this.leaderboardPopupGroups = this.buildLeaderboardGroups(stage);
+    this.leaderboardPopupMode = this.resolveLeaderboardMode(stage);
   }
 
   protected trackByStageRowKey(_: number, row: EventSubeventsStageRow): string {
@@ -1373,6 +1411,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
     const visibleStageCount = this.columnsPerPage();
     this.stagePages = this.stagePageStartIndexesCache.map(startIndex => this.stageCards.slice(startIndex, startIndex + visibleStageCount));
     this.clampStagePageIndex();
+    if (this.showLeaderboardPopup) {
+      this.syncLeaderboardPopupState();
+    }
   }
 
   private buildSortedEntries(source: readonly EventSubeventsItem[]): EventSubeventsSortedEntry[] {
@@ -1513,6 +1554,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.showLeaderboardPopup = false;
     this.leaderboardPopupStageKey = null;
     this.leaderboardPopupStageTitle = '';
+    this.leaderboardPopupGroups = [];
+    this.leaderboardPopupMode = 'Score';
     this.showGroupForm = false;
     this.showSubEventOptionalPicker = false;
     const sourceItem = this.workingSubEvents[sourceIndex];
@@ -1566,6 +1609,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.showLeaderboardPopup = false;
     this.leaderboardPopupStageKey = null;
     this.leaderboardPopupStageTitle = '';
+    this.leaderboardPopupGroups = [];
+    this.leaderboardPopupMode = 'Score';
     this.showSubEventForm = false;
     this.groupFormSourceIndex = stage.sourceIndex;
     const sourceItem = this.workingSubEvents[stage.sourceIndex];
@@ -1596,6 +1641,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.showLeaderboardPopup = false;
     this.leaderboardPopupStageKey = null;
     this.leaderboardPopupStageTitle = '';
+    this.leaderboardPopupGroups = [];
+    this.leaderboardPopupMode = 'Score';
     this.showSubEventForm = false;
     this.groupFormSourceIndex = row.stageSourceIndex;
     this.groupFormGroupId = row.groupId;
@@ -1627,6 +1674,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.groupForm = this.createEmptyGroupForm();
     this.leaderboardPopupStageKey = stage.key;
     this.leaderboardPopupStageTitle = stage.subtitle;
+    this.syncLeaderboardPopupState();
     this.showLeaderboardPopup = true;
   }
 
@@ -2597,6 +2645,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.showLeaderboardPopup = false;
     this.leaderboardPopupStageKey = null;
     this.leaderboardPopupStageTitle = '';
+    this.leaderboardPopupGroups = [];
+    this.leaderboardPopupMode = 'Score';
     this.pendingDeleteTarget = null;
     this.onStageSwipeCancel();
   }

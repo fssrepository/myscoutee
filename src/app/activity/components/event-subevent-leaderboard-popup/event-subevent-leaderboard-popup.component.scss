@@ -335,14 +335,39 @@
 
 .subevent-leaderboard-table tr.subevent-leaderboard-row-clickable {
   cursor: pointer;
+  outline: none;
 }
 
 .subevent-leaderboard-table tr.subevent-leaderboard-row-clickable td {
-  transition: background-color 0.16s ease;
+  cursor: inherit;
+  transition: background-color 0.16s ease, color 0.16s ease;
 }
 
-.subevent-leaderboard-table tr.subevent-leaderboard-row-clickable:hover td {
-  background: rgba(58, 108, 176, 0.1);
+.subevent-leaderboard-table tr.subevent-leaderboard-row-clickable .subevent-leaderboard-row-forward {
+  transition: transform 0.16s ease, color 0.16s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .subevent-leaderboard-table tr.subevent-leaderboard-row-clickable:hover td {
+    background: rgba(58, 108, 176, 0.12);
+    color: #173c68;
+  }
+
+  .subevent-leaderboard-table tr.subevent-leaderboard-row-clickable:hover .subevent-leaderboard-row-forward {
+    transform: translateX(2px);
+    color: #2b5e96;
+  }
+}
+
+.subevent-leaderboard-table tr.subevent-leaderboard-row-clickable:focus-visible td {
+  background: rgba(58, 108, 176, 0.14);
+  color: #173c68;
+  box-shadow: inset 0 0 0 1px rgba(55, 108, 176, 0.26);
+}
+
+.subevent-leaderboard-table tr.subevent-leaderboard-row-clickable:focus-visible .subevent-leaderboard-row-forward {
+  transform: translateX(2px);
+  color: #2b5e96;
 }
 
 .subevent-leaderboard-member-cell {
@@ -526,6 +551,32 @@
   font-weight: 700;
 }
 
+.subevent-leaderboard-entry-field input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  border: 1px solid rgba(136, 156, 186, 0.5);
+  border-radius: 10px;
+  background: #fff;
+  color: #1d3556;
+  padding: 0.56rem 0.72rem;
+  font-size: 0.84rem;
+  line-height: 1.2;
+  font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.subevent-leaderboard-entry-field input::placeholder {
+  color: rgba(67, 92, 126, 0.7);
+}
+
+.subevent-leaderboard-entry-field input:focus {
+  outline: 0;
+  border-color: rgba(52, 103, 182, 0.72);
+  box-shadow: 0 0 0 3px rgba(55, 116, 212, 0.14);
+}
+
 .subevent-leaderboard-entry-note {
   grid-column: 1 / -1;
 }
@@ -534,10 +585,10 @@
   min-width: 0;
   width: 100%;
   border: 1px solid rgba(67, 102, 147, 0.28);
-  border-radius: 8px;
+  border-radius: 10px;
   background: #fff;
-  min-height: 32px;
-  padding: 0 0.48rem;
+  min-height: 36px;
+  padding: 0 0.58rem;
   display: flex;
   align-items: center;
   box-sizing: border-box;
@@ -551,7 +602,8 @@
 }
 
 .subevent-leaderboard-select .mat-mdc-select-trigger {
-  min-height: 30px;
+  min-height: 34px;
+  align-items: center;
 }
 
 .subevent-leaderboard-select .mat-mdc-select-arrow-wrapper {

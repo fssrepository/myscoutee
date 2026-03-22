@@ -82,7 +82,12 @@
                             *ngIf="!row.isPlaceholder"
                             [class.is-advance]="isAdvanceRow(group, rowIndex)"
                             class="subevent-leaderboard-row-clickable subevent-leaderboard-member-row"
+                            tabindex="0"
+                            role="button"
+                            [attr.aria-label]="'Open ' + row.memberName + ' details'"
                             (click)="openMemberDetails(group, row.memberId, $event)"
+                            (keydown.enter)="openMemberDetails(group, row.memberId, $event)"
+                            (keydown.space)="openMemberDetails(group, row.memberId, $event); $event.preventDefault()"
                           >
                             <td>{{ rowIndex + 1 }}</td>
                             <td class="subevent-leaderboard-member-cell">{{ row.memberName }}</td>
@@ -153,7 +158,12 @@
                             *ngIf="!row.isPlaceholder"
                             [class.is-advance]="isAdvanceRow(group, rowIndex)"
                             class="subevent-leaderboard-row-clickable subevent-leaderboard-member-row"
+                            tabindex="0"
+                            role="button"
+                            [attr.aria-label]="'Open ' + row.memberName + ' details'"
                             (click)="openMemberDetails(group, row.memberId, $event)"
+                            (keydown.enter)="openMemberDetails(group, row.memberId, $event)"
+                            (keydown.space)="openMemberDetails(group, row.memberId, $event); $event.preventDefault()"
                           >
                             <td>{{ rowIndex + 1 }}</td>
                             <td class="subevent-leaderboard-member-cell">{{ row.memberName }}</td>
