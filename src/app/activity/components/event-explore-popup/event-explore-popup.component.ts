@@ -28,6 +28,7 @@ import {
   UsersService,
   type UserDto
 } from '../../../shared/core';
+import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import {
   InfoCardComponent,
   SmartListComponent,
@@ -66,6 +67,7 @@ export class EventExplorePopupComponent {
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
+  private readonly activitiesContext = inject(ActivitiesPopupStateService);
 
   protected readonly eventExploreOrderOptions = APP_STATIC_DATA.eventExploreOrderOptions;
   protected readonly eventExploreViewOptions = APP_STATIC_DATA.activitiesViewOptions.filter(
@@ -180,6 +182,14 @@ export class EventExplorePopupComponent {
       }
       this.lastAppliedActivityMembersUpdatedMs = sync.updatedMs;
       this.applyActivityMembersSyncState(sync);
+    });
+
+    effect(() => {
+      const sync = this.activitiesContext.activitiesEventSync();
+      if (!sync) {
+        return;
+      }
+      this.applyActivitiesEventSync(sync);
     });
   }
 
@@ -565,6 +575,53 @@ export class EventExplorePopupComponent {
     }
     if (changed) {
       this.cdr.markForCheck();
+    }
+  }
+
+  private applyActivitiesEventSync(sync: AppTypes.ActivitiesEventSyncPayload): void {
+    if (!this.eventExploreSmartList) {
+      return;
+    }
+    const currentItems = [...this.eventExploreSmartList.itemsSnapshot()];
+    const currentIndex = currentItems.findIndex(record => record.id === sync.id);
+
+    if (currentIndex >= 0) {
+      const existing = currentItems[currentIndex];
+      if (existing) {
+        const nextStartMs = AppUtils.toSortableDate(sync.startAt);
+        const nextEndIso = sync.endAt ?? sync.startAt;
+        const acceptedMembers = Math.max(0, existing.acceptedMembers);
+        
+        currentItems[currentIndex] = {
+          ...existing,
+          title: sync.title,
+          subtitle: sync.shortDescription,
+          startAtIso: sync.startAt,
+          endAtIso: nextEndIso,
+          distanceKm: sync.distanceKm,
+          visibility: sync.visibility ?? existing.visibility,
+          blindMode: sync.blindMode ?? existing.blindMode,
+          imageUrl: sync.imageUrl.trim() || existing.imageUrl,
+          sourceLink: sync.sourceLink?.trim() || existing.sourceLink,
+          location: sync.location?.trim() || existing.location,
+          locationCoordinates: sync.locationCoordinates ?? existing.locationCoordinates,
+          capacityMin: sync.capacityMin ?? existing.capacityMin,
+          capacityMax: sync.capacityMax ?? existing.capacityMax,
+          capacityTotal: Math.max(
+            acceptedMembers,
+            sync.capacityMax ?? sync.capacityTotal ?? existing.capacityTotal
+          ),
+          autoInviter: sync.autoInviter ?? existing.autoInviter,
+          frequency: sync.frequency ?? existing.frequency,
+          topics: Array.isArray(sync.topics) ? [...sync.topics] : [...existing.topics],
+          ticketing: sync.ticketing ?? existing.ticketing,
+          published: sync.published ?? existing.published
+        };
+        this.eventExploreSmartList.replaceVisibleItems(currentItems);
+        this.cdr.markForCheck();
+      }
+    } else if (this.isOpen) {
+      this.reloadEventExploreSmartList();
     }
   }
 

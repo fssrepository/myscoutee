@@ -214,7 +214,7 @@ export class EventEditorBuilder {
       shortDescription: params.form.description.trim(),
       timeframe: this.buildEventEditorTimeframeLabel(params.form.startAt, params.form.endAt, params.form.frequency),
       activity: params.existingRecord?.activity ?? 0,
-      isAdmin: true,
+      isAdmin: params.existingRecord?.isAdmin ?? (params.target === 'hosting'),
       startAt: params.form.startAt,
       endAt: params.form.endAt,
       distanceKm: params.existingRecord?.distanceKm ?? 0,

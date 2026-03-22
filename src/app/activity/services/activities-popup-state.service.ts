@@ -200,11 +200,7 @@ export class ActivitiesPopupStateService {
   }
 
   emitActivitiesEventSync(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): void {
-    const event = {
-      ...payload,
-      syncKey: `${payload.id}:${Date.now()}`
-    };
-    this._activitiesEventSync.set(event);
+    this._activitiesEventSync.set({ ...payload });
     this.runDeferredEventPersistence(payload);
   }
 

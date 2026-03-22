@@ -261,6 +261,7 @@ export class EventEditorConverter {
 
     return {
       form: {
+        id: `${sourceEvent['id'] ?? sourceEvent['eventId'] ?? ''}`.trim(),
         title: `${sourceEvent['title'] ?? ''}`.trim(),
         description: `${sourceEvent['description'] ?? sourceEvent['shortDescription'] ?? ''}`.trim(),
         imageUrl: this.resolveEventEditorSourceImage(sourceEvent),

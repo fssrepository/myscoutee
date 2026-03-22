@@ -134,6 +134,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   eventForm: AppTypes.EventEditorDraftForm = {
+    id: '',
     title: '',
     description: '',
     imageUrl: '',
@@ -745,7 +746,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
 
     const activeUserId = this.activeUserId();
-    const eventId = this.editingEventId ?? EventEditorBuilder.buildCreatedEventEditorId(this.editorTarget);
+    const eventId = this.eventForm.id.trim()
+      || this.editingEventId
+      || EventEditorBuilder.buildCreatedEventEditorId(this.editorTarget);
     const existingRecord = this.currentRecord
       ?? (activeUserId ? this.eventEditorDataService.peekKnownItemById(activeUserId, eventId) : null);
     const acceptedMembers = existingRecord?.acceptedMembers ?? 0;
@@ -842,6 +845,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   private populateFormFromSourceEvent(sourceEvent: Record<string, unknown>): void {
     const state = EventEditorConverter.toEventEditorFormState(sourceEvent);
+    this.editingEventId = state.form.id.trim() || this.editingEventId;
     this.eventForm = {
       ...state.form,
       subEvents: EventEditorBuilder.cloneEventEditorSubEvents(state.form.subEvents)
@@ -856,6 +860,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const end = new Date(start.getTime() + (60 * 60 * 1000));
 
     this.eventForm = {
+      id: '',
       title: '',
       description: '',
       imageUrl: '',

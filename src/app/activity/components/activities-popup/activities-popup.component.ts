@@ -433,7 +433,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return;
       }
       this.applyActivitiesEventSync(sync);
-      this.activitiesContext.clearActivitiesEventSync();
       this.cdr.markForCheck();
     });
 
@@ -604,6 +603,84 @@ export class ActivitiesPopupComponent implements OnDestroy {
         }));
       }
     }
+  }
+
+
+  private upsertVisibleEventRowFromSync(sync: ActivitiesEventSyncPayload): void {
+    if (!this.isEventActivitiesPrimaryFilter() || this.activitiesView === 'week' || this.activitiesView === 'month') {
+      return;
+    }
+    const smartList = this.activitiesSmartList;
+    if (!smartList) {
+      return;
+    }
+    const currentItems = [...smartList.itemsSnapshot()];
+    const currentIndex = currentItems.findIndex(row => row.id === sync.id);
+    const existingRow = currentIndex >= 0 ? currentItems[currentIndex] ?? null : null;
+    const nextRow = this.buildVisibleEventRowFromSync(sync, existingRow);
+
+    if (!nextRow) {
+      return;
+    }
+
+    if (currentIndex >= 0) {
+      currentItems[currentIndex] = nextRow;
+      smartList.replaceVisibleItems(currentItems);
+      return;
+    }
+
+    const nextItems = [
+      nextRow,
+      ...currentItems.filter(row => this.activityRowIdentity(row) !== this.activityRowIdentity(nextRow))
+    ];
+    smartList.replaceVisibleItems(nextItems);
+  }
+
+  private buildVisibleEventRowFromSync(
+    sync: ActivitiesEventSyncPayload,
+    existingRow: AppTypes.ActivityListRow | null = null
+  ): AppTypes.ActivityListRow | null {
+    const rowType = existingRow?.type ?? this.resolveVisibleEventRowTypeFromSync(sync);
+    if (rowType === 'events') {
+      const source = this.buildSyncedEventMenuItem(
+        sync,
+        existingRow?.type === 'events' ? existingRow.source as EventMenuItem : undefined
+      );
+      return toActivityEventRowFromMenuItem(source, {
+        dateIso: source.startAt ?? sync.startAt,
+        distanceKm: source.distanceKm ?? sync.distanceKm
+      });
+    }
+    if (rowType === 'hosting') {
+      const source = this.buildSyncedHostingMenuItem(
+        sync,
+        existingRow?.type === 'hosting' ? existingRow.source as HostingMenuItem : undefined
+      );
+      return toActivityHostingRowFromMenuItem(source, {
+        dateIso: source.startAt ?? sync.startAt,
+        distanceKm: source.distanceKm ?? sync.distanceKm
+      });
+    }
+    return null;
+  }
+
+  private resolveVisibleEventRowTypeFromSync(sync: ActivitiesEventSyncPayload): AppTypes.ActivityListRow['type'] | null {
+    if (this.activitiesEventScope === 'active-events') {
+      return sync.isAdmin ? null : 'events';
+    }
+    if (this.activitiesEventScope === 'my-events') {
+      if (this.hostingPublicationFilter === 'drafts' && sync.published !== false) {
+        return null;
+      }
+      return sync.isAdmin ? 'hosting' : null;
+    }
+    if (this.activitiesEventScope === 'drafts') {
+      return sync.isAdmin && sync.published === false ? 'hosting' : null;
+    }
+    if (this.activitiesEventScope === 'all') {
+      return sync.isAdmin ? 'hosting' : 'events';
+    }
+    return null;
   }
 
   private toEventMenuItem(record: DemoEventRecord): EventMenuItem {
@@ -1342,7 +1419,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
   // ── Event editor / explore – call EventEditorPopupStateService directly ────────────
 
   protected requestOpenEventEditor(): void {
-    const target: AppTypes.EventEditorTarget = this.isEventActivitiesPrimaryFilter() ? 'hosting' : 'events';
+    const target: AppTypes.EventEditorTarget = this.isEventActivitiesPrimaryFilter()
+      ? (this.activitiesEventScope === 'my-events' || this.activitiesEventScope === 'drafts' ? 'hosting' : 'events')
+      : 'events';
     this.showActivitiesQuickActionsMenu = false;
     this.popupCtx.requestActivitiesNavigation({
       type: 'eventEditorCreate',
@@ -4350,6 +4429,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
 
     this.patchVisibleActivityRowsFromEventSync(sync);
+    this.upsertVisibleEventRowFromSync(sync);
     this.applyActivitiesEventMemberSnapshot(sync);
     this.refreshSectionBadges();
   }
@@ -4363,7 +4443,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       shortDescription: sync.shortDescription,
       timeframe: sync.timeframe,
       activity: sync.activity,
-      isAdmin: sync.isAdmin || Boolean(existing?.isAdmin) || sync.target === 'hosting',
+      isAdmin: sync.isAdmin ?? existing?.isAdmin ?? (sync.target === 'hosting'),
       creatorUserId: sync.creatorUserId ?? existing?.creatorUserId,
       startAt: sync.startAt,
       endAt: sync.endAt,

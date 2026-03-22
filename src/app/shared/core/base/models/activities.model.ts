@@ -140,7 +140,6 @@ export interface ActivitiesEventSyncPayload {
   topics?: string[];
   subEvents?: SubEventFormItem[];
   subEventsDisplayMode?: import('./event.model').SubEventsDisplayMode;
-  syncKey: string;
 }
 
 export interface EventChatSession {

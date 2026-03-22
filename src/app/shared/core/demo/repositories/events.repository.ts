@@ -839,7 +839,7 @@ export class DemoEventsRepository {
       inviter: null,
       unread: 0,
       activity: Math.max(0, Math.trunc(Number(payload.activity) || 0)),
-      isAdmin: true,
+      isAdmin: payload.isAdmin ?? existing?.isAdmin ?? context.isHosting,
       isInvitation: false,
       isHosting: context.isHosting,
       isTrashed: existing?.isTrashed ?? false,
