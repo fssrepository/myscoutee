@@ -312,8 +312,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       ?? source?.pendingMembers
       ?? source?.pending
       ?? source?.pendingInvites
-      ?? source?.activity
-      ?? source?.unread
       ?? 0;
     const pendingCount = Number(pendingRaw);
     if (!Number.isFinite(pendingCount) || pendingCount <= 0) {
@@ -727,6 +725,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.currentMemberSummary = this.activityMembersService.peekSummaryByOwnerId(this.draftEventId);
     this.resetForm(target);
     this.eventEditorService.openCreate();
+    void this.refreshCurrentMemberSummary(this.draftEventId);
   }
 
   private async openEditRequest(row: AppTypes.ActivityListRow, readOnly: boolean): Promise<void> {
@@ -739,6 +738,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.editorTarget = target;
     this.editingEventId = row.id;
     this.currentMemberSummary = this.activityMembersService.peekSummaryByOwnerId(row.id);
+    void this.refreshCurrentMemberSummary(row.id);
 
     if (cachedRecord) {
       this.currentRecord = cachedRecord;
@@ -890,6 +890,28 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   private currentEventIdentity(): string {
     return this.eventForm.id.trim() || this.editingEventId || this.draftEventId || '';
+  }
+
+  private async refreshCurrentMemberSummary(ownerId: string | null | undefined): Promise<void> {
+    const normalizedOwnerId = `${ownerId ?? ''}`.trim();
+    if (!normalizedOwnerId) {
+      return;
+    }
+    const summary = await this.activityMembersService.querySummaryByOwnerId(normalizedOwnerId);
+    if (this.currentEventIdentity() !== normalizedOwnerId || !this.eventEditorService.isOpen()) {
+      return;
+    }
+    this.currentMemberSummary = summary;
+    if (this.currentRecord?.id === normalizedOwnerId && summary) {
+      this.currentRecord = {
+        ...this.currentRecord,
+        acceptedMembers: summary.acceptedMembers,
+        pendingMembers: summary.pendingMembers,
+        capacityTotal: summary.capacityTotal,
+        acceptedMemberUserIds: [...summary.acceptedMemberUserIds],
+        pendingMemberUserIds: [...summary.pendingMemberUserIds]
+      };
+    }
   }
 
   private async resolveCurrentEventMembersSummary(

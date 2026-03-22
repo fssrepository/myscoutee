@@ -240,7 +240,13 @@ export class EventEditorConverter {
       startAt: this.normalizeEventEditorTextValue(rowSource?.['startAt']) || row.dateIso,
       endAt: this.normalizeEventEditorTextValue(rowSource?.['endAt']) || row.dateIso,
       published: true,
-      pendingMembersCount: row.unread,
+      pendingMembersCount: this.toEventEditorCapacityInputValue(
+        rowSource?.['pendingMembersCount']
+        ?? rowSource?.['pendingCount']
+        ?? rowSource?.['pendingMembers']
+        ?? rowSource?.['pending']
+        ?? rowSource?.['pendingInvites']
+      ) ?? 0,
       distanceKm: row.distanceKm,
       sourceLink: this.normalizeEventEditorTextValue(rowSource?.['sourceLink']),
       readOnly
