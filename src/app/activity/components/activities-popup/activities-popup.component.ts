@@ -1003,7 +1003,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         dateIso: item.startAt ?? '2026-02-21T09:00:00',
         distanceKm: item.distanceKm ?? 5
       }));
-    const myEventRows = this.eventItems
+    const myEventRows = this.hostingItems
       .filter(item => item.isAdmin === true)
       .filter(item => !this.isActivityIdentityTrashed('hosting', item.id))
       .map(item => toActivityHostingRowFromMenuItem(item, {
@@ -1254,9 +1254,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected hostingDraftCount(): number {
-    return this.eventItems
-      .filter(item => item.isAdmin && !this.isHostingPublished(item.id))
+    return this.hostingItems
+      .filter(item => item.isAdmin)
       .filter(item => !this.isActivityIdentityTrashed('hosting', item.id))
+      .filter(item => !this.isHostingPublished(item.id))
       .length;
   }
 
@@ -4827,7 +4828,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       relevance: existing?.relevance,
       affinity: existing?.affinity,
       ticketing: sync.ticketing ?? existing?.ticketing,
-      published: sync.published ?? existing?.published
+      published: sync.published ?? existing?.published,
+      isAdmin: sync.isAdmin ?? existing?.isAdmin ?? true
     };
   }
 

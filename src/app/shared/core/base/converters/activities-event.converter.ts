@@ -51,7 +51,7 @@ export function toActivityHostingRowFromMenuItem(
     distanceMetersExact: resolveDistanceMetersExact(options.distanceKm ?? 10),
     unread: item.activity,
     metricScore: 20 + item.activity,
-    isAdmin: true,
+    isAdmin: item.isAdmin,
     source: item
   };
 }
@@ -123,7 +123,7 @@ export function toActivityEventRow(record: DemoEventRecord): AppTypes.ActivityLi
     distanceMetersExact: Math.max(0, Math.round((Number(record.distanceKm) || 0) * 1000)),
     unread: Math.max(0, Math.trunc(Number(record.activity) || 0)),
     metricScore: Math.max(0, Number(record.relevance) || 0),
-    isAdmin: rowType === 'hosting' ? true : record.isAdmin,
+    isAdmin: record.isAdmin,
     source: rowType === 'invitations'
       ? toInvitationMenuItem(record)
       : rowType === 'hosting'
@@ -201,7 +201,8 @@ function toHostingMenuItem(record: DemoEventRecord): HostingMenuItem {
     topics: [...record.topics],
     rating: record.rating,
     relevance: record.relevance,
-    published: record.published
+    published: record.published,
+    isAdmin: record.isAdmin
   };
 }
 

@@ -139,7 +139,7 @@ export class DemoEventsRepository {
       .filter(record => record.isInvitation)
       .filter(record => !record.isTrashed);
     const myEventItems = userItems
-      .filter(record => record.type === 'events')
+      .filter(record => record.type === 'hosting')
       .filter(record => record.isAdmin)
       .filter(record => !record.isTrashed);
     const draftItems = myEventItems.filter(record => record.published === false);

@@ -106,6 +106,7 @@ export interface HostingMenuItem {
   affinity?: number;
   ticketing?: boolean;
   published?: boolean;
+  isAdmin?: boolean;
 }
 
 export interface RateMenuItem {
