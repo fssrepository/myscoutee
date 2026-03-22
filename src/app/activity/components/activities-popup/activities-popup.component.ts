@@ -4303,14 +4303,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return item;
       }
       eventUpdated = true;
-      return {
-        ...item,
-        title: sync.title,
-        shortDescription: sync.shortDescription,
-        timeframe: sync.timeframe,
-        activity: sync.activity,
-        isAdmin: sync.isAdmin || item.isAdmin
-      };
+      return this.buildSyncedEventMenuItem(sync, item);
     });
 
     this.hostingItems = this.hostingItems.map(item => {
@@ -4318,52 +4311,165 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return item;
       }
       hostingUpdated = true;
-      return {
-        ...item,
-        title: sync.title,
-        shortDescription: sync.shortDescription,
-        timeframe: sync.timeframe,
-        activity: sync.activity
-      };
+      return this.buildSyncedHostingMenuItem(sync, item);
     });
 
     if (!eventUpdated) {
-      const nextEvent: EventMenuItem = {
-        id: sync.id,
-        avatar: AppUtils.initialsFromText(sync.title),
-        title: sync.title,
-        shortDescription: sync.shortDescription,
-        timeframe: sync.timeframe,
-        activity: sync.activity,
-        isAdmin: sync.isAdmin || sync.target === 'hosting'
-      };
-      this.eventItems = [nextEvent, ...this.eventItems];
+      this.eventItems = [this.buildSyncedEventMenuItem(sync), ...this.eventItems];
     }
 
     if (sync.target === 'hosting' && !hostingUpdated) {
-      const nextHosting: HostingMenuItem = {
-        id: sync.id,
-        avatar: AppUtils.initialsFromText(sync.title),
-        title: sync.title,
-        shortDescription: sync.shortDescription,
-        timeframe: sync.timeframe,
-        activity: sync.activity
-      };
-      this.hostingItems = [nextHosting, ...this.hostingItems];
+      this.hostingItems = [this.buildSyncedHostingMenuItem(sync), ...this.hostingItems];
     }
 
+    this.activityDateTimeRangeById[sync.id] = {
+      startIso: sync.startAt,
+      endIso: sync.endAt ?? sync.startAt
+    };
     this.eventDatesById[sync.id] = sync.startAt;
     this.hostingDatesById[sync.id] = sync.startAt;
     this.eventDistanceById[sync.id] = sync.distanceKm;
     this.hostingDistanceById[sync.id] = sync.distanceKm;
     if (sync.imageUrl.trim().length > 0) {
       this.activityImageById[sync.id] = sync.imageUrl;
+    } else {
+      delete this.activityImageById[sync.id];
+    }
+    if (sync.visibility) {
+      this.eventVisibilityById[sync.id] = sync.visibility;
+    }
+    if (sync.capacityMin !== undefined || sync.capacityMax !== undefined) {
+      const existingCapacity = this.eventCapacityById[sync.id] ?? { min: 0, max: 0 };
+      this.eventCapacityById[sync.id] = {
+        min: sync.capacityMin ?? existingCapacity.min,
+        max: sync.capacityMax ?? existingCapacity.max
+      };
+    }
+    if (Array.isArray(sync.subEvents)) {
+      this.eventSubEventsById[sync.id] = this.cloneSyncedSubEventForms(sync.subEvents);
     }
 
+    this.patchVisibleActivityRowsFromEventSync(sync);
     this.applyActivitiesEventMemberSnapshot(sync);
     this.refreshSectionBadges();
-    if (this.activitiesPrimaryFilter !== 'rates') {
-      this.activitiesSmartList?.reload();
+  }
+
+  private buildSyncedEventMenuItem(sync: ActivitiesEventSyncPayload, existing?: Partial<EventMenuItem>): EventMenuItem {
+    const imageUrl = sync.imageUrl.trim();
+    return {
+      id: sync.id,
+      avatar: existing?.avatar ?? sync.creatorInitials ?? AppUtils.initialsFromText(sync.title),
+      title: sync.title,
+      shortDescription: sync.shortDescription,
+      timeframe: sync.timeframe,
+      activity: sync.activity,
+      isAdmin: sync.isAdmin || Boolean(existing?.isAdmin) || sync.target === 'hosting',
+      creatorUserId: sync.creatorUserId ?? existing?.creatorUserId,
+      startAt: sync.startAt,
+      endAt: sync.endAt,
+      distanceKm: sync.distanceKm,
+      visibility: sync.visibility ?? existing?.visibility,
+      blindMode: sync.blindMode ?? existing?.blindMode,
+      imageUrl: imageUrl || existing?.imageUrl,
+      sourceLink: sync.sourceLink?.trim() || existing?.sourceLink,
+      location: sync.location?.trim() || existing?.location,
+      locationCoordinates: sync.locationCoordinates ?? existing?.locationCoordinates,
+      capacityMin: sync.capacityMin ?? existing?.capacityMin ?? null,
+      capacityMax: sync.capacityMax ?? existing?.capacityMax ?? null,
+      autoInviter: sync.autoInviter ?? existing?.autoInviter,
+      frequency: sync.frequency ?? existing?.frequency,
+      topics: Array.isArray(sync.topics) ? [...sync.topics] : [...(existing?.topics ?? [])],
+      subEvents: Array.isArray(sync.subEvents)
+        ? this.cloneSyncedSubEventForms(sync.subEvents)
+        : (existing?.subEvents ? this.cloneSyncedSubEventForms(existing.subEvents) : undefined),
+      subEventsDisplayMode: sync.subEventsDisplayMode ?? existing?.subEventsDisplayMode,
+      rating: existing?.rating,
+      relevance: existing?.relevance,
+      affinity: existing?.affinity,
+      ticketing: sync.ticketing ?? existing?.ticketing,
+      published: sync.published ?? existing?.published
+    };
+  }
+
+  private buildSyncedHostingMenuItem(sync: ActivitiesEventSyncPayload, existing?: Partial<HostingMenuItem>): HostingMenuItem {
+    const imageUrl = sync.imageUrl.trim();
+    return {
+      id: sync.id,
+      avatar: existing?.avatar ?? sync.creatorInitials ?? AppUtils.initialsFromText(sync.title),
+      title: sync.title,
+      shortDescription: sync.shortDescription,
+      timeframe: sync.timeframe,
+      activity: sync.activity,
+      creatorUserId: sync.creatorUserId ?? existing?.creatorUserId,
+      startAt: sync.startAt,
+      endAt: sync.endAt,
+      distanceKm: sync.distanceKm,
+      visibility: sync.visibility ?? existing?.visibility,
+      blindMode: sync.blindMode ?? existing?.blindMode,
+      imageUrl: imageUrl || existing?.imageUrl,
+      sourceLink: sync.sourceLink?.trim() || existing?.sourceLink,
+      location: sync.location?.trim() || existing?.location,
+      locationCoordinates: sync.locationCoordinates ?? existing?.locationCoordinates,
+      capacityMin: sync.capacityMin ?? existing?.capacityMin ?? null,
+      capacityMax: sync.capacityMax ?? existing?.capacityMax ?? null,
+      autoInviter: sync.autoInviter ?? existing?.autoInviter,
+      frequency: sync.frequency ?? existing?.frequency,
+      topics: Array.isArray(sync.topics) ? [...sync.topics] : [...(existing?.topics ?? [])],
+      subEvents: Array.isArray(sync.subEvents)
+        ? this.cloneSyncedSubEventForms(sync.subEvents)
+        : (existing?.subEvents ? this.cloneSyncedSubEventForms(existing.subEvents) : undefined),
+      subEventsDisplayMode: sync.subEventsDisplayMode ?? existing?.subEventsDisplayMode,
+      rating: existing?.rating,
+      relevance: existing?.relevance,
+      affinity: existing?.affinity,
+      ticketing: sync.ticketing ?? existing?.ticketing,
+      published: sync.published ?? existing?.published
+    };
+  }
+
+  private cloneSyncedSubEventForms(items: readonly AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] {
+    return items.map(item => ({
+      ...item,
+      groups: Array.isArray(item.groups)
+        ? item.groups.map(group => ({ ...group }))
+        : []
+    }));
+  }
+
+  private patchVisibleActivityRowsFromEventSync(sync: ActivitiesEventSyncPayload): void {
+    for (const row of this.visibleActivityRows) {
+      if (row.id !== sync.id) {
+        continue;
+      }
+
+      if (row.type === 'events') {
+        const nextSource = this.buildSyncedEventMenuItem(sync, row.source as EventMenuItem);
+        row.title = nextSource.title;
+        row.subtitle = nextSource.shortDescription;
+        row.detail = nextSource.timeframe;
+        row.dateIso = nextSource.startAt ?? sync.startAt;
+        row.distanceKm = nextSource.distanceKm ?? sync.distanceKm;
+        row.distanceMetersExact = Math.max(0, Math.round((Number(row.distanceKm) || 0) * 1000));
+        row.unread = nextSource.activity;
+        row.metricScore = Math.max(0, row.metricScore || sync.activity);
+        row.isAdmin = nextSource.isAdmin;
+        row.source = nextSource;
+        continue;
+      }
+
+      if (row.type === 'hosting') {
+        const nextSource = this.buildSyncedHostingMenuItem(sync, row.source as HostingMenuItem);
+        row.title = nextSource.title;
+        row.subtitle = nextSource.shortDescription;
+        row.detail = nextSource.timeframe;
+        row.dateIso = nextSource.startAt ?? sync.startAt;
+        row.distanceKm = nextSource.distanceKm ?? sync.distanceKm;
+        row.distanceMetersExact = Math.max(0, Math.round((Number(row.distanceKm) || 0) * 1000));
+        row.unread = nextSource.activity;
+        row.metricScore = Math.max(20 + nextSource.activity, row.metricScore || 0);
+        row.isAdmin = true;
+        row.source = nextSource;
+      }
     }
   }
 

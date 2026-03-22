@@ -25,6 +25,14 @@ import { SessionService } from '../../../shared/core';
 import { environment } from '../../../../environments/environment';
 import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
 
+interface DeferredEventEditorSaveSnapshot {
+  editorTarget: AppTypes.EventEditorTarget;
+  editingEventId: string | null;
+  currentRecord: DemoEventRecord | null;
+  subEventsDisplayMode: AppTypes.SubEventsDisplayMode;
+  form: AppTypes.EventEditorDraftForm;
+}
+
 @Component({
   selector: 'app-event-editor-popup',
   standalone: true,
@@ -47,7 +55,7 @@ import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subev
   styleUrls: ['./event-editor-popup.component.scss']
 })
 export class EventEditorPopupComponent implements OnInit, OnDestroy {
-  private static readonly SAVE_PENDING_WINDOW_MS = 1500;
+  private static readonly SAVE_PENDING_WINDOW_MS = 3000;
   protected readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly eventEditorDataService = inject(EventEditorDataService);
@@ -728,7 +736,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.eventEditorService.openEdit(source);
   }
 
-  private buildEventEditorSyncPayload(): Omit<AppTypes.ActivitiesEventSyncPayload, 'syncKey'> | null {
+  private createDeferredEventEditorSaveSnapshot(): DeferredEventEditorSaveSnapshot | null {
     if (this.eventEditorService.readOnly()) {
       return null;
     }
@@ -743,19 +751,38 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return null;
     }
 
+    return {
+      editorTarget: this.editorTarget,
+      editingEventId: this.editingEventId,
+      currentRecord: this.currentRecord,
+      subEventsDisplayMode: this.subEventsDisplayMode,
+      form: this.cloneEventEditorDraftForm(this.eventForm)
+    };
+  }
+
+  private cloneEventEditorDraftForm(form: AppTypes.EventEditorDraftForm): AppTypes.EventEditorDraftForm {
+    return {
+      ...form,
+      topics: [...form.topics],
+      subEvents: EventEditorBuilder.cloneEventEditorSubEvents(form.subEvents)
+    };
+  }
+
+  private buildEventEditorSyncPayloadFromSnapshot(snapshot: DeferredEventEditorSaveSnapshot): Omit<AppTypes.ActivitiesEventSyncPayload, 'syncKey'> {
     const activeUserId = this.activeUserId();
-    const eventId = this.editingEventId ?? EventEditorBuilder.buildCreatedEventEditorId(this.editorTarget);
-    const existingRecord = this.currentRecord
+    const eventId = snapshot.editingEventId ?? EventEditorBuilder.buildCreatedEventEditorId(snapshot.editorTarget);
+    const existingRecord = snapshot.currentRecord
       ?? (activeUserId ? this.eventEditorDataService.peekKnownItemById(activeUserId, eventId) : null);
     const acceptedMembers = existingRecord?.acceptedMembers ?? 0;
     const pendingMembers = existingRecord?.pendingMembers ?? 0;
+    const normalizedCapacity = EventEditorBuilder.normalizedEventEditorCapacityRange(snapshot.form);
     const capacityTotal = existingRecord?.capacityTotal
       ?? Math.max(0, normalizedCapacity.max ?? normalizedCapacity.min ?? 0);
     return EventEditorBuilder.buildEventEditorSyncPayload({
       eventId,
-      target: this.editorTarget,
-      form: this.eventForm,
-      subEventsDisplayMode: this.subEventsDisplayMode,
+      target: snapshot.editorTarget,
+      form: snapshot.form,
+      subEventsDisplayMode: snapshot.subEventsDisplayMode,
       acceptedMembers,
       pendingMembers,
       capacityTotal,
@@ -772,26 +799,21 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private async runSaveWithPendingWindow(): Promise<void> {
+    const snapshot = this.createDeferredEventEditorSaveSnapshot();
+    if (!snapshot) {
+      return;
+    }
+
     this.isSavePending = true;
-    const pendingWindowPromise = this.minimumSavePendingWindow();
     try {
-      await this.waitForAnimationKickoff();
-      const payload = this.buildEventEditorSyncPayload();
-      if (!payload) {
-        this.isSavePending = false;
-        return;
-      }
+      const pendingWindowPromise = this.minimumSavePendingWindow();
+      const savePromise = this.persistEventEditorSnapshotAfterUiYield(snapshot);
 
-      if (this.demoModeEnabled) {
-        await pendingWindowPromise;
-        this.isSavePending = false;
-        this.eventEditorService.close();
-        void this.emitEventEditorPayloadAfterUiYield(payload);
-        return;
-      }
+      await Promise.all([
+        pendingWindowPromise,
+        savePromise
+      ]);
 
-      this.persistEventEditorPayload(payload);
-      await pendingWindowPromise;
       this.isSavePending = false;
       this.eventEditorService.close();
     } catch {
@@ -805,9 +827,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       : Promise.resolve();
   }
 
-  private async emitEventEditorPayloadAfterUiYield(payload: Omit<AppTypes.ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
+  private async persistEventEditorSnapshotAfterUiYield(snapshot: DeferredEventEditorSaveSnapshot): Promise<void> {
+    await this.waitForAnimationKickoff();
     await this.waitForNextPaint();
-    this.persistEventEditorPayload(payload);
+    this.persistEventEditorPayload(this.buildEventEditorSyncPayloadFromSnapshot(snapshot));
   }
 
   private async waitForAnimationKickoff(): Promise<void> {

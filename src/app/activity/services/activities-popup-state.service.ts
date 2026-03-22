@@ -205,12 +205,27 @@ export class ActivitiesPopupStateService {
       syncKey: `${payload.id}:${Date.now()}`
     };
     this._activitiesEventSync.set(event);
-    void this.eventsService.syncEventSnapshot(payload).catch(() => {
-      // Demo persistence is best-effort; UI state stays optimistic.
-    });
-    void this.activityMembersService.syncEventMembersFromEventSnapshot(payload).catch(() => {
-      // Demo persistence is best-effort; UI state stays optimistic.
-    });
+    this.runDeferredEventPersistence(payload);
+  }
+
+  private runDeferredEventPersistence(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): void {
+    const persist = () => {
+      void this.eventsService.syncEventSnapshot(payload).catch(() => {
+        // Demo persistence is best-effort; UI state stays optimistic.
+      });
+      void this.activityMembersService.syncEventMembersFromEventSnapshot(payload).catch(() => {
+        // Demo persistence is best-effort; UI state stays optimistic.
+      });
+    };
+
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => {
+        setTimeout(persist, 0);
+      });
+      return;
+    }
+
+    setTimeout(persist, 0);
   }
 
   clearActivitiesEventSync(): void {
