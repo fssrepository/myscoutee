@@ -113,18 +113,16 @@
             (touchend)="onStageSwipeEnd($event)"
             (touchcancel)="onStageSwipeCancel()"
           >
-            <div class="subevents-stage-track" [style.transform]="'translateX(-' + (stagePageIndex * 100) + '%)'">
-              <section class="subevents-stage-page" *ngFor="let page of stagePages; trackBy: trackByStagePageIndex">
-                <div
-                  class="subevents-stage-grid"
-                  [class.subevents-stage-grid-mobile]="isMobileViewport"
-                  [style.gridTemplateColumns]="stageGridTemplateColumns(page)"
-                >
-                  <article
-                    class="subevents-stage-card"
-                    *ngFor="let stage of page; trackBy: trackByStageKey"
-                    [style.--stage-accent]="stageAccentColor(stage)"
-                  >
+            <div
+              class="subevents-stage-grid"
+              [class.subevents-stage-grid-mobile]="isMobileViewport"
+              [style.gridTemplateColumns]="stageGridTemplateColumns(visibleStageCards)"
+            >
+              <article
+                class="subevents-stage-card"
+                *ngFor="let stage of visibleStageCards; trackBy: trackByStageKey"
+                [style.--stage-accent]="stageAccentColor(stage)"
+              >
                     <header class="subevents-stage-head">
                       <div class="subevents-stage-head-main">
                         <span class="subevents-stage-step">{{ stage.title | uppercase }}</span>
@@ -281,9 +279,7 @@
                         </span>
                       </article>
                     </div>
-                  </article>
-                </div>
-              </section>
+              </article>
             </div>
           </div>
         </ng-container>

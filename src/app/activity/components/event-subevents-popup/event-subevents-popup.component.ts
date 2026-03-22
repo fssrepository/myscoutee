@@ -1457,35 +1457,33 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private stageRowsForItem(item: EventSubeventsItem, stageSourceIndex: number, stageId: string): EventSubeventsStageRow[] {
     const groups = this.cloneGroups(item.groups);
     const toneByIndex: Array<'amber' | 'green' | 'mint' | 'teal'> = ['amber', 'green', 'mint', 'teal'];
-    if (groups.length > 0) {
-      return groups.map((group, index) => {
-        const letter = String.fromCharCode(65 + (index % 26));
-        const groupName = `${group.name ?? `Group ${letter}`}`.trim() || `Group ${letter}`;
-        const source = this.normalizeGroupSource(group.source);
+    const explicitGroupCount = this.normalizedNonNegativeInt(item.tournamentGroupCount);
+    const stageCapacityMax = Math.max(0, Math.trunc(Number(item.capacityMax) || 0));
+    const groupCapacityMin = Math.max(1, Math.trunc(Number(item.tournamentGroupCapacityMin) || 0) || 1);
+    const inferredGroupCount = stageCapacityMax > 0
+      ? Math.max(1, Math.ceil(stageCapacityMax / groupCapacityMin))
+      : 0;
+    const targetGroupCount = Math.max(groups.length, explicitGroupCount ?? inferredGroupCount, 1);
+    const rows: EventSubeventsStageRow[] = [];
 
-        return {
-          key: `${stageId}-${group.id ?? index}`,
-          label: `${groupName.toUpperCase()} · ${source.toUpperCase()}`,
-          pending: this.toPendingCount(group.membersPending ?? 6),
-          groupId: group.id ?? null,
-          groupName,
-          tone: toneByIndex[index % toneByIndex.length],
-          source,
-          stageSourceIndex
-        };
+    for (let index = 0; index < targetGroupCount; index += 1) {
+      const group = groups[index] ?? null;
+      const letter = String.fromCharCode(65 + (index % 26));
+      const groupName = `${group?.name ?? `Group ${letter}`}`.trim() || `Group ${letter}`;
+      const source = group ? this.normalizeGroupSource(group.source) : 'generated';
+      rows.push({
+        key: `${stageId}-${group?.id ?? `generated-${index}`}`,
+        label: `${groupName.toUpperCase()} · ${source.toUpperCase()}`,
+        pending: this.toPendingCount(group?.membersPending ?? item.membersPending ?? 6),
+        groupId: group?.id ?? null,
+        groupName,
+        tone: toneByIndex[index % toneByIndex.length],
+        source,
+        stageSourceIndex
       });
     }
 
-    return [{
-      key: `${stageId}-generated-a`,
-      label: 'GROUP A · GENERATED',
-      pending: this.toPendingCount(item.membersPending ?? 6),
-      groupId: null,
-      groupName: 'Group A',
-      tone: 'amber',
-      source: 'generated',
-      stageSourceIndex
-    }];
+    return rows;
   }
 
   private resolveLeaderboardGroupMemberCount(
