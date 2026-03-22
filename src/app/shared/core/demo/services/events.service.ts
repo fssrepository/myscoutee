@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
+import { AppMemoryDb } from '../../../core/base';
 import type { ActivitiesEventSyncPayload } from '../../../core/base/models';
 import { resolveAdditionalDelayMsForRoute } from '../config';
 import { DemoEventsRepository } from '../repositories/events.repository';
@@ -20,6 +21,7 @@ export class DemoEventsService {
   private static readonly EVENTS_ROUTE = '/activities/events';
   private static readonly EVENTS_EXPLORE_ROUTE = '/activities/events/explore';
   private readonly eventsRepository = inject(DemoEventsRepository);
+  private readonly memoryDb = inject(AppMemoryDb);
 
   async queryItemsByUser(userId: string): Promise<DemoEventRecord[]> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
@@ -83,7 +85,9 @@ export class DemoEventsService {
   }
 
   async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
     this.eventsRepository.syncEventSnapshot(payload);
+    await this.memoryDb.flushToIndexedDb();
   }
 
   async trashItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
