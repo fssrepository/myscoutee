@@ -306,22 +306,14 @@
   stroke-linejoin: round;
   transform-origin: 50% 50%;
   transform: rotate(-90deg);
+  transition: stroke-dashoffset 1.5s linear;
 }
 
 .event-editor-save-btn-ring-progress.is-loading {
   stroke: url(#event-editor-save-gradient);
-  animation: event-editor-save-ring-progress 3s linear forwards;
 }
 
-@keyframes event-editor-save-ring-progress {
-  from {
-    stroke-dashoffset: 100;
-  }
 
-  to {
-    stroke-dashoffset: 0;
-  }
-}
 
 .event-editor-save-btn-shell.is-loading .event-editor-save-btn,
 .event-editor-save-btn-shell.is-loading .event-editor-save-btn:hover,
