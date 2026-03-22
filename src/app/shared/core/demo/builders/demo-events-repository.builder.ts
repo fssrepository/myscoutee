@@ -301,6 +301,7 @@ export class DemoEventsRepositoryBuilder {
 
     for (const [userId, items] of Object.entries(options.eventsByUser)) {
       for (const item of items) {
+        const creatorUserId = creatorUserIdByEventId.get(item.id) ?? userId;
         const recordKey = this.buildRecordKey(userId, 'events', item.id);
         byId[recordKey] = this.buildRecord({
           id: item.id,
@@ -313,13 +314,13 @@ export class DemoEventsRepositoryBuilder {
           inviter: null,
           unread: 0,
           activity: item.activity,
-          isAdmin: item.isAdmin,
+          isAdmin: item.isAdmin || creatorUserId === userId,
           isInvitation: false,
           isHosting: false,
           isTrashed: false,
           published: item.published ?? (options.publishedById?.[item.id] !== false),
           trashedAtIso: null,
-          creatorUserId: creatorUserIdByEventId.get(item.id) ?? userId,
+          creatorUserId,
           seed: this.extractSeedOverrides(item)
         });
         ids.push(recordKey);
@@ -474,14 +475,14 @@ export class DemoEventsRepositoryBuilder {
     const seededMembers = this.buildSeededMemberIds(record, startAtIso, distanceKm, creator);
     const acceptedMemberUserIds = this.normalizeUserIds(record.seed?.acceptedMemberUserIds);
     const pendingMemberUserIds = this.normalizeUserIds(record.seed?.pendingMemberUserIds);
-    const members = {
+    const members = this.normalizeDirectEventMembers(record, creator.id, {
       acceptedMemberUserIds: acceptedMemberUserIds.length > 0
         ? acceptedMemberUserIds
         : seededMembers.acceptedMemberUserIds,
       pendingMemberUserIds: pendingMemberUserIds.length > 0
         ? pendingMemberUserIds
         : seededMembers.pendingMemberUserIds
-    };
+    });
     const acceptedMembers = members.acceptedMemberUserIds.length;
     const pendingMembers = members.pendingMemberUserIds.length;
     const capacityMin = this.normalizeCount(record.seed?.capacityMin) ?? this.normalizeCount(capacityRange.min);
@@ -710,6 +711,48 @@ export class DemoEventsRepositoryBuilder {
       : 0.45 + (((seed >> 4) % 3) * 0.08);
     const min = Math.max(0, Math.min(max, Math.floor(max * minRatio)));
     return { min, max };
+  }
+
+
+  private static normalizeDirectEventMembers(
+    record: Pick<DemoEventRecord, 'type' | 'userId' | 'isAdmin' | 'isInvitation'>,
+    creatorUserId: string,
+    members: { acceptedMemberUserIds: string[]; pendingMemberUserIds: string[] }
+  ): { acceptedMemberUserIds: string[]; pendingMemberUserIds: string[] } {
+    const acceptedMemberUserIds = this.normalizeUserIds(members.acceptedMemberUserIds);
+    const pendingMemberUserIds = this.normalizeUserIds(members.pendingMemberUserIds)
+      .filter(userId => !acceptedMemberUserIds.includes(userId));
+    if (record.type !== 'events' || record.isInvitation) {
+      return {
+        acceptedMemberUserIds,
+        pendingMemberUserIds
+      };
+    }
+    const ownerUserId = record.userId.trim();
+    if (!ownerUserId) {
+      return {
+        acceptedMemberUserIds,
+        pendingMemberUserIds
+      };
+    }
+    if (record.isAdmin || creatorUserId === ownerUserId) {
+      return {
+        acceptedMemberUserIds: acceptedMemberUserIds.includes(ownerUserId)
+          ? acceptedMemberUserIds
+          : [ownerUserId, ...acceptedMemberUserIds],
+        pendingMemberUserIds: pendingMemberUserIds.filter(userId => userId !== ownerUserId)
+      };
+    }
+    if (acceptedMemberUserIds.includes(ownerUserId) || pendingMemberUserIds.includes(ownerUserId)) {
+      return {
+        acceptedMemberUserIds,
+        pendingMemberUserIds
+      };
+    }
+    return {
+      acceptedMemberUserIds: [ownerUserId, ...acceptedMemberUserIds],
+      pendingMemberUserIds
+    };
   }
 
   private static buildRecordImageUrl(
