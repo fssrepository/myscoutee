@@ -7,7 +7,7 @@
     "start:pcores": "bash -lc 'set -o pipefail; mkdir -p .agent/logs; taskset -c 0-3 env NG_BUILD_MAX_WORKERS=12 ng serve --configuration development 2>&1 | tee .agent/logs/ng-serve.log'",
     "start:log": "npm run start",
     "start:nolog": "NG_BUILD_MAX_WORKERS=12 ng serve --configuration development",
-    "start:prod": "bash -lc 'set -o pipefail; mkdir -p .agent/logs; NG_BUILD_MAX_WORKERS=12 ng serve --configuration production 2>&1 | tee .agent/logs/ng-serve-prod.log'",
+    "start:prod": "bash -lc 'set -o pipefail; mkdir -p .agent/logs; NG_BUILD_MAX_WORKERS=12 ng serve --configuration production-serve 2>&1 | tee .agent/logs/ng-serve-prod.log'",
     "start:events": "bash scripts/watch-ng-serve-log.sh",
     "start:wait-build": "bash scripts/watch-ng-serve-log.sh --once",
     "build": "NG_BUILD_MAX_WORKERS=12 ng build --configuration development",

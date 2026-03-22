@@ -55,7 +55,15 @@
                   "maximumError": "400kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "optimization": {
+                "styles": {
+                  "inlineCritical": true
+                },
+                "fonts": {
+                  "inline": true
+                }
+              }
             },
             "development": {
               "outputPath": {
@@ -77,6 +85,9 @@
             },
             "development": {
               "buildTarget": "myscoutee:build:development"
+            },
+            "production-serve": {
+              "buildTarget": "myscoutee:build:production"
             }
           },
           "defaultConfiguration": "development"
