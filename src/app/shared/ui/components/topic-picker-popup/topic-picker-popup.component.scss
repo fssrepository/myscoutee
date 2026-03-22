@@ -1,12 +1,22 @@
+@use '../../styles' as ui;
+
+@include ui.popup-shell();
+@include ui.interactive-motion();
+
 .topic-picker-screen-shell {
   z-index: 2640;
-  padding: 0.6rem;
-  align-items: center;
+  padding: 1rem;
+  align-items: flex-start;
+}
+
+.topic-picker-screen-shell .app-popup-backdrop {
+  background: rgba(18, 29, 48, 0.42);
 }
 
 .popup-panel-topic-picker {
-  width: min(980px, calc(100vw - 1rem));
-  height: min(92vh, 980px);
+  width: min(1060px, calc(100vw - 1.2rem));
+  height: calc(100vh - 1.2rem);
+  max-height: calc(100vh - 1.2rem);
 }
 
 .popup-header-friends-picker {
@@ -45,6 +55,76 @@
   margin-left: auto;
 }
 
+.values-selected-chip {
+  border: 1px solid rgba(76, 99, 136, 0.3);
+  background: linear-gradient(180deg, #f7f9ff 0%, #eef3ff 100%);
+  color: #24416a;
+  border-radius: 999px;
+  min-height: 26px;
+  padding: 0.18rem 0.46rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.26rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.values-selected-chip .mat-icon {
+  width: 12px;
+  height: 12px;
+  font-size: 12px;
+  line-height: 12px;
+}
+
+.values-selected-chip.section-social {
+  background: linear-gradient(180deg, #ecf4ff 0%, #e1ecfb 100%);
+  border-color: rgba(45, 94, 168, 0.32);
+  color: #2d5ea8;
+}
+
+.values-selected-chip.section-arts {
+  background: linear-gradient(180deg, #f2edfb 0%, #e9e2f9 100%);
+  border-color: rgba(103, 76, 164, 0.32);
+  color: #654ca1;
+}
+
+.values-selected-chip.section-food {
+  background: linear-gradient(180deg, #fff4e8 0%, #fee9d6 100%);
+  border-color: rgba(170, 97, 28, 0.32);
+  color: #9d611c;
+}
+
+.values-selected-chip.section-active {
+  background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
+  border-color: rgba(44, 126, 72, 0.32);
+  color: #2d7d47;
+}
+
+.values-selected-chip.section-mind {
+  background: linear-gradient(180deg, #eaf8f6 0%, #def1ee 100%);
+  border-color: rgba(37, 124, 118, 0.32);
+  color: #2d7d78;
+}
+
+.values-selected-chip.section-identity {
+  background: linear-gradient(180deg, #f4f0ff 0%, #e9e3fb 100%);
+  border-color: rgba(88, 78, 159, 0.32);
+  color: #5a4ea0;
+}
+
+.values-option-chip {
+  cursor: pointer;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.values-option-chip.active {
+  background: linear-gradient(180deg, #e8f2ec 0%, #ddeee5 100%);
+  border-color: rgba(44, 124, 72, 0.35);
+  color: #1f6a3b;
+}
+
 .popup-body-topic-picker .values-selected-chip {
   min-height: 32px;
   padding: 0.26rem 0.62rem;
@@ -59,6 +139,14 @@
   height: 14px;
   font-size: 14px;
   line-height: 14px;
+}
+
+.popup-body-topic-picker .values-option-chip {
+  min-height: 30px;
+  padding: 0.24rem 0.62rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  border-width: 1.5px;
 }
 
 .values-selector-popup {

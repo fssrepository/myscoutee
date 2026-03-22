@@ -187,6 +187,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   protected showDisplayModePicker = false;
   protected stagePageIndex = 0;
   protected isMobileViewport = this.readViewportWidth() <= 920;
+  protected stagePageMotionClass = '';
 
   protected openStageMenuKey: string | null = null;
   protected openGroupMenuKey: string | null = null;
@@ -220,6 +221,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   private stageSwipeStartX: number | null = null;
   private stageSwipeDeltaX = 0;
+  private stagePageMotionResetHandle: ReturnType<typeof setTimeout> | null = null;
   private workingSubEvents: EventSubeventsItem[] = [];
   protected sortedSubEvents: EventSubeventsPreparedItem[] = [];
   protected stageCards: EventSubeventsStageCard[] = [];
@@ -2120,6 +2122,38 @@ export class EventSubeventsPopupComponent implements OnChanges {
       Math.max(0, this.stagePages.length - 1)
     );
     this.syncVisibleStageCards();
+    this.triggerStagePageMotion(direction);
+  }
+
+  private triggerStagePageMotion(direction: -1 | 1): void {
+    const motionClass = direction > 0
+      ? 'subevents-stage-grid-enter-next'
+      : 'subevents-stage-grid-enter-prev';
+    if (this.stagePageMotionResetHandle) {
+      clearTimeout(this.stagePageMotionResetHandle);
+      this.stagePageMotionResetHandle = null;
+    }
+    this.stagePageMotionClass = '';
+    const applyMotion = () => {
+      this.stagePageMotionClass = motionClass;
+      this.stagePageMotionResetHandle = setTimeout(() => {
+        this.stagePageMotionClass = '';
+        this.stagePageMotionResetHandle = null;
+      }, 220);
+    };
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => applyMotion());
+      return;
+    }
+    applyMotion();
+  }
+
+  private clearStagePageMotion(): void {
+    if (this.stagePageMotionResetHandle) {
+      clearTimeout(this.stagePageMotionResetHandle);
+      this.stagePageMotionResetHandle = null;
+    }
+    this.stagePageMotionClass = '';
   }
 
   private alignPageToCurrentStage(): void {
@@ -2679,6 +2713,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   private resetTransientUi(): void {
+    this.clearStagePageMotion();
     this.showDisplayModePicker = false;
     this.openStageMenuKey = null;
     this.openGroupMenuKey = null;

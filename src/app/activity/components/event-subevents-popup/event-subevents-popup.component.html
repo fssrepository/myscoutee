@@ -116,6 +116,7 @@
             <div
               class="subevents-stage-grid"
               [class.subevents-stage-grid-mobile]="isMobileViewport"
+              [ngClass]="stagePageMotionClass"
               [style.gridTemplateColumns]="stageGridTemplateColumns(visibleStageCards)"
             >
               <article
