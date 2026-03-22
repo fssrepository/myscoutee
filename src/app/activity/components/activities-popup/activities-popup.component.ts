@@ -442,6 +442,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return;
       }
       this.lastAppliedActivityMembersUpdatedMs = sync.updatedMs;
+      if (this.eventEditorService.isOpen()) {
+        return;
+      }
       this.applyActivityMembersSyncState(sync);
       this.cdr.markForCheck();
     });
@@ -1153,7 +1156,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected shouldShowActivitiesQuickActions(): boolean {
-    return this.isEventActivitiesPrimaryFilter();
+    return this.isEventActivitiesPrimaryFilter()
+      && this.activitiesEventScope !== 'active-events'
+      && this.activitiesEventScope !== 'invitations'
+      && this.activitiesEventScope !== 'trash';
   }
 
   protected shouldShowRatesFullscreenToggle(): boolean {
@@ -1859,31 +1865,33 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activityDateRangeMetaLine(row: AppTypes.ActivityListRow): string {
-    return `${this.activityTypeLabel(row)} · ${this.activityDateLabel(row)} · ${row.distanceKm} km`;
+    return this.activityDateRangeLabel(row);
   }
 
   protected activityLocationMetaLine(row: AppTypes.ActivityListRow): string {
-    return (row.source as { city?: string })?.city ?? '';
+    const source = row.source as { location?: string; city?: string; creatorCity?: string };
+    const location = source.location?.trim() || source.city?.trim() || source.creatorCity?.trim() || '';
+    const distanceLabel = Number.isFinite(Number(row.distanceKm)) ? `${row.distanceKm} km` : '';
+    if (location && distanceLabel) {
+      return `${location} · ${distanceLabel}`;
+    }
+    return location || distanceLabel;
   }
 
-  private activityTypeLabel(row: AppTypes.ActivityListRow): string {
-    if (row.type === 'hosting') {
-      return 'My Event';
-    }
-    if (row.type === 'invitations') {
-      return 'Invitation';
-    }
-    return 'Event';
-  }
-
-  private activityDateLabel(row: AppTypes.ActivityListRow): string {
-    const parsed = new Date(row.dateIso);
-    if (Number.isNaN(parsed.getTime())) {
+  private activityDateRangeLabel(row: AppTypes.ActivityListRow): string {
+    const range = this.activityCalendarDateRange(row);
+    if (!range) {
       return (row.source as { timeframe?: string })?.timeframe ?? 'Date unavailable';
     }
-    return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-      + ', '
-      + parsed.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const sameDay = range.start.toDateString() === range.end.toDateString();
+    const startDateLabel = range.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const startTimeLabel = range.start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const endTimeLabel = range.end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    if (sameDay) {
+      return `${startDateLabel}, ${startTimeLabel} - ${endTimeLabel}`;
+    }
+    const endDateLabel = range.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `${startDateLabel}, ${startTimeLabel} - ${endDateLabel}, ${endTimeLabel}`;
   }
 
   protected activityEventInfoCard(
@@ -4409,6 +4417,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.hostingDatesById[sync.id] = sync.startAt;
     this.eventDistanceById[sync.id] = sync.distanceKm;
     this.hostingDistanceById[sync.id] = sync.distanceKm;
+    if (sync.isAdmin || sync.target === 'hosting') {
+      const nextPublishedIds = new Set(this.publishedHostingIds);
+      if (sync.published === false) {
+        nextPublishedIds.delete(sync.id);
+      } else {
+        nextPublishedIds.add(sync.id);
+      }
+      this.publishedHostingIds = nextPublishedIds;
+    }
     if (sync.imageUrl.trim().length > 0) {
       this.activityImageById[sync.id] = sync.imageUrl;
     } else {
@@ -4448,6 +4465,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
       startAt: sync.startAt,
       endAt: sync.endAt,
       distanceKm: sync.distanceKm,
+      acceptedMembers: Number.isFinite(Number(sync.acceptedMembers)) ? Math.max(0, Math.trunc(Number(sync.acceptedMembers))) : existing?.acceptedMembers,
+      pendingMembers: Number.isFinite(Number(sync.pendingMembers)) ? Math.max(0, Math.trunc(Number(sync.pendingMembers))) : existing?.pendingMembers,
+      capacityTotal: Number.isFinite(Number(sync.capacityTotal)) ? Math.max(0, Math.trunc(Number(sync.capacityTotal))) : existing?.capacityTotal,
       visibility: sync.visibility ?? existing?.visibility,
       blindMode: sync.blindMode ?? existing?.blindMode,
       imageUrl: imageUrl || existing?.imageUrl,
@@ -4484,6 +4504,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
       startAt: sync.startAt,
       endAt: sync.endAt,
       distanceKm: sync.distanceKm,
+      acceptedMembers: Number.isFinite(Number(sync.acceptedMembers)) ? Math.max(0, Math.trunc(Number(sync.acceptedMembers))) : existing?.acceptedMembers,
+      pendingMembers: Number.isFinite(Number(sync.pendingMembers)) ? Math.max(0, Math.trunc(Number(sync.pendingMembers))) : existing?.pendingMembers,
+      capacityTotal: Number.isFinite(Number(sync.capacityTotal)) ? Math.max(0, Math.trunc(Number(sync.capacityTotal))) : existing?.capacityTotal,
       visibility: sync.visibility ?? existing?.visibility,
       blindMode: sync.blindMode ?? existing?.blindMode,
       imageUrl: imageUrl || existing?.imageUrl,

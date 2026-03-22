@@ -18,7 +18,7 @@ import { AppUtils } from '../../../shared/app-utils';
 import { EventEditorBuilder } from '../../../shared/core/base/builders';
 import { EventEditorConverter } from '../../../shared/core/base/converters';
 import type * as AppTypes from '../../../shared/core/base/models';
-import { AppContext, AppPopupContext, EventEditorDataService } from '../../../shared/core';
+import { ActivityMembersService, AppContext, AppPopupContext, EventEditorDataService } from '../../../shared/core';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { TopicPickerPopupComponent } from '../../../shared/ui';
 import { SessionService } from '../../../shared/core';
@@ -51,6 +51,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   protected readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly eventEditorDataService = inject(EventEditorDataService);
+  private readonly activityMembersService = inject(ActivityMembersService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly sessionService = inject(SessionService);
@@ -65,6 +66,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   protected editingEventId: string | null = null;
   private draftEventId: string | null = null;
   private currentRecord: DemoEventRecord | null = null;
+  private currentMemberSummary: AppTypes.ActivityMembersSummary | null = null;
+  private lastHandledActivityMembersSyncMs = 0;
 
   constructor() {
     effect(() => {
@@ -109,6 +112,42 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.showEventVisibilityPicker = false;
       this.showTopicPicker = false;
       this.showSubEventsPopup = true;
+    });
+
+    effect(() => {
+      const sync = this.appCtx.activityMembersSync();
+      const isOpen = this.eventEditorService.isOpen();
+      if (!isOpen || !sync || sync.updatedMs <= this.lastHandledActivityMembersSyncMs) {
+        return;
+      }
+      this.lastHandledActivityMembersSyncMs = sync.updatedMs;
+      const eventId = this.currentEventIdentity();
+      if (!eventId || sync.id !== eventId) {
+        return;
+      }
+      const summary = this.activityMembersService.peekSummaryByOwnerId(sync.id);
+      this.currentMemberSummary = summary ?? {
+        ownerType: 'event',
+        ownerId: sync.id,
+        acceptedMembers: Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0)),
+        pendingMembers: Math.max(0, Math.trunc(Number(sync.pendingMembers) || 0)),
+        capacityTotal: Math.max(
+          Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0)),
+          Math.max(0, Math.trunc(Number(sync.capacityTotal) || 0))
+        ),
+        acceptedMemberUserIds: [],
+        pendingMemberUserIds: []
+      };
+      if (this.currentRecord?.id === sync.id) {
+        this.currentRecord = {
+          ...this.currentRecord,
+          acceptedMembers: this.currentMemberSummary.acceptedMembers,
+          pendingMembers: this.currentMemberSummary.pendingMembers,
+          capacityTotal: this.currentMemberSummary.capacityTotal,
+          acceptedMemberUserIds: [...this.currentMemberSummary.acceptedMemberUserIds],
+          pendingMemberUserIds: [...this.currentMemberSummary.pendingMemberUserIds]
+        };
+      }
     });
 
   }
@@ -192,8 +231,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.showEventVisibilityPicker = false;
     this.showTopicPicker = false;
     const source = this.eventEditorService.sourceEvent();
+    const eventId = this.currentEventIdentity() || 'draft-event';
     const row: AppTypes.ActivityListRow = {
-      id: source?.id ?? this.draftEventId ?? 'draft-event',
+      id: eventId,
       type: this.editorTarget === 'hosting' ? 'hosting' : 'events',
       title: this.eventForm.title.trim() || 'New Event',
       subtitle: this.eventForm.description.trim() || 'Draft event',
@@ -204,7 +244,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       metricScore: 0,
       isAdmin: true,
       source: source ?? {
-        id: this.draftEventId ?? 'draft-event',
+        id: eventId,
         avatar: '',
         title: this.eventForm.title.trim() || 'New Event',
         shortDescription: this.eventForm.description.trim() || 'Draft event',
@@ -266,7 +306,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   eventEditorHeaderPendingMemberCount(): number {
     const source: any = this.eventEditorService.sourceEvent();
-    const pendingRaw = source?.pendingMembersCount
+    const pendingRaw = this.currentMemberSummary?.pendingMembers
+      ?? source?.pendingMembersCount
       ?? source?.pendingCount
       ?? source?.pendingMembers
       ?? source?.pending
@@ -682,7 +723,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private openCreateRequest(target: AppTypes.EventEditorTarget): void {
     this.resetEditorContext();
     this.editorTarget = target;
-    this.draftEventId = `draft-${target}-${Date.now()}`;
+    this.draftEventId = EventEditorBuilder.buildCreatedEventEditorId(target);
+    this.currentMemberSummary = this.activityMembersService.peekSummaryByOwnerId(this.draftEventId);
     this.resetForm(target);
     this.eventEditorService.openCreate();
   }
@@ -696,6 +738,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
     this.editorTarget = target;
     this.editingEventId = row.id;
+    this.currentMemberSummary = this.activityMembersService.peekSummaryByOwnerId(row.id);
 
     if (cachedRecord) {
       this.currentRecord = cachedRecord;
@@ -748,26 +791,26 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const activeUserId = this.activeUserId();
     const eventId = this.eventForm.id.trim()
       || this.editingEventId
+      || this.draftEventId
       || EventEditorBuilder.buildCreatedEventEditorId(this.editorTarget);
+    this.eventForm.id = eventId;
     const existingRecord = this.currentRecord
       ?? (activeUserId ? this.eventEditorDataService.peekKnownItemById(activeUserId, eventId) : null);
-    const acceptedMembers = existingRecord?.acceptedMembers ?? 0;
-    const pendingMembers = existingRecord?.pendingMembers ?? 0;
-    const capacityTotal = existingRecord?.capacityTotal
-      ?? Math.max(0, normalizedCapacity.max ?? normalizedCapacity.min ?? 0);
+    const memberSummary = await this.resolveCurrentEventMembersSummary(eventId, normalizedCapacity);
+    this.currentMemberSummary = memberSummary;
     const payload = EventEditorBuilder.buildEventEditorSyncPayload({
       eventId,
       target: this.editorTarget,
       form: this.eventForm,
       subEventsDisplayMode: this.subEventsDisplayMode,
-      acceptedMembers,
-      pendingMembers,
-      capacityTotal,
+      acceptedMembers: memberSummary.acceptedMembers,
+      pendingMembers: memberSummary.pendingMembers,
+      capacityTotal: memberSummary.capacityTotal,
       existingRecord,
       activeUserId: activeUserId || null,
       activeUserProfile: activeUserId ? this.appCtx.getUserProfile(activeUserId) : null,
-      acceptedMemberUserIds: existingRecord?.acceptedMemberUserIds ?? [],
-      pendingMemberUserIds: existingRecord?.pendingMemberUserIds ?? []
+      acceptedMemberUserIds: memberSummary.acceptedMemberUserIds,
+      pendingMemberUserIds: memberSummary.pendingMemberUserIds
     });
 
     this.activitiesContext.emitActivitiesEventSync(payload);
@@ -837,10 +880,41 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.editingEventId = null;
     this.draftEventId = null;
     this.currentRecord = null;
+    this.currentMemberSummary = null;
+    this.lastHandledActivityMembersSyncMs = 0;
   }
 
   private activeUserId(): string {
     return this.appCtx.activeUserId().trim() || this.appCtx.getActiveUserId().trim();
+  }
+
+  private currentEventIdentity(): string {
+    return this.eventForm.id.trim() || this.editingEventId || this.draftEventId || '';
+  }
+
+  private async resolveCurrentEventMembersSummary(
+    eventId: string,
+    normalizedCapacity: AppTypes.EventCapacityRange
+  ): Promise<AppTypes.ActivityMembersSummary> {
+    const queriedSummary = eventId ? await this.activityMembersService.querySummaryByOwnerId(eventId) : null;
+    const summary = queriedSummary ?? this.currentMemberSummary;
+    const acceptedMembers = summary?.acceptedMembers ?? this.currentRecord?.acceptedMembers ?? 0;
+    const pendingMembers = summary?.pendingMembers ?? this.currentRecord?.pendingMembers ?? 0;
+    const capacityFloor = Math.max(0, normalizedCapacity.max ?? normalizedCapacity.min ?? 0);
+    const capacityTotal = Math.max(
+      acceptedMembers,
+      capacityFloor,
+      summary?.capacityTotal ?? this.currentRecord?.capacityTotal ?? 0
+    );
+    return {
+      ownerType: 'event',
+      ownerId: eventId,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      acceptedMemberUserIds: [...(summary?.acceptedMemberUserIds ?? this.currentRecord?.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(summary?.pendingMemberUserIds ?? this.currentRecord?.pendingMemberUserIds ?? [])]
+    };
   }
 
   private populateFormFromSourceEvent(sourceEvent: Record<string, unknown>): void {
@@ -860,7 +934,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const end = new Date(start.getTime() + (60 * 60 * 1000));
 
     this.eventForm = {
-      id: '',
+      id: this.draftEventId ?? '',
       title: '',
       description: '',
       imageUrl: '',

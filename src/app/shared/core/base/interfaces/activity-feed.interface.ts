@@ -47,6 +47,9 @@ export interface EventMenuItem {
   startAt?: string;
   endAt?: string;
   distanceKm?: number;
+  acceptedMembers?: number;
+  pendingMembers?: number;
+  capacityTotal?: number;
   visibility?: 'Public' | 'Friends only' | 'Invitation only';
   blindMode?: 'Open Event' | 'Blind Event';
   imageUrl?: string;
@@ -78,6 +81,9 @@ export interface HostingMenuItem {
   startAt?: string;
   endAt?: string;
   distanceKm?: number;
+  acceptedMembers?: number;
+  pendingMembers?: number;
+  capacityTotal?: number;
   visibility?: 'Public' | 'Friends only' | 'Invitation only';
   blindMode?: 'Open Event' | 'Blind Event';
   imageUrl?: string;
