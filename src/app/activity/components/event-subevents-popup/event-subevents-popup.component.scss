@@ -23,6 +23,7 @@
   .link-btn
 ) {
   -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
   transition:
     transform var(--interactive-motion-duration) var(--interactive-motion-ease),
     filter var(--interactive-motion-duration) var(--interactive-motion-ease),
@@ -1094,11 +1095,11 @@
   color: rgba(30, 58, 95, 0.86);
   font-weight: 700;
   -webkit-line-clamp: 1;
+  line-clamp: 1;
 }
 
 .subevents-casual-description {
   -webkit-line-clamp: 2;
-  line-clamp: 2;
   line-clamp: 2;
 }
 
