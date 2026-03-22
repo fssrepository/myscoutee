@@ -2111,11 +2111,17 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected shouldShowActivityPublishAction(row: AppTypes.ActivityListRow): boolean {
-    return !this.isActivityRowTrashed(row) && row.type === 'hosting' && !this.isHostingPublished(row.id);
+    return !this.isActivityRowTrashed(row) && row.type === 'hosting' && !!row.isAdmin && !this.isHostingPublished(row.id);
   }
 
   protected shouldShowActivityPrimaryAction(row: AppTypes.ActivityListRow): boolean {
-    return !this.isActivityRowTrashed(row);
+    if (this.isActivityRowTrashed(row)) {
+      return false;
+    }
+    if ((row.type === 'hosting' || row.type === 'events') && !row.isAdmin) {
+      return false;
+    }
+    return true;
   }
 
   protected shouldShowActivityViewAction(row: AppTypes.ActivityListRow): boolean {
@@ -2127,7 +2133,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected shouldShowActivitySecondaryAction(row: AppTypes.ActivityListRow): boolean {
-    return !this.isActivityRowTrashed(row);
+    if (this.isActivityRowTrashed(row)) {
+      return false;
+    }
+    if (row.type === 'hosting' && !row.isAdmin) {
+      return false;
+    }
+    return true;
   }
 
   protected shouldShowActivityRestoreAction(row: AppTypes.ActivityListRow): boolean {
