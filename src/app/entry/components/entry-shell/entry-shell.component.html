@@ -1,0 +1,34 @@
+<app-entry-landing
+  [authMode]="authMode"
+  [firebaseAuthProfile]="firebaseAuthProfile"
+  (demoRequested)="openEntryDemo()"
+  (firebaseAuthRequested)="openEntryFirebaseAuth()"
+  (consentRequested)="openEntryConsentPopup(true)"
+></app-entry-landing>
+
+<app-entry-consent-popup
+  [open]="showEntryConsentPopup"
+  [viewOnly]="entryConsentViewOnly"
+  (closeRequested)="closeEntryConsentPopup()"
+  (acceptRequested)="acceptEntryConsent()"
+  (rejectRequested)="rejectEntryConsent()"
+></app-entry-consent-popup>
+
+<app-entry-demo-user-selector
+  [open]="showUserSelector"
+  [loading]="demoSelectorLoading"
+  [loadingProgress]="demoSelectorLoadingProgress"
+  [loadingLabel]="demoSelectorLoadingLabel"
+  [submitting]="demoSelectorSubmitting"
+  [users]="demoSelectorUsers"
+  (closeRequested)="closeDemoUserSelectorPopup()"
+  (userSelected)="onSelectDemoUser($event)"
+></app-entry-demo-user-selector>
+
+<app-entry-firebase-auth-popup
+  [open]="showFirebaseAuthPopup"
+  [busy]="firebaseAuthIsBusy"
+  [isMobileView]="isMobileView"
+  (closeRequested)="closeFirebaseAuthPopup()"
+  (continueRequested)="onContinueWithFirebaseAuth()"
+></app-entry-firebase-auth-popup>

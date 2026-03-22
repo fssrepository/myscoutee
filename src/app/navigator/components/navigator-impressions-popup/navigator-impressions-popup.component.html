@@ -1,0 +1,125 @@
+<ng-container *ngIf="popupOpen() && viewModel() as vm">
+  <section class="app-popup app-popup-stacked app-popup-super-stacked navigator-impressions-popup">
+    <div class="app-popup-backdrop" (click)="closePopup()"></div>
+    <div class="app-popup-panel popup-panel-members" (click)="$event.stopPropagation()">
+      <div class="popup-header popup-header-impressions">
+        <div class="popup-title popup-title-impressions">
+          <div class="popup-chat-title-block">
+            <h2>Impressions</h2>
+          </div>
+        </div>
+        <button mat-icon-button class="popup-close" (click)="closePopup()" aria-label="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="popup-body popup-body-impressions">
+        <div class="social-proof-grid">
+          <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-host">
+            <div class="social-proof-identity-pill social-proof-identity-pill-host">
+              <mat-icon [class]="getHostTierColorClass(vm.user.hostTier)">{{ getHostTierIcon(vm.user.hostTier) }}</mat-icon>
+              <span class="social-proof-identity-label">
+                <span class="social-proof-identity-main">{{ vm.user.hostTier.replace(' Host', '') }}</span>
+                <span class="social-proof-identity-sub">Host</span>
+              </span>
+            </div>
+            <div class="popup-impressions-badge popup-impressions-badge-host" [class.popup-impressions-badge-updated]="vm.pulseFlags.hostTop">
+              <span class="popup-impressions-badge-segment popup-impressions-rate-rate">
+                <span class="popup-impressions-badge-label">Rate</span>
+                <span class="popup-impressions-badge-value">{{ vm.hostAverageRating }}</span>
+              </span>
+              <span class="popup-impressions-badge-segment popup-impressions-rate-people">
+                <span class="popup-impressions-badge-label">People / Events</span>
+                <span class="popup-impressions-badge-value">{{ vm.hostPeopleMet + ' / ' + vm.hostTotalEvents }}</span>
+              </span>
+              <span class="popup-impressions-badge-segment popup-impressions-rate-return">
+                <span class="popup-impressions-badge-label">Returnees / NoShow</span>
+                <span class="popup-impressions-badge-value">{{ vm.hostRepeatSummary + ' / ' + vm.hostAttendanceNoShowSummary }}</span>
+              </span>
+            </div>
+
+            <div class="social-proof-section-block">
+              <div class="social-proof-section-head section-vibe">
+                <span class="section-tag">Vibe</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="vm.pulseFlags.hostChips">
+                <span class="social-proof-chip chip-vibe" *ngFor="let item of vm.hostVibeBadgeItems">{{ item }}</span>
+              </div>
+            </div>
+
+            <div class="social-proof-section-block">
+              <div class="social-proof-section-head section-personality">
+                <span class="section-tag">Personality</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="vm.pulseFlags.hostChips">
+                <span class="social-proof-chip chip-personality" *ngFor="let item of vm.hostPersonalityBadgeItems">{{ item }}</span>
+              </div>
+            </div>
+
+            <div class="social-proof-section-block">
+              <div class="social-proof-section-head section-category">
+                <span class="section-tag">Category</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="vm.pulseFlags.hostChips">
+                <span class="social-proof-chip chip-category" *ngFor="let item of vm.hostCategoryBadgeItems">{{ item }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-member">
+            <div class="social-proof-identity-pill social-proof-identity-pill-member">
+              <mat-icon [class]="getTraitColorClass(vm.user.traitLabel)">{{ getTraitIcon(vm.user.traitLabel) }}</mat-icon>
+              <span class="social-proof-identity-label">
+                <span class="social-proof-identity-main">{{ vm.memberImpressionTitle.replace(' Attendee', '') }}</span>
+                <span class="social-proof-identity-sub">Attendee</span>
+              </span>
+            </div>
+            <div class="popup-impressions-badge popup-impressions-badge-member" [class.popup-impressions-badge-updated]="vm.pulseFlags.memberTop">
+              <span class="popup-impressions-badge-segment popup-impressions-rate-people">
+                <span class="popup-impressions-badge-label">People / Events</span>
+                <span class="popup-impressions-badge-value">{{ vm.memberPeopleMet + ' / ' + vm.memberTotalEvents }}</span>
+              </span>
+              <span class="popup-impressions-badge-segment popup-impressions-rate-return">
+                <span class="popup-impressions-badge-label">Returnees / NoShow</span>
+                <span class="popup-impressions-badge-value">{{ vm.memberReturneesSummary + ' / ' + vm.memberNoShowCount }}</span>
+              </span>
+            </div>
+
+            <div class="social-proof-section-block">
+              <div class="social-proof-section-head section-personality">
+                <span class="section-tag">Personality</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="vm.pulseFlags.memberChips">
+                <span class="social-proof-chip chip-personality" *ngFor="let item of vm.memberPersonalityBadgeItems">{{ item }}</span>
+              </div>
+            </div>
+
+            <div class="social-proof-section-block">
+              <div class="social-proof-section-head section-vibe">
+                <span class="section-tag">Vibe</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="vm.pulseFlags.memberChips">
+                <span class="social-proof-chip chip-vibe" *ngFor="let item of vm.memberVibeBadgeItems">{{ item }}</span>
+              </div>
+            </div>
+
+            <div class="social-proof-section-block">
+              <div class="social-proof-section-head section-category">
+                <span class="section-tag">Category</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="vm.pulseFlags.memberChips">
+                <span class="social-proof-chip chip-category" *ngFor="let item of vm.memberCategoryBadgeItems">{{ item }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</ng-container>

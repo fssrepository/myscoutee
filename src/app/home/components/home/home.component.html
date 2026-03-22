@@ -1,0 +1,86 @@
+<div class="game-page" [ngClass]="gamePageStatusClass()">
+  <header class="game-header">
+    <a class="game-brand" aria-label="MyScoutee home">
+      <img class="game-brand-mark" src="assets/logo/heart.png" alt="MyScoutee logo" />
+      <span class="game-brand-text">yScoutee</span>
+    </a>
+    <div class="game-actions">
+      <button type="button" class="game-action-mode" [class.mode-pair]="isPairMode" [class.mode-single]="!isPairMode" (click)="togglePairMode()">
+        <mat-icon>{{ isPairMode ? 'groups' : 'person' }}</mat-icon>
+        <span>{{ isPairMode ? 'Pair mode' : 'Single mode' }}</span>
+      </button>
+      <button
+        type="button"
+        class="game-action-filter has-badge"
+        [class.game-action-filter-has-matches]="hasRemainingCandidatesForCurrentMode"
+        [class.game-action-filter-no-matches]="!hasRemainingCandidatesForCurrentMode"
+        (click)="openFilter()"
+        aria-label="Open profile filters"
+      >
+        <mat-icon>filter_alt</mat-icon>
+        <span class="filter-state-badge" [class.active]="isFilterActive">{{ filterBadgeCount }}</span>
+      </button>
+      <button
+        type="button"
+        class="game-action-filter game-action-history has-badge"
+        [class.is-disabled]="!canOpenHistory"
+        [disabled]="!canOpenHistory"
+        (click)="openHistory()"
+        aria-label="Open game history"
+      >
+        <mat-icon>history</mat-icon>
+        <span class="history-badge" *ngIf="historyBadgeCount > 0">{{ historyBadgeCount }}</span>
+      </button>
+    </div>
+  </header>
+
+  <section class="game-layout-single">
+    <div class="game-card-deck">
+      <ng-template #homeFullscreenItemTemplate let-row let-renderState="renderState">
+        <ng-container *ngIf="row">
+          <app-pair-card
+            *ngIf="row.mode === 'pair'; else homeSingleCardTemplate"
+            [card]="homePairCard(row, { presentation: 'fullscreen', state: renderState })"
+          ></app-pair-card>
+
+          <ng-template #homeSingleCardTemplate>
+            <app-single-card
+              [card]="homeSingleCard(row, { presentation: 'fullscreen', state: renderState })"
+            ></app-single-card>
+          </ng-template>
+        </ng-container>
+      </ng-template>
+
+      <app-smart-list
+        #homeSmartList
+        class="home-smart-list"
+        [config]="homeSmartListConfig"
+        [loadPage]="homeSmartListLoadPage"
+        [fullscreenItemTemplate]="homeFullscreenItemTemplate"
+        presentation="fullscreen"
+        [query]="homeSmartListQuery"
+        (stateChange)="onHomeSmartListStateChange($event)"
+      ></app-smart-list>
+    </div>
+  </section>
+</div>
+
+<app-home-game-filter-popup
+  *ngIf="localPopup === 'filter' && gameFilterPopupContext"
+  [context]="gameFilterPopupContext"
+  (closed)="onGameFilterPopupClosed($event)"
+></app-home-game-filter-popup>
+
+<section class="game-popup" *ngIf="localPopup === 'history'">
+  <div class="game-popup-backdrop" (click)="closeLocalPopup()"></div>
+  <div class="game-popup-panel" (click)="$event.stopPropagation()">
+    <header>
+      <h2>Game History</h2>
+      <button type="button" (click)="closeLocalPopup()">×</button>
+    </header>
+    <div class="game-popup-body">
+      <p>Recent ratings and mutual matches can appear here.</p>
+      <p>Current placeholder keeps popup structure ready.</p>
+    </div>
+  </div>
+</section>

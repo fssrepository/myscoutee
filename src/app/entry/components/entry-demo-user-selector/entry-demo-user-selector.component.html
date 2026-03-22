@@ -1,0 +1,72 @@
+<section class="demo-login-overlay" *ngIf="open">
+  <div class="demo-login-backdrop" (click)="requestClose()"></div>
+  <div class="demo-login-panel" (click)="$event.stopPropagation()">
+    <div class="demo-login-header">
+      <div>
+        <h2>Select demo user</h2>
+        <p>Login disabled mode. Choose one of the 50 users to open perspective-based data.</p>
+      </div>
+      <button
+        mat-icon-button
+        type="button"
+        class="popup-close"
+        [disabled]="submitting"
+        (click)="requestClose()"
+        aria-label="Close demo user popup"
+      >
+        <span class="popup-close-glyph" aria-hidden="true">×</span>
+      </button>
+    </div>
+    <div class="demo-user-stage">
+      <ng-container *ngIf="loading; else demoUserSelectorReady">
+        <div class="demo-user-grid demo-user-grid-loading">
+          <div class="demo-user-loading-shell">
+            <div class="demo-user-loading-copy-group">
+              <p class="demo-user-loading-eyebrow">{{ submitting ? 'Opening demo session' : 'Preparing demo selector' }}</p>
+              <p class="demo-user-loading-copy">{{ loadingLabel }}</p>
+              <div
+                class="demo-user-progress"
+                role="progressbar"
+                aria-label="Demo data loading progress"
+                [attr.aria-valuemin]="0"
+                [attr.aria-valuemax]="100"
+                [attr.aria-valuenow]="loadingProgress"
+              >
+                <span class="demo-user-progress-track" aria-hidden="true"></span>
+                <span
+                  class="demo-user-progress-fill"
+                  [style.transform]="'scaleX(' + (loadingProgress / 100) + ')'"
+                  aria-hidden="true"
+                ></span>
+              </div>
+              <p class="demo-user-progress-value">{{ loadingProgress }}%</p>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+      <ng-template #demoUserSelectorReady>
+        <div class="demo-user-grid" [class.demo-user-grid-submitting]="submitting" *ngIf="users.length > 0; else demoUserSelectorEmpty">
+          <button
+            type="button"
+            class="demo-user-item"
+            [disabled]="submitting"
+            *ngFor="let user of users"
+            (click)="requestUserSelect(user.id)"
+          >
+            <span class="user-avatar" [class]="'user-color-' + user.gender">{{ user.initials }}</span>
+            <span class="demo-user-name">{{ user.name }}</span>
+            <span class="demo-user-meta">{{ user.gender }} · {{ user.city }}</span>
+          </button>
+        </div>
+      </ng-template>
+      <ng-template #demoUserSelectorEmpty>
+        <div class="demo-user-grid demo-user-grid-loading">
+          <p class="demo-user-loading-copy">No demo users available.</p>
+        </div>
+      </ng-template>
+      <div class="demo-user-submit-overlay" *ngIf="submitting && !loading">
+        <p class="demo-user-loading-copy">Opening demo session...</p>
+      </div>
+    </div>
+  </div>
+</section>

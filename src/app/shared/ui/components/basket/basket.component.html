@@ -1,0 +1,28 @@
+<div class="basket" [ngClass]="className" *ngIf="chips.length > 0">
+  <div
+    class="basket__chip values-selected-chip"
+    *ngFor="let chip of chips; trackBy: trackByChipId"
+    [class.is-disabled]="disabled || chip.disabled"
+  >
+    <span
+      class="basket__chip-avatar"
+      *ngIf="chip.avatarLabel; else basketLeadingIcon"
+      [ngClass]="chip.avatarClass"
+    >
+      {{ chip.avatarLabel }}
+    </span>
+    <ng-template #basketLeadingIcon>
+      <mat-icon class="basket__chip-icon" *ngIf="chip.icon">{{ chip.icon }}</mat-icon>
+    </ng-template>
+    <span class="basket__chip-label">{{ chip.label }}</span>
+    <button
+      type="button"
+      class="basket__chip-remove-btn"
+      [disabled]="disabled || chip.disabled"
+      [attr.aria-label]="'Remove ' + chip.label"
+      (click)="onChipClick(chip, $event)"
+    >
+      <mat-icon class="basket__chip-remove">{{ chip.trailingIcon || 'close' }}</mat-icon>
+    </button>
+  </div>
+</div>

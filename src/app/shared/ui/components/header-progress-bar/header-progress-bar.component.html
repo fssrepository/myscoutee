@@ -1,0 +1,10 @@
+<div
+  class="header-progress-bar"
+  [class.is-state-scrolling]="isScrollingState"
+  [class.is-state-loading]="isLoadingState"
+  [class.is-state-loading-overdue]="isLoadingOverdueState"
+  [class.is-state-offline]="isOfflineState"
+>
+  <span class="header-progress-bar__fill" [style.transform]="positionTransform()"></span>
+  <span class="header-progress-bar__loading" [style.transform]="positionTransform()"></span>
+</div>

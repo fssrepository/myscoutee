@@ -1,0 +1,95 @@
+:host {
+  display: block;
+  --bg-soft: #f3f6ff;
+  font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
+}
+
+.main {
+  width: 100%;
+  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  box-sizing: inherit;
+  position: relative;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(73, 111, 182, 0.16), transparent 35%),
+    radial-gradient(circle at 85% 0%, rgba(80, 174, 199, 0.12), transparent 32%),
+    var(--bg-soft);
+}
+
+.main.main-public {
+  height: auto;
+  min-height: 100vh;
+  background: transparent;
+}
+
+.content {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+  overflow: hidden;
+  height: 100dvh;
+}
+
+.content.content-single {
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 0 0.8rem;
+}
+
+.content.content-public {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0;
+  min-height: 100vh;
+  height: auto;
+}
+
+.content-area {
+  top: 0;
+  flex: 1;
+  background: transparent;
+  min-height: 420px;
+  padding-top: 0.75rem;
+}
+
+.content-area.content-area-full {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0.9rem 0.35rem 1rem;
+}
+
+.content-area.content-area-public {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+@media (max-width: 768px) {
+  .content {
+    overflow-x: hidden;
+  }
+
+  .content-area {
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 720px) {
+  .content.content-single {
+    padding: 0 0.45rem;
+  }
+
+  .content.content-public {
+    padding: 0;
+  }
+
+  .content-area.content-area-full {
+    padding: 0.7rem 0 0.85rem;
+  }
+}

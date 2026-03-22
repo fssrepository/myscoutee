@@ -1,0 +1,239 @@
+:host {
+  display: block;
+  font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
+  --line-strong: rgba(23, 33, 54, 0.2);
+  --text-main: #22324a;
+  --text-muted: rgba(23, 41, 66, 0.72);
+}
+
+.link-btn {
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  background: #fff;
+  color: #1f3350;
+  font: inherit;
+  font-size: 0.83rem;
+  padding: 0.46rem 0.82rem;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease, background 0.16s ease;
+}
+
+.link-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.link-btn:not(:disabled):active {
+  transform: translateY(0);
+}
+
+.neutral-btn {
+  background: #f2f4fa;
+  border-color: rgba(23, 33, 54, 0.12);
+}
+
+.primary-btn {
+  background: #4776b7;
+  border-color: #4776b7;
+  color: #fff;
+}
+
+.editor-list-card {
+  border: 1px solid rgba(13, 25, 44, 0.12);
+  border-radius: 11px;
+  padding: 0.56rem;
+  background: #fbfdff;
+}
+
+.editor-list-card h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-main);
+}
+
+.editor-list-card p {
+  margin-top: 0.26rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.support-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.support-card {
+  background: #fff;
+}
+
+.support-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.48rem;
+  margin-top: 0.54rem;
+  min-width: 0;
+}
+
+.support-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  min-width: 0;
+}
+
+.support-form label > span {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(29, 47, 72, 0.9);
+}
+
+.support-form input,
+.support-form select,
+.support-form textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid rgba(15, 27, 47, 0.16);
+  border-radius: 10px;
+  padding: 0.48rem 0.56rem;
+  font: inherit;
+  color: var(--text-main);
+  background: #fff;
+}
+
+.support-form input:focus,
+.support-form select:focus,
+.support-form textarea:focus {
+  outline: 0;
+  border-color: rgba(52, 103, 182, 0.72);
+  box-shadow: 0 0 0 3px rgba(55, 116, 212, 0.14);
+}
+
+.support-form-help-text {
+  font-size: 0.69rem;
+  font-weight: 700;
+  color: rgba(32, 58, 92, 0.62);
+  line-height: 1.25;
+}
+
+.support-form-help-text-error {
+  color: #9b2c37;
+}
+
+.support-form textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.support-submit-error {
+  border: 1px solid rgba(186, 56, 68, 0.22);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 242, 243, 0.96) 0%, rgba(255, 233, 236, 0.96) 100%);
+  color: #9b2c37;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.3;
+  padding: 0.48rem 0.56rem;
+}
+
+.support-submit-success {
+  border: 1px solid rgba(41, 131, 84, 0.35);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(220, 249, 231, 0.95) 0%, rgba(208, 245, 223, 0.95) 100%);
+  color: #1f6f48;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.35;
+  padding: 0.52rem 0.58rem;
+}
+
+.support-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.support-submit-btn-shell {
+  position: relative;
+  display: inline-flex;
+  border-radius: 16px;
+  padding: 2px;
+}
+
+.support-submit-btn {
+  position: relative;
+  z-index: 1;
+  min-height: 40px;
+  border-color: transparent;
+}
+
+.support-submit-btn-ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.support-submit-btn-ring-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 8px 20px rgba(13, 24, 44, 0.14));
+}
+
+.support-submit-btn-ring-track,
+.support-submit-btn-ring-progress {
+  fill: none;
+  stroke-width: 4;
+}
+
+.support-submit-btn-ring-track {
+  stroke: rgba(46, 114, 184, 0.12);
+}
+
+.support-submit-btn-ring-progress {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.support-submit-btn-ring-progress.is-loading {
+  stroke: url(#navigator-feedback-submit-gradient);
+  animation: support-submit-ring-progress 3s linear forwards;
+}
+
+.support-submit-btn-ring-progress.is-error {
+  stroke: url(#navigator-feedback-submit-gradient-error);
+}
+
+.support-submit-btn-ring-progress.is-success {
+  stroke: url(#navigator-feedback-submit-gradient-success);
+}
+
+.support-submit-btn-shell.is-loading .support-submit-btn,
+.support-submit-btn-shell.is-error .support-submit-btn,
+.support-submit-btn-shell.is-success .support-submit-btn {
+  box-shadow: none;
+}
+
+.support-actions .primary-btn:disabled,
+.support-submit-btn-shell.is-loading .support-submit-btn {
+  background: linear-gradient(180deg, #d9e2f2 0%, #c9d4e8 100%);
+  border-color: rgba(74, 103, 145, 0.32);
+  color: rgba(29, 51, 83, 0.72);
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes support-submit-ring-progress {
+  from {
+    stroke-dashoffset: 100;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}

@@ -1,0 +1,76 @@
+@mixin host-motion-vars(
+  $display: block,
+  $font-family: ('Nunito Sans', 'Segoe UI', sans-serif)
+) {
+  :host {
+    display: $display;
+    font-family: $font-family;
+    --asset-interactive-motion-duration: 0.16s;
+    --asset-interactive-motion-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+    --asset-interactive-hover-lift: -1.5px;
+    --asset-interactive-hover-scale: 1.018;
+    --asset-interactive-hover-brightness: 1.05;
+    --asset-interactive-hover-shadow: 0 6px 14px rgba(29, 67, 110, 0.16);
+    --asset-interactive-press-scale: 0.965;
+    --asset-interactive-press-brightness: 0.92;
+    --asset-interactive-press-shadow: 0 2px 8px rgba(29, 67, 110, 0.12);
+  }
+}
+
+@mixin interactive-feedback($selector-list) {
+  :where(#{$selector-list}) {
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      transform var(--asset-interactive-motion-duration) var(--asset-interactive-motion-ease),
+      filter var(--asset-interactive-motion-duration) var(--asset-interactive-motion-ease),
+      box-shadow var(--asset-interactive-motion-duration) var(--asset-interactive-motion-ease),
+      background-color var(--asset-interactive-motion-duration) var(--asset-interactive-motion-ease),
+      border-color var(--asset-interactive-motion-duration) var(--asset-interactive-motion-ease),
+      color var(--asset-interactive-motion-duration) var(--asset-interactive-motion-ease);
+    transform-origin: center;
+  }
+
+  :where(#{$selector-list}):focus-visible {
+    outline: 2px solid rgba(66, 110, 182, 0.44);
+    outline-offset: 2px;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    :where(#{$selector-list}):not(:disabled):not([aria-disabled='true']) {
+      &:hover {
+        transform: translateY(var(--asset-interactive-hover-lift)) scale(var(--asset-interactive-hover-scale));
+        filter: brightness(var(--asset-interactive-hover-brightness));
+        box-shadow: var(--asset-interactive-hover-shadow);
+      }
+
+      &:active {
+        transform: scale(var(--asset-interactive-press-scale));
+        filter: brightness(var(--asset-interactive-press-brightness));
+        box-shadow: var(--asset-interactive-press-shadow);
+      }
+    }
+  }
+
+  @keyframes asset-mobile-touch-feedback {
+    0% {
+      transform: scale(1);
+      filter: brightness(1);
+    }
+
+    45% {
+      transform: scale(var(--asset-interactive-press-scale));
+      filter: brightness(var(--asset-interactive-press-brightness));
+    }
+
+    100% {
+      transform: scale(1);
+      filter: brightness(1);
+    }
+  }
+
+  @media (hover: none), (pointer: coarse) {
+    :where(#{$selector-list}):not(:disabled):not([aria-disabled='true']):active {
+      animation: asset-mobile-touch-feedback 0.2s ease;
+    }
+  }
+}

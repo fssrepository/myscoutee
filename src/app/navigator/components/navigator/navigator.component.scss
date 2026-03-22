@@ -1,0 +1,27 @@
+:host {
+  display: block;
+  position: relative;
+  z-index: 9999;
+}
+
+// Ensure menu is at a baseline level
+app-navigator-menu {
+  display: block;
+  position: relative;
+  z-index: 1500;
+}
+
+// Let each popup shell manage its own z-index.
+// If these wrapper elements create sibling stacking contexts here,
+// child popups cannot reliably stack above their parent popups.
+app-activities-popup,
+app-event-feedback-popup,
+app-asset-popup,
+app-navigator-settings-popups,
+app-navigator-impressions-popup,
+app-profile-editor,
+app-event-members-popup,
+app-event-resource-popup,
+app-event-supply-contributions-popup {
+  display: contents;
+}

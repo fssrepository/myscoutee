@@ -1,0 +1,307 @@
+import { Injectable, inject } from '@angular/core';
+
+import { DemoUsersRepository } from '../repositories/users.repository';
+import { resolveAdditionalDelayMsForRoute } from '../config';
+import type {
+  UserByIdQueryResponse,
+  UserFeedbackSubmitRequestDto,
+  UserDto,
+  UserReportUserSubmitRequestDto,
+  UserRealtimeLongPollResponseDto,
+  UserProfileImageUploadResult,
+  UserService,
+  UserSubmitActionResponseDto,
+  UsersListQueryResponse
+} from '../../base/interfaces/user.interface';
+import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.interface';
+import {
+  DemoUserFilterPreferencesBuilder,
+  DemoUserImpressionsBuilder,
+  DemoUserMenuCountersBuilder
+} from '../builders';
+import { DemoEventsRepository } from '../repositories/events.repository';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class DemoUsersService implements UserService {
+  private static readonly DEMO_USERS_ROUTE = '/auth/demo-users';
+  private static readonly USER_BY_ID_ROUTE = '/auth/me';
+  private static readonly USER_FEEDBACK_ROUTE = '/auth/me/feedback';
+  private static readonly USER_REPORT_USER_ROUTE = '/auth/me/report-user';
+  private static readonly USER_REALTIME_LONG_POLL_ROUTE = '/auth/me/realtime/long-poll';
+  private static readonly USER_REALTIME_LONG_POLL_SIMULATION_STEP_MS = 30000;
+  private static readonly INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS = 2 * 60 * 60 * 1000;
+  private static readonly MAX_PROFILE_IMAGE_SLOTS = 8;
+  private readonly eventsRepository = inject(DemoEventsRepository);
+  private readonly usersRepository = inject(DemoUsersRepository);
+  private readonly realtimeCursorByUserId: Record<string, number> = {};
+  private readonly realtimeLastAdvanceAtByUserId: Record<string, number> = {};
+
+  async queryAvailableDemoUsers(): Promise<UsersListQueryResponse> {
+    const additionalDelayMs = resolveAdditionalDelayMsForRoute(DemoUsersService.DEMO_USERS_ROUTE);
+    if (additionalDelayMs > 0) {
+      await new Promise<void>(resolve => {
+        setTimeout(() => resolve(), additionalDelayMs);
+      });
+    }
+    return {
+      users: this.usersRepository.queryAvailableDemoUsers()
+    };
+  }
+
+  async queryUserById(userId?: string): Promise<UserByIdQueryResponse> {
+    const additionalDelayMs = resolveAdditionalDelayMsForRoute(DemoUsersService.USER_BY_ID_ROUTE);
+    if (additionalDelayMs > 0) {
+      await new Promise<void>(resolve => {
+        setTimeout(() => resolve(), additionalDelayMs);
+      });
+    }
+    const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
+    if (!normalizedUserId) {
+      return {
+        user: null,
+        filterPreferences: null
+      };
+    }
+    const loadedUser = this.usersRepository.queryUserById(normalizedUserId);
+    const user = loadedUser ? DemoUserImpressionsBuilder.withResolvedImpressions(loadedUser) : null;
+    const allUsers = this.usersRepository.queryGameStackUsers(normalizedUserId);
+    const filterCount = allUsers.length;
+    const persistedFilterPreferences = this.usersRepository.queryUserFilterPreferences(normalizedUserId);
+    return {
+      user,
+      filterCount,
+      counterOverrides: user ? this.buildInitialMenuCounterOverrides(user) : null,
+      filterPreferences: user
+        ? (persistedFilterPreferences ?? DemoUserFilterPreferencesBuilder.buildDefaultFilterPreferences(user))
+        : null
+    };
+  }
+
+  async queryUserRealtimeLongPoll(
+    userId: string,
+    cursor?: string | null
+  ): Promise<UserRealtimeLongPollResponseDto | null> {
+    const additionalDelayMs = resolveAdditionalDelayMsForRoute(DemoUsersService.USER_REALTIME_LONG_POLL_ROUTE);
+    if (additionalDelayMs > 0) {
+      await new Promise<void>(resolve => {
+        setTimeout(() => resolve(), additionalDelayMs);
+      });
+    }
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    const loadedUser = this.usersRepository.queryUserById(normalizedUserId);
+    if (!loadedUser) {
+      return null;
+    }
+    const user = DemoUserImpressionsBuilder.withResolvedImpressions(loadedUser);
+    const nextCursor = this.resolveRealtimeCursor(normalizedUserId, this.parseRealtimeCursor(cursor));
+    const counters = DemoUserImpressionsBuilder.buildSimulatedRealtimeCounters(user, nextCursor);
+    const impressions = DemoUserImpressionsBuilder.buildSimulatedRealtimeImpressions(user.impressions, counters, nextCursor);
+    return {
+      userId: normalizedUserId,
+      counters,
+      impressions,
+      cursor: String(nextCursor),
+      serverTsIso: new Date().toISOString()
+    };
+  }
+
+  private parseRealtimeCursor(cursor: string | null | undefined): number | null {
+    const normalized = cursor?.trim() ?? '';
+    if (!normalized) {
+      return null;
+    }
+    const parsed = Number.parseInt(normalized, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return null;
+    }
+    return Math.trunc(parsed);
+  }
+
+  private resolveRealtimeCursor(userId: string, cursor: number | null): number {
+    const now = Date.now();
+    if (cursor === null) {
+      this.realtimeCursorByUserId[userId] = 0;
+      this.realtimeLastAdvanceAtByUserId[userId] = 0;
+    }
+    const storedCursor = this.realtimeCursorByUserId[userId] ?? 0;
+    const currentCursor = cursor !== null
+      ? Math.max(storedCursor, cursor)
+      : storedCursor;
+    this.realtimeCursorByUserId[userId] = currentCursor;
+
+    const lastAdvanceAt = this.realtimeLastAdvanceAtByUserId[userId] ?? 0;
+    const shouldAdvance = currentCursor <= 0
+      || (now - lastAdvanceAt) >= DemoUsersService.USER_REALTIME_LONG_POLL_SIMULATION_STEP_MS;
+    if (!shouldAdvance) {
+      return currentCursor;
+    }
+
+    const nextCursor = currentCursor + 1;
+    this.realtimeCursorByUserId[userId] = nextCursor;
+    this.realtimeLastAdvanceAtByUserId[userId] = now;
+    return nextCursor;
+  }
+
+  async saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void> {
+    this.usersRepository.upsertUserFilterPreferences(userId, preferences);
+  }
+
+  async saveUserProfile(user: UserDto): Promise<UserDto | null> {
+    if (!user?.id?.trim()) {
+      return null;
+    }
+    return this.usersRepository.upsertUser(user);
+  }
+
+  async submitUserFeedback(
+    _request: UserFeedbackSubmitRequestDto,
+    signal?: AbortSignal
+  ): Promise<UserSubmitActionResponseDto> {
+    await this.waitForRouteDelay(DemoUsersService.USER_FEEDBACK_ROUTE, signal);
+    return {
+      submitted: true,
+      message: 'Feedback sent successfully. Thank you for helping improve MyScoutee.'
+    };
+  }
+
+  async submitReportUser(
+    request: UserReportUserSubmitRequestDto,
+    signal?: AbortSignal
+  ): Promise<UserSubmitActionResponseDto> {
+    await this.waitForRouteDelay(DemoUsersService.USER_REPORT_USER_ROUTE, signal);
+    const normalizedTarget = request.handle.trim();
+    return {
+      submitted: true,
+      message: `Report submitted successfully for ${normalizedTarget || 'the selected user'}. Our moderation team will review it.`
+    };
+  }
+
+  async uploadUserProfileImage(
+    userId: string,
+    file: File,
+    slotIndex: number
+  ): Promise<UserProfileImageUploadResult> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return {
+        uploaded: false,
+        imageUrl: null
+      };
+    }
+    const normalizedSlotIndex = this.resolveSlotIndex(slotIndex);
+    if (normalizedSlotIndex === null) {
+      return {
+        uploaded: false,
+        imageUrl: null
+      };
+    }
+    const user = this.usersRepository.queryUserById(normalizedUserId);
+    if (!user) {
+      return {
+        uploaded: false,
+        imageUrl: null
+      };
+    }
+    const imageDataUrl = await this.readFileAsDataUrl(file);
+    if (!imageDataUrl) {
+      return {
+        uploaded: false,
+        imageUrl: null
+      };
+    }
+    const slots: Array<string | null> = Array.from(
+      { length: DemoUsersService.MAX_PROFILE_IMAGE_SLOTS },
+      (_, index) => user.images?.[index] ?? null
+    );
+    slots[normalizedSlotIndex] = imageDataUrl;
+    this.usersRepository.upsertUser({
+      ...user,
+      images: slots
+        .map(value => value?.trim() ?? '')
+        .filter(value => value.length > 0)
+    });
+    return {
+      uploaded: true,
+      imageUrl: imageDataUrl
+    };
+  }
+
+  private buildInitialMenuCounterOverrides(user: UserDto) {
+    return DemoUserMenuCountersBuilder.buildInitialMenuCounterOverrides(user, {
+      tickets: this.eventsRepository.countTicketItemsByUser(user.id),
+      feedback: this.eventsRepository.countPendingEventFeedbackByUser(
+        user.id,
+        DemoUsersService.INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS
+      )
+    });
+  }
+
+  private async waitForRouteDelay(route: string, signal?: AbortSignal): Promise<void> {
+    const additionalDelayMs = resolveAdditionalDelayMsForRoute(route);
+    if (additionalDelayMs <= 0) {
+      return;
+    }
+    await this.waitForDelay(additionalDelayMs, signal);
+  }
+
+  private waitForDelay(delayMs: number, signal?: AbortSignal): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(this.createAbortError());
+        return;
+      }
+      const timer = setTimeout(() => {
+        cleanup();
+        resolve();
+      }, delayMs);
+      const onAbort = () => {
+        cleanup();
+        reject(this.createAbortError());
+      };
+      const cleanup = () => {
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', onAbort);
+      };
+      signal?.addEventListener('abort', onAbort, { once: true });
+    });
+  }
+
+  private createAbortError(): Error {
+    const error = new Error('Request aborted.');
+    error.name = 'AbortError';
+    return error;
+  }
+
+  private resolveSlotIndex(slotIndex: number): number | null {
+    if (!Number.isFinite(slotIndex)) {
+      return null;
+    }
+    const normalized = Math.trunc(Number(slotIndex));
+    if (normalized < 0 || normalized >= DemoUsersService.MAX_PROFILE_IMAGE_SLOTS) {
+      return null;
+    }
+    return normalized;
+  }
+
+  private readFileAsDataUrl(file: File): Promise<string | null> {
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result;
+        if (typeof result !== 'string' || result.trim().length === 0) {
+          resolve(null);
+          return;
+        }
+        resolve(result);
+      };
+      reader.onerror = () => resolve(null);
+      reader.onabort = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+  }
+}

@@ -1,12 +1,29 @@
 import { Routes } from '@angular/router';
+import { restrictedAreaGuard } from './shared/core';
+
+const loadEntryPage = () => import('./entry/components/entry-page/entry-page.component').then(m => m.EntryPageComponent);
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'game', pathMatch: 'full' },
-  { path: 'home', redirectTo: 'game', pathMatch: 'full' },
   {
-    path: 'game',
-    loadComponent: () => import('./home/components/home.component').then(m => m.HomeComponent),
-    data: { section: 'game' }
+    path: '',
+    pathMatch: 'full',
+    loadComponent: loadEntryPage
   },
-  { path: '**', redirectTo: 'game' }
+  {
+    path: 'entry',
+    loadComponent: loadEntryPage
+  },
+  {
+    path: '',
+    canActivate: [restrictedAreaGuard],
+    children: [
+      { path: 'home', redirectTo: 'game', pathMatch: 'full' },
+      {
+        path: 'game',
+        loadComponent: () => import('./home/components/home/home.component').then(m => m.HomeComponent),
+        data: { section: 'game' }
+      }
+    ]
+  },
+  { path: '**', redirectTo: '' }
 ];

@@ -1,0 +1,144 @@
+<ng-container *ngIf="resolvedPresentation() === 'fullscreen'; else listCard">
+  <div #fullscreenShell class="activities-rates-fullscreen">
+    <article
+      class="activities-rate-profile-card activities-row-item activities-rates-fullscreen-card"
+      [class.activities-rates-fullscreen-card-active]="resolvedState() === 'active'"
+      [class.activities-rates-fullscreen-card-leaving]="resolvedState() === 'leaving'"
+      [attr.data-activity-rate-row-id]="card?.rowId"
+      [style.width]="fullscreenCardWidth"
+      [style.height]="fullscreenCardHeight"
+    >
+      <ng-container *ngTemplateOutlet="cardBody"></ng-container>
+    </article>
+  </div>
+</ng-container>
+
+<ng-template #listCard>
+  <article
+    class="activities-rate-profile-card activities-row-item"
+    [attr.data-activity-rate-row-id]="card?.rowId"
+    [attr.data-group-label]="card?.groupLabel"
+  >
+    <ng-container *ngTemplateOutlet="cardBody"></ng-container>
+  </article>
+</ng-template>
+
+<ng-template #cardBody>
+  <div
+    class="activities-rate-profile-stack"
+    [class.activities-rate-profile-stack-pair-inline]="resolvedPresentation() === 'list'"
+    [class.activities-rate-profile-stack-pair-fullscreen]="resolvedPresentation() === 'fullscreen'"
+    [class.is-resizing]="isResizing"
+    [ngClass]="resolvedStackClasses()"
+    [style.--activities-pair-split]="resolvedSplitCssValue()"
+  >
+    <div
+      #splitContainer
+      class="activities-rate-pair-inline-grid"
+      [class.activities-rate-pair-fullscreen-grid]="resolvedPresentation() === 'fullscreen'"
+    >
+      <div
+        class="activities-rate-pair-inline-card"
+        *ngFor="let slot of resolvedSlots(); trackBy: trackBySlot"
+        [class.activities-rate-pair-inline-card-woman]="slot.tone === 'woman'"
+        [class.activities-rate-pair-inline-card-man]="slot.tone === 'man'"
+        [class.is-pane-loading]="isLoading(slot)"
+        [class.is-collapsed]="isSlotCollapsed(slot)"
+      >
+        <div class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators" *ngIf="slot.slides.length > 1">
+          <ng-container *ngIf="isInteractive(); else readonlyIndicators">
+            <button
+              type="button"
+              class="image-stack-line"
+              *ngFor="let slide of slot.slides; let imageIndex = index; trackBy: trackBySlide"
+              [class.active]="imageIndex === activeIndex(slot)"
+              (click)="onSlotSelect(slot, imageIndex, $event)"
+              [attr.aria-label]="'Select ' + slot.label.toLowerCase() + ' profile image'"
+            ></button>
+          </ng-container>
+          <ng-template #readonlyIndicators>
+            <span
+              class="image-stack-line"
+              *ngFor="let slide of slot.slides; let imageIndex = index; trackBy: trackBySlide"
+              [class.active]="imageIndex === activeIndex(slot)"
+            ></span>
+          </ng-template>
+        </div>
+
+        <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="currentSlide(slot)?.imageUrl ?? ''">
+          <span class="activities-rate-pair-inline-label">{{ slot.label }}</span>
+          <span class="shared-card-status-badge" *ngIf="slot.statusBadgeLabel as statusBadge">
+            {{ statusBadge }}
+          </span>
+          <div class="activities-rate-pair-inline-overlay">
+            <p class="activities-rate-profile-line activities-rate-profile-line-primary">{{ currentSlide(slot)?.primaryLine }}</p>
+            <p class="activities-rate-profile-line activities-rate-profile-line-secondary">{{ currentSlide(slot)?.secondaryLine }}</p>
+          </div>
+        </div>
+
+        <div class="image-stack-hit-area activities-rate-profile-hit-area activities-rate-pair-inline-hit-area" *ngIf="isInteractive() && slot.slides.length > 1">
+          <button
+            type="button"
+            class="image-stack-hit-segment"
+            *ngFor="let slide of slot.slides; let imageIndex = index; trackBy: trackBySlide"
+            (click)="onSlotSelect(slot, imageIndex, $event)"
+            [attr.aria-label]="'Select ' + slot.label.toLowerCase() + ' profile image'"
+          ></button>
+        </div>
+
+        <span class="card-image-placeholder" *ngIf="!currentSlide(slot)?.imageUrl">
+          {{ currentSlide(slot)?.placeholderLabel }}
+        </span>
+      </div>
+
+      <button
+        type="button"
+        class="activities-rates-pair-fullscreen-resize-handle"
+        *ngIf="isSplitEnabled()"
+        aria-label="Resize pair cards"
+        (pointerdown)="onSplitHandlePointerDown($event, splitContainer)"
+        (touchstart)="onSplitHandleTouchStart($event, splitContainer)"
+        (click)="consumeClick($event)"
+      >
+        <span class="activities-rates-pair-fullscreen-resize-handle-grip" aria-hidden="true"></span>
+      </button>
+    </div>
+
+    <ng-container *ngIf="card?.badge as cardBadge">
+      <button
+        *ngIf="isBadgeInteractive(); else readonlyBadge"
+        type="button"
+        class="activities-rate-score-badge"
+        [class.activities-rate-score-badge-floating]="usesFloatingBadge()"
+        [class.activities-rate-score-badge-between]="usesBetweenBadge()"
+        [class.activities-rate-score-badge-floating-pair-overlap]="usesPairOverlapBadge()"
+        [class.is-active]="cardBadge.active"
+        [class.is-pending]="cardBadge.pending"
+        [class.is-disabled]="cardBadge.disabled"
+        [class.is-blink]="isBadgeBlinking()"
+        [disabled]="cardBadge.disabled"
+        [attr.aria-label]="cardBadge.ariaLabel"
+        (click)="onBadgeClick($event)"
+      >
+        <mat-icon>star</mat-icon>
+        <span>{{ cardBadge.label }}</span>
+      </button>
+      <ng-template #readonlyBadge>
+        <span
+          class="activities-rate-score-badge"
+          [class.activities-rate-score-badge-floating]="usesFloatingBadge()"
+          [class.activities-rate-score-badge-between]="usesBetweenBadge()"
+          [class.activities-rate-score-badge-floating-pair-overlap]="usesPairOverlapBadge()"
+          [class.is-active]="cardBadge.active"
+          [class.is-pending]="cardBadge.pending"
+          [class.is-disabled]="cardBadge.disabled"
+          [class.is-blink]="isBadgeBlinking()"
+          [attr.aria-label]="cardBadge.ariaLabel"
+        >
+          <mat-icon>star</mat-icon>
+          <span>{{ cardBadge.label }}</span>
+        </span>
+      </ng-template>
+    </ng-container>
+  </div>
+</ng-template>

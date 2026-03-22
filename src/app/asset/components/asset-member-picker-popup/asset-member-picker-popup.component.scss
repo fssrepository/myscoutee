@@ -1,0 +1,356 @@
+@use '../../../shared/ui/styles' as ui;
+
+@include ui.popup-shell();
+@include ui.interactive-motion();
+@include ui.form-controls();
+
+:host {
+  display: contents;
+  --asset-member-picker-z-index: 12320;
+}
+
+.app-popup.asset-member-picker-popup-shell {
+  z-index: var(--asset-member-picker-z-index);
+}
+
+.asset-member-picker-popup-shell .popup-panel-friends-picker.popup-panel-friends-picker-members {
+  width: min(1080px, calc(100vw - 1.2rem));
+  height: calc(100vh - 1.2rem);
+  max-height: calc(100vh - 1.2rem);
+}
+
+.asset-member-picker-popup-shell .popup-body.popup-body-friends-picker {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.58rem;
+}
+
+.asset-member-picker-popup-shell .popup-header-inline-controls {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.46rem;
+}
+
+.asset-member-picker-popup-shell .asset-member-picker-header-count {
+  min-width: fit-content;
+  height: 22px;
+  border-radius: 999px;
+  padding: 0 9px;
+  border: 1px solid rgba(121, 144, 179, 0.24);
+  background: linear-gradient(180deg, #f5f8fc 0%, #e9eff7 100%);
+  box-shadow: 0 2px 8px rgba(26, 47, 78, 0.08);
+  color: rgba(24, 39, 61, 0.82);
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.asset-member-picker-popup-shell .popup-title p {
+  margin: 0.14rem 0 0;
+  color: rgba(32, 54, 84, 0.72);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.asset-member-picker-popup-shell .asset-member-picker-save-btn-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  padding: 2px;
+  box-sizing: border-box;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.asset-member-picker-popup-shell .asset-member-picker-save-btn {
+  position: relative;
+  z-index: 1;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  border-radius: 50%;
+}
+
+.asset-member-picker-popup-shell .asset-member-picker-save-btn-ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.asset-member-picker-popup-shell .asset-member-picker-save-btn-ring-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform-origin: 50% 50%;
+  will-change: transform;
+  filter: drop-shadow(0 4px 12px rgba(22, 94, 51, 0.12));
+}
+
+
+.asset-member-picker-popup-shell .asset-member-picker-save-btn-ring-track,
+.asset-member-picker-popup-shell .asset-member-picker-save-btn-ring-progress {
+  fill: none;
+  stroke-width: 3;
+}
+
+.asset-member-picker-popup-shell .asset-member-picker-save-btn-ring-track {
+  stroke: rgba(133, 100, 42, 0.18);
+}
+
+.asset-member-picker-popup-shell .asset-member-picker-save-btn-ring-progress {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform-origin: 50% 50%;
+  transform: rotate(-90deg);
+}
+
+.asset-member-picker-popup-shell .asset-member-picker-save-btn-ring-progress.is-loading {
+  stroke: url(#asset-member-picker-save-gradient);
+  animation: asset-member-picker-save-ring-progress 3s linear forwards;
+}
+
+.asset-member-picker-popup-shell .asset-member-picker-save-btn-ring-progress.is-error {
+  stroke: url(#asset-member-picker-save-gradient-error);
+}
+
+.asset-member-picker-popup-shell .asset-member-picker-save-btn-shell.is-loading .asset-member-picker-save-btn,
+.asset-member-picker-popup-shell .asset-member-picker-save-btn-shell.is-error .asset-member-picker-save-btn {
+  box-shadow: none;
+}
+
+.asset-member-picker-popup-shell .asset-member-picker-save-btn-shell.is-loading .asset-member-picker-save-btn,
+.asset-member-picker-popup-shell .asset-member-picker-save-btn-shell.is-loading .asset-member-picker-save-btn:hover,
+.asset-member-picker-popup-shell .asset-member-picker-save-btn-shell.is-loading .asset-member-picker-save-btn:disabled {
+  border-color: rgba(181, 117, 23, 0.76);
+  background: linear-gradient(180deg, #ffe7bf 0%, #ffd085 100%);
+  color: #8e4f0d;
+  opacity: 1;
+  cursor: wait;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+
+.asset-member-picker-popup-shell .asset-member-picker-save-btn-shell.is-error .asset-member-picker-save-btn,
+.asset-member-picker-popup-shell .asset-member-picker-save-btn-shell.is-error .asset-member-picker-save-btn:hover {
+  border-color: rgba(176, 31, 46, 0.82);
+  background: linear-gradient(180deg, #f36a79 0%, #d4374a 100%);
+  color: #fff;
+  opacity: 1;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+
+.asset-member-picker-popup-shell .friends-picker-sort {
+  position: relative;
+}
+
+.asset-member-picker-popup-shell .friends-picker-sort .popup-view-fab {
+  cursor: pointer;
+}
+
+.asset-member-picker-popup-shell .asset-member-picker-confirm-error {
+  margin: -0.12rem 0 0;
+  color: #a32f3d;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.asset-member-picker-popup-shell .asset-member-picker-smart-list {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.asset-member-picker-popup-shell .friends-picker-card {
+  position: relative;
+  min-height: 250px;
+  border-radius: 13px;
+  border: 1px solid rgba(30, 51, 81, 0.24);
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+
+.asset-member-picker-popup-shell .friends-picker-card.lazy-bg-error {
+  background: linear-gradient(180deg, rgba(251, 243, 243, 0.98) 0%, rgba(233, 218, 220, 0.96) 100%);
+}
+
+.asset-member-picker-popup-shell .friends-picker-card-avatar-fallback {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 1px solid rgba(198, 61, 61, 0.22);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(249, 232, 232, 0.92) 100%);
+  box-shadow: 0 10px 24px rgba(74, 18, 18, 0.16);
+  color: #c63d3d;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -58%);
+  pointer-events: none;
+}
+
+.asset-member-picker-popup-shell .friends-picker-card-avatar-fallback .mat-icon {
+  width: 28px;
+  height: 28px;
+  font-size: 28px;
+  line-height: 28px;
+}
+
+.asset-member-picker-popup-shell .friends-picker-card.lazy-bg-error .friends-picker-card-avatar-fallback {
+  display: inline-flex;
+}
+
+.asset-member-picker-popup-shell .friends-picker-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(8, 16, 28, 0.14) 0%, rgba(8, 15, 28, 0.82) 100%);
+}
+
+.asset-member-picker-popup-shell .friends-picker-card-add-btn {
+  position: absolute;
+  top: 0.48rem;
+  right: 0.48rem;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  background: rgba(243, 249, 255, 0.92);
+  color: #275b98;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.asset-member-picker-popup-shell .friends-picker-card-add-btn .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.asset-member-picker-popup-shell .friends-picker-card-add-btn.active {
+  background: linear-gradient(180deg, #2f9a59 0%, #237846 100%);
+  border-color: rgba(255, 255, 255, 0.92);
+  color: #fff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.72), 0 6px 16px rgba(20, 84, 46, 0.3);
+}
+
+.asset-member-picker-popup-shell .friends-picker-card-add-btn.is-persisted {
+  cursor: pointer;
+  opacity: 1;
+}
+
+.asset-member-picker-popup-shell .friends-picker-card-add-btn:disabled,
+.asset-member-picker-popup-shell .friends-picker-card-add-btn.is-persisted:disabled {
+  cursor: wait;
+  opacity: 1;
+}
+
+.asset-member-picker-popup-shell .friends-picker-card-add-btn.active .mat-icon {
+  font-size: 17px;
+  line-height: 17px;
+}
+
+.asset-member-picker-popup-shell .friends-picker-card-meta {
+  position: absolute;
+  left: 0.52rem;
+  right: 0.52rem;
+  bottom: 0.46rem;
+  z-index: 2;
+}
+
+.asset-member-picker-popup-shell .friends-picker-card-meta h4 {
+  margin: 0;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+
+.asset-member-picker-popup-shell .friends-picker-card-meta p {
+  margin: 0.1rem 0 0;
+  color: rgba(245, 249, 255, 0.96);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.58);
+}
+
+.asset-member-picker-popup-shell .friends-picker-chip-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.asset-member-picker-popup-shell .friends-picker-chip {
+  min-height: 30px;
+  padding: 0.22rem 0.56rem 0.22rem 0.32rem;
+  border-color: rgba(59, 95, 142, 0.3);
+  background: linear-gradient(180deg, #f7faff 0%, #edf3ff 100%);
+  box-shadow: 0 2px 8px rgba(29, 57, 96, 0.08);
+}
+
+.asset-member-picker-popup-shell .friends-picker-chip .friends-picker-chip-remove {
+  opacity: 0.72;
+}
+
+@keyframes asset-member-picker-save-ring-progress {
+  from {
+    stroke-dashoffset: 100;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+
+@media (max-width: 760px) {
+  .asset-member-picker-popup-shell .friends-picker-card {
+    min-height: 190px;
+  }
+}
+
+.asset-member-picker-popup-shell .asset-member-picker-chip-row .basket__chip-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+

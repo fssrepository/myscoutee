@@ -1,0 +1,543 @@
+<div class="app-popup" *ngIf="activitiesContext.activitiesOpenBoolean()">
+  <div class="app-popup-backdrop" (click)="closeActivitiesPopup()"></div>
+  <div class="app-popup-panel popup-panel-activities popup-panel-wide popup-panel-full-height" (click)="$event.stopPropagation()">
+    <div class="popup-header popup-header-with-progress">
+      <div class="popup-title">
+        <h2>Activities</h2>
+        <p class="popup-subtitle">{{ activitiesHeaderLineOne() }}</p>
+        <p class="popup-subtitle popup-subtitle-secondary" *ngIf="activitiesHeaderLineTwo()">
+          {{ activitiesHeaderLineTwo() }}
+        </p>
+      </div>
+      <div class="popup-filter-picker activities-view-picker">
+        <div class="popup-filter-picker-secondary activities-secondary-picker" *ngIf="!isCalendarLayoutView() && activitiesPrimaryFilter !== 'chats'">
+          <button
+            type="button"
+            class="popup-view-fab"
+            (click)="toggleActivitiesSecondaryPicker($event)"
+            [attr.aria-label]="'Open secondary filter: ' + activitiesSecondaryFilterLabel()"
+          >
+            <mat-icon>{{ activitiesSecondaryFilterIcon() }}</mat-icon>
+            <span>{{ activitiesSecondaryFilterLabel() }}</span>
+          </button>
+          <div class="popup-filter-panel activities-view-picker-panel" *ngIf="showActivitiesSecondaryPicker">
+            <button
+              type="button"
+              class="popup-filter-option activities-view-option"
+              *ngFor="let option of availableActivitiesSecondaryFilters()"
+              (click)="selectActivitiesSecondaryFilter(option.key)"
+            >
+              <mat-icon>{{ option.icon }}</mat-icon>
+              <span>{{ activitiesSecondaryFilterOptionLabel(option.key) }}</span>
+            </button>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="popup-view-fab"
+          *ngIf="activitiesPrimaryFilter !== 'chats'"
+          (click)="toggleActivitiesViewPicker($event)"
+          [attr.aria-label]="'Open view selector: ' + activityViewLabel()"
+        >
+          <mat-icon>view_agenda</mat-icon>
+          <span>{{ activityViewLabel() }}</span>
+        </button>
+        <div class="popup-filter-panel activities-view-picker-panel" *ngIf="showActivitiesViewPicker && activitiesPrimaryFilter !== 'chats'">
+          <button
+            type="button"
+            class="popup-filter-option activities-view-option"
+            *ngFor="let option of activitiesViewOptions"
+            (click)="setActivitiesView(option.key, $event)"
+          >
+            <mat-icon>{{ option.icon }}</mat-icon>
+            <span>{{ option.label }}</span>
+          </button>
+        </div>
+      </div>
+      <button type="button" class="popup-close" (click)="closeActivitiesPopup()" aria-label="Close">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    <div class="popup-body popup-body-activities">
+      <div class="activities-popup" [class.activities-popup-rates-fullscreen]="activitiesSmartListPresentation() === 'fullscreen'" (click)="onActivitiesPopupSurfaceClick($event)">
+
+  <!-- ───── Toolbar ───── -->
+  <div class="experience-toolbar assets-toolbar popup-filter-bar">
+
+    <!-- Primary filter — desktop mat-select / mobile button -->
+    <ng-container *ngIf="!isMobileView; else mobileActivitiesPrimaryFilterButton">
+      <div
+        class="profile-status-select-wrap selector-like experience-filter-select popup-compact-select activities-compact-select activities-primary-filter-select"
+        [ngClass]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)"
+        [class.activities-filter-no-badge]="activitiesPrimaryFilterCount(activitiesPrimaryFilter) === 0"
+        [class.popup-filter-no-badge]="activitiesPrimaryFilterCount(activitiesPrimaryFilter) === 0"
+      >
+        <mat-select
+          [(ngModel)]="activitiesPrimaryFilter"
+          (ngModelChange)="selectActivitiesPrimaryFilter($event)"
+          [panelWidth]="activitiesPrimaryPanelWidth()"
+          disableOptionCentering
+          panelClass="selector-options-panel profile-bottom-sheet-panel activities-primary-options-panel"
+        >
+          <mat-select-trigger>
+            <span class="status-option-content">
+              <mat-icon [class]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)">{{ activitiesPrimaryFilterIcon() }}</mat-icon>
+              <span>{{ activitiesPrimaryFilterLabel() }}</span>
+            </span>
+          </mat-select-trigger>
+          <mat-option *ngFor="let option of activitiesPrimaryFilters" [value]="option.key" class="status-option" [ngClass]="activitiesPrimaryFilterClass(option.key)">
+            <span class="status-option-content">
+              <mat-icon [class]="activitiesPrimaryFilterClass(option.key)">{{ option.icon }}</mat-icon>
+              <span>{{ option.label }}</span>
+              <span class="rate-filter-count-badge" *ngIf="activitiesPrimaryFilterCount(option.key) > 0">{{ activitiesPrimaryFilterCount(option.key) }}</span>
+            </span>
+          </mat-option>
+        </mat-select>
+        <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesPrimaryFilterCount(activitiesPrimaryFilter) > 0">{{ activitiesPrimaryFilterCount(activitiesPrimaryFilter) }}</span>
+      </div>
+    </ng-container>
+    <ng-template #mobileActivitiesPrimaryFilterButton>
+      <div class="popup-mobile-filter-picker activities-mobile-primary-filter-picker">
+        <button
+          type="button"
+          class="profile-status-select-wrap selector-like experience-filter-select popup-compact-select activities-compact-select activities-primary-filter-select"
+          [ngClass]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)"
+          [class.activities-filter-no-badge]="activitiesPrimaryFilterCount(activitiesPrimaryFilter) === 0"
+          [class.popup-filter-no-badge]="activitiesPrimaryFilterCount(activitiesPrimaryFilter) === 0"
+          (click)="openMobileActivitiesPrimaryFilterSelector($event)"
+        >
+          <span class="status-option-content">
+            <mat-icon [class]="activitiesPrimaryFilterClass(activitiesPrimaryFilter)">{{ activitiesPrimaryFilterIcon() }}</mat-icon>
+            <span>{{ activitiesPrimaryFilterLabel() }}</span>
+          </span>
+          <mat-icon>expand_more</mat-icon>
+          <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesPrimaryFilterCount(activitiesPrimaryFilter) > 0">{{ activitiesPrimaryFilterCount(activitiesPrimaryFilter) }}</span>
+        </button>
+        <div class="popup-filter-panel popup-mobile-filter-panel activities-view-picker-panel activities-mobile-filter-panel" *ngIf="showActivitiesPrimaryPicker">
+          <button
+            type="button"
+            class="popup-filter-option activities-view-option"
+            *ngFor="let option of activitiesPrimaryFilters"
+            [ngClass]="[activitiesPrimaryFilterClass(option.key), option.key === activitiesPrimaryFilter ? 'active' : '']"
+            (click)="selectActivitiesPrimaryFilter(option.key)"
+          >
+            <mat-icon [class]="activitiesPrimaryFilterClass(option.key)">{{ option.icon }}</mat-icon>
+            <span>{{ option.label }}</span>
+            <span class="rate-filter-count-badge" *ngIf="activitiesPrimaryFilterCount(option.key) > 0">{{ activitiesPrimaryFilterCount(option.key) }}</span>
+          </button>
+        </div>
+      </div>
+    </ng-template>
+
+    <!-- Event scope filter (events tab only) -->
+    <ng-container *ngIf="isEventActivitiesPrimaryFilter()">
+      <ng-container *ngIf="!isMobileView; else mobileActivitiesEventScopeFilterButton">
+        <div
+          class="profile-status-select-wrap selector-like experience-filter-select popup-compact-select activities-compact-select activities-event-scope-filter-select"
+          [ngClass]="activitiesEventScopeClass()"
+          [class.activities-filter-no-badge]="activitiesEventScopeCount() === 0"
+          [class.popup-filter-no-badge]="activitiesEventScopeCount() === 0"
+        >
+          <mat-select
+            [(ngModel)]="activitiesEventScope"
+            (ngModelChange)="selectActivitiesEventScope($event)"
+            [panelWidth]="activitiesEventScopePanelWidth()"
+            disableOptionCentering
+            panelClass="selector-options-panel profile-bottom-sheet-panel activities-event-scope-options-panel"
+          >
+            <mat-select-trigger>
+              <span class="status-option-content">
+                <mat-icon [class]="activitiesEventScopeClass()">{{ activitiesEventScopeIcon() }}</mat-icon>
+                <span>{{ activitiesEventScopeLabel() }}</span>
+              </span>
+            </mat-select-trigger>
+            <mat-option
+              *ngFor="let option of activitiesEventScopeFilters"
+              [value]="option.key"
+              class="status-option"
+              [ngClass]="activitiesEventScopeClass(option.key)"
+            >
+              <span class="status-option-content">
+                <mat-icon [class]="activitiesEventScopeClass(option.key)">{{ option.icon }}</mat-icon>
+                <span>{{ option.label }}</span>
+                <span class="rate-filter-count-badge" *ngIf="activitiesEventScopeCount(option.key) > 0">
+                  {{ activitiesEventScopeCount(option.key) }}
+                </span>
+              </span>
+            </mat-option>
+          </mat-select>
+          <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesEventScopeCount() > 0">
+            {{ activitiesEventScopeCount() }}
+          </span>
+        </div>
+      </ng-container>
+      <ng-template #mobileActivitiesEventScopeFilterButton>
+        <div class="popup-mobile-filter-picker activities-mobile-event-scope-filter-picker">
+          <button
+            type="button"
+            class="profile-status-select-wrap selector-like experience-filter-select popup-compact-select activities-compact-select activities-event-scope-filter-select"
+            [ngClass]="activitiesEventScopeClass()"
+            [class.activities-filter-no-badge]="activitiesEventScopeCount() === 0"
+            [class.popup-filter-no-badge]="activitiesEventScopeCount() === 0"
+            (click)="openMobileActivitiesEventScopeSelector($event)"
+            [attr.aria-label]="'Open event scope filter: ' + activitiesEventScopeLabel()"
+          >
+            <span class="status-option-content">
+              <mat-icon [class]="activitiesEventScopeClass()">{{ activitiesEventScopeIcon() }}</mat-icon>
+              <span>{{ activitiesEventScopeLabel() }}</span>
+            </span>
+            <mat-icon>expand_more</mat-icon>
+            <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesEventScopeCount() > 0">
+              {{ activitiesEventScopeCount() }}
+            </span>
+          </button>
+          <div class="popup-filter-panel popup-mobile-filter-panel activities-view-picker-panel activities-mobile-filter-panel" *ngIf="showActivitiesEventScopePicker">
+            <button
+              type="button"
+              class="popup-filter-option activities-view-option"
+              *ngFor="let option of activitiesEventScopeFilters"
+              [ngClass]="[activitiesEventScopeClass(option.key), option.key === activitiesEventScope ? 'active' : '']"
+              (click)="selectActivitiesEventScope(option.key)"
+            >
+              <mat-icon [class]="activitiesEventScopeClass(option.key)">{{ option.icon }}</mat-icon>
+              <span>{{ option.label }}</span>
+              <span class="rate-filter-count-badge" *ngIf="activitiesEventScopeCount(option.key) > 0">
+                {{ activitiesEventScopeCount(option.key) }}
+              </span>
+            </button>
+          </div>
+        </div>
+      </ng-template>
+    </ng-container>
+
+    <!-- Chat context filter (chats tab only) -->
+    <ng-container *ngIf="activitiesPrimaryFilter === 'chats'">
+      <ng-container *ngIf="!isMobileView; else mobileActivitiesChatContextFilterButton">
+        <div
+          class="profile-status-select-wrap selector-like experience-filter-select popup-compact-select activities-compact-select activities-chat-context-filter-select"
+          [ngClass]="activitiesChatContextFilterClass(activitiesChatContextFilter)"
+          [class.activities-filter-no-badge]="activitiesChatContextFilterCount(activitiesChatContextFilter) === 0"
+          [class.popup-filter-no-badge]="activitiesChatContextFilterCount(activitiesChatContextFilter) === 0"
+        >
+          <mat-select
+            [(ngModel)]="activitiesChatContextFilter"
+            (ngModelChange)="selectActivitiesChatContextFilter($event)"
+            panelWidth="260px"
+            disableOptionCentering
+            panelClass="selector-options-panel profile-bottom-sheet-panel activities-chat-context-options-panel"
+          >
+            <mat-select-trigger>
+              <span class="status-option-content">
+                <mat-icon [class]="activitiesChatContextFilterClass(activitiesChatContextFilter)">{{ activitiesChatContextFilterIcon() }}</mat-icon>
+                <span>{{ activitiesChatContextFilterLabel() }}</span>
+              </span>
+            </mat-select-trigger>
+            <mat-option
+              *ngFor="let option of activitiesChatContextFilters"
+              [value]="option.key"
+              class="status-option"
+              [ngClass]="activitiesChatContextFilterClass(option.key)"
+            >
+              <span class="status-option-content">
+                <mat-icon [class]="activitiesChatContextFilterClass(option.key)">{{ option.icon }}</mat-icon>
+                <span>{{ option.label }}</span>
+                <span class="rate-filter-count-badge" *ngIf="activitiesChatContextFilterCount(option.key) > 0">
+                  {{ activitiesChatContextFilterCount(option.key) }}
+                </span>
+              </span>
+            </mat-option>
+          </mat-select>
+          <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesChatContextFilterCount(activitiesChatContextFilter) > 0">
+            {{ activitiesChatContextFilterCount(activitiesChatContextFilter) }}
+          </span>
+        </div>
+      </ng-container>
+      <ng-template #mobileActivitiesChatContextFilterButton>
+        <div class="popup-mobile-filter-picker activities-mobile-chat-context-filter-picker">
+          <button
+            type="button"
+            class="profile-status-select-wrap selector-like experience-filter-select popup-compact-select activities-compact-select activities-chat-context-filter-select"
+            [ngClass]="activitiesChatContextFilterClass(activitiesChatContextFilter)"
+            [class.activities-filter-no-badge]="activitiesChatContextFilterCount(activitiesChatContextFilter) === 0"
+            [class.popup-filter-no-badge]="activitiesChatContextFilterCount(activitiesChatContextFilter) === 0"
+            (click)="openMobileActivitiesChatContextFilterSelector($event)"
+          >
+            <span class="status-option-content">
+              <mat-icon [class]="activitiesChatContextFilterClass(activitiesChatContextFilter)">{{ activitiesChatContextFilterIcon() }}</mat-icon>
+              <span>{{ activitiesChatContextFilterLabel() }}</span>
+            </span>
+            <mat-icon>expand_more</mat-icon>
+            <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesChatContextFilterCount(activitiesChatContextFilter) > 0">
+              {{ activitiesChatContextFilterCount(activitiesChatContextFilter) }}
+            </span>
+          </button>
+          <div class="popup-filter-panel popup-mobile-filter-panel activities-view-picker-panel activities-mobile-filter-panel" *ngIf="showActivitiesChatContextPicker">
+            <button
+              type="button"
+              class="popup-filter-option activities-view-option"
+              *ngFor="let option of activitiesChatContextFilters"
+              [ngClass]="[activitiesChatContextFilterClass(option.key), option.key === activitiesChatContextFilter ? 'active' : '']"
+              (click)="selectActivitiesChatContextFilter(option.key)"
+            >
+              <mat-icon [class]="activitiesChatContextFilterClass(option.key)">{{ option.icon }}</mat-icon>
+              <span>{{ option.label }}</span>
+              <span class="rate-filter-count-badge" *ngIf="activitiesChatContextFilterCount(option.key) > 0">
+                {{ activitiesChatContextFilterCount(option.key) }}
+              </span>
+            </button>
+          </div>
+        </div>
+      </ng-template>
+    </ng-container>
+
+    <!-- Rate filter (rates tab only) -->
+    <ng-container *ngIf="isRateFilterVisible()">
+      <ng-container *ngIf="!isMobileView; else mobileActivitiesRateFilterButton">
+        <div
+          class="profile-status-select-wrap selector-like experience-filter-select popup-compact-select activities-compact-select activities-rate-filter-select"
+          [ngClass]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]"
+          [class.activities-filter-no-badge]="totalRateFilterCount() === 0"
+          [class.popup-filter-no-badge]="totalRateFilterCount() === 0"
+        >
+          <mat-select
+            [(ngModel)]="activitiesRateFilter"
+            (ngModelChange)="selectActivitiesRateFilter($event)"
+            [panelWidth]="activitiesRatePanelWidth()"
+            disableOptionCentering
+            panelClass="selector-options-panel profile-bottom-sheet-panel activities-rate-options-panel"
+          >
+            <mat-select-trigger>
+              <span class="status-option-content">
+                <mat-icon [class]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]">{{ activitiesRateFilterIcon(activitiesRateFilter) }}</mat-icon>
+                <span>{{ activitiesRateFilterLabel() }}</span>
+              </span>
+            </mat-select-trigger>
+            <ng-container *ngFor="let option of rateFilterEntries">
+              <mat-option *ngIf="option.kind === 'group'" class="status-option rate-filter-group-option" [class.is-group-separator]="isRateGroupSeparator(option.label)" disabled>
+                <span class="status-option-content rate-filter-group-label">
+                  <span>{{ option.label }}</span>
+                </span>
+              </mat-option>
+              <mat-option
+                *ngIf="option.kind === 'item'"
+                [value]="option.key"
+                class="status-option"
+                [ngClass]="[activitiesRateFilterClass(option.key), rateFilterOptionClass(option.key)]"
+              >
+                <span class="status-option-content">
+                  <mat-icon [class]="[activitiesRateFilterClass(option.key), rateFilterOptionClass(option.key)]">{{ activitiesRateFilterIcon(option.key) }}</mat-icon>
+                  <span>{{ option.label }}</span>
+                  <span class="rate-filter-count-badge" *ngIf="rateFilterCount(option.key) > 0">{{ rateFilterCount(option.key) }}</span>
+                </span>
+              </mat-option>
+            </ng-container>
+          </mat-select>
+          <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="totalRateFilterCount() > 0">{{ totalRateFilterCount() }}</span>
+        </div>
+      </ng-container>
+      <ng-template #mobileActivitiesRateFilterButton>
+        <div class="popup-mobile-filter-picker activities-mobile-rate-filter-picker">
+          <button
+            type="button"
+            class="profile-status-select-wrap selector-like experience-filter-select popup-compact-select activities-compact-select activities-rate-filter-select"
+            [ngClass]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]"
+            [class.activities-filter-no-badge]="totalRateFilterCount() === 0"
+            [class.popup-filter-no-badge]="totalRateFilterCount() === 0"
+            (click)="openMobileActivitiesRateFilterSelector($event)"
+          >
+            <span class="status-option-content">
+              <mat-icon [class]="[activitiesRateFilterClass(activitiesRateFilter), rateFilterOptionClass(activitiesRateFilter)]">{{ activitiesRateFilterIcon(activitiesRateFilter) }}</mat-icon>
+              <span>{{ activitiesRateFilterLabel() }}</span>
+            </span>
+            <mat-icon>expand_more</mat-icon>
+            <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="totalRateFilterCount() > 0">{{ totalRateFilterCount() }}</span>
+          </button>
+          <div class="popup-filter-panel popup-mobile-filter-panel activities-view-picker-panel activities-mobile-rate-filter-panel" *ngIf="showActivitiesRatePicker">
+            <div class="activities-mobile-sheet-title activities-mobile-rate-sheet-title">
+              <mat-icon>list</mat-icon>
+              <span>Rate Type</span>
+            </div>
+            <ng-container *ngFor="let option of rateFilterEntries">
+              <span
+                class="popup-filter-option activities-view-option activities-mobile-rate-filter-group mobile-profile-selector-option mobile-profile-selector-option-group"
+                [class.rate-filter-group-single]="!isRateGroupSeparator(option.label)"
+                [class.rate-filter-group-pair]="isRateGroupSeparator(option.label)"
+                [class.is-group-separator-mobile]="isRateGroupSeparator(option.label)"
+                *ngIf="option.kind === 'group'"
+              >
+                <span class="mobile-profile-selector-option-main">
+                  <mat-icon>{{ isRateGroupSeparator(option.label) ? 'groups_2' : 'person' }}</mat-icon>
+                  <span>{{ option.label }}</span>
+                </span>
+              </span>
+              <button
+                type="button"
+                class="popup-filter-option activities-view-option"
+                *ngIf="option.kind === 'item'"
+                [ngClass]="[activitiesRateFilterClass(option.key), rateFilterOptionClass(option.key), option.key === activitiesRateFilter ? 'active' : '']"
+                (click)="selectActivitiesRateFilter(option.key)"
+              >
+                <span class="mobile-profile-selector-option-main">
+                  <mat-icon [class]="[activitiesRateFilterClass(option.key), rateFilterOptionClass(option.key)]">{{ activitiesRateFilterIcon(option.key) }}</mat-icon>
+                  <span>{{ option.label }}</span>
+                </span>
+                <span class="rate-filter-count-badge" *ngIf="rateFilterCount(option.key) > 0">{{ rateFilterCount(option.key) }}</span>
+              </button>
+            </ng-container>
+          </div>
+        </div>
+      </ng-template>
+    </ng-container>
+
+    <!-- Action stack: fullscreen toggle / quick actions -->
+    <div class="activities-action-stack" *ngIf="shouldShowActivitiesQuickActions() || shouldShowStandaloneEventExploreAction() || shouldShowRatesFullscreenToggle()">
+      <button
+        type="button"
+        class="popup-header-add-btn activities-explore-btn"
+        *ngIf="shouldShowStandaloneEventExploreAction()"
+        (click)="requestOpenEventExplore()"
+        aria-label="Open event explore"
+      >
+        <mat-icon>explore</mat-icon>
+        <span>Explore</span>
+      </button>
+      <button
+        type="button"
+        class="popup-header-add-btn activities-rates-fullscreen-toggle is-enter"
+        *ngIf="shouldShowRatesFullscreenToggle() && !isRatesFullscreenModeActive()"
+        (click)="toggleActivitiesRatesFullscreenMode($event)"
+        aria-label="Open rates fullscreen mode"
+      >
+        <mat-icon>fullscreen</mat-icon>
+      </button>
+      <button
+        type="button"
+        class="popup-header-add-btn activities-rates-fullscreen-toggle is-active is-exit"
+        *ngIf="shouldShowRatesFullscreenToggle() && isRatesFullscreenModeActive()"
+        (click)="toggleActivitiesRatesFullscreenMode($event)"
+        aria-label="Exit rates fullscreen mode"
+      >
+        <mat-icon>fullscreen_exit</mat-icon>
+      </button>
+      <div class="activities-quick-actions" *ngIf="shouldShowActivitiesQuickActions()">
+        <button
+          type="button"
+          class="popup-header-add-btn activities-add-btn"
+          [class.is-open]="showActivitiesQuickActionsMenu"
+          (click)="toggleActivitiesQuickActionsMenu($event)"
+          aria-label="Open event actions"
+        >
+          <mat-icon>add</mat-icon>
+        </button>
+        <div
+          class="popup-filter-panel activities-view-picker-panel"
+          [class.activities-mobile-filter-panel]="isMobileView"
+          [class.popup-mobile-filter-panel]="isMobileView"
+          *ngIf="showActivitiesQuickActionsMenu"
+        >
+          <button
+            type="button"
+            class="popup-filter-option activities-view-option activities-quick-action-option activities-quick-action-option-explore"
+            (click)="requestOpenEventExplore()"
+          >
+            <mat-icon>explore</mat-icon>
+            <span>Explore</span>
+          </button>
+          <button
+            type="button"
+            class="popup-filter-option activities-view-option activities-quick-action-option activities-quick-action-option-create"
+            (click)="requestOpenEventEditor()"
+          >
+            <mat-icon>add_circle</mat-icon>
+            <span>Create Event</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div><!-- /toolbar -->
+
+  <ng-template #activitiesRateFullscreenSmartListItemTemplate let-row let-renderState="renderState">
+    <ng-container *ngIf="row">
+      <app-pair-card
+        *ngIf="isPairRateRow(row); else fullscreenSingleRateCard"
+        [card]="activityPairCard(row, { presentation: 'fullscreen', state: renderState })"
+      ></app-pair-card>
+
+      <ng-template #fullscreenSingleRateCard>
+        <app-single-card
+          [card]="activitySingleCard(row, { presentation: 'fullscreen', state: renderState })"
+        ></app-single-card>
+      </ng-template>
+    </ng-container>
+  </ng-template>
+
+
+  <!-- ───── List / Calendar layout ───── -->
+  <app-smart-list
+      #activitiesSmartList
+      [config]="activitiesSmartListConfig"
+      [loadPage]="activitiesSmartListLoadPage"
+      [itemTemplate]="activitiesActiveSmartListItemTemplate"
+      [fullscreenItemTemplate]="activitiesRateFullscreenSmartListItemTemplate"
+      [presentation]="activitiesSmartListPresentation()"
+      [view]="activitiesView"
+      [query]="activitiesSmartListQuery"
+      (itemSelect)="onActivitiesSmartListItemSelect($event)"
+      (stateChange)="onActivitiesSmartListStateChange($event)"
+      (wheel)="closeActivityRateEditorFromUserScroll()"
+      (touchmove)="closeActivityRateEditorFromUserScroll()"
+  ></app-smart-list>
+
+  <ng-template #activitiesEventSmartListItemTemplate let-row let-groupLabel="groupLabel">
+    <app-info-card
+      [card]="activityEventInfoCard(row, { groupLabel: groupLabel })"
+      (mediaEndClick)="openActivityMembers(row)"
+      (menuAction)="onActivityEventInfoCardMenuAction(row, $event)"
+    ></app-info-card>
+  </ng-template>
+
+  <ng-template #activitiesChatSmartListItemTemplate let-row let-groupLabel="groupLabel">
+    <button
+      type="button"
+      class="activities-card activities-card-btn activities-row-item activities-card-chat activities-row-item-clickable"
+      [ngClass]="activityChatRowToneClass(row)"
+      [attr.data-group-label]="groupLabel"
+      (click)="onActivityRowClick(row, $event)"
+    >
+      <span class="activities-card-avatar" [class]="activityRowAvatarClass(row)">
+        {{ activityRowAvatarInitials(row) }}
+      </span>
+      <div class="activities-card-main">
+        <p class="activities-card-title">{{ row.title }}</p>
+        <p class="activities-card-subtitle">{{ row.subtitle }}</p>
+        <p class="activities-card-detail">{{ row.detail }}</p>
+      </div>
+      <span class="activities-chat-members-badge">
+        <span>{{ activityChatMemberCount(row) }} members</span>
+        <span class="card-badge asset-request-badge activities-chat-unread-badge" *ngIf="row.unread > 0">{{ row.unread }}</span>
+      </span>
+    </button>
+  </ng-template>
+
+  <ng-template #activitiesRateSingleSmartListItemTemplate let-row let-groupLabel="groupLabel">
+    <app-single-card
+      [card]="activitySingleCard(row, { groupLabel: groupLabel })"
+      (badgeClick)="openActivityRateEditor(row)"
+    ></app-single-card>
+  </ng-template>
+
+  <ng-template #activitiesRatePairSmartListItemTemplate let-row let-groupLabel="groupLabel">
+    <app-pair-card
+      [card]="activityPairCard(row, { groupLabel: groupLabel })"
+      (badgeClick)="openActivityRateEditor(row)"
+    ></app-pair-card>
+  </ng-template>
+
+      </div><!-- /activities-popup -->
+    </div><!-- /popup-body -->
+  </div><!-- /app-popup-panel -->
+  <app-event-chat-popup></app-event-chat-popup>
+</div><!-- /app-popup -->
+
+<app-event-explore-popup></app-event-explore-popup>

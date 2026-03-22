@@ -1,0 +1,373 @@
+import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Input, NgZone, Output, inject } from '@angular/core';
+
+import { UsersService, type DemoUserListItemDto } from '../../../shared/core';
+import type * as AppTypes from '../../../shared/core/base/models';
+import { EntryConsentPopupComponent } from '../entry-consent-popup/entry-consent-popup.component';
+import { EntryDemoUserSelectorComponent } from '../entry-demo-user-selector/entry-demo-user-selector.component';
+import { EntryFirebaseAuthPopupComponent } from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';
+import { EntryLandingComponent } from '../entry-landing/entry-landing.component';
+
+@Component({
+  selector: 'app-entry-shell',
+  standalone: true,
+  imports: [
+    EntryLandingComponent,
+    EntryConsentPopupComponent,
+    EntryDemoUserSelectorComponent,
+    EntryFirebaseAuthPopupComponent
+  ],
+  templateUrl: './entry-shell.component.html',
+  styleUrl: './entry-shell.component.scss'
+})
+export class EntryShellComponent {
+  private static readonly ENTRY_CONSENT_KEY = 'entry-gdpr-consent';
+  private static readonly ENTRY_CONSENT_AUDIT_KEY = 'entry-gdpr-consent-audit';
+  private static readonly ENTRY_CONSENT_VERSION = '2026-02-26-v1';
+  private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
+
+  private readonly injector = inject(Injector);
+  private readonly changeDetectorRef = inject(ChangeDetectorRef);
+  private readonly ngZone = inject(NgZone);
+  private usersServiceRef: UsersService | null = null;
+
+  @Input({ required: true }) authMode: AppTypes.AuthMode = 'selector';
+  @Input() firebaseAuthProfile: AppTypes.FirebaseAuthProfile | null = null;
+  @Input() firebaseAuthIsBusy = false;
+  @Input() isMobileView = false;
+
+  @Output() readonly demoUserSelected = new EventEmitter<string>();
+  @Output() readonly firebaseAuthRequested = new EventEmitter<void>();
+  @Output() readonly firebaseSessionContinueRequested = new EventEmitter<void>();
+
+  protected showEntryConsentPopup = false;
+  protected entryConsentViewOnly = false;
+  protected showUserSelector = false;
+  protected demoSelectorUsers: DemoUserListItemDto[] = [];
+  protected demoSelectorLoading = false;
+  protected demoSelectorLoadingProgress = 0;
+  protected demoSelectorLoadingLabel = 'Preparing demo data';
+  protected demoSelectorSubmitting = false;
+  protected showFirebaseAuthPopup = false;
+  private demoSelectorRequestToken = 0;
+
+  constructor() {
+    this.initializeEntryFlow();
+  }
+
+  @HostListener('window:keydown.escape', ['$event'])
+  protected onGlobalEscape(event: Event): void {
+    const keyboardEvent = event as KeyboardEvent;
+    if (keyboardEvent.defaultPrevented) {
+      return;
+    }
+    if (this.showUserSelector) {
+      keyboardEvent.stopPropagation();
+      if (this.demoSelectorSubmitting) {
+        return;
+      }
+      this.closeDemoUserSelectorPopup();
+      return;
+    }
+    if (this.showFirebaseAuthPopup) {
+      keyboardEvent.stopPropagation();
+      this.closeFirebaseAuthPopup();
+    }
+  }
+
+  protected get hasEntryConsent(): boolean {
+    return this.loadEntryConsentState() !== null;
+  }
+
+  protected openEntryDemo(): void {
+    if (!this.ensureEntryConsent()) {
+      return;
+    }
+    this.openDemoUserSelectorPopup();
+  }
+
+  protected openEntryFirebaseAuth(): void {
+    if (!this.ensureEntryConsent()) {
+      return;
+    }
+    if (this.authMode !== 'firebase') {
+      this.openDemoUserSelectorPopup();
+      return;
+    }
+    if (this.firebaseAuthProfile) {
+      this.firebaseSessionContinueRequested.emit();
+      return;
+    }
+    this.showFirebaseAuthPopup = true;
+  }
+
+  protected closeFirebaseAuthPopup(): void {
+    this.showFirebaseAuthPopup = false;
+  }
+
+  protected closeDemoUserSelectorPopup(): void {
+    if (this.demoSelectorSubmitting) {
+      return;
+    }
+    this.demoSelectorRequestToken += 1;
+    this.showUserSelector = false;
+    this.demoSelectorLoading = false;
+    this.demoSelectorLoadingProgress = 0;
+    this.demoSelectorLoadingLabel = 'Preparing demo data';
+    this.demoSelectorSubmitting = false;
+  }
+
+  protected onSelectDemoUser(userId: string): void {
+    if (this.demoSelectorLoading || this.demoSelectorSubmitting) {
+      return;
+    }
+    const requestToken = this.demoSelectorRequestToken;
+    this.demoSelectorSubmitting = true;
+    this.demoSelectorLoading = true;
+    this.demoSelectorLoadingProgress = 0;
+    this.demoSelectorLoadingLabel = 'Preparing demo session';
+    void this.prepareSelectedDemoUser(userId, requestToken);
+  }
+
+  protected onContinueWithFirebaseAuth(): void {
+    if (this.firebaseAuthIsBusy) {
+      return;
+    }
+    this.firebaseAuthRequested.emit();
+  }
+
+  protected openEntryConsentPopup(viewOnly = false): void {
+    this.entryConsentViewOnly = viewOnly;
+    this.showEntryConsentPopup = true;
+  }
+
+  protected closeEntryConsentPopup(): void {
+    if (!this.entryConsentViewOnly && !this.hasEntryConsent) {
+      return;
+    }
+    this.showEntryConsentPopup = false;
+    this.entryConsentViewOnly = false;
+  }
+
+  protected acceptEntryConsent(): void {
+    const nowIso = new Date().toISOString();
+    const consent: AppTypes.EntryConsentState = {
+      version: EntryShellComponent.ENTRY_CONSENT_VERSION,
+      accepted: true,
+      acceptedAtIso: nowIso
+    };
+    localStorage.setItem(EntryShellComponent.ENTRY_CONSENT_KEY, JSON.stringify(consent));
+    this.appendEntryConsentAudit('accepted', nowIso);
+    this.showEntryConsentPopup = false;
+    this.entryConsentViewOnly = false;
+  }
+
+  protected rejectEntryConsent(): void {
+    const nowIso = new Date().toISOString();
+    localStorage.removeItem(EntryShellComponent.ENTRY_CONSENT_KEY);
+    this.appendEntryConsentAudit('rejected', nowIso);
+    this.showEntryConsentPopup = false;
+    this.entryConsentViewOnly = false;
+  }
+
+  private initializeEntryFlow(): void {
+    const hasConsent = this.loadEntryConsentState() !== null;
+    this.entryConsentViewOnly = false;
+    this.showEntryConsentPopup = !hasConsent;
+    this.showUserSelector = false;
+    this.demoSelectorLoading = false;
+    this.demoSelectorLoadingProgress = 0;
+    this.demoSelectorLoadingLabel = 'Preparing demo data';
+    this.demoSelectorSubmitting = false;
+    this.showFirebaseAuthPopup = false;
+  }
+
+  private get usersService(): UsersService {
+    if (!this.usersServiceRef) {
+      this.usersServiceRef = this.injector.get(UsersService);
+    }
+    return this.usersServiceRef;
+  }
+
+  private ensureEntryConsent(): boolean {
+    if (this.hasEntryConsent) {
+      return true;
+    }
+    this.entryConsentViewOnly = false;
+    this.showEntryConsentPopup = true;
+    return false;
+  }
+
+  private openDemoUserSelectorPopup(): void {
+    const requestToken = ++this.demoSelectorRequestToken;
+    this.showUserSelector = true;
+    this.demoSelectorUsers = [];
+    this.demoSelectorLoading = true;
+    this.demoSelectorLoadingProgress = 0;
+    this.demoSelectorLoadingLabel = 'Preparing demo data';
+    this.demoSelectorSubmitting = false;
+    void this.loadDemoSelectorUsers(requestToken);
+  }
+
+  private async loadDemoSelectorUsers(requestToken: number): Promise<void> {
+    await this.waitForPopupPaint();
+    if (!this.isCurrentDemoSelectorRequest(requestToken)) {
+      return;
+    }
+
+    try {
+      const users = await this.usersService.loadAvailableDemoUsers(undefined, state => {
+        if (!this.isCurrentDemoSelectorRequest(requestToken)) {
+          return;
+        }
+        this.commitDemoSelectorState(() => {
+          this.demoSelectorLoadingProgress = state.percent;
+          this.demoSelectorLoadingLabel = state.label;
+        });
+      });
+      if (!this.isCurrentDemoSelectorRequest(requestToken)) {
+        return;
+      }
+      this.commitDemoSelectorState(() => {
+        this.demoSelectorUsers = users;
+        this.demoSelectorLoadingProgress = 100;
+        this.demoSelectorLoadingLabel = 'Demo data ready';
+      });
+      await this.waitForLoaderCompletionBeat();
+      if (!this.isCurrentDemoSelectorRequest(requestToken)) {
+        return;
+      }
+      this.commitDemoSelectorState(() => {
+        this.demoSelectorLoading = false;
+      });
+    } catch {
+      if (!this.isCurrentDemoSelectorRequest(requestToken)) {
+        return;
+      }
+      this.commitDemoSelectorState(() => {
+        this.demoSelectorLoading = false;
+      });
+    }
+  }
+
+  private async prepareSelectedDemoUser(userId: string, requestToken: number): Promise<void> {
+    await this.waitForPopupPaint();
+    if (!this.isCurrentDemoSelectorRequest(requestToken)) {
+      return;
+    }
+
+    try {
+      await this.usersService.prepareDemoUserSession(userId, state => {
+        if (!this.isCurrentDemoSelectorRequest(requestToken)) {
+          return;
+        }
+        this.commitDemoSelectorState(() => {
+          this.demoSelectorLoadingProgress = state.percent;
+          this.demoSelectorLoadingLabel = state.label;
+        });
+      });
+      if (!this.isCurrentDemoSelectorRequest(requestToken)) {
+        return;
+      }
+      this.commitDemoSelectorState(() => {
+        this.demoSelectorLoadingProgress = 100;
+        this.demoSelectorLoadingLabel = 'Demo session ready';
+      });
+      await this.waitForLoaderCompletionBeat();
+      if (!this.isCurrentDemoSelectorRequest(requestToken)) {
+        return;
+      }
+      this.demoUserSelected.emit(userId);
+    } catch {
+      if (!this.isCurrentDemoSelectorRequest(requestToken)) {
+        return;
+      }
+      this.commitDemoSelectorState(() => {
+        this.demoSelectorLoading = false;
+        this.demoSelectorSubmitting = false;
+        this.demoSelectorLoadingProgress = 0;
+        this.demoSelectorLoadingLabel = 'Preparing demo data';
+      });
+    }
+  }
+
+  private isCurrentDemoSelectorRequest(requestToken: number): boolean {
+    return this.showUserSelector && this.demoSelectorRequestToken === requestToken;
+  }
+
+  private waitForPopupPaint(): Promise<void> {
+    return new Promise(resolve => {
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            setTimeout(resolve, 80);
+          });
+        });
+        return;
+      }
+      setTimeout(resolve, 80);
+    });
+  }
+
+  private waitForLoaderCompletionBeat(): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, 240));
+  }
+
+  private commitDemoSelectorState(update: () => void): void {
+    this.ngZone.run(() => {
+      update();
+      this.changeDetectorRef.detectChanges();
+    });
+  }
+
+  private loadEntryConsentState(): AppTypes.EntryConsentState | null {
+    const raw = localStorage.getItem(EntryShellComponent.ENTRY_CONSENT_KEY);
+    if (!raw) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(raw) as Partial<AppTypes.EntryConsentState>;
+      if (
+        parsed.version !== EntryShellComponent.ENTRY_CONSENT_VERSION ||
+        parsed.accepted !== true ||
+        typeof parsed.acceptedAtIso !== 'string' ||
+        parsed.acceptedAtIso.length === 0
+      ) {
+        return null;
+      }
+      return {
+        version: parsed.version,
+        accepted: true,
+        acceptedAtIso: parsed.acceptedAtIso
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private appendEntryConsentAudit(action: AppTypes.EntryConsentAuditRecord['action'], tsIso: string): void {
+    const record: AppTypes.EntryConsentAuditRecord = {
+      tsIso,
+      action,
+      version: EntryShellComponent.ENTRY_CONSENT_VERSION,
+      source: 'entry',
+      userAgent: navigator.userAgent
+    };
+    const existing = this.loadEntryConsentAudit();
+    existing.unshift(record);
+    const trimmed = existing.slice(0, EntryShellComponent.ENTRY_CONSENT_AUDIT_MAX);
+    localStorage.setItem(EntryShellComponent.ENTRY_CONSENT_AUDIT_KEY, JSON.stringify(trimmed));
+  }
+
+  private loadEntryConsentAudit(): AppTypes.EntryConsentAuditRecord[] {
+    const raw = localStorage.getItem(EntryShellComponent.ENTRY_CONSENT_AUDIT_KEY);
+    if (!raw) {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(raw) as AppTypes.EntryConsentAuditRecord[];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+}
