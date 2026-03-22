@@ -15,8 +15,8 @@
 
 .asset-member-picker-popup-shell .popup-panel-friends-picker.popup-panel-friends-picker-members {
   width: min(1080px, calc(100vw - 1.2rem));
-  height: calc(100vh - 1.2rem);
-  max-height: calc(100vh - 1.2rem);
+  height: calc(100dvh - 1.2rem);
+  max-height: calc(100dvh - 1.2rem);
 }
 
 .asset-member-picker-popup-shell .popup-body.popup-body-friends-picker {
@@ -173,11 +173,13 @@
   flex: 1 1 auto;
   min-height: 0;
   height: 100%;
+  touch-action: pan-y;
 }
 
 .asset-member-picker-popup-shell .friends-picker-card {
   position: relative;
   min-height: 250px;
+  will-change: transform;
   border-radius: 13px;
   border: 1px solid rgba(30, 51, 81, 0.24);
   background-size: cover;
