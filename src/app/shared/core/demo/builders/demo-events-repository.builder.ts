@@ -202,6 +202,11 @@ const SEED_PUBLISHED_BY_ID: Record<string, boolean> = {
   h4: false
 };
 
+
+const SEED_EXPLORE_REBALANCE_BY_OWNER_USER: Record<string, readonly string[]> = {
+  u1: ['e2', 'e3', 'e6', 'e8']
+};
+
 interface DemoEventSeedOverrides {
   startAt?: string;
   endAt?: string;
@@ -236,15 +241,52 @@ export class DemoEventsRepositoryBuilder {
   }
 
   static buildSeedEventItemsByUser(): Record<string, EventMenuItem[]> {
-    return Object.fromEntries(
+    const seeded = Object.fromEntries(
       Object.entries(SEED_EVENTS_BY_USER).map(([userId, items]) => [
         userId,
         items.map(item => ({
           ...item,
-          topics: item.topics ? [...item.topics] : item.topics
+          topics: item.topics ? [...item.topics] : item.topics,
+          acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : item.acceptedMemberUserIds,
+          pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : item.pendingMemberUserIds
         }))
       ])
-    );
+    ) as Record<string, EventMenuItem[]>;
+
+    this.rebalanceSeedExploreItems(seeded);
+    return seeded;
+  }
+
+
+  private static rebalanceSeedExploreItems(seedItemsByUser: Record<string, EventMenuItem[]>): void {
+    for (const [ownerUserId, eventIds] of Object.entries(SEED_EXPLORE_REBALANCE_BY_OWNER_USER)) {
+      const ownerItems = seedItemsByUser[ownerUserId];
+      if (!ownerItems || ownerItems.length === 0) {
+        continue;
+      }
+      const movedEventIds = new Set(eventIds);
+      const itemsToMove = ownerItems.filter(item => movedEventIds.has(item.id));
+      if (itemsToMove.length === 0) {
+        continue;
+      }
+      seedItemsByUser[ownerUserId] = ownerItems.filter(item => !movedEventIds.has(item.id));
+      for (const item of itemsToMove) {
+        const creatorUserId = item.creatorUserId?.trim() || ownerUserId;
+        const creatorItems = seedItemsByUser[creatorUserId] ?? [];
+        if (creatorItems.some(existing => existing.id === item.id)) {
+          continue;
+        }
+        creatorItems.push({
+          ...item,
+          isAdmin: creatorUserId === ownerUserId ? item.isAdmin : true,
+          visibility: 'Public',
+          acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : undefined,
+          pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : undefined,
+          topics: item.topics ? [...item.topics] : item.topics
+        });
+        seedItemsByUser[creatorUserId] = creatorItems;
+      }
+    }
   }
 
   static buildSeedHostingItemsByUser(): Record<string, HostingMenuItem[]> {
