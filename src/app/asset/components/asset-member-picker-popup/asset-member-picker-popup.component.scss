@@ -339,6 +339,13 @@
 
 
 @media (max-width: 760px) {
+  .activity-members-popup-shell .subevent-members-grid {
+    /* Forces 2 equal columns, removing the 250px 'gap' trigger */
+    grid-template-columns: repeat(2, 1fr) !important; 
+    gap: 0.45rem;
+    padding: 0 0.1rem;
+  }
+  
   .asset-member-picker-popup-shell .friends-picker-card {
     min-height: 190px;
   }

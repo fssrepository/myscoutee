@@ -209,13 +209,16 @@
 
 .activity-members-popup-shell .friends-picker-card {
   position: relative;
-  width: min(100%, 320px);
+  /* Changed from min(100%, 320px) to 100% to allow full-width stretching */
+  width: 100%; 
   min-height: 250px;
   border-radius: 13px;
   border: 1px solid rgba(30, 51, 81, 0.24);
   background-size: cover;
   background-position: center;
   overflow: hidden;
+  /* Pre-renders the card for the GPU to fix the initial scroll lag */
+  will-change: transform;
 }
 
 .activity-members-popup-shell .friends-picker-card.lazy-bg-error {
