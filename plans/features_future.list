@@ -1,4 +1,4 @@
-activities-popup.component.ts cut by templates
+activities-popup.component.ts cut out the templates (ActivitiesListComponent)
 
 request to join - if there is slots, you can choose from the menu -> like the request to join has a ">"
 event editor should show for public or friends whether it's for group  of people or individual can join
