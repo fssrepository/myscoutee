@@ -122,22 +122,6 @@
           </article>
         </ng-template>
 
-        <app-confirmation-dialog
-          [useService]="false"
-          [dialog]="{
-            visible: !!pendingDelete,
-            title: pendingDeleteTitle(),
-            message: pendingDeleteLabel(),
-            errorMessage: pendingDeleteErrorMessage,
-            confirmLabel: pendingDeleteConfirmLabel(),
-            busyConfirmLabel: pendingDeleteBusyLabel(),
-            busy: pendingDeleteBusy,
-            ringPerimeter: deleteConfirmRingPerimeter,
-            confirmTone: 'danger',
-            cancelAction: cancelDelete.bind(this),
-            confirmAction: confirmDelete.bind(this)
-          }"
-        ></app-confirmation-dialog>
       </div>
     </div>
   </div>

@@ -532,19 +532,6 @@
       (badgeClick)="openActivityRateEditor(row)"
     ></app-pair-card>
   </ng-template>
-  <!-- ───── Delete confirm ───── -->
-  <section class="experience-delete-confirm" *ngIf="pendingActivityDeleteRow">
-    <div class="experience-delete-confirm-backdrop" (click)="cancelActivityDelete()"></div>
-    <div class="experience-delete-confirm-panel">
-      <h4>{{ pendingActivityConfirmTitle() }}</h4>
-      <p>{{ pendingActivityDeleteLabel() }}</p>
-      <div class="popup-actions">
-        <button type="button" class="link-btn neutral-btn" (click)="cancelActivityDelete()">Cancel</button>
-        <button type="button" class="link-btn experience-delete-btn" (click)="confirmActivityDelete()">{{ pendingActivityConfirmActionLabel() }}</button>
-      </div>
-    </div>
-  </section>
-
   <!-- ───── Publish confirm ───── -->
   <section class="experience-delete-confirm" *ngIf="pendingActivityPublishRow">
     <div class="experience-delete-confirm-backdrop" (click)="cancelActivityPublish()"></div>

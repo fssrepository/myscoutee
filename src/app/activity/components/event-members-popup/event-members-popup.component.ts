@@ -28,9 +28,9 @@ import {
   type SmartListConfig,
   type SmartListItemTemplateContext,
   type SmartListLoaders,
-  type SmartListStateChange,
-  ConfirmationDialogComponent
+  type SmartListStateChange
 } from '../../../shared/ui';
+import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { DemoUsersRepository } from '../../../shared/core/demo';
 
 interface MembersSmartListFilters {
@@ -57,8 +57,7 @@ type MembersSummaryState = {
     MatButtonModule,
     MatIconModule,
     SmartListComponent,
-    LazyBgImageDirective,
-    ConfirmationDialogComponent
+    LazyBgImageDirective
   ],
   templateUrl: './event-members-popup.component.html',
   styleUrls: ['./event-members-popup.component.scss'],
@@ -67,6 +66,7 @@ type MembersSummaryState = {
 export class EventMembersPopupComponent {
   private static readonly DELETE_PENDING_WINDOW_MS = 1500;
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly eventsService = inject(EventsService);
   private readonly appCtx = inject(AppContext);
@@ -97,10 +97,6 @@ export class EventMembersPopupComponent {
   protected acceptedCount = 0;
   protected capacityTotal = 0;
   protected canShowInviteButton = false;
-  protected pendingDelete: AppTypes.ActivityMemberEntry | null = null;
-  protected pendingDeleteBusy = false;
-  protected pendingDeleteErrorMessage = '';
-  protected readonly deleteConfirmRingPerimeter = 100;
 
   private ownerRecord: DemoEventRecord | null = null;
   private ownerRef: ActivityMemberOwnerRef | null = null;
@@ -209,12 +205,11 @@ export class EventMembersPopupComponent {
     if (!this.isOpen || keyboardEvent.defaultPrevented || this.isSuspendedForAssetInvite()) {
       return;
     }
-    keyboardEvent.preventDefault();
-    keyboardEvent.stopPropagation();
-    if (this.pendingDelete) {
-      this.cancelDelete();
+    if (this.confirmationDialogService.dialog()) {
       return;
     }
+    keyboardEvent.preventDefault();
+    keyboardEvent.stopPropagation();
     if (this.inlineItemActionMenu) {
       this.inlineItemActionMenu = null;
       this.cdr.markForCheck();
@@ -256,16 +251,12 @@ export class EventMembersPopupComponent {
     }
     this.pendingOnly = !this.pendingOnly;
     this.inlineItemActionMenu = null;
-    this.pendingDelete = null;
     this.syncMembersSmartListQuery();
     this.cdr.markForCheck();
   }
 
   protected closeMembersPopup(event?: Event): void {
     event?.stopPropagation();
-    if (this.pendingDeleteBusy) {
-      return;
-    }
     if (this.openMembersHydrationTimer) {
       clearTimeout(this.openMembersHydrationTimer);
       this.openMembersHydrationTimer = null;
@@ -278,9 +269,6 @@ export class EventMembersPopupComponent {
     this.ownerRef = null;
     this.ownerRecord = null;
     this.inlineItemActionMenu = null;
-    this.pendingDelete = null;
-    this.pendingDeleteBusy = false;
-    this.pendingDeleteErrorMessage = '';
     this.pendingOnly = false;
     this.canManageMembers = false;
     this.canShowInviteButton = false;
@@ -347,6 +335,40 @@ export class EventMembersPopupComponent {
     if (!this.canApproveMember(entry)) {
       return;
     }
+    this.inlineItemActionMenu = null;
+    this.cdr.markForCheck();
+    this.confirmationDialogService.open({
+      title: 'Approve request?',
+      message: `Approve ${entry.name} for this ${this.ownerScopeLabel()}?`,
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Approve',
+      busyConfirmLabel: 'Approving...',
+      confirmTone: 'accent',
+      failureMessage: 'Unable to approve request.',
+      onConfirm: () => this.confirmApproveMember(entry)
+    });
+  }
+
+  protected requestRemoveMember(entry: AppTypes.ActivityMemberEntry, event: Event): void {
+    event.stopPropagation();
+    if (!this.canDeleteMember(entry)) {
+      return;
+    }
+    this.inlineItemActionMenu = null;
+    this.cdr.markForCheck();
+    this.confirmationDialogService.open({
+      title: this.memberRemovalTitle(entry),
+      message: this.memberRemovalMessage(entry),
+      cancelLabel: 'Cancel',
+      confirmLabel: this.memberRemovalConfirmLabel(entry),
+      busyConfirmLabel: this.memberRemovalBusyLabel(entry),
+      confirmTone: 'danger',
+      failureMessage: this.memberRemovalFailureMessage(entry),
+      onConfirm: () => this.confirmRemoveMember(entry)
+    });
+  }
+
+  private async confirmApproveMember(entry: AppTypes.ActivityMemberEntry): Promise<void> {
     const previousMembers = this.currentOwnerMembers();
     const nextMembers = previousMembers.map(member =>
       member.id === entry.id
@@ -359,86 +381,61 @@ export class EventMembersPopupComponent {
           }
         : member
     );
-    void this.commitMembers(nextMembers, previousMembers).catch(() => undefined);
-  }
-
-  protected requestRemoveMember(entry: AppTypes.ActivityMemberEntry, event: Event): void {
-    event.stopPropagation();
-    if (!this.canDeleteMember(entry)) {
-      return;
-    }
-    this.inlineItemActionMenu = null;
-    this.pendingDelete = entry;
-    this.pendingDeleteBusy = false;
-    this.pendingDeleteErrorMessage = '';
-    this.cdr.markForCheck();
-  }
-
-  protected cancelDelete(event?: Event): void {
-    event?.stopPropagation();
-    if (this.pendingDeleteBusy) {
-      return;
-    }
-    this.pendingDelete = null;
-    this.pendingDeleteErrorMessage = '';
-    this.cdr.markForCheck();
-  }
-
-  protected async confirmDelete(event?: Event): Promise<void> {
-    event?.stopPropagation();
-    const pendingDelete = this.pendingDelete;
-    if (!pendingDelete || this.pendingDeleteBusy) {
-      return;
-    }
-    const previousMembers = this.currentOwnerMembers();
-    const nextMembers = previousMembers.filter(member => member.id !== pendingDelete.id);
-    this.pendingDeleteBusy = true;
-    this.pendingDeleteErrorMessage = '';
     const pendingWindowPromise = this.minimumDeletePendingWindow();
-    this.cdr.markForCheck();
-    try {
-      const deletePromise = this.runDeleteAfterUiYield(nextMembers, previousMembers);
-      await Promise.all([pendingWindowPromise, deletePromise]);
-      this.pendingDelete = null;
-      this.pendingDeleteBusy = false;
-      this.pendingDeleteErrorMessage = '';
-      this.cdr.markForCheck();
-    } catch {
-      this.pendingDeleteBusy = false;
-      this.pendingDeleteErrorMessage = 'Unable to remove member.';
-      this.cdr.markForCheck();
-    }
+    const approvePromise = this.runMemberUpdateAfterUiYield(nextMembers, previousMembers);
+    await Promise.all([pendingWindowPromise, approvePromise]);
   }
 
-  protected pendingDeleteTitle(): string {
-    return 'Remove member';
+  private async confirmRemoveMember(entry: AppTypes.ActivityMemberEntry): Promise<void> {
+    const previousMembers = this.currentOwnerMembers();
+    const nextMembers = previousMembers.filter(member => member.id !== entry.id);
+    const pendingWindowPromise = this.minimumDeletePendingWindow();
+    const deletePromise = this.runMemberUpdateAfterUiYield(nextMembers, previousMembers);
+    await Promise.all([pendingWindowPromise, deletePromise]);
   }
 
-  protected pendingDeleteLabel(): string {
-    if (!this.pendingDelete) {
-      return '';
+  private memberRemovalTitle(entry: AppTypes.ActivityMemberEntry): string {
+    if (entry.requestKind === 'join') {
+      return 'Reject request?';
     }
-    return `Remove ${this.pendingDelete.name} from this ${this.ownerScopeLabel()}?`;
+    if (entry.status === 'accepted') {
+      return 'Remove member?';
+    }
+    return 'Delete invitation?';
   }
 
-  protected pendingDeleteConfirmLabel(): string {
-    if (!this.pendingDelete) {
-      return 'Delete';
+  private memberRemovalMessage(entry: AppTypes.ActivityMemberEntry): string {
+    if (entry.requestKind === 'join') {
+      return `Reject ${entry.name}'s request to join this ${this.ownerScopeLabel()}?`;
     }
-    if (this.pendingDelete.requestKind === 'join') {
+    if (entry.status === 'accepted') {
+      return `Remove ${entry.name} from this ${this.ownerScopeLabel()}?`;
+    }
+    return `Delete ${entry.name}'s invitation to this ${this.ownerScopeLabel()}?`;
+  }
+
+  private memberRemovalConfirmLabel(entry: AppTypes.ActivityMemberEntry): string {
+    if (entry.requestKind === 'join') {
       return 'Reject';
     }
-    return this.pendingDelete.status === 'accepted' ? 'Remove' : 'Delete';
+    return entry.status === 'accepted' ? 'Remove' : 'Delete';
   }
 
-  protected pendingDeleteBusyLabel(): string {
-    if (!this.pendingDelete) {
-      return 'Deleting...';
-    }
-    if (this.pendingDelete.requestKind === 'join') {
+  private memberRemovalBusyLabel(entry: AppTypes.ActivityMemberEntry): string {
+    if (entry.requestKind === 'join') {
       return 'Rejecting...';
     }
-    return this.pendingDelete.status === 'accepted' ? 'Removing...' : 'Deleting...';
+    return entry.status === 'accepted' ? 'Removing...' : 'Deleting...';
+  }
+
+  private memberRemovalFailureMessage(entry: AppTypes.ActivityMemberEntry): string {
+    if (entry.requestKind === 'join') {
+      return 'Unable to reject request.';
+    }
+    if (entry.status === 'accepted') {
+      return 'Unable to remove member.';
+    }
+    return 'Unable to delete invitation.';
   }
 
   protected memberCardToneClass(entry: AppTypes.ActivityMemberEntry): string {
@@ -586,7 +583,6 @@ export class EventMembersPopupComponent {
     this.title = 'Members';
     this.subtitle = options?.subtitle?.trim() || 'Event';
     this.pendingOnly = false;
-    this.pendingDelete = null;
     this.inlineItemActionMenu = null;
     this.selectedMembersVisible = [];
     this.membersCacheByOwnerId.delete(normalizedOwnerId);
@@ -921,7 +917,7 @@ export class EventMembersPopupComponent {
       : Promise.resolve();
   }
 
-  private async runDeleteAfterUiYield(
+  private async runMemberUpdateAfterUiYield(
     nextMembers: readonly AppTypes.ActivityMemberEntry[],
     previousMembers: readonly AppTypes.ActivityMemberEntry[]
   ): Promise<void> {

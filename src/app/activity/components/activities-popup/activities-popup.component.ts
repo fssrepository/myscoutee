@@ -99,7 +99,6 @@ interface ActivitiesEventScopeOption {
   icon: string;
 }
 
-type PendingActivityAction = 'delete' | 'exit' | 'reject';
 type ActivityInfoCardActionId = 'publish' | 'primary' | 'view' | 'approve' | 'secondary' | 'restore';
 
 @Component({
@@ -378,9 +377,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected activitiesRatesFullscreenMode         = false;
 
   // ── Delete / publish confirms ─────────────────────────────────────────────
-  protected pendingActivityDeleteRow: AppTypes.ActivityListRow | null  = null;
   protected pendingActivityPublishRow: AppTypes.ActivityListRow | null = null;
-  protected pendingActivityAction: PendingActivityAction               = 'delete';
   protected stackedActivitiesPopup: 'activityMembers' | null = null;
   protected activityMembersReadOnly = false;
   protected activityMembersPendingOnly = false;
@@ -469,6 +466,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!this.activitiesContext.activitiesOpen()) {
       return;
     }
+    if (this.confirmationDialogService.dialog()) {
+      return;
+    }
     if (this.eventEditorService.isOpen()) {
       return;
     }
@@ -492,9 +492,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private resetActivitiesStateForOpen(): void {
     this.inlineItemActionMenu = null;
-    this.pendingActivityDeleteRow = null;
     this.pendingActivityPublishRow = null;
-    this.pendingActivityAction = 'delete';
     this.visibleActivityRows = [];
     this.activitiesStickyValue = '';
     this.lastRateIndicatorPulseRowId = null;
@@ -639,7 +637,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
     sync: ActivitiesEventSyncPayload,
     existingRow: AppTypes.ActivityListRow | null = null
   ): AppTypes.ActivityListRow | null {
-    const rowType = existingRow?.type ?? this.resolveVisibleEventRowTypeFromSync(sync);
+    const rowType = existingRow && existingRow.type !== 'invitations'
+      ? existingRow.type
+      : this.resolveVisibleEventRowTypeFromSync(sync);
     if (rowType === 'events') {
       const source = this.buildSyncedEventMenuItem(
         sync,
@@ -699,6 +699,20 @@ export class ActivitiesPopupComponent implements OnDestroy {
     smartList.replaceVisibleItems(nextItems, {
       total: Math.max(nextItems.length, smartList.cursorState().total + totalDelta)
     });
+  }
+
+  private removeVisibleActivityRow(row: AppTypes.ActivityListRow): void {
+    const smartList = this.activitiesSmartList;
+    if (!smartList) {
+      return;
+    }
+    const rowKey = this.activityRowIdentity(row);
+    const currentItems = [...smartList.itemsSnapshot()];
+    const nextItems = currentItems.filter(item => this.activityRowIdentity(item) !== rowKey);
+    if (nextItems.length === currentItems.length) {
+      return;
+    }
+    this.replaceVisibleActivityItems(nextItems, -1);
   }
 
   private sortVisibleEventRows(items: readonly AppTypes.ActivityListRow[]): AppTypes.ActivityListRow[] {
@@ -2172,7 +2186,20 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected runActivityItemApproveAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
-    this.openActivityRowInEventModule(row, true);
+    if (row.type !== 'invitations') {
+      this.openActivityRowInEventModule(row, true);
+      return;
+    }
+    this.confirmationDialogService.open({
+      title: 'Accept invitation?',
+      message: row.title,
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Accept',
+      busyConfirmLabel: 'Accepting...',
+      confirmTone: 'accent',
+      failureMessage: 'Unable to accept invitation.',
+      onConfirm: () => this.confirmActivityInvitationApproval(row)
+    });
   }
 
   protected runActivityItemRestoreAction(row: AppTypes.ActivityListRow, event?: Event): void {
@@ -2185,8 +2212,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected runActivityItemSecondaryAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
-    this.pendingActivityAction    = this.resolvePendingActivityAction(row);
-    this.pendingActivityDeleteRow = row;
+    this.confirmationDialogService.open({
+      title: this.activitySecondaryConfirmTitle(row),
+      message: row.title,
+      cancelLabel: 'Cancel',
+      confirmLabel: this.activitySecondaryConfirmActionLabel(row),
+      busyConfirmLabel: this.activitySecondaryConfirmBusyLabel(row),
+      confirmTone: 'danger',
+      failureMessage: this.activitySecondaryConfirmFailureMessage(row),
+      onConfirm: () => this.confirmActivitySecondaryAction(row)
+    });
   }
 
   protected runActivityItemPublishAction(row: AppTypes.ActivityListRow, event?: Event): void {
@@ -2195,36 +2230,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.pendingActivityPublishRow = row;
   }
 
-  protected cancelActivityDelete(): void {
-    this.pendingActivityDeleteRow = null;
-  }
-
-  protected confirmActivityDelete(): void {
-    const row = this.pendingActivityDeleteRow;
-    this.pendingActivityDeleteRow = null;
-    if (!row) {
-      return;
-    }
-    this.trashActivityRow(row);
-    this.reloadActivitiesSmartListData();
-    this.cdr.markForCheck();
-  }
-
-  protected pendingActivityConfirmTitle(): string {
-    if (this.pendingActivityAction === 'exit') { return 'Leave event?'; }
-    if (this.pendingActivityAction === 'reject') { return 'Reject invitation?'; }
-    return 'Delete event?';
-  }
-
-  protected pendingActivityDeleteLabel(): string {
-    return this.pendingActivityDeleteRow?.title ?? '';
-  }
-
-  protected pendingActivityConfirmActionLabel(): string {
-    if (this.pendingActivityAction === 'exit') { return 'Leave'; }
-    if (this.pendingActivityAction === 'reject') { return 'Reject'; }
-    return 'Delete';
-  }
 
   protected cancelActivityPublish(): void {
     this.pendingActivityPublishRow = null;
@@ -2243,14 +2248,158 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.pendingActivityPublishRow?.title ?? '';
   }
 
-  private resolvePendingActivityAction(row: AppTypes.ActivityListRow): PendingActivityAction {
+  private activitySecondaryConfirmTitle(row: AppTypes.ActivityListRow): string {
     if (row.type === 'events') {
-      return 'exit';
+      return 'Leave event?';
     }
     if (row.type === 'invitations') {
-      return 'reject';
+      return 'Reject invitation?';
     }
-    return 'delete';
+    return 'Delete event?';
+  }
+
+  private activitySecondaryConfirmActionLabel(row: AppTypes.ActivityListRow): string {
+    if (row.type === 'events') {
+      return 'Leave';
+    }
+    if (row.type === 'invitations') {
+      return 'Reject';
+    }
+    return 'Delete';
+  }
+
+  private activitySecondaryConfirmBusyLabel(row: AppTypes.ActivityListRow): string {
+    if (row.type === 'events') {
+      return 'Leaving...';
+    }
+    if (row.type === 'invitations') {
+      return 'Rejecting...';
+    }
+    return 'Deleting...';
+  }
+
+  private activitySecondaryConfirmFailureMessage(row: AppTypes.ActivityListRow): string {
+    if (row.type === 'events') {
+      return 'Unable to leave event.';
+    }
+    if (row.type === 'invitations') {
+      return 'Unable to reject invitation.';
+    }
+    return 'Unable to delete event.';
+  }
+
+  private async confirmActivitySecondaryAction(row: AppTypes.ActivityListRow): Promise<void> {
+    await this.trashActivityRow(row);
+    this.removeVisibleActivityRow(row);
+    this.cdr.markForCheck();
+  }
+
+  private async confirmActivityInvitationApproval(row: AppTypes.ActivityListRow): Promise<void> {
+    const syncPayload = await this.buildAcceptedInvitationSyncPayload(row);
+    this.invitationItems = this.invitationItems.filter(item => item.id !== row.id);
+    this.refreshSectionBadges();
+    this.activitiesContext.emitActivitiesEventSync(syncPayload);
+    this.cdr.markForCheck();
+  }
+
+  private async buildAcceptedInvitationSyncPayload(
+    row: AppTypes.ActivityListRow
+  ): Promise<Omit<ActivitiesEventSyncPayload, 'syncKey'>> {
+    const activeUserId = this.activeUser.id.trim();
+    if (!activeUserId) {
+      throw new Error('Unable to resolve active user.');
+    }
+
+    const invitationSource = row.source as InvitationMenuItem;
+    const relatedSource = ActivityEventBuilder.resolveEditorSource(row, {
+      eventItems: this.eventItems,
+      hostingItems: this.hostingItems,
+      invitationItems: this.invitationItems
+    }) ?? ActivityEventBuilder.buildInvitationPreviewEventSource(invitationSource);
+    const record = await this.eventsService.queryKnownItemById(activeUserId, row.id);
+
+    const existingAcceptedMemberUserIds = this.uniqueUserIds([
+      ...(record?.acceptedMemberUserIds ?? relatedSource.acceptedMemberUserIds ?? [])
+    ]);
+    const existingPendingMemberUserIds = this.uniqueUserIds([
+      ...(record?.pendingMemberUserIds ?? relatedSource.pendingMemberUserIds ?? [])
+    ]);
+    const activeUserWasAccepted = existingAcceptedMemberUserIds.includes(activeUserId);
+    const activeUserWasPending = existingPendingMemberUserIds.includes(activeUserId) || !activeUserWasAccepted;
+    const nextAcceptedMemberUserIds = activeUserWasAccepted
+      ? [...existingAcceptedMemberUserIds]
+      : this.uniqueUserIds([...existingAcceptedMemberUserIds, activeUserId]);
+    const nextPendingMemberUserIds = existingPendingMemberUserIds.filter(userId => userId !== activeUserId);
+
+    const acceptedMembersBase = this.chatCountValue(record?.acceptedMembers ?? relatedSource.acceptedMembers);
+    const pendingMembersBase = this.chatCountValue(
+      record?.pendingMembers
+      ?? relatedSource.pendingMembers
+      ?? (activeUserWasPending ? 1 : nextPendingMemberUserIds.length)
+    );
+    const nextAcceptedMembers = activeUserWasAccepted
+      ? Math.max(acceptedMembersBase, nextAcceptedMemberUserIds.length)
+      : Math.max(nextAcceptedMemberUserIds.length, acceptedMembersBase + 1);
+    const nextPendingMembers = activeUserWasAccepted
+      ? Math.max(pendingMembersBase, nextPendingMemberUserIds.length)
+      : Math.max(0, Math.max(pendingMembersBase, activeUserWasPending ? 1 : 0) - 1);
+
+    const title = record?.title ?? relatedSource.title ?? invitationSource.description ?? row.title;
+    const shortDescription = record?.subtitle
+      ?? relatedSource.shortDescription
+      ?? row.subtitle
+      ?? `Invited by ${invitationSource.inviter}`;
+    const timeframe = record?.timeframe ?? relatedSource.timeframe ?? invitationSource.when ?? row.detail;
+    const startAt = record?.startAtIso ?? relatedSource.startAt ?? invitationSource.startAt ?? row.dateIso;
+    const endAt = record?.endAtIso ?? relatedSource.endAt ?? invitationSource.endAt ?? startAt;
+    const distanceKmRaw = record?.distanceKm ?? relatedSource.distanceKm ?? invitationSource.distanceKm ?? row.distanceKm;
+    const distanceKm = Number.isFinite(Number(distanceKmRaw)) ? Math.max(0, Number(distanceKmRaw)) : 0;
+    const creatorName = record?.creatorName?.trim() || invitationSource.inviter?.trim() || title;
+    const creatorInitials = record?.creatorInitials?.trim() || relatedSource.avatar?.trim() || AppUtils.initialsFromText(creatorName);
+    const capacityTotal = Math.max(
+      nextAcceptedMembers,
+      this.chatCountValue(record?.capacityTotal ?? relatedSource.capacityTotal ?? relatedSource.capacityMax)
+    );
+
+    return {
+      id: row.id,
+      target: 'events',
+      title,
+      shortDescription,
+      timeframe,
+      activity: this.chatCountValue(record?.activity ?? relatedSource.activity ?? invitationSource.unread ?? row.unread),
+      isAdmin: false,
+      startAt,
+      endAt,
+      distanceKm,
+      imageUrl: record?.imageUrl ?? relatedSource.imageUrl ?? invitationSource.imageUrl ?? '',
+      acceptedMembers: nextAcceptedMembers,
+      pendingMembers: nextPendingMembers,
+      capacityTotal,
+      capacityMin: record?.capacityMin ?? relatedSource.capacityMin ?? null,
+      capacityMax: record?.capacityMax ?? relatedSource.capacityMax ?? capacityTotal,
+      autoInviter: record?.autoInviter ?? relatedSource.autoInviter,
+      frequency: record?.frequency ?? relatedSource.frequency,
+      ticketing: record?.ticketing ?? relatedSource.ticketing,
+      visibility: record?.visibility ?? relatedSource.visibility,
+      blindMode: record?.blindMode ?? relatedSource.blindMode,
+      published: record?.published ?? relatedSource.published ?? true,
+      creatorUserId: record?.creatorUserId ?? relatedSource.creatorUserId,
+      creatorName,
+      creatorInitials,
+      creatorGender: record?.creatorGender,
+      creatorCity: record?.creatorCity,
+      location: record?.location ?? relatedSource.location ?? invitationSource.location,
+      locationCoordinates: record?.locationCoordinates ?? relatedSource.locationCoordinates ?? invitationSource.locationCoordinates,
+      sourceLink: record?.sourceLink ?? relatedSource.sourceLink ?? invitationSource.sourceLink,
+      acceptedMemberUserIds: nextAcceptedMemberUserIds,
+      pendingMemberUserIds: nextPendingMemberUserIds,
+      topics: [...(record?.topics ?? relatedSource.topics ?? [])],
+      subEvents: Array.isArray(record?.subEvents)
+        ? this.cloneSyncedSubEventForms(record.subEvents)
+        : (Array.isArray(relatedSource.subEvents) ? this.cloneSyncedSubEventForms(relatedSource.subEvents) : undefined),
+      subEventsDisplayMode: record?.subEventsDisplayMode ?? relatedSource.subEventsDisplayMode
+    };
   }
 
   private isActivityIdentityTrashed(type: AppTypes.ActivityListRow['type'], id: string): boolean {
@@ -2272,10 +2421,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.trashedActivityRows().length;
   }
 
-  private trashActivityRow(row: AppTypes.ActivityListRow): void {
+  private async trashActivityRow(row: AppTypes.ActivityListRow): Promise<void> {
     this.trashedActivityRowsByKey[this.activityRowIdentity(row)] = { ...row };
     if (row.type === 'events' || row.type === 'hosting' || row.type === 'invitations') {
-      void this.eventsService.trashItem(this.activeUser.id, row.type, row.id);
+      await this.eventsService.trashItem(this.activeUser.id, row.type, row.id);
     }
     this.refreshSectionBadges();
   }
@@ -2286,12 +2435,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       void this.eventsService.restoreItem(this.activeUser.id, row.type, row.id);
     }
     this.refreshSectionBadges();
-    this.reloadActivitiesSmartListData();
-  }
-
-  private reloadActivitiesSmartListData(): void {
-    this.activitiesSmartList?.reload();
-    this.cdr.markForCheck();
+    this.removeVisibleActivityRow(row);
   }
 
   // =========================================================================
@@ -4545,11 +4689,23 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (Array.isArray(sync.subEvents)) {
       this.eventSubEventsById[sync.id] = this.cloneSyncedSubEventForms(sync.subEvents);
     }
+    this.reconcileInvitationItemsFromEventSync(sync);
 
     this.patchVisibleActivityRowsFromEventSync(sync);
     this.upsertVisibleEventRowFromSync(sync);
     this.applyActivitiesEventMemberSnapshot(sync);
     this.refreshSectionBadges();
+  }
+
+  private reconcileInvitationItemsFromEventSync(sync: ActivitiesEventSyncPayload): void {
+    const activeUserId = this.activeUser.id.trim();
+    if (!activeUserId) {
+      return;
+    }
+    if (!Array.isArray(sync.acceptedMemberUserIds) || !sync.acceptedMemberUserIds.includes(activeUserId)) {
+      return;
+    }
+    this.invitationItems = this.invitationItems.filter(item => item.id !== sync.id);
   }
 
   private buildSyncedEventMenuItem(sync: ActivitiesEventSyncPayload, existing?: Partial<EventMenuItem>): EventMenuItem {
