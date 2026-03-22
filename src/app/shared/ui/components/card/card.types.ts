@@ -1,7 +1,7 @@
 export type CardPresentation = 'list' | 'fullscreen';
 export type CardRenderState = 'default' | 'active' | 'leaving';
 export type CardBadgeLayout = 'floating' | 'between' | 'pair-overlap';
-export type InfoCardSurfaceTone = 'default' | 'draft' | 'full';
+export type InfoCardSurfaceTone = 'default' | 'draft' | 'full' | 'pending';
 export type InfoCardOverlayVariant = 'avatar' | 'badge' | 'toggle';
 export type InfoCardOverlayLayout = 'default' | 'avatar-metric' | 'badge-with-leading-accessory';
 export type InfoCardOverlayTone =
@@ -159,6 +159,7 @@ export interface InfoCardData {
   mediaEnd?: InfoCardOverlayAction | null;
   menuActions?: readonly InfoCardMenuAction[];
   clickable?: boolean;
+  state?: CardRenderState;
 }
 
 export interface InfoCardClickEvent {

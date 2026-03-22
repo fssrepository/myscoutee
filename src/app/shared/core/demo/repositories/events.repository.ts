@@ -363,30 +363,55 @@ export class DemoEventsRepository {
     sourceId: string,
     updates: Pick<DemoEventRecord, 'isTrashed' | 'trashedAtIso'>
   ): void {
-    const recordKey = this.resolveRecordKey(userId, type, sourceId);
-    if (!recordKey) {
+    const recordKeys = this.resolveStateRecordKeys(userId, type, sourceId);
+    if (recordKeys.length === 0) {
       return;
     }
     this.memoryDb.write(state => {
       const table = state[EVENTS_TABLE_NAME];
-      const current = table.byId[recordKey];
-      if (!current) {
+      const nextById = { ...table.byId };
+      let changed = false;
+      for (const recordKey of recordKeys) {
+        const current = table.byId[recordKey];
+        if (!current) {
+          continue;
+        }
+        nextById[recordKey] = {
+          ...current,
+          ...updates
+        };
+        changed = true;
+      }
+      if (!changed) {
         return state;
       }
       return {
         ...state,
         [EVENTS_TABLE_NAME]: {
-          byId: {
-            ...table.byId,
-            [recordKey]: {
-              ...current,
-              ...updates
-            }
-          },
+          byId: nextById,
           ids: [...table.ids]
         }
       };
     });
+  }
+
+  private resolveStateRecordKeys(
+    userId: string,
+    type: DemoRepositoryEventItemType,
+    sourceId: string
+  ): string[] {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return [];
+    }
+    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    const candidateTypes: DemoRepositoryEventItemType[] = type === 'invitations'
+      ? ['invitations']
+      : ['events', 'hosting'];
+    return candidateTypes
+      .map(candidateType => DemoEventsRepositoryBuilder.buildRecordKey(normalizedUserId, candidateType, normalizedSourceId))
+      .filter((recordKey, index, recordKeys) => recordKeys.indexOf(recordKey) === index && Boolean(table.byId[recordKey]));
   }
 
   private findItem(
@@ -432,11 +457,60 @@ export class DemoEventsRepository {
       return [];
     }
     const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
-    return table.ids
+    const directRecords = table.ids
       .map(id => table.byId[id])
       .filter((record): record is DemoEventRecord => Boolean(record))
       .filter(record => record.userId === normalizedUserId)
       .map(record => DemoEventsRepositoryBuilder.cloneRecord(record));
+    const directIds = new Set(directRecords.map(record => record.id));
+    const membershipRecords = this.computePreferredEventRecords(table)
+      .filter(record => record.creatorUserId !== normalizedUserId)
+      .filter(record => !record.isTrashed)
+      .filter(record => !directIds.has(record.id))
+      .filter(record => record.acceptedMemberUserIds.includes(normalizedUserId) || record.pendingMemberUserIds.includes(normalizedUserId))
+      .map(record => this.buildMembershipProjectionRecord(normalizedUserId, record));
+    return [...directRecords, ...membershipRecords];
+  }
+
+  private buildMembershipProjectionRecord(userId: string, record: DemoEventRecord): DemoEventRecord {
+    return {
+      ...DemoEventsRepositoryBuilder.cloneRecord(record),
+      userId,
+      type: 'events',
+      isAdmin: false,
+      isInvitation: false,
+      isHosting: false
+    };
+  }
+
+  private computePreferredEventRecords(table: DemoEventRecordCollection): DemoEventRecord[] {
+    const preferredRecordByEventId = new Map<string, DemoEventRecord>();
+
+    for (const id of table.ids) {
+      const record = table.byId[id];
+      if (!record || record.isInvitation) {
+        continue;
+      }
+      const current = preferredRecordByEventId.get(record.id);
+      if (!current || this.shouldPreferRecord(record, current)) {
+        preferredRecordByEventId.set(record.id, record);
+      }
+    }
+
+    return [...preferredRecordByEventId.values()];
+  }
+
+  private shouldPreferRecord(next: DemoEventRecord, current: DemoEventRecord): boolean {
+    if (next.type === 'hosting' && current.type !== 'hosting') {
+      return true;
+    }
+    if (next.type !== 'hosting' && current.type === 'hosting') {
+      return false;
+    }
+    if (next.isAdmin !== current.isAdmin) {
+      return next.isAdmin;
+    }
+    return next.acceptedMembers >= current.acceptedMembers;
   }
 
   private queryUserLocationCoordinates(userId: string): LocationCoordinates | null {
@@ -762,6 +836,9 @@ export class DemoEventsRepository {
       return false;
     }
     if (record.creatorUserId === activeUserId) {
+      return false;
+    }
+    if (record.acceptedMemberUserIds.includes(activeUserId) || record.pendingMemberUserIds.includes(activeUserId)) {
       return false;
     }
     if (record.visibility === 'Invitation only') {

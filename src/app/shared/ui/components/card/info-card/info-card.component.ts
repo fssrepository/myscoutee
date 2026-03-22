@@ -246,6 +246,9 @@ export class InfoCardComponent {
     if (this.card?.surfaceTone && this.card.surfaceTone !== 'default') {
       classes.push(`ui-info-card--tone-${this.card.surfaceTone}`);
     }
+    if (this.card?.state && this.card.state !== 'default') {
+      classes.push(`ui-info-card--state-${this.card.state}`);
+    }
     if (this.card?.clickable) {
       classes.push('ui-info-card--clickable');
     }

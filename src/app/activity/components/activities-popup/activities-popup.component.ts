@@ -63,6 +63,7 @@ import {
   type SmartListPresentation,
   type SmartListStateChange
 } from '../../../shared/ui';
+import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
 import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
 import {
@@ -140,6 +141,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly popupCtx = inject(AppPopupContext);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
+  private readonly confirmationDialogService = inject(ConfirmationDialogService);
 
   // ── Self-contained data state (no host inputs) ───────────────────────────
   protected isMobileView = false;
@@ -181,6 +183,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly acceptedTournamentGroupMembersByKey: Record<string, string[]> = {};
   private readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
   private readonly forcedAcceptedMembersByRowKey: Record<string, number> = { 'events:e8': 20 };
+  private readonly leavingActivityRowIds = new Set<string>();
+  private readonly activityRowExitAnimationMs = 180;
   private lastAppliedActivityMembersUpdatedMs = 0;
 
   protected get assetCards(): AppTypes.AssetCard[] {
@@ -621,22 +625,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const currentIndex = currentItems.findIndex(row => row.id === sync.id);
     const existingRow = currentIndex >= 0 ? currentItems[currentIndex] ?? null : null;
     const nextRow = this.buildVisibleEventRowFromSync(sync, existingRow);
-
-    if (!nextRow) {
+    if (!nextRow && currentIndex < 0) {
       return;
     }
-
-    if (currentIndex >= 0) {
-      currentItems[currentIndex] = nextRow;
-      smartList.replaceVisibleItems(currentItems);
-      return;
+    const nextItems = currentItems.filter(row => row.id !== sync.id);
+    if (nextRow) {
+      nextItems.push(nextRow);
     }
-
-    const nextItems = [
-      nextRow,
-      ...currentItems.filter(row => this.activityRowIdentity(row) !== this.activityRowIdentity(nextRow))
-    ];
-    smartList.replaceVisibleItems(nextItems);
+    this.replaceVisibleActivityItems(nextItems, (nextRow ? 1 : 0) - (currentIndex >= 0 ? 1 : 0));
   }
 
   private buildVisibleEventRowFromSync(
@@ -649,20 +645,26 @@ export class ActivitiesPopupComponent implements OnDestroy {
         sync,
         existingRow?.type === 'events' ? existingRow.source as EventMenuItem : undefined
       );
-      return toActivityEventRowFromMenuItem(source, {
-        dateIso: source.startAt ?? sync.startAt,
-        distanceKm: source.distanceKm ?? sync.distanceKm
-      });
+      return {
+        ...toActivityEventRowFromMenuItem(source, {
+          dateIso: source.startAt ?? sync.startAt,
+          distanceKm: source.distanceKm ?? sync.distanceKm
+        }),
+        metricScore: existingRow?.metricScore ?? source.relevance ?? source.activity
+      };
     }
     if (rowType === 'hosting') {
       const source = this.buildSyncedHostingMenuItem(
         sync,
         existingRow?.type === 'hosting' ? existingRow.source as HostingMenuItem : undefined
       );
-      return toActivityHostingRowFromMenuItem(source, {
-        dateIso: source.startAt ?? sync.startAt,
-        distanceKm: source.distanceKm ?? sync.distanceKm
-      });
+      return {
+        ...toActivityHostingRowFromMenuItem(source, {
+          dateIso: source.startAt ?? sync.startAt,
+          distanceKm: source.distanceKm ?? sync.distanceKm
+        }),
+        metricScore: existingRow?.metricScore ?? source.relevance ?? (20 + source.activity)
+      };
     }
     return null;
   }
@@ -686,6 +688,75 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return null;
   }
 
+  private replaceVisibleActivityItems(items: readonly AppTypes.ActivityListRow[], totalDelta = 0): void {
+    const smartList = this.activitiesSmartList;
+    if (!smartList) {
+      return;
+    }
+    const nextItems = this.isEventActivitiesPrimaryFilter() && !this.isCalendarLayoutView()
+      ? this.sortVisibleEventRows(items)
+      : [...items];
+    smartList.replaceVisibleItems(nextItems, {
+      total: Math.max(nextItems.length, smartList.cursorState().total + totalDelta)
+    });
+  }
+
+  private sortVisibleEventRows(items: readonly AppTypes.ActivityListRow[]): AppTypes.ActivityListRow[] {
+    const secondaryFilter = this.effectiveActivitiesSecondaryFilter();
+    return [...items].sort((left, right) => {
+      if (this.activitiesView === 'distance') {
+        if (secondaryFilter === 'relevant') {
+          return this.activityRowDistanceOrderValue(left) - this.activityRowDistanceOrderValue(right)
+            || this.activityRowRelevanceOrderValue(left) - this.activityRowRelevanceOrderValue(right)
+            || this.activityRowTimestampOrderValue(right) - this.activityRowTimestampOrderValue(left)
+            || this.activityRowIdentity(left).localeCompare(this.activityRowIdentity(right));
+        }
+        return this.activityRowDistanceOrderValue(left) - this.activityRowDistanceOrderValue(right)
+          || this.activityRowTimestampOrderValue(right) - this.activityRowTimestampOrderValue(left)
+          || this.activityRowIdentity(left).localeCompare(this.activityRowIdentity(right));
+      }
+      if (secondaryFilter === 'relevant') {
+        return this.activityRowDayOrderValue(left) - this.activityRowDayOrderValue(right)
+          || this.activityRowRelevanceOrderValue(left) - this.activityRowRelevanceOrderValue(right)
+          || this.activityRowTimestampOrderValue(right) - this.activityRowTimestampOrderValue(left)
+          || this.activityRowIdentity(left).localeCompare(this.activityRowIdentity(right));
+      }
+      if (secondaryFilter === 'past') {
+        return this.activityRowDayOrderValue(right) - this.activityRowDayOrderValue(left)
+          || this.activityRowTimestampOrderValue(right) - this.activityRowTimestampOrderValue(left)
+          || this.activityRowIdentity(left).localeCompare(this.activityRowIdentity(right));
+      }
+      return this.activityRowDayOrderValue(left) - this.activityRowDayOrderValue(right)
+        || this.activityRowTimestampOrderValue(left) - this.activityRowTimestampOrderValue(right)
+        || this.activityRowIdentity(left).localeCompare(this.activityRowIdentity(right));
+    });
+  }
+
+  private activityRowDistanceOrderValue(row: AppTypes.ActivityListRow): number {
+    return row.distanceMetersExact
+      ?? Math.max(0, Math.round((Number(row.distanceKm) || 0) * 1000));
+  }
+
+  private activityRowRelevanceOrderValue(row: AppTypes.ActivityListRow): number {
+    const sourceRelevance = Number((row.source as { relevance?: unknown }).relevance);
+    if (Number.isFinite(sourceRelevance)) {
+      return Math.max(0, sourceRelevance);
+    }
+    return Math.max(0, Number(row.metricScore) || 0);
+  }
+
+  private activityRowTimestampOrderValue(row: AppTypes.ActivityListRow): number {
+    return AppUtils.toSortableDate((row.source as { startAt?: string }).startAt ?? row.dateIso);
+  }
+
+  private activityRowDayOrderValue(row: AppTypes.ActivityListRow): number {
+    const timestamp = this.activityRowTimestampOrderValue(row);
+    if (!Number.isFinite(timestamp)) {
+      return 0;
+    }
+    return AppUtils.dateOnly(new Date(timestamp)).getTime();
+  }
+
   private toEventMenuItem(record: DemoEventRecord): EventMenuItem {
     return {
       id: record.id,
@@ -699,6 +770,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       startAt: record.startAtIso,
       endAt: record.endAtIso,
       distanceKm: record.distanceKm,
+      acceptedMemberUserIds: [...record.acceptedMemberUserIds],
+      pendingMemberUserIds: [...record.pendingMemberUserIds],
       visibility: record.visibility,
       blindMode: record.blindMode,
       imageUrl: record.imageUrl,
@@ -1160,6 +1233,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
       && this.activitiesEventScope !== 'active-events'
       && this.activitiesEventScope !== 'invitations'
       && this.activitiesEventScope !== 'trash';
+  }
+
+  protected shouldShowStandaloneEventExploreAction(): boolean {
+    return this.isEventActivitiesPrimaryFilter() && this.activitiesEventScope === 'active-events';
   }
 
   protected shouldShowRatesFullscreenToggle(): boolean {
@@ -4468,6 +4545,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       acceptedMembers: Number.isFinite(Number(sync.acceptedMembers)) ? Math.max(0, Math.trunc(Number(sync.acceptedMembers))) : existing?.acceptedMembers,
       pendingMembers: Number.isFinite(Number(sync.pendingMembers)) ? Math.max(0, Math.trunc(Number(sync.pendingMembers))) : existing?.pendingMembers,
       capacityTotal: Number.isFinite(Number(sync.capacityTotal)) ? Math.max(0, Math.trunc(Number(sync.capacityTotal))) : existing?.capacityTotal,
+      acceptedMemberUserIds: Array.isArray(sync.acceptedMemberUserIds) ? [...sync.acceptedMemberUserIds] : [...(existing?.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: Array.isArray(sync.pendingMemberUserIds) ? [...sync.pendingMemberUserIds] : [...(existing?.pendingMemberUserIds ?? [])],
       visibility: sync.visibility ?? existing?.visibility,
       blindMode: sync.blindMode ?? existing?.blindMode,
       imageUrl: imageUrl || existing?.imageUrl,
@@ -4507,6 +4586,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       acceptedMembers: Number.isFinite(Number(sync.acceptedMembers)) ? Math.max(0, Math.trunc(Number(sync.acceptedMembers))) : existing?.acceptedMembers,
       pendingMembers: Number.isFinite(Number(sync.pendingMembers)) ? Math.max(0, Math.trunc(Number(sync.pendingMembers))) : existing?.pendingMembers,
       capacityTotal: Number.isFinite(Number(sync.capacityTotal)) ? Math.max(0, Math.trunc(Number(sync.capacityTotal))) : existing?.capacityTotal,
+      acceptedMemberUserIds: Array.isArray(sync.acceptedMemberUserIds) ? [...sync.acceptedMemberUserIds] : [...(existing?.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: Array.isArray(sync.pendingMemberUserIds) ? [...sync.pendingMemberUserIds] : [...(existing?.pendingMemberUserIds ?? [])],
       visibility: sync.visibility ?? existing?.visibility,
       blindMode: sync.blindMode ?? existing?.blindMode,
       imageUrl: imageUrl || existing?.imageUrl,

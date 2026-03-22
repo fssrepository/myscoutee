@@ -111,7 +111,7 @@
 
         <ng-template #eventExploreItemTemplate let-record let-groupLabel="groupLabel">
           <app-info-card
-            [card]="EventExploreBuilder.buildInfoCard(record, { groupLabel: groupLabel, topicToneGroups: topicFilterGroups })"
+            [card]="eventExploreInfoCard(record, groupLabel)"
             (mediaStartClick)="openHostImpressions(record)"
             (mediaEndClick)="openEventExploreMembers(record)"
             (menuAction)="onEventExploreInfoCardMenuAction(record, $event)"

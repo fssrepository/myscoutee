@@ -33,6 +33,7 @@ import {
   InfoCardComponent,
   SmartListComponent,
   TopicPickerPopupComponent,
+  type InfoCardData,
   type InfoCardMenuActionEvent,
   type ListQuery,
   type SmartListConfig,
@@ -102,6 +103,9 @@ export class EventExplorePopupComponent {
 
   private activeUserId = 'u1';
   private eventEditorPrewarmStarted = false;
+  private readonly leavingEventExploreRecordIds = new Set<string>();
+  private readonly eventExploreExitAnimationMs = 180;
+  private readonly eventExploreJoinDelayMs = 1500;
   private lastAppliedActivityMembersUpdatedMs = 0;
 
   protected eventExploreSmartListQuery: Partial<ListQuery<EventExploreFeedFilters>> = {};
@@ -497,10 +501,10 @@ export class EventExplorePopupComponent {
       return;
     }
     this.confirmationDialogService.open({
-      title: 'Join this event?',
+      title: 'Request to join?',
       message: record.title,
       cancelLabel: 'Cancel',
-      confirmLabel: 'Join',
+      confirmLabel: 'Send request',
       confirmTone: 'accent',
       onConfirm: () => this.submitEventExploreJoinRequest(record)
     });
@@ -528,6 +532,14 @@ export class EventExplorePopupComponent {
     if (action.actionId === 'join') {
       this.runEventExploreJoinAction(record);
     }
+  }
+
+  protected eventExploreInfoCard(record: DemoEventRecord, groupLabel: string | null): InfoCardData {
+    return EventExploreBuilder.buildInfoCard(record, {
+      groupLabel,
+      topicToneGroups: this.topicFilterGroups,
+      state: this.isEventExploreRecordLeaving(record) ? 'leaving' : 'default'
+    });
   }
 
   private openEventExplore(): void {
@@ -569,8 +581,7 @@ export class EventExplorePopupComponent {
       };
       changed = true;
     }
-    if (this.isOpen) {
-      this.reloadEventExploreSmartList();
+    if (this.isOpen && this.applyVisibleEventExploreMembersSync(sync)) {
       changed = true;
     }
     if (changed) {
@@ -708,20 +719,25 @@ export class EventExplorePopupComponent {
       return;
     }
     const owner = this.eventMembersOwner(record);
-    const loadedMembers = await this.activityMembersService.queryMembersByOwner(owner);
+    const loadedMembersPromise = this.activityMembersService.queryMembersByOwner(owner);
+    const exitPromise = this.runEventExploreExitTransition(record, () => {
+      this.removeVisibleEventExploreRecord(record);
+    });
+    const delayPromise = this.waitForEventExploreDelay(this.eventExploreJoinDelayMs);
+    const loadedMembers = await loadedMembersPromise;
     const existingMembers = loadedMembers.length > 0 ? loadedMembers : this.buildMemberEntries(record);
     const existingEntry = existingMembers.find(member => member.userId === activeUserId);
+
+    await Promise.all([exitPromise, delayPromise]);
+
     if (existingEntry) {
-      const title = existingEntry.status === 'accepted' ? 'Already joined' : 'Already requested';
-      const message = existingEntry.status === 'accepted'
-        ? `You are already part of ${record.title}.`
-        : `A join request is already pending for ${record.title}.`;
-      this.confirmationDialogService.openInfo(message, {
-        title,
-        confirmTone: 'neutral'
-      });
+      if (this.selectedMembersRecord?.id === record.id) {
+        this.selectedMembers = this.sortMembersByActionTimeDesc(existingMembers);
+      }
+      this.cdr.markForCheck();
       return;
     }
+
     const nextMembers = this.sortMembersByActionTimeDesc([
       ...existingMembers,
       this.buildJoinRequestEntry(record)
@@ -730,11 +746,81 @@ export class EventExplorePopupComponent {
     if (this.selectedMembersRecord?.id === record.id) {
       this.selectedMembers = nextMembers;
     }
-    this.confirmationDialogService.openInfo(`Join request sent for ${record.title}.`, {
-      title: 'Join request sent',
-      confirmTone: 'neutral'
-    });
     this.cdr.markForCheck();
+  }
+
+  private applyVisibleEventExploreMembersSync(sync: ActivityMembersSyncState): boolean {
+    if (!this.eventExploreSmartList) {
+      return false;
+    }
+    const currentItems = [...this.eventExploreSmartList.itemsSnapshot()];
+    const currentIndex = currentItems.findIndex(record => record.id === sync.id);
+    if (currentIndex < 0) {
+      return false;
+    }
+    const activeUserId = this.activeUserId.trim();
+    const currentRecord = currentItems[currentIndex];
+    if (!currentRecord) {
+      return false;
+    }
+    if (activeUserId && this.hasTrackedMembership(currentRecord, activeUserId)) {
+      currentItems.splice(currentIndex, 1);
+      this.eventExploreSmartList.replaceVisibleItems(currentItems, {
+        total: Math.max(currentItems.length, this.eventExploreSmartList.cursorState().total - 1)
+      });
+      return true;
+    }
+    currentItems[currentIndex] = {
+      ...currentRecord,
+      acceptedMembers: Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0)),
+      pendingMembers: Math.max(0, Math.trunc(Number(sync.pendingMembers) || 0)),
+      capacityTotal: Math.max(
+        Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0)),
+        Math.trunc(Number(sync.capacityTotal) || 0)
+      )
+    };
+    this.eventExploreSmartList.replaceVisibleItems(currentItems, {
+      total: this.eventExploreSmartList.cursorState().total
+    });
+    return true;
+  }
+
+  private removeVisibleEventExploreRecord(record: DemoEventRecord): void {
+    if (!this.eventExploreSmartList) {
+      return;
+    }
+    const currentItems = [...this.eventExploreSmartList.itemsSnapshot()];
+    const nextItems = currentItems.filter(item => item.id !== record.id);
+    if (nextItems.length === currentItems.length) {
+      return;
+    }
+    this.eventExploreSmartList.replaceVisibleItems(nextItems, {
+      total: Math.max(nextItems.length, this.eventExploreSmartList.cursorState().total - 1)
+    });
+  }
+
+  private isEventExploreRecordLeaving(record: DemoEventRecord): boolean {
+    return this.leavingEventExploreRecordIds.has(record.id);
+  }
+
+  private async runEventExploreExitTransition(record: DemoEventRecord, onExited: () => void): Promise<void> {
+    const isVisible = this.eventExploreSmartList?.itemsSnapshot().some(item => item.id === record.id) ?? false;
+    if (!isVisible) {
+      onExited();
+      return;
+    }
+    this.leavingEventExploreRecordIds.add(record.id);
+    this.cdr.markForCheck();
+    await this.waitForEventExploreDelay(this.eventExploreExitAnimationMs);
+    onExited();
+    this.leavingEventExploreRecordIds.delete(record.id);
+    this.cdr.markForCheck();
+  }
+
+  private waitForEventExploreDelay(durationMs: number): Promise<void> {
+    return new Promise(resolve => {
+      setTimeout(resolve, Math.max(0, durationMs));
+    });
   }
 
   private ensureMemberUserIds(

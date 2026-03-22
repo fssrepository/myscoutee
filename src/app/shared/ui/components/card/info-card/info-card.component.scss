@@ -16,7 +16,7 @@
   padding: 0.58rem 0.62rem;
   background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
   box-shadow: 0 10px 24px rgba(18, 35, 58, 0.08);
-  transition: transform 0.14s ease, box-shadow 0.16s ease, filter 0.16s ease;
+  transition: transform 0.14s ease, box-shadow 0.16s ease, filter 0.16s ease, opacity 0.18s ease;
 }
 
 .ui-info-card--clickable {
@@ -41,6 +41,19 @@
   border-color: rgba(96, 108, 136, 0.34);
   background: linear-gradient(180deg, #fafbff 0%, #f0f3fb 100%);
   box-shadow: 0 8px 18px rgba(74, 88, 118, 0.08);
+}
+
+.ui-info-card--tone-pending {
+  border-color: rgba(202, 145, 52, 0.34);
+  background: linear-gradient(180deg, #fffaf0 0%, #fff2d9 100%);
+  box-shadow: 0 8px 18px rgba(171, 122, 40, 0.12);
+}
+
+.ui-info-card--state-leaving {
+  opacity: 0;
+  transform: translateY(10px) scale(0.97);
+  filter: saturate(0.76);
+  pointer-events: none;
 }
 
 .ui-info-card__media {

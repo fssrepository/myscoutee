@@ -50,6 +50,8 @@ export interface EventMenuItem {
   acceptedMembers?: number;
   pendingMembers?: number;
   capacityTotal?: number;
+  acceptedMemberUserIds?: string[];
+  pendingMemberUserIds?: string[];
   visibility?: 'Public' | 'Friends only' | 'Invitation only';
   blindMode?: 'Open Event' | 'Blind Event';
   imageUrl?: string;
@@ -84,6 +86,8 @@ export interface HostingMenuItem {
   acceptedMembers?: number;
   pendingMembers?: number;
   capacityTotal?: number;
+  acceptedMemberUserIds?: string[];
+  pendingMemberUserIds?: string[];
   visibility?: 'Public' | 'Friends only' | 'Invitation only';
   blindMode?: 'Open Event' | 'Blind Event';
   imageUrl?: string;

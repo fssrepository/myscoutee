@@ -1,6 +1,6 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
-import type { InfoCardData, InfoCardMenuAction } from '../../../ui';
+import type { CardRenderState, InfoCardData, InfoCardMenuAction } from '../../../ui';
 import type { DemoEventRecord } from '../../demo/models/events.model';
 import { toActivityEventRow } from '../converters/activities-event.converter';
 
@@ -15,6 +15,7 @@ export class EventExploreBuilder {
     options: {
       groupLabel?: string | null;
       topicToneGroups?: readonly TopicToneGroup[];
+      state?: CardRenderState | null;
     } = {}
   ): InfoCardData {
     const openEvent = this.isOpenEvent(record);
@@ -68,7 +69,8 @@ export class EventExploreBuilder {
         }
       },
       menuActions: this.infoCardMenuActions(record),
-      clickable: false
+      clickable: false,
+      state: options.state ?? 'default'
     };
   }
 
