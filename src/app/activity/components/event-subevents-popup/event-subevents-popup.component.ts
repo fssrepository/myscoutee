@@ -217,6 +217,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   private stageSwipeStartX: number | null = null;
   private stageSwipeDeltaX = 0;
+  protected stagePageAnimationClass: '' | 'is-sliding-left' | 'is-sliding-right' = '';
+  private stagePageAnimationResetHandle: ReturnType<typeof setTimeout> | null = null;
   private workingSubEvents: EventSubeventsItem[] = [];
   protected sortedSubEvents: EventSubeventsPreparedItem[] = [];
   protected stageCards: EventSubeventsStageCard[] = [];
@@ -369,8 +371,14 @@ export class EventSubeventsPopupComponent implements OnChanges {
     };
 
     this.showSubEventOptionalPicker = false;
-    this.applySubEventInsertTargetDateRangeToForm();
+    this.showDisplayModePicker = false;
     this.showSubEventForm = true;
+    void Promise.resolve().then(() => {
+      if (!this.showSubEventForm || this.subEventFormMode != 'create') {
+        return;
+      }
+      this.applySubEventInsertTargetDateRangeToForm();
+    });
   }
 
   protected toggleDisplayModePicker(event: Event): void {
@@ -1371,10 +1379,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return row.key;
   }
 
-  protected trackByStagePageIndex(index: number): number {
-    return this.stagePageStartIndexesCache[index] ?? index;
-  }
-
   protected trackByIndex(index: number): number {
     return index;
   }
@@ -2062,12 +2066,32 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (!this.canScrollStagePages(direction)) {
       return;
     }
+    this.triggerStagePageAnimation(direction);
     this.stagePageIndex = AppUtils.clampNumber(
       this.stagePageIndex + direction,
       0,
       Math.max(0, this.stagePages.length - 1)
     );
     this.syncVisibleStageCards();
+  }
+
+  private triggerStagePageAnimation(direction: -1 | 1): void {
+    if (typeof window === 'undefined') {
+      this.stagePageAnimationClass = direction > 0 ? 'is-sliding-left' : 'is-sliding-right';
+      return;
+    }
+    if (this.stagePageAnimationResetHandle !== null) {
+      window.clearTimeout(this.stagePageAnimationResetHandle);
+      this.stagePageAnimationResetHandle = null;
+    }
+    this.stagePageAnimationClass = '';
+    window.requestAnimationFrame(() => {
+      this.stagePageAnimationClass = direction > 0 ? 'is-sliding-left' : 'is-sliding-right';
+      this.stagePageAnimationResetHandle = window.setTimeout(() => {
+        this.stagePageAnimationClass = '';
+        this.stagePageAnimationResetHandle = null;
+      }, 220);
+    });
   }
 
   private alignPageToCurrentStage(): void {

@@ -89,11 +89,11 @@
                             (keydown.enter)="openMemberDetails(group, row.memberId, $event)"
                             (keydown.space)="openMemberDetails(group, row.memberId, $event); $event.preventDefault()"
                           >
-                            <td>{{ rowIndex + 1 }}</td>
-                            <td class="subevent-leaderboard-member-cell">{{ row.memberName }}</td>
-                            <td>{{ row.total }}</td>
-                            <td>{{ row.updates }}</td>
-                            <td class="subevent-leaderboard-row-end">
+                            <td (click)="openMemberDetails(group, row.memberId, $event)">{{ rowIndex + 1 }}</td>
+                            <td class="subevent-leaderboard-member-cell" (click)="openMemberDetails(group, row.memberId, $event)">{{ row.memberName }}</td>
+                            <td (click)="openMemberDetails(group, row.memberId, $event)">{{ row.total }}</td>
+                            <td (click)="openMemberDetails(group, row.memberId, $event)">{{ row.updates }}</td>
+                            <td class="subevent-leaderboard-row-end" (click)="openMemberDetails(group, row.memberId, $event)">
                               <mat-icon class="subevent-leaderboard-row-forward">chevron_right</mat-icon>
                             </td>
                           </tr>
@@ -165,13 +165,13 @@
                             (keydown.enter)="openMemberDetails(group, row.memberId, $event)"
                             (keydown.space)="openMemberDetails(group, row.memberId, $event); $event.preventDefault()"
                           >
-                            <td>{{ rowIndex + 1 }}</td>
-                            <td class="subevent-leaderboard-member-cell">{{ row.memberName }}</td>
-                            <td>{{ row.points }}</td>
-                            <td>{{ row.wins }}-{{ row.draws }}-{{ row.losses }}</td>
-                            <td>{{ row.goalsFor }}:{{ row.goalsAgainst }}</td>
-                            <td>{{ row.goalDiff }}</td>
-                            <td class="subevent-leaderboard-row-end">
+                            <td (click)="openMemberDetails(group, row.memberId, $event)">{{ rowIndex + 1 }}</td>
+                            <td class="subevent-leaderboard-member-cell" (click)="openMemberDetails(group, row.memberId, $event)">{{ row.memberName }}</td>
+                            <td (click)="openMemberDetails(group, row.memberId, $event)">{{ row.points }}</td>
+                            <td (click)="openMemberDetails(group, row.memberId, $event)">{{ row.wins }}-{{ row.draws }}-{{ row.losses }}</td>
+                            <td (click)="openMemberDetails(group, row.memberId, $event)">{{ row.goalsFor }}:{{ row.goalsAgainst }}</td>
+                            <td (click)="openMemberDetails(group, row.memberId, $event)">{{ row.goalDiff }}</td>
+                            <td class="subevent-leaderboard-row-end" (click)="openMemberDetails(group, row.memberId, $event)">
                               <mat-icon class="subevent-leaderboard-row-forward">chevron_right</mat-icon>
                             </td>
                           </tr>

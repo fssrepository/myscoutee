@@ -116,6 +116,8 @@
             <div
               class="subevents-stage-grid"
               [class.subevents-stage-grid-mobile]="isMobileViewport"
+              [class.is-sliding-left]="stagePageAnimationClass === 'is-sliding-left'"
+              [class.is-sliding-right]="stagePageAnimationClass === 'is-sliding-right'"
               [style.gridTemplateColumns]="stageGridTemplateColumns(visibleStageCards)"
             >
               <article
