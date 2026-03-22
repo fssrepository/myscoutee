@@ -673,17 +673,21 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private resolveVisibleEventRowTypeFromSync(sync: ActivitiesEventSyncPayload): AppTypes.ActivityListRow['type'] | null {
+    // If we've locally published it, trust that over a lagging sync payload
+    const isPublishedLocally = this.publishedHostingIds.has(sync.id);
+    const isPublished = sync.published !== false || isPublishedLocally;
+
     if (this.activitiesEventScope === 'active-events') {
-      return (sync.isAdmin && sync.published === false) ? null : 'events';
+      return (sync.isAdmin && !isPublished) ? null : 'events';
     }
     if (this.activitiesEventScope === 'my-events') {
-      if (this.hostingPublicationFilter === 'drafts' && sync.published !== false) {
+      if (this.hostingPublicationFilter === 'drafts' && isPublished) {
         return null;
       }
       return sync.isAdmin ? 'hosting' : null;
     }
     if (this.activitiesEventScope === 'drafts') {
-      return sync.isAdmin && sync.published === false ? 'hosting' : null;
+      return sync.isAdmin && !isPublished ? 'hosting' : null;
     }
     if (this.activitiesEventScope === 'all') {
       return sync.isAdmin ? 'hosting' : 'events';
@@ -2279,7 +2283,25 @@ export class ActivitiesPopupComponent implements OnDestroy {
       item.id === row.id ? { ...item, published: true } : item
     );
 
-    this.removeVisibleActivityRow(row);
+    // Only remove it if we are explicitly viewing Drafts
+    if (this.activitiesEventScope === 'drafts') {
+      this.removeVisibleActivityRow(row);
+    } else {
+      // Otherwise, patch the row visually to remove the "Publish" button and draft styling
+      const smartList = this.activitiesSmartList;
+      if (smartList) {
+        const currentItems = [...smartList.itemsSnapshot()];
+        const rowIndex = currentItems.findIndex(item => item.id === row.id);
+        if (rowIndex >= 0) {
+          const updatedRow = { ...currentItems[rowIndex] };
+          updatedRow.source = { ...updatedRow.source as any, published: true };
+          const nextItems = [...currentItems];
+          nextItems[rowIndex] = updatedRow;
+          this.replaceVisibleActivityItems(nextItems, 0);
+        }
+      }
+    }
+
     this.refreshSectionBadges();
     this.cdr.markForCheck();
   }
@@ -4712,7 +4734,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (sync.isAdmin || sync.target === 'hosting') {
       const nextPublishedIds = new Set(this.publishedHostingIds);
       if (sync.published === false) {
-        nextPublishedIds.delete(sync.id);
+        if (!this.publishedHostingIds.has(sync.id)) {
+          nextPublishedIds.delete(sync.id);
+        }
       } else {
         nextPublishedIds.add(sync.id);
       }
@@ -4793,7 +4817,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       relevance: existing?.relevance,
       affinity: existing?.affinity,
       ticketing: sync.ticketing ?? existing?.ticketing,
-      published: sync.published ?? existing?.published
+      published: this.publishedHostingIds.has(sync.id) ? true : (sync.published ?? existing?.published)
     };
   }
 
@@ -4834,7 +4858,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       relevance: existing?.relevance,
       affinity: existing?.affinity,
       ticketing: sync.ticketing ?? existing?.ticketing,
-      published: sync.published ?? existing?.published,
+      published: this.publishedHostingIds.has(sync.id) ? true : (sync.published ?? existing?.published),
       isAdmin: sync.isAdmin ?? existing?.isAdmin ?? true
     };
   }
