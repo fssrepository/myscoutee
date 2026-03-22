@@ -747,17 +747,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const eventId = this.editingEventId ?? EventEditorBuilder.buildCreatedEventEditorId(this.editorTarget);
     const existingRecord = this.currentRecord
       ?? (activeUserId ? this.eventEditorDataService.peekKnownItemById(activeUserId, eventId) : null);
-    const summary = this.editingEventId
-      ? await this.eventEditorDataService.querySummaryByOwnerId(this.editingEventId)
-      : null;
-    const acceptedMembers = summary?.acceptedMembers
-      ?? existingRecord?.acceptedMembers
-      ?? 0;
-    const pendingMembers = summary?.pendingMembers
-      ?? existingRecord?.pendingMembers
-      ?? 0;
-    const capacityTotal = summary?.capacityTotal
-      ?? existingRecord?.capacityTotal
+    const acceptedMembers = existingRecord?.acceptedMembers ?? 0;
+    const pendingMembers = existingRecord?.pendingMembers ?? 0;
+    const capacityTotal = existingRecord?.capacityTotal
       ?? Math.max(0, normalizedCapacity.max ?? normalizedCapacity.min ?? 0);
     const payload = EventEditorBuilder.buildEventEditorSyncPayload({
       eventId,
@@ -770,8 +762,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       existingRecord,
       activeUserId: activeUserId || null,
       activeUserProfile: activeUserId ? this.appCtx.getUserProfile(activeUserId) : null,
-      acceptedMemberUserIds: summary?.acceptedMemberUserIds ?? existingRecord?.acceptedMemberUserIds ?? [],
-      pendingMemberUserIds: summary?.pendingMemberUserIds ?? existingRecord?.pendingMemberUserIds ?? []
+      acceptedMemberUserIds: existingRecord?.acceptedMemberUserIds ?? [],
+      pendingMemberUserIds: existingRecord?.pendingMemberUserIds ?? []
     });
 
     this.activitiesContext.emitActivitiesEventSync(payload);

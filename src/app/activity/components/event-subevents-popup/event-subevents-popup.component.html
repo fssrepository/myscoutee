@@ -184,7 +184,7 @@
                     <div class="subevents-stage-body">
                       <article class="subevents-group-row" *ngFor="let row of stage.rows; trackBy: trackByStageRowKey" [attr.data-tone]="stageRowToneClass(stage, row)">
                         <span class="subevents-group-title">{{ row.label }}</span>
-                        <div class="experience-item-actions subevents-group-actions" *ngIf="!readOnly">
+                        <div class="experience-item-actions subevents-group-actions">
                           <button
                             type="button"
                             class="experience-action-btn experience-action-menu-trigger subevents-group-menu-btn"
@@ -206,11 +206,11 @@
                             (click)="$event.stopPropagation()"
                           >
                             <div class="item-action-menu-title">{{ row.groupName }}</div>
-                            <button type="button" class="item-action-menu-btn" (click)="runGroupMenuAction('edit-group', row, $event)">
+                            <button type="button" class="item-action-menu-btn" *ngIf="!readOnly" (click)="runGroupMenuAction('edit-group', row, $event)">
                               <mat-icon>edit</mat-icon>
                               <span>Edit</span>
                             </button>
-                            <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="runGroupMenuAction('delete-group', row, $event)">
+                            <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" *ngIf="!readOnly" (click)="runGroupMenuAction('delete-group', row, $event)">
                               <mat-icon>delete</mat-icon>
                               <span>Delete</span>
                             </button>
