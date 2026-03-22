@@ -165,7 +165,7 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
   }
 
   override async syncEventMembersFromEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
-    this.init();
+    this.ensureLightweightSyncReady();
     const eventId = payload.id.trim();
     if (!eventId) {
       return;
@@ -205,6 +205,23 @@ export class DemoActivityMembersRepository extends HttpActivityMembersRepository
       true
     );
     this.cacheMembers(owner, entries, summary.capacityTotal);
+  }
+
+  private ensureLightweightSyncReady(): void {
+    this.demoEventsRepository.init();
+    const state = this.memoryDb.read();
+    const table = state[ACTIVITY_MEMBERS_TABLE_NAME] as DemoActivityMembersRecordCollection | undefined;
+    if (table && typeof table === 'object' && table.byId && Array.isArray(table.ids) && table.idsByOwnerKey) {
+      return;
+    }
+    this.memoryDb.write(currentState => ({
+      ...currentState,
+      [ACTIVITY_MEMBERS_TABLE_NAME]: {
+        byId: {},
+        ids: [],
+        idsByOwnerKey: {}
+      }
+    }));
   }
 
   private readMembersByOwner(owner: ActivityMemberOwnerRef): AppTypes.ActivityMemberEntry[] {

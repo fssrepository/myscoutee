@@ -729,6 +729,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private async persistEventEditorForm(): Promise<void> {
+    console.log(Date.now());
     if (this.eventEditorService.readOnly()) {
       return;
     }
@@ -767,6 +768,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     });
 
     this.activitiesContext.emitActivitiesEventSync(payload);
+
+    console.log(Date.now());
   }
 
   private async runSaveWithPendingWindow(): Promise<void> {
@@ -794,7 +797,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private async runSaveAfterUiYield(): Promise<void> {
-    await this.waitForAnimationKickoff();
+    //await this.waitForAnimationKickoff();
     await this.persistEventEditorForm();
   }
 
