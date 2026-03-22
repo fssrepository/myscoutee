@@ -98,19 +98,22 @@ export class EventExploreBuilder {
   }
 
   private static infoCardMenuActions(record: DemoEventRecord): readonly InfoCardMenuAction[] {
-    return [
+    const actions: InfoCardMenuAction[] = [
       {
         id: 'view',
         label: record.type === 'hosting' ? 'View hosted event' : 'View event',
         icon: this.visibilityIcon(record.visibility)
-      },
-      {
+      }
+    ];
+    if (this.isOpenEvent(record)) {
+      actions.push({
         id: 'join',
         label: 'Request join',
         icon: 'person_add',
         tone: 'accent'
-      }
-    ];
+      });
+    }
+    return actions;
   }
 
   private static creatorOverlayTone(record: DemoEventRecord): 'cool' | 'cool-mid' | 'neutral' | 'warm-mid' | 'warm' {

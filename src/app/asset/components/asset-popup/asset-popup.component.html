@@ -224,13 +224,15 @@
           <app-confirmation-dialog
             *ngIf="!isBasketMode()"
             [useService]="false"
-            [visible]="!!ownedAssets.pendingAssetDeleteCardId"
-            title="Delete asset"
-            [message]="ownedAssets.pendingAssetDeleteLabel()"
-            confirmLabel="Delete"
-            confirmTone="danger"
-            [cancelAction]="cancelOwnedAssetDelete"
-            [confirmAction]="confirmOwnedAssetDelete"
+            [dialog]="{
+              visible: !!ownedAssets.pendingAssetDeleteCardId,
+              title: 'Delete asset',
+              message: ownedAssets.pendingAssetDeleteLabel(),
+              confirmLabel: 'Delete',
+              confirmTone: 'danger',
+              cancelAction: cancelOwnedAssetDelete,
+              confirmAction: confirmOwnedAssetDelete
+            }"
           ></app-confirmation-dialog>
         </div>
       </div>

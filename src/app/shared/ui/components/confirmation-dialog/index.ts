@@ -1,1 +1,1 @@
-export { ConfirmationDialogComponent } from './confirmation-dialog.component';
+export { ConfirmationDialogComponent, type ConfirmationDialogLocalConfig } from './confirmation-dialog.component';

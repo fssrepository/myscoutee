@@ -3,6 +3,23 @@ import { Component, HostListener, Input, inject } from '@angular/core';
 
 import { ConfirmationDialogService, type ConfirmationDialogState, type ConfirmationDialogTone } from '../../services/confirmation-dialog.service';
 
+export interface ConfirmationDialogLocalConfig {
+  visible?: boolean;
+  title?: string;
+  message?: string;
+  cancelLabel?: string | null;
+  confirmLabel?: string;
+  busyConfirmLabel?: string;
+  confirmTone?: ConfirmationDialogTone;
+  allowBackdropClose?: boolean;
+  allowEscapeClose?: boolean;
+  busy?: boolean;
+  errorMessage?: string;
+  ringPerimeter?: number;
+  cancelAction?: (() => void | Promise<void>) | null;
+  confirmAction?: (() => void | Promise<void>) | null;
+}
+
 type RenderedConfirmationDialogState = {
   title: string;
   message: string;
@@ -26,23 +43,9 @@ type RenderedConfirmationDialogState = {
 })
 export class ConfirmationDialogComponent {
   @Input() useService = true;
-  @Input() visible = false;
-  @Input() title = 'Confirmation';
-  @Input() message = '';
-  @Input() cancelLabel: string | null = 'Cancel';
-  @Input() confirmLabel = 'OK';
-  @Input() busyConfirmLabel = 'Working...';
-  @Input() confirmTone: ConfirmationDialogTone = 'accent';
-  @Input() allowBackdropClose = true;
-  @Input() allowEscapeClose = true;
-  @Input() busy = false;
-  @Input() errorMessage = '';
-  @Input() ringPerimeter = 100;
-  @Input() cancelAction: (() => void | Promise<void>) | null = null;
-  @Input() confirmAction: (() => void | Promise<void>) | null = null;
+  @Input() dialog: ConfirmationDialogLocalConfig | null = null;
 
   protected readonly dialogService = inject(ConfirmationDialogService);
-  protected readonly dialog = this.dialogService.dialog;
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscapePressed(event: Event): void {
@@ -58,25 +61,27 @@ export class ConfirmationDialogComponent {
 
   protected dialogState(): RenderedConfirmationDialogState | null {
     if (!this.useService) {
-      if (!this.visible) {
+      const dialog = this.dialog;
+      if (!dialog?.visible) {
         return null;
       }
+      const confirmLabel = dialog.confirmLabel?.trim() || 'OK';
       return {
-        title: this.title.trim() || 'Confirmation',
-        message: this.message.trim(),
-        cancelLabel: this.cancelLabel,
-        confirmLabel: this.confirmLabel.trim() || 'OK',
-        busyConfirmLabel: this.busyConfirmLabel.trim() || this.confirmLabel.trim() || 'OK',
-        confirmTone: this.confirmTone,
-        allowBackdropClose: this.allowBackdropClose,
-        allowEscapeClose: this.allowEscapeClose,
-        busy: this.busy,
-        errorMessage: this.errorMessage.trim(),
-        ringPerimeter: this.ringPerimeter
+        title: dialog.title?.trim() || 'Confirmation',
+        message: dialog.message?.trim() ?? '',
+        cancelLabel: dialog.cancelLabel === undefined ? 'Cancel' : dialog.cancelLabel,
+        confirmLabel,
+        busyConfirmLabel: dialog.busyConfirmLabel?.trim() || confirmLabel,
+        confirmTone: dialog.confirmTone ?? 'accent',
+        allowBackdropClose: dialog.allowBackdropClose !== false,
+        allowEscapeClose: dialog.allowEscapeClose !== false,
+        busy: dialog.busy === true,
+        errorMessage: dialog.errorMessage?.trim() ?? '',
+        ringPerimeter: Number.isFinite(Number(dialog.ringPerimeter)) ? Math.max(0, Number(dialog.ringPerimeter)) : 100
       };
     }
 
-    const state = this.dialog();
+    const state = this.dialogService.dialog();
     return state ? this.mapServiceState(state) : null;
   }
 
@@ -100,7 +105,7 @@ export class ConfirmationDialogComponent {
       return;
     }
     if (!this.useService) {
-      void this.cancelAction?.();
+      void this.dialog?.cancelAction?.();
       return;
     }
     this.dialogService.cancel();
@@ -113,7 +118,7 @@ export class ConfirmationDialogComponent {
       return;
     }
     if (!this.useService) {
-      void this.confirmAction?.();
+      void this.dialog?.confirmAction?.();
       return;
     }
     void this.dialogService.confirm();
