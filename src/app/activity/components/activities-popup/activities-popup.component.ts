@@ -76,6 +76,7 @@ import {
   AppContext,
   AppPopupContext,
   buildActivityRateRows,
+  toActivityEventRow,
   toActivityEventRowFromMenuItem,
   toActivityHostingRowFromMenuItem,
   toActivityInvitationRowFromMenuItem,
@@ -593,6 +594,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
         this.hostingDistanceById[record.id] = record.distanceKm;
       }
       if (record.isInvitation) {
+      }
+      if (record.isTrashed) {
+        const row = toActivityEventRow(record);
+        this.trashedActivityRowsByKey[this.activityRowIdentity(row)] = row;
       }
       if (record.imageUrl?.trim()) {
         this.activityImageById[record.id] = record.imageUrl;
