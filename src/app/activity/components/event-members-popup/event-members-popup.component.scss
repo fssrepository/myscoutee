@@ -66,6 +66,7 @@
   overflow-x: hidden;
   padding-right: 0.06rem;
   overscroll-behavior: contain;
+  touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -641,6 +642,7 @@
 
   .activity-members-popup-shell .subevent-member-image-card {
     min-height: 190px;
+    will-change: transform;
   }
 
   .activity-members-popup-shell .popup-header.popup-header-members-invite-mobile-layout {
