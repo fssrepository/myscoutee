@@ -207,6 +207,8 @@ const SEED_EXPLORE_REBALANCE_BY_OWNER_USER: Record<string, readonly string[]> = 
   u1: ['e2', 'e3', 'e6', 'e8']
 };
 
+const MAX_VISIBLE_ACTIVE_EVENTS_PER_USER = 28;
+
 interface DemoEventSeedOverrides {
   startAt?: string;
   endAt?: string;
@@ -396,7 +398,133 @@ export class DemoEventsRepositoryBuilder {
       }
     }
 
-    return { byId, ids };
+    return this.rebalanceVisibleActiveEventParticipation({ byId, ids });
+  }
+
+  private static rebalanceVisibleActiveEventParticipation(
+    collection: DemoEventRecordCollection
+  ): DemoEventRecordCollection {
+    const nextById = { ...collection.byId };
+    const canonicalRecordByEventId = new Map<string, DemoEventRecord>();
+    const recordKeysByEventId = new Map<string, string[]>();
+    const guaranteedVisibleActiveCountByUser = new Map<string, number>();
+
+    for (const recordKey of collection.ids) {
+      const record = collection.byId[recordKey];
+      if (!record || record.isInvitation) {
+        continue;
+      }
+      const eventId = record.id.trim();
+      if (!eventId) {
+        continue;
+      }
+      const ownerKeys = recordKeysByEventId.get(eventId) ?? [];
+      ownerKeys.push(recordKey);
+      recordKeysByEventId.set(eventId, ownerKeys);
+      const currentPreferred = canonicalRecordByEventId.get(eventId);
+      if (!currentPreferred || this.shouldPreferParticipationCanonicalRecord(record, currentPreferred)) {
+        canonicalRecordByEventId.set(eventId, record);
+      }
+      const ownerUserId = record.userId.trim();
+      if (
+        record.type === 'events'
+        && record.isAdmin !== true
+        && record.isTrashed !== true
+        && record.published !== false
+        && ownerUserId.length > 0
+        && record.creatorUserId.trim() === ownerUserId
+      ) {
+        guaranteedVisibleActiveCountByUser.set(ownerUserId, (guaranteedVisibleActiveCountByUser.get(ownerUserId) ?? 0) + 1);
+      }
+    }
+
+    const remainingGuestSlotsByUser = new Map<string, number>();
+    const canonicalRecords = [...canonicalRecordByEventId.values()].sort((left, right) => {
+      const delta = AppUtils.toSortableDate(left.startAtIso) - AppUtils.toSortableDate(right.startAtIso);
+      if (delta !== 0) {
+        return delta;
+      }
+      return left.id.localeCompare(right.id);
+    });
+
+    for (const record of canonicalRecords) {
+      const eventId = record.id.trim();
+      if (!eventId) {
+        continue;
+      }
+      const creatorUserId = record.creatorUserId.trim();
+      const acceptedMemberUserIds = this.normalizeUserIds(record.acceptedMemberUserIds);
+      const pendingMemberUserIds = this.normalizeUserIds(record.pendingMemberUserIds)
+        .filter(userId => !acceptedMemberUserIds.includes(userId));
+      const nextAcceptedMemberUserIds: string[] = [];
+      const nextPendingMemberUserIds: string[] = [];
+      const seen = new Set<string>();
+
+      const tryKeepUser = (userId: string): boolean => {
+        const normalizedUserId = userId.trim();
+        if (!normalizedUserId || seen.has(normalizedUserId)) {
+          return false;
+        }
+        seen.add(normalizedUserId);
+        if (normalizedUserId === creatorUserId) {
+          return true;
+        }
+        const guaranteedVisibleActiveCount = guaranteedVisibleActiveCountByUser.get(normalizedUserId) ?? 0;
+        const remainingGuestSlots = remainingGuestSlotsByUser.get(normalizedUserId)
+          ?? Math.max(0, MAX_VISIBLE_ACTIVE_EVENTS_PER_USER - guaranteedVisibleActiveCount);
+        if (remainingGuestSlots <= 0) {
+          return false;
+        }
+        remainingGuestSlotsByUser.set(normalizedUserId, remainingGuestSlots - 1);
+        return true;
+      };
+
+      for (const userId of acceptedMemberUserIds) {
+        if (tryKeepUser(userId)) {
+          nextAcceptedMemberUserIds.push(userId);
+        }
+      }
+      for (const userId of pendingMemberUserIds) {
+        if (tryKeepUser(userId)) {
+          nextPendingMemberUserIds.push(userId);
+        }
+      }
+
+      const acceptedMembers = nextAcceptedMemberUserIds.length;
+      const pendingMembers = nextPendingMemberUserIds.length;
+      for (const recordKey of recordKeysByEventId.get(eventId) ?? []) {
+        const currentRecord = nextById[recordKey];
+        if (!currentRecord || currentRecord.isInvitation) {
+          continue;
+        }
+        nextById[recordKey] = {
+          ...currentRecord,
+          acceptedMembers,
+          pendingMembers,
+          acceptedMemberUserIds: [...nextAcceptedMemberUserIds],
+          pendingMemberUserIds: [...nextPendingMemberUserIds],
+          capacityTotal: Math.max(acceptedMembers, currentRecord.capacityTotal)
+        };
+      }
+    }
+
+    return {
+      byId: nextById,
+      ids: [...collection.ids]
+    };
+  }
+
+  private static shouldPreferParticipationCanonicalRecord(next: DemoEventRecord, current: DemoEventRecord): boolean {
+    if (next.type === 'hosting' && current.type !== 'hosting') {
+      return true;
+    }
+    if (next.type !== 'hosting' && current.type === 'hosting') {
+      return false;
+    }
+    if (next.isAdmin !== current.isAdmin) {
+      return next.isAdmin;
+    }
+    return AppUtils.toSortableDate(next.startAtIso) < AppUtils.toSortableDate(current.startAtIso);
   }
 
   static cloneRecord(record: DemoEventRecord): DemoEventRecord {

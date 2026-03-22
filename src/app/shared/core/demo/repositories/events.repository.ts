@@ -1244,6 +1244,7 @@ export class DemoEventsRepository {
     const acceptedMemberUserIds = this.normalizeUserIds(current.acceptedMemberUserIds);
     const pendingMemberUserIds = this.normalizeUserIds(current.pendingMemberUserIds);
     const topics = this.normalizeTopics(current.topics ?? []);
+    const shouldPreferSeededSyntheticMembershipState = this.shouldPreferSeededSyntheticMembershipState(current, seeded);
     const shouldPreferSeededDirectEventState = this.shouldPreferSeededDirectEventState(
       current,
       seeded,
@@ -1251,12 +1252,13 @@ export class DemoEventsRepository {
       acceptedMemberUserIds,
       pendingMemberUserIds
     );
-    const mergedAcceptedMemberUserIds = shouldPreferSeededDirectEventState
+    const shouldPreferSeededMemberState = shouldPreferSeededSyntheticMembershipState || shouldPreferSeededDirectEventState;
+    const mergedAcceptedMemberUserIds = shouldPreferSeededMemberState
       ? [...seeded.acceptedMemberUserIds]
       : (acceptedMemberUserIds.length > 0
           ? acceptedMemberUserIds
           : [...seeded.acceptedMemberUserIds]);
-    const mergedPendingMemberUserIds = shouldPreferSeededDirectEventState
+    const mergedPendingMemberUserIds = shouldPreferSeededMemberState
       ? [...seeded.pendingMemberUserIds]
       : (pendingMemberUserIds.length > 0
           ? pendingMemberUserIds
@@ -1290,10 +1292,10 @@ export class DemoEventsRepository {
       frequency: current.frequency?.trim() || seeded.frequency,
       ticketing: typeof current.ticketing === 'boolean' ? current.ticketing : seeded.ticketing,
       isAdmin: shouldPreferSeededDirectEventState ? seeded.isAdmin : current.isAdmin,
-      acceptedMembers: shouldPreferSeededDirectEventState
+      acceptedMembers: shouldPreferSeededMemberState
         ? seeded.acceptedMembers
         : (this.normalizeCount(current.acceptedMembers) ?? seeded.acceptedMembers),
-      pendingMembers: shouldPreferSeededDirectEventState
+      pendingMembers: shouldPreferSeededMemberState
         ? seeded.pendingMembers
         : (this.normalizeCount(current.pendingMembers) ?? seeded.pendingMembers),
       acceptedMemberUserIds: mergedAcceptedMemberUserIds,
@@ -1313,6 +1315,34 @@ export class DemoEventsRepository {
         ? Math.max(0, Math.trunc(Number(current.affinity)))
         : seeded.affinity
     };
+  }
+
+  private shouldPreferSeededSyntheticMembershipState(
+    current: DemoEventRecord,
+    seeded: DemoEventRecord
+  ): boolean {
+    if (!current.id.startsWith('ex-') && !current.id.startsWith('fx-')) {
+      return false;
+    }
+    const currentAcceptedMemberUserIds = this.normalizeUserIds(current.acceptedMemberUserIds);
+    const currentPendingMemberUserIds = this.normalizeUserIds(current.pendingMemberUserIds);
+    const seededAcceptedMemberUserIds = this.normalizeUserIds(seeded.acceptedMemberUserIds);
+    const seededPendingMemberUserIds = this.normalizeUserIds(seeded.pendingMemberUserIds);
+    if (currentAcceptedMemberUserIds.length !== seededAcceptedMemberUserIds.length) {
+      return true;
+    }
+    if (currentPendingMemberUserIds.length !== seededPendingMemberUserIds.length) {
+      return true;
+    }
+    if (currentAcceptedMemberUserIds.some((userId, index) => userId !== seededAcceptedMemberUserIds[index])) {
+      return true;
+    }
+    if (currentPendingMemberUserIds.some((userId, index) => userId !== seededPendingMemberUserIds[index])) {
+      return true;
+    }
+    const currentAcceptedMembers = this.normalizeCount(current.acceptedMembers) ?? currentAcceptedMemberUserIds.length;
+    const currentPendingMembers = this.normalizeCount(current.pendingMembers) ?? currentPendingMemberUserIds.length;
+    return currentAcceptedMembers !== seeded.acceptedMembers || currentPendingMembers !== seeded.pendingMembers;
   }
 
   private shouldPreferSeededDirectEventState(
