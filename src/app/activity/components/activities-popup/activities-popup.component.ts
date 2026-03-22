@@ -715,6 +715,19 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.replaceVisibleActivityItems(nextItems, -1);
   }
 
+  private reinsertVisibleActivityRow(row: AppTypes.ActivityListRow): void {
+    const smartList = this.activitiesSmartList;
+    if (!smartList) {
+      return;
+    }
+    const rowKey = this.activityRowIdentity(row);
+    const currentItems = [...smartList.itemsSnapshot()];
+    if (currentItems.some(item => this.activityRowIdentity(item) === rowKey)) {
+      return;
+    }
+    this.replaceVisibleActivityItems([...currentItems, row], 1);
+  }
+
   private sortVisibleEventRows(items: readonly AppTypes.ActivityListRow[]): AppTypes.ActivityListRow[] {
     const secondaryFilter = this.effectiveActivitiesSecondaryFilter();
     return [...items].sort((left, right) => {
@@ -2205,8 +2218,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected runActivityItemRestoreAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
-    this.restoreActivityRow(row);
-    this.cdr.markForCheck();
+    void this.restoreActivityRow(row);
   }
 
   protected runActivityItemSecondaryAction(row: AppTypes.ActivityListRow, event?: Event): void {
@@ -2289,16 +2301,19 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private async confirmActivitySecondaryAction(row: AppTypes.ActivityListRow): Promise<void> {
-    await this.trashActivityRow(row);
+    await this.persistActivityRowTrash(row);
+    this.markActivityRowTrashed(row);
     this.removeVisibleActivityRow(row);
     this.cdr.markForCheck();
   }
 
   private async confirmActivityInvitationApproval(row: AppTypes.ActivityListRow): Promise<void> {
     const syncPayload = await this.buildAcceptedInvitationSyncPayload(row);
-    this.invitationItems = this.invitationItems.filter(item => item.id !== row.id);
-    this.refreshSectionBadges();
-    this.activitiesContext.emitActivitiesEventSync(syncPayload);
+    await Promise.all([
+      this.eventsService.syncEventSnapshot(syncPayload),
+      this.activityMembersService.syncEventMembersFromEventSnapshot(syncPayload)
+    ]);
+    this.applyActivitiesEventSync(syncPayload);
     this.cdr.markForCheck();
   }
 
@@ -2421,21 +2436,29 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.trashedActivityRows().length;
   }
 
-  private async trashActivityRow(row: AppTypes.ActivityListRow): Promise<void> {
+  private markActivityRowTrashed(row: AppTypes.ActivityListRow): void {
     this.trashedActivityRowsByKey[this.activityRowIdentity(row)] = { ...row };
-    if (row.type === 'events' || row.type === 'hosting' || row.type === 'invitations') {
-      await this.eventsService.trashItem(this.activeUser.id, row.type, row.id);
-    }
     this.refreshSectionBadges();
   }
 
-  private restoreActivityRow(row: AppTypes.ActivityListRow): void {
+  private unmarkActivityRowTrashed(row: AppTypes.ActivityListRow): void {
     delete this.trashedActivityRowsByKey[this.activityRowIdentity(row)];
-    if (row.type === 'events' || row.type === 'hosting' || row.type === 'invitations') {
-      void this.eventsService.restoreItem(this.activeUser.id, row.type, row.id);
-    }
     this.refreshSectionBadges();
+  }
+
+  private async persistActivityRowTrash(row: AppTypes.ActivityListRow): Promise<void> {
+    if (row.type === 'events' || row.type === 'hosting' || row.type === 'invitations') {
+      await this.eventsService.trashItem(this.activeUser.id, row.type, row.id);
+    }
+  }
+
+  private async restoreActivityRow(row: AppTypes.ActivityListRow): Promise<void> {
+    if (row.type === 'events' || row.type === 'hosting' || row.type === 'invitations') {
+      await this.eventsService.restoreItem(this.activeUser.id, row.type, row.id);
+    }
+    this.unmarkActivityRowTrashed(row);
     this.removeVisibleActivityRow(row);
+    this.cdr.markForCheck();
   }
 
   // =========================================================================

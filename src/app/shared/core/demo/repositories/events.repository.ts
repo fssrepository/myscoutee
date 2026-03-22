@@ -390,14 +390,13 @@ export class DemoEventsRepository {
     sourceId: string,
     updates: Pick<DemoEventRecord, 'isTrashed' | 'trashedAtIso'>
   ): void {
-    const recordKeys = this.resolveStateRecordKeys(userId, type, sourceId);
-    if (recordKeys.length === 0) {
-      return;
-    }
     this.memoryDb.write(state => {
       const table = state[EVENTS_TABLE_NAME];
       const nextById = { ...table.byId };
+      const nextIds = [...table.ids];
+      const recordKeys = this.resolveStateRecordKeysFromTable(table, userId, type, sourceId);
       let changed = false;
+
       for (const recordKey of recordKeys) {
         const current = table.byId[recordKey];
         if (!current) {
@@ -409,14 +408,29 @@ export class DemoEventsRepository {
         };
         changed = true;
       }
+
+      if (!changed) {
+        const overlayRecord = this.buildUserStateOverlayRecord(table, userId, type, sourceId, updates);
+        if (!overlayRecord) {
+          return state;
+        }
+        const overlayKey = DemoEventsRepositoryBuilder.buildRecordKey(overlayRecord.userId, overlayRecord.type, overlayRecord.id);
+        nextById[overlayKey] = overlayRecord;
+        if (!nextIds.includes(overlayKey)) {
+          nextIds.push(overlayKey);
+        }
+        changed = true;
+      }
+
       if (!changed) {
         return state;
       }
+
       return {
         ...state,
         [EVENTS_TABLE_NAME]: {
           byId: nextById,
-          ids: [...table.ids]
+          ids: nextIds
         }
       };
     });
@@ -427,18 +441,63 @@ export class DemoEventsRepository {
     type: DemoRepositoryEventItemType,
     sourceId: string
   ): string[] {
+    return this.resolveStateRecordKeysFromTable(this.memoryDb.read()[EVENTS_TABLE_NAME], userId, type, sourceId);
+  }
+
+  private resolveStateRecordKeysFromTable(
+    table: DemoEventRecordCollection,
+    userId: string,
+    type: DemoRepositoryEventItemType,
+    sourceId: string
+  ): string[] {
     const normalizedUserId = userId.trim();
     const normalizedSourceId = sourceId.trim();
     if (!normalizedUserId || !normalizedSourceId) {
       return [];
     }
-    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
     const candidateTypes: DemoRepositoryEventItemType[] = type === 'invitations'
       ? ['invitations']
       : ['events', 'hosting'];
     return candidateTypes
       .map(candidateType => DemoEventsRepositoryBuilder.buildRecordKey(normalizedUserId, candidateType, normalizedSourceId))
       .filter((recordKey, index, recordKeys) => recordKeys.indexOf(recordKey) === index && Boolean(table.byId[recordKey]));
+  }
+
+  private buildUserStateOverlayRecord(
+    table: DemoEventRecordCollection,
+    userId: string,
+    type: DemoRepositoryEventItemType,
+    sourceId: string,
+    updates: Pick<DemoEventRecord, 'isTrashed' | 'trashedAtIso'>
+  ): DemoEventRecord | null {
+    if (type === 'invitations') {
+      return null;
+    }
+
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+
+    const preferredRecord = this.computePreferredEventRecords(table)
+      .find(record => record.id === normalizedSourceId && !record.isInvitation);
+    if (!preferredRecord) {
+      return null;
+    }
+
+    const overlayType: DemoRepositoryEventItemType = type === 'hosting' ? 'hosting' : 'events';
+    const baseRecord = DemoEventsRepositoryBuilder.cloneRecord(preferredRecord);
+    return {
+      ...baseRecord,
+      userId: normalizedUserId,
+      type: overlayType,
+      isAdmin: overlayType === 'hosting',
+      isHosting: overlayType === 'hosting',
+      isInvitation: false,
+      isTrashed: updates.isTrashed,
+      trashedAtIso: updates.trashedAtIso
+    };
   }
 
   private findItem(
