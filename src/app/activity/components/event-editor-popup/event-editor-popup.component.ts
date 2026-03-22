@@ -728,9 +728,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.eventEditorService.openEdit(source);
   }
 
-  private async persistEventEditorForm(): Promise<void> {
+  private buildEventEditorSyncPayload(): Omit<AppTypes.ActivitiesEventSyncPayload, 'syncKey'> | null {
     if (this.eventEditorService.readOnly()) {
-      return;
+      return null;
     }
 
     this.syncEventFormFromDateTimeControls();
@@ -740,7 +740,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.eventForm.capacityMin = normalizedCapacity.min;
     this.eventForm.capacityMax = normalizedCapacity.max;
     if (!this.canSubmitEventEditorForm()) {
-      return;
+      return null;
     }
 
     const activeUserId = this.activeUserId();
@@ -751,7 +751,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const pendingMembers = existingRecord?.pendingMembers ?? 0;
     const capacityTotal = existingRecord?.capacityTotal
       ?? Math.max(0, normalizedCapacity.max ?? normalizedCapacity.min ?? 0);
-    const payload = EventEditorBuilder.buildEventEditorSyncPayload({
+    return EventEditorBuilder.buildEventEditorSyncPayload({
       eventId,
       target: this.editorTarget,
       form: this.eventForm,
@@ -765,7 +765,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       acceptedMemberUserIds: existingRecord?.acceptedMemberUserIds ?? [],
       pendingMemberUserIds: existingRecord?.pendingMemberUserIds ?? []
     });
+  }
 
+  private persistEventEditorPayload(payload: Omit<AppTypes.ActivitiesEventSyncPayload, 'syncKey'>): void {
     this.activitiesContext.emitActivitiesEventSync(payload);
   }
 
@@ -773,8 +775,23 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.isSavePending = true;
     const pendingWindowPromise = this.minimumSavePendingWindow();
     try {
-      const savePromise = this.runSaveAfterUiYield();
-      await Promise.all([pendingWindowPromise, savePromise]);
+      await this.waitForAnimationKickoff();
+      const payload = this.buildEventEditorSyncPayload();
+      if (!payload) {
+        this.isSavePending = false;
+        return;
+      }
+
+      if (this.demoModeEnabled) {
+        await pendingWindowPromise;
+        this.isSavePending = false;
+        this.eventEditorService.close();
+        void this.emitEventEditorPayloadAfterUiYield(payload);
+        return;
+      }
+
+      this.persistEventEditorPayload(payload);
+      await pendingWindowPromise;
       this.isSavePending = false;
       this.eventEditorService.close();
     } catch {
@@ -788,9 +805,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       : Promise.resolve();
   }
 
-  private async runSaveAfterUiYield(): Promise<void> {
-    await this.waitForAnimationKickoff();
-    await this.persistEventEditorForm();
+  private async emitEventEditorPayloadAfterUiYield(payload: Omit<AppTypes.ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
+    await this.waitForNextPaint();
+    this.persistEventEditorPayload(payload);
   }
 
   private async waitForAnimationKickoff(): Promise<void> {

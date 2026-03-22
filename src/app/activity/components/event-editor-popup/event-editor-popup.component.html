@@ -58,7 +58,7 @@
         *ngIf="!eventEditorService.readOnly()"
         [class.is-loading]="isSavePending"
       >
-        <span class="event-editor-save-btn-ring" aria-hidden="true">
+        <span class="event-editor-save-btn-ring" *ngIf="isSavePending" aria-hidden="true">
           <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="event-editor-save-btn-ring-svg">
             <defs>
               <linearGradient id="event-editor-save-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -75,7 +75,7 @@
               r="15"
               pathLength="100"
               [attr.stroke-dasharray]="saveRingPerimeter"
-              [style.stroke-dashoffset]="isSavePending ? 0 : saveRingPerimeter"
+              [attr.stroke-dashoffset]="isSavePending ? saveRingPerimeter : 0"
             ></circle>
           </svg>
         </span>
