@@ -215,6 +215,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
   protected leaderboardPopupGroups: readonly EventSubeventLeaderboardGroup[] = [];
   protected leaderboardPopupMode: TournamentLeaderboardType = 'Score';
 
+  private subEventFormPopupViewCacheKey = '';
+  private subEventFormPopupViewCache: EventSubeventStageFormPopupView | null = null;
+
   private stageSwipeStartX: number | null = null;
   private stageSwipeDeltaX = 0;
   private workingSubEvents: EventSubeventsItem[] = [];
@@ -932,30 +935,79 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
 
   protected subEventFormPopupView(): EventSubeventStageFormPopupView {
-    return {
+    const title = this.subEventFormTitle();
+    const canSave = this.canSaveSubEventForm();
+    const invalidName = this.subEventFieldInvalid('name');
+    const invalidDescription = this.subEventFieldInvalid('description');
+    const showOptionalToggle = this.showSubEventOptionalToggle();
+    const modeClass = this.subEventModeClass(this.subEventForm.optional);
+    const modeIcon = this.subEventModeIcon(this.subEventForm.optional);
+    const showInsertControls = this.showSubEventInsertControls();
+    const insertFieldLabel = this.subEventInsertFieldLabel();
+    const insertOptions = this.subEventStageInsertOptions;
+    const showTournamentFields = this.showTournamentStageConfigFields();
+    const tournamentLeaderboardTypeValue = this.tournamentLeaderboardTypeValue();
+    const tournamentLeaderboardTypeClass = this.tournamentLeaderboardTypeClass(tournamentLeaderboardTypeValue);
+    const tournamentLeaderboardTypeIcon = this.tournamentLeaderboardTypeIcon(tournamentLeaderboardTypeValue);
+    const tournamentEstimatedGroupCountLabel = this.tournamentEstimatedGroupCountLabel();
+
+    const cacheKey = [
+      this.showSubEventForm ? '1' : '0',
+      this.parentTitle,
+      title,
+      this.readOnly ? '1' : '0',
+      canSave ? '1' : '0',
+      invalidName ? '1' : '0',
+      invalidDescription ? '1' : '0',
+      showOptionalToggle ? '1' : '0',
+      this.showSubEventOptionalPicker ? '1' : '0',
+      this.subEventForm.optional ? '1' : '0',
+      modeClass,
+      modeIcon,
+      showInsertControls ? '1' : '0',
+      insertFieldLabel,
+      this.subEventStageInsertPlacement,
+      this.subEventStageInsertTargetId ?? '',
+      insertOptions.map(option => `${option.id}:${option.label}`).join('|'),
+      showTournamentFields ? '1' : '0',
+      tournamentLeaderboardTypeValue,
+      tournamentLeaderboardTypeClass,
+      tournamentLeaderboardTypeIcon,
+      tournamentEstimatedGroupCountLabel
+    ].join('||');
+
+    if (this.subEventFormPopupViewCacheKey === cacheKey && this.subEventFormPopupViewCache) {
+      return this.subEventFormPopupViewCache;
+    }
+
+    const nextView: EventSubeventStageFormPopupView = {
       open: this.showSubEventForm,
       parentTitle: this.parentTitle,
-      title: this.subEventFormTitle(),
+      title,
       readOnly: this.readOnly,
-      canSave: this.canSaveSubEventForm(),
-      invalidName: this.subEventFieldInvalid('name'),
-      invalidDescription: this.subEventFieldInvalid('description'),
-      showOptionalToggle: this.showSubEventOptionalToggle(),
+      canSave,
+      invalidName,
+      invalidDescription,
+      showOptionalToggle,
       showOptionalPicker: this.showSubEventOptionalPicker,
-      modeClass: this.subEventModeClass(this.subEventForm.optional),
-      modeIcon: this.subEventModeIcon(this.subEventForm.optional),
-      showInsertControls: this.showSubEventInsertControls(),
-      insertFieldLabel: this.subEventInsertFieldLabel(),
+      modeClass,
+      modeIcon,
+      showInsertControls,
+      insertFieldLabel,
       insertPlacement: this.subEventStageInsertPlacement,
       insertTargetId: this.subEventStageInsertTargetId,
-      insertOptions: this.subEventStageInsertOptions,
-      showTournamentFields: this.showTournamentStageConfigFields(),
+      insertOptions,
+      showTournamentFields,
       tournamentLeaderboardTypeOptions: this.tournamentLeaderboardTypeOptions,
-      tournamentLeaderboardTypeValue: this.tournamentLeaderboardTypeValue(),
-      tournamentLeaderboardTypeClass: this.tournamentLeaderboardTypeClass(),
-      tournamentLeaderboardTypeIcon: this.tournamentLeaderboardTypeIcon(),
-      tournamentEstimatedGroupCountLabel: this.tournamentEstimatedGroupCountLabel()
+      tournamentLeaderboardTypeValue,
+      tournamentLeaderboardTypeClass,
+      tournamentLeaderboardTypeIcon,
+      tournamentEstimatedGroupCountLabel
     };
+
+    this.subEventFormPopupViewCacheKey = cacheKey;
+    this.subEventFormPopupViewCache = nextView;
+    return nextView;
   }
 
   protected tournamentEstimatedGroupCountLabel(): string {
