@@ -291,7 +291,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventEditorService.readOnly()) {
       return false;
     }
-    this.syncEventFormFromDateTimeControls();
     return Boolean(
       this.eventForm.title.trim()
       && this.eventForm.description.trim()
@@ -303,6 +302,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   saveEventEditorForm(): void {
+    this.syncEventFormFromDateTimeControls();
     if (!this.canSubmitEventEditorForm() || this.isSavePending) {
       return;
     }

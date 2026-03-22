@@ -8,8 +8,7 @@
   --interactive-press-brightness: 0.96;
 }
 
-:where(
-  .popup-header-add-btn,
+:where(.popup-header-add-btn,
   .popup-close,
   .popup-view-fab,
   .activities-view-option,
@@ -21,8 +20,7 @@
   .event-ticketing-card,
   .profile-status-select-wrap,
   .experience-action-btn,
-  .event-subevents-panel-trigger
-) {
+  .event-subevents-panel-trigger) {
   -webkit-tap-highlight-color: transparent;
   transition:
     transform var(--interactive-motion-duration) var(--interactive-motion-ease),
@@ -34,8 +32,7 @@
   transform-origin: center;
 }
 
-:where(
-  .popup-header-add-btn,
+:where(.popup-header-add-btn,
   .popup-close,
   .popup-view-fab,
   .activities-view-option,
@@ -47,15 +44,14 @@
   .event-ticketing-card,
   .profile-status-select-wrap,
   .experience-action-btn,
-  .event-subevents-panel-trigger
-):focus-visible {
+  .event-subevents-panel-trigger):focus-visible {
   outline: 2px solid rgba(66, 110, 182, 0.44);
   outline-offset: 2px;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  :where(
-    .popup-header-add-btn,
+
+  :where(.popup-header-add-btn,
     .popup-close,
     .popup-view-fab,
     .activities-view-option,
@@ -67,14 +63,12 @@
     .event-ticketing-card,
     .profile-status-select-wrap,
     .experience-action-btn,
-    .event-subevents-panel-trigger
-  ):not(:disabled):not([aria-disabled='true']):hover {
+    .event-subevents-panel-trigger):not(:disabled):not([aria-disabled='true']):hover {
     transform: translateY(var(--interactive-hover-lift)) scale(var(--interactive-hover-scale));
     filter: brightness(var(--interactive-hover-brightness));
   }
 
-  :where(
-    .popup-header-add-btn,
+  :where(.popup-header-add-btn,
     .popup-close,
     .popup-view-fab,
     .activities-view-option,
@@ -86,8 +80,7 @@
     .event-ticketing-card,
     .profile-status-select-wrap,
     .experience-action-btn,
-    .event-subevents-panel-trigger
-  ):not(:disabled):not([aria-disabled='true']):active {
+    .event-subevents-panel-trigger):not(:disabled):not([aria-disabled='true']):active {
     transform: scale(var(--interactive-press-scale));
     filter: brightness(var(--interactive-press-brightness));
   }
@@ -98,19 +91,22 @@
     transform: scale(1);
     filter: brightness(1);
   }
+
   45% {
     transform: scale(var(--interactive-press-scale));
     filter: brightness(var(--interactive-press-brightness));
   }
+
   100% {
     transform: scale(1);
     filter: brightness(1);
   }
 }
 
-@media (hover: none), (pointer: coarse) {
-  :where(
-    .popup-header-add-btn,
+@media (hover: none),
+(pointer: coarse) {
+
+  :where(.popup-header-add-btn,
     .popup-close,
     .popup-view-fab,
     .activities-view-option,
@@ -122,8 +118,7 @@
     .event-ticketing-card,
     .profile-status-select-wrap,
     .experience-action-btn,
-    .event-subevents-panel-trigger
-  ):not(:disabled):not([aria-disabled='true']):active {
+    .event-subevents-panel-trigger):not(:disabled):not([aria-disabled='true']):active {
     animation: mobile-touch-feedback 0.2s ease;
   }
 }
@@ -172,7 +167,7 @@
   position: relative;
 }
 
-.popup-header > .popup-title {
+.popup-header>.popup-title {
   min-width: 0;
   flex: 1 1 auto;
 }
@@ -750,6 +745,11 @@
 .subevent-capacity-range input {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+.experience-form-panel input[type="number"]::-webkit-inner-spin-button,
+.experience-form-panel input[type="number"]::-webkit-outer-spin-button {
+  cursor: pointer;
 }
 
 .subevent-capacity-separator {
