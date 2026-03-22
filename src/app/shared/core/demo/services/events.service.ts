@@ -95,6 +95,11 @@ export class DemoEventsService {
     this.eventsRepository.trashItem(userId, type, sourceId);
   }
 
+  async publishItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
+    this.eventsRepository.publishItem(userId, type, sourceId);
+  }
+
   async restoreItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
     await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
     this.eventsRepository.restoreItem(userId, type, sourceId);

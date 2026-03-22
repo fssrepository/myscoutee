@@ -146,6 +146,7 @@ export interface InfoCardData {
   groupLabel?: string | null;
   title: string;
   imageUrl?: string | null;
+  placeholderLabel?: string | null;
   metaRows?: readonly string[];
   metaRowsLimit?: number | null;
   description?: string | null;

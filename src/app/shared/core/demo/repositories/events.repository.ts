@@ -341,6 +341,13 @@ export class DemoEventsRepository {
     });
   }
 
+  publishItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): void {
+    this.init();
+    this.updateItemState(userId, type, sourceId, {
+      published: true
+    });
+  }
+
   restoreItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): void {
     this.init();
     this.updateItemState(userId, type, sourceId, {
@@ -388,7 +395,7 @@ export class DemoEventsRepository {
     userId: string,
     type: DemoRepositoryEventItemType,
     sourceId: string,
-    updates: Pick<DemoEventRecord, 'isTrashed' | 'trashedAtIso'>
+    updates: Partial<DemoEventRecord>
   ): void {
     this.memoryDb.write(state => {
       const table = state[EVENTS_TABLE_NAME];
@@ -468,7 +475,7 @@ export class DemoEventsRepository {
     userId: string,
     type: DemoRepositoryEventItemType,
     sourceId: string,
-    updates: Pick<DemoEventRecord, 'isTrashed' | 'trashedAtIso'>
+    updates: Partial<DemoEventRecord>
   ): DemoEventRecord | null {
     if (type === 'invitations') {
       return null;
@@ -495,8 +502,7 @@ export class DemoEventsRepository {
       isAdmin: overlayType === 'hosting',
       isHosting: overlayType === 'hosting',
       isInvitation: false,
-      isTrashed: updates.isTrashed,
-      trashedAtIso: updates.trashedAtIso
+      ...updates
     };
   }
 

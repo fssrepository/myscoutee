@@ -70,6 +70,19 @@
   transition: opacity 100ms ease-in;
 }
 
+.ui-info-card__media--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ui-info-card__placeholder-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  color: rgba(36, 64, 98, 0.35);
+}
+
 .ui-info-card__head {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);

@@ -378,7 +378,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected activitiesRatesFullscreenMode         = false;
 
   // ── Delete / publish confirms ─────────────────────────────────────────────
-  protected pendingActivityPublishRow: AppTypes.ActivityListRow | null = null;
   protected stackedActivitiesPopup: 'activityMembers' | null = null;
   protected activityMembersReadOnly = false;
   protected activityMembersPendingOnly = false;
@@ -493,7 +492,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private resetActivitiesStateForOpen(): void {
     this.inlineItemActionMenu = null;
-    this.pendingActivityPublishRow = null;
     this.visibleActivityRows = [];
     this.activitiesStickyValue = '';
     this.lastRateIndicatorPulseRowId = null;
@@ -676,7 +674,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private resolveVisibleEventRowTypeFromSync(sync: ActivitiesEventSyncPayload): AppTypes.ActivityListRow['type'] | null {
     if (this.activitiesEventScope === 'active-events') {
-      return sync.isAdmin ? null : 'events';
+      return (sync.isAdmin && sync.published === false) ? null : 'events';
     }
     if (this.activitiesEventScope === 'my-events') {
       if (this.hostingPublicationFilter === 'drafts' && sync.published !== false) {
@@ -940,7 +938,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       visibleInvitations.length
     );
     const visibleActiveEvents = this.eventItems
-      .filter(item => item.isAdmin !== true)
+      .filter(item => item.isAdmin !== true || this.isHostingPublished(item.id))
       .filter(item => !this.isActivityIdentityTrashed('events', item.id));
     this.eventsBadge = DemoUserMenuCountersBuilder.resolveSectionBadge(
       visibleActiveEvents.map(item => item.activity),
@@ -1666,12 +1664,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   // ── Event-style rows ───────────────────────────────────────────────────────
 
-  protected activityImageUrl(row: AppTypes.ActivityListRow): string {
+  protected activityImageUrl(row: AppTypes.ActivityListRow): string | null {
     const sourceImageUrl = (row.source as { imageUrl?: string }).imageUrl;
     if (typeof sourceImageUrl === 'string' && sourceImageUrl.trim().length > 0) {
       return sourceImageUrl;
     }
-    return this.activityImageById[row.id] ?? `https://picsum.photos/seed/event-${row.id}/1200/700`;
+    return this.activityImageById[row.id] ?? null;
   }
 
   protected showActivitySourceIcon(row: AppTypes.ActivityListRow): boolean {
@@ -1785,7 +1783,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (Number.isFinite(sourceCapacityTotal) && sourceCapacityTotal >= 0) {
       return Math.max(fallbackBase, Math.trunc(sourceCapacityTotal));
     }
-    return Math.max(fallbackBase, 4);
+    return fallbackBase;
   }
 
 
@@ -2027,11 +2025,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
     options: { groupLabel?: string | null } = {}
   ): InfoCardData {
     const locationMetaLine = this.activityLocationMetaLine(row);
+    const imageUrl = this.activityImageUrl(row);
     return {
       rowId: this.activityRowIdentity(row),
       groupLabel: options.groupLabel ?? null,
       title: row.title,
-      imageUrl: this.activityImageUrl(row),
+      imageUrl: imageUrl,
+      placeholderLabel: imageUrl ? null : row.title,
       metaRows: [
         this.activityDateRangeMetaLine(row),
         ...(locationMetaLine ? [locationMetaLine] : [])
@@ -2257,25 +2257,25 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected runActivityItemPublishAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
     this.inlineItemActionMenu  = null;
-    this.pendingActivityPublishRow = row;
+    this.confirmationDialogService.open({
+      title: 'Publish event?',
+      message: row.title,
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Publish',
+      busyConfirmLabel: 'Publishing...',
+      confirmTone: 'accent',
+      failureMessage: 'Unable to publish event.',
+      onConfirm: () => this.confirmActivityPublish(row)
+    });
   }
 
+  private async confirmActivityPublish(row: AppTypes.ActivityListRow): Promise<void> {
+    await this.eventsService.publishItem(this.activeUser.id, row.type as any, row.id);
+    this.publishedHostingIds = new Set([...this.publishedHostingIds, row.id]);
 
-  protected cancelActivityPublish(): void {
-    this.pendingActivityPublishRow = null;
-  }
-
-  protected confirmActivityPublish(): void {
-    this.pendingActivityPublishRow = null;
+    this.removeVisibleActivityRow(row);
+    this.refreshSectionBadges();
     this.cdr.markForCheck();
-  }
-
-  protected pendingActivityPublishTitle(): string {
-    return 'Publish event?';
-  }
-
-  protected pendingActivityPublishLabel(): string {
-    return this.pendingActivityPublishRow?.title ?? '';
   }
 
   private activitySecondaryConfirmTitle(row: AppTypes.ActivityListRow): string {

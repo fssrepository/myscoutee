@@ -5,7 +5,7 @@
   [attr.data-info-card-row-id]="card?.rowId"
   (click)="onCardActivated($event)"
 >
-  <div class="ui-info-card__media" *ngIf="card?.imageUrl as imageUrl" [appLazyBgImage]="imageUrl">
+  <div class="ui-info-card__media" *ngIf="card?.imageUrl as imageUrl; else imagePlaceholder" [appLazyBgImage]="imageUrl">
     <ng-container *ngIf="card?.mediaStart as mediaStart">
       <button
         *ngIf="isOverlayInteractive(mediaStart); else mediaStartStatic"
@@ -162,6 +162,11 @@
       </ng-template>
     </ng-container>
   </div>
+  <ng-template #imagePlaceholder>
+    <div class="ui-info-card__media ui-info-card__media--placeholder">
+      <mat-icon class="ui-info-card__placeholder-icon">image_not_supported</mat-icon>
+    </div>
+  </ng-template>
 
   <div
     class="ui-info-card__head"

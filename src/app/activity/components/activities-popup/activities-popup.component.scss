@@ -1850,56 +1850,6 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   }
 }
 
-.experience-delete-confirm {
-  position: fixed;
-  inset: 0;
-  z-index: 4200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.8rem;
-}
-.experience-delete-confirm-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(8, 16, 30, 0.46);
-}
-.experience-delete-confirm-panel {
-  position: relative;
-  z-index: 1;
-  width: min(420px, 100%);
-  border: 1px solid rgba(42, 67, 101, 0.28);
-  border-radius: 12px;
-  background: #fff;
-  padding: 0.72rem;
-  display: grid;
-  gap: 0.4rem;
-  text-align: center;
-  justify-items: center;
-}
-.experience-delete-confirm-panel h4 {
-  margin: 0;
-  font-size: 0.94rem;
-  color: #1f3252;
-}
-.experience-delete-confirm-panel p {
-  margin: 0;
-  font-size: 0.8rem;
-  color: rgba(23, 41, 66, 0.72);
-}
-.experience-delete-confirm-panel .popup-actions {
-  justify-content: center;
-}
-.experience-delete-btn {
-  background: #d73838;
-  border-color: #b42a2a;
-  color: #fff;
-}
-.experience-publish-btn {
-  background: linear-gradient(180deg, #e8f9f1 0%, #d8f2e5 100%);
-  border-color: rgba(39, 132, 91, 0.48);
-  color: #20714f;
-}
 
 .asset-item-card .experience-item-head {
   grid-template-columns: auto minmax(0, 1fr) auto auto;
