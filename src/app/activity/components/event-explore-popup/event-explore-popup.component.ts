@@ -597,6 +597,11 @@ export class EventExplorePopupComponent {
     }
     const currentItems = [...this.eventExploreSmartList.itemsSnapshot()];
     const currentIndex = currentItems.findIndex(record => record.id === sync.id);
+    const activeUserId = this.activeUserId.trim();
+    const userJoinedEvent = activeUserId.length > 0 && (
+      (Array.isArray(sync.acceptedMemberUserIds) && sync.acceptedMemberUserIds.includes(activeUserId))
+      || (Array.isArray(sync.pendingMemberUserIds) && sync.pendingMemberUserIds.includes(activeUserId))
+    );
 
     if (currentIndex >= 0) {
       const existing = currentItems[currentIndex];
@@ -644,9 +649,13 @@ export class EventExplorePopupComponent {
         this.eventExploreSmartList.replaceVisibleItems(currentItems);
         this.cdr.markForCheck();
       }
-    } else if (this.isOpen) {
-      this.reloadEventExploreSmartList();
+      return;
     }
+
+    if (!this.isOpen || userJoinedEvent) {
+      return;
+    }
+    this.reloadEventExploreSmartList();
   }
 
   private eventMembersOwner(record: DemoEventRecord): ActivityMemberOwnerRef {
