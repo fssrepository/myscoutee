@@ -944,7 +944,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       visibleActiveEvents.map(item => item.activity),
       visibleActiveEvents.length
     );
-    const adminEvents = this.eventItems
+    const adminEvents = this.hostingItems
       .filter(item => item.isAdmin)
       .filter(item => !this.isActivityIdentityTrashed('hosting', item.id));
     this.hostingBadge = DemoUserMenuCountersBuilder.resolveSectionBadge(
@@ -1261,13 +1261,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected shouldShowActivitiesQuickActions(): boolean {
     return this.isEventActivitiesPrimaryFilter()
+      && this.activitiesEventScope !== 'all'
       && this.activitiesEventScope !== 'active-events'
       && this.activitiesEventScope !== 'invitations'
       && this.activitiesEventScope !== 'trash';
   }
 
   protected shouldShowStandaloneEventExploreAction(): boolean {
-    return this.isEventActivitiesPrimaryFilter() && this.activitiesEventScope === 'active-events';
+    return this.isEventActivitiesPrimaryFilter()
+      && (this.activitiesEventScope === 'all' || this.activitiesEventScope === 'active-events');
   }
 
   protected shouldShowRatesFullscreenToggle(): boolean {
@@ -2272,6 +2274,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private async confirmActivityPublish(row: AppTypes.ActivityListRow): Promise<void> {
     await this.eventsService.publishItem(this.activeUser.id, row.type as any, row.id);
     this.publishedHostingIds = new Set([...this.publishedHostingIds, row.id]);
+
+    this.hostingItems = this.hostingItems.map(item =>
+      item.id === row.id ? { ...item, published: true } : item
+    );
 
     this.removeVisibleActivityRow(row);
     this.refreshSectionBadges();

@@ -124,8 +124,8 @@
   border-color: rgba(115, 88, 176, 0.32);
 }
 .activities-mobile-filter-panel .activities-view-option.activity-filter-events {
-  background: linear-gradient(180deg, #fff7f0 0%, #ffefdf 100%);
-  border-color: rgba(208, 125, 51, 0.32);
+  background: linear-gradient(180deg, #f3f0ff 0%, #e9e4ff 100%);
+  border-color: rgba(109, 87, 182, 0.32);
 }
 .activities-mobile-filter-panel .activities-view-option.activity-filter-hosting {
   background: linear-gradient(180deg, #f1fbfa 0%, #e6f5f2 100%);
@@ -140,12 +140,12 @@
   border-color: rgba(177, 73, 92, 0.32);
 }
 .activities-mobile-filter-panel .activities-view-option.activities-quick-action-option-explore {
-  background: linear-gradient(180deg, #fff7f0 0%, #ffefdf 100%);
-  border-color: rgba(208, 125, 51, 0.32);
-  color: #b96b25;
+  background: linear-gradient(180deg, #f3f0ff 0%, #e9e4ff 100%);
+  border-color: rgba(109, 87, 182, 0.32);
+  color: #5741ac;
 }
 .activities-mobile-filter-panel .activities-view-option.activities-quick-action-option-explore .mat-icon {
-  color: #c7782e;
+  color: #644db4;
 }
 .activities-mobile-filter-panel .activities-view-option.activities-quick-action-option-create {
   background: linear-gradient(180deg, #f1fbfa 0%, #e6f5f2 100%);
@@ -1302,12 +1302,12 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   width: 100%;
 }
 .activities-quick-action-option-explore {
-  background: linear-gradient(180deg, #fff7f0 0%, #ffefdf 100%);
-  border: 1px solid rgba(208, 125, 51, 0.32);
-  color: #b96b25;
+  background: linear-gradient(180deg, #f3f0ff 0%, #e9e4ff 100%);
+  border: 1px solid rgba(109, 87, 182, 0.32);
+  color: #5741ac;
 }
 .activities-quick-action-option-explore .mat-icon {
-  color: #c7782e;
+  color: #644db4;
 }
 .activities-quick-action-option-create {
   background: linear-gradient(180deg, #f1fbfa 0%, #e6f5f2 100%);
@@ -1328,10 +1328,23 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
 }
 .activities-explore-btn {
   margin-left: 0;
+  width: auto;
+  min-width: 0;
+  padding: 0 0.84rem 0 0.64rem;
+  border-radius: 999px;
   border-color: rgba(102, 79, 174, 0.5);
   background: linear-gradient(180deg, #f0ecff 0%, #e3dbff 100%);
   color: #5a43a9;
   box-shadow: 0 2px 8px rgba(86, 63, 152, 0.2);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.44rem;
+
+  span {
+    font-size: 0.72rem;
+    font-weight: 800;
+    white-space: nowrap;
+  }
 }
 .activities-explore-btn:hover {
   background: linear-gradient(180deg, #e8e1ff 0%, #d9ceff 100%);
@@ -1506,8 +1519,8 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   border-color: rgba(115, 88, 176, 0.32);
 }
 .experience-filter-select.activity-filter-events {
-  background: linear-gradient(180deg, #fff7f0 0%, #ffefdf 100%);
-  border-color: rgba(208, 125, 51, 0.32);
+  background: linear-gradient(180deg, #f3f0ff 0%, #e9e4ff 100%);
+  border-color: rgba(109, 87, 182, 0.32);
 }
 .experience-filter-select.activity-filter-hosting {
   background: linear-gradient(180deg, #f1fbfa 0%, #e6f5f2 100%);
