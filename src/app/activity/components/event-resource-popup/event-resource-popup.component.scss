@@ -11,6 +11,109 @@
   display: contents;
 }
 
+/* =========================================================
+   CDK Drag & Drop Overrides
+   Restores layout/styles for elements detached during drag
+   ========================================================= */
+
+/* Target the dragged element globally so it doesn't lose styles */
+::ng-deep .cdk-drag-preview.asset-route-row {
+  /* 1. Restore the exact grid layout, but let CDK handle the width */
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) auto auto !important;
+  align-items: center !important;
+  gap: 0.62rem !important;
+  box-sizing: border-box !important;
+  
+  /* 2. Add a nice floating card effect */
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(14, 32, 58, 0.15);
+  padding: 0.25rem 0.5rem;
+
+  /* 3. Restore the input field styling */
+  input {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid rgba(42, 66, 102, 0.28);
+    border-radius: 4px;
+    padding: 0.4rem 0.6rem;
+    font-family: inherit;
+    box-sizing: border-box;
+  }
+
+  /* 4. Restore your circular icon buttons */
+  .experience-action-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid rgba(42, 67, 101, 0.26);
+    background: rgba(255, 255, 255, 0.88);
+    color: #2d5ea8;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+
+    .mat-icon {
+      width: 15px;
+      height: 15px;
+      font-size: 15px;
+      line-height: 15px;
+    }
+
+    &.asset-route-drag-btn {
+      cursor: grabbing;
+    }
+
+    &.asset-route-map-btn {
+      background: linear-gradient(180deg, #f4f7fc 0%, #e8eef9 100%);
+      border-color: rgba(53, 91, 140, 0.26);
+      color: #315e9a;
+    }
+
+    &.asset-route-delete-btn {
+      background: linear-gradient(180deg, #fff1f1 0%, #ffe4e4 100%);
+      border-color: rgba(177, 40, 40, 0.32);
+      color: #b12828;
+    }
+  }
+}
+
+/* Target the map pin avatar inside the info cards */
+::ng-deep .subevent-resource-card-list app-info-card [class*="avatar"],
+::ng-deep .subevent-resource-card-list app-info-card [class*="media-start"] {
+  
+  /* The base orangish styling */
+  background: linear-gradient(180deg, #ffe8cc 0%, #ffd7af 100%) !important;
+  border: 1px solid rgba(179, 108, 42, 0.54) !important;
+  color: #8c4f18 !important;
+
+  /* Add a smooth, snappy transition for the animations */
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              box-shadow 0.2s ease, 
+              filter 0.2s ease !important;
+
+  /* Ensure the icon color matches */
+  .mat-icon {
+    color: #8c4f18 !important;
+  }
+
+  /* HOVER: Slight scale up, move up 1px, and add a glowing orange shadow */
+  &:hover {
+    transform: scale(1.08) translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(179, 108, 42, 0.25) !important;
+    filter: brightness(1.05) !important;
+  }
+
+  /* ACTIVE (Click): Scale down slightly to feel like a real button press */
+  &:active {
+    transform: scale(0.95) !important;
+    box-shadow: 0 1px 4px rgba(179, 108, 42, 0.15) !important;
+  }
+}
+
 .app-popup.event-resource-popup-shell {
   z-index: var(--event-resource-shell-z-index);
   padding: var(--event-resource-shell-gap);
