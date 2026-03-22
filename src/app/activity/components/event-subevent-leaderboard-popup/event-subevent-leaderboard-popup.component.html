@@ -77,7 +77,7 @@
                         </tr>
                       </thead>
                       <tbody>
-                        <ng-container *ngFor="let row of scoreRows(group); let rowIndex = index">
+                        <ng-container *ngFor="let row of scoreRows(group); let rowIndex = index; trackBy: trackByIndex">
                           <tr
                             *ngIf="!row.isPlaceholder"
                             [class.is-advance]="isAdvanceRow(group, rowIndex)"
@@ -153,7 +153,7 @@
                         </tr>
                       </thead>
                       <tbody>
-                        <ng-container *ngFor="let row of fifaRows(group); let rowIndex = index">
+                        <ng-container *ngFor="let row of fifaRows(group); let rowIndex = index; trackBy: trackByIndex">
                           <tr
                             *ngIf="!row.isPlaceholder"
                             [class.is-advance]="isAdvanceRow(group, rowIndex)"

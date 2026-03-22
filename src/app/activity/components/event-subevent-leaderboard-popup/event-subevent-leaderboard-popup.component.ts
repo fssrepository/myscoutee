@@ -128,6 +128,10 @@ export class EventSubeventLeaderboardPopupComponent implements OnChanges {
     return item.id;
   }
 
+  protected trackByIndex(index: number): number {
+    return index;
+  }
+
   protected isGroupOpen(groupKey: string): boolean {
     return this.openGroups[groupKey] === true;
   }
