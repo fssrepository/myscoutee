@@ -2,7 +2,7 @@
   display: block;
   --line: rgba(23, 33, 54, 0.12);
   --line-strong: rgba(23, 33, 54, 0.2);
-  --danger: #b91c1c;
+  --danger: #d94a4a;
   --interactive-motion-duration: 0.16s;
   --interactive-motion-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
   --interactive-hover-lift: -1px;
@@ -189,7 +189,7 @@
 
 .user-initial.is-placeholder {
   background: linear-gradient(145deg, #f0f4fb, #dfe7f3);
-  color: #1A1A1A;
+  color: rgba(46, 70, 103, 0.92);
 }
 
 .user-selector-btn-global.is-error .user-initial.is-placeholder {
@@ -204,7 +204,7 @@
   min-width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #991b1b;
+  background: #d94a4a;
   color: #fff;
   font-size: 11px;
   font-weight: 700;
@@ -379,7 +379,7 @@
   min-width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #b91c1c;
+  background: #d94a4a;
   color: #fff;
   font-size: 13px;
   font-weight: 700;
@@ -399,7 +399,7 @@
   border-radius: 999px;
   background: #d8effa;
   border: 1px solid #8ac9e2;
-  color: #0d4a5c;
+  color: #1f6780;
   font-size: 13px;
   font-weight: 700;
   display: inline-flex;
