@@ -853,8 +853,8 @@
   cursor: pointer;
 
   /* ADD THESE TWO LINES */
-  touch-action: manipulation;
-  will-change: transform, color;
+  will-change: transform, opacity; /* Fixes the 'frozen' state during blink/curl */
+  backface-visibility: hidden;    /* Forces GPU acceleration for smoother curl */
 }
 
 .star-btn.filled {
@@ -1012,8 +1012,8 @@
 
 .game-filter-popup-panel {
   width: min(1060px, calc(100vw - 1.2rem));
-  height: calc(100vh - 1.2rem);
-  max-height: calc(100vh - 1.2rem);
+  height: calc(100dvh - 1.2rem);
+  max-height: calc(100dvh - 1.2rem);
   border-radius: 14px;
   border-color: rgba(31, 56, 89, 0.18);
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
@@ -2149,8 +2149,9 @@
 
   .game-rating-dock {
     padding: 0 var(--game-stack-inline-gap) calc(0.64rem + env(safe-area-inset-bottom));
-    /* ADD THIS LINE: Removes the 300ms touch delay */
-    touch-action: manipulation;
+    /* ADD THESE TWO LINES */
+    touch-action: manipulation; 
+    content-visibility: auto; /* Optimizes rendering for the star bar area */
   }
 
   .star-btn {
