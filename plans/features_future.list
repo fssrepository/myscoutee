@@ -34,10 +34,11 @@ Assets can have price tag (we haven't introduced purse for public/frineds event 
 
 Bugs
 ----
-1) activities-popup.component.ts cut out the templates (ActivitiesListComponent)
-2) put a contacts button to show assign members popup without basket
-3) optional events can be parallel (maybe a switch on the form "parallel allowed"), but needs to cut the mandatory in the same way when you add
-4) pull up feature if you edned up bottom of the scrolling area (by luck figured out pull down behaviour)
-5) instagram account should be renamed from myscoutee1 to myscoutee, after the other account deleted (deletion period ended apr 3)
-6) on profile editor the school/workspace item can be loaded from a cv (pdf/docx parse) - old myscoutee had got that
-7) personality traits should be stored in the db
+1) old myscoutee had got touch animation on clickable elements - that one should come back on new myscoutee
+2) activities-popup.component.ts cut out the templates (ActivitiesListComponent)
+3) put a contacts button to show assign members popup without basket
+4) optional events can be parallel (maybe a switch on the form "parallel allowed"), but needs to cut the mandatory in the same way when you add
+5) pull up feature if you edned up bottom of the scrolling area (by luck figured out pull down behaviour)
+6) instagram account should be renamed from myscoutee1 to myscoutee, after the other account deleted (deletion period ended apr 3)
+7) on profile editor the school/workspace item can be loaded from a cv (pdf/docx parse) - old myscoutee had got that
+8) personality traits should be stored in the db
