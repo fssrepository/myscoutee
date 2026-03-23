@@ -66,12 +66,15 @@
   overflow-x: hidden;
   padding-right: 0.06rem;
   overscroll-behavior: contain;
-  touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
+  
+  /* CRITICAL: Fixes the 300ms 'wait' lag on touch start */
+  touch-action: pan-y;
 }
 
 .activity-members-popup-shell .subevent-members-grid {
   display: grid;
+  /* Desktop: flexible columns */
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 0.58rem;
   align-content: start;
@@ -209,7 +212,7 @@
 
 .activity-members-popup-shell .friends-picker-card {
   position: relative;
-  /* Changed from min(100%, 320px) to 100% to allow full-width stretching */
+  /* Changed from min(100%, 320px) to 100% to allow stretching */
   width: 100%; 
   min-height: 250px;
   border-radius: 13px;
@@ -217,7 +220,8 @@
   background-size: cover;
   background-position: center;
   overflow: hidden;
-  /* Pre-renders the card for the GPU to fix the initial scroll lag */
+
+  /* Offloads rendering to the GPU to prevent stuttering */
   will-change: transform;
 }
 
@@ -640,7 +644,9 @@
 
 @media (max-width: 760px) {
   .activity-members-popup-shell .subevent-members-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    /* Mobile: Forces cards to stretch 50/50 and fill the width */
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.45rem;
   }
 
   .activity-members-popup-shell .subevent-member-image-card {
