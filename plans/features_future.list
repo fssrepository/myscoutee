@@ -42,3 +42,5 @@ Bugs
 6) instagram account should be renamed from myscoutee1 to myscoutee, after the other account deleted (deletion period ended apr 3)
 7) on profile editor the school/workspace item can be loaded from a cv (pdf/docx parse) - old myscoutee had got that
 8) personality traits should be stored in the db
+9) curl (rating)/scrolling animation speed up in most of the places
+10) demo creation has got some noticeable slowness on mobile
