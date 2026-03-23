@@ -209,6 +209,9 @@
   gap: 0.45rem;
   height: 100%;
   min-height: 0;
+  
+  /* CRITICAL: Removes the 300ms touch-start delay */
+  touch-action: pan-y;
 }
 .activities-popup.activities-popup-rates-fullscreen {
   background:
@@ -238,10 +241,13 @@
   gap: 0.48rem;
   align-items: center;
   cursor: pointer;
-  width: auto;
-  max-width: 100%;
+  /* Forces cards to stretch to fill the grid track width */
+  width: 100%; 
   box-sizing: border-box;
-  transition: transform 0.14s ease, box-shadow 0.16s ease, filter 0.16s ease;
+  
+  /* GPU Hint: Keeps the scroll smooth once it starts */
+  will-change: transform; 
+  transition: transform 0.14s ease, box-shadow 0.16s ease;
 }
 .activities-card-btn {
   appearance: none;
@@ -352,6 +358,9 @@
   background: linear-gradient(180deg, #1b2c45 0%, #132238 100%);
   overflow: hidden;
   box-sizing: border-box;
+
+  /* GPU Hint for heavy image rendering */
+  will-change: transform;
 }
 .activities-rate-profile-card.activities-row-item {
   cursor: default;
@@ -2218,7 +2227,9 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   }
 
   .app-popup-panel.popup-panel-activities {
-    height: 100dvh;
+    /* Use Dynamic Viewport Height to prevent layout shifts during scroll */
+    height: 100dvh; 
+    max-height: 100dvh;
   }
 
   .activities-mobile-filter-panel,
