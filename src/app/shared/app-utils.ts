@@ -1,5 +1,5 @@
-import type { ActivitiesView, ActivityListRow, AssetMemberRequest } from './app-types';
-import type { DemoUser } from './demo-data';
+import type { ActivitiesView, ActivityListRow, AssetMemberRequest } from './core/base/models';
+import type { DemoUser } from './core/base/interfaces/user.interface';
 
 export class AppUtils {
   static cloneMapItems<T extends object>(input: Record<string, T[]>): Record<string, T[]> {
@@ -29,6 +29,24 @@ export class AppUtils {
       return words[0].slice(0, 2).toUpperCase();
     }
     return `${words[0][0] ?? ''}${words[1][0] ?? ''}`.toUpperCase();
+  }
+
+  static hasText(value: string | null | undefined, minLength = 1): boolean {
+    return (value?.trim().length ?? 0) >= Math.max(0, Math.trunc(minLength));
+  }
+
+  static hashText(value: string): number {
+    let hash = 0;
+    for (let index = 0; index < value.length; index += 1) {
+      hash = (hash * 31 + value.charCodeAt(index)) % 104729;
+    }
+    return Math.abs(hash);
+  }
+
+  static firstImageUrl(images: readonly string[] | undefined | null): string {
+    return (images ?? [])
+      .map(image => `${image ?? ''}`.trim())
+      .find(image => image.length > 0) ?? '';
   }
 
   static pad2(value: number): string {

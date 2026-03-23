@@ -1,0 +1,59 @@
+<section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay" *ngIf="open" (click)="cancel.emit($event)">
+  <div class="experience-form-overlay-backdrop"></div>
+  <article class="experience-form-popup subevent-form-popup subevent-group-popup" (click)="$event.stopPropagation()">
+    <div class="experience-form-header subevent-group-header">
+      <div class="subevent-group-header-main">
+        <h3>{{ title }}</h3>
+        <p class="subevent-group-stage-subtitle" *ngIf="stageTitle">{{ stageTitle }}</p>
+      </div>
+      <div class="experience-form-header-controls">
+        <button
+          type="button"
+          class="popup-header-add-btn subevent-leaderboard-save-btn"
+          [class.form-save-invalid]="!canSave"
+          [disabled]="!canSave"
+          (click)="save.emit($event)"
+          aria-label="Save group"
+        >
+          <mat-icon>done</mat-icon>
+        </button>
+        <button type="button" class="experience-form-close-btn" (click)="cancel.emit($event)" aria-label="Close group form">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <section class="experience-form-panel subevent-form-panel subevent-group-form-panel">
+      <div class="experience-form-grid subevent-group-form-grid">
+        <label class="experience-title-field">
+          <span>Name <span class="required-star">*</span></span>
+          <input type="text" [(ngModel)]="model.name" [class.field-required-invalid]="invalidName" placeholder="Group name" />
+        </label>
+
+        <label class="subevent-capacity-range-field">
+          <span>Capacity</span>
+          <div class="subevent-capacity-range">
+            <input
+              type="number"
+              min="0"
+              step="1"
+              [ngModel]="model.capacityMin"
+              (ngModelChange)="capacityMinChange.emit($event)"
+              placeholder="Min"
+            />
+            <span class="subevent-capacity-separator">-</span>
+            <input
+              type="number"
+              [min]="model.capacityMin"
+              step="1"
+              [ngModel]="model.capacityMax"
+              (ngModelChange)="capacityMaxChange.emit($event)"
+              placeholder="Max"
+            />
+          </div>
+        </label>
+      </div>
+    </section>
+  </article>
+</section>
+

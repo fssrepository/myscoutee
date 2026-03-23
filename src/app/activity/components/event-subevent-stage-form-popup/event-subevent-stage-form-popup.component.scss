@@ -1,0 +1,817 @@
+@use '../activity-interactions.shared' as shared;
+
+@include shared.host-motion-vars();
+@include shared.interactive-feedback(
+  '.popup-header-add-btn, .experience-form-close-btn, .experience-action-btn, .subevent-optional-toggle, .subevent-stage-insert-mode-btn, .subevent-stage-insert-target-select, .subevent-tournament-select, .mat-datepicker-toggle .mat-mdc-icon-button, .mat-timepicker-toggle .mat-mdc-icon-button'
+);
+
+.experience-form-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 4600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.9rem;
+}
+
+.experience-form-overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 16, 30, 0.54);
+  backdrop-filter: blur(2px);
+}
+
+.experience-form-popup {
+  position: relative;
+  z-index: 1;
+  width: min(860px, calc(100vw - 2rem));
+  max-height: calc(100vh - 1.8rem);
+  overflow: hidden;
+  border-radius: 16px;
+  background: #fff;
+  box-sizing: border-box;
+  border: 1px solid rgba(42, 66, 102, 0.28);
+  box-shadow: 0 24px 60px rgba(14, 32, 58, 0.26);
+  display: flex;
+  flex-direction: column;
+  font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
+}
+
+.subevent-form-popup {
+  width: min(860px, calc(100vw - 2rem));
+}
+
+.experience-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.82rem 1rem;
+  border-bottom: 1px solid rgba(187, 199, 217, 0.7);
+  background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%);
+}
+
+.subevent-form-header-title h3,
+.experience-form-header h3 {
+  margin: 0;
+  color: #1e385a;
+  font-size: 1.12rem;
+  font-weight: 700;
+}
+
+.subevent-form-header-title p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: rgba(53, 79, 114, 0.86);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.experience-form-header-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.44rem;
+}
+
+@include shared.popup-header-add-btn-base();
+@include shared.experience-form-close-btn-base();
+
+.experience-form-panel {
+  border: 1px solid rgba(43, 71, 107, 0.2);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fbff 0%, #f4f8ff 100%);
+  padding: 0.74rem;
+  display: grid;
+  gap: 0.78rem;
+  margin: 0;
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.subevent-form-panel {
+  overflow-y: auto;
+}
+
+.subevent-form-panel.subevent-mode-mandatory {
+  background: linear-gradient(180deg, #fff3f3 0%, #ffe9e9 100%);
+  border-color: rgba(175, 78, 78, 0.28);
+}
+
+.subevent-form-panel.subevent-mode-optional {
+  background: linear-gradient(180deg, #f1f9ff 0%, #e8f3ff 100%);
+  border-color: rgba(63, 118, 188, 0.28);
+  align-content: space-between;
+}
+
+.subevent-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: max-content;
+  align-content: start;
+}
+
+.experience-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  justify-content: stretch;
+  column-gap: 1rem;
+  row-gap: 0.9rem;
+}
+
+.experience-title-field,
+.experience-description-field,
+.subevent-location-field {
+  grid-column: 1 / -1;
+}
+
+.subevent-name-field {
+  grid-column: 1 / -1;
+}
+
+.subevent-stage-insert-field {
+  grid-column: 1 / -1;
+}
+
+.subevent-form-grid.subevent-form-grid-with-insert .subevent-name-field {
+  grid-column: 1 / 2;
+}
+
+.subevent-form-grid.subevent-form-grid-with-insert .subevent-stage-insert-field {
+  grid-column: 2 / 3;
+  align-self: end;
+}
+
+.experience-form-grid label {
+  display: grid;
+  grid-template-rows: min-content;
+  gap: 0 !important;
+  font-weight: 600;
+  color: rgba(26, 44, 69, 0.88);
+}
+
+.required-star {
+  color: #bf2f2f;
+  font-weight: 800;
+}
+
+.experience-form-panel input,
+.experience-form-panel textarea {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid rgba(136, 156, 186, 0.5);
+  border-radius: 10px;
+  background: #fff;
+  color: #1d3556;
+  padding: 0.56rem 0.72rem;
+  font-size: 0.88rem;
+  line-height: 1.25;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+}
+
+.experience-form-panel input:focus,
+.experience-form-panel textarea:focus {
+  outline: 0;
+  border-color: rgba(52, 103, 182, 0.72);
+  box-shadow: 0 0 0 3px rgba(55, 116, 212, 0.14);
+}
+
+.experience-form-panel textarea {
+  resize: vertical;
+  min-height: 96px;
+}
+
+.experience-form-panel input.field-required-invalid,
+.experience-form-panel textarea.field-required-invalid {
+  border-color: #c83232 !important;
+  box-shadow: 0 0 0 2px rgba(200, 50, 50, 0.16);
+}
+
+.experience-form-panel input.field-required-invalid:focus,
+.experience-form-panel textarea.field-required-invalid:focus {
+  border-color: #b61f1f !important;
+  box-shadow: 0 0 0 3px rgba(182, 31, 31, 0.24);
+}
+
+.event-datetime-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(146px, 158px);
+  grid-template-rows: min-content;
+  align-items: center;
+  padding-left: 0 !important;
+  gap: 0.5rem;
+}
+
+.event-datetime-label {
+  gap: 0.32rem !important;
+  margin: 0;
+  width: 100%;
+}
+
+.asset-route-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.62rem;
+  width: 100%;
+}
+
+.asset-route-row.asset-route-row-inline {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.asset-route-row input {
+  width: 100%;
+  min-width: 0;
+}
+
+.subevent-location-field .asset-route-row.asset-route-row-inline {
+  width: 100%;
+  gap: 0.62rem;
+}
+
+.experience-action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(42, 67, 101, 0.26);
+  background: rgba(255, 255, 255, 0.88);
+  color: #2d5ea8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+.experience-action-btn .mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  line-height: 15px;
+}
+
+.experience-action-btn.asset-route-map-btn {
+  background: linear-gradient(180deg, #f4f7fc 0%, #e8eef9 100%);
+  border-color: rgba(53, 91, 140, 0.26);
+  color: #315e9a;
+}
+
+.subevent-capacity-range-field {
+  width: 100%;
+}
+
+.subevent-capacity-range {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.subevent-capacity-range input {
+  width: 100%;
+}
+
+.subevent-capacity-separator {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: rgba(31, 56, 89, 0.72);
+  line-height: 1;
+}
+
+.subevent-optional-field {
+  display: grid;
+  gap: 0.32rem;
+  position: relative;
+}
+
+.subevent-optional-field-header {
+  gap: 0;
+}
+
+.subevent-optional-toggle {
+  min-height: 38px;
+  border: 1px solid rgba(73, 105, 146, 0.32);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f2f7ff 0%, #e7f0fd 100%);
+  color: #2b5e98;
+  padding: 0 0.72rem;
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.subevent-optional-toggle .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.subevent-optional-toggle .mat-icon:last-child {
+  margin-left: auto;
+}
+
+.subevent-optional-toggle.subevent-mode-mandatory {
+  background: linear-gradient(180deg, #fff0f0 0%, #ffe4e4 100%);
+  border-color: rgba(176, 70, 70, 0.34);
+  color: #a23d3d;
+}
+
+.subevent-optional-toggle.subevent-mode-optional {
+  background: linear-gradient(180deg, #eef6ff 0%, #e3efff 100%);
+  border-color: rgba(53, 113, 185, 0.34);
+  color: #2d5ea8;
+}
+
+.subevent-optional-toggle-static {
+  cursor: default;
+}
+
+.subevent-stage-insert-field {
+  width: 100%;
+}
+
+.subevent-stage-insert-controls {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.46rem;
+  width: 100%;
+}
+
+.subevent-stage-insert-mode {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(52, 85, 126, 0.28);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f6f9ff 0%, #edf4ff 100%);
+  overflow: hidden;
+}
+
+.subevent-stage-insert-mode-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #2f4e76;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  min-height: 30px;
+  padding: 0 0.58rem;
+  cursor: pointer;
+}
+
+.subevent-stage-insert-mode-btn + .subevent-stage-insert-mode-btn {
+  border-left: 1px solid rgba(52, 85, 126, 0.22);
+}
+
+.subevent-stage-insert-mode-btn.is-active {
+  background: linear-gradient(180deg, #dbe9ff 0%, #cfdefb 100%);
+  color: #1f4678;
+}
+
+.subevent-stage-insert-target-select {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid rgba(67, 102, 147, 0.28);
+  border-radius: 8px;
+  background: #fff;
+  min-height: 32px;
+  padding: 0 0.48rem;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.subevent-stage-insert-target-select .mat-mdc-select {
+  width: 100%;
+  color: #1f3c62;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.subevent-stage-insert-target-select .mat-mdc-select-trigger {
+  min-height: 30px;
+}
+
+.subevent-stage-insert-target-select .mat-mdc-select-value,
+.subevent-stage-insert-target-select .mat-mdc-select-value-text,
+.subevent-stage-insert-option-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subevent-stage-insert-target-select .mat-mdc-select-arrow-wrapper {
+  margin-left: auto;
+  padding-left: 0.3rem;
+}
+
+.subevent-tournament-fieldset {
+  grid-column: 1 / -1;
+  margin: 0;
+  border: 1px solid rgba(53, 88, 130, 0.3);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f7fbff 0%, #edf5ff 100%);
+  padding: 0.5rem 0.58rem 0.54rem;
+  display: grid;
+  gap: 0.44rem;
+}
+
+.subevent-tournament-fieldset > legend {
+  padding: 0 0.36rem;
+  color: #294d79;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.subevent-tournament-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.44rem 0.52rem;
+}
+
+.subevent-tournament-field {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.subevent-tournament-field > span {
+  color: rgba(26, 52, 84, 0.82);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.subevent-tournament-field > input {
+  width: 100%;
+  min-height: 30px;
+  border: 1px solid rgba(61, 98, 143, 0.3);
+  border-radius: 8px;
+  background: #fff;
+  color: #1f3f68;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 0.2rem 0.46rem;
+  box-sizing: border-box;
+}
+
+.subevent-tournament-field-readonly > input {
+  background: #eff5fc;
+  color: #2d4f78;
+}
+
+.subevent-tournament-range-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 0.42rem;
+}
+
+.subevent-tournament-range-field {
+  min-width: 0;
+}
+
+.subevent-tournament-rule-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.44rem 0.52rem;
+}
+
+.subevent-tournament-select {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid rgba(61, 98, 143, 0.3);
+  border-radius: 8px;
+  background: #fff;
+  min-height: 30px;
+  padding: 0 0.46rem;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.subevent-tournament-select .mat-mdc-select {
+  width: 100%;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.subevent-tournament-select .mat-mdc-select-trigger {
+  min-height: 28px;
+}
+
+.subevent-tournament-select .mat-mdc-select-arrow-wrapper {
+  margin-left: auto;
+  padding-left: 0.3rem;
+}
+
+.subevent-tournament-select-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.26rem;
+}
+
+.subevent-tournament-select-trigger .mat-icon {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+  line-height: 14px;
+}
+
+.subevent-tournament-select.tournament-leaderboard-score {
+  background: linear-gradient(180deg, #f2f8ff 0%, #e8f1ff 100%);
+  border-color: rgba(56, 102, 170, 0.36);
+  color: #2e5ea8;
+}
+
+.subevent-tournament-select.tournament-leaderboard-fifa {
+  background: linear-gradient(180deg, #fff4e9 0%, #ffe9d4 100%);
+  border-color: rgba(181, 110, 40, 0.4);
+  color: #a35f1d;
+}
+
+.subevent-tournament-leaderboard-option-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+}
+
+.subevent-tournament-leaderboard-option-content .mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  line-height: 15px;
+}
+
+.subevent-tournament-leaderboard-option.tournament-leaderboard-score {
+  background: linear-gradient(180deg, #f5f9ff 0%, #edf3ff 100%);
+  color: #2e5ea8;
+}
+
+.subevent-tournament-leaderboard-option.tournament-leaderboard-fifa {
+  background: linear-gradient(180deg, #fff8ef 0%, #fff0df 100%);
+  color: #a35f1d;
+}
+
+.subevent-tournament-hint {
+  margin: 0;
+  color: rgba(35, 62, 97, 0.76);
+  font-size: 0.68rem;
+  line-height: 1.3;
+}
+
+.subevent-tournament-hint.subevent-tournament-hint-warning {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.22rem 0.56rem;
+  border: 1px solid rgba(177, 54, 54, 0.38);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff1f1 0%, #ffe5e5 100%);
+  color: #8d2f2f;
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.subevent-optional-picker-panel {
+  left: auto;
+  right: 0;
+  top: calc(100% + 0.32rem);
+  min-width: 176px;
+  z-index: 8;
+}
+
+.subevent-optional-picker-panel .activities-view-option.subevent-mode-mandatory {
+  background: linear-gradient(0deg, #ffffff, #fff0f0);
+  color: #a23d3d;
+}
+
+.subevent-optional-picker-panel .activities-view-option.subevent-mode-optional {
+  background: linear-gradient(0deg, #ffffff, #eef6ff);
+  color: #2d5ea8;
+}
+
+:host ::ng-deep .event-date-field,
+:host ::ng-deep .event-time-field {
+  width: 100%;
+  --mat-form-field-filled-container-color: transparent;
+  --mdc-filled-text-field-container-color: transparent;
+  --mat-form-field-state-layer-color: transparent;
+  --mat-form-field-hover-state-layer-opacity: 0;
+  --mat-form-field-focus-state-layer-opacity: 0;
+  --mat-form-field-outlined-outline-width: 0;
+  --mat-form-field-outlined-focus-outline-width: 0;
+  --mdc-outlined-text-field-outline-color: transparent;
+  --mdc-outlined-text-field-focus-outline-color: transparent;
+  --mdc-outlined-text-field-hover-outline-color: transparent;
+  padding-left: 0 !important;
+  margin: 0 !important;
+}
+
+::ng-deep .subevent-stage-insert-options-panel .mat-mdc-option,
+::ng-deep .subevent-tournament-leaderboard-options-panel .mat-mdc-option,
+::ng-deep .subevent-stage-insert-options-panel .mat-mdc-option .mdc-list-item__primary-text,
+::ng-deep .subevent-tournament-leaderboard-options-panel .mat-mdc-option .mdc-list-item__primary-text {
+  font-family: 'Nunito Sans', 'Segoe UI', sans-serif !important;
+}
+
+:host ::ng-deep .event-date-field .mdc-text-field--filled,
+:host ::ng-deep .event-time-field .mdc-text-field--filled {
+  --mdc-filled-text-field-container-color: transparent;
+}
+
+:host ::ng-deep .event-date-field .mdc-text-field--filled:not(.mdc-text-field--disabled)::before,
+:host ::ng-deep .event-date-field .mdc-text-field--filled:not(.mdc-text-field--disabled)::after,
+:host ::ng-deep .event-time-field .mdc-text-field--filled:not(.mdc-text-field--disabled)::before,
+:host ::ng-deep .event-time-field .mdc-text-field--filled:not(.mdc-text-field--disabled)::after {
+  border-bottom: 0 !important;
+}
+
+:host ::ng-deep .event-date-field .mat-mdc-text-field-wrapper::before,
+:host ::ng-deep .event-date-field .mat-mdc-text-field-wrapper::after,
+:host ::ng-deep .event-time-field .mat-mdc-text-field-wrapper::before,
+:host ::ng-deep .event-time-field .mat-mdc-text-field-wrapper::after {
+  border-bottom: 0 !important;
+}
+
+:host ::ng-deep .event-date-field .mat-mdc-text-field-wrapper,
+:host ::ng-deep .event-time-field .mat-mdc-text-field-wrapper {
+  min-height: 42px;
+  border-radius: 0;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0;
+  padding-left: 0 !important;
+}
+
+:host ::ng-deep .event-date-field .mdc-text-field,
+:host ::ng-deep .event-time-field .mdc-text-field {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0;
+}
+
+:host ::ng-deep .event-date-field .mat-mdc-form-field-focus-overlay,
+:host ::ng-deep .event-time-field .mat-mdc-form-field-focus-overlay {
+  background-color: transparent !important;
+  opacity: 0 !important;
+}
+
+:host ::ng-deep .event-date-field .mdc-notched-outline__leading,
+:host ::ng-deep .event-date-field .mdc-notched-outline__notch,
+:host ::ng-deep .event-date-field .mdc-notched-outline__trailing,
+:host ::ng-deep .event-time-field .mdc-notched-outline__leading,
+:host ::ng-deep .event-time-field .mdc-notched-outline__notch,
+:host ::ng-deep .event-time-field .mdc-notched-outline__trailing {
+  border: 0 !important;
+}
+
+:host ::ng-deep .event-date-field-start .mat-mdc-text-field-wrapper,
+:host ::ng-deep .event-time-field-start .mat-mdc-text-field-wrapper,
+:host ::ng-deep .event-date-field-end .mat-mdc-text-field-wrapper,
+:host ::ng-deep .event-time-field-end .mat-mdc-text-field-wrapper {
+  background: transparent !important;
+}
+
+:host ::ng-deep .event-date-field .mat-mdc-form-field-subscript-wrapper,
+:host ::ng-deep .event-time-field .mat-mdc-form-field-subscript-wrapper {
+  display: none;
+}
+
+:host ::ng-deep .event-date-field .mat-mdc-form-field-infix,
+:host ::ng-deep .event-time-field .mat-mdc-form-field-infix {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  min-height: 34px !important;
+  height: 34px;
+  display: flex;
+  align-items: center;
+}
+
+:host ::ng-deep .event-date-field .mat-mdc-form-field-flex,
+:host ::ng-deep .event-time-field .mat-mdc-form-field-flex {
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+  align-items: center !important;
+}
+
+:host ::ng-deep .event-date-field .mdc-line-ripple,
+:host ::ng-deep .event-time-field .mdc-line-ripple,
+:host ::ng-deep .event-date-field .mat-mdc-form-field-line-ripple,
+:host ::ng-deep .event-time-field .mat-mdc-form-field-line-ripple,
+:host ::ng-deep .event-date-field .mdc-line-ripple--deactivating,
+:host ::ng-deep .event-time-field .mdc-line-ripple--deactivating,
+:host ::ng-deep .event-date-field .mdc-line-ripple--active,
+:host ::ng-deep .event-time-field .mdc-line-ripple--active {
+  display: none !important;
+  opacity: 0 !important;
+  transform: scaleX(0) !important;
+}
+
+:host ::ng-deep .event-date-field .mat-mdc-form-field-bottom-align,
+:host ::ng-deep .event-time-field .mat-mdc-form-field-bottom-align {
+  display: none;
+}
+
+:host ::ng-deep .event-date-field input.mat-mdc-input-element,
+:host ::ng-deep .event-time-field input.mat-mdc-input-element {
+  border: 1px solid rgba(136, 156, 186, 0.5) !important;
+  border-radius: 11px;
+  background: #fff !important;
+  color: #1d3556;
+  min-height: 36px;
+  padding: 0 0.7rem;
+  box-sizing: border-box;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+:host ::ng-deep .experience-form-panel .event-date-field input.mat-mdc-input-element,
+:host ::ng-deep .experience-form-panel .event-time-field input.mat-mdc-input-element {
+  border: 1px solid rgba(136, 156, 186, 0.5) !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+
+:host ::ng-deep .event-date-field input.mat-mdc-input-element:focus,
+:host ::ng-deep .event-time-field input.mat-mdc-input-element:focus {
+  border-color: rgba(52, 103, 182, 0.72) !important;
+  box-shadow: 0 0 0 3px rgba(55, 116, 212, 0.14) !important;
+}
+
+:host ::ng-deep .event-date-field .mat-datepicker-toggle,
+:host ::ng-deep .event-time-field .mat-timepicker-toggle {
+  margin: 0 !important;
+  align-self: center !important;
+}
+
+:host ::ng-deep .event-date-field .mat-datepicker-toggle .mat-mdc-icon-button,
+:host ::ng-deep .event-time-field .mat-timepicker-toggle .mat-mdc-icon-button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 920px) {
+  .experience-form-overlay {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .experience-form-popup,
+  .subevent-form-popup {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .subevent-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .subevent-form-grid.subevent-form-grid-with-insert .subevent-name-field,
+  .subevent-form-grid.subevent-form-grid-with-insert .subevent-stage-insert-field {
+    grid-column: 1 / -1;
+  }
+
+  .subevent-stage-insert-controls {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.34rem;
+  }
+
+  .subevent-stage-insert-mode-btn {
+    min-height: 28px;
+    font-size: 0.7rem;
+    padding: 0 0.5rem;
+  }
+
+  .subevent-tournament-rule-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

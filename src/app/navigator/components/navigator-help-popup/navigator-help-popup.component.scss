@@ -1,0 +1,214 @@
+:host {
+  display: block;
+  font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
+  --text-main: #22324a;
+  --text-muted: rgba(23, 41, 66, 0.72);
+}
+
+.editor-list-card {
+  border: 1px solid rgba(13, 25, 44, 0.12);
+  border-radius: 11px;
+  padding: 0.56rem;
+  background: #fbfdff;
+}
+
+.editor-list-card h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-main);
+}
+
+.editor-list-card p {
+  margin-top: 0.26rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.support-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.support-help-hero {
+  background: linear-gradient(180deg, #fbf4e8 0%, #fffaf0 100%);
+  border-color: rgba(157, 118, 41, 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.support-help-hero h4 {
+  color: #7c5618;
+}
+
+.support-help-hero p {
+  color: rgba(108, 74, 19, 0.84);
+}
+
+.support-help-tabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.45rem;
+}
+
+.support-help-tab-btn {
+  border: 1px solid rgba(26, 53, 92, 0.18);
+  border-radius: 11px;
+  background: linear-gradient(180deg, #f9fbff 0%, #f1f6ff 100%);
+  color: #1f3d63;
+  min-height: 82px;
+  padding: 0.54rem;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.support-help-tab-btn.is-active {
+  border-color: rgba(53, 98, 172, 0.5);
+  background: linear-gradient(180deg, #e8f3ff 0%, #dbeaff 100%);
+  box-shadow: 0 4px 12px rgba(39, 76, 124, 0.2);
+}
+
+.support-help-tab-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  font-size: 0.83rem;
+  font-weight: 800;
+}
+
+.support-help-tab-head .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+  color: #2c629e;
+}
+
+.support-help-tab-blurb {
+  font-size: 0.74rem;
+  line-height: 1.3;
+  color: rgba(28, 50, 82, 0.76);
+}
+
+.support-help-detail {
+  background: #fff;
+  border-color: rgba(47, 86, 139, 0.22);
+}
+
+.support-help-detail h4 {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.36rem;
+}
+
+.support-help-detail h4 .mat-icon {
+  width: 17px;
+  height: 17px;
+  font-size: 17px;
+  line-height: 17px;
+  color: #2c629e;
+}
+
+.support-help-detail-lead {
+  margin-top: 0.3rem;
+  color: rgba(29, 59, 97, 0.86);
+  font-weight: 700;
+}
+
+.support-help-detail-list {
+  margin: 0.36rem 0 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.2rem;
+  color: rgba(25, 48, 77, 0.86);
+  font-size: 0.78rem;
+}
+
+.support-help-accordion {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .support-help-tabs-desktop,
+  .support-help-detail-desktop {
+    display: none;
+  }
+
+  .support-help-accordion {
+    display: grid;
+    gap: 0.44rem;
+  }
+
+  .support-help-accordion-item {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .support-help-accordion-btn {
+    width: 100%;
+    border: 0;
+    background: linear-gradient(180deg, #f9fbff 0%, #f1f6ff 100%);
+    color: #1f3d63;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.7rem 0.76rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .support-help-accordion-item.is-open .support-help-accordion-btn {
+    background: linear-gradient(180deg, #e8f3ff 0%, #dbeaff 100%);
+  }
+
+  .support-help-accordion-caret {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    line-height: 18px;
+    color: #2c629e;
+    transition: transform 0.16s ease;
+  }
+
+  .support-help-accordion-item.is-open .support-help-accordion-caret {
+    transform: rotate(180deg);
+  }
+
+  .support-help-accordion-panel-wrap {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition:
+      grid-template-rows 0.22s cubic-bezier(0.22, 0.61, 0.36, 1),
+      opacity 0.18s ease;
+  }
+
+  .support-help-accordion-panel-wrap.is-open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+
+  .support-help-accordion-panel {
+    min-height: 0;
+    overflow: hidden;
+    padding: 0 0.76rem;
+    border-top: 0 solid rgba(47, 86, 139, 0.14);
+    background: #fff;
+    transition:
+      padding 0.22s cubic-bezier(0.22, 0.61, 0.36, 1),
+      border-top-width 0.18s ease;
+  }
+
+  .support-help-accordion-panel-wrap.is-open .support-help-accordion-panel {
+    padding: 0.72rem 0.76rem 0.82rem;
+    border-top-width: 1px;
+  }
+
+  .support-help-accordion-panel p:first-child {
+    margin-top: 0;
+  }
+}

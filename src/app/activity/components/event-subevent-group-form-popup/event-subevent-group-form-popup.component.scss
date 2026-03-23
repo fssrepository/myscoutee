@@ -1,0 +1,206 @@
+@use '../activity-interactions.shared' as shared;
+
+@include shared.host-motion-vars();
+@include shared.interactive-feedback('.popup-header-add-btn, .experience-form-close-btn');
+
+.experience-form-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3910;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.9rem;
+}
+
+.experience-form-overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 16, 30, 0.54);
+  backdrop-filter: blur(2px);
+}
+
+.experience-form-popup {
+  position: relative;
+  z-index: 1;
+  width: min(620px, calc(100vw - 2rem));
+  border-radius: 16px;
+  border: 1px solid rgba(42, 66, 102, 0.28);
+  background: #fff;
+  box-shadow: 0 24px 60px rgba(14, 32, 58, 0.26);
+  overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  font-family: inherit;
+}
+
+.subevent-group-popup {
+  width: min(620px, calc(100vw - 2rem));
+}
+
+.experience-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.82rem 1rem;
+  border-bottom: 1px solid rgba(187, 199, 217, 0.7);
+  background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%);
+}
+
+.experience-form-header h3 {
+  margin: 0;
+  color: #1e385a;
+  font-size: 1.12rem;
+  font-weight: 700;
+}
+
+.subevent-group-header {
+  align-items: flex-start;
+}
+
+.subevent-group-header-main {
+  min-width: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.subevent-group-stage-subtitle {
+  margin: 0;
+  color: rgba(35, 57, 88, 0.76);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.24;
+}
+
+.experience-form-header-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.44rem;
+}
+
+@include shared.popup-header-add-btn-base();
+@include shared.experience-form-close-btn-base();
+
+.experience-form-panel {
+  border: 1px solid rgba(43, 71, 107, 0.2);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fbff 0%, #f4f8ff 100%);
+  padding: 0.74rem;
+  display: grid;
+  gap: 0.78rem;
+  margin: 0;
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.subevent-group-form-panel {
+  background: linear-gradient(180deg, #f1f9ff 0%, #e8f3ff 100%);
+  border-color: rgba(63, 118, 188, 0.28);
+}
+
+.experience-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  justify-content: stretch;
+  column-gap: 1rem;
+  row-gap: 0.9rem;
+}
+
+.subevent-group-form-grid {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  align-items: start;
+}
+
+.subevent-group-form-grid label {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.22rem !important;
+}
+
+.experience-form-grid label > span {
+  font-weight: 600;
+  color: rgba(26, 44, 69, 0.88);
+  font-size: 0.88rem;
+}
+
+.required-star {
+  color: #bf2f2f;
+  font-weight: 800;
+}
+
+.experience-form-panel input {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid rgba(136, 156, 186, 0.5);
+  border-radius: 10px;
+  background: #fff;
+  color: #1d3556;
+  padding: 0.56rem 0.72rem;
+  font-size: 0.88rem;
+  line-height: 1.25;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+}
+
+.experience-form-panel input:focus {
+  outline: 0;
+  border-color: rgba(52, 103, 182, 0.72);
+  box-shadow: 0 0 0 3px rgba(55, 116, 212, 0.14);
+}
+
+.experience-form-panel input.field-required-invalid {
+  border-color: #c83232 !important;
+  box-shadow: 0 0 0 2px rgba(200, 50, 50, 0.16);
+}
+
+.experience-form-panel input.field-required-invalid:focus {
+  border-color: #b61f1f !important;
+  box-shadow: 0 0 0 3px rgba(182, 31, 31, 0.24);
+}
+
+.subevent-capacity-range-field {
+  width: 100%;
+}
+
+.subevent-capacity-range {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.subevent-capacity-range input {
+  width: 100%;
+}
+
+.subevent-capacity-separator {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: rgba(31, 56, 89, 0.72);
+  line-height: 1;
+}
+
+@media (max-width: 920px) {
+  .experience-form-overlay {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .experience-form-popup,
+  .subevent-group-popup {
+    width: 100vw;
+    max-width: 100vw;
+    border-radius: 0;
+  }
+}

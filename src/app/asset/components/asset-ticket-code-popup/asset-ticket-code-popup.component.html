@@ -1,0 +1,19 @@
+<div class="ticket-code-popup">
+  <div class="ticket-code-sheet" *ngIf="selectedTicketRow">
+    <div class="ticket-scan-person-card ticket-scan-person-card-ticket ticket-code-info-card">
+      <div class="ticket-scan-person-body">
+        <div class="ticket-scan-person-avatar" [style.backgroundImage]="avatarUrl ? 'url(' + avatarUrl + ')' : null">
+          <span *ngIf="!avatarUrl">{{ initials }}</span>
+        </div>
+        <div class="ticket-scan-person-meta">
+          <p>{{ personLine }}</p>
+          <p>{{ roleEventLine }}</p>
+          <p>{{ dateLine }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="ticket-code-qr-wrap">
+      <img class="ticket-code-qr-image" [src]="qrImageUrl" alt="Ticket QR code" />
+    </div>
+  </div>
+</div>

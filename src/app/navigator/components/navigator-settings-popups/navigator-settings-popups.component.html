@@ -1,0 +1,22 @@
+<ng-container *ngIf="activePopup() as popup">
+  <section class="app-popup">
+    <div class="app-popup-backdrop" (click)="closePopup()"></div>
+    <div class="app-popup-panel navigator-settings-popup-panel" (click)="$event.stopPropagation()">
+      <div class="popup-header">
+        <div class="popup-title">
+          <h2>{{ popupTitle(popup) }}</h2>
+        </div>
+        <button mat-icon-button class="popup-close" (click)="closePopup()" aria-label="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="popup-body">
+        <app-navigator-help-popup *ngIf="popup === 'help'"></app-navigator-help-popup>
+        <app-navigator-feedback-popup *ngIf="popup === 'feedback'"></app-navigator-feedback-popup>
+        <app-navigator-privacy-popup *ngIf="popup === 'privacy'"></app-navigator-privacy-popup>
+        <app-navigator-report-user-popup *ngIf="popup === 'report-user'"></app-navigator-report-user-popup>
+      </div>
+    </div>
+  </section>
+</ng-container>

@@ -28,7 +28,15 @@
             "prerender": false,
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
-            "assets": ["src/assets", "src/404.html"],
+            "assets": [
+              "src/assets",
+              "src/404.html",
+              {
+                "glob": "**/*",
+                "input": "keys",
+                "output": "keys"
+              }
+            ],
             "styles": [
               "src/_styles/styles.scss"
             ]
@@ -47,7 +55,15 @@
                   "maximumError": "400kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "optimization": {
+                "styles": {
+                  "inlineCritical": true
+                },
+                "fonts": {
+                  "inline": true
+                }
+              }
             },
             "development": {
               "outputPath": {
@@ -69,6 +85,9 @@
             },
             "development": {
               "buildTarget": "myscoutee:build:development"
+            },
+            "production-serve": {
+              "buildTarget": "myscoutee:build:production"
             }
           },
           "defaultConfiguration": "development"
