@@ -851,6 +851,10 @@
   font-size: 0.98rem;
   line-height: 1;
   cursor: pointer;
+
+  /* ADD THESE TWO LINES */
+  touch-action: manipulation;
+  will-change: transform, color;
 }
 
 .star-btn.filled {
@@ -2145,6 +2149,8 @@
 
   .game-rating-dock {
     padding: 0 var(--game-stack-inline-gap) calc(0.64rem + env(safe-area-inset-bottom));
+    /* ADD THIS LINE: Removes the 300ms touch delay */
+    touch-action: manipulation;
   }
 
   .star-btn {
@@ -2179,9 +2185,7 @@
     width: 100vw;
     max-width: 100vw;
     min-height: 100dvh;
-    min-height: 100vh;
     height: 100dvh;
-    height: 100vh;
     max-height: 100dvh;
     border-radius: 0;
     border-left-width: 0;
