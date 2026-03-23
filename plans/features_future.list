@@ -1,69 +1,43 @@
-activities-popup.component.ts cut out the templates (ActivitiesListComponent)
+Slots
+-----
+1) main event
+Next to the one time event, there is a button called slot
+Opens a new slots wizard (calendar view - dragable element, and you can add slots)
+The main event editor, just show the slots in read only form, maybe scrolabble (undecided)
+(The slot wizard maybe only for public and friends event)
+Naturally the frequency affects the slot what you can add - monthly - you can pick some days, but on daily not.
+2) request to join on event explore (you can fully book an event - a flag on main event, but in this case the request to join is a "book")
+when you request join slots vizard in read only form popups up and you can choose a slot
+(the request join menu itself should show red counter or different way that you need to choose from slots)
+3) slots has separate and coloured chat channels
 
-request to join - if there is slots, you can choose from the menu -> like the request to join has a ">"
-event editor should show for public or friends whether it's for group  of people or individual can join
+Ratings
+-------
+separated friends, you met with both, but they didn't meet with each other
+friends in common, when you didn't met with someone, but you both meet a person, who meet with both of you
 
-on event item, go to the chat menu - + red counter on the three dot menu??? - so if anybody joined to the slot, needs to see
-not sure about slot handling on event page - as there is only one event (maybe it's a separate screen)
+1) home
+next to single mode/pair mode -> trasform to dropdown box, add "separated friends" / "friends in common"
+separated friends is a pair rate view, but two auto completer textbox at top of the image (you can put event/friends name etc.)
+the filtered list can be vertically scrollable on the pair panel the two people independently
+2) actitivies - rating
+separated friends -> on your side -> pair rate - given / on other side -> pair rate received (and it's friendss in common actually)
+next to pair rate label (dropdown box/mobile menu sheet) you can set - social badge on/off -
+so it's filtering the separated/friends in common from the given/received list
+when switch on the given/received red counter applies
 
-maybe put a contacts icon and it's going to rates met???
+Asset explore
+-------------
+You can borrow items from a foreigner (assets (accomodation/car/suplies) with public or friends visibility)
+Assets can be filtered by capacity, availability, topic (very similar screen then the event explore)
+Assets can have price tag (we haven't introduced purse for public/frineds event also)
 
-must
-----------------
-1) instagram account should be renamed from myscoutee1 to myscoutee, after the other account deleted (deletion period ended apr 3)
-2) pull up feature if you edned up bottom of the scrolling area (by luck figured out pull down behaviour)
-
-optional
----------------------
-
-optional event switch so it can be parallel or non-parallel against other optional event --- put the extra form field
-ratings - filter menu switch of friends in common + separated friends + Any
-
-maybe on the same menubar where the drop-down box is or popup - and the menu item will be adjusted accordingly
-(label will be shown, so no separate filter button to get enough room
-
-maybe in one line explain what it is over there (red badge message)
-separated friends won't be a popup two textbox at the top to filter and veryical scroll after independently both woman and man in a pair panel
-someone is friends in common or separated friends icon top roght corner showns that on activities rating
-
-it's going to the given rate
-here new menu item friends in common also
-
-single/pair/separated friends
-(you can put here the two + boxes, too choose friends rating, who does not know each other, maybe vertical swipe and filter text at the top of each boxes
-
-switch button on avatar menu (simple / middle / advanced)
-1) optional sub event can take place in the same time, does not need to be cut by another optional sub event
-2) Friends in common filter for game screen
-3) split the big module to smaller 2-3 static modules (chunks) to speed up the build
-4) activities rating - pair rate - met option or Separate friends flag
-(you can rate for pairs who does not know each other, but you know them)
-
-i think it can work in a way that two rectangles next to each other and a + in the middle for both
-click on "+" open new popup with friends, you can choose (there is one filter next to closing x in the header man/woman)
-clicking "+" on the right image is for woman, clicking on the right is for man
-when both has been selected star badge appear and you can rate
-it will go to the given list what you might be able to filter for (and somehow it shows that it's separated friends on the card)
-
-maybe
---------------------------------------------------------
-
-Assets Explore includes a popup with Public and Friends-only visibility.
-The menu bar shows an asset counter and allows selecting a borrowing date range, while badges serve a separate purpose.
-
-Assets can be filtered by date to display availability and capacity.
-Each asset may have a price set in the Asset Editor, though the Explore route development is still undecided.
-
-For events, fully booked items appear as Occupied. 
-
-Occupancy for selected dates must be clearly visible in both the popup and item view.
-Events also include an expense field with amount and currency.
-
-make a slot on/off button on event editor (multiple dates can be added - with byweekly, one time etc.),
-if it's public or friends (so when it explores it can decide the slots also)
-
-event explore - public - slots fot recommendations - when you can join or grab fully
-
-availability dates of assets (car/accomodation/suplies) to be able to lend
-
-it was a parser of cv to load schools and workspaces in the old myscoutee
+Bugs
+----
+1) activities-popup.component.ts cut out the templates (ActivitiesListComponent)
+2) put a contacts button to show assign members popup without basket
+3) optional events can be parallel (maybe a switch on the form "parallel allowed"), but needs to cut the mandatory in the same way when you add
+4) pull up feature if you edned up bottom of the scrolling area (by luck figured out pull down behaviour)
+5) instagram account should be renamed from myscoutee1 to myscoutee, after the other account deleted (deletion period ended apr 3)
+6) on profile editor the school/workspace item can be loaded from a cv (pdf/docx parse) - old myscoutee had got that
+7) personality traits should be stored in the db
