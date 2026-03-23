@@ -278,18 +278,9 @@
 }
 
 .home-smart-list {
-  /* ADD THESE */
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  contain: strict; /* Tells the browser this list won't change size, saving CPU */
-}
-
-/* Force the internal card to stay attached during animation */
-.home-smart-list ::ng-deep .activities-rate-profile-card {
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
 }
 
 :host ::ng-deep .home-smart-list .smart-list__stage {
@@ -861,9 +852,9 @@
   line-height: 1;
   cursor: pointer;
 
-  /* ADD THESE LINES */
-  will-change: transform, opacity; /* Pre-allocates memory for the curl/blink */
-  transform: translateZ(0);       /* Forces a new composite layer */
+  /* ADD THESE TWO LINES */
+  will-change: transform, opacity; /* Fixes the 'frozen' state during blink/curl */
+  backface-visibility: hidden;    /* Forces GPU acceleration for smoother curl */
 }
 
 .star-btn.filled {
@@ -2158,10 +2149,9 @@
 
   .game-rating-dock {
     padding: 0 var(--game-stack-inline-gap) calc(0.64rem + env(safe-area-inset-bottom));
-    /* ADD THESE THREE LINES: Prevents card/star-bar separation */
-    transform-style: preserve-3d;
-    contain: content;
-    will-change: transform;
+    /* ADD THESE TWO LINES */
+    touch-action: manipulation; 
+    content-visibility: auto; /* Optimizes rendering for the star bar area */
   }
 
   .star-btn {
