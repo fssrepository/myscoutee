@@ -94,6 +94,46 @@ export class DemoChatsRepository {
     return record ? DemoChatsRepositoryBuilder.cloneMessages(record.messages ?? []) : [];
   }
 
+  appendChatMessage(chat: ChatMenuItem, message: AppTypes.ChatPopupMessage): AppTypes.ChatPopupMessage | null {
+    this.init();
+    const record = this.resolveChatRecord(chat);
+    if (!record) {
+      return null;
+    }
+    const messageClone = DemoChatsRepositoryBuilder.cloneMessages([message])[0] ?? null;
+    if (!messageClone) {
+      return null;
+    }
+    const recordKey = DemoChatsRepositoryBuilder.buildRecordKey(record.ownerUserId, record.id);
+    this.memoryDb.write(currentState => {
+      const currentTable = currentState[CHATS_TABLE_NAME];
+      const existingRecord = currentTable.byId[recordKey];
+      if (!existingRecord) {
+        return currentState;
+      }
+      return {
+        ...currentState,
+        [CHATS_TABLE_NAME]: {
+          ...currentTable,
+          byId: {
+            ...currentTable.byId,
+            [recordKey]: {
+              ...existingRecord,
+              lastMessage: messageClone.text,
+              lastSenderId: messageClone.senderAvatar.id,
+              dateIso: messageClone.sentAtIso,
+              messages: [
+                ...DemoChatsRepositoryBuilder.cloneMessages(existingRecord.messages ?? []),
+                messageClone
+              ]
+            }
+          }
+        }
+      };
+    });
+    return messageClone;
+  }
+
   private queryUserRecords(userId: string): DemoChatRecord[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {

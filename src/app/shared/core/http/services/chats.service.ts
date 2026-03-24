@@ -5,7 +5,24 @@ import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import type { ChatMenuItem } from '../../base/interfaces/activity-feed.interface';
+import { AppContext } from '../../base/context';
+import { FirebaseAuthService } from '../../base/services/firebase-auth.service';
 import type { DemoChatRecord } from '../../demo/models/chats.model';
+
+interface HttpChatSummaryDto {
+  id: string;
+  avatar: string;
+  title: string;
+  lastMessage: string;
+  lastSenderId: string;
+  memberIds: string[];
+  unread: number;
+  dateIso?: string;
+  channelType?: 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent';
+  eventId?: string;
+  distanceKm?: number;
+  distanceMetersExact?: number;
+}
 
 interface HttpChatMessageDto {
   id: string;
@@ -15,6 +32,7 @@ interface HttpChatMessageDto {
   senderGender: 'woman' | 'man';
   text: string;
   sentAtIso: string;
+  mine?: boolean;
   readBy?: Array<{
     id: string;
     initials: string;
@@ -22,12 +40,24 @@ interface HttpChatMessageDto {
   }>;
 }
 
+interface HttpChatSocketRequestDto {
+  type: 'message';
+  text: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class HttpChatsService {
   private readonly http = inject(HttpClient);
+  private readonly appCtx = inject(AppContext);
+  private readonly firebaseAuthService = inject(FirebaseAuthService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
+  private readonly chatItemsByUserId = new Map<string, DemoChatRecord[]>();
+  private socket: WebSocket | null = null;
+  private socketChatId: string | null = null;
+  private socketPromise: Promise<WebSocket | null> | null = null;
+  private readonly socketListeners = new Set<(message: AppTypes.ChatPopupMessage) => void>();
 
   async queryChatItemsByUser(userId: string): Promise<DemoChatRecord[]> {
     const normalizedUserId = userId.trim();
@@ -36,50 +66,265 @@ export class HttpChatsService {
     }
     try {
       const response = await this.http
-        .get<DemoChatRecord[] | null>(`${this.apiBaseUrl}/activities/chats`, {
-          params: new HttpParams().set('userId', normalizedUserId)
+        .get<HttpChatSummaryDto[] | null>(`${this.apiBaseUrl}/activities/chats`, {
+          params: this.withUserId(new HttpParams(), normalizedUserId)
         })
         .toPromise();
-      if (!Array.isArray(response)) {
-        return [];
-      }
-      return response.map(record => ({ ...record, memberIds: [...(record.memberIds ?? [])] }));
+      const records = Array.isArray(response)
+        ? response.map(item => this.mapChatRecord(item, normalizedUserId))
+        : [];
+      this.chatItemsByUserId.set(normalizedUserId, records.map(record => this.cloneChatRecord(record)));
+      return records.map(record => this.cloneChatRecord(record));
     } catch {
-      return [];
+      return this.peekChatItemsByUser(normalizedUserId);
     }
   }
 
-  peekChatItemsByUser(_userId: string): DemoChatRecord[] {
-    return [];
+  peekChatItemsByUser(userId: string): DemoChatRecord[] {
+    const normalizedUserId = userId.trim();
+    const records = this.chatItemsByUserId.get(normalizedUserId) ?? [];
+    return records.map(record => this.cloneChatRecord(record));
   }
 
   async loadChatMessages(chat: ChatMenuItem): Promise<AppTypes.ChatPopupMessage[]> {
     const response = await this.http
-      .get<HttpChatMessageDto[]>(`${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/messages`)
+      .get<HttpChatMessageDto[]>(`${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/messages`, {
+        params: this.activeUserParams()
+      })
       .toPromise();
 
-    const messages = (response ?? []).map(message => {
-      const sentAt = new Date(message.sentAtIso);
-      return {
-        id: message.id,
-        sender: message.senderName,
-        senderAvatar: {
-          id: message.senderId,
-          initials: message.senderInitials,
-          gender: message.senderGender
-        },
-        text: message.text,
-        time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-        sentAtIso: message.sentAtIso,
-        mine: false,
-        readBy: (message.readBy ?? []).map(reader => ({
-          id: reader.id,
-          initials: reader.initials,
-          gender: reader.gender
-        }))
-      } satisfies AppTypes.ChatPopupMessage;
-    });
+    const messages = (response ?? []).map(message => this.mapChatMessage(message));
 
     return messages.sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+  }
+
+  async sendChatMessage(chat: ChatMenuItem, text: string): Promise<AppTypes.ChatPopupMessage | null> {
+    const trimmedText = text.trim();
+    if (!trimmedText) {
+      return null;
+    }
+
+    const socket = await this.ensureSocket(chat);
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      const payload: HttpChatSocketRequestDto = {
+        type: 'message',
+        text: trimmedText
+      };
+      socket.send(JSON.stringify(payload));
+      return null;
+    }
+
+    try {
+      const response = await this.http
+        .post<HttpChatMessageDto | null>(
+          `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/messages`,
+          { text: trimmedText },
+          { params: this.activeUserParams() }
+        )
+        .toPromise();
+      return response ? this.mapChatMessage(response) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async watchChatMessages(
+    chat: ChatMenuItem,
+    onMessage: (message: AppTypes.ChatPopupMessage) => void
+  ): Promise<() => void> {
+    const normalizedChatId = `${chat.id ?? ''}`.trim();
+    if (!normalizedChatId) {
+      return () => {};
+    }
+
+    this.socketListeners.add(onMessage);
+    const socket = await this.ensureSocket(chat);
+    if (!socket) {
+      this.socketListeners.delete(onMessage);
+      return () => {};
+    }
+
+    return () => {
+      this.socketListeners.delete(onMessage);
+      if (this.socketListeners.size === 0) {
+        this.closeSocket();
+      }
+    };
+  }
+
+  private mapChatRecord(item: HttpChatSummaryDto, ownerUserId: string): DemoChatRecord {
+    const distanceKm = Number(item.distanceKm) || 0;
+    const distanceMetersExact = Number.isFinite(Number(item.distanceMetersExact))
+      ? Math.max(0, Math.trunc(Number(item.distanceMetersExact)))
+      : Math.max(0, Math.round(distanceKm * 1000));
+    return {
+      id: `${item.id ?? ''}`.trim(),
+      avatar: `${item.avatar ?? ''}`.trim(),
+      title: `${item.title ?? ''}`.trim(),
+      lastMessage: `${item.lastMessage ?? ''}`.trim(),
+      lastSenderId: `${item.lastSenderId ?? ''}`.trim(),
+      memberIds: [...(item.memberIds ?? [])],
+      unread: Math.max(0, Math.trunc(Number(item.unread) || 0)),
+      dateIso: item.dateIso,
+      channelType: item.channelType,
+      eventId: item.eventId,
+      distanceKm,
+      distanceMetersExact,
+      ownerUserId
+    } satisfies DemoChatRecord;
+  }
+
+  private cloneChatRecord(record: DemoChatRecord): DemoChatRecord {
+    return {
+      ...record,
+      memberIds: [...(record.memberIds ?? [])],
+      messages: record.messages?.map(message => ({
+        ...message,
+        readBy: [...(message.readBy ?? [])]
+      }))
+    };
+  }
+
+  private mapChatMessage(message: HttpChatMessageDto): AppTypes.ChatPopupMessage {
+    const sentAt = new Date(message.sentAtIso);
+    const activeUserId = this.activeUserId();
+    return {
+      id: message.id,
+      sender: message.senderName,
+      senderAvatar: {
+        id: message.senderId,
+        initials: message.senderInitials,
+        gender: message.senderGender
+      },
+      text: message.text,
+      time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      sentAtIso: message.sentAtIso,
+      mine: message.mine === true || (!!activeUserId && message.senderId === activeUserId),
+      readBy: (message.readBy ?? []).map(reader => ({
+        id: reader.id,
+        initials: reader.initials,
+        gender: reader.gender
+      }))
+    } satisfies AppTypes.ChatPopupMessage;
+  }
+
+  private async ensureSocket(chat: ChatMenuItem): Promise<WebSocket | null> {
+    const normalizedChatId = `${chat.id ?? ''}`.trim();
+    if (!normalizedChatId || typeof WebSocket === 'undefined' || typeof window === 'undefined') {
+      return null;
+    }
+    if (
+      this.socket &&
+      this.socketChatId === normalizedChatId &&
+      (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)
+    ) {
+      if (this.socket.readyState === WebSocket.OPEN) {
+        return this.socket;
+      }
+      return this.socketPromise ?? Promise.resolve(this.socket);
+    }
+    if (this.socketPromise && this.socketChatId === normalizedChatId) {
+      return this.socketPromise;
+    }
+
+    this.closeSocket(false);
+    this.socketChatId = normalizedChatId;
+    this.socketPromise = this.createSocket(normalizedChatId);
+    const socket = await this.socketPromise;
+    this.socketPromise = null;
+    return socket;
+  }
+
+  private async createSocket(chatId: string): Promise<WebSocket | null> {
+    const socketUrl = await this.buildSocketUrl(chatId);
+    if (!socketUrl) {
+      return null;
+    }
+
+    return new Promise<WebSocket | null>(resolve => {
+      const socket = new WebSocket(socketUrl);
+      let resolved = false;
+      const finalize = (value: WebSocket | null) => {
+        if (resolved) {
+          return;
+        }
+        resolved = true;
+        resolve(value);
+      };
+
+      socket.onopen = () => {
+        this.socket = socket;
+        finalize(socket);
+      };
+      socket.onmessage = event => {
+        try {
+          const parsed = JSON.parse(`${event.data ?? ''}`) as HttpChatMessageDto;
+          const message = this.mapChatMessage(parsed);
+          for (const listener of this.socketListeners) {
+            listener(message);
+          }
+        } catch {
+          // Ignore malformed live chat payloads and keep the socket open.
+        }
+      };
+      socket.onerror = () => {
+        if (this.socket === socket) {
+          this.closeSocket(false);
+        }
+        finalize(null);
+      };
+      socket.onclose = () => {
+        if (this.socket === socket) {
+          this.closeSocket(false);
+        }
+      };
+    });
+  }
+
+  private async buildSocketUrl(chatId: string): Promise<string | null> {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    const baseUrl = new URL(`${this.apiBaseUrl.replace(/\/+$/, '')}/activities/chats/ws`, window.location.origin);
+    baseUrl.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    baseUrl.searchParams.set('chatId', chatId);
+    const activeUserId = this.activeUserId();
+    if (activeUserId) {
+      baseUrl.searchParams.set('userId', activeUserId);
+    }
+    if (this.firebaseAuthService.enabled) {
+      const token = await this.firebaseAuthService.getIdToken();
+      if (!token) {
+        return null;
+      }
+      baseUrl.searchParams.set('token', token);
+    }
+    return baseUrl.toString();
+  }
+
+  private activeUserId(): string {
+    return this.appCtx.activeUserId().trim();
+  }
+
+  private activeUserParams(): HttpParams {
+    return this.withUserId(new HttpParams(), this.activeUserId());
+  }
+
+  private withUserId(params: HttpParams, userId: string): HttpParams {
+    const normalizedUserId = userId.trim();
+    return normalizedUserId ? params.set('userId', normalizedUserId) : params;
+  }
+
+  private closeSocket(clearListeners = true): void {
+    const currentSocket = this.socket;
+    this.socket = null;
+    this.socketChatId = null;
+    this.socketPromise = null;
+    if (clearListeners) {
+      this.socketListeners.clear();
+    }
+    if (currentSocket && (currentSocket.readyState === WebSocket.OPEN || currentSocket.readyState === WebSocket.CONNECTING)) {
+      currentSocket.close();
+    }
   }
 }

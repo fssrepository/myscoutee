@@ -17,13 +17,14 @@ import { DemoUsersRepository } from '../../demo';
   providedIn: 'root'
 })
 export class ChatsService extends BaseRouteModeService {
+  private static readonly CHAT_ROUTE = '/activities/chats';
+
   private readonly demoChatsService = inject(DemoChatsService);
   private readonly httpChatsService = inject(HttpChatsService);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
 
-
   private get chatsService(): DemoChatsService | HttpChatsService {
-    return this.resolveRouteService('/activities/chats', this.demoChatsService, this.httpChatsService);
+    return this.resolveRouteService(ChatsService.CHAT_ROUTE, this.demoChatsService, this.httpChatsService);
   }
 
   async queryChatItemsByUser(userId: string): Promise<DemoChatRecord[]> {
@@ -38,6 +39,17 @@ export class ChatsService extends BaseRouteModeService {
     return this.chatsService.loadChatMessages(chat);
   }
 
+  async sendChatMessage(chat: ChatMenuItem, text: string): Promise<AppTypes.ChatPopupMessage | null> {
+    return this.chatsService.sendChatMessage(chat, text);
+  }
+
+  async watchChatMessages(
+    chat: ChatMenuItem,
+    onMessage: (message: AppTypes.ChatPopupMessage) => void
+  ): Promise<() => void> {
+    return this.chatsService.watchChatMessages(chat, onMessage);
+  }
+
   async queryActivitiesChatPage(
     userId: string,
     request: ActivitiesPageRequest,
@@ -46,10 +58,11 @@ export class ChatsService extends BaseRouteModeService {
       users?: readonly DemoUser[];
     } = {}
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
-    const items = options.chatItems
+    const items = options.chatItems && options.chatItems.length > 0
       ? options.chatItems.map(item => ({
           ...item,
-          ownerUserId: 'ownerUserId' in item && typeof item.ownerUserId === 'string' ? item.ownerUserId : userId
+          ownerUserId: 'ownerUserId' in item && typeof item.ownerUserId === 'string' ? item.ownerUserId : userId,
+          memberIds: [...(item.memberIds ?? [])]
         }))
       : await this.queryChatItemsByUser(userId);
     const filteredItems = items.filter(item =>

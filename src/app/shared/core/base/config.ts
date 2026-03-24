@@ -32,7 +32,8 @@ export const ROUTE_CONFIG: RouteConfig = {
     },
     {
       routePrefix: '/activities/chats',
-      demoDelayMs: 1500
+      demoDelayMs: 1500,
+      http: true
     },
     {
       routePrefix: '/activities/events',

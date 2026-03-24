@@ -21,7 +21,7 @@ import { ActivitiesPopupStateService } from '../../services/activities-popup-sta
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import type { EventChatResourceContext } from '../../../shared/core/base/models';
 import { AppPopupContext } from '../../../shared/core';
-import type { EventMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
+import type { ChatMenuItem, EventMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
 import {
   SmartListComponent,
   type ListQuery,
@@ -117,6 +117,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private chatHeaderLoadingInterval: ReturnType<typeof setInterval> | null = null;
   private chatHeaderLoadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
   private chatHeaderLoadingStartedAtMs = 0;
+  private liveChatUnsubscribe: (() => void) | null = null;
 
   constructor() {
     effect(() => {
@@ -127,6 +128,7 @@ export class EventChatPopupComponent implements OnDestroy {
         this.cdr.markForCheck();
         return;
       }
+      this.teardownLiveChatUpdates();
       this.loadedSessionKey = sessionKey;
       this.initialChatLoadedSessionKey = null;
       this.draftMessage = '';
@@ -154,6 +156,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.teardownLiveChatUpdates();
     this.cancelChatInitialLoadTimer();
     this.clearChatHeaderLoadingAnimation();
   }
@@ -161,6 +164,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected close(): void {
     this.showContextMenu = false;
     this.contextMenuOpenUp = false;
+    this.teardownLiveChatUpdates();
     this.cancelChatInitialLoadTimer();
     this.clearChatHeaderLoadingAnimation();
     this.loadedSessionKey = null;
@@ -322,28 +326,22 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!session || !text) {
       return;
     }
-    const sentAt = new Date();
-    this.allMessages = [
-      ...this.allMessages,
-      {
-        id: `${session.item.id}:${sentAt.getTime()}`,
-        sender: 'You',
-        senderAvatar: {
-          id: 'self',
-          initials: 'ME',
-          gender: 'man'
-        },
-        text,
-        time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-        sentAtIso: AppUtils.toIsoDateTime(sentAt),
-        mine: true,
-        readBy: []
-      }
-    ];
-    this.chatThreadRevision += 1;
-    this.syncChatThreadQuery();
+    const sessionKey = `${session.item.id}:${session.openedAtIso}`;
     this.draftMessage = '';
     this.cdr.markForCheck();
+    void this.activitiesContext.sendEventChatMessage(session.item, text)
+      .then(message => {
+        if (message) {
+          this.mergeIncomingChatMessage(message);
+        }
+      })
+      .catch(() => {
+        if (this.loadedSessionKey !== sessionKey) {
+          return;
+        }
+        this.draftMessage = text;
+        this.cdr.markForCheck();
+      });
   }
 
   private async loadInitialChatThreadPage(
@@ -364,6 +362,7 @@ export class EventChatPopupComponent implements OnDestroy {
       this.allMessages = [...nextMessages]
         .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
       this.initialChatLoadedSessionKey = sessionKey;
+      await this.startLiveChatUpdates(session.item, sessionKey);
       return this.chatThreadPageResult(query);
     } catch {
       if (this.loadedSessionKey !== sessionKey) {
@@ -371,6 +370,7 @@ export class EventChatPopupComponent implements OnDestroy {
       }
       this.allMessages = [];
       this.initialChatLoadedSessionKey = sessionKey;
+      await this.startLiveChatUpdates(session.item, sessionKey);
       return this.chatThreadPageResult(query);
     } finally {
       if (this.loadedSessionKey === sessionKey) {
@@ -412,6 +412,34 @@ export class EventChatPopupComponent implements OnDestroy {
         sessionKey: this.loadedSessionKey
       }
     };
+  }
+
+  private async startLiveChatUpdates(chat: ChatMenuItem, sessionKey: string): Promise<void> {
+    if (this.loadedSessionKey !== sessionKey || this.liveChatUnsubscribe) {
+      return;
+    }
+    this.liveChatUnsubscribe = await this.activitiesContext.watchEventChatMessages(chat, message => {
+      if (this.loadedSessionKey !== sessionKey) {
+        return;
+      }
+      this.mergeIncomingChatMessage(message);
+    });
+  }
+
+  private teardownLiveChatUpdates(): void {
+    this.liveChatUnsubscribe?.();
+    this.liveChatUnsubscribe = null;
+  }
+
+  private mergeIncomingChatMessage(message: AppTypes.ChatPopupMessage): void {
+    if (this.allMessages.some(existingMessage => existingMessage.id === message.id)) {
+      return;
+    }
+    this.allMessages = [...this.allMessages, message]
+      .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+    this.chatThreadRevision += 1;
+    this.syncChatThreadQuery();
+    this.cdr.markForCheck();
   }
 
   private chatDayLabel(value: Date): string {

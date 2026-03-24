@@ -5055,6 +5055,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activitiesListScrollable = change.scrollable;
     this.activitiesStickyValue = change.stickyLabel;
     this.activitiesContext.setActivitiesStickyValue(change.stickyLabel);
+    if (this.activitiesPrimaryFilter === 'chats') {
+      this.chatItems = this.chatsService.peekChatItemsByUser(this.activeUser.id)
+        .map(item => ({ ...item, memberIds: [...(item.memberIds ?? [])] }));
+      this.refreshSectionBadges();
+    }
     if (this.isRatesFullscreenModeActive()) {
       this.syncActivitiesRatesFullscreenSelection();
     }
