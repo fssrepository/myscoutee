@@ -48,6 +48,7 @@ export class GameService extends BaseRouteModeService {
   private userRatesOutboxSyncKickTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
+    super();
     this.startUserRatesOutboxSyncLoop();
   }
 

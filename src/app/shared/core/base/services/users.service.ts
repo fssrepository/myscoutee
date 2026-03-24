@@ -49,6 +49,10 @@ export class UsersService extends BaseRouteModeService {
   private readonly httpUsersService = inject(HttpUsersService);
   private readonly appCtx = inject(AppContext);
 
+  get demoModeEnabled(): boolean {
+    return this.isDemoModeEnabled('/auth/me');
+  }
+
   private get userService(): UserService {
     return this.resolveRouteService('/auth/me', this.demoUsersService, this.httpUsersService);
   }
