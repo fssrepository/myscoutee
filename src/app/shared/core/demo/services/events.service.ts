@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { AppMemoryDb } from '../../../core/base';
 import type { ActivitiesEventSyncPayload } from '../../../core/base/models';
-import { resolveAdditionalDelayMsForRoute } from '../config';
+import { DemoRouteDelayService } from './demo-route-delay.service';
 import { DemoEventsRepository } from '../repositories/events.repository';
 import type {
   DemoEventActivitiesQuery,
@@ -17,7 +17,7 @@ import type {
 @Injectable({
   providedIn: 'root'
 })
-export class DemoEventsService {
+export class DemoEventsService extends DemoRouteDelayService {
   private static readonly EVENTS_ROUTE = '/activities/events';
   private static readonly EVENTS_EXPLORE_ROUTE = '/activities/events/explore';
   private readonly eventsRepository = inject(DemoEventsRepository);
@@ -113,13 +113,4 @@ export class DemoEventsService {
     return this.eventsRepository.countPendingEventFeedbackByUser(userId, feedbackUnlockDelayMs);
   }
 
-  private async waitForRouteDelay(route: string): Promise<void> {
-    const additionalDelayMs = resolveAdditionalDelayMsForRoute(route);
-    if (additionalDelayMs <= 0) {
-      return;
-    }
-    await new Promise<void>(resolve => {
-      setTimeout(() => resolve(), additionalDelayMs);
-    });
-  }
 }

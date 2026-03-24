@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 
-import { environment } from '../../../../../environments/environment';
 import type { ActivitiesEventSyncPayload } from '../../../core/base/models';
 import { DemoEventsService } from '../../demo';
 import { HttpEventsService } from '../../http';
@@ -13,22 +12,18 @@ import type {
   DemoEventScopeFilter,
   DemoRepositoryEventItemType
 } from '../../demo/models/events.model';
-import { SessionService } from './session.service';
+import { BaseRouteModeService } from './base-route-mode.service';
 
 @Injectable({
   providedIn: 'root'
 })
-export class EventsService {
+export class EventsService extends BaseRouteModeService {
   private readonly demoEventsService = inject(DemoEventsService);
   private readonly httpEventsService = inject(HttpEventsService);
-  private readonly sessionService = inject(SessionService);
 
-  private get demoModeEnabled(): boolean {
-    return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
-  }
 
   private get eventsService(): DemoEventsService | HttpEventsService {
-    return this.demoModeEnabled ? this.demoEventsService : this.httpEventsService;
+    return this.resolveRouteService('/activities/events', this.demoEventsService, this.httpEventsService);
   }
 
   queryItemsByUser(userId: string): Promise<DemoEventRecord[]> {
@@ -64,7 +59,7 @@ export class EventsService {
   }
 
   async queryActivitiesEventPage(query: DemoEventActivitiesQuery): Promise<DemoEventActivitiesQueryResult> {
-    if (this.demoModeEnabled) {
+    if (this.isDemoModeEnabled('/activities/events')) {
       return this.demoEventsService.queryActivitiesEventPage(query);
     }
     const records = await this.httpEventsService.queryEventItemsByFilter(
@@ -88,14 +83,14 @@ export class EventsService {
   }
 
   async queryEventExplorePage(query: DemoEventExploreQuery): Promise<DemoEventExploreQueryResult> {
-    if (this.demoModeEnabled) {
+    if (this.isDemoModeEnabled('/activities/events')) {
       return this.demoEventsService.queryEventExplorePage(query);
     }
     return this.httpEventsService.queryEventExplorePage(query);
   }
 
   peekEventExplorePage(query: DemoEventExploreQuery): DemoEventExploreQueryResult {
-    if (this.demoModeEnabled) {
+    if (this.isDemoModeEnabled('/activities/events')) {
       return this.demoEventsService.peekEventExplorePage(query);
     }
     return this.httpEventsService.peekEventExplorePage(query);

@@ -1,27 +1,22 @@
 import { Injectable, inject } from '@angular/core';
 
-import { environment } from '../../../../../environments/environment';
 import { AppUtils } from '../../../app-utils';
 import type { ActivitiesPageRequest } from '../../../core/base/models';
 import type { RateMenuItem } from '../interfaces/activity-feed.interface';
 import { DemoRatesService } from '../../demo';
 import { HttpRatesService } from '../../http';
-import { SessionService } from './session.service';
+import { BaseRouteModeService } from './base-route-mode.service';
 
 @Injectable({
   providedIn: 'root'
 })
-export class RatesService {
+export class RatesService extends BaseRouteModeService {
   private readonly demoRatesService = inject(DemoRatesService);
   private readonly httpRatesService = inject(HttpRatesService);
-  private readonly sessionService = inject(SessionService);
 
-  private get demoModeEnabled(): boolean {
-    return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
-  }
 
   private get ratesService(): DemoRatesService | HttpRatesService {
-    return this.demoModeEnabled ? this.demoRatesService : this.httpRatesService;
+    return this.resolveRouteService('/activities/rates', this.demoRatesService, this.httpRatesService);
   }
 
   peekRateItemsByUser(userId: string): RateMenuItem[] {
@@ -36,7 +31,7 @@ export class RatesService {
     userId: string,
     request: ActivitiesPageRequest
   ): Promise<{ items: RateMenuItem[]; total: number; nextCursor?: string | null }> {
-    if (this.demoModeEnabled) {
+    if (this.isDemoModeEnabled('/activities/rates')) {
       return this.demoRatesService.queryActivitiesRatePage(userId, request);
     }
 

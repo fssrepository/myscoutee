@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 
-import { environment } from '../../../../../environments/environment';
 import { type LoadStatus } from '../context';
 import { AppContext } from '../context';
 import type {
@@ -14,7 +13,7 @@ import { DemoUsersRatingsRepository } from '../../demo/repositories/users-rating
 import { HttpGameService } from '../../http';
 import { HttpUsersRatingsRepository } from '../../http/repositories/users-ratings.repository';
 import type { UserDto } from '../interfaces/user.interface';
-import { SessionService } from './session.service';
+import { BaseRouteModeService } from './base-route-mode.service';
 
 export const USER_GAME_CARDS_LOAD_CONTEXT_KEY = 'user-game-cards';
 
@@ -34,7 +33,7 @@ class RequestTimeoutError extends Error {
 @Injectable({
   providedIn: 'root'
 })
-export class GameService {
+export class GameService extends BaseRouteModeService {
   private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 3000;
   private static readonly USER_RATES_OUTBOX_SYNC_INTERVAL_MS = 30000;
   private static readonly USER_RATES_OUTBOX_SYNC_BATCH_SIZE = 50;
@@ -42,27 +41,22 @@ export class GameService {
   private readonly demoUsersRatingsRepository = inject(DemoUsersRatingsRepository);
   private readonly httpGameService = inject(HttpGameService);
   private readonly httpUsersRatingsRepository = inject(HttpUsersRatingsRepository);
-  private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
   private readonly userGameCardsStackStateByUserId: Record<string, UserGameCardsStackState> = {};
   private userRatesOutboxSyncInFlight = false;
   private userRatesOutboxSyncTimer: ReturnType<typeof setInterval> | null = null;
   private userRatesOutboxSyncKickTimer: ReturnType<typeof setTimeout> | null = null;
 
-  private get demoModeEnabled(): boolean {
-    return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
-  }
-
   constructor() {
     this.startUserRatesOutboxSyncLoop();
   }
 
   private get gameDataService(): UserGameDataService {
-    return this.demoModeEnabled ? this.demoGameService : this.httpGameService;
+    return this.resolveRouteService('/game-cards/query', this.demoGameService, this.httpGameService);
   }
 
   private get usersRatingsRepository(): HttpUsersRatingsRepository {
-    return this.demoModeEnabled ? this.demoUsersRatingsRepository : this.httpUsersRatingsRepository;
+    return this.resolveRouteService('/activities/rates', this.demoUsersRatingsRepository, this.httpUsersRatingsRepository);
   }
 
   getGameCardsUsersSnapshot(): UserDto[] {
@@ -75,7 +69,8 @@ export class GameService {
     rating: number,
     mode: 'single' | 'pair' = 'single'
   ): void {
-    this.gameDataService.recordGameCardRating(raterUserId, ratedUserId, rating, mode);
+    this.resolveRouteService('/activities/rates', this.demoGameService, this.httpGameService)
+      .recordGameCardRating(raterUserId, ratedUserId, rating, mode);
     this.scheduleUserRatesOutboxFlushFromNow();
   }
 
@@ -334,6 +329,7 @@ export class GameService {
       this.userRatesOutboxSyncInFlight = false;
     }
   }
+
 
   private setLoadStatus(contextKey: string, status: LoadStatus, message?: string): void {
     this.appCtx.setStatus(contextKey, status, message);

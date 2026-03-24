@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 
-import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
 import type { ActivityInviteOwnerContext } from '../interfaces/activity-invite.interface';
 import { DemoActivityInviteCandidatesService } from '../../demo/services/activity-invite-candidates.service';
@@ -8,26 +7,26 @@ import { HttpActivityInviteCandidatesService } from '../../http/services/activit
 import { ActivityMembersService } from './activity-members.service';
 import { AppContext } from '../context';
 import { EventsService } from './events.service';
-import { SessionService } from './session.service';
+import { BaseRouteModeService } from './base-route-mode.service';
 import { AppUtils } from '../../../app-utils';
 
 @Injectable({
   providedIn: 'root'
 })
-export class ActivityInviteCandidatesService {
+export class ActivityInviteCandidatesService extends BaseRouteModeService {
   private readonly demoActivityInviteCandidatesService = inject(DemoActivityInviteCandidatesService);
   private readonly httpActivityInviteCandidatesService = inject(HttpActivityInviteCandidatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly eventsService = inject(EventsService);
   private readonly appCtx = inject(AppContext);
-  private readonly sessionService = inject(SessionService);
 
-  private get demoModeEnabled(): boolean {
-    return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
-  }
 
   private get inviteCandidatesService(): DemoActivityInviteCandidatesService | HttpActivityInviteCandidatesService {
-    return this.demoModeEnabled ? this.demoActivityInviteCandidatesService : this.httpActivityInviteCandidatesService;
+    return this.resolveRouteService(
+      '/activities/events/invite-candidates',
+      this.demoActivityInviteCandidatesService,
+      this.httpActivityInviteCandidatesService
+    );
   }
 
   async queryCandidatesByOwner(

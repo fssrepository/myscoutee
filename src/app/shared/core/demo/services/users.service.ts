@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { DemoUsersRepository } from '../repositories/users.repository';
-import { resolveAdditionalDelayMsForRoute } from '../config';
+import { DemoRouteDelayService } from './demo-route-delay.service';
 import type {
   UserByIdQueryResponse,
   UserFeedbackSubmitRequestDto,
@@ -24,7 +24,7 @@ import { DemoEventsRepository } from '../repositories/events.repository';
 @Injectable({
   providedIn: 'root'
 })
-export class DemoUsersService implements UserService {
+export class DemoUsersService extends DemoRouteDelayService implements UserService {
   private static readonly DEMO_USERS_ROUTE = '/auth/demo-users';
   private static readonly USER_BY_ID_ROUTE = '/auth/me';
   private static readonly USER_FEEDBACK_ROUTE = '/auth/me/feedback';
@@ -39,24 +39,14 @@ export class DemoUsersService implements UserService {
   private readonly realtimeLastAdvanceAtByUserId: Record<string, number> = {};
 
   async queryAvailableDemoUsers(): Promise<UsersListQueryResponse> {
-    const additionalDelayMs = resolveAdditionalDelayMsForRoute(DemoUsersService.DEMO_USERS_ROUTE);
-    if (additionalDelayMs > 0) {
-      await new Promise<void>(resolve => {
-        setTimeout(() => resolve(), additionalDelayMs);
-      });
-    }
+    await this.waitForRouteDelay(DemoUsersService.DEMO_USERS_ROUTE);
     return {
       users: this.usersRepository.queryAvailableDemoUsers()
     };
   }
 
   async queryUserById(userId?: string): Promise<UserByIdQueryResponse> {
-    const additionalDelayMs = resolveAdditionalDelayMsForRoute(DemoUsersService.USER_BY_ID_ROUTE);
-    if (additionalDelayMs > 0) {
-      await new Promise<void>(resolve => {
-        setTimeout(() => resolve(), additionalDelayMs);
-      });
-    }
+    await this.waitForRouteDelay(DemoUsersService.USER_BY_ID_ROUTE);
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
     if (!normalizedUserId) {
       return {
@@ -83,12 +73,7 @@ export class DemoUsersService implements UserService {
     userId: string,
     cursor?: string | null
   ): Promise<UserRealtimeLongPollResponseDto | null> {
-    const additionalDelayMs = resolveAdditionalDelayMsForRoute(DemoUsersService.USER_REALTIME_LONG_POLL_ROUTE);
-    if (additionalDelayMs > 0) {
-      await new Promise<void>(resolve => {
-        setTimeout(() => resolve(), additionalDelayMs);
-      });
-    }
+    await this.waitForRouteDelay(DemoUsersService.USER_REALTIME_LONG_POLL_ROUTE);
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return null;
@@ -241,41 +226,6 @@ export class DemoUsersService implements UserService {
     });
   }
 
-  private async waitForRouteDelay(route: string, signal?: AbortSignal): Promise<void> {
-    const additionalDelayMs = resolveAdditionalDelayMsForRoute(route);
-    if (additionalDelayMs <= 0) {
-      return;
-    }
-    await this.waitForDelay(additionalDelayMs, signal);
-  }
-
-  private waitForDelay(delayMs: number, signal?: AbortSignal): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      if (signal?.aborted) {
-        reject(this.createAbortError());
-        return;
-      }
-      const timer = setTimeout(() => {
-        cleanup();
-        resolve();
-      }, delayMs);
-      const onAbort = () => {
-        cleanup();
-        reject(this.createAbortError());
-      };
-      const cleanup = () => {
-        clearTimeout(timer);
-        signal?.removeEventListener('abort', onAbort);
-      };
-      signal?.addEventListener('abort', onAbort, { once: true });
-    });
-  }
-
-  private createAbortError(): Error {
-    const error = new Error('Request aborted.');
-    error.name = 'AbortError';
-    return error;
-  }
 
   private resolveSlotIndex(slotIndex: number): number | null {
     if (!Number.isFinite(slotIndex)) {

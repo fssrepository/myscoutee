@@ -7,13 +7,13 @@ import type {
 } from '../../../core/base/models';
 import type * as AppTypes from '../../../core/base/models';
 import { AppMemoryDb } from '../../../core/base';
-import { resolveAdditionalDelayMsForRoute } from '../config';
+import { DemoRouteDelayService } from './demo-route-delay.service';
 import { DemoActivityMembersRepository } from '../repositories/activity-members.repository';
 
 @Injectable({
   providedIn: 'root'
 })
-export class DemoActivityMembersService {
+export class DemoActivityMembersService extends DemoRouteDelayService {
   private static readonly MEMBERS_ROUTE = '/activities/events/members';
   private readonly activityMembersRepository = inject(DemoActivityMembersRepository);
   private readonly memoryDb = inject(AppMemoryDb);
@@ -50,13 +50,4 @@ export class DemoActivityMembersService {
     await this.memoryDb.flushToIndexedDb();
   }
 
-  private async waitForRouteDelay(route: string): Promise<void> {
-    const additionalDelayMs = resolveAdditionalDelayMsForRoute(route);
-    if (additionalDelayMs <= 0) {
-      return;
-    }
-    await new Promise<void>(resolve => {
-      setTimeout(() => resolve(), additionalDelayMs);
-    });
-  }
 }

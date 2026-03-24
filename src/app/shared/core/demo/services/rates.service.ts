@@ -3,13 +3,13 @@ import { Injectable, inject } from '@angular/core';
 import type { ActivitiesPageRequest } from '../../../core/base/models';
 import type { RateMenuItem } from '../../base/interfaces/activity-feed.interface';
 import type { ActivityRateRecordQuery } from '../../base/interfaces/game.interface';
-import { resolveAdditionalDelayMsForRoute } from '../config';
+import { DemoRouteDelayService } from './demo-route-delay.service';
 import { DemoUsersRatingsRepository } from '../repositories/users-ratings.repository';
 
 @Injectable({
   providedIn: 'root'
 })
-export class DemoRatesService {
+export class DemoRatesService extends DemoRouteDelayService {
   private static readonly RATES_ROUTE = '/activities/rates';
   private readonly usersRatingsRepository = inject(DemoUsersRatingsRepository);
 
@@ -32,15 +32,6 @@ export class DemoRatesService {
     );
   }
 
-  private async waitForRouteDelay(route: string): Promise<void> {
-    const additionalDelayMs = resolveAdditionalDelayMsForRoute(route);
-    if (additionalDelayMs <= 0) {
-      return;
-    }
-    await new Promise<void>(resolve => {
-      setTimeout(() => resolve(), additionalDelayMs);
-    });
-  }
 
   private toActivityRateRecordQuery(userId: string, request: ActivitiesPageRequest): ActivityRateRecordQuery {
     const [mode, displayDirection] = request.rateFilter.split('-') as [
