@@ -92,6 +92,7 @@ export class DemoUserRatesBuilder {
     const normalizedOwnerUserId = ownerUserId.trim();
     const normalizedCounterpartyUserId = item.userId.trim();
     const normalizedSecondaryUserId = item.secondaryUserId?.trim() ?? '';
+    const activityRateId = item.id.trim() || crypto.randomUUID();
     const scoreGiven = this.normalizeRateScore(item.scoreGiven);
     const scoreReceived = this.normalizeRateScore(item.scoreReceived);
 
@@ -115,7 +116,7 @@ export class DemoUserRatesBuilder {
 
     const happenedAtIso = item.happenedAt?.trim() || new Date().toISOString();
     return {
-      id: `activity-rate:${normalizedOwnerUserId}:${item.id}`,
+      id: activityRateId,
       fromUserId,
       toUserId,
       rate,
@@ -124,14 +125,14 @@ export class DemoUserRatesBuilder {
       createdAtIso: happenedAtIso,
       updatedAtIso: happenedAtIso,
       ownerUserId: normalizedOwnerUserId,
-      displayId: item.id,
+      displayId: activityRateId,
       displayDirection: item.direction,
       scoreGiven,
       scoreReceived,
       eventName: item.eventName,
       happenedAtIso,
       distanceKm: Number.isFinite(item.distanceKm) ? Number(item.distanceKm) : 0,
-      distanceMetersExact: this.normalizeDistanceMetersExact(item.distanceMetersExact, item.distanceKm, item.id)
+      distanceMetersExact: this.normalizeDistanceMetersExact(item.distanceMetersExact, item.distanceKm, activityRateId)
     };
   }
 
