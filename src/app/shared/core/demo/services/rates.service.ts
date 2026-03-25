@@ -13,6 +13,15 @@ export class DemoRatesService extends DemoRouteDelayService {
   private static readonly RATES_ROUTE = '/activities/rates';
   private readonly usersRatingsRepository = inject(DemoUsersRatingsRepository);
 
+  recordActivityRate(
+    ownerUserId: string,
+    item: RateMenuItem,
+    rating: number,
+    direction?: RateMenuItem['direction'] | null
+  ): void {
+    this.usersRatingsRepository.enqueueActivityRateOutbox(ownerUserId, item, rating, direction);
+  }
+
   peekRateItemsByUser(userId: string): RateMenuItem[] {
     return this.usersRatingsRepository.peekRateItemsByUserId(userId);
   }

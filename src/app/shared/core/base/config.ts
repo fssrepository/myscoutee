@@ -55,7 +55,8 @@ export const ROUTE_CONFIG: RouteConfig = {
     },
     {
       routePrefix: '/activities/rates',
-      demoDelayMs: 1500
+      demoDelayMs: 1500,
+      http: true
     },
     {
       routePrefix: '/assets',

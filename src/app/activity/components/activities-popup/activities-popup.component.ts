@@ -2877,6 +2877,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (nextDirection) {
       this.pendingActivityRateDirectionOverrideById[rateItem.id] = nextDirection;
     }
+    this.ratesService.recordActivityRate(
+      this.activeUser.id,
+      rateItem,
+      normalized,
+      nextDirection ?? this.displayedRateDirection(rateItem)
+    );
     if (!this.isRatesFullscreenModeActive()) {
       this.triggerActivityRateBlinks(row.id);
       return;

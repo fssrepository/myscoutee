@@ -95,6 +95,10 @@ export class GameService extends BaseRouteModeService {
     this.scheduleUserRatesOutboxFlushFromNow();
   }
 
+  kickUserRatesOutboxSync(): void {
+    this.scheduleUserRatesOutboxFlushFromNow();
+  }
+
   async loadUserGameCardsByFilter(
     request: UserGameCardsQueryRequest,
     requestTimeoutMs?: number
