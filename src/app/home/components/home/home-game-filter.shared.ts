@@ -99,10 +99,11 @@ export function parseGameHeightCm(height: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-export function createInitialGameFilter(activeUser: Pick<DemoUser, 'age' | 'height'>): GameFilterForm {
-  const activeHeight = parseGameHeightCm(activeUser.height);
-  const preferredMin = Math.max(GAME_FILTER_AGE_MIN, activeUser.age - 5);
-  const preferredMax = Math.min(GAME_FILTER_AGE_MAX, activeUser.age + 5);
+export function createInitialGameFilter(activeUser?: Pick<DemoUser, 'age' | 'height'> | null): GameFilterForm {
+  const activeAge = typeof activeUser?.age === 'number' ? activeUser.age : 30;
+  const activeHeight = parseGameHeightCm(activeUser?.height ?? '');
+  const preferredMin = Math.max(GAME_FILTER_AGE_MIN, activeAge - 5);
+  const preferredMax = Math.min(GAME_FILTER_AGE_MAX, activeAge + 5);
   return {
     ageMin: preferredMin,
     ageMax: preferredMax,
@@ -186,7 +187,7 @@ export function normalizeGameFilter(filter: GameFilterForm): GameFilterForm {
 
 export function isGameFilterActive(
   filter: GameFilterForm,
-  activeUser: Pick<DemoUser, 'age' | 'height'>
+  activeUser?: Pick<DemoUser, 'age' | 'height'> | null
 ): boolean {
   const baseline = createInitialGameFilter(activeUser);
   return (

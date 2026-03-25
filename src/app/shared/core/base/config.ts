@@ -24,11 +24,13 @@ export const ROUTE_CONFIG: RouteConfig = {
     },
     {
       routePrefix: '/auth/me',
-      demoDelayMs: 1500
+      demoDelayMs: 1500,
+      http: true
     },
     {
       routePrefix: '/game-cards/query',
-      demoDelayMs: 1500
+      demoDelayMs: 1500,
+      http: true
     },
     {
       routePrefix: '/activities/chats',

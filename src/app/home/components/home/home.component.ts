@@ -232,12 +232,17 @@ export class HomeComponent implements OnDestroy {
         return;
       }
       const status = userByIdLoadState().status;
+      const activeProfile = this.appCtx.activeUserProfile();
+      const alreadyLoaded = status === 'success' && activeProfile?.id === this.activeUserId;
       if (status === 'loading') {
         this.awaitingUserByIdLoadingSeen = true;
         return;
       }
-      if (status === 'idle' || !this.awaitingUserByIdLoadingSeen) {
+      if (status === 'idle' || (!this.awaitingUserByIdLoadingSeen && !alreadyLoaded)) {
         return;
+      }
+      if (activeProfile) {
+        this.upsertHomeUser(activeProfile);
       }
       this.awaitingUserBootstrap = false;
       this.awaitingUserByIdLoadingSeen = false;
@@ -290,12 +295,12 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get activeUser(): DemoUser {
-    const localUser = this.users.find(user => user.id === this.activeUserId) ?? this.users[0];
+    const localUser = this.users.find(user => user.id === this.activeUserId) ?? this.users[0] ?? null;
+    const contextUser = this.appCtx.activeUserProfile();
     if (!localUser) {
-      return this.users[0];
+      return contextUser ? this.toHomeUser(contextUser) : this.createFallbackActiveUser();
     }
-    const contextUser = this.appCtx.getUserProfile(localUser.id);
-    if (!contextUser) {
+    if (!contextUser || contextUser.id !== localUser.id) {
       return localUser;
     }
     return this.mergeActiveUserFromContext(localUser, contextUser);
@@ -1042,7 +1047,6 @@ export class HomeComponent implements OnDestroy {
     this.resetGameStackPaginationState(false);
     this.syncHomeSmartListQuery();
     this.gameInitialCardsLoadPending = true;
-    void this.reloadServiceCardStack();
     this.awaitingUserBootstrap = true;
     this.awaitingUserByIdLoadingSeen = false;
     this.cdr.markForCheck();
@@ -1081,6 +1085,7 @@ export class HomeComponent implements OnDestroy {
       if (requestUserId !== this.activeUserId) {
         return;
       }
+      this.mergeGameStackUsersIntoHomeUsers();
       this.resetGameStackPaginationState(true);
       this.preloadGameImageWindow();
       this.gameInitialCardsLoadPending = false;
@@ -1230,6 +1235,7 @@ export class HomeComponent implements OnDestroy {
         this.gameFilter,
         this.gameStackPageSizeForCurrentMode()
       );
+      this.mergeGameStackUsersIntoHomeUsers();
     }
   }
 
@@ -1920,6 +1926,7 @@ export class HomeComponent implements OnDestroy {
       this.gameFilter,
       this.gameStackPageSizeForCurrentMode()
     ).then(serviceStack => {
+      this.mergeGameStackUsersIntoHomeUsers();
       const previousLoaded = this.gameStackCardsLoaded;
       const totalRounds = this.totalRoundsForCurrentMode();
       this.gameStackCardsLoaded = Math.min(totalRounds, serviceStack.cardUserIds.length);
@@ -2154,6 +2161,78 @@ export class HomeComponent implements OnDestroy {
 
   private isGameImagePreloaded(url: string | null): boolean {
     return !!url && this.preloadedGameImageUrls.has(url);
+  }
+
+  private upsertHomeUser(user: UserDto): void {
+    const nextUser = this.toHomeUser(user);
+    const existingIndex = this.users.findIndex(item => item.id === nextUser.id);
+    if (existingIndex >= 0) {
+      this.users = this.users.map((item, index) => index === existingIndex ? nextUser : item);
+      return;
+    }
+    this.users = [nextUser, ...this.users];
+  }
+
+  private mergeGameStackUsersIntoHomeUsers(): void {
+    const snapshotUsers = this.gameService.getGameCardsUsersSnapshot() as DemoUser[];
+    if (snapshotUsers.length === 0) {
+      return;
+    }
+
+    const byId = new Map(this.users.map(user => [user.id, user] as const));
+    for (const user of snapshotUsers) {
+      byId.set(user.id, user);
+    }
+    this.users = Array.from(byId.values());
+  }
+
+  private toHomeUser(user: UserDto): DemoUser {
+    return {
+      ...user,
+      languages: [...(user.languages ?? [])],
+      images: [...(user.images ?? [])],
+      activities: {
+        game: user.activities?.game ?? 0,
+        chat: user.activities?.chat ?? 0,
+        invitations: user.activities?.invitations ?? 0,
+        events: user.activities?.events ?? 0,
+        hosting: user.activities?.hosting ?? 0
+      }
+    };
+  }
+
+  private createFallbackActiveUser(): DemoUser {
+    return {
+      id: this.activeUserId || this.appCtx.activeUserId().trim() || 'u1',
+      name: '',
+      age: 30,
+      birthday: '',
+      city: '',
+      height: '',
+      physique: '',
+      languages: [],
+      horoscope: '',
+      initials: '',
+      gender: 'woman',
+      statusText: '',
+      hostTier: '',
+      traitLabel: '',
+      completion: 0,
+      headline: '',
+      about: '',
+      affinity: 0,
+      locationCoordinates: undefined,
+      images: [],
+      impressions: undefined,
+      profileStatus: 'public',
+      activities: {
+        game: 0,
+        chat: 0,
+        invitations: 0,
+        events: 0,
+        hosting: 0
+      }
+    };
   }
 
   private mergeActiveUserFromContext(localUser: DemoUser, contextUser: UserDto): DemoUser {

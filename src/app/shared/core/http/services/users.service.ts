@@ -50,7 +50,8 @@ export class HttpUsersService implements UserService {
     }
   }
 
-  async queryUserById(_userId?: string): Promise<UserByIdQueryResponse> {
+  async queryUserById(userId?: string): Promise<UserByIdQueryResponse> {
+    const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
     try {
       type HttpUserByIdResponse = UserDto & {
         filterCount?: number;
@@ -58,7 +59,9 @@ export class HttpUsersService implements UserService {
         counterOverrides?: UserMenuCountersDto | null;
       };
       const me = await this.http
-        .get<HttpUserByIdResponse | null>(`${this.apiBaseUrl}/auth/me`)
+        .get<HttpUserByIdResponse | null>(`${this.apiBaseUrl}/auth/me`, {
+          params: normalizedUserId ? { userId: normalizedUserId } : {}
+        })
         .toPromise();
       if (!me) {
         return { user: null };

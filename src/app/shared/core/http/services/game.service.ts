@@ -18,9 +18,10 @@ export class HttpGameService implements UserGameDataService {
   private readonly http = inject(HttpClient);
   private readonly usersRatingsRepository = inject(HttpUsersRatingsRepository);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
+  private readonly gameCardsUsersSnapshot: UserDto[] = [];
 
   queryGameCardsUsersSnapshot(): UserDto[] {
-    return [];
+    return this.gameCardsUsersSnapshot;
   }
 
   recordGameCardRating(
@@ -39,9 +40,10 @@ export class HttpGameService implements UserGameDataService {
     }
     try {
       const response = await this.http
-        .post<{ filterCount?: number; cardUserIds?: string[]; nextCursor?: string | null } | null>(
+        .post<{ filterCount?: number; cardUserIds?: string[]; nextCursor?: string | null; users?: UserDto[] } | null>(
           `${this.apiBaseUrl}${HttpGameService.USER_GAME_CARDS_QUERY_ROUTE}`,
           {
+            userId: normalizedUserId,
             filterPreferences: request.filterPreferences ?? null,
             cursor: request.cursor ?? null,
             pageSize: Number.isFinite(request.pageSize) ? Math.max(1, Math.min(50, Math.trunc(Number(request.pageSize)))) : 10
@@ -59,6 +61,9 @@ export class HttpGameService implements UserGameDataService {
           .map(id => String(id).trim())
           .filter(id => id.length > 0)
         : [];
+      if (Array.isArray(response.users)) {
+        this.mergeGameCardsUsersSnapshot(response.users);
+      }
       const nextCursor = typeof response.nextCursor === 'string' && response.nextCursor.trim().length > 0
         ? response.nextCursor.trim()
         : null;
@@ -74,4 +79,34 @@ export class HttpGameService implements UserGameDataService {
     }
   }
 
+
+  private mergeGameCardsUsersSnapshot(users: UserDto[]): void {
+    for (const user of users) {
+      const normalized = this.cloneUser(user);
+      if (!normalized.id) {
+        continue;
+      }
+      const existingIndex = this.gameCardsUsersSnapshot.findIndex(item => item.id === normalized.id);
+      if (existingIndex >= 0) {
+        this.gameCardsUsersSnapshot[existingIndex] = normalized;
+        continue;
+      }
+      this.gameCardsUsersSnapshot.push(normalized);
+    }
+  }
+
+  private cloneUser(user: UserDto): UserDto {
+    return {
+      ...user,
+      languages: [...(user.languages ?? [])],
+      images: [...(user.images ?? [])],
+      activities: {
+        game: user.activities?.game ?? 0,
+        chat: user.activities?.chat ?? 0,
+        invitations: user.activities?.invitations ?? 0,
+        events: user.activities?.events ?? 0,
+        hosting: user.activities?.hosting ?? 0
+      }
+    };
+  }
 }
