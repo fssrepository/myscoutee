@@ -7,6 +7,7 @@ import type { Subscription } from 'rxjs';
 import {
   AppContext,
   USER_BY_ID_LOAD_CONTEXT_KEY,
+  USER_PROFILE_SAVE_CONTEXT_KEY,
   type ActivityCounterKey,
   type UserDto
 } from '../../../shared/core';
@@ -35,6 +36,7 @@ export class AvatarBtnComponent implements OnDestroy {
   private readonly currentUrlRef = signal(this.normalizeRouteUrl(this.router.url));
   private readonly userMenuLoadOverdueRef = signal(false);
   private readonly activeUserLoadState = this.appCtx.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
+  private readonly profileSaveLoadState = this.appCtx.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   private readonly routerEventsSubscription: Subscription;
   private userMenuLoadOverdueTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -56,6 +58,11 @@ export class AvatarBtnComponent implements OnDestroy {
   protected readonly canToggle = computed(() =>
     this.visible() && this.hasBindings() && this.activeUserLoadState().status === 'success'
   );
+  protected readonly isProfileSaving = computed(() => this.profileSaveLoadState().status === 'loading');
+  protected readonly hasProfileSaveError = computed(() => {
+    const status = this.profileSaveLoadState().status;
+    return status === 'error' || status === 'timeout';
+  });
   protected readonly isLoading = computed(() => {
     if (!this.visible()) {
       return false;
@@ -64,20 +71,28 @@ export class AvatarBtnComponent implements OnDestroy {
       return true;
     }
     const status = this.activeUserLoadState().status;
-    return status === 'idle' || status === 'loading';
+    return status === 'idle' || status === 'loading' || this.isProfileSaving();
   });
   protected readonly hasLoadError = computed(() => {
     if (!this.visible() || !this.hasBindings()) {
       return false;
     }
     const status = this.activeUserLoadState().status;
-    return status === 'error' || status === 'timeout' || this.userMenuLoadOverdueRef();
+    return status === 'error' || status === 'timeout' || this.userMenuLoadOverdueRef() || this.hasProfileSaveError();
   });
-  protected readonly showLoadRing = computed(() => this.visible() && !this.canToggle());
+  protected readonly showLoadRing = computed(() =>
+    this.visible() && (!this.canToggle() || this.isProfileSaving() || this.hasProfileSaveError())
+  );
   protected readonly badgeCount = computed(() =>
     this.canToggle() ? this.avatarState().badgeCount : 0
   );
   protected readonly ariaLabel = computed(() => {
+    if (this.canToggle() && this.isProfileSaving()) {
+      return 'Saving profile';
+    }
+    if (this.canToggle() && this.hasProfileSaveError()) {
+      return 'Profile save failed';
+    }
     if (this.canToggle()) {
       return this.isOpen() ? 'Close user menu' : 'Open user menu';
     }
@@ -87,6 +102,14 @@ export class AvatarBtnComponent implements OnDestroy {
     return 'Loading profile';
   });
   protected readonly title = computed(() => {
+    if (this.canToggle() && this.isProfileSaving()) {
+      return 'Saving profile';
+    }
+    if (this.canToggle() && this.hasProfileSaveError()) {
+      return this.profileSaveLoadState().status === 'timeout'
+        ? 'Profile save timed out'
+        : 'Profile was not able to save';
+    }
     if (this.canToggle()) {
       return this.isOpen() ? 'Close profile menu' : 'Open profile menu';
     }

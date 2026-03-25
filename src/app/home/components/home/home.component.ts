@@ -18,9 +18,11 @@ import {
 } from '../../../shared/ui';
 import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
+import { resolveRouteConfig } from '../../../shared/core/base/config';
 import {
   AppContext,
   GameService,
+  RouteDelayService,
   USER_BY_ID_LOAD_CONTEXT_KEY,
   USER_GAME_CARDS_LOAD_CONTEXT_KEY,
   UsersService,
@@ -112,6 +114,7 @@ export class HomeComponent implements OnDestroy {
   private static readonly GAME_STACK_PHOTO_PRELOAD_TARGET = 12;
   private static readonly GAME_STACK_LOADING_WINDOW_MS = 3000;
   private static readonly GAME_STACK_LOADING_TICK_MS = 16;
+  private static readonly GAME_STACK_QUICK_COMPLETE_THRESHOLD_MS = 120;
   private static readonly GAME_STACK_LOAD_DELAY_MS = 1500;
   private static readonly GAME_RATING_CONFIRMATION_MS = 120;
   private static readonly GAME_STACK_TEST_JOINER_BATCH_SIZE = 10;
@@ -188,6 +191,9 @@ export class HomeComponent implements OnDestroy {
   protected readonly homeSmartListConfig: SmartListConfig<HomeSmartListRow, HomeSmartListFilters> = {
     pageSize: HomeComponent.GAME_STACK_PAGE_SIZE_SINGLE,
     presentation: 'fullscreen',
+    loadingDelayMs: resolveRouteConfig('/game-cards/query').http
+      ? 0
+      : resolveRouteConfig('/game-cards/query').demoDelayMs,
     headerProgress: {
       enabled: true
     },
@@ -209,6 +215,7 @@ export class HomeComponent implements OnDestroy {
     private readonly activitiesContext: ActivitiesPopupStateService,
     private readonly appCtx: AppContext,
     private readonly gameService: GameService,
+    private readonly routeDelayService: RouteDelayService,
     private readonly usersService: UsersService
   ) {
     this.users = this.gameService.getGameCardsUsersSnapshot() as DemoUser[];
@@ -414,20 +421,6 @@ export class HomeComponent implements OnDestroy {
     return this.gameStackHeaderProgressLoading || this.gameStackPaginating;
   }
 
-  protected get gameStackHeaderProgress(): number {
-    if (this.gameStackCardsLoaded <= 0) {
-      return 0;
-    }
-    return this.clamp((this.cardIndex + 1) / this.gameStackCardsLoaded, 0, 1);
-  }
-
-  protected get showGameStackHeaderProgress(): boolean {
-    if (this.gameInitialCardsLoadPending && this.gameStackHeaderProgressLoading === false) {
-      return false;
-    }
-    return this.hasFilteredCandidates || this.gameStackHeaderProgressLoading;
-  }
-
   protected get noCandidateTitle(): string {
     if (this.gameInitialCardsLoadPending || this.isAwaitingMoreGameCards) {
       return 'Loading more cards';
@@ -457,16 +450,6 @@ export class HomeComponent implements OnDestroy {
       scale: this.ratingScale,
       presentation: 'fullscreen',
       animation: this.isRatingBarBlinking ? 'blink' : 'default'
-    };
-  }
-
-  protected get gameStackHeaderProgressBarConfig() {
-    return {
-      position: this.gameStackHeaderProgressLoading ? this.gameStackHeaderLoadingProgress : this.gameStackHeaderProgress,
-      state: this.gameStackHeaderProgressLoading
-        ? (this.gameStackHeaderLoadingOverdue ? 'loading-overdue' : 'loading')
-        : 'scrolling',
-      placement: 'inline'
     };
   }
 
@@ -518,17 +501,6 @@ export class HomeComponent implements OnDestroy {
     const cursorChanged = change.cursorIndex !== this.cardIndex;
     this.cardIndex = change.cursorIndex;
     this.gameStackCardsLoaded = change.items.length;
-    const shouldTrackSmartListLoading = this.gameInitialCardsLoadPending === false;
-    const smartListLoading = shouldTrackSmartListLoading && (change.loading || change.initialLoading);
-    if (smartListLoading) {
-      this.gameStackHeaderProgressLoading = true;
-      this.gameStackHeaderLoadingProgress = change.loadingProgress;
-      this.gameStackHeaderLoadingOverdue = change.loadingOverdue;
-    } else if (this.gameStackHeaderLoadingCounter === 0) {
-      this.gameStackHeaderProgressLoading = false;
-      this.gameStackHeaderLoadingProgress = 0;
-      this.gameStackHeaderLoadingOverdue = false;
-    }
     if (cursorChanged) {
       this.clearPendingRatingAdvanceTimer();
     }
@@ -1049,6 +1021,7 @@ export class HomeComponent implements OnDestroy {
     this.gameInitialCardsLoadPending = true;
     this.awaitingUserBootstrap = true;
     this.awaitingUserByIdLoadingSeen = false;
+    void this.reloadServiceCardStack();
     this.cdr.markForCheck();
   }
 
@@ -1070,6 +1043,10 @@ export class HomeComponent implements OnDestroy {
     this.gameFilter = normalizeGameFilter(next);
   }
 
+  private gameFilterForRequest(): GameFilterForm | null {
+    return this.appCtx.getUserFilterPreferences(this.activeUserId) ? this.gameFilter : null;
+  }
+
   private async reloadServiceCardStack(): Promise<void> {
     if (this.gameService.isUserGameCardsStackRequestInFlight(this.activeUserId)) {
       return;
@@ -1079,7 +1056,7 @@ export class HomeComponent implements OnDestroy {
     try {
       await this.gameService.loadInitialUserGameCardsStackPage(
         this.activeUserId,
-        this.gameFilter,
+        this.gameFilterForRequest(),
         this.gameStackPageSizeForCurrentMode()
       );
       if (requestUserId !== this.activeUserId) {
@@ -1232,7 +1209,7 @@ export class HomeComponent implements OnDestroy {
       }
       await this.gameService.loadNextUserGameCardsStackPage(
         this.activeUserId,
-        this.gameFilter,
+        this.gameFilterForRequest(),
         this.gameStackPageSizeForCurrentMode()
       );
       this.mergeGameStackUsersIntoHomeUsers();
@@ -1880,12 +1857,13 @@ export class HomeComponent implements OnDestroy {
     }
     this.gameStackPaginating = true;
     this.beginGameStackHeaderProgressLoading();
-    const delayMs = hadKnownMoreBeforeLoad
+    const requestedDelayMs = hadKnownMoreBeforeLoad
       ? HomeComponent.GAME_STACK_LOAD_DELAY_MS
       : (this.gameStackNoMoreProbeCount === 0
         ? HomeComponent.GAME_STACK_LOAD_DELAY_MS
         : (HomeComponent.GAME_STACK_LOADING_WINDOW_MS + 160));
-    this.gameStackLoadTimer = setTimeout(() => {
+    const delayMs = this.routeDelayService.resolveDelayMs('/game-cards/query', requestedDelayMs);
+    const finalizePaginationLoad = () => {
       this.gameStackLoadTimer = null;
       if (!hadKnownMoreBeforeLoad) {
         this.gameStackNoMoreProbeCount += 1;
@@ -1907,7 +1885,12 @@ export class HomeComponent implements OnDestroy {
       this.preloadGameImageWindow();
       this.beginCandidateImageLoadingForCurrentSelection(true);
       this.cdr.markForCheck();
-    }, delayMs);
+    };
+    if (delayMs <= 0) {
+      finalizePaginationLoad();
+      return;
+    }
+    this.gameStackLoadTimer = setTimeout(finalizePaginationLoad, delayMs);
   }
 
   private startServiceCardPaginationLoad(): void {
@@ -1990,6 +1973,12 @@ export class HomeComponent implements OnDestroy {
     if (this.gameStackHeaderLoadingInterval) {
       clearInterval(this.gameStackHeaderLoadingInterval);
       this.gameStackHeaderLoadingInterval = null;
+    }
+    const elapsed = Math.max(0, this.nowMs() - this.gameStackHeaderLoadingStartedAtMs);
+    if (elapsed < HomeComponent.GAME_STACK_QUICK_COMPLETE_THRESHOLD_MS) {
+      this.clearGameStackHeaderLoadingAnimation();
+      this.cdr.markForCheck();
+      return;
     }
     this.gameStackHeaderLoadingProgress = 1;
     this.gameStackHeaderLoadingOverdue = false;

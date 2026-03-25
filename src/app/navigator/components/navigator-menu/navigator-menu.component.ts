@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import {
   AppContext,
   AppPopupContext,
+  USER_PROFILE_SAVE_CONTEXT_KEY,
   type ActivityCounters,
   type UserDto,
   type UserImpressionChangeFlags
@@ -36,10 +37,31 @@ interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
   styleUrl: './navigator-menu.component.scss'
 })
 export class NavigatorMenuComponent {
+  private static readonly PROFILE_SAVE_RING_RADIUS = 51;
+  private static readonly PROFILE_SAVE_RING_CIRCUMFERENCE = 2 * Math.PI * NavigatorMenuComponent.PROFILE_SAVE_RING_RADIUS;
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly navigatorService = inject(NavigatorService);
+  private readonly profileSaveLoadState = this.appCtx.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   protected readonly activeUser = this.appCtx.activeUserProfile;
+  protected readonly profileSaveRingCircumference = NavigatorMenuComponent.PROFILE_SAVE_RING_CIRCUMFERENCE;
+  protected readonly isProfileSaving = computed(() => this.profileSaveLoadState().status === 'loading');
+  protected readonly hasProfileSaveError = computed(() => {
+    const status = this.profileSaveLoadState().status;
+    return status === 'error' || status === 'timeout';
+  });
+  protected readonly showProfileSaveRing = computed(() => this.isProfileSaving() || this.hasProfileSaveError());
+  protected readonly profileSaveAvatarTitle = computed(() => {
+    if (this.isProfileSaving()) {
+      return 'Saving profile';
+    }
+    if (this.hasProfileSaveError()) {
+      return this.profileSaveLoadState().status === 'timeout'
+        ? 'Profile save timed out'
+        : 'Profile was not able to save';
+    }
+    return null;
+  });
   protected readonly menuUser = computed<NavigatorMenuUser | null>(() => {
     const activeUser = this.appCtx.activeUserProfile();
     if (!activeUser) {

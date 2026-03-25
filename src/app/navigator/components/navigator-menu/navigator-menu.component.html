@@ -30,7 +30,32 @@
     <app-navigator-settings-menu *ngIf="ui.settingsOpen"></app-navigator-settings-menu>
 
     <div class="user-header-main">
-      <div class="avatar-stack">
+      <div class="avatar-stack" [attr.title]="profileSaveAvatarTitle()">
+        <span class="avatar-save-ring" *ngIf="showProfileSaveRing()" aria-hidden="true">
+          <svg viewBox="0 0 112 112" class="avatar-save-ring-svg">
+            <defs>
+              <linearGradient id="navigator-menu-save-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+              </linearGradient>
+              <linearGradient id="navigator-menu-save-gradient-overdue" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+                <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+              </linearGradient>
+            </defs>
+            <circle class="avatar-save-ring-track" cx="56" cy="56" r="51"></circle>
+            <circle
+              class="avatar-save-ring-progress"
+              [class.is-loading]="isProfileSaving() && !hasProfileSaveError()"
+              [class.is-overdue]="hasProfileSaveError()"
+              cx="56"
+              cy="56"
+              r="51"
+              [attr.stroke-dasharray]="profileSaveRingCircumference"
+              [attr.stroke-dashoffset]="hasProfileSaveError() ? 0 : profileSaveRingCircumference"
+            ></circle>
+          </svg>
+        </span>
         <span
           class="user-avatar user-avatar-large"
           [ngClass]="['user-color-' + user.gender, user.featuredImagePreview ? 'has-photo' : '']"

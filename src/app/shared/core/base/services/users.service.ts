@@ -23,6 +23,7 @@ export const USERS_LOAD_CONTEXT_KEY = 'users-selector';
 export const USER_BY_ID_LOAD_CONTEXT_KEY = 'user-by-id';
 export const USER_FEEDBACK_SUBMIT_CONTEXT_KEY = 'user-feedback-submit';
 export const USER_REPORT_USER_SUBMIT_CONTEXT_KEY = 'user-report-user-submit';
+export const USER_PROFILE_SAVE_CONTEXT_KEY = 'user-profile-save';
 
 class RequestTimeoutError extends Error {
   constructor() {
@@ -162,7 +163,32 @@ export class UsersService extends BaseRouteModeService {
   }
 
   async saveUserProfile(user: UserDto): Promise<UserDto | null> {
-    return this.userService.saveUserProfile(user);
+    if (!user?.id?.trim()) {
+      this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'error', 'Missing user id.');
+      return null;
+    }
+
+    this.appCtx.setUserProfile(user);
+    this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'loading');
+
+    try {
+      const savedUser = await this.withRequestTimeout(
+        this.userService.saveUserProfile(user),
+        UsersService.DEFAULT_REQUEST_TIMEOUT_MS
+      );
+      const resolvedUser = savedUser ?? user;
+      this.appCtx.setUserProfile(resolvedUser);
+      this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'success');
+      return resolvedUser;
+    } catch (error) {
+      if (error instanceof RequestTimeoutError) {
+        this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'timeout', 'Profile save request timeout.');
+        return user;
+      }
+
+      this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'error', 'Unable to save profile.');
+      return user;
+    }
   }
 
   async submitUserFeedback(

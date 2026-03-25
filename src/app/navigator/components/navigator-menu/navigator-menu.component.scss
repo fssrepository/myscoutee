@@ -346,6 +346,43 @@
   padding-bottom: 13px;
 }
 
+.avatar-save-ring {
+  position: absolute;
+  inset: -8px;
+  pointer-events: none;
+}
+
+.avatar-save-ring-svg {
+  width: 112px;
+  height: 112px;
+  display: block;
+  filter: drop-shadow(0 10px 26px rgba(13, 24, 44, 0.2));
+  transform: rotate(-90deg);
+}
+
+.avatar-save-ring-track,
+.avatar-save-ring-progress {
+  fill: none;
+  stroke-width: 4;
+}
+
+.avatar-save-ring-track {
+  stroke: rgba(46, 114, 184, 0.12);
+}
+
+.avatar-save-ring-progress {
+  stroke-linecap: round;
+}
+
+.avatar-save-ring-progress.is-loading {
+  stroke: url(#navigator-menu-save-gradient);
+  animation: navigator-load-ring-progress 3s linear forwards;
+}
+
+.avatar-save-ring-progress.is-overdue {
+  stroke: url(#navigator-menu-save-gradient-overdue);
+}
+
 .user-avatar {
   border-radius: 50%;
   display: inline-flex;

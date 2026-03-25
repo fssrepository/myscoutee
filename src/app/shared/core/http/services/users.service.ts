@@ -138,17 +138,13 @@ export class HttpUsersService implements UserService {
     if (!user?.id?.trim()) {
       return null;
     }
-    try {
-      const response = await this.http
-        .post<UserDto | null>(`${this.apiBaseUrl}/auth/me/profile`, user)
-        .toPromise();
-      if (!response) {
-        return this.cloneUser(user);
-      }
-      return this.cloneUser(response);
-    } catch {
+    const response = await this.http
+      .post<UserDto | null>(`${this.apiBaseUrl}/auth/me/profile`, user)
+      .toPromise();
+    if (!response) {
       return this.cloneUser(user);
     }
+    return this.cloneUser(response);
   }
 
   async submitUserFeedback(
