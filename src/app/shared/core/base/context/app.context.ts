@@ -625,6 +625,9 @@ export class AppContext {
       ...section,
       vibeBadges: [...(section.vibeBadges ?? [])],
       personalityBadges: [...(section.personalityBadges ?? [])],
+      personalityTraits: (section.personalityTraits ?? []).map(trait => ({
+        ...trait
+      })),
       categoryBadges: [...(section.categoryBadges ?? [])]
     };
   }

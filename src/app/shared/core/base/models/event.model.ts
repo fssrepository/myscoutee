@@ -5,6 +5,13 @@ export interface EventFeedbackOption {
   impressionTag?: string;
 }
 
+export interface EventFeedbackTraitOption {
+  id: string;
+  label: string;
+  icon: string;
+  coreVibe: string;
+}
+
 export interface EventFeedbackCard {
   id: string;
   eventId: string;
@@ -25,6 +32,9 @@ export interface EventFeedbackCard {
   questionSecondary: string;
   primaryOptions: EventFeedbackOption[];
   secondaryOptions: EventFeedbackOption[];
+  traitQuestion: string;
+  traitOptions: EventFeedbackTraitOption[];
+  selectedTraitIds: string[];
   answerPrimary: string;
   answerSecondary: string;
 }
@@ -37,6 +47,7 @@ export interface SubmittedEventFeedbackAnswer {
   targetRole: 'Admin' | 'Manager' | 'Member';
   primaryValue: string;
   secondaryValue: string;
+  personalityTraitIds: string[];
   tags: string[];
   submittedAtIso: string;
 }
@@ -46,6 +57,7 @@ export interface EventFeedbackStateDto {
   removed: boolean;
   submittedAtIso: string;
   organizerNote: string;
+  answersByCardId?: Record<string, SubmittedEventFeedbackAnswer>;
 }
 
 export interface EventFeedbackAnswerSubmitDto {
@@ -55,6 +67,7 @@ export interface EventFeedbackAnswerSubmitDto {
   targetRole: 'Admin' | 'Manager' | 'Member';
   primaryValue: string;
   secondaryValue: string;
+  personalityTraitIds: string[];
   tags: string[];
   submittedAtIso: string;
 }
@@ -280,4 +293,3 @@ export interface EventCapacityRange {
   min: number | null;
   max: number | null;
 }
-

@@ -26,6 +26,9 @@ export class EventsService extends BaseRouteModeService {
   private readonly demoEventsService = inject(DemoEventsService);
   private readonly httpEventsService = inject(HttpEventsService);
 
+  get demoModeEnabled(): boolean {
+    return this.isDemoModeEnabled('/activities/events');
+  }
 
   private get eventsService(): DemoEventsService | HttpEventsService {
     return this.resolveRouteService('/activities/events', this.demoEventsService, this.httpEventsService);

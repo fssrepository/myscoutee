@@ -1,7 +1,13 @@
 import { AppUtils } from '../../../app-utils';
 import type { EventMenuItem } from '../../base/interfaces/activity-feed.interface';
 import type { DemoUser } from '../../base/interfaces/user.interface';
-import type { EventFeedbackCard, EventFeedbackOption, EventFeedbackPersistedState, SubmittedEventFeedbackAnswer } from '../../base/models';
+import type {
+  EventFeedbackCard,
+  EventFeedbackOption,
+  EventFeedbackPersistedState,
+  EventFeedbackTraitOption,
+  SubmittedEventFeedbackAnswer
+} from '../../base/models';
 
 export class DemoEventFeedbackBuilder {
   static buildEventFeedbackCards(options: {
@@ -15,6 +21,7 @@ export class DemoEventFeedbackBuilder {
     hostImproveOptions: EventFeedbackOption[];
     attendeeCollabOptions: EventFeedbackOption[];
     attendeeRejoinOptions: EventFeedbackOption[];
+    personalityTraitOptions: EventFeedbackTraitOption[];
   }): EventFeedbackCard[] {
     const nowMs = Date.now();
     const eventCards: EventFeedbackCard[] = [];
@@ -48,6 +55,9 @@ export class DemoEventFeedbackBuilder {
         questionSecondary: `What should ${host.name} improve next time?`,
         primaryOptions: options.eventOverallOptions,
         secondaryOptions: options.hostImproveOptions,
+        traitQuestion: `Which traits describe ${host.name} best as the event creator?`,
+        traitOptions: options.personalityTraitOptions,
+        selectedTraitIds: [],
         answerPrimary: '',
         answerSecondary: ''
       });
@@ -73,6 +83,9 @@ export class DemoEventFeedbackBuilder {
           questionSecondary: `Would you team up with ${attendee.name} again in a future event?`,
           primaryOptions: options.attendeeCollabOptions,
           secondaryOptions: options.attendeeRejoinOptions,
+          traitQuestion: `Which personality traits best matched ${attendee.name} in this event?`,
+          traitOptions: options.personalityTraitOptions,
+          selectedTraitIds: [],
           answerPrimary: '',
           answerSecondary: ''
         });
@@ -93,6 +106,7 @@ export class DemoEventFeedbackBuilder {
     hostImproveOptions: EventFeedbackOption[];
     attendeeCollabOptions: EventFeedbackOption[];
     attendeeRejoinOptions: EventFeedbackOption[];
+    personalityTraitOptions: EventFeedbackTraitOption[];
   }): EventFeedbackPersistedState[] {
     const cardsByEventId = new Map<string, EventFeedbackCard[]>();
 
@@ -190,6 +204,7 @@ export class DemoEventFeedbackBuilder {
       targetRole: card.targetRole ?? 'Member',
       primaryValue: primaryOption?.value ?? '',
       secondaryValue: secondaryOption?.value ?? '',
+      personalityTraitIds: this.seededTraitIds(card, seed),
       tags: [...tags],
       submittedAtIso
     };
@@ -231,6 +246,22 @@ export class DemoEventFeedbackBuilder {
 
   private static eventFeedbackStateRecordId(userId: string, eventId: string): string {
     return `${userId.trim()}::${eventId.trim()}`;
+  }
+
+  private static seededTraitIds(card: EventFeedbackCard, seed: number): string[] {
+    if (!Array.isArray(card.traitOptions) || card.traitOptions.length === 0) {
+      return [];
+    }
+    const total = Math.min(3, card.traitOptions.length);
+    const next = new Set<string>();
+    for (let index = 0; index < total; index += 1) {
+      const optionIndex = AppUtils.hashText(`trait:${seed}:${card.id}:${index}`) % card.traitOptions.length;
+      const option = card.traitOptions[optionIndex];
+      if (option?.id?.trim()) {
+        next.add(option.id.trim());
+      }
+    }
+    return [...next];
   }
 
   private static eventStartAtMs(eventId: string, eventDatesById: Record<string, string>): number | null {

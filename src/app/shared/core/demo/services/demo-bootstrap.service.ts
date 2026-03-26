@@ -181,7 +181,8 @@ export class DemoBootstrapService {
         eventOverallOptions: APP_STATIC_DATA.eventFeedbackEventOverallOptions,
         hostImproveOptions: APP_STATIC_DATA.eventFeedbackHostImproveOptions,
         attendeeCollabOptions: APP_STATIC_DATA.eventFeedbackAttendeeCollabOptions,
-        attendeeRejoinOptions: APP_STATIC_DATA.eventFeedbackAttendeeRejoinOptions
+        attendeeRejoinOptions: APP_STATIC_DATA.eventFeedbackAttendeeRejoinOptions,
+        personalityTraitOptions: APP_STATIC_DATA.eventFeedbackPersonalityTraitOptions
       });
 
       for (const record of seededRecords) {

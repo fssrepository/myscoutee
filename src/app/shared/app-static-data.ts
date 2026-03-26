@@ -9,6 +9,7 @@ import type {
   EventBlindMode,
   EventFeedbackListFilter,
   EventFeedbackOption,
+  EventFeedbackTraitOption,
   EventExploreOrder,
   EventVisibility,
   ExperienceEntry,
@@ -22,6 +23,16 @@ import type {
   TournamentLeaderboardType,
   ValuesOptionGroup
 } from './core/base/models';
+
+interface PersonalityTraitCatalogEntry {
+  id: string;
+  label: string;
+  aliases: string[];
+  icon: string;
+  coreVibe: string;
+  highlights: string[];
+  toneClass: string;
+}
 
 const VIBE_CATEGORIES = ['Energetic', 'Social', 'Deep', 'Relaxed', 'Creative', 'Exclusive', 'Focused'];
 const HOSTED_EVENT_TYPES = ['Road Trip', 'Game Night', 'Brunch', 'Hiking', 'Coffee Meetup', 'Sports'];
@@ -46,6 +57,86 @@ const MEMBER_TRAIT_ICONS: Record<string, string> = {
   'Deep Thinker': '🧠',
   Empath: '💛'
 };
+const PERSONALITY_TRAIT_CATALOG: PersonalityTraitCatalogEntry[] = [
+  {
+    id: 'social-charmer',
+    label: 'Social Charmer',
+    aliases: ['The Social Charmer'],
+    icon: 'group',
+    coreVibe: 'Warm, magnetic, easy to talk to',
+    highlights: ['Friendly', 'Outgoing', 'Funny'],
+    toneClass: 'trait-tone-social'
+  },
+  {
+    id: 'deep-thinker',
+    label: 'Deep Thinker',
+    aliases: ['The Deep Thinker'],
+    icon: 'psychology',
+    coreVibe: 'Reflective, intellectual, meaningful',
+    highlights: ['Thoughtful', 'Curious', 'Insightful'],
+    toneClass: 'trait-tone-deep'
+  },
+  {
+    id: 'adventurer',
+    label: 'Adventurer',
+    aliases: ['The Adventurer'],
+    icon: 'explore',
+    coreVibe: 'Energetic, bold, spontaneous',
+    highlights: ['Spontaneous', 'Brave', 'Active'],
+    toneClass: 'trait-tone-adventure'
+  },
+  {
+    id: 'reliable-one',
+    label: 'Reliable One',
+    aliases: ['The Reliable One', 'Megbizhato', 'Megbízható'],
+    icon: 'verified_user',
+    coreVibe: 'Stable, trustworthy, grounded',
+    highlights: ['Loyal', 'Honest', 'Dependable'],
+    toneClass: 'trait-tone-reliable'
+  },
+  {
+    id: 'creative-soul',
+    label: 'Creative Soul',
+    aliases: ['The Creative Soul', 'Kreativ', 'Kreatív'],
+    icon: 'palette',
+    coreVibe: 'Expressive, imaginative, artistic',
+    highlights: ['Artistic', 'Unique', 'Visionary'],
+    toneClass: 'trait-tone-creative'
+  },
+  {
+    id: 'empath',
+    label: 'Empath',
+    aliases: ['The Empath', 'Empatikus'],
+    icon: 'favorite',
+    coreVibe: 'Kind, emotionally safe, nurturing',
+    highlights: ['Caring', 'Supportive', 'Patient'],
+    toneClass: 'trait-tone-empath'
+  },
+  {
+    id: 'ambitious-go-getter',
+    label: 'Ambitious Go-Getter',
+    aliases: ['The Ambitious Go-Getter'],
+    icon: 'trending_up',
+    coreVibe: 'Driven, goal-oriented, high standards',
+    highlights: ['Motivated', 'Focused', 'Strategic thinker'],
+    toneClass: 'trait-tone-ambitious'
+  },
+  {
+    id: 'playful-spirit',
+    label: 'Playful Spirit',
+    aliases: ['The Playful Spirit'],
+    icon: 'celebration',
+    coreVibe: 'Lighthearted, fun, youthful',
+    highlights: ['Silly', 'Optimistic', 'Witty'],
+    toneClass: 'trait-tone-playful'
+  }
+];
+const EVENT_FEEDBACK_PERSONALITY_TRAIT_OPTIONS: EventFeedbackTraitOption[] = PERSONALITY_TRAIT_CATALOG.map(trait => ({
+  id: trait.id,
+  label: trait.label,
+  icon: trait.icon,
+  coreVibe: trait.coreVibe
+}));
 const PHYSIQUE_OPTIONS = ['Slim', 'Lean', 'Athletic', 'Fit', 'Curvy', 'Average', 'Muscular'];
 const LANGUAGE_SUGGESTIONS = [
   'English',
@@ -735,6 +826,7 @@ export const APP_STATIC_DATA = {
   vibeIcons: VIBE_ICONS,
   categoryIcons: CATEGORY_ICONS,
   memberTraitIcons: MEMBER_TRAIT_ICONS,
+  personalityTraitCatalog: PERSONALITY_TRAIT_CATALOG,
   physiqueOptions: PHYSIQUE_OPTIONS,
   languageSuggestions: LANGUAGE_SUGGESTIONS,
   activitiesPrimaryFilters: ACTIVITIES_PRIMARY_FILTERS,
@@ -774,6 +866,7 @@ export const APP_STATIC_DATA = {
   eventFeedbackHostImproveOptions: EVENT_FEEDBACK_HOST_IMPROVE_OPTIONS,
   eventFeedbackAttendeeCollabOptions: EVENT_FEEDBACK_ATTENDEE_COLLAB_OPTIONS,
   eventFeedbackAttendeeRejoinOptions: EVENT_FEEDBACK_ATTENDEE_REJOIN_OPTIONS,
+  eventFeedbackPersonalityTraitOptions: EVENT_FEEDBACK_PERSONALITY_TRAIT_OPTIONS,
   eventFeedbackListFilters: EVENT_FEEDBACK_LIST_FILTERS,
   helpCenterSections: HELP_CENTER_SECTIONS
 };

@@ -192,6 +192,26 @@
                         </button>
                       </div>
                     </div>
+
+                    <div class="event-feedback-question event-feedback-question-traits">
+                      <div class="event-feedback-question-head">
+                        <h5>{{ card.traitQuestion }}</h5>
+                        <span class="event-feedback-question-hint">Pick up to 3</span>
+                      </div>
+                      <div class="event-feedback-options event-feedback-options-traits">
+                        <button
+                          type="button"
+                          class="event-feedback-option-btn event-feedback-option-btn-trait event-feedback-option-tone-slate"
+                          *ngFor="let trait of card.traitOptions"
+                          [class.is-selected]="feedback.isEventFeedbackTraitSelected(trait.id)"
+                          [disabled]="feedback.isEventFeedbackTraitDisabled(trait.id)"
+                          (click)="feedback.toggleEventFeedbackTrait(trait.id, $event)"
+                        >
+                          <mat-icon>{{ trait.icon }}</mat-icon>
+                          <span>{{ trait.label }}</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 

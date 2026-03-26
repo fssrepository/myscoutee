@@ -1,6 +1,14 @@
 import type { UserGameFilterPreferencesDto } from './game.interface';
 import type { LocationCoordinates } from './location.interface';
 
+export interface UserPersonalityTraitDto {
+  id: string;
+  label: string;
+  percent?: number;
+  evidenceCount?: number;
+  lastRatedAtIso?: string | null;
+}
+
 export interface UserImpressionsSectionDto {
   unreadCount?: number;
   averageRating?: number;
@@ -10,6 +18,7 @@ export interface UserImpressionsSectionDto {
   noShowCount?: number;
   vibeBadges?: string[];
   personalityBadges?: string[];
+  personalityTraits?: UserPersonalityTraitDto[];
   categoryBadges?: string[];
 }
 

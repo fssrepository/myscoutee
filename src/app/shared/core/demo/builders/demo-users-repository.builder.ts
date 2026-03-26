@@ -24,19 +24,40 @@ export class DemoUsersRepositoryBuilder {
   }
 
   static cloneUser(user: UserDto): UserDto {
-    const { impressions: _ignoredImpressions, ...rest } = user;
     return {
-      ...rest,
-      locationCoordinates: rest.locationCoordinates
+      ...user,
+      locationCoordinates: user.locationCoordinates
         ? {
-          latitude: rest.locationCoordinates.latitude,
-          longitude: rest.locationCoordinates.longitude
+          latitude: user.locationCoordinates.latitude,
+          longitude: user.locationCoordinates.longitude
         }
         : undefined,
-      languages: [...(rest.languages ?? [])],
-      images: [...(rest.images ?? [])],
+      languages: [...(user.languages ?? [])],
+      images: [...(user.images ?? [])],
+      impressions: user.impressions
+        ? {
+          host: user.impressions.host
+            ? {
+              ...user.impressions.host,
+              vibeBadges: [...(user.impressions.host.vibeBadges ?? [])],
+              personalityBadges: [...(user.impressions.host.personalityBadges ?? [])],
+              personalityTraits: (user.impressions.host.personalityTraits ?? []).map(trait => ({ ...trait })),
+              categoryBadges: [...(user.impressions.host.categoryBadges ?? [])]
+            }
+            : undefined,
+          member: user.impressions.member
+            ? {
+              ...user.impressions.member,
+              vibeBadges: [...(user.impressions.member.vibeBadges ?? [])],
+              personalityBadges: [...(user.impressions.member.personalityBadges ?? [])],
+              personalityTraits: (user.impressions.member.personalityTraits ?? []).map(trait => ({ ...trait })),
+              categoryBadges: [...(user.impressions.member.categoryBadges ?? [])]
+            }
+            : undefined
+        }
+        : undefined,
       activities: {
-        ...rest.activities
+        ...user.activities
       }
     };
   }

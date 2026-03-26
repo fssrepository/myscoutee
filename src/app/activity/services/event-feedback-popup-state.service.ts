@@ -22,13 +22,22 @@ export interface EventFeedbackPopupSource {
   providedIn: 'root'
 })
 export class EventFeedbackPopupStateService {
+  private static readonly EVENT_FEEDBACK_POLL_INTERVAL_MS = 15000;
+  private static readonly DEMO_EVENT_FEEDBACK_POLL_INTERVAL_MS = 5000;
   private readonly eventFeedbackUnlockDelayMs = 2 * 60 * 60 * 1000;
   private readonly sourceRef = signal<EventFeedbackPopupSource | null>(null);
   private readonly eventsService = inject(EventsService);
   private readonly memoryDb = inject(AppMemoryDb);
+  private eventFeedbackPollTimer: ReturnType<typeof setInterval> | null = null;
+  private eventFeedbackPollInFlight = false;
+  private eventFeedbackPollActiveIntervalMs = EventFeedbackPopupStateService.EVENT_FEEDBACK_POLL_INTERVAL_MS;
 
   public registerSource(source: EventFeedbackPopupSource | null): void {
     this.sourceRef.set(source);
+    this.configureEventFeedbackPolling();
+    if (!source?.activeUser?.id?.trim()) {
+      return;
+    }
     this.hydrateEventFeedbackState();
   }
 
@@ -65,6 +74,7 @@ export class EventFeedbackPopupStateService {
   public readonly eventFeedbackHostImproveOptions = APP_STATIC_DATA.eventFeedbackHostImproveOptions;
   public readonly eventFeedbackAttendeeCollabOptions = APP_STATIC_DATA.eventFeedbackAttendeeCollabOptions;
   public readonly eventFeedbackAttendeeRejoinOptions = APP_STATIC_DATA.eventFeedbackAttendeeRejoinOptions;
+  public readonly eventFeedbackPersonalityTraitOptions = APP_STATIC_DATA.eventFeedbackPersonalityTraitOptions;
   public readonly eventFeedbackListFilters: Array<{ key: AppTypes.EventFeedbackListFilter; label: string; icon: string }> = APP_STATIC_DATA.eventFeedbackListFilters;
 
   public openPopup(): void {
@@ -330,6 +340,46 @@ export class EventFeedbackPopupStateService {
     return this.activeEventFeedbackCard()?.answerSecondary === optionValue;
   }
 
+  public toggleEventFeedbackTrait(traitId: string, event?: Event): void {
+    event?.stopPropagation();
+    const card = this.activeEventFeedbackCard();
+    const normalizedTraitId = traitId.trim();
+    if (!card || !normalizedTraitId || !card.traitOptions.some(option => option.id === normalizedTraitId)) {
+      return;
+    }
+    this.eventFeedbackCards.update(cards => {
+      const idx = this.eventFeedbackIndex();
+      const currentCard = cards[idx];
+      if (!currentCard) {
+        return cards;
+      }
+      const selected = new Set(currentCard.selectedTraitIds ?? []);
+      if (selected.has(normalizedTraitId)) {
+        selected.delete(normalizedTraitId);
+      } else if (selected.size < 3) {
+        selected.add(normalizedTraitId);
+      }
+      const updated = [...cards];
+      updated[idx] = {
+        ...currentCard,
+        selectedTraitIds: [...selected]
+      };
+      return updated;
+    });
+  }
+
+  public isEventFeedbackTraitSelected(traitId: string): boolean {
+    return Boolean(this.activeEventFeedbackCard()?.selectedTraitIds?.includes(traitId));
+  }
+
+  public isEventFeedbackTraitDisabled(traitId: string): boolean {
+    const card = this.activeEventFeedbackCard();
+    if (!card) {
+      return false;
+    }
+    return !card.selectedTraitIds.includes(traitId) && card.selectedTraitIds.length >= 3;
+  }
+
   public eventFeedbackOptionToneClass(card: AppTypes.EventFeedbackCard, option: AppTypes.EventFeedbackOption): string {
     const tone = this.feedbackToneFromOptionValue(option.value);
     return `event-feedback-option-tone-${tone}`;
@@ -390,8 +440,14 @@ export class EventFeedbackPopupStateService {
     const requestAnswers: AppTypes.EventFeedbackAnswerSubmitDto[] = [];
     for (const feedbackCard of cardsToSubmit) {
       const impressionSummary = this.selectedImpressionTagsForCard(feedbackCard);
+      const personalityTraitIds = [...(feedbackCard.selectedTraitIds ?? [])];
       this.markEventFeedbackSubmitted(feedbackCard.id);
-      const submittedAnswer = this.recordSubmittedEventFeedbackAnswer(feedbackCard, impressionSummary, submittedAtIso);
+      const submittedAnswer = this.recordSubmittedEventFeedbackAnswer(
+        feedbackCard,
+        impressionSummary,
+        personalityTraitIds,
+        submittedAtIso
+      );
       persistedAnswers[submittedAnswer.cardId] = submittedAnswer;
       requestAnswers.push({
         cardId: submittedAnswer.cardId,
@@ -400,6 +456,7 @@ export class EventFeedbackPopupStateService {
         targetRole: submittedAnswer.targetRole,
         primaryValue: submittedAnswer.primaryValue,
         secondaryValue: submittedAnswer.secondaryValue,
+        personalityTraitIds: [...submittedAnswer.personalityTraitIds],
         tags: [...submittedAnswer.tags],
         submittedAtIso: submittedAnswer.submittedAtIso
       });
@@ -509,7 +566,10 @@ export class EventFeedbackPopupStateService {
           ...existing,
           removed: Boolean(state.removed),
           submittedAtIso: state.submittedAtIso?.trim() || null,
-          organizerNote: state.organizerNote?.trim() ?? existing.organizerNote
+          organizerNote: state.organizerNote?.trim() ?? existing.organizerNote,
+          answersByCardId: state.answersByCardId
+            ? this.clonePersistedAnswersByCardId(state.answersByCardId)
+            : this.clonePersistedAnswersByCardId(existing.answersByCardId)
         };
         if (!nextIds.includes(recordId)) {
           nextIds.push(recordId);
@@ -545,10 +605,7 @@ export class EventFeedbackPopupStateService {
       }
       for (const [cardId, answer] of Object.entries(record.answersByCardId ?? {})) {
         submittedCards[cardId] = true;
-        submittedAnswers[cardId] = {
-          ...answer,
-          tags: [...(answer.tags ?? [])]
-        };
+        submittedAnswers[cardId] = this.cloneSubmittedEventFeedbackAnswer(answer);
       }
     }
 
@@ -570,7 +627,7 @@ export class EventFeedbackPopupStateService {
       .filter((record): record is AppTypes.EventFeedbackPersistedState => Boolean(record) && record.userId === normalizedUserId)
       .map(record => ({
         ...record,
-        answersByCardId: { ...(record.answersByCardId ?? {}) }
+        answersByCardId: this.clonePersistedAnswersByCardId(record.answersByCardId)
       }));
   }
 
@@ -590,7 +647,7 @@ export class EventFeedbackPopupStateService {
       const existing = table.byId[recordId] ?? this.createEmptyPersistedEventFeedbackState(normalizedUserId, normalizedEventId);
       const nextRecord = updater({
         ...existing,
-        answersByCardId: { ...(existing.answersByCardId ?? {}) }
+        answersByCardId: this.clonePersistedAnswersByCardId(existing.answersByCardId)
       });
       return {
         ...current,
@@ -637,6 +694,84 @@ export class EventFeedbackPopupStateService {
 
   private eventFeedbackStateRecordId(userId: string, eventId: string): string {
     return `${userId.trim()}::${eventId.trim()}`;
+  }
+
+  private configureEventFeedbackPolling(): void {
+    const userId = this.sourceRef()?.activeUser?.id?.trim() ?? '';
+    if (!userId) {
+      this.stopEventFeedbackPolling();
+      return;
+    }
+    const intervalMs = this.eventsService.demoModeEnabled
+      ? EventFeedbackPopupStateService.DEMO_EVENT_FEEDBACK_POLL_INTERVAL_MS
+      : EventFeedbackPopupStateService.EVENT_FEEDBACK_POLL_INTERVAL_MS;
+    if (this.eventFeedbackPollTimer && this.eventFeedbackPollActiveIntervalMs === intervalMs) {
+      return;
+    }
+    this.stopEventFeedbackPolling();
+    this.eventFeedbackPollActiveIntervalMs = intervalMs;
+    this.eventFeedbackPollTimer = setInterval(() => {
+      void this.runEventFeedbackPollTick();
+    }, intervalMs);
+  }
+
+  private stopEventFeedbackPolling(): void {
+    if (this.eventFeedbackPollTimer) {
+      clearInterval(this.eventFeedbackPollTimer);
+      this.eventFeedbackPollTimer = null;
+    }
+    this.eventFeedbackPollInFlight = false;
+    this.eventFeedbackPollActiveIntervalMs = EventFeedbackPopupStateService.EVENT_FEEDBACK_POLL_INTERVAL_MS;
+  }
+
+  private async runEventFeedbackPollTick(): Promise<void> {
+    if (this.eventFeedbackPollInFlight) {
+      return;
+    }
+    const userId = this.sourceRef()?.activeUser?.id?.trim() ?? '';
+    if (!userId) {
+      this.stopEventFeedbackPolling();
+      return;
+    }
+    this.eventFeedbackPollInFlight = true;
+    try {
+      await this.refreshEventFeedbackStateFromServer(userId);
+    } finally {
+      this.eventFeedbackPollInFlight = false;
+    }
+  }
+
+  private cloneSubmittedEventFeedbackAnswer(
+    answer: AppTypes.SubmittedEventFeedbackAnswer
+  ): AppTypes.SubmittedEventFeedbackAnswer {
+    return {
+      ...answer,
+      cardId: answer.cardId?.trim() ?? '',
+      eventId: answer.eventId?.trim() ?? '',
+      kind: answer.kind === 'attendee' ? 'attendee' : 'event',
+      targetUserId: answer.targetUserId?.trim() || null,
+      targetRole: answer.targetRole === 'Admin' || answer.targetRole === 'Manager' ? answer.targetRole : 'Member',
+      primaryValue: answer.primaryValue?.trim() ?? '',
+      secondaryValue: answer.secondaryValue?.trim() ?? '',
+      personalityTraitIds: [...(answer.personalityTraitIds ?? [])],
+      tags: [...(answer.tags ?? [])],
+      submittedAtIso: answer.submittedAtIso?.trim() ?? ''
+    };
+  }
+
+  private clonePersistedAnswersByCardId(
+    answersByCardId: AppTypes.EventFeedbackPersistedState['answersByCardId'] | AppTypes.EventFeedbackStateDto['answersByCardId']
+  ): AppTypes.EventFeedbackPersistedState['answersByCardId'] {
+    const next: AppTypes.EventFeedbackPersistedState['answersByCardId'] = {};
+    const source = (answersByCardId ?? {}) as Record<string, AppTypes.SubmittedEventFeedbackAnswer>;
+    for (const [cardId, answer] of Object.entries(source)) {
+      const normalizedCardId = cardId.trim();
+      if (!normalizedCardId || !answer) {
+        continue;
+      }
+      next[normalizedCardId] = this.cloneSubmittedEventFeedbackAnswer(answer);
+    }
+    return next;
   }
 
   // --- Computed Properties ---
@@ -738,7 +873,8 @@ export class EventFeedbackPopupStateService {
       eventOverallOptions: this.eventFeedbackEventOverallOptions,
       hostImproveOptions: this.eventFeedbackHostImproveOptions,
       attendeeCollabOptions: this.eventFeedbackAttendeeCollabOptions,
-      attendeeRejoinOptions: this.eventFeedbackAttendeeRejoinOptions
+      attendeeRejoinOptions: this.eventFeedbackAttendeeRejoinOptions,
+      personalityTraitOptions: this.eventFeedbackPersonalityTraitOptions
     });
   }
 
@@ -835,6 +971,7 @@ export class EventFeedbackPopupStateService {
   private recordSubmittedEventFeedbackAnswer(
     card: AppTypes.EventFeedbackCard,
     tags: string[],
+    personalityTraitIds: string[],
     submittedAtIso: string
   ): AppTypes.SubmittedEventFeedbackAnswer {
     const submittedAnswer: AppTypes.SubmittedEventFeedbackAnswer = {
@@ -845,6 +982,7 @@ export class EventFeedbackPopupStateService {
       targetRole: card.targetRole ?? 'Member',
       primaryValue: card.answerPrimary,
       secondaryValue: card.answerSecondary,
+      personalityTraitIds: [...personalityTraitIds],
       tags: [...tags],
       submittedAtIso
     };

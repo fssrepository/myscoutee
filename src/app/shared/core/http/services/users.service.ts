@@ -339,6 +339,9 @@ export class HttpUsersService implements UserService {
       ...section,
       vibeBadges: [...(section.vibeBadges ?? [])],
       personalityBadges: [...(section.personalityBadges ?? [])],
+      personalityTraits: (section.personalityTraits ?? []).map(trait => ({
+        ...trait
+      })),
       categoryBadges: [...(section.categoryBadges ?? [])]
     };
   }

@@ -101,7 +101,8 @@ export class DemoEventsService extends DemoRouteDelayService {
       eventId: record.eventId,
       removed: record.removed,
       submittedAtIso: record.submittedAtIso ?? '',
-      organizerNote: record.organizerNote
+      organizerNote: record.organizerNote,
+      answersByCardId: this.cloneEventFeedbackAnswersByCardId(record.answersByCardId)
     }));
   }
 
@@ -129,6 +130,7 @@ export class DemoEventsService extends DemoRouteDelayService {
         targetRole: answer.targetRole === 'Admin' || answer.targetRole === 'Manager' ? answer.targetRole : 'Member',
         primaryValue: answer.primaryValue.trim(),
         secondaryValue: answer.secondaryValue.trim(),
+        personalityTraitIds: answer.personalityTraitIds.map(traitId => traitId.trim()).filter(Boolean),
         tags: answer.tags.map(tag => tag.trim()).filter(Boolean),
         submittedAtIso: answer.submittedAtIso.trim() || submittedAtIso
       };
@@ -235,7 +237,7 @@ export class DemoEventsService extends DemoRouteDelayService {
       .filter((record): record is EventFeedbackPersistedState => Boolean(record) && record.userId === normalizedUserId)
       .map(record => ({
         ...record,
-        answersByCardId: { ...(record.answersByCardId ?? {}) }
+        answersByCardId: this.cloneEventFeedbackAnswersByCardId(record.answersByCardId)
       }));
   }
 
@@ -255,7 +257,7 @@ export class DemoEventsService extends DemoRouteDelayService {
       const existing = table.byId[recordId] ?? this.createEmptyEventFeedbackState(normalizedUserId, normalizedEventId);
       const nextRecord = updater({
         ...existing,
-        answersByCardId: { ...(existing.answersByCardId ?? {}) }
+        answersByCardId: this.cloneEventFeedbackAnswersByCardId(existing.answersByCardId)
       });
       return {
         ...current,
@@ -284,6 +286,32 @@ export class DemoEventsService extends DemoRouteDelayService {
 
   private eventFeedbackStateRecordId(userId: string, eventId: string): string {
     return `${userId.trim()}::${eventId.trim()}`;
+  }
+
+  private cloneEventFeedbackAnswersByCardId(
+    answersByCardId: EventFeedbackPersistedState['answersByCardId']
+  ): EventFeedbackPersistedState['answersByCardId'] {
+    const next: EventFeedbackPersistedState['answersByCardId'] = {};
+    for (const [cardId, answer] of Object.entries(answersByCardId ?? {})) {
+      const normalizedCardId = cardId.trim();
+      if (!normalizedCardId || !answer) {
+        continue;
+      }
+      next[normalizedCardId] = {
+        ...answer,
+        cardId: answer.cardId?.trim() || normalizedCardId,
+        eventId: answer.eventId?.trim() ?? '',
+        kind: answer.kind === 'attendee' ? 'attendee' : 'event',
+        targetUserId: answer.targetUserId?.trim() || null,
+        targetRole: answer.targetRole === 'Admin' || answer.targetRole === 'Manager' ? answer.targetRole : 'Member',
+        primaryValue: answer.primaryValue?.trim() ?? '',
+        secondaryValue: answer.secondaryValue?.trim() ?? '',
+        personalityTraitIds: (answer.personalityTraitIds ?? []).map(traitId => traitId.trim()).filter(Boolean),
+        tags: (answer.tags ?? []).map(tag => tag.trim()).filter(Boolean),
+        submittedAtIso: answer.submittedAtIso?.trim() ?? ''
+      };
+    }
+    return next;
   }
 
 }

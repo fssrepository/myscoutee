@@ -250,7 +250,8 @@ export class HttpEventsService {
             eventId: item.eventId?.trim() ?? '',
             removed: Boolean(item.removed),
             submittedAtIso: item.submittedAtIso?.trim() ?? '',
-            organizerNote: item.organizerNote?.trim() ?? ''
+            organizerNote: item.organizerNote?.trim() ?? '',
+            answersByCardId: this.cloneEventFeedbackAnswersByCardId(item.answersByCardId)
           })).filter(item => item.eventId)
         : [];
     } catch {
@@ -313,5 +314,31 @@ export class HttpEventsService {
       pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
       topics: [...(record.topics ?? [])]
     }));
+  }
+
+  private cloneEventFeedbackAnswersByCardId(
+    answersByCardId: EventFeedbackStateDto['answersByCardId']
+  ): NonNullable<EventFeedbackStateDto['answersByCardId']> {
+    const next: NonNullable<EventFeedbackStateDto['answersByCardId']> = {};
+    for (const [cardId, answer] of Object.entries(answersByCardId ?? {})) {
+      const normalizedCardId = cardId.trim();
+      if (!normalizedCardId || !answer) {
+        continue;
+      }
+      next[normalizedCardId] = {
+        ...answer,
+        cardId: answer.cardId?.trim() || normalizedCardId,
+        eventId: answer.eventId?.trim() ?? '',
+        kind: answer.kind === 'attendee' ? 'attendee' : 'event',
+        targetUserId: answer.targetUserId?.trim() || null,
+        targetRole: answer.targetRole === 'Admin' || answer.targetRole === 'Manager' ? answer.targetRole : 'Member',
+        primaryValue: answer.primaryValue?.trim() ?? '',
+        secondaryValue: answer.secondaryValue?.trim() ?? '',
+        personalityTraitIds: (answer.personalityTraitIds ?? []).map(traitId => traitId.trim()).filter(Boolean),
+        tags: (answer.tags ?? []).map(tag => tag.trim()).filter(Boolean),
+        submittedAtIso: answer.submittedAtIso?.trim() ?? ''
+      };
+    }
+    return next;
   }
 }
