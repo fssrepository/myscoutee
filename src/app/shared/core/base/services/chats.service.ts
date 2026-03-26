@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 
-import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import type { ActivitiesPageRequest } from '../../../core/base/models';
@@ -11,24 +10,21 @@ import { activityChatContextFilterKey, buildActivityChatRows } from '../converte
 import type { DemoChatRecord } from '../../demo/models/chats.model';
 import { DemoChatsService } from '../../demo';
 import { HttpChatsService } from '../../http';
-import { SessionService } from './session.service';
+import { BaseRouteModeService } from './base-route-mode.service';
 import { DemoUsersRepository } from '../../demo';
 
 @Injectable({
   providedIn: 'root'
 })
-export class ChatsService {
+export class ChatsService extends BaseRouteModeService {
+  private static readonly CHAT_ROUTE = '/activities/chats';
+
   private readonly demoChatsService = inject(DemoChatsService);
   private readonly httpChatsService = inject(HttpChatsService);
-  private readonly sessionService = inject(SessionService);
   private readonly demoUsersRepository = inject(DemoUsersRepository);
 
-  private get demoModeEnabled(): boolean {
-    return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
-  }
-
   private get chatsService(): DemoChatsService | HttpChatsService {
-    return this.demoModeEnabled ? this.demoChatsService : this.httpChatsService;
+    return this.resolveRouteService(ChatsService.CHAT_ROUTE, this.demoChatsService, this.httpChatsService);
   }
 
   async queryChatItemsByUser(userId: string): Promise<DemoChatRecord[]> {
@@ -43,6 +39,32 @@ export class ChatsService {
     return this.chatsService.loadChatMessages(chat);
   }
 
+  async sendChatMessage(chat: ChatMenuItem, text: string): Promise<AppTypes.ChatPopupMessage | null> {
+    return this.chatsService.sendChatMessage(chat, text);
+  }
+
+  async watchChatMessages(
+    chat: ChatMenuItem,
+    onMessage: (message: AppTypes.ChatPopupMessage) => void
+  ): Promise<() => void> {
+    return this.chatsService.watchChatMessages(chat, onMessage);
+  }
+
+  async watchChatEvents(
+    chat: ChatMenuItem,
+    onEvent: (event: AppTypes.ChatLiveEvent) => void
+  ): Promise<() => void> {
+    return this.chatsService.watchChatEvents(chat, onEvent);
+  }
+
+  async sendChatTyping(chat: ChatMenuItem, typing: boolean): Promise<void> {
+    return this.chatsService.sendChatTyping(chat, typing);
+  }
+
+  async markChatRead(chat: ChatMenuItem, messageIds: readonly string[]): Promise<void> {
+    return this.chatsService.markChatRead(chat, messageIds);
+  }
+
   async queryActivitiesChatPage(
     userId: string,
     request: ActivitiesPageRequest,
@@ -51,10 +73,23 @@ export class ChatsService {
       users?: readonly DemoUser[];
     } = {}
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
-    const items = options.chatItems
+    if (!this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      const page = await this.httpChatsService.queryActivitiesChatPage(userId, request);
+      return {
+        items: buildActivityChatRows(page.items, {
+          users: options.users ?? this.demoUsersRepository.queryAllUsers(),
+          activeUserId: userId
+        }),
+        total: page.total,
+        nextCursor: page.nextCursor ?? null
+      };
+    }
+
+    const items = options.chatItems && options.chatItems.length > 0
       ? options.chatItems.map(item => ({
           ...item,
-          ownerUserId: 'ownerUserId' in item && typeof item.ownerUserId === 'string' ? item.ownerUserId : userId
+          ownerUserId: 'ownerUserId' in item && typeof item.ownerUserId === 'string' ? item.ownerUserId : userId,
+          memberIds: [...(item.memberIds ?? [])]
         }))
       : await this.queryChatItemsByUser(userId);
     const filteredItems = items.filter(item =>

@@ -693,11 +693,26 @@ app-info-card.event-feedback-carousel-info-card {
   gap: 0.28rem;
 }
 
+.event-feedback-question-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
 .event-feedback-question h5 {
   margin: 0;
   font-size: 0.76rem;
   font-weight: 800;
   color: #233f63;
+}
+
+.event-feedback-question-hint {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(38, 63, 97, 0.58);
 }
 
 .event-feedback-options {
@@ -720,6 +735,22 @@ app-info-card.event-feedback-carousel-info-card {
   font-weight: 700;
   cursor: pointer;
   transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.event-feedback-option-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.event-feedback-options-traits {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.event-feedback-option-btn-trait {
+  justify-content: flex-start;
+  min-height: 38px;
+  padding-inline: 0.5rem;
 }
 
 .event-feedback-option-btn:active {

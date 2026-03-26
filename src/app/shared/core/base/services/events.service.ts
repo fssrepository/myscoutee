@@ -1,7 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 
-import { environment } from '../../../../../environments/environment';
-import type { ActivitiesEventSyncPayload } from '../../../core/base/models';
+import type {
+  ActivitiesEventSyncPayload,
+  EventFeedbackNoteRequestDto,
+  EventFeedbackStateDto,
+  EventFeedbackSubmitRequestDto
+} from '../../../core/base/models';
 import { DemoEventsService } from '../../demo';
 import { HttpEventsService } from '../../http';
 import type {
@@ -13,22 +17,21 @@ import type {
   DemoEventScopeFilter,
   DemoRepositoryEventItemType
 } from '../../demo/models/events.model';
-import { SessionService } from './session.service';
+import { BaseRouteModeService } from './base-route-mode.service';
 
 @Injectable({
   providedIn: 'root'
 })
-export class EventsService {
+export class EventsService extends BaseRouteModeService {
   private readonly demoEventsService = inject(DemoEventsService);
   private readonly httpEventsService = inject(HttpEventsService);
-  private readonly sessionService = inject(SessionService);
 
-  private get demoModeEnabled(): boolean {
-    return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
+  get demoModeEnabled(): boolean {
+    return this.isDemoModeEnabled('/activities/events');
   }
 
   private get eventsService(): DemoEventsService | HttpEventsService {
-    return this.demoModeEnabled ? this.demoEventsService : this.httpEventsService;
+    return this.resolveRouteService('/activities/events', this.demoEventsService, this.httpEventsService);
   }
 
   queryItemsByUser(userId: string): Promise<DemoEventRecord[]> {
@@ -64,19 +67,10 @@ export class EventsService {
   }
 
   async queryActivitiesEventPage(query: DemoEventActivitiesQuery): Promise<DemoEventActivitiesQueryResult> {
-    if (this.demoModeEnabled) {
+    if (this.isDemoModeEnabled('/activities/events')) {
       return this.demoEventsService.queryActivitiesEventPage(query);
     }
-    const records = await this.httpEventsService.queryEventItemsByFilter(
-      query.userId,
-      query.filter,
-      query.hostingPublicationFilter ?? 'all'
-    );
-    return {
-      records,
-      total: records.length,
-      nextCursor: null
-    };
+    return this.httpEventsService.queryActivitiesEventPage(query);
   }
 
   queryExploreItems(userId: string): Promise<DemoEventRecord[]> {
@@ -88,14 +82,14 @@ export class EventsService {
   }
 
   async queryEventExplorePage(query: DemoEventExploreQuery): Promise<DemoEventExploreQueryResult> {
-    if (this.demoModeEnabled) {
+    if (this.isDemoModeEnabled('/activities/events')) {
       return this.demoEventsService.queryEventExplorePage(query);
     }
     return this.httpEventsService.queryEventExplorePage(query);
   }
 
   peekEventExplorePage(query: DemoEventExploreQuery): DemoEventExploreQueryResult {
-    if (this.demoModeEnabled) {
+    if (this.isDemoModeEnabled('/activities/events')) {
       return this.demoEventsService.peekEventExplorePage(query);
     }
     return this.httpEventsService.peekEventExplorePage(query);
@@ -139,6 +133,30 @@ export class EventsService {
 
   restoreItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
     return this.eventsService.restoreItem(userId, type, sourceId);
+  }
+
+  requestJoin(userId: string, sourceId: string): Promise<DemoEventRecord | null> {
+    return this.eventsService.requestJoin(userId, sourceId);
+  }
+
+  queryEventFeedbackStates(userId: string): Promise<EventFeedbackStateDto[]> {
+    return this.eventsService.queryEventFeedbackStates(userId);
+  }
+
+  submitEventFeedback(request: EventFeedbackSubmitRequestDto): Promise<void> {
+    return this.eventsService.submitEventFeedback(request);
+  }
+
+  saveEventFeedbackNote(request: EventFeedbackNoteRequestDto): Promise<void> {
+    return this.eventsService.saveEventFeedbackNote(request);
+  }
+
+  removeEventFeedbackEvent(userId: string, eventId: string): Promise<void> {
+    return this.eventsService.removeEventFeedbackEvent(userId, eventId);
+  }
+
+  restoreEventFeedbackEvent(userId: string, eventId: string): Promise<void> {
+    return this.eventsService.restoreEventFeedbackEvent(userId, eventId);
   }
 
   async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {

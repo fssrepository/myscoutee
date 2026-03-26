@@ -1,15 +1,19 @@
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
+import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
 import type { DemoEventRecord } from '../../demo/models/events.model';
 import { toActivityEventRow } from '../../base/converters/activities-event.converter';
-import { HttpEventsService } from '../services/events.service';
+import { OfflineCacheService } from '../../base/services/offline-cache.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class HttpAssetTicketsRepository {
-  private readonly httpEventsService = inject(HttpEventsService);
+  private readonly http = inject(HttpClient);
+  private readonly offlineCache = inject(OfflineCacheService);
+  private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly cachedRowsByUserId: Record<string, AppTypes.ActivityListRow[]> = {};
 
   peekTicketCountByUser(userId: string): number {
@@ -26,19 +30,33 @@ export class HttpAssetTicketsRepository {
     }
 
     try {
-      const [eventRecords, hostingRecords] = await Promise.all([
-        this.httpEventsService.queryEventItemsByUser(normalizedUserId),
-        this.httpEventsService.queryHostingItemsByUser(normalizedUserId)
-      ]);
-      this.cachedRowsByUserId[normalizedUserId] = this.buildTicketRows([
-        ...eventRecords,
-        ...hostingRecords
-      ]);
+      const response = await this.http
+        .get<{ records?: DemoEventRecord[]; total?: number } | null>(`${this.apiBaseUrl}/assets/tickets`, {
+          params: new HttpParams()
+            .set('userId', normalizedUserId)
+            .set('page', String(Math.max(0, Math.trunc(Number(query.page) || 0))))
+            .set('pageSize', String(Math.max(1, Math.trunc(Number(query.pageSize) || 1))))
+            .set('order', query.order)
+        })
+        .toPromise();
+      const rows = this.buildTicketRows(response?.records ?? []);
+      this.cachedRowsByUserId[normalizedUserId] = rows;
+      this.offlineCache.writeTicketPage(normalizedUserId, query.order, {
+        items: rows,
+        total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : rows.length
+      });
+      return {
+        items: this.cloneRows(rows),
+        total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : rows.length
+      };
     } catch {
-      // Fall back to the latest cached snapshot until dedicated endpoints land.
+      const cachedPage = this.offlineCache.readTicketPage(normalizedUserId, query.order);
+      if (cachedPage) {
+        this.cachedRowsByUserId[normalizedUserId] = this.cloneRows(cachedPage.items);
+        return this.pageRows(cachedPage.items, query);
+      }
+      return this.pageRows(this.peekTicketRowsByUser(normalizedUserId), query);
     }
-
-    return this.pageRows(this.peekTicketRowsByUser(normalizedUserId), query);
   }
 
   protected peekTicketRowsByUser(userId: string): AppTypes.ActivityListRow[] {
@@ -46,7 +64,17 @@ export class HttpAssetTicketsRepository {
     if (!normalizedUserId) {
       return [];
     }
-    return this.cloneRows(this.cachedRowsByUserId[normalizedUserId] ?? []);
+    const cachedRows = this.cachedRowsByUserId[normalizedUserId];
+    if (cachedRows && cachedRows.length > 0) {
+      return this.cloneRows(cachedRows);
+    }
+    const offlineRows = this.offlineCache.readTicketPage(normalizedUserId, 'upcoming')?.items
+      ?? this.offlineCache.readTicketPage(normalizedUserId, 'past')?.items
+      ?? [];
+    if (offlineRows.length > 0) {
+      this.cachedRowsByUserId[normalizedUserId] = this.cloneRows(offlineRows);
+    }
+    return this.cloneRows(offlineRows);
   }
 
   protected buildTicketRows(records: readonly DemoEventRecord[]): AppTypes.ActivityListRow[] {

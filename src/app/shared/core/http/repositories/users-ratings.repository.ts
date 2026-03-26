@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
+import { DemoUserRatesBuilder } from '../../demo/builders';
 import type { RateMenuItem } from '../../base/interfaces/activity-feed.interface';
 import type { UserRateOutboxRecord, UserRateRecord, UserRatesSyncResult } from '../../base/interfaces/game.interface';
 import {
@@ -52,7 +53,9 @@ export class HttpUsersRatingsRepository {
     if (!normalizedUserId) {
       return [];
     }
-    return this.cloneRateItems(this.cachedRatesByUserId[normalizedUserId] ?? []);
+    return this.cloneRateItems(
+      this.mergePendingOutboxRateItems(normalizedUserId, this.cachedRatesByUserId[normalizedUserId] ?? [])
+    );
   }
 
   async queryRateItemsByUserId(userId: string): Promise<RateMenuItem[]> {
@@ -66,8 +69,8 @@ export class HttpUsersRatingsRepository {
           params: new HttpParams().set('userId', normalizedUserId)
         })
         .toPromise();
-      const items = this.cloneRateItems(Array.isArray(response) ? response : []);
-      this.cachedRatesByUserId[normalizedUserId] = items;
+      const items = this.mergePendingOutboxRateItems(normalizedUserId, Array.isArray(response) ? response : []);
+      this.cachedRatesByUserId[normalizedUserId] = this.cloneRateItems(items);
       return this.cloneRateItems(items);
     } catch {
       return this.peekRateItemsByUserId(normalizedUserId);
@@ -189,34 +192,7 @@ export class HttpUsersRatingsRepository {
     if (!nextRecord) {
       return;
     }
-    this.memoryDb.write(state => {
-      const outboxTable = state[USER_RATES_OUTBOX_TABLE_NAME];
-      const outboxId = `upsert:${nextRecord.id}`;
-      const previousOutbox = outboxTable.byId[outboxId];
-      const nextOutboxRecord: UserRateOutboxRecord = {
-        id: outboxId,
-        rateId: nextRecord.id,
-        action: 'upsert',
-        payload: nextRecord,
-        status: 'pending',
-        retryCount: previousOutbox?.retryCount ?? 0,
-        queuedAtIso: previousOutbox?.queuedAtIso ?? nextRecord.updatedAtIso,
-        updatedAtIso: nextRecord.updatedAtIso,
-        lastTriedAtIso: previousOutbox?.lastTriedAtIso ?? null,
-        syncedAtIso: null,
-        lastError: null
-      };
-      return {
-        ...state,
-        [USER_RATES_OUTBOX_TABLE_NAME]: {
-          byId: {
-            ...outboxTable.byId,
-            [outboxId]: nextOutboxRecord
-          },
-          ids: previousOutbox ? outboxTable.ids : [...outboxTable.ids, outboxId]
-        }
-      };
-    });
+    this.enqueueNormalizedRateOutbox(nextRecord);
   }
 
   enqueueGameCardPairRatingOutbox(
@@ -229,34 +205,20 @@ export class HttpUsersRatingsRepository {
     if (!nextRecord) {
       return;
     }
-    this.memoryDb.write(state => {
-      const outboxTable = state[USER_RATES_OUTBOX_TABLE_NAME];
-      const outboxId = `upsert:${nextRecord.id}`;
-      const previousOutbox = outboxTable.byId[outboxId];
-      const nextOutboxRecord: UserRateOutboxRecord = {
-        id: outboxId,
-        rateId: nextRecord.id,
-        action: 'upsert',
-        payload: nextRecord,
-        status: 'pending',
-        retryCount: previousOutbox?.retryCount ?? 0,
-        queuedAtIso: previousOutbox?.queuedAtIso ?? nextRecord.updatedAtIso,
-        updatedAtIso: nextRecord.updatedAtIso,
-        lastTriedAtIso: previousOutbox?.lastTriedAtIso ?? null,
-        syncedAtIso: null,
-        lastError: null
-      };
-      return {
-        ...state,
-        [USER_RATES_OUTBOX_TABLE_NAME]: {
-          byId: {
-            ...outboxTable.byId,
-            [outboxId]: nextOutboxRecord
-          },
-          ids: previousOutbox ? outboxTable.ids : [...outboxTable.ids, outboxId]
-        }
-      };
-    });
+    this.enqueueNormalizedRateOutbox(nextRecord);
+  }
+
+  enqueueActivityRateOutbox(
+    ownerUserId: string,
+    item: RateMenuItem,
+    rating: number,
+    direction?: RateMenuItem['direction'] | null
+  ): void {
+    const nextRecord = this.buildNormalizedActivityRateRecord(ownerUserId, item, rating, direction);
+    if (!nextRecord) {
+      return;
+    }
+    this.enqueueNormalizedRateOutbox(nextRecord);
   }
 
   protected async syncUserRatesBatch(rates: UserRateRecord[]): Promise<UserRatesSyncResult> {
@@ -333,6 +295,37 @@ export class HttpUsersRatingsRepository {
     };
   }
 
+  protected buildNormalizedActivityRateRecord(
+    ownerUserId: string,
+    item: RateMenuItem,
+    rating: number,
+    direction?: RateMenuItem['direction'] | null
+  ): UserRateRecord | null {
+    const normalizedOwnerUserId = ownerUserId.trim();
+    const normalizedUserId = item.userId.trim();
+    if (!normalizedOwnerUserId || !normalizedUserId) {
+      return null;
+    }
+    const nextDirection = this.normalizeRateDirection(direction ?? item.direction);
+    if (!nextDirection) {
+      return null;
+    }
+    return DemoUserRatesBuilder.toActivityRateRecord(normalizedOwnerUserId, {
+      ...item,
+      userId: normalizedUserId,
+      secondaryUserId: item.secondaryUserId?.trim() || undefined,
+      direction: nextDirection,
+      scoreGiven: this.normalizeRateScore(rating),
+      scoreReceived: this.normalizeRateScore(item.scoreReceived),
+      eventName: item.eventName?.trim() || 'Rate',
+      happenedAt: item.happenedAt?.trim() || new Date().toISOString(),
+      distanceKm: Number.isFinite(item.distanceKm) ? Number(item.distanceKm) : 0,
+      distanceMetersExact: Number.isFinite(item.distanceMetersExact)
+        ? Math.max(0, Math.trunc(Number(item.distanceMetersExact)))
+        : undefined
+    });
+  }
+
   protected buildNormalizedPairRateRecord(
     raterUserId: string,
     firstRatedUserId: string,
@@ -369,6 +362,81 @@ export class HttpUsersRatingsRepository {
       updatedAtIso: nowIso,
       ownerUserId: normalizedOwnerUserId
     };
+  }
+
+  private enqueueNormalizedRateOutbox(nextRecord: UserRateRecord): void {
+    this.memoryDb.write(state => {
+      const outboxTable = state[USER_RATES_OUTBOX_TABLE_NAME];
+      const outboxId = `upsert:${nextRecord.id}`;
+      const previousOutbox = outboxTable.byId[outboxId];
+      const nextOutboxRecord: UserRateOutboxRecord = {
+        id: outboxId,
+        rateId: nextRecord.id,
+        action: 'upsert',
+        payload: nextRecord,
+        status: 'pending',
+        retryCount: previousOutbox?.retryCount ?? 0,
+        queuedAtIso: previousOutbox?.queuedAtIso ?? nextRecord.updatedAtIso,
+        updatedAtIso: nextRecord.updatedAtIso,
+        lastTriedAtIso: previousOutbox?.lastTriedAtIso ?? null,
+        syncedAtIso: null,
+        lastError: null
+      };
+      return {
+        ...state,
+        [USER_RATES_OUTBOX_TABLE_NAME]: {
+          byId: {
+            ...outboxTable.byId,
+            [outboxId]: nextOutboxRecord
+          },
+          ids: previousOutbox ? outboxTable.ids : [...outboxTable.ids, outboxId]
+        }
+      };
+    });
+  }
+
+  private mergePendingOutboxRateItems(userId: string, items: readonly RateMenuItem[]): RateMenuItem[] {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    const itemsById = new Map<string, RateMenuItem>();
+    for (const item of items) {
+      const normalizedId = item.id.trim();
+      if (!normalizedId) {
+        continue;
+      }
+      itemsById.set(normalizedId, { ...item });
+    }
+    const outboxTable = this.memoryDb.read()[USER_RATES_OUTBOX_TABLE_NAME];
+    for (const id of outboxTable.ids) {
+      const record = outboxTable.byId[id];
+      const item = record?.payload ? this.toRateMenuItem(record.payload, normalizedUserId) : null;
+      if (!item?.id?.trim()) {
+        continue;
+      }
+      itemsById.set(item.id.trim(), { ...item });
+    }
+    return [...itemsById.values()]
+      .sort((left, right) => right.happenedAt.localeCompare(left.happenedAt) || left.id.localeCompare(right.id));
+  }
+
+  private toRateMenuItem(record: UserRateRecord, ownerUserId: string): RateMenuItem | null {
+    if (record.source === 'activity-rate') {
+      return DemoUserRatesBuilder.toRateMenuItem(record);
+    }
+    return DemoUserRatesBuilder.toGameCardRateMenuItem(record, ownerUserId);
+  }
+
+  private normalizeRateDirection(direction: RateMenuItem['direction'] | string | null | undefined): RateMenuItem['direction'] | null {
+    if (direction === 'given' || direction === 'received' || direction === 'mutual' || direction === 'met') {
+      return direction;
+    }
+    return null;
+  }
+
+  private normalizeRateScore(value: number): number {
+    return Math.max(1, Math.min(10, Math.trunc(Number(value) || 0)));
   }
 
   private applyUserRatesSyncResult(

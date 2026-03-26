@@ -240,16 +240,28 @@ export class NavigatorService {
       cancelLabel: 'Cancel',
       confirmLabel: 'Delete',
       confirmTone: 'danger',
-      onConfirm: () => {
+      onConfirm: async () => {
         this.closeMenu();
-        this.confirmationDialogService.openInfo(
-          'Delete account flow is ready for backend wiring.',
-          {
-            title: 'Delete account',
-            confirmLabel: 'OK',
-            confirmTone: 'neutral'
+        this.closeSettingsPopup();
+        this.closeProfileEditor();
+        this.closeImpressionsPopup();
+        const activeUserId = this.appCtx.activeUserId().trim();
+        if (activeUserId) {
+          const result = await this.usersService.deleteUser(activeUserId);
+          if (!result.submitted) {
+            this.confirmationDialogService.openInfo(
+              result.message ?? 'Unable to delete account.',
+              {
+                title: 'Delete account',
+                confirmLabel: 'OK',
+                confirmTone: 'danger'
+              }
+            );
+            return;
           }
-        );
+        }
+        this.clearHydratedUser();
+        await this.sessionService.logout().finally(() => this.router.navigate(['/entry']));
       }
     });
   }
@@ -267,6 +279,21 @@ export class NavigatorService {
         this.closeSettingsPopup();
         this.closeProfileEditor();
         this.closeImpressionsPopup();
+        const activeUserId = this.appCtx.activeUserId().trim();
+        if (activeUserId) {
+          const result = await this.usersService.logoutUser(activeUserId);
+          if (!result.submitted) {
+            this.confirmationDialogService.openInfo(
+              result.message ?? 'Unable to log out.',
+              {
+                title: 'Logout',
+                confirmLabel: 'OK',
+                confirmTone: 'neutral'
+              }
+            );
+            return;
+          }
+        }
         this.clearHydratedUser();
         await this.sessionService.logout().finally(() => this.router.navigate(['/entry']));
       }
@@ -592,9 +619,25 @@ export class NavigatorService {
       !== JSON.stringify(this.sortImpressionsBadgeItems(next.vibeBadges ?? []))
       || JSON.stringify(this.sortImpressionsBadgeItems(previous.personalityBadges ?? []))
       !== JSON.stringify(this.sortImpressionsBadgeItems(next.personalityBadges ?? []))
+      || JSON.stringify(this.normalizeImpressionTraits(previous.personalityTraits))
+      !== JSON.stringify(this.normalizeImpressionTraits(next.personalityTraits))
       || JSON.stringify(this.sortImpressionsBadgeItems(previous.categoryBadges ?? []))
       !== JSON.stringify(this.sortImpressionsBadgeItems(next.categoryBadges ?? []))
     );
+  }
+
+  private normalizeImpressionTraits(
+    traits: UserImpressionsSectionDto['personalityTraits'] | undefined
+  ): Array<{ id: string; percent: number; evidenceCount: number; lastRatedAtIso: string | null }> {
+    return [...(traits ?? [])]
+      .map(trait => ({
+        id: `${trait.id ?? trait.label ?? ''}`.trim(),
+        percent: Math.max(0, Math.trunc(Number(trait.percent) || 0)),
+        evidenceCount: Math.max(0, Math.trunc(Number(trait.evidenceCount) || 0)),
+        lastRatedAtIso: trait.lastRatedAtIso?.trim() || null
+      }))
+      .filter(trait => trait.id.length > 0)
+      .sort((left, right) => right.percent - left.percent || left.id.localeCompare(right.id));
   }
 
   private impressionSectionCounter(value: number | undefined): number {

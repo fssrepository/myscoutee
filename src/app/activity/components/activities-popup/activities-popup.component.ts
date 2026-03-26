@@ -484,6 +484,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   /** Called once each time the service opens the popup. */
   private onActivitiesOpened(): void {
     this.refreshRateItems();
+    void this.refreshChatItems();
     this.resetActivitiesStateForOpen();
     this.clearActivityRateEditorState();
     this.resetActivitiesScroll();
@@ -552,6 +553,27 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.initializeEventEditorContextData();
     this.refreshSectionBadges();
     this.seedEventOwnerMemberCountsFromEventsTable();
+  }
+
+  private async refreshChatItems(): Promise<void> {
+    const userId = this.activeUser?.id?.trim();
+    if (!userId) {
+      return;
+    }
+    try {
+      const items = await this.chatsService.queryChatItemsByUser(userId);
+      if (this.activeUser.id.trim() !== userId) {
+        return;
+      }
+      this.chatItems = items.map(item => ({
+        ...item,
+        memberIds: [...(item.memberIds ?? [])]
+      }));
+      this.refreshSectionBadges();
+      this.cdr.markForCheck();
+    } catch {
+      // Keep the last cached chat state if the refresh fails.
+    }
   }
 
   private hydrateStandaloneEventItems(userId: string): void {
@@ -2877,6 +2899,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (nextDirection) {
       this.pendingActivityRateDirectionOverrideById[rateItem.id] = nextDirection;
     }
+    this.ratesService.recordActivityRate(
+      this.activeUser.id,
+      rateItem,
+      normalized,
+      nextDirection ?? this.displayedRateDirection(rateItem)
+    );
     if (!this.isRatesFullscreenModeActive()) {
       this.triggerActivityRateBlinks(row.id);
       return;
@@ -5055,6 +5083,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activitiesListScrollable = change.scrollable;
     this.activitiesStickyValue = change.stickyLabel;
     this.activitiesContext.setActivitiesStickyValue(change.stickyLabel);
+    if (this.activitiesPrimaryFilter === 'chats') {
+      this.chatItems = this.chatsService.peekChatItemsByUser(this.activeUser.id)
+        .map(item => ({ ...item, memberIds: [...(item.memberIds ?? [])] }));
+      this.refreshSectionBadges();
+    }
     if (this.isRatesFullscreenModeActive()) {
       this.syncActivitiesRatesFullscreenSelection();
     }

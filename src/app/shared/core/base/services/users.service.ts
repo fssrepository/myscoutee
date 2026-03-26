@@ -1,14 +1,15 @@
 import { Injectable, inject } from '@angular/core';
 
-import { environment } from '../../../../../environments/environment';
 import { type LoadStatus } from '../context';
 import { AppContext } from '../context';
 import { DemoBootstrapService, type DemoBootstrapProgressState, DemoUsersService } from '../../demo';
 import { HttpUsersService } from '../../http';
 import type {
   DemoUserListItemDto,
+  UserDeleteRequestDto,
   UserFeedbackSubmitRequestDto,
   UserDto,
+  UserLogoutRequestDto,
   UserReportUserSubmitRequestDto,
   UserRealtimeLongPollResponseDto,
   UserProfileImageUploadResult,
@@ -16,7 +17,7 @@ import type {
   UserService
 } from '../interfaces/user.interface';
 import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface';
-import { SessionService } from './session.service';
+import { BaseRouteModeService } from './base-route-mode.service';
 
 export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
 
@@ -24,6 +25,9 @@ export const USERS_LOAD_CONTEXT_KEY = 'users-selector';
 export const USER_BY_ID_LOAD_CONTEXT_KEY = 'user-by-id';
 export const USER_FEEDBACK_SUBMIT_CONTEXT_KEY = 'user-feedback-submit';
 export const USER_REPORT_USER_SUBMIT_CONTEXT_KEY = 'user-report-user-submit';
+export const USER_PROFILE_SAVE_CONTEXT_KEY = 'user-profile-save';
+export const USER_LOGOUT_CONTEXT_KEY = 'user-logout';
+export const USER_DELETE_CONTEXT_KEY = 'user-delete';
 
 class RequestTimeoutError extends Error {
   constructor() {
@@ -42,21 +46,20 @@ class RequestAbortedError extends Error {
 @Injectable({
   providedIn: 'root'
 })
-export class UsersService {
+export class UsersService extends BaseRouteModeService {
   private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 3000;
   private static readonly DEFAULT_SUBMIT_MIN_DELAY_MS = 1500;
   private readonly demoUsersService = inject(DemoUsersService);
   private readonly demoBootstrapService = inject(DemoBootstrapService);
   private readonly httpUsersService = inject(HttpUsersService);
-  private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
 
   get demoModeEnabled(): boolean {
-    return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
+    return this.isDemoModeEnabled('/auth/me');
   }
 
   private get userService(): UserService {
-    return this.demoModeEnabled ? this.demoUsersService : this.httpUsersService;
+    return this.resolveRouteService('/auth/me', this.demoUsersService, this.httpUsersService);
   }
 
   async loadAvailableDemoUsers(
@@ -64,13 +67,16 @@ export class UsersService {
     onProgress?: (state: DemoBootstrapProgressState) => void
   ): Promise<DemoUserListItemDto[]> {
     const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
+    const demoModeEnabled = this.isDemoModeEnabled('/auth/demo-users');
 
     this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'loading');
 
     try {
-      await this.demoBootstrapService.ensureReady(onProgress);
+      if (demoModeEnabled) {
+        await this.demoBootstrapService.ensureReady(onProgress);
+      }
       const response = await this.withRequestTimeout(
-        this.demoUsersService.queryAvailableDemoUsers(),
+        (demoModeEnabled ? this.demoUsersService : this.httpUsersService).queryAvailableDemoUsers(),
         normalizedTimeoutMs
       );
 
@@ -91,7 +97,7 @@ export class UsersService {
     userId: string,
     onProgress?: (state: DemoBootstrapProgressState) => void
   ): Promise<void> {
-    if (!this.demoModeEnabled) {
+    if (!this.isDemoModeEnabled('/auth/me')) {
       onProgress?.({
         percent: 100,
         label: 'Demo session ready'
@@ -106,7 +112,7 @@ export class UsersService {
     const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
 
-    if (this.demoModeEnabled && !normalizedUserId) {
+    if (this.isDemoModeEnabled('/auth/me') && !normalizedUserId) {
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Missing user id.');
       return null;
     }
@@ -161,7 +167,32 @@ export class UsersService {
   }
 
   async saveUserProfile(user: UserDto): Promise<UserDto | null> {
-    return this.userService.saveUserProfile(user);
+    if (!user?.id?.trim()) {
+      this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'error', 'Missing user id.');
+      return null;
+    }
+
+    this.appCtx.setUserProfile(user);
+    this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'loading');
+
+    try {
+      const savedUser = await this.withRequestTimeout(
+        this.userService.saveUserProfile(user),
+        UsersService.DEFAULT_REQUEST_TIMEOUT_MS
+      );
+      const resolvedUser = savedUser ?? user;
+      this.appCtx.setUserProfile(resolvedUser);
+      this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'success');
+      return resolvedUser;
+    } catch (error) {
+      if (error instanceof RequestTimeoutError) {
+        this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'timeout', 'Profile save request timeout.');
+        return user;
+      }
+
+      this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'error', 'Unable to save profile.');
+      return user;
+    }
   }
 
   async submitUserFeedback(
@@ -190,6 +221,42 @@ export class UsersService {
       requestTimeoutMs,
       'Report request timeout.',
       'Unable to submit report.',
+      signal
+    );
+  }
+
+  async logoutUser(
+    userId: string,
+    requestTimeoutMs?: number,
+    signal?: AbortSignal
+  ): Promise<UserSubmitActionResponseDto> {
+    const request: UserLogoutRequestDto = {
+      userId: userId.trim()
+    };
+    return this.submitUserAction(
+      USER_LOGOUT_CONTEXT_KEY,
+      requestSignal => this.userService.logoutUser(request, requestSignal),
+      requestTimeoutMs,
+      'Logout request timeout.',
+      'Unable to log out.',
+      signal
+    );
+  }
+
+  async deleteUser(
+    userId: string,
+    requestTimeoutMs?: number,
+    signal?: AbortSignal
+  ): Promise<UserSubmitActionResponseDto> {
+    const request: UserDeleteRequestDto = {
+      userId: userId.trim()
+    };
+    return this.submitUserAction(
+      USER_DELETE_CONTEXT_KEY,
+      requestSignal => this.userService.deleteUser(request, requestSignal),
+      requestTimeoutMs,
+      'Delete account request timeout.',
+      'Unable to delete account.',
       signal
     );
   }
@@ -232,6 +299,7 @@ export class UsersService {
     }
     return this.userService.uploadUserProfileImage(normalizedUserId, file, slotIndex);
   }
+
 
   private setLoadStatus(contextKey: string, status: LoadStatus, message?: string): void {
     this.appCtx.setStatus(contextKey, status, message);

@@ -5,6 +5,13 @@ export interface EventFeedbackOption {
   impressionTag?: string;
 }
 
+export interface EventFeedbackTraitOption {
+  id: string;
+  label: string;
+  icon: string;
+  coreVibe: string;
+}
+
 export interface EventFeedbackCard {
   id: string;
   eventId: string;
@@ -25,6 +32,9 @@ export interface EventFeedbackCard {
   questionSecondary: string;
   primaryOptions: EventFeedbackOption[];
   secondaryOptions: EventFeedbackOption[];
+  traitQuestion: string;
+  traitOptions: EventFeedbackTraitOption[];
+  selectedTraitIds: string[];
   answerPrimary: string;
   answerSecondary: string;
 }
@@ -37,8 +47,56 @@ export interface SubmittedEventFeedbackAnswer {
   targetRole: 'Admin' | 'Manager' | 'Member';
   primaryValue: string;
   secondaryValue: string;
+  personalityTraitIds: string[];
   tags: string[];
   submittedAtIso: string;
+}
+
+export interface EventFeedbackStateDto {
+  eventId: string;
+  removed: boolean;
+  submittedAtIso: string;
+  organizerNote: string;
+  answersByCardId?: Record<string, SubmittedEventFeedbackAnswer>;
+}
+
+export interface EventFeedbackAnswerSubmitDto {
+  cardId: string;
+  kind: 'event' | 'attendee';
+  targetUserId: string | null;
+  targetRole: 'Admin' | 'Manager' | 'Member';
+  primaryValue: string;
+  secondaryValue: string;
+  personalityTraitIds: string[];
+  tags: string[];
+  submittedAtIso: string;
+}
+
+export interface EventFeedbackSubmitRequestDto {
+  userId: string;
+  eventId: string;
+  answers: EventFeedbackAnswerSubmitDto[];
+}
+
+export interface EventFeedbackNoteRequestDto {
+  userId: string;
+  eventId: string;
+  text: string;
+}
+
+export interface EventFeedbackToggleRequestDto {
+  userId: string;
+  eventId: string;
+}
+
+export interface EventFeedbackPersistedState {
+  id: string;
+  userId: string;
+  eventId: string;
+  removed: boolean;
+  submittedAtIso: string | null;
+  organizerNote: string;
+  answersByCardId: Record<string, SubmittedEventFeedbackAnswer>;
 }
 
 export type EventFeedbackListFilter = 'pending' | 'feedbacked' | 'removed';
@@ -235,4 +293,3 @@ export interface EventCapacityRange {
   min: number | null;
   max: number | null;
 }
-

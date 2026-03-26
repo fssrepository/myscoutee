@@ -4,9 +4,11 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type {
   DemoUserListItemDto,
+  UserDeleteRequestDto,
   UserFeedbackSubmitRequestDto,
   UserByIdQueryResponse,
   UserImpressionsDto,
+  UserLogoutRequestDto,
   UserMenuCountersDto,
   UserRealtimeCountersDto,
   UserRealtimeLongPollResponseDto,
@@ -19,6 +21,7 @@ import type {
   UserDto
 } from '../../base/interfaces/user.interface';
 import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.interface';
+import { OfflineCacheService } from '../../base/services/offline-cache.service';
 
 @Injectable({
   providedIn: 'root'
@@ -27,9 +30,12 @@ export class HttpUsersService implements UserService {
   private static readonly PROFILE_IMAGE_UPLOAD_ROUTE = '/auth/me/profile-image';
   private static readonly USER_FEEDBACK_ROUTE = '/auth/me/feedback';
   private static readonly USER_REPORT_USER_ROUTE = '/auth/me/report-user';
+  private static readonly USER_LOGOUT_ROUTE = '/auth/me/logout';
+  private static readonly USER_DELETE_ROUTE = '/auth/me/delete';
   private static readonly USER_REALTIME_LONG_POLL_ROUTE = '/auth/me/realtime/long-poll';
   private static readonly MAX_PROFILE_IMAGE_SLOTS = 8;
   private readonly http = inject(HttpClient);
+  private readonly offlineCache = inject(OfflineCacheService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
   async queryAvailableDemoUsers(): Promise<UsersListQueryResponse> {
@@ -50,7 +56,8 @@ export class HttpUsersService implements UserService {
     }
   }
 
-  async queryUserById(_userId?: string): Promise<UserByIdQueryResponse> {
+  async queryUserById(userId?: string): Promise<UserByIdQueryResponse> {
+    const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
     try {
       type HttpUserByIdResponse = UserDto & {
         filterCount?: number;
@@ -58,20 +65,23 @@ export class HttpUsersService implements UserService {
         counterOverrides?: UserMenuCountersDto | null;
       };
       const me = await this.http
-        .get<HttpUserByIdResponse | null>(`${this.apiBaseUrl}/auth/me`)
+        .get<HttpUserByIdResponse | null>(`${this.apiBaseUrl}/auth/me`, {
+          params: normalizedUserId ? { userId: normalizedUserId } : {}
+        })
         .toPromise();
       if (!me) {
         return { user: null };
       }
       const user = this.cloneUser(me);
-      return {
+      return this.cacheUserResponse({
         user,
         filterCount: Number.isFinite(me.filterCount) ? Math.max(0, Math.trunc(Number(me.filterCount))) : undefined,
         filterPreferences: me.filterPreferences ?? null,
         counterOverrides: this.buildInitialMenuCounterOverrides(user, me.counterOverrides)
-      };
+      });
     } catch {
-      return { user: null };
+      const cached = this.offlineCache.readUser(normalizedUserId);
+      return cached ?? { user: null };
     }
   }
 
@@ -135,17 +145,13 @@ export class HttpUsersService implements UserService {
     if (!user?.id?.trim()) {
       return null;
     }
-    try {
-      const response = await this.http
-        .post<UserDto | null>(`${this.apiBaseUrl}/auth/me/profile`, user)
-        .toPromise();
-      if (!response) {
-        return this.cloneUser(user);
-      }
-      return this.cloneUser(response);
-    } catch {
+    const response = await this.http
+      .post<UserDto | null>(`${this.apiBaseUrl}/auth/me/profile`, user)
+      .toPromise();
+    if (!response) {
       return this.cloneUser(user);
     }
+    return this.cloneUser(response);
   }
 
   async submitUserFeedback(
@@ -200,6 +206,62 @@ export class HttpUsersService implements UserService {
       return {
         submitted: false,
         message: 'Unable to submit report.'
+      };
+    }
+  }
+
+  async logoutUser(
+    request: UserLogoutRequestDto,
+    signal?: AbortSignal
+  ): Promise<UserSubmitActionResponseDto> {
+    try {
+      const response = await this.postAbortable<UserSubmitActionResponseDto>(
+        `${this.apiBaseUrl}${HttpUsersService.USER_LOGOUT_ROUTE}`,
+        request,
+        signal
+      );
+      if (!response) {
+        return { submitted: true, message: null };
+      }
+      return {
+        submitted: response.submitted !== false,
+        message: typeof response.message === 'string' ? response.message : null
+      };
+    } catch (error) {
+      if (this.isAbortError(error)) {
+        throw error;
+      }
+      return {
+        submitted: false,
+        message: 'Unable to log out.'
+      };
+    }
+  }
+
+  async deleteUser(
+    request: UserDeleteRequestDto,
+    signal?: AbortSignal
+  ): Promise<UserSubmitActionResponseDto> {
+    try {
+      const response = await this.postAbortable<UserSubmitActionResponseDto>(
+        `${this.apiBaseUrl}${HttpUsersService.USER_DELETE_ROUTE}`,
+        request,
+        signal
+      );
+      if (!response) {
+        return { submitted: true, message: null };
+      }
+      return {
+        submitted: response.submitted !== false,
+        message: typeof response.message === 'string' ? response.message : null
+      };
+    } catch (error) {
+      if (this.isAbortError(error)) {
+        throw error;
+      }
+      return {
+        submitted: false,
+        message: 'Unable to delete account.'
       };
     }
   }
@@ -265,9 +327,19 @@ export class HttpUsersService implements UserService {
         chat: Math.max(0, Math.trunc(Number(user.activities?.chat) || 0)),
         invitations: Math.max(0, Math.trunc(Number(user.activities?.invitations) || 0)),
         events: Math.max(0, Math.trunc(Number(user.activities?.events) || 0)),
-        hosting: Math.max(0, Math.trunc(Number(user.activities?.hosting) || 0))
+        hosting: Math.max(0, Math.trunc(Number(user.activities?.hosting) || 0)),
+        tickets: Math.max(0, Math.trunc(Number(user.activities?.tickets) || 0)),
+        feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0))
       }
     };
+  }
+
+  private cacheUserResponse(response: UserByIdQueryResponse): UserByIdQueryResponse {
+    if (!response.user?.id?.trim()) {
+      return response;
+    }
+    this.offlineCache.writeUser(response.user.id.trim(), response);
+    return response;
   }
 
   private cloneImpressionsSection(section?: UserImpressionsSectionDto): UserImpressionsSectionDto | undefined {
@@ -278,6 +350,9 @@ export class HttpUsersService implements UserService {
       ...section,
       vibeBadges: [...(section.vibeBadges ?? [])],
       personalityBadges: [...(section.personalityBadges ?? [])],
+      personalityTraits: (section.personalityTraits ?? []).map(trait => ({
+        ...trait
+      })),
       categoryBadges: [...(section.categoryBadges ?? [])]
     };
   }
@@ -302,11 +377,8 @@ export class HttpUsersService implements UserService {
       invitations: this.normalizeInitialCounterValue(overrides?.invitations, user.activities?.invitations),
       events: this.normalizeInitialCounterValue(overrides?.events, user.activities?.events),
       hosting: this.normalizeInitialCounterValue(overrides?.hosting, user.activities?.hosting),
-      tickets: this.normalizeInitialCounterValue(
-        overrides?.tickets,
-        Math.max(0, Math.trunc((user.activities.events + user.activities.hosting) / 2))
-      ),
-      feedback: this.normalizeInitialCounterValue(overrides?.feedback, 0)
+      tickets: this.normalizeInitialCounterValue(overrides?.tickets, user.activities?.tickets),
+      feedback: this.normalizeInitialCounterValue(overrides?.feedback, user.activities?.feedback)
     };
   }
 
@@ -337,8 +409,8 @@ export class HttpUsersService implements UserService {
         invitations: user.activities.invitations,
         events: user.activities.events,
         hosting: user.activities.hosting,
-        tickets: Math.max(0, Math.trunc((user.activities.events + user.activities.hosting) / 2)),
-        feedback: 0
+        tickets: Math.max(0, Math.trunc(Number(user.activities.tickets) || 0)),
+        feedback: Math.max(0, Math.trunc(Number(user.activities.feedback) || 0))
       }),
       impressions: this.cloneImpressions(user.impressions),
       cursor,

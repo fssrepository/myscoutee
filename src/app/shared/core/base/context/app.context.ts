@@ -625,6 +625,9 @@ export class AppContext {
       ...section,
       vibeBadges: [...(section.vibeBadges ?? [])],
       personalityBadges: [...(section.personalityBadges ?? [])],
+      personalityTraits: (section.personalityTraits ?? []).map(trait => ({
+        ...trait
+      })),
       categoryBadges: [...(section.categoryBadges ?? [])]
     };
   }
@@ -639,7 +642,9 @@ export class AppContext {
         chat: user.activities?.chat ?? 0,
         invitations: user.activities?.invitations ?? 0,
         events: user.activities?.events ?? 0,
-        hosting: user.activities?.hosting ?? 0
+        hosting: user.activities?.hosting ?? 0,
+        tickets: user.activities?.tickets ?? 0,
+        feedback: user.activities?.feedback ?? 0
       },
       impressions: user.impressions ? this.cloneImpressions(user.impressions) : undefined
     };

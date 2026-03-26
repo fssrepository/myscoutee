@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { AppUtils } from '../../../app-utils';
 import type { EventMenuItem } from '../../../core/base/interfaces/activity-feed.interface';
 import { AppMemoryDb } from '../../base/db';
+import { EVENT_FEEDBACK_TABLE_NAME } from '../models/event-feedback.model';
 import { DemoEventSeedBuilder, DemoEventsRepositoryBuilder, DemoUserMenuCountersBuilder, DemoUserSeedBuilder } from '../builders';
 import {
   EVENTS_TABLE_NAME,
@@ -356,6 +357,59 @@ export class DemoEventsRepository {
     });
   }
 
+  requestJoin(userId: string, sourceId: string): DemoEventRecord | null {
+    this.init();
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+
+    const preferredRecord = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
+      .find(record => record.id === normalizedSourceId && !record.isInvitation);
+    if (!preferredRecord) {
+      return null;
+    }
+
+    const acceptedMemberUserIds = this.normalizeUserIds(preferredRecord.acceptedMemberUserIds);
+    const pendingMemberUserIds = this.normalizeUserIds(preferredRecord.pendingMemberUserIds);
+    if (!acceptedMemberUserIds.includes(normalizedUserId) && !pendingMemberUserIds.includes(normalizedUserId)) {
+      pendingMemberUserIds.push(normalizedUserId);
+      this.memoryDb.write(state => {
+        const table = state[EVENTS_TABLE_NAME];
+        const nextById = { ...table.byId };
+
+        for (const recordKey of table.ids) {
+          const current = table.byId[recordKey];
+          if (!current || current.id !== normalizedSourceId || current.isInvitation) {
+            continue;
+          }
+          nextById[recordKey] = {
+            ...current,
+            acceptedMembers: acceptedMemberUserIds.length,
+            pendingMembers: pendingMemberUserIds.length,
+            acceptedMemberUserIds: [...acceptedMemberUserIds],
+            pendingMemberUserIds: [...pendingMemberUserIds],
+            capacityTotal: Math.max(acceptedMemberUserIds.length, current.capacityTotal)
+          };
+        }
+
+        return {
+          ...state,
+          [EVENTS_TABLE_NAME]: {
+            byId: nextById,
+            ids: [...table.ids]
+          }
+        };
+      });
+    }
+
+    const refreshed = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
+      .find(record => record.id === normalizedSourceId && !record.isInvitation)
+      ?? preferredRecord;
+    return this.buildMembershipProjectionRecord(normalizedUserId, refreshed);
+  }
+
   isItemTrashed(userId: string, type: DemoRepositoryEventItemType, sourceId: string): boolean {
     this.init();
     const record = this.findItem(userId, type, sourceId);
@@ -373,14 +427,29 @@ export class DemoEventsRepository {
 
   countPendingEventFeedbackByUser(userId: string, feedbackUnlockDelayMs: number): number {
     this.init();
-    const eventItems = this.queryEventItemsByUser(userId);
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return 0;
+    }
+    const eventItems = this.queryEventItemsByUser(normalizedUserId);
+    const feedbackTable = this.memoryDb.read()[EVENT_FEEDBACK_TABLE_NAME];
     const nowMs = Date.now();
     const basePendingCount = eventItems.filter(item => {
       if (item.isAdmin) {
         return false;
       }
       const startMs = new Date(item.startAtIso ?? '').getTime();
-      return Number.isFinite(startMs) && nowMs >= startMs + feedbackUnlockDelayMs;
+      if (!Number.isFinite(startMs) || nowMs < startMs + feedbackUnlockDelayMs) {
+        return false;
+      }
+      const feedbackRecord = feedbackTable.byId[`${normalizedUserId}::${item.id}`];
+      if (!feedbackRecord) {
+        return true;
+      }
+      if (feedbackRecord.removed) {
+        return false;
+      }
+      return !(feedbackRecord.submittedAtIso?.trim());
     }).length;
 
     return basePendingCount + DemoUserMenuCountersBuilder.syntheticPendingEventFeedbackCount(

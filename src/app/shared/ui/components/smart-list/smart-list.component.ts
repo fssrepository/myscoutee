@@ -117,6 +117,7 @@ type SmartListCalendarWindow = {
 })
 export class SmartListComponent<T, TFilters extends SmartListFilters = SmartListFilters> implements AfterViewInit, OnChanges, OnDestroy {
   private static readonly DEFAULT_LOADING_DELAY_MS = 1500;
+  private static readonly QUICK_COMPLETE_THRESHOLD_MS = 120;
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly hostRef = inject(ElementRef<HTMLElement>);
   private restoreAnchorSequence = 0;
@@ -1914,6 +1915,15 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       clearInterval(this.loadingInterval);
       this.loadingInterval = null;
     }
+    const elapsed = Math.max(0, performance.now() - this.loadingStartedAtMs);
+    if (elapsed < SmartListComponent.QUICK_COMPLETE_THRESHOLD_MS) {
+      this.loadingProgress = 0;
+      this.loadingOverdue = false;
+      this.loadingStartedAtMs = 0;
+      this.emitState();
+      this.flushSoon();
+      return;
+    }
     this.loadingProgress = 1;
     this.loadingOverdue = false;
     this.emitState();
@@ -1956,7 +1966,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   private resolvedLoadingDelayMs(): number {
     const configured = Number(this.config.loadingDelayMs);
-    if (Number.isFinite(configured) && configured > 0) {
+    if (Number.isFinite(configured) && configured >= 0) {
       return Math.max(0, Math.trunc(configured));
     }
     return SmartListComponent.DEFAULT_LOADING_DELAY_MS;

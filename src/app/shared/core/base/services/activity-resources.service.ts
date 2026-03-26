@@ -1,27 +1,26 @@
 import { Injectable, inject } from '@angular/core';
 
-import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
 import { AppContext } from '../context';
 import { DemoActivityResourcesService } from '../../demo/services/activity-resources.service';
 import { HttpActivityResourcesService } from '../../http/services/activity-resources.service';
-import { SessionService } from './session.service';
+import { BaseRouteModeService } from './base-route-mode.service';
 
 @Injectable({
   providedIn: 'root'
 })
-export class ActivityResourcesService {
+export class ActivityResourcesService extends BaseRouteModeService {
   private readonly demoActivityResourcesService = inject(DemoActivityResourcesService);
   private readonly httpActivityResourcesService = inject(HttpActivityResourcesService);
-  private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
 
-  private get demoModeEnabled(): boolean {
-    return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
-  }
 
   private get activityResourcesService(): DemoActivityResourcesService | HttpActivityResourcesService {
-    return this.demoModeEnabled ? this.demoActivityResourcesService : this.httpActivityResourcesService;
+    return this.resolveRouteService(
+      '/activities/events/subevent-resources',
+      this.demoActivityResourcesService,
+      this.httpActivityResourcesService
+    );
   }
 
   activeAssetOwnerUserId(): string {

@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import { resolveAdditionalDelayMsForRoute } from '../config';
+import { DemoRouteDelayService } from './demo-route-delay.service';
 import { DemoUsersRepository } from '../repositories/users.repository';
 import { DemoUsersRatingsRepository } from '../repositories/users-ratings.repository';
 import type {
@@ -14,7 +14,7 @@ import type { UserDto } from '../../base/interfaces/user.interface';
 @Injectable({
   providedIn: 'root'
 })
-export class DemoGameService implements UserGameDataService {
+export class DemoGameService extends DemoRouteDelayService implements UserGameDataService {
   private static readonly USER_GAME_CARDS_ROUTE = '/game-cards/query';
   private readonly usersRepository = inject(DemoUsersRepository);
   private readonly usersRatingsRepository = inject(DemoUsersRatingsRepository);
@@ -33,12 +33,7 @@ export class DemoGameService implements UserGameDataService {
   }
 
   async queryUserGameCardsByFilter(request: UserGameCardsQueryRequest): Promise<UserGameCardsQueryResponse> {
-    const additionalDelayMs = resolveAdditionalDelayMsForRoute(DemoGameService.USER_GAME_CARDS_ROUTE);
-    if (additionalDelayMs > 0) {
-      await new Promise<void>(resolve => {
-        setTimeout(() => resolve(), additionalDelayMs);
-      });
-    }
+    await this.waitForRouteDelay(DemoGameService.USER_GAME_CARDS_ROUTE);
     const normalizedUserId = request.userId.trim();
     if (!normalizedUserId) {
       return { cards: null };

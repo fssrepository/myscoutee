@@ -137,12 +137,19 @@ export class AssetFacadeService {
 
   createTicketScanPayload(row: AppTypes.ActivityListRow): AppTypes.TicketScanPayload {
     const activeUser = this.resolveActiveTicketHolder();
-    const issuedAtIso = AppUtils.toIsoDateTime(new Date());
+    const source = row.source as {
+      createdDate?: string;
+      createdAtIso?: string;
+      updatedDate?: string;
+    } | null;
+    const issuedAtIso = `${source?.createdDate ?? source?.createdAtIso ?? source?.updatedDate ?? row.dateIso}`.trim()
+      || row.dateIso;
     const userId = activeUser?.id?.trim() || this.currentActiveUserId();
     const userName = activeUser?.name?.trim() || 'Ticket Holder';
     const holderAge = Math.max(0, Math.trunc(Number(activeUser?.age) || 0));
     const holderCity = activeUser?.city?.trim() || '';
-    const code = `TKT-${row.id}-${AppUtils.hashText(`${userId}:${row.id}:${issuedAtIso}`)}`;
+    const stableKey = `${userId}:${row.id}:${row.type}`;
+    const code = `TKT-${AppUtils.hashText(stableKey)}-${AppUtils.hashText(`${stableKey}:${issuedAtIso}`)}`;
     return {
       code,
       holderUserId: userId,

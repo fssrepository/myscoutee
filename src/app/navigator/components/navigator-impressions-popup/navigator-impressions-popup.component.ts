@@ -36,6 +36,9 @@ interface NavigatorImpressionsViewModel {
   hostRepeatSummary: string;
   hostAttendanceNoShowSummary: string;
   hostVibeBadgeItems: string[];
+  hostTraitCards: NavigatorImpressionsTraitCardViewModel[];
+  hostTraitIndex: number;
+  hostActiveTraitCard: NavigatorImpressionsTraitCardViewModel | null;
   hostPersonalityBadgeItems: string[];
   hostCategoryBadgeItems: string[];
   memberTotalEvents: number;
@@ -43,8 +46,23 @@ interface NavigatorImpressionsViewModel {
   memberReturneesSummary: string;
   memberNoShowCount: number;
   memberVibeBadgeItems: string[];
+  memberTraitCards: NavigatorImpressionsTraitCardViewModel[];
+  memberTraitIndex: number;
+  memberActiveTraitCard: NavigatorImpressionsTraitCardViewModel | null;
   memberPersonalityBadgeItems: string[];
   memberCategoryBadgeItems: string[];
+}
+
+interface NavigatorImpressionsTraitCardViewModel {
+  id: string;
+  label: string;
+  icon: string;
+  coreVibe: string;
+  highlights: string[];
+  percent: number;
+  evidenceCount: number;
+  lastRatedAtIso: string | null;
+  toneClass: string;
 }
 
 @Component({
@@ -69,9 +87,12 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   private readonly vibeIcons = APP_STATIC_DATA.vibeIcons;
   private readonly categoryIcons = APP_STATIC_DATA.categoryIcons;
   private readonly memberTraitIcons = APP_STATIC_DATA.memberTraitIcons;
+  private readonly personalityTraitCatalog = APP_STATIC_DATA.personalityTraitCatalog;
   private readonly pulseFlagsRef = signal<NavigatorImpressionsPulseFlags>({
     ...NavigatorImpressionsPopupComponent.DEFAULT_PULSE_FLAGS
   });
+  private readonly hostTraitIndexRef = signal(0);
+  private readonly memberTraitIndexRef = signal(0);
   private lastPopupOpen = false;
   private lastTrackedUserId = '';
   private lastTrackedImpressions: UserDto['impressions'] | null = null;
@@ -88,6 +109,10 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (!user) {
       return null;
     }
+    const hostTraitCards = this.resolveTraitCards(user, 'host');
+    const memberTraitCards = this.resolveTraitCards(user, 'member');
+    const hostTraitIndex = this.normalizeTraitIndex(this.hostTraitIndexRef(), hostTraitCards.length);
+    const memberTraitIndex = this.normalizeTraitIndex(this.memberTraitIndexRef(), memberTraitCards.length);
     return {
       user,
       pulseFlags: this.pulseFlagsRef(),
@@ -98,6 +123,9 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
       hostRepeatSummary: this.resolveHostRepeatSummary(user),
       hostAttendanceNoShowSummary: this.resolveHostAttendanceNoShowSummary(user),
       hostVibeBadgeItems: this.resolveHostVibeBadgeItems(user),
+      hostTraitCards,
+      hostTraitIndex,
+      hostActiveTraitCard: hostTraitCards[hostTraitIndex] ?? null,
       hostPersonalityBadgeItems: this.resolveHostPersonalityBadgeItems(user),
       hostCategoryBadgeItems: this.resolveHostCategoryBadgeItems(user),
       memberTotalEvents: this.resolveMemberTotalEvents(user),
@@ -105,6 +133,9 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
       memberReturneesSummary: this.resolveMemberReturneesSummary(user),
       memberNoShowCount: this.resolveMemberNoShowCount(user),
       memberVibeBadgeItems: this.resolveMemberVibeBadgeItems(user),
+      memberTraitCards,
+      memberTraitIndex,
+      memberActiveTraitCard: memberTraitCards[memberTraitIndex] ?? null,
       memberPersonalityBadgeItems: this.resolveMemberPersonalityBadgeItems(user),
       memberCategoryBadgeItems: this.resolveMemberCategoryBadgeItems(user)
     };
@@ -129,6 +160,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
         this.lastPopupOpen = false;
         this.lastTrackedUserId = userId;
         this.lastTrackedImpressions = this.cloneImpressions(currentImpressions);
+        this.resetTraitCarouselIndices();
         this.resetPulseFlags();
         return;
       }
@@ -140,6 +172,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
         this.lastPopupOpen = true;
         this.lastTrackedUserId = userId;
         this.lastTrackedImpressions = this.cloneImpressions(currentImpressions);
+        this.resetTraitCarouselIndices();
         this.resetPulseFlags();
         return;
       }
@@ -199,6 +232,54 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     return resolveTraitIcon(trait);
   }
 
+  protected previousHostTrait(): void {
+    const vm = this.viewModel();
+    if (!vm || vm.hostTraitCards.length <= 1) {
+      return;
+    }
+    this.hostTraitIndexRef.set((vm.hostTraitIndex - 1 + vm.hostTraitCards.length) % vm.hostTraitCards.length);
+  }
+
+  protected nextHostTrait(): void {
+    const vm = this.viewModel();
+    if (!vm || vm.hostTraitCards.length <= 1) {
+      return;
+    }
+    this.hostTraitIndexRef.set((vm.hostTraitIndex + 1) % vm.hostTraitCards.length);
+  }
+
+  protected selectHostTrait(index: number): void {
+    const vm = this.viewModel();
+    if (!vm || index < 0 || index >= vm.hostTraitCards.length) {
+      return;
+    }
+    this.hostTraitIndexRef.set(index);
+  }
+
+  protected previousMemberTrait(): void {
+    const vm = this.viewModel();
+    if (!vm || vm.memberTraitCards.length <= 1) {
+      return;
+    }
+    this.memberTraitIndexRef.set((vm.memberTraitIndex - 1 + vm.memberTraitCards.length) % vm.memberTraitCards.length);
+  }
+
+  protected nextMemberTrait(): void {
+    const vm = this.viewModel();
+    if (!vm || vm.memberTraitCards.length <= 1) {
+      return;
+    }
+    this.memberTraitIndexRef.set((vm.memberTraitIndex + 1) % vm.memberTraitCards.length);
+  }
+
+  protected selectMemberTrait(index: number): void {
+    const vm = this.viewModel();
+    if (!vm || index < 0 || index >= vm.memberTraitCards.length) {
+      return;
+    }
+    this.memberTraitIndexRef.set(index);
+  }
+
   private activeUserImpressionsSection(user: UserDto, kind: 'host' | 'member'): UserImpressionsSectionDto | null {
     const impressions = this.appCtx.getUserImpressions(user.id) ?? user.impressions ?? null;
     if (!impressions) {
@@ -234,6 +315,11 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     this.pulseFlagsRef.set({
       ...NavigatorImpressionsPopupComponent.DEFAULT_PULSE_FLAGS
     });
+  }
+
+  private resetTraitCarouselIndices(): void {
+    this.hostTraitIndexRef.set(0);
+    this.memberTraitIndexRef.set(0);
   }
 
   private clearPulseTimers(): void {
@@ -275,6 +361,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
             ...impressions.host,
             vibeBadges: [...(impressions.host.vibeBadges ?? [])],
             personalityBadges: [...(impressions.host.personalityBadges ?? [])],
+            personalityTraits: (impressions.host.personalityTraits ?? []).map(trait => ({ ...trait })),
             categoryBadges: [...(impressions.host.categoryBadges ?? [])]
           }
         : undefined,
@@ -283,6 +370,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
             ...impressions.member,
             vibeBadges: [...(impressions.member.vibeBadges ?? [])],
             personalityBadges: [...(impressions.member.personalityBadges ?? [])],
+            personalityTraits: (impressions.member.personalityTraits ?? []).map(trait => ({ ...trait })),
             categoryBadges: [...(impressions.member.categoryBadges ?? [])]
           }
         : undefined
@@ -347,6 +435,70 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     };
   }
 
+  private normalizeTraitIndex(index: number, length: number): number {
+    if (length <= 0) {
+      return 0;
+    }
+    return Math.max(0, Math.min(length - 1, Math.trunc(Number(index) || 0)));
+  }
+
+  private resolveTraitCards(
+    user: UserDto,
+    kind: 'host' | 'member'
+  ): NavigatorImpressionsTraitCardViewModel[] {
+    const section = this.activeUserImpressionsSection(user, kind)
+      ?? DemoUserImpressionsBuilder.withResolvedImpressions(user).impressions?.[kind]
+      ?? null;
+    const cardsById = new Map<string, NavigatorImpressionsTraitCardViewModel>();
+    for (const trait of section?.personalityTraits ?? []) {
+      const card = this.resolveTraitCard(trait.id ?? trait.label ?? '', trait.label ?? '');
+      if (!card) {
+        continue;
+      }
+      const nextCard: NavigatorImpressionsTraitCardViewModel = {
+        ...card,
+        percent: Math.max(0, Math.trunc(Number(trait.percent) || 0)),
+        evidenceCount: Math.max(0, Math.trunc(Number(trait.evidenceCount) || 0)),
+        lastRatedAtIso: trait.lastRatedAtIso?.trim() || null
+      };
+      const existing = cardsById.get(nextCard.id);
+      if (!existing || this.sortResolvedTraitCards(nextCard, existing) < 0) {
+        cardsById.set(nextCard.id, nextCard);
+      }
+    }
+    return [...cardsById.values()]
+      .sort((left, right) => this.sortResolvedTraitCards(left, right))
+      .slice(0, 3);
+  }
+
+  private resolveTraitCard(
+    traitKey: string,
+    fallbackLabel: string
+  ): NavigatorImpressionsTraitCardViewModel | null {
+    const normalizedKey = `${traitKey ?? ''}`.trim().toLowerCase();
+    const normalizedLabel = `${fallbackLabel ?? ''}`.trim().toLowerCase();
+    const match = this.personalityTraitCatalog.find(trait =>
+      trait.id === normalizedKey
+      || trait.label.toLowerCase() === normalizedKey
+      || trait.label.toLowerCase() === normalizedLabel
+      || trait.aliases.some(alias => alias.toLowerCase() === normalizedKey || alias.toLowerCase() === normalizedLabel)
+    );
+    if (!match) {
+      return null;
+    }
+    return {
+      id: match.id,
+      label: match.label,
+      icon: match.icon,
+      coreVibe: match.coreVibe,
+      highlights: [...match.highlights],
+      percent: 0,
+      evidenceCount: 0,
+      lastRatedAtIso: null,
+      toneClass: match.toneClass
+    };
+  }
+
   private resolveHostAverageRating(user: UserDto): string {
     const loaded = this.impressionSectionRating(this.activeUserImpressionsSection(user, 'host')?.averageRating);
     if (loaded !== null) {
@@ -404,6 +556,10 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   }
 
   private resolveHostPersonalityBadgeItems(user: UserDto): string[] {
+    const traitCards = this.resolveTraitCards(user, 'host');
+    if (traitCards.length > 0) {
+      return traitCards.map(trait => `${trait.label} ${trait.percent}%`);
+    }
     const loaded = this.impressionSectionBadgeList(this.activeUserImpressionsSection(user, 'host')?.personalityBadges);
     if (loaded) {
       return this.sortImpressionsBadgeItems(loaded);
@@ -471,6 +627,10 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   }
 
   private resolveMemberPersonalityBadgeItems(user: UserDto): string[] {
+    const traitCards = this.resolveTraitCards(user, 'member');
+    if (traitCards.length > 0) {
+      return traitCards.map(trait => `${trait.label} ${trait.percent}%`);
+    }
     const loaded = this.impressionSectionBadgeList(this.activeUserImpressionsSection(user, 'member')?.personalityBadges);
     if (loaded) {
       return this.sortImpressionsBadgeItems(loaded);
@@ -525,10 +685,68 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     return (
       JSON.stringify(this.sortImpressionsBadgeItems(previous.vibeBadges ?? []))
       !== JSON.stringify(this.sortImpressionsBadgeItems(next.vibeBadges ?? []))
+      || JSON.stringify(this.normalizeImpressionTraits(previous.personalityTraits))
+      !== JSON.stringify(this.normalizeImpressionTraits(next.personalityTraits))
       || JSON.stringify(this.sortImpressionsBadgeItems(previous.personalityBadges ?? []))
       !== JSON.stringify(this.sortImpressionsBadgeItems(next.personalityBadges ?? []))
       || JSON.stringify(this.sortImpressionsBadgeItems(previous.categoryBadges ?? []))
       !== JSON.stringify(this.sortImpressionsBadgeItems(next.categoryBadges ?? []))
     );
+  }
+
+  private normalizeImpressionTraits(
+    traits: UserImpressionsSectionDto['personalityTraits'] | undefined
+  ): Array<{ id: string; percent: number; evidenceCount: number; lastRatedAtIso: string | null }> {
+    return [...(traits ?? [])]
+      .map(trait => ({
+        id: this.resolveTraitIdentity(trait.id ?? '', trait.label ?? ''),
+        percent: Math.max(0, Math.trunc(Number(trait.percent) || 0)),
+        evidenceCount: Math.max(0, Math.trunc(Number(trait.evidenceCount) || 0)),
+        lastRatedAtIso: trait.lastRatedAtIso?.trim() || null
+      }))
+      .filter(trait => trait.id.length > 0)
+      .sort((left, right) =>
+        this.sortResolvedTraitCards(
+          {
+            label: left.id,
+            percent: left.percent,
+            evidenceCount: left.evidenceCount,
+            lastRatedAtIso: left.lastRatedAtIso
+          },
+          {
+            label: right.id,
+            percent: right.percent,
+            evidenceCount: right.evidenceCount,
+            lastRatedAtIso: right.lastRatedAtIso
+          }
+        )
+      );
+  }
+
+  private resolveTraitIdentity(traitId: string, traitLabel: string): string {
+    return this.resolveTraitCard(traitId, traitLabel)?.id ?? `${traitId ?? traitLabel ?? ''}`.trim();
+  }
+
+  private sortResolvedTraitCards(
+    left: Pick<NavigatorImpressionsTraitCardViewModel, 'label' | 'percent' | 'evidenceCount' | 'lastRatedAtIso'>,
+    right: Pick<NavigatorImpressionsTraitCardViewModel, 'label' | 'percent' | 'evidenceCount' | 'lastRatedAtIso'>
+  ): number {
+    if (left.percent !== right.percent) {
+      return right.percent - left.percent;
+    }
+    if (left.evidenceCount !== right.evidenceCount) {
+      return right.evidenceCount - left.evidenceCount;
+    }
+    const leftRatedAt = this.toSortableIsoDate(left.lastRatedAtIso);
+    const rightRatedAt = this.toSortableIsoDate(right.lastRatedAtIso);
+    if (leftRatedAt !== rightRatedAt) {
+      return rightRatedAt - leftRatedAt;
+    }
+    return left.label.localeCompare(right.label);
+  }
+
+  private toSortableIsoDate(value: string | null | undefined): number {
+    const parsed = Date.parse(value?.trim() ?? '');
+    return Number.isFinite(parsed) ? parsed : 0;
   }
 }

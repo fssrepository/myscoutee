@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 
-import { environment } from '../../../../../environments/environment';
 import type {
   ActivityMemberOwnerType,
   ActivityMemberOwnerRef,
@@ -11,24 +10,20 @@ import type * as AppTypes from '../../../core/base/models';
 import { AppContext } from '../context';
 import { DemoActivityMembersService } from '../../demo/services/activity-members.service';
 import { HttpActivityMembersService } from '../../http/services/activity-members.service';
-import { SessionService } from './session.service';
+import { BaseRouteModeService } from './base-route-mode.service';
 
 @Injectable({
   providedIn: 'root'
 })
-export class ActivityMembersService {
+export class ActivityMembersService extends BaseRouteModeService {
   private static readonly OWNER_TYPES: readonly ActivityMemberOwnerType[] = ['event', 'subEvent', 'group', 'asset'];
   private readonly demoActivityMembersService = inject(DemoActivityMembersService);
   private readonly httpActivityMembersService = inject(HttpActivityMembersService);
-  private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
 
-  private get demoModeEnabled(): boolean {
-    return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
-  }
 
   private get activityMembersService(): DemoActivityMembersService | HttpActivityMembersService {
-    return this.demoModeEnabled ? this.demoActivityMembersService : this.httpActivityMembersService;
+    return this.resolveRouteService('/activities/events/members', this.demoActivityMembersService, this.httpActivityMembersService);
   }
 
   peekMembersByOwner(owner: ActivityMemberOwnerRef): AppTypes.ActivityMemberEntry[] {

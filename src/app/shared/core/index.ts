@@ -22,6 +22,7 @@ export {
   USER_GAME_CARDS_LOAD_CONTEXT_KEY
 } from './base/services/game.service';
 export { EventsService } from './base/services/events.service';
+export { RouteDelayService } from './base/services/route-delay.service';
 export { EventEditorDataService } from './base/services/event-editor-data.service';
 export { ActivityMembersService } from './base/services/activity-members.service';
 export { ActivityResourcesService } from './base/services/activity-resources.service';
@@ -34,6 +35,7 @@ export {
   USER_FEEDBACK_SUBMIT_CONTEXT_KEY,
   USER_REPORT_USER_SUBMIT_CONTEXT_KEY,
   USER_BY_ID_LOAD_CONTEXT_KEY,
+  USER_PROFILE_SAVE_CONTEXT_KEY,
   USERS_LOAD_CONTEXT_KEY,
   UsersService
 } from './base/services/users.service';

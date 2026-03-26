@@ -12,6 +12,23 @@
   --interactive-press-brightness: 0.96;
 }
 
+@keyframes navigator-menu-mobile-touch-feedback {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+
+  45% {
+    transform: scale(var(--interactive-press-scale));
+    filter: brightness(var(--interactive-press-brightness));
+  }
+
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
 .card-badge,
 .row-badge {
   min-width: 22px;
@@ -91,6 +108,20 @@
   .asset-shortcut-btn:hover,
   .feedback-shortcut-btn:hover {
     box-shadow: 0 3px 10px rgba(16, 29, 48, 0.14);
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  :where(
+    .user-menu-settings-btn,
+    .user-menu-close-btn,
+    .header-open-cue,
+    .menu-shortcut-btn,
+    .impression-shortcut-btn,
+    .asset-shortcut-btn,
+    .feedback-shortcut-btn
+  ):not(:disabled):not([aria-disabled='true']):active {
+    animation: navigator-menu-mobile-touch-feedback 0.2s ease;
   }
 }
 
@@ -185,6 +216,32 @@
   background-repeat: no-repeat;
   color: transparent;
   font-size: 0;
+}
+
+.user-menu-offline-note {
+  margin: 0 0 0.95rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(53, 97, 146, 0.16);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(239, 246, 255, 0.92), rgba(232, 241, 253, 0.94));
+  color: rgba(29, 56, 89, 0.86);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+:where(
+  .header-open-cue,
+  .menu-shortcut-btn,
+  .impression-shortcut-btn,
+  .asset-shortcut-btn,
+  .feedback-shortcut-btn
+):disabled {
+  cursor: default;
+  opacity: 0.52;
+  box-shadow: none;
+  transform: none;
+  filter: grayscale(0.12);
 }
 
 .user-initial.is-placeholder {
@@ -344,6 +401,43 @@
 .avatar-stack {
   position: relative;
   padding-bottom: 13px;
+}
+
+.avatar-save-ring {
+  position: absolute;
+  inset: -8px;
+  pointer-events: none;
+}
+
+.avatar-save-ring-svg {
+  width: 112px;
+  height: 112px;
+  display: block;
+  filter: drop-shadow(0 10px 26px rgba(13, 24, 44, 0.2));
+  transform: rotate(-90deg);
+}
+
+.avatar-save-ring-track,
+.avatar-save-ring-progress {
+  fill: none;
+  stroke-width: 4;
+}
+
+.avatar-save-ring-track {
+  stroke: rgba(46, 114, 184, 0.12);
+}
+
+.avatar-save-ring-progress {
+  stroke-linecap: round;
+}
+
+.avatar-save-ring-progress.is-loading {
+  stroke: url(#navigator-menu-save-gradient);
+  animation: navigator-load-ring-progress 3s linear forwards;
+}
+
+.avatar-save-ring-progress.is-overdue {
+  stroke: url(#navigator-menu-save-gradient-overdue);
 }
 
 .user-avatar {
