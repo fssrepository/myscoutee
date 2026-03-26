@@ -4,8 +4,10 @@ import { DemoUsersRepository } from '../repositories/users.repository';
 import { DemoRouteDelayService } from './demo-route-delay.service';
 import type {
   UserByIdQueryResponse,
+  UserDeleteRequestDto,
   UserFeedbackSubmitRequestDto,
   UserDto,
+  UserLogoutRequestDto,
   UserReportUserSubmitRequestDto,
   UserRealtimeLongPollResponseDto,
   UserProfileImageUploadResult,
@@ -163,6 +165,36 @@ export class DemoUsersService extends DemoRouteDelayService implements UserServi
     return {
       submitted: true,
       message: `Report submitted successfully for ${normalizedTarget || 'the selected user'}. Our moderation team will review it.`
+    };
+  }
+
+  async logoutUser(
+    _request: UserLogoutRequestDto,
+    signal?: AbortSignal
+  ): Promise<UserSubmitActionResponseDto> {
+    await this.waitForRouteDelay(DemoUsersService.USER_BY_ID_ROUTE, signal);
+    return {
+      submitted: true,
+      message: null
+    };
+  }
+
+  async deleteUser(
+    request: UserDeleteRequestDto,
+    signal?: AbortSignal
+  ): Promise<UserSubmitActionResponseDto> {
+    await this.waitForRouteDelay(DemoUsersService.USER_BY_ID_ROUTE, signal);
+    const normalizedUserId = request.userId.trim();
+    const user = this.usersRepository.queryUserById(normalizedUserId);
+    if (user) {
+      this.usersRepository.upsertUser({
+        ...user,
+        profileStatus: 'deleted'
+      });
+    }
+    return {
+      submitted: true,
+      message: null
     };
   }
 

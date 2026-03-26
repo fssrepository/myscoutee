@@ -71,13 +71,15 @@ export interface UserDto {
   locationCoordinates?: LocationCoordinates;
   images?: string[];
   impressions?: UserImpressionsDto;
-  profileStatus: 'public' | 'friends only' | 'host only' | 'inactive';
+  profileStatus: 'public' | 'friends only' | 'host only' | 'inactive' | 'deleted';
   activities: {
     game: number;
     chat: number;
     invitations: number;
     events: number;
     hosting: number;
+    tickets?: number;
+    feedback?: number;
   };
 }
 
@@ -106,6 +108,14 @@ export interface UserReportUserSubmitRequestDto {
   details: string;
 }
 
+export interface UserLogoutRequestDto {
+  userId: string;
+}
+
+export interface UserDeleteRequestDto {
+  userId: string;
+}
+
 export interface UserSubmitActionResponseDto {
   submitted: boolean;
   message?: string | null;
@@ -124,5 +134,7 @@ export interface UserService {
   saveUserProfile(user: UserDto): Promise<UserDto | null>;
   submitUserFeedback(request: UserFeedbackSubmitRequestDto, signal?: AbortSignal): Promise<UserSubmitActionResponseDto>;
   submitReportUser(request: UserReportUserSubmitRequestDto, signal?: AbortSignal): Promise<UserSubmitActionResponseDto>;
+  logoutUser(request: UserLogoutRequestDto, signal?: AbortSignal): Promise<UserSubmitActionResponseDto>;
+  deleteUser(request: UserDeleteRequestDto, signal?: AbortSignal): Promise<UserSubmitActionResponseDto>;
   uploadUserProfileImage(userId: string, file: File, slotIndex: number): Promise<UserProfileImageUploadResult>;
 }

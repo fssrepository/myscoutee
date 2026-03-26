@@ -2,7 +2,12 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type { ActivitiesEventSyncPayload } from '../../../core/base/models';
+import type {
+  ActivitiesEventSyncPayload,
+  EventFeedbackNoteRequestDto,
+  EventFeedbackStateDto,
+  EventFeedbackSubmitRequestDto
+} from '../../../core/base/models';
 import type {
   DemoEventActivitiesQuery,
   DemoEventActivitiesQueryResult,
@@ -227,6 +232,46 @@ export class HttpEventsService {
     } catch {
       return null;
     }
+  }
+
+  async queryEventFeedbackStates(userId: string): Promise<EventFeedbackStateDto[]> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    try {
+      const response = await this.http
+        .get<EventFeedbackStateDto[] | null>(`${this.apiBaseUrl}/activities/events/feedback`, {
+          params: new HttpParams().set('userId', normalizedUserId)
+        })
+        .toPromise();
+      return Array.isArray(response)
+        ? response.map(item => ({
+            eventId: item.eventId?.trim() ?? '',
+            removed: Boolean(item.removed),
+            submittedAtIso: item.submittedAtIso?.trim() ?? '',
+            organizerNote: item.organizerNote?.trim() ?? ''
+          })).filter(item => item.eventId)
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async submitEventFeedback(request: EventFeedbackSubmitRequestDto): Promise<void> {
+    await this.postVoid('/activities/events/feedback/submit', request);
+  }
+
+  async saveEventFeedbackNote(request: EventFeedbackNoteRequestDto): Promise<void> {
+    await this.postVoid('/activities/events/feedback/note', request);
+  }
+
+  async removeEventFeedbackEvent(userId: string, eventId: string): Promise<void> {
+    await this.postVoid('/activities/events/feedback/remove', { userId: userId.trim(), eventId: eventId.trim() });
+  }
+
+  async restoreEventFeedbackEvent(userId: string, eventId: string): Promise<void> {
+    await this.postVoid('/activities/events/feedback/restore', { userId: userId.trim(), eventId: eventId.trim() });
   }
 
   async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {

@@ -6,8 +6,10 @@ import { DemoBootstrapService, type DemoBootstrapProgressState, DemoUsersService
 import { HttpUsersService } from '../../http';
 import type {
   DemoUserListItemDto,
+  UserDeleteRequestDto,
   UserFeedbackSubmitRequestDto,
   UserDto,
+  UserLogoutRequestDto,
   UserReportUserSubmitRequestDto,
   UserRealtimeLongPollResponseDto,
   UserProfileImageUploadResult,
@@ -24,6 +26,8 @@ export const USER_BY_ID_LOAD_CONTEXT_KEY = 'user-by-id';
 export const USER_FEEDBACK_SUBMIT_CONTEXT_KEY = 'user-feedback-submit';
 export const USER_REPORT_USER_SUBMIT_CONTEXT_KEY = 'user-report-user-submit';
 export const USER_PROFILE_SAVE_CONTEXT_KEY = 'user-profile-save';
+export const USER_LOGOUT_CONTEXT_KEY = 'user-logout';
+export const USER_DELETE_CONTEXT_KEY = 'user-delete';
 
 class RequestTimeoutError extends Error {
   constructor() {
@@ -217,6 +221,42 @@ export class UsersService extends BaseRouteModeService {
       requestTimeoutMs,
       'Report request timeout.',
       'Unable to submit report.',
+      signal
+    );
+  }
+
+  async logoutUser(
+    userId: string,
+    requestTimeoutMs?: number,
+    signal?: AbortSignal
+  ): Promise<UserSubmitActionResponseDto> {
+    const request: UserLogoutRequestDto = {
+      userId: userId.trim()
+    };
+    return this.submitUserAction(
+      USER_LOGOUT_CONTEXT_KEY,
+      requestSignal => this.userService.logoutUser(request, requestSignal),
+      requestTimeoutMs,
+      'Logout request timeout.',
+      'Unable to log out.',
+      signal
+    );
+  }
+
+  async deleteUser(
+    userId: string,
+    requestTimeoutMs?: number,
+    signal?: AbortSignal
+  ): Promise<UserSubmitActionResponseDto> {
+    const request: UserDeleteRequestDto = {
+      userId: userId.trim()
+    };
+    return this.submitUserAction(
+      USER_DELETE_CONTEXT_KEY,
+      requestSignal => this.userService.deleteUser(request, requestSignal),
+      requestTimeoutMs,
+      'Delete account request timeout.',
+      'Unable to delete account.',
       signal
     );
   }

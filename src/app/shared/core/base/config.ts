@@ -69,7 +69,8 @@ export const ROUTE_CONFIG: RouteConfig = {
     },
     {
       routePrefix: '/assets/tickets',
-      demoDelayMs: 1500
+      demoDelayMs: 1500,
+      http: true
     }
   ]
 };

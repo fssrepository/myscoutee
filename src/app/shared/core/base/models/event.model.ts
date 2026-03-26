@@ -41,6 +41,51 @@ export interface SubmittedEventFeedbackAnswer {
   submittedAtIso: string;
 }
 
+export interface EventFeedbackStateDto {
+  eventId: string;
+  removed: boolean;
+  submittedAtIso: string;
+  organizerNote: string;
+}
+
+export interface EventFeedbackAnswerSubmitDto {
+  cardId: string;
+  kind: 'event' | 'attendee';
+  targetUserId: string | null;
+  targetRole: 'Admin' | 'Manager' | 'Member';
+  primaryValue: string;
+  secondaryValue: string;
+  tags: string[];
+  submittedAtIso: string;
+}
+
+export interface EventFeedbackSubmitRequestDto {
+  userId: string;
+  eventId: string;
+  answers: EventFeedbackAnswerSubmitDto[];
+}
+
+export interface EventFeedbackNoteRequestDto {
+  userId: string;
+  eventId: string;
+  text: string;
+}
+
+export interface EventFeedbackToggleRequestDto {
+  userId: string;
+  eventId: string;
+}
+
+export interface EventFeedbackPersistedState {
+  id: string;
+  userId: string;
+  eventId: string;
+  removed: boolean;
+  submittedAtIso: string | null;
+  organizerNote: string;
+  answersByCardId: Record<string, SubmittedEventFeedbackAnswer>;
+}
+
 export type EventFeedbackListFilter = 'pending' | 'feedbacked' | 'removed';
 
 export interface EventFeedbackEventCard {

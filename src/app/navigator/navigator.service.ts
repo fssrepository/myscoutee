@@ -240,16 +240,28 @@ export class NavigatorService {
       cancelLabel: 'Cancel',
       confirmLabel: 'Delete',
       confirmTone: 'danger',
-      onConfirm: () => {
+      onConfirm: async () => {
         this.closeMenu();
-        this.confirmationDialogService.openInfo(
-          'Delete account flow is ready for backend wiring.',
-          {
-            title: 'Delete account',
-            confirmLabel: 'OK',
-            confirmTone: 'neutral'
+        this.closeSettingsPopup();
+        this.closeProfileEditor();
+        this.closeImpressionsPopup();
+        const activeUserId = this.appCtx.activeUserId().trim();
+        if (activeUserId) {
+          const result = await this.usersService.deleteUser(activeUserId);
+          if (!result.submitted) {
+            this.confirmationDialogService.openInfo(
+              result.message ?? 'Unable to delete account.',
+              {
+                title: 'Delete account',
+                confirmLabel: 'OK',
+                confirmTone: 'danger'
+              }
+            );
+            return;
           }
-        );
+        }
+        this.clearHydratedUser();
+        await this.sessionService.logout().finally(() => this.router.navigate(['/entry']));
       }
     });
   }
@@ -267,6 +279,21 @@ export class NavigatorService {
         this.closeSettingsPopup();
         this.closeProfileEditor();
         this.closeImpressionsPopup();
+        const activeUserId = this.appCtx.activeUserId().trim();
+        if (activeUserId) {
+          const result = await this.usersService.logoutUser(activeUserId);
+          if (!result.submitted) {
+            this.confirmationDialogService.openInfo(
+              result.message ?? 'Unable to log out.',
+              {
+                title: 'Logout',
+                confirmLabel: 'OK',
+                confirmTone: 'neutral'
+              }
+            );
+            return;
+          }
+        }
         this.clearHydratedUser();
         await this.sessionService.logout().finally(() => this.router.navigate(['/entry']));
       }

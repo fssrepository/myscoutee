@@ -1,6 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ActivitiesEventSyncPayload } from '../../../core/base/models';
+import type {
+  ActivitiesEventSyncPayload,
+  EventFeedbackNoteRequestDto,
+  EventFeedbackStateDto,
+  EventFeedbackSubmitRequestDto
+} from '../../../core/base/models';
 import { DemoEventsService } from '../../demo';
 import { HttpEventsService } from '../../http';
 import type {
@@ -129,6 +134,26 @@ export class EventsService extends BaseRouteModeService {
 
   requestJoin(userId: string, sourceId: string): Promise<DemoEventRecord | null> {
     return this.eventsService.requestJoin(userId, sourceId);
+  }
+
+  queryEventFeedbackStates(userId: string): Promise<EventFeedbackStateDto[]> {
+    return this.eventsService.queryEventFeedbackStates(userId);
+  }
+
+  submitEventFeedback(request: EventFeedbackSubmitRequestDto): Promise<void> {
+    return this.eventsService.submitEventFeedback(request);
+  }
+
+  saveEventFeedbackNote(request: EventFeedbackNoteRequestDto): Promise<void> {
+    return this.eventsService.saveEventFeedbackNote(request);
+  }
+
+  removeEventFeedbackEvent(userId: string, eventId: string): Promise<void> {
+    return this.eventsService.removeEventFeedbackEvent(userId, eventId);
+  }
+
+  restoreEventFeedbackEvent(userId: string, eventId: string): Promise<void> {
+    return this.eventsService.restoreEventFeedbackEvent(userId, eventId);
   }
 
   async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
