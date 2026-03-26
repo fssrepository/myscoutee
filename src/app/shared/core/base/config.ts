@@ -44,15 +44,18 @@ export const ROUTE_CONFIG: RouteConfig = {
     },
     {
       routePrefix: '/activities/events/subevent-resources',
-      demoDelayMs: 1500
+      demoDelayMs: 1500,
+      http: true
     },
     {
       routePrefix: '/activities/events/members',
-      demoDelayMs: 1500
+      demoDelayMs: 1500,
+      http: true
     },
     {
       routePrefix: '/activities/events/invite-candidates',
-      demoDelayMs: 1500
+      demoDelayMs: 1500,
+      http: true
     },
     {
       routePrefix: '/activities/rates',
@@ -61,7 +64,8 @@ export const ROUTE_CONFIG: RouteConfig = {
     },
     {
       routePrefix: '/assets',
-      demoDelayMs: 1500
+      demoDelayMs: 1500,
+      http: true
     },
     {
       routePrefix: '/assets/tickets',
