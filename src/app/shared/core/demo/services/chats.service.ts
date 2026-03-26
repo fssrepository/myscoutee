@@ -58,4 +58,19 @@ export class DemoChatsService extends DemoRouteDelayService {
   ): Promise<() => void> {
     return () => {};
   }
+
+  async watchChatEvents(
+    _chat: ChatMenuItem,
+    _onEvent: (event: AppTypes.ChatLiveEvent) => void
+  ): Promise<() => void> {
+    return () => {};
+  }
+
+  async sendChatTyping(_chat: ChatMenuItem, _typing: boolean): Promise<void> {
+    return;
+  }
+
+  async markChatRead(_chat: ChatMenuItem, _messageIds: readonly string[]): Promise<void> {
+    return;
+  }
 }

@@ -274,6 +274,21 @@ export class ActivitiesPopupStateService {
     return this.chatsService.watchChatMessages(chat, onMessage);
   }
 
+  async watchEventChatEvents(
+    chat: ChatMenuItem,
+    onEvent: (event: AppTypes.ChatLiveEvent) => void
+  ): Promise<() => void> {
+    return this.chatsService.watchChatEvents(chat, onEvent);
+  }
+
+  async sendEventChatTyping(chat: ChatMenuItem, typing: boolean): Promise<void> {
+    return this.chatsService.sendChatTyping(chat, typing);
+  }
+
+  async markEventChatRead(chat: ChatMenuItem, messageIds: readonly string[]): Promise<void> {
+    return this.chatsService.markChatRead(chat, messageIds);
+  }
+
   private patchUiState(patch: Partial<ActivitiesUiState>): void {
     this._uiState.update(state => ({
       ...state,

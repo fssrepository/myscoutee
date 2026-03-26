@@ -50,6 +50,21 @@ export class ChatsService extends BaseRouteModeService {
     return this.chatsService.watchChatMessages(chat, onMessage);
   }
 
+  async watchChatEvents(
+    chat: ChatMenuItem,
+    onEvent: (event: AppTypes.ChatLiveEvent) => void
+  ): Promise<() => void> {
+    return this.chatsService.watchChatEvents(chat, onEvent);
+  }
+
+  async sendChatTyping(chat: ChatMenuItem, typing: boolean): Promise<void> {
+    return this.chatsService.sendChatTyping(chat, typing);
+  }
+
+  async markChatRead(chat: ChatMenuItem, messageIds: readonly string[]): Promise<void> {
+    return this.chatsService.markChatRead(chat, messageIds);
+  }
+
   async queryActivitiesChatPage(
     userId: string,
     request: ActivitiesPageRequest,
@@ -58,6 +73,18 @@ export class ChatsService extends BaseRouteModeService {
       users?: readonly DemoUser[];
     } = {}
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
+    if (!this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      const page = await this.httpChatsService.queryActivitiesChatPage(userId, request);
+      return {
+        items: buildActivityChatRows(page.items, {
+          users: options.users ?? this.demoUsersRepository.queryAllUsers(),
+          activeUserId: userId
+        }),
+        total: page.total,
+        nextCursor: page.nextCursor ?? null
+      };
+    }
+
     const items = options.chatItems && options.chatItems.length > 0
       ? options.chatItems.map(item => ({
           ...item,

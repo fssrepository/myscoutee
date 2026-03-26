@@ -20,7 +20,7 @@ import { AppUtils } from '../../../shared/app-utils';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import type { EventChatResourceContext } from '../../../shared/core/base/models';
-import { AppPopupContext } from '../../../shared/core';
+import { AppContext, AppPopupContext } from '../../../shared/core';
 import type { ChatMenuItem, EventMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
 import {
   SmartListComponent,
@@ -49,6 +49,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly ngZone = inject(NgZone);
   protected readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly eventEditorService = inject(EventEditorPopupStateService);
+  private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
 
   protected readonly session = computed(() => this.activitiesContext.eventChatSession());
@@ -64,6 +65,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected preparedChatContext: AppTypes.EventChatContext | null = null;
   protected preparedChatMembersResource: EventChatResourceContext | null = null;
   protected preparedChatAssetResources: EventChatResourceContext[] = [];
+  protected typingIndicators: AppTypes.ChatTypingIndicator[] = [];
 
   private readonly chatHistoryPageSize = 10;
   private readonly chatInitialLoadMessageCount = 15;
@@ -71,6 +73,9 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly chatLoadOlderDelayMs = 1500;
   private readonly headerLoadingWindowMs = 3000;
   private readonly headerLoadingTickMs = 16;
+  private readonly chatTypingIdleMs = 1800;
+  private readonly chatTypingRemoteTtlMs = 3200;
+  private readonly chatTransientFxMs = 1600;
   private chatThreadRevision = 0;
   protected chatThreadQuery: Partial<ListQuery<ChatThreadFilters>> = {};
   protected readonly chatThreadSmartListConfig: SmartListConfig<AppTypes.ChatPopupMessage, ChatThreadFilters> = {
@@ -118,6 +123,12 @@ export class EventChatPopupComponent implements OnDestroy {
   private chatHeaderLoadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
   private chatHeaderLoadingStartedAtMs = 0;
   private liveChatUnsubscribe: (() => void) | null = null;
+  private typingIdleTimer: ReturnType<typeof setTimeout> | null = null;
+  private localTypingActive = false;
+  private readonly latestVisibleReadMessageIdByReaderId: Record<string, string> = {};
+  private readonly freshMessageIds = new Set<string>();
+  private readonly freshReadKeys = new Set<string>();
+  private readonly remoteTypingExpiryByUserId: Record<string, ReturnType<typeof setTimeout> | null> = {};
 
   constructor() {
     effect(() => {
@@ -135,6 +146,12 @@ export class EventChatPopupComponent implements OnDestroy {
       this.showContextMenu = false;
       this.contextMenuOpenUp = false;
       this.allMessages = [];
+      this.typingIndicators = [];
+      this.localTypingActive = false;
+      this.clearTypingIdleTimer();
+      this.clearRemoteTypingIndicators();
+      this.clearTransientMessageState();
+      this.resetVisibleReadReceipts();
       this.chatThreadRevision = 0;
       this.syncChatThreadQuery();
       this.chatHeaderProgress = 0;
@@ -156,6 +173,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.stopLocalTyping();
     this.teardownLiveChatUpdates();
     this.cancelChatInitialLoadTimer();
     this.clearChatHeaderLoadingAnimation();
@@ -164,6 +182,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected close(): void {
     this.showContextMenu = false;
     this.contextMenuOpenUp = false;
+    this.stopLocalTyping();
     this.teardownLiveChatUpdates();
     this.cancelChatInitialLoadTimer();
     this.clearChatHeaderLoadingAnimation();
@@ -320,6 +339,49 @@ export class EventChatPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
+  protected onDraftMessageChange(value: string): void {
+    this.draftMessage = value;
+    const session = this.session();
+    if (!session || this.chatInitialLoadPending) {
+      return;
+    }
+    const hasText = value.trim().length > 0;
+    if (!hasText) {
+      this.stopLocalTyping();
+      return;
+    }
+    if (!this.localTypingActive) {
+      this.localTypingActive = true;
+      void this.activitiesContext.sendEventChatTyping(session.item, true);
+    }
+    this.clearTypingIdleTimer();
+    this.typingIdleTimer = setTimeout(() => {
+      this.stopLocalTyping();
+    }, this.chatTypingIdleMs);
+  }
+
+  protected typingIndicatorLabel(): string {
+    if (this.typingIndicators.length === 0) {
+      return '';
+    }
+    if (this.typingIndicators.length === 1) {
+      return `${this.typingIndicators[0].userName || this.typingIndicators[0].userInitials} is typing`;
+    }
+    return 'Several people are typing';
+  }
+
+  protected visibleReadBy(message: AppTypes.ChatPopupMessage): AppTypes.ChatReadAvatar[] {
+    return (message.readBy ?? []).filter(reader => this.latestVisibleReadMessageIdByReaderId[reader.id] === message.id);
+  }
+
+  protected isFreshMessage(messageId: string): boolean {
+    return this.freshMessageIds.has(messageId);
+  }
+
+  protected isFreshRead(messageId: string, readerId: string): boolean {
+    return this.freshReadKeys.has(`${messageId}:${readerId}`);
+  }
+
   protected sendMessage(): void {
     const text = this.draftMessage.trim();
     const session = this.session();
@@ -328,6 +390,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     const sessionKey = `${session.item.id}:${session.openedAtIso}`;
     this.draftMessage = '';
+    this.stopLocalTyping();
     this.cdr.markForCheck();
     void this.activitiesContext.sendEventChatMessage(session.item, text)
       .then(message => {
@@ -361,6 +424,7 @@ export class EventChatPopupComponent implements OnDestroy {
       }
       this.allMessages = [...nextMessages]
         .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+      this.rebuildVisibleReadReceipts();
       this.initialChatLoadedSessionKey = sessionKey;
       await this.startLiveChatUpdates(session.item, sessionKey);
       return this.chatThreadPageResult(query);
@@ -369,6 +433,7 @@ export class EventChatPopupComponent implements OnDestroy {
         return this.chatThreadPageResult(query);
       }
       this.allMessages = [];
+      this.rebuildVisibleReadReceipts();
       this.initialChatLoadedSessionKey = sessionKey;
       await this.startLiveChatUpdates(session.item, sessionKey);
       return this.chatThreadPageResult(query);
@@ -418,28 +483,206 @@ export class EventChatPopupComponent implements OnDestroy {
     if (this.loadedSessionKey !== sessionKey || this.liveChatUnsubscribe) {
       return;
     }
-    this.liveChatUnsubscribe = await this.activitiesContext.watchEventChatMessages(chat, message => {
+    this.liveChatUnsubscribe = await this.activitiesContext.watchEventChatEvents(chat, event => {
       if (this.loadedSessionKey !== sessionKey) {
         return;
       }
-      this.mergeIncomingChatMessage(message);
+      this.handleLiveChatEvent(chat, event);
     });
   }
 
   private teardownLiveChatUpdates(): void {
     this.liveChatUnsubscribe?.();
     this.liveChatUnsubscribe = null;
+    this.clearRemoteTypingIndicators();
   }
 
   private mergeIncomingChatMessage(message: AppTypes.ChatPopupMessage): void {
     if (this.allMessages.some(existingMessage => existingMessage.id === message.id)) {
       return;
     }
+    this.flagFreshMessage(message.id);
     this.allMessages = [...this.allMessages, message]
       .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+    this.rebuildVisibleReadReceipts();
     this.chatThreadRevision += 1;
     this.syncChatThreadQuery();
     this.cdr.markForCheck();
+  }
+
+  private handleLiveChatEvent(chat: ChatMenuItem, event: AppTypes.ChatLiveEvent): void {
+    if (event.type === 'typing') {
+      this.applyTypingIndicator(event.typing);
+      return;
+    }
+    if (event.type === 'read') {
+      this.applyReadReceipt(event.read);
+      return;
+    }
+
+    this.mergeIncomingChatMessage(event.message);
+    if (!event.message.mine) {
+      void this.activitiesContext.markEventChatRead(chat, [event.message.id]);
+    }
+  }
+
+  private applyTypingIndicator(indicator: AppTypes.ChatTypingIndicator): void {
+    const activeUserId = this.activeUserId();
+    if (!indicator.userId || indicator.userId === activeUserId) {
+      return;
+    }
+    const nextIndicators = this.typingIndicators.filter(item => item.userId !== indicator.userId);
+    if (indicator.typing) {
+      nextIndicators.push({ ...indicator });
+      this.refreshRemoteTypingExpiry(indicator.userId);
+    } else {
+      this.clearRemoteTypingExpiry(indicator.userId);
+    }
+    this.typingIndicators = nextIndicators;
+    this.cdr.markForCheck();
+  }
+
+  private applyReadReceipt(read: AppTypes.ChatReadReceipt): void {
+    if (!read.userId || read.userId === this.activeUserId()) {
+      return;
+    }
+    const loadedMessageIds = new Set(this.allMessages.map(message => message.id));
+    const matchedMessageIds = (read.messageIds ?? []).filter(messageId => loadedMessageIds.has(messageId));
+    if (matchedMessageIds.length === 0) {
+      return;
+    }
+
+    let changed = false;
+    this.allMessages = this.allMessages.map(message => {
+      if (!message.mine || !matchedMessageIds.includes(message.id)) {
+        return message;
+      }
+      if ((message.readBy ?? []).some(reader => reader.id === read.userId)) {
+        return message;
+      }
+      changed = true;
+      return {
+        ...message,
+        readBy: [
+          ...(message.readBy ?? []),
+          {
+            id: read.userId,
+            initials: read.userInitials,
+            gender: read.userGender
+          }
+        ]
+      };
+    });
+
+    if (!changed) {
+      return;
+    }
+    this.rebuildVisibleReadReceipts();
+    const lastVisibleMessageId = this.latestVisibleReadMessageIdByReaderId[read.userId];
+    if (lastVisibleMessageId) {
+      this.flagFreshRead(lastVisibleMessageId, read.userId);
+    }
+    this.cdr.markForCheck();
+  }
+
+  private rebuildVisibleReadReceipts(): void {
+    for (const key of Object.keys(this.latestVisibleReadMessageIdByReaderId)) {
+      delete this.latestVisibleReadMessageIdByReaderId[key];
+    }
+    for (const message of this.allMessages) {
+      if (!message.mine) {
+        continue;
+      }
+      for (const reader of message.readBy ?? []) {
+        if (!reader.id) {
+          continue;
+        }
+        this.latestVisibleReadMessageIdByReaderId[reader.id] = message.id;
+      }
+    }
+  }
+
+  private resetVisibleReadReceipts(): void {
+    for (const key of Object.keys(this.latestVisibleReadMessageIdByReaderId)) {
+      delete this.latestVisibleReadMessageIdByReaderId[key];
+    }
+  }
+
+  private flagFreshMessage(messageId: string): void {
+    if (!messageId) {
+      return;
+    }
+    this.freshMessageIds.add(messageId);
+    setTimeout(() => {
+      this.freshMessageIds.delete(messageId);
+      this.cdr.markForCheck();
+    }, this.chatTransientFxMs);
+  }
+
+  private flagFreshRead(messageId: string, readerId: string): void {
+    const key = `${messageId}:${readerId}`;
+    this.freshReadKeys.add(key);
+    setTimeout(() => {
+      this.freshReadKeys.delete(key);
+      this.cdr.markForCheck();
+    }, this.chatTransientFxMs);
+  }
+
+  private clearTransientMessageState(): void {
+    this.freshMessageIds.clear();
+    this.freshReadKeys.clear();
+  }
+
+  private activeUserId(): string {
+    return this.appCtx.activeUserId().trim();
+  }
+
+  private refreshRemoteTypingExpiry(userId: string): void {
+    this.clearRemoteTypingExpiry(userId);
+    this.remoteTypingExpiryByUserId[userId] = setTimeout(() => {
+      this.typingIndicators = this.typingIndicators.filter(item => item.userId !== userId);
+      this.remoteTypingExpiryByUserId[userId] = null;
+      this.cdr.markForCheck();
+    }, this.chatTypingRemoteTtlMs);
+  }
+
+  private clearRemoteTypingExpiry(userId: string): void {
+    const existing = this.remoteTypingExpiryByUserId[userId];
+    if (!existing) {
+      return;
+    }
+    clearTimeout(existing);
+    this.remoteTypingExpiryByUserId[userId] = null;
+  }
+
+  private clearRemoteTypingIndicators(): void {
+    for (const [userId, timer] of Object.entries(this.remoteTypingExpiryByUserId)) {
+      if (timer) {
+        clearTimeout(timer);
+      }
+      this.remoteTypingExpiryByUserId[userId] = null;
+    }
+    this.typingIndicators = [];
+  }
+
+  private clearTypingIdleTimer(): void {
+    if (!this.typingIdleTimer) {
+      return;
+    }
+    clearTimeout(this.typingIdleTimer);
+    this.typingIdleTimer = null;
+  }
+
+  private stopLocalTyping(): void {
+    this.clearTypingIdleTimer();
+    if (!this.localTypingActive) {
+      return;
+    }
+    this.localTypingActive = false;
+    const session = this.session();
+    if (session) {
+      void this.activitiesContext.sendEventChatTyping(session.item, false);
+    }
   }
 
   private chatDayLabel(value: Date): string {

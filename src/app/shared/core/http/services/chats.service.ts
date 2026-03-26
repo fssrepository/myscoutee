@@ -5,6 +5,7 @@ import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import type { ChatMenuItem } from '../../base/interfaces/activity-feed.interface';
+import type { ActivitiesPageRequest } from '../../base/models';
 import { AppContext } from '../../base/context';
 import { FirebaseAuthService } from '../../base/services/firebase-auth.service';
 import type { DemoChatRecord } from '../../demo/models/chats.model';
@@ -20,6 +21,8 @@ interface HttpChatSummaryDto {
   dateIso?: string;
   channelType?: 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent';
   eventId?: string;
+  subEventId?: string;
+  groupId?: string;
   distanceKm?: number;
   distanceMetersExact?: number;
 }
@@ -41,8 +44,34 @@ interface HttpChatMessageDto {
 }
 
 interface HttpChatSocketRequestDto {
-  type: 'message';
-  text: string;
+  type: 'message' | 'typing' | 'read';
+  text?: string;
+  typing?: boolean;
+  messageIds?: string[];
+}
+
+interface HttpChatTypingDto {
+  userId: string;
+  userName: string;
+  userInitials: string;
+  userGender: 'woman' | 'man';
+  typing: boolean;
+}
+
+interface HttpChatReadReceiptDto {
+  userId: string;
+  userInitials: string;
+  userGender: 'woman' | 'man';
+  messageIds: string[];
+  readAtIso: string;
+}
+
+interface HttpChatSocketEventDto {
+  type: 'message' | 'typing' | 'read';
+  chatId: string;
+  message?: HttpChatMessageDto | null;
+  typing?: HttpChatTypingDto | null;
+  read?: HttpChatReadReceiptDto | null;
 }
 
 @Injectable({
@@ -57,7 +86,7 @@ export class HttpChatsService {
   private socket: WebSocket | null = null;
   private socketChatId: string | null = null;
   private socketPromise: Promise<WebSocket | null> | null = null;
-  private readonly socketListeners = new Set<(message: AppTypes.ChatPopupMessage) => void>();
+  private readonly socketListeners = new Set<(event: AppTypes.ChatLiveEvent) => void>();
 
   async queryChatItemsByUser(userId: string): Promise<DemoChatRecord[]> {
     const normalizedUserId = userId.trim();
@@ -77,6 +106,67 @@ export class HttpChatsService {
       return records.map(record => this.cloneChatRecord(record));
     } catch {
       return this.peekChatItemsByUser(normalizedUserId);
+    }
+  }
+
+  async queryActivitiesChatPage(
+    userId: string,
+    request: ActivitiesPageRequest
+  ): Promise<{ items: DemoChatRecord[]; total: number; nextCursor?: string | null }> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+
+    let params = new HttpParams()
+      .set('userId', normalizedUserId)
+      .set('limit', String(Math.max(1, Math.trunc(request.pageSize || 10))))
+      .set('sort', request.sort ?? 'date');
+    if (request.direction) {
+      params = params.set('sortDirection', request.direction);
+    }
+    if (request.secondaryFilter === 'recent' || request.secondaryFilter === 'past' || request.secondaryFilter === 'relevant') {
+      params = params.set('secondaryFilter', request.secondaryFilter);
+    }
+    if (request.chatContextFilter && request.chatContextFilter !== 'all') {
+      params = params.set('contextFilter', request.chatContextFilter);
+    }
+    if (request.cursor) {
+      params = params.set('cursor', request.cursor);
+    }
+    if (request.rangeStart) {
+      params = params.set('rangeStartIso', request.rangeStart);
+    }
+    if (request.rangeEnd) {
+      params = params.set('rangeEndIso', request.rangeEnd);
+    }
+
+    try {
+      const response = await this.http.get<{
+        items?: HttpChatSummaryDto[] | null;
+        total?: number | null;
+        nextCursor?: string | null;
+      } | null>(`${this.apiBaseUrl}/activities/chats/page`, { params }).toPromise();
+
+      return {
+        items: Array.isArray(response?.items)
+          ? response.items.map(item => this.mapChatRecord(item, normalizedUserId))
+          : [],
+        total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : 0,
+        nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
+          ? response.nextCursor.trim()
+          : null
+      };
+    } catch {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
     }
   }
 
@@ -128,28 +218,69 @@ export class HttpChatsService {
     }
   }
 
-  async watchChatMessages(
+  async sendChatTyping(chat: ChatMenuItem, typing: boolean): Promise<void> {
+    const socket = await this.ensureSocket(chat);
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    const payload: HttpChatSocketRequestDto = {
+      type: 'typing',
+      typing
+    };
+    socket.send(JSON.stringify(payload));
+  }
+
+  async markChatRead(chat: ChatMenuItem, messageIds: readonly string[]): Promise<void> {
+    const normalizedIds = messageIds
+      .map(messageId => `${messageId ?? ''}`.trim())
+      .filter(messageId => messageId.length > 0);
+    if (normalizedIds.length === 0) {
+      return;
+    }
+    const socket = await this.ensureSocket(chat);
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    const payload: HttpChatSocketRequestDto = {
+      type: 'read',
+      messageIds: normalizedIds
+    };
+    socket.send(JSON.stringify(payload));
+  }
+
+  async watchChatEvents(
     chat: ChatMenuItem,
-    onMessage: (message: AppTypes.ChatPopupMessage) => void
+    onEvent: (event: AppTypes.ChatLiveEvent) => void
   ): Promise<() => void> {
     const normalizedChatId = `${chat.id ?? ''}`.trim();
     if (!normalizedChatId) {
       return () => {};
     }
 
-    this.socketListeners.add(onMessage);
+    this.socketListeners.add(onEvent);
     const socket = await this.ensureSocket(chat);
     if (!socket) {
-      this.socketListeners.delete(onMessage);
+      this.socketListeners.delete(onEvent);
       return () => {};
     }
 
     return () => {
-      this.socketListeners.delete(onMessage);
+      this.socketListeners.delete(onEvent);
       if (this.socketListeners.size === 0) {
         this.closeSocket();
       }
     };
+  }
+
+  async watchChatMessages(
+    chat: ChatMenuItem,
+    onMessage: (message: AppTypes.ChatPopupMessage) => void
+  ): Promise<() => void> {
+    return this.watchChatEvents(chat, event => {
+      if (event.type === 'message') {
+        onMessage(event.message);
+      }
+    });
   }
 
   private mapChatRecord(item: HttpChatSummaryDto, ownerUserId: string): DemoChatRecord {
@@ -168,6 +299,8 @@ export class HttpChatsService {
       dateIso: item.dateIso,
       channelType: item.channelType,
       eventId: item.eventId,
+      subEventId: item.subEventId,
+      groupId: item.groupId,
       distanceKm,
       distanceMetersExact,
       ownerUserId
@@ -206,6 +339,56 @@ export class HttpChatsService {
         gender: reader.gender
       }))
     } satisfies AppTypes.ChatPopupMessage;
+  }
+
+  private mapSocketEvent(
+    payload: HttpChatMessageDto | HttpChatSocketEventDto,
+    fallbackChatId: string
+  ): AppTypes.ChatLiveEvent | null {
+    if ('senderId' in payload) {
+      return {
+        type: 'message',
+        chatId: fallbackChatId,
+        message: this.mapChatMessage(payload)
+      };
+    }
+
+    const type = payload.type ?? 'message';
+    const chatId = `${payload.chatId ?? fallbackChatId}`.trim() || fallbackChatId;
+    if (type === 'typing' && payload.typing) {
+      return {
+        type: 'typing',
+        chatId,
+        typing: {
+          userId: `${payload.typing.userId ?? ''}`.trim(),
+          userName: `${payload.typing.userName ?? ''}`.trim(),
+          userInitials: `${payload.typing.userInitials ?? ''}`.trim(),
+          userGender: payload.typing.userGender === 'woman' ? 'woman' : 'man',
+          typing: payload.typing.typing === true
+        }
+      };
+    }
+    if (type === 'read' && payload.read) {
+      return {
+        type: 'read',
+        chatId,
+        read: {
+          userId: `${payload.read.userId ?? ''}`.trim(),
+          userInitials: `${payload.read.userInitials ?? ''}`.trim(),
+          userGender: payload.read.userGender === 'woman' ? 'woman' : 'man',
+          messageIds: (payload.read.messageIds ?? []).map(messageId => `${messageId ?? ''}`.trim()).filter(Boolean),
+          readAtIso: `${payload.read.readAtIso ?? ''}`.trim()
+        }
+      };
+    }
+    if (payload.message) {
+      return {
+        type: 'message',
+        chatId,
+        message: this.mapChatMessage(payload.message)
+      };
+    }
+    return null;
   }
 
   private async ensureSocket(chat: ChatMenuItem): Promise<WebSocket | null> {
@@ -258,10 +441,13 @@ export class HttpChatsService {
       };
       socket.onmessage = event => {
         try {
-          const parsed = JSON.parse(`${event.data ?? ''}`) as HttpChatMessageDto;
-          const message = this.mapChatMessage(parsed);
+          const parsed = JSON.parse(`${event.data ?? ''}`) as HttpChatMessageDto | HttpChatSocketEventDto;
+          const liveEvent = this.mapSocketEvent(parsed, chatId);
+          if (!liveEvent) {
+            return;
+          }
           for (const listener of this.socketListeners) {
-            listener(message);
+            listener(liveEvent);
           }
         } catch {
           // Ignore malformed live chat payloads and keep the socket open.
