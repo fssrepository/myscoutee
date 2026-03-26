@@ -75,9 +75,7 @@ export class ActivitiesPopupStateService {
   readonly activitiesOpenBoolean = computed(() => this._uiState().open);
   readonly eventChatOpen = computed(() => this._eventChatSession() !== null);
 
-  readonly dataMode = this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled
-    ? 'demo'
-    : 'http';
+  readonly dataMode = environment.activitiesDataSource === 'demo' ? 'demo' : 'http';
 
   openActivities(
     primaryFilter: AppTypes.ActivitiesPrimaryFilter = 'chats',

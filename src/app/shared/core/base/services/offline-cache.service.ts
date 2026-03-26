@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
-import type { UserByIdQueryResponse } from '../interfaces/user.interface';
+import type { EventFeedbackPersistedState } from '../models/event.model';
+import type { UserByIdQueryResponse, UserDto } from '../interfaces/user.interface';
 
 interface CachedTicketPagePayload {
   items: readonly AppTypes.ActivityListRow[];
@@ -30,6 +31,52 @@ export class OfflineCacheService {
       return;
     }
     this.writeJson(this.userStorageKey(normalizedUserId), this.clone(response));
+    this.rememberKnownUserId(normalizedUserId);
+  }
+
+  readKnownUsers(): UserDto[] {
+    const userIds = this.readJson<string[]>(this.knownUsersStorageKey()) ?? [];
+    const seen = new Set<string>();
+    const users: UserDto[] = [];
+    for (const rawUserId of userIds) {
+      const normalizedUserId = `${rawUserId ?? ''}`.trim();
+      if (!normalizedUserId || seen.has(normalizedUserId)) {
+        continue;
+      }
+      seen.add(normalizedUserId);
+      const cached = this.readUser(normalizedUserId);
+      if (!cached?.user) {
+        continue;
+      }
+      users.push(this.clone(cached.user));
+    }
+    return users;
+  }
+
+  readEventFeedbackStates(userId: string): EventFeedbackPersistedState[] {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    const parsed = this.readJson<EventFeedbackPersistedState[]>(this.eventFeedbackStorageKey(normalizedUserId));
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return this.clone(parsed);
+  }
+
+  writeEventFeedbackStates(userId: string, states: readonly EventFeedbackPersistedState[]): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    this.writeJson(
+      this.eventFeedbackStorageKey(normalizedUserId),
+      this.clone(states.map(state => ({
+        ...state,
+        answersByCardId: { ...(state.answersByCardId ?? {}) }
+      } satisfies EventFeedbackPersistedState)))
+    );
   }
 
   readTicketPage(userId: string, order: 'upcoming' | 'past'): CachedTicketPagePayload | null {
@@ -65,6 +112,14 @@ export class OfflineCacheService {
     return `${OfflineCacheService.STORAGE_PREFIX}:tickets:${userId}:${order}`;
   }
 
+  private knownUsersStorageKey(): string {
+    return `${OfflineCacheService.STORAGE_PREFIX}:users:index`;
+  }
+
+  private eventFeedbackStorageKey(userId: string): string {
+    return `${OfflineCacheService.STORAGE_PREFIX}:event-feedback:${userId}`;
+  }
+
   private readJson<T>(key: string): T | null {
     if (typeof localStorage === 'undefined') {
       return null;
@@ -89,6 +144,18 @@ export class OfflineCacheService {
     } catch {
       // Ignore storage quota failures and keep runtime state resilient.
     }
+  }
+
+  private rememberKnownUserId(userId: string): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const current = this.readJson<string[]>(this.knownUsersStorageKey()) ?? [];
+    if (current.includes(normalizedUserId)) {
+      return;
+    }
+    this.writeJson(this.knownUsersStorageKey(), [...current, normalizedUserId]);
   }
 
   private clone<T>(value: T): T {

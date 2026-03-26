@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 
 import type {
   ActivitiesEventSyncPayload,
@@ -23,11 +23,20 @@ import { BaseRouteModeService } from './base-route-mode.service';
   providedIn: 'root'
 })
 export class EventsService extends BaseRouteModeService {
-  private readonly demoEventsService = inject(DemoEventsService);
+  private readonly injector = inject(Injector);
   private readonly httpEventsService = inject(HttpEventsService);
+
+  private demoEventsServiceRef: DemoEventsService | null = null;
 
   get demoModeEnabled(): boolean {
     return this.isDemoModeEnabled('/activities/events');
+  }
+
+  private get demoEventsService(): DemoEventsService {
+    if (!this.demoEventsServiceRef) {
+      this.demoEventsServiceRef = this.injector.get(DemoEventsService);
+    }
+    return this.demoEventsServiceRef;
   }
 
   private get eventsService(): DemoEventsService | HttpEventsService {

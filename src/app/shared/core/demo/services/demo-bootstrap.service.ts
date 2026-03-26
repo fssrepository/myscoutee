@@ -114,7 +114,7 @@ export class DemoBootstrapService {
     if (contextualChatsChanged) {
       onProgress?.({
         percent: 80,
-        label: 'Syncing demo IndexedDB'
+        label: 'Saving demo cache'
       });
       await this.memoryDb.flushToIndexedDb();
       await this.waitForUiYield();
@@ -145,7 +145,7 @@ export class DemoBootstrapService {
     await this.runBootstrapStep(80, 'Preparing owned assets', () => this.assetsRepository.init());
     await this.runBootstrapStep(90, 'Preparing activity members', () => this.activityMembersRepository.init());
     await this.runBootstrapStep(96, 'Preparing activity resources', () => this.activityResourcesRepository.init());
-    await this.runBootstrapStep(100, 'Syncing demo IndexedDB', () => this.memoryDb.flushToIndexedDb());
+    await this.runBootstrapStep(100, 'Saving demo cache', () => this.memoryDb.flushToIndexedDb());
 
     this.ready = true;
     this.emitProgress({

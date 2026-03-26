@@ -8,13 +8,11 @@ import type {
   ActivitiesEventSyncPayload
 } from '../../../core/base/models';
 import type * as AppTypes from '../../../core/base/models';
-import { AppMemoryDb } from '../../base/db';
 
 @Injectable({
   providedIn: 'root'
 })
 export class HttpActivityMembersRepository {
-  protected readonly memoryDb = inject(AppMemoryDb);
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly cachedMembersByOwnerKey: Record<string, AppTypes.ActivityMemberEntry[]> = {};

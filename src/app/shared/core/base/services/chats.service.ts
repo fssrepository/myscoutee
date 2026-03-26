@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
@@ -11,7 +11,7 @@ import type { DemoChatRecord } from '../../demo/models/chats.model';
 import { DemoChatsService } from '../../demo';
 import { HttpChatsService } from '../../http';
 import { BaseRouteModeService } from './base-route-mode.service';
-import { DemoUsersRepository } from '../../demo';
+import { UsersService } from './users.service';
 
 @Injectable({
   providedIn: 'root'
@@ -19,9 +19,17 @@ import { DemoUsersRepository } from '../../demo';
 export class ChatsService extends BaseRouteModeService {
   private static readonly CHAT_ROUTE = '/activities/chats';
 
-  private readonly demoChatsService = inject(DemoChatsService);
+  private readonly injector = inject(Injector);
   private readonly httpChatsService = inject(HttpChatsService);
-  private readonly demoUsersRepository = inject(DemoUsersRepository);
+  private readonly usersService = inject(UsersService);
+  private demoChatsServiceRef: DemoChatsService | null = null;
+
+  private get demoChatsService(): DemoChatsService {
+    if (!this.demoChatsServiceRef) {
+      this.demoChatsServiceRef = this.injector.get(DemoChatsService);
+    }
+    return this.demoChatsServiceRef;
+  }
 
   private get chatsService(): DemoChatsService | HttpChatsService {
     return this.resolveRouteService(ChatsService.CHAT_ROUTE, this.demoChatsService, this.httpChatsService);
@@ -77,7 +85,7 @@ export class ChatsService extends BaseRouteModeService {
       const page = await this.httpChatsService.queryActivitiesChatPage(userId, request);
       return {
         items: buildActivityChatRows(page.items, {
-          users: options.users ?? this.demoUsersRepository.queryAllUsers(),
+          users: options.users ?? this.usersService.peekCachedUsers(),
           activeUserId: userId
         }),
         total: page.total,
@@ -98,7 +106,7 @@ export class ChatsService extends BaseRouteModeService {
         : activityChatContextFilterKey(item) === request.chatContextFilter
     );
     const rows = buildActivityChatRows(filteredItems, {
-      users: options.users ?? this.demoUsersRepository.queryAllUsers(),
+      users: options.users ?? this.usersService.peekCachedUsers(),
       activeUserId: userId
     });
     const sorted = this.sortActivitiesChatRows(rows, request);

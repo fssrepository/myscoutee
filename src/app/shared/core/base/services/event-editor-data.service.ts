@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 
 import type { ActivityMembersSummary } from '../../../core/base/models';
 import type { DemoEventRecord } from '../../demo/models/events.model';
@@ -10,8 +10,16 @@ import { BaseRouteModeService } from './base-route-mode.service';
   providedIn: 'root'
 })
 export class EventEditorDataService extends BaseRouteModeService {
-  private readonly demoEventEditorDataService = inject(DemoEventEditorDataService);
+  private readonly injector = inject(Injector);
   private readonly httpEventEditorDataService = inject(HttpEventEditorDataService);
+  private demoEventEditorDataServiceRef: DemoEventEditorDataService | null = null;
+
+  private get demoEventEditorDataService(): DemoEventEditorDataService {
+    if (!this.demoEventEditorDataServiceRef) {
+      this.demoEventEditorDataServiceRef = this.injector.get(DemoEventEditorDataService);
+    }
+    return this.demoEventEditorDataServiceRef;
+  }
 
   peekKnownItemById(userId: string, itemId: string): DemoEventRecord | null {
     return this.isDemoModeEnabled('/activities/events')

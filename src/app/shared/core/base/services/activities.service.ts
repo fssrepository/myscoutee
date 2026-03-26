@@ -20,7 +20,7 @@ import { ChatsService } from './chats.service';
 import { EventsService } from './events.service';
 import { RatesService } from './rates.service';
 import { SessionService } from './session.service';
-import { DemoUsersRepository } from '../../demo';
+import { UsersService } from './users.service';
 
 @Injectable({
   providedIn: 'root'
@@ -31,7 +31,7 @@ export class ActivitiesService {
   private readonly chatsService = inject(ChatsService);
   private readonly ratesService = inject(RatesService);
   private readonly appCtx = inject(AppContext);
-  private readonly demoUsersRepository = inject(DemoUsersRepository);
+  private readonly usersService = inject(UsersService);
 
   async loadActivities(
     query: ListQuery<ActivitiesFeedFilters>,
@@ -68,7 +68,7 @@ export class ActivitiesService {
     return {
       items: buildActivityRateRows(page.items, {
         activeUserId,
-        users: this.demoUsersRepository.queryAllUsers(),
+        users: this.usersService.peekCachedUsers(),
         filter: request.rateFilter,
         secondaryFilter: request.secondaryFilter,
         view: request.view,
@@ -108,7 +108,7 @@ export class ActivitiesService {
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
     return this.chatsService.queryActivitiesChatPage(this.resolveActiveUserId(), request, {
       chatItems: options.chatItems,
-      users: this.demoUsersRepository.queryAllUsers()
+      users: this.usersService.peekCachedUsers()
     });
   }
 
@@ -120,7 +120,10 @@ export class ActivitiesService {
     if (session?.kind === 'firebase' && session.profile.id.trim().length > 0) {
       return session.profile.id.trim();
     }
-    return this.demoUsersRepository.queryAllUsers()[0]?.id ?? 'u1';
+    return (
+      this.usersService.peekCachedUsers()[0]?.id
+      ?? this.appCtx.getActiveUserId().trim()
+    ) || 'u1';
   }
 
   private normalizeEventActivitiesSort(value: string | undefined): 'date' | 'distance' | 'relevance' {

@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
 import { DemoAssetsService } from '../../demo/services/assets.service';
@@ -9,8 +9,16 @@ import { BaseRouteModeService } from './base-route-mode.service';
   providedIn: 'root'
 })
 export class AssetsService extends BaseRouteModeService {
-  private readonly demoAssetsService = inject(DemoAssetsService);
+  private readonly injector = inject(Injector);
   private readonly httpAssetsService = inject(HttpAssetsService);
+  private demoAssetsServiceRef: DemoAssetsService | null = null;
+
+  private get demoAssetsService(): DemoAssetsService {
+    if (!this.demoAssetsServiceRef) {
+      this.demoAssetsServiceRef = this.injector.get(DemoAssetsService);
+    }
+    return this.demoAssetsServiceRef;
+  }
 
 
   private get assetsService(): DemoAssetsService | HttpAssetsService {

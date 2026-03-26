@@ -5,6 +5,7 @@ import type {
   ActivityMembersSummary,
   ActivitiesEventSyncPayload
 } from '../../../core/base/models';
+import { AppMemoryDb } from '../../base/db';
 import { ActivityMembersBuilder } from '../../base/builders/activity-members.builder';
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import type * as AppTypes from '../../../core/base/models';
@@ -28,6 +29,7 @@ import { DemoUsersRepository } from './users.repository';
   providedIn: 'root'
 })
 export class DemoActivityMembersRepository extends HttpActivityMembersRepository {
+  private readonly memoryDb = inject(AppMemoryDb);
   private readonly demoAssetsRepository = inject(DemoAssetsRepository);
   private readonly demoEventsRepository = inject(DemoEventsRepository);
   private readonly demoUsersRepository = inject(DemoUsersRepository);

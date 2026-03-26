@@ -3,8 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { DemoAssetBuilder } from '../shared/core/demo/builders';
 import { AppUtils } from '../shared/app-utils';
 import type * as AppTypes from '../shared/core/base/models';
-import { AppContext, type UserDto } from '../shared/core';
-import { DemoUsersRepository } from '../shared/core/demo';
+import { AppContext, UsersService, type UserDto } from '../shared/core';
 import type { InfoCardData, InfoCardMenuAction } from '../shared/ui';
 
 
@@ -15,10 +14,10 @@ type TicketPerson = Pick<UserDto, 'id' | 'name' | 'age' | 'city' | 'gender' | 'i
 })
 export class AssetFacadeService {
   private readonly appCtx = inject(AppContext);
-  private readonly demoUsersRepository = inject(DemoUsersRepository);
+  private readonly usersService = inject(UsersService);
 
   private get users(): UserDto[] {
-    return this.demoUsersRepository.queryAllUsers();
+    return this.usersService.peekCachedUsers();
   }
 
   private get userById(): Map<string, UserDto> {

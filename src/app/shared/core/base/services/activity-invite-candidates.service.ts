@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
 import type { ActivityInviteOwnerContext } from '../interfaces/activity-invite.interface';
@@ -9,16 +9,26 @@ import { AppContext } from '../context';
 import { EventsService } from './events.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { AppUtils } from '../../../app-utils';
+import { SessionService } from './session.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ActivityInviteCandidatesService extends BaseRouteModeService {
-  private readonly demoActivityInviteCandidatesService = inject(DemoActivityInviteCandidatesService);
+  private readonly injector = inject(Injector);
   private readonly httpActivityInviteCandidatesService = inject(HttpActivityInviteCandidatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly eventsService = inject(EventsService);
   private readonly appCtx = inject(AppContext);
+  private readonly sessionService = inject(SessionService);
+  private demoActivityInviteCandidatesServiceRef: DemoActivityInviteCandidatesService | null = null;
+
+  private get demoActivityInviteCandidatesService(): DemoActivityInviteCandidatesService {
+    if (!this.demoActivityInviteCandidatesServiceRef) {
+      this.demoActivityInviteCandidatesServiceRef = this.injector.get(DemoActivityInviteCandidatesService);
+    }
+    return this.demoActivityInviteCandidatesServiceRef;
+  }
 
 
   private get inviteCandidatesService(): DemoActivityInviteCandidatesService | HttpActivityInviteCandidatesService {

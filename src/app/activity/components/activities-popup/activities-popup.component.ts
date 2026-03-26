@@ -84,9 +84,9 @@ import {
   ChatsService,
   EventsService,
   RatesService,
+  UsersService,
   type ActivityMembersSyncState
 } from '../../../shared/core';
-import { DemoUsersRepository } from '../../../shared/core/demo';
 import { DemoEventSeedBuilder, DemoUserMenuCountersBuilder } from '../../../shared/core/demo/builders';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 
@@ -140,13 +140,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
-  private readonly demoUsersRepository = inject(DemoUsersRepository);
+  private readonly usersService = inject(UsersService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
 
   // ── Self-contained data state (no host inputs) ───────────────────────────
   protected isMobileView = false;
   protected get users(): DemoUser[] {
-    return this.demoUsersRepository.queryAllUsers() as DemoUser[];
+    return this.usersService.peekCachedUsers() as DemoUser[];
   }
   protected activeUser: DemoUser = (this.appCtx.activeUserProfile() as DemoUser | null)
     ?? this.users[0]
@@ -412,6 +412,17 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.activitiesRatesFullscreenMode = svc.activitiesRatesFullscreenMode();
       this.selectedActivityRateId        = svc.activitiesSelectedRateId();
       this.syncActivitiesSmartListQuery();
+      this.cdr.markForCheck();
+    });
+
+    effect(() => {
+      const activeUserId = this.appCtx.activeUserId().trim();
+      const nextActiveUser = (this.appCtx.activeUserProfile() as DemoUser | null)
+        ?? this.users.find(user => user.id === activeUserId)
+        ?? this.users[0]
+        ?? this.createFallbackActiveUser();
+      this.activeUser = nextActiveUser;
+      this.refreshSectionBadges();
       this.cdr.markForCheck();
     });
 

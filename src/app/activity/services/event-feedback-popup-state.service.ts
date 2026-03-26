@@ -3,10 +3,10 @@ import type * as AppTypes from '../../shared/core/base/models';
 import { AppUtils } from '../../shared/app-utils';
 import { APP_STATIC_DATA } from '../../shared/app-static-data';
 import { DemoEventFeedbackBuilder } from '../../shared/core/demo/builders';
-import { AppMemoryDb, EventsService } from '../../shared/core/base';
-import { EVENT_FEEDBACK_TABLE_NAME } from '../../shared/core/demo/models/event-feedback.model';
+import { EventsService } from '../../shared/core/base';
 import type { UserDto } from '../../shared/core';
 import type { EventMenuItem } from '../../shared/core/base/interfaces/activity-feed.interface';
+import { OfflineCacheService } from '../../shared/core/base/services/offline-cache.service';
 
 export interface EventFeedbackPopupSource {
   eventItems: EventMenuItem[];
@@ -27,7 +27,7 @@ export class EventFeedbackPopupStateService {
   private readonly eventFeedbackUnlockDelayMs = 2 * 60 * 60 * 1000;
   private readonly sourceRef = signal<EventFeedbackPopupSource | null>(null);
   private readonly eventsService = inject(EventsService);
-  private readonly memoryDb = inject(AppMemoryDb);
+  private readonly offlineCache = inject(OfflineCacheService);
   private eventFeedbackPollTimer: ReturnType<typeof setInterval> | null = null;
   private eventFeedbackPollInFlight = false;
   private eventFeedbackPollActiveIntervalMs = EventFeedbackPopupStateService.EVENT_FEEDBACK_POLL_INTERVAL_MS;
@@ -551,38 +551,40 @@ export class EventFeedbackPopupStateService {
   }
 
   private mergeServerEventFeedbackStates(userId: string, states: AppTypes.EventFeedbackStateDto[]): void {
-    this.memoryDb.write(current => {
-      const table = current[EVENT_FEEDBACK_TABLE_NAME];
-      const nextById = { ...table.byId };
-      const nextIds = [...table.ids];
-      for (const state of states) {
-        const eventId = state.eventId?.trim() ?? '';
-        if (!eventId) {
-          continue;
-        }
-        const recordId = this.eventFeedbackStateRecordId(userId, eventId);
-        const existing = nextById[recordId] ?? this.createEmptyPersistedEventFeedbackState(userId, eventId);
-        nextById[recordId] = {
-          ...existing,
-          removed: Boolean(state.removed),
-          submittedAtIso: state.submittedAtIso?.trim() || null,
-          organizerNote: state.organizerNote?.trim() ?? existing.organizerNote,
-          answersByCardId: state.answersByCardId
-            ? this.clonePersistedAnswersByCardId(state.answersByCardId)
-            : this.clonePersistedAnswersByCardId(existing.answersByCardId)
-        };
-        if (!nextIds.includes(recordId)) {
-          nextIds.push(recordId);
-        }
+    const existingStates = this.readPersistedEventFeedbackStates(userId);
+    const nextById = Object.fromEntries(
+      existingStates.map(state => [state.id, {
+        ...state,
+        answersByCardId: this.clonePersistedAnswersByCardId(state.answersByCardId)
+      } satisfies AppTypes.EventFeedbackPersistedState])
+    );
+    const nextIds = existingStates.map(state => state.id);
+    for (const state of states) {
+      const eventId = state.eventId?.trim() ?? '';
+      if (!eventId) {
+        continue;
       }
-      return {
-        ...current,
-        [EVENT_FEEDBACK_TABLE_NAME]: {
-          byId: nextById,
-          ids: nextIds
-        }
+      const recordId = this.eventFeedbackStateRecordId(userId, eventId);
+      const existing = nextById[recordId] ?? this.createEmptyPersistedEventFeedbackState(userId, eventId);
+      nextById[recordId] = {
+        ...existing,
+        removed: Boolean(state.removed),
+        submittedAtIso: state.submittedAtIso?.trim() || null,
+        organizerNote: state.organizerNote?.trim() ?? existing.organizerNote,
+        answersByCardId: state.answersByCardId
+          ? this.clonePersistedAnswersByCardId(state.answersByCardId)
+          : this.clonePersistedAnswersByCardId(existing.answersByCardId)
       };
-    });
+      if (!nextIds.includes(recordId)) {
+        nextIds.push(recordId);
+      }
+    }
+    this.writePersistedEventFeedbackStates(
+      userId,
+      nextIds
+        .map(recordId => nextById[recordId])
+        .filter((record): record is AppTypes.EventFeedbackPersistedState => Boolean(record))
+    );
     this.applyPersistedEventFeedbackSignals(userId);
   }
 
@@ -621,10 +623,9 @@ export class EventFeedbackPopupStateService {
     if (!normalizedUserId) {
       return [];
     }
-    const table = this.memoryDb.read()[EVENT_FEEDBACK_TABLE_NAME];
-    return table.ids
-      .map(id => table.byId[id])
-      .filter((record): record is AppTypes.EventFeedbackPersistedState => Boolean(record) && record.userId === normalizedUserId)
+    return this.offlineCache
+      .readEventFeedbackStates(normalizedUserId)
+      .filter(record => record.userId === normalizedUserId)
       .map(record => ({
         ...record,
         answersByCardId: this.clonePersistedAnswersByCardId(record.answersByCardId)
@@ -641,26 +642,29 @@ export class EventFeedbackPopupStateService {
     if (!normalizedUserId || !normalizedEventId) {
       return;
     }
-    this.memoryDb.write(current => {
-      const table = current[EVENT_FEEDBACK_TABLE_NAME];
-      const recordId = this.eventFeedbackStateRecordId(normalizedUserId, normalizedEventId);
-      const existing = table.byId[recordId] ?? this.createEmptyPersistedEventFeedbackState(normalizedUserId, normalizedEventId);
-      const nextRecord = updater({
-        ...existing,
-        answersByCardId: this.clonePersistedAnswersByCardId(existing.answersByCardId)
-      });
-      return {
-        ...current,
-        [EVENT_FEEDBACK_TABLE_NAME]: {
-          byId: {
-            ...table.byId,
-            [recordId]: nextRecord
-          },
-          ids: table.ids.includes(recordId) ? table.ids : [...table.ids, recordId]
-        }
-      };
+    const existingStates = this.readPersistedEventFeedbackStates(normalizedUserId);
+    const recordId = this.eventFeedbackStateRecordId(normalizedUserId, normalizedEventId);
+    const existing = existingStates.find(record => record.id === recordId)
+      ?? this.createEmptyPersistedEventFeedbackState(normalizedUserId, normalizedEventId);
+    const nextRecord = updater({
+      ...existing,
+      answersByCardId: this.clonePersistedAnswersByCardId(existing.answersByCardId)
     });
+    const nextStates = existingStates.some(record => record.id === recordId)
+      ? existingStates.map(record => record.id === recordId ? nextRecord : record)
+      : [...existingStates, nextRecord];
+    this.writePersistedEventFeedbackStates(normalizedUserId, nextStates);
     this.applyPersistedEventFeedbackSignals(normalizedUserId);
+  }
+
+  private writePersistedEventFeedbackStates(
+    userId: string,
+    states: readonly AppTypes.EventFeedbackPersistedState[]
+  ): void {
+    this.offlineCache.writeEventFeedbackStates(userId, states.map(state => ({
+      ...state,
+      answersByCardId: this.clonePersistedAnswersByCardId(state.answersByCardId)
+    })));
   }
 
   private persistEventRemovedState(eventId: string, removed: boolean): void {

@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 
 import type { ActivitiesPageRequest } from '../../../core/base/models';
 import type { RateMenuItem } from '../interfaces/activity-feed.interface';
@@ -11,9 +11,17 @@ import { GameService } from './game.service';
   providedIn: 'root'
 })
 export class RatesService extends BaseRouteModeService {
-  private readonly demoRatesService = inject(DemoRatesService);
+  private readonly injector = inject(Injector);
   private readonly httpRatesService = inject(HttpRatesService);
   private readonly gameService = inject(GameService);
+  private demoRatesServiceRef: DemoRatesService | null = null;
+
+  private get demoRatesService(): DemoRatesService {
+    if (!this.demoRatesServiceRef) {
+      this.demoRatesServiceRef = this.injector.get(DemoRatesService);
+    }
+    return this.demoRatesServiceRef;
+  }
 
   private get ratesService(): DemoRatesService | HttpRatesService {
     return this.resolveRouteService('/activities/rates', this.demoRatesService, this.httpRatesService);
