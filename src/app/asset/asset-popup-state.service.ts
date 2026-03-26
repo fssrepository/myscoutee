@@ -43,6 +43,7 @@ export class AssetPopupStateService {
   private ticketScannerDetectionFrame: number | null = null;
   private ticketScannerDetectBusy = false;
   private ticketScannerVideoElement: HTMLVideoElement | null = null;
+  private readonly warmedTicketQrUrls = new Set<string>();
 
   registerHost(host: AssetPopupHost | null): void {
     this.hostRef.set(host);
@@ -150,6 +151,7 @@ export class AssetPopupStateService {
   updateTicketListState(change: SmartListStateChange<AppTypes.ActivityListRow>): void {
     this.ticketRowsRef.set([...change.items]);
     this.ticketTotalCountRef.set(Math.max(0, change.total));
+    this.warmTicketQrImages(change.items);
   }
 
   openTicketCodePopup(row: AppTypes.ActivityListRow, event?: Event): void {
@@ -161,6 +163,7 @@ export class AssetPopupStateService {
     this.ticketOverlayModeRef.set('ticketCode');
     this.cancelTicketScannerTimer();
     this.stopTicketScannerCamera();
+    this.warmTicketQrImages([row]);
   }
 
   ticketCodeAvatarUrl(): string {
@@ -379,6 +382,33 @@ export class AssetPopupStateService {
     } catch {
       return null;
     }
+  }
+
+  private warmTicketQrImages(rows: readonly AppTypes.ActivityListRow[]): void {
+    if (typeof fetch === 'undefined' || typeof navigator === 'undefined' || navigator.onLine === false) {
+      return;
+    }
+    for (const row of rows) {
+      const qrImageUrl = this.ticketQrImageUrlForRow(row);
+      if (!qrImageUrl || this.warmedTicketQrUrls.has(qrImageUrl)) {
+        continue;
+      }
+      this.warmedTicketQrUrls.add(qrImageUrl);
+      void fetch(qrImageUrl, {
+        mode: 'no-cors',
+        cache: 'reload'
+      }).catch(() => {
+        this.warmedTicketQrUrls.delete(qrImageUrl);
+      });
+    }
+  }
+
+  private ticketQrImageUrlForRow(row: AppTypes.ActivityListRow): string {
+    const payload = this.encodeTicketPayload(this.createTicketScanPayload(row));
+    if (!payload) {
+      return '';
+    }
+    return `https://api.qrserver.com/v1/create-qr-code/?size=1024x1024&format=png&ecc=Q&margin=0&data=${encodeURIComponent(payload)}`;
   }
 
   private startTicketScannerReading(): void {

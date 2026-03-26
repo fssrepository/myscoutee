@@ -53,3 +53,95 @@ textarea,
 select {
   -webkit-tap-highlight-color: transparent;
 }
+
+@keyframes global-mobile-touch-feedback {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+
+  45% {
+    transform: scale(0.98);
+    filter: brightness(0.97);
+  }
+
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  :where(
+    button,
+    a[href],
+    summary,
+    [role='button'],
+    [tabindex='0'],
+    .motion-card,
+    [data-motion='card'],
+    .activities-row-item,
+    .experience-item-card,
+    .ui-info-card,
+    [class*='-btn'],
+    [class*='__btn'],
+    [class*='-card'],
+    [class*='__card'],
+    [class*='-chip'],
+    [class*='__chip'],
+    [class*='-tile'],
+    [class*='__tile'],
+    [class*='-trigger'],
+    [class*='__trigger'],
+    [class*='-option'],
+    [class*='__option'],
+    [class*='-entry'],
+    [class*='__entry'],
+    [class*='-selector'],
+    [class*='__selector'],
+    [class*='-shortcut'],
+    [class*='__shortcut']
+  ):not(:disabled):not([aria-disabled='true']) {
+    transition:
+      transform 0.16s ease,
+      filter 0.16s ease,
+      box-shadow 0.16s ease,
+      opacity 0.16s ease;
+    transform-origin: center;
+  }
+
+  :where(
+    button,
+    a[href],
+    summary,
+    [role='button'],
+    [tabindex='0'],
+    .motion-card,
+    [data-motion='card'],
+    .activities-row-item,
+    .experience-item-card,
+    .ui-info-card,
+    [class*='-btn'],
+    [class*='__btn'],
+    [class*='-card'],
+    [class*='__card'],
+    [class*='-chip'],
+    [class*='__chip'],
+    [class*='-tile'],
+    [class*='__tile'],
+    [class*='-trigger'],
+    [class*='__trigger'],
+    [class*='-option'],
+    [class*='__option'],
+    [class*='-entry'],
+    [class*='__entry'],
+    [class*='-selector'],
+    [class*='__selector'],
+    [class*='-shortcut'],
+    [class*='__shortcut']
+  ):not(:disabled):not([aria-disabled='true']):active {
+    animation: global-mobile-touch-feedback 0.2s ease;
+    transform: scale(0.98);
+    filter: brightness(0.97);
+  }
+}

@@ -1,0 +1,17 @@
+<section class="app-install-prompt" *ngIf="visible" aria-live="polite">
+  <div class="app-install-prompt__panel">
+    <div class="app-install-prompt__copy">
+      <p class="app-install-prompt__eyebrow">Offline-ready</p>
+      <h2>Add MyScoutee to your home screen</h2>
+      <p>Keep tickets, cached profile details, and chat notifications available with the installed app.</p>
+    </div>
+    <div class="app-install-prompt__actions">
+      <button type="button" class="app-install-prompt__secondary" [disabled]="busy" (click)="dismiss()">
+        Later
+      </button>
+      <button type="button" class="app-install-prompt__primary" [disabled]="busy" (click)="requestInstall()">
+        {{ busy ? 'Opening...' : 'Add to Home Screen' }}
+      </button>
+    </div>
+  </div>
+</section>

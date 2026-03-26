@@ -44,6 +44,7 @@ export class NavigatorMenuComponent {
   private readonly navigatorService = inject(NavigatorService);
   private readonly profileSaveLoadState = this.appCtx.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   protected readonly activeUser = this.appCtx.activeUserProfile;
+  protected readonly isOnline = this.appCtx.isOnline;
   protected readonly profileSaveRingCircumference = NavigatorMenuComponent.PROFILE_SAVE_RING_CIRCUMFERENCE;
   protected readonly isProfileSaving = computed(() => this.profileSaveLoadState().status === 'loading');
   protected readonly hasProfileSaveError = computed(() => {
@@ -179,16 +180,25 @@ export class NavigatorMenuComponent {
 
   protected openProfileEditor(event?: Event): void {
     event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
     this.navigatorService.openProfileEditor();
   }
 
   protected openHostImpressions(event?: Event): void {
     event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
     this.navigatorService.openImpressionsPopup();
   }
 
   protected openMemberImpressions(event?: Event): void {
     event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
     this.navigatorService.openImpressionsPopup();
   }
 
@@ -219,16 +229,25 @@ export class NavigatorMenuComponent {
 
   protected openAssetCarPopup(event?: Event): void {
     event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
     this.popupCtx.openNavigatorAssetRequest('Car');
   }
 
   protected openAssetAccommodationPopup(event?: Event): void {
     event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
     this.popupCtx.openNavigatorAssetRequest('Accommodation');
   }
 
   protected openAssetSuppliesPopup(event?: Event): void {
     event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
     this.popupCtx.openNavigatorAssetRequest('Supplies');
   }
 
@@ -239,11 +258,17 @@ export class NavigatorMenuComponent {
 
   protected openEventFeedbackPopup(event?: Event): void {
     event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
     this.popupCtx.openNavigatorEventFeedbackRequest();
   }
 
   protected openReportUserFromFeedback(event?: Event): void {
     event?.stopPropagation();
+    if (!this.isOnline()) {
+      return;
+    }
     this.navigatorService.openSettingsPopup('report-user');
   }
 
@@ -255,6 +280,9 @@ export class NavigatorMenuComponent {
     primaryFilter: 'rates' | 'chats' | 'events',
     eventScope?: 'active-events' | 'invitations' | 'my-events'
   ): void {
+    if (!this.isOnline()) {
+      return;
+    }
     this.popupCtx.openNavigatorActivitiesRequest(primaryFilter, eventScope);
   }
 

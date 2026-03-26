@@ -68,7 +68,7 @@
                     <span class="personality-trait-pill-percent">{{ item.percent }}%</span>
                   </button>
                 </div>
-                <div class="personality-trait-card" [ngClass]="vm.hostActiveTraitCard?.toneClass" *ngIf="vm.hostActiveTraitCard as trait">
+                <div class="personality-trait-card" [ngClass]="vm.hostActiveTraitCard.toneClass" *ngIf="vm.hostActiveTraitCard as trait">
                   <div class="personality-trait-card-head">
                     <div class="personality-trait-card-title">
                       <span class="personality-trait-card-icon"><mat-icon>{{ trait.icon }}</mat-icon></span>
@@ -157,7 +157,7 @@
                     <span class="personality-trait-pill-percent">{{ item.percent }}%</span>
                   </button>
                 </div>
-                <div class="personality-trait-card" [ngClass]="vm.memberActiveTraitCard?.toneClass" *ngIf="vm.memberActiveTraitCard as trait">
+                <div class="personality-trait-card" [ngClass]="vm.memberActiveTraitCard.toneClass" *ngIf="vm.memberActiveTraitCard as trait">
                   <div class="personality-trait-card-head">
                     <div class="personality-trait-card-title">
                       <span class="personality-trait-card-icon"><mat-icon>{{ trait.icon }}</mat-icon></span>

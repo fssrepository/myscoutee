@@ -55,8 +55,13 @@ export class AvatarBtnComponent implements OnDestroy {
   protected readonly visible = computed(() => this.isInternalRoute(this.currentUrlRef()));
   protected readonly hasBindings = computed(() => this.bindings() !== null);
   protected readonly isOpen = computed(() => this.menuUiState().open);
+  protected readonly hasOfflineProfile = computed(() =>
+    !this.appCtx.isOnline() && this.activeUser() !== null
+  );
   protected readonly canToggle = computed(() =>
-    this.visible() && this.hasBindings() && this.activeUserLoadState().status === 'success'
+    this.visible()
+    && this.hasBindings()
+    && (this.activeUserLoadState().status === 'success' || this.hasOfflineProfile())
   );
   protected readonly isProfileSaving = computed(() => this.profileSaveLoadState().status === 'loading');
   protected readonly hasProfileSaveError = computed(() => {
@@ -70,12 +75,18 @@ export class AvatarBtnComponent implements OnDestroy {
     if (!this.hasBindings()) {
       return true;
     }
+    if (this.hasOfflineProfile()) {
+      return this.isProfileSaving();
+    }
     const status = this.activeUserLoadState().status;
     return status === 'idle' || status === 'loading' || this.isProfileSaving();
   });
   protected readonly hasLoadError = computed(() => {
     if (!this.visible() || !this.hasBindings()) {
       return false;
+    }
+    if (this.hasOfflineProfile()) {
+      return this.hasProfileSaveError();
     }
     const status = this.activeUserLoadState().status;
     return status === 'error' || status === 'timeout' || this.userMenuLoadOverdueRef() || this.hasProfileSaveError();
@@ -111,6 +122,9 @@ export class AvatarBtnComponent implements OnDestroy {
         : 'Profile was not able to save';
     }
     if (this.canToggle()) {
+      if (this.hasOfflineProfile()) {
+        return this.isOpen() ? 'Close profile menu (offline)' : 'Open profile menu (offline)';
+      }
       return this.isOpen() ? 'Close profile menu' : 'Open profile menu';
     }
     if (this.hasLoadError()) {

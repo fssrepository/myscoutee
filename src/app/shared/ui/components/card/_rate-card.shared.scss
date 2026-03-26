@@ -8,6 +8,23 @@
   height: 100%;
 }
 
+@keyframes rate-card-mobile-touch-feedback {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+
+  45% {
+    transform: scale(0.985);
+    filter: brightness(0.98);
+  }
+
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
 .activities-rate-profile-card {
   position: relative;
   width: 100%;
@@ -22,14 +39,21 @@
 .activities-rate-profile-card.activities-row-item {
   cursor: default;
   transform: none;
-  transition: none;
+  transition: transform 0.16s ease, filter 0.16s ease, box-shadow 0.16s ease;
   animation: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .activities-rate-profile-card.activities-row-item:hover,
 .activities-rate-profile-card.activities-row-item:active {
   transform: none;
   filter: none;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .activities-rate-profile-card.activities-row-item:active {
+    animation: rate-card-mobile-touch-feedback 0.2s ease;
+  }
 }
 
 .activities-rate-profile-stack {

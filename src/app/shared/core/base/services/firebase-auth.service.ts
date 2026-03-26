@@ -15,10 +15,12 @@ import {
 import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
 
-type FirebaseConfigFile = Pick<
+export type FirebaseConfigFile = Pick<
   FirebaseOptions,
   'apiKey' | 'authDomain' | 'projectId' | 'storageBucket' | 'messagingSenderId' | 'appId'
-> & Partial<Pick<FirebaseOptions, 'measurementId'>>;
+> & Partial<Pick<FirebaseOptions, 'measurementId'>> & {
+  vapidKey?: string;
+};
 
 @Injectable({
   providedIn: 'root'
@@ -28,6 +30,7 @@ export class FirebaseAuthService {
   private static readonly FIREBASE_CONFIG_PATH = 'keys/firebase.config.json';
 
   private firebaseAuthPromise: Promise<Auth | null> | null = null;
+  private firebaseAppPromise: Promise<FirebaseApp | null> | null = null;
 
   get enabled(): boolean {
     return environment.loginEnabled;
@@ -114,6 +117,16 @@ export class FirebaseAuthService {
     }
   }
 
+  async ensureFirebaseApp(): Promise<FirebaseApp | null> {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    if (!this.firebaseAppPromise) {
+      this.firebaseAppPromise = this.initializeFirebaseApp();
+    }
+    return this.firebaseAppPromise;
+  }
+
   private async ensureFirebaseAuth(): Promise<Auth | null> {
     if (!this.enabled || typeof window === 'undefined') {
       return null;
@@ -125,14 +138,21 @@ export class FirebaseAuthService {
   }
 
   private async initializeFirebaseAuth(): Promise<Auth | null> {
+    const app = await this.ensureFirebaseApp();
+    if (!app) {
+      return null;
+    }
+    const auth = getAuth(app);
+    await setPersistence(auth, browserLocalPersistence);
+    return auth;
+  }
+
+  private async initializeFirebaseApp(): Promise<FirebaseApp | null> {
     const firebaseConfig = await this.loadFirebaseConfig();
     if (!firebaseConfig) {
       return null;
     }
-    const app = this.resolveFirebaseApp(firebaseConfig);
-    const auth = getAuth(app);
-    await setPersistence(auth, browserLocalPersistence);
-    return auth;
+    return this.resolveFirebaseApp(firebaseConfig);
   }
 
   private resolveFirebaseApp(firebaseConfig: FirebaseConfigFile): FirebaseApp {
@@ -142,7 +162,7 @@ export class FirebaseAuthService {
     return initializeApp(firebaseConfig);
   }
 
-  private async loadFirebaseConfig(): Promise<FirebaseConfigFile | null> {
+  async loadFirebaseConfig(): Promise<FirebaseConfigFile | null> {
     if (typeof document === 'undefined') {
       return null;
     }

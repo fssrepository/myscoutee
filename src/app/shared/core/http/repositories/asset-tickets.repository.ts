@@ -5,12 +5,14 @@ import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
 import type { DemoEventRecord } from '../../demo/models/events.model';
 import { toActivityEventRow } from '../../base/converters/activities-event.converter';
+import { OfflineCacheService } from '../../base/services/offline-cache.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class HttpAssetTicketsRepository {
   private readonly http = inject(HttpClient);
+  private readonly offlineCache = inject(OfflineCacheService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly cachedRowsByUserId: Record<string, AppTypes.ActivityListRow[]> = {};
 
@@ -39,11 +41,20 @@ export class HttpAssetTicketsRepository {
         .toPromise();
       const rows = this.buildTicketRows(response?.records ?? []);
       this.cachedRowsByUserId[normalizedUserId] = rows;
+      this.offlineCache.writeTicketPage(normalizedUserId, query.order, {
+        items: rows,
+        total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : rows.length
+      });
       return {
         items: this.cloneRows(rows),
         total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : rows.length
       };
     } catch {
+      const cachedPage = this.offlineCache.readTicketPage(normalizedUserId, query.order);
+      if (cachedPage) {
+        this.cachedRowsByUserId[normalizedUserId] = this.cloneRows(cachedPage.items);
+        return this.pageRows(cachedPage.items, query);
+      }
       return this.pageRows(this.peekTicketRowsByUser(normalizedUserId), query);
     }
   }
@@ -53,7 +64,17 @@ export class HttpAssetTicketsRepository {
     if (!normalizedUserId) {
       return [];
     }
-    return this.cloneRows(this.cachedRowsByUserId[normalizedUserId] ?? []);
+    const cachedRows = this.cachedRowsByUserId[normalizedUserId];
+    if (cachedRows && cachedRows.length > 0) {
+      return this.cloneRows(cachedRows);
+    }
+    const offlineRows = this.offlineCache.readTicketPage(normalizedUserId, 'upcoming')?.items
+      ?? this.offlineCache.readTicketPage(normalizedUserId, 'past')?.items
+      ?? [];
+    if (offlineRows.length > 0) {
+      this.cachedRowsByUserId[normalizedUserId] = this.cloneRows(offlineRows);
+    }
+    return this.cloneRows(offlineRows);
   }
 
   protected buildTicketRows(records: readonly DemoEventRecord[]): AppTypes.ActivityListRow[] {

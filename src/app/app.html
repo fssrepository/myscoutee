@@ -7,3 +7,10 @@
 </main>
 
 <app-navigator *ngIf="showNavigator"></app-navigator>
+
+<app-install-prompt
+  [visible]="showNavigator && installPromptVisible()"
+  [busy]="installPromptBusy()"
+  (installRequested)="onInstallRequested()"
+  (dismissRequested)="onInstallDismissed()"
+></app-install-prompt>

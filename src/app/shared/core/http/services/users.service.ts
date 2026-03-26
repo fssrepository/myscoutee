@@ -21,6 +21,7 @@ import type {
   UserDto
 } from '../../base/interfaces/user.interface';
 import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.interface';
+import { OfflineCacheService } from '../../base/services/offline-cache.service';
 
 @Injectable({
   providedIn: 'root'
@@ -34,6 +35,7 @@ export class HttpUsersService implements UserService {
   private static readonly USER_REALTIME_LONG_POLL_ROUTE = '/auth/me/realtime/long-poll';
   private static readonly MAX_PROFILE_IMAGE_SLOTS = 8;
   private readonly http = inject(HttpClient);
+  private readonly offlineCache = inject(OfflineCacheService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
   async queryAvailableDemoUsers(): Promise<UsersListQueryResponse> {
@@ -71,14 +73,15 @@ export class HttpUsersService implements UserService {
         return { user: null };
       }
       const user = this.cloneUser(me);
-      return {
+      return this.cacheUserResponse({
         user,
         filterCount: Number.isFinite(me.filterCount) ? Math.max(0, Math.trunc(Number(me.filterCount))) : undefined,
         filterPreferences: me.filterPreferences ?? null,
         counterOverrides: this.buildInitialMenuCounterOverrides(user, me.counterOverrides)
-      };
+      });
     } catch {
-      return { user: null };
+      const cached = this.offlineCache.readUser(normalizedUserId);
+      return cached ?? { user: null };
     }
   }
 
@@ -329,6 +332,14 @@ export class HttpUsersService implements UserService {
         feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0))
       }
     };
+  }
+
+  private cacheUserResponse(response: UserByIdQueryResponse): UserByIdQueryResponse {
+    if (!response.user?.id?.trim()) {
+      return response;
+    }
+    this.offlineCache.writeUser(response.user.id.trim(), response);
+    return response;
   }
 
   private cloneImpressionsSection(section?: UserImpressionsSectionDto): UserImpressionsSectionDto | undefined {

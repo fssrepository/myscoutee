@@ -77,13 +77,17 @@
         </span>
       </div>
     </div>
-    <button type="button" class="header-open-cue" aria-label="Open profile editor" (click)="openProfileEditor($event)">
+    <button type="button" class="header-open-cue" [disabled]="!isOnline()" aria-label="Open profile editor" (click)="openProfileEditor($event)">
       <mat-icon>edit</mat-icon>
     </button>
   </div>
 
-  <div class="user-menu-content">
-    <div class="social-proof-section-head section-personality activities-header impressions-menu-header">
+    <div class="user-menu-content">
+      <div class="user-menu-offline-note" *ngIf="!isOnline()">
+        Offline mode is active. Tickets stay available, while the other menu actions wait for the connection to return.
+      </div>
+
+      <div class="social-proof-section-head section-personality activities-header impressions-menu-header">
       <span class="section-tag">
         <mat-icon>psychology</mat-icon>
         <span>Impressions</span>
@@ -96,6 +100,7 @@
         class="impression-shortcut-btn impression-shortcut-host-btn"
         [ngClass]="getHostTierToneClass(user.hostTier)"
         type="button"
+        [disabled]="!isOnline()"
         (click)="openHostImpressions($event)"
         aria-label="Open host impressions"
         [title]="user.hostTier"
@@ -115,6 +120,7 @@
         class="impression-shortcut-btn impression-shortcut-member-btn"
         [ngClass]="getTraitToneClass(user.traitLabel)"
         type="button"
+        [disabled]="!isOnline()"
         (click)="openMemberImpressions($event)"
         aria-label="Open member impressions"
         [title]="user.memberImpressionTitle"
@@ -140,31 +146,31 @@
     </div>
 
     <div class="menu-shortcuts">
-      <button class="menu-shortcut-btn menu-shortcut-rates" type="button" (click)="$event.stopPropagation(); openRatesShortcut()" aria-label="Open rates" title="Rates">
+      <button class="menu-shortcut-btn menu-shortcut-rates" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openRatesShortcut()" aria-label="Open rates" title="Rates">
         <mat-icon>star</mat-icon>
         <span class="menu-shortcut-label">Rates</span>
         <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.game > 0">{{ user.activities.game }}</span>
       </button>
 
-      <button class="menu-shortcut-btn menu-shortcut-chat" type="button" (click)="$event.stopPropagation(); openChatShortcut()" aria-label="Open chat" title="Chats">
+      <button class="menu-shortcut-btn menu-shortcut-chat" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openChatShortcut()" aria-label="Open chat" title="Chats">
         <mat-icon>chat</mat-icon>
         <span class="menu-shortcut-label">Chats</span>
         <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.chat > 0">{{ user.activities.chat }}</span>
       </button>
 
-      <button class="menu-shortcut-btn menu-shortcut-invitations" type="button" (click)="$event.stopPropagation(); openInvitationShortcut()" aria-label="Open invitations" title="Invitations">
+      <button class="menu-shortcut-btn menu-shortcut-invitations" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openInvitationShortcut()" aria-label="Open invitations" title="Invitations">
         <mat-icon>mail</mat-icon>
         <span class="menu-shortcut-label">Invitations</span>
         <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.invitations > 0">{{ user.activities.invitations }}</span>
       </button>
 
-      <button class="menu-shortcut-btn menu-shortcut-events" type="button" (click)="$event.stopPropagation(); openEventShortcut()" aria-label="Open events" title="Events">
+      <button class="menu-shortcut-btn menu-shortcut-events" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openEventShortcut()" aria-label="Open events" title="Events">
         <mat-icon>event</mat-icon>
         <span class="menu-shortcut-label">Events</span>
         <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.events > 0">{{ user.activities.events }}</span>
       </button>
 
-      <button class="menu-shortcut-btn menu-shortcut-hosting" type="button" (click)="$event.stopPropagation(); openHostingShortcut()" aria-label="Open my events" title="My Events">
+      <button class="menu-shortcut-btn menu-shortcut-hosting" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openHostingShortcut()" aria-label="Open my events" title="My Events">
         <mat-icon>stadium</mat-icon>
         <span class="menu-shortcut-label">My Events</span>
         <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.hosting > 0">{{ user.activities.hosting }}</span>
@@ -180,15 +186,15 @@
     </div>
 
     <div class="assets-shortcuts">
-      <button class="asset-shortcut-btn asset-shortcut-car" type="button" (click)="openAssetCarPopup($event)" aria-label="Car">
+      <button class="asset-shortcut-btn asset-shortcut-car" type="button" [disabled]="!isOnline()" (click)="openAssetCarPopup($event)" aria-label="Car">
         <mat-icon>directions_car</mat-icon>
         <span class="asset-shortcut-label">Car</span>
       </button>
-      <button class="asset-shortcut-btn asset-shortcut-accommodation" type="button" (click)="openAssetAccommodationPopup($event)" aria-label="Accommodation">
+      <button class="asset-shortcut-btn asset-shortcut-accommodation" type="button" [disabled]="!isOnline()" (click)="openAssetAccommodationPopup($event)" aria-label="Accommodation">
         <mat-icon>apartment</mat-icon>
         <span class="asset-shortcut-label">Accommodation</span>
       </button>
-      <button class="asset-shortcut-btn asset-shortcut-supplies" type="button" (click)="openAssetSuppliesPopup($event)" aria-label="Supplies">
+      <button class="asset-shortcut-btn asset-shortcut-supplies" type="button" [disabled]="!isOnline()" (click)="openAssetSuppliesPopup($event)" aria-label="Supplies">
         <mat-icon>inventory_2</mat-icon>
         <span class="asset-shortcut-label">Supplies</span>
       </button>
@@ -208,12 +214,12 @@
     </div>
 
     <div class="feedback-shortcuts">
-      <button class="feedback-shortcut-btn feedback-shortcut-event" type="button" (click)="openEventFeedbackPopup($event)" aria-label="Open event feedback" title="Event Feedback">
+      <button class="feedback-shortcut-btn feedback-shortcut-event" type="button" [disabled]="!isOnline()" (click)="openEventFeedbackPopup($event)" aria-label="Open event feedback" title="Event Feedback">
         <mat-icon>rate_review</mat-icon>
         <span class="feedback-shortcut-label">Event Feedback</span>
         <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.feedback > 0">{{ user.activities.feedback }}</span>
       </button>
-      <button class="feedback-shortcut-btn feedback-shortcut-report" type="button" (click)="openReportUserFromFeedback($event)" aria-label="Open report user" title="Report User">
+      <button class="feedback-shortcut-btn feedback-shortcut-report" type="button" [disabled]="!isOnline()" (click)="openReportUserFromFeedback($event)" aria-label="Open report user" title="Report User">
         <mat-icon>flag</mat-icon>
         <span class="feedback-shortcut-label">Report User</span>
       </button>

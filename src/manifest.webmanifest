@@ -1,0 +1,19 @@
+{
+  "name": "MyScoutee",
+  "short_name": "MyScoutee",
+  "description": "Connect with people through shared activities and keep event tickets available offline.",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "./",
+  "start_url": "./",
+  "background_color": "#f3f6ff",
+  "theme_color": "#2d5f94",
+  "icons": [
+    {
+      "src": "assets/logo/heart.png",
+      "sizes": "200x200",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
