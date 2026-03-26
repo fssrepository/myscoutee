@@ -1,8 +1,9 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 
+import { environment } from '../../../../../environments/environment';
 import { type LoadStatus } from '../context';
 import { AppContext } from '../context';
-import { DemoBootstrapService, type DemoBootstrapProgressState, DemoUsersService } from '../../demo';
+import { DemoBootstrapService, type DemoBootstrapProgressState, DemoUsersRepository, DemoUsersService } from '../../demo';
 import { HttpUsersService } from '../../http';
 import type {
   DemoUserListItemDto,
@@ -49,13 +50,98 @@ class RequestAbortedError extends Error {
 export class UsersService extends BaseRouteModeService {
   private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 3000;
   private static readonly DEFAULT_SUBMIT_MIN_DELAY_MS = 1500;
-  private readonly demoUsersService = inject(DemoUsersService);
-  private readonly demoBootstrapService = inject(DemoBootstrapService);
+  private readonly injector = inject(Injector);
   private readonly httpUsersService = inject(HttpUsersService);
   private readonly appCtx = inject(AppContext);
+  private demoUsersServiceRef: DemoUsersService | null = null;
+  private demoUsersRepositoryRef: DemoUsersRepository | null = null;
+  private demoBootstrapServiceRef: DemoBootstrapService | null = null;
 
   get demoModeEnabled(): boolean {
     return this.isDemoModeEnabled('/auth/me');
+  }
+
+  private get demoUsersService(): DemoUsersService {
+    if (!this.demoUsersServiceRef) {
+      this.demoUsersServiceRef = this.injector.get(DemoUsersService);
+    }
+    return this.demoUsersServiceRef;
+  }
+
+  private get demoUsersRepository(): DemoUsersRepository {
+    if (!this.demoUsersRepositoryRef) {
+      this.demoUsersRepositoryRef = this.injector.get(DemoUsersRepository);
+    }
+    return this.demoUsersRepositoryRef;
+  }
+
+  private get demoBootstrapService(): DemoBootstrapService {
+    if (!this.demoBootstrapServiceRef) {
+      this.demoBootstrapServiceRef = this.injector.get(DemoBootstrapService);
+    }
+    return this.demoBootstrapServiceRef;
+  }
+
+  peekCachedUsers(): UserDto[] {
+    const byId = new Map<string, UserDto>();
+    const appProfiles = this.appCtx.userProfilesByUserId();
+    for (const [userId, user] of Object.entries(appProfiles)) {
+      if (!userId.trim()) {
+        continue;
+      }
+      byId.set(userId, this.cloneUser(user));
+    }
+
+    if (this.demoModeEnabled) {
+      for (const user of this.demoUsersRepository.queryAllUsers()) {
+        if (!user?.id?.trim() || byId.has(user.id)) {
+          continue;
+        }
+        byId.set(user.id, this.cloneUser(user));
+      }
+    }
+
+    const activeUser = this.appCtx.activeUserProfile();
+    if (activeUser?.id?.trim()) {
+      byId.set(activeUser.id, this.cloneUser(activeUser));
+    }
+
+    return [...byId.values()];
+  }
+
+  peekCachedUserById(userId: string): UserDto | null {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    const appProfile = this.appCtx.getUserProfile(normalizedUserId);
+    if (appProfile) {
+      return this.cloneUser(appProfile);
+    }
+    if (!this.demoModeEnabled) {
+      return null;
+    }
+    const demoUser = this.demoUsersRepository.queryUserById(normalizedUserId);
+    return demoUser ? this.cloneUser(demoUser) : null;
+  }
+
+  async warmCachedUsers(userIds: readonly string[]): Promise<void> {
+    const pendingUserIds = [...new Set(
+      userIds
+        .map(userId => userId.trim())
+        .filter(userId => userId.length > 0)
+        .filter(userId => !this.peekCachedUserById(userId))
+    )];
+    if (pendingUserIds.length === 0) {
+      return;
+    }
+    await Promise.all(pendingUserIds.map(async userId => {
+      try {
+        await this.loadUserById(userId, 1500);
+      } catch {
+        // Keep enrichment warmup best-effort so screens stay responsive.
+      }
+    }));
   }
 
   private get userService(): UserService {
@@ -72,7 +158,7 @@ export class UsersService extends BaseRouteModeService {
     this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'loading');
 
     try {
-      if (demoModeEnabled) {
+      if (demoModeEnabled && environment.demoBootstrapEnabled) {
         await this.demoBootstrapService.ensureReady(onProgress);
       }
       const response = await this.withRequestTimeout(
@@ -97,7 +183,7 @@ export class UsersService extends BaseRouteModeService {
     userId: string,
     onProgress?: (state: DemoBootstrapProgressState) => void
   ): Promise<void> {
-    if (!this.isDemoModeEnabled('/auth/me')) {
+    if (!this.isDemoModeEnabled('/auth/me') || !environment.demoBootstrapEnabled) {
       onProgress?.({
         percent: 100,
         label: 'Demo session ready'
@@ -496,6 +582,45 @@ export class UsersService extends BaseRouteModeService {
       serverTsIso: typeof snapshot.serverTsIso === 'string'
         ? snapshot.serverTsIso
         : new Date().toISOString()
+    };
+  }
+
+  private cloneUser(user: UserDto): UserDto {
+    return {
+      ...user,
+      languages: [...(user.languages ?? [])],
+      images: [...(user.images ?? [])],
+      impressions: user.impressions
+        ? {
+            host: user.impressions.host
+              ? {
+                  ...user.impressions.host,
+                  vibeBadges: [...(user.impressions.host.vibeBadges ?? [])],
+                  personalityBadges: [...(user.impressions.host.personalityBadges ?? [])],
+                  personalityTraits: (user.impressions.host.personalityTraits ?? []).map(trait => ({ ...trait })),
+                  categoryBadges: [...(user.impressions.host.categoryBadges ?? [])]
+                }
+              : undefined,
+            member: user.impressions.member
+              ? {
+                  ...user.impressions.member,
+                  vibeBadges: [...(user.impressions.member.vibeBadges ?? [])],
+                  personalityBadges: [...(user.impressions.member.personalityBadges ?? [])],
+                  personalityTraits: (user.impressions.member.personalityTraits ?? []).map(trait => ({ ...trait })),
+                  categoryBadges: [...(user.impressions.member.categoryBadges ?? [])]
+                }
+              : undefined
+          }
+        : undefined,
+      activities: {
+        game: Math.max(0, Math.trunc(Number(user.activities?.game) || 0)),
+        chat: Math.max(0, Math.trunc(Number(user.activities?.chat) || 0)),
+        invitations: Math.max(0, Math.trunc(Number(user.activities?.invitations) || 0)),
+        events: Math.max(0, Math.trunc(Number(user.activities?.events) || 0)),
+        hosting: Math.max(0, Math.trunc(Number(user.activities?.hosting) || 0)),
+        tickets: Math.max(0, Math.trunc(Number(user.activities?.tickets) || 0)),
+        feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0))
+      }
     };
   }
 }

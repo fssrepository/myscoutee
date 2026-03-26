@@ -28,7 +28,7 @@ import {
   type SmartListLoaders,
   type SmartListStateChange
 } from '../../../shared/ui';
-import { ActivityInviteCandidatesService, ActivityMembersService, AppContext, AppPopupContext, SessionService } from '../../../shared/core';
+import { ActivityInviteCandidatesService, ActivityMembersService, AppContext, AppPopupContext } from '../../../shared/core';
 import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
 
 interface ActivityInviteFilters {
@@ -57,7 +57,6 @@ export class AssetMemberPickerPopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
-  private readonly sessionService = inject(SessionService);
   private readonly activityInviteCandidatesService = inject(ActivityInviteCandidatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
@@ -507,6 +506,6 @@ export class AssetMemberPickerPopupComponent {
   }
 
   private get demoModeEnabled(): boolean {
-    return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
+    return environment.activitiesDataSource === 'demo';
   }
 }

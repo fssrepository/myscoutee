@@ -20,7 +20,8 @@ export const ROUTE_CONFIG: RouteConfig = {
   entries: [
     {
       routePrefix: '/auth/demo-users',
-      demoDelayMs: 0
+      demoDelayMs: 0,
+      http: true
     },
     {
       routePrefix: '/auth/me',

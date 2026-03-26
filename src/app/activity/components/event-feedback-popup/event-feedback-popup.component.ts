@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { from } from 'rxjs';
 
-import { AppContext, EventsService, GameService, type UserDto } from '../../../shared/core';
+import { AppContext, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
 import type { EventMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
 import {
   InfoCardComponent,
@@ -21,7 +21,6 @@ import {
 import type * as AppTypes from '../../../shared/core/base/models';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { EventFeedbackPopupStateService, type EventFeedbackPopupSource } from '../../services/event-feedback-popup-state.service';
-import { DemoUsersRepository } from '../../../shared/core/demo';
 
 interface EventFeedbackListFilters {
   filter: AppTypes.EventFeedbackListFilter;
@@ -47,7 +46,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   private readonly appCtx = inject(AppContext);
   private readonly eventsService = inject(EventsService);
   private readonly gameService = inject(GameService);
-  private readonly demoUsersRepository = inject(DemoUsersRepository);
+  private readonly usersService = inject(UsersService);
   private readonly eventRecordsRef = signal<DemoEventRecord[]>([]);
   private lastLoadedUserId = '';
   private loadRequestVersion = 0;
@@ -149,7 +148,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   private get fallbackUsers(): UserDto[] {
-    return this.demoUsersRepository.queryAllUsers();
+    return this.usersService.peekCachedUsers();
   }
 
   public get users(): UserDto[] {
@@ -164,7 +163,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   public get activeUser(): UserDto {
-    return this.appCtx.activeUserProfile() ?? this.users[0] ?? this.fallbackUsers[0];
+    return this.appCtx.activeUserProfile() ?? this.users[0] ?? this.createFallbackUser();
   }
 
   public get eventDatesById(): Record<string, string> {
@@ -321,6 +320,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       }
       this.lastLoadedUserId = normalizedUserId;
       this.eventRecordsRef.set(records);
+      void this.usersService.warmCachedUsers(this.collectEventRecordUserIds(records));
     })();
 
     try {
@@ -338,6 +338,47 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       return null;
     }
     return this.eventRecordsRef().find(record => record.id === normalizedEventId) ?? null;
+  }
+
+  private collectEventRecordUserIds(records: readonly DemoEventRecord[]): string[] {
+    return [...new Set(records.flatMap(record => [
+      `${record.creatorUserId ?? ''}`.trim(),
+      ...(record.acceptedMemberUserIds ?? []).map(userId => `${userId}`.trim()),
+      ...(record.pendingMemberUserIds ?? []).map(userId => `${userId}`.trim())
+    ]).filter(userId => userId.length > 0))];
+  }
+
+  private createFallbackUser(): UserDto {
+    return {
+      id: this.appCtx.activeUserId().trim() || 'u1',
+      name: 'User',
+      age: 0,
+      birthday: '',
+      city: '',
+      height: '',
+      physique: '',
+      languages: [],
+      horoscope: '',
+      initials: 'U',
+      gender: 'woman',
+      statusText: '',
+      hostTier: '',
+      traitLabel: '',
+      completion: 0,
+      headline: '',
+      about: '',
+      images: [],
+      profileStatus: 'public',
+      activities: {
+        game: 0,
+        chat: 0,
+        invitations: 0,
+        events: 0,
+        hosting: 0,
+        tickets: 0,
+        feedback: 0
+      }
+    };
   }
 
   private eventFeedbackLeadingIcon(item: AppTypes.EventFeedbackEventCard): string {
