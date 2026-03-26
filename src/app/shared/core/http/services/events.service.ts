@@ -4,6 +4,8 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type { ActivitiesEventSyncPayload } from '../../../core/base/models';
 import type {
+  DemoEventActivitiesQuery,
+  DemoEventActivitiesQueryResult,
   DemoEventExploreQuery,
   DemoEventExploreQueryResult,
   DemoEventRecord,
@@ -15,6 +17,11 @@ interface HttpEventsFilterRequest {
   userId: string;
   filter: DemoEventScopeFilter;
   hostingPublicationFilter: 'all' | 'drafts';
+  secondaryFilter?: 'recent' | 'relevant' | 'past';
+  sort?: 'date' | 'distance' | 'relevance';
+  view?: 'month' | 'week' | 'day' | 'distance';
+  limit?: number;
+  cursor?: string | null;
 }
 
 @Injectable({
@@ -68,6 +75,54 @@ export class HttpEventsService {
       return this.cloneRecords(response);
     } catch {
       return [];
+    }
+  }
+
+  async queryActivitiesEventPage(query: DemoEventActivitiesQuery): Promise<DemoEventActivitiesQueryResult> {
+    const normalizedUserId = query.userId.trim();
+    if (!normalizedUserId) {
+      return {
+        records: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+    try {
+      const response = await this.http
+        .post<DemoEventRecord[] | DemoEventActivitiesQueryResult | null>(
+          `${this.apiBaseUrl}/activities/events/filter`,
+          {
+            userId: normalizedUserId,
+            filter: query.filter,
+            hostingPublicationFilter: query.hostingPublicationFilter ?? 'all',
+            secondaryFilter: query.secondaryFilter,
+            sort: query.sort,
+            view: query.view,
+            limit: query.limit,
+            cursor: query.cursor ?? null
+          } satisfies HttpEventsFilterRequest
+        )
+        .toPromise();
+      if (Array.isArray(response)) {
+        const records = this.cloneRecords(response);
+        return {
+          records,
+          total: records.length,
+          nextCursor: null
+        };
+      }
+      const records = this.cloneRecords(response?.records);
+      return {
+        records,
+        total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : records.length,
+        nextCursor: typeof response?.nextCursor === 'string' ? response.nextCursor : null
+      };
+    } catch {
+      return {
+        records: [],
+        total: 0,
+        nextCursor: null
+      };
     }
   }
 
@@ -152,6 +207,26 @@ export class HttpEventsService {
 
   async restoreItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
     await this.postVoid('/activities/events/restore', { userId: userId.trim(), type, sourceId: sourceId.trim() });
+  }
+
+  async requestJoin(userId: string, sourceId: string): Promise<DemoEventRecord | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    try {
+      const response = await this.http
+        .post<DemoEventRecord | null>(`${this.apiBaseUrl}/activities/events/join`, {
+          userId: normalizedUserId,
+          type: 'events',
+          sourceId: normalizedSourceId
+        })
+        .toPromise();
+      return response ? this.cloneRecords([response])[0] ?? null : null;
+    } catch {
+      return null;
+    }
   }
 
   async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {

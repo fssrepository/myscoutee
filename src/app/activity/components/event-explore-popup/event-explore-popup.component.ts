@@ -23,6 +23,7 @@ import {
   AppContext,
   AppPopupContext,
   EventExploreBuilder,
+  EventsService,
   type ActivityMembersSyncState,
   GameService,
   UsersService,
@@ -62,6 +63,7 @@ export class EventExplorePopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly activitiesService = inject(ActivitiesService);
+  private readonly eventsService = inject(EventsService);
   private readonly gameService = inject(GameService);
   private readonly usersService = inject(UsersService);
   protected readonly navigatorService = inject(NavigatorService);
@@ -769,7 +771,7 @@ export class EventExplorePopupComponent {
 
     try {
       await Promise.all([exitPromise, delayPromise]);
-      await this.activityMembersService.replaceMembersByOwner(owner, nextMembers, record.capacityTotal);
+      await this.eventsService.requestJoin(activeUserId, record.id);
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembers = nextMembers;
       }

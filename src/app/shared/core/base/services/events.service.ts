@@ -62,16 +62,7 @@ export class EventsService extends BaseRouteModeService {
     if (this.isDemoModeEnabled('/activities/events')) {
       return this.demoEventsService.queryActivitiesEventPage(query);
     }
-    const records = await this.httpEventsService.queryEventItemsByFilter(
-      query.userId,
-      query.filter,
-      query.hostingPublicationFilter ?? 'all'
-    );
-    return {
-      records,
-      total: records.length,
-      nextCursor: null
-    };
+    return this.httpEventsService.queryActivitiesEventPage(query);
   }
 
   queryExploreItems(userId: string): Promise<DemoEventRecord[]> {
@@ -134,6 +125,10 @@ export class EventsService extends BaseRouteModeService {
 
   restoreItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
     return this.eventsService.restoreItem(userId, type, sourceId);
+  }
+
+  requestJoin(userId: string, sourceId: string): Promise<DemoEventRecord | null> {
+    return this.eventsService.requestJoin(userId, sourceId);
   }
 
   async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {

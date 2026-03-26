@@ -356,6 +356,59 @@ export class DemoEventsRepository {
     });
   }
 
+  requestJoin(userId: string, sourceId: string): DemoEventRecord | null {
+    this.init();
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+
+    const preferredRecord = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
+      .find(record => record.id === normalizedSourceId && !record.isInvitation);
+    if (!preferredRecord) {
+      return null;
+    }
+
+    const acceptedMemberUserIds = this.normalizeUserIds(preferredRecord.acceptedMemberUserIds);
+    const pendingMemberUserIds = this.normalizeUserIds(preferredRecord.pendingMemberUserIds);
+    if (!acceptedMemberUserIds.includes(normalizedUserId) && !pendingMemberUserIds.includes(normalizedUserId)) {
+      pendingMemberUserIds.push(normalizedUserId);
+      this.memoryDb.write(state => {
+        const table = state[EVENTS_TABLE_NAME];
+        const nextById = { ...table.byId };
+
+        for (const recordKey of table.ids) {
+          const current = table.byId[recordKey];
+          if (!current || current.id !== normalizedSourceId || current.isInvitation) {
+            continue;
+          }
+          nextById[recordKey] = {
+            ...current,
+            acceptedMembers: acceptedMemberUserIds.length,
+            pendingMembers: pendingMemberUserIds.length,
+            acceptedMemberUserIds: [...acceptedMemberUserIds],
+            pendingMemberUserIds: [...pendingMemberUserIds],
+            capacityTotal: Math.max(acceptedMemberUserIds.length, current.capacityTotal)
+          };
+        }
+
+        return {
+          ...state,
+          [EVENTS_TABLE_NAME]: {
+            byId: nextById,
+            ids: [...table.ids]
+          }
+        };
+      });
+    }
+
+    const refreshed = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
+      .find(record => record.id === normalizedSourceId && !record.isInvitation)
+      ?? preferredRecord;
+    return this.buildMembershipProjectionRecord(normalizedUserId, refreshed);
+  }
+
   isItemTrashed(userId: string, type: DemoRepositoryEventItemType, sourceId: string): boolean {
     this.init();
     const record = this.findItem(userId, type, sourceId);

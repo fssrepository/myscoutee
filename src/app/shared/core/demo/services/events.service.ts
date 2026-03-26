@@ -105,6 +105,13 @@ export class DemoEventsService extends DemoRouteDelayService {
     this.eventsRepository.restoreItem(userId, type, sourceId);
   }
 
+  async requestJoin(userId: string, sourceId: string): Promise<DemoEventRecord | null> {
+    await this.waitForRouteDelay(DemoEventsService.EVENTS_ROUTE);
+    const record = this.eventsRepository.requestJoin(userId, sourceId);
+    await this.memoryDb.flushToIndexedDb();
+    return record;
+  }
+
   countTicketItemsByUser(userId: string): number {
     return this.eventsRepository.countTicketItemsByUser(userId);
   }
