@@ -1,11 +1,16 @@
 import { Injectable, inject } from '@angular/core';
 
+import { APP_STATIC_DATA } from '../../../app-static-data';
+import type { EventMenuItem } from '../../base/interfaces/activity-feed.interface';
 import { AppMemoryDb } from '../../base/db';
+import { DemoEventFeedbackBuilder } from '../builders';
 import { DemoActivityMembersRepository } from '../repositories/activity-members.repository';
 import { DemoActivityResourcesRepository } from '../repositories/activity-resources.repository';
 import { DemoAssetsRepository } from '../repositories/assets.repository';
 import { DemoChatsRepository } from '../repositories/chats.repository';
 import { DemoEventsRepository } from '../repositories/events.repository';
+import { EVENT_FEEDBACK_TABLE_NAME } from '../models/event-feedback.model';
+import type { DemoEventRecord } from '../models/events.model';
 import { DemoUsersRatingsRepository } from '../repositories/users-ratings.repository';
 import { DemoUsersRepository } from '../repositories/users.repository';
 
@@ -20,6 +25,7 @@ type DemoBootstrapProgressListener = (state: DemoBootstrapProgressState) => void
   providedIn: 'root'
 })
 export class DemoBootstrapService {
+  private static readonly EVENT_FEEDBACK_UNLOCK_DELAY_MS = 2 * 60 * 60 * 1000;
   private readonly memoryDb = inject(AppMemoryDb);
   private readonly chatsRepository = inject(DemoChatsRepository);
   private readonly eventsRepository = inject(DemoEventsRepository);
@@ -134,10 +140,11 @@ export class DemoBootstrapService {
     await this.runBootstrapStep(16, 'Loading chats', () => this.chatsRepository.init());
     await this.runBootstrapStep(36, 'Loading events', () => this.eventsRepository.init());
     await this.runBootstrapStep(52, 'Preparing demo users', () => { this.usersRepository.init(); });
-    await this.runBootstrapStep(64, 'Loading ratings', () => this.usersRatingsRepository.init());
-    await this.runBootstrapStep(76, 'Preparing owned assets', () => this.assetsRepository.init());
-    await this.runBootstrapStep(86, 'Preparing activity members', () => this.activityMembersRepository.init());
-    await this.runBootstrapStep(94, 'Preparing activity resources', () => this.activityResourcesRepository.init());
+    await this.runBootstrapStep(60, 'Preparing event feedback', () => this.seedEventFeedbackStates());
+    await this.runBootstrapStep(68, 'Loading ratings', () => this.usersRatingsRepository.init());
+    await this.runBootstrapStep(80, 'Preparing owned assets', () => this.assetsRepository.init());
+    await this.runBootstrapStep(90, 'Preparing activity members', () => this.activityMembersRepository.init());
+    await this.runBootstrapStep(96, 'Preparing activity resources', () => this.activityResourcesRepository.init());
     await this.runBootstrapStep(100, 'Syncing demo IndexedDB', () => this.memoryDb.flushToIndexedDb());
 
     this.ready = true;
@@ -145,6 +152,92 @@ export class DemoBootstrapService {
       percent: 100,
       label: 'Demo data ready'
     });
+  }
+
+
+  private seedEventFeedbackStates(): void {
+    const users = this.usersRepository.queryAllUsers();
+    if (users.length === 0) {
+      return;
+    }
+
+    const currentTable = this.memoryDb.read()[EVENT_FEEDBACK_TABLE_NAME];
+    const nextById = { ...currentTable.byId };
+    const nextIds = [...currentTable.ids];
+    let changed = false;
+
+    for (const activeUser of users) {
+      const eventRecords = this.eventsRepository.queryEventItemsByUser(activeUser.id);
+      if (eventRecords.length === 0) {
+        continue;
+      }
+      const seededRecords = DemoEventFeedbackBuilder.buildSeededPersistedStates({
+        eventItems: eventRecords.map(record => this.toEventMenuItem(record)),
+        users,
+        activeUser,
+        eventDatesById: Object.fromEntries(eventRecords.map(record => [record.id, record.startAtIso])),
+        activityImageById: Object.fromEntries(eventRecords.map(record => [record.id, record.imageUrl ?? ''])),
+        eventFeedbackUnlockDelayMs: DemoBootstrapService.EVENT_FEEDBACK_UNLOCK_DELAY_MS,
+        eventOverallOptions: APP_STATIC_DATA.eventFeedbackEventOverallOptions,
+        hostImproveOptions: APP_STATIC_DATA.eventFeedbackHostImproveOptions,
+        attendeeCollabOptions: APP_STATIC_DATA.eventFeedbackAttendeeCollabOptions,
+        attendeeRejoinOptions: APP_STATIC_DATA.eventFeedbackAttendeeRejoinOptions
+      });
+
+      for (const record of seededRecords) {
+        if (nextById[record.id]) {
+          continue;
+        }
+        nextById[record.id] = {
+          ...record,
+          answersByCardId: { ...(record.answersByCardId ?? {}) }
+        };
+        nextIds.push(record.id);
+        changed = true;
+      }
+    }
+
+    if (!changed) {
+      return;
+    }
+
+    this.memoryDb.write(state => ({
+      ...state,
+      [EVENT_FEEDBACK_TABLE_NAME]: {
+        byId: nextById,
+        ids: nextIds
+      }
+    }));
+  }
+
+  private toEventMenuItem(record: DemoEventRecord): EventMenuItem {
+    return {
+      id: record.id,
+      avatar: record.creatorInitials,
+      title: record.title,
+      shortDescription: record.subtitle,
+      timeframe: record.timeframe,
+      activity: record.activity,
+      isAdmin: record.isAdmin,
+      creatorUserId: record.creatorUserId,
+      startAt: record.startAtIso,
+      endAt: record.endAtIso,
+      distanceKm: record.distanceKm,
+      acceptedMemberUserIds: [...record.acceptedMemberUserIds],
+      pendingMemberUserIds: [...record.pendingMemberUserIds],
+      visibility: record.visibility,
+      blindMode: record.blindMode,
+      imageUrl: record.imageUrl,
+      sourceLink: record.sourceLink,
+      location: record.location,
+      capacityMin: record.capacityMin,
+      capacityMax: record.capacityMax,
+      ticketing: record.ticketing,
+      topics: [...record.topics],
+      rating: record.rating,
+      relevance: record.relevance,
+      published: record.published
+    };
   }
 
   private async runBootstrapStep(

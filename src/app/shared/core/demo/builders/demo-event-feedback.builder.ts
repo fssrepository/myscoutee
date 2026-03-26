@@ -1,7 +1,7 @@
 import { AppUtils } from '../../../app-utils';
 import type { EventMenuItem } from '../../base/interfaces/activity-feed.interface';
 import type { DemoUser } from '../../base/interfaces/user.interface';
-import type { EventFeedbackCard, EventFeedbackOption } from '../../base/models';
+import type { EventFeedbackCard, EventFeedbackOption, EventFeedbackPersistedState, SubmittedEventFeedbackAnswer } from '../../base/models';
 
 export class DemoEventFeedbackBuilder {
   static buildEventFeedbackCards(options: {
@@ -79,6 +79,158 @@ export class DemoEventFeedbackBuilder {
       }
     }
     return eventCards;
+  }
+
+
+  static buildSeededPersistedStates(options: {
+    eventItems: EventMenuItem[];
+    users: DemoUser[];
+    activeUser: DemoUser;
+    eventDatesById: Record<string, string>;
+    activityImageById: Record<string, string>;
+    eventFeedbackUnlockDelayMs: number;
+    eventOverallOptions: EventFeedbackOption[];
+    hostImproveOptions: EventFeedbackOption[];
+    attendeeCollabOptions: EventFeedbackOption[];
+    attendeeRejoinOptions: EventFeedbackOption[];
+  }): EventFeedbackPersistedState[] {
+    const cardsByEventId = new Map<string, EventFeedbackCard[]>();
+
+    for (const card of this.buildEventFeedbackCards(options)) {
+      if (card.kind === 'attendee' && card.attendeeUserId === options.activeUser.id) {
+        continue;
+      }
+      const eventCards = cardsByEventId.get(card.eventId) ?? [];
+      eventCards.push(card);
+      cardsByEventId.set(card.eventId, eventCards);
+    }
+
+    const states: EventFeedbackPersistedState[] = [];
+    for (const [eventId, eventCards] of cardsByEventId.entries()) {
+      if (eventCards.length === 0) {
+        continue;
+      }
+      const seed = AppUtils.hashText(`feedback-state:${options.activeUser.id}:${eventId}`);
+      const variant = seed % 8;
+      if (variant >= 5) {
+        continue;
+      }
+
+      const recordId = this.eventFeedbackStateRecordId(options.activeUser.id, eventId);
+      if (variant === 4) {
+        states.push({
+          id: recordId,
+          userId: options.activeUser.id,
+          eventId,
+          removed: true,
+          submittedAtIso: null,
+          organizerNote: '',
+          answersByCardId: {}
+        });
+        continue;
+      }
+
+      if (variant === 3) {
+        states.push({
+          id: recordId,
+          userId: options.activeUser.id,
+          eventId,
+          removed: false,
+          submittedAtIso: null,
+          organizerNote: this.seededOrganizerNote(eventCards[0], seed),
+          answersByCardId: {}
+        });
+        continue;
+      }
+
+      const submittedAtIso = this.seededSubmittedAtIso(
+        eventId,
+        options.eventDatesById,
+        options.eventFeedbackUnlockDelayMs,
+        seed
+      );
+      const answersByCardId: EventFeedbackPersistedState['answersByCardId'] = {};
+      for (const card of eventCards) {
+        const answer = this.seededSubmittedAnswer(card, seed, submittedAtIso);
+        answersByCardId[answer.cardId] = answer;
+      }
+      states.push({
+        id: recordId,
+        userId: options.activeUser.id,
+        eventId,
+        removed: false,
+        submittedAtIso,
+        organizerNote: (seed % 3) === 0 ? this.seededOrganizerNote(eventCards[0], seed) : '',
+        answersByCardId
+      });
+    }
+
+    return states;
+  }
+
+  private static seededSubmittedAnswer(
+    card: EventFeedbackCard,
+    seed: number,
+    submittedAtIso: string
+  ): SubmittedEventFeedbackAnswer {
+    const primaryOption = this.seededOption(card.primaryOptions, `primary:${seed}:${card.id}`);
+    const secondaryOption = this.seededOption(card.secondaryOptions, `secondary:${seed}:${card.id}`);
+    const tags = new Set<string>();
+    if (primaryOption?.impressionTag) {
+      tags.add(primaryOption.impressionTag);
+    }
+    if (secondaryOption?.impressionTag) {
+      tags.add(secondaryOption.impressionTag);
+    }
+    return {
+      cardId: card.id,
+      eventId: card.eventId,
+      kind: card.kind,
+      targetUserId: card.targetUserId ?? null,
+      targetRole: card.targetRole ?? 'Member',
+      primaryValue: primaryOption?.value ?? '',
+      secondaryValue: secondaryOption?.value ?? '',
+      tags: [...tags],
+      submittedAtIso
+    };
+  }
+
+  private static seededOption(
+    options: EventFeedbackOption[],
+    seedKey: string
+  ): EventFeedbackOption | null {
+    if (options.length === 0) {
+      return null;
+    }
+    const index = AppUtils.hashText(seedKey) % options.length;
+    return options[index] ?? options[0] ?? null;
+  }
+
+  private static seededSubmittedAtIso(
+    eventId: string,
+    eventDatesById: Record<string, string>,
+    eventFeedbackUnlockDelayMs: number,
+    seed: number
+  ): string {
+    const startMs = this.eventStartAtMs(eventId, eventDatesById);
+    const baseMs = startMs === null
+      ? Date.UTC(2026, 2, 20, 18, 0, 0, 0)
+      : startMs + eventFeedbackUnlockDelayMs;
+    const offsetMinutes = 45 + (seed % 180);
+    return new Date(baseMs + (offsetMinutes * 60 * 1000)).toISOString();
+  }
+
+  private static seededOrganizerNote(card: EventFeedbackCard, seed: number): string {
+    const noteTemplates = [
+      `Strong overall flow for ${card.heading}. I would tighten the timing at the start next round.`,
+      `The vibe was good around ${card.heading}. A clearer check-in and role handoff would help next time.`,
+      `Good energy on ${card.heading}. I would make the pacing a bit smoother between sections.`
+    ] as const;
+    return noteTemplates[seed % noteTemplates.length] ?? noteTemplates[0];
+  }
+
+  private static eventFeedbackStateRecordId(userId: string, eventId: string): string {
+    return `${userId.trim()}::${eventId.trim()}`;
   }
 
   private static eventStartAtMs(eventId: string, eventDatesById: Record<string, string>): number | null {

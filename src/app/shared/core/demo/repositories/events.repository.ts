@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { AppUtils } from '../../../app-utils';
 import type { EventMenuItem } from '../../../core/base/interfaces/activity-feed.interface';
 import { AppMemoryDb } from '../../base/db';
+import { EVENT_FEEDBACK_TABLE_NAME } from '../models/event-feedback.model';
 import { DemoEventSeedBuilder, DemoEventsRepositoryBuilder, DemoUserMenuCountersBuilder, DemoUserSeedBuilder } from '../builders';
 import {
   EVENTS_TABLE_NAME,
@@ -426,14 +427,29 @@ export class DemoEventsRepository {
 
   countPendingEventFeedbackByUser(userId: string, feedbackUnlockDelayMs: number): number {
     this.init();
-    const eventItems = this.queryEventItemsByUser(userId);
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return 0;
+    }
+    const eventItems = this.queryEventItemsByUser(normalizedUserId);
+    const feedbackTable = this.memoryDb.read()[EVENT_FEEDBACK_TABLE_NAME];
     const nowMs = Date.now();
     const basePendingCount = eventItems.filter(item => {
       if (item.isAdmin) {
         return false;
       }
       const startMs = new Date(item.startAtIso ?? '').getTime();
-      return Number.isFinite(startMs) && nowMs >= startMs + feedbackUnlockDelayMs;
+      if (!Number.isFinite(startMs) || nowMs < startMs + feedbackUnlockDelayMs) {
+        return false;
+      }
+      const feedbackRecord = feedbackTable.byId[`${normalizedUserId}::${item.id}`];
+      if (!feedbackRecord) {
+        return true;
+      }
+      if (feedbackRecord.removed) {
+        return false;
+      }
+      return !(feedbackRecord.submittedAtIso?.trim());
     }).length;
 
     return basePendingCount + DemoUserMenuCountersBuilder.syntheticPendingEventFeedbackCount(
