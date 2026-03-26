@@ -9,7 +9,6 @@ const PRECACHE_URLS = [
   './index.html',
   './manifest.webmanifest',
   './assets/icon/favicon.ico',
-  './assets/logo/heart.webp',
   './assets/logo/heart.png',
   './assets/logo/cards_no_edges.png'
 ];
@@ -79,15 +78,10 @@ self.addEventListener('push', event => {
   event.waitUntil(
     self.registration.showNotification(payload.title, {
       body: payload.body,
-      icon: payload.icon || './assets/logo/heart.webp',
-      badge: payload.badge || './assets/logo/heart.webp',
-      image: payload.image || undefined,
-      tag: payload.tag || undefined,
-      renotify: Boolean(payload.tag),
-      requireInteraction: false,
+      icon: payload.icon || './assets/logo/heart.png',
+      badge: payload.badge || './assets/logo/heart.png',
       data: {
-        url: payload.url || '/game',
-        chatId: payload.chatId || ''
+        url: payload.url || '/game'
       }
     })
   );
@@ -169,9 +163,6 @@ function parsePushPayload(event) {
       body: notification.body || data.body || '',
       icon: notification.icon || data.icon || '',
       badge: notification.badge || data.badge || '',
-      image: notification.image || data.image || '',
-      tag: notification.tag || data.tag || '',
-      chatId: data.chatId || '',
       url: data.url || data.click_action || '/game'
     };
   } catch {
@@ -179,10 +170,7 @@ function parsePushPayload(event) {
       title: 'MyScoutee',
       body: event.data.text(),
       icon: '',
-      badge: './assets/logo/heart.webp',
-      image: '',
-      tag: '',
-      chatId: '',
+      badge: '',
       url: '/game'
     };
   }

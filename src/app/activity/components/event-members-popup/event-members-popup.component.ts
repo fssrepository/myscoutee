@@ -18,7 +18,7 @@ import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import type { ActivityMemberOwnerRef, ActivityMemberOwnerType } from '../../../shared/core/base/models';
 import type { ActivityMembersSyncState } from '../../../shared/core';
-import { ActivityMembersService, AppContext, AppPopupContext, EventsService, UsersService } from '../../../shared/core';
+import { ActivityMembersService, AppContext, AppPopupContext, EventsService, SessionService } from '../../../shared/core';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import {
   LazyBgImageDirective,
@@ -31,6 +31,7 @@ import {
   type SmartListStateChange
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { DemoUsersRepository } from '../../../shared/core/demo';
 
 interface MembersSmartListFilters {
   ownerId?: string;
@@ -70,7 +71,16 @@ export class EventMembersPopupComponent {
   private readonly eventsService = inject(EventsService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
-  private readonly usersService = inject(UsersService);
+  private readonly sessionService = inject(SessionService);
+  private readonly demoUsersRepository = inject(DemoUsersRepository);
+
+  private get users() {
+    return this.demoUsersRepository.queryAllUsers();
+  }
+
+  private get userByIdMap() {
+    return new Map(this.users.map(user => [user.id, user]));
+  }
   private readonly membersCacheByOwnerId = new Map<string, AppTypes.ActivityMemberEntry[]>();
   private lastAppliedActivityMembersUpdatedMs = 0;
   private openMembersHydrationTimer: ReturnType<typeof setTimeout> | null = null;
@@ -466,7 +476,7 @@ export class EventMembersPopupComponent {
   }
 
   protected age(entry: AppTypes.ActivityMemberEntry): number {
-    return this.usersService.peekCachedUserById(entry.userId)?.age ?? 0;
+    return this.userByIdMap.get(entry.userId)?.age ?? 0;
   }
 
   protected roleLabel(entry: AppTypes.ActivityMemberEntry): string {
@@ -682,7 +692,6 @@ export class EventMembersPopupComponent {
         ? await this.activityMembersService.queryMembersByOwner(owner)
         : await this.activityMembersService.queryMembersByOwnerId(ownerId);
       members = this.sortMembersByActionTimeDesc(loadedMembers);
-      void this.usersService.warmCachedUsers(members.map(member => member.userId));
       this.membersCacheByOwnerId.set(ownerId, members);
       if (this.isOpen && this.ownerId === ownerId) {
         const summary = owner
@@ -941,7 +950,7 @@ export class EventMembersPopupComponent {
   }
 
   private get demoModeEnabled(): boolean {
-    return environment.activitiesDataSource === 'demo';
+    return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
   }
 
   private activeUserId(): string {

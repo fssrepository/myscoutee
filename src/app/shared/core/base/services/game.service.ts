@@ -1,4 +1,4 @@
-import { Injectable, Injector, inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 
 import { type LoadStatus } from '../context';
 import { AppContext } from '../context';
@@ -37,12 +37,11 @@ export class GameService extends BaseRouteModeService {
   private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 3000;
   private static readonly USER_RATES_OUTBOX_SYNC_INTERVAL_MS = 30000;
   private static readonly USER_RATES_OUTBOX_SYNC_BATCH_SIZE = 50;
-  private readonly injector = inject(Injector);
+  private readonly demoGameService = inject(DemoGameService);
+  private readonly demoUsersRatingsRepository = inject(DemoUsersRatingsRepository);
   private readonly httpGameService = inject(HttpGameService);
   private readonly httpUsersRatingsRepository = inject(HttpUsersRatingsRepository);
   private readonly appCtx = inject(AppContext);
-  private demoGameServiceRef: DemoGameService | null = null;
-  private demoUsersRatingsRepositoryRef: DemoUsersRatingsRepository | null = null;
   private readonly userGameCardsStackStateByUserId: Record<string, UserGameCardsStackState> = {};
   private userRatesOutboxSyncInFlight = false;
   private userRatesOutboxSyncTimer: ReturnType<typeof setInterval> | null = null;
@@ -51,20 +50,6 @@ export class GameService extends BaseRouteModeService {
   constructor() {
     super();
     this.startUserRatesOutboxSyncLoop();
-  }
-
-  private get demoGameService(): DemoGameService {
-    if (!this.demoGameServiceRef) {
-      this.demoGameServiceRef = this.injector.get(DemoGameService);
-    }
-    return this.demoGameServiceRef;
-  }
-
-  private get demoUsersRatingsRepository(): DemoUsersRatingsRepository {
-    if (!this.demoUsersRatingsRepositoryRef) {
-      this.demoUsersRatingsRepositoryRef = this.injector.get(DemoUsersRatingsRepository);
-    }
-    return this.demoUsersRatingsRepositoryRef;
   }
 
   private get gameDataService(): UserGameDataService {

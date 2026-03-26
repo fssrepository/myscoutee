@@ -7,8 +7,9 @@ import type { AssetPopupHost } from '../../asset/asset-popup.host';
 import { OwnedAssetsPopupFacadeService } from '../../asset/owned-assets-popup-facade.service';
 import { AppUtils } from '../../shared/app-utils';
 import type * as AppTypes from '../../shared/core/base/models';
-import { ActivityMembersService, ActivityResourceBuilder, ActivityResourcesService, AppContext, AppPopupContext, UsersService, type UserDto } from '../../shared/core';
+import { ActivityMembersService, ActivityResourceBuilder, ActivityResourcesService, AppContext, AppPopupContext, SessionService, type UserDto } from '../../shared/core';
 import { ActivitiesPopupStateService } from './activities-popup-state.service';
+import { DemoUsersRepository } from '../../shared/core/demo';
 import { EventEditorPopupStateService } from './event-editor-popup-state.service';
 import type {
   EventResourcePopupHost
@@ -102,10 +103,11 @@ export class SubEventResourcePopupService {
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
-  private readonly usersService = inject(UsersService);
+  private readonly sessionService = inject(SessionService);
+  private readonly demoUsersRepository = inject(DemoUsersRepository);
 
   private get users(): UserDto[] {
-    return this.usersService.peekCachedUsers();
+    return this.demoUsersRepository.queryAllUsers();
   }
 
   private get userById(): Map<string, UserDto> {
@@ -295,10 +297,7 @@ export class SubEventResourcePopupService {
 
   private activeUser(): UserDto {
     const activeUserId = this.appCtx.activeUserId().trim();
-    return this.appCtx.activeUserProfile()
-      ?? this.usersService.peekCachedUserById(activeUserId)
-      ?? this.users[0]
-      ?? this.createFallbackUser(activeUserId);
+    return this.users.find(user => user.id === activeUserId) ?? this.users[0];
   }
 
   private openFromChatRequest(request: Extract<AppTypes.ActivitiesNavigationRequest, { type: 'chatResource' }>): void {
@@ -615,7 +614,6 @@ export class SubEventResourcePopupService {
   private buildSupplyContributionRows(
     entries: readonly AppTypes.SubEventSupplyContributionEntry[]
   ): AppTypes.SubEventSupplyContributionRow[] {
-    void this.usersService.warmCachedUsers(entries.map(entry => entry.userId));
     return entries
       .map(entry => {
         const user = this.userById.get(entry.userId) ?? null;
@@ -1944,9 +1942,6 @@ export class SubEventResourcePopupService {
 
   private assetMemberEntries(card: AppTypes.AssetCard, ownerUserId: string | null): AppTypes.ActivityMemberEntry[] {
     const seedBaseDate = new Date('2026-02-24T12:00:00');
-    void this.usersService.warmCachedUsers(card.requests
-      .map(request => AppUtils.resolveAssetRequestUserId(request, this.users))
-      .filter(userId => `${userId}`.trim().length > 0));
     return [...card.requests]
       .map(request => {
         const requestUserId = AppUtils.resolveAssetRequestUserId(request, this.users);
@@ -1989,39 +1984,6 @@ export class SubEventResourcePopupService {
         };
       })
       .sort((left, right) => AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso));
-  }
-
-  private createFallbackUser(userId: string): UserDto {
-    return {
-      id: userId.trim() || 'u1',
-      name: 'User',
-      age: 0,
-      birthday: '',
-      city: '',
-      height: '',
-      physique: '',
-      languages: [],
-      horoscope: '',
-      initials: 'U',
-      gender: 'woman',
-      statusText: '',
-      hostTier: '',
-      traitLabel: '',
-      completion: 0,
-      headline: '',
-      about: '',
-      images: [],
-      profileStatus: 'public',
-      activities: {
-        game: 0,
-        chat: 0,
-        invitations: 0,
-        events: 0,
-        hosting: 0,
-        tickets: 0,
-        feedback: 0
-      }
-    };
   }
 
   private handleOwnedAssetDeleted(cardId: string): void {

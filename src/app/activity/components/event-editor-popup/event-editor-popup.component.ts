@@ -21,6 +21,7 @@ import type * as AppTypes from '../../../shared/core/base/models';
 import { ActivityMembersService, AppContext, AppPopupContext, EventEditorDataService } from '../../../shared/core';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { TopicPickerPopupComponent } from '../../../shared/ui';
+import { SessionService } from '../../../shared/core';
 import { environment } from '../../../../environments/environment';
 import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
 
@@ -53,6 +54,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
+  private readonly sessionService = inject(SessionService);
   protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
 
   @ViewChild('eventImageInput') eventImageInput!: ElementRef<HTMLInputElement>;
@@ -870,7 +872,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private get demoModeEnabled(): boolean {
-    return environment.activitiesDataSource === 'demo';
+    return this.sessionService.currentSession()?.kind === 'demo' || !environment.loginEnabled;
   }
 
   private resetEditorContext(): void {

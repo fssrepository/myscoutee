@@ -125,53 +125,17 @@ export class FirebaseMessagingService {
       if (!document.hidden) {
         return;
       }
-      const notificationPayload = payload.notification as ({
-        title?: string;
-        body?: string;
-        icon?: string;
-        badge?: string;
-        image?: string;
-        tag?: string;
-      } | undefined);
-      const title = notificationPayload?.title?.trim() || payload.data?.['title'] || 'MyScoutee';
-      const body = notificationPayload?.body?.trim() || payload.data?.['body'] || '';
-      const icon = notificationPayload?.icon?.trim()
-        || payload.data?.['icon']
-        || 'assets/logo/heart.webp';
-      const badge = notificationPayload?.badge?.trim()
-        || payload.data?.['badge']
-        || 'assets/logo/heart.webp';
-      const image = notificationPayload?.image?.trim()
-        || payload.data?.['image']
-        || undefined;
-      const tag = notificationPayload?.tag?.trim()
-        || payload.data?.['tag']
-        || undefined;
-      const url = payload.data?.['url'] || '/game';
+      const title = payload.notification?.title?.trim() || payload.data?.['title'] || 'MyScoutee';
+      const body = payload.notification?.body?.trim() || payload.data?.['body'] || '';
+      const icon = payload.notification?.icon?.trim() || 'assets/logo/heart.png';
       void this.pwaService.waitForServiceWorkerReady().then(registration => {
         if (!registration) {
           return;
         }
-        const options: NotificationOptions & {
-          image?: string;
-          tag?: string;
-          renotify?: boolean;
-        } = {
+        void registration.showNotification(title, {
           body,
-          icon,
-          badge,
-          data: {
-            url
-          }
-        };
-        if (image) {
-          options.image = image;
-        }
-        if (tag) {
-          options.tag = tag;
-          options.renotify = true;
-        }
-        void registration.showNotification(title, options);
+          icon
+        });
       });
     });
   }

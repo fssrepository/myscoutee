@@ -1,4 +1,4 @@
-import { Injectable, Injector, inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
 import { AppContext } from '../context';
@@ -10,17 +10,9 @@ import { BaseRouteModeService } from './base-route-mode.service';
   providedIn: 'root'
 })
 export class ActivityResourcesService extends BaseRouteModeService {
-  private readonly injector = inject(Injector);
+  private readonly demoActivityResourcesService = inject(DemoActivityResourcesService);
   private readonly httpActivityResourcesService = inject(HttpActivityResourcesService);
   private readonly appCtx = inject(AppContext);
-  private demoActivityResourcesServiceRef: DemoActivityResourcesService | null = null;
-
-  private get demoActivityResourcesService(): DemoActivityResourcesService {
-    if (!this.demoActivityResourcesServiceRef) {
-      this.demoActivityResourcesServiceRef = this.injector.get(DemoActivityResourcesService);
-    }
-    return this.demoActivityResourcesServiceRef;
-  }
 
 
   private get activityResourcesService(): DemoActivityResourcesService | HttpActivityResourcesService {

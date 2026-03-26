@@ -1,4 +1,4 @@
-import { Injectable, Injector, inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 
 import type {
   ActivityMemberOwnerType,
@@ -17,17 +17,9 @@ import { BaseRouteModeService } from './base-route-mode.service';
 })
 export class ActivityMembersService extends BaseRouteModeService {
   private static readonly OWNER_TYPES: readonly ActivityMemberOwnerType[] = ['event', 'subEvent', 'group', 'asset'];
-  private readonly injector = inject(Injector);
+  private readonly demoActivityMembersService = inject(DemoActivityMembersService);
   private readonly httpActivityMembersService = inject(HttpActivityMembersService);
   private readonly appCtx = inject(AppContext);
-  private demoActivityMembersServiceRef: DemoActivityMembersService | null = null;
-
-  private get demoActivityMembersService(): DemoActivityMembersService {
-    if (!this.demoActivityMembersServiceRef) {
-      this.demoActivityMembersServiceRef = this.injector.get(DemoActivityMembersService);
-    }
-    return this.demoActivityMembersServiceRef;
-  }
 
 
   private get activityMembersService(): DemoActivityMembersService | HttpActivityMembersService {
