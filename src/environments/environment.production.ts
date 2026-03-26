@@ -1,0 +1,8 @@
+export const environment = {
+  production: true,
+  loginEnabled: false,
+  activitiesDataSource: 'demo' as const,
+  apiBaseUrl: '/api',
+  serviceWorkerEnabled: true,
+  firebaseMessagingEnabled: true
+};

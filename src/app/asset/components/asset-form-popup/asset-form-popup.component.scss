@@ -1,0 +1,105 @@
+@use '../_asset-interactions.shared' as asset-interactions;
+
+@include asset-interactions.host-motion-vars(contents);
+@include asset-interactions.interactive-feedback('.popup-header-add-btn, .experience-form-close-btn, .profile-status-select-wrap, .experience-action-btn, .asset-source-refresh-btn, .asset-image-dropzone');
+
+.asset-route-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.62rem;
+  width: 100%;
+}
+
+.asset-route-row.asset-route-row-inline {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.asset-route-row input {
+  width: 100%;
+  min-width: 0;
+}
+
+.asset-route-map-btn {
+  width: 30px;
+  height: 30px;
+}
+
+.experience-action-btn.asset-route-map-btn {
+  background: linear-gradient(180deg, #f4f7fc 0%, #e8eef9 100%);
+  border-color: rgba(53, 91, 140, 0.26);
+  color: #315e9a;
+}
+
+.asset-source-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.38rem;
+  align-items: center;
+}
+
+.asset-source-refresh-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(36, 64, 98, 0.24);
+  background: linear-gradient(180deg, #edf3fb 0%, #e3ecf8 100%);
+  color: #34577f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.asset-source-refresh-btn .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.asset-image-dropzone {
+  border: 0;
+  background: transparent;
+  width: 100%;
+  padding: 0;
+  cursor: pointer;
+}
+
+.asset-image-preview {
+  width: 100%;
+  min-height: 170px;
+  border-radius: 12px;
+  border: 1px dashed rgba(56, 83, 119, 0.3);
+  background: linear-gradient(180deg, #f8fbff 0%, #edf3fb 100%);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.asset-image-plus {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(56, 83, 119, 0.24);
+  background: rgba(255, 255, 255, 0.86);
+  color: #34577f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+@media (max-width: 900px) {
+  .asset-route-row.asset-route-row-inline {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .asset-route-map-btn {
+    width: 28px;
+    height: 28px;
+  }
+}

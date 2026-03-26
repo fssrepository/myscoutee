@@ -1,0 +1,73 @@
+<div class="gdpr-popup">
+  <article class="editor-list-card gdpr-lead-card">
+    <h4>{{ gdprContent.title }}</h4>
+    <p>{{ gdprContent.subtitle }}</p>
+    <p><strong>Last updated:</strong> {{ gdprContent.updatedAt | date:'mediumDate' }}</p>
+  </article>
+
+  <article class="editor-list-card gdpr-card">
+    <h4>Contacts</h4>
+    <ul class="gdpr-list">
+      <li *ngFor="let contact of gdprContent.contacts"><strong>{{ contact.label }}:</strong> {{ contact.value }}</li>
+    </ul>
+  </article>
+
+  <article class="editor-list-card gdpr-card">
+    <h4>Legal Basis</h4>
+    <ul class="gdpr-list">
+      <li *ngFor="let item of gdprContent.legalBases">{{ item }}</li>
+    </ul>
+  </article>
+
+  <article class="editor-list-card gdpr-card">
+    <h4>Your Rights</h4>
+    <div class="gdpr-rights-grid">
+      <section class="gdpr-right-item" *ngFor="let right of gdprContent.rights">
+        <h5>{{ right.title }}</h5>
+        <ul class="gdpr-list">
+          <li *ngFor="let item of right.items">{{ item }}</li>
+        </ul>
+      </section>
+    </div>
+  </article>
+
+  <article class="editor-list-card gdpr-card">
+    <h4>Data We Process</h4>
+    <div class="gdpr-data-grid">
+      <section class="gdpr-data-item" *ngFor="let section of gdprContent.dataCategories">
+        <h5>{{ section.category }}</h5>
+        <ul class="gdpr-list">
+          <li *ngFor="let item of section.items">{{ item }}</li>
+        </ul>
+      </section>
+    </div>
+  </article>
+
+  <article class="editor-list-card gdpr-card">
+    <h4>Purposes</h4>
+    <ul class="gdpr-list">
+      <li *ngFor="let item of gdprContent.purposes">{{ item }}</li>
+    </ul>
+  </article>
+
+  <article class="editor-list-card gdpr-card">
+    <h4>Retention</h4>
+    <ul class="gdpr-list">
+      <li *ngFor="let item of gdprContent.retention">{{ item }}</li>
+    </ul>
+  </article>
+
+  <article class="editor-list-card gdpr-card">
+    <h4>Third-Party Sharing</h4>
+    <ul class="gdpr-list">
+      <li *ngFor="let item of gdprContent.sharing">{{ item }}</li>
+    </ul>
+  </article>
+
+  <article class="editor-list-card gdpr-card">
+    <h4>Security</h4>
+    <ul class="gdpr-list">
+      <li *ngFor="let item of gdprContent.security">{{ item }}</li>
+    </ul>
+  </article>
+</div>

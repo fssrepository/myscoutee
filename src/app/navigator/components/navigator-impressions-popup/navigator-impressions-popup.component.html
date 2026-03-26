@@ -1,0 +1,223 @@
+<ng-container *ngIf="popupOpen() && viewModel() as vm">
+  <section class="app-popup app-popup-stacked app-popup-super-stacked navigator-impressions-popup">
+    <div class="app-popup-backdrop" (click)="closePopup()"></div>
+    <div class="app-popup-panel popup-panel-members" (click)="$event.stopPropagation()">
+      <div class="popup-header popup-header-impressions">
+        <div class="popup-title popup-title-impressions">
+          <div class="popup-chat-title-block">
+            <h2>Impressions</h2>
+          </div>
+        </div>
+        <button mat-icon-button class="popup-close" (click)="closePopup()" aria-label="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="popup-body popup-body-impressions">
+        <div class="social-proof-grid">
+          <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-host">
+            <div class="social-proof-identity-pill social-proof-identity-pill-host">
+              <mat-icon [class]="getHostTierColorClass(vm.user.hostTier)">{{ getHostTierIcon(vm.user.hostTier) }}</mat-icon>
+              <span class="social-proof-identity-label">
+                <span class="social-proof-identity-main">{{ vm.user.hostTier.replace(' Host', '') }}</span>
+                <span class="social-proof-identity-sub">Host</span>
+              </span>
+            </div>
+            <div class="popup-impressions-badge popup-impressions-badge-host" [class.popup-impressions-badge-updated]="vm.pulseFlags.hostTop">
+              <span class="popup-impressions-badge-segment popup-impressions-rate-rate">
+                <span class="popup-impressions-badge-label">Rate</span>
+                <span class="popup-impressions-badge-value">{{ vm.hostAverageRating }}</span>
+              </span>
+              <span class="popup-impressions-badge-segment popup-impressions-rate-people">
+                <span class="popup-impressions-badge-label">People / Events</span>
+                <span class="popup-impressions-badge-value">{{ vm.hostPeopleMet + ' / ' + vm.hostTotalEvents }}</span>
+              </span>
+              <span class="popup-impressions-badge-segment popup-impressions-rate-return">
+                <span class="popup-impressions-badge-label">Returnees / NoShow</span>
+                <span class="popup-impressions-badge-value">{{ vm.hostRepeatSummary + ' / ' + vm.hostAttendanceNoShowSummary }}</span>
+              </span>
+            </div>
+
+            <div class="social-proof-section-block">
+              <div class="social-proof-section-head section-vibe">
+                <span class="section-tag">Vibe</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="vm.pulseFlags.hostChips">
+                <span class="social-proof-chip chip-vibe" *ngFor="let item of vm.hostVibeBadgeItems">{{ item }}</span>
+              </div>
+            </div>
+
+            <div class="social-proof-section-block">
+              <div class="social-proof-section-head section-personality">
+                <span class="section-tag">Personality</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="personality-trait-carousel" [class.personality-trait-carousel-updated]="vm.pulseFlags.hostChips" *ngIf="vm.hostTraitCards.length > 0; else hostPersonalityFallback">
+                <div class="personality-trait-pill-strip">
+                  <button
+                    type="button"
+                    class="personality-trait-pill"
+                    *ngFor="let item of vm.hostTraitCards; let index = index"
+                    [class.is-active]="index === vm.hostTraitIndex"
+                    (click)="selectHostTrait(index)"
+                    [attr.aria-label]="'Open host trait ' + item.label"
+                  >
+                    <span class="personality-trait-pill-rank">#{{ index + 1 }}</span>
+                    <span class="personality-trait-pill-label">{{ item.label }}</span>
+                    <span class="personality-trait-pill-percent">{{ item.percent }}%</span>
+                  </button>
+                </div>
+                <div class="personality-trait-card" [ngClass]="vm.hostActiveTraitCard.toneClass" *ngIf="vm.hostActiveTraitCard as trait">
+                  <div class="personality-trait-card-head">
+                    <div class="personality-trait-card-title">
+                      <span class="personality-trait-card-icon"><mat-icon>{{ trait.icon }}</mat-icon></span>
+                      <div>
+                        <strong>{{ trait.label }}</strong>
+                        <p>{{ trait.coreVibe }}</p>
+                      </div>
+                    </div>
+                    <span class="personality-trait-card-percent">{{ trait.percent }}%</span>
+                  </div>
+                  <div class="personality-trait-card-bar">
+                    <span [style.width.%]="trait.percent"></span>
+                  </div>
+                  <div class="personality-trait-card-meta">
+                    <span>{{ trait.evidenceCount }} signals</span>
+                    <span *ngIf="trait.lastRatedAtIso">{{ trait.lastRatedAtIso | date:'MMM d' }}</span>
+                  </div>
+                  <div class="personality-trait-card-highlights">
+                    <span class="social-proof-chip chip-personality" *ngFor="let item of trait.highlights">{{ item }}</span>
+                  </div>
+                </div>
+                <div class="personality-trait-carousel-footer" *ngIf="vm.hostTraitCards.length > 1">
+                  <button type="button" class="personality-trait-nav" (click)="previousHostTrait()" aria-label="Previous host trait">
+                    <mat-icon>chevron_left</mat-icon>
+                  </button>
+                  <div class="personality-trait-position">{{ vm.hostTraitIndex + 1 }} / {{ vm.hostTraitCards.length }}</div>
+                  <button type="button" class="personality-trait-nav" (click)="nextHostTrait()" aria-label="Next host trait">
+                    <mat-icon>chevron_right</mat-icon>
+                  </button>
+                </div>
+              </div>
+              <ng-template #hostPersonalityFallback>
+                <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="vm.pulseFlags.hostChips">
+                  <span class="social-proof-chip chip-personality" *ngFor="let item of vm.hostPersonalityBadgeItems">{{ item }}</span>
+                </div>
+              </ng-template>
+            </div>
+
+            <div class="social-proof-section-block">
+              <div class="social-proof-section-head section-category">
+                <span class="section-tag">Category</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="vm.pulseFlags.hostChips">
+                <span class="social-proof-chip chip-category" *ngFor="let item of vm.hostCategoryBadgeItems">{{ item }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-member">
+            <div class="social-proof-identity-pill social-proof-identity-pill-member">
+              <mat-icon [class]="getTraitColorClass(vm.user.traitLabel)">{{ getTraitIcon(vm.user.traitLabel) }}</mat-icon>
+              <span class="social-proof-identity-label">
+                <span class="social-proof-identity-main">{{ vm.memberImpressionTitle.replace(' Attendee', '') }}</span>
+                <span class="social-proof-identity-sub">Attendee</span>
+              </span>
+            </div>
+            <div class="popup-impressions-badge popup-impressions-badge-member" [class.popup-impressions-badge-updated]="vm.pulseFlags.memberTop">
+              <span class="popup-impressions-badge-segment popup-impressions-rate-people">
+                <span class="popup-impressions-badge-label">People / Events</span>
+                <span class="popup-impressions-badge-value">{{ vm.memberPeopleMet + ' / ' + vm.memberTotalEvents }}</span>
+              </span>
+              <span class="popup-impressions-badge-segment popup-impressions-rate-return">
+                <span class="popup-impressions-badge-label">Returnees / NoShow</span>
+                <span class="popup-impressions-badge-value">{{ vm.memberReturneesSummary + ' / ' + vm.memberNoShowCount }}</span>
+              </span>
+            </div>
+
+            <div class="social-proof-section-block">
+              <div class="social-proof-section-head section-personality">
+                <span class="section-tag">Personality</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="personality-trait-carousel" [class.personality-trait-carousel-updated]="vm.pulseFlags.memberChips" *ngIf="vm.memberTraitCards.length > 0; else memberPersonalityFallback">
+                <div class="personality-trait-pill-strip">
+                  <button
+                    type="button"
+                    class="personality-trait-pill"
+                    *ngFor="let item of vm.memberTraitCards; let index = index"
+                    [class.is-active]="index === vm.memberTraitIndex"
+                    (click)="selectMemberTrait(index)"
+                    [attr.aria-label]="'Open member trait ' + item.label"
+                  >
+                    <span class="personality-trait-pill-rank">#{{ index + 1 }}</span>
+                    <span class="personality-trait-pill-label">{{ item.label }}</span>
+                    <span class="personality-trait-pill-percent">{{ item.percent }}%</span>
+                  </button>
+                </div>
+                <div class="personality-trait-card" [ngClass]="vm.memberActiveTraitCard.toneClass" *ngIf="vm.memberActiveTraitCard as trait">
+                  <div class="personality-trait-card-head">
+                    <div class="personality-trait-card-title">
+                      <span class="personality-trait-card-icon"><mat-icon>{{ trait.icon }}</mat-icon></span>
+                      <div>
+                        <strong>{{ trait.label }}</strong>
+                        <p>{{ trait.coreVibe }}</p>
+                      </div>
+                    </div>
+                    <span class="personality-trait-card-percent">{{ trait.percent }}%</span>
+                  </div>
+                  <div class="personality-trait-card-bar">
+                    <span [style.width.%]="trait.percent"></span>
+                  </div>
+                  <div class="personality-trait-card-meta">
+                    <span>{{ trait.evidenceCount }} signals</span>
+                    <span *ngIf="trait.lastRatedAtIso">{{ trait.lastRatedAtIso | date:'MMM d' }}</span>
+                  </div>
+                  <div class="personality-trait-card-highlights">
+                    <span class="social-proof-chip chip-personality" *ngFor="let item of trait.highlights">{{ item }}</span>
+                  </div>
+                </div>
+                <div class="personality-trait-carousel-footer" *ngIf="vm.memberTraitCards.length > 1">
+                  <button type="button" class="personality-trait-nav" (click)="previousMemberTrait()" aria-label="Previous member trait">
+                    <mat-icon>chevron_left</mat-icon>
+                  </button>
+                  <div class="personality-trait-position">{{ vm.memberTraitIndex + 1 }} / {{ vm.memberTraitCards.length }}</div>
+                  <button type="button" class="personality-trait-nav" (click)="nextMemberTrait()" aria-label="Next member trait">
+                    <mat-icon>chevron_right</mat-icon>
+                  </button>
+                </div>
+              </div>
+              <ng-template #memberPersonalityFallback>
+                <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="vm.pulseFlags.memberChips">
+                  <span class="social-proof-chip chip-personality" *ngFor="let item of vm.memberPersonalityBadgeItems">{{ item }}</span>
+                </div>
+              </ng-template>
+            </div>
+
+            <div class="social-proof-section-block">
+              <div class="social-proof-section-head section-vibe">
+                <span class="section-tag">Vibe</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="vm.pulseFlags.memberChips">
+                <span class="social-proof-chip chip-vibe" *ngFor="let item of vm.memberVibeBadgeItems">{{ item }}</span>
+              </div>
+            </div>
+
+            <div class="social-proof-section-block">
+              <div class="social-proof-section-head section-category">
+                <span class="section-tag">Category</span>
+                <span class="section-line"></span>
+              </div>
+              <div class="social-proof-chip-list" [class.impressions-chip-list-updated]="vm.pulseFlags.memberChips">
+                <span class="social-proof-chip chip-category" *ngFor="let item of vm.memberCategoryBadgeItems">{{ item }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</ng-container>

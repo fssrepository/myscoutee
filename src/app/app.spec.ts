@@ -14,10 +14,12 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render entry header title', async () => {
+  it('should render the extracted entry shell', async () => {
     const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('.entry-shell-header h1')?.textContent).toContain('Myscoutee');
+    expect(compiled.querySelector('app-entry-shell')).not.toBeNull();
+    expect(compiled.querySelector('.entry-brand-text')?.textContent).toContain('yScoutee');
   });
 });

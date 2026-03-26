@@ -1,4 +1,8 @@
 export const environment = {
+  production: false,
   loginEnabled: false,
-  authMode: 'selector' as const
+  activitiesDataSource: 'demo' as const,
+  apiBaseUrl: '/api',
+  serviceWorkerEnabled: false,
+  firebaseMessagingEnabled: true
 };

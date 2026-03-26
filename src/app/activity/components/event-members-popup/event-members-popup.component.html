@@ -1,0 +1,128 @@
+<section class="app-popup app-popup-stacked app-popup-super-stacked activity-members-popup-shell" *ngIf="isOpen">
+  <div class="app-popup-backdrop" (click)="closeMembersPopup()"></div>
+  <div class="app-popup-panel popup-panel-members popup-panel-wide popup-panel-full-height" (click)="$event.stopPropagation()">
+    <div class="popup-header popup-header-members-invite-mobile-layout popup-header-activity-members-pending-layout">
+      <div class="popup-title popup-title-members">
+        <div class="popup-chat-title-block">
+          <h2>{{ title }}</h2>
+          <p>{{ subtitle }}</p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger activity-members-header-invite-trigger"
+        *ngIf="canShowInviteButton"
+        (click)="handleInvite($event)"
+        aria-label="Invite friends"
+      >
+        <span class="event-editor-members-invite">
+          <mat-icon>person_add</mat-icon>
+          <span>Invite</span>
+        </span>
+      </button>
+
+      <button
+        type="button"
+        class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select subevent-members-pending-toggle activity-members-header-pending-toggle"
+        [class.is-active]="pendingOnly"
+        (click)="togglePendingOnly($event)"
+        [attr.aria-label]="pendingOnly ? 'Show all members' : 'Show pending members only'"
+      >
+        <span class="status-option-content activities-hosting-draft-content">
+          <mat-icon class="activities-toggle-icon">pending_actions</mat-icon>
+          <span class="activities-hosting-draft-label">Pending only</span>
+        </span>
+        <span class="rate-filter-count-badge rate-filter-trigger-badge activity-members-header-pending-badge" *ngIf="pendingCount > 0">
+          {{ pendingCount }}
+        </span>
+      </button>
+
+      <span class="header-members-count members-header-summary-badge" *ngIf="isSummaryVisible">{{ summaryLabel }}</span>
+
+      <button mat-icon-button class="popup-close" (click)="closeMembersPopup($event)" aria-label="Close">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="popup-body popup-body-members">
+      <div class="activity-members-popup-wrap">
+        <app-smart-list
+          #membersSmartList
+          class="activity-members-smart-list"
+          [config]="membersSmartListConfig"
+          [loaders]="membersSmartListLoaders"
+          [itemTemplate]="membersItemTemplateRef ?? null"
+          [query]="membersSmartListQuery"
+          (stateChange)="onMembersSmartListStateChange($event)"
+        ></app-smart-list>
+
+        <ng-template #memberItemTemplate let-member>
+          <article
+            class="friends-picker-card subevent-member-image-card activity-member-image-card"
+            [ngClass]="[memberCardToneClass(member), isActionMenuOpen(member) ? 'menu-open' : '']"
+            [appLazyBgImage]="member.avatarUrl"
+          >
+            <span class="friends-picker-card-avatar-fallback" aria-hidden="true">
+              <mat-icon>highlight_off</mat-icon>
+            </span>
+            <span
+              class="member-card-status-chip"
+              [ngClass]="memberCardStatusClass(member)"
+              [attr.title]="memberCardStatusLabel(member)"
+            >
+              <mat-icon>{{ memberCardStatusIcon(member) }}</mat-icon>
+            </span>
+
+            <div class="subevent-member-menu-anchor" *ngIf="canShowActionMenu(member)">
+              <button
+                type="button"
+                class="friends-picker-card-add-btn subevent-member-menu-trigger experience-action-menu-trigger"
+                [class.active]="isActionMenuOpen(member)"
+                (click)="toggleMemberActionMenu(member, $event)"
+                aria-label="Open member actions"
+              >
+                <mat-icon>{{ isActionMenuOpen(member) ? 'close' : 'more_vert' }}</mat-icon>
+              </button>
+              <div
+                class="item-action-menu subevent-member-action-menu"
+                [class.is-open]="isActionMenuOpen(member)"
+                [class.item-action-menu-mobile]="isMobileView"
+                [class.item-action-menu-desktop]="!isMobileView"
+                [class.is-open-up]="isActionMenuOpenUp(member)"
+                (click)="$event.stopPropagation()"
+              >
+                <div class="item-action-menu-title">{{ member.name }}</div>
+                <button
+                  type="button"
+                  class="item-action-menu-btn item-action-menu-btn-publish"
+                  *ngIf="canApproveMember(member)"
+                  (click)="approveMember(member, $event)"
+                >
+                  <mat-icon>check_circle</mat-icon>
+                  <span>Approve</span>
+                </button>
+                <button
+                  type="button"
+                  class="item-action-menu-btn item-action-menu-btn-destructive"
+                  *ngIf="canDeleteMember(member)"
+                  (click)="requestRemoveMember(member, $event)"
+                >
+                  <mat-icon>delete</mat-icon>
+                  <span>{{ deleteLabel(member) }}</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="friends-picker-card-meta subevent-member-card-meta activity-member-card-meta">
+              <h4>{{ member.name }}, {{ age(member) }}</h4>
+              <p>{{ roleLabel(member) }} · {{ member.city }}</p>
+              <p class="subevent-member-card-status" *ngIf="member.status === 'pending'">{{ pendingStatusLabel(member) }}</p>
+            </div>
+          </article>
+        </ng-template>
+
+      </div>
+    </div>
+  </div>
+</section>

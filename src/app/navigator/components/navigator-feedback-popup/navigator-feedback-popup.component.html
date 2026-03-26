@@ -1,0 +1,102 @@
+<div class="support-popup">
+  <article class="editor-list-card support-card" *ngIf="!feedbackSubmitted; else sendFeedbackSubmittedState">
+    <h4>Send Feedback</h4>
+    <p>Tell us what works well or what should be improved. Product feedback is triaged by category.</p>
+    <form class="support-form" (ngSubmit)="submitFeedback()">
+      <div class="support-submit-error" *ngIf="submitErrorMessage() as errorMessage" role="alert">{{ errorMessage }}</div>
+      <label>
+        <span>Category</span>
+        <select
+          name="feedbackCategory"
+          [(ngModel)]="feedbackForm.category"
+          [disabled]="isSubmitBusy()"
+          (ngModelChange)="clearSubmitStatus()"
+        >
+          <option *ngFor="let item of feedbackCategories" [value]="item">{{ item }}</option>
+        </select>
+      </label>
+      <label>
+        <span>Subject</span>
+        <input
+          type="text"
+          name="feedbackSubject"
+          [(ngModel)]="feedbackForm.subject"
+          placeholder="Short summary"
+          [disabled]="isSubmitBusy()"
+          (ngModelChange)="clearSubmitStatus()"
+        />
+      </label>
+      <label>
+        <span>Details</span>
+        <textarea
+          rows="4"
+          name="feedbackDetails"
+          [(ngModel)]="feedbackForm.details"
+          placeholder="Describe your feedback. Include steps if this is a bug."
+          [disabled]="isSubmitBusy()"
+          (ngModelChange)="clearSubmitStatus()"
+        ></textarea>
+        <small class="support-form-help-text" [class.support-form-help-text-error]="feedbackDetailsRemaining > 0">
+          Minimum {{ feedbackDetailsMinLength }} characters ({{ feedbackDetailsRemaining }} left).
+        </small>
+      </label>
+      <div class="support-actions">
+        <button type="button" class="link-btn neutral-btn" (click)="closePopup()">Cancel</button>
+        <span
+          class="support-submit-btn-shell"
+          [class.is-loading]="isSubmitting()"
+          [class.is-error]="hasSubmitError()"
+          [class.is-success]="isSubmitSuccess()"
+        >
+          <span class="support-submit-btn-ring" *ngIf="showSubmitRing()" aria-hidden="true">
+            <svg viewBox="0 0 104 48" preserveAspectRatio="none" class="support-submit-btn-ring-svg">
+              <defs>
+                <linearGradient id="navigator-feedback-submit-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
+                  <stop offset="100%" stop-color="rgb(247, 190, 52)"></stop>
+                </linearGradient>
+                <linearGradient id="navigator-feedback-submit-gradient-error" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="rgb(213, 54, 68)"></stop>
+                  <stop offset="100%" stop-color="rgb(196, 29, 42)"></stop>
+                </linearGradient>
+                <linearGradient id="navigator-feedback-submit-gradient-success" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="rgb(72, 181, 111)"></stop>
+                  <stop offset="100%" stop-color="rgb(48, 156, 93)"></stop>
+                </linearGradient>
+              </defs>
+              <rect class="support-submit-btn-ring-track" x="2" y="2" width="100" height="44" rx="14" ry="14"></rect>
+              <rect
+                class="support-submit-btn-ring-progress"
+                [class.is-loading]="isSubmitting()"
+                [class.is-error]="hasSubmitError()"
+                [class.is-success]="isSubmitSuccess()"
+                x="2"
+                y="2"
+                width="100"
+                height="44"
+                rx="14"
+                ry="14"
+                pathLength="100"
+                [attr.stroke-dasharray]="submitRingPerimeter"
+                [attr.stroke-dashoffset]="(hasSubmitError() || isSubmitSuccess()) ? 0 : submitRingPerimeter"
+              ></rect>
+            </svg>
+          </span>
+          <button
+            type="submit"
+            class="link-btn primary-btn support-submit-btn"
+            [disabled]="!canSubmitFeedback()"
+          >
+            Send feedback
+          </button>
+        </span>
+      </div>
+    </form>
+  </article>
+</div>
+
+<ng-template #sendFeedbackSubmittedState>
+  <article class="editor-list-card support-card">
+    <div class="support-submit-success">{{ feedbackSubmitMessage }}</div>
+  </article>
+</ng-template>

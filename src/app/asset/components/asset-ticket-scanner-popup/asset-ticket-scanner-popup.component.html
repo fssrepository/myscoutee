@@ -1,0 +1,34 @@
+<div class="ticket-scanner-popup">
+  <div class="ticket-scanner-sheet">
+    <div class="ticket-scanner-frame">
+      <div class="ticket-scanner-result-slot">
+        <div class="ticket-scan-person-card ticket-scan-person-card-success ticket-scanner-result-inline" *ngIf="result; else ticketScannerResultPlaceholder">
+          <div class="ticket-scan-person-body">
+            <div class="ticket-scan-person-avatar" [style.backgroundImage]="avatarUrl ? 'url(' + avatarUrl + ')' : null">
+              <span *ngIf="!avatarUrl">{{ initials }}</span>
+            </div>
+            <div class="ticket-scan-person-meta">
+              <p>{{ personLine }}</p>
+              <p>{{ roleEventLine }}</p>
+              <p>{{ dateLine }}</p>
+            </div>
+          </div>
+        </div>
+        <ng-template #ticketScannerResultPlaceholder>
+          <div class="ticket-scan-person-card ticket-scan-person-card-pending ticket-scanner-result-placeholder">
+            <p class="ticket-scanner-result-placeholder-text">Scan a ticket to show attendee details.</p>
+          </div>
+        </ng-template>
+      </div>
+      <div class="ticket-scanner-target">
+        <video #ticketScannerVideo class="ticket-scanner-camera" autoplay playsinline muted></video>
+        <div class="ticket-scanner-camera-overlay"></div>
+        <div class="ticket-scanner-corners"></div>
+      </div>
+    </div>
+    <p class="ticket-scanner-status" *ngIf="state === 'reading'">Scanning QR code...</p>
+    <button type="button" class="link-btn neutral-btn ticket-scanner-retry-btn" *ngIf="state !== 'reading'" (click)="retry($event)">
+      Scan again
+    </button>
+  </div>
+</div>
