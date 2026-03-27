@@ -2120,6 +2120,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return this.moveCursor(delta);
     }
     this.paginationHelper.beginTransition(currentItem);
+    await this.waitForNextPaint();
     const moved = await this.moveCursor(delta);
     if (!moved) {
       this.paginationHelper.finishTransition();
@@ -2317,6 +2318,17 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return new Promise(resolve => {
       setTimeout(() => resolve(), delayMs);
     });
+  }
+
+  private waitForNextPaint(): Promise<void> {
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      return new Promise(resolve => {
+        globalThis.requestAnimationFrame(() => {
+          globalThis.requestAnimationFrame(() => resolve());
+        });
+      });
+    }
+    return this.wait(16);
   }
 
   private calendarConfig(): SmartListCalendarConfig<T, TFilters> | null {

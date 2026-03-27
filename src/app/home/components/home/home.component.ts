@@ -377,7 +377,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get candidatePool(): DemoUser[] {
-    const serviceStack = this.gameService.getUserGameCardsStackSnapshot(this.activeUserId);
+    const serviceStack = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
     if (this.isFriendsInCommonMode && (serviceStack.socialCards.length > 0 || serviceStack.nextCursor !== null)) {
       const usersById = new Map(this.users.map(user => [user.id, user] as const));
       return serviceStack.socialCards
@@ -528,7 +528,7 @@ export class HomeComponent implements OnDestroy {
 
   protected socialQuerySuggestions(side: 'left' | 'right'): string[] {
     const values = new Set<string>();
-    const socialCards = this.gameService.getUserGameCardsStackSnapshot(this.activeUserId).socialCards;
+    const socialCards = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId).socialCards;
     for (const card of socialCards) {
       const primaryUser = this.userById(card.userId);
       const secondaryUser = this.userById(side === 'left' ? card.userId : (card.secondaryUserId ?? card.bridgeUserId ?? ''));
@@ -1333,7 +1333,7 @@ export class HomeComponent implements OnDestroy {
       : this.gameStackPageSizeForCurrentMode();
     const requiredCount = (Math.max(0, query.page) + 1) * pageSize;
     while (this.availableServiceRowsCount() < requiredCount) {
-      const snapshot = this.gameService.getUserGameCardsStackSnapshot(this.activeUserId);
+      const snapshot = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
       if (snapshot.requestInFlight || snapshot.nextCursor === null) {
         return;
       }
@@ -1350,7 +1350,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private availableServiceRowsCount(): number {
-    const snapshot = this.gameService.getUserGameCardsStackSnapshot(this.activeUserId);
+    const snapshot = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
     if (this.isSeparatedFriendsMode || this.isFriendsInCommonMode) {
       return snapshot.socialCards.length;
     }
@@ -1447,7 +1447,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private socialPairRows(): HomePairSmartListRow[] {
-    return this.gameService.getUserGameCardsStackSnapshot(this.activeUserId).socialCards
+    return this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId).socialCards
       .filter(card => card.socialContext === 'separated-friends')
       .map(card => ({
         id: card.id,
@@ -1462,7 +1462,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private socialSingleRows(): HomeSingleSmartListRow[] {
-    return this.gameService.getUserGameCardsStackSnapshot(this.activeUserId).socialCards
+    return this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId).socialCards
       .filter(card => card.socialContext === 'friends-in-common')
       .map(card => ({
         id: card.id,
@@ -2013,7 +2013,7 @@ export class HomeComponent implements OnDestroy {
     if (this.isSyntheticPairMode) {
       return this.pairModeCycleSize();
     }
-    const serviceStack = this.gameService.getUserGameCardsStackSnapshot(this.activeUserId);
+    const serviceStack = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
     if (serviceStack.cardUserIds.length > 0 || serviceStack.socialCards.length > 0 || serviceStack.nextCursor !== null) {
       const fallbackCount = this.isSeparatedFriendsMode || this.isFriendsInCommonMode
         ? serviceStack.socialCards.length
@@ -2141,7 +2141,7 @@ export class HomeComponent implements OnDestroy {
     if (this.gameStackPaginating || this.gameService.isUserGameCardsStackRequestInFlight(this.activeUserId)) {
       return;
     }
-    const serviceStackBefore = this.gameService.getUserGameCardsStackSnapshot(this.activeUserId);
+    const serviceStackBefore = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
     if (!serviceStackBefore.nextCursor && (serviceStackBefore.cardUserIds.length > 0 || serviceStackBefore.socialCards.length > 0)) {
       this.gameStackExhausted = true;
       return;

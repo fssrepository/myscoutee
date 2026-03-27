@@ -213,6 +213,19 @@ export class GameService extends BaseRouteModeService {
     };
   }
 
+  peekUserGameCardsStackSnapshot(userId: string): UserGameCardsStackSnapshot {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return {
+        cardUserIds: [],
+        socialCards: [],
+        nextCursor: null,
+        requestInFlight: false
+      };
+    }
+    return this.ensureUserGameCardsStackState(normalizedUserId);
+  }
+
   resetUserGameCardsStack(userId: string): void {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -227,11 +240,11 @@ export class GameService extends BaseRouteModeService {
   }
 
   isUserGameCardsStackRequestInFlight(userId: string): boolean {
-    return this.getUserGameCardsStackSnapshot(userId).requestInFlight;
+    return this.peekUserGameCardsStackSnapshot(userId).requestInFlight;
   }
 
   shouldUseUserGameCardsStack(userId: string): boolean {
-    const snapshot = this.getUserGameCardsStackSnapshot(userId);
+    const snapshot = this.peekUserGameCardsStackSnapshot(userId);
     return snapshot.cardUserIds.length > 0
       || snapshot.socialCards.length > 0
       || snapshot.nextCursor !== null
