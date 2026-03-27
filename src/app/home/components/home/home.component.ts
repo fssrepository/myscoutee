@@ -512,6 +512,16 @@ export class HomeComponent implements OnDestroy {
     return this.homeModeOptions.find(option => option.key === this.selectedHomeMode)?.icon ?? 'person';
   }
 
+  protected homeModeToneClass(mode: UserGameMode): string {
+    const map: Record<UserGameMode, string> = {
+      single: 'mode-single',
+      pair: 'mode-pair',
+      'separated-friends': 'mode-separated-friends',
+      'friends-in-common': 'mode-friends-in-common'
+    };
+    return map[mode] ?? 'mode-single';
+  }
+
   protected showSocialQueryInputs(): boolean {
     return this.isSeparatedFriendsMode || this.isFriendsInCommonMode;
   }

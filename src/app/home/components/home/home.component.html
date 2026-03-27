@@ -5,15 +5,26 @@
       <span class="game-brand-text">yScoutee</span>
     </a>
     <div class="game-actions">
-      <div class="game-action-mode-select" [class.mode-pair]="isPairMode" [class.mode-single]="!isPairMode">
-        <mat-select [(ngModel)]="selectedHomeMode" (ngModelChange)="selectHomeMode($event)">
+      <div class="game-action-mode-select" [ngClass]="homeModeToneClass(selectedHomeMode)">
+        <mat-select
+          [(ngModel)]="selectedHomeMode"
+          (ngModelChange)="selectHomeMode($event)"
+          panelWidth="248px"
+          panelClass="home-mode-select-panel"
+        >
           <mat-select-trigger>
-            <span class="game-action-mode" [class.mode-pair]="isPairMode" [class.mode-single]="!isPairMode">
+            <span class="game-action-mode">
               <mat-icon>{{ selectedHomeModeIcon() }}</mat-icon>
               <span>{{ selectedHomeModeLabel() }}</span>
+              <mat-icon class="game-action-mode-chevron">expand_more</mat-icon>
             </span>
           </mat-select-trigger>
-          <mat-option *ngFor="let option of homeModeOptions" [value]="option.key">
+          <mat-option
+            *ngFor="let option of homeModeOptions"
+            [value]="option.key"
+            class="home-mode-option"
+            [ngClass]="homeModeToneClass(option.key)"
+          >
             <span class="game-mode-option">
               <mat-icon>{{ option.icon }}</mat-icon>
               <span>{{ option.label }}</span>
@@ -48,21 +59,21 @@
 
   <section class="game-social-query-bar" *ngIf="showSocialQueryInputs()">
     <label class="game-social-query-field">
-      <span>{{ isFriendsInCommonMode ? 'Person' : 'Friend A' }}</span>
       <input
         type="text"
         [value]="leftSocialQuery"
         [attr.list]="'home-social-left-suggestions'"
+        [attr.aria-label]="isFriendsInCommonMode ? 'Person' : 'Friend A'"
         [placeholder]="isFriendsInCommonMode ? 'Search person or event' : 'Search friend or event'"
         (input)="onLeftSocialQueryChanged(($any($event.target).value ?? '').toString())"
       />
     </label>
     <label class="game-social-query-field">
-      <span>{{ isFriendsInCommonMode ? 'Common friend' : 'Friend B' }}</span>
       <input
         type="text"
         [value]="rightSocialQuery"
         [attr.list]="'home-social-right-suggestions'"
+        [attr.aria-label]="isFriendsInCommonMode ? 'Common friend' : 'Friend B'"
         [placeholder]="isFriendsInCommonMode ? 'Search common friend' : 'Search friend or event'"
         (input)="onRightSocialQueryChanged(($any($event.target).value ?? '').toString())"
       />
