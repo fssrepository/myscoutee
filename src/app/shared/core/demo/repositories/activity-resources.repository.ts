@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { ActivityResourceBuilder } from '../../base/builders';
 import { AppMemoryDb } from '../../base/db';
 import type * as AppTypes from '../../../core/base/models';
+import { AppUtils } from '../../../app-utils';
 import { DemoAssetsRepository } from './assets.repository';
 import { HttpActivityResourcesRepository } from '../../http/repositories/activity-resources.repository';
 import {
@@ -222,6 +223,9 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
     let createdMs = Date.now();
 
     for (const record of sourceRecords) {
+      if (!this.shouldSeedResourcesForParticipant(record, normalizedUserId)) {
+        continue;
+      }
       for (const subEvent of record.subEvents ?? []) {
         const normalizedRef = this.normalizeRef({
           ownerId: record.id,
@@ -258,6 +262,17 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
     }
 
     return nextRecords;
+  }
+
+  private shouldSeedResourcesForParticipant(
+    record: DemoEventRecord,
+    userId: string
+  ): boolean {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return false;
+    }
+    return this.resolveSeededResourceContributorUserIds(record).includes(normalizedUserId);
   }
 
   private collectSourceRecordsForUser(
@@ -300,6 +315,59 @@ export class DemoActivityResourcesRepository extends HttpActivityResourcesReposi
       return next.published;
     }
     return next.activity >= current.activity;
+  }
+
+  private resolveSeededResourceContributorUserIds(record: DemoEventRecord): string[] {
+    const creatorUserId = `${record.creatorUserId ?? ''}`.trim();
+    const acceptedMemberUserIds = (record.acceptedMemberUserIds ?? [])
+      .map(userId => `${userId}`.trim())
+      .filter(userId => userId.length > 0);
+    const candidateUserIds = Array.from(new Set([
+      creatorUserId,
+      ...acceptedMemberUserIds
+    ].filter(userId => userId.length > 0)));
+    if (candidateUserIds.length <= 1) {
+      return candidateUserIds;
+    }
+
+    const targetCount = this.resolveSeededResourceContributorTarget(record, candidateUserIds.length);
+    if (targetCount >= candidateUserIds.length) {
+      return candidateUserIds;
+    }
+
+    return [...candidateUserIds]
+      .sort((left, right) => {
+        if (left === creatorUserId && right !== creatorUserId) {
+          return -1;
+        }
+        if (right === creatorUserId && left !== creatorUserId) {
+          return 1;
+        }
+        const leftWeight = AppUtils.hashText(`activity-resource:${record.id}:${left}`);
+        const rightWeight = AppUtils.hashText(`activity-resource:${record.id}:${right}`);
+        return leftWeight - rightWeight;
+      })
+      .slice(0, targetCount);
+  }
+
+  private resolveSeededResourceContributorTarget(record: DemoEventRecord, maxCount: number): number {
+    if (maxCount <= 1) {
+      return maxCount;
+    }
+
+    const seed = AppUtils.hashText(`activity-resource-target:${record.id}:${record.creatorUserId}:${record.activity}`);
+    const bucket = seed % 100;
+    let target = 1 + (seed % 2);
+
+    if (bucket >= 65 && bucket < 88) {
+      target = 2 + ((seed >> 3) % 3);
+    } else if (bucket >= 88 && bucket < 97) {
+      target = 4 + ((seed >> 5) % 3);
+    } else if (bucket >= 97) {
+      target = 10 + ((seed >> 7) % 4);
+    }
+
+    return Math.max(1, Math.min(maxCount, target));
   }
 
   private cloneRecord(record: DemoActivitySubEventResourceRecord): DemoActivitySubEventResourceRecord {

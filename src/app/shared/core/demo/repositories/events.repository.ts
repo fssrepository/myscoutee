@@ -40,7 +40,7 @@ interface DemoEventExploreCursor {
   providedIn: 'root'
 })
 export class DemoEventsRepository {
-  private static readonly MIN_DEMO_EVENT_ITEMS_PER_USER = 30;
+  private static readonly MIN_DEMO_EVENT_ITEMS_PER_USER = 15;
   private static readonly SYNTHETIC_EVENT_TITLE_PREFIXES = [
     'Lantern',
     'Harbor',
@@ -1425,8 +1425,23 @@ export class DemoEventsRepository {
     seeded: DemoEventRecordCollection
   ): { table: DemoEventRecordCollection; changed: boolean } {
     const nextById: Record<string, DemoEventRecord> = { ...current.byId };
-    const nextIds = [...current.ids];
+    const seededRecordKeys = new Set(seeded.ids);
+    const nextIds = current.ids.filter(recordKey => {
+      const currentRecord = current.byId[recordKey];
+      if (!currentRecord) {
+        return false;
+      }
+      if (seededRecordKeys.has(recordKey) || !this.isObsoleteSyntheticSeededRecord(currentRecord)) {
+        return true;
+      }
+      delete nextById[recordKey];
+      return false;
+    });
     let changed = false;
+
+    if (nextIds.length !== current.ids.length) {
+      changed = true;
+    }
 
     for (const recordKey of seeded.ids) {
       const seededRecord = seeded.byId[recordKey];
@@ -1454,6 +1469,10 @@ export class DemoEventsRepository {
       },
       changed
     };
+  }
+
+  private isObsoleteSyntheticSeededRecord(record: DemoEventRecord): boolean {
+    return record.type === 'events' && record.id.startsWith('ex-');
   }
 
   private mergeSeededRecord(current: DemoEventRecord, seeded: DemoEventRecord): DemoEventRecord {
