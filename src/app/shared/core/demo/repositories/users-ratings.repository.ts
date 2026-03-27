@@ -316,6 +316,9 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   }
 
   private normalizeIncomingRateRecord(record: UserRateRecord): UserRateRecord | null {
+    if (record.source === 'activity-rate') {
+      return this.normalizeIncomingActivityRateRecord(record);
+    }
     const normalized = record.mode === 'pair' && record.ownerUserId
       ? this.buildNormalizedPairRateRecord(
           record.ownerUserId,
@@ -343,6 +346,39 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
       ownerUserId: record.mode === 'pair' ? record.ownerUserId?.trim() || normalized.ownerUserId : normalized.ownerUserId,
       createdAtIso,
       updatedAtIso
+    };
+  }
+
+  private normalizeIncomingActivityRateRecord(record: UserRateRecord): UserRateRecord | null {
+    const ownerUserId = record.ownerUserId?.trim() ?? '';
+    if (!ownerUserId) {
+      return null;
+    }
+    const item = DemoUserRatesBuilder.toRateMenuItem(record);
+    if (!item) {
+      return null;
+    }
+    const normalized = this.buildNormalizedActivityRateRecord(
+      ownerUserId,
+      item,
+      Number.isFinite(Number(record.scoreGiven)) && Number(record.scoreGiven) > 0
+        ? Number(record.scoreGiven)
+        : record.rate,
+      record.displayDirection ?? item.direction
+    );
+    if (!normalized) {
+      return null;
+    }
+    return {
+      ...normalized,
+      id: record.id,
+      displayId: record.displayId?.trim() || record.id,
+      createdAtIso: typeof record.createdAtIso === 'string' && record.createdAtIso.trim().length > 0
+        ? record.createdAtIso
+        : normalized.createdAtIso,
+      updatedAtIso: typeof record.updatedAtIso === 'string' && record.updatedAtIso.trim().length > 0
+        ? record.updatedAtIso
+        : normalized.updatedAtIso
     };
   }
 }

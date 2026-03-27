@@ -341,7 +341,7 @@ export class DemoUserRatesBuilder {
     }
     const variantSuffix = variantIndex > 0 ? `-v${variantIndex}` : '';
     return {
-      id: `rate-${activeUserId}-${mode}-${direction}-${targetUserId}${secondaryUserId ? `-${secondaryUserId}` : ''}${variantSuffix}`,
+      id: crypto.randomUUID(),
       userId: targetUserId,
       ...(secondaryUserId ? { secondaryUserId } : {}),
       mode,

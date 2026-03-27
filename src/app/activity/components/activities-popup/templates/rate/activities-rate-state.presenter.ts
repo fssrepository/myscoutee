@@ -37,7 +37,7 @@ export function pendingActivitiesRateDirectionAfterRating(
   const direction = displayedDirection(item);
   if (item.mode === 'individual') {
     if (direction === 'given') {
-      return item.scoreReceived > 0 ? 'mutual' : 'given';
+      return 'given';
     }
     if (direction === 'received') {
       return 'mutual';
