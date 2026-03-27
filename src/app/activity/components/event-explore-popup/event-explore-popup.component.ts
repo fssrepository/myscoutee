@@ -44,6 +44,7 @@ import {
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../../navigator';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
+import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 
 @Component({
   selector: 'app-event-explore-popup',
@@ -108,7 +109,7 @@ export class EventExplorePopupComponent {
   private eventEditorPrewarmStarted = false;
   private readonly leavingEventExploreRecordIds = new Set<string>();
   private readonly eventExploreExitAnimationMs = 180;
-  private readonly eventExploreJoinDelayMs = 1500;
+  private readonly eventExploreJoinDelayMs = resolveCurrentRouteDelayMs('/activities/events', 1500);
   private lastAppliedActivityMembersUpdatedMs = 0;
 
   protected eventExploreSmartListQuery: Partial<ListQuery<EventExploreFeedFilters>> = {};
@@ -130,7 +131,7 @@ export class EventExplorePopupComponent {
 
   protected readonly eventExploreSmartListConfig: SmartListConfig<DemoEventRecord, EventExploreFeedFilters> = {
     pageSize: 10,
-    loadingDelayMs: 1500,
+    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/events'),
     defaultView: 'list',
     emptyLabel: 'No visible events right now.',
     emptyDescription: 'Try another filter or check back later.',

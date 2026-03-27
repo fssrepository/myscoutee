@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { of } from 'rxjs';
+import { resolveCurrentDemoDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { EventSubeventGroupFormPopupComponent } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
 import { EventSubeventLeaderboardGroup, EventSubeventLeaderboardPopupComponent } from '../event-subevent-leaderboard-popup/event-subevent-leaderboard-popup.component';
 import { EventSubeventStageFormPopupComponent, type EventSubeventStageFormPopupView } from '../event-subevent-stage-form-popup/event-subevent-stage-form-popup.component';
@@ -240,7 +241,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   protected readonly casualSmartListConfig: SmartListConfig<EventSubeventsItem, { revision: number }> = {
     pageSize: 18,
-    loadingDelayMs: 1500,
+    loadingDelayMs: resolveCurrentDemoDelayMs(1500),
     defaultView: 'list',
     showStickyHeader: false,
     showGroupMarker: () => false,

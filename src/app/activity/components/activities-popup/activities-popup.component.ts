@@ -81,6 +81,7 @@ import {
   UsersService,
   type ActivityMembersSyncState
 } from '../../../shared/core';
+import { resolveCurrentDemoDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import {
   toActivityEventRow,
   toActivityEventRowFromMenuItem,
@@ -312,7 +313,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activitiesSmartListConfig: SmartListConfig<AppTypes.ActivityListRow, ActivitiesSmartListFilters> = {
     pageSize: 10,
     initialPageSize: 20,
-    loadingDelayMs: 1500,
+    loadingDelayMs: resolveCurrentDemoDelayMs(1500),
     defaultView: 'day',
     containerClass: () => this.activitiesSmartListClassMap(),
     listLayout: 'card-grid',

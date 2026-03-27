@@ -16,6 +16,7 @@ import { from } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
+import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import {
   BasketComponent,
   LazyBgImageDirective,
@@ -98,7 +99,7 @@ export class AssetMemberPickerPopupComponent {
 
   protected readonly inviteSmartListConfig: SmartListConfig<AppTypes.ActivityMemberEntry, ActivityInviteFilters> = {
     pageSize: 16,
-    loadingDelayMs: 1500,
+    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/events/invite-candidates'),
     loadingWindowMs: 3000,
     defaultView: 'list',
     headerProgress: {

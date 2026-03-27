@@ -116,7 +116,7 @@ type SmartListCalendarWindow = {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SmartListComponent<T, TFilters extends SmartListFilters = SmartListFilters> implements AfterViewInit, OnChanges, OnDestroy {
-  private static readonly DEFAULT_LOADING_DELAY_MS = 1500;
+  private static readonly DEFAULT_LOADING_DELAY_MS = 0;
   private static readonly QUICK_COMPLETE_THRESHOLD_MS = 120;
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly hostRef = inject(ElementRef<HTMLElement>);

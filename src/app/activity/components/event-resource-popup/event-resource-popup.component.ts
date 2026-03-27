@@ -21,6 +21,7 @@ import {
   type SmartListStateChange
 } from '../../../shared/ui';
 import type * as AppTypes from '../../../shared/core/base/models';
+import { resolveCurrentDemoDelayMs } from '../../../shared/core/base/services/route-delay.service';
 
 interface CapacityEditorState {
   title: string;
@@ -178,7 +179,7 @@ export class EventResourcePopupComponent implements DoCheck {
 
   protected readonly resourceSmartListConfig: SmartListConfig<AppTypes.SubEventResourceCard, ResourceSmartListFilters> = {
     pageSize: 18,
-    loadingDelayMs: 1500,
+    loadingDelayMs: resolveCurrentDemoDelayMs(1500),
     loadingWindowMs: 3000,
     defaultView: 'list',
     headerProgress: {

@@ -17,6 +17,7 @@ import { delay, from, of } from 'rxjs';
 
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
+import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import type { EventChatResourceContext } from '../../../shared/core/base/models';
@@ -71,7 +72,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly chatHistoryPageSize = 10;
   private readonly chatInitialLoadMessageCount = 15;
   private readonly chatHistoryPreloadOffsetPx = 48;
-  private readonly chatLoadOlderDelayMs = 1500;
+  private readonly chatLoadOlderDelayMs = resolveCurrentRouteDelayMs('/activities/chats', 1500);
   private readonly headerLoadingWindowMs = 3000;
   private readonly headerLoadingTickMs = 16;
   private readonly chatTypingIdleMs = 1800;
@@ -84,7 +85,7 @@ export class EventChatPopupComponent implements OnDestroy {
     initialPageCount: 1,
     initialPageSize: this.chatInitialLoadMessageCount,
     preloadOffsetPx: this.chatHistoryPreloadOffsetPx,
-    loadingDelayMs: 1500,
+    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/chats'),
     showStickyHeader: false,
     showFirstGroupMarker: true,
     loadTriggerEdge: 'start',

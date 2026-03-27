@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { environment } from '../../../../environments/environment';
+import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -122,7 +123,7 @@ export class EventMembersPopupComponent {
 
   protected readonly membersSmartListConfig: SmartListConfig<AppTypes.ActivityMemberEntry, MembersSmartListFilters> = {
     pageSize: 16,
-    loadingDelayMs: 1500,
+    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/events/members'),
     loadingWindowMs: 3000,
     defaultView: 'list',
     headerProgress: {

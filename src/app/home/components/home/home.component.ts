@@ -21,7 +21,7 @@ import {
 } from '../../../shared/ui';
 import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { resolveRouteConfig } from '../../../shared/core/base/config';
+import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import {
   AppContext,
   GameService,
@@ -215,9 +215,7 @@ export class HomeComponent implements OnDestroy {
   protected readonly homeSmartListConfig: SmartListConfig<HomeSmartListRow, HomeSmartListFilters> = {
     pageSize: HomeComponent.GAME_STACK_PAGE_SIZE_SINGLE,
     presentation: 'fullscreen',
-    loadingDelayMs: resolveRouteConfig('/game-cards/query').http
-      ? 0
-      : resolveRouteConfig('/game-cards/query').demoDelayMs,
+    loadingDelayMs: resolveCurrentRouteDelayMs('/game-cards/query'),
     headerProgress: {
       enabled: true
     },

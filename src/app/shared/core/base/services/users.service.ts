@@ -19,6 +19,7 @@ import type {
 } from '../interfaces/user.interface';
 import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
+import { resolveCurrentDemoDelayMs } from './route-delay.service';
 
 export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
 
@@ -422,7 +423,7 @@ export class UsersService extends BaseRouteModeService {
 
       await this.ensureMinimumRequestDuration(
         startedAtMs,
-        UsersService.DEFAULT_SUBMIT_MIN_DELAY_MS,
+        resolveCurrentDemoDelayMs(UsersService.DEFAULT_SUBMIT_MIN_DELAY_MS),
         requestAbortController.signal
       );
 
@@ -447,7 +448,7 @@ export class UsersService extends BaseRouteModeService {
 
       await this.ensureMinimumRequestDuration(
         startedAtMs,
-        UsersService.DEFAULT_SUBMIT_MIN_DELAY_MS,
+        resolveCurrentDemoDelayMs(UsersService.DEFAULT_SUBMIT_MIN_DELAY_MS),
         requestAbortController.signal
       );
 
