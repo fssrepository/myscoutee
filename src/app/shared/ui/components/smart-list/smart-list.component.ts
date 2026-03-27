@@ -191,6 +191,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private calendarPendingVisualKey: string | null = null;
   private calendarFrozenProgress: number | null = null;
   private weekRateViewportPageKey: string | null = null;
+  private forceAnimatedLoadingCompletion = false;
   private readonly paginationHelper = new SmartListPaginationHelper<T>(() => {
     this.emitState();
     this.cdr.markForCheck();
@@ -966,6 +967,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       ? this.captureListRestoreContext(isInitial)
       : null;
     let handledManualPrepend = false;
+    let shouldAnimateEmptyAppendCompletion = false;
 
     try {
       const [result] = await Promise.all([
@@ -977,6 +979,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
         return;
       }
 
+      const nextItems = Array.isArray(result?.items) ? result.items : [];
+      shouldAnimateEmptyAppendCompletion = !isInitial && nextItems.length === 0;
       this.applyListPageResult(result, isInitial);
       if (sequence !== this.loadSequence) {
         return;
@@ -996,7 +1000,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       }
       this.loading = false;
       this.awaitScrollReset = true;
-      this.endLoadingAnimation();
+      this.endLoadingAnimation({
+        forceAnimatedCompletion: shouldAnimateEmptyAppendCompletion
+      });
       this.syncGroups();
       if (handledManualPrepend && restoreContext) {
         this.cdr.detectChanges();
@@ -1903,7 +1909,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     );
   }
 
-  private endLoadingAnimation(): void {
+  private endLoadingAnimation(options: { forceAnimatedCompletion?: boolean } = {}): void {
     if (this.loadingCounter === 0) {
       return;
     }
@@ -1916,7 +1922,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.loadingInterval = null;
     }
     const elapsed = Math.max(0, performance.now() - this.loadingStartedAtMs);
-    if (elapsed < SmartListComponent.QUICK_COMPLETE_THRESHOLD_MS) {
+    const forceAnimatedCompletion = options.forceAnimatedCompletion === true;
+    if (!forceAnimatedCompletion && elapsed < SmartListComponent.QUICK_COMPLETE_THRESHOLD_MS) {
       this.loadingProgress = 0;
       this.loadingOverdue = false;
       this.loadingStartedAtMs = 0;

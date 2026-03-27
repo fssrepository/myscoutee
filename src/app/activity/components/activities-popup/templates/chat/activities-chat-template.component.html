@@ -1,0 +1,20 @@
+<button
+  type="button"
+  class="activities-card activities-card-btn activities-row-item activities-card-chat activities-row-item-clickable"
+  [ngClass]="data?.toneClass"
+  [attr.data-group-label]="data?.groupLabel"
+  (click)="onRowClick($event)"
+>
+  <span class="activities-card-avatar" [ngClass]="data?.avatarClass">
+    {{ data?.avatarInitials }}
+  </span>
+  <div class="activities-card-main">
+    <p class="activities-card-title">{{ data?.title }}</p>
+    <p class="activities-card-subtitle">{{ data?.subtitle }}</p>
+    <p class="activities-card-detail">{{ data?.detail }}</p>
+  </div>
+  <span class="activities-chat-members-badge">
+    <span>{{ data?.memberCount ?? 0 }} members</span>
+    <span class="card-badge asset-request-badge activities-chat-unread-badge" *ngIf="(data?.unread ?? 0) > 0">{{ (data?.unread ?? 0) | counterBadge }}</span>
+  </span>
+</button>

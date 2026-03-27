@@ -2546,6 +2546,9 @@ export class EventSubeventsPopupComponent implements OnChanges {
       if (entry.item.id === insertedId) {
         continue;
       }
+      if (!this.shouldAutoAdjustInsertedSubEventOverlap(inserted, entry.item)) {
+        continue;
+      }
       if ((entry.startMs as number) < (insertedStartMs as number) && (entry.endMs as number) > (insertedStartMs as number)) {
         trimCandidate = entry;
       }
@@ -2556,6 +2559,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
     const firstShiftOverlap = ordered.find(entry =>
       entry.item.id !== insertedId
+      && this.shouldAutoAdjustInsertedSubEventOverlap(inserted, entry.item)
       && (entry.startMs as number) >= (insertedStartMs as number)
       && (entry.startMs as number) < (insertedEndMs as number)
     );
@@ -2570,7 +2574,11 @@ export class EventSubeventsPopupComponent implements OnChanges {
     }
 
     for (const entry of ordered) {
-      if (entry.item.id === insertedId || (entry.startMs as number) < shiftStartMs) {
+      if (
+        entry.item.id === insertedId
+        || (entry.startMs as number) < shiftStartMs
+        || !this.shouldAutoAdjustInsertedSubEventOverlap(inserted, entry.item)
+      ) {
         continue;
       }
       entry.item.startAt = AppUtils.toIsoDateTimeLocal(new Date((entry.startMs as number) + shiftMs));
@@ -2578,6 +2586,13 @@ export class EventSubeventsPopupComponent implements OnChanges {
     }
 
     return nextItems;
+  }
+
+  private shouldAutoAdjustInsertedSubEventOverlap(
+    inserted: Pick<EventSubeventsItem, 'optional'>,
+    candidate: Pick<EventSubeventsItem, 'optional'>
+  ): boolean {
+    return !(inserted.optional === true && candidate.optional === true);
   }
 
   private normalizedTournamentLeaderboardType(value: unknown): TournamentLeaderboardType {

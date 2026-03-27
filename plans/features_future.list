@@ -4,12 +4,6 @@ You can borrow items from a foreigner (assets (accomodation/car/suplies) with pu
 Assets can be filtered by capacity, availability, topic (very similar screen then the event explore)
 Assets can have price tag (we haven't introduced purse for public/friends event also)
 
-Features
---------
-1) pull up feature if you ended up bottom of the scrolling area (smart list - user retriggers load for next page - it might get back nothing - so the progress circle appears and disappears in this case in an animated way)
-2) extract the templates and behaviour (scss/ts/html) to self contained components from activities-popup.component.ts (it's too big) and put under a templates folder next to it (we have three templates here - rate/event/chat)
-3) optional events can be parallel with other optional events (does not need to cut optional events), but needs to cut the mandatory events as it is today
-
 Speed
 -----
 4) curl rating/scrolling animation speed up in most of the places
