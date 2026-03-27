@@ -53,15 +53,21 @@ import { ConfirmationDialogService } from '../../../shared/ui/services/confirmat
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
 import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
 import { ActivitiesPopupToolbarController } from './activities-popup-toolbar.controller';
-import { ActivitiesChatsController } from './templates/chat/activities-chats.controller';
-import { ActivitiesChatTemplateComponent } from './templates/chat/activities-chat-template.component';
-import { ActivitiesEventsController } from './templates/event/activities-events.controller';
-import { ActivitiesEventTemplateComponent } from './templates/event/activities-event-template.component';
-import type { ActivitiesChatTemplateContext } from './templates/chat/activities-chat-template.component';
-import type { ActivitiesEventTemplateContext } from './templates/event/activities-event-template.component';
-import { ActivitiesRateTemplateComponent } from './templates/rate/activities-rate-template.component';
-import type { ActivitiesRateTemplateContext } from './templates/rate/activities-rate-template.component';
-import { ActivitiesRatesController } from './templates/rate/activities-rates.controller';
+import {
+  ActivitiesChatTemplateComponent,
+  ActivitiesChatsController,
+  type ActivitiesChatTemplateContext
+} from './templates/chat/activities-chat-template.component';
+import {
+  ActivitiesEventTemplateComponent,
+  ActivitiesEventsController,
+  type ActivitiesEventTemplateContext
+} from './templates/event/activities-event-template.component';
+import {
+  ActivitiesRateTemplateComponent,
+  ActivitiesRatesController,
+  type ActivitiesRateTemplateContext
+} from './templates/rate/activities-rate-template.component';
 import {
   ActivityMembersBuilder,
   ActivitiesService,
@@ -69,17 +75,18 @@ import {
   ActivityResourcesService,
   AppContext,
   AppPopupContext,
-  buildActivityRateRows,
-  toActivityEventRow,
-  toActivityEventRowFromMenuItem,
-  toActivityHostingRowFromMenuItem,
-  toActivityInvitationRowFromMenuItem,
   ChatsService,
   EventsService,
   RatesService,
   UsersService,
   type ActivityMembersSyncState
 } from '../../../shared/core';
+import {
+  toActivityEventRow,
+  toActivityEventRowFromMenuItem,
+  toActivityHostingRowFromMenuItem,
+  toActivityInvitationRowFromMenuItem
+} from '../../../shared/core/base/converters/activities-event.converter';
 import { DemoEventSeedBuilder, DemoUserMenuCountersBuilder } from '../../../shared/core/demo/builders';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 
