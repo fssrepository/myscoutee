@@ -2567,7 +2567,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.popupCtx.requestActivitiesNavigation({
       type: 'members',
       ownerId: row.id,
-      ownerType: 'event'
+      ownerType: 'event',
+      subtitle: row.title,
+      canManage: row.isAdmin === true
     });
   }
 

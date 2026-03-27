@@ -426,7 +426,9 @@ export class EventExplorePopupComponent {
     this.popupCtx.requestActivitiesNavigation({
       type: 'members',
       ownerId: record.id,
-      ownerType: 'event'
+      ownerType: 'event',
+      subtitle: record.title,
+      canManage: record.isAdmin === true
     });
     this.cdr.markForCheck();
   }

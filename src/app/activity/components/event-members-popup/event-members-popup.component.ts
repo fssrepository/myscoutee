@@ -430,7 +430,13 @@ export class EventMembersPopupComponent {
 
   protected memberCardToneClass(entry: AppTypes.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'member-card-tone-admin' : 'member-card-tone-accepted';
+      if (entry.role === 'Admin') {
+        return 'member-card-tone-admin';
+      }
+      if (entry.role === 'Manager') {
+        return 'member-card-tone-manager';
+      }
+      return 'member-card-tone-accepted';
     }
     if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
       return 'member-card-tone-awaiting-approval';
@@ -440,7 +446,13 @@ export class EventMembersPopupComponent {
 
   protected memberCardStatusClass(entry: AppTypes.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'member-status-admin' : 'member-status-member';
+      if (entry.role === 'Admin') {
+        return 'member-status-admin';
+      }
+      if (entry.role === 'Manager') {
+        return 'member-status-manager';
+      }
+      return 'member-status-member';
     }
     if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
       return 'member-status-awaiting-approval';
@@ -450,7 +462,13 @@ export class EventMembersPopupComponent {
 
   protected memberCardStatusIcon(entry: AppTypes.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'admin_panel_settings' : 'person';
+      if (entry.role === 'Admin') {
+        return 'admin_panel_settings';
+      }
+      if (entry.role === 'Manager') {
+        return 'badge';
+      }
+      return 'person';
     }
     if (entry.requestKind === 'join' || entry.pendingSource === 'member') {
       return 'pending_actions';
@@ -460,7 +478,7 @@ export class EventMembersPopupComponent {
 
   protected memberCardStatusLabel(entry: AppTypes.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'Admin' : 'Member';
+      return this.roleLabel(entry);
     }
     return this.pendingStatusLabel(entry);
   }
@@ -654,7 +672,10 @@ export class EventMembersPopupComponent {
   ): void {
     this.ownerRecord = record;
     this.subtitle = record.title.trim() || options?.subtitle?.trim() || 'Event';
-    this.canManageMembers = this.canManageMembers || options?.canManage === true || record.creatorUserId === this.activeUserId();
+    this.canManageMembers = this.canManageMembers
+      || options?.canManage === true
+      || record.isAdmin === true
+      || record.creatorUserId === this.activeUserId();
     this.canShowInviteButton = this.canManageMembers;
     if (this.acceptedCount <= 0 && this.pendingCount <= 0 && this.capacityTotal <= 0) {
       this.applySummary(record.acceptedMembers, record.pendingMembers, record.capacityTotal);
