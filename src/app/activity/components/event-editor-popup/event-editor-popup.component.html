@@ -306,6 +306,75 @@
               </label>
             </section>
 
+            <section class="event-slots-panel">
+              <div class="event-slots-panel-head">
+                <button
+                  type="button"
+                  class="event-ticketing-card event-slots-toggle-card"
+                  [ngClass]="eventForm.slotsEnabled ? 'event-ticketing-on' : 'event-ticketing-off'"
+                  [disabled]="!canConfigureSlotsSeries()"
+                  (click)="toggleEventSlots($event)"
+                >
+                  <span class="event-ticketing-title">
+                    <mat-icon [ngClass]="eventForm.slotsEnabled ? 'event-ticketing-on' : 'event-ticketing-off'">
+                      {{ eventForm.slotsEnabled ? 'event_available' : 'event_busy' }}
+                    </mat-icon>
+                    <span>Slots {{ eventForm.slotsEnabled ? 'On' : 'Off' }}</span>
+                  </span>
+                  <span class="event-ticketing-description">
+                    {{ isGeneratedSlotInstance() ? 'Series settings stay on the parent event.' : 'Generated event instances created from this series.' }}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  class="popup-header-add-btn event-slots-add-btn"
+                  *ngIf="eventForm.slotsEnabled && canConfigureSlotsSeries()"
+                  (click)="addSlotTemplate()"
+                  aria-label="Add slot"
+                >
+                  <mat-icon>add</mat-icon>
+                </button>
+              </div>
+
+              <div class="event-slots-list" *ngIf="eventForm.slotsEnabled">
+                <div class="event-slot-row" *ngFor="let slot of eventForm.slotTemplates; let i = index">
+                  <div class="event-slot-row-head">
+                    <span class="event-slot-row-title">{{ slotTemplateLabel(i) }}</span>
+                    <button
+                      type="button"
+                      class="event-slot-remove-btn"
+                      [disabled]="!canConfigureSlotsSeries()"
+                      (click)="removeSlotTemplate(i)"
+                      aria-label="Remove slot"
+                    >
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                  <div class="event-slot-row-grid">
+                    <label class="event-slot-field">
+                      <span>Start</span>
+                      <input
+                        type="datetime-local"
+                        [ngModel]="slotTemplateInputValue(slot.startAt)"
+                        (ngModelChange)="onSlotTemplateStartChange(i, $event)"
+                        [readonly]="eventEditorService.readOnly()"
+                      />
+                    </label>
+                    <label class="event-slot-field">
+                      <span>End</span>
+                      <input
+                        type="datetime-local"
+                        [ngModel]="slotTemplateInputValue(slot.endAt)"
+                        (ngModelChange)="onSlotTemplateEndChange(i, $event)"
+                        [readonly]="eventEditorService.readOnly()"
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </section>
+
             <label class="experience-description-field event-location-field">
               <span>Location</span>
               <div class="asset-route-row asset-route-row-inline">

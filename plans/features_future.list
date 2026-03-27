@@ -1,28 +1,14 @@
-Slots
------
-1) main event
-Next to the one time event, there is a button called slot
-Opens a new slots wizard popup (calendar view - dragable element, and you can add slots - you can click on a cell and drag arround,
-which attaches and detaches automatically aligned to the cell / 4 = by 15 minutes - so how it works the calendar can switch between da and week view)
-The main event editor, just show the slots in read only form, maybe scrolabble (undecided)
-Naturally the frequency affects the slot what you can add - monthly - you can pick some days, but on daily not.
-2) request to join on event explore (you can fully book an event - a flag on main event, but in this case the request to join is a "book")
-when you request join slots vizard in read only form popups up and you can choose a slot
-(the request join menu itself should show red counter or different way that you need to choose from slots)
-3) slots has separate and coloured chat channels
-4) for creator for each slot a new event item will appear on activity event - it will be automatically generated for future dates and has dedicated custom colouring
-
 Asset explore
 -------------
 You can borrow items from a foreigner (assets (accomodation/car/suplies) with public or friends visibility)
 Assets can be filtered by capacity, availability, topic (very similar screen then the event explore)
-Assets can have price tag (we haven't introduced purse for public/frineds event also)
+Assets can have price tag (we haven't introduced purse for public/friends event also)
 
-Bugs
-----
-1) pull up feature if you ended up bottom of the scrolling area
-2) extract the templates and functionalities from activities-popup.component.ts and put under a templates folder next to it (we have three templates here - rate/event/chat)
-3) optional events can be parallel (maybe a switch on the form "parallel allowed"), but needs to cut the mandatory in the same way when you add
+Features
+--------
+1) pull up feature if you ended up bottom of the scrolling area (smart list - user retriggers load for next page - it might get back nothing - so the progress circle appears and disappears in this case in an animated way)
+2) extract the templates and behaviour (scss/ts/html) to self contained components from activities-popup.component.ts (it's too big) and put under a templates folder next to it (we have three templates here - rate/event/chat)
+3) optional events can be parallel with other optional events (does not need to cut optional events), but needs to cut the mandatory events as it is today
 
 Speed
 -----

@@ -121,6 +121,30 @@
     </div>
   </div>
 
+  <div class="event-explore-slot-picker-backdrop" *ngIf="slotPickerRecord" (click)="closeEventExploreSlotPicker()"></div>
+  <section class="event-explore-slot-picker" *ngIf="slotPickerRecord as record">
+    <header class="event-explore-slot-picker-head">
+      <div>
+        <h3>{{ record.title }}</h3>
+        <p>{{ record.ticketing ? 'Pick a slot to book' : 'Pick a slot to join' }}</p>
+      </div>
+      <button type="button" class="popup-close" (click)="closeEventExploreSlotPicker()" aria-label="Close slot picker">
+        <mat-icon>close</mat-icon>
+      </button>
+    </header>
+    <div class="event-explore-slot-picker-list">
+      <button
+        type="button"
+        class="event-explore-slot-option"
+        *ngFor="let slot of record.upcomingSlots ?? []"
+        (click)="selectEventExploreSlot(slot)"
+      >
+        <span class="event-explore-slot-option-title">{{ slot.timeframe }}</span>
+        <span class="event-explore-slot-option-meta">{{ slotPickerOccupancyLabel(slot) }}</span>
+      </button>
+    </div>
+  </section>
+
   <app-topic-picker-popup
     [open]="showTopicPicker"
     [title]="'Topic Filter'"

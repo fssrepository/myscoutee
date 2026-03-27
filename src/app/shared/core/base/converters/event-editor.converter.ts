@@ -69,6 +69,14 @@ export class EventEditorConverter {
     return normalized.includes('on') || normalized.includes('required') || normalized.includes('ticket');
   }
 
+  static normalizeEventEditorSlotsEnabled(value: unknown): boolean {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    return normalized === 'true' || normalized === 'on' || normalized === 'enabled';
+  }
+
   static normalizeEventEditorTopics(value: unknown): string[] {
     if (!Array.isArray(value)) {
       return [];
@@ -111,6 +119,25 @@ export class EventEditorConverter {
       return null;
     }
     return Math.max(0, Math.trunc(parsed));
+  }
+
+  static normalizeEventEditorSlotTemplates(value: unknown): AppTypes.EventSlotTemplate[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value.map((entry, index) => {
+      const item = (typeof entry === 'object' && entry !== null) ? entry as Record<string, unknown> : {};
+      const startAtDate = this.parseEventEditorDateValue(item['startAt'] ?? item['startDate']);
+      const endAtDate = this.parseEventEditorDateValue(item['endAt'] ?? item['endDate']);
+      const resolvedStart = startAtDate ?? new Date();
+      const resolvedEnd = endAtDate ?? new Date(resolvedStart.getTime() + (60 * 60 * 1000));
+      return {
+        id: `${item['id'] ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
+        startAt: AppUtils.toIsoDateTimeLocal(resolvedStart),
+        endAt: AppUtils.toIsoDateTimeLocal(resolvedEnd)
+      };
+    });
   }
 
   static normalizeEventEditorSubEvents(value: unknown): AppTypes.EventEditorSubEventItem[] {
@@ -194,6 +221,8 @@ export class EventEditorConverter {
       blindMode: record.blindMode,
       autoInviter: record.autoInviter ?? false,
       ticketing: record.ticketing,
+      slotsEnabled: Boolean(record.slotsEnabled),
+      slotTemplates: this.normalizeEventEditorSlotTemplates(record.slotTemplates ?? []),
       topics: [...record.topics],
       subEvents: this.normalizeEventEditorSubEvents(record.subEvents ?? []),
       subEventsDisplayMode: record.subEventsDisplayMode,
@@ -234,6 +263,8 @@ export class EventEditorConverter {
       blindMode: 'Open Event',
       autoInviter: false,
       ticketing: Boolean(rowSource?.['ticketing']),
+      slotsEnabled: Boolean(rowSource?.['slotsEnabled']),
+      slotTemplates: this.normalizeEventEditorSlotTemplates(rowSource?.['slotTemplates']),
       topics: Array.isArray(rowSource?.['topics']) ? rowSource['topics'] : [],
       subEvents: [],
       subEventsDisplayMode: 'Casual',
@@ -264,6 +295,9 @@ export class EventEditorConverter {
     const subEvents = this.normalizeEventEditorSubEvents(
       sourceEvent['subEvents'] ?? sourceEvent['subevents'] ?? sourceEvent['sub_events']
     );
+    const slotTemplates = this.normalizeEventEditorSlotTemplates(
+      sourceEvent['slotTemplates'] ?? sourceEvent['slots'] ?? sourceEvent['slot_templates']
+    );
 
     return {
       form: {
@@ -279,6 +313,8 @@ export class EventEditorConverter {
         blindMode: this.normalizeEventEditorBlindMode(sourceEvent['blindMode'] ?? sourceEvent['matchingMode']),
         autoInviter: this.normalizeEventEditorAutoInviter(sourceEvent['autoInviter'] ?? sourceEvent['inviteMode']),
         ticketing: this.normalizeEventEditorTicketing(sourceEvent['ticketing'] ?? sourceEvent['ticketType']),
+        slotsEnabled: this.normalizeEventEditorSlotsEnabled(sourceEvent['slotsEnabled']),
+        slotTemplates,
         topics: this.normalizeEventEditorTopics(sourceEvent['topics'] ?? sourceEvent['tags']),
         subEvents,
         startAt: AppUtils.toIsoDateTimeLocal(resolvedStart),

@@ -153,6 +153,80 @@
   position: relative;
 }
 
+.event-explore-slot-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--event-explore-shell-z-index) + 1);
+  background: rgba(9, 18, 31, 0.24);
+}
+
+.event-explore-slot-picker {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 1.4rem));
+  z-index: calc(var(--event-explore-shell-z-index) + 2);
+  border-radius: 18px;
+  border: 1px solid rgba(46, 78, 118, 0.18);
+  background: linear-gradient(180deg, #ffffff 0%, #f4f8fd 100%);
+  box-shadow: 0 20px 48px rgba(12, 23, 38, 0.22);
+  padding: 0.76rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.event-explore-slot-picker-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.event-explore-slot-picker-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #1f3f68;
+}
+
+.event-explore-slot-picker-head p {
+  margin: 0.16rem 0 0;
+  color: rgba(29, 49, 76, 0.7);
+  font-size: 0.82rem;
+}
+
+.event-explore-slot-picker-list {
+  display: grid;
+  gap: 0.5rem;
+  max-height: min(52vh, 360px);
+  overflow: auto;
+}
+
+.event-explore-slot-option {
+  border: 1px solid rgba(60, 99, 151, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 0.72rem 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  cursor: pointer;
+  color: #23476f;
+}
+
+.event-explore-slot-option-title {
+  font-weight: 800;
+  text-align: left;
+}
+
+.event-explore-slot-option-meta {
+  color: rgba(31, 63, 104, 0.72);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
 .event-explore-card {
   gap: 0.52rem;
   cursor: default;

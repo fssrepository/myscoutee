@@ -187,6 +187,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     blindMode: 'Open Event',
     autoInviter: false,
     ticketing: false,
+    slotsEnabled: false,
+    slotTemplates: [] as AppTypes.EventSlotTemplate[],
     topics: [] as string[],
     subEvents: [] as AppTypes.EventEditorSubEventItem[],
     startAt: '',
@@ -333,6 +335,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventEditorService.readOnly()) {
       return false;
     }
+    const hasValidSlots = !this.eventForm.slotsEnabled || this.eventForm.slotTemplates.length > 0;
     return Boolean(
       this.eventForm.title.trim()
       && this.eventForm.description.trim()
@@ -340,7 +343,16 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       && this.eventForm.capacityMax !== null
       && this.eventForm.startAt
       && this.eventForm.endAt
+      && hasValidSlots
     );
+  }
+
+  protected canConfigureSlotsSeries(): boolean {
+    return !this.eventEditorService.readOnly() && !this.isGeneratedSlotInstance();
+  }
+
+  protected isGeneratedSlotInstance(): boolean {
+    return Boolean(this.currentRecord?.generated) || this.currentRecord?.eventType === 'slot';
   }
 
   saveEventEditorForm(): void {
@@ -663,6 +675,96 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.eventForm.ticketing = !this.eventForm.ticketing;
   }
 
+  toggleEventSlots(event: Event): void {
+    event.preventDefault();
+    if (!this.canConfigureSlotsSeries()) {
+      return;
+    }
+    this.eventForm.slotsEnabled = !this.eventForm.slotsEnabled;
+    if (this.eventForm.slotsEnabled && this.eventForm.slotTemplates.length === 0) {
+      this.addSlotTemplate();
+    }
+  }
+
+  addSlotTemplate(): void {
+    if (!this.canConfigureSlotsSeries()) {
+      return;
+    }
+    const nextIndex = this.eventForm.slotTemplates.length + 1;
+    const startAt = this.eventForm.slotTemplates[this.eventForm.slotTemplates.length - 1]?.endAt
+      || this.eventForm.startAt
+      || AppUtils.toIsoDateTimeLocal(new Date());
+    const startDate = EventEditorConverter.parseEventEditorDateValue(startAt) ?? new Date();
+    const endDate = new Date(startDate.getTime() + (60 * 60 * 1000));
+    this.eventForm.slotTemplates = [
+      ...EventEditorBuilder.cloneEventEditorSlotTemplates(this.eventForm.slotTemplates),
+      {
+        id: `slot-${nextIndex}`,
+        startAt: AppUtils.toIsoDateTimeLocal(startDate),
+        endAt: AppUtils.toIsoDateTimeLocal(endDate)
+      }
+    ];
+  }
+
+  removeSlotTemplate(index: number): void {
+    if (!this.canConfigureSlotsSeries()) {
+      return;
+    }
+    this.eventForm.slotTemplates = this.eventForm.slotTemplates
+      .filter((_, currentIndex) => currentIndex !== index)
+      .map((item, currentIndex) => ({
+        ...item,
+        id: item.id?.trim() || `slot-${currentIndex + 1}`
+      }));
+  }
+
+  slotTemplateLabel(index: number): string {
+    return `Slot ${index + 1}`;
+  }
+
+  onSlotTemplateStartChange(index: number, value: string): void {
+    const normalizedValue = `${value ?? ''}`.trim();
+    this.eventForm.slotTemplates = this.eventForm.slotTemplates.map((item, currentIndex) => {
+      if (currentIndex !== index) {
+        return { ...item };
+      }
+      const nextStart = normalizedValue || item.startAt;
+      const startDate = EventEditorConverter.parseEventEditorDateValue(nextStart) ?? new Date();
+      const endDate = EventEditorConverter.parseEventEditorDateValue(item.endAt);
+      const nextEnd = !endDate || endDate.getTime() <= startDate.getTime()
+        ? AppUtils.toIsoDateTimeLocal(new Date(startDate.getTime() + (60 * 60 * 1000)))
+        : item.endAt;
+      return {
+        ...item,
+        startAt: nextStart,
+        endAt: nextEnd
+      };
+    });
+  }
+
+  onSlotTemplateEndChange(index: number, value: string): void {
+    const normalizedValue = `${value ?? ''}`.trim();
+    this.eventForm.slotTemplates = this.eventForm.slotTemplates.map((item, currentIndex) => {
+      if (currentIndex !== index) {
+        return { ...item };
+      }
+      const startDate = EventEditorConverter.parseEventEditorDateValue(item.startAt) ?? new Date();
+      const endDate = EventEditorConverter.parseEventEditorDateValue(normalizedValue);
+      const nextEnd = !endDate || endDate.getTime() <= startDate.getTime()
+        ? AppUtils.toIsoDateTimeLocal(new Date(startDate.getTime() + (60 * 60 * 1000)))
+        : normalizedValue;
+      return {
+        ...item,
+        endAt: nextEnd
+      };
+    });
+  }
+
+  slotTemplateInputValue(value: string): string {
+    const parsed = EventEditorConverter.parseEventEditorDateValue(value);
+    return parsed ? AppUtils.toIsoDateTimeLocal(parsed) : `${value ?? ''}`.trim();
+  }
+
   onEventLocationChange(value: string): void {
     this.eventForm.location = EventEditorConverter.normalizeEventEditorLocation(value);
     this.syncFirstSubEventLocationFromMainEvent();
@@ -786,6 +888,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
     this.syncEventFormFromDateTimeControls();
     this.normalizeEventDateRange();
+    this.normalizeEventSlotTemplates();
     this.syncFirstSubEventLocationFromMainEvent();
     const normalizedCapacity = EventEditorBuilder.normalizedEventEditorCapacityRange(this.eventForm);
     this.eventForm.capacityMin = normalizedCapacity.min;
@@ -959,6 +1062,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.pendingEventImageFile = null;
     this.eventForm = {
       ...state.form,
+      slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(state.form.slotTemplates),
       subEvents: EventEditorBuilder.cloneEventEditorSubEvents(state.form.subEvents)
     };
     this.subEventsDisplayMode = state.subEventsDisplayMode;
@@ -984,6 +1088,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       blindMode: 'Open Event',
       autoInviter: false,
       ticketing: false,
+      slotsEnabled: false,
+      slotTemplates: [],
       topics: [],
       subEvents: [],
       startAt: AppUtils.toIsoDateTimeLocal(start),
@@ -1024,6 +1130,15 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!this.eventFrequencyOptions.includes(this.eventForm.frequency)) {
       this.eventForm.frequency = this.eventFrequencyOptions[0] ?? 'One-time';
     }
+  }
+
+  private normalizeEventSlotTemplates(): void {
+    if (!this.eventForm.slotsEnabled) {
+      this.eventForm.slotTemplates = [];
+      return;
+    }
+
+    this.eventForm.slotTemplates = EventEditorBuilder.buildPersistedEventEditorSlotTemplates(this.eventForm.slotTemplates);
   }
 
   private syncMainEventBoundsFromSubEvents(): void {

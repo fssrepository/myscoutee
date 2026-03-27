@@ -49,6 +49,12 @@
   box-shadow: 0 8px 18px rgba(171, 122, 40, 0.12);
 }
 
+.ui-info-card--tone-series {
+  border-color: rgba(42, 126, 134, 0.34);
+  background: linear-gradient(180deg, #f2fbfb 0%, #e4f4f5 100%);
+  box-shadow: 0 8px 18px rgba(31, 111, 118, 0.12);
+}
+
 .ui-info-card--state-leaving {
   opacity: 0;
   transform: translateY(10px) scale(0.97);
