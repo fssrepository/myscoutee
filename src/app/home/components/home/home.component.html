@@ -7,7 +7,7 @@
     <div class="game-actions">
       <div class="game-action-mode-select" [ngClass]="homeModeToneClass(selectedHomeMode)">
         <mat-select
-          [(ngModel)]="selectedHomeMode"
+          [ngModel]="selectedHomeMode"
           (ngModelChange)="selectHomeMode($event)"
           panelWidth="248px"
           panelClass="home-mode-select-panel"
