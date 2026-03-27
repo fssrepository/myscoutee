@@ -25,6 +25,7 @@ separated friends -> on your side -> pair rate - given / on other side -> pair r
 next to pair rate label (dropdown box/mobile menu sheet) you can set - social badge on/off -
 so it's filtering the separated/friends in common from the given/received list
 when switch on the given/received red counter applies
+3) wire end to end to the backend also, not just for demo
 
 Asset explore
 -------------
@@ -34,12 +35,11 @@ Assets can have price tag (we haven't introduced purse for public/frineds event 
 
 Bugs
 ----
-1) old myscoutee had got touch animation on clickable elements - that one should come back on new myscoutee
+1) pull up feature if you ended up bottom of the scrolling area
 2) activities-popup.component.ts cut out the templates (ActivitiesListComponent)
-3) put a contacts button to show assign members popup without basket
-4) optional events can be parallel (maybe a switch on the form "parallel allowed"), but needs to cut the mandatory in the same way when you add
-5) pull up feature if you edned up bottom of the scrolling area (by luck figured out pull down behaviour)
-6) on profile editor the school/workspace item can be loaded from a cv (pdf/docx parse) - old myscoutee had got that
-7) curl (rating)/scrolling animation speed up in most of the places
-8) demo creation has got some noticeable slowness on mobile
-9) instagram account should be renamed from myscoutee1 to myscoutee, after the other account deleted (deletion period ended apr 3)
+3) optional events can be parallel (maybe a switch on the form "parallel allowed"), but needs to cut the mandatory in the same way when you add
+4) curl rating/scrolling animation speed up in most of the places
+5) demo creation has got some noticeable slowness on mobile
+6) instagram account should be renamed from myscoutee1 to myscoutee, after the other account deleted (deletion period ended apr 3)
+7) put a contacts button to show assign members popup without basket
+8) on profile editor the school/workspace item can be loaded from a cv (pdf/docx parse)
