@@ -167,9 +167,23 @@ export class UsersService extends BaseRouteModeService {
         normalizedTimeoutMs
       );
 
+      if (demoModeEnabled && (!Array.isArray(response.users) || response.users.length === 0)) {
+        const fallbackUsers = this.demoUsersRepository.queryAvailableDemoUsers();
+        this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'success');
+        return fallbackUsers;
+      }
+
       this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'success');
       return response.users;
     } catch (error) {
+      if (demoModeEnabled) {
+        const fallbackUsers = this.demoUsersRepository.queryAvailableDemoUsers();
+        if (fallbackUsers.length > 0) {
+          this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'success');
+          return fallbackUsers;
+        }
+      }
+
       if (error instanceof RequestTimeoutError) {
         this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'timeout', 'Users request timeout.');
         return [];
@@ -192,7 +206,18 @@ export class UsersService extends BaseRouteModeService {
       return;
     }
 
-    await this.demoBootstrapService.ensureUserReady(userId, onProgress);
+    try {
+      await this.demoBootstrapService.ensureUserReady(userId, onProgress);
+    } catch {
+      const fallbackUser = this.demoUsersRepository.queryUserById(userId.trim());
+      if (!fallbackUser) {
+        throw new Error('Unable to prepare demo user session.');
+      }
+      onProgress?.({
+        percent: 100,
+        label: 'Demo session ready'
+      });
+    }
   }
 
   async loadUserById(userId?: string, requestTimeoutMs?: number): Promise<UserDto | null> {
