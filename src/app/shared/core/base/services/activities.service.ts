@@ -19,14 +19,13 @@ import type { DemoEventRecord } from '../../demo/models/events.model';
 import { ChatsService } from './chats.service';
 import { EventsService } from './events.service';
 import { RatesService } from './rates.service';
-import { SessionService } from './session.service';
+import { BaseRouteModeService } from './base-route-mode.service';
 import { DemoUsersRepository } from '../../demo';
 
 @Injectable({
   providedIn: 'root'
 })
-export class ActivitiesService {
-  private readonly sessionService = inject(SessionService);
+export class ActivitiesService extends BaseRouteModeService {
   private readonly eventsService = inject(EventsService);
   private readonly chatsService = inject(ChatsService);
   private readonly ratesService = inject(RatesService);

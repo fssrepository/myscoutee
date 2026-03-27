@@ -160,7 +160,7 @@ export class UsersService extends BaseRouteModeService {
 
     try {
       if (demoModeEnabled && environment.demoBootstrapEnabled) {
-        await this.demoBootstrapService.ensureReady(onProgress);
+        await this.demoBootstrapService.ensureSelectorReady(onProgress);
       }
       const response = await this.withRequestTimeout(
         (demoModeEnabled ? this.demoUsersService : this.httpUsersService).queryAvailableDemoUsers(),

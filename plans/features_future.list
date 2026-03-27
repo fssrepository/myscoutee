@@ -6,8 +6,7 @@ Assets can have price tag (we haven't introduced purse for public/friends event 
 
 Speed
 -----
-1) curl rating/scrolling animation speed up in most of the places
-2) demo creation has got some noticeable slowness on mobile
+1) curl rating/scrolling animation slows on mobile in most of the places (i think it's related to the filter logic)
 
 3) instagram account should be renamed from myscoutee1 to myscoutee, after the other account deleted (deletion period ended apr 3)
 
