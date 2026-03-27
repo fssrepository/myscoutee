@@ -21,6 +21,7 @@ import type { ActivityMembersSyncState } from '../../../shared/core';
 import { ActivityMembersService, AppContext, AppPopupContext, EventsService, UsersService } from '../../../shared/core';
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import {
+  CounterBadgePipe,
   LazyBgImageDirective,
   SmartListComponent,
   type ListQuery,
@@ -56,7 +57,8 @@ type MembersSummaryState = {
     MatButtonModule,
     MatIconModule,
     SmartListComponent,
-    LazyBgImageDirective
+    LazyBgImageDirective,
+    CounterBadgePipe
   ],
   templateUrl: './event-members-popup.component.html',
   styleUrls: ['./event-members-popup.component.scss'],

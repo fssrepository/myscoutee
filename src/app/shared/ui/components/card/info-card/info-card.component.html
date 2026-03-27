@@ -120,7 +120,7 @@
         (click)="onMediaEndActivated($event)"
       >
         <ng-container *ngTemplateOutlet="overlayContent; context: { $implicit: mediaEnd }"></ng-container>
-        <span class="ui-info-card__pending-badge card-badge asset-request-badge" *ngIf="(mediaEnd.pendingCount ?? 0) > 0">{{ mediaEnd.pendingCount }}</span>
+        <span class="ui-info-card__pending-badge card-badge asset-request-badge" *ngIf="(mediaEnd.pendingCount ?? 0) > 0">{{ mediaEnd.pendingCount | counterBadge }}</span>
       </button>
 
       <ng-template #mediaEndStatic>
@@ -157,7 +157,7 @@
           [attr.aria-hidden]="true"
         >
           <ng-container *ngTemplateOutlet="overlayContent; context: { $implicit: mediaEnd }"></ng-container>
-          <span class="ui-info-card__pending-badge card-badge asset-request-badge" *ngIf="(mediaEnd.pendingCount ?? 0) > 0">{{ mediaEnd.pendingCount }}</span>
+          <span class="ui-info-card__pending-badge card-badge asset-request-badge" *ngIf="(mediaEnd.pendingCount ?? 0) > 0">{{ mediaEnd.pendingCount | counterBadge }}</span>
         </span>
       </ng-template>
     </ng-container>

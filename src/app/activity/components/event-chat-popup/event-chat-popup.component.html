@@ -30,7 +30,7 @@
           class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge"
           *ngIf="selectedChatHeaderActionBadgeCount() > 0"
         >
-          {{ selectedChatHeaderActionBadgeCount() }}
+          {{ selectedChatHeaderActionBadgeCount() | counterBadge }}
         </span>
       </button>
 
@@ -52,7 +52,7 @@
             class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge"
             *ngIf="selectedChatHeaderActionBadgeCount() > 0"
           >
-            {{ selectedChatHeaderActionBadgeCount() }}
+            {{ selectedChatHeaderActionBadgeCount() | counterBadge }}
           </span>
         </button>
 
@@ -83,7 +83,7 @@
               <span class="subevent-resource-menu-item-value">{{ membersResource.summary }}</span>
             </span>
             <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="membersResource.pending > 0">
-              {{ membersResource.pending }}
+              {{ membersResource.pending | counterBadge }}
             </span>
           </button>
           <div class="item-action-menu-divider" *ngIf="preparedChatMembersResource"></div>
@@ -101,7 +101,7 @@
               <span class="subevent-resource-menu-item-value">{{ resource.summary }}</span>
             </span>
             <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resource.pending > 0">
-              {{ resource.pending }}
+              {{ resource.pending | counterBadge }}
             </span>
           </button>
         </div>

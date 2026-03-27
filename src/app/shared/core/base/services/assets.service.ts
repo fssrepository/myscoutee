@@ -36,4 +36,12 @@ export class AssetsService extends BaseRouteModeService {
   async deleteOwnedAsset(userId: string, assetId: string): Promise<void> {
     await this.assetsService.deleteOwnedAsset(userId, assetId);
   }
+
+  async refreshAssetSourcePreview(
+    userId: string,
+    type: AppTypes.AssetType,
+    sourceLink: string
+  ): Promise<AppTypes.AssetSourcePreview | null> {
+    return this.assetsService.refreshAssetSourcePreview(userId, type, sourceLink);
+  }
 }

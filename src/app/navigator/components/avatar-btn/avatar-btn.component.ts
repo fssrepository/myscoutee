@@ -11,6 +11,7 @@ import {
   type ActivityCounterKey,
   type UserDto
 } from '../../../shared/core';
+import { CounterBadgePipe } from '../../../shared/ui';
 import { NavigatorService } from '../../navigator.service';
 
 interface NavigatorAvatarState {
@@ -21,7 +22,7 @@ interface NavigatorAvatarState {
 @Component({
   selector: 'app-avatar-btn',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, MatButtonModule, MatIconModule, CounterBadgePipe],
   templateUrl: './avatar-btn.component.html',
   styleUrl: './avatar-btn.component.scss'
 })

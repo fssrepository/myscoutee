@@ -8,6 +8,7 @@ import { MatSelectModule, MatSelect } from '@angular/material/select';
 import { of } from 'rxjs';
 
 import {
+  CounterBadgePipe,
   InfoCardComponent,
   SmartListComponent,
   type InfoCardData,
@@ -126,7 +127,8 @@ export interface EventResourcePopupHost {
     MatIconModule,
     MatSelectModule,
     SmartListComponent,
-    InfoCardComponent
+    InfoCardComponent,
+    CounterBadgePipe
   ],
   templateUrl: './event-resource-popup.component.html',
   styleUrls: ['./event-resource-popup.component.scss']

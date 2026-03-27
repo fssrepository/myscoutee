@@ -23,6 +23,7 @@ import type { EventChatResourceContext } from '../../../shared/core/base/models'
 import { AppContext, AppPopupContext } from '../../../shared/core';
 import type { ChatMenuItem, EventMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
 import {
+  CounterBadgePipe,
   SmartListComponent,
   type ListQuery,
   type PageResult,
@@ -39,7 +40,7 @@ interface ChatThreadFilters {
 @Component({
   selector: 'app-event-chat-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule, SmartListComponent],
+  imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule, SmartListComponent, CounterBadgePipe],
   templateUrl: './event-chat-popup.component.html',
   styleUrl: './event-chat-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

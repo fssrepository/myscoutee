@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
 import {
+  CounterBadgePipe,
   PairCardComponent,
   SingleCardComponent,
   SmartListComponent,
@@ -95,10 +96,11 @@ const PUBLIC_PROFILE_DETAIL_LABELS = new Set(
   imports: [
     CommonModule,
     MatIconModule,
-      SmartListComponent,
+    SmartListComponent,
     SingleCardComponent,
     PairCardComponent,
-    HomeGameFilterPopupComponent
+    HomeGameFilterPopupComponent,
+    CounterBadgePipe
   ],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss']

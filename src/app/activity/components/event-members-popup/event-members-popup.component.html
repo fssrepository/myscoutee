@@ -34,7 +34,7 @@
           <span class="activities-hosting-draft-label">Pending only</span>
         </span>
         <span class="rate-filter-count-badge rate-filter-trigger-badge activity-members-header-pending-badge" *ngIf="pendingCount > 0">
-          {{ pendingCount }}
+          {{ pendingCount | counterBadge }}
         </span>
       </button>
 

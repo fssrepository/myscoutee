@@ -90,11 +90,11 @@
             <span class="status-option-content">
               <mat-icon [class]="activitiesPrimaryFilterClass(option.key)">{{ option.icon }}</mat-icon>
               <span>{{ option.label }}</span>
-              <span class="rate-filter-count-badge" *ngIf="activitiesPrimaryFilterCount(option.key) > 0">{{ activitiesPrimaryFilterCount(option.key) }}</span>
+              <span class="rate-filter-count-badge" *ngIf="activitiesPrimaryFilterCount(option.key) > 0">{{ activitiesPrimaryFilterCount(option.key) | counterBadge }}</span>
             </span>
           </mat-option>
         </mat-select>
-        <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesPrimaryFilterCount(activitiesPrimaryFilter) > 0">{{ activitiesPrimaryFilterCount(activitiesPrimaryFilter) }}</span>
+        <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesPrimaryFilterCount(activitiesPrimaryFilter) > 0">{{ activitiesPrimaryFilterCount(activitiesPrimaryFilter) | counterBadge }}</span>
       </div>
     </ng-container>
     <ng-template #mobileActivitiesPrimaryFilterButton>
@@ -112,7 +112,7 @@
             <span>{{ activitiesPrimaryFilterLabel() }}</span>
           </span>
           <mat-icon>expand_more</mat-icon>
-          <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesPrimaryFilterCount(activitiesPrimaryFilter) > 0">{{ activitiesPrimaryFilterCount(activitiesPrimaryFilter) }}</span>
+          <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesPrimaryFilterCount(activitiesPrimaryFilter) > 0">{{ activitiesPrimaryFilterCount(activitiesPrimaryFilter) | counterBadge }}</span>
         </button>
         <div class="popup-filter-panel popup-mobile-filter-panel activities-view-picker-panel activities-mobile-filter-panel" *ngIf="showActivitiesPrimaryPicker">
           <button
@@ -124,7 +124,7 @@
           >
             <mat-icon [class]="activitiesPrimaryFilterClass(option.key)">{{ option.icon }}</mat-icon>
             <span>{{ option.label }}</span>
-            <span class="rate-filter-count-badge" *ngIf="activitiesPrimaryFilterCount(option.key) > 0">{{ activitiesPrimaryFilterCount(option.key) }}</span>
+            <span class="rate-filter-count-badge" *ngIf="activitiesPrimaryFilterCount(option.key) > 0">{{ activitiesPrimaryFilterCount(option.key) | counterBadge }}</span>
           </button>
         </div>
       </div>
@@ -162,13 +162,13 @@
                 <mat-icon [class]="activitiesEventScopeClass(option.key)">{{ option.icon }}</mat-icon>
                 <span>{{ option.label }}</span>
                 <span class="rate-filter-count-badge" *ngIf="activitiesEventScopeCount(option.key) > 0">
-                  {{ activitiesEventScopeCount(option.key) }}
+                  {{ activitiesEventScopeCount(option.key) | counterBadge }}
                 </span>
               </span>
             </mat-option>
           </mat-select>
           <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesEventScopeCount() > 0">
-            {{ activitiesEventScopeCount() }}
+            {{ activitiesEventScopeCount() | counterBadge }}
           </span>
         </div>
       </ng-container>
@@ -189,7 +189,7 @@
             </span>
             <mat-icon>expand_more</mat-icon>
             <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesEventScopeCount() > 0">
-              {{ activitiesEventScopeCount() }}
+              {{ activitiesEventScopeCount() | counterBadge }}
             </span>
           </button>
           <div class="popup-filter-panel popup-mobile-filter-panel activities-view-picker-panel activities-mobile-filter-panel" *ngIf="showActivitiesEventScopePicker">
@@ -203,7 +203,7 @@
               <mat-icon [class]="activitiesEventScopeClass(option.key)">{{ option.icon }}</mat-icon>
               <span>{{ option.label }}</span>
               <span class="rate-filter-count-badge" *ngIf="activitiesEventScopeCount(option.key) > 0">
-                {{ activitiesEventScopeCount(option.key) }}
+                {{ activitiesEventScopeCount(option.key) | counterBadge }}
               </span>
             </button>
           </div>
@@ -243,13 +243,13 @@
                 <mat-icon [class]="activitiesChatContextFilterClass(option.key)">{{ option.icon }}</mat-icon>
                 <span>{{ option.label }}</span>
                 <span class="rate-filter-count-badge" *ngIf="activitiesChatContextFilterCount(option.key) > 0">
-                  {{ activitiesChatContextFilterCount(option.key) }}
+                  {{ activitiesChatContextFilterCount(option.key) | counterBadge }}
                 </span>
               </span>
             </mat-option>
           </mat-select>
           <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesChatContextFilterCount(activitiesChatContextFilter) > 0">
-            {{ activitiesChatContextFilterCount(activitiesChatContextFilter) }}
+            {{ activitiesChatContextFilterCount(activitiesChatContextFilter) | counterBadge }}
           </span>
         </div>
       </ng-container>
@@ -269,7 +269,7 @@
             </span>
             <mat-icon>expand_more</mat-icon>
             <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesChatContextFilterCount(activitiesChatContextFilter) > 0">
-              {{ activitiesChatContextFilterCount(activitiesChatContextFilter) }}
+              {{ activitiesChatContextFilterCount(activitiesChatContextFilter) | counterBadge }}
             </span>
           </button>
           <div class="popup-filter-panel popup-mobile-filter-panel activities-view-picker-panel activities-mobile-filter-panel" *ngIf="showActivitiesChatContextPicker">
@@ -283,7 +283,7 @@
               <mat-icon [class]="activitiesChatContextFilterClass(option.key)">{{ option.icon }}</mat-icon>
               <span>{{ option.label }}</span>
               <span class="rate-filter-count-badge" *ngIf="activitiesChatContextFilterCount(option.key) > 0">
-                {{ activitiesChatContextFilterCount(option.key) }}
+                {{ activitiesChatContextFilterCount(option.key) | counterBadge }}
               </span>
             </button>
           </div>
@@ -328,12 +328,12 @@
                 <span class="status-option-content">
                   <mat-icon [class]="[activitiesRateFilterClass(option.key), rateFilterOptionClass(option.key)]">{{ activitiesRateFilterIcon(option.key) }}</mat-icon>
                   <span>{{ option.label }}</span>
-                  <span class="rate-filter-count-badge" *ngIf="rateFilterCount(option.key) > 0">{{ rateFilterCount(option.key) }}</span>
+                  <span class="rate-filter-count-badge" *ngIf="rateFilterCount(option.key) > 0">{{ rateFilterCount(option.key) | counterBadge }}</span>
                 </span>
               </mat-option>
             </ng-container>
           </mat-select>
-          <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="totalRateFilterCount() > 0">{{ totalRateFilterCount() }}</span>
+          <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="totalRateFilterCount() > 0">{{ totalRateFilterCount() | counterBadge }}</span>
         </div>
       </ng-container>
       <ng-template #mobileActivitiesRateFilterButton>
@@ -351,7 +351,7 @@
               <span>{{ activitiesRateFilterLabel() }}</span>
             </span>
             <mat-icon>expand_more</mat-icon>
-            <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="totalRateFilterCount() > 0">{{ totalRateFilterCount() }}</span>
+            <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="totalRateFilterCount() > 0">{{ totalRateFilterCount() | counterBadge }}</span>
           </button>
           <div class="popup-filter-panel popup-mobile-filter-panel activities-view-picker-panel activities-mobile-rate-filter-panel" *ngIf="showActivitiesRatePicker">
             <div class="activities-mobile-sheet-title activities-mobile-rate-sheet-title">
@@ -382,7 +382,7 @@
                   <mat-icon [class]="[activitiesRateFilterClass(option.key), rateFilterOptionClass(option.key)]">{{ activitiesRateFilterIcon(option.key) }}</mat-icon>
                   <span>{{ option.label }}</span>
                 </span>
-                <span class="rate-filter-count-badge" *ngIf="rateFilterCount(option.key) > 0">{{ rateFilterCount(option.key) }}</span>
+                <span class="rate-filter-count-badge" *ngIf="rateFilterCount(option.key) > 0">{{ rateFilterCount(option.key) | counterBadge }}</span>
               </button>
             </ng-container>
           </div>
@@ -515,7 +515,7 @@
       </div>
       <span class="activities-chat-members-badge">
         <span>{{ activityChatMemberCount(row) }} members</span>
-        <span class="card-badge asset-request-badge activities-chat-unread-badge" *ngIf="row.unread > 0">{{ row.unread }}</span>
+        <span class="card-badge asset-request-badge activities-chat-unread-badge" *ngIf="row.unread > 0">{{ row.unread | counterBadge }}</span>
       </span>
     </button>
   </ng-template>

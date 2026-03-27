@@ -47,12 +47,12 @@
                   <span class="status-option-content">
                     <mat-icon [class]="host.resourceTypeClass(option)">{{ host.resourceTypeIcon(option) }}</mat-icon>
                     <span>{{ option.toLowerCase() }}</span>
-                    <span class="rate-filter-count-badge" *ngIf="host.resourceFilterCount(option) > 0">{{ host.resourceFilterCount(option) }}</span>
+                    <span class="rate-filter-count-badge" *ngIf="host.resourceFilterCount(option) > 0">{{ host.resourceFilterCount(option) | counterBadge }}</span>
                   </span>
                 </mat-option>
               </mat-select>
               <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="host.resourceFilterCount(host.resourceFilter()) > 0">
-                {{ host.resourceFilterCount(host.resourceFilter()) }}
+                {{ host.resourceFilterCount(host.resourceFilter()) | counterBadge }}
               </span>
             </div>
           </ng-container>
@@ -70,7 +70,7 @@
               </span>
               <mat-icon>expand_more</mat-icon>
               <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="host.resourceFilterCount(host.resourceFilter()) > 0">
-                {{ host.resourceFilterCount(host.resourceFilter()) }}
+                {{ host.resourceFilterCount(host.resourceFilter()) | counterBadge }}
               </span>
             </button>
           </ng-template>

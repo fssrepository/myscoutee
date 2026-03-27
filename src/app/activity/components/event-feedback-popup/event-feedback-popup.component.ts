@@ -8,6 +8,7 @@ import { from } from 'rxjs';
 import { AppContext, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
 import type { EventMenuItem } from '../../../shared/core/base/interfaces/activity-feed.interface';
 import {
+  CounterBadgePipe,
   InfoCardComponent,
   SmartListComponent,
   type InfoCardData,
@@ -36,7 +37,8 @@ interface EventFeedbackListFilters {
     MatIconModule,
     MatButtonModule,
     SmartListComponent,
-    InfoCardComponent
+    InfoCardComponent,
+    CounterBadgePipe
   ],
   templateUrl: './event-feedback-popup.component.html',
   styleUrl: './event-feedback-popup.component.scss'

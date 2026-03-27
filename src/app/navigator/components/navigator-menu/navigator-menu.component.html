@@ -149,31 +149,31 @@
       <button class="menu-shortcut-btn menu-shortcut-rates" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openRatesShortcut()" aria-label="Open rates" title="Rates">
         <mat-icon>star</mat-icon>
         <span class="menu-shortcut-label">Rates</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.game > 0">{{ user.activities.game }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.game > 0">{{ user.activities.game | counterBadge }}</span>
       </button>
 
       <button class="menu-shortcut-btn menu-shortcut-chat" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openChatShortcut()" aria-label="Open chat" title="Chats">
         <mat-icon>chat</mat-icon>
         <span class="menu-shortcut-label">Chats</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.chat > 0">{{ user.activities.chat }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.chat > 0">{{ user.activities.chat | counterBadge }}</span>
       </button>
 
       <button class="menu-shortcut-btn menu-shortcut-invitations" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openInvitationShortcut()" aria-label="Open invitations" title="Invitations">
         <mat-icon>mail</mat-icon>
         <span class="menu-shortcut-label">Invitations</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.invitations > 0">{{ user.activities.invitations }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.invitations > 0">{{ user.activities.invitations | counterBadge }}</span>
       </button>
 
       <button class="menu-shortcut-btn menu-shortcut-events" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openEventShortcut()" aria-label="Open events" title="Events">
         <mat-icon>event</mat-icon>
         <span class="menu-shortcut-label">Events</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.events > 0">{{ user.activities.events }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.events > 0">{{ user.activities.events | counterBadge }}</span>
       </button>
 
       <button class="menu-shortcut-btn menu-shortcut-hosting" type="button" [disabled]="!isOnline()" (click)="$event.stopPropagation(); openHostingShortcut()" aria-label="Open my events" title="My Events">
         <mat-icon>stadium</mat-icon>
         <span class="menu-shortcut-label">My Events</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.hosting > 0">{{ user.activities.hosting }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.hosting > 0">{{ user.activities.hosting | counterBadge }}</span>
       </button>
     </div>
 
@@ -201,7 +201,7 @@
       <button class="asset-shortcut-btn asset-shortcut-ticket" type="button" (click)="openAssetTicketsPopup($event)" aria-label="Ticket">
         <mat-icon>qr_code_2</mat-icon>
         <span class="asset-shortcut-label">Ticket</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.tickets > 0">{{ user.activities.tickets }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.tickets > 0">{{ user.activities.tickets | counterBadge }}</span>
       </button>
     </div>
 
@@ -217,7 +217,7 @@
       <button class="feedback-shortcut-btn feedback-shortcut-event" type="button" [disabled]="!isOnline()" (click)="openEventFeedbackPopup($event)" aria-label="Open event feedback" title="Event Feedback">
         <mat-icon>rate_review</mat-icon>
         <span class="feedback-shortcut-label">Event Feedback</span>
-        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.feedback > 0">{{ user.activities.feedback }}</span>
+        <span class="card-badge menu-shortcut-badge" *ngIf="user.activities.feedback > 0">{{ user.activities.feedback | counterBadge }}</span>
       </button>
       <button class="feedback-shortcut-btn feedback-shortcut-report" type="button" [disabled]="!isOnline()" (click)="openReportUserFromFeedback($event)" aria-label="Open report user" title="Report User">
         <mat-icon>flag</mat-icon>

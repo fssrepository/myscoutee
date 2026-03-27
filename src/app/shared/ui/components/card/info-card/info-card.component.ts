@@ -13,6 +13,7 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 
 import { LazyBgImageDirective } from '../../../directives/lazy-bg-image.directive';
+import { CounterBadgePipe } from '../../../pipes/counter-badge.pipe';
 import type {
   InfoCardClickEvent,
   InfoCardData,
@@ -30,7 +31,7 @@ import type {
 @Component({
   selector: 'app-info-card',
   standalone: true,
-  imports: [CommonModule, MatIconModule, LazyBgImageDirective],
+  imports: [CommonModule, MatIconModule, LazyBgImageDirective, CounterBadgePipe],
   templateUrl: './info-card.component.html',
   styleUrl: './info-card.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

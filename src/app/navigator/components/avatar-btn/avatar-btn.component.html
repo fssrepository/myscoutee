@@ -52,7 +52,7 @@
           </ng-container>
         </span>
         <span class="badge-dot" *ngIf="canToggle() && badgeCount() > 0">
-          {{ badgeCount() }}
+          {{ badgeCount() | counterBadge }}
         </span>
       </button>
     </div>

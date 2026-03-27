@@ -13,6 +13,7 @@ import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import { AppContext, UsersService, type UserDto } from '../../../shared/core';
+import { CounterBadgePipe } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../navigator.service';
 
@@ -42,7 +43,8 @@ interface ProfileFormState {
     MatIconModule,
     MatInputModule,
     MatNativeDateModule,
-    MatSelectModule
+    MatSelectModule,
+    CounterBadgePipe
   ],
   providers: [
     { provide: DateAdapter, useClass: AppCalendarDateAdapter },

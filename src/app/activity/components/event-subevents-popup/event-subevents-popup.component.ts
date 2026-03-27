@@ -14,6 +14,7 @@ import { ActivityResourceBuilder, ActivityResourcesService, AppContext, EventsSe
 import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
 import { EventEditorPopupStateService, EventEditorSubEventResourceType } from '../../services/event-editor-popup-state.service';
 import {
+  CounterBadgePipe,
   SmartListComponent,
   type ListQuery,
   type PageResult,
@@ -160,7 +161,8 @@ type EventSubeventsAssetMetricsByType = Record<Exclude<EventEditorSubEventResour
     SmartListComponent,
     EventSubeventStageFormPopupComponent,
     EventSubeventGroupFormPopupComponent,
-    EventSubeventLeaderboardPopupComponent
+    EventSubeventLeaderboardPopupComponent,
+    CounterBadgePipe
   ],
   templateUrl: './event-subevents-popup.component.html',
   styleUrl: './event-subevents-popup.component.scss'

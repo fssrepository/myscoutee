@@ -5,5 +5,6 @@ export const environment = {
   demoBootstrapEnabled: true,
   apiBaseUrl: '/api',
   serviceWorkerEnabled: false,
-  firebaseMessagingEnabled: true
+  firebaseMessagingEnabled: true,
+  assetSourceRefreshEnabled: true
 };

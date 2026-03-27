@@ -40,6 +40,7 @@ import type {
 } from '../../../shared/core/base/models';
 import type * as AppTypes from '../../../shared/core/base/models';
 import {
+  CounterBadgePipe,
   buildPairRateCardData,
   buildSingleRateCardData,
   InfoCardComponent,
@@ -115,7 +116,8 @@ type ActivityInfoCardActionId = 'publish' | 'primary' | 'view' | 'approve' | 'se
     SingleCardComponent,
     PairCardComponent,
     EventChatPopupComponent,
-    EventExplorePopupComponent
+    EventExplorePopupComponent,
+    CounterBadgePipe
   ],
   templateUrl: './activities-popup.component.html',
   styleUrl: './activities-popup.component.scss',

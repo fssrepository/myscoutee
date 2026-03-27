@@ -226,7 +226,7 @@
                                 <span class="subevent-resource-menu-item-value">{{ subEventMembersResourceLabel(sortedSubEvents[row.stageSourceIndex], row) }}</span>
                               </span>
                               <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Members', row) > 0">
-                                {{ resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Members', row) }}
+                                {{ resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Members', row) | counterBadge }}
                               </span>
                             </button>
                             <div class="item-action-menu-divider"></div>
@@ -242,7 +242,7 @@
                                 <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(sortedSubEvents[row.stageSourceIndex], 'Car', row) }}</span>
                               </span>
                               <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Car', row) > 0">
-                                {{ resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Car', row) }}
+                                {{ resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Car', row) | counterBadge }}
                               </span>
                             </button>
                             <button
@@ -256,7 +256,7 @@
                                 <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(sortedSubEvents[row.stageSourceIndex], 'Accommodation', row) }}</span>
                               </span>
                               <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Accommodation', row) > 0">
-                                {{ resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Accommodation', row) }}
+                                {{ resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Accommodation', row) | counterBadge }}
                               </span>
                             </button>
                             <button
@@ -270,13 +270,13 @@
                                 <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(sortedSubEvents[row.stageSourceIndex], 'Supplies', row) }}</span>
                               </span>
                               <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Supplies', row) > 0">
-                                {{ resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Supplies', row) }}
+                                {{ resourcePendingCount(sortedSubEvents[row.stageSourceIndex], 'Supplies', row) | counterBadge }}
                               </span>
                             </button>
                           </div>
                         </div>
                         <span class="subevents-group-badge" *ngIf="groupMenuPendingCount(sortedSubEvents[row.stageSourceIndex], row) > 0">
-                          {{ groupMenuPendingCount(sortedSubEvents[row.stageSourceIndex], row) }}
+                          {{ groupMenuPendingCount(sortedSubEvents[row.stageSourceIndex], row) | counterBadge }}
                         </span>
                       </article>
                     </div>
@@ -313,7 +313,7 @@
                       <mat-icon class="subevents-menu-icon-dots">more_vert</mat-icon>
                       <mat-icon class="subevents-menu-icon-close">close</mat-icon>
                     </span>
-                    <span class="subevents-group-badge" *ngIf="casualMenuPendingCount(subEvent) > 0">{{ casualMenuPendingCount(subEvent) }}</span>
+                    <span class="subevents-group-badge" *ngIf="casualMenuPendingCount(subEvent) > 0">{{ casualMenuPendingCount(subEvent) | counterBadge }}</span>
                   </button>
                   <div
                     class="item-action-menu subevents-casual-menu"
@@ -348,7 +348,7 @@
                         <span class="subevent-resource-menu-item-value">{{ subEventMembersResourceLabel(subEvent) }}</span>
                       </span>
                       <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(subEvent, 'Members') > 0">
-                        {{ resourcePendingCount(subEvent, 'Members') }}
+                        {{ resourcePendingCount(subEvent, 'Members') | counterBadge }}
                       </span>
                     </button>
                     <div class="item-action-menu-divider" *ngIf="subEvent.optional"></div>
@@ -364,7 +364,7 @@
                         <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(subEvent, 'Car') }}</span>
                       </span>
                       <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(subEvent, 'Car') > 0">
-                        {{ resourcePendingCount(subEvent, 'Car') }}
+                        {{ resourcePendingCount(subEvent, 'Car') | counterBadge }}
                       </span>
                     </button>
                     <button
@@ -378,7 +378,7 @@
                         <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(subEvent, 'Accommodation') }}</span>
                       </span>
                       <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(subEvent, 'Accommodation') > 0">
-                        {{ resourcePendingCount(subEvent, 'Accommodation') }}
+                        {{ resourcePendingCount(subEvent, 'Accommodation') | counterBadge }}
                       </span>
                     </button>
                     <button
@@ -392,7 +392,7 @@
                         <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(subEvent, 'Supplies') }}</span>
                       </span>
                       <span class="rate-filter-count-badge subevent-resource-menu-item-counter" *ngIf="resourcePendingCount(subEvent, 'Supplies') > 0">
-                        {{ resourcePendingCount(subEvent, 'Supplies') }}
+                        {{ resourcePendingCount(subEvent, 'Supplies') | counterBadge }}
                       </span>
                     </button>
                   </div>

@@ -22,7 +22,7 @@
           class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge"
           *ngIf="eventEditorHeaderPendingMemberCount() > 0"
         >
-          {{ eventEditorHeaderPendingMemberCount() }}
+          {{ eventEditorHeaderPendingMemberCount() | counterBadge }}
         </span>
       </button>
 
@@ -368,7 +368,7 @@
                 <ng-template #eventSubeventsPlaceholder>
                   <span class="event-subevents-panel-placeholder">Open sub events</span>
                 </ng-template>
-                <span class="card-badge event-subevents-panel-counter" *ngIf="eventForm.subEvents.length > 0">{{ eventForm.subEvents.length }}</span>
+                <span class="card-badge event-subevents-panel-counter" *ngIf="eventForm.subEvents.length > 0">{{ eventForm.subEvents.length | counterBadge }}</span>
               </button>
             </label>
           </div>

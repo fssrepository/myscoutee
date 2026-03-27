@@ -766,7 +766,7 @@
           <mat-icon *ngIf="option.icon">{{ option.icon }}</mat-icon>
           <span>{{ option.label }}</span>
         </span>
-        <span class="rate-filter-count-badge" *ngIf="!option.disabled && option.badge !== undefined && option.badge > 0">{{ option.badge }}</span>
+        <span class="rate-filter-count-badge" *ngIf="!option.disabled && option.badge !== undefined && option.badge > 0">{{ option.badge | counterBadge }}</span>
         <mat-icon *ngIf="!option.disabled && option.badge === undefined && isMobileSelectorOptionActive(option.value)">check</mat-icon>
       </button>
     </div>
