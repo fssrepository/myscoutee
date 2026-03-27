@@ -1,33 +1,55 @@
-import { Directive } from '@angular/core';
-
-import { AppUtils } from '../../../shared/app-utils';
+import { AppUtils } from '../../../../../shared/app-utils';
 import type {
   ChatMenuItem,
   EventMenuItem,
   HostingMenuItem
-} from '../../../shared/core/base/interfaces/activity-feed.interface';
-import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
+} from '../../../../../shared/core/base/interfaces/activity-feed.interface';
+import type { DemoUser } from '../../../../../shared/core/base/interfaces/user.interface';
 import type {
   EventChatContext,
   EventChatResourceContext
-} from '../../../shared/core/base/models';
-import type * as AppTypes from '../../../shared/core/base/models';
+} from '../../../../../shared/core/base/models';
+import type * as AppTypes from '../../../../../shared/core/base/models';
 import {
   ActivityResourceBuilder,
   toActivitySourceRowFromMenuItem
-} from '../../../shared/core';
-import { ActivitiesPopupRatesBase } from './activities-popup-rates.base';
+} from '../../../../../shared/core';
 
-@Directive()
-export abstract class ActivitiesPopupChatsBase extends ActivitiesPopupRatesBase {
-  protected override chatChannelType(item: ChatMenuItem): AppTypes.ChatChannelType {
+type ActivitiesChatsHost = any;
+
+export class ActivitiesChatsController {
+  constructor(private readonly host: ActivitiesChatsHost) {}
+
+  private get activeUser() { return this.host.activeUser as DemoUser; }
+  private get activitiesContext() { return this.host.activitiesContext; }
+  private get activityResourcesService() { return this.host.activityResourcesService; }
+  private get appCtx() { return this.host.appCtx; }
+  private get assetCards() { return this.host.assetCards as AppTypes.AssetCard[]; }
+  private get cdr() { return this.host.cdr; }
+  private get chatItems() { return this.host.chatItems as ChatMenuItem[]; }
+  private get eventDatesById() { return this.host.eventDatesById as Record<string, string>; }
+  private get eventDistanceById() { return this.host.eventDistanceById as Record<string, number>; }
+  private get eventEditorService() { return this.host.eventEditorService; }
+  private get eventItems() { return this.host.eventItems as EventMenuItem[]; }
+  private get eventSubEventsById() { return this.host.eventSubEventsById as Record<string, AppTypes.SubEventFormItem[]>; }
+  private get hostingDatesById() { return this.host.hostingDatesById as Record<string, string>; }
+  private get hostingDistanceById() { return this.host.hostingDistanceById as Record<string, number>; }
+  private get hostingItems() { return this.host.hostingItems as HostingMenuItem[]; }
+  private get users() { return this.host.users as DemoUser[]; }
+
+  private activityPendingMemberCount(row: AppTypes.ActivityListRow): number { return this.host.activityPendingMemberCount(row); }
+  private chatCountValue(value: unknown): number { return this.host.chatCountValue(value); }
+  private defaultEventStartIso(): string { return this.host.defaultEventStartIso(); }
+  private runAfterActivitiesRender(task: () => void): void { this.host.runAfterActivitiesRender(task); }
+
+  public chatChannelType(item: ChatMenuItem): AppTypes.ChatChannelType {
     if (item.channelType === 'mainEvent' || item.channelType === 'optionalSubEvent' || item.channelType === 'groupSubEvent') {
       return item.channelType;
     }
     return 'general';
   }
 
-  protected override chatItemsForActivities(): ChatMenuItem[] {
+  public chatItemsForActivities(): ChatMenuItem[] {
     return this.chatItems.map(item => ({
       ...item,
       memberIds: [...(item.memberIds ?? [])],
@@ -345,11 +367,11 @@ export abstract class ActivitiesPopupChatsBase extends ActivitiesPopupRatesBase 
     return picked;
   }
 
-  protected override getChatLastSender(item: ChatMenuItem): DemoUser {
+  public getChatLastSender(item: ChatMenuItem): DemoUser {
     return this.users.find(user => user.id === item.lastSenderId) ?? this.getChatMembersById(item.id)[0] ?? this.activeUser;
   }
 
-  protected override getChatMemberCount(item: ChatMenuItem): number {
+  public getChatMemberCount(item: ChatMenuItem): number {
     return this.getChatMembersById(item.id).length;
   }
 
@@ -357,7 +379,7 @@ export abstract class ActivitiesPopupChatsBase extends ActivitiesPopupRatesBase 
     return subEvent?.name?.trim() ?? '';
   }
 
-  protected override openActivityChat(chat: ChatMenuItem): void {
+  public openActivityChat(chat: ChatMenuItem): void {
     const initialContext = this.buildInitialEventChatContext(chat);
     this.activitiesContext.openEventChat(chat, initialContext);
     const openedSession = this.activitiesContext.eventChatSession();
@@ -589,7 +611,7 @@ export abstract class ActivitiesPopupChatsBase extends ActivitiesPopupRatesBase 
       : 'subevent-capacity-out-of-range';
   }
 
-  protected override activityChatContextFilterKey(item: ChatMenuItem): AppTypes.ActivitiesChatContextFilter | null {
+  public activityChatContextFilterKey(item: ChatMenuItem): AppTypes.ActivitiesChatContextFilter | null {
     const channelType = this.chatChannelType(item);
     if (channelType === 'mainEvent' || channelType === 'general') {
       return 'event';

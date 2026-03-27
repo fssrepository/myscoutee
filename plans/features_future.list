@@ -6,10 +6,10 @@ Assets can have price tag (we haven't introduced purse for public/friends event 
 
 Speed
 -----
-4) curl rating/scrolling animation speed up in most of the places
-5) demo creation has got some noticeable slowness on mobile
+1) curl rating/scrolling animation speed up in most of the places
+2) demo creation has got some noticeable slowness on mobile
 
-6) instagram account should be renamed from myscoutee1 to myscoutee, after the other account deleted (deletion period ended apr 3)
+3) instagram account should be renamed from myscoutee1 to myscoutee, after the other account deleted (deletion period ended apr 3)
 
-7) put a contacts button to show assign members popup without basket
-8) on profile editor the school/workspace item can be loaded from a cv (pdf/docx parse)
+4) put a contacts button to show assign members popup without basket
+5) on profile editor the school/workspace item can be loaded from a cv (pdf/docx parse)

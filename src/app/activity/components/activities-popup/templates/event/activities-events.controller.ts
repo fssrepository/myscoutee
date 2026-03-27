@@ -1,30 +1,74 @@
-import { Directive } from '@angular/core';
-
-import { AppUtils } from '../../../shared/app-utils';
+import { AppUtils } from '../../../../../shared/app-utils';
 import type {
   ChatMenuItem,
   EventMenuItem,
   HostingMenuItem,
   InvitationMenuItem
-} from '../../../shared/core/base/interfaces/activity-feed.interface';
-import type { ActivitiesEventSyncPayload } from '../../../shared/core/base/models';
-import type * as AppTypes from '../../../shared/core/base/models';
+} from '../../../../../shared/core/base/interfaces/activity-feed.interface';
+import type { ActivitiesEventSyncPayload } from '../../../../../shared/core/base/models';
+import type * as AppTypes from '../../../../../shared/core/base/models';
 import type {
   InfoCardData,
   InfoCardMenuAction,
   InfoCardMenuActionEvent
-} from '../../../shared/ui';
+} from '../../../../../shared/ui';
 import {
   ActivityEventBuilder,
   ActivityMembersBuilder
-} from '../../../shared/core';
-import { ActivitiesPopupBase } from './activities-popup.base';
+} from '../../../../../shared/core';
 
 type ActivityInfoCardActionId = 'publish' | 'primary' | 'view' | 'approve' | 'secondary' | 'restore';
+type ActivitiesEventsHost = any;
 
-@Directive()
-export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
-  protected override activityLeadingIcon(row: AppTypes.ActivityListRow): string {
+export class ActivitiesEventsController {
+  constructor(private readonly host: ActivitiesEventsHost) {}
+
+  private get activeUser() { return this.host.activeUser as any; }
+  private get activitiesEventScope() { return this.host.activitiesEventScope as AppTypes.ActivitiesEventScope; }
+  private set activitiesEventScope(value: AppTypes.ActivitiesEventScope) { this.host.activitiesEventScope = value; }
+  private get activitiesRates() { return this.host.activitiesRates; }
+  private get activitiesSmartList() { return this.host.activitiesSmartList; }
+  private get activityMembersByRowId() { return this.host.activityMembersByRowId as Record<string, AppTypes.ActivityMemberEntry[]>; }
+  private get activityMembersService() { return this.host.activityMembersService; }
+  private get cdr() { return this.host.cdr; }
+  private get confirmationDialogService() { return this.host.confirmationDialogService; }
+  private get eventEditorService() { return this.host.eventEditorService; }
+  private get eventItems() { return this.host.eventItems as EventMenuItem[]; }
+  private get eventVisibilityById() { return this.host.eventVisibilityById as Record<string, AppTypes.EventVisibility>; }
+  private get eventsService() { return this.host.eventsService; }
+  private get hostingItems() { return this.host.hostingItems as HostingMenuItem[]; }
+  private set hostingItems(value: HostingMenuItem[]) { this.host.hostingItems = value; }
+  private get inlineItemActionMenu() { return this.host.inlineItemActionMenu; }
+  private set inlineItemActionMenu(value: any) { this.host.inlineItemActionMenu = value; }
+  private get invitationItems() { return this.host.invitationItems as InvitationMenuItem[]; }
+  private get isMobileView() { return this.host.isMobileView as boolean; }
+  private get pendingActivityMemberDelete() { return this.host.pendingActivityMemberDelete as AppTypes.ActivityMemberEntry | null; }
+  private set pendingActivityMemberDelete(value: AppTypes.ActivityMemberEntry | null) { this.host.pendingActivityMemberDelete = value; }
+  private get popupCtx() { return this.host.popupCtx; }
+  private get publishedHostingIds() { return this.host.publishedHostingIds as ReadonlySet<string>; }
+  private set publishedHostingIds(value: ReadonlySet<string>) { this.host.publishedHostingIds = value; }
+  private get selectedActivityMembers() { return this.host.selectedActivityMembers as AppTypes.ActivityMemberEntry[]; }
+  private set selectedActivityMembers(value: AppTypes.ActivityMemberEntry[]) { this.host.selectedActivityMembers = value; }
+  private get selectedActivityMembersRow() { return this.host.selectedActivityMembersRow as AppTypes.ActivityListRow | null; }
+  private get selectedActivityMembersRowId() { return this.host.selectedActivityMembersRowId as string | null; }
+  private get trashedActivityRowsByKey() { return this.host.trashedActivityRowsByKey as Record<string, AppTypes.ActivityListRow>; }
+  private get users() { return this.host.users as any[]; }
+
+  private activityRowIdentity(row: AppTypes.ActivityListRow): string { return this.host.activityRowIdentity(row); }
+  private applyActivitiesEventSync(sync: ActivitiesEventSyncPayload): void { this.host.applyActivitiesEventSync(sync); }
+  private chatCountValue(value: unknown): number { return this.host.chatCountValue(value); }
+  private cloneSyncedSubEventForms(items: AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] { return this.host.cloneSyncedSubEventForms(items); }
+  private isHostingPublished(id: string): boolean { return this.host.isHostingPublished(id); }
+  private openActivityChat(chat: ChatMenuItem): void { this.host.openActivityChat(chat); }
+  private persistSelectedActivityMembers(): void { this.host.persistSelectedActivityMembers(); }
+  private refreshSectionBadges(): void { this.host.refreshSectionBadges(); }
+  private removeVisibleActivityRow(row: AppTypes.ActivityListRow): void { this.host.removeVisibleActivityRow(row); }
+  private replaceVisibleActivityItems(items: readonly AppTypes.ActivityListRow[], totalDelta = 0): void {
+    this.host.replaceVisibleActivityItems(items, totalDelta);
+  }
+  private uniqueUserIds(userIds: readonly string[]): string[] { return this.host.uniqueUserIds(userIds); }
+
+  public activityLeadingIcon(row: AppTypes.ActivityListRow): string {
     if (this.isPendingActivityRow(row)) {
       return 'pending_actions';
     }
@@ -40,7 +84,7 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
       ?? (row.type === 'hosting' ? 'Invitation only' : 'Public');
   }
 
-  protected activityTypeIcon(row: AppTypes.ActivityListRow): string {
+  public activityTypeIcon(row: AppTypes.ActivityListRow): string {
     if (row.type === 'events') {
       return 'event';
     }
@@ -67,7 +111,7 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     }
   }
 
-  protected override activityLeadingIconTone(row: AppTypes.ActivityListRow): NonNullable<InfoCardData['leadingIcon']>['tone'] {
+  public activityLeadingIconTone(row: AppTypes.ActivityListRow): NonNullable<InfoCardData['leadingIcon']>['tone'] {
     if (this.isPendingActivityRow(row)) {
       return 'pending';
     }
@@ -84,7 +128,7 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     return 'invitation';
   }
 
-  protected override isPendingActivityRow(row: AppTypes.ActivityListRow): boolean {
+  public isPendingActivityRow(row: AppTypes.ActivityListRow): boolean {
     if (row.type !== 'events') {
       return false;
     }
@@ -96,7 +140,7 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     return Array.isArray(source.pendingMemberUserIds) && source.pendingMemberUserIds.includes(activeUserId);
   }
 
-  protected override activityEventInfoCardMenuActions(row: AppTypes.ActivityListRow): readonly InfoCardMenuAction[] {
+  public activityEventInfoCardMenuActions(row: AppTypes.ActivityListRow): readonly InfoCardMenuAction[] {
     if (!this.canManageActivityRow(row)) {
       return [];
     }
@@ -134,15 +178,15 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     return actions;
   }
 
-  protected canManageActivityRow(row: AppTypes.ActivityListRow): boolean {
+  public canManageActivityRow(row: AppTypes.ActivityListRow): boolean {
     return row.type !== 'chats' && row.type !== 'rates';
   }
 
-  protected shouldShowActivityPublishAction(row: AppTypes.ActivityListRow): boolean {
+  public shouldShowActivityPublishAction(row: AppTypes.ActivityListRow): boolean {
     return !this.isActivityRowTrashed(row) && row.type === 'hosting' && !!row.isAdmin && !this.isHostingPublished(row.id);
   }
 
-  protected shouldShowActivityPrimaryAction(row: AppTypes.ActivityListRow): boolean {
+  public shouldShowActivityPrimaryAction(row: AppTypes.ActivityListRow): boolean {
     if (this.isActivityRowTrashed(row)) {
       return false;
     }
@@ -152,15 +196,15 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     return true;
   }
 
-  protected shouldShowActivityViewAction(row: AppTypes.ActivityListRow): boolean {
+  public shouldShowActivityViewAction(row: AppTypes.ActivityListRow): boolean {
     return !this.isActivityRowTrashed(row) && (row.type === 'hosting' || row.type === 'events');
   }
 
-  protected shouldShowActivityApproveAction(row: AppTypes.ActivityListRow): boolean {
+  public shouldShowActivityApproveAction(row: AppTypes.ActivityListRow): boolean {
     return !this.isActivityRowTrashed(row) && row.type === 'invitations';
   }
 
-  protected shouldShowActivitySecondaryAction(row: AppTypes.ActivityListRow): boolean {
+  public shouldShowActivitySecondaryAction(row: AppTypes.ActivityListRow): boolean {
     if (this.isActivityRowTrashed(row)) {
       return false;
     }
@@ -170,39 +214,39 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     return true;
   }
 
-  protected shouldShowActivityRestoreAction(row: AppTypes.ActivityListRow): boolean {
+  public shouldShowActivityRestoreAction(row: AppTypes.ActivityListRow): boolean {
     return this.isActivityRowTrashed(row);
   }
 
-  protected isExitActivityRow(row: AppTypes.ActivityListRow): boolean {
+  public isExitActivityRow(row: AppTypes.ActivityListRow): boolean {
     return row.type === 'events';
   }
 
-  protected activityPrimaryActionIcon(row: AppTypes.ActivityListRow): string {
+  public activityPrimaryActionIcon(row: AppTypes.ActivityListRow): string {
     if (row.type === 'hosting') { return 'edit'; }
     if (row.type === 'invitations') { return 'visibility'; }
     return 'edit';
   }
 
-  protected activityPrimaryActionLabel(row: AppTypes.ActivityListRow): string {
+  public activityPrimaryActionLabel(row: AppTypes.ActivityListRow): string {
     if (row.type === 'hosting') { return 'Edit Event'; }
     if (row.type === 'invitations') { return 'View Invitation'; }
     return 'Edit Event';
   }
 
-  protected activitySecondaryActionIcon(row: AppTypes.ActivityListRow): string {
+  public activitySecondaryActionIcon(row: AppTypes.ActivityListRow): string {
     if (row.type === 'events') { return 'exit_to_app'; }
     if (row.type === 'hosting') { return 'delete'; }
     return 'block';
   }
 
-  protected activitySecondaryActionLabel(row: AppTypes.ActivityListRow): string {
+  public activitySecondaryActionLabel(row: AppTypes.ActivityListRow): string {
     if (row.type === 'events') { return 'Leave Event'; }
     if (row.type === 'hosting') { return 'Delete Event'; }
     return 'Reject Invitation';
   }
 
-  protected onActivityEventInfoCardMenuAction(row: AppTypes.ActivityListRow, action: InfoCardMenuActionEvent): void {
+  public onActivityEventInfoCardMenuAction(row: AppTypes.ActivityListRow, action: InfoCardMenuActionEvent): void {
     switch (action.action.id as ActivityInfoCardActionId) {
       case 'publish':
         this.runActivityItemPublishAction(row);
@@ -225,13 +269,13 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     }
   }
 
-  protected runActivityItemPrimaryAction(row: AppTypes.ActivityListRow, event?: Event): void {
+  public runActivityItemPrimaryAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
     this.openActivityRowInEventModule(row, false);
   }
 
-  protected runActivityItemViewAction(row: AppTypes.ActivityListRow, event?: Event): void {
+  public runActivityItemViewAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
     this.popupCtx.requestActivitiesNavigation({
@@ -241,7 +285,7 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     });
   }
 
-  protected runActivityItemApproveAction(row: AppTypes.ActivityListRow, event?: Event): void {
+  public runActivityItemApproveAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
     if (row.type !== 'invitations') {
@@ -260,13 +304,13 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     });
   }
 
-  protected runActivityItemRestoreAction(row: AppTypes.ActivityListRow, event?: Event): void {
+  public runActivityItemRestoreAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
     void this.restoreActivityRow(row);
   }
 
-  protected runActivityItemSecondaryAction(row: AppTypes.ActivityListRow, event?: Event): void {
+  public runActivityItemSecondaryAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
     this.confirmationDialogService.open({
@@ -281,7 +325,7 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     });
   }
 
-  protected runActivityItemPublishAction(row: AppTypes.ActivityListRow, event?: Event): void {
+  public runActivityItemPublishAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
     this.confirmationDialogService.open({
@@ -482,11 +526,11 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     };
   }
 
-  protected override isActivityIdentityTrashed(type: AppTypes.ActivityListRow['type'], id: string): boolean {
+  public isActivityIdentityTrashed(type: AppTypes.ActivityListRow['type'], id: string): boolean {
     return Boolean(this.trashedActivityRowsByKey[`${type}:${id}`]);
   }
 
-  protected isActivityRowTrashed(row: AppTypes.ActivityListRow): boolean {
+  public isActivityRowTrashed(row: AppTypes.ActivityListRow): boolean {
     if (Boolean((row.source as { isTrashed?: boolean }).isTrashed)) {
       return true;
     }
@@ -497,7 +541,7 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     return Object.values(this.trashedActivityRowsByKey);
   }
 
-  protected override trashedActivityCount(): number {
+  public trashedActivityCount(): number {
     return this.trashedActivityRows().length;
   }
 
@@ -526,7 +570,7 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     this.cdr.markForCheck();
   }
 
-  protected override onActivityRowClick(row: AppTypes.ActivityListRow, event?: Event): void {
+  public onActivityRowClick(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
     this.inlineItemActionMenu = null;
     if (row.type === 'chats') {
@@ -534,13 +578,13 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
       return;
     }
     if (row.type === 'rates') {
-      this.openActivityRateEditor(row, event as Event);
+      this.activitiesRates.openEditor(row, event as Event);
       return;
     }
     this.openActivityRowInEventModule(row, true);
   }
 
-  protected override openActivityMembers(row: AppTypes.ActivityListRow, event?: Event): void {
+  public openActivityMembers(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
     this.popupCtx.requestActivitiesNavigation({
       type: 'members',
@@ -551,11 +595,11 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     });
   }
 
-  protected canShowActivityMemberActionMenu(entry: AppTypes.ActivityMemberEntry): boolean {
+  public canShowActivityMemberActionMenu(entry: AppTypes.ActivityMemberEntry): boolean {
     return this.canApproveActivityMember(entry) || this.canDeleteActivityMember(entry);
   }
 
-  protected toggleActivityMemberActionMenu(entry: AppTypes.ActivityMemberEntry, event: Event): void {
+  public toggleActivityMemberActionMenu(entry: AppTypes.ActivityMemberEntry, event: Event): void {
     event.stopPropagation();
     if (!this.canShowActivityMemberActionMenu(entry)) {
       return;
@@ -572,24 +616,24 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     };
   }
 
-  protected isActivityMemberActionMenuOpen(entry: AppTypes.ActivityMemberEntry): boolean {
+  public isActivityMemberActionMenuOpen(entry: AppTypes.ActivityMemberEntry): boolean {
     return this.inlineItemActionMenu?.scope === 'activityMember' && this.inlineItemActionMenu.id === entry.userId;
   }
 
-  protected isActivityMemberActionMenuOpenUp(entry: AppTypes.ActivityMemberEntry): boolean {
+  public isActivityMemberActionMenuOpenUp(entry: AppTypes.ActivityMemberEntry): boolean {
     return this.inlineItemActionMenu?.scope === 'activityMember'
       && this.inlineItemActionMenu.id === entry.userId
       && this.inlineItemActionMenu.openUp;
   }
 
-  protected canApproveActivityMember(entry: AppTypes.ActivityMemberEntry): boolean {
+  public canApproveActivityMember(entry: AppTypes.ActivityMemberEntry): boolean {
     if (this.selectedActivityMembersRow?.isAdmin !== true) {
       return false;
     }
     return entry.status === 'pending' && (entry.pendingSource === 'member' || entry.requestKind === 'join');
   }
 
-  protected canDeleteActivityMember(entry: AppTypes.ActivityMemberEntry): boolean {
+  public canDeleteActivityMember(entry: AppTypes.ActivityMemberEntry): boolean {
     if (this.selectedActivityMembersRow?.isAdmin === true) {
       return true;
     }
@@ -598,7 +642,7 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
       && entry.invitedByActiveUser === true;
   }
 
-  protected activityMemberMenuDeleteLabel(entry: AppTypes.ActivityMemberEntry): string {
+  public activityMemberMenuDeleteLabel(entry: AppTypes.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return 'Remove member';
     }
@@ -608,15 +652,15 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     return 'Delete invitation';
   }
 
-  protected activityMemberAge(entry: AppTypes.ActivityMemberEntry): number {
+  public activityMemberAge(entry: AppTypes.ActivityMemberEntry): number {
     return this.users.find(user => user.id === entry.userId)?.age ?? 0;
   }
 
-  protected activityMemberRoleLabel(entry: AppTypes.ActivityMemberEntry): string {
+  public activityMemberRoleLabel(entry: AppTypes.ActivityMemberEntry): string {
     return entry.role === 'Admin' ? 'Admin' : 'Member';
   }
 
-  protected activityMemberStatusLabel(entry: AppTypes.ActivityMemberEntry): string {
+  public activityMemberStatusLabel(entry: AppTypes.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return 'Approved';
     }
@@ -629,7 +673,7 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     return 'Waiting For Admin Approval';
   }
 
-  protected memberCardStatusIcon(entry: AppTypes.ActivityMemberEntry): string {
+  public memberCardStatusIcon(entry: AppTypes.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return entry.role === 'Admin' ? 'admin_panel_settings' : 'person';
     }
@@ -639,7 +683,7 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     return 'outgoing_mail';
   }
 
-  protected memberCardStatusClass(entry: AppTypes.ActivityMemberEntry): string {
+  public memberCardStatusClass(entry: AppTypes.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return entry.role === 'Admin' ? 'member-status-admin' : 'member-status-member';
     }
@@ -649,7 +693,7 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     return 'member-status-invite-pending';
   }
 
-  protected memberCardToneClass(entry: AppTypes.ActivityMemberEntry): string {
+  public memberCardToneClass(entry: AppTypes.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return entry.role === 'Admin' ? 'member-card-tone-admin' : 'member-card-tone-accepted';
     }
@@ -659,14 +703,14 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     return 'member-card-tone-invite-pending';
   }
 
-  protected memberCardStatusLabel(entry: AppTypes.ActivityMemberEntry): string {
+  public memberCardStatusLabel(entry: AppTypes.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return entry.role === 'Admin' ? 'Admin' : 'Member';
     }
     return this.activityMemberStatusLabel(entry);
   }
 
-  protected approveActivityMember(entry: AppTypes.ActivityMemberEntry, event?: Event): void {
+  public approveActivityMember(entry: AppTypes.ActivityMemberEntry, event?: Event): void {
     event?.stopPropagation();
     if (!this.selectedActivityMembersRowId || !this.canApproveActivityMember(entry)) {
       return;
@@ -688,7 +732,7 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     this.inlineItemActionMenu = null;
   }
 
-  protected removeActivityMember(entry: AppTypes.ActivityMemberEntry, event?: Event): void {
+  public removeActivityMember(entry: AppTypes.ActivityMemberEntry, event?: Event): void {
     event?.stopPropagation();
     if (!this.selectedActivityMembersRowId || !this.canDeleteActivityMember(entry)) {
       return;
@@ -714,7 +758,7 @@ export abstract class ActivitiesPopupEventsBase extends ActivitiesPopupBase {
     return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
   }
 
-  protected override openActivityRowInEventModule(row: AppTypes.ActivityListRow, readOnly: boolean): void {
+  public openActivityRowInEventModule(row: AppTypes.ActivityListRow, readOnly: boolean): void {
     const source = ActivityEventBuilder.resolveEditorSource(row, {
       eventItems: this.eventItems,
       hostingItems: this.hostingItems,
