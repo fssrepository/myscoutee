@@ -154,6 +154,7 @@ export class DemoUserRatesBuilder {
       if (!firstUserId || !secondUserId || firstUserId === secondUserId) {
         return null;
       }
+      const socialContext = this.resolvePairSocialContext(record);
       if (direction === 'received') {
         if (firstUserId === ownerUserId) {
           return {
@@ -162,7 +163,7 @@ export class DemoUserRatesBuilder {
             secondaryUserId: firstUserId,
             mode: 'pair',
             direction,
-            socialContext: record.socialContext,
+            socialContext,
             bridgeUserId: record.bridgeUserId,
             bridgeCount: record.bridgeCount,
             scoreGiven: this.normalizeRateScore(record.scoreGiven),
@@ -180,7 +181,7 @@ export class DemoUserRatesBuilder {
             secondaryUserId: secondUserId,
             mode: 'pair',
             direction,
-            socialContext: record.socialContext,
+            socialContext,
             bridgeUserId: record.bridgeUserId,
             bridgeCount: record.bridgeCount,
             scoreGiven: this.normalizeRateScore(record.scoreGiven),
@@ -200,7 +201,7 @@ export class DemoUserRatesBuilder {
         secondaryUserId: secondUserId,
         mode: 'pair',
         direction,
-        socialContext: record.socialContext,
+        socialContext,
         bridgeUserId: record.bridgeUserId,
         bridgeCount: record.bridgeCount,
         scoreGiven: this.normalizeRateScore(record.scoreGiven),
@@ -346,6 +347,7 @@ export class DemoUserRatesBuilder {
       ...(secondaryUserId ? { secondaryUserId } : {}),
       mode,
       direction,
+      ...(mode === 'pair' ? { socialContext: this.generatedPairSocialContext(direction) } : {}),
       scoreGiven,
       scoreReceived,
       eventName: variantIndex > 0
@@ -379,6 +381,24 @@ export class DemoUserRatesBuilder {
 
   private static oppositeGender(gender: 'woman' | 'man'): 'woman' | 'man' {
     return gender === 'woman' ? 'man' : 'woman';
+  }
+
+  private static resolvePairSocialContext(
+    record: UserRateRecord
+  ): RateMenuItem['socialContext'] {
+    return record.socialContext ?? this.generatedPairSocialContext(record.displayDirection);
+  }
+
+  private static generatedPairSocialContext(
+    direction: UserRateRecord['displayDirection'] | RateMenuItem['direction']
+  ): RateMenuItem['socialContext'] | undefined {
+    if (direction === 'given') {
+      return 'separated-friends';
+    }
+    if (direction === 'received') {
+      return 'friends-in-common';
+    }
+    return undefined;
   }
 
   private static normalizeRateScore(value: unknown): number {
