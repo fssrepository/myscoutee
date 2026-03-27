@@ -2036,6 +2036,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected activityLocationMetaLine(row: AppTypes.ActivityListRow): string {
     const source = row.source as { location?: string; city?: string; creatorCity?: string };
     const location = source.location?.trim() || source.city?.trim() || source.creatorCity?.trim() || '';
+    if (row.type === 'chats') {
+      return location;
+    }
     const distanceLabel = Number.isFinite(Number(row.distanceKm)) ? `${row.distanceKm} km` : '';
     if (location && distanceLabel) {
       return `${location} · ${distanceLabel}`;

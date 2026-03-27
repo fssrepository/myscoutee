@@ -134,14 +134,11 @@ export class DemoChatsRepositoryBuilder {
       for (const item of items) {
         const recordKey = this.buildRecordKey(ownerUserId, item.id);
         const dateIso = this.buildDateIso(ownerUserId, item);
-        const distanceKm = this.buildDistanceKm(ownerUserId, item);
         byId[recordKey] = {
           ...item,
           memberIds: [...item.memberIds],
           ownerUserId,
           dateIso,
-          distanceKm,
-          distanceMetersExact: Math.max(0, Math.round(distanceKm * 1000)),
           messages: this.buildMessages(ownerUserId, item, dateIso)
         };
         ids.push(recordKey);
@@ -185,7 +182,6 @@ export class DemoChatsRepositoryBuilder {
       channelType: 'mainEvent',
       memberIds,
       dateIso: record.startAtIso,
-      distanceKm: record.distanceKm,
       unread: Math.max(0, Math.trunc(Number(record.pendingMembers) || 0))
     }, ownerUserId);
   }
@@ -220,7 +216,6 @@ export class DemoChatsRepositoryBuilder {
       channelType: 'optionalSubEvent',
       memberIds,
       dateIso: subEvent.startAt || record.startAtIso,
-      distanceKm: record.distanceKm,
       unread: this.sumSubEventPending(subEvent, true)
     }, ownerUserId);
   }
@@ -255,7 +250,6 @@ export class DemoChatsRepositoryBuilder {
       channelType: 'groupSubEvent',
       memberIds,
       dateIso: subEvent.startAt || record.startAtIso,
-      distanceKm: record.distanceKm,
       unread: this.estimateGroupPendingCount(subEvent, group, groups)
     }, ownerUserId);
   }
@@ -270,13 +264,11 @@ export class DemoChatsRepositoryBuilder {
     channelType: 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent';
     memberIds: string[];
     dateIso: string;
-    distanceKm: number;
     unread: number;
   }, ownerUserId: string): ChatMenuItem {
     const memberIds = this.uniqueUserIds(input.memberIds);
     const senderCandidates = memberIds.filter(id => id !== ownerUserId);
     const lastSenderId = senderCandidates[0] ?? memberIds[0] ?? ownerUserId;
-    const distanceKm = Math.max(0, Number(input.distanceKm) || 0);
     return {
       id: input.id,
       avatar: AppUtils.initialsFromText(input.title),
@@ -286,8 +278,6 @@ export class DemoChatsRepositoryBuilder {
       memberIds,
       unread: Math.max(0, Math.trunc(Number(input.unread) || 0)),
       dateIso: input.dateIso,
-      distanceKm,
-      distanceMetersExact: Math.max(0, Math.round(distanceKm * 1000)),
       channelType: input.channelType,
       eventId: input.eventId,
       subEventId: input.subEventId || undefined,
@@ -380,10 +370,6 @@ export class DemoChatsRepositoryBuilder {
     value.setDate(value.getDate() + (seed % 9));
     value.setHours(8 + (seed % 11), (seed % 4) * 15, 0, 0);
     return AppUtils.toIsoDateTime(value);
-  }
-
-  private static buildDistanceKm(ownerUserId: string, item: ChatMenuItem): number {
-    return 2 + (AppUtils.hashText(`chat-distance:${ownerUserId}:${item.id}:${item.title}`) % 18);
   }
 
   private static buildMessages(ownerUserId: string, item: ChatMenuItem, anchorIso: string): ChatPopupMessage[] {

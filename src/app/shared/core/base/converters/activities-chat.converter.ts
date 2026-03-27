@@ -22,6 +22,12 @@ export function toActivityChatRow(
 ): AppTypes.ActivityListRow {
   const lastSender = resolveChatLastSender(item, options.users, options.activeUserId);
   const unread = Math.max(0, Math.trunc(Number(item.unread) || 0));
+  const distanceKm = Number.isFinite(Number(item.distanceKm)) ? Math.max(0, Number(item.distanceKm)) : 0;
+  const distanceMetersExact = Number.isFinite(Number(item.distanceMetersExact))
+    ? Math.max(0, Math.trunc(Number(item.distanceMetersExact)))
+    : Number.isFinite(Number(item.distanceKm))
+      ? Math.max(0, Math.round(Number(item.distanceKm) * 1000))
+      : undefined;
   return {
     id: item.id,
     type: 'chats',
@@ -29,10 +35,8 @@ export function toActivityChatRow(
     subtitle: item.title,
     detail: item.lastMessage?.trim() || '',
     dateIso: item.dateIso ?? '2026-02-21T09:00:00',
-    distanceKm: Number.isFinite(Number(item.distanceKm)) ? Number(item.distanceKm) : 5,
-    distanceMetersExact: Number.isFinite(Number(item.distanceMetersExact))
-      ? Math.max(0, Math.trunc(Number(item.distanceMetersExact)))
-      : Math.max(0, Math.round((Number.isFinite(Number(item.distanceKm)) ? Number(item.distanceKm) : 5) * 1000)),
+    distanceKm,
+    distanceMetersExact,
     unread,
     metricScore: unread * 10 + resolveChatMemberCount(item, options.users, options.activeUserId),
     source: normalizeChatRecord(item)

@@ -114,9 +114,6 @@ export class ChatsService extends BaseRouteModeService {
     request: ActivitiesPageRequest
   ): AppTypes.ActivityListRow[] {
     const sorted = [...rows];
-    if (request.view === 'distance') {
-      return sorted.sort((left, right) => this.activityRowDistanceOrderValue(left) - this.activityRowDistanceOrderValue(right));
-    }
     if (request.secondaryFilter === 'past') {
       return sorted.sort((left, right) => AppUtils.toSortableDate(right.dateIso) - AppUtils.toSortableDate(left.dateIso));
     }
@@ -127,12 +124,5 @@ export class ChatsService extends BaseRouteModeService {
       );
     }
     return sorted.sort((left, right) => AppUtils.toSortableDate(right.dateIso) - AppUtils.toSortableDate(left.dateIso));
-  }
-
-  private activityRowDistanceOrderValue(row: AppTypes.ActivityListRow): number {
-    if (Number.isFinite(row.distanceMetersExact)) {
-      return Math.max(0, Math.trunc(Number(row.distanceMetersExact)));
-    }
-    return Math.max(0, Math.round((Number(row.distanceKm) || 0) * 1000));
   }
 }

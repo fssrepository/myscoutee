@@ -284,10 +284,14 @@ export class HttpChatsService {
   }
 
   private mapChatRecord(item: HttpChatSummaryDto, ownerUserId: string): DemoChatRecord {
-    const distanceKm = Number(item.distanceKm) || 0;
+    const distanceKm = Number.isFinite(Number(item.distanceKm))
+      ? Math.max(0, Number(item.distanceKm))
+      : undefined;
     const distanceMetersExact = Number.isFinite(Number(item.distanceMetersExact))
       ? Math.max(0, Math.trunc(Number(item.distanceMetersExact)))
-      : Math.max(0, Math.round(distanceKm * 1000));
+      : Number.isFinite(distanceKm)
+        ? Math.max(0, Math.round(Number(distanceKm) * 1000))
+        : undefined;
     return {
       id: `${item.id ?? ''}`.trim(),
       avatar: `${item.avatar ?? ''}`.trim(),
