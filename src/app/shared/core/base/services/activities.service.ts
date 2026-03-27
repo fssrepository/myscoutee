@@ -21,12 +21,12 @@ import { EventsService } from './events.service';
 import { RatesService } from './rates.service';
 import { SessionService } from './session.service';
 import { DemoUsersRepository } from '../../demo';
+import { BaseRouteModeService } from './base-route-mode.service';
 
 @Injectable({
   providedIn: 'root'
 })
-export class ActivitiesService {
-  private readonly sessionService = inject(SessionService);
+export class ActivitiesService extends BaseRouteModeService {
   private readonly eventsService = inject(EventsService);
   private readonly chatsService = inject(ChatsService);
   private readonly ratesService = inject(RatesService);
@@ -124,7 +124,7 @@ export class ActivitiesService {
     if (activeUserId) {
       return activeUserId;
     }
-    return this.isDemoModeEnabled('/activities/events')
+        return this.isDemoModeEnabled('/activities/events')
       ? (this.demoUsersRepository.queryAllUsers()[0]?.id ?? '')
       : '';
   }
