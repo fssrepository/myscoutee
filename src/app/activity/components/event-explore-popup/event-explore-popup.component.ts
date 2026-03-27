@@ -105,7 +105,7 @@ export class EventExplorePopupComponent {
   protected selectedMembersPendingOnly = false;
   protected selectedMembersRecord: DemoEventRecord | null = null;
 
-  private activeUserId = 'u1';
+  private activeUserId = '';
   private eventEditorPrewarmStarted = false;
   private readonly leavingEventExploreRecordIds = new Set<string>();
   private readonly eventExploreExitAnimationMs = 180;
@@ -171,7 +171,7 @@ export class EventExplorePopupComponent {
     });
 
     effect(() => {
-      const nextActiveUserId = this.appCtx.activeUserId().trim() || 'u1';
+      const nextActiveUserId = this.appCtx.activeUserId().trim();
       if (nextActiveUserId === this.activeUserId) {
         return;
       }

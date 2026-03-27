@@ -969,7 +969,7 @@ export class EventMembersPopupComponent {
   }
 
   private activeUserId(): string {
-    return this.appCtx.activeUserId().trim() || 'u1';
+    return this.appCtx.activeUserId().trim();
   }
 
   private resetSummaryState(): void {

@@ -373,7 +373,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   }
 
   private activeUserId(): string {
-    return this.appCtx.activeUserId().trim() || 'u1';
+    return this.appCtx.activeUserId().trim();
   }
 
   private currentAssetSmartListType(): AppTypes.AssetType {

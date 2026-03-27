@@ -624,7 +624,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private createFallbackActiveUser(): DemoUser {
     return {
-      id: this.appCtx.activeUserId().trim() || 'u1',
+      id: this.appCtx.activeUserId().trim(),
       name: 'Demo User',
       age: 0,
       birthday: '',

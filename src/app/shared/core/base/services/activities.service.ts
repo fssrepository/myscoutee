@@ -120,7 +120,13 @@ export class ActivitiesService {
     if (session?.kind === 'firebase' && session.profile.id.trim().length > 0) {
       return session.profile.id.trim();
     }
-    return this.demoUsersRepository.queryAllUsers()[0]?.id ?? 'u1';
+    const activeUserId = this.appCtx.getActiveUserId().trim();
+    if (activeUserId) {
+      return activeUserId;
+    }
+    return this.isDemoModeEnabled('/activities/events')
+      ? (this.demoUsersRepository.queryAllUsers()[0]?.id ?? '')
+      : '';
   }
 
   private normalizeEventActivitiesSort(value: string | undefined): 'date' | 'distance' | 'relevance' {
@@ -131,7 +137,7 @@ export class ActivitiesService {
     input: Partial<EventExploreFeedFilters> | null | undefined
   ): EventExploreFeedFilters {
     return {
-      userId: input?.userId?.trim() || this.appCtx.getActiveUserId().trim() || 'u1',
+      userId: input?.userId?.trim() || this.resolveActiveUserId(),
       order: this.normalizeEventExploreOrder(input?.order),
       view: this.normalizeEventExploreView(input?.view),
       friendsOnly: input?.friendsOnly === true,

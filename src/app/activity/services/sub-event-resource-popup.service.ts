@@ -1993,7 +1993,7 @@ export class SubEventResourcePopupService {
 
   private createFallbackUser(userId: string): UserDto {
     return {
-      id: userId.trim() || 'u1',
+      id: userId.trim(),
       name: 'User',
       age: 0,
       birthday: '',

@@ -1215,6 +1215,10 @@ export class HomeComponent implements OnDestroy {
   }
 
   private getActiveUserId(): string {
+    const activeUserId = this.appCtx.activeUserId().trim();
+    if (activeUserId) {
+      return activeUserId;
+    }
     if (this.users.length === 0) {
       return '';
     }
@@ -2426,7 +2430,7 @@ export class HomeComponent implements OnDestroy {
 
   private createFallbackActiveUser(): DemoUser {
     return {
-      id: this.activeUserId || this.appCtx.activeUserId().trim() || 'u1',
+      id: this.activeUserId || this.appCtx.activeUserId().trim(),
       name: '',
       age: 30,
       birthday: '',

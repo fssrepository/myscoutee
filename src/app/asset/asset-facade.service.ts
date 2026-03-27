@@ -332,7 +332,7 @@ export class AssetFacadeService {
   }
 
   private currentActiveUserId(): string {
-    return this.appCtx.getActiveUserId().trim() || 'u1';
+    return this.appCtx.getActiveUserId().trim();
   }
 
   private resolveActiveTicketHolder(): TicketPerson | null {
