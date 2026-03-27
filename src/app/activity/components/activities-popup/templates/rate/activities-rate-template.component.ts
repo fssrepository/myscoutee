@@ -256,6 +256,7 @@ export class ActivitiesRatesController {
   };
 
   private readonly rateEditorPresenter: ActivitiesRateEditorPresenter;
+  private selectedListRateRow: AppTypes.ActivityListRow | null = null;
 
   constructor(private readonly deps: ActivitiesRatesControllerDeps) {
     this.rateEditorPresenter = new ActivitiesRateEditorPresenter({
@@ -299,6 +300,7 @@ export class ActivitiesRatesController {
     if (!wasOpen) {
       this.deps.setEditorOpenScrollTop(scrollElement ? scrollElement.scrollTop : null);
     }
+    this.selectedListRateRow = row;
     this.setSelectedRateId(row.id);
     this.deps.setEditorClosing(false);
     this.cancelEditorLiftAnimation();
@@ -426,6 +428,7 @@ export class ActivitiesRatesController {
       this.deps.setEditorCloseTimer(null);
       this.deps.setEditorClosing(false);
       this.setSelectedRateId(null);
+      this.selectedListRateRow = null;
       this.deps.setLastIndicatorPulseRowId(null);
       this.deps.setLastEditorLiftDelta(0);
       this.deps.setEditorOpenScrollTop(null);
@@ -507,9 +510,11 @@ export class ActivitiesRatesController {
     }
     const currentRow = this.currentFullscreenRow();
     if (!currentRow) {
+      this.selectedListRateRow = null;
       this.setSelectedRateId(null);
       return;
     }
+    this.selectedListRateRow = currentRow;
     this.setSelectedRateId(currentRow.id);
   }
 
@@ -540,7 +545,15 @@ export class ActivitiesRatesController {
   }
 
   selectedRow(): AppTypes.ActivityListRow | null {
-    return selectedActivitiesRateRow(this.selectedRateId(), this.deps.getFilteredActivityRows());
+    const selectedRateId = this.selectedRateId();
+    const fromVisibleRows = selectedActivitiesRateRow(selectedRateId, this.deps.getFilteredActivityRows());
+    if (fromVisibleRows) {
+      this.selectedListRateRow = fromVisibleRows;
+      return fromVisibleRows;
+    }
+    return this.selectedListRateRow && this.selectedListRateRow.id === selectedRateId
+      ? this.selectedListRateRow
+      : null;
   }
 
   normalizeScore(value: number): number {
@@ -704,6 +717,9 @@ export class ActivitiesRatesController {
   }
 
   private setSelectedRateId(value: string | null): void {
+    if (!value) {
+      this.selectedListRateRow = null;
+    }
     this.deps.setSelectedRateId(value);
     this.deps.setSelectedRateIdInContext(value);
   }
