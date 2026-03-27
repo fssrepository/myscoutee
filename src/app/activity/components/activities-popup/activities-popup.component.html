@@ -297,8 +297,8 @@
         <div
           class="profile-status-select-wrap selector-like experience-filter-select popup-compact-select activities-compact-select activities-rate-filter-select"
           [ngClass]="[activitiesToolbar.activitiesRateFilterClass(activitiesRateFilter), activitiesToolbar.rateFilterOptionClass(activitiesRateFilter)]"
-          [class.activities-filter-no-badge]="activitiesToolbar.totalRateFilterCount() === 0"
-          [class.popup-filter-no-badge]="activitiesToolbar.totalRateFilterCount() === 0"
+          [class.activities-filter-no-badge]="activitiesToolbar.selectedRateFilterCount() === 0"
+          [class.popup-filter-no-badge]="activitiesToolbar.selectedRateFilterCount() === 0"
         >
           <mat-select
             [(ngModel)]="activitiesRateFilter"
@@ -315,8 +315,26 @@
             </mat-select-trigger>
             <ng-container *ngFor="let option of rateFilterEntries">
               <mat-option *ngIf="option.kind === 'group'" class="status-option rate-filter-group-option" [class.is-group-separator]="activitiesToolbar.isRateGroupSeparator(option.label)" disabled>
-                <span class="status-option-content rate-filter-group-label">
-                  <span>{{ option.label }}</span>
+                <span
+                  class="status-option-content rate-filter-group-label"
+                  [class.rate-filter-group-label-with-toggle]="activitiesToolbar.isRateGroupSeparator(option.label) && activitiesToolbar.shouldShowRateSocialBadgeToggle()"
+                >
+                  <span class="rate-filter-group-title-chip">
+                    <span class="rate-filter-group-title">{{ option.label }}</span>
+                  </span>
+                  <button
+                    *ngIf="activitiesToolbar.isRateGroupSeparator(option.label) && activitiesToolbar.shouldShowRateSocialBadgeToggle()"
+                    type="button"
+                    class="activities-rate-social-badge-toggle activities-rate-social-badge-toggle-inline"
+                    [class.is-active]="activitiesRateSocialBadgeEnabled"
+                    aria-label="Toggle social pair filter"
+                    (pointerdown)="$event.preventDefault(); $event.stopPropagation()"
+                    (mousedown)="$event.preventDefault(); $event.stopPropagation()"
+                    (click)="$event.preventDefault(); $event.stopPropagation(); activitiesToolbar.toggleRateSocialBadge()"
+                  >
+                    <mat-icon>{{ activitiesRateSocialBadgeEnabled ? 'sell' : 'sell_off' }}</mat-icon>
+                    <span>{{ activitiesToolbar.rateSocialBadgeButtonLabel() }}</span>
+                  </button>
                 </span>
               </mat-option>
               <mat-option
@@ -327,24 +345,14 @@
               >
                 <span class="status-option-content">
                   <mat-icon [class]="[activitiesToolbar.activitiesRateFilterClass(option.key), activitiesToolbar.rateFilterOptionClass(option.key)]">{{ activitiesToolbar.activitiesRateFilterIcon(option.key) }}</mat-icon>
-                  <span>{{ option.label }}</span>
+                  <span>{{ activitiesToolbar.rateFilterOptionLabel(option.key) }}</span>
                   <span class="rate-filter-count-badge" *ngIf="activitiesToolbar.rateFilterCount(option.key) > 0">{{ activitiesToolbar.rateFilterCount(option.key) | counterBadge }}</span>
                 </span>
               </mat-option>
             </ng-container>
           </mat-select>
-          <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesToolbar.totalRateFilterCount() > 0">{{ activitiesToolbar.totalRateFilterCount() | counterBadge }}</span>
+          <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesToolbar.selectedRateFilterCount() > 0">{{ activitiesToolbar.selectedRateFilterCount() | counterBadge }}</span>
         </div>
-        <button
-          type="button"
-          class="popup-view-fab activities-rate-social-badge-toggle"
-          *ngIf="activitiesToolbar.shouldShowRateSocialBadgeToggle()"
-          [class.is-active]="activitiesRateSocialBadgeEnabled"
-          (click)="activitiesToolbar.toggleRateSocialBadge()"
-        >
-          <mat-icon>{{ activitiesRateSocialBadgeEnabled ? 'sell' : 'sell_off' }}</mat-icon>
-          <span>{{ activitiesToolbar.rateSocialBadgeButtonLabel() }}</span>
-        </button>
       </ng-container>
       <ng-template #mobileActivitiesRateFilterButton>
         <div class="popup-mobile-filter-picker activities-mobile-rate-filter-picker">
@@ -352,8 +360,8 @@
             type="button"
             class="profile-status-select-wrap selector-like experience-filter-select popup-compact-select activities-compact-select activities-rate-filter-select"
             [ngClass]="[activitiesToolbar.activitiesRateFilterClass(activitiesRateFilter), activitiesToolbar.rateFilterOptionClass(activitiesRateFilter)]"
-            [class.activities-filter-no-badge]="activitiesToolbar.totalRateFilterCount() === 0"
-            [class.popup-filter-no-badge]="activitiesToolbar.totalRateFilterCount() === 0"
+            [class.activities-filter-no-badge]="activitiesToolbar.selectedRateFilterCount() === 0"
+            [class.popup-filter-no-badge]="activitiesToolbar.selectedRateFilterCount() === 0"
             (click)="activitiesToolbar.openMobileActivitiesRateFilterSelector($event)"
           >
             <span class="status-option-content">
@@ -361,38 +369,54 @@
               <span>{{ activitiesToolbar.activitiesRateFilterLabel() }}</span>
             </span>
             <mat-icon>expand_more</mat-icon>
-            <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesToolbar.totalRateFilterCount() > 0">{{ activitiesToolbar.totalRateFilterCount() | counterBadge }}</span>
+            <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="activitiesToolbar.selectedRateFilterCount() > 0">{{ activitiesToolbar.selectedRateFilterCount() | counterBadge }}</span>
           </button>
           <div class="popup-filter-panel popup-mobile-filter-panel activities-view-picker-panel activities-mobile-rate-filter-panel" *ngIf="showActivitiesRatePicker">
             <div class="activities-mobile-sheet-title activities-mobile-rate-sheet-title">
               <mat-icon>list</mat-icon>
               <span>Rate Type</span>
             </div>
-            <button
-              type="button"
-              class="popup-filter-option activities-view-option activities-rate-social-badge-toggle"
-              *ngIf="activitiesToolbar.shouldShowRateSocialBadgeToggle()"
-              [class.is-active]="activitiesRateSocialBadgeEnabled"
-              (click)="activitiesToolbar.toggleRateSocialBadge()"
-            >
-              <span class="mobile-profile-selector-option-main">
-                <mat-icon>{{ activitiesRateSocialBadgeEnabled ? 'sell' : 'sell_off' }}</mat-icon>
-                <span>{{ activitiesToolbar.rateSocialBadgeButtonLabel() }}</span>
-              </span>
-            </button>
             <ng-container *ngFor="let option of rateFilterEntries">
-              <span
-                class="popup-filter-option activities-view-option activities-mobile-rate-filter-group mobile-profile-selector-option mobile-profile-selector-option-group"
-                [class.rate-filter-group-single]="!activitiesToolbar.isRateGroupSeparator(option.label)"
-                [class.rate-filter-group-pair]="activitiesToolbar.isRateGroupSeparator(option.label)"
-                [class.is-group-separator-mobile]="activitiesToolbar.isRateGroupSeparator(option.label)"
-                *ngIf="option.kind === 'group'"
-              >
-                <span class="mobile-profile-selector-option-main">
-                  <mat-icon>{{ activitiesToolbar.isRateGroupSeparator(option.label) ? 'groups_2' : 'person' }}</mat-icon>
-                  <span>{{ option.label }}</span>
-                </span>
-              </span>
+              <ng-container *ngIf="option.kind === 'group'">
+                <div
+                  *ngIf="activitiesToolbar.isRateGroupSeparator(option.label) && activitiesToolbar.shouldShowRateSocialBadgeToggle(); else plainMobileRateGroup"
+                  class="activities-mobile-rate-filter-group-row"
+                >
+                  <span
+                    class="popup-filter-option activities-view-option activities-mobile-rate-filter-group mobile-profile-selector-option mobile-profile-selector-option-group rate-filter-group-pair is-group-separator-mobile"
+                  >
+                    <span class="mobile-profile-selector-option-main">
+                      <mat-icon>groups_2</mat-icon>
+                      <span>{{ option.label }}</span>
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    class="activities-rate-social-badge-toggle activities-rate-social-badge-toggle-inline activities-rate-social-badge-toggle-mobile"
+                    [class.is-active]="activitiesRateSocialBadgeEnabled"
+                    aria-label="Toggle social pair filter"
+                    (pointerdown)="$event.preventDefault(); $event.stopPropagation()"
+                    (mousedown)="$event.preventDefault(); $event.stopPropagation()"
+                    (click)="$event.preventDefault(); $event.stopPropagation(); activitiesToolbar.toggleRateSocialBadge()"
+                  >
+                    <mat-icon>{{ activitiesRateSocialBadgeEnabled ? 'sell' : 'sell_off' }}</mat-icon>
+                    <span>{{ activitiesToolbar.rateSocialBadgeButtonLabel() }}</span>
+                  </button>
+                </div>
+                <ng-template #plainMobileRateGroup>
+                  <span
+                    class="popup-filter-option activities-view-option activities-mobile-rate-filter-group mobile-profile-selector-option mobile-profile-selector-option-group"
+                    [class.rate-filter-group-single]="!activitiesToolbar.isRateGroupSeparator(option.label)"
+                    [class.rate-filter-group-pair]="activitiesToolbar.isRateGroupSeparator(option.label)"
+                    [class.is-group-separator-mobile]="activitiesToolbar.isRateGroupSeparator(option.label)"
+                  >
+                    <span class="mobile-profile-selector-option-main">
+                      <mat-icon>{{ activitiesToolbar.isRateGroupSeparator(option.label) ? 'groups_2' : 'person' }}</mat-icon>
+                      <span>{{ option.label }}</span>
+                    </span>
+                  </span>
+                </ng-template>
+              </ng-container>
               <button
                 type="button"
                 class="popup-filter-option activities-view-option"
@@ -402,7 +426,7 @@
               >
                 <span class="mobile-profile-selector-option-main">
                   <mat-icon [class]="[activitiesToolbar.activitiesRateFilterClass(option.key), activitiesToolbar.rateFilterOptionClass(option.key)]">{{ activitiesToolbar.activitiesRateFilterIcon(option.key) }}</mat-icon>
-                  <span>{{ option.label }}</span>
+                  <span>{{ activitiesToolbar.rateFilterOptionLabel(option.key) }}</span>
                 </span>
                 <span class="rate-filter-count-badge" *ngIf="activitiesToolbar.rateFilterCount(option.key) > 0">{{ activitiesToolbar.rateFilterCount(option.key) | counterBadge }}</span>
               </button>

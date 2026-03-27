@@ -52,7 +52,7 @@
 .activities-mobile-rate-filter-group {
   justify-content: flex-start;
   cursor: default;
-  pointer-events: none;
+  pointer-events: auto;
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.01em;
@@ -97,6 +97,16 @@
 .activities-mobile-rate-filter-panel .activities-mobile-rate-filter-group.is-group-separator-mobile {
   border-top: 0;
   padding-top: 0.18rem;
+}
+.activities-mobile-rate-filter-group-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.42rem;
+  width: 100%;
+}
+.activities-mobile-rate-filter-panel .activities-mobile-rate-filter-group-row .activities-mobile-rate-filter-group {
+  margin-top: 0.28rem;
 }
 .activities-mobile-rate-filter-panel .mobile-profile-selector-option-main {
   display: inline-flex;
@@ -200,6 +210,87 @@
   background: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
   border-color: rgba(37, 127, 95, 0.32);
   color: #236d51;
+}
+
+.activities-rate-social-badge-toggle,
+:host ::ng-deep .activities-rate-social-badge-toggle {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid rgba(82, 106, 143, 0.28);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f8fbff 0%, #eef3fb 100%);
+  color: #355178;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.08rem;
+  min-height: 24px;
+  padding: 0.16rem 0.42rem;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.7),
+    0 1px 2px rgba(24, 42, 68, 0.08);
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.14s ease;
+}
+
+.activities-rate-social-badge-toggle .mat-icon,
+:host ::ng-deep .activities-rate-social-badge-toggle .mat-icon {
+  width: 12px;
+  height: 12px;
+  font-size: 12px;
+  line-height: 12px;
+}
+
+.activities-rate-social-badge-toggle-inline,
+:host ::ng-deep .activities-rate-social-badge-toggle-inline {
+  min-height: 20px;
+  padding: 0.08rem 0.32rem;
+  font-size: 0.54rem;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.activities-rate-social-badge-toggle-mobile {
+  flex: 0 0 auto;
+  margin-top: 0.28rem;
+}
+
+.activities-rate-social-badge-toggle.is-active,
+:host ::ng-deep .activities-rate-social-badge-toggle.is-active {
+  border-color: rgba(42, 101, 177, 0.52);
+  background: linear-gradient(180deg, #dfedff 0%, #d1e4ff 100%);
+  color: #174b84;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.78),
+    0 0 0 1px rgba(52, 108, 180, 0.16),
+    0 5px 12px rgba(45, 92, 154, 0.16);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .activities-rate-social-badge-toggle:hover,
+  :host ::ng-deep .activities-rate-social-badge-toggle:hover {
+    border-color: rgba(63, 94, 138, 0.4);
+    transform: translateY(-1px);
+  }
+  .activities-rate-social-badge-toggle.is-active:hover,
+  :host ::ng-deep .activities-rate-social-badge-toggle.is-active:hover {
+    border-color: rgba(38, 94, 165, 0.6);
+  }
+}
+
+.activities-rate-social-badge-toggle:active,
+:host ::ng-deep .activities-rate-social-badge-toggle:active {
+  transform: translateY(0);
 }
 // ─── Popup Surface ───────────────────────────────────────────────────────
 .activities-popup {
@@ -2132,11 +2223,36 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
 
 // ─── Rate Filter Group / Badge ───────────────────────────────────────────
 .rate-filter-group-label {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.4rem;
+  width: 100%;
   font-weight: 800;
   font-size: 0.64rem;
   color: #1f3658;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+}
+.rate-filter-group-label-with-toggle {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.28rem;
+}
+.rate-filter-group-title {
+  min-width: 0;
+}
+.rate-filter-group-title-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0.12rem 0.44rem;
+  border-radius: 7px;
+  background: linear-gradient(180deg, #eef8f5 0%, #e5f2ee 100%);
+  border: 1px solid rgba(47, 142, 125, 0.24);
+  color: #2a6c61;
+  flex: 0 0 auto;
+  margin-right: auto;
 }
 .rate-filter-item-individual-given { color: #a1485a; }
 .rate-filter-item-individual-received { color: #2d5ea8; }
@@ -2188,13 +2304,26 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
 :host ::ng-deep .mat-mdc-option.status-option.rate-filter-group-option {
   background: #fff;
   opacity: 1;
-  pointer-events: none;
+  pointer-events: auto;
   min-height: 28px;
+  cursor: default;
+}
+:host ::ng-deep .mat-mdc-option.status-option.rate-filter-group-option.mdc-list-item--disabled,
+:host ::ng-deep .mat-mdc-option.status-option.rate-filter-group-option[aria-disabled='true'] {
+  opacity: 1;
+  color: inherit;
 }
 :host ::ng-deep .mat-mdc-option.status-option.rate-filter-group-option.is-group-separator {
   border-top: 1px solid rgba(92, 110, 140, 0.28);
   margin-top: 0.28rem;
   padding-top: 0.34rem;
+}
+:host ::ng-deep .mat-mdc-option.status-option.rate-filter-group-option .mdc-list-item__primary-text {
+  width: 100%;
+  opacity: 1;
+}
+:host ::ng-deep .mat-mdc-option.status-option.rate-filter-group-option .activities-rate-social-badge-toggle {
+  pointer-events: auto;
 }
 :host ::ng-deep .mat-mdc-option.status-option.rate-filter-item-individual-given {
   background: linear-gradient(0deg, #ffffff, #fff1f3);

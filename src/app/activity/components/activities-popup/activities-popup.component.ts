@@ -1562,6 +1562,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
   // =========================================================================
 
   protected onActivitiesPopupSurfaceClick(event: MouseEvent): void {
+    const target = event.target;
+    if (target instanceof Element && this.isInsideActivitiesFilterSurface(target)) {
+      return;
+    }
     if (
       this.showActivitiesViewPicker
       || this.showActivitiesSecondaryPicker
@@ -1584,7 +1588,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.inlineItemActionMenu = null;
       this.cdr.markForCheck();
     }
-    const target = event.target;
     if (!(target instanceof Element)) {
       return;
     }
@@ -1597,6 +1600,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected isHostingPublished(id: string): boolean {
     return this.publishedHostingIds.has(id);
+  }
+
+  private isInsideActivitiesFilterSurface(target: Element): boolean {
+    return !!target.closest(
+      '.popup-filter-picker, .popup-filter-panel, .activities-view-picker-panel, .popup-mobile-filter-picker, .popup-mobile-filter-panel, .popup-view-fab'
+    );
   }
 
   private refreshRateItems(): void {

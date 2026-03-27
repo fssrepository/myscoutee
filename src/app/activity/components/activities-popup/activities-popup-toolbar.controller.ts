@@ -135,7 +135,7 @@ export class ActivitiesPopupToolbarController {
   }
 
   activitiesRatePanelWidth(): string {
-    return '220px';
+    return '272px';
   }
 
   activitiesHeaderLineOne(): string {
@@ -144,7 +144,7 @@ export class ActivitiesPopupToolbarController {
     }
     if (this.activitiesPrimaryFilter === 'rates') {
       const group = this.activitiesRateFilter.startsWith('individual') ? 'Single' : 'Pair';
-      const label = this.rateFilters.find((option: any) => option.key === this.activitiesRateFilter)?.label ?? 'Given';
+      const label = this.rateFilterLabelForKey(this.activitiesRateFilter);
       return `${group} Rate · ${label}`;
     }
     if (this.isEventActivitiesPrimaryFilter()) {
@@ -217,16 +217,14 @@ export class ActivitiesPopupToolbarController {
   }
 
   activitiesRateFilterLabel(): string {
-    const filter = this.rateFilters.find((o: any) => o.key === this.activitiesRateFilter);
-    if (!filter) { return 'Single · Given'; }
+    const label = this.rateFilterLabelForKey(this.activitiesRateFilter);
+    if (!label) { return 'Single · Given'; }
     const group = this.activitiesRateFilter.startsWith('individual') ? 'Single' : 'Pair';
-    if (this.activitiesRateSocialBadgeEnabled && this.activitiesRateFilter === 'pair-given') {
-      return `${group} · Separated friends`;
-    }
-    if (this.activitiesRateSocialBadgeEnabled && this.activitiesRateFilter === 'pair-received') {
-      return `${group} · Friends in common`;
-    }
-    return `${group} · ${filter.label}`;
+    return `${group} · ${label}`;
+  }
+
+  rateFilterOptionLabel(key: AppTypes.RateFilterKey): string {
+    return this.rateFilterLabelForKey(key);
   }
 
   activitiesRateFilterIcon(key: AppTypes.RateFilterKey = this.activitiesRateFilter): string {
@@ -257,9 +255,12 @@ export class ActivitiesPopupToolbarController {
     return this.rateItems.filter((item: any) => this.activitiesRates.matchesFilter(item, filter)).length;
   }
 
+  selectedRateFilterCount(): number {
+    return this.rateFilterCount(this.activitiesRateFilter);
+  }
+
   shouldShowRateSocialBadgeToggle(): boolean {
-    return this.activitiesPrimaryFilter === 'rates'
-      && this.activitiesRateFilter.startsWith('pair');
+    return this.activitiesPrimaryFilter === 'rates';
   }
 
   rateSocialBadgeButtonLabel(): string {
@@ -268,8 +269,20 @@ export class ActivitiesPopupToolbarController {
 
   toggleRateSocialBadge(): void {
     this.activitiesRateSocialBadgeEnabled = !this.activitiesRateSocialBadgeEnabled;
-    this.activitiesSmartList?.reload();
+    if (this.activitiesRateFilter.startsWith('pair')) {
+      this.activitiesSmartList?.reload();
+    }
     this.cdr.markForCheck();
+  }
+
+  private rateFilterLabelForKey(key: AppTypes.RateFilterKey): string {
+    if (this.activitiesRateSocialBadgeEnabled && key === 'pair-given') {
+      return 'Separated friends';
+    }
+    if (this.activitiesRateSocialBadgeEnabled && key === 'pair-received') {
+      return 'Friends in common';
+    }
+    return this.rateFilters.find((option: any) => option.key === key)?.label ?? 'Given';
   }
 
   totalRateFilterCount(): number {
