@@ -335,6 +335,16 @@
           </mat-select>
           <span class="rate-filter-count-badge rate-filter-trigger-badge" *ngIf="totalRateFilterCount() > 0">{{ totalRateFilterCount() | counterBadge }}</span>
         </div>
+        <button
+          type="button"
+          class="popup-view-fab activities-rate-social-badge-toggle"
+          *ngIf="shouldShowRateSocialBadgeToggle()"
+          [class.is-active]="activitiesRateSocialBadgeEnabled"
+          (click)="toggleRateSocialBadge()"
+        >
+          <mat-icon>{{ activitiesRateSocialBadgeEnabled ? 'sell' : 'sell_off' }}</mat-icon>
+          <span>{{ rateSocialBadgeButtonLabel() }}</span>
+        </button>
       </ng-container>
       <ng-template #mobileActivitiesRateFilterButton>
         <div class="popup-mobile-filter-picker activities-mobile-rate-filter-picker">
@@ -358,6 +368,18 @@
               <mat-icon>list</mat-icon>
               <span>Rate Type</span>
             </div>
+            <button
+              type="button"
+              class="popup-filter-option activities-view-option activities-rate-social-badge-toggle"
+              *ngIf="shouldShowRateSocialBadgeToggle()"
+              [class.is-active]="activitiesRateSocialBadgeEnabled"
+              (click)="toggleRateSocialBadge()"
+            >
+              <span class="mobile-profile-selector-option-main">
+                <mat-icon>{{ activitiesRateSocialBadgeEnabled ? 'sell' : 'sell_off' }}</mat-icon>
+                <span>{{ rateSocialBadgeButtonLabel() }}</span>
+              </span>
+            </button>
             <ng-container *ngFor="let option of rateFilterEntries">
               <span
                 class="popup-filter-option activities-view-option activities-mobile-rate-filter-group mobile-profile-selector-option mobile-profile-selector-option-group"

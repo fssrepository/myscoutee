@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type {
+  UserGameSocialCard,
   UserGameCardsQueryRequest,
   UserGameCardsQueryResponse,
   UserGameDataService
@@ -40,10 +41,19 @@ export class HttpGameService implements UserGameDataService {
     }
     try {
       const response = await this.http
-        .post<{ filterCount?: number; cardUserIds?: string[]; nextCursor?: string | null; users?: UserDto[] } | null>(
+        .post<{
+          filterCount?: number;
+          cardUserIds?: string[];
+          nextCursor?: string | null;
+          users?: UserDto[];
+          socialCards?: UserGameSocialCard[];
+        } | null>(
           `${this.apiBaseUrl}${HttpGameService.USER_GAME_CARDS_QUERY_ROUTE}`,
           {
             userId: normalizedUserId,
+            mode: request.mode ?? 'single',
+            leftQuery: request.leftQuery ?? null,
+            rightQuery: request.rightQuery ?? null,
             filterPreferences: request.filterPreferences ?? null,
             cursor: request.cursor ?? null,
             pageSize: Number.isFinite(request.pageSize) ? Math.max(1, Math.min(50, Math.trunc(Number(request.pageSize)))) : 10
@@ -71,6 +81,11 @@ export class HttpGameService implements UserGameDataService {
         cards: {
           filterCount,
           cardUserIds,
+          socialCards: Array.isArray(response.socialCards)
+            ? response.socialCards
+              .map(card => this.cloneSocialCard(card))
+              .filter(card => card.id.length > 0 && card.userId.length > 0)
+            : [],
           nextCursor
         }
       };
@@ -109,6 +124,18 @@ export class HttpGameService implements UserGameDataService {
         tickets: user.activities?.tickets ?? 0,
         feedback: user.activities?.feedback ?? 0
       }
+    };
+  }
+
+  private cloneSocialCard(card: UserGameSocialCard): UserGameSocialCard {
+    return {
+      id: `${card.id ?? ''}`.trim(),
+      userId: `${card.userId ?? ''}`.trim(),
+      secondaryUserId: `${card.secondaryUserId ?? ''}`.trim() || undefined,
+      socialContext: card.socialContext === 'friends-in-common' ? 'friends-in-common' : 'separated-friends',
+      bridgeUserId: `${card.bridgeUserId ?? ''}`.trim() || undefined,
+      bridgeCount: Number.isFinite(card.bridgeCount) ? Math.max(0, Math.trunc(Number(card.bridgeCount))) : undefined,
+      eventName: `${card.eventName ?? ''}`.trim() || undefined
     };
   }
 }

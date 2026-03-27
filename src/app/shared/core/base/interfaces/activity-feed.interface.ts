@@ -115,6 +115,9 @@ export interface RateMenuItem {
   secondaryUserId?: string;
   mode: 'individual' | 'pair';
   direction: 'given' | 'received' | 'mutual' | 'met';
+  socialContext?: 'separated-friends' | 'friends-in-common';
+  bridgeUserId?: string;
+  bridgeCount?: number;
   scoreGiven: number;
   scoreReceived: number;
   eventName: string;

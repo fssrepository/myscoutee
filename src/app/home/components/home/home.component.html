@@ -5,10 +5,22 @@
       <span class="game-brand-text">yScoutee</span>
     </a>
     <div class="game-actions">
-      <button type="button" class="game-action-mode" [class.mode-pair]="isPairMode" [class.mode-single]="!isPairMode" (click)="togglePairMode()">
-        <mat-icon>{{ isPairMode ? 'groups' : 'person' }}</mat-icon>
-        <span>{{ isPairMode ? 'Pair mode' : 'Single mode' }}</span>
-      </button>
+      <div class="game-action-mode-select" [class.mode-pair]="isPairMode" [class.mode-single]="!isPairMode">
+        <mat-select [(ngModel)]="selectedHomeMode" (ngModelChange)="selectHomeMode($event)">
+          <mat-select-trigger>
+            <span class="game-action-mode" [class.mode-pair]="isPairMode" [class.mode-single]="!isPairMode">
+              <mat-icon>{{ selectedHomeModeIcon() }}</mat-icon>
+              <span>{{ selectedHomeModeLabel() }}</span>
+            </span>
+          </mat-select-trigger>
+          <mat-option *ngFor="let option of homeModeOptions" [value]="option.key">
+            <span class="game-mode-option">
+              <mat-icon>{{ option.icon }}</mat-icon>
+              <span>{{ option.label }}</span>
+            </span>
+          </mat-option>
+        </mat-select>
+      </div>
       <button
         type="button"
         class="game-action-filter has-badge"
@@ -33,6 +45,35 @@
       </button>
     </div>
   </header>
+
+  <section class="game-social-query-bar" *ngIf="showSocialQueryInputs()">
+    <label class="game-social-query-field">
+      <span>{{ isFriendsInCommonMode ? 'Person' : 'Friend A' }}</span>
+      <input
+        type="text"
+        [value]="leftSocialQuery"
+        [attr.list]="'home-social-left-suggestions'"
+        [placeholder]="isFriendsInCommonMode ? 'Search person or event' : 'Search friend or event'"
+        (input)="onLeftSocialQueryChanged(($any($event.target).value ?? '').toString())"
+      />
+    </label>
+    <label class="game-social-query-field">
+      <span>{{ isFriendsInCommonMode ? 'Common friend' : 'Friend B' }}</span>
+      <input
+        type="text"
+        [value]="rightSocialQuery"
+        [attr.list]="'home-social-right-suggestions'"
+        [placeholder]="isFriendsInCommonMode ? 'Search common friend' : 'Search friend or event'"
+        (input)="onRightSocialQueryChanged(($any($event.target).value ?? '').toString())"
+      />
+    </label>
+    <datalist id="home-social-left-suggestions">
+      <option *ngFor="let suggestion of socialQuerySuggestions('left')" [value]="suggestion"></option>
+    </datalist>
+    <datalist id="home-social-right-suggestions">
+      <option *ngFor="let suggestion of socialQuerySuggestions('right')" [value]="suggestion"></option>
+    </datalist>
+  </section>
 
   <section class="game-layout-single">
     <div class="game-card-deck">

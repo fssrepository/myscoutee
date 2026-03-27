@@ -253,6 +253,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     = [...APP_STATIC_DATA.rateFilterEntries];
   protected readonly activitiesViewOptions: Array<{ key: AppTypes.ActivitiesView; label: string; icon: string }>
     = [...APP_STATIC_DATA.activitiesViewOptions];
+  protected activitiesRateSocialBadgeEnabled = false;
 
   // ── Filter / view state – backed by EventEditorPopupStateService signals ───────────
   // Local copies are kept in sync via an effect() so that OnPush CD fires
@@ -1241,6 +1242,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const filter = this.rateFilters.find(o => o.key === this.activitiesRateFilter);
     if (!filter) { return 'Single · Given'; }
     const group = this.activitiesRateFilter.startsWith('individual') ? 'Single' : 'Pair';
+    if (this.activitiesRateSocialBadgeEnabled && this.activitiesRateFilter === 'pair-given') {
+      return `${group} · Separated friends`;
+    }
+    if (this.activitiesRateSocialBadgeEnabled && this.activitiesRateFilter === 'pair-received') {
+      return `${group} · Friends in common`;
+    }
     return `${group} · ${filter.label}`;
   }
 
@@ -1270,6 +1277,21 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected rateFilterCount(filter: AppTypes.RateFilterKey): number {
     return this.rateItems.filter(item => this.matchesRateFilter(item, filter)).length;
+  }
+
+  protected shouldShowRateSocialBadgeToggle(): boolean {
+    return this.activitiesPrimaryFilter === 'rates'
+      && this.activitiesRateFilter.startsWith('pair');
+  }
+
+  protected rateSocialBadgeButtonLabel(): string {
+    return this.activitiesRateSocialBadgeEnabled ? 'Social on' : 'Social off';
+  }
+
+  protected toggleRateSocialBadge(): void {
+    this.activitiesRateSocialBadgeEnabled = !this.activitiesRateSocialBadgeEnabled;
+    this.activitiesSmartList?.reload();
+    this.cdr.markForCheck();
   }
 
   protected totalRateFilterCount(): number {
@@ -4623,7 +4645,19 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private matchesRateFilter(item: RateMenuItem, filter: AppTypes.RateFilterKey): boolean {
     const [modeKey, directionKey] = filter.split('-') as ['individual' | 'pair', 'given' | 'received' | 'mutual' | 'met'];
-    return item.mode === modeKey && this.displayedRateDirection(item) === directionKey;
+    if (item.mode !== modeKey || this.displayedRateDirection(item) !== directionKey) {
+      return false;
+    }
+    if (!this.activitiesRateSocialBadgeEnabled || modeKey !== 'pair') {
+      return true;
+    }
+    if (filter === 'pair-given') {
+      return item.socialContext === 'separated-friends';
+    }
+    if (filter === 'pair-received') {
+      return item.socialContext === 'friends-in-common';
+    }
+    return true;
   }
 
   private displayedRateDirection(item: RateMenuItem): RateMenuItem['direction'] {

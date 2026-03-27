@@ -2,30 +2,15 @@ Slots
 -----
 1) main event
 Next to the one time event, there is a button called slot
-Opens a new slots wizard (calendar view - dragable element, and you can add slots)
+Opens a new slots wizard popup (calendar view - dragable element, and you can add slots - you can click on a cell and drag arround,
+which attaches and detaches automatically aligned to the cell / 4 = by 15 minutes - so how it works the calendar can switch between da and week view)
 The main event editor, just show the slots in read only form, maybe scrolabble (undecided)
-(The slot wizard maybe only for public and friends event)
 Naturally the frequency affects the slot what you can add - monthly - you can pick some days, but on daily not.
 2) request to join on event explore (you can fully book an event - a flag on main event, but in this case the request to join is a "book")
 when you request join slots vizard in read only form popups up and you can choose a slot
 (the request join menu itself should show red counter or different way that you need to choose from slots)
 3) slots has separate and coloured chat channels
-
-Ratings
--------
-separated friends, you met with both, but they didn't meet with each other
-friends in common, when you didn't met with someone, but you both meet a person, who meet with both of you
-
-1) home
-next to single mode/pair mode -> trasform to dropdown box, add "separated friends" / "friends in common"
-separated friends is a pair rate view, but two auto completer textbox at top of the image (you can put event/friends name etc.)
-the filtered list can be vertically scrollable on the pair panel the two people independently
-2) actitivies - rating
-separated friends -> on your side -> pair rate - given / on other side -> pair rate received (and it's friendss in common actually)
-next to pair rate label (dropdown box/mobile menu sheet) you can set - social badge on/off -
-so it's filtering the separated/friends in common from the given/received list
-when switch on the given/received red counter applies
-3) wire end to end to the backend also, not just for demo
+4) for creator for each slot a new event item will appear on activity event - it will be automatically generated for future dates and has dedicated custom colouring
 
 Asset explore
 -------------
@@ -36,7 +21,7 @@ Assets can have price tag (we haven't introduced purse for public/frineds event 
 Bugs
 ----
 1) pull up feature if you ended up bottom of the scrolling area
-2) activities-popup.component.ts cut out the templates (ActivitiesListComponent)
+2) extract the templates and functionalities from activities-popup.component.ts and put under a templates folder next to it (we have three templates here - rate/event/chat)
 3) optional events can be parallel (maybe a switch on the form "parallel allowed"), but needs to cut the mandatory in the same way when you add
 
 Speed

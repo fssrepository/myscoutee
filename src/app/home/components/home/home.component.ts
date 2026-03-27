@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, OnDestroy, ViewChild, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
 import { from } from 'rxjs';
 import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
 import {
@@ -27,7 +29,9 @@ import {
   USER_BY_ID_LOAD_CONTEXT_KEY,
   USER_GAME_CARDS_LOAD_CONTEXT_KEY,
   UsersService,
-  type UserDto
+  type UserDto,
+  type UserGameMode,
+  type UserGameSocialCard
 } from '../../../shared/core';
 import { HomeGameFilterPopupComponent } from './home-game-filter-popup.component';
 import {
@@ -59,11 +63,12 @@ interface LeavingGameCardState {
 interface PairModeRoundState {
   woman: DemoUser | null;
   man: DemoUser | null;
+  socialCard?: UserGameSocialCard;
 }
 
 interface HomeSmartListFilters {
   activeUserId: string;
-  mode: 'single' | 'pair';
+  mode: UserGameMode;
   filterKey: string;
 }
 
@@ -71,6 +76,7 @@ interface HomeSingleSmartListRow {
   id: string;
   mode: 'single';
   candidate: DemoUser;
+  socialCard?: UserGameSocialCard;
 }
 
 interface HomePairSmartListRow {
@@ -80,6 +86,12 @@ interface HomePairSmartListRow {
 }
 
 type HomeSmartListRow = HomeSingleSmartListRow | HomePairSmartListRow;
+
+interface HomeModeOption {
+  key: UserGameMode;
+  label: string;
+  icon: string;
+}
 
 const PUBLIC_PROFILE_DETAIL_LABELS = new Set(
   APP_STATIC_DATA.profileDetailGroupTemplates.flatMap(group =>
@@ -95,7 +107,9 @@ const PUBLIC_PROFILE_DETAIL_LABELS = new Set(
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
+    FormsModule,
     MatIconModule,
+    MatSelectModule,
     SmartListComponent,
     SingleCardComponent,
     PairCardComponent,
@@ -123,9 +137,17 @@ export class HomeComponent implements OnDestroy {
   private readonly gameFilterInterestGroups: GameFilterOptionGroup[] = APP_STATIC_DATA.homeGameFilterInterestGroups;
   private readonly gameFilterValuesGroups: GameFilterOptionGroup[] = APP_STATIC_DATA.homeGameFilterValuesGroups;
   private readonly userFacetById: Record<string, GameUserFacet> = APP_STATIC_DATA.homeUserFacetById;
+  protected readonly homeModeOptions: ReadonlyArray<HomeModeOption> = [
+    { key: 'single', label: 'Single mode', icon: 'person' },
+    { key: 'pair', label: 'Pair mode', icon: 'groups' },
+    { key: 'separated-friends', label: 'Separated friends', icon: 'group_add' },
+    { key: 'friends-in-common', label: 'Friends in common', icon: 'diversity_3' }
+  ];
   private users: DemoUser[] = [];
   protected selectedRating = 0;
-  protected isPairMode = false;
+  protected selectedHomeMode: UserGameMode = 'single';
+  protected leftSocialQuery = '';
+  protected rightSocialQuery = '';
   protected cardIndex = 0;
   protected isRatingBarBlinking = false;
   protected isCandidateImageLoading = false;
@@ -211,6 +233,22 @@ export class HomeComponent implements OnDestroy {
   };
   protected readonly homeSmartListLoadPage: SmartListLoadPage<HomeSmartListRow, HomeSmartListFilters>
     = query => from(this.loadHomeSmartListPage(query));
+
+  protected get isPairMode(): boolean {
+    return this.selectedHomeMode === 'pair' || this.selectedHomeMode === 'separated-friends';
+  }
+
+  private get isSyntheticPairMode(): boolean {
+    return this.selectedHomeMode === 'pair';
+  }
+
+  protected get isSeparatedFriendsMode(): boolean {
+    return this.selectedHomeMode === 'separated-friends';
+  }
+
+  protected get isFriendsInCommonMode(): boolean {
+    return this.selectedHomeMode === 'friends-in-common';
+  }
 
   constructor(
     private readonly cdr: ChangeDetectorRef,
@@ -342,6 +380,12 @@ export class HomeComponent implements OnDestroy {
 
   protected get candidatePool(): DemoUser[] {
     const serviceStack = this.gameService.getUserGameCardsStackSnapshot(this.activeUserId);
+    if (this.isFriendsInCommonMode && (serviceStack.socialCards.length > 0 || serviceStack.nextCursor !== null)) {
+      const usersById = new Map(this.users.map(user => [user.id, user] as const));
+      return serviceStack.socialCards
+        .map(card => usersById.get(card.userId))
+        .filter((user): user is DemoUser => Boolean(user));
+    }
     if (!this.isPairMode && (serviceStack.cardUserIds.length > 0 || serviceStack.nextCursor !== null)) {
       const usersById = new Map(this.users.map(user => [user.id, user] as const));
       return serviceStack.cardUserIds
@@ -397,6 +441,9 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get hasFilteredCandidates(): boolean {
+    if (this.isSeparatedFriendsMode) {
+      return this.socialPairRows().length > 0;
+    }
     return this.candidatePool.length > 0;
   }
 
@@ -459,6 +506,37 @@ export class HomeComponent implements OnDestroy {
     return isGameFilterActive(this.gameFilter, this.activeUser);
   }
 
+  protected selectedHomeModeLabel(): string {
+    return this.homeModeOptions.find(option => option.key === this.selectedHomeMode)?.label ?? 'Single mode';
+  }
+
+  protected selectedHomeModeIcon(): string {
+    return this.homeModeOptions.find(option => option.key === this.selectedHomeMode)?.icon ?? 'person';
+  }
+
+  protected showSocialQueryInputs(): boolean {
+    return this.isSeparatedFriendsMode || this.isFriendsInCommonMode;
+  }
+
+  protected socialQuerySuggestions(side: 'left' | 'right'): string[] {
+    const values = new Set<string>();
+    const socialCards = this.gameService.getUserGameCardsStackSnapshot(this.activeUserId).socialCards;
+    for (const card of socialCards) {
+      const primaryUser = this.userById(card.userId);
+      const secondaryUser = this.userById(side === 'left' ? card.userId : (card.secondaryUserId ?? card.bridgeUserId ?? ''));
+      if (primaryUser?.name) {
+        values.add(primaryUser.name);
+      }
+      if (secondaryUser?.name) {
+        values.add(secondaryUser.name);
+      }
+      if (card.eventName?.trim()) {
+        values.add(card.eventName.trim());
+      }
+    }
+    return [...values].slice(0, 24);
+  }
+
   protected homeSingleCard(
     row: HomeSmartListRow | null,
     options?: {
@@ -469,8 +547,10 @@ export class HomeComponent implements OnDestroy {
     const candidate = row?.mode === 'single' ? row.candidate : null;
     return {
       rowId: row?.id ?? 'home-single-empty',
-      slides: this.homeCandidateSlides(candidate),
-      statusBadgeLabel: this.candidateActivityBadge(candidate),
+      slides: this.homeCandidateSlides(candidate, row?.mode === 'single' ? row.socialCard : undefined),
+      statusBadgeLabel: row?.mode === 'single' && row.socialCard
+        ? this.homeSocialStatusBadge(row.socialCard)
+        : this.candidateActivityBadge(candidate),
       presentation: options?.presentation ?? 'fullscreen',
       state: options?.state ?? 'default'
     };
@@ -485,11 +565,22 @@ export class HomeComponent implements OnDestroy {
   ): PairCardData {
     const round = row?.mode === 'pair' ? row.round : null;
     const presentation = options?.presentation ?? 'fullscreen';
+    const isSocialPair = !!round?.socialCard;
     return {
       rowId: row?.id ?? 'home-pair-empty',
       slots: [
-        this.homePairCardSlot('woman', round?.woman ?? null),
-        this.homePairCardSlot('man', round?.man ?? null)
+        this.homePairCardSlot(
+          'woman',
+          isSocialPair ? 'Friend A' : 'Woman',
+          round?.woman ?? null,
+          round?.socialCard
+        ),
+        this.homePairCardSlot(
+          'man',
+          isSocialPair ? 'Friend B' : 'Man',
+          round?.man ?? null,
+          round?.socialCard
+        )
       ],
       presentation,
       state: options?.state ?? 'default',
@@ -553,17 +644,33 @@ export class HomeComponent implements OnDestroy {
     }, HomeComponent.GAME_RATING_CONFIRMATION_MS);
   }
 
-  protected togglePairMode(): void {
+  protected selectHomeMode(mode: UserGameMode): void {
+    const normalizedMode = this.normalizeHomeMode(mode);
+    if (this.selectedHomeMode === normalizedMode) {
+      return;
+    }
     this.stopPairModeSplitDrag();
-    this.isPairMode = !this.isPairMode;
+    this.selectedHomeMode = normalizedMode;
     this.appCtx.clearUserFilterCountOverride(this.activeUserId);
     this.resetServiceCardState();
     this.cardIndex = 0;
+    this.leftSocialQuery = '';
+    this.rightSocialQuery = '';
     this.resetCandidateImageState();
     this.resetGameStackPaginationState(false);
     this.syncHomeSmartListQuery();
     this.gameInitialCardsLoadPending = true;
     void this.reloadServiceCardStack();
+  }
+
+  protected onLeftSocialQueryChanged(value: string): void {
+    this.leftSocialQuery = value.trimStart();
+    this.reloadSocialModeCards();
+  }
+
+  protected onRightSocialQueryChanged(value: string): void {
+    this.rightSocialQuery = value.trimStart();
+    this.reloadSocialModeCards();
   }
 
   protected openHistory(): void {
@@ -573,7 +680,9 @@ export class HomeComponent implements OnDestroy {
     this.activitiesContext.openActivities(
       'rates',
       undefined,
-      this.isPairMode ? 'pair-given' : 'individual-given'
+      this.selectedHomeMode === 'friends-in-common'
+        ? 'pair-received'
+        : (this.isPairMode ? 'pair-given' : 'individual-given')
     );
   }
 
@@ -1059,7 +1168,10 @@ export class HomeComponent implements OnDestroy {
       await this.gameService.loadInitialUserGameCardsStackPage(
         this.activeUserId,
         this.gameFilterForRequest(),
-        this.gameStackPageSizeForCurrentMode()
+        this.gameStackPageSizeForCurrentMode(),
+        this.selectedHomeMode,
+        this.leftSocialQuery.trim() || null,
+        this.rightSocialQuery.trim() || null
       );
       if (requestUserId !== this.activeUserId) {
         return;
@@ -1156,8 +1268,12 @@ export class HomeComponent implements OnDestroy {
     this.homeSmartListQuery = {
       filters: {
         activeUserId: this.activeUserId,
-        mode: this.isPairMode ? 'pair' : 'single',
-        filterKey: JSON.stringify(this.gameFilter)
+        mode: this.selectedHomeMode,
+        filterKey: JSON.stringify({
+          gameFilter: this.gameFilter,
+          leftSocialQuery: this.leftSocialQuery.trim(),
+          rightSocialQuery: this.rightSocialQuery.trim()
+        })
       }
     };
   }
@@ -1182,7 +1298,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private async waitForInitialHomeGameStack(query: ListQuery<HomeSmartListFilters>): Promise<void> {
-    if (this.isPairMode || query.page > 0 || this.gameInitialCardsLoadPending === false) {
+    if (this.isSyntheticPairMode || query.page > 0 || this.gameInitialCardsLoadPending === false) {
       return;
     }
     while (this.gameInitialCardsLoadPending) {
@@ -1197,14 +1313,14 @@ export class HomeComponent implements OnDestroy {
   }
 
   private async ensureHomeSmartListRowsAvailable(query: ListQuery<HomeSmartListFilters>): Promise<void> {
-    if (this.isPairMode || !this.gameService.shouldUseUserGameCardsStack(this.activeUserId)) {
+    if (this.isSyntheticPairMode || !this.gameService.shouldUseUserGameCardsStack(this.activeUserId)) {
       return;
     }
     const pageSize = Number.isFinite(query.pageSize)
       ? Math.max(1, Math.trunc(Number(query.pageSize)))
       : this.gameStackPageSizeForCurrentMode();
     const requiredCount = (Math.max(0, query.page) + 1) * pageSize;
-    while (this.candidatePool.length < requiredCount) {
+    while (this.availableServiceRowsCount() < requiredCount) {
       const snapshot = this.gameService.getUserGameCardsStackSnapshot(this.activeUserId);
       if (snapshot.requestInFlight || snapshot.nextCursor === null) {
         return;
@@ -1212,19 +1328,36 @@ export class HomeComponent implements OnDestroy {
       await this.gameService.loadNextUserGameCardsStackPage(
         this.activeUserId,
         this.gameFilterForRequest(),
-        this.gameStackPageSizeForCurrentMode()
+        this.gameStackPageSizeForCurrentMode(),
+        this.selectedHomeMode,
+        this.leftSocialQuery.trim() || null,
+        this.rightSocialQuery.trim() || null
       );
       this.mergeGameStackUsersIntoHomeUsers();
     }
   }
 
+  private availableServiceRowsCount(): number {
+    const snapshot = this.gameService.getUserGameCardsStackSnapshot(this.activeUserId);
+    if (this.isSeparatedFriendsMode || this.isFriendsInCommonMode) {
+      return snapshot.socialCards.length;
+    }
+    return this.candidatePool.length;
+  }
+
   private homeSmartListRows(): HomeSmartListRow[] {
+    if (this.isSeparatedFriendsMode) {
+      return this.socialPairRows();
+    }
     if (this.isPairMode) {
       return this.pairModeRounds().map((round, index) => ({
-        id: `pair:${round.woman?.id ?? 'none'}:${round.man?.id ?? 'none'}:${index}`,
+        id: round.socialCard?.id ?? `pair:${round.woman?.id ?? 'none'}:${round.man?.id ?? 'none'}:${index}`,
         mode: 'pair',
         round
       }));
+    }
+    if (this.isFriendsInCommonMode) {
+      return this.socialSingleRows();
     }
     return this.candidatePool.map(candidate => ({
       id: `single:${candidate.id}`,
@@ -1259,7 +1392,12 @@ export class HomeComponent implements OnDestroy {
     }, HomeComponent.GAME_RATING_CONFIRMATION_MS + 24);
   }
 
-  private homeCandidateSlides(candidate: DemoUser | null): SingleCardData['slides'] {
+  private homeCandidateSlides(candidate: DemoUser | null): SingleCardData['slides'];
+  private homeCandidateSlides(candidate: DemoUser | null, socialCard: UserGameSocialCard | undefined): SingleCardData['slides'];
+  private homeCandidateSlides(
+    candidate: DemoUser | null,
+    socialCard?: UserGameSocialCard
+  ): SingleCardData['slides'] {
     if (!candidate) {
       return [{
         imageUrl: '',
@@ -1274,8 +1412,8 @@ export class HomeComponent implements OnDestroy {
       const overlay = overlays[index] ?? overlays[0] ?? null;
       return {
         imageUrl,
-        primaryLine: overlay?.primary ?? `${candidate.name}, ${candidate.age}`,
-        secondaryLine: overlay?.secondary ?? candidate.city,
+        primaryLine: overlay?.primary ?? this.homeCandidatePrimaryLine(candidate, socialCard),
+        secondaryLine: this.homeCandidateSecondaryLine(candidate, socialCard, overlay?.secondary),
         placeholderLabel: initials
       };
     });
@@ -1283,15 +1421,98 @@ export class HomeComponent implements OnDestroy {
 
   private homePairCardSlot(
     gender: DemoUser['gender'],
-    candidate: DemoUser | null
+    label: string,
+    candidate: DemoUser | null,
+    socialCard?: UserGameSocialCard
   ): PairCardData['slots'][number] {
     return {
       key: gender,
-      label: gender === 'woman' ? 'Woman' : 'Man',
-      tone: gender,
-      slides: this.homeCandidateSlides(candidate),
-      statusBadgeLabel: this.candidateActivityBadge(candidate)
+      label,
+      tone: candidate?.gender ?? gender,
+      slides: this.homeCandidateSlides(candidate, socialCard),
+      statusBadgeLabel: socialCard ? this.homeSocialStatusBadge(socialCard) : this.candidateActivityBadge(candidate)
     };
+  }
+
+  private socialPairRows(): HomePairSmartListRow[] {
+    return this.gameService.getUserGameCardsStackSnapshot(this.activeUserId).socialCards
+      .filter(card => card.socialContext === 'separated-friends')
+      .map(card => ({
+        id: card.id,
+        mode: 'pair' as const,
+        round: {
+          woman: this.userById(card.userId),
+          man: this.userById(card.secondaryUserId ?? ''),
+          socialCard: card
+        }
+      }))
+      .filter(row => !!row.round.woman && !!row.round.man);
+  }
+
+  private socialSingleRows(): HomeSingleSmartListRow[] {
+    return this.gameService.getUserGameCardsStackSnapshot(this.activeUserId).socialCards
+      .filter(card => card.socialContext === 'friends-in-common')
+      .map(card => ({
+        id: card.id,
+        mode: 'single' as const,
+        candidate: this.userById(card.userId),
+        socialCard: card
+      }))
+      .filter((row): row is HomeSingleSmartListRow & { socialCard: UserGameSocialCard } => Boolean(row.candidate));
+  }
+
+  private userById(userId: string): DemoUser | null {
+    return this.users.find(user => user.id === userId) ?? null;
+  }
+
+  private homeSocialStatusBadge(card: UserGameSocialCard): string {
+    return card.socialContext === 'friends-in-common' ? 'Common friend' : 'Separated';
+  }
+
+  private homeCandidatePrimaryLine(candidate: DemoUser, socialCard?: UserGameSocialCard): string {
+    if (socialCard?.socialContext === 'friends-in-common') {
+      return `${candidate.name}, ${candidate.age}`;
+    }
+    return `${candidate.name}, ${candidate.age}`;
+  }
+
+  private homeCandidateSecondaryLine(
+    candidate: DemoUser,
+    socialCard: UserGameSocialCard | undefined,
+    fallback: string | null | undefined
+  ): string {
+    if (socialCard?.socialContext === 'friends-in-common') {
+      const bridgeName = this.userById(socialCard.bridgeUserId ?? '')?.name ?? 'Shared friend';
+      return socialCard.eventName?.trim()
+        ? `${bridgeName} · ${socialCard.eventName.trim()}`
+        : `${bridgeName} · ${candidate.city}`;
+    }
+    if (socialCard?.socialContext === 'separated-friends') {
+      return socialCard.eventName?.trim() || fallback || candidate.city;
+    }
+    return fallback || candidate.city;
+  }
+
+  private reloadSocialModeCards(): void {
+    if (!this.isSeparatedFriendsMode && !this.isFriendsInCommonMode) {
+      return;
+    }
+    this.appCtx.clearUserFilterCountOverride(this.activeUserId);
+    this.resetServiceCardState();
+    this.cardIndex = 0;
+    this.resetCandidateImageState();
+    this.resetGameStackPaginationState(false);
+    this.syncHomeSmartListQuery();
+    this.gameInitialCardsLoadPending = true;
+    void this.reloadServiceCardStack();
+  }
+
+  private normalizeHomeMode(mode: UserGameMode | string | null | undefined): UserGameMode {
+    return mode === 'pair'
+      || mode === 'separated-friends'
+      || mode === 'friends-in-common'
+      ? mode
+      : 'single';
   }
 
   private resetCandidateImageState(): void {
@@ -1432,6 +1653,9 @@ export class HomeComponent implements OnDestroy {
   }
 
   private pairModeRounds(): PairModeRoundState[] {
+    if (this.isSeparatedFriendsMode) {
+      return this.socialPairRows().map(row => row.round);
+    }
     const women = this.candidatePool.filter(user => user.gender === 'woman');
     const men = this.candidatePool.filter(user => user.gender === 'man');
     const total = Math.min(women.length, men.length);
@@ -1774,20 +1998,26 @@ export class HomeComponent implements OnDestroy {
   }
 
   private totalRoundsForCurrentMode(): number {
-    if (this.isPairMode) {
+    if (this.isSyntheticPairMode) {
       return this.pairModeCycleSize();
     }
     const serviceStack = this.gameService.getUserGameCardsStackSnapshot(this.activeUserId);
-    if (serviceStack.cardUserIds.length > 0 || serviceStack.nextCursor !== null) {
-      return this.appCtx.resolveUserFilterCount(this.activeUserId, serviceStack.cardUserIds.length);
+    if (serviceStack.cardUserIds.length > 0 || serviceStack.socialCards.length > 0 || serviceStack.nextCursor !== null) {
+      const fallbackCount = this.isSeparatedFriendsMode || this.isFriendsInCommonMode
+        ? serviceStack.socialCards.length
+        : serviceStack.cardUserIds.length;
+      return this.appCtx.resolveUserFilterCount(this.activeUserId, fallbackCount);
     }
     return this.candidatePool.length;
   }
 
   private gameStackPaginationStateKey(): string {
-    const modeKey = this.isPairMode ? 'pair' : 'single';
-    const filterKey = JSON.stringify(this.gameFilter);
-    return `${this.activeUserId}|${modeKey}|${filterKey}`;
+    const filterKey = JSON.stringify({
+      gameFilter: this.gameFilter,
+      leftSocialQuery: this.leftSocialQuery.trim(),
+      rightSocialQuery: this.rightSocialQuery.trim()
+    });
+    return `${this.activeUserId}|${this.selectedHomeMode}|${filterKey}`;
   }
 
   private gameStackPageSizeForCurrentMode(): number {
@@ -1842,7 +2072,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private startGameStackPaginationLoad(): void {
-    if (!this.isPairMode && this.gameService.shouldUseUserGameCardsStack(this.activeUserId)) {
+    if (!this.isSyntheticPairMode && this.gameService.shouldUseUserGameCardsStack(this.activeUserId)) {
       this.startServiceCardPaginationLoad();
       return;
     }
@@ -1900,7 +2130,7 @@ export class HomeComponent implements OnDestroy {
       return;
     }
     const serviceStackBefore = this.gameService.getUserGameCardsStackSnapshot(this.activeUserId);
-    if (!serviceStackBefore.nextCursor && serviceStackBefore.cardUserIds.length > 0) {
+    if (!serviceStackBefore.nextCursor && (serviceStackBefore.cardUserIds.length > 0 || serviceStackBefore.socialCards.length > 0)) {
       this.gameStackExhausted = true;
       return;
     }
@@ -1909,12 +2139,18 @@ export class HomeComponent implements OnDestroy {
     void this.gameService.loadNextUserGameCardsStackPage(
       this.activeUserId,
       this.gameFilter,
-      this.gameStackPageSizeForCurrentMode()
+      this.gameStackPageSizeForCurrentMode(),
+      this.selectedHomeMode,
+      this.leftSocialQuery.trim() || null,
+      this.rightSocialQuery.trim() || null
     ).then(serviceStack => {
       this.mergeGameStackUsersIntoHomeUsers();
       const previousLoaded = this.gameStackCardsLoaded;
       const totalRounds = this.totalRoundsForCurrentMode();
-      this.gameStackCardsLoaded = Math.min(totalRounds, serviceStack.cardUserIds.length);
+      const loadedCount = this.isSeparatedFriendsMode || this.isFriendsInCommonMode
+        ? serviceStack.socialCards.length
+        : serviceStack.cardUserIds.length;
+      this.gameStackCardsLoaded = Math.min(totalRounds, loadedCount);
       const loadedMoreCards = this.gameStackCardsLoaded > previousLoaded;
       this.gameStackExhausted = !loadedMoreCards && !serviceStack.nextCursor;
       this.preloadGameImageWindow();
@@ -2030,9 +2266,7 @@ export class HomeComponent implements OnDestroy {
 
   private canAttemptGameStackLoad(): boolean {
     if (this.isPairMode) {
-      const hasWomen = this.candidatePool.some(user => user.gender === 'woman');
-      const hasMen = this.candidatePool.some(user => user.gender === 'man');
-      return hasWomen && hasMen;
+      return this.pairModeCycleSize() > 0;
     }
     return this.candidatePool.length > 0;
   }
