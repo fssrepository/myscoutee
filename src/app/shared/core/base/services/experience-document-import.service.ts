@@ -19,6 +19,14 @@ type PdfObjectStream = {
   content: string;
 };
 
+type PdfObjectDefinition = {
+  objectId: number;
+  offset: number;
+  nextOffset: number;
+  source: string;
+  dictionary: string;
+};
+
 @Injectable({
   providedIn: 'root'
 })
@@ -250,6 +258,55 @@ export class ExperienceDocumentImportService {
   }
 
   private async extractPdfObjectStreams(raw: string, bytes: Uint8Array): Promise<PdfObjectStream[]> {
+    const objects = this.extractPdfObjects(raw);
+    if (objects.length > 0) {
+      const streams: PdfObjectStream[] = [];
+
+      for (const object of objects) {
+        if (!object.dictionary || !object.source.includes('stream')) {
+          continue;
+        }
+
+        const streamStart = this.resolvePdfStreamStart(object);
+        if (streamStart < 0) {
+          continue;
+        }
+
+        const declaredLength = this.resolvePdfStreamLength(object.dictionary, raw);
+        const localEndStreamIndex = object.source.indexOf('endstream', streamStart - object.offset);
+        const fallbackEnd = localEndStreamIndex >= 0 ? object.offset + localEndStreamIndex : -1;
+        const end = declaredLength > 0 && streamStart + declaredLength <= object.nextOffset
+          ? streamStart + declaredLength
+          : fallbackEnd;
+        if (end < 0 || end > bytes.length) {
+          continue;
+        }
+
+        const streamBytes = bytes.slice(streamStart, end);
+        let content = '';
+        if (object.dictionary.includes('/FlateDecode')) {
+          const inflated = await this.inflatePdfStream(streamBytes);
+          if (!inflated) {
+            continue;
+          }
+          content = this.decodeBinaryBuffer(inflated);
+        } else {
+          content = this.decodeBinaryBuffer(streamBytes.buffer.slice(
+            streamBytes.byteOffset,
+            streamBytes.byteOffset + streamBytes.byteLength
+          ));
+        }
+
+        streams.push({
+          objectId: object.objectId,
+          dictionary: object.dictionary,
+          content
+        });
+      }
+
+      return streams;
+    }
+
     const streams: PdfObjectStream[] = [];
     const streamPattern = /(?:^|[\r\n])(\d+)\s+0\s+obj\b\s*<<([\s\S]*?)>>\s*stream\r?\n/g;
     let match: RegExpExecArray | null;
@@ -359,6 +416,11 @@ export class ExperienceDocumentImportService {
   }
 
   private extractPdfObjectDictionaries(raw: string): Map<number, string> {
+    const objects = this.extractPdfObjects(raw);
+    if (objects.length > 0) {
+      return new Map(objects.map(object => [object.objectId, object.dictionary] as [number, string]));
+    }
+
     const dictionaries = new Map<number, string>();
     for (const match of raw.matchAll(/(?:^|[\r\n])(\d+)\s+0\s+obj\b\s*<<([\s\S]*?)>>/g)) {
       const objectId = Number.parseInt(match[1], 10);
@@ -367,6 +429,138 @@ export class ExperienceDocumentImportService {
       }
     }
     return dictionaries;
+  }
+
+  private extractPdfObjects(raw: string): PdfObjectDefinition[] {
+    const offsets = this.extractPdfObjectOffsets(raw);
+    if (offsets.size === 0) {
+      return [];
+    }
+
+    const orderedOffsets = [...offsets.entries()].sort((left, right) => left[1] - right[1]);
+    const objects: PdfObjectDefinition[] = [];
+
+    for (let index = 0; index < orderedOffsets.length; index += 1) {
+      const [objectId, offset] = orderedOffsets[index];
+      const nextOffset = orderedOffsets[index + 1]?.[1] ?? raw.length;
+      if (offset < 0 || nextOffset <= offset || nextOffset > raw.length) {
+        continue;
+      }
+
+      const source = raw.slice(offset, nextOffset);
+      if (!/^\d+\s+\d+\s+obj\b/.test(source)) {
+        continue;
+      }
+
+      const dictionaryMatch = source.match(/^\d+\s+\d+\s+obj\b\s*<<([\s\S]*?)>>/);
+      objects.push({
+        objectId,
+        offset,
+        nextOffset,
+        source,
+        dictionary: dictionaryMatch?.[1] ?? ''
+      });
+    }
+
+    return objects;
+  }
+
+  private extractPdfObjectOffsets(raw: string): Map<number, number> {
+    const startXrefMatches = [...raw.matchAll(/startxref\s+(\d+)\s+%%EOF/g)];
+    const lastStartXrefMatch = startXrefMatches[startXrefMatches.length - 1];
+    if (!lastStartXrefMatch) {
+      return new Map();
+    }
+
+    let cursor = Number.parseInt(lastStartXrefMatch[1], 10);
+    if (Number.isNaN(cursor) || raw.slice(cursor, cursor + 4) !== 'xref') {
+      return new Map();
+    }
+    cursor += 4;
+
+    const offsets = new Map<number, number>();
+    while (cursor < raw.length) {
+      const lineResult = this.readPdfLine(raw, cursor);
+      if (!lineResult) {
+        break;
+      }
+      cursor = lineResult.nextIndex;
+      const line = lineResult.line.trim();
+      if (!line) {
+        continue;
+      }
+      if (line === 'trailer') {
+        break;
+      }
+
+      const subsectionMatch = line.match(/^(\d+)\s+(\d+)$/);
+      if (!subsectionMatch) {
+        return new Map();
+      }
+
+      const objectStart = Number.parseInt(subsectionMatch[1], 10);
+      const objectCount = Number.parseInt(subsectionMatch[2], 10);
+      if (Number.isNaN(objectStart) || Number.isNaN(objectCount)) {
+        return new Map();
+      }
+
+      for (let index = 0; index < objectCount; index += 1) {
+        const entryLineResult = this.readPdfLine(raw, cursor);
+        if (!entryLineResult) {
+          return new Map();
+        }
+        cursor = entryLineResult.nextIndex;
+        const entryMatch = entryLineResult.line.match(/^(\d{10})\s+(\d{5})\s+([nf])\s*$/);
+        if (!entryMatch) {
+          return new Map();
+        }
+        if (entryMatch[3] !== 'n') {
+          continue;
+        }
+        offsets.set(objectStart + index, Number.parseInt(entryMatch[1], 10));
+      }
+    }
+
+    return offsets;
+  }
+
+  private readPdfLine(raw: string, startIndex: number): { line: string; nextIndex: number } | null {
+    if (startIndex >= raw.length) {
+      return null;
+    }
+
+    let endIndex = startIndex;
+    while (endIndex < raw.length && raw[endIndex] !== '\n' && raw[endIndex] !== '\r') {
+      endIndex += 1;
+    }
+
+    let nextIndex = endIndex;
+    if (raw[nextIndex] === '\r' && raw[nextIndex + 1] === '\n') {
+      nextIndex += 2;
+    } else if (nextIndex < raw.length) {
+      nextIndex += 1;
+    }
+
+    return {
+      line: raw.slice(startIndex, endIndex),
+      nextIndex
+    };
+  }
+
+  private resolvePdfStreamStart(object: PdfObjectDefinition): number {
+    const streamKeywordIndex = object.source.indexOf('stream');
+    if (streamKeywordIndex < 0) {
+      return -1;
+    }
+
+    let startIndex = streamKeywordIndex + 'stream'.length;
+    if (object.source[startIndex] === '\r' && object.source[startIndex + 1] === '\n') {
+      startIndex += 2;
+    } else if (object.source[startIndex] === '\n' || object.source[startIndex] === '\r') {
+      startIndex += 1;
+    }
+
+    return object.offset + startIndex;
   }
 
   private parsePdfToUnicodeMap(cmap: string): PdfFontMap {
@@ -425,13 +619,26 @@ export class ExperienceDocumentImportService {
     fontMaps: ReadonlyMap<string, PdfFontMap>
   ): string {
     if (operand.startsWith('[')) {
-      return (operand.match(/\((?:\\.|[^\\()])*\)|<[\dA-Fa-f\s]+>/g) ?? [])
-        .map(token => this.decodePdfTextToken(token, fontName, fontMaps))
-        .join(' ')
-        .replace(/\s{2,}/g, ' ')
-        .trim();
+      return this.decodePdfTextArray(operand, fontName, fontMaps);
     }
     return this.decodePdfTextToken(operand, fontName, fontMaps).trim();
+  }
+
+  private decodePdfTextArray(
+    operand: string,
+    fontName: string,
+    fontMaps: ReadonlyMap<string, PdfFontMap>
+  ): string {
+    const tokens = operand.match(/\((?:\\.|[^\\()])*\)|<[\dA-Fa-f\s]+>|-?\d+(?:\.\d+)?/g) ?? [];
+    let decoded = '';
+
+    for (const token of tokens) {
+      if (token.startsWith('(') || token.startsWith('<')) {
+        decoded += this.decodePdfTextToken(token, fontName, fontMaps);
+      }
+    }
+
+    return decoded.replace(/\s{2,}/g, ' ').trim();
   }
 
   private decodePdfTextToken(
@@ -680,22 +887,33 @@ export class ExperienceDocumentImportService {
         continue;
       }
 
-      const resolvedType = this.resolveEntryType(currentLines, currentSection);
-      const parsedBlock = this.parseExperienceBlock(currentLines, resolvedType);
+      if (currentSection !== 'Workspace' && this.isStandaloneDateRangeLine(currentLines[0] ?? '')) {
+        currentSection = 'Workspace';
+        continue;
+      }
+
+      if (currentSection === 'Workspace') {
+        continue;
+      }
+
+      if (currentLines.length === 1) {
+        continue;
+      }
+
+      const parsedBlock = this.parseSectionBlock(
+        currentLines,
+        currentSection as Extract<ExperienceSectionType, 'School' | 'Online Session' | 'Additional Project'>
+      );
       if (!parsedBlock) {
         continue;
       }
 
-      if (parsedBlock.usedFallbackDate) {
-        usedFallbackDate = true;
-      }
-
-      const signature = this.entrySignature(parsedBlock.entry);
+      const signature = this.entrySignature(parsedBlock);
       if (seenSignatures.has(signature)) {
         continue;
       }
       seenSignatures.add(signature);
-      entries.push(parsedBlock.entry);
+      entries.push(parsedBlock);
     }
 
     if (usedFallbackDate) {
@@ -757,10 +975,10 @@ export class ExperienceDocumentImportService {
     if (/^(projects?|portfolio|open source|freelance projects?)$/.test(normalized)) {
       return 'Additional Project';
     }
-    if (/^(certifications?|courses?|training|bootcamps?|online courses?|certificates?)$/.test(normalized)) {
+    if (/^(certifications?|courses?|training|bootcamps?|online courses?|certificates?|interests)$/.test(normalized)) {
       return 'Online Session';
     }
-    if (/^(summary|profile|skills|technology|technical skills|tech stack|interests|languages|contact|personal data|personal details)$/.test(normalized)) {
+    if (/^(summary|profile|skills|technology|technical skills|tech stack|languages|contact|personal data|personal details)$/.test(normalized)) {
       return 'Ignore';
     }
     return null;
@@ -911,8 +1129,12 @@ export class ExperienceDocumentImportService {
         continue;
       }
 
+      if (currentSection !== 'Workspace' && this.isStandaloneDateRangeLine(line)) {
+        currentSection = 'Workspace';
+      }
+
       if (currentSection === 'School' || currentSection === 'Additional Project' || currentSection === 'Online Session') {
-        const collected = this.collectTimelineBlock(lines, index);
+        const collected = this.collectTimelineBlock(lines, index, currentSection);
         const parsed = this.parseSectionBlock(collected.blockLines, currentSection);
         if (parsed) {
           const signature = this.entrySignature(parsed);
@@ -926,7 +1148,7 @@ export class ExperienceDocumentImportService {
       }
 
       if (this.containsDateRange(line)) {
-        const collected = this.collectTimelineBlock(lines, index);
+        const collected = this.collectTimelineBlock(lines, index, 'Workspace');
         const parsed = this.parseTimelineBlock(collected.blockLines, currentSection);
         if (parsed) {
           const signature = this.entrySignature(parsed);
@@ -945,7 +1167,11 @@ export class ExperienceDocumentImportService {
     return entries;
   }
 
-  private collectTimelineBlock(lines: readonly string[], startIndex: number): { blockLines: string[]; nextIndex: number } {
+  private collectTimelineBlock(
+    lines: readonly string[],
+    startIndex: number,
+    currentSection: ExperienceSectionType
+  ): { blockLines: string[]; nextIndex: number } {
     const blockLines: string[] = [];
     let index = startIndex;
 
@@ -954,7 +1180,7 @@ export class ExperienceDocumentImportService {
       if (
         blockLines.length > 0
         && (
-          this.containsDateRange(line)
+          (currentSection === 'Workspace' ? this.containsDateRange(line) : this.isStandaloneDateRangeLine(line))
           || Boolean(this.resolveSectionHeaderType(line) && this.isSectionHeaderParagraph([line]))
         )
       ) {
@@ -1215,6 +1441,14 @@ export class ExperienceDocumentImportService {
 
   private containsDateRange(value: string): boolean {
     return this.extractDateRange(value) !== null;
+  }
+
+  private isStandaloneDateRangeLine(value: string): boolean {
+    const dateRange = this.extractDateRange(value);
+    if (!dateRange) {
+      return false;
+    }
+    return value.replace(dateRange.matchedText, ' ').trim().length === 0;
   }
 
   private extractStandaloneDateToken(value: string): string {
