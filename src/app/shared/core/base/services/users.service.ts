@@ -9,6 +9,7 @@ import type {
   DemoUserListItemDto,
   UserDeleteRequestDto,
   UserFeedbackSubmitRequestDto,
+  UserLocationEligibilityResponseDto,
   UserDto,
   UserLogoutRequestDto,
   UserReportUserSubmitRequestDto,
@@ -18,6 +19,7 @@ import type {
   UserService
 } from '../interfaces/user.interface';
 import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface';
+import type { LocationCoordinates } from '../interfaces/location.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { resolveCurrentRouteDelayMs } from './route-delay.service';
 
@@ -218,6 +220,10 @@ export class UsersService extends BaseRouteModeService {
         label: 'Demo session ready'
       });
     }
+  }
+
+  async checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto> {
+    return this.userService.checkLocationEligibility(coordinates);
   }
 
   async loadUserById(userId?: string, requestTimeoutMs?: number): Promise<UserDto | null> {
@@ -614,6 +620,12 @@ export class UsersService extends BaseRouteModeService {
   private cloneUser(user: UserDto): UserDto {
     return {
       ...user,
+      locationCoordinates: user.locationCoordinates
+        ? {
+            latitude: Number(user.locationCoordinates.latitude),
+            longitude: Number(user.locationCoordinates.longitude)
+          }
+        : undefined,
       languages: [...(user.languages ?? [])],
       images: [...(user.images ?? [])],
       impressions: user.impressions

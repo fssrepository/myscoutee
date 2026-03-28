@@ -113,6 +113,12 @@ export class HttpGameService implements UserGameDataService {
   private cloneUser(user: UserDto): UserDto {
     return {
       ...user,
+      locationCoordinates: user.locationCoordinates
+        ? {
+            latitude: Number(user.locationCoordinates.latitude),
+            longitude: Number(user.locationCoordinates.longitude)
+          }
+        : undefined,
       languages: [...(user.languages ?? [])],
       images: [...(user.images ?? [])],
       activities: {

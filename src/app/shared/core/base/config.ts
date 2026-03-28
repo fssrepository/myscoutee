@@ -20,58 +20,47 @@ export const ROUTE_CONFIG: RouteConfig = {
   entries: [
     {
       routePrefix: '/auth/demo-users',
-      demoDelayMs: 0,
-      http: true
+      demoDelayMs: 0
     },
     {
       routePrefix: '/auth/me',
-      demoDelayMs: 1500,
-      http: true
+      demoDelayMs: 1500
     },
     {
       routePrefix: '/game-cards/query',
-      demoDelayMs: 1500,
-      http: true
+      demoDelayMs: 1500
     },
     {
       routePrefix: '/activities/chats',
-      demoDelayMs: 1500,
-      http: true
+      demoDelayMs: 1500
     },
     {
       routePrefix: '/activities/events',
-      demoDelayMs: 1500,
-      http: true
+      demoDelayMs: 1500
     },
     {
       routePrefix: '/activities/events/subevent-resources',
-      demoDelayMs: 1500,
-      http: true
+      demoDelayMs: 1500
     },
     {
       routePrefix: '/activities/events/members',
-      demoDelayMs: 1500,
-      http: true
+      demoDelayMs: 1500
     },
     {
       routePrefix: '/activities/events/invite-candidates',
-      demoDelayMs: 1500,
-      http: true
+      demoDelayMs: 1500
     },
     {
       routePrefix: '/activities/rates',
-      demoDelayMs: 1500,
-      http: true
+      demoDelayMs: 1500
     },
     {
       routePrefix: '/assets',
-      demoDelayMs: 1500,
-      http: true
+      demoDelayMs: 1500
     },
     {
       routePrefix: '/assets/tickets',
-      demoDelayMs: 1500,
-      http: true
+      demoDelayMs: 1500
     }
   ]
 };

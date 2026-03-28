@@ -2,6 +2,9 @@ import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Inp
 
 import { UsersService, type DemoUserListItemDto } from '../../../shared/core';
 import type * as AppTypes from '../../../shared/core/base/models';
+import type { LocationCoordinates } from '../../../shared/core/base/interfaces/location.interface';
+import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
+import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { EntryConsentPopupComponent } from '../entry-consent-popup/entry-consent-popup.component';
 import { EntryDemoUserSelectorComponent } from '../entry-demo-user-selector/entry-demo-user-selector.component';
 import { EntryFirebaseAuthPopupComponent } from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';
@@ -14,7 +17,8 @@ import { EntryLandingComponent } from '../entry-landing/entry-landing.component'
     EntryLandingComponent,
     EntryConsentPopupComponent,
     EntryDemoUserSelectorComponent,
-    EntryFirebaseAuthPopupComponent
+    EntryFirebaseAuthPopupComponent,
+    ConfirmationDialogComponent
   ],
   templateUrl: './entry-shell.component.html',
   styleUrl: './entry-shell.component.scss'
@@ -28,7 +32,9 @@ export class EntryShellComponent {
   private readonly injector = inject(Injector);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
+  private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private usersServiceRef: UsersService | null = null;
+  private loginEligibilityBusy = false;
 
   @Input({ required: true }) authMode: AppTypes.AuthMode = 'selector';
   @Input() firebaseAuthProfile: AppTypes.FirebaseAuthProfile | null = null;
@@ -85,12 +91,19 @@ export class EntryShellComponent {
     this.openDemoUserSelectorPopup();
   }
 
-  protected openEntryFirebaseAuth(): void {
+  protected async openEntryFirebaseAuth(): Promise<void> {
     if (!this.ensureEntryConsent()) {
       return;
     }
     if (this.authMode !== 'firebase') {
       this.openDemoUserSelectorPopup();
+      return;
+    }
+    if (this.loginEligibilityBusy) {
+      return;
+    }
+    const allowed = await this.ensureHttpLoginAccessAllowed();
+    if (!allowed) {
       return;
     }
     if (this.firebaseAuthProfile) {
@@ -197,6 +210,53 @@ export class EntryShellComponent {
     return false;
   }
 
+  private async ensureHttpLoginAccessAllowed(): Promise<boolean> {
+    this.loginEligibilityBusy = true;
+    try {
+      const gateState = await this.usersService.checkLocationEligibility();
+      if (gateState.securityGateEnabled !== true) {
+        return true;
+      }
+
+        const coordinates = await this.requestCurrentLocation();
+        if (!coordinates) {
+          this.confirmationDialogService.openInfo(
+          'We need your location before login so we can apply the region-based security check.',
+          {
+            title: 'Location Required For Login',
+            confirmLabel: 'OK'
+          }
+        );
+        return false;
+      }
+
+      const result = await this.usersService.checkLocationEligibility(coordinates);
+      if (result.eligible) {
+        return true;
+      }
+
+      this.confirmationDialogService.openInfo(
+        result.message?.trim() || 'Login is currently unavailable from your country or region for security reasons. Please come back later.',
+        {
+          title: 'Login Unavailable',
+          confirmLabel: 'OK'
+        }
+      );
+      return false;
+    } catch {
+      this.confirmationDialogService.openInfo(
+        'We could not complete the region-based check right now. Please try again later.',
+        {
+          title: 'Check Unavailable',
+          confirmLabel: 'OK'
+        }
+      );
+      return false;
+    } finally {
+      this.loginEligibilityBusy = false;
+    }
+  }
+
   private openDemoUserSelectorPopup(): void {
     const requestToken = ++this.demoSelectorRequestToken;
     this.showUserSelector = true;
@@ -292,6 +352,32 @@ export class EntryShellComponent {
 
   private isCurrentDemoSelectorRequest(requestToken: number): boolean {
     return this.showUserSelector && this.demoSelectorRequestToken === requestToken;
+  }
+
+  private async requestCurrentLocation(): Promise<LocationCoordinates | null> {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      return null;
+    }
+
+    return new Promise<LocationCoordinates | null>(resolve => {
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          const latitude = Number(position.coords.latitude);
+          const longitude = Number(position.coords.longitude);
+          if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+            resolve(null);
+            return;
+          }
+          resolve({ latitude, longitude });
+        },
+        () => resolve(null),
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 5 * 60 * 1000
+        }
+      );
+    });
   }
 
   private waitForPopupPaint(): Promise<void> {
