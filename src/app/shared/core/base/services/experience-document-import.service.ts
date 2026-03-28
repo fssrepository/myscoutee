@@ -234,37 +234,47 @@ export class ExperienceDocumentImportService {
   }
 
   private async inflatePdfStream(streamBytes: Uint8Array): Promise<ArrayBuffer | null> {
-    try {
-      return await this.inflateBuffer(streamBytes, 'deflate');
-    } catch {
+    const trimmedStreamBytes = this.trimPdfStreamPadding(streamBytes);
+    for (const candidate of [streamBytes, trimmedStreamBytes]) {
       try {
-        return await this.inflateBuffer(streamBytes, 'deflate-raw');
+        return await this.inflateBuffer(candidate, 'deflate');
       } catch {
-        return null;
+        try {
+          return await this.inflateBuffer(candidate, 'deflate-raw');
+        } catch {
+          continue;
+        }
       }
     }
+    return null;
   }
 
   private async extractPdfObjectStreams(raw: string, bytes: Uint8Array): Promise<PdfObjectStream[]> {
     const streams: PdfObjectStream[] = [];
-    const streamPattern = /(\d+)\s+0\s+obj\s*<<([\s\S]*?)>>\s*stream\r?\n/g;
+    const streamPattern = /(?:^|[\r\n])(\d+)\s+0\s+obj\b\s*<<([\s\S]*?)>>\s*stream\r?\n/g;
     let match: RegExpExecArray | null;
 
     while ((match = streamPattern.exec(raw)) !== null) {
       const objectId = Number.parseInt(match[1], 10);
       const dictionary = match[2];
       const start = streamPattern.lastIndex;
-      const end = raw.indexOf('endstream', start);
-      if (end < 0) {
-        break;
+      const declaredLength = this.resolvePdfStreamLength(dictionary, raw);
+      const fallbackEnd = raw.indexOf('endstream', start);
+      const end = declaredLength > 0 && start + declaredLength <= bytes.length
+        ? start + declaredLength
+        : fallbackEnd;
+      if (end < 0 || end > bytes.length) {
+        streamPattern.lastIndex = fallbackEnd >= 0 ? fallbackEnd + 'endstream'.length : start + 1;
+        continue;
       }
 
       const streamBytes = bytes.slice(start, end);
+      const endStreamIndex = raw.indexOf('endstream', end);
       let content = '';
       if (dictionary.includes('/FlateDecode')) {
         const inflated = await this.inflatePdfStream(streamBytes);
         if (!inflated) {
-          streamPattern.lastIndex = end + 'endstream'.length;
+          streamPattern.lastIndex = endStreamIndex >= 0 ? endStreamIndex + 'endstream'.length : end;
           continue;
         }
         content = this.decodeBinaryBuffer(inflated);
@@ -280,7 +290,7 @@ export class ExperienceDocumentImportService {
         dictionary,
         content
       });
-      streamPattern.lastIndex = end + 'endstream'.length;
+      streamPattern.lastIndex = endStreamIndex >= 0 ? endStreamIndex + 'endstream'.length : end;
     }
 
     return streams;
@@ -350,7 +360,7 @@ export class ExperienceDocumentImportService {
 
   private extractPdfObjectDictionaries(raw: string): Map<number, string> {
     const dictionaries = new Map<number, string>();
-    for (const match of raw.matchAll(/(\d+)\s+0\s+obj\s*<<([\s\S]*?)>>/g)) {
+    for (const match of raw.matchAll(/(?:^|[\r\n])(\d+)\s+0\s+obj\b\s*<<([\s\S]*?)>>/g)) {
       const objectId = Number.parseInt(match[1], 10);
       if (!dictionaries.has(objectId)) {
         dictionaries.set(objectId, match[2]);
@@ -558,6 +568,37 @@ export class ExperienceDocumentImportService {
     return new TextDecoder('latin1').decode(buffer);
   }
 
+  private trimPdfStreamPadding(streamBytes: Uint8Array): Uint8Array {
+    let end = streamBytes.length;
+    while (end > 0) {
+      const byte = streamBytes[end - 1];
+      if (byte !== 0x0A && byte !== 0x0D) {
+        break;
+      }
+      end -= 1;
+    }
+    return end === streamBytes.length ? streamBytes : streamBytes.slice(0, end);
+  }
+
+  private resolvePdfStreamLength(dictionary: string, raw: string): number {
+    const directLengthMatch = dictionary.match(/\/Length\s+(\d+)\b(?!\s+0\s+R)/);
+    if (directLengthMatch) {
+      return Number.parseInt(directLengthMatch[1], 10);
+    }
+
+    const indirectLengthMatch = dictionary.match(/\/Length\s+(\d+)\s+0\s+R/);
+    if (!indirectLengthMatch) {
+      return -1;
+    }
+
+    const objectMatch = raw.match(new RegExp(`(?:^|[\\r\\n])${indirectLengthMatch[1]}\\s+0\\s+obj\\b\\s+(\\d+)\\s+endobj`, 'm'));
+    if (!objectMatch) {
+      return -1;
+    }
+
+    return Number.parseInt(objectMatch[1], 10);
+  }
+
   private decodeUtf8(bytes: Uint8Array): string {
     return new TextDecoder('utf-8').decode(bytes);
   }
@@ -566,8 +607,15 @@ export class ExperienceDocumentImportService {
     if (typeof DecompressionStream === 'undefined') {
       throw new Error('Compressed document import is unavailable in this browser.');
     }
-    const blobPayload = Uint8Array.from(bytes).buffer;
-    const stream = new Blob([blobPayload]).stream().pipeThrough(new DecompressionStream(format));
+    const payload = Uint8Array.from(bytes);
+    const source = new ReadableStream<BufferSource>({
+      start(controller) {
+        controller.enqueue(payload);
+        controller.close();
+      }
+    });
+    const decompressor = new DecompressionStream(format) as unknown as TransformStream<BufferSource, Uint8Array>;
+    const stream = source.pipeThrough(decompressor);
     return new Response(stream).arrayBuffer();
   }
 
@@ -613,7 +661,17 @@ export class ExperienceDocumentImportService {
         continue;
       }
 
-      const headerType = this.resolveSectionHeaderType(lines.join(' '));
+      let currentLines = lines;
+      const leadingHeaderType = this.resolveSectionHeaderType(lines[0] ?? '');
+      if (leadingHeaderType) {
+        currentSection = leadingHeaderType;
+        currentLines = lines.slice(1).filter(line => line.length > 0);
+        if (currentLines.length === 0 || currentSection === 'Ignore') {
+          continue;
+        }
+      }
+
+      const headerType = this.resolveSectionHeaderType(currentLines.join(' '));
       if (headerType && this.isSectionHeaderParagraph(lines)) {
         currentSection = headerType;
         continue;
@@ -622,8 +680,8 @@ export class ExperienceDocumentImportService {
         continue;
       }
 
-      const resolvedType = this.resolveEntryType(lines, currentSection);
-      const parsedBlock = this.parseExperienceBlock(lines, resolvedType);
+      const resolvedType = this.resolveEntryType(currentLines, currentSection);
+      const parsedBlock = this.parseExperienceBlock(currentLines, resolvedType);
       if (!parsedBlock) {
         continue;
       }
@@ -658,6 +716,7 @@ export class ExperienceDocumentImportService {
   private normalizeExtractedText(value: string): string {
     return value
       .replace(/\r/g, '\n')
+      .replace(/\u0000+/g, ' ')
       .replace(/\u00A0/g, ' ')
       .replace(/[•▪◦●■]/g, '\n')
       .replace(/\t/g, ' ')
@@ -686,22 +745,22 @@ export class ExperienceDocumentImportService {
     if (!normalized) {
       return null;
     }
-    if (/(work experience|professional experience|employment|career history|experience)/.test(normalized)) {
+    if (/^(work experience|professional experience|employment|career history|work history|experience)$/.test(normalized)) {
       return 'Workspace';
     }
-    if (/(education|academic background|studies|university|college)/.test(normalized)) {
+    if (/^(education|academic background|studies)$/.test(normalized)) {
       return 'School';
     }
-    if (/(thesis|dissertation)/.test(normalized)) {
+    if (/^(thesis|dissertation)$/.test(normalized)) {
       return 'Additional Project';
     }
-    if (/(project|portfolio|open source|freelance)/.test(normalized)) {
+    if (/^(projects?|portfolio|open source|freelance projects?)$/.test(normalized)) {
       return 'Additional Project';
     }
-    if (/(certification|course|training|bootcamp|online|certificate)/.test(normalized)) {
+    if (/^(certifications?|courses?|training|bootcamps?|online courses?|certificates?)$/.test(normalized)) {
       return 'Online Session';
     }
-    if (/(summary|profile|skills|technology|technical skills|tech stack|interests|languages|contact|personal data|personal details)/.test(normalized)) {
+    if (/^(summary|profile|skills|technology|technical skills|tech stack|interests|languages|contact|personal data|personal details)$/.test(normalized)) {
       return 'Ignore';
     }
     return null;
@@ -715,17 +774,17 @@ export class ExperienceDocumentImportService {
 
   private resolveEntryType(lines: readonly string[], sectionType: ExperienceSectionType): ExperienceEntry['type'] {
     const normalized = lines.join(' ').toLowerCase();
+    if (sectionType === 'School' || sectionType === 'Online Session' || sectionType === 'Additional Project') {
+      return sectionType;
+    }
     if (/(university|college|academy|school|bsc|msc|phd|degree|diploma)/.test(normalized)) {
       return 'School';
     }
     if (/(course|certification|certificate|bootcamp|online|remote program|udemy|coursera|edx)/.test(normalized)) {
       return 'Online Session';
     }
-    if (/(project|portfolio|freelance|open source|independent)/.test(normalized)) {
+    if (/(portfolio|open source|independent project|side project|personal project|pet project)/.test(normalized)) {
       return 'Additional Project';
-    }
-    if (sectionType === 'School' || sectionType === 'Online Session' || sectionType === 'Additional Project') {
-      return sectionType;
     }
     return 'Workspace';
   }
@@ -852,9 +911,9 @@ export class ExperienceDocumentImportService {
         continue;
       }
 
-      if (this.containsDateRange(line)) {
+      if (currentSection === 'School' || currentSection === 'Additional Project' || currentSection === 'Online Session') {
         const collected = this.collectTimelineBlock(lines, index);
-        const parsed = this.parseTimelineBlock(collected.blockLines, currentSection);
+        const parsed = this.parseSectionBlock(collected.blockLines, currentSection);
         if (parsed) {
           const signature = this.entrySignature(parsed);
           if (!seenSignatures.has(signature)) {
@@ -866,9 +925,9 @@ export class ExperienceDocumentImportService {
         continue;
       }
 
-      if (currentSection === 'School' || currentSection === 'Additional Project' || currentSection === 'Online Session') {
+      if (this.containsDateRange(line)) {
         const collected = this.collectTimelineBlock(lines, index);
-        const parsed = this.parseSectionBlock(collected.blockLines, currentSection);
+        const parsed = this.parseTimelineBlock(collected.blockLines, currentSection);
         if (parsed) {
           const signature = this.entrySignature(parsed);
           if (!seenSignatures.has(signature)) {
