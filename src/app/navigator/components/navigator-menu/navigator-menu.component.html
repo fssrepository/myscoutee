@@ -1,8 +1,8 @@
 <ng-container *ngIf="menuUser() as user">
 <ng-container *ngIf="menuUiState() as ui">
-<div class="user-menu-backdrop" [class.open]="ui.open" [class.is-covered]="isCoveredByPopup()" (click)="onCloseMenu()" *ngIf="ui.open"></div>
+<div class="user-menu-backdrop" [class.open]="ui.open" (click)="onCloseMenu()" *ngIf="ui.open"></div>
 
-<aside class="user-menu-panel" [class.open]="ui.open" [class.is-covered]="isCoveredByPopup()">
+<aside class="user-menu-panel" [class.open]="ui.open">
   <div
     class="user-menu-header"
     [ngClass]="profileStatusClass(user.profileStatus)"

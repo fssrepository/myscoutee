@@ -52,7 +52,6 @@ export class AvatarBtnComponent implements OnDestroy {
     };
   });
   protected readonly menuUiState = this.navigatorService.menuUiState;
-  protected readonly isCoveredByPopup = this.navigatorService.menuCoveredByPopup;
   protected readonly visible = computed(() => this.isInternalRoute(this.currentUrlRef()));
   protected readonly hasBindings = computed(() => this.bindings() !== null);
   protected readonly isOpen = computed(() => this.menuUiState().open);

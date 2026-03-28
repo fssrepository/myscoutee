@@ -294,11 +294,6 @@
   pointer-events: auto;
 }
 
-.user-menu-backdrop.is-covered {
-  opacity: 0;
-  pointer-events: none;
-}
-
 .user-menu-panel {
   position: fixed;
   top: 0;
@@ -313,16 +308,11 @@
   box-shadow: -10px 0 34px rgba(10, 20, 38, 0.3);
   opacity: 1;
   transform: translateX(100%);
-  transition: transform 0.24s ease, opacity 0.16s ease;
+  transition: transform 0.24s ease;
 }
 
 .user-menu-panel.open {
   transform: translateX(0);
-}
-
-.user-menu-panel.is-covered {
-  opacity: 0;
-  pointer-events: none;
 }
 
 .user-menu-header {
