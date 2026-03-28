@@ -1,6 +1,13 @@
 :host {
   display: block;
   min-width: 0;
+  --interactive-motion-duration: 160ms;
+  --interactive-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --interactive-hover-lift: -1px;
+  --interactive-hover-scale: 1.01;
+  --interactive-hover-brightness: 1.01;
+  --interactive-press-scale: 0.97;
+  --interactive-press-brightness: 0.97;
 }
 
 .activities-card {
@@ -17,7 +24,15 @@
   width: 100%;
   box-sizing: border-box;
   will-change: transform;
-  transition: transform 0.14s ease, box-shadow 0.16s ease;
+  -webkit-tap-highlight-color: transparent;
+  transform-origin: center;
+  transition:
+    transform var(--interactive-motion-duration) var(--interactive-motion-ease),
+    filter var(--interactive-motion-duration) var(--interactive-motion-ease),
+    box-shadow var(--interactive-motion-duration) var(--interactive-motion-ease),
+    background-color var(--interactive-motion-duration) var(--interactive-motion-ease),
+    border-color var(--interactive-motion-duration) var(--interactive-motion-ease),
+    color var(--interactive-motion-duration) var(--interactive-motion-ease);
 }
 
 .activities-card-btn {
@@ -64,6 +79,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.user-color-woman {
+  background: linear-gradient(180deg, #f089b0 0%, #df5d87 100%);
+}
+
+.user-color-man {
+  background: linear-gradient(180deg, #6ca6ff 0%, #3d78d8 100%);
 }
 
 .activities-card-main {
@@ -119,6 +142,30 @@
   margin-right: 0.4rem;
 }
 
+.card-badge {
+  min-width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #d84d4d;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.asset-request-badge {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid #fff;
+  z-index: 2;
+}
+
 .activities-chat-unread-badge {
   top: -6px;
   right: -6px;
@@ -131,4 +178,45 @@
 
 .activities-row-item-clickable {
   cursor: pointer;
+}
+
+.activities-card-btn:focus-visible {
+  outline: 2px solid rgba(66, 110, 182, 0.44);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .activities-card-btn:not(:disabled):not([aria-disabled='true']):hover {
+    transform: translateY(var(--interactive-hover-lift)) scale(var(--interactive-hover-scale));
+    filter: brightness(var(--interactive-hover-brightness));
+    box-shadow: 0 3px 10px rgba(16, 29, 48, 0.14);
+  }
+
+  .activities-card-btn:not(:disabled):not([aria-disabled='true']):active {
+    transform: scale(var(--interactive-press-scale));
+    filter: brightness(var(--interactive-press-brightness));
+  }
+}
+
+@keyframes activities-chat-touch-feedback {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+
+  45% {
+    transform: scale(var(--interactive-press-scale));
+    filter: brightness(var(--interactive-press-brightness));
+  }
+
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .activities-card-btn:not(:disabled):not([aria-disabled='true']):active {
+    animation: activities-chat-touch-feedback 0.2s ease;
+  }
 }

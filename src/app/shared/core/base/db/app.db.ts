@@ -11,6 +11,7 @@ import { ACTIVITY_RESOURCES_TABLE_NAME } from '../../demo/models/activity-resour
 import { CHATS_TABLE_NAME } from '../../demo/models/chats.model';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../../demo/models/event-feedback.model';
 import { EVENTS_TABLE_NAME } from '../../demo/models/events.model';
+import { PROFILE_EXPERIENCES_TABLE_NAME } from '../../demo/models/profile-experiences.model';
 import type { DemoMemorySchema } from '../../demo/models/memory.model';
 import {
   USER_FILTER_PREFERENCES_TABLE_NAME,
@@ -134,6 +135,10 @@ export class AppMemoryDb {
         byId: {},
         ids: []
       },
+      [PROFILE_EXPERIENCES_TABLE_NAME]: {
+        byUserId: {},
+        userIds: []
+      },
       [EVENTS_TABLE_NAME]: {
         byId: {},
         ids: []
@@ -247,6 +252,7 @@ export class AppMemoryDb {
     const filterPreferences = await this.readIndexedDbEntry(db, USER_FILTER_PREFERENCES_TABLE_NAME);
     const chats = await this.readIndexedDbEntry(db, CHATS_TABLE_NAME);
     const eventFeedback = await this.readIndexedDbEntry(db, EVENT_FEEDBACK_TABLE_NAME);
+    const profileExperiences = await this.readIndexedDbEntry(db, PROFILE_EXPERIENCES_TABLE_NAME);
     const events = await this.readIndexedDbEntry(db, EVENTS_TABLE_NAME)
       ?? await this.readIndexedDbEntry(db, 'demoEvents');
 
@@ -259,6 +265,7 @@ export class AppMemoryDb {
       || filterPreferences !== null
       || chats !== null
       || eventFeedback !== null
+      || profileExperiences !== null
       || events !== null;
     if (!hasSegmentedState) {
       const legacy = await this.readIndexedDbEntry(db, AppMemoryDb.LEGACY_INDEXED_DB_STATE_KEY);
@@ -296,6 +303,9 @@ export class AppMemoryDb {
     if (eventFeedback !== null) {
       partialState[EVENT_FEEDBACK_TABLE_NAME] = eventFeedback as DemoMemorySchema[typeof EVENT_FEEDBACK_TABLE_NAME];
     }
+    if (profileExperiences !== null) {
+      partialState[PROFILE_EXPERIENCES_TABLE_NAME] = profileExperiences as DemoMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME];
+    }
     if (events !== null) {
       partialState[EVENTS_TABLE_NAME] = events as DemoMemorySchema[typeof EVENTS_TABLE_NAME];
     }
@@ -319,6 +329,7 @@ export class AppMemoryDb {
       tablesStore.put(state[USER_FILTER_PREFERENCES_TABLE_NAME], USER_FILTER_PREFERENCES_TABLE_NAME);
       tablesStore.put(state[CHATS_TABLE_NAME], CHATS_TABLE_NAME);
       tablesStore.put(state[EVENT_FEEDBACK_TABLE_NAME], EVENT_FEEDBACK_TABLE_NAME);
+      tablesStore.put(state[PROFILE_EXPERIENCES_TABLE_NAME], PROFILE_EXPERIENCES_TABLE_NAME);
       tablesStore.put(state[EVENTS_TABLE_NAME], EVENTS_TABLE_NAME);
       tablesStore.delete('demoEvents');
       tablesStore.delete('rates');
@@ -537,6 +548,7 @@ export class AppMemoryDb {
     const legacySource = source as Record<string, unknown>;
     const chatsSource = source[CHATS_TABLE_NAME] as Partial<DemoMemorySchema[typeof CHATS_TABLE_NAME]> | undefined;
     const eventFeedbackSource = source[EVENT_FEEDBACK_TABLE_NAME] as Partial<DemoMemorySchema[typeof EVENT_FEEDBACK_TABLE_NAME]> | undefined;
+    const profileExperiencesSource = source[PROFILE_EXPERIENCES_TABLE_NAME] as Partial<DemoMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]> | undefined;
     const eventsSource = (
       source[EVENTS_TABLE_NAME]
       ?? legacySource['demoEvents']
@@ -606,6 +618,12 @@ export class AppMemoryDb {
           ? eventFeedbackSource.ids.map(id => String(id))
           : [...fallback[EVENT_FEEDBACK_TABLE_NAME].ids]
       },
+      [PROFILE_EXPERIENCES_TABLE_NAME]: {
+        byUserId: this.normalizeProfileExperiencesByUserId(profileExperiencesSource?.byUserId, fallback[PROFILE_EXPERIENCES_TABLE_NAME].byUserId),
+        userIds: Array.isArray(profileExperiencesSource?.userIds)
+          ? profileExperiencesSource.userIds.map(id => String(id))
+          : [...fallback[PROFILE_EXPERIENCES_TABLE_NAME].userIds]
+      },
       [EVENTS_TABLE_NAME]: {
         byId: eventsSource?.byId && typeof eventsSource.byId === 'object'
           ? { ...eventsSource.byId }
@@ -646,6 +664,36 @@ export class AppMemoryDb {
     return value && typeof value === 'object'
       ? { ...(value as DemoMemorySchema[typeof ASSETS_TABLE_NAME]['byId']) }
       : { ...fallback };
+  }
+
+  private normalizeProfileExperiencesByUserId(
+    value: unknown,
+    fallback: DemoMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]['byUserId']
+  ): DemoMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]['byUserId'] {
+    if (!value || typeof value !== 'object') {
+      return { ...fallback };
+    }
+
+    const next: DemoMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]['byUserId'] = {};
+    for (const [userId, entries] of Object.entries(value as Record<string, unknown>)) {
+      if (!userId.trim() || !Array.isArray(entries)) {
+        continue;
+      }
+      next[userId] = entries
+        .filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === 'object')
+        .map(entry => ({
+          id: `${entry['id'] ?? ''}`.trim(),
+          type: `${entry['type'] ?? 'Workspace'}`.trim() as DemoMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]['byUserId'][string][number]['type'],
+          title: `${entry['title'] ?? ''}`.trim(),
+          org: `${entry['org'] ?? ''}`.trim(),
+          city: `${entry['city'] ?? ''}`.trim(),
+          dateFrom: `${entry['dateFrom'] ?? ''}`.trim(),
+          dateTo: `${entry['dateTo'] ?? ''}`.trim(),
+          description: `${entry['description'] ?? ''}`.trim()
+        }))
+        .filter(entry => entry.id.length > 0);
+    }
+    return next;
   }
 
   private normalizeIdList(value: unknown, fallback: readonly string[]): string[] {

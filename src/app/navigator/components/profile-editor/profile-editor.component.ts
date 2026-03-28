@@ -10,9 +10,14 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { AppCalendarDateAdapter, AppCalendarDateFormats } from '../../../shared/app-calendar-date-adapter';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
+import type {
+  ExperienceImportProgressState,
+  ExperienceImportStatistics,
+  UserExperienceImportDraft
+} from '../../../shared/core/base/interfaces/experience.interface';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
-import { AppContext, UsersService, type UserDto } from '../../../shared/core';
+import { AppContext, UserExperiencesService, UsersService, type UserDto } from '../../../shared/core';
 import { CounterBadgePipe } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../navigator.service';
@@ -29,6 +34,17 @@ interface ProfileFormState {
   horoscope: string;
   profileStatus: AppTypes.ProfileStatus;
   about: string;
+}
+
+interface ExperienceImportDialogState {
+  visible: boolean;
+  fileName: string;
+  busy: boolean;
+  progress: ExperienceImportProgressState;
+  statistics: ExperienceImportStatistics;
+  warnings: string[];
+  error: string | null;
+  draft: UserExperienceImportDraft | null;
 }
 
 @Component({
@@ -55,16 +71,22 @@ interface ProfileFormState {
 })
 export class ProfileEditorComponent {
   @ViewChild('slotImageInput') private slotImageInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('experienceImportInput') private experienceImportInput?: ElementRef<HTMLInputElement>;
 
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly appCtx = inject(AppContext);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly navigatorService = inject(NavigatorService);
+  private readonly userExperiencesService = inject(UserExperiencesService);
   private readonly usersService = inject(UsersService);
   private readonly languageSheetHeightCssVar = '--mobile-language-sheet-height';
   private readonly profileDetailsFormByUser: Record<string, AppTypes.ProfileDetailFormGroup[]> = {};
   private readonly profileImageSlotsByUser: Record<string, Array<string | null>> = {};
+  private readonly experienceEntriesByUser: Record<string, AppTypes.ExperienceEntry[]> = {};
   private lastLoadedUserId = '';
+  private experienceEntriesLoadToken = 0;
+  private experienceEntriesSaveToken = 0;
+  private experienceImportToken = 0;
 
   protected readonly isOpen = this.navigatorService.profileEditorOpen;
   protected readonly profileStatusOptions = APP_STATIC_DATA.profileStatusOptions;
@@ -98,11 +120,14 @@ export class ProfileEditorComponent {
     workspace: 'Public',
     school: 'Public'
   };
-  protected experienceEntries: AppTypes.ExperienceEntry[] = APP_STATIC_DATA.profileSampleExperienceEntries.map(item => ({ ...item }));
-  protected experienceFilter: 'All' | 'Workspace' | 'School' = 'All';
+  protected experienceEntries: AppTypes.ExperienceEntry[] = [];
+  protected experienceFilter: AppTypes.ExperienceFilter = 'All';
+  protected showExperienceQuickActionsMenu = false;
   protected showExperienceForm = false;
   protected editingExperienceId: string | null = null;
   protected pendingExperienceDeleteId: string | null = null;
+  protected highlightedImportedExperienceIds = new Set<string>();
+  protected experienceImportDialog: ExperienceImportDialogState = this.createEmptyExperienceImportDialogState();
   protected experienceRangeStart: Date | null = null;
   protected experienceRangeEnd: Date | null = null;
   protected experienceForm: Omit<AppTypes.ExperienceEntry, 'id'> = {
@@ -153,6 +178,9 @@ export class ProfileEditorComponent {
     }
     if (this.openExperiencePrivacyFab && !target.closest('.profile-details-privacy-fab')) {
       this.openExperiencePrivacyFab = null;
+    }
+    if (this.showExperienceQuickActionsMenu && !target.closest('.experience-quick-actions')) {
+      this.showExperienceQuickActionsMenu = false;
     }
   }
 
@@ -222,6 +250,12 @@ export class ProfileEditorComponent {
     return Boolean(this.experienceForm.title.trim() && this.experienceForm.org.trim() && this.experienceRangeStart);
   }
 
+  protected get canSubmitExperienceImport(): boolean {
+    return !this.experienceImportDialog.busy
+      && !this.experienceImportDialog.error
+      && (this.experienceImportDialog.draft?.importedIds.length ?? 0) > 0;
+  }
+
   protected popupTitle(): string {
     switch (this.panel) {
       case 'image':
@@ -242,14 +276,23 @@ export class ProfileEditorComponent {
       this.closeMobileProfileSelectorSheet();
       return;
     }
+    if (this.experienceImportDialog.visible) {
+      this.cancelExperienceImportDialog();
+      return;
+    }
     if (this.showExperienceForm) {
       this.closeExperienceForm();
+      return;
+    }
+    if (this.showExperienceQuickActionsMenu) {
+      this.showExperienceQuickActionsMenu = false;
       return;
     }
     if (this.panel !== 'profile') {
       this.panel = 'profile';
       this.openPrivacyFab = null;
       this.openExperiencePrivacyFab = null;
+      this.showExperienceQuickActionsMenu = false;
       return;
     }
     this.commitProfileForm(false);
@@ -285,10 +328,11 @@ export class ProfileEditorComponent {
     this.openExperienceSelector('School');
   }
 
-  protected openExperienceSelector(filter: 'All' | 'Workspace' | 'School' = 'All'): void {
+  protected openExperienceSelector(filter: AppTypes.ExperienceFilter = 'All'): void {
     this.experienceFilter = filter;
     this.pendingExperienceDeleteId = null;
     this.editingExperienceId = null;
+    this.showExperienceQuickActionsMenu = false;
     this.resetExperienceForm();
     this.panel = 'experience';
   }
@@ -358,6 +402,82 @@ export class ProfileEditorComponent {
     }
     target.value = '';
     void this.uploadAndRefreshProfileImageSlot(file, slotIndex);
+  }
+
+  protected toggleExperienceQuickActionsMenu(event?: Event): void {
+    event?.stopPropagation();
+    this.showExperienceQuickActionsMenu = !this.showExperienceQuickActionsMenu;
+  }
+
+  protected openExperienceCreateAction(event?: Event): void {
+    event?.stopPropagation();
+    this.showExperienceQuickActionsMenu = false;
+    this.openExperienceForm();
+  }
+
+  protected openExperienceUploadAction(event?: Event): void {
+    event?.stopPropagation();
+    this.showExperienceQuickActionsMenu = false;
+    const input = this.experienceImportInput?.nativeElement;
+    if (!input) {
+      return;
+    }
+    input.value = '';
+    input.click();
+  }
+
+  protected onExperienceImportFileChange(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+    target.value = '';
+    if (!file) {
+      return;
+    }
+    void this.prepareExperienceImport(file);
+  }
+
+  protected cancelExperienceImportDialog(): void {
+    if (this.experienceImportDialog.busy && this.experienceImportDialog.progress.stage === 'saving') {
+      return;
+    }
+    this.experienceImportToken += 1;
+    this.experienceImportDialog = this.createEmptyExperienceImportDialogState();
+  }
+
+  protected submitExperienceImport(): void {
+    if (!this.canSubmitExperienceImport || !this.profileUser || !this.experienceImportDialog.draft) {
+      return;
+    }
+    const activeRequestToken = ++this.experienceImportToken;
+    const draft = this.experienceImportDialog.draft;
+    this.experienceImportDialog = {
+      ...this.experienceImportDialog,
+      busy: true,
+      progress: {
+        stage: 'saving',
+        percent: 100,
+        label: 'Saving imported experience batch'
+      }
+    };
+    void this.persistExperienceEntries(draft.nextEntries, {
+      highlightedIds: draft.importedIds,
+      onComplete: () => {
+        if (activeRequestToken !== this.experienceImportToken) {
+          return;
+        }
+        this.experienceFilter = 'All';
+        this.experienceImportDialog = this.createEmptyExperienceImportDialogState();
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  protected isExperienceEntryHighlighted(entryId: string): boolean {
+    return this.highlightedImportedExperienceIds.has(entryId);
+  }
+
+  protected experienceImportTypeCount(type: AppTypes.ExperienceEntry['type']): number {
+    return this.experienceImportDialog.statistics.countsByType[type] ?? 0;
   }
 
   protected profileStatusClass(value: AppTypes.ProfileStatus = this.profileForm.profileStatus): string {
@@ -1172,24 +1292,34 @@ export class ProfileEditorComponent {
     }
   }
 
-  protected experienceFilterIcon(option: 'All' | 'Workspace' | 'School'): string {
-    if (option === 'Workspace') {
-      return 'apartment';
+  protected experienceFilterIcon(option: AppTypes.ExperienceFilter): string {
+    switch (option) {
+      case 'Workspace':
+        return 'apartment';
+      case 'School':
+        return 'school';
+      case 'Online Session':
+        return 'videocam';
+      case 'Additional Project':
+        return 'rocket_launch';
+      default:
+        return 'filter_alt';
     }
-    if (option === 'School') {
-      return 'school';
-    }
-    return 'filter_alt';
   }
 
-  protected experienceFilterClass(option: 'All' | 'Workspace' | 'School'): string {
-    if (option === 'Workspace') {
-      return 'experience-filter-workspace';
+  protected experienceFilterClass(option: AppTypes.ExperienceFilter): string {
+    switch (option) {
+      case 'Workspace':
+        return 'experience-filter-workspace';
+      case 'School':
+        return 'experience-filter-school';
+      case 'Online Session':
+        return 'experience-filter-online';
+      case 'Additional Project':
+        return 'experience-filter-project';
+      default:
+        return 'experience-filter-all';
     }
-    if (option === 'School') {
-      return 'experience-filter-school';
-    }
-    return 'experience-filter-all';
   }
 
   protected experienceTypeToneClass(type: AppTypes.ExperienceEntry['type']): string {
@@ -1207,6 +1337,7 @@ export class ProfileEditorComponent {
 
   protected openExperienceForm(entry?: AppTypes.ExperienceEntry): void {
     this.pendingExperienceDeleteId = null;
+    this.showExperienceQuickActionsMenu = false;
     this.showExperienceForm = true;
     if (entry) {
       this.editingExperienceId = entry.id;
@@ -1251,21 +1382,21 @@ export class ProfileEditorComponent {
       dateTo: dateTo || 'Present',
       description: this.experienceForm.description.trim()
     };
-    if (this.editingExperienceId) {
-      this.experienceEntries = this.experienceEntries.map(item =>
+    const nextEntries = this.editingExperienceId
+      ? this.experienceEntries.map(item =>
         item.id === this.editingExperienceId
           ? { ...item, ...payload }
           : item
-      );
-    } else {
-      this.experienceEntries = [
-        ...this.experienceEntries,
-        { id: `exp-${Date.now()}`, ...payload }
-      ];
-    }
+      )
+      : [
+          ...this.experienceEntries,
+          { id: this.createExperienceId(), ...payload }
+        ];
+    this.setExperienceEntries(nextEntries);
     this.showExperienceForm = false;
     this.editingExperienceId = null;
     this.resetExperienceForm();
+    void this.persistExperienceEntries(nextEntries);
   }
 
   protected requestExperienceDelete(entryId: string): void {
@@ -1280,8 +1411,10 @@ export class ProfileEditorComponent {
     if (!this.pendingExperienceDeleteId) {
       return;
     }
-    this.experienceEntries = this.experienceEntries.filter(item => item.id !== this.pendingExperienceDeleteId);
+    const nextEntries = this.experienceEntries.filter(item => item.id !== this.pendingExperienceDeleteId);
+    this.setExperienceEntries(nextEntries);
     this.pendingExperienceDeleteId = null;
+    void this.persistExperienceEntries(nextEntries);
   }
 
   private loadProfileEditorState(user: UserDto): void {
@@ -1306,7 +1439,9 @@ export class ProfileEditorComponent {
     this.imageSlots = [...slots];
     const firstFilled = this.imageSlots.findIndex(slot => Boolean(slot));
     this.selectedImageIndex = firstFilled >= 0 ? firstFilled : 0;
+    this.setExperienceEntries(this.experienceEntriesByUser[user.id] ?? [], []);
     this.panel = 'profile';
+    void this.loadExperienceEntriesForUser(user.id);
   }
 
   private createEmptyProfileForm(): ProfileFormState {
@@ -1673,6 +1808,199 @@ export class ProfileEditorComponent {
     this.experienceRangeEnd = null;
   }
 
+  private createEmptyExperienceImportDialogState(): ExperienceImportDialogState {
+    return {
+      visible: false,
+      fileName: '',
+      busy: false,
+      progress: {
+        stage: 'ready',
+        percent: 0,
+        label: ''
+      },
+      statistics: this.createEmptyExperienceImportStatistics(),
+      warnings: [],
+      error: null,
+      draft: null
+    };
+  }
+
+  private createEmptyExperienceImportStatistics(): ExperienceImportStatistics {
+    return {
+      detectedCount: 0,
+      importedCount: 0,
+      duplicateCount: 0,
+      countsByType: {
+        Workspace: 0,
+        School: 0,
+        'Online Session': 0,
+        'Additional Project': 0
+      }
+    };
+  }
+
+  private cloneExperienceEntries(entries: readonly AppTypes.ExperienceEntry[]): AppTypes.ExperienceEntry[] {
+    return entries.map(entry => ({ ...entry }));
+  }
+
+  private setExperienceEntries(
+    entries: readonly AppTypes.ExperienceEntry[],
+    highlightedIds: readonly string[] | null = null
+  ): void {
+    const nextEntries = this.cloneExperienceEntries(entries);
+    this.experienceEntries = nextEntries;
+    if (this.profileUser) {
+      this.experienceEntriesByUser[this.profileUser.id] = this.cloneExperienceEntries(nextEntries);
+    }
+    if (highlightedIds) {
+      const validIds = new Set(nextEntries.map(entry => entry.id));
+      this.highlightedImportedExperienceIds = new Set(highlightedIds.filter(id => validIds.has(id)));
+      return;
+    }
+    this.pruneHighlightedExperienceIds(nextEntries);
+  }
+
+  private pruneHighlightedExperienceIds(entries: readonly AppTypes.ExperienceEntry[]): void {
+    if (this.highlightedImportedExperienceIds.size === 0) {
+      return;
+    }
+    const validIds = new Set(entries.map(entry => entry.id));
+    this.highlightedImportedExperienceIds = new Set(
+      [...this.highlightedImportedExperienceIds].filter(id => validIds.has(id))
+    );
+  }
+
+  private createExperienceId(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return `exp-${crypto.randomUUID()}`;
+    }
+    return `exp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  private async loadExperienceEntriesForUser(userId: string): Promise<void> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      this.setExperienceEntries([], []);
+      return;
+    }
+
+    const requestToken = ++this.experienceEntriesLoadToken;
+    try {
+      const loadedEntries = await this.userExperiencesService.loadUserExperiences(normalizedUserId);
+      if (requestToken !== this.experienceEntriesLoadToken || this.profileUser?.id !== normalizedUserId) {
+        return;
+      }
+      this.setExperienceEntries(loadedEntries, []);
+      this.cdr.markForCheck();
+    } catch {
+      if (requestToken !== this.experienceEntriesLoadToken || this.profileUser?.id !== normalizedUserId) {
+        return;
+      }
+      this.setExperienceEntries(this.experienceEntriesByUser[normalizedUserId] ?? [], []);
+      this.cdr.markForCheck();
+    }
+  }
+
+  private async prepareExperienceImport(file: File): Promise<void> {
+    const importToken = ++this.experienceImportToken;
+    this.experienceImportDialog = {
+      ...this.createEmptyExperienceImportDialogState(),
+      visible: true,
+      fileName: file.name,
+      busy: true,
+      progress: {
+        stage: 'reading',
+        percent: 0,
+        label: 'Preparing import preview'
+      }
+    };
+    this.cdr.markForCheck();
+
+    try {
+      const draft = await this.userExperiencesService.prepareUserExperienceImport(
+        file,
+        this.experienceEntries,
+        progress => {
+          if (importToken !== this.experienceImportToken) {
+            return;
+          }
+          this.experienceImportDialog = {
+            ...this.experienceImportDialog,
+            visible: true,
+            fileName: file.name,
+            busy: true,
+            progress,
+            error: null
+          };
+          this.cdr.markForCheck();
+        }
+      );
+      if (importToken !== this.experienceImportToken) {
+        return;
+      }
+      this.experienceImportDialog = {
+        visible: true,
+        fileName: file.name,
+        busy: false,
+        progress: {
+          stage: 'ready',
+          percent: 100,
+          label: draft.statistics.detectedCount > 0 ? 'Import preview ready' : 'No experience items recognized'
+        },
+        statistics: draft.statistics,
+        warnings: [...draft.warnings],
+        error: null,
+        draft
+      };
+      this.cdr.markForCheck();
+    } catch (error) {
+      if (importToken !== this.experienceImportToken) {
+        return;
+      }
+      this.experienceImportDialog = {
+        ...this.createEmptyExperienceImportDialogState(),
+        visible: true,
+        fileName: file.name,
+        error: this.resolveExperienceImportError(error),
+        progress: {
+          stage: 'ready',
+          percent: 100,
+          label: 'Import preview unavailable'
+        }
+      };
+      this.cdr.markForCheck();
+    }
+  }
+
+  private async persistExperienceEntries(
+    entries: readonly AppTypes.ExperienceEntry[],
+    options?: { highlightedIds?: readonly string[]; onComplete?: () => void }
+  ): Promise<void> {
+    const userId = this.profileUser?.id?.trim() ?? '';
+    if (!userId) {
+      return;
+    }
+
+    const requestToken = ++this.experienceEntriesSaveToken;
+    const savedEntries = await this.userExperiencesService.saveUserExperiences(userId, entries);
+    if (requestToken !== this.experienceEntriesSaveToken || this.profileUser?.id !== userId) {
+      return;
+    }
+    this.setExperienceEntries(savedEntries.length > 0 ? savedEntries : entries, options?.highlightedIds ?? null);
+    options?.onComplete?.();
+    this.cdr.markForCheck();
+  }
+
+  private resolveExperienceImportError(error: unknown): string {
+    if (error instanceof Error) {
+      const normalizedMessage = error.message.trim();
+      if (normalizedMessage) {
+        return normalizedMessage;
+      }
+    }
+    return 'Invalid document. Please upload a PDF, DOC, DOCX, ODT, RTF, or TXT file.';
+  }
+
   private persistActiveUserImageSlots(): void {
     this.syncActiveUserImageSlotsState();
     if (this.profileUser) {
@@ -1897,6 +2225,7 @@ export class ProfileEditorComponent {
     this.closeMobileProfileSelectorSheet();
     this.openPrivacyFab = null;
     this.openExperiencePrivacyFab = null;
+    this.showExperienceQuickActionsMenu = false;
     this.privacyFabJustSelectedKey = null;
     this.valuesSelectorContext = null;
     this.valuesSelectorSelected = [];
@@ -1906,6 +2235,8 @@ export class ProfileEditorComponent {
     this.showExperienceForm = false;
     this.editingExperienceId = null;
     this.pendingExperienceDeleteId = null;
+    this.highlightedImportedExperienceIds = new Set<string>();
+    this.cancelExperienceImportDialog();
     this.resetExperienceForm();
   }
 }

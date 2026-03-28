@@ -40,6 +40,8 @@ export interface ExperienceEntry {
   description: string;
 }
 
+export type ExperienceFilter = 'All' | ExperienceEntry['type'];
+
 export interface MobileProfileSelectorOption {
   value: string;
   label: string;
@@ -65,4 +67,3 @@ export interface MobileProfileSelectorSheet {
     | { kind: 'subEventResourceFilter' }
     | { kind: 'eventFrequency' };
 }
-

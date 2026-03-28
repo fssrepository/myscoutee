@@ -19,15 +19,35 @@
       <div class="popup-title">
         <h2>{{ popupTitle() }}</h2>
       </div>
-      <button
-        *ngIf="panel === 'experience' && !showExperienceForm"
-        type="button"
-        class="popup-header-add-btn"
-        (click)="openExperienceForm()"
-        aria-label="Add experience"
-      >
-        <mat-icon>add</mat-icon>
-      </button>
+      <div *ngIf="panel === 'experience' && !showExperienceForm" class="experience-quick-actions">
+        <button
+          type="button"
+          class="popup-header-add-btn experience-add-btn"
+          [class.is-open]="showExperienceQuickActionsMenu"
+          (click)="toggleExperienceQuickActionsMenu($event)"
+          aria-label="Open experience actions"
+        >
+          <mat-icon>add</mat-icon>
+        </button>
+        <div class="popup-filter-panel activities-view-picker-panel experience-quick-actions-panel" *ngIf="showExperienceQuickActionsMenu">
+          <button
+            type="button"
+            class="popup-filter-option activities-view-option experience-quick-action-option experience-quick-action-option-create"
+            (click)="openExperienceCreateAction($event)"
+          >
+            <mat-icon>add_circle</mat-icon>
+            <span>Create</span>
+          </button>
+          <button
+            type="button"
+            class="popup-filter-option activities-view-option experience-quick-action-option experience-quick-action-option-upload"
+            (click)="openExperienceUploadAction($event)"
+          >
+            <mat-icon>upload_file</mat-icon>
+            <span>Upload</span>
+          </button>
+        </div>
+      </div>
       <div class="event-visibility-picker profile-status-header-picker" *ngIf="panel === 'profile'">
         <button
           type="button"
@@ -566,6 +586,13 @@
       </div>
 
       <div *ngIf="panel === 'experience'" class="experience-popup">
+        <input
+          #experienceImportInput
+          type="file"
+          class="image-file-input-hidden"
+          accept=".pdf,.doc,.docx,.odt,.rtf,.txt"
+          (change)="onExperienceImportFileChange($event)"
+        />
         <div class="experience-toolbar">
           <div class="profile-status-select-wrap selector-like experience-filter-select" [ngClass]="experienceFilterClass(experienceFilter)">
             <mat-select [(ngModel)]="experienceFilter" disableOptionCentering panelClass="selector-options-panel profile-bottom-sheet-panel">
@@ -591,7 +618,12 @@
         </div>
 
         <div class="experience-card-list">
-          <article class="experience-item-card" [ngClass]="experienceTypeClass(item.type)" *ngFor="let item of filteredExperienceEntries">
+          <article
+            class="experience-item-card"
+            [ngClass]="experienceTypeClass(item.type)"
+            [class.experience-item-card-imported]="isExperienceEntryHighlighted(item.id)"
+            *ngFor="let item of filteredExperienceEntries"
+          >
             <div class="experience-item-head">
               <span class="experience-item-icon">
                 <mat-icon>{{ experienceTypeIcon(item.type) }}</mat-icon>
@@ -623,6 +655,102 @@
               <button type="button" class="link-btn neutral-btn" (click)="cancelExperienceDelete()">Cancel</button>
               <button type="button" class="link-btn experience-delete-btn" (click)="confirmExperienceDelete()">Delete</button>
             </div>
+          </div>
+        </section>
+
+        <section class="experience-import-dialog popup-surface-overlay" *ngIf="experienceImportDialog.visible">
+          <div class="experience-form-overlay-backdrop popup-surface-overlay-backdrop" (click)="cancelExperienceImportDialog()"></div>
+          <div class="experience-import-popup popup-surface">
+            <div class="experience-form-header popup-surface-header">
+              <div class="popup-surface-header-title">
+                <h3>Import Experience</h3>
+                <p *ngIf="experienceImportDialog.fileName">{{ experienceImportDialog.fileName }}</p>
+              </div>
+              <div class="experience-form-header-controls popup-surface-header-controls">
+                <button
+                  type="button"
+                  class="experience-form-close-btn popup-surface-close-btn"
+                  [disabled]="experienceImportDialog.busy && experienceImportDialog.progress.stage === 'saving'"
+                  (click)="cancelExperienceImportDialog()"
+                  aria-label="Close import dialog"
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            </div>
+            <section class="experience-import-panel popup-surface-body">
+              <div class="experience-import-progress-card">
+                <div class="experience-import-progress-meta">
+                  <span>{{ experienceImportDialog.progress.label || 'Preparing upload' }}</span>
+                  <strong>{{ experienceImportDialog.progress.percent }}%</strong>
+                </div>
+                <div class="experience-import-progress-bar">
+                  <span [style.width.%]="experienceImportDialog.progress.percent"></span>
+                </div>
+              </div>
+
+              <div class="experience-import-error" *ngIf="experienceImportDialog.error">
+                <mat-icon>error</mat-icon>
+                <div>
+                  <strong>Invalid document</strong>
+                  <p>{{ experienceImportDialog.error }}</p>
+                </div>
+              </div>
+
+              <div class="experience-import-stats" *ngIf="!experienceImportDialog.error">
+                <div class="experience-import-stat">
+                  <span>Detected</span>
+                  <strong>{{ experienceImportDialog.statistics.detectedCount }}</strong>
+                </div>
+                <div class="experience-import-stat">
+                  <span>Ready to add</span>
+                  <strong>{{ experienceImportDialog.statistics.importedCount }}</strong>
+                </div>
+                <div class="experience-import-stat">
+                  <span>Duplicates skipped</span>
+                  <strong>{{ experienceImportDialog.statistics.duplicateCount }}</strong>
+                </div>
+              </div>
+
+              <div class="experience-import-type-stats" *ngIf="!experienceImportDialog.error">
+                <div class="experience-import-type-chip" *ngFor="let option of experienceTypeOptions" [ngClass]="experienceTypeToneClass(option)">
+                  <mat-icon>{{ experienceTypeIcon(option) }}</mat-icon>
+                  <span>{{ option }}</span>
+                  <strong>{{ experienceImportTypeCount(option) }}</strong>
+                </div>
+              </div>
+
+              <div class="editor-list-card" *ngIf="!experienceImportDialog.error && experienceImportDialog.statistics.detectedCount === 0">
+                <h4>No categorized items found</h4>
+                <p>The document was parsed, but no experience cards were recognized in any category.</p>
+              </div>
+
+              <div class="experience-import-warnings" *ngIf="experienceImportDialog.warnings.length > 0">
+                <h4>Import notes</h4>
+                <ul>
+                  <li *ngFor="let warning of experienceImportDialog.warnings">{{ warning }}</li>
+                </ul>
+              </div>
+
+              <div class="popup-actions experience-import-actions">
+                <button
+                  type="button"
+                  class="link-btn neutral-btn"
+                  [disabled]="experienceImportDialog.busy && experienceImportDialog.progress.stage === 'saving'"
+                  (click)="cancelExperienceImportDialog()"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  class="link-btn primary-btn"
+                  [disabled]="!canSubmitExperienceImport"
+                  (click)="submitExperienceImport()"
+                >
+                  Submit
+                </button>
+              </div>
+            </section>
           </div>
         </section>
 
@@ -722,7 +850,7 @@
 
         <div *ngIf="filteredExperienceEntries.length === 0" class="editor-list-card">
           <h4>No entries in this filter</h4>
-          <p>Try switching the type dropdown to All.</p>
+          <p>Try switching the type dropdown to All or use Upload.</p>
         </div>
       </div>
     </div>

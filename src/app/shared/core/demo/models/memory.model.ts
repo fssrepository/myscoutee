@@ -4,6 +4,7 @@ import type { DemoActivityResourcesMemorySchema } from './activity-resources.mod
 import type { DemoChatsMemorySchema } from './chats.model';
 import type { DemoEventFeedbackMemorySchema } from './event-feedback.model';
 import type { DemoEventsMemorySchema } from './events.model';
+import type { DemoProfileExperiencesMemorySchema } from './profile-experiences.model';
 import type { DemoUsersMemorySchema } from './users.model';
 
 export type DemoMemorySchema = DemoUsersMemorySchema
@@ -12,4 +13,5 @@ export type DemoMemorySchema = DemoUsersMemorySchema
   & DemoActivityResourcesMemorySchema
   & DemoChatsMemorySchema
   & DemoEventFeedbackMemorySchema
+  & DemoProfileExperiencesMemorySchema
   & DemoEventsMemorySchema;
