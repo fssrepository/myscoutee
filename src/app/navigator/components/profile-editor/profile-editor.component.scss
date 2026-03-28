@@ -300,6 +300,12 @@
   overflow-x: hidden;
 }
 
+.app-popup-panel.popup-panel-profile-editor .popup-body.popup-body-experience {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
+}
+
 .popup-body.popup-body-image-editor {
   overflow: hidden;
 }
@@ -1392,6 +1398,17 @@
   margin: 0;
 }
 
+.experience-delete-btn {
+  background: linear-gradient(180deg, #ef5f5f 0%, #d63a3a 100%);
+  border-color: rgba(156, 30, 30, 0.9);
+  color: #fff;
+}
+
+.experience-delete-btn:hover {
+  background: linear-gradient(180deg, #f06d6d 0%, #da4343 100%);
+  border-color: rgba(145, 24, 24, 0.96);
+}
+
 .experience-import-popup {
   width: min(560px, 100%);
 }
@@ -1497,6 +1514,8 @@
 
 .experience-import-type-chip {
   min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   border-radius: 999px;
   padding: 0.42rem 0.62rem;
   display: inline-flex;
