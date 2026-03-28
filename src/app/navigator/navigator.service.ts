@@ -10,6 +10,7 @@ import {
   type UserRealtimeLongPollResponseDto
 } from '../shared/core';
 import { ConfirmationDialogService } from '../shared/ui/services/confirmation-dialog.service';
+import { AssetPopupStateService } from '../asset/asset-popup-state.service';
 
 export interface NavigatorMenuUiState {
   open: boolean;
@@ -34,6 +35,7 @@ export class NavigatorService {
   private readonly appCtx = inject(AppContext);
   private readonly router = inject(Router);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly assetPopupService = inject(AssetPopupStateService);
   private readonly bindingsRef = signal<NavigatorBindings | null>(null);
   private readonly hydrationRequestKeyRef = signal('');
   private readonly menuOpenRef = signal(false);
@@ -60,6 +62,7 @@ export class NavigatorService {
     open: this.menuOpenRef(),
     settingsOpen: this.settingsMenuOpenRef()
   }));
+  readonly navigatorCoveredByAssetPopup = computed(() => this.assetPopupService.visible());
 
   constructor() {
     effect(() => {

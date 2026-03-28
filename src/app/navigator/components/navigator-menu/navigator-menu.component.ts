@@ -102,6 +102,7 @@ export class NavigatorMenuComponent {
     };
   });
   protected readonly menuUiState = this.navigatorService.menuUiState;
+  protected readonly isCoveredByAssetPopup = this.navigatorService.navigatorCoveredByAssetPopup;
 
   @HostListener('document:click', ['$event'])
   protected onDocumentClick(event: MouseEvent): void {

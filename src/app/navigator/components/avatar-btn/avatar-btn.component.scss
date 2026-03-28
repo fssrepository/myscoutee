@@ -59,6 +59,11 @@
   pointer-events: none;
 }
 
+.user-selector-btn-global.is-covered {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .user-selector-btn-global:not(:disabled):hover {
   transform: translateY(-1px);
 }

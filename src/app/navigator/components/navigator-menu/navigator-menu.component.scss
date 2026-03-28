@@ -294,6 +294,11 @@
   pointer-events: auto;
 }
 
+.user-menu-backdrop.is-covered {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .user-menu-panel {
   position: fixed;
   top: 0;
@@ -313,6 +318,11 @@
 
 .user-menu-panel.open {
   transform: translateX(0);
+}
+
+.user-menu-panel.is-covered {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .user-menu-header {
