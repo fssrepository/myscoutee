@@ -61,13 +61,148 @@ select {
   }
 
   45% {
-    transform: scale(0.98);
-    filter: brightness(0.97);
+    transform: scale(var(--interactive-press-scale, 0.97));
+    filter: brightness(var(--interactive-press-brightness, 0.97));
   }
 
   100% {
     transform: scale(1);
     filter: brightness(1);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(
+    button,
+    a[href],
+    summary,
+    [role='button'],
+    [tabindex='0'],
+    .link-btn,
+    .popup-view-fab,
+    .popup-header-add-btn,
+    .activities-view-option,
+    .profile-status-select-wrap,
+    .profile-details-values-btn,
+    .profile-details-privacy-btn,
+    .profile-privacy-menu-option,
+    .popup-close,
+    .date-picker-btn,
+    .avatar-edit-btn,
+    .experience-form-close-btn,
+    .image-editor-grid button,
+    .image-stack-line,
+    .image-stack-hit-segment,
+    .mobile-profile-selector-close-btn,
+    .mobile-profile-selector-option,
+    .popup-panel-profile-selector .profile-filter-selector-clear,
+    .popup-panel-profile-selector .profile-filter-selector-chip,
+    .popup-panel-profile-selector .profile-selector-chip,
+    .item-action-menu-btn,
+    .experience-action-btn,
+    .header-icon-btn,
+    .chat-header-members,
+    .activities-row-item-clickable,
+    .activities-card-btn,
+    .asset-source-icon,
+    .event-editor-members-trigger,
+    .motion-card,
+    [data-motion='card'],
+    .ui-info-card--clickable
+  ):not(.motion-static):not([data-motion='none']):not(:disabled):not([aria-disabled='true']) {
+    transition:
+      transform var(--interactive-motion-duration, 160ms) var(--interactive-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+      filter var(--interactive-motion-duration, 160ms) var(--interactive-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+      box-shadow var(--interactive-motion-duration, 160ms) var(--interactive-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+      background-color var(--interactive-motion-duration, 160ms) var(--interactive-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+      border-color var(--interactive-motion-duration, 160ms) var(--interactive-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+      color var(--interactive-motion-duration, 160ms) var(--interactive-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+      opacity var(--interactive-motion-duration, 160ms) var(--interactive-motion-ease, cubic-bezier(0.22, 1, 0.36, 1));
+    transform-origin: center;
+  }
+
+  :where(
+    button,
+    a[href],
+    summary,
+    [role='button'],
+    [tabindex='0'],
+    .link-btn,
+    .popup-view-fab,
+    .popup-header-add-btn,
+    .activities-view-option,
+    .profile-status-select-wrap,
+    .profile-details-values-btn,
+    .profile-details-privacy-btn,
+    .profile-privacy-menu-option,
+    .popup-close,
+    .date-picker-btn,
+    .avatar-edit-btn,
+    .experience-form-close-btn,
+    .image-editor-grid button,
+    .image-stack-line,
+    .image-stack-hit-segment,
+    .mobile-profile-selector-close-btn,
+    .mobile-profile-selector-option,
+    .popup-panel-profile-selector .profile-filter-selector-clear,
+    .popup-panel-profile-selector .profile-filter-selector-chip,
+    .popup-panel-profile-selector .profile-selector-chip,
+    .item-action-menu-btn,
+    .experience-action-btn,
+    .header-icon-btn,
+    .chat-header-members,
+    .activities-row-item-clickable,
+    .activities-card-btn,
+    .asset-source-icon,
+    .event-editor-members-trigger,
+    .motion-card,
+    [data-motion='card'],
+    .ui-info-card--clickable
+  ):not(.motion-static):not([data-motion='none']):not(:disabled):not([aria-disabled='true']):hover {
+    transform: translateY(var(--interactive-hover-lift, -1px)) scale(var(--interactive-hover-scale, 1.01));
+    filter: brightness(var(--interactive-hover-brightness, 1.01));
+  }
+
+  :where(
+    button,
+    a[href],
+    summary,
+    [role='button'],
+    [tabindex='0'],
+    .link-btn,
+    .popup-view-fab,
+    .popup-header-add-btn,
+    .activities-view-option,
+    .profile-status-select-wrap,
+    .profile-details-values-btn,
+    .profile-details-privacy-btn,
+    .profile-privacy-menu-option,
+    .popup-close,
+    .date-picker-btn,
+    .avatar-edit-btn,
+    .experience-form-close-btn,
+    .image-editor-grid button,
+    .image-stack-line,
+    .image-stack-hit-segment,
+    .mobile-profile-selector-close-btn,
+    .mobile-profile-selector-option,
+    .popup-panel-profile-selector .profile-filter-selector-clear,
+    .popup-panel-profile-selector .profile-filter-selector-chip,
+    .popup-panel-profile-selector .profile-selector-chip,
+    .item-action-menu-btn,
+    .experience-action-btn,
+    .header-icon-btn,
+    .chat-header-members,
+    .activities-row-item-clickable,
+    .activities-card-btn,
+    .asset-source-icon,
+    .event-editor-members-trigger,
+    .motion-card,
+    [data-motion='card'],
+    .ui-info-card--clickable
+  ):not(.motion-static):not([data-motion='none']):not(:disabled):not([aria-disabled='true']):active {
+    transform: scale(var(--interactive-press-scale, 0.97));
+    filter: brightness(var(--interactive-press-brightness, 0.97));
   }
 }
 
@@ -111,10 +246,13 @@ select {
     .ui-info-card--clickable
   ):not(.motion-static):not([data-motion='none']):not(:disabled):not([aria-disabled='true']) {
     transition:
-      transform 0.16s ease,
-      filter 0.16s ease,
-      box-shadow 0.16s ease,
-      opacity 0.16s ease;
+      transform var(--interactive-motion-duration, 160ms) var(--interactive-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+      filter var(--interactive-motion-duration, 160ms) var(--interactive-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+      box-shadow var(--interactive-motion-duration, 160ms) var(--interactive-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+      background-color var(--interactive-motion-duration, 160ms) var(--interactive-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+      border-color var(--interactive-motion-duration, 160ms) var(--interactive-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+      color var(--interactive-motion-duration, 160ms) var(--interactive-motion-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+      opacity var(--interactive-motion-duration, 160ms) var(--interactive-motion-ease, cubic-bezier(0.22, 1, 0.36, 1));
     transform-origin: center;
   }
 
@@ -157,7 +295,7 @@ select {
     .ui-info-card--clickable
   ):not(.motion-static):not([data-motion='none']):not(:disabled):not([aria-disabled='true']):active {
     animation: global-mobile-touch-feedback 0.2s ease;
-    transform: scale(0.98);
-    filter: brightness(0.97);
+    transform: scale(var(--interactive-press-scale, 0.97));
+    filter: brightness(var(--interactive-press-brightness, 0.97));
   }
 }
