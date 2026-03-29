@@ -120,7 +120,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private static readonly QUICK_COMPLETE_THRESHOLD_MS = 120;
   private static readonly HOSTED_FULLSCREEN_STACK_SIZE = 3;
   private static readonly HOSTED_FULLSCREEN_PAGE_CURL_DURATION_MS = 420;
-  private static readonly HOSTED_FULLSCREEN_PAGE_CURL_CURSOR_ADVANCE_MS = 210;
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly hostRef = inject(ElementRef<HTMLElement>);
   private restoreAnchorSequence = 0;
@@ -198,8 +197,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private hostedFullscreenPendingDelta = 0;
   private hostedFullscreenCompletingTransition = false;
   private hostedFullscreenTransitionTimer: ReturnType<typeof setTimeout> | null = null;
-  private hostedFullscreenCursorAdvanceTimer: ReturnType<typeof setTimeout> | null = null;
-  private hostedFullscreenCursorAdvanced = false;
   private readonly paginationHelper = new SmartListPaginationHelper<T>(() => {
     this.emitState();
     this.cdr.markForCheck();
@@ -281,7 +278,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.loadSequence += 1;
     this.clearCalendarSettleTimers();
     this.clearLoadingAnimation();
-    this.clearHostedFullscreenCursorAdvanceTimer();
     this.clearHostedFullscreenTransitionTimer();
     this.paginationHelper.destroy();
   }
@@ -310,13 +306,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   ): HeaderProgressBarConfig {
     const cursor = this.buildCursorState();
     const loadingActive = this.isLoadingActive();
-    const useLoadingState = loadingActive && (mode === 'surface' || cursor.total === 0);
     const position = mode === 'cursor'
-      ? this.hostedFullscreenDisplayedCursorProgress(cursor)
+      ? cursor.progress
       : this.progress;
     return {
-      position: useLoadingState ? this.loadingProgress : position,
-      state: useLoadingState
+      position: loadingActive ? this.loadingProgress : position,
+      state: loadingActive
         ? (this.loadingOverdue ? 'loading-overdue' : 'loading')
         : 'scrolling',
       ...overrides
@@ -397,7 +392,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected onPaginationRatingSelect(score: number): void {
     if (this.shouldUseHostedFullscreenPagination()) {
-      void this.handleHostedFullscreenRatingTap(score);
+      void this.handleHostedFullscreenRatingSelect(score);
       return;
     }
     void this.config.pagination?.onRatingSelect?.(this.cursorItem(), score, this.currentQuery());
@@ -669,12 +664,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.cursorItem();
   }
 
-  protected hostedFullscreenLeavingItem(): T | null {
-    return this.paginationHelper.leavingItem;
-  }
-
   protected hostedFullscreenCurrentRenderState(): SmartListItemRenderState {
-    return 'active';
+    return this.paginationHelper.animating ? 'leaving' : 'active';
   }
 
   protected hostedFullscreenStackItem(slotOffset: number): T | null {
@@ -694,10 +685,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected onHostedFullscreenActiveCardAnimationEnd(event: AnimationEvent): void {
-    if (
-      event.animationName !== 'smart-list-fullscreen-page-curl'
-      && event.animationName !== 'smart-list-fullscreen-page-curl-backward'
-    ) {
+    if (event.animationName !== 'smart-list-fullscreen-page-curl') {
       return;
     }
     if (event.currentTarget !== event.target || !this.hostedFullscreenIsCurling()) {
@@ -2120,19 +2108,18 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   private ratingAdvanceInFlight = false;
 
-  private async handleHostedFullscreenRatingTap(score: number): Promise<void> {
-    await this.settleHostedFullscreenRatingFlow();
-    await this.handleHostedFullscreenRatingSelect(score);
-  }
-
   private async handleHostedFullscreenRatingSelect(score: number): Promise<void> {
-    if (this.ratingAdvanceInFlight) {
+    await this.config.pagination?.onRatingSelect?.(this.cursorItem(), score, this.currentQuery());
+    if (!this.shouldUseHostedFullscreenPagination() || !this.canMoveCursor(1)) {
+      return;
+    }
+    if (this.paginationHelper.animating || this.ratingAdvanceInFlight) {
       return;
     }
     this.ratingAdvanceInFlight = true;
     try {
-      await this.config.pagination?.onRatingSelect?.(this.cursorItem(), score, this.currentQuery());
-      if (!this.shouldUseHostedFullscreenPagination() || !this.canMoveCursor(1) || this.paginationHelper.animating) {
+      await this.wait(120);
+      if (!this.shouldUseHostedFullscreenPagination() || this.paginationHelper.animating) {
         return;
       }
       await this.advanceHostedFullscreenPagination(1);
@@ -2156,7 +2143,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
     if (normalizedDelta > 0) {
       const previewIndex = currentIndex + (SmartListComponent.HOSTED_FULLSCREEN_STACK_SIZE - 1);
-      void this.ensureHostedFullscreenTargetLoaded(previewIndex);
+      await this.ensureHostedFullscreenTargetLoaded(previewIndex);
     }
     const currentItem = this.cursorItem();
     if (!currentItem) {
@@ -2164,9 +2151,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
     this.hostedFullscreenPendingDelta = normalizedDelta;
     this.hostedFullscreenCompletingTransition = false;
-    this.hostedFullscreenCursorAdvanced = false;
     this.paginationHelper.beginTransition(currentItem);
-    this.startHostedFullscreenCursorAdvanceTimer();
     this.startHostedFullscreenTransitionTimer();
     return true;
   }
@@ -2362,44 +2347,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     });
   }
 
-  private hostedFullscreenDisplayedCursorProgress(cursor: SmartListCursorState<T>): number {
-    if (
-      !this.paginationHelper.animating
-      || this.hostedFullscreenPendingDelta === 0
-      || this.hostedFullscreenCursorAdvanced
-      || cursor.total <= 0
-    ) {
-      return cursor.progress;
-    }
-    return this.clamp((cursor.index + this.hostedFullscreenPendingDelta) / cursor.total);
-  }
-
   protected hostedFullscreenStackItemIndex(slotOffset: number): number {
-    return this.buildCursorState().index + slotOffset;
-  }
-
-  private async settleHostedFullscreenRatingFlow(): Promise<void> {
-    let waitTicks = 0;
-    while (this.ratingAdvanceInFlight && !this.paginationHelper.animating && this.hostedFullscreenPendingDelta === 0) {
-      await this.wait(16);
-      waitTicks += 1;
-      if (waitTicks >= 96) {
-        return;
-      }
-    }
-
-    if (this.paginationHelper.animating || this.hostedFullscreenPendingDelta !== 0) {
-      await this.completeHostedFullscreenPaginationTransition();
-    }
-
-    waitTicks = 0;
-    while (this.ratingAdvanceInFlight || this.hostedFullscreenCompletingTransition) {
-      await this.wait(16);
-      waitTicks += 1;
-      if (waitTicks >= 96) {
-        return;
-      }
-    }
+    const direction = this.paginationHelper.animating && this.hostedFullscreenPendingDelta < 0 ? -1 : 1;
+    return this.buildCursorState().index + (slotOffset * direction);
   }
 
   private startHostedFullscreenTransitionTimer(): void {
@@ -2410,14 +2360,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }, SmartListComponent.HOSTED_FULLSCREEN_PAGE_CURL_DURATION_MS + 48);
   }
 
-  private startHostedFullscreenCursorAdvanceTimer(): void {
-    this.clearHostedFullscreenCursorAdvanceTimer();
-    this.hostedFullscreenCursorAdvanceTimer = setTimeout(() => {
-      this.hostedFullscreenCursorAdvanceTimer = null;
-      void this.advanceHostedFullscreenTransitionCursor();
-    }, SmartListComponent.HOSTED_FULLSCREEN_PAGE_CURL_CURSOR_ADVANCE_MS);
-  }
-
   private clearHostedFullscreenTransitionTimer(): void {
     if (!this.hostedFullscreenTransitionTimer) {
       return;
@@ -2426,36 +2368,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.hostedFullscreenTransitionTimer = null;
   }
 
-  private clearHostedFullscreenCursorAdvanceTimer(): void {
-    if (!this.hostedFullscreenCursorAdvanceTimer) {
-      return;
-    }
-    clearTimeout(this.hostedFullscreenCursorAdvanceTimer);
-    this.hostedFullscreenCursorAdvanceTimer = null;
-  }
-
   private resetHostedFullscreenTransition(): void {
-    this.clearHostedFullscreenCursorAdvanceTimer();
     this.clearHostedFullscreenTransitionTimer();
     this.hostedFullscreenPendingDelta = 0;
-    this.hostedFullscreenCursorAdvanced = false;
     this.hostedFullscreenCompletingTransition = false;
     this.paginationHelper.reset();
-  }
-
-  private async advanceHostedFullscreenTransitionCursor(): Promise<void> {
-    if (
-      !this.paginationHelper.animating
-      || this.hostedFullscreenPendingDelta === 0
-      || this.hostedFullscreenCursorAdvanced
-      || this.hostedFullscreenCompletingTransition
-    ) {
-      return;
-    }
-    const moved = await this.moveCursor(this.hostedFullscreenPendingDelta);
-    if (moved) {
-      this.hostedFullscreenCursorAdvanced = true;
-    }
   }
 
   private async completeHostedFullscreenPaginationTransition(): Promise<void> {
@@ -2463,19 +2380,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return;
     }
     const delta = this.hostedFullscreenPendingDelta;
+    this.hostedFullscreenPendingDelta = 0;
     this.hostedFullscreenCompletingTransition = true;
-    this.clearHostedFullscreenCursorAdvanceTimer();
     this.clearHostedFullscreenTransitionTimer();
     try {
-      if (!this.hostedFullscreenCursorAdvanced) {
-        const moved = await this.moveCursor(delta);
-        if (moved) {
-          this.hostedFullscreenCursorAdvanced = true;
-        }
-      }
+      await this.moveCursor(delta);
     } finally {
-      this.hostedFullscreenPendingDelta = 0;
-      this.hostedFullscreenCursorAdvanced = false;
       this.hostedFullscreenCompletingTransition = false;
       this.paginationHelper.finishTransition();
     }

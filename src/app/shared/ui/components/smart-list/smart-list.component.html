@@ -237,21 +237,6 @@
       <div #fullscreenSurface class="smart-list__fullscreen-surface" *ngIf="resolvedFullscreenItemTemplate() as fullscreenTemplateRef">
         <ng-container *ngIf="hostedFullscreenCurrentItem() as currentItem; else fullscreenEmptyState">
           <div
-            class="smart-list__fullscreen-card smart-list__fullscreen-card--leaving"
-            *ngIf="hostedFullscreenLeavingItem() as leavingItem"
-            [class.smart-list__fullscreen-card--curling]="hostedFullscreenIsCurling()"
-            [class.smart-list__fullscreen-card--curling-backward]="hostedFullscreenIsCurlingBackwards()"
-            (animationend)="onHostedFullscreenActiveCardAnimationEnd($event)"
-          >
-            <ng-container
-              *ngTemplateOutlet="
-                fullscreenTemplateRef;
-                context: hostedFullscreenItemContext(leavingItem, 'leaving')
-              "
-            ></ng-container>
-          </div>
-
-          <div
             class="smart-list__fullscreen-card smart-list__fullscreen-card--slot-2 smart-list__fullscreen-card--preview"
             *ngIf="hostedFullscreenStackItem(2) as thirdItem"
             aria-hidden="true"
@@ -279,6 +264,9 @@
 
           <div
             class="smart-list__fullscreen-card smart-list__fullscreen-card--active"
+            [class.smart-list__fullscreen-card--curling]="hostedFullscreenIsCurling()"
+            [class.smart-list__fullscreen-card--curling-backward]="hostedFullscreenIsCurlingBackwards()"
+            (animationend)="onHostedFullscreenActiveCardAnimationEnd($event)"
           >
             <ng-container
               *ngTemplateOutlet="
