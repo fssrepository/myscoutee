@@ -197,6 +197,8 @@
 }
 
 .entry-cta {
+  position: relative;
+  overflow: hidden;
   min-height: 42px;
   border-radius: 999px;
   border: 0;
@@ -210,6 +212,12 @@
   gap: 0.4rem;
   padding: 0.2rem 1rem;
   text-decoration: none;
+}
+
+.entry-cta .mat-icon,
+.entry-cta span {
+  position: relative;
+  z-index: 1;
 }
 
 .entry-cta .mat-icon {

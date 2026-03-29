@@ -38,7 +38,13 @@
             <p class="hero-line-even">Myscoutee makes meeting people social again.</p>
           </div>
           <div class="entry-hero-cta">
-            <button type="button" class="entry-cta entry-cta-primary" (click)="requestDemo()">
+            <button
+              type="button"
+              class="entry-cta entry-cta-primary"
+              matRipple
+              [matRippleColor]="'rgba(112, 59, 242, 0.14)'"
+              (click)="requestDemo()"
+            >
               <mat-icon>rocket_launch</mat-icon>
               <span>Start exploring</span>
             </button>
@@ -129,7 +135,13 @@
 
     <section class="entry-final-cta">
       <h2>Stop guessing. Start prioritizing.</h2>
-      <button type="button" class="entry-cta entry-cta-primary" (click)="requestDemo()">
+      <button
+        type="button"
+        class="entry-cta entry-cta-primary"
+        matRipple
+        [matRippleColor]="'rgba(112, 59, 242, 0.14)'"
+        (click)="requestDemo()"
+      >
         <mat-icon>login</mat-icon>
         <span>Open demo</span>
       </button>

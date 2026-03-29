@@ -8,6 +8,8 @@
           type="button"
           class="popup-close"
           *ngIf="viewOnly"
+          matRipple
+          [matRippleColor]="'rgba(41, 78, 128, 0.12)'"
           (click)="requestClose()"
           aria-label="Close privacy popup"
         >
@@ -93,8 +95,24 @@
     </div>
 
     <footer class="entry-consent-actions" *ngIf="!viewOnly">
-      <button type="button" class="entry-consent-btn entry-consent-btn-muted" (click)="requestReject()">Not now</button>
-      <button type="button" class="entry-consent-btn entry-consent-btn-primary" (click)="requestAccept()">Accept and continue</button>
+      <button
+        type="button"
+        class="entry-consent-btn entry-consent-btn-muted"
+        matRipple
+        [matRippleColor]="'rgba(47, 78, 122, 0.14)'"
+        (click)="requestReject()"
+      >
+        Not now
+      </button>
+      <button
+        type="button"
+        class="entry-consent-btn entry-consent-btn-primary"
+        matRipple
+        [matRippleColor]="'rgba(255, 255, 255, 0.24)'"
+        (click)="requestAccept()"
+      >
+        Accept and continue
+      </button>
     </footer>
   </article>
 </section>
