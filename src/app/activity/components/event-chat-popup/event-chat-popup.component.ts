@@ -125,12 +125,16 @@ export class EventChatPopupComponent implements OnDestroy {
   private liveChatUnsubscribe: (() => void) | null = null;
   private typingIdleTimer: ReturnType<typeof setTimeout> | null = null;
   private localTypingActive = false;
+  private visibleChatThreadTotal = 0;
   private readonly latestVisibleReadMessageIdByReaderId: Record<string, string> = {};
+  protected readonly visibleReadReceiptsByMessageId: Record<string, AppTypes.ChatReadAvatar[]> = {};
   private readonly freshMessageIds = new Set<string>();
   private readonly freshReadKeys = new Set<string>();
   private readonly remoteTypingExpiryByUserId: Record<string, ReturnType<typeof setTimeout> | null> = {};
   private readonly pendingMessageTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
   private optimisticMessageSequence = 0;
+
+  protected readonly trackByChatReader = (_index: number, reader: AppTypes.ChatReadAvatar): string => reader.id;
 
   constructor() {
     effect(() => {
@@ -156,6 +160,7 @@ export class EventChatPopupComponent implements OnDestroy {
       this.clearPendingMessageTimers();
       this.resetVisibleReadReceipts();
       this.chatThreadRevision = 0;
+      this.visibleChatThreadTotal = 0;
       this.syncChatThreadQuery();
       if (!session) {
         this.loadedSessionKey = null;
@@ -177,6 +182,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.stopLocalTyping();
     this.teardownLiveChatUpdates();
     this.clearPendingMessageTimers();
+    this.visibleChatThreadTotal = 0;
   }
 
   protected close(): void {
@@ -185,6 +191,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.stopLocalTyping();
     this.teardownLiveChatUpdates();
     this.clearPendingMessageTimers();
+    this.visibleChatThreadTotal = 0;
     this.loadedSessionKey = null;
     this.chatThreadQuery = {};
     this.activitiesContext.closeEventChat();
@@ -354,10 +361,6 @@ export class EventChatPopupComponent implements OnDestroy {
     return 'Several people are typing';
   }
 
-  protected visibleReadBy(message: AppTypes.ChatPopupMessage): AppTypes.ChatReadAvatar[] {
-    return (message.readBy ?? []).filter(reader => this.latestVisibleReadMessageIdByReaderId[reader.id] === message.id);
-  }
-
   protected isFreshMessage(messageId: string): boolean {
     return this.freshMessageIds.has(messageId);
   }
@@ -489,22 +492,15 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private buildOptimisticChatMessage(text: string): AppTypes.ChatPopupMessage {
     const sentAt = new Date();
-    const activeUser = this.appCtx.activeUserProfile();
     const activeUserId = this.activeUserId();
-    const activeUserName = `${activeUser?.name ?? ''}`.trim();
-    const initials = `${activeUser?.initials ?? ''}`.trim() || AppUtils.initialsFromText(activeUserName || 'You');
-    const gender = activeUser?.gender === 'woman' ? 'woman' : 'man';
+    const senderPresentation = this.resolveOptimisticSenderPresentation(activeUserId);
     const clientId = `pending:${activeUserId || 'self'}:${sentAt.getTime()}:${++this.optimisticMessageSequence}`;
 
     return {
       id: clientId,
       clientId,
-      sender: activeUserName || 'You',
-      senderAvatar: {
-        id: activeUserId || 'self',
-        initials,
-        gender
-      },
+      sender: senderPresentation.sender,
+      senderAvatar: senderPresentation.senderAvatar,
       text,
       time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
       sentAtIso: sentAt.toISOString(),
@@ -584,14 +580,14 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     const loadedMessageIds = new Set(this.allMessages.map(message => message.id));
-    const matchedMessageIds = (read.messageIds ?? []).filter(messageId => loadedMessageIds.has(messageId));
-    if (matchedMessageIds.length === 0) {
+    const matchedMessageIds = new Set((read.messageIds ?? []).filter(messageId => loadedMessageIds.has(messageId)));
+    if (matchedMessageIds.size === 0) {
       return;
     }
 
     let changed = false;
     this.allMessages = this.allMessages.map(message => {
-      if (!message.mine || !matchedMessageIds.includes(message.id)) {
+      if (!message.mine || !matchedMessageIds.has(message.id)) {
         return message;
       }
       if ((message.readBy ?? []).some(reader => reader.id === read.userId)) {
@@ -627,6 +623,9 @@ export class EventChatPopupComponent implements OnDestroy {
     for (const key of Object.keys(this.latestVisibleReadMessageIdByReaderId)) {
       delete this.latestVisibleReadMessageIdByReaderId[key];
     }
+    for (const key of Object.keys(this.visibleReadReceiptsByMessageId)) {
+      delete this.visibleReadReceiptsByMessageId[key];
+    }
     for (const message of this.allMessages) {
       if (!message.mine) {
         continue;
@@ -638,11 +637,23 @@ export class EventChatPopupComponent implements OnDestroy {
         this.latestVisibleReadMessageIdByReaderId[reader.id] = message.id;
       }
     }
+    for (const message of this.allMessages) {
+      if (!message.mine || (message.readBy?.length ?? 0) === 0) {
+        continue;
+      }
+      const visibleReaders = (message.readBy ?? []).filter(reader => this.latestVisibleReadMessageIdByReaderId[reader.id] === message.id);
+      if (visibleReaders.length > 0) {
+        this.visibleReadReceiptsByMessageId[message.id] = visibleReaders;
+      }
+    }
   }
 
   private resetVisibleReadReceipts(): void {
     for (const key of Object.keys(this.latestVisibleReadMessageIdByReaderId)) {
       delete this.latestVisibleReadMessageIdByReaderId[key];
+    }
+    for (const key of Object.keys(this.visibleReadReceiptsByMessageId)) {
+      delete this.visibleReadReceiptsByMessageId[key];
     }
   }
 
@@ -684,13 +695,21 @@ export class EventChatPopupComponent implements OnDestroy {
     }
 
     this.clearPendingMessageTimeout(pendingMessageId);
-    const pendingClientId = this.allMessages[pendingIndex]?.clientId;
+    const pendingMessage = this.allMessages[pendingIndex];
+    const pendingClientId = pendingMessage?.clientId;
+    const normalizedMessage = message.mine
+      ? {
+          ...message,
+          sender: pendingMessage?.sender ?? message.sender,
+          senderAvatar: pendingMessage?.senderAvatar ?? message.senderAvatar
+        }
+      : message;
     let nextMessages = [...this.allMessages];
-    if (nextMessages.some((existingMessage, index) => index !== pendingIndex && existingMessage.id === message.id)) {
+    if (nextMessages.some((existingMessage, index) => index !== pendingIndex && existingMessage.id === normalizedMessage.id)) {
       nextMessages = nextMessages.filter((_existingMessage, index) => index !== pendingIndex);
     } else {
       nextMessages[pendingIndex] = {
-        ...message,
+        ...normalizedMessage,
         clientId: pendingClientId
       };
     }
@@ -699,7 +718,7 @@ export class EventChatPopupComponent implements OnDestroy {
       .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
     this.rebuildVisibleReadReceipts();
     this.syncVisibleChatThread({
-      appendedMessageId: message.id,
+      appendedMessageId: normalizedMessage.id,
       stickToEnd
     });
     this.cdr.markForCheck();
@@ -821,6 +840,30 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private activeUserId(): string {
     return this.appCtx.activeUserId().trim();
+  }
+
+  private resolveOptimisticSenderPresentation(
+    activeUserId: string
+  ): Pick<AppTypes.ChatPopupMessage, 'sender' | 'senderAvatar'> {
+    const latestOwnMessage = [...this.allMessages]
+      .reverse()
+      .find(message => message.mine && !!message.sender && !!message.senderAvatar?.initials);
+    if (latestOwnMessage) {
+      return {
+        sender: latestOwnMessage.sender,
+        senderAvatar: {
+          ...latestOwnMessage.senderAvatar
+        }
+      };
+    }
+    return {
+      sender: 'You',
+      senderAvatar: {
+        id: activeUserId || 'self',
+        initials: 'ME',
+        gender: 'man'
+      }
+    };
   }
 
   private refreshRemoteTypingExpiry(userId: string): void {
@@ -956,8 +999,9 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
 
+    const currentVisibleItems = smartList.itemsSnapshot();
     const latestMessageById = new Map(this.allMessages.map(message => [message.id, message] as const));
-    let nextVisibleItems = smartList.itemsSnapshot()
+    let nextVisibleItems = currentVisibleItems
       .map(message => latestMessageById.get(message.id) ?? message)
       .filter(message => latestMessageById.has(message.id));
 
@@ -970,9 +1014,20 @@ export class EventChatPopupComponent implements OnDestroy {
       }
     }
 
+    const visibleItemsChanged = nextVisibleItems.length !== currentVisibleItems.length
+      || nextVisibleItems.some((message, index) => message !== currentVisibleItems[index]);
+    const totalChanged = this.visibleChatThreadTotal !== this.allMessages.length;
+    if (!visibleItemsChanged && !totalChanged) {
+      if (options.stickToEnd) {
+        this.scheduleChatThreadScrollToEnd();
+      }
+      return;
+    }
+
     smartList.replaceVisibleItems(nextVisibleItems, {
       total: this.allMessages.length
     });
+    this.visibleChatThreadTotal = this.allMessages.length;
 
     if (options.stickToEnd) {
       this.scheduleChatThreadScrollToEnd();

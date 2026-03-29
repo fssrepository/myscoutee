@@ -166,6 +166,27 @@
     [attr.data-chat-message-id]="message.id"
   >
     <div class="chat-bubble">
+      <svg
+        class="chat-bubble-progress-ring"
+        *ngIf="message.mine && (message.deliveryState === 'pending' || message.deliveryState === 'timed-out')"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <rect class="chat-bubble-progress-track" x="1.25" y="1.25" width="97.5" height="97.5" rx="10.5" ry="10.5" pathLength="100"></rect>
+        <rect
+          class="chat-bubble-progress-stroke"
+          [class.is-loading]="message.deliveryState === 'pending'"
+          [class.is-timed-out]="message.deliveryState === 'timed-out'"
+          x="1.25"
+          y="1.25"
+          width="97.5"
+          height="97.5"
+          rx="10.5"
+          ry="10.5"
+          pathLength="100"
+        ></rect>
+      </svg>
       <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">
         {{ message.senderAvatar.initials }}
       </span>
@@ -185,16 +206,18 @@
           Taking longer than usual
         </div>
       </div>
-      <div class="chat-readers" *ngIf="visibleReadBy(message).length > 0">
-        <span
-          class="chat-reader"
-          *ngFor="let reader of visibleReadBy(message)"
-          [class]="'user-color-' + reader.gender"
-          [class.chat-reader-fresh]="isFreshRead(message.id, reader.id)"
-        >
-          {{ reader.initials }}
-        </span>
-      </div>
+      <ng-container *ngIf="visibleReadReceiptsByMessageId[message.id] as visibleReaders">
+        <div class="chat-readers" *ngIf="visibleReaders.length > 0">
+          <span
+            class="chat-reader"
+            *ngFor="let reader of visibleReaders; trackBy: trackByChatReader"
+            [class]="'user-color-' + reader.gender"
+            [class.chat-reader-fresh]="isFreshRead(message.id, reader.id)"
+          >
+            {{ reader.initials }}
+          </span>
+        </div>
+      </ng-container>
     </div>
   </article>
 </ng-template>
