@@ -139,9 +139,9 @@ export class HomeComponent implements OnDestroy {
   private readonly userFacetById: Record<string, GameUserFacet> = APP_STATIC_DATA.homeUserFacetById;
   protected readonly homeModeOptions: ReadonlyArray<HomeModeOption> = [
     { key: 'single', label: 'Preferences', icon: 'person' },
-    { key: 'pair', label: 'Discovery', icon: 'groups' },
     { key: 'friends-in-common', label: 'Connected', icon: 'diversity_3' },
-    { key: 'separated-friends', label: 'Unconnected', icon: 'group_add' }
+    { key: 'separated-friends', label: 'Unconnected', icon: 'group_add' },
+    { key: 'pair', label: 'Outside Network', icon: 'groups' }
   ];
   private users: DemoUser[] = [];
   protected selectedRating = 0;
