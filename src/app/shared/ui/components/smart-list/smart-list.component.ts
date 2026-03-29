@@ -661,7 +661,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected hostedFullscreenCurrentItem(): T | null {
-    return this.cursorItem();
+    return this.paginationHelper.leavingItem ?? this.cursorItem();
   }
 
   protected hostedFullscreenCurrentRenderState(): SmartListItemRenderState {
@@ -2149,9 +2149,19 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (!currentItem) {
       return this.moveCursor(normalizedDelta);
     }
+    this.cursorIndex = targetIndex;
+    this.syncCursorBounds();
+    this.emitState();
+    this.cdr.markForCheck();
     this.hostedFullscreenPendingDelta = normalizedDelta;
     this.hostedFullscreenCompletingTransition = false;
     this.paginationHelper.beginTransition(currentItem);
+    if (this.currentViewMode === 'list' && this.resolvedPresentation() === 'fullscreen' && this.hasMore && !this.loading) {
+      const remaining = this.items.length - (this.cursorIndex + 1);
+      if (remaining <= SmartListComponent.HOSTED_FULLSCREEN_STACK_SIZE - 1) {
+        void this.loadNextPage();
+      }
+    }
     this.startHostedFullscreenTransitionTimer();
     return true;
   }
@@ -2180,7 +2190,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return true;
   }
 
-  private buildCursorState(): SmartListCursorState<T> {
+  private buildCursorState(indexOverride = this.cursorIndex): SmartListCursorState<T> {
     const total = Math.max(0, Math.max(this.total, this.items.length));
     if (total === 0) {
       return {
@@ -2192,7 +2202,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
         item: null
       };
     }
-    const index = Math.max(0, Math.min(this.cursorIndex, total));
+    const index = Math.max(0, Math.min(indexOverride, total));
     return {
       index,
       total,
@@ -2348,8 +2358,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected hostedFullscreenStackItemIndex(slotOffset: number): number {
-    const direction = this.paginationHelper.animating && this.hostedFullscreenPendingDelta < 0 ? -1 : 1;
-    return this.buildCursorState().index + (slotOffset * direction);
+    const baseIndex = this.buildCursorState().index;
+    if (!this.paginationHelper.animating || this.hostedFullscreenPendingDelta === 0) {
+      return baseIndex + slotOffset;
+    }
+    const direction = this.hostedFullscreenPendingDelta < 0 ? -1 : 1;
+    return baseIndex + ((slotOffset - 1) * direction);
   }
 
   private startHostedFullscreenTransitionTimer(): void {
@@ -2379,16 +2393,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (!this.paginationHelper.animating || this.hostedFullscreenPendingDelta === 0 || this.hostedFullscreenCompletingTransition) {
       return;
     }
-    const delta = this.hostedFullscreenPendingDelta;
     this.hostedFullscreenPendingDelta = 0;
     this.hostedFullscreenCompletingTransition = true;
     this.clearHostedFullscreenTransitionTimer();
-    try {
-      await this.moveCursor(delta);
-    } finally {
-      this.hostedFullscreenCompletingTransition = false;
-      this.paginationHelper.finishTransition();
-    }
+    this.hostedFullscreenCompletingTransition = false;
+    this.paginationHelper.finishTransition();
   }
 
   private calendarConfig(): SmartListCalendarConfig<T, TFilters> | null {

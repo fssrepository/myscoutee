@@ -500,6 +500,7 @@ export class HomeComponent implements OnDestroy {
     return {
       scale: this.ratingScale,
       presentation: 'fullscreen',
+      blinkOnSelect: false,
       animation: this.isRatingBarBlinking ? 'blink' : 'default'
     };
   }
