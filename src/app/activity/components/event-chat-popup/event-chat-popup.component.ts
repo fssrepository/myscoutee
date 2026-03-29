@@ -415,7 +415,7 @@ export class EventChatPopupComponent implements OnDestroy {
       if (this.loadedSessionKey !== sessionKey) {
         return this.chatThreadPageResult(query);
       }
-      this.allMessages = [...nextMessages]
+      this.allMessages = this.normalizeChatMessages(nextMessages)
         .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
       this.rebuildVisibleReadReceipts();
       this.initialChatLoadedSessionKey = sessionKey;
@@ -518,21 +518,22 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private mergeIncomingChatMessage(message: AppTypes.ChatPopupMessage): void {
-    const shouldStickToEnd = message.mine || this.isChatThreadNearEnd();
-    const matchedPendingId = this.matchPendingMessageId(message);
+    const normalizedMessage = this.normalizeChatMessage(message);
+    const shouldStickToEnd = normalizedMessage.mine || this.isChatThreadNearEnd();
+    const matchedPendingId = this.matchPendingMessageId(normalizedMessage);
     if (matchedPendingId) {
-      this.replacePendingMessage(matchedPendingId, message, shouldStickToEnd);
+      this.replacePendingMessage(matchedPendingId, normalizedMessage, shouldStickToEnd);
       return;
     }
-    if (this.allMessages.some(existingMessage => existingMessage.id === message.id)) {
+    if (this.allMessages.some(existingMessage => existingMessage.id === normalizedMessage.id)) {
       return;
     }
-    this.flagFreshMessage(message.id);
-    this.allMessages = [...this.allMessages, message]
+    this.flagFreshMessage(normalizedMessage.id);
+    this.allMessages = [...this.allMessages, normalizedMessage]
       .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
     this.rebuildVisibleReadReceipts();
     this.syncVisibleChatThread({
-      appendedMessageId: message.id,
+      appendedMessageId: normalizedMessage.id,
       stickToEnd: shouldStickToEnd
     });
     this.cdr.markForCheck();
@@ -697,13 +698,14 @@ export class EventChatPopupComponent implements OnDestroy {
     this.clearPendingMessageTimeout(pendingMessageId);
     const pendingMessage = this.allMessages[pendingIndex];
     const pendingClientId = pendingMessage?.clientId;
-    const normalizedMessage = message.mine
+    const resolvedMessage = this.normalizeChatMessage(message);
+    const normalizedMessage = resolvedMessage.mine
       ? {
-          ...message,
-          sender: pendingMessage?.sender ?? message.sender,
-          senderAvatar: pendingMessage?.senderAvatar ?? message.senderAvatar
+          ...resolvedMessage,
+          sender: pendingMessage?.sender ?? resolvedMessage.sender,
+          senderAvatar: pendingMessage?.senderAvatar ?? resolvedMessage.senderAvatar
         }
-      : message;
+      : resolvedMessage;
     let nextMessages = [...this.allMessages];
     if (nextMessages.some((existingMessage, index) => index !== pendingIndex && existingMessage.id === normalizedMessage.id)) {
       nextMessages = nextMessages.filter((_existingMessage, index) => index !== pendingIndex);
@@ -761,17 +763,17 @@ export class EventChatPopupComponent implements OnDestroy {
       matchedPendingIds.add(pendingId);
       this.clearPendingMessageTimeout(pendingId);
       const pendingMessage = this.allMessages.find(existingMessage => existingMessage.id === pendingId);
-      return {
+      return this.normalizeChatMessage({
         ...message,
         clientId: pendingMessage?.clientId
-      };
+      });
     });
     const unresolvedPendingMessages = this.allMessages.filter(message =>
       (message.deliveryState === 'pending' || message.deliveryState === 'timed-out')
       && !matchedPendingIds.has(message.id)
     );
 
-    return [...snapshotMessages, ...unresolvedPendingMessages];
+    return [...this.normalizeChatMessages(snapshotMessages), ...unresolvedPendingMessages];
   }
 
   private schedulePendingMessageTimeout(messageId: string): void {
@@ -842,15 +844,36 @@ export class EventChatPopupComponent implements OnDestroy {
     return this.appCtx.activeUserId().trim();
   }
 
+  private normalizeChatMessages(
+    messages: readonly AppTypes.ChatPopupMessage[]
+  ): AppTypes.ChatPopupMessage[] {
+    return messages.map(message => this.normalizeChatMessage(message));
+  }
+
+  private normalizeChatMessage(message: AppTypes.ChatPopupMessage): AppTypes.ChatPopupMessage {
+    if (!message.mine) {
+      return message;
+    }
+    const senderPresentation = this.resolveOptimisticSenderPresentation(message.senderAvatar?.id || this.activeUserId());
+    return {
+      ...message,
+      sender: senderPresentation.sender,
+      senderAvatar: senderPresentation.senderAvatar
+    };
+  }
+
   private resolveOptimisticSenderPresentation(
     activeUserId: string
   ): Pick<AppTypes.ChatPopupMessage, 'sender' | 'senderAvatar'> {
+    const activeUser = this.appCtx.activeUserProfile() ?? (activeUserId ? this.appCtx.getUserProfile(activeUserId) : null);
+    const initials = activeUser?.initials?.trim()
+      || AppUtils.initialsFromText(activeUser?.name ?? 'Me');
     return {
       sender: 'You',
       senderAvatar: {
-        id: activeUserId || 'self',
-        initials: 'ME',
-        gender: 'man'
+        id: activeUser?.id?.trim() || activeUserId || 'self',
+        initials: initials || 'ME',
+        gender: activeUser?.gender ?? 'man'
       }
     };
   }
