@@ -1,4 +1,8 @@
-<div class="app-popup app-popup-stacked app-popup-stacked-over-activities event-chat-popup-shell" *ngIf="session() as chatSession">
+<div
+  class="app-popup app-popup-stacked app-popup-stacked-over-activities event-chat-popup-shell"
+  *ngIf="session() as chatSession"
+  [style.--chat-compose-detached-space.px]="chatComposeDetachedSpace"
+>
   <div class="app-popup-backdrop" (click)="close()"></div>
   <div class="app-popup-panel popup-panel-event-chat" (click)="$event.stopPropagation()">
     <button
@@ -133,7 +137,7 @@
             </span>
           </div>
 
-          <div class="chat-compose-box">
+          <div class="chat-compose-box" #chatComposeBox>
             <textarea
               rows="3"
               placeholder="Write message"

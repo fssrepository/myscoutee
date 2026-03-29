@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  ElementRef,
   NgZone,
   OnDestroy,
   ViewChild,
@@ -60,6 +61,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected draftMessage = '';
   protected showContextMenu = false;
   protected contextMenuOpenUp = false;
+  protected chatComposeDetachedSpace = 108;
   protected chatHeaderProgress = 0;
   protected chatHeaderProgressLoading = false;
   protected chatHeaderLoadingProgress = 0;
@@ -117,9 +119,17 @@ export class EventChatPopupComponent implements OnDestroy {
   @ViewChild('chatThreadSmartList')
   private chatThreadSmartList?: SmartListComponent<AppTypes.ChatPopupMessage, ChatThreadFilters>;
 
+  @ViewChild('chatComposeBox')
+  private set chatComposeBox(value: ElementRef<HTMLDivElement> | undefined) {
+    this.chatComposeBoxRef = value;
+    this.observeChatComposeBox();
+  }
+
   private loadedSessionKey: string | null = null;
   private initialChatLoadedSessionKey: string | null = null;
   private chatInitialLoadTimer: ReturnType<typeof setTimeout> | null = null;
+  private chatComposeBoxRef?: ElementRef<HTMLDivElement>;
+  private chatComposeResizeObserver: ResizeObserver | null = null;
   private chatHeaderLoadingCounter = 0;
   private chatHeaderLoadingInterval: ReturnType<typeof setInterval> | null = null;
   private chatHeaderLoadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
@@ -175,6 +185,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.clearChatComposeResizeObserver();
     this.stopLocalTyping();
     this.teardownLiveChatUpdates();
     this.cancelChatInitialLoadTimer();
@@ -503,12 +514,15 @@ export class EventChatPopupComponent implements OnDestroy {
     if (this.allMessages.some(existingMessage => existingMessage.id === message.id)) {
       return;
     }
+    const shouldStickToEnd = message.mine || this.isChatThreadNearEnd();
     this.flagFreshMessage(message.id);
     this.allMessages = [...this.allMessages, message]
       .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
     this.rebuildVisibleReadReceipts();
-    this.chatThreadRevision += 1;
-    this.syncChatThreadQuery();
+    this.syncVisibleChatThread({
+      appendedMessageId: message.id,
+      stickToEnd: shouldStickToEnd
+    });
     this.cdr.markForCheck();
   }
 
@@ -584,6 +598,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (lastVisibleMessageId) {
       this.flagFreshRead(lastVisibleMessageId, read.userId);
     }
+    this.syncVisibleChatThread();
     this.cdr.markForCheck();
   }
 
@@ -759,6 +774,97 @@ export class EventChatPopupComponent implements OnDestroy {
     const spaceBelow = viewportHeight - rect.bottom;
     const spaceAbove = rect.top;
     return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
+  }
+
+  private syncVisibleChatThread(
+    options: {
+      appendedMessageId?: string;
+      stickToEnd?: boolean;
+    } = {}
+  ): void {
+    const smartList = this.chatThreadSmartList;
+    if (!smartList) {
+      return;
+    }
+
+    const latestMessageById = new Map(this.allMessages.map(message => [message.id, message] as const));
+    let nextVisibleItems = smartList.itemsSnapshot()
+      .map(message => latestMessageById.get(message.id) ?? message)
+      .filter(message => latestMessageById.has(message.id));
+
+    const appendedMessageId = options.appendedMessageId?.trim() ?? '';
+    if (appendedMessageId) {
+      const appendedMessage = latestMessageById.get(appendedMessageId);
+      if (appendedMessage && !nextVisibleItems.some(message => message.id === appendedMessage.id)) {
+        nextVisibleItems = [...nextVisibleItems, appendedMessage]
+          .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+      }
+    }
+
+    smartList.replaceVisibleItems(nextVisibleItems, {
+      total: this.allMessages.length
+    });
+
+    if (options.stickToEnd) {
+      this.scheduleChatThreadScrollToEnd();
+    }
+  }
+
+  private isChatThreadNearEnd(): boolean {
+    const scrollElement = this.chatThreadSmartList?.scrollElement();
+    if (!scrollElement) {
+      return true;
+    }
+    const remaining = scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight;
+    return remaining <= 72;
+  }
+
+  private scheduleChatThreadScrollToEnd(): void {
+    const run = () => {
+      const scrollElement = this.chatThreadSmartList?.scrollElement();
+      if (!scrollElement) {
+        return;
+      }
+      scrollElement.scrollTo({
+        top: scrollElement.scrollHeight,
+        behavior: 'smooth'
+      });
+    };
+
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(run));
+      return;
+    }
+    setTimeout(run, 0);
+  }
+
+  private observeChatComposeBox(): void {
+    this.clearChatComposeResizeObserver();
+    this.syncChatComposeDetachedSpace();
+    const composeElement = this.chatComposeBoxRef?.nativeElement;
+    if (!composeElement || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    this.chatComposeResizeObserver = new ResizeObserver(() => {
+      this.syncChatComposeDetachedSpace();
+    });
+    this.chatComposeResizeObserver.observe(composeElement);
+  }
+
+  private clearChatComposeResizeObserver(): void {
+    this.chatComposeResizeObserver?.disconnect();
+    this.chatComposeResizeObserver = null;
+  }
+
+  private syncChatComposeDetachedSpace(): void {
+    const composeElement = this.chatComposeBoxRef?.nativeElement;
+    const measuredHeight = composeElement ? Math.ceil(composeElement.getBoundingClientRect().height) : 0;
+    const nextSpace = Math.max(108, measuredHeight + 12);
+    if (nextSpace === this.chatComposeDetachedSpace) {
+      return;
+    }
+    this.chatComposeDetachedSpace = nextSpace;
+    this.cdr.markForCheck();
   }
 
   private beginChatHeaderProgressLoading(): void {
