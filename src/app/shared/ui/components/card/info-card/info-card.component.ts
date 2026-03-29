@@ -253,6 +253,9 @@ export class InfoCardComponent {
     if (this.card?.clickable) {
       classes.push('ui-info-card--clickable');
     }
+    if (this.menuOpen) {
+      classes.push('ui-info-card--menu-open');
+    }
     return classes;
   }
 

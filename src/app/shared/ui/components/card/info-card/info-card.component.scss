@@ -21,6 +21,10 @@
   touch-action: pan-y;
 }
 
+.ui-info-card--menu-open {
+  z-index: 40;
+}
+
 .ui-info-card--clickable {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;

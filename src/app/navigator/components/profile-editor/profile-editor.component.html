@@ -389,6 +389,7 @@
                       <div
                         class="item-action-menu item-action-menu-desktop profile-privacy-menu"
                         *ngIf="!isMobileView"
+                        [class.profile-privacy-menu--open-up]="true"
                         [class.is-open]="isExperiencePrivacyFabOpen('workspace')"
                         (click)="$event.stopPropagation()"
                       >
@@ -438,6 +439,7 @@
                       <div
                         class="item-action-menu item-action-menu-desktop profile-privacy-menu"
                         *ngIf="!isMobileView"
+                        [class.profile-privacy-menu--open-up]="true"
                         [class.is-open]="isExperiencePrivacyFabOpen('school')"
                         (click)="$event.stopPropagation()"
                       >

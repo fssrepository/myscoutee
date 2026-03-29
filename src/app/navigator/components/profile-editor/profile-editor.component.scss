@@ -1072,6 +1072,11 @@
   display: none;
 }
 
+.profile-details-privacy-fab .profile-privacy-menu.profile-privacy-menu--open-up {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
 .profile-details-privacy-fab .profile-privacy-menu.is-open {
   display: grid;
 }
