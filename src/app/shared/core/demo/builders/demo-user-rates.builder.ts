@@ -9,10 +9,12 @@ type RateUserRef = {
 
 interface GeneratedRateItemsOptions {
   extraSingleGivenCount?: number;
+  userCoverageRatio?: number;
 }
 
 export class DemoUserRatesBuilder {
   private static readonly DEFAULT_EXTRA_SINGLE_GIVEN_COUNT = 0;
+  private static readonly DEFAULT_USER_COVERAGE_RATIO = 1;
 
   static buildGeneratedRateItemsForUser<TUser extends RateUserRef>(
     users: readonly TUser[],
@@ -22,6 +24,16 @@ export class DemoUserRatesBuilder {
     const otherUsers = users
       .filter(user => user.id !== activeUserId)
       .sort((a, b) => a.id.localeCompare(b.id));
+    const seededUsers = this.selectSeedUsers(otherUsers, activeUserId, options.userCoverageRatio);
+    const seededUserIds = new Set(seededUsers.map(user => user.id));
+    const extraTargetUsers = otherUsers
+      .filter(user => !seededUserIds.has(user.id))
+      .sort((left, right) =>
+        AppUtils.hashText(`rate-extra-seed:${activeUserId}:${left.id}`)
+        - AppUtils.hashText(`rate-extra-seed:${activeUserId}:${right.id}`)
+        || left.id.localeCompare(right.id)
+      );
+    const extraUsers = extraTargetUsers.length > 0 ? extraTargetUsers : seededUsers;
     const filterLanes: Array<{ mode: 'individual' | 'pair'; direction: RateMenuItem['direction'] }> = [
       { mode: 'individual', direction: 'given' },
       { mode: 'individual', direction: 'received' },
@@ -31,7 +43,7 @@ export class DemoUserRatesBuilder {
       { mode: 'pair', direction: 'received' }
     ];
     const generated: RateMenuItem[] = [];
-    otherUsers.forEach((user, userIndex) => {
+    seededUsers.forEach((user, userIndex) => {
       const laneIndex = userIndex % filterLanes.length;
       const lane = filterLanes[laneIndex];
       let secondaryUserId: string | undefined;
@@ -59,7 +71,7 @@ export class DemoUserRatesBuilder {
       Math.trunc(options.extraSingleGivenCount ?? DemoUserRatesBuilder.DEFAULT_EXTRA_SINGLE_GIVEN_COUNT)
     );
     for (let extraIndex = 0; extraIndex < extraSingleGivenCount; extraIndex += 1) {
-      const targetUser = otherUsers[extraIndex % otherUsers.length];
+      const targetUser = extraUsers[extraIndex % extraUsers.length];
       if (!targetUser) {
         break;
       }
@@ -70,7 +82,7 @@ export class DemoUserRatesBuilder {
           'individual',
           'given',
           0,
-          otherUsers.length + extraIndex,
+          seededUsers.length + extraIndex,
           extraIndex + 1
         )
       );
@@ -401,11 +413,42 @@ export class DemoUserRatesBuilder {
     return undefined;
   }
 
+  private static selectSeedUsers<TUser extends RateUserRef>(
+    users: readonly TUser[],
+    activeUserId: string,
+    requestedCoverageRatio: number | undefined
+  ): TUser[] {
+    const coverageRatio = this.normalizeCoverageRatio(requestedCoverageRatio);
+    if (coverageRatio >= 1 || users.length <= 1) {
+      return [...users];
+    }
+    if (coverageRatio <= 0 || users.length === 0) {
+      return [];
+    }
+    const targetCount = Math.max(1, Math.round(users.length * coverageRatio));
+    return [...users]
+      .map(user => ({
+        user,
+        seed: AppUtils.hashText(`rate-seed-coverage:${activeUserId}:${user.id}`)
+      }))
+      .sort((left, right) => left.seed - right.seed || left.user.id.localeCompare(right.user.id))
+      .slice(0, targetCount)
+      .map(entry => entry.user)
+      .sort((left, right) => left.id.localeCompare(right.id));
+  }
+
   private static normalizeRateScore(value: unknown): number {
     if (!Number.isFinite(value)) {
       return 0;
     }
     return Math.max(0, Math.min(10, Math.trunc(Number(value))));
+  }
+
+  private static normalizeCoverageRatio(value: number | undefined): number {
+    if (!Number.isFinite(value)) {
+      return DemoUserRatesBuilder.DEFAULT_USER_COVERAGE_RATIO;
+    }
+    return Math.max(0, Math.min(1, Number(value)));
   }
 
   private static normalizeDistanceMetersExact(value: unknown, distanceKm: unknown, seedKey: string): number {

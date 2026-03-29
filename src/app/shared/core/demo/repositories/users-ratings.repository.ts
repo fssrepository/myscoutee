@@ -22,6 +22,10 @@ import {
 export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
   private static readonly DEFAULT_DEMO_USERS_COUNT = 50;
   private static readonly MIN_ACTIVITY_RATE_CONNECTIONS = 12;
+  private static readonly DEMO_ACTIVITY_RATE_SEED_COVERAGE_RATIO = 0.5;
+  private static readonly FEATURED_DEMO_ACTIVITY_RATE_OWNER_COUNT = 4;
+  private static readonly FEATURED_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT = 15;
+  private static readonly DEFAULT_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT = 5;
 
   init(): void {
     const users = this.querySeedUsers();
@@ -29,8 +33,13 @@ export class DemoUsersRatingsRepository extends HttpUsersRatingsRepository {
     if (ownerIdsToSeed.length === 0) {
       return;
     }
-    const records = ownerIdsToSeed.flatMap(ownerUserId =>
-      DemoUserRatesBuilder.buildGeneratedRateItemsForUser(users, ownerUserId, { extraSingleGivenCount: 20 })
+    const records = ownerIdsToSeed.flatMap((ownerUserId, ownerIndex) =>
+      DemoUserRatesBuilder.buildGeneratedRateItemsForUser(users, ownerUserId, {
+        extraSingleGivenCount: ownerIndex < DemoUsersRatingsRepository.FEATURED_DEMO_ACTIVITY_RATE_OWNER_COUNT
+          ? DemoUsersRatingsRepository.FEATURED_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT
+          : DemoUsersRatingsRepository.DEFAULT_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT,
+        userCoverageRatio: DemoUsersRatingsRepository.DEMO_ACTIVITY_RATE_SEED_COVERAGE_RATIO
+      })
         .map(item => DemoUserRatesBuilder.toActivityRateRecord(ownerUserId, item))
     );
     if (records.length === 0) {
