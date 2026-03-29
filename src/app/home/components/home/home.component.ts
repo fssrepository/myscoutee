@@ -235,7 +235,9 @@ export class HomeComponent implements OnDestroy {
     = query => from(this.loadHomeSmartListPage(query));
 
   protected get isPairMode(): boolean {
-    return this.selectedHomeMode === 'pair' || this.selectedHomeMode === 'separated-friends';
+    return this.selectedHomeMode === 'pair'
+      || this.selectedHomeMode === 'separated-friends'
+      || this.selectedHomeMode === 'friends-in-common';
   }
 
   private get isSyntheticPairMode(): boolean {
@@ -441,8 +443,8 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get hasFilteredCandidates(): boolean {
-    if (this.isSeparatedFriendsMode) {
-      return this.socialPairRows().length > 0;
+    if (this.isSeparatedFriendsMode || this.isFriendsInCommonMode) {
+      return this.activeSocialPairRows().length > 0;
     }
     return this.candidatePool.length > 0;
   }
@@ -1360,8 +1362,8 @@ export class HomeComponent implements OnDestroy {
   }
 
   private homeSmartListRows(): HomeSmartListRow[] {
-    if (this.isSeparatedFriendsMode) {
-      return this.socialPairRows();
+    if (this.isSeparatedFriendsMode || this.isFriendsInCommonMode) {
+      return this.activeSocialPairRows();
     }
     if (this.isPairMode) {
       return this.pairModeRounds().map((round, index) => ({
@@ -1369,9 +1371,6 @@ export class HomeComponent implements OnDestroy {
         mode: 'pair',
         round
       }));
-    }
-    if (this.isFriendsInCommonMode) {
-      return this.socialFriendsInCommonPairRows();
     }
     return this.candidatePool.map(candidate => ({
       id: `single:${candidate.id}`,
@@ -1442,7 +1441,7 @@ export class HomeComponent implements OnDestroy {
     return {
       key: gender,
       label,
-      tone: candidate?.gender ?? gender,
+      tone: gender,
       slides: this.homeCandidateSlides(candidate, socialCard),
       statusBadgeLabel: socialCard ? this.homeSocialStatusBadge(socialCard) : this.candidateActivityBadge(candidate)
     };
@@ -1476,6 +1475,12 @@ export class HomeComponent implements OnDestroy {
         }
       }))
       .filter(row => !!row.round.woman && !!row.round.man);
+  }
+
+  private activeSocialPairRows(): HomePairSmartListRow[] {
+    return this.isFriendsInCommonMode
+      ? this.socialFriendsInCommonPairRows()
+      : this.socialPairRows();
   }
 
   private userById(userId: string): DemoUser | null {
@@ -1683,8 +1688,8 @@ export class HomeComponent implements OnDestroy {
   }
 
   private pairModeRounds(): PairModeRoundState[] {
-    if (this.isSeparatedFriendsMode) {
-      return this.socialPairRows().map(row => row.round);
+    if (this.isSeparatedFriendsMode || this.isFriendsInCommonMode) {
+      return this.activeSocialPairRows().map(row => row.round);
     }
     const women = this.candidatePool.filter(user => user.gender === 'woman');
     const men = this.candidatePool.filter(user => user.gender === 'man');
