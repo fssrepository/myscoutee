@@ -1340,7 +1340,11 @@ export class HomeComponent implements OnDestroy {
     const requiredCount = (Math.max(0, query.page) + 1) * pageSize;
     while (this.availableServiceRowsCount() < requiredCount) {
       const snapshot = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
-      if (snapshot.requestInFlight || snapshot.nextCursor === null) {
+      if (snapshot.requestInFlight) {
+        await this.waitForHomeGameStackTick();
+        continue;
+      }
+      if (snapshot.nextCursor === null) {
         return;
       }
       await this.gameService.loadNextUserGameCardsStackPage(
@@ -2043,7 +2047,9 @@ export class HomeComponent implements OnDestroy {
       const fallbackCount = this.isSeparatedFriendsMode || this.isFriendsInCommonMode
         ? serviceStack.socialCards.length
         : serviceStack.cardUserIds.length;
-      return this.appCtx.resolveUserFilterCount(this.activeUserId, fallbackCount);
+      const resolvedCount = this.appCtx.resolveUserFilterCount(this.activeUserId, fallbackCount);
+      const minimumKnownCount = fallbackCount + (serviceStack.nextCursor !== null ? 1 : 0);
+      return Math.max(resolvedCount, minimumKnownCount);
     }
     return this.candidatePool.length;
   }
