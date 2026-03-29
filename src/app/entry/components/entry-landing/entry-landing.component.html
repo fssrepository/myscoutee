@@ -9,7 +9,14 @@
         <a href="#why" (click)="scrollEntryTo('why', $event)">Why</a>
         <a href="#how" (click)="scrollEntryTo('how', $event)">How it works</a>
       </nav>
-      <button type="button" class="entry-auth-btn" [class.entry-auth-btn-avatar]="entryAuthButtonShowsAvatar" (click)="requestHeaderAuth()">
+      <button
+        type="button"
+        class="entry-auth-btn"
+        [class.entry-auth-btn-avatar]="entryAuthButtonShowsAvatar"
+        matRipple
+        [matRippleColor]="'rgba(255, 255, 255, 0.24)'"
+        (click)="requestHeaderAuth()"
+      >
         <ng-container *ngIf="entryAuthButtonShowsAvatar; else loginButtonContent">
           <span class="entry-auth-avatar">{{ firebaseAuthProfile?.initials }}</span>
         </ng-container>

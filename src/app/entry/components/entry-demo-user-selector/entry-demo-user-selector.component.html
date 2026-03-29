@@ -51,6 +51,8 @@
             class="demo-user-item"
             [disabled]="submitting"
             *ngFor="let user of users"
+            matRipple
+            [matRippleColor]="'rgba(72, 111, 196, 0.16)'"
             (click)="requestUserSelect(user.id)"
           >
             <span class="user-avatar" [class]="'user-color-' + user.gender">{{ user.initials }}</span>
