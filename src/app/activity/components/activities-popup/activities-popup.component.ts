@@ -380,7 +380,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   };
   protected readonly activitiesSmartListLoadPage: SmartListLoadPage<AppTypes.ActivityListRow, ActivitiesSmartListFilters>
     = query => from(this.activitiesService.loadActivities(query, {
-      chatItems: this.chatItemsForActivities()
+      chatItems: this.chatItems
     }));
   // ── Inline action menu ────────────────────────────────────────────────────
   protected inlineItemActionMenu: {

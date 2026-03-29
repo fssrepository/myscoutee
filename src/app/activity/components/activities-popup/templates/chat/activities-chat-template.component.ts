@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 
 import { AppUtils } from '../../../../../shared/app-utils';
 import type {
@@ -38,14 +38,22 @@ export interface ActivitiesChatTemplateContext {
   styleUrl: './activities-chat-template.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ActivitiesChatTemplateComponent {
+export class ActivitiesChatTemplateComponent implements OnChanges {
   @Input() row: AppTypes.ActivityListRow | null = null;
   @Input() groupLabel: string | null = null;
   @Input() context: ActivitiesChatTemplateContext | null = null;
 
   @Output() readonly rowClick = new EventEmitter<MouseEvent>();
 
-  protected get data(): ActivitiesChatTemplateData | null {
+  protected data: ActivitiesChatTemplateData | null = null;
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['row'] || changes['groupLabel'] || changes['context']) {
+      this.data = this.buildTemplateData();
+    }
+  }
+
+  private buildTemplateData(): ActivitiesChatTemplateData | null {
     const row = this.row;
     const context = this.context;
     if (!row || !context) {
@@ -70,6 +78,15 @@ type ActivitiesChatsHost = any;
 
 export class ActivitiesChatsController {
   constructor(private readonly host: ActivitiesChatsHost) {}
+
+  private cachedActiveUserRef: DemoUser | null = null;
+  private cachedUsersRef: readonly DemoUser[] | null = null;
+  private cachedChatItemsRef: readonly ChatMenuItem[] | null = null;
+  private readonly userByIdCache = new Map<string, DemoUser>();
+  private readonly chatItemByIdCache = new Map<string, ChatMenuItem>();
+  private readonly chatMembersByIdCache = new Map<string, DemoUser[]>();
+  private readonly chatLastSenderByIdCache = new Map<string, DemoUser>();
+  private cachedOtherUsers: DemoUser[] = [];
 
   private get activeUser() { return this.host.activeUser as DemoUser; }
   private get activitiesContext() { return this.host.activitiesContext; }
@@ -366,17 +383,57 @@ export class ActivitiesChatsController {
     return this.appCtx.activeUserId().trim() || this.activeUser.id;
   }
 
+  private syncChatLookupCache(): void {
+    const activeUser = this.activeUser;
+    const users = this.users;
+    const chatItems = this.chatItems;
+    if (
+      this.cachedActiveUserRef === activeUser
+      && this.cachedUsersRef === users
+      && this.cachedChatItemsRef === chatItems
+    ) {
+      return;
+    }
+
+    this.cachedActiveUserRef = activeUser;
+    this.cachedUsersRef = users;
+    this.cachedChatItemsRef = chatItems;
+    this.userByIdCache.clear();
+    this.chatItemByIdCache.clear();
+    this.chatMembersByIdCache.clear();
+    this.chatLastSenderByIdCache.clear();
+    this.cachedOtherUsers = [];
+
+    for (const user of users) {
+      this.userByIdCache.set(user.id, user);
+      if (user.id !== activeUser.id) {
+        this.cachedOtherUsers.push(user);
+      }
+    }
+
+    for (const item of chatItems) {
+      this.chatItemByIdCache.set(item.id, item);
+    }
+  }
+
   private getChatItemById(chatId: string): ChatMenuItem | undefined {
-    return this.chatItems.find(item => item.id === chatId);
+    this.syncChatLookupCache();
+    return this.chatItemByIdCache.get(chatId);
   }
 
   private getChatMembersById(chatId: string): DemoUser[] {
+    this.syncChatLookupCache();
+    const cachedMembers = this.chatMembersByIdCache.get(chatId);
+    if (cachedMembers) {
+      return cachedMembers;
+    }
+
     const chatItem = this.getChatItemById(chatId);
     const explicitMembers = (chatItem?.memberIds ?? [])
-      .map(memberId => this.users.find(user => user.id === memberId))
+      .map(memberId => this.userByIdCache.get(memberId))
       .filter((user): user is DemoUser => Boolean(user));
     const lastSender = chatItem?.lastSenderId
-      ? this.users.find(user => user.id === chatItem.lastSenderId) ?? null
+      ? this.userByIdCache.get(chatItem.lastSenderId) ?? null
       : null;
 
     const orderedMembers: DemoUser[] = [];
@@ -392,12 +449,15 @@ export class ActivitiesChatsController {
       orderedMembers.push(this.activeUser);
     }
     if (orderedMembers.length > 0) {
+      this.chatMembersByIdCache.set(chatId, orderedMembers);
       return orderedMembers;
     }
 
-    const others = this.users.filter(user => user.id !== this.activeUser.id);
+    const others = this.cachedOtherUsers;
     if (!others.length) {
-      return [this.activeUser];
+      const fallbackMembers = [this.activeUser];
+      this.chatMembersByIdCache.set(chatId, fallbackMembers);
+      return fallbackMembers;
     }
     const seed = AppUtils.hashText(chatId);
     const offsets = [0, 3, 7, 11, 15, 19];
@@ -415,11 +475,19 @@ export class ActivitiesChatsController {
     while (picked.length < memberCount) {
       picked.push(others[picked.length % others.length]);
     }
+    this.chatMembersByIdCache.set(chatId, picked);
     return picked;
   }
 
   public getChatLastSender(item: ChatMenuItem): DemoUser {
-    return this.users.find(user => user.id === item.lastSenderId) ?? this.getChatMembersById(item.id)[0] ?? this.activeUser;
+    this.syncChatLookupCache();
+    const cachedLastSender = this.chatLastSenderByIdCache.get(item.id);
+    if (cachedLastSender) {
+      return cachedLastSender;
+    }
+    const nextLastSender = this.userByIdCache.get(item.lastSenderId) ?? this.getChatMembersById(item.id)[0] ?? this.activeUser;
+    this.chatLastSenderByIdCache.set(item.id, nextLastSender);
+    return nextLastSender;
   }
 
   public getChatMemberCount(item: ChatMenuItem): number {

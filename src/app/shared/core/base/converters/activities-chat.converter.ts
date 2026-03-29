@@ -2,25 +2,37 @@ import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
 import type { ChatMenuItem } from '../interfaces/activity-feed.interface';
 import type { DemoUser } from '../interfaces/user.interface';
-import type { DemoChatRecord } from '../../demo/models/chats.model';
 
 interface BuildActivityChatRowsOptions {
   users: readonly DemoUser[];
   activeUserId: string;
 }
 
+interface ResolvedBuildActivityChatRowsOptions extends BuildActivityChatRowsOptions {
+  userById: ReadonlyMap<string, DemoUser>;
+  fallbackUser: DemoUser | null;
+}
+
 export function buildActivityChatRows(
-  items: readonly DemoChatRecord[],
+  items: readonly ChatMenuItem[],
   options: BuildActivityChatRowsOptions
 ): AppTypes.ActivityListRow[] {
-  return items.map(item => toActivityChatRow(item, options));
+  const resolvedOptions = resolveBuildActivityChatRowsOptions(options);
+  return items.map(item => toActivityChatRowWithResolvedOptions(item, resolvedOptions));
 }
 
 export function toActivityChatRow(
-  item: DemoChatRecord,
+  item: ChatMenuItem,
   options: BuildActivityChatRowsOptions
 ): AppTypes.ActivityListRow {
-  const lastSender = resolveChatLastSender(item, options.users, options.activeUserId);
+  return toActivityChatRowWithResolvedOptions(item, resolveBuildActivityChatRowsOptions(options));
+}
+
+function toActivityChatRowWithResolvedOptions(
+  item: ChatMenuItem,
+  options: ResolvedBuildActivityChatRowsOptions
+): AppTypes.ActivityListRow {
+  const lastSender = resolveChatLastSender(item, options);
   const unread = Math.max(0, Math.trunc(Number(item.unread) || 0));
   const distanceKm = Number.isFinite(Number(item.distanceKm)) ? Math.max(0, Number(item.distanceKm)) : 0;
   const distanceMetersExact = Number.isFinite(Number(item.distanceMetersExact))
@@ -38,7 +50,7 @@ export function toActivityChatRow(
     distanceKm,
     distanceMetersExact,
     unread,
-    metricScore: unread * 10 + resolveChatMemberCount(item, options.users, options.activeUserId),
+    metricScore: unread * 10 + resolveChatMemberCount(item, options),
     source: normalizeChatRecord(item)
   };
 }
@@ -66,7 +78,7 @@ export function activityChatContextFilterKey(
   return null;
 }
 
-function normalizeChatRecord(item: DemoChatRecord): ChatMenuItem {
+function normalizeChatRecord(item: ChatMenuItem): ChatMenuItem {
   return {
     ...item,
     memberIds: [...(item.memberIds ?? [])],
@@ -75,39 +87,49 @@ function normalizeChatRecord(item: DemoChatRecord): ChatMenuItem {
 }
 
 function resolveChatLastSender(
-  item: DemoChatRecord,
-  users: readonly DemoUser[],
-  activeUserId: string
+  item: ChatMenuItem,
+  options: ResolvedBuildActivityChatRowsOptions
 ): DemoUser | null {
-  const lastSender = users.find(user => user.id === item.lastSenderId) ?? null;
+  const lastSender = options.userById.get(item.lastSenderId) ?? null;
   if (lastSender) {
     return lastSender;
   }
-  const members = resolveChatMembers(item, users, activeUserId);
+  const members = resolveChatMembers(item, options);
   return members[0] ?? null;
 }
 
 function resolveChatMemberCount(
-  item: DemoChatRecord,
-  users: readonly DemoUser[],
-  activeUserId: string
+  item: ChatMenuItem,
+  options: ResolvedBuildActivityChatRowsOptions
 ): number {
-  return resolveChatMembers(item, users, activeUserId).length;
+  return resolveChatMembers(item, options).length;
 }
 
 function resolveChatMembers(
-  item: DemoChatRecord,
-  users: readonly DemoUser[],
-  activeUserId: string
+  item: ChatMenuItem,
+  options: ResolvedBuildActivityChatRowsOptions
 ): DemoUser[] {
   const members = (item.memberIds ?? [])
-    .map(memberId => users.find(user => user.id === memberId) ?? null)
+    .map(memberId => options.userById.get(memberId) ?? null)
     .filter((user): user is DemoUser => Boolean(user));
   if (members.length > 0) {
     return uniqueUsersById(members);
   }
-  const fallback = users.find(user => user.id === activeUserId) ?? users[0] ?? null;
-  return fallback ? [fallback] : [];
+  return options.fallbackUser ? [options.fallbackUser] : [];
+}
+
+function resolveBuildActivityChatRowsOptions(
+  options: BuildActivityChatRowsOptions
+): ResolvedBuildActivityChatRowsOptions {
+  const userById = new Map<string, DemoUser>();
+  for (const user of options.users) {
+    userById.set(user.id, user);
+  }
+  return {
+    ...options,
+    userById,
+    fallbackUser: userById.get(options.activeUserId) ?? options.users[0] ?? null
+  };
 }
 
 function uniqueUsersById(users: readonly DemoUser[]): DemoUser[] {

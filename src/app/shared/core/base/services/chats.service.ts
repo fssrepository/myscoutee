@@ -74,10 +74,11 @@ export class ChatsService extends BaseRouteModeService {
     } = {}
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
     if (!this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      const users = options.users ?? this.demoUsersRepository.queryAllUsers();
       const page = await this.httpChatsService.queryActivitiesChatPage(userId, request);
       return {
         items: buildActivityChatRows(page.items, {
-          users: options.users ?? this.demoUsersRepository.queryAllUsers(),
+          users,
           activeUserId: userId
         }),
         total: page.total,
@@ -85,44 +86,87 @@ export class ChatsService extends BaseRouteModeService {
       };
     }
 
+    const users = options.users ?? this.demoUsersRepository.queryAllUsers();
     const items = options.chatItems && options.chatItems.length > 0
-      ? options.chatItems.map(item => ({
-          ...item,
-          ownerUserId: 'ownerUserId' in item && typeof item.ownerUserId === 'string' ? item.ownerUserId : userId,
-          memberIds: [...(item.memberIds ?? [])]
-        }))
+      ? options.chatItems
       : await this.queryChatItemsByUser(userId);
     const filteredItems = items.filter(item =>
       request.chatContextFilter === 'all'
         ? true
         : activityChatContextFilterKey(item) === request.chatContextFilter
     );
-    const rows = buildActivityChatRows(filteredItems, {
-      users: options.users ?? this.demoUsersRepository.queryAllUsers(),
-      activeUserId: userId
-    });
-    const sorted = this.sortActivitiesChatRows(rows, request);
+    const sorted = this.sortActivitiesChatItems(filteredItems, request, users, userId);
     const startIndex = request.page * request.pageSize;
     return {
-      items: sorted.slice(startIndex, startIndex + request.pageSize),
+      items: buildActivityChatRows(sorted.slice(startIndex, startIndex + request.pageSize), {
+        users,
+        activeUserId: userId
+      }),
       total: sorted.length
     };
   }
 
-  private sortActivitiesChatRows(
-    rows: readonly AppTypes.ActivityListRow[],
-    request: ActivitiesPageRequest
-  ): AppTypes.ActivityListRow[] {
-    const sorted = [...rows];
+  private sortActivitiesChatItems(
+    items: readonly ChatMenuItem[],
+    request: ActivitiesPageRequest,
+    users: readonly DemoUser[],
+    activeUserId: string
+  ): ChatMenuItem[] {
+    const sorted = [...items];
+    const userById = this.buildUserById(users);
+    const hasFallbackUser = userById.has(activeUserId) || users.length > 0;
     if (request.secondaryFilter === 'past') {
-      return sorted.sort((left, right) => AppUtils.toSortableDate(right.dateIso) - AppUtils.toSortableDate(left.dateIso));
+      return sorted.sort(
+        (left, right) => AppUtils.toSortableDate(right.dateIso ?? '') - AppUtils.toSortableDate(left.dateIso ?? '')
+      );
     }
     if (request.secondaryFilter === 'relevant') {
       return sorted.sort((left, right) =>
-        right.metricScore - left.metricScore
-        || AppUtils.toSortableDate(right.dateIso) - AppUtils.toSortableDate(left.dateIso)
+        this.chatMetricScore(right, userById, hasFallbackUser) - this.chatMetricScore(left, userById, hasFallbackUser)
+        || AppUtils.toSortableDate(right.dateIso ?? '') - AppUtils.toSortableDate(left.dateIso ?? '')
       );
     }
-    return sorted.sort((left, right) => AppUtils.toSortableDate(right.dateIso) - AppUtils.toSortableDate(left.dateIso));
+    return sorted.sort(
+      (left, right) => AppUtils.toSortableDate(right.dateIso ?? '') - AppUtils.toSortableDate(left.dateIso ?? '')
+    );
+  }
+
+  private chatMetricScore(
+    item: Pick<ChatMenuItem, 'unread' | 'memberIds'>,
+    userById: ReadonlyMap<string, DemoUser>,
+    hasFallbackUser: boolean
+  ): number {
+    const unread = Math.max(0, Math.trunc(Number(item.unread) || 0));
+    return unread * 10 + this.chatMemberCount(item, userById, hasFallbackUser);
+  }
+
+  private chatMemberCount(
+    item: Pick<ChatMenuItem, 'memberIds'>,
+    userById: ReadonlyMap<string, DemoUser>,
+    hasFallbackUser: boolean
+  ): number {
+    const memberIds = item.memberIds ?? [];
+    if (memberIds.length === 0) {
+      return hasFallbackUser ? 1 : 0;
+    }
+
+    const uniqueIds = new Set<string>();
+    for (const memberId of memberIds) {
+      if (userById.has(memberId)) {
+        uniqueIds.add(memberId);
+      }
+    }
+    if (uniqueIds.size > 0) {
+      return uniqueIds.size;
+    }
+    return hasFallbackUser ? 1 : 0;
+  }
+
+  private buildUserById(users: readonly DemoUser[]): ReadonlyMap<string, DemoUser> {
+    const userById = new Map<string, DemoUser>();
+    for (const user of users) {
+      userById.set(user.id, user);
+    }
+    return userById;
   }
 }
