@@ -297,19 +297,34 @@ export class GameService extends BaseRouteModeService {
       return this.getUserGameCardsStackSnapshot(normalizedUserId);
     }
     state.requestInFlight = true;
-    const existingIds = reset ? [] : [...state.cardUserIds];
-    const existingSocialCards = reset ? [] : state.socialCards.map(card => ({ ...card }));
-    const existingCursor = reset ? null : state.nextCursor;
+    const fallbackIds = [...state.cardUserIds];
+    const fallbackSocialCards = state.socialCards.map(card => ({ ...card }));
+    const fallbackCursor = state.nextCursor;
+    const existingIds = reset ? [] : [...fallbackIds];
+    const existingSocialCards = reset ? [] : fallbackSocialCards.map(card => ({ ...card }));
+    const existingCursor = reset ? null : fallbackCursor;
     try {
-      const cards = await this.loadUserGameCardsPage(
-        normalizedUserId,
-        filterPreferences,
-        existingCursor,
-        pageSize,
-        mode,
-        leftQuery,
-        rightQuery,
-        requestTimeoutMs
+      const { value: cards } = await this.loadWithRecovery(
+        () => this.loadUserGameCardsPage(
+          normalizedUserId,
+          filterPreferences,
+          existingCursor,
+          pageSize,
+          mode,
+          leftQuery,
+          rightQuery,
+          requestTimeoutMs
+        ),
+        () => this.buildRecoveredGameCardsPage(
+          normalizedUserId,
+          fallbackIds,
+          fallbackSocialCards,
+          fallbackCursor
+        ),
+        {
+          shouldRecover: next => next === null,
+          hasRecoveryValue: next => this.hasRecoveredGameCards(next)
+        }
       );
       if (cards) {
         this.appCtx.setUserFilterCountOverride(normalizedUserId, cards.filterCount);
@@ -342,6 +357,40 @@ export class GameService extends BaseRouteModeService {
       state.requestInFlight = false;
     }
     return this.getUserGameCardsStackSnapshot(normalizedUserId);
+  }
+
+  private buildRecoveredGameCardsPage(
+    userId: string,
+    cardUserIds: readonly string[],
+    socialCards: readonly UserGameSocialCard[],
+    nextCursor: string | null
+  ): UserGameCardsDto | null {
+    if (
+      cardUserIds.length === 0
+      && socialCards.length === 0
+      && nextCursor === null
+      && this.appCtx.getUserFilterCountOverride(userId) === null
+    ) {
+      return null;
+    }
+    return {
+      filterCount: this.appCtx.getUserFilterCountOverride(userId) ?? cardUserIds.length + socialCards.length,
+      cardUserIds: [...cardUserIds],
+      socialCards: socialCards.map(card => ({ ...card })),
+      nextCursor
+    };
+  }
+
+  private hasRecoveredGameCards(cards: UserGameCardsDto | null): boolean {
+    return Boolean(
+      cards
+      && (
+        cards.cardUserIds.length > 0
+        || (cards.socialCards?.length ?? 0) > 0
+        || cards.nextCursor !== null
+        || Number.isFinite(cards.filterCount)
+      )
+    );
   }
 
   private ensureUserGameCardsStackState(userId: string): UserGameCardsStackState {

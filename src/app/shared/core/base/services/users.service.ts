@@ -7,6 +7,7 @@ import { DemoBootstrapService, type DemoBootstrapProgressState, DemoUsersReposit
 import { HttpUsersService } from '../../http';
 import type {
   DemoUserListItemDto,
+  UserByIdQueryResponse,
   UserDeleteRequestDto,
   UserFeedbackSubmitRequestDto,
   UserLocationEligibilityResponseDto,
@@ -164,28 +165,24 @@ export class UsersService extends BaseRouteModeService {
       if (demoModeEnabled && environment.demoBootstrapEnabled) {
         await this.demoBootstrapService.ensureReady(onProgress);
       }
-      const response = await this.withRequestTimeout(
-        (demoModeEnabled ? this.demoUsersService : this.httpUsersService).queryAvailableDemoUsers(),
-        normalizedTimeoutMs
+      const { value: response } = await this.loadWithRecovery(
+        () => this.withRequestTimeout(
+          (demoModeEnabled ? this.demoUsersService : this.httpUsersService).queryAvailableDemoUsers(),
+          normalizedTimeoutMs
+        ),
+        () => ({
+          users: demoModeEnabled ? this.demoUsersRepository.queryAvailableDemoUsers() : []
+        }),
+        {
+          shouldRecover: next =>
+            demoModeEnabled && (!Array.isArray(next.users) || next.users.length === 0),
+          hasRecoveryValue: next => Array.isArray(next.users) && next.users.length > 0
+        }
       );
-
-      if (demoModeEnabled && (!Array.isArray(response.users) || response.users.length === 0)) {
-        const fallbackUsers = this.demoUsersRepository.queryAvailableDemoUsers();
-        this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'success');
-        return fallbackUsers;
-      }
 
       this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'success');
       return response.users;
     } catch (error) {
-      if (demoModeEnabled) {
-        const fallbackUsers = this.demoUsersRepository.queryAvailableDemoUsers();
-        if (fallbackUsers.length > 0) {
-          this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'success');
-          return fallbackUsers;
-        }
-      }
-
       if (error instanceof RequestTimeoutError) {
         this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'timeout', 'Users request timeout.');
         return [];
@@ -238,9 +235,16 @@ export class UsersService extends BaseRouteModeService {
     this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'loading');
 
     try {
-      const response = await this.withRequestTimeout(
-        this.userService.queryUserById(normalizedUserId || undefined),
-        normalizedTimeoutMs
+      const { value: response } = await this.loadWithRecovery(
+        () => this.withRequestTimeout(
+          this.userService.queryUserById(normalizedUserId || undefined),
+          normalizedTimeoutMs
+        ),
+        () => this.recoverUserByIdResponse(normalizedUserId),
+        {
+          shouldRecover: next => !next.user,
+          hasRecoveryValue: next => Boolean(next.user)
+        }
       );
 
       if (!response.user) {
@@ -615,6 +619,61 @@ export class UsersService extends BaseRouteModeService {
         ? snapshot.serverTsIso
         : new Date().toISOString()
     };
+  }
+
+  private recoverUserByIdResponse(userId: string): UserByIdQueryResponse {
+    const normalizedUserId = userId.trim();
+    const cachedUser = normalizedUserId
+      ? this.peekCachedUserById(normalizedUserId)
+      : (this.appCtx.activeUserProfile() ?? this.buildSessionFallbackUser());
+
+    if (cachedUser) {
+      return {
+        user: this.cloneUser(cachedUser)
+      };
+    }
+
+    return {
+      user: null
+    };
+  }
+
+  private buildSessionFallbackUser(): UserDto | null {
+    const session = this.sessionService.currentSession();
+    if (session?.kind !== 'firebase') {
+      return null;
+    }
+
+    return this.cloneUser({
+      id: session.profile.id.trim(),
+      name: session.profile.name.trim(),
+      age: 0,
+      birthday: '',
+      city: '',
+      height: '',
+      physique: '',
+      languages: [],
+      horoscope: '',
+      initials: session.profile.initials.trim(),
+      gender: 'man',
+      statusText: '',
+      hostTier: '',
+      traitLabel: '',
+      completion: 0,
+      headline: '',
+      about: '',
+      images: [],
+      profileStatus: 'public',
+      activities: {
+        game: 0,
+        chat: 0,
+        invitations: 0,
+        events: 0,
+        hosting: 0,
+        tickets: 0,
+        feedback: 0
+      }
+    });
   }
 
   private cloneUser(user: UserDto): UserDto {

@@ -28,7 +28,18 @@ export class ChatsService extends BaseRouteModeService {
   }
 
   async queryChatItemsByUser(userId: string): Promise<DemoChatRecord[]> {
-    return this.chatsService.queryChatItemsByUser(userId);
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      return this.demoChatsService.queryChatItemsByUser(userId);
+    }
+    const { value } = await this.loadWithRecovery(
+      () => this.httpChatsService.queryChatItemsByUser(userId),
+      () => this.httpChatsService.peekChatItemsByUser(userId),
+      {
+        shouldRecover: items => items.length === 0,
+        hasRecoveryValue: items => items.length > 0
+      }
+    );
+    return value;
   }
 
   peekChatItemsByUser(userId: string): DemoChatRecord[] {
@@ -73,9 +84,13 @@ export class ChatsService extends BaseRouteModeService {
       users?: readonly DemoUser[];
     } = {}
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
-    if (!this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
-      const users = options.users ?? this.demoUsersRepository.queryAllUsers();
-      const page = await this.httpChatsService.queryActivitiesChatPage(userId, request);
+    const users = options.users ?? this.demoUsersRepository.queryAllUsers();
+
+    if (this.isDemoModeEnabled(ChatsService.CHAT_ROUTE)) {
+      const items = options.chatItems && options.chatItems.length > 0
+        ? options.chatItems
+        : await this.queryChatItemsByUser(userId);
+      const page = this.buildLocalActivitiesChatPage(userId, request, users, items);
       return {
         items: buildActivityChatRows(page.items, {
           users,
@@ -86,10 +101,35 @@ export class ChatsService extends BaseRouteModeService {
       };
     }
 
-    const users = options.users ?? this.demoUsersRepository.queryAllUsers();
-    const items = options.chatItems && options.chatItems.length > 0
-      ? options.chatItems
-      : await this.queryChatItemsByUser(userId);
+    const cachedChatItems = this.resolveCachedChatItems(userId, options.chatItems);
+    const { value: page } = await this.loadWithRecovery(
+      () => this.httpChatsService.queryActivitiesChatPage(userId, request),
+      () => this.buildLocalActivitiesChatPage(userId, request, users, cachedChatItems),
+      {
+        shouldRecover: next =>
+          next.items.length === 0
+          && next.total === 0
+          && cachedChatItems.length > 0,
+        hasRecoveryValue: next => next.items.length > 0 || next.total > 0
+      }
+    );
+
+    return {
+      items: buildActivityChatRows(page.items, {
+        users,
+        activeUserId: userId
+      }),
+      total: page.total,
+      nextCursor: page.nextCursor ?? null
+    };
+  }
+
+  private buildLocalActivitiesChatPage(
+    userId: string,
+    request: ActivitiesPageRequest,
+    users: readonly DemoUser[],
+    items: readonly ChatMenuItem[]
+  ): { items: DemoChatRecord[]; total: number; nextCursor?: string | null } {
     const filteredItems = items.filter(item =>
       request.chatContextFilter === 'all'
         ? true
@@ -98,12 +138,21 @@ export class ChatsService extends BaseRouteModeService {
     const sorted = this.sortActivitiesChatItems(filteredItems, request, users, userId);
     const startIndex = request.page * request.pageSize;
     return {
-      items: buildActivityChatRows(sorted.slice(startIndex, startIndex + request.pageSize), {
-        users,
-        activeUserId: userId
-      }),
+      items: sorted
+        .slice(startIndex, startIndex + request.pageSize)
+        .map(item => this.toDemoChatRecord(item, userId)),
       total: sorted.length
     };
+  }
+
+  private resolveCachedChatItems(
+    userId: string,
+    chatItems?: readonly ChatMenuItem[]
+  ): readonly ChatMenuItem[] {
+    if (chatItems && chatItems.length > 0) {
+      return chatItems;
+    }
+    return this.peekChatItemsByUser(userId);
   }
 
   private sortActivitiesChatItems(
@@ -168,5 +217,12 @@ export class ChatsService extends BaseRouteModeService {
       userById.set(user.id, user);
     }
     return userById;
+  }
+
+  private toDemoChatRecord(item: ChatMenuItem, ownerUserId: string): DemoChatRecord {
+    return {
+      ...item,
+      ownerUserId
+    };
   }
 }

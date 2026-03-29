@@ -104,7 +104,7 @@ export class DemoUserRatesBuilder {
     const normalizedOwnerUserId = ownerUserId.trim();
     const normalizedCounterpartyUserId = item.userId.trim();
     const normalizedSecondaryUserId = item.secondaryUserId?.trim() ?? '';
-    const activityRateId = item.id.trim() || crypto.randomUUID();
+    const activityRateId = item.id.trim() || this.createRateId();
     const scoreGiven = this.normalizeRateScore(item.scoreGiven);
     const scoreReceived = this.normalizeRateScore(item.scoreReceived);
 
@@ -354,7 +354,7 @@ export class DemoUserRatesBuilder {
     }
     const variantSuffix = variantIndex > 0 ? `-v${variantIndex}` : '';
     return {
-      id: crypto.randomUUID(),
+      id: this.createRateId(),
       userId: targetUserId,
       ...(secondaryUserId ? { secondaryUserId } : {}),
       mode,
@@ -369,6 +369,13 @@ export class DemoUserRatesBuilder {
       distanceKm: 2 + ((seed + laneIndex + userIndex) % 33),
       distanceMetersExact: this.seedDistanceMetersExact(2 + ((seed + laneIndex + userIndex) % 33), seed)
     };
+  }
+
+  private static createRateId(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+    return `rate-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   }
 
   private static selectPairSecondaryUserId<TUser extends RateUserRef>(
