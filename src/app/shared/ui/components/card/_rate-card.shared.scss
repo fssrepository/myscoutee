@@ -77,6 +77,7 @@
   min-height: 0;
   background-size: cover;
   background-position: center;
+  background-repeat: no-repeat;
 }
 
 .activities-rate-pair-inline-layer::after,
@@ -198,8 +199,14 @@
   overflow: hidden;
   background-size: cover;
   background-position: center;
+  background-repeat: no-repeat;
   border: 1px solid rgba(255, 255, 255, 0.26);
   box-shadow: 0 12px 24px rgba(6, 18, 36, 0.34);
+}
+
+:host([data-card-presentation='list']) .activities-rate-pair-inline-layer,
+:host([data-card-presentation='list']) .activities-rate-profile-layer {
+  background-size: contain;
 }
 
 .activities-rate-profile-layer-active {
