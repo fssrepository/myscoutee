@@ -33,6 +33,7 @@
         </mat-select>
       </div>
       <button
+        #filterButton
         type="button"
         class="game-action-filter has-badge"
         [class.game-action-filter-has-matches]="hasRemainingCandidatesForCurrentMode"
@@ -40,10 +41,12 @@
         (click)="openFilter()"
         aria-label="Open profile filters"
       >
+        <span class="game-action-ripple" matRipple [matRippleTrigger]="filterButton" aria-hidden="true"></span>
         <mat-icon>filter_alt</mat-icon>
         <span class="filter-state-badge" [class.active]="isFilterActive">{{ filterBadgeCount | counterBadge }}</span>
       </button>
       <button
+        #historyButton
         type="button"
         class="game-action-filter game-action-history has-badge"
         [class.is-disabled]="!canOpenHistory"
@@ -51,6 +54,7 @@
         (click)="openHistory()"
         aria-label="Open game history"
       >
+        <span class="game-action-ripple" matRipple [matRippleTrigger]="historyButton" aria-hidden="true"></span>
         <mat-icon>history</mat-icon>
         <span class="history-badge" *ngIf="historyBadgeCount > 0">{{ historyBadgeCount | counterBadge }}</span>
       </button>

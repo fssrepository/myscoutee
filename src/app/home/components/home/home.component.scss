@@ -1,5 +1,6 @@
 :host {
   display: block;
+  --game-action-ripple-color: rgba(33, 82, 132, 0.18);
 }
 
 .game-page {
@@ -307,6 +308,28 @@
   align-items: center;
   justify-content: center;
   position: relative;
+  isolation: isolate;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.game-action-ripple {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+:host ::ng-deep .game-action-ripple .mat-ripple-element {
+  background-color: var(--game-action-ripple-color);
+}
+
+.game-action-filter .mat-icon,
+.filter-state-badge,
+.history-badge {
+  position: relative;
+  z-index: 1;
 }
 
 .game-action-filter .mat-icon {
@@ -329,6 +352,7 @@
 }
 
 .game-action-history {
+  --game-action-ripple-color: rgba(200, 146, 30, 0.18);
   border-color: #e4c67f;
   background: linear-gradient(180deg, #fff7df 0%, #f6e8bf 100%);
   color: #835d14;

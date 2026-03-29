@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, OnDestroy, ViewChild, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { from } from 'rxjs';
@@ -108,6 +109,7 @@ const PUBLIC_PROFILE_DETAIL_LABELS = new Set(
   imports: [
     CommonModule,
     FormsModule,
+    MatRippleModule,
     MatIconModule,
     MatSelectModule,
     SmartListComponent,

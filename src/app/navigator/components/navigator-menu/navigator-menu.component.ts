@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, computed, inject } from '@angular/core';
+import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import {
   AppContext,
@@ -33,7 +34,7 @@ interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
 @Component({
   selector: 'app-navigator-menu',
   standalone: true,
-  imports: [CommonModule, MatIconModule, NavigatorSettingsMenuComponent, CounterBadgePipe],
+  imports: [CommonModule, MatIconModule, MatRippleModule, NavigatorSettingsMenuComponent, CounterBadgePipe],
   templateUrl: './navigator-menu.component.html',
   styleUrl: './navigator-menu.component.scss'
 })
