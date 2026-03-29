@@ -235,18 +235,47 @@
       *ngIf="shouldRenderHostedFullscreenOverlay()"
     >
       <div #fullscreenSurface class="smart-list__fullscreen-surface" *ngIf="resolvedFullscreenItemTemplate() as fullscreenTemplateRef">
-        <div
-          #fullscreenActiveCard
-          class="smart-list__fullscreen-card smart-list__fullscreen-card--active"
-          *ngIf="hostedFullscreenCurrentItem() as currentItem; else fullscreenEmptyState"
-        >
-          <ng-container
-            *ngTemplateOutlet="
-              fullscreenTemplateRef;
-              context: hostedFullscreenItemContext(currentItem, 'active')
-            "
-          ></ng-container>
-        </div>
+        <ng-container *ngIf="hostedFullscreenCurrentItem() as currentItem; else fullscreenEmptyState">
+          <div
+            class="smart-list__fullscreen-card smart-list__fullscreen-card--slot-2 smart-list__fullscreen-card--preview"
+            *ngIf="hostedFullscreenStackItem(2) as thirdItem"
+            aria-hidden="true"
+          >
+            <ng-container
+              *ngTemplateOutlet="
+                fullscreenTemplateRef;
+                context: hostedFullscreenItemContext(thirdItem, 'default', hostedFullscreenStackItemIndex(2))
+              "
+            ></ng-container>
+          </div>
+
+          <div
+            class="smart-list__fullscreen-card smart-list__fullscreen-card--slot-1 smart-list__fullscreen-card--preview"
+            *ngIf="hostedFullscreenStackItem(1) as nextItem"
+            aria-hidden="true"
+          >
+            <ng-container
+              *ngTemplateOutlet="
+                fullscreenTemplateRef;
+                context: hostedFullscreenItemContext(nextItem, 'default', hostedFullscreenStackItemIndex(1))
+              "
+            ></ng-container>
+          </div>
+
+          <div
+            class="smart-list__fullscreen-card smart-list__fullscreen-card--active"
+            [class.smart-list__fullscreen-card--curling]="hostedFullscreenIsCurling()"
+            [class.smart-list__fullscreen-card--curling-backward]="hostedFullscreenIsCurlingBackwards()"
+            (animationend)="onHostedFullscreenActiveCardAnimationEnd($event)"
+          >
+            <ng-container
+              *ngTemplateOutlet="
+                fullscreenTemplateRef;
+                context: hostedFullscreenItemContext(currentItem, hostedFullscreenCurrentRenderState())
+              "
+            ></ng-container>
+          </div>
+        </ng-container>
       </div>
     </div>
   </div>
