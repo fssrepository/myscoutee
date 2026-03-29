@@ -609,6 +609,7 @@ export class HomeComponent implements OnDestroy {
     if (cursorChanged) {
       this.clearPendingRatingAdvanceTimer();
     }
+    this.maybeStartGameStackPaginationLoad();
   }
 
   protected setRating(value: number): void {
