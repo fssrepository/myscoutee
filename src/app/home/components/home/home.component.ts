@@ -1339,7 +1339,12 @@ export class HomeComponent implements OnDestroy {
     const requiredCount = (Math.max(0, query.page) + 1) * pageSize;
     while (this.availableServiceRowsCount() < requiredCount) {
       const snapshot = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
-      if (snapshot.requestInFlight || snapshot.nextCursor === null) {
+      if (snapshot.requestInFlight) {
+        await this.waitForHomeGameStackTick();
+        this.mergeGameStackUsersIntoHomeUsers();
+        continue;
+      }
+      if (snapshot.nextCursor === null) {
         return;
       }
       await this.gameService.loadNextUserGameCardsStackPage(
@@ -1396,14 +1401,13 @@ export class HomeComponent implements OnDestroy {
     }
     const ratedRowId = row.id;
     this.selectedRating = score;
-    this.triggerRatingBarBlink();
     this.ratingAdvanceTimer = setTimeout(() => {
       this.ratingAdvanceTimer = null;
       if (this.homeSmartList?.cursorItem()?.id === ratedRowId) {
         this.selectedRating = 0;
         this.cdr.markForCheck();
       }
-    }, HomeComponent.GAME_RATING_CONFIRMATION_MS + 24);
+    }, HomeComponent.GAME_RATING_CONFIRMATION_MS + 320);
   }
 
   private homeCandidateSlides(candidate: DemoUser | null): SingleCardData['slides'];
