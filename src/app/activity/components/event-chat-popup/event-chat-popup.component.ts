@@ -845,17 +845,6 @@ export class EventChatPopupComponent implements OnDestroy {
   private resolveOptimisticSenderPresentation(
     activeUserId: string
   ): Pick<AppTypes.ChatPopupMessage, 'sender' | 'senderAvatar'> {
-    const latestOwnMessage = [...this.allMessages]
-      .reverse()
-      .find(message => message.mine && !!message.sender && !!message.senderAvatar?.initials);
-    if (latestOwnMessage) {
-      return {
-        sender: latestOwnMessage.sender,
-        senderAvatar: {
-          ...latestOwnMessage.senderAvatar
-        }
-      };
-    }
     return {
       sender: 'You',
       senderAvatar: {
