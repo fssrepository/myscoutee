@@ -244,7 +244,11 @@
             <ng-container
               *ngTemplateOutlet="
                 fullscreenTemplateRef;
-                context: hostedFullscreenItemContext(thirdItem, 'default', hostedFullscreenStackItemIndex(2))
+                context: hostedFullscreenItemContext(
+                  thirdItem,
+                  hostedFullscreenStackRenderState(2),
+                  hostedFullscreenStackItemIndex(2)
+                )
               "
             ></ng-container>
           </div>
@@ -257,7 +261,11 @@
             <ng-container
               *ngTemplateOutlet="
                 fullscreenTemplateRef;
-                context: hostedFullscreenItemContext(nextItem, 'default', hostedFullscreenStackItemIndex(1))
+                context: hostedFullscreenItemContext(
+                  nextItem,
+                  hostedFullscreenStackRenderState(1),
+                  hostedFullscreenStackItemIndex(1)
+                )
               "
             ></ng-container>
           </div>

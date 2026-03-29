@@ -375,6 +375,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   protected onPaginationPrev(event: Event): void {
     event.stopPropagation();
     if (this.shouldUseHostedFullscreenPagination()) {
+      this.interruptHostedFullscreenTransition();
       void this.advanceHostedFullscreenPagination(-1);
       return;
     }
@@ -384,6 +385,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   protected onPaginationNext(event: Event): void {
     event.stopPropagation();
     if (this.shouldUseHostedFullscreenPagination()) {
+      this.interruptHostedFullscreenTransition();
       void this.advanceHostedFullscreenPagination(1);
       return;
     }
@@ -674,6 +676,13 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return null;
     }
     return this.items[index] ?? null;
+  }
+
+  protected hostedFullscreenStackRenderState(slotOffset: number): SmartListItemRenderState {
+    if (slotOffset === 1 && this.paginationHelper.animating && this.hostedFullscreenPendingDelta !== 0) {
+      return 'active';
+    }
+    return 'default';
   }
 
   protected hostedFullscreenIsCurling(): boolean {
@@ -2109,11 +2118,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private ratingAdvanceInFlight = false;
 
   private async handleHostedFullscreenRatingSelect(score: number): Promise<void> {
+    this.interruptHostedFullscreenTransition();
     await this.config.pagination?.onRatingSelect?.(this.cursorItem(), score, this.currentQuery());
     if (!this.shouldUseHostedFullscreenPagination() || !this.canMoveCursor(1)) {
       return;
     }
-    if (this.paginationHelper.animating || this.ratingAdvanceInFlight) {
+    if (this.ratingAdvanceInFlight) {
       return;
     }
     this.ratingAdvanceInFlight = true;
@@ -2382,10 +2392,18 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.hostedFullscreenTransitionTimer = null;
   }
 
-  private resetHostedFullscreenTransition(): void {
+  private interruptHostedFullscreenTransition(): void {
+    if (!this.paginationHelper.animating) {
+      return;
+    }
     this.clearHostedFullscreenTransitionTimer();
     this.hostedFullscreenPendingDelta = 0;
     this.hostedFullscreenCompletingTransition = false;
+    this.paginationHelper.finishTransition();
+  }
+
+  private resetHostedFullscreenTransition(): void {
+    this.interruptHostedFullscreenTransition();
     this.paginationHelper.reset();
   }
 
