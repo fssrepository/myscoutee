@@ -1355,8 +1355,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
         stageNumber = this.workingSubEvents.length + 1;
       }
       return this.subEventFormMode === 'edit'
-        ? `Edit Stage ${stageNumber} Event`
-        : `Create Stage ${stageNumber} Event`;
+        ? `Edit Stage ${stageNumber}`
+        : `Create Stage ${stageNumber}`;
     }
     return this.subEventFormMode === 'edit' ? 'Edit Sub Event' : 'Create Sub Event';
   }
