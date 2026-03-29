@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 
 import { AppUtils } from '../../../../../shared/app-utils';
 import type {
@@ -46,15 +46,24 @@ export interface ActivitiesEventTemplateContext {
   templateUrl: './activities-event-template.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ActivitiesEventTemplateComponent {
+export class ActivitiesEventTemplateComponent implements OnChanges {
   @Input() row: AppTypes.ActivityListRow | null = null;
   @Input() groupLabel: string | null = null;
   @Input() context: ActivitiesEventTemplateContext | null = null;
+  @Input() cardRevision = 0;
 
   @Output() readonly mediaEndClick = new EventEmitter<void>();
   @Output() readonly menuAction = new EventEmitter<InfoCardMenuActionEvent>();
 
-  protected get card(): InfoCardData | null {
+  protected card: InfoCardData | null = null;
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['row'] || changes['groupLabel'] || changes['context'] || changes['cardRevision']) {
+      this.card = this.buildCard();
+    }
+  }
+
+  private buildCard(): InfoCardData | null {
     const row = this.row;
     const context = this.context;
     if (!row || !context) {

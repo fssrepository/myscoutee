@@ -17,6 +17,7 @@
   background: linear-gradient(180deg, #1b2c45 0%, #132238 100%);
   overflow: hidden;
   box-sizing: border-box;
+  touch-action: pan-y;
 }
 
 .activities-rate-profile-card.activities-row-item {

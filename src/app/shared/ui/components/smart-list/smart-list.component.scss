@@ -139,6 +139,8 @@
   scroll-padding-top: var(--smart-list-scroll-padding-top, 2.6rem);
   scroll-behavior: smooth;
   transition: padding-bottom 180ms ease;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 .smart-list--list.smart-list--thread {
@@ -162,6 +164,10 @@
 }
 
 @media (max-width: 900px) {
+  .smart-list--list.smart-list--card-grid.smart-list--snap-mandatory {
+    scroll-snap-type: y proximity;
+  }
+
   .smart-list--calendar.smart-list--month {
     padding-bottom: 0;
     overflow-y: hidden;

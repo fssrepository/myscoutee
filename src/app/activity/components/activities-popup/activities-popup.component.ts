@@ -250,6 +250,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly eventCapacityById: Record<string, AppTypes.EventCapacityRange> = {};
   protected readonly eventSubEventsById: Record<string, AppTypes.SubEventFormItem[]> = {};
   protected readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
+  protected activitiesEventCardRevision = 0;
   protected readonly forcedAcceptedMembersByRowKey: Record<string, number> = { 'events:e8': 20 };
   protected readonly leavingActivityRowIds = new Set<string>();
   protected readonly activityRowExitAnimationMs = 180;
@@ -525,6 +526,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         ?? this.users[0]
         ?? this.createFallbackActiveUser();
       this.activeUser = nextActiveUser;
+      this.bumpActivitiesEventCardRevision();
       this.refreshSectionBadges();
       this.cdr.markForCheck();
     });
@@ -747,6 +749,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         }));
       }
     }
+    this.bumpActivitiesEventCardRevision();
   }
 
 
@@ -1442,6 +1445,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private applyActivityMembersSummary(row: AppTypes.ActivityListRow, summary: ActivityMembersSummary): void {
     this.activityCapacityById[row.id] = `${summary.acceptedMembers} / ${summary.capacityTotal}`;
     this.activityPendingMembersById[row.id] = summary.pendingMembers;
+    this.bumpActivitiesEventCardRevision();
   }
 
   private applyActivityMembersSyncState(sync: ActivityMembersSyncState): void {
@@ -1453,6 +1457,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     );
     this.activityCapacityById[sync.id] = `${acceptedMembers} / ${capacityTotal}`;
     this.activityPendingMembersById[sync.id] = pendingMembers;
+    this.bumpActivitiesEventCardRevision();
   }
 
   private async loadActivityMembersForRow(
@@ -1502,6 +1507,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.activityCapacityById[record.id] = `${record.acceptedMembers} / ${record.capacityTotal}`;
       this.activityPendingMembersById[record.id] = record.pendingMembers;
     }
+    this.bumpActivitiesEventCardRevision();
   }
 
   private maybeDismissActivityRateEditor(target: Element): void {
@@ -1702,7 +1708,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.patchVisibleActivityRowsFromEventSync(sync);
     this.upsertVisibleEventRowFromSync(sync);
     this.applyActivitiesEventMemberSnapshot(sync);
+    this.bumpActivitiesEventCardRevision();
     this.refreshSectionBadges();
+  }
+
+  private bumpActivitiesEventCardRevision(): void {
+    this.activitiesEventCardRevision += 1;
   }
 
   private reconcileInvitationItemsFromEventSync(sync: ActivitiesEventSyncPayload): void {
