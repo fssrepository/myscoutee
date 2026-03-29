@@ -522,8 +522,8 @@ export class OwnedAssetsPopupFacadeService {
     };
   }
 
-  private normalizeAssetMediaLinks(): void {
-    this.assetCardsRef = this.assetCardsRef.map(card => {
+  private normalizeAssetMediaLinks(cards: readonly AppTypes.AssetCard[]): AppTypes.AssetCard[] {
+    return cards.map(card => {
       const imageUrl = this.normalizeAssetImageLink(card.type, card.imageUrl, card.id || card.title);
       const sourceLink = this.normalizeAssetSourceLink(card.sourceLink, imageUrl);
       return {
@@ -585,12 +585,15 @@ export class OwnedAssetsPopupFacadeService {
     cards: readonly AppTypes.AssetCard[],
     options: { persist?: boolean } = {}
   ): void {
-    this.assetCardsRef = cards.map(card => ({
+    const nextCards = this.normalizeAssetMediaLinks(cards.map(card => ({
       ...card,
       routes: [...(card.routes ?? [])],
       requests: card.requests.map(request => ({ ...request }))
-    }));
-    this.normalizeAssetMediaLinks();
+    })));
+    if (this.areAssetCardListsEqual(this.assetCardsRef, nextCards)) {
+      return;
+    }
+    this.assetCardsRef = nextCards;
     this.assetListRevisionRef.update(value => value + 1);
     if (options.persist) {
       this.schedulePersist();
@@ -682,5 +685,44 @@ export class OwnedAssetsPopupFacadeService {
     const spaceBelow = viewportHeight - rect.bottom;
     const spaceAbove = rect.top;
     return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
+  }
+
+  private areAssetCardListsEqual(
+    left: readonly AppTypes.AssetCard[],
+    right: readonly AppTypes.AssetCard[]
+  ): boolean {
+    if (left.length !== right.length) {
+      return false;
+    }
+    return left.every((card, index) => this.assetCardSignature(card) === this.assetCardSignature(right[index]));
+  }
+
+  private assetCardSignature(card: AppTypes.AssetCard | null | undefined): string {
+    if (!card) {
+      return '';
+    }
+    return [
+      card.id,
+      card.type,
+      card.title,
+      card.subtitle,
+      card.city,
+      String(card.capacityTotal),
+      card.details,
+      card.imageUrl,
+      card.sourceLink,
+      (card.routes ?? []).join('|'),
+      card.requests
+        .map(request => [
+          request.id,
+          request.userId ?? '',
+          request.name,
+          request.initials,
+          request.gender,
+          request.status,
+          request.note
+        ].join(':'))
+        .join('|')
+    ].join('||');
   }
 }

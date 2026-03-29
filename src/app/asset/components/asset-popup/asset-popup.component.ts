@@ -10,7 +10,7 @@ import { AssetFacadeService } from '../../asset-facade.service';
 import { AssetPopupStateService } from '../../asset-popup-state.service';
 import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
 import type * as AppTypes from '../../../shared/core/base/models';
-import { AppContext, AssetsService, AssetTicketsService } from '../../../shared/core';
+import { AppContext, AssetTicketsService } from '../../../shared/core';
 import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { AssetFormPopupComponent } from '../asset-form-popup/asset-form-popup.component';
 import { AssetTicketCodePopupComponent } from '../asset-ticket-code-popup/asset-ticket-code-popup.component';
@@ -62,7 +62,6 @@ interface OwnedAssetListFilters {
 export class AssetPopupComponent implements DoCheck, OnDestroy {
   private readonly assetFacade = inject(AssetFacadeService);
   private readonly appCtx = inject(AppContext);
-  private readonly assetsService = inject(AssetsService);
   private readonly assetTicketsService = inject(AssetTicketsService);
   protected readonly assetPopup = inject(AssetPopupStateService);
   protected readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
@@ -414,7 +413,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
         total: 0
       };
     }
-    const cards = await this.assetsService.queryOwnedAssetsByUser(userId);
+    const cards = this.ownedAssets.assetCards;
     const selectedAssetIds = this.isBasketMode()
       ? new Set((this.assetPopup.host()?.selectedSubEventAssetAssignChips() ?? []).map(card => card.id.trim()).filter(Boolean))
       : null;
