@@ -3,7 +3,6 @@ import {
   ChangeDetectorRef,
   Component,
   ElementRef,
-  NgZone,
   OnDestroy,
   ViewChild,
   computed,
@@ -30,8 +29,7 @@ import {
   type ListQuery,
   type PageResult,
   type SmartListConfig,
-  type SmartListLoadPage,
-  type SmartListStateChange
+  type SmartListLoadPage
 } from '../../../shared/ui';
 
 interface ChatThreadFilters {
@@ -49,7 +47,6 @@ interface ChatThreadFilters {
 })
 export class EventChatPopupComponent implements OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly ngZone = inject(NgZone);
   protected readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly appCtx = inject(AppContext);
@@ -62,10 +59,6 @@ export class EventChatPopupComponent implements OnDestroy {
   protected showContextMenu = false;
   protected contextMenuOpenUp = false;
   protected chatComposeDetachedSpace = 108;
-  protected chatHeaderProgress = 0;
-  protected chatHeaderProgressLoading = false;
-  protected chatHeaderLoadingProgress = 0;
-  protected chatHeaderLoadingOverdue = false;
   protected preparedChatContext: AppTypes.EventChatContext | null = null;
   protected preparedChatMembersResource: EventChatResourceContext | null = null;
   protected preparedChatAssetResources: EventChatResourceContext[] = [];
@@ -75,11 +68,11 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly chatInitialLoadMessageCount = 15;
   private readonly chatHistoryPreloadOffsetPx = 48;
   private readonly chatLoadOlderDelayMs = resolveCurrentRouteDelayMs('/activities/chats', 1500);
-  private readonly headerLoadingWindowMs = 3000;
-  private readonly headerLoadingTickMs = 16;
   private readonly chatTypingIdleMs = 1800;
   private readonly chatTypingRemoteTtlMs = 3200;
   private readonly chatTransientFxMs = 1600;
+  private readonly pendingMessageTimeoutMs = 7000;
+  private readonly pendingMessageMatchWindowMs = 45000;
   private chatThreadRevision = 0;
   protected chatThreadQuery: Partial<ListQuery<ChatThreadFilters>> = {};
   protected readonly chatThreadSmartListConfig: SmartListConfig<AppTypes.ChatPopupMessage, ChatThreadFilters> = {
@@ -127,13 +120,8 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private loadedSessionKey: string | null = null;
   private initialChatLoadedSessionKey: string | null = null;
-  private chatInitialLoadTimer: ReturnType<typeof setTimeout> | null = null;
   private chatComposeBoxRef?: ElementRef<HTMLDivElement>;
   private chatComposeResizeObserver: ResizeObserver | null = null;
-  private chatHeaderLoadingCounter = 0;
-  private chatHeaderLoadingInterval: ReturnType<typeof setInterval> | null = null;
-  private chatHeaderLoadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
-  private chatHeaderLoadingStartedAtMs = 0;
   private liveChatUnsubscribe: (() => void) | null = null;
   private typingIdleTimer: ReturnType<typeof setTimeout> | null = null;
   private localTypingActive = false;
@@ -141,6 +129,8 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly freshMessageIds = new Set<string>();
   private readonly freshReadKeys = new Set<string>();
   private readonly remoteTypingExpiryByUserId: Record<string, ReturnType<typeof setTimeout> | null> = {};
+  private readonly pendingMessageTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+  private optimisticMessageSequence = 0;
 
   constructor() {
     effect(() => {
@@ -163,17 +153,15 @@ export class EventChatPopupComponent implements OnDestroy {
       this.clearTypingIdleTimer();
       this.clearRemoteTypingIndicators();
       this.clearTransientMessageState();
+      this.clearPendingMessageTimers();
       this.resetVisibleReadReceipts();
       this.chatThreadRevision = 0;
       this.syncChatThreadQuery();
-      this.chatHeaderProgress = 0;
-      this.cancelChatInitialLoadTimer();
       if (!session) {
         this.loadedSessionKey = null;
         this.chatThreadQuery = {};
         this.chatInitialLoadPending = false;
         this.syncPreparedChatContext(null);
-        this.clearChatHeaderLoadingAnimation();
         this.cdr.markForCheck();
         return;
       }
@@ -188,8 +176,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.clearChatComposeResizeObserver();
     this.stopLocalTyping();
     this.teardownLiveChatUpdates();
-    this.cancelChatInitialLoadTimer();
-    this.clearChatHeaderLoadingAnimation();
+    this.clearPendingMessageTimers();
   }
 
   protected close(): void {
@@ -197,8 +184,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.contextMenuOpenUp = false;
     this.stopLocalTyping();
     this.teardownLiveChatUpdates();
-    this.cancelChatInitialLoadTimer();
-    this.clearChatHeaderLoadingAnimation();
+    this.clearPendingMessageTimers();
     this.loadedSessionKey = null;
     this.chatThreadQuery = {};
     this.activitiesContext.closeEventChat();
@@ -337,21 +323,6 @@ export class EventChatPopupComponent implements OnDestroy {
     this.contextMenuOpenUp = false;
   }
 
-  protected onChatThreadSmartListStateChange(
-    state: SmartListStateChange<AppTypes.ChatPopupMessage, ChatThreadFilters>
-  ): void {
-    if (this.chatInitialLoadPending) {
-      return;
-    }
-    this.chatHeaderProgress = state.scrollable
-      ? state.progress
-      : (state.items.length > 0 ? 1 : 0);
-    this.chatHeaderProgressLoading = state.loading;
-    this.chatHeaderLoadingProgress = state.loadingProgress;
-    this.chatHeaderLoadingOverdue = state.loadingOverdue;
-    this.cdr.markForCheck();
-  }
-
   protected onDraftMessageChange(value: string): void {
     this.draftMessage = value;
     const session = this.session();
@@ -402,20 +373,26 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     const sessionKey = `${session.item.id}:${session.openedAtIso}`;
+    const optimisticMessage = this.buildOptimisticChatMessage(text);
     this.draftMessage = '';
     this.stopLocalTyping();
+    this.mergeIncomingChatMessage(optimisticMessage);
+    this.schedulePendingMessageTimeout(optimisticMessage.id);
     this.cdr.markForCheck();
     void this.activitiesContext.sendEventChatMessage(session.item, text)
       .then(message => {
+        if (this.loadedSessionKey !== sessionKey) {
+          return;
+        }
         if (message) {
-          this.mergeIncomingChatMessage(message);
+          this.confirmPendingChatMessage(optimisticMessage.id, message);
         }
       })
       .catch(() => {
         if (this.loadedSessionKey !== sessionKey) {
           return;
         }
-        this.draftMessage = text;
+        this.markPendingMessageTimedOut(optimisticMessage.id);
         this.cdr.markForCheck();
       });
   }
@@ -510,11 +487,50 @@ export class EventChatPopupComponent implements OnDestroy {
     this.clearRemoteTypingIndicators();
   }
 
+  private buildOptimisticChatMessage(text: string): AppTypes.ChatPopupMessage {
+    const sentAt = new Date();
+    const activeUser = this.appCtx.activeUserProfile();
+    const activeUserId = this.activeUserId();
+    const activeUserName = `${activeUser?.name ?? ''}`.trim();
+    const initials = `${activeUser?.initials ?? ''}`.trim() || AppUtils.initialsFromText(activeUserName || 'You');
+    const gender = activeUser?.gender === 'woman' ? 'woman' : 'man';
+    const clientId = `pending:${activeUserId || 'self'}:${sentAt.getTime()}:${++this.optimisticMessageSequence}`;
+
+    return {
+      id: clientId,
+      clientId,
+      sender: activeUserName || 'You',
+      senderAvatar: {
+        id: activeUserId || 'self',
+        initials,
+        gender
+      },
+      text,
+      time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      sentAtIso: sentAt.toISOString(),
+      mine: true,
+      readBy: [],
+      deliveryState: 'pending'
+    } satisfies AppTypes.ChatPopupMessage;
+  }
+
+  private confirmPendingChatMessage(pendingMessageId: string, message: AppTypes.ChatPopupMessage): void {
+    if (this.replacePendingMessage(pendingMessageId, message, true)) {
+      return;
+    }
+    this.mergeIncomingChatMessage(message);
+  }
+
   private mergeIncomingChatMessage(message: AppTypes.ChatPopupMessage): void {
+    const shouldStickToEnd = message.mine || this.isChatThreadNearEnd();
+    const matchedPendingId = this.matchPendingMessageId(message);
+    if (matchedPendingId) {
+      this.replacePendingMessage(matchedPendingId, message, shouldStickToEnd);
+      return;
+    }
     if (this.allMessages.some(existingMessage => existingMessage.id === message.id)) {
       return;
     }
-    const shouldStickToEnd = message.mine || this.isChatThreadNearEnd();
     this.flagFreshMessage(message.id);
     this.allMessages = [...this.allMessages, message]
       .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
@@ -527,6 +543,11 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private handleLiveChatEvent(chat: ChatMenuItem, event: AppTypes.ChatLiveEvent): void {
+    if (event.type === 'reconnected') {
+      this.clearRemoteTypingIndicators();
+      void this.resyncChatThreadFromServer(chat);
+      return;
+    }
     if (event.type === 'typing') {
       this.applyTypingIndicator(event.typing);
       return;
@@ -623,6 +644,154 @@ export class EventChatPopupComponent implements OnDestroy {
     for (const key of Object.keys(this.latestVisibleReadMessageIdByReaderId)) {
       delete this.latestVisibleReadMessageIdByReaderId[key];
     }
+  }
+
+  private matchPendingMessageId(message: AppTypes.ChatPopupMessage): string | null {
+    if (!message.mine) {
+      return null;
+    }
+    let matchedId: string | null = null;
+    let matchedDiff = Number.POSITIVE_INFINITY;
+    const messageSentAtMs = AppUtils.toSortableDate(message.sentAtIso);
+
+    for (const pendingMessage of this.allMessages) {
+      if (
+        !pendingMessage.mine
+        || (pendingMessage.deliveryState !== 'pending' && pendingMessage.deliveryState !== 'timed-out')
+        || pendingMessage.text !== message.text
+      ) {
+        continue;
+      }
+      const diffMs = Math.abs(AppUtils.toSortableDate(pendingMessage.sentAtIso) - messageSentAtMs);
+      if (diffMs > this.pendingMessageMatchWindowMs || diffMs >= matchedDiff) {
+        continue;
+      }
+      matchedId = pendingMessage.id;
+      matchedDiff = diffMs;
+    }
+
+    return matchedId;
+  }
+
+  private replacePendingMessage(
+    pendingMessageId: string,
+    message: AppTypes.ChatPopupMessage,
+    stickToEnd: boolean
+  ): boolean {
+    const pendingIndex = this.allMessages.findIndex(existingMessage => existingMessage.id === pendingMessageId);
+    if (pendingIndex < 0) {
+      return false;
+    }
+
+    this.clearPendingMessageTimeout(pendingMessageId);
+    const pendingClientId = this.allMessages[pendingIndex]?.clientId;
+    let nextMessages = [...this.allMessages];
+    if (nextMessages.some((existingMessage, index) => index !== pendingIndex && existingMessage.id === message.id)) {
+      nextMessages = nextMessages.filter((_existingMessage, index) => index !== pendingIndex);
+    } else {
+      nextMessages[pendingIndex] = {
+        ...message,
+        clientId: pendingClientId
+      };
+    }
+
+    this.allMessages = nextMessages
+      .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+    this.rebuildVisibleReadReceipts();
+    this.syncVisibleChatThread({
+      appendedMessageId: message.id,
+      stickToEnd
+    });
+    this.cdr.markForCheck();
+    return true;
+  }
+
+  private async resyncChatThreadFromServer(chat: ChatMenuItem): Promise<void> {
+    const sessionKey = this.loadedSessionKey;
+    if (!sessionKey) {
+      return;
+    }
+    const shouldStickToEnd = this.isChatThreadNearEnd();
+
+    try {
+      const snapshot = await this.activitiesContext.loadEventChatMessages(chat);
+      if (this.loadedSessionKey !== sessionKey) {
+        return;
+      }
+      this.allMessages = this.mergeServerSnapshotWithPendingMessages(snapshot)
+        .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+      this.rebuildVisibleReadReceipts();
+      this.syncVisibleChatThread({
+        stickToEnd: shouldStickToEnd
+      });
+      this.cdr.markForCheck();
+    } catch {
+      // Keep the current optimistic/live state if the reconnect snapshot fails.
+    }
+  }
+
+  private mergeServerSnapshotWithPendingMessages(
+    snapshot: readonly AppTypes.ChatPopupMessage[]
+  ): AppTypes.ChatPopupMessage[] {
+    const matchedPendingIds = new Set<string>();
+    const snapshotMessages = snapshot.map(message => {
+      const pendingId = this.matchPendingMessageId(message);
+      if (!pendingId) {
+        return message;
+      }
+      matchedPendingIds.add(pendingId);
+      this.clearPendingMessageTimeout(pendingId);
+      const pendingMessage = this.allMessages.find(existingMessage => existingMessage.id === pendingId);
+      return {
+        ...message,
+        clientId: pendingMessage?.clientId
+      };
+    });
+    const unresolvedPendingMessages = this.allMessages.filter(message =>
+      (message.deliveryState === 'pending' || message.deliveryState === 'timed-out')
+      && !matchedPendingIds.has(message.id)
+    );
+
+    return [...snapshotMessages, ...unresolvedPendingMessages];
+  }
+
+  private schedulePendingMessageTimeout(messageId: string): void {
+    this.clearPendingMessageTimeout(messageId);
+    this.pendingMessageTimeouts.set(messageId, setTimeout(() => {
+      this.pendingMessageTimeouts.delete(messageId);
+      this.markPendingMessageTimedOut(messageId);
+    }, this.pendingMessageTimeoutMs));
+  }
+
+  private clearPendingMessageTimeout(messageId: string): void {
+    const timer = this.pendingMessageTimeouts.get(messageId);
+    if (!timer) {
+      return;
+    }
+    clearTimeout(timer);
+    this.pendingMessageTimeouts.delete(messageId);
+  }
+
+  private clearPendingMessageTimers(): void {
+    for (const timer of this.pendingMessageTimeouts.values()) {
+      clearTimeout(timer);
+    }
+    this.pendingMessageTimeouts.clear();
+  }
+
+  private markPendingMessageTimedOut(messageId: string): void {
+    const pendingIndex = this.allMessages.findIndex(message => message.id === messageId && message.deliveryState === 'pending');
+    if (pendingIndex < 0) {
+      return;
+    }
+    const nextMessages = [...this.allMessages];
+    nextMessages[pendingIndex] = {
+      ...nextMessages[pendingIndex],
+      deliveryState: 'timed-out'
+    };
+    this.allMessages = nextMessages;
+    this.syncVisibleChatThread();
+    this.cdr.markForCheck();
   }
 
   private flagFreshMessage(messageId: string): void {
@@ -865,110 +1034,5 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.chatComposeDetachedSpace = nextSpace;
     this.cdr.markForCheck();
-  }
-
-  private beginChatHeaderProgressLoading(): void {
-    this.chatHeaderLoadingCounter += 1;
-    if (this.chatHeaderLoadingCounter > 1) {
-      return;
-    }
-    this.chatHeaderProgressLoading = true;
-    this.chatHeaderLoadingOverdue = false;
-    this.chatHeaderLoadingProgress = 0.02;
-    this.chatHeaderLoadingStartedAtMs = performance.now();
-    this.cdr.markForCheck();
-    if (this.chatHeaderLoadingCompleteTimer) {
-      clearTimeout(this.chatHeaderLoadingCompleteTimer);
-      this.chatHeaderLoadingCompleteTimer = null;
-    }
-    if (this.chatHeaderLoadingInterval) {
-      clearInterval(this.chatHeaderLoadingInterval);
-      this.chatHeaderLoadingInterval = null;
-    }
-    this.updateChatHeaderLoadingWindow();
-    this.chatHeaderLoadingInterval = this.ngZone.runOutsideAngular(() =>
-      setInterval(() => {
-        this.updateChatHeaderLoadingWindow();
-        this.cdr.markForCheck();
-      }, this.headerLoadingTickMs)
-    );
-  }
-
-  private endChatHeaderProgressLoading(): void {
-    if (this.chatHeaderLoadingCounter === 0) {
-      return;
-    }
-    this.chatHeaderLoadingCounter = Math.max(0, this.chatHeaderLoadingCounter - 1);
-    if (this.chatHeaderLoadingCounter !== 0) {
-      return;
-    }
-    this.completeChatHeaderLoading();
-  }
-
-  private completeChatHeaderLoading(): void {
-    if (this.chatHeaderLoadingInterval) {
-      clearInterval(this.chatHeaderLoadingInterval);
-      this.chatHeaderLoadingInterval = null;
-    }
-    this.chatHeaderLoadingProgress = 1;
-    this.chatHeaderLoadingOverdue = false;
-    this.cdr.markForCheck();
-    if (this.chatHeaderLoadingCompleteTimer) {
-      clearTimeout(this.chatHeaderLoadingCompleteTimer);
-    }
-    this.chatHeaderLoadingCompleteTimer = this.ngZone.runOutsideAngular(() =>
-      setTimeout(() => {
-        this.ngZone.run(() => {
-          if (this.chatHeaderLoadingCounter !== 0) {
-            return;
-          }
-          this.chatHeaderProgressLoading = false;
-          this.chatHeaderLoadingProgress = 0;
-          this.chatHeaderLoadingOverdue = false;
-          this.chatHeaderLoadingStartedAtMs = 0;
-          this.chatHeaderLoadingCompleteTimer = null;
-          if (this.chatInitialLoadPending) {
-            this.chatInitialLoadPending = false;
-            this.chatHeaderProgress = this.allMessages.length > 0 ? 1 : 0;
-          }
-          this.cdr.markForCheck();
-        });
-      }, 100)
-    );
-  }
-
-  private updateChatHeaderLoadingWindow(): void {
-    if (!this.chatHeaderProgressLoading) {
-      return;
-    }
-    const elapsed = Math.max(0, performance.now() - this.chatHeaderLoadingStartedAtMs);
-    const nextProgress = AppUtils.clampNumber(elapsed / this.headerLoadingWindowMs, 0, 1);
-    this.chatHeaderLoadingProgress = Math.max(this.chatHeaderLoadingProgress, nextProgress);
-    this.chatHeaderLoadingOverdue = elapsed >= this.headerLoadingWindowMs && this.chatHeaderLoadingCounter > 0;
-  }
-
-  private clearChatHeaderLoadingAnimation(): void {
-    if (this.chatHeaderLoadingInterval) {
-      clearInterval(this.chatHeaderLoadingInterval);
-      this.chatHeaderLoadingInterval = null;
-    }
-    if (this.chatHeaderLoadingCompleteTimer) {
-      clearTimeout(this.chatHeaderLoadingCompleteTimer);
-      this.chatHeaderLoadingCompleteTimer = null;
-    }
-    this.chatHeaderLoadingCounter = 0;
-    this.chatHeaderLoadingProgress = 0;
-    this.chatHeaderProgressLoading = false;
-    this.chatHeaderLoadingOverdue = false;
-    this.chatHeaderLoadingStartedAtMs = 0;
-    this.cdr.markForCheck();
-  }
-
-  private cancelChatInitialLoadTimer(): void {
-    if (!this.chatInitialLoadTimer) {
-      return;
-    }
-    clearTimeout(this.chatInitialLoadTimer);
-    this.chatInitialLoadTimer = null;
   }
 }

@@ -1987,20 +1987,40 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected onActivitiesSmartListStateChange(change: SmartListStateChange<AppTypes.ActivityListRow, ActivitiesSmartListFilters>): void {
-    this.visibleActivityRows = [...change.items];
-    this.activitiesInitialLoadPending = change.initialLoading;
-    this.activitiesListScrollable = change.scrollable;
-    this.activitiesStickyValue = change.stickyLabel;
-    this.activitiesContext.setActivitiesStickyValue(change.stickyLabel);
-    if (this.activitiesPrimaryFilter === 'chats') {
-      this.chatItems = this.chatsService.peekChatItemsByUser(this.activeUser.id)
-        .map(item => ({ ...item, memberIds: [...(item.memberIds ?? [])] }));
-      this.refreshSectionBadges();
+    let shouldMarkForCheck = false;
+
+    const currentVisibleIds = this.visibleActivityRows.map(row => this.activityRowIdentity(row));
+    const nextVisibleIds = change.items.map(row => this.activityRowIdentity(row));
+    if (
+      currentVisibleIds.length !== nextVisibleIds.length
+      || currentVisibleIds.some((id, index) => id !== nextVisibleIds[index])
+    ) {
+      this.visibleActivityRows = [...change.items];
+      shouldMarkForCheck = true;
     }
+
+    if (this.activitiesInitialLoadPending !== change.initialLoading) {
+      this.activitiesInitialLoadPending = change.initialLoading;
+      shouldMarkForCheck = true;
+    }
+
+    if (this.activitiesListScrollable !== change.scrollable) {
+      this.activitiesListScrollable = change.scrollable;
+      shouldMarkForCheck = true;
+    }
+
+    if (this.activitiesStickyValue !== change.stickyLabel) {
+      this.activitiesStickyValue = change.stickyLabel;
+      this.activitiesContext.setActivitiesStickyValue(change.stickyLabel);
+      shouldMarkForCheck = true;
+    }
+
     if (this.isRatesFullscreenModeActive()) {
       this.activitiesRates.syncFullscreenSelection();
     }
-    this.cdr.markForCheck();
+    if (shouldMarkForCheck) {
+      this.cdr.markForCheck();
+    }
   }
 
   protected activityRowIdentity(row: AppTypes.ActivityListRow): string {

@@ -4,6 +4,8 @@ export interface ChatReadAvatar {
   gender: 'woman' | 'man';
 }
 
+export type ChatMessageDeliveryState = 'pending' | 'timed-out';
+
 export interface ChatPopupMessage {
   id: string;
   sender: string;
@@ -13,6 +15,8 @@ export interface ChatPopupMessage {
   sentAtIso: string;
   mine: boolean;
   readBy: ChatReadAvatar[];
+  clientId?: string;
+  deliveryState?: ChatMessageDeliveryState;
 }
 
 export interface ChatTypingIndicator {
@@ -34,7 +38,8 @@ export interface ChatReadReceipt {
 export type ChatLiveEvent =
   | { type: 'message'; chatId: string; message: ChatPopupMessage }
   | { type: 'typing'; chatId: string; typing: ChatTypingIndicator }
-  | { type: 'read'; chatId: string; read: ChatReadReceipt };
+  | { type: 'read'; chatId: string; read: ChatReadReceipt }
+  | { type: 'reconnected'; chatId: string };
 
 export interface ChatPopupDayGroup {
   key: string;

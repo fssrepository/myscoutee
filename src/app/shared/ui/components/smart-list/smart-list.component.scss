@@ -447,6 +447,12 @@
   gap: 0.68rem;
 }
 
+.smart-list--list.chat-thread-list {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+}
+
 .smart-list {
   display: flex;
   flex: 1;
@@ -1058,6 +1064,13 @@
   background: linear-gradient(180deg, #f0e6ff 0%, #e2d3ff 100%);
   border-color: rgba(113, 82, 193, 0.28);
   color: #5a3d9d;
+}
+
+@media (max-width: 900px) {
+  .smart-list--list.chat-thread-list {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
 }
 
 @media (min-width: 901px) {

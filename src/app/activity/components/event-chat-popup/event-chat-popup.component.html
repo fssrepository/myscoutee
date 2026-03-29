@@ -125,7 +125,6 @@
             [loadPage]="chatThreadLoadPage"
             [itemTemplate]="chatThreadMessageTemplate"
             [query]="chatThreadQuery"
-            (stateChange)="onChatThreadSmartListStateChange($event)"
           ></app-smart-list>
 
           <div class="chat-typing-indicator" *ngIf="typingIndicators.length > 0">
@@ -160,6 +159,8 @@
     class="chat-message"
     [class.mine]="message.mine"
     [class.chat-message-fresh]="isFreshMessage(message.id)"
+    [class.chat-message-pending]="message.deliveryState === 'pending'"
+    [class.chat-message-timed-out]="message.deliveryState === 'timed-out'"
     [attr.data-group-label]="groupLabel"
     [attr.data-smart-list-anchor]="message.id"
     [attr.data-chat-message-id]="message.id"
@@ -174,6 +175,15 @@
           <span class="chat-time-chip">{{ message.time }}</span>
         </div>
         <p class="chat-line">{{ message.text }}</p>
+        <div class="chat-delivery-state" *ngIf="message.mine && message.deliveryState === 'pending'">
+          Sending...
+        </div>
+        <div
+          class="chat-delivery-state chat-delivery-state-timed-out"
+          *ngIf="message.mine && message.deliveryState === 'timed-out'"
+        >
+          Taking longer than usual
+        </div>
       </div>
       <div class="chat-readers" *ngIf="visibleReadBy(message).length > 0">
         <span

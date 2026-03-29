@@ -78,6 +78,9 @@ interface HttpChatSocketEventDto {
   providedIn: 'root'
 })
 export class HttpChatsService {
+  private static readonly SOCKET_RECONNECT_BASE_DELAY_MS = 750;
+  private static readonly SOCKET_RECONNECT_MAX_DELAY_MS = 8000;
+
   private readonly http = inject(HttpClient);
   private readonly appCtx = inject(AppContext);
   private readonly firebaseAuthService = inject(FirebaseAuthService);
@@ -87,6 +90,10 @@ export class HttpChatsService {
   private socketChatId: string | null = null;
   private socketPromise: Promise<WebSocket | null> | null = null;
   private readonly socketListeners = new Set<(event: AppTypes.ChatLiveEvent) => void>();
+  private readonly intentionalSocketClosures = new Set<WebSocket>();
+  private socketReconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private socketReconnectAttempt = 0;
+  private shouldEmitReconnectEvent = false;
 
   async queryChatItemsByUser(userId: string): Promise<DemoChatRecord[]> {
     const normalizedUserId = userId.trim();
@@ -259,9 +266,8 @@ export class HttpChatsService {
 
     this.socketListeners.add(onEvent);
     const socket = await this.ensureSocket(chat);
-    if (!socket) {
-      this.socketListeners.delete(onEvent);
-      return () => {};
+    if (!socket && this.socketListeners.has(onEvent) && this.socketChatId === normalizedChatId) {
+      this.scheduleSocketReconnect(normalizedChatId);
     }
 
     return () => {
@@ -414,6 +420,7 @@ export class HttpChatsService {
       return this.socketPromise;
     }
 
+    this.clearSocketReconnectTimer();
     this.closeSocket(false);
     this.socketChatId = normalizedChatId;
     this.socketPromise = this.createSocket(normalizedChatId);
@@ -440,8 +447,18 @@ export class HttpChatsService {
       };
 
       socket.onopen = () => {
+        const emitReconnect = this.shouldEmitReconnectEvent;
         this.socket = socket;
+        this.clearSocketReconnectTimer();
+        this.socketReconnectAttempt = 0;
+        this.shouldEmitReconnectEvent = false;
         finalize(socket);
+        if (emitReconnect) {
+          this.emitSocketEvent({
+            type: 'reconnected',
+            chatId
+          });
+        }
       };
       socket.onmessage = event => {
         try {
@@ -450,23 +467,24 @@ export class HttpChatsService {
           if (!liveEvent) {
             return;
           }
-          for (const listener of this.socketListeners) {
-            listener(liveEvent);
-          }
+          this.emitSocketEvent(liveEvent);
         } catch {
           // Ignore malformed live chat payloads and keep the socket open.
         }
       };
       socket.onerror = () => {
-        if (this.socket === socket) {
-          this.closeSocket(false);
+        if (this.intentionalSocketClosures.delete(socket)) {
+          finalize(null);
+          return;
         }
+        this.handleUnexpectedSocketDisconnect(chatId);
         finalize(null);
       };
       socket.onclose = () => {
-        if (this.socket === socket) {
-          this.closeSocket(false);
+        if (this.intentionalSocketClosures.delete(socket)) {
+          return;
         }
+        this.handleUnexpectedSocketDisconnect(chatId);
       };
     });
   }
@@ -506,15 +524,78 @@ export class HttpChatsService {
   }
 
   private closeSocket(clearListeners = true): void {
+    this.clearSocketReconnectTimer();
     const currentSocket = this.socket;
     this.socket = null;
     this.socketChatId = null;
     this.socketPromise = null;
+    this.socketReconnectAttempt = 0;
+    this.shouldEmitReconnectEvent = false;
     if (clearListeners) {
       this.socketListeners.clear();
     }
     if (currentSocket && (currentSocket.readyState === WebSocket.OPEN || currentSocket.readyState === WebSocket.CONNECTING)) {
+      this.intentionalSocketClosures.add(currentSocket);
       currentSocket.close();
     }
+  }
+
+  private emitSocketEvent(event: AppTypes.ChatLiveEvent): void {
+    for (const listener of this.socketListeners) {
+      listener(event);
+    }
+  }
+
+  private handleUnexpectedSocketDisconnect(chatId: string): void {
+    if (this.socketChatId && this.socketChatId !== chatId) {
+      return;
+    }
+    this.socket = null;
+    this.socketPromise = null;
+    this.socketChatId = chatId;
+    if (this.socketListeners.size === 0) {
+      this.shouldEmitReconnectEvent = false;
+      return;
+    }
+    this.shouldEmitReconnectEvent = true;
+    this.scheduleSocketReconnect(chatId);
+  }
+
+  private scheduleSocketReconnect(chatId: string): void {
+    if (!chatId || this.socketListeners.size === 0 || this.socketReconnectTimer || this.socketChatId !== chatId) {
+      return;
+    }
+    this.socketReconnectAttempt += 1;
+    const delayMs = Math.min(
+      HttpChatsService.SOCKET_RECONNECT_MAX_DELAY_MS,
+      HttpChatsService.SOCKET_RECONNECT_BASE_DELAY_MS * Math.pow(2, Math.max(0, this.socketReconnectAttempt - 1))
+    );
+    this.socketReconnectTimer = setTimeout(() => {
+      this.socketReconnectTimer = null;
+      if (this.socketListeners.size === 0 || this.socketChatId !== chatId || this.socket || this.socketPromise) {
+        return;
+      }
+      void this.reconnectSocket(chatId);
+    }, delayMs);
+  }
+
+  private async reconnectSocket(chatId: string): Promise<void> {
+    if (this.socketListeners.size === 0 || this.socketChatId !== chatId || this.socket || this.socketPromise) {
+      return;
+    }
+    this.socketPromise = this.createSocket(chatId);
+    const socket = await this.socketPromise;
+    this.socketPromise = null;
+    if (!socket && this.socketListeners.size > 0 && this.socketChatId === chatId) {
+      this.scheduleSocketReconnect(chatId);
+    }
+  }
+
+  private clearSocketReconnectTimer(): void {
+    if (!this.socketReconnectTimer) {
+      return;
+    }
+    clearTimeout(this.socketReconnectTimer);
+    this.socketReconnectTimer = null;
   }
 }

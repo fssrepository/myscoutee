@@ -601,7 +601,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }, 120);
   }
 
-  protected readonly trackByGroup = (_index: number, group: SmartListGroup<T>): string => group.label;
+  protected readonly trackByGroup = (_index: number, group: SmartListGroup<T>): string => `${group.startIndex}:${group.label}`;
 
   protected readonly trackByItem = (index: number, item: T): unknown =>
     this.config.trackBy ? this.config.trackBy(index, item) : index;
@@ -644,11 +644,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       presentation: 'list',
       renderState: 'list'
     };
-  }
-
-  protected itemDomIndex(item: T): number {
-    const index = this.items.indexOf(item);
-    return index >= 0 ? index : 0;
   }
 
   protected resolvedFullscreenItemTemplate(): TemplateRef<SmartListItemTemplateContext<T, TFilters>> | null {
@@ -1483,7 +1478,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     const groupBy = this.config.groupBy;
     if (!groupBy) {
-      this.groups = this.items.length > 0 ? [{ label: '', items: [...this.items] }] : [];
+      this.groups = this.items.length > 0 ? [{ label: '', items: [...this.items], startIndex: 0 }] : [];
       if (!this.items.length || !this.shouldShowStickyHeader()) {
         this.stickyLabel = this.resolveEmptyStickyLabel();
       }
@@ -1492,14 +1487,20 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     const query = this.currentQuery();
     const nextGroups: SmartListGroup<T>[] = [];
+    let itemIndex = 0;
     for (const item of this.items) {
       const label = groupBy(item, query);
       const lastGroup = nextGroups[nextGroups.length - 1];
       if (!lastGroup || lastGroup.label !== label) {
-        nextGroups.push({ label, items: [item] });
-        continue;
+        nextGroups.push({
+          label,
+          items: [item],
+          startIndex: itemIndex
+        });
+      } else {
+        lastGroup.items.push(item);
       }
-      lastGroup.items.push(item);
+      itemIndex += 1;
     }
     this.groups = nextGroups;
     if (nextGroups.length === 0 || !this.shouldShowStickyHeader()) {

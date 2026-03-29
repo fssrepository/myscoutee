@@ -204,8 +204,8 @@
                   ></div>
                   <div
                     class="smart-list__item-shell"
-                    [attr.data-smart-list-index]="itemDomIndex(item)"
-                    [attr.data-smart-list-anchor]="itemAnchorKey(item, itemDomIndex(item))"
+                    [attr.data-smart-list-index]="group.startIndex + itemIndex"
+                    [attr.data-smart-list-anchor]="itemAnchorKey(item, group.startIndex + itemIndex)"
                   >
                     <ng-container
                       *ngTemplateOutlet="

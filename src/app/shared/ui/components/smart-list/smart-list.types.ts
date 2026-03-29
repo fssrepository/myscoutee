@@ -50,6 +50,7 @@ export type SmartListLoaders<T, TFilters extends SmartListFilters = SmartListFil
 export interface SmartListGroup<T> {
   label: string;
   items: T[];
+  startIndex: number;
 }
 
 export interface SmartListStateChange<T, TFilters extends SmartListFilters = SmartListFilters> {
