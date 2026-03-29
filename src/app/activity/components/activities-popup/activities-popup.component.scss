@@ -78,6 +78,8 @@
   border-radius: 7px;
   min-height: 26px;
   padding: 0.18rem 0.44rem;
+  padding-left: 0;
+  padding-right: 0;
   font-size: 0.64rem;
   font-weight: 800;
   letter-spacing: 0.03em;
@@ -87,6 +89,8 @@
 }
 .activities-mobile-rate-filter-panel .activities-mobile-rate-filter-group .mobile-profile-selector-option-main {
   gap: 0.26rem;
+  padding-left: 0.44rem;
+  padding-right: 0.44rem;
 }
 .activities-mobile-rate-filter-panel .activities-mobile-rate-filter-group .mobile-profile-selector-option-main .mat-icon {
   width: 16px;
@@ -95,7 +99,6 @@
   line-height: 16px;
 }
 .activities-mobile-rate-filter-panel .activities-mobile-rate-filter-group.is-group-separator-mobile {
-  border-top: 0;
   padding-top: 0.18rem;
 }
 .activities-mobile-rate-filter-group-row {
@@ -104,9 +107,10 @@
   justify-content: space-between;
   gap: 0.42rem;
   width: 100%;
+  padding-top: 0.28rem;
 }
 .activities-mobile-rate-filter-panel .activities-mobile-rate-filter-group-row .activities-mobile-rate-filter-group {
-  margin-top: 0.28rem;
+  margin-top: 0;
 }
 .activities-mobile-rate-filter-panel .mobile-profile-selector-option-main {
   display: inline-flex;
@@ -2264,11 +2268,16 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   min-height: 22px;
   padding: 0.12rem 0.44rem;
   border-radius: 7px;
-  background: linear-gradient(180deg, #eef8f5 0%, #e5f2ee 100%);
-  border: 1px solid rgba(47, 142, 125, 0.24);
-  color: #2a6c61;
+  background: linear-gradient(180deg, #eef3fb 0%, #e7edf8 100%);
+  border: 1px solid rgba(84, 104, 136, 0.24);
+  color: #3f5779;
   flex: 0 0 auto;
   margin-right: auto;
+}
+:host ::ng-deep .mat-mdc-option.status-option.rate-filter-group-option.is-group-separator .rate-filter-group-title-chip {
+  background: linear-gradient(180deg, #eef8f5 0%, #e5f2ee 100%);
+  border-color: rgba(47, 142, 125, 0.24);
+  color: #2a6c61;
 }
 .rate-filter-item-individual-given { color: #a1485a; }
 .rate-filter-item-individual-received { color: #2d5ea8; }
@@ -2323,6 +2332,8 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
   pointer-events: auto;
   min-height: 28px;
   cursor: default;
+  padding-left: 0;
+  padding-right: 0;
 }
 :host ::ng-deep .mat-mdc-option.status-option.rate-filter-group-option.mdc-list-item--disabled,
 :host ::ng-deep .mat-mdc-option.status-option.rate-filter-group-option[aria-disabled='true'] {

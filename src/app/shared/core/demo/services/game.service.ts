@@ -194,7 +194,7 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
           bridgeCount: 2,
           eventName: graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, leftUserId))
             ?? graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, rightUserId))
-            ?? 'Separated friends'
+            ?? 'Unconnected Friends'
         });
       }
     }
@@ -224,7 +224,7 @@ export class DemoGameService extends DemoRouteDelayService implements UserGameDa
         bridgeCount: bridges.length,
         eventName: graph.edgeEventNameByKey.get(this.sortedPairKey(activeUserId, bridgeUserId))
           ?? graph.edgeEventNameByKey.get(this.sortedPairKey(user.id, bridgeUserId))
-          ?? 'Friends in common'
+          ?? 'Connected Friends'
       });
     }
     return cards.sort((left, right) => (right.bridgeCount ?? 0) - (left.bridgeCount ?? 0) || left.id.localeCompare(right.id));

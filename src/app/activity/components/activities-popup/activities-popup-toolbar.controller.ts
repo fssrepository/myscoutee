@@ -143,9 +143,9 @@ export class ActivitiesPopupToolbarController {
       return this.activitiesChatsHeaderLabel();
     }
     if (this.activitiesPrimaryFilter === 'rates') {
-      const group = this.activitiesRateFilter.startsWith('individual') ? 'Single' : 'Pair';
+      const group = this.rateGroupLabelForKey(this.activitiesRateFilter);
       const label = this.rateFilterLabelForKey(this.activitiesRateFilter);
-      return `${group} Rate · ${label}`;
+      return `${group} · ${label}`;
     }
     if (this.isEventActivitiesPrimaryFilter()) {
       if (this.activitiesView === 'month' || this.activitiesView === 'week') {
@@ -218,8 +218,11 @@ export class ActivitiesPopupToolbarController {
 
   activitiesRateFilterLabel(): string {
     const label = this.rateFilterLabelForKey(this.activitiesRateFilter);
-    if (!label) { return 'Single · Given'; }
-    const group = this.activitiesRateFilter.startsWith('individual') ? 'Single' : 'Pair';
+    if (!label) { return 'Preferences · Given'; }
+    if (this.activitiesRateSocialBadgeEnabled && this.activitiesRateFilter.startsWith('pair')) {
+      return label;
+    }
+    const group = this.rateGroupLabelForKey(this.activitiesRateFilter);
     return `${group} · ${label}`;
   }
 
@@ -248,7 +251,7 @@ export class ActivitiesPopupToolbarController {
   }
 
   isRateGroupSeparator(label: string): boolean {
-    return label.trim().toLowerCase().includes('pair');
+    return label.trim().toLowerCase() === this.rateGroupLabelForKey('pair-given').toLowerCase();
   }
 
   rateFilterCount(filter: AppTypes.RateFilterKey): number {
@@ -277,12 +280,16 @@ export class ActivitiesPopupToolbarController {
 
   private rateFilterLabelForKey(key: AppTypes.RateFilterKey): string {
     if (this.activitiesRateSocialBadgeEnabled && key === 'pair-given') {
-      return 'Separated friends';
+      return 'Network';
     }
     if (this.activitiesRateSocialBadgeEnabled && key === 'pair-received') {
-      return 'Friends in common';
+      return 'Suggested via Connection';
     }
     return this.rateFilters.find((option: any) => option.key === key)?.label ?? 'Given';
+  }
+
+  private rateGroupLabelForKey(key: AppTypes.RateFilterKey): string {
+    return key.startsWith('individual') ? 'Preferences' : 'Suggestions';
   }
 
   totalRateFilterCount(): number {

@@ -138,10 +138,10 @@ export class HomeComponent implements OnDestroy {
   private readonly gameFilterValuesGroups: GameFilterOptionGroup[] = APP_STATIC_DATA.homeGameFilterValuesGroups;
   private readonly userFacetById: Record<string, GameUserFacet> = APP_STATIC_DATA.homeUserFacetById;
   protected readonly homeModeOptions: ReadonlyArray<HomeModeOption> = [
-    { key: 'single', label: 'Single mode', icon: 'person' },
-    { key: 'pair', label: 'Pair mode', icon: 'groups' },
-    { key: 'separated-friends', label: 'Separated friends', icon: 'group_add' },
-    { key: 'friends-in-common', label: 'Friends in common', icon: 'diversity_3' }
+    { key: 'single', label: 'Preferences', icon: 'person' },
+    { key: 'pair', label: 'Discovery', icon: 'groups' },
+    { key: 'friends-in-common', label: 'Connected', icon: 'diversity_3' },
+    { key: 'separated-friends', label: 'Unconnected', icon: 'group_add' }
   ];
   private users: DemoUser[] = [];
   protected selectedRating = 0;
@@ -505,7 +505,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected selectedHomeModeLabel(): string {
-    return this.homeModeOptions.find(option => option.key === this.selectedHomeMode)?.label ?? 'Single mode';
+    return this.homeModeOptions.find(option => option.key === this.selectedHomeMode)?.label ?? 'Preferences';
   }
 
   protected selectedHomeModeIcon(): string {
@@ -579,13 +579,13 @@ export class HomeComponent implements OnDestroy {
       slots: [
         this.homePairCardSlot(
           'woman',
-          isSocialPair ? 'Friend A' : 'Woman',
+          this.homePairSlotLabel(round?.socialCard, 'left'),
           round?.woman ?? null,
           round?.socialCard
         ),
         this.homePairCardSlot(
           'man',
-          isSocialPair ? 'Friend B' : 'Man',
+          this.homePairSlotLabel(round?.socialCard, 'right'),
           round?.man ?? null,
           round?.socialCard
         )
@@ -1369,7 +1369,7 @@ export class HomeComponent implements OnDestroy {
       }));
     }
     if (this.isFriendsInCommonMode) {
-      return this.socialSingleRows();
+      return this.socialFriendsInCommonPairRows();
     }
     return this.candidatePool.map(candidate => ({
       id: `single:${candidate.id}`,
@@ -1461,16 +1461,19 @@ export class HomeComponent implements OnDestroy {
       .filter(row => !!row.round.woman && !!row.round.man);
   }
 
-  private socialSingleRows(): HomeSingleSmartListRow[] {
+  private socialFriendsInCommonPairRows(): HomePairSmartListRow[] {
     return this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId).socialCards
       .filter(card => card.socialContext === 'friends-in-common')
       .map(card => ({
         id: card.id,
-        mode: 'single' as const,
-        candidate: this.userById(card.userId),
-        socialCard: card
+        mode: 'pair' as const,
+        round: {
+          woman: this.userById(card.userId),
+          man: this.userById(card.bridgeUserId ?? ''),
+          socialCard: card
+        }
       }))
-      .filter((row): row is HomeSingleSmartListRow & { socialCard: UserGameSocialCard } => Boolean(row.candidate));
+      .filter(row => !!row.round.woman && !!row.round.man);
   }
 
   private userById(userId: string): DemoUser | null {
@@ -1478,7 +1481,20 @@ export class HomeComponent implements OnDestroy {
   }
 
   private homeSocialStatusBadge(card: UserGameSocialCard): string {
-    return card.socialContext === 'friends-in-common' ? 'Common friend' : 'Separated';
+    return card.socialContext === 'friends-in-common' ? 'Connected' : 'Unconnected';
+  }
+
+  private homePairSlotLabel(
+    socialCard: UserGameSocialCard | undefined,
+    side: 'left' | 'right'
+  ): string {
+    if (!socialCard) {
+      return side === 'left' ? 'Woman' : 'Man';
+    }
+    if (socialCard.socialContext === 'friends-in-common') {
+      return side === 'left' ? 'Person' : 'Common friend';
+    }
+    return side === 'left' ? 'Friend A' : 'Friend B';
   }
 
   private homeCandidatePrimaryLine(candidate: DemoUser, socialCard?: UserGameSocialCard): string {

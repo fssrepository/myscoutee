@@ -428,12 +428,12 @@ const RATE_FILTERS: Array<{ key: RateFilterKey; label: string }> = [
   { key: 'pair-received', label: 'Received' }
 ];
 const RATE_FILTER_ENTRIES: RateFilterEntry[] = [
-  { kind: 'group', label: 'Single Rate' },
+  { kind: 'group', label: 'Preferences' },
   { kind: 'item', key: 'individual-given', label: 'Given' },
   { kind: 'item', key: 'individual-received', label: 'Received' },
   { kind: 'item', key: 'individual-mutual', label: 'Mutual' },
   { kind: 'item', key: 'individual-met', label: 'Met' },
-  { kind: 'group', label: 'Pair Rate' },
+  { kind: 'group', label: 'Suggestions' },
   { kind: 'item', key: 'pair-given', label: 'Given' },
   { kind: 'item', key: 'pair-received', label: 'Received' }
 ];
