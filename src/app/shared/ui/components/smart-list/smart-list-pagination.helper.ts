@@ -5,7 +5,8 @@ export class SmartListPaginationHelper<T> {
 
   constructor(
     private readonly markDirty: () => void,
-    private readonly leaveDurationMs = 420
+    private readonly leaveDurationMs = 420,
+    private readonly onFinish: (() => void) | null = null
   ) {}
 
   public get leavingItem(): T | null {
@@ -34,6 +35,7 @@ export class SmartListPaginationHelper<T> {
     }
     this.animatingValue = false;
     this.leavingItemValue = null;
+    this.onFinish?.();
     this.markDirty();
   }
 

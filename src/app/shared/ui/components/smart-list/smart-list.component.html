@@ -234,21 +234,12 @@
       [class.smart-list__stage-overlay--with-rating-bar]="shouldRenderPaginationRatingBar()"
       *ngIf="shouldRenderHostedFullscreenOverlay()"
     >
-      <div class="smart-list__fullscreen-surface" *ngIf="resolvedFullscreenItemTemplate() as fullscreenTemplateRef">
+      <div #fullscreenSurface class="smart-list__fullscreen-surface" *ngIf="resolvedFullscreenItemTemplate() as fullscreenTemplateRef">
         <div
-          class="smart-list__fullscreen-card smart-list__fullscreen-card--leaving"
-          *ngIf="hostedFullscreenLeavingItem() as leavingItem"
-          (animationend)="onHostedFullscreenLeaveAnimationEnd($event)"
+          #fullscreenActiveCard
+          class="smart-list__fullscreen-card smart-list__fullscreen-card--active"
+          *ngIf="hostedFullscreenCurrentItem() as currentItem; else fullscreenEmptyState"
         >
-          <ng-container
-            *ngTemplateOutlet="
-              fullscreenTemplateRef;
-              context: hostedFullscreenItemContext(leavingItem, 'leaving')
-            "
-          ></ng-container>
-        </div>
-
-        <div class="smart-list__fullscreen-card smart-list__fullscreen-card--active" *ngIf="hostedFullscreenCurrentItem() as currentItem; else fullscreenEmptyState">
           <ng-container
             *ngTemplateOutlet="
               fullscreenTemplateRef;
