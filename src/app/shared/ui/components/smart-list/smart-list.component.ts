@@ -120,6 +120,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private static readonly QUICK_COMPLETE_THRESHOLD_MS = 120;
   private static readonly HOSTED_FULLSCREEN_STACK_SIZE = 3;
   private static readonly HOSTED_FULLSCREEN_PAGE_CURL_DURATION_MS = 420;
+  private static readonly LIST_SNAP_SETTLE_DELAY_MS = 96;
+  private static readonly LIST_SNAP_SETTLE_GUARD_MS = 280;
   private static readonly LIST_CARD_SNAP_TARGET_SELECTOR =
     '.activities-row-item, .asset-item-card, .activities-card, .event-explore-card, .experience-item-card';
   private readonly cdr = inject(ChangeDetectorRef);
@@ -178,6 +180,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private loadingStartedAtMs = 0;
   private loadingInterval: ReturnType<typeof setInterval> | null = null;
   private loadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
+  private listSnapSettleTimer: ReturnType<typeof setTimeout> | null = null;
+  private listSnapSettleGuardTimer: ReturnType<typeof setTimeout> | null = null;
+  private suppressListSnapSettle = false;
   private flushScheduled = false;
   private awaitScrollReset = false;
   private calendarMonthFocusDate: Date | null = null;
@@ -280,6 +285,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   ngOnDestroy(): void {
     this.loadSequence += 1;
+    this.clearListSnapSettleTimers();
     this.clearCalendarSettleTimers();
     this.clearLoadingAnimation();
     this.clearHostedFullscreenTransitionTimer();
@@ -589,6 +595,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.updateScrollProgress(target);
     this.emitState();
     this.maybeLoadMore(target);
+    this.scheduleListSnapSettle(target);
   }
 
   protected onCalendarScroll(event: Event): void {
@@ -1844,6 +1851,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
           return;
         }
         scrollElement.style.scrollBehavior = previousScrollBehavior;
+        this.guardListSnapSettle();
         scrollElement.scrollTo({ top: finalTop, behavior: 'smooth' });
       };
 
@@ -1868,6 +1876,88 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.resolvedListLayout() === 'card-grid' && this.resolvedSnapMode() !== 'none';
   }
 
+  private scheduleListSnapSettle(scrollElement: HTMLDivElement): void {
+    if (!this.shouldUseSmoothListSnapSettle(scrollElement)) {
+      this.clearListSnapSettleTimer();
+      return;
+    }
+
+    this.clearListSnapSettleTimer();
+    this.listSnapSettleTimer = setTimeout(() => {
+      this.listSnapSettleTimer = null;
+      this.settleListSnapSmoothly(scrollElement);
+    }, SmartListComponent.LIST_SNAP_SETTLE_DELAY_MS);
+  }
+
+  private shouldUseSmoothListSnapSettle(scrollElement: HTMLDivElement): boolean {
+    return !this.suppressListSnapSettle
+      && this.currentViewMode === 'list'
+      && this.resolvedListLayout() === 'card-grid'
+      && this.resolvedSnapMode() !== 'none'
+      && scrollElement === this.scrollHostRef?.nativeElement;
+  }
+
+  private settleListSnapSmoothly(scrollElement: HTMLDivElement): void {
+    if (!this.shouldUseSmoothListSnapSettle(scrollElement)) {
+      return;
+    }
+
+    const nearestTarget = this.nearestListSnapTarget(scrollElement);
+    if (!nearestTarget) {
+      return;
+    }
+
+    const targetTop = this.listSnapTargetTop(scrollElement, nearestTarget);
+    if (Math.abs(scrollElement.scrollTop - targetTop) <= 2) {
+      return;
+    }
+
+    this.guardListSnapSettle();
+    scrollElement.scrollTo({ top: targetTop, behavior: 'smooth' });
+  }
+
+  private nearestListSnapTarget(scrollElement: HTMLDivElement): HTMLElement | null {
+    const targets = this.listCardSnapTargets(scrollElement);
+    if (targets.length === 0) {
+      return null;
+    }
+
+    const currentTop = scrollElement.scrollTop;
+    return targets.reduce<HTMLElement>((nearest, candidate) => {
+      const nearestDistance = Math.abs(this.listSnapTargetTop(scrollElement, nearest) - currentTop);
+      const candidateDistance = Math.abs(this.listSnapTargetTop(scrollElement, candidate) - currentTop);
+      return candidateDistance < nearestDistance ? candidate : nearest;
+    }, targets[0]);
+  }
+
+  private guardListSnapSettle(): void {
+    this.suppressListSnapSettle = true;
+    if (this.listSnapSettleGuardTimer) {
+      clearTimeout(this.listSnapSettleGuardTimer);
+    }
+    this.listSnapSettleGuardTimer = setTimeout(() => {
+      this.listSnapSettleGuardTimer = null;
+      this.suppressListSnapSettle = false;
+    }, SmartListComponent.LIST_SNAP_SETTLE_GUARD_MS);
+  }
+
+  private clearListSnapSettleTimer(): void {
+    if (!this.listSnapSettleTimer) {
+      return;
+    }
+    clearTimeout(this.listSnapSettleTimer);
+    this.listSnapSettleTimer = null;
+  }
+
+  private clearListSnapSettleTimers(): void {
+    this.clearListSnapSettleTimer();
+    if (this.listSnapSettleGuardTimer) {
+      clearTimeout(this.listSnapSettleGuardTimer);
+      this.listSnapSettleGuardTimer = null;
+    }
+    this.suppressListSnapSettle = false;
+  }
+
   private updateAutoFooterSpacerHeight(scrollElement?: HTMLDivElement | null): void {
     const target = scrollElement ?? this.scrollHostRef?.nativeElement;
     if (
@@ -1889,9 +1979,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return;
     }
 
-    const stickyHeaderHeight = this.shouldShowStickyHeader()
-      ? target.querySelector<HTMLElement>('.smart-list__sticky')?.offsetHeight ?? this.stickyHeaderHeightPx
-      : 0;
+    const snapPaddingTop = this.listSnapPaddingTop(target);
     const lastSnapTargetHeight = Math.max(
       lastSnapTarget.offsetHeight,
       Math.round(lastSnapTarget.getBoundingClientRect().height)
@@ -1899,7 +1987,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     this.autoFooterSpacerHeightPx = Math.max(
       0,
-      Math.ceil(target.clientHeight - stickyHeaderHeight - lastSnapTargetHeight)
+      Math.ceil(target.clientHeight - snapPaddingTop - lastSnapTargetHeight)
     );
   }
 
@@ -1923,11 +2011,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const stickyHeaderHeight = this.shouldShowStickyHeader()
       ? scrollElement.querySelector<HTMLElement>('.smart-list__sticky')?.offsetHeight ?? 0
       : 0;
-    const scrollPaddingTop = stickyHeaderHeight > 0
-      ? stickyHeaderHeight
-      : Number.isFinite(parsedScrollPaddingTop)
-        ? parsedScrollPaddingTop
-        : 0;
+    const scrollPaddingTop = Number.isFinite(parsedScrollPaddingTop)
+      ? parsedScrollPaddingTop
+      : stickyHeaderHeight;
     return scrollPaddingTop;
   }
 
