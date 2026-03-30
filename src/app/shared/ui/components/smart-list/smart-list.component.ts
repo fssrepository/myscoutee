@@ -120,6 +120,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private static readonly QUICK_COMPLETE_THRESHOLD_MS = 120;
   private static readonly HOSTED_FULLSCREEN_STACK_SIZE = 3;
   private static readonly HOSTED_FULLSCREEN_PAGE_CURL_DURATION_MS = 420;
+  private static readonly LIST_CARD_SNAP_TARGET_SELECTOR =
+    '.activities-row-item, .asset-item-card, .activities-card, .event-explore-card, .experience-item-card';
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly hostRef = inject(ElementRef<HTMLElement>);
   private restoreAnchorSequence = 0;
@@ -153,6 +155,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   protected calendarMonthPages: SmartListCalendarMonthPage<T>[] = [];
   protected calendarWeekPages: SmartListCalendarWeekPage<T>[] = [];
   protected stickyLabel = '';
+  protected stickyHeaderHeightPx = 0;
+  protected autoFooterSpacerHeightPx = 0;
   protected loading = false;
   protected initialLoading = true;
 
@@ -528,7 +532,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected resolvedFooterSpacerHeight(): string | null {
-    return this.resolveConfigValue(this.config.footerSpacerHeight, null);
+    const configuredHeight = this.resolveConfigValue(this.config.footerSpacerHeight, null);
+    if (this.autoFooterSpacerHeightPx <= 0) {
+      return configuredHeight;
+    }
+    const autoHeight = `${this.autoFooterSpacerHeightPx}px`;
+    return configuredHeight ? `calc(${configuredHeight} + ${autoHeight})` : autoHeight;
   }
 
   protected resolvedPresentation(): SmartListPresentation {
@@ -574,6 +583,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const target = event.target as HTMLDivElement;
     if (this.shouldShowStickyHeader()) {
       this.updateStickyLabel(target.scrollTop);
+    } else {
+      this.stickyHeaderHeightPx = 0;
     }
     this.updateScrollProgress(target);
     this.emitState();
@@ -1320,8 +1331,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       if (this.shouldShowStickyHeader()) {
         this.updateStickyLabel(scrollElement.scrollTop);
       } else {
+        this.stickyHeaderHeightPx = 0;
         this.stickyLabel = this.resolveEmptyStickyLabel();
       }
+      this.updateAutoFooterSpacerHeight(scrollElement);
       this.updateScrollProgress(scrollElement);
       this.emitState();
       this.cdr.markForCheck();
@@ -1633,23 +1646,27 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   private updateStickyLabel(scrollTop: number): void {
     if (!this.shouldShowStickyHeader()) {
+      this.stickyHeaderHeightPx = 0;
       this.stickyLabel = this.resolveEmptyStickyLabel();
       return;
     }
     if (this.groups.length === 0) {
+      this.stickyHeaderHeightPx = 0;
       this.stickyLabel = this.resolveEmptyStickyLabel();
       return;
     }
     const scrollElement = this.scrollHostRef?.nativeElement;
     if (!scrollElement) {
+      this.stickyHeaderHeightPx = 0;
       this.stickyLabel = this.groups[0]?.label ?? this.resolveEmptyStickyLabel();
       return;
     }
     const stickyHeader = scrollElement.querySelector<HTMLElement>('.smart-list__sticky');
     const stickyHeaderHeight = stickyHeader?.offsetHeight ?? 0;
+    this.stickyHeaderHeightPx = stickyHeaderHeight;
     const targetTop = scrollTop + stickyHeaderHeight + 1;
     const rows = Array.from(
-      scrollElement.querySelectorAll<HTMLElement>('[data-group-label]:not(.smart-list__group-marker)')
+      scrollElement.querySelectorAll<HTMLElement>('.smart-list__item-shell[data-group-label]')
     );
     if (rows.length === 0) {
       this.stickyLabel = this.groups[0]?.label ?? this.resolveEmptyStickyLabel();
@@ -1709,8 +1726,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
         if (this.shouldShowStickyHeader()) {
           this.updateStickyLabel(this.scrollHostRef?.nativeElement?.scrollTop ?? 0);
         } else {
+          this.stickyHeaderHeightPx = 0;
           this.stickyLabel = this.resolveEmptyStickyLabel();
         }
+        this.updateAutoFooterSpacerHeight();
         this.updateScrollProgress();
       }
       this.emitState();
@@ -1801,9 +1820,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       if (scrollElement.scrollTop > 1) {
         return;
       }
-      const firstSnapTarget = scrollElement.querySelector<HTMLElement>(
-        '.activities-row-item, .asset-item-card, .activities-card'
-      );
+      const firstSnapTarget = this.listCardSnapTargets(scrollElement)[0] ?? null;
       if (!firstSnapTarget) {
         return;
       }
@@ -1851,16 +1868,67 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.resolvedListLayout() === 'card-grid' && this.resolvedSnapMode() !== 'none';
   }
 
+  private updateAutoFooterSpacerHeight(scrollElement?: HTMLDivElement | null): void {
+    const target = scrollElement ?? this.scrollHostRef?.nativeElement;
+    if (
+      !target
+      || this.currentViewMode !== 'list'
+      || this.resolvedListLayout() !== 'card-grid'
+      || this.resolvedSnapMode() === 'none'
+    ) {
+      this.autoFooterSpacerHeightPx = 0;
+      return;
+    }
+
+    const snapTargets = this.listCardSnapTargets(target);
+    const lastSnapTarget = snapTargets.length > 0
+      ? snapTargets[snapTargets.length - 1]
+      : null;
+    if (!lastSnapTarget) {
+      this.autoFooterSpacerHeightPx = 0;
+      return;
+    }
+
+    const stickyHeaderHeight = this.shouldShowStickyHeader()
+      ? target.querySelector<HTMLElement>('.smart-list__sticky')?.offsetHeight ?? this.stickyHeaderHeightPx
+      : 0;
+    const lastSnapTargetHeight = Math.max(
+      lastSnapTarget.offsetHeight,
+      Math.round(lastSnapTarget.getBoundingClientRect().height)
+    );
+
+    this.autoFooterSpacerHeightPx = Math.max(
+      0,
+      Math.ceil(target.clientHeight - stickyHeaderHeight - lastSnapTargetHeight)
+    );
+  }
+
+  private listCardSnapTargets(scrollElement: HTMLDivElement): HTMLElement[] {
+    return Array.from(
+      scrollElement.querySelectorAll<HTMLElement>(SmartListComponent.LIST_CARD_SNAP_TARGET_SELECTOR)
+    );
+  }
+
   private listSnapTargetTop(scrollElement: HTMLDivElement, target: HTMLElement): number {
+    const scrollPaddingTop = this.listSnapPaddingTop(scrollElement);
+    return Math.max(0, target.offsetTop - scrollPaddingTop);
+  }
+
+  private listSnapPaddingTop(scrollElement: HTMLDivElement): number {
     const computed = globalThis.getComputedStyle?.(scrollElement);
     const rawScrollPaddingTop = computed?.scrollPaddingTop
       || computed?.getPropertyValue('scroll-padding-top')
       || '';
     const parsedScrollPaddingTop = Number.parseFloat(rawScrollPaddingTop);
-    const scrollPaddingTop = Number.isFinite(parsedScrollPaddingTop)
-      ? parsedScrollPaddingTop
-      : scrollElement.querySelector<HTMLElement>('.smart-list__sticky')?.offsetHeight ?? 0;
-    return Math.max(0, target.offsetTop - scrollPaddingTop);
+    const stickyHeaderHeight = this.shouldShowStickyHeader()
+      ? scrollElement.querySelector<HTMLElement>('.smart-list__sticky')?.offsetHeight ?? 0
+      : 0;
+    const scrollPaddingTop = stickyHeaderHeight > 0
+      ? stickyHeaderHeight
+      : Number.isFinite(parsedScrollPaddingTop)
+        ? parsedScrollPaddingTop
+        : 0;
+    return scrollPaddingTop;
   }
 
   private resetScrollSoon(): void {

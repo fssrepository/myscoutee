@@ -178,6 +178,7 @@
           [class.smart-list--snap-mandatory]="resolvedSnapMode() === 'mandatory'"
           [style.--smart-list-desktop-columns]="resolvedDesktopColumns()"
           [style.--smart-list-scroll-padding-top]="resolvedScrollPaddingTop()"
+          [style.--smart-list-sticky-header-height.px]="stickyHeaderHeightPx > 0 ? stickyHeaderHeightPx : null"
           (scroll)="onListScroll($event)"
         >
           <div *ngIf="shouldShowStickyHeader()" class="smart-list__sticky" [ngClass]="resolvedStickyHeaderClass()">{{ stickyLabel }}</div>
@@ -204,6 +205,7 @@
                   ></div>
                   <div
                     class="smart-list__item-shell"
+                    [attr.data-group-label]="group.label || null"
                     [attr.data-smart-list-index]="group.startIndex + itemIndex"
                     [attr.data-smart-list-anchor]="itemAnchorKey(item, group.startIndex + itemIndex)"
                   >
