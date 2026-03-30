@@ -82,8 +82,10 @@
   inset: 0 0 var(--smart-list-fullscreen-bottom-offset) 0;
   margin: 0;
   pointer-events: none;
-  transform-origin: top right;
-  will-change: transform, opacity, filter;
+  transform-origin: center right;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
 }
 
 .smart-list__fullscreen-card--active {
@@ -120,7 +122,7 @@
 }
 
 .smart-list__fullscreen-card--curling-backward {
-  transform-origin: top left;
+  transform-origin: center left;
   animation-name: smart-list-fullscreen-page-curl-backward;
 }
 
@@ -412,30 +414,38 @@
 
 @keyframes smart-list-fullscreen-page-curl {
   0% {
-    transform: perspective(1400px) translateX(0) translateY(0) rotateY(0deg) rotateZ(0deg);
+    transform: perspective(1800px) translate3d(0, 0, 0) rotateY(0deg) scale3d(1, 1, 1);
     opacity: 1;
   }
-  30% {
-    transform: perspective(1400px) translateX(-8%) translateY(1%) rotateY(-24deg) rotateZ(-2deg);
+  24% {
+    transform: perspective(1800px) translate3d(-4%, 0, 10px) rotateY(-14deg) scale3d(0.998, 1, 1);
     opacity: 0.96;
   }
+  62% {
+    transform: perspective(1800px) translate3d(-18%, 0, 24px) rotateY(-42deg) scale3d(0.982, 1, 1);
+    opacity: 0.92;
+  }
   100% {
-    transform: perspective(1400px) translateX(-145%) translateY(8%) rotateY(-82deg) rotateZ(-11deg);
+    transform: perspective(1800px) translate3d(-118%, 0, 0) rotateY(-84deg) scale3d(0.94, 1, 1);
     opacity: 0;
   }
 }
 
 @keyframes smart-list-fullscreen-page-curl-backward {
   0% {
-    transform: perspective(1400px) translateX(0) translateY(0) rotateY(0deg) rotateZ(0deg);
+    transform: perspective(1800px) translate3d(0, 0, 0) rotateY(0deg) scale3d(1, 1, 1);
     opacity: 1;
   }
-  30% {
-    transform: perspective(1400px) translateX(8%) translateY(1%) rotateY(24deg) rotateZ(2deg);
+  24% {
+    transform: perspective(1800px) translate3d(4%, 0, 10px) rotateY(14deg) scale3d(0.998, 1, 1);
     opacity: 0.96;
   }
+  62% {
+    transform: perspective(1800px) translate3d(18%, 0, 24px) rotateY(42deg) scale3d(0.982, 1, 1);
+    opacity: 0.92;
+  }
   100% {
-    transform: perspective(1400px) translateX(145%) translateY(8%) rotateY(82deg) rotateZ(11deg);
+    transform: perspective(1800px) translate3d(118%, 0, 0) rotateY(84deg) scale3d(0.94, 1, 1);
     opacity: 0;
   }
 }
